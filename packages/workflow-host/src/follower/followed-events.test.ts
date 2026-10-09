@@ -107,3 +107,14 @@ describe('a fact of a brain, as the follower reads it', () => {
     ]).toEqual(['none', 'none', 'none']);
   });
 });
+
+describe('the reads and tellings of a conversation, as the follower meets them', () => {
+  it('are none, which no recall function folds and no trigger takes', () => {
+    const read = { call_id: 'c-1', server: 'chat', tool: 'thread_replies', by: 'brain:alpha', at };
+
+    expect([
+      followedEventOf(recordOf('conversation-calls/c-1', { type: 'replies_read', ...read }), 'orchestration'),
+      followedEventOf(recordOf('conversation-calls/c-1', { type: 'telling_started', ...read }), 'recollection'),
+    ]).toEqual(['none', 'none']);
+  });
+});

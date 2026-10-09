@@ -16,6 +16,7 @@ const protectedPath = '/v1/orgs/acme/whoami';
 
 const malformedAuthorization: ReadonlyArray<readonly [string, ReadonlyArray<readonly [string, string]>]> = [
   ['credentials of another scheme', [['authorization', 'Basic YWNtZTpzZWNyZXQ=']]],
+  ['a Request header with a token, a scheme the API does not know', [['authorization', 'Request a-request.a-digest']]],
   ['a Bearer header without a key', [['authorization', 'Bearer']]],
   ['a Request header without a token', [['authorization', 'Request']]],
   ['two words after Request', [['authorization', 'Request abc def']]],
@@ -65,19 +66,6 @@ describe('authentication with API keys', () => {
   });
 });
 
-describe('the answer token of a request', () => {
-  it('is handed on unverified, as a caller of the org the call names with no permission', async () => {
-    const { handler } = createTestHandler({ authenticator: keyHolders, routes: [whoIsCalling] });
-
-    expect(
-      await call(handler, protectedPath, { headers: { authorization: 'request a-token-of-a-request_1' } }),
-    ).toMatchObject({
-      status: 200,
-      body: { id: 'request-token', org: 'acme', permissions: [], brains: [], requestToken: 'a-token-of-a-request_1' },
-    });
-  });
-});
-
 describe('a malformed Authorization header', () => {
   it.each(malformedAuthorization)('answers %s with 400 and an invalid_request challenge', async (_case, headers) => {
     const { handler } = createTestHandler({ authenticator: keyHolders, routes: [whoIsCalling] });
@@ -90,8 +78,7 @@ describe('a malformed Authorization header', () => {
       status: 400,
       body: {
         reason: 'bad_request',
-        detail:
-          'The Authorization header must hold exactly one API key, as Bearer <key>, or the answer token of a request, as Request <token>',
+        detail: 'The Authorization header must hold exactly one API key, as Bearer <key>',
       },
     });
     expect(answer.headers.get('www-authenticate')).toBe('Bearer error="invalid_request"');

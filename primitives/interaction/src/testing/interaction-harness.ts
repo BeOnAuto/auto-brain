@@ -7,7 +7,6 @@ import {
   type Outcome,
 } from '@beonauto/operations';
 import { memoryBrainRegistry, memoryLedger, recordingReporter } from '@beonauto/operations/testing';
-import type { OutboundFetch } from '@beonauto/outbound';
 import {
   defineCancelExecution,
   defineCreateSpec,
@@ -18,11 +17,11 @@ import {
 } from '@beonauto/specs';
 import { Effect, Layer } from 'effect';
 
-import { noChannels, type ChannelSettings } from '../channels/channel-settings.ts';
 import { makeInteractionFunctionAdapter } from '../primitive/interaction-function.ts';
 import { openRequests, openRequestsName } from '../requests/open-requests.ts';
 import { requestsDue, type DueRequestItem, type RequestsDue } from '../schedule/due-requests.ts';
-import { dueInBothLanes, firstOpenOf, noTools, performedAll, performedEach } from './harness-parts.ts';
+import { noTools, type ToolPorts } from './fake-tools.ts';
+import { dueInBothLanes, firstOpenOf, performedAll, performedEach } from './harness-parts.ts';
 
 export const acmeAdmin: CallerIdentity = { id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: '*' };
 
@@ -35,12 +34,12 @@ export interface HarnessLedger {
   readonly layer: Layer.Layer<Ledger>;
 }
 
+export type HarnessTools = ToolPorts;
+
 export interface HarnessOptions {
   readonly ledger?: HarnessLedger | undefined;
-  readonly channels?: ChannelSettings;
-  readonly tools?: typeof noTools;
+  readonly tools?: HarnessTools;
   readonly mostOpenRequests?: number;
-  readonly fetch?: OutboundFetch;
 }
 
 export interface InteractionHarness {
@@ -54,7 +53,6 @@ export interface InteractionHarness {
   readonly runOf: (executionId: string) => Promise<Outcome>;
   readonly performDue: (now: number) => Promise<number>;
   readonly firstOpen: () => Promise<unknown>;
-  readonly dueWith: (channels: ChannelSettings) => RequestsDue;
   readonly dueOver: (over: RequestLedger) => RequestsDue;
   readonly dueItems: (now: number, due?: RequestsDue) => Promise<readonly DueRequestItem[]>;
   readonly performAll: (items: readonly DueRequestItem[], now: number) => Promise<void>;
@@ -63,9 +61,9 @@ export interface InteractionHarness {
 
 export function interactionHarness(options: HarnessOptions = {}): InteractionHarness {
   const ledger: HarnessLedger = options.ledger ?? memoryLedger(undefined, [openRequests]);
-  const channels = options.channels ?? noChannels;
+  const tools = options.tools ?? noTools;
   const primitive = makeInteractionFunctionAdapter({
-    channels,
+    tools,
     openRequests: (brain) =>
       ledger.service.countProjectedRows(openRequestsName, brain, [{ column: 'open', equals: true }]),
     mostOpenRequests: options.mostOpenRequests ?? 10_000,
@@ -76,16 +74,8 @@ export function interactionHarness(options: HarnessOptions = {}): InteractionHar
     Effect.runPromise(calls.pipe(Effect.provide(services)));
   const call: InteractionHarness['call'] = (operation, input, caller = acmeAdmin) =>
     run(dispatcher.dispatchToBrain(operation.registration, { caller, ...alpha, input, encoding: 'json' }));
-  const dueOn = (over: RequestLedger, given: ChannelSettings): RequestsDue =>
-    requestsDue({
-      ledger: over,
-      channels: given,
-      tools: options.tools ?? noTools,
-      origin: 'https://brains.example.com',
-      ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
-    });
-  const dueWith = (given: ChannelSettings): RequestsDue => dueOn(ledger.service, given);
-  const due = dueWith(channels);
+  const dueOver = (over: RequestLedger): RequestsDue => requestsDue({ ledger: over, tools });
+  const due = dueOver(ledger.service);
   const primitives = [primitive];
   const performDue = async (now: number): Promise<number> => {
     const items = await dueInBothLanes(due, now);
@@ -103,8 +93,7 @@ export function interactionHarness(options: HarnessOptions = {}): InteractionHar
     cancel: (executionId) => call(defineCancelExecution(primitives), { execution_id: executionId }),
     runOf: (executionId) => call(defineGetExecution(primitives), { execution_id: executionId }),
     performDue,
-    dueWith,
-    dueOver: (over) => dueOn(over, channels),
+    dueOver,
     dueItems: (now, from = due) => dueInBothLanes(from, now),
     performAll: performedAll,
     performEach: (times) => performedEach(times, performDue),

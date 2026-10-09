@@ -9,6 +9,7 @@ import {
   type ExecutionDeferred,
   type ExecutionEvent,
   type ExecutionStarted,
+  type ReplyEvent,
   type ToolCallAnswered,
   type ToolCallEvent,
   type ToolCallStarted,
@@ -25,7 +26,7 @@ import {
   toolCalled,
 } from '../plain-language/event-words.ts';
 import type { SpecWords } from '../plain-language/spec-words.ts';
-import { deferralAccount, deliveryAccount, type TypedAccount } from '../run-work/run-work-accounts.ts';
+import { deferralAccount, deliveryAccount, replyAccount, type TypedAccount } from '../run-work/run-work-accounts.ts';
 import {
   cutAtCodePoint,
   issuesShown,
@@ -37,7 +38,7 @@ import {
 } from './event-data.ts';
 import type { Account } from './event-presenter.ts';
 
-type ShownExecutionEvent = Exclude<ExecutionEvent, ExecutionDeferred | DeliveryEvent>;
+type ShownExecutionEvent = Exclude<ExecutionEvent, ExecutionDeferred | DeliveryEvent | ReplyEvent>;
 
 interface Fact {
   readonly execution_id: string;
@@ -178,6 +179,8 @@ const shownNames: Readonly<Record<Exclude<ExecutionEvent, ExecutionDeferred>['ty
   tool_call_answered: ['tool_call_answered'],
   delivery_started: ['delivery_started'],
   delivery_ended: ['delivery_ended'],
+  reply_taken: ['reply_taken'],
+  reply_refused: ['reply_refused'],
 };
 
 const decodeExecutionEvent = Schema.decodeUnknownSync(Schema.toCodecJson(ExecutionEventSchema));
@@ -189,6 +192,9 @@ function presentedAccount(words: SpecWords, event: ExecutionEvent, executionId: 
   }
   if (event.type === 'delivery_started' || event.type === 'delivery_ended') {
     return deliveryAccount(words.runWordsOf(event.primitive), event, fact);
+  }
+  if (event.type === 'reply_taken' || event.type === 'reply_refused') {
+    return replyAccount(event, fact);
   }
   return { type: event.type, ...accountOf(words, event, executionId) };
 }

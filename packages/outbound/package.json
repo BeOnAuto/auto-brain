@@ -5,8 +5,7 @@
   "license": "Elastic-2.0",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./testing": "./src/testing/index.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "lint": "oxlint -c ../../.oxlintrc.json",

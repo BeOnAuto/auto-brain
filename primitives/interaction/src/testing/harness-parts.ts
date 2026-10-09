@@ -1,4 +1,3 @@
-import type { ToolAccess } from '@beonauto/mcp';
 import type { Outcome } from '@beonauto/operations';
 import type { BrainOperation } from '@beonauto/specs';
 import { Effect, Schema } from 'effect';
@@ -18,10 +17,6 @@ export async function firstOpenOf(
 ): Promise<unknown> {
   return decodeListed(await call(listInteractions, {})).output.interactions[0];
 }
-
-export const noTools: Pick<ToolAccess, 'callOnce'> = {
-  callOnce: () => Effect.succeed({ outcome: 'not_offered', detail: 'No MCP server is configured', retryAfterMs: null }),
-};
 
 export function dueInBothLanes(due: RequestsDue, now: number): Promise<readonly DueRequestItem[]> {
   return Effect.runPromise(

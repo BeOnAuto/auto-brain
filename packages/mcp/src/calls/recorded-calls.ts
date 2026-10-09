@@ -8,6 +8,10 @@ import type { CallAnswered, CallOutcome, CallStarted } from './call-facts.ts';
 
 export type NumberedAnswer = CallAnswered & { readonly number: number };
 
+export type StartedFields = Omit<CallStarted, 'type' | 'call_id'>;
+
+export type AnsweredFields = Omit<CallAnswered, 'type' | 'outcome' | 'duration_ms'>;
+
 export type RecordedCall = (CallStarted & { readonly number: number }) | NumberedAnswer;
 
 export interface CallJournal {
@@ -15,20 +19,26 @@ export interface CallJournal {
   readonly answered: (fact: NumberedAnswer) => Effect.Effect<boolean>;
 }
 
-export interface StartedCall {
-  readonly callId: string;
+export interface StartingCall {
   readonly server: string;
   readonly tool: string;
   readonly argumentsJson: string;
 }
 
-export interface AnsweredCall {
-  readonly number: number;
-  readonly outcome: CallOutcome;
+export interface StartedCall extends StartingCall {
+  readonly callId: string;
+}
+
+export interface CallResult {
   readonly resultJson: string | null;
-  readonly durationMs: number;
   readonly jsonrpcId: string | number | null;
   readonly serverRequestId: string | null;
+}
+
+export interface AnsweredCall extends CallResult {
+  readonly number: number;
+  readonly outcome: CallOutcome;
+  readonly durationMs: number;
 }
 
 export interface Recording {
@@ -45,16 +55,18 @@ function contentOf(name: string, json: string, { content, scrub }: Recording) {
   return content ? { [name]: cutAsStored(scrub(json), toolBounds.recordedContentBytes) } : {};
 }
 
-export function callStarted(call: StartedCall, recording: Recording): CallStarted {
+export function startedFields(call: StartingCall, recording: Recording): StartedFields {
   return {
-    type: 'tool_call_started',
-    call_id: call.callId,
     server: call.server,
     tool: call.tool,
     arguments_bytes: bytesOf(call.argumentsJson),
     arguments_sha256: digestOf(call.argumentsJson),
     ...contentOf('arguments_json', call.argumentsJson, recording),
   };
+}
+
+export function callStarted(call: StartedCall, recording: Recording): CallStarted {
+  return { type: 'tool_call_started', call_id: call.callId, ...startedFields(call, recording) };
 }
 
 function resultOf(resultJson: string | null, recording: Recording) {
@@ -67,14 +79,20 @@ function resultOf(resultJson: string | null, recording: Recording) {
       };
 }
 
+export function answeredFields(call: CallResult, recording: Recording): AnsweredFields {
+  return {
+    ...resultOf(call.resultJson, recording),
+    jsonrpc_id: call.jsonrpcId,
+    ...(recording.requestId ? { server_request_id: call.serverRequestId } : {}),
+  };
+}
+
 export function callAnswered(call: AnsweredCall, recording: Recording): NumberedAnswer {
   return {
     type: 'tool_call_answered',
     number: call.number,
     outcome: call.outcome,
-    ...resultOf(call.resultJson, recording),
+    ...answeredFields(call, recording),
     duration_ms: call.durationMs,
-    jsonrpc_id: call.jsonrpcId,
-    ...(recording.requestId ? { server_request_id: call.serverRequestId } : {}),
   };
 }

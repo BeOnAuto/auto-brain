@@ -1,7 +1,7 @@
 import { pointerOf, problem, type SettingProblem } from '@beonauto/config';
 import { Result } from 'effect';
 
-import { isToolName } from '../names/tool-reference.ts';
+import { isToolName, toolNameShape } from '../names/tool-reference.ts';
 import type { ToolLists } from './mcp-settings.ts';
 import { mcpServersSetting, type McpServerEntryFields } from './server-entries.ts';
 
@@ -35,7 +35,7 @@ function namedProblem(list: ToolList, written: readonly string[], tool: string, 
     return list.everyTool;
   }
   if (!isToolName(tool)) {
-    return 'Expected a tool name of 1 to 128 letters, digits, underscores, hyphens and dots';
+    return `Expected ${toolNameShape}`;
   }
   return written.indexOf(tool) < index ? `${tool} is listed twice` : undefined;
 }

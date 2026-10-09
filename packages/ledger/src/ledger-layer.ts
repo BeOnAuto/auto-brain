@@ -1,4 +1,4 @@
-import { Ledger, type RunOutcomeMapping, type RunProjection } from '@beonauto/operations';
+import { Ledger, type RunOutcomeMapping, type KeyedProjection } from '@beonauto/operations';
 import { Effect, Layer } from 'effect';
 
 import { signalledOn, type AppendSignal } from './appends/append-signal.ts';
@@ -7,7 +7,7 @@ import { makeLedger } from './ledger-service.ts';
 
 export interface StoreLayerOptions {
   readonly runOutcomes?: RunOutcomeMapping | undefined;
-  readonly projections?: readonly RunProjection[] | undefined;
+  readonly projections?: readonly KeyedProjection[] | undefined;
   readonly appends?: AppendSignal | undefined;
 }
 

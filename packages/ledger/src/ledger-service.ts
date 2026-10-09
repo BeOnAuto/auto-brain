@@ -86,5 +86,6 @@ export function makeLedger(store: LedgerStore): Ledger['Service'] {
     countProjectedRows: store.countProjectedRows,
     readDueRows: store.readDueRows,
     nextDueOf: store.nextDueOf,
+    advanceRow: store.advanceRow,
   });
 }

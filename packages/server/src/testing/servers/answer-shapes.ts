@@ -1,10 +1,10 @@
 import { openRequests } from '@beonauto/interaction';
-import { partnerSecret } from '@beonauto/interaction/testing';
-import { Ledger, projectedTableOf, type RunProjection } from '@beonauto/operations';
-import { serveFakeReceiver } from '@beonauto/outbound/testing';
+import { serveFakeMcp } from '@beonauto/mcp/testing';
+import { Ledger, projectedTableOf, type KeyedProjection } from '@beonauto/operations';
 import { ManagedRuntime, Schema, type Layer } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
+import { chatEnvironment, chatKey } from './chat-deliveries.ts';
 import { interactionServerOn, servingInteractions, type InteractionServer } from './interaction-server.ts';
 import { alpha } from './reasoning-server.ts';
 import { until } from './workflow-calls.ts';
@@ -12,7 +12,7 @@ import { workflowTestTimeoutMs } from './workflow-server.ts';
 
 export interface ProjectionStore {
   readonly environment: Readonly<Record<string, string>>;
-  readonly ledgerKeeping: (projection: RunProjection) => Layer.Layer<Ledger>;
+  readonly ledgerKeeping: (projection: KeyedProjection) => Layer.Layer<Ledger>;
   readonly tablesOf: (projection: string) => Promise<readonly string[]>;
   readonly dropTable: (table: string) => Promise<void>;
 }
@@ -23,7 +23,7 @@ export interface ProjectionStoreChoice {
   readonly aStore: () => Promise<ProjectionStore>;
 }
 
-const versionOne: RunProjection = {
+const versionOne: KeyedProjection = {
   ...openRequests,
   version: 1,
   columns: openRequests.columns.filter(({ name }) => name !== 'answer_schema'),
@@ -66,16 +66,12 @@ function answerShapesOf(listed: Listed): Readonly<Record<string, unknown>> {
   );
 }
 
-async function failingPartner(): Promise<Readonly<Record<string, string>>> {
-  const partner = await serveFakeReceiver();
-  onTestFinished(partner.close);
-  partner.answerEveryWith({ status: 503 });
-  return {
-    CHANNELS: JSON.stringify({
-      partner: { type: 'webhook', url: partner.url, secret: '${PARTNER_WEBHOOK_SECRET}', to: '^[a-z]+$', org: 'acme' },
-    }),
-    PARTNER_WEBHOOK_SECRET: partnerSecret,
-  };
+const refusedDelivery = ['deliver:', '  server: chat', '  tool: denied', '  with:', "    text: '{{ message }}'"];
+
+async function refusingChat(): Promise<Readonly<Record<string, string>>> {
+  const chat = await serveFakeMcp({ bearer: chatKey });
+  onTestFinished(chat.close);
+  return chatEnvironment(chat.url);
 }
 
 async function versionOneLeftIn(store: ProjectionStore): Promise<readonly string[]> {
@@ -93,8 +89,8 @@ export function answerShapesOn(stores: readonly ProjectionStoreChoice[]): void {
       { timeout: workflowTestTimeoutMs },
       async () => {
         const store = await aStore();
-        const environment = { ...store.environment, ...(await failingPartner()) };
-        const first = await servingInteractions('partner', environment);
+        const environment = { ...store.environment, ...(await refusingChat()) };
+        const first = await servingInteractions(refusedDelivery, environment);
         const question = await first.ask('approve-brief');
         const notification = await first.ask('brief-out');
         const kept = answerShapesOf(await until(() => listedIn(first), eachTriedOnce));

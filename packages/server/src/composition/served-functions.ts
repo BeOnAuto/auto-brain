@@ -41,7 +41,7 @@ export async function functionsServedBy(
       primitives: [reasoning.primitive, interaction.primitive, computation.primitive, recall.primitive],
       orgOperations: [...brainOperations, reasoning.listModels, reasoning.listToolServersInOrg],
       brainOperations: [reasoning.listToolServers, reasoning.testToolCall, ...interaction.operations],
-      dueWork: [interaction.dueWork],
+      dueWork: interaction.dueWork,
       store: recall.store,
       views: recall.views,
     },

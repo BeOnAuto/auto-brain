@@ -21,11 +21,7 @@ describe('readSettings', () => {
 
     expect(models.openai).toEqual({ configured: false, missing: ['OPENAI_API_KEY'] });
     expect(mcp).toEqual({ servers: [] });
-    expect(interaction).toEqual({
-      channels: { channels: new Map(), secrets: [] },
-      mostOpenRequests: 10_000,
-      origin: 'http://localhost:8080',
-    });
+    expect(interaction).toEqual({ mostOpenRequests: 10_000 });
     expect(server).toEqual({
       host: '0.0.0.0',
       port: 8080,
@@ -54,10 +50,9 @@ describe('readSettings given every setting', () => {
       LOG_FORMAT: 'pretty',
       OPENAI_API_KEY: 'sk-test',
       INTERACTION_OPEN_REQUESTS: '250',
-      PUBLIC_ORIGIN: 'https://brains.example.com',
     });
 
-    expect(interaction).toMatchObject({ mostOpenRequests: 250, origin: 'https://brains.example.com' });
+    expect(interaction).toEqual({ mostOpenRequests: 250 });
     expect(models.openai).toMatchObject({ configured: true });
     expect(mcp.servers).toEqual([]);
     expect(server).toEqual({
@@ -85,12 +80,10 @@ describe('readSettings with empty values', () => {
         LEDGER_FILE: '',
         LOCAL_MODE: '',
         LOG_FORMAT: '',
-        CHANNELS: '',
         INTERACTION_OPEN_REQUESTS: '',
-        PUBLIC_ORIGIN: '',
       }),
     ).toMatchObject({
-      interaction: { channels: { channels: new Map() }, mostOpenRequests: 10_000, origin: 'http://localhost:8080' },
+      interaction: { mostOpenRequests: 10_000 },
       allowedOrigins: [],
       apiKeys: undefined,
       ledger: { store: 'sqlite', file: 'data/ledger.db' },

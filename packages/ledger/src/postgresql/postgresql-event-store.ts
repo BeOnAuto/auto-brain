@@ -1,4 +1,4 @@
-import type { RunOutcomeMapping, RunProjection } from '@beonauto/operations';
+import type { RunOutcomeMapping, KeyedProjection } from '@beonauto/operations';
 import { getPostgreSQLEventStore } from '@event-driven-io/emmett-postgresql';
 import { pgEventStoreDriver } from '@event-driven-io/emmett-postgresql/pg';
 import { Pool } from 'pg';
@@ -13,7 +13,7 @@ import { migrationLockTakenWithin, postgresqlRunOutcomesOf } from './postgresql-
 export interface PostgreSQLOptions {
   readonly connectionString: string;
   readonly runOutcomes?: RunOutcomeMapping;
-  readonly projections?: readonly RunProjection[];
+  readonly projections?: readonly KeyedProjection[];
 }
 
 export interface PostgreSQLStoreOptions extends PostgreSQLOptions {
@@ -47,7 +47,7 @@ export function postgresqlEventStore({
   return {
     ...store,
     ...postgresqlRecordedStore(query),
-    ...kept.readerOn(formattedFor(query)),
+    ...kept.readerOn({ query: formattedFor(query), command: formattedFor(query) }),
     readRunOutcomes: postgresqlRunOutcomesOf(runOutcomes, query),
     close: async () => {
       await store.close();

@@ -30,18 +30,20 @@ await test('interaction functions are available in a self-hosted runtime, with t
   assert.ok(routes.indexOf('/reference/reasoning-format') < routes.indexOf('/reference/interaction-format'));
   assert.ok(routes.indexOf('/reference/interaction-format') < routes.indexOf('/reference/computation-format'));
   assert.ok(urlsInCode(format).some((href) => href === unansweredType.href));
-  assert.ok(format.includes('Authorization: Request <answer_token>'));
+  assert.match(format, /^## Sending through a tool\n[\s\S]*^### Attempts\n[\s\S]*^## Fields$/mu);
+  assert.match(format, /^\| `deliver` +\| The tool the request is sent through: /mu);
+  assert.match(format, /^### Answering by reply$/mu);
 });
 
 await test('the words of interaction are on the terminology page, and the first workflow asks through the inbox', () => {
   const terminology = readFileSync(join(docs, 'concepts/terminology.md'), 'utf8');
   const tutorial = readFileSync(join(docs, 'tutorials/first-workflow.md'), 'utf8');
   const workflows = readFileSync(join(docs, 'concepts/workflows.md'), 'utf8');
-  for (const term of ['Request', 'Inbox', 'Channel', 'Answer', 'Notification']) {
+  for (const term of ['Request', 'Inbox', 'Delivery', 'Answer', 'Notification']) {
     assert.match(terminology, new RegExp(`^\\| ${term} +\\| `, 'mu'), `The terminology page needs ${term}`);
   }
   assert.ok(terminology.includes('An interaction function asks a person or a system and takes the answer later'));
-  assert.ok(tutorial.includes('channel: inbox'));
+  assert.ok(!tutorial.includes('deliver:'));
   assert.ok(tutorial.includes('answer_interaction'));
   assert.ok(workflows.includes('An approval is an interaction function'));
 });

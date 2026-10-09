@@ -12,17 +12,13 @@ export interface FunctionSettings extends ReasoningSettings {
   readonly interaction: InteractionSettings;
 }
 
-export function readFunctionSettings(
-  environment: Environment,
-  file: FileUse | undefined,
-  listening: { readonly host: string; readonly port: number },
-): FunctionSettings {
+export function readFunctionSettings(environment: Environment, file: FileUse | undefined): FunctionSettings {
   const { models, mcp } = readReasoningSettings(environment, file);
   return {
     models,
     mcp,
     computation: Effect.runSync(readComputationSettings(environment)),
     recall: Effect.runSync(readRecallSettings(environment)),
-    interaction: readInteractionSettings(environment, file, mcp, listening),
+    interaction: readInteractionSettings(environment),
   };
 }

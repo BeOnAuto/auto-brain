@@ -52,7 +52,7 @@ describe('a configuration file the server cannot read as settings', { timeout: s
     [
       'holds the URL of the ledger database, which only the environment holds',
       `database_url: postgresql://brains:${secret}@db.example.com/brains\n`,
-      `${invalid} auto-brain.yaml:1:15 database_url: Not a setting this file holds; it holds allowed_origins, api_keys, model_gateways, model_aliases, declared_models, allowed_models, mcp_servers, channels\n`,
+      `${invalid} auto-brain.yaml:1:15 database_url: Not a setting this file holds; it holds allowed_origins, api_keys, model_gateways, model_aliases, declared_models, allowed_models, mcp_servers\n`,
     ],
   ])('stops the start when it %s, naming the line and the key and never a value', async (_, text, line) => {
     await expect(startupLine(text)).resolves.toBe(line);
@@ -87,6 +87,14 @@ describe(
     });
   },
 );
+
+describe('channels written in the file', { timeout: spawnedServerTestTimeoutMs }, () => {
+  it('stop the start at their line, saying where an interaction function names the tool it sends through', async () => {
+    await expect(startupLine('channels:\n  approvals:\n    type: mcp\n')).resolves.toBe(
+      `${invalid} auto-brain.yaml:2:3 channels: Not a setting this file holds; an interaction function names the tool it sends through in its own document, under deliver\n`,
+    );
+  });
+});
 
 describe('declared and allowed models the server refuses', { timeout: spawnedServerTestTimeoutMs }, () => {
   it('stops the start at the line of a declared or allowed model the model settings refuse', async () => {

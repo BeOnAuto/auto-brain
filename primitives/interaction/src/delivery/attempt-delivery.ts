@@ -1,35 +1,67 @@
-import { Clock, Effect, type Schema } from 'effect';
+import type { DeliveryCall, StartedFields } from '@beonauto/mcp';
+import { deliveryIdKey, executionIdKey } from '@beonauto/mcp/policy';
+import { Effect, Result, type Schema } from 'effect';
 
-import type { Channel } from '../channels/channel-settings.ts';
+import { argumentsFailureWords, deliveryVariablesOf, renderedArguments } from '../route/rendered-arguments.ts';
+import type { DeliveringRecord } from '../run/request-record.ts';
 import type { DeliveryParts, DueRequest } from '../schedule/delivery-parts.ts';
-import { endedAs, type AttemptEnd } from './attempt-end.ts';
-import { deliveredByTool } from './mcp-delivery.ts';
-import { deliveredByWebhook } from './webhook-delivery.ts';
+import { recordedCall } from '../schedule/request-ledger.ts';
+import { endOf, type AttemptEnd } from './attempt-end.ts';
+import { startedFact, type Attempting } from './attempt-facts.ts';
 
-export function attemptOf(
+export interface Delivered {
+  readonly startedId: string;
+  readonly end: AttemptEnd;
+}
+
+export interface DeliveryPlan {
+  readonly request: DueRequest;
+  readonly record: DeliveringRecord;
+  readonly input: Schema.Json;
+  readonly attempting: Attempting;
+}
+
+function recordedStart(
   parts: DeliveryParts,
-  channel: Channel | undefined,
-  request: DueRequest,
-  answerSchema: Schema.JsonObject | undefined,
-): Effect.Effect<AttemptEnd> {
-  if (channel === undefined) {
-    return Effect.succeed(endedAs({ outcome: 'failed', because: 'channel_not_offered' }));
-  }
+  { request, attempting }: DeliveryPlan,
+  call?: StartedFields,
+): Effect.Effect<string | undefined> {
+  return Effect.map(
+    recordedCall(parts.ledger, request.address, startedFact(attempting, call), request.lineage),
+    (made) => made?.id,
+  );
+}
+
+function callOf({ request, record }: DeliveryPlan, input: DeliveryCall['input']): DeliveryCall {
   const { address, row } = request;
-  if (channel.type === 'mcp') {
-    return deliveredByTool({ channel, address, row, answerSchema, tools: parts.tools });
+  return {
+    org: address.org,
+    brain: address.brain,
+    reference: { server: record.deliver.server, tool: record.deliver.tool },
+    input,
+    meta: { [executionIdKey]: address.id, [deliveryIdKey]: row.request_id },
+  };
+}
+
+export function deliveredOnce(parts: DeliveryParts, plan: DeliveryPlan): Effect.Effect<Delivered | undefined> {
+  const { request, record, input } = plan;
+  const asking = { input, runId: request.address.id, functionName: request.row.function };
+  const rendered = renderedArguments(record.deliver.with, deliveryVariablesOf(record, asking));
+  if (Result.isFailure(rendered)) {
+    const { failure } = rendered;
+    const end: AttemptEnd = {
+      outcome: 'refused',
+      because: failure.reason === 'too_large' ? 'too_large' : 'unworkable',
+      detail: argumentsFailureWords(failure, 'the call that delivers the request'),
+    };
+    return Effect.map(recordedStart(parts, plan), (startedId): Delivered | undefined =>
+      startedId === undefined ? undefined : { startedId, end },
+    );
   }
-  return Effect.flatMap(Clock.currentTimeMillis, (nowMs) =>
-    Effect.promise(() =>
-      deliveredByWebhook({
-        channel,
-        address,
-        row,
-        answerSchema,
-        origin: parts.origin,
-        nowMs,
-        ...(parts.fetch === undefined ? {} : { fetch: parts.fetch }),
-      }),
-    ),
+  const call = callOf(plan, rendered.success.input);
+  return Effect.flatMap(recordedStart(parts, plan, parts.tools.startOf(call)), (startedId) =>
+    startedId === undefined
+      ? Effect.undefined
+      : Effect.map(parts.tools.callOnce(call), (called): Delivered => ({ startedId, end: endOf(called, record) })),
   );
 }

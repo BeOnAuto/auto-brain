@@ -329,7 +329,7 @@ jobs:
               --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
           }
           brain=http://127.0.0.1:8080/v1/orgs/demo/brains/smoke
-          source="$(printf '%s\n' '---' 'channel: inbox' "to: '{{ input.owner }}'" 'expires: P1D' 'output:' \
+          source="$(printf '%s\n' '---' "to: '{{ input.owner }}'" 'expires: P1D' 'output:' \
             '  schema: {type: object, required: [choice], properties: {choice: {type: string, enum: [approve, reject]}}}' \
             '---' 'Approve the brief for {{ input.campaign }}?')"
           spec="$(jq --null-input --arg source "$source" '{name: "approve-brief", source: $source}')"

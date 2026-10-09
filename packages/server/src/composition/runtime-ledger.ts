@@ -1,11 +1,11 @@
 import type { AppRuntime } from '@beonauto/api';
-import type { RequestLedger } from '@beonauto/interaction';
+import type { ConversationLedger } from '@beonauto/interaction';
 import { Ledger, type DispatcherServices, type ProjectionReader } from '@beonauto/operations';
 import { Effect } from 'effect';
 
 import { inRuntime } from '../workflows/in-runtime.ts';
 
-interface RuntimeLedger extends RequestLedger, Pick<ProjectionReader, 'countProjectedRows'> {}
+interface RuntimeLedger extends ConversationLedger, Pick<ProjectionReader, 'countProjectedRows'> {}
 
 export function runtimeLedger(runtime: AppRuntime<DispatcherServices>): RuntimeLedger {
   const viaLedger = <A, E>(use: (ledger: Ledger['Service']) => Effect.Effect<A, E>): Effect.Effect<A, E> =>
@@ -15,6 +15,10 @@ export function runtimeLedger(runtime: AppRuntime<DispatcherServices>): RuntimeL
     execute: (stream, decider, command, lineage) =>
       viaLedger((ledger) => ledger.execute(stream, decider, command, lineage)),
     readRecorded: (brain, selection, page) => viaLedger((ledger) => ledger.readRecorded(brain, selection, page)),
+    readProjectedRows: (projection, brain, query) =>
+      viaLedger((ledger) => ledger.readProjectedRows(projection, brain, query)),
+    advanceRow: (projection, brain, key, advance) =>
+      viaLedger((ledger) => ledger.advanceRow(projection, brain, key, advance)),
     countProjectedRows: (projection, brain, where) =>
       viaLedger((ledger) => ledger.countProjectedRows(projection, brain, where)),
     readDueRows: (projection, query) => viaLedger((ledger) => ledger.readDueRows(projection, query)),

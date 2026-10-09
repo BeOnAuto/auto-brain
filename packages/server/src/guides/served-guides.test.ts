@@ -36,6 +36,16 @@ const workflow = primitiveOf('orchestration', 'workflow', { name: 'workflow' });
 
 const everyType = [reasoning, computation, recall, workflow];
 
+const interaction = primitiveOf('interaction', 'interaction function', { name: 'interaction-function' });
+
+function recipeTextsOf(primitives: readonly Primitive[]): Readonly<Record<string, string>> {
+  return Object.fromEntries(servedGuidesOf(primitives).recipes.map(({ name, text }) => [name, text]));
+}
+
+function bytesOf(texts: Readonly<Record<string, string>>, ...names: readonly string[]): readonly number[] {
+  return names.map((name) => Buffer.byteLength(texts[name] ?? ''));
+}
+
 function page(path: string): string {
   return readFileSync(new URL(`../../../../docs/${path}`, import.meta.url), 'utf8');
 }
@@ -176,6 +186,34 @@ describe('the recipes that give a brain tools', () => {
     expect([Buffer.byteLength(String(texts['give-tools'])), Buffer.byteLength(String(texts['first-brain']))]).toEqual([
       2052, 1761,
     ]);
+  });
+});
+
+describe('the recipes of a server that serves interaction functions', () => {
+  it('send a message a person answers to an interaction function, words a server without them does not serve', () => {
+    const texts = recipeTextsOf([...everyType, interaction]);
+
+    expect(texts['give-tools']).toContain(
+      '5. Ask the person what the function should do with the tools, and which of them it needs. When the brain should send a person a message through a tool and take their answer, write an interaction function instead: the interaction-function guide says how it names the tool it sends through and the tool it reads replies with, each tested the same way.\n',
+    );
+    expect(texts['first-brain']).toContain(
+      'give it tools with the give-tools recipe, send someone a message through a tool and take their answer with an interaction function, make the brain remember its answers',
+    );
+    expect([
+      bytesOf(texts, 'give-tools', 'first-brain'),
+      bytesOf(recipeTextsOf(everyType), 'give-tools', 'first-brain'),
+    ]).toEqual([
+      [2312, 1851],
+      [2052, 1761],
+    ]);
+  });
+
+  it('name the same tools as on a server without them', () => {
+    const { recipes } = servedGuidesOf([...everyType, interaction]);
+
+    expect(recipes.map(({ name, text }) => [name, toolsNamedIn(text).toSorted()])).toEqual(
+      recipes.map(({ name, calls }) => [name, calls.toSorted()]),
+    );
   });
 });
 

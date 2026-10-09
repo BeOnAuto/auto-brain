@@ -11,6 +11,8 @@ export const storedTypesByStatus: Readonly<Record<ExecutionStatus, readonly stri
     'tool_call_answered',
     'delivery_started',
     'delivery_ended',
+    'reply_taken',
+    'reply_refused',
   ],
   succeeded: ['execution_succeeded'],
   rejected: ['execution_rejected'],

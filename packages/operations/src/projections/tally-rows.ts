@@ -2,7 +2,7 @@ import { Effect, Option, Schema } from 'effect';
 
 import { defineQuery } from '../definition/operation.ts';
 import { BrainReader } from '../ledger/brain-reader.ts';
-import type { ProjectedMessage, ProjectedRow, RunProjection } from './run-projection.ts';
+import type { KeyedProjection, ProjectedMessage, ProjectedRow } from './keyed-projection.ts';
 
 const BeganSchema = Schema.Struct({ type: Schema.Literal('run_began'), at: Schema.String, fn: Schema.String });
 
@@ -43,9 +43,10 @@ function rowAfterFact(
   return fact.type === 'run_noted' ? counted : { ...counted, status: fact.status, open: false, due_at: null };
 }
 
-export function tallyRowsOf(version: number, fail?: (row: ProjectedRow) => boolean): RunProjection {
+export function tallyRowsOf(version: number, fail?: (row: ProjectedRow) => boolean): KeyedProjection {
   return {
     name: 'run_tallies',
+    kinds: ['executions'],
     version,
     types: ['run_began', 'run_ended', 'run_noted'],
     columns: [
@@ -88,6 +89,6 @@ export const readTallyRows = defineQuery('brain', {
     const reader = yield* BrainReader;
     const where = [{ column: 'open', equals: true }];
     const rows = yield* reader.readProjectedRows('run_tallies', { where, orderBy: ['began_at'], order: 'desc', limit });
-    return { runs: rows.map(({ runId }) => runId), open: yield* reader.countProjectedRows('run_tallies', where) };
+    return { runs: rows.map(({ key }) => key), open: yield* reader.countProjectedRows('run_tallies', where) };
   }),
 });

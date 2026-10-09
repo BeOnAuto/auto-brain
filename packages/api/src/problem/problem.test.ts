@@ -139,12 +139,9 @@ describe('a request nobody answered', () => {
   });
 });
 
-describe('a channel or room for a request the server cannot give', () => {
-  it('asks for no retry of a channel not offered, and for a retry once the brain has room for a request', () => {
-    expect([retryAfterOf({ kind: 'channel_not_offered' }), retryAfterOf({ kind: 'requests_full' })]).toEqual([
-      null,
-      '5',
-    ]);
+describe('room for a request the server cannot give', () => {
+  it('asks for a retry once the brain has room for a request', () => {
+    expect(retryAfterOf({ kind: 'requests_full' })).toBe('5');
   });
 });
 

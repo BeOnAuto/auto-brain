@@ -1,4 +1,4 @@
-import { openRequests } from '@beonauto/interaction';
+import { conversations, openRequests } from '@beonauto/interaction';
 import type { AppendSignal } from '@beonauto/ledger';
 import { postgresqlLedgerLayer } from '@beonauto/ledger/postgresql';
 import { ledgerLayer } from '@beonauto/ledger/sqlite3';
@@ -8,7 +8,7 @@ import { Redacted, type Layer } from 'effect';
 
 import type { LedgerSettings } from '../settings/ledger-settings.ts';
 
-const projections = [openRequests];
+const projections = [openRequests, conversations];
 
 export function ledgerLayerOf(settings: LedgerSettings, appends?: AppendSignal): Layer.Layer<Ledger> {
   const signalled = appends === undefined ? {} : { appends };

@@ -124,13 +124,8 @@ const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
   undelivered: {
     why: 'what it had to send could not be delivered, though every attempt was made',
     remedy:
-      'Nothing more of it runs; whoever runs the server can look into the channel it names, and then a new run can send it again.',
+      'Nothing more of it runs; whoever runs the server can look into the tool it names, and then a new run can send it again.',
     mayHaveChanged: true,
-  },
-  channel_not_offered: {
-    why: 'this server does not offer the channel it names',
-    remedy:
-      'This can be put right on your side: whoever runs the server decides which channels this brain may use, so once it names one of those, it can be tried again.',
   },
   requests_full: {
     why: 'the brain already holds as many open requests as it may',

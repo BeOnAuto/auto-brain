@@ -1,5 +1,5 @@
 import { defineListBrainEvents } from '@beonauto/brains';
-import { toolTestPresenter } from '@beonauto/mcp';
+import { conversationCallPresenter, toolTestPresenter } from '@beonauto/mcp';
 import type { Presenter } from '@beonauto/operations';
 import {
   makeSpecOperations,
@@ -13,6 +13,11 @@ export function brainOperationsServing(
   primitives: readonly Primitive[],
   logPresenters: readonly Presenter[],
 ): readonly BrainOperation[] {
-  const presenters = [...makeSpecPresenters(primitives), toolTestPresenter, ...logPresenters];
+  const presenters = [
+    ...makeSpecPresenters(primitives),
+    toolTestPresenter,
+    conversationCallPresenter,
+    ...logPresenters,
+  ];
   return [...makeSpecOperations(primitives, presenters), defineListBrainEvents(presenters), publishEvent];
 }

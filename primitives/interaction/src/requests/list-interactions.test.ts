@@ -2,9 +2,8 @@ import { defineUpdateSpec } from '@beonauto/specs';
 import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { noChannels } from '../channels/channel-settings.ts';
-import { approvalDocument, askedThroughPartner, interactionHarness } from '../testing/index.ts';
-import { defineAnswerInteraction } from './answer-interaction.ts';
+import { approvalDocument, askedThroughChat, interactionHarness } from '../testing/index.ts';
+import { answerInteraction } from './answer-interaction.ts';
 import { listInteractions } from './list-interactions.ts';
 
 const runIds = [
@@ -77,7 +76,6 @@ const approvalSchema = {
 const decisionDocument = [
   '---',
   'description: Ask the campaign owner to decide on a brief',
-  'channel: inbox',
   "to: '{{ input.owner }}'",
   'expires: P2D',
   'input:',
@@ -106,14 +104,14 @@ async function shapesIn(brain: ReturnType<typeof interactionHarness>) {
   return decodeShapes(await brain.call(listInteractions, {})).output.interactions;
 }
 
-const answer = defineAnswerInteraction(noChannels);
+const answer = answerInteraction;
 
 describe('the answer shape of an open request', () => {
   it('is the answer schema its request recorded for a question, and null for a notification', async () => {
     const asking = interactionHarness();
     await asking.define('approve-brief', approvalDocument());
     await asking.ask('approve-brief', { campaign: 'Spring', owner: 'ada' }, String(runIds[0]));
-    const telling = await askedThroughPartner({ notification: true });
+    const telling = await askedThroughChat({ notification: true });
 
     expect([await shapesIn(asking), await shapesIn(telling.brain)]).toEqual([
       [{ version: 1, takes_answer: true, answer_schema: approvalSchema }],

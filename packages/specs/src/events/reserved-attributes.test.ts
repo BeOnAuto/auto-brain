@@ -35,8 +35,13 @@ const typesOfTheBrain = [
   'tool_call_answered',
   'delivery_started',
   'delivery_ended',
+  'reply_taken',
+  'reply_refused',
   'tool_test_started',
   'tool_test_answered',
+  'replies_read',
+  'telling_started',
+  'telling_ended',
   'interaction_requested',
   'spec_created',
   'spec_updated',
@@ -81,11 +86,16 @@ describe('the types and sources of what the brain records itself', () => {
         'tool_call_started',
         'tool_test_started',
         'tool_test_answered',
+        'reply_taken',
+        'reply_refused',
+        'replies_read',
+        'telling_started',
+        'telling_ended',
         'event_published',
         'workflow_input_applied',
         'step_waiting',
       ].map((type) => refusals({ type }).length),
-    ).toEqual([1, 1, 1, 1, 1, 1, 1]);
+    ).toEqual([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
     expect(refusals({ type: 'com.acme.ledger.month-closed', source: '/ledger/eu' })).toEqual([]);
   });
 });

@@ -40,14 +40,19 @@ export type {
   DeliveryEndedFact,
   DeliveryStartedFact,
   OutboundCallFact,
+  ReplyFact,
+  ReplyRefusedFact,
+  ReplyTakenFact,
 } from './execution/execution-commands.ts';
 export {
   CalledBySchema,
   CancelRequestKindSchema,
   DeliveryBecauseSchema,
   DeliveryOutcomeSchema,
+  ReplyRefusalSchema,
   type CalledBy,
   type CancelRequestKind,
+  type DeliveredAs,
   type DeliveryBecause,
   type DeliveryEnded,
   type DeliveryEvent,
@@ -55,10 +60,20 @@ export {
   type DeliveryStarted,
   type ExecutionDeferred,
   type ExecutionEvent,
+  type RepliesIn,
+  type ReplyIdentity,
+  type ReplyRefusal,
 } from './execution/execution-events.ts';
 export { executionEventOf, recordedRunIn, recordedRunInBrain, type RecordedRun } from './run-work/recorded-runs.ts';
-export { outboundCallRecorder, type RecordedOutboundCall, type RecordOutboundCall } from './run-work/outbound-calls.ts';
-export { deliveryEnded, deliveryStarted, statusInWords } from './run-work/delivery-words.ts';
+export {
+  outboundCallRecorder,
+  replyRecorder,
+  type RecordedOutboundCall,
+  type RecordOutboundCall,
+  type RecordRunWork,
+} from './run-work/outbound-calls.ts';
+export { replyBounds } from './run-work/work-decisions.ts';
+export { deliveryEnded, deliveryStarted, throughTheTool } from './run-work/delivery-words.ts';
 export { mostCallDepth } from './operations/execution-running.ts';
 export {
   cancelRequestOf,
@@ -86,7 +101,7 @@ export {
   type SettleExecution,
   type Settlement,
 } from './execution/execution-settler.ts';
-export { answeredWithinDelivery } from './execution/execution-decisions.ts';
+export { answeredByAReply } from './execution/execution-decisions.ts';
 export { defineGetExecution, getExecution } from './operations/get-execution.ts';
 export { defineGetExecutionHistory } from './reading/get-execution-history.ts';
 export { defineListExecutions } from './reading/list-executions.ts';

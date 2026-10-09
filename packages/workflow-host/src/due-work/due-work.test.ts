@@ -58,7 +58,7 @@ describe('the due rows of a projection, in the loop of the host', () => {
   });
 });
 
-describe('due rows whose perform never ends, as a delivery to a receiver that never answers', () => {
+describe('due rows whose perform never ends, as a delivery through a tool that never answers', () => {
   it('hold the timers of a tick for a second at most, and the ticks after not at all, 16 of them at once', async () => {
     const now = Date.now();
     const rows = fakeDueWork();

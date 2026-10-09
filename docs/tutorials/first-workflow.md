@@ -40,7 +40,6 @@ The interaction function asks one person for a decision. Its run renders the mes
 ```markdown
 ---
 description: Asks the campaign owner to approve a reviewed brief
-channel: inbox
 to: '{{ input.owner }}'
 expires: P2D
 input:
@@ -141,7 +140,7 @@ It should still show `status: started`, and the tool's summary reads: The workfl
 
 > List the open requests of `campaign-review-tutorial`. Show the execution id, the party, the message, the expiry and the standing of each.
 
-The agent should show one request, to `ada@example.com`, through the channel `inbox`, with the standing `in_inbox`, an `expires_at` two days ahead, and the message rendered from the review. The tool's summary reads: Found 1 request waiting on this page.
+The agent should show one request, to `ada@example.com`, waiting in the inbox with no `delivery`, with the standing `in_inbox`, an `expires_at` two days ahead, and the message rendered from the review. The tool's summary reads: Found 1 request waiting on this page.
 
 The request has an `execution_id` of its own: it is the run of the interaction function that the workflow started, and it is the id to answer.
 
@@ -201,6 +200,6 @@ Each call in this exercise was run against the runtime and its answers recorded.
 
 The brain now contains a workflow that reviews a brief with a reasoning function and asks for an approval with an interaction function, and one recorded run of it. The review criteria live in the reasoning function, the question and the shape of its answer in the interaction function, and the workflow decides when each runs.
 
-A request can also go to a person or a system outside the brain through a channel that the runtime's operator configures, such as a webhook; [Interaction function format](../reference/interaction-format.md) describes the document, the channels and how a request ends, and [Workflows and runs](../concepts/workflows.md) explains how runs start, wait and end.
+A request can also go to a person or a system outside the brain through a tool of a tool server, such as one that posts in a chat, which the function names in `deliver`; [Interaction function format](../reference/interaction-format.md) describes the document, sending through a tool, answering by reply and how a request ends, and [Workflows and runs](../concepts/workflows.md) explains how runs start, wait and end.
 
 </div>

@@ -2,6 +2,7 @@ import { OAuthError, OAuthErrorCode, requireBearerAuth } from '@modelcontextprot
 import { Option, Schema } from 'effect';
 
 import { fakeAuthorization, type ClientRegistration, type FakeAuthorization } from './fake-authorization.ts';
+import { fakeChat, type FakeChat } from './fake-chat.ts';
 import { fakeSessions, type FakeSessions } from './fake-sessions.ts';
 import type { ReceivedCall } from './fake-tools.ts';
 import { serveOnLoopback, type FailedRequest, type FetchHandler } from './loopback-server.ts';
@@ -12,6 +13,8 @@ export interface FakeMcpOptions {
   readonly requestIdHeader?: string;
   readonly issuesSessionIds?: boolean;
   readonly annotated?: boolean;
+  readonly chat?: boolean;
+  readonly echoes?: string;
 }
 
 export interface SeenRequest {
@@ -27,6 +30,7 @@ export interface FakeMcpServer {
   readonly seen: () => readonly SeenRequest[];
   readonly failures: () => readonly FailedRequest[];
   readonly received: () => readonly ReceivedCall[];
+  readonly chat: FakeChat;
   readonly openSessions: () => number;
   readonly endedSessions: () => number;
   readonly tokenRequests: () => number;
@@ -176,13 +180,22 @@ function guarded(
   return (request) => authorization?.answer(request) ?? checked(request);
 }
 
+function recordsOf(options: FakeMcpOptions, removed: ReadonlySet<string>, chat: FakeChat) {
+  return {
+    isRemoved: (tool: string) => removed.has(tool),
+    annotated: options.annotated ?? true,
+    chat: options.chat === true ? chat : undefined,
+  };
+}
+
 export async function serveFakeMcp(options: FakeMcpOptions = {}): Promise<FakeMcpServer> {
   const seen: SeenRequest[] = [];
   const next = nextAnswers();
   const received: ReceivedCall[] = [];
   const removed = new Set<string>();
   const authorizations: FakeAuthorization[] = [];
-  const records = { isRemoved: (tool: string) => removed.has(tool), annotated: options.annotated ?? true };
+  const chat = fakeChat(options.echoes);
+  const records = recordsOf(options, removed, chat);
   const sessions = fakeSessions({ ...records, receive: (call) => received.push(call) }, options.issuesSessionIds);
   const endpoint = mcpEndpoint({
     sessions,
@@ -203,6 +216,7 @@ export async function serveFakeMcp(options: FakeMcpOptions = {}): Promise<FakeMc
     seen: () => [...seen],
     failures: listening.failures,
     received: () => [...received],
+    chat,
     openSessions: sessions.open,
     endedSessions: sessions.ended,
     tokenRequests: () => authorizations.reduce((total, authorization) => total + authorization.tokenRequests(), 0),

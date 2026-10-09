@@ -34,7 +34,6 @@
     "effect": "catalog:"
   },
   "devDependencies": {
-    "@beonauto/outbound": "workspace:*",
     "@types/pg": "8.23.1",
     "@vitest/coverage-v8": "catalog:",
     "pg": "8.23.1",

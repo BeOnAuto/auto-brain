@@ -217,15 +217,26 @@ describe('the records that are no facts of the brain', () => {
     expect(unreadable.map((record) => brainFactOf(record))).toEqual([undefined, undefined, undefined]);
   });
 
-  it('are the run logs and every other stream kind, the tests of a tool among them', () => {
+  it('are the run logs, the replies a run took or refused, and every other stream kind, tool tests and conversation reads among them', () => {
     const tested = { type: 'tool_test_started', test_id: '0199b7e2', server: 'graph', tool: 'search', at: fact.at };
+    const read = { type: 'replies_read', call_id: '0199b7e3', server: 'chat', tool: 'thread_replies', at: fact.at };
+    const reply = {
+      server: 'chat',
+      tool: 'thread_replies',
+      reply: { id: '1699.2', sender: 'ada' },
+      ...ofSummary,
+      ...fact,
+    };
     const others: readonly RecordedEvent[] = [
       { ...about, stream: `runs/${executionId}`, type: 'input_applied', data: {} },
       { ...about, stream: 'events/0199a3c4', type: 'event_published', data: {} },
       { ...about, stream: 'tool-tests/0199b7e2', type: 'tool_test_started', data: tested },
+      { ...about, stream: 'conversation-calls/0199b7e3', type: 'replies_read', data: read },
+      ofRun({ type: 'reply_taken', ...reply, answer: { choice: 'approve' } }),
+      ofRun({ type: 'reply_refused', ...reply, because: 'not_an_answer', told: false }),
     ];
 
-    expect(others.map((record) => brainFactOf(record))).toEqual([undefined, undefined, undefined]);
+    expect(others.filter((record) => brainFactOf(record) !== undefined)).toEqual([]);
   });
 });
 

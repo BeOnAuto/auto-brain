@@ -15,14 +15,15 @@ const sqliteProjectionDialect: ProjectionDialect = {
   tableVersions: (name) => SQL`SELECT name FROM sqlite_master WHERE type = 'table' AND name GLOB ${`${name}_*`}`,
   columnTypes: { text: 'TEXT', integer: 'INTEGER', boolean: 'INTEGER' },
   asNumber: (expression) => expression,
-  runStreamsAfter: (after, count, types) =>
+  streamsAfter: (after, count, kinds, types) =>
     SQL`SELECT s.stream_id AS stream, (
         SELECT coalesce(sum(octet_length(m.message_data)), 0) FROM emt_messages AS m
         WHERE m.stream_id = s.stream_id AND m.message_type IN (SELECT value FROM json_each(${JSON.stringify(types)}))
           AND m.partition = ${defaultPartition} AND m.is_archived = FALSE
       ) AS size
       FROM emt_streams AS s
-      WHERE s.stream_id > ${after} AND s.stream_id GLOB '*/*/*/executions/*'
+      WHERE s.stream_id > ${after}
+        AND EXISTS (SELECT 1 FROM json_each(${JSON.stringify(kinds)}) AS k WHERE s.stream_id GLOB '*/*/*/' || k.value || '/*')
         AND s.partition = ${defaultPartition} AND s.is_archived = FALSE
       ORDER BY s.stream_id
       LIMIT ${count}`,
@@ -33,6 +34,16 @@ const sqliteProjectionDialect: ProjectionDialect = {
         AND message_type IN (SELECT value FROM json_each(${JSON.stringify(types)}))
         AND partition = ${defaultPartition} AND is_archived = FALSE
       ORDER BY stream_id, stream_position`,
+  messagesInOrderAfter: (after, count, kinds, types) =>
+    SQL`SELECT CAST(m.global_position AS TEXT) AS point, m.stream_id AS stream, m.message_type AS type,
+        m.message_data AS data, m.stream_position AS position
+      FROM emt_messages AS m
+      WHERE m.global_position > ${Number(after ?? '0')}
+        AND m.message_type IN (SELECT value FROM json_each(${JSON.stringify(types)}))
+        AND EXISTS (SELECT 1 FROM json_each(${JSON.stringify(kinds)}) AS k WHERE m.stream_id GLOB '*/*/*/' || k.value || '/*')
+        AND m.partition = ${defaultPartition} AND m.is_archived = FALSE
+      ORDER BY m.global_position
+      LIMIT ${count}`,
   rowsInAWrite: (columns) => Math.max(1, Math.floor(mostParameters / (columns + 2))),
   filledData: (column) => decodeText(column),
   appendedData: (stored) => stored,

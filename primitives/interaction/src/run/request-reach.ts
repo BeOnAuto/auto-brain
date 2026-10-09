@@ -1,47 +1,28 @@
+import { toolBounds, type ToolAccess, type ToolNotOffered } from '@beonauto/mcp';
+import type { ToolReference } from '@beonauto/mcp/policy';
 import { Unavailable, type BrainAddress, type Conflict } from '@beonauto/operations';
-import type { RunContext } from '@beonauto/specs';
-import { Effect, Result } from 'effect';
+import { Effect, Result, type Schema } from 'effect';
 
-import { renderedArguments, type ArgumentsFailure } from '../channels/channel-arguments.ts';
-import { inboxChannel } from '../channels/channel-names.ts';
-import { channelFor, type Channel, type ChannelSettings } from '../channels/channel-settings.ts';
+import { deliveryVariablesOf, renderedArguments, type ArgumentsFailure } from '../route/rendered-arguments.ts';
 import type { RequestRecord } from './request-record.ts';
-import { unworkable, type PartyRule } from './request-rendering.ts';
-import { interactionBounds } from './run-bounds.ts';
+import { unworkable } from './request-rendering.ts';
 
 export interface InteractionPorts {
-  readonly channels: ChannelSettings;
+  readonly tools: Pick<ToolAccess, 'named' | 'configured'>;
   readonly openRequests: (brain: BrainAddress) => Effect.Effect<number>;
   readonly mostOpenRequests: number;
 }
 
-export type Reach = { readonly kind: 'inbox' } | { readonly kind: 'channel'; readonly channel: Channel };
-
-const inbox: Reach = { kind: 'inbox' };
-
-const anyParty: PartyRule = { channel: inboxChannel, allowsParty: () => true };
-
-export function partyRuleOf(reach: Reach): PartyRule {
-  return reach.kind === 'inbox' ? anyParty : { channel: reach.channel.name, allowsParty: reach.channel.allowsParty };
-}
-
-export function reachOf(
-  channel: string,
+export function offered(
+  tools: readonly ToolReference[],
   ports: InteractionPorts,
   brain: BrainAddress,
-): Effect.Effect<Reach, Unavailable> {
-  if (channel === inboxChannel) {
-    return Effect.succeed(inbox);
-  }
-  const offered = channelFor(ports.channels, channel, brain);
-  return offered === undefined
-    ? Effect.fail(
-        new Unavailable({
-          detail: `The interaction function asks through the channel “${channel}”, which this server does not offer to this brain`,
-          kind: 'channel_not_offered',
-        }),
-      )
-    : Effect.succeed({ kind: 'channel', channel: offered });
+): Effect.Effect<void, Unavailable> {
+  return Result.match(ports.tools.named(brain, tools), {
+    onSuccess: () => Effect.void,
+    onFailure: ({ because, detail }: Pick<ToolNotOffered, 'because' | 'detail'>) =>
+      Effect.fail(new Unavailable({ detail, kind: 'tool_not_offered', because })),
+  });
 }
 
 export function roomFor(ports: InteractionPorts, brain: BrainAddress): Effect.Effect<void, Unavailable> {
@@ -59,43 +40,36 @@ export function roomFor(ports: InteractionPorts, brain: BrainAddress): Effect.Ef
 
 const argumentWords = {
   not_text: 'renders a value that is not text for this request',
-  too_long: `renders more than the ${interactionBounds.argumentBytes} bytes a call may send for this request`,
+  too_long: `renders more than the ${toolBounds.argumentBytes} bytes a call may send for this request`,
   missing_variable: 'reads what this request does not have',
   limit_exceeded: 'cannot be rendered for this request',
   failed: 'cannot be rendered for this request',
 } as const;
 
-function argumentsRefusal(channel: string, failure: ArgumentsFailure): Conflict {
+function argumentsRefusal(failure: ArgumentsFailure): Conflict {
   return failure.reason === 'too_large'
     ? unworkable(
-        '',
-        `The arguments of the call that delivers the request through the channel “${channel}” take ${failure.bytes} bytes, more than the ${interactionBounds.argumentBytes} a call may send`,
+        '/deliver/with',
+        `The arguments of the call that delivers the request take ${failure.bytes} bytes, more than the ${toolBounds.argumentBytes} a call may send`,
       )
     : unworkable(
-        '',
-        `The argument ${failure.argument} of the channel “${channel}” ${argumentWords[failure.failure.reason]}`,
+        `/deliver/with/${failure.argument}`,
+        `The argument ${failure.argument} of the call that delivers the request ${argumentWords[failure.failure.reason]}`,
       );
 }
 
-export function checkedArguments(
-  reach: Reach,
-  record: RequestRecord,
-  context: RunContext,
-): Effect.Effect<void, Conflict> {
-  if (reach.kind === 'inbox' || reach.channel.type !== 'mcp') {
+export interface Asking {
+  readonly input: Schema.Json;
+  readonly runId: string;
+  readonly functionName: string;
+}
+
+export function checkedArguments(record: RequestRecord, asking: Asking): Effect.Effect<void, Conflict> {
+  if (record.deliver === undefined) {
     return Effect.void;
   }
-  const { channel } = reach;
-  const fields = {
-    to: record.to,
-    message: record.message,
-    run_id: context.id,
-    function: context.spec.name,
-    expires_at: record.expires_at,
-    answer_schema: record.answer_schema ?? null,
-  };
-  return Result.match(renderedArguments(channel, fields), {
+  return Result.match(renderedArguments(record.deliver.with, deliveryVariablesOf(record, asking)), {
     onSuccess: () => Effect.void,
-    onFailure: (failure) => Effect.fail(argumentsRefusal(channel.name, failure)),
+    onFailure: (failure) => Effect.fail(argumentsRefusal(failure)),
   });
 }

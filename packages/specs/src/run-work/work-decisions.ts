@@ -1,7 +1,12 @@
 import { Conflict, type Rejection } from '@beonauto/operations';
 import { Result } from 'effect';
 
-import type { CommandMetadata, ExecutionOutboundCall, ExecutionToolCall } from '../execution/execution-commands.ts';
+import type {
+  CommandMetadata,
+  ExecutionOutboundCall,
+  ExecutionReply,
+  ExecutionToolCall,
+} from '../execution/execution-commands.ts';
 import type { ExecutionEvent } from '../execution/execution-events.ts';
 import { isRunning, type ExecutionState, type RecordedExecution } from '../execution/execution-state.ts';
 
@@ -62,4 +67,41 @@ export function decideOutboundCall(
   const allowed =
     fact.type === 'delivery_ended' ? attemptEndable(state, fact.number) : attemptStartable(state, fact.number);
   return Result.map(allowed, () => [recorded]);
+}
+
+export const replyBounds = { refusals: 10 } as const;
+
+const replySeen = new Conflict({ detail: 'The run has taken or refused this reply already, so it records it once' });
+
+const answeredAlready = new Conflict({
+  detail: 'The run was answered by a reply already, so it takes no further reply',
+});
+
+const replyWhileCancelling = new Conflict({ detail: 'The run is being cancelled, so it takes no reply' });
+
+const refusedEnough = new Conflict({
+  detail: `The run has refused ${replyBounds.refusals} replies, the most it records, so it records no more`,
+});
+
+function replyRefusal(state: RecordedExecution, fact: ExecutionReply['fact']): Conflict | undefined {
+  if (state.cancel !== undefined) {
+    return replyWhileCancelling;
+  }
+  if (state.repliesSeen.includes(fact.reply.id)) {
+    return replySeen;
+  }
+  if (state.broughtAnswer !== null) {
+    return answeredAlready;
+  }
+  return fact.type === 'reply_taken' || state.replyRefusals < replyBounds.refusals ? undefined : refusedEnough;
+}
+
+export function decideReply({ fact, by, at }: ExecutionReply & CommandMetadata, state: ExecutionState): Decision {
+  if (state === undefined || !isRunning(state)) {
+    return Result.fail(runEnded);
+  }
+  const refusal = replyRefusal(state, fact);
+  return refusal === undefined
+    ? Result.succeed([{ ...fact, ...ofTheDefinition(state), by, at }])
+    : Result.fail(refusal);
 }
