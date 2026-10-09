@@ -1,6 +1,6 @@
 # 0016 — Speaking to agents: what the brain says when an agent connects, measured against the servers that do it best
 
-**Status:** accepted (2026-10-07), with the amendments from the build at the end
+**Status:** accepted (2026-10-07), with the amendments from the build at the end; amended (2026-10-09): the tools advertise no output schema
 
 ## Context
 
@@ -169,3 +169,34 @@ Built on 2026-10-07. Interaction functions (0010) reached main the same day, so 
 - **Verification.** The replay test calls the tools itself, with what each episode's answer needs, and checks that the served texts hold that answer; it does not run an agent. Episode 4 saves the recall function the `remember` recipe describes over the runs of a function that answers what it posted, runs that function with a scripted model reply and finds the recall function answers what was posted. Episode 6 pins the words of a refused key. Episode 7 is the evening's failure: a request is open through a chat channel, the person says "approve", the expected act is `answer_interaction` with `{"decision": "approve"}` on that request, which ends the workflow run and leaves no request open, and a new run only when the person asks for the next month.
 - **Not built.** The recorded run of the asks against `pnpm dev` with a real model, for `docs/engineering/reference/mcp.md`, needs a person with a model provider's key.
 - **Tools on a connection, 25 (2026-10-08).** [Decision 0018](0018-testing-a-tool-call.md#7-over-http-and-over-mcp) adds `test_tool_call`, a 25th tool for a key that may call them all, so the bound of §8 is 25; when it is reached, the tools group by endpoint or into a catalogue pair as Sentry's, as before, since a bound that moves by one for each tool is no bound. The instructions gain the clause "; test_tool_call shows what a tool answers" where the tool is listed, and take 1,990 characters on `/mcp`, 1,473 on `/orgs/{org}/mcp` and 1,950 on `/orgs/{org}/brains/{brain}/mcp`.
+
+## Amendment (2026-10-09): the tools advertise no output schema
+
+Decided against `origin/main` at 9203df9d.
+
+### Context
+
+Every operation tool the brain serves over MCP, 24 of the 25 on `/mcp`, carries an `outputSchema`, the operation's output schema made self-contained with its `$defs` and the 2020-12 dialect (`packages/api/src/tools/tool-definition.ts:55`; `tools/tool-schema.ts:69-72`), beside the `inputSchema`, the two text blocks and the `structuredContent` of its result (`tools/tool-result.ts:51-61`). Section 1 of this record counted them as part of the surface: "described schemas, `structuredContent` beside two text blocks".
+
+On 2026-10-08 every call of `list_tool_servers` and of the run tools failed in a desktop client with "The connector returned an error or an invalid response", on a server whose log showed no error and whose answers were valid. The cause, read in the client's own code and its logs: an MCP client compiles a validator from each tool's `outputSchema` when it lists the tools, and checks every result's `structuredContent` against it, refusing the result when it does not match; the official client does this (`@modelcontextprotocol/sdk`, `Client.listTools` caching the output validators and `Client.callTool` throwing "Structured content does not match the tool's output schema"), and so does the desktop client, with a validator of its own. The client had listed the tools once, on 2026-10-07 at 17:49, and never again in twenty-one hours; the server was replaced by a newer main in between, through a bridge process that outlived the restart, so the client kept checking new results against old shapes. Two tools whose result shape had changed failed on every call until the client was restarted.
+
+The protocol gives a server one way to say that its tools changed, `tools.listChanged` with `notifications/tools/list_changed`, which needs a session and a stream to the client. The brain serves MCP without sessions (`packages/api/src/mcp/mcp-routes.ts:80`, `legacy: 'stateless'`) and says `listChanged: false` (`mcp/mcp-connection.ts:43`), so a restart is invisible to a client behind a bridge, and no notification can reach it. The newer protocol revision lets a listing declare its lifetime, which the server package already fills as `ttlMs: 0`, but the clients in use connect through the older one. Our output schemas are closed, 150 structs with `additionalProperties: false` across the 24 tools, so a field added to any result breaks every connected client, not only a rename. The schemas also weigh 113,841 bytes of the `/mcp` listing's 152,633, 13,748 of the org endpoint's 21,905 and 102,882 of the brain endpoint's 133,578. No client of the brain consumes them: agents read the text blocks, the management plane calls the HTTP API, and the MCP reference describes the structured content, not a schema.
+
+### Decision
+
+- The served tools advertise **no `outputSchema`**. Each result keeps its first text block, the plain-language sentence, its second text block, the output as JSON text, and its `structuredContent`, which the protocol allows without a schema. `tool-definition.ts` builds no output schema, and `ToolDefinition` loses the field.
+- The input schemas stay, since a client must know what a tool takes; a client holding an old input schema after an upgrade sends old arguments and is told by the brain's refusal what is wrong, a failure that is visible and ends with a restart, where a stale output schema failed opaquely.
+- The brain keeps `listChanged: false` and its stateless serving; a schema that clients freeze per connection is not advertised until the brain can tell them when it changes: when it serves a listing with a declared lifetime that the clients in use honour, and the result shapes have stopped moving. Reintroducing the schema is then a decision of its own.
+- The MCP reference says that a result carries the summary, the JSON text and the structured content, and no schema; this record's section 1 is read as amended.
+- A client already connected before this change still holds the old listing with its schemas, and checks against them until it is restarted once more; the change ends the class of failure for every upgrade after it.
+
+### Verification the build must include
+
+- Every tool served on `/mcp`, the org endpoint and the brain endpoint carries an `inputSchema` and no `outputSchema`, over the real server.
+- A tool's result still carries the two text blocks and the `structuredContent`, and an official client calling `list_tool_servers`, `list_brains` and `execute_spec` after listing the tools compiles no output validator and accepts each result.
+- The listing's size: the three listings measured, each smaller than today by the schemas' bytes, pinned as an upper bound.
+- The MCP reference and the api README say so; the internal-terms check.
+
+### Self-check
+
+Read on 2026-10-09 against `origin/main` at 9203df9d: `tool-definition.ts:55` builds the output schema, `tool-schema.ts:69-72` makes it self-contained, `tool-result.ts:51-61` builds the result, `mcp-routes.ts:80` serves stateless and `mcp-connection.ts:43` announces no changes. The client behaviour was read in the official SDK's client and in the desktop client's bundle, and the single listing in its logs. The counts, 150 closed structs and the schemas' bytes of each listing, were measured over the listings served at 9203df9d. The amendment names no client vendor in its decision, no platform and no customer.

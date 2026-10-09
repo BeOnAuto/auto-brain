@@ -68,14 +68,6 @@ describe('a registration', () => {
     expect(addNote.registration.input).toEqual({ schema: noteJsonSchema, definitions: {} });
   });
 
-  it('keeps named definitions apart so a transport can hoist them', () => {
-    expect(getNote.registration.output).toEqual({
-      schema: { type: 'object', $ref: '#/$defs/Note' },
-      definitions: { Note: noteJsonSchema },
-    });
-    expect(addNote.registration.output.definitions).toEqual({ Note: noteJsonSchema });
-  });
-
   it('answers with 200 unless the definition says otherwise, and names its path parameters', () => {
     expect(getNote.registration).toMatchObject({ successStatus: 200, pathParameters: ['name'] });
     expect(labelBrain.registration).toMatchObject({ scope: 'org', successStatus: 200, pathParameters: ['brain'] });

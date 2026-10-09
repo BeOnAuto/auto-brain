@@ -97,24 +97,6 @@ const draftAnswerSchema = {
   properties: { decision: { type: 'string', enum: ['approve', 'revise', 'skip'] }, note: { type: 'string' } },
 };
 
-const Described = Schema.Struct({ description: Schema.String });
-
-const decodeListedFields = Schema.decodeUnknownSync(
-  Schema.Struct({
-    $defs: Schema.Struct({
-      Interaction: Schema.Struct({
-        properties: Schema.Struct({
-          answer_schema: Described,
-          delivery: Described,
-          conversation: Described,
-          answerer: Described,
-          reply_refusals: Described,
-        }),
-      }),
-    }),
-  }),
-);
-
 type OpenRequest = (typeof OpenRequestsSchema.Type)['interactions'][number];
 
 async function openRequestsIn(session: McpSession): Promise<readonly OpenRequest[]> {
@@ -218,10 +200,8 @@ describe(
 );
 
 describe('the shape of the answer an open request takes, as the agent reads it', () => {
-  it('is on each listed request, described within the bounds the server holds texts to', () => {
+  it('is on each listed request, as the description of list_interactions says within the bounds the server holds texts to', () => {
     const description = descriptionIn(meetings.surfaces, 'list_interactions');
-    const listing = meetings.surfaces.tools.find(({ name }) => name === 'list_interactions');
-    const fields = decodeListedFields(listing?.outputSchema).$defs.Interaction.properties;
 
     expect(sentenceNaming(description, 'answer_schema')).toBe(
       'Each carries its `answer_schema`, the shape answer_interaction checks an answer against, as recorded when it was asked, which get_spec may no longer show; null for a notification.',
@@ -229,17 +209,6 @@ describe('the shape of the answer an open request takes, as the agent reads it',
     expect(descriptionIn(meetings.surfaces, 'answer_interaction')).toContain(
       "`answer` takes the shape of the request's answer_schema, which list_interactions shows,",
     );
-    expect([
-      description.length,
-      sentencesOf(description).length,
-      fields.answer_schema.description.length < 300,
-    ]).toEqual([724, 5, true]);
-    expect(fields.delivery.description).toBe(
-      'The tool the function delivers the request through, as its deliver names it, or null for a request waiting in the inbox',
-    );
-    expect(fields.delivery.description).toHaveLength(119);
-    expect(
-      [fields.conversation, fields.answerer, fields.reply_refusals].map(({ description: words }) => words.length < 300),
-    ).toEqual([true, true, true]);
+    expect([description.length, sentencesOf(description).length]).toEqual([724, 5]);
   });
 });

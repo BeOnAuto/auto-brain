@@ -1,19 +1,13 @@
 import { rejected, type Issue } from '@beonauto/operations';
-import type { CallToolResult, McpServer, StandardSchemaWithJSON, ToolAnnotations } from '@modelcontextprotocol/server';
+import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import { Result, Schema, SchemaIssue, type SchemaAST } from 'effect';
 
+import type { ToolDefinition } from '../tools/tool-definition.ts';
 import { unsuccessfulResultOf } from '../tools/tool-result.ts';
 import { advertisedSchema } from '../tools/tool-schema.ts';
 import type { GuideShelf } from './guide-shelf.ts';
 
 export const guideToolName = 'get_guide';
-
-interface GuideToolDefinition {
-  readonly title: string;
-  readonly description: string;
-  readonly inputSchema: StandardSchemaWithJSON;
-  readonly annotations: ToolAnnotations;
-}
 
 const description = [
   "Reads one of the brain's guides: what its words mean, how each kind of definition is written, with its format, examples and bounds, and how the common tasks are done.",
@@ -28,7 +22,7 @@ const strictly: SchemaAST.ParseOptions = { onExcessProperty: 'error', errors: 'a
 
 const failureOf = SchemaIssue.makeFormatterStandardSchemaV1();
 
-function guideToolDefinitionOf({ everyGuide }: GuideShelf): GuideToolDefinition {
+function guideToolDefinitionOf({ everyGuide }: GuideShelf): ToolDefinition {
   return {
     title: 'Get guide',
     description,

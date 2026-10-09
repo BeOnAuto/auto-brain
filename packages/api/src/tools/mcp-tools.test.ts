@@ -7,7 +7,7 @@ import { withMcpSession, type McpConnection, type McpSession } from '../testing/
 import { notebookOperations } from '../testing/notebook.ts';
 import { acmeAdmin, operationServer, type OperationServer } from '../testing/operation-server.ts';
 import { danglingReferencesIn } from '../testing/self-contained.ts';
-import { guideToolName, listedTools, operationToolsIn, schemasOf } from '../testing/tool-listing.ts';
+import { guideToolName, listedTools, operationToolsIn } from '../testing/tool-listing.ts';
 
 const orgOperations = notebookOperations.filter(({ registration }) => registration.scope === 'org');
 
@@ -62,12 +62,13 @@ describe('the tools of each endpoint', () => {
     ]);
   });
 
-  it('publishes self-contained schemas with an object root, and the primitive as a plain enum', async () => {
+  it('publishes self-contained input schemas with an object root, the primitive as a plain enum, and no output schema', async () => {
     const tools = listedTools(await onAlpha((session) => session.listTools()));
-    const schemas = schemasOf(tools);
+    const schemas = tools.map(({ inputSchema }) => inputSchema);
 
     expect(schemas.map((schema) => schema['type'])).toEqual(schemas.map(() => 'object'));
     expect(schemas.flatMap((schema) => danglingReferencesIn(schema))).toEqual([]);
+    expect(tools.filter(({ outputSchema }) => outputSchema !== undefined)).toEqual([]);
     expect(tools.find(({ name }) => name === 'create_spec')?.inputSchema).toMatchObject({
       properties: { primitive: { type: 'string', enum: ['echo'] } },
     });

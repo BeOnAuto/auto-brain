@@ -72,7 +72,6 @@ describe('the guide tool', () => {
           additionalProperties: false,
         },
       });
-      expect(guideTool?.outputSchema).toBeUndefined();
     },
   );
 });

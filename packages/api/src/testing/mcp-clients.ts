@@ -1,4 +1,4 @@
-import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
+import { Client, StreamableHTTPClientTransport, type jsonSchemaValidator } from '@modelcontextprotocol/client';
 import { Client as PreviousMajorClient } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport as PreviousMajorTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
@@ -29,6 +29,7 @@ export interface McpSession {
   readonly readResource: (uri: string) => Promise<unknown>;
   readonly listPrompts: () => Promise<unknown>;
   readonly getPrompt: (name: string, words?: Readonly<Record<string, string>>) => Promise<unknown>;
+  readonly compiledOutputSchemas: () => readonly unknown[];
   readonly close: () => Promise<void>;
 }
 
@@ -73,6 +74,28 @@ function wordsOf(words: Readonly<Record<string, string>> | undefined): Record<st
   return { ...words };
 }
 
+interface RecordingValidator {
+  readonly validator: jsonSchemaValidator;
+  readonly compiled: () => readonly unknown[];
+}
+
+function recordingValidator(): RecordingValidator {
+  const compiled: unknown[] = [];
+  return {
+    validator: {
+      getValidator: (schema: unknown) => {
+        compiled.push(schema);
+        return () => ({
+          valid: false,
+          data: undefined,
+          errorMessage: 'A result was checked against an advertised output schema',
+        });
+      },
+    },
+    compiled: () => [...compiled],
+  };
+}
+
 class PreviousMajorHttpTransport implements Transport {
   onclose?: NonNullable<Transport['onclose']>;
   onerror?: NonNullable<Transport['onerror']>;
@@ -102,7 +125,11 @@ class PreviousMajorHttpTransport implements Transport {
 }
 
 async function connectPreviousMajor(connection: McpConnection): Promise<McpSession> {
-  const client = new PreviousMajorClient({ name: 'auto-brain-tests', version: '1.0.0' });
+  const { validator, compiled } = recordingValidator();
+  const client = new PreviousMajorClient(
+    { name: 'auto-brain-tests', version: '1.0.0' },
+    { jsonSchemaValidator: validator },
+  );
   const transport = new PreviousMajorHttpTransport(connection);
   await client.connect(transport);
   return {
@@ -115,13 +142,18 @@ async function connectPreviousMajor(connection: McpConnection): Promise<McpSessi
     readResource: (uri) => client.readResource({ uri }),
     listPrompts: () => client.listPrompts(),
     getPrompt: (name, words) => client.getPrompt({ name, arguments: wordsOf(words) }),
+    compiledOutputSchemas: compiled,
     close: () => client.close(),
   };
 }
 
 async function connectCurrentMajor(kind: McpClientKind, { url, headers }: McpConnection): Promise<McpSession> {
   const versionNegotiation = kind === 'current revision' ? { mode: { pin: '2026-07-28' } } : {};
-  const client = new Client({ name: 'auto-brain-tests', version: '2.0.0' }, { versionNegotiation });
+  const { validator, compiled } = recordingValidator();
+  const client = new Client(
+    { name: 'auto-brain-tests', version: '2.0.0' },
+    { versionNegotiation, jsonSchemaValidator: validator },
+  );
   await client.connect(new StreamableHTTPClientTransport(new URL(url), { requestInit: { headers: { ...headers } } }));
   return {
     protocolVersion: client.getNegotiatedProtocolVersion(),
@@ -133,6 +165,7 @@ async function connectCurrentMajor(kind: McpClientKind, { url, headers }: McpCon
     readResource: (uri) => client.readResource({ uri }),
     listPrompts: () => client.listPrompts(),
     getPrompt: (name, words) => client.getPrompt({ name, arguments: wordsOf(words) }),
+    compiledOutputSchemas: compiled,
     close: () => client.close(),
   };
 }

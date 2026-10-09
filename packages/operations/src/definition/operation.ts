@@ -110,7 +110,6 @@ function defineOperation<
       permissions,
       reasons,
       input: jsonSchemaDocumentOf(inputSchema),
-      output: jsonSchemaDocumentOf(outputSchema),
       ...plainLanguageFields(definition.plainLanguage, inputSchema, outputSchema),
       run: runnerOf(decodeInput, handle, encodeOutput, reasons),
     },

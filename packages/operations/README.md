@@ -90,7 +90,7 @@ Plain words have bounds: an outcome takes at most `mostOutcomeCharacters`, 400, 
 
 `InvalidInput`, `Unavailable` and `Conflict` may also carry a `record`, a JSON object of what was done before the rejection, such as the tokens a model call spent. No outcome or problem document shows it; `@beonauto/specs` keeps it on a run its runtime adapter rejected.
 
-`getLabel.registration` is what a catalog stores: the route, the kind, the success status, the reasons, the permissions that let a caller call it, whether the operation targets a brain, whether it reaches outside the server, and JSON Schema for the input and output with their definitions kept apart. Its `run` decodes an input, runs the handler and encodes the output; only the dispatcher calls it, because it checks nothing about the caller.
+`getLabel.registration` is what a catalog stores: the route, the kind, the success status, the reasons, the permissions that let a caller call it, whether the operation targets a brain, whether it reaches outside the server, and the JSON Schema of the input with its definitions kept apart. Its `run` decodes an input, runs the handler and encodes the output; only the dispatcher calls it, because it checks nothing about the caller.
 
 `getLabel.call(input)` runs the handler in process with typed input and output, checking both against their schemas. This is how one operation calls another. The call runs with the authority of the calling operation: it does not check the permission of the operation it calls, nor run the pipeline steps.
 

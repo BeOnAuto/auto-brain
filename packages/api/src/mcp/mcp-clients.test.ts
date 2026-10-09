@@ -1,6 +1,8 @@
+import { McpServer, createMcpHandler } from '@modelcontextprotocol/server';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { instructionsFor } from '../index.ts';
+import { instructionsFor, type RegisterRoutes } from '../index.ts';
+import { createTestHandler } from '../testing/api-calls.ts';
 import { testDefinitionTypes, testRecipes } from '../testing/guides.ts';
 import { listenOnLoopback, type Listening } from '../testing/listening.ts';
 import {
@@ -12,18 +14,43 @@ import {
   type McpConnection,
 } from '../testing/mcp-clients.ts';
 import { acmeAdmin, operationServer, testServerInfo, type OperationServer } from '../testing/operation-server.ts';
-import { outputConformsTo, toolNamesIn } from '../testing/tool-listing.ts';
+import { toolNamesIn } from '../testing/tool-listing.ts';
+import { advertisedSchema } from '../tools/tool-schema.ts';
+
+const countSchema = { type: 'object', properties: { count: { type: 'integer' } }, required: ['count'] };
+
+function countingServer(): McpServer {
+  const counting = new McpServer({ name: 'counting', version: '1.0.0' });
+  counting.registerTool(
+    'count',
+    {
+      description: 'Counts to one.',
+      inputSchema: advertisedSchema({ type: 'object' }),
+      outputSchema: advertisedSchema(countSchema),
+    },
+    () => ({ content: [{ type: 'text', text: '{"count":1}' }], structuredContent: { count: 1 } }),
+  );
+  return counting;
+}
+
+const advertisingAnOutputSchema: RegisterRoutes = (routes) => {
+  const counting = createMcpHandler(countingServer, { legacy: 'stateless' });
+  routes.add('POST', '/counting/mcp', (c) => counting.fetch(c.req.raw));
+  routes.onClose(() => counting.close());
+};
 
 let server: OperationServer;
 let listening: Listening;
+let advertising: Listening;
 
 beforeAll(async () => {
   server = await operationServer();
   listening = await listenOnLoopback(server.handler);
+  advertising = await listenOnLoopback(createTestHandler({ routes: [advertisingAnOutputSchema] }).handler);
 });
 
 afterAll(async () => {
-  await listening.close();
+  await Promise.all([listening.close(), advertising.close()]);
   await server.runtime.dispose();
 });
 
@@ -79,14 +106,17 @@ describe.each(mcpClientKinds)('the %s client connecting to a brain endpoint', (k
 });
 
 describe.each(mcpClientKinds)('the %s client calling tools that succeed', (kind) => {
-  it('calls a command and a query, whose structured content conforms to the output schema', async () => {
+  it('lists the tools, then calls a command and a query and accepts each result without compiling an output validator', async () => {
     const name = `note-${kind.replaceAll(' ', '-')}`;
 
-    const outcome = await withMcpSession(kind, alphaEndpoint(), async (session) => ({
-      listing: await session.listTools(),
-      added: await session.callTool('add_note', { name, text: 'hello' }),
-      read: await session.callTool('get_note', { name }),
-    }));
+    const outcome = await withMcpSession(kind, alphaEndpoint(), async (session) => {
+      await session.listTools();
+      return {
+        added: await session.callTool('add_note', { name, text: 'hello' }),
+        read: await session.callTool('get_note', { name }),
+        compiled: session.compiledOutputSchemas(),
+      };
+    });
 
     expect(outcome.added).toEqual({
       content: [
@@ -96,7 +126,25 @@ describe.each(mcpClientKinds)('the %s client calling tools that succeed', (kind)
       structuredContent: { name, text: 'hello' },
     });
     expect(outcome.read.structuredContent).toEqual({ name, text: 'hello' });
-    expect(outputConformsTo(outcome.listing, 'get_note', outcome.read.structuredContent)).toBe(true);
+    expect(outcome.compiled).toEqual([]);
+  });
+});
+
+describe.each(mcpClientKinds)('the %s client listing a tool with an output schema', (kind) => {
+  it('records the output schema it compiles a validator from, and refuses the result checked against it', async () => {
+    const compiled = await withMcpSession(
+      kind,
+      { url: `${advertising.origin}/counting/mcp`, headers: {} },
+      async (session) => {
+        await session.listTools();
+        await expect(session.callTool('count', {})).rejects.toThrow(
+          "Structured content does not match the tool's output schema: A result was checked against an advertised output schema",
+        );
+        return session.compiledOutputSchemas();
+      },
+    );
+
+    expect(compiled).toMatchObject([countSchema]);
   });
 });
 

@@ -52,7 +52,7 @@ Functions and workflows share the definition tools: those tools accept `inferenc
 | Learn what a tool answers    | `test_tool_call`, with the `server`, the `tool` and its `arguments`                                      |
 | Read a guide                 | `get_guide`, with the name of the guide                                                                  |
 
-Every tool supplies its description and input and output JSON Schemas. A description says what the tool does and when to use it; the rules of each argument are in its schema, and the format of a definition is in its guide. Each tool's annotations say whether it only reads, whether what it does cannot be undone, as retiring, cancelling and answering a request cannot, whether calling it again with the same input changes nothing, and whether it reaches outside the runtime. Brain-management and model-discovery tools are available at `/mcp` and the org endpoint; function, workflow, brain event and tool test tools are available at `/mcp` and the brain endpoint; `list_tool_servers` and `get_guide` are available on every endpoint.
+Every tool supplies its description and the JSON Schema of its input, and no output schema; [Successful results](#successful-results) says what a result carries. A description says what the tool does and when to use it; the rules of each argument are in its schema, and the format of a definition is in its guide. Each tool's annotations say whether it only reads, whether what it does cannot be undone, as retiring, cancelling and answering a request cannot, whether calling it again with the same input changes nothing, and whether it reaches outside the runtime. Brain-management and model-discovery tools are available at `/mcp` and the org endpoint; function, workflow, brain event and tool test tools are available at `/mcp` and the brain endpoint; `list_tool_servers` and `get_guide` are available on every endpoint.
 
 Definition operations identify a function or workflow by `primitive` and `name`. Creating or updating a definition takes its document as `source`. Running it accepts `input` and an optional UUID `execution_id`; inspecting a run requires `execution_id`. Cancelling a run requires its `execution_id` and takes an optional `reason`, 1 to 1,024 characters, which the run keeps as the detail of its ending; [Cancelling a run](http.md#cancelling-a-run) says which runs can be cancelled. Sending an event requires the run's `execution_id` and an `event` with a `type`; [HTTP workflows](http.md#workflows) lists its other fields and limits. Publishing an event to a brain requires an `event` with a `source` and a `type`; [Publishing events](http.md#publishing-events) lists its attributes and limits and what publishing it again returns. See [HTTP operations](http.md) for field limits and retry behavior.
 
@@ -92,13 +92,13 @@ This model catalog lists language models, not MCP tools; `list_tool_servers` lis
 
 ## Successful results
 
-A successful tool result contains the operation output in `structuredContent`:
+A successful tool result carries a plain-language summary, the operation's output as JSON text and the same output as structured content. No tool advertises an output schema, so a client takes `structuredContent` as it comes instead of checking it against one.
 
-| Field               | Contents                                                               |
-| ------------------- | ---------------------------------------------------------------------- |
-| `structuredContent` | The operation's structured output                                      |
-| `content[0].text`   | A human-readable summary                                               |
-| `content[1].text`   | The same output as JSON, for clients without structured-output support |
+| Field               | Contents                                                                       |
+| ------------------- | ------------------------------------------------------------------------------ |
+| `content[0].text`   | A plain-language summary of what was done                                      |
+| `content[1].text`   | The operation's output as JSON text, for clients that do not read the next one |
+| `structuredContent` | The same output as structured content                                          |
 
 Consumers should read `structuredContent`. The first text block is not JSON.
 
