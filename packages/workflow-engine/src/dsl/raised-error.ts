@@ -1,9 +1,10 @@
 import {
-  ConflictKindSchema,
   isKindWithType,
   problemTypeOf,
+  reasonOfKind,
   RejectionBecauseSchema,
   UnansweredKindSchema,
+  type ConflictKind,
   type KindWithType,
   type Settlement,
 } from '@beonauto/operations';
@@ -114,7 +115,11 @@ export function reasonOfStatus(status: number): 'invalid_input' | 'unavailable' 
   return status >= 400 && status < 500 && !retryableStatuses.has(status) ? 'invalid_input' : 'unavailable';
 }
 
-const isConflictKind = Schema.is(ConflictKindSchema);
+type ConflictKindWithType = Extract<KindWithType, ConflictKind>;
+
+function isConflictKind(kind: KindWithType): kind is ConflictKindWithType {
+  return reasonOfKind(kind) === 'conflict';
+}
 
 function becauseOf(kind: KindWithType, because: string | undefined) {
   return kind === 'tools_called' || !isRejectionBecause(because) ? {} : { because };
