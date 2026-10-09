@@ -17,6 +17,7 @@ import type { RunEvent } from './run-events.ts';
 import {
   awaitsSettlement,
   cancelBeforeStartOf,
+  changedNothing,
   hasFinalResult,
   isRunning,
   mayHaveChangedSomething,
@@ -27,24 +28,13 @@ import {
   type RecordedRunState,
 } from './run-state.ts';
 import { settlementKeyOf, succeedsWith } from './settlement-keys.ts';
+import { startedCallingTools, toolsOnlyRead, toolsWereCalled } from './tool-refusals.ts';
 
 type Decision = Result.Result<readonly RunEvent[], Rejection<'not_found' | 'conflict' | 'cancelled'>>;
 
 export type Claim = 'run' | 'answer';
 
 const nothingToRecord: Decision = Result.succeed([]);
-
-const toolsWereCalled = new Conflict({
-  detail:
-    'The run called tools and did not succeed, so it is not run again under its id, since a tool may have changed something; start a new run with another run id, and read with get_run_history what it called',
-  kind: 'tools_called',
-});
-
-const startedCallingTools = new Conflict({
-  detail:
-    'The run has started and its definition calls tools, so it is not run again under its id: it may still be in progress, or have stopped without recording how it ended, and its tools may have changed something; start a new run with another run id, and read with get_run_history what it has called so far',
-  kind: 'tools_called',
-});
 
 const noSuchRun = new NotFound({ detail: 'There is no such run in this brain' });
 
@@ -73,6 +63,9 @@ function needsNoRun(state: RecordedRunState): boolean {
 function claimOfRecorded(state: RecordedRunState): Result.Result<Claim, Conflict> {
   if (needsNoRun(state)) {
     return Result.succeed('answer');
+  }
+  if (changedNothing(state)) {
+    return Result.fail(toolsOnlyRead);
   }
   return mayHaveChangedSomething(state) ? Result.fail(toolsWereCalled) : Result.succeed('run');
 }

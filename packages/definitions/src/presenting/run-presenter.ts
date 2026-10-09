@@ -93,6 +93,7 @@ function callStartedAccount(event: ToolCallStarted, fact: Fact): Account {
       tool,
       arguments_bytes: event.arguments_bytes,
       arguments_sha256: cutAtCodePoint(event.arguments_sha256, mostDigestBytes),
+      ...(event.read_only === true ? { read_only: true } : {}),
       ...contentShown('arguments_json', event.arguments_json),
     },
   };
