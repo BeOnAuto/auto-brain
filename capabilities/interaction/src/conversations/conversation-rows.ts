@@ -104,7 +104,7 @@ function rowAfter(row: ProjectedRow | undefined, event: unknown, message: Projec
 
 export const conversations: KeyedProjection = {
   name: conversationsName,
-  version: 1,
+  version: 2,
   kinds: ['runs', conversationCallsKind],
   types: ['delivery_ended', 'replies_read'],
   columns: [
