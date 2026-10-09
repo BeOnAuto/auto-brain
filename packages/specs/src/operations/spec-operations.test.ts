@@ -66,22 +66,6 @@ describe('a catalog of the spec operations', () => {
       'get_brain_analytics',
     ]);
   });
-
-  it('describes a definition and a run once each, as shared definitions', () => {
-    expect(catalog.operations.map(({ output }) => Object.keys(output.definitions))).toEqual([
-      ['Definition'],
-      ['ListedDefinition'],
-      ['Definition'],
-      ['Definition'],
-      ['Definition'],
-      ['Run'],
-      ['RunDetail'],
-      ['Run'],
-      ['ListedRun'],
-      ['PublicEvent'],
-      ['BrainAnalytics'],
-    ]);
-  });
 });
 
 describe('the spec operations for a list of primitives', () => {

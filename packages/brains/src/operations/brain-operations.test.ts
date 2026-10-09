@@ -29,14 +29,4 @@ describe('the brain operations', () => {
     ]);
     expect(new Set(routes).size).toBe(routes.length);
   });
-
-  it('describe a brain once, as a shared definition', () => {
-    expect(catalog.operations.map(({ output }) => Object.keys(output.definitions))).toEqual([
-      ['Brain'],
-      ['Brain'],
-      ['Brain'],
-      ['Brain'],
-      ['Brain'],
-    ]);
-  });
 });

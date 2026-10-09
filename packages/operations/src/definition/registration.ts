@@ -30,7 +30,6 @@ export interface RegistrationOf<S extends OperationScope, K extends OperationKin
   readonly permissions: readonly Permission[];
   readonly reasons: readonly DeclarableReason[];
   readonly input: JsonSchemaDocument;
-  readonly output: JsonSchemaDocument;
   readonly plainLanguage?: RegisteredPlainLanguage;
   readonly run: (input: unknown, encoding: InputEncoding) => Effect.Effect<Succeeded, Rejected, HandlerServices<S, K>>;
   readonly checkInput: (input: unknown, encoding: InputEncoding) => Effect.Effect<void, Rejected>;
