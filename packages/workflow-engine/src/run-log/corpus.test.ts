@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import {
   loadedRunOf,
   RunLogEventSchema,
+  SnapshotSchema,
   snapshotFromChunks,
   stateFormats,
   stateInCurrentFormat,
@@ -24,27 +25,59 @@ const CorpusSchema = Schema.Struct({
 
 type Corpus = typeof CorpusSchema.Type;
 
-const decodeCorpus = Schema.decodeUnknownSync(Schema.fromJsonString(CorpusSchema));
+const CorpusJsonSchema = Schema.toCodecJson(CorpusSchema);
+
+const decodeCorpus = Schema.decodeUnknownSync(CorpusJsonSchema);
+
+const writeCorpus = Schema.encodeSync(CorpusJsonSchema);
+
+const writeSnapshot = Schema.encodeSync(Schema.toCodecJson(SnapshotSchema));
+
+const readJson = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Json));
 
 const directory = fileURLToPath(new URL('../../corpus/', import.meta.url));
 
-const corpora: readonly Corpus[] = readdirSync(directory)
+const committed: readonly unknown[] = readdirSync(directory)
   .filter((name) => name.endsWith('.json'))
-  .map((name) => decodeCorpus(readFileSync(`${directory}${name}`, 'utf8')));
+  .map((name) => readJson(readFileSync(`${directory}${name}`, 'utf8')));
 
-function loadedBothWays({ stream, snapshot }: Corpus): readonly unknown[] {
-  const whole = loadedRunOf({ snapshot: null, tail: stream });
+const corpora: readonly Corpus[] = committed.map((file) => decodeCorpus(file));
+
+function snapshotIn({ snapshot }: Corpus) {
+  return Result.getOrThrow(snapshotFromChunks(snapshot.chunks));
+}
+
+function loadedBothWays(corpus: Corpus): readonly unknown[] {
+  const whole = loadedRunOf({ snapshot: null, tail: corpus.stream });
   const fromSnapshot = loadedRunOf({
-    snapshot: { snapshot: Result.getOrThrow(snapshotFromChunks(snapshot.chunks)), bytes: snapshot.bytes },
-    tail: snapshot.tail,
+    snapshot: { snapshot: snapshotIn(corpus), bytes: corpus.snapshot.bytes },
+    tail: corpus.snapshot.tail,
   });
   return [whole.state, fromSnapshot.state, whole.version, fromSnapshot.version];
+}
+
+function formatsNamed(corpus: Corpus): readonly number[] {
+  return [
+    ...new Set([
+      ...corpus.stream.map(({ event }) => event.format),
+      ...corpus.snapshot.tail.map(({ event }) => event.format),
+      snapshotIn(corpus).format,
+    ]),
+  ];
 }
 
 describe('the committed corpus of past state formats', () => {
   it('holds a stream and a snapshot for every state format up to the current one', () => {
     expect(corpora.map(({ format }) => format).toSorted((first, second) => first - second)).toEqual(
       Array.from({ length: stateFormats.current }, (_, index) => index + 1),
+    );
+    expect(corpora.map((corpus) => formatsNamed(corpus))).toEqual(corpora.map(({ format }) => [format]));
+  });
+
+  it('reads each event and snapshot with the schemas of the format it names, and writes it back as it was committed', () => {
+    expect(corpora.map((corpus) => writeCorpus(corpus))).toEqual(committed);
+    expect(corpora.map((corpus) => writeSnapshot(snapshotIn(corpus)))).toEqual(
+      corpora.map(({ snapshot }) => readJson(snapshot.chunks.join(''))),
     );
   });
 

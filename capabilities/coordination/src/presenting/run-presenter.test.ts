@@ -228,7 +228,7 @@ describe('the largest input a workflow can take', () => {
 
 describe('the presenter of the runs of workflows', () => {
   it('decides on every stored type of the log of a run', () => {
-    expect(Object.keys(runPresenter.publicNames)).toEqual([RunLogEventSchema.fields.type.literal]);
+    expect(Object.keys(runPresenter.publicNames)).toEqual(['input_applied']);
     expect(runPresenter.publicNames['input_applied']).toEqual([
       'workflow_input_applied',
       'step_started',

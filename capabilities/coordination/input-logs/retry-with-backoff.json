@@ -3,7 +3,7 @@
   "inputs": [
     {
       "kind": "started",
-      "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+      "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
       "at": 1790845200000,
       "document": {
         "document": {
@@ -18,9 +18,9 @@
               "try": [
                 {
                   "fetch": {
-                    "call": "execute_spec",
+                    "call": "run_definition",
                     "with": {
-                      "primitive": "inference",
+                      "type": "reasoning",
                       "name": "flaky",
                       "input": {
                         "key": "backoff"
@@ -63,10 +63,10 @@
     },
     {
       "kind": "call_answered",
-      "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+      "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
       "at": 1790845200050,
       "key": {
-        "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+        "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
         "reference": "/do/0/guarded/try/0/fetch",
         "run": 1
       },
@@ -78,16 +78,16 @@
     },
     {
       "kind": "timer_fired",
-      "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+      "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
       "at": 1790845200550,
       "timerId": "3"
     },
     {
       "kind": "call_answered",
-      "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+      "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
       "at": 1790845200600,
       "key": {
-        "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+        "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
         "reference": "/do/0/guarded/try/0/fetch",
         "run": 2
       },
@@ -99,16 +99,16 @@
     },
     {
       "kind": "timer_fired",
-      "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+      "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
       "at": 1790845201600,
       "timerId": "5"
     },
     {
       "kind": "call_answered",
-      "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+      "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
       "at": 1790845201650,
       "key": {
-        "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+        "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
         "reference": "/do/0/guarded/try/0/fetch",
         "run": 3
       },
@@ -123,7 +123,7 @@
   "events": [
     {
       "type": "input_applied",
-      "format": 6,
+      "format": 7,
       "receipt": {
         "kind": "started",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
@@ -157,7 +157,7 @@
       "patch": [
         {
           "op": "replace",
-          "path": "/executionId",
+          "path": "/runId",
           "value": "0199a3c4-7d2e-7c1a-9b3f-000000000307"
         },
         {
@@ -182,9 +182,9 @@
                     "try": [
                       {
                         "fetch": {
-                          "call": "execute_spec",
+                          "call": "run_definition",
                           "with": {
-                            "primitive": "inference",
+                            "type": "reasoning",
                             "name": "flaky",
                             "input": {
                               "key": "backoff"
@@ -289,7 +289,7 @@
           "op": "add",
           "path": "/calls/[\"0199a3c4-7d2e-7c1a-9b3f-000000000307\",\"~1do~10~1guarded~1try~10~1fetch\",1]",
           "value": {
-            "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+            "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
             "reference": "/do/0/guarded/try/0/fetch",
             "run": 1
           }
@@ -297,7 +297,7 @@
         {
           "op": "replace",
           "path": "/heldBytes",
-          "value": 12717
+          "value": 12709
         },
         {
           "op": "add",
@@ -312,13 +312,13 @@
           "path": "/machine/values/2",
           "value": {
             "value": {
-              "primitive": "inference",
+              "type": "reasoning",
               "name": "flaky",
               "input": {
                 "key": "backoff"
               }
             },
-            "bytes": 66
+            "bytes": 61
           }
         },
         {
@@ -381,11 +381,11 @@
                               "body": {
                                 "kind": "call",
                                 "key": {
-                                  "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+                                  "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
                                   "reference": "/do/0/guarded/try/0/fetch",
                                   "run": 1
                                 },
-                                "function": "execute_spec",
+                                "function": "run_definition",
                                 "arguments": 2,
                                 "label": "the reasoning function flaky",
                                 "deadline": "2"
@@ -405,13 +405,13 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 4042
+          "value": 3997
         }
       ],
       "outputs": [
         {
           "kind": "arm_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
           "timerId": "1",
           "dueAt": 1793437200000,
           "purpose": "deadline",
@@ -420,13 +420,13 @@
         {
           "kind": "start_call",
           "key": {
-            "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+            "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
             "reference": "/do/0/guarded/try/0/fetch",
             "run": 1
           },
-          "function": "execute_spec",
+          "function": "run_definition",
           "arguments": {
-            "primitive": "inference",
+            "type": "reasoning",
             "name": "flaky",
             "input": {
               "key": "backoff"
@@ -436,7 +436,7 @@
         },
         {
           "kind": "arm_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
           "timerId": "2",
           "dueAt": 1790845800000,
           "purpose": "call_deadline",
@@ -446,7 +446,7 @@
     },
     {
       "type": "input_applied",
-      "format": 6,
+      "format": 7,
       "receipt": {
         "kind": "call_answered",
         "key": "[\"0199a3c4-7d2e-7c1a-9b3f-000000000307\",\"/do/0/guarded/try/0/fetch\",1]",
@@ -468,7 +468,7 @@
           },
           "error": {
             "type": "https://open-workflow-specification.org/spec/1.0.0/errors/communication",
-            "title": "The reasoning function flaky rejected the execution with unavailable"
+            "title": "The reasoning function flaky rejected the run with unavailable"
           }
         }
       ],
@@ -514,7 +514,7 @@
         {
           "op": "replace",
           "path": "/heldBytes",
-          "value": 8555
+          "value": 8552
         },
         {
           "op": "remove",
@@ -544,7 +544,7 @@
           "value": {
             "type": "https://open-workflow-specification.org/spec/1.0.0/errors/communication",
             "status": 503,
-            "title": "The reasoning function flaky rejected the execution with unavailable",
+            "title": "The reasoning function flaky rejected the run with unavailable",
             "detail": "busy on call 1",
             "instance": "/do/0/guarded/try/0/fetch"
           }
@@ -562,18 +562,18 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 6390
+          "value": 6321
         }
       ],
       "outputs": [
         {
           "kind": "cancel_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
           "timerId": "2"
         },
         {
           "kind": "arm_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
           "timerId": "3",
           "dueAt": 1790845200550,
           "purpose": "retry_delay",
@@ -583,7 +583,7 @@
     },
     {
       "type": "input_applied",
-      "format": 6,
+      "format": 7,
       "receipt": {
         "kind": "timer_fired",
         "key": "3",
@@ -645,7 +645,7 @@
           "op": "add",
           "path": "/calls/[\"0199a3c4-7d2e-7c1a-9b3f-000000000307\",\"~1do~10~1guarded~1try~10~1fetch\",2]",
           "value": {
-            "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+            "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
             "reference": "/do/0/guarded/try/0/fetch",
             "run": 2
           }
@@ -653,20 +653,20 @@
         {
           "op": "replace",
           "path": "/heldBytes",
-          "value": 12717
+          "value": 12709
         },
         {
           "op": "add",
           "path": "/machine/values/3",
           "value": {
             "value": {
-              "primitive": "inference",
+              "type": "reasoning",
               "name": "flaky",
               "input": {
                 "key": "backoff"
               }
             },
-            "bytes": 66
+            "bytes": 61
           }
         },
         {
@@ -718,11 +718,11 @@
                 "body": {
                   "kind": "call",
                   "key": {
-                    "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+                    "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
                     "reference": "/do/0/guarded/try/0/fetch",
                     "run": 2
                   },
-                  "function": "execute_spec",
+                  "function": "run_definition",
                   "arguments": 3,
                   "label": "the reasoning function flaky",
                   "deadline": "4"
@@ -739,20 +739,20 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 9191
+          "value": 9092
         }
       ],
       "outputs": [
         {
           "kind": "start_call",
           "key": {
-            "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+            "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
             "reference": "/do/0/guarded/try/0/fetch",
             "run": 2
           },
-          "function": "execute_spec",
+          "function": "run_definition",
           "arguments": {
-            "primitive": "inference",
+            "type": "reasoning",
             "name": "flaky",
             "input": {
               "key": "backoff"
@@ -762,7 +762,7 @@
         },
         {
           "kind": "arm_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
           "timerId": "4",
           "dueAt": 1790845800550,
           "purpose": "call_deadline",
@@ -772,7 +772,7 @@
     },
     {
       "type": "input_applied",
-      "format": 6,
+      "format": 7,
       "receipt": {
         "kind": "call_answered",
         "key": "[\"0199a3c4-7d2e-7c1a-9b3f-000000000307\",\"/do/0/guarded/try/0/fetch\",2]",
@@ -794,7 +794,7 @@
           },
           "error": {
             "type": "https://open-workflow-specification.org/spec/1.0.0/errors/communication",
-            "title": "The reasoning function flaky rejected the execution with unavailable"
+            "title": "The reasoning function flaky rejected the run with unavailable"
           }
         }
       ],
@@ -840,7 +840,7 @@
         {
           "op": "replace",
           "path": "/heldBytes",
-          "value": 8555
+          "value": 8552
         },
         {
           "op": "remove",
@@ -870,7 +870,7 @@
           "value": {
             "type": "https://open-workflow-specification.org/spec/1.0.0/errors/communication",
             "status": 503,
-            "title": "The reasoning function flaky rejected the execution with unavailable",
+            "title": "The reasoning function flaky rejected the run with unavailable",
             "detail": "busy on call 2",
             "instance": "/do/0/guarded/try/0/fetch"
           }
@@ -888,18 +888,18 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 11540
+          "value": 11417
         }
       ],
       "outputs": [
         {
           "kind": "cancel_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
           "timerId": "4"
         },
         {
           "kind": "arm_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
           "timerId": "5",
           "dueAt": 1790845201600,
           "purpose": "retry_delay",
@@ -909,7 +909,7 @@
     },
     {
       "type": "input_applied",
-      "format": 6,
+      "format": 7,
       "receipt": {
         "kind": "timer_fired",
         "key": "5",
@@ -971,7 +971,7 @@
           "op": "add",
           "path": "/calls/[\"0199a3c4-7d2e-7c1a-9b3f-000000000307\",\"~1do~10~1guarded~1try~10~1fetch\",3]",
           "value": {
-            "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+            "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
             "reference": "/do/0/guarded/try/0/fetch",
             "run": 3
           }
@@ -979,20 +979,20 @@
         {
           "op": "replace",
           "path": "/heldBytes",
-          "value": 12717
+          "value": 12709
         },
         {
           "op": "add",
           "path": "/machine/values/4",
           "value": {
             "value": {
-              "primitive": "inference",
+              "type": "reasoning",
               "name": "flaky",
               "input": {
                 "key": "backoff"
               }
             },
-            "bytes": 66
+            "bytes": 61
           }
         },
         {
@@ -1044,11 +1044,11 @@
                 "body": {
                   "kind": "call",
                   "key": {
-                    "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+                    "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
                     "reference": "/do/0/guarded/try/0/fetch",
                     "run": 3
                   },
-                  "function": "execute_spec",
+                  "function": "run_definition",
                   "arguments": 4,
                   "label": "the reasoning function flaky",
                   "deadline": "6"
@@ -1065,20 +1065,20 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 14342
+          "value": 14189
         }
       ],
       "outputs": [
         {
           "kind": "start_call",
           "key": {
-            "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+            "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
             "reference": "/do/0/guarded/try/0/fetch",
             "run": 3
           },
-          "function": "execute_spec",
+          "function": "run_definition",
           "arguments": {
-            "primitive": "inference",
+            "type": "reasoning",
             "name": "flaky",
             "input": {
               "key": "backoff"
@@ -1088,7 +1088,7 @@
         },
         {
           "kind": "arm_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
           "timerId": "6",
           "dueAt": 1790845801600,
           "purpose": "call_deadline",
@@ -1098,7 +1098,7 @@
     },
     {
       "type": "input_applied",
-      "format": 6,
+      "format": 7,
       "receipt": {
         "kind": "call_answered",
         "key": "[\"0199a3c4-7d2e-7c1a-9b3f-000000000307\",\"/do/0/guarded/try/0/fetch\",3]",
@@ -1169,7 +1169,7 @@
         {
           "op": "replace",
           "path": "/heldBytes",
-          "value": 363
+          "value": 360
         },
         {
           "op": "remove",
@@ -1198,23 +1198,23 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 15992
+          "value": 15821
         }
       ],
       "outputs": [
         {
           "kind": "cancel_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
           "timerId": "6"
         },
         {
           "kind": "cancel_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
           "timerId": "1"
         },
         {
           "kind": "settle",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
           "settlement": {
             "status": "succeeded",
             "output": {

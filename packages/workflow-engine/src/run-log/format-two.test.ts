@@ -10,7 +10,11 @@ const [, formatTwo] = stateFormats.older;
 
 const failedBranch = { type: 'runtime', status: 500, instance: '/do/1/fork/branches/2' };
 
-const stateOfFormatTwo = beforeFormatFive(snapshotOf(runningState, 1).state);
+const stateOfFormatTwo = toJson(
+  JSON.parse(
+    JSON.stringify(beforeFormatFive(snapshotOf(runningState, 1).state)).replaceAll('"runId":', '"executionId":'),
+  ),
+);
 
 function withBranchError(error: Readonly<Record<string, unknown>>): Schema.Json {
   return toJson(

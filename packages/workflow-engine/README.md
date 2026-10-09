@@ -158,8 +158,9 @@ Compression is not part of the format. A run store may compress the events and s
 
 ## State formats
 
-Every event and every snapshot names its state format; `stateFormat` is 7. A change to the state's schema is a new format, and:
+Every event and every snapshot names its state format; `stateFormat` is 7. A change to the state's schema, or to the schema of an event or a snapshot, is a new format, and:
 
+- an event and a snapshot are read with the schemas of the format they name: an older format's are frozen copies, read strictly, and an event of an older format is measured as it was written (`eventBytesOf`), so its bytes are those its history counted;
 - each event is folded under its own format, and a state that crosses to a newer format is read strictly under the old one and upcast by that format's upcaster (`OlderFormat.read`, `OlderFormat.upcast`) before the next event applies;
 - an event and a snapshot are read with the schemas of the format they name;
 - formats never go back within a stream, and a format newer than the code is refused, both when the run loads (`UnreadableRun`);
@@ -175,7 +176,7 @@ Format 5 came with reactions: the state keeps `listeners`, the listen tasks open
 
 Format 6 came with waiting calls and cancellations: the run's limits may hold `longestCallMsByTask`, the longest a call of each task may take, by its reference, and a cancelled outcome holds `cancel`, who asked, the kind (`requested`, `deadline` or `parent_ended`) and the reason, so the run's settlement says who cancelled it and why. Format 5 is read strictly with its own frozen schema (`src/run-log/format-five.ts`) and upcast: a cancelled outcome gains a cancel by `unknown`, of the kind `requested`, whose reason says it was recorded before a cancel named who asked.
 
-Format 7 came with the product's words: the state names its run `runId`, and so do every input, the outputs of every event, such as `arm_timer`, `cancel_timer` and `settle`, a call's key and a snapshot's envelope, where format 6 used the runtime's earlier word for a run. Format 6 is read strictly with its own frozen schema (`src/run-log/format-six.ts`) and upcast by renaming that member to `runId`; the same file freezes the event and snapshot schemas of formats 1 to 6, their outputs and call keys among them, which the run log decodes an event or a snapshot of those formats with (`src/run-log/known-formats.ts`). A call frame's `function` and its held `arguments` are data from the document, so a format-6 log of a call keeps the names and values its document gave and loads as it was written.
+Format 7 came with the one vocabulary: the state, its call keys, the outputs of an event and the envelope of a snapshot name the run `runId`, where formats 1 to 6 named it otherwise. Format 6 is read strictly with its own frozen schema (`src/run-log/format-six.ts`) and upcast by naming the run `runId` in the state, in the keys of its calls and listeners, and in the key of every call frame. The events and snapshots of formats 1 to 6 are read strictly with the frozen schemas of `src/run-log/format-six-records.ts`, which give their outputs and envelope the new name, and are written back and measured with the old. What a run holds as data, its document, its held values and a call's function and arguments, keeps the words it was written with.
 
 Patches are never rewritten: a patch applies only to the format it was written for. `evolve` applies a patch strictly, `add` to a member that exists or `replace` and `remove` of one that does not die with `PatchFailed`, and the result must decode as the state with no member the format does not describe (`onExcessProperty: 'error'`), so a skew between a log and the code that reads it is caught when the run loads, never folded into a wrong state.
 

@@ -1,9 +1,9 @@
 {
-  "name": "execute-spec",
+  "name": "run-definition",
   "inputs": [
     {
       "kind": "started",
-      "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000302",
+      "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000302",
       "at": 1790845200000,
       "document": {
         "document": {
@@ -15,9 +15,9 @@
         "do": [
           {
             "summarize": {
-              "call": "execute_spec",
+              "call": "run_definition",
               "with": {
-                "primitive": "inference",
+                "type": "reasoning",
                 "name": "summarize",
                 "input": {
                   "text": "${ .text }"
@@ -47,10 +47,10 @@
     },
     {
       "kind": "call_answered",
-      "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000302",
+      "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000302",
       "at": 1790845200050,
       "key": {
-        "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000302",
+        "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000302",
         "reference": "/do/0/summarize",
         "run": 1
       },
@@ -65,7 +65,7 @@
   "events": [
     {
       "type": "input_applied",
-      "format": 6,
+      "format": 7,
       "receipt": {
         "kind": "started",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000302",
@@ -86,7 +86,7 @@
       "patch": [
         {
           "op": "replace",
-          "path": "/executionId",
+          "path": "/runId",
           "value": "0199a3c4-7d2e-7c1a-9b3f-000000000302"
         },
         {
@@ -108,9 +108,9 @@
               "do": [
                 {
                   "summarize": {
-                    "call": "execute_spec",
+                    "call": "run_definition",
                     "with": {
-                      "primitive": "inference",
+                      "type": "reasoning",
                       "name": "summarize",
                       "input": {
                         "text": "${ .text }"
@@ -195,7 +195,7 @@
           "op": "add",
           "path": "/calls/[\"0199a3c4-7d2e-7c1a-9b3f-000000000302\",\"~1do~10~1summarize\",1]",
           "value": {
-            "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000302",
+            "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000302",
             "reference": "/do/0/summarize",
             "run": 1
           }
@@ -203,7 +203,7 @@
         {
           "op": "replace",
           "path": "/heldBytes",
-          "value": 8563
+          "value": 8555
         },
         {
           "op": "add",
@@ -220,13 +220,13 @@
           "path": "/machine/values/2",
           "value": {
             "value": {
-              "primitive": "inference",
+              "type": "reasoning",
               "name": "summarize",
               "input": {
                 "text": "hello"
               }
             },
-            "bytes": 69
+            "bytes": 64
           }
         },
         {
@@ -267,11 +267,11 @@
                     "body": {
                       "kind": "call",
                       "key": {
-                        "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000302",
+                        "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000302",
                         "reference": "/do/0/summarize",
                         "run": 1
                       },
-                      "function": "execute_spec",
+                      "function": "run_definition",
                       "arguments": 2,
                       "label": "the reasoning function summarize",
                       "deadline": "2"
@@ -285,13 +285,13 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3332
+          "value": 3287
         }
       ],
       "outputs": [
         {
           "kind": "arm_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000302",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000302",
           "timerId": "1",
           "dueAt": 1793437200000,
           "purpose": "deadline",
@@ -300,13 +300,13 @@
         {
           "kind": "start_call",
           "key": {
-            "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000302",
+            "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000302",
             "reference": "/do/0/summarize",
             "run": 1
           },
-          "function": "execute_spec",
+          "function": "run_definition",
           "arguments": {
-            "primitive": "inference",
+            "type": "reasoning",
             "name": "summarize",
             "input": {
               "text": "hello"
@@ -316,7 +316,7 @@
         },
         {
           "kind": "arm_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000302",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000302",
           "timerId": "2",
           "dueAt": 1790845800000,
           "purpose": "call_deadline",
@@ -326,7 +326,7 @@
     },
     {
       "type": "input_applied",
-      "format": 6,
+      "format": 7,
       "receipt": {
         "kind": "call_answered",
         "key": "[\"0199a3c4-7d2e-7c1a-9b3f-000000000302\",\"/do/0/summarize\",1]",
@@ -402,7 +402,7 @@
         {
           "op": "replace",
           "path": "/heldBytes",
-          "value": 302
+          "value": 299
         },
         {
           "op": "replace",
@@ -437,23 +437,23 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 5163
+          "value": 5100
         }
       ],
       "outputs": [
         {
           "kind": "cancel_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000302",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000302",
           "timerId": "2"
         },
         {
           "kind": "cancel_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000302",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000302",
           "timerId": "1"
         },
         {
           "kind": "settle",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000302",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000302",
           "settlement": {
             "status": "succeeded",
             "output": {

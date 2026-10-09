@@ -1,20 +1,36 @@
 import { Schema } from 'effect';
 
 import { RunStateSchema, type RunState } from '../machine/run-state.ts';
+import {
+  FormatsOneToSixSchema,
+  SnapshotOfFormatsOneToSixSchema,
+  snapshotNamesOfFormatsOneToSix,
+} from './format-six-records.ts';
 import { eventBytesOf, type RunLogEvent } from './run-event.ts';
-import { stateFormat, StateFormatSchema } from './state-format.ts';
+import { stateFormat, ThisFormatOrNewerSchema, writtenInAnOlderFormat } from './state-format.ts';
 
 export const snapshotEveryBytes = 1_048_576;
 
 export const mostSnapshotChunkBytes = 1_048_576;
 
-export const SnapshotSchema = Schema.Struct({
-  format: StateFormatSchema,
-  runId: Schema.NonEmptyString,
-  version: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
-  historyBytes: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
-  state: Schema.Json,
-});
+function snapshotInFormat<Format extends Schema.Top>(format: Format) {
+  return Schema.Struct({
+    format,
+    runId: Schema.NonEmptyString,
+    version: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
+    historyBytes: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+    state: Schema.Json,
+  });
+}
+
+export const SnapshotSchema = Schema.Union([
+  snapshotInFormat(ThisFormatOrNewerSchema),
+  writtenInAnOlderFormat(
+    SnapshotOfFormatsOneToSixSchema,
+    snapshotInFormat(FormatsOneToSixSchema),
+    snapshotNamesOfFormatsOneToSix,
+  ),
+]);
 
 export type Snapshot = typeof SnapshotSchema.Type;
 

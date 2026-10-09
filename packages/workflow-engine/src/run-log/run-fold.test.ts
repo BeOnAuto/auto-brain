@@ -113,10 +113,10 @@ describe('a run loaded from a snapshot', () => {
 describe('a run that cannot be read', () => {
   it('dies on a gap in its events, or on events whose sizes are not the bytes of history the state counts', () => {
     const afterAGap = streamIn([
-      [1, started],
-      [1, []],
+      [stateFormat, started],
+      [stateFormat, []],
     ]).slice(1);
-    const miscounted = streamIn([[1, started]]).map(({ version, event }) => ({
+    const miscounted = streamIn([[stateFormat, started]]).map(({ version, event }) => ({
       version,
       event: {
         ...event,
