@@ -10,7 +10,7 @@ import { runRequest } from './run-requests.ts';
 
 const description = [
   'Runs a function or workflow with an input and records the run.',
-  'A function answers its result; a workflow or an interaction function answers started with an run_id unless it ends before its first wait, and get_run shows how it ended.',
+  'A function answers its result; a workflow or an interaction function answers started with a run_id unless it ends before its first wait, and get_run shows how it ended.',
   "Use it to run a saved definition at the person's request; a workflow's steps call it the same way.",
   '`type` and `name` say which definition, `input` is the value it takes, as the input_schema get_definition shows,',
   'and `run_id` is optional: give the same id to retry safely, since a run that ended or waits answers as it stands and one that failed runs again.',

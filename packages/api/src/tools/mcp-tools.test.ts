@@ -62,7 +62,7 @@ describe('the tools of each endpoint', () => {
     ]);
   });
 
-  it('publishes self-contained input schemas with an object root, the capability as a plain enum, and no output schema', async () => {
+  it('publishes self-contained input schemas with an object root, the type as a plain enum, and no output schema', async () => {
     const tools = listedTools(await onAlpha((session) => session.listTools()));
     const schemas = tools.map(({ inputSchema }) => inputSchema);
 

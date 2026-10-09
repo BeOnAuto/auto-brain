@@ -176,7 +176,7 @@ describe('a key that may only read inside brains, on /mcp', () => {
     expect(outcome.tools).toEqual(['list_brains', 'list_tool_servers', ...queriesInsideABrain, 'get_guide']);
     expect(commands.filter((name) => outcome.instructions.includes(name))).toEqual([]);
     expect(outcome.instructions).toContain(
-      "This connection acts in the caller's own org: list_brains shows its brains. The tools call a definition",
+      "This connection acts in the caller's own org: list_brains shows its brains. get_guide holds what these words mean",
     );
     expect(outcome.listed.structuredContent).toMatchObject({ brains: [{ id: 'alpha' }, { id: 'beta' }] });
   });

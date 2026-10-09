@@ -9,6 +9,7 @@ const leaks: ReadonlyArray<readonly [string, string]> = [
   ['The execution started.', 'execution'],
   ['It ran an inference.', 'inference'],
   ['An orchestration started.', 'orchestration'],
+  ['It folds a recollection.', 'recollection'],
   ['Its YAML is wrong.', 'YAML'],
   ['Its yml is wrong.', 'yml'],
   ['It answered in JSON.', 'JSON'],

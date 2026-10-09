@@ -184,7 +184,7 @@ describe('the recipes that give a brain tools', () => {
       "When it should use a tool server's tools, follow the give-tools recipe: to learn what a tool answers, test it with test_tool_call, and never make a function to look.",
     );
     expect([Buffer.byteLength(String(texts['give-tools'])), Buffer.byteLength(String(texts['first-brain']))]).toEqual([
-      2052, 1761,
+      2049, 1764,
     ]);
   });
 });
@@ -200,11 +200,11 @@ describe('the recipes of a server that serves interaction functions', () => {
       'give it tools with the give-tools recipe, send someone a message through a tool and take their answer with an interaction function, make the brain remember its answers',
     );
     expect([
-      bytesOf(texts, 'give-tools', 'first-brain'),
-      bytesOf(recipeTextsOf(everyType), 'give-tools', 'first-brain'),
+      bytesOf(texts, 'first-brain', 'remember', 'give-tools', 'schedule'),
+      bytesOf(recipeTextsOf(everyType), 'first-brain', 'remember', 'give-tools', 'schedule'),
     ]).toEqual([
-      [2312, 1851],
-      [2052, 1761],
+      [1854, 1762, 2309, 1285],
+      [1764, 1762, 2049, 1285],
     ]);
   });
 
