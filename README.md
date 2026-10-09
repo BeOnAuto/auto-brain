@@ -6,7 +6,7 @@ The runtime for business brains, built and used through your agent.
 
 [![Auto Studio showing a Sales Ops brain, with its functions, workflows and runs on the left and its run, token and duration charts on the right](docs/assets/studio-dashboard.png)](https://studio.on.auto)
 
-[Auto Studio](https://studio.on.auto) shows a running brain in the browser, with nothing to install. Browse its functions and workflows, inspect any run to understand its result, and see how much the brain runs, what it costs and how long each run takes.
+[Auto Studio](https://studio.on.auto) is where you watch a brain work. Open a run to follow how it reached its result, or check the charts for how busy the brain has been and what it has spent in tokens.
 
 ## Documentation and help
 
