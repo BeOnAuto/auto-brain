@@ -35,16 +35,10 @@ function invalidWith(detail: string, issue: string, pointer = ''): InvalidInput 
   return new InvalidInput({ detail, issues: [{ pointer, detail: issue }] });
 }
 
-function rejectionOf({ pointer, what, mostBytes }: RenderedPart, failure: TextFailure): Conflict | InvalidInput {
-  if (failure.reason === 'not_text') {
-    return unworkable(
-      pointer,
-      `${what} renders a value that is not text on line ${failure.line}; render a field that is text, or write | json after it`,
-    );
-  }
-  if (failure.reason === 'too_long') {
-    return unworkable(pointer, `${what} renders to more than the ${mostBytes} bytes a request may hold`);
-  }
+export function unrenderableFor(
+  what: string,
+  failure: Exclude<TextFailure, { readonly reason: 'not_text' | 'too_long' }>,
+): InvalidInput {
   if (failure.reason === 'missing_variable') {
     return invalidWith(
       'The definition reads a field the input does not have',
@@ -56,6 +50,19 @@ function rejectionOf({ pointer, what, mostBytes }: RenderedPart, failure: TextFa
     `${what} cannot be rendered with this input`,
     `Line ${failure.line}: the render stopped here, past what a render may take, or at a filter that refused the value`,
   );
+}
+
+function rejectionOf({ pointer, what, mostBytes }: RenderedPart, failure: TextFailure): Conflict | InvalidInput {
+  if (failure.reason === 'not_text') {
+    return unworkable(
+      pointer,
+      `${what} renders a value that is not text on line ${failure.line}; render a field that is text, or write | json after it`,
+    );
+  }
+  if (failure.reason === 'too_long') {
+    return unworkable(pointer, `${what} renders to more than the ${mostBytes} bytes a request may hold`);
+  }
+  return unrenderableFor(what, failure);
 }
 
 export function renderedPart(

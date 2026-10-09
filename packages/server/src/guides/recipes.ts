@@ -73,8 +73,10 @@ const interactionGuide = 'interaction-function';
 const whereInteractionIsServed: Readonly<Record<string, Insertion>> = {
   'give-tools': {
     after: 'and which of them it needs.',
-    words:
+    words: [
+      " When the brain only needs what a tool answers, with nothing to reason about, write an interaction function that calls the tool instead: it answers at once with what the tool answered and spends no model call, and the interaction-function guide says how to write it from the test's answer.",
       ' When the brain should send a person a message through a tool and take their answer, write an interaction function instead: the interaction-function guide says how it names the tool it sends through and the tool it reads replies with, each tested the same way.',
+    ].join(''),
   },
   'first-brain': {
     after: 'give it tools with the give-tools recipe',

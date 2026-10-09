@@ -108,12 +108,13 @@ export interface DeliveryContext {
   readonly functionName: string;
 }
 
+export function momentVariables(input: Schema.Json, at: string): TemplateVariables {
+  return { input, today: at.slice(0, 10), now: at };
+}
+
 export function deliveryVariablesOf(record: RequestRecord, { input, runId, functionName }: DeliveryContext) {
-  const now = record.requested_at;
   return {
-    input,
-    today: now.slice(0, 10),
-    now,
+    ...momentVariables(input, record.requested_at),
     to: record.to,
     message: record.message,
     run_id: runId,

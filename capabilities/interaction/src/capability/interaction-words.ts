@@ -3,9 +3,10 @@ import { Buffer } from 'node:buffer';
 import { defaultRunWords, outputInWords, type RunAccount, type RunWords } from '@beonauto/definitions';
 import type { Schema } from 'effect';
 
-import { routeOf, throughWords } from '../route/routes.ts';
+import { callOutputInWords } from '../call/call-words.ts';
 import { requestRecordOf, takesAnswer } from '../run/request-record.ts';
 import { interactionBounds } from '../run/run-bounds.ts';
+import { routeOf, throughWords } from '../tool-blocks/routes.ts';
 
 function cutParty(party: string): string {
   const bytes = Buffer.from(party, 'utf8');
@@ -45,7 +46,11 @@ export const interactionRunWords: RunWords = {
 
 const answerInWords = outputInWords('answer');
 
-export function describeAnswer(output: Schema.Json): string {
+export function describeAnswer(output: Schema.Json, record?: Schema.JsonObject): string {
+  const asked = callOutputInWords(output, record);
+  if (asked !== undefined) {
+    return asked;
+  }
   if (output !== null && typeof output === 'object' && !Array.isArray(output) && Object.keys(output).length === 0) {
     return 'It delivered its notification.';
   }

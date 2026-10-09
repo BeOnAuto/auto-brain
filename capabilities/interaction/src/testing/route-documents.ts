@@ -1,7 +1,8 @@
 import { issueText } from '@beonauto/definitions/document';
-import { Result } from 'effect';
+import { Option, Result } from 'effect';
 
 import { parseInteractionDocument } from '../document/document-parsing.ts';
+import type { InteractionFunctionDefinitionDocument, RequestDocument } from '../document/interaction-document.ts';
 
 export const delivering: readonly string[] = [
   "to: '{{ input.owner }}'",
@@ -63,4 +64,12 @@ export function without(lines: readonly string[], ...left: readonly string[]): r
 export function problemsOf(source: string): readonly string[] {
   const parsed = parseInteractionDocument(source);
   return Result.isFailure(parsed) ? parsed.failure.map((issue) => issueText(issue)) : [];
+}
+
+function isRequest(document: InteractionFunctionDefinitionDocument): document is RequestDocument {
+  return document.shape === 'request';
+}
+
+export function requestDocumentOf(source: string): RequestDocument {
+  return Option.getOrThrow(Option.liftPredicate(Result.getOrThrow(parseInteractionDocument(source)), isRequest));
 }

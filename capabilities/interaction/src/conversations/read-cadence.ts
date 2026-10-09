@@ -1,4 +1,4 @@
-import type { Replies } from '../route/route-schemas.ts';
+import type { Replies } from '../tool-blocks/tool-block-schemas.ts';
 import { waitBefore } from './cadence.ts';
 import type { Cadence, ConversationRow } from './conversation-rows.ts';
 

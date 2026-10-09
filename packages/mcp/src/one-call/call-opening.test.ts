@@ -37,6 +37,30 @@ const listing = {
   toolsListed: Function.constVoid,
 };
 
+const exited: McpConnection = {
+  call: () => Promise.reject(new Error('No call is made')),
+  listTools: () => Promise.reject(new Error('No listing is made')),
+  closed: Promise.resolve(),
+  end: () => Promise.resolve(),
+};
+
+const notStartingAgain: ServerLink = {
+  ...hanging,
+  take: () => Promise.resolve(exited),
+  renew: () => Promise.reject(new Error('The notes process could not start')),
+};
+
+describe('the opening of one call to a process that exited', () => {
+  it('starts the process again before it lists its tools, and is unopened when it cannot', async () => {
+    expect(await openedFor({ server: 'notes', tool: 'search' }, notStartingAgain, listing)).toEqual({
+      kind: 'unopened',
+      refused: 'mcp_server_failed',
+      because: 'failing',
+      detail: 'The MCP server notes could not be used: The notes process could not start',
+    });
+  });
+});
+
 describe('the opening of one call', () => {
   it('gives up on a connection that does not open within the open bound, as a server that could not be reached', async () => {
     expect(await openedFor({ server: 'notes', tool: 'search' }, hanging, listing)).toEqual({

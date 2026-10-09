@@ -3,14 +3,25 @@ import { isServerName, isToolName, serverNameShape, toolNameShape } from '@beona
 import { readDuration } from '@beonauto/workflow-engine/dsl';
 import { JsonPointer, Result, type Schema } from 'effect';
 
+import { templateIssues, templatesIssues, type TemplatePlace } from './block-templates.ts';
 import { isJsonPointer } from './json-pointers.ts';
-import { argumentsFailureWords, renderedArguments } from './rendered-arguments.ts';
-import type { Replies, ToolDelivery } from './route-schemas.ts';
-import { templateIssues, templatesIssues, type TemplatePlace } from './route-templates.ts';
-import { conversationTemplates, deliveryTemplates, readingTemplates, tellingTemplates } from './template-sets.ts';
+import {
+  argumentsFailureWords,
+  renderedArguments,
+  type ArgumentsFailure,
+  type Templates,
+} from './rendered-arguments.ts';
+import {
+  callTemplates,
+  conversationTemplates,
+  deliveryTemplates,
+  readingTemplates,
+  tellingTemplates,
+} from './template-sets.ts';
+import type { CallBlock, DeliverBlock, Replies } from './tool-block-schemas.ts';
 
 export interface WrittenRoute {
-  readonly deliver: ToolDelivery;
+  readonly deliver: DeliverBlock;
   readonly replies?: Replies | undefined;
 }
 
@@ -119,7 +130,7 @@ function readingIssues(replies: Replies, place: TemplatePlace): readonly Documen
   ];
 }
 
-export function compiledRoute(
+export function compiledToolBlock(
   written: WrittenRoute,
   lines: SourceLines,
   inputSchema: Schema.JsonObject | undefined,
@@ -130,4 +141,37 @@ export function compiledRoute(
     ...(written.replies === undefined ? [] : readingIssues(written.replies, place)),
   ];
   return issues.length > 0 ? Result.fail(issues) : Result.succeed(written);
+}
+
+function isOversized(failure: ArgumentsFailure): boolean {
+  return failure.reason === 'too_large' || failure.failure.reason === 'too_long';
+}
+
+function callArgumentIssues(written: Templates, place: TemplatePlace): readonly DocumentIssue[] {
+  const pointer = placeOf('call', 'with');
+  const issues = templatesIssues(callTemplates, written, { ...place, pointer });
+  if (issues.length > 0) {
+    return issues;
+  }
+  const rendered = renderedArguments(written, callTemplates.sample);
+  if (Result.isSuccess(rendered) || !isOversized(rendered.failure)) {
+    return [];
+  }
+  const { failure } = rendered;
+  const at = failure.reason === 'too_large' ? pointer : `${pointer}/${failure.argument}`;
+  return [issueAt(place.lines, at, argumentsFailureWords(failure, 'the call'))];
+}
+
+export function compiledCallBlock(
+  call: CallBlock,
+  lines: SourceLines,
+  inputSchema: Schema.JsonObject | undefined,
+): Result.Result<CallBlock, readonly DocumentIssue[]> {
+  const issues = [
+    ...nameIssues(lines, [[placeOf('call', 'server'), call.server]], isServerName, serverNameShape),
+    ...nameIssues(lines, [[placeOf('call', 'tool'), call.tool]], isToolName, toolNameShape),
+    ...callArgumentIssues(call.with ?? {}, { lines, pointer: '', inputSchema }),
+    ...pointerIssues(lines, [[placeOf('call', 'read'), call.read]]),
+  ];
+  return issues.length > 0 ? Result.fail(issues) : Result.succeed(call);
 }

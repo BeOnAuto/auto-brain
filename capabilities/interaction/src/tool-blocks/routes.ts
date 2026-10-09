@@ -1,7 +1,7 @@
 import { toolInWords } from '@beonauto/mcp';
 import type { ToolReference } from '@beonauto/mcp/policy';
 
-import type { Replies } from './route-schemas.ts';
+import type { Replies } from './tool-block-schemas.ts';
 
 export interface RecordedBlocks {
   readonly deliver?: ToolReference | undefined;

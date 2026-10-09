@@ -5,8 +5,8 @@ import { answerDocument, toolBounds, type CalledOnce, type ReadOutcome } from '@
 import { endOfCall } from '../delivery/call-ends.ts';
 import { isBoundedPart } from '../delivery/sent-messages.ts';
 import type { Reply } from '../replies/reply-taking.ts';
-import { textAt, valueAt } from '../route/json-pointers.ts';
-import type { Replies } from '../route/route-schemas.ts';
+import { textAt, valueAt } from '../tool-blocks/json-pointers.ts';
+import type { Replies } from '../tool-blocks/tool-block-schemas.ts';
 
 type ReplyPointers = Replies['read']['each'];
 

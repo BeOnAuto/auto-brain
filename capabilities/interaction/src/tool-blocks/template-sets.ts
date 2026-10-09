@@ -13,6 +13,13 @@ const momentOfTheSample = '2026-10-07T09:00:00.000Z';
 
 const sent = { conversation: 'C0123', id: '1699.1' };
 
+export const callTemplates: TemplateSet = {
+  names: ['input', 'today', 'now'],
+  what: 'a template of a call',
+  sample: { today: momentOfTheSample.slice(0, 10), now: momentOfTheSample },
+  structured: 'input',
+};
+
 export const deliveryTemplates: TemplateSet = {
   names: ['input', 'today', 'now', 'to', 'message', 'run_id', 'function', 'expires_at', 'answer_schema'],
   what: 'a template of a delivery',

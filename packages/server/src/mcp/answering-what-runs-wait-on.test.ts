@@ -163,7 +163,7 @@ describe(
         "When the person approves, rejects or otherwise answers what a run waits on, answer its request with answer_interaction, in the shape its function's answer takes, and start no new run for it.",
       );
       expect(sentenceNaming(instructions, 'get_run')).toBe(
-        'A run of an interaction function or a workflow answers started; get_run shows whether it ended or still waits.',
+        'A run of a workflow answers started; get_run shows whether it ended or still waits.',
       );
       expect(instructions).not.toMatch(/\bpoll|\buntil (?:it ends|its status changes)/iu);
       expect(descriptionIn(meetings.surfaces, 'answer_interaction')).toContain(

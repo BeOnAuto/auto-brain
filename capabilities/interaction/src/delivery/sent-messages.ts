@@ -6,10 +6,10 @@ import { answerDocument, type CallAnswer } from '@beonauto/mcp';
 import { Result, Schema } from 'effect';
 
 import { interactionEngine } from '../document/request-templates.ts';
-import { textAt } from '../route/json-pointers.ts';
-import type { Replies } from '../route/route-schemas.ts';
 import type { DeliveringRecord } from '../run/request-record.ts';
 import { renderedText } from '../run/text-rendering.ts';
+import { textAt } from '../tool-blocks/json-pointers.ts';
+import type { Replies } from '../tool-blocks/tool-block-schemas.ts';
 
 const sentBounds = { partBytes: 256 } as const;
 

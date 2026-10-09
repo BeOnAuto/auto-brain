@@ -12,7 +12,7 @@ function problemsOf(source: string): readonly string[] {
 
 function ruleOf(source: string) {
   const parsed = parseInteractionDocument(source);
-  return Result.isSuccess(parsed) ? parsed.success.reply : 'refused';
+  return Result.isSuccess(parsed) && parsed.success.shape === 'request' ? parsed.success.reply : 'refused';
 }
 
 function withAnswer(schema: readonly string[], rule: readonly string[] = []): string {

@@ -2,7 +2,7 @@ import type { ReplyIdentity, Settlement } from '@beonauto/definitions';
 import { brainCallerOf, type BrainAddress } from '@beonauto/operations';
 import type { Schema } from 'effect';
 
-import { throughWords, type Route } from '../route/routes.ts';
+import { throughWords, type Route } from '../tool-blocks/routes.ts';
 
 export function expiredSettlement({ expires_at: expiresAt }: { readonly expires_at: number }): Settlement {
   return {

@@ -5,15 +5,30 @@ import {
   type Capability,
 } from '@beonauto/definitions';
 
-import { finishesLater, interactionRun } from '../run/interaction-run.ts';
+import { callRun, longestCallRunMs } from '../call/call-run.ts';
+import type { InteractionFunctionDefinitionDocument } from '../document/interaction-document.ts';
+import { asksLater, requestRun } from '../run/interaction-run.ts';
 import type { InteractionPorts } from '../run/request-reach.ts';
 import { parse, summarize } from './definition-reading.ts';
 import { interactionType } from './interaction-type.ts';
 import { describeAnswer, interactionRunWords } from './interaction-words.ts';
 import { cancelledRequest } from './request-cancels.ts';
 
+function finishesLater(document: InteractionFunctionDefinitionDocument): boolean {
+  return document.shape === 'request' && asksLater(document);
+}
+
+function callsTools({ shape }: InteractionFunctionDefinitionDocument): boolean {
+  return shape === 'call';
+}
+
+function longestRunOf(document: InteractionFunctionDefinitionDocument): number {
+  return document.shape === 'call' ? longestCallRunMs : document.expiresMs;
+}
+
 export function makeInteractionFunctionAdapter(ports: InteractionPorts): Capability {
-  const run = interactionRun(ports);
+  const asked = requestRun(ports);
+  const called = callRun(ports);
   const reachesOutside = ports.tools.configured;
   return defineCapability({
     type: interactionType,
@@ -24,12 +39,14 @@ export function makeInteractionFunctionAdapter(ports: InteractionPorts): Capabil
     mediaType: 'text/markdown',
     parse,
     summarize,
-    run: (document, input, context) => run(document, input, context),
+    run: (document, input, context) =>
+      document.shape === 'call' ? called(document, input, context) : asked(document, input, context),
     whenCancelled: 'finish',
     reachesOutside,
     mayChangeOutside: reachesOutside,
+    callsTools,
     finishesLater,
-    longestRunOf: ({ expiresMs }) => expiresMs,
+    longestRunOf,
     runWords: interactionRunWords,
     cancel: cancelledRequest,
   });

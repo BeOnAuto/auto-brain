@@ -87,7 +87,7 @@ describe('/mcp with workflows', { timeout: workflowTestTimeoutMs }, () => {
     expect(served.tools).toHaveLength(25);
     expect(served.tools.slice(-2)).toEqual(['send_run_event', 'get_guide']);
     expect(served.instructions).toContain(
-      'or a workflow answers started; get_run shows whether it ended or still waits.',
+      'A run of a workflow answers started; get_run shows whether it ended or still waits.',
     );
   });
 

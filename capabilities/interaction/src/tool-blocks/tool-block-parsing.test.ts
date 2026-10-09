@@ -1,7 +1,5 @@
-import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { parseInteractionDocument } from '../document/document-parsing.ts';
 import {
   answering,
   delivering,
@@ -9,6 +7,7 @@ import {
   problemsOf,
   reading,
   replacing,
+  requestDocumentOf,
   without,
 } from '../testing/route-documents.ts';
 
@@ -18,7 +17,7 @@ const toolShape = 'Expected a tool name of 1 to 128 letters, digits, underscores
 
 describe('a definition that delivers through a tool and reads its replies', () => {
   it('reads deliver and replies as written', () => {
-    const parsed = Result.getOrThrow(parseInteractionDocument(documentOf(delivering, reading, answering)));
+    const parsed = requestDocumentOf(documentOf(delivering, reading, answering));
 
     expect(parsed.route).toMatchObject({
       deliver: {

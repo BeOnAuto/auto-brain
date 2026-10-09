@@ -3,12 +3,12 @@ import type { ToolReference } from '@beonauto/mcp/policy';
 import { Unavailable, type BrainAddress, type Conflict } from '@beonauto/operations';
 import { Effect, Result, type Schema } from 'effect';
 
-import { deliveryVariablesOf, renderedArguments, type ArgumentsFailure } from '../route/rendered-arguments.ts';
+import { deliveryVariablesOf, renderedArguments, type ArgumentsFailure } from '../tool-blocks/rendered-arguments.ts';
 import type { RequestRecord } from './request-record.ts';
 import { unworkable } from './request-rendering.ts';
 
 export interface InteractionPorts {
-  readonly tools: Pick<ToolAccess, 'named' | 'configured'>;
+  readonly tools: Pick<ToolAccess, 'named' | 'configured' | 'callOnce'>;
   readonly openRequests: (brain: BrainAddress) => Effect.Effect<number>;
   readonly mostOpenRequests: number;
 }

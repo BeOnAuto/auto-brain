@@ -50,10 +50,6 @@ function rejectionShown(rejection: RunRejection) {
   if (rejection.reason === 'invalid_input') {
     return { reason: rejection.reason, detail, ...issuesShown(rejection.issues) };
   }
-  if (rejection.reason === 'conflict') {
-    const { reason, kind } = rejection;
-    return { reason, detail, ...(kind === undefined ? {} : { kind }) };
-  }
   if (rejection.reason === 'cancelled' || rejection.reason === 'unanswered') {
     const { reason, kind } = rejection;
     return { reason, detail, kind };

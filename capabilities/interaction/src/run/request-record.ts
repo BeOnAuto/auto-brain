@@ -1,7 +1,7 @@
 import { Option, Schema } from 'effect';
 
 import { ReplyRuleSchema } from '../replies/reply-rule.ts';
-import { RepliesSchema, ToolDeliverySchema } from '../route/route-schemas.ts';
+import { RepliesSchema, DeliverBlockSchema } from '../tool-blocks/tool-block-schemas.ts';
 
 const RequestRecordSchema = Schema.Struct({
   to: Schema.String,
@@ -11,13 +11,13 @@ const RequestRecordSchema = Schema.Struct({
   reply: Schema.optionalKey(ReplyRuleSchema),
   expires_at: Schema.String,
   requested_at: Schema.String,
-  deliver: Schema.optionalKey(ToolDeliverySchema),
+  deliver: Schema.optionalKey(DeliverBlockSchema),
   replies: Schema.optionalKey(RepliesSchema),
 });
 
 export type RequestRecord = typeof RequestRecordSchema.Type;
 
-const DeliveringRecordSchema = Schema.Struct({ ...RequestRecordSchema.fields, deliver: ToolDeliverySchema });
+const DeliveringRecordSchema = Schema.Struct({ ...RequestRecordSchema.fields, deliver: DeliverBlockSchema });
 
 export type DeliveringRecord = typeof DeliveringRecordSchema.Type;
 

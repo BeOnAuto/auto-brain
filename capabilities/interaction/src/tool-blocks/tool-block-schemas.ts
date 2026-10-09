@@ -11,15 +11,32 @@ export const SentSchema = Schema.Struct({
   }),
 });
 
-export const ToolDeliverySchema = Schema.Struct({
+const ArgumentsSchema = Templates.annotate({
+  description:
+    "The arguments of the call, named as the tool's input_schema names them; a number, boolean, null, list or object is sent as written, with the Liquid templates in its strings rendered; a string that is one {{ expression }} alone is sent as the value it reads; any other string is rendered as text",
+});
+
+const ToolUseSchema = Schema.Struct({
   server: Schema.String.annotate({ description: 'The tool server, as list_tool_servers names it' }),
-  tool: Schema.String.annotate({ description: 'The tool of that server that sends the request' }),
-  with: Templates.annotate({
-    description:
-      'The arguments of the call over input, today, now, to, message, run_id, function, expires_at and answer_schema; a number, boolean, null, list or object is sent as written, with the Liquid templates in its strings rendered; a string that is one {{ expression }} alone is sent as the value it reads; any other string is rendered as text',
-  }),
+  tool: Schema.String.annotate({ description: 'The tool of that server, as list_tool_servers lists it' }),
+  with: ArgumentsSchema,
+});
+
+export const DeliverBlockSchema = Schema.Struct({
+  ...ToolUseSchema.fields,
   sent: Schema.optionalKey(
     SentSchema.annotate({ description: 'Where, in what the tool answered, the message that was sent is named' }),
+  ),
+});
+
+export const CallBlockSchema = Schema.Struct({
+  ...ToolUseSchema.fields,
+  with: Schema.optionalKey(ArgumentsSchema),
+  read: Schema.optionalKey(
+    Schema.String.annotate({
+      description:
+        "A JSON Pointer into the document of the tool's answer, to the value the function answers with; the whole document when left out",
+    }),
   ),
 });
 
@@ -72,6 +89,8 @@ export const RepliesSchema = Schema.Struct({
   tell: Schema.optionalKey(TellSchema),
 });
 
-export type ToolDelivery = typeof ToolDeliverySchema.Type;
+export type DeliverBlock = typeof DeliverBlockSchema.Type;
+
+export type CallBlock = typeof CallBlockSchema.Type;
 
 export type Replies = typeof RepliesSchema.Type;

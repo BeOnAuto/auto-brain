@@ -20,7 +20,7 @@ const description = [
   'Cancels a run that is still going and finishes later, such as a workflow, at the request of the person:',
   "the request is recorded on the run at once, and the run ends as cancelled within a moment, its workflow's steps stopped and the runs they wait for cancelled too.",
   'It cannot be undone, and what the run did before it ended stays done.',
-  'Use it only when the person asks to stop that run; a reasoning, computation or recall function runs within its call and cannot be cancelled.',
+  'Use it only when the person asks to stop that run; a run that ends within its call, as a reasoning, computation or recall function does or an interaction function that calls a tool, cannot be cancelled.',
   "`run_id` is the run's id and `reason`, kept on the run, says why; asking again records nothing more, and get_run shows how it ended.",
 ].join(' ');
 

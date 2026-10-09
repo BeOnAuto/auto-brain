@@ -72,6 +72,21 @@ describe('settling a deferred run as rejected or failed', () => {
     expect(relayer.runs()).toBe(1);
   });
 
+  it('records a conflict with its kind and because', async () => {
+    const { running, settling } = await withHandOn();
+    await running();
+    const unknown = {
+      reason: 'conflict',
+      detail: 'It may have posted',
+      kind: 'effect_unknown',
+      because: 'tool_error',
+    } as const;
+
+    expect(await settling({ status: 'rejected', ...unknown })).toMatchObject(
+      Result.succeed({ status: 'rejected', rejection: unknown }),
+    );
+  });
+
   it('as unavailable or failed lets a call with its id run it again', async () => {
     const { running, relayer, settling } = await withHandOn();
     await running();
