@@ -148,12 +148,12 @@ describe('the input of create_definition', () => {
     });
   });
 
-  it('rejects a capability whose name is malformed, and answers not_found for one it does not know', async () => {
+  it('rejects a type that is malformed, and answers not_found for one it does not know', async () => {
     expect(await creating({ type: 'Echo!', name: 'greet', source: hello })).toMatchObject({
       reason: 'invalid_input',
       issues: [
         {
-          pointer: '/capability',
+          pointer: '/type',
           detail: 'Expected a type: 3 to 32 lowercase letters, digits and hyphens, starting with a letter',
         },
       ],
@@ -161,7 +161,7 @@ describe('the input of create_definition', () => {
     expect(await creating({ type: 'reasoning', name: 'greet', source: hello })).toEqual({
       status: 'rejected',
       reason: 'not_found',
-      detail: 'There is no type reasoning',
+      detail: 'There is no definition type reasoning',
     });
   });
 });

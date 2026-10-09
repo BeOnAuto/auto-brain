@@ -66,7 +66,7 @@ describe('the outcome of a run that ended', () => {
 
     expect(keptAfter(workflow, deferred, succeeded)).toEqual({
       ...firstStart,
-      type: 'workflow',
+      definitionType: 'workflow',
       name: 'approval',
       status: 'succeeded',
       durationMs: 86_400_000,
@@ -148,7 +148,7 @@ describe('the outcome of a run with a finish it cannot measure', () => {
       startedDay: '2026-10-03',
       startedAt: '2026-10-03T23:59:59.999Z',
       lastStartedAt: '2026-10-03T23:59:59.999Z',
-      type: '',
+      definitionType: '',
       name: '',
       status: 'failed',
       durationMs: null,

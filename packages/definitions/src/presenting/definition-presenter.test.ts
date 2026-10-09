@@ -49,7 +49,7 @@ describe('the presenter of the definitions of a capability', () => {
       type: 'definition_created',
       summary: 'The greeting “greet” was created.',
       data: {
-        type: 'echo',
+        definition_type: 'echo',
         name: 'greet',
         by: 'acme-admin',
         version: 1,
@@ -69,7 +69,14 @@ describe('the presenter of the changes to a definition', () => {
       ...shown,
       type: 'definition_updated',
       summary: 'The greeting “greet” was updated to version one hundred and fifty.',
-      data: { type: 'echo', name: 'greet', by: 'acme-admin', version: 150, source_bytes: 2, warning_count: 0 },
+      data: {
+        definition_type: 'echo',
+        name: 'greet',
+        by: 'acme-admin',
+        version: 150,
+        source_bytes: 2,
+        warning_count: 0,
+      },
     });
   });
 
@@ -78,7 +85,7 @@ describe('the presenter of the changes to a definition', () => {
       ...shown,
       type: 'definition_retired',
       summary: 'The item “greet” was retired.',
-      data: { type: 'gone', name: 'greet', by: 'acme-admin' },
+      data: { definition_type: 'gone', name: 'greet', by: 'acme-admin' },
     });
   });
 

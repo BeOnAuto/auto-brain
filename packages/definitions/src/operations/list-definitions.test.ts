@@ -81,11 +81,11 @@ describe('list_definitions', () => {
     });
   });
 
-  it('rejects a capability it does not know', async () => {
+  it('rejects a type it does not know', async () => {
     expect(await harness().call(listDefinitions, toAlpha(acmeAdmin, { type: 'reasoning' }))).toEqual({
       status: 'rejected',
       reason: 'not_found',
-      detail: 'There is no type reasoning',
+      detail: 'There is no definition type reasoning',
     });
   });
 });

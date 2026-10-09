@@ -59,7 +59,7 @@ describe('the presenter of the events of a run', () => {
       data: {
         run_id: runId,
         by: 'acme-admin',
-        type: 'echo',
+        definition_type: 'echo',
         name: 'greet',
         definition_version: 2,
         input_bytes: 13,

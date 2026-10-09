@@ -59,7 +59,7 @@ describe('get_run rejecting', () => {
   it('an id that is not a UUID and a field the operation does not know', async () => {
     expect(await harness().call(getRun, toAlpha(acmeAdmin, { run_id: 'latest', type: 'echo' }))).toMatchObject({
       reason: 'invalid_input',
-      issues: [{ pointer: '/capability' }, { pointer: '/run_id', detail: 'Expected a UUID' }],
+      issues: [{ pointer: '/type' }, { pointer: '/run_id', detail: 'Expected a UUID' }],
     });
   });
 });

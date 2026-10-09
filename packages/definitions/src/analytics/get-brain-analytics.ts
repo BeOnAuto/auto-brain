@@ -32,7 +32,7 @@ const AnalyticsInputSchema = Schema.Struct({
 type AnalyticsInput = typeof AnalyticsInputSchema.Type;
 
 function selectionOf({ type, name }: AnalyticsInput) {
-  return { ...(type === undefined ? {} : { type }), ...(name === undefined ? {} : { name }) };
+  return { ...(type === undefined ? {} : { definitionType: type }), ...(name === undefined ? {} : { name }) };
 }
 
 const readAnalytics = Effect.fnUntraced(function* (input: AnalyticsInput) {

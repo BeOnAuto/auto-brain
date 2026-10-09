@@ -43,7 +43,7 @@ describe('a saved definition', () => {
     ]);
   });
 
-  it.each(['echo', 'reason', 'workflow', 'interact', 'prediction', 'recall', 'compute'])(
+  it.each(['echo', 'reason', 'interact', 'prediction', 'compute'])(
     'is neither of a custom adapter or a planned function type: %s',
     (type) => {
       const definition = { ...reasoningFunction, type };

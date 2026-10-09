@@ -176,7 +176,7 @@ describe('a run the capability rejects after it spent something', () => {
 });
 
 describe('run_definition rejecting', () => {
-  it('a definition the brain does not have, and a capability it does not know', async () => {
+  it('a definition the brain does not have, and a type it does not know', async () => {
     const { call, runDefinition } = await withPlain();
 
     expect(await call(runDefinition, toAlpha(acmeAdmin, { type: 'probe', name: 'ghost' }))).toEqual({
@@ -187,7 +187,7 @@ describe('run_definition rejecting', () => {
     expect(await call(runDefinition, toAlpha(acmeAdmin, { type: 'echo', name: 'plain' }))).toEqual({
       status: 'rejected',
       reason: 'not_found',
-      detail: 'There is no type echo',
+      detail: 'There is no definition type echo',
     });
   });
 

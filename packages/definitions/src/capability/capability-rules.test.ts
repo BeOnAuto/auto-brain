@@ -9,7 +9,7 @@ const header = [
   'export const { Caller, Conflict, InvalidInput, NotFound, Unavailable } = Operations;',
   "import { Effect } from 'effect';",
   "import { defineCapability } from '../../../src/index.ts';",
-  "export const about = { name: 'probe', title: 'Probe', guide: { name: 'probe' }, noun: { one: 'probe', other: 'probes' }, describeOutput: () => 'Probed.', mediaType: 'text/plain' };",
+  "export const about = { type: 'probe', title: 'Probe', guide: { name: 'probe' }, noun: { one: 'probe', other: 'probes' }, describeOutput: () => 'Probed.', mediaType: 'text/plain' };",
   "export const parse = (source: string) => Effect.succeed({ lines: source.split('\\n') });",
   "export const summarize = () => ({ description: 'Probe' });",
 ];
@@ -18,26 +18,26 @@ function defined(lines: readonly string[]): readonly string[] {
   return [...header, 'export const probe = defineCapability({', '  ...about,', ...lines, '});'];
 }
 
-const answering = '  execute: () => Effect.succeed({ output: null, record: {} }),';
+const answering = '  run: () => Effect.succeed({ output: null, record: {} }),';
 
 const accepted: Readonly<Record<string, readonly string[]>> = {
   'parsed-value-flows.ts': defined([
     '  parse,',
     "  summarize: ({ lines }) => ({ description: lines.join(' '), inputSchema: { type: 'object' } }),",
-    '  execute: ({ lines }, input, { definition }) =>',
+    '  run: ({ lines }, input, { definition }) =>',
     '    Effect.succeed({ output: { lines: [...lines], input, version: definition.version }, record: { count: lines.length } }),',
   ]),
   'declared-rejections.ts': defined([
     "  parse: (source: string) => source === '' ? Effect.fail(new InvalidInput({ detail: 'empty', issues: [] })) : parse(source),",
     '  summarize,',
-    '  execute: ({ lines }) =>',
+    '  run: ({ lines }) =>',
     "    lines.length > 2 ? Effect.fail(new Conflict({ detail: 'cannot run as written' })) :",
     "    lines.length > 1 ? Effect.fail(new Unavailable({ detail: 'busy' })) : Effect.fail(new InvalidInput({ detail: 'no', issues: [] })),",
   ]),
   'finishes-later.ts': defined([
     '  parse,',
     '  summarize,',
-    '  execute: (_parsed, _input, { id }) => Effect.succeed({ finishesLater: true, record: { run: id } }),',
+    '  run: (_parsed, _input, { id }) => Effect.succeed({ finishesLater: true, record: { run: id } }),',
   ]),
 };
 
@@ -55,12 +55,12 @@ const rejected: Readonly<Record<string, Rejection>> = {
       answering,
     ]),
   },
-  'execute-expects-another-value.ts': {
+  'run-expects-another-value.ts': {
     because: "Property 'size' is missing",
     source: defined([
       '  parse,',
       '  summarize,',
-      '  execute: ({ size }: { size: number }) => Effect.succeed({ output: size, record: {} }),',
+      '  run: ({ size }: { size: number }) => Effect.succeed({ output: size, record: {} }),',
     ]),
   },
   'parse-rejects-undeclared.ts': {
@@ -71,33 +71,29 @@ const rejected: Readonly<Record<string, Rejection>> = {
       answering,
     ]),
   },
-  'execute-rejects-undeclared.ts': {
+  'run-rejects-undeclared.ts': {
     because: "Type 'NotFound' is not assignable to type 'CapabilityRejection'",
-    source: defined(['  parse,', '  summarize,', "  execute: () => Effect.fail(new NotFound({ detail: 'gone' })),"]),
+    source: defined(['  parse,', '  summarize,', "  run: () => Effect.fail(new NotFound({ detail: 'gone' })),"]),
   },
-  'execute-asks-a-service.ts': {
+  'run-asks-a-service.ts': {
     because: "Type 'Caller' is not assignable to type 'never'",
     source: defined([
       '  parse,',
       '  summarize,',
-      '  execute: () => Effect.gen(function* () { yield* Caller; return { output: null, record: {} }; }),',
+      '  run: () => Effect.gen(function* () { yield* Caller; return { output: null, record: {} }; }),',
     ]),
   },
   'output-not-json.ts': {
     because: "is not assignable to type 'Json'",
-    source: defined([
-      '  parse,',
-      '  summarize,',
-      '  execute: () => Effect.succeed({ output: new Date(), record: {} }),',
-    ]),
+    source: defined(['  parse,', '  summarize,', '  run: () => Effect.succeed({ output: new Date(), record: {} }),']),
   },
   'finishes-later-without-record.ts': {
     because: "Property 'record' is missing",
-    source: defined(['  parse,', '  summarize,', '  execute: () => Effect.succeed({ finishesLater: true }),']),
+    source: defined(['  parse,', '  summarize,', '  run: () => Effect.succeed({ finishesLater: true }),']),
   },
   'record-not-an-object.ts': {
     because: "Type 'string' is not assignable to type 'JsonObject'",
-    source: defined(['  parse,', '  summarize,', "  execute: () => Effect.succeed({ output: null, record: 'ran' }),"]),
+    source: defined(['  parse,', '  summarize,', "  run: () => Effect.succeed({ output: null, record: 'ran' }),"]),
   },
 };
 
