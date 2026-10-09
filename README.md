@@ -4,9 +4,9 @@ The runtime for business brains, built and used through your agent.
 
 [![CI](https://github.com/BeOnAuto/auto-brain/actions/workflows/ci.yml/badge.svg)](https://github.com/BeOnAuto/auto-brain/actions/workflows/ci.yml) [![License: ELv2](https://img.shields.io/badge/license-ELv2-blue?style=flat-square)](LICENSING.md)
 
-[![Auto Studio showing a Sales Ops brain: its functions, workflows and runs on the left, and a week of run, token and duration analytics on the right](docs/assets/studio-dashboard.png)](https://studio.on.auto)
+[![Auto Studio showing a Sales Ops brain, with its functions, workflows and runs on the left and its run, token and duration charts on the right](docs/assets/studio-dashboard.png)](https://studio.on.auto)
 
-[Auto Studio](https://studio.on.auto) opens a running brain in the browser: every function, workflow and run, and a week of analytics, with nothing to install.
+[Auto Studio](https://studio.on.auto) is where you watch a brain work. Open a run to follow how it reached its result, or check the charts for how busy the brain has been and what it has spent in tokens.
 
 ## Documentation and help
 
