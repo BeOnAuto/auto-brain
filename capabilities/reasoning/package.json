@@ -29,7 +29,7 @@
     "@beonauto/outbound": "workspace:*",
     "ai": "7.0.124",
     "effect": "catalog:",
-    "google-auth-library": "10.9.1",
+    "google-auth-library": "11.2.0",
     "liquidjs": "10.29.0",
     "zod": "4.6.5"
   },
