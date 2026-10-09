@@ -60,7 +60,7 @@ const aboutTheRun = {
   time: fact.at,
 };
 
-const ofTheRun = { type: 'reasoning', name: 'summary', version: 3, caller: 'acme-admin', depth: 0 };
+const ofTheRun = { definition_type: 'reasoning', name: 'summary', version: 3, caller: 'acme-admin', depth: 0 };
 
 describe('the facts of a run as events', () => {
   it('are its start and its endings, about the run, from the record and its time, naming what ran', () => {
@@ -176,17 +176,17 @@ describe('the facts of a definition as events', () => {
       {
         ...aboutTheDefinition,
         type: 'definition_created',
-        data: { type: 'reasoning', name: 'summary', version: 1, caller: 'acme-admin' },
+        data: { definition_type: 'reasoning', name: 'summary', version: 1, caller: 'acme-admin' },
       },
       {
         ...aboutTheDefinition,
         type: 'definition_updated',
-        data: { type: 'reasoning', name: 'summary', version: 2, caller: 'acme-admin' },
+        data: { definition_type: 'reasoning', name: 'summary', version: 2, caller: 'acme-admin' },
       },
       {
         ...aboutTheDefinition,
         type: 'definition_retired',
-        data: { type: 'reasoning', name: 'summary', caller: 'acme-admin' },
+        data: { definition_type: 'reasoning', name: 'summary', caller: 'acme-admin' },
       },
     ]);
     expect(facts.every((event) => isCloudEvent(event))).toBe(true);

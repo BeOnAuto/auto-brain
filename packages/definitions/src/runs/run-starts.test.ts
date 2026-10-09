@@ -37,8 +37,8 @@ describe('the start of a run read from its record', () => {
       ),
       runStartedOf('not a record'),
     ]).toEqual([
-      { type: 'workflow', name: 'close', depth: 2 },
-      { type: 'reasoning', name: 'sum', depth: 0 },
+      { definitionType: 'workflow', name: 'close', depth: 2 },
+      { definitionType: 'reasoning', name: 'sum', depth: 0 },
       undefined,
       undefined,
     ]);
