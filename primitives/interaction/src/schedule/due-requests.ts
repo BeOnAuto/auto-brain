@@ -1,12 +1,12 @@
-import type { ProjectedRunRow } from '@beonauto/operations';
+import type { ProjectedKeyedRow } from '@beonauto/operations';
 import { Effect } from 'effect';
 
 import { openRequestsName } from '../requests/open-requests.ts';
-import { requestRowFrom, settlesFromDelivery, type OpenRequestRow } from '../requests/request-rows.ts';
+import { requestRowFrom, routeOfRow, settlesFromBroughtAnswer, type OpenRequestRow } from '../requests/request-rows.ts';
 import type { DeliveryParts, DueRequest } from './delivery-parts.ts';
 import { lostAttempt, nextAttempt } from './request-attempts.ts';
 import { expiredSettlement, undeliveredSettlement } from './request-endings.ts';
-import { correlationOf, settled, settledFromDelivery } from './request-ledger.ts';
+import { correlationOf, settled, settledFromBroughtAnswer } from './request-ledger.ts';
 
 export interface DueRequestItem {
   readonly key: string;
@@ -14,11 +14,11 @@ export interface DueRequestItem {
   readonly perform: (now: number) => Effect.Effect<void>;
 }
 
-type DueAction = 'settle_from_delivery' | 'expire' | 'end_undelivered' | 'wait' | 'end_lost' | 'attempt';
+type DueAction = 'settle_from_brought_answer' | 'expire' | 'end_undelivered' | 'wait' | 'end_lost' | 'attempt';
 
 function dueActionOf(row: OpenRequestRow, now: number): DueAction {
-  if (settlesFromDelivery(row)) {
-    return 'settle_from_delivery';
+  if (settlesFromBroughtAnswer(row)) {
+    return 'settle_from_brought_answer';
   }
   if (now >= row.expires_at) {
     return 'expire';
@@ -41,9 +41,9 @@ export interface RequestsDue {
 function performedNow(parts: DeliveryParts, request: DueRequest, now: number): Effect.Effect<void> {
   const { row, address, lineage } = request;
   const performed: Readonly<Record<DueAction, () => Effect.Effect<void>>> = {
-    settle_from_delivery: () => settledFromDelivery(parts.ledger, request),
+    settle_from_brought_answer: () => settledFromBroughtAnswer(parts.ledger, request),
     expire: () => settled(parts.ledger, address, expiredSettlement(row), lineage),
-    end_undelivered: () => settled(parts.ledger, address, undeliveredSettlement(row), lineage),
+    end_undelivered: () => settled(parts.ledger, address, undeliveredSettlement(routeOfRow(row)), lineage),
     wait: () => Effect.void,
     end_lost: () => lostAttempt(parts, request),
     attempt: () => nextAttempt(parts, request),
@@ -51,17 +51,17 @@ function performedNow(parts: DeliveryParts, request: DueRequest, now: number): E
   return performed[dueActionOf(row, now)]();
 }
 
-function performedRow(parts: DeliveryParts, kept: ProjectedRunRow, row: OpenRequestRow, now: number) {
-  const address = { org: kept.org, brain: kept.brain, id: kept.runId };
+function performedRow(parts: DeliveryParts, kept: ProjectedKeyedRow, row: OpenRequestRow, now: number) {
+  const address = { org: kept.org, brain: kept.brain, id: kept.key };
   return Effect.flatMap(correlationOf(parts.ledger, address), (correlationId) =>
     performedNow(parts, { address, row, lineage: { causationId: row.request_id, correlationId } }, now),
   );
 }
 
-function itemOf(parts: DeliveryParts, kept: ProjectedRunRow, dueAt: number): DueRequestItem {
+function itemOf(parts: DeliveryParts, kept: ProjectedKeyedRow, dueAt: number): DueRequestItem {
   const row = requestRowFrom(kept.row);
   return {
-    key: `${kept.org}/${kept.brain}/${kept.runId}`,
+    key: `${kept.org}/${kept.brain}/${kept.key}`,
     callsOut: dueActionOf(row, dueAt) === 'attempt',
     perform: (now) => Effect.suspend(() => performedRow(parts, kept, row, now)),
   };

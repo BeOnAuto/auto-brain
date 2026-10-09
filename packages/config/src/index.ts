@@ -24,7 +24,6 @@ export {
   type SettingProblem,
 } from './json-settings/json-setting.ts';
 export {
-  liesWithin,
   servedScopeOf,
   servesBrain,
   type ServedAddress,

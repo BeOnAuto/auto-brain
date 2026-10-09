@@ -6,8 +6,14 @@ export interface ProjectionDialect {
   readonly tableVersions: (name: string) => SQL;
   readonly columnTypes: Readonly<Record<ProjectedColumnKind, string>>;
   readonly asNumber: (expression: string) => string;
-  readonly runStreamsAfter: (after: string, count: number, types: readonly string[]) => SQL;
+  readonly streamsAfter: (after: string, count: number, kinds: readonly string[], types: readonly string[]) => SQL;
   readonly messagesOf: (streams: readonly string[], types: readonly string[]) => SQL;
+  readonly messagesInOrderAfter: (
+    after: string | undefined,
+    count: number,
+    kinds: readonly string[],
+    types: readonly string[],
+  ) => SQL;
   readonly rowsInAWrite: (columns: number) => number;
   readonly filledData: (column: unknown) => unknown;
   readonly appendedData: (stored: unknown) => unknown;

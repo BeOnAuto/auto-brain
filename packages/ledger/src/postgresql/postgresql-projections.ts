@@ -20,12 +20,14 @@ function storedData(stored: unknown): unknown {
   return dataAsJsonText.read(decodeJsonText(stored));
 }
 
+const beforeEveryMessage = '0/0';
+
 export const postgresqlProjectionDialect: ProjectionDialect = {
   tableVersions: (name) => SQL`SELECT relname AS name FROM pg_class
     WHERE relkind IN ('r', 'p') AND relname ~ ${`^${name}_[0-9]+$`} AND pg_table_is_visible(oid)`,
   columnTypes: { text: 'text', integer: 'bigint', boolean: 'boolean' },
   asNumber: (expression) => `${expression}::float8`,
-  runStreamsAfter: (after, count, types) =>
+  streamsAfter: (after, count, kinds, types) =>
     SQL`SELECT s.stream_id AS stream, (
         SELECT coalesce(sum(octet_length(m.message_data ->> 'json')), 0)::float8 FROM emt_messages AS m
         WHERE m.stream_id = s.stream_id
@@ -33,7 +35,8 @@ export const postgresqlProjectionDialect: ProjectionDialect = {
           AND m.partition = ${defaultPartition} AND m.is_archived = FALSE
       ) AS size
       FROM emt_streams AS s
-      WHERE s.stream_id > ${after} AND s.stream_id ~ '^[^/]+/[^/]+/[^/]+/executions/[^/]+$'
+      WHERE s.stream_id > ${after} AND s.stream_id ~ '^[^/]+/[^/]+/[^/]+/[^/]+/[^/]+$'
+        AND split_part(s.stream_id, '/', 4) IN (SELECT jsonb_array_elements_text(${JSON.stringify(kinds)}::jsonb))
         AND s.partition = ${defaultPartition} AND s.is_archived = FALSE
       ORDER BY s.stream_id
       LIMIT ${count}`,
@@ -44,6 +47,18 @@ export const postgresqlProjectionDialect: ProjectionDialect = {
         AND message_type IN (SELECT jsonb_array_elements_text(${JSON.stringify(types)}::jsonb))
         AND partition = ${defaultPartition} AND is_archived = FALSE
       ORDER BY stream_id, stream_position`,
+  messagesInOrderAfter: (after, count, kinds, types) =>
+    SQL`SELECT m.transaction_id::text || '/' || m.global_position::text AS point, m.stream_id AS stream,
+        m.message_type AS type, m.message_data AS data, m.stream_position::float8 AS position
+      FROM emt_messages AS m
+      WHERE (m.transaction_id, m.global_position)
+          > (split_part(${after ?? beforeEveryMessage}, '/', 1)::xid8, split_part(${after ?? beforeEveryMessage}, '/', 2)::bigint)
+        AND m.message_type IN (SELECT jsonb_array_elements_text(${JSON.stringify(types)}::jsonb))
+        AND m.stream_id ~ '^[^/]+/[^/]+/[^/]+/[^/]+/[^/]+$'
+        AND split_part(m.stream_id, '/', 4) IN (SELECT jsonb_array_elements_text(${JSON.stringify(kinds)}::jsonb))
+        AND m.partition = ${defaultPartition} AND m.is_archived = FALSE
+      ORDER BY m.transaction_id, m.global_position
+      LIMIT ${count}`,
   rowsInAWrite: () => rowsInAWrite,
   filledData: storedData,
   appendedData: storedData,

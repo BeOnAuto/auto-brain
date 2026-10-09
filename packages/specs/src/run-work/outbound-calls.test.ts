@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import type { DeliveryStartedFact } from '../execution/execution-commands.ts';
 import { executionDecider } from '../execution/execution-decider.ts';
 import { brainBoundSettler } from '../execution/execution-settler.ts';
-import { outboundCallRecorder } from './outbound-calls.ts';
+import { outboundCallRecorder, replyRecorder } from './outbound-calls.ts';
 import { executionEventOf, recordedRunIn, recordedRunInBrain } from './recorded-runs.ts';
 
 const run = { org: 'acme', brain: 'alpha', id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' };
@@ -34,7 +34,15 @@ async function aDeferredRun() {
   await Effect.runPromise(
     ledger.service.execute(stream, executionDecider, {
       type: 'finish',
-      result: { type: 'execution_deferred', record: { channel: 'inbox' } },
+      result: {
+        type: 'execution_deferred',
+        record: {
+          to: 'ada',
+          message: 'Approve?',
+          expires_at: '2026-10-09T09:00:00.000Z',
+          requested_at: '2026-10-07T09:00:00.000Z',
+        },
+      },
       ...fact,
     }),
   );
@@ -54,7 +62,11 @@ describe('the outbound calls of a run', () => {
     const record = outboundCallRecorder(ledger.service);
 
     const started = await Effect.runPromise(
-      record(run, { type: 'delivery_started', number: 1, channel: 'inbox', target: 'ada' }, lineage),
+      record(
+        run,
+        { type: 'delivery_started', number: 1, target: 'ada', server: 'chat', tool: 'post_message' },
+        lineage,
+      ),
     );
     const startedId = started.id;
     const ended = await Effect.runPromise(
@@ -78,11 +90,19 @@ describe('the outbound calls of a run', () => {
     ]);
     expect(records.slice(2).map(({ data }) => executionEventOf(data)?.at)).toEqual([started.at, ended.at]);
   });
+});
 
+describe('the outbound calls of a run that another call came before', () => {
   it('are refused under a number another call took, and for a run the brain cannot hold', async () => {
     const ledger = await aDeferredRun();
     const record = outboundCallRecorder(ledger.service);
-    const attempt: DeliveryStartedFact = { type: 'delivery_started', number: 1, channel: 'inbox', target: 'ada' };
+    const attempt: DeliveryStartedFact = {
+      type: 'delivery_started',
+      number: 1,
+      target: 'ada',
+      server: 'chat',
+      tool: 'post_message',
+    };
     await Effect.runPromise(record(run, attempt, lineage));
 
     expect(await Effect.runPromise(Effect.result(record(run, attempt, lineage)))).toMatchObject(
@@ -100,7 +120,16 @@ describe('a run as it was recorded', () => {
     const read = await Effect.runPromise(recordedRunIn(ledger.service, run));
 
     expect(read).toMatchObject({
-      run: { execution_id: run.id, status: 'started', record: { channel: 'inbox' } },
+      run: {
+        execution_id: run.id,
+        status: 'started',
+        record: {
+          to: 'ada',
+          message: 'Approve?',
+          expires_at: '2026-10-09T09:00:00.000Z',
+          requested_at: '2026-10-07T09:00:00.000Z',
+        },
+      },
       input: { owner: 'ada' },
       awaitsSettlement: true,
       lastCall: 0,
@@ -131,5 +160,23 @@ describe('a settlement made through the writer of a brain', () => {
     expect(await Effect.runPromise(Effect.result(settle({ ...run, id: 'nope' }, { status: 'failed' })))).toMatchObject(
       Result.fail({ _tag: 'not_found' }),
     );
+  });
+});
+
+describe('the replies a run takes or refuses', () => {
+  it('are recorded as the brain itself, with the lineage they are given, once for each reply', async () => {
+    const ledger = await aDeferredRun();
+    const record = replyRecorder(ledger.service);
+    const reading = { server: 'chat', tool: 'thread_replies', reply: { id: '1699.2', sender: 'ada' } };
+
+    const taken = await Effect.runPromise(
+      record(run, { type: 'reply_taken', ...reading, answer: { choice: 'approve' } }, lineage),
+    );
+    const again = await Effect.runPromise(
+      Effect.result(record(run, { type: 'reply_refused', ...reading, because: 'not_an_answer', told: false }, lineage)),
+    );
+
+    expect(taken.id).toBe(messageIdOf(stream, 3));
+    expect(again).toMatchObject(Result.fail({ _tag: 'conflict' }));
   });
 });

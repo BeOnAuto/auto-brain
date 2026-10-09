@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { misplacedReferences, secretsOfEntry, substituted, type ReferencePlacement } from '../index.ts';
 
 const placement: ReferencePlacement = {
-  setting: 'EXAMPLE_CHANNELS',
+  setting: 'EXAMPLE_ENDPOINTS',
   entry: 'partner',
   fields: ['headers', 'secret'],
   misplaced: 'Holds a reference, which only headers and secret may hold',
@@ -24,8 +24,8 @@ describe('the references of an entry', () => {
 
   it('are refused in every field but those that hold secrets, at their places', () => {
     expect(misplacedReferences(placement, references)).toEqual([
-      { setting: 'EXAMPLE_CHANNELS', detail: `/partner/url: ${placement.misplaced}` },
-      { setting: 'EXAMPLE_CHANNELS', detail: `/partner/fallback: ${placement.misplaced}` },
+      { setting: 'EXAMPLE_ENDPOINTS', detail: `/partner/url: ${placement.misplaced}` },
+      { setting: 'EXAMPLE_ENDPOINTS', detail: `/partner/fallback: ${placement.misplaced}` },
     ]);
   });
 

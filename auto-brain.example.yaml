@@ -36,18 +36,19 @@ model_aliases:
 #   - anthropic/*
 #   - gateway/anthropic/claude-haiku-4-5
 
-# The MCP servers whose tools a reasoning function may name in its tools key,
-# each bound to an org and, optionally, to some of its brains. A remote server
-# has a url; a process has a command, installed and pinned, which inherits
-# nothing from the server's environment but its env.
+# The MCP servers whose tools a function may name, a reasoning function in its
+# tools key and an interaction function in deliver, each bound to an org and,
+# optionally, to some of its brains. A remote server has a url; a process has a
+# command, installed and pinned, which inherits nothing from the server's
+# environment but its env.
 #
-# allowed names the tools of a server a reasoning function may name and a
-# channel may call, as the server lists them; every tool of the server when left
-# out. testable names the tools test_tool_call may test although the server does
-# not mark them read-only, each also in allowed; only the tools the server marks
-# read-only can be tested when left out. A server that marks its read-only tools
-# needs no testable; one that marks none needs its read-only tools named, for
-# example a Constellation gateway's search, introspect, validate and dry_run.
+# allowed names the tools of a server a function may name, as the server lists
+# them; every tool of the server when left out. testable names the tools
+# test_tool_call may test although the server does not mark them read-only, each
+# also in allowed; only the tools the server marks read-only can be tested when
+# left out. A server that marks its read-only tools needs no testable; one that
+# marks none needs its read-only tools named, for example a Constellation
+# gateway's search, introspect, validate and dry_run.
 # mcp_servers:
 #   graph:
 #     url: https://gateway.example.com/mcp
@@ -63,28 +64,6 @@ model_aliases:
 #     env:
 #       NOTES_API_KEY: ${NOTES_API_KEY}
 #     org: acme
-
-# The channels an interaction function may send its request through, beside the
-# brain's own inbox: a signed webhook, or one call of a tool of an MCP server.
-# Each names the parties it may reach in to and is bound to an org and,
-# optionally, to some of its brains.
-# channels:
-#   partner:
-#     type: webhook
-#     url: https://partner.example.com/brain/requests
-#     secret: ${PARTNER_WEBHOOK_SECRET}
-#     to: '^[a-z.]+@partner\.example\.com$'
-#     org: acme
-#   approvals:
-#     type: mcp
-#     server: graph
-#     tool: post_message
-#     to: '^#approvals-[a-z-]+$'
-#     with:
-#       channel: '{{ to }}'
-#       text: '{{ message }}'
-#     org: acme
-#     brains: [sales]
 
 # The origins a page in a browser may call the API from.
 allowed_origins:

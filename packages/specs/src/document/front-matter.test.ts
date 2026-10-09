@@ -8,13 +8,19 @@ import { frontMatterIn, type FrontMatterShape, type ReadFrontMatter } from './fr
 const NoteSchema = Schema.Struct({
   title: Schema.String,
   size: Schema.optionalKey(Schema.Number),
-  extra: Schema.optionalKey(Schema.Struct({ anything: Schema.optionalKey(Schema.Json) })),
+  extra: Schema.optionalKey(
+    Schema.Struct({
+      anything: Schema.optionalKey(Schema.Json),
+      deeper: Schema.optionalKey(Schema.Struct({ kept: Schema.optionalKey(Schema.String) })),
+    }),
+  ),
 });
 
 const note: FrontMatterShape = {
   sections: [
     { name: undefined, keys: Object.keys(NoteSchema.fields) },
-    { name: 'extra', keys: ['anything'] },
+    { name: 'extra', keys: ['anything', 'deeper'] },
+    { name: 'extra.deeper', keys: ['kept'] },
   ],
   decode: Schema.decodeUnknownResult(NoteSchema, { errors: 'all' }),
   required: 'the title',
@@ -129,8 +135,15 @@ describe('the keys of the front matter', () => {
       'Line 2, /title: title is required',
       'Line 2, /size: Expected number',
       'Line 3, /prompt: prompt is not a key of the front matter; it takes title, size, extra',
-      'Line 5, /extra/other: other is not a key of extra; it takes anything',
+      'Line 5, /extra/other: other is not a key of extra; it takes anything, deeper',
     ]);
+  });
+
+  it('are checked in a section nested in another, named by its path', () => {
+    expect(issuesIn(documentOf('title: A\nextra:\n  deeper:\n    kept: yes\n    lost: 1'))).toEqual([
+      'Line 6, /extra/deeper/lost: lost is not a key of extra.deeper; it takes kept',
+    ]);
+    expect(issuesIn(documentOf('title: A\nextra: 5'))).toHaveLength(1);
   });
 
   it('are reported at most 20 at once, with how many more there were', () => {

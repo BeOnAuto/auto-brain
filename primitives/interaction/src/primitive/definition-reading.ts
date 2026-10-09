@@ -19,17 +19,16 @@ export function parse(source: string): Effect.Effect<InteractionFunctionDefiniti
   });
 }
 
-export function summarize({
-  description,
-  input,
-  output,
-  channel,
-  expires,
-}: InteractionFunctionDefinitionDocument): DefinitionSummary {
+function deliveryOf({ route }: InteractionFunctionDefinitionDocument) {
+  return route === undefined ? {} : { deliver: { server: route.deliver.server, tool: route.deliver.tool } };
+}
+
+export function summarize(document: InteractionFunctionDefinitionDocument): DefinitionSummary {
+  const { description, input, output, expires } = document;
   return {
     ...(description === undefined ? {} : { description }),
     ...(input.schema === undefined ? {} : { inputSchema: input.schema.document }),
     ...(output.schema === undefined ? {} : { outputSchema: output.schema.document }),
-    details: { channel, expires },
+    details: { expires, ...deliveryOf(document) },
   };
 }

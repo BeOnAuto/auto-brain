@@ -1,4 +1,5 @@
 import { CallAnsweredSchema, CallStartedSchema } from '@beonauto/mcp';
+import { IssueSchema } from '@beonauto/operations';
 import { Schema } from 'effect';
 
 import { StartingTriggerSchema } from '../registry/spec-triggers.ts';
@@ -89,41 +90,71 @@ const ToolCallAnsweredSchema = Schema.Struct({ type: callAnswered, number: Schem
 const DeliveryStartedSchema = Schema.Struct({
   type: Schema.Literal('delivery_started'),
   number: Schema.Int,
-  channel: Schema.String,
   target: Schema.String,
+  server: startedFields.server,
+  tool: startedFields.tool,
+  arguments_bytes: Schema.optionalKey(startedFields.arguments_bytes),
+  arguments_sha256: Schema.optionalKey(startedFields.arguments_sha256),
+  arguments_json: startedFields.arguments_json,
   ...ofTheDefinition,
   ...fact,
 });
 
-export const DeliveryOutcomeSchema = Schema.Literals(['delivered', 'answered', 'failed', 'refused']);
+export const DeliveryOutcomeSchema = Schema.Literals(['delivered', 'failed', 'refused']);
 
 export const DeliveryBecauseSchema = Schema.Literals([
-  'status',
   'timed_out',
-  'unreachable',
-  'untrusted_certificate',
-  'redirected',
-  'not_https',
   'too_large',
-  'channel_not_offered',
+  'unworkable',
+  'tool_not_offered',
   'tool_error',
   'server_failure',
-  'not_json',
-  'answer_invalid',
   'lost',
 ]);
+
+const DeliveredAsSchema = Schema.Struct({ conversation: Schema.String, id: Schema.String });
+
+const RepliesInSchema = Schema.Struct({ server: Schema.String, tool: Schema.String, key: Schema.String });
 
 const DeliveryEndedSchema = Schema.Struct({
   type: Schema.Literal('delivery_ended'),
   number: Schema.Int,
   outcome: DeliveryOutcomeSchema,
-  status: Schema.optionalKey(Schema.Int),
   because: Schema.optionalKey(DeliveryBecauseSchema),
   retry_after_ms: Schema.optionalKey(Schema.Int),
-  response_bytes: Schema.optionalKey(Schema.Int),
   detail: Schema.optionalKey(Schema.String),
-  answer: Schema.optionalKey(Schema.Json),
+  result_bytes: Schema.optionalKey(answeredFields.result_bytes),
+  result_sha256: Schema.optionalKey(answeredFields.result_sha256),
+  result_json: answeredFields.result_json,
+  jsonrpc_id: Schema.optionalKey(answeredFields.jsonrpc_id),
+  server_request_id: answeredFields.server_request_id,
   duration_ms: Schema.Int,
+  delivered_as: Schema.optionalKey(DeliveredAsSchema),
+  replies_in: Schema.optionalKey(RepliesInSchema),
+  ...ofTheDefinition,
+  ...fact,
+});
+
+const ReplyIdentitySchema = Schema.Struct({ id: Schema.String, sender: Schema.String });
+
+const ofTheReading = { server: Schema.String, tool: Schema.String, reply: ReplyIdentitySchema };
+
+const ReplyTakenSchema = Schema.Struct({
+  type: Schema.Literal('reply_taken'),
+  ...ofTheReading,
+  answer: Schema.Json,
+  ...ofTheDefinition,
+  ...fact,
+});
+
+export const ReplyRefusalSchema = Schema.Literals(['not_an_answer', 'invalid', 'too_long', 'ambiguous']);
+
+const ReplyRefusedSchema = Schema.Struct({
+  type: Schema.Literal('reply_refused'),
+  ...ofTheReading,
+  because: ReplyRefusalSchema,
+  issues: Schema.optionalKey(Schema.Array(IssueSchema)),
+  told: Schema.Boolean,
   ...ofTheDefinition,
   ...fact,
 });
@@ -139,6 +170,8 @@ export const ExecutionEventSchema = Schema.Union([
   ToolCallAnsweredSchema,
   DeliveryStartedSchema,
   DeliveryEndedSchema,
+  ReplyTakenSchema,
+  ReplyRefusedSchema,
 ]);
 
 export type ExecutionEvent = typeof ExecutionEventSchema.Type;
@@ -163,11 +196,25 @@ export type DeliveryStarted = Extract<DeliveryEvent, { readonly type: 'delivery_
 
 export type DeliveryEnded = Extract<DeliveryEvent, { readonly type: 'delivery_ended' }>;
 
+export type DeliveredAs = typeof DeliveredAsSchema.Type;
+
+export type RepliesIn = typeof RepliesInSchema.Type;
+
+export type ReplyIdentity = typeof ReplyIdentitySchema.Type;
+
+export type ReplyEvent = Extract<ExecutionEvent, { readonly type: 'reply_taken' | 'reply_refused' }>;
+
+export type ReplyTaken = Extract<ReplyEvent, { readonly type: 'reply_taken' }>;
+
+export type ReplyRefused = Extract<ReplyEvent, { readonly type: 'reply_refused' }>;
+
+export type ReplyRefusal = typeof ReplyRefusalSchema.Type;
+
 export type DeliveryOutcome = typeof DeliveryOutcomeSchema.Type;
 
 export type DeliveryBecause = typeof DeliveryBecauseSchema.Type;
 
 export type ExecutionFinished = Exclude<
   ExecutionEvent,
-  ExecutionStarted | ExecutionDeferred | ExecutionCancelRequested | ToolCallEvent | DeliveryEvent
+  ExecutionStarted | ExecutionDeferred | ExecutionCancelRequested | ToolCallEvent | DeliveryEvent | ReplyEvent
 >;

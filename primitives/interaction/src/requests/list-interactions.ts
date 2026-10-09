@@ -8,21 +8,26 @@ import {
   defaultPageLimit,
   defineQuery,
   partsOfCursor,
+  plainNumber,
   type ProjectedCondition,
-  type ProjectedRunRow,
+  type ProjectedKeyedRow,
   type ProjectedValue,
 } from '@beonauto/operations';
 import { Effect, Option, Schema } from 'effect';
 
+import { readingKeyOf } from '../conversations/conversation-keys.ts';
 import { openRequestsName } from './open-requests.ts';
-import { StandingSchema, requestRowFrom } from './request-rows.ts';
+import { StandingSchema, requestRowFrom, routeOfRow, type OpenRequestRow } from './request-rows.ts';
 
 const InteractionSchema = Schema.Struct({
   execution_id: Schema.String.annotate({ description: 'The run of the request, to answer with answer_interaction' }),
   function: Schema.String.annotate({ description: 'The interaction function that asked' }),
   version: Schema.Int.annotate({ description: 'The version of the function that asked' }),
   to: Schema.String.annotate({ description: 'The party the request goes to' }),
-  channel: Schema.String.annotate({ description: 'The channel the request goes through, or inbox' }),
+  delivery: Schema.NullOr(Schema.Struct({ server: Schema.String, tool: Schema.String })).annotate({
+    description:
+      'The tool the function delivers the request through, as its deliver names it, or null for a request waiting in the inbox',
+  }),
   message: Schema.String.annotate({ description: 'The message of the request' }),
   takes_answer: Schema.Boolean.annotate({ description: 'true for a question, false for a notification' }),
   answer_schema: Schema.NullOr(Schema.JsonObject).annotate({
@@ -32,18 +37,40 @@ const InteractionSchema = Schema.Struct({
   requested_at: Schema.String.annotate({ description: 'When the request was made, in ISO 8601 UTC' }),
   expires_at: Schema.String.annotate({ description: 'When the request expires unanswered, in ISO 8601 UTC' }),
   attempts: Schema.Int.annotate({ description: 'The delivery attempts made so far' }),
+  conversation: Schema.NullOr(Schema.String).annotate({
+    description:
+      'The conversation the brain reads replies in, as its delivery keys it, while the request takes an answer and its delivery reads replies; null for a request answered through answer_interaction alone.',
+  }),
+  answerer: Schema.NullOr(Schema.String).annotate({
+    description:
+      "The party whose reply the brain takes as the answer, the function's from, or its to when it gives no from; null for a request that takes no reply.",
+  }),
+  reply_refusals: Schema.Int.annotate({
+    description:
+      'How many replies from the answerer the brain refused because they were not an answer the function takes, each told how to answer where its reading tells.',
+  }),
   standing: StandingSchema.annotate({
     description:
-      'How its delivery stands: in_inbox, to_deliver, delivering, delivered, retrying, undelivered once every attempt failed, answered within its delivery while its run is settled, or cancelling once a cancel was asked',
+      'How its delivery stands: in_inbox, to_deliver, delivering, delivered, retrying, undelivered once every attempt failed, answered by a reply while its run is settled, or cancelling once a cancel was asked',
   }),
 }).annotate({ identifier: 'Interaction', description: 'An open request of an interaction function' });
 
 const requestNoun = { one: 'request', other: 'requests' };
 
+function refusedInWords(interactions: readonly { readonly reply_refusals: number }[]): string {
+  const refused = interactions.filter(({ reply_refusals: refusals }) => refusals > 0).length;
+  if (refused === 0) {
+    return '';
+  }
+  return refused === 1
+    ? ' One of them has had a reply refused.'
+    : ` ${plainNumber(refused)} of them have had a reply refused.`;
+}
+
 const FilterText = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256));
 
 const description = [
-  'Lists the open requests of the brain, newest first: what each interaction function asked, of whom, through which channel,',
+  'Lists the open requests of the brain, newest first: what each interaction function asked, of whom, through which tool, or in the inbox,',
   'until when and how its delivery stands, with the `execution_id` that answer_interaction takes.',
   'Each carries its `answer_schema`, the shape answer_interaction checks an answer against, as recorded when it was asked,',
   'which get_spec may no longer show; null for a notification.',
@@ -71,21 +98,29 @@ function afterOf(cursor: string | undefined): Effect.Effect<readonly ProjectedVa
 
 const answerSchemaFrom = Schema.decodeUnknownSync(Schema.NullOr(Schema.fromJsonString(Schema.JsonObject)));
 
-function shownOf({ runId, row }: ProjectedRunRow) {
+function deliveryShown(kept: OpenRequestRow) {
+  const route = routeOfRow(kept);
+  return route.kind === 'inbox' ? null : route.delivery;
+}
+
+function shownOf({ key, row }: ProjectedKeyedRow) {
   const kept = requestRowFrom(row);
   return [
     {
-      execution_id: runId,
+      execution_id: key,
       function: kept.function,
       version: kept.version,
       to: kept.party,
-      channel: kept.channel,
+      delivery: deliveryShown(kept),
       message: kept.message,
       takes_answer: kept.answers,
       answer_schema: answerSchemaFrom(kept.answer_schema),
       requested_at: new Date(kept.requested_at).toISOString(),
       expires_at: new Date(kept.expires_at).toISOString(),
       attempts: kept.attempts,
+      conversation: kept.conversation === null ? null : readingKeyOf(kept.conversation),
+      answerer: kept.conversation === null ? null : kept.answerer,
+      reply_refusals: kept.reply_refusals,
       standing: kept.standing,
     },
   ];
@@ -120,7 +155,7 @@ const listed = Effect.fnUntraced(function* ({ to, function: name, limit = defaul
   return {
     interactions: page.flatMap((kept) => shownOf(kept)),
     has_more: hasMore,
-    next_cursor: hasMore ? cursorOfParts([Number(last.row['requested_at']), last.runId]) : null,
+    next_cursor: hasMore ? cursorOfParts([Number(last.row['requested_at']), last.key]) : null,
   };
 });
 
@@ -146,6 +181,6 @@ export const listInteractions = defineQuery('brain', {
     outcome: ({ interactions }) =>
       interactions.length === 0
         ? 'No request is waiting.'
-        : `Found ${counted(interactions.length, requestNoun)} waiting on this page.`,
+        : `Found ${counted(interactions.length, requestNoun)} waiting on this page.${refusedInWords(interactions)}`,
   },
 });

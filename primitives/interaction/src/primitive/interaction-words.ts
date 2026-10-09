@@ -4,18 +4,15 @@ import { asSentence } from '@beonauto/operations';
 import { defaultRunWords, inWords, type RunAccount, type RunWords } from '@beonauto/specs';
 import type { Schema } from 'effect';
 
-import { inboxChannel } from '../channels/channel-names.ts';
+import { routeOf, throughWords } from '../route/routes.ts';
 import { requestRecordOf, takesAnswer } from '../run/request-record.ts';
-
-const mostPartyBytes = 256;
+import { interactionBounds } from '../run/run-bounds.ts';
 
 function cutParty(party: string): string {
   const bytes = Buffer.from(party, 'utf8');
-  return bytes.length <= mostPartyBytes ? party : new TextDecoder().decode(bytes.subarray(0, mostPartyBytes));
-}
-
-function throughWords(channel: string): string {
-  return channel === inboxChannel ? 'in the brain’s inbox' : `through the channel “${channel}”`;
+  return bytes.length <= interactionBounds.toBytes
+    ? party
+    : new TextDecoder().decode(bytes.subarray(0, interactionBounds.toBytes));
 }
 
 function requestAccount(record: Schema.JsonObject): RunAccount | undefined {
@@ -24,12 +21,16 @@ function requestAccount(record: Schema.JsonObject): RunAccount | undefined {
     return undefined;
   }
   const answers = takesAnswer(request);
+  const route = routeOf(request);
   const what = answers ? 'A request is waiting for an answer' : 'A notification is waiting to be delivered';
+  const answerer = request.answerer === request.to ? undefined : request.answerer;
+  const from = answerer === undefined ? '' : '; a reply counts from its answerer alone';
   return {
-    summary: `${what}, ${throughWords(request.channel)}, until ${request.expires_at}.`,
+    summary: `${what}, ${throughWords(route)}, until ${request.expires_at}${from}.`,
     data: {
-      channel: request.channel,
+      delivery: route.kind === 'inbox' ? null : { server: route.delivery.server, tool: route.delivery.tool },
       to: cutParty(request.to),
+      ...(answerer === undefined ? {} : { answerer: cutParty(answerer) }),
       message_bytes: Buffer.byteLength(request.message, 'utf8'),
       takes_answer: answers,
       expires_at: request.expires_at,

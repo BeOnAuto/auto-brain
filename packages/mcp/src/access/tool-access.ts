@@ -3,7 +3,7 @@ import { Effect } from 'effect';
 import type { Timing } from '../bounds/call-bounds.ts';
 import type { RunTools } from '../calls/run-tools.ts';
 import type { LinkOptions } from '../connections/server-links.ts';
-import type { DeliveryCall, DeliveryCallEnded } from '../delivery/delivery-bounds.ts';
+import type { CalledOnce, DeliveryCall } from '../delivery/delivery-bounds.ts';
 import type { ToolServer } from '../listing/tool-server.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
 import {
@@ -14,6 +14,7 @@ import {
   type ServerToolLists,
 } from '../settings/mcp-settings.ts';
 import type { CallerContext, ServerMessage, ToolsNotOpened } from './caller-context.ts';
+import { namingOf, startsOf, type NamingCheck, type StartOf } from './entry-reads.ts';
 
 export interface ToolAccessOptions {
   readonly reportServerMessage: (report: ServerMessage) => void;
@@ -30,13 +31,15 @@ export interface ToolAccess {
     context: CallerContext,
     references: readonly ToolReference[],
   ) => Effect.Effect<RunTools, ToolsNotOpened>;
-  readonly callOnce: (call: DeliveryCall) => Effect.Effect<DeliveryCallEnded>;
+  readonly named: NamingCheck;
+  readonly startOf: StartOf;
+  readonly callOnce: (call: DeliveryCall) => Effect.Effect<CalledOnce>;
   readonly listServers: (scope: ServersScope, named?: string) => Effect.Effect<readonly ToolServer[]>;
   readonly brainsServedBy: (server: string) => readonly string[];
   readonly close: () => Promise<void>;
 }
 
-export type LinkedAccess = Omit<ToolAccess, 'brainsServedBy'>;
+export type LinkedAccess = Omit<ToolAccess, 'brainsServedBy' | 'named' | 'startOf'>;
 
 async function linked(settings: McpSettings, options: ToolAccessOptions): Promise<LinkedAccess> {
   const { linkedAccess } = await import('./linked-access.ts');
@@ -53,6 +56,8 @@ export function makeToolAccess(settings: McpSettings, options: ToolAccessOptions
     configured: settings.servers.length > 0,
     testing: settings.servers,
     open: (context, references) => Effect.flatMap(Effect.promise(loaded), (access) => access.open(context, references)),
+    named: namingOf(settings.servers),
+    startOf: startsOf(settings.servers),
     callOnce: (call) => Effect.flatMap(Effect.promise(loaded), (access) => access.callOnce(call)),
     listServers: (scope, named) =>
       settings.servers.some((server) => isListedFor(server, scope, named))

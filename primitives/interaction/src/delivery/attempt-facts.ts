@@ -1,44 +1,31 @@
-import { Buffer } from 'node:buffer';
-
-import { secretsOf } from '@beonauto/mcp';
-import { outboundBounds } from '@beonauto/outbound';
+import type { StartedFields } from '@beonauto/mcp';
 import type { DeliveryEndedFact, DeliveryStartedFact } from '@beonauto/specs';
 
-import type { ChannelSettings } from '../channels/channel-settings.ts';
 import { attemptInFlightMs } from '../requests/open-requests.ts';
 import type { OpenRequestRow } from '../requests/request-rows.ts';
-import { mostDetailBytes, type AttemptEnd, type AttemptFields } from './attempt-end.ts';
+import { attemptSchedule } from '../schedule/attempt-schedule.ts';
+import type { AttemptEnd } from './attempt-end.ts';
 
-function cutDetail(detail: string): string {
-  const bytes = Buffer.from(detail, 'utf8');
-  return bytes.length <= mostDetailBytes ? detail : new TextDecoder().decode(bytes.subarray(0, mostDetailBytes));
+export interface Attempting {
+  readonly number: number;
+  readonly target: string;
+  readonly server: string;
+  readonly tool: string;
 }
 
-export function startedFact(row: OpenRequestRow): DeliveryStartedFact {
-  return { type: 'delivery_started', number: row.attempts + 1, channel: row.channel, target: row.party };
+export function startedFact(attempting: Attempting, call?: StartedFields): DeliveryStartedFact {
+  const { number, target, server, tool } = attempting;
+  return { type: 'delivery_started', number, target, ...(call ?? { server, tool }) };
 }
 
-export function endedFact(
-  number: number,
-  { ended, answer }: AttemptEnd,
-  durationMs: number,
-  secrets: ChannelSettings['secrets'],
-): DeliveryEndedFact {
-  const { detail, ...fields } = ended;
-  return {
-    type: 'delivery_ended',
-    number,
-    ...fields,
-    ...(detail === undefined ? {} : { detail: cutDetail(secretsOf(secrets).scrub(detail)) }),
-    ...(answer === undefined ? {} : { answer }),
-    duration_ms: durationMs,
-  };
+export function endedFact(number: number, end: AttemptEnd, durationMs: number): DeliveryEndedFact {
+  return { type: 'delivery_ended', number, ...end, duration_ms: durationMs };
 }
 
 export function lostFact(row: OpenRequestRow): DeliveryEndedFact {
-  return endedFact(row.attempts, { ended: { outcome: 'failed', because: 'lost' } }, attemptInFlightMs, []);
+  return endedFact(row.attempts, { outcome: 'failed', because: 'lost' }, attemptInFlightMs);
 }
 
-export function isLastAttempt({ outcome }: AttemptFields, number: number): boolean {
-  return outcome === 'refused' || (outcome === 'failed' && number >= outboundBounds.attempts);
+export function isLastAttempt({ outcome }: Pick<AttemptEnd, 'outcome'>, number: number): boolean {
+  return outcome === 'refused' || (outcome === 'failed' && number >= attemptSchedule.attempts);
 }

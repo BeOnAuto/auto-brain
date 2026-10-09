@@ -497,9 +497,6 @@ importers:
         specifier: 'catalog:'
         version: 4.0.0
     devDependencies:
-      '@beonauto/outbound':
-        specifier: workspace:*
-        version: link:../outbound
       '@types/pg':
         specifier: 8.23.1
         version: 8.23.1
@@ -722,18 +719,12 @@ importers:
 
   primitives/interaction:
     dependencies:
-      '@beonauto/config':
-        specifier: workspace:*
-        version: link:../../packages/config
       '@beonauto/mcp':
         specifier: workspace:*
         version: link:../../packages/mcp
       '@beonauto/operations':
         specifier: workspace:*
         version: link:../../packages/operations
-      '@beonauto/outbound':
-        specifier: workspace:*
-        version: link:../../packages/outbound
       '@beonauto/specs':
         specifier: workspace:*
         version: link:../../packages/specs

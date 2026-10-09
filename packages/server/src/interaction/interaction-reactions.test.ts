@@ -30,7 +30,7 @@ const hurried = `do:
 
 describe('another workflow, triggered by the answer to a request', { timeout: workflowTestTimeoutMs }, () => {
   it('starts on the ending of the interaction function and reads the answer and who gave it', async () => {
-    const server = await servingInteractions('inbox');
+    const server = await servingInteractions();
     await server.call('POST', `${alpha}/specs/orchestration`, { body: { name: 'on-approval', source: onAnApproval } });
     const runId = await server.ask('approve-brief');
 
@@ -51,7 +51,7 @@ describe('another workflow, triggered by the answer to a request', { timeout: wo
 
 describe('a request a workflow step waits for past its deadline', { timeout: workflowTestTimeoutMs }, () => {
   it('is cancelled with the kind deadline, and leaves the inbox', async () => {
-    const server = await servingInteractions('inbox');
+    const server = await servingInteractions();
     const workflowId = await server.workflow('hurried', hurried);
 
     const [request] = await server.openRequests(1);

@@ -58,23 +58,22 @@ describe('the callers an MCP endpoint rejects before the MCP SDK runs', () => {
   });
 });
 
-describe('the answer token of a request at an MCP endpoint', () => {
+describe('credentials of a scheme the API does not know, at an MCP endpoint', () => {
   it.each(['/mcp', '/orgs/acme/mcp', '/orgs/acme/brains/alpha/mcp'])(
-    'refuses the answer token of a request on %s, which answers over HTTP alone',
+    'refuses a Request header on %s as a malformed Authorization header, as over HTTP',
     async (path) => {
       const { handler } = await operationServer();
 
       const answer = await postMcp(handler, path, { authorization: 'Request a-token-of-a-request' });
 
       expect({ status: answer.status, body: jsonOf(answer.text) }).toMatchObject({
-        status: 401,
+        status: 400,
         body: {
-          reason: 'unauthenticated',
-          detail:
-            'The answer token of a request answers it over HTTP alone, as Request <token>; MCP takes an API key, as Bearer <key>',
+          reason: 'bad_request',
+          detail: 'The Authorization header must hold exactly one API key, as Bearer <key>',
         },
       });
-      expect(answer.headers.get('www-authenticate')).toBe('Bearer error="invalid_token"');
+      expect(answer.headers.get('www-authenticate')).toBe('Bearer error="invalid_request"');
     },
   );
 });

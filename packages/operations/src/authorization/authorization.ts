@@ -1,7 +1,7 @@
 import { Effect, Predicate } from 'effect';
 
 import { canAccessBrain } from '../caller/brain-access.ts';
-import { requestTokenRefused, type CallerIdentity } from '../caller/caller.ts';
+import type { CallerIdentity } from '../caller/caller.ts';
 import { isBrainId, isOrgId } from '../caller/identifiers.ts';
 import type { OperationKind } from '../caller/operation-scope.ts';
 import type { Registration } from '../definition/registration.ts';
@@ -10,29 +10,20 @@ import { BrainRegistry, type BrainStatus } from '../ledger/brain-registry.ts';
 import { rejected, type Rejected } from '../outcome/outcome.ts';
 import { alternatives } from '../plain-language/phrasing.ts';
 
-function authorizesItself({ authorizesByToken }: Registration, { requestToken }: CallerIdentity): boolean {
-  return authorizesByToken !== undefined && requestToken !== undefined;
-}
-
 function rejectionOfCaller(registration: Registration, { caller, org }: OrgRequest): Rejected | undefined {
   if (caller.org !== org) {
     return rejected('forbidden', 'The caller does not belong to this org');
   }
   const { permissions } = registration;
-  return authorizesItself(registration, caller) ||
-    permissions.some((permission) => caller.permissions.includes(permission))
+  return permissions.some((permission) => caller.permissions.includes(permission))
     ? undefined
     : rejected('forbidden', `The caller lacks the ${alternatives(permissions)} permission`);
 }
 
 const brainUnnamed = 'The caller may access only some brains of this org; name one of them in brain';
 
-function rejectionOfBrainAccess(
-  registration: Registration,
-  caller: CallerIdentity,
-  brain: unknown,
-): Rejected | undefined {
-  if (authorizesItself(registration, caller) || canAccessBrain(caller.brains, brain)) {
+function rejectionOfBrainAccess(caller: CallerIdentity, brain: unknown): Rejected | undefined {
+  if (canAccessBrain(caller.brains, brain)) {
     return undefined;
   }
   return rejected('forbidden', brain === undefined ? brainUnnamed : 'The caller may not access this brain');
@@ -60,9 +51,7 @@ export function authorizeOrgCall(
 ): Effect.Effect<void, Rejected> {
   return failWith(
     rejectionOfCaller(registration, request) ??
-      (registration.targetsBrain
-        ? rejectionOfBrainAccess(registration, request.caller, brainFieldOf(request.input))
-        : undefined),
+      (registration.targetsBrain ? rejectionOfBrainAccess(request.caller, brainFieldOf(request.input)) : undefined),
   );
 }
 
@@ -70,9 +59,7 @@ export function authorizeBrainCall(
   registration: Registration<'brain'>,
   request: BrainRequest,
 ): Effect.Effect<void, Rejected> {
-  return failWith(
-    rejectionOfCaller(registration, request) ?? rejectionOfBrainAccess(registration, request.caller, request.brain),
-  );
+  return failWith(rejectionOfCaller(registration, request) ?? rejectionOfBrainAccess(request.caller, request.brain));
 }
 
 export function confirmOrgExists({ org }: OrgRequest): Effect.Effect<void, Rejected> {
@@ -88,25 +75,11 @@ function rejectionOfBrainStatus(status: BrainStatus, kind: OperationKind, brain:
     : undefined;
 }
 
-const brainTakesCall = Effect.fnUntraced(function* ({ kind }: Registration<'brain'>, { org, brain }: BrainRequest) {
+export const confirmBrainTakesCall = Effect.fnUntraced(function* (
+  { kind }: Registration<'brain'>,
+  { org, brain }: BrainRequest,
+) {
   yield* failWith(rejectionOfOrgId(org) ?? rejectionOfBrainId(brain));
   const status = yield* (yield* BrainRegistry).status({ org, brain });
   return yield* failWith(rejectionOfBrainStatus(status, kind, brain));
 });
-
-const tokenRefused = rejected('forbidden', requestTokenRefused);
-
-export function confirmBrainTakesCall(registration: Registration<'brain'>, request: BrainRequest) {
-  const confirmed = brainTakesCall(registration, request);
-  const { authorizesByToken } = registration;
-  const { requestToken } = request.caller;
-  if (authorizesByToken === undefined || requestToken === undefined) {
-    return confirmed;
-  }
-  return registration
-    .checkInput(request.input, request.encoding)
-    .pipe(
-      Effect.andThen(failWith(authorizesByToken(requestToken) ? undefined : tokenRefused)),
-      Effect.andThen(Effect.mapError(confirmed, () => tokenRefused)),
-    );
-}

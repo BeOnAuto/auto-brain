@@ -1,4 +1,4 @@
-import type { Ledger, RunOutcomeMapping, RunProjection } from '@beonauto/operations';
+import type { Ledger, RunOutcomeMapping, KeyedProjection } from '@beonauto/operations';
 import type { Layer } from 'effect';
 import { onTestFinished } from 'vitest';
 
@@ -13,7 +13,7 @@ export interface LedgerEntry {
   readonly ledgerOn: (
     database: string,
     runOutcomes?: RunOutcomeMapping,
-    projections?: readonly RunProjection[],
+    projections?: readonly KeyedProjection[],
   ) => Layer.Layer<Ledger>;
   readonly storeOn: (database: string) => LedgerStore;
   readonly untilReadable: (database: string) => Promise<void>;
@@ -28,7 +28,7 @@ export async function aLedger(
   entry: LedgerEntry,
   database?: string,
   runOutcomes?: RunOutcomeMapping,
-  projections?: readonly RunProjection[],
+  projections?: readonly KeyedProjection[],
 ): Promise<Ledger['Service']> {
   const { ledger, dispose } = await openLedgerWith(
     entry.ledgerOn(database ?? (await entry.aDatabase()), runOutcomes, projections),

@@ -1,6 +1,6 @@
 import { Schema } from 'effect';
 
-const CallOutcomeSchema = Schema.Literals(['result', 'tool_error', 'server_failure', 'timed_out', 'cancelled']);
+export const CallOutcomeSchema = Schema.Literals(['result', 'tool_error', 'server_failure', 'timed_out', 'cancelled']);
 
 export const CallStartedSchema = Schema.Struct({
   type: Schema.Literal('tool_call_started'),

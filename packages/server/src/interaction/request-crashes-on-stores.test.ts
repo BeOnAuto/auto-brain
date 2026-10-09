@@ -1,12 +1,15 @@
 import { randomUUID } from 'node:crypto';
 
-import { defineAnswerInteraction, noChannels, openRequests } from '@beonauto/interaction';
+import { answerInteraction, openRequests } from '@beonauto/interaction';
 import {
-  deliveryEndedBeforeSettling,
   askedRunId,
-  askedThroughPartner,
+  askedThroughChat,
   attemptedThenStopped,
+  broughtBeforeSettling,
+  recordedReply,
+  takenReply,
   type HarnessLedger,
+  type InteractionHarness,
 } from '@beonauto/interaction/testing';
 import { postgresqlLedgerLayer } from '@beonauto/ledger/postgresql';
 import { ledgerLayer } from '@beonauto/ledger/sqlite3';
@@ -69,26 +72,36 @@ const stores: readonly Store[] = [
   { store: `PostgreSQL${notice}`, skipped: postgresql === '', aLedger: onPostgreSQL },
 ];
 
-describe.each(stores)(
-  'a server that stopped between a delivery and its settlement, on $store',
-  ({ skipped, aLedger }) => {
-    it.skipIf(skipped)('settles an answer given within the delivery from its end, after the expiry too', async () => {
-      const asked = await askedThroughPartner({ answers: true, ledger: await aLedger() });
-      asked.receiver.answerWith({ status: 200, body: JSON.stringify({ choice: 'approve' }) });
+const approved = {
+  output: {
+    status: 'succeeded',
+    output: { choice: 'approve' },
+    record: { answered_by: 'brain:alpha', reply: takenReply },
+  },
+};
 
-      const stopped = await attemptedThenStopped(asked);
+function replyTaken(brain: InteractionHarness): Promise<unknown> {
+  return recordedReply(brain.ledger, { choice: 'approve' });
+}
+
+describe.each(stores)(
+  'a server that stopped between a reply or a delivery and its settlement, on $store',
+  ({ skipped, aLedger }) => {
+    it.skipIf(skipped)('settles an answer a reply brought from the reply, after the expiry too', async () => {
+      const asked = await askedThroughChat({ ledger: await aLedger() });
+      await asked.brain.performDue(asked.askedAt);
+      await replyTaken(asked.brain);
+
       const afterStop = await asked.brain.firstOpen();
       await asked.brain.performDue(asked.askedAt + 3 * days);
 
-      expect([stopped, afterStop]).toMatchObject([true, { standing: 'answered' }]);
-      expect(await asked.brain.runOf(askedRunId)).toMatchObject({
-        output: { status: 'succeeded', output: { choice: 'approve' }, record: { answered_by: 'channel:partner' } },
-      });
-      expect(asked.receiver.received()).toHaveLength(1);
+      expect(afterStop).toMatchObject({ standing: 'answered' });
+      expect(await asked.brain.runOf(askedRunId)).toMatchObject(approved);
+      expect(asked.tools.calls()).toHaveLength(1);
     });
 
     it.skipIf(skipped)('succeeds a delivered notification from the end of its delivery', async () => {
-      const asked = await askedThroughPartner({ notification: true, ledger: await aLedger() });
+      const asked = await askedThroughChat({ notification: true, ledger: await aLedger() });
 
       await attemptedThenStopped(asked);
       await asked.brain.performDue(Date.now());
@@ -96,52 +109,44 @@ describe.each(stores)(
       expect(await asked.brain.runOf(askedRunId)).toMatchObject({
         output: { status: 'succeeded', output: {}, record: { delivered_at: anyTime } },
       });
-      expect(asked.receiver.received()).toHaveLength(1);
+      expect(asked.tools.calls()).toHaveLength(1);
     });
   },
 );
 
-const approved = {
-  output: { status: 'succeeded', output: { choice: 'approve' }, record: { answered_by: 'channel:partner' } },
-};
+describe.each(stores)('a reply taken while another settlement is under way, on $store', ({ skipped, aLedger }) => {
+  it.skipIf(skipped)('refuses an answer given meanwhile, and the run settles with the reply’s', async () => {
+    const racing = broughtBeforeSettling(await aLedger(), { choice: 'approve' });
+    const asked = await askedThroughChat({ ledger: racing.ledger });
+    await racing.started();
 
-describe.each(stores)(
-  'a delivery that ends with its answer while another settlement is under way, on $store',
-  ({ skipped, aLedger }) => {
-    it.skipIf(skipped)('refuses an answer given meanwhile, and the run settles with the delivery’s', async () => {
-      const racing = deliveryEndedBeforeSettling(await aLedger(), { choice: 'approve' });
-      const asked = await askedThroughPartner({ answers: true, ledger: racing.ledger });
-      await racing.started();
-
-      const meanwhile = await asked.brain.call(defineAnswerInteraction(noChannels), {
-        execution_id: askedRunId,
-        answer: { choice: 'reject' },
-      });
-      await asked.brain.performDue(Date.now());
-
-      expect(meanwhile).toMatchObject({ status: 'rejected', reason: 'conflict' });
-      expect(await asked.brain.runOf(askedRunId)).toMatchObject(approved);
+    const meanwhile = await asked.brain.call(answerInteraction, {
+      execution_id: askedRunId,
+      answer: { choice: 'reject' },
     });
+    await asked.brain.performDue(Date.now());
 
-    it.skipIf(skipped)('settles a cancel under way with the delivery’s answer, read again once refused', async () => {
-      const racing = deliveryEndedBeforeSettling(await aLedger(), { choice: 'approve' });
-      const asked = await askedThroughPartner({ answers: true, ledger: racing.ledger });
-      await racing.started();
+    expect(meanwhile).toMatchObject({ status: 'rejected', reason: 'conflict' });
+    expect(await asked.brain.runOf(askedRunId)).toMatchObject(approved);
+  });
 
-      await asked.brain.cancel(askedRunId);
-      await racing.cancelSettled(asked.brain.primitive);
+  it.skipIf(skipped)('settles a cancel asked after the reply with the reply’s answer', async () => {
+    const asked = await askedThroughChat({ ledger: await aLedger() });
+    await replyTaken(asked.brain);
 
-      expect(await asked.brain.runOf(askedRunId)).toMatchObject(approved);
-    });
-  },
-);
+    await asked.brain.cancel(askedRunId);
+    await asked.brain.performDue(Date.now());
+
+    expect(await asked.brain.runOf(askedRunId)).toMatchObject(approved);
+  });
+});
 
 describe.each(stores)(
   'a notification delivered while a cancel of its run is under way, on $store',
   ({ skipped, aLedger }) => {
     it.skipIf(skipped)('succeeds as delivered, the cancel reading the run again once it changed', async () => {
-      const racing = deliveryEndedBeforeSettling(await aLedger());
-      const asked = await askedThroughPartner({ notification: true, ledger: racing.ledger });
+      const racing = broughtBeforeSettling(await aLedger());
+      const asked = await askedThroughChat({ notification: true, ledger: racing.ledger });
       await racing.started();
 
       await asked.brain.cancel(askedRunId);

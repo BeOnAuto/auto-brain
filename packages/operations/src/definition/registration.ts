@@ -26,13 +26,11 @@ export interface RegistrationOf<S extends OperationScope, K extends OperationKin
   readonly mayChangeOutside: boolean;
   readonly irreversible: boolean;
   readonly repeatable: boolean;
-  readonly authorizesByToken: ((token: string) => boolean) | undefined;
   readonly permissions: readonly Permission[];
   readonly reasons: readonly DeclarableReason[];
   readonly input: JsonSchemaDocument;
   readonly plainLanguage?: RegisteredPlainLanguage;
   readonly run: (input: unknown, encoding: InputEncoding) => Effect.Effect<Succeeded, Rejected, HandlerServices<S, K>>;
-  readonly checkInput: (input: unknown, encoding: InputEncoding) => Effect.Effect<void, Rejected>;
 }
 
 export type Registration<S extends OperationScope = OperationScope> = {

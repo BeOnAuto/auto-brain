@@ -13,7 +13,7 @@ import {
   type Outcome,
   type PipelineStep,
   type RunOutcomeMapping,
-  type RunProjection,
+  type KeyedProjection,
   type Settled,
 } from '../index.ts';
 import { memoryBrainRegistry } from './memory-brain-registry.ts';
@@ -26,7 +26,7 @@ export interface HarnessOptions {
   readonly brains?: readonly BrainAddress[];
   readonly retiredBrains?: readonly BrainAddress[];
   readonly runOutcomes?: RunOutcomeMapping;
-  readonly projections?: readonly RunProjection[];
+  readonly projections?: readonly KeyedProjection[];
 }
 
 export interface Harness {

@@ -30,7 +30,7 @@ function causesIn(history: unknown): readonly (readonly [string, string | null |
 
 export interface InteractionServer extends ReasoningServer {
   readonly ask: (name: string) => Promise<string>;
-  readonly answer: (runId: string, body: unknown, authorization?: string) => ReturnType<ReasoningServer['call']>;
+  readonly answer: (runId: string, body: unknown) => ReturnType<ReasoningServer['call']>;
   readonly settled: (runId: string) => Promise<unknown>;
   readonly workflow: (name: string, steps: string) => Promise<string>;
   readonly openRequests: (count: number) => Promise<readonly string[]>;
@@ -58,11 +58,7 @@ export async function interactionServerOn(environment: Readonly<Record<string, s
       });
       return executionIdIn(started.body);
     },
-    answer: (runId, body, authorization) =>
-      server.call('POST', `${alpha}/executions/${runId}/answer`, {
-        body,
-        ...(authorization === undefined ? {} : { authorization }),
-      }),
+    answer: (runId, body) => server.call('POST', `${alpha}/executions/${runId}/answer`, { body }),
     settled: async (runId) => (await settledExecution(server, `${alpha}/executions/${runId}`)).body,
     workflow: async (name, steps) => {
       await server.call('POST', `${alpha}/specs/orchestration`, {
@@ -85,16 +81,16 @@ export async function interactionServerOn(environment: Readonly<Record<string, s
 }
 
 export async function servingInteractions(
-  channel: string,
+  delivery: readonly string[] = [],
   environment: Readonly<Record<string, string>> = {},
 ): Promise<InteractionServer> {
   const server = await interactionServerOn(environment);
   await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
   await server.call('POST', `${alpha}/specs/interaction`, {
-    body: { name: 'approve-brief', source: approvalDocument(channel) },
+    body: { name: 'approve-brief', source: approvalDocument(delivery) },
   });
   await server.call('POST', `${alpha}/specs/interaction`, {
-    body: { name: 'brief-out', source: notificationDocument(channel) },
+    body: { name: 'brief-out', source: notificationDocument(delivery) },
   });
   return server;
 }

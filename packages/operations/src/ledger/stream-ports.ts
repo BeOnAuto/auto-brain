@@ -4,7 +4,7 @@ import type { BrainAddress } from '../caller/brain-context.ts';
 import type { Conflict } from '../outcome/conflict.ts';
 import type { InvalidInput } from '../outcome/invalid-input.ts';
 import type { DeclarableReason, Rejection } from '../outcome/rejection.ts';
-import type { ProjectionReader } from '../projections/run-projection.ts';
+import type { ProjectionAdvancer, ProjectionReader } from '../projections/keyed-projection.ts';
 import type { InvalidCursor, RecordedPage, RecordedPageRequest, RecordedSelection } from '../reading/recorded-read.ts';
 import type { RunOutcomeGroup, RunOutcomeSelection, RunOutcomeWindow } from '../run-outcomes/run-outcomes.ts';
 import type { Decider, StreamState, TypedEvent } from './decider.ts';
@@ -49,7 +49,12 @@ export interface RunOutcomesReader {
   ) => Effect.Effect<readonly RunOutcomeGroup[]>;
 }
 
-export type LedgerPorts = StreamReader & StreamWriter & RecordedReader & RunOutcomesReader & ProjectionReader;
+export type LedgerPorts = StreamReader &
+  StreamWriter &
+  RecordedReader &
+  RunOutcomesReader &
+  ProjectionReader &
+  ProjectionAdvancer;
 
 export interface BrainRunOutcomesReader {
   readonly readRunOutcomes: (

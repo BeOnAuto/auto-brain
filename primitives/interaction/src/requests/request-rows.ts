@@ -1,6 +1,9 @@
 import type { ProjectedRow } from '@beonauto/operations';
 import { Option, Schema } from 'effect';
 
+import { RepliesSchema } from '../route/route-schemas.ts';
+import { routeOf, type Route } from '../route/routes.ts';
+
 export const StandingSchema = Schema.Literals([
   'in_inbox',
   'to_deliver',
@@ -17,7 +20,8 @@ const OpenRequestRowSchema = Schema.Struct({
   function: Schema.String,
   version: Schema.Int,
   party: Schema.String,
-  channel: Schema.String,
+  delivery: Schema.NullOr(Schema.String),
+  replies: Schema.NullOr(Schema.String),
   message: Schema.String,
   answers: Schema.Boolean,
   answer_schema: Schema.NullOr(Schema.String),
@@ -30,6 +34,13 @@ const OpenRequestRowSchema = Schema.Struct({
   attempt_due_at: Schema.NullOr(Schema.Int),
   ending_due_at: Schema.NullOr(Schema.Int),
   ended: Schema.NullOr(Schema.String),
+  conversation: Schema.NullOr(Schema.String),
+  sent_conversation: Schema.NullOr(Schema.String),
+  sent_id: Schema.NullOr(Schema.String),
+  answerer: Schema.NullOr(Schema.String),
+  reply: Schema.NullOr(Schema.String),
+  reply_refusals: Schema.Int,
+  refusals_told: Schema.Int,
 });
 
 export type OpenRequestRow = typeof OpenRequestRowSchema.Type;
@@ -42,14 +53,14 @@ export function requestRowOf(row: ProjectedRow | undefined): OpenRequestRow | un
   return row === undefined ? undefined : Option.getOrUndefined(decodeRow(row));
 }
 
-export function settlesFromDelivery({ answers, standing }: Pick<OpenRequestRow, 'answers' | 'standing'>): boolean {
+export function settlesFromBroughtAnswer({ answers, standing }: Pick<OpenRequestRow, 'answers' | 'standing'>): boolean {
   return standing === 'answered' || (!answers && standing === 'delivered');
 }
 
 export type UndueRequestRow = Omit<OpenRequestRow, 'attempt_due_at' | 'ending_due_at'>;
 
 function settlesNow(row: UndueRequestRow): boolean {
-  return settlesFromDelivery(row) || (!row.answers && row.standing === 'undelivered');
+  return settlesFromBroughtAnswer(row) || (!row.answers && row.standing === 'undelivered');
 }
 
 function stillDue(row: UndueRequestRow): boolean {
@@ -70,4 +81,14 @@ export function endingDueAtOf(row: UndueRequestRow): number | null {
   }
   const lostAt = row.standing === 'delivering' ? row.next_attempt_at : null;
   return Math.min(row.expires_at, lostAt ?? Number.POSITIVE_INFINITY);
+}
+
+const decodeDelivery = Schema.decodeUnknownSync(
+  Schema.NullOr(Schema.fromJsonString(Schema.Struct({ server: Schema.String, tool: Schema.String }))),
+);
+
+const decodeReplies = Schema.decodeUnknownSync(Schema.NullOr(Schema.fromJsonString(RepliesSchema)));
+
+export function routeOfRow({ delivery, replies }: Pick<OpenRequestRow, 'delivery' | 'replies'>): Route {
+  return routeOf({ deliver: decodeDelivery(delivery) ?? undefined, replies: decodeReplies(replies) ?? undefined });
 }

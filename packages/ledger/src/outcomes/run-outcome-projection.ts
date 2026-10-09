@@ -3,11 +3,11 @@ import {
   type ProjectedRow,
   type RunOutcome,
   type RunOutcomeMapping,
-  type RunProjection,
+  type KeyedProjection,
 } from '@beonauto/operations';
 import { Schema } from 'effect';
 
-const runOutcomesVersion = 1;
+const runOutcomesVersion = 2;
 
 export const runOutcomesTable = `run_outcomes_${runOutcomesVersion}`;
 
@@ -57,10 +57,11 @@ function rowOf(outcome: RunOutcome): ProjectedRow {
   };
 }
 
-function runOutcomeProjectionOf({ types, rowAfter }: RunOutcomeMapping): RunProjection {
+function runOutcomeProjectionOf({ types, rowAfter }: RunOutcomeMapping): KeyedProjection {
   return {
     name: 'run_outcomes',
     version: runOutcomesVersion,
+    kinds: ['executions'],
     types,
     columns: [
       { name: 'started_day', kind: 'text' },
@@ -84,7 +85,7 @@ function runOutcomeProjectionOf({ types, rowAfter }: RunOutcomeMapping): RunProj
 
 export function keptProjections(
   runOutcomes: RunOutcomeMapping | undefined,
-  projections: readonly RunProjection[],
-): readonly RunProjection[] {
+  projections: readonly KeyedProjection[],
+): readonly KeyedProjection[] {
   return [...(runOutcomes === undefined ? [] : [runOutcomeProjectionOf(runOutcomes)]), ...projections];
 }

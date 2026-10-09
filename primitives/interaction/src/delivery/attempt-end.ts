@@ -1,12 +1,11 @@
+import type { AnsweredOnce, CalledOnce } from '@beonauto/mcp';
 import type { DeliveryEndedFact } from '@beonauto/specs';
-import type { Schema } from 'effect';
 
-export type AttemptFields = Omit<DeliveryEndedFact, 'type' | 'number' | 'duration_ms'>;
+import type { DeliveringRecord } from '../run/request-record.ts';
+import { endOfCall } from './call-ends.ts';
+import { keptOf } from './sent-messages.ts';
 
-export interface AttemptEnd {
-  readonly ended: AttemptFields;
-  readonly answer?: Schema.Json;
-}
+export type AttemptEnd = Omit<DeliveryEndedFact, 'type' | 'number' | 'duration_ms'>;
 
 export interface RequestAddress {
   readonly org: string;
@@ -14,8 +13,31 @@ export interface RequestAddress {
   readonly id: string;
 }
 
-export const mostDetailBytes = 1024;
+function detailOf(detail: string) {
+  return detail === '' ? {} : { detail };
+}
 
-export function endedAs(ended: AttemptFields): AttemptEnd {
-  return { ended };
+function endOfAnswer(called: AnsweredOnce, record: DeliveringRecord): AttemptEnd {
+  const end = endOfCall(called);
+  if ('answered' in end) {
+    return { outcome: 'delivered', ...called.fields, ...keptOf(record, end.answered) };
+  }
+  const { because, retryAfterMs, detail } = end.failed;
+  return {
+    outcome: 'failed',
+    because,
+    ...(retryAfterMs === null ? {} : { retry_after_ms: retryAfterMs }),
+    ...detailOf(detail),
+    ...called.fields,
+  };
+}
+
+export function endOf(called: CalledOnce, record: DeliveringRecord): AttemptEnd {
+  if (called.kind === 'not_offered') {
+    return { outcome: 'failed', because: 'tool_not_offered', ...detailOf(called.detail) };
+  }
+  if (called.kind === 'unopened') {
+    return { outcome: 'failed', because: 'server_failure', ...detailOf(called.detail) };
+  }
+  return endOfAnswer(called, record);
 }

@@ -1,4 +1,4 @@
-import { JsonPointer, Predicate, Result, SchemaIssue, type Schema, type StandardSchema } from 'effect';
+import { Predicate, Result, SchemaIssue, type Schema, type StandardSchema } from 'effect';
 
 import { issueAt, type DocumentIssue, type SourceLines } from './document-issue.ts';
 import { readFrontMatter } from './front-matter-reading.ts';
@@ -29,20 +29,25 @@ function isPropertyKey(segment: IssueSegment): segment is PropertyKey {
   return typeof segment !== 'object';
 }
 
+function sectionAt(root: Schema.JsonObject, path: readonly string[]): unknown {
+  return path.reduce<unknown>((value, key) => (Predicate.isObject(value) ? Reflect.get(value, key) : undefined), root);
+}
+
 function unknownKeyIssues(
   root: Schema.JsonObject,
   lines: SourceLines,
   sections: readonly FrontMatterSection[],
 ): readonly DocumentIssue[] {
   return sections.flatMap(({ name, keys }) => {
-    const section = name === undefined ? root : root[name];
+    const path = name === undefined ? [] : name.split('.');
+    const section = sectionAt(root, path);
     const unknown = Predicate.isObject(section) && !Array.isArray(section) ? Object.keys(section) : [];
     return unknown
       .filter((key) => !keys.includes(key))
       .map((key) =>
         issueAt(
           lines,
-          `${name === undefined ? '' : `/${name}`}/${JsonPointer.escapeToken(key)}`,
+          pointerOf([...path, key]),
           `${key} is not a key of ${name ?? 'the front matter'}; it takes ${keys.join(', ')}`,
         ),
       );

@@ -37,6 +37,7 @@ Setup work that couldn't be finished yet, and why.
 ## Local databases
 
 - [ ] **Delete every local ledger made before several triggers.** The host keeps one row a trigger now, in a `workflow_subscriptions` keyed by brain, workflow and trigger, and does not migrate the old table, since nothing is live. Delete `packages/server/.data/ledger.db` for `pnpm dev`, or the file `LEDGER_FILE` names, or the PostgreSQL database `DATABASE_URL` names. Kept, such a database fails every round of the host's follower: no trigger starts a run, no listening run is offered an event and no waiting call is answered.
+- [ ] **Delete every local ledger made before an interaction function named the tool it sends through.** A request's record and its delivery facts changed shape, the open requests moved to `open_requests_4` and the conversations the brain reads have a table of their own, and nothing reads the old shape, since nothing is live. Delete `packages/server/.data/ledger.db` for `pnpm dev`, or the file `LEDGER_FILE` names, or the PostgreSQL database `DATABASE_URL` names. Kept, such a database holds runs that wait on requests no attempt delivers and no listing shows.
 
 ## Tests
 

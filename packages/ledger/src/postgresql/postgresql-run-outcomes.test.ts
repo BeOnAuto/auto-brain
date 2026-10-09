@@ -77,7 +77,7 @@ function aLedgerWithOneRun(tables: readonly string[]): Answers {
 }
 
 const keptRow =
-  'INSERT INTO run_outcomes_1 (brain_key, run_id, started_day, started_at, last_started_at, primitive, name, status, duration_ms, input_tokens, output_tokens, cached_tokens) VALUES ("brain/acme/alpha/", "r1", "2026-10-01", "2026-10-01T09:00:00.000Z", "2026-10-01T09:00:00.000Z", "tally", "triage", "started", null, null, null, null) ON CONFLICT (brain_key, run_id) DO UPDATE SET started_day = excluded.started_day,';
+  'INSERT INTO run_outcomes_2 (brain_key, row_key, started_day, started_at, last_started_at, primitive, name, status, duration_ms, input_tokens, output_tokens, cached_tokens) VALUES ("brain/acme/alpha/", "r1", "2026-10-01", "2026-10-01T09:00:00.000Z", "2026-10-01T09:00:00.000Z", "tally", "triage", "started", null, null, null, null) ON CONFLICT (brain_key, row_key) DO UPDATE SET started_day = excluded.started_day,';
 
 describe('the table of the outcomes of runs on PostgreSQL, as the ledger opens', () => {
   it("is created after the brain's indexes, filled from the stored run streams, and analysed", async () => {
@@ -86,16 +86,16 @@ describe('the table of the outcomes of runs on PostgreSQL, as the ledger opens',
     await tallied.afterTheSchema({ execute });
 
     expect(commands.map((command) => command.split(' ').slice(0, 6).join(' '))).toEqual([
-      'CREATE TABLE IF NOT EXISTS run_outcomes_1',
-      'CREATE INDEX IF NOT EXISTS run_outcomes_1_by_brain_and_day',
-      'INSERT INTO run_outcomes_1 (brain_key, run_id, started_day,',
-      'ANALYZE run_outcomes_1',
+      'CREATE TABLE IF NOT EXISTS run_outcomes_2',
+      'CREATE INDEX IF NOT EXISTS run_outcomes_2_by_brain_and_day',
+      'INSERT INTO run_outcomes_2 (brain_key, row_key, started_day,',
+      'ANALYZE run_outcomes_2',
     ]);
     expect(commands[2]?.startsWith(keptRow)).toBe(true);
   });
 
   it('is left as it is when it is found, and never made by a ledger without the projection', async () => {
-    const found = recording(aLedgerWithOneRun(['run_outcomes_1']));
+    const found = recording(aLedgerWithOneRun(['run_outcomes_2']));
     const without = recording(aLedgerWithOneRun([]));
 
     await tallied.afterTheSchema({ execute: found.execute });

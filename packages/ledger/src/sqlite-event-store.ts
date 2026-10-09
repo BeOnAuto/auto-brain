@@ -37,7 +37,10 @@ export function sqliteEventStore<Driver extends AnyDriver>(
   return {
     ...streams,
     ...sqliteRecordedStore(pool.execute),
-    ...projections.readerOn(async (sql) => (await pool.execute.query(sql)).rows),
+    ...projections.readerOn({
+      query: async (sql) => (await pool.execute.query(sql)).rows,
+      command: (sql) => pool.execute.command(sql),
+    }),
     readRunOutcomes: sqliteRunOutcomesOf(kept.runOutcomes, pool.execute),
     migrate: async () => {
       await streams.migrate();

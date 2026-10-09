@@ -1,27 +1,23 @@
 import { recordedRunIn, type Settlement } from '@beonauto/specs';
 import { Clock, Effect } from 'effect';
 
-import { channelFor } from '../channels/channel-settings.ts';
-import { attemptOf } from '../delivery/attempt-delivery.ts';
+import { deliveredOnce } from '../delivery/attempt-delivery.ts';
 import type { AttemptEnd } from '../delivery/attempt-end.ts';
-import { endedFact, isLastAttempt, lostFact, startedFact } from '../delivery/attempt-facts.ts';
-import { requestRecordOf } from '../run/request-record.ts';
+import { endedFact, isLastAttempt, lostFact } from '../delivery/attempt-facts.ts';
+import { routeOfRow } from '../requests/request-rows.ts';
+import { deliveringRecordOf } from '../run/request-record.ts';
 import type { DeliveryParts, DueRequest } from './delivery-parts.ts';
-import { answeredSettlement, deliveredSettlement, undeliveredSettlement } from './request-endings.ts';
+import { deliveredSettlement, undeliveredSettlement } from './request-endings.ts';
 import { recordedCall, settled } from './request-ledger.ts';
 
-function settlementAfter(request: DueRequest, number: number, end: AttemptEnd, at: string): Settlement | undefined {
-  const { row } = request;
-  if (end.answer !== undefined) {
-    return answeredSettlement(row.channel, end.answer, at);
-  }
+function settlementAfter({ row }: DueRequest, number: number, end: AttemptEnd, at: string): Settlement | undefined {
   if (row.answers) {
     return undefined;
   }
-  if (end.ended.outcome === 'delivered') {
+  if (end.outcome === 'delivered') {
     return deliveredSettlement(at);
   }
-  return isLastAttempt(end.ended, number) ? undeliveredSettlement(row) : undefined;
+  return isLastAttempt(end, number) ? undeliveredSettlement(routeOfRow(row)) : undefined;
 }
 
 interface Ended {
@@ -43,20 +39,25 @@ export function nextAttempt(parts: DeliveryParts, request: DueRequest): Effect.E
   const { address, row, lineage } = request;
   return Effect.gen(function* () {
     const recorded = yield* recordedRunIn(parts.ledger, address);
-    const start = startedFact(row);
-    const startedCall =
-      recorded?.awaitsSettlement === true ? yield* recordedCall(parts.ledger, address, start, lineage) : undefined;
-    if (recorded === undefined || startedCall === undefined) {
+    if (recorded?.awaitsSettlement !== true) {
       return;
     }
-    const startedId = startedCall.id;
+    const record = deliveringRecordOf(recorded.run.record);
+    const { server, tool } = record.deliver;
+    const attempting = { number: row.attempts + 1, target: row.party, server, tool };
     const began = yield* Clock.currentTimeMillis;
-    const answerSchema = requestRecordOf(recorded.run.record)?.answer_schema;
-    const end = yield* attemptOf(parts, channelFor(parts.channels, row.channel, address), request, answerSchema);
-    const ended = endedFact(start.number, end, (yield* Clock.currentTimeMillis) - began, parts.channels.secrets);
-    const endedCall = yield* recordedCall(parts.ledger, address, ended, { ...lineage, causationId: startedId });
-    const settling = { ...request, lineage: { ...lineage, causationId: endedCall?.id ?? startedId } };
+    const delivered = yield* deliveredOnce(parts, { request, record, input: recorded.input, attempting });
+    if (delivered === undefined) {
+      return;
+    }
+    const { number } = attempting;
+    const ended = endedFact(number, delivered.end, (yield* Clock.currentTimeMillis) - began);
+    const endedCall = yield* recordedCall(parts.ledger, address, ended, {
+      ...lineage,
+      causationId: delivered.startedId,
+    });
+    const settling = { ...request, lineage: { ...lineage, causationId: endedCall?.id ?? delivered.startedId } };
     const at = endedCall?.at ?? new Date(yield* Clock.currentTimeMillis).toISOString();
-    yield* settledAfter(parts, settling, { number: start.number, end, at });
+    yield* settledAfter(parts, settling, { number, end: delivered.end, at });
   });
 }

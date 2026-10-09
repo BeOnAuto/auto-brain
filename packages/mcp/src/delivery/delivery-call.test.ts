@@ -1,238 +1,129 @@
-import { once } from 'node:events';
-import { createServer } from 'node:http';
+import { Buffer } from 'node:buffer';
 
-import { Effect, Function, Result, Schema } from 'effect';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import { toolBounds } from '../bounds/call-bounds.ts';
 import {
-  patientTiming,
-  recordingCallJournal,
-  reportingAccess,
-  serveFakeMcp,
-  toolRun,
-  type FakeMcpServer,
-} from '../testing/index.ts';
-import { deliveryBounds, type DeliveryCall } from './delivery-bounds.ts';
+  calledOnce,
+  delivery,
+  deliveredRunId,
+  deliveryAccess,
+  deliveryId,
+  deliveryKey,
+  deliveryServer,
+  failedWith,
+} from '../testing/delivery-calls.ts';
+import { deliveryBounds } from './delivery-bounds.ts';
 
-const apiKey = 'graph-api-key-4f1d9a7c2b';
+const largeText = '\u{1F600}'.repeat(8 * 256);
 
-const portOf = Schema.decodeUnknownSync(Schema.Struct({ port: Schema.Number }));
+const largeAnswerBytes = Buffer.byteLength(JSON.stringify({ content: [{ type: 'text', text: largeText }] }));
 
-const closing: (() => Promise<void>)[] = [];
+const aDigest: unknown = expect.stringMatching(/^[0-9a-f]{64}$/u);
 
-afterEach(async () => {
-  await Promise.all(closing.splice(0).map((close) => close()));
-});
+const aNumber: unknown = expect.any(Number);
 
-async function fakeServer(): Promise<FakeMcpServer> {
-  const fake = await serveFakeMcp({ bearer: apiKey });
-  closing.push(fake.close);
-  return fake;
-}
-
-function accessTo(url: string, changes: Readonly<Record<string, unknown>> = {}, callMs = patientTiming.callMs) {
-  const { access } = reportingAccess(
-    {
-      graph: {
-        url,
-        headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' },
-        org: 'acme',
-        allowed: ['echo', 'denied', 'sleep', 'large', 'search', 'gone'],
-        ...changes,
-      },
-    },
-    { environment: { GRAPH_API_KEY: apiKey }, timing: { ...patientTiming, callMs } },
-  );
-  closing.push(access.close);
-  return access;
-}
-
-const largeAnswer = JSON.stringify({ content: [{ type: 'text', text: '\u{1F600}'.repeat(8 * 256) }] });
-
-const largeAnswerBytes = Buffer.byteLength(largeAnswer);
-
-const answerOpening = '{"content":[{"type":"text","text":"';
-
-const largeAnswerKept = `${answerOpening}${'\u{1F600}'.repeat(Math.floor((deliveryBounds.resultBytes - answerOpening.length) / 4))}`;
-
-const toolErrorDetail: unknown = expect.stringContaining('The field salary is denied by the policy');
-
-const toolMissingDetail: unknown = expect.stringContaining('Tool gone not found');
-
-const delivery: DeliveryCall = {
-  org: 'acme',
-  brain: 'alpha',
-  executionId: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
-  deliveryId: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a',
-  reference: { server: 'graph', tool: 'echo' },
-  input: { channel: '#approvals', text: 'Please approve' },
-};
-
-function calledOnce(access: ReturnType<typeof accessTo>, changes: Partial<DeliveryCall> = {}) {
-  return Effect.runPromise(access.callOnce({ ...delivery, ...changes }));
-}
+const scrubbed = JSON.stringify({ token: '[redacted]' });
 
 describe('one call of a tool for a delivery', () => {
-  it('calls the tool with its arguments as they are, naming the run and the delivery so a receiver can deduplicate', async () => {
-    const fake = await fakeServer();
-    const access = accessTo(fake.url);
+  it('calls the tool with its arguments and the metadata its caller gives, and answers the call whole', async () => {
+    const fake = await deliveryServer();
+    const access = deliveryAccess(fake.url);
 
     expect(await calledOnce(access)).toEqual({
+      kind: 'answered',
       outcome: 'result',
-      text: JSON.stringify({ content: [{ type: 'text', text: JSON.stringify(delivery.input) }] }),
-      bytes: 95,
+      fields: { result_bytes: 95, result_sha256: aDigest, jsonrpc_id: aNumber },
+      answer: { content: [{ type: 'text', text: JSON.stringify(delivery.input) }] },
+      durationMs: aNumber,
+      detail: '',
+      retryAfterMs: null,
+    });
+    expect(access.startOf(delivery)).toEqual({
+      server: 'graph',
+      tool: 'echo',
+      arguments_bytes: 48,
+      arguments_sha256: aDigest,
     });
     expect(fake.received()).toEqual([
       {
         tool: 'echo',
         arguments: delivery.input,
-        meta: { 'com.beonauto/execution_id': delivery.executionId, 'com.beonauto/delivery_id': delivery.deliveryId },
+        meta: { 'com.beonauto/execution_id': deliveredRunId, 'com.beonauto/delivery_id': deliveryId },
       },
     ]);
     expect(fake.seen().map(({ rpc }) => rpc)).not.toContain('tools/list');
   });
 
-  it('is a tool error when the tool answers with one, or the server does not have the tool', async () => {
-    const fake = await fakeServer();
-    const access = accessTo(fake.url);
+  it('records the arguments and the answer, scrubbed, where the server records its content', async () => {
+    const fake = await deliveryServer();
+    const access = deliveryAccess(fake.url, { record_content: true });
+    const call = { ...delivery, input: { token: deliveryKey } };
 
-    expect(await calledOnce(access, { reference: { server: 'graph', tool: 'denied' } })).toMatchObject({
-      outcome: 'tool_error',
-      detail: toolErrorDetail,
-      retryAfterMs: null,
+    const called = await calledOnce(access, call);
+
+    expect([
+      access.startOf(call),
+      access.startOf({ ...call, reference: { server: 'wiki', tool: 'echo' } }),
+    ]).toMatchObject([{ arguments_json: scrubbed }, { server: 'wiki', arguments_bytes: 36 }]);
+    expect(access.startOf({ ...call, reference: { server: 'wiki', tool: 'echo' } })).not.toHaveProperty(
+      'arguments_json',
+    );
+    expect(called).toMatchObject({
+      fields: { result_json: JSON.stringify({ content: [{ type: 'text', text: scrubbed }] }) },
     });
-    expect(await calledOnce(access, { reference: { server: 'graph', tool: 'gone' } })).toMatchObject({
-      outcome: 'tool_error',
-      detail: toolMissingDetail,
-    });
+  });
+});
+
+describe('a call for a delivery that fails', () => {
+  it('is a tool error when the tool answers with one, or the server does not have the tool', async () => {
+    const fake = await deliveryServer();
+    const access = deliveryAccess(fake.url);
+
+    expect(await calledOnce(access, { reference: { server: 'graph', tool: 'denied' } })).toMatchObject(
+      failedWith('tool_error', expect.stringContaining('The field salary is denied by the policy')),
+    );
+    expect(await calledOnce(access, { reference: { server: 'graph', tool: 'gone' } })).toMatchObject(
+      failedWith('tool_error', expect.stringContaining('Tool gone not found')),
+    );
   });
 
   it('ends at its call bound, waiting no longer than a delivery may', async () => {
-    const fake = await fakeServer();
+    const fake = await deliveryServer();
+    const sleeping = { reference: { server: 'graph', tool: 'sleep' }, input: { ms: 5000 } };
 
-    expect(
-      await calledOnce(accessTo(fake.url, {}, 200), {
-        reference: { server: 'graph', tool: 'sleep' },
-        input: { ms: 5000 },
-      }),
-    ).toEqual({ outcome: 'timed_out', detail: 'The MCP server did not answer within 200 ms', retryAfterMs: null });
+    expect(await calledOnce(deliveryAccess(fake.url, {}, 200), sleeping)).toMatchObject({
+      ...failedWith('timed_out', 'The MCP server did not answer within 200 ms'),
+      fields: { result_bytes: null, result_sha256: null },
+    });
     expect(deliveryBounds).toMatchObject({ connectionMs: 10_000, callMs: 30_000 });
   });
 });
 
 describe('what a tool answers a delivery', () => {
-  it('is kept to 4 KiB, cut at a character, and counted whole', async () => {
-    const fake = await fakeServer();
+  it('is carried whole, its content and its structured content, and counted', async () => {
+    const fake = await deliveryServer();
+    const access = deliveryAccess(fake.url);
 
-    const answered = await calledOnce(accessTo(fake.url), {
-      reference: { server: 'graph', tool: 'large' },
-      input: { kib: 8 },
+    const large = await calledOnce(access, { reference: { server: 'graph', tool: 'large' }, input: { kib: 8 } });
+    const structured = await calledOnce(access, { reference: { server: 'graph', tool: 'profile' }, input: {} });
+
+    expect(large).toMatchObject({
+      outcome: 'result',
+      answer: { content: [{ type: 'text', text: largeText }] },
+      fields: { result_bytes: largeAnswerBytes },
     });
-
-    expect(answered).toEqual({ outcome: 'result', text: largeAnswerKept, bytes: largeAnswerBytes });
-    expect(Buffer.byteLength(largeAnswerKept)).toBeLessThanOrEqual(deliveryBounds.resultBytes);
-  });
-});
-
-describe('a server that cannot take a delivery now', () => {
-  it('hands on the wait a 429 asks for to the schedule of the delivery, without waiting it out in the call', async () => {
-    const fake = await fakeServer();
-    const access = accessTo(fake.url);
-    const tools = Result.getOrThrow(
-      await Effect.runPromise(
-        Effect.result(access.open(toolRun(recordingCallJournal()), [{ server: 'graph', tool: 'search' }])),
-      ),
-    );
-    closing.push(tools.close);
-
-    fake.answerNextWith(429, 1, { 'retry-after': '120' });
-
-    expect(await calledOnce(access)).toEqual({
-      outcome: 'server_failure',
-      detail: 'The MCP server answered HTTP 429',
-      retryAfterMs: 120_000,
+    expect(structured).toMatchObject({
+      outcome: 'result',
+      answer: { content: [], structuredContent: { name: 'Ada', rows: 2 } },
     });
   });
 
-  it('is a server failure when the server cannot be reached', async () => {
-    const fake = await fakeServer();
-    const { url } = fake;
-    await fake.close();
+  it('is scrubbed of the secrets of the server before the caller reads it', async () => {
+    const fake = await deliveryServer();
 
-    expect(await calledOnce(accessTo(url))).toEqual({
-      outcome: 'server_failure',
-      detail: 'The MCP server could not be reached',
-      retryAfterMs: null,
+    expect(await calledOnce(deliveryAccess(fake.url), { input: { token: deliveryKey } })).toMatchObject({
+      outcome: 'result',
+      answer: { content: [{ type: 'text', text: scrubbed }] },
     });
   });
-});
-
-describe('the words of a server that fails a delivery', () => {
-  it('are cut at 1 KiB, the bound every reader of a failure shares', async () => {
-    const fake = await fakeServer();
-    const refusal = 'The gateway refused the request. '.repeat(100);
-    const { access } = reportingAccess(
-      { graph: { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme' } },
-      { environment: { GRAPH_API_KEY: apiKey }, fetch: () => Promise.reject(new Error(refusal)) },
-    );
-    closing.push(access.close);
-
-    expect(await calledOnce(access)).toEqual({
-      outcome: 'server_failure',
-      detail: refusal.slice(0, toolBounds.failureBytes),
-      retryAfterMs: null,
-    });
-  });
-});
-
-describe('a delivery through a tool this brain is not offered', () => {
-  it('is refused before anything is sent, for a server it does not have, of another org, or a tool not allowed', async () => {
-    const fake = await fakeServer();
-    const access = accessTo(fake.url);
-    const elsewhere = accessTo(fake.url, { org: 'globex' });
-
-    expect([
-      await calledOnce(access, { reference: { server: 'wiki', tool: 'echo' } }),
-      await calledOnce(elsewhere),
-      await calledOnce(access, { reference: { server: 'graph', tool: 'environment' } }),
-    ]).toEqual([
-      { outcome: 'not_offered', detail: 'No MCP server named wiki is configured for this brain', retryAfterMs: null },
-      { outcome: 'not_offered', detail: 'No MCP server named graph is configured for this brain', retryAfterMs: null },
-      {
-        outcome: 'not_offered',
-        detail: 'The operator of this server does not allow graph/environment',
-        retryAfterMs: null,
-      },
-    ]);
-    expect(fake.received()).toEqual([]);
-  });
-});
-
-describe('a delivery to a server that opens no connection', () => {
-  it(
-    'fails at the bound of a delivery, though the shared opening of tool calls may wait longer',
-    async () => {
-      const silent = createServer(Function.constVoid);
-      silent.listen(0, '127.0.0.1');
-      await once(silent, 'listening');
-      closing.push(async () => {
-        silent.closeAllConnections();
-        silent.close();
-        await once(silent, 'close');
-      });
-      const startedAt = Date.now();
-
-      const ended = await calledOnce(accessTo(`http://127.0.0.1:${String(portOf(silent.address()).port)}/mcp`));
-
-      expect(patientTiming.openMs).toBeGreaterThan(deliveryBounds.connectionMs);
-      expect(ended).toEqual({
-        outcome: 'timed_out',
-        detail: `The MCP server graph did not open a connection within ${deliveryBounds.connectionMs} ms`,
-        retryAfterMs: null,
-      });
-      expect(Date.now() - startedAt).toBeLessThan(patientTiming.openMs);
-    },
-    2 * deliveryBounds.connectionMs,
-  );
 });
