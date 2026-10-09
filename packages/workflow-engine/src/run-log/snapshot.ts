@@ -5,7 +5,7 @@ import {
   FormatsOneToSixSchema,
   SnapshotOfFormatsOneToSixSchema,
   snapshotNamesOfFormatsOneToSix,
-} from './format-six-records.ts';
+} from './formats/format-six-records.ts';
 import { eventBytesOf, type RunLogEvent } from './run-event.ts';
 import { stateFormat, ThisFormatOrNewerSchema, writtenInAnOlderFormat } from './state-format.ts';
 

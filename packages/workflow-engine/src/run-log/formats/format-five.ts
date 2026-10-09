@@ -1,5 +1,6 @@
 import { Schema } from 'effect';
 
+import type { OlderFormat } from '../state-format.ts';
 import {
   CallKeySchema,
   InstantSchema,
@@ -7,7 +8,6 @@ import {
   RunLimitsSchema,
   TimerPurposeSchema,
 } from './format-two.ts';
-import type { OlderFormat } from './state-format.ts';
 
 const DslErrorSchema = Schema.Struct({
   type: Schema.String,

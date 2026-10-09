@@ -1,8 +1,8 @@
 import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { stateFormats, stateInCurrentFormat } from '../index.ts';
-import { at, runId } from '../testing/runs.ts';
+import { stateFormats, stateInCurrentFormat } from '../../index.ts';
+import { at, runId } from '../../testing/runs.ts';
 
 const toJson = Schema.decodeUnknownSync(Schema.Json);
 

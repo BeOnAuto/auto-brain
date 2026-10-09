@@ -1,6 +1,6 @@
 import { Schema } from 'effect';
 
-import type { RunOutput } from '../dispatch/run-output.ts';
+import type { RunOutput } from '../../dispatch/run-output.ts';
 import { RunCountSchema, StepCauseSchema, StepOutcomeSchema, withExecutionId, withRunId } from './format-six.ts';
 import { CallKeySchema, InstantSchema, TimerPurposeSchema } from './format-two.ts';
 

@@ -1,8 +1,13 @@
 import { Schema } from 'effect';
 
-import type { CallKey } from '../executor/call-key.ts';
-import { CallKeySchema, InstantSchema, ReceivedEventSchema, TimerPurposeSchema } from './format-two.ts';
-import type { OlderFormat } from './state-format.ts';
+import type { OlderFormat } from '../state-format.ts';
+import {
+  CallKeySchema,
+  InstantSchema,
+  ReceivedEventSchema,
+  RunLimitsSchema,
+  TimerPurposeSchema,
+} from './format-two.ts';
 
 const DslErrorSchema = Schema.Struct({
   type: Schema.String,
@@ -14,21 +19,16 @@ const DslErrorSchema = Schema.Struct({
   because: Schema.optionalKey(Schema.String),
 });
 
-export const RunCountSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(1));
+const RunCountSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(1));
 
-export const StepOutcomeSchema = Schema.Literals([
-  'started',
-  'skipped',
-  'waiting',
-  'completed',
-  'raised',
-  'timed_out',
-  'cancelled',
-]);
-
-export const StepCauseSchema = Schema.Union([
+const StepCauseSchema = Schema.Union([
   Schema.Literal('input'),
-  Schema.Struct({ reference: Schema.String, run: RunCountSchema, outcome: StepOutcomeSchema, times: RunCountSchema }),
+  Schema.Struct({
+    reference: Schema.String,
+    run: RunCountSchema,
+    outcome: Schema.Literals(['started', 'skipped', 'waiting', 'completed', 'raised', 'timed_out', 'cancelled']),
+    times: RunCountSchema,
+  }),
 ]);
 
 const ValueIdSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
@@ -86,11 +86,7 @@ const FrameBodySchema = Schema.Union([
     label: Schema.String,
     deadline: Schema.String,
   }),
-  Schema.Struct({
-    kind: Schema.Literal('listen'),
-    consumed: Schema.Array(Schema.NullOr(ValueIdSchema)),
-    waited: Schema.Int,
-  }),
+  Schema.Struct({ kind: Schema.Literal('listen'), consumed: Schema.Array(ValueIdSchema), waited: Schema.Int }),
 ]);
 
 const TaskFrameSchema = Schema.Struct({
@@ -105,30 +101,16 @@ const TaskFrameSchema = Schema.Struct({
   body: FrameBodySchema,
 });
 
-const PositiveMillisecondsSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(1));
-
-const RunLimitsSchema = Schema.Struct({
-  mostDurationMs: PositiveMillisecondsSchema,
-  longestCallMs: PositiveMillisecondsSchema,
-  longestCallMsByTask: Schema.optionalKey(Schema.Record(Schema.String, PositiveMillisecondsSchema)),
-});
-
-const CancelOrderSchema = Schema.Struct({
-  by: Schema.NonEmptyString,
-  kind: Schema.Literals(['requested', 'deadline', 'parent_ended']),
-  reason: Schema.String,
-});
-
 const RunOutcomeSchema = Schema.Union([
   Schema.Struct({ kind: Schema.Literal('completed'), output: Schema.Json }),
   Schema.Struct({ kind: Schema.Literal('raised'), error: DslErrorSchema }),
-  Schema.Struct({ kind: Schema.Literal('cancelled'), cancel: CancelOrderSchema }),
+  Schema.Struct({ kind: Schema.Literal('cancelled') }),
   Schema.Struct({ kind: Schema.Literal('broken'), reason: Schema.String }),
   Schema.Struct({ kind: Schema.Literal('oversized'), bytes: Schema.Int, most: Schema.Int }),
   Schema.Struct({ kind: Schema.Literal('overran'), milliseconds: Schema.Int }),
 ]);
 
-const FormatSixSchema = Schema.Struct({
+const FormatFourSchema = Schema.Struct({
   executionId: Schema.String,
   status: Schema.Literals(['new', 'running', 'ended']),
   workflow: Schema.NullOr(Schema.Struct({ document: Schema.JsonObject, input: ValueIdSchema })),
@@ -152,13 +134,10 @@ const FormatSixSchema = Schema.Struct({
     ),
   }),
   calls: Schema.Record(Schema.String, CallKeySchema),
-  listeners: Schema.Record(Schema.String, CallKeySchema),
-  emitted: Schema.Struct({ count: Schema.Int, bytes: Schema.Int }),
   inbox: Schema.Struct({
     waiting: Schema.Array(Schema.Struct({ event: ReceivedEventSchema, bytes: Schema.Int })),
     waitingBytes: Schema.Int,
     receivedIds: Schema.Array(Schema.String),
-    offeredIds: Schema.Array(Schema.String),
     received: Schema.Int,
     receivedBytes: Schema.Int,
   }),
@@ -175,56 +154,88 @@ const FormatSixSchema = Schema.Struct({
   outcome: Schema.NullOr(RunOutcomeSchema),
 });
 
-type FormatSix = typeof FormatSixSchema.Type;
+type FormatFour = typeof FormatFourSchema.Type;
 
-const readFormatSix = Schema.decodeUnknownSync(FormatSixSchema, { onExcessProperty: 'error' });
+const readFormatFour = Schema.decodeUnknownSync(FormatFourSchema, { onExcessProperty: 'error' });
 
 type Fields = Readonly<Record<string, unknown>>;
+
+interface ListenFrame {
+  readonly reference: string;
+  readonly run: number;
+}
 
 function isRecord(node: unknown): node is Fields {
   return typeof node === 'object' && node !== null && !Array.isArray(node);
 }
 
-export function withRunId<Named extends { readonly executionId: string }>({ executionId, ...named }: Named) {
-  return { ...named, runId: executionId };
+function fieldOf(node: unknown, key: string): unknown {
+  return isRecord(node) && Object.hasOwn(node, key) ? node[key] : undefined;
 }
 
-export function withExecutionId<Named extends { readonly runId: string }>({ runId, ...named }: Named) {
-  return { ...named, executionId: runId };
-}
-
-const isKeyOfFormatSix = Schema.is(CallKeySchema);
-
-function keysWithRunId(keys: Readonly<Record<string, typeof CallKeySchema.Type>>): Readonly<Record<string, CallKey>> {
-  return Object.fromEntries(
-    Object.entries(keys).map(([text, key]: readonly [string, typeof CallKeySchema.Type]) => [text, withRunId(key)]),
-  );
-}
-
-function callsWithRunId(node: unknown): unknown {
+function listenFramesIn(node: unknown): readonly ListenFrame[] {
   if (Array.isArray(node)) {
-    return node.map((item: unknown) => callsWithRunId(item));
+    return node.flatMap((item: unknown) => listenFramesIn(item));
   }
   if (!isRecord(node)) {
-    return node;
+    return [];
   }
-  const walked = Object.fromEntries(
-    Object.entries(node).map(([name, item]: readonly [string, unknown]) => [name, callsWithRunId(item)]),
+  const nested = Object.values(node).flatMap((item: unknown) => listenFramesIn(item));
+  const { reference, run } = node;
+  const isListen = fieldOf(node['body'], 'kind') === 'listen';
+  return isListen && typeof reference === 'string' && typeof run === 'number'
+    ? [{ reference, run }, ...nested]
+    : nested;
+}
+
+function taskAt(document: unknown, reference: string): unknown {
+  return reference
+    .split('/')
+    .slice(1)
+    .map((segment) => segment.replaceAll('~1', '/').replaceAll('~0', '~'))
+    .reduce(
+      (node: unknown, segment) => (Array.isArray(node) ? node[Number(segment)] : fieldOf(node, segment)),
+      document,
+    );
+}
+
+function filtersOf(task: unknown): readonly unknown[] {
+  const to = fieldOf(fieldOf(task, 'listen'), 'to');
+  const one = fieldOf(to, 'one');
+  if (one !== undefined) {
+    return [one];
+  }
+  const listed = fieldOf(to, 'all') ?? fieldOf(to, 'any');
+  return Array.isArray(listed) ? listed : [];
+}
+
+function isBrainWide(filter: unknown): boolean {
+  const type = fieldOf(fieldOf(filter, 'with'), 'type');
+  return typeof type === 'string' && type !== '' && !type.trimStart().startsWith('${');
+}
+
+function listenersOf({ executionId, workflow, machine }: FormatFour): Fields {
+  const listening = listenFramesIn(machine.root).filter(({ reference }) =>
+    filtersOf(taskAt(workflow?.document, reference)).some((filter) => isBrainWide(filter)),
   );
-  const { kind, key } = node;
-  return kind === 'call' && isKeyOfFormatSix(key) ? { ...walked, key: withRunId(key) } : walked;
+  return Object.fromEntries(
+    listening.map(({ reference, run }) => {
+      const key = { executionId, reference, run };
+      return [JSON.stringify([executionId, reference, run]), key];
+    }),
+  );
 }
 
-function upcastFormatSix({ calls, listeners, machine, ...state }: FormatSix): unknown {
-  return withRunId({
+function upcastFormatFour(state: FormatFour): unknown {
+  return {
     ...state,
-    calls: keysWithRunId(calls),
-    listeners: keysWithRunId(listeners),
-    machine: { ...machine, root: callsWithRunId(machine.root) },
-  });
+    listeners: listenersOf(state),
+    emitted: { count: 0, bytes: 0 },
+    inbox: { ...state.inbox, offeredIds: [] },
+  };
 }
 
-const initialOfFormatSix = {
+const initialOfFormatFour = {
   executionId: '',
   status: 'new',
   workflow: null,
@@ -237,9 +248,7 @@ const initialOfFormatSix = {
   runs: {},
   timers: { next: 1, armed: {} },
   calls: {},
-  listeners: {},
-  emitted: { count: 0, bytes: 0 },
-  inbox: { waiting: [], waitingBytes: 0, receivedIds: [], offeredIds: [], received: 0, receivedBytes: 0 },
+  inbox: { waiting: [], waitingBytes: 0, receivedIds: [], received: 0, receivedBytes: 0 },
   heldBytes: 0,
   historyBytes: 0,
   stepsWithoutWaiting: 0,
@@ -248,9 +257,9 @@ const initialOfFormatSix = {
   outcome: null,
 };
 
-export const formatSix: OlderFormat = {
-  format: 6,
-  initial: initialOfFormatSix,
-  read: (state) => readFormatSix(state),
-  upcast: (state) => upcastFormatSix(readFormatSix(state)),
+export const formatFour: OlderFormat = {
+  format: 4,
+  initial: initialOfFormatFour,
+  read: (state) => readFormatFour(state),
+  upcast: (state) => upcastFormatFour(readFormatFour(state)),
 };

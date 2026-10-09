@@ -1,5 +1,7 @@
 import { Schema } from 'effect';
 
+import type { OlderFormat } from '../state-format.ts';
+import { isRecord } from '../state-patch.ts';
 import {
   CallKeySchema,
   DslErrorSchema,
@@ -9,8 +11,6 @@ import {
   RunOutcomeSchema,
   TimerPurposeSchema,
 } from './format-two.ts';
-import type { OlderFormat } from './state-format.ts';
-import { isRecord } from './state-patch.ts';
 
 type Fields = Readonly<Record<string, unknown>>;
 

@@ -1,7 +1,7 @@
 import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { stateFormats, stateInCurrentFormat } from '../index.ts';
+import { stateFormats, stateInCurrentFormat } from '../../index.ts';
 
 const [, , formatThree] = stateFormats.older;
 

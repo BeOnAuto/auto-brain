@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { stateFormats, stateInCurrentFormat } from '../index.ts';
+import { stateFormats, stateInCurrentFormat } from '../../index.ts';
 
 const CorpusOfFormatSixSchema = Schema.Struct({ snapshot: Schema.Struct({ chunks: Schema.Array(Schema.String) }) });
 
@@ -13,7 +13,7 @@ const SnapshotOfFormatSixSchema = Schema.Struct({ executionId: Schema.String, st
 const readSnapshot = Schema.decodeUnknownSync(Schema.fromJsonString(SnapshotOfFormatSixSchema));
 
 const { snapshot } = Schema.decodeUnknownSync(Schema.fromJsonString(CorpusOfFormatSixSchema))(
-  readFileSync(fileURLToPath(new URL('../../corpus/format-6.json', import.meta.url)), 'utf8'),
+  readFileSync(fileURLToPath(new URL('../../../corpus/format-6.json', import.meta.url)), 'utf8'),
 );
 
 const snapshotText = snapshot.chunks.join('');

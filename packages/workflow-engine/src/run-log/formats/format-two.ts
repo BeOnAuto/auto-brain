@@ -1,35 +1,45 @@
 import { Schema } from 'effect';
 
-import {
-  CallKeySchema,
-  InstantSchema,
-  ReceivedEventSchema,
-  RunLimitsSchema,
-  TimerPurposeSchema,
-} from './format-two.ts';
-import type { OlderFormat } from './state-format.ts';
+import type { OlderFormat } from '../state-format.ts';
 
-const DslErrorSchema = Schema.Struct({
+export const InstantSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
+
+export const CallKeySchema = Schema.Struct({
+  executionId: Schema.NonEmptyString,
+  reference: Schema.String,
+  run: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
+});
+
+export const ReceivedEventSchema = Schema.StructWithRest(
+  Schema.Struct({
+    id: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256)),
+    type: Schema.NonEmptyString,
+  }),
+  [Schema.Record(Schema.String, Schema.Json)],
+);
+
+export const RunLimitsSchema = Schema.Struct({
+  mostDurationMs: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
+  longestCallMs: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
+});
+
+export const TimerPurposeSchema = Schema.Literals([
+  'wait',
+  'timeout',
+  'retry_delay',
+  'attempt_limit',
+  'deadline',
+  'call_deadline',
+  'yield',
+]);
+
+export const DslErrorSchema = Schema.Struct({
   type: Schema.String,
   status: Schema.Int,
   instance: Schema.String,
   title: Schema.optionalKey(Schema.String),
   detail: Schema.optionalKey(Schema.String),
-  kind: Schema.optionalKey(Schema.String),
-  because: Schema.optionalKey(Schema.String),
 });
-
-const RunCountSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(1));
-
-const StepCauseSchema = Schema.Union([
-  Schema.Literal('input'),
-  Schema.Struct({
-    reference: Schema.String,
-    run: RunCountSchema,
-    outcome: Schema.Literals(['started', 'skipped', 'waiting', 'completed', 'raised', 'timed_out', 'cancelled']),
-    times: RunCountSchema,
-  }),
-]);
 
 const ValueIdSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
 
@@ -44,7 +54,7 @@ const ListCursorSchema = Schema.Struct({
   variables: VariablesSchema,
   current: Schema.Union([
     Schema.Struct({ kind: Schema.Literal('running'), task: TaskFrameReference }),
-    Schema.Struct({ kind: Schema.Literal('yielding'), timer: Schema.String, after: StepCauseSchema }),
+    Schema.Struct({ kind: Schema.Literal('yielding'), timer: Schema.String }),
   ]),
 });
 
@@ -57,12 +67,7 @@ const BranchSchema = Schema.Union([
 
 const TryPhaseSchema = Schema.Union([
   Schema.Struct({ kind: Schema.Literal('trying'), list: ListCursorSchema, attemptLimit: Schema.NullOr(Schema.String) }),
-  Schema.Struct({
-    kind: Schema.Literal('backing_off'),
-    timer: Schema.String,
-    error: DslErrorSchema,
-    failed: StepCauseSchema,
-  }),
+  Schema.Struct({ kind: Schema.Literal('backing_off'), timer: Schema.String, error: DslErrorSchema }),
   Schema.Struct({ kind: Schema.Literal('recovering'), list: ListCursorSchema }),
 ]);
 
@@ -86,7 +91,7 @@ const FrameBodySchema = Schema.Union([
     label: Schema.String,
     deadline: Schema.String,
   }),
-  Schema.Struct({ kind: Schema.Literal('listen'), consumed: Schema.Array(ValueIdSchema), waited: Schema.Int }),
+  Schema.Struct({ kind: Schema.Literal('listen'), consumed: Schema.Array(ValueIdSchema) }),
 ]);
 
 const TaskFrameSchema = Schema.Struct({
@@ -101,7 +106,7 @@ const TaskFrameSchema = Schema.Struct({
   body: FrameBodySchema,
 });
 
-const RunOutcomeSchema = Schema.Union([
+export const RunOutcomeSchema = Schema.Union([
   Schema.Struct({ kind: Schema.Literal('completed'), output: Schema.Json }),
   Schema.Struct({ kind: Schema.Literal('raised'), error: DslErrorSchema }),
   Schema.Struct({ kind: Schema.Literal('cancelled') }),
@@ -110,7 +115,7 @@ const RunOutcomeSchema = Schema.Union([
   Schema.Struct({ kind: Schema.Literal('overran'), milliseconds: Schema.Int }),
 ]);
 
-const FormatFourSchema = Schema.Struct({
+const FormatTwoSchema = Schema.Struct({
   executionId: Schema.String,
   status: Schema.Literals(['new', 'running', 'ended']),
   workflow: Schema.NullOr(Schema.Struct({ document: Schema.JsonObject, input: ValueIdSchema })),
@@ -154,88 +159,9 @@ const FormatFourSchema = Schema.Struct({
   outcome: Schema.NullOr(RunOutcomeSchema),
 });
 
-type FormatFour = typeof FormatFourSchema.Type;
+const readFormatTwo = Schema.decodeUnknownSync(FormatTwoSchema, { onExcessProperty: 'error' });
 
-const readFormatFour = Schema.decodeUnknownSync(FormatFourSchema, { onExcessProperty: 'error' });
-
-type Fields = Readonly<Record<string, unknown>>;
-
-interface ListenFrame {
-  readonly reference: string;
-  readonly run: number;
-}
-
-function isRecord(node: unknown): node is Fields {
-  return typeof node === 'object' && node !== null && !Array.isArray(node);
-}
-
-function fieldOf(node: unknown, key: string): unknown {
-  return isRecord(node) && Object.hasOwn(node, key) ? node[key] : undefined;
-}
-
-function listenFramesIn(node: unknown): readonly ListenFrame[] {
-  if (Array.isArray(node)) {
-    return node.flatMap((item: unknown) => listenFramesIn(item));
-  }
-  if (!isRecord(node)) {
-    return [];
-  }
-  const nested = Object.values(node).flatMap((item: unknown) => listenFramesIn(item));
-  const { reference, run } = node;
-  const isListen = fieldOf(node['body'], 'kind') === 'listen';
-  return isListen && typeof reference === 'string' && typeof run === 'number'
-    ? [{ reference, run }, ...nested]
-    : nested;
-}
-
-function taskAt(document: unknown, reference: string): unknown {
-  return reference
-    .split('/')
-    .slice(1)
-    .map((segment) => segment.replaceAll('~1', '/').replaceAll('~0', '~'))
-    .reduce(
-      (node: unknown, segment) => (Array.isArray(node) ? node[Number(segment)] : fieldOf(node, segment)),
-      document,
-    );
-}
-
-function filtersOf(task: unknown): readonly unknown[] {
-  const to = fieldOf(fieldOf(task, 'listen'), 'to');
-  const one = fieldOf(to, 'one');
-  if (one !== undefined) {
-    return [one];
-  }
-  const listed = fieldOf(to, 'all') ?? fieldOf(to, 'any');
-  return Array.isArray(listed) ? listed : [];
-}
-
-function isBrainWide(filter: unknown): boolean {
-  const type = fieldOf(fieldOf(filter, 'with'), 'type');
-  return typeof type === 'string' && type !== '' && !type.trimStart().startsWith('${');
-}
-
-function listenersOf({ executionId, workflow, machine }: FormatFour): Fields {
-  const listening = listenFramesIn(machine.root).filter(({ reference }) =>
-    filtersOf(taskAt(workflow?.document, reference)).some((filter) => isBrainWide(filter)),
-  );
-  return Object.fromEntries(
-    listening.map(({ reference, run }) => {
-      const key = { executionId, reference, run };
-      return [JSON.stringify([executionId, reference, run]), key];
-    }),
-  );
-}
-
-function upcastFormatFour(state: FormatFour): unknown {
-  return {
-    ...state,
-    listeners: listenersOf(state),
-    emitted: { count: 0, bytes: 0 },
-    inbox: { ...state.inbox, offeredIds: [] },
-  };
-}
-
-const initialOfFormatFour = {
+const initialOfFormatTwo = {
   executionId: '',
   status: 'new',
   workflow: null,
@@ -257,9 +183,9 @@ const initialOfFormatFour = {
   outcome: null,
 };
 
-export const formatFour: OlderFormat = {
-  format: 4,
-  initial: initialOfFormatFour,
-  read: (state) => readFormatFour(state),
-  upcast: (state) => upcastFormatFour(readFormatFour(state)),
+export const formatTwo: OlderFormat = {
+  format: 2,
+  initial: initialOfFormatTwo,
+  read: (state) => readFormatTwo(state),
+  upcast: (state) => state,
 };

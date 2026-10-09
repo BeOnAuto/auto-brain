@@ -1,45 +1,35 @@
 import { Schema } from 'effect';
 
-import type { OlderFormat } from './state-format.ts';
+import type { CallKey } from '../../executor/call-key.ts';
+import type { OlderFormat } from '../state-format.ts';
+import { CallKeySchema, InstantSchema, ReceivedEventSchema, TimerPurposeSchema } from './format-two.ts';
 
-export const InstantSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
-
-export const CallKeySchema = Schema.Struct({
-  executionId: Schema.NonEmptyString,
-  reference: Schema.String,
-  run: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
-});
-
-export const ReceivedEventSchema = Schema.StructWithRest(
-  Schema.Struct({
-    id: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256)),
-    type: Schema.NonEmptyString,
-  }),
-  [Schema.Record(Schema.String, Schema.Json)],
-);
-
-export const RunLimitsSchema = Schema.Struct({
-  mostDurationMs: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
-  longestCallMs: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
-});
-
-export const TimerPurposeSchema = Schema.Literals([
-  'wait',
-  'timeout',
-  'retry_delay',
-  'attempt_limit',
-  'deadline',
-  'call_deadline',
-  'yield',
-]);
-
-export const DslErrorSchema = Schema.Struct({
+const DslErrorSchema = Schema.Struct({
   type: Schema.String,
   status: Schema.Int,
   instance: Schema.String,
   title: Schema.optionalKey(Schema.String),
   detail: Schema.optionalKey(Schema.String),
+  kind: Schema.optionalKey(Schema.String),
+  because: Schema.optionalKey(Schema.String),
 });
+
+export const RunCountSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(1));
+
+export const StepOutcomeSchema = Schema.Literals([
+  'started',
+  'skipped',
+  'waiting',
+  'completed',
+  'raised',
+  'timed_out',
+  'cancelled',
+]);
+
+export const StepCauseSchema = Schema.Union([
+  Schema.Literal('input'),
+  Schema.Struct({ reference: Schema.String, run: RunCountSchema, outcome: StepOutcomeSchema, times: RunCountSchema }),
+]);
 
 const ValueIdSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
 
@@ -54,7 +44,7 @@ const ListCursorSchema = Schema.Struct({
   variables: VariablesSchema,
   current: Schema.Union([
     Schema.Struct({ kind: Schema.Literal('running'), task: TaskFrameReference }),
-    Schema.Struct({ kind: Schema.Literal('yielding'), timer: Schema.String }),
+    Schema.Struct({ kind: Schema.Literal('yielding'), timer: Schema.String, after: StepCauseSchema }),
   ]),
 });
 
@@ -67,7 +57,12 @@ const BranchSchema = Schema.Union([
 
 const TryPhaseSchema = Schema.Union([
   Schema.Struct({ kind: Schema.Literal('trying'), list: ListCursorSchema, attemptLimit: Schema.NullOr(Schema.String) }),
-  Schema.Struct({ kind: Schema.Literal('backing_off'), timer: Schema.String, error: DslErrorSchema }),
+  Schema.Struct({
+    kind: Schema.Literal('backing_off'),
+    timer: Schema.String,
+    error: DslErrorSchema,
+    failed: StepCauseSchema,
+  }),
   Schema.Struct({ kind: Schema.Literal('recovering'), list: ListCursorSchema }),
 ]);
 
@@ -91,7 +86,11 @@ const FrameBodySchema = Schema.Union([
     label: Schema.String,
     deadline: Schema.String,
   }),
-  Schema.Struct({ kind: Schema.Literal('listen'), consumed: Schema.Array(ValueIdSchema) }),
+  Schema.Struct({
+    kind: Schema.Literal('listen'),
+    consumed: Schema.Array(Schema.NullOr(ValueIdSchema)),
+    waited: Schema.Int,
+  }),
 ]);
 
 const TaskFrameSchema = Schema.Struct({
@@ -106,16 +105,30 @@ const TaskFrameSchema = Schema.Struct({
   body: FrameBodySchema,
 });
 
-export const RunOutcomeSchema = Schema.Union([
+const PositiveMillisecondsSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(1));
+
+const RunLimitsSchema = Schema.Struct({
+  mostDurationMs: PositiveMillisecondsSchema,
+  longestCallMs: PositiveMillisecondsSchema,
+  longestCallMsByTask: Schema.optionalKey(Schema.Record(Schema.String, PositiveMillisecondsSchema)),
+});
+
+const CancelOrderSchema = Schema.Struct({
+  by: Schema.NonEmptyString,
+  kind: Schema.Literals(['requested', 'deadline', 'parent_ended']),
+  reason: Schema.String,
+});
+
+const RunOutcomeSchema = Schema.Union([
   Schema.Struct({ kind: Schema.Literal('completed'), output: Schema.Json }),
   Schema.Struct({ kind: Schema.Literal('raised'), error: DslErrorSchema }),
-  Schema.Struct({ kind: Schema.Literal('cancelled') }),
+  Schema.Struct({ kind: Schema.Literal('cancelled'), cancel: CancelOrderSchema }),
   Schema.Struct({ kind: Schema.Literal('broken'), reason: Schema.String }),
   Schema.Struct({ kind: Schema.Literal('oversized'), bytes: Schema.Int, most: Schema.Int }),
   Schema.Struct({ kind: Schema.Literal('overran'), milliseconds: Schema.Int }),
 ]);
 
-const FormatTwoSchema = Schema.Struct({
+const FormatSixSchema = Schema.Struct({
   executionId: Schema.String,
   status: Schema.Literals(['new', 'running', 'ended']),
   workflow: Schema.NullOr(Schema.Struct({ document: Schema.JsonObject, input: ValueIdSchema })),
@@ -139,10 +152,13 @@ const FormatTwoSchema = Schema.Struct({
     ),
   }),
   calls: Schema.Record(Schema.String, CallKeySchema),
+  listeners: Schema.Record(Schema.String, CallKeySchema),
+  emitted: Schema.Struct({ count: Schema.Int, bytes: Schema.Int }),
   inbox: Schema.Struct({
     waiting: Schema.Array(Schema.Struct({ event: ReceivedEventSchema, bytes: Schema.Int })),
     waitingBytes: Schema.Int,
     receivedIds: Schema.Array(Schema.String),
+    offeredIds: Schema.Array(Schema.String),
     received: Schema.Int,
     receivedBytes: Schema.Int,
   }),
@@ -159,9 +175,56 @@ const FormatTwoSchema = Schema.Struct({
   outcome: Schema.NullOr(RunOutcomeSchema),
 });
 
-const readFormatTwo = Schema.decodeUnknownSync(FormatTwoSchema, { onExcessProperty: 'error' });
+type FormatSix = typeof FormatSixSchema.Type;
 
-const initialOfFormatTwo = {
+const readFormatSix = Schema.decodeUnknownSync(FormatSixSchema, { onExcessProperty: 'error' });
+
+type Fields = Readonly<Record<string, unknown>>;
+
+function isRecord(node: unknown): node is Fields {
+  return typeof node === 'object' && node !== null && !Array.isArray(node);
+}
+
+export function withRunId<Named extends { readonly executionId: string }>({ executionId, ...named }: Named) {
+  return { ...named, runId: executionId };
+}
+
+export function withExecutionId<Named extends { readonly runId: string }>({ runId, ...named }: Named) {
+  return { ...named, executionId: runId };
+}
+
+const isKeyOfFormatSix = Schema.is(CallKeySchema);
+
+function keysWithRunId(keys: Readonly<Record<string, typeof CallKeySchema.Type>>): Readonly<Record<string, CallKey>> {
+  return Object.fromEntries(
+    Object.entries(keys).map(([text, key]: readonly [string, typeof CallKeySchema.Type]) => [text, withRunId(key)]),
+  );
+}
+
+function callsWithRunId(node: unknown): unknown {
+  if (Array.isArray(node)) {
+    return node.map((item: unknown) => callsWithRunId(item));
+  }
+  if (!isRecord(node)) {
+    return node;
+  }
+  const walked = Object.fromEntries(
+    Object.entries(node).map(([name, item]: readonly [string, unknown]) => [name, callsWithRunId(item)]),
+  );
+  const { kind, key } = node;
+  return kind === 'call' && isKeyOfFormatSix(key) ? { ...walked, key: withRunId(key) } : walked;
+}
+
+function upcastFormatSix({ calls, listeners, machine, ...state }: FormatSix): unknown {
+  return withRunId({
+    ...state,
+    calls: keysWithRunId(calls),
+    listeners: keysWithRunId(listeners),
+    machine: { ...machine, root: callsWithRunId(machine.root) },
+  });
+}
+
+const initialOfFormatSix = {
   executionId: '',
   status: 'new',
   workflow: null,
@@ -174,7 +237,9 @@ const initialOfFormatTwo = {
   runs: {},
   timers: { next: 1, armed: {} },
   calls: {},
-  inbox: { waiting: [], waitingBytes: 0, receivedIds: [], received: 0, receivedBytes: 0 },
+  listeners: {},
+  emitted: { count: 0, bytes: 0 },
+  inbox: { waiting: [], waitingBytes: 0, receivedIds: [], offeredIds: [], received: 0, receivedBytes: 0 },
   heldBytes: 0,
   historyBytes: 0,
   stepsWithoutWaiting: 0,
@@ -183,9 +248,9 @@ const initialOfFormatTwo = {
   outcome: null,
 };
 
-export const formatTwo: OlderFormat = {
-  format: 2,
-  initial: initialOfFormatTwo,
-  read: (state) => readFormatTwo(state),
-  upcast: (state) => state,
+export const formatSix: OlderFormat = {
+  format: 6,
+  initial: initialOfFormatSix,
+  read: (state) => readFormatSix(state),
+  upcast: (state) => upcastFormatSix(readFormatSix(state)),
 };

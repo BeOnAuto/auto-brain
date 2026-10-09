@@ -8,7 +8,7 @@ import {
   EventOfFormatsOneToSixSchema,
   eventNamesOfFormatsOneToSix,
   FormatsOneToSixSchema,
-} from './format-six-records.ts';
+} from './formats/format-six-records.ts';
 import { stateFormat, ThisFormatOrNewerSchema, writtenInAnOlderFormat } from './state-format.ts';
 import { PatchOperationSchema } from './state-patch.ts';
 

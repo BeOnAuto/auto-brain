@@ -4,12 +4,12 @@ import { fileURLToPath } from 'node:url';
 import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { stateFormats, stateInCurrentFormat } from '../index.ts';
+import { stateFormats, stateInCurrentFormat } from '../../index.ts';
 
 const CorpusStateSchema = Schema.Struct({ state: Schema.Json });
 
 const { state: stateOfFormatFour } = Schema.decodeUnknownSync(Schema.fromJsonString(CorpusStateSchema))(
-  readFileSync(fileURLToPath(new URL('../../corpus/format-4.json', import.meta.url)), 'utf8'),
+  readFileSync(fileURLToPath(new URL('../../../corpus/format-4.json', import.meta.url)), 'utf8'),
 );
 
 const [, , , formatFour] = stateFormats.older;

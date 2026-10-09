@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { loadedRunOf, RunLogEventSchema, snapshotFromChunks, type RunOutput } from '../index.ts';
+import { loadedRunOf, RunLogEventSchema, snapshotFromChunks, type RunOutput } from '../../index.ts';
 
 const CorpusOfFormatSixSchema = Schema.Struct({
   stream: Schema.Array(Schema.Struct({ version: Schema.Int, event: Schema.JsonObject })),
@@ -12,7 +12,7 @@ const CorpusOfFormatSixSchema = Schema.Struct({
 });
 
 const { stream, snapshot } = Schema.decodeUnknownSync(Schema.fromJsonString(CorpusOfFormatSixSchema))(
-  readFileSync(fileURLToPath(new URL('../../corpus/format-6.json', import.meta.url)), 'utf8'),
+  readFileSync(fileURLToPath(new URL('../../../corpus/format-6.json', import.meta.url)), 'utf8'),
 );
 
 const snapshotText = snapshot.chunks.join('');

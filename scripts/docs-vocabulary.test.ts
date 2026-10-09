@@ -23,11 +23,11 @@ const keptFolders: readonly string[] = ['docs/decisions/', 'patches/'];
 const frozenFormats: readonly string[] = [
   ...['1', '2', '3', '4', '5', '6'].map((format) => `packages/workflow-engine/corpus/format-${format}.json`),
   ...['one', 'two', 'three', 'four', 'five', 'six'].map(
-    (format) => `packages/workflow-engine/src/run-log/format-${format}.ts`,
+    (format) => `packages/workflow-engine/src/run-log/formats/format-${format}.ts`,
   ),
-  'packages/workflow-engine/src/run-log/format-six-records.ts',
+  'packages/workflow-engine/src/run-log/formats/format-six-records.ts',
   ...['one', 'two', 'four', 'six', 'six-records'].map(
-    (format) => `packages/workflow-engine/src/run-log/format-${format}.test.ts`,
+    (format) => `packages/workflow-engine/src/run-log/formats/format-${format}.test.ts`,
   ),
 ];
 
