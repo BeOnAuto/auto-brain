@@ -19,7 +19,7 @@ export function defineCreateDefinition(capabilities: readonly Capability[]) {
       description: [
         'Saves a new function or workflow definition in the brain from its document and returns it without running it.',
         'Use it once the person has agreed to the definition; update_definition changes one that exists, and a name is never reused in a brain.',
-        `\`capability\` is the definition's type and \`name\` is how workflows and tools refer to it: ${known.typesWithGuides}.`,
+        `\`type\` is the definition's type and \`name\` is how workflows and tools refer to it: ${known.typesWithGuides}.`,
         "`source` is the whole document in that type's format, which get_guide gives.",
         'A document that does not fit its format is refused with the line and what is wrong, and nothing is saved.',
       ].join(' '),

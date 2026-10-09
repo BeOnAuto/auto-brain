@@ -39,7 +39,9 @@ const DaySchema = Schema.Struct({
 });
 
 const FunctionSchema = Schema.Struct({
-  type: Schema.String.annotate({ description: 'The API type identifier of the definition' }),
+  type: Schema.String.annotate({
+    description: 'The type of the definition: reasoning, interaction, computation, recall or workflow',
+  }),
   name: Schema.String.annotate({ description: 'The definition name' }),
   runs: Count.annotate({ description: 'How many of its runs ended' }),
 });
@@ -53,7 +55,7 @@ export const BrainAnalyticsSchema = Schema.Struct({
     description: 'Every day of the window, oldest first, one with no runs included',
   }),
   by_function: Schema.Array(FunctionSchema).annotate({
-    description: 'The definitions that had runs end, the most runs first, then by API type identifier and name',
+    description: 'The definitions that had runs end, the most runs first, then by type and name',
   }),
 }).annotate({
   identifier: 'BrainAnalytics',

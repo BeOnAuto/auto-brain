@@ -3,7 +3,9 @@ import { Schema } from 'effect';
 import { TriggerSchema } from './definition-triggers.ts';
 
 const listedDefinitionFields = {
-  type: Schema.String.annotate({ description: 'The API type identifier of the definition' }),
+  type: Schema.String.annotate({
+    description: 'The type of the definition: reasoning, interaction, computation, recall or workflow',
+  }),
   name: Schema.String.annotate({
     description: 'The definition name, unique among definitions of its type in the brain and never reused',
   }),
