@@ -63,12 +63,12 @@ describe('the plain language of create_definition', () => {
     );
   });
 
-  it('names the definition it tried to create in the words of its capability, or what it tried', () => {
+  it('names the definition it tried to create in the words of its capability, or what it tried for a type the server does not run', () => {
     expect([
       attemptOf('create_definition', greetInput),
       attemptOf('create_definition', { ...greetInput, type: 'nowhere' }),
       attemptOf('create_definition', { name: 'greet' }),
-    ]).toEqual(['create the greeting “greet”', 'create the item “greet”', 'create a new greeting or probe']);
+    ]).toEqual(['create the greeting “greet”', 'create a new greeting or probe', 'create a new greeting or probe']);
   });
 });
 

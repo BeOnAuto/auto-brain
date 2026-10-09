@@ -8,6 +8,7 @@ import { acmeAdmin, globexAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
 import { echo } from '../testing/echo.ts';
 import { harness, toBrain } from '../testing/harness.ts';
+import { relay } from '../testing/relay.ts';
 
 const toAlpha = toBrain('acme', 'alpha');
 
@@ -27,7 +28,7 @@ function idOf(index: number): string {
 }
 
 async function brainWithEchoes(count: number, input: object = {}) {
-  const operations = definitionOperationsFor([echo]);
+  const operations = definitionOperationsFor([echo, relay().capability]);
   const definitions = harness();
   await definitions.call(
     operations.createDefinition,
@@ -44,10 +45,10 @@ async function brainWithEchoes(count: number, input: object = {}) {
       run,
     ),
   );
-  const executing = (index: number) => definitions.run(run(index));
+  const running = (index: number) => definitions.run(run(index));
   const listing = (request: object) => definitions.call(operations.listRuns, toAlpha(acmeAdmin, request));
   const reading = (request: object) => definitions.call(operations.getRunHistory, toAlpha(acmeAdmin, request));
-  return { ...definitions, ...operations, executing, listing, reading };
+  return { ...definitions, ...operations, running, listing, reading };
 }
 
 type Page = (typeof PageSchema.Type)['output'];
@@ -73,13 +74,13 @@ function withCursor(cursor: string | undefined): object {
 
 describe('paging through the runs of a brain', () => {
   it('delivers every run once, newest first, while more runs start', async () => {
-    const { executing, listing } = await brainWithEchoes(7);
+    const { running, listing } = await brainWithEchoes(7);
     let next = 8;
 
     const pages = await everyPage(
       (cursor) => listing({ limit: 2, ...withCursor(cursor) }),
       async () => {
-        await executing(next);
+        await running(next);
         next += 1;
       },
     );

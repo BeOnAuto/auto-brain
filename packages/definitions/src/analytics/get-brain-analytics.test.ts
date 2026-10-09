@@ -9,7 +9,11 @@ import { acmeReader } from '../testing/callers.ts';
 import { echo } from '../testing/echo.ts';
 import { asQueryString, harness, toBrain, type Harness } from '../testing/harness.ts';
 
-const getBrainAnalytics = defineGetBrainAnalytics([echo]);
+const getBrainAnalytics = defineGetBrainAnalytics([
+  echo,
+  { ...echo, type: 'reasoning' },
+  { ...echo, type: 'workflow' },
+]);
 
 const runEvents: Decider<null, readonly RunEvent[], RunEvent> = {
   initialState: null,
@@ -95,6 +99,7 @@ const schemaRefusals: readonly (readonly [Readonly<Record<string, unknown>>, str
   [{ from: '2026-10-01', to: '2026-10-6' }, '/to'],
   [{ from: '2026-10-01T24:00:00Z', to: '2026-10-02' }, '/from'],
   [{ since: '2026-10-01T00:00:00Z' }, '/since'],
+  [{ type: 'prediction' }, '/type'],
 ];
 
 describe('get_brain_analytics', () => {

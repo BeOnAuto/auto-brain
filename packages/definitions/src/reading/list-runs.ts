@@ -10,7 +10,7 @@ import {
 import { Effect, Schema } from 'effect';
 
 import type { Capability } from '../capability/capability.ts';
-import { DefinitionTypeField, knownCapabilities } from '../capability/known-capabilities.ts';
+import { knownCapabilities, type KnownCapabilities } from '../capability/known-capabilities.ts';
 import { RunsOfNameField } from '../operations/definition-fields.ts';
 import { definitionWordsFor } from '../plain-language/definition-words.ts';
 import { runsListed, runsToList } from '../plain-language/reading-words.ts';
@@ -26,17 +26,21 @@ const description = [
   '`cursor` is the next_cursor of the page before.',
 ].join(' ');
 
-const ListRunsInput = Schema.Struct({
-  type: Schema.optionalKey(DefinitionTypeField),
-  name: Schema.optionalKey(RunsOfNameField),
-  status: Schema.optionalKey(
-    RunSchema.fields.status.annotate({
-      description: 'Only runs in this status: started, succeeded, rejected or failed',
-    }),
-  ),
-  limit: PagingInputFields.limit,
-  cursor: PagingInputFields.cursor,
-});
+function listRunsInputOf(typeField: KnownCapabilities['field']) {
+  return Schema.Struct({
+    type: Schema.optionalKey(typeField),
+    name: Schema.optionalKey(RunsOfNameField),
+    status: Schema.optionalKey(
+      RunSchema.fields.status.annotate({
+        description: 'Only runs in this status: started, succeeded, rejected or failed',
+      }),
+    ),
+    limit: PagingInputFields.limit,
+    cursor: PagingInputFields.cursor,
+  });
+}
+
+type ListRunsInput = ReturnType<typeof listRunsInputOf>['Type'];
 
 const ListedRunsPage = Schema.Struct({
   runs: Schema.Array(ListedRunSchema),
@@ -52,13 +56,7 @@ function streamsOfRuns(type: string | undefined, name: string | undefined): Reco
   };
 }
 
-const listRuns = Effect.fnUntraced(function* ({
-  type,
-  name,
-  status,
-  limit = defaultPageLimit,
-  cursor,
-}: typeof ListRunsInput.Type) {
+const listRuns = Effect.fnUntraced(function* ({ type, name, status, limit = defaultPageLimit, cursor }: ListRunsInput) {
   const page = yield* (yield* BrainReader).readRecorded(streamsOfRuns(type, name), {
     order: 'desc',
     limit,
@@ -80,7 +78,7 @@ export function defineListRuns(capabilities: readonly Capability[]) {
     title: 'List runs',
     description,
     route: { method: 'GET', path: '/runs' },
-    inputSchema: ListRunsInput,
+    inputSchema: listRunsInputOf(known.field),
     outputSchema: ListedRunsPage,
     reasons: ['invalid_input'],
     handle: listRuns,

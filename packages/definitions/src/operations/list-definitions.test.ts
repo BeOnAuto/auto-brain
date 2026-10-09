@@ -81,11 +81,12 @@ describe('list_definitions', () => {
     });
   });
 
-  it('rejects a type it does not know', async () => {
+  it('rejects a type the server does not run', async () => {
     expect(await harness().call(listDefinitions, toAlpha(acmeAdmin, { type: 'reasoning' }))).toEqual({
       status: 'rejected',
-      reason: 'not_found',
-      detail: 'There is no definition type reasoning',
+      reason: 'invalid_input',
+      detail: 'The input does not match the input schema',
+      issues: [{ pointer: '/type', detail: 'Expected a type this server runs: echo or probe' }],
     });
   });
 });

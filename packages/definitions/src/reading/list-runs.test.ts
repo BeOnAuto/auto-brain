@@ -48,24 +48,24 @@ async function brainWithRuns() {
   await creating('echo', 'wave', '{"greeting":"Hey"}');
   await creating('probe', 'plain', 'plain');
   await creating('relay', 'hand-on', 'text');
-  const executing = ([type, name]: DefinitionName, input: object, runId: string, at: string) =>
+  const running = ([type, name]: DefinitionName, input: object, runId: string, at: string) =>
     definitions.call(operations.runDefinition, toAlpha(acmeAdmin, { type, name, input, run_id: runId }), at);
   const listing = (input: object = {}) => definitions.call(operations.listRuns, toAlpha(acmeAdmin, input));
-  return { ...definitions, ...operations, prober, executing, listing };
+  return { ...definitions, ...operations, prober, running, listing };
 }
 
 async function brainWithEveryEnding() {
   const brain = await brainWithRuns();
-  const { executing, prober } = brain;
-  await executing(greet, { who: 'Ada' }, callerChosen, '2026-10-01T09:01:00.000Z');
-  await executing(plain, { reject: true }, hashedChild, '2026-10-01T09:02:00.000Z');
+  const { running, prober } = brain;
+  await running(greet, { who: 'Ada' }, callerChosen, '2026-10-01T09:01:00.000Z');
+  await running(plain, { reject: true }, hashedChild, '2026-10-01T09:02:00.000Z');
   prober.sufferOnNextRun('unavailable');
-  await executing(plain, {}, startedTwice, '2026-10-01T09:03:00.000Z');
-  await executing(handOn, {}, '22222222-7d2e-7c1a-9b3f-2f1e0d9c8b7a', '2026-10-01T09:04:00.000Z');
+  await running(plain, {}, startedTwice, '2026-10-01T09:03:00.000Z');
+  await running(handOn, {}, '22222222-7d2e-7c1a-9b3f-2f1e0d9c8b7a', '2026-10-01T09:04:00.000Z');
   prober.sufferOnNextRun('breakdown');
-  await executing(plain, {}, '33333333-7d2e-7c1a-9b3f-2f1e0d9c8b7a', '2026-10-01T09:05:00.000Z');
-  await executing(wave, {}, '44444444-7d2e-7c1a-9b3f-2f1e0d9c8b7a', '2026-10-01T09:06:00.000Z');
-  await executing(plain, {}, startedTwice, '2026-10-01T09:07:00.000Z');
+  await running(plain, {}, '33333333-7d2e-7c1a-9b3f-2f1e0d9c8b7a', '2026-10-01T09:05:00.000Z');
+  await running(wave, {}, '44444444-7d2e-7c1a-9b3f-2f1e0d9c8b7a', '2026-10-01T09:06:00.000Z');
+  await running(plain, {}, startedTwice, '2026-10-01T09:07:00.000Z');
   return brain;
 }
 
@@ -170,11 +170,11 @@ describe('list_runs', () => {
 
 describe('a run listed after it started again', () => {
   it('shows a run started again and still running by its latest start, in the place of its first', async () => {
-    const { callCancelledWhen, runDefinition, executing, listing, prober, call, updateDefinition } =
+    const { callCancelledWhen, runDefinition, running, listing, prober, call, updateDefinition } =
       await brainWithRuns();
     prober.sufferOnNextRun('unavailable');
-    await executing(plain, {}, startedTwice, '2026-10-01T09:01:00.000Z');
-    await executing(greet, {}, callerChosen, '2026-10-01T09:02:00.000Z');
+    await running(plain, {}, startedTwice, '2026-10-01T09:01:00.000Z');
+    await running(greet, {}, callerChosen, '2026-10-01T09:02:00.000Z');
     await call(updateDefinition, toAlpha(acmeAdmin, { type: 'probe', name: 'plain', source: 'newer' }));
     prober.sufferOnNextRun('stall');
     const finishing = Promise.withResolvers<void>();
@@ -199,13 +199,13 @@ describe('a run listed after it started again', () => {
 
 describe('a run listed after it did not go through', () => {
   it('shows the reason, kind and because of a rejection, and never its detail', async () => {
-    const { executing, listing, prober } = await brainWithRuns();
+    const { running, listing, prober } = await brainWithRuns();
     prober.sufferOnNextRun('unoffered');
-    await executing(plain, {}, callerChosen, '2026-10-01T09:01:00.000Z');
+    await running(plain, {}, callerChosen, '2026-10-01T09:01:00.000Z');
     prober.sufferOnNextRun('unworkable');
-    await executing(plain, {}, hashedChild, '2026-10-01T09:02:00.000Z');
+    await running(plain, {}, hashedChild, '2026-10-01T09:02:00.000Z');
     prober.sufferOnNextRun('unavailable');
-    await executing(plain, {}, startedTwice, '2026-10-01T09:03:00.000Z');
+    await running(plain, {}, startedTwice, '2026-10-01T09:03:00.000Z');
 
     expect(await listing()).toMatchObject({
       output: {
@@ -224,9 +224,9 @@ describe('a run listed after it did not go through', () => {
 
 describe('a conflict in the list of runs', () => {
   it('shows its reason alone when it has no kind', async () => {
-    const { executing, listing, prober } = await brainWithRuns();
+    const { running, listing, prober } = await brainWithRuns();
     prober.sufferOnNextRun('conflict');
-    await executing(plain, {}, callerChosen, '2026-10-01T09:01:00.000Z');
+    await running(plain, {}, callerChosen, '2026-10-01T09:01:00.000Z');
 
     expect(await listing()).toMatchObject({
       output: { runs: [{ run_id: callerChosen, rejection: { reason: 'conflict' } }] },
@@ -245,7 +245,6 @@ describe('list_runs filtering', () => {
     [{ name: 'plain' }, ['33333333', '00000000', '6b1e2f30']],
     [{ type: 'probe', name: 'plain', status: 'succeeded' }, ['00000000']],
     [{ type: 'echo', name: 'plain' }, []],
-    [{ type: 'gone' }, []],
   ] as const)('keeps the runs %j', async (filters, kept) => {
     const { listing } = await brainWithEveryEnding();
 
@@ -253,6 +252,16 @@ describe('list_runs filtering', () => {
 
     expect(listed).toMatchObject({ status: 'succeeded', output: { has_more: false, next_cursor: null } });
     expect(idStartsIn(listed)).toEqual(kept);
+  });
+
+  it('refuses a type the server does not run, naming the types it runs', async () => {
+    const { listing } = await brainWithEveryEnding();
+
+    expect(await listing({ type: 'gone' })).toMatchObject({
+      status: 'rejected',
+      reason: 'invalid_input',
+      issues: [{ pointer: '/type', detail: 'Expected a type this server runs: echo, probe, or relay' }],
+    });
   });
 
   it('reads its filters, limit and cursor from a query string', async () => {

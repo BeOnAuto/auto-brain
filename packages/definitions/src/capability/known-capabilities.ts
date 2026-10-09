@@ -7,11 +7,21 @@ interface PublishedOperation {
   readonly registration: Registration<'brain'>;
 }
 
-export const DefinitionTypeField = Schema.String.check(
-  Schema.makeFilter(isDefinitionTypeName, {
-    expected: 'a type: 3 to 32 lowercase letters, digits and hyphens, starting with a letter',
-  }),
+const DefinitionTypeField = Schema.String.check(
+  Schema.makeFilter(
+    isDefinitionTypeName,
+    { expected: 'a type: 3 to 32 lowercase letters, digits and hyphens, starting with a letter' },
+    true,
+  ),
 );
+
+function servedTypeField(types: readonly string[]): typeof DefinitionTypeField {
+  return DefinitionTypeField.check(
+    Schema.makeFilter((type: string) => types.includes(type), {
+      expected: `a type this server runs: ${alternatives(types)}`,
+    }),
+  );
+}
 
 export interface KnownCapabilities {
   readonly field: typeof DefinitionTypeField;
@@ -58,7 +68,7 @@ export function knownCapabilities(capabilities: readonly Capability[]): KnownCap
   requireDistinctNames(names);
   const byName = new Map(capabilities.map((capability) => [capability.type, capability]));
   return {
-    field: DefinitionTypeField,
+    field: servedTypeField(names),
     typesWithGuides: capabilities
       .map(({ type, noun, guide }) => `${type}, ${articled(noun.one)}, guide ${guide.name}`)
       .join('; '),

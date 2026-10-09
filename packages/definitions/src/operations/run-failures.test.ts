@@ -20,12 +20,12 @@ async function withPlain() {
     operations.createDefinition,
     toAlpha(acmeAdmin, { type: 'probe', name: 'plain', source: 'text' }),
   );
-  const executing = (input: object) =>
+  const running = (input: object) =>
     definitions.call(
       operations.runDefinition,
       toAlpha(acmeAdmin, { type: 'probe', name: 'plain', run_id: runId, ...input }),
     );
-  return { ...definitions, ...operations, prober, executing };
+  return { ...definitions, ...operations, prober, running };
 }
 
 const failedRun = {
@@ -41,10 +41,10 @@ const failedRun = {
 
 describe('a run the capability cannot serve now', () => {
   it('is rejected with unavailable, and the rejection is recorded', async () => {
-    const { call, executing, getRun, prober } = await withPlain();
+    const { call, running, getRun, prober } = await withPlain();
     prober.sufferOnNextRun('unavailable');
 
-    expect(await executing({})).toEqual({
+    expect(await running({})).toEqual({
       status: 'rejected',
       reason: 'unavailable',
       detail: 'The probe cannot answer now',
@@ -57,10 +57,10 @@ describe('a run the capability cannot serve now', () => {
 
 describe('a run that names a model the server is not set up for, while it can use others', () => {
   it('is rejected with unavailable of that kind and why, both recorded and answered again', async () => {
-    const { call, executing, getRun, prober } = await withPlain();
+    const { call, running, getRun, prober } = await withPlain();
     prober.sufferOnNextRun('unoffered');
 
-    expect(await executing({})).toEqual({
+    expect(await running({})).toEqual({
       status: 'rejected',
       reason: 'unavailable',
       detail: 'The probe cannot reach that model, only others',
@@ -83,10 +83,10 @@ describe('a run that names a model the server is not set up for, while it can us
 
 describe('a run of a definition the capability cannot run as written', () => {
   it('is rejected with conflict, and the rejection is recorded and answered without a kind, as it was given', async () => {
-    const { call, executing, getRun, prober } = await withPlain();
+    const { call, running, getRun, prober } = await withPlain();
     prober.sufferOnNextRun('conflict');
 
-    expect(await executing({})).toEqual({
+    expect(await running({})).toEqual({
       status: 'rejected',
       reason: 'conflict',
       detail: 'The probe cannot run this definition as written; update it',
@@ -104,7 +104,7 @@ describe('a run of a definition the capability cannot run as written', () => {
 
 describe('a run whose capability finds, by running it, that its definition is unworkable', () => {
   it('is rejected with conflict of that kind, which is recorded and answered again', async () => {
-    const { call, executing, getRun, prober } = await withPlain();
+    const { call, running, getRun, prober } = await withPlain();
     prober.sufferOnNextRun('unworkable');
     const rejection = {
       reason: 'conflict',
@@ -112,7 +112,7 @@ describe('a run whose capability finds, by running it, that its definition is un
       kind: 'unworkable',
     };
 
-    expect(await executing({})).toEqual({ status: 'rejected', ...rejection });
+    expect(await running({})).toEqual({ status: 'rejected', ...rejection });
     expect(await call(getRun, readingTheRun)).toStrictEqual({
       status: 'succeeded',
       output: { ...failedRun, status: 'rejected', rejection },
@@ -122,10 +122,10 @@ describe('a run whose capability finds, by running it, that its definition is un
 
 describe('a run whose capability breaks down', () => {
   it('fails with an incident that holds the defect, and is recorded as failed', async () => {
-    const { call, executing, getRun, prober, reported } = await withPlain();
+    const { call, running, getRun, prober, reported } = await withPlain();
     prober.sufferOnNextRun('breakdown');
 
-    expect(await executing({})).toEqual({ status: 'failed', incident: reported()[0]?.id });
+    expect(await running({})).toEqual({ status: 'failed', incident: reported()[0]?.id });
     expect(reported().map(({ original }) => original)).toEqual([new Error('The probe broke down')]);
     expect(await call(getRun, readingTheRun)).toStrictEqual({
       status: 'succeeded',
@@ -134,9 +134,9 @@ describe('a run whose capability breaks down', () => {
   });
 
   it('fails the same way when the capability answers with output that is not JSON', async () => {
-    const { call, executing, getRun, reported } = await withPlain();
+    const { call, running, getRun, reported } = await withPlain();
 
-    expect(await executing({ input: { unmeasurable: true } })).toEqual({
+    expect(await running({ input: { unmeasurable: true } })).toEqual({
       status: 'failed',
       incident: reported()[0]?.id,
     });
@@ -150,10 +150,10 @@ describe('a run whose capability breaks down', () => {
 
 describe('a run the capability rejects after it spent something', () => {
   it('keeps what the rejection recorded on the run, as get_run shows it', async () => {
-    const { call, executing, getRun, prober } = await withPlain();
+    const { call, running, getRun, prober } = await withPlain();
     prober.sufferOnNextRun('spent');
 
-    expect(await executing({})).toEqual({
+    expect(await running({})).toEqual({
       status: 'rejected',
       reason: 'unavailable',
       detail: 'The probe was answered, but not usably',
@@ -164,10 +164,10 @@ describe('a run the capability rejects after it spent something', () => {
   });
 
   it('fails with an incident when what it recorded is more than a run may record', async () => {
-    const { call, executing, getRun, prober, reported } = await withPlain();
+    const { call, running, getRun, prober, reported } = await withPlain();
     prober.sufferOnNextRun('overspent');
 
-    expect(await executing({})).toEqual({ status: 'failed', incident: reported()[0]?.id });
+    expect(await running({})).toEqual({ status: 'failed', incident: reported()[0]?.id });
     expect(await call(getRun, readingTheRun)).toStrictEqual({
       status: 'succeeded',
       output: failedRun,
@@ -176,7 +176,7 @@ describe('a run the capability rejects after it spent something', () => {
 });
 
 describe('run_definition rejecting', () => {
-  it('a definition the brain does not have, and a type it does not know', async () => {
+  it('a definition the brain does not have, and a type the server does not run', async () => {
     const { call, runDefinition } = await withPlain();
 
     expect(await call(runDefinition, toAlpha(acmeAdmin, { type: 'probe', name: 'ghost' }))).toEqual({
@@ -186,16 +186,17 @@ describe('run_definition rejecting', () => {
     });
     expect(await call(runDefinition, toAlpha(acmeAdmin, { type: 'echo', name: 'plain' }))).toEqual({
       status: 'rejected',
-      reason: 'not_found',
-      detail: 'There is no definition type echo',
+      reason: 'invalid_input',
+      detail: 'The input does not match the input schema',
+      issues: [{ pointer: '/type', detail: 'Expected a type this server runs: probe' }],
     });
   });
 
   it('a definition whose document its capability no longer parses, recording nothing', async () => {
-    const { executing, ledger, prober } = await withPlain();
+    const { running, ledger, prober } = await withPlain();
     prober.rejectEveryDocument();
 
-    expect(await executing({})).toEqual({
+    expect(await running({})).toEqual({
       status: 'rejected',
       reason: 'conflict',
       detail:
@@ -206,9 +207,9 @@ describe('run_definition rejecting', () => {
   });
 
   it('a run id that is not a UUID', async () => {
-    const { executing } = await withPlain();
+    const { running } = await withPlain();
 
-    expect(await executing({ run_id: 'run-1' })).toMatchObject({
+    expect(await running({ run_id: 'run-1' })).toMatchObject({
       reason: 'invalid_input',
       issues: [{ pointer: '/run_id', detail: 'Expected a UUID' }],
     });

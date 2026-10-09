@@ -82,7 +82,7 @@ describe('retire_definition', () => {
 });
 
 describe('retire_definition rejecting', () => {
-  it('a definition the brain does not have, and a capability it does not know', async () => {
+  it('a definition the brain does not have, and a type the server does not run', async () => {
     const { call } = await withPlain();
 
     expect(await call(retireDefinition, toAlpha(acmeAdmin, { type: 'echo', name: 'plain' }))).toEqual({
@@ -92,8 +92,9 @@ describe('retire_definition rejecting', () => {
     });
     expect(await call(retireDefinition, toAlpha(acmeAdmin, { type: 'reason', name: 'plain' }))).toEqual({
       status: 'rejected',
-      reason: 'not_found',
-      detail: 'There is no definition type reason',
+      reason: 'invalid_input',
+      detail: 'The input does not match the input schema',
+      issues: [{ pointer: '/type', detail: 'Expected a type this server runs: echo or probe' }],
     });
   });
 

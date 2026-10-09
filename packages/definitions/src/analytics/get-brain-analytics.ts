@@ -2,7 +2,7 @@ import { BrainReader, defineQuery } from '@beonauto/operations';
 import { Clock, Effect, Schema } from 'effect';
 
 import type { Capability } from '../capability/capability.ts';
-import { DefinitionTypeField, knownCapabilities } from '../capability/known-capabilities.ts';
+import { knownCapabilities, type KnownCapabilities } from '../capability/known-capabilities.ts';
 import { RunsOfNameField } from '../operations/definition-fields.ts';
 import { definitionWordsFor } from '../plain-language/definition-words.ts';
 import { analyticsOf, BrainAnalyticsSchema } from './analytics-answer.ts';
@@ -17,19 +17,21 @@ const description = [
   '`days` reads the last 7, 14 or 30 days, or `from` and `to` the days between them, and `type` and `name` keep the runs of one definition.',
 ].join(' ');
 
-const AnalyticsInputSchema = Schema.Struct({
-  days: Schema.optionalKey(DaysField),
-  from: Schema.optionalKey(dayFieldOf('The first day to read, YYYY-MM-DD in UTC, given with to and not with days')),
-  to: Schema.optionalKey(
-    dayFieldOf(
-      `The last day to read, YYYY-MM-DD in UTC, no later than today and at most ${longestWindowInDays} days from the first`,
+function analyticsInputOf(typeField: KnownCapabilities['field']) {
+  return Schema.Struct({
+    days: Schema.optionalKey(DaysField),
+    from: Schema.optionalKey(dayFieldOf('The first day to read, YYYY-MM-DD in UTC, given with to and not with days')),
+    to: Schema.optionalKey(
+      dayFieldOf(
+        `The last day to read, YYYY-MM-DD in UTC, no later than today and at most ${longestWindowInDays} days from the first`,
+      ),
     ),
-  ),
-  type: Schema.optionalKey(DefinitionTypeField),
-  name: Schema.optionalKey(RunsOfNameField),
-});
+    type: Schema.optionalKey(typeField),
+    name: Schema.optionalKey(RunsOfNameField),
+  });
+}
 
-type AnalyticsInput = typeof AnalyticsInputSchema.Type;
+type AnalyticsInput = ReturnType<typeof analyticsInputOf>['Type'];
 
 function selectionOf({ type, name }: AnalyticsInput) {
   return { ...(type === undefined ? {} : { definitionType: type }), ...(name === undefined ? {} : { name }) };
@@ -48,7 +50,7 @@ export function defineGetBrainAnalytics(capabilities: readonly Capability[]) {
     title: 'Get brain analytics',
     description,
     route: { method: 'GET', path: '/analytics' },
-    inputSchema: AnalyticsInputSchema,
+    inputSchema: analyticsInputOf(known.field),
     outputSchema: BrainAnalyticsSchema,
     reasons: ['invalid_input'],
     handle: readAnalytics,
