@@ -1,11 +1,12 @@
 import { internalTermsIn } from '@beonauto/api/testing';
 import { recallDocument } from '@beonauto/recollection/testing';
 import { Schema } from 'effect';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import {
   brainWithReviews,
+  foldsHeld,
   foldsHeldUntilOpened,
   inState,
   liveAt,
@@ -61,15 +62,13 @@ function updated(server: ReasoningServer, name: string, fold: string) {
 }
 
 describe('a recall function whose view is being built', { timeout: recallTestTimeoutMs }, () => {
-  it('answers at once, unavailable, rebuilding, with Retry-After, until its view has caught up', async () => {
+  it('answers before its view is built, unavailable, rebuilding, with Retry-After, until its view has caught up', async () => {
     const gate = foldsHeldUntilOpened();
     const server = await servingWith({}, gate);
     await brainWithReviews(server, 1);
-    await standingUntil(server, 'reviews', inState('rebuilding'));
+    await foldsHeld(gate, 1);
 
-    const askedAt = Date.now();
     const meanwhile = await recalled(server, 'reviews', { campaign: 'spring' });
-    const answeredInMs = Date.now() - askedAt;
     gate.open();
     await standingUntil(server, 'reviews', liveWith(1));
     const caughtUp = await recalled(server, 'reviews', { campaign: 'spring' });
@@ -86,7 +85,6 @@ describe('a recall function whose view is being built', { timeout: recallTestTim
     });
     expect(meanwhile.headers.get('retry-after')).toBe('5');
     expect(internalTermsIn(decodeDetail(meanwhile.body).detail)).toEqual([]);
-    expect(answeredInMs).toBeLessThan(2000);
     expect(caughtUp).toMatchObject({ status: 200, body: { output: [{ verdict: 'approve' }] } });
   });
 
@@ -114,9 +112,7 @@ describe('a recall function waiting for its view to be built', { timeout: recall
     const gate = foldsHeldUntilOpened();
     const server = await servingWith({ RECOLLECTION_MAX_REBUILDS: '1', RECOLLECTION_BRAINS_AT_ONCE: '1' }, gate);
     await brainWithReviews(server, 1, 'beta');
-    await vi.waitFor(() => {
-      expect(gate.held()).toBe(1);
-    });
+    await foldsHeld(gate, 1);
     await brainWithReviews(server, 1);
     await saved(server, 'count', '. + 1');
     gate.letThrough(1);

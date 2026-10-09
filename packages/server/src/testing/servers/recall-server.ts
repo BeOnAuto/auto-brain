@@ -9,6 +9,8 @@ import { alpha, servingReasoning, type ReasoningServer } from './reasoning-serve
 
 export const recallTestTimeoutMs = 60_000;
 
+const untilNearTheTestTimeout = { timeout: recallTestTimeoutMs - 10_000, interval: 50 };
+
 export const anyReview = [
   '---',
   'description: Reviews a campaign brief, answering whatever the model writes',
@@ -73,6 +75,12 @@ export function foldsHeldUntilOpened(): Gate {
   };
 }
 
+export function foldsHeld(gate: Gate, folds: number): Promise<void> {
+  return vi.waitFor(() => {
+    expect(gate.held()).toBe(folds);
+  }, untilNearTheTestTimeout);
+}
+
 export async function brainWithReviews(server: ReasoningServer, briefsFirst = 0, brain = 'alpha'): Promise<void> {
   const path = `/v1/orgs/acme/brains/${brain}`;
   await server.call('POST', '/v1/orgs/acme/brains', { body: { brain, name: brain } });
@@ -102,15 +110,12 @@ export function standingUntil(
   name: string,
   holds: (standing: Standing) => boolean,
 ): Promise<unknown> {
-  return vi.waitFor(
-    async () => {
-      const { body } = await server.call('GET', `${alpha}/specs/recollection/${name}`);
-      const standing = Option.getOrUndefined(decodeStanding(body))?.standing;
-      expect(standing !== undefined && holds(standing)).toBe(true);
-      return body;
-    },
-    { timeout: recallTestTimeoutMs - 10_000, interval: 50 },
-  );
+  return vi.waitFor(async () => {
+    const { body } = await server.call('GET', `${alpha}/specs/recollection/${name}`);
+    const standing = Option.getOrUndefined(decodeStanding(body))?.standing;
+    expect(standing !== undefined && holds(standing)).toBe(true);
+    return body;
+  }, untilNearTheTestTimeout);
 }
 
 export function liveWith(folded: number): (standing: Standing) => boolean {

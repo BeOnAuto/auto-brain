@@ -3,19 +3,21 @@ import { describe, expect, it } from 'vitest';
 
 import { statement } from '../database/statement.ts';
 import {
+  alpha,
   at,
   cronTrigger,
   eventRecordOf,
   eventTrigger,
   everyTrigger,
   published,
+  publishedInTurn,
   runRecorded,
   specRecordAt,
   specRecorded,
 } from '../reaction-testing/brain-writes.ts';
 import { startsReaching, untilScheduleRuns } from '../reaction-testing/kept-triggers.ts';
 import { movedClock } from '../reaction-testing/moved-clock.ts';
-import { reactingHost } from '../reaction-testing/reacting-host.ts';
+import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
 import { until } from '../reaction-testing/until.ts';
 import { reactionExecutionIdOf } from '../reactions/reaction-ids.ts';
 import { mostStartsAMinute } from '../reactions/start-rates.ts';
@@ -30,15 +32,33 @@ function isoAt(minutes: number): string {
   return new Date(activatedAt + minutes * aMinute).toISOString();
 }
 
-async function closingAt(start: number, onEvents = closed) {
+async function openedAt(start: number) {
   const clock = movedClock(start);
   const reacting = await reactingHost({ clock });
-  await specRecorded(reacting.database.store, {
+  return { reacting, clock, starts: reacting.reactions.starts };
+}
+
+function closingSaved({ database }: ReactingHost, onEvents = closed) {
+  return specRecorded(database.store, {
     name: 'close',
     version: 1,
     triggers: [onEvents, cronTrigger('30 9 * * *'), everyTrigger(15 * aMinute)],
   });
-  return { reacting, clock, starts: reacting.reactions.starts };
+}
+
+async function closingAt(start: number, onEvents = closed) {
+  const opened = await openedAt(start);
+  await closingSaved(opened.reacting, onEvents);
+  return opened;
+}
+
+function closingStartedIn({ database }: ReactingHost, minute: number, starts: number) {
+  return Effect.runPromise(
+    database.write(
+      statement`INSERT INTO workflow_reaction_rates (brain_key, workflow, minute, starts)
+        VALUES (${alpha}, 'close', ${minute}, ${starts})`,
+    ),
+  );
 }
 
 function executionIdOf(start: { readonly executionId: string } | undefined): string {
@@ -112,26 +132,24 @@ describe('a due time of a schedule asked for again', () => {
 });
 
 describe('the start rate of a workflow with several triggers', () => {
-  it(`counts the ${mostStartsAMinute} starts of its event trigger a minute, and never a start of its schedule`, async () => {
-    const { reacting } = await closingAt(activatedAt + 15 * aMinute + 1000);
+  it(`counts the starts of its event trigger to ${mostStartsAMinute} a minute, and never a start of its schedule`, async () => {
+    const minute = activatedAt + 15 * aMinute;
+    const { reacting } = await openedAt(minute + 1000);
+    await closingStartedIn(reacting, minute, mostStartsAMinute - 1);
+    await closingSaved(reacting);
     await startsReaching(reacting.reactions.starts, 1);
 
-    await Array.from({ length: mostStartsAMinute + 1 }, (_, index) => index).reduce<Promise<void>>(
-      (before, index) =>
-        before.then(() => published(reacting.database.store, { id: `e${index}`, type: 'com.acme.closed' })),
-      Promise.resolve(),
-    );
-    const starts = await startsReaching(reacting.reactions.starts, mostStartsAMinute + 1);
+    await publishedInTurn(reacting.database.store, [
+      { id: 'e1', type: 'com.acme.closed' },
+      { id: 'e2', type: 'com.acme.closed' },
+    ]);
+    const starts = await startsReaching(reacting.reactions.starts, 2);
     const waiting = await until(
       () => Effect.runPromise(reacting.database.read(statement`SELECT execution_id FROM workflow_reaction_backlog`)),
       (rows) => rows.length > 0,
     );
 
-    expect([starts.filter(({ trigger }) => trigger.kind === 'event').length, waiting.length]).toEqual([
-      mostStartsAMinute,
-      1,
-    ]);
-    expect(starts.filter(({ trigger }) => trigger.kind === 'every')).toHaveLength(1);
+    expect([starts.map(({ trigger }) => trigger.kind), waiting.length]).toEqual([['every', 'event'], 1]);
   });
 });
 
