@@ -14,7 +14,7 @@ curl http://localhost:8080/v1/orgs/local/brains/sales
 
 `PUT /v1/orgs/local/brains/sales` replaces the name and the description, and `POST /v1/orgs/local/brains/sales/retire` retires the brain for good.
 
-A brain has reusable function and workflow definitions, stored as named, versioned `definitions` in the API. A reasoning function calls a language model, with the key from your `.env`. Write its definition in `greeting.md`: YAML front matter that names the model, then a Liquid template that renders the prompt from the input.
+A brain has reusable function and workflow definitions, stored as named, versioned definitions. A reasoning function calls a language model, with the key from your `.env`. Write its definition in `greeting.md`: YAML front matter that names the model, then a Liquid template that renders the prompt from the input.
 
 ```markdown
 ---

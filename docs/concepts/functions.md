@@ -18,7 +18,7 @@ The source-available runtime is in early development and is not ready for produc
 
 Workflows are available and coordinate the functions above. They are not another function type.
 
-Every runtime runs workflows itself, with nothing more to set up: a connection's tools include `send_run_event`, and `create_definition` accepts the capability `workflow`. A self-hosted runtime runs interaction, computation and recall functions too: its `create_definition` accepts the capabilities `interaction`, `computation` and `recall`, and its tools include `list_interactions` and `answer_interaction`; Auto Cloud does not offer them yet.
+Every runtime runs workflows itself, with nothing more to set up: a connection's tools include `send_run_event`, and `create_definition` accepts the type `workflow`. A self-hosted runtime runs interaction, computation and recall functions too: its `create_definition` accepts the types `interaction`, `computation` and `recall`, and its tools include `list_interactions` and `answer_interaction`; Auto Cloud does not offer them yet.
 
 Dream is coming soon. It is an optional process using history and functions, not a sixth function type. API details should match the runtime version in use.
 

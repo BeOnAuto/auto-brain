@@ -89,7 +89,7 @@ Any other option is rejected when the document is parsed, with the option named 
 
 A gateway is a different case: the AI SDK adds every key under the gateway's name, or its camel case (`my-gateway` and `myGateway`), to the request body as it is, and reads `user` from `openaiCompatible`. A gateway gives meaning to body fields its operator may not want a tenant to set: attribution and budgets, routing and fallbacks, mock answers, endpoints and credentials. So a definition sets for a gateway only the top-level fields its entry lists in `allowed_provider_options`, under any of those namespaces, and by default none. The list is checked when the server starts: at most 64 distinct names of 1 to 64 characters, none of them a field the runtime sets or that changes what the call is (`model`, `messages`, `stream`, `stream_options`, `n`, `max_tokens`, `max_completion_tokens`, `temperature`, `top_p`, `frequency_penalty`, `presence_penalty`, `seed`, `stop`, `response_format`, `tools`, `tool_choice`, `functions`, `function_call`, `reasoning_effort`, `verbosity`, and the SDK's `reasoningEffort`, `textVerbosity` and `strictJsonSchema`). A problem names the setting and the field, never a value.
 
-The parser does not know the gateways, so this check runs when the definition executes: a field outside the list rejects the run as `conflict`, naming the field and saying the gateway does not allow it, and the gateway is not called. The same goes for a namespace that is shaped like a gateway's name but is no configured gateway's: the run is rejected as `conflict` before any provider is called.
+The parser does not know the gateways, so this check runs when the function runs: a field outside the list rejects the run as `conflict`, naming the field and saying the gateway does not allow it, and the gateway is not called. The same goes for a namespace that is shaped like a gateway's name but is no configured gateway's: the run is rejected as `conflict` before any provider is called.
 
 A document is checked without calling a model, and the same document always gives the same answer. Whether its provider is configured, and whether the provider accepts the model and the settings, shows only when it runs; see [When a run is rejected](#when-a-run-is-rejected).
 
@@ -175,7 +175,7 @@ Left out, and why:
 - `url_encode`, `cgi_escape`, `uri_escape` and `url_decode`: the encoders grow their output without charging the memory limit (nine `url_encode` in a row turn 65,536 characters into 1,245,184 without charging anything), and a prompt has no URL to encode;
 - `inspect` and `jsonify` do what `json` does.
 
-As of October 2026, no published advisory affects liquidjs 10.27.2 or later; earlier versions have several, including code run from a crafted template. 10.29.0 is the newest release the workspace's minimum release age allows.
+As of October 2026, no published advisory affects liquidjs 10.27.2 or later; earlier versions have several, including running code from a crafted template. 10.29.0 is the newest release the workspace's minimum release age allows.
 
 ### Limits
 
@@ -191,7 +191,7 @@ Names are counted in the text inside `{{ }}` and `{% %}`: every variable, proper
 
 ## Creating and running a reasoning function
 
-The definition and run operations of [`@beonauto/definitions`](../../../packages/definitions) store reasoning function definitions and record their runs: `create_definition`, `list_definitions`, `get_definition`, `update_definition`, `retire_definition`, `run_definition` and `get_run`, under `/v1/orgs/{org}/brains/{brain}`, with `type: "reasoning"` as the API type identifier. Give the server a key for the provider first; it reads the model settings when it starts:
+The definition and run operations of [`@beonauto/definitions`](../../../packages/definitions) store reasoning function definitions and record their runs: `create_definition`, `list_definitions`, `get_definition`, `update_definition`, `retire_definition`, `run_definition` and `get_run`, under `/v1/orgs/{org}/brains/{brain}`, with `type: "reasoning"`. Give the server a key for the provider first; it reads the model settings when it starts:
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
@@ -285,7 +285,7 @@ output:
 Expense: {{ input.expense }}, {{ input.amount | money }}.
 ```
 
-CapabilityAnswer with `{"input":{"expense":"Dinner for two with a client","amount":142.5}}`, it answers with the JSON value, validated against the schema:
+Run with `{"input":{"expense":"Dinner for two with a client","amount":142.5}}`, it answers with the JSON value, validated against the schema:
 
 ```json
 {

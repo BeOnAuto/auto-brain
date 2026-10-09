@@ -20,6 +20,6 @@ Workflows run in the server itself, on the workflow engine of `@beonauto/workflo
 - [HTTP API](reference/http.md) and [HTTP walkthrough](reference/http-tutorial.md)
 - [MCP transport and tool behavior](reference/mcp.md)
 - [Complete reasoning function format](reference/reasoning-format.md)
-- [Workflow format and run](reference/workflow-format.md)
+- [Workflow format and runs](reference/workflow-format.md)
 
 Keep these notes accurate when changing the runtime. Publish the relevant user-facing behavior separately in the public guides. Package READMEs retain code entry points and test instructions; architecture decisions live in [decisions](../decisions/README.md).

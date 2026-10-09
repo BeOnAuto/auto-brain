@@ -101,7 +101,7 @@ The HTTP method decides nothing. The server serves these, which `packages/server
 | succeeded                   | the first text content says in plain words what happened, the second is the output as JSON text, and `structuredContent` is the same output, with no output schema to check it against |
 | rejected, failed, cancelled | `isError: true`; the first text content says in plain words what could not be done, and the second is the problem document HTTP would answer with, as JSON; no `structuredContent`     |
 
-Human-readable results name reasoning functions, workflows and runs. They omit ids, versions, formats and status codes, which remain in the structured result. The tools take `type: reasoning` for reasoning functions and `type: workflow` for workflows. `get_guide` serves the format of each definition type; no tool description carries one. The words of an outcome take at most 400 characters and those of a refusal at most 600: `withinCharacters` of `@beonauto/operations` keeps the whole sentences that fit and says the rest is in the details below, the JSON beside them.
+Human-readable results name reasoning functions, workflows and runs. They omit ids, versions, formats and status codes, which remain in the structured result. `get_guide` serves the format of each definition type; no tool description carries one. The words of an outcome take at most 400 characters and those of a refusal at most 600: `withinCharacters` of `@beonauto/operations` keeps the whole sentences that fit and says the rest is in the details below, the JSON beside them.
 
 Each operation supplies `plainLanguage`: a `task` and an `attempt` describing the action, and an `outcome` based on its output. It may also give `remedies` of its own by `because`, which take the place of the shared remedy in the words of its refusals, as `test_tool_call` names what `list_tool_servers` shows where a function's refusal speaks of the function. Each adapter gives the noun for its definitions and a sentence for a run's result. An endpoint refuses to mount an operation without them.
 
@@ -145,7 +145,7 @@ The SDK reports the errors it answers with JSON-RPC to `reportError`, which the 
 
 ## The list of models
 
-The server serves `list_models`, an org query of [`@beonauto/reasoning`](../../capabilities/reasoning/README.md#listing-the-models), like any other operation: `GET /v1/orgs/{org}/models`, with an optional `provider` in the query string, and the read-only tool `list_models` on `/mcp` and `/orgs/{org}/mcp`. It answers in the shape of the OpenAI API's list of models, which gateways such as LiteLLM, Portkey and Vercel's serve too:
+The server serves `list_models`, an org query of [`@beonauto/reasoning`](../../capabilities/reasoning/README.md#using-it-from-code), like any other operation: `GET /v1/orgs/{org}/models`, with an optional `provider` in the query string, and the read-only tool `list_models` on `/mcp` and `/orgs/{org}/mcp`. It answers in the shape of the OpenAI API's list of models, which gateways such as LiteLLM, Portkey and Vercel's serve too:
 
 ```json
 {

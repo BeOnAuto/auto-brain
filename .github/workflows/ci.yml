@@ -272,9 +272,9 @@ jobs:
           test "$(call created.json --data "$definition" "$brain/definitions/reasoning")" = 201
           test "$(call read.json "$brain/definitions/reasoning/hello")" = 200
           test "$(jq --raw-output .source read.json)" = "$source"
-          test "$(call executed.json --data '{"input":{"name":"CI"}}' "$brain/definitions/reasoning/hello/run")" = 503
-          test "$(jq --raw-output .reason executed.json)" = unavailable
-          test "$(jq --raw-output .detail executed.json)" = \
+          test "$(call ran.json --data '{"input":{"name":"CI"}}' "$brain/definitions/reasoning/hello/run")" = 503
+          test "$(jq --raw-output .reason ran.json)" = unavailable
+          test "$(jq --raw-output .detail ran.json)" = \
             'anthropic is not configured. No model provider is configured'
           docker stop reasoning
           test "$(docker inspect reasoning --format '{{.State.ExitCode}}')" = 0
@@ -436,7 +436,7 @@ jobs:
           source="$(printf '%s\n' '---' 'model: anthropic/claude-sonnet-4-5' '---' 'Say hello to {{ input.name }}.')"
           definition="$(jq --null-input --arg source "$source" '{name: "hello", source: $source}')"
           test "$(call created.json --data "$definition" "$brain/definitions/reasoning")" = 201
-          test "$(call executed.json --data '{"input":{"name":"CI"}}' "$brain/definitions/reasoning/hello/run")" = 503
+          test "$(call ran.json --data '{"input":{"name":"CI"}}' "$brain/definitions/reasoning/hello/run")" = 503
           test "$(call analytics.json "$brain/analytics")" = 200
           test "$(jq --compact-output '[.days, .runs.succeeded, .runs.rejected, .by_day[-1].day, .by_day[-1].runs.total]' \
             analytics.json)" = "[7,2,1,\"$(date --utc +%F)\",3]"

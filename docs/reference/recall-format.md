@@ -2,7 +2,7 @@
 
 # Recall function format
 
-The API stores a recall function as a `recall` definition. Its source document names the events of the brain it folds, the view they fold into and how that view starts, and holds a fold, written in jq, that takes the view and one event and answers the next view. The runtime keeps the view as the brain records events, from the first event of its history on, and a run answers from the view as it stands, applying the function's `answer` to it. Use one so that a brain remembers what it decided before: the reviews of each campaign, the latest verdict per region, the refusals of a quarter.
+The API stores a recall function as a definition of the type `recall`. Its source document names the events of the brain it folds, the view they fold into and how that view starts, and holds a fold, written in jq, that takes the view and one event and answers the next view. The runtime keeps the view as the brain records events, from the first event of its history on, and a run answers from the view as it stands, applying the function's `answer` to it. Use one so that a brain remembers what it decided before: the reviews of each campaign, the latest verdict per region, the refusals of a quarter.
 
 The view is a function of the brain's events alone. Nothing a run passes in is kept, no run changes it, and the same history folds to the same view on every server and either store.
 
@@ -55,7 +55,7 @@ The fold runs once for every run of `review-brief` that succeeds, whatever the m
 
 A fold that raises an error on an ordinary output stops its view at that event, and so does a view that outgrows its bound or its schema; see [When a view stalls](#when-a-view-stalls). Guard the fold, and bound the view, before you save it.
 
-For this document, `create_definition` takes `type: "recall"`, a function `name` such as `campaign-reviews`, and the document as `source`. `run_definition` takes the same capability and name, with the `campaign` and optionally how many reviews to answer, `last`, in the `input` object. Both operations also require the brain id unless the MCP connection is scoped to that brain.
+For this document, `create_definition` takes `type: "recall"`, a function `name` such as `campaign-reviews`, and the document as `source`. `run_definition` takes the same type and name, with the `campaign` and optionally how many reviews to answer, `last`, in the `input` object. Both operations also require the brain id unless the MCP connection is scoped to that brain.
 
 After three runs of `review-brief`, the view is:
 
@@ -141,11 +141,11 @@ Unknown fields are rejected, among them the fields of a reasoning function that 
 
 A recall function folds the events of its own brain, in the order the brain recorded them, from the first:
 
-| Events                                                           | `source`                     | `subject`       | `data`                                                                                                                                                    |
-| ---------------------------------------------------------------- | ---------------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `run_started`, `run_succeeded`, `run_rejected`, `run_failed`     | `/runs/<run id>`             | `<type>/<name>` | `type`, `name`, `version` and `caller`; on a success also `output`, or `output_bytes`, its size, when the output would make the event larger than 240 KiB |
-| `definition_created`, `definition_updated`, `definition_retired` | `/definitions/<type>/<name>` | none            | `type`, `name`, `caller`, and `version` unless retired                                                                                                    |
-| An event published to the brain, of any other type               | as its publisher gave it     | as given        | as given; see [Publishing events](http.md#publishing-events)                                                                                              |
+| Events                                                           | `source`                     | `subject`       | `data`                                                                                                                                                               |
+| ---------------------------------------------------------------- | ---------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `run_started`, `run_succeeded`, `run_rejected`, `run_failed`     | `/runs/<run id>`             | `<type>/<name>` | `definition_type`, `name`, `version` and `caller`; on a success also `output`, or `output_bytes`, its size, when the output would make the event larger than 240 KiB |
+| `definition_created`, `definition_updated`, `definition_retired` | `/definitions/<type>/<name>` | none            | `definition_type`, `name`, `caller`, and `version` unless retired                                                                                                    |
+| An event published to the brain, of any other type               | as its publisher gave it     | as given        | as given; see [Publishing events](http.md#publishing-events)                                                                                                         |
 
 Each event is a CloudEvent with its `id`, `type`, `source`, `time`, the time it happened as the brain recorded it, and its `data`; an event the brain recorded as the effect of another names that one in `causationid`, and the run at the top of its chain in `correlationid`. A recall function never folds the events of its own runs. An event the runtime cannot read, such as one whose data nests deeper than 512 levels, is passed over and reported to the operator once.
 
