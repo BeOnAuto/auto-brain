@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 
+import { mostAssignmentsInAFunction } from '@beonauto/definitions/check';
 import { describe, expect, it } from 'vitest';
 
 import { computationBounds, mebibytes, mostOutputBytes } from '../run/run-bounds.ts';
@@ -21,6 +22,7 @@ describe('the bounds on the public reference page of computation functions', () 
   it('are the bounds the code holds a run to', () => {
     expect([
       valueOf('Work'),
+      valueOf('Assignments'),
       valueOf('Memory'),
       valueOf('Stack'),
       valueOf('Depth of a value'),
@@ -29,6 +31,7 @@ describe('the bounds on the public reference page of computation functions', () 
       valueOf('Runs at once'),
     ]).toEqual([
       expect.stringContaining(`${counted.format(computationBounds.budget)} checkpoints`),
+      expect.stringContaining(`${mostAssignmentsInAFunction} to variables in one function`),
       expect.stringContaining(`${computationBounds.memoryBytes / mebibytes} MiB`),
       expect.stringContaining(`${computationBounds.stackBytes / mebibytes} MiB`),
       expect.stringContaining(`${computationBounds.mostValueDepth} levels`),

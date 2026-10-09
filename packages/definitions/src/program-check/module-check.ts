@@ -1,7 +1,8 @@
 import type { CheckIssue, CheckJob } from '@beonauto/workflow-engine/dsl';
 import ts from 'typescript6';
 
-import { locatedIn } from './diagnostics.ts';
+import { assignmentIssues } from './assignment-bound.ts';
+import { locatedIn, type Located } from './diagnostics.ts';
 import { contractOf, contractIssues, type Contract } from './entry-contracts.ts';
 import { exportedFunctions, moduleRuleIssues, type Place } from './module-rules.ts';
 
@@ -18,10 +19,10 @@ export function sourceFileOf(name: string, text: string): ts.SourceFile {
   return ts.createSourceFile(name, text, ts.ScriptTarget.ES2025, true);
 }
 
-export function moduleIssues(
+function analysedIssues(
   program: ts.Program,
   { file, place, contract, contractFile }: CheckedModule,
-): readonly CheckIssue[] {
+): readonly Located[] {
   const compiled = locatedIn(file, () => [
     ...program.getSyntacticDiagnostics(file()),
     ...program.getSemanticDiagnostics(file()),
@@ -30,11 +31,16 @@ export function moduleIssues(
     locatedIn(contractFile, () => program.getSemanticDiagnostics(contractFile())),
     contract,
   );
-  return [...compiled, ...moduleRuleIssues(file, place), ...contracted].map(({ line, detail }): CheckIssue => ({
-    at: 'module',
-    line,
-    detail,
-  }));
+  return [...compiled, ...moduleRuleIssues(file, place), ...contracted];
+}
+
+export function moduleIssues(program: ts.Program, checked: CheckedModule): readonly CheckIssue[] {
+  const bounded = assignmentIssues(checked.file);
+  const located =
+    bounded.length > 0
+      ? [...bounded, ...moduleRuleIssues(checked.file, checked.place)]
+      : analysedIssues(program, checked);
+  return located.map(({ line, detail }): CheckIssue => ({ at: 'module', line, detail }));
 }
 
 export function checkedModuleOf(job: CheckJob): CheckedModule | undefined {

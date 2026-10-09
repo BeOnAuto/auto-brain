@@ -1,6 +1,7 @@
 import type { CheckIssue } from '@beonauto/workflow-engine/worker';
 import ts from 'typescript6';
 
+import { assignmentIssues } from './assignment-bound.ts';
 import type { Located } from './diagnostics.ts';
 import type { ExpressionsFile, Span } from './expressions-file.ts';
 
@@ -49,16 +50,29 @@ function syntaxIssue(span: Span, located: Located): CheckIssue {
   return placed(span, { line: located.line, detail: `${located.detail.replace(/\.$/u, '')}; ${over}` });
 }
 
-function spanIssues(span: Span, diagnostics: ExpressionDiagnostics, whole: ReadonlySet<string>): readonly CheckIssue[] {
+interface SpanDiagnostics extends ExpressionDiagnostics {
+  readonly bounded: readonly Located[];
+}
+
+function spanIssues(span: Span, diagnostics: SpanDiagnostics, whole: ReadonlySet<string>): readonly CheckIssue[] {
   const own = (found: readonly Located[]) => found.filter(({ line }) => isWithin(span, line));
   const syntactic = own(diagnostics.syntactic);
   if (syntactic.length > 0) {
     return syntactic.map((located) => syntaxIssue(span, located));
   }
+  const bounded = own(diagnostics.bounded);
+  if (bounded.length > 0) {
+    return bounded.map((located) => placed(span, located));
+  }
   if (!whole.has(`${span.opening}:${span.closing}`)) {
     return [{ at: span.index, line: 1, detail: oneExpression(span.names) }];
   }
   return own(diagnostics.semantic()).map((located) => placed(span, located));
+}
+
+function boundedDiagnostics(file: () => ts.SourceFile, diagnostics: ExpressionDiagnostics): SpanDiagnostics {
+  const bounded = assignmentIssues(file);
+  return bounded.length === 0 ? { ...diagnostics, bounded } : { ...diagnostics, bounded, semantic: () => [] };
 }
 
 export function expressionIssues(
@@ -67,5 +81,6 @@ export function expressionIssues(
   diagnostics: ExpressionDiagnostics,
 ): readonly CheckIssue[] {
   const whole = wholeExpressions(file);
-  return placedFile.spans.flatMap((span) => spanIssues(span, diagnostics, whole));
+  const bounded = boundedDiagnostics(file, diagnostics);
+  return placedFile.spans.flatMap((span) => spanIssues(span, bounded, whole));
 }

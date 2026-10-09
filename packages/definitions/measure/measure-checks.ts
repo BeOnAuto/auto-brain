@@ -63,13 +63,19 @@ const table = [
   '}',
 ].join('\n');
 
-const reassigned = [
-  'export default function (input: Input): Output {',
-  '  let total = 0;',
-  ...Array.from({ length: 1500 }, (_, index) => `  total += input.period.days_total * ${index % 97};`),
-  '  return { campaigns: [], total_spend_cents: total };',
-  '}',
-].join('\n');
+function assigning(times: number): string {
+  return [
+    'export default function (input: Input): Output {',
+    '  let total = 0;',
+    ...Array.from({ length: times }, (_, index) => `  total += input.period.days_total * ${index % 97};`),
+    '  return { campaigns: [], total_spend_cents: total };',
+    '}',
+  ].join('\n');
+}
+
+const reassigned = assigning(500);
+
+const overAssigned = assigning(2150);
 
 const computation = (source: string): CheckJob => ({
   module: { place: 'computation', source },
@@ -119,7 +125,11 @@ const cases: readonly (readonly [string, CheckJob])[] = [
   ['one expression', expressions(1)],
   ['a hundred expressions', expressions(100)],
   [`a program of ${table.length} characters, a table in one function`, computation(table)],
-  [`a program of ${reassigned.length} characters, one variable assigned 1,500 times`, computation(reassigned)],
+  [`a program of ${reassigned.length} characters, one variable assigned 500 times`, computation(reassigned)],
+  [
+    `a program of ${overAssigned.length} characters, one variable assigned 2,150 times, which the walk refuses before the compiler analyses it`,
+    computation(overAssigned),
+  ],
 ];
 
 for (const [name, job] of cases) {
