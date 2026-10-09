@@ -40,7 +40,7 @@ function withTypeField(
   capabilities: readonly Capability[],
   meaning: string,
 ): JsonSchemaDocument {
-  const types = alternatives(capabilities.map(({ type, noun }) => `${type} (${noun.one})`));
+  const types = alternatives(capabilities.map(({ type }) => type));
   const typeProperty = {
     type: 'string',
     enum: capabilities.map(({ type }) => type),

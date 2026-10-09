@@ -204,8 +204,7 @@ describe('the instructions an agent receives when it connects', () => {
     expect(createDefinition?.inputSchema).toMatchObject({
       properties: {
         type: {
-          description:
-            "The definition's type: reasoning (reasoning function), interaction (interaction function), computation (computation function), recall (recall function), or workflow (workflow)",
+          description: "The definition's type: reasoning, interaction, computation, recall, or workflow",
         },
       },
     });

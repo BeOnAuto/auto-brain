@@ -60,7 +60,7 @@ describe('the JSON Schema of the input of the operations', () => {
       expect(input.schema).toHaveProperty(['properties', 'type'], {
         type: 'string',
         enum: ['echo', 'probe'],
-        description: "The definition's type: echo (greeting) or probe (probe)",
+        description: "The definition's type: echo or probe",
       });
       expect(input.schema).toMatchObject({ type: 'object', additionalProperties: false });
     }
@@ -109,7 +109,7 @@ describe('the JSON Schema of the filters of the runs', () => {
     expect(listing?.input.schema).toMatchObject({
       properties: {
         type: {
-          description: 'Only the runs of this type: echo (greeting) or probe (probe)',
+          description: 'Only the runs of this type: echo or probe',
         },
         name: { description: 'Only the runs of the definition with this name' },
       },
