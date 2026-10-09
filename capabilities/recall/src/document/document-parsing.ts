@@ -10,14 +10,14 @@ import {
   type ReadFrontMatter,
   type SourceLines,
 } from '@beonauto/definitions/document';
-import { compileProgram, jsonBytesOf, lineOf, mostValueDepth } from '@beonauto/workflow-engine/dsl';
+import { oneLanguage } from '@beonauto/workflow-engine';
+import { jsonBytesOf, mostValueDepth } from '@beonauto/workflow-engine/dsl';
 import type { ViewFilter } from '@beonauto/workflow-host';
 import { Result, type Schema } from 'effect';
 
 import { recallBounds } from '../run/recall-bounds.ts';
 import { decodeFrontMatter, recallFrontMatter, type RecallFrontMatter } from './front-matter.ts';
-import { answerDialect, foldDialect } from './recall-dialects.ts';
-import type { RecallAnswer, RecallFunctionDefinitionDocument, ValueContract } from './recall-document.ts';
+import type { RecallFunctionDefinitionDocument, ValueContract } from './recall-document.ts';
 import { filtersOf } from './source-filters.ts';
 
 type Checked<A> = Result.Result<A, readonly DocumentIssue[]>;
@@ -32,13 +32,11 @@ interface ViewPart {
   readonly schema?: CompiledSchema;
 }
 
-interface AnswerPart {
-  readonly answer?: RecallAnswer;
-}
-
 type ValueSection = { readonly schema?: Schema.JsonObject } | undefined;
 
-const language = 'jq';
+const language = 'typescript';
+
+const exportedAnswer = /^export function answer\b/mu;
 
 function issuesOf(check: () => Checked<unknown>): readonly DocumentIssue[] {
   const checked = check();
@@ -48,27 +46,18 @@ function issuesOf(check: () => Checked<unknown>): readonly DocumentIssue[] {
 function foldOf({ body, bodyLine }: DocumentParts): Checked<FoldPart> {
   if (body.trim() === '') {
     return Result.fail([
-      { line: bodyLine, pointer: '', detail: 'The definition has no fold: write it after the front matter' },
+      {
+        line: bodyLine,
+        pointer: '',
+        detail: 'The definition has no program: write the module with its fold after the front matter',
+      },
     ]);
   }
-  const compiled = compileProgram(body, foldDialect);
-  return 'issues' in compiled
-    ? Result.fail(
-        compiled.issues.map(({ detail, span }) => ({
-          line: bodyLine + lineOf(body, span.start) - 1,
-          pointer: '',
-          detail,
-        })),
-      )
-    : Result.succeed({ fold: body, foldLine: bodyLine });
+  return Result.succeed({ fold: body, foldLine: bodyLine });
 }
 
 function languageOf(written: string, lines: SourceLines): Checked<typeof language> {
-  return written === language
-    ? Result.succeed(language)
-    : Result.fail([
-        issueAt(lines, '/language', `${written} is not a language of a recall function; it is written in jq`),
-      ]);
+  return written === language ? Result.succeed(language) : Result.fail([issueAt(lines, '/language', oneLanguage)]);
 }
 
 function schemaOf(document: Schema.JsonObject | undefined, what: string, lines: SourceLines): Checked<ValueContract> {
@@ -109,39 +98,26 @@ function viewOf(front: RecallFrontMatter, lines: SourceLines): Checked<ViewPart>
   });
 }
 
-function answerOf(source: string | undefined, lines: SourceLines): Checked<AnswerPart> {
-  if (source === undefined) {
-    return Result.succeed({});
-  }
-  const compiled = compileProgram(source, answerDialect);
-  const { line } = issueAt(lines, '/answer', '');
-  return 'issues' in compiled
-    ? Result.fail(compiled.issues.map(({ detail }) => issueAt(lines, '/answer', detail)))
-    : Result.succeed({ answer: { source, line } });
-}
-
 interface Parts {
   readonly language: typeof language;
   readonly input: ValueContract;
   readonly output: ValueContract;
   readonly view: ViewPart;
-  readonly answer: AnswerPart;
   readonly filters: readonly ViewFilter[];
   readonly fold: FoldPart;
 }
 
 function assembled(description: string | undefined, parts: Parts): RecallFunctionDefinitionDocument {
-  const { input, output, view, answer, filters, fold } = parts;
+  const { input, output, view, filters, fold } = parts;
   return {
     ...(description === undefined ? {} : { description }),
     language,
     input,
     output,
-    ...answer,
+    answers: exportedAnswer.test(fold.fold),
     details: {
       language,
       ...fold,
-      ...(answer.answer === undefined ? {} : { answer: answer.answer.source }),
       filters,
       initial: view.initial,
       ...(view.schema === undefined ? {} : { schema: view.schema.document }),
@@ -163,7 +139,6 @@ function documentFrom(
     input: contractOf(front.input, 'input', lines),
     output: contractOf(front.output, 'output', lines),
     view: viewOf(front, lines),
-    answer: answerOf(front.answer, lines),
     filters: filtersOf(front.source.events, lines),
     fold: fold(),
   };
@@ -172,7 +147,6 @@ function documentFrom(
     ...issuesOf(() => parts.input),
     ...issuesOf(() => parts.output),
     ...issuesOf(() => parts.view),
-    ...issuesOf(() => parts.answer),
     ...issuesOf(() => parts.filters),
     ...issuesOf(() => parts.fold),
   ];

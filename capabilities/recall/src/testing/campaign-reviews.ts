@@ -1,7 +1,7 @@
 export const campaignReviews = [
   '---',
   'description: The reviews of each campaign, latest last, as the review-brief function wrote them',
-  'language: jq',
+  'language: typescript',
   'source:',
   '  events:',
   '    - type: run_succeeded',
@@ -11,7 +11,10 @@ export const campaignReviews = [
   '  schema:',
   '    type: object',
   '    maxProperties: 50',
-  '    additionalProperties: { type: array, maxItems: 20 }',
+  '    additionalProperties:',
+  '      type: array',
+  '      maxItems: 20',
+  '      items: { type: object, required: [at, verdict, run], properties: { at: { type: string }, verdict: { type: string }, run: { type: string } } }',
   'input:',
   '  schema:',
   '    type: object',
@@ -22,13 +25,34 @@ export const campaignReviews = [
   'output:',
   '  schema:',
   '    type: array',
-  '    items: { type: object, required: [at, verdict], properties: { at: { type: string }, verdict: { type: string } } }',
-  "answer: '.[$input.campaign] // [] | .[-($input.last // 5):]'",
+  '    items: { type: object, required: [at, verdict], properties: { at: { type: string }, verdict: { type: string }, run: { type: string } } }',
   '---',
-  '($event.data.output | if type == "object" then .campaign else null end | if type == "string" then . else "unknown" end) as $campaign',
-  '| .[$campaign] += [{ at: $event.time, verdict: ($event.data.output.verdict? // "none" | tostring | .[0:200]), run: $event.source }]',
-  '| .[$campaign] |= .[-20:]',
-  '| to_entries | sort_by(.value[-1].at) | .[-50:] | from_entries',
+  'type Review = View[string][number];',
+  '',
+  'function fieldOf(value: Json | undefined, name: string): Json | undefined {',
+  "  return typeof value === 'object' && value !== null && !Array.isArray(value) ? value[name] : undefined;",
+  '}',
+  '',
+  'function lastAt(reviews: Review[]): string {',
+  "  return reviews.at(-1)?.at ?? '';",
+  '}',
+  '',
+  'export function fold(view: View, event: Event): View {',
+  "  const output = fieldOf(event.data, 'output');",
+  "  const named = fieldOf(output, 'campaign');",
+  "  const campaign = typeof named === 'string' ? named : 'unknown';",
+  "  const given = fieldOf(output, 'verdict') ?? 'none';",
+  "  const verdict = (typeof given === 'string' ? given : JSON.stringify(given)).slice(0, 200);",
+  "  const reviews = [...(view[campaign] ?? []), { at: event.time ?? '', verdict, run: event.source }].slice(-20);",
+  '  const latest = Object.entries({ ...view, [campaign]: reviews })',
+  '    .toSorted(([, first], [, second]) => (lastAt(first) < lastAt(second) ? -1 : lastAt(first) > lastAt(second) ? 1 : 0))',
+  '    .slice(-50);',
+  '  return Object.fromEntries(latest);',
+  '}',
+  '',
+  'export function answer(view: View, input: Input): Output {',
+  '  return (view[input.campaign] ?? []).slice(-(input.last ?? 5));',
+  '}',
 ].join('\n');
 
 export const reviewBrief = [
@@ -45,8 +69,15 @@ export const reviewBrief = [
 ].join('\n');
 
 export function recallDocument(
-  fold: string,
-  frontMatter = 'language: jq\nsource:\n  events:\n    - type: run_succeeded',
+  module: string,
+  frontMatter = 'language: typescript\nsource:\n  events:\n    - type: run_succeeded',
 ): string {
-  return `---\n${frontMatter}\n---\n${fold}`;
+  return `---\n${frontMatter}\n---\n${module}`;
+}
+
+export function foldOf(body: string, answerBody?: string): string {
+  const fold = `export function fold(view: any, event: any): unknown {\n  ${body}\n}`;
+  return answerBody === undefined
+    ? fold
+    : `${fold}\n\nexport function answer(view: any, input: any): unknown {\n  ${answerBody}\n}`;
 }

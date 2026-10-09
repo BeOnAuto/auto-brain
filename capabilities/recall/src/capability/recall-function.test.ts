@@ -2,7 +2,7 @@ import type { ViewStall } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { campaignReviews, recallDocument } from '../testing/campaign-reviews.ts';
+import { campaignReviews, foldOf, recallDocument } from '../testing/campaign-reviews.ts';
 import { liveView, poolOf, recallWith } from '../testing/recall-runs.ts';
 
 const stall: ViewStall = {
@@ -51,17 +51,16 @@ describe('the summary of a recall function', () => {
       inputSchema: { type: 'object', required: ['campaign'] },
       outputSchema: { type: 'array' },
       details: {
-        language: 'jq',
-        foldLine: 27,
+        language: 'typescript',
+        foldLine: 29,
         filters: [{ type: 'run_succeeded', subject: 'reasoning/review-brief' }],
         initial: {},
-        answer: '.[$input.campaign] // [] | .[-($input.last // 5):]',
       },
     });
-    expect(prepared(recallDocument('. + 1')).summary).toEqual({
+    expect(prepared(recallDocument(foldOf('return view + 1;'))).summary).toEqual({
       details: {
-        language: 'jq',
-        fold: '. + 1',
+        language: 'typescript',
+        fold: foldOf('return view + 1;'),
         foldLine: 7,
         filters: [{ type: 'run_succeeded' }],
         initial: null,
@@ -76,25 +75,29 @@ describe('a recall function definition with problems', () => {
 
     expect(
       await Effect.runPromise(
-        Effect.flip(capability.prepare(recallDocument('now', 'language: python\nsource: {events: [{type: x}]}'))),
+        Effect.flip(capability.prepare(recallDocument('  ', 'language: python\nsource: {events: [{type: x}]}'))),
       ),
     ).toMatchObject({
       detail: 'The recall function definition has 2 problems',
       issues: [
         {
           pointer: '',
-          detail: 'Line 2, /language: python is not a language of a recall function; it is written in jq',
+          detail:
+            "Line 2, /language: The brain's one language is TypeScript; write the program as a TypeScript function",
         },
         {
           pointer: '',
-          detail:
-            'Line 5: now reads the clock, so the same events would not fold to the same view; read the time of an event as $event.time',
+          detail: 'Line 5: The definition has no program: write the module with its fold after the front matter',
         },
       ],
     });
-    expect(await Effect.runPromise(Effect.flip(capability.prepare(recallDocument('.a +'))))).toMatchObject({
-      detail: 'The recall function definition has a problem',
-    });
+    expect(
+      await Effect.runPromise(
+        Effect.flip(
+          capability.prepare(recallDocument(foldOf('return view;'), 'language: python\nsource: {events: [{type: x}]}')),
+        ),
+      ),
+    ).toMatchObject({ detail: 'The recall function definition has a problem' });
   });
 });
 

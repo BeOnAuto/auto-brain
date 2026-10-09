@@ -2,7 +2,7 @@
 
 # Recall function format
 
-The API stores a recall function as a definition of the type `recall`. Its source document names the events of the brain it folds, the view they fold into and how that view starts, and holds a fold, written in jq, that takes the view and one event and answers the next view. The runtime keeps the view as the brain records events, from the first event of its history on, and a run answers from the view as it stands, applying the function's `answer` to it. Use one so that a brain remembers what it decided before: the reviews of each campaign, the latest verdict per region, the refusals of a quarter.
+The API stores a recall function as a definition of the type `recall`. Its source document names the events of the brain it folds, the view they fold into and how that view starts, and holds a TypeScript module whose function `fold` takes the view and one event and answers the next view. The runtime keeps the view as the brain records events, from the first event of its history on, and a run answers from the view as it stands, applying the module's function `answer` to it. Use one so that a brain remembers what it decided before: the reviews of each campaign, the latest verdict per region, the refusals of a quarter.
 
 The view is a function of the brain's events alone. Nothing a run passes in is kept, no run changes it, and the same history folds to the same view on every server and either store.
 
@@ -10,13 +10,13 @@ The brain's history already holds every run of each function and workflow, its s
 
 ## A function document
 
-The source is Markdown with YAML front matter followed by the fold. This example keeps the reviews that the reasoning function `review-brief` wrote, for each campaign, and answers the last few reviews of the campaign a run names:
+The source is Markdown with YAML front matter followed by the module. This example keeps the reviews that the reasoning function `review-brief` wrote, for each campaign, and answers the last few reviews of the campaign a run names:
 
 <!-- prettier-ignore -->
 ```markdown
 ---
 description: The reviews of each campaign, latest last, as the review-brief function wrote them
-language: jq
+language: typescript
 source:
   events:
     - type: run_succeeded
@@ -26,7 +26,10 @@ view:
   schema:
     type: object
     maxProperties: 50
-    additionalProperties: { type: array, maxItems: 20 }
+    additionalProperties:
+      type: array
+      maxItems: 20
+      items: { type: object, required: [at, verdict, run], properties: { at: { type: string }, verdict: { type: string }, run: { type: string } } }
 input:
   schema:
     type: object
@@ -37,21 +40,42 @@ input:
 output:
   schema:
     type: array
-    items: { type: object, required: [at, verdict], properties: { at: { type: string }, verdict: { type: string } } }
-answer: '.[$input.campaign] // [] | .[-($input.last // 5):]'
+    items: { type: object, required: [at, verdict], properties: { at: { type: string }, verdict: { type: string }, run: { type: string } } }
 ---
-($event.data.output | if type == "object" then .campaign else null end | if type == "string" then . else "unknown" end) as $campaign
-| .[$campaign] += [{ at: $event.time, verdict: ($event.data.output.verdict? // "none" | tostring | .[0:200]), run: $event.source }]
-| .[$campaign] |= .[-20:]
-| to_entries | sort_by(.value[-1].at) | .[-50:] | from_entries
+type Review = View[string][number];
+
+function fieldOf(value: Json | undefined, name: string): Json | undefined {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) ? value[name] : undefined;
+}
+
+function lastAt(reviews: Review[]): string {
+  return reviews.at(-1)?.at ?? '';
+}
+
+export function fold(view: View, event: Event): View {
+  const output = fieldOf(event.data, 'output');
+  const named = fieldOf(output, 'campaign');
+  const campaign = typeof named === 'string' ? named : 'unknown';
+  const given = fieldOf(output, 'verdict') ?? 'none';
+  const verdict = (typeof given === 'string' ? given : JSON.stringify(given)).slice(0, 200);
+  const reviews = [...(view[campaign] ?? []), { at: event.time ?? '', verdict, run: event.source }].slice(-20);
+  const latest = Object.entries({ ...view, [campaign]: reviews })
+    .toSorted(([, first], [, second]) => (lastAt(first) < lastAt(second) ? -1 : lastAt(first) > lastAt(second) ? 1 : 0))
+    .slice(-50);
+  return Object.fromEntries(latest);
+}
+
+export function answer(view: View, input: Input): Output {
+  return (view[input.campaign] ?? []).slice(-(input.last ?? 5));
+}
 ```
 
-The fold runs once for every run of `review-brief` that succeeds, whatever the model answered, so it guards against every output it may meet:
+`View`, `Input` and `Output` are the view, input and output schemas as TypeScript types, `Event` is the brain's event and `Json` any JSON value, all of which the runtime declares for the module; see [The module](#the-module). The fold runs once for every run of `review-brief` that succeeds, whatever the model answered, so it guards against every output it may meet:
 
 - an output that is not an object, such as a text or a list, counts for the campaign `unknown`, and so does a campaign that is not a text, such as a number;
-- a verdict that is missing reads `none`, one that is not a text, such as a number, reads as its text, and every verdict is cut at 200 characters;
+- a verdict that is missing reads `none`, one that is not a text, such as a number, reads as its JSON text, and every verdict is cut at 200 characters;
 - an output too large for the brain's event, which then carries its size instead of the output, counts for `unknown` with the verdict `none`;
-- the view keeps the last 20 reviews of a campaign and the 50 campaigns reviewed most recently, so it stays well under the 512 KiB a view may take. The keys of `to_entries` come sorted by name, so the fold sorts by the time of each campaign's last review before it keeps the last 50.
+- the view keeps the last 20 reviews of a campaign and the 50 campaigns reviewed most recently, so it stays well under the 512 KiB a view may take. An object keeps its keys in the order they were written, so the fold sorts the campaigns by the time of each one's last review before it keeps the last 50.
 
 A fold that raises an error on an ordinary output stops its view at that event, and so does a view that outgrows its bound or its schema; see [When a view stalls](#when-a-view-stalls). Guard the fold, and bound the view, before you save it.
 
@@ -107,7 +131,7 @@ The common case keeps what one function answered. This document keeps the output
 ```markdown
 ---
 description: What the post-announcement function answered, oldest first, the last 50
-language: jq
+language: typescript
 source:
   events:
     - type: run_succeeded
@@ -116,26 +140,33 @@ view:
   initial: []
   schema: { type: array, maxItems: 50 }
 ---
-. + [{ at: $event.time, run: $event.source, output: (if ($event.data.output | tojson | utf8bytelength) <= 8192 then $event.data.output else null end) }]
-| .[-50:]
+function bytesOf(text: string): number {
+  return encodeURIComponent(text).replace(/%[0-9A-F]{2}/gu, '_').length;
+}
+
+export function fold(view: View, event: Event): View {
+  const data = event.data;
+  const output = typeof data === 'object' && data !== null && !Array.isArray(data) ? (data['output'] ?? null) : null;
+  const kept = bytesOf(JSON.stringify(output)) <= 8192 ? output : null;
+  return [...view, { at: event.time ?? '', run: event.source, output: kept }].slice(-50);
+}
 ```
 
 The filter writes out the type and the subject, `reasoning/post-announcement` for the runs of that reasoning function. An output larger than 8 KiB as JSON, or too large for its event, is kept as `null`, so 50 entries stay under the 512 KiB a view may take, and `get_run` of the run an entry names reads the whole output. Every run of `post-announcement` is in the brain's history whoever started it, so this view misses none, where a log that workflows write into misses each run that does not write to it.
 
 ## Fields
 
-| Field           | Purpose                                                                                                                                              |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `description`   | Optional explanation, 1 to 1,000 characters                                                                                                          |
-| `language`      | Required; `jq`, the one language a recall function is written in today                                                                               |
-| `source.events` | Required; 1 to 8 filters, each naming events the fold takes; see [The events](#the-events)                                                           |
-| `view.initial`  | Optional; the view before any event, any JSON value within the bound on a view, `null` when left out                                                 |
-| `view.schema`   | Optional JSON Schema the view must match after every fold; `initial` must match it too                                                               |
-| `input.schema`  | Optional JSON Schema of a run's input; a run given no input runs with `{}`                                                                           |
-| `output.schema` | Optional JSON Schema of a run's output; an output that does not match it ends the run as a conflict                                                  |
-| `answer`        | Optional jq expression a run applies to the view, reading the view as `.` and the run's input as `$input`; without it, a run answers the view itself |
+| Field           | Purpose                                                                                              |
+| --------------- | ---------------------------------------------------------------------------------------------------- |
+| `description`   | Optional explanation, 1 to 1,000 characters                                                          |
+| `language`      | Required; `typescript`, the brain's one language                                                     |
+| `source.events` | Required; 1 to 8 filters, each naming events the fold takes; see [The events](#the-events)           |
+| `view.initial`  | Optional; the view before any event, any JSON value within the bound on a view, `null` when left out |
+| `view.schema`   | Optional JSON Schema the view must match after every fold; `initial` must match it too               |
+| `input.schema`  | Optional JSON Schema of a run's input; a run given no input runs with `{}`                           |
+| `output.schema` | Optional JSON Schema of a run's output; an output that does not match it ends the run as a conflict  |
 
-Unknown fields are rejected, among them the fields of a reasoning function that do not apply here: `model`, `config`, `tools`, `output.format` and `input.default`. The body after the front matter is the fold, and a document without one is rejected. The saved function has the `media_type` `text/markdown`, and its `description`, `input_schema` and `output_schema` come from the document.
+Unknown fields are rejected, among them the fields of a reasoning function that do not apply here: `model`, `config`, `tools`, `output.format` and `input.default`. The body after the front matter is the module, and a document without one is rejected; a module that exports a function `answer` answers a run with it, and one that does not answers the view itself. The saved function has the `media_type` `text/markdown`, and its `description`, `input_schema` and `output_schema` come from the document.
 
 ## The events
 
@@ -151,32 +182,27 @@ Each event is a CloudEvent with its `id`, `type`, `source`, `time`, the time it 
 
 A filter names the events it takes:
 
-| Key       | What an event must have                                                                                                                                                            |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `type`    | Required; exactly this type, written out                                                                                                                                           |
-| `source`  | Optional; exactly this source, written out                                                                                                                                         |
-| `subject` | Optional; exactly this subject, written out, such as `reasoning/review-brief` for the runs of one reasoning function                                                               |
-| `data`    | Optional; data equal to this value, or, as an expression such as `'${ .revenue > 100 }'`, data for which it is true; the expression reads the event's data as `.` and nothing else |
+| Key       | What an event must have                                                                                                                                                                   |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`    | Required; exactly this type, written out                                                                                                                                                  |
+| `source`  | Optional; exactly this source, written out                                                                                                                                                |
+| `subject` | Optional; exactly this subject, written out, such as `reasoning/review-brief` for the runs of one reasoning function                                                                      |
+| `data`    | Optional; data equal to this value, or, as an expression such as `'${ $data.revenue > 100 }'`, data for which it holds; the expression reads the event's data as `$data` and nothing else |
 
-An event is folded when it matches any of the filters, and once only. Any other key is rejected, and so are a computed `type`, `source` or `subject` and a `data` expression that names a variable.
+An event is folded when it matches any of the filters, and once only. An expression holds unless it answers `false` or `null`. Any other key is rejected, and so are a computed `type`, `source` or `subject`, and a `data` expression that names anything but `$data` is refused when the document is saved, with the compiler's `Cannot find name`.
 
-## The fold and the answer
+## The module
 
-The fold reads the view as `.` and the event as `$event`, and answers the next view with exactly one output. The answer reads the view as `.` and the run's input as `$input`, and answers the run's output with exactly one output. Neither sees anything else: no clock, no environment, no files, no network, and no other events. These are rejected when the document is saved, each with the reason and the line:
+The body is one TypeScript module, as a [computation function's program](computation-format.md#the-program) is, with two functions it may export:
 
-| Rejected                                                                                                                          | Why                                                                                   |
-| --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `now`                                                                                                                             | It reads the clock; read the time of an event as `$event.time`                        |
-| `env`, `$ENV`, `input`, `inputs`, `input_filename`, `input_line_number`, `$__loc__`, `builtins`                                   | They read something other than the view and its event or input                        |
-| `$ARGS`                                                                                                                           | A recall function is given no arguments; the fold reads `$event`, the answer `$input` |
-| `localtime`, `strflocaltime`                                                                                                      | They read the host's time zone; use the UTC builtins such as `todate`                 |
-| `debug`, `stderr`, `halt`, `halt_error`                                                                                           | They write outside the program                                                        |
-| `label`, `break`                                                                                                                  | They give wrong answers in this dialect; use `reduce`, `foreach`, `limit` or `first`  |
-| `$input` in the fold, `$event` in the answer, any variable in a filter, or a `$variable` not bound by `as`, `reduce` or `foreach` | Nothing defines it there                                                              |
-| A program that does not parse, or names a function that does not exist or with the wrong number of arguments                      | The program must be valid                                                             |
-| A program that nests more than 128 levels deep                                                                                    | See [Bounds](#bounds)                                                                 |
+| Export                                     | What it does                                                                                                  |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `fold(view: View, event: Event): View`     | Required; takes the view and one event and answers the next view                                              |
+| `answer(view: View, input: Input): Output` | Optional; takes the view and the run's input and answers the run's output; without it, a run answers the view |
 
-The language is the dialect of jq that computation functions use, with the same numbers: see [Numbers](computation-format.md#numbers) and [How the dialect differs from jq](computation-format.md#how-the-dialect-differs-from-jq). Recursion stops at the same fixed depth, 10,000 levels of evaluation, so a fold stops at the same event on every server.
+`View` is `view.schema` as a type, `Json` without one; `Input` and `Output` are the input and output schemas, as for a computation function, and `Event` is the brain's event, with `specversion`, `id`, `type`, `source`, `subject`, `time`, `datacontenttype`, `dataschema`, `data` as `Json`, `causationid` and `correlationid`, each but `id`, `type` and `source` optional, and its extensions. The module may declare types of its own and functions, and nothing else at the top level, since a module that kept state between two folds would make a view depend on where a page of events ends. The document is checked when it is saved, as a computation function's is, each problem refused with its line and the compiler's words, and a module without `fold` is refused with the signature it needs.
+
+The module runs in the same sandbox as a computation function, with the same library and the same numbers: see [The sandbox](computation-format.md#the-sandbox) and [Numbers](computation-format.md#numbers). In a fold, `Date.now()` and `new Date()` answer the time of the event being folded, so a fold gives the same view on every server; in an answer, the moment the run started. The view stays inside the fold's sandbox for a whole page of events, so each fold is given the view the one before it answered; its sandbox is frozen once the module is loaded, so nothing a fold writes outside its view, to `Math`, to a prototype or to the module, reaches the next fold.
 
 ## How the view is kept
 
@@ -194,56 +220,57 @@ A run never waits for the view: it answers from what the brain has folded so far
 | `view.last_event`    | The `id` and `time` of the last event the view folded, `null` before the first |
 | `view.folded`        | How many events the view has folded                                            |
 
-The record also holds `language`, `work`, the units of work the answer spent, `duration_ms`, and `input_bytes` and `output_bytes`. `get_run` returns it with the output.
+The record also holds `language`, `work`, the checkpoints the answer spent, `duration_ms`, and `input_bytes` and `output_bytes`. `get_run` returns it with the output.
 
 `get_definition` of a recall function adds its view's `standing`:
 
-| Field                                                 | What it says                                                                                                                                |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `state`                                               | `live` once caught up, `rebuilding` while it is built, `waiting` for its turn to be built, or `stalled`                                     |
-| `version`                                             | The version the view is of                                                                                                                  |
-| `checkpoint`, `checkpoint_at`, `last_event`, `folded` | As in a run's record                                                                                                                        |
-| `lag_ms`                                              | How far the view is behind: the time of the brain's newest record less `checkpoint_at`, to the second on SQLite                             |
-| `newest_record_at`                                    | When the brain last recorded anything                                                                                                       |
-| `stalled`                                             | For a stalled view, the `event` it stopped at, with its `id`, `type` and `time`, the `kind` of stall, the fold's own `error` and its `line` |
+| Field                                                 | What it says                                                                                                                                                |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `state`                                               | `live` once caught up, `rebuilding` while it is built, `waiting` for its turn to be built, or `stalled`                                                     |
+| `version`                                             | The version the view is of                                                                                                                                  |
+| `checkpoint`, `checkpoint_at`, `last_event`, `folded` | As in a run's record                                                                                                                                        |
+| `lag_ms`                                              | How far the view is behind: the time of the brain's newest record less `checkpoint_at`, to the second on SQLite                                             |
+| `newest_record_at`                                    | When the brain last recorded anything                                                                                                                       |
+| `stalled`                                             | For a stalled view, the `event` it stopped at, with its `id`, `type` and `time`, the `kind` of stall, the fold's own `error` and its `line` in the document |
 
 ## When a view stalls
 
-A fold that raises an error, gives no output or more than one, does more than its work, nests deeper than a value may, answers a view larger than 512 KiB or one its schema refuses, or gives `nan` or `infinite`, stops its view at that event. The view keeps what it folded before, its other events wait, and the brain's other views go on. A fold that runs longer than 10 seconds is tried again on later passes, since its time depends on the machine, without holding back the brain's other views, and stalls once it has run out of time twenty times. Each fold has its own 10 seconds, so the folds of the brain's other views on the same event never count against it, and the view keeps what it folded before that event. A filter's `data` runs under bounds of its own as large as the fold's, 16,000,000 units of work among them, and shares the fold's 10 seconds: one that does more than its work or nests too deep stalls the view, and one that runs out of time is tried again as a slow fold is.
+A fold that raises an error, a stack overflow among them, does more than its work or uses more memory than its sandbox, answers what JSON cannot carry or a value deeper than 512 levels, answers a view larger than 512 KiB or one its schema refuses, or a module that does not load, stops its view at that event, with the kind of the stall: `raised`, `work`, `memory`, `unfit`, `size`, `schema` or `refused`. The view keeps what it folded before, its other events wait, and the brain's other views go on. The view is checked after every fold, so it stalls at the event that broke it however the brain's history falls into pages. A fold that runs longer than 10 seconds is tried again on later passes, since its time depends on the machine, without holding back the brain's other views, and stalls once it has run out of time twenty times. Each fold has its own 10 seconds, so the folds of the brain's other views on the same event never count against it, and the view keeps what it folded before that event. A filter's `data` runs under a budget of its own as large as the fold's and shares the fold's 10 seconds: one that does more than its work stalls the view, one that raises does not take the event, and one that runs out of time is tried again as a slow fold is.
 
 While its view is stalled, a run answers `conflict` with the kind `stalled`, naming in fixed words the type and time of the event and what went wrong, with the line of the fold, never the fold's own message or the event's values, which the standing shows. The history is the source of the view, so the repair is a corrected version: saving it builds the view again from the start.
 
 ## How a run ends
 
-A run first checks the input against `input.schema`, then reads the view, applies `answer`, requires exactly one output and checks it against `output.schema`. It ends in one of these ways:
+A run first checks the input against `input.schema`, then reads the view, calls `answer` when the module exports it, checks its answer is JSON and checks it against `output.schema`. It ends in one of these ways:
 
-| Ending                           | When                                                                                                                                                                                                                                           |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `succeeded`                      | The answer gave one output that matches the output schema                                                                                                                                                                                      |
-| `invalid_input`                  | The input does not match the input schema, with a pointer to each problem, or nests deeper than 512 levels                                                                                                                                     |
-| `unavailable`, kind `rebuilding` | The view of the latest version is not built yet, or waits to be built; try again later                                                                                                                                                         |
-| `conflict`, kind `stalled`       | The view stopped at an event its fold could not take; save a corrected version                                                                                                                                                                 |
-| `conflict`, kind `unworkable`    | The answer raised an error, gave no output or more than one, did more work, built a deeper value or recursed deeper than a run may, gave `nan` or `infinite`, or answered what the output schema refuses or what does not fit the run's record |
-| `unavailable`                    | The answer took longer or used more memory than a run may, or found no turn to run within its time                                                                                                                                             |
-| `failed`                         | The runtime itself broke down                                                                                                                                                                                                                  |
+| Ending                           | When                                                                                                                                                                                                                                                  |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `succeeded`                      | The answer, or the view, is JSON that matches the output schema                                                                                                                                                                                       |
+| `invalid_input`                  | The input does not match the input schema, with a pointer to each problem, or nests deeper than 512 levels                                                                                                                                            |
+| `unavailable`, kind `rebuilding` | The view of the latest version is not built yet, or waits to be built; try again later                                                                                                                                                                |
+| `conflict`, kind `stalled`       | The view stopped at an event its fold could not take; save a corrected version                                                                                                                                                                        |
+| `conflict`, kind `unworkable`    | The answer raised an error, a stack overflow among them, did more work or used more memory than a run may, returned what JSON cannot carry or a value deeper than 512 levels, or what the output schema refuses or what does not fit the run's record |
+| `unavailable`                    | The answer took longer than a run may, or found no turn to run within its time                                                                                                                                                                        |
+| `failed`                         | The runtime itself broke down                                                                                                                                                                                                                         |
 
-A `conflict` of the kind `unworkable` names the answer's own error and its line in the document, such as `The answer raised an error on line 25: no such campaign`. The same view and input give the same result, so running it again does not help.
+A `conflict` of the kind `unworkable` names the answer's own error and its line in the document, such as `The answer raised an error on line 53: Error: no such campaign`. The same view and input give the same result, so running it again does not help.
 
 ## Bounds
 
 | Bound                          | Value                                                                                                                                        | When it is reached                                       |
 | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
 | Document                       | 65,536 bytes in UTF-8, as every definition                                                                                                   | Refused when saved                                       |
+| The check at save              | 2 seconds on the check's own worker, as for a computation function                                                                           | The save is `unavailable`; save it again                 |
 | Filters                        | 8                                                                                                                                            | Refused when saved                                       |
-| Nesting of the fold or answer  | 128 levels                                                                                                                                   | Refused when saved, with the line                        |
 | Events a view folds            | The brain's whole history, in the order it was recorded, selected by the filters                                                             | —                                                        |
-| Work of one fold               | 16,000,000 units, what one workflow input may do                                                                                             | The view stalls at that event                            |
+| Work of one fold               | 500 checkpoints, what one workflow input may do                                                                                              | The view stalls at that event                            |
+| Memory of one fold             | 64 MiB, the maximum of the view's sandbox for a page of events                                                                               | The view stalls at that event                            |
 | Duration of one fold           | 10 seconds; the one stall that depends on the machine's speed                                                                                | Tried again on twenty passes, then the view stalls       |
 | View                           | 512 KiB as JSON, checked after every fold, so that a view answered whole fits a run's record                                                 | The view stalls at that event                            |
-| Depth of a value               | 512 levels; recursion 10,000 levels of evaluation, as for a computation function                                                             | The view stalls; for an answer, `conflict`, `unworkable` |
-| Work of one answer             | 16,000,000 units                                                                                                                             | `conflict`, `unworkable`                                 |
+| Depth of a value               | 512 levels, in a view and in an answer; the stack 1 MiB, as for a computation function                                                       | The view stalls; for an answer, `conflict`, `unworkable` |
+| Work of one answer             | 500 checkpoints                                                                                                                              | `conflict`, `unworkable`                                 |
 | Output                         | 1 MiB as JSON together with the run's record, as every run, which leaves the output 1,046,528 bytes                                          | `conflict`, `unworkable`                                 |
-| Duration and memory of a run   | 10 seconds and 256 MiB, as for a computation function                                                                                        | `unavailable`                                            |
+| Duration and memory of a run   | 10 seconds and 256 MiB, as for a computation function                                                                                        | `unavailable`; `conflict`, `unworkable`                  |
 | Recall functions a brain keeps | 32, which the operator of a self-hosted runtime can change; lowering it below what a brain keeps refuses saves and nothing else              | Refused when saved, `conflict`                           |
 | Views built at once            | 4 a brain, a setting; a stalled view counts for none                                                                                         | The save succeeds; the standing says `waiting`           |
 | Folding time of a page         | 2 seconds from its first fold, checked before each fold, after which the page ends before its next fold and the rest waits for the next page | —                                                        |
@@ -251,7 +278,7 @@ A `conflict` of the kind `unworkable` names the answer's own error and its line 
 | Brains followed at once        | 4, a setting                                                                                                                                 | The others wait for their turn                           |
 | Lag                            | Reported in the standing and the record, never bounded                                                                                       | —                                                        |
 
-Work is counted as for a computation function, so the same fold spends the same units on every server. The example spent 6,155,033 units on a page of 100 runs of 100 campaigns, about 61,550 an event, well under the bound. Building a view of 100,000 matching events with the example's fold, over runs of 100 campaigns, in pages of up to 1,000 records, took 34.9 seconds on SQLite and 36.2 seconds on PostgreSQL with each page folded in a worker kept between pages, against 39.0 and 41.0 seconds when each page started a worker of its own, measured alternately on 2026-10-07 on Node 26.10.0 on an Apple M4 Max with the machine at rest. Under a load average of 94 to 186 on its 16 cores from other work the same builds took 89 and 94 seconds on SQLite and 80 and 92 seconds on PostgreSQL, against 101 and 162 seconds and 103 and 116 seconds. In pages of up to 100 records, each in a worker of its own, it had taken 183.7 and 195.4 seconds. At rest a page of 1,000 events in a worker kept between pages cost about 4.7 milliseconds more than its folds alone, within the 10 milliseconds beyond its folds the runtime allows a page.
+Work is counted as for a computation function, so the same fold spends the same checkpoints on every server and at every size of page. Building a view of 100,000 matching events with the example's fold, over runs of 100 campaigns, in pages of up to 1,000 in a worker kept between pages, took 47.9 seconds, about half a millisecond a fold, most of it writing the view out after each fold, which costs with the size of the view; each fold spent no checkpoint, and 3,000 of the events gave the same view and the same checkpoints in pages of 7 and of 1,000. Measured on 2026-10-09 on Node 26.10.0 on an Apple M4 Max.
 
 ## In a workflow
 
@@ -284,12 +311,23 @@ The computation function `tally-verdicts`:
 ```markdown
 ---
 description: Counts the approvals and rejections among the reviews, beside the advice
-language: jq
+language: typescript
+input:
+  schema:
+    type: object
+    required: [reviews, advice]
+    properties:
+      reviews: { type: array, items: { type: object, required: [verdict], properties: { verdict: { type: string } } } }
+      advice: { type: object, required: [approve], properties: { approve: { type: boolean } } }
 ---
 
-{ approvals: (.reviews | map(select(.verdict == "approve")) | length),
-rejections: (.reviews | map(select(.verdict | startswith("reject"))) | length),
-approve: .advice.approve }
+export default function (input: Input): Json {
+return {
+approvals: input.reviews.filter((review) => review.verdict === 'approve').length,
+rejections: input.reviews.filter((review) => review.verdict.startsWith('reject')).length,
+approve: input.advice.approve,
+};
+}
 ```
 
 The workflow `decide-on-campaign`:
@@ -316,7 +354,7 @@ do:
             with:
               type: recall
               name: campaign-reviews
-              input: { campaign: '${ .campaign }', last: 20 }
+              input: { campaign: '${ $data.campaign }', last: 20 }
       catch:
         errors:
           with: { status: 503 }
@@ -325,7 +363,7 @@ do:
           limit:
             attempt: { count: 3 }
       export:
-        as: '${ { reviews: . } }'
+        as: '${ ({ reviews: $data }) }'
   - advise:
       call: run_definition
       with:
@@ -337,7 +375,7 @@ do:
       with:
         type: computation
         name: tally-verdicts
-        input: { reviews: '${ $context.reviews }', advice: '${ . }' }
+        input: { reviews: '${ $context.reviews }', advice: '${ $data }' }
 ```
 
 `run_definition` of `decide-on-campaign` takes an input such as `{"campaign": "spring-sale"}`. When the view is still being built, the `recall` task tries again up to three more times; when the view has stalled, the run ends `rejected` at once, and its history shows the recall function's run with the stall.

@@ -1,19 +1,19 @@
 import { mostResultBytes } from '@beonauto/definitions';
 import { checkedWorker } from '@beonauto/definitions/json-schema';
-import { liftedLimits, mostEvaluationDepth, mostValueDepth, type ProgramLimits } from '@beonauto/workflow-engine/dsl';
+import { mostValueDepth, runMemoryBytes, unitMemoryBytes, workerStackBytes } from '@beonauto/workflow-engine/dsl';
 import type { FoldingSettings } from '@beonauto/workflow-host';
-
-import { foldDialect, foldVariable } from '../document/recall-dialects.ts';
 
 export const recallBounds = {
   mostFilters: 8,
-  mostWork: 16_000_000,
+  budget: 500,
   foldDeadlineMs: 10_000,
   deadlineMs: 10_000,
+  answerMemoryBytes: runMemoryBytes,
+  foldMemoryBytes: unitMemoryBytes,
+  stackBytes: workerStackBytes,
   heapMegabytes: 256,
   mostViewBytes: 524_288,
   mostValueDepth,
-  mostEvaluationDepth,
   overtimesBeforeStall: 20,
   pageBudgetMs: 2000,
   pagesPerWake: 10,
@@ -26,12 +26,12 @@ const recordRoomBytes = 2048;
 
 export const mostOutputBytes = mostResultBytes - recordRoomBytes;
 
-export const recallLimits: ProgramLimits = liftedLimits(recallBounds.mostWork);
+export const mebibytes = 1_048_576;
 
 export const recallFolding: FoldingSettings = {
-  dialect: foldDialect,
-  variable: foldVariable,
-  limits: recallLimits,
+  budget: recallBounds.budget,
+  memoryBytes: recallBounds.foldMemoryBytes,
+  stackBytes: recallBounds.stackBytes,
   foldDeadlineMs: recallBounds.foldDeadlineMs,
   pageBudgetMs: recallBounds.pageBudgetMs,
   mostViewBytes: recallBounds.mostViewBytes,

@@ -5,16 +5,11 @@ export interface ValueContract {
   readonly schema?: CompiledSchema;
 }
 
-export interface RecallAnswer {
-  readonly source: string;
-  readonly line: number;
-}
-
 export interface RecallFunctionDefinitionDocument {
   readonly description?: string;
-  readonly language: 'jq';
+  readonly language: 'typescript';
   readonly input: ValueContract;
   readonly output: ValueContract;
-  readonly answer?: RecallAnswer;
+  readonly answers: boolean;
   readonly details: ViewDetails;
 }

@@ -31,7 +31,7 @@ function rebuilding(views: ViewsPort, { org, brain, definition }: RunContext, ke
 
 function recordOf(kept: KeptView, answered: Answered, input: Schema.Json): Schema.JsonObject {
   return {
-    language: 'jq',
+    language: 'typescript',
     work: answered.work,
     duration_ms: Math.round(answered.milliseconds),
     input_bytes: jsonBytesOf(input),

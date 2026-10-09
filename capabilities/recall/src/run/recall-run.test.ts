@@ -3,7 +3,7 @@ import type { ViewStall } from '@beonauto/workflow-host';
 import { Exit, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { campaignReviews, recallDocument } from '../testing/campaign-reviews.ts';
+import { campaignReviews, foldOf, recallDocument } from '../testing/campaign-reviews.ts';
 import { liveView, recallWith, workerTestTimeoutMs } from '../testing/recall-runs.ts';
 
 const reviews = {
@@ -34,7 +34,7 @@ describe('a run of a recall function', { timeout: workerTestTimeoutMs }, () => {
       Exit.succeed({
         output: [{ at: '2026-10-06T10:00:03.000Z', verdict: 'reject', run: '/runs/b' }],
         record: {
-          language: 'jq',
+          language: 'typescript',
           input_bytes: 30,
           output_bytes: 70,
           view: {
@@ -53,9 +53,9 @@ describe('a run of a recall function', { timeout: workerTestTimeoutMs }, () => {
     const run = recallWith();
     run.keep(liveView({ count: 3 }));
 
-    const answered = await run.running(recallDocument('. + 1'));
+    const answered = await run.running(recallDocument(foldOf('return view + 1;')));
     run.keep(liveView(null, { folded: 0, lastEvent: null }));
-    const initial = await run.running(recallDocument('. + 1'));
+    const initial = await run.running(recallDocument(foldOf('return view + 1;')));
 
     expect(answered).toMatchObject(Exit.succeed({ output: { count: 3 }, record: { work: 0, output_bytes: 11 } }));
     expect(initial).toMatchObject(Exit.succeed({ output: null, record: { view: { folded: 0, last_event: null } } }));
