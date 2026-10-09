@@ -11,18 +11,18 @@ COPY packages/server/package.json packages/server/
 COPY packages/api/package.json packages/api/
 COPY packages/brains/package.json packages/brains/
 COPY packages/config/package.json packages/config/
+COPY packages/definitions/package.json packages/definitions/
 COPY packages/identity/package.json packages/identity/
 COPY packages/ledger/package.json packages/ledger/
 COPY packages/mcp/package.json packages/mcp/
 COPY packages/operations/package.json packages/operations/
 COPY packages/outbound/package.json packages/outbound/
-COPY packages/definitions/package.json packages/definitions/
 COPY packages/workflow-engine/package.json packages/workflow-engine/
 COPY packages/workflow-host/package.json packages/workflow-host/
 COPY capabilities/computation/package.json capabilities/computation/
-COPY capabilities/reasoning/package.json capabilities/reasoning/
-COPY capabilities/interaction/package.json capabilities/interaction/
 COPY capabilities/coordination/package.json capabilities/coordination/
+COPY capabilities/interaction/package.json capabilities/interaction/
+COPY capabilities/reasoning/package.json capabilities/reasoning/
 COPY capabilities/recall/package.json capabilities/recall/
 RUN pnpm install --frozen-lockfile --prod --no-optional --ignore-scripts --filter @beonauto/server...
 RUN --network=none npm_config_build_from_source=sqlite3 npm_config_nodedir=/usr/local \
@@ -47,19 +47,19 @@ COPY docs/reference/*-format.md docs/reference/
 COPY packages/api/src packages/api/src
 COPY packages/brains/src packages/brains/src
 COPY packages/config/src packages/config/src
+COPY packages/definitions/src packages/definitions/src
 COPY packages/identity/src packages/identity/src
 COPY packages/ledger/src packages/ledger/src
 COPY packages/mcp/src packages/mcp/src
 COPY packages/operations/src packages/operations/src
 COPY packages/outbound/src packages/outbound/src
 COPY packages/server/src packages/server/src
-COPY packages/definitions/src packages/definitions/src
 COPY packages/workflow-engine/src packages/workflow-engine/src
 COPY packages/workflow-host/src packages/workflow-host/src
 COPY capabilities/computation/src capabilities/computation/src
-COPY capabilities/reasoning/src capabilities/reasoning/src
-COPY capabilities/interaction/src capabilities/interaction/src
 COPY capabilities/coordination/src capabilities/coordination/src
+COPY capabilities/interaction/src capabilities/interaction/src
+COPY capabilities/reasoning/src capabilities/reasoning/src
 COPY capabilities/recall/src capabilities/recall/src
 RUN apt-get update \
   && apt-get install --yes --no-install-recommends tini \
