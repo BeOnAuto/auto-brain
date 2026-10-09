@@ -1,11 +1,12 @@
 import { internalTermsIn } from '@beonauto/api/testing';
 import { recallDocument } from '@beonauto/recollection/testing';
 import { Schema } from 'effect';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import {
   brainWithReviews,
+  foldsHeld,
   foldsHeldUntilOpened,
   inState,
   liveAt,
@@ -65,7 +66,7 @@ describe('a recall function whose view is being built', { timeout: recallTestTim
     const gate = foldsHeldUntilOpened();
     const server = await servingWith({}, gate);
     await brainWithReviews(server, 1);
-    await standingUntil(server, 'reviews', inState('rebuilding'));
+    await foldsHeld(gate, 1);
 
     const askedAt = Date.now();
     const meanwhile = await recalled(server, 'reviews', { campaign: 'spring' });
@@ -114,9 +115,7 @@ describe('a recall function waiting for its view to be built', { timeout: recall
     const gate = foldsHeldUntilOpened();
     const server = await servingWith({ RECOLLECTION_MAX_REBUILDS: '1', RECOLLECTION_BRAINS_AT_ONCE: '1' }, gate);
     await brainWithReviews(server, 1, 'beta');
-    await vi.waitFor(() => {
-      expect(gate.held()).toBe(1);
-    });
+    await foldsHeld(gate, 1);
     await brainWithReviews(server, 1);
     await saved(server, 'count', '. + 1');
     gate.letThrough(1);
