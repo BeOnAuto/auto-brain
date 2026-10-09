@@ -24,7 +24,8 @@ const workflows: Readonly<Record<string, string>> = {
   nesting: 'do:\n  - nest: { call: run_definition, with: { type: workflow, name: setting } }\n',
   pausing: 'do:\n  - pause: { wait: { milliseconds: 50 } }\n',
   listening: 'do:\n  - hold: { listen: { to: { one: { with: { type: com.acme.go } } } } }\n',
-  telling: 'do:\n  - tell: { emit: { event: { with: { type: com.acme.told, source: /acme, data: { to: ada } } } } }\n',
+  telling:
+    'do:\n  - tell: { emit: { event: { with: { type: com.acme.told, source: https://acme.example/told, data: { to: ada } } } } }\n',
   forking:
     'do:\n  - both:\n      fork:\n        branches:\n          - a: { set: { a: 1 } }\n          - b: { set: { b: 2 } }\n',
   guarding: `do:
@@ -92,9 +93,13 @@ async function definedInTurn(entries: readonly (readonly [string, string])[]): P
   }
 }
 
-async function started(name: string): Promise<string> {
+async function startedInTurn(names: readonly string[], runIds: readonly string[] = []): Promise<readonly string[]> {
+  const [name, ...rest] = names;
+  if (name === undefined) {
+    return runIds;
+  }
   const response = await server.call('POST', `${alpha}/definitions/workflow/${name}/run`, { body: { input: {} } });
-  return runIdIn(response.body);
+  return startedInTurn(rest, [...runIds, runIdIn(response.body)]);
 }
 
 describe('the run log of a workflow', { timeout: workflowTestTimeoutMs }, () => {
@@ -107,7 +112,7 @@ describe('the run log of a workflow', { timeout: workflowTestTimeoutMs }, () => 
     await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
     await server.call('POST', `${alpha}/definitions/reasoning`, { body: { name: 'summary', source: summary } });
     await definedInTurn(Object.entries(workflows));
-    const runIds = await Promise.all(Object.keys(workflows).map((name) => started(name)));
+    const runIds = await startedInTurn(Object.keys(workflows));
 
     const messages = await until(() => Promise.resolve(firstMessagesOfTheBrain()), holdsTheLogOfEvery(runIds));
 
