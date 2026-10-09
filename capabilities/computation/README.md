@@ -1,6 +1,6 @@
 # @beonauto/computation
 
-The implementation of computation functions. A computation function is a program in jq with schemas for its input and output; a run applies the program to its input and answers with exactly one output, the same for the same input on every host of the same image, within bounds on its work, the values it builds, its time and its memory. Its API identifier and package name are `computation`. [Decision 0005](../../docs/decisions/0005-computation-functions.md) says why it exists and how it is bounded.
+The implementation of computation functions. A computation function is a program in jq with schemas for its input and output; a run applies the program to its input and answers with exactly one output, the same for the same input on every host of the same image, within bounds on its work, the values it builds, its time and its memory. [Decision 0005](../../docs/decisions/0005-computation-functions.md) says why it exists and how it is bounded.
 
 User documentation is [Computation function format](../../docs/reference/computation-format.md), published at [on.auto/docs](https://on.auto/docs/): the document, the dialect, the number rules, the endings and the bounds. Update it alongside behaviour changes.
 
@@ -64,4 +64,4 @@ The pool keeps a worker between runs, so a run costs its work and the copies of 
 
 ## Source
 
-`src/index.ts` is the entry point and `src/testing/index.ts` the entry point of the test support. `src/document` holds the document: its type, the front matter's keys, the dialect and parsing. `src/run` holds a run: its bounds, the input's checks, the call of the pool and the endings. `src/type` holds the capability, whose guide is the public reference page, served to agents as `computation-function`. `src/testing` holds the example and what the tests share.
+`src/index.ts` is the entry point and `src/testing/index.ts` the entry point of the test support. `src/document` holds the document: its type, the front matter's keys, the dialect and parsing. `src/run` holds a run: its bounds, the input's checks, the call of the pool and the endings. `src/capability` holds the capability, whose guide is the public reference page, served to agents as `computation-function`. `src/testing` holds the example and what the tests share.

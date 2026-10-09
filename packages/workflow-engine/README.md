@@ -15,7 +15,7 @@ The same code runs in Node, where one server keeps every run in one SQLite file,
 ## How a run moves
 
 1. An adapter submits an input for a run, with `at`, the time on its own clock. The machine never reads a clock. It takes `max(at, lastInputAt)` as the time of the input, and for a fired timer at least the time it was due, so time in a run never goes back however the adapters' clocks drift (`inputTimeOf`).
-2. Holding the run's serialisation, the engine runs the ledger's own load-decide-append loop, `decisionLoop` from `@beonauto/ledger`, with a load of its own: the run the engine kept after the input before, when its stream has no event after the version it kept, or else `RunStore.load`, the latest snapshot and the events after it, which `loadedRunOf` folds (`runLoopOf`, and The cache of loaded runs below).
+2. Holding the run's serialisation, the engine runs the ledger's own load-decide-append loop, `decisionLoop` from `@beonauto/ledger`, with a load of its own: the run the engine kept after the input before, when its stream has no event after the version it kept, or else `RunLogStore.load`, the latest snapshot and the events after it, which `loadedRunOf` folds (`runLoopOf`, and The cache of loaded runs below).
 3. `staleReasonOf(state, input)` says whether the input can still change the run. An input to a run whose `started` has not arrived is `not_started`: the engine answers `{ outcome: 'not_started' }`, which an adapter answers as `not_found` so the caller tries again, as the API does today. Any other reason is `stale`. Neither appends anything (`submissionOf`).
 4. Otherwise the machine decides, and the decision is one event, appended with the version the loop read as the expected version. After a version conflict the loop loads and decides again, up to three more times, and then fails with the ledger's `Conflict`. The engine answers `{ outcome: 'applied' }`.
 5. When a snapshot is due, the engine saves one.
@@ -24,33 +24,33 @@ The same code runs in Node, where one server keeps every run in one SQLite file,
 
 ## Layers and ports
 
-| Layer         | Folder              | What it holds                                                           | Port                                    |
-| ------------- | ------------------- | ----------------------------------------------------------------------- | --------------------------------------- |
-| DSL           | `src/dsl`           | JSON, durations, jq expressions with their work budget, tasks, policy   | none: pure                              |
-| programs      | `src/programs`      | the evaluator: compiling a program for a dialect, its checks, its runs  | none: pure                              |
-| jobs          | `src/jobs`          | the pool's contract and messages, an answer, the job loop's caches      | none: pure                              |
-| program pool  | `src/program-pool`  | warm worker threads, their permits, the job loop, a deadline and a heap | none: Node only, reached from `dsl.ts`  |
-| workers       | `src/workers`       | the pool's own program and fold workers, on the job loop                | none: Node only, loaded by the pool     |
-| folds         | `src/folds`         | a page of events folded into views, and how a page crosses to a worker  | none: pure, given its clock             |
-| machine       | `src/machine`       | inputs, state, held values, admission, the clock, UTC time, draws       | none: pure                              |
-| runner        | `src/runner`        | the session of one input, the list and task runners                     | none: pure                              |
-| tasks         | `src/tasks`         | each task body: start, resume and cancel over its frame                 | none: pure                              |
-| decider       | `src/decider`       | the run's lifecycle, its bounds, the patch and outputs of an event      | none: pure                              |
-| run log       | `src/run-log`       | events, state patches, state formats, the fold, snapshots               | `RunStore` (one Emmett stream per run)  |
-| steps         | `src/steps`         | the step entries of an event, what caused each, the ids of step events  | none: pure                              |
-| timers        | `src/timers`        | timer ids and what each timer is for                                    | `Timers`                                |
-| inbox         | `src/inbox`         | the external events a run receives                                      | none: events arrive as `event_received` |
-| filters       | `src/filters`       | an event filter read and matched over an event alone                    | none: pure                              |
-| reactions     | `src/reactions`     | the ports a run reacts through, its listeners and its emissions         | `Listeners`, `Emitter`                  |
-| executor      | `src/executor`      | call keys                                                               | `Executor`                              |
-| dispatch      | `src/dispatch`      | outputs, the watermark, the order of a dispatch, a run's next due time  | `DispatchWatermark`                     |
-| serialisation | `src/serialisation` | one input at a time for each run                                        | `RunSerialiser`                         |
-| settlement    | `src/settlement`    | settle receipts, due times, troubling receipts                          | `RecordStore`, `RunReporter`            |
-| cache         | `src/cache`         | the runs the engine keeps loaded between inputs, bounded                | none                                    |
-| engine        | `src/engine`        | the loop on the ledger, the ports together, the engine's interface      | `WorkflowEngine`                        |
-| memory        | `src/memory`        | a run store, timers, executor, record store and watermark in memory     | every port, in memory                   |
-| testing       | `src/testing`       | a driver over the memory adapter, the ports' probes, run readers        | none                                    |
-| pool testing  | `src/pool-testing`  | the scripted pool and the counting modules the pool's tests use         | none                                    |
+| Layer         | Folder              | What it holds                                                           | Port                                      |
+| ------------- | ------------------- | ----------------------------------------------------------------------- | ----------------------------------------- |
+| DSL           | `src/dsl`           | JSON, durations, jq expressions with their work budget, tasks, policy   | none: pure                                |
+| programs      | `src/programs`      | the evaluator: compiling a program for a dialect, its checks, its runs  | none: pure                                |
+| jobs          | `src/jobs`          | the pool's contract and messages, an answer, the job loop's caches      | none: pure                                |
+| program pool  | `src/program-pool`  | warm worker threads, their permits, the job loop, a deadline and a heap | none: Node only, reached from `dsl.ts`    |
+| workers       | `src/workers`       | the pool's own program and fold workers, on the job loop                | none: Node only, loaded by the pool       |
+| folds         | `src/folds`         | a page of events folded into views, and how a page crosses to a worker  | none: pure, given its clock               |
+| machine       | `src/machine`       | inputs, state, held values, admission, the clock, UTC time, draws       | none: pure                                |
+| runner        | `src/runner`        | the session of one input, the list and task runners                     | none: pure                                |
+| tasks         | `src/tasks`         | each task body: start, resume and cancel over its frame                 | none: pure                                |
+| decider       | `src/decider`       | the run's lifecycle, its bounds, the patch and outputs of an event      | none: pure                                |
+| run log       | `src/run-log`       | events, state patches, state formats, the fold, snapshots               | `RunLogStore` (one Emmett stream per run) |
+| steps         | `src/steps`         | the step entries of an event, what caused each, the ids of step events  | none: pure                                |
+| timers        | `src/timers`        | timer ids and what each timer is for                                    | `Timers`                                  |
+| inbox         | `src/inbox`         | the external events a run receives                                      | none: events arrive as `event_received`   |
+| filters       | `src/filters`       | an event filter read and matched over an event alone                    | none: pure                                |
+| reactions     | `src/reactions`     | the ports a run reacts through, its listeners and its emissions         | `Listeners`, `Emitter`                    |
+| executor      | `src/executor`      | call keys                                                               | `Executor`                                |
+| dispatch      | `src/dispatch`      | outputs, the watermark, the order of a dispatch, a run's next due time  | `DispatchWatermark`                       |
+| serialisation | `src/serialisation` | one input at a time for each run                                        | `RunSerialiser`                           |
+| settlement    | `src/settlement`    | settle receipts, due times, troubling receipts                          | `RecordStore`, `RunReporter`              |
+| cache         | `src/cache`         | the runs the engine keeps loaded between inputs, bounded                | none                                      |
+| engine        | `src/engine`        | the loop on the ledger, the ports together, the engine's interface      | `WorkflowEngine`                          |
+| memory        | `src/memory`        | a run store, timers, executor, record store and watermark in memory     | every port, in memory                     |
+| testing       | `src/testing`       | a driver over the memory adapter, the ports' probes, run readers        | none                                      |
+| pool testing  | `src/pool-testing`  | the scripted pool and the counting modules the pool's tests use         | none                                      |
 
 Every port answers with an Effect. None of them is a clock: time comes in with the inputs, and the sweep is given the time before which a run is overdue.
 
@@ -158,9 +158,10 @@ Compression is not part of the format. A run store may compress the events and s
 
 ## State formats
 
-Every event and every snapshot names its state format; `stateFormat` is 6. A change to the state's schema is a new format, and:
+Every event and every snapshot names its state format; `stateFormat` is 7. A change to the state's schema is a new format, and:
 
 - each event is folded under its own format, and a state that crosses to a newer format is read strictly under the old one and upcast by that format's upcaster (`OlderFormat.read`, `OlderFormat.upcast`) before the next event applies;
+- an event and a snapshot are read with the schemas of the format they name;
 - formats never go back within a stream, and a format newer than the code is refused, both when the run loads (`UnreadableRun`);
 - `packages/workflow-engine/corpus/format-<n>.json` holds a committed stream and snapshot of every format, which must load to the state it recorded (`src/run-log/corpus.test.ts`). A new format adds its corpus and keeps every older one loading.
 
@@ -173,6 +174,8 @@ Format 4 came with the step entries: across inputs the state keeps, in a list wa
 Format 5 came with reactions: the state keeps `listeners`, the listen tasks open with a filter that names a type, by the key of their task run; `emitted`, the count and the bytes of the events the run emitted; `inbox.offeredIds`, the keys of the offers it took, a list apart from `receivedIds`; and a listen for all of several filters keeps its events by filter, `consumed[i]` the event of filter `i` or null, since it takes events in any order. Format 4 is read strictly with its own frozen schema (`src/run-log/format-four.ts`) and upcast: no offers and no emissions, a listener for every open listen whose task names a type in a filter, found in the document the state holds, and its events, taken in filter order, already where format 5 keeps them.
 
 Format 6 came with waiting calls and cancellations: the run's limits may hold `longestCallMsByTask`, the longest a call of each task may take, by its reference, and a cancelled outcome holds `cancel`, who asked, the kind (`requested`, `deadline` or `parent_ended`) and the reason, so the run's settlement says who cancelled it and why. Format 5 is read strictly with its own frozen schema (`src/run-log/format-five.ts`) and upcast: a cancelled outcome gains a cancel by `unknown`, of the kind `requested`, whose reason says it was recorded before a cancel named who asked.
+
+Format 7 came with the product's words: the state names its run `runId`, and so do every input, the outputs of every event, such as `arm_timer`, `cancel_timer` and `settle`, a call's key and a snapshot's envelope, where format 6 used the runtime's earlier word for a run. Format 6 is read strictly with its own frozen schema (`src/run-log/format-six.ts`) and upcast by renaming that member to `runId`; the same file freezes the event and snapshot schemas of formats 1 to 6, their outputs and call keys among them, which the run log decodes an event or a snapshot of those formats with (`src/run-log/known-formats.ts`). A call frame's `function` and its held `arguments` are data from the document, so a format-6 log of a call keeps the names and values its document gave and loads as it was written.
 
 Patches are never rewritten: a patch applies only to the format it was written for. `evolve` applies a patch strictly, `add` to a member that exists or `replace` and `remove` of one that does not die with `PatchFailed`, and the result must decode as the state with no member the format does not describe (`onExcessProperty: 'error'`), so a skew between a log and the code that reads it is caught when the run loads, never folded into a wrong state.
 
@@ -211,7 +214,7 @@ A call is idempotent by its key in this sense: it is answered at most once. A st
 
 Every cancel the timer store or the executor takes for a key that has not fired or been answered is recorded as a tombstone, whether the key was armed, running or never seen, so an arm or a start of that key that arrives later is refused (`refused_after_cancel`). Dispatch takes outputs in the order of the stream, so a start always reaches the port before its cancel; tombstones matter when a dispatch is repeated from a watermark left behind, as a due note that fails leaves it, which sends an arm or a start again after the cancel that followed it, and to an executor that takes work asynchronously, such as from a queue, where a cancel can overtake its start.
 
-The machine checks only the size of a call's arguments, at most 264 KiB as JSON. The executor checks what they mean, such as a capability, a name and an input, and answers `rejected` with reason `invalid_arguments` and a detail when they are wrong. The machine maps a rejection's reason to the task's error through one table (`callErrorOf` in `src/dsl/raised-error.ts`), with `invalid_arguments` as a `validation` error, status 400, carrying the executor's detail.
+The machine checks only the size of a call's arguments, at most 264 KiB as JSON. The executor checks what they mean, such as a type, a name and an input, and answers `rejected` with reason `invalid_arguments` and a detail when they are wrong. The machine maps a rejection's reason to the task's error through one table (`callErrorOf` in `src/dsl/raised-error.ts`), with `invalid_arguments` as a `validation` error, status 400, carrying the executor's detail.
 
 ## Idempotency keys
 
