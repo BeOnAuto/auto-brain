@@ -11,7 +11,7 @@ describe('the port to the views a host keeps', () => {
     const newestAt = () => Effect.runPromise(views.store.views.newestRecordAt(alpha));
 
     const before = await newestAt();
-    await views.ran('inference/runs', 1);
+    await views.ran('reasoning/runs', 1);
     const after = await newestAt();
 
     expect(before).toBeUndefined();

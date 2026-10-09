@@ -35,7 +35,7 @@ export async function deliveryHistoryOf(
   server: InteractionServer,
   runId: string,
 ): Promise<readonly Readonly<Record<string, unknown>>[]> {
-  const history = await server.call('GET', `${alpha}/executions/${runId}/history`);
+  const history = await server.call('GET', `${alpha}/runs/${runId}/history`);
   return decodeHistory(history.body)
     .events.filter(({ type }) => type === 'delivery_started' || type === 'delivery_ended')
     .map(({ type, data }) => Object.assign({ type }, data));

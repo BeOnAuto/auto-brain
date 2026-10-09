@@ -5,7 +5,7 @@ import { Effect, Function } from 'effect';
 
 import { openHostDatabase, type DatabaseSettings } from '../src/database/host-databases.ts';
 import { openWorkflowHost } from '../src/host/workflow-host.ts';
-import { brainCreated, everyTrigger, specRecorded } from '../src/reaction-testing/brain-writes.ts';
+import { brainCreated, everyTrigger, definitionRecorded } from '../src/reaction-testing/brain-writes.ts';
 import { recordedReactions } from '../src/reaction-testing/recorded-reactions.ts';
 import { recordedWaiting } from '../src/waiting-testing/recorded-waiting.ts';
 
@@ -63,7 +63,7 @@ export async function everyFiringOn(database: DatabaseSettings, schedules: numbe
   await Array.from({ length: schedules }, (_, index) => index).reduce<Promise<void>>(
     (before, index) =>
       before.then(() =>
-        specRecorded(opened.store, { name: `w${index}`, version: 1, triggers: [everyTrigger(aMinute)], when }),
+        definitionRecorded(opened.store, { name: `w${index}`, version: 1, triggers: [everyTrigger(aMinute)], when }),
       ),
     Promise.resolve(),
   );

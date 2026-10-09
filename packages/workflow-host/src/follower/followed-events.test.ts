@@ -26,23 +26,23 @@ function recordOf(stream: string, data: Data, correlationId: string | null = nul
 
 function published(extra: Readonly<Record<string, Schema.Json>>, correlationId: string | null = null) {
   const data = { type: 'event_published', event: told, filled: [], ...extra, by: 'acme-admin', at };
-  return followedEventOf(recordOf('events/e1', data, correlationId), 'orchestration');
+  return followedEventOf(recordOf('events/e1', data, correlationId), 'workflow');
 }
 
-function runFact(executionId: string, [primitive, name]: readonly [string, string], correlationId: string | null) {
+function runFact(runId: string, [type, name]: readonly [string, string], correlationId: string | null) {
   const data = {
-    type: 'execution_started',
-    primitive,
+    type: 'run_started',
+    definition_type: type,
     name,
-    spec_version: 1,
+    definition_version: 1,
     input: {},
     by: 'acme-admin',
     at,
   };
-  return followedEventOf(recordOf(`executions/${executionId}`, data, correlationId), 'orchestration');
+  return followedEventOf(recordOf(`runs/${runId}`, data, correlationId), 'workflow');
 }
 
-const emittedBy = { emitted_by: { execution_id: 'r-nested', workflow: 'close', version: 1 }, depth: 2 };
+const emittedBy = { emitted_by: { run_id: 'r-nested', workflow: 'close', version: 1 }, depth: 2 };
 
 describe('an event published to a brain, as the follower reads it', () => {
   it('is the event at depth 1 when sent from outside, owned by no workflow', () => {
@@ -51,49 +51,48 @@ describe('an event published to a brain, as the follower reads it', () => {
 
   it('when a run emitted it, is owned by the workflow of that run, and names the run that began the chain', () => {
     expect([published(emittedBy, 'r-top'), published(emittedBy, 'r-nested'), published(emittedBy)]).toMatchObject([
-      { depth: 2, emitter: { executionId: 'r-nested', workflow: 'close' }, ownedBy: ['close'], topRun: 'r-top' },
+      { depth: 2, emitter: { runId: 'r-nested', workflow: 'close' }, ownedBy: ['close'], topRun: 'r-top' },
       { topRun: undefined },
       { topRun: undefined },
     ]);
   });
 
   it('is unreadable when its record cannot be read as a publication', () => {
-    expect(followedEventOf(recordOf('events/e1', { type: 'event_published' }), 'orchestration')).toBe('unreadable');
+    expect(followedEventOf(recordOf('events/e1', { type: 'event_published' }), 'workflow')).toBe('unreadable');
   });
 });
 
 describe('a fact of a brain, as the follower reads it', () => {
   it('about a run, is owned by the workflow it ran and names the run that began the chain, one deeper', () => {
-    expect([
-      runFact('r-1', ['orchestration', 'close'], 'r-top'),
-      runFact('r-2', ['inference', 'sum'], 'r-2'),
-    ]).toMatchObject([
-      {
-        depth: 1,
-        ownedBy: ['close'],
-        topRun: 'r-top',
-        event: { type: 'execution_started', subject: 'orchestration/close' },
-      },
-      { depth: 1, ownedBy: [], topRun: undefined, event: { subject: 'inference/sum' } },
-    ]);
+    expect([runFact('r-1', ['workflow', 'close'], 'r-top'), runFact('r-2', ['reasoning', 'sum'], 'r-2')]).toMatchObject(
+      [
+        {
+          depth: 1,
+          ownedBy: ['close'],
+          topRun: 'r-top',
+          event: { type: 'run_started', subject: 'workflow/close' },
+        },
+        { depth: 1, ownedBy: [], topRun: undefined, event: { subject: 'reasoning/sum' } },
+      ],
+    );
   });
 
-  it('about a spec, is owned by no workflow', () => {
-    const retired = { type: 'spec_retired', name: 'close', by: 'acme-admin', at };
+  it('about a definition, is owned by no workflow', () => {
+    const retired = { type: 'definition_retired', name: 'close', by: 'acme-admin', at };
 
-    expect(followedEventOf(recordOf('specs/orchestration', retired), 'orchestration')).toMatchObject({
+    expect(followedEventOf(recordOf('definitions/workflow', retired), 'workflow')).toMatchObject({
       depth: 1,
       ownedBy: [],
       topRun: undefined,
-      event: { type: 'spec_retired', source: '/specs/orchestration/close' },
+      event: { type: 'definition_retired', source: '/definitions/workflow/close' },
     });
   });
 
   it('is unreadable when its record cannot be read, and no fact at all for a record that is none', () => {
     expect([
-      followedEventOf(recordOf('executions/r-1', { type: 'execution_started' }), 'orchestration'),
-      followedEventOf(recordOf('executions/r-1', { type: 'call_recorded' }), 'orchestration'),
-      followedEventOf(recordOf('runs/r-1', { type: 'input_applied' }), 'orchestration'),
+      followedEventOf(recordOf('runs/r-1', { type: 'run_started' }), 'workflow'),
+      followedEventOf(recordOf('runs/r-1', { type: 'call_recorded' }), 'workflow'),
+      followedEventOf(recordOf('run-logs/r-1', { type: 'input_applied' }), 'workflow'),
     ]).toEqual(['unreadable', 'none', 'none']);
   });
 
@@ -101,9 +100,9 @@ describe('a fact of a brain, as the follower reads it', () => {
     const tested = { test_id: 't-1', server: 'graph', tool: 'search', by: 'acme-builder', at };
 
     expect([
-      followedEventOf(recordOf('tool-tests/t-1', { type: 'tool_test_started', ...tested }), 'orchestration'),
-      followedEventOf(recordOf('tool-tests/t-1', { type: 'tool_test_answered', ...tested }), 'orchestration'),
-      followedEventOf(recordOf('tool-tests/t-1', { type: 'tool_test_started' }), 'recollection'),
+      followedEventOf(recordOf('tool-tests/t-1', { type: 'tool_test_started', ...tested }), 'workflow'),
+      followedEventOf(recordOf('tool-tests/t-1', { type: 'tool_test_answered', ...tested }), 'workflow'),
+      followedEventOf(recordOf('tool-tests/t-1', { type: 'tool_test_started' }), 'recall'),
     ]).toEqual(['none', 'none', 'none']);
   });
 });
@@ -113,8 +112,8 @@ describe('the reads and tellings of a conversation, as the follower meets them',
     const read = { call_id: 'c-1', server: 'chat', tool: 'thread_replies', by: 'brain:alpha', at };
 
     expect([
-      followedEventOf(recordOf('conversation-calls/c-1', { type: 'replies_read', ...read }), 'orchestration'),
-      followedEventOf(recordOf('conversation-calls/c-1', { type: 'telling_started', ...read }), 'recollection'),
+      followedEventOf(recordOf('conversation-calls/c-1', { type: 'replies_read', ...read }), 'workflow'),
+      followedEventOf(recordOf('conversation-calls/c-1', { type: 'telling_started', ...read }), 'recall'),
     ]).toEqual(['none', 'none']);
   });
 });

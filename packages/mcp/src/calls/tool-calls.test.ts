@@ -132,9 +132,7 @@ describe('a server that fails a call', () => {
     const { call, messages } = await runWith(['broken']);
 
     expect(await call('broken', { key: fakeApiKey, attempt: 1 })).toMatchObject({ text: brokenWithKey, isError: true });
-    expect(messages()).toEqual([
-      { server: 'graph', message: reportedWithKey, execution_id: toolRunId, tool_test_id: null },
-    ]);
+    expect(messages()).toEqual([{ server: 'graph', message: reportedWithKey, run_id: toolRunId, tool_test_id: null }]);
   });
 
   it('ends the calls after five failures', async () => {

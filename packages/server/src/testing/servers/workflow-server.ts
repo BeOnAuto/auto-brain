@@ -1,7 +1,7 @@
 import { setTimeout } from 'node:timers/promises';
 
 import type { McpSession, ToolResult } from '@beonauto/api/testing';
-import type { ScriptedReply } from '@beonauto/inference/testing';
+import type { ScriptedReply } from '@beonauto/reasoning/testing';
 import type { HostClock } from '@beonauto/workflow-host';
 import { Option, Schema } from 'effect';
 
@@ -15,7 +15,7 @@ const localMode: Readonly<Record<string, string>> = { LOCAL_MODE: 'true' };
 
 const statusOf = Schema.decodeUnknownOption(Schema.Struct({ status: Schema.String }));
 
-const executionOf = Schema.decodeUnknownSync(Schema.Struct({ execution_id: Schema.String }));
+const runOf = Schema.decodeUnknownSync(Schema.Struct({ run_id: Schema.String }));
 
 export function servingWorkflows(
   replies: readonly ScriptedReply[],
@@ -33,15 +33,15 @@ export function workflowSource(name: string, steps: string): string {
   return `document:\n  dsl: '1.0.3'\n  namespace: acme\n  name: ${name}\n  version: '1.0.0'\n${steps}`;
 }
 
-export function executionIdIn(body: unknown): string {
-  return executionOf(body).execution_id;
+export function runIdIn(body: unknown): string {
+  return runOf(body).run_id;
 }
 
 export function isStarted(body: unknown): boolean {
   return Option.getOrUndefined(statusOf(body))?.status === 'started';
 }
 
-export async function settledExecution(
+export async function settledRun(
   server: ReasoningServer,
   path: string,
   options: RequestOptions = {},
@@ -51,14 +51,14 @@ export async function settledExecution(
     return response;
   }
   await setTimeout(100);
-  return settledExecution(server, path, options);
+  return settledRun(server, path, options);
 }
 
-export async function settledOverMcp(session: McpSession, executionId: string): Promise<ToolResult> {
-  const reading = await session.callTool('get_execution', { execution_id: executionId });
+export async function settledOverMcp(session: McpSession, runId: string): Promise<ToolResult> {
+  const reading = await session.callTool('get_run', { run_id: runId });
   if (!isStarted(reading.structuredContent)) {
     return reading;
   }
   await setTimeout(100);
-  return settledOverMcp(session, executionId);
+  return settledOverMcp(session, runId);
 }

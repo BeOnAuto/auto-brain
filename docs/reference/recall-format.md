@@ -2,7 +2,7 @@
 
 # Recall function format
 
-The API stores a recall function as a `recollection` spec. Its source document names the events of the brain it folds, the view they fold into and how that view starts, and holds a fold, written in jq, that takes the view and one event and answers the next view. The runtime keeps the view as the brain records events, from the first event of its history on, and a run answers from the view as it stands, applying the function's `answer` to it. Use one so that a brain remembers what it decided before: the reviews of each campaign, the latest verdict per region, the refusals of a quarter.
+The API stores a recall function as a `recall` definition. Its source document names the events of the brain it folds, the view they fold into and how that view starts, and holds a fold, written in jq, that takes the view and one event and answers the next view. The runtime keeps the view as the brain records events, from the first event of its history on, and a run answers from the view as it stands, applying the function's `answer` to it. Use one so that a brain remembers what it decided before: the reviews of each campaign, the latest verdict per region, the refusals of a quarter.
 
 The view is a function of the brain's events alone. Nothing a run passes in is kept, no run changes it, and the same history folds to the same view on every server and either store.
 
@@ -19,8 +19,8 @@ description: The reviews of each campaign, latest last, as the review-brief func
 language: jq
 source:
   events:
-    - type: execution_succeeded
-      subject: inference/review-brief
+    - type: run_succeeded
+      subject: reasoning/review-brief
 view:
   initial: {}
   schema:
@@ -55,7 +55,7 @@ The fold runs once for every run of `review-brief` that succeeds, whatever the m
 
 A fold that raises an error on an ordinary output stops its view at that event, and so does a view that outgrows its bound or its schema; see [When a view stalls](#when-a-view-stalls). Guard the fold, and bound the view, before you save it.
 
-For this document, `create_spec` takes `primitive: "recollection"`, a function `name` such as `campaign-reviews`, and the document as `source`. `execute_spec` takes the same primitive and name, with the `campaign` and optionally how many reviews to answer, `last`, in the `input` object. Both operations also require the brain id unless the MCP connection is scoped to that brain.
+For this document, `create_definition` takes `type: "recall"`, a function `name` such as `campaign-reviews`, and the document as `source`. `run_definition` takes the same capability and name, with the `campaign` and optionally how many reviews to answer, `last`, in the `input` object. Both operations also require the brain id unless the MCP connection is scoped to that brain.
 
 After three runs of `review-brief`, the view is:
 
@@ -65,19 +65,19 @@ After three runs of `review-brief`, the view is:
     {
       "at": "2026-09-30T14:02:11.000Z",
       "verdict": "approve",
-      "run": "/executions/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b71"
+      "run": "/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b71"
     }
   ],
   "spring-sale": [
     {
       "at": "2026-10-01T09:15:42.000Z",
       "verdict": "reject: the budget is not stated",
-      "run": "/executions/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b72"
+      "run": "/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b72"
     },
     {
       "at": "2026-10-03T16:40:05.000Z",
       "verdict": "approve",
-      "run": "/executions/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b73"
+      "run": "/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b73"
     }
   ]
 }
@@ -96,7 +96,7 @@ the run succeeds with this output:
   {
     "at": "2026-10-03T16:40:05.000Z",
     "verdict": "approve",
-    "run": "/executions/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b73"
+    "run": "/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b73"
   }
 ]
 ```
@@ -110,8 +110,8 @@ description: What the post-announcement function answered, oldest first, the las
 language: jq
 source:
   events:
-    - type: execution_succeeded
-      subject: inference/post-announcement
+    - type: run_succeeded
+      subject: reasoning/post-announcement
 view:
   initial: []
   schema: { type: array, maxItems: 50 }
@@ -120,7 +120,7 @@ view:
 | .[-50:]
 ```
 
-The filter writes out the type and the subject, `inference/post-announcement` for the runs of that reasoning function. An output larger than 8 KiB as JSON, or too large for its event, is kept as `null`, so 50 entries stay under the 512 KiB a view may take, and `get_execution` of the run an entry names reads the whole output. Every run of `post-announcement` is in the brain's history whoever started it, so this view misses none, where a log that workflows write into misses each run that does not write to it.
+The filter writes out the type and the subject, `reasoning/post-announcement` for the runs of that reasoning function. An output larger than 8 KiB as JSON, or too large for its event, is kept as `null`, so 50 entries stay under the 512 KiB a view may take, and `get_run` of the run an entry names reads the whole output. Every run of `post-announcement` is in the brain's history whoever started it, so this view misses none, where a log that workflows write into misses each run that does not write to it.
 
 ## Fields
 
@@ -141,11 +141,11 @@ Unknown fields are rejected, among them the fields of a reasoning function that 
 
 A recall function folds the events of its own brain, in the order the brain recorded them, from the first:
 
-| Events                                                                               | `source`                    | `subject`            | `data`                                                                                                                                                         |
-| ------------------------------------------------------------------------------------ | --------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `execution_started`, `execution_succeeded`, `execution_rejected`, `execution_failed` | `/executions/<run id>`      | `<primitive>/<name>` | `primitive`, `name`, `version` and `caller`; on a success also `output`, or `output_bytes`, its size, when the output would make the event larger than 240 KiB |
-| `spec_created`, `spec_updated`, `spec_retired`                                       | `/specs/<primitive>/<name>` | none                 | `primitive`, `name`, `caller`, and `version` unless retired                                                                                                    |
-| An event published to the brain, of any other type                                   | as its publisher gave it    | as given             | as given; see [Publishing events](http.md#publishing-events)                                                                                                   |
+| Events                                                           | `source`                     | `subject`       | `data`                                                                                                                                                    |
+| ---------------------------------------------------------------- | ---------------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `run_started`, `run_succeeded`, `run_rejected`, `run_failed`     | `/runs/<run id>`             | `<type>/<name>` | `type`, `name`, `version` and `caller`; on a success also `output`, or `output_bytes`, its size, when the output would make the event larger than 240 KiB |
+| `definition_created`, `definition_updated`, `definition_retired` | `/definitions/<type>/<name>` | none            | `type`, `name`, `caller`, and `version` unless retired                                                                                                    |
+| An event published to the brain, of any other type               | as its publisher gave it     | as given        | as given; see [Publishing events](http.md#publishing-events)                                                                                              |
 
 Each event is a CloudEvent with its `id`, `type`, `source`, `time`, the time it happened as the brain recorded it, and its `data`; an event the brain recorded as the effect of another names that one in `causationid`, and the run at the top of its chain in `correlationid`. A recall function never folds the events of its own runs. An event the runtime cannot read, such as one whose data nests deeper than 512 levels, is passed over and reported to the operator once.
 
@@ -155,7 +155,7 @@ A filter names the events it takes:
 | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `type`    | Required; exactly this type, written out                                                                                                                                           |
 | `source`  | Optional; exactly this source, written out                                                                                                                                         |
-| `subject` | Optional; exactly this subject, written out, such as `inference/review-brief` for the runs of one reasoning function                                                               |
+| `subject` | Optional; exactly this subject, written out, such as `reasoning/review-brief` for the runs of one reasoning function                                                               |
 | `data`    | Optional; data equal to this value, or, as an expression such as `'${ .revenue > 100 }'`, data for which it is true; the expression reads the event's data as `.` and nothing else |
 
 An event is folded when it matches any of the filters, and once only. Any other key is rejected, and so are a computed `type`, `source` or `subject` and a `data` expression that names a variable.
@@ -194,9 +194,9 @@ A run never waits for the view: it answers from what the brain has folded so far
 | `view.last_event`    | The `id` and `time` of the last event the view folded, `null` before the first |
 | `view.folded`        | How many events the view has folded                                            |
 
-The record also holds `language`, `work`, the units of work the answer spent, `duration_ms`, and `input_bytes` and `output_bytes`. `get_execution` returns it with the output.
+The record also holds `language`, `work`, the units of work the answer spent, `duration_ms`, and `input_bytes` and `output_bytes`. `get_run` returns it with the output.
 
-`get_spec` of a recall function adds its view's `standing`:
+`get_definition` of a recall function adds its view's `standing`:
 
 | Field                                                 | What it says                                                                                                                                |
 | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -255,7 +255,7 @@ Work is counted as for a computation function, so the same fold spends the same 
 
 ## In a workflow
 
-A workflow calls a recall function as it calls any function, with `call: execute_spec` and `primitive: recollection`, and the task's output is the run's output, typically passed to a reasoning function whose prompt reads it as any input; see [Calling a function](workflow-format.md#calling-a-function). A recall function reaches nothing outside the brain, so a workflow may run it again freely.
+A workflow calls a recall function as it calls any function, with `call: run_definition` and `type: recall`, and the task's output is the run's output, typically passed to a reasoning function whose prompt reads it as any input; see [Calling a function](workflow-format.md#calling-a-function). A recall function reaches nothing outside the brain, so a workflow may run it again freely.
 
 A view follows its brain by up to a pass and a page's folds, so a workflow that recalls what it recorded a moment before may not see it yet, and a step sees only the output, not the checkpoint. A run rejected with `conflict`, of the kind `stalled` or `unworkable`, raises a `runtime` error with status 409 and that `kind`; running it again gives the same answer, so a retry policy should not match it. A view still being built raises status 503, which a retry may resolve.
 
@@ -312,9 +312,9 @@ do:
   - recall:
       try:
         - remember:
-            call: execute_spec
+            call: run_definition
             with:
-              primitive: recollection
+              type: recall
               name: campaign-reviews
               input: { campaign: '${ .campaign }', last: 20 }
       catch:
@@ -327,20 +327,20 @@ do:
       export:
         as: '${ { reviews: . } }'
   - advise:
-      call: execute_spec
+      call: run_definition
       with:
-        primitive: inference
+        type: reasoning
         name: advise-on-campaign
         input: { reviews: '${ $context.reviews }' }
   - tally:
-      call: execute_spec
+      call: run_definition
       with:
-        primitive: computation
+        type: computation
         name: tally-verdicts
         input: { reviews: '${ $context.reviews }', advice: '${ . }' }
 ```
 
-`execute_spec` of `decide-on-campaign` takes an input such as `{"campaign": "spring-sale"}`. When the view is still being built, the `recall` task tries again up to three more times; when the view has stalled, the run ends `rejected` at once, and its history shows the recall function's run with the stall.
+`run_definition` of `decide-on-campaign` takes an input such as `{"campaign": "spring-sale"}`. When the view is still being built, the `recall` task tries again up to three more times; when the view has stalled, the run ends `rejected` at once, and its history shows the recall function's run with the stall.
 
 ## Availability
 

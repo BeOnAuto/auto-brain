@@ -1,0 +1,172 @@
+import { BrainContext, BrainWriter, Caller, messageIdOf, type Lineage, type RecordedEvent } from '@beonauto/operations';
+import { Effect } from 'effect';
+import { describe, expect, it } from 'vitest';
+
+import { runDecider, runStreamNameOf } from '../runs/run-decider.ts';
+import { acmeAdmin } from '../testing/callers.ts';
+import { definitionOperationsFor } from '../testing/definition-operations.ts';
+import { harness, toBrain, type Harness } from '../testing/harness.ts';
+import { relayedId, withHandOn } from '../testing/relaying.ts';
+import { answerOfCall, toolUser } from '../testing/tool-user.ts';
+import { toolCallJournal } from './tool-call-journal.ts';
+
+const toAlpha = toBrain('acme', 'alpha');
+
+const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+
+const stream = `brain/acme/alpha/${runStreamNameOf(runId)}`;
+
+const idAt = (position: number): string => messageIdOf(stream, position);
+
+interface Linked {
+  readonly type: string;
+  readonly id: string;
+  readonly causationId: string | null;
+  readonly correlationId: string | null;
+}
+
+function linksOf({ type, id, causationId, correlationId }: RecordedEvent): Linked {
+  return { type, id, causationId, correlationId };
+}
+
+async function linksIn({ ledger, run }: Harness): Promise<readonly Linked[]> {
+  const { records } = await run(
+    Effect.orDie(
+      ledger.service.readRecorded(
+        { org: 'acme', brain: 'alpha' },
+        { kind: 'run', run: runId },
+        { order: 'asc', limit: 100 },
+      ),
+    ),
+  );
+  return records.map((record) => linksOf(record));
+}
+
+async function aToolUser() {
+  const user = toolUser();
+  const operations = definitionOperationsFor([user.capability]);
+  const definitions = harness();
+  await definitions.call(
+    operations.createDefinition,
+    toAlpha(acmeAdmin, { type: 'tool-user', name: 'caller', source: 'x' }),
+  );
+  const executing = (input: object, lineage?: Lineage) =>
+    definitions.call(operations.runDefinition, {
+      ...toAlpha(acmeAdmin, { type: 'tool-user', name: 'caller', input, run_id: runId }),
+      ...(lineage === undefined ? {} : { lineage }),
+    });
+  return { ...definitions, executing };
+}
+
+describe('the lineage of a run that calls tools', () => {
+  it('starts with no cause, links each call to the answer before it and each answer to its call, and the finish to the last answer', async () => {
+    const definitions = await aToolUser();
+    await definitions.executing({ calls: 2 });
+
+    expect(await linksIn(definitions)).toEqual([
+      { type: 'run_started', id: idAt(1), causationId: null, correlationId: runId },
+      { type: 'tool_call_started', id: idAt(2), causationId: idAt(1), correlationId: runId },
+      { type: 'tool_call_started', id: idAt(3), causationId: idAt(1), correlationId: runId },
+      { type: 'tool_call_answered', id: idAt(4), causationId: idAt(2), correlationId: runId },
+      { type: 'tool_call_answered', id: idAt(5), causationId: idAt(3), correlationId: runId },
+      { type: 'run_succeeded', id: idAt(6), causationId: idAt(5), correlationId: runId },
+    ]);
+  });
+
+  it('finishes caused by its start when it called no tool, and a failure too', async () => {
+    const definitions = await aToolUser();
+    await definitions.executing({ calls: 0, ending: 'unavailable' });
+
+    expect((await linksIn(definitions)).map(({ type, causationId }) => [type, causationId])).toEqual([
+      ['run_started', null],
+      ['run_rejected', idAt(1)],
+    ]);
+  });
+
+  it('started by another run, is caused by what it was given and belongs to the run it was given', async () => {
+    const definitions = await aToolUser();
+    const lineage = { causationId: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a', correlationId: 'root' };
+    await definitions.executing({ calls: 0 }, lineage);
+
+    expect((await linksIn(definitions)).map(({ causationId, correlationId }) => [causationId, correlationId])).toEqual([
+      [lineage.causationId, 'root'],
+      [idAt(1), 'root'],
+    ]);
+  });
+
+  it('is never taken from the input of run_definition, which refuses a field it does not know', async () => {
+    const definitions = await aToolUser();
+    const lineage = { causationId: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a', correlationId: 'root' };
+
+    expect(await definitions.executing({ calls: 0, lineage })).toMatchObject({ status: 'succeeded' });
+    expect(
+      await definitions.call(
+        definitionOperationsFor([toolUser().capability]).runDefinition,
+        toAlpha(acmeAdmin, { type: 'tool-user', name: 'caller', input: { calls: 0 }, lineage }),
+      ),
+    ).toMatchObject({ status: 'rejected', reason: 'invalid_input', issues: [{ pointer: '/lineage' }] });
+  });
+});
+
+describe('the journal of a run, given an answer to a call it has no start of', () => {
+  it('links the answer to the answer before it, or to the start of the run', async () => {
+    const definitions = harness();
+    const recording = Effect.gen(function* () {
+      yield* definitions.ledger.service.execute(stream, runDecider, {
+        type: 'start',
+        definition_type: 'tool-user',
+        name: 'caller',
+        input: {},
+        definition_version: 1,
+        calls_tools: true,
+        by: 'acme-admin',
+        at: '2026-10-01T09:00:00.000Z',
+      });
+      const journal = yield* toolCallJournal(runId, { startId: idAt(1), correlationId: runId });
+      return yield* journal.answered(answerOfCall(9));
+    }).pipe(
+      Effect.provideService(BrainWriter, {
+        execute: (relative, decider, command, lineage) =>
+          definitions.ledger.service.execute(`brain/acme/alpha/${relative}`, decider, command, lineage),
+      }),
+      Effect.provideService(Caller, acmeAdmin),
+      Effect.provideService(BrainContext, { org: 'acme', brain: 'alpha' }),
+    );
+
+    expect(await definitions.run(Effect.orDie(recording))).toBe(true);
+    expect((await linksIn(definitions)).at(-1)).toEqual({
+      type: 'tool_call_answered',
+      id: idAt(2),
+      causationId: idAt(1),
+      correlationId: runId,
+    });
+  });
+});
+
+describe('the lineage of a run that finishes later', () => {
+  it('defers caused by its start, and settles caused by what settled it', async () => {
+    const definitions = await withHandOn();
+    await definitions.executing();
+    const settledBy = { causationId: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a', correlationId: relayedId };
+    await definitions.settling({ status: 'succeeded', output: 'done', record: {} }, undefined, settledBy);
+
+    expect((await linksIn(definitions)).map(({ type, causationId }) => [type, causationId])).toEqual([
+      ['run_started', null],
+      ['run_deferred', idAt(1)],
+      ['run_succeeded', settledBy.causationId],
+    ]);
+  });
+
+  it('started again after it was rejected, is caused by its latest start from then on', async () => {
+    const definitions = await aToolUser();
+    await definitions.executing({ calls: 0, ending: 'unavailable' });
+    await definitions.executing({ calls: 0, ending: 'unavailable' });
+
+    expect((await linksIn(definitions)).map(({ type, causationId }) => [type, causationId])).toEqual([
+      ['run_started', null],
+      ['run_rejected', idAt(1)],
+      ['run_started', null],
+      ['run_rejected', idAt(3)],
+    ]);
+  });
+});

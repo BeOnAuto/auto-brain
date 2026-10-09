@@ -1,7 +1,7 @@
 import { Schema } from 'effect';
 
 import { RunStateSchema, type RunState } from '../machine/run-state.ts';
-import { eventBytesOf, type RunEvent } from './run-event.ts';
+import { eventBytesOf, type RunLogEvent } from './run-event.ts';
 import { stateFormat, StateFormatSchema } from './state-format.ts';
 
 export const snapshotEveryBytes = 1_048_576;
@@ -10,7 +10,7 @@ export const mostSnapshotChunkBytes = 1_048_576;
 
 export const SnapshotSchema = Schema.Struct({
   format: StateFormatSchema,
-  executionId: Schema.NonEmptyString,
+  runId: Schema.NonEmptyString,
   version: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
   historyBytes: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   state: Schema.Json,
@@ -36,14 +36,14 @@ const utf8 = new TextEncoder();
 export function snapshotOf(state: RunState, version: number): Snapshot {
   return {
     format: stateFormat,
-    executionId: state.executionId,
+    runId: state.runId,
     version,
     historyBytes: state.historyBytes,
     state: encodeState(state),
   };
 }
 
-export function sinceSnapshotAfter(since: SinceSnapshot, events: readonly RunEvent[]): SinceSnapshot {
+export function sinceSnapshotAfter(since: SinceSnapshot, events: readonly RunLogEvent[]): SinceSnapshot {
   return { ...since, bytes: events.reduce((sum, event) => sum + eventBytesOf(event), since.bytes) };
 }
 

@@ -1,8 +1,8 @@
 import { makeAppRuntime } from '@beonauto/api';
+import { defineStartVersion } from '@beonauto/definitions';
+import { echo } from '@beonauto/definitions/testing';
 import { ledgerLayer } from '@beonauto/ledger/sqlite3';
 import { makeDispatcher } from '@beonauto/operations';
-import { defineStartVersion } from '@beonauto/specs';
-import { echo } from '@beonauto/specs/testing';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -17,7 +17,7 @@ describe('the cancels the workflow host hands to the runtime of the server', () 
   it('settle nothing for a run the ledger does not have, and record the cancel of a run that has not started yet', async () => {
     const runtime = await makeAppRuntime(applicationLayer(ledgerLayer({ fileName: ':memory:' })));
     const { waiting } = hostWorkOf(runtime, makeDispatcher([]), {
-      primitives: [echo],
+      capabilities: [echo],
       startVersion: defineStartVersion([echo]),
     });
 

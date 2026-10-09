@@ -5,11 +5,11 @@ import { heldBytesOf } from '../machine/held-values.ts';
 import type { Started } from '../machine/run-input.ts';
 import { newRun, type RunState, type TaskFrame } from '../machine/run-state.ts';
 
-export const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+export const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 export const document = { document: { dsl: '1.0.3', namespace: 'acme', name: 'triage', version: '1.0.0' }, do: [] };
 
-export const openCall: CallKey = { executionId, reference: '/do/1/fork/branches/0/ask', run: 1 };
+export const openCall: CallKey = { runId, reference: '/do/1/fork/branches/0/ask', run: 1 };
 
 export const armedTimer = '1';
 
@@ -76,7 +76,7 @@ const forking: TaskFrame = {
 
 const running: RunState = {
   ...newRun,
-  executionId,
+  runId,
   status: 'running',
   workflow: { document, input: ticket },
   attributes: { owner: 'tests' },
@@ -160,7 +160,7 @@ export function beforeFormatFive(state: unknown): unknown {
 
 export const started: Started = {
   kind: 'started',
-  executionId,
+  runId,
   at,
   document,
   input: { ticket: 7 },

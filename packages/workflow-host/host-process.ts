@@ -1,8 +1,8 @@
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { setTimeout } from 'node:timers/promises';
 
+import type { SettleRun } from '@beonauto/definitions';
 import type { CallResult } from '@beonauto/operations';
-import type { SettleExecution } from '@beonauto/specs';
 import { defaultLimits, defaultSeed, testMachine } from '@beonauto/workflow-engine/testing';
 import { Effect, Function, Schema } from 'effect';
 
@@ -22,7 +22,7 @@ const settings: DatabaseSettings = Schema.decodeUnknownSync(
   ),
 )(settingsText);
 
-const run = { org: 'acme', brain: 'alpha', executionId: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' };
+const run = { org: 'acme', brain: 'alpha', runId: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' };
 
 const notifying = {
   document: { dsl: '1.0.3', namespace: 'acme', name: 'notifying', version: '1.0.0' },
@@ -39,16 +39,16 @@ const hangs = Effect.never;
 
 const answered: Effect.Effect<CallResult> = Effect.succeed({ status: 'succeeded', output: 'sent' });
 
-const settle: SettleExecution = ({ id }, settlement) =>
+const settle: SettleRun = ({ id }, settlement) =>
   mode === 'hang-on-settle'
     ? Effect.andThen(said('settling'), hangs)
     : Effect.sync(() => {
         appendFileSync(settlementsFile, `${JSON.stringify({ id, settlement })}\n`);
         return {
-          execution_id: id,
-          primitive: 'orchestration',
+          run_id: id,
+          type: 'workflow',
           name: 'notifying',
-          spec_version: 1,
+          definition_version: 1,
           status: 'succeeded',
           started_at: '2026-10-05T09:00:00.000Z',
           started_by: 'acme-admin',

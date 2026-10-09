@@ -7,6 +7,6 @@ A reasoning function can call the tools of the tool servers that whoever runs th
 3. When a server says it cannot be asked just now, tell the person why, in its words; whoever runs the server can look into it.
 4. To learn what a tool answers, test it with test_tool_call, with the arguments its input_schema takes, and read the answer: that is what the function's model will see. Never make a function to look. When a prompt needs an id, such as a channel's, test the tool that lists them and take the id from its answer, confirming the choice with the person. A tool that cannot be tested may change something; list_tool_servers says which can.
 5. Ask the person what the function should do with the tools, and which of them it needs.
-6. Write a reasoning function whose `tools` name those tools in the format of the reasoning-function guide, show it to the person, and save it with create_spec, `primitive` inference, once they agree.
-7. Run it with execute_spec. A run that called tools and did not succeed is not run again under its id, since a tool may have changed something: read what it called with get_execution_history, and start a new run only if the person still wants one.
+6. Write a reasoning function whose `tools` name those tools in the format of the reasoning-function guide, show it to the person, and save it with create_definition, `type` reasoning, once they agree.
+7. Run it with run_definition. A run that called tools and did not succeed is not run again under its id, since a tool may have changed something: read what it called with get_run_history, and start a new run only if the person still wants one.
 8. Tell the person what the run did with the tools, and that the function can call only the tools it names.

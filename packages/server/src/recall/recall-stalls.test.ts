@@ -1,5 +1,5 @@
 import { internalTermsIn, plainTextIn, problemIn, withMcpSession } from '@beonauto/api/testing';
-import { recallDocument } from '@beonauto/recollection/testing';
+import { recallDocument } from '@beonauto/recall/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -18,7 +18,7 @@ import {
 } from '../testing/servers/recall-server.ts';
 
 const reviewRuns =
-  'language: jq\nsource:\n  events:\n    - type: execution_succeeded\n      subject: inference/review-brief\nview:\n  initial: 0';
+  'language: jq\nsource:\n  events:\n    - type: run_succeeded\n      subject: reasoning/review-brief\nview:\n  initial: 0';
 
 const takingObjectsOnly = [
   '. + 1',
@@ -51,7 +51,7 @@ async function stalledServer(): Promise<ReasoningServer> {
   );
   closing.push(server.stop);
   await brainWithReviews(server);
-  await server.call('POST', `${alpha}/specs/recollection`, {
+  await server.call('POST', `${alpha}/definitions/recall`, {
     body: { name: 'objects', source: recallDocument(takingObjectsOnly, reviewRuns) },
   });
   await reviewed(server, 2);
@@ -68,7 +68,7 @@ describe('a recall function whose view stalled', { timeout: recallTestTimeoutMs 
 
     expect(standing).toMatchObject({
       folded: 1,
-      stalled: { event: { type: 'execution_succeeded' }, kind: 'raised', line: 11 },
+      stalled: { event: { type: 'run_succeeded' }, kind: 'raised', line: 11 },
     });
     expect(standing.stalled.error).toBe('cannot take the secret plan of the spring campaign');
     expect(reviews).toMatchObject({ status: 200, body: { output: [{ verdict: 'none' }] } });
@@ -85,7 +85,7 @@ describe('a recall function whose view stalled', { timeout: recallTestTimeoutMs 
       body: {
         reason: 'conflict',
         kind: 'stalled',
-        detail: `The view of the recall function “objects” stopped at the execution_succeeded event of ${stalled.event.time}: its fold raised an error on line 11. Save a corrected version to build the view again from the brain's history`,
+        detail: `The view of the recall function “objects” stopped at the run_succeeded event of ${stalled.event.time}: its fold raised an error on line 11. Save a corrected version to build the view again from the brain's history`,
       },
     });
     expect(ran.text).not.toContain('secret');
@@ -98,7 +98,7 @@ describe('a recall function whose view stalled, afterwards', { timeout: recallTe
     const server = await stalledServer();
     await standingUntil(server, 'objects', inState('stalled'));
 
-    await server.call('PUT', `${alpha}/specs/recollection/objects`, {
+    await server.call('PUT', `${alpha}/definitions/recall/objects`, {
       body: { source: recallDocument('. + 1', reviewRuns) },
     });
     await standingUntil(server, 'objects', liveAt(2));
@@ -110,17 +110,17 @@ describe('a recall function whose view stalled, afterwards', { timeout: recallTe
     const server = await stalledServer();
     await standingUntil(server, 'objects', inState('stalled'));
 
-    const executed = await withMcpSession(
+    const ran = await withMcpSession(
       'current revision',
       { url: `${server.origin}/orgs/acme/brains/alpha/mcp`, headers: {} },
-      (session) => session.callTool('execute_spec', { primitive: 'recollection', name: 'objects', input: {} }),
+      (session) => session.callTool('run_definition', { type: 'recall', name: 'objects', input: {} }),
     );
 
-    expect({ isError: executed.isError, problem: problemIn(executed) }).toMatchObject({
+    expect({ isError: ran.isError, problem: problemIn(ran) }).toMatchObject({
       isError: true,
       problem: { status: 409, reason: 'conflict', kind: 'stalled' },
     });
-    expect(internalTermsIn(plainTextIn(executed))).toEqual([]);
-    expect(plainTextIn(executed)).not.toContain('secret');
+    expect(internalTermsIn(plainTextIn(ran))).toEqual([]);
+    expect(plainTextIn(ran)).not.toContain('secret');
   });
 });

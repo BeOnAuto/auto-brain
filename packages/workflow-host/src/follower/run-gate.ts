@@ -20,14 +20,14 @@ export function runGateOf(database: HostDatabase, brainKey: string): RunGate {
   const watermark = sqlWatermark(database);
   const [, org = '', brain = ''] = brainKey.split('/');
   const known = new Map<string, Known>();
-  const knownOf = (runId: string, record: RecordedEvent): Effect.Effect<Known> => {
-    const cached = known.get(runId);
+  const knownOf = (runKey: string, record: RecordedEvent): Effect.Effect<Known> => {
+    const cached = known.get(runKey);
     return cached !== undefined && cached.through >= record.version
       ? Effect.succeed(cached)
       : Effect.map(
-          Effect.zip(watermark.read(runId), pendingArmings(database, record.stream)),
+          Effect.zip(watermark.read(runKey), pendingArmings(database, record.stream)),
           ([through, pending]: readonly [number, readonly number[]]) => {
-            known.set(runId, { through, pending });
+            known.set(runKey, { through, pending });
             return { through, pending };
           },
         );
@@ -35,18 +35,18 @@ export function runGateOf(database: HostDatabase, brainKey: string): RunGate {
   return {
     verdictOn: (record, overdue) =>
       Effect.gen(function* () {
-        const runId = `${org}/${brain}/${record.stream.slice(record.stream.lastIndexOf('/') + 1)}`;
-        const { through, pending } = yield* knownOf(runId, record);
+        const runKey = `${org}/${brain}/${record.stream.slice(record.stream.lastIndexOf('/') + 1)}`;
+        const { through, pending } = yield* knownOf(runKey, record);
         const behind = through < record.version;
         if (behind && !overdue) {
           return 'held';
         }
         const armed = pending.some((armedBy) => armedBy <= record.version);
         if (behind) {
-          yield* runPassedThrough(database, runId, record.version);
+          yield* runPassedThrough(database, runKey, record.version);
         }
         if (behind || armed) {
-          known.set(runId, { through, pending: pending.filter((armedBy) => armedBy > record.version) });
+          known.set(runKey, { through, pending: pending.filter((armedBy) => armedBy > record.version) });
           yield* passedListeners(database, record.stream, record.version);
         }
         if (behind) {

@@ -1,7 +1,7 @@
 import { brainsStreamOfOrg } from '@beonauto/brains';
+import type { Trigger } from '@beonauto/definitions';
 import { eventAppenderOf, type EventStore } from '@beonauto/ledger';
 import { messageIdOf, noLineage, type Lineage } from '@beonauto/operations';
-import type { Trigger } from '@beonauto/specs';
 import type { Json } from '@beonauto/workflow-engine';
 import { Effect, Schema } from 'effect';
 
@@ -21,7 +21,7 @@ export interface PublishedEvent {
   readonly data?: Json;
 }
 
-export interface SpecVersion {
+export interface DefinitionVersion {
   readonly name: string;
   readonly version: number;
   readonly triggers: readonly Trigger[];
@@ -75,10 +75,14 @@ export function everyTrigger(milliseconds: number): Trigger {
   return { kind: 'every', reference: '/schedule/every', milliseconds };
 }
 
-export function specRecorded(store: EventStore, { name, version, triggers, when = at }: SpecVersion, brainKey = alpha) {
+export function definitionRecorded(
+  store: EventStore,
+  { name, version, triggers, when = at }: DefinitionVersion,
+  brainKey = alpha,
+) {
   const content = triggers.length === 0 ? { source: 'do: []' } : { source: 'schedule: {}', triggers };
-  return recorded(store, `${brainKey}specs/orchestration`, {
-    type: version === 1 ? 'spec_created' : 'spec_updated',
+  return recorded(store, `${brainKey}definitions/workflow`, {
+    type: version === 1 ? 'definition_created' : 'definition_updated',
     name,
     version,
     content,
@@ -87,16 +91,16 @@ export function specRecorded(store: EventStore, { name, version, triggers, when 
   });
 }
 
-export function specRecordAt(position: number, brainKey = alpha): string {
-  return messageIdOf(`${brainKey}specs/orchestration`, position);
+export function definitionRecordAt(position: number, brainKey = alpha): string {
+  return messageIdOf(`${brainKey}definitions/workflow`, position);
 }
 
 export function eventRecordOf(id: string, brainKey = alpha): string {
   return messageIdOf(`${brainKey}events/${id}`, 1);
 }
 
-export function specRetired(store: EventStore, name: string) {
-  return recorded(store, `${alpha}specs/orchestration`, { type: 'spec_retired', name, by: 'acme-admin', at });
+export function definitionRetired(store: EventStore, name: string) {
+  return recorded(store, `${alpha}definitions/workflow`, { type: 'definition_retired', name, by: 'acme-admin', at });
 }
 
 export function brainCreated(store: EventStore, brain: string) {
@@ -115,19 +119,19 @@ export function brainRenamed(store: EventStore, brain: string) {
 }
 
 export interface RunOf {
-  readonly executionId: string;
-  readonly primitive: string;
+  readonly runId: string;
+  readonly type: string;
   readonly name: string;
   readonly depth?: number;
   readonly correlation?: string;
 }
 
-export async function runRecorded(store: EventStore, run: RunOf, ending?: 'execution_succeeded') {
-  const { executionId, primitive, name, depth, correlation = executionId } = run;
-  const stream = `${alpha}executions/${executionId}`;
-  const ofTheRun = { primitive, name, spec_version: 1, ...(depth === undefined ? {} : { depth }) };
+export async function runRecorded(store: EventStore, run: RunOf, ending?: 'run_succeeded') {
+  const { runId, type, name, depth, correlation = runId } = run;
+  const stream = `${alpha}runs/${runId}`;
+  const ofTheRun = { definition_type: type, name, definition_version: 1, ...(depth === undefined ? {} : { depth }) };
   const lineage = { causationId: null, correlationId: correlation };
-  await recorded(store, stream, { type: 'execution_started', ...ofTheRun, input: {}, by: 'acme-admin', at }, lineage);
+  await recorded(store, stream, { type: 'run_started', ...ofTheRun, input: {}, by: 'acme-admin', at }, lineage);
   if (ending !== undefined) {
     await recorded(
       store,

@@ -1,9 +1,9 @@
+import { runOutcomeMapping } from '@beonauto/definitions';
 import { conversations, openRequests } from '@beonauto/interaction';
 import type { AppendSignal } from '@beonauto/ledger';
 import { postgresqlLedgerLayer } from '@beonauto/ledger/postgresql';
 import { ledgerLayer } from '@beonauto/ledger/sqlite3';
 import type { Ledger } from '@beonauto/operations';
-import { runOutcomeMapping } from '@beonauto/specs';
 import { Redacted, type Layer } from 'effect';
 
 import type { LedgerSettings } from '../settings/ledger-settings.ts';

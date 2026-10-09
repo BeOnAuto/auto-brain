@@ -25,7 +25,7 @@ async function viewsInEveryBrain(views: ViewHarness): Promise<void> {
   await Promise.all(
     brains.map(async (brain) => {
       await views.saved('runs', counting, brain);
-      await views.ran('inference/runs', 1, { brain });
+      await views.ran('reasoning/runs', 1, { brain });
     }),
   );
 }
@@ -36,7 +36,7 @@ function partsOf(views: ViewHarness, database: HostDatabase, pagesPerWake: numbe
     note: () => Effect.void,
     settings: views.settingsOf({ pagesPerWake, folding: { ...foldingOf(), pageBudgetMs: 60_000 } }),
     share: Semaphore.makeUnsafe(2),
-    reconciling: { database, definitionType: 'recollection', rebuildsAtOnce: 4, definitions: new Map() },
+    reconciling: { database, definitionType: 'recall', rebuildsAtOnce: 4, definitions: new Map() },
     resting: { isResting: () => false, rest: Function.constVoid },
     firstSeen: () => true,
     trouble: () => Effect.void,
@@ -51,10 +51,10 @@ describe('the pages of a pass', { timeout: viewTestTimeoutMs }, () => {
   it('reads at most the pages a pass may for a live view, and asks for another pass', async () => {
     const views = await viewHarness(await onSQLite());
     await views.saved('runs', counting);
-    await views.ran('inference/runs', 1);
+    await views.ran('reasoning/runs', 1);
     await Effect.runPromise(brainPass(partsOf(views, views.store.database, 10), alphaKey));
     const caughtUp = await views.viewOf('runs');
-    await views.ranInOneStream('inference/runs', runsOf(2500));
+    await views.ranInOneStream('reasoning/runs', runsOf(2500));
     const reads = heldReads(views.store.database);
     reads.open();
 
@@ -68,7 +68,7 @@ describe('the pages of a pass', { timeout: viewTestTimeoutMs }, () => {
   it('reads at most the pages a pass may for a rebuilding view, and asks for another pass', async () => {
     const views = await viewHarness(await onSQLite());
     await views.saved('runs', counting);
-    await views.ranInOneStream('inference/runs', runsOf(2500));
+    await views.ranInOneStream('reasoning/runs', runsOf(2500));
     const reads = heldReads(views.store.database);
     reads.open();
 
@@ -132,14 +132,14 @@ describe('a fold that ran past its deadline', { timeout: viewTestTimeoutMs }, ()
     views.start({ folding: { ...folding, limits, foldDeadlineMs: 500 }, sweepEveryMs: 10_000 });
     await Promise.all([views.until('slow', isLive), views.until('quick', isLive)]);
 
-    await views.ran('inference/runs', 'slow');
+    await views.ran('reasoning/runs', 'slow');
     await vi.waitFor(
       async () => {
         expect(await overtimesOf(views, 'slow')).toBe(1);
       },
       { timeout: 8000 },
     );
-    await views.ran('inference/runs', 'quick');
+    await views.ran('reasoning/runs', 'quick');
     await views.until('quick', foldedAll(2));
     const beforeTheSweep = await overtimesOf(views, 'slow');
     await vi.waitFor(

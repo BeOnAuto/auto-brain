@@ -116,7 +116,7 @@ export interface EmittedEvents {
 }
 
 export interface RunState {
-  readonly executionId: string;
+  readonly runId: string;
   readonly status: 'new' | 'running' | 'ended';
   readonly workflow: { readonly document: Schema.JsonObject; readonly input: ValueId } | null;
   readonly attributes: Schema.JsonObject;
@@ -227,7 +227,7 @@ const RunOutcomeSchema: Schema.Codec<RunOutcome> = Schema.Union([
 ]);
 
 export const RunStateSchema: Schema.Codec<RunState> = Schema.Struct({
-  executionId: Schema.String,
+  runId: Schema.String,
   status: Schema.Literals(['new', 'running', 'ended']),
   workflow: Schema.NullOr(Schema.Struct({ document: Schema.JsonObject, input: ValueIdSchema })),
   attributes: Schema.JsonObject,
@@ -274,7 +274,7 @@ export const RunStateSchema: Schema.Codec<RunState> = Schema.Struct({
 });
 
 export const newRun: RunState = {
-  executionId: '',
+  runId: '',
   status: 'new',
   workflow: null,
   attributes: {},

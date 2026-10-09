@@ -7,7 +7,7 @@ import { EarlierStepSchema, ResumedSchema, StepSchema } from '../steps/step-entr
 import { StateFormatSchema } from './state-format.ts';
 import { PatchOperationSchema } from './state-patch.ts';
 
-export const RunEventSchema = Schema.Struct({
+export const RunLogEventSchema = Schema.Struct({
   type: Schema.Literal('input_applied'),
   format: StateFormatSchema,
   receipt: InputReceiptSchema,
@@ -17,29 +17,29 @@ export const RunEventSchema = Schema.Struct({
   outputs: Schema.Array(RunOutputSchema),
 });
 
-export type RunEvent = typeof RunEventSchema.Type;
+export type RunLogEvent = typeof RunLogEventSchema.Type;
 
 export interface PositionedEvent {
   readonly version: number;
-  readonly event: RunEvent;
+  readonly event: RunLogEvent;
 }
 
 const utf8 = new TextEncoder();
 
-export function eventBytesOf(event: RunEvent): number {
+export function eventBytesOf(event: RunLogEvent): number {
   return utf8.encode(JSON.stringify(event)).byteLength;
 }
 
-export function fitsInOneEvent(event: RunEvent): boolean {
+export function fitsInOneEvent(event: RunLogEvent): boolean {
   return eventBytesOf(event) <= mostEventBytes;
 }
 
-function withHistoryBytesOf(event: RunEvent, historyBytes: number): RunEvent {
+function withHistoryBytesOf(event: RunLogEvent, historyBytes: number): RunLogEvent {
   return { ...event, patch: [...event.patch, { op: 'replace', path: '/historyBytes', value: historyBytes }] };
 }
 
-export function withHistoryBytes(event: RunEvent, before: number): RunEvent {
-  const settled = (guess: number): RunEvent => {
+export function withHistoryBytes(event: RunLogEvent, before: number): RunLogEvent {
+  const settled = (guess: number): RunLogEvent => {
     const counted = withHistoryBytesOf(event, before + guess);
     const bytes = eventBytesOf(counted);
     return bytes === guess ? counted : settled(bytes);

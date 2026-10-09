@@ -72,8 +72,8 @@ export function startedRow(
 ): Effect.Effect<boolean, DatabaseFailed> {
   return database
     .write(
-      statement`INSERT INTO workflow_calls (call_key, run_id, state, call, attributes, child, root_id)
-        VALUES (${key}, ${run.executionId}, 'running', ${encodeCall(call)}, ${encodeAttributes(run.attributes)},
+      statement`INSERT INTO workflow_calls (call_key, run_key, state, call, attributes, child, root_id)
+        VALUES (${key}, ${run.runId}, 'running', ${encodeCall(call)}, ${encodeAttributes(run.attributes)},
           ${child}, ${root})
         ON CONFLICT (call_key) DO NOTHING RETURNING state`,
     )
@@ -88,7 +88,7 @@ export function refusedRow(
 ): Effect.Effect<boolean, DatabaseFailed> {
   return database
     .write(
-      statement`INSERT INTO workflow_calls (call_key, run_id, state, result) VALUES (${key}, ${run.executionId},
+      statement`INSERT INTO workflow_calls (call_key, run_key, state, result) VALUES (${key}, ${run.runId},
         'answered', ${encodeResult(refusal)})
         ON CONFLICT (call_key) DO NOTHING RETURNING state`,
     )
@@ -116,11 +116,11 @@ export function cancelledRow(database: HostDatabase, key: string): Effect.Effect
 export function tombstonedRow(
   database: HostDatabase,
   key: string,
-  runId: string,
+  runKey: string,
 ): Effect.Effect<boolean, DatabaseFailed> {
   return database
     .write(
-      statement`INSERT INTO workflow_calls (call_key, run_id, state) VALUES (${key}, ${runId}, 'cancelled')
+      statement`INSERT INTO workflow_calls (call_key, run_key, state) VALUES (${key}, ${runKey}, 'cancelled')
         ON CONFLICT (call_key) DO NOTHING RETURNING state`,
     )
     .pipe(Effect.map((rows) => rows.length > 0));
@@ -173,12 +173,12 @@ function waitingOf(rows: readonly (typeof WaitingRow.Type)[]): readonly WaitingC
 
 export function waitingCallsOf(
   database: HostDatabase,
-  runId: string,
+  runKey: string,
 ): Effect.Effect<readonly WaitingCall[], DatabaseFailed> {
   return rowsOf(
     WaitingRow,
     database.read(
-      statement`SELECT call_key, call, child FROM workflow_calls WHERE run_id = ${runId} AND state = 'waiting'
+      statement`SELECT call_key, call, child FROM workflow_calls WHERE run_key = ${runKey} AND state = 'waiting'
         ORDER BY call_key`,
     ),
   ).pipe(Effect.map(waitingOf));
@@ -197,15 +197,15 @@ export function unfinishedCalls(database: HostDatabase): Effect.Effect<readonly 
   return rowsOf(
     UnfinishedRow,
     database.read(
-      statement`SELECT call_key, run_id, call, attributes, result FROM workflow_calls
+      statement`SELECT call_key, run_key, call, attributes, result FROM workflow_calls
         WHERE state = 'running' OR (state = 'answered' AND delivered = 0)`,
     ),
   ).pipe(
     Effect.map((rows) =>
-      rows.map(({ call_key: key, run_id: executionId, call, attributes, result }) => ({
+      rows.map(({ call_key: key, run_id: runId, call, attributes, result }) => ({
         key,
         call,
-        run: { executionId, attributes },
+        run: { runId, attributes },
         result,
       })),
     ),

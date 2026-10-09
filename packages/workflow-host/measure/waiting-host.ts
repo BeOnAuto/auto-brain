@@ -1,7 +1,7 @@
 import { setTimeout } from 'node:timers/promises';
 
+import type { SettleRun } from '@beonauto/definitions';
 import { streamSignalOf } from '@beonauto/ledger';
-import type { SettleExecution } from '@beonauto/specs';
 import { testMachine } from '@beonauto/workflow-engine/testing';
 import { Effect, Function } from 'effect';
 
@@ -17,11 +17,11 @@ export interface WaitingHost {
   readonly host: WorkflowHost;
   readonly settledAt: ReadonlyMap<string, number>;
   readonly untilSettled: (count: number) => Promise<void>;
-  readonly untilWaiting: (runIds: readonly string[]) => Promise<void>;
+  readonly untilWaiting: (runKeys: readonly string[]) => Promise<void>;
 }
 
-export function childOf(runId: string): string {
-  return runId.slice(runId.lastIndexOf('/') + 1).replace('-9b3f-', '-8b3f-');
+export function childOf(runKey: string): string {
+  return runKey.slice(runKey.lastIndexOf('/') + 1).replace('-9b3f-', '-8b3f-');
 }
 
 async function until(done: () => Promise<boolean>, everyMs: number): Promise<void> {
@@ -31,15 +31,15 @@ async function until(done: () => Promise<boolean>, everyMs: number): Promise<voi
   }
 }
 
-function settlingAt(settledAt: Map<string, number>): SettleExecution {
+function settlingAt(settledAt: Map<string, number>): SettleRun {
   return (address) =>
     Effect.sync(() => {
       settledAt.set(address.id, Date.now());
       return {
-        execution_id: address.id,
-        primitive: 'orchestration',
+        run_id: address.id,
+        type: 'workflow',
         name: 'measured',
-        spec_version: 1,
+        definition_version: 1,
         status: 'succeeded',
         started_at: '2026-10-07T09:00:00.000Z',
         started_by: 'acme-admin',
@@ -53,7 +53,7 @@ export async function waitingHost(settings: DatabaseSettings, reads: Reads, sign
   const host = await openWorkflowHost({
     database: settings,
     machine: testMachine,
-    perform: (call) => Effect.succeed({ status: 'waiting', child: childOf(call.key.executionId) }),
+    perform: (call) => Effect.succeed({ status: 'waiting', child: childOf(call.key.runId) }),
     settle: settlingAt(settledAt),
     reports: {
       unsettled: () => Effect.void,
@@ -66,14 +66,14 @@ export async function waitingHost(settings: DatabaseSettings, reads: Reads, sign
     reactions: signalled ? reactions : { ...reactions, appended: streamSignalOf() },
     waiting: recordedWaiting().options,
   });
-  const allWaiting = async (runIds: readonly string[]) => {
-    const waiting = await Promise.all(runIds.map((runId) => Effect.runPromise(waitingCallsOf(reads, runId))));
+  const allWaiting = async (runKeys: readonly string[]) => {
+    const waiting = await Promise.all(runKeys.map((runKey) => Effect.runPromise(waitingCallsOf(reads, runKey))));
     return waiting.every((calls) => calls.length === 1);
   };
   return {
     host,
     settledAt,
     untilSettled: (count) => until(() => Promise.resolve(settledAt.size >= count), 5),
-    untilWaiting: (runIds) => until(() => allWaiting(runIds), 50),
+    untilWaiting: (runKeys) => until(() => allWaiting(runKeys), 50),
   };
 }

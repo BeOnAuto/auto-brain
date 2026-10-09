@@ -14,17 +14,17 @@ const foldDialect = {
   variables: ['event'],
 };
 
-const reviewed = { type: 'execution_succeeded', subject: 'inference/review-brief' };
+const reviewed = { type: 'run_succeeded', subject: 'reasoning/review-brief' };
 
 function succeeded(campaign: Json, verdict: Json, time: string): JsonObject {
-  return { ...reviewed, source: '/executions/run', time, data: { output: { campaign, verdict } } };
+  return { ...reviewed, source: '/runs/run', time, data: { output: { campaign, verdict } } };
 }
 
 const springApproved = succeeded('spring', 'approve', '2026-10-01T09:00:00Z');
 
 const events: readonly JsonObject[] = [
   springApproved,
-  { type: 'execution_started', subject: 'inference/review-brief', time: '2026-10-01T09:00:01Z', data: {} },
+  { type: 'run_started', subject: 'reasoning/review-brief', time: '2026-10-01T09:00:01Z', data: {} },
   succeeded('summer', 'reject', '2026-10-01T09:00:02Z'),
   succeeded('spring', 'reject', '2026-10-01T09:00:03Z'),
 ];
@@ -265,8 +265,8 @@ describe('a view that stalls on what its fold answers', () => {
 
 describe('the filters of a view in a page of folds', () => {
   it('run under the deadline and the limits of its fold, after the fold that was going is marked', () => {
-    const slowFilter = [{ type: 'execution_succeeded', data: '${ reduce range(100000) as $i (0; . + $i) > 0 }' }];
-    const greedyFilter = [{ type: 'execution_succeeded', data: '${ ("x" * 20000000 | length) > 0 }' }];
+    const slowFilter = [{ type: 'run_succeeded', data: '${ reduce range(100000) as $i (0; . + $i) > 0 }' }];
+    const greedyFilter = [{ type: 'run_succeeded', data: '${ ("x" * 20000000 | length) > 0 }' }];
     const views = [
       viewOf('. + 1', { view: 0, filters: slowFilter }),
       viewOf('. + 1', { view: 0, filters: greedyFilter }),
@@ -281,7 +281,7 @@ describe('the filters of a view in a page of folds', () => {
   });
 
   it('stall a view whose filter does not compile on this server', () => {
-    const filters = [{ type: 'execution_succeeded', data: '${ $x }' }];
+    const filters = [{ type: 'run_succeeded', data: '${ $x }' }];
 
     expect(foldPage(pageOf([viewOf('. + 1', { view: 0, filters })]), stillClock()).views[0]).toMatchObject({
       folded: 0,

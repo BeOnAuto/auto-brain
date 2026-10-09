@@ -6,26 +6,26 @@ import { rowsOf, type HostDatabase } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
 import { insertedListener } from '../listeners/listener-rows.ts';
 import { reactionOfRun } from '../reactions/run-attributes.ts';
-import { ledgerRunStore } from '../runs/ledger-run-store.ts';
-import { addressOfRun, streamOfRun } from '../runs/run-address.ts';
+import { ledgerRunLogStore } from '../runs/ledger-run-store.ts';
+import { addressOfRun, runLogStreamOf } from '../runs/run-address.ts';
 
 const RunRow = Schema.Struct({ run_id: Schema.String });
 
 const scanOfListeners = 'listeners';
 
-function listenersOfRun(database: HostDatabase, runId: string) {
+function listenersOfRun(database: HostDatabase, runKey: string) {
   return Effect.gen(function* () {
-    const { state, version } = loadedRunOf(yield* ledgerRunStore(database).load(runId));
+    const { state, version } = loadedRunOf(yield* ledgerRunLogStore(database).load(runKey));
     const document = state.workflow?.document ?? {};
     const { workflow } = reactionOfRun(state.attributes);
     yield* Effect.forEach(
       Object.entries(state.listeners),
       ([listener, key]: readonly [string, CallKey]) =>
         insertedListener(database, {
-          runId,
+          runKey,
           listener,
-          brainKey: streamPrefixOfBrain(addressOfRun(runId)),
-          streamId: streamOfRun(runId),
+          brainKey: streamPrefixOfBrain(addressOfRun(runKey)),
+          streamId: runLogStreamOf(runKey),
           armedBy: version,
           filters: JSON.stringify(listenFiltersOf(valueAtPointer(document, key.reference))),
           workflow,
@@ -47,9 +47,9 @@ export function scannedListeners(database: HostDatabase): Effect.Effect<number> 
       }
       const live = yield* rowsOf(
         RunRow,
-        database.read(statement`SELECT run_id FROM workflow_runs WHERE ended_at IS NULL`),
+        database.read(statement`SELECT run_key FROM workflow_runs WHERE ended_at IS NULL`),
       );
-      yield* Effect.forEach(live, ({ run_id: runId }) => listenersOfRun(database, runId), { discard: true });
+      yield* Effect.forEach(live, ({ run_id: runKey }) => listenersOfRun(database, runKey), { discard: true });
       yield* database.write(statement`INSERT INTO workflow_followed_scans (name) VALUES (${scanOfListeners})`);
       return live.length;
     }),

@@ -29,7 +29,7 @@ const foldDialect = {
   variables: ['event'],
 };
 
-export const succeeded = [{ type: 'execution_succeeded' }];
+export const succeeded = [{ type: 'run_succeeded' }];
 
 export function detailsOf(fold: string, filters: ViewDetails['filters'], more: Partial<ViewDetails> = {}): ViewDetails {
   return { language: 'jq', fold, foldLine: 30, filters, initial: {}, ...more };
@@ -61,7 +61,7 @@ export type ViewSettingsOf = (more?: Partial<ProjectorSettings>) => ProjectorSet
 
 export function settingsOver(pool: ProgramPool, appends: AppendSignal): ViewSettingsOf {
   return (more = {}) => ({
-    definitionType: 'recollection',
+    definitionType: 'recall',
     pool,
     folding: foldingOf(),
     brainsAtOnce: 4,

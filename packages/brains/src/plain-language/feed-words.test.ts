@@ -31,7 +31,7 @@ describe('the plain language of list_brain_events', () => {
       found([event, event]),
       found([event], { type: 'note_added', since: '2026-10-01T09:00:00Z', order: 'asc' }, true),
       found(Array.from({ length: 100 }, () => event)),
-      found([event], { execution_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' }),
+      found([event], { run_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' }),
     ]).toEqual([
       'Found 2 events in this brain, newest first.',
       'Found 1 event of the kind asked for in this brain since the time given, oldest first. More remain after these.',
@@ -46,7 +46,7 @@ describe('the plain language of list_brain_events', () => {
       found([], { since: '2026-10-01T09:00:00Z' }),
       found([], { type: 'note_added', cursor: 'WyJicmFpbiJd' }),
       found([], { type: 'note_added' }, true),
-      found([], { execution_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' }),
+      found([], { run_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' }),
     ]).toEqual([
       'Nothing has happened in this brain yet.',
       'Nothing has happened in this brain since the time given.',

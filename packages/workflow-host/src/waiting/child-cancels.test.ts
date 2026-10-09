@@ -9,7 +9,7 @@ import { childCancelsOn } from './child-cancels.ts';
 
 const lineage = { causationId: 'step-1', correlationId: 'root-1' };
 
-const child = { org: 'acme', brain: 'alpha', executionId: '0199a3c4-7d2e-7c1a-9b3f-0000000000c1' };
+const child = { org: 'acme', brain: 'alpha', runId: '0199a3c4-7d2e-7c1a-9b3f-0000000000c1' };
 
 describe('a cancel of the run a call waits for', () => {
   it('asks for the run to be cancelled with the kind of the cancel and words that say why', async () => {
@@ -21,7 +21,7 @@ describe('a cancel of the run a call waits for', () => {
 
     expect(waiting.cancels()).toEqual([
       {
-        execution: { org: 'acme', brain: 'alpha', id: child.executionId },
+        run: { org: 'acme', brain: 'alpha', id: child.runId },
         request: {
           kind: 'deadline',
           reason: 'The step that waited for this run ran out of time, so it no longer needs it',
@@ -29,7 +29,7 @@ describe('a cancel of the run a call waits for', () => {
         lineage,
       },
       {
-        execution: { org: 'acme', brain: 'alpha', id: child.executionId },
+        run: { org: 'acme', brain: 'alpha', id: child.runId },
         request: {
           kind: 'parent_ended',
           reason: 'The run that waited for this run ended first, or the branch that waited for it lost a race',
@@ -44,7 +44,7 @@ describe('the deadline of a call that waits for a run', () => {
   it('ends the call as a timeout and cancels the run it waited for, as past its deadline', async () => {
     const waiting = recordedWaiting();
     const clock = movedClock(Date.now());
-    const { settled, callStates } = await waitingParent(child.executionId, { clock, waiting: waiting.options });
+    const { settled, callStates } = await waitingParent(child.runId, { clock, waiting: waiting.options });
 
     clock.moveTo(Date.now() + defaultLimits.longestCallMs + 1);
     const settlement = await settled(parentId);
@@ -54,8 +54,8 @@ describe('the deadline of a call that waits for a run', () => {
       reason: 'unavailable',
       detail: 'The function notify did not finish within 600000 ms, the most it may take (at /do/0/ask)',
     });
-    expect(waiting.cancels().map(({ execution, request }) => [execution, request.kind])).toEqual([
-      [{ org: 'acme', brain: 'alpha', id: child.executionId }, 'deadline'],
+    expect(waiting.cancels().map(({ run, request }) => [run, request.kind])).toEqual([
+      [{ org: 'acme', brain: 'alpha', id: child.runId }, 'deadline'],
     ]);
     expect(await callStates()).toEqual([{ state: 'cancelled', delivered: 0 }]);
   });

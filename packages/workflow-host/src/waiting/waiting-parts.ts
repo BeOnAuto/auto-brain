@@ -39,7 +39,7 @@ export interface CallConsumerParts extends EndingParts, CancelParts {
 
 export interface ServedWaiting {
   readonly calls: readonly CallConsumer[];
-  readonly endedChildren: (runId: string) => Effect.Effect<void, DeliveryFailed>;
+  readonly endedChildren: (runKey: string) => Effect.Effect<void, DeliveryFailed>;
   readonly cancelsAsked: Effect.Effect<void>;
 }
 

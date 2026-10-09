@@ -14,7 +14,7 @@ import {
 } from './view-documents.ts';
 import { viewHarness } from './view-harness.ts';
 
-const reviewBrief = 'inference/review-brief';
+const reviewBrief = 'reasoning/review-brief';
 
 const anyText: unknown = expect.any(String);
 
@@ -44,7 +44,7 @@ function reviewsTests(settingsOf: SettingsOf): void {
     const numbers = await views.ran(reviewBrief, { campaign: 7, verdict: 3 }, { at: '2026-10-06T10:00:03.000Z' });
     const oversized = { campaign: 'spring', verdict: 'x'.repeat(300_000) };
     const over = await views.ran(reviewBrief, oversized, { at: '2026-10-06T10:00:04.000Z' });
-    await views.ran('inference/other', { campaign: 'spring', verdict: 'reject' }, { at: '2026-10-06T10:00:05.000Z' });
+    await views.ran('reasoning/other', { campaign: 'spring', verdict: 'reject' }, { at: '2026-10-06T10:00:05.000Z' });
     views.start();
 
     const kept = await views.until('reviews', foldedAll(5));
@@ -52,12 +52,12 @@ function reviewsTests(settingsOf: SettingsOf): void {
     expect(kept).toMatchObject({ name: 'reviews', version: 1, phase: 'live', folded: 5 });
     expect(kept.view).toEqual({
       unknown: [
-        { at: '2026-10-06T10:00:01.000Z', verdict: 'none', run: `/executions/${text}` },
-        { at: '2026-10-06T10:00:02.000Z', verdict: 'none', run: `/executions/${array}` },
-        { at: '2026-10-06T10:00:03.000Z', verdict: '3', run: `/executions/${numbers}` },
-        { at: '2026-10-06T10:00:04.000Z', verdict: 'none', run: `/executions/${over}` },
+        { at: '2026-10-06T10:00:01.000Z', verdict: 'none', run: `/runs/${text}` },
+        { at: '2026-10-06T10:00:02.000Z', verdict: 'none', run: `/runs/${array}` },
+        { at: '2026-10-06T10:00:03.000Z', verdict: '3', run: `/runs/${numbers}` },
+        { at: '2026-10-06T10:00:04.000Z', verdict: 'none', run: `/runs/${over}` },
       ],
-      spring: [{ at: '2026-10-06T10:00:00.000Z', verdict: 'approve', run: `/executions/${spring}` }],
+      spring: [{ at: '2026-10-06T10:00:00.000Z', verdict: 'approve', run: `/runs/${spring}` }],
     });
     expect(JSON.stringify(kept.view)).toMatch(/^\{"spring":.*"unknown":/u);
     expect(kept.lastEvent?.time).toBe('2026-10-06T10:00:04.000Z');
@@ -68,11 +68,11 @@ function checkpointTests(settingsOf: SettingsOf): void {
   it('moves its checkpoint to the last record examined, though no record matched its filters', async () => {
     const views = await viewHarness(await settingsOf());
     await views.saved('quiet', detailsOf('. + 1', [{ type: 'com.acme.never' }], { initial: 0 }));
-    await views.ran('inference/other', 'nothing to fold');
+    await views.ran('reasoning/other', 'nothing to fold');
     views.start();
 
     const caught = await views.until('quiet', liveFromSomewhere);
-    await views.ran('inference/other', 'still nothing');
+    await views.ran('reasoning/other', 'still nothing');
     const moved = await views.until('quiet', ({ checkpoint }) => checkpoint !== caught.checkpoint);
 
     expect([caught.view, caught.folded, moved.view, moved.folded]).toEqual([0, 0, 0, 0]);
@@ -82,7 +82,7 @@ function checkpointTests(settingsOf: SettingsOf): void {
     const views = await viewHarness(await settingsOf());
     await views.saved('count', collecting);
     const outputs = Array.from({ length: 2300 }, (_, index) => index);
-    await views.ranInOneStream('inference/count', outputs);
+    await views.ranInOneStream('reasoning/count', outputs);
     views.start();
 
     const kept = await views.until('count', foldedAll(outputs.length));
@@ -93,7 +93,7 @@ function checkpointTests(settingsOf: SettingsOf): void {
   it('ends a page early once its time is spent, and goes on from there with nothing stalled', async () => {
     const views = await viewHarness(await settingsOf());
     await views.saved('slow', counting);
-    await views.ranEach('inference/slow', [1, 2, 3, 4]);
+    await views.ranEach('reasoning/slow', [1, 2, 3, 4]);
     views.start({ folding: { ...foldingOf(), pageBudgetMs: 0 } });
 
     const kept = await views.until('slow', foldedAll(4));
@@ -108,13 +108,13 @@ function sourceTests(settingsOf: SettingsOf): void {
   it('never folds the runs of its own recall function, and folds those of another', async () => {
     const views = await viewHarness(await settingsOf());
     const runs = [
-      { type: 'execution_succeeded', subject: 'recollection/self' },
-      { type: 'execution_succeeded', subject: 'recollection/other' },
+      { type: 'run_succeeded', subject: 'recall/self' },
+      { type: 'run_succeeded', subject: 'recall/other' },
     ];
     await views.saved('self', detailsOf('. + 1', runs, { initial: 0 }));
-    await views.ran('recollection/self', 'its own answer');
-    await views.ran('recollection/other', 'an answer of another');
-    await views.ran('recollection/self', 'its own answer again');
+    await views.ran('recall/self', 'its own answer');
+    await views.ran('recall/other', 'an answer of another');
+    await views.ran('recall/self', 'its own answer again');
     views.start();
 
     const kept = await views.until('self', liveFromSomewhere);
@@ -146,8 +146,8 @@ function recordTests(settingsOf: SettingsOf): void {
   it('gives a fact its message id, its cause and its run', async () => {
     const views = await viewHarness(await settingsOf());
     const fold = '. + [$event | {id, causationid, correlationid}]';
-    await views.saved('ids', detailsOf(fold, [{ type: 'execution_succeeded' }], { initial: [] }));
-    const run = await views.ran('inference/ids', 'answered');
+    await views.saved('ids', detailsOf(fold, [{ type: 'run_succeeded' }], { initial: [] }));
+    const run = await views.ran('reasoning/ids', 'answered');
     views.start();
 
     const kept = await views.until('ids', foldedAll(1));
@@ -160,12 +160,10 @@ function recordTests(settingsOf: SettingsOf): void {
     const views = await viewHarness(await settingsOf());
     await views.saved(
       'count',
-      detailsOf('. + 1', [{ type: 'execution_succeeded' }, { type: 'com.acme.deep' }], { initial: 0 }),
+      detailsOf('. + 1', [{ type: 'run_succeeded' }, { type: 'com.acme.deep' }], { initial: 0 }),
     );
-    await views.ran('inference/count', 'one');
-    await views.append('brain/acme/alpha/executions/broken', [
-      { type: 'execution_succeeded', data: { type: 'execution_succeeded' } },
-    ]);
+    await views.ran('reasoning/count', 'one');
+    await views.append('brain/acme/alpha/runs/broken', [{ type: 'run_succeeded', data: { type: 'run_succeeded' } }]);
     const deep = Array.from({ length: 600 }).reduce<Schema.Json>((inner) => [inner], null);
     await views.published({
       specversion: '1.0',
@@ -175,7 +173,7 @@ function recordTests(settingsOf: SettingsOf): void {
       time: '2026-10-01T09:00:00Z',
       data: deep,
     });
-    await views.ran('inference/count', 'two');
+    await views.ran('reasoning/count', 'two');
     views.start();
 
     const kept = await views.until('count', foldedAll(2));

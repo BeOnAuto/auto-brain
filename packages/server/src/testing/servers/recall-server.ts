@@ -1,5 +1,5 @@
-import { answers, jsonResult, type ScriptedReply } from '@beonauto/inference/testing';
-import { campaignReviews } from '@beonauto/recollection/testing';
+import { answers, jsonResult, type ScriptedReply } from '@beonauto/reasoning/testing';
+import { campaignReviews } from '@beonauto/recall/testing';
 import type { ProgramPool } from '@beonauto/workflow-engine/dsl';
 import { Option, Schema } from 'effect';
 import { expect, vi } from 'vitest';
@@ -84,16 +84,16 @@ export function foldsHeld(gate: Gate, folds: number): Promise<void> {
 export async function brainWithReviews(server: ReasoningServer, briefsFirst = 0, brain = 'alpha'): Promise<void> {
   const path = `/v1/orgs/acme/brains/${brain}`;
   await server.call('POST', '/v1/orgs/acme/brains', { body: { brain, name: brain } });
-  await server.call('POST', `${path}/specs/inference`, { body: { name: 'review-brief', source: anyReview } });
+  await server.call('POST', `${path}/definitions/reasoning`, { body: { name: 'review-brief', source: anyReview } });
   await reviewed(server, briefsFirst, brain);
-  await server.call('POST', `${path}/specs/recollection`, { body: { name: 'reviews', source: campaignReviews } });
+  await server.call('POST', `${path}/definitions/recall`, { body: { name: 'reviews', source: campaignReviews } });
 }
 
 export function reviewed(server: ReasoningServer, briefs: number, brain = 'alpha'): Promise<unknown> {
   return Array.from({ length: briefs }, (_, index) => index).reduce<Promise<unknown>>(
     (before, index) =>
       before.then(() =>
-        server.call('POST', `/v1/orgs/acme/brains/${brain}/specs/inference/review-brief/execute`, {
+        server.call('POST', `/v1/orgs/acme/brains/${brain}/definitions/reasoning/review-brief/run`, {
           body: { input: { brief: `brief ${index}` } },
         }),
       ),
@@ -102,7 +102,7 @@ export function reviewed(server: ReasoningServer, briefs: number, brain = 'alpha
 }
 
 export function recalled(server: ReasoningServer, name: string, input: Schema.Json) {
-  return server.call('POST', `${alpha}/specs/recollection/${name}/execute`, { body: { input } });
+  return server.call('POST', `${alpha}/definitions/recall/${name}/run`, { body: { input } });
 }
 
 export function standingUntil(
@@ -111,7 +111,7 @@ export function standingUntil(
   holds: (standing: Standing) => boolean,
 ): Promise<unknown> {
   return vi.waitFor(async () => {
-    const { body } = await server.call('GET', `${alpha}/specs/recollection/${name}`);
+    const { body } = await server.call('GET', `${alpha}/definitions/recall/${name}`);
     const standing = Option.getOrUndefined(decodeStanding(body))?.standing;
     expect(standing !== undefined && holds(standing)).toBe(true);
     return body;

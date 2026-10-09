@@ -6,14 +6,14 @@ import { describe, expect, it } from 'vitest';
 
 import {
   loadedRunOf,
-  RunEventSchema,
+  RunLogEventSchema,
   snapshotFromChunks,
   stateFormats,
   stateInCurrentFormat,
   StateFormatSchema,
 } from '../index.ts';
 
-const StoredEventsSchema = Schema.Array(Schema.Struct({ version: Schema.Int, event: RunEventSchema }));
+const StoredEventsSchema = Schema.Array(Schema.Struct({ version: Schema.Int, event: RunLogEventSchema }));
 
 const CorpusSchema = Schema.Struct({
   format: StateFormatSchema,

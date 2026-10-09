@@ -1,4 +1,4 @@
-export const executionIdKey = 'com.beonauto/execution_id';
+export const runIdKey = 'com.beonauto/run_id';
 
 export const deliveryIdKey = 'com.beonauto/delivery_id';
 

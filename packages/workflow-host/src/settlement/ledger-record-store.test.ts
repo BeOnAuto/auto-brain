@@ -1,20 +1,20 @@
+import type { SettleRun } from '@beonauto/definitions';
 import type { Settlement } from '@beonauto/operations';
-import type { SettleExecution } from '@beonauto/specs';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { faultyDatabase } from '../testing/faulty-database.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
-import { runId } from '../testing/probe-subjects.ts';
+import { runKey } from '../testing/probe-subjects.ts';
 import { ledgerRecordStore } from './ledger-record-store.ts';
 
 const settledBy = { version: 2, lastStep: null };
 
-const run = { executionId: runId, attributes: {} };
+const run = { runId: runKey, attributes: {} };
 
 const succeeded: Settlement = { status: 'succeeded', output: 'done' };
 
-const brokeDown: SettleExecution = () => Effect.die(new Error('The ledger broke down'));
+const brokeDown: SettleRun = () => Effect.die(new Error('The ledger broke down'));
 
 describe('the record store of the host, failing', () => {
   it('counts a settlement that broke down as an attempt, to be dispatched again', async () => {
@@ -25,7 +25,7 @@ describe('the record store of the host, failing', () => {
     });
 
     const failure = await Effect.runPromise(
-      Effect.flip(recordStore.settle({ executionId: runId, settlement: { status: 'failed' } }, run, settledBy)),
+      Effect.flip(recordStore.settle({ runId: runKey, settlement: { status: 'failed' } }, run, settledBy)),
     );
 
     expect(failure.detail).toContain('The ledger broke down');
@@ -38,8 +38,8 @@ describe('the record store of the host, failing', () => {
 
     const failures = await Effect.runPromise(
       Effect.all([
-        Effect.flip(recordStore.settle({ executionId: runId, settlement: succeeded }, run, settledBy)),
-        Effect.flip(recordStore.noteDue({ executionId: runId, version: 1, nextDueAt: null }, run)),
+        Effect.flip(recordStore.settle({ runId: runKey, settlement: succeeded }, run, settledBy)),
+        Effect.flip(recordStore.noteDue({ runId: runKey, version: 1, nextDueAt: null }, run)),
       ]),
     );
 

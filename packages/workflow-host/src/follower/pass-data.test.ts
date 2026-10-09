@@ -54,10 +54,10 @@ function endlessNotes(): CountedRecords {
 
 function listening(database: HostDatabase, armedBy: number) {
   return insertedListener(database, {
-    runId: 'acme/alpha/r-1',
+    runKey: 'acme/alpha/r-1',
     listener: 'listener',
     brainKey,
-    streamId: `${brainKey}runs/r-1`,
+    streamId: `${brainKey}run-logs/r-1`,
     armedBy,
     filters: '[{"type":"com.acme.noted"}]',
     workflow: 'wait',
@@ -74,8 +74,8 @@ async function passing(counted: CountedRecords) {
     brains,
     consumers: [],
     calls: [],
-    primitive: 'orchestration',
-    applySpecRecord: () => Effect.succeed('applied'),
+    type: 'workflow',
+    applyDefinitionRecord: () => Effect.succeed('applied'),
     unreadable: () => Effect.void,
     passedEarly: () => Effect.void,
     registered: [],

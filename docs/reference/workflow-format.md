@@ -2,7 +2,7 @@
 
 # Workflow format
 
-The API stores a workflow as an `orchestration` spec. Its source document is YAML written in the [Open Workflow Specification](https://github.com/open-workflow-specification/specification) DSL 1.0, within the rules and limits on this page. [Build your first workflow](../tutorials/first-workflow.md) provides a guided example, and [Workflows and runs](../concepts/workflows.md) explains how a run starts, waits and ends.
+The API stores a workflow as an `workflow` definition. Its source document is YAML written in the [Open Workflow Specification](https://github.com/open-workflow-specification/specification) DSL 1.0, within the rules and limits on this page. [Build your first workflow](../tutorials/first-workflow.md) provides a guided example, and [Workflows and runs](../concepts/workflows.md) explains how a run starts, waits and ends.
 
 ## A workflow document
 
@@ -34,9 +34,9 @@ do:
   - review:
       try:
         - review-brief:
-            call: execute_spec
+            call: run_definition
             with:
-              primitive: inference
+              type: reasoning
               name: review-campaign-brief
               input:
                 brief: ${ .brief }
@@ -91,7 +91,7 @@ do:
         review: ${ .review }
 ```
 
-For this document, `create_spec` takes `primitive: "orchestration"`, a workflow `name` and the document as `source`. `execute_spec` takes the same primitive and name, with `brief` in the `input` object. The run reviews the brief, then waits. Sending it the event `com.example.brief.decided` with `data` of `{"approved": true}` ends it with `approved: true` and the review. A decision of `{"approved": false, "reason": "..."}` ends it with that reason, and no decision within seven days ends it with the reason `No decision within a week`.
+For this document, `create_definition` takes `type: "workflow"`, a workflow `name` and the document as `source`. `run_definition` takes the same capability and name, with `brief` in the `input` object. The run reviews the brief, then waits. Sending it the event `com.example.brief.decided` with `data` of `{"approved": true}` ends it with `approved: true` and the review. A decision of `{"approved": false, "reason": "..."}` ends it with that reason, and no decision within seven days ends it with the reason `No decision within a week`.
 
 ## Document fields
 
@@ -112,7 +112,7 @@ For this document, `create_spec` takes `primitive: "orchestration"`, a workflow 
 
 The runtime does not check a run's input or output against these schemas; they tell callers what the workflow takes and gives. A run whose input lacks a value still starts, and a step that depends on the value fails: a reasoning function, for example, rejects input that does not match its own schema. Schemas must be written inline under `document`, as JSON Schema.
 
-`document.version` is part of the document you write. The definition's `version` counts saved changes: it is 1 when the workflow is created and increases each time `update_spec` changes the document.
+`document.version` is part of the document you write. The definition's `version` counts saved changes: it is 1 when the workflow is created and increases each time `update_definition` changes the document.
 
 ## Triggers
 
@@ -135,18 +135,18 @@ schedule:
   every: PT15M
 ```
 
-A trigger is identified by its kind, `event`, `cron` or `every`, and its place in the document, `/schedule/on`, `/schedule/cron` or `/schedule/every`. `get_spec` and `list_specs` show a saved workflow's triggers in that form as `triggers`, and a run a trigger started names its trigger on its `execution_started` event, whose words say which kind started it, such as "was started by its cron schedule". No trigger has an input of its own: a run's input is the list holding the event or the due time, so a workflow with both kinds tells them apart with `input.from` or a `switch`:
+A trigger is identified by its kind, `event`, `cron` or `every`, and its place in the document, `/schedule/on`, `/schedule/cron` or `/schedule/every`. `get_definition` and `list_definitions` show a saved workflow's triggers in that form as `triggers`, and a run a trigger started names its trigger on its `run_started` event, whose words say which kind started it, such as "was started by its cron schedule". No trigger has an input of its own: a run's input is the list holding the event or the due time, so a workflow with both kinds tells them apart with `input.from` or a `switch`:
 
 ```yaml
 input:
   from: '${ if type == "array" then { month: .[0].data.month } else { due: .schedule.due } end }'
 ```
 
-`on.one` takes one filter and `on.any` a list of at least one and at most 64; a run starts when any of them matches. A filter names the `type` of its events as written text, and may name `source` and `subject` as written text and `data` as a value or as an expression over the event alone, such as `data: '${ .region == "eu" }'`; an expression cannot use the variables of a run, such as `$workflow`, since no run exists yet. A filter is written once: a filter of `any` whose `type` and attributes an earlier one has, in any order, is refused. An expression that fails on an event does not match it, and the brain records that once for each version. A filter matches every event the brain records: events published with `publish_event`, events workflows emit, and the brain's own facts, such as `execution_succeeded`, whose `source` is `/executions/<execution id>` and whose `subject` names the definition, as `inference/summarize`. A run's facts carry the trigger that started it in their data, so a filter can test it, as `data: '${ .trigger.kind == "event" }'`.
+`on.one` takes one filter and `on.any` a list of at least one and at most 64; a run starts when any of them matches. A filter names the `type` of its events as written text, and may name `source` and `subject` as written text and `data` as a value or as an expression over the event alone, such as `data: '${ .region == "eu" }'`; an expression cannot use the variables of a run, such as `$workflow`, since no run exists yet. A filter is written once: a filter of `any` whose `type` and attributes an earlier one has, in any order, is refused. An expression that fails on an event does not match it, and the brain records that once for each version. A filter matches every event the brain records: events published with `publish_event`, events workflows emit, and the brain's own facts, such as `run_succeeded`, whose `source` is `/runs/<run id>` and whose `subject` names the definition, as `reasoning/summarize`. A run's facts carry the trigger that started it in their data, so a filter can test it, as `data: '${ .trigger.kind == "event" }'`.
 
 `cron` has the five fields minute, hour, day of month, month and day of week, read in UTC; when both day of month and day of week are restricted, a day that matches either is due. `every` is a [duration](#durations) of at least a minute, counted from when the trigger was saved as it is.
 
-A trigger applies from the moment it is saved as it is: nothing recorded before is matched. The saving itself is the first thing it can match, so a trigger that names `spec_created` also starts on the fact of its own workflow's definition being saved, which a `data` filter on the definition's name, such as `data: '${ .name != "close-month" }'`, leaves out. A new version's triggers are compared with those of the version before, by kind and place: a trigger it leaves unchanged goes on as it was, with its times and its running run, and starts the new version from then on; a trigger it changes or adds applies from the new version's saving, and a changed schedule counts its times from then; a trigger it removes stops. Saving a version without a schedule, or retiring the workflow, stops every trigger. A run a trigger starts uses the version current when the event was recorded or the time came, and its `execution_id` is derived from the workflow, that version, the trigger and the event or the due time, so an event or a time starts it once.
+A trigger applies from the moment it is saved as it is: nothing recorded before is matched. The saving itself is the first thing it can match, so a trigger that names `definition_created` also starts on the fact of its own workflow's definition being saved, which a `data` filter on the definition's name, such as `data: '${ .name != "close-month" }'`, leaves out. A new version's triggers are compared with those of the version before, by kind and place: a trigger it leaves unchanged goes on as it was, with its times and its running run, and starts the new version from then on; a trigger it changes or adds applies from the new version's saving, and a changed schedule counts its times from then; a trigger it removes stops. Saving a version without a schedule, or retiring the workflow, stops every trigger. A run a trigger starts uses the version current when the event was recorded or the time came, and its `run_id` is derived from the workflow, that version, the trigger and the event or the due time, so an event or a time starts it once.
 
 A run a trigger starts acts as the brain itself: its `started_by` is `brain:` and the brain's name, and each step acts with read and write access to that brain and nothing else. It never acts for a person, so no key's permissions or revocation affect it.
 
@@ -165,19 +165,19 @@ What a trigger did not start is recorded in the brain as a `reaction_refused` ev
 
 Each item of a task list is a mapping with one key, the task's name. Its value defines the task, and the kind of task is the key the definition contains. A task is one step of the workflow.
 
-| Task                 | Fields                                                                                                 | Output                                                                    |
-| -------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
-| `call: execute_spec` | `with.primitive`, `with.name`, optional `with.input`                                                   | The output of the function's run                                          |
-| `set`                | A template                                                                                             | The template, with its expressions evaluated                              |
-| `do`                 | A task list                                                                                            | The output of the list                                                    |
-| `switch`             | A list of named cases, each with an optional `when` and a `then`                                       | Its input, unchanged                                                      |
-| `for`                | `for.in`, optional `for.each` and `for.at`, optional `while`, and `do`                                 | The output of the last iteration                                          |
-| `fork`               | `fork.branches`, a task list, and optional `fork.compete`                                              | A list of the branches' outputs, or the first output with `compete: true` |
-| `try`                | `try`, a task list, and `catch` with optional `errors.with`, `as`, `when`, `exceptWhen`, `retry`, `do` | The output of `try`, or of the recovery                                   |
-| `raise`              | `raise.error`: an error, or the name of one in `use.errors`                                            | None; it raises the error                                                 |
-| `wait`               | A duration                                                                                             | Its input, unchanged                                                      |
-| `listen`             | `listen.to` with `one`, `any` or `all`, and optional `listen.read`                                     | A list with the data of each event it took                                |
-| `emit`               | `emit.event.with`, the event's attributes, with `type` and `source`                                    | Its input, unchanged                                                      |
+| Task                   | Fields                                                                                                 | Output                                                                    |
+| ---------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| `call: run_definition` | `with.type`, `with.name`, optional `with.input`                                                        | The output of the function's run                                          |
+| `set`                  | A template                                                                                             | The template, with its expressions evaluated                              |
+| `do`                   | A task list                                                                                            | The output of the list                                                    |
+| `switch`               | A list of named cases, each with an optional `when` and a `then`                                       | Its input, unchanged                                                      |
+| `for`                  | `for.in`, optional `for.each` and `for.at`, optional `while`, and `do`                                 | The output of the last iteration                                          |
+| `fork`                 | `fork.branches`, a task list, and optional `fork.compete`                                              | A list of the branches' outputs, or the first output with `compete: true` |
+| `try`                  | `try`, a task list, and `catch` with optional `errors.with`, `as`, `when`, `exceptWhen`, `retry`, `do` | The output of `try`, or of the recovery                                   |
+| `raise`                | `raise.error`: an error, or the name of one in `use.errors`                                            | None; it raises the error                                                 |
+| `wait`                 | A duration                                                                                             | Its input, unchanged                                                      |
+| `listen`               | `listen.to` with `one`, `any` or `all`, and optional `listen.read`                                     | A list with the data of each event it took                                |
+| `emit`                 | `emit.event.with`, the event's attributes, with `type` and `source`                                    | Its input, unchanged                                                      |
 
 Every task also accepts these fields:
 
@@ -206,11 +206,11 @@ A `switch` tests its cases in order and follows the `then` of the first case who
 
 ### Calling a function
 
-`call: execute_spec` runs the active latest version of another definition in the same brain: `with.primitive` names its type, `inference` for a reasoning function, `interaction` for an [interaction function](interaction-format.md), `computation` for a [computation function](computation-format.md), `recollection` for a [recall function](recall-format.md) or `orchestration` for another workflow, and `with.name` the definition. `with.input` is a template for its input, `{}` when left out. The task's output is that run's output: the text or JSON value a reasoning function answered, the answer an interaction function's request took, the value a computation function's program gave, what a recall function answered from its view, or the output of the workflow it ran.
+`call: run_definition` runs the active latest version of another definition in the same brain: `with.type` names its type, `reasoning` for a reasoning function, `interaction` for an [interaction function](interaction-format.md), `computation` for a [computation function](computation-format.md), `recall` for a [recall function](recall-format.md) or `workflow` for another workflow, and `with.name` the definition. `with.input` is a template for its input, `{}` when left out. The task's output is that run's output: the text or JSON value a reasoning function answered, the answer an interaction function's request took, the value a computation function's program gave, what a recall function answered from its view, or the output of the workflow it ran.
 
-Each time the task runs, including on a retry, it starts a separate run of the function, recorded under its own `execution_id`. That run acts for the caller who started the workflow, with the permissions that caller had when the workflow started. `execute_spec` takes no arguments other than `primitive`, `name` and `input`.
+Each time the task runs, including on a retry, it starts a separate run of the function, recorded under its own `run_id`. That run acts for the caller who started the workflow, with the permissions that caller had when the workflow started. `run_definition` takes no arguments other than `type`, `name` and `input`.
 
-A run of a reasoning, computation or recall function finishes within the call that starts it. A run of a workflow or of an interaction function finishes later, and the task waits for it: the run records the task it answers, and its ending, whenever it comes and on whichever server it is recorded, answers the task. While the task waits, it holds none of the calls the server runs at once, and a restart of the server does not start the run again. A task waits for a run as long as a run of that definition may take, plus a minute, and never past the longest the workflow itself may still run: a workflow may take the longest a run may last, an interaction function the `expires` of its document, a reasoning function its model's deadline or, when it names tools, the bound of its tool loop, and a computation or recall function ten seconds. That is settled when the workflow starts, for each task that names its definition as written; a task whose `with.primitive` or `with.name` is an expression, or a definition saved after the workflow started, waits as long as the longest run of any function other than a workflow, plus a minute. When the wait passes, the task raises a `timeout` error, status 408, and the run it waited for is cancelled with the kind `deadline`; an ending that comes later answers nothing.
+A run of a reasoning, computation or recall function finishes within the call that starts it. A run of a workflow or of an interaction function finishes later, and the task waits for it: the run records the task it answers, and its ending, whenever it comes and on whichever server it is recorded, answers the task. While the task waits, it holds none of the calls the server runs at once, and a restart of the server does not start the run again. A task waits for a run as long as a run of that definition may take, plus a minute, and never past the longest the workflow itself may still run: a workflow may take the longest a run may last, an interaction function the `expires` of its document, a reasoning function its model's deadline or, when it names tools, the bound of its tool loop, and a computation or recall function ten seconds. That is settled when the workflow starts, for each task that names its definition as written; a task whose `with.type` or `with.name` is an expression, or a definition saved after the workflow started, waits as long as the longest run of any function other than a workflow, plus a minute. When the wait passes, the task raises a `timeout` error, status 408, and the run it waited for is cancelled with the kind `deadline`; an ending that comes later answers nothing.
 
 Workflows that call workflows reach at most 8 calls deep: the run that would sit a ninth call below the workflow at the top is refused as a `conflict`, which the calling task raises as a `runtime` error. The runs under one workflow at the top of a tree wait for at most 1,000 calls at once, a limit the deployment can change; the next call is refused in the same way.
 
@@ -237,7 +237,7 @@ A computation function's run that is rejected with `conflict` has the kind `unwo
 
 A recall function's run that is rejected with `conflict` has the kind `stalled`, when its view stopped at an event its fold could not take, or `unworkable`, when its answer could not give an output; neither changes on a retry, so leave 409 out of a retry policy as well. While its view is still being built, its run is `unavailable` with the kind `rebuilding`, status 503, which a retry after a few seconds may resolve. A recall function answers from what its view has folded so far, so a step may not see an event recorded a moment before. [Recall function format](recall-format.md#in-a-workflow) has a workflow that recalls, reasons and computes.
 
-A run that was cancelled raises the [problem type](http.md#responses-and-errors) `https://on.auto/problems/cancelled` with the kind of its cancellation: `requested` when someone cancelled it with `cancel_execution`, `deadline` when what waited for it ran out of time, `overrun` when it ran as long as a workflow may, and `parent_ended` when the run that waited for it ended first. No retry policy matches it unless it names that type, so a workflow catches a cancellation only on purpose, as with `errors: { with: { type: https://on.auto/problems/cancelled } }` and `when: '${ $error.kind == "requested" }'`. A workflow that does not catch it is rejected by the error's status, 409, as `invalid_input`, and not as `cancelled`, since the workflow itself was not cancelled.
+A run that was cancelled raises the [problem type](http.md#responses-and-errors) `https://on.auto/problems/cancelled` with the kind of its cancellation: `requested` when someone cancelled it with `cancel_run`, `deadline` when what waited for it ran out of time, `overrun` when it ran as long as a workflow may, and `parent_ended` when the run that waited for it ended first. No retry policy matches it unless it names that type, so a workflow catches a cancellation only on purpose, as with `errors: { with: { type: https://on.auto/problems/cancelled } }` and `when: '${ $error.kind == "requested" }'`. A workflow that does not catch it is rejected by the error's status, 409, as `invalid_input`, and not as `cancelled`, since the workflow itself was not cancelled.
 
 A request of an [interaction function](interaction-format.md) that nobody answered raises the problem type `https://on.auto/problems/unanswered`, status 410, with the kind `expired` when it expired unanswered or `undelivered` when a notification could not be delivered. No retry policy matches it unless it names that type, as with `errors: { with: { type: https://on.auto/problems/unanswered, kind: expired } }`, since asking again is a decision. A workflow that does not catch it is rejected as `unanswered` with the same kind.
 
@@ -245,7 +245,7 @@ The error's `title` names the definition and, for a rejection, its reason; its `
 
 ### Waiting for events
 
-A `listen` task waits for events sent to the run with `send_execution_event`, through [HTTP](http.md) or [MCP](mcp.md), and, through a filter that names its `type` as written text, for the events of the whole brain:
+A `listen` task waits for events sent to the run with `send_run_event`, through [HTTP](http.md) or [MCP](mcp.md), and, through a filter that names its `type` as written text, for the events of the whole brain:
 
 - `listen.to.one` takes one event that matches its filter.
 - `listen.to.any` takes the first event that matches any filter in its list.
@@ -257,7 +257,7 @@ The task's output is a list with the `data` of each event it took. With `listen.
 
 An event sent before a `listen` task waits for it is kept, and the task takes the earliest event that matches. An event whose `id` the run has already received is ignored, so a sender can retry with the same id. Waiting `until` a condition, `foreach` and `correlate` are not supported.
 
-A filter whose `type` is written out, such as `type: com.example.brief.decided`, also hears the events the brain records: events published with `publish_event`, events workflows emit, and the brain's own facts. Such an event reaches the run only while the task listens; one recorded before the task began to listen, or after it ended, is not offered to it. The run checks the rest of its filter itself, with its own variables, so `data: '${ .ticket == $workflow.input.ticket }'` takes only the event about the run's own ticket. With `all`, the events may come in any order. A filter that computes its `type` hears only events sent to the run. A run never takes an event it emitted itself. Send an event to the run by its execution id when the run must not miss it. A brain has at most 4,096 tasks listening for its events at once; one more hears only events sent to its run.
+A filter whose `type` is written out, such as `type: com.example.brief.decided`, also hears the events the brain records: events published with `publish_event`, events workflows emit, and the brain's own facts. Such an event reaches the run only while the task listens; one recorded before the task began to listen, or after it ended, is not offered to it. The run checks the rest of its filter itself, with its own variables, so `data: '${ .ticket == $workflow.input.ticket }'` takes only the event about the run's own ticket. With `all`, the events may come in any order. A filter that computes its `type` hears only events sent to the run. A run never takes an event it emitted itself. Send an event to the run by its run id when the run must not miss it. A brain has at most 4,096 tasks listening for its events at once; one more hears only events sent to its run.
 
 ### Emitting an event
 
@@ -331,15 +331,15 @@ This task reviews two briefs at once and outputs both reviews:
     fork:
       branches:
         - first:
-            call: execute_spec
+            call: run_definition
             with:
-              primitive: inference
+              type: reasoning
               name: review-campaign-brief
               input: { brief: '${ .brief }' }
         - second:
-            call: execute_spec
+            call: run_definition
             with:
-              primitive: inference
+              type: reasoning
               name: review-campaign-brief
               input: { brief: '${ .revised }' }
 ```
@@ -348,17 +348,17 @@ This task reviews two briefs at once and outputs both reviews:
 
 Expressions are [jq](https://jqlang.org). A string enclosed in `${ }` is an expression wherever a value is written, including in templates: the values of `set`, `with`, `raise.error`, durations, and object forms of `input.from`, `output.as` and `export.as`. `if`, `when`, `exceptWhen`, `for.in`, `while` and the string forms of `input.from`, `output.as` and `export.as` are expressions even without `${ }`. A condition holds unless it gives `false` or `null`.
 
-| Variable          | Value                                                                                     |
-| ----------------- | ----------------------------------------------------------------------------------------- |
-| `.`               | The data of the task: its input, or what it produced in `output.as`                       |
-| `$input`          | The task's input                                                                          |
-| `$output`         | The task's output, in `export.as`                                                         |
-| `$context`        | What earlier tasks exported; `{}` until a task exports                                    |
-| `$task`           | `name`, `reference`, `definition`, `input`, `startedAt`, and `output` after it ran        |
-| `$workflow`       | `id` (the run's `execution_id`), `definition`, `input` (before `input.from`), `startedAt` |
-| `$runtime`        | `name: auto-brain`, `version` and `metadata.primitive: orchestration`                     |
-| `$item`, `$index` | The current item and position in a `for` loop, unless renamed                             |
-| `$error`          | The caught error in `catch`, unless renamed with `catch.as`                               |
+| Variable          | Value                                                                               |
+| ----------------- | ----------------------------------------------------------------------------------- |
+| `.`               | The data of the task: its input, or what it produced in `output.as`                 |
+| `$input`          | The task's input                                                                    |
+| `$output`         | The task's output, in `export.as`                                                   |
+| `$context`        | What earlier tasks exported; `{}` until a task exports                              |
+| `$task`           | `name`, `reference`, `definition`, `input`, `startedAt`, and `output` after it ran  |
+| `$workflow`       | `id` (the run's `run_id`), `definition`, `input` (before `input.from`), `startedAt` |
+| `$runtime`        | `name: auto-brain`, `version` and `metadata.type: workflow`                         |
+| `$item`, `$index` | The current item and position in a `for` loop, unless renamed                       |
+| `$error`          | The caught error in `catch`, unless renamed with `catch.as`                         |
 
 `startedAt` values hold `iso8601` and `epoch` with `seconds` and `milliseconds`. `now` gives the time the run recorded for the task, never the clock of the machine. `localtime` and `strflocaltime`, which read the machine's time zone, are refused; use the UTC builtins.
 
@@ -376,7 +376,7 @@ A duration is an ISO 8601 string such as `PT30M` or `P7D`, in weeks, days, hours
 
 ## Saving a document
 
-`create_spec` and `update_spec` check the whole document before saving it: its YAML, the DSL schema, the connections between its tasks, every expression and duration, and the rules on this page. Anchors, aliases and tags are refused. Each problem is an issue under `/source` with its line, column and JSON Pointer:
+`create_definition` and `update_definition` check the whole document before saving it: its YAML, the DSL schema, the connections between its tasks, every expression and duration, and the rules on this page. Anchors, aliases and tags are refused. Each problem is an issue under `/source` with its line, column and JSON Pointer:
 
 ```text
 Line 7, column 12: at /do/1/loop/for: It needs in
@@ -388,7 +388,7 @@ These are refused when a document is saved:
 | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
 | `run` tasks                                                                                    | The runtime does not run them                                   |
 | `call` of `http`, `grpc`, `openapi`, `asyncapi`, `a2a` or `mcp`                                | A workflow reaches the world only through its brain's functions |
-| A `call` of anything other than `execute_spec`                                                 | `execute_spec` is the one function                              |
+| A `call` of anything other than `run_definition`                                               | `run_definition` is the one function                            |
 | `schedule.after`, `schedule.on.all`, `schedule.on.until`, or a schedule that names no trigger  | A trigger starts one run for each event or time                 |
 | A trigger filter without a written `type`, or with a `data` expression that uses `$` variables | A trigger is matched before any run exists                      |
 | A trigger filter written twice in `any`, or more than 64 filters in one trigger                | See [Triggers](#triggers)                                       |
@@ -405,18 +405,18 @@ These are refused when a document is saved:
 
 ## How a run ends
 
-`execute_spec` answers `status: started` as soon as the run begins, or how the run ended when it ended before its first wait. `get_execution` shows the run as `started` until it ends:
+`run_definition` answers `status: started` as soon as the run begins, or how the run ended when it ended before its first wait. `get_run` shows the run as `started` until it ends:
 
 - `succeeded`, with the run's `output`, when its last task completes or a task ends it.
 - `rejected`, when an error is not caught. The rejection's `reason` is `invalid_input` for an error with a 4xx status other than 408 and 429, and `unavailable` otherwise. Its `detail` gives the error's title, or else its type, then its detail and the task that raised it, such as `The brief is not usable: Missing: audience (at /do/0/stop)`.
-- `rejected` with the reason `cancelled`, when it was cancelled: with the kind `requested` by `cancel_execution`, `deadline` when the workflow that waited for it ran out of time, `overrun` when it was still running at the longest a run may last, and `parent_ended` when the workflow that waited for it ended first, or the branch that waited for it lost a race. The `detail` says why, in the words of whoever cancelled it.
+- `rejected` with the reason `cancelled`, when it was cancelled: with the kind `requested` by `cancel_run`, `deadline` when the workflow that waited for it ran out of time, `overrun` when it was still running at the longest a run may last, and `parent_ended` when the workflow that waited for it ended first, or the branch that waited for it lost a race. The `detail` says why, in the words of whoever cancelled it.
 - `rejected` with the reason `unanswered`, with the kind `expired` or `undelivered`, when it did not catch the error of a request of an interaction function that nobody answered.
 - `rejected` with the reason `conflict` of the kind `oversized`, when its output is larger than 1 MiB.
 - `failed`, when the run broke down inside the runtime.
 
 A timeout that is not caught therefore rejects the run as `unavailable`, and a call rejected with `invalid_input` that is not caught rejects it as `invalid_input`.
 
-`cancel_execution` cancels a workflow run that has not ended, from any server: the run stops its tasks, cancels each run it waits for, with the kind `parent_ended`, and ends as `cancelled` within a moment, unless it ends first. It cancels the run of an interaction function whose request waits in the same way. A run that has ended, or a run of a function that finishes within its call, cannot be cancelled.
+`cancel_run` cancels a workflow run that has not ended, from any server: the run stops its tasks, cancels each run it waits for, with the kind `parent_ended`, and ends as `cancelled` within a moment, unless it ends first. It cancels the run of an interaction function whose request waits in the same way. A run that has ended, or a run of a function that finishes within its call, cannot be cancelled.
 
 ## Limits
 

@@ -89,7 +89,7 @@ function bodyOf(choose: Choose, depth: number): FrameBody {
     () => ({ kind: 'wait', timer: 't' }),
     () => ({
       kind: 'call',
-      key: { executionId: 'e', reference: '/do/0', run: 1 },
+      key: { runId: 'e', reference: '/do/0', run: 1 },
       function: 'notify',
       arguments: choose(valueCount),
       label: 'notify',
@@ -121,7 +121,7 @@ function stateOf(seed: number): RunState {
   );
   return {
     ...newRun,
-    executionId: 'e',
+    runId: 'e',
     status: 'running',
     workflow: { document: { do: [{ seed }] }, input: choose(valueCount) },
     machine: { values, nextValue: valueCount, context: choose(valueCount), root: frameOf(choose, 3) },

@@ -9,7 +9,7 @@ import {
   servingMeetings,
   type MeetingsServer,
 } from '../testing/servers/meetings-server.ts';
-import { executionIdIn, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { runIdIn, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 let meetings: MeetingsServer;
 
@@ -50,8 +50,8 @@ const draftingEachMonth = workflowSource(
     '    document: { type: object, required: [month, owner] }',
     'do:',
     '  - approval:',
-    '      call: execute_spec',
-    "      with: { primitive: interaction, name: approve-draft, input: '${ . }' }",
+    '      call: run_definition',
+    "      with: { type: interaction, name: approve-draft, input: '${ . }' }",
     '',
   ].join('\n'),
 );
@@ -60,15 +60,15 @@ beforeAll(async () => {
   meetings = await servingMeetings([], { chat: true });
   await meetings.onMcp(async (session) => {
     await session.callTool('create_brain', { ...inMeetings, name: 'Meetings' });
-    await session.callTool('create_spec', {
+    await session.callTool('create_definition', {
       ...inMeetings,
-      primitive: 'interaction',
+      type: 'interaction',
       name: 'approve-draft',
       source: approvingTheDraft,
     });
-    await session.callTool('create_spec', {
+    await session.callTool('create_definition', {
       ...inMeetings,
-      primitive: 'orchestration',
+      type: 'workflow',
       name: 'monthly-draft',
       source: draftingEachMonth,
     });
@@ -82,7 +82,7 @@ afterAll(async () => {
 const OpenRequestsSchema = Schema.Struct({
   interactions: Schema.Array(
     Schema.Struct({
-      execution_id: Schema.String,
+      run_id: Schema.String,
       delivery: Schema.NullOr(Schema.Struct({ server: Schema.String, tool: Schema.String })),
       message: Schema.String,
       standing: Schema.String,
@@ -115,10 +115,10 @@ function deliveredRequestsIn(session: McpSession, count: number): Promise<readon
   );
 }
 
-function endedIn(session: McpSession, executionId: string): Promise<unknown> {
+function endedIn(session: McpSession, runId: string): Promise<unknown> {
   return vi.waitFor(
     async () => {
-      const read = await session.callTool('get_execution', { ...inMeetings, execution_id: executionId });
+      const read = await session.callTool('get_run', { ...inMeetings, run_id: runId });
       expect(read.structuredContent).not.toMatchObject({ status: 'started' });
       return read.structuredContent;
     },
@@ -128,13 +128,13 @@ function endedIn(session: McpSession, executionId: string): Promise<unknown> {
 
 function draftFor(session: McpSession, month: string): Promise<string> {
   return session
-    .callTool('execute_spec', {
+    .callTool('run_definition', {
       ...inMeetings,
-      primitive: 'orchestration',
+      type: 'workflow',
       name: 'monthly-draft',
       input: { month, owner: 'ada' },
     })
-    .then(({ structuredContent }) => executionIdIn(structuredContent));
+    .then(({ structuredContent }) => runIdIn(structuredContent));
 }
 
 async function approvedThenNextMonth(session: McpSession) {
@@ -142,7 +142,7 @@ async function approvedThenNextMonth(session: McpSession) {
   const [asked] = await deliveredRequestsIn(session, 1);
   const answered = await session.callTool('answer_interaction', {
     ...inMeetings,
-    execution_id: String(asked?.execution_id),
+    run_id: String(asked?.run_id),
     answer: { decision: 'approve' },
   });
   const ended = await endedIn(session, september);
@@ -162,8 +162,8 @@ describe(
       expect(sentenceNaming(instructions, 'answer_interaction')).toBe(
         "When the person approves, rejects or otherwise answers what a run waits on, answer its request with answer_interaction, in the shape its function's answer takes, and start no new run for it.",
       );
-      expect(sentenceNaming(instructions, 'get_execution')).toBe(
-        'A run of an interaction function or a workflow answers started; get_execution shows whether it ended or still waits.',
+      expect(sentenceNaming(instructions, 'get_run')).toBe(
+        'A run of an interaction function or a workflow answers started; get_run shows whether it ended or still waits.',
       );
       expect(instructions).not.toMatch(/\bpoll|\buntil (?:it ends|its status changes)/iu);
       expect(descriptionIn(meetings.surfaces, 'answer_interaction')).toContain(
@@ -204,7 +204,7 @@ describe('the shape of the answer an open request takes, as the agent reads it',
     const description = descriptionIn(meetings.surfaces, 'list_interactions');
 
     expect(sentenceNaming(description, 'answer_schema')).toBe(
-      'Each carries its `answer_schema`, the shape answer_interaction checks an answer against, as recorded when it was asked, which get_spec may no longer show; null for a notification.',
+      'Each carries its `answer_schema`, the shape answer_interaction checks an answer against, as recorded when it was asked, which get_definition may no longer show; null for a notification.',
     );
     expect(descriptionIn(meetings.surfaces, 'answer_interaction')).toContain(
       "`answer` takes the shape of the request's answer_schema, which list_interactions shows,",

@@ -11,14 +11,14 @@ import type { HostDatabase } from '../database/host-database.ts';
 import { sqlWatermark } from '../dispatch/sql-watermark.ts';
 import { sqlListeners } from '../listeners/sql-listeners.ts';
 import { refusalsOn } from '../reactions/refusals.ts';
-import { ledgerRunStore } from '../runs/ledger-run-store.ts';
+import { ledgerRunLogStore } from '../runs/ledger-run-store.ts';
 import { ledgerRecordStore } from '../settlement/ledger-record-store.ts';
 import { sqlTimers } from '../timers/sql-timers.ts';
-import { knownExecutions } from './known-executions.ts';
+import { knownRuns } from './known-runs.ts';
 
-export const runId = 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+export const runKey = 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
-const otherRunId = 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b';
+const otherRunKey = 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b';
 
 export const startedAt = 1_790_845_200_000;
 
@@ -27,8 +27,8 @@ export function timerSubjectOn(database: HostDatabase): TimerSubject {
   const table = sqlTimers(database, Function.constVoid);
   return {
     timers: table.timers,
-    run: { executionId: runId, attributes: {} },
-    otherRun: { executionId: otherRunId, attributes: {} },
+    run: { runId: runKey, attributes: {} },
+    otherRun: { runId: otherRunKey, attributes: {} },
     now: () => clock.now,
     settle: () =>
       Effect.gen(function* () {
@@ -41,30 +41,30 @@ export function timerSubjectOn(database: HostDatabase): TimerSubject {
 }
 
 export function recordStoreSubjectOn(database: HostDatabase): RecordStoreSubject {
-  const { settle, know } = knownExecutions();
+  const { settle, know } = knownRuns();
   return {
     recordStore: ledgerRecordStore(database, { settle, note: Effect.logWarning, now: Date.now }),
-    run: { executionId: runId, attributes: {} },
-    know: (executionId) =>
+    run: { runId: runKey, attributes: {} },
+    know: (runId) =>
       Effect.sync(() => {
-        know(executionId.slice(executionId.lastIndexOf('/') + 1));
+        know(runId.slice(runId.lastIndexOf('/') + 1));
       }),
   };
 }
 
 export function watermarkSubjectOn(database: HostDatabase): WatermarkSubject {
-  return { watermark: sqlWatermark(database), runStore: ledgerRunStore(database), executionId: runId };
+  return { watermark: sqlWatermark(database), runStore: ledgerRunLogStore(database), runId: runKey };
 }
 
 export function runStoreSubjectOn(database: HostDatabase): RunStoreSubject {
-  return { runStore: ledgerRunStore(database), executionId: runId };
+  return { runStore: ledgerRunLogStore(database), runId: runKey };
 }
 
 export function listenerSubjectOn(database: HostDatabase): ListenerSubject {
-  const attributes = { spec: { name: 'await-approval', version: 1 }, caller: { id: 'acme-admin' } };
+  const attributes = { definition: { name: 'await-approval', version: 1 }, caller: { id: 'acme-admin' } };
   return {
     listeners: sqlListeners(database, refusalsOn(database, Date.now)),
-    run: { executionId: runId, attributes },
-    otherRun: { executionId: otherRunId, attributes },
+    run: { runId: runKey, attributes },
+    otherRun: { runId: otherRunKey, attributes },
   };
 }

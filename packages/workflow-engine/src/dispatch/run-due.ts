@@ -15,5 +15,5 @@ export function changesTimers({ event }: PositionedEvent): boolean {
 }
 
 export function runDueOf(state: RunState, version: number): RunDue {
-  return { executionId: state.executionId, version, nextDueAt: nextDueAtOf(state) };
+  return { runId: state.runId, version, nextDueAt: nextDueAtOf(state) };
 }

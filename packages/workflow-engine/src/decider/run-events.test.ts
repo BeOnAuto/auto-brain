@@ -7,7 +7,7 @@ import { drivenRun, outputKindsIn } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 import { withoutUndone } from './run-events.ts';
 
-const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 const inboxLists = /^\/inbox\/(?:receivedIds|waiting)(?:\/|$)/u;
 
@@ -22,8 +22,8 @@ function declinedThenApproved(driver: MemoryDriver, running: string): void {
 
 describe('the outputs of an event', () => {
   it('leave out a listener the same input armed and cancelled, and keep one armed and cancelled apart', () => {
-    const key = { executionId, reference: '/do/0/await', run: 1 };
-    const other = { executionId, reference: '/do/1/await', run: 1 };
+    const key = { runId, reference: '/do/0/await', run: 1 };
+    const other = { runId, reference: '/do/1/await', run: 1 };
 
     expect(
       withoutUndone([
@@ -54,11 +54,11 @@ do:
   });
 
   it('keep a cancel of what an earlier input armed or started', () => {
-    const key = { executionId, reference: '/do/0/ask', run: 1 };
+    const key = { runId, reference: '/do/0/ask', run: 1 };
     const outputs = [
-      { kind: 'cancel_timer', executionId, timerId: '1' },
+      { kind: 'cancel_timer', runId, timerId: '1' },
       { kind: 'cancel_call', key },
-      { kind: 'arm_timer', executionId, timerId: '2', dueAt: 1, purpose: 'wait' },
+      { kind: 'arm_timer', runId, timerId: '2', dueAt: 1, purpose: 'wait' },
     ] as const;
 
     expect(withoutUndone(outputs)).toEqual(outputs);

@@ -6,7 +6,7 @@ import { details, inAlpha, reading, type AnyLedger, type LedgerMaker } from '../
 
 const RunFactSchema = Schema.Struct({
   type: Schema.String,
-  primitive: Schema.optionalKey(Schema.String),
+  definition_type: Schema.optionalKey(Schema.String),
   name: Schema.optionalKey(Schema.String),
   detail: Schema.optionalKey(Schema.Json),
 });
@@ -24,18 +24,18 @@ const runsOfTheReport = Array.from({ length: 28 }, (_, index) => index);
 
 function startOfTheReport(index: number): RunFact {
   return {
-    type: 'execution_started',
-    primitive: index % 4 === 0 ? 'orchestration' : 'inference',
+    type: 'run_started',
+    definition_type: index % 4 === 0 ? 'workflow' : 'reasoning',
     name: index % 4 === 1 ? 'qualify-enquiry' : 'summary',
   };
 }
 
 function endingOfTheReport(index: number): RunFact {
-  return { type: index % 9 === 2 ? 'execution_rejected' : 'execution_succeeded' };
+  return { type: index % 9 === 2 ? 'run_rejected' : 'run_succeeded' };
 }
 
 function recordedRun(ledger: AnyLedger, run: string, facts: readonly RunFact[]): Effect.Effect<unknown, unknown> {
-  return ledger.execute(inAlpha(`executions/${run}`), runFacts, facts);
+  return ledger.execute(inAlpha(`runs/${run}`), runFacts, facts);
 }
 
 async function twentyEightRuns(aLedger: LedgerMaker): Promise<AnyLedger> {
@@ -53,7 +53,7 @@ async function twentyEightRuns(aLedger: LedgerMaker): Promise<AnyLedger> {
 type RunsOnAPage = readonly [runs: readonly string[], hasMore: boolean];
 
 function runsOn({ records, hasMore }: RecordedPage): RunsOnAPage {
-  const runsListed = new Set(records.map(({ stream }) => stream.slice(inAlpha('executions/').length)));
+  const runsListed = new Set(records.map(({ stream }) => stream.slice(inAlpha('runs/').length)));
   return [[...runsListed], hasMore];
 }
 
@@ -68,16 +68,16 @@ async function everyPageOfRuns(
     : [runsOn(read), ...(await everyPageOfRuns(ledger, selection, { ...page, cursor: read.nextCursor }))];
 }
 
-const runsOfOrchestration: RecordedSelection = { kind: 'executions', primitive: 'orchestration' };
+const runsOfWorkflows: RecordedSelection = { kind: 'runs', definitionType: 'workflow' };
 
-function theRunsOfOnePrimitive(aLedger: LedgerMaker): void {
+function theRunsOfOneType(aLedger: LedgerMaker): void {
   it(
-    'fill every page with the runs of the primitive asked for, five then two, and have no more after the last',
+    'fill every page with the runs of the definition type asked for, five then two, and have no more after the last',
     { timeout: 60_000 },
     async () => {
       const ledger = await twentyEightRuns(aLedger);
 
-      const pages = await everyPageOfRuns(ledger, runsOfOrchestration, { order: 'desc', limit: 5 });
+      const pages = await everyPageOfRuns(ledger, runsOfWorkflows, { order: 'desc', limit: 5 });
 
       expect(pages).toEqual([
         [['run-24', 'run-20', 'run-16', 'run-12', 'run-8'], true],
@@ -91,11 +91,7 @@ function theRunsOfOneName(aLedger: LedgerMaker): void {
   it('page through the seven runs of the name asked for, two at a time', { timeout: 60_000 }, async () => {
     const ledger = await twentyEightRuns(aLedger);
 
-    const pages = await everyPageOfRuns(
-      ledger,
-      { kind: 'executions', name: 'qualify-enquiry' },
-      { order: 'desc', limit: 2 },
-    );
+    const pages = await everyPageOfRuns(ledger, { kind: 'runs', name: 'qualify-enquiry' }, { order: 'desc', limit: 2 });
 
     expect(pages).toEqual([
       [['run-25', 'run-21'], true],
@@ -112,11 +108,11 @@ function theRejectedRuns(aLedger: LedgerMaker): void {
     { timeout: 60_000 },
     async () => {
       const ledger = await twentyEightRuns(aLedger);
-      const rejectedOneAtATime = { order: 'desc', limit: 1, types: ['execution_rejected'] } as const;
+      const rejectedOneAtATime = { order: 'desc', limit: 1, types: ['run_rejected'] } as const;
 
       const pages = await Promise.all([
-        everyPageOfRuns(ledger, { kind: 'executions' }, rejectedOneAtATime),
-        everyPageOfRuns(ledger, runsOfOrchestration, rejectedOneAtATime),
+        everyPageOfRuns(ledger, { kind: 'runs' }, rejectedOneAtATime),
+        everyPageOfRuns(ledger, runsOfWorkflows, rejectedOneAtATime),
       ]);
 
       expect(pages).toEqual([
@@ -143,19 +139,19 @@ const awkwardText = {
 function theDefinitionOfAnAwkwardRun(aLedger: LedgerMaker): void {
   it('is read at the top of the first message alone, exactly as recorded, whatever else the message holds', async () => {
     const ledger = await aLedger();
-    const awkward = { primitive: 'orchestration', name: 'qualify-enquiry', text: awkwardText };
-    const start = { type: 'execution_started', primitive: 'inference', name: 'summary', detail: awkward };
+    const awkward = { type: 'workflow', name: 'qualify-enquiry', text: awkwardText };
+    const start = { type: 'run_started', definition_type: 'reasoning', name: 'summary', detail: awkward };
     const namedAwkwardly = { ...start, name: awkwardText.escapedNul, detail: 'named awkwardly' };
     await Effect.runPromise(recordedRun(ledger, 'awkward', [start]));
     await Effect.runPromise(recordedRun(ledger, 'named-awkwardly', [namedAwkwardly]));
     const newest = { order: 'desc', limit: 10 } as const;
 
     const pages = await Promise.all([
-      reading(ledger, { kind: 'executions', primitive: 'inference', name: 'summary' }, newest),
-      reading(ledger, runsOfOrchestration, newest),
-      reading(ledger, { kind: 'executions', name: 'qualify-enquiry' }, newest),
-      reading(ledger, { kind: 'executions', name: awkwardText.escapedNul }, newest),
-      reading(ledger, { kind: 'executions', name: 'a' }, newest),
+      reading(ledger, { kind: 'runs', definitionType: 'reasoning', name: 'summary' }, newest),
+      reading(ledger, runsOfWorkflows, newest),
+      reading(ledger, { kind: 'runs', name: 'qualify-enquiry' }, newest),
+      reading(ledger, { kind: 'runs', name: awkwardText.escapedNul }, newest),
+      reading(ledger, { kind: 'runs', name: 'a' }, newest),
     ]);
 
     expect(pages.map((page) => details(page))).toEqual([[awkward], [], [], ['named awkwardly'], []]);
@@ -164,7 +160,7 @@ function theDefinitionOfAnAwkwardRun(aLedger: LedgerMaker): void {
 
 export function runFiltersBehaviour(aLedger: LedgerMaker): void {
   describe('the runs of one definition', () => {
-    theRunsOfOnePrimitive(aLedger);
+    theRunsOfOneType(aLedger);
     theRunsOfOneName(aLedger);
     theRejectedRuns(aLedger);
     theDefinitionOfAnAwkwardRun(aLedger);

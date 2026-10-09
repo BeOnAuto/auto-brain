@@ -35,7 +35,7 @@ function callBookOf(clock: VirtualClock, submit: Submit, responder: Responder): 
     const key = callKeyText(call.key);
     awaited.delete(key);
     answered.set(key, result);
-    submit({ kind: 'call_answered', executionId: call.key.executionId, at: clock.now(), key: call.key, result });
+    submit({ kind: 'call_answered', runId: call.key.runId, at: clock.now(), key: call.key, result });
     return result;
   };
   const reply = (call: StartCall, key: string, given: Exclude<CallAnswer, 'never'>): void => {

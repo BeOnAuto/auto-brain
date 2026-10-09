@@ -3,7 +3,7 @@ import { Schema } from 'effect';
 
 export const groupFields = {
   day: Schema.String,
-  primitive: Schema.String,
+  definitionType: Schema.String,
   name: Schema.String,
   status: RunOutcomeStatusSchema,
   runs: Schema.Number,
@@ -14,7 +14,7 @@ export const groupFields = {
 
 export interface GroupRow {
   readonly day: string;
-  readonly primitive: string;
+  readonly definitionType: string;
   readonly name: string;
   readonly status: RunOutcomeGroup['status'];
   readonly runs: number;
@@ -27,7 +27,7 @@ export interface GroupRow {
 export function groupOf(row: GroupRow): RunOutcomeGroup {
   return {
     day: row.day,
-    primitive: row.primitive,
+    definitionType: row.definitionType,
     name: row.name,
     status: row.status,
     runs: row.runs,

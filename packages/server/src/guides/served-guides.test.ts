@@ -2,7 +2,7 @@ import { Buffer } from 'node:buffer';
 import { readFileSync } from 'node:fs';
 
 import { mostGuideBytes, mostRecipeBytes } from '@beonauto/api';
-import { definePrimitive, type Primitive, type PrimitiveGuide } from '@beonauto/specs';
+import { defineCapability, type Capability, type CapabilityGuide } from '@beonauto/definitions';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -10,9 +10,9 @@ import { withLinksResolved } from './page-links.ts';
 import { servedGuidesOf } from './served-guides.ts';
 import { withoutSiteMarkup } from './site-markup.ts';
 
-function primitiveOf(name: string, noun: string, guide: PrimitiveGuide): Primitive {
-  return definePrimitive({
-    name,
+function capabilityOf(name: string, noun: string, guide: CapabilityGuide): Capability {
+  return defineCapability({
+    type: name,
     title: noun,
     guide,
     noun: { one: noun, other: `${noun}s` },
@@ -20,26 +20,26 @@ function primitiveOf(name: string, noun: string, guide: PrimitiveGuide): Primiti
     mediaType: 'text/markdown',
     parse: () => Effect.succeed({}),
     summarize: () => ({}),
-    execute: () => Effect.succeed({ output: null, record: {} }),
+    run: () => Effect.succeed({ output: null, record: {} }),
   });
 }
 
 const onThisServer = 'On this server, a reasoning function names its model through anthropic.';
 
-const reasoning = primitiveOf('inference', 'reasoning function', { name: 'reasoning-function', onThisServer });
+const reasoning = capabilityOf('reasoning', 'reasoning function', { name: 'reasoning-function', onThisServer });
 
-const computation = primitiveOf('computation', 'computation function', { name: 'computation-function' });
+const computation = capabilityOf('computation', 'computation function', { name: 'computation-function' });
 
-const recall = primitiveOf('recollection', 'recall function', { name: 'recall-function' });
+const recall = capabilityOf('recall', 'recall function', { name: 'recall-function' });
 
-const workflow = primitiveOf('orchestration', 'workflow', { name: 'workflow' });
+const workflow = capabilityOf('workflow', 'workflow', { name: 'workflow' });
 
 const everyType = [reasoning, computation, recall, workflow];
 
-const interaction = primitiveOf('interaction', 'interaction function', { name: 'interaction-function' });
+const interaction = capabilityOf('interaction', 'interaction function', { name: 'interaction-function' });
 
-function recipeTextsOf(primitives: readonly Primitive[]): Readonly<Record<string, string>> {
-  return Object.fromEntries(servedGuidesOf(primitives).recipes.map(({ name, text }) => [name, text]));
+function recipeTextsOf(capabilities: readonly Capability[]): Readonly<Record<string, string>> {
+  return Object.fromEntries(servedGuidesOf(capabilities).recipes.map(({ name, text }) => [name, text]));
 }
 
 function bytesOf(texts: Readonly<Record<string, string>>, ...names: readonly string[]): readonly number[] {
@@ -80,10 +80,10 @@ describe('the guides of a server that runs every type of definition', () => {
       'schedule',
     ]);
     expect(definitionTypes).toEqual([
-      { primitive: 'inference', noun: 'reasoning function', guide: 'reasoning-function' },
-      { primitive: 'computation', noun: 'computation function', guide: 'computation-function' },
-      { primitive: 'recollection', noun: 'recall function', guide: 'recall-function' },
-      { primitive: 'orchestration', noun: 'workflow', guide: 'workflow' },
+      { type: 'reasoning', noun: 'reasoning function', guide: 'reasoning-function' },
+      { type: 'computation', noun: 'computation function', guide: 'computation-function' },
+      { type: 'recall', noun: 'recall function', guide: 'recall-function' },
+      { type: 'workflow', noun: 'workflow', guide: 'workflow' },
     ]);
   });
 
@@ -254,7 +254,7 @@ describe('the terminology guide of a server', () => {
 
 describe('a server without the page of a type it runs', () => {
   it('fails to start', () => {
-    expect(() => servedGuidesOf([primitiveOf('drafting', 'draft', { name: 'drafting-function' })])).toThrow(
+    expect(() => servedGuidesOf([capabilityOf('drafting', 'draft', { name: 'drafting-function' })])).toThrow(
       /no such file or directory.*drafting-format\.md/u,
     );
   });

@@ -1,4 +1,5 @@
 import { mcpRoutes, operationRoutes, type AppRuntime, type RegisterRoutes } from '@beonauto/api';
+import type { Capability } from '@beonauto/definitions';
 import {
   makeCatalog,
   makeDispatcher,
@@ -6,7 +7,6 @@ import {
   type Dispatcher,
   type DispatcherServices,
 } from '@beonauto/operations';
-import type { Primitive } from '@beonauto/specs';
 
 import { servedGuidesOf } from '../guides/served-guides.ts';
 import { logMcpError } from '../logging/logging.ts';
@@ -18,7 +18,7 @@ export function routesFor(
   runtime: AppRuntime<DispatcherServices>,
   catalog: Catalog,
   dispatcher: Dispatcher,
-  primitives: readonly Primitive[],
+  capabilities: readonly Capability[],
 ): readonly RegisterRoutes[] {
   return [
     operationRoutes({ catalog, dispatcher, runCall: runtime.run }),
@@ -27,7 +27,7 @@ export function routesFor(
       dispatcher,
       runCall: runtime.run,
       serverInfo: release,
-      ...servedGuidesOf(primitives),
+      ...servedGuidesOf(capabilities),
       reportError: (error) => {
         void runtime.run(logMcpError(error));
       },

@@ -9,8 +9,8 @@ const brainKey = 'brain/acme/alpha/';
 
 const parts: StepParts = {
   consumers: [],
-  primitive: 'orchestration',
-  applySpecRecord: () => Effect.succeed('applied'),
+  type: 'workflow',
+  applyDefinitionRecord: () => Effect.succeed('applied'),
   unreadable: () => Effect.void,
   passedEarly: () => Effect.void,
   registered: [],
@@ -22,7 +22,7 @@ const record: RecordedEvent = {
   cursor: 'cursor-1',
   causationId: null,
   correlationId: null,
-  stream: `${brainKey}runs/r-1`,
+  stream: `${brainKey}run-logs/r-1`,
   version: 1,
   type: 'input_applied',
   data: null,

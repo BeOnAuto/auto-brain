@@ -24,28 +24,28 @@ const hour = 3_600_000;
 const wholeNumber = /^\d{1,7}$/u;
 
 const mostDuration: Bounds = {
-  setting: 'ORCHESTRATION_MAX_DURATION',
+  setting: 'WORKFLOW_MAX_DURATION',
   least: 2 * hour,
   most: 365 * 24 * hour,
   expected: 'Expected an ISO 8601 duration from PT2H to P365D, such as P30D',
 };
 
 const sweepInterval: Bounds = {
-  setting: 'ORCHESTRATION_SWEEP_INTERVAL',
+  setting: 'WORKFLOW_SWEEP_INTERVAL',
   least: 10,
   most: 60_000,
   expected: 'Expected an ISO 8601 duration from PT0.01S to PT1M, such as PT1S',
 };
 
-const nestedExecutions: Bounds = {
-  setting: 'ORCHESTRATION_NESTED_EXECUTIONS',
+const nestedRuns: Bounds = {
+  setting: 'WORKFLOW_NESTED_RUNS',
   least: 1,
   most: 1000,
   expected: 'Expected a whole number from 1 to 1000, such as 32',
 };
 
 const openCalls: Bounds = {
-  setting: 'ORCHESTRATION_MAX_OPEN_CALLS',
+  setting: 'WORKFLOW_MAX_OPEN_CALLS',
   least: 1,
   most: 9999,
   expected: `Expected a whole number from 1 to 9999, such as ${mostOpenCallsOfATree}`,
@@ -53,7 +53,7 @@ const openCalls: Bounds = {
 
 const sources = Config.all({
   mostDuration: Config.String(mostDuration.setting).pipe(Config.withDefault('P30D')),
-  nestedExecutions: Config.String(nestedExecutions.setting).pipe(Config.withDefault('32')),
+  nestedRuns: Config.String(nestedRuns.setting).pipe(Config.withDefault('32')),
   openCalls: Config.String(openCalls.setting).pipe(Config.withDefault(String(mostOpenCallsOfATree))),
   sweepInterval: Config.String(sweepInterval.setting).pipe(Config.withDefault('PT1S')),
 });
@@ -75,13 +75,13 @@ export function readWorkflowSettings(environment: Environment): Effect.Effect<Wo
     const source = yield* Effect.orDie(sources.parse(ConfigProvider.fromEnvRecord(environment)));
     const settings = {
       mostDurationMs: millisecondsOf(source.mostDuration),
-      mostCallsAtOnce: countOf(source.nestedExecutions),
+      mostCallsAtOnce: countOf(source.nestedRuns),
       mostOpenCalls: countOf(source.openCalls),
       sweepEveryMs: millisecondsOf(source.sweepInterval),
     };
     const problems = [
       ...problemOf(settings.mostDurationMs, mostDuration),
-      ...problemOf(settings.mostCallsAtOnce, nestedExecutions),
+      ...problemOf(settings.mostCallsAtOnce, nestedRuns),
       ...problemOf(settings.mostOpenCalls, openCalls),
       ...problemOf(settings.sweepEveryMs, sweepInterval),
     ];

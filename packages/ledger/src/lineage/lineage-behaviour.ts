@@ -28,17 +28,19 @@ function idsOfARead(aLedger: LedgerMaker): void {
   describe('the lineage of what a brain recorded', () => {
     it('names each message by its stream and position, with the cause and correlation it was written with', async () => {
       const ledger = await aLedger();
-      await happenWith(ledger, inAlpha(`executions/${root}`), { causationId: null, correlationId: root }, 'start');
-      const start = messageIdOf(inAlpha(`executions/${root}`), 1);
-      await happenWith(ledger, inAlpha(`runs/${root}`), { causationId: start, correlationId: root }, 'input');
-      await Effect.runPromise(ledger.execute(inAlpha('specs/inference'), happenings, [noted('noted', 'spec')]));
+      await happenWith(ledger, inAlpha(`runs/${root}`), { causationId: null, correlationId: root }, 'start');
+      const start = messageIdOf(inAlpha(`runs/${root}`), 1);
+      await happenWith(ledger, inAlpha(`run-logs/${root}`), { causationId: start, correlationId: root }, 'input');
+      await Effect.runPromise(
+        ledger.execute(inAlpha('definitions/reasoning'), happenings, [noted('noted', 'definition')]),
+      );
 
       const { records } = await reading(ledger, { kind: 'everything' }, { order: 'asc', limit: 10 });
 
       expect(lineagesOf(records)).toEqual([
         { id: start, causationId: null, correlationId: root },
-        { id: messageIdOf(inAlpha(`runs/${root}`), 1), causationId: start, correlationId: root },
-        { id: messageIdOf(inAlpha('specs/inference'), 1), causationId: null, correlationId: null },
+        { id: messageIdOf(inAlpha(`run-logs/${root}`), 1), causationId: start, correlationId: root },
+        { id: messageIdOf(inAlpha('definitions/reasoning'), 1), causationId: null, correlationId: null },
       ]);
     });
   });
@@ -49,11 +51,11 @@ function aReadByCorrelation(aLedger: LedgerMaker): void {
     it('answers what a run and the runs it caused recorded, in the order of the brain, and nothing for a child', async () => {
       const ledger = await aLedger();
       const ofRoot = { causationId: null, correlationId: root };
-      await happenWith(ledger, inAlpha(`executions/${root}`), ofRoot, 'root started');
+      await happenWith(ledger, inAlpha(`runs/${root}`), ofRoot, 'root started');
       await happenWith(ledger, inAlpha('notes'), { causationId: null, correlationId: null }, 'elsewhere');
-      await happenWith(ledger, inAlpha(`executions/${child}`), ofRoot, 'child started');
+      await happenWith(ledger, inAlpha(`runs/${child}`), ofRoot, 'child started');
       await happenWith(ledger, 'brain/acme/beta/notes', ofRoot, 'another brain');
-      await happenWith(ledger, inAlpha(`executions/${root}`), ofRoot, 'root finished');
+      await happenWith(ledger, inAlpha(`runs/${root}`), ofRoot, 'root finished');
 
       const pages = await Promise.all([
         reading(ledger, { kind: 'correlated', correlation: root }, { order: 'asc', limit: 2 }),

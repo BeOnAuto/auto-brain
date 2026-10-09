@@ -1,9 +1,9 @@
 import { Effect } from 'effect';
 
 import type { RunState } from '../machine/run-state.ts';
-import type { RunEvent } from '../run-log/run-event.ts';
+import type { RunLogEvent } from '../run-log/run-event.ts';
 import { loadedRunOf, type LoadedRun } from '../run-log/run-fold.ts';
-import type { RunStore } from '../run-log/run-store.ts';
+import type { RunLogStore } from '../run-log/run-store.ts';
 import { sinceSnapshotAfter } from '../run-log/snapshot.ts';
 
 export interface RunCacheBounds {
@@ -12,14 +12,14 @@ export interface RunCacheBounds {
 }
 
 export interface RunCache {
-  readonly get: (executionId: string) => LoadedRun | undefined;
-  readonly put: (executionId: string, loaded: LoadedRun) => void;
-  readonly drop: (executionId: string) => void;
+  readonly get: (runId: string) => LoadedRun | undefined;
+  readonly put: (runId: string, loaded: LoadedRun) => void;
+  readonly drop: (runId: string) => void;
 }
 
 interface DecidedRun {
   readonly loaded: LoadedRun;
-  readonly events: readonly RunEvent[];
+  readonly events: readonly RunLogEvent[];
   readonly state: RunState;
   readonly version: number;
 }
@@ -33,33 +33,33 @@ function bytesOf({ state }: LoadedRun): number {
 export function runCacheOf({ mostRuns, mostBytes }: RunCacheBounds = runCacheBounds): RunCache {
   const runs = new Map<string, LoadedRun>();
   const held = { bytes: 0 };
-  const drop = (executionId: string): void => {
-    const kept = runs.get(executionId);
+  const drop = (runId: string): void => {
+    const kept = runs.get(runId);
     if (kept !== undefined) {
-      runs.delete(executionId);
+      runs.delete(runId);
       held.bytes -= bytesOf(kept);
     }
   };
   const evictLeastRecentlyUsed = (): void => {
-    for (const executionId of runs.keys()) {
+    for (const runId of runs.keys()) {
       if (runs.size <= mostRuns && held.bytes <= mostBytes) {
         return;
       }
-      drop(executionId);
+      drop(runId);
     }
   };
   return {
-    get: (executionId) => {
-      const kept = runs.get(executionId);
+    get: (runId) => {
+      const kept = runs.get(runId);
       if (kept !== undefined) {
-        runs.delete(executionId);
-        runs.set(executionId, kept);
+        runs.delete(runId);
+        runs.set(runId, kept);
       }
       return kept;
     },
-    put: (executionId, loaded) => {
-      drop(executionId);
-      runs.set(executionId, loaded);
+    put: (runId, loaded) => {
+      drop(runId);
+      runs.set(runId, loaded);
       held.bytes += bytesOf(loaded);
       evictLeastRecentlyUsed();
     },
@@ -67,33 +67,33 @@ export function runCacheOf({ mostRuns, mostBytes }: RunCacheBounds = runCacheBou
   };
 }
 
-function loadedFromStore(runStore: RunStore, cache: RunCache, executionId: string): Effect.Effect<LoadedRun> {
-  return Effect.map(runStore.load(executionId), (stored) => {
+function loadedFromStore(runStore: RunLogStore, cache: RunCache, runId: string): Effect.Effect<LoadedRun> {
+  return Effect.map(runStore.load(runId), (stored) => {
     const loaded = loadedRunOf(stored);
-    cache.put(executionId, loaded);
+    cache.put(runId, loaded);
     return loaded;
   });
 }
 
-export function cachedLoadOf(runStore: RunStore, cache: RunCache): (executionId: string) => Effect.Effect<LoadedRun> {
-  return (executionId) => {
-    const kept = cache.get(executionId);
+export function cachedLoadOf(runStore: RunLogStore, cache: RunCache): (runId: string) => Effect.Effect<LoadedRun> {
+  return (runId) => {
+    const kept = cache.get(runId);
     if (kept === undefined) {
-      return loadedFromStore(runStore, cache, executionId);
+      return loadedFromStore(runStore, cache, runId);
     }
-    return Effect.flatMap(runStore.eventsAfter(executionId, kept.version), (newer) => {
+    return Effect.flatMap(runStore.eventsAfter(runId, kept.version), (newer) => {
       if (newer.length === 0) {
         return Effect.succeed(kept);
       }
-      cache.drop(executionId);
-      return loadedFromStore(runStore, cache, executionId);
+      cache.drop(runId);
+      return loadedFromStore(runStore, cache, runId);
     });
   };
 }
 
-export function keptAfter(cache: RunCache, executionId: string, decided: DecidedRun): void {
+export function keptAfter(cache: RunCache, runId: string, decided: DecidedRun): void {
   if (decided.events.length > 0) {
     const sinceSnapshot = sinceSnapshotAfter(decided.loaded.sinceSnapshot, decided.events);
-    cache.put(executionId, { state: decided.state, version: decided.version, sinceSnapshot });
+    cache.put(runId, { state: decided.state, version: decided.version, sinceSnapshot });
   }
 }

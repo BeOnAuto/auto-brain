@@ -56,17 +56,17 @@ export function runsOf(groups: readonly RunOutcomeGroup[]): readonly string[] {
 }
 
 export async function fourRuns(ledger: AnyLedger): Promise<void> {
-  await noting(ledger, 'brain/acme/alpha/executions/r1', began('triage'), ended('succeeded', 120, 40));
-  await noting(ledger, 'brain/acme/alpha/executions/r2', began('triage'));
-  await noting(ledger, 'brain/acme/alpha/executions/r2', ended('succeeded', 80, 2));
-  await noting(ledger, 'brain/acme/alpha/executions/r3', began('triage'), ended('rejected', null));
-  await noting(ledger, 'brain/acme/alpha/executions/r4', began('draft', '2026-10-02T23:59:59.999Z'));
+  await noting(ledger, 'brain/acme/alpha/runs/r1', began('triage'), ended('succeeded', 120, 40));
+  await noting(ledger, 'brain/acme/alpha/runs/r2', began('triage'));
+  await noting(ledger, 'brain/acme/alpha/runs/r2', ended('succeeded', 80, 2));
+  await noting(ledger, 'brain/acme/alpha/runs/r3', began('triage'), ended('rejected', null));
+  await noting(ledger, 'brain/acme/alpha/runs/r4', began('draft', '2026-10-02T23:59:59.999Z'));
 }
 
 export const fourRunsKept: readonly RunOutcomeGroup[] = [
   {
     day: '2026-10-01',
-    primitive: 'tally',
+    definitionType: 'tally',
     name: 'triage',
     status: 'rejected',
     runs: 1,
@@ -77,7 +77,7 @@ export const fourRunsKept: readonly RunOutcomeGroup[] = [
   },
   {
     day: '2026-10-01',
-    primitive: 'tally',
+    definitionType: 'tally',
     name: 'triage',
     status: 'succeeded',
     runs: 2,
@@ -88,7 +88,7 @@ export const fourRunsKept: readonly RunOutcomeGroup[] = [
   },
   {
     day: '2026-10-02',
-    primitive: 'tally',
+    definitionType: 'tally',
     name: 'draft',
     status: 'started',
     runs: 1,
@@ -110,12 +110,12 @@ function theRowOfEachRun(aLedger: LedgerKeeping): void {
 
     it('keep to the days of the window, the selection, and the brain matched exactly', async () => {
       const ledger = await aLedger(runTallies);
-      await noting(ledger, 'brain/acme/alpha/executions/r1', began('triage', '2026-09-30T23:59:59.999Z'));
-      await noting(ledger, 'brain/acme/alpha/executions/r2', began('triage', '2026-10-01T00:00:00.000Z'));
-      await noting(ledger, 'brain/acme/alpha/executions/r3', began('draft', '2026-10-01T00:00:00.000Z'));
+      await noting(ledger, 'brain/acme/alpha/runs/r1', began('triage', '2026-09-30T23:59:59.999Z'));
+      await noting(ledger, 'brain/acme/alpha/runs/r2', began('triage', '2026-10-01T00:00:00.000Z'));
+      await noting(ledger, 'brain/acme/alpha/runs/r3', began('draft', '2026-10-01T00:00:00.000Z'));
       await Promise.all(
-        ['brain/acme/alpha2/executions/r4', 'brain/acme/Alpha/executions/r5', 'brain/acme/alph_/executions/r6'].map(
-          (stream) => noting(ledger, stream, began('triage', '2026-10-01T00:00:00.000Z')),
+        ['brain/acme/alpha2/runs/r4', 'brain/acme/Alpha/runs/r5', 'brain/acme/alph_/runs/r6'].map((stream) =>
+          noting(ledger, stream, began('triage', '2026-10-01T00:00:00.000Z')),
         ),
       );
 
@@ -123,8 +123,8 @@ function theRowOfEachRun(aLedger: LedgerKeeping): void {
         reading(ledger, { from: '2026-10-01', to: '2026-10-01' }),
         reading(ledger, { from: '2026-09-30', to: '2026-09-30' }),
         reading(ledger, october, { name: 'draft' }),
-        reading(ledger, october, { primitive: 'other' }),
-        reading(ledger, october, { primitive: 'tally', name: 'triage' }),
+        reading(ledger, october, { definitionType: 'other' }),
+        reading(ledger, october, { definitionType: 'tally', name: 'triage' }),
         reading(ledger, october, {}, { org: 'acme', brain: 'alph_' }),
       ]);
 
@@ -140,9 +140,9 @@ function theRowOfEachRun(aLedger: LedgerKeeping): void {
 
     it('leave out other streams, a stream nested under a run, other types, and what the mapping keeps nothing of', async () => {
       const ledger = await aLedger(runTallies);
-      await noting(ledger, 'brain/acme/alpha/runs/r1', began('triage'));
-      await noting(ledger, 'brain/acme/alpha/executions/r2/nested', began('triage'));
-      await noting(ledger, 'brain/acme/alpha/executions/r3', ended('failed', 5), { type: 'run_noted' });
+      await noting(ledger, 'brain/acme/alpha/run-logs/r1', began('triage'));
+      await noting(ledger, 'brain/acme/alpha/runs/r2/nested', began('triage'));
+      await noting(ledger, 'brain/acme/alpha/runs/r3', ended('failed', 5), { type: 'run_noted' });
 
       expect(await reading(ledger)).toEqual([]);
     });

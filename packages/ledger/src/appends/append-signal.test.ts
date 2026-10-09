@@ -58,7 +58,7 @@ describe('the signal of an append to a brain', () => {
     const store = failingStore();
 
     expect([
-      brainKeyOfStream('brain/acme/alpha/executions/run-1'),
+      brainKeyOfStream('brain/acme/alpha/runs/run-1'),
       brainKeyOfStream('brain/acme/alpha'),
       signalledOn(store) === store,
     ]).toEqual(['brain/acme/alpha/', undefined, true]);

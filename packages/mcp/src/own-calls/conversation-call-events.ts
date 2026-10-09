@@ -32,7 +32,7 @@ const answeredFields = {
 const TellingStartedSchema = Schema.Struct({
   type: Schema.Literal('telling_started'),
   call_id: Schema.String,
-  execution_id: Schema.String,
+  run_id: Schema.String,
   ...theTool,
   ...startedFields,
   ...ofTheBrain,

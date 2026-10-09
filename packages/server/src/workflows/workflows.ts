@@ -1,7 +1,7 @@
 import type { AppRuntime } from '@beonauto/api';
+import { callMarginMs, defineSendRunEvent, makeWorkflowAdapter, runPresenter } from '@beonauto/coordination';
+import { defineStartVersion, type BrainOperation, type Capability } from '@beonauto/definitions';
 import { makeCatalog, makeDispatcher, type DispatcherServices, type Registration } from '@beonauto/operations';
-import { callMarginMs, defineSendExecutionEvent, makeWorkflowAdapter, runPresenter } from '@beonauto/orchestration';
-import { defineStartVersion, type BrainOperation, type Primitive } from '@beonauto/specs';
 import type { WorkflowHost } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
 
@@ -19,8 +19,8 @@ export interface WorkflowParts extends HostParts {
   readonly brainOperations: readonly BrainOperation[];
 }
 
-export function longestCallOf(primitives: readonly Pick<Primitive, 'longestExecutionMs'>[]): number {
-  return Math.max(0, ...primitives.map(({ longestExecutionMs }) => longestExecutionMs)) + callMarginMs;
+export function longestCallOf(capabilities: readonly Pick<Capability, 'longestAnyRunMs'>[]): number {
+  return Math.max(0, ...capabilities.map(({ longestAnyRunMs }) => longestAnyRunMs)) + callMarginMs;
 }
 
 function onceOpened(opening: Promise<WorkflowHost>): Pick<WorkflowHost, 'start'> {
@@ -39,16 +39,16 @@ export async function serveWorkflows(runtime: AppRuntime<DispatcherServices>, pa
   const workflow = makeWorkflowAdapter({
     runs: onceOpened(opening.promise),
     mostDurationMs: parts.workflows.mostDurationMs,
-    longestCallMs: longestCallOf(parts.primitives),
+    longestCallMs: longestCallOf(parts.capabilities),
   });
-  const primitives = [...parts.primitives, workflow];
-  const host = await openedHost(runtime, dispatcher, { ...parts, primitives }, defineStartVersion(primitives));
+  const capabilities = [...parts.capabilities, workflow];
+  const host = await openedHost(runtime, dispatcher, { ...parts, capabilities }, defineStartVersion(capabilities));
   opening.resolve(host);
   const catalog = makeCatalog([
     ...parts.orgOperations,
-    ...brainOperationsServing(primitives, [runPresenter]),
+    ...brainOperationsServing(capabilities, [runPresenter]),
     ...parts.brainOperations,
-    defineSendExecutionEvent(host),
+    defineSendRunEvent(host),
   ]);
-  return { routes: routesFor(runtime, catalog, dispatcher, primitives), stopWork: host.stop };
+  return { routes: routesFor(runtime, catalog, dispatcher, capabilities), stopWork: host.stop };
 }

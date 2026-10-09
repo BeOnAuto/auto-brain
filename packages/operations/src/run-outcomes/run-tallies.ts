@@ -30,7 +30,13 @@ const decodeFact = Schema.decodeUnknownOption(TalliedSchema);
 function tallied(row: RunOutcome | undefined, fact: typeof TalliedSchema.Type): RunOutcome | undefined {
   if (fact.type === 'run_began') {
     const { at, fn } = fact;
-    const started = { startedDay: at.slice(0, 10), startedAt: at, lastStartedAt: at, primitive: 'tally', name: fn };
+    const started = {
+      startedDay: at.slice(0, 10),
+      startedAt: at,
+      lastStartedAt: at,
+      definitionType: 'tally',
+      name: fn,
+    };
     return {
       ...started,
       status: 'started',
@@ -55,7 +61,7 @@ export const runTallies: RunOutcomeMapping = {
 
 const GroupSchema = Schema.Struct({
   day: Schema.String,
-  primitive: Schema.String,
+  definitionType: Schema.String,
   name: Schema.String,
   status: Schema.String,
   runs: Schema.Int,

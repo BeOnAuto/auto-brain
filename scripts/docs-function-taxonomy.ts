@@ -6,12 +6,12 @@ import {
   functionDescriptions,
   functionKindOrder,
   functionResourceLabels,
-} from '@beonauto/specs';
+} from '@beonauto/definitions';
 
 export const functionTaxonomyDocument = `${JSON.stringify(
   {
     schema: 1,
-    source: '@beonauto/specs',
+    source: '@beonauto/definitions',
     functions: functionKindOrder.map((kind) => ({
       kind,
       label: functionCategoryLabels[kind],

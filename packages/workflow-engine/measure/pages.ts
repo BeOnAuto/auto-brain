@@ -19,12 +19,12 @@ const turns = 9;
 function reviewed(index: number): JsonObject {
   return {
     specversion: '1.0',
-    source: `/executions/0199a3c4-7d2e-7c1a-9b3f-${String(index).padStart(12, '0')}`,
-    type: 'execution_succeeded',
-    subject: 'inference/review-brief',
+    source: `/runs/0199a3c4-7d2e-7c1a-9b3f-${String(index).padStart(12, '0')}`,
+    type: 'run_succeeded',
+    subject: 'reasoning/review-brief',
     time: new Date(Date.UTC(2026, 9, 6) + index * 1000).toISOString(),
     data: {
-      primitive: 'inference',
+      type: 'reasoning',
       name: 'review-brief',
       version: 1,
       output: { campaign: `campaign-${index % 100}`, verdict: index % 3 === 0 ? 'reject' : 'approve' },
@@ -42,7 +42,7 @@ function pageOf(count: number): FoldRequest {
         : [
             {
               fold: reviewsFold,
-              filters: [{ type: 'execution_succeeded', subject: 'inference/review-brief' }],
+              filters: [{ type: 'run_succeeded', subject: 'reasoning/review-brief' }],
               view: {},
               events: page.map((_, index) => index),
             },

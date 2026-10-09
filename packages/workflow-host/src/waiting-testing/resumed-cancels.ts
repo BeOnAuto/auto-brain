@@ -29,22 +29,22 @@ const outcomes: Readonly<Record<string, Submission['outcome'] | 'conflict'>> = {
   'acme/alpha/stranded': 'not_started',
 };
 
-async function pendingFor(runIds: readonly string[], database: HostDatabase): Promise<void> {
+async function pendingFor(runKeys: readonly string[], database: HostDatabase): Promise<void> {
   await Effect.runPromise(
-    Effect.forEach(runIds, (runId) => passedOverRow(database, { runId, cause: `${runId}-asked`, cancel })),
+    Effect.forEach(runKeys, (runKey) => passedOverRow(database, { runKey, cause: `${runKey}-asked`, cancel })),
   );
 }
 
-export async function resumedWith(settingsOf: SettingsOf, runIds: readonly string[]): Promise<ResumedCancels> {
+export async function resumedWith(settingsOf: SettingsOf, runKeys: readonly string[]): Promise<ResumedCancels> {
   const database = faultyDatabase(await openedOn(await settingsOf()));
-  await pendingFor(runIds, database);
+  await pendingFor(runKeys, database);
   const given: string[] = [];
   const troubles: string[] = [];
   const failing = { still: true };
   const submitted = (input: RunInput) =>
     Effect.suspend(() => {
-      given.push(input.executionId);
-      const outcome = outcomes[input.executionId] ?? 'applied';
+      given.push(input.runId);
+      const outcome = outcomes[input.runId] ?? 'applied';
       return outcome === 'conflict' && failing.still
         ? Effect.fail(new Conflict({ detail: 'The log of the run kept changing' }))
         : Effect.succeed({ outcome: outcome === 'conflict' ? 'applied' : outcome, version: 2 });
@@ -60,19 +60,19 @@ export async function resumedWith(settingsOf: SettingsOf, runIds: readonly strin
     troubles: () => troubles,
     resume: () => Effect.runPromise(cancelsAsked),
     pending: async () =>
-      (await Effect.runPromise(pendingCancelRowsAfter(database, '', 1000))).map(({ runId }) => runId),
+      (await Effect.runPromise(pendingCancelRowsAfter(database, '', 1000))).map(({ runKey }) => runKey),
     failingNoMore: () => {
       failing.still = false;
     },
   };
 }
 
-const ofTheRun = { primitive: 'orchestration', name: 'pause', spec_version: 1, by: 'acme-admin', at };
+const ofTheRun = { definition_type: 'workflow', name: 'pause', definition_version: 1, by: 'acme-admin', at };
 
-const asked = { type: 'execution_cancel_requested', kind: 'requested', reason: 'Not needed any more', ...ofTheRun };
+const asked = { type: 'run_cancel_requested', kind: 'requested', reason: 'Not needed any more', ...ofTheRun };
 
 const rejectedUnstarted = {
-  type: 'execution_rejected',
+  type: 'run_rejected',
   rejection: { reason: 'unavailable', detail: 'The workflow could not be started' },
   ...ofTheRun,
 };
@@ -81,9 +81,9 @@ export function endedRunSuite(settingsOf: SettingsOf): void {
   describe('a cancel kept for a run that finished without ever reaching the host', () => {
     it('is cleared by the newest head of the run, read first, and given to no run', async () => {
       const resumed = await resumedWith(settingsOf, ['acme/alpha/finished-unstarted', 'acme/alpha/stranded']);
-      await recorded(resumed.database.store, `${alpha}executions/finished-unstarted`, asked);
-      await recorded(resumed.database.store, `${alpha}executions/finished-unstarted`, rejectedUnstarted);
-      await recorded(resumed.database.store, `${alpha}executions/stranded`, asked);
+      await recorded(resumed.database.store, `${alpha}runs/finished-unstarted`, asked);
+      await recorded(resumed.database.store, `${alpha}runs/finished-unstarted`, rejectedUnstarted);
+      await recorded(resumed.database.store, `${alpha}runs/stranded`, asked);
 
       await resumed.resume();
 

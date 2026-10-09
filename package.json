@@ -30,7 +30,7 @@
     "prepare": "lefthook install"
   },
   "devDependencies": {
-    "@beonauto/specs": "workspace:*",
+    "@beonauto/definitions": "workspace:*",
     "@commitlint/cli": "21.2.3",
     "@commitlint/config-conventional": "21.2.3",
     "@commitlint/types": "21.2.3",

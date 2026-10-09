@@ -5,7 +5,7 @@ import type { CancelOrder, RunLimits, Started } from '../machine/run-input.ts';
 import type { MachineOptions } from '../runner/run-descriptors.ts';
 
 export interface StartRequest {
-  readonly executionId: string;
+  readonly runId: string;
   readonly document: JsonObject;
   readonly input?: Json;
   readonly limits?: Partial<RunLimits>;
@@ -38,10 +38,10 @@ export const defaultSeed = 7;
 export const testCancel: CancelOrder = { by: 'tester', kind: 'requested', reason: 'The test cancelled the run' };
 
 export function startedOf(request: StartRequest, at: number): Started {
-  const { executionId, document, input = {}, limits = {}, attributes = {}, seed = defaultSeed } = request;
+  const { runId, document, input = {}, limits = {}, attributes = {}, seed = defaultSeed } = request;
   return {
     kind: 'started',
-    executionId,
+    runId,
     at,
     document,
     input,

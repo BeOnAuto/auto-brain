@@ -14,13 +14,13 @@ describe('a host given a store and the settings of views', { timeout: viewTestTi
     const settings = await onSQLite();
     const views = await viewHarness(settings);
     await views.saved('runs', counting);
-    await views.ran('inference/runs', 1);
+    await views.ran('reasoning/runs', 1);
     const store = await openWorkflowStore(settings, Function.constVoid);
 
     const hosted = await hostedOn(store, { views: views.settingsOf() });
     const kept = await views.until('runs', ({ folded }) => folded === 1);
     await hosted.host.stop();
-    await views.ran('inference/runs', 2);
+    await views.ran('reasoning/runs', 2);
     await setTimeout(300);
     const afterStopping = await views.viewOf('runs');
 

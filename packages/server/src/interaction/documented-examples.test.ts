@@ -1,12 +1,12 @@
 import { withMcpSession } from '@beonauto/api/testing';
-import { answers, textResult } from '@beonauto/inference/testing';
+import { answers, textResult } from '@beonauto/reasoning/testing';
 import { Schema } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { interactionServerOn } from '../testing/servers/interaction-server.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
 import { fencedBlocksOf, pageOf, tutorialRunOn } from '../testing/servers/tutorial-calls.ts';
-import { executionIdIn, servingWorkflows, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { runIdIn, servingWorkflows, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 const reference = fencedBlocksOf('reference/interaction-format.md');
 
@@ -16,20 +16,20 @@ describe('the example of the interaction function format', { timeout: workflowTe
   it('asks through the inbox in a workflow that takes the answer the page shows as its output', async () => {
     const server = await interactionServerOn({});
     await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
-    await server.call('POST', `${alpha}/specs/interaction`, {
+    await server.call('POST', `${alpha}/definitions/interaction`, {
       body: { name: 'approve-brief', source: reference.get('markdown') },
     });
-    await server.call('POST', `${alpha}/specs/orchestration`, {
+    await server.call('POST', `${alpha}/definitions/workflow`, {
       body: { name: 'brief-approval', source: reference.get('yaml') },
     });
-    const started = await server.call('POST', `${alpha}/specs/orchestration/brief-approval/execute`, {
+    const started = await server.call('POST', `${alpha}/definitions/workflow/brief-approval/run`, {
       body: { input: { campaign: 'Spring', owner: 'ada', summary: 'A brief for the spring sale.' } },
     });
     const [request] = await server.openRequests(1);
     const answered = await server.answer(String(request), decodeAnswer(reference.get('json')));
 
     expect(answered.status).toBe(200);
-    expect(await server.settled(executionIdIn(started.body))).toMatchObject({
+    expect(await server.settled(runIdIn(started.body))).toMatchObject({
       status: 'succeeded',
       output: { choice: 'approve', note: 'Ready to launch.' },
     });

@@ -17,11 +17,11 @@ interface Bounds {
   readonly example: number;
 }
 
-const mostFunctions: Bounds = { setting: 'RECOLLECTION_MAX_FUNCTIONS', least: 1, most: 1000, example: 32 };
+const mostFunctions: Bounds = { setting: 'RECALL_MAX_FUNCTIONS', least: 1, most: 1000, example: 32 };
 
-const rebuildsAtOnce: Bounds = { setting: 'RECOLLECTION_MAX_REBUILDS', least: 1, most: 64, example: 4 };
+const rebuildsAtOnce: Bounds = { setting: 'RECALL_MAX_REBUILDS', least: 1, most: 64, example: 4 };
 
-const brainsAtOnce: Bounds = { setting: 'RECOLLECTION_BRAINS_AT_ONCE', least: 1, most: 64, example: 4 };
+const brainsAtOnce: Bounds = { setting: 'RECALL_BRAINS_AT_ONCE', least: 1, most: 64, example: 4 };
 
 function sourceOf({ setting, example }: Bounds): Config.Config<string> {
   return Config.String(setting).pipe(Config.withDefault(String(example)));

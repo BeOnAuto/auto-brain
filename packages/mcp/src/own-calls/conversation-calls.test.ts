@@ -46,10 +46,10 @@ function decided(event: ConversationCallEvent, ...history: readonly Conversation
 
 describe('a telling the brain makes in a conversation', () => {
   it('records its start with the call it sends and its end with what the tool answered', () => {
-    expect(tellingStartedOf({ callId: 'call-2', executionId: 'run-1' }, started, recorded)).toEqual({
+    expect(tellingStartedOf({ callId: 'call-2', runId: 'run-1' }, started, recorded)).toEqual({
       type: 'telling_started',
       call_id: 'call-2',
-      execution_id: 'run-1',
+      run_id: 'run-1',
       ...started,
       ...recorded,
     });
@@ -147,7 +147,7 @@ describe('a read the brain could not send', () => {
 });
 
 describe('the turns of a call in a conversation', () => {
-  const telling = tellingStartedOf({ callId: 'call-2', executionId: 'run-1' }, started, recorded);
+  const telling = tellingStartedOf({ callId: 'call-2', runId: 'run-1' }, started, recorded);
   const ending = tellingEndedOf('call-2', answered, recorded);
   const read = repliesReadOf(reading, recorded);
 

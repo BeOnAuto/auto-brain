@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseEnv } from 'node:util';
 
-import { providerStatus } from '@beonauto/inference';
+import { providerStatus } from '@beonauto/reasoning';
 import { describe, expect, it } from 'vitest';
 
 import { readSettings } from '../settings/settings.ts';

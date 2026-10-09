@@ -8,16 +8,16 @@ import { describe, expect, it } from 'vitest';
 import { eventually } from '../testing/eventually.ts';
 import { faultyDatabase, type FaultyDatabase } from '../testing/faulty-database.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
-import { runId } from '../testing/probe-subjects.ts';
+import { runKey } from '../testing/probe-subjects.ts';
 import { hostExecutor, type Deliver, type HostExecutor } from './host-executor.ts';
 
 const origin = { version: 2, lastStep: null };
 
-const run = { executionId: runId, attributes: { org: 'acme' } };
+const run = { runId: runKey, attributes: { org: 'acme' } };
 
 const call: StartCall = {
   kind: 'start_call',
-  key: { executionId: runId, reference: '/do/0/notify', run: 1 },
+  key: { runId: runKey, reference: '/do/0/notify', run: 1 },
   function: 'notify',
   arguments: { to: 'ada' },
   longestMs: 60_000,
@@ -156,7 +156,7 @@ describe('the executor of the host, resuming recorded answers', () => {
     {
       status: 'rejected',
       reason: 'invalid_arguments',
-      detail: 'The input of execute_spec takes 262211 bytes as JSON, more than the 262144 a run takes',
+      detail: 'The input of run_definition takes 262211 bytes as JSON, more than the 262144 a run takes',
     },
   ])('gives a recorded $status answer, as it was recorded, when it next resumes', async (recorded) => {
     const calls = await executing(() => Effect.succeed(recorded));

@@ -11,11 +11,11 @@ import { childEndings, endedChildrenOn } from './child-endings.ts';
 
 const child = '0199a3c4-7d2e-7c1a-9b3f-0000000000c1';
 
-const calledBy = { execution_id: parentId, reference: '/do/0/ask', run: 1 };
+const calledBy = { run_id: parentId, reference: '/do/0/ask', run: 1 };
 
-const ofTheChild = { primitive: 'orchestration', name: 'check', spec_version: 1, by: 'brain:alpha', at };
+const ofTheChild = { definition_type: 'workflow', name: 'check', definition_version: 1, by: 'brain:alpha', at };
 
-const succeeded = { type: 'execution_succeeded', output: 'checked', record: {}, ...ofTheChild, called_by: calledBy };
+const succeeded = { type: 'run_succeeded', output: 'checked', record: {}, ...ofTheChild, called_by: calledBy };
 
 const endingRecord = {
   brain: { org: 'acme', brain: 'alpha' },
@@ -25,7 +25,7 @@ const endingRecord = {
     cursor: 'record-1',
     causationId: null,
     correlationId: null,
-    stream: `executions/${child}`,
+    stream: `runs/${child}`,
     version: 2,
     type: succeeded.type,
     data: succeeded,
@@ -37,7 +37,7 @@ describe('the ending of a run that answers a call', () => {
   it('is delivered by the follower to the step that waits for it, as its answer, and the call is answered', async () => {
     const { database, settled, answeredCalls } = await waitingParent(child);
 
-    await recorded(database.store, `${alpha}executions/${child}`, succeeded);
+    await recorded(database.store, `${alpha}runs/${child}`, succeeded);
 
     expect(await settled(parentId)).toEqual({ status: 'succeeded', output: 'checked' });
     expect(await answeredCalls()).toEqual([{ state: 'answered', delivered: 1 }]);
@@ -56,20 +56,20 @@ describe('the ending of a run that answers a call', () => {
       },
     });
 
-    await recorded(database.store, `${alpha}executions/${child}`, succeeded);
-    await recorded(database.store, `${alpha}executions/${child}`, succeeded);
-    await recorded(database.store, `${alpha}executions/${child}x`, {
-      type: 'execution_failed',
+    await recorded(database.store, `${alpha}runs/${child}`, succeeded);
+    await recorded(database.store, `${alpha}runs/${child}`, succeeded);
+    await recorded(database.store, `${alpha}runs/${child}x`, {
+      type: 'run_failed',
       ...ofTheChild,
       called_by: calledBy,
     });
     await settled(parentId);
     await eventually(
       (): readonly string[] => mapped,
-      (types) => types.includes('execution_failed'),
+      (types) => types.includes('run_failed'),
     );
 
-    expect(mapped).toContain('execution_failed');
+    expect(mapped).toContain('run_failed');
     expect(hosted.troubles()).toEqual([]);
   });
 });
@@ -98,8 +98,8 @@ describe('a delivery of an ending that the run cannot take now', () => {
 describe('the endings of the runs a run waits for, before a timer of that run fires', () => {
   it('are delivered first, so a child that ended while the server was down answers before the deadline', async () => {
     const { database, callStates } = await waitingParent(child);
-    await recorded(database.store, `${alpha}executions/${child}`, {
-      type: 'execution_started',
+    await recorded(database.store, `${alpha}runs/${child}`, {
+      type: 'run_started',
       ...ofTheChild,
       input: {},
     });
@@ -117,8 +117,8 @@ describe('the endings of the runs a run waits for, before a timer of that run fi
 
     await Effect.runPromise(endedChildren(parentRun));
     const whileGoing = submitted.length;
-    await recorded(database.store, `${alpha}executions/${child}`, {
-      type: 'execution_rejected',
+    await recorded(database.store, `${alpha}runs/${child}`, {
+      type: 'run_rejected',
       rejection: { reason: 'cancelled', detail: 'Expired', kind: 'deadline' },
       ...ofTheChild,
       called_by: calledBy,
@@ -129,9 +129,9 @@ describe('the endings of the runs a run waits for, before a timer of that run fi
     expect(submitted).toEqual([
       {
         kind: 'call_answered',
-        executionId: parentRun,
+        runId: parentRun,
         at: 1,
-        key: { executionId: parentRun, reference: '/do/0/ask', run: 1 },
+        key: { runId: parentRun, reference: '/do/0/ask', run: 1 },
         result: { status: 'rejected', reason: 'cancelled', detail: 'Expired' },
       },
     ]);

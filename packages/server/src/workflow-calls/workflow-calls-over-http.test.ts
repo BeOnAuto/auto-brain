@@ -1,9 +1,9 @@
-import { answers, textResult } from '@beonauto/inference/testing';
+import { answers, textResult } from '@beonauto/reasoning/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import { ended, runsOf, servingCalls, startedRunOf, until } from '../testing/servers/workflow-calls.ts';
-import { executionIdIn, settledExecution, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { runIdIn, settledRun, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 let server: ReasoningServer;
 
@@ -13,7 +13,7 @@ afterEach(async () => {
 
 async function settledRunOf(name: string) {
   const started = await startedRunOf(server, name);
-  return settledExecution(server, `${alpha}/executions/${executionIdIn(started.body)}`);
+  return settledRun(server, `${alpha}/runs/${runIdIn(started.body)}`);
 }
 
 describe('a workflow that calls a workflow, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
@@ -35,10 +35,10 @@ describe('a workflow that calls a workflow, over HTTP', { timeout: workflowTestT
       () => runsOf(server, 'pending'),
       (runs) => runs.length === 1,
     );
-    const cancelled = await server.call('POST', `${alpha}/executions/${String(pending?.execution_id)}/cancel`, {
+    const cancelled = await server.call('POST', `${alpha}/runs/${String(pending?.run_id)}/cancel`, {
       body: { reason: 'No longer needed' },
     });
-    const settled = await settledExecution(server, `${alpha}/executions/${executionIdIn(started.body)}`);
+    const settled = await settledRun(server, `${alpha}/runs/${runIdIn(started.body)}`);
 
     expect(cancelled).toMatchObject({ status: 200, body: { status: 'started' } });
     expect(settled).toMatchObject({ body: { status: 'succeeded', output: { caught: 'requested' } } });
@@ -66,7 +66,7 @@ describe('workflows that call workflows, over HTTP', { timeout: workflowTestTime
   });
 
   it('keep no more calls open under one run than the server allows, refusing the next', async () => {
-    server = await servingCalls([], { ORCHESTRATION_MAX_OPEN_CALLS: '2' });
+    server = await servingCalls([], { WORKFLOW_MAX_OPEN_CALLS: '2' });
 
     const settled = await settledRunOf('wide');
     const pending = await until(() => runsOf(server, 'pending'), ended);
@@ -79,7 +79,7 @@ describe('workflows that call workflows, over HTTP', { timeout: workflowTestTime
   });
 
   it('release the call while the run it waits for runs, so one call at once still lets many runs wait', async () => {
-    server = await servingCalls([], { ORCHESTRATION_NESTED_EXECUTIONS: '1' });
+    server = await servingCalls([], { WORKFLOW_NESTED_RUNS: '1' });
 
     await startedRunOf(server, 'waiting');
     await startedRunOf(server, 'waiting');

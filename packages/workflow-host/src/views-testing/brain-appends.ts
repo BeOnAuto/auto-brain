@@ -41,26 +41,26 @@ function appendOn(store: EventStore, appends: AppendSignal): Append {
 
 function ranBy(append: Append): Ran {
   return async (subject, output, { at = ranAt, brain = alpha } = {}) => {
-    const [primitive = '', name = ''] = subject.split('/');
+    const [type = '', name = ''] = subject.split('/');
     const id = randomUUID();
-    const definition = { primitive, name, spec_version: 1, by: 'acme-admin', at };
-    await append(`${brainKeyOf(brain)}executions/${id}`, [
-      { type: 'execution_started', data: { type: 'execution_started', ...definition, input: {} } },
-      { type: 'execution_succeeded', data: { type: 'execution_succeeded', ...definition, output, record: {} } },
+    const definition = { definition_type: type, name, definition_version: 1, by: 'acme-admin', at };
+    await append(`${brainKeyOf(brain)}runs/${id}`, [
+      { type: 'run_started', data: { type: 'run_started', ...definition, input: {} } },
+      { type: 'run_succeeded', data: { type: 'run_succeeded', ...definition, output, record: {} } },
     ]);
     return id;
   };
 }
 
 function savedBy(append: Append): BrainAppends['saved'] {
-  const specs = new Map<string, number>();
+  const definitions = new Map<string, number>();
   return async (name, details, brain = alpha) => {
     const key = `${brainKeyOf(brain)}${name}`;
-    const version = (specs.get(key) ?? 0) + 1;
-    specs.set(key, version);
-    const type = version === 1 ? 'spec_created' : 'spec_updated';
+    const version = (definitions.get(key) ?? 0) + 1;
+    definitions.set(key, version);
+    const type = version === 1 ? 'definition_created' : 'definition_updated';
     const content = { source: `the ${name} document, version ${version}`, details };
-    await append(`${brainKeyOf(brain)}specs/recollection`, [
+    await append(`${brainKeyOf(brain)}definitions/recall`, [
       { type, data: { type, name, version, content, by: 'acme-admin', at: savedAt } },
     ]);
   };
@@ -73,18 +73,18 @@ export function brainAppends(store: EventStore, appends: AppendSignal): BrainApp
     append,
     saved: savedBy(append),
     retired: async (name) => {
-      const event = { type: 'spec_retired', name, by: 'acme-admin', at: savedAt };
-      await append(`${brainKeyOf(alpha)}specs/recollection`, [{ type: 'spec_retired', data: event }]);
+      const event = { type: 'definition_retired', name, by: 'acme-admin', at: savedAt };
+      await append(`${brainKeyOf(alpha)}definitions/recall`, [{ type: 'definition_retired', data: event }]);
     },
     ran,
     ranInOneStream: async (subject, outputs) => {
-      const [primitive = '', name = ''] = subject.split('/');
-      const definition = { primitive, name, spec_version: 1, by: 'acme-admin', at: ranAt };
+      const [type = '', name = ''] = subject.split('/');
+      const definition = { definition_type: type, name, definition_version: 1, by: 'acme-admin', at: ranAt };
       await append(
-        `${brainKeyOf(alpha)}executions/${randomUUID()}`,
+        `${brainKeyOf(alpha)}runs/${randomUUID()}`,
         outputs.map((output) => ({
-          type: 'execution_succeeded',
-          data: { type: 'execution_succeeded', ...definition, output, record: {} },
+          type: 'run_succeeded',
+          data: { type: 'run_succeeded', ...definition, output, record: {} },
         })),
       );
     },

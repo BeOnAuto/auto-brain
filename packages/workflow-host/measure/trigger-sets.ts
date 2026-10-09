@@ -1,4 +1,4 @@
-import type { Trigger } from '@beonauto/specs';
+import type { Trigger } from '@beonauto/definitions';
 
 import { cronTrigger, eventTrigger, everyTrigger } from '../src/reaction-testing/brain-writes.ts';
 

@@ -14,12 +14,12 @@ import {
 import { memoryRunStore } from '../memory/run-store.ts';
 import { countingDecider } from '../testing/counting-decider.ts';
 import { testCancel } from '../testing/driver-inputs.ts';
-import { at, executionId, runningState, started } from '../testing/runs.ts';
+import { at, runId, runningState, started } from '../testing/runs.ts';
 
-const cancelled: RunInput = { kind: 'cancel_requested', executionId, at: at + 1, cancel: testCancel };
+const cancelled: RunInput = { kind: 'cancel_requested', runId, at: at + 1, cancel: testCancel };
 
 function submitted(store: ReturnType<typeof memoryRunStore>, input: RunInput) {
-  return runLoopOf(store, countingDecider)(input.executionId, input).pipe(
+  return runLoopOf(store, countingDecider)(input.runId, input).pipe(
     Effect.map((decided) => submissionOf(decided, input)),
   );
 }
@@ -37,22 +37,22 @@ describe('the engine on the ledger loop', () => {
       { outcome: 'applied', version: 2 },
       { outcome: 'stale', version: 2 },
     ]);
-    expect(store.events(executionId).map(({ version }) => version)).toEqual([1, 2]);
+    expect(store.events(runId).map(({ version }) => version)).toEqual([1, 2]);
   });
 
   it('answers not_started for an input to a run whose start has not arrived, and appends nothing', async () => {
     const store = memoryRunStore();
 
     expect(await Effect.runPromise(submitted(store, cancelled))).toEqual({ outcome: 'not_started', version: 0 });
-    expect(store.events(executionId)).toEqual([]);
+    expect(store.events(runId)).toEqual([]);
   });
 
   it('counts the bytes of every event it appends in the state it folds', async () => {
     const store = memoryRunStore();
 
-    const { state } = await Effect.runPromise(runLoopOf(store, countingDecider)(executionId, started));
+    const { state } = await Effect.runPromise(runLoopOf(store, countingDecider)(runId, started));
 
-    expect(state.historyBytes).toBe(store.events(executionId).reduce((sum, { event }) => sum + eventBytesOf(event), 0));
+    expect(state.historyBytes).toBe(store.events(runId).reduce((sum, { event }) => sum + eventBytesOf(event), 0));
   });
 
   it('loads and decides again after a version conflict, and fails with the ledger Conflict after three more', async () => {
@@ -76,10 +76,10 @@ describe('a decision', () => {
       decide: (input, state) => Result.map(countingDecider.decide(input, state), (events) => [...events, ...events]),
     };
 
-    const exit = await Effect.runPromise(Effect.exit(runLoopOf(store, twice)(executionId, started)));
+    const exit = await Effect.runPromise(Effect.exit(runLoopOf(store, twice)(runId, started)));
 
-    expect(exit).toEqual(Exit.die(new SplitDecision({ executionId, events: 2 })));
-    expect(store.events(executionId)).toEqual([]);
+    expect(exit).toEqual(Exit.die(new SplitDecision({ runId, events: 2 })));
+    expect(store.events(runId)).toEqual([]);
   });
 });
 
@@ -88,7 +88,7 @@ describe('the run store the tests use', () => {
     const store = memoryRunStore();
     await Effect.runPromise(Effect.all([submitted(store, started), submitted(store, cancelled)]));
 
-    const after = await Effect.runPromise(store.eventsAfter(executionId, 1));
+    const after = await Effect.runPromise(store.eventsAfter(runId, 1));
 
     expect(after.map(({ version }) => version)).toEqual([2]);
     await Effect.runPromise(store.saveSnapshot(snapshotOf(runningState, 2)));

@@ -1,0 +1,121 @@
+import { Buffer } from 'node:buffer';
+
+import {
+  RunIdInputField,
+  RunSchema,
+  answeredByAReply,
+  brainBoundSettler,
+  recordedRunInBrain,
+  type RecordedRun,
+  refusingBlankText,
+  refusingForbiddenCharacters,
+} from '@beonauto/definitions';
+import {
+  BrainContext,
+  BrainReader,
+  BrainWriter,
+  Caller,
+  Conflict,
+  NotFound,
+  type InvalidInput,
+  defineCommand,
+} from '@beonauto/operations';
+import { Clock, Effect, Schema } from 'effect';
+
+import { interactionBounds } from '../run/run-bounds.ts';
+import { answerFor } from './answering.ts';
+import { correlationOfRun, openRequestRowIn } from './request-reads.ts';
+
+const ClaimedForField = Schema.String.annotate({
+  description: `Whom the caller says it answers for, kept with the answer as a claim and never checked, at most ${interactionBounds.claimBytes} bytes`,
+}).check(
+  Schema.makeFilter((text: string) => Buffer.byteLength(text, 'utf8') <= interactionBounds.claimBytes, {
+    expected: `at most ${interactionBounds.claimBytes} bytes`,
+  }),
+  refusingForbiddenCharacters,
+  refusingBlankText,
+);
+
+const description = [
+  "Answers a request an interaction function's run waits on, and settles the run for good:",
+  'the run succeeds with the answer as its output, which reaches the workflow step that waits for it.',
+  'Use it when the person approves, rejects, revises or otherwise answers a request list_interactions shows, wherever it reached them;',
+  'a new run asks again and answers nothing, and send_run_event gives an event to a waiting workflow instead.',
+  '`run_id` is the run of the request, and `answer` takes the shape of the request\'s answer_schema, which list_interactions shows, such as {"decision": "approve"}.',
+  '`claimed_for` is whom the caller says it answers for, kept as a claim.',
+  'The same answer again answers the run as it stands, and an answer that does not match leaves the request open.',
+].join(' ');
+
+const answerSchemaOf = Schema.decodeUnknownSync(Schema.Struct({ answer_schema: Schema.JsonObject }));
+
+const notARequest = new Conflict({
+  detail: 'The run is not a request of an interaction function that waits for an answer',
+});
+
+const takesNoAnswer = new Conflict({ detail: 'The request is a notification, which takes no answer' });
+
+interface Answering {
+  readonly id: string;
+  readonly answer: Schema.Json;
+  readonly claimedFor: string | undefined;
+}
+
+function checkedFor(run: RecordedRun, answer: Schema.Json): Effect.Effect<Schema.Json, InvalidInput | Conflict> {
+  if (!run.awaitsSettlement) {
+    return Effect.succeed(answer);
+  }
+  return answerFor(answer, answerSchemaOf(run.run.record).answer_schema);
+}
+
+const answered = Effect.fnUntraced(function* ({ id, answer, claimedFor }: Answering) {
+  const brain = yield* BrainContext;
+  const { id: answeredBy } = yield* Caller;
+  const row = yield* openRequestRowIn(id);
+  const run = yield* recordedRunInBrain(yield* BrainReader, id);
+  if (run === undefined) {
+    return yield* new NotFound({ detail: 'There is no such run in this brain' });
+  }
+  if (row === undefined) {
+    return yield* notARequest;
+  }
+  if (!row.answers) {
+    return yield* takesNoAnswer;
+  }
+  if (row.standing === 'answered') {
+    return yield* answeredByAReply;
+  }
+  const output = yield* checkedFor(run, answer);
+  const at = new Date(yield* Clock.currentTimeMillis).toISOString();
+  const record = {
+    answered_by: answeredBy,
+    ...(claimedFor === undefined ? {} : { claimed_for: claimedFor }),
+    answered_at: at,
+  };
+  return yield* brainBoundSettler(yield* BrainWriter)(
+    { ...brain, id },
+    { status: 'succeeded', output, record, by: answeredBy },
+    { causationId: row.request_id, correlationId: yield* correlationOfRun(id) },
+  ).pipe(Effect.catchTag('not_found', Effect.die));
+});
+
+export const answerInteraction = defineCommand('brain', {
+  name: 'answer_interaction',
+  title: 'Answer a request',
+  description,
+  route: { method: 'POST', path: '/runs/{run_id}/answer' },
+  irreversible: true,
+  repeatable: true,
+  inputSchema: Schema.Struct({
+    run_id: RunIdInputField,
+    answer: Schema.Json.annotate({ description: 'The answer, a JSON value the answer schema of the request takes' }),
+    claimed_for: Schema.optionalKey(ClaimedForField),
+  }),
+  outputSchema: RunSchema,
+  reasons: ['invalid_input', 'not_found', 'conflict'],
+  handle: ({ run_id: id, answer, claimed_for: claimedFor }) => answered({ id, answer, claimedFor }),
+  plainLanguage: {
+    task: 'answer a request',
+    attempt: () => 'answer the request',
+    outcome: () => 'The request is answered: the run that asked it succeeded, with the answer as its output.',
+  },
+});

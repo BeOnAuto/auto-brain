@@ -13,7 +13,7 @@ export interface CallerContext {
 export interface ServerMessage {
   readonly server: string;
   readonly message: string;
-  readonly execution_id: string | null;
+  readonly run_id: string | null;
   readonly tool_test_id: string | null;
 }
 

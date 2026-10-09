@@ -46,7 +46,7 @@ function rowAfterFact(
 export function tallyRowsOf(version: number, fail?: (row: ProjectedRow) => boolean): KeyedProjection {
   return {
     name: 'run_tallies',
-    kinds: ['executions'],
+    kinds: ['runs'],
     version,
     types: ['run_began', 'run_ended', 'run_noted'],
     columns: [

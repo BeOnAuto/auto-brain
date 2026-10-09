@@ -8,7 +8,7 @@ import type { DevelopmentSetup } from './development-run.ts';
 const repository = fileURLToPath(new URL('../../../../', import.meta.url));
 
 function workspaceSources(root: string): readonly string[] {
-  return ['packages', 'primitives']
+  return ['packages', 'capabilities']
     .flatMap((group) => readdirSync(join(root, group)).map((name) => join(root, group, name, 'src')))
     .filter((directory) => existsSync(directory));
 }

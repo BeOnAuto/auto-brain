@@ -1,24 +1,20 @@
-import { runStartedOf } from '@beonauto/specs';
+import { runStartedOf } from '@beonauto/definitions';
 import { Effect } from 'effect';
 
-export type WorkflowOfRun = (brainKey: string, executionId: string) => Effect.Effect<string | undefined>;
+export type WorkflowOfRun = (brainKey: string, runId: string) => Effect.Effect<string | undefined>;
 
 export type ReadStream = (stream: string) => Promise<{ readonly events: readonly unknown[] }>;
 
 const mostRunsRemembered = 4096;
 
-export function workflowsOfRuns(
-  read: ReadStream,
-  primitive: string,
-  mostRemembered = mostRunsRemembered,
-): WorkflowOfRun {
+export function workflowsOfRuns(read: ReadStream, type: string, mostRemembered = mostRunsRemembered): WorkflowOfRun {
   const remembered = new Map<string, string | undefined>();
   const workflowOf = (events: readonly unknown[]): string | undefined => {
     const started = runStartedOf(events[0]);
-    return started?.primitive === primitive ? started.name : undefined;
+    return started?.type === type ? started.name : undefined;
   };
-  return (brainKey, executionId) => {
-    const stream = `${brainKey}executions/${executionId}`;
+  return (brainKey, runId) => {
+    const stream = `${brainKey}runs/${runId}`;
     if (remembered.has(stream)) {
       return Effect.succeed(remembered.get(stream));
     }

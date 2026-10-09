@@ -1,9 +1,9 @@
+import type { SettleRun } from '@beonauto/definitions';
 import { Conflict, type Lineage, type Settlement } from '@beonauto/operations';
-import type { SettleExecution } from '@beonauto/specs';
 import { Effect } from 'effect';
 
 import type { HostNote, HostReports } from '../host/host-reports.ts';
-import { knownExecutions } from './known-executions.ts';
+import { knownRuns } from './known-runs.ts';
 
 export interface RecordingReports {
   readonly reports: HostReports;
@@ -12,11 +12,11 @@ export interface RecordingReports {
 }
 
 export interface RecordingSettlements {
-  readonly settle: SettleExecution;
+  readonly settle: SettleRun;
   readonly settlements: () => ReadonlyMap<string, Settlement>;
   readonly lineages: () => ReadonlyMap<string, Lineage | undefined>;
   readonly attempts: () => number;
-  readonly know: (executionId: string) => void;
+  readonly know: (runId: string) => void;
 }
 
 const ledgerUnreachable = new Conflict({ detail: 'The ledger cannot be reached' });
@@ -29,9 +29,9 @@ export function recordingReports(): RecordingReports {
   };
   return {
     reports: {
-      unsettled: ({ executionId, receipt }) =>
+      unsettled: ({ runId, receipt }) =>
         Effect.sync(() => {
-          noted(`${executionId} ${receipt}`);
+          noted(`${runId} ${receipt}`);
         }),
       trouble: (what) =>
         Effect.sync(() => {
@@ -52,7 +52,7 @@ export function recordingSettlements(ledgerDown: () => boolean): RecordingSettle
   const settled = new Map<string, Settlement>();
   const lineages = new Map<string, Lineage | undefined>();
   const counts = { attempts: 0 };
-  const { settle, know } = knownExecutions();
+  const { settle, know } = knownRuns();
   return {
     settle: (address, settlement, lineage) =>
       Effect.suspend(() => {

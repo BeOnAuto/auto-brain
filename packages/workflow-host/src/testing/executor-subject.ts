@@ -5,7 +5,7 @@ import { Deferred, Effect, Function } from 'effect';
 
 import { hostExecutor, type HostExecutor } from '../calls/host-executor.ts';
 import type { HostDatabase } from '../database/host-database.ts';
-import { runId } from './probe-subjects.ts';
+import { runKey } from './probe-subjects.ts';
 
 export function executorSubjectOn(database: HostDatabase): ExecutorSubject {
   const finishers = new Map<string, Deferred.Deferred<CallResult>>();
@@ -36,7 +36,7 @@ export function executorSubjectOn(database: HostDatabase): ExecutorSubject {
       start: (call, run) => host.current.executor.start(call, run),
       cancel: (call, run, origin) => host.current.executor.cancel(call, run, origin),
     },
-    run: { executionId: runId, attributes: {} },
+    run: { runId: runKey, attributes: {} },
     finish: (call, result) => Deferred.succeed(finisherOf(call.key), result),
     loseHost: () =>
       Effect.andThen(

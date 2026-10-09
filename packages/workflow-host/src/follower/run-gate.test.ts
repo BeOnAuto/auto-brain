@@ -11,7 +11,7 @@ import { runGateOf } from './run-gate.ts';
 
 const brainKey = 'brain/acme/alpha/';
 
-const stream = `${brainKey}runs/r-1`;
+const stream = `${brainKey}run-logs/r-1`;
 
 const PassedRow = Schema.Struct({ listener: Schema.String, passed: WholeNumber });
 
@@ -19,7 +19,7 @@ const PassedRunRow = Schema.Struct({ run_id: Schema.String, passed_through: Whol
 
 function passedRuns(database: HostDatabase) {
   return Effect.runPromise(
-    rowsOf(PassedRunRow, database.read(statement`SELECT run_id, passed_through FROM workflow_passed_runs`)),
+    rowsOf(PassedRunRow, database.read(statement`SELECT run_key, passed_through FROM workflow_passed_runs`)),
   );
 }
 
@@ -66,8 +66,8 @@ function runRecord(version: number): RecordedEvent {
 function dispatchedThrough(database: HostDatabase, through: number) {
   return Effect.runPromise(
     database.write(
-      statement`INSERT INTO workflow_runs (run_id, stream_id, dispatched_through) VALUES (${'acme/alpha/r-1'}, ${stream}, ${through})
-        ON CONFLICT (run_id) DO UPDATE SET dispatched_through = excluded.dispatched_through`,
+      statement`INSERT INTO workflow_runs (run_key, stream_id, dispatched_through) VALUES (${'acme/alpha/r-1'}, ${stream}, ${through})
+        ON CONFLICT (run_key) DO UPDATE SET dispatched_through = excluded.dispatched_through`,
     ),
   );
 }
@@ -75,7 +75,7 @@ function dispatchedThrough(database: HostDatabase, through: number) {
 function armedAt(database: HostDatabase, listener: string, armedBy: number) {
   return Effect.runPromise(
     insertedListener(database, {
-      runId: 'acme/alpha/r-1',
+      runKey: 'acme/alpha/r-1',
       listener,
       brainKey,
       streamId: stream,
@@ -171,7 +171,7 @@ describe('the gate noting how far it passed a run', () => {
     const ended = await openedOn(await onSQLite());
     const caughtUp = sqlWatermark(reached).advance('acme/alpha/r-1', 2);
     const finished = ended.write(
-      statement`UPDATE workflow_runs SET ended_at = ${2} WHERE run_id = ${'acme/alpha/r-1'}`,
+      statement`UPDATE workflow_runs SET ended_at = ${2} WHERE run_key = ${'acme/alpha/r-1'}`,
     );
     await dispatchedThrough(reached, 0);
     await dispatchedThrough(ended, 0);

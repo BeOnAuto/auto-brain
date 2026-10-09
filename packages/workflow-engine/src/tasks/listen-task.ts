@@ -41,7 +41,7 @@ function acceptsBy(filter: Json, invocation: Invocation): EventFilter {
 
 function keyOf(invocation: Invocation): CallKey {
   const { frame, machine } = invocation;
-  return { executionId: machine.session.executionId(), reference: frame.reference, run: frame.run };
+  return { runId: machine.session.runId(), reference: frame.reference, run: frame.run };
 }
 
 function slotsOf(listening: Listening, consumed: Slots): Slots {
@@ -152,7 +152,7 @@ export function resumeListen(invocation: Invocation, body: ListenBody, signal: S
 
 export function cancelListen(machine: Machine, frame: Pick<TaskFrame, 'reference' | 'run'>): void {
   machine.session.listeners.cancel({
-    executionId: machine.session.executionId(),
+    runId: machine.session.runId(),
     reference: frame.reference,
     run: frame.run,
   });

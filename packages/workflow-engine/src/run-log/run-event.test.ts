@@ -6,16 +6,16 @@ import {
   fitsInOneEvent,
   mostEventBytes,
   newRun,
-  RunEventSchema,
+  RunLogEventSchema,
   RunInputSchema,
   RunStateSchema,
   stateFormat,
   withHistoryBytes,
-  type RunEvent,
+  type RunLogEvent,
   type RunInput,
 } from '../index.ts';
 import { testCancel } from '../testing/driver-inputs.ts';
-import { at, executionId, openCall, runningState, started } from '../testing/runs.ts';
+import { at, runId, openCall, runningState, started } from '../testing/runs.ts';
 
 function asStored<S extends Schema.Codec<unknown, unknown>>(schema: S, value: S['Type']): unknown {
   return JSON.parse(JSON.stringify(Schema.encodeUnknownSync(Schema.toCodecJson(schema))(value)));
@@ -28,7 +28,7 @@ function readBack<S extends Schema.Codec<unknown, unknown>>(
   return Schema.decodeUnknownResult(Schema.toCodecJson(schema))(stored);
 }
 
-const event: RunEvent = {
+const event: RunLogEvent = {
   type: 'input_applied',
   format: stateFormat,
   receipt: { kind: 'call_answered', key: 'k', at, status: 'succeeded' },
@@ -42,10 +42,10 @@ const event: RunEvent = {
     { op: 'remove', path: '/calls/k' },
   ],
   outputs: [
-    { kind: 'cancel_timer', executionId, timerId: '2' },
-    { kind: 'arm_timer', executionId, timerId: '3', dueAt: at + 1000, purpose: 'wait' },
+    { kind: 'cancel_timer', runId, timerId: '2' },
+    { kind: 'arm_timer', runId, timerId: '3', dueAt: at + 1000, purpose: 'wait' },
     { kind: 'cancel_call', key: openCall },
-    { kind: 'settle', executionId, settlement: { status: 'succeeded', output: { approved: true } } },
+    { kind: 'settle', runId, settlement: { status: 'succeeded', output: { approved: true } } },
   ],
 };
 
@@ -54,33 +54,33 @@ function countedAfter(before: number): readonly [unknown, unknown] {
   return [applied.patch.at(-1), { op: 'replace', path: '/historyBytes', value: before + eventBytesOf(applied) }];
 }
 
-function near(text: string): RunEvent {
+function near(text: string): RunLogEvent {
   return { ...event, patch: [{ op: 'replace', path: '/machine/context', value: text }] };
 }
 
 const inputs: readonly RunInput[] = [
   started,
-  { kind: 'timer_fired', executionId, at, timerId: '1' },
+  { kind: 'timer_fired', runId, at, timerId: '1' },
   {
     kind: 'call_answered',
-    executionId,
+    runId,
     at,
     key: openCall,
     result: { status: 'rejected', reason: 'invalid_arguments', detail: 'x' },
   },
-  { kind: 'event_received', executionId, at, event: { id: 'event-3', type: 'com.acme.approval', data: [1, 2] } },
-  { kind: 'cancel_requested', executionId, at, cancel: testCancel },
+  { kind: 'event_received', runId, at, event: { id: 'event-3', type: 'com.acme.approval', data: [1, 2] } },
+  { kind: 'cancel_requested', runId, at, cancel: testCancel },
 ];
 
 describe('a run event', () => {
   it('is stored as JSON, naming its state format, and read back as it was decided', () => {
-    expect(readBack(RunEventSchema, asStored(RunEventSchema, event))).toEqual(Result.succeed(event));
+    expect(readBack(RunLogEventSchema, asStored(RunLogEventSchema, event))).toEqual(Result.succeed(event));
   });
 
   it('is refused when it names no state format, or holds an output the engine does not dispatch', () => {
     expect([
-      Result.isFailure(readBack(RunEventSchema, { ...event, format: 0 })),
-      Result.isFailure(readBack(RunEventSchema, { ...event, outputs: [{ kind: 'send_email', to: 'someone' }] })),
+      Result.isFailure(readBack(RunLogEventSchema, { ...event, format: 0 })),
+      Result.isFailure(readBack(RunLogEventSchema, { ...event, outputs: [{ kind: 'send_email', to: 'someone' }] })),
     ]).toEqual([true, true]);
   });
 
@@ -111,8 +111,8 @@ describe('a run input', () => {
 
   it('is refused for an event without an id, or a time before the epoch', () => {
     expect([
-      Result.isFailure(readBack(RunInputSchema, { kind: 'event_received', executionId, at, event: { type: 't' } })),
-      Result.isFailure(readBack(RunInputSchema, { kind: 'cancel_requested', executionId, at: -1 })),
+      Result.isFailure(readBack(RunInputSchema, { kind: 'event_received', runId, at, event: { type: 't' } })),
+      Result.isFailure(readBack(RunInputSchema, { kind: 'cancel_requested', runId, at: -1 })),
     ]).toEqual([true, true]);
   });
 });

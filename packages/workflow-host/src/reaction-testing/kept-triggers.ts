@@ -65,16 +65,14 @@ export function startsReaching<Start extends ReactionStart>(
   );
 }
 
-export function runStillGoing(database: HostDatabase, executionId: string) {
+export function runStillGoing(database: HostDatabase, runId: string) {
   return Effect.runPromise(
-    database.write(
-      statement`INSERT INTO workflow_runs (run_id, stream_id) VALUES (${`acme/alpha/${executionId}`}, ${'s'})`,
-    ),
+    database.write(statement`INSERT INTO workflow_runs (run_key, stream_id) VALUES (${`acme/alpha/${runId}`}, ${'s'})`),
   );
 }
 
-export function runEnded(database: HostDatabase, executionId: string) {
+export function runEnded(database: HostDatabase, runId: string) {
   return Effect.runPromise(
-    database.write(statement`UPDATE workflow_runs SET ended_at = 1 WHERE run_id = ${`acme/alpha/${executionId}`}`),
+    database.write(statement`UPDATE workflow_runs SET ended_at = 1 WHERE run_key = ${`acme/alpha/${runId}`}`),
   );
 }

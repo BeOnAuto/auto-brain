@@ -6,7 +6,7 @@ import type { Served } from '../lifecycle/lifecycle.ts';
 import type { Settings } from '../settings/settings.ts';
 import type { WorkflowParts } from '../workflows/workflows.ts';
 import { computationServedBy, workerPool, type ProgramPoolOf } from './served-computation.ts';
-import type { ModelAccessOf } from './served-inference.ts';
+import type { ModelAccessOf } from './served-reasoning.ts';
 import { recallWiring, type RecallWiring } from './served-recall.ts';
 import { toolUsersServedBy } from './served-tools.ts';
 
@@ -38,7 +38,7 @@ export async function functionsServedBy(
   const recall = await wiring.served(runtime, settings, computation.pool);
   return {
     parts: {
-      primitives: [reasoning.primitive, interaction.primitive, computation.primitive, recall.primitive],
+      capabilities: [reasoning.capability, interaction.capability, computation.capability, recall.capability],
       orgOperations: [...brainOperations, reasoning.listModels, reasoning.listToolServersInOrg],
       brainOperations: [reasoning.listToolServers, reasoning.testToolCall, ...interaction.operations],
       dueWork: interaction.dueWork,

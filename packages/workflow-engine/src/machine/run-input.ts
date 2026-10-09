@@ -6,7 +6,7 @@ import { ReceivedEventSchema } from '../inbox/received-event.ts';
 import { InstantSchema } from './instant.ts';
 import { mostEventIdLength } from './limits.ts';
 
-const ExecutionIdSchema = Schema.NonEmptyString;
+const RunIdSchema = Schema.NonEmptyString;
 
 const PositiveMillisecondsSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(1));
 
@@ -24,7 +24,7 @@ export const CancelOrderSchema = Schema.Struct({
 
 const StartedSchema = Schema.Struct({
   kind: Schema.Literal('started'),
-  executionId: ExecutionIdSchema,
+  runId: RunIdSchema,
   at: InstantSchema,
   document: Schema.JsonObject,
   input: Schema.Json,
@@ -35,14 +35,14 @@ const StartedSchema = Schema.Struct({
 
 const TimerFiredSchema = Schema.Struct({
   kind: Schema.Literal('timer_fired'),
-  executionId: ExecutionIdSchema,
+  runId: RunIdSchema,
   at: InstantSchema,
   timerId: Schema.NonEmptyString,
 });
 
 const CallAnsweredSchema = Schema.Struct({
   kind: Schema.Literal('call_answered'),
-  executionId: ExecutionIdSchema,
+  runId: RunIdSchema,
   at: InstantSchema,
   key: CallKeySchema,
   result: CallResultSchema,
@@ -50,7 +50,7 @@ const CallAnsweredSchema = Schema.Struct({
 
 const EventReceivedSchema = Schema.Struct({
   kind: Schema.Literal('event_received'),
-  executionId: ExecutionIdSchema,
+  runId: RunIdSchema,
   at: InstantSchema,
   event: ReceivedEventSchema,
 });
@@ -59,7 +59,7 @@ const OfferKeySchema = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLe
 
 const EventOfferedSchema = Schema.Struct({
   kind: Schema.Literal('event_offered'),
-  executionId: ExecutionIdSchema,
+  runId: RunIdSchema,
   at: InstantSchema,
   key: OfferKeySchema,
   listener: CallKeySchema,
@@ -68,7 +68,7 @@ const EventOfferedSchema = Schema.Struct({
 
 const CancelRequestedSchema = Schema.Struct({
   kind: Schema.Literal('cancel_requested'),
-  executionId: ExecutionIdSchema,
+  runId: RunIdSchema,
   at: InstantSchema,
   cancel: CancelOrderSchema,
   cause: Schema.optionalKey(Schema.NonEmptyString),

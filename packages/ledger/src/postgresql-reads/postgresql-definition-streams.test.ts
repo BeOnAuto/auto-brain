@@ -7,12 +7,12 @@ describe('the definition streams of a type on PostgreSQL', () => {
     const asked: { readonly text: string; readonly values: readonly unknown[] }[] = [];
     const store = postgresqlDefinitionStreams((text, values) => {
       asked.push({ text, values });
-      return Promise.resolve([{ stream: 'brain/acme/alpha/specs/recollection', version: '3' }]);
+      return Promise.resolve([{ stream: 'brain/acme/alpha/definitions/recall', version: '3' }]);
     });
 
-    const streams = await store.definitionStreams('recollection');
+    const streams = await store.definitionStreams('recall');
 
-    expect(streams).toEqual([{ stream: 'brain/acme/alpha/specs/recollection', version: 3 }]);
-    expect(asked).toEqual([{ text: definitionStreamsStatement, values: ['recollection', 'emt:default'] }]);
+    expect(streams).toEqual([{ stream: 'brain/acme/alpha/definitions/recall', version: 3 }]);
+    expect(asked).toEqual([{ text: definitionStreamsStatement, values: ['recall', 'emt:default'] }]);
   });
 });

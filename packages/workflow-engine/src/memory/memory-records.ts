@@ -8,8 +8,8 @@ import type { Faults } from './memory-timers.ts';
 import type { MemoryRunStore } from './run-store.ts';
 
 export interface MemoryRecordStore extends RecordStore {
-  readonly known: (executionId: string) => void;
-  readonly settlementOf: (executionId: string) => Settlement | undefined;
+  readonly known: (runId: string) => void;
+  readonly settlementOf: (runId: string) => Settlement | undefined;
 }
 
 export interface MemoryReporter extends RunReporter {
@@ -20,20 +20,20 @@ export function memoryRecordStore(faults: Faults): MemoryRecordStore {
   const known = new Set<string>();
   const settled = new Map<string, Settlement>();
   const dues = new Map<string, RunDue>();
-  const recorded = (executionId: string, settlement: Settlement): SettleReceipt => {
-    const earlier = settled.get(executionId);
-    if (!known.has(executionId)) {
-      return 'unknown_execution';
+  const recorded = (runId: string, settlement: Settlement): SettleReceipt => {
+    const earlier = settled.get(runId);
+    if (!known.has(runId)) {
+      return 'unknown_run';
     }
     if (earlier === undefined) {
-      settled.set(executionId, settlement);
+      settled.set(runId, settlement);
       return 'recorded';
     }
     return sameJson(earlier, settlement) ? 'already_recorded' : 'settled_otherwise';
   };
   return {
     settle: (request) =>
-      faults.attempt({ kind: 'settle', ...request }, () => recorded(request.executionId, request.settlement)),
+      faults.attempt({ kind: 'settle', ...request }, () => recorded(request.runId, request.settlement)),
     noteDue: (due) =>
       Effect.suspend(() => {
         if (faults.fails('note_due')) {
@@ -41,23 +41,23 @@ export function memoryRecordStore(faults: Faults): MemoryRecordStore {
             new DispatchFailed({ output: 'note_due', detail: 'The record store was told to fail once' }),
           );
         }
-        const noted = dues.get(due.executionId);
+        const noted = dues.get(due.runId);
         if (noted === undefined || noted.version <= due.version) {
-          dues.set(due.executionId, due);
+          dues.set(due.runId, due);
         }
         return Effect.void;
       }),
     dueRuns: (before) =>
       Effect.sync(() =>
         [...dues.values()]
-          .filter((due) => !settled.has(due.executionId))
+          .filter((due) => !settled.has(due.runId))
           .filter(({ nextDueAt }) => nextDueAt !== null && nextDueAt < before)
-          .map(({ executionId }) => executionId),
+          .map(({ runId }) => runId),
       ),
-    known: (executionId) => {
-      known.add(executionId);
+    known: (runId) => {
+      known.add(runId);
     },
-    settlementOf: (executionId) => settled.get(executionId),
+    settlementOf: (runId) => settled.get(runId),
   };
 }
 
@@ -73,21 +73,21 @@ export function memoryReporter(): MemoryReporter {
 }
 
 interface Handouts {
-  readonly takenAt: (executionId: string) => number;
-  readonly handOut: (executionIds: readonly string[]) => readonly string[];
+  readonly takenAt: (runId: string) => number;
+  readonly handOut: (runIds: readonly string[]) => readonly string[];
 }
 
 function handoutsOf(): Handouts {
   const taken = new Map<string, number>();
   const clock = { now: 0 };
   return {
-    takenAt: (executionId) => taken.get(executionId) ?? 0,
-    handOut: (executionIds) => {
+    takenAt: (runId) => taken.get(runId) ?? 0,
+    handOut: (runIds) => {
       clock.now += 1;
-      for (const executionId of executionIds) {
-        taken.set(executionId, clock.now);
+      for (const runId of runIds) {
+        taken.set(runId, clock.now);
       }
-      return executionIds;
+      return runIds;
     },
   };
 }
@@ -95,19 +95,19 @@ function handoutsOf(): Handouts {
 export function memoryWatermark(runStore: Pick<MemoryRunStore, 'versions'>): DispatchWatermark {
   const marks = new Map<string, number>();
   const handouts = handoutsOf();
-  const markOf = (executionId: string): number => marks.get(executionId) ?? 0;
+  const markOf = (runId: string): number => marks.get(runId) ?? 0;
   return {
-    read: (executionId) => Effect.sync(() => markOf(executionId)),
-    advance: (executionId, through) =>
+    read: (runId) => Effect.sync(() => markOf(runId)),
+    advance: (runId, through) =>
       Effect.sync(() => {
-        marks.set(executionId, Math.max(markOf(executionId), through));
+        marks.set(runId, Math.max(markOf(runId), through));
       }),
     behindRuns: (limit) =>
       Effect.sync(() =>
         handouts.handOut(
           [...runStore.versions()]
-            .filter(([executionId, version]: readonly [string, number]) => markOf(executionId) < version)
-            .map(([executionId]: readonly [string, number]) => executionId)
+            .filter(([runId, version]: readonly [string, number]) => markOf(runId) < version)
+            .map(([runId]: readonly [string, number]) => runId)
             .toSorted((first, second) => handouts.takenAt(first) - handouts.takenAt(second))
             .slice(0, limit),
         ),

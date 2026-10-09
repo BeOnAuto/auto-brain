@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { linesLoggedBy } from '../testing/records/logged-lines.ts';
 import { logHostNote } from './host-notes.ts';
 
-const run = { org: 'acme', brain: 'alpha', executionId: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' };
+const run = { org: 'acme', brain: 'alpha', runId: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' };
 
 describe('the notes of the workflow host', () => {
   it('warn that another server runs the workflows of the database, and until when it holds them', async () => {
@@ -25,7 +25,7 @@ describe('the notes of the workflow host', () => {
     );
   });
 
-  it('warn once when a settlement backs off, and once when it is settled at last, naming only the execution', async () => {
+  it('warn once when a settlement backs off, and once when it is settled at last, naming only the run', async () => {
     const lines = [
       ...(await linesLoggedBy(
         logHostNote({ kind: 'settle_backing_off', run, attempts: 20, detail: 'The ledger cannot be reached' }),
@@ -35,14 +35,12 @@ describe('the notes of the workflow host', () => {
 
     expect(lines).toEqual([
       expect.stringContaining(
-        '"message":"An execution could not be settled in 20 attempts; it is tried again once a minute until it is","level":"WARN"',
+        '"message":"A run could not be settled in 20 attempts; it is tried again once a minute until it is","level":"WARN"',
       ),
-      expect.stringContaining(
-        '"message":"An execution that could not be settled was settled at attempt 22","level":"WARN"',
-      ),
+      expect.stringContaining('"message":"A run that could not be settled was settled at attempt 22","level":"WARN"'),
     ]);
     expect(lines[0]).toContain(
-      '"annotations":{"org":"acme","brain":"alpha","execution_id":"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a","error":"The ledger cannot be reached"}',
+      '"annotations":{"org":"acme","brain":"alpha","run_id":"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a","error":"The ledger cannot be reached"}',
     );
   });
 });
@@ -78,7 +76,7 @@ describe('the note of a record of a run passed before its outputs were dispatche
       '"message":"A record of a run\'s log was passed before the run\'s outputs were dispatched, after 20 sweeps held it; a listener it armed takes events once it is kept, and none recorded before","level":"WARN"',
     );
     expect(line).toContain(
-      '"annotations":{"org":"acme","brain":"alpha","execution_id":"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a","version":4}',
+      '"annotations":{"org":"acme","brain":"alpha","run_id":"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a","version":4}',
     );
   });
 });

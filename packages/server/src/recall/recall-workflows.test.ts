@@ -1,6 +1,6 @@
 import { withMcpSession } from '@beonauto/api/testing';
-import { answers, jsonResult, type ScriptedReply } from '@beonauto/inference/testing';
-import { recallDocument } from '@beonauto/recollection/testing';
+import { answers, jsonResult, type ScriptedReply } from '@beonauto/reasoning/testing';
+import { recallDocument } from '@beonauto/recall/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
@@ -13,7 +13,7 @@ import {
   standingUntil,
   verdicts,
 } from '../testing/servers/recall-server.ts';
-import { executionIdIn, settledExecution, settledOverMcp, workflowSource } from '../testing/servers/workflow-server.ts';
+import { runIdIn, settledRun, settledOverMcp, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const advise = [
   '---',
@@ -38,7 +38,7 @@ const tally = [
 
 const stalling = recallDocument(
   'error("cannot fold this")',
-  'language: jq\nsource:\n  events:\n    - type: execution_succeeded\n      subject: inference/review-brief',
+  'language: jq\nsource:\n  events:\n    - type: run_succeeded\n      subject: reasoning/review-brief',
 );
 
 function recallingWorkflow(name: string, recall: string): string {
@@ -48,8 +48,8 @@ function recallingWorkflow(name: string, recall: string): string {
   - recall:
       try:
         - remember:
-            call: execute_spec
-            with: { primitive: recollection, name: ${recall}, input: { campaign: '\${ .campaign }' } }
+            call: run_definition
+            with: { type: recall, name: ${recall}, input: { campaign: '\${ .campaign }' } }
       catch:
         errors:
           with: { status: 503 }
@@ -60,11 +60,11 @@ function recallingWorkflow(name: string, recall: string): string {
       export:
         as: '\${ { reviews: . } }'
   - advise:
-      call: execute_spec
-      with: { primitive: inference, name: advise, input: { reviews: '\${ $context.reviews }' } }
+      call: run_definition
+      with: { type: reasoning, name: advise, input: { reviews: '\${ $context.reviews }' } }
   - tally:
-      call: execute_spec
-      with: { primitive: computation, name: tally, input: { reviews: '\${ $context.reviews }', advice: '\${ . }' } }
+      call: run_definition
+      with: { type: computation, name: tally, input: { reviews: '\${ $context.reviews }', advice: '\${ . }' } }
 `,
   );
 }
@@ -83,33 +83,33 @@ async function serving(...more: readonly ScriptedReply[]): Promise<ReasoningServ
   closing.push(server.stop);
   await brainWithReviews(server, 2);
   const definitions = [
-    ['inference', 'advise', advise],
+    ['reasoning', 'advise', advise],
     ['computation', 'tally', tally],
-    ['recollection', 'stalling', stalling],
-    ['orchestration', 'decide', recallingWorkflow('decide', 'reviews')],
-    ['orchestration', 'stuck', recallingWorkflow('stuck', 'stalling')],
+    ['recall', 'stalling', stalling],
+    ['workflow', 'decide', recallingWorkflow('decide', 'reviews')],
+    ['workflow', 'stuck', recallingWorkflow('stuck', 'stalling')],
   ] as const;
   await definitions.reduce(
-    (created: Promise<unknown>, [primitive, name, source]) =>
-      created.then(() => server.call('POST', `${alpha}/specs/${primitive}`, { body: { name, source } })),
+    (created: Promise<unknown>, [type, name, source]) =>
+      created.then(() => server.call('POST', `${alpha}/definitions/${type}`, { body: { name, source } })),
     Promise.resolve(),
   );
   await standingUntil(server, 'reviews', liveWith(2));
   return server;
 }
 
-async function settledRun(server: ReasoningServer, workflow: string) {
-  const started = await server.call('POST', `${alpha}/specs/orchestration/${workflow}/execute`, {
+async function settledWorkflowRun(server: ReasoningServer, workflow: string) {
+  const started = await server.call('POST', `${alpha}/definitions/workflow/${workflow}/run`, {
     body: { input: { campaign: 'spring' } },
   });
-  return settledExecution(server, `${alpha}/executions/${executionIdIn(started.body)}`);
+  return settledRun(server, `${alpha}/runs/${runIdIn(started.body)}`);
 }
 
 describe('a workflow that recalls, reasons and computes', { timeout: recallTestTimeoutMs }, () => {
   it('gives the reasoning function the verdicts the brain reached before, and tallies them with its advice', async () => {
     const server = await serving(answers(jsonResult({ approve: false })));
 
-    const settled = await settledRun(server, 'decide');
+    const settled = await settledWorkflowRun(server, 'decide');
 
     expect(settled).toMatchObject({
       body: { status: 'succeeded', output: { approvals: 1, rejections: 1, approve: false } },
@@ -121,12 +121,12 @@ describe('a workflow that recalls, reasons and computes', { timeout: recallTestT
     const server = await serving();
     await standingUntil(server, 'stalling', inState('stalled'));
 
-    const settled = await settledRun(server, 'stuck');
-    const recalls = await server.call('GET', `${alpha}/executions?primitive=recollection`);
+    const settled = await settledWorkflowRun(server, 'stuck');
+    const recalls = await server.call('GET', `${alpha}/runs?type=recall`);
 
     expect(settled).toMatchObject({ body: { status: 'rejected' } });
     expect(recalls.body).toMatchObject({
-      executions: [{ name: 'stalling', status: 'rejected', rejection: { reason: 'conflict', kind: 'stalled' } }],
+      runs: [{ name: 'stalling', status: 'rejected', rejection: { reason: 'conflict', kind: 'stalled' } }],
     });
     expect(server.modelCalls()).toBe(2);
   });
@@ -138,12 +138,12 @@ describe('a workflow that recalls, reasons and computes', { timeout: recallTestT
       'current revision',
       { url: `${server.origin}/orgs/acme/brains/alpha/mcp`, headers: {} },
       async (session) => {
-        const started = await session.callTool('execute_spec', {
-          primitive: 'orchestration',
+        const started = await session.callTool('run_definition', {
+          type: 'workflow',
           name: 'decide',
           input: { campaign: 'spring' },
         });
-        return settledOverMcp(session, String(started.structuredContent?.['execution_id']));
+        return settledOverMcp(session, String(started.structuredContent?.['run_id']));
       },
     );
 

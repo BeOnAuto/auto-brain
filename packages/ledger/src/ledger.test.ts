@@ -23,7 +23,7 @@ function queried(fileName: string, statement: string): Promise<readonly unknown[
 async function definitionStreamsIndexed(fileName: string): Promise<boolean> {
   const pool = dumbo(sqlite3EventStoreDriver.mapToDumboOptions({ fileName }));
   try {
-    const { rows } = await pool.execute.query(SQL`EXPLAIN QUERY PLAN ${definitionStreamsQuery('recollection')}`);
+    const { rows } = await pool.execute.query(SQL`EXPLAIN QUERY PLAN ${definitionStreamsQuery('recall')}`);
     return JSON.stringify(rows).includes('USING INDEX ledger_definition_streams');
   } finally {
     await pool.close();

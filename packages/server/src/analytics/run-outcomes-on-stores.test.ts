@@ -64,8 +64,8 @@ const fact = { by: 'acme-admin' };
 
 const usage = { input: { total: 1200, cache_read: 1000 }, output: { total: 300 } };
 
-function started(name: string, at: string, primitive = 'inference'): Fact {
-  return { type: 'execution_started', primitive, name, spec_version: 1, input: {}, ...fact, at };
+function started(name: string, at: string, type = 'reasoning'): Fact {
+  return { type: 'run_started', definition_type: type, name, definition_version: 1, input: {}, ...fact, at };
 }
 
 function finished(type: string, at: string, more: Readonly<Record<string, Schema.Json>> = {}): Fact {
@@ -77,49 +77,49 @@ const runs: readonly (readonly [string, readonly Fact[]])[] = [
     'started-twice',
     [
       started('triage', '2026-10-01T09:00:00.000Z'),
-      finished('execution_failed', '2026-10-01T09:00:01.000Z'),
+      finished('run_failed', '2026-10-01T09:00:01.000Z'),
       started('triage', '2026-10-01T10:00:00.000Z'),
       finished('tool_call_started', '2026-10-01T10:00:00.100Z', { number: 1 }),
-      finished('execution_succeeded', '2026-10-01T10:00:00.250Z', { output: 'ok', record: { usage } }),
+      finished('run_succeeded', '2026-10-01T10:00:00.250Z', { output: 'ok', record: { usage } }),
     ],
   ],
   [
     'without-usage',
     [
       started('triage', '2026-10-01T11:00:00.000Z'),
-      finished('execution_succeeded', '2026-10-01T11:00:00.500Z', { output: 'ok', record: {} }),
+      finished('run_succeeded', '2026-10-01T11:00:00.500Z', { output: 'ok', record: {} }),
     ],
   ],
   [
     'not-an-object',
     [
       started('triage', '2026-10-01T12:00:00.000Z'),
-      finished('execution_succeeded', '2026-10-01T12:00:00.100Z', { output: 'ok', record: 'text' }),
+      finished('run_succeeded', '2026-10-01T12:00:00.100Z', { output: 'ok', record: 'text' }),
     ],
   ],
   [
     'rejected-with-usage',
     [
       started('triage', '2026-10-01T13:00:00.000Z'),
-      finished('execution_rejected', '2026-10-01T13:00:01.000Z', { rejection: {}, record: { usage } }),
+      finished('run_rejected', '2026-10-01T13:00:01.000Z', { rejection: {}, record: { usage } }),
     ],
   ],
   [
     'rejected',
     [
       started('triage', '2026-10-01T14:00:00.000Z'),
-      finished('execution_rejected', '2026-10-01T14:00:01.000Z', { rejection: {} }),
+      finished('run_rejected', '2026-10-01T14:00:01.000Z', { rejection: {} }),
     ],
   ],
   [
     'workflow',
     [
-      started('approval', '2026-10-01T15:00:00.000Z', 'orchestration'),
-      finished('execution_deferred', '2026-10-01T15:00:00.010Z', { record: {} }),
-      finished('execution_succeeded', '2026-10-02T15:00:00.000Z', { output: {}, record: {} }),
+      started('approval', '2026-10-01T15:00:00.000Z', 'workflow'),
+      finished('run_deferred', '2026-10-01T15:00:00.010Z', { record: {} }),
+      finished('run_succeeded', '2026-10-02T15:00:00.000Z', { output: {}, record: {} }),
     ],
   ],
-  ['finish-alone', [finished('execution_failed', '2026-10-02T09:00:00.000Z')]],
+  ['finish-alone', [finished('run_failed', '2026-10-02T09:00:00.000Z')]],
   ['still-going', [started('draft', '2026-10-02T10:00:00.000Z')]],
 ];
 
@@ -128,7 +128,7 @@ function written(ledger: Ledger['Service']): Promise<void> {
     Effect.forEach(
       runs,
       ([run, given]) =>
-        Effect.forEach(given, (each) => ledger.execute(`brain/acme/alpha/executions/${run}`, facts, [each]), {
+        Effect.forEach(given, (each) => ledger.execute(`brain/acme/alpha/runs/${run}`, facts, [each]), {
           discard: true,
         }),
       { discard: true },
@@ -143,10 +143,10 @@ function withoutTheProjection(settings: LedgerSettings): Layer.Layer<Ledger> {
 }
 
 function lineOf(group: RunOutcomeGroup): string {
-  const { day, primitive, name, status, inputTokens, outputTokens, cachedTokens } = group;
+  const { day, definitionType: type, name, status, inputTokens, outputTokens, cachedTokens } = group;
   const durations = group.durations.toSorted((left, right) => left - right).join(' ');
   const tokens = `${inputTokens} ${outputTokens} ${cachedTokens}`;
-  return `${day} ${primitive}/${name} ${status} ${group.runs} [${durations}] ${tokens}`;
+  return `${day} ${type}/${name} ${status} ${group.runs} [${durations}] ${tokens}`;
 }
 
 async function outcomesIn(ledger: Ledger['Service']): Promise<readonly string[]> {
@@ -157,11 +157,11 @@ async function outcomesIn(ledger: Ledger['Service']): Promise<readonly string[]>
 }
 
 const kept = [
-  '2026-10-01 inference/triage rejected 2 [] 1200 300 1000',
-  '2026-10-01 inference/triage succeeded 3 [100 250 500] 1200 300 1000',
-  '2026-10-01 orchestration/approval succeeded 1 [86400000] 0 0 0',
+  '2026-10-01 reasoning/triage rejected 2 [] 1200 300 1000',
+  '2026-10-01 reasoning/triage succeeded 3 [100 250 500] 1200 300 1000',
+  '2026-10-01 workflow/approval succeeded 1 [86400000] 0 0 0',
   '2026-10-02 / failed 1 [] 0 0 0',
-  '2026-10-02 inference/draft started 1 [] 0 0 0',
+  '2026-10-02 reasoning/draft started 1 [] 0 0 0',
 ];
 
 interface Store {

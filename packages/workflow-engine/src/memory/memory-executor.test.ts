@@ -10,7 +10,7 @@ import { memoryExecutor } from './memory-executor.ts';
 import { faultsOf } from './memory-timers.ts';
 import { virtualClock, type VirtualClock } from './virtual-clock.ts';
 
-const run = { executionId: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', attributes: {} };
+const run = { runId: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', attributes: {} };
 
 async function settledOf(clock: VirtualClock, take: () => readonly string[]): Promise<readonly string[]> {
   await setImmediate();

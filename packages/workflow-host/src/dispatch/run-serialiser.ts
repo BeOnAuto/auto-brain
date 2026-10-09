@@ -8,24 +8,24 @@ interface RunLock {
 
 export function runSerialiser(): RunSerialiser {
   const locks = new Map<string, { readonly semaphore: Semaphore.Semaphore; holders: number }>();
-  const lockOf = (runId: string): RunLock => {
-    const lock = locks.get(runId) ?? { semaphore: Semaphore.makeUnsafe(1), holders: 0 };
+  const lockOf = (runKey: string): RunLock => {
+    const lock = locks.get(runKey) ?? { semaphore: Semaphore.makeUnsafe(1), holders: 0 };
     lock.holders += 1;
-    locks.set(runId, lock);
+    locks.set(runKey, lock);
     return {
       semaphore: lock.semaphore,
       release: () => {
         lock.holders -= 1;
         if (lock.holders === 0) {
-          locks.delete(runId);
+          locks.delete(runKey);
         }
       },
     };
   };
   return {
-    serialise: (runId, work) =>
+    serialise: (runKey, work) =>
       Effect.suspend(() => {
-        const { semaphore, release } = lockOf(runId);
+        const { semaphore, release } = lockOf(runKey);
         return semaphore.withPermit(work).pipe(Effect.ensuring(Effect.sync(release)));
       }),
   };

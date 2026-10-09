@@ -4,7 +4,7 @@ import { failedOnce, failuresEnded, shownResult, type CallTally } from '../bound
 import { errorTextForModel, errorTextForOperator, resultText } from '../bounds/result-text.ts';
 import { bytesOf } from '../bounds/text-bytes.ts';
 import type { CallOutcome } from './call-facts.ts';
-import { executionIdKey, toolTestIdKey } from './call-meta.ts';
+import { runIdKey, toolTestIdKey } from './call-meta.ts';
 import type { Forwarded } from './tool-calls.ts';
 
 interface ModelWords {
@@ -46,7 +46,7 @@ export function failureCounted(
   replying.report({
     server: replying.server,
     message: errorTextForOperator(done.message, replying.scrub),
-    execution_id: replying.meta[executionIdKey] ?? null,
+    run_id: replying.meta[runIdKey] ?? null,
     tool_test_id: replying.meta[toolTestIdKey] ?? null,
   });
   const counted = failedOnce(tally);

@@ -12,14 +12,14 @@ import {
   published,
   publishedInTurn,
   runRecorded,
-  specRecordAt,
-  specRecorded,
+  definitionRecordAt,
+  definitionRecorded,
 } from '../reaction-testing/brain-writes.ts';
 import { startsReaching, untilScheduleRuns } from '../reaction-testing/kept-triggers.ts';
 import { movedClock } from '../reaction-testing/moved-clock.ts';
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
 import { until } from '../reaction-testing/until.ts';
-import { reactionExecutionIdOf } from '../reactions/reaction-ids.ts';
+import { reactionRunIdOf } from '../reactions/reaction-ids.ts';
 import { mostStartsAMinute } from '../reactions/start-rates.ts';
 
 const activatedAt = Date.parse(at);
@@ -39,7 +39,7 @@ async function openedAt(start: number) {
 }
 
 function closingSaved({ database }: ReactingHost, onEvents = closed) {
-  return specRecorded(database.store, {
+  return definitionRecorded(database.store, {
     name: 'close',
     version: 1,
     triggers: [onEvents, cronTrigger('30 9 * * *'), everyTrigger(15 * aMinute)],
@@ -61,14 +61,14 @@ function closingStartedIn({ database }: ReactingHost, minute: number, starts: nu
   );
 }
 
-function executionIdOf(start: { readonly executionId: string } | undefined): string {
-  return start?.executionId ?? '';
+function runIdOf(start: { readonly runId: string } | undefined): string {
+  return start?.runId ?? '';
 }
 
 describe('a workflow with an event trigger, a cron schedule and an every schedule', () => {
   it('starts one run for an event and one at each time each schedule is due, each naming its trigger and cause', async () => {
     const { reacting, clock } = await closingAt(activatedAt + 1000);
-    const activation = specRecordAt(1);
+    const activation = definitionRecordAt(1);
     const event = eventRecordOf('e1');
 
     await published(reacting.database.store, { id: 'e1', type: 'com.acme.closed' });
@@ -78,27 +78,22 @@ describe('a workflow with an event trigger, a cron schedule and an every schedul
     clock.moveTo(activatedAt + 30 * aMinute);
     const starts = await startsReaching(reacting.reactions.starts, 4);
 
-    expect(starts.map(({ executionId, trigger, cause, version }) => [executionId, trigger, cause, version])).toEqual([
+    expect(starts.map(({ runId, trigger, cause, version }) => [runId, trigger, cause, version])).toEqual([
+      [reactionRunIdOf('close', 1, '/schedule/on', event), { kind: 'event', reference: '/schedule/on' }, event, 1],
       [
-        reactionExecutionIdOf('close', 1, '/schedule/on', event),
-        { kind: 'event', reference: '/schedule/on' },
-        event,
-        1,
-      ],
-      [
-        reactionExecutionIdOf('close', 1, '/schedule/every', isoAt(15)),
+        reactionRunIdOf('close', 1, '/schedule/every', isoAt(15)),
         { kind: 'every', reference: '/schedule/every' },
         activation,
         1,
       ],
       [
-        reactionExecutionIdOf('close', 1, '/schedule/cron', isoAt(30)),
+        reactionRunIdOf('close', 1, '/schedule/cron', isoAt(30)),
         { kind: 'cron', reference: '/schedule/cron' },
         activation,
         1,
       ],
       [
-        reactionExecutionIdOf('close', 1, '/schedule/every', isoAt(30)),
+        reactionRunIdOf('close', 1, '/schedule/every', isoAt(30)),
         { kind: 'every', reference: '/schedule/every' },
         activation,
         1,
@@ -127,7 +122,7 @@ describe('a due time of a schedule asked for again', () => {
     );
     const [first, again] = await startsReaching(reacting.reactions.starts, 2);
 
-    expect([again?.executionId, again?.input]).toEqual([first?.executionId, first?.input]);
+    expect([again?.runId, again?.input]).toEqual([first?.runId, first?.input]);
   });
 });
 
@@ -145,7 +140,7 @@ describe('the start rate of a workflow with several triggers', () => {
     ]);
     const starts = await startsReaching(reacting.reactions.starts, 2);
     const waiting = await until(
-      () => Effect.runPromise(reacting.database.read(statement`SELECT execution_id FROM workflow_reaction_backlog`)),
+      () => Effect.runPromise(reacting.database.read(statement`SELECT run_id FROM workflow_reaction_backlog`)),
       (rows) => rows.length > 0,
     );
 
@@ -155,24 +150,24 @@ describe('the start rate of a workflow with several triggers', () => {
 
 describe('a workflow whose schedule started a run', () => {
   it('is not started by its own event trigger for that run, its facts, nor the events it emits', async () => {
-    const told = eventTrigger({ type: 'com.acme.told' }, { type: 'execution_succeeded' });
+    const told = eventTrigger({ type: 'com.acme.told' }, { type: 'run_succeeded' });
     const { reacting, clock, starts: started } = await closingAt(activatedAt + 1000, told);
-    await specRecorded(reacting.database.store, {
+    await definitionRecorded(reacting.database.store, {
       name: 'watch',
       version: 1,
       triggers: [eventTrigger({ type: 'go' })],
     });
     clock.moveTo(activatedAt + 15 * aMinute);
     const [scheduled] = await startsReaching(started, 1);
-    const run = executionIdOf(scheduled);
+    const run = runIdOf(scheduled);
     const { store } = reacting.database;
 
-    await runRecorded(store, { executionId: run, primitive: 'orchestration', name: 'close' }, 'execution_succeeded');
+    await runRecorded(store, { runId: run, type: 'workflow', name: 'close' }, 'run_succeeded');
     await published(
       store,
       { id: 'told', type: 'com.acme.told' },
       {
-        emitted_by: { execution_id: run, workflow: 'close', version: 1 },
+        emitted_by: { run_id: run, workflow: 'close', version: 1 },
         depth: 1,
       },
     );

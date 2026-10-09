@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
 import { withMcpSession } from '@beonauto/api/testing';
-import { OutputInvalid } from '@beonauto/inference';
-import { answers, textResult } from '@beonauto/inference/testing';
+import { OutputInvalid } from '@beonauto/reasoning';
+import { answers, textResult } from '@beonauto/reasoning/testing';
 import { Effect, Schema } from 'effect';
 import { Client } from 'pg';
 import { afterEach, describe, expect, it, onTestFinished } from 'vitest';
@@ -84,9 +84,9 @@ async function brainWithThreeRuns(environment: Readonly<Record<string, string>>)
     environment,
   );
   await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
-  await server.call('POST', `${alpha}/specs/inference`, { body: { name: 'summary', source: summary } });
+  await server.call('POST', `${alpha}/definitions/reasoning`, { body: { name: 'summary', source: summary } });
   const running = (input: Readonly<Record<string, unknown>>) =>
-    server.call('POST', `${alpha}/specs/inference/summary/execute`, { body: { input } });
+    server.call('POST', `${alpha}/definitions/reasoning/summary/run`, { body: { input } });
   await running({ text: 'the quarter' });
   await running({ text: 'the year' });
   await running({ text: 7 });
@@ -109,7 +109,7 @@ describe.each(stores)('the analytics of a brain over HTTP and MCP, on $store', (
       await brainWithThreeRuns(await environment());
 
       const read = await server.call('GET', `${alpha}/analytics`);
-      const filtered = await server.call('GET', `${alpha}/analytics?days=14&primitive=inference&name=summary`);
+      const filtered = await server.call('GET', `${alpha}/analytics?days=14&type=reasoning&name=summary`);
       const onAlpha = { url: `${server.origin}/orgs/acme/brains/alpha/mcp`, headers: {} };
       const overMcp = await withMcpSession('current revision', onAlpha, (session) =>
         session.callTool('get_brain_analytics', {}),
@@ -121,7 +121,7 @@ describe.each(stores)('the analytics of a brain over HTTP and MCP, on $store', (
           days: 7,
           runs: { total: 3, succeeded: 1, failed: 0, rejected: 2 },
           tokens: { input: 1500, output: 100, cached: 1000 },
-          by_function: [{ primitive: 'inference', name: 'summary', runs: 3 }],
+          by_function: [{ type: 'reasoning', name: 'summary', runs: 3 }],
         },
       });
       expect(read.body).toMatchObject({ by_day: { 6: { day: today, runs: { total: 3 } } } });

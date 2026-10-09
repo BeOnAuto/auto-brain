@@ -2,14 +2,14 @@ import { definitionStreamsStatement } from './postgresql-definition-streams.ts';
 
 export const definitionStreamsPlan = {
   explained: `EXPLAIN ${definitionStreamsStatement}`,
-  values: ['recollection', 'emt:default'],
-  throughTheIndex: `Index Cond: ("substring"(stream_id, '^(?:[^/]*/){3}specs/([^/]+)$'::text) = `,
+  values: ['recall', 'emt:default'],
+  throughTheIndex: `Index Cond: ("substring"(stream_id, '^(?:[^/]*/){3}definitions/([^/]+)$'::text) = `,
 };
 
 export const theBrainIndexes = [
   {
     indexname: 'ledger_definition_streams',
-    indexdef: `CREATE INDEX ledger_definition_streams ON ONLY public.emt_streams USING btree ("substring"(stream_id, '^(?:[^/]*/){3}specs/([^/]+)$'::text)) WHERE ("substring"(stream_id, '^(?:[^/]*/){3}specs/([^/]+)$'::text) IS NOT NULL)`,
+    indexdef: `CREATE INDEX ledger_definition_streams ON ONLY public.emt_streams USING btree ("substring"(stream_id, '^(?:[^/]*/){3}definitions/([^/]+)$'::text)) WHERE ("substring"(stream_id, '^(?:[^/]*/){3}definitions/([^/]+)$'::text) IS NOT NULL)`,
   },
   {
     indexname: 'ledger_first_messages_by_kind',

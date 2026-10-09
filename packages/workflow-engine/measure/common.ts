@@ -3,7 +3,7 @@ import type { RunState } from '../src/machine/run-state.ts';
 import { armedTimerIds } from '../src/testing/run-history.ts';
 import { workflow } from '../src/testing/workflows.ts';
 
-export const executionId = '0199a3c4-7d2e-7c1a-9b3f-000000040000';
+export const runId = '0199a3c4-7d2e-7c1a-9b3f-000000040000';
 
 export const startedAt = 1_790_845_200_000;
 
@@ -29,7 +29,7 @@ do:
 export function nextTick(state: RunState): RunInput {
   const [timerId = ''] = armedTimerIds(state, 'wait');
   const at = state.timers.armed[timerId]?.dueAt ?? state.lastInputAt;
-  return { kind: 'timer_fired', executionId: state.executionId, at, timerId };
+  return { kind: 'timer_fired', runId: state.runId, at, timerId };
 }
 
 export function millisecondsOf(work: () => void): number {

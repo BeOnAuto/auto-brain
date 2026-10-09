@@ -11,7 +11,7 @@ import { aSQLiteFile, type SettingsOf } from './host-files.ts';
 import { hostIn } from './host-processes.ts';
 import { hostedOn } from './host-runs.ts';
 
-const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 const sweepEveryMs = 400;
 
@@ -34,9 +34,9 @@ export function leaseSuite(settings: SettingsOf): void {
     const first = hostIn(database, 'hang-on-call', join(aSQLiteFile(), '..', 'settlements.jsonl'), sweepEveryMs);
     await first.said('calling');
     const second = await hostedOn(database, { sweepEveryMs });
-    second.know(executionId);
+    second.know(runId);
 
-    const refused = await Effect.runPromise(Effect.flip(second.host.start(runAt(executionId), startOf(listening))));
+    const refused = await Effect.runPromise(Effect.flip(second.host.start(runAt(runId), startOf(listening))));
     await setTimeout(3 * sweepEveryMs);
     const performedWhileBothRan = second.calls().length;
     await first.killed();
@@ -46,7 +46,7 @@ export function leaseSuite(settings: SettingsOf): void {
     expect(performedWhileBothRan).toBe(0);
     expect(second.notes().map(({ kind }) => kind)).toEqual(['standing_by', 'took_over']);
     expect(second.calls()).toHaveLength(1);
-    expect([...settled.keys()]).toEqual([executionId]);
+    expect([...settled.keys()]).toEqual([runId]);
   }, 60_000);
 
   it('hands the workflows over at the next sweep when the host serving them stops', async () => {
@@ -73,7 +73,7 @@ export function claimSuite(settings: SettingsOf, claimClock: ClaimClock): void {
 
     await first.paused(1000);
     await setTimeout(10 * shortestSweepMs);
-    const refused = await Effect.runPromise(Effect.flip(second.host.start(runAt(executionId), startOf(listening))));
+    const refused = await Effect.runPromise(Effect.flip(second.host.start(runAt(runId), startOf(listening))));
 
     expect(refused).toBeInstanceOf(HostElsewhere);
     expect(second.notes().map(({ kind }) => kind)).toEqual(['standing_by']);

@@ -46,7 +46,7 @@ export function faultsOf(clock: VirtualClock): Faults {
   };
 }
 
-type TimerOfRun = Pick<ArmTimer, 'executionId' | 'timerId'>;
+type TimerOfRun = Pick<ArmTimer, 'runId' | 'timerId'>;
 
 interface Firing {
   readonly fire: (timer: ArmTimer) => void;
@@ -56,21 +56,21 @@ interface Firing {
   readonly forget: () => void;
 }
 
-function timerKeyOf({ executionId, timerId }: TimerOfRun): string {
-  return JSON.stringify([executionId, timerId]);
+function timerKeyOf({ runId, timerId }: TimerOfRun): string {
+  return JSON.stringify([runId, timerId]);
 }
 
 function firingOf(clock: VirtualClock, submit: Submit): Firing {
   const fired = new Set<string>();
   const armed = new Set<string>();
   return {
-    fire: ({ executionId, timerId, dueAt }) => {
-      const key = timerKeyOf({ executionId, timerId });
+    fire: ({ runId, timerId, dueAt }) => {
+      const key = timerKeyOf({ runId, timerId });
       armed.add(key);
       clock.schedule(dueAt, key, () => {
         armed.delete(key);
         fired.add(key);
-        submit({ kind: 'timer_fired', executionId, at: clock.now(), timerId });
+        submit({ kind: 'timer_fired', runId, at: clock.now(), timerId });
       });
     },
     hasFired: (timer) => fired.has(timerKeyOf(timer)),

@@ -18,7 +18,7 @@ The source-available runtime is in early development and is not ready for produc
 
 Workflows are available and coordinate the functions above. They are not another function type.
 
-Every runtime runs workflows itself, with nothing more to set up: a connection's tools include `send_execution_event`, and `create_spec` accepts the primitive `orchestration`. A self-hosted runtime runs interaction, computation and recall functions too: its `create_spec` accepts the primitives `interaction`, `computation` and `recollection`, and its tools include `list_interactions` and `answer_interaction`; Auto Cloud does not offer them yet.
+Every runtime runs workflows itself, with nothing more to set up: a connection's tools include `send_run_event`, and `create_definition` accepts the capability `workflow`. A self-hosted runtime runs interaction, computation and recall functions too: its `create_definition` accepts the capabilities `interaction`, `computation` and `recall`, and its tools include `list_interactions` and `answer_interaction`; Auto Cloud does not offer them yet.
 
 Dream is coming soon. It is an optional process using history and functions, not a sixth function type. API details should match the runtime version in use.
 
@@ -78,7 +78,7 @@ A skill is reusable task guidance and associated resources. A tool is a calling 
 
 A reasoning function can call the tools of MCP servers that the runtime's operator configures. The operator binds each server to an org, and optionally to some of its brains, and can narrow which of its tools functions may name. A function lists the tools it may use, such as `graph/search`, or `graph/*` for every tool of a server that the operator allows. During a run, the model can request one of those tools, receive its result and continue before it answers, within bounds on the number of calls, the size of their results and the time the run takes. Each call appears in the run's history as it happens.
 
-A tool may change something outside the brain. A run that called tools and did not succeed is therefore not run again under the same execution id; start a new run once you have checked what its history shows it called. When any MCP server is configured, an agent connected to Auto sees `execute_spec` marked as possibly destructive, so it can ask before running a function.
+A tool may change something outside the brain. A run that called tools and did not succeed is therefore not run again under the same run id; start a new run once you have checked what its history shows it called. When any MCP server is configured, an agent connected to Auto sees `run_definition` marked as possibly destructive, so it can ask before running a function.
 
 To learn what a tool answers before a function names it, an agent tests it with `test_tool_call` instead of making a function to look: the brain calls the tool once, as a run would, and answers what the run's model would see. Only a tool its server marks read-only, or that the operator marks testable on its entry, can be tested, and each test is recorded in the brain's history, never as a run.
 

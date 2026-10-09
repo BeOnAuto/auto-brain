@@ -2,7 +2,7 @@ import type { RunOutput } from '../dispatch/run-output.ts';
 import { callKeyText } from '../executor/call-key.ts';
 import type { InputReceipt } from '../machine/input-receipt.ts';
 import type { RunState } from '../machine/run-state.ts';
-import { withHistoryBytes, type RunEvent } from '../run-log/run-event.ts';
+import { withHistoryBytes, type RunLogEvent } from '../run-log/run-event.ts';
 import { stateFormat } from '../run-log/state-format.ts';
 import type { SessionResult } from '../runner/session.ts';
 import { patchBetween } from './state-diff.ts';
@@ -29,7 +29,7 @@ export function withoutUndone(outputs: readonly RunOutput[]): readonly RunOutput
   return outputs.filter((output) => !undone.has(keyOf(output)));
 }
 
-export function eventOf(state: RunState, result: SessionResult, receipt: InputReceipt): RunEvent {
+export function eventOf(state: RunState, result: SessionResult, receipt: InputReceipt): RunLogEvent {
   return withHistoryBytes(
     {
       type: 'input_applied',

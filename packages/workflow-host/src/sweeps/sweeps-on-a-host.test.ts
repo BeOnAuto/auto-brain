@@ -1,7 +1,7 @@
 import { streamSignalOf } from '@beonauto/ledger';
 import { describe, expect, it } from 'vitest';
 
-import { brainCreated, eventTrigger, published, specRecorded } from '../reaction-testing/brain-writes.ts';
+import { brainCreated, eventTrigger, published, definitionRecorded } from '../reaction-testing/brain-writes.ts';
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
 import { until } from '../reaction-testing/until.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
@@ -26,7 +26,7 @@ describe('the brains another process writes to, which raises no signal here', ()
       const settings = await onSQLite();
       const { store } = await openedOn(settings);
       await brainCreated(store, 'alpha');
-      await specRecorded(store, { name: 'close', version: 1, triggers: [closed] });
+      await definitionRecorded(store, { name: 'close', version: 1, triggers: [closed] });
       const reacting = await reactingHost({ settings, appended: streamSignalOf(), sweepEveryMs: 20 });
 
       await published(store, { id: 'after', type: 'com.acme.closed' });
@@ -44,7 +44,7 @@ describe('the brains another process writes to, which raises no signal here', ()
       const { store } = reacting.database;
 
       await brainCreated(store, 'beta');
-      await specRecorded(store, { name: 'close', version: 1, triggers: [closed] }, beta);
+      await definitionRecorded(store, { name: 'close', version: 1, triggers: [closed] }, beta);
       await published(store, { id: 'first', type: 'com.acme.closed' }, {}, beta);
       const starts = await startsReaching(reacting, 1);
 

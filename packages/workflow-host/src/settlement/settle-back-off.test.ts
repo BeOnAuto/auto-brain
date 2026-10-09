@@ -1,18 +1,18 @@
+import type { SettleRun } from '@beonauto/definitions';
 import { Conflict, type Settlement } from '@beonauto/operations';
-import type { SettleExecution } from '@beonauto/specs';
 import { Effect, Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { HostNote } from '../host/host-reports.ts';
 import { addressOfRun } from '../runs/run-address.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
-import { runId } from '../testing/probe-subjects.ts';
+import { runKey } from '../testing/probe-subjects.ts';
 import { ledgerRecordStore } from './ledger-record-store.ts';
 import { settleAttemptsBeforeBackingOff, settleBackOffMs } from './settle-attempts.ts';
 
 const settledBy = { version: 2, lastStep: null };
 
-const run = { executionId: runId, attributes: {} };
+const run = { runId: runKey, attributes: {} };
 
 const succeeded: Settlement = { status: 'succeeded', output: 'done' };
 
@@ -20,11 +20,11 @@ const stillRunning = new Conflict({
   detail: 'The run executes within the call that started it, so it cannot be settled',
 });
 
-const execution = {
-  execution_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
-  primitive: 'orchestration',
+const recordedRun = {
+  run_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
+  type: 'workflow',
   name: 'flow',
-  spec_version: 1,
+  definition_version: 1,
   status: 'succeeded',
   started_at: '2026-10-05T09:00:00.000Z',
   started_by: 'acme-admin',
@@ -41,10 +41,10 @@ interface Recording {
 async function recording(): Promise<Recording> {
   const state = { now: 0, refuses: true, attempts: 0 };
   const notes: HostNote[] = [];
-  const settle: SettleExecution = () =>
+  const settle: SettleRun = () =>
     Effect.suspend(() => {
       state.attempts += 1;
-      return state.refuses ? Effect.fail(stillRunning) : Effect.succeed(execution);
+      return state.refuses ? Effect.fail(stillRunning) : Effect.succeed(recordedRun);
     });
   const recordStore = ledgerRecordStore(await openedOn({ store: 'sqlite', file: aSQLiteFile() }), {
     settle,
@@ -69,18 +69,16 @@ async function recording(): Promise<Recording> {
 
 function settledOnce(recorded: Recording): Promise<Result.Result<string, { readonly detail: string }>> {
   return Effect.runPromise(
-    Effect.result(recorded.recordStore.settle({ executionId: runId, settlement: succeeded }, run, settledBy)),
+    Effect.result(recorded.recordStore.settle({ runId: runKey, settlement: succeeded }, run, settledBy)),
   );
 }
 
 function refusedEveryAttemptBeforeBackingOff(recorded: Recording): Promise<readonly { readonly detail: string }[]> {
-  const refused = Effect.flip(
-    recorded.recordStore.settle({ executionId: runId, settlement: succeeded }, run, settledBy),
-  );
+  const refused = Effect.flip(recorded.recordStore.settle({ runId: runKey, settlement: succeeded }, run, settledBy));
   return Effect.runPromise(Effect.forEach(Array.from({ length: settleAttemptsBeforeBackingOff }), () => refused));
 }
 
-const address = addressOfRun(runId);
+const address = addressOfRun(runKey);
 
 describe('the record store of the host, refused', () => {
   it(`tries again every dispatch, then after ${settleAttemptsBeforeBackingOff} attempts once a minute, saying so once`, async () => {

@@ -6,8 +6,8 @@ import { statement } from '../database/statement.ts';
 import { runAt, startOf, workflow } from '../testing/host-documents.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { hostedOn } from '../testing/host-runs.ts';
-import { ledgerRunStore } from './ledger-run-store.ts';
-import { runIdOf } from './run-address.ts';
+import { ledgerRunLogStore } from './ledger-run-store.ts';
+import { runKeyOf } from './run-address.ts';
 
 const run = runAt('0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a');
 
@@ -27,12 +27,12 @@ describe('the run store of the host, refusing', () => {
     const database = await openedOn({ store: 'sqlite', file });
     await Effect.runPromise(
       database.write(
-        statement`INSERT INTO workflow_snapshot_chunks (run_id, version, chunk, chunks, bytes, text)
-          VALUES (${runIdOf(run)}, ${1}, ${0}, ${1}, ${2}, ${'{}'})`,
+        statement`INSERT INTO workflow_snapshot_chunks (run_key, version, chunk, chunks, bytes, text)
+          VALUES (${runKeyOf(run)}, ${1}, ${0}, ${1}, ${2}, ${'{}'})`,
       ),
     );
 
-    const defect = await defectOf(ledgerRunStore(database).load(runIdOf(run)));
+    const defect = await defectOf(ledgerRunLogStore(database).load(runKeyOf(run)));
 
     expect(detailOf(defect).detail).toContain('A snapshot of the run does not decode');
   });
@@ -42,7 +42,7 @@ describe('the run store of the host, refusing', () => {
     const hosted = await hostedOn({ store: 'sqlite', file });
     await Effect.runPromise(hosted.host.start(run, startOf(waiting)));
     const state = await Effect.runPromise(hosted.host.stateOf(run));
-    const runStore = ledgerRunStore(await openedOn({ store: 'sqlite', file }));
+    const runStore = ledgerRunLogStore(await openedOn({ store: 'sqlite', file }));
 
     const defect = await defectOf(runStore.saveSnapshot(snapshotOf(state, 2)));
 

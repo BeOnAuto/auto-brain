@@ -19,8 +19,8 @@ const pausing: Schema.JsonObject = { document: header, do: [{ pause: { wait: 'PT
 
 const cancel = { by: 'acme-admin', kind: 'requested', reason: 'Measured' } as const;
 
-function runIdAt(index: number): string {
-  return `acme/alpha/${runAt(index).executionId}`;
+function runKeyAt(index: number): string {
+  return `acme/alpha/${runAt(index).runId}`;
 }
 
 async function goingRuns(database: DatabaseSettings, going: number): Promise<void> {
@@ -43,7 +43,7 @@ export async function firstResumeOn(database: DatabaseSettings, going: number, p
   await Effect.runPromise(
     Effect.forEach(
       Array.from({ length: pending }, (_, index) => index),
-      (index) => passedOverRow(opened, { runId: runIdAt(index), cause: `${runIdAt(index)}-asked`, cancel }),
+      (index) => passedOverRow(opened, { runKey: runKeyAt(index), cause: `${runKeyAt(index)}-asked`, cancel }),
       { discard: true },
     ),
   );

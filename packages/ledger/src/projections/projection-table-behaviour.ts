@@ -33,16 +33,16 @@ function anAppendThatBreaksDown(entry: LedgerEntry): void {
     it('fails the append, which keeps nothing, the row it changed before included', async () => {
       const breaking = tallyRowsOf(1, (row) => row['status'] === 'failed');
       const ledger = await aLedger(entry, undefined, undefined, [breaking]);
-      await noting(ledger, 'brain/acme/alpha/executions/r1', began);
+      await noting(ledger, 'brain/acme/alpha/runs/r1', began);
 
-      await expect(noting(ledger, 'brain/acme/alpha/executions/r1', { type: 'run_noted' }, ended)).rejects.toThrow(
+      await expect(noting(ledger, 'brain/acme/alpha/runs/r1', { type: 'run_noted' }, ended)).rejects.toThrow(
         breakingDown,
       );
 
       expect(
         (await Effect.runPromise(ledger.readProjectedRows('run_tallies', alpha, everyRow))).map(({ row }) => row),
       ).toMatchObject([{ status: 'started', facts: 1 }]);
-      expect((await Effect.runPromise(ledger.load('brain/acme/alpha/executions/r1', runFacts))).version).toBe(1);
+      expect((await Effect.runPromise(ledger.load('brain/acme/alpha/runs/r1', runFacts))).version).toBe(1);
     });
   });
 }
@@ -52,14 +52,14 @@ function aTableNotThereYet(entry: LedgerEntry): void {
     it('is made with its indexes and filled when the ledger opens, from every run stream, and earlier versions dropped', async () => {
       const database = await entry.aDatabase();
       const first = await aLedger(entry, database, undefined, [runTallyRows]);
-      await noting(first, 'brain/acme/alpha/executions/r1', began, { type: 'run_noted' });
-      await noting(first, 'brain/acme/alpha/executions/r2', ended);
-      await noting(first, 'brain/acme/alpha/executions/r3/nested', began);
+      await noting(first, 'brain/acme/alpha/runs/r1', began, { type: 'run_noted' });
+      await noting(first, 'brain/acme/alpha/runs/r2', ended);
+      await noting(first, 'brain/acme/alpha/runs/r3/nested', began);
 
       const next = await aLedger(entry, database, undefined, [tallyRowsOf(2)]);
 
       expect(await Effect.runPromise(next.readProjectedRows('run_tallies', alpha, everyRow))).toMatchObject([
-        { key: 'r1', row: { facts: 2, last_message: messageIdOf('brain/acme/alpha/executions/r1', 2) } },
+        { key: 'r1', row: { facts: 2, last_message: messageIdOf('brain/acme/alpha/runs/r1', 2) } },
       ]);
       expect(await entry.queried(database, entry.projectionTables)).toEqual([{ name: 'run_tallies_2' }]);
       expect(await entry.queried(database, entry.projectionIndexes)).toEqual([
@@ -70,7 +70,7 @@ function aTableNotThereYet(entry: LedgerEntry): void {
 
     it('is left as it is by a ledger that finds it', async () => {
       const database = await entry.aDatabase();
-      await noting(await aLedger(entry, database, undefined, [runTallyRows]), 'brain/acme/alpha/executions/r1', began);
+      await noting(await aLedger(entry, database, undefined, [runTallyRows]), 'brain/acme/alpha/runs/r1', began);
       await entry.queried(database, "DELETE FROM run_tallies_1 WHERE row_key = 'r1'");
 
       const reopened = await aLedger(entry, database, undefined, [runTallyRows]);
@@ -109,11 +109,11 @@ function aKeyedTableNotThereYet(entry: LedgerEntry): void {
       const database = await entry.aDatabase();
       const first = await aLedger(entry, database);
       await topics(first, 'brain/acme/alpha/notes/w1', { type: 'topic_noted', topic: 'winter', note: 'never opened' });
-      await topics(first, 'brain/acme/alpha/executions/r9', { type: 'topic_opened', topic: 'spring', at: 1000 });
+      await topics(first, 'brain/acme/alpha/runs/r9', { type: 'topic_opened', topic: 'spring', at: 1000 });
       await topics(first, 'brain/acme/alpha/notes/z9', { type: 'topic_noted', topic: 'spring', note: 'first' });
       await topics(first, 'brain/acme/alpha/notes/a1', { type: 'topic_noted', topic: 'spring', note: 'second' });
       await topics(first, 'brain/acme/alpha/others/o1', { type: 'topic_noted', topic: 'spring', note: 'other' });
-      await topics(first, 'brain/acme/alpha/executions/r8', { type: 'topic_opened', topic: 'autumn', at: 2000 });
+      await topics(first, 'brain/acme/alpha/runs/r8', { type: 'topic_opened', topic: 'autumn', at: 2000 });
       await notedMany(first, 'brain/acme/alpha/notes/n1');
 
       const next = await aLedger(entry, database, undefined, [topicRows]);

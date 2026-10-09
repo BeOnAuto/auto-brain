@@ -35,7 +35,7 @@ export function memoryPorts(clock: VirtualClock, submit: Submit, responder: Resp
     emitter: memoryEmitter(faults),
     recordStore: memoryRecordStore(faults),
     reporter: memoryReporter(),
-    serialiser: { serialise: (_executionId, work) => work },
+    serialiser: { serialise: (_runId, work) => work },
     faults,
   };
 }

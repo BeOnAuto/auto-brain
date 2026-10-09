@@ -1,5 +1,5 @@
-import { makeModelAccess } from '@beonauto/inference';
-import { scriptedLanguageModel, type ScriptedReply } from '@beonauto/inference/testing';
+import { makeModelAccess } from '@beonauto/reasoning';
+import { scriptedLanguageModel, type ScriptedReply } from '@beonauto/reasoning/testing';
 import type { HostClock } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
 
@@ -13,7 +13,7 @@ export interface ReasoningServer {
   readonly origin: string;
   readonly call: (method: string, path: string, options?: RequestOptions) => Promise<TestResponse>;
   readonly modelCalls: () => number;
-  readonly modelExecutions: () => readonly (string | undefined)[];
+  readonly modelRunIds: () => readonly (string | undefined)[];
   readonly stop: () => Promise<void>;
 }
 
@@ -54,7 +54,7 @@ export async function servingReasoning(
     origin: `http://127.0.0.1:${server.port}`,
     call: (method, path, options) => request(server.port, method, path, options),
     modelCalls: () => scripted.requests().length,
-    modelExecutions: () => scripted.requests().map(({ execution_id: executionId }) => executionId),
+    modelRunIds: () => scripted.requests().map(({ run_id: runId }) => runId),
     stop: async () => {
       await server.stop();
       ledger.remove();

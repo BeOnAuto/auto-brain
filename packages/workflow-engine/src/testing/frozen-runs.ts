@@ -18,8 +18,8 @@ export function deeplyFrozen<T>(value: T): T {
 export function frozenRuns(cache: RunCache): RunCache {
   return {
     ...cache,
-    put: (executionId, loaded) => {
-      cache.put(executionId, deeplyFrozen(loaded));
+    put: (runId, loaded) => {
+      cache.put(runId, deeplyFrozen(loaded));
     },
   };
 }

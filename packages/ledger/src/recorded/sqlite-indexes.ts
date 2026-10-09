@@ -18,7 +18,7 @@ export const brainKeyOfStream = SQL.plain(brainKeyText);
 export const kindKeyOfStream = SQL.plain(prefixThroughSlashes(4));
 
 export const definitionTypeOfStream = SQL.plain(
-  `CASE WHEN substr(stream_id, length(${brainKeyText}) + 1, 6) = 'specs/' THEN substr(stream_id, length(${brainKeyText}) + 7) END`,
+  `CASE WHEN substr(stream_id, length(${brainKeyText}) + 1, 6) = 'definitions/' THEN substr(stream_id, length(${brainKeyText}) + 7) END`,
 );
 
 export const correlationOfMessage = SQL.plain("json_extract(message_metadata, '$.correlationId')");

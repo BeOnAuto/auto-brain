@@ -8,7 +8,7 @@ import {
   workflowProcess,
 } from '../testing/processes/workflow-process.ts';
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
-import { executionIdIn, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { runIdIn, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 const ledger = temporaryLedger();
 
@@ -23,11 +23,11 @@ describe('a server that ran workflows, told to stop', { timeout: workflowTestTim
     const child = workflowProcess(ledger.fileName);
     const port = await child.port;
     await requestTo(port, 'POST', '', { brain: 'alpha', name: 'Alpha' });
-    await requestTo(port, 'POST', '/alpha/specs/orchestration', { name: 'greeting', source: greeting });
-    const started = await requestTo(port, 'POST', '/alpha/specs/orchestration/greeting/execute', {
+    await requestTo(port, 'POST', '/alpha/definitions/workflow', { name: 'greeting', source: greeting });
+    const started = await requestTo(port, 'POST', '/alpha/definitions/workflow/greeting/run', {
       input: { name: 'Ada' },
     });
-    const settled = await settledOver(port, `/alpha/executions/${executionIdIn(started.body)}`);
+    const settled = await settledOver(port, `/alpha/runs/${runIdIn(started.body)}`);
 
     const stopping = performance.now();
     child.signal('SIGTERM');
@@ -47,7 +47,7 @@ describe('a server that ran workflows, told to stop', { timeout: workflowTestTim
     async (signal, exitedWith, brain) => {
       const gateway = await gatewayThatHangsFirst();
       const first = workflowProcess(ledger.fileName, { MODEL_GATEWAYS: gateway.gateways });
-      const executionId = await welcomingStarted(await first.port, brain);
+      const runId = await welcomingStarted(await first.port, brain);
       await gateway.firstHeard;
 
       const stopping = performance.now();
@@ -55,7 +55,7 @@ describe('a server that ran workflows, told to stop', { timeout: workflowTestTim
       const exitCode = await first.exited;
       const stoppedWithinMs = performance.now() - stopping;
       const second = workflowProcess(ledger.fileName, { MODEL_GATEWAYS: gateway.gateways });
-      const settled = await settledOver(await second.port, `/${brain}/executions/${executionId}`);
+      const settled = await settledOver(await second.port, `/${brain}/runs/${runId}`);
       second.signal('SIGTERM');
 
       expect(exitCode).toBe(exitedWith);

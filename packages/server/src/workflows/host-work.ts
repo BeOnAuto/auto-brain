@@ -1,21 +1,21 @@
 import type { AppRuntime } from '@beonauto/api';
-import { Ledger, type Dispatcher, type DispatcherServices } from '@beonauto/operations';
 import {
   callResultOfEnding,
   definitionCalls,
   definitionRunResultOf,
-  orchestrationMachine,
+  workflowMachineOptions,
   type RunDefinition,
-} from '@beonauto/orchestration';
+} from '@beonauto/coordination';
 import {
-  defineExecuteSpec,
+  defineRunDefinition,
   deferredCanceller,
-  executionCanceller,
-  executionSettler,
+  runCanceller,
+  runSettler,
   type BrainOperation,
-  type Primitive,
-  type SettleExecution,
-} from '@beonauto/specs';
+  type Capability,
+  type SettleRun,
+} from '@beonauto/definitions';
+import { Ledger, type Dispatcher, type DispatcherServices } from '@beonauto/operations';
 import type { HostOptions, WaitingOptions } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
 
@@ -25,23 +25,23 @@ import { reactionsOf } from './reaction-dependencies.ts';
 export type HostWork = Pick<HostOptions, 'machine' | 'perform' | 'settle' | 'reactions' | 'waiting'>;
 
 export interface WorkParts {
-  readonly primitives: readonly Primitive[];
+  readonly capabilities: readonly Capability[];
   readonly startVersion: BrainOperation;
 }
 
-function nestedExecutions(
+function nestedRuns(
   runtime: AppRuntime<DispatcherServices>,
   dispatcher: Dispatcher,
-  executeSpec: BrainOperation,
+  runDefinition: BrainOperation,
 ): RunDefinition {
-  return ({ org, brain, caller, primitive, name, input, executionId, lineage, depth, callDepth, calledBy }) =>
+  return ({ org, brain, caller, type, name, input, runId, lineage, depth, callDepth, calledBy }) =>
     inRuntime(
       runtime,
-      dispatcher.dispatchToBrain(executeSpec.registration, {
+      dispatcher.dispatchToBrain(runDefinition.registration, {
         caller,
         org,
         brain,
-        input: { primitive, name, input, execution_id: executionId },
+        input: { type, name, input, run_id: runId },
         encoding: 'json',
         lineage,
         depth,
@@ -51,27 +51,27 @@ function nestedExecutions(
     ).pipe(Effect.map(definitionRunResultOf));
 }
 
-function settlements(runtime: AppRuntime<DispatcherServices>): SettleExecution {
-  return (execution, settlement, lineage) =>
+function settlements(runtime: AppRuntime<DispatcherServices>): SettleRun {
+  return (run, settlement, lineage) =>
     inRuntime(
       runtime,
-      Effect.flatMap(Effect.service(Ledger), (ledger) => executionSettler(ledger)(execution, settlement, lineage)),
+      Effect.flatMap(Effect.service(Ledger), (ledger) => runSettler(ledger)(run, settlement, lineage)),
     );
 }
 
-function waitingOf(runtime: AppRuntime<DispatcherServices>, primitives: readonly Primitive[]): WaitingOptions {
+function waitingOf(runtime: AppRuntime<DispatcherServices>, capabilities: readonly Capability[]): WaitingOptions {
   return {
     resultOf: callResultOfEnding,
-    cancel: (execution, request, lineage) =>
+    cancel: (run, request, lineage) =>
       inRuntime(
         runtime,
-        Effect.flatMap(Effect.service(Ledger), (ledger) => executionCanceller(ledger)(execution, request, lineage)),
+        Effect.flatMap(Effect.service(Ledger), (ledger) => runCanceller(ledger)(run, request, lineage)),
       ),
-    cancelDeferred: (execution, request, lineage) =>
+    cancelDeferred: (run, request, lineage) =>
       inRuntime(
         runtime,
         Effect.flatMap(Effect.service(Ledger), (ledger) =>
-          deferredCanceller(primitives, ledger)(execution, request, lineage),
+          deferredCanceller(capabilities, ledger)(run, request, lineage),
         ),
       ),
   };
@@ -80,13 +80,13 @@ function waitingOf(runtime: AppRuntime<DispatcherServices>, primitives: readonly
 export function hostWorkOf(
   runtime: AppRuntime<DispatcherServices>,
   dispatcher: Dispatcher,
-  { primitives, startVersion }: WorkParts,
+  { capabilities, startVersion }: WorkParts,
 ): HostWork {
   return {
-    machine: orchestrationMachine,
-    perform: definitionCalls(nestedExecutions(runtime, dispatcher, defineExecuteSpec(primitives))),
+    machine: workflowMachineOptions,
+    perform: definitionCalls(nestedRuns(runtime, dispatcher, defineRunDefinition(capabilities))),
     settle: settlements(runtime),
     reactions: reactionsOf(runtime, dispatcher, startVersion),
-    waiting: waitingOf(runtime, primitives),
+    waiting: waitingOf(runtime, capabilities),
   };
 }

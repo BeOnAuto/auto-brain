@@ -45,15 +45,15 @@ The preview opens under `/docs/`. Read [Documentation contributions](docs/contri
 
 ## Commits and pull requests
 
-- **Commits are [conventional](https://www.conventionalcommits.org) with a scope,** for example `feat(inference): render the liquid body against the brain`.
-  - The scope is a package or primitive folder name (`server`, `config`, `ledger`, `inference`, ...), or one of `global`, `deps`, `ci` and `release`.
+- **Commits are [conventional](https://www.conventionalcommits.org) with a scope,** for example `feat(reasoning): render the liquid body against the brain`.
+  - The scope is a package or capability folder name (`server`, `config`, `ledger`, `reasoning`, ...), or one of `global`, `deps`, `ci` and `release`.
   - `pnpm commit` walks you through it, and a git hook checks every message.
 - **The pull request title matters most.** Pull requests are squash-merged, so the title becomes the commit on `main` and the changelog entry. CI checks it too.
 - **CI must pass, then the pull request merges through the merge queue.** CI runs the full `pnpm check`, builds and smoke-tests the container, and audits the workflows. Keep each pull request to one change.
 
 ## Adding a function or workflow adapter
 
-Function and workflow implementations live in `primitives/<name>`. The shared `Primitive` interface is their low-level runtime adapter contract, including custom extension adapters. It is not a product category. Each implemented adapter is a workspace package:
+Function and workflow implementations live in `capabilities/<name>`. The shared `Capability` interface is their low-level runtime adapter contract, including custom extension adapters. It is not a product category. Each implemented adapter is a workspace package:
 
 - `package.json` named `@beonauto/<name>`, with `"exports": { ".": "./src/index.ts" }` and `lint`, `typecheck` and `test` scripts. Copy them from `packages/config`.
 - `README.md` saying what the adapter runs and how it reads and writes the ledger.

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { StartCall } from '../dispatch/run-output.ts';
 import { taskNameOf } from '../dsl/tasks.ts';
-import type { RunEvent } from '../run-log/run-event.ts';
+import type { RunLogEvent } from '../run-log/run-event.ts';
 import { drivenRun, type DriveOptions, type DrivenRun } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 import { isRecordedStep, type Step, type StepCause } from './step-entry.ts';
@@ -16,11 +16,11 @@ function stepShown(step: Step): string {
   return `${step.name}#${step.run} ${step.outcome} ${step.times} <- ${causeShown(step.caused_by)}`;
 }
 
-function shown({ steps }: RunEvent): readonly string[] {
+function shown({ steps }: RunLogEvent): readonly string[] {
   return steps.filter((step) => isRecordedStep(step)).map((step) => stepShown(step));
 }
 
-function recordedIn({ steps }: RunEvent): readonly Step[] {
+function recordedIn({ steps }: RunLogEvent): readonly Step[] {
   return steps.filter((step) => isRecordedStep(step));
 }
 
@@ -141,12 +141,12 @@ do:
     const steps = stepsOf(
       'do:\n  - both: { listen: { to: { all: [{ with: { type: a } }, { with: { type: b } }] } } }',
       {
-        meanwhile: (driver, executionId) => {
+        meanwhile: (driver, runId) => {
           driver.at(10, () => {
-            driver.deliver(executionId, { id: 'a', type: 'a' });
+            driver.deliver(runId, { id: 'a', type: 'a' });
           });
           driver.at(20, () => {
-            driver.deliver(executionId, { id: 'b', type: 'b' });
+            driver.deliver(runId, { id: 'b', type: 'b' });
           });
         },
       },
@@ -178,8 +178,8 @@ describe('the cause of a step after a yield, a timeout or a cancel', () => {
   it('is the waiting entry for a step that timed out, with its error, and a cancel records no step', () => {
     const run = drivenRun(workflow('do:\n  - slow: { timeout: { after: PT1S }, wait: PT1H }'));
     const cancelled = drivenRun(workflow('do:\n  - slow: { wait: PT1H }'), {
-      meanwhile: (driver, executionId) => {
-        driver.cancel(executionId);
+      meanwhile: (driver, runId) => {
+        driver.cancel(runId);
       },
     });
 

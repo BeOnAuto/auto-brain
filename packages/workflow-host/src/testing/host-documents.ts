@@ -15,8 +15,8 @@ export function workflow(source: string): JsonObject {
   return { document: header, ...decodeObject(parse(source)) };
 }
 
-export function runAt(executionId: string): RunAddress {
-  return { org: 'acme', brain: 'alpha', executionId };
+export function runAt(runId: string): RunAddress {
+  return { org: 'acme', brain: 'alpha', runId };
 }
 
 export function startOf(document: JsonObject, input: JsonObject = {}): RunStart {

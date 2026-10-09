@@ -5,7 +5,7 @@ import { chatEnvironment, chatKey, chatServer, deliveryHistoryOf } from '../test
 import { servingInteractions } from '../testing/servers/interaction-server.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
 import { until } from '../testing/servers/workflow-calls.ts';
-import { executionIdIn, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { runIdIn, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 const aDigest: unknown = expect.stringMatching(/^[0-9a-f]{64}$/u);
 
@@ -33,7 +33,7 @@ describe('an interaction function that delivers through a tool, over HTTP', { ti
     expect(facts).toEqual([
       {
         type: 'delivery_started',
-        execution_id: runId,
+        run_id: runId,
         by: 'brain:alpha',
         number: 1,
         delivery: { server: 'chat', tool: 'post_message' },
@@ -43,7 +43,7 @@ describe('an interaction function that delivers through a tool, over HTTP', { ti
       },
       {
         type: 'delivery_ended',
-        execution_id: runId,
+        run_id: runId,
         by: 'brain:alpha',
         number: 1,
         outcome: 'delivered',
@@ -55,9 +55,7 @@ describe('an interaction function that delivers through a tool, over HTTP', { ti
       },
     ]);
     expect(listed.body).toMatchObject({
-      interactions: [
-        { execution_id: runId, delivery: { server: 'chat', tool: 'post_message' }, standing: 'delivered' },
-      ],
+      interactions: [{ run_id: runId, delivery: { server: 'chat', tool: 'post_message' }, standing: 'delivered' }],
     });
   });
 });
@@ -69,11 +67,11 @@ describe(
     it('records the arguments and the answer, scrubbed, where the server records its content, shown at 2 KiB', async () => {
       const chat = await chatServer();
       const server = await servingInteractions(chatDelivery, chatEnvironment(chat.url, { record_content: true }));
-      const started = await server.call('POST', `${alpha}/specs/interaction/approve-brief/execute`, {
+      const started = await server.call('POST', `${alpha}/definitions/interaction/approve-brief/run`, {
         body: { input: { owner: 'ada', campaign: `${chatKey} ${'x'.repeat(5000)}` } },
       });
 
-      const [start, end] = await endedFacts(server, executionIdIn(started.body));
+      const [start, end] = await endedFacts(server, runIdIn(started.body));
 
       expect(String(start?.['arguments_json'])).toMatch(
         /^\{"channel":"#approvals-ada","text":"Please review the brief for \[redacted\] x+$/u,
@@ -89,11 +87,11 @@ describe(
 
       expect(await server.settled(runId)).toMatchObject({ status: 'succeeded', output: {} });
       expect(await server.causes(runId)).toEqual([
-        ['execution_started', null],
-        ['interaction_requested', 'execution_started'],
+        ['run_started', null],
+        ['interaction_requested', 'run_started'],
         ['delivery_started', 'interaction_requested'],
         ['delivery_ended', 'delivery_started'],
-        ['execution_succeeded', 'delivery_ended'],
+        ['run_succeeded', 'delivery_ended'],
       ]);
     });
   },

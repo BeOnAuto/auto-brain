@@ -2,7 +2,7 @@
 
 # Interaction function format
 
-The API stores an interaction function as an `interaction` spec. Its source document names a party and an expiry, holds the message, and may name the tool of a tool server its request is sent through. A run renders the request from its input, sends it through that tool or, for a function that names none, leaves it in the brain's inbox, and waits, holding nothing of the server, until the request is answered, expires or is cancelled. The answer, checked against the answer schema the document gives, is the run's output. Use one wherever a brain asks a person or a system and takes the answer later: an approval, a choice, a figure only someone else has, or a notification that needs no answer.
+The API stores an interaction function as an `interaction` definition. Its source document names a party and an expiry, holds the message, and may name the tool of a tool server its request is sent through. A run renders the request from its input, sends it through that tool or, for a function that names none, leaves it in the brain's inbox, and waits, holding nothing of the server, until the request is answered, expires or is cancelled. The answer, checked against the answer schema the document gives, is the run's output. Use one wherever a brain asks a person or a system and takes the answer later: an approval, a choice, a figure only someone else has, or a notification that needs no answer.
 
 ## A function document
 
@@ -35,7 +35,7 @@ Please review the brief for {{ input.campaign }}.
 {{ input.summary }}
 ```
 
-For this document, `create_spec` takes `primitive: "interaction"`, a function `name` such as `approve-brief`, and the document as `source`. `execute_spec` takes the same primitive and name, with `campaign`, `owner` and `summary` in the `input` object. Both operations also require the brain id unless the MCP connection is scoped to that brain. The run answers `status: started` with its `execution_id`, and the request waits in the brain's inbox until it is answered, since the function names no `deliver`.
+For this document, `create_definition` takes `type: "interaction"`, a function `name` such as `approve-brief`, and the document as `source`. `run_definition` takes the same capability and name, with `campaign`, `owner` and `summary` in the `input` object. Both operations also require the brain id unless the MCP connection is scoped to that brain. The run answers `status: started` with its `run_id`, and the request waits in the brain's inbox until it is answered, since the function names no `deliver`.
 
 ## Sending through a tool
 
@@ -44,7 +44,7 @@ A function sends its request through a tool of a tool server the brain may use b
 1. Call `list_tool_servers` to see the servers this brain may use and the tools each offers.
 2. Test the tool that sends with `test_tool_call`, with the arguments its `input_schema` takes, and read its answer: that is the document `deliver.sent` points into, with JSON Pointers, to where the conversation the message landed in and the identity of the message are named. A chat's tool that posts a message answers the conversation it posted in and the message's timestamp or id.
 3. When the person answers where the message reached them, test the tool that reads what came since a point, and write `replies`: the `conversation` the brain reads by, the tool and its arguments over `sent` and the cursor `since`, the pointers of `read` to the list of replies and, within each, its id, its sender, its words and the message it answers, the floor `wait` of the cadence, and `tell`, how the party is told when a reply was not an answer. The `reply` rule maps the reply's words to the answer.
-4. Write `deliver` with `server`, `tool`, `with` and `sent`, show the person the whole document, and save it with `create_spec`, `primitive` interaction, once they agree. A run refuses a server this brain may not use or a tool its operator does not allow, in the words of `list_tool_servers`.
+4. Write `deliver` with `server`, `tool`, `with` and `sent`, show the person the whole document, and save it with `create_definition`, `type` interaction, once they agree. A run refuses a server this brain may not use or a tool its operator does not allow, in the words of `list_tool_servers`.
 
 The arguments of `deliver.with`, `replies.with` and `tell.with` are typed as written: a number, boolean, null, list or object is sent as written, with the templates inside its strings rendered; a string that is exactly one `{{ expression }}` is sent as the value the expression reads, so a number stays a number and an object an object, and `'{{ answer_schema }}'` sends the schema itself; any other string is rendered as text, with `| json` to embed a structured value in it. The templates of `deliver.with` read `input`, `today` and `now` as the message does, and the request's `to`, `message`, `run_id`, `function`, `expires_at` and `answer_schema`; `today` and `now` are the request's own moment, so every attempt sends the same arguments. `to` is the party the request goes to, which the templates may use as the tool's address or not. A template holds no `${`, since a document is never filled from the environment.
 
@@ -131,17 +131,17 @@ A delivery's templates are checked the same way when the document is saved, each
 
 ## Answering a request
 
-`answer_interaction` answers a request, over MCP or as `POST /v1/orgs/{org}/brains/{brain}/executions/{execution_id}/answer` over HTTP, with the `execution_id` of the interaction function's run, which `list_interactions` shows, and the `answer`:
+`answer_interaction` answers a request, over MCP or as `POST /v1/orgs/{org}/brains/{brain}/runs/{run_id}/answer` over HTTP, with the `run_id` of the interaction function's run, which `list_interactions` shows, and the `answer`:
 
 ```json
 { "answer": { "choice": "approve", "note": "Ready to launch." }, "claimed_for": "the campaign team" }
 ```
 
-When the person answers a request in a conversation, by approving, rejecting, asking for changes or in other words, the agent they talk to answers it with `answer_interaction`, on the request's `execution_id`, with the answer in the shape of the request's `answer_schema`, which `list_interactions` shows beside that `execution_id`: the function's `output.schema` as it stood when the request was asked, which `get_spec` no longer shows once the function has changed. For the document above, the person's "approve" is `{ "choice": "approve" }`; for a function whose answer has a `decision` of `approve`, `revise` or `skip` and an optional `note`, it is `{ "decision": "approve" }`. This holds wherever the request reached the person, in the inbox or through a tool such as a chat's. Running the function or its workflow again answers nothing: it makes a new request and leaves the first open until it expires, while the run that waits for it goes on waiting.
+When the person answers a request in a conversation, by approving, rejecting, asking for changes or in other words, the agent they talk to answers it with `answer_interaction`, on the request's `run_id`, with the answer in the shape of the request's `answer_schema`, which `list_interactions` shows beside that `run_id`: the function's `output.schema` as it stood when the request was asked, which `get_definition` no longer shows once the function has changed. For the document above, the person's "approve" is `{ "choice": "approve" }`; for a function whose answer has a `decision` of `approve`, `revise` or `skip` and an optional `note`, it is `{ "decision": "approve" }`. This holds wherever the request reached the person, in the inbox or through a tool such as a chat's. Running the function or its workflow again answers nothing: it makes a new request and leaves the first open until it expires, while the run that waits for it goes on waiting.
 
 A caller that may write to the brain can answer. The answer is checked against the answer schema the request recorded, at most 64 KiB as JSON, and settles the run `succeeded` with the answer as its output. The run's record shows `answered_by`, the caller's id, `answered_at`, and `claimed_for`, whom the caller says it answers for, kept as a claim and never checked. An answer that does not match is `invalid_input`, with a pointer under `/answer` for each problem, and leaves the request open. The same answer again answers the run as it stands; a different answer, or an answer to a request that has ended, is `conflict`.
 
-`list_interactions`, `GET /v1/orgs/{org}/brains/{brain}/interactions` over HTTP, lists the brain's open requests, newest first: the `execution_id`, the function and its version, `to`, the `delivery`, the tool the request is sent through or `null` for the inbox, the message, whether it takes an answer, when it was asked and expires, the attempts made and how its delivery stands, `in_inbox`, `to_deliver`, `delivering`, `delivered`, `retrying`, `undelivered`, `answered`, while a reply that answered it settles its run, or `cancelling`, once a cancel of its run was asked. `to` keeps the requests to one party and `function` those of one interaction function; it pages with `limit` and `cursor`. Every reader of the brain sees each party and message, as a run's input is seen.
+`list_interactions`, `GET /v1/orgs/{org}/brains/{brain}/interactions` over HTTP, lists the brain's open requests, newest first: the `run_id`, the function and its version, `to`, the `delivery`, the tool the request is sent through or `null` for the inbox, the message, whether it takes an answer, when it was asked and expires, the attempts made and how its delivery stands, `in_inbox`, `to_deliver`, `delivering`, `delivered`, `retrying`, `undelivered`, `answered`, while a reply that answered it settles its run, or `cancelling`, once a cancel of its run was asked. `to` keeps the requests to one party and `function` those of one interaction function; it pages with `limit` and `cursor`. Every reader of the brain sees each party and message, as a run's input is seen.
 
 Each listed request also shows its `answer_schema`, the JSON Schema an answer is checked against, as the request recorded it, or `null` for a notification.
 
@@ -160,12 +160,12 @@ Where a function reads replies, the person answers by replying to the message th
 | `unavailable`, kind `requests_full`            | The brain already has as many open requests as the runtime allows, 10,000 unless its operator sets another number                                                                                                      |
 | `rejected` as `unanswered`, kind `expired`     | Nobody answered the request before it expired                                                                                                                                                                          |
 | `rejected` as `unanswered`, kind `undelivered` | Every attempt to deliver a notification failed                                                                                                                                                                         |
-| `rejected` as `cancelled`                      | `cancel_execution` cancelled the run, or the workflow that waited for it ran out of time or ended first                                                                                                                |
+| `rejected` as `cancelled`                      | `cancel_run` cancelled the run, or the workflow that waited for it ran out of time or ended first                                                                                                                      |
 | `failed`                                       | The runtime itself broke down                                                                                                                                                                                          |
 
-A request that has ended is final for its execution id: answering it is `conflict`, and running the function again starts a new request under a new id.
+A request that has ended is final for its run id: answering it is `conflict`, and running the function again starts a new request under a new id.
 
-The run's history shows the request as `interaction_requested`, with the delivery, the party, the size of the message, whether it takes an answer and the expiry; then each delivery attempt as `delivery_started`, with the tool and the size and digest of its arguments, and `delivery_ended`, with how it ended, the size and digest of what the tool answered and, where the delivery writes `sent`, what the message was delivered as; each reply taken or refused as `reply_taken` or `reply_refused`, with the reply's identity and never its words; and the run's end. The arguments, the message among them, and what the tool answered are shown at 2 KiB only where the operator records the server's content. An answer is the run's output, which `get_execution` returns and the history does not show. `list_brain_events` shows the brain's reads of a conversation that found a reply or failed, and its tellings.
+The run's history shows the request as `interaction_requested`, with the delivery, the party, the size of the message, whether it takes an answer and the expiry; then each delivery attempt as `delivery_started`, with the tool and the size and digest of its arguments, and `delivery_ended`, with how it ended, the size and digest of what the tool answered and, where the delivery writes `sent`, what the message was delivered as; each reply taken or refused as `reply_taken` or `reply_refused`, with the reply's identity and never its words; and the run's end. The arguments, the message among them, and what the tool answered are shown at 2 KiB only where the operator records the server's content. An answer is the run's output, which `get_run` returns and the history does not show. `list_brain_events` shows the brain's reads of a conversation that found a reply or failed, and its tellings.
 
 ## Bounds
 
@@ -189,7 +189,7 @@ The run's history shows the request as `interaction_requested`, with the deliver
 
 ## In a workflow
 
-A workflow calls an interaction function as it calls any function, with `call: execute_spec` and `primitive: interaction`. The step waits for the request, as long as the function's `expires` and a minute more, holding nothing of the server, across a restart, and its output is the answer. A request nobody answers raises an error of the [problem type](http.md#responses-and-errors) `https://on.auto/problems/unanswered`, status 410, with the kind `expired` or, for a notification, `undelivered`. No retry policy matches it unless it names that type, so a workflow handles an unanswered request only on purpose, and a workflow that does not catch it ends `rejected` as `unanswered` with the same kind. When the step runs out of time, or the workflow ends first, the request is cancelled.
+A workflow calls an interaction function as it calls any function, with `call: run_definition` and `type: interaction`. The step waits for the request, as long as the function's `expires` and a minute more, holding nothing of the server, across a restart, and its output is the answer. A request nobody answers raises an error of the [problem type](http.md#responses-and-errors) `https://on.auto/problems/unanswered`, status 410, with the kind `expired` or, for a notification, `undelivered`. No retry policy matches it unless it names that type, so a workflow handles an unanswered request only on purpose, and a workflow that does not catch it ends `rejected` as `unanswered` with the same kind. When the step runs out of time, or the workflow ends first, the request is cancelled.
 
 This workflow asks for the approval and, when nobody answers in time, records that the brief went unapproved:
 
@@ -209,9 +209,9 @@ do:
   - approval:
       try:
         - ask:
-            call: execute_spec
+            call: run_definition
             with:
-              primitive: interaction
+              type: interaction
               name: approve-brief
               input: '${ . }'
       catch:
@@ -221,9 +221,9 @@ do:
           - unapproved: { set: { choice: unanswered } }
 ```
 
-The run ends `succeeded` with the answer, such as `{"choice": "approve"}`, as its output, or with `{"choice": "unanswered"}` when the request expired. `list_interactions` shows the request while it waits, under the `execution_id` of the interaction function's run.
+The run ends `succeeded` with the answer, such as `{"choice": "approve"}`, as its output, or with `{"choice": "unanswered"}` when the request expired. `list_interactions` shows the request while it waits, under the `run_id` of the interaction function's run.
 
-`send_execution_event` remains for events a waiting workflow listens for that are not the answer to a question.
+`send_run_event` remains for events a waiting workflow listens for that are not the answer to a question.
 
 ## Availability
 

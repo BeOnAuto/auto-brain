@@ -4,7 +4,7 @@ import { Effect } from 'effect';
 import type { HostDatabase } from '../database/host-database.ts';
 import { deliverySweeps, type RecordConsumer, type Delivery, type FollowedRecord } from '../follower/consumers.ts';
 import { eventSubscriptionsOf, type EventSubscription } from '../triggers/trigger-rows.ts';
-import { reactionExecutionIdOf } from './reaction-ids.ts';
+import { reactionRunIdOf } from './reaction-ids.ts';
 import type { RefuseReaction } from './refusals.ts';
 import type { WorkflowOfRun } from './run-workflows.ts';
 import type { Starting } from './start-rates.ts';
@@ -56,7 +56,7 @@ function startOf(parts: StartParts, subscription: EventSubscription, followed: F
             ...brain,
             workflow,
             version,
-            executionId: reactionExecutionIdOf(workflow, version, reference, record.id),
+            runId: reactionRunIdOf(workflow, version, reference, record.id),
             input: [event.event],
             depth: event.depth,
             cause: record.id,

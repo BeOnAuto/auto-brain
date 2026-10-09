@@ -106,7 +106,7 @@
   },
   "overrides": [
     {
-      "files": ["packages/workflow-engine/src/program-pool/**", "primitives/computation/measure/**"],
+      "files": ["packages/workflow-engine/src/program-pool/**", "capabilities/computation/measure/**"],
       "rules": {
         "no-restricted-imports": "off"
       }

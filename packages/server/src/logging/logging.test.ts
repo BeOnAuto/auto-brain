@@ -121,14 +121,14 @@ describe('the workflow logs', () => {
     expect(line).toContain(words);
   });
 
-  it('report an execution settling left started as an error with its org, brain, id and reason only', async () => {
+  it('report a run settling left started as an error with its org, brain, id and reason only', async () => {
     const [line] = await linesLoggedBy(
-      logUnsettled({ org: 'acme', brain: 'alpha', executionId: 'e-1', reason: 'The ledger has no such execution' }),
+      logUnsettled({ org: 'acme', brain: 'alpha', runId: 'e-1', reason: 'The ledger has no such run' }),
     );
 
-    expect(line).toContain('"message":"An execution stays started because settling it failed","level":"ERROR"');
+    expect(line).toContain('"message":"A run stays started because settling it failed","level":"ERROR"');
     expect(line).toContain(
-      '"annotations":{"org":"acme","brain":"alpha","execution_id":"e-1","reason":"The ledger has no such execution"}',
+      '"annotations":{"org":"acme","brain":"alpha","run_id":"e-1","reason":"The ledger has no such run"}',
     );
   });
 });
@@ -230,11 +230,11 @@ describe('the pretty log format', () => {
 
   it('writes an annotation that is not one plain word as JSON', async () => {
     const lines = await prettyLinesLoggedBy(
-      logUnsettled({ org: 'acme', brain: 'alpha', executionId: 'e-1', reason: 'The ledger has no such execution' }),
+      logUnsettled({ org: 'acme', brain: 'alpha', runId: 'e-1', reason: 'The ledger has no such run' }),
     );
 
     expect(lines).toEqual([
-      '<time> ERROR An execution stays started because settling it failed org=acme brain=alpha execution_id=e-1 reason="The ledger has no such execution"',
+      '<time> ERROR A run stays started because settling it failed org=acme brain=alpha run_id=e-1 reason="The ledger has no such run"',
     ]);
   });
 

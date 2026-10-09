@@ -4,14 +4,14 @@ import { Effect } from 'effect';
 
 const recordsInAPage = 100;
 
-const specTypes: readonly string[] = ['spec_created', 'spec_updated', 'spec_retired'];
+const definitionTypes: readonly string[] = ['definition_created', 'definition_updated', 'definition_retired'];
 
 const factTypes: ReadonlySet<string> = new Set([
-  'execution_started',
-  'execution_succeeded',
-  'execution_rejected',
-  'execution_failed',
-  ...specTypes,
+  'run_started',
+  'run_succeeded',
+  'run_rejected',
+  'run_failed',
+  ...definitionTypes,
 ]);
 
 export const noRecordTypes: ReadonlySet<string> = new Set();
@@ -45,7 +45,7 @@ export function brainRecordsOf(store: EventStore): BrainRecords {
           {
             order: 'asc',
             limit: recordsInAPage,
-            dataOf: [...new Set([...specTypes, ...delivers])],
+            dataOf: [...new Set([...definitionTypes, ...delivers])],
             ...(cursor === null ? {} : { cursor }),
           },
         ),

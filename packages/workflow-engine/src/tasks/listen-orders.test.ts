@@ -10,13 +10,13 @@ import { testMachine } from '../testing/driver-inputs.ts';
 import { memoryDriver, type MemoryDriver } from '../testing/memory-driver.ts';
 import { workflow } from '../testing/workflows.ts';
 
-const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 function outputKindsOf(driver: MemoryDriver): readonly string[] {
-  return driver.ports.runStore.events(executionId).flatMap(({ event }) => event.outputs.map(({ kind }) => kind));
+  return driver.ports.runStore.events(runId).flatMap(({ event }) => event.outputs.map(({ kind }) => kind));
 }
 
-const awaiting: CallKey = { executionId, reference: '/do/0/await', run: 1 };
+const awaiting: CallKey = { runId, reference: '/do/0/await', run: 1 };
 
 type Offered = Parameters<MemoryDriver['offer']>[0];
 
@@ -28,11 +28,11 @@ interface Offering {
 
 function offering(to: string): Offering {
   const driver = memoryDriver();
-  driver.start({ executionId, document: workflow(`do:\n  - await: { listen: { to: ${to} } }`) });
+  driver.start({ runId, document: workflow(`do:\n  - await: { listen: { to: ${to} } }`) });
   return {
     driver,
-    offer: (key, event, listener = awaiting) => driver.offer({ executionId, key, listener, event }),
-    state: () => driver.state(executionId),
+    offer: (key, event, listener = awaiting) => driver.offer({ runId, key, listener, event }),
+    state: () => driver.state(runId),
   };
 }
 
@@ -61,8 +61,8 @@ describe('a listen task that waits for all of its filters', () => {
   it('takes the events sent to it in any order too', () => {
     const run = offering('{ all: [{ with: { type: a } }, { with: { type: b } }] }');
 
-    run.driver.deliver(executionId, { id: 'e1', type: 'b', data: 2 });
-    run.driver.deliver(executionId, { id: 'e2', type: 'a', data: 1 });
+    run.driver.deliver(runId, { id: 'e1', type: 'b', data: 2 });
+    run.driver.deliver(runId, { id: 'e2', type: 'a', data: 1 });
 
     expect(run.state().outcome).toEqual({ kind: 'completed', output: [1, 2] });
   });
@@ -87,10 +87,10 @@ do:
   - pause: { wait: PT1S }
   - await: { listen: { to: { one: { with: { type: go } } } } }
 `);
-    driver.start({ executionId, document });
-    driver.deliver(executionId, { id: 'e1', type: 'go' });
+    driver.start({ runId, document });
+    driver.deliver(runId, { id: 'e1', type: 'go' });
 
-    const ended = driver.runUntilEnded(executionId);
+    const ended = driver.runUntilEnded(runId);
 
     expect(ended.outcome).toEqual({ kind: 'completed', output: [null] });
     expect(outputKindsOf(driver)).not.toContain('arm_listener');
@@ -99,19 +99,19 @@ do:
   it('is cancelled when the listen times out, and when the run ends while it listens', () => {
     const timedOut = memoryDriver();
     timedOut.start({
-      executionId,
+      runId,
       document: workflow(
         'do:\n  - await: { listen: { to: { one: { with: { type: go } } } }, timeout: { after: PT1M } }',
       ),
     });
     const cancelled = memoryDriver();
     cancelled.start({
-      executionId,
+      runId,
       document: workflow('do:\n  - await: { listen: { to: { one: { with: { type: go } } } } }'),
     });
-    cancelled.cancel(executionId);
+    cancelled.cancel(runId);
 
-    const states = [timedOut.runUntilEnded(executionId), cancelled.runUntilEnded(executionId)];
+    const states = [timedOut.runUntilEnded(runId), cancelled.runUntilEnded(runId)];
 
     expect(states.map(({ listeners }) => listeners)).toEqual([{}, {}]);
     expect(
@@ -125,7 +125,7 @@ describe('the offers a run accepts', () => {
     const run = offering('{ one: { with: { type: go } } }');
     const waiting = run.state();
     const full: RunState = { ...waiting, inbox: { ...waiting.inbox, received: mostReceivedEvents } };
-    const offer = { executionId, at: waiting.lastInputAt + 1, key: 'record-1', listener: awaiting };
+    const offer = { runId, at: waiting.lastInputAt + 1, key: 'record-1', listener: awaiting };
 
     const events = Result.getOrThrow(
       workflowMachine(testMachine).decide({ ...offer, kind: 'event_offered', event: { id: 'e1', type: 'go' } }, full),
@@ -142,7 +142,7 @@ describe('an offer to a listen nested in other tasks', () => {
   it('reaches a listen in a branch of a fork, in a try and in a loop', () => {
     const driver = memoryDriver();
     driver.start({
-      executionId,
+      runId,
       document: workflow(`
 do:
   - both:
@@ -158,11 +158,11 @@ do:
           - pause: { wait: PT1H }
 `),
     });
-    const listener = { executionId, reference: '/do/0/both/fork/branches/0/guarded/try/0/each/do/0/await', run: 1 };
+    const listener = { runId, reference: '/do/0/both/fork/branches/0/guarded/try/0/each/do/0/await', run: 1 };
 
-    const offered = driver.offer({ executionId, key: 'record-1', listener, event: { id: 'e1', type: 'go' } });
+    const offered = driver.offer({ runId, key: 'record-1', listener, event: { id: 'e1', type: 'go' } });
     const elsewhere = driver.offer({
-      executionId,
+      runId,
       key: 'record-2',
       listener: { ...listener, reference: '/do/0/both/fork/branches/1/pause' },
       event: { id: 'e2', type: 'go' },
@@ -175,7 +175,7 @@ do:
     const run = offering('{ one: { with: { type: go } } }');
     const waiting = run.state();
     const astray: RunState = { ...waiting, machine: { ...waiting.machine, root: null } };
-    const offer = { executionId, at: waiting.lastInputAt + 1, key: 'record-1', listener: awaiting };
+    const offer = { runId, at: waiting.lastInputAt + 1, key: 'record-1', listener: awaiting };
 
     const events = Result.getOrThrow(
       workflowMachine(testMachine).decide({ ...offer, kind: 'event_offered', event: { id: 'e1', type: 'go' } }, astray),
@@ -189,7 +189,7 @@ describe('an event no branch of a fork takes', () => {
   it('leaves the fork as it was, while a branch that has finished and a branch that yields are passed over', () => {
     const driver = memoryDriver();
     driver.start({
-      executionId,
+      runId,
       document: workflow(`
 do:
   - all:
@@ -203,12 +203,12 @@ do:
                 - noop: { set: {} }
 `),
     });
-    const listener = { executionId, reference: '/do/0/all/fork/branches/0/await', run: 1 };
-    const before = driver.ports.runStore.events(executionId).length;
+    const listener = { runId, reference: '/do/0/all/fork/branches/0/await', run: 1 };
+    const before = driver.ports.runStore.events(runId).length;
 
-    driver.deliver(executionId, { id: 'e1', type: 'stop' });
-    const offered = driver.offer({ executionId, key: 'record-1', listener, event: { id: 'e2', type: 'go' } });
+    driver.deliver(runId, { id: 'e1', type: 'stop' });
+    const offered = driver.offer({ runId, key: 'record-1', listener, event: { id: 'e2', type: 'go' } });
 
-    expect([driver.ports.runStore.events(executionId).length - before, offered.outcome]).toEqual([2, 'applied']);
+    expect([driver.ports.runStore.events(runId).length - before, offered.outcome]).toEqual([2, 'applied']);
   });
 });

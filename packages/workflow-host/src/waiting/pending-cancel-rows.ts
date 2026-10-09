@@ -5,7 +5,7 @@ import { rowsOf, type DatabaseFailed, type HostDatabase } from '../database/host
 import { statement } from '../database/statement.ts';
 
 export interface PendingCancelRow {
-  readonly runId: string;
+  readonly runKey: string;
   readonly cause: string;
   readonly cancel: CancelOrder;
 }
@@ -18,19 +18,25 @@ const PendingRow = Schema.Struct({
   reason: CancelOrderSchema.fields.reason,
 });
 
-function pendingOf({ run_id: runId, cause, cancelled_by: by, kind, reason }: typeof PendingRow.Type): PendingCancelRow {
-  return { runId, cause, cancel: { by, kind, reason } };
+function pendingOf({
+  run_id: runKey,
+  cause,
+  cancelled_by: by,
+  kind,
+  reason,
+}: typeof PendingRow.Type): PendingCancelRow {
+  return { runKey, cause, cancel: { by, kind, reason } };
 }
 
 export function passedOverRow(
   database: HostDatabase,
-  { runId, cause, cancel }: PendingCancelRow,
+  { runKey, cause, cancel }: PendingCancelRow,
 ): Effect.Effect<void, DatabaseFailed> {
   return Effect.asVoid(
     database.write(
-      statement`INSERT INTO workflow_pending_cancels (run_id, cause, cancelled_by, kind, reason)
-        VALUES (${runId}, ${cause}, ${cancel.by}, ${cancel.kind}, ${cancel.reason})
-        ON CONFLICT (run_id) DO NOTHING`,
+      statement`INSERT INTO workflow_pending_cancels (run_key, cause, cancelled_by, kind, reason)
+        VALUES (${runKey}, ${cause}, ${cancel.by}, ${cancel.kind}, ${cancel.reason})
+        ON CONFLICT (run_key) DO NOTHING`,
     ),
   );
 }
@@ -43,12 +49,12 @@ export function pendingCancelRowsAfter(
   return rowsOf(
     PendingRow,
     database.read(
-      statement`SELECT run_id, cause, cancelled_by, kind, reason FROM workflow_pending_cancels
-        WHERE run_id > ${after} ORDER BY run_id LIMIT ${most}`,
+      statement`SELECT run_key, cause, cancelled_by, kind, reason FROM workflow_pending_cancels
+        WHERE run_key > ${after} ORDER BY run_key LIMIT ${most}`,
     ),
   ).pipe(Effect.map((rows) => rows.map((row) => pendingOf(row))));
 }
 
-export function clearedPendingRow(database: HostDatabase, runId: string): Effect.Effect<void, DatabaseFailed> {
-  return Effect.asVoid(database.write(statement`DELETE FROM workflow_pending_cancels WHERE run_id = ${runId}`));
+export function clearedPendingRow(database: HostDatabase, runKey: string): Effect.Effect<void, DatabaseFailed> {
+  return Effect.asVoid(database.write(statement`DELETE FROM workflow_pending_cancels WHERE run_key = ${runKey}`));
 }

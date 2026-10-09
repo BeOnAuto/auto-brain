@@ -3,17 +3,17 @@ import type { Effect } from 'effect';
 
 import type { DispatchFailed, OutputOrigin, RunContext } from '../dispatch/dispatch-watermark.ts';
 
-export type SettleReceipt = 'recorded' | 'already_recorded' | 'settled_otherwise' | 'unknown_execution';
+export type SettleReceipt = 'recorded' | 'already_recorded' | 'settled_otherwise' | 'unknown_run';
 
-export type TroublingReceipt = Extract<SettleReceipt, 'settled_otherwise' | 'unknown_execution'>;
+export type TroublingReceipt = Extract<SettleReceipt, 'settled_otherwise' | 'unknown_run'>;
 
 export interface SettleRequest {
-  readonly executionId: string;
+  readonly runId: string;
   readonly settlement: Settlement;
 }
 
 export interface RunDue {
-  readonly executionId: string;
+  readonly runId: string;
   readonly version: number;
   readonly nextDueAt: number | null;
 }
@@ -38,5 +38,5 @@ export interface RunReporter {
 }
 
 export function isTroubling(receipt: SettleReceipt): receipt is TroublingReceipt {
-  return receipt === 'settled_otherwise' || receipt === 'unknown_execution';
+  return receipt === 'settled_otherwise' || receipt === 'unknown_run';
 }

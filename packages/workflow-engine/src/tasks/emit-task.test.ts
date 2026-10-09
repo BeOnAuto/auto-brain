@@ -6,7 +6,7 @@ import { mostEmittedEvents } from '../machine/limits.ts';
 import { isoInstantOf } from '../machine/utc-time.ts';
 import { testMachine } from '../testing/driver-inputs.ts';
 import { memoryDriver } from '../testing/memory-driver.ts';
-import { drivenExecutionId, drivenRun, outputsIn } from '../testing/run-history.ts';
+import { drivenRunId, drivenRun, outputsIn } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 import { emittedEventIdOf } from './emit-task.ts';
 
@@ -30,7 +30,7 @@ do:
 `),
       { input: { month: 'september', total: 12 } },
     );
-    const key = { executionId: drivenExecutionId, reference: '/do/0/announce', run: 1 };
+    const key = { runId: drivenRunId, reference: '/do/0/announce', run: 1 };
 
     expect(run.outcome).toEqual({ kind: 'completed', output: { month: 'september', total: 12 } });
     expect(emissionsIn(run)).toEqual([
@@ -94,11 +94,11 @@ describe('an emit task that cannot emit', () => {
       },
     });
     driver.start({
-      executionId: drivenExecutionId,
+      runId: drivenRunId,
       document: workflow('do:\n  - announce: { emit: { event: { with: { type: reserved, source: /a } } } }'),
     });
 
-    expect(driver.runUntilEnded(drivenExecutionId).outcome).toMatchObject({
+    expect(driver.runUntilEnded(drivenRunId).outcome).toMatchObject({
       kind: 'raised',
       error: { status: 400, title: 'The type reserved is the brain’s own' },
     });

@@ -10,9 +10,9 @@ function titleOf(outcome: RunOutcome | null): string {
 }
 
 function delivering(event: { readonly id: string; readonly type: string; readonly data?: number }) {
-  return (driver: MemoryDriver, executionId: string): void => {
+  return (driver: MemoryDriver, runId: string): void => {
     driver.at(1, () => {
-      driver.deliver(executionId, event);
+      driver.deliver(runId, event);
     });
   };
 }

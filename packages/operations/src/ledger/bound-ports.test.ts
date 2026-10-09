@@ -76,7 +76,7 @@ describe('the prefix of a brain', () => {
 });
 
 const malformedStreams = [
-  '../../beta/specs',
+  '../../beta/definitions',
   '',
   'red/',
   'red//blue',
@@ -151,7 +151,7 @@ describe('the read of what a brain recorded, bound to a call', () => {
 
     expect(
       await run(
-        dispatcher.dispatchToBrain(readNoteHistory.registration, toAlpha(acmeAdmin, { limit: 10, execution: 'run-1' })),
+        dispatcher.dispatchToBrain(readNoteHistory.registration, toAlpha(acmeAdmin, { limit: 10, run: 'run-1' })),
       ),
     ).toEqual({ status: 'succeeded', output: { streams: [], ids: [], next_cursor: null } });
   });
@@ -218,8 +218,8 @@ describe('a page the read bound to a call cannot hold', () => {
     [{ limit: 0 }, 'RangeError: A page holds 1 to 100 records, not 0'],
     [{ limit: 101 }, 'RangeError: A page holds 1 to 100 records, not 101'],
     [{ limit: 10, since: 'yesterday' }, 'RangeError: The time "yesterday" a page starts from is not a time'],
-    [{ limit: 10, execution: 'a/../b' }, 'Error: The stream name "executions/a/../b" is malformed'],
-    [{ limit: 10, correlation: 'a/../b' }, 'Error: The stream name "executions/a/../b" is malformed'],
+    [{ limit: 10, run: 'a/../b' }, 'Error: The stream name "runs/a/../b" is malformed'],
+    [{ limit: 10, correlation: 'a/../b' }, 'Error: The stream name "runs/a/../b" is malformed'],
   ] as const)('fails the call, %j', async (input, defect) => {
     const { dispatcher, reported, run } = harness();
 
@@ -240,8 +240,8 @@ describe('the read of the outcomes of runs, bound to a call', () => {
   it('reads only the brain of the call', async () => {
     const { dispatcher, ledger, run } = harness({ runOutcomes: runTallies });
     const began: RunFact = { type: 'run_began', at: '2026-10-01T09:00:00.000Z', fn: 'triage' };
-    await Effect.runPromise(ledger.service.execute('brain/acme/alpha/executions/r1', runFacts, [began]));
-    await Effect.runPromise(ledger.service.execute('brain/globex/gamma/executions/r2', runFacts, [began]));
+    await Effect.runPromise(ledger.service.execute('brain/acme/alpha/runs/r1', runFacts, [began]));
+    await Effect.runPromise(ledger.service.execute('brain/globex/gamma/runs/r2', runFacts, [began]));
     const window = { from: '2026-10-01', to: '2026-10-01' };
 
     const read = await run(dispatcher.dispatchToBrain(readRunTallies.registration, toAlpha(acmeAdmin, window)));
@@ -267,8 +267,8 @@ describe('the read of projected rows, bound to a call', () => {
   it('reads only the brain of the call, and counts its rows', async () => {
     const { dispatcher, ledger, run } = harness({ projections: [runTallyRows] });
     const began: RunFact = { type: 'run_began', at: '2026-10-01T09:00:00.000Z', fn: 'triage' };
-    await Effect.runPromise(ledger.service.execute('brain/acme/alpha/executions/r1', runFacts, [began]));
-    await Effect.runPromise(ledger.service.execute('brain/acme/beta/executions/r2', runFacts, [began]));
+    await Effect.runPromise(ledger.service.execute('brain/acme/alpha/runs/r1', runFacts, [began]));
+    await Effect.runPromise(ledger.service.execute('brain/acme/beta/runs/r2', runFacts, [began]));
 
     expect(await run(dispatcher.dispatchToBrain(readTallyRows.registration, toAlpha(acmeAdmin, { limit: 5 })))).toEqual(
       {

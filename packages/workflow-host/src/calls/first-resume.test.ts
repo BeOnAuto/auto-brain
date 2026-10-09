@@ -8,11 +8,11 @@ import type { Statement } from '../database/statement.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { hostExecutor } from './host-executor.ts';
 
-const run = { executionId: 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', attributes: {} };
+const run = { runId: 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', attributes: {} };
 
 const call: StartCall = {
   kind: 'start_call',
-  key: { executionId: run.executionId, reference: '/do/0/ask', run: 1 },
+  key: { runId: run.runId, reference: '/do/0/ask', run: 1 },
   function: 'notify',
   arguments: { to: 'ada' },
   longestMs: 60_000,

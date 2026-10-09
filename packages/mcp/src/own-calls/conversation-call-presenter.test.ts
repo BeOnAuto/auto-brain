@@ -128,7 +128,7 @@ describe('a telling the brain made in a conversation, as the brain events show i
     const started = shown({
       type: 'telling_started',
       call_id: 'call-2',
-      execution_id: 'run-1',
+      run_id: 'run-1',
       server: 'chat',
       tool: 'post_message',
       arguments_bytes: 80,
@@ -144,7 +144,7 @@ describe('a telling the brain made in a conversation, as the brain events show i
       'The tool that told the party was no longer offered by its server.',
     ]);
     expect([started?.data, ended?.data]).toMatchObject([
-      { call_id: 'call-2', execution_id: 'run-1', arguments_bytes: 80 },
+      { call_id: 'call-2', run_id: 'run-1', arguments_bytes: 80 },
       { outcome: 'result', ...answered },
     ]);
   });

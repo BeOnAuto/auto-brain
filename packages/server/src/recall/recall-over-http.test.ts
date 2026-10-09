@@ -21,7 +21,7 @@ const decodeHistory = Schema.decodeUnknownSync(
   }),
 );
 
-const decodeExecution = Schema.decodeUnknownSync(Schema.Struct({ execution_id: Schema.String }));
+const decodeRun = Schema.decodeUnknownSync(Schema.Struct({ run_id: Schema.String }));
 
 const anyText: unknown = expect.any(String);
 
@@ -68,16 +68,16 @@ describe('a recall function over HTTP', { timeout: recallTestTimeoutMs }, () => 
     const server = await reviewing({ campaign: 'spring', verdict: 'approve' });
     await standingUntil(server, 'reviews', liveWith(1));
 
-    const run = decodeExecution((await recalled(server, 'reviews', { campaign: 'spring' })).body).execution_id;
-    const read = await server.call('GET', `${alpha}/executions/${run}`);
-    const { events } = decodeHistory((await server.call('GET', `${alpha}/executions/${run}/history`)).body);
+    const run = decodeRun((await recalled(server, 'reviews', { campaign: 'spring' })).body).run_id;
+    const read = await server.call('GET', `${alpha}/runs/${run}`);
+    const { events } = decodeHistory((await server.call('GET', `${alpha}/runs/${run}/history`)).body);
 
     expect(read.body).toMatchObject({
-      primitive: 'recollection',
+      type: 'recall',
       name: 'reviews',
       record: { language: 'jq', view: { version: 1, folded: 1, checkpoint: anyText } },
     });
-    expect(events.map(({ type }) => type)).toEqual(['execution_started', 'execution_succeeded']);
+    expect(events.map(({ type }) => type)).toEqual(['run_started', 'run_succeeded']);
     expect(events.every(({ data }) => JSON.stringify(data).length <= 4096)).toBe(true);
   });
 });
@@ -87,7 +87,7 @@ describe('the input of a run of a recall function over HTTP', { timeout: recallT
     const server = await reviewing({ campaign: 'spring', verdict: 'approve' });
     await standingUntil(server, 'reviews', liveWith(1));
 
-    const withoutInput = await server.call('POST', `${alpha}/specs/recollection/reviews/execute`, { body: {} });
+    const withoutInput = await server.call('POST', `${alpha}/definitions/recall/reviews/run`, { body: {} });
 
     expect(withoutInput).toMatchObject({
       status: 422,
@@ -113,7 +113,7 @@ describe('a run of a recall function the server cannot finish, over HTTP', { tim
 
     const busy = await recalled(server, 'reviews', { campaign: 'spring' });
     const broken = await recalled(server, 'reviews', { campaign: 'spring' });
-    const runs = await server.call('GET', `${alpha}/executions?primitive=recollection`);
+    const runs = await server.call('GET', `${alpha}/runs?type=recall`);
 
     expect(busy).toMatchObject({
       status: 503,
@@ -123,6 +123,6 @@ describe('a run of a recall function the server cannot finish, over HTTP', { tim
       },
     });
     expect(broken).toMatchObject({ status: 500, body: { reason: 'internal' } });
-    expect(runs.body).toMatchObject({ executions: [{ status: 'failed' }, { status: 'rejected' }] });
+    expect(runs.body).toMatchObject({ runs: [{ status: 'failed' }, { status: 'rejected' }] });
   });
 });

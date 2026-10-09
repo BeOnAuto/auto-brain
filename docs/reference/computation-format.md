@@ -2,7 +2,7 @@
 
 # Computation function format
 
-The API stores a computation function as a `computation` spec. Its source document declares the input and output contracts and holds a program, written in jq, that computes the output from the input. A run applies the program to its input and answers with exactly one output, the same output for the same input every time. Use one for the arithmetic and data shaping a language model should not do: totals, paces, projections and transformations of rows of figures.
+The API stores a computation function as a `computation` definition. Its source document declares the input and output contracts and holds a program, written in jq, that computes the output from the input. A run applies the program to its input and answers with exactly one output, the same output for the same input every time. Use one for the arithmetic and data shaping a language model should not do: totals, paces, projections and transformations of rows of figures.
 
 Numbers are double-precision floating point. Integers are exact up to 2^53, there is no decimal type and nothing rounds to decimal places, so compute money in whole minor units, such as cents, as the example below does. See [Numbers](#numbers).
 
@@ -41,7 +41,7 @@ output:
 | { campaigns: ., total_spend_cents: (map(.spend_cents) | add) }
 ```
 
-For this document, `create_spec` takes `primitive: "computation"`, a function `name` such as `campaign-pace`, and the document as `source`. `execute_spec` takes the same primitive and name, with `rows` and `period` in the `input` object. Both operations also require the brain id unless the MCP connection is scoped to that brain.
+For this document, `create_definition` takes `type: "computation"`, a function `name` such as `campaign-pace`, and the document as `source`. `run_definition` takes the same capability and name, with `rows` and `period` in the `input` object. Both operations also require the brain id unless the MCP connection is scoped to that brain.
 
 Given this input:
 
@@ -147,9 +147,9 @@ A run first checks the input against `input.schema`, then applies the program, r
 | `unavailable`                 | The run took longer or used more memory than a run may, or found no turn to run within its time                                                                                                                                                                                  |
 | `failed`                      | The runtime itself broke down                                                                                                                                                                                                                                                    |
 
-A `conflict` of the kind `unworkable` names the program's own error and the line of the document it came from, such as `The program raised an error on line 4: no rows`. The text of the program's error is cut at 1,024 bytes of UTF-8 and marked with `…`, and so are the pointer and the detail of each issue of an output the schema refuses, each on its own, so an issue at a very long key still says what is wrong. A long error is answered, recorded and passed to a workflow at that size. The same input gives the same result every time, so running it again does not help: update the definition, or change the input. `get_execution` shows the kind on the run's rejection, and `list_executions` shows it in the listing.
+A `conflict` of the kind `unworkable` names the program's own error and the line of the document it came from, such as `The program raised an error on line 4: no rows`. The text of the program's error is cut at 1,024 bytes of UTF-8 and marked with `…`, and so are the pointer and the detail of each issue of an output the schema refuses, each on its own, so an issue at a very long key still says what is wrong. A long error is answered, recorded and passed to a workflow at that size. The same input gives the same result every time, so running it again does not help: update the definition, or change the input. `get_run` shows the kind on the run's rejection, and `list_runs` shows it in the listing.
 
-A run that succeeds records `language`, `work`, the units of work it spent, `duration_ms`, and `input_bytes` and `output_bytes`, the sizes of its input and output as JSON. `get_execution` returns that record with the output.
+A run that succeeds records `language`, `work`, the units of work it spent, `duration_ms`, and `input_bytes` and `output_bytes`, the sizes of its input and output as JSON. `get_run` returns that record with the output.
 
 ## Bounds
 
@@ -174,7 +174,7 @@ The duration is a safeguard for what work does not stop. Measured on Node 26.10.
 
 ## In a workflow
 
-A workflow calls a computation function as it calls a reasoning function, with `call: execute_spec` and `primitive: computation`, and the task's output is the function's output; see [Calling a function](workflow-format.md#calling-a-function). The function reaches nothing outside the brain, so a workflow may run it again freely: its result does not depend on how often it ran.
+A workflow calls a computation function as it calls a reasoning function, with `call: run_definition` and `type: computation`, and the task's output is the function's output; see [Calling a function](workflow-format.md#calling-a-function). The function reaches nothing outside the brain, so a workflow may run it again freely: its result does not depend on how often it ran.
 
 A run rejected with `conflict` raises a `runtime` error with status 409, and the error's `kind` is `unworkable`. A retry gives the same result for the same input, so a retry policy should not match it: retry on status 503, which a run that was `unavailable` raises, as the example below does.
 
@@ -252,9 +252,9 @@ input:
       required: [month, period]
 do:
   - read:
-      call: execute_spec
+      call: run_definition
       with:
-        primitive: inference
+        type: reasoning
         name: read-campaign-costs
         input: { month: '${ .month }' }
       output:
@@ -262,9 +262,9 @@ do:
   - compute:
       try:
         - pace:
-            call: execute_spec
+            call: run_definition
             with:
-              primitive: computation
+              type: computation
               name: campaign-pace
               input: '${ . }'
       catch:
@@ -275,16 +275,16 @@ do:
           limit:
             attempt: { count: 2 }
   - write:
-      call: execute_spec
+      call: run_definition
       with:
-        primitive: inference
+        type: reasoning
         name: write-pace-summary
         input:
           campaigns: '${ .campaigns }'
           total_spend_cents: '${ .total_spend_cents }'
 ```
 
-`execute_spec` of `campaign-pace-report` takes an input such as `{"month": "2026-09", "period": {"days_elapsed": 12, "days_total": 30}}`. The run reads the rows, computes them, and ends with the summary as its output. When the computation function's run is `unavailable`, the `compute` task tries it up to twice more; when the program raises an error, the run ends `rejected` at once, and the history shows the computation function's run with its line and error.
+`run_definition` of `campaign-pace-report` takes an input such as `{"month": "2026-09", "period": {"days_elapsed": 12, "days_total": 30}}`. The run reads the rows, computes them, and ends with the summary as its output. When the computation function's run is `unavailable`, the `compute` task tries it up to twice more; when the program raises an error, the run ends `rejected` at once, and the history shows the computation function's run with its line and error.
 
 ## Availability
 

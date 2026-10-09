@@ -8,9 +8,9 @@ import {
   eventTrigger,
   everyTrigger,
   published,
-  specRecordAt,
-  specRecorded,
-  specRetired,
+  definitionRecordAt,
+  definitionRecorded,
+  definitionRetired,
 } from '../reaction-testing/brain-writes.ts';
 import {
   refusalsSaid,
@@ -36,11 +36,11 @@ function isoAt(minutes: number): string {
 async function tickingEveryMinute() {
   const clock = movedClock(activatedAt + 1000);
   const reacting = await reactingHost({ clock });
-  await specRecorded(reacting.database.store, { name: 'tick', version: 1, triggers: [everyTrigger(aMinute)] });
+  await definitionRecorded(reacting.database.store, { name: 'tick', version: 1, triggers: [everyTrigger(aMinute)] });
   clock.moveTo(activatedAt + aMinute);
   const [first] = await startsReaching(reacting.reactions.starts, 1);
-  await runStillGoing(reacting.database, first?.executionId ?? '');
-  return { reacting, clock, running: first?.executionId ?? '' };
+  await runStillGoing(reacting.database, first?.runId ?? '');
+  return { reacting, clock, running: first?.runId ?? '' };
 }
 
 async function sentinelPassed(reacting: ReactingHost, count: number) {
@@ -52,7 +52,7 @@ describe('a version that leaves the triggers of the one before unchanged', () =>
   it('keeps their anchor, their next due time and their running run, and the next run is of the new version', async () => {
     const { reacting, clock, running } = await tickingEveryMinute();
     const { database } = reacting;
-    await specRecorded(database.store, {
+    await definitionRecorded(database.store, {
       name: 'tick',
       version: 2,
       triggers: [everyTrigger(aMinute)],
@@ -69,7 +69,11 @@ describe('a version that leaves the triggers of the one before unchanged', () =>
     expect(refusals.map(({ reason }) => reason)).toEqual([
       `The run its every schedule had due at ${isoAt(2)} was skipped: the run its every schedule started before still runs`,
     ]);
-    expect([next?.version, next?.input, next?.cause]).toEqual([2, { schedule: { due: isoAt(3) } }, specRecordAt(1)]);
+    expect([next?.version, next?.input, next?.cause]).toEqual([
+      2,
+      { schedule: { due: isoAt(3) } },
+      definitionRecordAt(1),
+    ]);
   });
 });
 
@@ -77,7 +81,7 @@ describe('a version that changes an every schedule', () => {
   it('counts it from its own record, and skips while a run the version before started still runs', async () => {
     const { reacting, clock, running } = await tickingEveryMinute();
     const { database } = reacting;
-    await specRecorded(database.store, {
+    await definitionRecorded(database.store, {
       name: 'tick',
       version: 2,
       triggers: [everyTrigger(2 * aMinute)],
@@ -94,7 +98,11 @@ describe('a version that changes an every schedule', () => {
     expect(refusals.map(({ reason }) => reason)).toEqual([
       `The run its every schedule had due at ${isoAt(3.5)} was skipped: the run its every schedule started before still runs`,
     ]);
-    expect([next?.version, next?.input, next?.cause]).toEqual([2, { schedule: { due: isoAt(5.5) } }, specRecordAt(2)]);
+    expect([next?.version, next?.input, next?.cause]).toEqual([
+      2,
+      { schedule: { due: isoAt(5.5) } },
+      definitionRecordAt(2),
+    ]);
   });
 });
 
@@ -102,11 +110,19 @@ describe('a version that changes the event trigger', () => {
   it('matches nothing recorded before it, while what matched before it starts the version before', async () => {
     const reacting = await reactingHost();
     const { store } = reacting.database;
-    await specRecorded(store, { name: 'watch', version: 1, triggers: [watching] });
-    await specRecorded(store, { name: 'close', version: 1, triggers: [eventTrigger({ type: 'com.acme.closed' })] });
+    await definitionRecorded(store, { name: 'watch', version: 1, triggers: [watching] });
+    await definitionRecorded(store, {
+      name: 'close',
+      version: 1,
+      triggers: [eventTrigger({ type: 'com.acme.closed' })],
+    });
     await published(store, { id: 'closed-before', type: 'com.acme.closed' });
     await published(store, { id: 'opened-before', type: 'com.acme.opened' });
-    await specRecorded(store, { name: 'close', version: 2, triggers: [eventTrigger({ type: 'com.acme.opened' })] });
+    await definitionRecorded(store, {
+      name: 'close',
+      version: 2,
+      triggers: [eventTrigger({ type: 'com.acme.opened' })],
+    });
     await published(store, { id: 'closed-after', type: 'com.acme.closed' });
     await published(store, { id: 'opened-after', type: 'com.acme.opened' });
 
@@ -125,13 +141,18 @@ describe('a version that removes a cron schedule', () => {
     const clock = movedClock(activatedAt + 1000);
     const reacting = await reactingHost({ clock });
     const { store } = reacting.database;
-    await specRecorded(store, { name: 'watch', version: 1, triggers: [watching] });
-    await specRecorded(store, {
+    await definitionRecorded(store, { name: 'watch', version: 1, triggers: [watching] });
+    await definitionRecorded(store, {
       name: 'tick',
       version: 1,
       triggers: [cronTrigger('5 9 * * *'), everyTrigger(10 * aMinute)],
     });
-    await specRecorded(store, { name: 'tick', version: 2, triggers: [everyTrigger(10 * aMinute)], when: isoAt(1) });
+    await definitionRecorded(store, {
+      name: 'tick',
+      version: 2,
+      triggers: [everyTrigger(10 * aMinute)],
+      when: isoAt(1),
+    });
     await untilTriggersAt(reacting.database, 'tick', 2);
 
     clock.moveTo(activatedAt + 10 * aMinute);
@@ -151,11 +172,11 @@ describe('a version without a schedule, and a retirement', () => {
     const reacting = await reactingHost({ clock });
     const { store } = reacting.database;
     const closed = eventTrigger({ type: 'com.acme.closed' });
-    await specRecorded(store, { name: 'watch', version: 1, triggers: [watching] });
-    await specRecorded(store, { name: 'close', version: 1, triggers: [closed, everyTrigger(aMinute)] });
-    await specRecorded(store, { name: 'open', version: 1, triggers: [closed, cronTrigger('5 9 * * *')] });
-    await specRecorded(store, { name: 'close', version: 2, triggers: [] });
-    await specRetired(store, 'open');
+    await definitionRecorded(store, { name: 'watch', version: 1, triggers: [watching] });
+    await definitionRecorded(store, { name: 'close', version: 1, triggers: [closed, everyTrigger(aMinute)] });
+    await definitionRecorded(store, { name: 'open', version: 1, triggers: [closed, cronTrigger('5 9 * * *')] });
+    await definitionRecorded(store, { name: 'close', version: 2, triggers: [] });
+    await definitionRetired(store, 'open');
 
     clock.moveTo(activatedAt + 10 * aMinute);
     await published(store, { id: 'closed', type: 'com.acme.closed' });

@@ -1,4 +1,4 @@
-import { TriggerSchema, type Trigger } from '@beonauto/specs';
+import { TriggerSchema, type Trigger } from '@beonauto/definitions';
 import { Schema } from 'effect';
 
 export type TriggerChange =

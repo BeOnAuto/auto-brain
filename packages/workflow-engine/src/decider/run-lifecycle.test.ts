@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { mostValueDepth, type Json } from '../dsl/json.ts';
 import { errorType } from '../dsl/raised-error.ts';
 import { mostOutputBytes, mostStepsWithoutWaiting } from '../machine/limits.ts';
-import { armedTimersAlong, drivenExecutionId, drivenRun, outputKindsIn, outputsIn } from '../testing/run-history.ts';
+import { armedTimersAlong, drivenRunId, drivenRun, outputKindsIn, outputsIn } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 
 function nested(depth: number): Json {
@@ -29,7 +29,7 @@ do:
     const run = drivenRun(workflow('do:\n  - greet: { set: { done: true } }'));
     const settlement = { status: 'succeeded', output: { done: true } };
 
-    expect(outputsIn(run.events)).toContainEqual({ kind: 'settle', executionId: drivenExecutionId, settlement });
+    expect(outputsIn(run.events)).toContainEqual({ kind: 'settle', runId: drivenRunId, settlement });
     expect(outputKindsIn(run.events).filter((kind) => kind === 'settle')).toHaveLength(1);
     expect(outputKindsIn(run.events.slice(-1)).at(-1)).toBe('settle');
   });
@@ -49,7 +49,7 @@ do:
     const run = drivenRun(document, { limits: { mostDurationMs: 3_600_000 } });
 
     expect(run.outcome).toEqual({ kind: 'overran', milliseconds: 3_600_000 });
-    expect(run.driver.ports.recordStore.settlementOf(drivenExecutionId)).toEqual({
+    expect(run.driver.ports.recordStore.settlementOf(drivenRunId)).toEqual({
       status: 'rejected',
       reason: 'cancelled',
       kind: 'overrun',
@@ -63,9 +63,9 @@ describe('a run that is cancelled or refused', () => {
     const cancel = { by: 'acme-admin', kind: 'requested', reason: 'Not needed any more' } as const;
     const run = drivenRun(workflow('do:\n  - ask: { call: notify, with: { to: ada } }'), {
       respond: () => 'never',
-      meanwhile: (driver, executionId) => {
+      meanwhile: (driver, runId) => {
         driver.at(5, () => {
-          driver.cancel(executionId, cancel);
+          driver.cancel(runId, cancel);
         });
       },
     });
@@ -75,7 +75,7 @@ describe('a run that is cancelled or refused', () => {
     expect(outputKindsIn(run.events.slice(-1))).toEqual(['cancel_call', 'cancel_timer', 'cancel_timer', 'settle']);
     expect(run.events.at(-1)?.event.outputs[0]).toMatchObject({ kind: 'cancel_call', reason: 'parent_ended' });
     expect(run.events.at(-1)?.event.receipt).toMatchObject({ cancel: { by: 'acme-admin', kind: 'requested' } });
-    expect(run.driver.ports.recordStore.settlementOf(drivenExecutionId)).toEqual({
+    expect(run.driver.ports.recordStore.settlementOf(drivenRunId)).toEqual({
       status: 'rejected',
       reason: 'cancelled',
       kind: 'requested',
@@ -106,7 +106,7 @@ describe('a run that is cancelled or refused', () => {
 });
 
 describe('a run that does too much', () => {
-  it('ends oversized when its output is larger than an execution records', () => {
+  it('ends oversized when its output is larger than a run records', () => {
     const run = drivenRun(workflow("do:\n  - big: { set: '${ { text: .text } }' }"), {
       input: { text: 'x'.repeat(mostOutputBytes) },
     });

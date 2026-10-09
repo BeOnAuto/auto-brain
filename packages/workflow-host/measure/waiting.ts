@@ -24,7 +24,7 @@ const calling: Schema.JsonObject = { document: header, do: [{ ask: { call: 'noti
 
 const pausing: Schema.JsonObject = { document: header, do: [{ pause: { wait: 'PT1H' } }] };
 
-const ofTheRun = { primitive: 'orchestration', name: 'measured', spec_version: 1, at };
+const ofTheRun = { definition_type: 'workflow', name: 'measured', definition_version: 1, at };
 
 function percentile(sorted: readonly number[], fraction: number): number {
   return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * fraction))] ?? 0;
@@ -39,7 +39,7 @@ function inTurn(count: number, each: (index: number) => Promise<unknown>): Promi
 
 function latencyOf(recordedAt: ReadonlyMap<string, number>, { settledAt }: WaitingHost): WaitingLatency {
   const late = [...recordedAt]
-    .map(([executionId, when]: readonly [string, number]) => (settledAt.get(executionId) ?? when) - when)
+    .map(([runId, when]: readonly [string, number]) => (settledAt.get(runId) ?? when) - when)
     .toSorted((a, b) => a - b);
   return { runs: late.length, p50: percentile(late, 0.5), p99: percentile(late, 0.99), most: late.at(-1) ?? 0 };
 }
@@ -48,20 +48,20 @@ async function measuredOn(
   database: DatabaseSettings,
   { runs, signalled, oneAtATime }: WaitingCase,
   document: Schema.JsonObject,
-  record: (store: Store, executionId: string) => Promise<void>,
+  record: (store: Store, runId: string) => Promise<void>,
 ): Promise<WaitingLatency> {
   const opened = await openHostDatabase(database, Function.constVoid);
   await brainCreated(opened.store, 'alpha');
   const waiting = await waitingHost(database, opened, signalled);
   await inTurn(runs, (index) => Effect.runPromise(waiting.host.start(runAt(index), startOf(document))));
   if (document === calling) {
-    await waiting.untilWaiting(Array.from({ length: runs }, (_, index) => `acme/alpha/${runAt(index).executionId}`));
+    await waiting.untilWaiting(Array.from({ length: runs }, (_, index) => `acme/alpha/${runAt(index).runId}`));
   }
   const recordedAt = new Map<string, number>();
   await inTurn(runs, async (index) => {
-    const { executionId } = runAt(index);
-    await record(opened.store, executionId);
-    recordedAt.set(executionId, Date.now());
+    const { runId } = runAt(index);
+    await record(opened.store, runId);
+    recordedAt.set(runId, Date.now());
     await waiting.untilSettled(oneAtATime ? index + 1 : 0);
   });
   await waiting.untilSettled(runs);
@@ -71,22 +71,22 @@ async function measuredOn(
 }
 
 export function childEndingLatencyOn(database: DatabaseSettings, measured: WaitingCase): Promise<WaitingLatency> {
-  return measuredOn(database, measured, calling, (store, executionId) =>
-    recorded(store, `${alpha}executions/${childOf(executionId)}`, {
-      type: 'execution_succeeded',
+  return measuredOn(database, measured, calling, (store, runId) =>
+    recorded(store, `${alpha}runs/${childOf(runId)}`, {
+      type: 'run_succeeded',
       output: 'done',
       record: {},
       by: 'brain:alpha',
-      called_by: { execution_id: executionId, reference: '/do/0/ask', run: 1 },
+      called_by: { run_id: runId, reference: '/do/0/ask', run: 1 },
       ...ofTheRun,
     }),
   );
 }
 
 export function cancelLatencyOn(database: DatabaseSettings, measured: WaitingCase): Promise<WaitingLatency> {
-  return measuredOn(database, measured, pausing, (store, executionId) =>
-    recorded(store, `${alpha}executions/${executionId}`, {
-      type: 'execution_cancel_requested',
+  return measuredOn(database, measured, pausing, (store, runId) =>
+    recorded(store, `${alpha}runs/${runId}`, {
+      type: 'run_cancel_requested',
       kind: 'requested',
       reason: 'Measured',
       by: 'acme-admin',

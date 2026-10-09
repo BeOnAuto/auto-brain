@@ -49,7 +49,7 @@ export interface ListenerTable {
 
 export function timerTableOf(
   state: RunState,
-  run: Pick<Descriptors, 'executionId'>,
+  run: Pick<Descriptors, 'runId'>,
   now: number,
   journal: Journal,
 ): TimerTable {
@@ -58,7 +58,7 @@ export function timerTableOf(
   const disarm = (timerId: string | null): void => {
     if (timerId !== null && Object.hasOwn(armed, timerId)) {
       delete armed[timerId];
-      journal.emit({ kind: 'cancel_timer', executionId: run.executionId(), timerId });
+      journal.emit({ kind: 'cancel_timer', runId: run.runId(), timerId });
     }
   };
   return {
@@ -67,7 +67,7 @@ export function timerTableOf(
       counter.next += 1;
       const dueAt = now + milliseconds;
       armed[timerId] = { purpose, reference, armedAt: now, dueAt };
-      journal.emit({ kind: 'arm_timer', executionId: run.executionId(), timerId, dueAt, purpose, label });
+      journal.emit({ kind: 'arm_timer', runId: run.runId(), timerId, dueAt, purpose, label });
       return timerId;
     },
     disarm,

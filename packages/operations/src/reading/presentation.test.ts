@@ -44,8 +44,8 @@ const presentation = presentationOf([notes, shelves]);
 
 describe('the kind of a stream', () => {
   it.each([
-    ['executions/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', 'executions'],
-    ['specs/inference', 'specs'],
+    ['runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', 'runs'],
+    ['definitions/reasoning', 'definitions'],
     ['notes', 'notes'],
   ])('of %s is %s', (stream, kind) => {
     expect(streamKindOf(stream)).toBe(kind);
@@ -63,7 +63,7 @@ describe('the presentation of what a brain recorded', () => {
   it('hides a record of a kind without a presenter, of a type its presenter hides or does not know, or one its presenter hides', () => {
     expect(
       [
-        recorded('runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', 'input_applied'),
+        recorded('run-logs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', 'input_applied'),
         recorded('notes', 'note_dropped'),
         recorded('notes', 'note_burnt'),
         recorded('notes', 'constructor'),

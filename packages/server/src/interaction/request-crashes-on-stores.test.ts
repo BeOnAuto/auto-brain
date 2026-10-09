@@ -121,7 +121,7 @@ describe.each(stores)('a reply taken while another settlement is under way, on $
     await racing.started();
 
     const meanwhile = await asked.brain.call(answerInteraction, {
-      execution_id: askedRunId,
+      run_id: askedRunId,
       answer: { choice: 'reject' },
     });
     await asked.brain.performDue(Date.now());
@@ -150,7 +150,7 @@ describe.each(stores)(
       await racing.started();
 
       await asked.brain.cancel(askedRunId);
-      await racing.cancelSettled(asked.brain.primitive);
+      await racing.cancelSettled(asked.brain.capability);
 
       expect(await asked.brain.runOf(askedRunId)).toMatchObject({
         output: { status: 'succeeded', output: {}, record: { delivered_at: anyTime } },

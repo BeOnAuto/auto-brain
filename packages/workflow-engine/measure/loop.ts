@@ -9,7 +9,7 @@ import type { StoredRun } from '../src/run-log/run-store.ts';
 import { isSnapshotDue, snapshotChunks, snapshotOf } from '../src/run-log/snapshot.ts';
 import { startedOf, testMachine } from '../src/testing/driver-inputs.ts';
 import {
-  executionId,
+  runId,
   jsonBytesOf,
   looping,
   medianMillisecondsOf,
@@ -35,7 +35,7 @@ function decidedAlone(inputs: number): Loop {
   const events: PositionedEvent[] = [];
   const run: { state: RunState; input: RunInput } = {
     state: newRun,
-    input: startedOf({ executionId, document: looping(inputs) }, startedAt),
+    input: startedOf({ runId, document: looping(inputs) }, startedAt),
   };
   const milliseconds = millisecondsOf(() => {
     while (run.state.status !== 'ended') {

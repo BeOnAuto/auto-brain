@@ -22,6 +22,6 @@ export interface SweepReport {
 
 export interface WorkflowEngine {
   readonly submit: (input: RunInput) => Effect.Effect<Submission, Conflict>;
-  readonly wake: (executionId: string) => Effect.Effect<Wake>;
+  readonly wake: (runId: string) => Effect.Effect<Wake>;
   readonly sweep: (before: number) => Effect.Effect<SweepReport>;
 }

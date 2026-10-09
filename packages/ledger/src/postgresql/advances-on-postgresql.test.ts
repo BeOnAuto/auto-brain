@@ -74,9 +74,7 @@ describe.skipIf(skipped)(`A fold beside an advance of the same row on PostgreSQL
     );
     onTestFinished(dispose);
     await Effect.runPromise(
-      ledger.execute('brain/acme/alpha/executions/r1', topicFacts, [
-        { type: 'topic_opened', topic: 'spring', at: 1000 },
-      ]),
+      ledger.execute('brain/acme/alpha/runs/r1', topicFacts, [{ type: 'topic_opened', topic: 'spring', at: 1000 }]),
     );
     const advancing = await connected(database);
     await advancing.query('BEGIN');

@@ -180,9 +180,11 @@ function notOfTypes(column: string, types: readonly string[]): SQL {
   return types.length === 0 ? SQL`` : SQL` AND NOT ${ofTypes(column, types)}`;
 }
 
-function ofTheDefinitionAsked({ primitive, name }: RunsSelected): SQL {
+function ofTheDefinitionAsked({ definitionType, name }: RunsSelected): SQL {
   const asked: SQL[] = [
-    ...(primitive === undefined ? [] : [SQL`json_extract(message_data, '$.primitive') IS ${primitive}`]),
+    ...(definitionType === undefined
+      ? []
+      : [SQL`json_extract(message_data, '$.definition_type') IS ${definitionType}`]),
     ...(name === undefined ? [] : [SQL`json_extract(message_data, '$.name') IS ${name}`]),
   ];
   return asked.length === 0 ? SQL`1` : SQL.merge(asked, ' AND ');
@@ -198,7 +200,7 @@ function firstMessagesOfRuns(scope: ExaminationScope, runs: RunsSelected): SQL {
         ${correlationOfMessage} AS correlation, octet_length(message_data) AS size,
         ${ofTheDefinitionAsked(runs)} AS of_the_definition
       FROM emt_messages
-      WHERE ${kindKeyOfStream} = ${`${scope.brainKey}executions/`} AND stream_position = 1
+      WHERE ${kindKeyOfStream} = ${`${scope.brainKey}runs/`} AND stream_position = 1
         AND partition = ${defaultPartition} AND is_archived = FALSE${bounds(scope)}${notOfTypes('message_type', runs.notBeginningWith ?? [])}
       ORDER BY global_position ${direction(scope)}
       LIMIT ${scope.examineAtMost + 1}

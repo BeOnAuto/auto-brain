@@ -16,14 +16,14 @@ COPY packages/ledger/package.json packages/ledger/
 COPY packages/mcp/package.json packages/mcp/
 COPY packages/operations/package.json packages/operations/
 COPY packages/outbound/package.json packages/outbound/
-COPY packages/specs/package.json packages/specs/
+COPY packages/definitions/package.json packages/definitions/
 COPY packages/workflow-engine/package.json packages/workflow-engine/
 COPY packages/workflow-host/package.json packages/workflow-host/
-COPY primitives/computation/package.json primitives/computation/
-COPY primitives/inference/package.json primitives/inference/
-COPY primitives/interaction/package.json primitives/interaction/
-COPY primitives/orchestration/package.json primitives/orchestration/
-COPY primitives/recollection/package.json primitives/recollection/
+COPY capabilities/computation/package.json capabilities/computation/
+COPY capabilities/reasoning/package.json capabilities/reasoning/
+COPY capabilities/interaction/package.json capabilities/interaction/
+COPY capabilities/coordination/package.json capabilities/coordination/
+COPY capabilities/recall/package.json capabilities/recall/
 RUN pnpm install --frozen-lockfile --prod --no-optional --ignore-scripts --filter @beonauto/server...
 RUN --network=none npm_config_build_from_source=sqlite3 npm_config_nodedir=/usr/local \
   pnpm rebuild --filter @beonauto/server... sqlite3 \
@@ -31,7 +31,7 @@ RUN --network=none npm_config_build_from_source=sqlite3 npm_config_nodedir=/usr/
     -exec rm -rf {} +
 ARG AZURE_IDENTITY=false
 RUN case "$AZURE_IDENTITY" in \
-    true) pnpm install --frozen-lockfile --prod --ignore-scripts --filter @beonauto/inference ;; \
+    true) pnpm install --frozen-lockfile --prod --ignore-scripts --filter @beonauto/reasoning ;; \
     false) ;; \
     *) echo "AZURE_IDENTITY is true or false, not $AZURE_IDENTITY" >&2 && exit 1 ;; \
   esac
@@ -53,14 +53,14 @@ COPY packages/mcp/src packages/mcp/src
 COPY packages/operations/src packages/operations/src
 COPY packages/outbound/src packages/outbound/src
 COPY packages/server/src packages/server/src
-COPY packages/specs/src packages/specs/src
+COPY packages/definitions/src packages/definitions/src
 COPY packages/workflow-engine/src packages/workflow-engine/src
 COPY packages/workflow-host/src packages/workflow-host/src
-COPY primitives/computation/src primitives/computation/src
-COPY primitives/inference/src primitives/inference/src
-COPY primitives/interaction/src primitives/interaction/src
-COPY primitives/orchestration/src primitives/orchestration/src
-COPY primitives/recollection/src primitives/recollection/src
+COPY capabilities/computation/src capabilities/computation/src
+COPY capabilities/reasoning/src capabilities/reasoning/src
+COPY capabilities/interaction/src capabilities/interaction/src
+COPY capabilities/coordination/src capabilities/coordination/src
+COPY capabilities/recall/src capabilities/recall/src
 RUN apt-get update \
   && apt-get install --yes --no-install-recommends tini \
   && rm -rf /var/lib/apt/lists/* \

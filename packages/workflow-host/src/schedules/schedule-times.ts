@@ -1,4 +1,4 @@
-import type { ScheduleTrigger } from '@beonauto/specs';
+import type { ScheduleTrigger } from '@beonauto/definitions';
 import { Cron } from 'croner';
 
 const fieldsOfACron = 5;

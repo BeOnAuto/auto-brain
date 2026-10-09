@@ -99,9 +99,9 @@ export const copyNote = defineCommand('brain', {
   }),
 });
 
-function selectionOf(execution: string | undefined, correlation: string | undefined): RecordedSelection {
-  if (execution !== undefined) {
-    return { kind: 'run', execution };
+function selectionOf(run: string | undefined, correlation: string | undefined): RecordedSelection {
+  if (run !== undefined) {
+    return { kind: 'run', run };
   }
   return correlation === undefined ? { kind: 'everything' } : { kind: 'correlated', correlation };
 }
@@ -115,7 +115,7 @@ export const readNoteHistory = defineQuery('brain', {
     limit: Schema.Int,
     cursor: Schema.optionalKey(Schema.String),
     since: Schema.optionalKey(Schema.String),
-    execution: Schema.optionalKey(Schema.String),
+    run: Schema.optionalKey(Schema.String),
     correlation: Schema.optionalKey(Schema.String),
   }),
   outputSchema: Schema.Struct({
@@ -124,8 +124,8 @@ export const readNoteHistory = defineQuery('brain', {
     next_cursor: Schema.NullOr(Schema.String),
   }),
   reasons: ['invalid_input'],
-  handle: Effect.fnUntraced(function* ({ limit, cursor, since, execution, correlation }) {
-    const { records, nextCursor } = yield* (yield* BrainReader).readRecorded(selectionOf(execution, correlation), {
+  handle: Effect.fnUntraced(function* ({ limit, cursor, since, run, correlation }) {
+    const { records, nextCursor } = yield* (yield* BrainReader).readRecorded(selectionOf(run, correlation), {
       order: 'asc',
       limit,
       ...(cursor === undefined ? {} : { cursor }),

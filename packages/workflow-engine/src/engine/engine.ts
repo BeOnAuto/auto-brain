@@ -26,32 +26,32 @@ export function workflowEngineOf(
   cache: RunCache = runCacheOf(),
 ): WorkflowEngine {
   const loop = runLoopOf(ports.runStore, workflowMachine(options), cache);
-  const loaded = (executionId: string) => loadedFrom(ports, executionId);
-  const wake = (executionId: string): Effect.Effect<Wake> =>
+  const loaded = (runId: string) => loadedFrom(ports, runId);
+  const wake = (runId: string): Effect.Effect<Wake> =>
     ports.serialiser.serialise(
-      executionId,
-      Effect.flatMap(loaded(executionId), ({ state, version }) => dispatchRun(ports, { executionId, state, version })),
+      runId,
+      Effect.flatMap(loaded(runId), ({ state, version }) => dispatchRun(ports, { runId, state, version })),
     );
-  const swept = (executionId: string): Effect.Effect<number> =>
+  const swept = (runId: string): Effect.Effect<number> =>
     ports.serialiser.serialise(
-      executionId,
+      runId,
       Effect.gen(function* () {
-        const { state, version } = yield* loaded(executionId);
-        yield* dispatchRun(ports, { executionId, state, version });
-        const run = { executionId, attributes: state.attributes };
-        return yield* Effect.orElseSucceed(ports.timers.sweep(run, armedTimersOf(executionId, state)), () => 0);
+        const { state, version } = yield* loaded(runId);
+        yield* dispatchRun(ports, { runId, state, version });
+        const run = { runId, attributes: state.attributes };
+        return yield* Effect.orElseSucceed(ports.timers.sweep(run, armedTimersOf(runId, state)), () => 0);
       }),
     );
   return {
     submit: (input) =>
       ports.serialiser.serialise(
-        input.executionId,
+        input.runId,
         Effect.gen(function* () {
-          const decision = yield* loop(input.executionId, input);
+          const decision = yield* loop(input.runId, input);
           if (decision.events.length > 0) {
-            yield* snapshotIfDue(ports, cache, input.executionId, decision);
+            yield* snapshotIfDue(ports, cache, input.runId, decision);
             yield* dispatchRun(ports, {
-              executionId: input.executionId,
+              runId: input.runId,
               state: decision.state,
               version: decision.version,
             });
@@ -63,7 +63,7 @@ export function workflowEngineOf(
     sweep: (before) =>
       Effect.gen(function* () {
         const due = yield* dueRunsOf(ports, before);
-        const armedAgain = yield* Effect.forEach(due, (executionId) => swept(executionId));
+        const armedAgain = yield* Effect.forEach(due, (runId) => swept(runId));
         return { runs: due.length, timersArmedAgain: armedAgain.reduce((sum, count) => sum + count, 0) };
       }),
   };

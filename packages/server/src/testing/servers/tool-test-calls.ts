@@ -1,6 +1,6 @@
 import type { McpSession, ToolResult } from '@beonauto/api/testing';
-import type { ScriptedReply } from '@beonauto/inference/testing';
 import { serveFakeMcp } from '@beonauto/mcp/testing';
+import type { ScriptedReply } from '@beonauto/reasoning/testing';
 
 import type { ReasoningServer } from './reasoning-server.ts';
 import { servingWorkflows } from './workflow-server.ts';

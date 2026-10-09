@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "source": "@beonauto/specs",
+  "source": "@beonauto/definitions",
   "functions": [
     {
       "kind": "reason",

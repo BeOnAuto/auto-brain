@@ -3,7 +3,7 @@ import type { InputReceipt } from '../machine/input-receipt.ts';
 import { eventBytesOf, withHistoryBytes, type PositionedEvent } from '../run-log/run-event.ts';
 import { stateFormat } from '../run-log/state-format.ts';
 import type { StatePatch } from '../run-log/state-patch.ts';
-import { at, document, executionId } from './runs.ts';
+import { at, document, runId } from './runs.ts';
 
 export interface Change {
   readonly receipt: InputReceipt;
@@ -28,9 +28,9 @@ export function streamOf(changes: readonly Change[]): readonly PositionedEvent[]
 
 export const exampleStream = streamOf([
   {
-    receipt: { kind: 'started', key: executionId, at },
+    receipt: { kind: 'started', key: runId, at },
     patch: [
-      { op: 'replace', path: '/executionId', value: executionId },
+      { op: 'replace', path: '/runId', value: runId },
       { op: 'replace', path: '/status', value: 'running' },
       { op: 'replace', path: '/workflow', value: { document, input: 1 } },
       { op: 'add', path: '/machine/values/1', value: { value: { ticket: 7 }, bytes: 12 } },
@@ -51,7 +51,7 @@ export const exampleStream = streamOf([
       { op: 'replace', path: '/inputs', value: 2 },
       { op: 'replace', path: '/lastInputAt', value: at + 10 },
     ],
-    outputs: [{ kind: 'arm_timer', executionId, timerId: timer, dueAt: at + 1000, purpose: 'wait' }],
+    outputs: [{ kind: 'arm_timer', runId, timerId: timer, dueAt: at + 1000, purpose: 'wait' }],
   },
   {
     receipt: { kind: 'timer_fired', key: timer, at: at + 1000 },

@@ -23,8 +23,8 @@ export type SubmissionOutcome = 'applied' | 'stale' | 'not_started';
 export class RunMismatch extends Data.TaggedError('run_mismatch')<{ readonly detail: string }> {}
 
 function requireSameRun(state: RunState, input: RunInput): void {
-  if (input.executionId !== state.executionId) {
-    throw new RunMismatch({ detail: `An input for ${input.executionId} reached the run of ${state.executionId}` });
+  if (input.runId !== state.runId) {
+    throw new RunMismatch({ detail: `An input for ${input.runId} reached the run of ${state.runId}` });
   }
 }
 
@@ -37,10 +37,10 @@ function startedReason(
   }
   requireSameRun(state, input);
   if (state.workflow === null || !sameJson(state.workflow.document, input.document)) {
-    throw new RunMismatch({ detail: `The run of ${state.executionId} was started again with another document` });
+    throw new RunMismatch({ detail: `The run of ${state.runId} was started again with another document` });
   }
   if (!sameJson(heldValueOf(state, state.workflow.input).value, input.input)) {
-    throw new RunMismatch({ detail: `The run of ${state.executionId} was started again with another input` });
+    throw new RunMismatch({ detail: `The run of ${state.runId} was started again with another input` });
   }
   return 'started_before';
 }

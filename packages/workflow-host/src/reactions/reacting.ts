@@ -4,13 +4,13 @@ import type { RecordConsumer } from '../follower/consumers.ts';
 import type { FollowerHost } from '../follower/follower-host.ts';
 import type { Upkeep } from '../follower/follower-loop.ts';
 import { scheduleFiringOn } from '../schedules/schedule-firing.ts';
-import { specRecordsOn, type ApplySpecRecord } from '../triggers/spec-records.ts';
+import { definitionRecordsOn, type ApplyDefinitionRecord } from '../triggers/definition-records.ts';
 import { reactionConsumersOf, type ReactionUse } from './reaction-consumers.ts';
 import { startingOn } from './start-rates.ts';
 
 export interface Reacting {
   readonly consumers: readonly RecordConsumer[];
-  readonly applySpecRecord: ApplySpecRecord;
+  readonly applyDefinitionRecord: ApplyDefinitionRecord;
   readonly upkeep: Upkeep;
 }
 
@@ -21,7 +21,7 @@ export function reactingOn(host: FollowerHost, use: ReactionUse): Reacting {
   const schedules = scheduleFiringOn(database, options.start, refusals, clock.now);
   return {
     consumers: reactionConsumersOf(host, use, starting),
-    applySpecRecord: specRecordsOn(database),
+    applyDefinitionRecord: definitionRecordsOn(database),
     upkeep: {
       sweep: () => Effect.asVoid(Effect.andThen(starting.startDeferred(), refusals.flush())),
       fireSchedules: () => Effect.asVoid(schedules.fireDue()),

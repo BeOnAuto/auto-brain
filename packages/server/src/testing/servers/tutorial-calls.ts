@@ -4,7 +4,7 @@ import { plainTextIn, type McpSession, type ToolResult } from '@beonauto/api/tes
 import { Schema } from 'effect';
 
 import { until } from './workflow-calls.ts';
-import { executionIdIn } from './workflow-server.ts';
+import { runIdIn } from './workflow-server.ts';
 
 export interface TutorialRun {
   readonly summaries: readonly string[];
@@ -17,7 +17,7 @@ const decodeEvents = Schema.decodeUnknownSync(
 );
 
 const decodeListed = Schema.decodeUnknownSync(
-  Schema.Struct({ interactions: Schema.Array(Schema.Struct({ execution_id: Schema.String })) }),
+  Schema.Struct({ interactions: Schema.Array(Schema.Struct({ run_id: Schema.String })) }),
 );
 
 const review = [
@@ -55,25 +55,25 @@ function called(session: McpSession, tool: string, input: Readonly<Record<string
 
 function settledOn(session: McpSession, id: string): Promise<ToolResult> {
   return until(
-    () => called(session, 'get_execution', { execution_id: id }),
+    () => called(session, 'get_run', { run_id: id }),
     ({ structuredContent }) => structuredContent?.['status'] !== 'started',
   );
 }
 
 async function saved(session: McpSession): Promise<readonly string[]> {
   await session.callTool('create_brain', { brain: 'campaign-review-tutorial', name: 'Campaign review tutorial' });
-  await called(session, 'create_spec', { primitive: 'inference', name: 'review-campaign-brief', source: review });
+  await called(session, 'create_definition', { type: 'reasoning', name: 'review-campaign-brief', source: review });
   return [
     plainTextIn(
-      await called(session, 'create_spec', {
-        primitive: 'interaction',
+      await called(session, 'create_definition', {
+        type: 'interaction',
         name: 'approve-campaign-brief',
         source: tutorial.get('markdown'),
       }),
     ),
     plainTextIn(
-      await called(session, 'create_spec', {
-        primitive: 'orchestration',
+      await called(session, 'create_definition', {
+        type: 'workflow',
         name: 'review-and-approve',
         source: tutorial.get('yaml'),
       }),
@@ -82,8 +82,8 @@ async function saved(session: McpSession): Promise<readonly string[]> {
 }
 
 async function startedAndAsked(session: McpSession) {
-  const started = await called(session, 'execute_spec', {
-    primitive: 'orchestration',
+  const started = await called(session, 'run_definition', {
+    type: 'workflow',
     name: 'review-and-approve',
     input: { brief: tutorial.get('text'), owner: 'ada@example.com' },
   });
@@ -95,8 +95,8 @@ async function startedAndAsked(session: McpSession) {
   return {
     started,
     listed,
-    workflowId: executionIdIn(started.structuredContent),
-    requestId: String(request?.execution_id),
+    workflowId: runIdIn(started.structuredContent),
+    requestId: String(request?.run_id),
   };
 }
 
@@ -104,12 +104,12 @@ export async function tutorialRunOn(session: McpSession): Promise<TutorialRun> {
   const created = await saved(session);
   const { started, listed, workflowId, requestId } = await startedAndAsked(session);
   const answer = { verdict: 'approve', note: 'Approved for the autumn launch.' };
-  const answered = await called(session, 'answer_interaction', { execution_id: requestId, answer });
+  const answered = await called(session, 'answer_interaction', { run_id: requestId, answer });
   const ended = await settledOn(session, workflowId);
-  const history = await called(session, 'get_execution_history', { execution_id: workflowId });
+  const history = await called(session, 'get_run_history', { run_id: workflowId });
   const request = await settledOn(session, requestId);
   const inbox = await called(session, 'list_interactions', {});
-  const again = await called(session, 'answer_interaction', { execution_id: requestId, answer: { verdict: 'revise' } });
+  const again = await called(session, 'answer_interaction', { run_id: requestId, answer: { verdict: 'revise' } });
   return {
     summaries: [
       ...created,

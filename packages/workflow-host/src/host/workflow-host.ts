@@ -3,7 +3,7 @@ import type { ReceivedEvent, RunState } from '@beonauto/workflow-engine';
 import type { Effect } from 'effect';
 
 import { systemClock, type HostClock } from '../loop/host-clock.ts';
-import { runIdOf, type RunAddress } from '../runs/run-address.ts';
+import { runKeyOf, type RunAddress } from '../runs/run-address.ts';
 import { gate, type HostStopped } from './host-gate.ts';
 import type { ServingOptions } from './host-serving.ts';
 import { standingOn } from './host-standing.ts';
@@ -47,7 +47,7 @@ export async function openWorkflowHost(options: HostOptions): Promise<WorkflowHo
   return {
     start: (run, start) => guarded(runs.start(run, start)),
     deliver: (run, event) => guarded(runs.deliver(run, event)),
-    stateOf: (run) => runs.stateOf(runIdOf(run)),
+    stateOf: (run) => runs.stateOf(runKeyOf(run)),
     stop: () => {
       stopping.done ??= stopped();
       return stopping.done;

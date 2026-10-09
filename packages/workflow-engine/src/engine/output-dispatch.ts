@@ -9,7 +9,7 @@ import {
 import { changesTimers, runDueOf } from '../dispatch/run-due.ts';
 import type { RunOutput } from '../dispatch/run-output.ts';
 import type { RunState } from '../machine/run-state.ts';
-import type { PositionedEvent, RunEvent } from '../run-log/run-event.ts';
+import type { PositionedEvent, RunLogEvent } from '../run-log/run-event.ts';
 import { isTroubling } from '../settlement/record-store.ts';
 import { isRecordedStep, keyOf } from '../steps/step-entry.ts';
 import type { EnginePorts } from './engine-ports.ts';
@@ -43,11 +43,11 @@ function performed(
     return ports.emitter.emit(output, run, origin);
   }
   return ports.recordStore
-    .settle({ executionId: output.executionId, settlement: output.settlement }, run, origin)
+    .settle({ runId: output.runId, settlement: output.settlement }, run, origin)
     .pipe(Effect.tap((receipt) => (isTroubling(receipt) ? ports.reporter.unsettled({ run, receipt }) : Effect.void)));
 }
 
-function originOf(version: number, { steps }: RunEvent): OutputOrigin {
+function originOf(version: number, { steps }: RunLogEvent): OutputOrigin {
   const last = steps.at(-1);
   return { version, lastStep: last !== undefined && isRecordedStep(last) ? keyOf(last) : null };
 }
@@ -77,27 +77,27 @@ function firstFailureIn(
 }
 
 export interface LoadedForDispatch {
-  readonly executionId: string;
+  readonly runId: string;
   readonly state: RunState;
   readonly version: number;
 }
 
 function notedDue(ports: EnginePorts, run: RunContext, loaded: LoadedForDispatch): Effect.Effect<boolean> {
-  const due = { ...runDueOf(loaded.state, loaded.version), executionId: loaded.executionId };
+  const due = { ...runDueOf(loaded.state, loaded.version), runId: loaded.runId };
   return Effect.match(ports.recordStore.noteDue(due, run), { onFailure: () => false, onSuccess: () => true });
 }
 
 export function dispatchRun(ports: EnginePorts, loaded: LoadedForDispatch): Effect.Effect<Wake> {
-  const { executionId, state, version } = loaded;
-  const run: RunContext = { executionId, attributes: state.attributes };
+  const { runId, state, version } = loaded;
+  const run: RunContext = { runId, attributes: state.attributes };
   return Effect.gen(function* () {
-    const watermark = yield* ports.watermark.read(executionId);
-    const events = yield* ports.runStore.eventsAfter(executionId, watermark);
+    const watermark = yield* ports.watermark.read(runId);
+    const events = yield* ports.runStore.eventsAfter(runId, watermark);
     const failed = yield* firstFailureIn(ports, run, events, state.status === 'ended');
     const changed = failed !== null || events.some((event) => changesTimers(event));
     const noted = changed ? yield* notedDue(ports, run, loaded) : true;
     const through = noted ? dispatchedThrough(watermark, events, failed ?? undefined) : watermark;
-    yield* ports.watermark.advance(executionId, through);
+    yield* ports.watermark.advance(runId, through);
     return { version, dispatchedThrough: through };
   });
 }

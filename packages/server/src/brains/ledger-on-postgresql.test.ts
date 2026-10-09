@@ -2,14 +2,14 @@ import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 import { campaignPace, campaignRows } from '@beonauto/computation/testing';
-import { answers, textResult } from '@beonauto/inference/testing';
+import { answers, textResult } from '@beonauto/reasoning/testing';
 import { Schema } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
 import { servingReasoning } from '../testing/servers/reasoning-server.ts';
-import { executionIdIn, settledExecution, workflowSource } from '../testing/servers/workflow-server.ts';
+import { runIdIn, settledRun, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const mainModule = fileURLToPath(new URL('../main.ts', import.meta.url));
 
@@ -49,24 +49,21 @@ const computedRun = Schema.decodeUnknownSync(
 async function computedOn(environment: Readonly<Record<string, string>>) {
   const computing = await servingReasoning([], environment);
   await computing.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
-  await computing.call('POST', `${brain}/specs/computation`, { body: { name: 'pace', source: campaignPace } });
-  const runs = await executionIds.reduce<Promise<readonly ReturnType<typeof computedRun>[]>>(
-    async (before, executionId) => {
-      await computing.call('POST', `${brain}/specs/computation/pace/execute`, {
-        body: { input: campaignRows(500), execution_id: executionId },
-      });
-      const run = computedRun((await computing.call('GET', `${brain}/executions/${executionId}`)).body);
-      return [...(await before), run];
-    },
-    Promise.resolve([]),
-  );
+  await computing.call('POST', `${brain}/definitions/computation`, { body: { name: 'pace', source: campaignPace } });
+  const runs = await runIds.reduce<Promise<readonly ReturnType<typeof computedRun>[]>>(async (before, runId) => {
+    await computing.call('POST', `${brain}/definitions/computation/pace/run`, {
+      body: { input: campaignRows(500), run_id: runId },
+    });
+    const run = computedRun((await computing.call('GET', `${brain}/runs/${runId}`)).body);
+    return [...(await before), run];
+  }, Promise.resolve([]));
   await computing.stop();
   return runs;
 }
 
-const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
-const executionIds = [executionId, '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b'];
+const runIds = [runId, '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b'];
 
 const summary = [
   '---',
@@ -86,24 +83,26 @@ describe.skipIf(skipped)(
   `A server that keeps its ledger in PostgreSQL${notice}`,
   { timeout: spawnedServerTestTimeoutMs },
   () => {
-    it('executes a reasoning function definition of a brain it created, and reads the execution again after a restart', async () => {
+    it('executes a reasoning function definition of a brain it created, and reads the run again after a restart', async () => {
       const environment = await onADatabaseOfItsOwn();
       const first = await servingReasoning([answers(textResult('Profits rose.'))], environment);
       const created = await first.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
-      const spec = await first.call('POST', `${brain}/specs/inference`, { body: { name: 'summary', source: summary } });
-      const executed = await first.call('POST', `${brain}/specs/inference/summary/execute`, {
-        body: { input: { text: 'the quarter' }, execution_id: executionId },
+      const definition = await first.call('POST', `${brain}/definitions/reasoning`, {
+        body: { name: 'summary', source: summary },
       });
-      const execution = `${brain}/executions/${executionId}`;
-      const before = await first.call('GET', execution);
+      const ran = await first.call('POST', `${brain}/definitions/reasoning/summary/run`, {
+        body: { input: { text: 'the quarter' }, run_id: runId },
+      });
+      const run = `${brain}/runs/${runId}`;
+      const before = await first.call('GET', run);
       await first.stop();
 
       const second = await servingReasoning([], environment);
-      const after = await second.call('GET', execution);
+      const after = await second.call('GET', run);
       const brainAfter = await second.call('GET', brain);
       await second.stop();
 
-      expect([created.status, spec.status, executed.status, before.status]).toEqual([201, 201, 200, 200]);
+      expect([created.status, definition.status, ran.status, before.status]).toEqual([201, 201, 200, 200]);
       expect(before.body).toMatchObject({ status: 'succeeded', output: 'Profits rose.', name: 'summary' });
       expect(after).toMatchObject({ status: 200, body: before.body });
       expect(brainAfter).toMatchObject({ status: 200, body: { id: 'alpha', name: 'Alpha', status: 'active' } });
@@ -151,18 +150,18 @@ describe.skipIf(skipped)(
       const environment = await onADatabaseOfItsOwn();
       const first = await servingReasoning([], environment);
       await first.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
-      await first.call('POST', `${brain}/specs/orchestration`, { body: { name: 'approval', source: approval } });
-      const started = await first.call('POST', `${brain}/specs/orchestration/approval/execute`, {
+      await first.call('POST', `${brain}/definitions/workflow`, { body: { name: 'approval', source: approval } });
+      const started = await first.call('POST', `${brain}/definitions/workflow/approval/run`, {
         body: { input: {} },
       });
       await first.stop();
 
       const second = await servingReasoning([], environment);
-      const execution = `${brain}/executions/${executionIdIn(started.body)}`;
-      const sent = await second.call('POST', `${execution}/events`, {
+      const run = `${brain}/runs/${runIdIn(started.body)}`;
+      const sent = await second.call('POST', `${run}/events`, {
         body: { event: { type: 'com.acme.approved', data: { by: 'Ada' } } },
       });
-      const settled = await settledExecution(second, execution);
+      const settled = await settledRun(second, run);
       await second.stop();
 
       expect(started).toMatchObject({ status: 200, body: { status: 'started' } });

@@ -10,23 +10,23 @@ import { binding, type Bind, type Query } from '../postgresql-reads/recorded-par
 
 const GroupRows = Schema.Array(Schema.Struct({ ...groupFields, durations: Schema.Array(Schema.Number) }));
 
-function selected(bind: Bind, { primitive, name }: RunOutcomeSelection): string {
-  const ofPrimitive = primitive === undefined ? '' : ` AND primitive = ${bind(primitive)}`;
-  return name === undefined ? ofPrimitive : `${ofPrimitive} AND name = ${bind(name)}`;
+function selected(bind: Bind, { definitionType: type, name }: RunOutcomeSelection): string {
+  const ofDefinitionType = type === undefined ? '' : ` AND definition_type = ${bind(type)}`;
+  return name === undefined ? ofDefinitionType : `${ofDefinitionType} AND name = ${bind(name)}`;
 }
 
 export function postgresqlRunOutcomesReader(query: Query): RunOutcomesStore['readRunOutcomes'] {
   return async (brainKey, { from, to }, selection) => {
     const { values, bind } = binding();
     const rows = await query(
-      `SELECT started_day AS day, primitive, name, status, count(*)::int AS runs,
+      `SELECT started_day AS day, definition_type, name, status, count(*)::int AS runs,
           coalesce(sum(input_tokens), 0)::float8 AS input_tokens,
           coalesce(sum(output_tokens), 0)::float8 AS output_tokens,
           coalesce(sum(cached_tokens), 0)::float8 AS cached_tokens,
           coalesce(json_agg(duration_ms) FILTER (WHERE duration_ms IS NOT NULL), '[]'::json) AS durations
         FROM ${runOutcomesTable}
         WHERE brain_key = ${bind(brainKey)} AND started_day BETWEEN ${bind(from)} AND ${bind(to)}${selected(bind, selection)}
-        GROUP BY started_day, primitive, name, status`,
+        GROUP BY started_day, definition_type, name, status`,
       values,
     );
     return Schema.decodeUnknownSync(GroupRows)(rows).map((row) => groupOf(row));

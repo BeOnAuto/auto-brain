@@ -30,13 +30,13 @@ export function followerOn(host: FollowerHost, assembly: FollowerAssembly): Foll
     consumers: reacting.consumers,
     registered: assembly.consumers,
     calls: assembly.calls,
-    primitive: assembly.options.primitive,
-    applySpecRecord: reacting.applySpecRecord,
+    type: assembly.options.type,
+    applyDefinitionRecord: reacting.applyDefinitionRecord,
     unreadable,
     passedEarly: (brainKey, { stream, version }, sweeps) =>
       reports.note({
         kind: 'run_record_passed',
-        run: { ...brainOfKey(brainKey), executionId: stream.slice(stream.lastIndexOf('/') + 1) },
+        run: { ...brainOfKey(brainKey), runId: stream.slice(stream.lastIndexOf('/') + 1) },
         version,
         sweeps,
       }),
@@ -45,9 +45,9 @@ export function followerOn(host: FollowerHost, assembly: FollowerAssembly): Foll
     database,
     brains,
     records: assembly.records,
-    applySpecRecord: reacting.applySpecRecord,
+    applyDefinitionRecord: reacting.applyDefinitionRecord,
     unreadable,
-    primitive: assembly.options.primitive,
+    type: assembly.options.type,
   });
   return startFollower({
     pass,

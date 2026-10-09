@@ -19,7 +19,7 @@ For a campaign review, the method might require a specific audience, a clear off
 | Function | A reusable operation with defined inputs, outputs and behavior | Review a brief against those criteria        |
 | Workflow | A definition coordinating steps and their dependencies         | Review the brief, then request approval      |
 | Step     | A use of a function, another workflow or control operation     | Run the brief review                         |
-| Run      | One execution against particular inputs                        | Review of the autumn campaign brief          |
+| Run      | One run against particular inputs                              | Review of the autumn campaign brief          |
 | Result   | The output produced by that run                                | A recommendation and missing information     |
 
 The [function types](functions.md) describe different kinds of work. [Workflows](workflows.md) coordinate those functions. A workflow that another workflow calls is a subworkflow, and the workflow that calls it waits for its run.

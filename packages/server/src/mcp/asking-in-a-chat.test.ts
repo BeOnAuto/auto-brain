@@ -83,28 +83,28 @@ async function askedToSendADraft(session: McpSession) {
     tool: 'thread_replies',
     arguments: { channel: '#drafts', ts: '1699.000001' },
   });
-  const saved = await session.callTool('create_spec', {
+  const saved = await session.callTool('create_definition', {
     ...inMeetings,
-    primitive: 'interaction',
+    type: 'interaction',
     name: 'approve-draft',
     source: approvingInTheChat,
   });
-  const reasoning = await session.callTool('list_specs', { ...inMeetings, primitive: 'inference' });
+  const reasoning = await session.callTool('list_definitions', { ...inMeetings, type: 'reasoning' });
   return { guide, sent, read, saved, reasoning };
 }
 
 async function askedWhereNoToolServerIs(session: McpSession) {
   const briefs = { brain: 'briefs' };
   await session.callTool('create_brain', { ...briefs, name: 'Briefs' });
-  await session.callTool('create_spec', {
+  await session.callTool('create_definition', {
     ...briefs,
-    primitive: 'interaction',
+    type: 'interaction',
     name: 'approve-draft',
     source: approvingInTheChat,
   });
-  return session.callTool('execute_spec', {
+  return session.callTool('run_definition', {
     ...briefs,
-    primitive: 'interaction',
+    type: 'interaction',
     name: 'approve-draft',
     input: { owner: 'ada', draft: 'The September newsletter' },
   });
@@ -127,7 +127,7 @@ describe(
       expect(seen.guide).toMatch(/^## Sending through a tool\n[\s\S]*^### Attempts\n[\s\S]*^## Fields$/mu);
       expect(Buffer.byteLength(seen.guide)).toBeLessThan(mostGuideBytes);
       expect(seen.saved.isError).not.toBe(true);
-      expect(seen.reasoning.structuredContent).toEqual({ specs: [] });
+      expect(seen.reasoning.structuredContent).toEqual({ definitions: [] });
     });
 
     it('is told, on a brain no tool server serves, what whoever runs the server sets up', async () => {

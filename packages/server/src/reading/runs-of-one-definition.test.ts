@@ -56,7 +56,7 @@ const summary = [
 const echoed = ['---', 'language: jq', '---', '.'].join('\n');
 
 const RunsPageSchema = Schema.Struct({
-  executions: Schema.Array(Schema.Struct({ execution_id: Schema.String, primitive: Schema.String })),
+  runs: Schema.Array(Schema.Struct({ run_id: Schema.String, type: Schema.String })),
   has_more: Schema.Boolean,
   next_cursor: Schema.NullOr(Schema.String),
 });
@@ -75,10 +75,8 @@ const newerComputationRuns = [4, 5, 6, 7, 8].map((index) => runOf(index));
 
 let server: ReasoningServer;
 
-function inTurn(executionIds: readonly string[], started: (executionId: string) => Promise<unknown>): Promise<void> {
-  return Effect.runPromise(
-    Effect.forEach(executionIds, (executionId) => Effect.promise(() => started(executionId)), { discard: true }),
-  );
+function inTurn(runIds: readonly string[], started: (runId: string) => Promise<unknown>): Promise<void> {
+  return Effect.runPromise(Effect.forEach(runIds, (runId) => Effect.promise(() => started(runId)), { discard: true }));
 }
 
 afterEach(async () => {
@@ -88,27 +86,27 @@ afterEach(async () => {
 async function threeReasoningRunsBehindFiveComputationRuns(environment: Readonly<Record<string, string>>) {
   server = await servingReasoning([], environment);
   await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
-  await server.call('POST', `${alpha}/specs/inference`, { body: { name: 'summary', source: summary } });
-  await server.call('POST', `${alpha}/specs/computation`, { body: { name: 'echoed', source: echoed } });
-  await inTurn(reasoningRuns, (executionId) =>
-    server.call('POST', `${alpha}/specs/inference/summary/execute`, {
-      body: { input: { text: 7 }, execution_id: executionId },
+  await server.call('POST', `${alpha}/definitions/reasoning`, { body: { name: 'summary', source: summary } });
+  await server.call('POST', `${alpha}/definitions/computation`, { body: { name: 'echoed', source: echoed } });
+  await inTurn(reasoningRuns, (runId) =>
+    server.call('POST', `${alpha}/definitions/reasoning/summary/run`, {
+      body: { input: { text: 7 }, run_id: runId },
     }),
   );
-  await inTurn(newerComputationRuns, (executionId) =>
-    server.call('POST', `${alpha}/specs/computation/echoed/execute`, {
-      body: { input: {}, execution_id: executionId },
+  await inTurn(newerComputationRuns, (runId) =>
+    server.call('POST', `${alpha}/definitions/computation/echoed/run`, {
+      body: { input: {}, run_id: runId },
     }),
   );
 }
 
-function figuresOf({ executions, has_more: hasMore }: RunsPage): readonly [readonly string[], boolean] {
-  return [executions.map(({ execution_id: id }) => id), hasMore];
+function figuresOf({ runs, has_more: hasMore }: RunsPage): readonly [readonly string[], boolean] {
+  return [runs.map(({ run_id: id }) => id), hasMore];
 }
 
 async function overHttp(cursor?: string): Promise<RunsPage> {
   const next = cursor === undefined ? '' : `&cursor=${cursor}`;
-  const { body } = await server.call('GET', `${alpha}/executions?primitive=inference&limit=2${next}`);
+  const { body } = await server.call('GET', `${alpha}/runs?type=reasoning&limit=2${next}`);
   return runsPageOf(body);
 }
 
@@ -117,10 +115,10 @@ function overMcp(): Promise<readonly RunsPage[]> {
     'current revision',
     { url: `${server.origin}/orgs/acme/brains/alpha/mcp`, headers: {} },
     async (session) => {
-      const first = await session.callTool('list_executions', { primitive: 'inference', limit: 2 });
+      const first = await session.callTool('list_runs', { type: 'reasoning', limit: 2 });
       const firstPage = runsPageOf(first.structuredContent);
-      const next = await session.callTool('list_executions', {
-        primitive: 'inference',
+      const next = await session.callTool('list_runs', {
+        type: 'reasoning',
         limit: 2,
         cursor: String(firstPage.next_cursor),
       });
@@ -129,7 +127,7 @@ function overMcp(): Promise<readonly RunsPage[]> {
   );
 }
 
-describe.each(stores)('the runs of one primitive, a page at a time, on $store', ({ skipped, environment }) => {
+describe.each(stores)('the runs of one capability, a page at a time, on $store', ({ skipped, environment }) => {
   it.skipIf(skipped)(
     'fill each page with as many of its runs as the limit asks, behind newer runs of another, over HTTP and MCP',
     { timeout: 60_000 },
@@ -146,10 +144,10 @@ describe.each(stores)('the runs of one primitive, a page at a time, on $store', 
       ];
       expect(pagesOverHttp.map((page) => figuresOf(page))).toEqual(expected);
       expect(pagesOverMcp.map((page) => figuresOf(page))).toEqual(expected);
-      expect(pagesOverHttp.flatMap(({ executions }) => executions.map(({ primitive }) => primitive))).toEqual([
-        'inference',
-        'inference',
-        'inference',
+      expect(pagesOverHttp.flatMap(({ runs }) => runs.map(({ type }) => type))).toEqual([
+        'reasoning',
+        'reasoning',
+        'reasoning',
       ]);
     },
   );

@@ -1,4 +1,5 @@
 import type { AppRuntime } from '@beonauto/api';
+import { eventEmitter, type BrainOperation } from '@beonauto/definitions';
 import {
   brainCallerOf,
   Ledger,
@@ -7,13 +8,12 @@ import {
   type DispatcherServices,
   type Outcome,
 } from '@beonauto/operations';
-import { eventEmitter, type BrainOperation } from '@beonauto/specs';
 import { StartRefused, StartRejected, type ReactionOptions, type ReactionStart } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
 
 import { inRuntime } from './in-runtime.ts';
 
-const workflows = 'orchestration';
+const workflows = 'workflow';
 
 function requestOf({
   org,
@@ -21,7 +21,7 @@ function requestOf({
   workflow,
   version,
   input,
-  executionId,
+  runId,
   depth,
   cause,
   trigger,
@@ -30,9 +30,9 @@ function requestOf({
     caller: brainCallerOf({ org, brain }),
     org,
     brain,
-    input: { primitive: workflows, name: workflow, version, input, execution_id: executionId },
+    input: { type: workflows, name: workflow, version, input, run_id: runId },
     encoding: 'json',
-    lineage: { causationId: cause, correlationId: executionId },
+    lineage: { causationId: cause, correlationId: runId },
     depth,
     trigger,
   };
@@ -56,7 +56,7 @@ export function reactionsOf(
   startVersion: BrainOperation,
 ): ReactionOptions {
   return {
-    primitive: workflows,
+    type: workflows,
     start: (start) =>
       Effect.flatMap(
         inRuntime(runtime, dispatcher.dispatchToBrain(startVersion.registration, requestOf(start))),

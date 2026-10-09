@@ -4,14 +4,14 @@ import { onTestFinished } from 'vitest';
 
 import { alpha, servingReasoning, type ReasoningServer } from './reasoning-server.ts';
 import { until } from './workflow-calls.ts';
-import { executionIdIn, settledExecution, workflowSource } from './workflow-server.ts';
+import { runIdIn, settledRun, workflowSource } from './workflow-server.ts';
 
 export const brief = { campaign: 'Spring', owner: 'ada' };
 
 const unansweredType = 'https://on.auto/problems/unanswered';
 
 const decodeListed = Schema.decodeUnknownSync(
-  Schema.Struct({ interactions: Schema.Array(Schema.Struct({ execution_id: Schema.String })) }),
+  Schema.Struct({ interactions: Schema.Array(Schema.Struct({ run_id: Schema.String })) }),
 );
 
 const decodeHistory = Schema.decodeUnknownSync(
@@ -53,30 +53,30 @@ export async function interactionServerOn(environment: Readonly<Record<string, s
     ...server,
     stop,
     ask: async (name) => {
-      const started = await server.call('POST', `${alpha}/specs/interaction/${name}/execute`, {
+      const started = await server.call('POST', `${alpha}/definitions/interaction/${name}/run`, {
         body: { input: brief },
       });
-      return executionIdIn(started.body);
+      return runIdIn(started.body);
     },
-    answer: (runId, body) => server.call('POST', `${alpha}/executions/${runId}/answer`, { body }),
-    settled: async (runId) => (await settledExecution(server, `${alpha}/executions/${runId}`)).body,
+    answer: (runId, body) => server.call('POST', `${alpha}/runs/${runId}/answer`, { body }),
+    settled: async (runId) => (await settledRun(server, `${alpha}/runs/${runId}`)).body,
     workflow: async (name, steps) => {
-      await server.call('POST', `${alpha}/specs/orchestration`, {
+      await server.call('POST', `${alpha}/definitions/workflow`, {
         body: { name, source: workflowSource(name, steps) },
       });
-      const started = await server.call('POST', `${alpha}/specs/orchestration/${name}/execute`, {
+      const started = await server.call('POST', `${alpha}/definitions/workflow/${name}/run`, {
         body: { input: {} },
       });
-      return executionIdIn(started.body);
+      return runIdIn(started.body);
     },
     openRequests: async (count) => {
       const listed = await until(
         async () => decodeListed((await server.call('GET', `${alpha}/interactions`)).body).interactions,
         (interactions) => interactions.length >= count,
       );
-      return listed.map(({ execution_id: runId }) => runId);
+      return listed.map(({ run_id: runId }) => runId);
     },
-    causes: async (runId) => causesIn((await server.call('GET', `${alpha}/executions/${runId}/history`)).body),
+    causes: async (runId) => causesIn((await server.call('GET', `${alpha}/runs/${runId}/history`)).body),
   };
 }
 
@@ -86,17 +86,17 @@ export async function servingInteractions(
 ): Promise<InteractionServer> {
   const server = await interactionServerOn(environment);
   await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
-  await server.call('POST', `${alpha}/specs/interaction`, {
+  await server.call('POST', `${alpha}/definitions/interaction`, {
     body: { name: 'approve-brief', source: approvalDocument(delivery) },
   });
-  await server.call('POST', `${alpha}/specs/interaction`, {
+  await server.call('POST', `${alpha}/definitions/interaction`, {
     body: { name: 'brief-out', source: notificationDocument(delivery) },
   });
   return server;
 }
 
 export function asking(name: string, task: string, indent = '  '): string {
-  return `${indent}- ${task}: { call: execute_spec, with: { primitive: interaction, name: ${name}, input: { campaign: Spring, owner: ada } } }\n`;
+  return `${indent}- ${task}: { call: run_definition, with: { type: interaction, name: ${name}, input: { campaign: Spring, owner: ada } } }\n`;
 }
 
 export function guarded(name: string, kind: string): string {

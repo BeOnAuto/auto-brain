@@ -55,7 +55,7 @@ describe('a test whose tool does not answer as asked', () => {
         result_bytes: null,
       },
     });
-    expect(messages()).toMatchObject([{ server: 'graph', execution_id: null, tool_test_id: aTestId }]);
+    expect(messages()).toMatchObject([{ server: 'graph', run_id: null, tool_test_id: aTestId }]);
   });
 
   it('succeeds as timed out when the tool takes longer than a call may', async () => {

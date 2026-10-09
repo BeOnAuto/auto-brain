@@ -128,16 +128,16 @@ describe('the host database on PostgreSQL, open', () => {
     const migration = asked().length;
 
     const read = await Effect.runPromise(database.read(statement`SELECT ${1} AS one`));
-    const written = await Effect.runPromise(database.write(statement`DELETE FROM workflow_due WHERE run_id = ${'a'}`));
+    const written = await Effect.runPromise(database.write(statement`DELETE FROM workflow_due WHERE run_key = ${'a'}`));
     await database.close();
 
     expect(asked().slice(migration)).toEqual([
       { text: 'SELECT $1 AS one', values: [1] },
-      { text: 'DELETE FROM workflow_due WHERE run_id = $1', values: ['a'] },
+      { text: 'DELETE FROM workflow_due WHERE run_key = $1', values: ['a'] },
     ]);
     expect([read, written]).toEqual([
       [{ answered: 'SELECT $1 AS one' }],
-      [{ answered: 'DELETE FROM workflow_due WHERE run_id = $1' }],
+      [{ answered: 'DELETE FROM workflow_due WHERE run_key = $1' }],
     ]);
     expect(said().slice(-2)).toEqual(['store closed', 'connections ended']);
   });

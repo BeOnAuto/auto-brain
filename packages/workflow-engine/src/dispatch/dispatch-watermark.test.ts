@@ -8,19 +8,25 @@ import {
   type PositionedEvent,
   type RunOutput,
 } from '../index.ts';
-import { at, executionId, openCall } from '../testing/runs.ts';
+import { at, runId, openCall } from '../testing/runs.ts';
 
 const arm: RunOutput = {
   kind: 'arm_timer',
-  executionId,
+  runId,
   timerId: '1',
   dueAt: at + 60_000,
   purpose: 'timeout',
 };
 
-const start: RunOutput = { kind: 'start_call', key: openCall, function: 'executeSpec', arguments: {}, longestMs: 600 };
+const start: RunOutput = {
+  kind: 'start_call',
+  key: openCall,
+  function: 'runDefinition',
+  arguments: {},
+  longestMs: 600,
+};
 
-const settle: RunOutput = { kind: 'settle', executionId, settlement: { status: 'failed' } };
+const settle: RunOutput = { kind: 'settle', runId, settlement: { status: 'failed' } };
 
 function applied(version: number, outputs: readonly RunOutput[]): PositionedEvent {
   return {

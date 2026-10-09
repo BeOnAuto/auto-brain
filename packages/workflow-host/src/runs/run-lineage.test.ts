@@ -7,14 +7,14 @@ import { eventually } from '../testing/eventually.ts';
 import { runAt, startOf, workflow } from '../testing/host-documents.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { hostedOn } from '../testing/host-runs.ts';
-import { streamOfRun, runIdOf } from './run-address.ts';
+import { runLogStreamOf, runKeyOf } from './run-address.ts';
 import { lineageOfRecord } from './run-lineage.ts';
 
-const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
-const run = runAt(executionId);
+const run = runAt(runId);
 
-const stream = streamOfRun(runIdOf(run));
+const stream = runLogStreamOf(runKeyOf(run));
 
 const start = '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a';
 
@@ -30,7 +30,7 @@ describe('the lineage the host writes with each record of a run', () => {
   it('is the start it was given for the first, the waiting step for a resumption, and the root as correlation', async () => {
     const file = aSQLiteFile();
     const hosted = await hostedOn({ store: 'sqlite', file });
-    hosted.know(executionId);
+    hosted.know(runId);
     const document = workflow('do:\n  - pause: { wait: PT0.05S }');
     await Effect.runPromise(hosted.host.start(run, { ...startOf(document), attributes: given }));
     await eventually(hosted.settlements, (settled) => settled.size > 0, 400);
@@ -39,12 +39,12 @@ describe('the lineage the host writes with each record of a run', () => {
       { id: messageIdOf(stream, 1), causationId: start, correlationId: 'root' },
       {
         id: messageIdOf(stream, 2),
-        causationId: stepEventIdOf(executionId, { reference: '/do/0/pause', run: 1, outcome: 'waiting', times: 1 }),
+        causationId: stepEventIdOf(runId, { reference: '/do/0/pause', run: 1, outcome: 'waiting', times: 1 }),
         correlationId: 'root',
       },
     ]);
-    expect(hosted.settledWith().get(executionId)).toEqual({
-      causationId: stepEventIdOf(executionId, { reference: '/do/0/pause', run: 1, outcome: 'completed', times: 1 }),
+    expect(hosted.settledWith().get(runId)).toEqual({
+      causationId: stepEventIdOf(runId, { reference: '/do/0/pause', run: 1, outcome: 'completed', times: 1 }),
       correlationId: 'root',
     });
   });
@@ -58,16 +58,16 @@ describe('the lineage of the fire of a timer', () => {
     await Effect.runPromise(first.host.start(run, startOf(document)));
     await first.host.stop();
     const second = await hostedOn({ store: 'sqlite', file });
-    second.know(executionId);
+    second.know(runId);
     await eventually(second.settlements, (settled) => settled.size > 0, 400);
 
     expect(await lineagesOf(file)).toEqual([
-      { id: messageIdOf(stream, 1), causationId: null, correlationId: executionId },
-      { id: messageIdOf(stream, 2), causationId: messageIdOf(stream, 1), correlationId: executionId },
+      { id: messageIdOf(stream, 1), causationId: null, correlationId: runId },
+      { id: messageIdOf(stream, 2), causationId: messageIdOf(stream, 1), correlationId: runId },
     ]);
-    expect(second.settledWith().get(executionId)).toEqual({
-      causationId: stepEventIdOf(executionId, { reference: '/do/0/slow', run: 1, outcome: 'timed_out', times: 1 }),
-      correlationId: executionId,
+    expect(second.settledWith().get(runId)).toEqual({
+      causationId: stepEventIdOf(runId, { reference: '/do/0/slow', run: 1, outcome: 'timed_out', times: 1 }),
+      correlationId: runId,
     });
   });
 });
@@ -76,7 +76,7 @@ describe('the lineage of a record nothing waited for', () => {
   it('is nothing for an event no step took, and the record that ended a run with no step settles it', async () => {
     const file = aSQLiteFile();
     const hosted = await hostedOn({ store: 'sqlite', file });
-    hosted.know(executionId);
+    hosted.know(runId);
     const waiting = { ...startOf(workflow('do:\n  - pause: { wait: PT1H }')), attributes: given };
     await Effect.runPromise(hosted.host.start(run, waiting));
     await Effect.runPromise(
@@ -92,7 +92,7 @@ describe('the lineage of a record nothing waited for', () => {
       { id: messageIdOf(stream, 2), causationId: null, correlationId: 'root' },
       66,
     ]);
-    expect(hosted.settledWith().get(executionId)).toEqual({
+    expect(hosted.settledWith().get(runId)).toEqual({
       causationId: messageIdOf(stream, 66),
       correlationId: 'root',
     });
@@ -103,7 +103,7 @@ describe('the lineage of a record nothing waited for', () => {
 
     expect(
       await Effect.runPromise(
-        lineageOfRecord(database, runIdOf(run), { cause: { kind: 'timer', timerId: '9' }, attributes: given }),
+        lineageOfRecord(database, runKeyOf(run), { cause: { kind: 'timer', timerId: '9' }, attributes: given }),
       ),
     ).toEqual({ causationId: null, correlationId: 'root' });
   });

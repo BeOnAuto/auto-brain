@@ -10,18 +10,18 @@ import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import type { ChildCancel, ChildReceipt } from './call-cancels.ts';
 import { hostExecutor, type CallAnswer } from './host-executor.ts';
 
-const runId = 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+const runKey = 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 const root = '0199a3c4-7d2e-7c1a-9b3f-000000000999';
 
-const run = { executionId: runId, attributes: { lineage: { start: 'start-1', correlation: root } } };
+const run = { runId: runKey, attributes: { lineage: { start: 'start-1', correlation: root } } };
 
 const child = '0199a3c4-7d2e-7c1a-9b3f-0000000000c1';
 
-function callAt(reference: string, executionId = runId): StartCall {
+function callAt(reference: string, runId = runKey): StartCall {
   return {
     kind: 'start_call',
-    key: { executionId, reference, run: 1 },
+    key: { runId, reference, run: 1 },
     function: 'notify',
     arguments: { to: 'ada' },
     longestMs: 60_000,
@@ -135,7 +135,7 @@ describe('a call whose run ended before the call was marked waiting', () => {
 describe('the open calls under one run at the top of a tree', () => {
   it('are bounded, the call past the bound answered as a conflict without being performed', async () => {
     const calls = await executing(() => Effect.never, { mostOpen: 2 });
-    const elsewhere = { executionId: 'acme/alpha/other', attributes: {} };
+    const elsewhere = { runId: 'acme/alpha/other', attributes: {} };
     await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/a'), run));
     await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/b'), run));
 
@@ -175,7 +175,7 @@ describe('a cancel of a waiting call', () => {
     expect(await calls.rows()).toEqual([{ state: 'cancelled', child }]);
     expect(calls.cancels()).toEqual([
       {
-        child: { org: 'acme', brain: 'alpha', executionId: child },
+        child: { org: 'acme', brain: 'alpha', runId: child },
         reason: 'deadline',
         lineage: {
           causationId: stepEventIdOf('0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', origin.lastStep),
@@ -207,7 +207,7 @@ describe('a cancel of a running call', () => {
     await Effect.runPromise(Deferred.succeed(finishing, { status: 'succeeded', output: 2 }));
 
     expect(receipts).toEqual(['cancelled', 'already_answered', 'tombstoned']);
-    expect(calls.cancels().map((cancel) => cancel.child.executionId)).toEqual(['a-derived']);
+    expect(calls.cancels().map((cancel) => cancel.child.runId)).toEqual(['a-derived']);
     expect(calls.answered()).toHaveLength(1);
   });
 });

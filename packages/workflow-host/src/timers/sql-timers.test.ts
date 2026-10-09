@@ -4,15 +4,15 @@ import { describe, expect, it } from 'vitest';
 
 import { faultyDatabase } from '../testing/faulty-database.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
-import { runId, startedAt } from '../testing/probe-subjects.ts';
+import { runKey, startedAt } from '../testing/probe-subjects.ts';
 import { armedByOf, sqlTimers } from './sql-timers.ts';
 
-const run = { executionId: runId, attributes: {} };
+const run = { runId: runKey, attributes: {} };
 
 const armedBy = { version: 3, lastStep: null };
 
 function timerDue(timerId: string, dueAt: number): ArmTimer {
-  return { kind: 'arm_timer', executionId: runId, timerId, dueAt, purpose: 'wait' };
+  return { kind: 'arm_timer', runId: runKey, timerId, dueAt, purpose: 'wait' };
 }
 
 describe('the timers of the host', () => {
@@ -40,7 +40,11 @@ describe('the timers of the host, once armed', () => {
 
     expect(
       await Effect.runPromise(
-        Effect.all([armedByOf(database, runId, '1'), armedByOf(database, runId, '2'), armedByOf(database, runId, '3')]),
+        Effect.all([
+          armedByOf(database, runKey, '1'),
+          armedByOf(database, runKey, '2'),
+          armedByOf(database, runKey, '3'),
+        ]),
       ),
     ).toEqual([3, null, null]);
   });
@@ -49,10 +53,10 @@ describe('the timers of the host, once armed', () => {
     const table = sqlTimers(await openedOn({ store: 'sqlite', file: aSQLiteFile() }), Function.constVoid);
     await Effect.runPromise(table.timers.arm(timerDue('1', startedAt), run, armedBy));
 
-    await Effect.runPromise(table.postponed({ runId, timerId: '1' }, startedAt + 50));
+    await Effect.runPromise(table.postponed({ runKey, timerId: '1' }, startedAt + 50));
 
     expect(await Effect.runPromise(table.due(startedAt, 10))).toEqual([]);
-    expect(await Effect.runPromise(table.due(startedAt + 50, 10))).toEqual([{ runId, timerId: '1' }]);
+    expect(await Effect.runPromise(table.due(startedAt + 50, 10))).toEqual([{ runKey, timerId: '1' }]);
   });
 
   it('fail an arm, a cancel or a sweep they cannot record, to be dispatched again', async () => {
@@ -63,7 +67,7 @@ describe('the timers of the host, once armed', () => {
     const failures = await Effect.runPromise(
       Effect.all([
         Effect.flip(timers.arm(timerDue('1', startedAt), run, armedBy)),
-        Effect.flip(timers.cancel({ kind: 'cancel_timer', executionId: runId, timerId: '1' }, run)),
+        Effect.flip(timers.cancel({ kind: 'cancel_timer', runId: runKey, timerId: '1' }, run)),
         Effect.flip(timers.sweep(run, [timerDue('1', startedAt)])),
       ]),
     );

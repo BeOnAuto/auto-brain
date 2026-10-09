@@ -13,13 +13,13 @@ function listening(filter: string, input: Readonly<Record<string, string>> = {})
   return startOf(workflow(`do:\n  - await: { listen: { to: { one: { with: ${filter} } } } }`), input);
 }
 
-function stateOf({ host }: ReactingHost, executionId = waiting) {
-  return Effect.runPromise(host.stateOf(runAt(executionId)));
+function stateOf({ host }: ReactingHost, runId = waiting) {
+  return Effect.runPromise(host.stateOf(runAt(runId)));
 }
 
-function ended(reacting: ReactingHost, executionId = waiting) {
+function ended(reacting: ReactingHost, runId = waiting) {
   return until(
-    () => stateOf(reacting, executionId),
+    () => stateOf(reacting, runId),
     (state) => state.status === 'ended',
   );
 }
@@ -72,7 +72,7 @@ describe('an offer to a run that waits for an event', () => {
     await published(
       reacting.database.store,
       { id: 'own', type: 'com.acme.decided' },
-      { emitted_by: { execution_id: waiting, workflow: 'test', version: 1 }, depth: 1 },
+      { emitted_by: { run_id: waiting, workflow: 'test', version: 1 }, depth: 1 },
     );
     await published(reacting.database.store, { id: 'theirs', type: 'com.acme.decided', data: 'theirs' });
     const state = await ended(reacting);
@@ -86,7 +86,7 @@ describe('a run that listened before the host kept its listeners', () => {
     const first = await reactingHost();
     await Effect.runPromise(first.host.start(runAt(waiting), listening('{ type: com.acme.decided }')));
     await until(
-      () => Effect.runPromise(first.database.read(statement`SELECT run_id FROM workflow_listeners`)),
+      () => Effect.runPromise(first.database.read(statement`SELECT run_key FROM workflow_listeners`)),
       (rows) => rows.length > 0,
     );
     await first.host.stop();
@@ -96,7 +96,7 @@ describe('a run that listened before the host kept its listeners', () => {
         first.database.write(statement`DELETE FROM workflow_listeners`),
         first.database.write(statement`DELETE FROM workflow_followed_scans`),
         first.database.write(
-          statement`INSERT INTO workflow_runs (run_id, stream_id) VALUES (${'acme/alpha/bare'}, ${'s'})`,
+          statement`INSERT INTO workflow_runs (run_key, stream_id) VALUES (${'acme/alpha/bare'}, ${'s'})`,
         ),
       ]),
     );

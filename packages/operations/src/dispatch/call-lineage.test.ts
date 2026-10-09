@@ -24,7 +24,7 @@ const note = defineCommand('brain', {
     version: Schema.Int,
     depth: Schema.Int,
     callDepth: Schema.Int,
-    calledBy: Schema.NullOr(Schema.Struct({ execution_id: Schema.String, reference: Schema.String, run: Schema.Int })),
+    calledBy: Schema.NullOr(Schema.Struct({ run_id: Schema.String, reference: Schema.String, run: Schema.Int })),
     trigger: Schema.NullOr(
       Schema.Struct({ kind: Schema.Literals(['event', 'cron', 'every']), reference: Schema.String }),
     ),
@@ -72,7 +72,7 @@ describe('the lineage of a call', () => {
 
   it('carries how many calls are above the run and the call it answers, and none for a request that gave none', async () => {
     const { dispatcher, run } = harness();
-    const calledBy = { execution_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', reference: '/do/0/ask', run: 2 };
+    const calledBy = { run_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', reference: '/do/0/ask', run: 2 };
 
     const outcomes = [
       await run(dispatcher.dispatchToBrain(note.registration, { ...toAlpha(acmeAdmin), callDepth: 2, calledBy })),

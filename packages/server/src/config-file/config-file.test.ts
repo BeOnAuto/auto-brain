@@ -1,12 +1,7 @@
 import { createApiKey } from '@beonauto/identity';
 import { describe, expect, it } from 'vitest';
 
-import {
-  configuredServer,
-  rejectedExecution,
-  settingLines,
-  stoppedOutput,
-} from '../testing/processes/configured-server.ts';
+import { configuredServer, rejectedRun, settingLines, stoppedOutput } from '../testing/processes/configured-server.ts';
 import { spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
 import { request } from '../testing/servers/http-client.ts';
 
@@ -45,8 +40,8 @@ describe(
       const { child, configFile } = configuredServer(fileText, { GATEWAY_API_KEY: gatewayKey });
       const port = await child.port;
 
-      const unauthenticated = await rejectedExecution(port);
-      const rejected = await rejectedExecution(port, created.key);
+      const unauthenticated = await rejectedRun(port);
+      const rejected = await rejectedRun(port, created.key);
       const origins = {
         listed: await fromOrigin(port, 'https://app.example.com'),
         other: await fromOrigin(port, 'https://other.example'),
@@ -77,12 +72,12 @@ describe(
   'a server whose configuration file declares and allows models',
   { timeout: spawnedServerTestTimeoutMs },
   () => {
-    it('lists the declared models, and refuses a spec that names a model it does not allow', async () => {
+    it('lists the declared models, and refuses a definition that names a model it does not allow', async () => {
       const { child, configFile } = configuredServer(modelsText, { LOCAL_MODE: 'true', AWS_REGION: 'eu-central-1' });
       const port = await child.port;
 
       const listed = await request(port, 'GET', '/v1/orgs/acme/models?provider=bedrock');
-      const rejected = await rejectedExecution(port);
+      const rejected = await rejectedRun(port);
       const stderr = await stoppedOutput(child);
 
       expect(listed.body).toMatchObject({
@@ -119,7 +114,7 @@ describe('a server with settings in the environment', { timeout: spawnedServerTe
       MODEL_ALIASES: JSON.stringify({ 'house/fast': 'relay/llama-3.3-70b' }),
     });
 
-    const rejected = await rejectedExecution(await child.port);
+    const rejected = await rejectedRun(await child.port);
     const stderr = await stoppedOutput(child);
 
     expect(rejected.body).toMatchObject({
@@ -135,7 +130,7 @@ describe('a server with settings in the environment', { timeout: spawnedServerTe
       MODEL_ALIASES: JSON.stringify({ 'house/fast': 'gateway/llama-3.3-70b' }),
     });
 
-    const rejected = await rejectedExecution(await child.port, created.key);
+    const rejected = await rejectedRun(await child.port, created.key);
     const stderr = await stoppedOutput(child);
 
     expect(rejected.body).toMatchObject({

@@ -74,8 +74,8 @@ describe('the sweeps of the follower', () => {
     const appended: AppendedStreams = {
       streams: [
         'brain/acme/alpha/events/',
-        'brain/acme/alpha/specs/',
-        'brain/acme/beta/runs/',
+        'brain/acme/alpha/definitions/',
+        'brain/acme/beta/run-logs/',
         'org/acme/brains',
         'org/acme/keys/k1',
         'workflow/elsewhere',

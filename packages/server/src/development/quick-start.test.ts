@@ -55,14 +55,14 @@ const triage = [
   "document: {dsl: '1.0.3', namespace: support, name: triage-ticket, version: '1.0.0'}",
   'do:',
   '  - classify:',
-  '      call: execute_spec',
-  "      with: {primitive: inference, name: classify-ticket, input: {ticket: '${ .ticket }'}}",
+  '      call: run_definition',
+  "      with: {type: reasoning, name: classify-ticket, input: {ticket: '${ .ticket }'}}",
   "      output: {as: '${ $input + {triage: .} }'}",
   '  - escalate:',
   '      if: .triage.urgency == "high"',
-  '      call: execute_spec',
+  '      call: run_definition',
   '      with:',
-  '        primitive: inference',
+  '        type: reasoning',
   '        name: escalation-note',
   "        input: {ticket: '${ .ticket }', category: '${ .triage.category }'}",
   "      output: {as: '${ $input + {note: .} }'}",
@@ -123,22 +123,22 @@ function structured(result: ToolResult): Readonly<Record<string, unknown>> {
   return { isError: result.isError ?? false, ...result.structuredContent };
 }
 
-async function settled(session: McpSession, executionId: unknown): Promise<Readonly<Record<string, unknown>>> {
-  const reading = structured(await session.callTool('get_execution', { brain, execution_id: executionId }));
+async function settled(session: McpSession, runId: unknown): Promise<Readonly<Record<string, unknown>>> {
+  const reading = structured(await session.callTool('get_run', { brain, run_id: runId }));
   if (reading['status'] !== 'started') {
     return reading;
   }
   await setTimeout(100);
-  return settled(session, executionId);
+  return settled(session, runId);
 }
 
-async function stored(session: McpSession, primitive: string, name: string, source: string): Promise<unknown> {
-  return structured(await session.callTool('create_spec', { brain, primitive, name, source }));
+async function stored(session: McpSession, type: string, name: string, source: string): Promise<unknown> {
+  return structured(await session.callTool('create_definition', { brain, type, name, source }));
 }
 
-async function executed(session: McpSession, name: string, input: object, primitive = 'inference'): Promise<unknown> {
-  const started = structured(await session.callTool('execute_spec', { brain, primitive, name, input }));
-  return settled(session, started['execution_id']);
+async function ran(session: McpSession, name: string, input: object, type = 'reasoning'): Promise<unknown> {
+  const started = structured(await session.callTool('run_definition', { brain, type, name, input }));
+  return settled(session, started['run_id']);
 }
 
 describe(
@@ -150,17 +150,17 @@ describe(
     it('creates a brain, stores a reasoning function that classifies tickets, runs it, reads its record and runs a new version', async () => {
       const steps = await onPnpmDev(async (session) => ({
         brain: structured(await session.callTool('create_brain', { brain, name: 'Support' })),
-        stored: await stored(session, 'inference', 'classify-ticket', classifyingPrompt('Answer as JSON.')),
-        first: await executed(session, 'classify-ticket', { ticket: charged }),
+        stored: await stored(session, 'reasoning', 'classify-ticket', classifyingPrompt('Answer as JSON.')),
+        first: await ran(session, 'classify-ticket', { ticket: charged }),
         updated: structured(
-          await session.callTool('update_spec', {
+          await session.callTool('update_definition', {
             brain,
-            primitive: 'inference',
+            type: 'reasoning',
             name: 'classify-ticket',
             source: classifyingPrompt('Anything about money is billing and at least normal urgency.'),
           }),
         ),
-        second: await executed(session, 'classify-ticket', { ticket: charged }),
+        second: await ran(session, 'classify-ticket', { ticket: charged }),
       }));
 
       expect(steps).toMatchObject({
@@ -172,7 +172,7 @@ describe(
           record: { usage: { total: 80 }, prompt: { message: `\nTicket: ${charged}` } },
         },
         updated: { isError: false, version: 2 },
-        second: { status: 'succeeded', name: 'classify-ticket', spec_version: 2 },
+        second: { status: 'succeeded', name: 'classify-ticket', definition_version: 2 },
       });
     });
   },
@@ -182,12 +182,12 @@ describe('the workflow requests of the quick start, over /mcp', { timeout: devel
   it('builds a workflow that drafts an escalation note only for an urgent ticket, and runs it on two', async () => {
     const outputs = await onPnpmDev(async (session) => {
       await session.callTool('create_brain', { brain, name: 'Support' });
-      await stored(session, 'inference', 'classify-ticket', classifyingPrompt('Answer as JSON.'));
-      await stored(session, 'inference', 'escalation-note', escalationNote);
-      await stored(session, 'orchestration', 'triage-ticket', triage);
+      await stored(session, 'reasoning', 'classify-ticket', classifyingPrompt('Answer as JSON.'));
+      await stored(session, 'reasoning', 'escalation-note', escalationNote);
+      await stored(session, 'workflow', 'triage-ticket', triage);
       return [
-        await executed(session, 'triage-ticket', { ticket: charged }, 'orchestration'),
-        await executed(session, 'triage-ticket', { ticket: question }, 'orchestration'),
+        await ran(session, 'triage-ticket', { ticket: charged }, 'workflow'),
+        await ran(session, 'triage-ticket', { ticket: question }, 'workflow'),
       ];
     });
 
@@ -200,23 +200,23 @@ describe('the workflow requests of the quick start, over /mcp', { timeout: devel
   it('starts a workflow that waits for an approval, sends the approval, and sees it finish', async () => {
     const ending = await onPnpmDev(async (session) => {
       await session.callTool('create_brain', { brain, name: 'Support' });
-      await stored(session, 'orchestration', 'refund-approval', approval);
+      await stored(session, 'workflow', 'refund-approval', approval);
       const started = structured(
-        await session.callTool('execute_spec', {
+        await session.callTool('run_definition', {
           brain,
-          primitive: 'orchestration',
+          type: 'workflow',
           name: 'refund-approval',
           input: { refund: 'ticket-4711' },
         }),
       );
       const sent = structured(
-        await session.callTool('send_execution_event', {
+        await session.callTool('send_run_event', {
           brain,
-          execution_id: started['execution_id'],
+          run_id: started['run_id'],
           event: { type: 'com.acme.refund.approved', data: { by: 'dana' } },
         }),
       );
-      return { started, sent, settled: await settled(session, started['execution_id']) };
+      return { started, sent, settled: await settled(session, started['run_id']) };
     });
 
     expect(ending).toMatchObject({
@@ -252,13 +252,15 @@ describe('the first-brain prompt of the quick start, over /mcp', { timeout: deve
         brain: structured(
           await session.callTool('create_brain', { brain, name: 'Support', description: 'Classifies support tickets' }),
         ),
-        stored: await stored(session, 'inference', 'classify-ticket', classifyingPrompt('Answer as JSON.')),
-        run: await executed(session, 'classify-ticket', { ticket: charged }),
+        stored: await stored(session, 'reasoning', 'classify-ticket', classifyingPrompt('Answer as JSON.')),
+        run: await ran(session, 'classify-ticket', { ticket: charged }),
       };
     });
 
     expect(outcome.recipe).toMatch(/^Create my first brain\.\n\n# Create your first brain\n/u);
-    expect(inTheirOrder(outcome.recipe, ['list_brains', 'create_brain', 'create_spec', 'execute_spec'])).toBe(true);
+    expect(inTheirOrder(outcome.recipe, ['list_brains', 'create_brain', 'create_definition', 'run_definition'])).toBe(
+      true,
+    );
     expect(outcome.guide.uri).toBe('guide://reasoning-function');
     expect(outcome.guide.text).toContain('# Reasoning function format');
     expect(outcome).toMatchObject({

@@ -22,16 +22,16 @@ export function reactionConsumersOf(
   const offers = listenerOffers({
     database,
     refusals,
-    offer: ({ runId, key, listener, event }) =>
-      host.submitted({ kind: 'event_offered', executionId: runId, at: clock.now(), key, listener, event }),
-    declined: (runId, detail) => reports.note({ kind: 'offer_declined', run: addressOfRun(runId), detail }),
+    offer: ({ runKey, key, listener, event }) =>
+      host.submitted({ kind: 'event_offered', runId: runKey, at: clock.now(), key, listener, event }),
+    declined: (runKey, detail) => reports.note({ kind: 'offer_declined', run: addressOfRun(runKey), detail }),
     now: clock.now,
   });
   const starts = subscriptionStarts({
     database,
     starting,
     refusals,
-    workflowOfRun: workflowsOfRuns((stream) => database.store.read(stream, 0), options.primitive),
+    workflowOfRun: workflowsOfRuns((stream) => database.store.read(stream, 0), options.type),
     now: clock.now,
   });
   return [offers, starts];

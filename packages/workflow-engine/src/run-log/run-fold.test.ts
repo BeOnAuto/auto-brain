@@ -13,23 +13,23 @@ import {
   withHistoryBytes,
   type OlderFormat,
   type PositionedEvent,
-  type RunEvent,
+  type RunLogEvent,
   type StateFormats,
   type StatePatch,
 } from '../index.ts';
-import { at, executionId } from '../testing/runs.ts';
+import { at, runId } from '../testing/runs.ts';
 import { exampleStream } from '../testing/streams.ts';
 
 function bytesOf(events: readonly PositionedEvent[]): number {
   return events.reduce((sum, { event }: PositionedEvent) => sum + eventBytesOf(event), 0);
 }
 
-function eventIn(format: number, patch: StatePatch, before: number): RunEvent {
+function eventIn(format: number, patch: StatePatch, before: number): RunLogEvent {
   return withHistoryBytes(
     {
       type: 'input_applied',
       format,
-      receipt: { kind: 'cancel_requested', key: executionId, at },
+      receipt: { kind: 'cancel_requested', key: runId, at },
       steps: [],
       patch,
       outputs: [],
@@ -72,11 +72,11 @@ const countingApplied: OlderFormat = {
 const twoFormats: StateFormats = { current: 2, older: [countingApplied] };
 
 const started: StatePatch = [
-  { op: 'replace', path: '/executionId', value: executionId },
+  { op: 'replace', path: '/runId', value: runId },
   { op: 'replace', path: '/status', value: 'running' },
 ];
 
-function patched(patch: StatePatch): RunEvent {
+function patched(patch: StatePatch): RunLogEvent {
   return eventIn(stateFormat, patch, 0);
 }
 
@@ -87,7 +87,7 @@ describe('a run loaded from its stream', () => {
     expect(loaded).toMatchObject({
       version: 3,
       sinceSnapshot: { bytes: bytesOf(exampleStream), snapshotBytes: 0 },
-      state: { executionId, status: 'running', inputs: 3, historyBytes: bytesOf(exampleStream), timers: { armed: {} } },
+      state: { runId, status: 'running', inputs: 3, historyBytes: bytesOf(exampleStream), timers: { armed: {} } },
     });
     expect(loadedRunOf({ snapshot: null, tail: [] }).state).toEqual(newRun);
   });
@@ -155,7 +155,7 @@ describe('the state formats of a stream', () => {
 
   it('upcast a snapshot of an older format before the events after it', () => {
     const olderState = Schema.decodeUnknownSync(Schema.Json)({ ...withoutInputs, applied: 4 });
-    const snapshot = { format: 1, executionId, version: 4, historyBytes: 0, state: olderState };
+    const snapshot = { format: 1, runId, version: 4, historyBytes: 0, state: olderState };
     const tail = streamIn([[2, [{ op: 'replace', path: '/inputs', value: 5 }]]]).map(({ event }) => ({
       version: 5,
       event,

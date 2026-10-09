@@ -4,7 +4,7 @@ import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-databas
 import { statement } from '../database/statement.ts';
 
 export interface ListenerRow {
-  readonly runId: string;
+  readonly runKey: string;
   readonly listener: string;
   readonly brainKey: string;
   readonly streamId: string;
@@ -15,7 +15,7 @@ export interface ListenerRow {
 }
 
 export interface ListenerPlace {
-  readonly runId: string;
+  readonly runKey: string;
   readonly listener: string;
 }
 
@@ -39,17 +39,17 @@ function typesOf(filters: string): readonly string[] {
 
 export function insertedListener(database: HostDatabase, row: ListenerRow) {
   return Effect.gen(function* () {
-    const { runId, listener, brainKey, streamId, armedBy, filters, workflow, passed } = row;
+    const { runKey, listener, brainKey, streamId, armedBy, filters, workflow, passed } = row;
     yield* database.write(
-      statement`INSERT INTO workflow_listeners (run_id, listener, brain_key, stream_id, armed_by, filters, workflow, passed)
-        VALUES (${runId}, ${listener}, ${brainKey}, ${streamId}, ${armedBy}, ${filters}, ${workflow}, ${passed ? 1 : 0})
-        ON CONFLICT (run_id, listener) DO NOTHING`,
+      statement`INSERT INTO workflow_listeners (run_key, listener, brain_key, stream_id, armed_by, filters, workflow, passed)
+        VALUES (${runKey}, ${listener}, ${brainKey}, ${streamId}, ${armedBy}, ${filters}, ${workflow}, ${passed ? 1 : 0})
+        ON CONFLICT (run_key, listener) DO NOTHING`,
     );
     yield* database.write(
       statement`UPDATE workflow_listeners SET passed = 1
-        WHERE run_id = ${runId} AND listener = ${listener} AND passed = 0 AND EXISTS (
+        WHERE run_key = ${runKey} AND listener = ${listener} AND passed = 0 AND EXISTS (
           SELECT 1 FROM workflow_passed_runs
-          WHERE workflow_passed_runs.run_id = workflow_listeners.run_id
+          WHERE workflow_passed_runs.run_key = workflow_listeners.run_key
             AND workflow_passed_runs.passed_through >= workflow_listeners.armed_by
         )`,
     );
@@ -57,29 +57,31 @@ export function insertedListener(database: HostDatabase, row: ListenerRow) {
       typesOf(filters),
       (type) =>
         database.write(
-          statement`INSERT INTO workflow_listener_types (brain_key, type, run_id, listener)
-            VALUES (${brainKey}, ${type}, ${runId}, ${listener}) ON CONFLICT DO NOTHING`,
+          statement`INSERT INTO workflow_listener_types (brain_key, type, run_key, listener)
+            VALUES (${brainKey}, ${type}, ${runKey}, ${listener}) ON CONFLICT DO NOTHING`,
         ),
       { discard: true },
     );
   });
 }
 
-export function removedListener(database: HostDatabase, { runId, listener }: ListenerPlace) {
+export function removedListener(database: HostDatabase, { runKey, listener }: ListenerPlace) {
   return Effect.gen(function* () {
     yield* database.write(
-      statement`DELETE FROM workflow_listener_types WHERE run_id = ${runId} AND listener = ${listener}`,
+      statement`DELETE FROM workflow_listener_types WHERE run_key = ${runKey} AND listener = ${listener}`,
     );
     const removed = yield* database.write(
-      statement`DELETE FROM workflow_listeners WHERE run_id = ${runId} AND listener = ${listener} RETURNING run_id`,
+      statement`DELETE FROM workflow_listeners WHERE run_key = ${runKey} AND listener = ${listener} RETURNING run_key`,
     );
     return removed.length > 0;
   });
 }
 
-export function isListening(database: HostDatabase, { runId, listener }: ListenerPlace) {
+export function isListening(database: HostDatabase, { runKey, listener }: ListenerPlace) {
   return Effect.map(
-    database.read(statement`SELECT run_id FROM workflow_listeners WHERE run_id = ${runId} AND listener = ${listener}`),
+    database.read(
+      statement`SELECT run_key FROM workflow_listeners WHERE run_key = ${runKey} AND listener = ${listener}`,
+    ),
     (rows) => rows.length > 0,
   );
 }
@@ -106,25 +108,25 @@ export function pendingArmings(database: HostDatabase, streamId: string): Effect
   );
 }
 
-export function runPassedThrough(database: HostDatabase, runId: string, version: number) {
+export function runPassedThrough(database: HostDatabase, runKey: string, version: number) {
   return Effect.asVoid(
     Effect.orDie(
       database
         .write(
-          statement`INSERT INTO workflow_passed_runs (run_id, passed_through)
-          SELECT ${runId}, CAST(${version} AS BIGINT)
+          statement`INSERT INTO workflow_passed_runs (run_key, passed_through)
+          SELECT ${runKey}, CAST(${version} AS BIGINT)
           WHERE NOT EXISTS (
             SELECT 1 FROM workflow_runs
-            WHERE run_id = ${runId} AND (ended_at IS NOT NULL OR dispatched_through >= ${version})
+            WHERE run_key = ${runKey} AND (ended_at IS NOT NULL OR dispatched_through >= ${version})
           )
-          ON CONFLICT (run_id) DO UPDATE SET passed_through = excluded.passed_through`,
+          ON CONFLICT (run_key) DO UPDATE SET passed_through = excluded.passed_through`,
         )
         .pipe(
           Effect.andThen(
             database.write(
-              statement`DELETE FROM workflow_passed_runs WHERE run_id = ${runId} AND EXISTS (
+              statement`DELETE FROM workflow_passed_runs WHERE run_key = ${runKey} AND EXISTS (
               SELECT 1 FROM workflow_runs
-              WHERE workflow_runs.run_id = workflow_passed_runs.run_id
+              WHERE workflow_runs.run_key = workflow_passed_runs.run_key
                 AND (workflow_runs.ended_at IS NOT NULL
                   OR workflow_runs.dispatched_through >= workflow_passed_runs.passed_through)
             )`,
@@ -135,19 +137,19 @@ export function runPassedThrough(database: HostDatabase, runId: string, version:
   );
 }
 
-export function runCaughtUp(database: HostDatabase, runId: string, through: number) {
+export function runCaughtUp(database: HostDatabase, runKey: string, through: number) {
   return Effect.asVoid(
     Effect.orDie(
       database.write(
-        statement`DELETE FROM workflow_passed_runs WHERE run_id = ${runId} AND passed_through <= ${through}`,
+        statement`DELETE FROM workflow_passed_runs WHERE run_key = ${runKey} AND passed_through <= ${through}`,
       ),
     ),
   );
 }
 
-export function runForgotten(database: HostDatabase, runId: string) {
+export function runForgotten(database: HostDatabase, runKey: string) {
   return Effect.asVoid(
-    Effect.orDie(database.write(statement`DELETE FROM workflow_passed_runs WHERE run_id = ${runId}`)),
+    Effect.orDie(database.write(statement`DELETE FROM workflow_passed_runs WHERE run_key = ${runKey}`)),
   );
 }
 
@@ -177,12 +179,12 @@ export function listenersOfType(
     rowsOf(
       MatchedRow,
       database.read(
-        statement`SELECT l.run_id, l.listener, l.filters, l.workflow
+        statement`SELECT l.run_key, l.listener, l.filters, l.workflow
           FROM workflow_listener_types AS t
-          JOIN workflow_listeners AS l ON l.run_id = t.run_id AND l.listener = t.listener
+          JOIN workflow_listeners AS l ON l.run_key = t.run_key AND l.listener = t.listener
           WHERE t.brain_key = ${brainKey} AND t.type = ${type} AND l.passed = 1
-            AND (t.run_id > ${after.runId} OR (t.run_id = ${after.runId} AND t.listener > ${after.listener}))
-          ORDER BY t.run_id, t.listener
+            AND (t.run_key > ${after.runKey} OR (t.run_key = ${after.runKey} AND t.listener > ${after.listener}))
+          ORDER BY t.run_key, t.listener
           LIMIT ${limit}`,
       ),
     ),

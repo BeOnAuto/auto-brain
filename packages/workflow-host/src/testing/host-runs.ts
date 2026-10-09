@@ -17,7 +17,7 @@ export interface HostedRuns {
   readonly settleAttempts: () => number;
   readonly troubles: () => readonly string[];
   readonly notes: RecordingReports['notes'];
-  readonly know: (executionId: string) => void;
+  readonly know: (runId: string) => void;
 }
 
 export interface HostedOptions {

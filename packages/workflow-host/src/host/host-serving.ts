@@ -46,7 +46,7 @@ function servedOf(database: HostDatabase, options: ServingOptions, engine: HostE
     submitted: engine.submitted,
     resultOf: options.waiting.resultOf,
     cancelDeferred: options.waiting.cancelDeferred,
-    workflows: options.reactions.primitive,
+    workflows: options.reactions.type,
     now: options.clock.now,
     trouble: options.reports.trouble,
   });
@@ -64,10 +64,10 @@ export function startServing(database: HostDatabase, options: ServingOptions): S
     timers: engine.timers,
     dueWork: options.dueWork ?? [],
     engine: engine.engine,
-    fire: ({ runId, timerId }, at) =>
+    fire: ({ runKey, timerId }, at) =>
       Effect.andThen(
-        served.endedChildren(runId),
-        engine.submitted({ kind: 'timer_fired', executionId: runId, at, timerId }),
+        served.endedChildren(runKey),
+        engine.submitted({ kind: 'timer_fired', runId: runKey, at, timerId }),
       ),
     resume: () => Effect.andThen(served.cancelsAsked, engine.executor.resume()),
     trouble: options.reports.trouble,

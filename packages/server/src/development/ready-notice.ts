@@ -1,5 +1,5 @@
 import { configurationOf, type Environment } from '@beonauto/config';
-import { providerStatus, readModelSettings } from '@beonauto/inference';
+import { providerStatus, readModelSettings } from '@beonauto/reasoning';
 import { Effect, Function, Result } from 'effect';
 
 import { fileSettings, refusedKeys } from '../config-file/file-settings.ts';

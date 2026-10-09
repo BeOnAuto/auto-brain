@@ -219,7 +219,7 @@ describe('the fill of a projection keyed by its mapping on PostgreSQL', () => {
 
     expect(fill.queries.filter((statement) => statement.includes('ORDER BY m.transaction_id'))).toHaveLength(2);
     expect(fill.queries.find((statement) => statement.includes('split_part("0/0"'))).toContain(
-      `split_part(m.stream_id, '/', 4) IN (SELECT jsonb_array_elements_text("[\\"executions\\",\\"notes\\"]"::jsonb))`,
+      `split_part(m.stream_id, '/', 4) IN (SELECT jsonb_array_elements_text("[\\"runs\\",\\"notes\\"]"::jsonb))`,
     );
     expect(fill.commands.filter((command) => command.startsWith('INSERT INTO topics_1')).join(' ')).toMatch(
       /"t0".*"t1".*"t2"/u,

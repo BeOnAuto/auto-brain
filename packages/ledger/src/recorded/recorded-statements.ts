@@ -48,10 +48,10 @@ export interface RecordedStatements {
   readonly dataAt: (points: readonly RecordedPoint[]) => Promise<ReadonlyMap<string, unknown>>;
 }
 
-export type RunsSelected = Extract<RecordedSelection, { readonly kind: 'executions' }>;
+export type RunsSelected = Extract<RecordedSelection, { readonly kind: 'runs' }>;
 
 export interface FieldAsked {
-  readonly field: 'primitive' | 'name';
+  readonly field: 'definition_type' | 'name';
   readonly value: string;
   readonly asWritten: string;
 }
@@ -60,8 +60,8 @@ function fieldAsked(field: FieldAsked['field'], value: string | undefined): read
   return value === undefined ? [] : [{ field, value, asWritten: `"${field}":${JSON.stringify(value)}` }];
 }
 
-export function fieldsAskedOf({ name, primitive }: RunsSelected): readonly FieldAsked[] {
-  return [...fieldAsked('name', name), ...fieldAsked('primitive', primitive)];
+export function fieldsAskedOf({ name, definitionType }: RunsSelected): readonly FieldAsked[] {
+  return [...fieldAsked('name', name), ...fieldAsked('definition_type', definitionType)];
 }
 
 export type RecordsSelected =
@@ -74,7 +74,7 @@ export function pointKey(point: RecordedPoint): string {
 }
 
 function asksForOneDefinition(selection: RecordedSelection): boolean {
-  return selection.kind === 'executions' && fieldsAskedOf(selection).length > 0;
+  return selection.kind === 'runs' && fieldsAskedOf(selection).length > 0;
 }
 
 function scopeOf(
@@ -97,12 +97,12 @@ function scopeOf(
 
 function selectedOf(
   brainKey: string,
-  selection: Exclude<RecordedSelection, { readonly kind: 'executions' }>,
+  selection: Exclude<RecordedSelection, { readonly kind: 'runs' }>,
 ): RecordsSelected {
   if (selection.kind === 'run') {
     return {
       kind: 'streams',
-      streams: [`${brainKey}executions/${selection.execution}`, `${brainKey}runs/${selection.execution}`],
+      streams: [`${brainKey}runs/${selection.run}`, `${brainKey}run-logs/${selection.run}`],
     };
   }
   return selection.kind === 'correlated' ? selection : { kind: 'brain' };
@@ -113,7 +113,7 @@ function examine(
   selection: RecordedSelection,
   scope: ExaminationScope,
 ): Promise<readonly ExaminedItem[]> {
-  if (selection.kind === 'executions') {
+  if (selection.kind === 'runs') {
     return statements.examineRuns(scope, selection);
   }
   return statements.examineRecords(selectedOf(scope.brainKey, selection), scope);

@@ -120,8 +120,8 @@ describe('the tools a run is offered', () => {
       { text: 'Answered from far away.', isError: false },
     ]);
     expect(fake.received()).toEqual([
-      { tool: 'graph.query.v2', arguments: { query: 'acme' }, meta: { 'com.beonauto/execution_id': toolRunId } },
-      { tool: longToolName, arguments: {}, meta: { 'com.beonauto/execution_id': toolRunId } },
+      { tool: 'graph.query.v2', arguments: { query: 'acme' }, meta: { 'com.beonauto/run_id': toolRunId } },
+      { tool: longToolName, arguments: {}, meta: { 'com.beonauto/run_id': toolRunId } },
     ]);
   });
 });
@@ -234,7 +234,7 @@ describe('a stdio server and the MCP client', { timeout: stdioTestTimeoutMs }, (
     expect(messages()).toContainEqual({
       server: 'limitless',
       message: 'The fake MCP server says line 1 on stderr',
-      execution_id: null,
+      run_id: null,
       tool_test_id: null,
     });
   });
@@ -250,7 +250,7 @@ describe('a stdio server and the MCP client', { timeout: stdioTestTimeoutMs }, (
     expect(messages()).toContainEqual({
       server: 'limitless',
       message: 'The MCP server wrote a message that is not JSON-RPC',
-      execution_id: null,
+      run_id: null,
       tool_test_id: null,
     });
   });

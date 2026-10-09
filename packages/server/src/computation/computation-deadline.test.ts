@@ -33,12 +33,12 @@ afterEach(async () => {
   await server.stop();
 });
 
-function executed(rows: number) {
-  return server.call('POST', `${alpha}/specs/computation/pace/execute`, { body: { input: campaignRows(rows) } });
+function ran(rows: number) {
+  return server.call('POST', `${alpha}/definitions/computation/pace/run`, { body: { input: campaignRows(rows) } });
 }
 
 async function ranOn(rows: number) {
-  return decodeRan((await executed(rows)).body).output;
+  return decodeRan((await ran(rows)).body).output;
 }
 
 describe('a run of a computation function that does not end by itself, over HTTP', { timeout: 60_000 }, () => {
@@ -48,16 +48,16 @@ describe('a run of a computation function that does not end by itself, over HTTP
         programPool({ workers, heapMegabytes: computationBounds.heapMegabytes, worker: blockingOnTwoRows }),
     });
     await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
-    await server.call('POST', `${alpha}/specs/computation`, { body: { name: 'pace', source: campaignPace } });
+    await server.call('POST', `${alpha}/definitions/computation`, { body: { name: 'pace', source: campaignPace } });
     const warm = await ranOn(3);
     const started = performance.now();
     const settled = { run: false };
 
-    const running = executed(2).then((response) => {
+    const running = ran(2).then((response) => {
       settled.run = true;
       return { response, milliseconds: performance.now() - started };
     });
-    const meanwhile = await server.call('GET', `${alpha}/specs/computation/pace`);
+    const meanwhile = await server.call('GET', `${alpha}/definitions/computation/pace`);
     const elsewhere = await ranOn(3);
     const answeredFirst = !settled.run;
     const { response, milliseconds } = await running;

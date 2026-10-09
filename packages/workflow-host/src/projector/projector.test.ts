@@ -26,10 +26,8 @@ describe('the records a projector reports', { timeout: viewTestTimeoutMs }, () =
   it('include a record passed over once, though a view rebuilt later reads it again', async () => {
     const views = await viewHarness(await onSQLite());
     await views.saved('first', counting);
-    await views.ran('inference/runs', 1);
-    await views.append('brain/acme/alpha/executions/broken', [
-      { type: 'execution_succeeded', data: { type: 'execution_succeeded' } },
-    ]);
+    await views.ran('reasoning/runs', 1);
+    await views.append('brain/acme/alpha/runs/broken', [{ type: 'run_succeeded', data: { type: 'run_succeeded' } }]);
     views.start();
     await views.until('first', liveWith(1));
 
@@ -46,7 +44,7 @@ describe('a projector that fails', { timeout: viewTestTimeoutMs }, () => {
   it('reports a sweep that failed, and sweeps again', async () => {
     const views = await viewHarness(await onSQLite());
     await views.saved('runs', counting);
-    await views.ran('inference/runs', 1);
+    await views.ran('reasoning/runs', 1);
     views.failingDiscovery(true);
     views.start({ sweepEveryMs: 20 });
 
@@ -61,7 +59,7 @@ describe('a projector that fails', { timeout: viewTestTimeoutMs }, () => {
   it('reports a pass of a brain that failed, and passes again', async () => {
     const views = await viewHarness(await onSQLite());
     await views.saved('runs', counting);
-    await views.ran('inference/runs', 1);
+    await views.ran('reasoning/runs', 1);
     views.start({ sweepEveryMs: 20, pool: failingOnce(views.pool).pool });
 
     const kept = await views.until('runs', foldedAll(1));

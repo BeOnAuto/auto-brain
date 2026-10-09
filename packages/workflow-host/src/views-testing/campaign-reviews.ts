@@ -7,7 +7,7 @@ const reviewsFold = [
   '| to_entries | sort_by(.value[-1].at) | .[-50:] | from_entries',
 ].join('\n');
 
-const reviewFilters = [{ type: 'execution_succeeded', subject: 'inference/review-brief' }];
+const reviewFilters = [{ type: 'run_succeeded', subject: 'reasoning/review-brief' }];
 
 const reviewsSchema = {
   type: 'object',

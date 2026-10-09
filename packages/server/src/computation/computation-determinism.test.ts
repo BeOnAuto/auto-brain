@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
-const executionIds = { cold: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', warm: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b' };
+const runIds = { cold: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', warm: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b' };
 
 const decodeRun = Schema.decodeUnknownSync(
   Schema.Struct({
@@ -14,17 +14,17 @@ const decodeRun = Schema.decodeUnknownSync(
   }),
 );
 
-async function ranIn(server: ReasoningServer, input: Schema.Json, executionId: string) {
-  await server.call('POST', `${alpha}/specs/computation/pace/execute`, { body: { input, execution_id: executionId } });
-  const { output, record } = decodeRun((await server.call('GET', `${alpha}/executions/${executionId}`)).body);
+async function ranIn(server: ReasoningServer, input: Schema.Json, runId: string) {
+  await server.call('POST', `${alpha}/definitions/computation/pace/run`, { body: { input, run_id: runId } });
+  const { output, record } = decodeRun((await server.call('GET', `${alpha}/runs/${runId}`)).body);
   return { output, work: record.work, input_bytes: record.input_bytes, output_bytes: record.output_bytes };
 }
 
 async function ranOn(server: ReasoningServer, input: Schema.Json) {
   await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
-  await server.call('POST', `${alpha}/specs/computation`, { body: { name: 'pace', source: campaignPace } });
-  const cold = await ranIn(server, input, executionIds.cold);
-  const warm = await ranIn(server, input, executionIds.warm);
+  await server.call('POST', `${alpha}/definitions/computation`, { body: { name: 'pace', source: campaignPace } });
+  const cold = await ranIn(server, input, runIds.cold);
+  const warm = await ranIn(server, input, runIds.warm);
   await server.stop();
   return { cold, warm };
 }

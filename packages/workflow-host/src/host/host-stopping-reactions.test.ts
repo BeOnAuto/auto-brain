@@ -4,7 +4,7 @@ import { Effect, Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { DatabaseSettings } from '../database/host-databases.ts';
-import { eventTrigger, published, specRecorded } from '../reaction-testing/brain-writes.ts';
+import { eventTrigger, published, definitionRecorded } from '../reaction-testing/brain-writes.ts';
 import { heldStart, type HeldStart } from '../reaction-testing/held-start.ts';
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
 import { until } from '../reaction-testing/until.ts';
@@ -18,7 +18,7 @@ const sweepEveryMs = 20;
 async function startingAReaction(held: HeldStart, settings: DatabaseSettings): Promise<ReactingHost> {
   const reacting = await reactingHost({ settings, start: held.start, sweepEveryMs });
   const trigger = eventTrigger({ type: 'com.acme.closed' });
-  await specRecorded(reacting.database.store, { name: 'close', version: 1, triggers: [trigger] });
+  await definitionRecorded(reacting.database.store, { name: 'close', version: 1, triggers: [trigger] });
   await published(reacting.database.store, { id: 'e1', type: 'com.acme.closed' });
   await held.begun;
   return reacting;

@@ -5,13 +5,21 @@ import { workflowsOfRuns } from './run-workflows.ts';
 
 const brainKey = 'brain/acme/alpha/';
 
-function startedRecord(primitive: string, name: string) {
-  return { type: 'execution_started', primitive, name, spec_version: 1, input: {}, by: 'acme-admin', at: 'now' };
+function startedRecord(type: string, name: string) {
+  return {
+    type: 'run_started',
+    definition_type: type,
+    name,
+    definition_version: 1,
+    input: {},
+    by: 'acme-admin',
+    at: 'now',
+  };
 }
 
 const streams: ReadonlyMap<string, readonly unknown[]> = new Map([
-  [`${brainKey}executions/r-close`, [startedRecord('orchestration', 'close')]],
-  [`${brainKey}executions/r-sum`, [startedRecord('inference', 'sum')]],
+  [`${brainKey}runs/r-close`, [startedRecord('workflow', 'close')]],
+  [`${brainKey}runs/r-sum`, [startedRecord('reasoning', 'sum')]],
 ]);
 
 function counting() {
@@ -26,21 +34,15 @@ function counting() {
 describe('the workflow of a run', () => {
   it('is the name the run started, when it is a workflow, and is read once while it is remembered', async () => {
     const { read, reads } = counting();
-    const workflowOf = workflowsOfRuns(read, 'orchestration', 3);
+    const workflowOf = workflowsOfRuns(read, 'workflow', 3);
 
     const workflows = await Effect.runPromise(
-      Effect.forEach(['r-close', 'r-sum', 'r-unknown', 'r-close', 'r-other', 'r-close'], (executionId) =>
-        workflowOf(brainKey, executionId),
+      Effect.forEach(['r-close', 'r-sum', 'r-unknown', 'r-close', 'r-other', 'r-close'], (runId) =>
+        workflowOf(brainKey, runId),
       ),
     );
 
     expect(workflows).toEqual(['close', undefined, undefined, 'close', undefined, 'close']);
-    expect(reads()).toEqual([
-      'executions/r-close',
-      'executions/r-sum',
-      'executions/r-unknown',
-      'executions/r-other',
-      'executions/r-close',
-    ]);
+    expect(reads()).toEqual(['runs/r-close', 'runs/r-sum', 'runs/r-unknown', 'runs/r-other', 'runs/r-close']);
   });
 });

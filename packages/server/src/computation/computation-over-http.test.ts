@@ -18,7 +18,7 @@ const raising = [
   '| error("no budget for \\(length) rows")',
 ].join('\n');
 
-const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 const decodeHistory = Schema.decodeUnknownSync(
   Schema.Struct({
@@ -39,26 +39,26 @@ function scripted(...outcomes: readonly PoolOutcome[]): ProgramPoolOf {
 async function serving(programPoolOf: ProgramPoolOf = workerPool): Promise<ReasoningServer> {
   server = await servingReasoning([], { LOCAL_MODE: 'true' }, undefined, { programPoolOf });
   await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
-  await server.call('POST', `${alpha}/specs/computation`, { body: { name: 'pace', source: campaignPace } });
-  await server.call('POST', `${alpha}/specs/computation`, { body: { name: 'raising', source: raising } });
+  await server.call('POST', `${alpha}/definitions/computation`, { body: { name: 'pace', source: campaignPace } });
+  await server.call('POST', `${alpha}/definitions/computation`, { body: { name: 'raising', source: raising } });
   return server;
 }
 
 function executing(name: string, body: object) {
-  return server.call('POST', `${alpha}/specs/computation/${name}/execute`, { body });
+  return server.call('POST', `${alpha}/definitions/computation/${name}/run`, { body });
 }
 
 describe('a computation function over HTTP', { timeout: computationTestTimeoutMs }, () => {
   it('runs its program on the input and answers the output, recorded with the work, the time and the sizes', async () => {
     await serving();
 
-    const executed = await executing('pace', { input: campaignRows(100), execution_id: executionId });
-    const read = await server.call('GET', `${alpha}/executions/${executionId}`);
+    const ran = await executing('pace', { input: campaignRows(100), run_id: runId });
+    const read = await server.call('GET', `${alpha}/runs/${runId}`);
 
-    expect(executed).toMatchObject({
+    expect(ran).toMatchObject({
       status: 200,
       body: {
-        primitive: 'computation',
+        type: 'computation',
         name: 'pace',
         status: 'succeeded',
         output: { campaigns: [{ campaign: 'campaign-0' }, {}, {}, {}], total_spend_cents: 283_150 },
@@ -73,13 +73,13 @@ describe('a computation function over HTTP', { timeout: computationTestTimeoutMs
     expect(read.body).toHaveProperty('record.output_bytes');
   });
 
-  it('is listed and read with the spec operations, its schemas and description shown', async () => {
+  it('is listed and read with the definition operations, its schemas and description shown', async () => {
     await serving();
 
-    expect(await server.call('GET', `${alpha}/specs/computation/pace`)).toMatchObject({
+    expect(await server.call('GET', `${alpha}/definitions/computation/pace`)).toMatchObject({
       status: 200,
       body: {
-        primitive: 'computation',
+        type: 'computation',
         media_type: 'text/markdown',
         description: 'Spend, pace and projection per campaign, in cents, for a reporting period',
         input_schema: { type: 'object', required: ['rows', 'period'] },
@@ -97,20 +97,20 @@ describe(
       await serving();
       const detail = 'The program raised an error on line 6: no budget for 2 rows';
 
-      const executed = await executing('raising', { input: campaignRows(2), execution_id: executionId });
-      const read = await server.call('GET', `${alpha}/executions/${executionId}`);
-      const listed = await server.call('GET', `${alpha}/executions?primitive=computation`);
-      const { events } = decodeHistory((await server.call('GET', `${alpha}/executions/${executionId}/history`)).body);
+      const ran = await executing('raising', { input: campaignRows(2), run_id: runId });
+      const read = await server.call('GET', `${alpha}/runs/${runId}`);
+      const listed = await server.call('GET', `${alpha}/runs?type=computation`);
+      const { events } = decodeHistory((await server.call('GET', `${alpha}/runs/${runId}/history`)).body);
 
-      expect(executed).toMatchObject({ status: 409, body: { reason: 'conflict', kind: 'unworkable', detail } });
+      expect(ran).toMatchObject({ status: 409, body: { reason: 'conflict', kind: 'unworkable', detail } });
       expect(read.body).toMatchObject({
         status: 'rejected',
         rejection: { reason: 'conflict', kind: 'unworkable', detail },
       });
       expect(listed.body).toMatchObject({
-        executions: [{ execution_id: executionId, rejection: { reason: 'conflict', kind: 'unworkable' } }],
+        runs: [{ run_id: runId, rejection: { reason: 'conflict', kind: 'unworkable' } }],
       });
-      expect(events.map(({ type }) => type)).toEqual(['execution_started', 'execution_rejected']);
+      expect(events.map(({ type }) => type)).toEqual(['run_started', 'run_rejected']);
       expect(events[1]).toMatchObject({
         summary: 'A run did not go through: it cannot work as it is written.',
         data: { reason: 'conflict', kind: 'unworkable', detail },
@@ -121,8 +121,8 @@ describe(
     it('runs again under its id, ending the same way, since the same input gives the same result', async () => {
       await serving();
 
-      const first = await executing('raising', { input: campaignRows(2), execution_id: executionId });
-      const again = await executing('raising', { input: campaignRows(2), execution_id: executionId });
+      const first = await executing('raising', { input: campaignRows(2), run_id: runId });
+      const again = await executing('raising', { input: campaignRows(2), run_id: runId });
 
       expect(again.body).toEqual(first.body);
     });
@@ -133,7 +133,7 @@ describe('an output too large to record, over HTTP', { timeout: computationTestT
   it('ends in conflict for an output that would take 240 MB as JSON, measured before it is written, and the server answers on', async () => {
     await serving();
     const doubled = ['---', 'language: jq', '---', '("\\u0001Ā" * 15000000) | [., .]'].join('\n');
-    await server.call('POST', `${alpha}/specs/computation`, { body: { name: 'doubled', source: doubled } });
+    await server.call('POST', `${alpha}/definitions/computation`, { body: { name: 'doubled', source: doubled } });
 
     expect(await executing('doubled', { input: null })).toMatchObject({
       status: 409,
@@ -151,13 +151,13 @@ describe('a long error, over HTTP', { timeout: computationTestTimeoutMs }, () =>
   it('answers, records and lists the text of the error cut at 1,024 bytes', async () => {
     await serving();
     const shouting = ['---', 'language: jq', '---', 'error("x" * 30000000)'].join('\n');
-    await server.call('POST', `${alpha}/specs/computation`, { body: { name: 'shouting', source: shouting } });
+    await server.call('POST', `${alpha}/definitions/computation`, { body: { name: 'shouting', source: shouting } });
     const detail = `The program raised an error on line 4: ${'x'.repeat(1024)}…`;
 
-    const executed = await executing('shouting', { input: null, execution_id: executionId });
-    const read = await server.call('GET', `${alpha}/executions/${executionId}`);
+    const ran = await executing('shouting', { input: null, run_id: runId });
+    const read = await server.call('GET', `${alpha}/runs/${runId}`);
 
-    expect(executed).toMatchObject({ status: 409, body: { reason: 'conflict', kind: 'unworkable', detail } });
+    expect(ran).toMatchObject({ status: 409, body: { reason: 'conflict', kind: 'unworkable', detail } });
     expect(read.body).toMatchObject({ rejection: { reason: 'conflict', kind: 'unworkable', detail } });
     expect(JSON.stringify(read.body).length).toBeLessThan(2048);
   });
@@ -183,7 +183,7 @@ describe(
       const refused = ['---', 'language: jq', 'model: anthropic/claude-sonnet-4-5', '---', 'now'].join('\n');
 
       expect(
-        await server.call('POST', `${alpha}/specs/computation`, { body: { name: 'clock', source: refused } }),
+        await server.call('POST', `${alpha}/definitions/computation`, { body: { name: 'clock', source: refused } }),
       ).toMatchObject({
         status: 422,
         body: {
@@ -203,7 +203,7 @@ describe(
         },
       });
       expect(
-        await server.call('POST', `${alpha}/specs/computation`, {
+        await server.call('POST', `${alpha}/definitions/computation`, {
           body: { name: 'large', source: `---\nlanguage: jq\n---\n${'.'.repeat(65_536)}` },
         }),
       ).toMatchObject({ status: 422, body: { reason: 'invalid_input', errors: [{ pointer: '/source' }] } });
@@ -232,10 +232,10 @@ describe(
         scripted({ ran: 'crashed', detail: 'The worker ended with code 1 before it answered', milliseconds: 5 }),
       );
 
-      const executed = await executing('pace', { input: campaignRows(2), execution_id: executionId });
+      const ran = await executing('pace', { input: campaignRows(2), run_id: runId });
 
-      expect(executed).toMatchObject({ status: 500 });
-      expect(await server.call('GET', `${alpha}/executions/${executionId}`)).toMatchObject({
+      expect(ran).toMatchObject({ status: 500 });
+      expect(await server.call('GET', `${alpha}/runs/${runId}`)).toMatchObject({
         body: { status: 'failed' },
       });
     });

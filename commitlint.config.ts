@@ -5,7 +5,7 @@ import type { UserConfig } from '@commitlint/types';
 
 const workspaceScopes = [
   ...new Set(
-    globSync(['{packages,primitives}/*/package.json', '{packages,primitives}/*/README.md'], {
+    globSync(['{packages,capabilities}/*/package.json', '{packages,capabilities}/*/README.md'], {
       cwd: import.meta.dirname,
     }).map((file) => basename(dirname(file))),
   ),

@@ -50,12 +50,12 @@ const everything: RecordedSelection = { kind: 'everything' };
 
 function aBrainWith(ledger: MemoryLedger) {
   return Effect.all([
-    recording(ledger, 1000, 'brain/acme/alpha/executions/r1', 'execution_started'),
-    recording(ledger, 1000, 'brain/acme/alpha/runs/r1', 'input_applied'),
+    recording(ledger, 1000, 'brain/acme/alpha/runs/r1', 'run_started'),
+    recording(ledger, 1000, 'brain/acme/alpha/run-logs/r1', 'input_applied'),
     recording(ledger, 2000, 'brain/acme/alpha2/notes', 'noted'),
     recording(ledger, 2000, 'org/acme/brains', 'brain_created'),
-    recording(ledger, 3000, 'brain/acme/alpha/executions/r1', 'execution_succeeded'),
-    recording(ledger, 4000, 'brain/acme/alpha/executions/r2', 'execution_started'),
+    recording(ledger, 3000, 'brain/acme/alpha/runs/r1', 'run_succeeded'),
+    recording(ledger, 4000, 'brain/acme/alpha/runs/r2', 'run_started'),
   ]);
 }
 
@@ -83,10 +83,10 @@ describe('the in-memory read of what a brain recorded', () => {
     );
 
     expect(pages).toEqual([
-      { types: ['execution_started', 'input_applied', 'execution_succeeded'], hasMore: true },
-      { types: ['execution_started'], hasMore: false },
-      { types: ['execution_started', 'execution_succeeded', 'input_applied'], hasMore: true },
-      { types: ['execution_started'], hasMore: false },
+      { types: ['run_started', 'input_applied', 'run_succeeded'], hasMore: true },
+      { types: ['run_started'], hasMore: false },
+      { types: ['run_started', 'run_succeeded', 'input_applied'], hasMore: true },
+      { types: ['run_started'], hasMore: false },
     ]);
   });
 });
@@ -99,27 +99,27 @@ describe('the in-memory read of runs', () => {
       Effect.gen(function* () {
         yield* aBrainWith(ledger);
         return yield* Effect.all([
-          reading(ledger, { kind: 'run', execution: 'r1' }, { order: 'asc', limit: 10 }),
-          reading(ledger, { kind: 'executions' }, { order: 'desc', limit: 10 }),
-          reading(ledger, { kind: 'executions' }, { order: 'desc', limit: 10, types: ['execution_succeeded'] }),
+          reading(ledger, { kind: 'run', run: 'r1' }, { order: 'asc', limit: 10 }),
+          reading(ledger, { kind: 'runs' }, { order: 'desc', limit: 10 }),
+          reading(ledger, { kind: 'runs' }, { order: 'desc', limit: 10, types: ['run_succeeded'] }),
         ]);
       }),
     );
 
     expect(ofRun.records.map(({ stream, type }) => `${stream} ${type}`)).toEqual([
-      'brain/acme/alpha/executions/r1 execution_started',
-      'brain/acme/alpha/runs/r1 input_applied',
-      'brain/acme/alpha/executions/r1 execution_succeeded',
+      'brain/acme/alpha/runs/r1 run_started',
+      'brain/acme/alpha/run-logs/r1 input_applied',
+      'brain/acme/alpha/runs/r1 run_succeeded',
     ]);
-    expect(typesOf(runs)).toEqual(['execution_started', 'execution_started', 'execution_succeeded']);
+    expect(typesOf(runs)).toEqual(['run_started', 'run_started', 'run_succeeded']);
     expect(runs.records.map(({ stream }) => stream)).toEqual([
-      'brain/acme/alpha/executions/r2',
-      'brain/acme/alpha/executions/r1',
-      'brain/acme/alpha/executions/r1',
+      'brain/acme/alpha/runs/r2',
+      'brain/acme/alpha/runs/r1',
+      'brain/acme/alpha/runs/r1',
     ]);
     expect(succeeded.records.map(({ stream }) => stream)).toEqual([
-      'brain/acme/alpha/executions/r1',
-      'brain/acme/alpha/executions/r1',
+      'brain/acme/alpha/runs/r1',
+      'brain/acme/alpha/runs/r1',
     ]);
   });
 });
@@ -135,16 +135,16 @@ describe('the in-memory read from a time or of some types', () => {
           reading(ledger, everything, { order: 'asc', limit: 10, since: new Date(1000).toISOString() }),
           reading(ledger, everything, { order: 'desc', limit: 10, since: new Date(2500).toISOString() }),
           reading(ledger, everything, { order: 'asc', limit: 10, since: new Date(5000).toISOString() }),
-          reading(ledger, everything, { order: 'asc', limit: 10, types: ['execution_succeeded', 'input_applied'] }),
+          reading(ledger, everything, { order: 'asc', limit: 10, types: ['run_succeeded', 'input_applied'] }),
         ]);
       }),
     );
 
     expect(pages.map((page) => ({ types: typesOf(page), next: page.nextCursor }))).toEqual([
-      { types: ['execution_started', 'input_applied', 'execution_succeeded', 'execution_started'], next: null },
-      { types: ['execution_started', 'execution_succeeded'], next: null },
+      { types: ['run_started', 'input_applied', 'run_succeeded', 'run_started'], next: null },
+      { types: ['run_started', 'run_succeeded'], next: null },
       { types: [], next: null },
-      { types: ['input_applied', 'execution_succeeded'], next: null },
+      { types: ['input_applied', 'run_succeeded'], next: null },
     ]);
     expect(pages[0]?.records.map(({ recordedAt }) => recordedAt).at(-1)).toBe('1970-01-01T00:00:04.000Z');
   });
@@ -158,8 +158,8 @@ describe('the in-memory read that loads the data of some types alone', () => {
       Effect.gen(function* () {
         yield* aBrainWith(ledger);
         return yield* Effect.all([
-          reading(ledger, everything, { order: 'asc', limit: 10, dataOf: ['execution_succeeded'] }),
-          reading(ledger, { kind: 'executions' }, { order: 'asc', limit: 10, dataOf: [] }),
+          reading(ledger, everything, { order: 'asc', limit: 10, dataOf: ['run_succeeded'] }),
+          reading(ledger, { kind: 'runs' }, { order: 'asc', limit: 10, dataOf: [] }),
         ]);
       }),
     );
@@ -168,15 +168,15 @@ describe('the in-memory read that loads the data of some types alone', () => {
       pages.map(({ records }) => records.map(({ type, version, data }) => [type, version, data !== undefined])),
     ).toEqual([
       [
-        ['execution_started', 1, false],
+        ['run_started', 1, false],
         ['input_applied', 1, false],
-        ['execution_succeeded', 2, true],
-        ['execution_started', 1, false],
+        ['run_succeeded', 2, true],
+        ['run_started', 1, false],
       ],
       [
-        ['execution_started', 1, false],
-        ['execution_succeeded', 2, false],
-        ['execution_started', 1, false],
+        ['run_started', 1, false],
+        ['run_succeeded', 2, false],
+        ['run_started', 1, false],
       ],
     ]);
   });
@@ -231,8 +231,8 @@ describe('the in-memory read from inside a record', () => {
     );
 
     expect(pages.map((page) => typesOf(page))).toEqual([
-      ['input_applied', 'execution_succeeded'],
-      ['input_applied', 'execution_started'],
+      ['input_applied', 'run_succeeded'],
+      ['input_applied', 'run_started'],
     ]);
   });
 });
@@ -244,7 +244,12 @@ describe('the in-memory lineage of what a brain recorded', () => {
     const [correlated, page] = await run(
       Effect.gen(function* () {
         yield* aBrainWith(ledger);
-        yield* ledger.service.execute('brain/acme/alpha/runs/r1', happenings, [{ type: 'noted', note: '' }], lineage);
+        yield* ledger.service.execute(
+          'brain/acme/alpha/run-logs/r1',
+          happenings,
+          [{ type: 'noted', note: '' }],
+          lineage,
+        );
         return yield* Effect.all([
           reading(ledger, { kind: 'correlated', correlation: 'r1' }, { order: 'asc', limit: 10 }),
           reading(ledger, everything, { order: 'asc', limit: 1 }),
@@ -253,10 +258,14 @@ describe('the in-memory lineage of what a brain recorded', () => {
     );
 
     expect(correlated.records.map(({ id, stream, causationId }) => ({ id, stream, causationId }))).toEqual([
-      { id: messageIdOf('brain/acme/alpha/runs/r1', 2), stream: 'brain/acme/alpha/runs/r1', causationId: 'cause' },
+      {
+        id: messageIdOf('brain/acme/alpha/run-logs/r1', 2),
+        stream: 'brain/acme/alpha/run-logs/r1',
+        causationId: 'cause',
+      },
     ]);
     expect(page.records.map(({ id, causationId, correlationId }) => ({ id, causationId, correlationId }))).toEqual([
-      { id: messageIdOf('brain/acme/alpha/executions/r1', 1), causationId: null, correlationId: null },
+      { id: messageIdOf('brain/acme/alpha/runs/r1', 1), causationId: null, correlationId: null },
     ]);
   });
 });

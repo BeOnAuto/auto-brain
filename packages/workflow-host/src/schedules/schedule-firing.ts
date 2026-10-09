@@ -1,9 +1,9 @@
-import { triggerNamed } from '@beonauto/specs';
+import { triggerNamed } from '@beonauto/definitions';
 import { Effect, Schema } from 'effect';
 
 import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
-import { reactionExecutionIdOf } from '../reactions/reaction-ids.ts';
+import { reactionRunIdOf } from '../reactions/reaction-ids.ts';
 import type { ReactionStart, StartReaction } from '../reactions/reaction-options.ts';
 import type { Refusals } from '../reactions/refusals.ts';
 import { dueSchedules, nextScheduleDue, scheduleMovedOn, type Schedule } from './schedule-rows.ts';
@@ -52,7 +52,7 @@ function stillRuns(database: HostDatabase, brainKey: string, running: string | n
   return Effect.orDie(
     rowsOf(
       EndedRow,
-      database.read(statement`SELECT ended_at FROM workflow_runs WHERE run_id = ${`${org}/${brain}/${running}`}`),
+      database.read(statement`SELECT ended_at FROM workflow_runs WHERE run_key = ${`${org}/${brain}/${running}`}`),
     ),
   ).pipe(Effect.map(([row]) => row !== undefined && row.ended_at === null));
 }
@@ -87,7 +87,7 @@ function startOf(firing: Firing): ReactionStart {
     ...brainOf(brainKey),
     workflow,
     version,
-    executionId: reactionExecutionIdOf(workflow, version, trigger.reference, due),
+    runId: reactionRunIdOf(workflow, version, trigger.reference, due),
     input: { schedule: { due } },
     depth: 1,
     cause: activatedBy,
@@ -101,7 +101,7 @@ function ran(parts: FiringParts, firing: Firing) {
   return parts.start(start).pipe(
     Effect.andThen(
       Effect.andThen(
-        scheduleMovedOn(parts.database, firing.subscription, firing.next, start.executionId),
+        scheduleMovedOn(parts.database, firing.subscription, firing.next, start.runId),
         missedSaid(parts, firing),
       ),
     ),

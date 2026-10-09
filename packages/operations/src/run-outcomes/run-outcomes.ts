@@ -8,7 +8,7 @@ export interface RunOutcome {
   readonly startedDay: string;
   readonly startedAt: string;
   readonly lastStartedAt: string;
-  readonly primitive: string;
+  readonly definitionType: string;
   readonly name: string;
   readonly status: RunOutcomeStatus;
   readonly durationMs: number | null;
@@ -28,13 +28,13 @@ export interface RunOutcomeWindow {
 }
 
 export interface RunOutcomeSelection {
-  readonly primitive?: string;
+  readonly definitionType?: string;
   readonly name?: string;
 }
 
 export interface RunOutcomeGroup {
   readonly day: string;
-  readonly primitive: string;
+  readonly definitionType: string;
   readonly name: string;
   readonly status: RunOutcomeStatus;
   readonly runs: number;

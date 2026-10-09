@@ -1,4 +1,4 @@
-import { recallDocument } from '@beonauto/recollection/testing';
+import { recallDocument } from '@beonauto/recall/testing';
 import type { ProgramPool } from '@beonauto/workflow-engine/dsl';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -15,8 +15,7 @@ import {
   verdicts,
 } from '../testing/servers/recall-server.ts';
 
-const reviewRuns =
-  'language: jq\nsource:\n  events:\n    - type: execution_succeeded\n      subject: inference/review-brief';
+const reviewRuns = 'language: jq\nsource:\n  events:\n    - type: run_succeeded\n      subject: reasoning/review-brief';
 
 const strings = '---\nlanguage: jq\noutput:\n  schema: {type: array, items: {type: string}}\n---\n[1, 2, 3, 4]';
 
@@ -65,11 +64,13 @@ describe(
       );
       closing.push(server.stop);
       await brainWithReviews(server, 1);
-      await server.call('POST', `${alpha}/specs/computation`, { body: { name: 'strings', source: strings } });
-      await server.call('POST', `${alpha}/specs/recollection`, { body: { name: 'wrong', source: answeredWrong } });
-      await server.call('POST', `${alpha}/specs/recollection`, { body: { name: 'outgrowing', source: outgrowing } });
+      await server.call('POST', `${alpha}/definitions/computation`, { body: { name: 'strings', source: strings } });
+      await server.call('POST', `${alpha}/definitions/recall`, { body: { name: 'wrong', source: answeredWrong } });
+      await server.call('POST', `${alpha}/definitions/recall`, { body: { name: 'outgrowing', source: outgrowing } });
 
-      const computed = await server.call('POST', `${alpha}/specs/computation/strings/execute`, { body: { input: {} } });
+      const computed = await server.call('POST', `${alpha}/definitions/computation/strings/run`, {
+        body: { input: {} },
+      });
       await standingUntil(server, 'wrong', inState('live'));
       const answered = await recalled(server, 'wrong', {});
       const stalled = decodeStall(await standingUntil(server, 'outgrowing', inState('stalled'))).standing.stalled;

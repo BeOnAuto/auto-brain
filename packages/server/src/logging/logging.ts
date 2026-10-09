@@ -1,9 +1,9 @@
 import { resolve } from 'node:path';
 
 import type { AccessMode } from '@beonauto/identity';
-import type { OperatorHintReport, ProviderMessageReport, ProviderStatus } from '@beonauto/inference';
 import type { ServerMessage } from '@beonauto/mcp';
 import type { Incident } from '@beonauto/operations';
+import type { OperatorHintReport, ProviderMessageReport, ProviderStatus } from '@beonauto/reasoning';
 import { Cause, Effect, Logger, type Layer } from 'effect';
 
 import type { LedgerSettings } from '../settings/ledger-settings.ts';
@@ -174,7 +174,7 @@ export function logModelProviders(status: ProviderStatus): Effect.Effect<void> {
 export interface UnsettledReport {
   readonly org: string;
   readonly brain: string;
-  readonly executionId: string;
+  readonly runId: string;
   readonly reason: string;
 }
 
@@ -208,9 +208,9 @@ export function logWorkflows({ mostDurationMs, mostCallsAtOnce, sweepEveryMs }: 
   );
 }
 
-export function logUnsettled({ org, brain, executionId, reason }: UnsettledReport): Effect.Effect<void> {
-  return Effect.logError('An execution stays started because settling it failed').pipe(
-    Effect.annotateLogs({ org, brain, execution_id: executionId, reason }),
+export function logUnsettled({ org, brain, runId, reason }: UnsettledReport): Effect.Effect<void> {
+  return Effect.logError('A run stays started because settling it failed').pipe(
+    Effect.annotateLogs({ org, brain, run_id: runId, reason }),
   );
 }
 
@@ -231,22 +231,22 @@ export function logProviderMessage({
   model,
   status,
   message,
-  execution_id,
+  run_id,
 }: ProviderMessageReport): Effect.Effect<void> {
   return Effect.logWarning(`Model provider ${provider} answered with an error`).pipe(
-    Effect.annotateLogs({ provider, model, status, execution_id, provider_message: message }),
+    Effect.annotateLogs({ provider, model, status, run_id, provider_message: message }),
   );
 }
 
-export function logOperatorHint({ provider, model, hint, execution_id }: OperatorHintReport): Effect.Effect<void> {
+export function logOperatorHint({ provider, model, hint, run_id }: OperatorHintReport): Effect.Effect<void> {
   return Effect.logWarning(`Model provider ${provider} could not be called: ${hint}`).pipe(
-    Effect.annotateLogs({ provider, model, execution_id }),
+    Effect.annotateLogs({ provider, model, run_id }),
   );
 }
 
-function callerOf({ execution_id, tool_test_id }: ServerMessage): Readonly<Record<string, string>> | undefined {
-  if (execution_id !== null) {
-    return { execution_id };
+function callerOf({ run_id, tool_test_id }: ServerMessage): Readonly<Record<string, string>> | undefined {
+  if (run_id !== null) {
+    return { run_id };
   }
   return tool_test_id === null ? undefined : { tool_test_id };
 }

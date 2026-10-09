@@ -1,0 +1,70 @@
+import { describe, expect, it } from 'vitest';
+
+import { definitionRunResultOf } from './function-results.ts';
+
+describe('the result of executing a definition through the operations', () => {
+  it('is the output of the run that succeeded', () => {
+    expect(definitionRunResultOf({ status: 'succeeded', output: { status: 'succeeded', output: { a: 1 } } })).toEqual({
+      status: 'succeeded',
+      output: { a: 1 },
+    });
+    expect(definitionRunResultOf({ status: 'succeeded', output: { status: 'succeeded' } })).toEqual({
+      status: 'succeeded',
+      output: null,
+    });
+  });
+
+  it('is a wait for a run that finishes later', () => {
+    expect(definitionRunResultOf({ status: 'succeeded', output: { status: 'started' } })).toEqual({
+      status: 'waiting',
+    });
+  });
+
+  it('is the rejection, with its issues when it has some', () => {
+    expect(definitionRunResultOf({ status: 'rejected', reason: 'forbidden', detail: 'No' })).toEqual({
+      status: 'rejected',
+      reason: 'forbidden',
+      detail: 'No',
+    });
+    expect(
+      definitionRunResultOf({
+        status: 'rejected',
+        reason: 'invalid_input',
+        detail: 'Wrong',
+        issues: [{ detail: 'Expected a string', pointer: '/input' }],
+      }),
+    ).toEqual({
+      status: 'rejected',
+      reason: 'invalid_input',
+      detail: 'Wrong',
+      issues: [{ detail: 'Expected a string', pointer: '/input' }],
+    });
+  });
+
+  it('is a failure that names the incident of a call that failed', () => {
+    expect(definitionRunResultOf({ status: 'failed', incident: 'inc-1' })).toEqual({
+      status: 'failed',
+      detail: 'The run failed with incident inc-1',
+    });
+  });
+});
+
+describe('the rejection of executing a definition that names its kind and because', () => {
+  it('is the rejection with its kind and because, which a workflow reads in the error it catches', () => {
+    expect(
+      definitionRunResultOf({
+        status: 'rejected',
+        reason: 'unavailable',
+        detail: 'A tool server kept failing',
+        kind: 'tools_unfinished',
+        because: 'server_failed',
+      }),
+    ).toEqual({
+      status: 'rejected',
+      reason: 'unavailable',
+      detail: 'A tool server kept failing',
+      kind: 'tools_unfinished',
+      because: 'server_failed',
+    });
+  });
+});

@@ -17,13 +17,13 @@ function tookOver({ holder }: NoteOf<'took_over'>): Effect.Effect<void> {
 
 function backingOff({ run, attempts, detail }: NoteOf<'settle_backing_off'>): Effect.Effect<void> {
   return Effect.logWarning(
-    `An execution could not be settled in ${attempts} attempts; it is tried again once a minute until it is`,
-  ).pipe(Effect.annotateLogs({ org: run.org, brain: run.brain, execution_id: run.executionId, error: detail }));
+    `A run could not be settled in ${attempts} attempts; it is tried again once a minute until it is`,
+  ).pipe(Effect.annotateLogs({ org: run.org, brain: run.brain, run_id: run.runId, error: detail }));
 }
 
 function settledAfterBackingOff({ run, attempts }: NoteOf<'settled_after_back_off'>): Effect.Effect<void> {
-  return Effect.logWarning(`An execution that could not be settled was settled at attempt ${attempts}`).pipe(
-    Effect.annotateLogs({ org: run.org, brain: run.brain, execution_id: run.executionId }),
+  return Effect.logWarning(`A run that could not be settled was settled at attempt ${attempts}`).pipe(
+    Effect.annotateLogs({ org: run.org, brain: run.brain, run_id: run.runId }),
   );
 }
 
@@ -42,7 +42,7 @@ function viewStalled({ brain, name, version }: NoteOf<'view_stalled'>): Effect.E
 function offerDeclined({ run, detail }: NoteOf<'offer_declined'>): Effect.Effect<void> {
   return Effect.logWarning(
     'A run waiting for an event of its brain did not take one, since its filter failed on the event',
-  ).pipe(Effect.annotateLogs({ org: run.org, brain: run.brain, execution_id: run.executionId, error: detail }));
+  ).pipe(Effect.annotateLogs({ org: run.org, brain: run.brain, run_id: run.runId, error: detail }));
 }
 
 function recordUnreadable({ org, brain, recordId, type }: NoteOf<'record_unreadable'>): Effect.Effect<void> {
@@ -54,7 +54,7 @@ function recordUnreadable({ org, brain, recordId, type }: NoteOf<'record_unreada
 function runRecordPassed({ run, version, sweeps }: NoteOf<'run_record_passed'>): Effect.Effect<void> {
   return Effect.logWarning(
     `A record of a run's log was passed before the run's outputs were dispatched, after ${sweeps} sweeps held it; a listener it armed takes events once it is kept, and none recorded before`,
-  ).pipe(Effect.annotateLogs({ org: run.org, brain: run.brain, execution_id: run.executionId, version }));
+  ).pipe(Effect.annotateLogs({ org: run.org, brain: run.brain, run_id: run.runId, version }));
 }
 
 const loggers: { readonly [Kind in HostNote['kind']]: (note: NoteOf<Kind>) => Effect.Effect<void> } = {

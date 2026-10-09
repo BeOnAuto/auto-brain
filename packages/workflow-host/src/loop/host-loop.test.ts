@@ -10,9 +10,9 @@ import { sqlTimers, type DueTimer, type TimerTable } from '../timers/sql-timers.
 import { systemClock } from './host-clock.ts';
 import { startLoop, type HostLoop } from './host-loop.ts';
 
-const runId = 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+const runKey = 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
-const run = { executionId: runId, attributes: {} };
+const run = { runId: runKey, attributes: {} };
 
 interface Looping {
   readonly loop: HostLoop;
@@ -98,7 +98,7 @@ async function looping(options: LoopingOptions): Promise<Looping> {
     loop,
     arm: async (timerId, inMs) => {
       const dueAt = Date.now() + inMs;
-      const timer: ArmTimer = { kind: 'arm_timer', executionId: runId, timerId, dueAt, purpose: 'wait' };
+      const timer: ArmTimer = { kind: 'arm_timer', runId: runKey, timerId, dueAt, purpose: 'wait' };
       await Effect.runPromise(timers.timers.arm(timer, run, { version: 1, lastStep: null }));
       return dueAt;
     },
