@@ -28,7 +28,7 @@ type TimerState = 'armed' | 'fired' | 'cancelled';
 
 const StateRow = Schema.Struct({ state: Schema.Literals(['armed', 'fired', 'cancelled']) });
 
-const DueRow = Schema.Struct({ run_id: Schema.String, timer_id: Schema.String });
+const DueRow = Schema.Struct({ run_key: Schema.String, timer_id: Schema.String });
 
 const NextRow = Schema.Struct({ due: Schema.NullOr(WholeNumber) });
 
@@ -151,7 +151,7 @@ export function sqlTimers(database: HostDatabase, armed: (dueAt: number) => void
               WHERE state = 'armed' AND due_at <= ${now} ORDER BY due_at LIMIT ${limit}`,
           ),
         ),
-      ).pipe(Effect.map((rows) => rows.map(({ run_id: runKey, timer_id: timerId }) => ({ runKey, timerId })))),
+      ).pipe(Effect.map((rows) => rows.map(({ run_key: runKey, timer_id: timerId }) => ({ runKey, timerId })))),
     nextDueAt: () =>
       Effect.orDie(
         oneRowOf(

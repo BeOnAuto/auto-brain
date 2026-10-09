@@ -33,7 +33,7 @@ const CallRowSchema = Schema.Struct({
 
 const UnfinishedRow = Schema.Struct({
   call_key: Schema.String,
-  run_id: Schema.String,
+  run_key: Schema.String,
   call: CallText,
   attributes: AttributesText,
   result: Schema.NullOr(ResultText),
@@ -202,10 +202,10 @@ export function unfinishedCalls(database: HostDatabase): Effect.Effect<readonly 
     ),
   ).pipe(
     Effect.map((rows) =>
-      rows.map(({ call_key: key, run_id: runId, call, attributes, result }) => ({
+      rows.map(({ call_key: key, run_key: runKey, call, attributes, result }) => ({
         key,
         call,
-        run: { runId, attributes },
+        run: { runId: runKey, attributes },
         result,
       })),
     ),

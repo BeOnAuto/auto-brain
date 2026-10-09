@@ -15,7 +15,7 @@ const stream = `${brainKey}run-logs/r-1`;
 
 const PassedRow = Schema.Struct({ listener: Schema.String, passed: WholeNumber });
 
-const PassedRunRow = Schema.Struct({ run_id: Schema.String, passed_through: WholeNumber });
+const PassedRunRow = Schema.Struct({ run_key: Schema.String, passed_through: WholeNumber });
 
 function passedRuns(database: HostDatabase) {
   return Effect.runPromise(
@@ -158,8 +158,8 @@ describe('the gate passing a record of a run held too long', () => {
     await Effect.runPromise(watermark.advance('acme/alpha/r-1', 2));
 
     expect([kept, behind]).toEqual([
-      [{ run_id: 'acme/alpha/r-1', passed_through: 2 }],
-      [{ run_id: 'acme/alpha/r-1', passed_through: 2 }],
+      [{ run_key: 'acme/alpha/r-1', passed_through: 2 }],
+      [{ run_key: 'acme/alpha/r-1', passed_through: 2 }],
     ]);
     expect(await passedRuns(database)).toEqual([]);
   });

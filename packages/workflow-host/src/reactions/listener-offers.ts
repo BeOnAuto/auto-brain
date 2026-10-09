@@ -46,7 +46,7 @@ function placeOf(after: string | undefined): ListenerPlace {
 }
 
 function keyOf(row: MatchedListener): string {
-  return JSON.stringify([row.run_id, row.listener]);
+  return JSON.stringify([row.run_key, row.listener]);
 }
 
 function listenerKeyOf(text: string): CallKey {
@@ -62,7 +62,7 @@ function accepts(row: MatchedListener, { event }: FollowedRecord, now: number): 
 }
 
 function emittedByTheRun(row: MatchedListener, { event }: FollowedRecord): boolean {
-  return event.emitter?.runId === addressOfRun(row.run_id).runId;
+  return event.emitter?.runId === addressOfRun(row.run_key).runId;
 }
 
 function offerOf(parts: OfferParts, row: MatchedListener, followed: FollowedRecord): Delivery {
@@ -71,13 +71,15 @@ function offerOf(parts: OfferParts, row: MatchedListener, followed: FollowedReco
     workflow: row.workflow,
     deliver: parts
       .offer({
-        runKey: row.run_id,
+        runKey: row.run_key,
         key: followed.record.id,
         listener: listenerKeyOf(row.listener),
         event: followed.event.event,
       })
       .pipe(
-        Effect.flatMap(({ declined }) => (declined === undefined ? Effect.void : parts.declined(row.run_id, declined))),
+        Effect.flatMap(({ declined }) =>
+          declined === undefined ? Effect.void : parts.declined(row.run_key, declined),
+        ),
         Effect.mapError(({ detail }: Readonly<{ detail: string }>) => new DeliveryFailed({ detail })),
       ),
   };
