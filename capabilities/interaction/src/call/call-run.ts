@@ -7,7 +7,12 @@ import { Clock, Effect, Result, type Schema } from 'effect';
 import type { CallDocument } from '../document/interaction-document.ts';
 import { unrenderableFor, unworkable } from '../run/request-rendering.ts';
 import { preparedInput } from '../run/run-input.ts';
-import { momentVariables, renderedArguments, type ArgumentsFailure } from '../tool-blocks/rendered-arguments.ts';
+import {
+  argumentsFailureWords,
+  momentVariables,
+  renderedArguments,
+  type ArgumentsFailure,
+} from '../tool-blocks/rendered-arguments.ts';
 import { endingOf } from './call-endings.ts';
 
 export const longestCallRunMs = 4 * toolBounds.openMs + toolBounds.callMs;
@@ -18,24 +23,11 @@ export interface CallPorts {
 
 function argumentsRejection(failure: ArgumentsFailure): Conflict | InvalidInput {
   if (failure.reason === 'too_large') {
-    return unworkable(
-      '/call/with',
-      `The arguments of the call take ${failure.bytes} bytes, more than the ${toolBounds.argumentBytes} a call may send`,
-    );
+    return unworkable('/call/with', argumentsFailureWords(failure, 'the call'));
   }
   const { argument, failure: rendering } = failure;
-  const pointer = `/call/with/${argument}`;
-  if (rendering.reason === 'not_text') {
-    return unworkable(
-      pointer,
-      `The argument ${argument} of the call renders a value that is not text among text; write | json after it, or write it alone as one {{ }} to send it as it is`,
-    );
-  }
-  return rendering.reason === 'too_long'
-    ? unworkable(
-        pointer,
-        `The argument ${argument} of the call renders more than the ${toolBounds.argumentBytes} bytes a call may send`,
-      )
+  return rendering.reason === 'not_text' || rendering.reason === 'too_long'
+    ? unworkable(`/call/with/${argument}`, argumentsFailureWords(failure, 'the call'))
     : unrenderableFor(`The argument ${argument} of the call`, rendering);
 }
 

@@ -29,46 +29,56 @@ function recordOf({ call }: CallDocument): Schema.JsonObject {
   return read === undefined ? { server, tool } : { server, tool, read };
 }
 
+const mayHaveActed = 'The tool ran and may have changed something; a run again calls it again';
+
+type Answered = Extract<AnsweredOnce, { readonly outcome: 'result' }>;
+
 interface Reading {
   readonly named: string;
   readonly at: string;
+  readonly unreadable: (detail: string) => Ending;
 }
 
-function checkedValue(document: CallDocument, value: Schema.Json, { named, at }: Reading): Ending {
+function unreadableAfter({ annotations }: Answered): (detail: string) => Ending {
+  return (detail) => unworkable(isReadOnly(annotations) ? detail : `${detail}. ${mayHaveActed}`);
+}
+
+function checkedValue(document: CallDocument, value: Schema.Json, { named, at, unreadable }: Reading): Ending {
   const what = `What ${named} answered${at}`;
   const bytes = Buffer.byteLength(JSON.stringify(value), 'utf8');
   if (bytes > interactionBounds.answerBytes) {
-    return unworkable(
+    return unreadable(
       `${what} takes ${bytes} bytes as JSON, more than the ${interactionBounds.answerBytes} an answer may`,
     );
   }
   if (measureOf(value) === undefined) {
-    return unworkable(`${what} nests deeper than the ${mostValueDepth} levels a value may`);
+    return unreadable(`${what} nests deeper than the ${mostValueDepth} levels a value may`);
   }
   return Result.match(checkedAnswer(value, document.output.schema.document), {
     onSuccess: (output) => Effect.succeed({ output, record: recordOf(document) }),
-    onFailure: (issues) => unworkable(`${what} does not match the output schema: ${issuesDetail(issues, 'answer')}`),
+    onFailure: (issues) => unreadable(`${what} does not match the output schema: ${issuesDetail(issues, 'answer')}`),
   });
 }
 
-function answeredWith(document: CallDocument, answer: Extract<AnsweredOnce, { readonly outcome: 'result' }>): Ending {
+function answeredWith(document: CallDocument, answer: Answered): Ending {
   const named = toolInWords(document.call);
   const read = document.call.read ?? '';
+  const unreadable = unreadableAfter(answer);
   const found = answerDocument(answer.answer);
   if (found === undefined) {
-    return unworkable(
+    return unreadable(
       `${capitalized(named)} answered neither structured content nor text, so there is nothing to read`,
     );
   }
   const value = valueAt(found, read);
   if (!isJson(value)) {
-    return unworkable(
+    return unreadable(
       typeof found === 'string'
         ? `${capitalized(named)} answered text that is not JSON, which holds nothing at ${read}`
         : `The answer of ${named} holds nothing at ${read}`,
     );
   }
-  return checkedValue(document, value, { named, at: read === '' ? '' : ` at ${read}` });
+  return checkedValue(document, value, { named, at: read === '' ? '' : ` at ${read}`, unreadable });
 }
 
 function afterSending(called: AnsweredOnce, because: 'tool_error' | 'server_failed', detail: string): Ending {

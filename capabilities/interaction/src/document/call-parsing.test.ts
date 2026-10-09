@@ -117,7 +117,7 @@ describe('the arguments of a call', () => {
     ]).toEqual([
       ['Line 7, /call/with/channel: Expected no ${ in a template, which never holds a secret'],
       [
-        'Line 7, /call/with/channel: Renders a value that is not text inside a longer text; write | json after a structured value such as input, or write the expression alone to send the value as it is',
+        'Line 7, /call/with/channel: Renders a value that is not text among text; write | json after it, or write it alone as one {{ }} to send it as it is',
       ],
     ]);
   });

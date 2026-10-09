@@ -6,7 +6,7 @@ import { interactionEngine } from '../document/request-templates.ts';
 import { renderedText } from '../run/text-rendering.ts';
 import { isLoneExpression } from '../run/value-rendering.ts';
 import { childrenOf, isJsonParent, type JsonParent } from './json-children.ts';
-import type { Templates } from './rendered-arguments.ts';
+import { notTextRemedy, type Templates } from './rendered-arguments.ts';
 import { nameOf, reads, type TemplateSet } from './template-sets.ts';
 
 export interface TemplatePlace {
@@ -46,8 +46,7 @@ type Rendering = 'text' | 'argument';
 
 const notTextWords: Readonly<Record<Rendering, (structured: string) => string>> = {
   text: (structured) => `Renders a value that is not text; write | json after a structured value such as ${structured}`,
-  argument: (structured) =>
-    `Renders a value that is not text inside a longer text; write | json after a structured value such as ${structured}, or write the expression alone to send the value as it is`,
+  argument: () => `Renders a value that is not text among text; ${notTextRemedy}`,
 };
 
 function templateDetails(set: TemplateSet, text: string, place: TemplatePlace, rendering: Rendering) {

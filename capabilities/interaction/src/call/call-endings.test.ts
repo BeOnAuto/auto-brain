@@ -21,7 +21,7 @@ function rejectedWith(fields: Readonly<Record<string, unknown>>) {
 }
 
 describe('a run that asks a system and sends nothing', () => {
-  it('is unavailable when its server does not serve the brain, its operator does not allow the tool or its server does not list it', async () => {
+  it('is unavailable when its server does not serve the brain, or its operator does not allow the tool, whether its server lists it or not', async () => {
     const elsewhere = await callRuns({ entry: { org: 'globex' } });
     const narrow = await callRuns({ entry: { allowed: ['search'] } });
 

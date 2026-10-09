@@ -1,13 +1,13 @@
 import { issueAt, type DocumentIssue, type DocumentParts, type SourceLines } from '@beonauto/definitions/document';
-import { Result } from 'effect';
+import { Predicate, Result } from 'effect';
 
 import { compiledCallBlock } from '../tool-blocks/compiled-tool-block.ts';
 import type { CallBlock } from '../tool-blocks/tool-block-schemas.ts';
 import type { InteractionFrontMatter } from './front-matter.ts';
 import type { CallDocument } from './interaction-document.ts';
-import { contractOf, type Checked } from './written-parts.ts';
+import { contractOf, issuesOf, type Checked } from './written-parts.ts';
 
-const callsATool = /^call:/mu;
+const writesACall = /^call:/mu;
 
 const keysOfARequest = ['to', 'expires', 'deliver', 'replies', 'from', 'reply'] as const;
 
@@ -16,8 +16,12 @@ const noMessage =
 
 const outputNeeded = 'A function with call answers with what the tool answered, so output.schema says what that is';
 
-export function asksASystem({ frontMatter }: Pick<DocumentParts, 'frontMatter'>): boolean {
-  return callsATool.test(frontMatter);
+export function asksASystem(root: unknown): boolean {
+  return Predicate.hasProperty(root, 'call');
+}
+
+export function seemsToAskASystem({ frontMatter }: Pick<DocumentParts, 'frontMatter'>): boolean {
+  return writesACall.test(frontMatter);
 }
 
 function requestKeyIssues(written: InteractionFrontMatter, lines: SourceLines): readonly DocumentIssue[] {
@@ -31,11 +35,6 @@ function requestKeyIssues(written: InteractionFrontMatter, lines: SourceLines): 
 function bodyIssues({ body, bodyLine }: DocumentParts): readonly DocumentIssue[] {
   const firstWritten = body.split('\n').findIndex((line) => line.trim() !== '');
   return firstWritten === -1 ? [] : [{ line: bodyLine + firstWritten, pointer: '', detail: noMessage }];
-}
-
-function issuesOf(check: () => Checked<unknown>): readonly DocumentIssue[] {
-  const checked = check();
-  return Result.isFailure(checked) ? checked.failure : [];
 }
 
 export function callFrom(

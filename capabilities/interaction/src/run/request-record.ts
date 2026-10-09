@@ -33,3 +33,14 @@ export function requestRecordOf(record: unknown): RequestRecord | undefined {
 export function takesAnswer({ answer_schema: schema }: Pick<RequestRecord, 'answer_schema'>): boolean {
   return schema !== undefined;
 }
+
+const DeliveredRecordSchema = Schema.Struct({ delivered_at: Schema.String });
+
+export type DeliveredRecord = typeof DeliveredRecordSchema.Type;
+
+const isDeliveredRecord = Schema.is(DeliveredRecordSchema);
+
+export function isNotification(record: unknown): boolean {
+  const request = requestRecordOf(record);
+  return request === undefined ? isDeliveredRecord(record) : !takesAnswer(request);
+}

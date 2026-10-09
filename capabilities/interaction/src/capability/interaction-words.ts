@@ -4,7 +4,7 @@ import { defaultRunWords, outputInWords, type RunAccount, type RunWords } from '
 import type { Schema } from 'effect';
 
 import { callOutputInWords } from '../call/call-words.ts';
-import { requestRecordOf, takesAnswer } from '../run/request-record.ts';
+import { isNotification, requestRecordOf, takesAnswer } from '../run/request-record.ts';
 import { interactionBounds } from '../run/run-bounds.ts';
 import { routeOf, throughWords } from '../tool-blocks/routes.ts';
 
@@ -51,8 +51,5 @@ export function describeAnswer(output: Schema.Json, record?: Schema.JsonObject):
   if (asked !== undefined) {
     return asked;
   }
-  if (output !== null && typeof output === 'object' && !Array.isArray(output) && Object.keys(output).length === 0) {
-    return 'It delivered its notification.';
-  }
-  return answerInWords(output);
+  return isNotification(record) ? 'It delivered its notification.' : answerInWords(output);
 }

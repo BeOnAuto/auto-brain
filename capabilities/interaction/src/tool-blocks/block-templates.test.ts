@@ -54,7 +54,7 @@ describe('a delivery argument and the values it holds', () => {
       problemsOf(documentOf(deliveringText('Input: {{ input }}'))),
     ]).toEqual([
       [
-        'Line 9, /deliver/with/text: Renders a value that is not text inside a longer text; write | json after a structured value such as answer_schema, or write the expression alone to send the value as it is',
+        'Line 9, /deliver/with/text: Renders a value that is not text among text; write | json after it, or write it alone as one {{ }} to send it as it is',
       ],
       [],
       [],
@@ -119,7 +119,7 @@ describe('the values a reading and a telling send', () => {
       problemsOf(documentOf(delivering, keyed, answering)),
     ]).toEqual([
       [
-        'Line 18, /replies/with/ts: Renders a value that is not text inside a longer text; write | json after a structured value such as sent, or write the expression alone to send the value as it is',
+        'Line 18, /replies/with/ts: Renders a value that is not text among text; write | json after it, or write it alone as one {{ }} to send it as it is',
       ],
       [],
       [

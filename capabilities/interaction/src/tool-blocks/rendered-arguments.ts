@@ -88,8 +88,10 @@ export function renderedArguments(
   });
 }
 
+export const notTextRemedy = 'write | json after it, or write it alone as one {{ }} to send it as it is';
+
 const failureWords: Readonly<Record<TextFailure['reason'], string>> = {
-  not_text: 'renders a value that is not text',
+  not_text: `renders a value that is not text among text; ${notTextRemedy}`,
   too_long: `renders more than the ${toolBounds.argumentBytes} bytes a call may send`,
   missing_variable: 'reads a value it does not have',
   limit_exceeded: 'cannot be rendered within the limits of a template',

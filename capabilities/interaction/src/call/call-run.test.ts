@@ -38,6 +38,7 @@ describe('a run of an interaction function that asks a system', () => {
         tool: 'thread',
         arguments_bytes: aNumber,
         arguments_sha256: aDigest,
+        read_only: true,
         number: 1,
       },
       expect.objectContaining({ type: 'tool_call_answered', number: 1, outcome: 'result', duration_ms: aNumber }),

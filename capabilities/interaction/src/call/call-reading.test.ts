@@ -48,12 +48,40 @@ describe('a run that asks a system and cannot read what the tool answered', () =
       await run(callDocument({ output: ['output:', '  schema: { type: string }'] })),
     ]).toEqual([
       unworkable('What the large tool of chat answered takes 71682 bytes as JSON, more than the 65536 an answer may'),
-      unworkable('What the echo tool of chat answered nests deeper than the 512 levels a value may'),
+      unworkable(
+        'What the echo tool of chat answered nests deeper than the 512 levels a value may. The tool ran and may have changed something; a run again calls it again',
+      ),
       unworkable(
         expect.stringMatching(
           /^What the thread tool of chat answered at \/messages does not match the output schema: the answer: /u,
         ),
       ),
     ]);
+  });
+});
+
+const countOutput = [
+  'output:',
+  '  schema: { type: object, required: [count], properties: { count: { type: number } } }',
+];
+
+describe('a run that asks a system whose answer the brain cannot use', () => {
+  it('checks what a tool answered against its own output schema, whatever schema the tool declares', async () => {
+    const { fake, run } = await callRuns();
+
+    expect(await run(callDocument({ tool: 'promised', read: null, with: [], output: countOutput }))).toEqual(
+      unworkable('What the promised tool of chat answered does not match the output schema: /count: Expected number'),
+    );
+    expect(fake.received()).toHaveLength(1);
+  });
+
+  it('says that running it again calls the tool again when the tool may change something', async () => {
+    const { run } = await callRuns({ server: { hints: { thread: { readOnlyHint: false } } } });
+
+    expect(await run(callDocument({ read: '/nothing' }))).toEqual(
+      unworkable(
+        'The answer of the thread tool of chat holds nothing at /nothing. The tool ran and may have changed something; a run again calls it again',
+      ),
+    );
   });
 });

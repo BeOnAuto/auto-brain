@@ -8,14 +8,14 @@ import {
 } from '@beonauto/definitions/document';
 import { Result } from 'effect';
 
-import { asksASystem, callFrom } from './call-parts.ts';
+import { asksASystem, callFrom, seemsToAskASystem } from './call-parts.ts';
 import { decodeFrontMatter, interactionFrontMatter } from './front-matter.ts';
 import type { InteractionFunctionDefinitionDocument } from './interaction-document.ts';
 import { requestFrom } from './request-parts.ts';
 import { messageOf, type Checked } from './written-parts.ts';
 
-function bodyIssuesOf(parts: DocumentParts): readonly DocumentIssue[] {
-  if (asksASystem(parts)) {
+function bodyIssuesOf(parts: DocumentParts, callsATool: boolean): readonly DocumentIssue[] {
+  if (callsATool) {
     return [];
   }
   const message = messageOf(parts);
@@ -25,7 +25,7 @@ function bodyIssuesOf(parts: DocumentParts): readonly DocumentIssue[] {
 function documentFrom(reading: ReadFrontMatter, parts: DocumentParts): Checked<InteractionFunctionDefinitionDocument> {
   const decoded = decodeFrontMatter(reading.root);
   if (reading.issues.length > 0 || Result.isFailure(decoded)) {
-    return Result.fail([...reading.issues, ...bodyIssuesOf(parts)]);
+    return Result.fail([...reading.issues, ...bodyIssuesOf(parts, asksASystem(reading.root))]);
   }
   const written = decoded.success;
   return written.call === undefined
@@ -36,7 +36,7 @@ function documentFrom(reading: ReadFrontMatter, parts: DocumentParts): Checked<I
 function documentOf(parts: DocumentParts): Checked<InteractionFunctionDefinitionDocument> {
   const reading = frontMatterIn(parts.frontMatter, parts.frontMatterLine, interactionFrontMatter);
   return Result.isFailure(reading)
-    ? Result.fail([...reading.failure, ...bodyIssuesOf(parts)])
+    ? Result.fail([...reading.failure, ...bodyIssuesOf(parts, seemsToAskASystem(parts))])
     : documentFrom(reading.success, parts);
 }
 
