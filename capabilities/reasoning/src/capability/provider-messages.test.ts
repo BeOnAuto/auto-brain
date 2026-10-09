@@ -6,9 +6,8 @@ import { accessFor } from '../testing/adapter-harness.ts';
 import { documentOf } from '../testing/definition-documents.ts';
 import { exposedText } from '../testing/exposure.ts';
 import { gatewayError, gatewayErrorText, gatewayInternals, recordingReporter } from '../testing/provider-errors.ts';
-import { runContext } from '../testing/reasoning-runs.ts';
+import { adapterWithoutTools, runContext } from '../testing/reasoning-runs.ts';
 import { jsonResponse, recordingFetch } from '../testing/recording-fetch.ts';
-import { makeReasoningFunctionAdapter } from './reasoning-function.ts';
 
 async function executedThroughGateway(gateway: object) {
   const reporter = recordingReporter();
@@ -16,7 +15,7 @@ async function executedThroughGateway(gateway: object) {
     { MODEL_GATEWAYS: JSON.stringify([gateway]) },
     { fetch: recordingFetch(() => jsonResponse(gatewayError, 404)).fetch, reportProviderMessage: reporter.report },
   );
-  const capability = makeReasoningFunctionAdapter({ languageModel: access.languageModel, offered: access.offered });
+  const capability = adapterWithoutTools(access);
   const prepared = Effect.runSync(capability.prepare(documentOf('model: gateway/no-such-model-xyz', 'Say hello.')));
   const exit = await Effect.runPromiseExit(prepared.run({}, runContext));
   return { exit, reports: reporter.reports() };

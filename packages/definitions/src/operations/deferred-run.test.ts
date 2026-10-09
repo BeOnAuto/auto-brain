@@ -13,6 +13,7 @@ const waiting = {
     status: 'started',
     started_at: firstMoment,
     started_by: 'acme-admin',
+    record: { handed_on: relayedId },
   },
 };
 
@@ -23,7 +24,7 @@ describe('a run whose capability finishes it after the call returns', () => {
     expect(await running()).toStrictEqual(waiting);
     expect(await reading()).toStrictEqual({
       status: 'succeeded',
-      output: { ...waiting.output, record: { handed_on: relayedId } },
+      output: waiting.output,
     });
   });
 
@@ -42,7 +43,7 @@ describe('a run whose capability finishes it after the call returns', () => {
     expect(relayer.runs()).toBe(1);
     expect(await reading()).toStrictEqual({
       status: 'succeeded',
-      output: { ...waiting.output, record: { handed_on: relayedId } },
+      output: waiting.output,
     });
   });
 

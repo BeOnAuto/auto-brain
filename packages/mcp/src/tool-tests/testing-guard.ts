@@ -1,15 +1,15 @@
-import type { ListedTool, ToolAnnotations } from '../bounds/result-text.ts';
+import { isReadOnly, type ListedTool, type ToolAnnotations } from '../bounds/result-text.ts';
 import { allowsTool } from '../names/tool-reference.ts';
 import type { McpServerSettings, ToolLists } from '../settings/mcp-settings.ts';
 
 export function canBeTested(tool: string, annotations: ToolAnnotations | undefined, lists: ToolLists): boolean {
-  return allowsTool(lists.allowed, tool) && (annotations?.readOnlyHint === true || lists.testable.includes(tool));
+  return allowsTool(lists.allowed, tool) && (isReadOnly(annotations) || lists.testable.includes(tool));
 }
 
 function offersNothingTestable({ allowed, testable }: ToolLists, tools: readonly ListedTool[]): boolean {
   return (
     testable.length === 0 &&
-    !tools.some(({ name, annotations }) => allowsTool(allowed, name) && annotations?.readOnlyHint === true)
+    !tools.some(({ name, annotations }) => allowsTool(allowed, name) && isReadOnly(annotations))
   );
 }
 

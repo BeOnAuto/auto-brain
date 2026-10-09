@@ -4,7 +4,7 @@ import { Effect, Schema } from 'effect';
 import type { Capability } from '../capability/capability.ts';
 import { knownCapabilities } from '../capability/known-capabilities.ts';
 import { runPlainLanguage } from '../plain-language/run-words.ts';
-import { RunSchema } from '../runs/run.ts';
+import { RunDetailSchema } from '../runs/run.ts';
 import { RunIdInputField, InputField, DefinitionNameField } from './definition-fields.ts';
 import { runRequest } from './run-requests.ts';
 
@@ -14,7 +14,7 @@ const description = [
   "Use it to run a saved definition at the person's request; a workflow's steps call it the same way.",
   '`type` and `name` say which definition, `input` is the value it takes, as the input_schema get_definition shows,',
   'and `run_id` is optional: give the same id to retry safely, since a run that ended or waits answers as it stands and one that failed runs again.',
-  'A reasoning function that names tools may change something outside the brain, so a run of one that did not succeed is never run again under its id;',
+  'A function that calls a tool may change something outside the brain, so a run of one that did not succeed is never run again under its id;',
   'get_run_history shows what it called.',
 ].join(' ');
 
@@ -34,7 +34,7 @@ export function defineRunDefinition(capabilities: readonly Capability[]) {
         input: Schema.optionalKey(InputField),
         run_id: Schema.optionalKey(RunIdInputField),
       }),
-      outputSchema: RunSchema,
+      outputSchema: RunDetailSchema,
       reasons: ['not_found', 'conflict', 'invalid_input', 'unavailable', 'cancelled', 'unanswered'],
       handle: Effect.fnUntraced(function* ({ type, name, input = {}, run_id: suppliedId }) {
         const capability = yield* known.capabilityOfType(type);

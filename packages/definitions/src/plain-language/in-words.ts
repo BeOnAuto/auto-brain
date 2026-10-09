@@ -1,4 +1,4 @@
-import { listed, quoted } from '@beonauto/operations';
+import { asSentence, listed, quoted } from '@beonauto/operations';
 import { Predicate, type Schema } from 'effect';
 
 const mostCharacters = 300;
@@ -12,7 +12,7 @@ export function wordsOf(name: string): string {
 }
 
 function renderedArray(items: readonly Schema.Json[]): string {
-  return items.length === 0 ? 'an empty list' : listed(items.map((item) => rendered(item)));
+  return items.length === 0 ? 'an empty list' : listed(items.map((item) => nested(item)));
 }
 
 function renderedObject(fields: Readonly<Record<string, Schema.Json>>): string {
@@ -51,4 +51,15 @@ function rendered(value: Schema.Json): string {
 export function inWords(value: Schema.Json): string | undefined {
   const words = rendered(value);
   return words.length <= mostCharacters ? words : undefined;
+}
+
+type OutputNoun = 'answer' | 'result';
+
+export function outputInWords(noun: OutputNoun): (output: Schema.Json) => string {
+  return (output) => {
+    const words = inWords(output);
+    return words === undefined
+      ? `Its ${noun} is too long to repeat here; the whole of it is in the details below.`
+      : asSentence(`Its ${noun}: ${words}`);
+  };
 }

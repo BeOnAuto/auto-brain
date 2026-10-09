@@ -35,7 +35,7 @@ describe('settling a deferred run', () => {
     });
     expect(await running()).toStrictEqual({
       status: 'succeeded',
-      output: { ...settled, status: 'succeeded', output: 'handed on' },
+      output: { ...settled, status: 'succeeded', output: 'handed on', record: { steps: 3 } },
     });
     expect(relayer.runs()).toBe(1);
   });

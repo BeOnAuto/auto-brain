@@ -1,11 +1,15 @@
 import type { CapabilityAnswer, RunContext, PreparedDefinition, Capability } from '@beonauto/definitions';
 import { noLongestRuns, recordingJournal, type RecordingJournal } from '@beonauto/definitions/testing';
 import type { ToolAccess } from '@beonauto/mcp';
+import { noToolServers } from '@beonauto/mcp/testing';
 import { allPermissions, type Conflict, type InvalidInput, type Unavailable } from '@beonauto/operations';
 import { DateTime, Effect, type Exit, type Schema } from 'effect';
 import { TestClock } from 'effect/testing';
 
-import { makeReasoningFunctionAdapter } from '../capability/reasoning-function.ts';
+import {
+  makeReasoningFunctionAdapter,
+  type ReasoningFunctionAdapterOptions,
+} from '../capability/reasoning-function.ts';
 import type { ModelRequest } from '../model/model-request.ts';
 import { scriptedLanguageModel, type ScriptedReply } from './scripted-language-model.ts';
 
@@ -39,16 +43,12 @@ export interface ToolRun extends ReasoningRun {
   readonly journal: RecordingJournal;
 }
 
-function reasoningOf(
-  tools: ToolAccess | undefined,
-  replies: readonly ScriptedReply[],
-  context: RunContext,
-): ReasoningRun {
+function reasoningOf(tools: ToolAccess, replies: readonly ScriptedReply[], context: RunContext): ReasoningRun {
   const scripted = scriptedLanguageModel(...replies);
   const capability = makeReasoningFunctionAdapter({
     languageModel: scripted.languageModel,
     offered: anthropicOnly,
-    ...(tools === undefined ? {} : { tools }),
+    tools,
   });
   const prepared = (source: string): PreparedDefinition => Effect.runSync(capability.prepare(source));
   return {
@@ -65,8 +65,15 @@ function reasoningOf(
   };
 }
 
+export function adapterWithoutTools({
+  languageModel,
+  offered,
+}: Pick<ReasoningFunctionAdapterOptions, 'languageModel' | 'offered'>): Capability {
+  return makeReasoningFunctionAdapter({ languageModel, offered, tools: noToolServers });
+}
+
 export function reasoningWith(...replies: readonly ScriptedReply[]): ReasoningRun {
-  return reasoningOf(undefined, replies, runContext);
+  return reasoningOf(noToolServers, replies, runContext);
 }
 
 export function reasoningWithTools(tools: ToolAccess, ...replies: readonly ScriptedReply[]): ToolRun {

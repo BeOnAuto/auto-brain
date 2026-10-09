@@ -1,8 +1,8 @@
 import type { Schema } from 'effect';
 
 import { cappedIssues, type Issue } from './issue.ts';
+import type { RejectionBecause } from './rejection-because.ts';
 import type { DeclarableReason, RejectionKind } from './rejection.ts';
-import type { UnavailableBecause } from './unavailable.ts';
 
 export type RejectionReason = 'forbidden' | DeclarableReason;
 
@@ -17,7 +17,7 @@ export interface Rejected {
   readonly detail: string;
   readonly issues?: readonly Issue[];
   readonly kind?: RejectionKind;
-  readonly because?: UnavailableBecause;
+  readonly because?: RejectionBecause;
 }
 
 export interface Failed {

@@ -12,7 +12,7 @@ import { rejections, spendingSince, type DefinitionRejection } from './model-rej
 
 export interface Answering {
   readonly languageModel: LanguageModel['Service'];
-  readonly access: ToolAccess | undefined;
+  readonly access: ToolAccess;
   readonly definition: ReasoningFunctionDefinitionDocument;
   readonly prompt: RenderedPrompt;
   readonly run: RunContext;

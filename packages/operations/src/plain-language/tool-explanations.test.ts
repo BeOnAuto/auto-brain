@@ -8,8 +8,24 @@ const toolsNamed =
 const serverFailed =
   'Nothing was called through it, so it can be tried again later; if it keeps happening, whoever runs the server can look into that tool server.';
 
-const toolsMayHaveWritten =
-  'What it called may have changed something, so it is not run again by itself: check what its history shows it called, then start a new run if it is still needed.';
+const toolsOnlyRead =
+  "Every tool it called only reads, by its server's own account, so running it again is safe: a new run, or a workflow's retry, may make it; its history shows what it called.";
+
+const effectUnknown =
+  'It is not run again by itself: a person decides, or a workflow rule that names this kind; its history shows the call.';
+
+const calledAndUnfinished = 'it called tools but could not finish';
+
+const mayHaveChanged =
+  'it could not finish after calling a tool that may change something, so whether that happened is not known';
+
+const unfinishedBecauses = [
+  ['server_failed', 'a tool server failed', 'because a tool server failed'],
+  ['tool_error', 'a tool answered an error', 'because the tool answered an error, which the details below give'],
+  ['model_unavailable', 'the model did not finish', 'because the model stopped answering'],
+  ['run_bound', 'ran out of time', 'because it ran out of time'],
+  ['no_answer', 'never came to an answer', 'because the model kept calling tools instead of answering'],
+] as const;
 
 const toolEndings: ReadonlyArray<readonly [string, ExplainedRejection, string, string]> = [
   [
@@ -60,34 +76,26 @@ const toolEndings: ReadonlyArray<readonly [string, ExplainedRejection, string, s
     'a tool server it needs could not be used, because the tool server could not be reached in time',
     serverFailed,
   ],
-  [
-    'calls a failing tool server ended',
-    { reason: 'unavailable', kind: 'tools_unfinished', because: 'server_failed' },
-    'it called tools but could not finish, because a tool server kept failing',
-    toolsMayHaveWritten,
-  ],
-  [
-    'calls the model did not finish',
-    { reason: 'unavailable', kind: 'tools_unfinished', because: 'model_unavailable' },
-    'it called tools but could not finish, because the model stopped answering',
-    toolsMayHaveWritten,
-  ],
-  [
-    'calls that ran out of time',
-    { reason: 'unavailable', kind: 'tools_unfinished', because: 'run_bound' },
-    'it called tools but could not finish, because it ran out of time',
-    toolsMayHaveWritten,
-  ],
-  [
-    'calls that never came to an answer',
-    { reason: 'unavailable', kind: 'tools_unfinished', because: 'no_answer' },
-    'it called tools but could not finish, because the model kept calling tools instead of answering',
-    toolsMayHaveWritten,
-  ],
 ];
 
+const unfinishedEndings: ReadonlyArray<readonly [string, ExplainedRejection, string, string]> =
+  unfinishedBecauses.flatMap(([because, ended, words]) => [
+    [
+      `calls of tools that only read, where ${ended}`,
+      { reason: 'unavailable', kind: 'tools_unfinished', because },
+      `${calledAndUnfinished}, ${words}`,
+      toolsOnlyRead,
+    ],
+    [
+      `calls of a tool that may change something, where ${ended}`,
+      { reason: 'conflict', kind: 'effect_unknown', because },
+      `${mayHaveChanged}, ${words}`,
+      effectUnknown,
+    ],
+  ]);
+
 describe('explanationOf a run that needs tools', () => {
-  it.each(toolEndings)('explains %s', (_case, rejection, why, remedy) => {
+  it.each([...toolEndings, ...unfinishedEndings])('explains %s', (_case, rejection, why, remedy) => {
     expect(explanationOf(rejection)).toMatchObject({ why, remedy });
   });
 
@@ -98,12 +106,24 @@ describe('explanationOf a run that needs tools', () => {
     expect(remedy).toHaveLength(214);
   });
 
-  it('says only of tool calls that could not finish that something may have changed', () => {
-    const changing = toolEndings.filter(([, rejection]) => explanationOf(rejection).mayHaveChanged === true);
-
-    expect(changing.map(([, rejection]) => rejection.kind)).toEqual(
-      Array.from({ length: 4 }, () => 'tools_unfinished'),
+  it('says only of tool calls whose effect is not known that something may have changed', () => {
+    const changing = [...toolEndings, ...unfinishedEndings].filter(
+      ([, rejection]) => explanationOf(rejection).mayHaveChanged === true,
     );
+
+    expect(changing.map(([, rejection]) => rejection.kind)).toEqual(Array.from({ length: 5 }, () => 'effect_unknown'));
+  });
+
+  it('says why the effect is not known in 105 characters and what to do in 117, and that tools that only read may run again in 171', () => {
+    const unknown = explanationOf({ reason: 'conflict', kind: 'effect_unknown' });
+    const onlyRead = explanationOf({ reason: 'unavailable', kind: 'tools_unfinished' });
+
+    expect([unknown.why.length, unknown.remedy.length, onlyRead.remedy.length]).toEqual([105, 117, 171]);
+    expect(
+      explanationOf({ reason: 'conflict', kind: 'effect_unknown', because: 'tool_error' }).why.slice(
+        unknown.why.length + 2,
+      ),
+    ).toHaveLength(64);
   });
 });
 

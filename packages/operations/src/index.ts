@@ -151,12 +151,7 @@ export {
   type RunOutcomeWindow,
   type RunStream,
 } from './run-outcomes/run-outcomes.ts';
-export {
-  Unavailable,
-  UnavailableBecauseSchema,
-  UnavailableKindSchema,
-  type UnavailableBecause,
-  type UnavailableKind,
-} from './outcome/unavailable.ts';
+export { RejectionBecauseSchema, type RejectionBecause } from './outcome/rejection-because.ts';
+export { Unavailable, UnavailableKindSchema, type UnavailableKind } from './outcome/unavailable.ts';
 export { uuidV5 } from './uuid/uuid-v5.ts';
 export { randomUUIDv7 } from './uuid/uuid-v7.ts';

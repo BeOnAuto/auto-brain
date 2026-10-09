@@ -5,7 +5,7 @@ import type { Capability } from '../capability/capability.ts';
 import { knownCapabilities } from '../capability/known-capabilities.ts';
 import { definitionWordsFor } from '../plain-language/definition-words.ts';
 import { runPlainLanguage } from '../plain-language/run-words.ts';
-import { RunSchema } from '../runs/run.ts';
+import { RunDetailSchema } from '../runs/run.ts';
 import { RunIdInputField, InputField, DefinitionNameField } from './definition-fields.ts';
 import { startVersionOnce } from './run-requests.ts';
 
@@ -32,7 +32,7 @@ export function defineStartVersion(capabilities: readonly Capability[]) {
         input: InputField,
         run_id: RunIdInputField,
       }),
-      outputSchema: RunSchema,
+      outputSchema: RunDetailSchema,
       reasons: ['not_found', 'conflict', 'invalid_input', 'unavailable', 'cancelled', 'unanswered'],
       handle: Effect.fnUntraced(function* ({ type, name, version, input, run_id: id }) {
         const capability = yield* known.capabilityOfType(type);

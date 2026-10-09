@@ -43,7 +43,7 @@ export function caller(
     if (number === undefined) {
       return notRecorded;
     }
-    state.used(reference);
+    state.used(offered);
     const began = performance.now();
     const forwarding = { slot, tool: offered.tool.name, input, meta: context.meta, signal: signals.signal };
     const done = await forwarded({ ...forwarding, ...timing });

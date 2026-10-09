@@ -1,4 +1,4 @@
-import { unsuccessfulWords, type UnavailableBecause } from '@beonauto/operations';
+import { unsuccessfulWords, type RejectionBecause } from '@beonauto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -69,10 +69,10 @@ describe('the plain words of test_tool_call', () => {
   });
 });
 
-const notOffered = (because: UnavailableBecause) =>
+const notOffered = (because: RejectionBecause) =>
   ({ status: 'rejected', reason: 'unavailable', detail: 'x', kind: 'tool_not_offered', because }) as const;
 
-const remedies: ReadonlyArray<readonly [UnavailableBecause, string]> = [
+const remedies: ReadonlyArray<readonly [RejectionBecause, string]> = [
   [
     'mcp_server_not_configured',
     'This can be put right on your side: list_tool_servers shows the tool servers this brain may use, so a test that names one of those can be tried.',

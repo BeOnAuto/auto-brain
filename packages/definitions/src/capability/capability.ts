@@ -99,7 +99,7 @@ export interface CapabilityDeclaration<Parsed> {
   readonly title: string;
   readonly guide: CapabilityGuide;
   readonly noun: Noun;
-  readonly describeOutput: (output: Schema.Json) => string;
+  readonly describeOutput: (output: Schema.Json, record?: Schema.JsonObject) => string;
   readonly mediaType: string;
   readonly parse: (source: string) => Effect.Effect<Parsed, InvalidInput>;
   readonly summarize: (parsed: NoInfer<Parsed>) => DefinitionSummary;
@@ -161,7 +161,7 @@ export interface Capability {
   readonly title: string;
   readonly guide: CapabilityGuide;
   readonly noun: Noun;
-  readonly describeOutput: (output: Schema.Json) => string;
+  readonly describeOutput: (output: Schema.Json, record?: Schema.JsonObject) => string;
   readonly mediaType: string;
   readonly longestAnyRunMs: number;
   readonly reachesOutside: boolean;

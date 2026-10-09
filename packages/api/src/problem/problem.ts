@@ -3,7 +3,7 @@ import {
   problemTypeOf,
   type KindWithType,
   type RejectionKind,
-  type UnavailableBecause,
+  type RejectionBecause,
   type UnavailableKind,
 } from '@beonauto/operations';
 
@@ -38,7 +38,7 @@ export interface Problem {
   readonly instance?: string;
   readonly errors?: readonly ProblemIssue[];
   readonly kind?: RejectionKind;
-  readonly because?: UnavailableBecause;
+  readonly because?: RejectionBecause;
 }
 
 export type OptionalProblemMembers = Pick<Problem, 'instance' | 'errors' | 'kind' | 'because'>;
@@ -69,6 +69,7 @@ const problemTypes: Readonly<Record<ProblemReason, ProblemType>> = {
 const kindProblemTypes: Readonly<Record<KindWithType, ProblemType>> = {
   tools_unfinished: { status: 503, title: 'Tools unfinished' },
   tools_called: { status: 409, title: 'Tools called' },
+  effect_unknown: { status: 409, title: 'Effect unknown' },
   rebuilding: { status: 503, title: 'Rebuilding' },
 };
 

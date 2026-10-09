@@ -5,16 +5,15 @@ import { describe, expect, it } from 'vitest';
 import { accessFor } from '../testing/adapter-harness.ts';
 import { documentOf } from '../testing/definition-documents.ts';
 import { chatCompletion } from '../testing/provider-replies.ts';
-import { runContext } from '../testing/reasoning-runs.ts';
+import { adapterWithoutTools, runContext } from '../testing/reasoning-runs.ts';
 import { jsonResponse, recordingFetch } from '../testing/recording-fetch.ts';
-import { makeReasoningFunctionAdapter } from './reasoning-function.ts';
 
 const gateway = { name: 'internal', base_url: 'https://llm.internal.example/v1', allowed_provider_options: ['user'] };
 
 async function executedWith(providerOptions: string) {
   const recording = recordingFetch(() => jsonResponse(chatCompletion('Hello')));
   const access = await accessFor({ MODEL_GATEWAYS: JSON.stringify([gateway]) }, { fetch: recording.fetch });
-  const capability = makeReasoningFunctionAdapter({ languageModel: access.languageModel, offered: access.offered });
+  const capability = adapterWithoutTools(access);
   const document = documentOf(`model: internal/llama-3.3-70b\nprovider_options:\n  internal: ${providerOptions}`, 'Hi');
   const prepared = Effect.runSync(capability.prepare(document));
   const exit = await Effect.runPromiseExit(prepared.run({}, runContext));

@@ -5,7 +5,7 @@ import type {
   Lineage,
   RejectionKind,
   RejectionReason,
-  UnavailableBecause,
+  RejectionBecause,
 } from '@beonauto/operations';
 import type { Effect, Schema } from 'effect';
 
@@ -31,7 +31,7 @@ export type EndedRunResult =
       readonly detail: string;
       readonly issues?: readonly Issue[];
       readonly kind?: RejectionKind;
-      readonly because?: UnavailableBecause;
+      readonly because?: RejectionBecause;
     }
   | { readonly status: 'failed'; readonly detail: string };
 

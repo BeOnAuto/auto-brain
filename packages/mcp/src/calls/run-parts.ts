@@ -41,6 +41,6 @@ export interface RunToolsParts {
 export interface RunState {
   readonly tally: () => CallTally;
   readonly tallied: (tally: CallTally) => void;
-  readonly used: (reference: ToolReference) => void;
+  readonly used: (offer: OfferedOnServer) => void;
   readonly ended: (because: CallsEndedBecause) => void;
 }

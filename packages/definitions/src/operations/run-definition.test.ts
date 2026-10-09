@@ -79,21 +79,17 @@ describe('run_definition', () => {
         started_at: later,
         started_by: 'acme-admin',
         finished_at: later,
+        record: { greeting: 'Hello' },
       },
     });
   });
 
-  it('answers with the run that get_run reads, without the record that get_run adds', async () => {
+  it('answers with the run that get_run reads, its record included', async () => {
     const { call } = await withGreetAndPlain();
+    const ran = await call(runDefinition, running('greet', { run_id: runId }));
 
-    expect(await call(runDefinition, running('greet', { run_id: runId }))).toStrictEqual({
-      status: 'succeeded',
-      output: greeted,
-    });
-    expect(await call(getRun, toAlpha(acmeAdmin, { run_id: runId }))).toStrictEqual({
-      status: 'succeeded',
-      output: { ...greeted, record: { greeting: 'Hello' } },
-    });
+    expect(ran).toStrictEqual({ status: 'succeeded', output: { ...greeted, record: { greeting: 'Hello' } } });
+    expect(await call(getRun, toAlpha(acmeAdmin, { run_id: runId }))).toStrictEqual(ran);
   });
 });
 

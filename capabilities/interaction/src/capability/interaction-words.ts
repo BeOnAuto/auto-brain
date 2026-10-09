@@ -1,7 +1,6 @@
 import { Buffer } from 'node:buffer';
 
-import { defaultRunWords, inWords, type RunAccount, type RunWords } from '@beonauto/definitions';
-import { asSentence } from '@beonauto/operations';
+import { defaultRunWords, outputInWords, type RunAccount, type RunWords } from '@beonauto/definitions';
 import type { Schema } from 'effect';
 
 import { routeOf, throughWords } from '../route/routes.ts';
@@ -44,12 +43,11 @@ export const interactionRunWords: RunWords = {
   deferral: requestAccount,
 };
 
+const answerInWords = outputInWords('answer');
+
 export function describeAnswer(output: Schema.Json): string {
   if (output !== null && typeof output === 'object' && !Array.isArray(output) && Object.keys(output).length === 0) {
     return 'It delivered its notification.';
   }
-  const words = inWords(output);
-  return words === undefined
-    ? 'Its answer is too long to repeat here; the whole of it is in the details below.'
-    : asSentence(`Its answer: ${words}`);
+  return answerInWords(output);
 }

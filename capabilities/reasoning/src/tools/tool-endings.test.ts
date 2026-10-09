@@ -120,6 +120,39 @@ describe('a run whose tool servers kept failing', () => {
   });
 });
 
+function unknown(because: string, detail: string) {
+  return Exit.fail(expect.objectContaining({ _tag: 'conflict', kind: 'effect_unknown', because, detail }));
+}
+
+const echoed: ScriptedCall = ['mcp__graph__echo', { said: 'acme' }];
+
+const usedBoth = 'after the run called the search and echo tools of graph';
+
+describe('a run that could not finish after calling a tool its server does not mark read-only', () => {
+  it('is a conflict whose effect is unknown, with the because and detail it would have had, whether that tool came first or last', async () => {
+    const afterReading = callingTools([...searched, echoed], stoppedBy('no_answer', 'anthropic kept calling tools'));
+    const beforeReading = callingTools([echoed, ...searched], timedOut);
+
+    expect(await ending(await graphServer(), afterReading)).toEqual(
+      unknown('no_answer', `anthropic kept calling tools, ${usedBoth}`),
+    );
+    expect(await ending(await graphServer(), beforeReading)).toEqual(
+      unknown(
+        'model_unavailable',
+        'anthropic did not answer within 60000 ms, after the run called the echo and search tools of graph',
+      ),
+    );
+  });
+
+  it('is a conflict whose effect is unknown when its run reached its bound', async () => {
+    const reply = callingTools([echoed], stoppedBy('run_bound', 'The run went on for 600000 ms'));
+
+    expect(await ending(await graphServer(), reply)).toEqual(
+      unknown('run_bound', 'The run went on for 600000 ms, after the run called the echo tool of graph'),
+    );
+  });
+});
+
 describe('a run that could not finish before it called a tool', () => {
   it('is unavailable as before, without saying that tools were called', async () => {
     const fake = await graphServer();

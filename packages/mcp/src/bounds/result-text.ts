@@ -40,6 +40,10 @@ export type ListedTool = typeof ListedToolSchema.Type;
 
 export type ToolAnnotations = typeof ToolAnnotationsSchema.Type;
 
+export function isReadOnly(annotations: ToolAnnotations | undefined): boolean {
+  return annotations?.readOnlyHint === true;
+}
+
 type ContentBlock = typeof ContentBlockSchema.Type;
 
 export type AnswerBlock = ContentBlock;

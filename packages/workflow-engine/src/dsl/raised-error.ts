@@ -1,8 +1,9 @@
 import {
+  ConflictKindSchema,
   isKindWithType,
   problemTypeOf,
+  RejectionBecauseSchema,
   UnansweredKindSchema,
-  UnavailableBecauseSchema,
   type KindWithType,
   type Settlement,
 } from '@beonauto/operations';
@@ -101,7 +102,7 @@ export function describeError({ type, title, detail, instance }: DslError): stri
 
 const retryableStatuses: ReadonlySet<number> = new Set([408, 429]);
 
-const isUnavailableBecause = Schema.is(UnavailableBecauseSchema);
+const isRejectionBecause = Schema.is(RejectionBecauseSchema);
 
 const isUnansweredKind = Schema.is(UnansweredKindSchema);
 
@@ -113,16 +114,17 @@ export function reasonOfStatus(status: number): 'invalid_input' | 'unavailable' 
   return status >= 400 && status < 500 && !retryableStatuses.has(status) ? 'invalid_input' : 'unavailable';
 }
 
+const isConflictKind = Schema.is(ConflictKindSchema);
+
+function becauseOf(kind: KindWithType, because: string | undefined) {
+  return kind === 'tools_called' || !isRejectionBecause(because) ? {} : { because };
+}
+
 function ownTypeRejectionOf(kind: KindWithType, detail: string, because: string | undefined): Settlement {
-  return kind === 'tools_called'
-    ? { status: 'rejected', reason: 'conflict', detail, kind }
-    : {
-        status: 'rejected',
-        reason: 'unavailable',
-        detail,
-        kind,
-        ...(isUnavailableBecause(because) ? { because } : {}),
-      };
+  const known = becauseOf(kind, because);
+  return isConflictKind(kind)
+    ? { status: 'rejected', reason: 'conflict', detail, kind, ...known }
+    : { status: 'rejected', reason: 'unavailable', detail, kind, ...known };
 }
 
 function settledRejectionOf(error: DslError): Settlement {
