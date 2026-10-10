@@ -14,16 +14,45 @@ const topRuns: ReadonlyMap<string, string> = new Map([
 
 export const stopsByItsMemory = '${ "stops by its memory" }';
 
-function stoppedByItsMemory({ reference }: MatchedFilter): FilterVerdict {
-  return {
-    error: {
-      type: 'https://open-workflow-specification.org/spec/1.0.0/errors/runtime',
-      status: 500,
+export const stopsByItsWork = '${ "stops by its work" }';
+
+interface ScriptedStop {
+  readonly title: string;
+  readonly stopped: boolean;
+}
+
+const scriptedStops: ReadonlyMap<string, ScriptedStop> = new Map([
+  [
+    stopsByItsMemory,
+    {
       title: 'The program used more memory than it may: one filter may use the memory of its sandbox and no more',
-      instance: reference,
+      stopped: true,
     },
-    stopped: true,
-  };
+  ],
+  [
+    stopsByItsWork,
+    {
+      title:
+        'The program did more work than it may: an expression of a filter may do 250 checkpoints of work, and those of one filter 500 together',
+      stopped: false,
+    },
+  ],
+]);
+
+function scriptedVerdictOf({ reference, attributes }: MatchedFilter): FilterVerdict | undefined {
+  const data = attributes['data'];
+  const stop = typeof data === 'string' ? scriptedStops.get(data) : undefined;
+  return stop === undefined
+    ? undefined
+    : {
+        error: {
+          type: 'https://open-workflow-specification.org/spec/1.0.0/errors/runtime',
+          status: 500,
+          title: stop.title,
+          instance: reference,
+        },
+        stopped: stop.stopped,
+      };
 }
 
 interface CountingMatches {
@@ -39,11 +68,10 @@ export function countingMatches(): CountingMatches {
     match: (filters, event, now) => {
       evaluated.push(...filters.map(({ reference }) => reference));
       return Effect.map(
-        Effect.forEach(filters, (filter) =>
-          filter.attributes['data'] === stopsByItsMemory
-            ? Effect.succeed([stoppedByItsMemory(filter)])
-            : matching([filter], event, now),
-        ),
+        Effect.forEach(filters, (filter) => {
+          const scripted = scriptedVerdictOf(filter);
+          return scripted === undefined ? matching([filter], event, now) : Effect.succeed([scripted]);
+        }),
         Array.flatten,
       );
     },

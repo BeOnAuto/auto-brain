@@ -5,7 +5,7 @@ import type { HostDatabase } from '../database/host-database.ts';
 import { stopsInARowBeforeTheVersion } from '../filtering/filter-matching.ts';
 import { eventTrigger, type TriggerFilter } from '../reaction-testing/brain-writes.ts';
 import { followedRecordOf } from '../reaction-testing/followed-records.ts';
-import { starting, stopsByItsMemory } from '../reaction-testing/trigger-starting.ts';
+import { starting, stopsByItsMemory, stopsByItsWork } from '../reaction-testing/trigger-starting.ts';
 import { triggersActivated } from '../triggers/trigger-rows.ts';
 import { reactionRunIdOf } from './reaction-ids.ts';
 import { mostReactionDepth } from './subscription-starts.ts';
@@ -14,7 +14,7 @@ const brainKey = 'brain/acme/alpha/';
 
 const at = '2026-10-01T09:00:00.000Z';
 
-const working = { type: 'go', data: '${ (() => { let turns = 0; for (;;) { turns += 1; } })() }' };
+const working = { type: 'go', data: stopsByItsWork };
 
 const filling = { type: 'go', data: stopsByItsMemory };
 
