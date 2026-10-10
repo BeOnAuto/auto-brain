@@ -1,5 +1,6 @@
 import { decideMeasured, snapshotMeasured } from './measure/decide.ts';
 import { engineMeasured } from './measure/engine.ts';
+import { evaluationsMeasured } from './measure/evaluations.ts';
 import { loopMeasured } from './measure/loop.ts';
 import { pagesMeasured } from './measure/pages.ts';
 import { sandboxMeasured } from './measure/sandbox.ts';
@@ -12,6 +13,7 @@ const measured = [
   ...snapshotMeasured(),
   ...(await pagesMeasured()),
   ...(await sandboxMeasured()),
+  ...(await evaluationsMeasured()),
 ];
 
 for (const line of measured) {

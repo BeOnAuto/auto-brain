@@ -16,7 +16,7 @@ import {
   type SettleRun,
 } from '@beonauto/definitions';
 import { Ledger, type Dispatcher, type DispatcherServices } from '@beonauto/operations';
-import { machineSandboxOf } from '@beonauto/workflow-engine/dsl';
+import type { Evaluations } from '@beonauto/workflow-engine';
 import type { HostOptions, WaitingOptions } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
 
@@ -28,6 +28,7 @@ export type HostWork = Pick<HostOptions, 'machine' | 'perform' | 'settle' | 'rea
 export interface WorkParts {
   readonly capabilities: readonly Capability[];
   readonly startVersion: BrainOperation;
+  readonly evaluations: Evaluations;
 }
 
 function nestedRuns(
@@ -81,13 +82,13 @@ function waitingOf(runtime: AppRuntime<DispatcherServices>, capabilities: readon
 export function hostWorkOf(
   runtime: AppRuntime<DispatcherServices>,
   dispatcher: Dispatcher,
-  { capabilities, startVersion }: WorkParts,
+  { capabilities, startVersion, evaluations }: WorkParts,
 ): HostWork {
   return {
-    machine: workflowMachineOptionsOf(machineSandboxOf()),
+    machine: workflowMachineOptionsOf(evaluations.machine),
     perform: definitionCalls(nestedRuns(runtime, dispatcher, defineRunDefinition(capabilities))),
     settle: settlements(runtime),
-    reactions: reactionsOf(runtime, dispatcher, startVersion),
+    reactions: { ...reactionsOf(runtime, dispatcher, startVersion), filters: evaluations.filters },
     waiting: waitingOf(runtime, capabilities),
   };
 }

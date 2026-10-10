@@ -2,11 +2,23 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { freshInstance } from '../instances/fresh-instances.ts';
-import { reservedSandbox, reusedSandbox } from './reserved-instances.ts';
+import type { Evaluation, ProgramRun } from './program-run.ts';
+import { reservedSandbox, reusedSandbox, type MachineSandbox } from './reserved-instances.ts';
 import { unitMemoryBytes } from './sandbox-bounds.ts';
 import type { SandboxInstance } from './sandbox-session.ts';
 
 const instance = await freshInstance(unitMemoryBytes);
+
+const evaluation: Evaluation = { budget: 250, deadlineAt: Number.POSITIVE_INFINITY, moment: 0 };
+
+function decidedIn(sandbox: MachineSandbox): ProgramRun {
+  const unit = sandbox.unit();
+  try {
+    return unit.evaluate('$data * 2', { data: 21 }, evaluation);
+  } finally {
+    unit.close();
+  }
+}
 
 interface Preparing {
   readonly prepare: () => Promise<SandboxInstance>;
@@ -63,7 +75,7 @@ describe('a sandbox of reserved instances', () => {
 
     expect(reserved).toBe(true);
     expect(preparing.prepared()).toBe(2);
-    expect(sandbox.take()).toBe(instance);
+    expect(decidedIn(sandbox)).toEqual({ ran: 'answered', text: '42', work: 0 });
     expect(sandbox.clock()).toBe(7);
   });
 
@@ -77,7 +89,7 @@ describe('a sandbox of reserved instances', () => {
 
     expect(early).toBe(false);
     expect(await settledSoon(reserving)).toBe(true);
-    expect(sandbox.take()).toBe(instance);
+    expect(decidedIn(sandbox)).toMatchObject({ ran: 'answered', text: '42' });
   });
 });
 
@@ -102,7 +114,7 @@ describe('the stock of a sandbox of reserved instances', () => {
     await preparing.finishOne();
     await Effect.runPromise(sandbox.reserve);
 
-    sandbox.release();
+    sandbox.unit().close();
     const again = await settledSoon(Effect.runPromise(sandbox.reserve));
 
     expect(again).toBe(true);
@@ -112,17 +124,20 @@ describe('the stock of a sandbox of reserved instances', () => {
   it('refuses a decision that takes an instance no input set aside', () => {
     const sandbox = reservedSandbox(preparedOnDemand().prepare, () => 0);
 
-    expect(() => sandbox.take()).toThrow('A decision took a sandbox no input had set aside');
+    expect(() => decidedIn(sandbox)).toThrow('A decision took a sandbox no input had set aside');
   });
 });
 
 describe('a sandbox of one reused instance', () => {
-  it('needs no reservation and hands every decision the same instance', async () => {
+  it('needs no reservation and evaluates every decision on the same instance', async () => {
     const sandbox = reusedSandbox(instance, () => 3);
 
     await Effect.runPromise(sandbox.reserve);
-    sandbox.release();
 
-    expect([sandbox.take(), sandbox.take(), sandbox.clock()]).toEqual([instance, instance, 3]);
+    expect([decidedIn(sandbox), decidedIn(sandbox), sandbox.clock()]).toEqual([
+      { ran: 'answered', text: '42', work: 0 },
+      { ran: 'answered', text: '42', work: 0 },
+      3,
+    ]);
   });
 });

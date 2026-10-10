@@ -44,6 +44,7 @@ export async function functionsServedBy(
       dueWork: interaction.dueWork,
       store: recall.store,
       views: recall.views,
+      evaluations: computation.pool.evaluations,
       check: computation.check,
     },
     closing: (served) => computation.withPoolClosed(withToolsClosed(served)),

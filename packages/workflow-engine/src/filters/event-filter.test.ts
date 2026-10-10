@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Json, JsonObject } from '../dsl/json.ts';
-import { freshInstance } from '../instances/fresh-instances.ts';
-import { unitMemoryBytes } from '../programs/sandbox-bounds.ts';
+import { filterSandboxOf } from '../instances/host-sandboxes.ts';
 import {
   brainWideFilterOf,
   listenFiltersOf,
@@ -17,7 +16,7 @@ const at = '/schedule/on/one';
 
 const now = Date.parse('2026-10-01T09:00:00.000Z');
 
-const sandbox: FilterSandbox = { instance: await freshInstance(unitMemoryBytes), clock: () => 0, now };
+const sandbox: FilterSandbox = filterSandboxOf(() => 0);
 
 const monthClosed: JsonObject = {
   specversion: '1.0',
@@ -37,8 +36,8 @@ function filterOf(filter: Json): LiteralFilter {
   return reading.filter;
 }
 
-function matched(attributes: JsonObject, event: JsonObject = monthClosed): FilterVerdict | undefined {
-  const [verdict] = filterVerdictsOf([filterOf({ with: attributes })], event, sandbox);
+async function matched(attributes: JsonObject, event: JsonObject = monthClosed): Promise<FilterVerdict | undefined> {
+  const [verdict] = await filterVerdictsOf([filterOf({ with: attributes })], event, sandbox, now);
   return verdict;
 }
 
@@ -72,57 +71,57 @@ describe('an event filter matched over the event alone', () => {
 });
 
 describe('matching an event over the event alone', () => {
-  it('matches the type, the source and the subject as written', () => {
-    expect(matched({ type: 'com.acme.ledger.month-closed' })).toBe(true);
-    expect(matched({ type: 'com.acme.ledger.month-closed', source: '/ledger/eu', subject: 'september' })).toBe(true);
-    expect(matched({ type: 'com.acme.ledger.month-opened' })).toBe(false);
-    expect(matched({ type: 'com.acme.ledger.month-closed', source: '/ledger/us' })).toBe(false);
-    expect(matched({ type: 'com.acme.ledger.month-closed', subject: 'october' })).toBe(false);
+  it('matches the type, the source and the subject as written', async () => {
+    expect(await matched({ type: 'com.acme.ledger.month-closed' })).toBe(true);
+    expect(await matched({ type: 'com.acme.ledger.month-closed', source: '/ledger/eu', subject: 'september' })).toBe(
+      true,
+    );
+    expect(await matched({ type: 'com.acme.ledger.month-opened' })).toBe(false);
+    expect(await matched({ type: 'com.acme.ledger.month-closed', source: '/ledger/us' })).toBe(false);
+    expect(await matched({ type: 'com.acme.ledger.month-closed', subject: 'october' })).toBe(false);
   });
 
-  it('matches no event that lacks an attribute it names', () => {
+  it('matches no event that lacks an attribute it names', async () => {
     const { subject: _subject, ...withoutSubject } = monthClosed;
 
-    expect(matched({ type: 'com.acme.ledger.month-closed', subject: 'september' }, withoutSubject)).toBe(false);
+    expect(await matched({ type: 'com.acme.ledger.month-closed', subject: 'september' }, withoutSubject)).toBe(false);
   });
 
-  it('evaluates a data expression over the data of the event, as a listen task does', () => {
-    expect(matched({ type: 'com.acme.ledger.month-closed', data: '${ $data.region == "eu" }' })).toBe(true);
+  it('evaluates a data expression over the data of the event, as a listen task does', async () => {
+    expect(await matched({ type: 'com.acme.ledger.month-closed', data: '${ $data.region == "eu" }' })).toBe(true);
     expect(
-      matched({ type: 'com.acme.ledger.month-closed', data: '${ $data.totals.revenue > $data.totals.costs }' }),
+      await matched({ type: 'com.acme.ledger.month-closed', data: '${ $data.totals.revenue > $data.totals.costs }' }),
     ).toBe(true);
-    expect(matched({ type: 'com.acme.ledger.month-closed', data: '${ $data.region == "us" }' })).toBe(false);
-    expect(matched({ type: 'com.acme.ledger.month-closed', data: '${ $data.missing }' })).toBe(false);
+    expect(await matched({ type: 'com.acme.ledger.month-closed', data: '${ $data.region == "us" }' })).toBe(false);
+    expect(await matched({ type: 'com.acme.ledger.month-closed', data: '${ $data.missing }' })).toBe(false);
   });
 
-  it('evaluates with the time it is given as the moment of Date', () => {
+  it('evaluates with the time it is given as the moment of Date', async () => {
     expect(
-      matched({
+      await matched({
         type: 'com.acme.ledger.month-closed',
         data: '${ new Date().toISOString() == "2026-10-01T09:00:00.000Z" }',
       }),
     ).toBe(true);
   });
 
-  it('compares written data as JSON, in any order of keys', () => {
+  it('compares written data as JSON, in any order of keys', async () => {
     const data = { totals: { costs: 80, revenue: 120 }, region: 'eu' };
 
-    expect(matched({ type: 'com.acme.ledger.month-closed', data })).toBe(true);
-    expect(matched({ type: 'com.acme.ledger.month-closed', data: { region: 'eu' } })).toBe(false);
+    expect(await matched({ type: 'com.acme.ledger.month-closed', data })).toBe(true);
+    expect(await matched({ type: 'com.acme.ledger.month-closed', data: { region: 'eu' } })).toBe(false);
   });
 
-  it('takes filters of their place and their attributes alone, as a trigger keeps them, and matches them in one batch', () => {
-    expect(filterVerdictsOf([inRegion('eu'), inRegion('us'), inRegion('eu')], monthClosed, sandbox)).toEqual([
-      true,
-      false,
-      true,
-    ]);
+  it('takes filters of their place and their attributes alone, as a trigger keeps them, and matches them in one batch', async () => {
+    expect(await filterVerdictsOf([inRegion('eu'), inRegion('us'), inRegion('eu')], monthClosed, sandbox, now)).toEqual(
+      [true, false, true],
+    );
   });
 });
 
 describe('matching an event whose data expression fails', () => {
-  it('answers the error a run would raise, at the place of the filter', () => {
-    const verdict = matched({ type: 'com.acme.ledger.month-closed', data: '${ $data.totals.missing.value }' });
+  it('answers the error a run would raise, at the place of the filter', async () => {
+    const verdict = await matched({ type: 'com.acme.ledger.month-closed', data: '${ $data.totals.missing.value }' });
 
     expect(verdict).toMatchObject({
       error: {
@@ -135,29 +134,28 @@ describe('matching an event whose data expression fails', () => {
     expect(JSON.stringify(verdict)).toContain('$data.totals.missing.value');
   });
 
-  it('answers an error for a data expression that does more work than an expression of a workflow may', () => {
-    const verdict = matched({ type: 'com.acme.ledger.month-closed', data: '${ (() => { for (;;) {} })() }' });
+  it('answers an error for a data expression that does more work than an expression of a workflow may', async () => {
+    const verdict = await matched({ type: 'com.acme.ledger.month-closed', data: '${ (() => { for (;;) {} })() }' });
 
     expect(verdict).toMatchObject({
       error: { type: 'https://open-workflow-specification.org/spec/1.0.0/errors/runtime', status: 500, instance: at },
     });
-    expect(JSON.stringify(verdict)).toContain('an expression may do 250 checkpoints of work');
+    expect(JSON.stringify(verdict)).toContain(
+      'an expression of a filter may do 250 checkpoints of work, and those of one filter 500 together',
+    );
   });
 
-  it('answers the same error for every filter of a batch whose context did not freeze in time', async () => {
+  it('answers an error for a filter whose context did not freeze in time', async () => {
     const ticking = { at: 0 };
-    const late: FilterSandbox = {
-      instance: await freshInstance(unitMemoryBytes),
-      clock: () => {
-        ticking.at += 5000;
-        return ticking.at;
-      },
-      now,
-    };
-    const verdicts = filterVerdictsOf(
+    const late = filterSandboxOf(() => {
+      ticking.at += 5000;
+      return ticking.at;
+    });
+    const verdicts = await filterVerdictsOf(
       [filterOf({ with: { type: 'com.acme.ledger.month-closed', data: '${ $data.region == "eu" }' } })],
       monthClosed,
       late,
+      now,
     );
 
     expect(verdicts).toMatchObject([{ error: { status: 500 } }]);
@@ -238,8 +236,8 @@ describe('an event filter that tests what cannot be matched as it is', () => {
   });
 });
 
-function matchedIfRead(filter: LiteralFilter | undefined): FilterVerdict | undefined {
-  return filter === undefined ? undefined : filterVerdictsOf([filter], monthClosed, sandbox)[0];
+async function matchedIfRead(filter: LiteralFilter | undefined): Promise<FilterVerdict | undefined> {
+  return filter === undefined ? undefined : (await filterVerdictsOf([filter], monthClosed, sandbox, now))[0];
 }
 
 describe('a filter of a listen task that reaches events beyond its run', () => {
@@ -261,7 +259,7 @@ describe('a filter of a listen task that reaches events beyond its run', () => {
     ]);
   });
 
-  it('is matched by its literal attributes and its expressions, which name the data alone', () => {
+  it('is matched by its literal attributes and its expressions, which name the data alone', async () => {
     const listener = listenerFilterOf(
       { type: 'com.acme.ledger.month-closed', subject: 'september', data: '${ $data.region == "eu" }' },
       '/do/0/await/listen/to/one',
@@ -273,7 +271,7 @@ describe('a filter of a listen task that reaches events beyond its run', () => {
       type: 'com.acme.ledger.month-closed',
       attributes: { type: 'com.acme.ledger.month-closed', subject: 'september', data: '${ $data.region == "eu" }' },
     });
-    expect([listener, closed].map((filter) => matchedIfRead(filter))).toEqual([true, false]);
+    expect(await Promise.all([listener, closed].map((filter) => matchedIfRead(filter)))).toEqual([true, false]);
     expect(listenerFilterOf({ type: '${ "x" }' }, '/x')).toBeUndefined();
   });
 });

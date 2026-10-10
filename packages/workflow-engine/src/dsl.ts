@@ -40,5 +40,5 @@ export type {
 } from './folds/fold-page.ts';
 export type { FoldPlace } from './folds/fold-progress.ts';
 export { freshInstance } from './instances/fresh-instances.ts';
-export { filterInstances, hostClock, machineSandboxOf } from './instances/host-sandboxes.ts';
+export { filterSandboxOf, hostClock, machineSandboxOf } from './instances/host-sandboxes.ts';
 export { sandboxAnswers } from './instances/sandbox-probes.ts';

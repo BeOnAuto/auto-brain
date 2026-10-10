@@ -5,12 +5,14 @@ import type { CheckAnswer, CheckJob } from './check-messages.ts';
 import type { FoldAnswer } from './fold-messages.ts';
 import type { Ending, Interrupted } from './job-endings.ts';
 import type { ProgramAnswer } from './program-messages.ts';
+import type { Evaluations } from './remote-evaluations.ts';
 
 export interface PoolSettings {
   readonly workers: number;
   readonly heapMegabytes: number;
   readonly worker?: Readonly<URL>;
   readonly foldWorker?: Readonly<URL>;
+  readonly evaluationWorker?: Readonly<URL>;
   readonly environment?: Readonly<Record<string, string>>;
   readonly idleMs?: number;
   readonly jobsPerWorker?: number;
@@ -55,5 +57,6 @@ export interface ProgramPool {
   readonly run: (request: ProgramRequest, signal?: Readonly<AbortSignal>) => Promise<PoolOutcome>;
   readonly fold: (request: FoldRequest, signal?: Readonly<AbortSignal>) => Promise<FoldOutcome>;
   readonly check: (request: CheckRequest, signal?: Readonly<AbortSignal>) => Promise<CheckOutcome>;
+  readonly evaluations: Evaluations;
   readonly close: () => Promise<void>;
 }

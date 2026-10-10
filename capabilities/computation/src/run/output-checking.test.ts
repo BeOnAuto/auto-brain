@@ -20,6 +20,7 @@ function recording(pool: ProgramPool): { readonly pool: ProgramPool; readonly re
       heapMegabytes: pool.heapMegabytes,
       fold: pool.fold,
       check: pool.check,
+      evaluations: pool.evaluations,
       close: pool.close,
       run: (request, signal) => {
         requests.push(request);

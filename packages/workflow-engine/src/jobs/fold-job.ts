@@ -2,9 +2,9 @@ import { Schema, Struct } from 'effect';
 
 import { foldPageData } from '../folds/fold-answer.ts';
 import { foldProgress, type FoldPlace } from '../folds/fold-progress.ts';
-import { FoldAnswerSchema, type FoldAnswer } from '../jobs/fold-messages.ts';
-import { isInterrupted, type Ending } from '../jobs/job-endings.ts';
-import type { FoldEnding, FoldRequest } from '../jobs/pool-contract.ts';
+import { FoldAnswerSchema, type FoldAnswer } from './fold-messages.ts';
+import { isInterrupted, type Ending } from './job-endings.ts';
+import type { FoldEnding, FoldRequest } from './pool-contract.ts';
 import type { Evaluate, Job } from './pool-job.ts';
 
 export interface FoldJob {

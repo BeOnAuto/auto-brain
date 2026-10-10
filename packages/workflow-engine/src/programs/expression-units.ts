@@ -10,10 +10,19 @@ import {
 
 export type Arguments = Readonly<Record<string, Json>>;
 
+export interface NamedArguments {
+  readonly names: readonly string[];
+  readonly texts: readonly string[];
+}
+
 export interface ExpressionUnit {
   readonly evaluate: (source: string, values: Arguments, evaluation: Evaluation) => ProgramRun;
-  readonly took: () => boolean;
   readonly close: () => void;
+}
+
+export interface OpenedUnit extends ExpressionUnit {
+  readonly evaluateNamed: (source: string, named: NamedArguments, evaluation: Evaluation) => ProgramRun;
+  readonly took: () => boolean;
 }
 
 interface Opened {
@@ -23,16 +32,13 @@ interface Opened {
 
 const argumentName = /\$[A-Za-z_][\w$]*/gu;
 
-function namesIn(source: string): ReadonlySet<string> {
-  return new Set(source.match(argumentName));
+export function namedArguments(source: string, values: Arguments): NamedArguments {
+  const named = new Set(source.match(argumentName));
+  const names = Object.keys(values).filter((name) => named.has(`$${name}`));
+  return { names, texts: names.map((name) => JSON.stringify(values[name])) };
 }
 
-function namedIn(source: string, values: Arguments): readonly string[] {
-  const named = namesIn(source);
-  return Object.keys(values).filter((name) => named.has(`$${name}`));
-}
-
-export function expressionUnitOf(instances: () => SandboxInstance, settings: SandboxSettings): ExpressionUnit {
+export function expressionUnitOf(instances: () => SandboxInstance, settings: SandboxSettings): OpenedUnit {
   const opened: { current?: Opened } = {};
   const openedNow = (): Opened => {
     if (opened.current === undefined) {
@@ -41,30 +47,30 @@ export function expressionUnitOf(instances: () => SandboxInstance, settings: San
     }
     return opened.current;
   };
+  const evaluateNamed = (source: string, { names, texts }: NamedArguments, evaluation: Evaluation): ProgramRun => {
+    const { instance, runtime } = openedNow();
+    if (instance.refusedGrowth() || runtime.broken()) {
+      return exhaustedBy(instance.refusedGrowth() ? 'memory' : 'stack', 0);
+    }
+    const context = runtime.context();
+    try {
+      const loaded = context.expression(
+        expressionScript(
+          source,
+          names.map((name) => `$${name}`),
+        ),
+        evaluation,
+      );
+      return 'failed' in loaded
+        ? loaded.failed
+        : context.call({ fn: loaded.kept, args: texts, form: 'expression' }, evaluation);
+    } finally {
+      context.close();
+    }
+  };
   return {
-    evaluate: (source, values, evaluation) => {
-      const names = namedIn(source, values);
-      const { instance, runtime } = openedNow();
-      if (instance.refusedGrowth() || runtime.broken()) {
-        return exhaustedBy(instance.refusedGrowth() ? 'memory' : 'stack', 0);
-      }
-      const context = runtime.context();
-      try {
-        const loaded = context.expression(
-          expressionScript(
-            source,
-            names.map((name) => `$${name}`),
-          ),
-          evaluation,
-        );
-        const args = names.map((name) => JSON.stringify(values[name]));
-        return 'failed' in loaded
-          ? loaded.failed
-          : context.call({ fn: loaded.kept, args, form: 'expression' }, evaluation);
-      } finally {
-        context.close();
-      }
-    },
+    evaluate: (source, values, evaluation) => evaluateNamed(source, namedArguments(source, values), evaluation),
+    evaluateNamed,
     took: () => opened.current !== undefined,
     close: () => {
       opened.current?.runtime.close();

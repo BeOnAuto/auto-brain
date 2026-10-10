@@ -1,5 +1,11 @@
 import type { Conflict } from '@beonauto/operations';
-import { CallKeySchema, listenerFilterOf, type CallKey, type Submission } from '@beonauto/workflow-engine';
+import {
+  CallKeySchema,
+  listenerFilterOf,
+  type CallKey,
+  type MatchedFilter,
+  type Submission,
+} from '@beonauto/workflow-engine';
 import { Effect, Schema } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
@@ -12,7 +18,7 @@ import {
 } from '../follower/consumers.ts';
 import { listenersOfType, type ListenerPlace, type MatchedListener } from '../listeners/listener-rows.ts';
 import { addressOfRun } from '../runs/run-address.ts';
-import { groupVerdicts, type MatchedFilter, type MatchFilters } from './filter-matching.ts';
+import { groupVerdicts, type MatchFilters } from './filter-matching.ts';
 import type { RefuseReaction } from './refusals.ts';
 
 interface Offer {

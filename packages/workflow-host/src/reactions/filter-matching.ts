@@ -1,8 +1,12 @@
-import { filterVerdictsOf, type FilterVerdict, type JsonObject, type LiteralFilter } from '@beonauto/workflow-engine';
-import { filterInstances, hostClock, type SandboxInstance } from '@beonauto/workflow-engine/dsl';
+import {
+  filterVerdictsOf,
+  type FilterSandbox,
+  type FilterVerdict,
+  type JsonObject,
+  type MatchedFilter,
+} from '@beonauto/workflow-engine';
+import { filterSandboxOf } from '@beonauto/workflow-engine/dsl';
 import { Effect } from 'effect';
-
-export type MatchedFilter = Pick<LiteralFilter, 'reference' | 'attributes'>;
 
 export type MatchFilters = (
   filters: readonly MatchedFilter[],
@@ -10,14 +14,8 @@ export type MatchFilters = (
   now: number,
 ) => Effect.Effect<readonly FilterVerdict[]>;
 
-export function filterMatchingOf(
-  instances: () => Promise<SandboxInstance> = filterInstances(),
-  clock: () => number = hostClock,
-): MatchFilters {
-  return (filters, event, now) =>
-    filters.length === 0
-      ? Effect.succeed([])
-      : Effect.map(Effect.promise(instances), (instance) => filterVerdictsOf(filters, event, { instance, clock, now }));
+export function filterMatchingOf(sandbox: FilterSandbox = filterSandboxOf()): MatchFilters {
+  return (filters, event, now) => Effect.promise(() => filterVerdictsOf(filters, event, sandbox, now));
 }
 
 export function groupVerdicts(
@@ -26,8 +24,5 @@ export function groupVerdicts(
   event: JsonObject,
   now: number,
 ): Effect.Effect<readonly (readonly FilterVerdict[])[]> {
-  return Effect.map(match(groups.flat(), event, now), (verdicts) => {
-    const rest = [...verdicts];
-    return groups.map((filters) => rest.splice(0, filters.length));
-  });
+  return Effect.forEach(groups, (filters) => match(filters, event, now));
 }

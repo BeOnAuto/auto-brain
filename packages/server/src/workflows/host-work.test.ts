@@ -3,6 +3,7 @@ import { defineStartVersion } from '@beonauto/definitions';
 import { echo } from '@beonauto/definitions/testing';
 import { ledgerLayer } from '@beonauto/ledger/sqlite3';
 import { makeDispatcher } from '@beonauto/operations';
+import { filterSandboxOf, machineSandboxOf } from '@beonauto/workflow-engine/dsl';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -19,6 +20,7 @@ describe('the cancels the workflow host hands to the runtime of the server', () 
     const { waiting } = hostWorkOf(runtime, makeDispatcher([]), {
       capabilities: [echo],
       startVersion: defineStartVersion([echo]),
+      evaluations: { machine: machineSandboxOf(), filters: filterSandboxOf() },
     });
 
     const settled = await Effect.runPromise(

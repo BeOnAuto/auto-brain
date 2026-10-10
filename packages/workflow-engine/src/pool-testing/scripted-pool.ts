@@ -11,6 +11,7 @@ export function scriptedPool(script: readonly PoolOutcome[], otherwise: ProgramP
     },
     fold: otherwise.fold,
     check: otherwise.check,
+    evaluations: otherwise.evaluations,
     close: otherwise.close,
   };
 }

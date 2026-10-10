@@ -5,7 +5,7 @@ import { Option, Schema } from 'effect';
 import { crashed, stopped, type Ending, type Interrupted } from '../jobs/job-endings.ts';
 import { JobAnswerSchema } from '../jobs/job-envelopes.ts';
 import type { PoolSettings } from '../jobs/pool-contract.ts';
-import type { Job, Running } from './pool-job.ts';
+import type { Job, Running } from '../jobs/pool-job.ts';
 
 export const workerStackMegabytes = 64;
 
@@ -131,7 +131,7 @@ function routed(current: () => ThreadEvents | undefined, troubled: () => void): 
   };
 }
 
-function workerOptions(settings: PoolSettings): WorkerOptions {
+export function workerOptions(settings: PoolSettings): WorkerOptions {
   return {
     resourceLimits: { maxOldGenerationSizeMb: settings.heapMegabytes, stackSizeMb: workerStackMegabytes },
     env: { ...settings.environment },

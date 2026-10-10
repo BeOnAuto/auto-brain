@@ -1,18 +1,18 @@
 import { mostInputMs, testedOrRaised } from '../dsl/evaluation.ts';
 import type { JsonObject } from '../dsl/json.ts';
 import { caughtRaise } from '../dsl/raised-error.ts';
-import { filterContextOf, type FilterContext, type FilterTest } from '../programs/kept-contexts.ts';
-import { threadStackBytes, unitMemoryBytes } from '../programs/sandbox-bounds.ts';
-import type { SandboxInstance } from '../programs/sandbox-session.ts';
+import type { FilterContext, FilterTest } from '../programs/kept-contexts.ts';
+import type { Evaluation } from '../programs/program-run.ts';
 import { meterOf, type Meter } from '../runner/run-tables.ts';
 import { attributeHolds, filterAttributesOf, type FilterAttribute, type Verdict } from './attribute-match.ts';
 import type { FilterVerdict, LiteralFilter } from './event-filter.ts';
 
 export interface FilterSandbox {
-  readonly instance: SandboxInstance;
+  readonly context: (opening: () => Evaluation) => Promise<FilterContext>;
   readonly clock: () => number;
-  readonly now: number;
 }
+
+export type MatchedFilter = Pick<LiteralFilter, 'reference' | 'attributes'>;
 
 interface PreparedFilter {
   readonly reference: string;
@@ -24,51 +24,77 @@ interface Testing {
   readonly reference: string;
   readonly deadlineAt: number;
   readonly now: number;
+  readonly refused: () => void;
 }
 
-function preparedOf(
-  { reference, attributes }: Pick<LiteralFilter, 'reference' | 'attributes'>,
-  define: FilterContext['define'],
-): PreparedFilter {
+function preparedOf({ reference, attributes }: MatchedFilter, define: FilterContext['define']): PreparedFilter {
   return { reference, attributes: filterAttributesOf(attributes, define) };
 }
 
 function verdictIn(testing: Testing): Verdict<FilterTest> {
   return (test, actual, source) => {
-    const mostWork = testing.meter.allowance();
-    const run = test(JSON.stringify(actual), { budget: mostWork, deadlineAt: testing.deadlineAt, moment: testing.now });
-    return testedOrRaised(source, run, testing, mostWork);
+    const run = test(JSON.stringify(actual), {
+      budget: testing.meter.allowance(),
+      deadlineAt: testing.deadlineAt,
+      moment: testing.now,
+    });
+    if (run.ran === 'exhausted') {
+      testing.refused();
+    }
+    return testedOrRaised(source, run, testing);
   };
 }
 
-function filterVerdict(
-  filter: PreparedFilter,
-  event: JsonObject,
-  testing: Omit<Testing, 'meter' | 'reference'>,
-): FilterVerdict {
-  const place: Testing = { ...testing, meter: meterOf(), reference: filter.reference };
+function filterVerdict(filter: PreparedFilter, event: JsonObject, testing: Testing): FilterVerdict {
   return caughtRaise<FilterVerdict>(
-    () => filter.attributes.every((attribute) => attributeHolds(attribute, event, verdictIn(place))),
+    () => filter.attributes.every((attribute) => attributeHolds(attribute, event, verdictIn(testing))),
     (error) => ({ error }),
   );
 }
 
-export function filterVerdictsOf(
-  filters: readonly Pick<LiteralFilter, 'reference' | 'attributes'>[],
+function verdictsUntilRefused(
+  filters: readonly PreparedFilter[],
   event: JsonObject,
-  { instance, clock, now }: FilterSandbox,
+  sandbox: FilterSandbox,
+  now: number,
 ): readonly FilterVerdict[] {
-  const deadlineAt = clock() + mostInputMs;
-  const context = filterContextOf(
-    instance,
-    { stackBytes: threadStackBytes, mostAnswerBytes: unitMemoryBytes, clock },
-    { budget: Number.POSITIVE_INFINITY, deadlineAt, moment: now },
-  );
-  try {
-    const prepared = filters.map((filter) => preparedOf(filter, context.define));
-    context.freeze();
-    return prepared.map((filter) => filterVerdict(filter, event, { deadlineAt, now }));
-  } finally {
-    context.close();
+  const verdicts: FilterVerdict[] = [];
+  const state = { refused: false };
+  const refused = (): void => {
+    state.refused = true;
+  };
+  for (const filter of filters) {
+    const testing = { meter: meterOf(), reference: filter.reference, deadlineAt: sandbox.clock() + mostInputMs, now };
+    verdicts.push(filterVerdict(filter, event, { ...testing, refused }));
+    if (state.refused) {
+      break;
+    }
   }
+  return verdicts;
+}
+
+export async function filterVerdictsOf(
+  filters: readonly MatchedFilter[],
+  event: JsonObject,
+  sandbox: FilterSandbox,
+  now: number,
+): Promise<readonly FilterVerdict[]> {
+  if (filters.length === 0) {
+    return [];
+  }
+  const context = await sandbox.context(() => ({
+    budget: Number.POSITIVE_INFINITY,
+    deadlineAt: sandbox.clock() + mostInputMs,
+    moment: now,
+  }));
+  const verdicts = ((): readonly FilterVerdict[] => {
+    try {
+      const prepared = filters.map((filter) => preparedOf(filter, context.define));
+      context.freeze();
+      return verdictsUntilRefused(prepared, event, sandbox, now);
+    } finally {
+      context.close();
+    }
+  })();
+  return [...verdicts, ...(await filterVerdictsOf(filters.slice(verdicts.length), event, sandbox, now))];
 }

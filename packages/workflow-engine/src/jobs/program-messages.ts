@@ -2,6 +2,23 @@ import { Schema } from 'effect';
 
 const IssueSchema = Schema.Struct({ detail: Schema.String, line: Schema.NullOr(Schema.Number) });
 
+export const RaisedSchema = Schema.Struct({ ran: Schema.Literal('raised'), issue: IssueSchema, work: Schema.Number });
+
+export const ExhaustedSchema = Schema.Struct({
+  ran: Schema.Literal('exhausted'),
+  limit: Schema.Literals(['work', 'memory', 'stack', 'deadline']),
+  issue: IssueSchema,
+  work: Schema.Number,
+});
+
+export const UnfitSchema = Schema.Struct({ ran: Schema.Literal('unfit'), issue: IssueSchema, work: Schema.Number });
+
+export const OversizedSchema = Schema.Struct({
+  ran: Schema.Literal('oversized'),
+  issue: IssueSchema,
+  work: Schema.Number,
+});
+
 export const SettingsSchema = Schema.Struct({
   budget: Schema.Number,
   memoryBytes: Schema.Number,
@@ -34,14 +51,9 @@ export const ProgramAnswerSchema = Schema.Union([
     issues: Schema.Array(Schema.Struct({ pointer: Schema.String, detail: Schema.String })),
     work: Schema.Number,
   }),
-  Schema.Struct({ ran: Schema.Literal('raised'), issue: IssueSchema, work: Schema.Number }),
-  Schema.Struct({
-    ran: Schema.Literal('exhausted'),
-    limit: Schema.Literals(['work', 'memory', 'stack', 'deadline']),
-    issue: IssueSchema,
-    work: Schema.Number,
-  }),
-  Schema.Struct({ ran: Schema.Literal('unfit'), issue: IssueSchema, work: Schema.Number }),
+  RaisedSchema,
+  ExhaustedSchema,
+  UnfitSchema,
   Schema.Struct({ ran: Schema.Literal('refused'), issue: IssueSchema }),
 ]);
 

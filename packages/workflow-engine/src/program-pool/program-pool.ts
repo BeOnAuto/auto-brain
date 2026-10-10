@@ -1,11 +1,12 @@
 import { Schema, Struct } from 'effect';
 
 import { CheckAnswerSchema, type CheckAnswer } from '../jobs/check-messages.ts';
+import { foldJobOf } from '../jobs/fold-job.ts';
 import { stopped, type Ending } from '../jobs/job-endings.ts';
 import type { CheckRequest, PoolSettings, ProgramPool, ProgramRequest } from '../jobs/pool-contract.ts';
+import type { Job } from '../jobs/pool-job.ts';
 import { ProgramAnswerSchema, type ProgramAnswer } from '../jobs/program-messages.ts';
-import { foldJobOf } from './fold-job.ts';
-import type { Job } from './pool-job.ts';
+import { poolEvaluationsOf } from './evaluation-thread.ts';
 import { poolSlots, type PoolSlots } from './pool-slots.ts';
 import { poolWorkers } from './pool-workers.ts';
 
@@ -14,6 +15,8 @@ export const checkPermits = 1;
 const programWorker = new URL('../workers/program-worker.ts', import.meta.url);
 
 const foldWorker = new URL('../workers/fold-worker.ts', import.meta.url);
+
+const evaluationWorker = new URL('../workers/evaluation-worker.ts', import.meta.url);
 
 const decodeProgramAnswer = Schema.decodeUnknownOption(ProgramAnswerSchema);
 
@@ -64,6 +67,7 @@ export function programPool(settings: PoolSettings): ProgramPool {
   const checkSlots = poolSlots(checkPermits);
   const workers = poolWorkers(settings);
   const checkers = poolWorkers({ ...settings, workers: checkPermits });
+  const evaluations = poolEvaluationsOf(settings.evaluationWorker ?? evaluationWorker, settings);
   return {
     workers: settings.workers,
     heapMegabytes: settings.heapMegabytes,
@@ -90,10 +94,11 @@ export function programPool(settings: PoolSettings): ProgramPool {
       );
       return { ...ending, milliseconds: performance.now() - started };
     },
+    evaluations: evaluations.evaluations,
     close: async () => {
       slots.close();
       checkSlots.close();
-      await Promise.all([workers.close(), checkers.close()]);
+      await Promise.all([workers.close(), checkers.close(), evaluations.close()]);
     },
   };
 }

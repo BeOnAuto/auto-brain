@@ -1,7 +1,7 @@
 import type { Option } from 'effect';
 
-import type { Ending } from '../jobs/job-endings.ts';
-import type { JobSchema } from '../jobs/job-envelopes.ts';
+import type { Ending } from './job-endings.ts';
+import type { JobSchema } from './job-envelopes.ts';
 
 type Envelope = typeof JobSchema.Encoded;
 

@@ -1,6 +1,7 @@
+import type { FilterSandbox } from '../filters/filter-verdicts.ts';
+import { filterContextOf } from '../programs/kept-contexts.ts';
 import { reservedSandbox, type MachineSandbox } from '../programs/reserved-instances.ts';
-import { unitMemoryBytes } from '../programs/sandbox-bounds.ts';
-import type { SandboxInstance } from '../programs/sandbox-session.ts';
+import { threadStackBytes, unitMemoryBytes } from '../programs/sandbox-bounds.ts';
 import { freshInstance } from './fresh-instances.ts';
 import { instanceStock } from './instance-stock.ts';
 
@@ -12,7 +13,15 @@ export function machineSandboxOf(clock: () => number = hostClock): MachineSandbo
   return reservedSandbox(() => freshInstance(unitMemoryBytes), clock);
 }
 
-export function filterInstances(): () => Promise<SandboxInstance> {
+export function filterSandboxOf(clock: () => number = hostClock): FilterSandbox {
   const instances = instanceStock();
-  return () => instances(unitMemoryBytes);
+  return {
+    context: async (opening) =>
+      filterContextOf(
+        await instances(unitMemoryBytes),
+        { stackBytes: threadStackBytes, mostAnswerBytes: unitMemoryBytes, clock },
+        opening(),
+      ),
+    clock,
+  };
 }

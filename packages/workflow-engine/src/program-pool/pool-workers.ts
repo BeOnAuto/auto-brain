@@ -1,6 +1,6 @@
 import { stopped } from '../jobs/job-endings.ts';
 import type { PoolSettings } from '../jobs/pool-contract.ts';
-import type { Evaluate } from './pool-job.ts';
+import type { Evaluate } from '../jobs/pool-job.ts';
 import { threadOf, type Thread, type ThreadHooks } from './pool-threads.ts';
 
 export const idleWorkerMs = 60_000;

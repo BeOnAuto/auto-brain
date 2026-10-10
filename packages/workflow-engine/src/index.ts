@@ -66,7 +66,7 @@ export {
   type LiteralFilter,
   type LiteralFilterReading,
 } from './filters/event-filter.ts';
-export { filterVerdictsOf, type FilterSandbox } from './filters/filter-verdicts.ts';
+export { filterVerdictsOf, type FilterSandbox, type MatchedFilter } from './filters/filter-verdicts.ts';
 export type { CallCancelReceipt, Executor, StartReceipt } from './executor/executor.ts';
 export { ReceivedEventSchema, type ReceivedEvent } from './inbox/received-event.ts';
 export {
@@ -187,6 +187,7 @@ export {
 } from './run-log/state-patch.ts';
 export type { MachineOptions, MachineSettings } from './runner/run-descriptors.ts';
 export { reusedSandbox, type MachineSandbox } from './programs/reserved-instances.ts';
+export type { Evaluations } from './jobs/remote-evaluations.ts';
 export type {
   EmitReceipt,
   Emitter,

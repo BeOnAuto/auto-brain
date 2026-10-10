@@ -51,26 +51,25 @@ export function evaluate(source: string, data: Json, variables: Variables, place
       { now: place.now, mostWork, deadlineAt: place.deadlineAt },
     ),
     place,
-    mostWork,
+    (limit) => inputBoundOf(limit, mostWork),
   );
 }
 
-export function testedOrRaised(
-  source: string,
-  run: ProgramRun,
-  place: Pick<Place, 'reference' | 'meter'>,
-  mostWork: number,
-): Json {
-  return answeredOrRaised(evaluationOf(source, run), place, mostWork);
+export function testedOrRaised(source: string, run: ProgramRun, place: Pick<Place, 'reference' | 'meter'>): Json {
+  return answeredOrRaised(evaluationOf(source, run), place, (limit) => filterBoundOf[limit]);
 }
 
-function answeredOrRaised(evaluation: Evaluation, place: Pick<Place, 'reference' | 'meter'>, mostWork: number): Json {
+function answeredOrRaised(
+  evaluation: Evaluation,
+  place: Pick<Place, 'reference' | 'meter'>,
+  boundFor: (limit: Bound) => string,
+): Json {
   place.meter.record(evaluation.work);
   if ('value' in evaluation) {
     return evaluation.value;
   }
   if (evaluation.exhausted) {
-    throw raised('runtime', 500, exhaustionOf(evaluation.problem, evaluation.limit, mostWork), place.reference);
+    throw raised('runtime', 500, `${evaluation.problem}: ${boundFor(evaluation.limit)}`, place.reference);
   }
   throw new RaisedError({
     type: errorType('expression'),
@@ -81,17 +80,22 @@ function answeredOrRaised(evaluation: Evaluation, place: Pick<Place, 'reference'
   });
 }
 
-const boundOf: Readonly<Record<Bound, string>> = {
+const inputBounds: Readonly<Record<Bound, string>> = {
   work: `an expression may do ${mostExpressionWork} checkpoints of work`,
   memory: 'the expressions of one input may use the memory of their sandbox and no more',
   deadline: `the expressions of one input may take ${mostInputMs} ms`,
 };
 
-function exhaustionOf(problem: string, limit: Bound, mostWork: number): string {
-  if (limit === 'work' && mostWork < mostExpressionWork) {
-    return `${problem}: the workflow did ${mostWorkPerInput} checkpoints of expression work in one input; it lets other workflows run between tasks, not within one`;
-  }
-  return `${problem}: ${boundOf[limit]}`;
+const filterBoundOf: Readonly<Record<Bound, string>> = {
+  work: `an expression of a filter may do ${mostExpressionWork} checkpoints of work, and those of one filter ${mostWorkPerInput} together`,
+  memory: 'one filter may use the memory of its sandbox and no more',
+  deadline: `one filter may take ${mostInputMs} ms`,
+};
+
+function inputBoundOf(limit: Bound, mostWork: number): string {
+  return limit === 'work' && mostWork < mostExpressionWork
+    ? `the workflow did ${mostWorkPerInput} checkpoints of expression work in one input; it lets other workflows run between tasks, not within one`
+    : inputBounds[limit];
 }
 
 export function evaluateExpression(expression: string, data: Json, variables: Variables, place: Place): Json {

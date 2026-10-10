@@ -1,11 +1,12 @@
-import { Effect, Function } from 'effect';
+import { Effect } from 'effect';
 
-import type { SandboxInstance } from './sandbox-session.ts';
+import { expressionUnitOf, type ExpressionUnit } from './expression-units.ts';
+import { threadStackBytes, unitMemoryBytes } from './sandbox-bounds.ts';
+import type { SandboxInstance, SandboxSettings } from './sandbox-session.ts';
 
 export interface MachineSandbox {
   readonly reserve: Effect.Effect<void>;
-  readonly take: () => SandboxInstance;
-  readonly release: () => void;
+  readonly unit: () => ExpressionUnit;
   readonly clock: () => number;
 }
 
@@ -66,22 +67,38 @@ function stockOf(prepare: () => Promise<SandboxInstance>): Stock {
   };
 }
 
+function inThread(clock: () => number): SandboxSettings {
+  return { stackBytes: threadStackBytes, mostAnswerBytes: unitMemoryBytes, clock };
+}
+
+function takenFrom(stock: Stock): SandboxInstance {
+  const instance = stock.taken();
+  if (instance === undefined) {
+    throw new Error('A decision took a sandbox no input had set aside');
+  }
+  return instance;
+}
+
 export function reservedSandbox(prepare: () => Promise<SandboxInstance>, clock: () => number): MachineSandbox {
   const stock = stockOf(prepare);
   return {
     reserve: Effect.suspend(() => (stock.setAside() ? Effect.void : Effect.promise(stock.waitFor))),
-    take: () => {
-      const instance = stock.taken();
-      if (instance === undefined) {
-        throw new Error('A decision took a sandbox no input had set aside');
-      }
-      return instance;
+    unit: () => {
+      const unit = expressionUnitOf(() => takenFrom(stock), inThread(clock));
+      return {
+        evaluate: unit.evaluate,
+        close: () => {
+          unit.close();
+          if (!unit.took()) {
+            stock.released();
+          }
+        },
+      };
     },
-    release: stock.released,
     clock,
   };
 }
 
 export function reusedSandbox(instance: SandboxInstance, clock: () => number): MachineSandbox {
-  return { reserve: Effect.void, take: () => instance, release: Function.constVoid, clock };
+  return { reserve: Effect.void, unit: () => expressionUnitOf(() => instance, inThread(clock)), clock };
 }

@@ -20,7 +20,7 @@ export function reactionConsumersOf(
   starting: Starting,
 ): readonly RecordConsumer[] {
   const { database, clock, reports } = host;
-  const match = filterMatchingOf();
+  const match = filterMatchingOf(options.filters);
   const offers = listenerOffers({
     database,
     refusals,
