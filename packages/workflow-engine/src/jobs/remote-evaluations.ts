@@ -4,7 +4,7 @@ import type { FilterSandbox, FilterSession } from '../filters/filter-verdicts.ts
 import { namedArguments, type ExpressionUnit } from '../programs/expression-units.ts';
 import { exhaustedBy, type Evaluation, type ProgramFailure, type ProgramRun } from '../programs/program-run.ts';
 import type { MachineSandbox } from '../programs/reserved-instances.ts';
-import type { AnsweredRequest } from './evaluation-messages.ts';
+import type { AnsweredRequest, PrepareRequest, TestRequest } from './evaluation-messages.ts';
 
 export interface EvaluationCalls {
   readonly ready: () => Promise<void>;
@@ -14,7 +14,8 @@ export interface EvaluationCalls {
 
 export interface EvaluationAsks {
   readonly ready: () => Promise<void>;
-  readonly ask: (request: AnsweredRequest, waitMs: number) => Promise<ProgramRun>;
+  readonly prepare: (request: PrepareRequest, waitMs: number) => Promise<ProgramRun>;
+  readonly test: (request: TestRequest, waitMs: number) => Promise<ProgramRun | 'unprepared'>;
   readonly release: (unit: number) => void;
 }
 
@@ -69,23 +70,31 @@ function remoteUnit({ calls, clock, unit }: Remote): ExpressionUnit {
 
 function remoteFilterSession({ asks, clock, unit }: Asked, opening: Evaluation): FilterSession {
   const sources: string[] = [];
+  const prepareWaitMs = opening.deadlineAt - clock();
   const state: { prepared: Promise<ProgramRun> | undefined } = { prepared: undefined };
   const prepared = (): Promise<ProgramRun> => {
     state.prepared ??=
       sources.length === 0
         ? Promise.resolve(answeredNothing)
-        : asks.ask({ kind: 'prepare', unit, sources, evaluation: opening }, opening.deadlineAt - clock());
+        : asks.prepare({ kind: 'prepare', unit, sources, evaluation: opening }, prepareWaitMs);
     return state.prepared;
   };
   return {
     define: (source) => {
       const test = sources.push(source) - 1;
-      return async (value, evaluation) => {
+      const tested = async (value: string, evaluation: Evaluation, waitMs: number): Promise<ProgramRun> => {
         const frozen = await prepared();
-        return frozen.ran === 'answered'
-          ? asks.ask({ kind: 'test', unit, test, value, evaluation }, evaluation.deadlineAt - clock())
-          : frozen;
+        if (frozen.ran !== 'answered') {
+          return frozen;
+        }
+        const run = await asks.test({ kind: 'test', unit, test, value, evaluation }, waitMs);
+        if (run !== 'unprepared') {
+          return run;
+        }
+        state.prepared = undefined;
+        return tested(value, evaluation, waitMs);
       };
+      return (value, evaluation) => tested(value, evaluation, evaluation.deadlineAt - clock());
     },
     freeze: async () => {
       const frozen = await prepared();

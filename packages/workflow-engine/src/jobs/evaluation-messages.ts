@@ -44,3 +44,7 @@ export const EvaluationRequestSchema = Schema.Union([
 type EvaluationRequest = typeof EvaluationRequestSchema.Type;
 
 export type AnsweredRequest = Exclude<EvaluationRequest, { readonly kind: 'close' }>;
+
+export type PrepareRequest = Extract<AnsweredRequest, { readonly kind: 'prepare' }>;
+
+export type TestRequest = Extract<AnsweredRequest, { readonly kind: 'test' }>;

@@ -145,6 +145,23 @@ describe(
   },
 );
 
+describe('the filter worker of a pool, matching groups at the same time', { timeout: evaluationTestTimeoutMs }, () => {
+  it('prepares again on the fresh worker the groups prepared on the worker a churning filter ended, so groups matched at the same time still match', async () => {
+    const { filters } = poolOf().evaluations;
+    await filterVerdictsOf([plainFilter], closed, filters, now);
+    const european = (reference: string) => ({ ...plainFilter, reference });
+
+    const verdicts = await Promise.all([
+      filterVerdictsOf([churningFilter], closed, filters, now),
+      filterVerdictsOf([european('/first')], closed, filters, now),
+      filterVerdictsOf([european('/second')], closed, filters, now),
+      filterVerdictsOf([european('/third')], closed, filters, now),
+    ]);
+
+    expect(verdicts).toMatchObject([[{ stopped: true }], [true], [true], [true]]);
+  });
+});
+
 describe(
   'the evaluation worker of a pool, given a stack or a memory to exhaust',
   { timeout: evaluationTestTimeoutMs },

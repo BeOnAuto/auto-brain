@@ -13,6 +13,8 @@ const writingTheIteratorPrototype =
 
 const filling = '${ (() => { const kept = []; for (;;) { kept.push("x".repeat(1048576) + kept.length); } })() }';
 
+const working = '${ (() => { let turns = 0; for (;;) { turns += 1; } })() }';
+
 function filterAt(reference: string, data = writingTheIteratorPrototype) {
   return { reference, attributes: { type: 'com.acme.ledger.month-closed', data } };
 }
@@ -48,5 +50,22 @@ describe('the filters of one batch', () => {
 
     expect(verdicts).toMatchObject([{ error: { status: 500, instance: '/filling' } }, true, false]);
     expect(JSON.stringify(verdicts[0])).toContain('one filter may use the memory of its sandbox and no more');
+  });
+
+  it('say a filter was stopped when its memory or its deadline ended it, which no event causes, and not when its work did', async () => {
+    const sandbox = filterSandboxOf(() => 0);
+
+    const verdicts = await filterVerdictsOf(
+      [filterAt('/working', working), filterAt('/filling', filling), filterAt('/eu', '${ $data.region == "eu" }')],
+      closed,
+      sandbox,
+      now,
+    );
+
+    expect(verdicts).toMatchObject([
+      { error: { instance: '/working' }, stopped: false },
+      { error: { instance: '/filling' }, stopped: true },
+      true,
+    ]);
   });
 });

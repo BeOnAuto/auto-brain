@@ -4,14 +4,18 @@ import { Option, Schema } from 'effect';
 
 import { freshInstance } from '../instances/fresh-instances.ts';
 import { instanceStock, type Instances } from '../instances/instance-stock.ts';
-import { answeredFlag, EvaluationRequestSchema, readyFlag, type AnsweredRequest } from '../jobs/evaluation-messages.ts';
+import {
+  answeredFlag,
+  EvaluationRequestSchema,
+  readyFlag,
+  type AnsweredRequest,
+  type PrepareRequest,
+} from '../jobs/evaluation-messages.ts';
 import { expressionUnitOf, type OpenedUnit } from '../programs/expression-units.ts';
 import { filterContextOf, type FilterContext, type FilterTest } from '../programs/kept-contexts.ts';
 import type { ProgramRun } from '../programs/program-run.ts';
 import { threadStackBytes, unitMemoryBytes } from '../programs/sandbox-bounds.ts';
 import type { SandboxSettings } from '../programs/sandbox-session.ts';
-
-type PrepareRequest = Extract<AnsweredRequest, { readonly kind: 'prepare' }>;
 
 interface PreparedFilters {
   readonly context: FilterContext;

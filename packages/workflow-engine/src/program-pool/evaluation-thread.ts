@@ -35,12 +35,15 @@ interface Live {
   readonly ready: Promise<void>;
   readonly gone: () => boolean;
   readonly post: (request: AnsweredRequest, waitMs: number) => void;
+  readonly answer: (request: AnsweredRequest, waitMs: number) => Promise<Heard>;
 }
 
 interface ThreadState {
   live?: Live;
   closed: boolean;
 }
+
+type Heard = { readonly message: unknown } | 'timed-out';
 
 const decodeRun = Schema.decodeUnknownSync(ProgramRunSchema);
 
@@ -71,7 +74,22 @@ function started(module: Readonly<URL>, settings: PoolSettings): Live {
   const post = (request: AnsweredRequest, waitMs: number): void => {
     port1.postMessage({ ...request, evaluation: { ...request.evaluation, deadlineAt: absoluteNow() + waitMs } }, []);
   };
-  return { worker, port: port1, flags, ready, gone: () => state.gone, post };
+  const answer = (request: AnsweredRequest, waitMs: number): Promise<Heard> => {
+    const { promise, resolve } = Promise.withResolvers<Heard>();
+    const answered = (message: unknown): void => {
+      clearTimeout(timer);
+      resolve({ message });
+    };
+    const timer = setTimeout(() => {
+      port1.off('message', answered);
+      resolve('timed-out');
+    }, waitMs + answerGraceMs);
+    port1.once('message', answered);
+    port1.unref();
+    post(request, waitMs);
+    return promise;
+  };
+  return { worker, port: port1, flags, ready, gone: () => state.gone, post, answer };
 }
 
 function remainingUntil(at: number): number {
@@ -134,40 +152,48 @@ function callingThreadOf(keeper: Keeper): EvaluationCalls {
 
 function askingThreadOf(keeper: Keeper): EvaluationAsks {
   const queue: { last: Promise<unknown> } = { last: Promise.resolve() };
-  const askedNow = async (request: AnsweredRequest, waitMs: number): Promise<ProgramRun> => {
+  const preparedOn = new Map<number, Live>();
+  const queued = <Answer>(work: () => Promise<Answer>): Promise<Answer> => {
+    const asked = queue.last.then(work);
+    queue.last = asked.then(Function.constVoid, Function.constVoid);
+    return asked;
+  };
+  const readyLive = async (): Promise<Live | undefined> => {
     const live = keeper.current();
-    if (live === undefined) {
+    await live?.ready;
+    return live;
+  };
+  const runOf = (heard: Heard): ProgramRun => {
+    if (heard === 'timed-out') {
+      keeper.replaced();
       return exhaustedBy('deadline', 0);
     }
-    await live.ready;
-    const { promise, resolve } = Promise.withResolvers<ProgramRun>();
-    const answered = (message: unknown): void => {
-      clearTimeout(timer);
-      resolve(keptAfter(decodeRun(message), keeper));
-    };
-    const timer = setTimeout(
-      () => {
-        live.port.off('message', answered);
-        keeper.replaced();
-        resolve(exhaustedBy('deadline', 0));
-      },
-      Math.max(0, waitMs) + answerGraceMs,
-    );
-    live.port.once('message', answered);
-    live.port.unref();
-    live.post(request, Math.max(0, waitMs));
-    return promise;
+    return keptAfter(decodeRun(heard.message), keeper);
   };
   return {
     ready: async () => {
       await keeper.current()?.ready;
     },
-    ask: (request, waitMs) => {
-      const asked = queue.last.then(() => askedNow(request, waitMs));
-      queue.last = asked.then(Function.constVoid, Function.constVoid);
-      return asked;
+    prepare: (request, waitMs) =>
+      queued(async () => {
+        const live = await readyLive();
+        if (live === undefined) {
+          return exhaustedBy('deadline', 0);
+        }
+        preparedOn.set(request.unit, live);
+        return runOf(await live.answer(request, Math.max(0, waitMs)));
+      }),
+    test: (request, waitMs) =>
+      queued(async () => {
+        const live = await readyLive();
+        return live !== undefined && preparedOn.get(request.unit) === live
+          ? runOf(await live.answer(request, Math.max(0, waitMs)))
+          : 'unprepared';
+      }),
+    release: (unit) => {
+      preparedOn.delete(unit);
+      keeper.release(unit);
     },
-    release: keeper.release,
   };
 }
 

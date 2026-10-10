@@ -41,8 +41,13 @@ function filterOf(reference: string, data: string) {
   return { reference, attributes: { type: 'com.acme.closed', data } };
 }
 
-function fakeCalls(answer: (request: AnsweredRequest) => ProgramRun, msPerCall = 0): FakeCalls {
+function fakeCalls(
+  answer: (request: AnsweredRequest) => ProgramRun,
+  msPerCall = 0,
+  unprepared: readonly boolean[] = [],
+): FakeCalls {
   const asked: Asked[] = [];
+  const unpreparedTests = [...unprepared];
   const released: number[] = [];
   const clock = { at: 0, readies: 0 };
   return {
@@ -67,10 +72,15 @@ function fakeCalls(answer: (request: AnsweredRequest) => ProgramRun, msPerCall =
         clock.at += 500;
         return Promise.resolve();
       },
-      ask: (request, waitMs) => {
+      prepare: (request, waitMs) => {
         asked.push({ request, waitMs });
         clock.at += msPerCall;
         return Promise.resolve(answer(request));
+      },
+      test: (request, waitMs) => {
+        asked.push({ request, waitMs });
+        clock.at += msPerCall;
+        return Promise.resolve(unpreparedTests.shift() === true ? 'unprepared' : answer(request));
       },
       release: (unit) => {
         released.push(unit);
@@ -176,6 +186,29 @@ describe('the filters whose contexts another thread keeps', () => {
       evaluation: { budget: Number.POSITIVE_INFINITY, deadlineAt: 2500, moment: now },
     });
     expect([fake.released, filters.clock()]).toEqual([[1], 5000]);
+  });
+});
+
+describe('the filters of a context the thread no longer holds', () => {
+  it('prepare their sources again when the thread says its fresh worker never had them, and test under the wait the filter started with', async () => {
+    const fake = fakeCalls(firstTestHolds, 100, [true]);
+    const { filters } = remoteEvaluations(fake.calls, fake.asks, () => fake.clock.at);
+
+    const verdicts = await filterVerdictsOf(
+      [filterOf('/eu', '${ $data == "eu" }'), filterOf('/us', '${ $data == "us" }')],
+      event,
+      filters,
+      now,
+    );
+
+    expect(verdicts).toEqual([true, false]);
+    expect(fake.asked.map(({ request, waitMs }) => [request.kind, request.unit, waitMs])).toEqual([
+      ['prepare', 1, 2000],
+      ['test', 1, 200],
+      ['prepare', 1, 2000],
+      ['test', 1, 200],
+      ['test', 1, 200],
+    ]);
   });
 });
 

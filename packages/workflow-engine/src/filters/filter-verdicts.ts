@@ -1,7 +1,7 @@
 import { mostFilterMs, mostInputMs, testedOrRaised } from '../dsl/evaluation.ts';
 import type { Json, JsonObject } from '../dsl/json.ts';
 import { caughtRaiseLater } from '../dsl/raised-error.ts';
-import type { Evaluation, ProgramFailure, ProgramRun } from '../programs/program-run.ts';
+import type { Evaluation, Limit, ProgramFailure, ProgramRun } from '../programs/program-run.ts';
 import { meterOf, type Meter } from '../runner/run-tables.ts';
 import { attributeHoldsLater, filterAttributesOf, type FilterAttribute } from './attribute-match.ts';
 import type { FilterVerdict, LiteralFilter } from './event-filter.ts';
@@ -31,8 +31,10 @@ interface Testing {
   readonly reference: string;
   readonly deadlineAt: number;
   readonly now: number;
-  readonly refused: () => void;
+  readonly exhausted: (limit: Limit) => void;
 }
+
+const limitsNoEventCauses: ReadonlySet<Limit> = new Set(['deadline', 'memory']);
 
 function preparedOf({ reference, attributes }: MatchedFilter, define: FilterSession['define']): PreparedFilter {
   return { reference, attributes: filterAttributesOf(attributes, define) };
@@ -46,7 +48,7 @@ function verdictIn(testing: Testing): (test: AskedTest, actual: Json, source: st
       moment: testing.now,
     });
     if (run.ran === 'exhausted') {
-      testing.refused();
+      testing.exhausted(run.limit);
     }
     return testedOrRaised(source, run, testing);
   };
@@ -74,21 +76,21 @@ async function verdictsUntilRefused(
   if (filter === undefined) {
     return [];
   }
-  const state = { refused: false };
+  const state: { limit: Limit | undefined } = { limit: undefined };
   const testing: Testing = {
     meter: meterOf(),
     reference: filter.reference,
     deadlineAt: sandbox.clock() + mostFilterMs,
     now,
-    refused: () => {
-      state.refused = true;
+    exhausted: (limit) => {
+      state.limit = limit;
     },
   };
   const verdict = await caughtRaiseLater<FilterVerdict>(
     () => attributesHold(filter.attributes, event, testing),
-    (error) => ({ error, stopped: state.refused }),
+    (error) => ({ error, stopped: state.limit !== undefined && limitsNoEventCauses.has(state.limit) }),
   );
-  return state.refused ? [verdict] : [verdict, ...(await verdictsUntilRefused(rest, event, sandbox, now))];
+  return state.limit === undefined ? [verdict, ...(await verdictsUntilRefused(rest, event, sandbox, now))] : [verdict];
 }
 
 async function verdictsInSession(

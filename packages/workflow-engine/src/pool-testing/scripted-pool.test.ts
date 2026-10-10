@@ -16,7 +16,8 @@ const evaluations = remoteEvaluations(
   },
   {
     ready: () => Promise.resolve(),
-    ask: () => Promise.resolve({ ran: 'answered', text: 'null', work: 0 }),
+    prepare: () => Promise.resolve({ ran: 'answered', text: 'null', work: 0 }),
+    test: () => Promise.resolve({ ran: 'answered', text: 'null', work: 0 }),
     release: (unit) => {
       asked.push(`release ${unit}`);
     },
