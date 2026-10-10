@@ -5,9 +5,7 @@ import { formatted, functionOf, inTurn, poolOfOne, request } from './common.ts';
 
 const blocking = new URL(`data:text/javascript,${encodeURIComponent('while (true) {}')}`);
 
-const recursion = functionOf(
-  'const down = (left: number): number => (left === 0 ? 0 : down(left - 1));\n  return down(input);',
-);
+const recursion = functionOf('const down = (left) => (left === 0 ? 0 : down(left - 1));\n  return down(input);');
 
 interface Bomb {
   readonly name: string;
@@ -17,11 +15,11 @@ interface Bomb {
 const bombs: readonly Bomb[] = [
   {
     name: 'strings of a megabyte',
-    body: 'const kept: string[] = [];\n  for (;;) kept.push("y".repeat(1048576) + kept.length);',
+    body: 'const kept = [];\n  for (;;) kept.push("y".repeat(1048576) + kept.length);',
   },
   {
     name: 'small objects',
-    body: 'const kept: object[] = [];\n  for (let index = 0; ; index++) kept.push({ index, text: "w" + index });',
+    body: 'const kept = [];\n  for (let index = 0; ; index++) kept.push({ index, text: "w" + index });',
   },
 ];
 

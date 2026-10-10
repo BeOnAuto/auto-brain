@@ -1,13 +1,16 @@
 import { mostInputBytes } from '@beonauto/definitions';
 import { jsonBytesOf, type ProgramPool } from '@beonauto/workflow-engine/dsl';
-import { Result } from 'effect';
+import { Effect, Result } from 'effect';
 
+import { documentCheck } from '../src/document/document-check.ts';
 import { parseComputationDocument } from '../src/document/document-parsing.ts';
 import { campaignPace, campaignRows } from '../src/testing/campaign-pace.ts';
 import { formatted, inTurn, median, poolOfOne, request } from './common.ts';
 
-function program(): string {
-  return Result.getOrThrow(parseComputationDocument(campaignPace)).program;
+async function strippedProgram(pool: ProgramPool): Promise<string> {
+  const document = Result.getOrThrow(parseComputationDocument(campaignPace));
+  const { module = document.program } = await Effect.runPromise(documentCheck(pool)(document));
+  return module;
 }
 
 function mostRowsWithinTheInput(): number {
@@ -30,9 +33,9 @@ async function workOf(pool: ProgramPool, source: string, rows: number): Promise<
 }
 
 export async function exampleMeasured(): Promise<readonly string[]> {
-  const source = program();
-  const most = mostRowsWithinTheInput();
   const pool = poolOfOne();
+  const source = await strippedProgram(pool);
+  const most = mostRowsWithinTheInput();
   const sizes = [1000, 2000, 4000, most];
   const checkpoints = await inTurn(
     sizes,

@@ -36,12 +36,12 @@ const constructs: readonly Construct[] = [
   { name: 'listing entries', operation: 'Object.entries(input.o);' },
   { name: 'encoding JSON', operation: 'JSON.stringify(input.a);' },
   { name: 'decoding JSON', operation: 'JSON.parse(input.j);' },
-  { name: 'mapping', operation: 'input.a.map((each: number) => each + 1);' },
-  { name: 'reducing', operation: 'input.a.reduce((sum: number, each: number) => sum + each, 0);' },
-  { name: 'grouping', operation: 'Map.groupBy(input.a, (each: number) => each % 10);' },
+  { name: 'mapping', operation: 'input.a.map((each) => each + 1);' },
+  { name: 'reducing', operation: 'input.a.reduce((sum, each) => sum + each, 0);' },
+  { name: 'grouping', operation: 'Map.groupBy(input.a, (each) => each % 10);' },
   {
     name: 'sorting with a comparator',
-    operation: 'input.b.toSorted((first: number, second: number) => first - second);',
+    operation: 'input.b.toSorted((first, second) => first - second);',
   },
   { name: 'sorting without one', operation: 'input.b.toSorted();' },
   { name: 'making a set', operation: 'new Set(input.a);' },
@@ -58,7 +58,7 @@ const deadlineMs = 60_000;
 export async function constructsMeasured(): Promise<readonly string[]> {
   const pool = poolOfOne();
   const all = await inTurn(constructs, async ({ name, operation }): Promise<Timed> => {
-    const source = functionOf(`const step = (): number => 0;\n  for (;;) {\n    ${operation}\n  }`);
+    const source = functionOf(`const step = () => 0;\n  for (;;) {\n    ${operation}\n  }`);
     const ran = await pool.run(request(source, data, deadlineMs));
     const ending = ran.ran === 'exhausted' ? `exhausted by ${ran.limit}` : ran.ran;
     return { name, milliseconds: ran.milliseconds, ending };

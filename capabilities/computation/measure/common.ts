@@ -24,7 +24,7 @@ export function inTurn<A, B>(items: readonly A[], step: (item: A) => Promise<B>)
 }
 
 export function functionOf(body: string): string {
-  return `export default function (input: any): unknown {\n  ${body}\n}`;
+  return `export default function (input) {\n  ${body}\n}`;
 }
 
 export function request(
