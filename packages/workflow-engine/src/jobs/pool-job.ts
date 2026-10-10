@@ -14,6 +14,7 @@ export interface Job<Answer> {
 export interface Running {
   readonly until: number;
   readonly signal?: Readonly<AbortSignal> | undefined;
+  readonly afterReady?: number;
 }
 
 export type Evaluate = <Answer>(job: Job<Answer>, running: Running) => Promise<Ending<Answer>>;

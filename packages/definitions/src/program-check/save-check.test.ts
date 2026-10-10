@@ -4,7 +4,7 @@ import { Effect, Exit } from 'effect';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import * as checkWorkerModule from './check-worker.ts';
-import { checkDeadlineMs, checkedAtSave, checkWorker } from './save-check.ts';
+import { checkDeadlineMs, checkedAtSave, checkWorker, warmedChecks } from './save-check.ts';
 
 const pool = programPool({ workers: 1, heapMegabytes: 256 });
 
@@ -31,7 +31,7 @@ function checked(on: ProgramPool, deadlineMs?: number) {
 
 describe('the check of a document when it is saved', () => {
   it('runs in the pool’s check worker and answers the compiler’s issues', { timeout: 60_000 }, async () => {
-    expect(await checked(pool, 50_000)).toEqual(
+    expect(await checked(pool)).toEqual(
       Exit.succeed({
         issues: [
           {
@@ -62,7 +62,7 @@ describe('a check that passes', () => {
       ],
     };
 
-    expect(await Effect.runPromise(checkedAtSave(pool, passing, 50_000))).toEqual({
+    expect(await Effect.runPromise(checkedAtSave(pool, passing))).toEqual({
       stripped: {
         module: 'export default function (input       )         {\n  return input.ready;\n}',
         expressions: { '$data.ready as boolean': '$data.ready           ' },
@@ -76,7 +76,7 @@ describe('a check that passes', () => {
 
 describe('a check that does not answer', () => {
   it('is unavailable when the check does not answer within its deadline', async () => {
-    expect(await checked(pool, 1)).toEqual(
+    expect(await checked(answering({ ran: 'stopped', because: 'deadline', milliseconds: 1 }), 1)).toEqual(
       Exit.fail(
         new Unavailable({
           detail:
@@ -95,7 +95,7 @@ describe('a check that does not answer', () => {
 
     expect(stopped).toEqual(
       [
-        'No checker was free within the 2000 ms a save allows its check, since this server checks one document at a time; try again',
+        'No checker was ready in time for this save, since this server checks one document at a time with one checker; try again',
         'The check of the document took more memory than its worker may use, and was stopped; try again',
         'The save was stopped before its check ended',
         'The server is stopping',
@@ -109,4 +109,28 @@ describe('a check that does not answer', () => {
     expect(Exit.hasDies(exit)).toBe(true);
     expect(String(Exit.findDefect(exit))).toContain(defect);
   });
+});
+
+describe('the check worker a server warms when it starts', () => {
+  it(
+    'checks one trivial expression, so the compiler is loaded before the first save',
+    { timeout: 60_000 },
+    async () => {
+      const asked: unknown[] = [];
+      const recording: ProgramPool = {
+        ...pool,
+        check: (request, signal) => {
+          asked.push(request);
+          return pool.check(request, signal);
+        },
+      };
+
+      const warmed = await warmedChecks(recording);
+
+      expect(warmed).toMatchObject({ ran: 'checked', issues: [] });
+      expect(asked).toEqual([
+        { schemas: {}, expressions: [{ source: 'true', names: [] }], deadlineMs: checkDeadlineMs, worker: checkWorker },
+      ]);
+    },
+  );
 });

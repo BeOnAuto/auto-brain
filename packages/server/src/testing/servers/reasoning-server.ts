@@ -26,15 +26,6 @@ export const alpha = '/v1/orgs/acme/brains/alpha';
 
 const localMode: Readonly<Record<string, string>> = { LOCAL_MODE: 'true' };
 
-const checkDeadlineMs = 20_000;
-
-function withPatientChecks(programPoolOf: ProgramPoolOf): ProgramPoolOf {
-  return (settings) => {
-    const pool = programPoolOf(settings);
-    return { ...pool, check: (asked, signal) => pool.check({ ...asked, deadlineMs: checkDeadlineMs }, signal) };
-  };
-}
-
 type Fetch = typeof globalThis.fetch;
 
 const noNetwork: Fetch = () => Promise.reject(new TypeError('fetch failed: the tests reach no network'));
@@ -55,7 +46,7 @@ export async function servingReasoning(
           ...access,
           languageModel: scripted.languageModel,
         })),
-      withPatientChecks(programPoolOf),
+      programPoolOf,
       clock,
     ),
   );

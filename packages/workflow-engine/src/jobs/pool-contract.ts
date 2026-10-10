@@ -15,6 +15,7 @@ export interface PoolSettings {
   readonly evaluationWorker?: Readonly<URL>;
   readonly environment?: Readonly<Record<string, string>>;
   readonly idleMs?: number;
+  readonly checkStartMs?: number;
   readonly jobsPerWorker?: number;
 }
 

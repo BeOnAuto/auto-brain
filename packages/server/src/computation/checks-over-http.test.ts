@@ -163,9 +163,10 @@ describe('a long document checked when it is saved, over HTTP', { timeout: check
 });
 
 describe('the check at save, over HTTP', { timeout: checkTestTimeoutMs }, () => {
-  it('runs once a save, never when a definition is read or run', async () => {
+  it('runs once when the server starts, to warm its worker, and then once a save, never when a definition is read or run', async () => {
     const { checks, poolOf } = countingChecks();
     await serving(poolOf);
+    const atStart = checks.count();
 
     await saving('pace', campaignPace);
     await server.call('GET', `${alpha}/definitions/computation/pace`);
@@ -174,7 +175,7 @@ describe('the check at save, over HTTP', { timeout: checkTestTimeoutMs }, () => 
     });
 
     expect(ran).toMatchObject({ status: 200 });
-    expect(checks.count()).toBe(1);
+    expect([atStart, checks.count()]).toEqual([1, 2]);
   });
 
   it('leaves the document unsaved and answers unavailable, on a create and an update, when it does not answer in time', async () => {

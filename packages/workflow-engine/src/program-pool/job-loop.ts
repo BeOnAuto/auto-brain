@@ -5,7 +5,7 @@ import { Option, Schema } from 'effect';
 import type { FoldAnswerData } from '../folds/fold-answer.ts';
 import { progressOf } from '../folds/fold-progress.ts';
 import { instanceStock, type Instances } from '../instances/instance-stock.ts';
-import { JobSchema, type JobAnswer, type JobEnvelope } from '../jobs/job-envelopes.ts';
+import { JobSchema, readySignal, type JobAnswer, type JobEnvelope } from '../jobs/job-envelopes.ts';
 import { keptFor, type JobHandlers, type Kept } from '../jobs/job-kit.ts';
 import type { ProgramAnswerData } from '../jobs/program-answer.ts';
 
@@ -105,4 +105,5 @@ export function serveJobs(handlers: JobHandlers, port: MessagePort | null = pare
       return answer;
     });
   });
+  port.postMessage(readySignal, []);
 }

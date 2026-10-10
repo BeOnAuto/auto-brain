@@ -51,7 +51,7 @@ describe(
   'the expressions of a workflow, checked when it is saved, over HTTP',
   { timeout: workflowTestTimeoutMs },
   () => {
-    it('checks a hundred expressions as one job, saves the workflow, and runs it', async () => {
+    it('checks one expression when the server starts, then a hundred as one job, saves the workflow, and runs it', async () => {
       const { checked, poolOf } = recordingChecks();
       server = await servingWorkflows([], { LOCAL_MODE: 'true' }, poolOf);
       await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
@@ -60,7 +60,7 @@ describe(
       const started = await server.call('POST', `${alpha}/definitions/workflow/hundred/run`, { body: { input: {} } });
 
       expect(saved).toMatchObject({ status: 201 });
-      expect(checked.map(({ expressions }) => expressions.length)).toEqual([100]);
+      expect(checked.map(({ expressions }) => expressions.length)).toEqual([1, 100]);
       expect(await settledRun(server, `${alpha}/runs/${runIdIn(started.body)}`)).toMatchObject({
         body: { status: 'succeeded', output: { n: 4950 } },
       });

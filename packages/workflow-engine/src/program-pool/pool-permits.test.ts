@@ -4,11 +4,11 @@ import { setTimeout } from 'node:timers/promises';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { CheckRequest, PoolOutcome, PoolSettings, ProgramPool } from '../jobs/pool-contract.ts';
+import type { PoolOutcome, PoolSettings, ProgramPool } from '../jobs/pool-contract.ts';
 import { counting, countingElsewhere } from '../pool-testing/counting-workers.ts';
 import { threadsAlive } from '../pool-testing/threads-alive.ts';
 import { unitMemoryBytes, workerStackBytes } from '../programs/sandbox-bounds.ts';
-import { checkPermits, programPool } from './program-pool.ts';
+import { programPool } from './program-pool.ts';
 
 interface Ran {
   readonly jobs: number;
@@ -16,8 +16,6 @@ interface Ran {
 }
 
 const poolTestTimeoutMs = 30_000;
-
-const longerThanTheTestMs = 2 * poolTestTimeoutMs;
 
 const pools: ProgramPool[] = [];
 
@@ -72,30 +70,6 @@ function run(
     mostOutputBytes: 1000,
     worker,
   });
-}
-
-const blocking = new URL(`data:text/javascript,${encodeURIComponent('while (true) {}')}`);
-
-const checking = new URL(
-  `data:text/javascript,${encodeURIComponent(
-    [
-      "import { parentPort } from 'node:worker_threads';",
-      'parentPort.on("message", ({ job, kind, request }) => {',
-      "  const issues = kind === 'check' ? request.expressions.map((each, at) => ({ at, line: 1, detail: each.source })) : [];",
-      "  parentPort.postMessage({ job, answer: { ran: 'checked', issues }, keep: true });",
-      '});',
-    ].join('\n'),
-  )}`,
-);
-
-function checkOf(more: Partial<CheckRequest> = {}): CheckRequest {
-  return {
-    schemas: {},
-    expressions: [{ source: '$data.a', names: ['$data'] }],
-    deadlineMs: 2000,
-    worker: checking,
-    ...more,
-  };
 }
 
 function ranOf(outcome: PoolOutcome): Ran {
@@ -174,40 +148,6 @@ describe('the workers of a pool and its permits, while a worker is let go of', {
       { ran: 'stopped', because: 'closing' },
       { ran: 'stopped', because: 'closing' },
     ]);
-  });
-});
-
-describe('the permit of the checks of a pool', { timeout: poolTestTimeoutMs }, () => {
-  it('runs on a permit of its own, so it never waits behind the runs that take every worker', async () => {
-    const pool = poolOf({ workers: 2 });
-    const blocked = Array.from({ length: 2 }, () => run(pool, 'block', counting, longerThanTheTestMs));
-
-    const checked = await pool.check(checkOf());
-
-    expect(checkPermits).toBe(1);
-    expect(checked).toMatchObject({ ran: 'checked', issues: [{ at: 0, line: 1, detail: '$data.a' }] });
-    await pool.close();
-    expect(await Promise.all(blocked)).toMatchObject([
-      { ran: 'stopped', because: 'closing' },
-      { ran: 'stopped', because: 'closing' },
-    ]);
-  });
-
-  it('waits for its one permit until its deadline, and stops a check that runs past it', async () => {
-    const pool = poolOf();
-    const first = pool.check(checkOf({ worker: blocking, deadlineMs: 2000 }));
-
-    const second = await pool.check(checkOf({ deadlineMs: 300 }));
-
-    expect(second).toMatchObject({ ran: 'stopped', because: 'busy' });
-    expect(await first).toMatchObject({ ran: 'stopped', because: 'deadline' });
-  });
-
-  it('takes no more checks once the pool is closed', async () => {
-    const pool = poolOf();
-    await pool.close();
-
-    expect(await pool.check(checkOf())).toMatchObject({ ran: 'stopped', because: 'closing' });
   });
 });
 

@@ -1,6 +1,6 @@
 import { computationBounds, makeComputationFunctionAdapter } from '@beonauto/computation';
 import type { Capability } from '@beonauto/definitions';
-import { checkedAtSave } from '@beonauto/definitions/check';
+import { checkedAtSave, warmedChecks } from '@beonauto/definitions/check';
 import { programPool, type CheckJob, type ProgramPool } from '@beonauto/workflow-engine/dsl';
 
 import type { ComputationSettings } from '../function-settings/computation-settings.ts';
@@ -20,6 +20,7 @@ export const workerPool: ProgramPoolOf = ({ workers }) =>
 
 export function computationServedBy(settings: ComputationSettings, poolOf: ProgramPoolOf): ServedComputation {
   const pool = poolOf(settings);
+  void warmedChecks(pool);
   return {
     capability: makeComputationFunctionAdapter({ pool }),
     pool,

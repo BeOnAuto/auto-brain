@@ -32,8 +32,11 @@ afterEach(() => {
 function served(handlers: JobHandlers): Ask {
   const { port1, port2 } = new MessageChannel();
   channels.push({ port1, port2 });
+  const ready = Promise.withResolvers<unknown>();
+  port2.once('message', ready.resolve);
   serveJobs(handlers, port1);
-  return (message) => {
+  return async (message) => {
+    await ready.promise;
     const { promise, resolve } = Promise.withResolvers<unknown>();
     port2.once('message', (answer: unknown) => {
       resolve(answer);
@@ -107,6 +110,19 @@ function checkJob(job: number): unknown {
 function refusingEvery(detail: string): OutputCheck {
   return () => [{ pointer: '', detail }];
 }
+
+describe('a loop that starts serving jobs', () => {
+  it('tells the pool it is ready once it listens, before any job', async () => {
+    const { port1, port2 } = new MessageChannel();
+    channels.push({ port1, port2 });
+    const first = Promise.withResolvers<unknown>();
+    port2.once('message', first.resolve);
+
+    serveJobs({}, port1);
+
+    expect(await first.promise).toEqual({ ready: true });
+  });
+});
 
 describe('a loop that serves jobs', () => {
   it('answers each job by its id, with the answer of the handler of its kind and whether the worker may be kept', async () => {

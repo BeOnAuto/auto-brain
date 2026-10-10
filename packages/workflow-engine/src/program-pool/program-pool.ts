@@ -12,6 +12,8 @@ import { poolWorkers } from './pool-workers.ts';
 
 export const checkPermits = 1;
 
+export const mostCheckStartMs = 10_000;
+
 const programWorker = new URL('../workers/program-worker.ts', import.meta.url);
 
 const foldWorker = new URL('../workers/fold-worker.ts', import.meta.url);
@@ -66,7 +68,7 @@ export function programPool(settings: PoolSettings): ProgramPool {
   const slots = poolSlots(settings.workers);
   const checkSlots = poolSlots(checkPermits);
   const workers = poolWorkers(settings);
-  const checkers = poolWorkers({ ...settings, workers: checkPermits });
+  const checkers = poolWorkers({ ...settings, workers: checkPermits, idleMs: Number.POSITIVE_INFINITY });
   const evaluations = poolEvaluationsOf(settings.evaluationWorker ?? evaluationWorker, settings);
   return {
     workers: settings.workers,
@@ -88,9 +90,12 @@ export function programPool(settings: PoolSettings): ProgramPool {
     },
     check: async (request, signal) => {
       const started = performance.now();
-      const until = started + request.deadlineMs;
-      const ending = await admitted(checkSlots, until, signal, () =>
-        checkers.evaluate(checkJob(request.worker, request), { until, signal }),
+      const ending = await admitted(checkSlots, started + request.deadlineMs, signal, () =>
+        checkers.evaluate(checkJob(request.worker, request), {
+          until: performance.now() + (settings.checkStartMs ?? mostCheckStartMs),
+          afterReady: request.deadlineMs,
+          signal,
+        }),
       );
       return { ...ending, milliseconds: performance.now() - started };
     },

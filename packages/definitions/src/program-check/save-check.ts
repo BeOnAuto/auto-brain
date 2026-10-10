@@ -20,14 +20,16 @@ export type CheckedDocument = { readonly issues: readonly CheckIssue[] } | { rea
 const stoppedBecause: Readonly<Record<Stopped, (deadlineMs: number) => string>> = {
   deadline: (deadlineMs) =>
     `The check of the document did not answer within the ${deadlineMs} ms a save allows it, and was stopped; try again`,
-  busy: (deadlineMs) =>
-    `No checker was free within the ${deadlineMs} ms a save allows its check, since this server checks one document at a time; try again`,
+  busy: () =>
+    'No checker was ready in time for this save, since this server checks one document at a time with one checker; try again',
   memory: () => 'The check of the document took more memory than its worker may use, and was stopped; try again',
   cancelled: () => 'The save was stopped before its check ended',
   closing: () => 'The server is stopping',
 };
 
 const notStripped: StrippedSources = { expressions: [] };
+
+const warming: CheckJob = { schemas: {}, expressions: [{ source: 'true', names: [] }] };
 
 function formsOf(job: CheckJob, { module, expressions }: StrippedSources): StrippedForms {
   return {
@@ -67,4 +69,8 @@ export function checkedAtSave(
   return Effect.promise((signal) => pool.check({ ...job, deadlineMs, worker: checkWorker }, signal)).pipe(
     Effect.flatMap((outcome) => issuesOf(job, outcome, deadlineMs)),
   );
+}
+
+export function warmedChecks(pool: ProgramPool): Promise<CheckOutcome> {
+  return pool.check({ ...warming, deadlineMs: checkDeadlineMs, worker: checkWorker });
 }
