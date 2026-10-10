@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import type { HostDatabase } from '../database/host-database.ts';
 import { insertedListener } from '../listeners/listener-rows.ts';
 import { followedRecordOf, saidRefusals } from '../reaction-testing/followed-records.ts';
-import { countingMatches } from '../reaction-testing/trigger-starting.ts';
+import { countingMatches, stopsByItsMemory } from '../reaction-testing/trigger-starting.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
 import { listenerOffers } from './listener-offers.ts';
 
@@ -128,10 +128,7 @@ describe('the offers of an event to the runs that listen for its type', () => {
 describe('the filter of the runs listening at one task of a version that goes past a bound', () => {
   it('keeps the event it was stopped on by its memory waiting, and after three such stops in a row, in any of the runs, is not evaluated again for that task and version', async () => {
     const database = await openedOn(await onSQLite());
-    const filling = {
-      type: 'go',
-      data: '${ (() => { const kept = []; for (;;) { kept.push("x".repeat(1048576) + kept.length); } })() }',
-    };
+    const filling = { type: 'go', data: stopsByItsMemory };
     await ['run-a', 'run-b', 'run-c'].reduce<Promise<unknown>>(
       (before, run) =>
         before.then(() => listening(database, run, [filling, { type: 'go', data: { region: 'eu' } }], 'wf')),

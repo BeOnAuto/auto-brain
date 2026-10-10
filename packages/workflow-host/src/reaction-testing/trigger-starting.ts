@@ -1,4 +1,5 @@
-import { Effect, Function } from 'effect';
+import type { FilterVerdict, MatchedFilter } from '@beonauto/workflow-engine';
+import { Array, Effect, Function } from 'effect';
 
 import { filterMatchingOf, filterStops, type FilterStops, type MatchFilters } from '../filtering/filter-matching.ts';
 import type { ReactionStart } from '../reactions/reaction-options.ts';
@@ -10,6 +11,20 @@ const topRuns: ReadonlyMap<string, string> = new Map([
   ['r-of-close', 'close'],
   ['r-of-other', 'other'],
 ]);
+
+export const stopsByItsMemory = '${ "stops by its memory" }';
+
+function stoppedByItsMemory({ reference }: MatchedFilter): FilterVerdict {
+  return {
+    error: {
+      type: 'https://open-workflow-specification.org/spec/1.0.0/errors/runtime',
+      status: 500,
+      title: 'The program used more memory than it may: one filter may use the memory of its sandbox and no more',
+      instance: reference,
+    },
+    stopped: true,
+  };
+}
 
 interface CountingMatches {
   readonly match: MatchFilters;
@@ -23,7 +38,14 @@ export function countingMatches(): CountingMatches {
   return {
     match: (filters, event, now) => {
       evaluated.push(...filters.map(({ reference }) => reference));
-      return matching(filters, event, now);
+      return Effect.map(
+        Effect.forEach(filters, (filter) =>
+          filter.attributes['data'] === stopsByItsMemory
+            ? Effect.succeed([stoppedByItsMemory(filter)])
+            : matching([filter], event, now),
+        ),
+        Array.flatten,
+      );
     },
     stops: filterStops(),
     evaluated: () => evaluated,
