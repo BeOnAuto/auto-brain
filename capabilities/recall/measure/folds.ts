@@ -1,6 +1,7 @@
 import { programPool, type FoldRequest, type Json, type JsonObject } from '@beonauto/workflow-engine/dsl';
-import { Result } from 'effect';
+import { Effect, Result } from 'effect';
 
+import { documentCheck } from '../src/document/document-check.ts';
 import { parseRecallDocument } from '../src/document/document-parsing.ts';
 import { recallBounds, recallFolding } from '../src/run/recall-bounds.ts';
 import { campaignReviews } from '../src/testing/campaign-reviews.ts';
@@ -14,7 +15,16 @@ export interface Folded {
   readonly sameAtEveryPageSize: boolean;
 }
 
-const details = Result.getOrThrow(parseRecallDocument(campaignReviews)).details;
+const document = Result.getOrThrow(parseRecallDocument(campaignReviews));
+
+const { details } = document;
+
+async function strippedFold(): Promise<string> {
+  const pool = programPool({ workers: 1, heapMegabytes: recallBounds.heapMegabytes });
+  const { module = details.fold } = await Effect.runPromise(documentCheck(pool)(document));
+  await pool.close();
+  return module;
+}
 
 function reviewed(index: number): JsonObject {
   return {
@@ -33,7 +43,7 @@ function reviewed(index: number): JsonObject {
   };
 }
 
-function pageOf(view: Json, first: number, size: number): FoldRequest {
+function pageOf(fold: string, view: Json, first: number, size: number): FoldRequest {
   const events = Array.from({ length: size }, (_, index) => reviewed(first + index));
   return {
     ...recallFolding,
@@ -41,7 +51,7 @@ function pageOf(view: Json, first: number, size: number): FoldRequest {
     events,
     views: [
       {
-        fold: details.fold,
+        fold,
         filters: details.filters,
         view,
         ...(details.schema === undefined ? {} : { schema: details.schema }),
@@ -58,13 +68,17 @@ interface Progress {
   readonly checkpoints: number;
 }
 
-async function foldedInPages(events: number, size: number): Promise<Progress & { readonly pages: number }> {
+async function foldedInPages(
+  fold: string,
+  events: number,
+  size: number,
+): Promise<Progress & { readonly pages: number }> {
   const pool = programPool({ workers: 1, heapMegabytes: recallBounds.heapMegabytes });
   const starts = Array.from({ length: Math.ceil(events / size) }, (_, index) => index * size);
   const done = await starts.reduce<Promise<Progress>>(
     async (before, start) => {
       const { view, checkpoints } = await before;
-      const page = await pool.fold(pageOf(view, start, Math.min(size, events - start)));
+      const page = await pool.fold(pageOf(fold, view, start, Math.min(size, events - start)));
       if (page.ran !== 'folded') {
         throw new Error(`A page of folds ended ${page.ran}`);
       }
@@ -78,11 +92,12 @@ async function foldedInPages(events: number, size: number): Promise<Progress & {
 }
 
 export async function foldsMeasured(events: number): Promise<Folded> {
+  const fold = await strippedFold();
   const started = performance.now();
-  const whole = await foldedInPages(events, 1000);
+  const whole = await foldedInPages(fold, events, 1000);
   const milliseconds = performance.now() - started;
-  const smaller = await foldedInPages(Math.min(events, 3000), 7);
-  const larger = await foldedInPages(Math.min(events, 3000), 1000);
+  const smaller = await foldedInPages(fold, Math.min(events, 3000), 7);
+  const larger = await foldedInPages(fold, Math.min(events, 3000), 1000);
   return {
     events,
     pages: whole.pages,
