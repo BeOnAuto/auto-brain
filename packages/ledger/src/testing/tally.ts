@@ -1,7 +1,9 @@
-import { Conflict, type Decider } from '@beonauto/operations';
+import { Conflict, factOf, type Decider } from '@beonauto/operations';
 import { Effect, Result, Schema, SchemaGetter } from 'effect';
 
-const CountedSchema = Schema.Struct({ type: Schema.Literal('counted'), by: Schema.Int });
+import { stamped } from './happenings.ts';
+
+const CountedSchema = factOf('counted', Schema.Struct({ by: Schema.Int }));
 
 type Counted = typeof CountedSchema.Type;
 
@@ -11,13 +13,14 @@ function decided(amounts: Amounts, total: number): Result.Result<readonly Counte
   const reached = amounts.reduce((running, amount) => running + amount, total);
   return reached < 0
     ? Result.fail(new Conflict({ detail: `A tally of ${total} cannot fall to ${reached}` }))
-    : Result.succeed(amounts.map((by) => ({ type: 'counted', by })));
+    : Result.succeed(amounts.map((by) => ({ type: 'counted', data: { by } })));
 }
 
 export const tally: Decider<number, Amounts, Counted, 'conflict'> = {
   initialState: 0,
-  evolve: (total, { by }) => total + by,
+  evolve: (total, { data }) => total + data.by,
   decide: decided,
+  context: () => stamped,
   eventSchema: CountedSchema,
 };
 

@@ -9,7 +9,7 @@ export function streamReaderOf(store: StreamStore): StreamReader['load'] {
   return (stream, decider) =>
     Effect.gen(function* () {
       const recorded = yield* Effect.promise(() => store.read(stream));
-      const events = yield* Effect.forEach(recorded.events, eventCodecOf(decider.eventSchema).decode);
+      const events = yield* Effect.forEach(recorded.messages, eventCodecOf(decider.eventSchema).decode);
       return { state: foldEvents(decider.evolve, decider.initialState, events), version: recorded.version };
     });
 }

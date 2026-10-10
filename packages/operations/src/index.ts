@@ -63,7 +63,31 @@ export {
   reasonOfKind,
   type KindWithType,
 } from './outcome/problem-types.ts';
-export type { Decider, StreamState, TypedEvent } from './ledger/decider.ts';
+export {
+  factOf,
+  recordedWith,
+  type Decider,
+  type Recorded,
+  type StreamState,
+  type TypedEvent,
+} from './ledger/decider.ts';
+export {
+  CalledBySchema,
+  ContextSchema,
+  StartingTriggerSchema,
+  checkedContext,
+  contextOf,
+  forbiddenCharactersInWords,
+  holdsNoForbiddenCharacter,
+  mostReferenceBytes,
+  refusingForbiddenCharacters,
+  refusingLongReferences,
+  type CalledBy,
+  type Context,
+  type StartingTrigger,
+} from './ledger/context.ts';
+export type { BrainContentReader, RecordedContent } from './content/recorded-content.ts';
+export { bytesOfText, chunksOf, mostContentChunkBytes } from './content/content-chunks.ts';
 export type { DispatcherServices } from './dispatch/dispatcher-services.ts';
 export { makeDispatcher, type Dispatcher, type PipelineStep } from './dispatch/dispatcher.ts';
 export { cursorOfParts, cursorWithin, partsOfCursor, type CursorPart } from './reading/cursor-parts.ts';
@@ -81,10 +105,11 @@ export {
   type RecordedPage,
   type RecordedPageRequest,
   type RecordedSelection,
+  type Trace,
 } from './reading/recorded-read.ts';
 export { IssueSchema, type Issue } from './outcome/issue.ts';
 export type { JsonSchemaDocument } from './definition/json-schema.ts';
-export { Ledger } from './ledger/ledger.ts';
+export { Ledger, type ContentKeeper, type LedgerPorts } from './ledger/ledger.ts';
 export { lineageAttributeNames, messageIdOf, noLineage, type Lineage } from './ledger/message-lineage.ts';
 export { NotFound } from './outcome/not-found.ts';
 export { defineCommand, defineQuery, type Operation } from './definition/operation.ts';

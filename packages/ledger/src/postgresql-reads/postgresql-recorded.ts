@@ -1,10 +1,12 @@
 import { Schema } from 'effect';
 
 import { postgresqlAppended } from '../appended/postgresql-appended.ts';
-import type { DefinitionStreamsStore, RecordedStore } from '../event-store.ts';
+import type { ContentStore, DefinitionStreamsStore, RecordedStore } from '../event-store.ts';
 import { dataAsJsonText } from '../postgresql/json-text.ts';
+import { postgresqlContentOn } from '../postgresql/postgresql-schema.ts';
 import {
   pointKey,
+  recordOf,
   recordedReadingOver,
   type ExaminationScope,
   type ExaminedItem,
@@ -40,6 +42,8 @@ const ExaminedRecordRows = Schema.Array(Schema.Struct({ ...HeadFields, wanted: S
 const PointRows = Schema.Array(Schema.Struct(PointFields));
 
 const DataRows = Schema.Array(Schema.Struct({ ...PointFields, data: Schema.Struct({ json: Schema.String }) }));
+
+const RecordRows = Schema.Array(Schema.Struct({ ...HeadFields, data: Schema.Struct({ json: Schema.String }) }));
 
 interface RecordsScope {
   readonly bind: Bind;
@@ -99,7 +103,7 @@ function examineRecords(query: Query): RecordedStatements['examineRecords'] {
     };
     const size = sizeOf({ wanted: 'wanted', types: sizedTypesOf(bind, scope) }, scope, 'numbered', 'type');
     const rows = await query(
-      `SELECT transaction, position, stream, version, type, recorded, id, causation, correlation, wanted,
+      `SELECT transaction, position, stream, version, type, recorded, id, metadata, correlation, wanted,
           examined::int AS examined, ${size} AS size
         FROM (
           SELECT scanned.*, row_number() OVER (ORDER BY ${inOrder(records, 'scanned.')}) AS examined,
@@ -156,11 +160,35 @@ function dataAt(query: Query): RecordedStatements['dataAt'] {
   };
 }
 
-export function postgresqlRecordedStore(query: Query): RecordedStore & DefinitionStreamsStore {
+function recordWithId(query: Query): RecordedStore['readRecordedEvent'] {
+  return async (brainKey, id) => {
+    const { values, bind } = binding();
+    const rows = await query(
+      `WITH found AS MATERIALIZED (
+          SELECT * FROM emt_messages
+          WHERE message_id = ${bind(id)} AND partition = ${bind(defaultPartition)} AND is_archived = FALSE
+        )
+        SELECT transaction_id::text AS transaction, global_position::text AS position, stream_id AS stream,
+          stream_position::int AS version, message_type AS type, ${timeOf('created')} AS recorded, ${lineageColumns},
+          0 AS size, message_data AS data
+        FROM found
+        WHERE ${brainKeyOfStream} = ${bind(brainKey)}
+        LIMIT 1`,
+      values,
+    );
+    return Schema.decodeUnknownSync(RecordRows)(rows)
+      .map((row) => recordOf(headOf(row), dataAsJsonText.read(row.data)))
+      .at(0);
+  };
+}
+
+export function postgresqlRecordedStore(query: Query): RecordedStore & DefinitionStreamsStore & ContentStore {
   return {
     ...postgresqlDefinitionStreams(query),
+    content: postgresqlContentOn(query),
     pointLength: 2,
     readAppended: postgresqlAppended(query),
+    readRecordedEvent: recordWithId(query),
     readRecorded: recordedReadingOver({
       firstPointSince: firstPointSince(query),
       examineRecords: examineRecords(query),

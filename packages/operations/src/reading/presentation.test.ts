@@ -10,8 +10,10 @@ function recorded(stream: string, type: string): RecordedEvent {
     correlationId: null,
     stream,
     version: 1,
+    globalPosition: 1,
     type,
     data: {},
+    context: { at: '2026-10-05T09:00:00.000Z', by: 'tester' },
     recordedAt: '2026-10-05T09:00:00.000Z',
   };
 }

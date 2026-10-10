@@ -40,8 +40,8 @@ export function signalledOn<Store extends StreamStore>(store: Store, signal?: Ap
   }
   return {
     ...store,
-    append: async (stream, events, expectedVersion, lineage) => {
-      await store.append(stream, events, expectedVersion, lineage);
+    append: async (stream, events, place) => {
+      await store.append(stream, events, place);
       signal.raise(stream);
     },
   };

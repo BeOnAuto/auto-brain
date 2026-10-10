@@ -7,9 +7,11 @@ import {
   NotFound,
   defineCommand,
   defineQuery,
+  factOf,
   type Decider,
   type RecordedSelection,
 } from '../index.ts';
+import { testedContext } from './callers.ts';
 
 const NoteName = Schema.String.check(Schema.isPattern(/^[a-z][a-z0-9-]{0,31}$/u));
 
@@ -19,17 +21,18 @@ const NoteSchema = Schema.Struct(noteFields).annotate({ identifier: 'Note' });
 
 type Note = typeof NoteSchema.Type;
 
-const NoteAddedSchema = Schema.Struct({ type: Schema.Literal('note_added'), note: NoteSchema });
+const NoteAddedSchema = factOf('note_added', NoteSchema);
 
 type NoteAdded = typeof NoteAddedSchema.Type;
 
 const notebook: Decider<readonly Note[], Note, NoteAdded, 'conflict'> = {
   initialState: [],
-  evolve: (notes, { note }) => [...notes, note],
+  evolve: (notes, { data }) => [...notes, data],
   decide: (note, notes) =>
     notes.some(({ name }) => name === note.name)
       ? Result.fail(new Conflict({ detail: `A note named ${note.name} exists` }))
-      : Result.succeed([{ type: 'note_added', note }]),
+      : Result.succeed([{ type: 'note_added', data: note }]),
+  context: () => testedContext,
   eventSchema: NoteAddedSchema,
 };
 
@@ -132,5 +135,32 @@ export const readNoteHistory = defineQuery('brain', {
       ...(since === undefined ? {} : { since }),
     });
     return { streams: records.map(({ stream }) => stream), ids: records.map(({ id }) => id), next_cursor: nextCursor };
+  }),
+});
+
+export const readNoteEvent = defineQuery('brain', {
+  name: 'read_note_event',
+  title: 'Read note event',
+  description: 'Reads one event the brain recorded, by its id.',
+  route: { method: 'GET', path: '/note-events/{id}' },
+  inputSchema: Schema.Struct({ id: Schema.String }),
+  outputSchema: Schema.Struct({ stream: Schema.NullOr(Schema.String), by: Schema.NullOr(Schema.String) }),
+  reasons: [],
+  handle: Effect.fnUntraced(function* ({ id }) {
+    const record = yield* (yield* BrainReader).readRecordedEvent(id);
+    return record === undefined ? { stream: null, by: null } : { stream: record.stream, by: record.context.by };
+  }),
+});
+
+export const readNoteContent = defineQuery('brain', {
+  name: 'read_note_content',
+  title: 'Read note content',
+  description: 'Reads a content the brain recorded, by its digest.',
+  route: { method: 'GET', path: '/note-contents/{sha256}' },
+  inputSchema: Schema.Struct({ sha256: Schema.String }),
+  outputSchema: Schema.Struct({ text: Schema.NullOr(Schema.String) }),
+  reasons: [],
+  handle: Effect.fnUntraced(function* ({ sha256 }) {
+    return { text: (yield* (yield* BrainReader).readContent(sha256)) ?? null };
   }),
 });

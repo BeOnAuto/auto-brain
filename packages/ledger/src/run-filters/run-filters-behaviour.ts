@@ -2,50 +2,57 @@ import type { Decider, RecordedPage, RecordedPageRequest, RecordedSelection } fr
 import { Effect, Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { details, inAlpha, reading, type AnyLedger, type LedgerMaker } from '../testing/happenings.ts';
+import { details, inAlpha, reading, stamped, type AnyLedger, type LedgerMaker } from '../testing/happenings.ts';
 
-const RunFactSchema = Schema.Struct({
-  type: Schema.String,
-  definition_type: Schema.optionalKey(Schema.String),
-  name: Schema.optionalKey(Schema.String),
-  detail: Schema.optionalKey(Schema.Json),
-});
+const RunFactSchema = Schema.Struct({ type: Schema.String, data: Schema.Struct({ detail: Schema.Json }) });
 
 type RunFact = typeof RunFactSchema.Type;
 
-const runFacts: Decider<null, readonly RunFact[], RunFact> = {
+interface RunFacts {
+  readonly facts: readonly RunFact[];
+  readonly definitionType?: string;
+  readonly definitionName?: string;
+}
+
+const runFacts: Decider<null, RunFacts, RunFact> = {
   initialState: null,
   evolve: () => null,
-  decide: (facts) => Result.succeed(facts),
+  decide: ({ facts }) => Result.succeed(facts),
+  context: ({ definitionType, definitionName }) => ({
+    ...stamped,
+    ...(definitionType === undefined ? {} : { definitionType }),
+    ...(definitionName === undefined ? {} : { definitionName }),
+  }),
   eventSchema: RunFactSchema,
 };
 
 const runsOfTheReport = Array.from({ length: 28 }, (_, index) => index);
 
-function startOfTheReport(index: number): RunFact {
-  return {
-    type: 'run_started',
-    definition_type: index % 4 === 0 ? 'workflow' : 'reasoning',
-    name: index % 4 === 1 ? 'qualify-enquiry' : 'summary',
-  };
+function factOfType(type: string, detail: Schema.Json = null): RunFact {
+  return { type, data: { detail } };
 }
 
-function endingOfTheReport(index: number): RunFact {
-  return { type: index % 9 === 2 ? 'run_rejected' : 'run_succeeded' };
+function runOfTheReport(index: number): RunFacts {
+  const facts = [factOfType('run_started'), factOfType(index % 9 === 2 ? 'run_rejected' : 'run_succeeded')];
+  return index === 27
+    ? { facts }
+    : {
+        facts,
+        definitionType: index % 4 === 0 ? 'workflow' : 'reasoning',
+        definitionName: index % 4 === 1 ? 'qualify-enquiry' : 'summary',
+      };
 }
 
-function recordedRun(ledger: AnyLedger, run: string, facts: readonly RunFact[]): Effect.Effect<unknown, unknown> {
+function recordedRun(ledger: AnyLedger, run: string, facts: RunFacts): Effect.Effect<unknown, unknown> {
   return ledger.execute(inAlpha(`runs/${run}`), runFacts, facts);
 }
 
 async function twentyEightRuns(aLedger: LedgerMaker): Promise<AnyLedger> {
   const ledger = await aLedger();
   await Effect.runPromise(
-    Effect.forEach(
-      runsOfTheReport,
-      (index) => recordedRun(ledger, `run-${index}`, [startOfTheReport(index), endingOfTheReport(index)]),
-      { discard: true },
-    ),
+    Effect.forEach(runsOfTheReport, (index) => recordedRun(ledger, `run-${index}`, runOfTheReport(index)), {
+      discard: true,
+    }),
   );
   return ledger;
 }
@@ -137,13 +144,20 @@ const awkwardText = {
 };
 
 function theDefinitionOfAnAwkwardRun(aLedger: LedgerMaker): void {
-  it('is read at the top of the first message alone, exactly as recorded, whatever else the message holds', async () => {
+  it('is read from the context of the first message alone, exactly as recorded, whatever its data holds', async () => {
     const ledger = await aLedger();
     const awkward = { definition_type: 'workflow', name: 'qualify-enquiry', text: awkwardText };
-    const start = { type: 'run_started', definition_type: 'reasoning', name: 'summary', detail: awkward };
-    const namedAwkwardly = { ...start, name: awkwardText.escapedNul, detail: 'named awkwardly' };
-    await Effect.runPromise(recordedRun(ledger, 'awkward', [start]));
-    await Effect.runPromise(recordedRun(ledger, 'named-awkwardly', [namedAwkwardly]));
+    const summary = { definitionType: 'reasoning', definitionName: 'summary' };
+    await Effect.runPromise(
+      recordedRun(ledger, 'awkward', { facts: [factOfType('run_started', awkward)], ...summary }),
+    );
+    await Effect.runPromise(
+      recordedRun(ledger, 'named-awkwardly', {
+        facts: [factOfType('run_started', 'named awkwardly')],
+        definitionType: 'reasoning',
+        definitionName: awkwardText.escapedNul,
+      }),
+    );
     const newest = { order: 'desc', limit: 10 } as const;
 
     const pages = await Promise.all([

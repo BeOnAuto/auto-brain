@@ -1,6 +1,7 @@
 import { SQL } from '@event-driven-io/dumbo';
 import { Schema } from 'effect';
 
+import { contentTableNames, createdContentTables } from '../content/content-tables.ts';
 import { createMissingIndexes, type BrainIndex, type IndexExecutor } from './missing-indexes.ts';
 
 function prefixThroughSlashes(count: number): string {
@@ -58,6 +59,10 @@ const brainIndexes: readonly BrainIndex[] = [
     create: () => SQL`CREATE INDEX IF NOT EXISTS ledger_definition_streams
       ON emt_streams (${definitionTypeOfStream}) WHERE ${definitionTypeOfStream} IS NOT NULL`,
   },
+  {
+    name: 'ledger_messages_by_id',
+    create: () => SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_id ON emt_messages (message_id)`,
+  },
 ];
 
 export async function createSQLiteBrainIndexes(execute: IndexExecutor): Promise<void> {
@@ -67,4 +72,12 @@ export async function createSQLiteBrainIndexes(execute: IndexExecutor): Promise<
   );
   const existing = new Set(Schema.decodeUnknownSync(NameRows)(rows).map(({ name }) => name));
   await createMissingIndexes(execute, brainIndexes, existing);
+}
+
+export async function sqliteSchemaCreated(execute: IndexExecutor): Promise<void> {
+  await createSQLiteBrainIndexes(execute);
+  await createdContentTables(
+    execute,
+    SQL`SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (SELECT value FROM json_each(${JSON.stringify(contentTableNames)}))`,
+  );
 }

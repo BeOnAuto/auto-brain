@@ -15,6 +15,8 @@ function recordOf(position: number, steps: number): RecordedEvent {
     correlationId: null,
     stream: 'run-logs/r1',
     version: position,
+    globalPosition: 1,
+    context: { at: '2026-10-05T09:00:00.000Z', by: 'tester' },
     type: 'moved',
     data: { position, steps },
     recordedAt: '2026-10-05T09:00:00.000Z',

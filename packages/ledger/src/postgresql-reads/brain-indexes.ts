@@ -46,6 +46,10 @@ const brainIndexes: readonly BrainIndex[] = [
     create: () => SQL`CREATE INDEX IF NOT EXISTS ledger_definition_streams
       ON emt_streams ((${SQL.plain(definitionTypeOfStream)})) WHERE (${SQL.plain(definitionTypeOfStream)}) IS NOT NULL`,
   },
+  {
+    name: 'ledger_messages_by_id',
+    create: () => SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_id ON emt_messages (message_id)`,
+  },
 ];
 
 export async function createPostgreSQLBrainIndexes({ execute }: { readonly execute: IndexExecutor }): Promise<void> {

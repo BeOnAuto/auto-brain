@@ -95,9 +95,9 @@ function aNewTableVersion(entry: LedgerEntry): void {
         const database = await entry.aDatabase();
         const writing = await aLedger(entry, database);
         await fourRuns(writing);
-        await noting(writing, 'brain/acme/alpha/runs/r6', ended('failed', 1), { type: 'run_noted' });
+        await noting(writing, 'brain/acme/alpha/runs/r6', ended('failed', 1), { type: 'run_noted', data: {} });
         await noting(writing, 'brain/acme/alpha/runs/r7/nested', began('triage'));
-        await noting(writing, 'brain/acme/alpha/runs/r8', { type: 'run_noted' });
+        await noting(writing, 'brain/acme/alpha/runs/r8', { type: 'run_noted', data: {} });
         await manyRuns(entry, database, 1000);
         await entry.queried(database, 'CREATE TABLE run_outcomes_2 (brain_key text, row_key text)');
 
@@ -152,7 +152,7 @@ function aFillInterruptedOrDone(entry: LedgerEntry): void {
 const mebibyte = 1024 * 1024;
 
 function largeEnd(ms: number, note: string): RunFact {
-  return { type: 'run_ended', status: 'succeeded', ms, tokens: null, note };
+  return { type: 'run_ended', data: { status: 'succeeded', ms, tokens: null, note } };
 }
 
 function aFillOfLargeRecords(entry: LedgerEntry): void {

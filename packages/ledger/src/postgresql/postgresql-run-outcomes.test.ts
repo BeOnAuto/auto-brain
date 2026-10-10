@@ -43,7 +43,7 @@ function recording(answers: Answers): Recording {
   };
 }
 
-const began: RunFact = { type: 'run_began', at: '2026-10-01T09:00:00.000Z', fn: 'triage' };
+const began: RunFact = { type: 'run_began', data: { at: '2026-10-01T09:00:00.000Z', fn: 'triage' } };
 
 const indexes = [
   'ledger_messages_by_brain',
@@ -52,12 +52,18 @@ const indexes = [
   'ledger_first_messages_by_kind',
   'ledger_messages_by_brain_and_correlation',
   'ledger_definition_streams',
+  'ledger_messages_by_id',
 ].map((name) => ({ name }));
+
+const contentTables = ['recorded_content_chunks', 'recorded_content_heads'].map((name) => ({ name }));
 
 function aLedgerWithOneRun(tables: readonly string[]): Answers {
   return (statement) => {
     if (statement.includes('ledger_messages_by_brain')) {
       return indexes;
+    }
+    if (statement.includes('recorded_content_chunks')) {
+      return contentTables;
     }
     if (statement.includes('pg_class')) {
       return tables.map((name) => ({ name }));
@@ -69,7 +75,8 @@ function aLedgerWithOneRun(tables: readonly string[]): Answers {
       {
         stream: 'brain/acme/alpha/runs/r1',
         type: 'run_began',
-        data: { json: JSON.stringify(began) },
+        data: { json: JSON.stringify(began.data) },
+        metadata: { at: '2026-10-01T09:00:00.000Z', by: 'tallies' },
         position: 1,
       },
     ];
@@ -110,6 +117,7 @@ async function filledOnPostgreSQL(sizes: readonly number[]): Promise<RecordedFil
     sizes,
     (sql) => SQL.describe(sql, pgFormatter),
     (json) => ({ json }),
+    (json): unknown => JSON.parse(json),
   );
   await tallied.afterTheSchema({ execute: fill.execute });
   return fill;
@@ -137,8 +145,14 @@ describe('the projection of the outcomes of runs on PostgreSQL', () => {
     const [registration] = tallied.registrations;
     const message = {
       type: 'run_began',
-      data: { json: JSON.stringify(began) },
-      metadata: { streamName: 'brain/acme/alpha/runs/r1', messageId: 'm1', streamPosition: 1n },
+      data: { json: JSON.stringify(began.data) },
+      metadata: {
+        streamName: 'brain/acme/alpha/runs/r1',
+        messageId: 'm1',
+        streamPosition: 1n,
+        at: '2026-10-01T09:00:00.000Z',
+        by: 'tallies',
+      },
     };
 
     await registration?.projection.handle([message], { execute });

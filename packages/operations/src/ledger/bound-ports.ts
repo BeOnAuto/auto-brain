@@ -8,6 +8,7 @@ import { isCalendarDay } from '../reading/calendar-days.ts';
 import { mostRecordsInAPage } from '../reading/page-bounds.ts';
 import type {
   InvalidCursorKind,
+  RecordedEvent,
   RecordedPage,
   RecordedPageRequest,
   RecordedSelection,
@@ -87,14 +88,17 @@ const refusedCursors: Readonly<Record<InvalidCursorKind, InvalidInput>> = {
   }),
 };
 
+function recordRelativeTo(prefix: string): (record: RecordedEvent) => RecordedEvent {
+  return (record) => ({ ...record, stream: record.stream.slice(prefix.length) });
+}
+
 function relativeTo(prefix: string): (page: RecordedPage) => RecordedPage {
-  return ({ records, ...paging }) => ({
-    records: records.map((record) => ({ ...record, stream: record.stream.slice(prefix.length) })),
-    ...paging,
-  });
+  const relative = recordRelativeTo(prefix);
+  return ({ records, ...paging }) => ({ records: records.map((record) => relative(record)), ...paging });
 }
 
 export function brainBoundRecordedReader(ledger: RecordedReader, brain: BrainAddress): BrainRecordedReader {
+  const prefix = streamPrefixOfBrain(brain);
   return {
     readRecorded: (selection, page) =>
       Effect.gen(function* () {
@@ -102,8 +106,12 @@ export function brainBoundRecordedReader(ledger: RecordedReader, brain: BrainAdd
         const checkedPage = yield* wellFormedPage(page);
         return yield* ledger.readRecorded(brain, checkedSelection, checkedPage);
       }).pipe(
-        Effect.map(relativeTo(streamPrefixOfBrain(brain))),
+        Effect.map(relativeTo(prefix)),
         Effect.mapError(({ kind }: { readonly kind: InvalidCursorKind }) => refusedCursors[kind]),
+      ),
+    readRecordedEvent: (id) =>
+      Effect.map(ledger.readRecordedEvent(brain, id), (record) =>
+        record === undefined ? undefined : recordRelativeTo(prefix)(record),
       ),
   };
 }

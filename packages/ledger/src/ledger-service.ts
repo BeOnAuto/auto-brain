@@ -1,6 +1,9 @@
 import {
   Ledger,
+  checkedContext,
+  recordedWith,
   type Conflict,
+  type Context,
   type Decider,
   type DeclarableReason,
   type Rejection,
@@ -13,16 +16,21 @@ import { eventAppenderOf } from './event-appender.ts';
 import type { LedgerStore } from './event-store.ts';
 import { foldEvents } from './fold-events.ts';
 import { runOutcomesReaderOf } from './outcomes/run-outcomes-reader.ts';
-import { recordedReaderOf } from './recorded/recorded-reader.ts';
+import { recordedEventReaderOf, recordedReaderOf } from './recorded/recorded-reader.ts';
 import { streamReaderOf } from './stream-reader.ts';
 import { retriedOnVersionConflict, type VersionConflict } from './version-conflict.ts';
 
 export type StreamLoad<Loaded> = (stream: string) => Effect.Effect<Loaded>;
 
+export interface DecidedPlace {
+  readonly expectedVersion: number;
+  readonly context: Context;
+}
+
 export type StreamAppend<Event, Loaded = unknown> = (
   stream: string,
   events: readonly Event[],
-  expectedVersion: number,
+  place: DecidedPlace,
   loaded: Loaded,
 ) => Effect.Effect<void, VersionConflict>;
 
@@ -54,15 +62,28 @@ export function decisionLoop<
     Effect.gen(function* () {
       const loaded = yield* load(stream);
       const decided = decider.decide(command, loaded.state);
-      if (Result.isSuccess(decided) && decided.success.length > 0) {
-        yield* append(stream, decided.success, loaded.version, loaded);
+      if (Result.isFailure(decided) || decided.success.length === 0) {
+        return Result.map(decided, (events: readonly Event[]) => ({
+          loaded,
+          events,
+          state: loaded.state,
+          version: loaded.version,
+        }));
       }
-      return Result.map(decided, (events: readonly Event[]) => ({
+      const events = decided.success;
+      const context = yield* Effect.sync(() => checkedContext(decider.context(command, loaded.state)));
+      yield* append(stream, events, { expectedVersion: loaded.version, context }, loaded);
+      const recorded = recordedWith<Event>(context);
+      return Result.succeed({
         loaded,
         events,
-        state: foldEvents(decider.evolve, loaded.state, events),
+        state: foldEvents(
+          decider.evolve,
+          loaded.state,
+          events.map((event) => recorded(event)),
+        ),
         version: loaded.version + events.length,
-      }));
+      });
     });
   return (stream, command) =>
     retriedOnVersionConflict(attempt(stream, command)).pipe(Effect.flatMap(Effect.fromResult));
@@ -76,16 +97,21 @@ export function makeLedger(store: LedgerStore): Ledger['Service'] {
     execute: (stream, decider, command, lineage) =>
       decisionLoop(
         (named: string) => load(named, decider),
-        (named, events, expectedVersion) =>
-          eventAppenderOf(store, decider.eventSchema)(named, events, expectedVersion, lineage),
+        (named, events, place) =>
+          eventAppenderOf(store, decider.eventSchema)(named, events, {
+            ...place,
+            ...(lineage === undefined ? {} : { lineage }),
+          }),
         decider,
       )(stream, command).pipe(Effect.map(({ state, version }) => ({ state, version }))),
     readRecorded: recordedReaderOf(store),
+    readRecordedEvent: recordedEventReaderOf(store),
     readRunOutcomes: runOutcomesReaderOf(store),
     readProjectedRows: store.readProjectedRows,
     countProjectedRows: store.countProjectedRows,
     readDueRows: store.readDueRows,
     nextDueOf: store.nextDueOf,
     advanceRow: store.advanceRow,
+    content: store.content,
   });
 }

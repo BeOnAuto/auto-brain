@@ -11,6 +11,7 @@ async function filledOnSQLite(sizes: readonly number[]): Promise<RecordedFill> {
     sizes,
     (sql) => SQL.describe(sql, sqliteFormatter),
     (json) => json,
+    (json) => json,
   );
   await sqliteProjectionsOf({ runOutcomes: runTallies }).prepare(fill.execute, (work) => work(fill.execute));
   return fill;

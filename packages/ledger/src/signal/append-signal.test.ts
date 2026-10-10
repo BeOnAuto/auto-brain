@@ -7,6 +7,7 @@ import { dataAsWritten, emmettEventStore } from '../emmett/emmett-event-store.ts
 import { eventAppenderOf, streamAppends, streamSignalOf, VersionConflict } from '../index.ts';
 import { ledgerLayer } from '../sqlite3.ts';
 import { happenings, noted } from '../testing/happenings.ts';
+import { stamped } from '../testing/happenings.ts';
 import { openLedgerWith, outcomeOf } from '../testing/open-ledger.ts';
 import { tally } from '../testing/tally.ts';
 
@@ -33,9 +34,9 @@ describe('the signal an append raises', () => {
     });
     const store = await aStoreSignalling(signal);
 
-    await store.append('brain/acme/alpha/events/e1', one, 0);
-    await store.append('org/acme/brains', one, 0);
-    await store.append('brain/acme/Beta_2/run-logs/r1', one, 0);
+    await store.append('brain/acme/alpha/events/e1', one, { expectedVersion: 0, context: stamped });
+    await store.append('org/acme/brains', one, { expectedVersion: 0, context: stamped });
+    await store.append('brain/acme/Beta_2/run-logs/r1', one, { expectedVersion: 0, context: stamped });
 
     expect(heard).toEqual(['brain/acme/alpha/events/e1', 'org/acme/brains', 'brain/acme/Beta_2/run-logs/r1']);
   });
@@ -47,18 +48,23 @@ describe('the signal an append raises', () => {
       heard.push(brainKey);
     });
     const store = await aStoreSignalling(signal);
-    await store.append('brain/acme/alpha/notes', one, 0);
+    await store.append('brain/acme/alpha/notes', one, { expectedVersion: 0, context: stamped });
 
     const conflicted = await outcomeOf(
-      eventAppenderOf(store, tally.eventSchema)('brain/acme/alpha/notes', [{ type: 'counted', by: 1 }], 0),
+      eventAppenderOf(store, tally.eventSchema)('brain/acme/alpha/notes', [{ type: 'counted', data: { by: 1 } }], {
+        expectedVersion: 0,
+        context: stamped,
+      }),
     );
     stop();
-    await store.append('brain/acme/alpha/notes', one, 1);
+    await store.append('brain/acme/alpha/notes', one, { expectedVersion: 1, context: stamped });
 
     expect([conflicted, heard]).toEqual([Result.fail(new VersionConflict()), ['brain/acme/alpha/notes']]);
   });
+});
 
-  it('is the signal of the process when none is given, so every ledger of the process raises it', async () => {
+describe('the signal of the process', () => {
+  it('is the signal when none is given, so every ledger of the process raises it', async () => {
     const heard: string[] = [];
     const stop = streamAppends.listen((brainKey) => {
       heard.push(brainKey);

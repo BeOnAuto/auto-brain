@@ -1,51 +1,19 @@
-import { randomUUID } from 'node:crypto';
-
 import { Effect } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
-import { definitionStreamsPlan, theBrainIndexes } from '../postgresql-reads/index-checks.ts';
+import { theBrainIndexes } from '../postgresql-reads/index-checks.ts';
 import { details, happenings } from '../testing/happenings.ts';
 import { ledgerBehaviour } from '../testing/ledger-behaviour.ts';
 import type { LedgerEntry } from '../testing/ledger-entry.ts';
 import { openLedgerWith, type OpenLedger } from '../testing/open-ledger.ts';
+import { aDatabaseOn, definitionStreamsIndexed, planOf, queried } from './postgresql-checks.ts';
 import { postgresqlEventStore, postgresqlLedgerLayer } from './postgresql-ledger.ts';
 
 const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
 
-async function queried(database: string, statement: string): Promise<readonly unknown[]> {
-  const client = new Client({ connectionString: database });
-  await client.connect();
-  try {
-    const { rows } = await client.query<Readonly<Record<string, unknown>>>(statement);
-    return rows;
-  } finally {
-    await client.end();
-  }
-}
-
-async function definitionStreamsIndexed(database: string): Promise<boolean> {
-  const client = new Client({ connectionString: database });
-  await client.connect();
-  try {
-    await client.query('SET enable_seqscan = off');
-    const { explained, values, throughTheIndex } = definitionStreamsPlan;
-    const plan = await client.query<Readonly<Record<string, unknown>>>(explained, values);
-    return plan.rows.some((row) => String(row['QUERY PLAN']).includes(throughTheIndex));
-  } finally {
-    await client.end();
-  }
-}
-
-async function aDatabase(): Promise<string> {
-  const name = `ledger_${randomUUID().replaceAll('-', '')}`;
-  await queried(server, `CREATE DATABASE ${name}`);
-  onTestFinished(async () => {
-    await queried(server, `DROP DATABASE ${name} WITH (FORCE)`);
-  });
-  const database = new URL(server);
-  database.pathname = `/${name}`;
-  return database.href;
+function aDatabase(): Promise<string> {
+  return aDatabaseOn(server);
 }
 
 function pause(milliseconds: number): Promise<void> {
@@ -104,6 +72,9 @@ const onPostgreSQL: LedgerEntry = {
     }),
   queried,
   definitionStreamsIndexed,
+  planOf,
+  throughTheKindIndex: `Index Cond: (("substring"(stream_id, '^(?:[^/]*/){4}'::text) = ANY`,
+  throughTheIdIndex: 'Index Cond: (message_id = ',
   outcomeTables:
     "SELECT relname AS name FROM pg_class WHERE relkind IN ('r', 'p') AND relname ~ '^run_outcomes_[0-9]+$' ORDER BY relname",
   projectionTables:
@@ -128,6 +99,8 @@ const alpha = { org: 'acme', brain: 'alpha' };
 
 const noMetadata: Readonly<Record<string, string>> = {};
 
+const stampedAsStored = { at: '2026-10-05T09:00:00.000Z', by: 'tester' };
+
 async function anAppendLeftOpen(database: string, stream: string, type: string, meta = noMetadata): Promise<Client> {
   const client = new Client({ connectionString: database });
   await client.connect();
@@ -136,7 +109,7 @@ async function anAppendLeftOpen(database: string, stream: string, type: string, 
   await client.query(
     `SELECT success FROM emt_append_to_stream(
       ARRAY['late-1'], ARRAY[$1::jsonb], ARRAY[$4::jsonb], ARRAY['1'], ARRAY[$2], ARRAY['E'], $3, 'brain', 0, 'emt:default')`,
-    [{ json: JSON.stringify({ type, detail: 'late' }) }, type, stream, meta],
+    [{ json: JSON.stringify({ detail: 'late' }) }, type, stream, { ...stampedAsStored, ...meta }],
   );
   return client;
 }
@@ -159,14 +132,14 @@ function reading(ledger: OpenLedger['ledger'], selection: RecordedSelection, ord
 }
 
 function noting(ledger: OpenLedger['ledger'], stream: string, type: string, detail: string): Promise<unknown> {
-  return Effect.runPromise(ledger.execute(`brain/acme/alpha/${stream}`, happenings, [{ type, detail }]));
+  return Effect.runPromise(ledger.execute(`brain/acme/alpha/${stream}`, happenings, [{ type, data: { detail } }]));
 }
 
 const root = 'brain/acme/alpha/runs/root';
 const ofTheRoot = { causationId: null, correlationId: 'root' };
 
 function notingOfRoot(ledger: OpenLedger['ledger'], type: string, detail: string): Promise<unknown> {
-  return Effect.runPromise(ledger.execute(root, happenings, [{ type, detail }], ofTheRoot));
+  return Effect.runPromise(ledger.execute(root, happenings, [{ type, data: { detail } }], ofTheRoot));
 }
 
 type OwnLedger = { readonly database: string; readonly ledger: OpenLedger['ledger'] };
@@ -292,6 +265,6 @@ describe.skipIf(skipped)(`The brain's indexes on PostgreSQL${notice}`, { timeout
 
     expect(
       await queried(database, "SELECT count(*)::int AS indexes FROM pg_indexes WHERE indexname LIKE 'ledger%'"),
-    ).toEqual([{ indexes: 6 }]);
+    ).toEqual([{ indexes: 7 }]);
   });
 });

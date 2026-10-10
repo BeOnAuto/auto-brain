@@ -1,19 +1,24 @@
 import { Clock, Effect, Layer, Result, Schema } from 'effect';
 
+import { memoryRecordedContent } from '../content/memory-content.ts';
 import {
   Conflict,
   Ledger,
+  checkedContext,
   messageIdOf,
   noLineage,
+  recordedWith,
+  type Context,
   type Decider,
   type DeclarableReason,
   type Lineage,
+  type Recorded,
   type RunOutcomeMapping,
   type KeyedProjection,
   type StreamState,
   type TypedEvent,
 } from '../index.ts';
-import { memoryProjections, type MemoryProjections } from '../projections/memory-projections.ts';
+import { memoryProjections, type AppendedFact, type MemoryProjections } from '../projections/memory-projections.ts';
 import { memoryRunOutcomes, type MemoryRunOutcomes } from '../run-outcomes/memory-run-outcomes.ts';
 import { memoryRecordedReader, type MemoryRecord } from './memory-recorded.ts';
 
@@ -25,53 +30,93 @@ export interface MemoryLedger {
 
 interface Appended {
   readonly stream: string;
-  readonly events: readonly TypedEvent[];
-  readonly encoded: readonly unknown[];
+  readonly stored: readonly AppendedFact[];
   readonly lineage: Lineage;
 }
 
 interface Kept {
-  readonly streams: Map<string, readonly unknown[]>;
+  readonly streams: Map<string, readonly AppendedFact[]>;
   readonly log: readonly MemoryRecord[];
   readonly logged: (records: readonly MemoryRecord[]) => void;
   readonly outcomes: MemoryRunOutcomes;
   readonly projected: MemoryProjections;
 }
 
+const EncodedFactSchema = Schema.Struct({ type: Schema.String, data: Schema.Unknown });
+
+const encodedFactOf = Schema.decodeUnknownSync(EncodedFactSchema);
+
 function folded<State, Command, Event extends TypedEvent, R extends DeclarableReason>(
   decider: Decider<State, Command, Event, R>,
-  stored: readonly unknown[],
+  stored: readonly AppendedFact[],
 ): Effect.Effect<StreamState<State>> {
   const decodeEvent = Schema.decodeUnknownEffect(Schema.toCodecJson(decider.eventSchema));
-  return Effect.forEach(stored, (event) => Effect.orDie(decodeEvent(event))).pipe(
-    Effect.map((events: readonly Event[]) => ({
-      state: events.reduce((state, event) => decider.evolve(state, event), decider.initialState),
+  return Effect.forEach(stored, ({ type, data, context }) =>
+    Effect.map(Effect.orDie(decodeEvent({ type, data })), recordedWith<Event>(context)),
+  ).pipe(
+    Effect.map((events: readonly Recorded<Event>[]) => ({
+      state: foldedOver(decider, decider.initialState, events),
       version: events.length,
     })),
   );
 }
 
-function storedIn({ streams }: Kept, stream: string): readonly unknown[] {
+function recordedEvents<Event extends TypedEvent>(
+  events: readonly Event[],
+  context: Context,
+): readonly Recorded<Event>[] {
+  const recorded = recordedWith<Event>(context);
+  return events.map((event) => recorded(event));
+}
+
+function foldedOver<State, Command, Event extends TypedEvent, R extends DeclarableReason>(
+  decider: Decider<State, Command, Event, R>,
+  from: State,
+  events: readonly Recorded<Event>[],
+): State {
+  let state = from;
+  for (const event of events) {
+    state = decider.evolve(state, event);
+  }
+  return state;
+}
+
+function storedIn({ streams }: Kept, stream: string): readonly AppendedFact[] {
   return streams.get(stream) ?? [];
 }
 
-function recorded(kept: Kept, { stream, events, encoded, lineage }: Appended, at: number): void {
+function appendedTo(kept: Kept, { stream, stored, lineage }: Appended, at: number): void {
   const version = storedIn(kept, stream).length;
-  kept.outcomes.project(stream, events, encoded);
-  kept.projected.project(stream, events, encoded, version + 1);
+  kept.outcomes.project(stream, stored, version + 1);
+  kept.projected.project(stream, stored, version + 1);
   kept.logged(
-    events.map(({ type }, index) => ({
+    stored.map(({ type, data, context }, index) => ({
       position: kept.log.length + index + 1,
       id: messageIdOf(stream, version + index + 1),
       ...lineage,
       stream,
       streamPosition: version + index + 1,
       type,
-      data: encoded[index],
+      data,
+      context,
       recordedAt: new Date(at).toISOString(),
     })),
   );
-  kept.streams.set(stream, [...storedIn(kept, stream), ...encoded]);
+  kept.streams.set(stream, [...storedIn(kept, stream), ...stored]);
+}
+
+function encodedWith<Event extends TypedEvent>(
+  eventSchema: Schema.ConstraintCodec<Event, unknown>,
+  context: Context,
+): (event: Event) => Effect.Effect<AppendedFact> {
+  const encodeEvent = Schema.encodeUnknownEffect(Schema.toCodecJson(eventSchema));
+  return (event) =>
+    Effect.orDie(encodeEvent(event)).pipe(
+      Effect.map((encoded) => {
+        const { type, data } = encodedFactOf(encoded);
+        return { type, data, context };
+      }),
+    );
 }
 
 function executedOn(kept: Kept): Ledger['Service']['execute'] {
@@ -88,11 +133,14 @@ function executedOn(kept: Kept): Ledger['Service']['execute'] {
           new Conflict({ detail: 'The state changed while the command was decided', kind: 'concurrent_change' }),
         );
       }
-      const encodeEvent = Schema.encodeUnknownEffect(Schema.toCodecJson(decider.eventSchema));
-      const encoded = yield* Effect.forEach(decided.success, (event) => Effect.orDie(encodeEvent(event)));
-      recorded(kept, { stream, events: decided.success, encoded, lineage }, yield* Clock.currentTimeMillis);
+      if (decided.success.length === 0) {
+        return { state, version };
+      }
+      const context = yield* Effect.sync(() => checkedContext(decider.context(command, state)));
+      const stored = yield* Effect.forEach(decided.success, encodedWith(decider.eventSchema, context));
+      appendedTo(kept, { stream, stored, lineage }, yield* Clock.currentTimeMillis);
       return {
-        state: decided.success.reduce((evolved, event) => decider.evolve(evolved, event), state),
+        state: foldedOver(decider, state, recordedEvents(decided.success, context)),
         version: version + decided.success.length,
       };
     });
@@ -113,16 +161,19 @@ export function memoryLedger(
     projected: memoryProjections(projections),
   };
   const { projected } = kept;
+  const recordedReader = memoryRecordedReader(kept.log);
   const service = Ledger.of({
     load: (stream, decider) => Effect.suspend(() => folded(decider, storedIn(kept, stream))),
     execute: executedOn(kept),
-    readRecorded: memoryRecordedReader(kept.log),
+    readRecorded: recordedReader.readRecorded,
+    readRecordedEvent: recordedReader.readRecordedEvent,
     readRunOutcomes: kept.outcomes.readRunOutcomes,
     readProjectedRows: projected.readProjectedRows,
     countProjectedRows: projected.countProjectedRows,
     readDueRows: projected.readDueRows,
     nextDueOf: projected.nextDueOf,
     advanceRow: projected.advanceRow,
+    content: memoryRecordedContent(),
   });
   return { service, layer: Layer.succeed(Ledger, service), streamNames: () => [...kept.streams.keys()] };
 }

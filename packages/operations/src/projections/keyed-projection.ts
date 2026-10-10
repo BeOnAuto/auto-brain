@@ -1,6 +1,7 @@
 import type { Effect } from 'effect';
 
 import type { BrainAddress } from '../caller/brain-context.ts';
+import type { Context } from '../ledger/context.ts';
 
 export type ProjectedValue = string | number | boolean | null;
 
@@ -23,6 +24,9 @@ export interface ProjectedIndex {
 export interface ProjectedMessage {
   readonly id: string;
   readonly position: number;
+  readonly type: string;
+  readonly data: unknown;
+  readonly context: Context;
 }
 
 export interface ProjectedStream {
@@ -42,13 +46,9 @@ export interface KeyedProjection {
   readonly types: readonly string[];
   readonly columns: readonly ProjectedColumn[];
   readonly indexes: readonly ProjectedIndex[];
-  readonly keyOf?: (event: unknown, stream: ProjectedStream) => string | undefined;
+  readonly keyOf?: (message: ProjectedMessage, stream: ProjectedStream) => string | undefined;
   readonly advanced?: AdvancedColumns;
-  readonly rowAfter: (
-    row: ProjectedRow | undefined,
-    event: unknown,
-    message: ProjectedMessage,
-  ) => ProjectedRow | undefined;
+  readonly rowAfter: (row: ProjectedRow | undefined, message: ProjectedMessage) => ProjectedRow | undefined;
 }
 
 export interface ProjectedCondition {
@@ -139,11 +139,15 @@ export function brainStreamOf(stream: string): BrainStream | undefined {
     : { brainKey: String(groups['brainKey']), kind: String(groups['kind']), id: String(groups['id']) };
 }
 
-export function rowKeyOf(projection: KeyedProjection, event: unknown, stream: BrainStream): string | undefined {
+export function rowKeyOf(
+  projection: KeyedProjection,
+  message: ProjectedMessage,
+  stream: BrainStream,
+): string | undefined {
   if (!projection.kinds.includes(stream.kind)) {
     return undefined;
   }
-  return projection.keyOf === undefined ? stream.id : projection.keyOf(event, stream);
+  return projection.keyOf === undefined ? stream.id : projection.keyOf(message, stream);
 }
 
 export function advancedColumnsOf({ advanced }: KeyedProjection): readonly string[] {

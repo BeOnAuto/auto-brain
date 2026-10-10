@@ -2,16 +2,17 @@ import { Effect, Option, Schema } from 'effect';
 
 import { defineQuery } from '../definition/operation.ts';
 import { BrainReader } from '../ledger/brain-reader.ts';
+import { factOf } from '../ledger/decider.ts';
 import type { KeyedProjection, ProjectedMessage, ProjectedRow } from './keyed-projection.ts';
 
-const BeganSchema = Schema.Struct({ type: Schema.Literal('run_began'), at: Schema.String, fn: Schema.String });
+const BeganSchema = factOf('run_began', Schema.Struct({ at: Schema.String, fn: Schema.String }));
 
-const EndedSchema = Schema.Struct({
-  type: Schema.Literal('run_ended'),
-  status: Schema.Literals(['succeeded', 'failed', 'rejected']),
-});
+const EndedSchema = factOf(
+  'run_ended',
+  Schema.Struct({ status: Schema.Literals(['succeeded', 'failed', 'rejected']) }),
+);
 
-const NotedSchema = Schema.Struct({ type: Schema.Literal('run_noted') });
+const NotedSchema = factOf('run_noted', Schema.Struct({}));
 
 const decodeFact = Schema.decodeUnknownOption(Schema.Union([BeganSchema, EndedSchema, NotedSchema]));
 
@@ -25,9 +26,9 @@ function rowAfterFact(
   { id }: ProjectedMessage,
 ): ProjectedRow | undefined {
   if (fact.type === 'run_began') {
-    const beganAt = Date.parse(fact.at);
+    const beganAt = Date.parse(fact.data.at);
     return {
-      fn: fact.fn,
+      fn: fact.data.fn,
       began_at: beganAt,
       status: 'started',
       facts: 1,
@@ -40,7 +41,7 @@ function rowAfterFact(
     return undefined;
   }
   const counted = { ...row, facts: Number(row['facts']) + 1, last_message: id };
-  return fact.type === 'run_noted' ? counted : { ...counted, status: fact.status, open: false, due_at: null };
+  return fact.type === 'run_noted' ? counted : { ...counted, status: fact.data.status, open: false, due_at: null };
 }
 
 export function tallyRowsOf(version: number, fail?: (row: ProjectedRow) => boolean): KeyedProjection {
@@ -62,9 +63,9 @@ export function tallyRowsOf(version: number, fail?: (row: ProjectedRow) => boole
       { name: 'by_brain_and_status', columns: ['status', 'began_at'] },
       { name: 'due', columns: ['due_at'], acrossBrains: true, whereSet: 'due_at' },
     ],
-    rowAfter: (row, event, message) =>
+    rowAfter: (row, message) =>
       Option.getOrUndefined(
-        Option.flatMapNullishOr(decodeFact(event), (fact) => {
+        Option.flatMapNullishOr(decodeFact({ type: message.type, data: message.data }), (fact) => {
           const next = rowAfterFact(row, fact, message);
           if (next !== undefined && fail?.(next) === true) {
             throw new Error('The projection broke down');

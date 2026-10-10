@@ -6,7 +6,7 @@ import type { Decider, InvalidCursor, RecordedPageRequest, RecordedSelection } f
 import { memoryLedger, type MemoryLedger } from './memory-ledger.ts';
 import { memoryRecordedReader } from './memory-recorded.ts';
 
-const HappenedSchema = Schema.Struct({ type: Schema.String });
+const HappenedSchema = Schema.Struct({ type: Schema.String, data: Schema.Struct({}) });
 
 type Happened = typeof HappenedSchema.Type;
 
@@ -14,6 +14,7 @@ const happenings: Decider<null, Happened, Happened> = {
   initialState: null,
   evolve: () => null,
   decide: (happened) => Result.succeed([happened]),
+  context: () => ({ at: '2026-10-05T09:00:00.000Z', by: 'tester' }),
   eventSchema: HappenedSchema,
 };
 
@@ -24,7 +25,7 @@ const newestHundred: RecordedPageRequest = { order: 'desc', limit: 100 };
 function streamsBeginningWith(ledger: MemoryLedger, firstTypes: readonly string[]) {
   return Effect.forEach(firstTypes, (type, index) =>
     TestClock.setTime(1000 + index).pipe(
-      Effect.andThen(ledger.service.execute(`brain/acme/alpha/runs/s${index}`, happenings, { type })),
+      Effect.andThen(ledger.service.execute(`brain/acme/alpha/runs/s${index}`, happenings, { type, data: {} })),
     ),
   );
 }
@@ -59,14 +60,23 @@ describe('the in-memory read of runs that leaves out the streams beginning with 
   });
 });
 
-const StartSchema = Schema.Struct({ type: Schema.String, definition_type: Schema.String, name: Schema.String });
+const StartSchema = Schema.Struct({ type: Schema.Literal('run_started'), data: Schema.Struct({}) });
 
-type Start = typeof StartSchema.Type;
+interface Start {
+  readonly definitionType: string;
+  readonly definitionName: string;
+}
 
-const starts: Decider<null, Start, Start> = {
+const starts: Decider<null, Start, typeof StartSchema.Type> = {
   initialState: null,
   evolve: () => null,
-  decide: (start) => Result.succeed([start]),
+  decide: () => Result.succeed([{ type: 'run_started', data: {} }]),
+  context: ({ definitionType, definitionName }) => ({
+    at: '2026-10-05T09:00:00.000Z',
+    by: 'tester',
+    definitionType,
+    definitionName,
+  }),
   eventSchema: StartSchema,
 };
 
@@ -75,9 +85,8 @@ function runsWithOneInFourOfEachDefinition(ledger: MemoryLedger) {
     Array.from({ length: 28 }, (_, index) => index),
     (index) =>
       ledger.service.execute(`brain/acme/alpha/runs/r${index}`, starts, {
-        type: 'run_started',
-        definition_type: index % 4 === 0 ? 'workflow' : 'reasoning',
-        name: index % 4 === 1 ? 'qualify-enquiry' : 'summary',
+        definitionType: index % 4 === 0 ? 'workflow' : 'reasoning',
+        definitionName: index % 4 === 1 ? 'qualify-enquiry' : 'summary',
       }),
     { discard: true },
   );
@@ -139,7 +148,7 @@ describe('the in-memory read of the runs of one definition', () => {
   });
 });
 
-describe('the in-memory read of the runs of one definition, over a first record that is not an object', () => {
+describe('the in-memory read of the runs of one definition, over a first record whose context names none', () => {
   it('lists the run when no definition is asked, and finds it of none when one is', async () => {
     const readOneRecord = memoryRecordedReader([
       {
@@ -151,13 +160,14 @@ describe('the in-memory read of the runs of one definition, over a first record 
         streamPosition: 1,
         type: 'run_started',
         data: 'workflow',
+        context: { at: '2026-10-07T09:00:00.000Z', by: 'tester' },
         recordedAt: '2026-10-07T09:00:00.000Z',
       },
     ]);
     const reading = (selection: RecordedSelection) =>
-      readOneRecord({ org: 'acme', brain: 'alpha' }, selection, newestHundred).pipe(
-        Effect.map(({ records }) => records.map(({ data }) => data)),
-      );
+      readOneRecord
+        .readRecorded({ org: 'acme', brain: 'alpha' }, selection, newestHundred)
+        .pipe(Effect.map(({ records }) => records.map(({ data }) => data)));
 
     const pages = await Effect.runPromise(
       Effect.all([
