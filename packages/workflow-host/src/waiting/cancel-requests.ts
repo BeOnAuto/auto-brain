@@ -34,7 +34,8 @@ function lineageOf({ id, correlationId }: RecordedEvent): Lineage {
 }
 
 function cancelledWorkflow(parts: CancelParts, { brain, record, request, runId }: Asked) {
-  const { kind, reason, by } = request;
+  const { kind, reason } = request.data;
+  const { by } = request.context;
   const runKey = runKeyOf({ ...brain, runId });
   const pending = { runKey, cause: record.id, cancel: { by, kind, reason } };
   return parts.submitted({ kind: 'cancel_requested', runId: runKey, at: parts.now(), ...pending }).pipe(
@@ -48,15 +49,16 @@ function cancelled(parts: CancelParts, asked: Asked): Effect.Effect<void, Delive
   if (type === parts.workflows) {
     return cancelledWorkflow(parts, asked);
   }
-  const { kind, reason, by } = request;
+  const { kind, reason } = request.data;
+  const { by } = request.context;
   return parts
     .cancelDeferred({ ...brain, id: runId }, { kind, reason, by }, lineageOf(record))
     .pipe(Effect.mapError(failedWith));
 }
 
 function deliveriesOf(parts: CancelParts, { brain, record }: CallRecord): readonly Delivery[] {
-  const request = cancelRequestOf(record.data);
-  const type = request?.definition_type;
+  const request = cancelRequestOf(record);
+  const type = request?.context.definitionType;
   if (request === undefined || type === undefined) {
     return [];
   }

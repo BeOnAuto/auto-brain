@@ -1,7 +1,34 @@
-import type { Decider } from '@beonauto/operations';
+import { factOf, type Context, type Decider } from '@beonauto/operations';
+import { Result } from 'effect';
 
-import type { RunLogEvent } from '../run-log/run-event.ts';
+import { RunLogEventSchema, type RunLogEvent } from '../run-log/run-event.ts';
 import type { RunInput } from './run-input.ts';
 import type { RunState } from './run-state.ts';
 
-export type RunDecider = Decider<RunState, RunInput, RunLogEvent>;
+export interface RunDecider {
+  readonly initialState: RunState;
+  readonly evolve: (state: RunState, event: RunLogEvent) => RunState;
+  readonly decide: (input: RunInput, state: RunState) => Result.Result<readonly RunLogEvent[]>;
+  readonly context: (input: RunInput, state: RunState) => Context;
+}
+
+export const RunLogRecordSchema = factOf('input_applied', RunLogEventSchema);
+
+export type RunLogRecord = typeof RunLogRecordSchema.Type;
+
+export function runLogRecordOf(event: RunLogEvent): RunLogRecord {
+  return { type: 'input_applied', data: event };
+}
+
+export function runLogDeciderOf(machine: RunDecider): Decider<RunState, RunInput, RunLogRecord> {
+  return {
+    initialState: machine.initialState,
+    evolve: (state, { data }) => machine.evolve(state, data),
+    decide: (input, state) =>
+      Result.map(machine.decide(input, state), (events: readonly RunLogEvent[]) =>
+        events.map((event) => runLogRecordOf(event)),
+      ),
+    context: machine.context,
+    eventSchema: RunLogRecordSchema,
+  };
+}

@@ -49,16 +49,12 @@ describe('a notification whose attempts fail', () => {
     await Effect.runPromise(
       record(
         address,
-        { type: 'delivery_started', number: 1, target: 'ada', server: 'chat', tool: 'post_message' },
+        { type: 'delivery_started', data: { number: 1, target: 'ada', server: 'chat', tool: 'post_message' } },
         lineage,
       ),
     );
     await Effect.runPromise(
-      record(
-        address,
-        { type: 'delivery_ended', number: 1, outcome: 'refused', because: 'too_large', duration_ms: 3 },
-        lineage,
-      ),
+      record(address, { type: 'delivery_refused', data: { number: 1, because: 'too_large', duration_ms: 3 } }, lineage),
     );
 
     await brain.performDue(askedAt);

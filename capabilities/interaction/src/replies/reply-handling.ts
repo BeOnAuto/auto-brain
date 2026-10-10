@@ -1,4 +1,4 @@
-import { replyRecorder, type ReplyFact, type ReplyRefusal, type ReplyTakenFact } from '@beonauto/definitions';
+import { replyRecorder, type ReplyFact, type ReplyRefusal, type ReplyTaken } from '@beonauto/definitions';
 import type { Issue } from '@beonauto/operations';
 import { Effect } from 'effect';
 
@@ -35,13 +35,13 @@ function readThrough({ route }: Reading) {
   return { server: route.server, tool: route.replies.tool };
 }
 
-function taken(reading: Reading, state: ReadingState, request: KeptRequest, fact: ReplyTakenFact) {
+function taken(reading: Reading, state: ReadingState, request: KeptRequest, fact: ReplyTaken) {
   return Effect.gen(function* () {
     const made = yield* recorded(reading, request, fact);
     if (made === undefined) {
       return state;
     }
-    const brought = { answer: fact.answer, at: made.at, reply: fact.reply };
+    const brought = { answer: fact.data.answer, at: made.at, reply: fact.data.reply };
     yield* settled(reading.parts.ledger, made.address, answeredSettlement(reading.place.brain, brought), {
       causationId: made.id,
       correlationId: made.correlationId,
@@ -70,11 +70,13 @@ function refusedReply(reading: Reading, state: ReadingState, { request, reply, b
     const kept = issues.slice(0, replyBoundsOfAReading.issues);
     const fact: ReplyFact = {
       type: 'reply_refused',
-      ...readThrough(reading),
-      reply: identityOf(reply),
-      because,
-      ...(kept.length === 0 ? {} : { issues: kept }),
-      told: input !== undefined,
+      data: {
+        ...readThrough(reading),
+        reply: identityOf(reply),
+        because,
+        ...(kept.length === 0 ? {} : { issues: kept }),
+        told: input !== undefined,
+      },
     };
     const made = yield* recorded(reading, request, fact);
     if (made === undefined) {
@@ -106,11 +108,9 @@ export function handledReply(reading: Reading, state: ReadingState, reply: Reply
     return Effect.succeed(state);
   }
   if (decision.kind === 'take') {
-    const fact: ReplyTakenFact = {
+    const fact: ReplyTaken = {
       type: 'reply_taken',
-      ...readThrough(reading),
-      reply: identityOf(reply),
-      answer: decision.answer,
+      data: { ...readThrough(reading), reply: identityOf(reply), answer: decision.answer },
     };
     return taken(reading, state, decision.request, fact);
   }

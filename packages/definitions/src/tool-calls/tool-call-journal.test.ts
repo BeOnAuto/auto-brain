@@ -86,6 +86,15 @@ describe('the journal of a run', () => {
   });
 });
 
+describe('the journal of a run whose calls failed', () => {
+  it('records how each call failed after its start', async () => {
+    const { running, history } = await brainWithToolUser();
+    await running({ calls: 1, failing: true });
+
+    expect(await history()).toEqual(['run_started', 'tool_call_started', 'tool_call_failed', 'run_succeeded']);
+  });
+});
+
 describe('the journal of a run that has finished', () => {
   it('records nothing more', async () => {
     const { running, history, user } = await brainWithToolUser();

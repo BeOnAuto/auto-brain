@@ -107,7 +107,7 @@ export {
   mostWorkPerInput,
   taskFrameBytes,
 } from './machine/limits.ts';
-export type { RunDecider } from './machine/run-decider.ts';
+export { RunLogRecordSchema, runLogRecordOf, type RunDecider, type RunLogRecord } from './machine/run-decider.ts';
 export {
   CancelOrderSchema,
   RunInputSchema,

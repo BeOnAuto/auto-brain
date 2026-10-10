@@ -164,6 +164,31 @@ describe('the end of a delivery', () => {
   });
 });
 
+describe('the end of a delivery that answered and kept no conversation', () => {
+  it('shows what the tool answered alone', () => {
+    const delivered: RunEvent = {
+      type: 'delivery_succeeded',
+      data: {
+        number: 1,
+        result_bytes: 52,
+        result_sha256: 'b'.repeat(64),
+        content_kept: false,
+        jsonrpc_id: 3,
+        duration_ms: 5,
+      },
+    };
+
+    expect(presented(delivered)[0]?.data).toEqual({
+      number: 1,
+      result_bytes: 52,
+      result_sha256: 'b'.repeat(64),
+      content_kept: false,
+      jsonrpc_id: 3,
+      duration_ms: 5,
+    });
+  });
+});
+
 describe('the end of a delivery that answered', () => {
   it('shows what the tool answered, what the message was delivered as and where replies are read', () => {
     const delivered: RunEvent = {

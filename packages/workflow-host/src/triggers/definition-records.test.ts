@@ -43,13 +43,13 @@ function saved({ id, name, version, triggers, at = first }: Saved): DefinitionRe
   return {
     id,
     type: version === 1 ? 'definition_created' : 'definition_updated',
-    data: {
-      type: version === 1 ? 'definition_created' : 'definition_updated',
-      name,
-      version,
-      content,
+    data: { content },
+    context: {
       by: 'acme-admin',
       at: new Date(at).toISOString(),
+      definitionType: 'workflow',
+      definitionName: name,
+      definitionVersion: version,
     },
   };
 }
@@ -58,7 +58,8 @@ function retired(id: string, name: string): DefinitionRecord {
   return {
     id,
     type: 'definition_retired',
-    data: { type: 'definition_retired', name, by: 'acme-admin', at: '2026-10-02T00:00:00Z' },
+    data: {},
+    context: { by: 'acme-admin', at: '2026-10-02T00:00:00Z', definitionType: 'workflow', definitionName: name },
   };
 }
 
@@ -115,7 +116,7 @@ describe('the records of the definitions of a brain, applied to its triggers', (
       saved({ id: 's4', name: 'close', version: 2, triggers: [] }),
       saved({ id: 's5', name: 'gone', version: 1, triggers: [everyTrigger(aMinute)] }),
       retired('s6', 'gone'),
-      { id: 's7', type: 'definition_created', data: { type: 'definition_created', name: 7 } },
+      { id: 's7', type: 'definition_created', data: { content: 7 }, context: { by: 'acme-admin', at: 'now' } },
     );
     const rows = await rowsIn(database);
 
@@ -266,19 +267,30 @@ describe('a record of a definition applied again, as a pass that reads it again 
 });
 
 describe('the records of the definitions read back from their stream', () => {
-  it('are each given the id of its record and the type its data names', () => {
+  it('are each given the id of its record, its type, its data and its context', () => {
+    const context = { by: 'acme-admin', at: 'now', definitionName: 'close' };
+
     expect(
       definitionRecordsIn({
         version: 2,
-        events: [{ type: 'definition_created', name: 'close' }, { name: 7 }],
-        lineages: [
-          { id: 'm1', causationId: null, correlationId: null },
-          { id: 'm2', causationId: null, correlationId: null },
+        messages: [
+          {
+            type: 'definition_created',
+            data: { content: { source: 'do: []' } },
+            context,
+            lineage: { id: 'm1', causationId: null, correlationId: null },
+          },
+          {
+            type: 'definition_retired',
+            data: {},
+            context,
+            lineage: { id: 'm2', causationId: null, correlationId: null },
+          },
         ],
       }),
     ).toEqual([
-      { id: 'm1', type: 'definition_created', data: { type: 'definition_created', name: 'close' } },
-      { id: 'm2', type: 'unknown', data: { name: 7 } },
+      { id: 'm1', type: 'definition_created', data: { content: { source: 'do: []' } }, context },
+      { id: 'm2', type: 'definition_retired', data: {}, context },
     ]);
   });
 });

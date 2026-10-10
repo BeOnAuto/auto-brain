@@ -15,17 +15,23 @@ export interface Attempting {
 
 export function startedFact(attempting: Attempting, call?: StartedFields): DeliveryStartedFact {
   const { number, target, server, tool } = attempting;
-  return { type: 'delivery_started', number, target, ...(call ?? { server, tool }) };
+  return { type: 'delivery_started', data: { number, target, ...(call ?? { server, tool }) } };
 }
 
 export function endedFact(number: number, end: AttemptEnd, durationMs: number): DeliveryEndedFact {
-  return { type: 'delivery_ended', number, ...end, duration_ms: durationMs };
+  const ofTheAttempt = { number, duration_ms: durationMs };
+  if (end.type === 'delivery_succeeded') {
+    return { type: end.type, data: { ...ofTheAttempt, ...end.data } };
+  }
+  return end.type === 'delivery_failed'
+    ? { type: end.type, data: { ...ofTheAttempt, ...end.data } }
+    : { type: end.type, data: { ...ofTheAttempt, ...end.data } };
 }
 
 export function lostFact(row: OpenRequestRow): DeliveryEndedFact {
-  return endedFact(row.attempts, { outcome: 'failed', because: 'lost' }, attemptInFlightMs);
+  return endedFact(row.attempts, { type: 'delivery_failed', data: { because: 'lost' } }, attemptInFlightMs);
 }
 
-export function isLastAttempt({ outcome }: Pick<AttemptEnd, 'outcome'>, number: number): boolean {
-  return outcome === 'refused' || (outcome === 'failed' && number >= attemptSchedule.attempts);
+export function isLastAttempt({ type }: Pick<AttemptEnd, 'type'>, number: number): boolean {
+  return type === 'delivery_refused' || (type === 'delivery_failed' && number >= attemptSchedule.attempts);
 }

@@ -9,9 +9,8 @@ import {
 import { changesTimers, runDueOf } from '../dispatch/run-due.ts';
 import type { RunOutput } from '../dispatch/run-output.ts';
 import type { RunState } from '../machine/run-state.ts';
-import type { PositionedEvent, RunLogEvent } from '../run-log/run-event.ts';
+import type { PositionedEvent } from '../run-log/run-event.ts';
 import { isTroubling } from '../settlement/record-store.ts';
-import { isRecordedStep, keyOf } from '../steps/step-entry.ts';
 import type { EnginePorts } from './engine-ports.ts';
 import type { Wake } from './workflow-engine.ts';
 
@@ -28,7 +27,7 @@ function performed(
     return ports.timers.cancel(output, run);
   }
   if (output.kind === 'start_call') {
-    return ports.executor.start(output, run);
+    return ports.executor.start(output, run, origin);
   }
   if (output.kind === 'cancel_call') {
     return ports.executor.cancel(output, run, origin);
@@ -47,11 +46,6 @@ function performed(
     .pipe(Effect.tap((receipt) => (isTroubling(receipt) ? ports.reporter.unsettled({ run, receipt }) : Effect.void)));
 }
 
-function originOf(version: number, { steps }: RunLogEvent): OutputOrigin {
-  const last = steps.at(-1);
-  return { version, lastStep: last !== undefined && isRecordedStep(last) ? keyOf(last) : null };
-}
-
 function isMootOnceEnded(output: RunOutput): boolean {
   return output.kind === 'start_call';
 }
@@ -64,7 +58,7 @@ function firstFailureIn(
 ): Effect.Effect<number | null> {
   return Effect.gen(function* () {
     for (const { version, event } of events) {
-      const origin = originOf(version, event);
+      const origin: OutputOrigin = { version };
       for (const output of event.outputs) {
         const done = yield* Effect.result(performed(ports, run, output, origin));
         if (Result.isFailure(done) && !(ended && isMootOnceEnded(output))) {

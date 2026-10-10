@@ -4,7 +4,7 @@ import { openHostDatabase, type DatabaseSettings } from '../src/database/host-da
 import { passOf } from '../src/follower/brain-pass.ts';
 import { brainRecordsOf } from '../src/follower/brain-records.ts';
 import { followedBrainsOn } from '../src/follower/followed-brains.ts';
-import { eventTrigger, published, definitionRecorded } from '../src/reaction-testing/brain-writes.ts';
+import { byAdmin, definitionRecorded, eventTrigger, published } from '../src/reaction-testing/brain-writes.ts';
 import { definitionRecordsKeepingTheirOwnStops } from '../src/reaction-testing/own-stops.ts';
 import { brainSweepsOn, type BrainSweeps } from '../src/sweeps/brain-sweeps.ts';
 import { resultOfEnding } from '../src/waiting-testing/recorded-waiting.ts';
@@ -59,7 +59,7 @@ export async function sweepCostOn(database: DatabaseSettings, brains: number, re
   const opened = await openHostDatabase(database, Function.constVoid);
   const followed = followedBrainsOn(opened);
   await inTurn(brains, async (index) => {
-    await published(opened.store, { id: `e${index}`, type: 'com.measure.other' }, {}, brainKeyOf(index));
+    await published(opened.store, { id: `e${index}`, type: 'com.measure.other' }, byAdmin, brainKeyOf(index));
     await Effect.runPromise(followed.follow(brainKeyOf(index), null));
   });
   await inTurn(reacting, (index) =>
@@ -97,7 +97,7 @@ export async function sweepCostOn(database: DatabaseSettings, brains: number, re
     idle.push(await timed(sweptUntilEmpty(sweeps, pass)));
   });
   await inTurn(brains, (index) =>
-    published(opened.store, { id: `n${index}`, type: 'com.measure.other' }, {}, brainKeyOf(index)),
+    published(opened.store, { id: `n${index}`, type: 'com.measure.other' }, byAdmin, brainKeyOf(index)),
   );
   const changedMs = await timed(sweptUntilEmpty(sweeps, pass));
   await opened.close();

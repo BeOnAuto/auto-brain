@@ -1,5 +1,13 @@
 import { eventAppenderOf, eventCodecOf } from '@beonauto/ledger';
-import { RunLogEventSchema, type PositionedEvent, type RunLogEvent, type RunLogStore } from '@beonauto/workflow-engine';
+import type { Recorded } from '@beonauto/operations';
+import {
+  RunLogRecordSchema,
+  runLogRecordOf,
+  type PositionedEvent,
+  type RunLogEvent,
+  type RunLogRecord,
+  type RunLogStore,
+} from '@beonauto/workflow-engine';
 import { Effect } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
@@ -9,7 +17,7 @@ import { runLogStreamOf } from './run-address.ts';
 import { lineageOfRecord } from './run-lineage.ts';
 import { latestSnapshotOf, savedSnapshot } from './snapshot-chunks.ts';
 
-const codec = eventCodecOf(RunLogEventSchema);
+const codec = eventCodecOf(RunLogRecordSchema);
 
 function endsTheRun(event: RunLogEvent): boolean {
   return event.outputs.some(({ kind }) => kind === 'settle');
@@ -35,13 +43,18 @@ function endedAt(database: HostDatabase, runKey: string, version: number): Effec
 }
 
 export function ledgerRunLogStore(database: HostDatabase): RunLogStore {
-  const append = eventAppenderOf(database.store, RunLogEventSchema);
+  const append = eventAppenderOf(database.store, RunLogRecordSchema);
   const streamAfter = (runKey: string, version: number) =>
     Effect.promise(() => database.store.read(runLogStreamOf(runKey), version));
   const eventsAfter = (runKey: string, version: number): Effect.Effect<readonly PositionedEvent[]> =>
     streamAfter(runKey, version).pipe(
-      Effect.flatMap(({ events }) => Effect.forEach(events, codec.decode)),
-      Effect.map((events: readonly RunLogEvent[]) => positioned(version, events)),
+      Effect.flatMap(({ messages }) => Effect.forEach(messages, codec.decode)),
+      Effect.map((records: readonly Recorded<RunLogRecord>[]) =>
+        positioned(
+          version,
+          records.map(({ data }) => data),
+        ),
+      ),
     );
   return {
     load: (runKey) =>
@@ -50,25 +63,24 @@ export function ledgerRunLogStore(database: HostDatabase): RunLogStore {
         const tail = yield* eventsAfter(runKey, snapshot?.snapshot.version ?? 0);
         return { snapshot, tail };
       }),
-    append: (runKey, event, expectedVersion, lineage) =>
+    append: (runKey, event, { expectedVersion, context }, lineage) =>
       Effect.gen(function* () {
         if (expectedVersion === 0) {
           yield* knownRun(database, runKey);
         }
-        yield* append(
-          runLogStreamOf(runKey),
-          [event],
+        yield* append(runLogStreamOf(runKey), [runLogRecordOf(event)], {
           expectedVersion,
-          yield* lineageOfRecord(database, runKey, lineage),
-        );
+          context,
+          lineage: yield* lineageOfRecord(database, runKey, lineage),
+        });
         if (endsTheRun(event)) {
           yield* endedAt(database, runKey, expectedVersion + 1);
         }
       }),
     eventsAfter,
     saveSnapshot: (snapshot) =>
-      Effect.flatMap(streamAfter(snapshot.runId, snapshot.version - 1), ({ events, version }) =>
-        events.length > 0
+      Effect.flatMap(streamAfter(snapshot.runId, snapshot.version - 1), ({ messages, version }) =>
+        messages.length > 0
           ? savedSnapshot(database, snapshot)
           : Effect.die(
               new RangeError(`A snapshot at version ${snapshot.version} of a run whose log holds ${version} events`),

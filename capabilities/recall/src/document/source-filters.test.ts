@@ -54,7 +54,7 @@ describe('the filters a recall function refuses', () => {
     expect(
       issuesIn(withEvents('\n    - run_succeeded\n    - {source: /ledger}\n    - {type: "${ $data.x }"}')),
     ).toEqual([
-      'Line 5, /source/events/0: A filter is a mapping of the attributes an event must have: type, and optionally source, subject and data',
+      'Line 5, /source/events/0: A filter is a mapping of the attributes an event must have: type, and optionally any other attribute of the event and its data',
       'Line 6, /source/events/1/type: An event filter matched over the event alone names the type of the events it takes',
       'Line 7, /source/events/2/type: type is written out, not computed by an expression, so that it is matched as it is',
     ]);
@@ -62,15 +62,16 @@ describe('the filters a recall function refuses', () => {
 
   it('refuses an attribute it does not test, and a source or subject computed or empty, leaving the expression of its data to the check at save', () => {
     const filters = [
-      '    - {type: a, id: x}',
+      '    - {type: a, Tenant: x, depth: two}',
       '    - {type: b, subject: "${ $data }", source: ""}',
       '    - {type: c, data: "${ $data.x + }"}',
     ];
 
     expect(issuesIn(withEvents(`\n${filters.join('\n')}`))).toEqual([
-      'Line 5, /source/events/0/id: An event filter matched over the event alone tests type, source, subject and data, not id',
-      'Line 6, /source/events/1/source: source is text that is not empty',
+      'Line 5, /source/events/0/Tenant: An event filter names an attribute of the event as CloudEvents names it, in at most 20 lowercase letters and digits, not Tenant',
+      'Line 5, /source/events/0/depth: depth is a whole number, written out',
       'Line 6, /source/events/1/subject: subject is written out, not computed by an expression, so that it is matched as it is',
+      'Line 6, /source/events/1/source: source is text that is not empty',
     ]);
   });
 });

@@ -50,9 +50,21 @@ export function typesToRead(named: readonly string[]): readonly string[] {
 }
 
 function eventOf(brainKey: string, record: StoredRecord): CloudEvent | undefined {
-  const { id, causationId, correlationId, version, type, data, recordedAt } = record;
+  const { id, causationId, correlationId, version, globalPosition, type, data, metadata, recordedAt } = record;
   const stream = record.stream.slice(brainKey.length);
-  return brainEventOf({ id, cursor: '', causationId, correlationId, stream, version, type, data, recordedAt });
+  return brainEventOf({
+    id,
+    cursor: '',
+    causationId,
+    correlationId,
+    stream,
+    version,
+    globalPosition,
+    type,
+    data,
+    context: metadata.context,
+    recordedAt,
+  });
 }
 
 function hasAMoment({ time }: CloudEvent): boolean {

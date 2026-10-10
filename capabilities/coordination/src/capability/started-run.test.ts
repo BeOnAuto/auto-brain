@@ -1,4 +1,4 @@
-import { echo } from '@beonauto/definitions/testing';
+import { echo, noLongestRuns, recordingJournal } from '@beonauto/definitions/testing';
 import { memoryLedger } from '@beonauto/operations/testing';
 import type { RunStart, WorkflowHost } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
@@ -62,7 +62,39 @@ describe('the run a run of a workflow starts', () => {
       },
     ]);
   });
+});
 
+describe('the run a run of a workflow starts for a call or a trigger', () => {
+  it('carries the call that started it and the trigger that started it, when it has them', async () => {
+    const { starts, recording } = recordingStarts();
+    const prepared = Effect.runSync(recordingWorkflows(recording).prepare(flow));
+    const context = {
+      id: runId,
+      org: 'acme',
+      brain: 'alpha',
+      caller: acmeCaller,
+      definition: { name: 'flow', version: 1 },
+      journal: recordingJournal(),
+      lineage: { startId: 'start-1', correlationId: 'root-1' },
+      depth: 1,
+      callDepth: 1,
+      calledBy: { run_id: 'r-0', reference: '/do/0/flow', run: 1 },
+      trigger: { kind: 'event', reference: '/schedule/on' },
+      longestRunOf: noLongestRuns,
+    } as const;
+
+    await Effect.runPromise(prepared.run({}, context));
+
+    expect(starts.map(({ attributes }) => attributes)).toMatchObject([
+      {
+        called_by: { run_id: 'r-0', reference: '/do/0/flow', run: 1 },
+        trigger: { kind: 'event', reference: '/schedule/on' },
+      },
+    ]);
+  });
+});
+
+describe('the calls of the run a run of a workflow starts', () => {
   it('waits for each call that names its definition no longer than that definition may run, with a minute more', async () => {
     const { starts, recording } = recordingStarts();
     const brain = brainOn(memoryLedger(), [recordingWorkflows(recording), echo]);

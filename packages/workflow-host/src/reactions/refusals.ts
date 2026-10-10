@@ -1,9 +1,11 @@
 import { ReactionRefusedSchema, reactionsStreamKind, type ReactionRefused } from '@beonauto/definitions';
 import { eventAppenderOf } from '@beonauto/ledger';
+import { brainCallerOf } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
 import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
+import { brainOfKey } from '../follower/record-steps.ts';
 
 export interface RefuseReaction {
   readonly refuse: (brainKey: string, workflow: string, reason: string) => Effect.Effect<void>;
@@ -39,16 +41,18 @@ function recorded(database: HostDatabase, row: Row, at: number): Effect.Effect<v
   const stream = reactionsStreamOf(row.brain_key, row.workflow);
   const refused: ReactionRefused = {
     type: 'reaction_refused',
-    workflow: row.workflow,
-    count: row.count,
-    reason: row.reason,
-    minute: new Date(row.minute).toISOString(),
+    data: { count: row.count, reason: row.reason, minute: new Date(row.minute).toISOString() },
+  };
+  const context = {
     at: new Date(at).toISOString(),
+    by: brainCallerOf(brainOfKey(row.brain_key)).id,
+    definitionType: 'workflow',
+    definitionName: row.workflow,
   };
   return Effect.orDie(
     Effect.gen(function* () {
       const { version } = yield* Effect.promise(() => database.store.read(stream));
-      yield* append(stream, [refused], version);
+      yield* append(stream, [refused], { expectedVersion: version, context });
       yield* database.write(
         statement`UPDATE workflow_reaction_refusals SET recorded = 1
           WHERE brain_key = ${row.brain_key} AND workflow = ${row.workflow} AND minute = ${row.minute}`,

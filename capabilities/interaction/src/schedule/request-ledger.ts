@@ -24,20 +24,21 @@ export interface RequestLedger
 
 const decodeFirst = Schema.decodeUnknownSync(Schema.NonEmptyArray(Schema.Struct({ correlationId: Schema.String })));
 
+const broughtAt = { id: Schema.String, context: Schema.Struct({ at: Schema.String }) };
+
 const decodeLastBrought = Schema.decodeUnknownSync(
   Schema.NonEmptyArray(
-    Schema.Struct({
-      id: Schema.String,
-      data: Schema.Union([
-        Schema.Struct({ type: Schema.Literal('delivery_ended'), at: Schema.String }),
-        Schema.Struct({
-          type: Schema.Literal('reply_taken'),
+    Schema.Union([
+      Schema.Struct({ ...broughtAt, type: Schema.Literal('delivery_succeeded') }),
+      Schema.Struct({
+        ...broughtAt,
+        type: Schema.Literal('reply_taken'),
+        data: Schema.Struct({
           answer: Schema.Json,
           reply: Schema.Struct({ id: Schema.String, sender: Schema.String }),
-          at: Schema.String,
         }),
-      ]),
-    }),
+      }),
+    ]),
   ),
 );
 
@@ -72,17 +73,19 @@ export function recordedCall(
 const lastBrought: RecordedPageRequest = {
   order: 'desc',
   limit: 1,
-  types: ['delivery_ended', 'reply_taken'],
-  dataOf: ['delivery_ended', 'reply_taken'],
+  types: ['delivery_succeeded', 'reply_taken'],
+  dataOf: ['reply_taken'],
 };
 
 export function settledFromBroughtAnswer(ledger: RequestLedger, { address, lineage }: DueRequest): Effect.Effect<void> {
   return ledger.readRecorded(address, { kind: 'run', run: address.id }, lastBrought).pipe(
     Effect.orDie,
     Effect.flatMap(({ records }) => {
-      const [{ id, data }] = decodeLastBrought(records);
-      const settlement = data.type === 'reply_taken' ? answeredSettlement(address, data) : deliveredSettlement(data.at);
-      return settled(ledger, address, settlement, { ...lineage, causationId: id });
+      const [last] = decodeLastBrought(records);
+      const { at } = last.context;
+      const settlement =
+        last.type === 'reply_taken' ? answeredSettlement(address, { ...last.data, at }) : deliveredSettlement(at);
+      return settled(ledger, address, settlement, { ...lineage, causationId: last.id });
     }),
   );
 }

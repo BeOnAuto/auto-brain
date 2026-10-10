@@ -143,6 +143,7 @@ export { publishedEventOf, type EventPublished } from './events/published-events
 export { ReactionRefusedSchema, reactionsStreamKind, type ReactionRefused } from './events/reaction-refusals.ts';
 export { mostReactingDefinitions } from './registry/registry-decisions.ts';
 export { definitionChangeOf, type DefinitionChange } from './registry/definition-changes.ts';
+export { definitionNameOf } from './registry/definition-registry.ts';
 export {
   EventTriggerSchema,
   ScheduleTriggerSchema,

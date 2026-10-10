@@ -1,12 +1,7 @@
 import { internalTermsIn } from '@beonauto/api/testing';
 import { reservedEventTypes } from '@beonauto/definitions';
-import {
-  PublicEventSchema,
-  cursorWithin,
-  mostPublicEventDataBytes,
-  presentationOf,
-  type RecordedEvent,
-} from '@beonauto/operations';
+import { PublicEventSchema, mostPublicEventDataBytes, presentationOf, type RecordedEvent } from '@beonauto/operations';
+import { nothingKept } from '@beonauto/operations/testing';
 import {
   RunLogEventSchema,
   callKeyText,
@@ -33,8 +28,10 @@ const decodePublicEvent = Schema.decodeUnknownResult(PublicEventSchema);
 
 const presentation = presentationOf([runPresenter]);
 
+const showing = { streamPrefix: 'brain/acme/alpha/', content: nothingKept, view: 'page' } as const;
+
 function present(record: RecordedEvent) {
-  return presentation.present(record).at(0);
+  return presentation.present(record, showing).at(0);
 }
 
 const utf8 = new TextEncoder();
@@ -60,11 +57,27 @@ function recordOf(event: RunLogEvent): RecordedEvent {
     correlationId: runId,
     stream: `run-logs/${runId}`,
     version: 1,
+    globalPosition: 1,
     type: event.type,
     data: encodeEvent(event),
+    context: {
+      at: '2026-10-05T09:00:00.000Z',
+      by: 'acme-admin',
+      runId,
+      definitionType: 'workflow',
+      definitionName: 'triage',
+      definitionVersion: 1,
+    },
     recordedAt: '2026-10-05T09:00:00.000Z',
   };
 }
+
+const ofTheRun: unknown = expect.objectContaining({
+  causation_id: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a',
+  at: '2026-10-05T09:00:00.000Z',
+  run_id: runId,
+  definition: { type: 'workflow', name: 'triage', version: 1 },
+});
 
 const settled: RunOutput = { kind: 'settle', runId: runKey, settlement: { status: 'succeeded', output: 1 } };
 
@@ -78,13 +91,10 @@ describe('an input a workflow took, in the history of its run', () => {
 
     expect(present(recordOf(event))).toEqual({
       id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
-      cursor: cursorWithin('WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ', 0),
-      causation_id: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a',
-      at: '2026-10-05T09:00:00.000Z',
       type: 'workflow_input_applied',
       summary: 'The workflow started, and 1 step moved.',
+      metadata: ofTheRun,
       data: {
-        run_id: runId,
         input: { kind: 'started', key: runId },
         step_count: 1,
         steps: [{ task: '/do/0/notify', run: 1, outcome: 'completed' }],

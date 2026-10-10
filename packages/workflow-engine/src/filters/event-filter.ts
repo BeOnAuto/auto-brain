@@ -1,7 +1,7 @@
 import { Function } from 'effect';
 
 import { enclosedBody } from '../dsl/expressions.ts';
-import { field, isObject, objectField, type Json, type JsonObject } from '../dsl/json.ts';
+import { entriesOf, field, isObject, objectField, type Json, type JsonEntry, type JsonObject } from '../dsl/json.ts';
 import { forbidden, rejection, type Rejection } from '../dsl/policy-checks.ts';
 import { eventFilterRejections, eventFiltersOf, type LocatedFilter } from '../dsl/task-policy.ts';
 import { pointerTo } from '../dsl/tasks.ts';
@@ -22,9 +22,9 @@ export type FilterVerdict = boolean | { readonly error: DslError; readonly stopp
 
 const filterKeys: ReadonlySet<string> = new Set(['with', 'correlate']);
 
-const literalAttributes: readonly string[] = ['type', 'source', 'subject'];
+const wholeNumberAttributes: ReadonlySet<string> = new Set(['depth', 'calldepth', 'definitionversion']);
 
-const testedAttributes: ReadonlySet<string> = new Set([...literalAttributes, 'data']);
+const attributeName = /^[a-z0-9]{1,20}$/u;
 
 export function hasAttributes(event: JsonObject, attributes: JsonObject, verdictOf: ExpressionVerdict): boolean {
   return filterAttributesOf(attributes, Function.identity).every((attribute) =>
@@ -37,21 +37,25 @@ function strayKeyRejections(filter: JsonObject, attributes: JsonObject, pointer:
     .filter((key) => !filterKeys.has(key))
     .map((key) => forbidden(pointerTo(pointer, key), `${key} is not part of an event filter, which takes with`));
   const strayAttributes = Object.keys(attributes)
-    .filter((name) => !testedAttributes.has(name))
+    .filter((name) => !attributeName.test(name))
     .map((name) =>
       forbidden(
         pointerTo(`${pointer}/with`, name),
-        `An event filter matched over the event alone tests type, source, subject and data, not ${name}`,
+        `An event filter names an attribute of the event as CloudEvents names it, in at most 20 lowercase letters and digits, not ${name}`,
       ),
     );
   return [...strayKeys, ...strayAttributes];
 }
 
-function literalRejection(name: string, expected: Json | undefined, pointer: string): readonly Rejection[] {
-  if (expected === undefined) {
-    return name === 'type'
-      ? [rejection(pointer, 'An event filter matched over the event alone names the type of the events it takes')]
-      : [];
+function wholeNumberRejection(name: string, expected: Json, pointer: string): readonly Rejection[] {
+  return typeof expected === 'number' && Number.isSafeInteger(expected) && expected >= 0
+    ? []
+    : [rejection(pointer, `${name} is a whole number, written out`)];
+}
+
+function literalRejection(name: string, expected: Json, pointer: string): readonly Rejection[] {
+  if (wholeNumberAttributes.has(name)) {
+    return wholeNumberRejection(name, expected, pointer);
   }
   if (typeof expected !== 'string' || expected === '') {
     return [rejection(pointer, `${name} is text that is not empty`)];
@@ -62,9 +66,19 @@ function literalRejection(name: string, expected: Json | undefined, pointer: str
 }
 
 function literalRejections(attributes: JsonObject, pointer: string): readonly Rejection[] {
-  return literalAttributes.flatMap((name) =>
-    literalRejection(name, field(attributes, name), pointerTo(`${pointer}/with`, name)),
-  );
+  const typeNamed =
+    field(attributes, 'type') === undefined
+      ? [
+          rejection(
+            pointerTo(`${pointer}/with`, 'type'),
+            'An event filter matched over the event alone names the type of the events it takes',
+          ),
+        ]
+      : [];
+  const literals = entriesOf(attributes)
+    .filter(([name]: JsonEntry) => name !== 'data' && attributeName.test(name))
+    .flatMap(([name, expected]: JsonEntry) => literalRejection(name, expected, pointerTo(`${pointer}/with`, name)));
+  return [...typeNamed, ...literals];
 }
 
 export function literalFilterOf(filter: Json | undefined, pointer: string): LiteralFilterReading {

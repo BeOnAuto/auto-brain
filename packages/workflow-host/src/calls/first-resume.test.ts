@@ -8,6 +8,8 @@ import type { Statement } from '../database/statement.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { hostExecutor } from './host-executor.ts';
 
+const origin = { version: 1 };
+
 const run = { runId: 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', attributes: {} };
 
 const call: StartCall = {
@@ -60,7 +62,7 @@ describe('the first resume of an executor', () => {
       childAnswerOf: () => Effect.sync(() => ended.result),
       cancelChild: () => Effect.succeed('requested'),
     });
-    await Effect.runPromise(executor.executor.start(call, run));
+    await Effect.runPromise(executor.executor.start(call, run, origin));
     await Effect.runPromise(executor.idle());
     ended.result = { status: 'succeeded', output: 'checked' };
 

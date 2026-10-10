@@ -11,6 +11,7 @@ import {
   UnavailableKindSchema,
   defineCommand,
   defineQuery,
+  factOf,
   quoted,
   type Decider,
   type Issue,
@@ -26,17 +27,20 @@ type Note = typeof NoteSchema.Type;
 
 const Nothing = Schema.Record(Schema.String, Schema.Never);
 
-const NoteAddedSchema = Schema.Struct({ type: Schema.Literal('note_added'), note: NoteSchema });
+const NoteAddedSchema = factOf('note_added', Schema.Struct({ note: NoteSchema }));
 
 type NoteAdded = typeof NoteAddedSchema.Type;
 
+const writtenNow = { at: '2026-10-01T09:00:00.000Z', by: 'notebook' };
+
 const notebook: Decider<readonly Note[], Note, NoteAdded, 'conflict'> = {
   initialState: [],
-  evolve: (notes, { note }) => [...notes, note],
+  evolve: (notes, { data }) => [...notes, data.note],
   decide: (note, notes) =>
     notes.some(({ name }) => name === note.name)
       ? Result.fail(new Conflict({ detail: `A note named ${note.name} exists` }))
-      : Result.succeed([{ type: 'note_added', note }]),
+      : Result.succeed([{ type: 'note_added', data: { note } }]),
+  context: () => writtenNow,
   eventSchema: NoteAddedSchema,
 };
 
@@ -155,14 +159,15 @@ const BrainLabelSchema = Schema.Struct({ brain: BrainIdSchema, label: Schema.Str
 
 type BrainLabel = typeof BrainLabelSchema.Type;
 
-const BrainLabelledSchema = Schema.Struct({ type: Schema.Literal('brain_labelled'), labelled: BrainLabelSchema });
+const BrainLabelledSchema = factOf('brain_labelled', Schema.Struct({ labelled: BrainLabelSchema }));
 
 type BrainLabelled = typeof BrainLabelledSchema.Type;
 
 const labelBook: Decider<readonly BrainLabel[], BrainLabel, BrainLabelled> = {
   initialState: [],
-  evolve: (labels, { labelled }) => [...labels.filter(({ brain }) => brain !== labelled.brain), labelled],
-  decide: (labelled) => Result.succeed([{ type: 'brain_labelled', labelled }]),
+  evolve: (labels, { data: { labelled } }) => [...labels.filter(({ brain }) => brain !== labelled.brain), labelled],
+  decide: (labelled) => Result.succeed([{ type: 'brain_labelled', data: { labelled } }]),
+  context: () => writtenNow,
   eventSchema: BrainLabelledSchema,
 };
 

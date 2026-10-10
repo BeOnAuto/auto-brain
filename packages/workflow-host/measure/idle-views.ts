@@ -26,17 +26,27 @@ const details = {
   initial: 0,
 };
 
-function saved(index: number) {
+async function saved(store: WorkflowStore, index: number): Promise<void> {
   const name = `view-${index}`;
-  const data = {
-    type: 'definition_created',
-    name,
-    version: 1,
-    content: { source: name, details },
+  const context = {
     by: 'acme-admin',
     at: '2026-10-06T09:00:00.000Z',
+    definitionType: 'recall',
+    definitionName: name,
+    definitionVersion: 1,
   };
-  return { type: 'definition_created', data };
+  await store.database.store.append(
+    `${brain}definitions/recall`,
+    [{ type: 'definition_created', data: { content: { source: name, details } } }],
+    { expectedVersion: index, context },
+  );
+}
+
+async function savedInTurn(store: WorkflowStore, views: number, index = 0): Promise<void> {
+  if (index < views) {
+    await saved(store, index);
+    await savedInTurn(store, views, index + 1);
+  }
 }
 
 async function allLive(store: WorkflowStore, views: number): Promise<void> {
@@ -54,11 +64,7 @@ async function allLive(store: WorkflowStore, views: number): Promise<void> {
 
 export async function idleViewsOn(settings: DatabaseSettings, views: number, seconds: number): Promise<IdleViews> {
   const store = await openWorkflowStore(settings, Function.constVoid);
-  await store.database.store.append(
-    `${brain}definitions/recall`,
-    Array.from({ length: views }, (_, index) => saved(index)),
-    0,
-  );
+  await savedInTurn(store, views);
   const pool = programPool({ workers: 4, heapMegabytes: 256 });
   const projector = startProjector({
     database: store.database,

@@ -1,5 +1,4 @@
 import { messageIdOf } from '@beonauto/operations';
-import { stepEventIdOf } from '@beonauto/workflow-engine';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -22,12 +21,12 @@ const given = { lineage: { start, correlation: 'root' } };
 
 async function lineagesOf(file: string): Promise<readonly unknown[]> {
   const database = await openedOn({ store: 'sqlite', file });
-  const { lineages } = await database.store.read(stream);
-  return lineages;
+  const { messages } = await database.store.read(stream);
+  return messages.map(({ lineage }) => lineage);
 }
 
 describe('the lineage the host writes with each record of a run', () => {
-  it('is the start it was given for the first, the waiting step for a resumption, and the root as correlation', async () => {
+  it('is the start it was given for the first, the record that armed the timer of a wait, and the root as correlation', async () => {
     const file = aSQLiteFile();
     const hosted = await hostedOn({ store: 'sqlite', file });
     hosted.know(runId);
@@ -37,16 +36,9 @@ describe('the lineage the host writes with each record of a run', () => {
 
     expect(await lineagesOf(file)).toEqual([
       { id: messageIdOf(stream, 1), causationId: start, correlationId: 'root' },
-      {
-        id: messageIdOf(stream, 2),
-        causationId: stepEventIdOf(runId, { reference: '/do/0/pause', run: 1, outcome: 'waiting', times: 1 }),
-        correlationId: 'root',
-      },
+      { id: messageIdOf(stream, 2), causationId: messageIdOf(stream, 1), correlationId: 'root' },
     ]);
-    expect(hosted.settledWith().get(runId)).toEqual({
-      causationId: stepEventIdOf(runId, { reference: '/do/0/pause', run: 1, outcome: 'completed', times: 1 }),
-      correlationId: 'root',
-    });
+    expect(hosted.settledWith().get(runId)).toEqual({ causationId: messageIdOf(stream, 2), correlationId: 'root' });
   });
 });
 
@@ -65,10 +57,7 @@ describe('the lineage of the fire of a timer', () => {
       { id: messageIdOf(stream, 1), causationId: null, correlationId: runId },
       { id: messageIdOf(stream, 2), causationId: messageIdOf(stream, 1), correlationId: runId },
     ]);
-    expect(second.settledWith().get(runId)).toEqual({
-      causationId: stepEventIdOf(runId, { reference: '/do/0/slow', run: 1, outcome: 'timed_out', times: 1 }),
-      correlationId: runId,
-    });
+    expect(second.settledWith().get(runId)).toEqual({ causationId: messageIdOf(stream, 2), correlationId: runId });
   });
 });
 

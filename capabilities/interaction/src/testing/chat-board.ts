@@ -1,10 +1,13 @@
-import type { AnsweredOnce, OneCall } from '@beonauto/mcp';
+import type { AnsweredOnce, CallAnswer, OneCall } from '@beonauto/mcp';
 
-export type BoardAnswer = AnsweredOnce extends infer Answer
-  ? Answer extends AnsweredOnce
-    ? Omit<Answer, 'kind' | 'fields' | 'durationMs' | 'annotations'>
-    : never
-  : never;
+interface Answering {
+  readonly detail: string;
+  readonly retryAfterMs: number | null;
+}
+
+export type BoardAnswer =
+  | (Answering & { readonly outcome: 'result'; readonly answer: CallAnswer })
+  | (Answering & { readonly outcome: Exclude<AnsweredOnce['outcome'], 'result'> });
 
 export interface ChatMessage {
   readonly ts: string;

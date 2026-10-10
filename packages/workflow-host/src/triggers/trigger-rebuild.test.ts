@@ -67,14 +67,15 @@ describe('the triggers of a brain made again from the records of its definitions
       ['tick', '/schedule/every', 2, definitionRecordAt(5)],
     ]);
   });
+});
 
+describe('the triggers of a brain made again, past the records of its definitions that cannot be read', () => {
   it('pass over a record that cannot be read, which is said', async () => {
     const settings = await onSQLite();
     const { store } = await openedOn(settings);
     await brainCreated(store, 'alpha');
-    await recorded(store, `${alpha}definitions/workflow`, { type: 'definition_created', name: 7 });
-    const { version } = await store.read(`${alpha}definitions/workflow`);
-    await store.append(`${alpha}definitions/workflow`, [{ type: 'definition_created', data: { name: 8 } }], version);
+    await recorded(store, `${alpha}definitions/workflow`, { type: 'definition_created', data: { content: 7 } });
+    await recorded(store, `${alpha}definitions/workflow`, { type: 'definition_created', data: { content: {} } });
     await definitionRecorded(store, { name: 'tick', version: 1, triggers: [everyTrigger(aMinute)] });
 
     const reacting = await reactingHost({ settings, clock: movedClock(activatedAt + 1000) });
@@ -92,7 +93,13 @@ describe('the triggers of a brain made again from the records of its definitions
         recordId: definitionRecordAt(1),
         type: 'definition_created',
       },
-      { kind: 'record_unreadable', org: 'acme', brain: 'alpha', recordId: definitionRecordAt(2), type: 'unknown' },
+      {
+        kind: 'record_unreadable',
+        org: 'acme',
+        brain: 'alpha',
+        recordId: definitionRecordAt(2),
+        type: 'definition_created',
+      },
     ]);
   });
 });

@@ -67,23 +67,28 @@ export async function resumedWith(settingsOf: SettingsOf, runKeys: readonly stri
   };
 }
 
-const ofTheRun = { definition_type: 'workflow', name: 'pause', definition_version: 1, by: 'acme-admin', at };
+const ofTheRun = {
+  by: 'acme-admin',
+  at,
+  definitionType: 'workflow',
+  definitionName: 'pause',
+  definitionVersion: 1,
+};
 
-const asked = { type: 'run_cancel_requested', kind: 'requested', reason: 'Not needed any more', ...ofTheRun };
+const asked = { type: 'run_cancel_requested', data: { kind: 'requested', reason: 'Not needed any more' } };
 
 const rejectedUnstarted = {
   type: 'run_rejected',
-  rejection: { reason: 'unavailable', detail: 'The workflow could not be started' },
-  ...ofTheRun,
+  data: { rejection: { reason: 'unavailable', detail: 'The workflow could not be started' } },
 };
 
 export function endedRunSuite(settingsOf: SettingsOf): void {
   describe('a cancel kept for a run that finished without ever reaching the host', () => {
     it('is cleared by the newest head of the run, read first, and given to no run', async () => {
       const resumed = await resumedWith(settingsOf, ['acme/alpha/finished-unstarted', 'acme/alpha/stranded']);
-      await recorded(resumed.database.store, `${alpha}runs/finished-unstarted`, asked);
-      await recorded(resumed.database.store, `${alpha}runs/finished-unstarted`, rejectedUnstarted);
-      await recorded(resumed.database.store, `${alpha}runs/stranded`, asked);
+      await recorded(resumed.database.store, `${alpha}runs/finished-unstarted`, asked, ofTheRun);
+      await recorded(resumed.database.store, `${alpha}runs/finished-unstarted`, rejectedUnstarted, ofTheRun);
+      await recorded(resumed.database.store, `${alpha}runs/stranded`, asked, ofTheRun);
 
       await resumed.resume();
 

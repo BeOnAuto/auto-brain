@@ -4,6 +4,7 @@ import {
   callKeyText,
   type CallKey,
   type Executor,
+  type OutputOrigin,
   type RunContext,
   type StartCall,
   type StartReceipt,
@@ -37,7 +38,7 @@ interface Waiting {
 
 export type CallAnswer = CallResult | Waiting;
 
-export type Perform = (call: StartCall, run: RunContext) => Effect.Effect<CallAnswer>;
+export type Perform = (call: StartCall, run: RunContext, origin: OutputOrigin) => Effect.Effect<CallAnswer>;
 
 export type Deliver = (key: CallKey, result: CallResult) => Effect.Effect<unknown, unknown>;
 
@@ -62,8 +63,14 @@ export interface HostExecutor {
   readonly stop: () => Effect.Effect<void>;
 }
 
+interface Starting {
+  readonly call: StartCall;
+  readonly run: RunContext;
+  readonly origin: OutputOrigin;
+}
+
 interface Calls {
-  readonly begin: (key: string, call: StartCall, run: RunContext) => void;
+  readonly begin: (key: string, call: StartCall, run: RunContext, origin: OutputOrigin) => void;
   readonly answerAgain: (key: string, callKey: CallKey, result: CallResult) => void;
   readonly isRunning: (key: string) => boolean;
   readonly interrupt: (key: string) => Effect.Effect<void>;
@@ -128,10 +135,10 @@ function callsOf(parts: ExecutorParts, running: Background): Calls {
     answer.status === 'waiting' ? waited(key, call, answer.child) : settled(key, call, answer);
   const roots = runSerialiser();
   return {
-    begin: (key, call, run) => {
+    begin: (key, call, run, origin) => {
       running.run(
         key,
-        atOnce.withPermit(perform(call, run)).pipe(
+        atOnce.withPermit(perform(call, run, origin)).pipe(
           Effect.flatMap((answer) => answered(key, call, answer)),
           Effect.catchCause((cause: Cause.Cause<unknown>) => trouble('A call could not record its answer', cause)),
         ),
@@ -150,8 +157,7 @@ function callsOf(parts: ExecutorParts, running: Background): Calls {
 function startedOnce(
   { database, mostOpen, childOf }: ExecutorParts,
   calls: Calls,
-  call: StartCall,
-  run: RunContext,
+  { call, run, origin }: Starting,
 ): Effect.Effect<boolean, DatabaseFailed> {
   return Effect.gen(function* () {
     const key = callKeyText(call.key);
@@ -165,15 +171,15 @@ function startedOnce(
       }
       return refused;
     }
-    const inserted = yield* startedRow(database, key, { call, run, child: childOf(call, run), root });
+    const inserted = yield* startedRow(database, key, { call, run, origin, child: childOf(call, run), root });
     if (inserted) {
-      calls.begin(key, call, run);
+      calls.begin(key, call, run, origin);
     }
     return inserted;
   }).pipe((counted) => calls.underItsRoot(correlationOfRun(run.runId, run.attributes), counted));
 }
 
-function startedAgain(calls: Calls, call: StartCall, run: RunContext, { state, result }: CallRow): StartReceipt {
+function startedAgain(calls: Calls, { call, run, origin }: Starting, { state, result }: CallRow): StartReceipt {
   const key = callKeyText(call.key);
   if (state === 'cancelled') {
     return 'refused_after_cancel';
@@ -185,27 +191,22 @@ function startedAgain(calls: Calls, call: StartCall, run: RunContext, { state, r
   if (state === 'waiting' || calls.isRunning(key)) {
     return 'running';
   }
-  calls.begin(key, call, run);
+  calls.begin(key, call, run, origin);
   return 'started_again';
 }
 
-function started(
-  parts: ExecutorParts,
-  calls: Calls,
-  call: StartCall,
-  run: RunContext,
-): Effect.Effect<StartReceipt, DatabaseFailed> {
+function started(parts: ExecutorParts, calls: Calls, starting: Starting): Effect.Effect<StartReceipt, DatabaseFailed> {
   return Effect.gen(function* () {
-    if (yield* startedOnce(parts, calls, call, run)) {
+    if (yield* startedOnce(parts, calls, starting)) {
       return 'started';
     }
-    return startedAgain(calls, call, run, yield* existingRowOf(parts.database, callKeyText(call.key)));
+    return startedAgain(calls, starting, yield* existingRowOf(parts.database, callKeyText(starting.call.key)));
   });
 }
 
-function resumedIn(calls: Calls, { key, call, run, result }: UnfinishedCall): void {
+function resumedIn(calls: Calls, { key, call, run, origin, result }: UnfinishedCall): void {
   if (result === null) {
-    calls.begin(key, call, run);
+    calls.begin(key, call, run, origin);
   } else {
     calls.answerAgain(key, call.key, result);
   }
@@ -237,7 +238,8 @@ export function hostExecutor(parts: ExecutorParts): HostExecutor {
   const waitingAnswered = waitingAnsweredOnce(parts, calls);
   return {
     executor: {
-      start: (call, run) => started(parts, calls, call, run).pipe(Effect.mapError(failedTo('start_call'))),
+      start: (call, run, origin) =>
+        started(parts, calls, { call, run, origin }).pipe(Effect.mapError(failedTo('start_call'))),
       cancel: (call, run, origin) =>
         cancelledCall({ ...parts, interrupt: calls.interrupt }, { call, run, origin }).pipe(
           Effect.mapError(failedTo('cancel_call')),

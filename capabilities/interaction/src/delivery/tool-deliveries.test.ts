@@ -16,10 +16,14 @@ async function deliveryFacts(brain: InteractionHarness): Promise<readonly unknow
     brain.ledger.service.readRecorded(
       address,
       { kind: 'run', run: askedRunId },
-      { order: 'asc', limit: 20, types: ['delivery_started', 'delivery_ended'] },
+      {
+        order: 'asc',
+        limit: 20,
+        types: ['delivery_started', 'delivery_succeeded', 'delivery_failed', 'delivery_refused'],
+      },
     ),
   );
-  return records.map(({ data }) => data);
+  return records.map(({ type, data }) => ({ type, data }));
 }
 
 function replacingText(lines: readonly string[], line: string, replacement: string): readonly string[] {
@@ -50,14 +54,17 @@ describe('a request delivered through a tool', () => {
     expect(await deliveryFacts(brain)).toMatchObject([
       {
         type: 'delivery_started',
-        number: 1,
-        target: 'ada',
-        server: 'chat',
-        tool: 'post_message',
-        arguments_bytes: 73,
-        arguments_sha256: aDigest,
+        data: {
+          number: 1,
+          target: 'ada',
+          server: 'chat',
+          tool: 'post_message',
+          arguments_bytes: 73,
+          arguments_sha256: aDigest,
+          content_kept: true,
+        },
       },
-      { type: 'delivery_ended', number: 1, outcome: 'delivered', result_sha256: aDigest, jsonrpc_id: 1 },
+      { type: 'delivery_succeeded', data: { number: 1, result_sha256: aDigest, content_kept: true, jsonrpc_id: 1 } },
     ]);
     expect(await brain.firstOpen()).toMatchObject({ attempts: 1, standing: 'delivered' });
     expect(tools.posted()).toMatchObject([{ channel: '#approvals-ada', text: 'Please review the brief for Spring.' }]);
@@ -105,13 +112,13 @@ describe('an attempt that fails', () => {
     expect(await deliveryFacts(brain)).toMatchObject([
       { type: 'delivery_started' },
       {
-        type: 'delivery_ended',
-        outcome: 'failed',
-        because: 'server_failure',
-        retry_after_ms: 120_000,
-        detail: 'The MCP server answered HTTP 429',
-        result_bytes: null,
-        jsonrpc_id: 1,
+        type: 'delivery_failed',
+        data: {
+          because: 'server_failure',
+          retry_after_ms: 120_000,
+          detail: 'The MCP server answered HTTP 429',
+          jsonrpc_id: 1,
+        },
       },
     ]);
   });
@@ -129,10 +136,13 @@ describe('an attempt whose call did not answer as asked', () => {
     const [, lost, , missing] = await deliveryFacts(brain);
 
     expect([lost, missing]).toMatchObject([
-      { outcome: 'failed', because: 'lost' },
-      { outcome: 'failed', because: 'tool_error', detail: 'Tool post_message not found' },
+      { type: 'delivery_failed', data: { because: 'lost' } },
+      {
+        type: 'delivery_failed',
+        data: { because: 'tool_error', detail: 'Tool post_message not found', result_bytes: 0 },
+      },
     ]);
-    expect(lost).not.toHaveProperty('detail');
+    expect(lost).not.toHaveProperty('data.detail');
   });
 
   it('ends with no field of an answer when no call was sent, for a tool no longer offered or a server not reached', async () => {
@@ -143,22 +153,21 @@ describe('an attempt whose call did not answer as asked', () => {
     const [started, notOffered, , unopened] = await deliveryFacts(brain);
 
     expect([started, notOffered, unopened]).toMatchObject([
-      { type: 'delivery_started', number: 1, server: 'chat', tool: 'post_message', arguments_sha256: aDigest },
       {
-        type: 'delivery_ended',
-        outcome: 'failed',
-        because: 'tool_not_offered',
-        detail: 'The operator of this server does not allow chat/post_message',
+        type: 'delivery_started',
+        data: { number: 1, server: 'chat', tool: 'post_message', arguments_sha256: aDigest },
       },
       {
-        type: 'delivery_ended',
-        outcome: 'failed',
-        because: 'server_failure',
-        detail: 'The MCP server could not be reached',
+        type: 'delivery_failed',
+        data: { because: 'tool_not_offered', detail: 'The operator of this server does not allow chat/post_message' },
+      },
+      {
+        type: 'delivery_failed',
+        data: { because: 'server_failure', detail: 'The MCP server could not be reached' },
       },
     ]);
-    expect(notOffered).not.toHaveProperty('result_bytes');
-    expect(unopened).not.toHaveProperty('result_bytes');
+    expect(notOffered).not.toHaveProperty('data.result_bytes');
+    expect(unopened).not.toHaveProperty('data.result_bytes');
     expect(tools.calls()).toEqual([]);
   });
 });

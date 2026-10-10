@@ -16,9 +16,17 @@ export type {
   RecordedStream,
   StoredPage,
   StoredPlace,
+  StoredRecord,
 } from './event-store.ts';
 export { cursorOf as recordedCursorOf } from './recorded/cursor.ts';
-export { decisionLoop, type Decided, type DecisionLoop, type StreamAppend, type StreamLoad } from './ledger-service.ts';
+export {
+  decisionLoop,
+  type Decided,
+  type DecidedPlace,
+  type DecisionLoop,
+  type StreamAppend,
+  type StreamLoad,
+} from './ledger-service.ts';
 export { sqliteEventStore, sqliteLedgerLayer, type SQLiteStoreOptions } from './sqlite-event-store.ts';
 export { recordedReaderOf } from './recorded/recorded-reader.ts';
 export { retriedOnVersionConflict, VersionConflict } from './version-conflict.ts';

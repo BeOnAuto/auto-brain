@@ -8,7 +8,7 @@ import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { runKey } from '../testing/probe-subjects.ts';
 import { ledgerRecordStore } from './ledger-record-store.ts';
 
-const settledBy = { version: 2, lastStep: null };
+const settledBy = { version: 2 };
 
 const run = { runId: runKey, attributes: {} };
 

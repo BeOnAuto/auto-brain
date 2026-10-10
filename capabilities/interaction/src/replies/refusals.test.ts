@@ -37,14 +37,17 @@ describe('a reply from the answerer the rule cannot read', () => {
     const [started] = await recordsOf(brain.ledger, 'telling_started');
 
     expect(refused).toMatchObject([
-      { data: { type: 'reply_refused', server: 'chat', tool: 'thread_replies', because: 'not_an_answer', told: true } },
+      {
+        type: 'reply_refused',
+        data: { server: 'chat', tool: 'thread_replies', because: 'not_an_answer', told: true },
+      },
     ]);
     expect(brain.chat.posted().at(-1)).toMatchObject({
       thread_ts: thread,
       text: 'To answer, reply with one of approve, reject; what follows is kept as the note.',
     });
     expect(started?.causationId).toBe(refused[0]?.id);
-    expect((await recordsOf(brain.ledger, 'telling_ended')).map(({ causationId }) => causationId)).toEqual([
+    expect((await recordsOf(brain.ledger, 'telling_succeeded')).map(({ causationId }) => causationId)).toEqual([
       started?.id,
     ]);
     expect(await brain.firstOpen()).toMatchObject({ standing: 'delivered', reply_refusals: 1 });

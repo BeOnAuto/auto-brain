@@ -1,8 +1,16 @@
 import { messageIdOf, type Lineage } from '@beonauto/operations';
-import { stepEventIdOf, type OutputOrigin, type RecordLineage, type RunContext } from '@beonauto/workflow-engine';
+import {
+  callKeyText,
+  type OutputOrigin,
+  type RecordLineage,
+  type RunContext,
+  type StepKey,
+} from '@beonauto/workflow-engine';
 import { Effect, Option, Schema } from 'effect';
 
+import { startedByOf } from '../calls/call-rows.ts';
 import type { HostDatabase } from '../database/host-database.ts';
+import { armedByOfListener } from '../listeners/listener-rows.ts';
 import { armedByOf } from '../timers/sql-timers.ts';
 import { addressOfRun, runLogStreamOf } from './run-address.ts';
 
@@ -28,6 +36,23 @@ export function correlationOfRun(runKey: string, attributes: Schema.JsonObject):
   return givenOf(runKey, attributes).correlation;
 }
 
+export function recordIdOf(runKey: string, version: number | null): string | null {
+  return version === null ? null : messageIdOf(runLogStreamOf(runKey), version);
+}
+
+function waitBeganIn(
+  database: HostDatabase,
+  runKey: string,
+  { reference, run }: StepKey,
+): Effect.Effect<number | null> {
+  const key = callKeyText({ runId: runKey, reference, run });
+  return Effect.orDie(
+    Effect.flatMap(startedByOf(database, key), (startedBy) =>
+      startedBy === null ? armedByOfListener(database, runKey, key) : Effect.succeed(startedBy),
+    ),
+  );
+}
+
 function causeOfRecord(
   database: HostDatabase,
   runKey: string,
@@ -38,15 +63,13 @@ function causeOfRecord(
     return Effect.succeed(given.start);
   }
   if (cause.kind === 'resumed') {
-    return Effect.succeed(stepEventIdOf(addressOfRun(runKey).runId, cause.step));
+    return Effect.map(waitBeganIn(database, runKey, cause.step), (version) => recordIdOf(runKey, version));
   }
   if (cause.kind === 'given') {
     return Effect.succeed(cause.id);
   }
   return cause.kind === 'timer'
-    ? Effect.map(armedByOf(database, runKey, cause.timerId), (armedBy) =>
-        armedBy === null ? null : messageIdOf(runLogStreamOf(runKey), armedBy),
-      )
+    ? Effect.map(armedByOf(database, runKey, cause.timerId), (armedBy) => recordIdOf(runKey, armedBy))
     : Effect.succeed(null);
 }
 
@@ -62,13 +85,9 @@ export function lineageOfRecord(
   }));
 }
 
-export function lineageOfSettlement({ runId: runKey, attributes }: RunContext, origin: OutputOrigin): Lineage {
-  const { lastStep, version } = origin;
+export function lineageOfSettlement({ runId: runKey, attributes }: RunContext, { version }: OutputOrigin): Lineage {
   return {
-    causationId:
-      lastStep === null
-        ? messageIdOf(runLogStreamOf(runKey), version)
-        : stepEventIdOf(addressOfRun(runKey).runId, lastStep),
+    causationId: messageIdOf(runLogStreamOf(runKey), version),
     correlationId: givenOf(runKey, attributes).correlation,
   };
 }

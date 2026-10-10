@@ -1,5 +1,11 @@
-import { DefinitionEventSchema, definitionTypeStreamOf, type DefinitionEvent } from '@beonauto/definitions';
-import { Option, Schema } from 'effect';
+import {
+  DefinitionEventSchema,
+  definitionNameOf,
+  definitionTypeStreamOf,
+  type DefinitionEvent,
+} from '@beonauto/definitions';
+import { recordedDecoder, type Recorded } from '@beonauto/operations';
+import { Option } from 'effect';
 
 import { runnableDetailsOf } from '../views/view-details.ts';
 
@@ -16,7 +22,7 @@ export interface BrainDefinitions {
 
 export const noDefinitions: BrainDefinitions = { version: 0, functions: new Map() };
 
-const decodeDefinitionEvent = Schema.decodeUnknownOption(Schema.toCodecJson(DefinitionEventSchema));
+const decodeDefinitionEvent = recordedDecoder(DefinitionEventSchema);
 
 export function definitionStreamOf(brainKey: string, definitionType: string): string {
   return `${brainKey}${definitionTypeStreamOf(definitionType)}`;
@@ -26,15 +32,17 @@ export function brainKeyOfDefinitions(stream: string, definitionType: string): s
   return stream.slice(0, stream.length - definitionTypeStreamOf(definitionType).length);
 }
 
-function evolved(functions: ReadonlyMap<string, KeptFunction>, event: DefinitionEvent, saved: number) {
+function evolved(functions: ReadonlyMap<string, KeptFunction>, event: Recorded<DefinitionEvent>, saved: number) {
   const kept = new Map(functions);
+  const name = definitionNameOf(event.context);
   if (event.type === 'definition_retired') {
-    kept.delete(event.name);
+    kept.delete(name);
   } else {
-    kept.set(event.name, {
-      version: event.version,
+    const { content } = event.data;
+    kept.set(name, {
+      version: event.context.definitionVersion ?? 1,
       saved,
-      details: runnableDetailsOf(event.content.details, event.content.stripped),
+      details: runnableDetailsOf(content.details, content.stripped),
     });
   }
   return kept;

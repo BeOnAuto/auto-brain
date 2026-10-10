@@ -50,18 +50,22 @@ export function deliveredOnce(parts: DeliveryParts, plan: DeliveryPlan): Effect.
   if (Result.isFailure(rendered)) {
     const { failure } = rendered;
     const end: AttemptEnd = {
-      outcome: 'refused',
-      because: failure.reason === 'too_large' ? 'too_large' : 'unworkable',
-      detail: argumentsFailureWords(failure, 'the call that delivers the request'),
+      type: 'delivery_refused',
+      data: {
+        because: failure.reason === 'too_large' ? 'too_large' : 'unworkable',
+        detail: argumentsFailureWords(failure, 'the call that delivers the request'),
+      },
     };
     return Effect.map(recordedStart(parts, plan), (startedId): Delivered | undefined =>
       startedId === undefined ? undefined : { startedId, end },
     );
   }
   const call = callOf(plan, rendered.success.input);
-  return Effect.flatMap(recordedStart(parts, plan, parts.tools.startOf(call)), (startedId) =>
-    startedId === undefined
-      ? Effect.undefined
-      : Effect.map(parts.tools.callOnce(call), (called): Delivered => ({ startedId, end: endOf(called, record) })),
+  return Effect.flatMap(
+    Effect.flatMap(parts.tools.startOf(call), (fields) => recordedStart(parts, plan, fields)),
+    (startedId) =>
+      startedId === undefined
+        ? Effect.undefined
+        : Effect.map(parts.tools.callOnce(call), (called): Delivered => ({ startedId, end: endOf(called, record) })),
   );
 }

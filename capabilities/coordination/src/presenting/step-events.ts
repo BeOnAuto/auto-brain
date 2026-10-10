@@ -1,5 +1,5 @@
-import { cursorWithin, type PublicEvent, type RecordedEvent } from '@beonauto/operations';
-import { isRecordedStep, keyOf, stepEventIdOf, type RunLogEvent, type Step } from '@beonauto/workflow-engine';
+import type { PresentedFact } from '@beonauto/operations';
+import { isRecordedStep, keyOf, type RunLogEvent, type Step, type StepKey } from '@beonauto/workflow-engine';
 import type { Schema } from 'effect';
 
 import { cutAtCodePoint } from './cut-text.ts';
@@ -49,17 +49,20 @@ function dataOf({ name, reference, run, times, outcome, error, waits_for: waitsF
   return publicTypes[outcome] === 'step_failed' ? { ...shown, outcome, ...errorShown(error) } : shown;
 }
 
-export function stepEventsOf(recorded: RecordedEvent, event: RunLogEvent, runId: string): readonly PublicEvent[] {
-  const at = new Date(event.receipt.at).toISOString();
-  return event.steps
-    .filter((step) => isRecordedStep(step))
-    .map((step, index) => ({
-      id: stepEventIdOf(runId, keyOf(step)),
-      cursor: cursorWithin(recorded.cursor, index + 1),
-      causation_id: step.caused_by === 'input' ? recorded.id : stepEventIdOf(runId, step.caused_by),
-      at,
-      type: publicTypes[step.outcome],
-      summary: stepSummaryOf(step),
-      data: dataOf(step),
-    }));
+function keyTextOf({ reference, run, outcome, times }: StepKey): string {
+  return JSON.stringify([reference, run, outcome, times]);
+}
+
+export function stepFactsOf(event: RunLogEvent): readonly PresentedFact[] {
+  const recorded = event.steps.filter((step) => isRecordedStep(step));
+  const numbers = new Map(recorded.map((step, index) => [keyTextOf(keyOf(step)), index + 1]));
+  return recorded.map((step, index) => ({
+    type: publicTypes[step.outcome],
+    summary: stepSummaryOf(step),
+    data: dataOf(step),
+    part: {
+      number: index + 1,
+      causedBy: step.caused_by === 'input' ? 0 : (numbers.get(keyTextOf(step.caused_by)) ?? 0),
+    },
+  }));
 }

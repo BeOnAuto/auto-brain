@@ -42,6 +42,7 @@ const DeliverySucceededSchema = Schema.Struct({
   ...answered,
   delivered_as: Schema.optionalKey(DeliveredAsSchema),
   replies_in: Schema.optionalKey(RepliesInSchema),
+  detail: Schema.optionalKey(Schema.String),
 });
 
 const DeliveryFailedSchema = Schema.Struct({

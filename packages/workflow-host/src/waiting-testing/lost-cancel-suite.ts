@@ -22,17 +22,22 @@ const aWhile = 30_000;
 
 const attempts = 2000;
 
-const ofTheRun = { definition_type: 'workflow', name: 'pause', definition_version: 1, by: 'brain:alpha', at };
+const ofTheRun = {
+  by: 'brain:alpha',
+  at,
+  definitionType: 'workflow',
+  definitionName: 'pause',
+  definitionVersion: 1,
+};
 
 const rejectedUnstarted = {
   type: 'run_rejected',
-  rejection: { reason: 'unavailable', detail: 'The workflow could not be started' },
-  ...ofTheRun,
+  data: { rejection: { reason: 'unavailable', detail: 'The workflow could not be started' } },
 };
 
 const strandedId = '0199a3c4-7d2e-7c1a-9b3f-0000000000e1';
 
-const strandedCancel = { type: 'run_cancel_requested', kind: 'requested', reason: 'Gone', ...ofTheRun };
+const strandedCancel = { type: 'run_cancel_requested', data: { kind: 'requested', reason: 'Gone' } };
 
 function diedAfterTheStart(settingsOf: SettingsOf): void {
   describe('a host that died after it started a run and before it read the cancel its follower had passed over', () => {
@@ -79,9 +84,9 @@ function endedWithoutStarting(settingsOf: SettingsOf): void {
         await untilFollowed(database, attempts);
         const pending = () => Effect.runPromise(pendingCancelRowsAfter(database, '', 10));
         await startedThenCancelled(database);
-        await recorded(database.store, `${alpha}runs/${strandedId}`, strandedCancel);
+        await recorded(database.store, `${alpha}runs/${strandedId}`, strandedCancel, ofTheRun);
         const kept = await until(pending, (rows) => rows.length === 2, attempts);
-        await recorded(database.store, lostStream, rejectedUnstarted);
+        await recorded(database.store, lostStream, rejectedUnstarted, ofTheRun);
         await followedThroughTheLatest(database, attempts);
         const keptAfterTheEnding = await pending();
         await first.host.stop();

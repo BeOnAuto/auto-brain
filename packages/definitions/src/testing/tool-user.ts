@@ -48,8 +48,13 @@ const decodeInput = Schema.decodeUnknownSync(
   Schema.Struct({
     calls: Schema.Int,
     ending: Schema.optionalKey(Schema.Literals(['succeed', 'unavailable', 'conflict', 'stall'])),
+    failing: Schema.optionalKey(Schema.Boolean),
   }),
 );
+
+function failureOfCall(number: number): CallEnded {
+  return { type: 'tool_call_failed', data: { because: 'timed_out', duration_ms: 30_000, jsonrpc_id: number } };
+}
 
 function numbersUpTo(count: number): readonly number[] {
   return Array.from({ length: count }, (_, index) => index + 1);
@@ -63,8 +68,9 @@ function everyStart(count: number, journal: ToolCallJournal) {
   );
 }
 
-function everyAnswer(count: number, journal: ToolCallJournal) {
-  return Effect.forEach(numbersUpTo(count), (number) => journal.ended(number, answerOfCall(number)), {
+function everyAnswer(count: number, journal: ToolCallJournal, failing: boolean) {
+  const endOf = failing ? failureOfCall : answerOfCall;
+  return Effect.forEach(numbersUpTo(count), (number) => journal.ended(number, endOf(number)), {
     concurrency: 'unbounded',
   });
 }
@@ -95,13 +101,13 @@ export function toolUser(): ToolUser {
     run: (_document, input, { journal }) =>
       Effect.gen(function* () {
         journals.push(journal);
-        const { calls, ending = 'succeed' } = decodeInput(input);
+        const { calls, ending = 'succeed', failing = false } = decodeInput(input);
         const started = yield* everyStart(calls, journal);
         if (ending === 'stall') {
           stalling.resolve();
           return yield* Effect.never;
         }
-        const answered = yield* everyAnswer(calls, journal);
+        const answered = yield* everyAnswer(calls, journal, failing);
         return yield* endings[ending]([...started, ...answered]);
       }),
     reachesOutside: true,

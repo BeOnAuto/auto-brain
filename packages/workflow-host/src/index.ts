@@ -21,6 +21,8 @@ export type { FoldedEvent, KeptView, StallCause, StalledEvent, ViewPhase, ViewSt
 export type { ViewsPort } from './views/views-port.ts';
 export type { HostClock } from './loop/host-clock.ts';
 export type { RunAddress } from './runs/run-address.ts';
+export { runLogContextOf } from './runs/run-log-context.ts';
+export { recordIdOf } from './runs/run-lineage.ts';
 export {
   StartRefused,
   type ReactionOptions,

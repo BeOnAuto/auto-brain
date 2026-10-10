@@ -16,7 +16,7 @@ export interface EmitterSubject {
   readonly run: RunContext;
 }
 
-const armedBy: OutputOrigin = { version: 2, lastStep: null };
+const armedBy: OutputOrigin = { version: 2 };
 
 function listenerOf({ runId }: RunContext, reference: string): ArmListener {
   return {

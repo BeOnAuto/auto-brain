@@ -43,6 +43,16 @@ describe('the check of a recall function when it is saved', { timeout: workerTes
     expect(await checking(campaignReviews)).toEqual(Exit.succeed({ module: strippedFold }));
   });
 
+  it('accepts a fold that reads the subject, the caller and the trigger of an event under the Event type it declares', async () => {
+    const reading = [
+      'export function fold(view: Json, event: Event): Json {',
+      "  return `${event.subject ?? ''} ${event.caller ?? ''} ${event.triggerkind ?? ''} ${event.depth ?? 0}`;",
+      '}',
+    ].join('\n');
+
+    expect(Exit.isSuccess(await checking(recallDocument(reading)))).toBe(true);
+  });
+
   it('refuses a filter that names more than $data, and a module that keeps state, at their lines', async () => {
     expect(await checking(recallDocument(`let seen = 0;\n${foldOf('return view;')}`, filtered))).toEqual(
       Exit.fail(
