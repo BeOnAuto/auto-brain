@@ -7,7 +7,7 @@ import { Effect } from 'effect';
 
 import { invalidDocument, notRunnable, placeOf, type LocatedIssue, type ReadWorkflow } from './workflow-document.ts';
 
-export type ExpressionCheck = (job: CheckJob) => Effect.Effect<CheckedDocument, Unavailable>;
+export type ExpressionCheck = (job: CheckJob) => Effect.Effect<CheckedDocument, InvalidInput | Unavailable>;
 
 function locatedIssues(
   { locate }: ReadWorkflow,

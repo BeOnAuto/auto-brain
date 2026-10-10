@@ -22,28 +22,26 @@ afterEach(async () => {
   await server.stop();
 });
 
-const deadlineStopped: CheckOutcome = { ran: 'stopped', because: 'deadline', milliseconds: 2000 };
-
 interface Checks {
   readonly count: () => number;
-  readonly stall: () => void;
+  readonly stall: (because: 'deadline' | 'busy') => void;
 }
 
 function countingChecks(): { readonly checks: Checks; readonly poolOf: ProgramPoolOf } {
   let count = 0;
-  let stalled = false;
+  let stalled: CheckOutcome | undefined;
   const checking = (pool: ProgramPool): ProgramPool => ({
     ...pool,
     check: (request, signal) => {
       count += 1;
-      return stalled ? Promise.resolve(deadlineStopped) : pool.check(request, signal);
+      return stalled === undefined ? pool.check(request, signal) : Promise.resolve(stalled);
     },
   });
   return {
     checks: {
       count: () => count,
-      stall: () => {
-        stalled = true;
+      stall: (because) => {
+        stalled = { ran: 'stopped', because, milliseconds: 2000 };
       },
     },
     poolOf: (settings) => checking(workerPool(settings)),
@@ -138,27 +136,48 @@ describe('the check at save, over HTTP', { timeout: checkTestTimeoutMs }, () => 
     expect(ran).toMatchObject({ status: 200, body: { status: 'succeeded', output: paceOfTwoRows } });
     expect([atStart, checks.count()]).toEqual([1, 2]);
   });
-
-  it('leaves the document unsaved and answers unavailable, on a create and an update, when it does not answer in time', async () => {
-    const { checks, poolOf } = countingChecks();
-    await serving(poolOf);
-    await saving('pace', campaignPace);
-    checks.stall();
-    const unavailable = {
-      status: 503,
-      body: {
-        reason: 'unavailable',
-        detail:
-          'The check of the document did not answer within the 2000 ms a save allows it, and was stopped; try again',
-      },
-    };
-
-    expect(await saving('again', campaignPace)).toMatchObject(unavailable);
-    expect(
-      await server.call('PUT', `${alpha}/definitions/computation/pace`, { body: { source: `${campaignPace}\n` } }),
-    ).toMatchObject(unavailable);
-    expect(await server.call('GET', `${alpha}/definitions/computation/pace`)).toMatchObject({
-      body: { version: 1, source: campaignPace },
-    });
-  });
 });
+
+describe(
+  'a check at save that runs past its deadline, or has no checker ready, over HTTP',
+  { timeout: checkTestTimeoutMs },
+  () => {
+    it('leaves the document unsaved, invalid when its check runs past its deadline and unavailable when no checker is ready, on a create and an update', async () => {
+      const { checks, poolOf } = countingChecks();
+      await serving(poolOf);
+      await saving('pace', campaignPace);
+      checks.stall('deadline');
+      const tooLong = await saving('slow', campaignPace);
+      checks.stall('busy');
+      const unavailable = {
+        status: 503,
+        body: {
+          reason: 'unavailable',
+          detail:
+            'No checker was ready in time for this save, since this server checks one document at a time with one checker; try again',
+        },
+      };
+
+      expect(tooLong).toMatchObject({
+        status: 422,
+        body: {
+          reason: 'invalid_input',
+          errors: [
+            {
+              pointer: '/source',
+              detail:
+                'The document takes longer to check than the 2000 ms a save allows its check, so saving it again would not help; simplify its types or split its program',
+            },
+          ],
+        },
+      });
+      expect(await saving('again', campaignPace)).toMatchObject(unavailable);
+      expect(
+        await server.call('PUT', `${alpha}/definitions/computation/pace`, { body: { source: `${campaignPace}\n` } }),
+      ).toMatchObject(unavailable);
+      expect(await server.call('GET', `${alpha}/definitions/computation/pace`)).toMatchObject({
+        body: { version: 1, source: campaignPace },
+      });
+    });
+  },
+);

@@ -27,20 +27,23 @@ afterEach(async () => {
   await server.stop();
 });
 
-function stallingChecks(): { readonly stall: () => void; readonly poolOf: ProgramPoolOf } {
-  let stalled = false;
+function stallingChecks(): {
+  readonly stall: (because: 'deadline' | 'busy') => void;
+  readonly poolOf: ProgramPoolOf;
+} {
+  const state: { because?: 'deadline' | 'busy' } = {};
   return {
-    stall: () => {
-      stalled = true;
+    stall: (because) => {
+      state.because = because;
     },
     poolOf: (settings) => {
       const pool = workerPool(settings);
       return {
         ...pool,
         check: (request, signal) =>
-          stalled
-            ? Promise.resolve({ ran: 'stopped', because: 'deadline', milliseconds: 2000 })
-            : pool.check(request, signal),
+          state.because === undefined
+            ? pool.check(request, signal)
+            : Promise.resolve({ ran: 'stopped', because: state.because, milliseconds: 2000 }),
       };
     },
   };
@@ -106,22 +109,38 @@ describe('each refusal of the check at save, over MCP', { timeout: checkTestTime
   });
 });
 
-describe('a check at save that does not answer in time, over MCP', { timeout: checkTestTimeoutMs }, () => {
-  it('answers unavailable, on a create and an update, when the check does not answer in time', async () => {
-    const { stall, poolOf } = stallingChecks();
-    const saved = await onAlpha(poolOf, async (session) => {
-      await session.callTool('create_definition', { type: 'computation', name: 'pace', source: campaignPace });
-      stall();
-      return [
-        await session.callTool('create_definition', { type: 'computation', name: 'again', source: campaignPace }),
-        await session.callTool('update_definition', { type: 'computation', name: 'pace', source: `${campaignPace}\n` }),
-      ];
-    });
-    const unavailable = { isError: true, problem: { status: 503, reason: 'unavailable' } };
+describe(
+  'a check at save that does not answer in time, or has no checker ready, over MCP',
+  { timeout: checkTestTimeoutMs },
+  () => {
+    it('answers invalid input when the check runs past its deadline, and unavailable, on a create and an update, when no checker is ready', async () => {
+      const { stall, poolOf } = stallingChecks();
+      const saved = await onAlpha(poolOf, async (session) => {
+        await session.callTool('create_definition', { type: 'computation', name: 'pace', source: campaignPace });
+        stall('deadline');
+        const tooLong = await session.callTool('create_definition', {
+          type: 'computation',
+          name: 'slow',
+          source: campaignPace,
+        });
+        stall('busy');
+        return [
+          tooLong,
+          await session.callTool('create_definition', { type: 'computation', name: 'again', source: campaignPace }),
+          await session.callTool('update_definition', {
+            type: 'computation',
+            name: 'pace',
+            source: `${campaignPace}\n`,
+          }),
+        ];
+      });
+      const unavailable = { isError: true, problem: { status: 503, reason: 'unavailable' } };
 
-    expect(saved.map((result) => ({ isError: result.isError, problem: problemIn(result) }))).toMatchObject([
-      unavailable,
-      unavailable,
-    ]);
-  });
-});
+      expect(saved.map((result) => ({ isError: result.isError, problem: problemIn(result) }))).toMatchObject([
+        { isError: true, problem: { status: 422, reason: 'invalid_input', errors: [{ pointer: '/source' }] } },
+        unavailable,
+        unavailable,
+      ]);
+    });
+  },
+);

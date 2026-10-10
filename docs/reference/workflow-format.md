@@ -365,7 +365,7 @@ An expression is one TypeScript expression, which may span lines, not a list of 
 
 A name a `for` or a `catch` gives, `for.each`, `for.at` or `catch.as`, is written without `$` and read with it, as `line` and `$line` in the example above; it is letters, digits and underscores. `startedAt` values hold `iso8601` and `epoch` with `seconds` and `milliseconds`.
 
-Every expression is checked when the document is saved, as one file: one that is not one expression, or that names what its place lacks, such as `$input` in an `if`, is refused at its line with the compiler's words, as `Line 8, column 23: at /do/1/read/set/n: Cannot find name '$nope'.` An expression is checked for its syntax and its names, not its types, since a workflow carries no schema of its data.
+Every expression is checked when the document is saved, as one file: one that is not one expression, or that names what its place lacks, such as `$input` in an `if`, is refused at its line with the compiler's words, as `Line 8, column 23: at /do/1/read/set/n: Cannot find name '$nope'.` An expression is checked for its syntax and its names, not its types, since a workflow carries no schema of its data. A document whose check takes longer than the 2 seconds a save allows is refused, `invalid_input`, as for a computation function.
 
 Expressions run in the sandbox computation functions run in, with the same library and rules; see [The sandbox](computation-format.md#the-sandbox). `Date.now()` and `new Date()` give the time the run recorded for the task, never the clock of the machine, so a run decides the same way when it is replayed; a `Date` made from local time, such as `new Date(2026, 0, 1)`, raises, and the local-time methods are absent: use `Date.UTC` and the UTC methods.
 

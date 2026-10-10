@@ -1,4 +1,4 @@
-import { Unavailable } from '@beonauto/operations';
+import { InvalidInput, Unavailable } from '@beonauto/operations';
 import { programPool, type CheckOutcome, type CheckJob, type ProgramPool } from '@beonauto/workflow-engine/dsl';
 import { Effect, Exit } from 'effect';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -75,14 +75,12 @@ describe('a check that passes', () => {
 });
 
 describe('a check that does not answer', () => {
-  it('is unavailable when the check does not answer within its deadline', async () => {
+  it('is invalid input when the check runs past its deadline on a worker that was ready, since saving it again would not help', async () => {
+    const detail =
+      'The document takes longer to check than the 1 ms a save allows its check, so saving it again would not help; simplify its types or split its program';
+
     expect(await checked(answering({ ran: 'stopped', because: 'deadline', milliseconds: 1 }), 1)).toEqual(
-      Exit.fail(
-        new Unavailable({
-          detail:
-            'The check of the document did not answer within the 1 ms a save allows it, and was stopped; try again',
-        }),
-      ),
+      Exit.fail(new InvalidInput({ detail, issues: [{ pointer: '', detail }] })),
     );
   });
 
