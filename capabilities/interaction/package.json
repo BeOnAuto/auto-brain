@@ -19,7 +19,7 @@
     "@beonauto/operations": "workspace:*",
     "@beonauto/workflow-engine": "workspace:*",
     "effect": "catalog:",
-    "liquidjs": "10.29.0"
+    "liquidjs": "10.30.0"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "catalog:",

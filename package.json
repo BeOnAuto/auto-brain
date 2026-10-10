@@ -34,30 +34,30 @@
     "@commitlint/cli": "21.2.3",
     "@commitlint/config-conventional": "21.2.3",
     "@commitlint/types": "21.2.3",
-    "@types/node": "26.6.3",
+    "@types/node": "26.6.5",
     "@vitest/coverage-v8": "catalog:",
     "czg": "1.14.0",
-    "knip": "6.38.0",
-    "lefthook": "2.1.14",
-    "oxfmt": "0.71.0",
-    "oxlint": "1.86.0",
+    "knip": "6.41.0",
+    "lefthook": "2.2.1",
+    "oxfmt": "0.72.0",
+    "oxlint": "1.87.0",
     "oxlint-tsgolint": "7.0.2003",
     "sherif": "1.13.0",
-    "turbo": "2.11.5",
+    "turbo": "2.11.7",
     "typescript": "7.0.2",
-    "vite": "8.3.1",
+    "vite": "8.3.4",
     "vitepress": "1.6.4",
     "vitest": "catalog:"
   },
   "devEngines": {
     "runtime": {
       "name": "node",
-      "version": "26.10.0",
+      "version": "26.11.1",
       "onFail": "download"
     }
   },
   "engines": {
     "node": ">=26.10.0"
   },
-  "packageManager": "pnpm@12.8.1+sha512.f64ba907507f5ceafe06c8d38e6052d0179444580ec1279ddd5bfc11cb48aa8a2644b66598e07e761da84872a9fc57d5f902b87fa49d024198d558612aabbe45"
+  "packageManager": "pnpm@12.11.2+sha512.25a51652a196785af5f28bda6dfe8dc582ebefa4ac1d180221ce1390231c5fb76637822ea4b6e4633ce74acdcb0a77f725af11bad38177fdeddaee818a955cb9"
 }
