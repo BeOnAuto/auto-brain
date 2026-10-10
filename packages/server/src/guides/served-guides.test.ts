@@ -175,7 +175,7 @@ describe('the recipes that give a brain tools', () => {
     const texts = Object.fromEntries(servedGuidesOf(everyType).recipes.map(({ name, text }) => [name, text]));
 
     expect(String(texts['give-tools'])).toContain(
-      "4. To learn what a tool answers, test it with test_tool_call, with the arguments its input_schema takes, and read the answer: that is what the function's model will see. Never make a function to look. When a prompt needs an id, such as a channel's, test the tool that lists them and take the id from its answer, confirming the choice with the person. A tool that cannot be tested may change something; list_tool_servers says which can.",
+      "4. To learn what a tool answers, test it with test_tool_call, with the arguments its input_schema takes, and read its `text`: that is what the function's model will see. Never make a function to look. When a prompt needs an id, such as a channel's, test the tool that lists them and take the id from its answer, confirming the choice with the person. A tool that cannot be tested may change something; list_tool_servers says which can.",
     );
     expect(String(texts['give-tools'])).toContain(
       'the org it serves, with `allowed` naming the tools a function may call. The server reads them when it starts again.',
@@ -194,7 +194,7 @@ describe('the recipes of a server that serves interaction functions', () => {
     const texts = recipeTextsOf([...everyType, interaction]);
 
     expect(texts['give-tools']).toContain(
-      '5. Ask the person what the function should do with the tools, and which of them it needs. When the brain should send a person a message through a tool and take their answer, write an interaction function instead: the interaction-function guide says how it names the tool it sends through and the tool it reads replies with, each tested the same way.\n',
+      "5. Ask the person what the function should do with the tools, and which of them it needs. When the brain only needs what a tool answers, with nothing to reason about, write an interaction function that calls the tool instead: it answers at once with what the tool answered and spends no model call, and the interaction-function guide says how to write it from the test's answer. When the brain should send a person a message through a tool and take their answer, write an interaction function instead: the interaction-function guide says how it names the tool it sends through and the tool it reads replies with, each tested the same way.\n",
     );
     expect(texts['first-brain']).toContain(
       'give it tools with the give-tools recipe, send someone a message through a tool and take their answer with an interaction function, make the brain remember its answers',
@@ -203,7 +203,7 @@ describe('the recipes of a server that serves interaction functions', () => {
       bytesOf(texts, 'first-brain', 'remember', 'give-tools', 'schedule'),
       bytesOf(recipeTextsOf(everyType), 'first-brain', 'remember', 'give-tools', 'schedule'),
     ]).toEqual([
-      [1854, 1762, 2309, 1285],
+      [1854, 1762, 2598, 1285],
       [1764, 1762, 2049, 1285],
     ]);
   });

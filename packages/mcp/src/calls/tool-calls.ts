@@ -1,6 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { metaValueOf, type ToolResult } from '../bounds/result-text.ts';
+import { metaValueOf, type ToolResult } from '../bounds/tool-results.ts';
 import { ignored } from '../connections/ignored.ts';
 import type { Observed } from '../connections/observed-requests.ts';
 import { failureOf, type FailureKind } from '../connections/server-failures.ts';

@@ -32,7 +32,7 @@ const reasoningFunctionType = 'reasoning';
 
 const purposeByType: Readonly<Record<string, string>> = {
   reasoning: 'A reasoning function has a prompt and calls a language model.',
-  interaction: 'An interaction function asks a person or a system and takes the answer later.',
+  interaction: 'An interaction function asks a system and answers at once, or asks a person and answers started.',
   computation: 'A computation function runs a program on its input and gives the same output every time.',
   recall:
     "A recall function answers from what it keeps of the brain's own history: every run's start and end, with its result when it succeeded, the definitions saved and the events published to the brain, never a run's input or its tool calls, so nothing has to write into it.",
@@ -115,7 +115,7 @@ const modelsAndTools: Sentences = ({ reasoning, listed }) => {
   ];
 };
 
-const typesThatFinishLater: ReadonlySet<string> = new Set(['interaction', 'workflow']);
+const typesThatFinishLater: ReadonlySet<string> = new Set(['workflow']);
 
 const runsThatFinishLater: Sentences = ({ listed, definitionTypes }) => {
   const finishingLater = definitionTypes

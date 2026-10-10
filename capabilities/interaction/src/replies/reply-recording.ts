@@ -2,7 +2,7 @@ import { Result } from 'effect';
 
 import type { ReadingRoute } from '../conversations/conversation-parts.ts';
 import type { ConversationRow } from '../conversations/conversation-rows.ts';
-import { renderedArguments } from '../route/rendered-arguments.ts';
+import { renderedArguments } from '../tool-blocks/rendered-arguments.ts';
 import type { KeptRequest } from './reply-taking.ts';
 
 export interface ReadingState {

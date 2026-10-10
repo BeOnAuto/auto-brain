@@ -34,6 +34,7 @@ export interface RecordedRunState {
   readonly callsTools: boolean;
   readonly lastCall: number;
   readonly mayHaveChanged: boolean;
+  readonly calledOnlyReadOnly: boolean;
   readonly deliveryInFlight: number | null;
   readonly broughtAnswer: BroughtAnswer | null;
   readonly deliveredAt: string | null;
@@ -64,6 +65,20 @@ export function cancelBeforeStartOf(state: RunStreamState): AskedCancel | undefi
   return state !== undefined && 'cancelledBeforeStart' in state ? state.cancelledBeforeStart : undefined;
 }
 
+type CallsBefore = Pick<RecordedRunState, 'lastCall' | 'mayHaveChanged' | 'calledOnlyReadOnly'>;
+
+const noCallsBefore: CallsBefore = { lastCall: 0, mayHaveChanged: false, calledOnlyReadOnly: true };
+
+function callsBefore(earlier: RunState): CallsBefore {
+  return earlier === undefined
+    ? noCallsBefore
+    : {
+        lastCall: earlier.lastCall,
+        mayHaveChanged: earlier.mayHaveChanged,
+        calledOnlyReadOnly: earlier.calledOnlyReadOnly,
+      };
+}
+
 function startedRun(event: RunStarted, earlier: RunState): RecordedRunState {
   const {
     definition_type: type,
@@ -83,8 +98,7 @@ function startedRun(event: RunStarted, earlier: RunState): RecordedRunState {
     finishesLater: finishes_later === true,
     deferred: false,
     callsTools: calls_tools === true,
-    lastCall: earlier?.lastCall ?? 0,
-    mayHaveChanged: earlier?.mayHaveChanged ?? false,
+    ...callsBefore(earlier),
     deliveryInFlight: null,
     broughtAnswer: null,
     deliveredAt: null,
@@ -152,7 +166,12 @@ function evolveStarted(state: RecordedRunState, event: Exclude<RunEvent, RunStar
     return repliedTo(state, event);
   }
   if (event.type === 'tool_call_started') {
-    return { ...state, lastCall: event.number, mayHaveChanged: true };
+    return {
+      ...state,
+      lastCall: event.number,
+      mayHaveChanged: true,
+      calledOnlyReadOnly: state.calledOnlyReadOnly && event.read_only === true,
+    };
   }
   if (event.type === 'delivery_started') {
     return { ...state, lastCall: event.number, deliveryInFlight: event.number };
@@ -208,4 +227,8 @@ export function lastCallOf(state: RunState): number {
 
 export function mayHaveChangedSomething({ mayHaveChanged }: RecordedRunState): boolean {
   return mayHaveChanged;
+}
+
+export function changedNothing(state: RecordedRunState): boolean {
+  return state.mayHaveChanged && state.calledOnlyReadOnly && !isRunning(state);
 }

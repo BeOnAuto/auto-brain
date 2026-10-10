@@ -97,8 +97,7 @@ describe('a tool a reasoning function names that is not offered', () => {
         expect.objectContaining({
           kind: 'tool_not_offered',
           because: 'mcp_server_not_configured',
-          detail:
-            'The reasoning function names graph/search and crm/find, but no MCP server is configured on this server',
+          detail: 'No MCP server named graph or crm is configured for this brain',
         }),
       ),
     );

@@ -13,6 +13,8 @@ const namingTheMessage: unknown = expect.stringContaining('"ts":"1699.000001"');
 
 const listingTheMessages: unknown = expect.stringContaining('"messages":[');
 
+const someMessages: unknown = expect.any(Array);
+
 const inMeetings = { brain: 'meetings' };
 
 const approvingInTheChat = [
@@ -118,7 +120,7 @@ describe(
       const seen = await meetings.onMcp(askedToSendADraft);
 
       expect(sentenceNaming(meetings.surfaces.instructions, 'An interaction function')).toBe(
-        'An interaction function asks a person or a system and takes the answer later.',
+        'An interaction function asks a system and answers at once, or asks a person and answers started.',
       );
       expect([seen.sent.structuredContent, seen.read.structuredContent]).toMatchObject([
         { outcome: 'result', text: namingTheMessage },
@@ -136,6 +138,68 @@ describe(
       expect(plainTextIn(refused)).toBe(
         'Could not run the interaction function “approve-draft”: this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this brain. Nothing was changed. This can be put right on your side: whoever runs the server decides which tool servers and tools this brain may use, which list_tool_servers shows, so once it names only those, it can be tried again.',
       );
+    });
+  },
+);
+
+const readingAThread = [
+  '---',
+  'description: Read the replies of a thread in the team chat, oldest first',
+  'call:',
+  '  server: chat',
+  '  tool: thread_replies',
+  '  with:',
+  "    channel: '{{ input.channel }}'",
+  "    ts: '{{ input.thread }}'",
+  '  read: /messages',
+  'input:',
+  '  schema: { type: object, required: [channel, thread], properties: { channel: { type: string }, thread: { type: string } } }',
+  'output:',
+  '  schema:',
+  '    type: array',
+  '    items: { type: object, required: [user, ts], properties: { user: { type: string }, text: { type: string }, ts: { type: string } } }',
+  '---',
+  '',
+].join('\n');
+
+async function askedForTheRepliesOfAThread(session: McpSession) {
+  const recipe = textOf(await session.callTool('get_guide', { guide: 'give-tools' }));
+  const tested = await session.callTool('test_tool_call', {
+    ...inMeetings,
+    server: 'chat',
+    tool: 'thread_replies',
+    arguments: { channel: '#drafts', ts: '1699.000001' },
+  });
+  const saved = await session.callTool('create_definition', {
+    ...inMeetings,
+    type: 'interaction',
+    name: 'thread-replies',
+    source: readingAThread,
+  });
+  const reasoning = await session.callTool('list_definitions', { ...inMeetings, type: 'reasoning' });
+  return { recipe, tested, saved, reasoning };
+}
+
+describe(
+  'episode 10: asked to put the replies of a thread into the weekly summary',
+  { timeout: workflowTestTimeoutMs },
+  () => {
+    it('reads the interaction sentence and the give-tools sentence, tests the tool, reads its answer, and saves one interaction function that calls it', async () => {
+      const seen = await meetings.onMcp(askedForTheRepliesOfAThread);
+
+      expect(sentenceNaming(meetings.surfaces.instructions, 'An interaction function')).toBe(
+        'An interaction function asks a system and answers at once, or asks a person and answers started.',
+      );
+      expect(seen.recipe).toContain(
+        'When the brain only needs what a tool answers, with nothing to reason about, write an interaction function that calls the tool instead',
+      );
+      expect(seen.tested.structuredContent).toMatchObject({
+        outcome: 'result',
+        text: listingTheMessages,
+        answer: { messages: someMessages },
+      });
+      expect(seen.saved.isError).not.toBe(true);
+      expect(seen.reasoning.structuredContent).toEqual({ definitions: [] });
     });
   },
 );

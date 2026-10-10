@@ -3,7 +3,7 @@ import { Effect } from 'effect';
 import { defaultTiming } from '../bounds/call-bounds.ts';
 import { secretsOfServers } from '../bounds/secrets.ts';
 import { serverLink, type LinkOptions } from '../connections/server-links.ts';
-import { deliveredCall } from '../delivery/delivery-call.ts';
+import { oneCall } from '../one-call/one-call.ts';
 import type { McpSettings } from '../settings/mcp-settings.ts';
 import { untestableNoting } from '../tool-tests/testing-guard.ts';
 import { openedRun } from './run-opening.ts';
@@ -29,7 +29,7 @@ export function linkedAccess(settings: McpSettings, options: ToolAccessOptions):
     configured: settings.servers.length > 0,
     testing: settings.servers,
     open: (context, references) => openedRun({ context, references, links, secrets, timing, toolsListed, report }),
-    callOnce: (call) => deliveredCall(call, { links, secrets, timing }),
+    callOnce: (call, runCall) => oneCall(call, { links, secrets, timing, toolsListed }, runCall),
     listServers: (scope, named) =>
       Effect.promise(() => toolServersOf({ scope, named }, { links, secrets, timing, toolsListed })),
     close: async () => {

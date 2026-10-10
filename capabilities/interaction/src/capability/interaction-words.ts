@@ -1,12 +1,12 @@
 import { Buffer } from 'node:buffer';
 
-import { defaultRunWords, inWords, type RunAccount, type RunWords } from '@beonauto/definitions';
-import { asSentence } from '@beonauto/operations';
+import { defaultRunWords, outputInWords, type RunAccount, type RunWords } from '@beonauto/definitions';
 import type { Schema } from 'effect';
 
-import { routeOf, throughWords } from '../route/routes.ts';
-import { requestRecordOf, takesAnswer } from '../run/request-record.ts';
+import { callOutputInWords } from '../call/call-words.ts';
+import { isNotification, requestRecordOf, takesAnswer } from '../run/request-record.ts';
 import { interactionBounds } from '../run/run-bounds.ts';
+import { routeOf, throughWords } from '../tool-blocks/routes.ts';
 
 function cutParty(party: string): string {
   const bytes = Buffer.from(party, 'utf8');
@@ -44,12 +44,12 @@ export const interactionRunWords: RunWords = {
   deferral: requestAccount,
 };
 
-export function describeAnswer(output: Schema.Json): string {
-  if (output !== null && typeof output === 'object' && !Array.isArray(output) && Object.keys(output).length === 0) {
-    return 'It delivered its notification.';
+const answerInWords = outputInWords('answer');
+
+export function describeAnswer(output: Schema.Json, record?: Schema.JsonObject): string {
+  const asked = callOutputInWords(output, record);
+  if (asked !== undefined) {
+    return asked;
   }
-  const words = inWords(output);
-  return words === undefined
-    ? 'Its answer is too long to repeat here; the whole of it is in the details below.'
-    : asSentence(`Its answer: ${words}`);
+  return isNotification(record) ? 'It delivered its notification.' : answerInWords(output);
 }

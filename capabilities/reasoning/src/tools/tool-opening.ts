@@ -1,23 +1,12 @@
 import type { RunContext } from '@beonauto/definitions';
 import type { NotOfferedBecause, RunTools, ServerFailedBecause, ToolAccess } from '@beonauto/mcp';
-import { runIdKey, writtenOf, type ToolReference } from '@beonauto/mcp/policy';
+import { runIdKey, type ToolReference } from '@beonauto/mcp/policy';
 import { Unavailable } from '@beonauto/operations';
 import { Effect } from 'effect';
 
 interface Refused<Because> {
   readonly because: Because;
   readonly detail: string;
-}
-
-const conjunction = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' });
-
-function noServerFor(references: readonly ToolReference[]): Unavailable {
-  const named = conjunction.format(references.map((reference) => writtenOf(reference)));
-  return new Unavailable({
-    detail: `The reasoning function names ${named}, but no MCP server is configured on this server`,
-    kind: 'tool_not_offered',
-    because: 'mcp_server_not_configured',
-  });
 }
 
 function opened(
@@ -36,16 +25,13 @@ function opened(
 }
 
 export function withTools<A, E>(
-  access: ToolAccess | undefined,
+  access: ToolAccess,
   references: readonly ToolReference[],
   run: RunContext,
   use: (tools?: RunTools) => Effect.Effect<A, E>,
 ): Effect.Effect<A, E | Unavailable> {
   if (references.length === 0) {
     return use();
-  }
-  if (access === undefined) {
-    return Effect.fail(noServerFor(references));
   }
   return opened(access, references, run).pipe(
     Effect.flatMap((tools) => use(tools).pipe(Effect.ensuring(Effect.promise(() => tools.close())))),

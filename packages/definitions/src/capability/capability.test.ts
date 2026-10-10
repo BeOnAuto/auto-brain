@@ -181,7 +181,7 @@ describe('what a capability decides of each document and says of its runs', () =
       { summary: 'Waiting.', data: { to: 'ada' } },
     ]);
     expect(own.runWords.delivery(deliveryOfWords)).toBe(
-      'Delivery attempt 1 of the request started, through the tool post_message of chat.',
+      'Delivery attempt 1 of the request started, through the post message tool of chat.',
     );
   });
 });

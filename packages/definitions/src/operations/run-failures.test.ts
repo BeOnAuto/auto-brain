@@ -120,6 +120,25 @@ describe('a run whose capability finds, by running it, that its definition is un
   });
 });
 
+describe('a run that could not finish after calling a tool that may change something', () => {
+  it('is rejected with conflict of that kind and its because, which is recorded', async () => {
+    const { call, running, getRun, prober } = await withPlain();
+    prober.sufferOnNextRun('unknown');
+    const rejection = {
+      reason: 'conflict',
+      detail: 'The probe could not finish after calling a tool that may post',
+      kind: 'effect_unknown',
+      because: 'tool_error',
+    };
+
+    expect(await running({})).toEqual({ status: 'rejected', ...rejection });
+    expect(await call(getRun, readingTheRun)).toStrictEqual({
+      status: 'succeeded',
+      output: { ...failedRun, status: 'rejected', rejection },
+    });
+  });
+});
+
 describe('a run whose capability breaks down', () => {
   it('fails with an incident that holds the defect, and is recorded as failed', async () => {
     const { call, running, getRun, prober, reported } = await withPlain();

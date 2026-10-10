@@ -1,8 +1,14 @@
 import type { ServerMessage } from '../access/caller-context.ts';
 import type { CallsEndedBecause } from '../access/mcp-server-failed.ts';
 import { failedOnce, failuresEnded, shownResult, type CallTally } from '../bounds/call-bounds.ts';
-import { errorTextForModel, errorTextForOperator, resultText } from '../bounds/result-text.ts';
 import { bytesOf } from '../bounds/text-bytes.ts';
+import {
+  answerOf,
+  errorTextForModel,
+  errorTextForOperator,
+  resultText,
+  type ToolAnswer,
+} from '../bounds/tool-results.ts';
 import type { CallOutcome } from './call-facts.ts';
 import { runIdKey, toolTestIdKey } from './call-meta.ts';
 import type { Forwarded } from './tool-calls.ts';
@@ -19,6 +25,7 @@ export interface CallReply extends ModelWords {
   readonly resultBytes: number | null;
   readonly durationMs: number;
   readonly serverRequestId: string | null;
+  readonly scrubbedResult?: () => ToolAnswer;
 }
 
 export interface Replying {
@@ -76,6 +83,10 @@ export function callReplyOf(words: ModelWords, done: Forwarded, durationMs: numb
     durationMs,
     serverRequestId: done.serverRequestId,
   };
+}
+
+export function readableReply(reply: CallReply, { resultJson }: Forwarded, scrub: (text: string) => string): CallReply {
+  return resultJson === null ? reply : { ...reply, scrubbedResult: () => answerOf(scrub(resultJson)) };
 }
 
 export function unsentReply(text: string): CallReply {

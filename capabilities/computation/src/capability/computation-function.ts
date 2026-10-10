@@ -2,14 +2,14 @@ import {
   defineCapability,
   functionCategoryLabels,
   functionResourceLabels,
-  inWords,
+  outputInWords,
   type DefinitionSummary,
   type Capability,
 } from '@beonauto/definitions';
 import { issueText } from '@beonauto/definitions/document';
-import { asSentence, InvalidInput } from '@beonauto/operations';
+import { InvalidInput } from '@beonauto/operations';
 import type { ProgramPool } from '@beonauto/workflow-engine/dsl';
-import { Effect, Result, type Schema } from 'effect';
+import { Effect, Result } from 'effect';
 
 import type { ComputationFunctionDefinitionDocument } from '../document/computation-document.ts';
 import { parseComputationDocument } from '../document/document-parsing.ts';
@@ -42,13 +42,6 @@ function summarize({ description, input, output }: ComputationFunctionDefinition
   };
 }
 
-function describeResult(output: Schema.Json): string {
-  const words = inWords(output);
-  return words === undefined
-    ? 'Its result is too long to repeat here; the whole of it is in the details below.'
-    : asSentence(`Its result: ${words}`);
-}
-
 export function makeComputationFunctionAdapter({
   pool,
   deadlineMs = computationBounds.deadlineMs,
@@ -59,7 +52,7 @@ export function makeComputationFunctionAdapter({
     title: functionCategoryLabels.computation,
     guide: { name: 'computation-function' },
     noun: { one: functionResourceLabels.computation.singular, other: functionResourceLabels.computation.plural },
-    describeOutput: describeResult,
+    describeOutput: outputInWords('result'),
     mediaType: 'text/markdown',
     parse,
     summarize,

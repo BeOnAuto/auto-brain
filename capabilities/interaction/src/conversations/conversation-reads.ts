@@ -5,7 +5,7 @@ import { Effect, Result } from 'effect';
 import { handledReply, type Reading } from '../replies/reply-handling.ts';
 import { nothingRead, readArguments, type ReadingState } from '../replies/reply-recording.ts';
 import type { KeptRequest } from '../replies/reply-taking.ts';
-import { argumentsFailureWords } from '../route/rendered-arguments.ts';
+import { argumentsFailureWords } from '../tool-blocks/rendered-arguments.ts';
 import { failedRead, readAnswerOf, type ReadAnswer } from './read-answers.ts';
 import { cursorOf } from './read-cadence.ts';
 import { recordedRead } from './read-records.ts';

@@ -2,13 +2,13 @@ import {
   defineCapability,
   functionCategoryLabels,
   functionResourceLabels,
-  inWords,
+  outputInWords,
   type DefinitionSummary,
   type Capability,
 } from '@beonauto/definitions';
 import { issueText } from '@beonauto/definitions/document';
-import { asSentence, InvalidInput } from '@beonauto/operations';
-import { Effect, Result, type Schema } from 'effect';
+import { InvalidInput } from '@beonauto/operations';
+import { Effect, Result } from 'effect';
 
 import { parseDefinitionDocument } from '../definition/definition-parsing.ts';
 import type { ReasoningFunctionDefinitionDocument } from '../definition/reasoning-function-definition.ts';
@@ -43,13 +43,6 @@ function summarize({ description, input, output, warnings }: ReasoningFunctionDe
   };
 }
 
-function describeAnswer(output: Schema.Json): string {
-  const words = inWords(output);
-  return words === undefined
-    ? 'Its answer is too long to repeat here; the whole of it is in the details below.'
-    : asSentence(`Its answer: ${words}`);
-}
-
 export function makeReasoningFunctionAdapter(options: ReasoningFunctionAdapterOptions): Capability {
   const run = definitionRun(options);
   return defineCapability({
@@ -57,10 +50,10 @@ export function makeReasoningFunctionAdapter(options: ReasoningFunctionAdapterOp
     title: functionCategoryLabels.reasoning,
     guide: {
       name: 'reasoning-function',
-      onThisServer: onThisServer(options.offered, options.tools?.configured === true),
+      onThisServer: onThisServer(options.offered, options.tools.configured),
     },
     noun: { one: functionResourceLabels.reasoning.singular, other: functionResourceLabels.reasoning.plural },
-    describeOutput: describeAnswer,
+    describeOutput: outputInWords('answer'),
     mediaType: 'text/markdown',
     parse,
     summarize,
@@ -68,7 +61,7 @@ export function makeReasoningFunctionAdapter(options: ReasoningFunctionAdapterOp
     longestAnyRunMs: longestRequestMs,
     longestRunOf: longestRunMsOf,
     reachesOutside: true,
-    mayChangeOutside: options.tools?.configured === true,
+    mayChangeOutside: options.tools.configured,
     callsTools: ({ tools }) => tools.length > 0,
   });
 }

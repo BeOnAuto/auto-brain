@@ -90,7 +90,7 @@ describe('the words of an interaction run', () => {
       },
       {
         summary:
-          'A notification is waiting to be delivered, through the tool post_message of chat, until 2026-10-09T09:00:00.000Z.',
+          'A notification is waiting to be delivered, through the post message tool of chat, until 2026-10-09T09:00:00.000Z.',
         data: {
           delivery: { server: 'chat', tool: 'post_message' },
           to: 'a'.repeat(256),
@@ -135,14 +135,29 @@ describe('the words of a request answered by reply', () => {
 });
 
 describe('the words of an answer', () => {
-  it('say what the answer was, or that a notification was delivered', () => {
+  it('say that a notification was delivered, read from the record of its request or of its delivery', () => {
+    const notified = {
+      to: 'ada',
+      message: 'Shipped',
+      expires_at: '2026-10-09T09:00:00.000Z',
+      requested_at: '2026-10-07T09:00:00.000Z',
+    };
+
     expect([
-      describeAnswer({}),
-      describeAnswer({ choice: 'approve' }),
-      describeAnswer('x'.repeat(5000)),
-      describeAnswer([]),
+      describeAnswer({}, notified),
+      describeAnswer({}, { delivered_at: '2026-10-07T09:00:01.000Z' }),
+      describeAnswer({}, { ...notified, answer_schema: {} }),
+      describeAnswer({}, { answered_by: 'acme-admin', answered_at: '2026-10-07T09:00:01.000Z' }),
     ]).toEqual([
       'It delivered its notification.',
+      'It delivered its notification.',
+      'Its answer: nothing.',
+      'Its answer: nothing.',
+    ]);
+  });
+
+  it('say what the answer was', () => {
+    expect([describeAnswer({ choice: 'approve' }), describeAnswer('x'.repeat(5000)), describeAnswer([])]).toEqual([
       expect.stringContaining('Its answer:'),
       'Its answer is too long to repeat here; the whole of it is in the details below.',
       expect.stringContaining('Its answer'),

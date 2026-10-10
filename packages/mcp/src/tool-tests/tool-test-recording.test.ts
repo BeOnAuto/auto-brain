@@ -67,6 +67,7 @@ describe('what a test records', () => {
           tool: 'search',
           arguments_bytes: Buffer.byteLength(argumentsJson),
           arguments_sha256: digestOf(argumentsJson),
+          read_only: true,
           by: 'acme-builder',
           at: aTime,
         },

@@ -10,6 +10,7 @@ export const CallStartedSchema = Schema.Struct({
   arguments_bytes: Schema.Int,
   arguments_sha256: Schema.String,
   arguments_json: Schema.optionalKey(Schema.String),
+  read_only: Schema.optionalKey(Schema.Literal(true)),
 });
 
 export const CallAnsweredSchema = Schema.Struct({

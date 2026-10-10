@@ -1,11 +1,10 @@
-import { answeredInWords } from '@beonauto/mcp';
+import { answeredInWords, toolInWords } from '@beonauto/mcp';
 import { capitalized, explanationOf, plainNumber, quoted } from '@beonauto/operations';
 
 import type { StartingTrigger } from '../registry/definition-triggers.ts';
 import type { CancelRequestKind, ToolCallAnswered } from '../runs/run-events.ts';
 import type { RunRejection } from '../runs/run.ts';
 import type { DefinitionWords } from './definition-words.ts';
-import { wordsOf } from './in-words.ts';
 import { explainedRejectionOf } from './run-words.ts';
 
 export const runFinished = 'A run finished.';
@@ -54,14 +53,8 @@ export function definitionRetired(words: DefinitionWords, type: string, name: st
   return `${capitalized(words.named(type, name))} was retired.`;
 }
 
-const notLettersOrDigits = /[^A-Za-z0-9]+/gu;
-
-function nameInWords(name: string): string {
-  return wordsOf(name.replaceAll(notLettersOrDigits, ' '));
-}
-
 export function toolCalled(number: number, server: string, tool: string): string {
-  return `A run made tool call ${plainNumber(number)}, to the ${nameInWords(tool)} tool of ${nameInWords(server)}.`;
+  return `A run made tool call ${plainNumber(number)}, to ${toolInWords({ server, tool })}.`;
 }
 
 export function toolAnswered(number: number, outcome: ToolCallAnswered['outcome']): string {

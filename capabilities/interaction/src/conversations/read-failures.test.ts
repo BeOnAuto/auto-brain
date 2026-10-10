@@ -45,6 +45,7 @@ describe('a read that fails', () => {
       answered({ messages: [], padding: 'x'.repeat(70_000) }),
       textOf('Nothing new.'),
       answered({ messages: { ts: '1' } }),
+      { outcome: 'result', answer: { content: [{ type: 'image' }] }, detail: '', retryAfterMs: null },
       { outcome: 'tool_error', detail: 'channel_not_found', retryAfterMs: null },
       { outcome: 'timed_out', detail: 'The MCP server did not answer within 30000 ms', retryAfterMs: null },
       { outcome: 'cancelled', detail: '', retryAfterMs: null },
@@ -54,6 +55,7 @@ describe('a read that fails', () => {
 
     expect(await Promise.all(answers.map((answer) => failedRead(answer)))).toMatchObject([
       [{ outcome: 'too_large', replies: 0 }, true],
+      [{ outcome: 'unreadable' }, true],
       [{ outcome: 'unreadable' }, true],
       [{ outcome: 'unreadable' }, true],
       [{ outcome: 'tool_error' }, true],

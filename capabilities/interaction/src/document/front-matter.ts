@@ -3,13 +3,14 @@ import { Schema } from 'effect';
 
 import { WrittenRuleSchema } from '../replies/reply-rule.ts';
 import {
+  CallBlockSchema,
+  DeliverBlockSchema,
   EachSchema,
   ReadSchema,
   RepliesSchema,
   SentSchema,
   TellSchema,
-  ToolDeliverySchema,
-} from '../route/route-schemas.ts';
+} from '../tool-blocks/tool-block-schemas.ts';
 
 const descriptionLength = 1000;
 
@@ -17,10 +18,11 @@ const SectionSchema = Schema.Struct({ schema: Schema.optionalKey(Schema.JsonObje
 
 const FrontMatterSchema = Schema.Struct({
   description: Schema.optionalKey(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(descriptionLength))),
-  to: Schema.String,
+  call: Schema.optionalKey(CallBlockSchema),
+  to: Schema.optionalKey(Schema.String),
   from: Schema.optionalKey(Schema.String),
-  expires: Schema.String,
-  deliver: Schema.optionalKey(ToolDeliverySchema),
+  expires: Schema.optionalKey(Schema.String),
+  deliver: Schema.optionalKey(DeliverBlockSchema),
   replies: Schema.optionalKey(RepliesSchema),
   input: Schema.optionalKey(SectionSchema),
   output: Schema.optionalKey(SectionSchema),
@@ -33,7 +35,8 @@ const sections: readonly FrontMatterSection[] = [
   { name: undefined, keys: Object.keys(FrontMatterSchema.fields) },
   { name: 'input', keys: Object.keys(SectionSchema.fields) },
   { name: 'output', keys: Object.keys(SectionSchema.fields) },
-  { name: 'deliver', keys: Object.keys(ToolDeliverySchema.fields) },
+  { name: 'call', keys: Object.keys(CallBlockSchema.fields) },
+  { name: 'deliver', keys: Object.keys(DeliverBlockSchema.fields) },
   { name: 'deliver.sent', keys: Object.keys(SentSchema.fields) },
   { name: 'replies', keys: Object.keys(RepliesSchema.fields) },
   { name: 'replies.read', keys: Object.keys(ReadSchema.fields) },
@@ -46,5 +49,5 @@ export const decodeFrontMatter = Schema.decodeUnknownResult(FrontMatterSchema, {
 export const interactionFrontMatter: FrontMatterShape = {
   sections,
   decode: decodeFrontMatter,
-  required: 'the party it goes to and when it expires',
+  required: 'the tool it calls, or the party it goes to and when it expires',
 };

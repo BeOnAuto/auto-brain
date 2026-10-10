@@ -30,7 +30,11 @@ await test('interaction functions are available in a self-hosted runtime, with t
   assert.ok(routes.indexOf('/reference/reasoning-format') < routes.indexOf('/reference/interaction-format'));
   assert.ok(routes.indexOf('/reference/interaction-format') < routes.indexOf('/reference/computation-format'));
   assert.ok(urlsInCode(format).some((href) => href === unansweredType.href));
-  assert.match(format, /^## Sending through a tool\n[\s\S]*^### Attempts\n[\s\S]*^## Fields$/mu);
+  assert.match(
+    format,
+    /^## Asking a system\n[\s\S]*^## Sending through a tool\n[\s\S]*^### Attempts\n[\s\S]*^## Fields$/mu,
+  );
+  assert.match(format, /^\| `call` +\| The tool the function asks: /mu);
   assert.match(format, /^\| `deliver` +\| The tool the request is sent through: /mu);
   assert.match(format, /^### Answering by reply$/mu);
 });
@@ -42,7 +46,11 @@ await test('the words of interaction are on the terminology page, and the first 
   for (const term of ['Request', 'Inbox', 'Delivery', 'Answer', 'Notification']) {
     assert.match(terminology, new RegExp(`^\\| ${term} +\\| `, 'mu'), `The terminology page needs ${term}`);
   }
-  assert.ok(terminology.includes('An interaction function asks a person or a system and takes the answer later'));
+  assert.ok(
+    terminology.includes(
+      'An interaction function asks a system and answers at once, or asks a person and takes the answer later',
+    ),
+  );
   assert.ok(!tutorial.includes('deliver:'));
   assert.ok(tutorial.includes('answer_interaction'));
   assert.ok(workflows.includes('An approval is an interaction function'));

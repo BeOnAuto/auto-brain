@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 
-import type { CalledOnce, DeliveryCall, NotOfferedBecause, StartedFields, ToolAccess } from '@beonauto/mcp';
+import type { CalledOnce, NotOfferedBecause, OneCall, StartedFields, ToolAccess } from '@beonauto/mcp';
 import { ToolNotOffered } from '@beonauto/mcp';
 import { Effect, Result } from 'effect';
 
@@ -14,7 +14,7 @@ export type FakeAnswer =
 export type ToolPorts = Pick<ToolAccess, 'named' | 'configured' | 'startOf' | 'callOnce'>;
 
 export interface FakeTools extends ToolPorts, Pick<ChatBoard, 'posted' | 'reply'> {
-  readonly calls: () => readonly DeliveryCall[];
+  readonly calls: () => readonly OneCall[];
   readonly answerNext: (...answers: readonly FakeAnswer[]) => void;
   readonly disallow: (tool: string) => void;
 }
@@ -38,32 +38,32 @@ interface Offering {
   readonly disallowed: ReadonlySet<string>;
 }
 
-function refusalOf({ server, tool }: DeliveryCall['reference'], { disallowed }: Offering): Refusal | undefined {
+function refusalOf({ server, tool }: OneCall['reference'], { disallowed }: Offering): Refusal | undefined {
   if (server !== 'chat') {
     return notConfigured(server);
   }
   return disallowed.has(tool) ? notAllowed(tool) : undefined;
 }
 
-function notOfferedBy({ because, detail }: Refusal): CalledOnce {
-  return { kind: 'not_offered', because, detail };
+function notOfferedBy(refusal: Refusal): CalledOnce {
+  return { kind: 'unopened', refused: 'tool_not_offered', ...refusal };
 }
 
-function startOf({ reference, input }: Pick<DeliveryCall, 'reference' | 'input'>): StartedFields {
+function startOf({ reference, input }: Pick<OneCall, 'reference' | 'input'>): StartedFields {
   const argumentsJson = JSON.stringify(input);
   return { ...reference, arguments_bytes: Buffer.byteLength(argumentsJson), arguments_sha256: digest };
 }
 
-function unsentBy(answer: Exclude<FakeAnswer, BoardAnswer>, { reference }: DeliveryCall): CalledOnce {
+function unsentBy(answer: Exclude<FakeAnswer, BoardAnswer>, { reference }: OneCall): CalledOnce {
   return answer.kind === 'unopened'
-    ? { kind: 'unopened', because: 'mcp_server_failed', detail: answer.detail }
+    ? { kind: 'unopened', refused: 'mcp_server_failed', because: 'failing', detail: answer.detail }
     : notOfferedBy(notAllowed(reference.tool));
 }
 
 function answeredWith(answer: BoardAnswer, number: number): CalledOnce {
   const bytes = answer.outcome === 'result' ? Buffer.byteLength(JSON.stringify(answer.answer)) : null;
   const fields = { result_bytes: bytes, result_sha256: bytes === null ? null : digest, jsonrpc_id: number };
-  return { ...answer, kind: 'answered', fields, durationMs: 3 };
+  return { ...answer, kind: 'answered', fields, durationMs: 3, annotations: undefined };
 }
 
 function namedBy(refusals: readonly (Refusal | undefined)[]): Result.Result<void, ToolNotOffered> {
@@ -71,12 +71,12 @@ function namedBy(refusals: readonly (Refusal | undefined)[]): Result.Result<void
   return refusal === undefined ? Result.void : Result.fail(new ToolNotOffered(refusal));
 }
 
-export function fakeTools(duringCall: (call: DeliveryCall) => Effect.Effect<unknown> = () => Effect.void): FakeTools {
+export function fakeTools(duringCall: (call: OneCall) => Effect.Effect<unknown> = () => Effect.void): FakeTools {
   const board = chatBoard();
-  const calls: DeliveryCall[] = [];
+  const calls: OneCall[] = [];
   const queued: FakeAnswer[] = [];
   const offering = { disallowed: new Set<string>() };
-  const sent = (call: DeliveryCall): Effect.Effect<CalledOnce> => {
+  const sent = (call: OneCall): Effect.Effect<CalledOnce> => {
     const refusal = refusalOf(call.reference, offering);
     if (refusal !== undefined) {
       return Effect.succeed(notOfferedBy(refusal));

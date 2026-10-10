@@ -1,4 +1,4 @@
-import type { ConflictKind, UnavailableBecause, UnavailableKind } from '@beonauto/operations';
+import type { ConflictKind, RejectionBecause, UnavailableKind } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
 import type { CapabilityAnswer, CapabilityRejection } from '../capability/capability.ts';
@@ -59,7 +59,7 @@ function rejectedForInput(rejection: Rejection & Recorded): Effect.Effect<RunRes
 interface Unavailability extends Recorded {
   readonly detail: string;
   readonly kind?: UnavailableKind;
-  readonly because?: UnavailableBecause;
+  readonly because?: RejectionBecause;
 }
 
 function rejectedAsUnavailable(rejection: Unavailability): Effect.Effect<RunResult> {
@@ -78,11 +78,20 @@ function rejectedAsUnavailable(rejection: Unavailability): Effect.Effect<RunResu
 interface Clash extends Recorded {
   readonly detail: string;
   readonly kind?: ConflictKind;
+  readonly because?: RejectionBecause;
 }
 
 function rejectedAsConflict(rejection: Clash): Effect.Effect<RunResult> {
-  const { detail, kind } = rejection;
-  return rejectedWith({ reason: 'conflict', detail, ...(kind === undefined ? {} : { kind }) }, rejection);
+  const { detail, kind, because } = rejection;
+  return rejectedWith(
+    {
+      reason: 'conflict',
+      detail,
+      ...(kind === undefined ? {} : { kind }),
+      ...(because === undefined ? {} : { because }),
+    },
+    rejection,
+  );
 }
 
 export function attempt(running: Effect.Effect<CapabilityAnswer, CapabilityRejection>): Effect.Effect<RunOutcome> {

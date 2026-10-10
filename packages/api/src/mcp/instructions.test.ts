@@ -56,7 +56,8 @@ function asServedWithFourTypes(recordText: string): string {
   return amendments.reduce((text, [recorded, served]) => text.replace(recorded, served), recordText);
 }
 
-const interactionSentence = 'An interaction function asks a person or a system and takes the answer later.';
+const interactionSentence =
+  'An interaction function asks a system and answers at once, or asks a person and answers started.';
 
 const answeringSentence =
   "When the person approves, rejects or otherwise answers what a run waits on, answer its request with answer_interaction, in the shape its function's answer takes, and start no new run for it.";
@@ -69,7 +70,7 @@ function asServedWithFiveTypes(recordText: string): string {
     )
     .replace(
       'A run of a workflow answers started; get_run shows whether it ended or still waits.',
-      `A run of an interaction function or a workflow answers started; get_run shows whether it ended or still waits. ${answeringSentence}`,
+      `A run of a workflow answers started; get_run shows whether it ended or still waits. ${answeringSentence}`,
     )
     .replace('Runs, history and events come', 'Runs, history, events and requests come');
 }

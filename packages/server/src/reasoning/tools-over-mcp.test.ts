@@ -135,15 +135,33 @@ describe('a reasoning function with tools over MCP', () => {
       });
     },
   );
+});
 
-  it('says in plain words that a run that called tools may have changed something, and is not run again', async () => {
+describe('the words of a reasoning run over MCP that could not finish after calling tools', () => {
+  it('says in plain words that a run whose tools only read may run again, though not under its id', async () => {
     const fake = await fakeGraph();
     const { first, again } = await executedTwice(
       await serving(fake, [callingTools([['mcp__graph__search', { query: 'acme' }]], timedOut)]),
     );
 
     expect(plainTextIn(first)).toBe(
-      'Could not run the reasoning function “summary”: it called tools but could not finish, because the model stopped answering. What it called may have changed something, so it is not run again by itself: check what its history shows it called, then start a new run if it is still needed.',
+      "Could not run the reasoning function “summary”: it called tools but could not finish, because the model stopped answering. Nothing was changed. Every tool it called only reads, by its server's own account, so running it again is safe: a new run, or a workflow's retry, may make it; its history shows what it called.",
+    );
+    expect(plainTextIn(again)).toBe(
+      "Could not run the reasoning function “summary”: an attempt of this run under the same id did not succeed, and every tool it called only reads, by its server's own account. Nothing was changed. So it was not run again under its id: start a new run instead; its history shows what it called.",
+    );
+    expect(fake.received()).toHaveLength(1);
+  });
+
+  it('says in plain words that a run whose tool may have changed something is not run again by itself', async () => {
+    const fake = await fakeGraph();
+    const { first, again } = await executedTwice(
+      await serving(fake, [callingTools([['mcp__graph__echo', { said: 'acme' }]], timedOut)]),
+      source.replace('graph/search', 'graph/echo'),
+    );
+
+    expect(plainTextIn(first)).toBe(
+      'Could not run the reasoning function “summary”: it could not finish after calling a tool that may change something, so whether that happened is not known, because the model stopped answering. It is not run again by itself: a person decides, or a workflow rule that names this kind; its history shows the call.',
     );
     expect(plainTextIn(again)).toMatch(
       /^Could not run the reasoning function “summary”: this run calls tools, and an attempt of it under the same id may still be in progress or did not succeed, so its tools may have changed something\. So it was not run again/u,

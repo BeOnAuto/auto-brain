@@ -1,8 +1,8 @@
 import type { ProjectedRow } from '@beonauto/operations';
 import { Option, Schema } from 'effect';
 
-import { RepliesSchema } from '../route/route-schemas.ts';
-import { routeOf, type Route } from '../route/routes.ts';
+import { routeOf, type Route } from '../tool-blocks/routes.ts';
+import { RepliesSchema } from '../tool-blocks/tool-block-schemas.ts';
 
 export const StandingSchema = Schema.Literals([
   'in_inbox',

@@ -16,6 +16,7 @@ export {
   threadReplies,
   type ThreadOptions,
 } from './documents.ts';
+export { callDocument, repliesOutput, type CallOptions } from './call-documents.ts';
 export { askedRunId, askedThroughChat, type AskedRequest, type AskingOptions } from './asked-requests.ts';
 export { attemptedThenStopped } from './stopped-requests.ts';
 export { broughtBeforeSettling, recordedReply, takenReply, type RacingDelivery } from './racing-deliveries.ts';

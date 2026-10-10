@@ -3,7 +3,7 @@ import { Schema } from 'effect';
 
 import { toolBounds } from '../bounds/call-bounds.ts';
 import { cutAsStored } from '../bounds/text-bytes.ts';
-import { answeredInWords } from '../names/tool-words.ts';
+import { answeredInWords, toolInWords } from '../names/tool-words.ts';
 import {
   ConversationCallEventSchema,
   conversationCallsKind,
@@ -53,7 +53,7 @@ function contentShown(name: string, content: string | undefined, mostBytes: numb
 }
 
 function throughTheTool({ server, tool }: Pick<TellingStarted, 'server' | 'tool'>): string {
-  return `through the tool ${named(tool)} of ${named(server)}`;
+  return `through ${toolInWords({ server: named(server), tool: named(tool) })}`;
 }
 
 function argumentsShown(bytes: number | undefined, digest: string | undefined) {

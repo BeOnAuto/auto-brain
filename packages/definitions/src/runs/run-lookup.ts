@@ -45,14 +45,18 @@ function replayed(rejection: RunRejection): ReplayedRejection {
   if (rejection.reason === 'unanswered') {
     return new RunUnanswered({ detail: rejection.detail, kind: rejection.kind });
   }
-  const { detail, kind } = rejection;
-  return new Conflict(kind === undefined ? { detail } : { detail, kind });
+  const { detail, kind, because } = rejection;
+  return new Conflict({
+    detail,
+    ...(kind === undefined ? {} : { kind }),
+    ...(because === undefined ? {} : { because }),
+  });
 }
 
-function answerWith(run: Run): Effect.Effect<Run, ReplayedRejection> {
+function answerWith(run: RunDetail): Effect.Effect<RunDetail, ReplayedRejection> {
   return run.rejection === undefined ? Effect.succeed(run) : Effect.fail(replayed(run.rejection));
 }
 
-export function answerOf(id: string, state: RunStreamState): Effect.Effect<Run, NotFound | ReplayedRejection> {
-  return runOf(id, state).pipe(Effect.flatMap(answerWith));
+export function answerOf(id: string, state: RunStreamState): Effect.Effect<RunDetail, NotFound | ReplayedRejection> {
+  return runDetailOf(id, state).pipe(Effect.flatMap(answerWith));
 }

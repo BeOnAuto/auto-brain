@@ -3,8 +3,8 @@ import { Function, Result } from 'effect';
 
 import { secretsOfServers } from '../bounds/secrets.ts';
 import { startedFields, type StartedFields } from '../calls/recorded-calls.ts';
-import type { DeliveryCall } from '../delivery/delivery-bounds.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
+import type { OneCall } from '../one-call/one-call.ts';
 import type { McpServerSettings } from '../settings/mcp-settings.ts';
 import { namedLinks } from './tool-naming.ts';
 import type { ToolNotOffered } from './tool-not-offered.ts';
@@ -14,7 +14,7 @@ export type NamingCheck = (
   references: readonly ToolReference[],
 ) => Result.Result<void, ToolNotOffered>;
 
-export type StartOf = (call: Pick<DeliveryCall, 'reference' | 'input'>) => StartedFields;
+export type StartOf = (call: Pick<OneCall, 'reference' | 'input'>) => StartedFields;
 
 export function namingOf(servers: readonly McpServerSettings[]): NamingCheck {
   const entries = new Map(servers.map((settings) => [settings.name, { settings }]));

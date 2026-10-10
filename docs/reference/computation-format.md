@@ -178,15 +178,19 @@ A workflow calls a computation function as it calls a reasoning function, with `
 
 A run rejected with `conflict` raises a `runtime` error with status 409, and the error's `kind` is `unworkable`. A retry gives the same result for the same input, so a retry policy should not match it: retry on status 503, which a run that was `unavailable` raises, as the example below does.
 
-This workflow reads a month's campaign costs through an MCP server, computes the pace of each campaign and has a reasoning function write a summary. A workflow reaches an MCP server only through a reasoning function's [tools](reasoning-format.md#tools), so the first function reads the rows and passes them on unchanged; the arithmetic happens in the computation function, and the words in the last reasoning function.
+This workflow reads a month's campaign costs through a tool server, computes the pace of each campaign and has a reasoning function write a summary. The first function is an [interaction function that asks a system](interaction-format.md#asking-a-system): it calls the tool and answers the rows it gives, checked against its output schema, with no model to read them; the arithmetic happens in the computation function, and the words in the reasoning function.
 
-The reasoning function `read-campaign-costs`:
+The interaction function `read-campaign-costs`:
 
 ```markdown
 ---
 description: Reads the cost rows of every campaign for a month
-model: anthropic/claude-sonnet-4-5
-tools: [ads/campaign-costs]
+call:
+  server: ads
+  tool: campaign-costs
+  with:
+    month: '{{ input.month }}'
+  read: /rows
 input:
   schema:
     type: object
@@ -194,23 +198,16 @@ input:
       month: { type: string }
     required: [month]
 output:
-  format: json
   schema:
-    type: object
-    properties:
-      rows:
-        type: array
-        items:
-          type: object
-          properties:
-            campaign: { type: string }
-            cost_cents: { type: integer }
-            budget_cents: { type: integer }
-          required: [campaign, cost_cents, budget_cents]
-    required: [rows]
+    type: array
+    items:
+      type: object
+      properties:
+        campaign: { type: string }
+        cost_cents: { type: integer }
+        budget_cents: { type: integer }
+      required: [campaign, cost_cents, budget_cents]
 ---
-
-Call ads/campaign-costs for the month {{ input.month }} and answer with the rows it gives, exactly as it gives them. Do not add, round or calculate anything.
 ```
 
 The computation function `campaign-pace` is the document at the top of this page. The reasoning function `write-pace-summary`:
@@ -254,11 +251,11 @@ do:
   - read:
       call: run_definition
       with:
-        type: reasoning
+        type: interaction
         name: read-campaign-costs
         input: { month: '${ .month }' }
       output:
-        as: '${ { rows: .rows, period: $input.period } }'
+        as: '${ { rows: ., period: $input.period } }'
   - compute:
       try:
         - pace:

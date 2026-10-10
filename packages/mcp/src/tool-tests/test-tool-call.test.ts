@@ -85,6 +85,7 @@ describe('a test of a tool its server marks read-only', () => {
         tool: 'search',
         outcome: 'result',
         text: 'Found 2 rows for acme.',
+        answer: 'Found 2 rows for acme.',
         result_bytes: Buffer.byteLength(
           JSON.stringify({ content: [{ type: 'text', text: 'Found 2 rows for acme.' }] }),
         ),

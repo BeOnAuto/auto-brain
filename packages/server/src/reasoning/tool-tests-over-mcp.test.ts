@@ -72,7 +72,7 @@ describe('test_tool_call over MCP', () => {
 
     expect([tested.structuredContent, onTheBrain.structuredContent]).toMatchObject([answered, answered]);
     expect(plainTextIn(tested)).toMatch(
-      /^The tool “search” of “graph” answered in [\d,]+ ms with \d+ bytes; what a reasoning function's model would see is in the details\.$/u,
+      /^The search tool of graph answered in [\d,]+ ms with \d+ bytes; what a reasoning function's model would see is in the details\.$/u,
     );
     expect(listedTools(onTheOrg).map(({ name }) => name)).not.toContain('test_tool_call');
   });
@@ -104,7 +104,7 @@ describe('test_tool_call refused over MCP', () => {
       because: 'not_testable',
     });
     expect(plainTextIn(refused)).toBe(
-      "Could not test the tool “echo” of “graph”: this server does not offer a tool it names, because by its server's own account it may change something, and whoever runs the server has not listed it as safe to test. Nothing was changed. A tool that may change something is called only by a function the person asked to run; whoever runs the server can mark it testable on its tool server's entry, and list_tool_servers shows which tools can be tested.",
+      "Could not test the echo tool of graph: this server does not offer a tool it names, because by its server's own account it may change something, and whoever runs the server has not listed it as safe to test. Nothing was changed. A tool that may change something is called only by a function the person asked to run; whoever runs the server can mark it testable on its tool server's entry, and list_tool_servers shows which tools can be tested.",
     );
     expect(graph.received()).toEqual([]);
   });
@@ -118,7 +118,7 @@ describe('test_tool_call refused over MCP', () => {
 
     expect(problemIn(refused)).toMatchObject({ kind: 'tool_not_offered', because: 'mcp_server_not_configured' });
     expect(plainTextIn(refused)).toBe(
-      'Could not test the tool “search” of “wiki”: this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this brain. Nothing was changed. This can be put right on your side: list_tool_servers shows the tool servers this brain may use, so a test that names one of those can be tried.',
+      'Could not test the search tool of wiki: this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this brain. Nothing was changed. This can be put right on your side: list_tool_servers shows the tool servers this brain may use, so a test that names one of those can be tried.',
     );
     expect(graph.seen()).toEqual([]);
   });

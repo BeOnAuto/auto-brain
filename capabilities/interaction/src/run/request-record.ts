@@ -1,7 +1,7 @@
 import { Option, Schema } from 'effect';
 
 import { ReplyRuleSchema } from '../replies/reply-rule.ts';
-import { RepliesSchema, ToolDeliverySchema } from '../route/route-schemas.ts';
+import { RepliesSchema, DeliverBlockSchema } from '../tool-blocks/tool-block-schemas.ts';
 
 const RequestRecordSchema = Schema.Struct({
   to: Schema.String,
@@ -11,13 +11,13 @@ const RequestRecordSchema = Schema.Struct({
   reply: Schema.optionalKey(ReplyRuleSchema),
   expires_at: Schema.String,
   requested_at: Schema.String,
-  deliver: Schema.optionalKey(ToolDeliverySchema),
+  deliver: Schema.optionalKey(DeliverBlockSchema),
   replies: Schema.optionalKey(RepliesSchema),
 });
 
 export type RequestRecord = typeof RequestRecordSchema.Type;
 
-const DeliveringRecordSchema = Schema.Struct({ ...RequestRecordSchema.fields, deliver: ToolDeliverySchema });
+const DeliveringRecordSchema = Schema.Struct({ ...RequestRecordSchema.fields, deliver: DeliverBlockSchema });
 
 export type DeliveringRecord = typeof DeliveringRecordSchema.Type;
 
@@ -32,4 +32,15 @@ export function requestRecordOf(record: unknown): RequestRecord | undefined {
 
 export function takesAnswer({ answer_schema: schema }: Pick<RequestRecord, 'answer_schema'>): boolean {
   return schema !== undefined;
+}
+
+const DeliveredRecordSchema = Schema.Struct({ delivered_at: Schema.String });
+
+export type DeliveredRecord = typeof DeliveredRecordSchema.Type;
+
+const isDeliveredRecord = Schema.is(DeliveredRecordSchema);
+
+export function isNotification(record: unknown): boolean {
+  const request = requestRecordOf(record);
+  return request === undefined ? isDeliveredRecord(record) : !takesAnswer(request);
 }

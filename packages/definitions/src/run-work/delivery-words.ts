@@ -1,3 +1,4 @@
+import { toolInWords } from '@beonauto/mcp';
 import { plainNumber } from '@beonauto/operations';
 
 import type { DeliveryBecause, DeliveryEnded, DeliveryStarted } from '../runs/run-events.ts';
@@ -13,7 +14,7 @@ const becauseWords: Readonly<Record<DeliveryBecause, string>> = {
 };
 
 export function throughTheTool({ server, tool }: Pick<DeliveryStarted, 'server' | 'tool'>): string {
-  return `through the tool ${tool} of ${server}`;
+  return `through ${toolInWords({ server, tool })}`;
 }
 
 export function deliveryStarted(fact: Pick<DeliveryStarted, 'number' | 'server' | 'tool'>): string {

@@ -1,8 +1,8 @@
-import type { AnsweredOnce, DeliveryCall } from '@beonauto/mcp';
+import type { AnsweredOnce, OneCall } from '@beonauto/mcp';
 
 export type BoardAnswer = AnsweredOnce extends infer Answer
   ? Answer extends AnsweredOnce
-    ? Omit<Answer, 'kind' | 'fields' | 'durationMs'>
+    ? Omit<Answer, 'kind' | 'fields' | 'durationMs' | 'annotations'>
     : never
   : never;
 
@@ -22,14 +22,14 @@ export interface Replying {
 }
 
 export interface ChatBoard {
-  readonly answerOf: (call: DeliveryCall) => BoardAnswer;
+  readonly answerOf: (call: OneCall) => BoardAnswer;
   readonly posted: () => readonly ChatMessage[];
   readonly reply: (replying: Replying) => string;
 }
 
 export const brainUser = 'brain';
 
-function argument(call: DeliveryCall, name: string): string {
+function argument(call: OneCall, name: string): string {
   const value = call.input[name];
   return typeof value === 'string' ? value : '';
 }
@@ -50,7 +50,7 @@ function threadOf(thread: string) {
 export function chatBoard(): ChatBoard {
   const messages: ChatMessage[] = [];
   const nextTs = () => `1699.${String(messages.length + 1).padStart(6, '0')}`;
-  const post = (call: DeliveryCall): BoardAnswer => {
+  const post = (call: OneCall): BoardAnswer => {
     const ts = nextTs();
     const channel = argument(call, 'channel');
     messages.push({
@@ -62,7 +62,7 @@ export function chatBoard(): ChatBoard {
     });
     return answered({ ok: true, channel, ts });
   };
-  const read = (call: DeliveryCall): BoardAnswer => {
+  const read = (call: OneCall): BoardAnswer => {
     const ts = argument(call, 'ts');
     const oldest = Number(argument(call, 'oldest'));
     const inThread = (message: ChatMessage) => ts === '' || message.ts === ts || message.thread_ts === ts;

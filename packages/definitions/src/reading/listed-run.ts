@@ -2,7 +2,7 @@ import {
   CancelledKindSchema,
   ConflictKindSchema,
   UnansweredKindSchema,
-  UnavailableBecauseSchema,
+  RejectionBecauseSchema,
   UnavailableKindSchema,
   type RecordedEvent,
 } from '@beonauto/operations';
@@ -19,10 +19,10 @@ const ListedRejectionSchema = Schema.Struct({
   kind: Schema.optionalKey(
     Schema.Union([UnavailableKindSchema, ConflictKindSchema, CancelledKindSchema, UnansweredKindSchema]),
   ),
-  because: Schema.optionalKey(UnavailableBecauseSchema),
+  because: Schema.optionalKey(RejectionBecauseSchema),
 }).annotate({
   description:
-    'Why the run was rejected: its reason, the kind it gave for unavailable or conflict, the kind of a cancellation or of a request nobody answered, and for unavailable the because it gave',
+    'Why the run was rejected: its reason, the kind it gave for unavailable or conflict, the kind of a cancellation or of a request nobody answered, and for unavailable or conflict the because it gave',
 });
 
 export const ListedRunSchema = Schema.Struct({
@@ -52,10 +52,6 @@ function runsOf(records: readonly RecordedEvent[]): ReadonlyMap<string, readonly
 function listedRejectionOf(rejection: RunRejection): ListedRejection {
   if (rejection.reason === 'invalid_input') {
     return { reason: rejection.reason };
-  }
-  if (rejection.reason === 'conflict') {
-    const { reason, kind } = rejection;
-    return { reason, ...(kind === undefined ? {} : { kind }) };
   }
   if (rejection.reason === 'cancelled' || rejection.reason === 'unanswered') {
     const { reason, kind } = rejection;

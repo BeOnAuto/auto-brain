@@ -1,6 +1,6 @@
-import type { UnavailableBecause } from '../outcome/unavailable.ts';
+import type { RejectionBecause } from '../outcome/rejection-because.ts';
 
-export type Remedies = Readonly<Partial<Record<UnavailableBecause, string>>>;
+export type Remedies = Readonly<Partial<Record<RejectionBecause, string>>>;
 
 export interface PlainLanguage<Input, Output> {
   readonly task: string;

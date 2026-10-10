@@ -9,7 +9,16 @@ import {
   type CapabilityRejection,
 } from '../index.ts';
 
-type Mishap = 'stall' | 'unavailable' | 'unoffered' | 'conflict' | 'unworkable' | 'breakdown' | 'spent' | 'overspent';
+type Mishap =
+  | 'stall'
+  | 'unavailable'
+  | 'unoffered'
+  | 'conflict'
+  | 'unworkable'
+  | 'unknown'
+  | 'breakdown'
+  | 'spent'
+  | 'overspent';
 
 export const spentUsage = {
   input: { total: 120, uncached: 30, cache_read: 90, cache_write: 0 },
@@ -47,6 +56,13 @@ const mishaps: Readonly<Record<Mishap, Effect.Effect<never, Unavailable | Confli
   conflict: Effect.fail(new Conflict({ detail: 'The probe cannot run this definition as written; update it' })),
   unworkable: Effect.fail(
     new Conflict({ detail: 'The program of the probe raised an error on line 2: stop', kind: 'unworkable' }),
+  ),
+  unknown: Effect.fail(
+    new Conflict({
+      detail: 'The probe could not finish after calling a tool that may post',
+      kind: 'effect_unknown',
+      because: 'tool_error',
+    }),
   ),
   breakdown: Effect.die(new Error('The probe broke down')),
   spent: Effect.fail(

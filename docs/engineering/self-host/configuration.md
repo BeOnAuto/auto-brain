@@ -47,7 +47,7 @@ allowed_models:
 
 ## MCP servers
 
-A reasoning function that lists `tools` calls the tools of the MCP servers in `mcp_servers` ([decision 0003](../../decisions/0003-mcp-servers.md)), and an interaction function sends its request through the tool it names in `deliver`. The key is the name a function writes in `server/tool`, and each entry is a remote server or a process, in the shape assistants read:
+A reasoning function that lists `tools` calls the tools of the MCP servers in `mcp_servers` ([decision 0003](../../decisions/0003-mcp-servers.md)), and an interaction function calls the tool it names in `call`, or sends its request through the tool it names in `deliver`. The key is the name a function writes in `server/tool`, and each entry is a remote server or a process, in the shape assistants read:
 
 ```yaml
 mcp_servers:
@@ -96,7 +96,7 @@ The server checks every entry at start and stops, naming the setting and the pla
 
 ## Interaction functions
 
-An interaction function sends its request through a tool of a server in `mcp_servers`, which it names in its own document under `deliver`, or leaves it in the brain's inbox, and may read the replies to what it sent through another tool of that server ([decision 0010](../../decisions/0010-interaction-functions.md)). Nothing is configured for it beyond the tool server: the entry's `allowed` names the tools its functions may use, checked again at every attempt and every read, and its `record_content` records what they send and what the tool answers.
+An interaction function calls a tool of a server in `mcp_servers` and answers with its result, naming it in its own document under `call` ([decision 0021](../../decisions/0021-asking-a-system.md)), or sends its request through such a tool, named under `deliver`, or leaves it in the brain's inbox, and may read the replies to what it sent through another tool of that server ([decision 0010](../../decisions/0010-interaction-functions.md)). Nothing is configured for it beyond the tool server: the entry's `allowed` names the tools its functions may use, checked again at every call, every attempt and every read, and its `record_content` records what they send and what the tool answers.
 
 One setting goes with interaction functions:
 

@@ -90,7 +90,7 @@ describe('a run that ends while it calls', () => {
     const { call, fake, journal } = await runWith(['search'], 10_000);
     const signals = controlledSignals();
 
-    fake.answerNextWith(429, 1, { 'retry-after': '5' });
+    fake.answerNextOf('tools/call', 429, 1, { 'retry-after': '5' });
     const replied = call('search', { query: 'waiting' }, signals);
     await setTimeout(100);
     signals.end();

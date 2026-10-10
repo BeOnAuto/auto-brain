@@ -47,6 +47,35 @@ describe('the rejection of an uncaught error of a kind with a type of its own', 
   });
 });
 
+describe('the rejection of an uncaught error whose effect is unknown', () => {
+  it('settles effect_unknown as a conflict with its because, raised at 409 under its own type', () => {
+    const unknown = callErrorOf(
+      { status: 'rejected', reason: 'conflict', detail: 'Called', kind: 'effect_unknown', because: 'tool_error' },
+      { function: 'notify', label: 'the function notify', reference: '/do/0/ask' },
+    );
+
+    expect(unknown).toMatchObject({ type: 'https://on.auto/problems/effect_unknown', status: 409 });
+    expect([
+      settlementOf({ kind: 'raised', error: unknown }),
+      settlementOf({ kind: 'raised', error: { ...unknown, because: 'not a because' } }),
+    ]).toEqual([
+      {
+        status: 'rejected',
+        reason: 'conflict',
+        detail: 'The function notify rejected the run with conflict: Called (at /do/0/ask)',
+        kind: 'effect_unknown',
+        because: 'tool_error',
+      },
+      {
+        status: 'rejected',
+        reason: 'conflict',
+        detail: 'The function notify rejected the run with conflict: Called (at /do/0/ask)',
+        kind: 'effect_unknown',
+      },
+    ]);
+  });
+});
+
 describe('the error of a call that did not succeed', () => {
   const site = { function: 'notify', label: 'the function notify', reference: '/do/0/ask' };
 

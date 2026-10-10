@@ -2,7 +2,7 @@ import { servesBrain } from '@beonauto/config';
 import { capitalized, type BrainAddress } from '@beonauto/operations';
 import { Result } from 'effect';
 
-import type { ListedTool } from '../bounds/result-text.ts';
+import type { ListedTool } from '../bounds/tool-results.ts';
 import type { OfferedOnServer } from '../calls/run-parts.ts';
 import type { ServerSlot } from '../calls/server-slot.ts';
 import type { ServerLink } from '../connections/server-links.ts';

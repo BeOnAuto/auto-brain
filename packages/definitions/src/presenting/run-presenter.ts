@@ -50,10 +50,6 @@ function rejectionShown(rejection: RunRejection) {
   if (rejection.reason === 'invalid_input') {
     return { reason: rejection.reason, detail, ...issuesShown(rejection.issues) };
   }
-  if (rejection.reason === 'conflict') {
-    const { reason, kind } = rejection;
-    return { reason, detail, ...(kind === undefined ? {} : { kind }) };
-  }
   if (rejection.reason === 'cancelled' || rejection.reason === 'unanswered') {
     const { reason, kind } = rejection;
     return { reason, detail, kind };
@@ -97,6 +93,7 @@ function callStartedAccount(event: ToolCallStarted, fact: Fact): Account {
       tool,
       arguments_bytes: event.arguments_bytes,
       arguments_sha256: cutAtCodePoint(event.arguments_sha256, mostDigestBytes),
+      ...(event.read_only === true ? { read_only: true } : {}),
       ...contentShown('arguments_json', event.arguments_json),
     },
   };

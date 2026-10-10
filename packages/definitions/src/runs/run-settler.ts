@@ -65,8 +65,8 @@ function rejectionOf(settlement: SettledRejection): RunRejection {
     return { reason, detail, ...(kind === undefined ? {} : { kind }), ...(because === undefined ? {} : { because }) };
   }
   if (settlement.reason === 'conflict') {
-    const { reason, detail, kind } = settlement;
-    return { reason, detail, ...(kind === undefined ? {} : { kind }) };
+    const { reason, detail, kind, because } = settlement;
+    return { reason, detail, ...(kind === undefined ? {} : { kind }), ...(because === undefined ? {} : { because }) };
   }
   if (settlement.reason === 'unanswered') {
     const { reason, detail, kind } = settlement;

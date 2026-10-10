@@ -1,7 +1,7 @@
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import type { AnsweredOnce } from '../delivery/delivery-bounds.ts';
+import type { AnsweredOnce, CalledOnce } from '../one-call/called-once.ts';
 import { conversationCallStreamOf, type ConversationCallEvent } from './conversation-call-events.ts';
 import { conversationCallDecider, repliesReadOf, tellingEndedOf, tellingStartedOf } from './conversation-calls.ts';
 
@@ -19,9 +19,15 @@ const answered: AnsweredOnce = {
   durationMs: 7,
   detail: '',
   retryAfterMs: null,
+  annotations: { readOnlyHint: true },
 };
 
-const notOffered = { kind: 'not_offered', because: 'tool_not_allowed', detail: 'Not allowed' } as const;
+const notOffered: CalledOnce = {
+  kind: 'unopened',
+  refused: 'tool_not_offered',
+  because: 'tool_not_allowed',
+  detail: 'Not allowed',
+};
 
 const reading = {
   callId: 'call-1',
@@ -66,7 +72,11 @@ describe('a telling the brain makes in a conversation', () => {
   it('records no answer when the server no longer offers the tool, or its connection could not be opened', () => {
     expect([
       tellingEndedOf('call-3', notOffered, recorded),
-      tellingEndedOf('call-4', { kind: 'unopened', because: 'mcp_server_failed', detail: 'Unreachable' }, recorded),
+      tellingEndedOf(
+        'call-4',
+        { kind: 'unopened', refused: 'mcp_server_failed', because: 'unreachable', detail: 'Unreachable' },
+        recorded,
+      ),
     ]).toEqual([
       { type: 'telling_ended', call_id: 'call-3', outcome: 'tool_not_offered', ...recorded },
       { type: 'telling_ended', call_id: 'call-4', outcome: 'server_failure', ...recorded },

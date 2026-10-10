@@ -1,7 +1,15 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { Timing } from '../bounds/call-bounds.ts';
-import { deniedText, fakeApiKey, fakeChannels, inTurn, openFakeToolRun, toolRunId } from '../testing/index.ts';
+import {
+  brokenPromise,
+  deniedText,
+  fakeApiKey,
+  fakeChannels,
+  inTurn,
+  openFakeToolRun,
+  toolRunId,
+} from '../testing/index.ts';
 
 const quick: Timing = { callMs: 2000, openMs: 2000, longestRetryWaitMs: 1000 };
 
@@ -52,6 +60,18 @@ describe('the result of a call', () => {
     expect(replies).toMatchObject(Array.from({ length: 6 }, () => ({ text: deniedText, isError: true })));
     expect(tools.ending()).toBeUndefined();
     expect(tools.ended.aborted).toBe(false);
+  });
+
+  it('gives the model what a tool answered against its own output schema, and never says the arguments were refused', async () => {
+    const run = await openFakeToolRun(['promised'], quick, { data: true });
+    closing.push(run.close);
+
+    expect(await run.call('promised', {})).toMatchObject({
+      text: JSON.stringify(brokenPromise),
+      isError: false,
+      outcome: 'result',
+    });
+    expect(run.fake.received()).toHaveLength(1);
   });
 
   it('cuts a result over 64 KiB at a code point, with the note', async () => {
@@ -150,7 +170,7 @@ describe('a server that fails a call', () => {
   it('fails a call its server answers HTTP 403 as a failure of that call, counted as one, and never as a refused key', async () => {
     const { call, fake, journal, tools } = await runWith(['search']);
 
-    fake.answerNextWith(403, 5);
+    fake.answerNextOf('tools/call', 403, 5);
     const replies = await inTurn([1, 2, 3, 4, 5], (attempt) => call('search', { query: `denied ${attempt}` }));
 
     expect(replies[0]).toMatchObject({
@@ -176,9 +196,9 @@ describe('a server that asks to slow down or forgets a session', () => {
   it('waits out a 429 within the longest wait, and fails one asking longer, ending the calls as rate limited after five', async () => {
     const { call, fake, tools } = await runWith(['search'], quick);
 
-    fake.answerNextWith(429, 1, { 'retry-after': '0' });
+    fake.answerNextOf('tools/call', 429, 1, { 'retry-after': '0' });
     const waited = await call('search', { query: 'waited' });
-    fake.answerNextWith(429, 5, { 'retry-after': '5' });
+    fake.answerNextOf('tools/call', 429, 5, { 'retry-after': '5' });
     const [limited] = await inTurn(['limited', 'b', 'c', 'd', 'e'], (query) => call('search', { query }));
 
     expect(waited).toMatchObject({ text: 'Found 2 rows for waited.', isError: false });

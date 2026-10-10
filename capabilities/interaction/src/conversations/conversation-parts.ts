@@ -2,8 +2,8 @@ import type { ToolAccess } from '@beonauto/mcp';
 import type { BrainAddress, ProjectionAdvancer, ProjectionReader } from '@beonauto/operations';
 import type { Effect } from 'effect';
 
-import type { Replies } from '../route/route-schemas.ts';
 import type { RequestLedger } from '../schedule/request-ledger.ts';
+import type { Replies } from '../tool-blocks/tool-block-schemas.ts';
 import { advancedOf, conversationsName, type Cadence, type ConversationRow } from './conversation-rows.ts';
 
 export interface ConversationLedger

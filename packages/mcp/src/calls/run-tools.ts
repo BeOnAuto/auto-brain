@@ -2,12 +2,11 @@ import type { Schema } from 'effect';
 
 import type { CallsEndedBecause } from '../access/mcp-server-failed.ts';
 import { callsEnded, cutToDescriptionBound, noCalls } from '../bounds/call-bounds.ts';
-import type { ToolAnnotations } from '../bounds/result-text.ts';
+import { isReadOnly, type ToolAnnotations } from '../bounds/tool-results.ts';
 import { modelFacingNames } from '../names/model-facing-names.ts';
-import type { ToolReference } from '../names/tool-reference.ts';
 import { toolsInWords } from '../names/tool-words.ts';
 import type { CallReply } from './call-replies.ts';
-import type { CallSignals, RunState, RunToolsParts, ToolCallRequest } from './run-parts.ts';
+import type { CallSignals, OfferedOnServer, RunState, RunToolsParts, ToolCallRequest } from './run-parts.ts';
 import { caller } from './tool-caller.ts';
 
 export interface OfferedTool {
@@ -28,6 +27,7 @@ export interface RunTools {
   readonly ended: Readonly<AbortSignal>;
   readonly ending: () => ToolsEnding | undefined;
   readonly calledAny: () => boolean;
+  readonly calledOnlyReadOnly: () => boolean;
   readonly usedInWords: () => string;
   readonly close: () => Promise<void>;
 }
@@ -35,15 +35,15 @@ export interface RunTools {
 export function runTools(parts: RunToolsParts): RunTools {
   let tally = noCalls;
   let ending: ToolsEnding | undefined;
-  const used: ToolReference[] = [];
+  const used: OfferedOnServer[] = [];
   const stop = new AbortController();
   const state: RunState = {
     tally: () => tally,
     tallied: (next) => {
       tally = next;
     },
-    used: (reference) => {
-      used.push(reference);
+    used: (offer) => {
+      used.push(offer);
     },
     ended: (because) => {
       ending ??= { because };
@@ -63,7 +63,8 @@ export function runTools(parts: RunToolsParts): RunTools {
     ended: stop.signal,
     ending: () => ending,
     calledAny: () => used.length > 0,
-    usedInWords: () => toolsInWords(used),
+    calledOnlyReadOnly: () => used.every(({ tool }) => isReadOnly(tool.annotations)),
+    usedInWords: () => toolsInWords(used.map(({ reference }) => reference)),
     close: async () => {
       await Promise.all(parts.slots.map((slot) => slot.release()));
     },

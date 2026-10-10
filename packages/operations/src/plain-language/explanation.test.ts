@@ -151,6 +151,19 @@ describe('explanationOf a run that names no kind', () => {
   });
 });
 
+describe('unsuccessfulWords of a run whose tools only read', () => {
+  it('says that nothing changed', () => {
+    expect(
+      unsuccessfulWords('run the reasoning function “summary”', 'command', {
+        ...rejected('unavailable', 'x', undefined, 'tools_unfinished'),
+        because: 'run_bound',
+      }),
+    ).toBe(
+      "Could not run the reasoning function “summary”: it called tools but could not finish, because it ran out of time. Nothing was changed. Every tool it called only reads, by its server's own account, so running it again is safe: a new run, or a workflow's retry, may make it; its history shows what it called.",
+    );
+  });
+});
+
 describe('unsuccessfulWords', () => {
   it('says what could not be done, why, that nothing changed, and what to do, for a command', () => {
     expect(
@@ -163,11 +176,11 @@ describe('unsuccessfulWords', () => {
   it('does not say that nothing changed for a command whose tool calls may have changed something', () => {
     expect(
       unsuccessfulWords('run the reasoning function “summary”', 'command', {
-        ...rejected('unavailable', 'x', undefined, 'tools_unfinished'),
+        ...rejected('conflict', 'x', undefined, 'effect_unknown'),
         because: 'run_bound',
       }),
     ).toBe(
-      'Could not run the reasoning function “summary”: it called tools but could not finish, because it ran out of time. What it called may have changed something, so it is not run again by itself: check what its history shows it called, then start a new run if it is still needed.',
+      'Could not run the reasoning function “summary”: it could not finish after calling a tool that may change something, so whether that happened is not known, because it ran out of time. It is not run again by itself: a person decides, or a workflow rule that names this kind; its history shows the call.',
     );
   });
 

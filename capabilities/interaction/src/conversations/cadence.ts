@@ -1,6 +1,6 @@
 import { readDuration } from '@beonauto/workflow-engine/dsl';
 
-import type { Replies } from '../route/route-schemas.ts';
+import type { Replies } from '../tool-blocks/tool-block-schemas.ts';
 
 export const firstReadWaitMs = 5000;
 

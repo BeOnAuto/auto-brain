@@ -1,3 +1,4 @@
+import { noToolServers } from '@beonauto/mcp/testing';
 import { InvalidInput } from '@beonauto/operations';
 import { Effect, Exit } from 'effect';
 import { TestClock } from 'effect/testing';
@@ -138,6 +139,7 @@ describe('the moment a run renders', () => {
       languageModel: scripted.languageModel,
       clock,
       offered: { providers: ['anthropic'], aliases: [] },
+      tools: noToolServers,
     });
     const definition = Effect.runSync(
       timed.prepare(documentOf('model: openai/gpt-5', 'Today is {{ today }}, now {{ now }}')),

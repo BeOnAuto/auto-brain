@@ -2,7 +2,8 @@ import type { ReplyIdentity, Settlement } from '@beonauto/definitions';
 import { brainCallerOf, type BrainAddress } from '@beonauto/operations';
 import type { Schema } from 'effect';
 
-import { throughWords, type Route } from '../route/routes.ts';
+import type { DeliveredRecord } from '../run/request-record.ts';
+import { throughWords, type Route } from '../tool-blocks/routes.ts';
 
 export function expiredSettlement({ expires_at: expiresAt }: { readonly expires_at: number }): Settlement {
   return {
@@ -25,7 +26,8 @@ export function answeredSettlement(brain: BrainAddress, { answer, at, reply }: B
 }
 
 export function deliveredSettlement(at: string): Settlement {
-  return { status: 'succeeded', output: {}, record: { delivered_at: at } };
+  const record: DeliveredRecord = { delivered_at: at };
+  return { status: 'succeeded', output: {}, record };
 }
 
 export function undeliveredSettlement(route: Route): Settlement {

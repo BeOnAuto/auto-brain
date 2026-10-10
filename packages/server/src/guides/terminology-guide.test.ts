@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 
 import { terminologyGuideOf } from './terminology-guide.ts';
 
+const theRequestTerm = 'Interaction:\n\n- Request: What a run of an interaction function that asks a person asks';
+
 const page = readFileSync(new URL('../../../../docs/concepts/terminology.md', import.meta.url), 'utf8');
 
 describe('the terminology guide', () => {
@@ -30,7 +32,7 @@ describe('the terminology guide', () => {
     const interacting = terminologyGuideOf(page, ['interaction function', 'workflow']).text;
     const notInteracting = terminologyGuideOf(page, ['workflow']).text;
 
-    expect(interacting).toContain('Interaction:\n\n- Request: What a run of an interaction function asks');
+    expect(interacting).toContain(theRequestTerm);
     expect(notInteracting).not.toContain('Interaction:');
     expect(notInteracting).not.toContain('- Inbox:');
   });

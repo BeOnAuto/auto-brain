@@ -112,7 +112,7 @@ describe('the start of a delivery', () => {
     expect(presented(started)).toEqual([
       {
         type: 'delivery_started',
-        summary: 'Delivery attempt 1 of the request started, through the tool post_message of chat.',
+        summary: 'Delivery attempt 1 of the request started, through the post message tool of chat.',
         data: {
           run_id: runId,
           by: 'brain:alpha',
@@ -238,7 +238,7 @@ describe('a reply the run took or refused', () => {
     ).toEqual([
       {
         type: 'reply_taken',
-        summary: 'A reply from the party answered the request, read through the tool thread_replies of chat.',
+        summary: 'A reply from the party answered the request, read through the thread replies tool of chat.',
         data: { run_id: runId, by: 'brain:alpha', ...shownReply, answer_bytes: 20 },
       },
     ]);
