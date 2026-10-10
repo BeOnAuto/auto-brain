@@ -1,6 +1,6 @@
 import type { StartedFields } from '../calls/recorded-calls.ts';
-import type { CalledOnce } from '../delivery/delivery-bounds.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
+import type { CalledOnce } from '../one-call/called-once.ts';
 import {
   ConversationCallEventSchema,
   type ConversationCallEvent,
@@ -33,7 +33,7 @@ function tellingOutcomeOf(end: CalledOnce): TellingOutcome {
   if (end.kind === 'answered') {
     return end.outcome;
   }
-  return end.kind === 'unopened' ? 'server_failure' : 'tool_not_offered';
+  return end.refused === 'tool_not_offered' ? 'tool_not_offered' : 'server_failure';
 }
 
 export interface Telling {

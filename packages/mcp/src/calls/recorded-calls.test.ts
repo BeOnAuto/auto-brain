@@ -97,7 +97,7 @@ async function recordedCalls(
 }
 
 describe('the events of a call', () => {
-  it('records the size and digest of the arguments and the result, and no content', async () => {
+  it('records the size and digest of the arguments and the result, that its server marks the tool read-only, and no content', async () => {
     expect(await recordedCalls({}, [['graph/search', { query: 'acme' }]])).toEqual([
       {
         type: 'tool_call_started',
@@ -107,6 +107,7 @@ describe('the events of a call', () => {
         tool: 'search',
         arguments_bytes: 16,
         arguments_sha256: digest('{"query":"acme"}'),
+        read_only: true,
       },
       {
         type: 'tool_call_answered',

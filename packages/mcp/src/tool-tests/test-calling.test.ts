@@ -17,6 +17,7 @@ function runToolsOffering(offered: readonly OfferedTool[]): RunTools {
     ended: new AbortController().signal,
     ending: noEnding,
     calledAny: () => false,
+    calledOnlyReadOnly: () => true,
     usedInWords: () => 'no tool',
     close: () => Promise.resolve(),
   };

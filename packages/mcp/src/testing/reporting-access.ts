@@ -3,6 +3,7 @@ import { Effect } from 'effect';
 import type { ServerMessage } from '../access/caller-context.ts';
 import { makeToolAccess, type ToolAccess, type ToolAccessOptions } from '../access/tool-access.ts';
 import type { Timing } from '../bounds/call-bounds.ts';
+import { ignored } from '../connections/ignored.ts';
 import { readMcpSettings, type Environment } from '../settings/settings-reading.ts';
 
 export interface AccessOptions {
@@ -38,3 +39,8 @@ export function reportingAccess(
   });
   return { access, messages: () => [...messages], untestable: () => [...untestable] };
 }
+
+export const noToolServers: ToolAccess = makeToolAccess(
+  { servers: [] },
+  { reportServerMessage: ignored, reportUntestable: ignored },
+);

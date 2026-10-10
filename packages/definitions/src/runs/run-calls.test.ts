@@ -90,6 +90,15 @@ const toolsWereCalled = new Conflict({
   kind: 'tools_called',
 });
 
+const toolsOnlyRead = new Conflict({
+  detail:
+    "The run called tools and did not succeed, so it is not run again under its id; every tool it called only reads, by its server's own account, so nothing was changed: start a new run with another run id, and read with get_run_history what it called",
+  kind: 'tools_called',
+  because: 'only_read',
+});
+
+const readCalled: RunEvent = { ...called, read_only: true, number: 1, ...during };
+
 const noMoreWork = new Conflict({ detail: 'The run has ended, so it records no more of its work' });
 
 describe('a tool call of a run', () => {
@@ -157,5 +166,28 @@ describe('the calls a run recorded', () => {
     expect(decided(recordingCall(called), started, callStarted, failed, started)).toStrictEqual(
       Result.succeed([{ ...callStarted, number: 2 }]),
     );
+  });
+});
+
+describe('the calls of a run whose every tool only reads', () => {
+  it('keep the run from running again under its id, saying that nothing was changed once it ended', () => {
+    const readAgain = { ...readCalled, number: 2 };
+
+    expect([
+      decided(starting(), started, readCalled, readAgain, unavailable),
+      decided(starting(), started, readCalled, failed),
+      decided(starting(), started, readCalled, callStarted, unavailable),
+      decided(starting(), started, readCalled),
+    ]).toEqual([
+      Result.fail(toolsOnlyRead),
+      Result.fail(toolsOnlyRead),
+      Result.fail(toolsWereCalled),
+      Result.fail(toolsWereCalled),
+    ]);
+  });
+
+  it('are known after a start recorded again, since each start keeps what the calls before it recorded', () => {
+    expect(stateAfter(started, readCalled, failed, started)).toMatchObject({ calledOnlyReadOnly: true });
+    expect(stateAfter(started, callStarted, failed, started)).toMatchObject({ calledOnlyReadOnly: false });
   });
 });

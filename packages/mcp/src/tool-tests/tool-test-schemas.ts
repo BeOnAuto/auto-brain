@@ -42,6 +42,12 @@ export const ToolTestedSchema = Schema.Struct({
     description:
       "What a reasoning function's model would see of the answer, scrubbed of the server's secrets and cut at 64 KiB with the note a run adds; for a failure, the words a run's model gets",
   }),
+  answer: Schema.optionalKey(
+    Schema.Json.annotate({
+      description:
+        "The document a call's read points into: the structured content, else the first text block parsed as JSON, else that text, scrubbed of the server's secrets; absent when the tool answered neither, and when it takes more than 64 KiB as JSON",
+    }),
+  ),
   result_bytes: Schema.NullOr(Schema.Int).annotate({
     description: 'The size of the whole result as its server gave it, before the cut; null when there is none',
   }),

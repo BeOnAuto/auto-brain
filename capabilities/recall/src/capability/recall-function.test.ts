@@ -18,7 +18,7 @@ describe('a recall function', () => {
   it('describes its result in words', () => {
     const { capability } = recallWith(poolOf({ workers: 1 }));
 
-    expect(capability.describeOutput([{ verdict: 'approve' }])).toBe('Its result: verdict: “approve”.');
+    expect(capability.describeOutput([{ verdict: 'approve' }])).toBe('Its result: (verdict: “approve”).');
     expect(capability.describeOutput('x'.repeat(5000))).toBe(
       'Its result is too long to repeat here; the whole of it is in the details below.',
     );

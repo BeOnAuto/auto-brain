@@ -1,5 +1,11 @@
-import { defineCapability, inWords, type RunContext, type FinishesLater, type Capability } from '@beonauto/definitions';
-import { asSentence, Conflict, type InvalidInput, type Unavailable } from '@beonauto/operations';
+import {
+  defineCapability,
+  outputInWords,
+  type RunContext,
+  type FinishesLater,
+  type Capability,
+} from '@beonauto/definitions';
+import { Conflict, type InvalidInput, type Unavailable } from '@beonauto/operations';
 import type { StartAnswer, WorkflowHost } from '@beonauto/workflow-host';
 import { Effect, Random, type Schema } from 'effect';
 
@@ -28,13 +34,6 @@ const ranBefore =
 const notNow = 'The workflow cannot start now; try again shortly';
 
 const mostSeed = 2_147_483_647;
-
-function describeResult(output: Schema.Json): string {
-  const words = inWords(output);
-  return words === undefined
-    ? 'Its result is too long to repeat here; the whole of it is in the details below.'
-    : asSentence(`Its result: ${words}`);
-}
 
 function finishedLaterOr(answer: StartAnswer): Effect.Effect<FinishesLater, Conflict> {
   return answer === 'settled'
@@ -75,7 +74,7 @@ export function makeWorkflowAdapter(dependencies: WorkflowAdapterDependencies): 
     title: 'Workflow',
     guide: { name: 'workflow' },
     noun: { one: 'workflow', other: 'workflows' },
-    describeOutput: describeResult,
+    describeOutput: outputInWords('result'),
     mediaType: 'application/yaml',
     parse: (source: string): Effect.Effect<ReadWorkflow, InvalidInput> =>
       readWorkflowDocument(source, dependencies.mostDurationMs),

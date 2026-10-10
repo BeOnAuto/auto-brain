@@ -3,12 +3,18 @@ const problemTypes = 'https://on.auto/problems/';
 const reasonsOfKinds = {
   tools_unfinished: 'unavailable',
   tools_called: 'conflict',
+  effect_unknown: 'conflict',
   rebuilding: 'unavailable',
 } as const;
 
 export type KindWithType = keyof typeof reasonsOfKinds;
 
-export const kindsWithTypes: readonly KindWithType[] = ['tools_unfinished', 'tools_called', 'rebuilding'];
+export const kindsWithTypes: readonly KindWithType[] = [
+  'tools_unfinished',
+  'tools_called',
+  'effect_unknown',
+  'rebuilding',
+];
 
 export function problemTypeOf(name: string): string {
   return `${problemTypes}${name}`;

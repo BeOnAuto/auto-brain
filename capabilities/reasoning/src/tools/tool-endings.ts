@@ -1,11 +1,11 @@
 import type { RunTools } from '@beonauto/mcp';
-import { Unavailable, type UnavailableBecause } from '@beonauto/operations';
+import { Conflict, Unavailable, type RejectionBecause } from '@beonauto/operations';
 import { Effect, type Schema } from 'effect';
 
 import type { ToolsStoppedBecause } from '../failure/tools-stopped.ts';
 import type { TokenUsage } from '../model/model-result.ts';
 
-type UnfinishedBecause = Extract<UnavailableBecause, 'server_failed' | 'model_unavailable' | 'run_bound' | 'no_answer'>;
+type UnfinishedBecause = Extract<RejectionBecause, 'server_failed' | 'model_unavailable' | 'run_bound' | 'no_answer'>;
 
 const serverEndings = {
   failing: 'A tool server kept failing',
@@ -16,13 +16,11 @@ export interface Spent {
   readonly record?: Schema.JsonObject;
 }
 
-function unfinished(tools: RunTools, because: UnfinishedBecause, detail: string, spent: Spent): Unavailable {
-  return new Unavailable({
-    detail: `${detail}, after the run called ${tools.usedInWords()}`,
-    kind: 'tools_unfinished',
-    because,
-    ...spent,
-  });
+function unfinished(tools: RunTools, because: UnfinishedBecause, detail: string, spent: Spent): Unavailable | Conflict {
+  const ending = { detail: `${detail}, after the run called ${tools.usedInWords()}`, because, ...spent };
+  return tools.calledOnlyReadOnly()
+    ? new Unavailable({ ...ending, kind: 'tools_unfinished' })
+    : new Conflict({ ...ending, kind: 'effect_unknown' });
 }
 
 export interface Stopped {
@@ -40,7 +38,7 @@ export function stoppedEnding(
   tools: RunTools | undefined,
   stopped: Stopped,
   spent: Spent = {},
-): Effect.Effect<never, Unavailable> {
+): Effect.Effect<never, Unavailable | Conflict> {
   return Effect.fail(
     tools?.calledAny() === true
       ? unfinished(tools, stopped.because, stoppedDetail(tools, stopped), spent)
@@ -53,7 +51,7 @@ export function unavailableAfter(
   detail: string,
   advice: string,
   spent: Spent = {},
-): Effect.Effect<never, Unavailable> {
+): Effect.Effect<never, Unavailable | Conflict> {
   return Effect.fail(
     tools?.calledAny() === true
       ? unfinished(tools, 'model_unavailable', detail, spent)

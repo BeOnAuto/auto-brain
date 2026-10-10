@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { JsonObject } from '../dsl/json.ts';
 import { filterSandboxOf } from '../instances/host-sandboxes.ts';
-import { filterVerdictsOf } from './filter-verdicts.ts';
+import { filterVerdictsOf, type FilterSandbox } from './filter-verdicts.ts';
 
 const now = Date.parse('2026-10-01T09:00:00.000Z');
 
@@ -18,6 +18,24 @@ const working = '${ (() => { let turns = 0; for (;;) { turns += 1; } })() }';
 function filterAt(reference: string, data = writingTheIteratorPrototype) {
   return { reference, attributes: { type: 'com.acme.ledger.month-closed', data } };
 }
+
+describe('the filters of a sandbox that breaks', () => {
+  it('pass on a failure that is not a raise of the filter, unchanged', async () => {
+    const failure = new TypeError('the sandbox broke');
+    const sandbox = filterSandboxOf(() => 0);
+    const breaking: FilterSandbox = {
+      ...sandbox,
+      session: async (opening) => ({
+        ...(await sandbox.session(opening)),
+        define: () => () => Promise.reject(failure),
+      }),
+    };
+
+    await expect(filterVerdictsOf([filterAt('/eu', '${ $data.region == "eu" }')], closed, breaking, now)).rejects.toBe(
+      failure,
+    );
+  });
+});
 
 describe('the filters of one batch', () => {
   it('share no state through an intrinsic no global names, so each answers as it would alone', async () => {

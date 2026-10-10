@@ -1,14 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  callErrorOf,
-  caughtRaiseLater,
-  errorAsJson,
-  errorType,
-  raised,
-  reasonOfStatus,
-  settlementOf,
-} from './raised-error.ts';
+import { callErrorOf, errorAsJson, errorType, reasonOfStatus, settlementOf } from './raised-error.ts';
 
 describe('the rejection of an uncaught error', () => {
   it.each([400, 401, 403, 404, 409, 422, 499])('is invalid_input for the client error %d, a final result', (status) => {
@@ -52,6 +44,35 @@ describe('the rejection of an uncaught error of a kind with a type of its own', 
     expect(settlementOf({ kind: 'raised', error: { ...called, type: errorType('runtime') } })).toMatchObject({
       reason: 'invalid_input',
     });
+  });
+});
+
+describe('the rejection of an uncaught error whose effect is unknown', () => {
+  it('settles effect_unknown as a conflict with its because, raised at 409 under its own type', () => {
+    const unknown = callErrorOf(
+      { status: 'rejected', reason: 'conflict', detail: 'Called', kind: 'effect_unknown', because: 'tool_error' },
+      { function: 'notify', label: 'the function notify', reference: '/do/0/ask' },
+    );
+
+    expect(unknown).toMatchObject({ type: 'https://on.auto/problems/effect_unknown', status: 409 });
+    expect([
+      settlementOf({ kind: 'raised', error: unknown }),
+      settlementOf({ kind: 'raised', error: { ...unknown, because: 'not a because' } }),
+    ]).toEqual([
+      {
+        status: 'rejected',
+        reason: 'conflict',
+        detail: 'The function notify rejected the run with conflict: Called (at /do/0/ask)',
+        kind: 'effect_unknown',
+        because: 'tool_error',
+      },
+      {
+        status: 'rejected',
+        reason: 'conflict',
+        detail: 'The function notify rejected the run with conflict: Called (at /do/0/ask)',
+        kind: 'effect_unknown',
+      },
+    ]);
   });
 });
 
@@ -259,27 +280,5 @@ describe('the settlement of a workflow whose output or run broke', () => {
     );
 
     expect(settlementOf({ kind: 'raised', error: conflict })).toMatchObject({ reason: 'invalid_input' });
-  });
-});
-
-describe('a raise caught after an attempt that answers later', () => {
-  it('answers what the catch makes of the error the attempt raised', async () => {
-    const answer = await caughtRaiseLater(
-      () => Promise.reject(raised('runtime', 500, 'Too slow', '/churn')),
-      (error) => error.instance,
-    );
-
-    expect(answer).toBe('/churn');
-  });
-
-  it('passes on a failure that is not a raise, unchanged', async () => {
-    const failure = new TypeError('not a raise');
-
-    await expect(
-      caughtRaiseLater(
-        () => Promise.reject(failure),
-        (error) => error.instance,
-      ),
-    ).rejects.toBe(failure);
   });
 });

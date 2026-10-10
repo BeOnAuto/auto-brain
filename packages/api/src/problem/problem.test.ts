@@ -158,3 +158,20 @@ describe('a view still being built', () => {
     expect(retryAfterOf({ kind: 'rebuilding' })).toBe('5');
   });
 });
+
+describe('a run whose tool may have changed something', () => {
+  it('is described at 409 under a type of its own, with its because, and asks for no retry', () => {
+    const unknown = problemOf('conflict', 'It may have posted', { kind: 'effect_unknown', because: 'tool_error' });
+
+    expect(unknown).toEqual({
+      type: 'https://on.auto/problems/effect_unknown',
+      title: 'Effect unknown',
+      status: 409,
+      detail: 'It may have posted',
+      reason: 'conflict',
+      kind: 'effect_unknown',
+      because: 'tool_error',
+    });
+    expect(problemResponse(unknown).headers.get('retry-after')).toBeNull();
+  });
+});

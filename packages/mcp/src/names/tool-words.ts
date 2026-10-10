@@ -25,6 +25,10 @@ function toolsOfServer(server: string, tools: readonly string[]): string {
   return `the ${named} ${distinct.length === 1 ? 'tool' : 'tools'} of ${inWords(server)}`;
 }
 
+export function toolInWords({ server, tool }: ToolReference): string {
+  return toolsOfServer(server, [tool]);
+}
+
 export function toolsInWords(tools: readonly ToolReference[]): string {
   const byServer = Map.groupBy(tools, ({ server }) => server);
   const parts = [...byServer].map(([server, used]: readonly [string, readonly ToolReference[]]) =>

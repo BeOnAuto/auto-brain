@@ -2,8 +2,9 @@ import type { CapabilityAnswer, CapabilityRejection, RunContext } from '@beonaut
 import type { Conflict, InvalidInput } from '@beonauto/operations';
 import { Clock, Effect, type Schema } from 'effect';
 
-import type { InteractionFunctionDefinitionDocument } from '../document/interaction-document.ts';
-import { routeOf, toolsOf } from '../route/routes.ts';
+import type { RequestDocument } from '../document/interaction-document.ts';
+import { momentVariables } from '../tool-blocks/rendered-arguments.ts';
+import { routeOf, toolsOf } from '../tool-blocks/routes.ts';
 import { checkedArguments, offered, roomFor, type InteractionPorts } from './request-reach.ts';
 import type { RequestRecord } from './request-record.ts';
 import { checkedAnswerer, checkedParty, fromPart, messagePart, renderedPart, toPart } from './request-rendering.ts';
@@ -12,7 +13,7 @@ import { preparedInput } from './run-input.ts';
 type Variables = Readonly<Record<string, Schema.Json>>;
 
 function answeringOf(
-  document: InteractionFunctionDefinitionDocument,
+  document: RequestDocument,
   variables: Variables,
   to: string,
 ): Effect.Effect<Pick<RequestRecord, 'answerer' | 'reply'>, Conflict | InvalidInput> {
@@ -27,13 +28,13 @@ function answeringOf(
 }
 
 function requestOf(
-  document: InteractionFunctionDefinitionDocument,
+  document: RequestDocument,
   input: Schema.Json,
 ): Effect.Effect<RequestRecord, Conflict | InvalidInput> {
   return Effect.gen(function* () {
     const at = yield* Clock.currentTimeMillis;
     const now = new Date(at).toISOString();
-    const variables = { input, today: now.slice(0, 10), now };
+    const variables = momentVariables(input, now);
     const to = yield* Effect.flatMap(renderedPart({ ...toPart, template: document.to }, variables), checkedParty);
     const message = yield* renderedPart({ ...messagePart, template: document.message }, variables);
     const answerSchema = document.output.schema?.document;
@@ -54,13 +55,13 @@ function requestOf(
   });
 }
 
-export function finishesLater(document: InteractionFunctionDefinitionDocument): boolean {
+export function asksLater(document: RequestDocument): boolean {
   return document.route !== undefined || document.output.schema !== undefined;
 }
 
-export function interactionRun(ports: InteractionPorts) {
+export function requestRun(ports: InteractionPorts) {
   return (
-    document: InteractionFunctionDefinitionDocument,
+    document: RequestDocument,
     input: Schema.Json,
     context: RunContext,
   ): Effect.Effect<CapabilityAnswer, CapabilityRejection> =>
@@ -68,7 +69,7 @@ export function interactionRun(ports: InteractionPorts) {
       const admitted = yield* preparedInput(input, document.input);
       const brain = { org: context.org, brain: context.brain };
       yield* offered(toolsOf(routeOf(document.route ?? {})), ports, brain);
-      if (!finishesLater(document)) {
+      if (!asksLater(document)) {
         const notified = yield* requestOf(document, admitted);
         return { output: {}, record: notified };
       }

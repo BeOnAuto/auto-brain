@@ -13,7 +13,7 @@ import { finishedWith } from './spending-record.ts';
 export interface RunServices {
   readonly languageModel: LanguageModel['Service'];
   readonly clock?: Clock.Clock;
-  readonly tools?: ToolAccess;
+  readonly tools: ToolAccess;
 }
 
 function outputOf({ text, json }: { readonly text: string; readonly json?: Schema.Json }): Schema.Json {

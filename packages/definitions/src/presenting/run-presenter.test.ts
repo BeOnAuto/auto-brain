@@ -228,6 +228,10 @@ describe('the presenter of the start of a tool call', () => {
     });
   });
 
+  it('shows that its server marks the tool read-only, where the start recorded it', () => {
+    expect(presented({ ...started, read_only: true })).toMatchObject({ data: { read_only: true } });
+  });
+
   it('keeps nothing of a name its server gave but letters and digits, so no slash or dot reaches the summary', () => {
     expect(presented({ ...started, tool: 'files/read.v2', server: 'graph-eu' })).toMatchObject({
       summary: 'A run made tool call 3, to the files read v2 tool of graph eu.',

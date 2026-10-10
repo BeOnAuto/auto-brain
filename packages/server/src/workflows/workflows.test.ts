@@ -1,3 +1,4 @@
+import { noToolServers } from '@beonauto/mcp/testing';
 import { makeReasoningFunctionAdapter } from '@beonauto/reasoning';
 import { scriptedLanguageModel } from '@beonauto/reasoning/testing';
 import { describe, expect, it } from 'vitest';
@@ -9,6 +10,7 @@ describe('the longest a nested run of a workflow may run', () => {
     const reasoning = makeReasoningFunctionAdapter({
       languageModel: scriptedLanguageModel().languageModel,
       offered: { providers: [], aliases: [] },
+      tools: noToolServers,
     });
 
     expect(longestCallOf([reasoning])).toBe(1_720_000);

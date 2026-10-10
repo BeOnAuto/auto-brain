@@ -1,12 +1,68 @@
 import { admission } from '../bounds/call-bounds.ts';
-import { callReplyOf, failureCounted, replyOf, unsentReply, type CallReply, type Replying } from './call-replies.ts';
-import { callAnswered, callStarted } from './recorded-calls.ts';
+import { isReadOnly } from '../bounds/tool-results.ts';
+import type { CallStarted } from './call-facts.ts';
+import {
+  callReplyOf,
+  failureCounted,
+  readableReply,
+  replyOf,
+  unsentReply,
+  type CallReply,
+  type Replying,
+} from './call-replies.ts';
+import { callAnswered, callStarted, recordingOf, type NumberedAnswer, type Recording } from './recorded-calls.ts';
 import type { CallSignals, NamedOffer, RunState, RunToolsParts, ToolCallRequest } from './run-parts.ts';
-import { forwarded, type Forwarded } from './tool-calls.ts';
+import { forwarded, type Forwarded, type Forwarding } from './tool-calls.ts';
 
 const notRecorded = unsentReply('This call could not be recorded on its run, so it was not sent; answer without it.');
 
 const notSent = unsentReply('The run has ended, so this call was not sent.');
+
+export interface CallJournalling {
+  readonly callId: string;
+  readonly readOnly: boolean;
+  readonly started: (fact: CallStarted) => Promise<number | undefined>;
+  readonly answered: (fact: NumberedAnswer) => Promise<void>;
+}
+
+interface SentCall {
+  readonly sent: true;
+  readonly done: Forwarded;
+  readonly durationMs: number;
+}
+
+export type JournalledCall = SentCall | { readonly sent: false };
+
+const unsent: JournalledCall = { sent: false };
+
+async function sentCall(forwarding: Forwarding): Promise<SentCall> {
+  const began = performance.now();
+  const done = await forwarded(forwarding);
+  return { sent: true, done, durationMs: Math.round(performance.now() - began) };
+}
+
+function startOf(forwarding: Forwarding, recording: Recording, { callId, readOnly }: CallJournalling): CallStarted {
+  const { slot, tool, input } = forwarding;
+  const argumentsJson = JSON.stringify(input);
+  return callStarted({ callId, readOnly, server: slot.settings.name, tool, argumentsJson }, recording);
+}
+
+export async function journalledCall(
+  forwarding: Forwarding,
+  recording: Recording,
+  journalling?: CallJournalling,
+): Promise<JournalledCall> {
+  if (journalling === undefined) {
+    return sentCall(forwarding);
+  }
+  const number = await journalling.started(startOf(forwarding, recording, journalling));
+  if (number === undefined) {
+    return unsent;
+  }
+  const sent = await sentCall(forwarding);
+  await journalling.answered(callAnswered({ ...sent.done, number, durationMs: sent.durationMs }, recording));
+  return sent;
+}
 
 function replied(state: RunState, done: Forwarded, replying: Replying, durationMs: number): CallReply {
   const failure = failureCounted(state.tally(), done, replying);
@@ -16,7 +72,7 @@ function replied(state: RunState, done: Forwarded, replying: Replying, durationM
   }
   const reply = replyOf(state.tally(), done, replying);
   state.tallied(reply.tally);
-  return callReplyOf(reply.value, done, durationMs);
+  return readableReply(callReplyOf(reply.value, done, durationMs), done, replying.scrub);
 }
 
 export function caller(
@@ -24,11 +80,11 @@ export function caller(
   state: RunState,
   offered: NamedOffer,
 ): (request: ToolCallRequest, signals: CallSignals) => Promise<CallReply> {
-  const { slot, reference } = offered;
+  const { slot } = offered;
   const { context, timing } = parts;
   const { scrub } = parts.secrets;
-  const recording = { content: slot.settings.record_content, requestId: slot.settings.request_id !== null, scrub };
-  const replying = { server: reference.server, meta: context.meta, scrub, report: parts.report };
+  const recording = recordingOf(slot.settings, scrub);
+  const replying = { server: offered.reference.server, meta: context.meta, scrub, report: parts.report };
   return async ({ callId, input }, signals) => {
     if (signals.signal.aborted) {
       return notSent;
@@ -38,19 +94,23 @@ export function caller(
     if (!admitted.admitted) {
       return unsentReply(admitted.refusal);
     }
-    const start = callStarted({ callId, ...reference, argumentsJson: JSON.stringify(input) }, recording);
-    const number = await parts.run(context.journal.started(start));
-    if (number === undefined) {
-      return notRecorded;
-    }
-    state.used(reference);
-    const began = performance.now();
     const forwarding = { slot, tool: offered.tool.name, input, meta: context.meta, signal: signals.signal };
-    const done = await forwarded({ ...forwarding, ...timing });
-    const durationMs = Math.round(performance.now() - began);
-    if (!signals.cancelled.aborted) {
-      await parts.run(context.journal.answered(callAnswered({ ...done, number, durationMs }, recording)));
-    }
-    return replied(state, done, replying, durationMs);
+    const journey = await journalledCall({ ...forwarding, ...timing }, recording, {
+      callId,
+      readOnly: isReadOnly(offered.tool.annotations),
+      started: async (fact) => {
+        const number = await parts.run(context.journal.started(fact));
+        if (number !== undefined) {
+          state.used(offered);
+        }
+        return number;
+      },
+      answered: async (fact) => {
+        if (!signals.cancelled.aborted) {
+          await parts.run(context.journal.answered(fact));
+        }
+      },
+    });
+    return journey.sent ? replied(state, journey.done, replying, journey.durationMs) : notRecorded;
   };
 }

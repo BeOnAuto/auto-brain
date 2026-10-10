@@ -15,6 +15,11 @@ import { compiledTemplate } from './request-templates.ts';
 
 export type Checked<A> = Result.Result<A, readonly DocumentIssue[]>;
 
+export function issuesOf(check: () => Checked<unknown>): readonly DocumentIssue[] {
+  const checked = check();
+  return Result.isFailure(checked) ? checked.failure : [];
+}
+
 type ValueSection = { readonly schema?: Schema.JsonObject } | undefined;
 
 export function messageOf({ body, bodyLine }: DocumentParts, inputSchema?: Schema.JsonObject): Checked<ParsedTemplate> {

@@ -42,7 +42,7 @@ describe('the example of the computation function format, through the server', {
 
     const created = [
       await saved('computation', 'campaign-pace', pace),
-      await saved('reasoning', 'read-campaign-costs', readCosts),
+      await saved('interaction', 'read-campaign-costs', readCosts),
       await saved('reasoning', 'write-pace-summary', writeSummary),
       await saved('workflow', 'campaign-pace-report', report),
     ];

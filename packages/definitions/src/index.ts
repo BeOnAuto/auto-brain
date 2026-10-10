@@ -154,7 +154,7 @@ export {
   type TriggerFilter,
 } from './registry/definition-triggers.ts';
 export { runStartedOf, type StartedRun } from './runs/run-starts.ts';
-export { inWords, wordsOf } from './plain-language/in-words.ts';
+export { inWords, outputInWords, wordsOf } from './plain-language/in-words.ts';
 export { triggerNamed } from './plain-language/event-words.ts';
 export { mostInputBytes, mostInputDepth, mostResultBytes } from './runs/recorded-size.ts';
 export {

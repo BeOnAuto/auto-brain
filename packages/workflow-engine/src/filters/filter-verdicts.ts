@@ -1,6 +1,7 @@
 import { mostFilterMs, mostInputMs, testedOrRaised } from '../dsl/evaluation.ts';
 import type { Json, JsonObject } from '../dsl/json.ts';
-import { caughtRaiseLater } from '../dsl/raised-error.ts';
+import { RaisedError } from '../dsl/raised-error.ts';
+import type { DslError } from '../machine/dsl-error.ts';
 import type { Evaluation, Limit, ProgramFailure, ProgramRun } from '../programs/program-run.ts';
 import { meterOf, type Meter } from '../runner/run-tables.ts';
 import { attributeHoldsLater, filterAttributesOf, type FilterAttribute } from './attribute-match.ts';
@@ -20,6 +21,20 @@ export interface FilterSandbox {
 }
 
 export type MatchedFilter = Pick<LiteralFilter, 'reference' | 'attributes'>;
+
+async function verdictUnlessRaised(
+  holds: () => Promise<boolean>,
+  failed: (error: DslError) => FilterVerdict,
+): Promise<FilterVerdict> {
+  try {
+    return await holds();
+  } catch (error) {
+    if (!(error instanceof RaisedError)) {
+      throw error;
+    }
+    return failed(error.error);
+  }
+}
 
 interface PreparedFilter {
   readonly reference: string;
@@ -86,7 +101,7 @@ async function verdictsUntilRefused(
       state.limit = limit;
     },
   };
-  const verdict = await caughtRaiseLater<FilterVerdict>(
+  const verdict = await verdictUnlessRaised(
     () => attributesHold(filter.attributes, event, testing),
     (error) => ({ error, stopped: state.limit !== undefined && limitsNoEventCauses.has(state.limit) }),
   );

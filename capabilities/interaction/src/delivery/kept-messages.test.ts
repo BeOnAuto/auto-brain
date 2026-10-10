@@ -89,15 +89,11 @@ describe('a delivery whose answer names no message the brain can keep', () => {
     const ends = await Promise.all(answers.map(async (answer) => (await deliveredWith(answer)).ended));
 
     expect(ends.map((ended) => keptOf(ended))).toEqual([
+      [undefined, undefined, `The answer of the tool holds neither structured content nor text${takesNoReply}`],
       [
         undefined,
         undefined,
-        `The answer of the tool holds no JSON document, in its structured content or its first text${takesNoReply}`,
-      ],
-      [
-        undefined,
-        undefined,
-        `The answer of the tool holds no JSON document, in its structured content or its first text${takesNoReply}`,
+        `The answer of the tool has no text or whole number at /channel, its conversation${takesNoReply}`,
       ],
       [undefined, undefined, `The answer of the tool has no text or whole number at /ts, its message${takesNoReply}`],
       [

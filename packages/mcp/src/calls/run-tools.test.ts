@@ -16,6 +16,18 @@ async function runWith(tools: readonly string[]) {
   return run;
 }
 
+describe('whether every tool a run called only reads', () => {
+  it('holds before any call and while each tool called is one its server marks read-only, and not once another is called', async () => {
+    const { tools, call } = await runWith(['search', 'echo']);
+    const before = tools.calledOnlyReadOnly();
+    await call('search', { query: 'acme' });
+    const afterReading = tools.calledOnlyReadOnly();
+    await call('echo', {});
+
+    expect([before, afterReading, tools.calledOnlyReadOnly(), tools.calledAny()]).toEqual([true, true, false, true]);
+  });
+});
+
 describe('what the model sees of a tool', () => {
   it('sees its description cut to 4 KiB', async () => {
     const { tools, call } = await runWith(['verbose']);

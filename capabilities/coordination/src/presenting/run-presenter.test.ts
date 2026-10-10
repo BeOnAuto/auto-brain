@@ -135,8 +135,9 @@ describe('the words of an input a workflow took', () => {
   });
 });
 
-function rejectedWith(kind: string, because: string): InputReceipt {
-  return { kind: 'call_answered', key: callKeyText(callKey), at, status: 'rejected', rejection: { kind, because } };
+function rejectedWith(kind: string, because?: string): InputReceipt {
+  const rejection = because === undefined ? { kind } : { kind, because };
+  return { kind: 'call_answered', key: callKeyText(callKey), at, status: 'rejected', rejection };
 }
 
 describe('the words of a rejection of a function a workflow called', () => {
@@ -144,7 +145,7 @@ describe('the words of a rejection of a function a workflow called', () => {
     expect(
       present(recordOf(eventOf(rejectedWith('tools_unfinished', 'server_failed'), stepsOf(1), [settled])))?.summary,
     ).toBe(
-      'A function the workflow called did not succeed, and 1 step moved; the workflow ended. It called tools but could not finish, because a tool server kept failing.',
+      'A function the workflow called did not succeed, and 1 step moved; the workflow ended. It called tools but could not finish, because a tool server failed.',
     );
   });
 
@@ -158,8 +159,12 @@ describe('the words of a rejection of a function a workflow called', () => {
       'A function the workflow called did not succeed. A tool server it needs could not be used, because the tool server asked it to slow down for longer than a run waits.',
     ],
     [
-      rejectedWith('tools_called', 'no_answer'),
+      rejectedWith('tools_called'),
       'A function the workflow called did not succeed. This run calls tools, and an attempt of it under the same id may still be in progress or did not succeed, so its tools may have changed something.',
+    ],
+    [
+      rejectedWith('effect_unknown', 'server_failed'),
+      'A function the workflow called did not succeed. It could not finish after calling a tool that may change something, so whether that happened is not known, because a tool server failed.',
     ],
     [rejectedWith('something_new', 'some_reason'), 'A function the workflow called did not succeed.'],
   ])('says each kind and because it knows: %#', (receipt, summary) => {

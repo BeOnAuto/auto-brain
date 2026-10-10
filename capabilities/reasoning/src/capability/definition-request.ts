@@ -22,8 +22,8 @@ export function longestRunMsOf({ settings, tools }: ReasoningFunctionDefinitionD
   return tools.length === 0 ? timeoutMs : runBoundMs(timeoutMs);
 }
 
-function modelToolsOf({ offered, callsEnded, ended }: RunTools, timeoutMs: number): ModelTools {
-  return { offered, callsEnded, ended, runBoundMs: runBoundMs(timeoutMs) };
+function modelToolsOf({ offered, callsEnded, calledAny, ended }: RunTools, timeoutMs: number): ModelTools {
+  return { offered, callsEnded, calledAny, ended, runBoundMs: runBoundMs(timeoutMs) };
 }
 
 export function requestFor(

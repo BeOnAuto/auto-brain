@@ -55,6 +55,7 @@ describe('a start of one version of a definition, once', () => {
         started_at: firstMoment,
         started_by: 'brain:alpha',
         finished_at: firstMoment,
+        record: { greeting: 'Hello' },
       },
     });
     expect(definitions.ledger.streamNames().filter((stream) => stream.endsWith(runId))).toEqual([

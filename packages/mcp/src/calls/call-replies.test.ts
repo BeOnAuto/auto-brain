@@ -47,6 +47,8 @@ async function opened(meta: Readonly<Record<string, string>>, ...tools: readonly
   return { call, journal, messages };
 }
 
+const aReader: unknown = expect.any(Function);
+
 describe('what a call answers beside what the model sees', () => {
   it('is the outcome, the size of the whole result, how long it took and the id the server gave it, as recorded', async () => {
     const { call, journal } = await opened({ 'com.beonauto/run_id': testId }, 'search', 'denied');
@@ -61,6 +63,7 @@ describe('what a call answers beside what the model sees', () => {
         resultBytes: Buffer.byteLength(JSON.stringify({ content: [{ type: 'text', text: 'Found 2 rows for acme.' }] })),
         durationMs: aDuration,
         serverRequestId: 'call-1',
+        scrubbedResult: aReader,
       },
       expect.objectContaining({ isError: true, outcome: 'tool_error', serverRequestId: 'call-2' }),
     ]);

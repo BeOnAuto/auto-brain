@@ -1,7 +1,7 @@
 import type { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { inWords, wordsOf } from '../index.ts';
+import { inWords, outputInWords, wordsOf } from '../index.ts';
 
 const renderings: ReadonlyArray<readonly [Schema.Json, string]> = [
   ['Profits rose.', '“Profits rose.”'],
@@ -11,6 +11,10 @@ const renderings: ReadonlyArray<readonly [Schema.Json, string]> = [
   [null, 'nothing'],
   [[], 'an empty list'],
   [['a', 'b'], '“a” and “b”'],
+  [
+    [{ user: 'ada', text: 'Shipped.' }, { user: 'grace', text: 'Thanks.' }, {}],
+    '(user: “ada” and text: “Shipped.”), (user: “grace” and text: “Thanks.”), and nothing',
+  ],
   [{}, 'nothing'],
   [{ approve: true }, 'approve: yes'],
   [{ approve: true, reason: 'cheap' }, 'approve: yes and reason: “cheap”'],
@@ -31,6 +35,20 @@ describe('inWords', () => {
 
   it('renders a value that just fits', () => {
     expect(inWords('a'.repeat(298))).toBe(`“${'a'.repeat(298)}”`);
+  });
+});
+
+describe('outputInWords', () => {
+  it('says the answer or the result in words, or that it is too long to repeat', () => {
+    expect([
+      outputInWords('answer')({ approve: true }),
+      outputInWords('result')([{ verdict: 'approve' }]),
+      outputInWords('result')('a'.repeat(299)),
+    ]).toEqual([
+      'Its answer: approve: yes.',
+      'Its result: (verdict: “approve”).',
+      'Its result is too long to repeat here; the whole of it is in the details below.',
+    ]);
   });
 });
 

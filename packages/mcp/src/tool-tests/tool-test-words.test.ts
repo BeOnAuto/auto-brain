@@ -1,4 +1,4 @@
-import { unsuccessfulWords, type UnavailableBecause } from '@beonauto/operations';
+import { unsuccessfulWords, type RejectionBecause } from '@beonauto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -26,16 +26,16 @@ const answer = {
 
 describe('the plain words of test_tool_call', () => {
   it('say which tool of which server it tried to test, or what it tried when the input does not hold', () => {
-    expect(words?.attempt({ server: 'graph', tool: 'search' })).toBe('test the tool “search” of “graph”');
+    expect(words?.attempt({ server: 'graph', tool: 'search' })).toBe('test the search tool of graph');
     expect(words?.attempt({ server: 'Graph/', tool: 'search' })).toBe('test a tool of a tool server');
   });
 
   it('say what the tool answered, how long it took and how much, and where the model’s view of it is', () => {
     expect(words?.outcome(answer, asked)).toBe(
-      "The tool “search” of “graph” answered in 312 ms with 1,204 bytes; what a reasoning function's model would see is in the details.",
+      "The search tool of graph answered in 312 ms with 1,204 bytes; what a reasoning function's model would see is in the details.",
     );
     expect(words?.outcome({ ...answer, result_bytes: null }, asked)).toBe(
-      "The tool “search” of “graph” answered in 312 ms with nothing; what a reasoning function's model would see is in the details.",
+      "The search tool of graph answered in 312 ms with nothing; what a reasoning function's model would see is in the details.",
     );
   });
 
@@ -50,7 +50,7 @@ describe('the plain words of test_tool_call', () => {
     const timedOut = { ...answer, outcome: 'timed_out', result_bytes: null };
 
     expect(words?.outcome(toolError, asked)).toBe(
-      "The tool “search” of “graph” answered an error, as a run's model would see it; the details show what it said.",
+      "The search tool of graph answered an error, as a run's model would see it; the details show what it said.",
     );
     expect(words?.outcome(serverFailure, asked)).toBe(
       'The tool server “graph” failed to answer the test: The MCP server answered HTTP 503. It may or may not have received the call.',
@@ -69,10 +69,10 @@ describe('the plain words of test_tool_call', () => {
   });
 });
 
-const notOffered = (because: UnavailableBecause) =>
+const notOffered = (because: RejectionBecause) =>
   ({ status: 'rejected', reason: 'unavailable', detail: 'x', kind: 'tool_not_offered', because }) as const;
 
-const remedies: ReadonlyArray<readonly [UnavailableBecause, string]> = [
+const remedies: ReadonlyArray<readonly [RejectionBecause, string]> = [
   [
     'mcp_server_not_configured',
     'This can be put right on your side: list_tool_servers shows the tool servers this brain may use, so a test that names one of those can be tried.',
@@ -92,7 +92,7 @@ describe('the plain words of a test refused a tool it is not offered', () => {
     'end, for %s, with what list_tool_servers shows, in place of the words for a function',
     (because, remedy) => {
       const refused = unsuccessfulWords(
-        'test the tool “search” of “wiki”',
+        'test the search tool of wiki',
         'command',
         notOffered(because),
         words?.remedies,
@@ -106,13 +106,13 @@ describe('the plain words of a test refused a tool it is not offered', () => {
   it('say why and what to do in one message for a tool server not set up for the brain', () => {
     expect(
       unsuccessfulWords(
-        'test the tool “search” of “wiki”',
+        'test the search tool of wiki',
         'command',
         notOffered('mcp_server_not_configured'),
         words?.remedies,
       ),
     ).toBe(
-      'Could not test the tool “search” of “wiki”: this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this brain. Nothing was changed. This can be put right on your side: list_tool_servers shows the tool servers this brain may use, so a test that names one of those can be tried.',
+      'Could not test the search tool of wiki: this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this brain. Nothing was changed. This can be put right on your side: list_tool_servers shows the tool servers this brain may use, so a test that names one of those can be tried.',
     );
   });
 });

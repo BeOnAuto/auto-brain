@@ -4,7 +4,7 @@ import { Option, Schema } from 'effect';
 import { fakeAuthorization, type ClientRegistration, type FakeAuthorization } from './fake-authorization.ts';
 import { fakeChat, type FakeChat } from './fake-chat.ts';
 import { fakeSessions, type FakeSessions } from './fake-sessions.ts';
-import type { ReceivedCall } from './fake-tools.ts';
+import type { FakeHints, ReceivedCall } from './fake-tools.ts';
 import { serveOnLoopback, type FailedRequest, type FetchHandler } from './loopback-server.ts';
 
 export interface FakeMcpOptions {
@@ -13,7 +13,9 @@ export interface FakeMcpOptions {
   readonly requestIdHeader?: string;
   readonly issuesSessionIds?: boolean;
   readonly annotated?: boolean;
+  readonly hints?: FakeHints;
   readonly chat?: boolean;
+  readonly data?: boolean;
   readonly echoes?: string;
 }
 
@@ -35,7 +37,14 @@ export interface FakeMcpServer {
   readonly endedSessions: () => number;
   readonly tokenRequests: () => number;
   readonly answerNextWith: (status: number, times?: number, headers?: Readonly<Record<string, string>>) => void;
+  readonly answerNextOf: (
+    rpc: string,
+    status: number,
+    times?: number,
+    headers?: Readonly<Record<string, string>>,
+  ) => void;
   readonly answerNextCallAfterNoise: (messages: number) => void;
+  readonly holdNextOf: (rpc: string) => void;
   readonly forgetSessions: () => void;
   readonly revokeTokens: () => void;
   readonly removeTool: (name: string) => void;
@@ -49,24 +58,40 @@ interface Programmed {
 }
 
 interface NextAnswers {
-  readonly programmed: () => Programmed | undefined;
+  readonly programmed: (rpc: string | undefined) => Programmed | undefined;
   readonly noise: () => number;
   readonly answerWith: FakeMcpServer['answerNextWith'];
+  readonly answerOf: FakeMcpServer['answerNextOf'];
   readonly answerAfterNoise: FakeMcpServer['answerNextCallAfterNoise'];
+  readonly held: (rpc: string | undefined) => boolean;
+  readonly hold: FakeMcpServer['holdNextOf'];
+}
+
+function programmedAnswers(status: number, times: number, headers: Readonly<Record<string, string>>): Programmed[] {
+  return Array.from({ length: times }, () => ({ status, headers }));
 }
 
 function nextAnswers(): NextAnswers {
   const programmed: Programmed[] = [];
+  const programmedOf = new Map<string, Programmed[]>();
+  const holding = new Set<string>();
   let noise = 0;
   return {
-    programmed: () => programmed.shift(),
+    held: (rpc) => holding.delete(String(rpc)),
+    hold: (rpc) => {
+      holding.add(rpc);
+    },
+    programmed: (rpc) => programmedOf.get(String(rpc))?.shift() ?? programmed.shift(),
     noise: () => {
       const messages = noise;
       noise = 0;
       return messages;
     },
     answerWith: (status, times = 1, headers = {}) => {
-      programmed.push(...Array.from({ length: times }, () => ({ status, headers })));
+      programmed.push(...programmedAnswers(status, times, headers));
+    },
+    answerOf: (rpc, status, times = 1, headers = {}) => {
+      programmedOf.set(rpc, [...(programmedOf.get(rpc) ?? []), ...programmedAnswers(status, times, headers)]);
     },
     answerAfterNoise: (messages) => {
       noise = messages;
@@ -132,7 +157,10 @@ function mcpEndpoint({ sessions, see, next, requestIdHeader }: Endpoint): FetchH
       session: request.headers.get('mcp-session-id'),
       authorization: request.headers.get('authorization'),
     });
-    const programmed = next.programmed();
+    if (next.held(rpc)) {
+      return Promise.withResolvers<Response>().promise;
+    }
+    const programmed = next.programmed(rpc);
     if (programmed !== undefined) {
       return new Response(JSON.stringify({ error: `answered ${programmed.status}` }), programmed);
     }
@@ -184,7 +212,20 @@ function recordsOf(options: FakeMcpOptions, removed: ReadonlySet<string>, chat: 
   return {
     isRemoved: (tool: string) => removed.has(tool),
     annotated: options.annotated ?? true,
+    hints: options.hints ?? {},
     chat: options.chat === true ? chat : undefined,
+    data: options.data === true,
+  };
+}
+
+function tokensOf(authorizations: readonly FakeAuthorization[]): Pick<FakeMcpServer, 'tokenRequests' | 'revokeTokens'> {
+  return {
+    tokenRequests: () => authorizations.reduce((total, authorization) => total + authorization.tokenRequests(), 0),
+    revokeTokens: () => {
+      for (const authorization of authorizations) {
+        authorization.revokeEveryToken();
+      }
+    },
   };
 }
 
@@ -219,15 +260,12 @@ export async function serveFakeMcp(options: FakeMcpOptions = {}): Promise<FakeMc
     chat,
     openSessions: sessions.open,
     endedSessions: sessions.ended,
-    tokenRequests: () => authorizations.reduce((total, authorization) => total + authorization.tokenRequests(), 0),
+    ...tokensOf(authorizations),
     answerNextWith: next.answerWith,
+    answerNextOf: next.answerOf,
     answerNextCallAfterNoise: next.answerAfterNoise,
+    holdNextOf: next.hold,
     forgetSessions: sessions.forget,
-    revokeTokens: () => {
-      for (const authorization of authorizations) {
-        authorization.revokeEveryToken();
-      }
-    },
     removeTool: (name) => {
       removed.add(name);
     },

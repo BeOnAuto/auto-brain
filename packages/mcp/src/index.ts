@@ -8,14 +8,9 @@ export type { CallJournal, RecordedCall } from './calls/recorded-calls.ts';
 export type { CallSignals, ToolCallRequest } from './calls/run-parts.ts';
 export type { OfferedTool, RunTools, ToolsEnding } from './calls/run-tools.ts';
 export type { AnsweredFields, StartedFields } from './calls/recorded-calls.ts';
-export {
-  deliveryBounds,
-  type AnsweredOnce,
-  type CallAnswer,
-  type CalledOnce,
-  type DeliveryCall,
-  type UnopenedOnce,
-} from './delivery/delivery-bounds.ts';
+export type { AnsweredOnce, CallAnswer, CalledOnce, UnopenedOnce } from './one-call/called-once.ts';
+export type { OneCall, RunCall } from './one-call/one-call.ts';
+export { answerDocument, isReadOnly, type ToolAnnotations } from './bounds/tool-results.ts';
 export type { NamingCheck, StartOf } from './access/entry-reads.ts';
 export {
   ConversationCallEventSchema,
@@ -39,7 +34,7 @@ export {
 } from './own-calls/conversation-calls.ts';
 export { defineListToolServers } from './listing/list-tool-servers.ts';
 export { defineListToolServersInOrg, type BrainLookup } from './listing/list-tool-servers-in-org.ts';
-export { answeredInWords } from './names/tool-words.ts';
+export { answeredInWords, toolInWords } from './names/tool-words.ts';
 export { defineTestToolCall } from './tool-tests/test-tool-call.ts';
 export { type ToolTestEvent } from './tool-tests/tool-test-events.ts';
 export { toolTestPresenter } from './tool-tests/tool-test-presenter.ts';

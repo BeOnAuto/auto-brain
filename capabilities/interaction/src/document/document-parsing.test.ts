@@ -3,6 +3,7 @@ import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { approvalDocument, notificationDocument } from '../testing/index.ts';
+import { requestDocumentOf } from '../testing/route-documents.ts';
 import { parseInteractionDocument } from './document-parsing.ts';
 
 function problemsOf(source: string): readonly string[] {
@@ -16,11 +17,11 @@ function documentWith(frontMatter: readonly string[], body = 'Approve {{ input.c
 
 const essentials = ["to: '{{ input.owner }}'", 'expires: P2D'];
 
-const keys = 'description, to, from, expires, deliver, replies, input, output, reply';
+const keys = 'description, call, to, from, expires, deliver, replies, input, output, reply';
 
 describe('an interaction function definition', () => {
   it('reads its party, expiry, schemas and message, and waits in the inbox without deliver', () => {
-    const parsed = Result.getOrThrow(parseInteractionDocument(approvalDocument()));
+    const parsed = requestDocumentOf(approvalDocument());
 
     expect(parsed).toMatchObject({
       description: 'Ask the campaign owner to approve a brief',
@@ -48,7 +49,7 @@ describe('an interaction function definition', () => {
 });
 
 function expiresOf(expires: string): number {
-  return Result.getOrThrow(parseInteractionDocument(documentWith(["to: 'x'", `expires: ${expires}`]))).expiresMs;
+  return requestDocumentOf(documentWith(["to: 'x'", `expires: ${expires}`])).expiresMs;
 }
 
 describe('the expiry of a definition', () => {
@@ -67,6 +68,27 @@ describe('the expiry of a definition', () => {
       [`Line 3, /expires: PT30S is not a time a request may wait. ${bounds}`],
       [`Line 3, /expires: P31D is not a time a request may wait. ${bounds}`],
       [`Line 3, /expires: two days is not an ISO 8601 duration. ${bounds}`],
+    ]);
+  });
+});
+
+describe('a definition that names neither the tool it calls nor the party it asks', () => {
+  it('refuses a request without its party or its expiry, and an empty front matter, in words that name call', () => {
+    expect([
+      problemsOf(documentWith(['description: Ask someone'])),
+      problemsOf(documentWith(["to: '{{ input.owner }}'"])),
+      problemsOf('---\n---\nHello'),
+    ]).toEqual([
+      [
+        'Line 2, /to: to is required, the party the request goes to, unless the function asks a system with call',
+        'Line 2, /expires: expires is required, how long the request waits, unless the function asks a system with call',
+      ],
+      [
+        'Line 2, /expires: expires is required, how long the request waits, unless the function asks a system with call',
+      ],
+      [
+        'Line 2: The front matter is empty; it names at least the tool it calls, or the party it goes to and when it expires',
+      ],
     ]);
   });
 });

@@ -6,6 +6,7 @@ const answered = {
   kind: 'answered',
   fields: { result_bytes: 52, result_sha256: null, jsonrpc_id: 1 },
   durationMs: 3,
+  annotations: undefined,
 } as const;
 
 describe('the end of one call of a tool the brain makes', () => {

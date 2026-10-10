@@ -8,9 +8,9 @@ import type { WorkflowParts } from '../workflows/workflows.ts';
 import { computationServedBy, workerPool, type ProgramPoolOf } from './served-computation.ts';
 import type { ModelAccessOf } from './served-reasoning.ts';
 import { recallWiring, type RecallWiring } from './served-recall.ts';
-import { toolUsersServedBy } from './served-tools.ts';
+import { toolUsersServedBy, type TimedTools } from './served-tools.ts';
 
-export interface FunctionWiring {
+export interface FunctionWiring extends TimedTools {
   readonly modelAccessOf: ModelAccessOf;
   readonly programPoolOf: ProgramPoolOf;
   readonly recall: RecallWiring;
@@ -24,16 +24,22 @@ export interface ServedFunctions {
 export function functionWiringOf(
   modelAccessOf: ModelAccessOf,
   programPoolOf: ProgramPoolOf = workerPool,
+  toolTiming?: FunctionWiring['toolTiming'],
 ): FunctionWiring {
-  return { modelAccessOf, programPoolOf, recall: recallWiring() };
+  return { modelAccessOf, programPoolOf, recall: recallWiring(), ...(toolTiming === undefined ? {} : { toolTiming }) };
 }
 
 export async function functionsServedBy(
   runtime: AppRuntime<DispatcherServices>,
   settings: Settings,
-  { modelAccessOf, programPoolOf, recall: wiring }: FunctionWiring,
+  { modelAccessOf, programPoolOf, recall: wiring, toolTiming }: FunctionWiring,
 ): Promise<ServedFunctions> {
-  const { reasoning, interaction, withToolsClosed } = await toolUsersServedBy(runtime, settings, modelAccessOf);
+  const { reasoning, interaction, withToolsClosed } = await toolUsersServedBy(
+    runtime,
+    settings,
+    modelAccessOf,
+    toolTiming,
+  );
   const computation = await computationServedBy(settings.computation, programPoolOf);
   const recall = await wiring.served(runtime, settings, computation.pool);
   return {

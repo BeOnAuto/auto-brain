@@ -69,6 +69,7 @@ export interface ModelTool {
 export interface ModelTools {
   readonly offered: readonly ModelTool[];
   readonly callsEnded: () => boolean;
+  readonly calledAny: () => boolean;
   readonly ended: Readonly<AbortSignal>;
   readonly runBoundMs: number;
 }

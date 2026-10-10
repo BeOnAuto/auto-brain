@@ -1,7 +1,7 @@
 import type { OperationKind } from '../caller/operation-scope.ts';
 import type { Cancelled, Failed, Rejected, RejectionReason } from '../outcome/outcome.ts';
+import type { RejectionBecause } from '../outcome/rejection-because.ts';
 import type { RejectionKind } from '../outcome/rejection.ts';
-import type { UnavailableBecause } from '../outcome/unavailable.ts';
 import type { Remedies } from './plain-language.ts';
 
 export interface Explanation {
@@ -73,6 +73,12 @@ const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
       'So it was not run again: start a new run instead, after checking what its history shows it has called so far.',
     mayHaveChanged: true,
   },
+  effect_unknown: {
+    why: 'it could not finish after calling a tool that may change something, so whether that happened is not known',
+    remedy:
+      'It is not run again by itself: a person decides, or a workflow rule that names this kind; its history shows the call.',
+    mayHaveChanged: true,
+  },
   model_not_offered: {
     why: 'this server does not offer the model named',
     remedy:
@@ -134,12 +140,11 @@ const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
   tools_unfinished: {
     why: 'it called tools but could not finish',
     remedy:
-      'What it called may have changed something, so it is not run again by itself: check what its history shows it called, then start a new run if it is still needed.',
-    mayHaveChanged: true,
+      "Every tool it called only reads, by its server's own account, so running it again is safe: a new run, or a workflow's retry, may make it; its history shows what it called.",
   },
 };
 
-const explanationByBecause: Readonly<Record<UnavailableBecause, string>> = {
+const explanationByBecause: Readonly<Record<RejectionBecause, string>> = {
   provider_not_configured: 'because its provider is not set up on this server, though others are',
   model_not_allowed: 'because it is not among the models whoever runs the server allows',
   mcp_server_not_configured: 'because whoever runs the server has not set up a tool server of that name for this brain',
@@ -151,16 +156,29 @@ const explanationByBecause: Readonly<Record<UnavailableBecause, string>> = {
   rate_limited: 'because the tool server asked it to slow down for longer than a run waits',
   unreachable: 'because the tool server could not be reached in time',
   key_refused: 'because the tool server did not accept the key this server gives it',
-  server_failed: 'because a tool server kept failing',
+  server_failed: 'because a tool server failed',
+  tool_error: 'because the tool answered an error, which the details below give',
   model_unavailable: 'because the model stopped answering',
   run_bound: 'because it ran out of time',
   no_answer: 'because the model kept calling tools instead of answering',
+  only_read: "because every tool it called only reads, by its server's own account",
 };
 
 const remedyByBecause: Remedies = {
   not_testable:
     "A tool that may change something is called only by a function the person asked to run; whoever runs the server can mark it testable on its tool server's entry, and list_tool_servers shows which tools can be tested.",
   key_refused: 'Trying again will not help until whoever runs the server checks the key it gives that tool server.',
+};
+
+const explanationByKindAndBecause: Readonly<
+  Partial<Record<RejectionKind, Partial<Record<RejectionBecause, Explanation>>>>
+> = {
+  tools_called: {
+    only_read: {
+      why: "an attempt of this run under the same id did not succeed, and every tool it called only reads, by its server's own account",
+      remedy: 'So it was not run again under its id: start a new run instead; its history shows what it called.',
+    },
+  },
 };
 
 const noRemedies: Remedies = {};
@@ -173,6 +191,10 @@ export function explanationOf(
     return explanationByReason[reason];
   }
   const explanation = explanationByKind[kind];
+  const ofBoth = because === undefined ? undefined : explanationByKindAndBecause[kind]?.[because];
+  if (ofBoth !== undefined) {
+    return ofBoth;
+  }
   return because === undefined
     ? explanation
     : {

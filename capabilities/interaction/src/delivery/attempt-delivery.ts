@@ -1,11 +1,11 @@
-import type { DeliveryCall, StartedFields } from '@beonauto/mcp';
+import type { OneCall, StartedFields } from '@beonauto/mcp';
 import { deliveryIdKey, runIdKey } from '@beonauto/mcp/policy';
 import { Effect, Result, type Schema } from 'effect';
 
-import { argumentsFailureWords, deliveryVariablesOf, renderedArguments } from '../route/rendered-arguments.ts';
 import type { DeliveringRecord } from '../run/request-record.ts';
 import type { DeliveryParts, DueRequest } from '../schedule/delivery-parts.ts';
 import { recordedCall } from '../schedule/request-ledger.ts';
+import { argumentsFailureWords, deliveryVariablesOf, renderedArguments } from '../tool-blocks/rendered-arguments.ts';
 import { endOf, type AttemptEnd } from './attempt-end.ts';
 import { startedFact, type Attempting } from './attempt-facts.ts';
 
@@ -32,7 +32,7 @@ function recordedStart(
   );
 }
 
-function callOf({ request, record }: DeliveryPlan, input: DeliveryCall['input']): DeliveryCall {
+function callOf({ request, record }: DeliveryPlan, input: OneCall['input']): OneCall {
   const { address, row } = request;
   return {
     org: address.org,

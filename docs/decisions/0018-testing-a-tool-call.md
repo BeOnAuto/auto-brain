@@ -1,6 +1,6 @@
 # 0018 — Testing a tool call: an agent tries one tool of a tool server through the brain, as a run would call it
 
-**Status:** accepted (2026-10-08), designed against `feat/speaking-to-agents` at 09b727a2 and verified again against `origin/main` at f4a7d7f6, where that branch has merged; built on 2026-10-08, with the amendments from the build after the appendix and the verifications of the record against the code at the end
+**Status:** accepted (2026-10-08), designed against `feat/speaking-to-agents` at 09b727a2 and verified again against `origin/main` at f4a7d7f6, where that branch has merged; built on 2026-10-08, with the amendments from the build after the appendix and the verifications of the record against the code at the end; amended (2026-10-09) by [decision 0021](0021-asking-a-system.md), a test also answering the document a call reads
 
 ## Context
 
@@ -272,6 +272,7 @@ Built on 2026-10-08 on `origin/main` at f4a7d7f6. The texts and counts the recor
 - **The fake server learns to answer without sessions** (`issuesSessionIds: false`), to count the five requests of a test of a server that issues no session id, and a tool that lists the channels of a workspace, `list_channels`, read-only, for episode 8.
 - **The answer schema of an open request**, which section 12 leaves to a record of its own, is that record, [decision 0019](0019-the-answer-shape-of-an-open-request.md), built beside this one; nothing here touches it.
 - **The image's smoke test** checks that `test_tool_call` is served, that a key that may only read is refused it over HTTP and is not offered it over MCP, and that a server without tool servers answers a test with `mcp_server_not_configured`.
+- **The document a call reads (2026-10-09).** `test_tool_call` also answers `answer`, the document a call's `read` points into: the structured content, else the first text block parsed as JSON, else that text, built by the `answerDocument` an interaction function's call reads with, scrubbed as `text` is and left out past 64 KiB ([decision 0021](0021-asking-a-system.md)). Section 1 answered only what a model sees, since the next thing written from a test was a prompt; a call's `read` and `output.schema` are written against the document, which `text` hides where a tool gives structured content beside a summary, so the test answers both.
 
 ## Verification of this record
 

@@ -4,7 +4,7 @@ import type { ServerMessage } from '../access/caller-context.ts';
 import type { Timing } from '../bounds/call-bounds.ts';
 import type { CallReply } from '../calls/call-replies.ts';
 import type { RunTools } from '../calls/run-tools.ts';
-import { serveFakeMcp, type FakeMcpServer } from './fake-mcp-server.ts';
+import { serveFakeMcp, type FakeMcpOptions, type FakeMcpServer } from './fake-mcp-server.ts';
 import { reportingAccess } from './reporting-access.ts';
 import {
   controlledSignals,
@@ -29,8 +29,12 @@ export interface FakeToolRun {
   readonly close: () => Promise<void>;
 }
 
-export async function openFakeToolRun(tools: readonly string[], timing?: Timing): Promise<FakeToolRun> {
-  const fake = await serveFakeMcp({ bearer: fakeApiKey });
+export async function openFakeToolRun(
+  tools: readonly string[],
+  timing?: Timing,
+  options: FakeMcpOptions = {},
+): Promise<FakeToolRun> {
+  const fake = await serveFakeMcp({ ...options, bearer: fakeApiKey });
   const { access, messages } = reportingAccess(
     { graph: { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme' } },
     { environment: { GRAPH_API_KEY: fakeApiKey }, ...(timing === undefined ? {} : { timing }) },

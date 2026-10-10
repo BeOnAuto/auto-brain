@@ -2,13 +2,11 @@ import {
   defineCapability,
   functionCategoryLabels,
   functionResourceLabels,
-  inWords,
+  outputInWords,
   type Capability,
 } from '@beonauto/definitions';
-import { asSentence } from '@beonauto/operations';
 import type { ProgramPool } from '@beonauto/workflow-engine/dsl';
 import type { ViewsPort } from '@beonauto/workflow-host';
-import type { Schema } from 'effect';
 
 import { documentCheck } from '../document/document-check.ts';
 import { recallBounds, recallDefinitionType } from '../run/recall-bounds.ts';
@@ -25,13 +23,6 @@ export interface RecallFunctionAdapterOptions {
   readonly memoryBytes?: number;
 }
 
-function describeResult(output: Schema.Json): string {
-  const words = inWords(output);
-  return words === undefined
-    ? 'Its result is too long to repeat here; the whole of it is in the details below.'
-    : asSentence(`Its result: ${words}`);
-}
-
 export function makeRecallFunctionAdapter({
   pool,
   views,
@@ -46,7 +37,7 @@ export function makeRecallFunctionAdapter({
     title: functionCategoryLabels.recall,
     guide: { name: 'recall-function' },
     noun: { one: functionResourceLabels.recall.singular, other: functionResourceLabels.recall.plural },
-    describeOutput: describeResult,
+    describeOutput: outputInWords('result'),
     mediaType: 'text/markdown',
     parse,
     check: documentCheck(pool),

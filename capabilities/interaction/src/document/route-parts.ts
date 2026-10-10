@@ -1,7 +1,7 @@
 import { issueAt, type DocumentIssue, type SourceLines } from '@beonauto/definitions/document';
 import { Result, type Schema } from 'effect';
 
-import { compiledRoute, type WrittenRoute } from '../route/compiled-route.ts';
+import { compiledToolBlock, type WrittenRoute } from '../tool-blocks/compiled-tool-block.ts';
 import type { InteractionFrontMatter } from './front-matter.ts';
 
 type Checked<A> = Result.Result<A, readonly DocumentIssue[]>;
@@ -31,7 +31,7 @@ export function routeIn(
     return replies === undefined ? Result.succeed(null) : Result.fail([issueAt(lines, '/replies', inboxReadsNothing)]);
   }
   const shape = replies === undefined ? [] : readingIssues(written, lines);
-  const compiled = compiledRoute({ deliver, replies }, lines, inputSchema);
+  const compiled = compiledToolBlock({ deliver, replies }, lines, inputSchema);
   if (shape.length > 0) {
     return Result.fail([...shape, ...(Result.isFailure(compiled) ? compiled.failure : [])]);
   }
