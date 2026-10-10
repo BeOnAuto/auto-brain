@@ -11,7 +11,6 @@ import type { ValueTable } from './run-tables.ts';
 export interface MachineSettings {
   readonly functions: CallFunctions;
   readonly runtime: JsonObject;
-  readonly mostStepsWithoutWaiting?: number;
 }
 
 export interface MachineOptions extends MachineSettings {

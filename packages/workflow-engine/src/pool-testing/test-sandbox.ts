@@ -11,6 +11,10 @@ export const testSandbox: MachineSandbox = reusedSandbox(await freshInstance(uni
 
 export const testMachine: MachineOptions = testMachineOf(testSandbox);
 
+export function testSandboxStoppingAfter(stepsWithoutWaiting: number): MachineSandbox {
+  return { ...testSandbox, mostStepsWithoutWaiting: stepsWithoutWaiting };
+}
+
 export const testWorkflowMachine: RunDecider = workflowMachine(testMachine);
 
 export function testDriverOf(options: Omit<DriverOptions, 'sandbox'> = {}): MemoryDriver {

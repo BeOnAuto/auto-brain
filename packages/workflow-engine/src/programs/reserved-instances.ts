@@ -8,6 +8,7 @@ export interface MachineSandbox {
   readonly reserve: Effect.Effect<void>;
   readonly unit: () => ExpressionUnit;
   readonly clock: () => number;
+  readonly mostStepsWithoutWaiting?: number;
 }
 
 interface Stock {

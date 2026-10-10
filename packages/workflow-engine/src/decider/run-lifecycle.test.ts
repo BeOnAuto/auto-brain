@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { mostValueDepth, type Json } from '../dsl/json.ts';
 import { errorType } from '../dsl/raised-error.ts';
 import { mostOutputBytes, mostStepsWithoutWaiting } from '../machine/limits.ts';
-import { testSettings } from '../testing/driver-inputs.ts';
 import { armedTimersAlong, drivenRunId, drivenRun, outputKindsIn, outputsIn } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 
@@ -115,17 +114,18 @@ describe('a run that does too much', () => {
     expect(run.outcome).toEqual({ kind: 'oversized', bytes: mostOutputBytes + 11, most: mostOutputBytes });
   });
 
-  it(`raises once it ran the tasks its settings allow without waiting, ${mostStepsWithoutWaiting} unless they say fewer`, () => {
+  it(`raises once it ran ${mostStepsWithoutWaiting} tasks without waiting, a constant of the machine only the test sandbox lowers`, () => {
     const document = workflow("do:\n  - spin: { for: { in: '${ $data.items }' }, do: [{ step: { set: {} } }] }");
     const items = Array.from({ length: 50 }, (_item, index) => index);
-    const machine = { ...testSettings, mostStepsWithoutWaiting: 40 };
 
     expect(mostStepsWithoutWaiting).toBe(10_000);
-    expect(drivenRun(document, { input: { items }, machine }).outcome).toMatchObject({
+    expect(drivenRun(document, { input: { items }, stepsWithoutWaiting: 40 }).outcome).toMatchObject({
       kind: 'raised',
       error: { title: 'The workflow ran 40 tasks without waiting for anything; it would never end' },
     });
-    expect(drivenRun(document, { input: { items: items.slice(0, 30) }, machine }).outcome).toMatchObject({
+    expect(
+      drivenRun(document, { input: { items: items.slice(0, 30) }, stepsWithoutWaiting: 40 }).outcome,
+    ).toMatchObject({
       kind: 'completed',
     });
   });

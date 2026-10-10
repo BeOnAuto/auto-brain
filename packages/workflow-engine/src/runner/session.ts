@@ -113,7 +113,7 @@ export function sessionOf(state: RunState, now: number, options: DecidingOptions
     },
     ...values,
     ...inbox,
-    ...countersOf(cell, options.mostStepsWithoutWaiting),
+    ...countersOf(cell, options.sandbox.mostStepsWithoutWaiting),
     ...descriptors,
     ...lifecycleOf(cell, ending, now),
     context: () => cell.get().context,
