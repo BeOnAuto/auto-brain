@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:26.10.0-slim@sha256:ec7758ee051e457b468b32bde57b0879010b325bb9862718e9615225ce4aaae1 AS dependencies
+FROM node:26.11.1-slim@sha256:193fe51b64e77981119c98c2002c9e32a70e2f006fb4d25068ce0558998917f0 AS dependencies
 RUN apt-get update \
   && apt-get install --yes --no-install-recommends g++ make python3 \
   && rm -rf /var/lib/apt/lists/*
@@ -35,7 +35,7 @@ RUN case "$AZURE_IDENTITY" in \
     *) echo "AZURE_IDENTITY is true or false, not $AZURE_IDENTITY" >&2 && exit 1 ;; \
   esac
 
-FROM node:26.10.0-slim@sha256:ec7758ee051e457b468b32bde57b0879010b325bb9862718e9615225ce4aaae1
+FROM node:26.11.1-slim@sha256:193fe51b64e77981119c98c2002c9e32a70e2f006fb4d25068ce0558998917f0
 LABEL org.opencontainers.image.licenses="Elastic-2.0"
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=8080
 WORKDIR /app

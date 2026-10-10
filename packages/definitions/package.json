@@ -25,7 +25,7 @@
     "@beonauto/operations": "workspace:*",
     "@beonauto/workflow-engine": "workspace:*",
     "effect": "catalog:",
-    "liquidjs": "10.29.0",
+    "liquidjs": "10.30.0",
     "ts-blank-space": "0.9.0",
     "typescript6": "npm:typescript@6.0.3",
     "yaml": "2.9.1"

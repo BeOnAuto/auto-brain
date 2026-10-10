@@ -20,7 +20,7 @@
     "@beonauto/ledger": "workspace:*",
     "@beonauto/operations": "workspace:*",
     "@beonauto/workflow-engine": "workspace:*",
-    "@event-driven-io/dumbo": "0.13.0-beta.56",
+    "@event-driven-io/dumbo": "0.13.0-betabeta.50",
     "@event-driven-io/emmett-sqlite": "0.43.0-beta.50",
     "croner": "10.0.1",
     "effect": "catalog:",
