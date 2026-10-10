@@ -6,8 +6,8 @@ import { describe, expect, it } from 'vitest';
 import type { HostDatabase } from '../database/host-database.ts';
 import { insertedListener } from '../listeners/listener-rows.ts';
 import { followedRecordOf, saidRefusals } from '../reaction-testing/followed-records.ts';
+import { countingMatches } from '../reaction-testing/trigger-starting.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
-import { filterMatchingOf } from './filter-matching.ts';
 import { listenerOffers } from './listener-offers.ts';
 
 const brainKey = 'brain/acme/alpha/';
@@ -19,6 +19,7 @@ const declinedOffer: Submission = { outcome: 'stale', version: 2, declined: 'The
 interface Offering {
   readonly offers: () => readonly string[];
   readonly said: () => readonly string[];
+  readonly evaluated: () => readonly string[];
   readonly consumer: ReturnType<typeof listenerOffers>;
 }
 
@@ -41,6 +42,7 @@ function listening(database: HostDatabase, run: string, filters: readonly Json[]
 function offering(database: HostDatabase, answer: (runKey: string) => Effect.Effect<Submission, Conflict>): Offering {
   const offers: string[] = [];
   const { refusals, said, say } = saidRefusals();
+  const { match, evaluated } = countingMatches();
   const consumer = listenerOffers({
     database,
     refusals,
@@ -52,10 +54,10 @@ function offering(database: HostDatabase, answer: (runKey: string) => Effect.Eff
         answer(runKey),
       ),
     declined: (runKey, detail) => say(`${runKey} declined: ${detail}`),
-    match: filterMatchingOf(),
+    match,
     now: () => 0,
   });
-  return { offers: () => offers, said, consumer };
+  return { offers: () => offers, said, evaluated, consumer };
 }
 
 function declinedByTheFirst(runKey: string): Effect.Effect<Submission, Conflict> {
@@ -108,6 +110,27 @@ describe('the offers of an event to the runs that listen for its type', () => {
     const second = await Effect.runPromise(consumer.batchOf(followed, first.through, 2));
 
     expect([offers().length, first.more, second.deliveries.length, second.more]).toEqual([2, true, 1, false]);
+  });
+});
+
+describe('the filter of a listening run that goes past a bound', () => {
+  it('is said once and not evaluated again while that task listens, and the filters beside it still take events', async () => {
+    const database = await openedOn(await onSQLite());
+    const working = { type: 'go', data: '${ (() => { let turns = 0; for (;;) { turns += 1; } })() }' };
+    await listening(database, 'run-a', [working, { type: 'go', data: { region: 'eu' } }]);
+    const { offers, said, evaluated, consumer } = offering(database, () => Effect.succeed(applied));
+
+    await deliveredAll(consumer, followedRecordOf({ region: 'us' }), 10);
+    const before = evaluated().length;
+    await deliveredAll(consumer, followedRecordOf({ region: 'eu' }), 10);
+
+    expect([before, evaluated().length - before]).toEqual([2, 1]);
+    expect(offers()).toEqual(['acme/alpha/run-a record-1 /do/0/wait']);
+    expect(said()).toEqual([
+      expect.stringContaining(
+        "wf-run-a: The filter of a run's listen task went past a bound on an event, so the event was not offered to the run, and the filter is not evaluated again while that task listens:",
+      ),
+    ]);
   });
 });
 

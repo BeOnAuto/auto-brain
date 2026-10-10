@@ -68,6 +68,35 @@ describe('the starts of the workflows whose trigger an event matches', () => {
   });
 });
 
+describe('the filter of an event trigger that goes past a bound', () => {
+  it('is stopped: said once, skipped on the next events of that version and evaluated again after a new version', async () => {
+    const { database, delivered, starts, said, evaluated } = await starting();
+    const working = { type: 'go', data: '${ (() => { let turns = 0; for (;;) { turns += 1; } })() }' };
+    const european = { type: 'go', data: { region: 'eu' } };
+    await subscribed(database, 'busy', working, european);
+
+    await delivered(followedRecordOf({ region: 'us' }));
+    await delivered(followedRecordOf({ region: 'eu' }));
+    await subscribedAt(database, 2, 'busy', working, european);
+    await delivered(followedRecordOf({ region: 'us' }));
+    const stopped =
+      "busy: The filter of the workflow's event trigger went past a bound on an event, so it did not match, and it is not evaluated again for this version of the workflow; a new version evaluates it again:";
+
+    expect(evaluated()).toEqual([
+      '/schedule/on/any/0',
+      '/schedule/on/any/1',
+      '/schedule/on/any/1',
+      '/schedule/on/any/0',
+      '/schedule/on/any/1',
+    ]);
+    expect(said()).toEqual([expect.stringContaining(stopped), expect.stringContaining(stopped)]);
+    expect(said()[0]).toContain(
+      'The program did more work than it may: an expression of a filter may do 250 checkpoints of work',
+    );
+    expect(starts().map(({ version }) => version)).toEqual([1]);
+  });
+});
+
 describe('the event triggers an event is matched against', () => {
   it('are those that name its type, so the filters of other types are never evaluated on it', async () => {
     const { database, delivered, starts, said } = await starting();

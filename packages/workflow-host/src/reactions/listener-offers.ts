@@ -1,12 +1,14 @@
 import type { Conflict } from '@beonauto/operations';
 import {
   CallKeySchema,
+  describeError,
   listenerFilterOf,
   type CallKey,
+  type DslError,
   type MatchedFilter,
   type Submission,
 } from '@beonauto/workflow-engine';
-import { Effect, Schema } from 'effect';
+import { Array, Effect, Schema } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
 import {
@@ -18,8 +20,14 @@ import {
 } from '../follower/consumers.ts';
 import { listenersOfType, type ListenerPlace, type MatchedListener } from '../listeners/listener-rows.ts';
 import { addressOfRun } from '../runs/run-address.ts';
-import { groupVerdicts, type MatchFilters } from './filter-matching.ts';
+import { groupMatchingOf, type MatchFilters, type MatchGroups } from './filter-matching.ts';
 import type { RefuseReaction } from './refusals.ts';
+
+interface ListenerVerdict {
+  readonly row: MatchedListener;
+  readonly accepted: boolean;
+  readonly stopped: readonly DslError[];
+}
 
 interface Offer {
   readonly runKey: string;
@@ -70,13 +78,31 @@ function filtersOf(row: MatchedListener): readonly MatchedFilter[] {
 }
 
 function accepting(
+  matchGroups: MatchGroups,
   parts: OfferParts,
   rows: readonly MatchedListener[],
   { event }: FollowedRecord,
-): Effect.Effect<readonly boolean[]> {
-  const groups = rows.map((row) => filtersOf(row));
-  return Effect.map(groupVerdicts(parts.match, groups, event.event, parts.now()), (verdicts) =>
-    verdicts.map((each) => each.includes(true)),
+): Effect.Effect<readonly ListenerVerdict[]> {
+  const groups = rows.map((row) => ({ scope: keyOf(row), filters: filtersOf(row) }));
+  return Effect.map(matchGroups(groups, event.event, parts.now()), (matched) =>
+    Array.zipWith(rows, matched, (row, { verdicts, stopped }): ListenerVerdict => ({
+      row,
+      accepted: verdicts.includes(true),
+      stopped,
+    })),
+  );
+}
+
+function reportedStops(parts: OfferParts, brainKey: string, row: MatchedListener, stopped: readonly DslError[]) {
+  return Effect.forEach(
+    stopped,
+    (error) =>
+      parts.refusals.refuse(
+        brainKey,
+        row.workflow,
+        `The filter of a run's listen task went past a bound on an event, so the event was not offered to the run, and the filter is not evaluated again while that task listens: ${describeError(error)}`,
+      ),
+    { discard: true },
   );
 }
 
@@ -105,6 +131,7 @@ function offerOf(parts: OfferParts, row: MatchedListener, followed: FollowedReco
 }
 
 export function listenerOffers(parts: OfferParts): RecordConsumer {
+  const matchGroups = groupMatchingOf(parts.match);
   return {
     name: 'listener_offers',
     skippedAfterSweeps: deliverySweeps,
@@ -118,10 +145,13 @@ export function listenerOffers(parts: OfferParts): RecordConsumer {
         });
         const taken = rows.slice(0, most);
         const others = taken.filter((row) => !emittedByTheRun(row, followed));
-        const accepted = yield* accepting(parts, others, followed);
+        const judged = yield* accepting(matchGroups, parts, others, followed);
+        yield* Effect.forEach(judged, ({ row, stopped }) => reportedStops(parts, followed.brainKey, row, stopped), {
+          discard: true,
+        });
         const lastTaken = taken.at(-1);
         return {
-          deliveries: others.filter((_, index) => accepted[index] === true).map((row) => offerOf(parts, row, followed)),
+          deliveries: judged.flatMap(({ row, accepted }) => (accepted ? [offerOf(parts, row, followed)] : [])),
           through: lastTaken === undefined ? undefined : keyOf(lastTaken),
           more: rows.length > most,
         };
