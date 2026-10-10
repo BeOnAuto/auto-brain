@@ -35,15 +35,15 @@ The hosted runtime does not offer recall functions until its adapter bounds the 
 
 ## Measurements
 
-`pnpm --filter @beonauto/recall measure` measures, outside the tests (`measure.ts`, with its parts in `measure/`), the example's fold over 100,000 runs of 100 campaigns in pages of up to 1,000, the way the host's projector folds them, in one warm worker of the pool, the view checked after every fold, and whether 3,000 of them fold to the same view with the same checkpoints in pages of 7 and of 1,000. Measured on 2026-10-09 on Node 26.10.0 on an Apple M4 Max, 16 cores, at a load average of about 3 to 4:
+`pnpm --filter @beonauto/recall measure` measures, outside the tests (`measure.ts`, with its parts in `measure/`), the example's fold over 100,000 runs of 100 campaigns in pages of up to 1,000, the way the host's projector folds them, in one warm worker of the pool, the view checked after every fold, and whether 3,000 of them fold to the same view with the same checkpoints in pages of 7 and of 1,000. Measured on 2026-10-10 on Node 26.10.0 on an Apple M4 Max, 16 cores, at a load average of about 3 to 4, on the final build, its fold stripped of its types at save:
 
 | What                                                                      | Measured                                                                     |
 | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| 100,000 folds in 100 pages of 1,000, the view written out after each fold | 41.7 s, 2,395 folds a second, about 0.42 ms a fold, to a view of 6,034 bytes |
+| 100,000 folds in 100 pages of 1,000, the view written out after each fold | 42.7 s, 2,343 folds a second, about 0.43 ms a fold, to a view of 6,034 bytes |
 | the checkpoints of those folds                                            | 0 in all: each fold makes fewer than 10,000 of the engine's polls            |
 | 3,000 of them in pages of 7 and in pages of 1,000                         | the same view and the same checkpoints                                       |
 
-A fold writes its view out after it, through the refusing replacer, over the whole view each time, and the next fold is handed that text parsed again: measured by hand the same day over a view of 6,024 bytes shaped like this example's, 1,000 writes took 113 ms, where `JSON.stringify` alone took 45 ms and the replacer before it was made lean 231 ms, and the 1,000 parses 40 ms. The same 100,000 folds took 48.5 s before those changes. Checking the view against its schema added about 50 ms a page. A page of 1,000 of the example's folds took about 0.4 s against its budget of 2 s, so a page never ended early here.
+A fold writes its view out after it, through the refusing replacer, over the whole view each time, and the next fold is handed that text parsed again: measured by hand the same day over a view of 6,024 bytes shaped like this example's, 1,000 writes took 113 ms, where `JSON.stringify` alone took 45 ms and the replacer before it was made lean 231 ms, and the 1,000 parses 40 ms. The same 100,000 folds took 48.5 s before those changes, and 41.7 s with them while the engine still stripped types at run. Checking the view against its schema added about 50 ms a page. A page of 1,000 of the example's folds took about 0.4 s against its budget of 2 s, so a page never ended early here.
 
 ## Testing
 

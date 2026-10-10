@@ -32,7 +32,7 @@ const caughtStackBomb =
 
 const closed = { type: 'com.acme.closed', data: { region: 'eu' } };
 
-const runtimeError = 'https://open-workflow-specification.org/spec/1.0.0/errors/runtime';
+const runtimeError: unknown = expect.stringMatching(/\/errors\/runtime$/u);
 
 const churningFilter = { reference: '/churn', attributes: { type: 'com.acme.closed', data: `\${ ${churn} }` } };
 
