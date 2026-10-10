@@ -3,20 +3,21 @@ import { describe, expect, it } from 'vitest';
 import type { SettingsOf } from '../testing/host-files.ts';
 import { secondFoldWithBudget } from './pool-faults.ts';
 import {
+  delayingFolding,
   overrunningFold,
   overrunningFolding,
   overrunsItsDeadline,
   steppedClock,
+  takesItsNeighboursTime,
   untilTried,
 } from './stepped-sweeps.ts';
-import { breakingFoldWorker, breaksTheWorker, sleepsBeforeItIsFolded } from './test-fold-workers.ts';
+import { breakingFoldWorker, breaksTheWorker } from './test-fold-workers.ts';
 import {
   collecting,
   counting,
   detailsOf,
   foldOf,
   foldedAll,
-  foldingOf,
   isLive,
   isStalled,
   liveWith,
@@ -177,10 +178,10 @@ function neighbourTests(settingsOf: SettingsOf): void {
       (before, name) => before.then(() => views.saved(name, counting)),
       Promise.resolve(),
     );
-    views.start({ folding: { ...foldingOf(), foldDeadlineMs: 1000, pageBudgetMs: 1 }, overtimesBeforeStall: 1 });
+    views.start({ folding: delayingFolding(), clock: steppedClock(sweptFrom), overtimesBeforeStall: 1 });
     await Promise.all(names.map((name) => views.until(name, isLive)));
 
-    await views.ran('reasoning/runs', sleepsBeforeItIsFolded);
+    await views.ran('reasoning/runs', takesItsNeighboursTime);
     const kept = await Promise.all(names.map((name) => views.until(name, liveWith(1))));
 
     expect(kept.map(({ phase, view }) => [phase, view])).toEqual(names.map(() => ['live', 1]));

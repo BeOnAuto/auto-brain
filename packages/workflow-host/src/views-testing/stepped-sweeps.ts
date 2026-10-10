@@ -29,6 +29,23 @@ export function overrunningFolding(): FoldingSettings {
   return { ...foldingOf(), budget: 1_000_000_000, worker: overrunningFoldWorker };
 }
 
+export const takesItsNeighboursTime = 'takes its neighbours time';
+
+const neighbourFoldDeadlineMs = 1000;
+
+const neighbourTimeMs = 1600;
+
+const delayingFoldWorker = foldingWorker({
+  prelude: ['const late = { byMs: 0 };'],
+  clock: { starting: 'const frozenAt = host.now(); late.byMs = 0;', now: '() => frozenAt + late.byMs' },
+  whenFolding: `if (events[event]?.data?.output === '${takesItsNeighboursTime}') late.byMs += ${neighbourTimeMs};`,
+  serving: 'serveJobs({ fold });',
+});
+
+export function delayingFolding(): FoldingSettings {
+  return { ...foldingOf(), foldDeadlineMs: neighbourFoldDeadlineMs, pageBudgetMs: 1, worker: delayingFoldWorker };
+}
+
 export interface SteppedClock extends HostClock {
   readonly step: (milliseconds: number) => void;
 }
