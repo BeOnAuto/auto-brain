@@ -21,7 +21,7 @@ Copy the Agent prompt into a coding agent with terminal access, or use the Manua
 ```text [Agent]
 Install https://github.com/BeOnAuto/auto-brain using its setup guide.
 Ask before installing prerequisites; keep existing files and .env.
-Use pinned versions. Never print secrets or ask for API keys in chat.
+Do not install Node.js, pnpm manages it. Never print secrets or ask for API keys in chat.
 Help configure my model provider, then show how to start the server.
 ```
 
@@ -34,7 +34,24 @@ cp .env.example .env
 
 :::
 
-pnpm uses the Node and pnpm versions pinned by the repository, downloading them when needed. If you are returning to an existing checkout, keep your existing `.env` file.
+pnpm is the only tool to install. From version 10 it fetches the pnpm and Node.js versions this repository pins and keeps them inside the project, so do not install Node.js for Auto. Without pnpm, run its standalone installer and open a new terminal:
+
+```bash
+curl -fsSL https://get.pnpm.io/install.sh | sh -
+```
+
+The install output lists `node 26.10.0` among the dependencies: that is the runtime pnpm fetched for this project. Check the toolchain from inside the checkout:
+
+```bash
+pnpm --version
+pnpm exec node --version
+```
+
+The first prints the pnpm version in the `packageManager` field of `package.json`, `12.8.1` today, and the second the Node.js version in `.nvmrc`, `v26.10.0` today. `node --version` on its own may print another version you installed earlier; Auto does not use it. If you are returning to an existing checkout, keep your existing `.env` file.
+
+::: tip Already have Node.js or pnpm?
+pnpm 10 or newer needs nothing: it switches to the pinned version by itself. Upgrade pnpm 9 or older with the installer above. With nvm, fnm or Volta you still do not need Node.js 26; if you switch versions anyway, those tools keep global packages per version, so `pnpm` can disappear from your terminal, while the standalone installer lives outside them.
+:::
 
 ## 2. Configure a model provider
 
@@ -94,7 +111,9 @@ Start a new Codex session. Use `/mcp` in the CLI to check the connection, or `co
 
 Claude Desktop needs a local MCP connection for this setup. Its remote connector runs from Anthropic's servers, so entering `http://localhost:8080/mcp` there will not reach Auto on your computer.
 
-Install a current [Node.js LTS release](https://nodejs.org/en/download) with npm, so Desktop can run `npx`. This is separate from the Node version pnpm manages inside the Auto repository.
+::: tip The only step that needs your own Node.js
+Claude Desktop starts the bridge with `npx`, so it needs a current [Node.js LTS release](https://nodejs.org/en/download) with npm on your computer. It is separate from the Node.js pnpm keeps inside the Auto repository, and Claude Code and Codex do not need it.
+:::
 
 In Claude Desktop, open **Settings → Developer → Edit Config**. Add the `auto-brain` entry to `mcpServers`, keeping any existing entries:
 
@@ -174,6 +193,8 @@ Your agent can try a tool before a function uses it, to see what it answers. A s
 ## If something does not connect
 
 If the health check fails, check the server terminal for startup errors and confirm that port 8080 is free. If your agent cannot connect but the health check works, check its MCP endpoint, restart the agent session, and confirm it is running on the same computer as Auto.
+
+If `pnpm` is not found after you switched Node.js versions with nvm, fnm or Volta, install it with the standalone installer in step 1, which lives outside those tools, and open a new terminal. If `pnpm install` does not switch to the pinned pnpm, yours is older than 10; upgrade it the same way. To see which Node.js the server runs on, use `pnpm exec node --version` in the checkout rather than `node --version`.
 
 If a reasoning function reports `provider_not_configured`, check the uncommented setting in `.env` and restart Auto. If model discovery is incomplete, use a concrete model reference supported by your configured provider. Do not paste keys into a prompt to fix a connection.
 

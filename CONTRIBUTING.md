@@ -11,7 +11,7 @@ Thanks for helping build the runtime for business brains. Bug reports, ideas and
 
 ## Set up
 
-You need Node 26 (`nvm use` reads `.nvmrc`) and pnpm 12 (`npm install --global pnpm@12`).
+Install pnpm 10 or newer as the [quick start](docs/get-started/local.md) shows. It fetches the Node.js and pnpm versions the repository pins and runs everything on them, so you do not install Node.js. `nvm use` reads `.nvmrc` if your editor's tooling wants the same Node.js on your `PATH`; the server runs on pnpm's managed runtime either way.
 
 ```bash
 pnpm install          # also installs the git hooks
