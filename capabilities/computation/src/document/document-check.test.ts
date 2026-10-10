@@ -82,19 +82,27 @@ describe('the check of a computation function that has problems', { timeout: wor
 });
 
 describe('a check of a computation function that does not answer', { timeout: workerTestTimeoutMs }, () => {
-  it('is unavailable when its check does not answer', async () => {
+  it('refuses the document when a ready checker runs past its deadline, and is unavailable when no checker was ready', async () => {
     const pool = poolOf();
-    const busy = {
+    const tooLong = {
       ...pool,
       check: () => Promise.resolve({ ran: 'stopped', because: 'deadline', milliseconds: 2000 } as const),
     };
-    const { prepared } = computationWith(busy);
+    const busy = {
+      ...pool,
+      check: () => Promise.resolve({ ran: 'stopped', because: 'busy', milliseconds: 1 } as const),
+    };
+    const tooLongToCheck =
+      'The document takes longer to check than the 2000 ms a save allows its check, so saving it again would not help; simplify its types or split its program';
 
-    expect(await Effect.runPromiseExit(prepared(campaignPace).check)).toEqual(
+    expect(await Effect.runPromiseExit(computationWith(tooLong).prepared(campaignPace).check)).toEqual(
+      Exit.fail(new InvalidInput({ detail: tooLongToCheck, issues: [{ pointer: '', detail: tooLongToCheck }] })),
+    );
+    expect(await Effect.runPromiseExit(computationWith(busy).prepared(campaignPace).check)).toEqual(
       Exit.fail(
         new Unavailable({
           detail:
-            'The check of the document did not answer within the 2000 ms a save allows it, and was stopped; try again',
+            'No checker was ready in time for this save, since this server checks one document at a time with one checker; try again',
         }),
       ),
     );
