@@ -1,112 +1,112 @@
 import { createHash } from 'node:crypto';
 
+import type { BrainAddress } from '@beonauto/operations';
 import type { Effect } from 'effect';
 
-import { toolBounds } from '../bounds/call-bounds.ts';
-import { bytesOf, cutAsStored } from '../bounds/text-bytes.ts';
+import { cutToFailureBound } from '../bounds/call-bounds.ts';
+import type { Secrets } from '../bounds/secrets.ts';
+import { bytesOf } from '../bounds/text-bytes.ts';
 import type { McpServerSettings } from '../settings/mcp-settings.ts';
-import type { CallAnswered, CallOutcome, CallStarted } from './call-facts.ts';
+import type { CallAnswered, CallEnded, CallFailed, CallFailedBecause, CallStarted } from './call-facts.ts';
 
-export type NumberedAnswer = CallAnswered & { readonly number: number };
+export type StartedFields = Omit<CallStarted, 'call_id' | 'read_only'>;
 
-export type StartedFields = Omit<CallStarted, 'type' | 'call_id'>;
-
-export type AnsweredFields = Omit<CallAnswered, 'type' | 'outcome' | 'duration_ms'>;
-
-export type RecordedCall = (CallStarted & { readonly number: number }) | NumberedAnswer;
+export type AnsweredFields = Omit<CallAnswered, 'is_error' | 'shown_bytes' | 'duration_ms'>;
 
 export interface CallJournal {
   readonly started: (fact: CallStarted) => Effect.Effect<number | undefined>;
-  readonly answered: (fact: NumberedAnswer) => Effect.Effect<boolean>;
+  readonly ended: (number: number, fact: CallEnded) => Effect.Effect<boolean>;
+}
+
+export type KeepContent = (sha256: string, text: string) => Promise<void>;
+
+export type KeepIn = (brain: BrainAddress) => KeepContent;
+
+export interface Recording {
+  readonly content: boolean;
+  readonly requestId: boolean;
+  readonly secrets: Pick<Secrets, 'scrub' | 'scrubValue'>;
+  readonly keep: KeepContent;
 }
 
 export interface StartingCall {
   readonly server: string;
   readonly tool: string;
-  readonly argumentsJson: string;
+  readonly input: Readonly<Record<string, unknown>>;
 }
 
-export interface StartedCall extends StartingCall {
-  readonly callId: string;
-  readonly readOnly: boolean;
-}
-
-export interface CallResult {
-  readonly resultJson: string | null;
+export interface CallAnswer {
+  readonly answerJson: string;
   readonly jsonrpcId: string | number | null;
   readonly serverRequestId: string | null;
 }
 
-export interface AnsweredCall extends CallResult {
-  readonly number: number;
-  readonly outcome: CallOutcome;
-  readonly durationMs: number;
-}
-
-export interface Recording {
-  readonly content: boolean;
-  readonly requestId: boolean;
-  readonly scrub: (text: string) => string;
-}
-
 export function recordingOf(
   settings: Pick<McpServerSettings, 'record_content' | 'request_id'>,
-  scrub: (text: string) => string,
+  secrets: Pick<Secrets, 'scrub' | 'scrubValue'>,
+  keep: KeepContent,
 ): Recording {
-  return { content: settings.record_content, requestId: settings.request_id !== null, scrub };
+  return { content: settings.record_content, requestId: settings.request_id !== null, secrets, keep };
 }
 
-function digestOf(text: string): string {
+export function digestOf(text: string): string {
   return createHash('sha256').update(text, 'utf8').digest('hex');
 }
 
-function contentOf(name: string, json: string, { content, scrub }: Recording) {
-  return content ? { [name]: cutAsStored(scrub(json), toolBounds.recordedContentBytes) } : {};
+export function scrubbedJsonOf(json: string, { secrets }: Pick<Recording, 'secrets'>): string {
+  const parsed: unknown = JSON.parse(json);
+  return JSON.stringify(secrets.scrubValue(parsed));
 }
 
-export function startedFields(call: StartingCall, recording: Recording): StartedFields {
+async function kept(recording: Recording, sha256: string, json: string): Promise<boolean> {
+  if (!recording.content) {
+    return false;
+  }
+  await recording.keep(sha256, scrubbedJsonOf(json, recording));
+  return true;
+}
+
+export async function startedFields(call: StartingCall, recording: Recording): Promise<StartedFields> {
+  const sent = JSON.stringify(call.input);
+  const sha256 = digestOf(sent);
   return {
     server: call.server,
     tool: call.tool,
-    arguments_bytes: bytesOf(call.argumentsJson),
-    arguments_sha256: digestOf(call.argumentsJson),
-    ...contentOf('arguments_json', call.argumentsJson, recording),
+    arguments_bytes: bytesOf(sent),
+    arguments_sha256: sha256,
+    content_kept: await kept(recording, sha256, sent),
   };
 }
 
-export function callStarted(call: StartedCall, recording: Recording): CallStarted {
+function requestIdOf({ serverRequestId }: Pick<CallAnswer, 'serverRequestId'>, { requestId }: Recording) {
+  return requestId ? { server_request_id: serverRequestId } : {};
+}
+
+export async function answeredFields(answer: CallAnswer, recording: Recording): Promise<AnsweredFields> {
+  const sha256 = digestOf(answer.answerJson);
   return {
-    type: 'tool_call_started',
-    call_id: call.callId,
-    ...startedFields(call, recording),
-    ...(call.readOnly ? { read_only: true } : {}),
+    result_bytes: bytesOf(answer.answerJson),
+    result_sha256: sha256,
+    content_kept: await kept(recording, sha256, answer.answerJson),
+    jsonrpc_id: answer.jsonrpcId,
+    ...requestIdOf(answer, recording),
   };
 }
 
-function resultOf(resultJson: string | null, recording: Recording) {
-  return resultJson === null
-    ? { result_bytes: null, result_sha256: null }
-    : {
-        result_bytes: bytesOf(resultJson),
-        result_sha256: digestOf(resultJson),
-        ...contentOf('result_json', resultJson, recording),
-      };
+export interface CallFailure {
+  readonly because: CallFailedBecause;
+  readonly message: string;
+  readonly jsonrpcId: string | number | null;
+  readonly serverRequestId: string | null;
 }
 
-export function answeredFields(call: CallResult, recording: Recording): AnsweredFields {
+export function failedData(failure: CallFailure, durationMs: number, recording: Recording): CallFailed {
+  const detail = cutToFailureBound(recording.secrets.scrub(failure.message.trim()));
   return {
-    ...resultOf(call.resultJson, recording),
-    jsonrpc_id: call.jsonrpcId,
-    ...(recording.requestId ? { server_request_id: call.serverRequestId } : {}),
-  };
-}
-
-export function callAnswered(call: AnsweredCall, recording: Recording): NumberedAnswer {
-  return {
-    type: 'tool_call_answered',
-    number: call.number,
-    outcome: call.outcome,
-    ...answeredFields(call, recording),
-    duration_ms: call.durationMs,
+    because: failure.because,
+    ...(detail === '' ? {} : { detail }),
+    duration_ms: durationMs,
+    jsonrpc_id: failure.jsonrpcId,
+    ...requestIdOf(failure, recording),
   };
 }

@@ -1,5 +1,5 @@
 import { cursorWithin, insideOf, type InsideARecord } from './cursor-parts.ts';
-import type { Presentation } from './presentation.ts';
+import type { Presentation, Showing } from './presentation.ts';
 import type { PublicEvent } from './public-event.ts';
 import type { RecordedEvent, RecordedOrder, RecordedPage } from './recorded-read.ts';
 
@@ -8,15 +8,11 @@ export interface EventPaging {
   readonly limit: number;
   readonly cursor?: string;
   readonly keeps?: (event: PublicEvent) => boolean;
-}
-
-export interface PagedEvent {
-  readonly stream: string;
-  readonly event: PublicEvent;
+  readonly showing: Showing;
 }
 
 export interface EventsPage {
-  readonly events: readonly PagedEvent[];
+  readonly events: readonly PublicEvent[];
   readonly hasMore: boolean;
   readonly nextCursor: string | null;
 }
@@ -43,15 +39,15 @@ function shownOf(presentation: Presentation, paging: EventPaging): (recorded: Re
   const keeps = paging.keeps ?? keepingAll;
   return (recorded) => {
     const shown = presentation
-      .present(recorded)
+      .present(recorded, paging.showing)
       .map((event, index): Shown => ({ recorded, index, event }))
       .filter((each) => keeps(each.event) && !answeredBefore(paging.order, inside, each));
     return paging.order === 'asc' ? shown : shown.toReversed();
   };
 }
 
-function pagedOf({ recorded, event }: Shown): PagedEvent {
-  return { stream: recorded.stream, event };
+function eventOf({ event }: Shown): PublicEvent {
+  return event;
 }
 
 function cursorAfter(last: Shown, next: Shown): string {
@@ -61,7 +57,7 @@ function cursorAfter(last: Shown, next: Shown): string {
 export function eventsPageOf(presentation: Presentation, page: RecordedPage, paging: EventPaging): EventsPage {
   const shown = page.records.flatMap(shownOf(presentation, paging));
   const answered = shown.slice(0, paging.limit);
-  const events = answered.map((each) => pagedOf(each));
+  const events = answered.map((each) => eventOf(each));
   const last = answered.at(-1);
   const next = shown[paging.limit];
   if (last === undefined || next === undefined) {

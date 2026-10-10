@@ -13,16 +13,16 @@ export interface ServersListing extends Listing, Showing {
 }
 
 async function toolServerOf(link: ServerLink, listing: ServersListing): Promise<ToolServer> {
-  const { name, type } = link.settings;
+  const { name, type, record_content } = link.settings;
   const connected = await connectedTo(link, listing);
   if (Result.isFailure(connected)) {
     const { detail, because } = connected.failure;
-    return { name, type, unavailable: cutToFailureBound(detail), because };
+    return { name, type, record_content, unavailable: cutToFailureBound(detail), because };
   }
   const listed = connected.success;
   await listed.slot.release();
   const offered = offeredOn(listed, { references: [{ server: name, tool: '*' }] });
-  return { name, type, tools: offered.map(({ tool }) => shownTool(tool, link.settings, listing)) };
+  return { name, type, record_content, tools: offered.map(({ tool }) => shownTool(tool, link.settings, listing)) };
 }
 
 function byName(first: ServerLink, second: ServerLink): number {

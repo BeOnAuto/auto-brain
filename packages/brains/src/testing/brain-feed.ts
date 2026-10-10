@@ -1,4 +1,11 @@
-import type { Decider, Lineage, Outcome, Presenter, PublicEvent, RecordedEvent } from '@beonauto/operations';
+import {
+  factOf,
+  type Decider,
+  type Lineage,
+  type Outcome,
+  type PresentedFact,
+  type Presenter,
+} from '@beonauto/operations';
 import { memoryBrainRegistry } from '@beonauto/operations/testing';
 import { Effect, Result, Schema } from 'effect';
 
@@ -6,25 +13,35 @@ import { defineListBrainEvents } from '../feed/list-brain-events.ts';
 import { acmeAdmin } from './callers.ts';
 import { harness, toBrain } from './harness.ts';
 
-const FactSchema = Schema.Struct({
-  type: Schema.Literals(['added', 'hidden', 'kept', 'moved']),
-  text: Schema.String,
-  at: Schema.String,
-});
+const TextSchema = Schema.Struct({ text: Schema.String });
+
+const FactSchema = Schema.Union([
+  factOf('added', TextSchema),
+  factOf('hidden', TextSchema),
+  factOf('kept', TextSchema),
+  factOf('moved', TextSchema),
+]);
 
 export type Fact = typeof FactSchema.Type;
 
-const recorder: Decider<null, Fact, Fact> = {
+interface Recording {
+  readonly fact: Fact;
+  readonly at: string;
+}
+
+const recorder: Decider<null, Recording, Fact> = {
   initialState: null,
   evolve: (state) => state,
-  decide: (fact) => Result.succeed([fact]),
+  decide: ({ fact }) => Result.succeed([fact]),
+  context: ({ at }) => ({ at, by: 'acme-admin' }),
   eventSchema: FactSchema,
 };
 
-const decodeFact = Schema.decodeUnknownSync(FactSchema);
+const decodeText = Schema.decodeUnknownSync(TextSchema);
 
-function eventOf({ id, cursor, causationId }: RecordedEvent, type: string, text: string, at: string): PublicEvent {
-  return { id, cursor, causation_id: causationId, at, type, summary: 'Something happened.', data: { text } };
+function eventOf(type: string, text: string, part?: number): PresentedFact {
+  const fact = { type, summary: 'Something happened.', data: { text } };
+  return part === undefined ? fact : { ...fact, part: { number: part, causedBy: part - 1 } };
 }
 
 export function presenterOf(streamKind: string, publicNames: Readonly<Record<string, string | null>>): Presenter {
@@ -36,10 +53,7 @@ export function presenterOf(streamKind: string, publicNames: Readonly<Record<str
         name === null ? [] : [name],
       ]),
     ),
-    present: (recorded) => {
-      const { text, at } = decodeFact(recorded.data);
-      return [eventOf(recorded, String(publicNames[recorded.type]), text, at)];
-    },
+    present: (recorded) => [eventOf(String(publicNames[recorded.type]), decodeText(recorded.data).text)],
   };
 }
 
@@ -51,11 +65,8 @@ const steps: Presenter = {
   streamKind: 'run-logs',
   publicNames: { moved: ['run_moved', 'run_stepped'] },
   present: (recorded) => {
-    const { text, at } = decodeFact(recorded.data);
-    return [
-      eventOf(recorded, 'run_moved', text, at),
-      ...[1, 2].map((step) => eventOf(recorded, 'run_stepped', `${text}${step}`, at)),
-    ];
+    const { text } = decodeText(recorded.data);
+    return [eventOf('run_moved', text), ...[1, 2].map((step) => eventOf('run_stepped', `${text}${step}`, step))];
   },
 };
 
@@ -92,16 +103,16 @@ export function withCursor(cursor: string | undefined): object {
 export function brainFeed() {
   const feed = harness(brains);
   let minute = 0;
-  const recordingWith = (stream: string, fact: Omit<Fact, 'at'>, lineage?: Lineage, brain = 'brain/acme/alpha') => {
+  const recordingWith = (stream: string, fact: Fact, lineage?: Lineage, brain = 'brain/acme/alpha') => {
     minute += 1;
     const at = `2026-10-01T09:${String(minute).padStart(2, '0')}:00.000Z`;
     return feed.run(
-      Effect.orDie(feed.ledger.service.execute(`${brain}/${stream}`, recorder, { ...fact, at }, lineage)),
+      Effect.orDie(feed.ledger.service.execute(`${brain}/${stream}`, recorder, { fact, at }, lineage)),
       at,
     );
   };
   const recording = (stream: string, type: Fact['type'], text: string, brain = 'brain/acme/alpha') =>
-    recordingWith(stream, { type, text }, undefined, brain);
+    recordingWith(stream, { type, data: { text } }, undefined, brain);
   const reading = (input: object = {}) => feed.callInBrain(listBrainEvents, toAlpha(acmeAdmin, input));
   return { ...feed, recording, recordingWith, reading };
 }

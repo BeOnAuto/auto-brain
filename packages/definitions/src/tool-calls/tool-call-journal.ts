@@ -1,3 +1,4 @@
+import type { CallEnded } from '@beonauto/mcp';
 import { BrainContext, BrainWriter, Caller, messageIdOf, streamPrefixOfBrain } from '@beonauto/operations';
 import { DateTime, Effect, Exit, Ref, Semaphore } from 'effect';
 
@@ -16,17 +17,23 @@ interface Calls {
 }
 
 function causeOf(fact: ToolCallFact, calls: Calls): string {
-  return fact.type === 'tool_call_answered' ? (calls.started.get(fact.number) ?? calls.answered) : calls.answered;
+  return fact.type === 'tool_call_started' ? calls.answered : (calls.started.get(fact.data.number) ?? calls.answered);
 }
 
 function numberOf(fact: ToolCallFact, state: RunState): number {
-  return fact.type === 'tool_call_answered' ? fact.number : lastCallOf(state);
+  return fact.type === 'tool_call_started' ? lastCallOf(state) : fact.data.number;
 }
 
 function noted(fact: ToolCallFact, calls: Calls, number: number, id: string): Calls {
+  return fact.type === 'tool_call_started'
+    ? { ...calls, started: new Map([...calls.started, [number, id]]) }
+    : { ...calls, answered: id };
+}
+
+function endedFact(number: number, fact: CallEnded): ToolCallFact {
   return fact.type === 'tool_call_answered'
-    ? { ...calls, answered: id }
-    : { ...calls, started: new Map([...calls.started, [number, id]]) };
+    ? { type: fact.type, data: { number, ...fact.data } }
+    : { type: fact.type, data: { number, ...fact.data } };
 }
 
 export const toolCallJournal = Effect.fnUntraced(function* (id: string, lineage: RunLineage) {
@@ -43,7 +50,7 @@ export const toolCallJournal = Effect.fnUntraced(function* (id: string, lineage:
         const { state, version } = yield* writer.execute(
           runStreamNameOf(id),
           runDecider,
-          { type: 'tool_call', fact, by, at },
+          { type: 'tool_call', fact, runId: id, by, at },
           { causationId: causeOf(fact, known), correlationId: lineage.correlationId },
         );
         const number = numberOf(fact, startedRunOf(state));
@@ -52,8 +59,8 @@ export const toolCallJournal = Effect.fnUntraced(function* (id: string, lineage:
       }),
     );
   const journal: RunJournal = {
-    started: (fact) => append(fact).pipe(Effect.catchCause(() => Effect.undefined)),
-    answered: (fact) => append(fact).pipe(Effect.exit, Effect.map(Exit.isSuccess)),
+    started: (data) => append({ type: 'tool_call_started', data }).pipe(Effect.catchCause(() => Effect.undefined)),
+    ended: (number, fact) => append(endedFact(number, fact)).pipe(Effect.exit, Effect.map(Exit.isSuccess)),
     latest: Effect.map(Ref.get(calls), ({ answered }) => answered),
   };
   return journal;

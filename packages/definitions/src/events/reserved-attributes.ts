@@ -41,15 +41,21 @@ const brainTypes: Readonly<Record<FeedType, true>> = {
   run_cancel_requested: true,
   tool_call_started: true,
   tool_call_answered: true,
+  tool_call_failed: true,
   delivery_started: true,
-  delivery_ended: true,
+  delivery_succeeded: true,
+  delivery_failed: true,
+  delivery_refused: true,
   reply_taken: true,
   reply_refused: true,
   tool_test_started: true,
   tool_test_answered: true,
+  tool_test_failed: true,
   replies_read: true,
+  reading_failed: true,
   telling_started: true,
-  telling_ended: true,
+  telling_succeeded: true,
+  telling_failed: true,
   interaction_requested: true,
   definition_created: true,
   definition_updated: true,
@@ -84,14 +90,26 @@ export function isReservedSource(source: string): boolean {
   return reservedSourcePrefixes.some((prefix) => source.startsWith(prefix));
 }
 
-const lineageInWords = new Intl.ListFormat('en-GB', { type: 'conjunction' }).format(lineageAttributeNames);
+export const contextAttributeNames: readonly string[] = [
+  'caller',
+  'definitionversion',
+  'depth',
+  'calldepth',
+  'calledby',
+  'triggerkind',
+  'triggerreference',
+];
+
+const reservedAttributeNames: readonly string[] = [...lineageAttributeNames, ...contextAttributeNames];
+
+const reservedAttributesInWords = new Intl.ListFormat('en-GB', { type: 'conjunction' }).format(reservedAttributeNames);
 
 function lineageIssues(attributes: Attributes) {
-  return lineageAttributeNames
+  return reservedAttributeNames
     .filter((name) => Object.hasOwn(attributes, name))
     .map((name) => ({
       path: [name],
-      issue: `Expected no ${name}: ${lineageInWords} are the lineage the brain gives its own records, which no event may claim`,
+      issue: `Expected no ${name}: ${reservedAttributesInWords} are the lineage and context the brain gives its own records, which no event may claim`,
     }));
 }
 

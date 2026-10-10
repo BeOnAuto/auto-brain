@@ -1,4 +1,4 @@
-import type { Decider } from '@beonauto/operations';
+import type { Context, Decider } from '@beonauto/operations';
 import { Effect, Result, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -15,38 +15,39 @@ const getBrainAnalytics = defineGetBrainAnalytics([
   { ...echo, type: 'workflow' },
 ]);
 
-const runEvents: Decider<null, readonly RunEvent[], RunEvent> = {
+interface Writing {
+  readonly event: RunEvent;
+  readonly context: Context;
+}
+
+const runEvents: Decider<null, Writing, RunEvent> = {
   initialState: null,
   evolve: () => null,
-  decide: (events) => Result.succeed(events),
+  decide: ({ event }) => Result.succeed([event]),
+  context: ({ context }) => context,
   eventSchema: RunEventSchema,
 };
 
 const now = '2026-10-06T12:00:00.000Z';
 
-const fact = { by: 'acme-admin' };
+function ofTheRun(name: string, type: string, at: string) {
+  return { at, by: 'acme-admin', definitionType: type, definitionName: name, definitionVersion: 1 };
+}
 
 const usage = { input: { total: 1200, cache_read: 1000 }, output: { total: 300 } };
 
-function started(name: string, at: string, type = 'reasoning'): RunEvent {
-  return { type: 'run_started', definition_type: type, name, definition_version: 1, input: {}, ...fact, at };
+function started(name: string, at: string, type = 'reasoning'): Writing {
+  return { event: { type: 'run_started', data: { input: {} } }, context: ofTheRun(name, type, at) };
 }
 
-function succeeded(at: string, record: Schema.JsonObject = {}, name = 'triage', type = 'reasoning'): RunEvent {
-  return {
-    type: 'run_succeeded',
-    output: 'ok',
-    record,
-    definition_type: type,
-    name,
-    definition_version: 1,
-    ...fact,
-    at,
-  };
+function succeeded(at: string, record: Schema.JsonObject = {}, name = 'triage', type = 'reasoning'): Writing {
+  return { event: { type: 'run_succeeded', data: { output: 'ok', record } }, context: ofTheRun(name, type, at) };
 }
 
-function running(definitions: Harness, stream: string, ...events: readonly RunEvent[]): Promise<unknown> {
-  return Effect.runPromise(definitions.ledger.service.execute(stream, runEvents, events));
+function running(definitions: Harness, stream: string, ...events: readonly Writing[]): Promise<unknown> {
+  return Effect.runPromise(
+    Effect.forEach(events, (event) => definitions.ledger.service.execute(stream, runEvents, event)),
+  );
 }
 
 async function aBrainWithRuns(): Promise<Harness> {
@@ -59,14 +60,11 @@ async function aBrainWithRuns(): Promise<Harness> {
     succeeded('2026-10-05T09:00:01.000Z', { usage }),
   );
   await running(definitions, 'brain/acme/alpha/runs/r2', started('triage', '2026-10-05T10:00:00.000Z'), {
-    type: 'run_rejected',
-    rejection,
-    record: { usage: { input: { total: 10, cache_read: 0 }, output: { total: 2 } } },
-    definition_type: 'reasoning',
-    name: 'triage',
-    definition_version: 1,
-    ...fact,
-    at: '2026-10-05T10:00:00.500Z',
+    event: {
+      type: 'run_rejected',
+      data: { rejection, record: { usage: { input: { total: 10, cache_read: 0 }, output: { total: 2 } } } },
+    },
+    context: ofTheRun('triage', 'reasoning', '2026-10-05T10:00:00.500Z'),
   });
   await running(
     definitions,

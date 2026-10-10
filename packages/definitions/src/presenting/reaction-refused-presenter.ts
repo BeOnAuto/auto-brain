@@ -1,21 +1,22 @@
-import type { Presenter } from '@beonauto/operations';
+import type { Presenter, Recorded } from '@beonauto/operations';
 
 import { ReactionRefusedSchema, reactionsStreamKind, type ReactionRefused } from '../events/reaction-refusals.ts';
 import { reactionsRefused } from '../plain-language/event-words.ts';
+import { definitionNameOf } from '../registry/definition-registry.ts';
 import { cutAtCodePoint, mostDetailBytes, mostNameBytes } from './event-data.ts';
 import { eventPresenter, type Account } from './event-presenter.ts';
 
-function accountOf({ workflow, count, reason, minute }: ReactionRefused): Account {
-  const name = cutAtCodePoint(workflow, mostNameBytes);
+function accountOf({ data, context }: Recorded<ReactionRefused>): Account {
+  const { count, reason, minute } = data;
   return {
-    summary: reactionsRefused(name),
-    data: { workflow: name, count, reason: cutAtCodePoint(reason, mostDetailBytes), minute },
+    summary: reactionsRefused(cutAtCodePoint(definitionNameOf(context), mostNameBytes)),
+    data: { count, reason: cutAtCodePoint(reason, mostDetailBytes), minute },
   };
 }
 
-export const reactionRefusedPresenter: Presenter = eventPresenter<ReactionRefused['type'], ReactionRefused>({
+export const reactionRefusedPresenter: Presenter = eventPresenter<ReactionRefused>({
   streamKind: reactionsStreamKind,
   eventSchema: ReactionRefusedSchema,
-  publicNames: { reaction_refused: ['reaction_refused'] },
+  types: ['reaction_refused'],
   account: accountOf,
 });

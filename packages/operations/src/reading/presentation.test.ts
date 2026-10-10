@@ -1,33 +1,35 @@
 import { describe, expect, it } from 'vitest';
 
-import { presentationOf, streamKindOf, type Presenter, type PublicEvent, type RecordedEvent } from '../index.ts';
+import {
+  presentationOf,
+  streamKindOf,
+  type PresentedFact,
+  type Presenter,
+  type RecordedEvent,
+  type Showing,
+} from '../index.ts';
+import { nothingKept } from './kept-content.ts';
+
+const at = '2026-10-05T09:00:00.000Z';
 
 function recorded(stream: string, type: string): RecordedEvent {
   return {
     id: `${stream}:${type}`,
     cursor: `${stream}@${type}`,
-    causationId: null,
-    correlationId: null,
+    causationId: 'cause',
+    correlationId: 'top',
     stream,
-    version: 1,
-    globalPosition: 1,
+    version: 3,
+    globalPosition: 42,
     type,
     data: {},
-    context: { at: '2026-10-05T09:00:00.000Z', by: 'tester' },
-    recordedAt: '2026-10-05T09:00:00.000Z',
+    context: { at, by: 'tester' },
+    recordedAt: at,
   };
 }
 
-function shown({ id, cursor, type }: RecordedEvent): PublicEvent {
-  return {
-    id,
-    cursor,
-    causation_id: null,
-    at: '2026-10-05T09:00:00.000Z',
-    type: `shown_${type}`,
-    summary: 'Something happened.',
-    data: {},
-  };
+function shown({ type }: RecordedEvent): PresentedFact {
+  return { type: `shown_${type}`, summary: 'Something happened.', data: { text: 'small' } };
 }
 
 const notes: Presenter = {
@@ -42,7 +44,33 @@ const shelves: Presenter = {
   present: (record) => (record.stream.endsWith('/secret') ? [] : [shown(record)]),
 };
 
-const presentation = presentationOf([notes, shelves]);
+const steps: Presenter = {
+  streamKind: 'run-logs',
+  publicNames: { input_applied: ['applied', 'stepped'] },
+  present: (record, content) => [
+    { type: 'applied', summary: 'An input was applied.', data: { answer: content(record.type) ?? null } },
+    { type: 'stepped', summary: 'A step started.', data: {}, part: { number: 1, causedBy: 0 } },
+    { type: 'stepped', summary: 'A step ended.', data: {}, part: { number: 2, causedBy: 1 } },
+  ],
+};
+
+const presentation = presentationOf([notes, shelves, steps]);
+
+const showing: Showing = {
+  streamPrefix: 'brain/acme/alpha/',
+  content: nothingKept,
+  view: 'page',
+};
+
+const metadata = {
+  stream: 'brain/acme/alpha/notes',
+  position: 3,
+  global_position: 42,
+  correlation_id: 'top',
+  causation_id: 'cause',
+  at,
+  by: 'tester',
+};
 
 describe('the kind of a stream', () => {
   it.each([
@@ -55,22 +83,50 @@ describe('the kind of a stream', () => {
 });
 
 describe('the presentation of what a brain recorded', () => {
-  it('presents a record by the presenter of its stream kind', () => {
-    expect(presentation.present(recorded('notes', 'note_added'))).toEqual([shown(recorded('notes', 'note_added'))]);
-    expect(presentation.present(recorded('shelves/red', 'shelf_filled'))).toEqual([
-      shown(recorded('shelves/red', 'shelf_filled')),
+  it('presents a record by the presenter of its stream kind, with its id and its metadata', () => {
+    expect(presentation.present(recorded('notes', 'note_added'), showing)).toEqual([
+      {
+        id: 'notes:note_added',
+        type: 'shown_note_added',
+        summary: 'Something happened.',
+        data: { text: 'small' },
+        metadata,
+      },
+    ]);
+    expect(presentation.present(recorded('shelves/red', 'shelf_filled'), showing)).toEqual([
+      {
+        id: 'shelves/red:shelf_filled',
+        type: 'shown_shelf_filled',
+        summary: 'Something happened.',
+        data: { text: 'small' },
+        metadata: { ...metadata, stream: 'brain/acme/alpha/shelves/red' },
+      },
     ]);
   });
 
+  it('names each part of a record by the record id and its number, and its cause by the part it names', () => {
+    const record = recorded('run-logs/r1', 'input_applied');
+    const rows = presentation.present(record, { ...showing, content: (sha256) => `content of ${sha256}` });
+
+    expect(rows.map(({ id, metadata: { causation_id: cause } }) => [id, cause])).toEqual([
+      ['run-logs/r1:input_applied', 'cause'],
+      ['run-logs/r1:input_applied/1', 'run-logs/r1:input_applied'],
+      ['run-logs/r1:input_applied/2', 'run-logs/r1:input_applied/1'],
+    ]);
+    expect(rows[0]?.data).toEqual({ answer: 'content of input_applied' });
+  });
+});
+
+describe('the records a presentation shows', () => {
   it('hides a record of a kind without a presenter, of a type its presenter hides or does not know, or one its presenter hides', () => {
     expect(
       [
-        recorded('run-logs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', 'input_applied'),
+        recorded('definitions/reasoning', 'definition_created'),
         recorded('notes', 'note_dropped'),
         recorded('notes', 'note_burnt'),
         recorded('notes', 'constructor'),
         recorded('shelves/secret', 'shelf_filled'),
-      ].map((record) => presentation.present(record)),
+      ].map((record) => presentation.present(record, showing)),
     ).toEqual([[], [], [], [], []]);
   });
 
@@ -80,6 +136,8 @@ describe('the presentation of what a brain recorded', () => {
       'shown_note_kept',
       'shown_shelf_filled',
       'shown_shelf_counted',
+      'applied',
+      'stepped',
     ]);
     expect(presentation.storedTypesOf('shown_note_added')).toEqual(['note_added']);
     expect(presentation.storedTypesOf('shown_shelf_filled')).toEqual(['shelf_filled']);

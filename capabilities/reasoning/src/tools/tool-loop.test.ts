@@ -39,16 +39,18 @@ const aws = (): Promise<AwsCredentials> =>
 
 const asText = (reply: (text: string) => object) => (value: object) => reply(JSON.stringify(value));
 
+const anthropic: Provider = {
+  name: 'anthropic',
+  model: 'anthropic/claude-sonnet-4-5',
+  environment: { ANTHROPIC_API_KEY: 'k' },
+  toolCall: anthropicToolCall,
+  text: (text) => anthropicMessage(text),
+  json: asText((text) => anthropicMessage(text)),
+  native: ['"tool_use"', '"tool_result"'],
+};
+
 const providers: readonly Provider[] = [
-  {
-    name: 'anthropic',
-    model: 'anthropic/claude-sonnet-4-5',
-    environment: { ANTHROPIC_API_KEY: 'k' },
-    toolCall: anthropicToolCall,
-    text: (text) => anthropicMessage(text),
-    json: asText((text) => anthropicMessage(text)),
-    native: ['"tool_use"', '"tool_result"'],
-  },
+  anthropic,
   {
     name: 'openai',
     model: 'openai/gpt-5',
@@ -140,5 +142,32 @@ describe.each(providers)('the last step of a run that calls tools with $name', (
     expect(result.json).toEqual({ verdict: 'approve' });
     expect(last).toContain(toolsWithdrawn);
     expect(last).not.toContain(`"name":"${searchTool}"`);
+  });
+});
+
+describe('a run whose model calls have spent the input tokens the operator allows', () => {
+  it('answers from what the tools answered, with the tools withheld, though it may call more', async () => {
+    const { tools, calls } = scriptedTools({ endAfter: 25, mostInputTokens: 30 });
+
+    const { result, last } = await twoSteps(anthropic, anthropic.text('Acme has 2 rows.'), (model) =>
+      textRequest(model, { tools }),
+    );
+
+    expect(result.text).toBe('Acme has 2 rows.');
+    expect(calls()).toHaveLength(1);
+    expect(last).toContain(toolsWithdrawn);
+  });
+});
+
+describe('a call of a run whose model has a known context window', () => {
+  it('gives the tool the room the answer has beside the conversation so far, within the window', async () => {
+    const { tools, calls } = scriptedTools({ contextWindow: 10_000 });
+
+    await twoSteps(anthropic, anthropic.text('Acme has 2 rows.'), (model) => textRequest(model, { tools }));
+    const rooms = calls().map(({ room }) => Number(room));
+
+    expect(rooms).toHaveLength(1);
+    expect(Math.min(...rooms)).toBeGreaterThan(0);
+    expect(Math.max(...rooms)).toBeLessThan((10_000 - 256) * 3);
   });
 });

@@ -1,54 +1,50 @@
-import { presentationOf } from '@beonauto/operations';
-import { Schema } from 'effect';
+import { presentationOf, type RecordedEvent, type Context } from '@beonauto/operations';
+import { nothingKept } from '@beonauto/operations/testing';
 import { describe, expect, it } from 'vitest';
 
-import { ReactionRefusedSchema, type ReactionRefused } from '../events/reaction-refusals.ts';
 import { makeDefinitionPresenters } from '../index.ts';
 import { echo } from '../testing/echo.ts';
 
 const { present } = presentationOf(makeDefinitionPresenters([echo]));
 
-const encode = Schema.encodeSync(Schema.toCodecJson(ReactionRefusedSchema));
+function recordOf(stream: string, type: string, data: unknown, context: Context): RecordedEvent {
+  return {
+    id: '5c6f1a43-0d6e-5b2a-9c1e-7e3f2a1b0c9d',
+    cursor: 'c-1',
+    causationId: null,
+    correlationId: null,
+    stream,
+    version: 1,
+    globalPosition: 1,
+    type,
+    data,
+    context,
+    recordedAt: '2026-10-01T09:00:02.000Z',
+  };
+}
 
-const refused: ReactionRefused = {
-  type: 'reaction_refused',
-  workflow: 'close-the-month',
-  count: 3,
-  reason:
-    'An event matched the event trigger of the workflow at reaction depth 9, past the 8 a chain of reactions may reach',
-  minute: '2026-10-01T09:00:00.000Z',
-  at: '2026-10-01T09:01:00.000Z',
-};
+const showing = { streamPrefix: 'brain/acme/alpha/', content: nothingKept, view: 'page' } as const;
+
+const reason =
+  'An event matched the event trigger of the workflow at reaction depth 9, past the 8 a chain of reactions may reach';
 
 describe('the presenter of the refused reactions of a workflow', () => {
-  it('says in words that the workflow was not started every time its triggers called for it, and gives the count and the last reason', () => {
-    expect(
-      present({
-        id: '5c6f1a43-0d6e-5b2a-9c1e-7e3f2a1b0c9e',
-        cursor: 'c-1',
-        causationId: null,
-        correlationId: null,
-        stream: 'reactions/close-the-month',
-        version: 1,
-        type: 'reaction_refused',
-        data: encode(refused),
-        recordedAt: '2026-10-01T09:01:00.000Z',
-      }),
-    ).toEqual([
+  it('says in words that the workflow of its context was not started every time its triggers called for it, and gives the count and the last reason', () => {
+    const context = {
+      at: '2026-10-01T09:01:00.000Z',
+      by: 'brain:alpha',
+      definitionType: 'workflow',
+      definitionName: 'close-the-month',
+    };
+    const data = { count: 3, reason, minute: '2026-10-01T09:00:00.000Z' };
+
+    expect(present(recordOf('reactions/close-the-month', 'reaction_refused', data, context), showing)).toMatchObject([
       {
-        id: '5c6f1a43-0d6e-5b2a-9c1e-7e3f2a1b0c9e',
-        cursor: 'c-1',
-        causation_id: null,
-        at: '2026-10-01T09:01:00.000Z',
         type: 'reaction_refused',
         summary:
           'The workflow “close-the-month” was not started every time its triggers called for it in a minute; the details say how often and why.',
-        data: {
-          workflow: 'close-the-month',
-          count: 3,
-          reason: refused.reason,
-          minute: '2026-10-01T09:00:00.000Z',
-        },
+        data,
+        metadata: { definition: { type: 'workflow', name: 'close-the-month' } },
       },
     ]);
   });

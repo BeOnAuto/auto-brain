@@ -29,12 +29,14 @@ export interface RunTools {
   readonly calledAny: () => boolean;
   readonly calledOnlyReadOnly: () => boolean;
   readonly usedInWords: () => string;
+  readonly answeredBytes: () => number;
   readonly close: () => Promise<void>;
 }
 
 export function runTools(parts: RunToolsParts): RunTools {
   let tally = noCalls;
   let ending: ToolsEnding | undefined;
+  let answeredBytes = 0;
   const used: OfferedOnServer[] = [];
   const stop = new AbortController();
   const state: RunState = {
@@ -48,6 +50,9 @@ export function runTools(parts: RunToolsParts): RunTools {
     ended: (because) => {
       ending ??= { because };
       stop.abort();
+    },
+    answered: (bytes) => {
+      answeredBytes += bytes;
     },
   };
   const offered = modelFacingNames(parts.offered).map((tool): OfferedTool => ({
@@ -65,6 +70,7 @@ export function runTools(parts: RunToolsParts): RunTools {
     calledAny: () => used.length > 0,
     calledOnlyReadOnly: () => used.every(({ tool }) => isReadOnly(tool.annotations)),
     usedInWords: () => toolsInWords(used.map(({ reference }) => reference)),
+    answeredBytes: () => answeredBytes,
     close: async () => {
       await Promise.all(parts.slots.map((slot) => slot.release()));
     },

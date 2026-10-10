@@ -34,7 +34,7 @@ await test('reasoning guides retain tool-use limits and side-effect-aware retrie
     assert.ok(guide.includes('tools_unfinished'));
     assert.ok(guide.includes('tools_called'));
     assert.ok(guide.includes('25'));
-    assert.ok(guide.includes('256 KiB'));
+    assert.ok(guide.includes('REASONING_MAX_INPUT_TOKENS'));
     assert.ok(guide.includes('16 KiB'));
   }
   assert.ok(publicGuide.includes('Inspect its history and any external effects'));
@@ -50,6 +50,6 @@ await test('MCP configuration documents recording and credential boundaries', ()
   assert.ok(configuration.includes('a value shorter than 8 characters is not'));
   assert.ok(configuration.includes('anyone who may read the brain reads them'));
   assert.ok(http.includes('`tool_call_started` and `tool_call_answered`'));
-  assert.ok(http.includes('Content is omitted unless the operator enables `record_content`'));
+  assert.ok(http.includes('unless the operator turns `record_content` off for the server'));
   assert.ok(http.includes('absence of an answer does not prove it was cancelled before acting'));
 });

@@ -1,4 +1,4 @@
-import { Conflict } from '@beonauto/operations';
+import { Conflict, type Recorded } from '@beonauto/operations';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -6,37 +6,29 @@ import { brainFactOf } from '../events/brain-facts.ts';
 import type { RunCommand, ReplyFact } from '../runs/run-commands.ts';
 import { runDecider } from '../runs/run-decider.ts';
 import type { RunEvent } from '../runs/run-events.ts';
+import { recordedWith, runStateAfter, testRunId } from '../testing/run-facts.ts';
 
-const start = { by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
+const start = { runId: testRunId, by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
 
-const during = { by: 'brain:alpha', at: '2026-10-01T09:00:07.000Z' };
+const during = { runId: testRunId, by: 'brain:alpha', at: '2026-10-01T09:00:07.000Z' };
 
-const ofApproval = { definition_type: 'interaction', name: 'approve-brief', definition_version: 3 };
+const ofApproval = { definitionType: 'interaction', definitionName: 'approve-brief', definitionVersion: 3 };
 
-const started: RunEvent = {
+const meanwhile = recordedWith({ ...during, ...ofApproval });
+
+const started = recordedWith({ ...start, ...ofApproval })({
   type: 'run_started',
-  ...ofApproval,
-  input: { owner: 'U024BE7LH' },
-  finishes_later: true,
-  ...start,
-};
+  data: { input: { owner: 'U024BE7LH' }, finishes_later: true },
+});
 
-const deferred: RunEvent = {
-  type: 'run_deferred',
-  record: { to: 'U024BE7LH' },
-  ...ofApproval,
-  ...during,
-};
+const deferred = meanwhile({ type: 'run_deferred', data: { record: { to: 'U024BE7LH' } } });
 
-const cancelAsked: RunEvent = {
+const cancelAsked = meanwhile({
   type: 'run_cancel_requested',
-  kind: 'requested',
-  reason: 'No longer needed',
-  ...ofApproval,
-  ...during,
-};
+  data: { kind: 'requested', reason: 'No longer needed' },
+});
 
-const succeeded: RunEvent = { type: 'run_succeeded', output: {}, record: {}, ...ofApproval, ...during };
+const succeeded = meanwhile({ type: 'run_succeeded', data: { output: {}, record: {} } });
 
 function reply(id: string) {
   return { id, sender: 'U024BE7LH' };
@@ -44,38 +36,41 @@ function reply(id: string) {
 
 const reading = { server: 'chat', tool: 'thread_replies' };
 
-const taken: ReplyFact = {
-  type: 'reply_taken',
-  ...reading,
-  reply: reply('1699.2'),
-  answer: { choice: 'approve' },
-};
-
-function refusal(id: string): ReplyFact {
-  return { type: 'reply_refused', ...reading, reply: reply(id), because: 'not_an_answer', told: true };
+function takenAs(id: string): ReplyFact {
+  return { type: 'reply_taken', data: { ...reading, reply: reply(id), answer: { choice: 'approve' } } };
 }
 
-function stateAfter(...events: readonly RunEvent[]) {
-  return events.reduce((state, event) => runDecider.evolve(state, event), runDecider.initialState);
+const taken = takenAs('1699.2');
+
+function refusal(id: string): ReplyFact {
+  return { type: 'reply_refused', data: { ...reading, reply: reply(id), because: 'not_an_answer', told: true } };
+}
+
+function stateAfter(...events: readonly Recorded<RunEvent>[]) {
+  return runStateAfter(events);
 }
 
 function replying(fact: ReplyFact): RunCommand {
   return { type: 'reply', fact, ...during };
 }
 
-function decided(fact: ReplyFact, ...history: readonly RunEvent[]) {
+function decided(fact: ReplyFact, ...history: readonly Recorded<RunEvent>[]) {
   return runDecider.decide(replying(fact), stateAfter(...history));
 }
 
-function recorded(fact: ReplyFact): RunEvent {
-  return { ...fact, ...ofApproval, ...during };
+function recorded(fact: ReplyFact): Recorded<RunEvent> {
+  return meanwhile(fact);
 }
 
 const refusedTen = Array.from({ length: 10 }, (_, index) => recorded(refusal(`1699.${index + 10}`)));
 
 describe('a reply a run takes as its answer', () => {
-  it('is recorded with the definition, and kept as the answer brought back with the reply as evidence', () => {
-    expect(decided(taken, started, deferred)).toStrictEqual(Result.succeed([recorded(taken)]));
+  it('is recorded, with the definition as its context, and kept as the answer brought back with the reply as evidence', () => {
+    expect(decided(taken, started, deferred)).toStrictEqual(Result.succeed([taken]));
+    expect(runDecider.context(replying(taken), stateAfter(started, deferred))).toStrictEqual({
+      ...during,
+      ...ofApproval,
+    });
     expect(stateAfter(started, deferred, recorded(taken))).toMatchObject({
       broughtAnswer: { answer: { choice: 'approve' }, at: during.at, reply: reply('1699.2') },
       repliesSeen: ['1699.2'],
@@ -87,7 +82,7 @@ describe('a reply a run takes as its answer', () => {
     const answered = new Conflict({ detail: 'The run was answered by a reply already, so it takes no further reply' });
 
     expect([
-      decided({ ...taken, reply: reply('1699.4') }, started, deferred, recorded(taken)),
+      decided(takenAs('1699.4'), started, deferred, recorded(taken)),
       decided(refusal('1699.5'), started, deferred, recorded(taken)),
     ]).toEqual([Result.fail(answered), Result.fail(answered)]);
   });
@@ -95,15 +90,15 @@ describe('a reply a run takes as its answer', () => {
 
 describe('a reply a run refuses', () => {
   it('is recorded and counted, at most ten of them, past which the run records no more', () => {
-    expect(decided(refusal('1699.3'), started, deferred)).toStrictEqual(Result.succeed([recorded(refusal('1699.3'))]));
+    expect(decided(refusal('1699.3'), started, deferred)).toStrictEqual(Result.succeed([refusal('1699.3')]));
     expect(stateAfter(started, deferred, ...refusedTen)).toMatchObject({ replyRefusals: 10, broughtAnswer: null });
     expect(decided(refusal('1699.30'), started, deferred, ...refusedTen)).toEqual(
       Result.fail(
         new Conflict({ detail: 'The run has refused 10 replies, the most it records, so it records no more' }),
       ),
     );
-    expect(decided({ ...taken, reply: reply('1699.31') }, started, deferred, ...refusedTen)).toStrictEqual(
-      Result.succeed([recorded({ ...taken, reply: reply('1699.31') })]),
+    expect(decided(takenAs('1699.31'), started, deferred, ...refusedTen)).toStrictEqual(
+      Result.succeed([takenAs('1699.31')]),
     );
   });
 });
@@ -137,10 +132,12 @@ function recordOf(fact: ReplyFact) {
     cursor: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
     causationId: null,
     correlationId: null,
-    stream: 'runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
+    stream: `runs/${testRunId}`,
     version: 3,
+    globalPosition: 3,
     type: fact.type,
-    data: recorded(fact),
+    data: fact.data,
+    context: { ...during, ...ofApproval },
     recordedAt: during.at,
   };
 }

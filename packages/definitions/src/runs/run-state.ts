@@ -1,9 +1,8 @@
+import type { CalledBy, Context, Recorded, StartingTrigger } from '@beonauto/operations';
 import type { Schema } from 'effect';
 
-import type { StartingTrigger } from '../registry/definition-triggers.ts';
 import type { RunResult } from './run-commands.ts';
 import type {
-  CalledBy,
   CancelRequestKind,
   DeliveryEnded,
   RunEvent,
@@ -79,22 +78,16 @@ function callsBefore(earlier: RunState): CallsBefore {
       };
 }
 
-function startedRun(event: RunStarted, earlier: RunState): RecordedRunState {
-  const {
-    definition_type: type,
-    name,
-    definition_version,
-    input,
-    calls_tools,
-    finishes_later,
-    depth = 0,
-    by,
-    at,
-  } = event;
-  const { call_depth: callDepth = 0, called_by: calledBy, trigger } = event;
+function definitionOf({ definitionType, definitionName, definitionVersion }: Context) {
+  return { type: definitionType ?? '', name: definitionName ?? '', definition_version: definitionVersion ?? 0 };
+}
+
+function startedRun({ data, context }: Recorded<RunStarted>, earlier: RunState): RecordedRunState {
+  const { input, calls_tools, finishes_later } = data;
+  const { at, by, depth = 0, callDepth = 0, calledBy, trigger } = context;
   return {
     input,
-    run: { type, name, definition_version, status: 'started', started_at: at, started_by: by },
+    run: { ...definitionOf(context), status: 'started', started_at: at, started_by: by },
     finishesLater: finishes_later === true,
     deferred: false,
     callsTools: calls_tools === true,
@@ -112,13 +105,13 @@ function startedRun(event: RunStarted, earlier: RunState): RecordedRunState {
 }
 
 function resultOf(event: RunFinished): RunResult {
-  if (event.type === 'run_succeeded') {
-    return { type: event.type, output: event.output, record: event.record };
-  }
   if (event.type === 'run_rejected') {
-    return { type: event.type, rejection: event.rejection };
+    return { type: event.type, data: { rejection: event.data.rejection } };
   }
-  return event.incident === undefined ? { type: event.type } : { type: event.type, incident: event.incident };
+  if (event.type === 'run_succeeded') {
+    return { type: event.type, data: event.data };
+  }
+  return { type: event.type, data: event.data };
 }
 
 function finishedRecord(
@@ -128,68 +121,73 @@ function finishedRecord(
 ): RunRecord {
   const attempt = { type, name, definition_version, started_at, started_by, finished_at: at };
   if (result.type === 'run_succeeded') {
-    return { ...attempt, status: 'succeeded', output: result.output };
+    return { ...attempt, status: 'succeeded', output: result.data.output };
   }
   if (result.type === 'run_rejected') {
-    return { ...attempt, status: 'rejected', rejection: result.rejection };
+    return { ...attempt, status: 'rejected', rejection: result.data.rejection };
   }
   return { ...attempt, status: 'failed' };
 }
 
 function recordOf(event: RunFinished): Schema.JsonObject | undefined {
-  return event.type === 'run_failed' ? undefined : event.record;
+  return event.type === 'run_failed' ? undefined : event.data.record;
 }
 
-function finishedRun(state: RecordedRunState, event: RunFinished): RecordedRunState {
+function finishedRun(state: RecordedRunState, event: Recorded<RunFinished>): RecordedRunState {
   const result = resultOf(event);
-  const finished = { ...state, run: finishedRecord(state.run, result, event.at), result };
+  const finished = { ...state, run: finishedRecord(state.run, result, event.context.at), result };
   const record = recordOf(event);
   return record === undefined ? finished : { ...finished, record };
 }
 
-function endedDelivery(state: RecordedRunState, { outcome, at }: DeliveryEnded): RecordedRunState {
+function endedDelivery(state: RecordedRunState, { type, context }: Recorded<DeliveryEnded>): RecordedRunState {
   const ended = { ...state, deliveryInFlight: null };
-  return outcome === 'delivered' ? { ...ended, deliveredAt: at } : ended;
+  return type === 'delivery_succeeded' ? { ...ended, deliveredAt: context.at } : ended;
 }
 
-function repliedTo(state: RecordedRunState, event: ReplyEvent): RecordedRunState {
-  const seen = { ...state, repliesSeen: [...state.repliesSeen, event.reply.id] };
-  if (event.type === 'reply_refused') {
+function repliedTo(state: RecordedRunState, { type, data, context }: Recorded<ReplyEvent>): RecordedRunState {
+  const seen = { ...state, repliesSeen: [...state.repliesSeen, data.reply.id] };
+  if (type === 'reply_refused') {
     return { ...seen, replyRefusals: state.replyRefusals + 1 };
   }
-  const { answer, at, reply } = event;
-  return { ...seen, broughtAnswer: { answer, at, reply } };
+  return { ...seen, broughtAnswer: { answer: data.answer, at: context.at, reply: data.reply } };
 }
 
-function evolveStarted(state: RecordedRunState, event: Exclude<RunEvent, RunStarted>): RecordedRunState {
+function evolveWork(state: RecordedRunState, event: Recorded<Exclude<RunEvent, RunStarted>>): RecordedRunState {
   if (event.type === 'reply_taken' || event.type === 'reply_refused') {
     return repliedTo(state, event);
   }
   if (event.type === 'tool_call_started') {
     return {
       ...state,
-      lastCall: event.number,
+      lastCall: event.data.number,
       mayHaveChanged: true,
-      calledOnlyReadOnly: state.calledOnlyReadOnly && event.read_only === true,
+      calledOnlyReadOnly: state.calledOnlyReadOnly && event.data.read_only === true,
     };
   }
   if (event.type === 'delivery_started') {
-    return { ...state, lastCall: event.number, deliveryInFlight: event.number };
+    return { ...state, lastCall: event.data.number, deliveryInFlight: event.data.number };
   }
-  if (event.type === 'delivery_ended') {
+  if (event.type === 'delivery_succeeded' || event.type === 'delivery_failed' || event.type === 'delivery_refused') {
     return endedDelivery(state, event);
   }
-  if (event.type === 'tool_call_answered') {
-    return state;
-  }
-  if (event.type === 'run_cancel_requested') {
-    const { kind, reason, by } = event;
-    return { ...state, cancel: { kind, reason, by } };
-  }
-  return event.type === 'run_deferred' ? { ...state, deferred: true, record: event.record } : finishedRun(state, event);
+  return state;
 }
 
-export function evolveRun(state: RunStreamState, event: RunEvent): RunStreamState {
+function evolveStarted(state: RecordedRunState, event: Recorded<Exclude<RunEvent, RunStarted>>): RecordedRunState {
+  if (event.type === 'run_cancel_requested') {
+    const { kind, reason } = event.data;
+    return { ...state, cancel: { kind, reason, by: event.context.by } };
+  }
+  if (event.type === 'run_deferred') {
+    return { ...state, deferred: true, record: event.data.record };
+  }
+  return event.type === 'run_succeeded' || event.type === 'run_rejected' || event.type === 'run_failed'
+    ? finishedRun(state, event)
+    : evolveWork(state, event);
+}
+
+export function evolveRun(state: RunStreamState, event: Recorded<RunEvent>): RunStreamState {
   if (event.type === 'run_started') {
     return startedRun(event, startedRunOf(state));
   }
@@ -198,8 +196,8 @@ export function evolveRun(state: RunStreamState, event: RunEvent): RunStreamStat
     return evolveStarted(run, event);
   }
   if (state === undefined && event.type === 'run_cancel_requested') {
-    const { kind, reason, by } = event;
-    return { cancelledBeforeStart: { kind, reason, by } };
+    const { kind, reason } = event.data;
+    return { cancelledBeforeStart: { kind, reason, by: event.context.by } };
   }
   return state;
 }

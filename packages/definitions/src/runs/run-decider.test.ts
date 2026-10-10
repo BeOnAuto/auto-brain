@@ -1,58 +1,61 @@
-import { Conflict } from '@beonauto/operations';
+import { Conflict, type Context, type Recorded } from '@beonauto/operations';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { recordedWith, runStateAfter, testRunId } from '../testing/run-facts.ts';
 import type { RunCommand, RunResult } from './run-commands.ts';
 import { runDecider, runStreamNameOf } from './run-decider.ts';
 import type { RunEvent } from './run-events.ts';
 import { startedRunOf } from './run-state.ts';
 
-const start = { by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
+const start = { runId: testRunId, by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
 
-const finish = { by: 'acme-admin', at: '2026-10-01T09:00:05.000Z' };
+const finish = { runId: testRunId, by: 'acme-admin', at: '2026-10-01T09:00:05.000Z' };
+
+const ofGreet = { definitionType: 'echo', definitionName: 'greet', definitionVersion: 1 };
 
 const greeting = { definition_type: 'echo', name: 'greet', input: { who: 'Ada', tags: ['a', 'b'] } };
 
-const started: RunEvent = { type: 'run_started', ...greeting, definition_version: 1, ...start };
+const started: RunEvent = { type: 'run_started', data: { input: greeting.input } };
 
-const ofGreet = { definition_type: 'echo', name: 'greet', definition_version: 1 };
+const succeeded: RunResult = { type: 'run_succeeded', data: { output: 'Hello Ada', record: { model: 'x' } } };
 
-const succeeded: RunEvent = {
-  type: 'run_succeeded',
-  output: 'Hello Ada',
-  record: { model: 'x' },
-  ...ofGreet,
-  ...finish,
-};
-
-const rejectedInput: RunEvent = {
+const rejectedInput: RunResult = {
   type: 'run_rejected',
-  rejection: { reason: 'invalid_input', detail: 'No', issues: [{ detail: 'Expected a name', pointer: '/input/who' }] },
-  ...ofGreet,
-  ...finish,
+  data: {
+    rejection: {
+      reason: 'invalid_input',
+      detail: 'No',
+      issues: [{ detail: 'Expected a name', pointer: '/input/who' }],
+    },
+  },
 };
 
-const unavailable: RunEvent = {
+const unavailable: RunResult = {
   type: 'run_rejected',
-  rejection: { reason: 'unavailable', detail: 'The model is busy' },
-  ...ofGreet,
-  ...finish,
+  data: { rejection: { reason: 'unavailable', detail: 'The model is busy' } },
 };
 
-const conflicted: RunEvent = {
+const conflicted: RunResult = {
   type: 'run_rejected',
-  rejection: { reason: 'conflict', detail: 'The model takes no seed; update the definition' },
-  ...ofGreet,
-  ...finish,
+  data: { rejection: { reason: 'conflict', detail: 'The model takes no seed; update the definition' } },
 };
 
-const failed: RunEvent = { type: 'run_failed', ...ofGreet, ...finish };
+const failed: RunResult = { type: 'run_failed', data: {} };
 
-function stateAfter(...events: readonly RunEvent[]) {
-  return events.reduce((state, event) => runDecider.evolve(state, event), runDecider.initialState);
+const atTheStart: Context = { ...start, ...ofGreet };
+
+const atTheFinish: Context = { ...finish, ...ofGreet };
+
+const startedAt = recordedWith(atTheStart);
+
+const finishedAt = recordedWith(atTheFinish);
+
+function stateAfter(...events: readonly Recorded<RunEvent>[]) {
+  return runStateAfter(events);
 }
 
-function decided(command: RunCommand, ...history: readonly RunEvent[]) {
+function decided(command: RunCommand, ...history: readonly Recorded<RunEvent>[]) {
   return runDecider.decide(command, stateAfter(...history));
 }
 
@@ -69,78 +72,111 @@ const anotherRequest = new Conflict({
 });
 
 describe('starting a run', () => {
-  it('records the definition, its version, the input, who started it and when', () => {
+  it('records the input, with the definition, its version, who started it and when as its context', () => {
     expect(decided(starting())).toStrictEqual(Result.succeed([started]));
+    expect(runDecider.context(starting(), runDecider.initialState)).toStrictEqual(atTheStart);
   });
 
   it('records it again when it never finished, at the version given', () => {
-    expect(decided(starting({}, 2), started)).toStrictEqual(Result.succeed([{ ...started, definition_version: 2 }]));
+    expect(decided(starting({}, 2), startedAt(started))).toStrictEqual(Result.succeed([started]));
+    expect(runDecider.context(starting({}, 2), stateAfter(startedAt(started)))).toMatchObject({
+      definitionVersion: 2,
+    });
   });
 
   it('records it again after unavailable, a conflict or a failure, which are no final result', () => {
-    expect(decided(starting(), started, unavailable)).toStrictEqual(Result.succeed([started]));
-    expect(decided(starting({}, 2), started, conflicted)).toStrictEqual(
-      Result.succeed([{ ...started, definition_version: 2 }]),
-    );
-    expect(decided(starting(), started, failed)).toStrictEqual(Result.succeed([started]));
+    expect([
+      decided(starting(), startedAt(started), finishedAt(unavailable)),
+      decided(starting({}, 2), startedAt(started), finishedAt(conflicted)),
+      decided(starting(), startedAt(started), finishedAt(failed)),
+    ]).toStrictEqual([Result.succeed([started]), Result.succeed([started]), Result.succeed([started])]);
   });
 
   it('records nothing once the run has a final result', () => {
-    expect(decided(starting(), started, succeeded)).toStrictEqual(Result.succeed([]));
-    expect(decided(starting(), started, rejectedInput)).toStrictEqual(Result.succeed([]));
+    expect(decided(starting(), startedAt(started), finishedAt(succeeded))).toStrictEqual(Result.succeed([]));
+    expect(decided(starting(), startedAt(started), finishedAt(rejectedInput))).toStrictEqual(Result.succeed([]));
   });
 
   it('takes the same input in any key order', () => {
-    expect(decided(starting({ input: { tags: ['a', 'b'], who: 'Ada' } }), started, succeeded)).toStrictEqual(
-      Result.succeed([]),
-    );
+    expect(
+      decided(starting({ input: { tags: ['a', 'b'], who: 'Ada' } }), startedAt(started), finishedAt(succeeded)),
+    ).toStrictEqual(Result.succeed([]));
   });
 
   it('is rejected for another type, another definition or another input under the same id', () => {
-    expect(decided(starting({ definition_type: 'probe' }), started)).toEqual(Result.fail(anotherRequest));
-    expect(decided(starting({ name: 'wave' }), started, succeeded)).toEqual(Result.fail(anotherRequest));
-    expect(decided(starting({ input: { who: 'Bob' } }), started, failed)).toEqual(Result.fail(anotherRequest));
-    expect(decided(starting({ input: { who: 'Ada', tags: ['b', 'a'] } }), started)).toEqual(
+    expect([
+      decided(starting({ definition_type: 'probe' }), startedAt(started)),
+      decided(starting({ name: 'wave' }), startedAt(started), finishedAt(succeeded)),
+      decided(starting({ input: { who: 'Bob' } }), startedAt(started), finishedAt(failed)),
+      decided(starting({ input: { who: 'Ada', tags: ['b', 'a'] } }), startedAt(started)),
+    ]).toEqual([
       Result.fail(anotherRequest),
-    );
+      Result.fail(anotherRequest),
+      Result.fail(anotherRequest),
+      Result.fail(anotherRequest),
+    ]);
   });
 });
 
 describe('finishing a run', () => {
-  it('records how a started run ended, with who finished it and when', () => {
-    expect(
-      decided(finishing({ type: 'run_succeeded', output: 'Hello Ada', record: { model: 'x' } }), started),
-    ).toStrictEqual(Result.succeed([succeeded]));
-    expect(decided(finishing({ type: 'run_failed' }), started)).toStrictEqual(Result.succeed([failed]));
+  it('records how a started run ended, with who finished it and when as its context', () => {
+    const state = stateAfter(startedAt(started));
+
+    expect(decided(finishing(succeeded), startedAt(started))).toStrictEqual(Result.succeed([succeeded]));
+    expect(decided(finishing(failed), startedAt(started))).toStrictEqual(Result.succeed([failed]));
+    expect(runDecider.context(finishing(failed), state)).toStrictEqual(atTheFinish);
   });
 
-  it('records the type, the name and the version of the definition the latest attempt ran', () => {
-    expect(
-      decided(finishing({ type: 'run_failed' }), started, unavailable, { ...started, definition_version: 2 }),
-    ).toStrictEqual(Result.succeed([{ ...failed, definition_version: 2 }]));
+  it('takes the type, the name and the version of the definition the latest attempt ran as its context', () => {
+    const state = stateAfter(
+      startedAt(started),
+      finishedAt(unavailable),
+      recordedWith({ ...atTheStart, definitionVersion: 2 })(started),
+    );
+
+    expect(runDecider.context(finishing(failed), state)).toStrictEqual({ ...atTheFinish, definitionVersion: 2 });
   });
 
   it('records the result of another attempt after unavailable or a failure', () => {
-    expect(
-      decided(finishing({ type: 'run_succeeded', output: 'Hello Ada', record: { model: 'x' } }), started, unavailable),
-    ).toStrictEqual(Result.succeed([succeeded]));
+    expect(decided(finishing(succeeded), startedAt(started), finishedAt(unavailable))).toStrictEqual(
+      Result.succeed([succeeded]),
+    );
   });
 
   it('records nothing once the run has a final result, nor for a run that never started', () => {
-    expect(decided(finishing({ type: 'run_failed' }), started, succeeded)).toStrictEqual(Result.succeed([]));
-    expect(decided(finishing({ type: 'run_failed' }), started, rejectedInput)).toStrictEqual(Result.succeed([]));
-    expect(decided(finishing({ type: 'run_failed' }))).toStrictEqual(Result.succeed([]));
+    expect([
+      decided(finishing(failed), startedAt(started), finishedAt(succeeded)),
+      decided(finishing(failed), startedAt(started), finishedAt(rejectedInput)),
+      decided(finishing(failed)),
+    ]).toStrictEqual([Result.succeed([]), Result.succeed([]), Result.succeed([])]);
+    expect(runDecider.context(finishing(failed), runDecider.initialState)).toStrictEqual(finish);
   });
 });
 
+const recordedState = {
+  finishesLater: false,
+  deferred: false,
+  callsTools: false,
+  lastCall: 0,
+  mayHaveChanged: false,
+  calledOnlyReadOnly: true,
+  deliveryInFlight: null,
+  broughtAnswer: null,
+  deliveredAt: null,
+  repliesSeen: [],
+  replyRefusals: 0,
+  depth: 0,
+  callDepth: 0,
+};
+
 describe('a run', () => {
   it('lives in a stream of its own, named after its id', () => {
-    expect(runStreamNameOf('0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a')).toBe('runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a');
+    expect(runStreamNameOf(testRunId)).toBe(`runs/${testRunId}`);
   });
 
   it('starts unknown and holds its input and how its latest attempt went', () => {
     expect(stateAfter()).toBeUndefined();
-    expect(stateAfter(started, unavailable)).toStrictEqual({
+    expect(stateAfter(startedAt(started), finishedAt(unavailable))).toStrictEqual({
       input: greeting.input,
       run: {
         type: 'echo',
@@ -152,27 +188,17 @@ describe('a run', () => {
         started_by: start.by,
         finished_at: finish.at,
       },
-      finishesLater: false,
-      deferred: false,
-      callsTools: false,
-      lastCall: 0,
-      mayHaveChanged: false,
-      calledOnlyReadOnly: true,
-      deliveryInFlight: null,
-      broughtAnswer: null,
-      deliveredAt: null,
-      repliesSeen: [],
-      replyRefusals: 0,
-      depth: 0,
-      callDepth: 0,
-      result: { type: 'run_rejected', rejection: { reason: 'unavailable', detail: 'The model is busy' } },
+      ...recordedState,
+      result: { type: 'run_rejected', data: { rejection: { reason: 'unavailable', detail: 'The model is busy' } } },
     });
   });
 });
 
 describe('a run started again', () => {
   it('holds how its latest attempt went, at the version that attempt ran', () => {
-    expect(stateAfter(started, unavailable, { ...started, definition_version: 2 }, succeeded)).toStrictEqual({
+    const again = recordedWith({ ...atTheStart, definitionVersion: 2 })(started);
+
+    expect(stateAfter(startedAt(started), finishedAt(unavailable), again, finishedAt(succeeded))).toStrictEqual({
       input: greeting.input,
       run: {
         type: 'echo',
@@ -184,28 +210,16 @@ describe('a run started again', () => {
         started_by: start.by,
         finished_at: finish.at,
       },
-      finishesLater: false,
-      deferred: false,
-      callsTools: false,
-      lastCall: 0,
-      mayHaveChanged: false,
-      calledOnlyReadOnly: true,
-      deliveryInFlight: null,
-      broughtAnswer: null,
-      deliveredAt: null,
-      repliesSeen: [],
-      replyRefusals: 0,
-      depth: 0,
-      callDepth: 0,
+      ...recordedState,
       record: { model: 'x' },
-      result: { type: 'run_succeeded', output: 'Hello Ada', record: { model: 'x' } },
+      result: succeeded,
     });
   });
 });
 
 describe('the attempts of a run', () => {
   it('hold a failure without an output or a rejection', () => {
-    expect(startedRunOf(stateAfter(started, failed))?.run).toStrictEqual({
+    expect(startedRunOf(stateAfter(startedAt(started), finishedAt(failed)))?.run).toStrictEqual({
       type: 'echo',
       name: 'greet',
       definition_version: 1,
@@ -217,6 +231,14 @@ describe('the attempts of a run', () => {
   });
 
   it('are ignored when the run was never seen to start', () => {
-    expect(stateAfter(succeeded, failed)).toBeUndefined();
+    expect(stateAfter(finishedAt(succeeded), finishedAt(failed))).toBeUndefined();
+  });
+
+  it('hold a start recorded without its definition as a run of no definition', () => {
+    expect(startedRunOf(stateAfter(recordedWith(start)(started)))?.run).toMatchObject({
+      type: '',
+      name: '',
+      definition_version: 0,
+    });
   });
 });

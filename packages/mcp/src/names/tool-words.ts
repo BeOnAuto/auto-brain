@@ -1,9 +1,12 @@
-import type { CallOutcome } from '../calls/call-facts.ts';
+import type { CallFailedBecause } from '../calls/call-facts.ts';
 import type { ToolReference } from './tool-reference.ts';
 
-export const answeredInWords: Readonly<Record<CallOutcome, string>> = {
-  result: 'answered',
-  tool_error: 'answered with an error',
+export function answeredInWords(isError: boolean): string {
+  return isError ? 'answered with an error of its own' : 'answered';
+}
+
+export const failedInWords: Readonly<Record<CallFailedBecause, string>> = {
+  arguments_refused: 'was refused by its server, which did not take its arguments',
   server_failure: 'failed at its server',
   timed_out: 'took too long, so it was given up',
   cancelled: 'was cancelled when the run ended',

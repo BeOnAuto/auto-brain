@@ -6,6 +6,7 @@ import type { CallTally, Timing } from '../bounds/call-bounds.ts';
 import type { Secrets } from '../bounds/secrets.ts';
 import type { ListedTool } from '../bounds/tool-results.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
+import type { KeepContent } from './recorded-calls.ts';
 import type { ServerSlot } from './server-slot.ts';
 
 export interface OfferedOnServer {
@@ -21,6 +22,7 @@ export interface NamedOffer extends OfferedOnServer {
 export interface ToolCallRequest {
   readonly callId: string;
   readonly input: Readonly<Record<string, unknown>>;
+  readonly room?: number;
 }
 
 export interface CallSignals {
@@ -33,6 +35,7 @@ export interface RunToolsParts {
   readonly slots: readonly ServerSlot[];
   readonly offered: readonly OfferedOnServer[];
   readonly secrets: Secrets;
+  readonly keep: KeepContent;
   readonly timing: Timing;
   readonly report: (message: ServerMessage) => void;
   readonly run: <A>(effect: Effect.Effect<A>) => Promise<A>;
@@ -43,4 +46,5 @@ export interface RunState {
   readonly tallied: (tally: CallTally) => void;
   readonly used: (offer: OfferedOnServer) => void;
   readonly ended: (because: CallsEndedBecause) => void;
+  readonly answered: (bytes: number) => void;
 }

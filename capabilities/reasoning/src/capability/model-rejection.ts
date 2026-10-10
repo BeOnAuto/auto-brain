@@ -65,14 +65,27 @@ function waitFor(retryAfterMs: number | null): string {
   return seconds === 1 ? 'in 1 second' : `in ${seconds} seconds`;
 }
 
-function definitionRefused({ detail, provider_message, issues }: RejectedDefinition): Effect.Effect<never, Conflict> {
-  const said = provider_message === null ? '' : `. The provider said: ${provider_message}`;
-  return Effect.fail(
-    new Conflict({
-      detail: `${detail}${listed(issues)}; update the reasoning function definition${said}`,
-      kind: 'unworkable',
-    }),
-  );
+const namesTheContext = /context|too long|input token/iu;
+
+const counted = new Intl.NumberFormat('en');
+
+function answeredInWords(tools: RunTools | undefined, providerMessage: string | null): string {
+  const answered = tools?.answeredBytes() ?? 0;
+  return providerMessage !== null && namesTheContext.test(providerMessage) && answered > 0
+    ? `, since the tools of this run answered ${counted.format(answered)} bytes, which the model reads whole, so ask them for a page of what they hold`
+    : '';
+}
+
+function definitionRefused(tools: RunTools | undefined) {
+  return ({ detail, provider_message, issues }: RejectedDefinition): Effect.Effect<never, Conflict> => {
+    const said = provider_message === null ? '' : `. The provider said: ${provider_message}`;
+    return Effect.fail(
+      new Conflict({
+        detail: `${detail}${listed(issues)}; update the reasoning function definition${answeredInWords(tools, provider_message)}${said}`,
+        kind: 'unworkable',
+      }),
+    );
+  };
 }
 
 export function rejections(maxOutputTokens: number, spending: Spending, tools?: RunTools) {
@@ -80,7 +93,7 @@ export function rejections(maxOutputTokens: number, spending: Spending, tools?: 
     unavailableAfter(tools, detail, advice, spent);
   return {
     cancelled: () => Effect.interrupt,
-    definition_invalid: definitionRefused,
+    definition_invalid: definitionRefused(tools),
     output_invalid: ({ detail, provider, finish_reason, issues, usage }: InvalidAnswer) =>
       Effect.flatMap(spending(usage), (spent): Effect.Effect<never, Conflict | Unavailable> =>
         finish_reason === 'length'

@@ -1,7 +1,9 @@
-import { Option, Schema } from 'effect';
+import { recordedDecoder } from '@beonauto/operations';
+import { Option } from 'effect';
 
 import { noStrippedForms, runnableAttributes, type StrippedForms } from '../capability/stripped-forms.ts';
 import { DefinitionEventSchema } from './definition-events.ts';
+import { definitionNameOf } from './definition-registry.ts';
 import type { Trigger } from './definition-triggers.ts';
 
 export type DefinitionChange =
@@ -16,7 +18,7 @@ export type DefinitionChange =
   | { readonly kind: 'unchanged' }
   | { readonly kind: 'unreadable' };
 
-const decodeDefinitionEvent = Schema.decodeUnknownOption(Schema.toCodecJson(DefinitionEventSchema));
+const decodeDefinitionEvent = recordedDecoder(DefinitionEventSchema);
 
 const unreadable: DefinitionChange = { kind: 'unreadable' };
 
@@ -32,15 +34,16 @@ function runnableTrigger(trigger: Trigger, stripped: StrippedForms): Trigger {
     : trigger;
 }
 
-export function definitionChangeOf(data: unknown): DefinitionChange {
-  return Option.match(decodeDefinitionEvent(data), {
+export function definitionChangeOf(recorded: unknown): DefinitionChange {
+  return Option.match(decodeDefinitionEvent(recorded), {
     onNone: () => unreadable,
     onSome: (event): DefinitionChange => {
+      const name = definitionNameOf(event.context);
       if (event.type === 'definition_retired') {
-        return { kind: 'deactivated', name: event.name };
+        return { kind: 'deactivated', name };
       }
-      const { name, version, content, at } = event;
-      const { triggers = [], stripped = noStrippedForms } = content;
+      const { at, definitionVersion: version = 1 } = event.context;
+      const { triggers = [], stripped = noStrippedForms } = event.data.content;
       if (triggers.length > 0) {
         return {
           kind: 'activated',

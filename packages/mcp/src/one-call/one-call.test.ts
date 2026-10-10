@@ -1,5 +1,7 @@
 import { Buffer } from 'node:buffer';
+import { createHash } from 'node:crypto';
 
+import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { brokenPromise, deniedText } from '../testing/index.ts';
@@ -25,6 +27,10 @@ const aNumber: unknown = expect.any(Number);
 
 const scrubbed = JSON.stringify({ token: '[redacted]' });
 
+const digest = (text: string) => createHash('sha256').update(text).digest('hex');
+
+const alpha = { org: 'acme', brain: 'alpha' };
+
 describe('one call of a tool', () => {
   it('lists the tools of its server, calls the tool with the metadata its caller gives, and answers the call whole', async () => {
     const fake = await oneCallServer();
@@ -33,18 +39,25 @@ describe('one call of a tool', () => {
     expect(await calledOnce(access)).toEqual({
       kind: 'answered',
       outcome: 'result',
-      fields: { result_bytes: 95, result_sha256: aDigest, jsonrpc_id: aNumber },
+      answered: {
+        is_error: false,
+        result_bytes: 95,
+        result_sha256: aDigest,
+        content_kept: true,
+        duration_ms: aNumber,
+        jsonrpc_id: aNumber,
+      },
       answer: { content: [{ type: 'text', text: JSON.stringify(echoCall.input) }] },
-      durationMs: aNumber,
       detail: '',
       retryAfterMs: null,
       annotations: undefined,
     });
-    expect(access.startOf(echoCall)).toEqual({
+    expect(await Effect.runPromise(access.startOf(echoCall))).toEqual({
       server: 'graph',
       tool: 'echo',
       arguments_bytes: 48,
       arguments_sha256: aDigest,
+      content_kept: true,
     });
     expect(fake.received()).toEqual([
       {
@@ -74,23 +87,27 @@ describe('what one call answers of its tool', () => {
     );
   });
 
-  it('records the arguments and the answer, scrubbed, where the server records its content', async () => {
+  it('keeps the arguments and the answer, scrubbed, unless the entry of the server turns keeping off', async () => {
     const fake = await oneCallServer();
-    const access = oneCallAccess(fake.url, { record_content: true });
+    const access = oneCallAccess(fake.url);
     const call = { ...echoCall, input: { token: oneCallKey } };
+    const sent = JSON.stringify(call.input);
+    const answered = JSON.stringify({ content: [{ type: 'text', text: sent }] });
 
     const called = await calledOnce(access, call);
-
-    expect([
-      access.startOf(call),
-      access.startOf({ ...call, reference: { server: 'wiki', tool: 'echo' } }),
-    ]).toMatchObject([{ arguments_json: scrubbed }, { server: 'wiki', arguments_bytes: 36 }]);
-    expect(access.startOf({ ...call, reference: { server: 'wiki', tool: 'echo' } })).not.toHaveProperty(
-      'arguments_json',
+    const starts = await Effect.runPromise(
+      Effect.all([access.startOf(call), access.startOf({ ...call, reference: { server: 'wiki', tool: 'echo' } })]),
     );
-    expect(called).toMatchObject({
-      fields: { result_json: JSON.stringify({ content: [{ type: 'text', text: scrubbed }] }) },
-    });
+
+    expect(starts).toMatchObject([
+      { arguments_sha256: digest(sent), content_kept: true },
+      { server: 'wiki', arguments_bytes: 36, content_kept: false },
+    ]);
+    expect(called).toMatchObject({ answered: { result_sha256: digest(answered), content_kept: true } });
+    await expect(Effect.runPromise(access.content.get(alpha, digest(sent)))).resolves.toBe(scrubbed);
+    await expect(Effect.runPromise(access.content.get(alpha, digest(answered)))).resolves.toBe(
+      JSON.stringify({ content: [{ type: 'text', text: scrubbed }] }),
+    );
   });
 });
 
@@ -101,13 +118,13 @@ describe('a call that fails', () => {
 
     expect(await calledOnce(access, { reference: { server: 'graph', tool: 'denied' } })).toMatchObject({
       ...failedWith('tool_error', deniedText),
-      fields: { result_bytes: aNumber },
+      answered: { is_error: true, result_bytes: aNumber },
     });
     expect(
       await calledOnce(access, { reference: { server: 'graph', tool: 'strict' }, input: { limit: '15' } }),
     ).toMatchObject({
-      ...failedWith('tool_error', expect.stringContaining('limit must be a whole number')),
-      fields: { result_bytes: null },
+      ...failedWith('arguments_refused', expect.stringContaining('limit must be a whole number')),
+      failed: { because: 'arguments_refused' },
     });
   });
 
@@ -126,7 +143,7 @@ describe('a call that fails', () => {
 
     expect(await calledOnce(oneCallAccess(fake.url, {}, { callMs: 200 }), sleeping)).toMatchObject({
       ...failedWith('timed_out', 'The MCP server did not answer within 200 ms'),
-      fields: { result_bytes: null, result_sha256: null },
+      failed: { because: 'timed_out', duration_ms: aNumber },
     });
   });
 });
@@ -142,7 +159,7 @@ describe('what a tool answers', () => {
     expect(large).toMatchObject({
       outcome: 'result',
       answer: { content: [{ type: 'text', text: largeText }] },
-      fields: { result_bytes: largeAnswerBytes },
+      answered: { result_bytes: largeAnswerBytes },
     });
     expect(structured).toMatchObject({
       outcome: 'result',

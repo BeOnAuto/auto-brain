@@ -1,94 +1,110 @@
-import { Schema } from 'effect';
+import { factOf } from '@beonauto/operations';
+import { Schema, Struct } from 'effect';
 
-import { CallOutcomeSchema } from '../calls/call-facts.ts';
+import { CallAnsweredSchema, CallFailedSchema, CallSentSchema } from '../calls/call-facts.ts';
 
 export const conversationCallsKind = 'conversation-calls';
 
-const ofTheBrain = { by: Schema.String, at: Schema.String };
+const ofTheCall = { call_id: Schema.String };
 
-const theTool = { server: Schema.String, tool: Schema.String };
+const sentFields = Struct.omit(CallSentSchema.fields, ['read_only']);
 
-const startedFields = {
-  arguments_bytes: Schema.Int,
-  arguments_sha256: Schema.String,
-  arguments_json: Schema.optionalKey(Schema.String),
+const answeredFields = Struct.omit(CallAnsweredSchema.fields, ['is_error', 'shown_bytes']);
+
+function optionalOf<Field extends Schema.Top>(field: Field) {
+  return Schema.optionalKey(field);
+}
+
+const answerOnAFailure = {
+  result_bytes: optionalOf(answeredFields.result_bytes),
+  result_sha256: optionalOf(answeredFields.result_sha256),
+  content_kept: optionalOf(answeredFields.content_kept),
 };
 
-const readArguments = {
-  arguments_bytes: Schema.optionalKey(Schema.Int),
-  arguments_sha256: Schema.optionalKey(Schema.String),
-  arguments_json: Schema.optionalKey(Schema.String),
+const callFailure = {
+  detail: optionalOf(CallFailedSchema.fields.detail),
+  duration_ms: optionalOf(CallFailedSchema.fields.duration_ms),
+  jsonrpc_id: optionalOf(CallFailedSchema.fields.jsonrpc_id),
+  server_request_id: CallFailedSchema.fields.server_request_id,
 };
 
-const answeredFields = {
-  result_bytes: Schema.optionalKey(Schema.NullOr(Schema.Int)),
-  result_sha256: Schema.optionalKey(Schema.NullOr(Schema.String)),
-  result_json: Schema.optionalKey(Schema.String),
-  duration_ms: Schema.optionalKey(Schema.Int),
-  jsonrpc_id: Schema.optionalKey(Schema.NullOr(Schema.Union([Schema.String, Schema.Int]))),
-  server_request_id: Schema.optionalKey(Schema.NullOr(Schema.String)),
-};
-
-const TellingStartedSchema = Schema.Struct({
-  type: Schema.Literal('telling_started'),
-  call_id: Schema.String,
-  run_id: Schema.String,
-  ...theTool,
-  ...startedFields,
-  ...ofTheBrain,
-});
-
-const TellingOutcomeSchema = Schema.Union([CallOutcomeSchema, Schema.Literal('tool_not_offered')]);
-
-const TellingEndedSchema = Schema.Struct({
-  type: Schema.Literal('telling_ended'),
-  call_id: Schema.String,
-  outcome: TellingOutcomeSchema,
-  ...answeredFields,
-  ...ofTheBrain,
-});
-
-const ReadOutcomeSchema = Schema.Literals([
-  'result',
+export const TellingFailedBecauseSchema = Schema.Literals([
   'tool_error',
+  'arguments_refused',
   'server_failure',
   'timed_out',
+  'cancelled',
+  'tool_not_offered',
+]);
+
+export const ReadingFailedBecauseSchema = Schema.Literals([
+  'tool_error',
+  'arguments_refused',
+  'server_failure',
+  'timed_out',
+  'cancelled',
   'unreadable',
   'too_large',
   'tool_not_offered',
   'not_sent',
 ]);
 
-const RepliesReadSchema = Schema.Struct({
-  type: Schema.Literal('replies_read'),
-  call_id: Schema.String,
-  ...theTool,
-  ...readArguments,
-  ...answeredFields,
-  outcome: ReadOutcomeSchema,
-  detail: Schema.optionalKey(Schema.String),
+const theConversation = {
+  server: Schema.String,
+  tool: Schema.String,
   conversation: Schema.String,
   since: Schema.NullOr(Schema.String),
-  replies: Schema.Int,
-  taken: Schema.Int,
-  refused: Schema.Int,
-  retry_after_ms: Schema.optionalKey(Schema.Int),
-  ...ofTheBrain,
-});
+};
 
-export const ConversationCallEventSchema = Schema.Union([TellingStartedSchema, TellingEndedSchema, RepliesReadSchema]);
+const readArguments = {
+  arguments_bytes: optionalOf(sentFields.arguments_bytes),
+  arguments_sha256: optionalOf(sentFields.arguments_sha256),
+};
+
+export const ConversationCallEventSchema = Schema.Union([
+  factOf('telling_started', Schema.Struct({ ...ofTheCall, ...sentFields })),
+  factOf('telling_succeeded', Schema.Struct({ ...ofTheCall, ...answeredFields })),
+  factOf(
+    'telling_failed',
+    Schema.Struct({ ...ofTheCall, ...callFailure, because: TellingFailedBecauseSchema, ...answerOnAFailure }),
+  ),
+  factOf(
+    'replies_read',
+    Schema.Struct({
+      ...ofTheCall,
+      ...theConversation,
+      ...readArguments,
+      ...answeredFields,
+      replies: Schema.Int,
+      taken: Schema.Int,
+      refused: Schema.Int,
+    }),
+  ),
+  factOf(
+    'reading_failed',
+    Schema.Struct({
+      ...ofTheCall,
+      ...theConversation,
+      ...readArguments,
+      ...callFailure,
+      because: ReadingFailedBecauseSchema,
+      retry_after_ms: Schema.optionalKey(Schema.Int),
+      ...answerOnAFailure,
+    }),
+  ),
+]);
 
 export type ConversationCallEvent = typeof ConversationCallEventSchema.Type;
 
 export type TellingStarted = Extract<ConversationCallEvent, { readonly type: 'telling_started' }>;
 
-export type TellingEnded = Extract<ConversationCallEvent, { readonly type: 'telling_ended' }>;
+export type TellingEnded = Extract<ConversationCallEvent, { readonly type: 'telling_succeeded' | 'telling_failed' }>;
 
-export type RepliesRead = Extract<ConversationCallEvent, { readonly type: 'replies_read' }>;
+export type ReadingRecorded = Extract<ConversationCallEvent, { readonly type: 'replies_read' | 'reading_failed' }>;
 
-export type TellingOutcome = typeof TellingOutcomeSchema.Type;
+export type TellingFailedBecause = typeof TellingFailedBecauseSchema.Type;
 
-export type ReadOutcome = typeof ReadOutcomeSchema.Type;
+export type ReadingFailedBecause = typeof ReadingFailedBecauseSchema.Type;
 
 export function conversationCallStreamOf(callId: string): string {
   return `${conversationCallsKind}/${callId}`;

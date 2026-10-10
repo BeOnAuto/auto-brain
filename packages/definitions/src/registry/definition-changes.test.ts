@@ -1,12 +1,18 @@
-import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { definitionChangeOf } from './definition-changes.ts';
-import { DefinitionEventSchema, type DefinitionContent, type DefinitionEvent } from './definition-events.ts';
-
-const encode = Schema.encodeSync(Schema.toCodecJson(DefinitionEventSchema));
+import type { DefinitionContent, DefinitionEvent } from './definition-events.ts';
 
 const at = { by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
+
+function about(name: string, version?: number) {
+  return {
+    ...at,
+    definitionType: 'workflow',
+    definitionName: name,
+    ...(version === undefined ? {} : { definitionVersion: version }),
+  };
+}
 
 const triggers: DefinitionContent['triggers'] = [
   { kind: 'cron', reference: '/schedule/cron', expression: '0 9 * * 1-5' },
@@ -17,24 +23,30 @@ const reacting: DefinitionContent = { source: 'schedule: ...', triggers };
 
 const plain = { source: 'do: []' };
 
-function changeOf(event: DefinitionEvent) {
-  return definitionChangeOf(encode(event));
+function changeOf(event: DefinitionEvent, name = 'close', version = 1) {
+  return definitionChangeOf({ ...event, context: about(name, version) });
+}
+
+function unversioned(event: DefinitionEvent) {
+  return definitionChangeOf({ ...event, context: about('close') });
 }
 
 describe('the change a record of a definition makes to what starts on its own', () => {
   it('activates a version with triggers, and deactivates the definition at a version without or at its retirement', () => {
     expect([
-      changeOf({ type: 'definition_created', name: 'close', version: 1, content: reacting, ...at }),
-      changeOf({ type: 'definition_updated', name: 'close', version: 2, content: plain, ...at }),
-      changeOf({ type: 'definition_retired', name: 'close', ...at }),
-      changeOf({ type: 'definition_created', name: 'plain', version: 1, content: plain, ...at }),
-      definitionChangeOf({ type: 'definition_created' }),
+      changeOf({ type: 'definition_created', data: { content: reacting } }),
+      changeOf({ type: 'definition_updated', data: { content: plain } }, 'close', 2),
+      unversioned({ type: 'definition_retired', data: {} }),
+      changeOf({ type: 'definition_created', data: { content: plain } }, 'plain'),
+      definitionChangeOf({ type: 'definition_created', context: at }),
+      unversioned({ type: 'definition_created', data: { content: reacting } }),
     ]).toEqual([
       { kind: 'activated', name: 'close', version: 1, triggers, at: at.at },
       { kind: 'deactivated', name: 'close' },
       { kind: 'deactivated', name: 'close' },
       { kind: 'unchanged' },
       { kind: 'unreadable' },
+      { kind: 'activated', name: 'close', version: 1, triggers, at: at.at },
     ]);
   });
 });
@@ -61,7 +73,7 @@ describe('the triggers a version activates', () => {
       stripped: { expressions: { ' $data.total as number > 1 ': ' $data.total           > 1 ' } },
     };
 
-    expect(changeOf({ type: 'definition_created', name: 'close', version: 1, content, ...at })).toMatchObject({
+    expect(changeOf({ type: 'definition_created', data: { content } })).toMatchObject({
       kind: 'activated',
       triggers: [
         { kind: 'event', filters: [{ attributes: { type: 'noted', data: '${ $data.total           > 1 }' } }] },

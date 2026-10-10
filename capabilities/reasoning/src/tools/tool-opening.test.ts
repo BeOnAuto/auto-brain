@@ -8,7 +8,7 @@ import { callingTools } from '../testing/calling-tools.ts';
 import { documentOf, issuesIn } from '../testing/definition-documents.ts';
 import { textResult } from '../testing/model-results.ts';
 import { runContext, reasoningWith, reasoningWithTools } from '../testing/reasoning-runs.ts';
-import { answers } from '../testing/scripted-language-model.ts';
+import { answers, scriptedLanguageModel } from '../testing/scripted-language-model.ts';
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
@@ -60,7 +60,9 @@ describe('a reasoning function that names tools', () => {
     expect(run.requests()[0]?.tools).toMatchObject({
       offered: [{ name: 'mcp__graph__search' }],
       runBoundMs: 600_000,
+      mostInputTokens: 2_000_000,
     });
+    expect(run.requests()[0]?.tools).not.toHaveProperty('contextWindow');
     expect(run.journal.recorded().map(({ type }) => type)).toEqual(['tool_call_started', 'tool_call_answered']);
     expect(fake.received()).toEqual([
       { tool: 'search', arguments: { query: 'acme' }, meta: { 'com.beonauto/run_id': runContext.id } },
@@ -73,6 +75,32 @@ describe('a reasoning function that names tools', () => {
 
     expect(run.capability.mayChangeOutside).toBe(true);
     expect(reasoningWith().capability.mayChangeOutside).toBe(false);
+  });
+});
+
+describe('the reading of a reasoning function that names tools', () => {
+  it('is bounded by the input tokens the operator allows and by the window the catalog gives its model', async () => {
+    const asked: string[] = [];
+    const scripted = scriptedLanguageModel(
+      callingTools([['mcp__graph__search', { query: 'acme' }]], answers(textResult('Acme has 2 rows.'))),
+    );
+    const capability = makeReasoningFunctionAdapter({
+      languageModel: scripted.languageModel,
+      offered: { providers: ['anthropic'], aliases: [] },
+      tools: accessTo(await graphServer()),
+      reading: {
+        mostInputTokens: 500_000,
+        contextWindowOf: (model) => {
+          asked.push(model);
+          return Effect.succeed(200_000);
+        },
+      },
+    });
+
+    await Effect.runPromise(Effect.runSync(capability.prepare(naming('graph/search'))).run({}, runContext));
+
+    expect(asked).toEqual(['anthropic/claude-sonnet-4-5']);
+    expect(scripted.requests()[0]?.tools).toMatchObject({ mostInputTokens: 500_000, contextWindow: 200_000 });
   });
 });
 

@@ -70,10 +70,8 @@ describe('publish_event', () => {
     expect(await storedOn(definitions, '/ledger/eu', 'm-2026-09')).toStrictEqual({
       state: {
         type: 'event_published',
-        event: { specversion: '1.0', ...monthClosed },
-        filled: [],
-        by: 'acme-admin',
-        at: firstMoment,
+        data: { event: { specversion: '1.0', ...monthClosed }, filled: [] },
+        context: { by: 'acme-admin', at: firstMoment },
       },
       version: 1,
     });
@@ -90,7 +88,7 @@ describe('publish_event', () => {
     expect(idOf(first)).toMatch(anUuid);
     expect(idOf(second)).not.toBe(idOf(first));
     expect(await storedOn(definitions, '/ledger/eu', idOf(first))).toMatchObject({
-      state: { event: { specversion: '1.0', id: idOf(first), time: firstMoment }, filled: ['id', 'time'] },
+      state: { data: { event: { specversion: '1.0', id: idOf(first), time: firstMoment }, filled: ['id', 'time'] } },
     });
   });
 });
@@ -236,7 +234,6 @@ describe('the events published to a brain', () => {
       output: {
         events: [
           {
-            at: firstMoment,
             type: 'event_published',
             summary: 'The event “com.acme.ledger.month-closed” was published to the brain.',
             data: {
@@ -245,10 +242,10 @@ describe('the events published to a brain', () => {
               source: '/ledger/eu',
               subject: 'september',
               time: monthClosed.time,
-              data_bytes: 15,
+              data: { region: 'eu' },
               filled: [],
-              by: 'acme-admin',
             },
+            metadata: { at: firstMoment, by: 'acme-admin' },
           },
         ],
         has_more: false,

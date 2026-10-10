@@ -12,6 +12,7 @@ import {
   logIncident,
   logLostWorkflowConnection,
   logMcpError,
+  logReasoning,
   logUnsettled,
   logWorkflows,
   logWorkflowTrouble,
@@ -94,6 +95,17 @@ describe('logIncident', () => {
       '"annotations":{"incident":"incident-2","operation":"add_note","org":"acme","brain":"alpha","caller":"acme-admin"}',
     );
     expect(line).toContain('not an error');
+  });
+});
+
+describe('the reasoning logs', () => {
+  it('say how many input tokens the model calls of a run add up to at most', async () => {
+    const [line] = await linesLoggedBy(logReasoning(2_000_000));
+
+    expect(line).toContain(
+      `"message":"Reasoning functions run in this server: the model calls of a run add up to at most 2,000,000 input tokens, and each answer of a tool is read whole where it fits the model's context window","level":"INFO"`,
+    );
+    expect(line).toContain('"annotations":{"most_input_tokens":2000000}');
   });
 });
 
@@ -275,6 +287,7 @@ describe('the server with LOG_FORMAT=pretty', { timeout: spawnedServerTestTimeou
       expect.stringMatching(/^WARN {2}Local mode is on: /u),
       'INFO  The ledger is kept in the file :memory: ledger_file=:memory:',
       expect.stringMatching(/^WARN {2}No model provider is configured, .* providers=\[\{"provider":"anthropic",/u),
+      "INFO  Reasoning functions run in this server: the model calls of a run add up to at most 2,000,000 input tokens, and each answer of a tool is read whole where it fits the model's context window most_input_tokens=2000000",
       'INFO  Workflows run in this server: a run lasts at most 30 days, at most 32 of their calls run at once, and the runs are swept every 1000 ms most_duration_ms=2592000000 most_calls_at_once=32 sweep_every_ms=1000',
       '',
     ]);

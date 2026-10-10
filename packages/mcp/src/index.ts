@@ -3,8 +3,21 @@ export { McpServerFailed, type CallsEndedBecause, type ServerFailedBecause } fro
 export { ToolNotOffered, type NotOfferedBecause } from './access/tool-not-offered.ts';
 export type { CallerContext, ServerMessage, ToolsNotOpened } from './access/caller-context.ts';
 export type { CallReply, ReplyOutcome } from './calls/call-replies.ts';
-export { CallAnsweredSchema, CallStartedSchema, type CallOutcome } from './calls/call-facts.ts';
-export type { CallJournal, RecordedCall } from './calls/recorded-calls.ts';
+export {
+  CallAnsweredSchema,
+  CallFailedBecauseSchema,
+  CallFailedSchema,
+  CallSentSchema,
+  CallStartedSchema,
+  type CallAnswered,
+  type CallEnded,
+  type CallFailed,
+  type CallFailedBecause,
+  type CallSent,
+  type CallStarted,
+} from './calls/call-facts.ts';
+export type { CallJournal, KeepContent } from './calls/recorded-calls.ts';
+export { callFieldsShown, keptAnswerOf, keptArgumentsOf } from './calls/shown-calls.ts';
 export type { CallSignals, ToolCallRequest } from './calls/run-parts.ts';
 export type { OfferedTool, RunTools, ToolsEnding } from './calls/run-tools.ts';
 export type { AnsweredFields, StartedFields } from './calls/recorded-calls.ts';
@@ -17,24 +30,27 @@ export {
   conversationCallStreamOf,
   conversationCallsKind,
   type ConversationCallEvent,
-  type ReadOutcome,
-  type RepliesRead,
+  type ReadingFailedBecause,
+  type ReadingRecorded,
   type TellingEnded,
-  type TellingOutcome,
+  type TellingFailedBecause,
   type TellingStarted,
 } from './own-calls/conversation-call-events.ts';
 export {
   conversationCallDecider,
+  readingFailedOf,
   repliesReadOf,
   tellingEndedOf,
   tellingStartedOf,
-  type Reading,
+  type ConversationCall,
+  type ReadingFailed,
   type Recorded,
+  type RepliesRead,
   type Telling,
 } from './own-calls/conversation-calls.ts';
 export { defineListToolServers } from './listing/list-tool-servers.ts';
 export { defineListToolServersInOrg, type BrainLookup } from './listing/list-tool-servers-in-org.ts';
-export { answeredInWords, toolInWords } from './names/tool-words.ts';
+export { answeredInWords, failedInWords, toolInWords } from './names/tool-words.ts';
 export { defineTestToolCall } from './tool-tests/test-tool-call.ts';
 export { type ToolTestEvent } from './tool-tests/tool-test-events.ts';
 export { toolTestPresenter } from './tool-tests/tool-test-presenter.ts';

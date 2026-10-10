@@ -185,7 +185,7 @@ describe('draining the stdio transport', { timeout: stdioTestTimeoutMs }, () => 
     const output: string[] = [];
     const transport = new StdioProcessTransport(
       { command: process.execPath, args: ['--eval', `process.stdout.write(${batch}.repeat(20000))`], env: {} },
-      observations(null),
+      observations(null, Infinity),
       {
         scrub: String,
         report: (line) => {

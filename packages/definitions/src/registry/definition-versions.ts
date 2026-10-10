@@ -1,4 +1,4 @@
-import type { Decider } from '@beonauto/operations';
+import type { Decider, Recorded } from '@beonauto/operations';
 import { Result } from 'effect';
 
 import type { StrippedForms } from '../capability/stripped-forms.ts';
@@ -18,20 +18,15 @@ export interface VersionSearch {
 function evolvedSearch(
   name: string,
   version: number,
-): (search: VersionSearch, event: DefinitionEvent) => VersionSearch {
+): (search: VersionSearch, event: Recorded<DefinitionEvent>) => VersionSearch {
   return ({ position, found }, event) => {
     const at = position + 1;
-    const isTheVersion = event.type !== 'definition_retired' && event.name === name && event.version === version;
-    return {
-      position: at,
-      found: isTheVersion
-        ? {
-            source: event.content.source,
-            ...(event.content.stripped === undefined ? {} : { stripped: event.content.stripped }),
-            position: at,
-          }
-        : found,
-    };
+    const { definitionName, definitionVersion } = event.context;
+    if (event.type === 'definition_retired' || definitionName !== name || definitionVersion !== version) {
+      return { position: at, found };
+    }
+    const { source, stripped } = event.data.content;
+    return { position: at, found: { source, ...(stripped === undefined ? {} : { stripped }), position: at } };
   };
 }
 
@@ -40,6 +35,7 @@ export function definitionVersionDecider(name: string, version: number): Decider
     initialState: { position: 0, found: undefined },
     evolve: evolvedSearch(name, version),
     decide: () => Result.succeed([]),
+    context: () => ({ at: '', by: '' }),
     eventSchema: DefinitionEventSchema,
   };
 }

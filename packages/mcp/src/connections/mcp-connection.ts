@@ -1,6 +1,7 @@
 import { Client } from '@modelcontextprotocol/client';
 import { Predicate } from 'effect';
 
+import { toolBounds } from '../bounds/call-bounds.ts';
 import { decodeListedTools, decodeToolResult, type ListedTool, type ToolResult } from '../bounds/tool-results.ts';
 import { observations, type Observed, type Observations } from './observed-requests.ts';
 
@@ -71,7 +72,7 @@ export function openingClient(requestIdHeader: string | null, reportError: (mess
       reportError(message);
     },
   });
-  return { client, observations: observations(requestIdHeader), closed };
+  return { client, observations: observations(requestIdHeader, toolBounds.httpAnswerBytes), closed };
 }
 
 export function observingFetch<Args extends readonly [unknown, unknown?]>(
@@ -81,8 +82,7 @@ export function observingFetch<Args extends readonly [unknown, unknown?]>(
   return async (...args) => {
     const response = await fetch(...args);
     const [, init] = args;
-    observed.noteAnswered(Predicate.hasProperty(init, 'body') ? init.body : undefined, response);
-    return response;
+    return observed.noteAnswered(Predicate.hasProperty(init, 'body') ? init.body : undefined, response);
   };
 }
 
@@ -105,10 +105,14 @@ export function connectionOver(
   return {
     call: async ({ tool, input, meta, signal, timeoutMs }) => {
       const marker = observed.mark();
+      const tooLarge = new AbortController();
+      observed.whenTooLarge(marker, () => {
+        tooLarge.abort();
+      });
       const settled = await client
         .request(
           { method: 'tools/call', params: { name: tool, arguments: { ...input }, [metaField]: { ...meta } } },
-          { signal, timeout: timeoutMs, onresumptiontoken: marker },
+          { signal: AbortSignal.any([signal, tooLarge.signal]), timeout: timeoutMs, onresumptiontoken: marker },
         )
         .then(settledOf, (error: unknown) => ({ error }));
       return { ...settled, observed: observed.take(marker) };

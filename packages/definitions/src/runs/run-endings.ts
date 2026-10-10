@@ -1,29 +1,30 @@
-import { Option, Schema } from 'effect';
+import { recordedDecoder, type Recorded } from '@beonauto/operations';
+import { Option } from 'effect';
 
-import { RunEventSchema, type RunCancelRequested, type RunFinished } from './run-events.ts';
+import { RunEventSchema, type RunCancelRequested, type RunEvent, type RunFinished } from './run-events.ts';
 
-export type RunEnding = RunFinished;
+export type RunEnding = Recorded<RunFinished>;
 
-export type CancelRequested = RunCancelRequested;
+export type CancelRequested = Recorded<RunCancelRequested>;
 
-const decodeRunEvent = Schema.decodeUnknownOption(Schema.toCodecJson(RunEventSchema));
+const decodeRunEvent = recordedDecoder(RunEventSchema);
 
-function isEnding(event: Schema.Schema.Type<typeof RunEventSchema>): event is RunEnding {
+function isEnding(event: Recorded<RunEvent>): event is RunEnding {
   return event.type === 'run_succeeded' || event.type === 'run_rejected' || event.type === 'run_failed';
 }
 
-export function runEndingOf(data: unknown): RunEnding | undefined {
-  return Option.getOrUndefined(Option.filter(decodeRunEvent(data), isEnding));
+function isCancelRequest(event: Recorded<RunEvent>): event is CancelRequested {
+  return event.type === 'run_cancel_requested';
 }
 
-export function lastEndingOf(events: readonly unknown[]): RunEnding | undefined {
-  return runEndingOf(events.at(-1));
+export function runEndingOf(recorded: unknown): RunEnding | undefined {
+  return Option.getOrUndefined(Option.filter(decodeRunEvent(recorded), isEnding));
 }
 
-export function cancelRequestOf(data: unknown): CancelRequested | undefined {
-  return Option.getOrUndefined(
-    Option.flatMap(decodeRunEvent(data), (event) =>
-      event.type === 'run_cancel_requested' ? Option.some(event) : Option.none(),
-    ),
-  );
+export function lastEndingOf(recorded: readonly unknown[]): RunEnding | undefined {
+  return runEndingOf(recorded.at(-1));
+}
+
+export function cancelRequestOf(recorded: unknown): CancelRequested | undefined {
+  return Option.getOrUndefined(Option.filter(decodeRunEvent(recorded), isCancelRequest));
 }

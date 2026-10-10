@@ -1,3 +1,5 @@
+import type { RecordedContent } from '@beonauto/operations';
+import { memoryRecordedContent } from '@beonauto/operations/testing';
 import { Effect } from 'effect';
 
 import type { ServerMessage } from '../access/caller-context.ts';
@@ -14,6 +16,7 @@ export interface AccessOptions {
 
 export interface ReportingAccess {
   readonly access: ToolAccess;
+  readonly content: RecordedContent;
   readonly messages: () => readonly ServerMessage[];
   readonly untestable: () => readonly string[];
 }
@@ -24,10 +27,12 @@ export function reportingAccess(
 ): ReportingAccess {
   const messages: ServerMessage[] = [];
   const untestable: string[] = [];
+  const content = memoryRecordedContent();
   const settings = Effect.runSync(
     readMcpSettings({ ...environment, MCP_SERVERS: JSON.stringify(servers) }, { modelProviders: [] }),
   );
   const access = makeToolAccess(settings, {
+    content,
     reportServerMessage: (message) => {
       messages.push(message);
     },
@@ -37,10 +42,10 @@ export function reportingAccess(
     ...(timing === undefined ? {} : { timing }),
     ...(fetch === undefined ? {} : { fetch }),
   });
-  return { access, messages: () => [...messages], untestable: () => [...untestable] };
+  return { access, content, messages: () => [...messages], untestable: () => [...untestable] };
 }
 
 export const noToolServers: ToolAccess = makeToolAccess(
   { servers: [] },
-  { reportServerMessage: ignored, reportUntestable: ignored },
+  { content: memoryRecordedContent(), reportServerMessage: ignored, reportUntestable: ignored },
 );

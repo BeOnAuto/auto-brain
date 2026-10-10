@@ -1,11 +1,10 @@
+import type { CallEnded, CallStarted } from '@beonauto/mcp';
 import { Conflict, Unavailable } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
 import {
   defineCapability,
   type CapabilityAnswer,
-  type CallAnsweredFact,
-  type CallStartedFact,
   type CapabilityRejection,
   type Capability,
   type ToolCallJournal,
@@ -20,26 +19,28 @@ export interface ToolUser {
   readonly startedLate: () => Promise<readonly (number | undefined)[]>;
 }
 
-export function startOfCall(number: number): CallStartedFact {
+export function startOfCall(number: number): CallStarted {
   return {
-    type: 'tool_call_started',
     call_id: `toolu_${number}`,
     server: 'graph',
     tool: 'search',
     arguments_bytes: 2,
     arguments_sha256: 'a'.repeat(64),
+    content_kept: true,
   };
 }
 
-export function answerOfCall(number: number): CallAnsweredFact {
+export function answerOfCall(number: number): CallEnded {
   return {
     type: 'tool_call_answered',
-    number,
-    outcome: 'result',
-    result_bytes: 2,
-    result_sha256: 'b'.repeat(64),
-    duration_ms: 5,
-    jsonrpc_id: number,
+    data: {
+      is_error: false,
+      result_bytes: 2,
+      result_sha256: 'b'.repeat(64),
+      content_kept: true,
+      duration_ms: 5,
+      jsonrpc_id: number,
+    },
   };
 }
 
@@ -63,7 +64,7 @@ function everyStart(count: number, journal: ToolCallJournal) {
 }
 
 function everyAnswer(count: number, journal: ToolCallJournal) {
-  return Effect.forEach(numbersUpTo(count), (number) => journal.answered(answerOfCall(number)), {
+  return Effect.forEach(numbersUpTo(count), (number) => journal.ended(number, answerOfCall(number)), {
     concurrency: 'unbounded',
   });
 }
@@ -110,7 +111,7 @@ export function toolUser(): ToolUser {
   return {
     capability,
     stalled: stalling.promise,
-    recordedLate: () => Promise.all(journals.map((journal) => Effect.runPromise(journal.answered(answerOfCall(1))))),
+    recordedLate: () => Promise.all(journals.map((journal) => Effect.runPromise(journal.ended(1, answerOfCall(1))))),
     startedLate: () => Promise.all(journals.map((journal) => Effect.runPromise(journal.started(startOfCall(9))))),
   };
 }

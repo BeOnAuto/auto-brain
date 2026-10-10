@@ -29,15 +29,7 @@ const words: CapabilityDeclaration<{ readonly words: readonly string[] }> = {
 
 const deliveryOfWords: DeliveryEvent = {
   type: 'delivery_started',
-  number: 1,
-  target: 'ada',
-  server: 'chat',
-  tool: 'post_message',
-  definition_type: 'words',
-  name: 'count',
-  definition_version: 1,
-  by: 'brain:alpha',
-  at: '2026-10-01T09:00:00.000Z',
+  data: { number: 1, target: 'ada', server: 'chat', tool: 'post_message' },
 };
 
 const run: RunContext = {
@@ -123,17 +115,17 @@ describe('the change a capability may make outside the server', () => {
 
 describe('a journal that records in memory, for tests', () => {
   it('keeps what it records, numbering the calls it starts, and refuses what it is told to', async () => {
-    const journal = recordingJournal(({ type }) => type === 'tool_call_answered');
-    const refusingStarts = recordingJournal(({ type }) => type === 'tool_call_started');
+    const journal = recordingJournal((fact) => 'type' in fact);
+    const refusingStarts = recordingJournal((fact) => 'call_id' in fact);
 
     expect(await Effect.runPromise(journal.started(startOfCall(1)))).toBe(1);
     expect(await Effect.runPromise(journal.started(startOfCall(2)))).toBe(2);
-    expect(await Effect.runPromise(journal.answered(answerOfCall(1)))).toBe(false);
+    expect(await Effect.runPromise(journal.ended(1, answerOfCall(1)))).toBe(false);
     expect(journal.recorded()).toEqual([
-      { ...startOfCall(1), number: 1 },
-      { ...startOfCall(2), number: 2 },
+      { number: 1, type: 'tool_call_started', data: startOfCall(1) },
+      { number: 2, type: 'tool_call_started', data: startOfCall(2) },
     ]);
-    expect(await Effect.runPromise(recordingJournal().answered(answerOfCall(2)))).toBe(true);
+    expect(await Effect.runPromise(recordingJournal().ended(2, answerOfCall(2)))).toBe(true);
     expect(await Effect.runPromise(refusingStarts.started(startOfCall(1)))).toBeUndefined();
   });
 });

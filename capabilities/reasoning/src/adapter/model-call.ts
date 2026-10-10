@@ -42,7 +42,7 @@ export async function callModel(
       },
     },
   });
-  const loop = toolLoop(request.tools, signals.cancelled);
+  const loop = toolLoop(request.tools, signals.cancelled, request.settings.max_output_tokens);
   const { tools, prepareStep, stopWhen } = loop;
   const call = {
     model,

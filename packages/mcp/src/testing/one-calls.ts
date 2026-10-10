@@ -1,3 +1,4 @@
+import type { RecordedContent } from '@beonauto/operations';
 import { Effect } from 'effect';
 import { afterEach } from 'vitest';
 
@@ -37,8 +38,8 @@ export function oneCallAccess(
   url: string,
   changes: Readonly<Record<string, unknown>> = {},
   timing: Partial<Timing> = {},
-): ToolAccess {
-  const { access } = reportingAccess(
+): ToolAccess & { readonly content: RecordedContent } {
+  const { access, content } = reportingAccess(
     {
       graph: {
         url,
@@ -51,7 +52,7 @@ export function oneCallAccess(
     { environment: { GRAPH_API_KEY: oneCallKey }, timing: { ...patientTiming, ...timing } },
   );
   closedAfter(access.close);
-  return access;
+  return { ...access, content };
 }
 
 export const echoCall: OneCall = {

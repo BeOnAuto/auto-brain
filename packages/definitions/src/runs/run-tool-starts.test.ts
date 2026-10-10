@@ -1,47 +1,42 @@
-import { Conflict } from '@beonauto/operations';
+import { Conflict, type Recorded } from '@beonauto/operations';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { recordedWith, runStateAfter, testRunId } from '../testing/run-facts.ts';
 import type { RunCommand } from './run-commands.ts';
 import { runDecider } from './run-decider.ts';
 import type { RunEvent } from './run-events.ts';
 
-const start = { by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
+const start = { runId: testRunId, by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
 
-const finish = { by: 'acme-admin', at: '2026-10-01T09:00:05.000Z' };
+const ofGreet = { definitionType: 'echo', definitionName: 'greet', definitionVersion: 1 };
+
+const atTheStart = recordedWith({ ...start, ...ofGreet });
+
+const atTheFinish = recordedWith({ ...start, ...ofGreet, at: '2026-10-01T09:00:05.000Z' });
 
 const greeting = { definition_type: 'echo', name: 'greet', input: { who: 'Ada', tags: ['a', 'b'] } };
 
-const started: RunEvent = { type: 'run_started', ...greeting, definition_version: 1, ...start };
+const started = atTheStart({ type: 'run_started', data: { input: greeting.input } });
 
-const ofGreet = { definition_type: 'echo', name: 'greet', definition_version: 1 };
+const succeeded = atTheFinish({ type: 'run_succeeded', data: { output: 'Hello Ada', record: {} } });
 
-const succeeded: RunEvent = {
-  type: 'run_succeeded',
-  output: 'Hello Ada',
-  record: {},
-  ...ofGreet,
-  ...finish,
-};
-
-const unavailable: RunEvent = {
+const unavailable = atTheFinish({
   type: 'run_rejected',
-  rejection: { reason: 'unavailable', detail: 'The model is busy' },
-  ...ofGreet,
-  ...finish,
-};
+  data: { rejection: { reason: 'unavailable', detail: 'The model is busy' } },
+});
 
-const failed: RunEvent = { type: 'run_failed', ...ofGreet, ...finish };
+const failed = atTheFinish({ type: 'run_failed', data: {} });
 
 const anotherRequest = new Conflict({
   detail: 'The run id belongs to a run of another definition or with another input',
 });
 
-function stateAfter(...events: readonly RunEvent[]) {
-  return events.reduce((state, event) => runDecider.evolve(state, event), runDecider.initialState);
+function stateAfter(...events: readonly Recorded<RunEvent>[]) {
+  return runStateAfter(events);
 }
 
-function decided(command: RunCommand, ...history: readonly RunEvent[]) {
+function decided(command: RunCommand, ...history: readonly Recorded<RunEvent>[]) {
   return runDecider.decide(command, stateAfter(...history));
 }
 
@@ -58,10 +53,12 @@ const startedCallingTools = new Conflict({
 describe('starting a run whose definition calls tools', () => {
   const callingTools = starting({ calls_tools: true });
 
-  const startedWithTools: RunEvent = { ...started, calls_tools: true };
+  const startOfTools: RunEvent = { type: 'run_started', data: { input: greeting.input, calls_tools: true } };
+
+  const startedWithTools = atTheStart(startOfTools);
 
   it('records it the first time, with the fact that it calls tools', () => {
-    expect(decided(callingTools)).toStrictEqual(Result.succeed([startedWithTools]));
+    expect(decided(callingTools)).toStrictEqual(Result.succeed([startOfTools]));
   });
 
   it('refuses it while an earlier attempt is started, before any call is recorded, since it may be in progress', () => {
@@ -75,8 +72,8 @@ describe('starting a run whose definition calls tools', () => {
   });
 
   it('records it again after an attempt that ended before any call, since no tool was called', () => {
-    expect(decided(callingTools, startedWithTools, unavailable)).toStrictEqual(Result.succeed([startedWithTools]));
-    expect(decided(callingTools, started, failed)).toStrictEqual(Result.succeed([startedWithTools]));
+    expect(decided(callingTools, startedWithTools, unavailable)).toStrictEqual(Result.succeed([startOfTools]));
+    expect(decided(callingTools, started, failed)).toStrictEqual(Result.succeed([startOfTools]));
   });
 
   it('answers a finished run again, and refuses another request under its id as any other', () => {

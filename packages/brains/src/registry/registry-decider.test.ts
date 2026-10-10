@@ -1,4 +1,4 @@
-import { Conflict, NotFound } from '@beonauto/operations';
+import { Conflict, NotFound, type Context, type Recorded } from '@beonauto/operations';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -12,16 +12,25 @@ const change = { by: 'acme-editor', at: '2026-10-02T10:30:00.000Z' };
 
 const alphaCreated: BrainEvent = {
   type: 'brain_created',
-  brain: 'alpha',
-  name: 'Alpha',
-  description: 'Answers sales questions',
-  ...creation,
+  data: { brain: 'alpha', name: 'Alpha', description: 'Answers sales questions' },
 };
 
-const alphaRetired: BrainEvent = { type: 'brain_retired', brain: 'alpha', ...change };
+const alphaRetired: BrainEvent = { type: 'brain_retired', data: { brain: 'alpha' } };
 
-function registryAfter(...events: readonly BrainEvent[]) {
-  return events.reduce((registry, event) => registryDecider.evolve(registry, event), registryDecider.initialState);
+const recordedWhen = new Map<BrainEvent, Context>([
+  [alphaCreated, creation],
+  [alphaRetired, change],
+]);
+
+function recorded(event: BrainEvent, context: Context = recordedWhen.get(event) ?? change): Recorded<BrainEvent> {
+  return { ...event, context };
+}
+
+function registryAfter(...events: readonly (BrainEvent | Recorded<BrainEvent>)[]) {
+  return events.reduce(
+    (registry, event) => registryDecider.evolve(registry, 'context' in event ? event : recorded(event)),
+    registryDecider.initialState,
+  );
 }
 
 function decided(command: BrainCommand, ...history: readonly BrainEvent[]) {
@@ -43,8 +52,9 @@ describe('creating a brain', () => {
     ...creation,
   };
 
-  it('records the brain with who created it and when', () => {
+  it('records the brain, with who created it and when as its context', () => {
     expect(decided(creating)).toStrictEqual(Result.succeed([alphaCreated]));
+    expect(registryDecider.context(creating, registryAfter())).toStrictEqual(creation);
   });
 
   it('is rejected while an active brain holds the id', () => {
@@ -81,13 +91,13 @@ describe('updating a brain', () => {
 
   it('records only the fields that change', () => {
     expect(decided(updating('Alpha Sales', 'Answers sales questions'), alphaCreated)).toStrictEqual(
-      Result.succeed([{ type: 'brain_updated', brain: 'alpha', name: 'Alpha Sales', ...change }]),
+      Result.succeed([{ type: 'brain_updated', data: { brain: 'alpha', name: 'Alpha Sales' } }]),
     );
     expect(decided(updating('Alpha', ''), alphaCreated)).toStrictEqual(
-      Result.succeed([{ type: 'brain_updated', brain: 'alpha', description: '', ...change }]),
+      Result.succeed([{ type: 'brain_updated', data: { brain: 'alpha', description: '' } }]),
     );
     expect(decided(updating('Alpha Sales', ''), alphaCreated)).toStrictEqual(
-      Result.succeed([{ type: 'brain_updated', brain: 'alpha', name: 'Alpha Sales', description: '', ...change }]),
+      Result.succeed([{ type: 'brain_updated', data: { brain: 'alpha', name: 'Alpha Sales', description: '' } }]),
     );
   });
 });
@@ -114,10 +124,10 @@ describe("an org's brain registry", () => {
   it('holds each brain as its facts left it', () => {
     const registry = registryAfter(
       alphaCreated,
-      { type: 'brain_created', brain: 'beta', name: 'Beta', description: '', ...creation },
-      { type: 'brain_updated', brain: 'alpha', name: 'Alpha Sales', ...change },
-      { type: 'brain_updated', brain: 'beta', description: 'Handles support', ...change },
-      { ...alphaRetired, at: '2026-10-03T08:00:00.000Z' },
+      recorded({ type: 'brain_created', data: { brain: 'beta', name: 'Beta', description: '' } }, creation),
+      { type: 'brain_updated', data: { brain: 'alpha', name: 'Alpha Sales' } },
+      { type: 'brain_updated', data: { brain: 'beta', description: 'Handles support' } },
+      recorded(alphaRetired, { ...change, at: '2026-10-03T08:00:00.000Z' }),
     );
 
     expect([...registry.values()]).toStrictEqual([
@@ -146,7 +156,7 @@ describe("an org's brain registry", () => {
 
 describe('a fact', () => {
   it('about a brain the registry never saw created leaves the registry as it was', () => {
-    expect(registryAfter(alphaRetired, { type: 'brain_updated', brain: 'alpha', name: 'Ghost', ...change }).size).toBe(
+    expect(registryAfter(alphaRetired, { type: 'brain_updated', data: { brain: 'alpha', name: 'Ghost' } }).size).toBe(
       0,
     );
   });
@@ -154,7 +164,7 @@ describe('a fact', () => {
   it('leaves the registry it evolves from untouched', () => {
     const before = registryAfter(alphaCreated);
 
-    registryDecider.evolve(before, alphaRetired);
+    registryDecider.evolve(before, recorded(alphaRetired));
 
     expect(before.get('alpha')?.status).toBe('active');
   });

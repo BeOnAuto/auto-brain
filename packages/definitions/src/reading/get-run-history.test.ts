@@ -1,4 +1,4 @@
-import type { Decider, Presenter } from '@beonauto/operations';
+import { factOf, type Decider, type Presenter } from '@beonauto/operations';
 import { Effect, Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -15,40 +15,31 @@ const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 const otherId = '0199a3c4-7d2e-7c1a-9b3f-000000000001';
 
-const StandInLogEventSchema = Schema.Struct({
-  type: Schema.Literals(['input_applied', 'state_patched']),
-  key: Schema.String,
-  at: Schema.String,
-});
+const KeySchema = Schema.Struct({ key: Schema.String });
+
+const StandInLogEventSchema = Schema.Union([factOf('input_applied', KeySchema), factOf('state_patched', KeySchema)]);
 
 type StandInLogEvent = typeof StandInLogEventSchema.Type;
 
-const runLog: Decider<null, StandInLogEvent, StandInLogEvent> = {
+interface Logging {
+  readonly event: StandInLogEvent;
+  readonly at: string;
+}
+
+const runLog: Decider<null, Logging, StandInLogEvent> = {
   initialState: null,
   evolve: (state) => state,
-  decide: (event) => Result.succeed([event]),
+  decide: ({ event }) => Result.succeed([event]),
+  context: ({ at }) => ({ at, by: 'brain:alpha', runId }),
   eventSchema: StandInLogEventSchema,
 };
 
-const decodeRunLogEvent = Schema.decodeUnknownSync(StandInLogEventSchema);
+const decodeKey = Schema.decodeUnknownSync(KeySchema);
 
 const runLogPresenter: Presenter = {
   streamKind: 'run-logs',
   publicNames: { input_applied: ['input_applied'], state_patched: [] },
-  present: ({ id, cursor, causationId, data }) => {
-    const { key, at } = decodeRunLogEvent(data);
-    return [
-      {
-        id,
-        cursor,
-        causation_id: causationId,
-        at,
-        type: 'input_applied',
-        summary: 'An input was applied.',
-        data: { key },
-      },
-    ];
-  },
+  present: ({ data }) => [{ type: 'input_applied', summary: 'An input was applied.', data: decodeKey(data) }],
 };
 
 async function brainWithRun(presenters: readonly Presenter[] = makeDefinitionPresenters([echo])) {
@@ -62,9 +53,9 @@ async function brainWithRun(presenters: readonly Presenter[] = makeDefinitionPre
     definitions.call(operations.runDefinition, toAlpha(acmeAdmin, { type: 'echo', name: 'greet', run_id: id }), at);
   const reading = (input: object) =>
     definitions.call(operations.getRunHistory, toAlpha(acmeAdmin, { run_id: runId, ...input }));
-  const logging = (event: StandInLogEvent, recordedAt: string) =>
+  const logging = (event: StandInLogEvent, at: string, recordedAt: string) =>
     definitions.run(
-      Effect.orDie(definitions.ledger.service.execute(`brain/acme/alpha/run-logs/${runId}`, runLog, event)),
+      Effect.orDie(definitions.ledger.service.execute(`brain/acme/alpha/run-logs/${runId}`, runLog, { event, at })),
       recordedAt,
     );
   return { ...definitions, ...operations, running, reading, logging };
@@ -100,32 +91,32 @@ describe('get_run_history', () => {
 });
 
 describe('the history of a run', () => {
-  it('holds the facts of the run oldest first, each at its own time', async () => {
+  it('holds the facts of the run oldest first, each with its data whole within 2 KiB and its metadata', async () => {
     const { running, reading } = await brainWithRun();
     await running(runId, '2026-10-01T09:00:10.000Z');
+    const metadata = {
+      stream: `brain/acme/alpha/runs/${runId}`,
+      at: '2026-10-01T09:00:10.000Z',
+      by: 'acme-admin',
+      run_id: runId,
+      definition: { type: 'echo', name: 'greet', version: 1 },
+    };
 
     expect(await reading({})).toMatchObject({
       status: 'succeeded',
       output: {
         events: [
           {
-            at: '2026-10-01T09:00:10.000Z',
             type: 'run_started',
             summary: 'A run of the greeting “greet” started.',
-            data: {
-              run_id: runId,
-              by: 'acme-admin',
-              definition_type: 'echo',
-              name: 'greet',
-              definition_version: 1,
-              input_bytes: 2,
-            },
+            data: { input: {} },
+            metadata: { ...metadata, position: 1 },
           },
           {
-            at: '2026-10-01T09:00:10.000Z',
             type: 'run_succeeded',
             summary: 'A run finished.',
-            data: { run_id: runId, by: 'acme-admin', output_bytes: 28, record_bytes: 17 },
+            data: { output: { greeting: 'Hi', input: {} }, record: { greeting: 'Hi' } },
+            metadata: { ...metadata, position: 2 },
           },
         ],
         has_more: false,
@@ -145,7 +136,7 @@ describe('the history of a run', () => {
     );
 
     expect(typesIn(read)).toEqual(['run_succeeded', 'run_started']);
-    expect(read).toMatchObject({ output: { events: [{ at: settledAt }, {}] } });
+    expect(read).toMatchObject({ output: { events: [{ metadata: { at: settledAt } }, {}] } });
   });
 });
 
@@ -153,19 +144,23 @@ async function runWithLog(presenters?: readonly Presenter[]) {
   const brain = await brainWithRun(presenters);
   await brain.running(runId, '2026-10-01T09:00:10.000Z');
   await brain.logging(
-    { type: 'input_applied', key: 'early', at: '2026-10-01T09:00:05.000Z' },
+    { type: 'input_applied', data: { key: 'early' } },
+    '2026-10-01T09:00:05.000Z',
     '2026-10-01T09:00:11.000Z',
   );
   await brain.logging(
-    { type: 'state_patched', key: 'patch', at: '2026-10-01T09:00:06.000Z' },
+    { type: 'state_patched', data: { key: 'patch' } },
+    '2026-10-01T09:00:06.000Z',
     '2026-10-01T09:00:11.000Z',
   );
   await brain.logging(
-    { type: 'input_applied', key: 'same', at: '2026-10-01T09:00:10.000Z' },
+    { type: 'input_applied', data: { key: 'same' } },
+    '2026-10-01T09:00:10.000Z',
     '2026-10-01T09:00:12.000Z',
   );
   await brain.logging(
-    { type: 'input_applied', key: 'late', at: '2026-10-01T09:00:20.000Z' },
+    { type: 'input_applied', data: { key: 'late' } },
+    '2026-10-01T09:00:20.000Z',
     '2026-10-01T09:00:21.000Z',
   );
   return brain;
@@ -183,14 +178,6 @@ const keysAndTypesOf = Schema.decodeUnknownSync(
 
 function keysAndTypesIn(outcome: unknown): readonly string[] {
   return keysAndTypesOf(outcome).output.events.map(({ type, data }) => data.key ?? type);
-}
-
-const cursorsOf = Schema.decodeUnknownSync(
-  Schema.Struct({ output: Schema.Struct({ events: Schema.Array(Schema.Struct({ cursor: Schema.String })) }) }),
-);
-
-function cursorsIn(outcome: unknown): readonly string[] {
-  return cursorsOf(outcome).output.events.map(({ cursor }) => cursor);
 }
 
 const withRunLog = [...makeDefinitionPresenters([echo]), runLogPresenter];
@@ -214,17 +201,21 @@ describe('the history of a run with a log of its own', () => {
     expect(keysAndTypesIn(await reading({ order: 'desc' }))).toEqual(recorded.toReversed());
   });
 
-  it('reads on from the cursor of each event to the events after it, in either order', async () => {
+  it('reads on from where each page ends to the events after it, in either order', async () => {
     const { reading } = await runWithLog(withRunLog);
-    const after = async (order: string) => {
-      const cursors = cursorsIn(await reading({ order }));
-      return Promise.all(cursors.map(async (cursor) => keysAndTypesIn(await reading({ order, cursor }))));
-    };
+    const after = (order: string) =>
+      Promise.all(
+        [1, 2, 3, 4].map(async (limit) => {
+          const page = await reading({ order, limit });
+          const rest = await reading({ order, cursor: String(nextCursorOf(page).output.next_cursor) });
+          return [keysAndTypesIn(page), keysAndTypesIn(rest)].flat();
+        }),
+      );
     const recorded = ['run_started', 'run_succeeded', 'early', 'same', 'late'];
 
     expect([await after('asc'), await after('desc')]).toEqual([
-      recorded.map((_, index) => recorded.slice(index + 1)),
-      recorded.toReversed().map((_, index) => recorded.toReversed().slice(index + 1)),
+      [recorded, recorded, recorded, recorded],
+      [recorded.toReversed(), recorded.toReversed(), recorded.toReversed(), recorded.toReversed()],
     ]);
   });
 
@@ -254,7 +245,7 @@ describe('get_run_history rejecting', () => {
       reason: 'not_found',
       detail: `There is no run ${runId} in this brain`,
     };
-    const [firstOfAnother] = cursorsIn(await reading({ run_id: otherId }));
+    const firstOfAnother = nextCursorOf(await reading({ run_id: otherId, limit: 1 })).output.next_cursor;
 
     expect(await reading({})).toEqual(notFound);
     expect(await reading({ cursor: String(firstOfAnother) })).toEqual(notFound);
@@ -273,12 +264,15 @@ describe('get_run_history rejecting', () => {
 });
 
 describe('the end of the history of a run', () => {
-  it('is an empty page without a cursor', async () => {
+  it('is a page that says nothing more remains, without a cursor', async () => {
     const { running, reading } = await brainWithRun();
     await running(runId, '2026-10-01T09:00:10.000Z');
-    const [, last] = cursorsIn(await reading({}));
+    const afterTheFirst = nextCursorOf(await reading({ limit: 1 })).output.next_cursor;
 
-    expect(await reading({ cursor: String(last) })).toEqual(emptyAndEnded);
+    expect(await reading({ limit: 1, cursor: String(afterTheFirst) })).toMatchObject({
+      status: 'succeeded',
+      output: { events: [{ type: 'run_succeeded' }], has_more: false, next_cursor: null },
+    });
   });
 });
 

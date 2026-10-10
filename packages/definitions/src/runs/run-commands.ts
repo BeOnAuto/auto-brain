@@ -1,8 +1,8 @@
+import type { CallLink } from '@beonauto/operations';
 import type { Schema } from 'effect';
 
 import type { StartingTrigger } from '../registry/definition-triggers.ts';
 import type {
-  CalledBy,
   CancelRequestKind,
   DeliveryEnded,
   DeliveryStarted,
@@ -10,7 +10,7 @@ import type {
   RunFinished,
   ReplyRefused,
   ReplyTaken,
-  ToolCallAnswered,
+  ToolCallEnded,
   ToolCallStarted,
 } from './run-events.ts';
 
@@ -27,47 +27,28 @@ export interface RunStart extends RunRequest {
   readonly finishes_later?: boolean;
   readonly depth?: number;
   readonly call_depth?: number;
-  readonly called_by?: CalledBy;
+  readonly called_by?: CallLink;
   readonly trigger?: StartingTrigger;
   readonly createOnly?: true;
 }
 
-type CopiedFromTheStart =
-  | 'by'
-  | 'at'
-  | 'definition_type'
-  | 'name'
-  | 'definition_version'
-  | 'depth'
-  | 'call_depth'
-  | 'called_by'
-  | 'trigger';
+export type RunResult = RunFinished;
 
-type WithoutFact<Event> = Event extends RunFinished | RunDeferred ? Omit<Event, CopiedFromTheStart> : never;
+export type RunOutcome = RunFinished | RunDeferred;
 
-export type RunResult = WithoutFact<RunFinished>;
+export type CallStartedFact = Omit<ToolCallStarted, 'data'> & {
+  readonly data: Omit<ToolCallStarted['data'], 'number'> & { readonly number?: number };
+};
 
-export type RunOutcome = WithoutFact<RunFinished | RunDeferred>;
+export type ToolCallFact = CallStartedFact | ToolCallEnded;
 
-export type CallStartedFact = Omit<ToolCallStarted, 'by' | 'at' | 'number'>;
+export type DeliveryStartedFact = DeliveryStarted;
 
-export type CallAnsweredFact = Omit<ToolCallAnswered, 'by' | 'at'>;
-
-export type ToolCallFact = (CallStartedFact & { readonly number?: number }) | CallAnsweredFact;
-
-type OfTheRun = 'by' | 'at' | 'definition_type' | 'name' | 'definition_version';
-
-export type DeliveryStartedFact = Omit<DeliveryStarted, OfTheRun>;
-
-export type DeliveryEndedFact = Omit<DeliveryEnded, OfTheRun>;
+export type DeliveryEndedFact = DeliveryEnded;
 
 export type OutboundCallFact = DeliveryStartedFact | DeliveryEndedFact;
 
-export type ReplyTakenFact = Omit<ReplyTaken, OfTheRun>;
-
-export type ReplyRefusedFact = Omit<ReplyRefused, OfTheRun>;
-
-export type ReplyFact = ReplyTakenFact | ReplyRefusedFact;
+export type ReplyFact = ReplyTaken | ReplyRefused;
 
 export interface InterruptedAttempt {
   readonly type: 'run_interrupted';
@@ -94,6 +75,7 @@ export interface RunReply {
 }
 
 export interface CommandMetadata {
+  readonly runId: string;
   readonly by: string;
   readonly at: string;
 }

@@ -1,8 +1,8 @@
-import { answeredInWords, toolInWords } from '@beonauto/mcp';
+import { answeredInWords, failedInWords, toolInWords, type CallFailedBecause } from '@beonauto/mcp';
 import { capitalized, explanationOf, plainNumber, quoted } from '@beonauto/operations';
 
 import type { StartingTrigger } from '../registry/definition-triggers.ts';
-import type { CancelRequestKind, ToolCallAnswered } from '../runs/run-events.ts';
+import type { CancelRequestKind } from '../runs/run-events.ts';
 import type { RunRejection } from '../runs/run.ts';
 import type { DefinitionWords } from './definition-words.ts';
 import { explainedRejectionOf } from './run-words.ts';
@@ -57,8 +57,12 @@ export function toolCalled(number: number, server: string, tool: string): string
   return `A run made tool call ${plainNumber(number)}, to ${toolInWords({ server, tool })}.`;
 }
 
-export function toolAnswered(number: number, outcome: ToolCallAnswered['outcome']): string {
-  return `Tool call ${plainNumber(number)} ${answeredInWords[outcome]}.`;
+export function toolAnswered(number: number, isError: boolean): string {
+  return `Tool call ${plainNumber(number)} ${answeredInWords(isError)}.`;
+}
+
+export function toolFailed(number: number, because: CallFailedBecause): string {
+  return `Tool call ${plainNumber(number)} ${failedInWords[because]}.`;
 }
 
 export function eventPublished(type: string): string {

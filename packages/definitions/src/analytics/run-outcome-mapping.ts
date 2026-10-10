@@ -1,4 +1,4 @@
-import type { RunOutcome, RunOutcomeMapping, RunOutcomeStatus } from '@beonauto/operations';
+import type { ProjectedMessage, RunOutcome, RunOutcomeMapping, RunOutcomeStatus } from '@beonauto/operations';
 import { Option, Predicate, Schema } from 'effect';
 
 const Time = Schema.String.check(
@@ -7,15 +7,13 @@ const Time = Schema.String.check(
 
 const StartedSchema = Schema.Struct({
   type: Schema.Literal('run_started'),
-  definition_type: Schema.String,
-  name: Schema.String,
-  at: Time,
+  context: Schema.Struct({ at: Time, definitionType: Schema.String, definitionName: Schema.String }),
 });
 
 const FinishedSchema = Schema.Struct({
   type: Schema.Literals(['run_succeeded', 'run_failed', 'run_rejected']),
-  at: Time,
-  record: Schema.optionalKey(Schema.Unknown),
+  data: Schema.Struct({ record: Schema.optionalKey(Schema.Unknown) }),
+  context: Schema.Struct({ at: Time }),
 });
 
 type Started = typeof StartedSchema.Type;
@@ -68,14 +66,17 @@ function durationBetween(startedAt: string, finishedAt: string): number | null {
 
 type Attempt = Pick<RunOutcome, 'lastStartedAt' | 'status' | 'durationMs'>;
 
-function started(row: RunOutcome | undefined, { definition_type: type, name, at }: Started): RunOutcome {
+function started(row: RunOutcome | undefined, { context }: Started): RunOutcome {
+  const { at, definitionType: type, definitionName: name } = context;
   const again: Attempt = { lastStartedAt: at, status: 'started', durationMs: null };
   return row === undefined
     ? { startedDay: dayOf(at), startedAt: at, definitionType: type, name, ...again, ...noTokens }
     : { ...row, ...again };
 }
 
-function finished(row: RunOutcome | undefined, { type, at, record }: Finished): RunOutcome {
+function finished(row: RunOutcome | undefined, { type, data, context }: Finished): RunOutcome {
+  const { at } = context;
+  const { record } = data;
   const status = statusOf[type];
   if (row === undefined) {
     const notStarted = { startedDay: dayOf(at), startedAt: at, lastStartedAt: at, definitionType: '', name: '' };
@@ -87,9 +88,9 @@ function finished(row: RunOutcome | undefined, { type, at, record }: Finished): 
 
 export const runOutcomeMapping: RunOutcomeMapping = {
   types: ['run_started', 'run_succeeded', 'run_failed', 'run_rejected'],
-  rowAfter: (row, event) =>
+  rowAfter: (row, { type, data, context }: ProjectedMessage) =>
     Option.getOrUndefined(
-      Option.map(decodeRunEvent(event), (decoded) =>
+      Option.map(decodeRunEvent({ type, data, context }), (decoded) =>
         decoded.type === 'run_started' ? started(row, decoded) : finished(row, decoded),
       ),
     ),

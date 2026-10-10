@@ -29,7 +29,7 @@ function filling(bytes: number) {
 }
 
 const cutLarge: unknown = expect.stringMatching(
-  /^(?:😀)+\n\[The answer was cut to 65536 of its 81920 bytes; ask for fewer rows, fields or depth to see the rest\.\]$/u,
+  /^(?:😀)+\n\[The answer was cut to 65,\d{3} of its 81,920 bytes, to fit what the model may still read; ask for fewer rows, fields or depth to see the rest\.\]$/u,
 );
 
 describe('a test whose tool does not answer as asked', () => {
@@ -70,14 +70,19 @@ describe('a test whose tool does not answer as asked', () => {
       },
     });
   });
+});
 
-  it('cuts an answer over 64 KiB as a run cuts it, and counts the whole result', async () => {
+describe('a test whose tool answers more than a reply shows', () => {
+  it('cuts an answer over 64 KiB where it stays valid, leaves its document out, and counts the whole result', async () => {
     const { test } = await testsWith();
 
-    expect(await test({ server: 'graph', tool: 'large', arguments: { kib: 80 } })).toMatchObject({
+    const tested = await test({ server: 'graph', tool: 'large', arguments: { kib: 80 } });
+
+    expect(tested).toMatchObject({
       status: 'succeeded',
       output: { outcome: 'result', text: cutLarge, result_bytes: moreThanWasShown },
     });
+    expect(tested).not.toHaveProperty('output.answer');
   });
 });
 

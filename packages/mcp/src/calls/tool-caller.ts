@@ -1,18 +1,24 @@
 import { admission } from '../bounds/call-bounds.ts';
-import { isReadOnly } from '../bounds/tool-results.ts';
-import type { CallStarted } from './call-facts.ts';
+import { answerOf, isReadOnly } from '../bounds/tool-results.ts';
+import type { CallAnswered, CallEnded, CallFailed, CallStarted } from './call-facts.ts';
+import { callReplyOf, failureCounted, replyOf, unsentReply, type CallReply, type Replying } from './call-replies.ts';
 import {
-  callReplyOf,
-  failureCounted,
-  readableReply,
-  replyOf,
-  unsentReply,
-  type CallReply,
-  type Replying,
-} from './call-replies.ts';
-import { callAnswered, callStarted, recordingOf, type NumberedAnswer, type Recording } from './recorded-calls.ts';
+  answeredFields,
+  failedData,
+  recordingOf,
+  scrubbedJsonOf,
+  startedFields,
+  type Recording,
+} from './recorded-calls.ts';
 import type { CallSignals, NamedOffer, RunState, RunToolsParts, ToolCallRequest } from './run-parts.ts';
-import { forwarded, type Forwarded, type Forwarding } from './tool-calls.ts';
+import {
+  forwarded,
+  type Delivered,
+  type FailedCall,
+  type Forwarded,
+  type Forwarding,
+  type ScrubbedAnswer,
+} from './tool-calls.ts';
 
 const notRecorded = unsentReply('This call could not be recorded on its run, so it was not sent; answer without it.');
 
@@ -22,57 +28,98 @@ export interface CallJournalling {
   readonly callId: string;
   readonly readOnly: boolean;
   readonly started: (fact: CallStarted) => Promise<number | undefined>;
-  readonly answered: (fact: NumberedAnswer) => Promise<void>;
+  readonly ended: (number: number, fact: CallEnded) => Promise<void>;
 }
 
-interface SentCall {
-  readonly sent: true;
-  readonly done: Forwarded;
+interface ForwardedOnce {
+  readonly done: Delivered;
   readonly durationMs: number;
 }
 
+export type SentCall =
+  | { readonly sent: true; readonly answered: true; readonly done: ScrubbedAnswer; readonly fact: CallAnswered }
+  | { readonly sent: true; readonly answered: false; readonly done: FailedCall; readonly fact: CallFailed };
+
 export type JournalledCall = SentCall | { readonly sent: false };
+
+export type ShownBytesOf = (sent: ForwardedOnce) => number | undefined;
 
 const unsent: JournalledCall = { sent: false };
 
-async function sentCall(forwarding: Forwarding): Promise<SentCall> {
-  const began = performance.now();
-  const done = await forwarded(forwarding);
-  return { sent: true, done, durationMs: Math.round(performance.now() - began) };
+function scrubbedOf(done: Forwarded, recording: Recording): Delivered {
+  return done.resultJson === null ? done : { ...done, scrubbed: answerOf(scrubbedJsonOf(done.resultJson, recording)) };
 }
 
-function startOf(forwarding: Forwarding, recording: Recording, { callId, readOnly }: CallJournalling): CallStarted {
+async function forwardedOnce(forwarding: Forwarding, recording: Recording): Promise<ForwardedOnce> {
+  const began = performance.now();
+  const done = await forwarded(forwarding);
+  return { done: scrubbedOf(done, recording), durationMs: Math.round(performance.now() - began) };
+}
+
+async function startOf(
+  forwarding: Forwarding,
+  recording: Recording,
+  { callId, readOnly }: CallJournalling,
+): Promise<CallStarted> {
   const { slot, tool, input } = forwarding;
-  const argumentsJson = JSON.stringify(input);
-  return callStarted({ callId, readOnly, server: slot.settings.name, tool, argumentsJson }, recording);
+  const fields = await startedFields({ server: slot.settings.name, tool, input }, recording);
+  return { call_id: callId, ...fields, ...(readOnly ? { read_only: true } : {}) };
+}
+
+async function settledOf(sent: ForwardedOnce, recording: Recording, shownBytes?: number): Promise<SentCall> {
+  const { done, durationMs } = sent;
+  if (done.resultJson === null) {
+    return {
+      sent: true,
+      answered: false,
+      done,
+      fact: failedData({ ...done, because: done.outcome }, durationMs, recording),
+    };
+  }
+  const fact: CallAnswered = {
+    is_error: done.outcome === 'tool_error',
+    ...(await answeredFields({ ...done, answerJson: done.resultJson }, recording)),
+    ...(shownBytes === undefined ? {} : { shown_bytes: shownBytes }),
+    duration_ms: durationMs,
+  };
+  return { sent: true, answered: true, done, fact };
+}
+
+export function endedOf(sent: SentCall): CallEnded {
+  return sent.answered
+    ? { type: 'tool_call_answered', data: sent.fact }
+    : { type: 'tool_call_failed', data: sent.fact };
 }
 
 export async function journalledCall(
   forwarding: Forwarding,
   recording: Recording,
   journalling?: CallJournalling,
+  shownBytesOf?: ShownBytesOf,
 ): Promise<JournalledCall> {
-  if (journalling === undefined) {
-    return sentCall(forwarding);
-  }
-  const number = await journalling.started(startOf(forwarding, recording, journalling));
+  const number =
+    journalling === undefined ? 0 : await journalling.started(await startOf(forwarding, recording, journalling));
   if (number === undefined) {
     return unsent;
   }
-  const sent = await sentCall(forwarding);
-  await journalling.answered(callAnswered({ ...sent.done, number, durationMs: sent.durationMs }, recording));
-  return sent;
+  const once = await forwardedOnce(forwarding, recording);
+  const settled = await settledOf(once, recording, shownBytesOf?.(once));
+  await journalling?.ended(number, endedOf(settled));
+  return settled;
 }
 
-function replied(state: RunState, done: Forwarded, replying: Replying, durationMs: number): CallReply {
-  const failure = failureCounted(state.tally(), done, replying);
+function replied(state: RunState, sent: SentCall, replying: Replying, room: number | undefined): CallReply {
+  const failure = failureCounted(state.tally(), sent.done, replying);
   state.tallied(failure.tally);
   if (failure.value !== undefined) {
     state.ended(failure.value);
   }
-  const reply = replyOf(state.tally(), done, replying);
-  state.tallied(reply.tally);
-  return readableReply(callReplyOf(reply.value, done, durationMs), done, replying.scrub);
+  const reply = callReplyOf(replyOf(sent.done, replying, room), sent.done, sent.fact.duration_ms);
+  if (!sent.answered) {
+    return reply;
+  }
+  state.answered(sent.fact.result_bytes);
+  return { ...reply, scrubbedResult: sent.done.scrubbed };
 }
 
 export function caller(
@@ -82,10 +129,14 @@ export function caller(
 ): (request: ToolCallRequest, signals: CallSignals) => Promise<CallReply> {
   const { slot } = offered;
   const { context, timing } = parts;
-  const { scrub } = parts.secrets;
-  const recording = recordingOf(slot.settings, scrub);
-  const replying = { server: offered.reference.server, meta: context.meta, scrub, report: parts.report };
-  return async ({ callId, input }, signals) => {
+  const recording = recordingOf(slot.settings, parts.secrets, parts.keep);
+  const replying = {
+    server: offered.reference.server,
+    meta: context.meta,
+    scrub: parts.secrets.scrub,
+    report: parts.report,
+  };
+  return async ({ callId, input, room }, signals) => {
     if (signals.signal.aborted) {
       return notSent;
     }
@@ -95,7 +146,7 @@ export function caller(
       return unsentReply(admitted.refusal);
     }
     const forwarding = { slot, tool: offered.tool.name, input, meta: context.meta, signal: signals.signal };
-    const journey = await journalledCall({ ...forwarding, ...timing }, recording, {
+    const journalling: CallJournalling = {
       callId,
       readOnly: isReadOnly(offered.tool.annotations),
       started: async (fact) => {
@@ -105,12 +156,18 @@ export function caller(
         }
         return number;
       },
-      answered: async (fact) => {
+      ended: async (number, fact) => {
         if (!signals.cancelled.aborted) {
-          await parts.run(context.journal.answered(fact));
+          await parts.run(context.journal.ended(number, fact));
         }
       },
-    });
-    return journey.sent ? replied(state, journey.done, replying, journey.durationMs) : notRecorded;
+    };
+    const journey = await journalledCall(
+      { ...forwarding, ...timing },
+      recording,
+      journalling,
+      (sent) => replyOf(sent.done, replying, room).shownBytes,
+    );
+    return journey.sent ? replied(state, journey, replying, room) : notRecorded;
   };
 }

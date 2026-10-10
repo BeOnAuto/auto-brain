@@ -7,7 +7,7 @@ import {
 } from '@beonauto/operations';
 import { Schema } from 'effect';
 
-const runOutcomesVersion = 3;
+const runOutcomesVersion = 4;
 
 export const runOutcomesTable = `run_outcomes_${runOutcomesVersion}`;
 

@@ -9,7 +9,7 @@ const answeredWith = (headers: Readonly<Record<string, string>> = {}, status = 2
 
 describe('the requests a connection observes', () => {
   it('pairs a request sent under a marker with the HTTP answer to it', () => {
-    const observed = observations('x-request-id');
+    const observed = observations('x-request-id', 1024);
     const marker = observed.mark();
 
     observed.noteSent(call, { onresumptiontoken: marker });
@@ -17,14 +17,14 @@ describe('the requests a connection observes', () => {
 
     expect(observed.take(marker)).toEqual({
       id: 7,
-      response: { status: 429, retryAfterMs: 2000, serverRequestId: 'r-1' },
+      response: { status: 429, retryAfterMs: 2000, serverRequestId: 'r-1', tooLarge: false },
     });
     expect(observed.take(marker)).toEqual({ id: null, response: null });
     expect(observed.lastRetryAfterMs()).toBe(2000);
   });
 
   it('keeps the id of a request no HTTP answer reached, as over stdio', () => {
-    const observed = observations('com.example/request_id');
+    const observed = observations('com.example/request_id', 1024);
     const marker = observed.mark();
 
     observed.noteSent({ ...call, id: 'call-a' }, { onresumptiontoken: marker });
@@ -33,7 +33,7 @@ describe('the requests a connection observes', () => {
   });
 
   it('keeps nothing of a message sent without a marker, of a message that is not a request, or of an answer to what it did not keep', () => {
-    const observed = observations(null);
+    const observed = observations(null, 1024);
     const marker = observed.mark();
 
     observed.noteSent(call, {});
@@ -44,6 +44,65 @@ describe('the requests a connection observes', () => {
 
     expect(observed.take(marker)).toEqual({ id: null, response: null });
     expect(observed.lastRetryAfterMs()).toBeNull();
+  });
+});
+
+describe('the size of an HTTP answer', () => {
+  it('passes an answer within the bound through whole', async () => {
+    const observed = observations(null, 4);
+    const marker = observed.mark();
+    observed.noteSent(call, { onresumptiontoken: marker });
+
+    const answer = observed.noteAnswered(JSON.stringify(call), new Response('four'));
+
+    await expect(answer.text()).resolves.toBe('four');
+    expect(observed.take(marker)).toMatchObject({ response: { tooLarge: false } });
+  });
+
+  it('stops an answer past the bound, says so of its request, and stops the call that waits for it', async () => {
+    const observed = observations(null, 4);
+    const marker = observed.mark();
+    const stopped: string[] = [];
+    observed.noteSent(call, { onresumptiontoken: marker });
+    observed.whenTooLarge(marker, () => {
+      stopped.push('stopped');
+    });
+
+    const answer = observed.noteAnswered(JSON.stringify(call), new Response('fives'));
+
+    await expect(answer.text()).rejects.toThrow('The MCP server answered more than the 4 bytes a call may take');
+    expect(stopped).toEqual(['stopped']);
+    expect(observed.take(marker)).toMatchObject({ response: { tooLarge: true } });
+  });
+});
+
+describe('the size of an HTTP answer to one of several requests', () => {
+  it('stops only the call whose answer passed the bound', async () => {
+    const observed = observations(null, 4);
+    const [first, second] = [observed.mark(), observed.mark()];
+    const stopped: string[] = [];
+    observed.noteSent(call, { onresumptiontoken: first });
+    observed.noteSent({ ...call, id: 8 }, { onresumptiontoken: second });
+    observed.whenTooLarge(first, () => {
+      stopped.push('first');
+    });
+    observed.whenTooLarge(second, () => {
+      stopped.push('second');
+    });
+
+    await expect(
+      observed.noteAnswered(JSON.stringify({ ...call, id: 8 }), new Response('fives')).text(),
+    ).rejects.toThrow('The MCP server answered more than the 4 bytes a call may take');
+    expect(stopped).toEqual(['second']);
+  });
+
+  it('stops an answer past the bound to a request it did not keep, and passes an answer without a body', async () => {
+    const observed = observations(null, 4);
+
+    await expect(observed.noteAnswered(null, new Response('fives')).text()).rejects.toThrow(
+      'The MCP server answered more than the 4 bytes a call may take',
+    );
+    expect(observed.noteAnswered(null, new Response(null, { status: 202 })).status).toBe(202);
   });
 });
 

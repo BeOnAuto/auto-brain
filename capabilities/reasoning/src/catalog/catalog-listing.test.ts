@@ -1,3 +1,4 @@
+import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { catalogFor, idsIn } from '../testing/catalog-harness.ts';
@@ -176,5 +177,27 @@ describe('a server with no provider', () => {
 
     expect(list).toMatchObject({ object: 'list', data: [], catalog_status: 'complete' });
     expect(Date.parse(list.listed_at)).toBeGreaterThanOrEqual(before);
+  });
+});
+
+describe('the context window of the model a run names', () => {
+  it('is the one its provider lists for it, through an alias too, and unknown where the provider does not say', async () => {
+    const catalog = await catalogFor(
+      {
+        ANTHROPIC_API_KEY: 'sk-ant-key',
+        MODEL_ALIASES: JSON.stringify({ 'house/fast': 'anthropic/claude-haiku-4-5-20251001' }),
+      },
+      () => jsonResponse(anthropicModels),
+    );
+    const windowOf = (model: string) => Effect.runPromise(catalog.access.catalog.contextWindowOf(model));
+
+    expect([
+      await windowOf('anthropic/claude-sonnet-4-5-20250929'),
+      await windowOf('house/fast'),
+      await windowOf('anthropic/claude-opus-4-1-20250805'),
+      await windowOf('anthropic/claude-unlisted'),
+      await windowOf('gateway/llama'),
+      await windowOf('unnamed'),
+    ]).toEqual([200_000, 200_000, undefined, undefined, undefined, undefined]);
   });
 });

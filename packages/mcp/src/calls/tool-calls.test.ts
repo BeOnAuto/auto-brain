@@ -1,3 +1,5 @@
+import { Buffer } from 'node:buffer';
+
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { Timing } from '../bounds/call-bounds.ts';
@@ -25,8 +27,10 @@ async function runWith(tools: readonly string[], timing?: Timing) {
   return run;
 }
 
+const aSize: unknown = expect.any(Number);
+
 const cutLarge: unknown = expect.stringMatching(
-  /^(?:😀)+\n\[The answer was cut to 65536 of its 81920 bytes; ask for fewer rows, fields or depth to see the rest\.\]$/u,
+  /^(?:😀)+\n\[The answer was cut to 65,\d{3} of its 81,920 bytes, to fit what the model may still read; ask for fewer rows, fields or depth to see the rest\.\]$/u,
 );
 
 const brokenWithKey: unknown = expect.stringMatching(
@@ -73,11 +77,35 @@ describe('the result of a call', () => {
     });
     expect(run.fake.received()).toHaveLength(1);
   });
+});
 
-  it('cuts a result over 64 KiB at a code point, with the note', async () => {
-    const { call } = await runWith(['large']);
+describe('a large result of a call', () => {
+  it('gives the model a large answer whole when it fits the room the model has, or when that room is unknown', async () => {
+    const { call, journal } = await runWith(['large']);
 
-    expect(await call('large', { kib: 80 })).toMatchObject({ text: cutLarge, isError: false });
+    const unbounded = await call('large', { kib: 362 });
+    const roomy = await call('large', { kib: 80 }, undefined, 100_000);
+
+    expect([unbounded.text, roomy.text]).toEqual(['😀'.repeat(362 * 256), '😀'.repeat(80 * 256)]);
+    expect(journal.facts().map(({ type, data }) => [type, 'shown_bytes' in data])).toEqual([
+      ['tool_call_started', false],
+      ['tool_call_answered', false],
+      ['tool_call_started', false],
+      ['tool_call_answered', false],
+    ]);
+  });
+
+  it('cuts an answer past the room the model has at a code point, with the note, and records how much it read', async () => {
+    const { call, journal } = await runWith(['large']);
+
+    const reply = await call('large', { kib: 80 }, undefined, 65_536);
+    const read = reply.text.slice(0, reply.text.indexOf('\n[The answer was cut'));
+
+    expect(reply).toMatchObject({ text: cutLarge, isError: false, shownBytes: Buffer.byteLength(read) });
+    expect(journal.facts().at(-1)).toMatchObject({
+      type: 'tool_call_answered',
+      data: { result_bytes: aSize, shown_bytes: Buffer.byteLength(read) },
+    });
   });
 });
 
@@ -110,16 +138,13 @@ describe('the calls a run may make', () => {
     expect(journal.facts()).toHaveLength(50);
   });
 
-  it('refuses calls once the results of the run fill 256 KiB', async () => {
+  it('reads answers that add up past 256 KiB whole, since the tokens of the run bound what it reads', async () => {
     const { call, tools } = await runWith(['large']);
 
-    await inTurn([1, 2, 3, 4], (page) => call('large', { kib: 64, page }));
+    const replies = await inTurn([1, 2, 3, 4, 5], (page) => call('large', { kib: 64, page }));
 
-    expect(tools.callsEnded()).toBe(true);
-    expect(await call('large', { kib: 1, page: 5 })).toMatchObject({
-      text: 'This run has received all the 262144 bytes of tool results it may; answer from what you have.',
-      isError: true,
-    });
+    expect(tools.callsEnded()).toBe(false);
+    expect(replies.map(({ text }) => Buffer.byteLength(text))).toEqual([65_536, 65_536, 65_536, 65_536, 65_536]);
   });
 });
 
@@ -177,7 +202,7 @@ describe('a server that fails a call', () => {
       text: 'The MCP server graph failed: The MCP server answered HTTP 403',
       isError: true,
     });
-    expect(journal.facts().at(-1)).toMatchObject({ type: 'tool_call_answered', outcome: 'server_failure' });
+    expect(journal.facts().at(-1)).toMatchObject({ type: 'tool_call_failed', data: { because: 'server_failure' } });
     expect(tools.ending()).toEqual({ because: 'failing' });
   });
 
@@ -188,7 +213,7 @@ describe('a server that fails a call', () => {
       text: 'The MCP server graph failed: The MCP server did not answer within 200 ms',
       isError: true,
     });
-    expect(journal.facts().at(-1)).toMatchObject({ type: 'tool_call_answered', outcome: 'timed_out' });
+    expect(journal.facts().at(-1)).toMatchObject({ type: 'tool_call_failed', data: { because: 'timed_out' } });
   });
 });
 

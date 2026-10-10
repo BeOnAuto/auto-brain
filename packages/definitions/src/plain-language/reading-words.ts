@@ -92,7 +92,7 @@ export function historyFound(
   { order = 'asc', cursor }: HistoryRequest,
 ): string {
   if (events.length > 0) {
-    const found = `Found ${counted(events.length, eventNoun)} in the history of the run, ${orderInWords[order]}.`;
+    const found = `Found ${counted(events.length, eventNoun)} in the history of the run, ${orderInWords[order]}, each with its fact and its metadata.`;
     return `${found}${hasMore ? moreRemain : ''}`;
   }
   if (hasMore) {

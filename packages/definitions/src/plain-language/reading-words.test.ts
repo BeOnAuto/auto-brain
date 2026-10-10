@@ -28,12 +28,18 @@ function listed(runs: readonly unknown[], filters: object = {}, hasMore = false)
 
 const event = {
   id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
-  cursor: 'WyJicmFpbiJd',
-  causation_id: null,
-  at: '2026-10-01T09:00:00.000Z',
   type: 'run_started',
   summary: 'A run started.',
   data: {},
+  metadata: {
+    stream: 'brain/acme/alpha/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
+    position: 1,
+    global_position: 1,
+    correlation_id: null,
+    causation_id: null,
+    at: '2026-10-01T09:00:00.000Z',
+    by: 'acme-admin',
+  },
 };
 
 function found(events: readonly unknown[], input: object = {}, hasMore = false): string | undefined {
@@ -88,8 +94,8 @@ describe('the plain language of list_runs', () => {
 describe('the plain language of get_run_history', () => {
   it('says how many events of the run it found, in which order', () => {
     expect([found([event, event]), found([event], { order: 'desc' }, true)]).toEqual([
-      'Found 2 events in the history of the run, oldest first.',
-      'Found 1 event in the history of the run, newest first. More remain after these.',
+      'Found 2 events in the history of the run, oldest first, each with its fact and its metadata.',
+      'Found 1 event in the history of the run, newest first, each with its fact and its metadata. More remain after these.',
     ]);
   });
 
