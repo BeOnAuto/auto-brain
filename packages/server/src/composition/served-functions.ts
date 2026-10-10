@@ -34,7 +34,7 @@ export async function functionsServedBy(
   { modelAccessOf, programPoolOf, recall: wiring }: FunctionWiring,
 ): Promise<ServedFunctions> {
   const { reasoning, interaction, withToolsClosed } = await toolUsersServedBy(runtime, settings, modelAccessOf);
-  const computation = computationServedBy(settings.computation, programPoolOf);
+  const computation = await computationServedBy(settings.computation, programPoolOf);
   const recall = await wiring.served(runtime, settings, computation.pool);
   return {
     parts: {

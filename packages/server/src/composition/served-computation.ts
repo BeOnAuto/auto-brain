@@ -18,9 +18,12 @@ export interface ServedComputation {
 export const workerPool: ProgramPoolOf = ({ workers }) =>
   programPool({ workers, heapMegabytes: computationBounds.heapMegabytes });
 
-export function computationServedBy(settings: ComputationSettings, poolOf: ProgramPoolOf): ServedComputation {
+export async function computationServedBy(
+  settings: ComputationSettings,
+  poolOf: ProgramPoolOf,
+): Promise<ServedComputation> {
   const pool = poolOf(settings);
-  void warmedChecks(pool);
+  await warmedChecks(pool);
   return {
     capability: makeComputationFunctionAdapter({ pool }),
     pool,

@@ -19,6 +19,8 @@ const misspelt = [
   '}',
 ].join('\n');
 
+type ToolResult = Awaited<ReturnType<McpSession['callTool']>>;
+
 let server: ReasoningServer;
 
 afterEach(async () => {
@@ -78,14 +80,16 @@ describe('a computation function checked when it is saved, over MCP', { timeout:
 describe('each refusal of the check at save, over MCP', { timeout: checkTestTimeoutMs }, () => {
   it('answers each refusal of the check with isError, its line and its words, as over HTTP', async () => {
     const created = await onAlpha(workerPool, (session) =>
-      Promise.all(
-        checkRefusals.map(([, program], index) =>
-          session.callTool('create_definition', {
+      checkRefusals.reduce<Promise<readonly ToolResult[]>>(
+        async (before, [, program], index) => [
+          ...(await before),
+          await session.callTool('create_definition', {
             type: 'computation',
             name: `refused-${index}`,
             source: documentOf(program),
           }),
-        ),
+        ],
+        Promise.resolve([]),
       ),
     );
 
