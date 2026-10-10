@@ -9,7 +9,7 @@ import { servingWorkflows, workflowSource, workflowTestTimeoutMs } from '../test
 
 const closing = workflowSource(
   'close-the-month',
-  "schedule:\n  on: { one: { with: { type: com.acme.ledger.closed } } }\ndo:\n  - total: { set: { month: '${ .[0].data.month }' } }\n",
+  "schedule:\n  on: { one: { with: { type: com.acme.ledger.closed } } }\ndo:\n  - total: { set: { month: '${ $data[0].data.month }' } }\n",
 );
 
 const ListedRuns = Schema.Struct({

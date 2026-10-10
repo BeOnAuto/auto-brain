@@ -1,6 +1,6 @@
-import { compileProgram, type Json, type ProgramLimits, type ProgramRun } from '@beonauto/workflow-engine/dsl';
+import { programPool, type Json, type ProgramPool, type ProgramRequest } from '@beonauto/workflow-engine/dsl';
 
-import { computationDialect } from '../src/document/program-dialect.ts';
+import { computationBounds } from '../src/run/run-bounds.ts';
 
 export function millisecondsOf(work: () => void): number {
   const started = performance.now();
@@ -12,14 +12,6 @@ export function median(samples: readonly number[]): number {
   return samples.toSorted((first, second) => first - second)[Math.floor(samples.length / 2)] ?? 0;
 }
 
-export function runInThread(source: string, input: Json, limits: ProgramLimits): ProgramRun {
-  const compiled = compileProgram(source, computationDialect);
-  if ('issues' in compiled) {
-    throw new Error(compiled.issues.map(({ detail }) => detail).join('; '));
-  }
-  return compiled.program.run(input, { limits, outputs: 'exactly one' });
-}
-
 export function formatted(value: number, digits = 0): string {
   return value.toLocaleString('en-US', { maximumFractionDigits: digits, minimumFractionDigits: digits });
 }
@@ -29,4 +21,30 @@ export function inTurn<A, B>(items: readonly A[], step: (item: A) => Promise<B>)
     async (done, item) => [...(await done), await step(item)],
     Promise.resolve([]),
   );
+}
+
+export function functionOf(body: string): string {
+  return `export default function (input) {\n  ${body}\n}`;
+}
+
+export function request(
+  source: string,
+  input: Json,
+  deadlineMs: number = computationBounds.deadlineMs,
+): ProgramRequest {
+  return {
+    source,
+    entry: 'default',
+    arguments: [input],
+    moment: 0,
+    budget: computationBounds.budget,
+    memoryBytes: computationBounds.memoryBytes,
+    stackBytes: computationBounds.stackBytes,
+    deadlineMs,
+    mostOutputBytes: 1_000_000,
+  };
+}
+
+export function poolOfOne(): ProgramPool {
+  return programPool({ workers: 1, heapMegabytes: computationBounds.heapMegabytes });
 }

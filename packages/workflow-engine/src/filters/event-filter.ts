@@ -1,22 +1,12 @@
-import { evaluate, type Place } from '../dsl/evaluation.ts';
-import { enclosedBody, freeVariablesOf } from '../dsl/expressions.ts';
-import {
-  entriesOf,
-  field,
-  isObject,
-  isTruthy,
-  jsonEquals,
-  objectField,
-  type Json,
-  type JsonEntry,
-  type JsonObject,
-} from '../dsl/json.ts';
+import { Function } from 'effect';
+
+import { enclosedBody } from '../dsl/expressions.ts';
+import { field, isObject, objectField, type Json, type JsonObject } from '../dsl/json.ts';
 import { forbidden, rejection, type Rejection } from '../dsl/policy-checks.ts';
-import { caughtRaise } from '../dsl/raised-error.ts';
 import { eventFilterRejections, eventFiltersOf, type LocatedFilter } from '../dsl/task-policy.ts';
 import { pointerTo } from '../dsl/tasks.ts';
 import type { DslError } from '../machine/dsl-error.ts';
-import { meterOf } from '../runner/run-tables.ts';
+import { attributeHolds, filterAttributesOf } from './attribute-match.ts';
 
 type ExpressionVerdict = (expression: string, value: Json) => Json;
 
@@ -24,12 +14,11 @@ export interface LiteralFilter {
   readonly reference: string;
   readonly type: string;
   readonly attributes: JsonObject;
-  readonly dataNeedsVariables: boolean;
 }
 
 export type LiteralFilterReading = { readonly filter: LiteralFilter } | { readonly rejections: readonly Rejection[] };
 
-export type FilterVerdict = boolean | { readonly error: DslError };
+export type FilterVerdict = boolean | { readonly error: DslError; readonly stopped: boolean };
 
 const filterKeys: ReadonlySet<string> = new Set(['with', 'correlate']);
 
@@ -37,18 +26,9 @@ const literalAttributes: readonly string[] = ['type', 'source', 'subject'];
 
 const testedAttributes: ReadonlySet<string> = new Set([...literalAttributes, 'data']);
 
-const noVariables = {};
-
-const noDurations = 0;
-
-function attributeMatches(expected: Json, actual: Json, verdictOf: ExpressionVerdict): boolean {
-  const expression = enclosedBody(expected);
-  return expression === undefined ? jsonEquals(expected, actual) : isTruthy(verdictOf(expression, actual));
-}
-
 export function hasAttributes(event: JsonObject, attributes: JsonObject, verdictOf: ExpressionVerdict): boolean {
-  return entriesOf(attributes).every(([name, expected]: JsonEntry) =>
-    attributeMatches(expected, field(event, name) ?? null, verdictOf),
+  return filterAttributesOf(attributes, Function.identity).every((attribute) =>
+    attributeHolds(attribute, event, (expression, actual) => verdictOf(expression, actual)),
   );
 }
 
@@ -87,17 +67,6 @@ function literalRejections(attributes: JsonObject, pointer: string): readonly Re
   );
 }
 
-function needsVariables(expected: Json | undefined): boolean {
-  const expression = enclosedBody(expected);
-  return expression !== undefined && freeVariablesOf(expression).length > 0;
-}
-
-function testedOf(attributes: JsonObject, dataNeedsVariables: boolean): JsonObject {
-  return dataNeedsVariables
-    ? Object.fromEntries(entriesOf(attributes).filter(([name]: JsonEntry) => name !== 'data'))
-    : attributes;
-}
-
 export function literalFilterOf(filter: Json | undefined, pointer: string): LiteralFilterReading {
   const attributes = isObject(filter) ? objectField(filter, 'with') : undefined;
   if (!isObject(filter) || attributes === undefined) {
@@ -114,10 +83,7 @@ export function literalFilterOf(filter: Json | undefined, pointer: string): Lite
   if (typeof type !== 'string' || rejections.length > 0) {
     return { rejections };
   }
-  const dataNeedsVariables = needsVariables(field(attributes, 'data'));
-  return {
-    filter: { reference: pointer, type, attributes: testedOf(attributes, dataNeedsVariables), dataNeedsVariables },
-  };
+  return { filter: { reference: pointer, type, attributes } };
 }
 
 export function brainWideFilterOf(filter: Json | undefined): JsonObject | undefined {
@@ -139,24 +105,5 @@ export function listenerFilterOf(attributes: JsonObject, reference: string): Lit
   if (typeof type !== 'string' || brainWideFilterOf({ with: attributes }) === undefined) {
     return undefined;
   }
-  const tested = entriesOf(attributes).filter(([, expected]: JsonEntry) => !needsVariables(expected));
-  return {
-    reference,
-    type,
-    attributes: Object.fromEntries(tested),
-    dataNeedsVariables: tested.length < entriesOf(attributes).length,
-  };
-}
-
-export function matchEvent(
-  filter: Pick<LiteralFilter, 'reference' | 'attributes'>,
-  event: JsonObject,
-  now: number,
-): FilterVerdict {
-  const place: Place = { reference: filter.reference, now, meter: meterOf(), mostDuration: noDurations };
-  return caughtRaise<FilterVerdict>(
-    () =>
-      hasAttributes(event, filter.attributes, (expression, value) => evaluate(expression, value, noVariables, place)),
-    (error) => ({ error }),
-  );
+  return { reference, type, attributes };
 }

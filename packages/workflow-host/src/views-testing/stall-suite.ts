@@ -2,13 +2,22 @@ import { describe, expect, it } from 'vitest';
 
 import type { SettingsOf } from '../testing/host-files.ts';
 import { secondFoldWithBudget } from './pool-faults.ts';
-import { breakingFoldWorker, breaksTheWorker, sleepsBeforeItIsFolded } from './test-fold-workers.ts';
+import {
+  delayingFolding,
+  overrunningFold,
+  overrunningFolding,
+  overrunsItsDeadline,
+  steppedClock,
+  takesItsNeighboursTime,
+  untilTried,
+} from './stepped-sweeps.ts';
+import { breakingFoldWorker, breaksTheWorker } from './test-fold-workers.ts';
 import {
   collecting,
   counting,
   detailsOf,
+  foldOf,
   foldedAll,
-  foldingOf,
   isLive,
   isStalled,
   liveWith,
@@ -17,35 +26,39 @@ import {
 } from './view-documents.ts';
 import { viewHarness, type ViewHarness } from './view-harness.ts';
 
-const raisingWithTheEvent =
-  'if $event.data.output == "bad" then error("cannot take \\($event.data.output)") else . + 1 end';
+const raisingWithTheEvent = foldOf(
+  'if (event.data.output === "bad") throw new Error(`cannot take ${event.data.output}`);\n  return view + 1;',
+);
+
+function badFold(whenBad: string): string {
+  return foldOf(`if (event.data.output === "bad") ${whenBad}\n  return view + 1;`);
+}
 
 const anyText: unknown = expect.any(String);
 
+const sweptFrom = Date.parse('2026-10-06T09:00:00.000Z');
+
+const sweepMs = 60_000;
+
 const stallingFolds: readonly (readonly [string, string, Readonly<Record<string, unknown>>])[] = [
-  ['raises with the event', raisingWithTheEvent, { kind: 'raised', message: 'cannot take bad', line: 30 }],
+  ['raises with the event', raisingWithTheEvent, { kind: 'raised', message: 'Error: cannot take bad', line: 31 }],
+  ['calls what is not a function', badFold('return view + event.data.output.toFixed();'), { kind: 'raised', line: 31 }],
+  ['answers nothing', badFold('return undefined;'), { kind: 'unfit', line: null }],
+  ['answers what JSON cannot carry', badFold('return Number.NaN;'), { kind: 'unfit', line: null }],
+  ['does too much work', badFold('for (;;) {}'), { kind: 'work', line: null }],
   [
-    'reads event text as a number',
-    'if $event.data.output == "bad" then . + ($event.data.output | tonumber) else . + 1 end',
-    { kind: 'raised', line: 30 },
-  ],
-  ['gives no output', 'if $event.data.output == "bad" then empty else . + 1 end', { kind: 'none', line: null }],
-  ['gives two outputs', 'if $event.data.output == "bad" then (., .) else . + 1 end', { kind: 'several', line: null }],
-  [
-    'does too much work',
-    'if $event.data.output == "bad" then ("x" * 20000000 | length) else . + 1 end',
-    { kind: 'work', line: 30 },
+    'uses more memory than a page may',
+    badFold('{\n    const kept = [];\n    for (;;) kept.push("y".repeat(1048576) + kept.length);\n  }'),
+    { kind: 'memory', line: null },
   ],
   [
     'nests too deep',
-    'if $event.data.output == "bad" then reduce range(600) as $i (.; [.]) else . + 1 end',
-    { kind: 'depth', line: 30 },
+    badFold(
+      '{\n    let value = 0;\n    for (let level = 0; level < 600; level++) value = [value];\n    return value;\n  }',
+    ),
+    { kind: 'unfit', line: null },
   ],
-  [
-    'outgrows its bound',
-    'if $event.data.output == "bad" then "x" * 600000 else . + 1 end',
-    { kind: 'size', line: null },
-  ],
+  ['outgrows its bound', badFold('return "x".repeat(600000);'), { kind: 'size', line: null }],
 ];
 
 async function threeRuns(views: ViewHarness): Promise<void> {
@@ -72,7 +85,10 @@ function stoppingTests(settingsOf: SettingsOf): void {
   it('stops when the view it folds is one its schema refuses', async () => {
     const views = await viewHarness(await settingsOf());
     const schema = { type: 'array', maxItems: 1 };
-    await views.saved('runs', detailsOf('. + [$event.data.output]', succeeded, { initial: [], schema }));
+    await views.saved(
+      'runs',
+      detailsOf(foldOf('return [...view, event.data.output];'), succeeded, { initial: [], schema }),
+    );
     await threeRuns(views);
     views.start();
 
@@ -99,17 +115,21 @@ function afterTheStallTests(settingsOf: SettingsOf): void {
     expect([kept.view, stalling?.folded, stalling?.phase]).toEqual([4, 1, 'stalled']);
   });
 
-  it('is tried again when its fold runs past its deadline, counting the tries on its row, and stops after twenty', async () => {
+  it('is tried again at each sweep when its fold runs past its deadline, counting the tries on its row, and stops after the tries it may have', async () => {
     const views = await viewHarness(await settingsOf());
-    const slow = 'if $event.data.output == "bad" then reduce range(3000000) as $i (.; . + 0) else . + 1 end';
-    await views.saved('runs', detailsOf(slow, succeeded, { initial: 0 }));
-    await threeRuns(views);
-    views.start({ folding: { ...foldingOf(), foldDeadlineMs: 1 }, sweepEveryMs: 20 });
+    const clock = steppedClock(sweptFrom);
+    await views.saved('runs', detailsOf(overrunningFold, succeeded, { initial: 0 }));
+    await views.ranEach('reasoning/runs', ['good', overrunsItsDeadline, 'later']);
+    views.start({ folding: overrunningFolding(), overtimesBeforeStall: 3, clock, sweepEveryMs: sweepMs });
 
+    await untilTried(views, 'runs', 1);
+    clock.step(sweepMs);
+    await untilTried(views, 'runs', 2);
+    clock.step(sweepMs);
     const kept = await views.until('runs', isStalled);
 
     expect(kept).toMatchObject({ view: 1, folded: 1, stall: { kind: 'time', line: null } });
-    expect(kept.stall?.message).toBe('The fold was stopped by its deadline of 1 ms 20 times');
+    expect(kept.stall?.message).toBe('The fold was stopped by its deadline of 10000 ms 3 times');
   });
 }
 
@@ -158,10 +178,10 @@ function neighbourTests(settingsOf: SettingsOf): void {
       (before, name) => before.then(() => views.saved(name, counting)),
       Promise.resolve(),
     );
-    views.start({ folding: { ...foldingOf(), foldDeadlineMs: 1000, pageBudgetMs: 1 }, overtimesBeforeStall: 1 });
+    views.start({ folding: delayingFolding(), clock: steppedClock(sweptFrom), overtimesBeforeStall: 1 });
     await Promise.all(names.map((name) => views.until(name, isLive)));
 
-    await views.ran('reasoning/runs', sleepsBeforeItIsFolded);
+    await views.ran('reasoning/runs', takesItsNeighboursTime);
     const kept = await Promise.all(names.map((name) => views.until(name, liveWith(1))));
 
     expect(kept.map(({ phase, view }) => [phase, view])).toEqual(names.map(() => ['live', 1]));

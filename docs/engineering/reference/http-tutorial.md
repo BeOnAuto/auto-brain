@@ -58,16 +58,16 @@ do:
         type: reasoning
         name: greeting
         input:
-          name: ${ .name }
+          name: ${ $data.name }
       output:
-        as: '${ { greeting: . } }'
+        as: '${ ({ greeting: $data }) }'
   - await:
       listen:
         to:
           one:
             with: { type: com.acme.customer.replied }
       output:
-        as: '${ $input + { reply: .[0] } }'
+        as: '${ ({ ...$input, reply: $data[0] }) }'
 ```
 
 Create it, execute it, and send it the event it waits for:

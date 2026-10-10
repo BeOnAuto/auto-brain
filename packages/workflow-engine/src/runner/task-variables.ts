@@ -1,8 +1,8 @@
+import type { Variables } from '../dsl/evaluation.ts';
 import type { Json, JsonObject } from '../dsl/json.ts';
 import type { TaskEntry } from '../dsl/tasks.ts';
 import type { ValueId, Variables as Scope } from '../machine/run-state.ts';
 import { dateTimeOf } from '../machine/utc-time.ts';
-import type { Variables } from '../programs/program-running.ts';
 import type { FramePrefix } from './advance.ts';
 import type { Session } from './session.ts';
 

@@ -23,16 +23,16 @@ const approval = workflowSource(
   `do:
   - judge:
       call: run_definition
-      with: { type: reasoning, name: verdict, input: { expense: '\${ .expense }' } }
+      with: { type: reasoning, name: verdict, input: { expense: '\${ $data.expense }' } }
       output:
-        as: '\${ { approve: .approve } }'
+        as: '\${ ({ approve: $data.approve }) }'
   - decide:
       listen:
         to:
           one:
             with: { type: com.acme.approval.decided }
       output:
-        as: '\${ { decided: .[0] } }'
+        as: '\${ ({ decided: $data[0] }) }'
 `,
 );
 

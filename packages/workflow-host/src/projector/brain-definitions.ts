@@ -1,6 +1,8 @@
 import { DefinitionEventSchema, definitionTypeStreamOf, type DefinitionEvent } from '@beonauto/definitions';
 import { Option, Schema } from 'effect';
 
+import { runnableDetailsOf } from '../views/view-details.ts';
+
 export interface KeptFunction {
   readonly version: number;
   readonly saved: number;
@@ -29,7 +31,11 @@ function evolved(functions: ReadonlyMap<string, KeptFunction>, event: Definition
   if (event.type === 'definition_retired') {
     kept.delete(event.name);
   } else {
-    kept.set(event.name, { version: event.version, saved, details: event.content.details });
+    kept.set(event.name, {
+      version: event.version,
+      saved,
+      details: runnableDetailsOf(event.content.details, event.content.stripped),
+    });
   }
   return kept;
 }

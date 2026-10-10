@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { mostExpressionWork, mostWorkPerInput } from '../machine/limits.ts';
+import { mostExpressionWork, mostValueWork, mostWorkPerInput } from '../machine/limits.ts';
 import type { RunOutcome } from '../machine/run-state.ts';
 import { drivenRun } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 import { errorType } from './raised-error.ts';
 
-const text = 'x'.repeat(1000);
+const justOverTheBudget = 'x'.repeat(mostValueWork - 15);
 
-const justOverTheBudget = 'x'.repeat(mostExpressionWork - 15);
+const twoHundredCheckpoints =
+  '(() => { let sum = 0; for (let index = 0; index < 1000000; index++) sum += index; return sum })()';
 
 function titleOf(outcome: RunOutcome | null): string {
   return outcome?.kind === 'raised' ? (outcome.error.title ?? '') : JSON.stringify(outcome);
@@ -16,7 +17,7 @@ function titleOf(outcome: RunOutcome | null): string {
 
 describe('an expression of a task', () => {
   it('that fails raises an expression error with what went wrong', () => {
-    const run = drivenRun(workflow('do:\n  - broken: { set: \'${ error("boom") }\' }'));
+    const run = drivenRun(workflow("do:\n  - broken: { set: '${ $data.missing.field }' }"));
 
     expect(run.outcome).toEqual({
       kind: 'raised',
@@ -24,50 +25,43 @@ describe('an expression of a task', () => {
         type: errorType('expression'),
         status: 400,
         title: 'An expression failed',
-        detail: ' error("boom") : RuntimeError: boom',
+        detail: "$data.missing.field: TypeError: cannot read property 'field' of undefined",
         instance: '/do/0/broken',
       },
     });
   });
 
   it('that does more work than an expression may raises a runtime error', () => {
-    const run = drivenRun(workflow("do:\n  - heavy: { set: '${ [limit(9000; repeat(.text))] | length }' }"), {
-      input: { text },
-    });
+    const run = drivenRun(workflow("do:\n  - heavy: { set: '${ (() => { for (;;) {} })() }' }"));
 
     expect(titleOf(run.outcome)).toMatch(
-      new RegExp(`: an expression may do ${mostExpressionWork} units of work$`, 'u'),
+      new RegExp(`: an expression may do ${mostExpressionWork} checkpoints of work$`, 'u'),
     );
   });
 
   it('that does more work than is left of the input raises a runtime error that says so', () => {
-    const heavy = "'${ [limit(2500; repeat(.text))] | length }'";
-    const run = drivenRun(workflow(`do:\n  - heavy: { set: { a: ${heavy}, b: ${heavy}, c: ${heavy} } }`), {
-      input: { text },
-    });
+    const heavy = `'\${ ${twoHundredCheckpoints} }'`;
+    const run = drivenRun(workflow(`do:\n  - heavy: { set: { a: ${heavy}, b: ${heavy}, c: ${heavy} } }`));
 
     expect(titleOf(run.outcome)).toMatch(
-      new RegExp(`: the workflow did ${mostWorkPerInput} units of expression work in one input; `, 'u'),
+      new RegExp(`: the workflow did ${mostWorkPerInput} checkpoints of expression work in one input; `, 'u'),
     );
   });
 });
 
 describe('a value an expression of a task builds', () => {
-  it('nested deeper than 512 levels raises an expression error with the depth of a value', () => {
+  it('nested deeper than 512 levels raises an expression error that names where', () => {
     const run = drivenRun(
-      workflow("do:\n  - deep: { set: '${ reduce range(2000) as $i (null; [.]) | tojson | length }' }"),
+      workflow(
+        "do:\n  - deep: { set: '${ (() => { let value = null; for (let level = 0; level < 600; level++) value = [value]; return value })() }' }",
+      ),
     );
 
-    expect(run.outcome).toEqual({
+    expect(run.outcome).toMatchObject({
       kind: 'raised',
-      error: {
-        type: errorType('expression'),
-        status: 400,
-        title: 'An expression failed',
-        detail: ' reduce range(2000) as $i (null; [.]) | tojson | length : LimitError: Value depth limit exceeded',
-        instance: '/do/0/deep',
-      },
+      error: { type: errorType('expression'), status: 400, title: 'An expression failed', instance: '/do/0/deep' },
     });
+    expect(JSON.stringify(run.outcome)).toContain('The answer holds a value deeper than 512 levels at $[0][0]');
   });
 });
 
@@ -78,7 +72,7 @@ describe('a value a task gives', () => {
     });
 
     expect(titleOf(run.outcome)).toBe(
-      `A value takes ${mostExpressionWork + 1} units of work to visit, more than the ${mostExpressionWork} a workflow may hold`,
+      `A value takes ${mostValueWork + 1} units of work to visit, more than the ${mostValueWork} a workflow may hold`,
     );
   });
 });

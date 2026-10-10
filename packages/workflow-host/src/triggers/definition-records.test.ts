@@ -5,8 +5,9 @@ import { describe, expect, it } from 'vitest';
 import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
 import { cronTrigger, eventTrigger, everyTrigger } from '../reaction-testing/brain-writes.ts';
+import { definitionRecordsKeepingTheirOwnStops } from '../reaction-testing/own-stops.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
-import { definitionRecordsIn, definitionRecordsOn, type DefinitionRecord } from './definition-records.ts';
+import { definitionRecordsIn, type DefinitionRecord } from './definition-records.ts';
 
 const brainKey = 'brain/acme/alpha/';
 
@@ -63,7 +64,7 @@ function retired(id: string, name: string): DefinitionRecord {
 
 async function applying() {
   const database = await openedOn(await onSQLite());
-  const apply = definitionRecordsOn(database);
+  const apply = definitionRecordsKeepingTheirOwnStops(database);
   return {
     database,
     applied: (...records: readonly DefinitionRecord[]) =>

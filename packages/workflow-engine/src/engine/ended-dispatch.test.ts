@@ -1,6 +1,7 @@
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { testSandbox } from '../pool-testing/test-sandbox.ts';
 import { memoryDriver } from '../testing/memory-driver.ts';
 import { workflow } from '../testing/workflows.ts';
 
@@ -9,7 +10,7 @@ const runId = '0199a3c4-7d2e-7c1a-9b3f-000000000071';
 const asking = workflow('do:\n  - ask: { call: notify, with: { to: ada } }');
 
 function cancelledWhileItAsks(failing: 'cancel_call' | 'settle') {
-  const driver = memoryDriver({ respond: () => 'never' });
+  const driver = memoryDriver({ sandbox: testSandbox, respond: () => 'never' });
   driver.start({ runId, document: asking });
   driver.ports.faults.failNext(failing);
   driver.cancel(runId);
@@ -25,7 +26,7 @@ describe('the outputs of a run that has ended', () => {
   });
 
   it('pass a start of a call that fails, which nothing can use once the run has ended', () => {
-    const driver = memoryDriver({ respond: () => 'never' });
+    const driver = memoryDriver({ sandbox: testSandbox, respond: () => 'never' });
     driver.ports.faults.failNext('start_call');
     driver.start({ runId, document: asking });
     driver.ports.faults.failNext('start_call');
@@ -42,7 +43,7 @@ describe('the outputs of a run that has ended', () => {
 
 describe('the outputs of a run still going', () => {
   it('stop at a start of a call that fails, which is dispatched again', () => {
-    const driver = memoryDriver({ respond: () => 'never' });
+    const driver = memoryDriver({ sandbox: testSandbox, respond: () => 'never' });
     driver.ports.faults.failNext('start_call');
     driver.start({ runId, document: asking });
 

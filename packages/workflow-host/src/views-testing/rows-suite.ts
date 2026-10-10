@@ -7,7 +7,7 @@ import type { SettingsOf } from '../testing/host-files.ts';
 import { viewRowOf, ViewRowSchema, type ViewRow } from '../views/view-rows.ts';
 import { foldedWritten, viewDropped, viewNamed, type FoldedRow } from '../views/view-statements.ts';
 import { racingOnce } from './pool-faults.ts';
-import { alphaKey, counting, detailsOf, liveAt, succeeded, viewTestTimeoutMs } from './view-documents.ts';
+import { alphaKey, counting, detailsOf, foldOf, liveAt, succeeded, viewTestTimeoutMs } from './view-documents.ts';
 import { viewHarness, type ViewHarness } from './view-harness.ts';
 
 const NameRow = Schema.Struct({ name: Schema.String });
@@ -229,7 +229,7 @@ function racingTests(settingsOf: SettingsOf): void {
   it('let a page go whose row another host renewed while it folded, and fold the newer version from the start', async () => {
     const views = await viewHarness(await settingsOf());
     const elsewhere = reconciling(views, 4);
-    await views.saved('runs', detailsOf('. + 100', succeeded, { initial: 0 }));
+    await views.saved('runs', detailsOf(foldOf('return view + 100;'), succeeded, { initial: 0 }));
     await views.ranEach('reasoning/runs', [1, 2]);
     const renewedElsewhere = async (): Promise<void> => {
       await views.saved('runs', counting);

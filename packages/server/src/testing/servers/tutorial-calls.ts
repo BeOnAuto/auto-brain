@@ -35,6 +35,19 @@ export function pageOf(page: string): string {
   return readFileSync(new URL(`../../../../../docs/${page}`, import.meta.url), 'utf8');
 }
 
+export interface FencedBlock {
+  readonly language: string;
+  readonly body: string;
+}
+
+export function blocksInOrderOf(page: string): readonly FencedBlock[] {
+  const blocks: FencedBlock[] = [];
+  for (const [, language = '', body = ''] of pageOf(page).matchAll(fencedBlock)) {
+    blocks.push({ language, body });
+  }
+  return blocks;
+}
+
 export function fencedBlocksOf(page: string): ReadonlyMap<string, string> {
   const blocks = new Map<string, string>();
   for (const [, language = '', body = ''] of pageOf(page).matchAll(fencedBlock)) {

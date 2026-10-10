@@ -38,8 +38,10 @@ export function runLoopOf(
   runStore: RunLogStore,
   decider: RunDecider,
   cache: RunCache = runCacheOf(),
+  reserve: Effect.Effect<void> = Effect.void,
 ): DecisionLoop<LoadedRun, RunState, RunInput, RunLogEvent, never> {
-  const load = cachedLoadOf(runStore, cache);
+  const cached = cachedLoadOf(runStore, cache);
+  const load = (runId: string): Effect.Effect<LoadedRun> => Effect.tap(cached(runId), () => reserve);
   return (runId, input) =>
     Effect.tap(decisionLoop(load, appendOf(runStore, cache, input), decider)(runId, input), (decision) =>
       Effect.sync(() => {

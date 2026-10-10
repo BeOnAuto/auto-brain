@@ -1,9 +1,9 @@
-import type { Place } from '../dsl/evaluation.ts';
+import { mostInputMs, type Place } from '../dsl/evaluation.ts';
 import { withReachableValuesOnly } from '../machine/held-values.ts';
 import type { RunState, TaskFrame, ValueId } from '../machine/run-state.ts';
 import { stepJournalOf, type StepJournal } from '../steps/step-journal.ts';
 import { countersOf, runCellOf, type Counters, type RunCell } from './run-cell.ts';
-import { descriptorsOf, type Descriptors, type MachineOptions } from './run-descriptors.ts';
+import { descriptorsOf, type DecidingOptions, type Descriptors, type MachineOptions } from './run-descriptors.ts';
 import { lifecycleOf, type Ending, type Lifecycle } from './run-ending.ts';
 import { emissionTableOf, inboxOf, type EmissionTable, type Inbox, type OfferVerdict } from './run-inbox.ts';
 import { journalOf, meterOf, valueTableOf, type Journal, type Meter, type ValueTable } from './run-tables.ts';
@@ -76,7 +76,19 @@ function endingOf(state: RunState, now: number, descriptors: Descriptors, journa
   };
 }
 
-export function sessionOf(state: RunState, now: number, options: MachineOptions): Session {
+interface Placing {
+  readonly now: number;
+  readonly meter: Meter;
+  readonly options: DecidingOptions;
+  readonly mostDuration: () => number;
+}
+
+function placesOf({ now, meter, options, mostDuration }: Placing): (reference: string) => Place {
+  const deadlineAt = options.sandbox.clock() + mostInputMs;
+  return (reference) => ({ reference, now, meter, mostDuration: mostDuration(), unit: options.unit, deadlineAt });
+}
+
+export function sessionOf(state: RunState, now: number, options: DecidingOptions): Session {
   const cell = runCellOf(state);
   const journal = journalOf();
   const steps = stepJournalOf();
@@ -91,7 +103,7 @@ export function sessionOf(state: RunState, now: number, options: MachineOptions)
     now,
     options,
     meter,
-    placeAt: (reference) => ({ reference, now, meter, mostDuration: descriptors.limits().mostDurationMs }),
+    placeAt: placesOf({ now, meter, options, mostDuration: () => descriptors.limits().mostDurationMs }),
     timers,
     calls,
     listeners,
@@ -101,7 +113,7 @@ export function sessionOf(state: RunState, now: number, options: MachineOptions)
     },
     ...values,
     ...inbox,
-    ...countersOf(cell),
+    ...countersOf(cell, options.sandbox.mostStepsWithoutWaiting),
     ...descriptors,
     ...lifecycleOf(cell, ending, now),
     context: () => cell.get().context,

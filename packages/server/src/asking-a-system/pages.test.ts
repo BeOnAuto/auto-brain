@@ -18,9 +18,9 @@ const paging = {
 const throughEveryPage = `do:
   - page:
       call: run_definition
-      with: { type: interaction, name: paging, input: { cursor: '\${ $context.next // "" }' } }
+      with: { type: interaction, name: paging, input: { cursor: '\${ $context.next ?? "" }' } }
       export:
-        as: '\${ { items: (($context.items // []) + .items), next: .next } }'
+        as: '\${ ({ items: [...($context.items ?? []), ...$data.items], next: $data.next }) }'
   - more:
       switch:
         - again:
@@ -35,7 +35,7 @@ const throughEveryPage = `do:
 const keptReplies = [
   '---',
   'description: What the thread-replies function read, the last ten times',
-  'language: jq',
+  'language: typescript',
   'source:',
   '  events:',
   '    - type: run_succeeded',
@@ -43,9 +43,11 @@ const keptReplies = [
   'view:',
   '  initial: []',
   '  schema: { type: array, maxItems: 10 }',
-  "answer: '.'",
   '---',
-  '(. + [$event.data.output]) | .[-10:]',
+  'export function fold(view: View, event: Event): View {',
+  '  const data = event.data as { output: View[number] };',
+  '  return [...view, data.output].slice(-10);',
+  '}',
 ].join('\n');
 
 const onReplies = workflowSource(
@@ -53,7 +55,7 @@ const onReplies = workflowSource(
   `schedule:
   on: { one: { with: { type: run_succeeded, subject: interaction/thread-replies } } }
 do:
-  - noted: { set: { replies: '\${ .[0].data.output | length }' } }
+  - noted: { set: { replies: '\${ $data[0].data.output.length }' } }
 `,
 );
 

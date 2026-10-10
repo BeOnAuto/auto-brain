@@ -6,20 +6,22 @@ import { describe, expect, it, vi } from 'vitest';
 import type { HostDatabase } from '../database/host-database.ts';
 import { onSQLite } from '../testing/host-files.ts';
 import { heldFolds, heldReads } from '../views-testing/pool-faults.ts';
+import {
+  overrunningFold,
+  overrunningFolding,
+  overrunsItsDeadline,
+  overtimesOf,
+  steppedClock,
+  untilTried,
+} from '../views-testing/stepped-sweeps.ts';
 import * as documents from '../views-testing/view-documents.ts';
 import { viewHarness, type ViewHarness } from '../views-testing/view-harness.ts';
 import { brainPass, type PassParts } from './brain-pass.ts';
-import { rowsOfBrain } from './view-reconciling.ts';
 
 const { alpha, alphaKey, counting, detailsOf, foldedAll, foldingOf, isLive, liveWith, succeeded, viewTestTimeoutMs } =
   documents;
 
 const brains = [alpha, { org: 'acme', brain: 'beta' }, { org: 'acme', brain: 'gamma' }];
-
-async function overtimesOf(views: ViewHarness, name: string): Promise<number | undefined> {
-  const rows = await Effect.runPromise(rowsOfBrain(views.store.database, alphaKey));
-  return rows.find((row) => row.name === name)?.overtimes;
-}
 
 async function viewsInEveryBrain(views: ViewHarness): Promise<void> {
   await Promise.all(
@@ -124,30 +126,19 @@ describe('the share of a projector', { timeout: viewTestTimeoutMs }, () => {
 describe('a fold that ran past its deadline', { timeout: viewTestTimeoutMs }, () => {
   it('is tried again at the next sweep, not the next page, while the other views of its brain go on', async () => {
     const views = await viewHarness(await onSQLite());
-    const slowOnce = 'if $event.data.output == "slow" then reduce range(1000000000) as $i (.; . + 0) else . + 1 end';
-    await views.saved('slow', detailsOf(slowOnce, succeeded, { initial: 0 }));
+    const clock = steppedClock(Date.parse('2026-10-06T09:00:00.000Z'));
+    await views.saved('slow', detailsOf(overrunningFold, succeeded, { initial: 0 }));
     await views.saved('quick', counting);
-    const folding = foldingOf();
-    const limits = { ...folding.limits, mostWork: 10_000_000_000 };
-    views.start({ folding: { ...folding, limits, foldDeadlineMs: 500 }, sweepEveryMs: 10_000 });
+    views.start({ folding: overrunningFolding(), clock, sweepEveryMs: 10_000 });
     await Promise.all([views.until('slow', isLive), views.until('quick', isLive)]);
 
-    await views.ran('reasoning/runs', 'slow');
-    await vi.waitFor(
-      async () => {
-        expect(await overtimesOf(views, 'slow')).toBe(1);
-      },
-      { timeout: 8000 },
-    );
+    await views.ran('reasoning/runs', overrunsItsDeadline);
+    await untilTried(views, 'slow', 1);
     await views.ran('reasoning/runs', 'quick');
     await views.until('quick', foldedAll(2));
     const beforeTheSweep = await overtimesOf(views, 'slow');
-    await vi.waitFor(
-      async () => {
-        expect(await overtimesOf(views, 'slow')).toBe(2);
-      },
-      { timeout: 25_000 },
-    );
+    clock.step(10_000);
+    await untilTried(views, 'slow', 2);
 
     expect(beforeTheSweep).toBe(1);
   });

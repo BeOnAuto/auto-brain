@@ -105,15 +105,19 @@ const postingWhatItPosted = [
 const rememberingWhatWasPosted = [
   '---',
   'description: What post-notes answered it posted, oldest first',
-  'language: jq',
+  'language: typescript',
   'source:',
   '  events:',
   '    - type: run_succeeded',
   '      subject: reasoning/post-notes',
   'view:',
   '  initial: []',
+  '  schema: {type: array, items: {type: string}}',
   '---',
-  '. + [$event.data.output.posted]',
+  'export function fold(view: View, event: Event): View {',
+  '  const data = event.data as { output: { posted: string } };',
+  '  return [...view, data.output.posted];',
+  '}',
 ].join('\n');
 
 const inPosts = { brain: 'posts' };

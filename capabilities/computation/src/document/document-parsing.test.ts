@@ -3,42 +3,9 @@ import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { campaignPace } from '../testing/campaign-pace.ts';
-import { programDocument } from '../testing/computation-runs.ts';
+import { functionOf, programDocument } from '../testing/computation-runs.ts';
 import type { ComputationFunctionDefinitionDocument } from './computation-document.ts';
 import { parseComputationDocument } from './document-parsing.ts';
-import { computationDialect } from './program-dialect.ts';
-
-const readsOutside =
-  'reads something other than the input, so the same input would not give the same output; pass it in';
-
-const hostTimeZone = "reads the server's time zone, so it is not the same everywhere; use the UTC date functions";
-
-const writesOutside = 'writes outside the program; a computation function answers only with its output';
-
-const wrongAnswers = 'gives wrong answers in this dialect of jq; use reduce, foreach, limit or first instead';
-
-const labelled = '(label $out | 1, break $out)';
-
-const refusals: readonly (readonly [string, string, string])[] = [
-  ['now', 'reads the clock, so the same input would not give the same output; pass the time in the input', 'now'],
-  ['env', readsOutside, 'env'],
-  ['$ENV', readsOutside, '$ENV'],
-  ['input', readsOutside, 'input'],
-  ['inputs', readsOutside, 'inputs'],
-  ['input_filename', readsOutside, 'input_filename'],
-  ['input_line_number', readsOutside, 'input_line_number'],
-  ['$__loc__', readsOutside, '$__loc__'],
-  ['builtins', readsOutside, 'builtins'],
-  ['localtime', hostTimeZone, 'localtime'],
-  ['strflocaltime', hostTimeZone, 'strflocaltime("%H")'],
-  ['debug', writesOutside, 'debug'],
-  ['stderr', writesOutside, 'stderr'],
-  ['halt', writesOutside, 'halt'],
-  ['halt_error', writesOutside, 'halt_error'],
-  ['label', wrongAnswers, labelled],
-  ['break', wrongAnswers, labelled],
-];
-
 function parsed(source: string): ComputationFunctionDefinitionDocument {
   return Result.getOrThrow(parseComputationDocument(source));
 }
@@ -56,37 +23,38 @@ describe('a computation function definition', () => {
 
     expect(document).toMatchObject({
       description: 'Spend, pace and projection per campaign, in cents, for a reporting period',
-      language: 'jq',
+      language: 'typescript',
       input: { schema: { document: { type: 'object', required: ['rows', 'period'] } } },
       output: { schema: { document: { type: 'object', required: ['campaigns', 'total_spend_cents'] } } },
       programLine: 19,
     });
-    expect(document.program.startsWith('.period as $p\n| .rows')).toBe(true);
+    expect(document.program.startsWith('export default function (input: Input): Output {\n')).toBe(true);
   });
 
   it('needs only a language and a program, and takes a schema of any value', () => {
-    expect(parsed(programDocument('. + 1'))).toEqual({
-      language: 'jq',
+    expect(parsed(programDocument(functionOf('return input + 1;')))).toEqual({
+      language: 'typescript',
       input: {},
       output: {},
-      program: '. + 1',
+      program: functionOf('return input + 1;'),
       programLine: 4,
     });
     expect(
-      parsed(programDocument('.', 'language: jq\ninput: {schema: {type: integer}}')).input.schema?.document,
+      parsed(programDocument(functionOf('return input;'), 'language: typescript\ninput: {schema: {type: integer}}'))
+        .input.schema?.document,
     ).toEqual({ type: 'integer' });
   });
 });
 
 describe('the front matter of a computation function definition', () => {
   it('names at least the language, and opens the document', () => {
-    expect(issuesIn(programDocument('.', '# nothing'))).toEqual([
+    expect(issuesIn(programDocument(functionOf('return input;'), '# nothing'))).toEqual([
       'Line 2: The front matter is empty; it names at least the language',
     ]);
-    expect(issuesIn('. + 1')).toEqual([
+    expect(issuesIn(functionOf('return input;'))).toEqual([
       'Line 1: A computation function definition starts with a line of three dashes (---) that opens its front matter of YAML',
     ]);
-    expect(issuesIn(programDocument('.', 'description: Adds one'))).toEqual([
+    expect(issuesIn(programDocument(functionOf('return input;'), 'description: Adds one'))).toEqual([
       'Line 2, /language: language is required',
     ]);
   });
@@ -95,8 +63,8 @@ describe('the front matter of a computation function definition', () => {
     expect(
       issuesIn(
         programDocument(
-          '.',
-          'language: jq\nmodel: anthropic/claude-sonnet-4-5\nconfig: {temperature: 0}\ntools: [graph/*]\ninput: {default: {}}\noutput: {format: json}',
+          functionOf('return input;'),
+          'language: typescript\nmodel: anthropic/claude-sonnet-4-5\nconfig: {temperature: 0}\ntools: [graph/*]\ninput: {default: {}}\noutput: {format: json}',
         ),
       ),
     ).toEqual([
@@ -110,29 +78,29 @@ describe('the front matter of a computation function definition', () => {
 });
 
 describe('the values in the front matter of a computation function definition', () => {
-  it('refuses a language other than jq, and a schema that is not a JSON Schema, with their line', () => {
+  it('refuses a language other than TypeScript, and a schema that is not a JSON Schema, with their line', () => {
     expect(
       issuesIn(
         programDocument(
-          '.',
-          'language: javascript\ninput:\n  schema: {type: object, properties: {a: {pattern: "x"}}}\noutput:\n  schema: {type: wrong}',
+          functionOf('return input;'),
+          'language: python\ninput:\n  schema: {type: object, properties: {a: {pattern: "x"}}}\noutput:\n  schema: {type: wrong}',
         ),
       ),
     ).toEqual([
-      'Line 2, /language: javascript is not a language of a computation function; it is written in jq',
+      "Line 2, /language: The brain's one language is TypeScript; write the program as a TypeScript function",
       'Line 4, /input/schema/properties/a/pattern: Regular expressions are not accepted, because a hostile pattern can stall validation',
       'Line 6, /output/schema/type: Expected one of null, boolean, object, array, number, string, integer, or a non-empty list of them',
     ]);
   });
 
   it('is checked with the program, whose issues it reports beside its own', () => {
-    expect(issuesIn(programDocument('now', 'language: jq\nsize: 2'))).toEqual([
+    expect(issuesIn(programDocument('  ', 'language: typescript\nsize: 2'))).toEqual([
       'Line 3, /size: size is not a key of the front matter; it takes description, language, input, output',
-      'Line 5: now reads the clock, so the same input would not give the same output; pass the time in the input',
+      'Line 5: The definition has no program: write it after the front matter',
     ]);
-    expect(issuesIn('---\nlanguage: [jq\n---\nnow')).toEqual([
+    expect(issuesIn('---\nlanguage: [typescript\n---\n')).toEqual([
       'Line 2: Flow sequence in block collection must be sufficiently indented and end with a ]',
-      'Line 4: now reads the clock, so the same input would not give the same output; pass the time in the input',
+      'Line 4: The definition has no program: write it after the front matter',
     ]);
   });
 });
@@ -144,35 +112,9 @@ describe('the program of a computation function definition', () => {
     ]);
   });
 
-  it('compiles, and an issue in it is reported with its line in the document', () => {
-    expect(issuesIn(programDocument('.rows\n| map(.a +)\n| add'))).toEqual(['Line 5: Unexpected token']);
-    expect(issuesIn(programDocument('.rows\n| frobnicate'))).toEqual(['Line 5: Unknown function: frobnicate']);
-    expect(issuesIn(programDocument('.rows\n| map($total)'))).toEqual([
-      'Line 5: $total is not defined; bind it with as, reduce or foreach before using it',
-    ]);
-  });
-
-  it.each(refusals)('refuses %s at save, with its line', (name, why, program) => {
-    expect(issuesIn(programDocument(`.\n| ${program}`))).toContain(`Line 5: ${name} ${why}`);
-  });
-
-  it('refuses exactly the names the design of computation functions lists, and no other', () => {
-    expect(computationDialect.refused.map(({ name }) => name).toSorted()).toEqual(
-      refusals.map(([name]) => name).toSorted(),
-    );
-  });
-
-  it('nests at most 128 levels, refused at save the same on any host', () => {
-    expect(issuesIn(programDocument(`${'1+'.repeat(5000)}1`))).toEqual([
-      'Line 4: The program nests more than 128 levels deep',
-    ]);
-    expect(issuesIn(programDocument(`.\n| ${'('.repeat(5000)}1${')'.repeat(5000)}`))).toEqual([
-      'Line 5: The program nests more than 128 levels deep',
-    ]);
-  });
-
-  it('compiles a program that raises only when it runs', () => {
-    expect(issuesIn(programDocument('.a + 1'))).toEqual([]);
-    expect(issuesIn(programDocument('error("not yet")'))).toEqual([]);
+  it('is read as it is written, its types and its mistakes left to the check at save', () => {
+    expect(
+      parsed(programDocument('export default function (input: Input): Output {\n  return input.perod;\n}')).program,
+    ).toBe('export default function (input: Input): Output {\n  return input.perod;\n}');
   });
 });

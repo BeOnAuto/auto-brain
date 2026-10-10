@@ -5,16 +5,18 @@ export interface ValueContract {
   readonly schema?: CompiledSchema;
 }
 
-export interface RecallAnswer {
+export interface FilterExpression {
   readonly source: string;
+  readonly pointer: string;
   readonly line: number;
 }
 
 export interface RecallFunctionDefinitionDocument {
   readonly description?: string;
-  readonly language: 'jq';
+  readonly language: 'typescript';
   readonly input: ValueContract;
   readonly output: ValueContract;
-  readonly answer?: RecallAnswer;
+  readonly answers: boolean;
+  readonly filterExpressions: readonly FilterExpression[];
   readonly details: ViewDetails;
 }

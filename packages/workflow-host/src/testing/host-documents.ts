@@ -1,4 +1,6 @@
-import { defaultLimits, defaultSeed } from '@beonauto/workflow-engine/testing';
+import type { MachineOptions } from '@beonauto/workflow-engine';
+import { machineSandboxOf } from '@beonauto/workflow-engine/dsl';
+import { defaultLimits, defaultSeed, testMachineOf } from '@beonauto/workflow-engine/testing';
 import { Schema } from 'effect';
 import { parse } from 'yaml';
 
@@ -10,6 +12,8 @@ type JsonObject = typeof Schema.JsonObject.Type;
 const decodeObject = Schema.decodeUnknownSync(Schema.JsonObject);
 
 const header = { dsl: '1.0.3', namespace: 'acme', name: 'test', version: '1.0.0' };
+
+export const testMachine: MachineOptions = testMachineOf(machineSandboxOf());
 
 export function workflow(source: string): JsonObject {
   return { document: header, ...decodeObject(parse(source)) };

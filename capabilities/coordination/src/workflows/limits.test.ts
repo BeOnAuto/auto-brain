@@ -27,9 +27,9 @@ do:
     const document = workflow(`
 do:
   - spin:
-      for: { in: '\${ [range(0; 3)] }' }
+      for: { in: '\${ [0, 1, 2] }' }
       do:
-        - count: { set: { turns: '\${ (.turns // 0) + 1 }' } }
+        - count: { set: { turns: '\${ ($data.turns ?? 0) + 1 }' } }
         - rest: { wait: PT1S }
 `);
 

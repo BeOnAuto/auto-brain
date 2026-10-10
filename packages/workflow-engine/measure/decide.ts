@@ -1,9 +1,8 @@
-import { workflowMachine } from '../src/decider/workflow-machine.ts';
 import type { RunInput } from '../src/machine/run-input.ts';
 import { newRun, type RunState } from '../src/machine/run-state.ts';
+import { testDriverOf, testWorkflowMachine } from '../src/pool-testing/test-sandbox.ts';
 import { snapshotChunks, snapshotOf } from '../src/run-log/snapshot.ts';
-import { startedOf, testCancel, testMachine } from '../src/testing/driver-inputs.ts';
-import { memoryDriver } from '../src/testing/memory-driver.ts';
+import { startedOf, testCancel } from '../src/testing/driver-inputs.ts';
 import { workflow } from '../src/testing/workflows.ts';
 import { runId, looping, medianMillisecondsOf, nextTick, startedAt, textBytesOf } from './common.ts';
 
@@ -13,12 +12,12 @@ const listening = workflow('do:\n  - await: { listen: { to: { one: { with: { typ
 
 const holdingAMegabyte = workflow(`
 do:
-  - hold: { set: '\${ { text: ("x" * 1000000) } }' }
+  - hold: { set: '\${ ({ text: "x".repeat(1000000) }) }' }
   - pause: { wait: PT1H }
 `);
 
 function waitingState(document: ReturnType<typeof workflow>): RunState {
-  const driver = memoryDriver({ respond: () => 'never' });
+  const driver = testDriverOf({ respond: () => 'never' });
   driver.start({ runId, document });
   return driver.state(runId);
 }
@@ -29,10 +28,9 @@ function answerTo(state: RunState): RunInput {
 }
 
 function decideMicroseconds(input: RunInput, state: RunState): string {
-  const machine = workflowMachine(testMachine);
   return (
     medianMillisecondsOf(1001, () => {
-      machine.decide(input, state);
+      testWorkflowMachine.decide(input, state);
     }) * 1000
   ).toFixed(0);
 }

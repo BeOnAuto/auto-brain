@@ -18,8 +18,8 @@ const paddingCharacters = 8000;
 const ticking = workflow(`
 do:
   - tick: { wait: PT1S }
-  - count: { set: '\${ { n: ((.n // 0) + 1), padding: ("x" * ${paddingCharacters}) } }' }
-  - again: { switch: [{ more: { when: '\${ .n < ${longRunInputs - 1} }', then: tick } }] }
+  - count: { set: '\${ ({ n: ($data.n ?? 0) + 1, padding: "x".repeat(${paddingCharacters}) }) }' }
+  - again: { switch: [{ more: { when: '\${ $data.n < ${longRunInputs - 1} }', then: tick } }] }
 `);
 
 export function longRunSuite(settings: SettingsOf): void {

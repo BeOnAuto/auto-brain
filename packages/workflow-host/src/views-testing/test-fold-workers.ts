@@ -2,10 +2,6 @@ import { mostValueDepth } from '@beonauto/workflow-engine/dsl';
 
 export const breaksTheWorker = 'breaks the worker';
 
-export const sleepsBeforeItIsFolded = 'sleeps before it is folded';
-
-const sleepBeforeItIsFoldedMs = 1600;
-
 const jobLoop = import.meta.resolve('@beonauto/workflow-engine/job-loop');
 
 const answerers = import.meta.resolve('@beonauto/workflow-engine/worker');
@@ -16,20 +12,24 @@ interface Folding {
   readonly prelude: readonly string[];
   readonly whenFolding: string;
   readonly serving: string;
+  readonly clock?: { readonly starting: string; readonly now: string };
 }
 
-function foldingWorker({ prelude, whenFolding, serving }: Folding): URL {
+const hostClock = { starting: '', now: 'host.now' };
+
+export function foldingWorker({ prelude, whenFolding, serving, clock = hostClock }: Folding): URL {
   const source = [
     `import { serveJobs } from '${jobLoop}';`,
     `import { foldAnswerOf } from '${answerers}';`,
     ...prelude,
     'const fold = (request, host) => {',
     '  const events = JSON.parse(request.events);',
+    `  ${clock.starting}`,
     '  const folding = (event, view) => {',
     '    host.folding(event, view);',
     `    ${whenFolding}`,
     '  };',
-    '  return foldAnswerOf(request, { ...host, folding });',
+    `  return foldAnswerOf(request, { ...host, folding, now: ${clock.now} });`,
     '};',
     serving,
   ];
@@ -39,13 +39,12 @@ function foldingWorker({ prelude, whenFolding, serving }: Folding): URL {
 export const testFoldWorker = foldingWorker({
   prelude: [
     `import { issuesDetail, schemaCheckOf } from '${schemaChecks}';`,
-    'const asleep = new Int32Array(new SharedArrayBuffer(4));',
     'const view = (schema) => {',
     `  const check = schemaCheckOf(schema, { what: 'view', nesting: ${mostValueDepth} });`,
     "  return (value) => { const issues = check(value); return issues.length === 0 ? undefined : issuesDetail(issues, 'view'); };",
     '};',
   ],
-  whenFolding: `if (events[event]?.data?.output === '${sleepsBeforeItIsFolded}') Atomics.wait(asleep, 0, 0, ${sleepBeforeItIsFoldedMs});`,
+  whenFolding: '',
   serving: 'serveJobs({ fold, checks: { output: () => () => [], view } });',
 });
 

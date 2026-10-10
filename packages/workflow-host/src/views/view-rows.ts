@@ -60,10 +60,7 @@ const PhaseSchema = Schema.Literals(['waiting', 'rebuilding', 'live', 'stalled']
 
 const StallCauseSchema = Schema.Literals([
   'raised',
-  'none',
-  'several',
   'work',
-  'depth',
   'unfit',
   'size',
   'schema',

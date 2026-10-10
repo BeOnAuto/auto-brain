@@ -1,12 +1,12 @@
 import type { Lineage, Settlement } from '@beonauto/operations';
 import type { StartCall } from '@beonauto/workflow-engine';
-import { testMachine } from '@beonauto/workflow-engine/testing';
 import { Effect } from 'effect';
 import { onTestFinished } from 'vitest';
 
 import { openWorkflowHost, type HostOptions, type WorkflowHost } from '../host/workflow-host.ts';
 import { recordedReactions } from '../reaction-testing/recorded-reactions.ts';
 import { recordedWaiting } from '../waiting-testing/recorded-waiting.ts';
+import { testMachine } from './host-documents.ts';
 import { recordingReports, recordingSettlements, type RecordingReports } from './recording-reports.ts';
 
 export interface HostedRuns {

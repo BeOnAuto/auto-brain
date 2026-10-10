@@ -1,83 +1,145 @@
-import { Conflict, InvalidInput, Unavailable } from '@beonauto/operations';
-import type { PoolOutcome } from '@beonauto/workflow-engine/dsl';
+import { Conflict, Unavailable } from '@beonauto/operations';
+import type { PoolOutcome, ProgramPool, ProgramRequest } from '@beonauto/workflow-engine/dsl';
 import { scriptedPool } from '@beonauto/workflow-engine/testing';
-import { Exit, Option, Schema } from 'effect';
+import { Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { campaignPace, campaignRows } from '../testing/campaign-pace.ts';
-import { computationWith, poolOf, programDocument, workerTestTimeoutMs } from '../testing/computation-runs.ts';
-
-const decodeRun = Schema.decodeUnknownSync(
-  Schema.Struct({ output: Schema.Json, record: Schema.Struct({ work: Schema.Number }) }),
-);
+import {
+  computationWith,
+  functionOf,
+  poolOf,
+  programDocument,
+  workerTestTimeoutMs,
+  type RunBounds,
+} from '../testing/computation-runs.ts';
 
 function unworkable(detail: string): Exit.Exit<never, Conflict> {
   return Exit.fail(new Conflict({ detail, kind: 'unworkable' }));
 }
 
-function ended(program: string, frontMatter?: string) {
-  return computationWith().running(programDocument(program, frontMatter), null);
+function ended(body: string, frontMatter?: string) {
+  return computationWith().running(programDocument(functionOf(body), frontMatter), null);
 }
 
-describe('a run whose program cannot work as written', { timeout: workerTestTimeoutMs }, () => {
+const smallWork = { budget: 50 };
+
+const smallMemory = { memoryBytes: 16_777_216 };
+
+function endedWithin(bounds: RunBounds, body: string) {
+  return computationWith(poolOf(), bounds).running(programDocument(functionOf(body)), null);
+}
+
+function usedAfter(checkpoints: number, mebibytes = 16): Exit.Exit<never, Conflict> {
+  return unworkable(
+    `The program used more memory than a run may, the ${mebibytes} MiB of its sandbox, having done ${checkpoints} checkpoints of work`,
+  );
+}
+
+function reaching(limit: 'work' | 'memory'): PoolOutcome {
+  return {
+    ran: 'exhausted',
+    limit,
+    issue: { detail: 'The program reached a bound', line: null },
+    work: 7,
+    milliseconds: 5,
+  };
+}
+
+interface RecordingPool {
+  readonly pool: ProgramPool;
+  readonly asked: () => readonly (readonly [number, number])[];
+}
+
+function recordingPool(script: readonly PoolOutcome[]): RecordingPool {
+  const scripted = scriptedPool(script, poolOf());
+  const asked: ProgramRequest[] = [];
+  return {
+    pool: {
+      ...scripted,
+      run: (request, signal) => {
+        asked.push(request);
+        return scripted.run(request, signal);
+      },
+    },
+    asked: () => asked.map(({ budget, memoryBytes }) => [budget, memoryBytes]),
+  };
+}
+
+const notJson: readonly (readonly [string, string, string])[] = [
+  ['a Date', 'return { at: new Date(0) };', 'a Date at $.at'],
+  ['a Map', 'return { kept: new Map() };', 'a Map at $.kept'],
+  ['a BigInt', 'return [10n];', 'a bigint at $[0]'],
+  ['NaN', 'return { pace: 0 / 0 };', 'NaN at $.pace'],
+  ['undefined', 'return { missing: undefined };', 'undefined at $.missing'],
+  ['a cycle', 'const kept: any = {};\n  kept.self = kept;\n  return kept;', 'a cycle at $.self'],
+];
+
+describe('a run whose program raises', { timeout: workerTestTimeoutMs }, () => {
   it('ends in conflict, unworkable, with the error the program raised and its line in the document', async () => {
-    expect(await ended('[1, 2, 3]\n| map(. * 2)\n| error("stopped at \\(length)")')).toEqual(
-      unworkable('The program raised an error on line 6: stopped at 3'),
+    expect(await ended('const rows = [1, 2, 3];\n  throw new Error(`stopped at ${rows.length}`);')).toEqual(
+      unworkable('The program raised an error on line 6: Error: stopped at 3'),
     );
-    expect(await ended('"x" + 1')).toEqual(
-      unworkable('The program raised an error on line 4: Cannot add string and number'),
-    );
-  });
-
-  it('ends in conflict when the program gives no output, or more than one', async () => {
-    expect(await ended('empty')).toEqual(
-      unworkable('The program gave no output; a computation function gives exactly one'),
-    );
-    expect(await ended('1, 2')).toEqual(
-      unworkable('The program gave more than one output; a computation function gives exactly one'),
+    expect(await ended('return input.rows.length;')).toEqual(
+      unworkable("The program raised an error on line 5: TypeError: cannot read property 'rows' of null"),
     );
   });
 
-  it('ends in conflict when its output is not what the output schema allows, or not JSON', async () => {
-    expect(await ended('{total: 1}', 'language: jq\noutput: {schema: {type: object, required: [rows]}}')).toEqual(
-      unworkable("The program's output does not match the output schema: /rows: Missing key"),
+  it('ends in conflict when the stack overflows and the program does not catch it', async () => {
+    expect(await ended('const down = (depth: number): number => down(depth + 1);\n  return down(0);')).toEqual(
+      unworkable('The program raised an error on line 5: InternalError: stack overflow'),
     );
-    expect(await ended('1', 'language: jq\noutput: {schema: {type: string}}')).toEqual(
+  });
+
+  it('cuts the text of the error at 1,024 bytes', async () => {
+    expect(await ended('throw new Error("x".repeat(30000000));')).toEqual(
+      unworkable(`The program raised an error on line 5: Error: ${'x'.repeat(1017)}…`),
+    );
+    expect(await ended('throw "plain text";')).toEqual(unworkable('The program raised an error: plain text'));
+  });
+});
+
+describe('a run whose program answers what cannot be its output', { timeout: workerTestTimeoutMs }, () => {
+  it.each(notJson)('ends in conflict when its output holds %s, naming where', async (_what, body, where) => {
+    expect(await ended(body)).toEqual(
+      unworkable(`The program's output is not JSON: The answer holds ${where}, which JSON cannot carry`),
+    );
+  });
+
+  it.each([600, 100_000])(
+    'ends in conflict when its output nests deeper than 512 levels, %i of them',
+    async (levels) => {
+      expect(
+        await ended(
+          `let value: unknown = 0;\n  for (let level = 0; level < ${levels}; level++) value = [value];\n  return value;`,
+        ),
+      ).toEqual(
+        unworkable(
+          `The program's output is not JSON: ${`The answer holds a value deeper than 512 levels at $${'[0]'.repeat(512)}, which JSON cannot carry`.slice(0, 1024)}…`,
+        ),
+      );
+    },
+  );
+
+  it('ends in conflict when its output is not what the output schema allows', async () => {
+    expect(
+      await ended('return { total: 1 };', 'language: typescript\noutput: {schema: {type: object, required: [rows]}}'),
+    ).toEqual(unworkable("The program's output does not match the output schema: /rows: Missing key"));
+    expect(await ended('return 1;', 'language: typescript\noutput: {schema: {type: string}}')).toEqual(
       unworkable("The program's output does not match the output schema: the output: Expected string"),
-    );
-    expect(await ended('nan')).toEqual(
-      unworkable('The program gave a number JSON cannot carry, such as nan or infinite'),
     );
   });
 
   it('ends in conflict when its output takes more than a run can record', async () => {
-    expect(await ended('"x" * 1100000')).toEqual(
+    expect(await ended('return "x".repeat(1100000);')).toEqual(
       unworkable("The program's output takes more than the 1048320 bytes as JSON a run can record"),
-    );
-  });
-
-  it('measures an output before writing it, so one that would take 240 MB as JSON ends in conflict and the pool runs on', async () => {
-    const run = computationWith();
-
-    expect(await run.running(programDocument('("\\u0001Ā" * 15000000) | [., .]'), null)).toEqual(
-      unworkable("The program's output takes more than the 1048320 bytes as JSON a run can record"),
-    );
-    expect(await run.running(programDocument('. + 1'), 1)).toMatchObject(Exit.succeed({ output: 2 }));
-  });
-});
-
-describe('the text of a long error', { timeout: workerTestTimeoutMs }, () => {
-  it('cuts the text of the error at 1,024 bytes', async () => {
-    expect(await ended('error("x" * 30000000)')).toEqual(
-      unworkable(`The program raised an error on line 4: ${'x'.repeat(1024)}…`),
     );
   });
 
   it('cuts the pointer of an issue of an output the schema refuses at 1,024 bytes, and keeps what it says', async () => {
     const closed =
-      'language: jq\noutput: {schema: {type: object, properties: {total: {type: integer}}, additionalProperties: false}}';
+      'language: typescript\noutput: {schema: {type: object, properties: {total: {type: integer}}, additionalProperties: false}}';
 
-    expect(await ended('{("k" * 300000): 1}', closed)).toEqual(
+    expect(await ended('return { ["k".repeat(300000)]: 1 };', closed)).toEqual(
       unworkable(
         `The program's output does not match the output schema: /${'k'.repeat(1023)}…: Expected no excess property`,
       ),
@@ -85,66 +147,43 @@ describe('the text of a long error', { timeout: workerTestTimeoutMs }, () => {
   });
 });
 
-describe('a run that reaches a bound of its program', { timeout: workerTestTimeoutMs }, () => {
-  it('ends in conflict when it does more than 64,000,000 units of work, with the units it spent', async () => {
-    const hashing = '("a" * 4000000) as $s | {} as $o | reduce range(1000) as $i (0; . + ($o[$s + "x"] // 1))';
+describe('a run that reaches a bound of its sandbox', { timeout: workerTestTimeoutMs }, () => {
+  it('ends in conflict when it does more work than its budget, whatever a try around it does, before any deadline', async () => {
+    const tooMuch = unworkable('The program did more work than a run may, 50 checkpoints, and was stopped');
 
-    expect(await ended('"x" * 100000000')).toEqual(
-      unworkable('The program did more than the 64000000 units of work a run may do, on line 4, having done 100000417'),
+    expect(await endedWithin(smallWork, 'for (;;) {}')).toEqual(tooMuch);
+    expect(await endedWithin(smallWork, 'for (;;) {\n    try {\n      for (;;) {}\n    } catch {}\n  }')).toEqual(
+      tooMuch,
     );
-    const unitsSpent: unknown = expect.stringMatching(/^The program did more than the 64000000 units/u);
-
-    expect(await ended(hashing)).toMatchObject(Exit.fail({ kind: 'unworkable', detail: unitsSpent }));
+    expect(await endedWithin(smallWork, 'return /^(a+)+$/.test("a".repeat(40) + "b");')).toEqual(tooMuch);
   });
 
-  it('ends in conflict when a regular expression would compile to more than it may, as the program raised', async () => {
-    expect(await ended('"a" | test("(((a{100}){100}){100}){40}")')).toEqual(
-      unworkable('The program raised an error on line 4: regex too large: more than 4096 instructions'),
-    );
+  it('ends in conflict when it uses more memory than its sandbox, at the same checkpoint twice, and when it catches the refusal', async () => {
+    const strings = 'const kept: string[] = [];\n  for (;;) kept.push("y".repeat(1048576) + kept.length);';
+    const objects =
+      'const kept: object[] = [];\n  for (let index = 0; ; index++) kept.push({ index, text: "w" + index });';
+    const caught = 'try {\n    return "x".repeat(2 ** 29).length;\n  } catch (error) {\n    return String(error);\n  }';
+
+    const objectsUsedAfter = usedAfter(17);
+
+    expect([await endedWithin(smallMemory, strings), await endedWithin(smallMemory, strings)]).toEqual([
+      usedAfter(0),
+      usedAfter(0),
+    ]);
+    expect([await endedWithin(smallMemory, objects), await endedWithin(smallMemory, objects)]).toEqual([
+      objectsUsedAfter,
+      objectsUsedAfter,
+    ]);
+    expect(await endedWithin(smallMemory, caught)).toEqual(usedAfter(0));
   });
 
-  it('ends in conflict when it builds a value nested deeper than 512 levels, a value of 100,000 levels among them', async () => {
-    expect(await ended('("[" * 100000) + ("]" * 100000) | fromjson')).toEqual(
-      unworkable('The program built a value that nests deeper than the 512 levels a value may, on line 4'),
-    );
-    expect(await ended('reduce range(600) as $i (null; [.])')).toEqual(
-      unworkable('The program built a value that nests deeper than the 512 levels a value may, on line 4'),
-    );
-  });
-
-  it('ends in conflict when it recurses deeper than its fixed bound, the same on every host', async () => {
-    const recursion = 'def g: if . == 0 then 0 else (. - 1 | g) end; g';
-    const run = computationWith();
-
-    expect(await run.running(programDocument(recursion), 500)).toMatchObject(Exit.succeed({ output: 0 }));
-    expect(await run.running(programDocument(recursion), 3000)).toEqual(
-      unworkable('The program recursed deeper than the 10000 levels of evaluation a run may nest, on line 4'),
-    );
-    expect(await run.running(programDocument('error("Max depth exceeded")'), null)).toEqual(
-      unworkable('The program raised an error on line 4: Max depth exceeded'),
-    );
-  });
-});
-
-describe('a run that would depend on the stack of its host', { timeout: workerTestTimeoutMs }, () => {
-  it('refuses a regular expression whose groups nest past 128 as the program raising, which try catches the same on every host', async () => {
-    const nested = '"a" | test(("(" * 77354) + "a" + (")" * 77354))';
-
-    expect(await ended(nested)).toEqual(
-      unworkable('The program raised an error on line 4: regex too large: groups nested more than 128 deep'),
-    );
-    expect(await ended(`try (${nested}) catch .`)).toMatchObject(
-      Exit.succeed({ output: 'regex too large: groups nested more than 128 deep' }),
-    );
-  });
-
-  it('ends in conflict when the stack of its worker overflows, an error the program cannot catch', async () => {
+  it('ends in conflict when the stack of its worker overflows before its own', async () => {
     const overflowing = scriptedPool(
       [
         {
           ran: 'exhausted',
           limit: 'stack',
-          issue: { detail: 'Maximum call stack size exceeded', span: { start: 0, end: 0 }, error: 'RangeError' },
+          issue: { detail: 'The program went deeper', line: null },
           work: 10,
           milliseconds: 5,
         },
@@ -152,127 +191,62 @@ describe('a run that would depend on the stack of its host', { timeout: workerTe
       poolOf(),
     );
 
-    expect(await computationWith(overflowing).running(programDocument('.'), null)).toEqual(
-      unworkable('The program went deeper than the 64 MiB stack of a run allows'),
+    expect(await computationWith(overflowing).running(programDocument(functionOf('return 1;')), null)).toEqual(
+      unworkable('The program went deeper than the 1 MiB stack of a run allows'),
+    );
+  });
+});
+
+describe('the bounds a run asks its sandbox for', { timeout: workerTestTimeoutMs }, () => {
+  it('are those its host gives, or 20,000 checkpoints and 256 MiB, named when the run reaches them', async () => {
+    const byDefault = recordingPool([reaching('work'), reaching('memory')]);
+    const given = recordingPool([reaching('work'), reaching('memory')]);
+    const program = programDocument(functionOf('return 1;'));
+    const runs = computationWith(byDefault.pool);
+    const smallRuns = computationWith(given.pool, { budget: 300, memoryBytes: 33_554_432 });
+
+    expect([await runs.running(program, null), await runs.running(program, null)]).toEqual([
+      unworkable('The program did more work than a run may, 20000 checkpoints, and was stopped'),
+      usedAfter(7, 256),
+    ]);
+    expect([await smallRuns.running(program, null), await smallRuns.running(program, null)]).toEqual([
+      unworkable('The program did more work than a run may, 300 checkpoints, and was stopped'),
+      usedAfter(7, 32),
+    ]);
+    expect([byDefault.asked(), given.asked()]).toEqual([
+      [
+        [20_000, 268_435_456],
+        [20_000, 268_435_456],
+      ],
+      [
+        [300, 33_554_432],
+        [300, 33_554_432],
+      ],
+    ]);
+  });
+});
+
+describe('a run of a program its save did not strip', () => {
+  it('ends in conflict, unworkable, rather than run the author’s TypeScript', async () => {
+    expect(await computationWith().runningUnsaved(programDocument(functionOf('return 1;')), null)).toEqual(
+      unworkable(
+        'The computation function was saved without the program its check strips for the sandbox; update it to save it again',
+      ),
     );
   });
 });
 
 describe('a run of the server that cannot finish', { timeout: workerTestTimeoutMs }, () => {
-  it('is unavailable when it runs past its deadline', async () => {
-    const slow = computationWith(poolOf(), 50);
+  it('is unavailable when it runs past its deadline, though its native work spends few checkpoints', async () => {
+    const slow = computationWith(poolOf(), { deadlineMs: 500 });
+    const churning = 'const big = ["x".repeat(4000000)];\n  for (;;) JSON.stringify(big);';
 
-    expect(await slow.running(programDocument('[range(100000000)] | length'), null)).toEqual(
+    expect(await slow.running(programDocument(functionOf(churning)), null)).toEqual(
       Exit.fail(
         new Unavailable({
-          detail: 'The run took longer than the 50 ms a computation function may run, and was stopped',
+          detail: 'The run took longer than the 500 ms a computation function may run, and was stopped',
         }),
       ),
     );
-  });
-
-  it('is unavailable when it takes more memory than its worker has', async () => {
-    const small = computationWith(poolOf({ heapMegabytes: 16 }));
-
-    expect(await small.running(programDocument('[range(1000000) | {a: .}] | length'), null)).toEqual(
-      Exit.fail(
-        new Unavailable({
-          detail: 'The run took more than the 16 MiB of memory a computation function may use, and was stopped',
-        }),
-      ),
-    );
-  });
-});
-
-describe('a run that the pool stops', { timeout: workerTestTimeoutMs }, () => {
-  it.each<readonly [PoolOutcome, string]>([
-    [
-      { ran: 'stopped', because: 'busy', milliseconds: 10_000 },
-      'No worker was free to run it within 10000 ms; this server runs 4 computation functions at once',
-    ],
-    [
-      { ran: 'stopped', because: 'deadline', milliseconds: 10_000 },
-      'The run took longer than the 10000 ms a computation function may run, and was stopped',
-    ],
-    [{ ran: 'stopped', because: 'cancelled', milliseconds: 1 }, 'The run was stopped before it ended'],
-    [{ ran: 'stopped', because: 'closing', milliseconds: 1 }, 'The server is stopping'],
-    [
-      {
-        ran: 'exhausted',
-        limit: 'deadline',
-        issue: { detail: 'Deadline exceeded', span: { start: 0, end: 0 } },
-        work: 5,
-        milliseconds: 10_000,
-      },
-      'The run took longer than the 10000 ms a computation function may run, and was stopped',
-    ],
-  ])('is unavailable when the pool answers %j', async (outcome, detail) => {
-    const run = computationWith(scriptedPool([outcome], poolOf()));
-
-    expect(await run.running(programDocument('.'), null)).toEqual(Exit.fail(new Unavailable({ detail })));
-  });
-
-  it.each<readonly [PoolOutcome, string]>([
-    [{ ran: 'crashed', detail: 'The worker failed: broken', milliseconds: 1 }, 'The worker failed: broken'],
-    [{ ran: 'refused', issues: [], milliseconds: 1 }, 'The worker refused a program the definition was accepted with'],
-  ])('fails, as the server breaks, when the pool answers %j', async (outcome, defect) => {
-    const run = computationWith(scriptedPool([outcome], poolOf()));
-    const exit = await run.running(programDocument('.'), null);
-
-    expect(Exit.hasDies(exit)).toBe(true);
-    expect(String(Exit.findDefect(exit))).toContain(defect);
-  });
-});
-
-describe('a run that was unavailable', { timeout: workerTestTimeoutMs }, () => {
-  it('runs when it is tried again, since nothing in it changed', async () => {
-    const run = computationWith(scriptedPool([{ ran: 'stopped', because: 'busy', milliseconds: 10_000 }], poolOf()));
-
-    expect(await run.running(programDocument('. + 1'), 1)).toMatchObject(Exit.fail({ _tag: 'unavailable' }));
-    expect(await run.running(programDocument('. + 1'), 1)).toMatchObject(Exit.succeed({ output: 2 }));
-  });
-});
-
-describe('the input of a run', { timeout: workerTestTimeoutMs }, () => {
-  it('is checked against the input schema, with a pointer to what does not fit', async () => {
-    expect(
-      await computationWith().running(campaignPace, {
-        period: { days_elapsed: 12, days_total: 31 },
-        rows: [{ campaign: 'a', cost_cents: 'ten', budget_cents: 1 }],
-      }),
-    ).toEqual(
-      Exit.fail(
-        new InvalidInput({
-          detail: 'The input does not match the computation function’s input schema',
-          issues: [{ pointer: '/rows/0/cost_cents', detail: 'Expected number' }],
-        }),
-      ),
-    );
-  });
-
-  it('nests at most 512 levels', async () => {
-    const deep = Array.from({ length: 600 }).reduce<Schema.Json>((inner) => [inner], null);
-
-    expect(await computationWith().running(programDocument('.'), deep)).toMatchObject(
-      Exit.fail({
-        _tag: 'invalid_input',
-        detail: 'The input nests more than the 512 levels a computation function takes',
-      }),
-    );
-  });
-});
-
-describe('the output of a run', { timeout: workerTestTimeoutMs }, () => {
-  it('is the same for the same input, in two pools of workers', async () => {
-    const input = campaignRows(300);
-
-    const [first, second] = await Promise.all(
-      [poolOf(), poolOf()].map(async (pool) =>
-        decodeRun(Option.getOrThrow(Exit.getSuccess(await computationWith(pool).running(campaignPace, input)))),
-      ),
-    );
-
-    expect(first?.output).toEqual(second?.output);
-    expect(first?.record.work).toBe(second?.record.work);
   });
 });

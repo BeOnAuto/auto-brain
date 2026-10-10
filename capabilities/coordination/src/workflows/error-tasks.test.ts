@@ -14,7 +14,7 @@ do:
           type: https://example.com/errors/limit
           status: 422
           title: Over the limit
-          detail: '\${ "The total \\(.total) is over 100" }'
+          detail: '\${ \`The total \${$data.total} is over 100\` }'
           instance: /orders
 `);
 
@@ -71,9 +71,9 @@ do:
       catch:
         as: problem
         do:
-          - recover: { set: { recovered: '\${ $problem.title }', input: '\${ . }' } }
+          - recover: { set: { recovered: '\${ $problem.title }', input: '\${ $data }' } }
   - after:
-      set: { after: '\${ .recovered }' }
+      set: { after: '\${ $data.recovered }' }
 `);
 
     expect((await interpret(document, { input: 1 })).ending).toEqual({ kind: 'completed', output: { after: 'Oops' } });
@@ -157,7 +157,7 @@ describe('the errors of the runtime', () => {
     const document = workflow(`
 do:
   - guarded:
-      try: [{ broken: { set: '\${ .a + 1 }' } }]
+      try: [{ broken: { set: '\${ $data.a.toFixed(1) }' } }]
       catch:
         do: [{ report: { set: '\${ $error }' } }]
 `);
@@ -169,7 +169,7 @@ do:
         status: 400,
         instance: '/do/0/guarded/try/0/broken',
         title: 'An expression failed',
-        detail: ' .a + 1 : RuntimeError: Cannot add string and number',
+        detail: '$data.a.toFixed(1): TypeError: not a function',
       },
     });
   });

@@ -35,7 +35,7 @@ function followerOf(database: HostDatabase, options: ServingOptions, engine: Hos
       reports: options.reports,
     },
     options.reactions,
-    engine.reacting.refusals,
+    engine.reacting,
     { consumers: options.consumers ?? [], calls },
   );
 }

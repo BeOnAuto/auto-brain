@@ -7,15 +7,15 @@ import { workflow } from '../testing/workflows.ts';
 function tasksCounting(count: number): string {
   return Array.from(
     { length: count },
-    (_task, index) => `  - add${index}: { set: '\${ { count: ((.count // 0) + 1) } }' }`,
+    (_task, index) => `  - add${index}: { set: '\${ ({ count: ($data.count ?? 0) + 1 }) }' }`,
   ).join('\n');
 }
 
 const counting = `
           - counting:
-              for: { in: '\${ [range(0; 150)] }' }
+              for: { in: '\${ Array.from({ length: 150 }, (_, index) => index) }' }
               do:
-                - add: { set: '\${ { count: ((.count // 0) + 1) } }' }`;
+                - add: { set: '\${ ({ count: ($data.count ?? 0) + 1 }) }' }`;
 
 describe('a list that would run more tasks than one input takes', () => {
   it(`runs ${mostTasksPerInput} tasks, then waits for a timer due at once before it goes on`, () => {
@@ -76,8 +76,8 @@ describe('a do task', () => {
 do:
   - steps:
       do:
-        - first: { set: '\${ { count: (.count + 1) } }' }
-        - second: { set: '\${ { count: (.count + 1) } }' }
+        - first: { set: '\${ ({ count: $data.count + 1 }) }' }
+        - second: { set: '\${ ({ count: $data.count + 1 }) }' }
 `);
 
     expect(drivenRun(document, { input: { count: 0 } }).outcome).toEqual({ kind: 'completed', output: { count: 2 } });
@@ -90,7 +90,7 @@ do:
       do:
         - leave: { set: { left: true }, then: exit }
         - skipped: { set: { skipped: true } }
-  - after: { set: '\${ { after: .left } }' }
+  - after: { set: '\${ ({ after: $data.left }) }' }
 `);
 
     expect(drivenRun(document).outcome).toEqual({ kind: 'completed', output: { after: true } });

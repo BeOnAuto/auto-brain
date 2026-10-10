@@ -43,7 +43,7 @@ export function runCellOf(state: RunState): RunCell {
   };
 }
 
-export function countersOf(cell: RunCell): Counters {
+export function countersOf(cell: RunCell, mostSteps: number = mostStepsWithoutWaiting): Counters {
   return {
     nextRun: (reference) => {
       const next = (cell.get().runs[reference] ?? 0) + 1;
@@ -53,11 +53,11 @@ export function countersOf(cell: RunCell): Counters {
     step: (reference) => {
       const steps = cell.get().stepsWithoutWaiting + 1;
       cell.update({ stepsWithoutWaiting: steps });
-      if (steps > mostStepsWithoutWaiting) {
+      if (steps > mostSteps) {
         throw raised(
           'runtime',
           500,
-          `The workflow ran ${mostStepsWithoutWaiting} tasks without waiting for anything; it would never end`,
+          `The workflow ran ${mostSteps} tasks without waiting for anything; it would never end`,
           reference,
         );
       }

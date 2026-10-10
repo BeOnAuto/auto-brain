@@ -71,7 +71,7 @@ do:
 
 describe('a listen task that filters', () => {
   it('matches a property by an expression on its value', () => {
-    const run = drivenRun(listening("{ one: { with: { type: tick, data: '${ . > 2 }' } } }"), {
+    const run = drivenRun(listening("{ one: { with: { type: tick, data: '${ $data > 2 }' } } }"), {
       meanwhile: delivering([1, { id: 'e1', type: 'tick', data: 1 }], [2, { id: 'e2', type: 'tick', data: 3 }]),
     });
 

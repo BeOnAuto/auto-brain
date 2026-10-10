@@ -1,7 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
 import { streamSignalOf } from '@beonauto/ledger';
-import { testMachine } from '@beonauto/workflow-engine/testing';
 import { Effect, Function } from 'effect';
 
 import type { DatabaseSettings } from '../src/database/host-databases.ts';
@@ -9,6 +8,7 @@ import { openHostDatabase } from '../src/database/host-databases.ts';
 import { openWorkflowHost } from '../src/host/workflow-host.ts';
 import { brainCreated, eventRecordOf, published, definitionRecorded } from '../src/reaction-testing/brain-writes.ts';
 import { recordedReactions } from '../src/reaction-testing/recorded-reactions.ts';
+import { testMachine } from '../src/testing/host-documents.ts';
 import { recordedWaiting } from '../src/waiting-testing/recorded-waiting.ts';
 import { anEventTrigger, savedNow, type TriggersOf } from './trigger-sets.ts';
 

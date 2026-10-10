@@ -17,7 +17,7 @@ const onAnApproval = workflowSource(
   `schedule:
   on: { one: { with: { type: run_succeeded, subject: interaction/approve-brief } } }
 do:
-  - noted: { set: { choice: '\${ .[0].data.output.choice }', answered_by: '\${ .[0].data.caller }' } }
+  - noted: { set: { choice: '\${ $data[0].data.output.choice }', answered_by: '\${ $data[0].data.caller }' } }
 `,
 );
 

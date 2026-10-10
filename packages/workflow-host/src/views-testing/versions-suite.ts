@@ -5,6 +5,7 @@ import {
   alpha,
   counting,
   detailsOf,
+  foldOf,
   foldedAll,
   isStalled,
   liveAt,
@@ -21,7 +22,7 @@ function rebuildTests(settingsOf: SettingsOf): void {
     views.start();
     const first = await views.until('runs', foldedAll(2));
 
-    await views.saved('runs', detailsOf('. + 10', succeeded, { initial: 0 }));
+    await views.saved('runs', detailsOf(foldOf('return view + 10;'), succeeded, { initial: 0 }));
     const second = await views.until('runs', liveAt(2));
     await views.retired('runs');
     const retired = await views.gone('runs');
@@ -31,7 +32,7 @@ function rebuildTests(settingsOf: SettingsOf): void {
 
   it('replace an older version that waits, rebuilds or stalled with the newer one', async () => {
     const views = await viewHarness(await settingsOf());
-    await views.saved('runs', detailsOf('error("version one")', succeeded, { initial: 0 }));
+    await views.saved('runs', detailsOf(foldOf('throw new Error("version one");'), succeeded, { initial: 0 }));
     await views.ran('reasoning/runs', 1);
     views.start();
     await views.until('runs', isStalled);

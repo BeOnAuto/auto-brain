@@ -2,10 +2,12 @@ import type { ProgramPool, ProgramRequest } from '@beonauto/workflow-engine/dsl'
 import { Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { recallDocument } from '../testing/campaign-reviews.ts';
+import { foldOf, recallDocument } from '../testing/campaign-reviews.ts';
 import { liveView, poolOf, recallWith, workerTestTimeoutMs } from '../testing/recall-runs.ts';
 
-const succeeded = 'language: jq\nsource:\n  events:\n    - type: run_succeeded';
+const succeeded = 'language: typescript\nsource:\n  events:\n    - type: run_succeeded';
+
+const counting = foldOf('return view;', 'return view.spring.length;');
 
 function recording(pool: ProgramPool): { readonly pool: ProgramPool; readonly requests: ProgramRequest[] } {
   const requests: ProgramRequest[] = [];
@@ -26,11 +28,8 @@ describe('the worker an answer runs in', { timeout: workerTestTimeoutMs }, () =>
     const { pool, requests } = recording(poolOf());
     const run = recallWith(pool);
     run.keep(liveView({ spring: [1, 2] }));
-    const withoutASchema = recallDocument('.', `${succeeded}\nanswer: '.spring | length'`);
-    const withASchema = recallDocument(
-      '.',
-      `${succeeded}\noutput:\n  schema: {type: integer}\nanswer: '.spring | length'`,
-    );
+    const withoutASchema = recallDocument(counting, succeeded);
+    const withASchema = recallDocument(counting, `${succeeded}\noutput:\n  schema: {type: integer}`);
 
     const answered = [await run.running(withoutASchema), await run.running(withASchema)];
 

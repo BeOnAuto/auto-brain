@@ -25,7 +25,7 @@ export function workflowEngineOf(
   options: MachineOptions,
   cache: RunCache = runCacheOf(),
 ): WorkflowEngine {
-  const loop = runLoopOf(ports.runStore, workflowMachine(options), cache);
+  const loop = runLoopOf(ports.runStore, workflowMachine(options), cache, options.sandbox.reserve);
   const loaded = (runId: string) => loadedFrom(ports, runId);
   const wake = (runId: string): Effect.Effect<Wake> =>
     ports.serialiser.serialise(
@@ -56,7 +56,7 @@ export function workflowEngineOf(
               version: decision.version,
             });
           }
-          return submissionWithDeclined(decision, input, options);
+          return yield* submissionWithDeclined(decision, input, options);
         }),
       ),
     wake,

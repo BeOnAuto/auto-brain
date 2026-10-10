@@ -1,10 +1,29 @@
 import { detailsOf } from './view-documents.ts';
 
-const reviewsFold = [
-  '($event.data.output | if type == "object" then .campaign else null end | if type == "string" then . else "unknown" end) as $campaign',
-  '| .[$campaign] += [{ at: $event.time, verdict: ($event.data.output.verdict? // "none" | tostring | .[0:200]), run: $event.source }]',
-  '| .[$campaign] |= .[-20:]',
-  '| to_entries | sort_by(.value[-1].at) | .[-50:] | from_entries',
+export const reviewsFold = [
+  'function fieldOf(value, name) {',
+  "  return typeof value === 'object' && value !== null && !Array.isArray(value) ? Reflect.get(value, name) : undefined;",
+  '}',
+  '',
+  'function lastAt(reviews) {',
+  "  return reviews.at(-1)?.at ?? '';",
+  '}',
+  '',
+  'export function fold(view, event) {',
+  "  const output = fieldOf(event.data, 'output');",
+  "  const named = fieldOf(output, 'campaign');",
+  "  const campaign = typeof named === 'string' ? named : 'unknown';",
+  "  const verdict = String(fieldOf(output, 'verdict') ?? 'none').slice(0, 200);",
+  "  const reviews = [...(view[campaign] ?? []), { at: event.time ?? '', verdict, run: event.source }].slice(-20);",
+  '  const latest = Object.entries({ ...view, [campaign]: reviews })',
+  '    .toSorted(([, first], [, second]) => (lastAt(first) < lastAt(second) ? -1 : lastAt(first) > lastAt(second) ? 1 : 0))',
+  '    .slice(-50);',
+  '  return Object.fromEntries(latest);',
+  '}',
+  '',
+  'export function answer(view, input) {',
+  '  return (view[input.campaign] ?? []).slice(-(input.last ?? 5));',
+  '}',
 ].join('\n');
 
 const reviewFilters = [{ type: 'run_succeeded', subject: 'reasoning/review-brief' }];
@@ -15,7 +34,4 @@ const reviewsSchema = {
   additionalProperties: { type: 'array', maxItems: 20 },
 };
 
-export const campaignReviews = detailsOf(reviewsFold, reviewFilters, {
-  schema: reviewsSchema,
-  answer: '.[$input.campaign] // [] | .[-($input.last // 5):]',
-});
+export const campaignReviews = detailsOf(reviewsFold, reviewFilters, { schema: reviewsSchema });

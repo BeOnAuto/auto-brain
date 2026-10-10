@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import type { RunInput } from '../machine/run-input.ts';
-import { startedOf } from '../testing/driver-inputs.ts';
-import { testCancel } from '../testing/driver-inputs.ts';
-import { memoryDriver, type MemoryDriver } from '../testing/memory-driver.ts';
+import { testDriverOf } from '../pool-testing/test-sandbox.ts';
+import { startedOf, testCancel } from '../testing/driver-inputs.ts';
+import type { MemoryDriver } from '../testing/memory-driver.ts';
 import { armedTimerIds, drivenRunId as runId } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 
@@ -18,7 +18,7 @@ do:
 `);
 
 function started(): MemoryDriver {
-  const driver = memoryDriver({ respond: () => 'never' });
+  const driver = testDriverOf({ respond: () => 'never' });
   driver.start({ runId, document });
   return driver;
 }
@@ -89,7 +89,9 @@ describe('an event or a cancel given twice is applied once', () => {
 
 describe('a stream', () => {
   it('has no two events with the same receipt', () => {
-    const driver = memoryDriver({ respond: () => ({ after: 5, result: { status: 'succeeded', output: 1 } }) });
+    const driver = testDriverOf({
+      respond: () => ({ after: 5, result: { status: 'succeeded', output: 1 } }),
+    });
     driver.start({ runId, document });
     for (const id of ['a', 'b']) {
       driver.at(10, () => {
@@ -104,6 +106,6 @@ describe('a stream', () => {
   });
 
   it('takes nothing for a run that has not started, and says so', () => {
-    expect(memoryDriver().cancel(runId)).toEqual({ outcome: 'not_started', version: 0 });
+    expect(testDriverOf().cancel(runId)).toEqual({ outcome: 'not_started', version: 0 });
   });
 });

@@ -1,5 +1,6 @@
 import type { EmitEvent, StartingTrigger } from '@beonauto/definitions';
 import type { StreamSignal } from '@beonauto/ledger';
+import type { FilterSandbox } from '@beonauto/workflow-engine';
 import { Data, type Effect, type Schema } from 'effect';
 
 import type { StartRejected } from './start-rejected.ts';
@@ -25,4 +26,5 @@ export interface ReactionOptions {
   readonly start: StartReaction;
   readonly emit: EmitEvent;
   readonly appended?: StreamSignal;
+  readonly filters?: FilterSandbox;
 }

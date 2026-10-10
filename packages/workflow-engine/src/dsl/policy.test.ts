@@ -21,14 +21,14 @@ use:
   timeouts:
     short: { after: PT5S }
 input:
-  from: .order
+  from: $data.order
   schema:
     format: json:2020-12
     document: { type: object }
 do:
   - check:
-      if: .total > 0
-      set: { total: '\${ .total }' }
+      if: $data.total > 0
+      set: { total: '\${ $data.total }' }
       timeout: short
       then: done
   - done:
@@ -37,12 +37,28 @@ do:
 timeout:
   after: PT1H
 output:
-  as: '\${ { total } }'
+  as: '\${ ({ total: $data.total }) }'
 `);
 
 describe('the policy of a document', () => {
   it('allows a workflow of the tasks this runtime runs', () => {
     expect(rejectionsOf(allowed)).toEqual([]);
+  });
+
+  it('evaluates its expressions as TypeScript in strict mode, the defaults, and refuses another language or mode', () => {
+    expect(rejectionsOf(workflow('evaluate: { language: typescript, mode: strict }\ndo: []'))).toEqual([]);
+    expect(rejectionsOf(workflow('evaluate: { language: python, mode: loose }\ndo: []'))).toEqual([
+      {
+        pointer: '/evaluate/language',
+        detail: "The brain's one language is TypeScript; write the program as a TypeScript function",
+        forbidden: true,
+      },
+      {
+        pointer: '/evaluate/mode',
+        detail: 'An expression that fails must fail, so evaluate.mode is strict, the default',
+        forbidden: true,
+      },
+    ]);
   });
 
   it('runs documents of DSL 1.0.x only', () => {
@@ -74,27 +90,22 @@ do: []
     ).toEqual(['/use/authentications', '/use/secrets', '/use/catalogs', '/use/extensions', '/use/functions']);
   });
 
-  it('are checked when they are retries, timeouts and errors', () => {
+  it('are checked when they are retries and timeouts, whose expressions the check at save reads', () => {
     expect(
       pointersRejectedIn(`
 use:
   retries:
-    broken: { delay: soon, when: '.a +', jitter: { from: PT1S, to: P1M } }
+    broken: { delay: soon, when: '$data.a +', jitter: { from: PT1S, to: P1M } }
     ignored: 3
   timeouts:
     broken: { after: never }
+    computed: { after: '\${ $data.after }' }
     ignored: 3
   errors:
-    broken: { type: '\${ .a + }', status: 500 }
+    computed: { type: '\${ $data.type }', status: 500 }
 do: []
 `),
-    ).toEqual([
-      '/use/retries/broken/when',
-      '/use/retries/broken/delay',
-      '/use/retries/broken/jitter/to',
-      '/use/timeouts/broken/after',
-      '/use/errors/broken/type',
-    ]);
+    ).toEqual(['/use/retries/broken/delay', '/use/retries/broken/jitter/to', '/use/timeouts/broken/after']);
   });
 });
 
@@ -105,18 +116,18 @@ function refusingAfter(schedule: Json, pointer: string): readonly Rejection[] {
 }
 
 describe('the data of a document', () => {
-  it('has no schedule and well-formed transforms and timeout', () => {
+  it('has no schedule and a well-formed timeout', () => {
     expect(
       pointersRejectedIn(`
 schedule: { every: PT1H }
 input:
-  from: .a +
+  from: $data.a
 output:
-  as: { total: '\${ .a + }' }
+  as: { total: '\${ $data.total }' }
 timeout: missing
 do: []
 `),
-    ).toEqual(['/schedule', '/input/from', '/output/as/total', '/timeout']);
+    ).toEqual(['/schedule', '/timeout']);
   });
 
   it('has its schedule checked by the functions it is given, when they check one', () => {

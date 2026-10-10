@@ -16,17 +16,14 @@ const tryAgain = 'try again in a little while';
 
 const wordsOfStall: Readonly<Record<StallCause, string>> = {
   raised: 'its fold raised an error',
-  none: 'its fold gave no output',
-  several: 'its fold gave more than one output',
-  work: `its fold did more than the ${recallBounds.mostWork} units of work one fold may do`,
+  work: `its fold did more than the ${recallBounds.budget} checkpoints of work one fold may do`,
   time: `its fold ran past the ${recallBounds.foldDeadlineMs} ms one fold may take, every time it was tried`,
-  memory: 'its fold took more memory than a fold may use, every time it was tried',
+  memory: 'its fold used more memory than a fold may',
   crash: 'its fold broke the worker that ran it, every time it was tried',
-  depth: `its fold nested deeper than the ${recallBounds.mostValueDepth} levels a value may, or than its evaluation may`,
   size: `the view it folded took more than the ${recallBounds.mostViewBytes} bytes a view may`,
   schema: "the view it folded did not match the view's schema",
-  unfit: 'its fold gave a number a view cannot hold, such as nan or infinite',
-  refused: 'its fold does not compile on this server',
+  unfit: 'its fold answered a view that is not JSON, or one nested deeper than 512 levels',
+  refused: 'its module does not load on this server',
 };
 
 export function lagOf(newestAt: string | undefined, checkpointAt: string | null): number | undefined {

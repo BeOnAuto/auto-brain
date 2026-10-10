@@ -1,12 +1,12 @@
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { newRun } from '../machine/run-state.ts';
+import { testMachine } from '../pool-testing/test-sandbox.ts';
 import { evolveRun, stateInCurrentFormat } from '../run-log/run-fold.ts';
-import { startedOf, testMachine } from '../testing/driver-inputs.ts';
+import { startedOf } from '../testing/driver-inputs.ts';
 import { drivenRunId as runId } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 import { workflowMachine } from './workflow-machine.ts';
@@ -15,10 +15,7 @@ const calling = workflow('do:\n  - ask: { call: notify, with: { to: ada } }');
 
 const corpusState = stateInCurrentFormat(
   1,
-  Reflect.get(
-    JSON.parse(readFileSync(fileURLToPath(new URL('../../corpus/format-1.json', import.meta.url)), 'utf8')),
-    'state',
-  ),
+  Reflect.get(JSON.parse(readFileSync(new URL('../../corpus/format-1.json', import.meta.url), 'utf8')), 'state'),
 );
 
 describe('the workflow machine', () => {

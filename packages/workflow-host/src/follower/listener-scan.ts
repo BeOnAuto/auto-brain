@@ -17,7 +17,7 @@ function listenersOfRun(database: HostDatabase, runKey: string) {
   return Effect.gen(function* () {
     const { state, version } = loadedRunOf(yield* ledgerRunLogStore(database).load(runKey));
     const document = state.workflow?.document ?? {};
-    const { workflow } = reactionOfRun(state.attributes);
+    const reaction = reactionOfRun(state.attributes);
     yield* Effect.forEach(
       Object.entries(state.listeners),
       ([listener, key]: readonly [string, CallKey]) =>
@@ -28,7 +28,8 @@ function listenersOfRun(database: HostDatabase, runKey: string) {
           streamId: runLogStreamOf(runKey),
           armedBy: version,
           filters: JSON.stringify(listenFiltersOf(valueAtPointer(document, key.reference))),
-          workflow,
+          workflow: reaction.workflow,
+          version: reaction.version,
           passed: true,
         }),
       { discard: true },

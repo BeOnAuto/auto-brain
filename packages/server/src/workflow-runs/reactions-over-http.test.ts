@@ -29,7 +29,7 @@ type ListedRun = (typeof ListedRuns.Type)['runs'][number];
 
 const closing = workflowSource(
   'close-the-month',
-  "schedule:\n  on: { one: { with: { type: com.acme.ledger.closed } } }\ndo:\n  - total: { set: { month: '${ .[0].data.month }' } }\n",
+  "schedule:\n  on: { one: { with: { type: com.acme.ledger.closed } } }\ndo:\n  - total: { set: { month: '${ $data[0].data.month }' } }\n",
 );
 
 const announcing = workflowSource(
@@ -39,7 +39,7 @@ const announcing = workflowSource(
 
 const approving = workflowSource(
   'approval',
-  "do:\n  - wait: { listen: { to: { one: { with: { type: com.acme.approved } } } }, output: { as: '${ .[0] }' } }\n",
+  "do:\n  - wait: { listen: { to: { one: { with: { type: com.acme.approved } } } }, output: { as: '${ $data[0] }' } }\n",
 );
 
 let server: ReasoningServer;

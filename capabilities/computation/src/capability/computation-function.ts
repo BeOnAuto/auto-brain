@@ -6,12 +6,12 @@ import {
   type DefinitionSummary,
   type Capability,
 } from '@beonauto/definitions';
-import { issueText } from '@beonauto/definitions/document';
-import { InvalidInput } from '@beonauto/operations';
+import type { InvalidInput } from '@beonauto/operations';
 import type { ProgramPool } from '@beonauto/workflow-engine/dsl';
 import { Effect, Result } from 'effect';
 
 import type { ComputationFunctionDefinitionDocument } from '../document/computation-document.ts';
+import { documentCheck, invalidDefinition } from '../document/document-check.ts';
 import { parseComputationDocument } from '../document/document-parsing.ts';
 import { computationRun } from '../run/computation-run.ts';
 import { computationBounds } from '../run/run-bounds.ts';
@@ -19,18 +19,14 @@ import { computationBounds } from '../run/run-bounds.ts';
 export interface ComputationFunctionAdapterOptions {
   readonly pool: ProgramPool;
   readonly deadlineMs?: number;
+  readonly budget?: number;
+  readonly memoryBytes?: number;
 }
 
 function parse(source: string): Effect.Effect<ComputationFunctionDefinitionDocument, InvalidInput> {
   return Result.match(parseComputationDocument(source), {
     onSuccess: (document) => Effect.succeed(document),
-    onFailure: (issues) =>
-      Effect.fail(
-        new InvalidInput({
-          detail: `The computation function definition has ${issues.length === 1 ? 'a problem' : `${issues.length} problems`}`,
-          issues: issues.map((issue) => ({ pointer: '', detail: issueText(issue) })),
-        }),
-      ),
+    onFailure: (issues) => Effect.fail(invalidDefinition(issues)),
   });
 }
 
@@ -45,8 +41,10 @@ function summarize({ description, input, output }: ComputationFunctionDefinition
 export function makeComputationFunctionAdapter({
   pool,
   deadlineMs = computationBounds.deadlineMs,
+  budget = computationBounds.budget,
+  memoryBytes = computationBounds.memoryBytes,
 }: ComputationFunctionAdapterOptions): Capability {
-  const run = computationRun({ pool, deadlineMs });
+  const run = computationRun({ pool, deadlineMs, budget, memoryBytes });
   return defineCapability({
     type: 'computation',
     title: functionCategoryLabels.computation,
@@ -55,8 +53,9 @@ export function makeComputationFunctionAdapter({
     describeOutput: outputInWords('result'),
     mediaType: 'text/markdown',
     parse,
+    check: documentCheck(pool),
     summarize,
-    run: (document, input) => run(document, input),
+    run: (document, input, _run, stripped) => run(document, input, stripped),
     longestAnyRunMs: deadlineMs,
   });
 }

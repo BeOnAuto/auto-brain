@@ -12,9 +12,11 @@ export const mostTasksPerInput = 100;
 
 export const mostStepsWithoutWaiting = 10_000;
 
-export const mostExpressionWork = 8_000_000;
+export const mostExpressionWork = 250;
 
-export const mostWorkPerInput = 16_000_000;
+export const mostWorkPerInput = 500;
+
+export const mostValueWork = 8_000_000;
 
 export const mostInputs = 100_000;
 

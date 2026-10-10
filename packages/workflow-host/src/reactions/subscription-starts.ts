@@ -1,8 +1,22 @@
-import { describeError, matchEvent } from '@beonauto/workflow-engine';
-import { Effect } from 'effect';
+import { describeError, type DslError, type FilterVerdict } from '@beonauto/workflow-engine';
+import { Array, Effect } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
-import { deliverySweeps, type RecordConsumer, type Delivery, type FollowedRecord } from '../follower/consumers.ts';
+import {
+  groupMatchingOf,
+  stopsInARowBeforeTheVersion,
+  type FilterPlace,
+  type FilterStops,
+  type MatchFilters,
+  type MatchGroups,
+} from '../filtering/filter-matching.ts';
+import {
+  DeliveryFailed,
+  deliverySweeps,
+  type RecordConsumer,
+  type Delivery,
+  type FollowedRecord,
+} from '../follower/consumers.ts';
 import { eventSubscriptionsOf, type EventSubscription } from '../triggers/trigger-rows.ts';
 import { reactionRunIdOf } from './reaction-ids.ts';
 import type { RefuseReaction } from './refusals.ts';
@@ -16,18 +30,52 @@ export interface StartParts {
   readonly starting: Starting;
   readonly refusals: RefuseReaction;
   readonly workflowOfRun: WorkflowOfRun;
+  readonly match: MatchFilters;
+  readonly stops: FilterStops;
   readonly now: () => number;
 }
 
 type Verdict = 'matched' | 'unmatched' | { readonly error: string };
 
-function verdictOf({ filters }: EventSubscription, { event: { event } }: FollowedRecord, now: number): Verdict {
-  const verdicts = filters.map((filter) => matchEvent(filter, event, now));
+interface SubscriptionVerdict {
+  readonly subscription: EventSubscription;
+  readonly place: FilterPlace;
+  readonly verdict: Verdict;
+  readonly stopped: readonly DslError[];
+  readonly struck: boolean;
+}
+
+function verdictOf(verdicts: readonly FilterVerdict[]): Verdict {
   if (verdicts.includes(true)) {
     return 'matched';
   }
-  const failed = verdicts.find((verdict) => typeof verdict === 'object');
+  const failed = verdicts.find((verdict) => typeof verdict === 'object' && !verdict.stopped);
   return typeof failed === 'object' ? { error: describeError(failed.error) } : 'unmatched';
+}
+
+function placeOf(brainKey: string, { workflow, version, reference }: EventSubscription): FilterPlace {
+  return { kind: 'trigger', brainKey, workflow, version, reference };
+}
+
+function verdictsOf(
+  matchGroups: MatchGroups,
+  parts: StartParts,
+  subscriptions: readonly EventSubscription[],
+  { brainKey, event: { event } }: FollowedRecord,
+): Effect.Effect<readonly SubscriptionVerdict[]> {
+  const groups = subscriptions.map((subscription) => ({
+    place: placeOf(brainKey, subscription),
+    filters: subscription.filters,
+  }));
+  return Effect.map(matchGroups(groups, event, parts.now()), (matched) =>
+    Array.zipWith(subscriptions, matched, (subscription, { verdicts, stopped, struck }): SubscriptionVerdict => ({
+      subscription,
+      place: placeOf(brainKey, subscription),
+      verdict: verdictOf(verdicts),
+      stopped,
+      struck,
+    })),
+  );
 }
 
 function isOwn(parts: StartParts, workflow: string, { brainKey, event }: FollowedRecord): Effect.Effect<boolean> {
@@ -65,46 +113,67 @@ function startOf(parts: StartParts, subscription: EventSubscription, followed: F
   };
 }
 
-export function subscriptionStarts(parts: StartParts): RecordConsumer {
-  const reported = new Set<string>();
-  const reportedOnce = (brainKey: string, { workflow, version, reference }: EventSubscription, error: string) => {
-    const key = JSON.stringify([brainKey, workflow, reference, version]);
-    const fresh = !reported.has(key);
-    reported.add(key);
-    return fresh
+function matchedLater({ workflow }: EventSubscription): Delivery {
+  return {
+    key: workflow,
+    workflow,
+    deliver: Effect.fail(
+      new DeliveryFailed({
+        detail:
+          "The filter of the workflow's event trigger was stopped on the event by its deadline or its memory, so the event waits to be matched again",
+      }),
+    ),
+  };
+}
+
+function deliveriesOf(parts: StartParts, judged: SubscriptionVerdict, followed: FollowedRecord) {
+  const { subscription, verdict, struck } = judged;
+  if (verdict !== 'matched') {
+    return Effect.succeed(struck ? [matchedLater(subscription)] : []);
+  }
+  return Effect.map(isOwn(parts, subscription.workflow, followed), (own) =>
+    own ? [] : [startOf(parts, subscription, followed)],
+  );
+}
+
+function reported(parts: StartParts, { place, verdict, stopped }: SubscriptionVerdict) {
+  const { brainKey, workflow } = place;
+  return Effect.andThen(
+    Effect.forEach(
+      stopped,
+      (error) =>
+        parts.refusals.refuse(
+          brainKey,
+          workflow,
+          `The filter of the workflow's event trigger was stopped by its deadline or its memory ${stopsInARowBeforeTheVersion} times in a row, so it is not evaluated again for this version of the workflow; a new version evaluates it again: ${describeError(error)}`,
+        ),
+      { discard: true },
+    ),
+    typeof verdict === 'object' && parts.stops.failedFirst(place)
       ? parts.refusals.refuse(
           brainKey,
           workflow,
-          `The filter of the workflow's event trigger failed on an event, so it did not match: ${error}`,
+          `The filter of the workflow's event trigger failed on an event, so it did not match: ${verdict.error}`,
         )
-      : Effect.void;
-  };
+      : Effect.void,
+  );
+}
+
+export function subscriptionStarts(parts: StartParts): RecordConsumer {
+  const matchGroups = groupMatchingOf(parts.match, parts.stops);
   return {
     name: 'subscription_starts',
     skippedAfterSweeps: deliverySweeps,
     batchOf: (followed, after, most) =>
       Effect.gen(function* () {
-        const now = parts.now();
         const type = followed.event.event.type;
         const candidates = yield* eventSubscriptionsOf(parts.database, followed.brainKey, { type, after, most });
         const taken = candidates.slice(0, most);
-        const verdicts = taken.map((subscription) => verdictOf(subscription, followed, now));
-        yield* Effect.forEach(
-          taken,
-          (subscription, index) => {
-            const verdict = verdicts[index];
-            return typeof verdict === 'object'
-              ? reportedOnce(followed.brainKey, subscription, verdict.error)
-              : Effect.void;
-          },
-          { discard: true },
-        );
-        const matched = taken.filter((_, index) => verdicts[index] === 'matched');
-        const owned = yield* Effect.forEach(matched, (subscription) => isOwn(parts, subscription.workflow, followed));
+        const judged = yield* verdictsOf(matchGroups, parts, taken, followed);
+        yield* Effect.forEach(judged, (each) => reported(parts, each), { discard: true });
+        const deliveries = yield* Effect.forEach(judged, (each) => deliveriesOf(parts, each, followed));
         return {
-          deliveries: matched
-            .filter((_, index) => owned[index] !== true)
-            .map((subscription) => startOf(parts, subscription, followed)),
+          deliveries: deliveries.flat(),
           through: taken.at(-1)?.workflow,
           more: candidates.length > most,
         };

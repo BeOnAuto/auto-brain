@@ -137,9 +137,9 @@ describe('templates of a task', () => {
   it('evaluate the expressions in lists, and loop over null items and items held twice', () => {
     const document = workflow(`
 do:
-  - listed: { set: ['\${ .a }', 2] }
+  - listed: { set: ['\${ $data.a }', 2] }
   - loop:
-      for: { in: '\${ [null, .[0], .[0]] }' }
+      for: { in: '\${ [null, $data[0], $data[0]] }' }
       do: [{ seen: { set: { item: '\${ $item }' } } }]
 `);
 

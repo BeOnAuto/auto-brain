@@ -1,9 +1,8 @@
-import { isJson, isObject, type Json } from '../dsl/json.ts';
-import { jsonBytesWithin, mostIssueBytes, textWithin } from '../programs/byte-sizes.ts';
-import type { CompiledProgram } from '../programs/program-compiling.ts';
-import type { Dialect } from '../programs/program-dialect.ts';
-import type { ProgramRun } from '../programs/program-running.ts';
-import type { ProgramIssue } from '../programs/program-tree.ts';
+import { jsonOfText, type Json } from '../dsl/json.ts';
+import { mostIssueBytes, textWithin, utf8BytesWithin } from '../programs/byte-sizes.ts';
+import { moduleRun, type ModuleRun } from '../programs/module-runs.ts';
+import type { ProgramIssue } from '../programs/program-run.ts';
+import type { SandboxInstance } from '../programs/sandbox-session.ts';
 import type { ProgramAnswerSchema, ProgramJob } from './program-messages.ts';
 
 export type ProgramAnswerData = typeof ProgramAnswerSchema.Encoded;
@@ -17,16 +16,9 @@ export type OutputCheck = (output: Json) => readonly OutputIssue[];
 
 export interface ProgramHost {
   readonly now: () => number;
-  readonly compile: (source: string, dialect: Dialect) => CompiledProgram;
+  readonly instance: SandboxInstance;
   readonly check: OutputCheck;
 }
-
-const tooDeep: ProgramAnswerData = {
-  ran: 'exhausted',
-  limit: 'value depth',
-  issue: { detail: 'The input nests too deep', span: { start: 0, end: 0 } },
-  work: 0,
-};
 
 export const unchecked: OutputCheck = () => [];
 
@@ -34,10 +26,10 @@ function cut(issue: ProgramIssue): ProgramIssue {
   return { ...issue, detail: textWithin(issue.detail, mostIssueBytes) };
 }
 
-function checkedAnswer(value: Json, bytes: number, work: number, check: OutputCheck): ProgramAnswerData {
-  const issues = check(value);
+function checkedAnswer(text: string, bytes: number, work: number, check: OutputCheck): ProgramAnswerData {
+  const issues = check(jsonOfText(text));
   return issues.length === 0
-    ? { ran: 'answered', output: JSON.stringify(value), bytes, work }
+    ? { ran: 'answered', output: text, bytes, work }
     : {
         ran: 'mismatched',
         issues: issues.map(({ pointer, detail }) => ({
@@ -48,34 +40,32 @@ function checkedAnswer(value: Json, bytes: number, work: number, check: OutputCh
       };
 }
 
-function answerFrom(run: ProgramRun, mostOutputBytes: number, check: OutputCheck): ProgramAnswerData {
-  if (run.ran === 'raised' || run.ran === 'exhausted') {
-    return { ...run, issue: cut(run.issue) };
+function answerFrom(run: ModuleRun, mostOutputBytes: number, check: OutputCheck): ProgramAnswerData {
+  if (run.ran === 'refused') {
+    return { ran: 'refused', issue: cut(run.issue) };
+  }
+  if (run.ran === 'oversized') {
+    return { ran: 'oversized', work: run.work };
   }
   if (run.ran !== 'answered') {
-    return run;
+    return { ...run, issue: cut(run.issue) };
   }
-  const bytes = jsonBytesWithin(run.value, mostOutputBytes);
+  const bytes = utf8BytesWithin(run.text, mostOutputBytes);
   return bytes > mostOutputBytes
     ? { ran: 'oversized', work: run.work }
-    : checkedAnswer(run.value, bytes, run.work, check);
+    : checkedAnswer(run.text, bytes, run.work, check);
 }
 
-export function answerOf(request: ProgramJob, { now, compile, check }: ProgramHost): ProgramAnswerData {
-  const compiled = compile(request.source, request.dialect);
-  if ('issues' in compiled) {
-    return { ran: 'refused', issues: compiled.issues.map((issue) => cut(issue)) };
-  }
-  const input: unknown = JSON.parse(request.input);
-  const variables: unknown = JSON.parse(request.variables);
-  if (!isJson(input) || !isJson(variables) || !isObject(variables)) {
-    return tooDeep;
-  }
-  const run = compiled.program.run(input, {
-    limits: request.limits,
-    outputs: 'exactly one',
-    variables,
-    deadline: { milliseconds: request.deadlineAt - now(), clock: now },
-  });
+export function answerOf(request: ProgramJob, { now, instance, check }: ProgramHost): ProgramAnswerData {
+  const run = moduleRun(
+    instance,
+    { stackBytes: request.stackBytes, mostAnswerBytes: request.mostOutputBytes, clock: now },
+    {
+      source: request.source,
+      entry: request.entry,
+      arguments: request.arguments,
+      evaluation: { budget: request.budget, deadlineAt: request.deadlineAt, moment: request.moment },
+    },
+  );
   return answerFrom(run, request.mostOutputBytes, check);
 }

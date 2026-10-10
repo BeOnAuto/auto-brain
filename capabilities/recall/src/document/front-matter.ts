@@ -19,7 +19,6 @@ const FrontMatterSchema = Schema.Struct({
   view: Schema.optionalKey(ViewSchema),
   input: Schema.optionalKey(SectionSchema),
   output: Schema.optionalKey(SectionSchema),
-  answer: Schema.optionalKey(Schema.String.check(Schema.isMinLength(1))),
 });
 
 export type RecallFrontMatter = typeof FrontMatterSchema.Type;

@@ -56,7 +56,7 @@ A recall function retrieves or reconstructs relevant information. Its sources ca
 
 Memory describes the broader retention and availability of information. Recall is the operation that obtains the relevant parts. The event ledger already stores events and run records; it is one possible source for recall.
 
-In the current runtime, a recall function keeps a view of the brain's own history. Its fold, a program in jq, folds each event its filters name into the view, such as every review a reasoning function wrote, and the runtime keeps the view as the brain records events. A run answers from the view as it stands, such as the last reviews of one campaign, within milliseconds, and says how far the view has read. A workflow can recall what the brain decided before and give it to a reasoning function as input, so the next review knows the last one. Recall over documents and other sources is not available yet.
+In the current runtime, a recall function keeps a view of the brain's own history. Its fold, a function in TypeScript, folds each event its filters name into the view, such as every review a reasoning function wrote, and the runtime keeps the view as the brain records events. A run answers from the view as it stands, such as the last reviews of one campaign, within milliseconds, and says how far the view has read. A workflow can recall what the brain decided before and give it to a reasoning function as input, so the next review knows the last one. Recall over documents and other sources is not available yet.
 
 See [Recall function format](../reference/recall-format.md).
 
@@ -64,7 +64,7 @@ See [Recall function format](../reference/recall-format.md).
 
 A computation function executes specified code or expressions with defined inputs and outputs, such as a calculation or data transformation. It need not be mathematically pure. AI-assisted authoring can help write the logic; once defined, the operation executes that specified logic.
 
-In the current runtime, a computation function is a program in jq with schemas for its input and output. A run applies the program to its input and answers with exactly one output, the same output for the same input every time, within bounds on its work, memory and time. It reaches nothing outside the brain. Use it for the arithmetic a language model should not do: a workflow can read figures through an interaction function that calls a tool, compute totals, paces and projections exactly with a computation function, and have a reasoning function write about them.
+In the current runtime, a computation function is a TypeScript function with schemas for its input and output, which are its types, checked when it is saved. A run calls the function with its input in a sandbox and answers with its output, the same output for the same input every time, within bounds on its work, memory and time. It reaches nothing outside the brain. Use it for the arithmetic a language model should not do: a workflow can read figures through an interaction function that calls a tool, compute totals, paces and projections exactly with a computation function, and have a reasoning function write about them.
 
 See [Computation function format](../reference/computation-format.md).
 

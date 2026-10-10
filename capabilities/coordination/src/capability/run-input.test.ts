@@ -5,10 +5,12 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { brainOn } from '../testing/brain.ts';
+import { testExpressionCheck } from '../testing/expression-checks.ts';
 import { makeWorkflowAdapter, type WorkflowAdapterDependencies } from './workflow.ts';
 
 const neverStarted: WorkflowAdapterDependencies = {
   runs: { start: () => Effect.die('A workflow started') },
+  check: testExpressionCheck,
   mostDurationMs: 30 * 24 * 3_600_000,
   longestCallMs: 660_000,
 };

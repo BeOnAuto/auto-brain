@@ -1,5 +1,6 @@
 import { Schema } from 'effect';
 
+import { StrippedFormsSchema } from '../capability/stripped-forms.ts';
 import { TriggerSchema } from './definition-triggers.ts';
 
 const DefinitionContentSchema = Schema.Struct({
@@ -10,6 +11,7 @@ const DefinitionContentSchema = Schema.Struct({
   warnings: Schema.optionalKey(Schema.Array(Schema.String)),
   triggers: Schema.optionalKey(Schema.Array(TriggerSchema)),
   details: Schema.optionalKey(Schema.JsonObject),
+  stripped: Schema.optionalKey(StrippedFormsSchema),
 });
 
 export type DefinitionContent = typeof DefinitionContentSchema.Type;

@@ -39,9 +39,23 @@ const summary = [
   'Write one sentence about a total spend of {{ input.total_spend_cents }} cents.',
 ].join('\n');
 
-const raising = ['---', 'language: jq', '---', 'error("the period has not started")'].join('\n');
+const raising = [
+  '---',
+  'language: typescript',
+  '---',
+  'export default function (input: Input): Output {',
+  "  throw new Error('the period has not started');",
+  '}',
+].join('\n');
 
-const shouting = ['---', 'language: jq', '---', 'error("x" * 30000000)'].join('\n');
+const shouting = [
+  '---',
+  'language: typescript',
+  '---',
+  'export default function (input: Input): Output {',
+  "  throw new Error('x'.repeat(30_000_000));",
+  '}',
+].join('\n');
 
 const catching = workflowSource(
   'catching',
@@ -50,7 +64,7 @@ const catching = workflowSource(
       try:
         - shout:
             call: run_definition
-            with: { type: computation, name: shouting, input: '\${ . }' }
+            with: { type: computation, name: shouting, input: '\${ $data }' }
       catch:
         errors:
           with: { status: 409 }
@@ -60,7 +74,7 @@ const catching = workflowSource(
               set:
                 type: '\${ $failure.type }'
                 kind: '\${ $failure.kind }'
-                bytes: '\${ $failure.detail | utf8bytelength }'
+                bytes: '\${ encodeURIComponent($failure.detail).replace(/%[0-9A-F]{2}/gu, "_").length }'
 `,
 );
 
@@ -70,14 +84,14 @@ function report(name: string, computation: string): string {
     `do:
   - read:
       call: run_definition
-      with: { type: reasoning, name: read-rows, input: { campaigns: '\${ .campaigns }' } }
+      with: { type: reasoning, name: read-rows, input: { campaigns: '\${ $data.campaigns }' } }
       output:
-        as: '\${ { rows: .rows, period: $input.period } }'
+        as: '\${ ({ rows: $data.rows, period: $input.period }) }'
   - compute:
       try:
         - pace:
             call: run_definition
-            with: { type: computation, name: ${computation}, input: '\${ . }' }
+            with: { type: computation, name: ${computation}, input: '\${ $data }' }
       catch:
         errors:
           with: { status: 503 }
@@ -87,7 +101,7 @@ function report(name: string, computation: string): string {
             attempt: { count: 2 }
   - write:
       call: run_definition
-      with: { type: reasoning, name: summary, input: { total_spend_cents: '\${ .total_spend_cents }' } }
+      with: { type: reasoning, name: summary, input: { total_spend_cents: '\${ $data.total_spend_cents }' } }
 `,
   );
 }

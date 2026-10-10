@@ -3,8 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { memoryPorts } from '../memory/memory-ports.ts';
 import { virtualClock } from '../memory/virtual-clock.ts';
-import { testMachine } from '../testing/driver-inputs.ts';
-import { memoryDriver } from '../testing/memory-driver.ts';
+import { testDriverOf, testMachine } from '../pool-testing/test-sandbox.ts';
 import { workflow } from '../testing/workflows.ts';
 import { workflowEngineOf } from './engine.ts';
 
@@ -14,7 +13,7 @@ const pausing = workflow('do:\n  - pause: { wait: PT1M }');
 
 describe('a run whose note of its due time failed', () => {
   it('is found by a sweep an hour later, though nothing woke it and its alarm was lost, and runs to its end', () => {
-    const driver = memoryDriver();
+    const driver = testDriverOf();
     driver.ports.faults.failNext('note_due');
     const started = driver.start({ runId, document: pausing });
     driver.ports.timers.forget();
@@ -29,7 +28,7 @@ describe('a run whose note of its due time failed', () => {
   });
 
   it('leaves its dispatch behind until a wake dispatches it again and notes its due time', () => {
-    const driver = memoryDriver();
+    const driver = testDriverOf();
     driver.ports.faults.failNext('note_due');
     driver.start({ runId, document: pausing });
 
@@ -43,7 +42,7 @@ describe('a run whose note of its due time failed', () => {
   });
 
   it('is found by a sweep after a port failed too, though nothing woke it, and runs to its end', () => {
-    const driver = memoryDriver();
+    const driver = testDriverOf();
     driver.ports.faults.failNext('arm_timer');
     driver.ports.faults.failNext('note_due');
     driver.start({ runId, document: pausing });

@@ -19,6 +19,3 @@ allowBuilds:
   lefthook: true
   protobufjs: false
   sqlite3: true
-
-patchedDependencies:
-  '@gabrielbryk/jq-ts@1.7.0': patches/@gabrielbryk__jq-ts@1.7.0.patch

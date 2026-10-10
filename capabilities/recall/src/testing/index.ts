@@ -1,1 +1,1 @@
-export { campaignReviews, recallDocument, reviewBrief } from './campaign-reviews.ts';
+export { campaignReviews, foldOf, recallDocument, reviewBrief } from './campaign-reviews.ts';

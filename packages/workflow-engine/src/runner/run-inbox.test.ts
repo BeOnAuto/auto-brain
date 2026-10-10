@@ -6,7 +6,8 @@ import {
   mostWaitingEventBytes,
   mostWaitingEvents,
 } from '../machine/limits.ts';
-import { memoryDriver, type MemoryDriver } from '../testing/memory-driver.ts';
+import { testDriverOf } from '../pool-testing/test-sandbox.ts';
+import type { MemoryDriver } from '../testing/memory-driver.ts';
 import { drivenRunId, drivenRun } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 
@@ -47,7 +48,7 @@ describe('the events a run has not consumed', () => {
 
 describe('the events a run receives over its life', () => {
   it(`may number ${mostReceivedEvents}, consumed or not; one more ends the run, which keeps the ids of the ${mostReceivedEvents} it took`, () => {
-    const driver = memoryDriver();
+    const driver = testDriverOf();
     driver.start({ runId: drivenRunId, document: consumingForever });
     for (let index = 0; index < mostReceivedEvents; index += 1) {
       driver.deliver(drivenRunId, { id: index.toString(36), type: 'tick' });

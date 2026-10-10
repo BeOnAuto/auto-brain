@@ -1,49 +1,49 @@
-import { Schema } from 'effect';
+import { Schema, Struct } from 'effect';
 
-import { mostValueDepth } from '../dsl/json.ts';
+import { CheckAnswerSchema, type CheckAnswer } from '../jobs/check-messages.ts';
+import { foldJobOf } from '../jobs/fold-job.ts';
 import { stopped, type Ending } from '../jobs/job-endings.ts';
-import type { PoolSettings, ProgramPool, ProgramRequest } from '../jobs/pool-contract.ts';
+import type { CheckRequest, PoolSettings, ProgramPool, ProgramRequest } from '../jobs/pool-contract.ts';
+import type { Job } from '../jobs/pool-job.ts';
 import { ProgramAnswerSchema, type ProgramAnswer } from '../jobs/program-messages.ts';
-import type { ProgramLimits } from '../programs/program-running.ts';
-import { foldJobOf } from './fold-job.ts';
-import type { Job } from './pool-job.ts';
+import { poolEvaluationsOf } from './evaluation-thread.ts';
 import { poolSlots, type PoolSlots } from './pool-slots.ts';
 import { poolWorkers } from './pool-workers.ts';
 
-export const mostEvaluationDepth = 10_000;
+export const checkPermits = 1;
+
+export const mostCheckStartMs = 10_000;
 
 const programWorker = new URL('../workers/program-worker.ts', import.meta.url);
 
 const foldWorker = new URL('../workers/fold-worker.ts', import.meta.url);
 
+const evaluationWorker = new URL('../workers/evaluation-worker.ts', import.meta.url);
+
 const decodeProgramAnswer = Schema.decodeUnknownOption(ProgramAnswerSchema);
 
-export function liftedLimits(mostWork: number): ProgramLimits {
-  return {
-    mostWork,
-    mostSteps: Number.POSITIVE_INFINITY,
-    mostOutputs: Number.POSITIVE_INFINITY,
-    mostDepth: mostEvaluationDepth,
-    mostValueDepth,
-  };
-}
+const decodeCheckAnswer = Schema.decodeUnknownOption(CheckAnswerSchema);
 
 function programJob(module: Readonly<URL>, request: ProgramRequest, until: number): Job<ProgramAnswer> {
-  const { source, input, variables = {}, dialect, limits, mostOutputBytes, context = null } = request;
   const job = {
-    source,
-    input: JSON.stringify(input),
-    variables: JSON.stringify(variables),
-    dialect,
-    limits,
-    mostOutputBytes,
+    ...Struct.pick(request, ['source', 'entry', 'moment', 'budget', 'memoryBytes', 'stackBytes', 'mostOutputBytes']),
+    arguments: request.arguments.map((argument) => JSON.stringify(argument)),
     deadlineAt: performance.timeOrigin + until,
-    context,
+    context: request.context ?? null,
   };
   return {
     module,
     envelope: (id) => ({ job: id, kind: 'program', request: job }),
     decode: decodeProgramAnswer,
+  };
+}
+
+function checkJob(module: Readonly<URL>, request: CheckRequest): Job<CheckAnswer> {
+  const job = Struct.omit(request, ['deadlineMs', 'worker']);
+  return {
+    module,
+    envelope: (id) => ({ job: id, kind: 'check', request: job }),
+    decode: decodeCheckAnswer,
   };
 }
 
@@ -66,7 +66,10 @@ async function admitted<Answer>(
 
 export function programPool(settings: PoolSettings): ProgramPool {
   const slots = poolSlots(settings.workers);
+  const checkSlots = poolSlots(checkPermits);
   const workers = poolWorkers(settings);
+  const checkers = poolWorkers({ ...settings, workers: checkPermits, idleMs: Number.POSITIVE_INFINITY });
+  const evaluations = poolEvaluationsOf(settings.evaluationWorker ?? evaluationWorker, settings);
   return {
     workers: settings.workers,
     heapMegabytes: settings.heapMegabytes,
@@ -85,9 +88,22 @@ export function programPool(settings: PoolSettings): ProgramPool {
       const ending = await admitted(slots, started + job.waitMs, signal, job.run);
       return { ...ending, milliseconds: performance.now() - started };
     },
+    check: async (request, signal) => {
+      const started = performance.now();
+      const ending = await admitted(checkSlots, started + request.deadlineMs, signal, () =>
+        checkers.evaluate(checkJob(request.worker, request), {
+          until: performance.now() + (settings.checkStartMs ?? mostCheckStartMs),
+          afterReady: request.deadlineMs,
+          signal,
+        }),
+      );
+      return { ...ending, milliseconds: performance.now() - started };
+    },
+    evaluations: evaluations.evaluations,
     close: async () => {
       slots.close();
-      await workers.close();
+      checkSlots.close();
+      await Promise.all([workers.close(), checkers.close(), evaluations.close()]);
     },
   };
 }

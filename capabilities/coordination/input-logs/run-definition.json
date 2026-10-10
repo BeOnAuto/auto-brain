@@ -20,7 +20,7 @@
                 "type": "reasoning",
                 "name": "summarize",
                 "input": {
-                  "text": "${ .text }"
+                  "text": "${ $data.text }"
                 }
               }
             }
@@ -28,7 +28,7 @@
           {
             "answer": {
               "set": {
-                "summary": "${ .summary }",
+                "summary": "${ $data.summary }",
                 "runtime": "${ $runtime.name }"
               }
             }
@@ -113,7 +113,7 @@
                       "type": "reasoning",
                       "name": "summarize",
                       "input": {
-                        "text": "${ .text }"
+                        "text": "${ $data.text }"
                       }
                     }
                   }
@@ -121,7 +121,7 @@
                 {
                   "answer": {
                     "set": {
-                      "summary": "${ .summary }",
+                      "summary": "${ $data.summary }",
                       "runtime": "${ $runtime.name }"
                     }
                   }
@@ -203,7 +203,7 @@
         {
           "op": "replace",
           "path": "/heldBytes",
-          "value": 8555
+          "value": 8565
         },
         {
           "op": "add",
@@ -285,7 +285,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3287
+          "value": 3297
         }
       ],
       "outputs": [
@@ -402,7 +402,7 @@
         {
           "op": "replace",
           "path": "/heldBytes",
-          "value": 299
+          "value": 309
         },
         {
           "op": "replace",
@@ -437,7 +437,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 5100
+          "value": 5110
         }
       ],
       "outputs": [

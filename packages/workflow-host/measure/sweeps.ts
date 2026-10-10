@@ -5,8 +5,8 @@ import { passOf } from '../src/follower/brain-pass.ts';
 import { brainRecordsOf } from '../src/follower/brain-records.ts';
 import { followedBrainsOn } from '../src/follower/followed-brains.ts';
 import { eventTrigger, published, definitionRecorded } from '../src/reaction-testing/brain-writes.ts';
+import { definitionRecordsKeepingTheirOwnStops } from '../src/reaction-testing/own-stops.ts';
 import { brainSweepsOn, type BrainSweeps } from '../src/sweeps/brain-sweeps.ts';
-import { definitionRecordsOn } from '../src/triggers/definition-records.ts';
 import { resultOfEnding } from '../src/waiting-testing/recorded-waiting.ts';
 import { servedWaitingOf } from '../src/waiting/waiting-parts.ts';
 
@@ -84,7 +84,7 @@ export async function sweepCostOn(database: DatabaseSettings, brains: number, re
       trouble: () => Effect.void,
     }).calls,
     definitionType: 'workflow',
-    applyDefinitionRecord: definitionRecordsOn(opened),
+    applyDefinitionRecord: definitionRecordsKeepingTheirOwnStops(opened),
     unreadable: () => Effect.void,
     passedEarly: () => Effect.void,
     registered: [],

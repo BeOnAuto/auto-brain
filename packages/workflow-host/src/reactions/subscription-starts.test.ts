@@ -2,22 +2,23 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { HostDatabase } from '../database/host-database.ts';
+import { stopsInARowBeforeTheVersion } from '../filtering/filter-matching.ts';
 import { eventTrigger, type TriggerFilter } from '../reaction-testing/brain-writes.ts';
-import { followedRecordOf, saidRefusals } from '../reaction-testing/followed-records.ts';
-import { onSQLite, openedOn } from '../testing/host-files.ts';
+import { followedRecordOf } from '../reaction-testing/followed-records.ts';
+import { starting, stopsByItsMemory, stopsByItsWork } from '../reaction-testing/trigger-starting.ts';
 import { triggersActivated } from '../triggers/trigger-rows.ts';
 import { reactionRunIdOf } from './reaction-ids.ts';
-import type { ReactionStart } from './reaction-options.ts';
-import { mostReactionDepth, subscriptionStarts } from './subscription-starts.ts';
+import { mostReactionDepth } from './subscription-starts.ts';
 
 const brainKey = 'brain/acme/alpha/';
 
 const at = '2026-10-01T09:00:00.000Z';
 
-const topRuns: ReadonlyMap<string, string> = new Map([
-  ['r-of-close', 'close'],
-  ['r-of-other', 'other'],
-]);
+const working = { type: 'go', data: stopsByItsWork };
+
+const filling = { type: 'go', data: stopsByItsMemory };
+
+const european = { type: 'go', data: { region: 'eu' } };
 
 async function subscribedAt(
   database: HostDatabase,
@@ -33,32 +34,6 @@ async function subscribedAt(
 
 function subscribed(database: HostDatabase, name: string, ...filters: readonly TriggerFilter[]) {
   return subscribedAt(database, 1, name, ...filters);
-}
-
-async function starting() {
-  const database = await openedOn(await onSQLite());
-  const starts: ReactionStart[] = [];
-  const { refusals, said } = saidRefusals();
-  const consumer = subscriptionStarts({
-    database,
-    starting: {
-      start: (_brainKey, start) =>
-        Effect.sync(() => {
-          starts.push(start);
-        }),
-      startDeferred: () => Effect.succeed(0),
-    },
-    refusals,
-    workflowOfRun: (_brainKey, runId) => Effect.succeed(topRuns.get(runId)),
-    now: () => 0,
-  });
-  const delivered = (followed: ReturnType<typeof followedRecordOf>) =>
-    Effect.runPromise(
-      Effect.flatMap(consumer.batchOf(followed, undefined, 100), ({ deliveries }) =>
-        Effect.forEach(deliveries, ({ deliver }) => deliver, { discard: true }),
-      ),
-    );
-  return { database, consumer, delivered, starts: () => starts, said };
 }
 
 describe('the starts of the workflows whose trigger an event matches', () => {
@@ -86,7 +61,7 @@ describe('the starts of the workflows whose trigger an event matches', () => {
 
   it('say once for each version of the trigger that a filter failed on an event, which it then does not match', async () => {
     const { database, delivered, starts, said } = await starting();
-    const failing = { type: 'go', data: '${ .a.b }' };
+    const failing = { type: 'go', data: '${ $data.a.b }' };
     await subscribed(database, 'broken', failing);
 
     await delivered(followedRecordOf('text'));
@@ -94,16 +69,63 @@ describe('the starts of the workflows whose trigger an event matches', () => {
     await subscribedAt(database, 2, 'broken', failing);
     await delivered(followedRecordOf('text again'));
     const failed =
-      "broken: The filter of the workflow's event trigger failed on an event, so it did not match: An expression failed:  .a.b : RuntimeError: Cannot index string with string (at /schedule/on/any/0)";
+      "broken: The filter of the workflow's event trigger failed on an event, so it did not match: An expression failed: $data.a.b: TypeError: cannot read property 'b' of undefined (at /schedule/on/any/0)";
 
     expect([starts(), said()]).toEqual([[], [failed, failed]]);
+  });
+});
+
+describe('the filter of an event trigger that goes past a bound', () => {
+  it('does not match an event on which it does more than its work, is said once a version as a failing filter is, and is evaluated on the next event', async () => {
+    const { database, delivered, starts, said, evaluated } = await starting();
+    await subscribed(database, 'busy', working, european);
+
+    await delivered(followedRecordOf({ region: 'us' }));
+    await delivered(followedRecordOf({ region: 'eu' }));
+
+    expect(evaluated()).toEqual([
+      '/schedule/on/any/0',
+      '/schedule/on/any/1',
+      '/schedule/on/any/0',
+      '/schedule/on/any/1',
+    ]);
+    expect(said()).toEqual([
+      expect.stringMatching(
+        /^busy: The filter of the workflow's event trigger failed on an event, so it did not match: .*The program did more work than it may/u,
+      ),
+    ]);
+    expect(starts().map(({ workflow }) => workflow)).toEqual(['busy']);
+  });
+
+  it(`keeps the event it was stopped on by its memory waiting, is stopped for its version at the ${stopsInARowBeforeTheVersion}rd such stop in a row, and is evaluated again after a new version`, async () => {
+    const { database, tried, starts, said, evaluated } = await starting();
+    await subscribed(database, 'filling', filling, european);
+    const american = followedRecordOf({ region: 'us' });
+
+    const tries = [await tried(american), await tried(american), await tried(american)];
+    const matched = await tried(followedRecordOf({ region: 'eu' }));
+    const beforeTheVersion = evaluated().length;
+    await subscribedAt(database, 2, 'filling', filling, european);
+    const afterTheVersion = await tried(american);
+
+    expect([tries, matched]).toEqual([[['filling waits'], ['filling waits'], []], ['filling delivered']]);
+    expect(said()).toEqual([
+      expect.stringContaining(
+        "filling: The filter of the workflow's event trigger was stopped by its deadline or its memory 3 times in a row, so it is not evaluated again for this version of the workflow; a new version evaluates it again: ",
+      ),
+    ]);
+    expect([beforeTheVersion, evaluated().slice(beforeTheVersion - 1)]).toEqual([
+      7,
+      ['/schedule/on/any/1', '/schedule/on/any/0', '/schedule/on/any/1'],
+    ]);
+    expect([starts().map(({ version }) => version), afterTheVersion]).toEqual([[1], ['filling waits']]);
   });
 });
 
 describe('the event triggers an event is matched against', () => {
   it('are those that name its type, so the filters of other types are never evaluated on it', async () => {
     const { database, delivered, starts, said } = await starting();
-    await subscribed(database, 'other', { data: '${ .a.b }', type: 'stop' });
+    await subscribed(database, 'other', { data: '${ $data.a.b }', type: 'stop' });
     await subscribed(database, 'close', { type: 'go' });
 
     await delivered(followedRecordOf('text'));

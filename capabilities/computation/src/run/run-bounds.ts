@@ -1,17 +1,18 @@
 import { mostResultBytes } from '@beonauto/definitions';
-import { liftedLimits, mostEvaluationDepth, mostValueDepth, type ProgramLimits } from '@beonauto/workflow-engine/dsl';
+import { mostValueDepth, runMemoryBytes, workerStackBytes } from '@beonauto/workflow-engine/dsl';
 
 export const computationBounds = {
-  mostWork: 64_000_000,
+  budget: 20_000,
   deadlineMs: 10_000,
+  memoryBytes: runMemoryBytes,
+  stackBytes: workerStackBytes,
   heapMegabytes: 256,
   workers: 4,
   mostValueDepth,
-  mostEvaluationDepth,
 } as const;
 
 const recordRoomBytes = 256;
 
 export const mostOutputBytes = mostResultBytes - recordRoomBytes;
 
-export const computationLimits: ProgramLimits = liftedLimits(computationBounds.mostWork);
+export const mebibytes = 1_048_576;

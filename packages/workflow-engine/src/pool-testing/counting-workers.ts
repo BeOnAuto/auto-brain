@@ -52,7 +52,7 @@ export const countingOnTheLoop = workerOf(
     '  },',
     '  fold: (request, host) => {',
     '    jobs += 1;',
-    "    return foldAnswerOf(request.variable === 'unreadable' ? { ...request, events: '{' } : request, host);",
+    "    return foldAnswerOf(request.mostViewBytes === 0 ? { ...request, events: '{' } : request, host);",
     '  },',
     '});',
   ].join('\n'),

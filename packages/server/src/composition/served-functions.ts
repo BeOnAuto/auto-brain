@@ -40,7 +40,7 @@ export async function functionsServedBy(
     modelAccessOf,
     toolTiming,
   );
-  const computation = computationServedBy(settings.computation, programPoolOf);
+  const computation = await computationServedBy(settings.computation, programPoolOf);
   const recall = await wiring.served(runtime, settings, computation.pool);
   return {
     parts: {
@@ -50,6 +50,8 @@ export async function functionsServedBy(
       dueWork: interaction.dueWork,
       store: recall.store,
       views: recall.views,
+      evaluations: computation.pool.evaluations,
+      check: computation.check,
     },
     closing: (served) => computation.withPoolClosed(withToolsClosed(served)),
   };

@@ -236,7 +236,7 @@ do:
             with:
               type: interaction
               name: approve-brief
-              input: '${ . }'
+              input: '${ $data }'
       catch:
         errors:
           with: { type: https://on.auto/problems/unanswered, kind: expired }

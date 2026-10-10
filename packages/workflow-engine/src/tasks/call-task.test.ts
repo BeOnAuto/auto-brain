@@ -10,7 +10,7 @@ import { drivenRunId, drivenRun, outputKindsIn, outputsIn } from '../testing/run
 import { workflow } from '../testing/workflows.ts';
 
 const calling = workflow(
-  "do:\n  - ask: { call: notify, with: { to: '${ .name }' } }\n  - after: { set: { answer: '${ . }' } }",
+  "do:\n  - ask: { call: notify, with: { to: '${ $data.name }' } }\n  - after: { set: { answer: '${ $data }' } }",
 );
 
 const firstAsk = { runId: drivenRunId, reference: '/do/0/ask', run: 1 };

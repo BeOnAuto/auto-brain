@@ -10,6 +10,8 @@ export function scriptedPool(script: readonly PoolOutcome[], otherwise: ProgramP
       return next === undefined ? otherwise.run(request, signal) : Promise.resolve(next);
     },
     fold: otherwise.fold,
+    check: otherwise.check,
+    evaluations: otherwise.evaluations,
     close: otherwise.close,
   };
 }

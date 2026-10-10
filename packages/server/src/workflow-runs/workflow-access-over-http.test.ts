@@ -41,7 +41,7 @@ const approval = workflowSource(
   `do:
   - judge:
       call: run_definition
-      with: { type: reasoning, name: verdict, input: { expense: '\${ .expense }' } }
+      with: { type: reasoning, name: verdict, input: { expense: '\${ $data.expense }' } }
   - decide:
       listen:
         to:

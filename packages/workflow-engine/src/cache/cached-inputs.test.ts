@@ -1,13 +1,12 @@
 import { Effect, Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { workflowMachine } from '../decider/workflow-machine.ts';
 import type { RunInput } from '../machine/run-input.ts';
 import { newRun, type RunState } from '../machine/run-state.ts';
+import { testDriverOf, testWorkflowMachine } from '../pool-testing/test-sandbox.ts';
 import type { RunLogEvent } from '../run-log/run-event.ts';
-import { testMachine } from '../testing/driver-inputs.ts';
 import { testCancel } from '../testing/driver-inputs.ts';
-import { memoryDriver, type MemoryDriver } from '../testing/memory-driver.ts';
+import type { MemoryDriver } from '../testing/memory-driver.ts';
 import { armedTimerIds, drivenRunId, statesAlong } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 
@@ -25,13 +24,13 @@ function ticking(times: number): ReturnType<typeof workflow> {
   return workflow(`
 do:
   - tick: { wait: PT1S }
-  - count: { set: '\${ { n: ((.n // 0) + 1) } }' }
-  - again: { switch: [{ more: { when: '\${ .n < ${times} }', then: tick } }] }
+  - count: { set: '\${ ({ n: ($data.n ?? 0) + 1 }) }' }
+  - again: { switch: [{ more: { when: '\${ $data.n < ${times} }', then: tick } }] }
 `);
 }
 
 function startedTicking(times: number): MemoryDriver {
-  const driver = memoryDriver();
+  const driver = testDriverOf();
   driver.start({ runId: drivenRunId, document: ticking(times) });
   return driver;
 }
@@ -48,7 +47,7 @@ function storedState(driver: MemoryDriver): RunState {
 }
 
 function decidedElsewhere(driver: MemoryDriver, input: RunInput): readonly RunLogEvent[] {
-  return Result.getOrThrow(workflowMachine(testMachine).decide(input, storedState(driver)));
+  return Result.getOrThrow(testWorkflowMachine.decide(input, storedState(driver)));
 }
 
 function armedTick(driver: MemoryDriver): string {

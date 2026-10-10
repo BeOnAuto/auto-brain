@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { callKeyText } from '../executor/call-key.ts';
 import type { ArmedTimer, RunState } from '../machine/run-state.ts';
 import type { CallAnswer, Responder } from '../memory/memory-executor.ts';
+import { testSandbox } from '../pool-testing/test-sandbox.ts';
 import { memoryDriver, type MemoryDriver } from '../testing/memory-driver.ts';
 import { statesAlong } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
@@ -162,7 +163,7 @@ describe('every open call', () => {
   it.each(cases)(
     'has an armed call deadline no later than its start and the longest a call runs, and leaves none once it closes: $shape, $answer',
     ({ document, respond }) => {
-      const driver = memoryDriver({ respond });
+      const driver = memoryDriver({ sandbox: testSandbox, respond });
       const runId = '0199a3c4-7d2e-7c1a-9b3f-000000000033';
       const ended = endedRun(driver, runId, document);
       const states = statesAlong(driver.ports.runStore.events(runId));
@@ -176,7 +177,7 @@ describe('every open call', () => {
   );
 
   it('is answered by its deadline when the executor never answers, as a timeout that cancels it', () => {
-    const driver = memoryDriver({ respond: () => 'never' });
+    const driver = memoryDriver({ sandbox: testSandbox, respond: () => 'never' });
     const runId = '0199a3c4-7d2e-7c1a-9b3f-000000000034';
     const ended = endedRun(driver, runId, aCall);
 
@@ -199,7 +200,7 @@ describe('every open call', () => {
 describe('a call whose host died before the dispatch of its start finished', () => {
   it('is started again when the run is woken, and answered once', () => {
     const host = hostThatDiesOnce();
-    const driver = memoryDriver({ respond: host.respond });
+    const driver = memoryDriver({ sandbox: testSandbox, respond: host.respond });
     host.onDeath(() => {
       driver.ports.faults.failNext('arm_timer');
     });

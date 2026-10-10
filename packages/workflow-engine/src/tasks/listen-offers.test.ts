@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { JsonObject } from '../dsl/json.ts';
 import type { CallKey } from '../executor/call-key.ts';
-import { memoryDriver, type MemoryDriver } from '../testing/memory-driver.ts';
+import { testDriverOf } from '../pool-testing/test-sandbox.ts';
+import type { MemoryDriver } from '../testing/memory-driver.ts';
 import { outputsIn } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 
@@ -19,7 +20,7 @@ interface Offering {
 }
 
 function offering(to: string, input: JsonObject = {}): Offering {
-  const driver = memoryDriver();
+  const driver = testDriverOf();
   driver.start({ runId, document: workflow(`do:\n  - await: { listen: { to: ${to} } }`), input });
   return {
     driver,
@@ -50,13 +51,8 @@ describe('a listen task whose filter names a type', () => {
     });
   });
 
-  it('takes an offer that its filter accepts with the run’s own variables, and appends nothing for one it does not', () => {
-    const run = offering(
-      "{ one: { with: { type: com.acme.closed, data: '${ .region == $workflow.input.region }' } } }",
-      {
-        region: 'eu',
-      },
-    );
+  it('takes an offer that its filter accepts over the data of the event, and appends nothing for one it does not', () => {
+    const run = offering('{ one: { with: { type: com.acme.closed, data: \'${ $data.region == "eu" }\' } } }');
     const before = run.driver.ports.runStore.events(runId).length;
 
     const declined = run.offer('record-1', { id: 'e1', type: 'com.acme.closed', data: { region: 'us' } });
@@ -90,7 +86,7 @@ describe('the offers a listen task takes once', () => {
 
 describe('an offer a listen task does not take', () => {
   it('answers an offer whose check fails as stale, with why, rather than raising in the run', () => {
-    const run = offering('{ one: { with: { type: go, data: \'${ error("no") }\' } } }');
+    const run = offering('{ one: { with: { type: go, data: \'${ (() => { throw new Error("no") })() }\' } } }');
 
     const submission = run.offer('record-1', { id: 'e1', type: 'go', data: 1 });
 
@@ -99,7 +95,7 @@ describe('an offer a listen task does not take', () => {
   });
 
   it('leaves the run waiting and its inbox empty after offers meant for other runs', () => {
-    const run = offering("{ one: { with: { type: go, data: '${ . == $workflow.input.mine }' } } }", { mine: 1 });
+    const run = offering("{ one: { with: { type: go, data: '${ $data == 1 }' } } }");
 
     const outcomes = Array.from({ length: 65 }, (_, index) =>
       run.offer(`record-${index}`, { id: `e${index}`, type: 'go', data: 2 }),

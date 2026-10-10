@@ -6,7 +6,7 @@ export interface ValueContract {
 
 export interface ComputationFunctionDefinitionDocument {
   readonly description?: string;
-  readonly language: 'jq';
+  readonly language: 'typescript';
   readonly input: ValueContract;
   readonly output: ValueContract;
   readonly program: string;

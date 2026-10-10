@@ -25,7 +25,7 @@ function competing(branches: readonly string[], after = ''): JsonObject {
 const waitingAndAsking = ['waiting: { wait: PT1H }', 'asking: { call: notify, with: { to: ada } }'];
 
 const counting =
-  "counting: { for: { in: '${ [range(0; 150)] }' }, do: [{ add: { set: '${ { count: ((.count // 0) + 1) } }' } }] }";
+  "counting: { for: { in: '${ Array.from({ length: 150 }, (_, index) => index) }' }, do: [{ add: { set: '${ ({ count: ($data.count ?? 0) + 1 }) }' } }] }";
 
 describe('a fork', () => {
   it('runs every branch and gives their outputs in the order of the branches', () => {

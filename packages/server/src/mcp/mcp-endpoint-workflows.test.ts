@@ -14,16 +14,16 @@ const welcome = workflowSource(
   `do:
   - greet:
       call: run_definition
-      with: { type: reasoning, name: greeting, input: { name: '\${ .name }' } }
+      with: { type: reasoning, name: greeting, input: { name: '\${ $data.name }' } }
       output:
-        as: '\${ { greeting: . } }'
+        as: '\${ ({ greeting: $data }) }'
   - await:
       listen:
         to:
           one:
             with: { type: com.acme.customer.replied }
       output:
-        as: '\${ $input + { reply: .[0] } }'
+        as: '\${ ({ ...$input, reply: $data[0] }) }'
 `,
 );
 

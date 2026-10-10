@@ -13,7 +13,7 @@ const blockingOnTwoRows = new URL(
       'let jobs = 0;',
       "parentPort.on('message', ({ job, request }) => {",
       '  jobs += 1;',
-      '  if (JSON.parse(request.input).rows.length === 2) { while (true) {} }',
+      '  if (JSON.parse(request.arguments[0]).rows.length === 2) { while (true) {} }',
       '  const output = JSON.stringify({ jobs, thread: threadId });',
       "  parentPort.postMessage({ job, answer: { ran: 'answered', output, bytes: output.length, work: 0 }, keep: true });",
       '});',

@@ -94,19 +94,19 @@ do:
         type: reasoning
         name: review-campaign-brief
         input:
-          brief: ${ .brief }
+          brief: ${ $data.brief }
       output:
-        as: '${ { owner: $input.owner, review: . } }'
+        as: '${ ({ owner: $input.owner, review: $data }) }'
   - ask-for-approval:
       call: run_definition
       with:
         type: interaction
         name: approve-campaign-brief
         input:
-          owner: ${ .owner }
-          review: ${ .review }
+          owner: ${ $data.owner }
+          review: ${ $data.review }
       output:
-        as: '${ { review: $input.review, approval: . } }'
+        as: '${ ({ review: $input.review, approval: $data }) }'
 ```
 
 The agent should confirm the workflow `review-and-approve` at version 1, with the description from the document's `summary` and with `brief` and `owner` as its required input. The tool's summary reads: Created the workflow “review-and-approve”. What it does: Reviews a campaign brief, then asks its owner to approve it. It has been saved but has not been run yet.

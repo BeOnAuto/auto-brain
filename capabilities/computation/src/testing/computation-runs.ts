@@ -3,9 +3,13 @@ import { noLongestRuns, recordingJournal } from '@beonauto/definitions/testing';
 import { allPermissions, type Conflict, type InvalidInput, type Unavailable } from '@beonauto/operations';
 import { programPool, type PoolSettings, type ProgramPool } from '@beonauto/workflow-engine/dsl';
 import { Effect, type Exit, type Schema } from 'effect';
+import { TestClock } from 'effect/testing';
 import { afterEach } from 'vitest';
 
-import { makeComputationFunctionAdapter } from '../capability/computation-function.ts';
+import {
+  makeComputationFunctionAdapter,
+  type ComputationFunctionAdapterOptions,
+} from '../capability/computation-function.ts';
 import { computationBounds } from '../run/run-bounds.ts';
 
 export const workerTestTimeoutMs = 30_000;
@@ -29,6 +33,8 @@ export interface ComputationRuns {
   readonly capability: Capability;
   readonly prepared: (source: string) => PreparedDefinition;
   readonly running: (source: string, input?: Schema.Json) => Promise<Run>;
+  readonly runningUnsaved: (source: string, input?: Schema.Json) => Promise<Run>;
+  readonly runningAt: (moment: number, source: string, input?: Schema.Json) => Promise<Run>;
 }
 
 const pools: ProgramPool[] = [];
@@ -54,16 +60,32 @@ export function poolOf(settings: Partial<PoolSettings> = {}): ProgramPool {
   return pool;
 }
 
-export function computationWith(pool: ProgramPool = poolOf(), deadlineMs?: number): ComputationRuns {
-  const capability = makeComputationFunctionAdapter({ pool, ...(deadlineMs === undefined ? {} : { deadlineMs }) });
+export type RunBounds = Omit<ComputationFunctionAdapterOptions, 'pool'>;
+
+export function computationWith(pool: ProgramPool = poolOf(), bounds: RunBounds = {}): ComputationRuns {
+  const capability = makeComputationFunctionAdapter({ pool, ...bounds });
   const prepared = (source: string): PreparedDefinition => Effect.runSync(capability.prepare(source));
+  const saved = (source: string) =>
+    Effect.flatMap(prepared(source).check, (stripped) => capability.prepare(source, stripped));
   return {
     capability,
     prepared,
-    running: (source, input = {}) => Effect.runPromiseExit(prepared(source).run(input, run)),
+    running: (source, input = {}) =>
+      Effect.runPromiseExit(Effect.flatMap(saved(source), (definition) => definition.run(input, run))),
+    runningUnsaved: (source, input = {}) => Effect.runPromiseExit(prepared(source).run(input, run)),
+    runningAt: (moment, source, input = {}) =>
+      Effect.runPromiseExit(
+        Effect.flatMap(saved(source), (definition) =>
+          TestClock.setTime(moment).pipe(Effect.andThen(definition.run(input, run)), Effect.provide(TestClock.layer())),
+        ),
+      ),
   };
 }
 
-export function programDocument(program: string, frontMatter = 'language: jq'): string {
+export function programDocument(program: string, frontMatter = 'language: typescript'): string {
   return `---\n${frontMatter}\n---\n${program}`;
+}
+
+export function functionOf(body: string): string {
+  return `export default function (input: any): any {\n  ${body}\n}`;
 }

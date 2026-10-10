@@ -2,8 +2,7 @@ import { checkedWorker } from '@beonauto/definitions/json-schema';
 import { programPool, type ProgramRequest } from '@beonauto/workflow-engine/dsl';
 
 import { computationBounds } from '../src/run/run-bounds.ts';
-import { formatted, inTurn, median } from './common.ts';
-import { request } from './runs.ts';
+import { formatted, functionOf, inTurn, median, request } from './common.ts';
 
 const jobs = 200;
 
@@ -27,7 +26,11 @@ const oneModule: Naming = (index) => (index % 2 === 0 ? { worker: checkedWorker,
 async function burstOf(naming: Naming): Promise<number> {
   const pool = programPool({ workers: permits, heapMegabytes: computationBounds.heapMegabytes });
   const started = performance.now();
-  await Promise.all(Array.from({ length: jobs }, (_, index) => pool.run({ ...request('.', index), ...naming(index) })));
+  await Promise.all(
+    Array.from({ length: jobs }, (_, index) =>
+      pool.run({ ...request(functionOf('return input;'), index), ...naming(index) }),
+    ),
+  );
   const milliseconds = performance.now() - started;
   await pool.close();
   return milliseconds;

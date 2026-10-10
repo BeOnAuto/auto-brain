@@ -13,10 +13,10 @@ function nested(depth: number): Json {
 describe('a run', () => {
   it('reads its input through input.from and shapes its output through output.as', () => {
     const document = workflow(`
-input: { from: '\${ { name: .who } }' }
-output: { as: '\${ { greeting: .greeting, by: $workflow.input.who } }' }
+input: { from: '\${ ({ name: $data.who }) }' }
+output: { as: '\${ ({ greeting: $data.greeting, by: $workflow.input.who }) }' }
 do:
-  - greet: { set: { greeting: '\${ "Hello, " + .name }' } }
+  - greet: { set: { greeting: '\${ "Hello, " + $data.name }' } }
 `);
 
     expect(drivenRun(document, { input: { who: 'Ada' } }).outcome).toEqual({
@@ -107,29 +107,33 @@ describe('a run that is cancelled or refused', () => {
 
 describe('a run that does too much', () => {
   it('ends oversized when its output is larger than a run records', () => {
-    const run = drivenRun(workflow("do:\n  - big: { set: '${ { text: .text } }' }"), {
+    const run = drivenRun(workflow("do:\n  - big: { set: '${ ({ text: $data.text }) }' }"), {
       input: { text: 'x'.repeat(mostOutputBytes) },
     });
 
     expect(run.outcome).toEqual({ kind: 'oversized', bytes: mostOutputBytes + 11, most: mostOutputBytes });
   });
 
-  it(`raises once it ran ${mostStepsWithoutWaiting} tasks without waiting`, () => {
-    const document = workflow("do:\n  - spin: { for: { in: '${ .items }' }, do: [{ step: { set: {} } }] }");
-    const items = Array.from({ length: mostStepsWithoutWaiting }, (_item, index) => index);
+  it(`raises once it ran ${mostStepsWithoutWaiting} tasks without waiting, a constant of the machine only the test sandbox lowers`, () => {
+    const document = workflow("do:\n  - spin: { for: { in: '${ $data.items }' }, do: [{ step: { set: {} } }] }");
+    const items = Array.from({ length: 50 }, (_item, index) => index);
 
-    expect(drivenRun(document, { input: { items } }).outcome).toMatchObject({
+    expect(mostStepsWithoutWaiting).toBe(10_000);
+    expect(drivenRun(document, { input: { items }, stepsWithoutWaiting: 40 }).outcome).toMatchObject({
       kind: 'raised',
-      error: {
-        title: `The workflow ran ${mostStepsWithoutWaiting} tasks without waiting for anything; it would never end`,
-      },
+      error: { title: 'The workflow ran 40 tasks without waiting for anything; it would never end' },
     });
-  }, 30_000);
+    expect(
+      drivenRun(document, { input: { items: items.slice(0, 30) }, stepsWithoutWaiting: 40 }).outcome,
+    ).toMatchObject({
+      kind: 'completed',
+    });
+  });
 });
 
 describe('a task', () => {
   it('is skipped when its condition does not hold, and keeps its input', () => {
-    const document = workflow("do:\n  - maybe: { if: '${ .go }', set: { went: true } }");
+    const document = workflow("do:\n  - maybe: { if: '${ $data.go }', set: { went: true } }");
 
     expect(drivenRun(document, { input: { go: false } }).outcome).toEqual({ kind: 'completed', output: { go: false } });
     expect(drivenRun(document, { input: { go: true } }).outcome).toEqual({ kind: 'completed', output: { went: true } });
@@ -139,11 +143,11 @@ describe('a task', () => {
     const document = workflow(`
 do:
   - first:
-      input: { from: '\${ .value }' }
-      set: '\${ { doubled: (. * 2) } }'
-      output: { as: '\${ .doubled }' }
-      export: { as: '\${ { first: . } }' }
-  - second: { set: '\${ { seen: $context.first, input: . } }' }
+      input: { from: '\${ $data.value }' }
+      set: '\${ ({ doubled: $data * 2 }) }'
+      output: { as: '\${ $data.doubled }' }
+      export: { as: '\${ ({ first: $data }) }' }
+  - second: { set: '\${ ({ seen: $context.first, input: $data }) }' }
 `);
 
     expect(drivenRun(document, { input: { value: 4 } }).outcome).toEqual({
@@ -182,7 +186,7 @@ do:
       catch: {}
   - second:
       try:
-        - misread: { set: { a: 1 }, input: { from: '\${ error("unreadable") }' }, timeout: { after: PT1M } }
+        - misread: { set: { a: 1 }, input: { from: '\${ (() => { throw new Error("unreadable") })() }' }, timeout: { after: PT1M } }
       catch: {}
   - rest: { wait: PT1S }
 `);

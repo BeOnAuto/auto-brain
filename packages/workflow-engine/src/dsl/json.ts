@@ -1,3 +1,5 @@
+import { Schema } from 'effect';
+
 export type Json = null | boolean | number | string | JsonArray | JsonObject;
 
 export interface JsonArray extends ReadonlyArray<Json> {}
@@ -74,6 +76,8 @@ export function valueAtPointer(value: Json, pointer: string): Json | undefined {
     return isObject(current) ? field(current, token) : undefined;
   }, value);
 }
+
+export const jsonOfText: (text: string) => Json = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Json));
 
 export const mostValueDepth = 512;
 

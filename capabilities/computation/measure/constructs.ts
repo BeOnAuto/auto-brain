@@ -1,7 +1,7 @@
 import type { Json } from '@beonauto/workflow-engine/dsl';
 
-import { computationLimits } from '../src/run/run-bounds.ts';
-import { formatted, millisecondsOf, runInThread } from './common.ts';
+import { computationBounds } from '../src/run/run-bounds.ts';
+import { formatted, functionOf, inTurn, poolOfOne, request } from './common.ts';
 
 interface Construct {
   readonly name: string;
@@ -11,75 +11,62 @@ interface Construct {
 interface Timed {
   readonly name: string;
   readonly milliseconds: number;
-  readonly work: number;
+  readonly ending: string;
 }
 
 const numbers = Array.from({ length: 10_000 }, (_, index) => index);
 
-const keyed = Object.fromEntries(Array.from({ length: 5000 }, (_, index) => [`k${index}`, index]));
-
 const data: Json = {
   a: numbers,
-  b: [...numbers],
-  o: keyed,
+  b: numbers.toReversed(),
+  o: Object.fromEntries(Array.from({ length: 5000 }, (_, index) => [`k${index}`, index])),
   s: 'x'.repeat(200_000),
   r: 'a'.repeat(5000),
-  f: Array.from({ length: 2000 }, (_, index) => [index]),
-  m: [numbers.slice(0, 1000), ...Array.from({ length: 100 }, () => [])],
   j: JSON.stringify(numbers),
 };
 
 const constructs: readonly Construct[] = [
-  { name: 'repeating a string', operation: '"x" * 200000' },
-  { name: 'concatenating strings', operation: '.s + .s' },
-  { name: 'concatenating arrays', operation: '.a + .a' },
-  { name: 'subtracting arrays', operation: '.a - .b' },
-  { name: 'merging objects', operation: '.o * .o' },
-  { name: 'comparing values', operation: '.a == .b' },
-  { name: 'encoding JSON', operation: '.a | tojson' },
-  { name: 'decoding JSON', operation: '.j | fromjson' },
-  { name: 'deleting a path', operation: 'del(.a[0])' },
-  { name: 'updating an object', operation: '.o.k0 = 1' },
-  { name: 'updating an array', operation: '.a[0] = 1' },
-  { name: 'slicing', operation: '.a[1:] | .[0]' },
-  { name: 'iterating', operation: '[.a[]] | length' },
-  { name: 'reducing', operation: 'reduce .a[] as $x (0; . + $x)' },
-  { name: 'formatting', operation: '.s | @base64' },
-  { name: 'searching a string', operation: '.s | contains("y")' },
-  { name: 'running the regex machine', operation: '.r | test("(a|a|a|a|a|a|a|a|a|a)*b")' },
-  { name: 'reading text for a regex', operation: '.s | test("y")' },
-  { name: 'substituting', operation: '.s | sub("x"; "z")' },
-  { name: 'changing case', operation: '.s | ascii_upcase' },
-  { name: 'splitting', operation: '.s | split("x")' },
-  { name: 'exploding', operation: '.s | explode' },
-  { name: 'joining', operation: '.a | map(tostring) | join(",")' },
-  { name: 'sorting', operation: '.b | sort' },
-  { name: 'grouping', operation: '.a | group_by(. % 10)' },
-  { name: 'keeping unique values', operation: '.a | unique' },
-  { name: 'flattening', operation: '.f | flatten' },
-  { name: 'transposing', operation: '.m | transpose' },
-  { name: 'listing entries', operation: '.o | to_entries' },
-  { name: 'listing paths', operation: '[.o | paths] | length' },
-  { name: 'hashing a long key', operation: '.o[.s + "k"]' },
-  { name: 'stepping', operation: '1 + 1' },
+  { name: 'a loop that does nothing', operation: '' },
+  { name: 'calling a function', operation: 'step();' },
+  { name: 'repeating a string', operation: '"x".repeat(200000);' },
+  { name: 'concatenating strings', operation: 'input.s + input.s;' },
+  { name: 'concatenating arrays', operation: 'input.a.concat(input.a);' },
+  { name: 'spreading arrays', operation: '[...input.a, ...input.a];' },
+  { name: 'merging objects', operation: '({ ...input.o, ...input.o });' },
+  { name: 'listing entries', operation: 'Object.entries(input.o);' },
+  { name: 'encoding JSON', operation: 'JSON.stringify(input.a);' },
+  { name: 'decoding JSON', operation: 'JSON.parse(input.j);' },
+  { name: 'mapping', operation: 'input.a.map((each) => each + 1);' },
+  { name: 'reducing', operation: 'input.a.reduce((sum, each) => sum + each, 0);' },
+  { name: 'grouping', operation: 'Map.groupBy(input.a, (each) => each % 10);' },
+  {
+    name: 'sorting with a comparator',
+    operation: 'input.b.toSorted((first, second) => first - second);',
+  },
+  { name: 'sorting without one', operation: 'input.b.toSorted();' },
+  { name: 'making a set', operation: 'new Set(input.a);' },
+  { name: 'joining', operation: 'input.a.join(",");' },
+  { name: 'splitting', operation: 'input.s.split("x");' },
+  { name: 'upper-casing', operation: 'input.s.toUpperCase();' },
+  { name: 'searching a string', operation: 'input.s.includes("y");' },
+  { name: 'replacing', operation: 'input.s.replaceAll("x", "z");' },
+  { name: 'testing a regular expression', operation: '/(a|a|a|a|a|a|a|a|a|a)*b/.test(input.r);' },
 ];
 
-function timed({ name, operation }: Construct): Timed {
-  const source = `def operation: ${operation}; . as $d | reduce range(1000000000) as $i (0; . + ($d | operation | 0))`;
-  const ran = { work: 0 };
-  const milliseconds = millisecondsOf(() => {
-    ran.work = runInThread(source, data, computationLimits).work;
-  });
-  return { name, milliseconds, work: ran.work };
-}
+const deadlineMs = 60_000;
 
-export function constructsMeasured(): readonly string[] {
-  const all = constructs.map((construct) => timed(construct));
+export async function constructsMeasured(): Promise<readonly string[]> {
+  const pool = poolOfOne();
+  const all = await inTurn(constructs, async ({ name, operation }): Promise<Timed> => {
+    const source = functionOf(`const step = () => 0;\n  for (;;) {\n    ${operation}\n  }`);
+    const ran = await pool.run(request(source, data, deadlineMs));
+    const ending = ran.ran === 'exhausted' ? `exhausted by ${ran.limit}` : ran.ran;
+    return { name, milliseconds: ran.milliseconds, ending };
+  });
+  await pool.close();
   const slowest = all.toSorted((first, second) => second.milliseconds - first.milliseconds);
   return [
-    `each of ${all.length} charged constructs, repeated until a run's ${formatted(computationLimits.mostWork)} units are spent, on the thread that measures:`,
-    ...slowest.map(
-      ({ name, milliseconds, work }) => `  ${name}: ${formatted(milliseconds)} ms for ${formatted(work)} units`,
-    ),
+    `each of ${all.length} constructs, repeated in a worker until a run's ${formatted(computationBounds.budget)} checkpoints are spent, under a deadline of ${formatted(deadlineMs / 1000)} s:`,
+    ...slowest.map(({ name, milliseconds, ending }) => `  ${name}: ${formatted(milliseconds)} ms, ${ending}`),
   ];
 }

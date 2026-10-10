@@ -16,7 +16,7 @@ afterAll(() => {
   ledger.remove();
 });
 
-const greeting = workflowSource('greeting', 'do:\n  - greet: { set: { greeting: \'${ "Hello, " + .name }\' } }\n');
+const greeting = workflowSource('greeting', "do:\n  - greet: { set: { greeting: '${ `Hello, ${$data.name}` }' } }\n");
 
 describe('a server that ran workflows, told to stop', { timeout: workflowTestTimeoutMs }, () => {
   it('exits 0 at once, holding nothing open', async () => {

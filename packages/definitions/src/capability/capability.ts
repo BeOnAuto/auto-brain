@@ -6,6 +6,7 @@ import { deliveryEnded, deliveryStarted } from '../run-work/delivery-words.ts';
 import type { CallAnsweredFact, CallStartedFact } from '../runs/run-commands.ts';
 import type { CancelRequestKind, DeliveryEvent } from '../runs/run-events.ts';
 import type { BroughtAnswer } from '../runs/run-state.ts';
+import { noStrippedForms, type StrippedForms } from './stripped-forms.ts';
 
 export interface DefinitionSummary {
   readonly description?: string;
@@ -102,11 +103,16 @@ export interface CapabilityDeclaration<Parsed> {
   readonly describeOutput: (output: Schema.Json, record?: Schema.JsonObject) => string;
   readonly mediaType: string;
   readonly parse: (source: string) => Effect.Effect<Parsed, InvalidInput>;
+  readonly check?: (
+    parsed: NoInfer<Parsed>,
+    source: string,
+  ) => Effect.Effect<StrippedForms, InvalidInput | Unavailable>;
   readonly summarize: (parsed: NoInfer<Parsed>) => DefinitionSummary;
   readonly run: (
     parsed: NoInfer<Parsed>,
     input: Schema.Json,
     context: RunContext,
+    stripped: StrippedForms,
   ) => Effect.Effect<CapabilityAnswer, CapabilityRejection>;
   readonly whenCancelled?: WhenCancelled;
   readonly longestAnyRunMs?: number;
@@ -123,6 +129,7 @@ export interface CapabilityDeclaration<Parsed> {
 
 export interface PreparedDefinition {
   readonly summary: DefinitionSummary;
+  readonly check: Effect.Effect<StrippedForms, InvalidInput | Unavailable>;
   readonly run: (input: Schema.Json, context: RunContext) => Effect.Effect<CapabilityAnswer, CapabilityRejection>;
   readonly whenCancelled: WhenCancelled;
   readonly callsTools: boolean;
@@ -156,6 +163,10 @@ function standsAsSaved(): Effect.Effect<Schema.JsonObject | undefined> {
   return Effect.undefined;
 }
 
+function needsNoCheck(): Effect.Effect<StrippedForms> {
+  return Effect.succeed(noStrippedForms);
+}
+
 export interface Capability {
   readonly type: string;
   readonly title: string;
@@ -170,7 +181,7 @@ export interface Capability {
   readonly standing: Standing;
   readonly cancel: CancelDecision;
   readonly runWords: RunWords;
-  readonly prepare: (source: string) => Effect.Effect<PreparedDefinition, InvalidInput>;
+  readonly prepare: (source: string, stripped?: StrippedForms) => Effect.Effect<PreparedDefinition, InvalidInput>;
 }
 
 const definitionTypePattern = /^[a-z][a-z0-9-]{2,31}$/u;
@@ -197,6 +208,7 @@ function finishingOf<Parsed>(declared: CapabilityDeclaration<Parsed>['finishesLa
 
 function declaredRuns<Parsed>(definition: CapabilityDeclaration<Parsed>, longestAnyRunMs: number) {
   return {
+    check: definition.check ?? needsNoCheck,
     whenCancelled: definition.whenCancelled ?? 'stop',
     callsTools: definition.callsTools ?? callsNoTools,
     finishesLater: finishingOf<Parsed>(definition.finishesLater),
@@ -207,7 +219,10 @@ function declaredRuns<Parsed>(definition: CapabilityDeclaration<Parsed>, longest
 export function defineCapability<Parsed>(definition: CapabilityDeclaration<Parsed>): Capability {
   const { type, title, guide, noun, describeOutput, mediaType, parse, summarize, run } = definition;
   const bounds = declaredBounds(definition);
-  const { whenCancelled, callsTools, finishesLater, longestRunOf } = declaredRuns(definition, bounds.longestAnyRunMs);
+  const { check, whenCancelled, callsTools, finishesLater, longestRunOf } = declaredRuns(
+    definition,
+    bounds.longestAnyRunMs,
+  );
   if (!isDefinitionTypeName(type)) {
     throw new Error(`The type ${type} is malformed`);
   }
@@ -219,11 +234,12 @@ export function defineCapability<Parsed>(definition: CapabilityDeclaration<Parse
     describeOutput,
     mediaType,
     ...bounds,
-    prepare: (source) =>
+    prepare: (source, stripped = noStrippedForms) =>
       parse(source).pipe(
         Effect.map((parsed) => ({
           summary: summarize(parsed),
-          run: (input, context) => run(parsed, input, context),
+          check: Effect.suspend(() => check(parsed, source)),
+          run: (input, context) => run(parsed, input, context, stripped),
           whenCancelled,
           callsTools: callsTools(parsed),
           finishesLater: finishesLater(parsed),

@@ -66,6 +66,7 @@ const followerTables: readonly Statement[] = [
     armed_by BIGINT NOT NULL,
     filters TEXT NOT NULL,
     workflow TEXT NOT NULL,
+    version BIGINT NOT NULL,
     passed INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (run_key, listener)
   )`,

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { armedTimersAlong, drivenRun, timersArmedIn } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 
-const busy = "{ raise: { error: { type: https://example.com/busy, status: 503, detail: '${ .why }' } } }";
+const busy = "{ raise: { error: { type: https://example.com/busy, status: 503, detail: '${ $data.why }' } } }";
 
 function retrying(retry: string, catchMore = ''): ReturnType<typeof workflow> {
   return workflow(`
@@ -200,16 +200,19 @@ describe('the conditions of the retries of a try task', () => {
   });
 
   it('stop retrying when the condition of the policy no longer holds', () => {
-    const run = drivenRun(retrying('{ delay: PT1S, when: \'${ .why == "y" }\', limit: { attempt: { count: 3 } } }'), {
-      input: { why: 'x' },
-    });
+    const run = drivenRun(
+      retrying('{ delay: PT1S, when: \'${ $data.why == "y" }\', limit: { attempt: { count: 3 } } }'),
+      {
+        input: { why: 'x' },
+      },
+    );
 
     expect(delaysOf(run)).toEqual([]);
   });
 
   it('stop retrying when the exception of the policy holds', () => {
     const run = drivenRun(
-      retrying('{ delay: PT1S, exceptWhen: \'${ .why == "x" }\', limit: { attempt: { count: 3 } } }'),
+      retrying('{ delay: PT1S, exceptWhen: \'${ $data.why == "x" }\', limit: { attempt: { count: 3 } } }'),
       { input: { why: 'x' } },
     );
 

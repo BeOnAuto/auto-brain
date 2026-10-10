@@ -1,6 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { liftedLimits, programPool } from '@beonauto/workflow-engine/dsl';
+import { programPool, unitMemoryBytes, workerStackBytes } from '@beonauto/workflow-engine/dsl';
 import { Effect, Function } from 'effect';
 
 import type { DatabaseSettings } from '../src/database/host-databases.ts';
@@ -19,8 +19,8 @@ export interface IdleViews {
 const brain = 'brain/acme/alpha/';
 
 const details = {
-  language: 'jq',
-  fold: '. + 1',
+  language: 'typescript',
+  fold: 'export function fold(view: number): number {\n  return view + 1;\n}',
   foldLine: 7,
   filters: [{ type: 'com.acme.never' }],
   initial: 0,
@@ -66,9 +66,9 @@ export async function idleViewsOn(settings: DatabaseSettings, views: number, sec
       definitionType: 'recall',
       pool,
       folding: {
-        dialect: { refused: [], variables: ['event'] },
-        variable: 'event',
-        limits: liftedLimits(16_000_000),
+        budget: 500,
+        memoryBytes: unitMemoryBytes,
+        stackBytes: workerStackBytes,
         foldDeadlineMs: 10_000,
         pageBudgetMs: 2000,
         mostViewBytes: 524_288,

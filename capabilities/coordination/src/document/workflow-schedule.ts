@@ -36,9 +36,6 @@ const untilRefused = 'A trigger matches every event of its brain while its versi
 
 const onTakes = 'on takes one, a filter of the events that start the workflow, or any, a list of at least one';
 
-const variablesRefused =
-  'A trigger is matched before any run starts, so its data expression cannot use variables such as $workflow';
-
 const tooManyFilters = `A trigger takes at most ${mostTriggerFilters} filters, since each is matched against every event of a type it names for as long as its version is active`;
 
 const sameAttributes = Schema.toEquivalence(Schema.JsonObject);
@@ -54,10 +51,7 @@ function isKind(key: string): key is Kind {
 
 function filterRejections(filter: Json, pointer: string): readonly Rejection[] {
   const reading = literalFilterOf(filter, pointer);
-  if ('rejections' in reading) {
-    return reading.rejections;
-  }
-  return reading.filter.dataNeedsVariables ? [forbidden(`${pointer}/with/data`, variablesRefused)] : [];
+  return 'rejections' in reading ? reading.rejections : [];
 }
 
 function filtersOf(on: JsonObject): readonly PlacedFilter[] {

@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import type { HostDatabase } from '../database/host-database.ts';
 import { insertedListener } from '../listeners/listener-rows.ts';
 import { followedRecordOf, saidRefusals } from '../reaction-testing/followed-records.ts';
+import { countingMatches, stopsByItsMemory } from '../reaction-testing/trigger-starting.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
 import { listenerOffers } from './listener-offers.ts';
 
@@ -18,10 +19,11 @@ const declinedOffer: Submission = { outcome: 'stale', version: 2, declined: 'The
 interface Offering {
   readonly offers: () => readonly string[];
   readonly said: () => readonly string[];
+  readonly evaluated: () => readonly string[];
   readonly consumer: ReturnType<typeof listenerOffers>;
 }
 
-function listening(database: HostDatabase, run: string, filters: readonly Json[]) {
+function listening(database: HostDatabase, run: string, filters: readonly Json[], workflow = `wf-${run}`) {
   const runKey = `acme/alpha/${run}`;
   return Effect.runPromise(
     insertedListener(database, {
@@ -31,7 +33,8 @@ function listening(database: HostDatabase, run: string, filters: readonly Json[]
       streamId: `${brainKey}run-logs/${run}`,
       armedBy: 1,
       filters: JSON.stringify(filters),
-      workflow: `wf-${run}`,
+      workflow,
+      version: 1,
       passed: true,
     }),
   );
@@ -40,6 +43,7 @@ function listening(database: HostDatabase, run: string, filters: readonly Json[]
 function offering(database: HostDatabase, answer: (runKey: string) => Effect.Effect<Submission, Conflict>): Offering {
   const offers: string[] = [];
   const { refusals, said, say } = saidRefusals();
+  const { match, stops, evaluated } = countingMatches();
   const consumer = listenerOffers({
     database,
     refusals,
@@ -51,15 +55,27 @@ function offering(database: HostDatabase, answer: (runKey: string) => Effect.Eff
         answer(runKey),
       ),
     declined: (runKey, detail) => say(`${runKey} declined: ${detail}`),
+    match,
+    stops,
     now: () => 0,
   });
-  return { offers: () => offers, said, consumer };
+  return { offers: () => offers, said, evaluated, consumer };
 }
 
 function declinedByTheFirst(runKey: string): Effect.Effect<Submission, Conflict> {
   return runKey.endsWith('run-a')
     ? Effect.succeed(declinedOffer)
     : Effect.fail(new Conflict({ detail: 'The ledger cannot be reached' }));
+}
+
+function outcomesOf(consumer: Offering['consumer'], followed: ReturnType<typeof followedRecordOf>) {
+  return Effect.runPromise(
+    Effect.flatMap(consumer.batchOf(followed, undefined, 10), ({ deliveries }) =>
+      Effect.forEach(deliveries, ({ workflow, deliver }) =>
+        Effect.map(Effect.isSuccess(deliver), (made) => `${workflow} ${made ? 'delivered' : 'waits'}`),
+      ),
+    ),
+  );
 }
 
 function deliveredAll(consumer: Offering['consumer'], followed: ReturnType<typeof followedRecordOf>, most: number) {
@@ -106,6 +122,34 @@ describe('the offers of an event to the runs that listen for its type', () => {
     const second = await Effect.runPromise(consumer.batchOf(followed, first.through, 2));
 
     expect([offers().length, first.more, second.deliveries.length, second.more]).toEqual([2, true, 1, false]);
+  });
+});
+
+describe('the filter of the runs listening at one task of a version that goes past a bound', () => {
+  it('keeps the event it was stopped on by its memory waiting, and after three such stops in a row, in any of the runs, is not evaluated again for that task and version', async () => {
+    const database = await openedOn(await onSQLite());
+    const filling = { type: 'go', data: stopsByItsMemory };
+    await ['run-a', 'run-b', 'run-c'].reduce<Promise<unknown>>(
+      (before, run) =>
+        before.then(() => listening(database, run, [filling, { type: 'go', data: { region: 'eu' } }], 'wf')),
+      Promise.resolve(),
+    );
+    const { offers, said, evaluated, consumer } = offering(database, () => Effect.succeed(applied));
+    const american = followedRecordOf({ region: 'us' });
+
+    const first = await outcomesOf(consumer, american);
+    const atFirst = evaluated().length;
+    const again = await outcomesOf(consumer, american);
+    await deliveredAll(consumer, followedRecordOf({ region: 'eu' }), 10);
+
+    expect([first, again]).toEqual([['wf waits', 'wf waits'], []]);
+    expect([atFirst, evaluated().length]).toEqual([6, 12]);
+    expect(offers()).toHaveLength(3);
+    expect(said()).toEqual([
+      expect.stringContaining(
+        "wf: The filter of a listen task of the workflow was stopped by its deadline or its memory 3 times in a row, so the brain's events are not offered through it again for this version of the workflow; events sent to its runs still reach them: ",
+      ),
+    ]);
   });
 });
 

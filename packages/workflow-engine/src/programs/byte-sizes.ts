@@ -80,6 +80,17 @@ export function jsonBytesWithin(value: Json, most: number): number {
   return isObject(value) ? entriesBytesWithin(value, most) : JSON.stringify(value).length;
 }
 
+export function utf8BytesWithin(text: string, most: number): number {
+  let bytes = 0;
+  for (const character of text) {
+    bytes += utf8BytesOf(character);
+    if (bytes > most) {
+      return bytes;
+    }
+  }
+  return bytes;
+}
+
 export function textWithin(text: string, mostBytes: number): string {
   const ellipsis = '…';
   let bytes = 0;

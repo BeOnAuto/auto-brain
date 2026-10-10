@@ -1,9 +1,9 @@
 import type { StartCall } from '@beonauto/workflow-engine';
-import { testMachine } from '@beonauto/workflow-engine/testing';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { alpha, at, recorded } from '../reaction-testing/brain-writes.ts';
+import { testMachine } from '../testing/host-documents.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { recordedWaiting } from '../waiting-testing/recorded-waiting.ts';
 import { mostOpenCallsOfATree } from './waiting-options.ts';

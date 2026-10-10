@@ -28,7 +28,7 @@
           {
             "last": {
               "set": {
-                "step": "${ .step + \", then last\" }"
+                "step": "${ $data.step + \", then last\" }"
               }
             }
           }
@@ -121,7 +121,7 @@
                 {
                   "last": {
                     "set": {
-                      "step": "${ .step + \", then last\" }"
+                      "step": "${ $data.step + \", then last\" }"
                     }
                   }
                 }
@@ -198,7 +198,7 @@
         {
           "op": "replace",
           "path": "/heldBytes",
-          "value": 8416
+          "value": 8421
         },
         {
           "op": "add",
@@ -266,7 +266,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2701
+          "value": 2706
         }
       ],
       "outputs": [
@@ -361,7 +361,7 @@
         {
           "op": "replace",
           "path": "/heldBytes",
-          "value": 208
+          "value": 213
         },
         {
           "op": "replace",
@@ -395,7 +395,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 4131
+          "value": 4136
         }
       ],
       "outputs": [

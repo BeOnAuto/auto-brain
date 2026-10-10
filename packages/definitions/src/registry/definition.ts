@@ -1,5 +1,6 @@
 import { Schema } from 'effect';
 
+import type { StrippedForms } from '../capability/stripped-forms.ts';
 import { TriggerSchema } from './definition-triggers.ts';
 
 const listedDefinitionFields = {
@@ -99,4 +100,5 @@ export type ListedDefinition = typeof ListedDefinitionSchema.Type;
 
 export type StoredDefinition = Omit<Definition, 'type' | 'media_type' | 'triggers_since' | 'standing'> & {
   readonly details?: Schema.JsonObject;
+  readonly stripped?: StrippedForms;
 };

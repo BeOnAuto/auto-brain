@@ -6,7 +6,7 @@ import type { FollowerHost } from '../follower/follower-host.ts';
 import type { Follower } from '../follower/follower-loop.ts';
 import { systemClock } from '../loop/host-clock.ts';
 import type { ReactionOptions } from './reaction-options.ts';
-import type { Refusals } from './refusals.ts';
+import type { ReactionPorts } from './reaction-ports.ts';
 
 export interface FollowerConsumers {
   readonly consumers: FollowerAssembly['consumers'];
@@ -16,12 +16,13 @@ export interface FollowerConsumers {
 export function startReacting(
   host: FollowerHost,
   options: ReactionOptions,
-  refusals: Refusals,
+  { refusals, stops }: Pick<ReactionPorts, 'refusals' | 'stops'>,
   { consumers, calls }: FollowerConsumers,
 ): Follower {
   return followerOn(host, {
     options,
     refusals,
+    stops,
     consumers,
     calls,
     records: brainRecordsOf(host.database.store),

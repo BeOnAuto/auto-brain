@@ -8,9 +8,9 @@ describe('a for task', () => {
     const document = workflow(`
 do:
   - each:
-      for: { in: '\${ .items }', each: name, at: position }
+      for: { in: '\${ $data.items }', each: name, at: position }
       do:
-        - add: { set: '\${ { seen: ((.seen // []) + [$name + ($position | tostring)]) } }' }
+        - add: { set: '\${ ({ seen: [...($data.seen ?? []), $name + String($position)] }) }' }
 `);
 
     expect(drivenRun(document, { input: { items: ['a', 'b'] } }).outcome).toEqual({
@@ -25,7 +25,7 @@ do:
   - each:
       for: { in: '\${ [5, 6] }' }
       do:
-        - add: { set: '\${ { last: [$item, $index] } }' }
+        - add: { set: '\${ ({ last: [$item, $index] }) }' }
 `);
 
     expect(drivenRun(document).outcome).toEqual({ kind: 'completed', output: { last: [6, 1] } });
@@ -36,9 +36,9 @@ do:
 do:
   - each:
       for: { in: '\${ [1, 2, 3, 4] }' }
-      while: '\${ (.total // 0) < 3 }'
+      while: '\${ ($data.total ?? 0) < 3 }'
       do:
-        - add: { set: '\${ { total: ((.total // 0) + $item) } }' }
+        - add: { set: '\${ ({ total: ($data.total ?? 0) + $item }) }' }
 `);
 
     expect(drivenRun(document).outcome).toEqual({ kind: 'completed', output: { total: 3 } });
@@ -48,7 +48,7 @@ do:
 describe('a for task over many items', () => {
   it('runs its iterations in turn, not one inside the other, and lets other runs in every 100 of them', () => {
     const items = Array.from({ length: 3000 }, (_item, index) => index);
-    const run = drivenRun(workflow("do:\n  - each: { for: { in: '${ .items }' }, do: [] }"), { input: { items } });
+    const run = drivenRun(workflow("do:\n  - each: { for: { in: '${ $data.items }' }, do: [] }"), { input: { items } });
 
     expect(run.outcome).toEqual({ kind: 'completed', output: { items } });
     expect(timersArmedIn(run.events, 'yield')).toHaveLength(29);
@@ -83,7 +83,7 @@ do:
       for: { in: '\${ [1, 2] }' }
       do:
         - pause: { wait: PT1S }
-        - add: { set: '\${ { total: ((.total // 0) + $item) } }' }
+        - add: { set: '\${ ({ total: ($data.total ?? 0) + $item }) }' }
 `);
 
     const run = drivenRun(document);

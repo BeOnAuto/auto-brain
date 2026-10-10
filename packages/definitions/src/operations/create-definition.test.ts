@@ -30,7 +30,7 @@ describe('create_definition', () => {
       route: { method: 'POST', path: '/definitions/{type}' },
       pathParameters: ['type'],
       successStatus: 201,
-      reasons: ['not_found', 'invalid_input', 'conflict'],
+      reasons: ['not_found', 'invalid_input', 'conflict', 'unavailable'],
     });
   });
 

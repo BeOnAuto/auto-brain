@@ -8,12 +8,12 @@ describe('a for loop', () => {
 do:
   - total:
       for:
-        in: .items
+        in: $data.items
         each: item
         at: position
       do:
         - add:
-            set: { sum: '\${ .sum + $item }', last: '\${ $position }' }
+            set: { sum: '\${ $data.sum + $item }', last: '\${ $position }' }
 `);
 
     expect((await interpret(document, { input: { items: [1, 2, 3], sum: 0 } })).ending).toEqual({
@@ -26,10 +26,10 @@ do:
     const document = workflow(`
 do:
   - collect:
-      for: { in: '\${ .letters }' }
+      for: { in: '\${ $data.letters }' }
       do:
         - note:
-            set: { seen: '\${ .seen + [$item + ($index | tostring)] }' }
+            set: { seen: '\${ [...$data.seen, $item + String($index)] }' }
 `);
 
     expect((await interpret(document, { input: { letters: ['a', 'b'], seen: [] } })).ending).toEqual({
@@ -44,11 +44,11 @@ describe('a for loop that stops', () => {
     const document = workflow(`
 do:
   - count:
-      for: { in: .items }
-      while: .count < 2
+      for: { in: $data.items }
+      while: $data.count < 2
       do:
         - increment:
-            set: { count: '\${ .count + 1 }' }
+            set: { count: '\${ $data.count + 1 }' }
 `);
 
     expect((await interpret(document, { input: { items: [1, 2, 3, 4], count: 0 } })).ending).toEqual({
@@ -63,18 +63,18 @@ describe('a for loop that leaves', () => {
     const exiting = workflow(`
 do:
   - loop:
-      for: { in: .items }
+      for: { in: $data.items }
       do:
         - stop:
             set: { stopped: '\${ $item }' }
             then: exit
   - after:
-      set: { after: '\${ .stopped }' }
+      set: { after: '\${ $data.stopped }' }
 `);
     const ending = workflow(`
 do:
   - loop:
-      for: { in: .items }
+      for: { in: $data.items }
       do:
         - stop:
             set: { stopped: '\${ $item }' }
@@ -99,7 +99,7 @@ describe('a for loop over no array', () => {
     const document = workflow(`
 do:
   - loop:
-      for: { in: .missing }
+      for: { in: $data.missing }
       do: []
 `);
 

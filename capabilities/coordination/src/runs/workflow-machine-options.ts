@@ -1,4 +1,4 @@
-import type { JsonObject, MachineOptions } from '@beonauto/workflow-engine';
+import type { JsonObject, MachineOptions, MachineSandbox, MachineSettings } from '@beonauto/workflow-engine';
 
 import { childRunOf } from '../calls/child-run.ts';
 import { workflowFunctions } from '../document/workflow-functions.ts';
@@ -9,7 +9,11 @@ const runtimeDescriptor: JsonObject = {
   metadata: { type: 'workflow' },
 };
 
-export const workflowMachineOptions: MachineOptions = {
+export const workflowMachineSettings: MachineSettings = {
   functions: { ...workflowFunctions, childOf: childRunOf },
   runtime: runtimeDescriptor,
 };
+
+export function workflowMachineOptionsOf(sandbox: MachineSandbox): MachineOptions {
+  return { ...workflowMachineSettings, sandbox };
+}

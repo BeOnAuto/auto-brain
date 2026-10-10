@@ -1,14 +1,16 @@
 import { mostInputBytes } from '@beonauto/definitions';
-import { jsonBytesOf } from '@beonauto/workflow-engine/dsl';
-import { Result } from 'effect';
+import { jsonBytesOf, type ProgramPool } from '@beonauto/workflow-engine/dsl';
+import { Effect, Result } from 'effect';
 
+import { documentCheck } from '../src/document/document-check.ts';
 import { parseComputationDocument } from '../src/document/document-parsing.ts';
-import { computationLimits } from '../src/run/run-bounds.ts';
 import { campaignPace, campaignRows } from '../src/testing/campaign-pace.ts';
-import { formatted, median, millisecondsOf, runInThread } from './common.ts';
+import { formatted, inTurn, median, poolOfOne, request } from './common.ts';
 
-function program(): string {
-  return Result.getOrThrow(parseComputationDocument(campaignPace)).program;
+async function strippedProgram(pool: ProgramPool): Promise<string> {
+  const document = Result.getOrThrow(parseComputationDocument(campaignPace));
+  const { module = document.program } = await Effect.runPromise(documentCheck(pool)(document));
+  return module;
 }
 
 function mostRowsWithinTheInput(): number {
@@ -25,26 +27,28 @@ function mostRowsWithinTheInput(): number {
   return low;
 }
 
-function workOf(source: string, rows: number): number {
-  return runInThread(source, campaignRows(rows), computationLimits).work;
+async function workOf(pool: ProgramPool, source: string, rows: number): Promise<string> {
+  const ran = await pool.run(request(source, campaignRows(rows)));
+  return ran.ran === 'answered' ? formatted(ran.work) : ran.ran;
 }
 
-export function exampleMeasured(): readonly string[] {
-  const source = program();
+export async function exampleMeasured(): Promise<readonly string[]> {
+  const pool = poolOfOne();
+  const source = await strippedProgram(pool);
   const most = mostRowsWithinTheInput();
-  const perThousand = [1000, 2000, 4000].map(
-    (rows) => `${formatted(workOf(source, rows))} units for ${formatted(rows)} rows`,
+  const sizes = [1000, 2000, 4000, most];
+  const checkpoints = await inTurn(
+    sizes,
+    async (rows) => `${await workOf(pool, source, rows)} for ${formatted(rows)} rows`,
   );
   const input = campaignRows(most);
-  const time = median(
-    Array.from({ length: 9 }, () =>
-      millisecondsOf(() => {
-        runInThread(source, input, computationLimits);
-      }),
-    ),
+  const times = await inTurn(
+    Array.from({ length: 21 }),
+    async () => (await pool.run(request(source, input))).milliseconds,
   );
+  await pool.close();
   return [
-    `the example: ${perThousand.join(', ')}`,
-    `the example at the most rows its input takes, ${formatted(most)} rows of ${formatted(jsonBytesOf(campaignRows(most)))} bytes: ${formatted(workOf(source, most))} units, ${formatted(time, 1)} ms at the median, on the thread that measures`,
+    `the example's checkpoints, in a worker: ${checkpoints.join(', ')}`,
+    `the example at the most rows its input takes, ${formatted(most)} rows of ${formatted(jsonBytesOf(input))} bytes: ${formatted(median(times), 1)} ms at the median of ${times.length} warm runs, in a fresh sandbox each`,
   ];
 }

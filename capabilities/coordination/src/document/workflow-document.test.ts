@@ -60,13 +60,13 @@ describe('a document that breaks the DSL', () => {
 
 describe('a document the runtime does not run', () => {
   it('is rejected for what the policy rejects, reported once where the DSL agrees', async () => {
-    const source = `${header}do:\n  - a: { set: { x: 1 }, then: nowhere }\n  - b: { wait: soon, if: .a + }\n`;
+    const source = `${header}do:\n  - a: { set: { x: 1 }, then: nowhere }\n  - b: { wait: soon, then: nowhere }\n`;
 
     expect(await parsed(source)).toMatchObject(
       rejected('The workflow document is not a workflow this runtime runs', [
         'Line 7, column 31: at /do/0/a/then: then: nowhere names no task in the same list',
         'Line 8, column 16: at /do/1/b/wait: soon is not an ISO 8601 duration',
-        'Line 8, column 26: at /do/1/b/if: .a +: ParseError: Unexpected token',
+        'Line 8, column 28: at /do/1/b/then: then: nowhere names no task in the same list',
       ]),
     );
   });

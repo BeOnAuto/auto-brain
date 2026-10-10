@@ -2,6 +2,7 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { RunLimits } from '../machine/run-input.ts';
+import { testSandbox } from '../pool-testing/test-sandbox.ts';
 import type { PositionedEvent } from '../run-log/run-event.ts';
 import { memoryDriver } from '../testing/memory-driver.ts';
 import { workflow } from '../testing/workflows.ts';
@@ -33,7 +34,7 @@ function waitOf(positioned: PositionedEvent | undefined): string {
 }
 
 function deadlinesOf(limits: Partial<RunLimits>) {
-  const driver = memoryDriver({ respond: () => 'never' });
+  const driver = memoryDriver({ sandbox: testSandbox, respond: () => 'never' });
   driver.start({ runId, document: twoCalls, limits });
   const [first] = Effect.runSync(driver.ports.runStore.eventsAfter(runId, 0));
   return (first?.event.outputs ?? []).flatMap((output) =>
@@ -55,7 +56,7 @@ describe('the deadline of a call', () => {
   });
 
   it('is a millisecond at the least, for a call that starts when the run has no time left', () => {
-    const driver = memoryDriver({ respond: () => 'never' });
+    const driver = memoryDriver({ sandbox: testSandbox, respond: () => 'never' });
     driver.start({
       runId,
       document: pausingThenAsking,

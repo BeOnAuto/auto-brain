@@ -16,7 +16,7 @@ import { logWorkflows } from '../logging/logging.ts';
 import type { LedgerSettings } from '../settings/ledger-settings.ts';
 import type { WorkflowSettings } from '../settings/workflow-settings.ts';
 import { hostReports } from './host-reports.ts';
-import { hostWorkOf } from './host-work.ts';
+import { hostWorkOf, type WorkParts } from './host-work.ts';
 
 export interface HostParts {
   readonly ledger: LedgerSettings;
@@ -25,6 +25,7 @@ export interface HostParts {
   readonly store: WorkflowStore;
   readonly views: ProjectorSettings;
   readonly dueWork: NonNullable<HostOptions['dueWork']>;
+  readonly evaluations: WorkParts['evaluations'];
   readonly clock?: HostClock;
 }
 
@@ -37,14 +38,14 @@ export function hostDatabaseOf(ledger: LedgerSettings): DatabaseSettings {
 export async function openedHost(
   runtime: AppRuntime<DispatcherServices>,
   dispatcher: Dispatcher,
-  { workflows, capabilities, store, views, dueWork, clock }: HostParts,
+  { workflows, capabilities, store, views, dueWork, evaluations, clock }: HostParts,
   startVersion: BrainOperation,
 ): Promise<WorkflowHost> {
   const host = await openWorkflowHost({
     database: store,
     views,
     dueWork,
-    ...hostWorkOf(runtime, dispatcher, { capabilities, startVersion }),
+    ...hostWorkOf(runtime, dispatcher, { capabilities, startVersion, evaluations }),
     reports: hostReports(runtime),
     sweepEveryMs: workflows.sweepEveryMs,
     mostCallsAtOnce: workflows.mostCallsAtOnce,

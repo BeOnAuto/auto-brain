@@ -49,7 +49,12 @@ export const triggersSince = Effect.fnUntraced(function* (type: string, { name, 
 });
 
 export function versionOf(type: string, name: string, version: number) {
-  return Effect.map(recordedVersionOf(type, name, version), ({ source }) => ({ name, version, source }));
+  return Effect.map(recordedVersionOf(type, name, version), ({ source, stripped }) => ({
+    name,
+    version,
+    source,
+    stripped,
+  }));
 }
 
 export const recordInRegistry = Effect.fnUntraced(function* (

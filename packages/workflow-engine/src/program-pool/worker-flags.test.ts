@@ -7,6 +7,9 @@ import { pathToFileURL } from 'node:url';
 
 import { describe, expect, it, onTestFinished } from 'vitest';
 
+import type { ProgramPool, ProgramRequest } from '../jobs/pool-contract.ts';
+import { programPool } from './program-pool.ts';
+
 const poolTestTimeoutMs = 30_000;
 
 const reading = new URL(
@@ -21,10 +24,33 @@ const reading = new URL(
   )}`,
 );
 
+const request: ProgramRequest = {
+  source: '.',
+  entry: 'default',
+  arguments: [null],
+  moment: 0,
+  budget: 500,
+  memoryBytes: 67_108_864,
+  stackBytes: 1_048_576,
+  deadlineMs: 10_000,
+  mostOutputBytes: 1000,
+};
+
+function poolReading(environment?: Readonly<Record<string, string>>): ProgramPool {
+  const pool = programPool({
+    workers: 1,
+    heapMegabytes: 64,
+    worker: reading,
+    ...(environment === undefined ? {} : { environment }),
+  });
+  onTestFinished(() => pool.close());
+  return pool;
+}
+
 const server = [
-  `const { liftedLimits, programPool } = await import(${JSON.stringify(new URL('program-pool.ts', import.meta.url).href)});`,
+  `const { programPool } = await import(${JSON.stringify(new URL('program-pool.ts', import.meta.url).href)});`,
   `const pool = programPool({ workers: 1, heapMegabytes: 64, worker: new URL(${JSON.stringify(reading.href)}) });`,
-  "const outcome = await pool.run({ source: '.', input: null, dialect: { refused: [] }, limits: liftedLimits(1000000), deadlineMs: 10000, mostOutputBytes: 1000 });",
+  "const outcome = await pool.run({ source: '.', arguments: [null], entry: 'default', moment: 0, budget: 500, memoryBytes: 67108864, stackBytes: 1048576, deadlineMs: 10000, mostOutputBytes: 1000 });",
   'await pool.close();',
   'process.stdout.write(JSON.stringify({ secret: process.env.WORKER_SECRET, preloaded: globalThis.preloaded === true, outcome }));',
 ].join('\n');
@@ -70,5 +96,13 @@ describe('the flags of a worker', { timeout: poolTestTimeoutMs }, () => {
       preloaded: true,
       outcome: { ran: 'answered', output: { environment: [], flags: [], preloaded: false } },
     });
+  });
+});
+
+describe('the environment of a worker', { timeout: poolTestTimeoutMs }, () => {
+  it('is empty unless the pool is given one, so no setting of the server, such as a key, reaches a program or its worker', async () => {
+    expect(Object.keys(process.env).length).toBeGreaterThan(1);
+    expect(await poolReading().run(request)).toMatchObject({ ran: 'answered', output: { environment: [] } });
+    expect(await poolReading({ ONLY: 'this' }).run(request)).toMatchObject({ output: { environment: ['ONLY'] } });
   });
 });

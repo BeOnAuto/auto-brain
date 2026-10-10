@@ -5,7 +5,8 @@ import { workflowEngineOf } from '../src/engine/engine.ts';
 import type { RunInput } from '../src/machine/run-input.ts';
 import { memoryPorts } from '../src/memory/memory-ports.ts';
 import { virtualClock } from '../src/memory/virtual-clock.ts';
-import { startedOf, testMachine } from '../src/testing/driver-inputs.ts';
+import { testMachine } from '../src/pool-testing/test-sandbox.ts';
+import { startedOf } from '../src/testing/driver-inputs.ts';
 import { runId, looping, millisecondsOf } from './common.ts';
 
 function throughTheEngine(inputs: number, cache: RunCache): number {

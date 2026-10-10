@@ -1,12 +1,12 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { testMachine } from '@beonauto/workflow-engine/testing';
 import { Effect, Function } from 'effect';
 
 import { openHostDatabase, type DatabaseSettings } from '../src/database/host-databases.ts';
 import { openWorkflowHost } from '../src/host/workflow-host.ts';
 import { brainCreated, everyTrigger, definitionRecorded } from '../src/reaction-testing/brain-writes.ts';
 import { recordedReactions } from '../src/reaction-testing/recorded-reactions.ts';
+import { testMachine } from '../src/testing/host-documents.ts';
 import { recordedWaiting } from '../src/waiting-testing/recorded-waiting.ts';
 
 export interface EveryFiring {

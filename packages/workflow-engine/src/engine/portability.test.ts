@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { checkExpression } from '../dsl/expressions.ts';
+import { freezingPreludeSource, preludeSource } from '../programs/sandbox-prelude.ts';
 
 interface Forbidden {
   readonly what: string;
@@ -15,11 +15,21 @@ const source = fileURLToPath(new URL('..', import.meta.url));
 
 const importedEverywhere: ReadonlySet<string> = new Set(['effect', '@beonauto/operations', '@beonauto/ledger']);
 
-const importedInTheEvaluator: ReadonlySet<string> = new Set(['@gabrielbryk/jq-ts']);
+const importedInTheEvaluator: ReadonlySet<string> = new Set(['quickjs-emscripten-core']);
 
 const importedInThePool: ReadonlySet<string> = new Set(['node:worker_threads']);
 
+const importedByTheInstances: ReadonlySet<string> = new Set([
+  'node:fs/promises',
+  'quickjs-emscripten-core',
+  '@jitl/quickjs-wasmfile-release-sync',
+]);
+
+const quickJs = 'quickjs-emscripten-core';
+
 const importSpecifier = /^\s*(?:import|export)\s(?:[^;'"]*?\bfrom\s*)?['"]([^'"]+)['"]/gmu;
+
+const quickJsImport = /^\s*import\s(type\s)?[^;'"]*?\bfrom\s*['"]quickjs-emscripten-core['"]/gmu;
 
 function specifiersIn(text: string): readonly string[] {
   return [...text.matchAll(importSpecifier)].map(([, specifier = '']: readonly string[]) => specifier);
@@ -34,7 +44,8 @@ function isAllowedImport(file: string, specifier: string): boolean {
     isOwnFile(file, specifier) ||
     importedEverywhere.has(specifier) ||
     (file.startsWith('programs/') && importedInTheEvaluator.has(specifier)) ||
-    (file.startsWith('program-pool/') && importedInThePool.has(specifier))
+    (file.startsWith('program-pool/') && importedInThePool.has(specifier)) ||
+    (file.startsWith('instances/') && importedByTheInstances.has(specifier))
   );
 }
 
@@ -42,6 +53,12 @@ function importsOutsideTheAllowList(file: string, text: string): readonly string
   return specifiersIn(text)
     .filter((specifier) => !isAllowedImport(file, specifier))
     .map((specifier) => `${file}: ${specifier}`);
+}
+
+function valueImportsOfQuickJsIn(file: string, text: string): readonly string[] {
+  return [...text.matchAll(quickJsImport)]
+    .filter(([, typeOnly]: readonly (string | undefined)[]) => typeOnly === undefined)
+    .map(() => `${file}: ${quickJs}`);
 }
 
 const hostOnly: readonly Forbidden[] = [
@@ -62,29 +79,6 @@ const impure: readonly Forbidden[] = [
   { what: 'the host locale or time zone', pattern: /\bIntl\./u },
 ];
 
-const blockComments = /\/\*[\s\S]*?\*\//gu;
-
-const localTimeBuiltins = /Builtin\("\w+", false\)/gu;
-
-const jqForImport = fileURLToPath(import.meta.resolve('@gabrielbryk/jq-ts'));
-
-const jq = readFileSync(jqForImport, 'utf8').replaceAll(blockComments, '');
-
-const jqForRequire = readFileSync(join(dirname(jqForImport), 'index.cjs'), 'utf8');
-
-const patchOfJq = readFileSync(
-  fileURLToPath(new URL('../../../../patches/@gabrielbryk__jq-ts@1.7.0.patch', import.meta.url)),
-  'utf8',
-);
-
-function linesThePatchAddsTo(file: string): readonly string[] {
-  const section = patchOfJq.split('diff --git ').find((part) => part.startsWith(`a/dist/${file} `)) ?? '';
-  return section
-    .split('\n')
-    .filter((line) => line.startsWith('+') && !line.startsWith('+++'))
-    .map((line) => line.slice(1));
-}
-
 const growingCache: readonly Forbidden[] = [
   {
     what: 'a module-level collection',
@@ -104,19 +98,22 @@ function sourcesUnder(folder: string): readonly string[] {
     .filter((file) => isProductionSource(file));
 }
 
+function caught(text: string, forbidden: readonly Forbidden[]): readonly string[] {
+  return forbidden.filter(({ pattern }: Forbidden) => pattern.test(text)).map(({ what }: Forbidden) => what);
+}
+
 function findingsIn(files: readonly string[], forbidden: readonly Forbidden[]): readonly string[] {
-  return files.flatMap((file) => {
-    const text = readFileSync(join(source, file), 'utf8');
-    return forbidden
-      .filter(({ pattern }: Forbidden) => pattern.test(text))
-      .map(({ what }: Forbidden) => `${file}: ${what}`);
-  });
+  return files.flatMap((file) =>
+    caught(readFileSync(join(source, file), 'utf8'), forbidden).map((what) => `${file}: ${what}`),
+  );
 }
 
 const expressionCall = /(?<!function )\brunExpression\(([^()]*)\)/gu;
 
 function expressionCallsIn(text: string): readonly string[] {
-  return [...text.matchAll(expressionCall)].map(([, call = '']: readonly string[]) => call);
+  return [...text.matchAll(expressionCall)].map(([, call = '']: readonly string[]) =>
+    call.replaceAll(/\s+/gu, ' ').trim(),
+  );
 }
 
 function expressionCallsUnder(files: readonly string[]): readonly string[] {
@@ -125,19 +122,9 @@ function expressionCallsUnder(files: readonly string[]): readonly string[] {
   );
 }
 
-function localTimeBuiltinsIn(text: string): readonly string[] {
-  return (text.match(localTimeBuiltins) ?? []).map((call: string) =>
-    call.slice('Builtin("'.length, call.indexOf('",')),
-  );
-}
-
-function caught(text: string, forbidden: readonly Forbidden[]): readonly string[] {
-  return forbidden.filter(({ pattern }: Forbidden) => pattern.test(text)).map(({ what }: Forbidden) => what);
-}
-
 const everySource = sourcesUnder('.');
 
-const nodeHosted = ['dsl.ts', 'job-loop.ts', 'program-pool/', 'workers/'];
+const nodeHosted = ['dsl.ts', 'job-loop.ts', 'program-pool/', 'workers/', 'instances/'];
 
 const portableSources = everySource.filter((file) => !nodeHosted.some((hosted) => file.startsWith(hosted)));
 
@@ -182,12 +169,16 @@ describe('the testing entry', () => {
 });
 
 describe('the entries of the engine', () => {
-  it('reach the worker pool only through the dsl and job-loop subpaths, so the main, testing and worker entries stay portable', () => {
-    const dslEntry = ['program-pool/program-pool.ts', 'programs/program-compiling.ts'];
-
-    expect(reachableFrom('dsl.ts')).toEqual(expect.arrayContaining(dslEntry));
-    expect(reachableFrom('job-loop.ts')).toContain('program-pool/job-loop.ts');
-    expect(reachableFrom('worker.ts')).toContain('jobs/program-answer.ts');
+  it('reach the worker pool and the instances of the sandbox only through the dsl and job-loop subpaths, so the main, testing and worker entries stay portable', () => {
+    expect(reachableFrom('dsl.ts')).toEqual(
+      expect.arrayContaining(['program-pool/program-pool.ts', 'instances/fresh-instances.ts']),
+    );
+    expect(reachableFrom('job-loop.ts')).toEqual(
+      expect.arrayContaining(['program-pool/job-loop.ts', 'instances/instance-stock.ts']),
+    );
+    expect(reachableFrom('worker.ts')).toEqual(
+      expect.arrayContaining(['jobs/program-answer.ts', 'programs/sandbox-session.ts']),
+    );
     for (const entry of ['index.ts', 'testing/index.ts', 'worker.ts']) {
       expect(reachableFrom(entry).filter((file) => nodeHosted.some((hosted) => file.startsWith(hosted)))).toEqual([]);
     }
@@ -195,17 +186,27 @@ describe('the entries of the engine', () => {
 });
 
 describe('the engine core', () => {
-  it('imports only effect, the workspace packages it builds on and its own files, the jq library in the evaluator alone and worker threads in the pool alone', () => {
+  it('imports only effect, the workspace packages it builds on and its own files, the sandbox in the evaluator, the build of QuickJS in the instances alone and worker threads in the pool alone', () => {
     expect(everySource.length).toBeGreaterThan(20);
     expect(
       everySource.flatMap((file) => importsOutsideTheAllowList(file, readFileSync(join(source, file), 'utf8'))),
     ).toEqual([]);
   });
 
+  it('imports the QuickJS library by type alone wherever it is portable, so the host hands the evaluator its instances', () => {
+    expect(
+      portableSources.flatMap((file) => valueImportsOfQuickJsIn(file, readFileSync(join(source, file), 'utf8'))),
+    ).toEqual([]);
+    expect(
+      sourcesUnder('programs').filter((file) => readFileSync(join(source, file), 'utf8').includes(quickJs)),
+    ).toEqual(expect.arrayContaining(['programs/sandbox-session.ts', 'programs/sandbox-vm.ts']));
+  });
+
   it('uses no Node global, no dynamic import, no code generation and no host timer, but for the timers of the worker pool', () => {
     expect(portableSources.length).toBeGreaterThan(20);
     expect(findingsIn(portableSources, hostOnly)).toEqual([]);
     expect(findingsIn(sourcesUnder('program-pool'), hostOnly).toSorted()).toEqual([
+      'program-pool/evaluation-thread.ts: a host timer',
       'program-pool/pool-slots.ts: a host timer',
       'program-pool/pool-threads.ts: a host timer',
     ]);
@@ -218,62 +219,60 @@ describe('the engine core', () => {
   });
 });
 
-describe('the machine, its runner, its tasks and its decider, the run log and the DSL', () => {
+describe('the machine, its runner, its tasks and its decider, the run log, the DSL and the evaluator', () => {
   it('read no clock, no random source and no locale, so the same state and input decide the same events', () => {
     expect(machineAndRunLog.length).toBeGreaterThan(50);
     expect(findingsIn(machineAndRunLog, impure)).toEqual([]);
   });
 
-  it('evaluate expressions with work as their only budget, so no deadline makes them read a clock', () => {
+  it('give the sandbox a prelude that itself reads no clock, no random source and no locale, and builds no code', () => {
+    expect(caught(preludeSource, [...impure, ...hostOnly])).toEqual([]);
+    expect(caught(freezingPreludeSource, [...impure, ...hostOnly])).toEqual([]);
+  });
+
+  it('evaluate expressions under a budget of work and the deadline of the input, read on the clock the host gives the machine', () => {
     expect(expressionCallsUnder(everySource)).toEqual([
-      'dsl/evaluation.ts: source, data, variables, { now: place.now, mostWork }',
+      'dsl/evaluation.ts: place.unit, source, { ...variables, data }, { now: place.now, mostWork, deadlineAt: place.deadlineAt },',
     ]);
+    expect(readFileSync(join(source, 'runner/session.ts'), 'utf8')).toContain(
+      'const deadlineAt = options.sandbox.clock() + mostInputMs;',
+    );
   });
 });
 
-describe('the jq library the machine runs expressions with', () => {
-  it('imports nothing, uses no Node-only API, no code generation and no host timer, and reads no clock or random source', () => {
-    expect(jq.length).toBeGreaterThan(100_000);
-    expect(specifiersIn(jq)).toEqual([]);
-    expect(caught(jq, [...hostOnly, ...clockOrRandom])).toEqual([]);
-  });
-
-  it('is patched the same in the build require() loads as in the one import loads', () => {
-    const added = linesThePatchAddsTo('index.mjs');
-
-    expect(added.length).toBeGreaterThan(200);
-    expect(added.filter((line) => !jqForRequire.includes(line))).toEqual([]);
-  });
-
-  it('reaches the host time zone only through localtime and strflocaltime, which the DSL refuses', () => {
-    expect(localTimeBuiltinsIn(jq)).toEqual(['localtime', 'strflocaltime']);
-    expect([checkExpression('now | localtime'), checkExpression('now | strflocaltime("%H")')]).toEqual([
-      expect.stringContaining("localtime reads the host's time zone"),
-      expect.stringContaining("strflocaltime reads the host's time zone"),
-    ]);
-  });
-});
-
-describe('the checks of purity', () => {
+describe('the checks of imports', () => {
   it('catch what they are there to catch', () => {
     expect(
       importsOutsideTheAllowList(
         'machine/m.ts',
-        "import { x } from 'fs';\nimport { y } from 'node:fs';\nimport type { W } from '@temporalio/workflow';\nimport { compile } from '@gabrielbryk/jq-ts';\nimport { Worker } from 'node:worker_threads';\nimport { Effect } from 'effect';\nimport { z } from '../dsl/z.ts';\nimport { w } from '../../../ledger/src/w.ts';\nimport 'yaml';",
+        "import { x } from 'fs';\nimport { y } from 'node:fs';\nimport type { W } from '@temporalio/workflow';\nimport variant from '@jitl/quickjs-wasmfile-release-sync';\nimport { Worker } from 'node:worker_threads';\nimport { Effect } from 'effect';\nimport { z } from '../dsl/z.ts';\nimport { w } from '../../../ledger/src/w.ts';\nimport 'yaml';",
       ),
     ).toEqual([
       'machine/m.ts: fs',
       'machine/m.ts: node:fs',
       'machine/m.ts: @temporalio/workflow',
-      'machine/m.ts: @gabrielbryk/jq-ts',
+      'machine/m.ts: @jitl/quickjs-wasmfile-release-sync',
       'machine/m.ts: node:worker_threads',
       'machine/m.ts: ../../../ledger/src/w.ts',
       'machine/m.ts: yaml',
     ]);
-    expect(importsOutsideTheAllowList('programs/p.ts', "import { compile } from '@gabrielbryk/jq-ts';")).toEqual([]);
+    expect(
+      importsOutsideTheAllowList('programs/p.ts', "import variant from '@jitl/quickjs-wasmfile-release-sync';"),
+    ).toEqual(['programs/p.ts: @jitl/quickjs-wasmfile-release-sync']);
     expect(
       importsOutsideTheAllowList('program-pool/p.ts', "import { W } from 'node:worker_threads';\nimport 'node:fs';"),
     ).toEqual(['program-pool/p.ts: node:fs']);
+    expect(
+      valueImportsOfQuickJsIn(
+        'programs/p.ts',
+        "import type { QuickJSHandle } from 'quickjs-emscripten-core';\nimport { newVariant } from 'quickjs-emscripten-core';",
+      ),
+    ).toEqual(['programs/p.ts: quickjs-emscripten-core']);
+  });
+});
+
+describe('the checks of purity in the code', () => {
+  it('catch what they are there to catch', () => {
     expect(caught("const y = await import('./z.ts');\nsetTimeout(f, 1);\nprocess.exit(1);", hostOnly)).toEqual([
       'a dynamic import',
       'a Node global',
@@ -293,8 +292,8 @@ describe('the checks of purity', () => {
     ).toEqual([]);
     expect(
       expressionCallsIn(
-        'function runExpression(source: string) {}\nrunExpression(source, data, {}, { now, mostWork, deadline: { milliseconds: 5, clock } });',
+        'function runExpression(source: string) {}\nrunExpression(unit, source, {}, { now, mostWork });',
       ),
-    ).toEqual(['source, data, {}, { now, mostWork, deadline: { milliseconds: 5, clock } }']);
+    ).toEqual(['unit, source, {}, { now, mostWork }']);
   });
 });

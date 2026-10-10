@@ -29,9 +29,9 @@ describe('the example on the reference page of computation functions', { timeout
     const [, input, output] = fencedBlocks;
 
     expect([input?.language, output?.language]).toEqual(['json', 'json']);
-    expect(referencePage).toContain('spent 19,756 units of work');
+    expect(referencePage).toContain('spent 0 checkpoints of work');
     expect(await computationWith().running(campaignPace, decodeJson(input?.body))).toMatchObject(
-      Exit.succeed({ output: decodeJson(output?.body), record: { work: 19_756 } }),
+      Exit.succeed({ output: decodeJson(output?.body), record: { work: 0 } }),
     );
   });
 });

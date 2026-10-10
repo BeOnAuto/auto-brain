@@ -65,7 +65,7 @@ describe('templates of a task', () => {
   it('evaluate the expressions in lists, and loop over null items', async () => {
     const document = workflow(`
 do:
-  - listed: { set: ['\${ .a }', 2] }
+  - listed: { set: ['\${ $data.a }', 2] }
   - loop:
       for: { in: '\${ [null] }' }
       do: [{ seen: { set: { item: '\${ $item }' } } }]

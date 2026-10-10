@@ -21,6 +21,10 @@ function waitsAlong({ events }: DrivenRun): readonly unknown[] {
     .map((step) => step.waits_for);
 }
 
+const yieldingLoop = workflow(
+  "do:\n  - each: { for: { in: '${ Array.from({ length: 120 }, (_, index) => index) }' }, do: [{ one: { set: {} } }] }",
+);
+
 describe('the waiting entry an input resumed', () => {
   it('is the wait a timer ended, the call an answer or its deadline ended, and the listen an event moved', () => {
     const runs = [
@@ -55,7 +59,7 @@ describe('the waiting entry an input resumed', () => {
   it('is none for a timer of a timeout or a yield, and for a cancel', () => {
     const runs = [
       drivenRun(workflow('do:\n  - slow: { timeout: { after: PT1S }, wait: PT1H }')),
-      drivenRun(workflow("do:\n  - each: { for: { in: '${ [range(0; 120)] }' }, do: [{ one: { set: {} } }] }")),
+      drivenRun(yieldingLoop),
       drivenRun(workflow('do:\n  - slow: { wait: PT1H }'), {
         meanwhile: (driver, runId) => {
           driver.cancel(runId);

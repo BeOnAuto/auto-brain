@@ -11,7 +11,7 @@ do:
         type: reasoning
         name: summarize
         input:
-          text: \${ .text }
+          text: \${ $data.text }
 `);
 
 function answering(result: DefinitionCallResult) {
@@ -47,7 +47,7 @@ describe('the runs of a call', () => {
     const document = workflow(`
 do:
   - each:
-      for: { in: .items }
+      for: { in: $data.items }
       do:
         - summarize:
             call: run_definition

@@ -14,7 +14,6 @@ import {
   policyOf,
   type Rejection,
   rejection,
-  templateRejections,
   textField,
 } from '@beonauto/workflow-engine';
 
@@ -34,7 +33,7 @@ function runDefinitionRejections(arguments_: Json | undefined, pointer: string):
   const missing = ['type', 'name']
     .filter((key) => typeof field(arguments_, key) !== 'string')
     .map((key) => rejection(pointerTo(pointer, key), `${runDefinitionFunction} needs a string ${key}`));
-  return unknown.concat(missing, templateRejections(arguments_, pointer));
+  return unknown.concat(missing);
 }
 
 function definitionDescribed(name: string, arguments_: Json): string {

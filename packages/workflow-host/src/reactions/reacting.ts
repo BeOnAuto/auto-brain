@@ -21,7 +21,7 @@ export function reactingOn(host: FollowerHost, use: ReactionUse): Reacting {
   const schedules = scheduleFiringOn(database, options.start, refusals, clock.now);
   return {
     consumers: reactionConsumersOf(host, use, starting),
-    applyDefinitionRecord: definitionRecordsOn(database),
+    applyDefinitionRecord: definitionRecordsOn(database, use.stops),
     upkeep: {
       sweep: () => Effect.asVoid(Effect.andThen(starting.startDeferred(), refusals.flush())),
       fireSchedules: () => Effect.asVoid(schedules.fireDue()),

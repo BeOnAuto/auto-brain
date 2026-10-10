@@ -1,5 +1,5 @@
 import { internalTermsIn } from '@beonauto/api/testing';
-import { recallDocument } from '@beonauto/recall/testing';
+import { foldOf, recallDocument } from '@beonauto/recall/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -21,7 +21,7 @@ import {
 } from '../testing/servers/recall-server.ts';
 
 const reviewRuns =
-  'language: jq\nsource:\n  events:\n    - type: run_succeeded\n      subject: reasoning/review-brief\nview:\n  initial: 0';
+  'language: typescript\nsource:\n  events:\n    - type: run_succeeded\n      subject: reasoning/review-brief\nview:\n  initial: 0';
 
 const decodeDetail = Schema.decodeUnknownSync(Schema.Struct({ detail: Schema.String }));
 
@@ -51,13 +51,13 @@ async function serving(): Promise<ReasoningServer> {
 
 function saved(server: ReasoningServer, name: string, fold: string) {
   return server.call('POST', `${alpha}/definitions/recall`, {
-    body: { name, source: recallDocument(fold, reviewRuns) },
+    body: { name, source: recallDocument(foldOf(fold), reviewRuns) },
   });
 }
 
 function updated(server: ReasoningServer, name: string, fold: string) {
   return server.call('PUT', `${alpha}/definitions/recall/${name}`, {
-    body: { source: recallDocument(fold, reviewRuns) },
+    body: { source: recallDocument(foldOf(fold), reviewRuns) },
   });
 }
 
@@ -90,12 +90,12 @@ describe('a recall function whose view is being built', { timeout: recallTestTim
 
   it('builds the view of a new version from the start of the history, and answers by that version alone', async () => {
     const server = await serving();
-    await saved(server, 'count', '. + 1');
+    await saved(server, 'count', 'return view + 1;');
     await reviewed(server, 2);
     await standingUntil(server, 'count', liveWith(2));
 
     const before = await recalled(server, 'count', {});
-    await updated(server, 'count', '. + 10');
+    await updated(server, 'count', 'return view + 10;');
     const rebuilt = await standingUntil(server, 'count', liveAt(2));
     const after = await recalled(server, 'count', {});
 
@@ -114,7 +114,7 @@ describe('a recall function waiting for its view to be built', { timeout: recall
     await brainWithReviews(server, 1, 'beta');
     await foldsHeld(gate, 1);
     await brainWithReviews(server, 1);
-    await saved(server, 'count', '. + 1');
+    await saved(server, 'count', 'return view + 1;');
     gate.letThrough(1);
 
     const [first, second] = await Promise.all([

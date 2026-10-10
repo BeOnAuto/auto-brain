@@ -55,9 +55,13 @@ function eventOf(brainKey: string, record: StoredRecord): CloudEvent | undefined
   return brainEventOf({ id, cursor: '', causationId, correlationId, stream, version, type, data, recordedAt });
 }
 
+function hasAMoment({ time }: CloudEvent): boolean {
+  return time === undefined || Number.isFinite(Date.parse(time));
+}
+
 function placedOf(brainKey: string, record: StoredRecord): PageEvent | PassedOver {
   const event = eventOf(brainKey, record);
-  return event === undefined
+  return event === undefined || !hasAMoment(event)
     ? { record: record.id, reason: 'unreadable' }
     : { point: record.point, recordedAt: record.recordedAt, record: record.id, event };
 }

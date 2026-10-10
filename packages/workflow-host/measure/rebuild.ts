@@ -1,6 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { liftedLimits, programPool } from '@beonauto/workflow-engine/dsl';
+import { programPool, unitMemoryBytes, workerStackBytes } from '@beonauto/workflow-engine/dsl';
 import { Effect, Function } from 'effect';
 
 import type { HostDatabase } from '../src/database/host-database.ts';
@@ -8,6 +8,7 @@ import type { DatabaseSettings } from '../src/database/host-databases.ts';
 import { openWorkflowStore } from '../src/host/workflow-store.ts';
 import { systemClock } from '../src/loop/host-clock.ts';
 import { startProjector } from '../src/projector/projector.ts';
+import { reviewsFold } from '../src/views-testing/campaign-reviews.ts';
 
 export interface Rebuild {
   readonly events: number;
@@ -21,15 +22,8 @@ const brain = 'brain/acme/alpha/';
 
 const runsInAStream = 100;
 
-const reviewsFold = [
-  '($event.data.output | if type == "object" then .campaign else null end | if type == "string" then . else "unknown" end) as $campaign',
-  '| .[$campaign] += [{ at: $event.time, verdict: ($event.data.output.verdict? // "none" | tostring | .[0:200]), run: $event.source }]',
-  '| .[$campaign] |= .[-20:]',
-  '| to_entries | sort_by(.value[-1].at) | .[-50:] | from_entries',
-].join('\n');
-
 const details = {
-  language: 'jq',
+  language: 'typescript',
   fold: reviewsFold,
   foldLine: 15,
   filters: [{ type: 'run_succeeded', subject: 'reasoning/review-brief' }],
@@ -116,9 +110,9 @@ export async function rebuildOn(settings: DatabaseSettings, events: number): Pro
       definitionType: 'recall',
       pool,
       folding: {
-        dialect: { refused: [], variables: ['event'] },
-        variable: 'event',
-        limits: liftedLimits(16_000_000),
+        budget: 500,
+        memoryBytes: unitMemoryBytes,
+        stackBytes: workerStackBytes,
         foldDeadlineMs: 10_000,
         pageBudgetMs: 2000,
         mostViewBytes: 524_288,

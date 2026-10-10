@@ -1,15 +1,16 @@
 import { Schema } from 'effect';
 
-import { DialectSchema, LimitsSchema, SpanSchema } from './program-messages.ts';
+import { SettingsSchema } from './program-messages.ts';
 
 const StallSchema = Schema.Struct({
   at: Schema.Number,
-  kind: Schema.Literals(['raised', 'none', 'several', 'work', 'depth', 'unfit', 'size', 'schema', 'refused']),
+  kind: Schema.Literals(['raised', 'work', 'memory', 'unfit', 'size', 'schema', 'refused']),
   message: Schema.String,
-  span: Schema.NullOr(SpanSchema),
+  line: Schema.NullOr(Schema.Number),
 });
 
 export const FoldJobSchema = Schema.Struct({
+  ...SettingsSchema.fields,
   events: Schema.String,
   views: Schema.Array(
     Schema.Struct({
@@ -20,9 +21,6 @@ export const FoldJobSchema = Schema.Struct({
       events: Schema.Array(Schema.Number),
     }),
   ),
-  dialect: DialectSchema,
-  variable: Schema.String,
-  limits: LimitsSchema,
   foldDeadlineMs: Schema.Number,
   pageBudgetMs: Schema.Number,
   mostViewBytes: Schema.Number,

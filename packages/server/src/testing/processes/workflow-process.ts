@@ -83,7 +83,7 @@ const welcome = ['---', 'model: stub/writer', '---', 'Welcome {{ input.name }}.'
 
 const welcoming = workflowSource(
   'welcoming',
-  "do:\n  - welcome: { call: run_definition, with: { type: reasoning, name: welcome, input: { name: '${ .name }' } } }\n",
+  "do:\n  - welcome: { call: run_definition, with: { type: reasoning, name: welcome, input: { name: '${ $data.name }' } } }\n",
 );
 
 export interface StubGateway {

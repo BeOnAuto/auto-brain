@@ -1,17 +1,11 @@
 import type { Finished } from '@beonauto/definitions';
 import { issuesDetail } from '@beonauto/definitions/json-schema';
 import { Conflict, Unavailable } from '@beonauto/operations';
-import {
-  lineOf,
-  type PoolOutcome,
-  type ProgramSpan,
-  type Stopped,
-  workerStackMegabytes,
-} from '@beonauto/workflow-engine/dsl';
+import type { PoolOutcome, ProgramIssue, Stopped } from '@beonauto/workflow-engine/dsl';
 import { Effect, type Schema } from 'effect';
 
 import type { ComputationFunctionDefinitionDocument } from '../document/computation-document.ts';
-import { computationBounds, mostOutputBytes } from './run-bounds.ts';
+import { computationBounds, mebibytes, mostOutputBytes } from './run-bounds.ts';
 
 export interface RunFacts {
   readonly document: ComputationFunctionDefinitionDocument;
@@ -19,6 +13,8 @@ export interface RunFacts {
   readonly workers: number;
   readonly heapMegabytes: number;
   readonly deadlineMs: number;
+  readonly budget: number;
+  readonly memoryBytes: number;
 }
 
 type Ending = Effect.Effect<Finished, Conflict | Unavailable>;
@@ -31,13 +27,13 @@ function unworkable(detail: string): Ending {
   return Effect.fail(new Conflict({ detail, kind: 'unworkable' }));
 }
 
-function lineAt({ program, programLine }: ComputationFunctionDefinitionDocument, span: ProgramSpan): number {
-  return programLine + lineOf(program, span.start) - 1;
+function placeOf({ programLine }: ComputationFunctionDefinitionDocument, { line }: ProgramIssue): string {
+  return line === null ? '' : ` on line ${programLine + line - 1}`;
 }
 
 function recordOf(answered: Answered, { inputBytes }: RunFacts): Schema.JsonObject {
   return {
-    language: 'jq',
+    language: 'typescript',
     work: answered.work,
     duration_ms: Math.round(answered.milliseconds),
     input_bytes: inputBytes,
@@ -53,62 +49,46 @@ const stoppedBecause: Readonly<Record<Stopped, (facts: RunFacts) => string>> = {
   deadline: ({ deadlineMs }) =>
     `The run took longer than the ${deadlineMs} ms a computation function may run, and was stopped`,
   memory: ({ heapMegabytes }) =>
-    `The run took more than the ${heapMegabytes} MiB of memory a computation function may use, and was stopped`,
+    `The run's worker took more than the ${heapMegabytes} MiB of heap it may use, and was stopped`,
   busy: ({ workers, deadlineMs }) =>
     `No worker was free to run it within ${deadlineMs} ms; this server runs ${workers} computation functions at once`,
   cancelled: () => 'The run was stopped before it ended',
   closing: () => 'The server is stopping',
 };
 
-function exhaustedWith({ limit, issue, work }: Exhausted, facts: RunFacts): Ending {
-  const line = lineAt(facts.document, issue.span);
+function exhaustedWith({ limit, work }: Exhausted, facts: RunFacts): Ending {
+  const { budget, memoryBytes } = facts;
   if (limit === 'deadline') {
     return Effect.fail(new Unavailable({ detail: stoppedBecause.deadline(facts) }));
   }
-  if (limit === 'depth') {
+  if (limit === 'memory') {
     return unworkable(
-      `The program recursed deeper than the ${computationBounds.mostEvaluationDepth} levels of evaluation a run may nest, on line ${line}`,
+      `The program used more memory than a run may, the ${memoryBytes / mebibytes} MiB of its sandbox, having done ${work} checkpoints of work`,
     );
   }
-  if (limit === 'stack') {
-    return unworkable(`The program went deeper than the ${workerStackMegabytes} MiB stack of a run allows`);
-  }
-  return limit === 'work'
+  return limit === 'stack'
     ? unworkable(
-        `The program did more than the ${computationBounds.mostWork} units of work a run may do, on line ${line}, having done ${work}`,
+        `The program went deeper than the ${computationBounds.stackBytes / mebibytes} MiB stack of a run allows`,
       )
-    : unworkable(
-        `The program built a value that nests deeper than the ${computationBounds.mostValueDepth} levels a value may, on line ${line}`,
-      );
+    : unworkable(`The program did more work than a run may, ${budget} checkpoints, and was stopped`);
 }
 
-function raisedWith(detail: string, span: ProgramSpan, { document }: RunFacts): Ending {
-  return unworkable(`The program raised an error on line ${lineAt(document, span)}: ${detail}`);
-}
-
-type Unworkable = Extract<
-  PoolOutcome,
-  { readonly ran: 'oversized' | 'mismatched' | 'unanswered' | 'unfit' | 'refused' }
->;
+type Unworkable = Extract<PoolOutcome, { readonly ran: 'oversized' | 'mismatched' | 'unfit' | 'refused' }>;
 
 function unworkableWith(outcome: Unworkable): Ending {
   if (outcome.ran === 'refused') {
-    return Effect.die(new Error('The worker refused a program the definition was accepted with'));
+    return Effect.die(
+      new Error(`The worker refused a program the definition was accepted with: ${outcome.issue.detail}`),
+    );
   }
   if (outcome.ran === 'mismatched') {
     return unworkable(
       `The program's output does not match the output schema: ${issuesDetail(outcome.issues, 'output')}`,
     );
   }
-  if (outcome.ran === 'oversized') {
-    return unworkable(`The program's output takes more than the ${mostOutputBytes} bytes as JSON a run can record`);
-  }
-  if (outcome.ran === 'unfit') {
-    return unworkable('The program gave a number JSON cannot carry, such as nan or infinite');
-  }
-  return unworkable(
-    `The program gave ${outcome.outputs === 0 ? 'no output' : 'more than one output'}; a computation function gives exactly one`,
-  );
+  return outcome.ran === 'oversized'
+    ? unworkable(`The program's output takes more than the ${mostOutputBytes} bytes as JSON a run can record`)
+    : unworkable(`The program's output is not JSON: ${outcome.issue.detail}`);
 }
 
 export function endingOf(outcome: PoolOutcome, facts: RunFacts): Ending {
@@ -116,7 +96,7 @@ export function endingOf(outcome: PoolOutcome, facts: RunFacts): Ending {
     return finishedWith(outcome, facts);
   }
   if (outcome.ran === 'raised') {
-    return raisedWith(outcome.issue.detail, outcome.issue.span, facts);
+    return unworkable(`The program raised an error${placeOf(facts.document, outcome.issue)}: ${outcome.issue.detail}`);
   }
   if (outcome.ran === 'exhausted') {
     return exhaustedWith(outcome, facts);

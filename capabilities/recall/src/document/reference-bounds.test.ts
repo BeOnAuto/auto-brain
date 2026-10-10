@@ -1,9 +1,8 @@
 import { readFileSync } from 'node:fs';
 
-import { mostSyntaxDepth } from '@beonauto/workflow-engine/dsl';
 import { describe, expect, it } from 'vitest';
 
-import { recallBounds } from '../run/recall-bounds.ts';
+import { mebibytes, recallBounds } from '../run/recall-bounds.ts';
 
 const page = readFileSync(new URL('../../../../docs/reference/recall-format.md', import.meta.url), 'utf8');
 
@@ -22,8 +21,8 @@ describe('the bounds on the public reference page of recall functions', () => {
   it('are the bounds the code holds a view, a fold and a run to', () => {
     expect([
       valueOf('Filters'),
-      valueOf('Nesting of the fold or answer'),
       valueOf('Work of one fold'),
+      valueOf('Memory of one fold'),
       valueOf('Duration of one fold'),
       valueOf('View'),
       valueOf('Depth of a value'),
@@ -36,15 +35,15 @@ describe('the bounds on the public reference page of recall functions', () => {
       valueOf('Brains followed at once'),
     ]).toEqual([
       expect.stringContaining(String(recallBounds.mostFilters)),
-      expect.stringContaining(`${mostSyntaxDepth} levels`),
-      expect.stringContaining(`${counted.format(recallBounds.mostWork)} units`),
+      expect.stringContaining(`${counted.format(recallBounds.budget)} checkpoints`),
+      expect.stringContaining(`${recallBounds.foldMemoryBytes / mebibytes} MiB`),
       expect.stringContaining(`${recallBounds.foldDeadlineMs / 1000} seconds`),
       expect.stringContaining(`${recallBounds.mostViewBytes / 1024} KiB`),
+      expect.stringContaining(`${recallBounds.mostValueDepth} levels`),
+      expect.stringContaining(`${counted.format(recallBounds.budget)} checkpoints`),
       expect.stringContaining(
-        `${recallBounds.mostValueDepth} levels; recursion ${counted.format(recallBounds.mostEvaluationDepth)} levels`,
+        `${recallBounds.deadlineMs / 1000} seconds and ${recallBounds.answerMemoryBytes / mebibytes} MiB`,
       ),
-      expect.stringContaining(`${counted.format(recallBounds.mostWork)} units`),
-      expect.stringContaining(`${recallBounds.deadlineMs / 1000} seconds and ${recallBounds.heapMegabytes} MiB`),
       expect.stringContaining(String(recallBounds.mostFunctions)),
       expect.stringContaining(`${recallBounds.rebuildsAtOnce} a brain`),
       expect.stringContaining(`${recallBounds.pageBudgetMs / 1000} seconds`),

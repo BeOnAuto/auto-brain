@@ -3,10 +3,9 @@ import { Worker, type WorkerOptions } from 'node:worker_threads';
 import { Option, Schema } from 'effect';
 
 import { crashed, stopped, type Ending, type Interrupted } from '../jobs/job-endings.ts';
-import { JobAnswerSchema } from '../jobs/job-envelopes.ts';
+import { JobAnswerSchema, ReadySchema } from '../jobs/job-envelopes.ts';
 import type { PoolSettings } from '../jobs/pool-contract.ts';
-import { fieldOf, textOf } from '../programs/program-tree.ts';
-import type { Job, Running } from './pool-job.ts';
+import type { Job, Running } from '../jobs/pool-job.ts';
 
 export const workerStackMegabytes = 64;
 
@@ -39,7 +38,7 @@ interface ThreadEvents {
 interface ThreadState {
   jobs: number;
   events?: ThreadEvents;
-  resting?: ReturnType<typeof setTimeout>;
+  resting: ReturnType<typeof setTimeout> | undefined;
   ended?: Promise<number>;
 }
 
@@ -49,16 +48,27 @@ interface Watch<Answer> {
   readonly done: () => void;
 }
 
+type Start = 'ready' | 'gone' | Interrupted;
+
+interface Serving {
+  readonly loaded: Promise<boolean>;
+  readonly served: <Answer>(job: number, work: Job<Answer>, running: Running) => Promise<Served<Answer>>;
+  readonly closing: () => boolean;
+}
+
 const decodeJobAnswer = Schema.decodeUnknownOption(JobAnswerSchema);
+
+const isReady = Schema.is(ReadySchema);
 
 const outOfMemory = 'ERR_WORKER_OUT_OF_MEMORY';
 
 const notAnAnswer = 'The worker answered with something that is not an answer';
 
 function failedWith(error: unknown): Interrupted {
-  return fieldOf(error, 'code') === outOfMemory
+  const failure = new Object(error);
+  return Reflect.get(failure, 'code') === outOfMemory
     ? stopped('memory')
-    : crashed(`The worker failed: ${textOf(error, 'message')}`);
+    : crashed(`The worker failed: ${String(Reflect.get(failure, 'message'))}`);
 }
 
 function answerIn<Answer>(message: unknown, job: number, { decode }: Job<Answer>): Served<Answer> {
@@ -107,6 +117,54 @@ function watchOf<Answer>(job: number, work: Job<Answer>, running: Running, closi
   };
 }
 
+async function startWithin(loaded: Promise<boolean>, running: Running): Promise<Start> {
+  const { promise, resolve } = Promise.withResolvers<Start>();
+  const timer = setTimeout(() => {
+    resolve(stopped('busy'));
+  }, running.until - performance.now());
+  const cancel = (): void => {
+    resolve(stopped('cancelled'));
+  };
+  running.signal?.addEventListener('abort', cancel, { once: true });
+  void loaded.then((ready) => {
+    resolve(ready ? 'ready' : 'gone');
+    return ready;
+  });
+  const start = await promise;
+  clearTimeout(timer);
+  running.signal?.removeEventListener('abort', cancel);
+  return start;
+}
+
+function goneBeforeReady<Answer>(closing: boolean): Served<Answer> {
+  return { ending: closing ? stopped('closing') : crashed('The worker ended before it was ready'), keep: false };
+}
+
+async function servedOnceReady<Answer>(serving: Serving, job: number, work: Job<Answer>, running: Running) {
+  if (running.afterReady === undefined) {
+    return serving.served(job, work, running);
+  }
+  const start = await startWithin(serving.loaded, running);
+  if (start === 'ready') {
+    return serving.served(job, work, { until: performance.now() + running.afterReady, signal: running.signal });
+  }
+  return start === 'gone' ? goneBeforeReady<Answer>(serving.closing()) : { ending: start, keep: true };
+}
+
+function restingFor(idleMs: number, tired: () => void): ReturnType<typeof setTimeout> | undefined {
+  return Number.isFinite(idleMs) ? setTimeout(tired, idleMs).unref() : undefined;
+}
+
+function readyOr(ready: (loaded: boolean) => void, answered: (message: unknown) => void): (message: unknown) => void {
+  return (message) => {
+    if (isReady(message)) {
+      ready(true);
+    } else {
+      answered(message);
+    }
+  };
+}
+
 function routed(current: () => ThreadEvents | undefined, troubled: () => void): ThreadEvents {
   return {
     answered: (message) => {
@@ -131,7 +189,7 @@ function routed(current: () => ThreadEvents | undefined, troubled: () => void): 
   };
 }
 
-function workerOptions(settings: PoolSettings): WorkerOptions {
+export function workerOptions(settings: PoolSettings): WorkerOptions {
   return {
     resourceLimits: { maxOldGenerationSizeMb: settings.heapMegabytes, stackSizeMb: workerStackMegabytes },
     env: { ...settings.environment },
@@ -141,24 +199,26 @@ function workerOptions(settings: PoolSettings): WorkerOptions {
 
 export function threadOf(module: string, settings: PoolSettings, hooks: ThreadHooks): Thread {
   const worker = new Worker(new URL(module), workerOptions(settings));
-  const state: ThreadState = { jobs: 0 };
+  const state: ThreadState = { jobs: 0, resting: undefined };
+  const loading = Promise.withResolvers<boolean>();
+  const served = async <Answer>(job: number, work: Job<Answer>, running: Running): Promise<Served<Answer>> => {
+    state.jobs += 1;
+    const watch = watchOf(job, work, running, hooks.closing);
+    state.events = watch.events;
+    worker.postMessage(work.envelope(job), []);
+    const answer = await watch.served;
+    watch.done();
+    delete state.events;
+    return answer;
+  };
+  const serving: Serving = { loaded: loading.promise, served, closing: hooks.closing };
   const thread: Thread = {
     module,
     jobs: () => state.jobs,
-    serve: async (job, work, running) => {
-      state.jobs += 1;
-      const watch = watchOf(job, work, running, hooks.closing);
-      state.events = watch.events;
-      worker.postMessage(work.envelope(job), []);
-      const served = await watch.served;
-      watch.done();
-      delete state.events;
-      return served;
-    },
+    serve: (job, work, running) => servedOnceReady(serving, job, work, running),
     rest: (idleMs, tired) => {
       worker.unref();
-      state.resting = setTimeout(tired, idleMs);
-      state.resting.unref();
+      state.resting = restingFor(idleMs, tired);
     },
     wake: () => {
       clearTimeout(state.resting);
@@ -177,9 +237,10 @@ export function threadOf(module: string, settings: PoolSettings, hooks: ThreadHo
     },
   );
   worker
-    .on('message', route.answered)
+    .on('message', readyOr(loading.resolve, route.answered))
     .on('error', route.failed)
     .on('exit', (code: number) => {
+      loading.resolve(false);
       hooks.gone(thread);
       route.exited(code);
     });

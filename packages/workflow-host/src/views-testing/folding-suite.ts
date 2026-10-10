@@ -7,6 +7,7 @@ import {
   collecting,
   counting,
   detailsOf,
+  foldOf,
   foldedAll,
   foldingOf,
   liveFromSomewhere,
@@ -67,7 +68,7 @@ function reviewsTests(settingsOf: SettingsOf): void {
 function checkpointTests(settingsOf: SettingsOf): void {
   it('moves its checkpoint to the last record examined, though no record matched its filters', async () => {
     const views = await viewHarness(await settingsOf());
-    await views.saved('quiet', detailsOf('. + 1', [{ type: 'com.acme.never' }], { initial: 0 }));
+    await views.saved('quiet', detailsOf(foldOf('return view + 1;'), [{ type: 'com.acme.never' }], { initial: 0 }));
     await views.ran('reasoning/other', 'nothing to fold');
     views.start();
 
@@ -111,7 +112,7 @@ function sourceTests(settingsOf: SettingsOf): void {
       { type: 'run_succeeded', subject: 'recall/self' },
       { type: 'run_succeeded', subject: 'recall/other' },
     ];
-    await views.saved('self', detailsOf('. + 1', runs, { initial: 0 }));
+    await views.saved('self', detailsOf(foldOf('return view + 1;'), runs, { initial: 0 }));
     await views.ran('recall/self', 'its own answer');
     await views.ran('recall/other', 'an answer of another');
     await views.ran('recall/self', 'its own answer again');
@@ -124,8 +125,9 @@ function sourceTests(settingsOf: SettingsOf): void {
 
   it('folds the events published to the brain as their publishers gave them, matched by type, source and data', async () => {
     const views = await viewHarness(await settingsOf());
-    const filters = [{ type: 'com.acme.ledger.month-closed', source: '/ledger/eu', data: '${ .revenue > 100 }' }];
-    await views.saved('months', detailsOf('. + [$event | {id, subject, time}]', filters, { initial: [] }));
+    const filters = [{ type: 'com.acme.ledger.month-closed', source: '/ledger/eu', data: '${ $data.revenue > 100 }' }];
+    const fold = foldOf('return [...view, { id: event.id, subject: event.subject, time: event.time }];');
+    await views.saved('months', detailsOf(fold, filters, { initial: [] }));
     await views.published(month('m-08', { revenue: 120 }));
     await views.published(month('m-09', { revenue: 90 }));
     await views.published(month('m-10', { revenue: 130 }, '/ledger/us'));
@@ -145,7 +147,9 @@ function sourceTests(settingsOf: SettingsOf): void {
 function recordTests(settingsOf: SettingsOf): void {
   it('gives a fact its message id, its cause and its run', async () => {
     const views = await viewHarness(await settingsOf());
-    const fold = '. + [$event | {id, causationid, correlationid}]';
+    const fold = foldOf(
+      'return [...view, { id: event.id, causationid: event.causationid ?? null, correlationid: event.correlationid ?? null }];',
+    );
     await views.saved('ids', detailsOf(fold, [{ type: 'run_succeeded' }], { initial: [] }));
     const run = await views.ran('reasoning/ids', 'answered');
     views.start();
@@ -155,12 +159,16 @@ function recordTests(settingsOf: SettingsOf): void {
     expect(kept.view).toEqual([{ id: anyText, causationid: null, correlationid: null }]);
     expect(kept.lastEvent?.id).not.toContain(run);
   });
+}
 
-  it('passes over a record it cannot read and an event nested deeper than a fold may read, reporting each, and folds the rest', async () => {
+function passedOverTests(settingsOf: SettingsOf): void {
+  it('passes over a record it cannot read, an event nested deeper than a fold may read and one at a leap second, which gives a fold no moment, reporting each, and folds the rest', async () => {
     const views = await viewHarness(await settingsOf());
     await views.saved(
       'count',
-      detailsOf('. + 1', [{ type: 'run_succeeded' }, { type: 'com.acme.deep' }], { initial: 0 }),
+      detailsOf(foldOf('return view + 1;'), [{ type: 'run_succeeded' }, { type: 'com.acme.deep' }], {
+        initial: 0,
+      }),
     );
     await views.ran('reasoning/count', 'one');
     await views.append('brain/acme/alpha/runs/broken', [{ type: 'run_succeeded', data: { type: 'run_succeeded' } }]);
@@ -173,14 +181,23 @@ function recordTests(settingsOf: SettingsOf): void {
       time: '2026-10-01T09:00:00Z',
       data: deep,
     });
+    await views.published({
+      specversion: '1.0',
+      id: 'leap',
+      source: '/acme',
+      type: 'com.acme.deep',
+      time: '2016-12-31T23:59:60Z',
+      data: 1,
+    });
     await views.ran('reasoning/count', 'two');
     views.start();
 
     const kept = await views.until('count', foldedAll(2));
-    await views.until('count', () => views.reports.notes().length >= 2);
+    await views.until('count', () => views.reports.notes().length >= 3);
 
     expect(kept.view).toBe(2);
     expect(views.reports.notes()).toEqual([
+      { kind: 'record_passed_over', brain: 'brain/acme/alpha/', record: anyText, reason: 'unreadable' },
       { kind: 'record_passed_over', brain: 'brain/acme/alpha/', record: anyText, reason: 'unreadable' },
       { kind: 'record_passed_over', brain: 'brain/acme/alpha/', record: anyText, reason: 'unreadable' },
     ]);
@@ -193,5 +210,6 @@ export function foldingSuite(settingsOf: SettingsOf): void {
     checkpointTests(settingsOf);
     sourceTests(settingsOf);
     recordTests(settingsOf);
+    passedOverTests(settingsOf);
   });
 }

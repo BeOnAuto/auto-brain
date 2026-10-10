@@ -103,6 +103,7 @@ describe.skipIf(server === '')('a listener kept while the gate passes its run ea
           armedBy: 2,
           filters: '[]',
           workflow: 'wait',
+          version: 1,
           passed: false,
         }),
       );

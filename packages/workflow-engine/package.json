@@ -20,8 +20,9 @@
   "dependencies": {
     "@beonauto/ledger": "workspace:*",
     "@beonauto/operations": "workspace:*",
-    "@gabrielbryk/jq-ts": "1.7.0",
-    "effect": "catalog:"
+    "@jitl/quickjs-wasmfile-release-sync": "0.32.0",
+    "effect": "catalog:",
+    "quickjs-emscripten-core": "0.32.0"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "catalog:",

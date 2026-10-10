@@ -6,7 +6,7 @@ import {
   withMcpSession,
   type McpSession,
 } from '@beonauto/api/testing';
-import { campaignReviews, recallDocument } from '@beonauto/recall/testing';
+import { campaignReviews, foldOf, recallDocument } from '@beonauto/recall/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { ReasoningServer } from '../testing/servers/reasoning-server.ts';
@@ -26,8 +26,8 @@ async function onAlpha<T>(server: ReasoningServer, use: (session: McpSession) =>
 }
 
 const counting = recallDocument(
-  '. + 1',
-  'language: jq\nsource:\n  events:\n    - type: run_succeeded\nview:\n  initial: 0',
+  foldOf('return view + 1;'),
+  'language: typescript\nsource:\n  events:\n    - type: run_succeeded\nview:\n  initial: 0',
 );
 
 function liveOverMcp(session: McpSession, folded: number, name = 'reviews'): Promise<unknown> {
@@ -79,7 +79,9 @@ describe('a recall function over MCP, on the endpoint of its brain', { timeout: 
     expect(plainTextIn(recalled)).toMatch(/^Ran the recall function “reviews”\. Its result: /u);
     expect(plainTextIn(count)).toBe('Ran the recall function “count”. Its result: 1.');
     expect(internalTermsIn(plainTextIn(count))).toEqual([]);
-    expect(run.structuredContent).toMatchObject({ record: { language: 'jq', view: { version: 1, folded: 1 } } });
+    expect(run.structuredContent).toMatchObject({
+      record: { language: 'typescript', view: { version: 1, folded: 1 } },
+    });
   });
 });
 

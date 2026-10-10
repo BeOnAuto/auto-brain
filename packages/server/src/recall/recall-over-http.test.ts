@@ -75,7 +75,7 @@ describe('a recall function over HTTP', { timeout: recallTestTimeoutMs }, () => 
     expect(read.body).toMatchObject({
       type: 'recall',
       name: 'reviews',
-      record: { language: 'jq', view: { version: 1, folded: 1, checkpoint: anyText } },
+      record: { language: 'typescript', view: { version: 1, folded: 1, checkpoint: anyText } },
     });
     expect(events.map(({ type }) => type)).toEqual(['run_started', 'run_succeeded']);
     expect(events.every(({ data }) => JSON.stringify(data).length <= 4096)).toBe(true);
