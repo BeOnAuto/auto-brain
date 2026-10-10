@@ -6,6 +6,8 @@ import { workerStackBytes } from '../programs/sandbox-bounds.ts';
 
 const smallMemoryBytes = 16_777_216;
 
+const fillingTestTimeoutMs = 30_000;
+
 const memoryBomb =
   'export function fold() {\n  const kept = [];\n  for (;;) kept.push("y".repeat(1048576) + kept.length);\n}';
 
@@ -88,6 +90,7 @@ const stallingFolds: readonly (readonly [string, string, Json, Readonly<Record<s
 describe('a view that stalls in a page of folds', () => {
   it.each(stallingFolds)(
     'stalls at the event when its fold %s, never folding another',
+    { timeout: fillingTestTimeoutMs },
     async (_ending, fold, view, stall) => {
       const page = await folded(pageOf([viewOf(fold, { view }), viewOf(adding, { view: 0 })]));
 
@@ -98,7 +101,7 @@ describe('a view that stalls in a page of folds', () => {
 
   it(
     'stalls a view whose initial value does not fit its sandbox, or whose context does not freeze in time',
-    { timeout: 30_000 },
+    { timeout: fillingTestTimeoutMs },
     async () => {
       const page = await folded(
         pageOf([viewOf(adding, { view: 'x'.repeat(20_000_000) })], { memoryBytes: smallMemoryBytes }),

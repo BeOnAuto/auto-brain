@@ -252,7 +252,7 @@ Measured once more later the same day on the machine at rest, at a load average 
 
 At rest no page ended at its 2 seconds, and kept workers built the view 4.1 seconds sooner on SQLite and 4.8 seconds sooner on PostgreSQL, more than its 101 pages times the start of a fold worker of the code before measured alone at rest, 31.1 and 30.8 ms, about 3.1 seconds: the bound of decision 0014 is met on both stores at rest, in one build each. A page itself, in the engine's measurement at rest, cost 4.7 ms beyond its folds at the median of six runs, within the decision's bound of at most 10 ms beyond its folds, measured at rest (see [the engine](../workflow-engine/README.md#the-workers-of-the-pool-measured)).
 
-The figures above were measured with folds written in jq. With folds in TypeScript, each view of a page in a fresh QuickJS instance and the view written out, checked and handed back as JSON after every fold ([decision record 0022](../../docs/decisions/0022-typescript-is-the-language.md)), the same rebuild of 100,000 matching events in pages of up to 1,000 records, workers kept between pages, measured on 2026-10-10 on the same machine and stores at a load average of about 3 (`measure/rebuild.ts`, `measure/idle-views.ts`):
+The figures above were measured before folds ran in the sandbox of [decision record 0022](../../docs/decisions/0022-typescript-is-the-language.md). With folds in TypeScript, each view of a page in a fresh QuickJS instance and the view written out, checked and handed back as JSON after every fold, the same rebuild of 100,000 matching events in pages of up to 1,000 records, workers kept between pages, measured on 2026-10-10 on the same machine and stores at a load average of about 3 (`measure/rebuild.ts`, `measure/idle-views.ts`):
 
 | What                                                | SQLite                 | PostgreSQL             |
 | --------------------------------------------------- | ---------------------- | ---------------------- |
@@ -260,7 +260,7 @@ The figures above were measured with folds written in jq. With folds in TypeScri
 | pages read and writes of the view's row             | 101 and 100            | 101 and 100            |
 | 32 idle views of 523,891 bytes, the event loop busy | 7.0 ms a second        | 8.7 ms a second        |
 
-A rebuild costs about 12 and 16 seconds more than with jq's folds at rest, the price of writing the view out after each fold, which the recall reference measures.
+A rebuild costs about 12 and 16 seconds more than the figures at rest above, the price of writing the view out after each fold, which the recall reference measures.
 
 One run's inputs are taken one at a time, each a few round trips to the database: on PostgreSQL that bounds one run to about 180 inputs a second, while runs side by side share the database's time. The spike's timers fired 3.7 ms late at p99 when idle (`spikes/node/results/timers-precision.json`); the host's, armed by the runs it decides, fired 2 to 5 ms late at p99 on SQLite and 5 ms on PostgreSQL in the three measurements here, and 9 ms on PostgreSQL in a reviewer's measurement, so allow for up to 10 ms at p99.
 

@@ -6,6 +6,7 @@ import { folded, pageOf, viewOf } from '../pool-testing/fold-pages.ts';
 interface Folding {
   readonly view: Json;
   readonly work: number;
+  readonly works: readonly number[];
   readonly stalledAt?: number;
 }
 
@@ -37,37 +38,65 @@ const swelling = [
   '}',
 ].join('\n');
 
-const before: Folding = { view: { folds: 0, spent: 0 }, work: 0 };
+const before: Folding = { view: { folds: 0, spent: 0 }, work: 0, works: [] };
 
-async function foldedInPages(fold: string, size: number, from: Folding = before, start = 0): Promise<Folding> {
-  if (start >= threeThousand.length) {
+interface Paging {
+  readonly fold: string;
+  readonly size: number;
+  readonly count: number;
+}
+
+function pagesOf(fold: string, size: number, count = 3000): Paging {
+  return { fold, size, count };
+}
+
+async function pageFolded(fold: string, view: Json, events: readonly JsonObject[]) {
+  const page = await folded(pageOf([viewOf(fold, { view, events: events.map((_, index) => index) })], { events }));
+  return page.views[0];
+}
+
+async function foldedInPages(paging: Paging, from = before, start = 0): Promise<Folding> {
+  if (start >= paging.count) {
     return from;
   }
-  const events = threeThousand.slice(start, start + size);
-  const page = await folded(
-    pageOf([viewOf(fold, { view: from.view, events: events.map((_, index) => index) })], { events }),
-  );
-  const [result] = page.views;
-  const work = from.work + (result?.work ?? 0);
+  const events = threeThousand.slice(start, Math.min(start + paging.size, paging.count));
+  const result = await pageFolded(paging.fold, from.view, events);
+  const pageWork = result?.work ?? 0;
+  const spent = { work: from.work + pageWork, works: [...from.works, pageWork] };
   return result?.stall === undefined
-    ? foldedInPages(fold, size, { view: result?.view ?? null, work }, start + size)
-    : { view: result.view, work, stalledAt: start + result.stall.at };
+    ? foldedInPages(paging, { view: result?.view ?? null, ...spent }, start + paging.size)
+    : { view: result.view, ...spent, stalledAt: start + result.stall.at };
+}
+
+function sumsOf(works: readonly number[], size: number): readonly number[] {
+  return Array.from({ length: Math.ceil(works.length / size) }, (_, page) =>
+    works.slice(page * size, page * size + size).reduce((sum, work) => sum + work, 0),
+  );
 }
 
 describe('the folds of one view over 3,000 events', { timeout: sizesTestTimeoutMs }, () => {
   it('give the same view and spend the same checkpoints in pages of 7 as in pages of 1,000', async () => {
-    const [seven, thousand] = [await foldedInPages(working, 7), await foldedInPages(working, 1000)];
+    const [seven, thousand] = [await foldedInPages(pagesOf(working, 7)), await foldedInPages(pagesOf(working, 1000))];
 
     expect(thousand.work).toBeGreaterThan(3000);
-    expect(seven).toEqual(thousand);
+    expect([seven.view, seven.work]).toEqual([thousand.view, thousand.work]);
     expect(thousand.view).toMatchObject({ folds: 3000 });
+  });
+
+  it('spend in each page of 7 and of 1,000 what its folds spend in pages of one event each, more than nothing for every fold', async () => {
+    const eachFold = (await foldedInPages(pagesOf(working, 1, 1000))).works;
+    const sevens = (await foldedInPages(pagesOf(working, 7, 1000))).works;
+    const thousand = (await foldedInPages(pagesOf(working, 1000, 1000))).works;
+
+    expect(Math.min(...eachFold)).toBeGreaterThan(0);
+    expect([sevens, thousand]).toEqual([sumsOf(eachFold, 7), sumsOf(eachFold, 1000)]);
   });
 
   it('stall at the event whose view outgrew its bound, at every size of page, though the next fold would shrink it back', async () => {
     const stalls = [
-      await foldedInPages(swelling, 7),
-      await foldedInPages(swelling, 1000),
-      await foldedInPages(swelling, 3000),
+      await foldedInPages(pagesOf(swelling, 7)),
+      await foldedInPages(pagesOf(swelling, 1000)),
+      await foldedInPages(pagesOf(swelling, 3000)),
     ].map(({ view, stalledAt }) => ({ view, stalledAt }));
 
     expect(stalls).toEqual([1, 2, 3].map(() => ({ view: { folds: 1500 }, stalledAt: 1500 })));
