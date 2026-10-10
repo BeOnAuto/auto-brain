@@ -206,6 +206,7 @@ describe('the engine core', () => {
     expect(portableSources.length).toBeGreaterThan(20);
     expect(findingsIn(portableSources, hostOnly)).toEqual([]);
     expect(findingsIn(sourcesUnder('program-pool'), hostOnly).toSorted()).toEqual([
+      'program-pool/evaluation-thread.ts: a host timer',
       'program-pool/pool-slots.ts: a host timer',
       'program-pool/pool-threads.ts: a host timer',
     ]);

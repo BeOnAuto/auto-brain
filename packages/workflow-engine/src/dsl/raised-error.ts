@@ -52,6 +52,17 @@ export function caughtRaise<A>(attempt: () => A, onRaise: (error: DslError) => A
   }
 }
 
+export async function caughtRaiseLater<A>(attempt: () => Promise<A>, onRaise: (error: DslError) => A): Promise<A> {
+  try {
+    return await attempt();
+  } catch (error) {
+    if (!(error instanceof RaisedError)) {
+      throw error;
+    }
+    return onRaise(error.error);
+  }
+}
+
 const standardErrorTypes = 'https://open-workflow-specification.org/spec/1.0.0/errors/';
 
 export function errorType(kind: ErrorKind): string {

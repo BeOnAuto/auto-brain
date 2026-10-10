@@ -41,6 +41,8 @@ export interface Place {
 
 export const mostInputMs = 2000;
 
+export const mostFilterMs = 200;
+
 export function evaluate(source: string, data: Json, variables: Variables, place: Place): Json {
   const mostWork = place.meter.allowance();
   return answeredOrRaised(
@@ -89,7 +91,7 @@ const inputBounds: Readonly<Record<Bound, string>> = {
 const filterBoundOf: Readonly<Record<Bound, string>> = {
   work: `an expression of a filter may do ${mostExpressionWork} checkpoints of work, and those of one filter ${mostWorkPerInput} together`,
   memory: 'one filter may use the memory of its sandbox and no more',
-  deadline: `one filter may take ${mostInputMs} ms`,
+  deadline: `one filter may take ${mostFilterMs} ms`,
 };
 
 function inputBoundOf(limit: Bound, mostWork: number): string {

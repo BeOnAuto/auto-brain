@@ -18,7 +18,7 @@ export interface LiteralFilter {
 
 export type LiteralFilterReading = { readonly filter: LiteralFilter } | { readonly rejections: readonly Rejection[] };
 
-export type FilterVerdict = boolean | { readonly error: DslError };
+export type FilterVerdict = boolean | { readonly error: DslError; readonly stopped: boolean };
 
 const filterKeys: ReadonlySet<string> = new Set(['with', 'correlate']);
 

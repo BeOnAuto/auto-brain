@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { callErrorOf, errorAsJson, errorType, reasonOfStatus, settlementOf } from './raised-error.ts';
+import {
+  callErrorOf,
+  caughtRaiseLater,
+  errorAsJson,
+  errorType,
+  raised,
+  reasonOfStatus,
+  settlementOf,
+} from './raised-error.ts';
 
 describe('the rejection of an uncaught error', () => {
   it.each([400, 401, 403, 404, 409, 422, 499])('is invalid_input for the client error %d, a final result', (status) => {
@@ -251,5 +259,27 @@ describe('the settlement of a workflow whose output or run broke', () => {
     );
 
     expect(settlementOf({ kind: 'raised', error: conflict })).toMatchObject({ reason: 'invalid_input' });
+  });
+});
+
+describe('a raise caught after an attempt that answers later', () => {
+  it('answers what the catch makes of the error the attempt raised', async () => {
+    const answer = await caughtRaiseLater(
+      () => Promise.reject(raised('runtime', 500, 'Too slow', '/churn')),
+      (error) => error.instance,
+    );
+
+    expect(answer).toBe('/churn');
+  });
+
+  it('passes on a failure that is not a raise, unchanged', async () => {
+    const failure = new TypeError('not a raise');
+
+    await expect(
+      caughtRaiseLater(
+        () => Promise.reject(failure),
+        (error) => error.instance,
+      ),
+    ).rejects.toBe(failure);
   });
 });

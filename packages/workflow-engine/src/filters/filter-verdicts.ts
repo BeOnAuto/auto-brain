@@ -1,14 +1,21 @@
-import { mostInputMs, testedOrRaised } from '../dsl/evaluation.ts';
-import type { JsonObject } from '../dsl/json.ts';
-import { caughtRaise } from '../dsl/raised-error.ts';
-import type { FilterContext, FilterTest } from '../programs/kept-contexts.ts';
-import type { Evaluation } from '../programs/program-run.ts';
+import { mostFilterMs, mostInputMs, testedOrRaised } from '../dsl/evaluation.ts';
+import type { Json, JsonObject } from '../dsl/json.ts';
+import { caughtRaiseLater } from '../dsl/raised-error.ts';
+import type { Evaluation, ProgramFailure, ProgramRun } from '../programs/program-run.ts';
 import { meterOf, type Meter } from '../runner/run-tables.ts';
-import { attributeHolds, filterAttributesOf, type FilterAttribute, type Verdict } from './attribute-match.ts';
+import { attributeHoldsLater, filterAttributesOf, type FilterAttribute } from './attribute-match.ts';
 import type { FilterVerdict, LiteralFilter } from './event-filter.ts';
 
+type AskedTest = (value: string, evaluation: Evaluation) => Promise<ProgramRun>;
+
+export interface FilterSession {
+  readonly define: (source: string) => AskedTest;
+  readonly freeze: () => Promise<ProgramFailure | undefined>;
+  readonly close: () => void;
+}
+
 export interface FilterSandbox {
-  readonly context: (opening: () => Evaluation) => Promise<FilterContext>;
+  readonly session: (opening: () => Evaluation) => Promise<FilterSession>;
   readonly clock: () => number;
 }
 
@@ -16,7 +23,7 @@ export type MatchedFilter = Pick<LiteralFilter, 'reference' | 'attributes'>;
 
 interface PreparedFilter {
   readonly reference: string;
-  readonly attributes: readonly FilterAttribute<FilterTest>[];
+  readonly attributes: readonly FilterAttribute<AskedTest>[];
 }
 
 interface Testing {
@@ -27,13 +34,13 @@ interface Testing {
   readonly refused: () => void;
 }
 
-function preparedOf({ reference, attributes }: MatchedFilter, define: FilterContext['define']): PreparedFilter {
+function preparedOf({ reference, attributes }: MatchedFilter, define: FilterSession['define']): PreparedFilter {
   return { reference, attributes: filterAttributesOf(attributes, define) };
 }
 
-function verdictIn(testing: Testing): Verdict<FilterTest> {
-  return (test, actual, source) => {
-    const run = test(JSON.stringify(actual), {
+function verdictIn(testing: Testing): (test: AskedTest, actual: Json, source: string) => Promise<Json> {
+  return async (test, actual, source) => {
+    const run = await test(JSON.stringify(actual), {
       budget: testing.meter.allowance(),
       deadlineAt: testing.deadlineAt,
       moment: testing.now,
@@ -45,32 +52,58 @@ function verdictIn(testing: Testing): Verdict<FilterTest> {
   };
 }
 
-function filterVerdict(filter: PreparedFilter, event: JsonObject, testing: Testing): FilterVerdict {
-  return caughtRaise<FilterVerdict>(
-    () => filter.attributes.every((attribute) => attributeHolds(attribute, event, verdictIn(testing))),
-    (error) => ({ error }),
-  );
+async function attributesHold(
+  attributes: readonly FilterAttribute<AskedTest>[],
+  event: JsonObject,
+  testing: Testing,
+): Promise<boolean> {
+  const [attribute, ...rest] = attributes;
+  if (attribute === undefined) {
+    return true;
+  }
+  return (await attributeHoldsLater(attribute, event, verdictIn(testing))) && attributesHold(rest, event, testing);
 }
 
-function verdictsUntilRefused(
+async function verdictsUntilRefused(
   filters: readonly PreparedFilter[],
   event: JsonObject,
   sandbox: FilterSandbox,
   now: number,
-): readonly FilterVerdict[] {
-  const verdicts: FilterVerdict[] = [];
-  const state = { refused: false };
-  const refused = (): void => {
-    state.refused = true;
-  };
-  for (const filter of filters) {
-    const testing = { meter: meterOf(), reference: filter.reference, deadlineAt: sandbox.clock() + mostInputMs, now };
-    verdicts.push(filterVerdict(filter, event, { ...testing, refused }));
-    if (state.refused) {
-      break;
-    }
+): Promise<readonly FilterVerdict[]> {
+  const [filter, ...rest] = filters;
+  if (filter === undefined) {
+    return [];
   }
-  return verdicts;
+  const state = { refused: false };
+  const testing: Testing = {
+    meter: meterOf(),
+    reference: filter.reference,
+    deadlineAt: sandbox.clock() + mostFilterMs,
+    now,
+    refused: () => {
+      state.refused = true;
+    },
+  };
+  const verdict = await caughtRaiseLater<FilterVerdict>(
+    () => attributesHold(filter.attributes, event, testing),
+    (error) => ({ error, stopped: state.refused }),
+  );
+  return state.refused ? [verdict] : [verdict, ...(await verdictsUntilRefused(rest, event, sandbox, now))];
+}
+
+async function verdictsInSession(
+  session: FilterSession,
+  filters: readonly MatchedFilter[],
+  event: JsonObject,
+  { sandbox, now }: { readonly sandbox: FilterSandbox; readonly now: number },
+): Promise<readonly FilterVerdict[]> {
+  try {
+    const prepared = filters.map((filter) => preparedOf(filter, session.define));
+    await session.freeze();
+    return await verdictsUntilRefused(prepared, event, sandbox, now);
+  } finally {
+    session.close();
+  }
 }
 
 export async function filterVerdictsOf(
@@ -82,19 +115,11 @@ export async function filterVerdictsOf(
   if (filters.length === 0) {
     return [];
   }
-  const context = await sandbox.context(() => ({
+  const session = await sandbox.session(() => ({
     budget: Number.POSITIVE_INFINITY,
     deadlineAt: sandbox.clock() + mostInputMs,
     moment: now,
   }));
-  const verdicts = ((): readonly FilterVerdict[] => {
-    try {
-      const prepared = filters.map((filter) => preparedOf(filter, context.define));
-      context.freeze();
-      return verdictsUntilRefused(prepared, event, sandbox, now);
-    } finally {
-      context.close();
-    }
-  })();
+  const verdicts = await verdictsInSession(session, filters, event, { sandbox, now });
   return [...verdicts, ...(await filterVerdictsOf(filters.slice(verdicts.length), event, sandbox, now))];
 }

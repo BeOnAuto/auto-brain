@@ -1,8 +1,7 @@
 import { Effect } from 'effect';
 
-import type { FilterSandbox } from '../filters/filter-verdicts.ts';
+import type { FilterSandbox, FilterSession } from '../filters/filter-verdicts.ts';
 import { namedArguments, type ExpressionUnit } from '../programs/expression-units.ts';
-import type { FilterContext } from '../programs/kept-contexts.ts';
 import { exhaustedBy, type Evaluation, type ProgramFailure, type ProgramRun } from '../programs/program-run.ts';
 import type { MachineSandbox } from '../programs/reserved-instances.ts';
 import type { AnsweredRequest } from './evaluation-messages.ts';
@@ -13,6 +12,12 @@ export interface EvaluationCalls {
   readonly release: (unit: number) => void;
 }
 
+export interface EvaluationAsks {
+  readonly ready: () => Promise<void>;
+  readonly ask: (request: AnsweredRequest, waitMs: number) => Promise<ProgramRun>;
+  readonly release: (unit: number) => void;
+}
+
 export interface Evaluations {
   readonly machine: MachineSandbox;
   readonly filters: FilterSandbox;
@@ -20,6 +25,12 @@ export interface Evaluations {
 
 interface Remote {
   readonly calls: EvaluationCalls;
+  readonly clock: () => number;
+  readonly unit: number;
+}
+
+interface Asked {
+  readonly asks: EvaluationAsks;
   readonly clock: () => number;
   readonly unit: number;
 }
@@ -56,52 +67,52 @@ function remoteUnit({ calls, clock, unit }: Remote): ExpressionUnit {
   };
 }
 
-function remoteFilterContext({ calls, clock, unit }: Remote, opening: Evaluation): FilterContext {
+function remoteFilterSession({ asks, clock, unit }: Asked, opening: Evaluation): FilterSession {
   const sources: string[] = [];
-  const state: { prepared: ProgramRun | undefined } = { prepared: undefined };
-  const prepared = (): ProgramRun => {
+  const state: { prepared: Promise<ProgramRun> | undefined } = { prepared: undefined };
+  const prepared = (): Promise<ProgramRun> => {
     state.prepared ??=
       sources.length === 0
-        ? answeredNothing
-        : calls.call({ kind: 'prepare', unit, sources, evaluation: opening }, opening.deadlineAt - clock());
+        ? Promise.resolve(answeredNothing)
+        : asks.ask({ kind: 'prepare', unit, sources, evaluation: opening }, opening.deadlineAt - clock());
     return state.prepared;
   };
   return {
     define: (source) => {
       const test = sources.push(source) - 1;
-      return (value, evaluation) => {
-        const frozen = prepared();
+      return async (value, evaluation) => {
+        const frozen = await prepared();
         return frozen.ran === 'answered'
-          ? calls.call({ kind: 'test', unit, test, value, evaluation }, evaluation.deadlineAt - clock())
+          ? asks.ask({ kind: 'test', unit, test, value, evaluation }, evaluation.deadlineAt - clock())
           : frozen;
       };
     },
-    freeze: () => {
-      const frozen = prepared();
+    freeze: async () => {
+      const frozen = await prepared();
       return frozen.ran === 'answered' ? undefined : frozen;
     },
     close: () => {
-      calls.release(unit);
+      asks.release(unit);
     },
   };
 }
 
-export function remoteEvaluations(calls: EvaluationCalls, clock: () => number): Evaluations {
+export function remoteEvaluations(calls: EvaluationCalls, asks: EvaluationAsks, clock: () => number): Evaluations {
   const units = { last: 0 };
-  const next = (): Remote => {
+  const nextUnit = (): number => {
     units.last += 1;
-    return { calls, clock, unit: units.last };
+    return units.last;
   };
   return {
     machine: {
       reserve: Effect.promise(calls.ready),
-      unit: () => remoteUnit(next()),
+      unit: () => remoteUnit({ calls, clock, unit: nextUnit() }),
       clock,
     },
     filters: {
-      context: async (opening) => {
-        await calls.ready();
-        return remoteFilterContext(next(), opening());
+      session: async (opening) => {
+        await asks.ready();
+        return remoteFilterSession({ asks, clock, unit: nextUnit() }, opening());
       },
       clock,
     },

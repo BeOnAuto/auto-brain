@@ -1,20 +1,26 @@
 import { Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { mostFilterMs } from '../dsl/evaluation.ts';
 import { filterVerdictsOf } from '../filters/filter-verdicts.ts';
 import { machineSandboxOf } from '../instances/host-sandboxes.ts';
-import type { PoolSettings, ProgramPool } from '../jobs/pool-contract.ts';
 import { decidedOnce } from '../pool-testing/decided-once.ts';
 import { threadsAlive } from '../pool-testing/threads-alive.ts';
 import type { Evaluation, ProgramRun } from '../programs/program-run.ts';
 import { answerGraceMs } from './evaluation-thread.ts';
 import { programPool } from './program-pool.ts';
 
+type ProgramPool = ReturnType<typeof programPool>;
+
+type PoolSettings = Parameters<typeof programPool>[0];
+
 type Machine = ProgramPool['evaluations']['machine'];
 
 const evaluationTestTimeoutMs = 30_000;
 
 const severalTimesSlowerMs = 3000;
+
+const timerMs = 20;
 
 const pools: ProgramPool[] = [];
 
@@ -94,19 +100,47 @@ describe(
       expect(ms).toBeLessThan(2000 + answerGraceMs + severalTimesSlowerMs);
       expect(next.outcome).toEqual({ kind: 'completed', output: { sum: 2 } });
     });
+  },
+);
 
-    it('ends a trigger filter at its own deadline, within about 2.1 s, and matches the filters after it on a fresh worker', async () => {
-      const { machine, filters } = poolOf().evaluations;
-      await Effect.runPromise(machine.reserve);
+describe(
+  'the filter worker of a pool, given native work that no checkpoint interrupts',
+  { timeout: evaluationTestTimeoutMs },
+  () => {
+    it('ends a trigger filter at its own deadline of 200 ms, stopped, and matches the filter after it on a fresh worker', async () => {
+      const { filters } = poolOf().evaluations;
+      await filterVerdictsOf([plainFilter], closed, filters, now);
 
-      const { answer: alone, ms } = await timed(() => filterVerdictsOf([churningFilter], closed, filters, now));
-      const together = await filterVerdictsOf([churningFilter, plainFilter], closed, filters, now);
+      const { answer, ms } = await timed(() => filterVerdictsOf([churningFilter, plainFilter], closed, filters, now));
 
-      expect(alone).toMatchObject([{ error: { status: 500, instance: '/churn' } }]);
-      expect(JSON.stringify(alone)).toContain('The program ran past its deadline: one filter may take 2000 ms');
-      expect(ms).toBeGreaterThan(2000);
-      expect(ms).toBeLessThan(2000 + answerGraceMs + severalTimesSlowerMs);
-      expect(together).toMatchObject([{ error: { status: 500 } }, true]);
+      expect(answer).toMatchObject([{ error: { status: 500, instance: '/churn' }, stopped: true }, true]);
+      expect(JSON.stringify(answer)).toContain(
+        `The program ran past its deadline: one filter may take ${mostFilterMs} ms`,
+      );
+      expect(ms).toBeGreaterThan(mostFilterMs);
+      expect(ms).toBeLessThan(mostFilterMs + answerGraceMs + severalTimesSlowerMs);
+    });
+
+    it("leaves the main thread free while a plain filter and a churning one after it are matched, so the main thread's timer fires on schedule", async () => {
+      const { filters } = poolOf().evaluations;
+      await filterVerdictsOf([plainFilter], closed, filters, now);
+      const order: string[] = [];
+
+      const fired = new Promise<void>((resolve) => {
+        setTimeout(() => {
+          order.push('timer');
+          resolve();
+        }, timerMs);
+      });
+      const matched = filterVerdictsOf([plainFilter, churningFilter], closed, filters, now).then((verdicts) => {
+        order.push('verdicts');
+        return verdicts;
+      });
+      await Promise.all([fired, matched]);
+
+      expect(timerMs).toBeLessThan(mostFilterMs);
+      expect(order).toEqual(['timer', 'verdicts']);
+      expect(await matched).toMatchObject([true, { stopped: true }]);
     });
   },
 );
@@ -163,16 +197,20 @@ describe(
 );
 
 describe('the evaluation worker of a pool that cannot answer', { timeout: evaluationTestTimeoutMs }, () => {
-  it('starts no worker once the pool closed, and ends an evaluation at once at its deadline', async () => {
+  it('starts no worker once the pool closed, and ends an evaluation and a filter at once at their deadlines', async () => {
     const pool = poolOf();
     await pool.close();
     const before = threadsAlive();
 
     await Effect.runPromise(pool.evaluations.machine.reserve);
     const { answer, ms } = await timed(() => evaluatedIn(pool.evaluations.machine, '1 + 1'));
+    const { answer: verdicts, ms: filterMs } = await timed(() =>
+      filterVerdictsOf([plainFilter], closed, pool.evaluations.filters, now),
+    );
 
     expect(answer).toMatchObject({ ran: 'exhausted', limit: 'deadline', work: 0 });
-    expect(ms).toBeLessThan(severalTimesSlowerMs);
+    expect(verdicts).toMatchObject([{ error: { status: 500, instance: '/plain' }, stopped: true }]);
+    expect([ms, filterMs].every((elapsed) => elapsed < severalTimesSlowerMs)).toBe(true);
     expect(threadsAlive()).toBe(before);
   });
 

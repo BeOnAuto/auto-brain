@@ -5,7 +5,7 @@ import type { JsonObject } from '../dsl/json.ts';
 import { filterVerdictsOf } from '../filters/filter-verdicts.ts';
 import { exhaustedBy, type Evaluation, type ProgramRun } from '../programs/program-run.ts';
 import type { AnsweredRequest } from './evaluation-messages.ts';
-import { remoteEvaluations, type EvaluationCalls } from './remote-evaluations.ts';
+import { remoteEvaluations, type EvaluationAsks, type EvaluationCalls } from './remote-evaluations.ts';
 
 interface Asked {
   readonly request: AnsweredRequest;
@@ -14,6 +14,7 @@ interface Asked {
 
 interface FakeCalls {
   readonly calls: EvaluationCalls;
+  readonly asks: EvaluationAsks;
   readonly asked: readonly Asked[];
   readonly released: readonly number[];
   readonly clock: { at: number; readies: number };
@@ -60,6 +61,21 @@ function fakeCalls(answer: (request: AnsweredRequest) => ProgramRun, msPerCall =
         released.push(unit);
       },
     },
+    asks: {
+      ready: () => {
+        clock.readies += 1;
+        clock.at += 500;
+        return Promise.resolve();
+      },
+      ask: (request, waitMs) => {
+        asked.push({ request, waitMs });
+        clock.at += msPerCall;
+        return Promise.resolve(answer(request));
+      },
+      release: (unit) => {
+        released.push(unit);
+      },
+    },
     asked,
     released,
     clock,
@@ -73,7 +89,7 @@ function evaluationAt(deadlineAt: number): Evaluation {
 describe('the sandbox of a machine whose units another thread evaluates', () => {
   it('waits for the thread before an input, sends an expression with only the values it names, waits until its deadline and releases the unit', async () => {
     const fake = fakeCalls(() => answered('42'));
-    const { machine } = remoteEvaluations(fake.calls, () => fake.clock.at);
+    const { machine } = remoteEvaluations(fake.calls, fake.asks, () => fake.clock.at);
 
     await Effect.runPromise(machine.reserve);
     const [first, second] = [machine.unit(), machine.unit()];
@@ -111,7 +127,7 @@ describe('a unit of a machine whose expressions another thread evaluates', () =>
         answered('1'),
       ),
     );
-    const { machine } = remoteEvaluations(fake.calls, () => fake.clock.at);
+    const { machine } = remoteEvaluations(fake.calls, fake.asks, () => fake.clock.at);
     const [worked, filled, late] = [machine.unit(), machine.unit(), machine.unit()];
 
     const runs = [
@@ -136,9 +152,9 @@ describe('a unit of a machine whose expressions another thread evaluates', () =>
 });
 
 describe('the filters whose contexts another thread keeps', () => {
-  it('opens a context once the thread is ready, defines and freezes its sources in one call, and tests each filter under a deadline counted from its own start', async () => {
+  it('opens a context once the thread is ready, defines and freezes its sources in one call, and tests each filter under a deadline of its own, 200 ms from its start', async () => {
     const fake = fakeCalls(firstTestHolds, 1500);
-    const { filters } = remoteEvaluations(fake.calls, () => fake.clock.at);
+    const { filters } = remoteEvaluations(fake.calls, fake.asks, () => fake.clock.at);
 
     const verdicts = await filterVerdictsOf(
       [filterOf('/eu', '${ $data == "eu" }'), filterOf('/us', '${ $data == "us" }'), filterOf('/any', 'eu')],
@@ -150,8 +166,8 @@ describe('the filters whose contexts another thread keeps', () => {
     expect(verdicts).toEqual([true, false, true]);
     expect(fake.asked.map(({ request, waitMs }) => [request.kind, waitMs])).toEqual([
       ['prepare', 2000],
-      ['test', 2000],
-      ['test', 2000],
+      ['test', 200],
+      ['test', 200],
     ]);
     expect(fake.asked[0]?.request).toMatchObject({
       kind: 'prepare',
@@ -166,7 +182,7 @@ describe('the filters whose contexts another thread keeps', () => {
 describe('the filters of a group whose contexts another thread keeps', () => {
   it('asks the thread nothing for filters that name no expression', async () => {
     const fake = fakeCalls(() => answered('true'));
-    const { filters } = remoteEvaluations(fake.calls, () => fake.clock.at);
+    const { filters } = remoteEvaluations(fake.calls, fake.asks, () => fake.clock.at);
 
     const verdicts = await filterVerdictsOf([filterOf('/any', 'eu')], event, filters, now);
 
@@ -175,7 +191,7 @@ describe('the filters of a group whose contexts another thread keeps', () => {
 
   it('answers every test of a context whose sources did not freeze with that ending, and opens a fresh context for the filters after it', async () => {
     const fake = fakeCalls(scripted([exhaustedBy('deadline', 0), answered('null')], answered('true')));
-    const { filters } = remoteEvaluations(fake.calls, () => fake.clock.at);
+    const { filters } = remoteEvaluations(fake.calls, fake.asks, () => fake.clock.at);
 
     const verdicts = await filterVerdictsOf(
       [filterOf('/first', '${ true }'), filterOf('/second', '${ true }')],

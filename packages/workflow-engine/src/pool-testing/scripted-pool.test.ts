@@ -14,6 +14,13 @@ const evaluations = remoteEvaluations(
       asked.push(`release ${unit}`);
     },
   },
+  {
+    ready: () => Promise.resolve(),
+    ask: () => Promise.resolve({ ran: 'answered', text: 'null', work: 0 }),
+    release: (unit) => {
+      asked.push(`release ${unit}`);
+    },
+  },
   () => 0,
 );
 

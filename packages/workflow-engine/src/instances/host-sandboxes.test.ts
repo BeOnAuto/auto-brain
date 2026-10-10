@@ -32,16 +32,16 @@ describe('the sandboxes of a host', () => {
   it('opens a context on an instance of 64 MiB for each group of filters, read against the clock of the host by default', async () => {
     const sandbox = filterSandboxOf();
 
-    const context = await sandbox.context(() => evaluation);
-    const [fitting, overflowing] = [context.define(fits), context.define(overflows)];
-    context.freeze();
-    const runs = [fitting('null', evaluation), overflowing('null', evaluation)];
-    context.close();
+    const session = await sandbox.session(() => evaluation);
+    const [fitting, overflowing] = [session.define(fits), session.define(overflows)];
+    const frozen = await session.freeze();
+    const runs = [await fitting('null', evaluation), await overflowing('null', evaluation)];
+    session.close();
 
     expect(runs).toMatchObject([
       { ran: 'answered', text: String(16 * 1024 * 1024) },
       { ran: 'exhausted', limit: 'memory' },
     ]);
-    expect(sandbox.clock).toBe(hostClock);
+    expect([frozen, sandbox.clock]).toEqual([undefined, hostClock]);
   });
 });

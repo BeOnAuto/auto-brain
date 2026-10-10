@@ -16,12 +16,18 @@ export function machineSandboxOf(clock: () => number = hostClock): MachineSandbo
 export function filterSandboxOf(clock: () => number = hostClock): FilterSandbox {
   const instances = instanceStock();
   return {
-    context: async (opening) =>
-      filterContextOf(
-        await instances(unitMemoryBytes),
-        { stackBytes: threadStackBytes, mostAnswerBytes: unitMemoryBytes, clock },
-        opening(),
-      ),
+    session: async (opening) => {
+      const settings = { stackBytes: threadStackBytes, mostAnswerBytes: unitMemoryBytes, clock };
+      const context = filterContextOf(await instances(unitMemoryBytes), settings, opening());
+      return {
+        define: (source) => {
+          const test = context.define(source);
+          return (value, evaluation) => Promise.resolve(test(value, evaluation));
+        },
+        freeze: () => Promise.resolve(context.freeze()),
+        close: context.close,
+      };
+    },
     clock,
   };
 }
