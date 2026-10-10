@@ -28,8 +28,8 @@ describe('the listeners kept in memory', () => {
 
     const receipts = await Effect.runPromise(
       Effect.all([
-        listeners.arm(listener('/do/0/a'), run, { version: 3, lastStep: null }),
-        listeners.arm(listener('/do/0/b'), run, { version: 4, lastStep: null }),
+        listeners.arm(listener('/do/0/a'), run, { version: 3 }),
+        listeners.arm(listener('/do/0/b'), run, { version: 4 }),
       ]),
     );
 

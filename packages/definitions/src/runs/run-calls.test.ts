@@ -1,51 +1,48 @@
-import { Conflict } from '@beonauto/operations';
+import { Conflict, type Recorded } from '@beonauto/operations';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import type { CallAnsweredFact, CallStartedFact, RunCommand, ToolCallFact } from './run-commands.ts';
+import { recordedWith, runStateAfter, testRunId } from '../testing/run-facts.ts';
+import type { CallStartedFact, RunCommand, ToolCallFact } from './run-commands.ts';
 import { runDecider } from './run-decider.ts';
 import type { RunEvent } from './run-events.ts';
 import { lastCallOf, startedRunOf } from './run-state.ts';
 
-const start = { by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
+const start = { runId: testRunId, by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
 
-const finish = { by: 'acme-admin', at: '2026-10-01T09:00:05.000Z' };
+const ofGreet = { definitionType: 'echo', definitionName: 'greet', definitionVersion: 1 };
+
+const atTheStart = recordedWith({ ...start, ...ofGreet });
+
+const atTheFinish = recordedWith({ ...start, ...ofGreet, at: '2026-10-01T09:00:05.000Z' });
+
+const during = { runId: testRunId, by: 'acme-admin', at: '2026-10-01T09:00:02.000Z' };
+
+const meanwhile = recordedWith({ ...during, ...ofGreet });
 
 const greeting = { definition_type: 'echo', name: 'greet', input: { who: 'Ada', tags: ['a', 'b'] } };
 
-const started: RunEvent = { type: 'run_started', ...greeting, definition_version: 1, ...start };
+const started = atTheStart({ type: 'run_started', data: { input: greeting.input } });
 
-const ofGreet = { definition_type: 'echo', name: 'greet', definition_version: 1 };
+const succeeded = atTheFinish({ type: 'run_succeeded', data: { output: 'Hello Ada', record: {} } });
 
-const succeeded: RunEvent = {
-  type: 'run_succeeded',
-  output: 'Hello Ada',
-  record: {},
-  ...ofGreet,
-  ...finish,
-};
-
-const rejectedInput: RunEvent = {
+const rejectedInput = atTheFinish({
   type: 'run_rejected',
-  rejection: { reason: 'invalid_input', detail: 'No', issues: [] },
-  ...ofGreet,
-  ...finish,
-};
+  data: { rejection: { reason: 'invalid_input', detail: 'No', issues: [] } },
+});
 
-const unavailable: RunEvent = {
+const unavailable = atTheFinish({
   type: 'run_rejected',
-  rejection: { reason: 'unavailable', detail: 'The model is busy' },
-  ...ofGreet,
-  ...finish,
-};
+  data: { rejection: { reason: 'unavailable', detail: 'The model is busy' } },
+});
 
-const failed: RunEvent = { type: 'run_failed', ...ofGreet, ...finish };
+const failed = atTheFinish({ type: 'run_failed', data: {} });
 
-function stateAfter(...events: readonly RunEvent[]) {
-  return events.reduce((state, event) => runDecider.evolve(state, event), runDecider.initialState);
+function stateAfter(...events: readonly Recorded<RunEvent>[]) {
+  return runStateAfter(events);
 }
 
-function decided(command: RunCommand, ...history: readonly RunEvent[]) {
+function decided(command: RunCommand, ...history: readonly Recorded<RunEvent>[]) {
   return runDecider.decide(command, stateAfter(...history));
 }
 
@@ -53,36 +50,43 @@ function starting(): RunCommand {
   return { type: 'start', ...greeting, calls_tools: false, definition_version: 1, ...start };
 }
 
-const called: CallStartedFact = {
-  type: 'tool_call_started',
+const sent = {
   call_id: 'toolu_01',
   server: 'graph',
   tool: 'search',
   arguments_bytes: 17,
   arguments_sha256: 'a'.repeat(64),
+  content_kept: true,
 };
 
-const answered: CallAnsweredFact = {
+const called: CallStartedFact = { type: 'tool_call_started', data: sent };
+
+const answered: ToolCallFact = {
   type: 'tool_call_answered',
-  number: 1,
-  outcome: 'result',
-  result_bytes: 42,
-  result_sha256: 'b'.repeat(64),
-  duration_ms: 120,
-  jsonrpc_id: 3,
+  data: {
+    number: 1,
+    is_error: false,
+    result_bytes: 42,
+    result_sha256: 'b'.repeat(64),
+    content_kept: true,
+    duration_ms: 120,
+    jsonrpc_id: 3,
+  },
 };
-
-const during = { by: 'acme-admin', at: '2026-10-01T09:00:02.000Z' };
 
 function recordingCall(fact: ToolCallFact): RunCommand {
   return { type: 'tool_call', fact, ...during };
 }
 
-const callStarted: RunEvent = { ...called, number: 1, ...during };
+function startOfCall(number: number, readOnly = false): RunEvent {
+  return { type: 'tool_call_started', data: { ...sent, ...(readOnly ? { read_only: true } : {}), number } };
+}
 
-const callAnswered: RunEvent = { ...answered, ...during };
+const callStarted = meanwhile(startOfCall(1));
 
-const deferred: RunEvent = { type: 'run_deferred', record: { run: 'x' }, ...ofGreet, ...during };
+const callAnswered = meanwhile({ type: 'tool_call_answered', data: { ...answered.data, number: 1 } });
+
+const deferred = meanwhile({ type: 'run_deferred', data: { record: { run: 'x' } } });
 
 const toolsWereCalled = new Conflict({
   detail:
@@ -97,24 +101,25 @@ const toolsOnlyRead = new Conflict({
   because: 'only_read',
 });
 
-const readCalled: RunEvent = { ...called, read_only: true, number: 1, ...during };
+const readCalled = meanwhile(startOfCall(1, true));
 
 const noMoreWork = new Conflict({ detail: 'The run has ended, so it records no more of its work' });
 
 describe('a tool call of a run', () => {
-  it('is recorded while the run runs, numbered by the decider, with who and when', () => {
-    expect(decided(recordingCall(called), started)).toStrictEqual(Result.succeed([callStarted]));
-    expect(decided(recordingCall(answered), started, callStarted)).toStrictEqual(Result.succeed([callAnswered]));
+  it('is recorded while the run runs, numbered by the decider, with who and when as its context', () => {
+    expect(decided(recordingCall(called), started)).toStrictEqual(Result.succeed([startOfCall(1)]));
+    expect(decided(recordingCall(answered), started, callStarted)).toStrictEqual(Result.succeed([answered]));
     expect(decided(recordingCall(called), started, callStarted, callAnswered)).toStrictEqual(
-      Result.succeed([{ ...callStarted, number: 2 }]),
+      Result.succeed([startOfCall(2)]),
     );
+    expect(runDecider.context(recordingCall(called), stateAfter(started))).toStrictEqual({ ...during, ...ofGreet });
   });
 
   it('takes the number a call names only when it is the next, so a call repeated under its number is refused', () => {
-    expect(decided(recordingCall({ ...called, number: 2 }), started, callStarted)).toStrictEqual(
-      Result.succeed([{ ...callStarted, number: 2 }]),
+    expect(decided(recordingCall({ ...called, data: { ...sent, number: 2 } }), started, callStarted)).toStrictEqual(
+      Result.succeed([startOfCall(2)]),
     );
-    expect(decided(recordingCall({ ...called, number: 1 }), started, callStarted)).toEqual(
+    expect(decided(recordingCall({ ...called, data: { ...sent, number: 1 } }), started, callStarted)).toEqual(
       Result.fail(
         new Conflict({
           detail:
@@ -132,14 +137,14 @@ describe('a tool call of a run', () => {
   });
 
   it('is taken as the work of a run that finishes later, until it is settled', () => {
-    expect(decided(recordingCall(called), started, deferred)).toStrictEqual(Result.succeed([callStarted]));
+    expect(decided(recordingCall(called), started, deferred)).toStrictEqual(Result.succeed([startOfCall(1)]));
     expect(decided(recordingCall(called), started, deferred, failed)).toEqual(Result.fail(noMoreWork));
   });
 });
 
 describe('the calls a run recorded', () => {
   it('leave the run started, keeping the number of its last call and that it may have changed something', () => {
-    const running = stateAfter(started, callStarted, callAnswered, { ...callStarted, number: 2 });
+    const running = stateAfter(started, callStarted, callAnswered, meanwhile(startOfCall(2)));
 
     expect(running).toMatchObject({ run: { status: 'started' }, lastCall: 2, mayHaveChanged: true });
     expect(stateAfter(started, callStarted, failed)).toMatchObject({
@@ -164,14 +169,14 @@ describe('the calls a run recorded', () => {
   it('are counted across a start that was recorded again, so numbers never repeat under one id', () => {
     expect(stateAfter(started, callStarted, started)).toMatchObject({ lastCall: 1, mayHaveChanged: true });
     expect(decided(recordingCall(called), started, callStarted, failed, started)).toStrictEqual(
-      Result.succeed([{ ...callStarted, number: 2 }]),
+      Result.succeed([startOfCall(2)]),
     );
   });
 });
 
 describe('the calls of a run whose every tool only reads', () => {
   it('keep the run from running again under its id, saying that nothing was changed once it ended', () => {
-    const readAgain = { ...readCalled, number: 2 };
+    const readAgain = meanwhile(startOfCall(2, true));
 
     expect([
       decided(starting(), started, readCalled, readAgain, unavailable),

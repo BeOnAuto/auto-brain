@@ -9,6 +9,10 @@ const serverFields = {
   type: Schema.Literals(['http', 'stdio']).annotate({
     description: 'http for a remote server, stdio for a process this server starts',
   }),
+  record_content: Schema.Boolean.annotate({
+    description:
+      "Whether the arguments and the answers of the server's calls are kept whole in the brain's ledger, where anyone who may read the brain reads them; false only when whoever runs this server set record_content: false on its entry",
+  }),
 };
 
 const ServerToolSchema = Schema.Struct({

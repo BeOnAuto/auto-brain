@@ -1,4 +1,11 @@
-import { BrainIdSchema, OrgIdSchema, streamPrefixOfBrain, type StreamReader } from '@beonauto/operations';
+import {
+  BrainIdSchema,
+  OrgIdSchema,
+  recordedDecoder,
+  streamPrefixOfBrain,
+  type Recorded,
+  type StreamReader,
+} from '@beonauto/operations';
 import { Effect, Option, Schema } from 'effect';
 
 import { runDecider, runStreamNameOf } from '../runs/run-decider.ts';
@@ -19,10 +26,10 @@ const isWellFormed = Schema.is(
   Schema.Struct({ org: OrgIdSchema, brain: BrainIdSchema, id: Schema.String.check(Schema.isUUID()) }),
 );
 
-const decodeRunEvent = Schema.decodeUnknownOption(Schema.toCodecJson(RunEventSchema));
+const decodeRunEvent = recordedDecoder(RunEventSchema);
 
-export function runEventOf(data: unknown): RunEvent | undefined {
-  return Option.getOrUndefined(decodeRunEvent(data));
+export function runEventOf(recorded: unknown): Recorded<RunEvent> | undefined {
+  return Option.getOrUndefined(decodeRunEvent(recorded));
 }
 
 function recordedOf(id: string, state: RunStreamState): Effect.Effect<RecordedRun | undefined> {

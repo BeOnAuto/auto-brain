@@ -1,14 +1,14 @@
-import type { TypedEvent } from '@beonauto/operations';
+import { recordedWith, type Recorded, type TypedEvent } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
-import type { EncodedEvent } from './event-store.ts';
+import type { EncodedEvent, RecordedMessage } from './event-store.ts';
 
 export interface EventCodec<Event extends TypedEvent> {
   readonly encode: (event: Event) => Effect.Effect<EncodedEvent>;
-  readonly decode: (data: unknown) => Effect.Effect<Event>;
+  readonly decode: (message: RecordedMessage) => Effect.Effect<Recorded<Event>>;
 }
 
-const asJsonObject = Schema.decodeUnknownEffect(Schema.JsonObject);
+const asEncodedEvent = Schema.decodeUnknownEffect(Schema.Struct({ type: Schema.String, data: Schema.JsonObject }));
 
 export function eventCodecOf<Event extends TypedEvent>(
   eventSchema: Schema.ConstraintCodec<Event, unknown>,
@@ -17,12 +17,8 @@ export function eventCodecOf<Event extends TypedEvent>(
   const encodeJson = Schema.encodeUnknownEffect(json);
   const decodeJson = Schema.decodeUnknownEffect(json);
   return {
-    encode: (event) =>
-      encodeJson(event).pipe(
-        Effect.flatMap(asJsonObject),
-        Effect.map((data) => ({ type: event.type, data })),
-        Effect.orDie,
-      ),
-    decode: (data) => Effect.orDie(decodeJson(data)),
+    encode: (event) => encodeJson(event).pipe(Effect.flatMap(asEncodedEvent), Effect.orDie),
+    decode: ({ type, data, context }) =>
+      Effect.orDie(decodeJson({ type, data })).pipe(Effect.map(recordedWith<Event>(context))),
   };
 }

@@ -7,7 +7,7 @@ import { ledgerLayerOver, type StoreLayerOptions } from './ledger-layer.ts';
 import { sqliteRunOutcomesOf } from './outcomes/sqlite-run-outcomes.ts';
 import type { KeptTables } from './projections/projection-parts.ts';
 import { preparedOn, sqliteProjectionsOf } from './projections/sqlite-projections.ts';
-import { createSQLiteBrainIndexes } from './recorded/sqlite-indexes.ts';
+import { sqliteSchemaCreated } from './recorded/sqlite-indexes.ts';
 import { sqliteRecordedStore } from './recorded/sqlite-recorded.ts';
 
 type AnyDriver = Parameters<typeof getSQLiteEventStore>[0]['driver'];
@@ -44,7 +44,7 @@ export function sqliteEventStore<Driver extends AnyDriver>(
     readRunOutcomes: sqliteRunOutcomesOf(kept.runOutcomes, pool.execute),
     migrate: async () => {
       await streams.migrate();
-      await createSQLiteBrainIndexes(pool.execute);
+      await sqliteSchemaCreated(pool.execute);
       await preparedOn(projections.prepare, pool);
     },
   };

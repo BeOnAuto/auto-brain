@@ -1,7 +1,7 @@
 import { once } from 'node:events';
 import { createServer } from 'node:net';
 
-import type { EventStore } from '@beonauto/ledger';
+import type { EventStore, StoredRecord } from '@beonauto/ledger';
 import { Effect, Function, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -43,9 +43,10 @@ function telling(failingOn = '', rowsOf = (text: string): readonly unknown[] => 
     store: {
       mostEventsInOneAppend: 64,
       pointLength: 2,
-      read: () => Promise.resolve({ version: 0, events: [], lineages: [] }),
+      read: () => Promise.resolve({ version: 0, messages: [] }),
       append: () => Promise.resolve(),
       readRecorded: () => Promise.resolve({ records: [] }),
+      readRecordedEvent: (_, id) => Promise.resolve(new Map<string, StoredRecord>().get(id)),
       readAppended: () => Promise.resolve({ streams: [], through: ['0', '0'], more: false }),
       definitionStreams: () => Promise.resolve([]),
       migrate: () => saying('store migrated'),

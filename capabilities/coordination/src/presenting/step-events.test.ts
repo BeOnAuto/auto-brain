@@ -1,12 +1,7 @@
 import { internalTermsIn } from '@beonauto/api/testing';
-import {
-  PublicEventSchema,
-  cursorWithin,
-  mostPublicEventDataBytes,
-  presentationOf,
-  type RecordedEvent,
-} from '@beonauto/operations';
-import { RunLogEventSchema, stepEventIdOf, type RunLogEvent, type Step } from '@beonauto/workflow-engine';
+import { PublicEventSchema, mostPublicEventDataBytes, presentationOf, type RecordedEvent } from '@beonauto/operations';
+import { nothingKept } from '@beonauto/operations/testing';
+import { RunLogEventSchema, type RunLogEvent, type Step } from '@beonauto/workflow-engine';
 import { Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -20,7 +15,13 @@ const encodeEvent = Schema.encodeSync(Schema.toCodecJson(RunLogEventSchema));
 
 const decodePublicEvent = Schema.decodeUnknownResult(PublicEventSchema);
 
-const { present } = presentationOf([runPresenter]);
+const presentation = presentationOf([runPresenter]);
+
+const showing = { streamPrefix: 'brain/acme/alpha/', content: nothingKept, view: 'page' } as const;
+
+function present(record: RecordedEvent) {
+  return presentation.present(record, showing);
+}
 
 const utf8 = new TextEncoder();
 
@@ -45,8 +46,17 @@ function recordOf(steps: readonly Step[]): RecordedEvent {
     correlationId: runId,
     stream: `run-logs/${runId}`,
     version: 1,
+    globalPosition: 1,
     type: event.type,
     data: encodeEvent(event),
+    context: {
+      at: '2026-10-05T09:00:00.000Z',
+      by: 'acme-admin',
+      runId,
+      definitionType: 'workflow',
+      definitionName: 'triage',
+      definitionVersion: 1,
+    },
     recordedAt: '2026-10-05T09:00:00.000Z',
   };
 }
@@ -67,30 +77,24 @@ const waiting: Step = {
 
 const asked: readonly Step[] = [completed, waiting];
 
-function idOf(step: Step): string {
-  return stepEventIdOf(runId, {
-    reference: step.reference,
-    run: step.run,
-    outcome: step.outcome,
-    times: step.times,
-  });
-}
+const causedByTheInput: unknown = expect.objectContaining({
+  causation_id: recordId,
+  at: '2026-10-05T09:00:00.000Z',
+  run_id: runId,
+});
+
+const causedByTheFirstStep: unknown = expect.objectContaining({ causation_id: `${recordId}/1` });
 
 const presentedSteps = [
   {
-    id: idOf(completed),
-    cursor: cursorWithin(cursor, 1),
-    causation_id: recordId,
-    at: '2026-10-05T09:00:00.000Z',
+    id: `${recordId}/1`,
     type: 'step_finished',
     summary: 'The step “ask” finished.',
     data: { name: 'ask', reference: '/do/0/ask', run: 1, times: 1 },
+    metadata: causedByTheInput,
   },
   {
-    id: idOf(waiting),
-    cursor: cursorWithin(cursor, 2),
-    causation_id: idOf(completed),
-    at: '2026-10-05T09:00:00.000Z',
+    id: `${recordId}/2`,
     type: 'step_waiting',
     summary: 'The step “next” waits for a function it called.',
     data: {
@@ -101,17 +105,28 @@ const presentedSteps = [
       waits_for: 'call',
       run_id: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a',
     },
+    metadata: causedByTheFirstStep,
   },
 ];
 
 describe('the steps of an input a workflow took, in the history of its run', () => {
-  it('follow the input as events of their own, each with its id, its cause and a cursor inside the input', () => {
+  it('follow the input as events of their own, each its record id and its number, caused by the input or a step', () => {
     const [record, ...steps] = present(recordOf(asked));
 
-    expect(record).toMatchObject({ type: 'workflow_input_applied', data: { step_count: 2 } });
+    expect(record).toMatchObject({ id: recordId, type: 'workflow_input_applied', data: { step_count: 2 } });
     expect(steps).toEqual(presentedSteps);
   });
 
+  it('name as the cause of a step the input itself when the step that caused it was recorded with an earlier input', () => {
+    const [, resumed] = present(
+      recordOf([{ ...next, outcome: 'completed', caused_by: { ...ask, outcome: 'waiting' } }]),
+    );
+
+    expect(resumed).toMatchObject({ id: `${recordId}/1`, metadata: { causation_id: recordId } });
+  });
+});
+
+describe('the steps of an input a workflow took, in plain words', () => {
   it.each([
     [
       { outcome: 'raised', error: { type: 'https://example.com/busy', title: 'Busy' } },

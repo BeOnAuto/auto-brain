@@ -1,5 +1,5 @@
 import { Conflict, Ledger } from '@beonauto/operations';
-import { memoryLedger } from '@beonauto/operations/testing';
+import { memoryLedger, nothingKept } from '@beonauto/operations/testing';
 import { Effect, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -53,19 +53,23 @@ describe('an event a workflow emits', () => {
     );
 
     expect(outcomes).toEqual(['recorded', 'already_recorded']);
-    expect(records.map(({ data }) => publishedEventOf(data))).toEqual([
+    expect(records.map((record) => publishedEventOf(record))).toEqual([
       {
         type: 'event_published',
-        event: told,
-        filled: [],
-        emitted_by: { run_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', workflow: 'close-the-month', version: 2 },
-        depth: 1,
-        by: 'acme-admin',
-        at: '2026-10-01T09:00:01.000Z',
+        data: { event: told, filled: [] },
+        context: {
+          at: '2026-10-01T09:00:01.000Z',
+          by: 'acme-admin',
+          runId: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
+          definitionType: 'workflow',
+          definitionName: 'close-the-month',
+          definitionVersion: 2,
+          depth: 1,
+        },
       },
     ]);
-    expect(records.flatMap((record) => publishedEventPresenter.present(record))).toMatchObject([
-      { summary: 'The workflow “close-the-month” emitted the event “com.acme.closed”.', data: { depth: 1 } },
+    expect(records.flatMap((record) => publishedEventPresenter.present(record, nothingKept))).toMatchObject([
+      { summary: 'The workflow “close-the-month” emitted the event “com.acme.closed”.' },
     ]);
   });
 });

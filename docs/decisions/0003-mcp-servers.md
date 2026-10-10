@@ -1,6 +1,6 @@
 # 0003 — MCP servers: a brain reaches the outside world through configured MCP servers
 
-**Status:** accepted (2026-10-05), revised four times after audit and the gateway's answers the same day; amended (2026-10-06) with what the build of step 1 and its review learned; amended (2026-10-07) with `list_tool_servers`; amended (2026-10-08) with a server's tools allowed and marked testable on its own entry; amended (2026-10-09) with the two endings of a run that called tools and could not finish
+**Status:** accepted (2026-10-05), revised four times after audit and the gateway's answers the same day; amended (2026-10-06) with what the build of step 1 and its review learned; amended (2026-10-07) with `list_tool_servers`; amended (2026-10-08) with a server's tools allowed and marked testable on its own entry; amended (2026-10-09) with the two endings of a run that called tools and could not finish; amended (2026-10-10) by [decision 0023](0023-facts-in-the-ledger.md): the arguments and answer of a call are kept whole, scrubbed, in the ledger's recorded content, `record_content` is `true` when left out, and a call ends as `tool_call_answered` with `is_error` or `tool_call_failed` with `because`, where it carried an `outcome`
 
 ## Context
 

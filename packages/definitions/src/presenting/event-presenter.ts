@@ -1,40 +1,32 @@
-import type { Presenter } from '@beonauto/operations';
-import { Schema } from 'effect';
-
-interface Fact<Type extends string> {
-  readonly type: Type;
-  readonly at: string;
-}
+import { strictRecordedDecoder, type Presenter, type Recorded, type TypedEvent } from '@beonauto/operations';
+import type { Schema } from 'effect';
 
 export interface Account {
   readonly summary: string;
   readonly data: Schema.JsonObject;
 }
 
-export interface EventPresenting<Type extends string, Event extends Fact<Type>> {
+export interface EventPresenting<Event extends TypedEvent> {
   readonly streamKind: string;
   readonly eventSchema: Schema.ConstraintCodec<Event, unknown>;
-  readonly publicNames: Readonly<Record<Type, readonly [string]>>;
-  readonly account: (event: Event, subject: string) => Account;
+  readonly types: readonly Event['type'][];
+  readonly account: (event: Recorded<Event>, subject: string) => Account;
 }
 
-export function eventPresenter<Type extends string, Event extends Fact<Type>>({
+export function eventPresenter<Event extends TypedEvent>({
   streamKind,
   eventSchema,
-  publicNames,
+  types,
   account,
-}: EventPresenting<Type, Event>): Presenter {
-  const decode = Schema.decodeUnknownSync(Schema.toCodecJson(eventSchema));
+}: EventPresenting<Event>): Presenter {
+  const decode = strictRecordedDecoder(eventSchema);
   const subjectStart = streamKind.length + 1;
   return {
     streamKind,
-    publicNames,
-    present: ({ id, cursor, causationId, stream, data }) => {
-      const event = decode(data);
-      const [type] = publicNames[event.type];
-      return [
-        { id, cursor, causation_id: causationId, at: event.at, type, ...account(event, stream.slice(subjectStart)) },
-      ];
+    publicNames: Object.fromEntries(types.map((type) => [type, [type]])),
+    present: (recorded) => {
+      const event = decode(recorded);
+      return [{ type: event.type, ...account(event, recorded.stream.slice(subjectStart)) }];
     },
   };
 }

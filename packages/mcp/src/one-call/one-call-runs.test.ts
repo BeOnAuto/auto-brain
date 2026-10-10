@@ -32,22 +32,28 @@ describe('a call recorded on its run', () => {
     expect(receivedAtTheStart).toEqual([0]);
     expect(journal.facts()).toEqual([
       {
-        type: 'tool_call_started',
-        call_id: callId,
-        server: 'graph',
-        tool: 'echo',
-        arguments_bytes: 48,
-        arguments_sha256: aDigest,
         number: 1,
+        type: 'tool_call_started',
+        data: {
+          call_id: callId,
+          server: 'graph',
+          tool: 'echo',
+          arguments_bytes: 48,
+          arguments_sha256: aDigest,
+          content_kept: true,
+        },
       },
       {
-        type: 'tool_call_answered',
         number: 1,
-        outcome: 'result',
-        result_bytes: 95,
-        result_sha256: aDigest,
-        jsonrpc_id: aNumber,
-        duration_ms: aNumber,
+        type: 'tool_call_answered',
+        data: {
+          is_error: false,
+          result_bytes: 95,
+          result_sha256: aDigest,
+          content_kept: true,
+          jsonrpc_id: aNumber,
+          duration_ms: aNumber,
+        },
       },
     ]);
     expect(called).toMatchObject({ kind: 'answered', outcome: 'result' });

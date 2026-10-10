@@ -10,6 +10,8 @@ const aNumber: unknown = expect.any(Number);
 
 const aDigest: unknown = expect.stringMatching(/^[0-9a-f]{64}$/u);
 
+const answeredInFull: unknown = expect.objectContaining({ is_error: false, duration_ms: aNumber, content_kept: true });
+
 const asSystem = makeInteractionFunctionAdapter({
   tools: noTools,
   openRequests: () => Effect.succeed(0),
@@ -33,18 +35,23 @@ describe('a run of an interaction function that asks a system', () => {
     expect(journal.recorded()).toEqual([
       {
         type: 'tool_call_started',
-        call_id: callRunId,
-        server: 'chat',
-        tool: 'thread',
-        arguments_bytes: aNumber,
-        arguments_sha256: aDigest,
-        read_only: true,
         number: 1,
+        data: {
+          call_id: callRunId,
+          server: 'chat',
+          tool: 'thread',
+          arguments_bytes: aNumber,
+          arguments_sha256: aDigest,
+          content_kept: true,
+          read_only: true,
+        },
       },
-      expect.objectContaining({ type: 'tool_call_answered', number: 1, outcome: 'result', duration_ms: aNumber }),
+      { type: 'tool_call_answered', number: 1, data: answeredInFull },
     ]);
   });
+});
 
+describe('a run of an interaction function that asks a system with its input', () => {
   it('sends a value written alone in one {{ }} as the value it reads, and answers with the whole answer without read', async () => {
     const { fake, run } = await callRuns();
     const echoing = callDocument({

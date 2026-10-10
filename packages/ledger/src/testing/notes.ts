@@ -1,18 +1,18 @@
-import type { Decider } from '@beonauto/operations';
+import { factOf, type Decider } from '@beonauto/operations';
 import { Result, Schema } from 'effect';
 
-const NotedSchema = Schema.Struct({
-  type: Schema.Literal('noted'),
-  details: Schema.Record(Schema.String, Schema.Json),
-});
+import { stamped } from './happenings.ts';
+
+const NotedSchema = factOf('noted', Schema.Record(Schema.String, Schema.Json));
 
 type Noted = typeof NotedSchema.Type;
 
-type Details = Noted['details'];
+type Details = Noted['data'];
 
 export const notes: Decider<readonly Details[], readonly Details[], Noted> = {
   initialState: [],
-  evolve: (written, { details }) => [...written, details],
-  decide: (written) => Result.succeed(written.map((details) => ({ type: 'noted', details }))),
+  evolve: (written, { data }) => [...written, data],
+  decide: (written) => Result.succeed(written.map((details) => ({ type: 'noted', data: details }))),
+  context: () => stamped,
   eventSchema: NotedSchema,
 };

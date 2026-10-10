@@ -1,42 +1,39 @@
-import { quoted, type Presenter } from '@beonauto/operations';
+import { quoted, type KeptContent, type PresentedFact, type Presenter } from '@beonauto/operations';
 import { Schema } from 'effect';
 
 import { toolBounds } from '../bounds/call-bounds.ts';
 import { cutAsStored } from '../bounds/text-bytes.ts';
-import { answeredInWords, toolInWords } from '../names/tool-words.ts';
+import { callFieldsShown, keptAnswerOf, keptArgumentsOf } from '../calls/shown-calls.ts';
+import { failedInWords, toolInWords } from '../names/tool-words.ts';
 import {
   ConversationCallEventSchema,
   conversationCallsKind,
   type ConversationCallEvent,
-  type ReadOutcome,
-  type RepliesRead,
-  type TellingEnded,
-  type TellingOutcome,
-  type TellingStarted,
+  type ReadingFailedBecause,
+  type TellingFailedBecause,
 } from './conversation-call-events.ts';
 
 const mostNameBytes = 256;
-
-const mostDigestBytes = 128;
-
-const mostReadContentBytes = 1024;
 
 const counted = new Intl.NumberFormat('en');
 
 const decodeConversationCall = Schema.decodeUnknownSync(Schema.toCodecJson(ConversationCallEventSchema));
 
-const failedReadWords: Readonly<Record<Exclude<ReadOutcome, 'result'>, string>> = {
+const failedReadWords: Readonly<Record<ReadingFailedBecause, string>> = {
   tool_error: 'the tool answered with an error',
+  arguments_refused: 'the tool server refused the arguments of the read',
   server_failure: 'the tool server failed',
   timed_out: `the tool server did not answer within ${counted.format(toolBounds.callMs / 1000)} seconds`,
+  cancelled: 'the read was cancelled',
   unreadable: 'what the tool answered could not be read as a list of replies',
-  too_large: `the tool answered more than the ${counted.format(toolBounds.resultBytes)} bytes a read may take`,
+  too_large: `the tool answered more than the ${counted.format(toolBounds.readAnswerBytes)} bytes a read may take`,
   tool_not_offered: 'the tool server no longer offers the tool to this brain',
   not_sent: 'its arguments could not be rendered, so nothing was sent',
 };
 
-const tellingInWords: Readonly<Record<TellingOutcome, string>> = {
-  ...answeredInWords,
+const failedTellingWords: Readonly<Record<TellingFailedBecause, string>> = {
+  ...failedInWords,
+  tool_error: 'answered with an error of its own',
   tool_not_offered: 'was no longer offered by its server',
 };
 
@@ -44,106 +41,79 @@ function named(text: string): string {
   return cutAsStored(text, mostNameBytes);
 }
 
-function digestShown(digest: string): string {
-  return cutAsStored(digest, mostDigestBytes);
+interface OnTheTool {
+  readonly server: string;
+  readonly tool: string;
 }
 
-function contentShown(name: string, content: string | undefined, mostBytes: number) {
-  return content === undefined ? {} : { [name]: cutAsStored(content, mostBytes) };
-}
-
-function throughTheTool({ server, tool }: Pick<TellingStarted, 'server' | 'tool'>): string {
+function throughTheTool({ server, tool }: OnTheTool): string {
   return `through ${toolInWords({ server: named(server), tool: named(tool) })}`;
 }
 
-function argumentsShown(bytes: number | undefined, digest: string | undefined) {
-  return bytes === undefined || digest === undefined
-    ? {}
-    : { arguments_bytes: bytes, arguments_sha256: digestShown(digest) };
+interface OnTheConversation extends OnTheTool {
+  readonly conversation: string;
 }
 
-function startShown(event: RepliesRead | TellingStarted, content: number) {
-  return {
-    call_id: named(event.call_id),
-    by: named(event.by),
-    server: named(event.server),
-    tool: named(event.tool),
-    ...argumentsShown(event.arguments_bytes, event.arguments_sha256),
-    ...contentShown('arguments_json', event.arguments_json, content),
-  };
+function whereOf(data: OnTheConversation): string {
+  return `the conversation ${quoted(named(data.conversation))} ${throughTheTool(data)}`;
 }
 
-function idShown(id: string | number | null): string | number | null {
-  return typeof id === 'string' ? digestShown(id) : id;
-}
+type Reading = Extract<ConversationCallEvent, { readonly type: 'replies_read' | 'reading_failed' }>;
 
-function answerShown(event: RepliesRead | TellingEnded, content: number) {
-  const { result_bytes: bytes, result_sha256: digest, duration_ms: durationMs, jsonrpc_id: jsonrpcId } = event;
-  return {
-    ...(bytes === undefined ? {} : { result_bytes: bytes }),
-    ...(digest === undefined ? {} : { result_sha256: digest === null ? null : digestShown(digest) }),
-    ...(durationMs === undefined ? {} : { duration_ms: durationMs }),
-    ...(jsonrpcId === undefined ? {} : { jsonrpc_id: idShown(jsonrpcId) }),
-    ...(event.server_request_id === undefined
-      ? {}
-      : { server_request_id: event.server_request_id === null ? null : named(event.server_request_id) }),
-    ...contentShown('result_json', event.result_json, content),
-  };
-}
-
-function readAccount(event: RepliesRead) {
-  const where = `the conversation ${quoted(named(event.conversation))} ${throughTheTool(event)}`;
-  const summary =
-    event.outcome === 'result'
-      ? `The brain looked for new replies in ${where} and found ${event.replies}, took ${event.taken} as an answer and refused ${event.refused}.`
-      : `The brain could not read the replies of ${where}: ${failedReadWords[event.outcome]}.`;
-  return {
-    summary,
-    data: {
-      ...startShown(event, mostReadContentBytes),
-      conversation: named(event.conversation),
-      since: event.since === null ? null : named(event.since),
-      outcome: event.outcome,
-      ...contentShown('detail', event.detail, mostReadContentBytes),
-      replies: event.replies,
-      taken: event.taken,
-      refused: event.refused,
-      ...(event.retry_after_ms === undefined ? {} : { retry_after_ms: event.retry_after_ms }),
-      ...answerShown(event, mostReadContentBytes),
-    },
-  };
-}
-
-function accountOf(event: ConversationCallEvent) {
+function readingFact(event: Reading, content: KeptContent): PresentedFact {
+  const shown = { ...keptArgumentsOf(event.data, content), ...keptAnswerOf(event.data, content) };
   if (event.type === 'replies_read') {
-    return readAccount(event);
-  }
-  if (event.type === 'telling_started') {
+    const { data } = event;
     return {
-      summary: `The brain told the party how to answer ${throughTheTool(event)}.`,
-      data: { ...startShown(event, toolBounds.shownContentBytes), run_id: named(event.run_id) },
+      type: event.type,
+      summary: `The brain looked for new replies in ${whereOf(data)} and found ${data.replies}, took ${data.taken} as an answer and refused ${data.refused}.`,
+      data: { ...callFieldsShown(data), ...shown },
     };
   }
+  const { data } = event;
   return {
-    summary: `The tool that told the party ${tellingInWords[event.outcome]}.`,
-    data: {
-      call_id: named(event.call_id),
-      by: named(event.by),
-      outcome: event.outcome,
-      ...answerShown(event, toolBounds.shownContentBytes),
-    },
+    type: event.type,
+    summary: `The brain could not read the replies of ${whereOf(data)}: ${failedReadWords[data.because]}.`,
+    data: { ...callFieldsShown(data), ...shown },
+  };
+}
+
+function factOf(event: ConversationCallEvent, content: KeptContent): PresentedFact {
+  if (event.type === 'replies_read' || event.type === 'reading_failed') {
+    return readingFact(event, content);
+  }
+  if (event.type === 'telling_started') {
+    const { data } = event;
+    return {
+      type: event.type,
+      summary: `The brain told the party how to answer ${throughTheTool(data)}.`,
+      data: { ...callFieldsShown(data), ...keptArgumentsOf(data, content) },
+    };
+  }
+  if (event.type === 'telling_succeeded') {
+    const { data } = event;
+    return {
+      type: event.type,
+      summary: 'The tool that told the party answered.',
+      data: { ...callFieldsShown(data), ...keptAnswerOf(data, content) },
+    };
+  }
+  const { data } = event;
+  return {
+    type: event.type,
+    summary: `The tool that told the party ${failedTellingWords[data.because]}.`,
+    data: { ...callFieldsShown(data), ...keptAnswerOf(data, content) },
   };
 }
 
 export const conversationCallPresenter: Presenter = {
   streamKind: conversationCallsKind,
   publicNames: {
-    replies_read: ['replies_read'],
     telling_started: ['telling_started'],
-    telling_ended: ['telling_ended'],
+    telling_succeeded: ['telling_succeeded'],
+    telling_failed: ['telling_failed'],
+    replies_read: ['replies_read'],
+    reading_failed: ['reading_failed'],
   },
-  present: ({ id, cursor, causationId, data }) => {
-    const event = decodeConversationCall(data);
-    return [{ id, cursor, causation_id: causationId, at: event.at, type: event.type, ...accountOf(event) }];
-  },
+  present: ({ type, data }, content) => [factOf(decodeConversationCall({ type, data }), content)],
 };

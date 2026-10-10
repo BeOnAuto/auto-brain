@@ -7,9 +7,10 @@ import {
   alpha,
   brainCreated,
   brainRenamed,
+  byAdmin,
+  definitionRecorded,
   eventTrigger,
   published,
-  definitionRecorded,
 } from '../reaction-testing/brain-writes.ts';
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
 import { until } from '../reaction-testing/until.ts';
@@ -53,7 +54,7 @@ describe('a brain its org creates while the host runs', () => {
 
     await brainCreated(store, 'beta');
     await definitionRecorded(store, { name: 'watch', version: 1, triggers: [sentinel] }, beta);
-    await published(store, { id: 's1', type: 'com.acme.sentinel' }, {}, beta);
+    await published(store, { id: 's1', type: 'com.acme.sentinel' }, byAdmin, beta);
     const starts = await startsReaching(reacting, 1);
 
     expect(starts.map(({ brain, workflow }) => [brain, workflow])).toEqual([['beta', 'watch']]);
@@ -73,7 +74,7 @@ describe('a brain its org created while the host was stopped', () => {
 
     await brainCreated(first.database.store, 'beta');
     await definitionRecorded(first.database.store, { name: 'watch', version: 1, triggers: [sentinel] }, beta);
-    await published(first.database.store, { id: 's1', type: 'com.acme.sentinel' }, {}, beta);
+    await published(first.database.store, { id: 's1', type: 'com.acme.sentinel' }, byAdmin, beta);
     const second = await reactingHost({ settings });
     const starts = await startsReaching(second, 1);
 

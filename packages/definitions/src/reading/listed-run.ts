@@ -4,6 +4,7 @@ import {
   UnansweredKindSchema,
   RejectionBecauseSchema,
   UnavailableKindSchema,
+  type Recorded,
   type RecordedEvent,
 } from '@beonauto/operations';
 import { Effect, Schema, Struct } from 'effect';
@@ -66,10 +67,21 @@ function listedOf(run: Run): ListedRun {
   return run.rejection === undefined ? listed : { ...listed, rejection: listedRejectionOf(run.rejection) };
 }
 
+function recordedRunEventOf({
+  type,
+  data,
+  context,
+}: RecordedEvent): Effect.Effect<Recorded<RunEvent>, Schema.SchemaError> {
+  return Effect.map(decodeEvent({ type, data }), (event) => ({ ...event, context }));
+}
+
 function listedRunOf(stream: string, heads: readonly RecordedEvent[]): Effect.Effect<ListedRun> {
-  return Effect.forEach(heads, ({ data }) => decodeEvent(data)).pipe(
-    Effect.map((events: readonly RunEvent[]) =>
-      events.reduce((state: RunStreamState, event: RunEvent) => evolveRun(state, event), runDecider.initialState),
+  return Effect.forEach(heads, recordedRunEventOf).pipe(
+    Effect.map((events: readonly Recorded<RunEvent>[]) =>
+      events.reduce(
+        (state: RunStreamState, event: Recorded<RunEvent>) => evolveRun(state, event),
+        runDecider.initialState,
+      ),
     ),
     Effect.flatMap((state) => runOf(stream.slice(runStreamPrefix.length), startedRunOf(state))),
     Effect.orDie,

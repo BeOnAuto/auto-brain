@@ -27,8 +27,8 @@ const versionOne: KeyedProjection = {
   ...openRequests,
   version: 1,
   columns: openRequests.columns.filter(({ name }) => name !== 'answer_schema'),
-  rowAfter: (row, event, message) =>
-    openRequests.rowAfter(row === undefined ? undefined : { ...row, answer_schema: null }, event, message),
+  rowAfter: (row, message) =>
+    openRequests.rowAfter(row === undefined ? undefined : { ...row, answer_schema: null }, message),
 };
 
 const approvalSchema = {

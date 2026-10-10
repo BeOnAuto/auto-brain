@@ -1,4 +1,4 @@
-import { Conflict, plainNumber, type Rejection } from '@beonauto/operations';
+import { Conflict, plainNumber, type Context, type Rejection } from '@beonauto/operations';
 import { Result } from 'effect';
 
 import { definitionResourceLabel } from '../capability/function-terminology.ts';
@@ -71,7 +71,7 @@ function tooMany({ type, mostActive }: RegistryRules, active: number, saving: st
 
 function decideCreation(
   rules: RegistryRules,
-  { name, content, by, at }: DefinitionCreation & CommandMetadata,
+  { name, content }: DefinitionCreation & CommandMetadata,
   registry: DefinitionRegistry,
 ): Decision {
   const existing = registry.get(name);
@@ -83,14 +83,12 @@ function decideCreation(
     return Result.fail(tooMany(rules, active, 'creating another'));
   }
   const beyond = beyondTheReactingBound(rules.type, registry, { name, content });
-  return beyond === undefined
-    ? recording({ type: 'definition_created', name, version: 1, content, by, at })
-    : Result.fail(beyond);
+  return beyond === undefined ? recording({ type: 'definition_created', data: { content } }) : Result.fail(beyond);
 }
 
 function decideUpdate(
   rules: RegistryRules,
-  { name, content, by, at }: DefinitionUpdate & CommandMetadata,
+  { name, content }: DefinitionUpdate & CommandMetadata,
   registry: DefinitionRegistry,
 ): Decision {
   const { type } = rules;
@@ -114,21 +112,32 @@ function decideUpdate(
     return Result.fail(tooMany(rules, active, 'saving another version'));
   }
   const beyond = beyondTheReactingBound(type, registry, { name, content });
-  return beyond === undefined
-    ? recording({ type: 'definition_updated', name, version: existing.version + 1, content, by, at })
-    : Result.fail(beyond);
+  return beyond === undefined ? recording({ type: 'definition_updated', data: { content } }) : Result.fail(beyond);
 }
 
 function decideRetirement(
   type: string,
-  { name, by, at }: DefinitionRetirement & CommandMetadata,
+  { name }: DefinitionRetirement & CommandMetadata,
   registry: DefinitionRegistry,
 ): Decision {
   const existing = registry.get(name);
   if (existing === undefined) {
     return Result.fail(definitionNotFound(type, name));
   }
-  return existing.status === 'retired' ? nothingToRecord : recording({ type: 'definition_retired', name, by, at });
+  return existing.status === 'retired' ? nothingToRecord : recording({ type: 'definition_retired', data: {} });
+}
+
+function versionSaved(command: DefinitionCommand, registry: DefinitionRegistry): Pick<Context, 'definitionVersion'> {
+  if (command.type === 'retire') {
+    return {};
+  }
+  const existing = registry.get(command.name);
+  return { definitionVersion: command.type === 'create' || existing === undefined ? 1 : existing.version + 1 };
+}
+
+export function definitionContextOf(type: string, command: DefinitionCommand, registry: DefinitionRegistry): Context {
+  const { by, at, name } = command;
+  return { at, by, definitionType: type, definitionName: name, ...versionSaved(command, registry) };
 }
 
 export function decideOnDefinitions(

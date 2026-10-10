@@ -93,12 +93,12 @@ export function brainDiscoveryOn(parts: DiscoveryParts): Discovery {
   const followedAtTail = followedAtTailOn(parts);
   const registryRead = (stream: string, after: number | undefined, atStart: boolean) =>
     Effect.gen(function* () {
-      const { events, version } = yield* Effect.promise(() => database.store.read(stream, after ?? 0));
+      const { messages, version } = yield* Effect.promise(() => database.store.read(stream, after ?? 0));
       if (version === after) {
         return;
       }
-      const created = events.flatMap((data) => {
-        const brain = brainCreatedOf(data);
+      const created = messages.flatMap((message) => {
+        const brain = brainCreatedOf(message);
         return brain === undefined ? [] : [brainKeyOf(stream, brain)];
       });
       yield* Effect.forEach(

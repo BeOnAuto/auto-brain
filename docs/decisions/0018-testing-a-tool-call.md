@@ -1,6 +1,6 @@
 # 0018 — Testing a tool call: an agent tries one tool of a tool server through the brain, as a run would call it
 
-**Status:** accepted (2026-10-08), designed against `feat/speaking-to-agents` at 09b727a2 and verified again against `origin/main` at f4a7d7f6, where that branch has merged; built on 2026-10-08, with the amendments from the build after the appendix and the verifications of the record against the code at the end; amended (2026-10-09) by [decision 0021](0021-asking-a-system.md), a test also answering the document a call reads
+**Status:** accepted (2026-10-08), designed against `feat/speaking-to-agents` at 09b727a2 and verified again against `origin/main` at f4a7d7f6, where that branch has merged; built on 2026-10-08, with the amendments from the build after the appendix and the verifications of the record against the code at the end; amended (2026-10-09) by [decision 0021](0021-asking-a-system.md), a test also answering the document a call reads; amended (2026-10-10) by [decision 0023](0023-facts-in-the-ledger.md): a test ends as `tool_test_answered` or `tool_test_failed`, its arguments and answer kept whole unless the operator turns `record_content` off, while the reply of `test_tool_call` keeps its `outcome`
 
 ## Context
 

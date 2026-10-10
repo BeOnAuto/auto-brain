@@ -167,7 +167,8 @@ export const hostTables: readonly Statement[] = [
     result TEXT,
     delivered INTEGER NOT NULL DEFAULT 0,
     child TEXT,
-    root_id TEXT
+    root_id TEXT,
+    started_by BIGINT
   )`,
   statement`CREATE INDEX IF NOT EXISTS workflow_calls_unfinished ON workflow_calls (call_key)
     WHERE state = 'running' OR (state = 'answered' AND delivered = 0)`,

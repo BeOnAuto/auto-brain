@@ -1,4 +1,4 @@
-import { settle, type DispatcherServices, type Outcome } from '@beonauto/operations';
+import { ServedAsTool, settle, type DispatcherServices, type Outcome } from '@beonauto/operations';
 import type { CallToolResult } from '@modelcontextprotocol/server';
 import { Effect, Schema } from 'effect';
 
@@ -41,7 +41,10 @@ export function callbackFor(
         dropped.find((argument) => argument.id === id),
       );
       operationInput = operationInputOf(restored);
-      const call = settle(dispatch(restored), signal).pipe(Effect.annotateLogs({ requestId }));
+      const call = settle(dispatch(restored), signal).pipe(
+        Effect.provideService(ServedAsTool, true),
+        Effect.annotateLogs({ requestId }),
+      );
       return toolResultOf(await runCall(call), signal.aborted, words, operationInput);
     } catch (thrown) {
       return toolResultOf(reportThrown(thrown, requestId), false, words, operationInput);

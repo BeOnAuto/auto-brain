@@ -244,7 +244,7 @@ export function checkedEntry(
         org: scope.success.org,
         brains: scope.success.brains,
         ...tools.success,
-        record_content: fields.record_content ?? false,
+        record_content: fields.record_content ?? true,
         request_id: fields.request_id ?? null,
         secrets,
       });

@@ -1,7 +1,5 @@
 import { Buffer } from 'node:buffer';
 
-import { toolBounds } from '@beonauto/mcp';
-
 const mostIssuesShown = 5;
 
 const mostIssueDetailBytes = 256;
@@ -10,15 +8,9 @@ const mostPointerBytes = 128;
 
 export const mostDetailBytes = 1024;
 
-export const mostCallerBytes = 256;
-
 export const mostDescriptionCharacters = 300;
 
 export const mostNameBytes = 256;
-
-export const mostContentBytes = toolBounds.shownContentBytes;
-
-export const mostDigestBytes = 128;
 
 export interface ShownIssue {
   readonly detail: string;

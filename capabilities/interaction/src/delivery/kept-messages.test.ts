@@ -21,7 +21,7 @@ async function deliveryEndOf(brain: ChatHarness) {
   const { records } = await Effect.runPromise(
     brain.ledger.service.readRecorded(alpha, { kind: 'run', run: runId }, { order: 'asc', limit: 20 }),
   );
-  return records.map(({ data }) => runEventOf(data)).find((event) => event?.type === 'delivery_ended');
+  return records.map((record) => runEventOf(record)).find((event) => event?.type === 'delivery_succeeded');
 }
 
 async function deliveredWith(answer?: FakeAnswer, document?: string) {
@@ -35,7 +35,9 @@ async function deliveredWith(answer?: FakeAnswer, document?: string) {
 }
 
 function keptOf(ended: Awaited<ReturnType<typeof deliveryEndOf>>) {
-  return ended?.type === 'delivery_ended' ? [ended.delivered_as, ended.replies_in, ended.detail] : ['no delivery'];
+  return ended?.type === 'delivery_succeeded'
+    ? [ended.data.delivered_as, ended.data.replies_in, ended.data.detail]
+    : ['no delivery'];
 }
 
 function textAnswer(text: string): FakeAnswer {
@@ -47,9 +49,11 @@ describe('a delivery whose function reads replies', () => {
     const { brain, ended } = await deliveredWith();
 
     expect(ended).toMatchObject({
-      outcome: 'delivered',
-      delivered_as: { conversation: '#approvals-sales', id: '1699.000001' },
-      replies_in: { server: 'chat', tool: 'thread_replies', key: '#approvals-sales/1699.000001' },
+      type: 'delivery_succeeded',
+      data: {
+        delivered_as: { conversation: '#approvals-sales', id: '1699.000001' },
+        replies_in: { server: 'chat', tool: 'thread_replies', key: '#approvals-sales/1699.000001' },
+      },
     });
     expect(await brain.firstOpen()).toMatchObject({
       standing: 'delivered',
@@ -71,8 +75,7 @@ describe('a delivery whose function reads replies', () => {
     });
 
     expect(ended).toMatchObject({
-      delivered_as: { conversation: 'C0123', id: '1699000001' },
-      replies_in: { key: 'C0123/1699000001' },
+      data: { delivered_as: { conversation: 'C0123', id: '1699000001' }, replies_in: { key: 'C0123/1699000001' } },
     });
   });
 });

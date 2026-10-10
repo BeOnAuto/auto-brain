@@ -23,6 +23,7 @@ function startedUnder(root: string, index: number) {
       longestMs: 60_000,
     },
     run: { runId, attributes: {} },
+    origin: { version: 1 },
     child: `${root}-${index}-child`,
     root,
   };

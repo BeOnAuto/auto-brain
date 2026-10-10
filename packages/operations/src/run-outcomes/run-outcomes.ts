@@ -1,5 +1,7 @@
 import { Schema } from 'effect';
 
+import type { ProjectedMessage } from '../projections/keyed-projection.ts';
+
 export const RunOutcomeStatusSchema = Schema.Literals(['started', 'succeeded', 'failed', 'rejected']);
 
 export type RunOutcomeStatus = typeof RunOutcomeStatusSchema.Type;
@@ -19,7 +21,7 @@ export interface RunOutcome {
 
 export interface RunOutcomeMapping {
   readonly types: readonly string[];
-  readonly rowAfter: (row: RunOutcome | undefined, event: unknown) => RunOutcome | undefined;
+  readonly rowAfter: (row: RunOutcome | undefined, message: ProjectedMessage) => RunOutcome | undefined;
 }
 
 export interface RunOutcomeWindow {

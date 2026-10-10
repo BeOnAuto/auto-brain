@@ -43,9 +43,9 @@ describe('a record of a brain the follower cannot read', () => {
       { type: 'definition_created' },
     );
     await definitionRecorded(store, { name: 'watch', version: 1, triggers: [trigger] });
-    await recorded(store, `${alpha}events/bad`, { type: 'event_published', event: 'not an event' });
-    await recorded(store, `${alpha}runs/r-bad`, { type: 'run_started', name: 7 });
-    await recorded(store, `${alpha}definitions/workflow`, { type: 'definition_created', name: 7 });
+    await recorded(store, `${alpha}events/bad`, { type: 'event_published', data: { event: 'not an event' } });
+    await recorded(store, `${alpha}runs/r-bad`, { type: 'run_started', data: { input: {}, calls_tools: 7 } });
+    await recorded(store, `${alpha}definitions/workflow`, { type: 'definition_created', data: { content: 7 } });
 
     await published(store, { id: 's1', type: 'com.acme.sentinel' });
     await until(

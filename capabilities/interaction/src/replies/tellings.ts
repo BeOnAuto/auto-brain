@@ -40,10 +40,11 @@ export function told({ ledger, tools }: TellingParts, telling: Telling): Effect.
   const by = brainCallerOf(brain).id;
   const call = { ...brain, reference: { server, tool }, input, meta: { [conversationCallIdKey]: callId } };
   return Effect.gen(function* () {
-    const started = tellingStartedOf({ callId, runId }, tools.startOf(call), { by, at: yield* moment });
+    const fields = yield* tools.startOf(call);
+    const started = tellingStartedOf({ callId, runId }, fields, { by, at: yield* moment });
     const { version } = yield* ledger.execute(stream, conversationCallDecider, started, lineage).pipe(Effect.orDie);
     const called = yield* tools.callOnce(call);
-    const ended = tellingEndedOf(callId, called, { by, at: yield* moment });
+    const ended = tellingEndedOf({ callId, runId }, called, { by, at: yield* moment });
     yield* ledger
       .execute(stream, conversationCallDecider, ended, { ...lineage, causationId: messageIdOf(stream, version) })
       .pipe(Effect.orDie);

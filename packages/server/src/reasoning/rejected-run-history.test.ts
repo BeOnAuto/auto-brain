@@ -1,5 +1,3 @@
-import { Buffer } from 'node:buffer';
-
 import { withMcpSession } from '@beonauto/api/testing';
 import { OutputInvalid } from '@beonauto/reasoning';
 import { answers, textResult } from '@beonauto/reasoning/testing';
@@ -46,9 +44,8 @@ afterEach(async () => {
   await server.stop();
 });
 
-async function recordBytesOf(runId: string): Promise<number> {
-  const { record } = decodeRecord((await server.call('GET', `${alpha}/runs/${runId}`)).body);
-  return Buffer.byteLength(JSON.stringify(record), 'utf8');
+async function recordOf(runId: string): Promise<Schema.Json> {
+  return decodeRecord((await server.call('GET', `${alpha}/runs/${runId}`)).body).record;
 }
 
 function historyOf(runId: string): Promise<unknown> {
@@ -56,7 +53,7 @@ function historyOf(runId: string): Promise<unknown> {
 }
 
 describe('the history of a reasoning run rejected after its model was called', () => {
-  it('shows the size of the record the rejection kept, as the history of a run that succeeded does, over HTTP and MCP', async () => {
+  it('shows the record the rejection kept, as the history of a run that succeeded does, over HTTP and MCP', async () => {
     server = await servingReasoning([
       answers(textResult('Profits rose.', { usage: usageOf(1200, 80) })),
       () => Effect.fail(unusable),
@@ -82,13 +79,13 @@ describe('the history of a reasoning run rejected after its model was called', (
       succeeded: {
         events: [
           { type: 'run_started' },
-          { type: 'run_succeeded', data: { record_bytes: await recordBytesOf(succeeded) } },
+          { type: 'run_succeeded', data: { output: 'Profits rose.', record: await recordOf(succeeded) } },
         ],
       },
       rejected: {
         events: [
           { type: 'run_started' },
-          { type: 'run_rejected', data: { reason: 'unavailable', record_bytes: await recordBytesOf(rejected) } },
+          { type: 'run_rejected', data: { reason: 'unavailable', record: await recordOf(rejected) } },
         ],
       },
     });

@@ -29,7 +29,7 @@ export interface WatermarkSubject {
 
 const succeeded: Settlement = { status: 'succeeded', output: 'done' };
 
-const settledBy: OutputOrigin = { version: 2, lastStep: null };
+const settledBy: OutputOrigin = { version: 2 };
 
 function settled(subject: RecordStoreSubject, runId: string, settlement: Settlement) {
   return subject.recordStore.settle({ runId, settlement }, { ...subject.run, runId }, settledBy);
@@ -88,10 +88,18 @@ const first = exampleStream.slice(0, 1);
 
 const appendedBy: RecordLineage = { cause: { kind: 'none' }, attributes: {} };
 
+function placedAt(expectedVersion: number) {
+  return { expectedVersion, context: { at: '2026-10-01T09:00:00.000Z', by: 'tester' } };
+}
+
 function appendedTo(runStore: RunLogStore, runId: string, events: typeof exampleStream): Effect.Effect<void, unknown> {
-  return Effect.forEach(events, ({ version, event }) => runStore.append(runId, event, version - 1, appendedBy), {
-    discard: true,
-  });
+  return Effect.forEach(
+    events,
+    ({ version, event }) => runStore.append(runId, event, placedAt(version - 1), appendedBy),
+    {
+      discard: true,
+    },
+  );
 }
 
 function stateAt(version: number): RunState {
@@ -182,10 +190,10 @@ export const runStoreProbes: readonly Probe<RunStoreSubject>[] = [
     run: ({ runStore, runId }) =>
       Effect.gen(function* () {
         const appended = yield* Effect.forEach(firstTwo, ({ version, event }) =>
-          Effect.as(runStore.append(runId, event, version - 1, appendedBy), 'appended'),
+          Effect.as(runStore.append(runId, event, placedAt(version - 1), appendedBy), 'appended'),
         );
         const conflicts = yield* Effect.forEach(first, ({ event }) =>
-          Effect.as(Effect.flip(runStore.append(runId, event, 0, appendedBy)), 'conflict'),
+          Effect.as(Effect.flip(runStore.append(runId, event, placedAt(0), appendedBy)), 'conflict'),
         );
         const loaded = yield* runStore.load(runId);
         const after = yield* runStore.eventsAfter(runId, 1);

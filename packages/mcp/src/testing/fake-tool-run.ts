@@ -25,6 +25,7 @@ export interface FakeToolRun {
     tool: string,
     input: Readonly<Record<string, unknown>>,
     signals?: ControlledSignals,
+    room?: number,
   ) => Promise<CallReply>;
   readonly close: () => Promise<void>;
 }
@@ -49,10 +50,11 @@ export async function openFakeToolRun(
     tools: opened,
     journal,
     messages,
-    call: (tool, input, signals = controlledSignals()) => {
+    call: (tool, input, signals, room) => {
       calls += 1;
       const offered = Option.getOrThrow(Option.fromNullishOr(byName.get(`mcp__graph__${tool}`)));
-      return offered.call({ callId: `call-${calls}`, input }, signals);
+      const request = { callId: `call-${calls}`, input, ...(room === undefined ? {} : { room }) };
+      return offered.call(request, signals ?? controlledSignals());
     },
     close: async () => {
       await opened.close();

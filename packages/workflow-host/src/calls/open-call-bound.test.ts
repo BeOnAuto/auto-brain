@@ -9,6 +9,8 @@ import { eventually } from '../testing/eventually.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { hostExecutor } from './host-executor.ts';
 
+const origin = { version: 1 };
+
 const root = '0199a3c4-7d2e-7c1a-9b3f-000000000999';
 
 const attributes = { lineage: { start: 'start-1', correlation: root } };
@@ -69,7 +71,10 @@ describe('the open calls of runs of one tree that start at the same moment', () 
 
     await Effect.runPromise(
       Effect.all(
-        [executor.executor.start(callOf(first.runId), first), executor.executor.start(callOf(second.runId), second)],
+        [
+          executor.executor.start(callOf(first.runId), first, origin),
+          executor.executor.start(callOf(second.runId), second, origin),
+        ],
         {
           concurrency: 'unbounded',
         },

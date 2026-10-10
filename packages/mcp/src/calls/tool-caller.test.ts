@@ -11,7 +11,7 @@ import {
   serveFakeMcp,
   toolRun,
 } from '../testing/index.ts';
-import type { CallJournal, RecordedCall } from './recorded-calls.ts';
+import type { CallJournal } from './recorded-calls.ts';
 
 const closing: (() => Promise<void>)[] = [];
 
@@ -71,7 +71,7 @@ describe('a run that ends while it calls', () => {
       text: 'The MCP server graph failed: The call was cancelled because the run ended',
       isError: true,
     });
-    expect(journal.facts().at(-1)).toMatchObject({ type: 'tool_call_answered', outcome: 'cancelled' });
+    expect(journal.facts().at(-1)).toMatchObject({ type: 'tool_call_failed', data: { because: 'cancelled' } });
   });
 
   it('leaves a call in flight when the run is cancelled with a start and no answer', async () => {
@@ -96,7 +96,7 @@ describe('a run that ends while it calls', () => {
     signals.end();
 
     expect(await replied).toMatchObject({ isError: true });
-    expect(journal.facts().at(-1)).toMatchObject({ outcome: 'cancelled' });
+    expect(journal.facts().at(-1)).toMatchObject({ type: 'tool_call_failed', data: { because: 'cancelled' } });
     expect(fake.received()).toEqual([]);
   });
 });
@@ -110,17 +110,17 @@ async function runCancelledOnRecording() {
   );
   closing.push(access.close);
   const signals = controlledSignals();
-  const facts: RecordedCall[] = [];
+  const facts: string[] = [];
   const journal: CallJournal = {
-    started: (fact) =>
+    started: () =>
       Effect.sync(() => {
-        facts.push({ ...fact, number: 1 });
+        facts.push('tool_call_started');
         signals.cancel();
         return 1;
       }),
-    answered: (fact) =>
+    ended: (_number, fact) =>
       Effect.sync(() => {
-        facts.push(fact);
+        facts.push(fact.type);
         return true;
       }),
   };
@@ -139,7 +139,7 @@ describe('a run cancelled between recording the start of a call and sending it',
       text: 'The MCP server graph failed: The call was cancelled because the run ended',
       isError: true,
     });
-    expect(facts.map(({ type }) => type)).toEqual(['tool_call_started']);
+    expect(facts).toEqual(['tool_call_started']);
     expect(fake.received()).toEqual([]);
     expect(fake.seen().map(({ rpc }) => rpc)).not.toContain('tools/call');
   });

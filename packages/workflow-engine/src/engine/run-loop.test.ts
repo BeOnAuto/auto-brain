@@ -44,9 +44,22 @@ describe('the engine on the ledger loop', () => {
     const store = memoryRunStore();
 
     expect(await Effect.runPromise(submitted(store, cancelled))).toEqual({ outcome: 'not_started', version: 0 });
-    expect(store.events(runId)).toEqual([]);
+    expect([store.events(runId), store.contexts(runId)]).toEqual([[], []]);
   });
 
+  it('appends each event with the context its decider gives for the input, at the time of the input', async () => {
+    const store = memoryRunStore();
+
+    await Effect.runPromise(Effect.all([submitted(store, started), submitted(store, cancelled)]));
+
+    expect(store.contexts(runId)).toEqual([
+      { at: new Date(at).toISOString(), by: 'counter' },
+      { at: new Date(at + 1).toISOString(), by: 'counter' },
+    ]);
+  });
+});
+
+describe('the engine on the ledger loop, as it appends', () => {
   it('counts the bytes of every event it appends in the state it folds', async () => {
     const store = memoryRunStore();
 

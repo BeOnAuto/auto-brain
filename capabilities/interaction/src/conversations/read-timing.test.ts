@@ -33,12 +33,12 @@ describe('a conversation read later', () => {
     const [row] = await conversationRows(brain.ledger);
 
     expect(brain.chat.calls()).toHaveLength(1);
-    expect(await recordsOf(brain.ledger, 'replies_read')).toMatchObject([
+    expect(await recordsOf(brain.ledger, 'reading_failed')).toMatchObject([
       {
         data: {
           server: 'chat',
           tool: 'thread_replies',
-          outcome: 'not_sent',
+          because: 'not_sent',
           detail: 'The argument ts of the read renders more than the 16384 bytes a call may send',
         },
       },

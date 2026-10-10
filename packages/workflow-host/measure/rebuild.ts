@@ -31,19 +31,18 @@ const details = {
 };
 
 function succeeded(index: number) {
-  const at = new Date(Date.UTC(2026, 9, 6) + index * 1000).toISOString();
   const output = { campaign: `campaign-${index % 100}`, verdict: index % 3 === 0 ? 'reject' : 'approve' };
-  const data = {
-    type: 'run_succeeded',
-    definition_type: 'reasoning',
-    name: 'review-brief',
-    definition_version: 1,
-    output,
-    record: {},
+  return { type: 'run_succeeded', data: { output, record: {} } };
+}
+
+function ranAt(stream: number) {
+  return {
     by: 'acme-admin',
-    at,
+    at: new Date(Date.UTC(2026, 9, 6) + stream * runsInAStream * 1000).toISOString(),
+    definitionType: 'reasoning',
+    definitionName: 'review-brief',
+    definitionVersion: 1,
   };
-  return { type: 'run_succeeded', data };
 }
 
 async function recorded(database: HostDatabase, events: number): Promise<void> {
@@ -54,20 +53,23 @@ async function recorded(database: HostDatabase, events: number): Promise<void> {
         database.store.append(
           `${brain}runs/0199a3c4-7d2e-7c1a-9b3f-${String(stream).padStart(12, '0')}`,
           Array.from({ length: runsInAStream }, (_, run) => succeeded(stream * runsInAStream + run)),
-          0,
+          { expectedVersion: 0, context: ranAt(stream) },
         ),
       ),
     Promise.resolve(),
   );
-  const saved = {
-    type: 'definition_created',
-    name: 'reviews',
-    version: 1,
-    content: { source: 'reviews', details },
+  const context = {
     by: 'acme-admin',
     at: '2026-10-06T09:00:00.000Z',
+    definitionType: 'recall',
+    definitionName: 'reviews',
+    definitionVersion: 1,
   };
-  await database.store.append(`${brain}definitions/recall`, [{ type: 'definition_created', data: saved }], 0);
+  await database.store.append(
+    `${brain}definitions/recall`,
+    [{ type: 'definition_created', data: { content: { source: 'reviews', details } } }],
+    { expectedVersion: 0, context },
+  );
 }
 
 interface Counted {

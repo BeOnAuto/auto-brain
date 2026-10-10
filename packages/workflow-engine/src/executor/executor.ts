@@ -8,7 +8,11 @@ export type StartReceipt = 'started' | 'started_again' | 'running' | 'answered_a
 export type CallCancelReceipt = 'cancelled' | 'already_answered' | 'tombstoned';
 
 export interface Executor {
-  readonly start: (call: StartCall, run: RunContext) => Effect.Effect<StartReceipt, DispatchFailed>;
+  readonly start: (
+    call: StartCall,
+    run: RunContext,
+    origin: OutputOrigin,
+  ) => Effect.Effect<StartReceipt, DispatchFailed>;
   readonly cancel: (
     call: CancelCall,
     run: RunContext,

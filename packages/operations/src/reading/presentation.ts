@@ -1,9 +1,17 @@
-import type { Presenter } from './presenter.ts';
-import type { PublicEvent } from './public-event.ts';
+import { eventMetadataOf } from './event-metadata.ts';
+import type { KeptContent, PresentedFact, PresentedPart, Presenter } from './presenter.ts';
+import type { EventMetadata, PublicEvent } from './public-event.ts';
 import type { RecordedEvent } from './recorded-read.ts';
+import { shownData, type EventView } from './shown-data.ts';
+
+export interface Showing {
+  readonly streamPrefix: string;
+  readonly content: KeptContent;
+  readonly view: EventView;
+}
 
 export interface Presentation {
-  readonly present: (recorded: RecordedEvent) => readonly PublicEvent[];
+  readonly present: (recorded: RecordedEvent, showing: Showing) => readonly PublicEvent[];
   readonly publicTypes: readonly string[];
   readonly storedTypesOf: (publicType: string) => readonly string[];
 }
@@ -38,6 +46,29 @@ function presentingOf(presenter: Presenter): Presenting {
   return { presenter, presented: new Set(presented) };
 }
 
+function partIdOf(id: string, number: number): string {
+  return number === 0 ? id : `${id}/${number}`;
+}
+
+function rowOf(recorded: RecordedEvent, metadata: EventMetadata, view: EventView) {
+  const causationOf = (part: PresentedPart): EventMetadata => ({
+    ...metadata,
+    causation_id: partIdOf(recorded.id, part.causedBy),
+  });
+  return ({ type, summary, data, part }: PresentedFact): PublicEvent => ({
+    id: part === undefined ? recorded.id : partIdOf(recorded.id, part.number),
+    type,
+    summary,
+    data: shownData(data, view),
+    metadata: part === undefined ? metadata : causationOf(part),
+  });
+}
+
+function rowsOf(presenter: Presenter, recorded: RecordedEvent, showing: Showing): readonly PublicEvent[] {
+  const row = rowOf(recorded, eventMetadataOf(recorded, showing.streamPrefix), showing.view);
+  return presenter.present(recorded, showing.content).map((fact) => row(fact));
+}
+
 export function presentationOf(presenters: readonly Presenter[]): Presentation {
   requireOnePresenterPerKind(presenters);
   const byKind = new Map(presenters.map((presenter) => [presenter.streamKind, presentingOf(presenter)]));
@@ -47,10 +78,10 @@ export function presentationOf(presenters: readonly Presenter[]): Presentation {
       names.map((name) => ({ stored, name })),
     );
   return {
-    present: (recorded) => {
+    present: (recorded, showing) => {
       const presenting = byKind.get(streamKindOf(recorded.stream));
       return presenting !== undefined && presenting.presented.has(recorded.type)
-        ? presenting.presenter.present(recorded)
+        ? rowsOf(presenting.presenter, recorded, showing)
         : [];
     },
     publicTypes: [...new Set(named.map(({ name }) => name))],

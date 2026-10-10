@@ -9,7 +9,7 @@ import {
   noCalls,
   runBoundMs,
   shownResult,
-  toolBounds,
+  shownWithin,
   type CallTally,
 } from './call-bounds.ts';
 import { bytesOf } from './text-bytes.ts';
@@ -28,7 +28,7 @@ describe('admitting a call', () => {
   it('admits a call and counts it', () => {
     expect(admission(noCalls, searched('call-1'))).toMatchObject({
       admitted: true,
-      tally: { calls: 1, resultBytes: 0, failures: 0 },
+      tally: { calls: 1, failures: 0 },
     });
   });
 
@@ -43,16 +43,6 @@ describe('admitting a call', () => {
       admitted: false,
       tally: { ...tally, calls: 26 },
       refusal: 'This run has made all the 25 tool calls it may; answer from what you have.',
-    });
-  });
-
-  it('refuses a call once the results of the run fill their budget', () => {
-    const full = { ...noCalls, resultBytes: toolBounds.resultBytesInRun };
-
-    expect(callsEnded(full)).toBe(true);
-    expect(admission(full, searched('call-1'))).toMatchObject({
-      admitted: false,
-      refusal: 'This run has received all the 262144 bytes of tool results it may; answer from what you have.',
     });
   });
 });
@@ -78,29 +68,39 @@ describe('admitting the arguments of a call', () => {
   });
 });
 
+const anArray: unknown = expect.any(Array);
+
+const rowsOfJson: unknown = expect.objectContaining({ rows: anArray });
+
 describe('showing a result', () => {
-  it('shows a result within its bound whole and counts its bytes', () => {
-    expect(shownResult(noCalls, 'Found 2 rows.')).toEqual({
-      tally: { ...noCalls, resultBytes: 13 },
-      text: 'Found 2 rows.',
-    });
+  it('shows a result whole when it fits the room the model has, or when that room is unknown', () => {
+    expect(shownResult('Found 2 rows.', 13)).toEqual({ text: 'Found 2 rows.' });
+    expect(shownResult('x'.repeat(5_000_000))).toEqual({ text: 'x'.repeat(5_000_000) });
   });
 
-  it('cuts a result over 64 KiB at a code point, with the note', () => {
-    const shown = shownResult(noCalls, '😀'.repeat(20_000));
+  it('cuts a result past the room at a code point, with the note, and says how much the model read', () => {
+    const text = '😀'.repeat(20_000);
+    const shown = shownResult(text, 4000);
 
-    expect(bytesOf(shown.text)).toBeLessThanOrEqual(toolBounds.resultBytes);
+    expect(bytesOf(shown.text)).toBeLessThanOrEqual(4000);
     expect(shown.text).toMatch(
-      /^(?:😀)+\n\[The answer was cut to 65536 of its 80000 bytes; ask for fewer rows, fields or depth to see the rest\.\]$/u,
+      /^(?:😀)+\n\[The answer was cut to 3,8\d\d of its 80,000 bytes, to fit what the model may still read; ask for fewer rows, fields or depth to see the rest\.\]$/u,
     );
-    expect(shown.tally.resultBytes).toBe(bytesOf(shown.text));
+    expect(shown.text.startsWith(shownWithin(text, Number(shown.shownBytes)))).toBe(true);
+    expect(shown.shownBytes).toBe(bytesOf(shownWithin(text, Number(shown.shownBytes))));
   });
 
-  it('cuts a result to what is left of the budget of the run', () => {
-    const shown = shownResult({ ...noCalls, resultBytes: toolBounds.resultBytesInRun - 200 }, 'x'.repeat(300));
+  it('cuts a JSON result after its last complete value, so the model reads JSON', () => {
+    const rows = JSON.stringify({
+      rows: Array.from({ length: 50 }, (_, index) => ({ id: index, name: `row ${index}` })),
+    });
+    const shown = shownResult(rows, 400);
+    const read = shown.text.slice(0, Number(shown.shownBytes));
 
-    expect(shown.text).toMatch(/^x+\n\[The answer was cut to 200 of its 300 bytes;/u);
-    expect(shown.tally.resultBytes).toBe(toolBounds.resultBytesInRun);
+    expect(read.startsWith('{"rows":[{"id":0,"name":"row 0"},')).toBe(true);
+    expect(read.endsWith('}]}')).toBe(true);
+    expect(JSON.parse(read)).toStrictEqual(rowsOfJson);
+    expect(read).toBe(shownWithin(rows, Number(shown.shownBytes)));
   });
 });
 

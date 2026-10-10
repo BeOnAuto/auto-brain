@@ -20,11 +20,11 @@ function noting(ledger: MemoryLedger, stream: string, ...facts: readonly RunFact
 }
 
 function began(fn: string, at = '2026-10-01T09:00:00.000Z'): RunFact {
-  return { type: 'run_began', at, fn };
+  return { type: 'run_began', data: { at, fn } };
 }
 
 function ended(status: 'succeeded' | 'failed' | 'rejected', ms: number | null, tokens: number | null = null): RunFact {
-  return { type: 'run_ended', status, ms, tokens };
+  return { type: 'run_ended', data: { status, ms, tokens } };
 }
 
 function reading(
@@ -111,7 +111,7 @@ describe('what the in-memory ledger keeps no outcome of', () => {
   it('is another stream, another type, and an event the mapping keeps nothing of', async () => {
     const ledger = memoryLedger(runTallies);
     await noting(ledger, 'brain/acme/alpha/run-logs/r1', began('triage'));
-    await noting(ledger, 'brain/acme/alpha/runs/r2', ended('failed', 5), { type: 'run_noted' });
+    await noting(ledger, 'brain/acme/alpha/runs/r2', ended('failed', 5), { type: 'run_noted', data: {} });
 
     expect(await reading(ledger)).toEqual([]);
   });

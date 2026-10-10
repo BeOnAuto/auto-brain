@@ -1,38 +1,41 @@
-import { presentationOf, type RecordedEvent } from '@beonauto/operations';
-import { Schema } from 'effect';
+import { presentationOf, type Context, type RecordedEvent } from '@beonauto/operations';
+import { nothingKept } from '@beonauto/operations/testing';
 import { describe, expect, it } from 'vitest';
 
 import { makeDefinitionPresenters } from '../index.ts';
-import { DefinitionEventSchema, type DefinitionEvent } from '../registry/definition-events.ts';
+import type { DefinitionEvent } from '../registry/definition-events.ts';
 import { echo } from '../testing/echo.ts';
 
 const { present } = presentationOf(makeDefinitionPresenters([echo]));
 
-const encode = Schema.encodeSync(Schema.toCodecJson(DefinitionEventSchema));
-
-const fact = { name: 'greet', by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
-
-function presented(event: DefinitionEvent, type = 'echo') {
-  const record: RecordedEvent = {
-    id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
-    cursor: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
+function recordOf(stream: string, type: string, data: unknown, context: Context): RecordedEvent {
+  return {
+    id: '5c6f1a43-0d6e-5b2a-9c1e-7e3f2a1b0c9d',
+    cursor: 'c-1',
     causationId: null,
     correlationId: null,
-    stream: `definitions/${type}`,
+    stream,
     version: 1,
-    type: event.type,
-    data: encode(event),
-    recordedAt: '2026-10-01T09:00:00.000Z',
+    globalPosition: 1,
+    type,
+    data,
+    context,
+    recordedAt: '2026-10-01T09:00:02.000Z',
   };
-  return present(record).at(0);
 }
 
-const shown = {
-  id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
-  cursor: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
-  causation_id: null,
-  at: '2026-10-01T09:00:00.000Z',
-};
+const showing = { streamPrefix: 'brain/acme/alpha/', content: nothingKept, view: 'page' } as const;
+
+function presented(event: DefinitionEvent, version?: number, type = 'echo') {
+  const context = {
+    at: '2026-10-01T09:00:00.000Z',
+    by: 'acme-admin',
+    definitionType: type,
+    definitionName: 'greet',
+    ...(version === undefined ? {} : { definitionVersion: version }),
+  };
+  return present(recordOf(`definitions/${type}`, event.type, event.data, context), showing).at(0);
+}
 
 describe('the presenter of the definitions of a capability', () => {
   it('presents a definition created with the size of its document and what its capability said of it', () => {
@@ -44,56 +47,47 @@ describe('the presenter of the definitions of a capability', () => {
       warnings: ['one', 'two'],
     };
 
-    expect(presented({ type: 'definition_created', version: 1, content, ...fact })).toEqual({
-      ...shown,
+    expect(presented({ type: 'definition_created', data: { content } }, 1)).toMatchObject({
       type: 'definition_created',
       summary: 'The greeting “greet” was created.',
       data: {
-        definition_type: 'echo',
-        name: 'greet',
-        by: 'acme-admin',
-        version: 1,
         source_bytes: 18,
         description: 'Greets',
         input_schema_bytes: 17,
         output_schema_bytes: 17,
         warning_count: 2,
       },
+      metadata: { by: 'acme-admin', definition: { type: 'echo', name: 'greet', version: 1 } },
     });
   });
 });
 
 describe('the presenter of the changes to a definition', () => {
   it('presents an update with its version, and a document its capability said little of', () => {
-    expect(presented({ type: 'definition_updated', version: 150, content: { source: 'Hi' }, ...fact })).toEqual({
-      ...shown,
+    expect(presented({ type: 'definition_updated', data: { content: { source: 'Hi' } } }, 150)).toMatchObject({
       type: 'definition_updated',
       summary: 'The greeting “greet” was updated to version one hundred and fifty.',
-      data: {
-        definition_type: 'echo',
-        name: 'greet',
-        by: 'acme-admin',
-        version: 150,
-        source_bytes: 2,
-        warning_count: 0,
-      },
+      data: { source_bytes: 2, warning_count: 0 },
     });
   });
 
-  it('presents a retirement, and names a definition of a capability the server does not offer as an item', () => {
-    expect(presented({ type: 'definition_retired', ...fact }, 'gone')).toEqual({
-      ...shown,
+  it('presents a retirement with no data, and names a definition of a capability the server does not offer as an item', () => {
+    expect(presented({ type: 'definition_retired', data: {} }, undefined, 'gone')).toMatchObject({
       type: 'definition_retired',
       summary: 'The item “greet” was retired.',
-      data: { definition_type: 'gone', name: 'greet', by: 'acme-admin' },
+      data: {},
+      metadata: { definition: { type: 'gone', name: 'greet' } },
     });
   });
 
-  it('shows the first three hundred characters of a description', () => {
+  it('shows the first three hundred characters of a description, and an update recorded without its version as the first', () => {
     const description = `${'😀'.repeat(299)}ab`;
 
     expect(
-      presented({ type: 'definition_created', version: 1, content: { source: 'Hi', description }, ...fact }),
+      presented({ type: 'definition_created', data: { content: { source: 'Hi', description } } }, 1),
     ).toMatchObject({ data: { description: `${'😀'.repeat(299)}a` } });
+    expect(presented({ type: 'definition_updated', data: { content: { source: 'Hi' } } })).toMatchObject({
+      summary: 'The greeting “greet” was updated to version 1.',
+    });
   });
 });

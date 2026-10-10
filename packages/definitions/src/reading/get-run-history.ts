@@ -1,12 +1,16 @@
 import {
+  BrainContext,
   BrainReader,
-  PagingInputFields,
-  PagingOutputFields,
+  EventPagingInputFields,
+  EventPagingOutputFields,
   PublicEventSchema,
   defaultPageLimit,
   defineQuery,
   eventsPageOf,
+  keptContentOf,
+  mostPublicEventDataBytes,
   presentationOf,
+  streamPrefixOfBrain,
   type Presentation,
   type Presenter,
   type RecordedEvent,
@@ -20,20 +24,21 @@ import { noRunCalled } from '../runs/run-lookup.ts';
 
 const description = [
   'Reads what happened in one run, a page at a time, oldest first: when it started and ended,',
-  'each tool call a reasoning function made with its outcome, and each step of a workflow with what it waited for and the runs it started.',
-  'Inputs, outputs and results appear as their sizes; get_run reads the output and the record.',
+  'each tool call a function made and what the tool answered, and each step of a workflow with what it waited for and the runs it started.',
+  "Each event holds its fact as data, a field such as an input, an output, a tool's arguments or its answer whole within 2 KiB and as its size beyond,",
+  'and its metadata: where it is recorded, when, who acted, the definition, the run and the chain; get_event reads one event whole.',
   'Use it to see what a run did, such as which tools it called before it did not succeed.',
   "`run_id` is the run's id, `order` reads newest first when desc, and `cursor` is the next_cursor of the page before.",
 ].join(' ');
 
 const RunHistoryInput = Schema.Struct({
   run_id: RunIdInputField,
-  order: PagingInputFields.order,
-  limit: PagingInputFields.limit,
-  cursor: PagingInputFields.cursor,
+  order: EventPagingInputFields.order,
+  limit: EventPagingInputFields.limit,
+  cursor: EventPagingInputFields.cursor,
 });
 
-const EventsPage = Schema.Struct({ events: Schema.Array(PublicEventSchema), ...PagingOutputFields });
+const EventsPage = Schema.Struct({ events: Schema.Array(PublicEventSchema), ...EventPagingOutputFields });
 
 const cancelRequested = 'run_cancel_requested';
 
@@ -71,12 +76,10 @@ function historyReader(presentation: Presentation) {
     if (page.records.every((record) => isACancel(record)) && holdsNoRun(yield* newestHeadOf(id))) {
       return yield* Effect.fail(noRunCalled(id));
     }
-    const { events, hasMore, nextCursor } = eventsPageOf(presentation, page, paging);
-    return {
-      events: events.map(({ event }) => event),
-      has_more: hasMore,
-      next_cursor: nextCursor,
-    };
+    const content = yield* keptContentOf(page.records, mostPublicEventDataBytes);
+    const showing = { streamPrefix: streamPrefixOfBrain(yield* BrainContext), content, view: 'page' } as const;
+    const { events, hasMore, nextCursor } = eventsPageOf(presentation, page, { ...paging, showing });
+    return { events, has_more: hasMore, next_cursor: nextCursor };
   });
 }
 

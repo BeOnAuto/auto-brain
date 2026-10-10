@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 
-import type { CalledOnce, NotOfferedBecause, OneCall, StartedFields, ToolAccess } from '@beonauto/mcp';
+import type { AnsweredOnce, CalledOnce, NotOfferedBecause, OneCall, StartedFields, ToolAccess } from '@beonauto/mcp';
 import { ToolNotOffered } from '@beonauto/mcp';
 import { Effect, Result } from 'effect';
 
@@ -49,9 +49,14 @@ function notOfferedBy(refusal: Refusal): CalledOnce {
   return { kind: 'unopened', refused: 'tool_not_offered', ...refusal };
 }
 
-function startOf({ reference, input }: Pick<OneCall, 'reference' | 'input'>): StartedFields {
+function startOf({ reference, input }: Pick<OneCall, 'reference' | 'input'>): Effect.Effect<StartedFields> {
   const argumentsJson = JSON.stringify(input);
-  return { ...reference, arguments_bytes: Buffer.byteLength(argumentsJson), arguments_sha256: digest };
+  return Effect.succeed({
+    ...reference,
+    arguments_bytes: Buffer.byteLength(argumentsJson),
+    arguments_sha256: digest,
+    content_kept: true,
+  });
 }
 
 function unsentBy(answer: Exclude<FakeAnswer, BoardAnswer>, { reference }: OneCall): CalledOnce {
@@ -60,10 +65,29 @@ function unsentBy(answer: Exclude<FakeAnswer, BoardAnswer>, { reference }: OneCa
     : notOfferedBy(notAllowed(reference.tool));
 }
 
-function answeredWith(answer: BoardAnswer, number: number): CalledOnce {
-  const bytes = answer.outcome === 'result' ? Buffer.byteLength(JSON.stringify(answer.answer)) : null;
-  const fields = { result_bytes: bytes, result_sha256: bytes === null ? null : digest, jsonrpc_id: number };
-  return { ...answer, kind: 'answered', fields, durationMs: 3, annotations: undefined };
+function answeredOf(bytes: number, isError: boolean, number: number) {
+  return {
+    is_error: isError,
+    result_bytes: bytes,
+    result_sha256: digest,
+    content_kept: true,
+    duration_ms: 3,
+    jsonrpc_id: number,
+  };
+}
+
+function answeredWith(answer: BoardAnswer, number: number): AnsweredOnce {
+  const { detail, retryAfterMs } = answer;
+  const answering = { kind: 'answered', annotations: undefined, detail, retryAfterMs } as const;
+  if (answer.outcome === 'result') {
+    const bytes = Buffer.byteLength(JSON.stringify(answer.answer));
+    return { ...answering, outcome: 'result', answer: answer.answer, answered: answeredOf(bytes, false, number) };
+  }
+  const { outcome } = answer;
+  if (outcome === 'tool_error') {
+    return { ...answering, outcome, answered: answeredOf(0, true, number) };
+  }
+  return { ...answering, outcome, failed: { because: outcome, duration_ms: 3, jsonrpc_id: number } };
 }
 
 function namedBy(refusals: readonly (Refusal | undefined)[]): Result.Result<void, ToolNotOffered> {

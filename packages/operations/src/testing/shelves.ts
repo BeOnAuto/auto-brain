@@ -1,19 +1,21 @@
 import { Effect, Result, Schema } from 'effect';
 
-import { BrainReader, BrainWriter, defineCommand, defineQuery, type Decider } from '../index.ts';
+import { BrainReader, BrainWriter, defineCommand, defineQuery, factOf, type Decider } from '../index.ts';
+import { testedContext } from './callers.ts';
 
 const ItemSchema = Schema.Struct({ item: Schema.String });
 
 type Item = typeof ItemSchema.Type;
 
-const ItemShelvedSchema = Schema.Struct({ type: Schema.Literal('item_shelved'), item: Schema.String });
+const ItemShelvedSchema = factOf('item_shelved', ItemSchema);
 
 type ItemShelved = typeof ItemShelvedSchema.Type;
 
 const shelf: Decider<readonly string[], Item, ItemShelved> = {
   initialState: [],
-  evolve: (items, { item }) => [...items, item],
-  decide: ({ item }) => Result.succeed([{ type: 'item_shelved', item }]),
+  evolve: (items, { data }) => [...items, data.item],
+  decide: (item) => Result.succeed([{ type: 'item_shelved', data: item }]),
+  context: () => testedContext,
   eventSchema: ItemShelvedSchema,
 };
 

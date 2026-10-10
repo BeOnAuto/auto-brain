@@ -1,5 +1,5 @@
-import type { CallResult } from '@beonauto/operations';
-import { stepEventIdOf, type StartCall } from '@beonauto/workflow-engine';
+import { messageIdOf, type CallResult } from '@beonauto/operations';
+import type { StartCall } from '@beonauto/workflow-engine';
 import { Deferred, Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -28,7 +28,7 @@ function callAt(reference: string, runId = runKey): StartCall {
   };
 }
 
-const origin = { version: 3, lastStep: { reference: '/do/0/a', run: 1, outcome: 'raised', times: 1 } } as const;
+const origin = { version: 3 };
 
 function waitingAtTheFirst(call: StartCall): Effect.Effect<CallAnswer> {
   return Effect.succeed(
@@ -103,11 +103,11 @@ async function executing(
 describe('a call whose run finishes later', () => {
   it('waits for that run with its id, releasing its permit, and is never performed again', async () => {
     const calls = await executing(waitingAtTheFirst);
-    await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/a'), run));
-    await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/b'), run));
+    await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/a'), run, origin));
+    await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/b'), run, origin));
     await Effect.runPromise(calls.executor.idle());
 
-    const again = await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/a'), run));
+    const again = await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/a'), run, origin));
     const resumed = await Effect.runPromise(calls.executor.resume());
 
     expect(await calls.rows()).toEqual([
@@ -124,7 +124,7 @@ describe('a call whose run ended before the call was marked waiting', () => {
       ended: { status: 'succeeded', output: 'done' },
     });
 
-    await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/a'), run));
+    await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/a'), run, origin));
     await eventually(calls.answered, (answered) => answered.length > 0);
 
     expect(calls.answered()).toEqual([{ status: 'succeeded', output: 'done' }]);
@@ -136,15 +136,15 @@ describe('the open calls under one run at the top of a tree', () => {
   it('are bounded, the call past the bound answered as a conflict without being performed', async () => {
     const calls = await executing(() => Effect.never, { mostOpen: 2 });
     const elsewhere = { runId: 'acme/alpha/other', attributes: {} };
-    await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/a'), run));
-    await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/b'), run));
+    await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/a'), run, origin));
+    await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/b'), run, origin));
 
-    const refused = await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/c'), run));
+    const refused = await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/c'), run, origin));
     const another = await Effect.runPromise(
-      calls.executor.executor.start(callAt('/do/0/d', 'acme/alpha/other'), elsewhere),
+      calls.executor.executor.start(callAt('/do/0/d', 'acme/alpha/other'), elsewhere, origin),
     );
     await eventually(calls.answered, (answered) => answered.length > 0);
-    const refusedAgain = await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/c'), run));
+    const refusedAgain = await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/c'), run, origin));
     await eventually(calls.answered, (answered) => answered.length > 1);
 
     expect([refused, another, refusedAgain]).toEqual(['started', 'started', 'answered_again']);
@@ -157,7 +157,7 @@ describe('the open calls under one run at the top of a tree', () => {
 describe('a cancel of a waiting call', () => {
   it('cancels the run the call waits for, by its id, before marking the call, then names it cancelled', async () => {
     const calls = await executing(() => Effect.succeed({ status: 'waiting', child }));
-    await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/a'), run));
+    await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/a'), run, origin));
     await Effect.runPromise(calls.executor.idle());
 
     const cancelled = await Effect.runPromise(
@@ -178,7 +178,7 @@ describe('a cancel of a waiting call', () => {
         child: { org: 'acme', brain: 'alpha', runId: child },
         reason: 'deadline',
         lineage: {
-          causationId: stepEventIdOf('0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', origin.lastStep),
+          causationId: messageIdOf(`brain/acme/alpha/run-logs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a`, origin.version),
           correlationId: root,
         },
       },
@@ -191,9 +191,9 @@ describe('a cancel of a running call', () => {
   it('interrupts the call and cancels the run its arguments name, and leaves an answered one alone', async () => {
     const finishing = Deferred.makeUnsafe<CallAnswer>();
     const calls = await executing(heldAtTheFirst(Deferred.await(finishing)));
-    await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/b'), run));
+    await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/b'), run, origin));
     await eventually(calls.answered, (answered) => answered.length > 0);
-    await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/a'), run));
+    await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/a'), run, origin));
     const cancelOf = (reference: string) =>
       calls.executor.executor.cancel(
         { kind: 'cancel_call', key: callAt(reference).key, reason: 'parent_ended' },
@@ -226,7 +226,7 @@ describe('a cancel of a call whose run could not be cancelled', () => {
       childAnswerOf: () => Effect.undefined,
       cancelChild: () => Effect.fail({ detail: 'The ledger is busy' }),
     });
-    await Effect.runPromise(executor.executor.start(callAt('/do/0/a'), run));
+    await Effect.runPromise(executor.executor.start(callAt('/do/0/a'), run, origin));
     await Effect.runPromise(executor.idle());
 
     const failure = await Effect.runPromise(
@@ -238,7 +238,7 @@ describe('a cancel of a call whose run could not be cancelled', () => {
 
   it('fails too when the run it waits for is not one its brain can hold, and leaves the call as it was', async () => {
     const calls = await executing(() => Effect.succeed({ status: 'waiting', child }), { receipt: 'unknown_run' });
-    await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/a'), run));
+    await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/a'), run, origin));
     await Effect.runPromise(calls.executor.idle());
 
     const failure = await Effect.runPromise(

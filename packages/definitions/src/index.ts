@@ -37,31 +37,31 @@ export {
   type StrippedForms,
 } from './capability/stripped-forms.ts';
 export type {
-  CallAnsweredFact,
-  CallStartedFact,
   DeliveryEndedFact,
   DeliveryStartedFact,
   OutboundCallFact,
   ReplyFact,
-  ReplyRefusedFact,
-  ReplyTakenFact,
+  RunOutcome,
+  RunResult,
 } from './runs/run-commands.ts';
 export {
-  CalledBySchema,
   CancelRequestKindSchema,
-  DeliveryBecauseSchema,
-  DeliveryOutcomeSchema,
+  DeliveryFailedBecauseSchema,
+  DeliveryRefusedBecauseSchema,
   ReplyRefusalSchema,
-  type CalledBy,
+  RunEventSchema,
   type CancelRequestKind,
   type DeliveredAs,
-  type DeliveryBecause,
   type DeliveryEnded,
   type DeliveryEvent,
-  type DeliveryOutcome,
+  type DeliveryFailedBecause,
+  type DeliveryRefusedBecause,
   type DeliveryStarted,
+  type ReplyRefused,
+  type ReplyTaken,
   type RunDeferred,
   type RunEvent,
+  type RunFinished,
   type RepliesIn,
   type ReplyIdentity,
   type ReplyRefusal,
@@ -117,6 +117,7 @@ export {
   callerSourcePrefix,
   isReservedSource,
   refusingTheBrainsOwnAttributes,
+  contextAttributeNames,
   reservedEventTypes,
   reservedSourcesInWords,
 } from './events/reserved-attributes.ts';
@@ -142,6 +143,7 @@ export { publishedEventOf, type EventPublished } from './events/published-events
 export { ReactionRefusedSchema, reactionsStreamKind, type ReactionRefused } from './events/reaction-refusals.ts';
 export { mostReactingDefinitions } from './registry/registry-decisions.ts';
 export { definitionChangeOf, type DefinitionChange } from './registry/definition-changes.ts';
+export { definitionNameOf } from './registry/definition-registry.ts';
 export {
   EventTriggerSchema,
   ScheduleTriggerSchema,
@@ -153,7 +155,7 @@ export {
   type Trigger,
   type TriggerFilter,
 } from './registry/definition-triggers.ts';
-export { runStartedOf, type StartedRun } from './runs/run-starts.ts';
+export { runStartedOf } from './runs/run-starts.ts';
 export { inWords, outputInWords, wordsOf } from './plain-language/in-words.ts';
 export { triggerNamed } from './plain-language/event-words.ts';
 export { mostInputBytes, mostInputDepth, mostResultBytes } from './runs/recorded-size.ts';

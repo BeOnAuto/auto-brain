@@ -30,8 +30,8 @@ export function rowsOfBrain(database: HostDatabase, brain: string): Effect.Effec
 function definitionsOf({ database, definitionType, definitions }: Reconciling, brain: string) {
   const known = definitions.get(brain) ?? noDefinitions;
   return Effect.promise(() => database.store.read(definitionStreamOf(brain, definitionType), known.version)).pipe(
-    Effect.map(({ events }) => {
-      const next = definitionsAfter(known, events);
+    Effect.map(({ messages }) => {
+      const next = definitionsAfter(known, messages);
       definitions.set(brain, next);
       return next;
     }),

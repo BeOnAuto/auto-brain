@@ -28,6 +28,20 @@ describe('whether every tool a run called only reads', () => {
   });
 });
 
+describe('how much the tools of a run answered', () => {
+  it('adds up the bytes of every answer a tool gave, and nothing for a call that failed', async () => {
+    const { tools, call } = await runWith(['search', 'broken']);
+    const before = tools.answeredBytes();
+    await call('search', { query: 'acme' });
+    await call('broken', {});
+
+    expect([before, tools.answeredBytes()]).toEqual([
+      0,
+      Buffer.byteLength(JSON.stringify({ content: [{ type: 'text', text: 'Found 2 rows for acme.' }] })),
+    ]);
+  });
+});
+
 describe('what the model sees of a tool', () => {
   it('sees its description cut to 4 KiB', async () => {
     const { tools, call } = await runWith(['verbose']);

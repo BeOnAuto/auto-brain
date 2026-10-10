@@ -1,4 +1,4 @@
-import { Conflict } from '@beonauto/operations';
+import { Conflict, type Recorded } from '@beonauto/operations';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -12,69 +12,57 @@ import type {
 import { runDecider } from '../runs/run-decider.ts';
 import { answeredByAReply } from '../runs/run-decisions.ts';
 import type { RunEvent } from '../runs/run-events.ts';
+import { recordedWith, runStateAfter, testRunId } from '../testing/run-facts.ts';
 
-const start = { by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
+const start = { runId: testRunId, by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
 
-const during = { by: 'brain:alpha', at: '2026-10-01T09:00:02.000Z' };
+const during = { runId: testRunId, by: 'brain:alpha', at: '2026-10-01T09:00:02.000Z' };
 
 const request = { definition_type: 'interaction', name: 'approve-brief', input: { owner: 'ada' } };
 
-const ofApproval = { definition_type: 'interaction', name: 'approve-brief', definition_version: 3 };
+const ofApproval = { definitionType: 'interaction', definitionName: 'approve-brief', definitionVersion: 3 };
 
-const started: RunEvent = {
-  type: 'run_started',
-  ...request,
-  definition_version: 3,
-  finishes_later: true,
-  ...start,
+const meanwhile = recordedWith({ ...during, ...ofApproval });
+
+const startOfTheRun: RunEvent = { type: 'run_started', data: { input: request.input, finishes_later: true } };
+
+const started = recordedWith({ ...start, ...ofApproval })(startOfTheRun);
+
+const record = {
+  to: 'ada',
+  message: 'Approve?',
+  expires_at: '2026-10-09T09:00:00.000Z',
+  requested_at: '2026-10-07T09:00:00.000Z',
 };
 
-const deferred: RunEvent = {
-  type: 'run_deferred',
-  record: {
-    to: 'ada',
-    message: 'Approve?',
-    expires_at: '2026-10-09T09:00:00.000Z',
-    requested_at: '2026-10-07T09:00:00.000Z',
-  },
-  ...ofApproval,
-  ...during,
-};
+const deferred = meanwhile({ type: 'run_deferred', data: { record } });
 
-const succeeded: RunEvent = { type: 'run_succeeded', output: {}, record: {}, ...ofApproval, ...during };
+const succeeded = meanwhile({ type: 'run_succeeded', data: { output: {}, record: {} } });
 
-const unavailable: RunEvent = {
+const unavailable = meanwhile({
   type: 'run_rejected',
-  rejection: { reason: 'unavailable', detail: 'The tool server is gone' },
-  ...ofApproval,
-  ...during,
-};
+  data: { rejection: { reason: 'unavailable', detail: 'The tool server is gone' } },
+});
 
 const attempt: DeliveryStartedFact = {
   type: 'delivery_started',
-  number: 1,
-  target: 'ada',
-  server: 'chat',
-  tool: 'post_message',
+  data: { number: 1, target: 'ada', server: 'chat', tool: 'post_message' },
 };
 
 const ended: DeliveryEndedFact = {
-  type: 'delivery_ended',
-  number: 1,
-  outcome: 'failed',
-  because: 'server_failure',
-  duration_ms: 40,
+  type: 'delivery_failed',
+  data: { number: 1, because: 'server_failure', duration_ms: 40 },
 };
 
-const attemptStarted: RunEvent = { ...attempt, ...ofApproval, ...during };
+const attemptStarted = meanwhile(attempt);
 
-const attemptEnded: RunEvent = { ...ended, ...ofApproval, ...during };
+const attemptEnded = meanwhile(ended);
 
-function stateAfter(...events: readonly RunEvent[]) {
-  return events.reduce((state, event) => runDecider.evolve(state, event), runDecider.initialState);
+function stateAfter(...events: readonly Recorded<RunEvent>[]) {
+  return runStateAfter(events);
 }
 
-function decided(command: RunCommand, ...history: readonly RunEvent[]) {
+function decided(command: RunCommand, ...history: readonly Recorded<RunEvent>[]) {
   return runDecider.decide(command, stateAfter(...history));
 }
 
@@ -91,35 +79,27 @@ function notInFlight(number: number): Conflict {
 const noMoreWork = new Conflict({ detail: 'The run has ended, so it records no more of its work' });
 
 describe('the deferral of a run', () => {
-  it('names the definition that ran, as its endings do', () => {
-    expect(
-      decided(
-        {
-          type: 'finish',
-          result: {
-            type: 'run_deferred',
-            record: {
-              to: 'ada',
-              message: 'Approve?',
-              expires_at: '2026-10-09T09:00:00.000Z',
-              requested_at: '2026-10-07T09:00:00.000Z',
-            },
-          },
-          ...during,
-        },
-        started,
-      ),
-    ).toStrictEqual(Result.succeed([deferred]));
+  it('takes the definition that ran as its context, as its endings do', () => {
+    const deferring: RunCommand = { type: 'finish', result: { type: 'run_deferred', data: { record } }, ...during };
+
+    expect(decided(deferring, started)).toStrictEqual(Result.succeed([{ type: 'run_deferred', data: { record } }]));
+    expect(runDecider.context(deferring, stateAfter(started))).toStrictEqual({ ...during, ...ofApproval });
   });
 });
 
 describe('an outbound call of a run that finishes later', () => {
-  it('is recorded as the work of the run, with the definition, numbered as the next call the run makes', () => {
-    expect(decided(recording(attempt), started, deferred)).toStrictEqual(Result.succeed([attemptStarted]));
-    expect(decided(recording(ended), started, deferred, attemptStarted)).toStrictEqual(Result.succeed([attemptEnded]));
-    expect(
-      decided(recording({ ...attempt, number: 2 }), started, deferred, attemptStarted, attemptEnded),
-    ).toStrictEqual(Result.succeed([{ ...attemptStarted, number: 2 }]));
+  it('is recorded as the work of the run, numbered as the next call the run makes', () => {
+    const second: DeliveryStartedFact = { ...attempt, data: { ...attempt.data, number: 2 } };
+
+    expect(decided(recording(attempt), started, deferred)).toStrictEqual(Result.succeed([attempt]));
+    expect(decided(recording(ended), started, deferred, attemptStarted)).toStrictEqual(Result.succeed([ended]));
+    expect(decided(recording(second), started, deferred, attemptStarted, attemptEnded)).toStrictEqual(
+      Result.succeed([second]),
+    );
+    expect(runDecider.context(recording(attempt), stateAfter(started, deferred))).toStrictEqual({
+      ...during,
+      ...ofApproval,
+    });
   });
 
   it('is refused under a number that is not the next, so an attempt two hosts make is recorded once', () => {
@@ -136,9 +116,11 @@ describe('an outbound call of a run that finishes later', () => {
 
 describe('the end of a delivery', () => {
   it('ends only the attempt in flight, once, so an attempt that never started or already ended is refused', () => {
+    const secondEnded: DeliveryEndedFact = { ...ended, data: { ...ended.data, number: 2 } };
+
     expect([
       decided(recording(ended), started, deferred),
-      decided(recording({ ...ended, number: 2 }), started, deferred, attemptStarted),
+      decided(recording(secondEnded), started, deferred, attemptStarted),
       decided(recording(ended), started, deferred, attemptStarted, attemptEnded),
     ]).toEqual([Result.fail(notInFlight(1)), Result.fail(notInFlight(2)), Result.fail(notInFlight(1))]);
     expect(stateAfter(started, deferred, attemptStarted)).toMatchObject({ deliveryInFlight: 1 });
@@ -148,61 +130,84 @@ describe('the end of a delivery', () => {
       deliveredAt: null,
     });
   });
+
+  it('ends the attempt in flight whether it succeeded, failed or was refused', () => {
+    const refused = meanwhile({
+      type: 'delivery_refused',
+      data: { number: 1, because: 'too_large', duration_ms: 0 },
+    });
+
+    expect(stateAfter(started, deferred, attemptStarted, refused)).toMatchObject({ deliveryInFlight: null });
+  });
 });
 
 describe('the deliveries of a run asked to cancel', () => {
   it('starts no attempt once a cancel is asked, though the attempt in flight may still end', () => {
-    const cancelAsked: RunEvent = {
+    const cancelAsked = meanwhile({
       type: 'run_cancel_requested',
-      kind: 'requested',
-      reason: 'No longer needed',
-      ...during,
-    };
+      data: { kind: 'requested', reason: 'No longer needed' },
+    });
 
     expect(decided(recording(attempt), started, deferred, cancelAsked)).toEqual(
       Result.fail(new Conflict({ detail: 'The run is being cancelled, so it starts no more deliveries' })),
     );
     expect(decided(recording(ended), started, deferred, attemptStarted, cancelAsked)).toStrictEqual(
-      Result.succeed([attemptEnded]),
+      Result.succeed([ended]),
     );
   });
 });
 
+function settling(result: RunResult): RunCommand {
+  return { type: 'settle', result, ...during };
+}
+
 describe('a run a reply answered', () => {
   it('leaves the run to be settled with that answer alone, whoever settles it and however', () => {
-    const taken: RunEvent = {
+    const taken = meanwhile({
       type: 'reply_taken',
-      server: 'chat',
-      tool: 'thread_replies',
-      reply: { id: '1699.2', sender: 'ada' },
-      answer: { choice: 'approve' },
-      ...ofApproval,
-      ...during,
-    };
-    const settling = (result: RunResult): RunCommand => ({ type: 'settle', result, ...during });
-    const withTheAnswer = settling({ type: 'run_succeeded', output: { choice: 'approve' }, record: {} });
+      data: {
+        server: 'chat',
+        tool: 'thread_replies',
+        reply: { id: '1699.2', sender: 'ada' },
+        answer: { choice: 'approve' },
+      },
+    });
+    const answer: RunResult = { type: 'run_succeeded', data: { output: { choice: 'approve' }, record: {} } };
     const history = [started, deferred, attemptStarted, taken];
 
     expect([
-      decided(settling({ type: 'run_succeeded', output: { choice: 'reject' }, record: {} }), ...history),
+      decided(settling({ type: 'run_succeeded', data: { output: { choice: 'reject' }, record: {} } }), ...history),
       decided(
-        settling({ type: 'run_rejected', rejection: { reason: 'cancelled', kind: 'requested', detail: 'Off' } }),
+        settling({
+          type: 'run_rejected',
+          data: { rejection: { reason: 'cancelled', kind: 'requested', detail: 'Off' } },
+        }),
         ...history,
       ),
-      decided(withTheAnswer, ...history),
-      decided(withTheAnswer, started, deferred, attemptStarted, attemptEnded),
-    ]).toMatchObject([
+      decided(settling(answer), ...history),
+      decided(settling(answer), started, deferred, attemptStarted, attemptEnded),
+    ]).toStrictEqual([
       Result.fail(answeredByAReply),
       Result.fail(answeredByAReply),
-      Result.succeed([{ type: 'run_succeeded', output: { choice: 'approve' } }]),
-      Result.succeed([{ type: 'run_succeeded', output: { choice: 'approve' } }]),
+      Result.succeed([answer]),
+      Result.succeed([answer]),
     ]);
   });
 });
 
 describe('the end of a delivery that delivered', () => {
   it('is kept by the run as when it was delivered, for a cancel of a notification, and brings no answer', () => {
-    const delivered: RunEvent = { ...ended, outcome: 'delivered', ...ofApproval, ...during };
+    const delivered = meanwhile({
+      type: 'delivery_succeeded',
+      data: {
+        number: 1,
+        result_bytes: 20,
+        result_sha256: 'b'.repeat(64),
+        content_kept: true,
+        duration_ms: 40,
+        jsonrpc_id: 2,
+      },
+    });
 
     expect(stateAfter(started, deferred, attemptStarted, delivered)).toMatchObject({
       broughtAnswer: null,
@@ -218,10 +223,6 @@ describe('the end of a delivery of a run that ended or starts again', () => {
   });
 
   it('keeps the number of the last call but never says the run may have changed something, so it can run again', () => {
-    expect(stateAfter(started, deferred, attemptStarted, attemptEnded)).toMatchObject({
-      lastCall: 1,
-      mayHaveChanged: false,
-    });
     const startingAgain: RunCommand = {
       type: 'start',
       ...request,
@@ -231,6 +232,10 @@ describe('the end of a delivery of a run that ended or starts again', () => {
       ...start,
     };
 
-    expect(decided(startingAgain, started, attemptStarted, unavailable)).toStrictEqual(Result.succeed([started]));
+    expect(stateAfter(started, deferred, attemptStarted, attemptEnded)).toMatchObject({
+      lastCall: 1,
+      mayHaveChanged: false,
+    });
+    expect(decided(startingAgain, started, attemptStarted, unavailable)).toStrictEqual(Result.succeed([startOfTheRun]));
   });
 });

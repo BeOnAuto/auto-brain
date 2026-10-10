@@ -11,7 +11,7 @@ import {
 } from '@beonauto/reasoning';
 import { Effect } from 'effect';
 
-import { logModelProviders, logOperatorHint, logProviderMessage } from '../logging/logging.ts';
+import { logModelProviders, logOperatorHint, logProviderMessage, logReasoning } from '../logging/logging.ts';
 import type { Settings } from '../settings/settings.ts';
 
 export type ModelAccessOf = (settings: ModelSettings) => Effect.Effect<ModelAccess>;
@@ -29,14 +29,17 @@ export const loggedModelAccess: ModelAccessOf = (settings) =>
 
 export async function reasoningServedBy(
   runtime: AppRuntime<DispatcherServices>,
-  settings: Pick<Settings, 'models'>,
+  settings: Pick<Settings, 'models' | 'reasoning'>,
   modelAccessOf: ModelAccessOf,
   tools: ToolAccess,
 ): Promise<ServedReasoning> {
   const { languageModel, status, offered, catalog } = await Effect.runPromise(modelAccessOf(settings.models));
   await runtime.run(logModelProviders(status));
+  const { mostInputTokens } = settings.reasoning;
+  await runtime.run(logReasoning(mostInputTokens));
+  const reading = { mostInputTokens, contextWindowOf: catalog.contextWindowOf };
   return {
-    capability: makeReasoningFunctionAdapter({ languageModel, offered, tools }),
+    capability: makeReasoningFunctionAdapter({ languageModel, offered, tools, reading }),
     listModels: defineListModels(catalog),
     listToolServers: defineListToolServers(tools),
     listToolServersInOrg: defineListToolServersInOrg(tools, foundBrain),

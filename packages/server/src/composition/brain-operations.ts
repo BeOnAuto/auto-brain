@@ -1,4 +1,4 @@
-import { defineListBrainEvents } from '@beonauto/brains';
+import { defineGetEvent, defineListBrainEvents } from '@beonauto/brains';
 import {
   makeDefinitionOperations,
   makeDefinitionPresenters,
@@ -19,5 +19,10 @@ export function brainOperationsServing(
     conversationCallPresenter,
     ...logPresenters,
   ];
-  return [...makeDefinitionOperations(capabilities, presenters), defineListBrainEvents(presenters), publishEvent];
+  return [
+    ...makeDefinitionOperations(capabilities, presenters),
+    defineListBrainEvents(presenters),
+    defineGetEvent(presenters),
+    publishEvent,
+  ];
 }

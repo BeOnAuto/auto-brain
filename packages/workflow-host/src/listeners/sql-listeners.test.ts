@@ -14,7 +14,7 @@ const attributes = { definition: { name: 'await-approval', version: 1 }, caller:
 
 const run = { runId: 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', attributes };
 
-const armedBy = { version: 3, lastStep: null };
+const armedBy = { version: 3 };
 
 function listenerAt(reference: string): ArmListener {
   return { kind: 'arm_listener', key: { runId: run.runId, reference, run: 1 }, filters: [{ type: 'go' }] };

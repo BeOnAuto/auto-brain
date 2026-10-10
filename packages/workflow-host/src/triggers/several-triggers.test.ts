@@ -6,14 +6,15 @@ import {
   alpha,
   at,
   cronTrigger,
+  definitionRecordAt,
+  definitionRecorded,
+  emittedContext,
   eventRecordOf,
   eventTrigger,
   everyTrigger,
   published,
   publishedInTurn,
   runRecorded,
-  definitionRecordAt,
-  definitionRecorded,
 } from '../reaction-testing/brain-writes.ts';
 import { startsReaching, untilScheduleRuns } from '../reaction-testing/kept-triggers.ts';
 import { movedClock } from '../reaction-testing/moved-clock.ts';
@@ -163,14 +164,7 @@ describe('a workflow whose schedule started a run', () => {
     const { store } = reacting.database;
 
     await runRecorded(store, { runId: run, type: 'workflow', name: 'close' }, 'run_succeeded');
-    await published(
-      store,
-      { id: 'told', type: 'com.acme.told' },
-      {
-        emitted_by: { run_id: run, workflow: 'close', version: 1 },
-        depth: 1,
-      },
-    );
+    await published(store, { id: 'told', type: 'com.acme.told' }, emittedContext(run, 'close', 1));
     await published(store, { id: 'go', type: 'go' });
     const starts = await startsReaching(reacting.reactions.starts, 2);
 

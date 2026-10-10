@@ -4,14 +4,15 @@ import { staleReasonOf } from '../machine/admission.ts';
 import { inputTimeOf, receiptOf } from '../machine/input-receipt.ts';
 import type { RunDecider } from '../machine/run-decider.ts';
 import { newRun } from '../machine/run-state.ts';
-import { RunLogEventSchema, withHistoryBytes } from '../run-log/run-event.ts';
+import { isoInstantOf } from '../machine/utc-time.ts';
+import { withHistoryBytes } from '../run-log/run-event.ts';
 import { evolveRun } from '../run-log/run-fold.ts';
 import { stateFormat } from '../run-log/state-format.ts';
 
 export const countingDecider: RunDecider = {
   initialState: newRun,
   evolve: evolveRun,
-  eventSchema: RunLogEventSchema,
+  context: (input, state) => ({ at: isoInstantOf(inputTimeOf(state, input)), by: 'counter' }),
   decide: (input, state) => {
     if (staleReasonOf(state, input) !== undefined) {
       return Result.succeed([]);

@@ -104,7 +104,7 @@ describe('run_definition over MCP on a server with MCP servers', () => {
       events: [
         { type: 'run_started' },
         { type: 'tool_call_started', data: { server: 'graph', tool: 'search' } },
-        { type: 'tool_call_answered', data: { outcome: 'result' } },
+        { type: 'tool_call_answered', data: { is_error: false, answer: 'Found 2 rows for acme.' } },
         { type: 'run_succeeded' },
       ],
     });
@@ -129,7 +129,7 @@ describe('a reasoning function with tools over MCP', () => {
         events: [
           { type: 'run_started' },
           { type: 'tool_call_started', data: { server: 'limitless', tool: 'search' } },
-          { type: 'tool_call_answered', data: { outcome: 'result' } },
+          { type: 'tool_call_answered', data: { is_error: false, answer: 'Found 2 rows for acme.' } },
           { type: 'run_succeeded' },
         ],
       });

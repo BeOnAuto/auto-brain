@@ -1,9 +1,8 @@
+import { cutWhereValid } from './structural-cut.ts';
 import { bytesOf, canonicalJson, cutAtCodePoint } from './text-bytes.ts';
 
 export const toolBounds = {
   callsInRun: 25,
-  resultBytesInRun: 262_144,
-  resultBytes: 65_536,
   argumentBytes: 16_384,
   sameCallsInRun: 2,
   failuresInRun: 5,
@@ -13,8 +12,9 @@ export const toolBounds = {
   runMs: 600_000,
   descriptionBytes: 4096,
   failureBytes: 1024,
-  recordedContentBytes: 4096,
-  shownContentBytes: 2048,
+  testedAnswerBytes: 65_536,
+  readAnswerBytes: 65_536,
+  httpAnswerBytes: 16_777_216,
 } as const;
 
 export interface Timing {
@@ -31,7 +31,6 @@ export const defaultTiming: Timing = {
 
 export interface CallTally {
   readonly calls: number;
-  readonly resultBytes: number;
   readonly failures: number;
   readonly sameCalls: ReadonlyMap<string, readonly string[]>;
 }
@@ -47,15 +46,13 @@ export type Admission =
   | { readonly admitted: false; readonly tally: CallTally; readonly refusal: string };
 
 export interface ShownResult {
-  readonly tally: CallTally;
   readonly text: string;
+  readonly shownBytes?: number;
 }
 
-export const noCalls: CallTally = { calls: 0, resultBytes: 0, failures: 0, sameCalls: new Map() };
+export const noCalls: CallTally = { calls: 0, failures: 0, sameCalls: new Map() };
 
 const allCallsMade = `This run has made all the ${toolBounds.callsInRun} tool calls it may; answer from what you have.`;
-
-const allResultsReceived = `This run has received all the ${toolBounds.resultBytesInRun} bytes of tool results it may; answer from what you have.`;
 
 function argumentsTooLarge(bytes: number): string {
   return `The arguments of this call take ${bytes} bytes, more than the ${toolBounds.argumentBytes} a call may send; send less.`;
@@ -68,9 +65,6 @@ function repeated(earlier: readonly string[]): string {
 function refusalOf(tally: CallTally, argumentBytes: number, earlier: readonly string[]): string | undefined {
   if (tally.calls > toolBounds.callsInRun) {
     return allCallsMade;
-  }
-  if (tally.resultBytes >= toolBounds.resultBytesInRun) {
-    return allResultsReceived;
   }
   if (argumentBytes > toolBounds.argumentBytes) {
     return argumentsTooLarge(argumentBytes);
@@ -88,16 +82,24 @@ export function admission(tally: CallTally, { tool, callId, input }: CallAsked):
     : { admitted: false, tally: counted, refusal };
 }
 
-function cutNote(room: number, bytes: number): string {
-  return `\n[The answer was cut to ${room} of its ${bytes} bytes; ask for fewer rows, fields or depth to see the rest.]`;
+const measured = new Intl.NumberFormat('en');
+
+function cutNote(shown: number, bytes: number): string {
+  return `\n[The answer was cut to ${measured.format(shown)} of its ${measured.format(bytes)} bytes, to fit what the model may still read; ask for fewer rows, fields or depth to see the rest.]`;
 }
 
-export function shownResult(tally: CallTally, text: string): ShownResult {
-  const room = Math.min(toolBounds.resultBytes, toolBounds.resultBytesInRun - tally.resultBytes);
+export function shownResult(text: string, room?: number): ShownResult {
   const bytes = bytesOf(text);
-  const note = cutNote(room, bytes);
-  const shown = bytes <= room ? text : `${cutAtCodePoint(text, room - bytesOf(note))}${note}`;
-  return { tally: { ...tally, resultBytes: tally.resultBytes + bytesOf(shown) }, text: shown };
+  if (room === undefined || bytes <= room) {
+    return { text };
+  }
+  const shown = cutWhereValid(text, Math.max(0, room - bytesOf(cutNote(room, bytes))));
+  const shownBytes = bytesOf(shown);
+  return { text: `${shown}${cutNote(shownBytes, bytes)}`, shownBytes };
+}
+
+export function shownWithin(text: string, shownBytes: number): string {
+  return cutWhereValid(text, shownBytes);
 }
 
 export function failedOnce(tally: CallTally): CallTally {
@@ -108,8 +110,8 @@ export function failuresEnded({ failures }: CallTally): boolean {
   return failures >= toolBounds.failuresInRun;
 }
 
-export function callsEnded({ calls, resultBytes }: CallTally): boolean {
-  return calls >= toolBounds.callsInRun || resultBytes >= toolBounds.resultBytesInRun;
+export function callsEnded({ calls }: CallTally): boolean {
+  return calls >= toolBounds.callsInRun;
 }
 
 export function runBoundMs(stepDeadlineMs: number): number {

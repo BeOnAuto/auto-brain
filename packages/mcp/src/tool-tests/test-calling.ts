@@ -1,6 +1,7 @@
 import { Unavailable } from '@beonauto/operations';
 import { DateTime, Effect, Schema } from 'effect';
 
+import { toolBounds } from '../bounds/call-bounds.ts';
 import type { CallReply } from '../calls/call-replies.ts';
 import type { OfferedTool, RunTools } from '../calls/run-tools.ts';
 import { ignored } from '../connections/ignored.ts';
@@ -8,7 +9,6 @@ import type { ToolReference } from '../names/tool-reference.ts';
 import type { ServerToolLists } from '../settings/mcp-settings.ts';
 import { canBeTested } from './testing-guard.ts';
 import { TestedOutcomeSchema } from './tool-test-schemas.ts';
-import type { TestedOutcome } from './tool-test-words.ts';
 
 export interface Tested {
   readonly reference: ToolReference;
@@ -41,7 +41,7 @@ function notListed({ server, tool }: ToolReference): Unavailable {
   });
 }
 
-export function testedOutcomeOf({ outcome }: CallReply): Effect.Effect<TestedOutcome> {
+export function testedOutcomeOf({ outcome }: CallReply): Effect.Effect<typeof TestedOutcomeSchema.Type> {
   return isTestedOutcome(outcome)
     ? Effect.succeed(outcome)
     : Effect.die(new Error(`A test of a tool answered ${outcome}, which a test that was sent never answers`));
@@ -57,7 +57,10 @@ async function closedOnceAnswered(tools: RunTools, answering: Promise<CallReply>
 
 function startedCall(tools: RunTools, offered: OfferedTool, { testId, input }: Tested, testedAt: string): Calling {
   const stop = new AbortController();
-  const answering = offered.call({ callId: testId, input }, { signal: stop.signal, cancelled: stop.signal });
+  const answering = offered.call(
+    { callId: testId, input, room: toolBounds.testedAnswerBytes },
+    { signal: stop.signal, cancelled: stop.signal },
+  );
   const replying = closedOnceAnswered(tools, answering);
   replying.catch(ignored);
   return { testedAt, answering, replying, stop };

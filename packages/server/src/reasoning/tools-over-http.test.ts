@@ -8,6 +8,8 @@ import { alpha, servingReasoning, type ReasoningServer } from '../testing/server
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
+const pin = '73914286';
+
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 const decodeHistory = Schema.decodeUnknownSync(
@@ -41,13 +43,13 @@ async function serving(fake: FakeMcpServer, ...replies: readonly ScriptedReply[]
   const server = await servingReasoning(replies, {
     LOCAL_MODE: 'true',
     GRAPH_API_KEY: apiKey,
+    GRAPH_PIN: pin,
     NODE_V8_COVERAGE: process.env['NODE_V8_COVERAGE'] ?? '',
     MCP_SERVERS: JSON.stringify({
       graph: {
         url: fake.url,
-        headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' },
+        headers: { Authorization: 'Bearer ${GRAPH_API_KEY}', 'X-Pin': '${GRAPH_PIN}' },
         org: 'acme',
-        record_content: true,
       },
       crm: { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'globex' },
       limitless: {
@@ -183,19 +185,28 @@ describe('a server bound to another org, over HTTP', () => {
   });
 });
 
+const decodeIds = Schema.decodeUnknownSync(
+  Schema.Struct({ events: Schema.Array(Schema.Struct({ id: Schema.String })) }),
+);
+
 describe('the secrets of a server, over HTTP', () => {
-  it('never show in the history of a run that records what its calls sent and received', async () => {
+  it('never show in the history of a run that keeps what its calls sent and received, nor in any of its events read whole, as a value, a key or a number', async () => {
     const echoed = callingTools(
-      [['mcp__graph__echo', { said: `the key is ${apiKey}` }]],
+      [['mcp__graph__echo', { said: `the key is ${apiKey}`, [apiKey]: 'a key', pin: Number(pin) }]],
       answers(textResult('Echoed.')),
     );
     const server = await serving(await fakeGraph(), echoed);
 
     await running(server, 'echo');
     const history = await server.call('GET', `${alpha}/runs/${runId}/history`);
+    const wholes = await Promise.all(
+      decodeIds(history.body).events.map(async ({ id }) => (await server.call('GET', `${alpha}/events/${id}`)).body),
+    );
+    const seen = JSON.stringify([history.body, ...wholes]);
 
-    expect(JSON.stringify(history.body)).not.toContain(apiKey);
-    expect(JSON.stringify(history.body)).toContain('[redacted]');
+    expect([apiKey, pin].filter((secret) => seen.includes(secret))).toEqual([]);
+    expect(seen).toContain('[redacted]');
+    expect(wholes).toHaveLength(4);
   });
 });
 

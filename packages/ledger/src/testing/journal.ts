@@ -1,25 +1,32 @@
-import type { Decider } from '@beonauto/operations';
+import { factOf, type Decider } from '@beonauto/operations';
 import { Result, Schema } from 'effect';
 
-const EntryWrittenSchema = Schema.Struct({
-  type: Schema.Literal('entry_written'),
-  at: Schema.Date,
-  amount: Schema.BigInt,
-  ratio: Schema.Number,
-  tags: Schema.Array(Schema.String),
-  memo: Schema.optionalKey(Schema.String),
-  source: Schema.NullOr(Schema.Struct({ name: Schema.String })),
-});
+import { stamped } from './happenings.ts';
 
-const EntryStruckSchema = Schema.Struct({ type: Schema.Literal('entry_struck'), reason: Schema.String });
+const EntryWrittenSchema = factOf(
+  'entry_written',
+  Schema.Struct({
+    at: Schema.Date,
+    amount: Schema.BigInt,
+    ratio: Schema.Number,
+    tags: Schema.Array(Schema.String),
+    memo: Schema.optionalKey(Schema.String),
+    source: Schema.NullOr(Schema.Struct({ name: Schema.String })),
+  }),
+);
+
+const EntryStruckSchema = factOf('entry_struck', Schema.Struct({ reason: Schema.String }));
 
 const JournalEventSchema = Schema.Union([EntryWrittenSchema, EntryStruckSchema]);
 
 export type JournalEvent = typeof JournalEventSchema.Type;
 
+const asDecided = Schema.decodeUnknownSync(Schema.toType(JournalEventSchema));
+
 export const journal: Decider<readonly JournalEvent[], readonly JournalEvent[], JournalEvent> = {
   initialState: [],
-  evolve: (written, event) => [...written, event],
+  evolve: (written, recorded) => [...written, asDecided(recorded)],
   decide: (events) => Result.succeed(events),
+  context: () => stamped,
   eventSchema: JournalEventSchema,
 };

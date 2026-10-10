@@ -85,9 +85,9 @@ interface Endpoint {
 }
 
 const endpoints: readonly Endpoint[] = [
-  { path: '/mcp', tools: 25, mostBytes: 40_000 },
+  { path: '/mcp', tools: 26, mostBytes: 40_000 },
   { path: '/orgs/local/mcp', tools: 8, mostBytes: 9000 },
-  { path: '/orgs/local/brains/alpha/mcp', tools: 19, mostBytes: 32_000 },
+  { path: '/orgs/local/brains/alpha/mcp', tools: 20, mostBytes: 32_000 },
 ];
 
 describe('the tools of each endpoint', () => {

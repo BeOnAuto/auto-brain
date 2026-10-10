@@ -25,6 +25,7 @@ const failedBecause: Readonly<Record<FailureKind, ServerFailedBecause>> = {
   forgotten: 'failing',
   refused: 'failing',
   key_refused: 'key_refused',
+  too_large: 'failing',
 };
 
 export function serverFailed(

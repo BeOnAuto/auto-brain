@@ -2,30 +2,24 @@ import type { ServerMessage } from '../access/caller-context.ts';
 import type { CallsEndedBecause } from '../access/mcp-server-failed.ts';
 import { failedOnce, failuresEnded, shownResult, type CallTally } from '../bounds/call-bounds.ts';
 import { bytesOf } from '../bounds/text-bytes.ts';
-import {
-  answerOf,
-  errorTextForModel,
-  errorTextForOperator,
-  resultText,
-  type ToolAnswer,
-} from '../bounds/tool-results.ts';
-import type { CallOutcome } from './call-facts.ts';
+import { errorTextForModel, errorTextForOperator, resultText, type ToolAnswer } from '../bounds/tool-results.ts';
 import { runIdKey, toolTestIdKey } from './call-meta.ts';
-import type { Forwarded } from './tool-calls.ts';
+import type { Delivered, Forwarded, ForwardedOutcome } from './tool-calls.ts';
 
 interface ModelWords {
   readonly text: string;
   readonly isError: boolean;
+  readonly shownBytes?: number;
 }
 
-export type ReplyOutcome = CallOutcome | 'not_sent';
+export type ReplyOutcome = 'result' | 'tool_error' | 'server_failure' | 'timed_out' | 'cancelled' | 'not_sent';
 
 export interface CallReply extends ModelWords {
   readonly outcome: ReplyOutcome;
   readonly resultBytes: number | null;
   readonly durationMs: number;
   readonly serverRequestId: string | null;
-  readonly scrubbedResult?: () => ToolAnswer;
+  readonly scrubbedResult?: ToolAnswer;
 }
 
 export interface Replying {
@@ -65,28 +59,27 @@ export function serverFailedText(server: string, said: string): string {
   return `The MCP server ${server} failed: ${said}`;
 }
 
-export function replyOf(tally: CallTally, done: Forwarded, replying: Replying): Tallied<ModelWords> {
-  if (done.result === null) {
+export function replyOf(done: Delivered, replying: Pick<Replying, 'server' | 'scrub'>, room?: number): ModelWords {
+  if (done.resultJson === null) {
     const said = errorTextForModel(done.message, replying.scrub);
-    const text = done.outcome === 'tool_error' ? said : serverFailedText(replying.server, said);
-    return { tally, value: { text, isError: true } };
+    const text = done.outcome === 'arguments_refused' ? said : serverFailedText(replying.server, said);
+    return { text, isError: true };
   }
-  const shown = shownResult(tally, replying.scrub(resultText(done.result)));
-  return { tally: shown.tally, value: { text: shown.text, isError: done.outcome === 'tool_error' } };
+  return { ...shownResult(resultText(done.scrubbed), room), isError: done.outcome === 'tool_error' };
+}
+
+function replyOutcomeOf(outcome: ForwardedOutcome): ReplyOutcome {
+  return outcome === 'arguments_refused' ? 'tool_error' : outcome;
 }
 
 export function callReplyOf(words: ModelWords, done: Forwarded, durationMs: number): CallReply {
   return {
     ...words,
-    outcome: done.outcome,
+    outcome: replyOutcomeOf(done.outcome),
     resultBytes: done.resultJson === null ? null : bytesOf(done.resultJson),
     durationMs,
     serverRequestId: done.serverRequestId,
   };
-}
-
-export function readableReply(reply: CallReply, { resultJson }: Forwarded, scrub: (text: string) => string): CallReply {
-  return resultJson === null ? reply : { ...reply, scrubbedResult: () => answerOf(scrub(resultJson)) };
 }
 
 export function unsentReply(text: string): CallReply {

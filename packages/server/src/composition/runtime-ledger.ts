@@ -1,11 +1,13 @@
 import type { AppRuntime } from '@beonauto/api';
 import type { ConversationLedger } from '@beonauto/interaction';
-import { Ledger, type DispatcherServices, type ProjectionReader } from '@beonauto/operations';
+import { Ledger, type DispatcherServices, type ProjectionReader, type RecordedContent } from '@beonauto/operations';
 import { Effect } from 'effect';
 
 import { inRuntime } from '../workflows/in-runtime.ts';
 
-interface RuntimeLedger extends ConversationLedger, Pick<ProjectionReader, 'countProjectedRows'> {}
+interface RuntimeLedger extends ConversationLedger, Pick<ProjectionReader, 'countProjectedRows'> {
+  readonly content: Pick<RecordedContent, 'put'>;
+}
 
 export function runtimeLedger(runtime: AppRuntime<DispatcherServices>): RuntimeLedger {
   const viaLedger = <A, E>(use: (ledger: Ledger['Service']) => Effect.Effect<A, E>): Effect.Effect<A, E> =>
@@ -23,5 +25,8 @@ export function runtimeLedger(runtime: AppRuntime<DispatcherServices>): RuntimeL
       viaLedger((ledger) => ledger.countProjectedRows(projection, brain, where)),
     readDueRows: (projection, query) => viaLedger((ledger) => ledger.readDueRows(projection, query)),
     nextDueOf: (projection, column, after) => viaLedger((ledger) => ledger.nextDueOf(projection, column, after)),
+    content: {
+      put: (brain, sha256, text) => viaLedger((ledger) => ledger.content.put(brain, sha256, text)),
+    },
   };
 }

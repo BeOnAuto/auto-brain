@@ -187,7 +187,8 @@ function noted(point: number, topic: string) {
     point: `7/${point}`,
     stream: `brain/acme/alpha/notes/n${point}`,
     type: 'topic_opened',
-    data: { json: JSON.stringify({ type: 'topic_opened', topic, at: point }) },
+    data: { json: JSON.stringify({ topic, at: point }) },
+    metadata: { at: '2026-10-05T09:00:00.000Z', by: 'topics' },
     position: 1,
   };
 }
@@ -231,7 +232,13 @@ function appendedNote(type: string, data: unknown) {
   return {
     type,
     data: { json: JSON.stringify(data) },
-    metadata: { streamName: 'brain/acme/alpha/notes/n1', messageId: 'm2', streamPosition: 2n },
+    metadata: {
+      streamName: 'brain/acme/alpha/notes/n1',
+      messageId: 'm2',
+      streamPosition: 2n,
+      at: '2026-10-05T09:00:00.000Z',
+      by: 'topics',
+    },
   };
 }
 
@@ -242,8 +249,8 @@ describe('the fold of a projection keyed by its mapping on PostgreSQL', () => {
 
     await registration?.projection.handle(
       [
-        appendedNote('topic_noted', { type: 'topic_noted', topic: 'spring', note: 'later' }),
-        appendedNote('topic_opened', { type: 'topic_opened', topic: 'spring', at: 1000 }),
+        appendedNote('topic_noted', { topic: 'spring', note: 'later' }),
+        appendedNote('topic_opened', { topic: 'spring', at: 1000 }),
       ],
       { execute: fold.execute },
     );

@@ -1,7 +1,13 @@
 import { chatDelivery } from '@beonauto/interaction/testing';
 import { describe, expect, it } from 'vitest';
 
-import { chatEnvironment, chatKey, chatServer, deliveryHistoryOf } from '../testing/servers/chat-deliveries.ts';
+import {
+  chatEnvironment,
+  chatKey,
+  chatServer,
+  deliveryHistoryOf,
+  deliveryRowsOf,
+} from '../testing/servers/chat-deliveries.ts';
 import { servingInteractions } from '../testing/servers/interaction-server.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
 import { until } from '../testing/servers/workflow-calls.ts';
@@ -11,15 +17,17 @@ const aDigest: unknown = expect.stringMatching(/^[0-9a-f]{64}$/u);
 
 const aNumber: unknown = expect.any(Number);
 
+const scrubbedBrief: unknown = expect.stringMatching(/^Please review the brief for \[redacted\] x{5000}\.$/u);
+
 function endedFacts(server: Awaited<ReturnType<typeof servingInteractions>>, runId: string) {
   return until(
     () => deliveryHistoryOf(server, runId),
-    (facts) => facts.some(({ type }) => type === 'delivery_ended'),
+    (facts) => facts.some(({ type }) => type !== 'delivery_started'),
   );
 }
 
 describe('an interaction function that delivers through a tool, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
-  it('posts its request with one recorded call, its sizes and digests kept, and its content where it is recorded', async () => {
+  it('posts its request with one recorded call, its sizes, digests and content kept', async () => {
     const chat = await chatServer();
     const server = await servingInteractions(chatDelivery, chatEnvironment(chat.url));
     const runId = await server.ask('approve-brief');
@@ -33,25 +41,25 @@ describe('an interaction function that delivers through a tool, over HTTP', { ti
     expect(facts).toEqual([
       {
         type: 'delivery_started',
-        run_id: runId,
-        by: 'brain:alpha',
         number: 1,
-        delivery: { server: 'chat', tool: 'post_message' },
         target: 'ada',
+        server: 'chat',
+        tool: 'post_message',
         arguments_bytes: 73,
         arguments_sha256: aDigest,
+        content_kept: true,
+        arguments: { channel: '#approvals-ada', text: 'Please review the brief for Spring.' },
       },
       {
-        type: 'delivery_ended',
-        run_id: runId,
-        by: 'brain:alpha',
+        type: 'delivery_succeeded',
         number: 1,
-        outcome: 'delivered',
         result_bytes: aNumber,
         result_sha256: aDigest,
+        content_kept: true,
         jsonrpc_id: aNumber,
         duration_ms: aNumber,
         delivered_as: { conversation: '#approvals-ada', id: '1699.000001' },
+        answer: { channel: '#approvals-ada', ok: true, ts: '1699.000001' },
       },
     ]);
     expect(listed.body).toMatchObject({
@@ -64,23 +72,25 @@ describe(
   'a request delivered through a tool, as the history of its run keeps it',
   { timeout: workflowTestTimeoutMs },
   () => {
-    it('records the arguments and the answer, scrubbed, where the server records its content, shown at 2 KiB', async () => {
+    it('keeps the arguments and the answer scrubbed, shows on the history what fits 2 KiB, and reads the rest whole as one event', async () => {
       const chat = await chatServer();
-      const server = await servingInteractions(chatDelivery, chatEnvironment(chat.url, { record_content: true }));
+      const server = await servingInteractions(chatDelivery, chatEnvironment(chat.url));
       const started = await server.call('POST', `${alpha}/definitions/interaction/approve-brief/run`, {
         body: { input: { owner: 'ada', campaign: `${chatKey} ${'x'.repeat(5000)}` } },
       });
+      const runId = runIdIn(started.body);
 
-      const [start, end] = await endedFacts(server, runIdIn(started.body));
+      const [start, end] = await endedFacts(server, runId);
+      const [startRow] = await deliveryRowsOf(server, runId);
+      const whole = await server.call('GET', `${alpha}/events/${String(startRow?.id)}`);
 
-      expect(String(start?.['arguments_json'])).toMatch(
-        /^\{"channel":"#approvals-ada","text":"Please review the brief for \[redacted\] x+$/u,
-      );
-      expect(String(start?.['arguments_json']).length).toBeLessThanOrEqual(2048);
-      expect(end?.['result_json']).toMatch(/^\{"content":\[\{"type":"text","text":"\{\\"ok\\":true/u);
+      expect(start).not.toHaveProperty('arguments');
+      expect(start?.['arguments_bytes']).toBeGreaterThan(5000);
+      expect(whole.body).toMatchObject({ data: { arguments: { channel: '#approvals-ada', text: scrubbedBrief } } });
+      expect(end?.['answer']).toMatchObject({ channel: '#approvals-ada', ok: true });
     });
 
-    it('succeeds a notification once delivered, its ending caused by the end of the delivery', async () => {
+    it('succeeds a notification once delivered, its ending caused by the delivery that succeeded', async () => {
       const chat = await chatServer();
       const server = await servingInteractions(chatDelivery, chatEnvironment(chat.url));
       const runId = await server.ask('brief-out');
@@ -90,8 +100,8 @@ describe(
         ['run_started', null],
         ['interaction_requested', 'run_started'],
         ['delivery_started', 'interaction_requested'],
-        ['delivery_ended', 'delivery_started'],
-        ['run_succeeded', 'delivery_ended'],
+        ['delivery_succeeded', 'delivery_started'],
+        ['run_succeeded', 'delivery_succeeded'],
       ]);
     });
   },

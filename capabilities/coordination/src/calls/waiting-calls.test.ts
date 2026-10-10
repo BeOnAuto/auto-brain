@@ -28,7 +28,13 @@ const review: StartCall = {
   longestMs: 60_000,
 };
 
-const ofTheChild = { definition_type: 'workflow', name: 'review', definition_version: 1, by: 'brain:alpha', at: 'now' };
+const ofTheChild = {
+  by: 'brain:alpha',
+  at: 'now',
+  definitionType: 'workflow',
+  definitionName: 'review',
+  definitionVersion: 1,
+};
 
 function answering(result: DefinitionRunResult) {
   const asked: DefinitionRunRequest[] = [];
@@ -45,7 +51,7 @@ describe('a workflow call of a workflow', () => {
   it('starts the workflow one call deeper, naming the call it answers, and waits for its run', async () => {
     const { perform, asked } = answering({ status: 'waiting' });
 
-    const answer = await Effect.runPromise(perform(review, run));
+    const answer = await Effect.runPromise(perform(review, run, { version: 2 }));
 
     expect(answer).toEqual({ status: 'waiting', child: nestedRunId(workflowRun, '/do/0/review', 2) });
     expect(asked()).toMatchObject([
@@ -62,8 +68,12 @@ describe('a workflow call of a workflow', () => {
 describe('the ending of a run a step waits for', () => {
   it('answers the step with the output of a run that succeeded, unless the output is larger than a workflow takes', () => {
     expect([
-      callResultOfEnding({ type: 'run_succeeded', output: { done: true }, record: {}, ...ofTheChild }),
-      callResultOfEnding({ type: 'run_succeeded', output: 'x'.repeat(1_048_576), record: {}, ...ofTheChild }),
+      callResultOfEnding({ type: 'run_succeeded', data: { output: { done: true }, record: {} }, context: ofTheChild }),
+      callResultOfEnding({
+        type: 'run_succeeded',
+        data: { output: 'x'.repeat(1_048_576), record: {} },
+        context: ofTheChild,
+      }),
     ]).toEqual([
       { status: 'succeeded', output: { done: true } },
       { status: 'failed', detail: 'The run returned 1048578 bytes as JSON, more than the 1048576 a workflow takes' },
@@ -74,17 +84,19 @@ describe('the ending of a run a step waits for', () => {
     expect([
       callResultOfEnding({
         type: 'run_rejected',
-        rejection: { reason: 'cancelled', kind: 'deadline', detail: 'Out of time' },
-        ...ofTheChild,
+        data: { rejection: { reason: 'cancelled', kind: 'deadline', detail: 'Out of time' } },
+        context: ofTheChild,
       }),
       callResultOfEnding({
         type: 'run_rejected',
-        rejection: {
-          reason: 'invalid_input',
-          detail: 'Wrong',
-          issues: [{ pointer: '/input/ticket', detail: 'Expected a string' }],
+        data: {
+          rejection: {
+            reason: 'invalid_input',
+            detail: 'Wrong',
+            issues: [{ pointer: '/input/ticket', detail: 'Expected a string' }],
+          },
         },
-        ...ofTheChild,
+        context: ofTheChild,
       }),
     ]).toEqual([
       { status: 'rejected', reason: 'cancelled', kind: 'deadline', detail: 'Out of time' },
@@ -94,8 +106,8 @@ describe('the ending of a run a step waits for', () => {
 
   it('answers the step with a failure that names the incident of a run that broke down, when it has one', () => {
     expect([
-      callResultOfEnding({ type: 'run_failed', incident: 'i-1', ...ofTheChild }),
-      callResultOfEnding({ type: 'run_failed', ...ofTheChild }),
+      callResultOfEnding({ type: 'run_failed', data: { incident: 'i-1' }, context: ofTheChild }),
+      callResultOfEnding({ type: 'run_failed', data: {}, context: ofTheChild }),
     ]).toEqual([
       { status: 'failed', detail: 'The run failed with incident i-1' },
       { status: 'failed', detail: 'The run failed' },

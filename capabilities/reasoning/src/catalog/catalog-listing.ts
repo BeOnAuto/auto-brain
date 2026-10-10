@@ -1,9 +1,10 @@
-import { Clock, Effect } from 'effect';
+import { Clock, Effect, Option } from 'effect';
 
 import type { ListedSource } from '../listing/listing-request.ts';
 import type { ModelSource } from '../listing/model-sources.ts';
 import { aliasResolution } from '../model/model-alias.ts';
 import { modelOffer } from '../model/model-offer.ts';
+import { parseModelReference } from '../model/model-reference.ts';
 import type { CachedListing, ListingCache } from './listing-cache.ts';
 import { refreshOf, type ListingReports } from './listing-refresh.ts';
 import { aliasEntryOf, anyModelOf, byId, entryOf, uniqueById } from './model-entries.ts';
@@ -11,6 +12,7 @@ import type { ModelEntry, ModelList } from './model-list.ts';
 
 export interface ModelCatalog {
   readonly list: (provider?: string) => Effect.Effect<ModelList>;
+  readonly contextWindowOf: (model: string) => Effect.Effect<number | undefined>;
 }
 
 export interface CatalogParts {
@@ -54,6 +56,21 @@ function servedBy(provider: string | undefined): (served: string) => boolean {
   return (served) => provider === undefined || served === provider;
 }
 
+function windowIn(parts: CatalogParts, model: string): Effect.Effect<number | undefined> {
+  return Option.match(parseModelReference(model), {
+    onNone: () => Effect.undefined,
+    onSome: ({ provider }) =>
+      Effect.map(
+        Effect.forEach(
+          parts.sources.filter((source) => source.provider === provider),
+          (source) => gathered(parts, source),
+        ),
+        (all: readonly Gathered[]) =>
+          all.flatMap(({ entries }) => entries).find(({ id }) => id === model)?.context_window,
+      ),
+  });
+}
+
 export function catalogListing(parts: CatalogParts): ModelCatalog {
   const resolve = aliasResolution(parts.aliases);
   const offer = modelOffer(parts.allowed);
@@ -79,5 +96,6 @@ export function catalogListing(parts: CatalogParts): ModelCatalog {
         };
         return list;
       }),
+    contextWindowOf: (model) => windowIn(parts, resolve(model)),
   };
 }

@@ -30,7 +30,7 @@ export interface RacingDelivery {
 function replyTakenIn(ledger: HarnessLedger, answer: Schema.Json): Effect.Effect<RecordedOutboundCall, unknown> {
   return replyRecorder(ledger.service)(
     address,
-    { type: 'reply_taken', server: 'chat', tool: 'thread_replies', reply: takenReply, answer },
+    { type: 'reply_taken', data: { server: 'chat', tool: 'thread_replies', reply: takenReply, answer } },
     lineage,
   );
 }
@@ -46,7 +46,17 @@ function broughtOf(
   return answer === undefined
     ? outboundCallRecorder(ledger.service)(
         address,
-        { type: 'delivery_ended', number: 1, outcome: 'delivered', duration_ms: 3 },
+        {
+          type: 'delivery_succeeded',
+          data: {
+            number: 1,
+            result_bytes: 2,
+            result_sha256: 'd'.repeat(64),
+            content_kept: true,
+            duration_ms: 3,
+            jsonrpc_id: 1,
+          },
+        },
         lineage,
       )
     : replyTakenIn(ledger, answer);
@@ -81,7 +91,7 @@ export function broughtBeforeSettling(ledger: HarnessLedger, answer?: Schema.Jso
         Effect.asVoid(
           outboundCallRecorder(ledger.service)(
             address,
-            { type: 'delivery_started', number: 1, target: 'ada', server: 'chat', tool: 'post_message' },
+            { type: 'delivery_started', data: { number: 1, target: 'ada', server: 'chat', tool: 'post_message' } },
             lineage,
           ),
         ),

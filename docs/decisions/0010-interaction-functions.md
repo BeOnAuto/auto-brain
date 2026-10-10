@@ -1,6 +1,6 @@
 # 0010 — Interaction functions: a brain asks a person or a system and waits for the answer
 
-**Status:** accepted (2026-10-07), with the amendments from the build at the end
+**Status:** accepted (2026-10-07), with the amendments from the build at the end; amended (2026-10-10) by [decision 0023](0023-facts-in-the-ledger.md): a delivery ends as one fact for each outcome, `delivery_succeeded`, `delivery_failed` or `delivery_refused`, the open requests read the time and the run from the message's context as `open_requests_6`, and a brain event carries its caller as the attribute `caller`
 
 ## Context
 

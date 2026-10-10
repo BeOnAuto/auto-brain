@@ -1,4 +1,4 @@
-import type { VersionConflict } from '@beonauto/ledger';
+import type { DecidedPlace, VersionConflict } from '@beonauto/ledger';
 import type { Effect, Schema } from 'effect';
 
 import type { StepKey } from '../steps/step-entry.ts';
@@ -32,7 +32,7 @@ export interface RunLogStore {
   readonly append: (
     runId: string,
     event: RunLogEvent,
-    expectedVersion: number,
+    place: DecidedPlace,
     lineage: RecordLineage,
   ) => Effect.Effect<void, VersionConflict>;
   readonly eventsAfter: (runId: string, version: number) => Effect.Effect<readonly PositionedEvent[]>;

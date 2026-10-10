@@ -1,9 +1,12 @@
 import {
   brainStreamOf,
+  contextOf,
   messageIdOf,
   rowKeyOf,
   setsAdvancedColumns,
+  type Context,
   type KeyedProjection,
+  type ProjectedMessage,
   type ProjectedRow,
 } from '@beonauto/operations';
 
@@ -25,18 +28,25 @@ export interface ProjectionKeeping {
 
 export interface ReplayedMessage {
   readonly stream: string;
+  readonly type: string;
   readonly data: unknown;
+  readonly metadata: unknown;
   readonly position: number;
+}
+
+function projectedOf({ type, data, context, id, position }: StoredMessage): ProjectedMessage {
+  return { id, position, type, data, context };
 }
 
 async function keptAfter(
   { dialect, projection }: ProjectionKeeping,
   execute: StatementExecutor,
   place: RowPlace,
-  { type, data, id, position }: StoredMessage,
+  message: StoredMessage,
 ): Promise<void> {
   const stored = await rowIn(execute, dialect, projection, place);
-  const row = projection.rowAfter(stored, data, { id, position });
+  const row = projection.rowAfter(stored, projectedOf(message));
+  const { type } = message;
   if (row !== undefined) {
     const written =
       stored === undefined || setsAdvancedColumns(projection, type) ? 'with_advanced' : 'without_advanced';
@@ -44,9 +54,9 @@ async function keptAfter(
   }
 }
 
-function placeOf(projection: KeyedProjection, { stream, data }: StoredMessage): RowPlace | undefined {
-  const named = brainStreamOf(stream);
-  const key = named === undefined ? undefined : rowKeyOf(projection, data, named);
+function placeOf(projection: KeyedProjection, message: StoredMessage): RowPlace | undefined {
+  const named = brainStreamOf(message.stream);
+  const key = named === undefined ? undefined : rowKeyOf(projection, projectedOf(message), named);
   return named === undefined || key === undefined ? undefined : { brainKey: named.brainKey, key };
 }
 
@@ -64,14 +74,22 @@ function keepingProjection(keeping: ProjectionKeeping): InlineProjection {
   };
 }
 
+export function filledMessageOf(
+  { dialect }: Pick<ProjectionKeeping, 'dialect'>,
+  { stream, type, data, metadata, position }: ReplayedMessage,
+): ProjectedMessage {
+  const context: Context = contextOf(dialect.filledMetadata(metadata));
+  return { id: messageIdOf(stream, position), position, type, data: dialect.filledData(data), context };
+}
+
 export function replayedRow(
-  { dialect, projection }: ProjectionKeeping,
+  keeping: ProjectionKeeping,
   messages: readonly ReplayedMessage[],
   from?: ProjectedRow,
 ): ProjectedRow | undefined {
   let row = from;
-  for (const { stream, data, position } of messages) {
-    row = projection.rowAfter(row, dialect.filledData(data), { id: messageIdOf(stream, position), position }) ?? row;
+  for (const message of messages) {
+    row = keeping.projection.rowAfter(row, filledMessageOf(keeping, message)) ?? row;
   }
   return row;
 }

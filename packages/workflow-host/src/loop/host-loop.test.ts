@@ -99,7 +99,7 @@ async function looping(options: LoopingOptions): Promise<Looping> {
     arm: async (timerId, inMs) => {
       const dueAt = Date.now() + inMs;
       const timer: ArmTimer = { kind: 'arm_timer', runId: runKey, timerId, dueAt, purpose: 'wait' };
-      await Effect.runPromise(timers.timers.arm(timer, run, { version: 1, lastStep: null }));
+      await Effect.runPromise(timers.timers.arm(timer, run, { version: 1 }));
       return dueAt;
     },
     fired: () => fired,

@@ -91,7 +91,7 @@ describe('a cancel of a run of another capability, as asked', () => {
       ),
     );
 
-    expect(records.at(-1)?.data).toMatchObject({ type: 'run_rejected', by: 'brain:alpha' });
+    expect(records.at(-1)).toMatchObject({ type: 'run_rejected', context: { by: 'brain:alpha' } });
   });
 });
 
@@ -117,10 +117,10 @@ describe('a cancel its capability settles otherwise', () => {
       ),
     );
 
-    expect(records.at(-1)?.data).toMatchObject({
+    expect(records.at(-1)).toMatchObject({
       type: 'run_succeeded',
-      output: { delivered: JSON.stringify({ broughtAnswer: null, deliveredAt: null }) },
-      by: 'ada',
+      data: { output: { delivered: JSON.stringify({ broughtAnswer: null, deliveredAt: null }) } },
+      context: { by: 'ada' },
     });
   });
 });
@@ -187,10 +187,24 @@ describe('a cancel whose run changes between its read and its settlement', () =>
     const delivered = Effect.all([
       record(
         relayed,
-        { type: 'delivery_started', number: 1, target: 'ada', server: 'chat', tool: 'post_message' },
+        { type: 'delivery_started', data: { number: 1, target: 'ada', server: 'chat', tool: 'post_message' } },
         lineage,
       ),
-      record(relayed, { type: 'delivery_ended', number: 1, outcome: 'delivered', duration_ms: 3 }, lineage),
+      record(
+        relayed,
+        {
+          type: 'delivery_succeeded',
+          data: {
+            number: 1,
+            result_bytes: 2,
+            result_sha256: 'b'.repeat(64),
+            content_kept: true,
+            duration_ms: 3,
+            jsonrpc_id: 1,
+          },
+        },
+        lineage,
+      ),
     ]);
     const turns = { next: (): Effect.Effect<unknown, unknown> => delivered };
     const changedOnce: StreamReader & StreamWriter = {

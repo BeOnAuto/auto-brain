@@ -1,14 +1,13 @@
 import { randomUUID } from 'node:crypto';
 
-import { Effect } from 'effect';
 import { Client } from 'pg';
-import { describe, expect, it, onTestFinished } from 'vitest';
+import { describe, onTestFinished } from 'vitest';
 
-import { definitionStreamsPlan, theBrainIndexes } from '../postgresql-reads/index-checks.ts';
-import { details, happenings } from '../testing/happenings.ts';
+import type { RecordedStore } from '../event-store.ts';
+import { definitionStreamsPlan } from '../postgresql-reads/index-checks.ts';
+import { postgresqlRecordedStore } from '../postgresql-reads/postgresql-recorded.ts';
 import { ledgerBehaviour } from '../testing/ledger-behaviour.ts';
 import type { LedgerEntry } from '../testing/ledger-entry.ts';
-import { openLedgerWith, type OpenLedger } from '../testing/open-ledger.ts';
 import { postgresqlEventStore, postgresqlLedgerLayer } from './postgresql-ledger.ts';
 
 const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
@@ -32,6 +31,31 @@ async function definitionStreamsIndexed(database: string): Promise<boolean> {
     const { explained, values, throughTheIndex } = definitionStreamsPlan;
     const plan = await client.query<Readonly<Record<string, unknown>>>(explained, values);
     return plan.rows.some((row) => String(row['QUERY PLAN']).includes(throughTheIndex));
+  } finally {
+    await client.end();
+  }
+}
+
+async function planOf(database: string, read: (store: RecordedStore) => Promise<unknown>): Promise<string> {
+  const asked: { readonly text: string; readonly values: readonly unknown[] }[] = [];
+  await read(
+    postgresqlRecordedStore((text, values) => {
+      asked.push({ text, values });
+      return Promise.resolve([]);
+    }),
+  );
+  const client = new Client({ connectionString: database });
+  await client.connect();
+  try {
+    await client.query('SET enable_seqscan = off');
+    const plans = await Promise.all(
+      asked.map(({ text, values }) => client.query<Readonly<Record<string, unknown>>>(`EXPLAIN ${text}`, [...values])),
+    );
+    const lines: string[] = [];
+    for (const { rows } of plans) {
+      lines.push(...rows.map((row) => String(row['QUERY PLAN'])));
+    }
+    return lines.join('\n');
   } finally {
     await client.end();
   }
@@ -104,6 +128,9 @@ const onPostgreSQL: LedgerEntry = {
     }),
   queried,
   definitionStreamsIndexed,
+  planOf,
+  throughTheKindIndex: `Index Cond: (("substring"(stream_id, '^(?:[^/]*/){4}'::text) = ANY`,
+  throughTheIdIndex: 'Index Cond: (message_id = ',
   outcomeTables:
     "SELECT relname AS name FROM pg_class WHERE relkind IN ('r', 'p') AND relname ~ '^run_outcomes_[0-9]+$' ORDER BY relname",
   projectionTables:
@@ -120,178 +147,4 @@ const notice = skipped ? ', skipped: set LEDGER_TEST_POSTGRESQL_URL to the URL o
 
 describe.skipIf(skipped)(`The ledger on PostgreSQL${notice}`, { timeout: 30_000 }, () => {
   ledgerBehaviour(onPostgreSQL);
-});
-
-type RecordedSelection = Parameters<OpenLedger['ledger']['readRecorded']>[1];
-
-const alpha = { org: 'acme', brain: 'alpha' };
-
-const noMetadata: Readonly<Record<string, string>> = {};
-
-async function anAppendLeftOpen(database: string, stream: string, type: string, meta = noMetadata): Promise<Client> {
-  const client = new Client({ connectionString: database });
-  await client.connect();
-  onTestFinished(() => client.end());
-  await client.query('BEGIN');
-  await client.query(
-    `SELECT success FROM emt_append_to_stream(
-      ARRAY['late-1'], ARRAY[$1::jsonb], ARRAY[$4::jsonb], ARRAY['1'], ARRAY[$2], ARRAY['E'], $3, 'brain', 0, 'emt:default')`,
-    [{ json: JSON.stringify({ type, detail: 'late' }) }, type, stream, meta],
-  );
-  return client;
-}
-
-type OpenWrite = { readonly client: Client; readonly id: string };
-
-async function aWriteLeftOpenElsewhere(): Promise<OpenWrite> {
-  const client = new Client({ connectionString: server });
-  await client.connect();
-  onTestFinished(() => client.end());
-  await client.query('BEGIN');
-  const { rows } = await client.query<{ readonly id: string }>('SELECT pg_current_xact_id()::text AS id');
-  return { client, id: rows[0]?.id ?? '' };
-}
-
-function reading(ledger: OpenLedger['ledger'], selection: RecordedSelection, order: 'asc' | 'desc', cursor?: string) {
-  return Effect.runPromise(
-    ledger.readRecorded(alpha, selection, { order, limit: 10, ...(cursor === undefined ? {} : { cursor }) }),
-  );
-}
-
-function noting(ledger: OpenLedger['ledger'], stream: string, type: string, detail: string): Promise<unknown> {
-  return Effect.runPromise(ledger.execute(`brain/acme/alpha/${stream}`, happenings, [{ type, detail }]));
-}
-
-const root = 'brain/acme/alpha/runs/root';
-const ofTheRoot = { causationId: null, correlationId: 'root' };
-
-function notingOfRoot(ledger: OpenLedger['ledger'], type: string, detail: string): Promise<unknown> {
-  return Effect.runPromise(ledger.execute(root, happenings, [{ type, detail }], ofTheRoot));
-}
-
-type OwnLedger = { readonly database: string; readonly ledger: OpenLedger['ledger'] };
-
-async function aLedgerOnItsOwnDatabase(): Promise<OwnLedger> {
-  const database = await aDatabase();
-  const { ledger, dispose } = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
-  onTestFinished(dispose);
-  return { database, ledger };
-}
-
-const everything: RecordedSelection = { kind: 'everything' };
-
-const runs: RecordedSelection = { kind: 'runs' };
-
-describe.skipIf(skipped)(`A read on PostgreSQL while an append is still open${notice}`, { timeout: 30_000 }, () => {
-  it('oldest first, stays behind it, and delivers every message once after it commits', async () => {
-    const { database, ledger } = await aLedgerOnItsOwnDatabase();
-    await noting(ledger, 'notes', 'noted', 'before');
-    await untilReadable(database);
-    const open = await anAppendLeftOpen(database, 'brain/acme/alpha/late', 'noted');
-    await noting(ledger, 'notes', 'noted', 'after');
-
-    const whileOpen = await reading(ledger, everything, 'asc');
-    await open.query('COMMIT');
-    await untilReadable(database);
-    const rest = await reading(ledger, everything, 'asc', String(whileOpen.records.at(-1)?.cursor));
-
-    expect([details(whileOpen), details(rest)]).toEqual([['before'], ['late', 'after']]);
-  });
-
-  it('newest first, reads every message committed, the one committed after it included', async () => {
-    const { database, ledger } = await aLedgerOnItsOwnDatabase();
-    await noting(ledger, 'notes', 'noted', 'before');
-    const open = await anAppendLeftOpen(database, 'brain/acme/alpha/late', 'noted');
-    await noting(ledger, 'notes', 'noted', 'after');
-
-    const whileOpen = await reading(ledger, everything, 'desc');
-    await open.query('COMMIT');
-    const afterCommit = await reading(ledger, everything, 'desc');
-
-    expect([details(whileOpen), details(afterCommit)]).toEqual([
-      ['after', 'before'],
-      ['after', 'late', 'before'],
-    ]);
-  });
-
-  it('by correlation, stays behind it oldest first, and delivers the message committed late once after', async () => {
-    const { database, ledger } = await aLedgerOnItsOwnDatabase();
-    const correlated: RecordedSelection = { kind: 'correlated', correlation: 'root' };
-    await notingOfRoot(ledger, 'run_started', 'before');
-    await untilReadable(database);
-    const child = 'brain/acme/alpha/runs/child';
-    const open = await anAppendLeftOpen(database, child, 'run_started', { correlationId: 'root' });
-    await notingOfRoot(ledger, 'run_succeeded', 'after');
-
-    const whileOpen = await reading(ledger, correlated, 'asc');
-    await open.query('COMMIT');
-    await untilReadable(database);
-    const rest = await reading(ledger, correlated, 'asc', String(whileOpen.records.at(-1)?.cursor));
-
-    expect([details(whileOpen), details(rest)]).toEqual([['before'], ['late', 'after']]);
-  });
-});
-
-describe.skipIf(skipped)(
-  `A list of runs on PostgreSQL while an append is still open${notice}`,
-  { timeout: 30_000 },
-  () => {
-    it('lists runs oldest first behind it, and every run once after it commits', async () => {
-      const { database, ledger } = await aLedgerOnItsOwnDatabase();
-      await noting(ledger, 'runs/r-before', 'run_started', 'before');
-      await untilReadable(database);
-      const open = await anAppendLeftOpen(database, 'brain/acme/alpha/runs/r-late', 'run_started');
-      await noting(ledger, 'runs/r-after', 'run_started', 'after');
-
-      const whileOpen = await reading(ledger, runs, 'asc');
-      await open.query('COMMIT');
-      await untilReadable(database);
-      const rest = await reading(ledger, runs, 'asc', String(whileOpen.records.at(-1)?.cursor));
-
-      expect([details(whileOpen), details(rest)]).toEqual([['before'], ['late', 'after']]);
-    });
-
-    it('lets a write open in another database of the server hide nothing', async () => {
-      const { database, ledger } = await aLedgerOnItsOwnDatabase();
-      await noting(ledger, 'notes', 'noted', 'before');
-      const elsewhere = await aWriteLeftOpenElsewhere();
-      await noting(ledger, 'notes', 'noted', 'after');
-      await untilReadable(database, elsewhere.id);
-
-      const whileOpen = await reading(ledger, everything, 'asc');
-      await elsewhere.client.query('COMMIT');
-
-      expect(details(whileOpen)).toEqual(['before', 'after']);
-    });
-  },
-);
-
-describe.skipIf(skipped)(`The brain's indexes on PostgreSQL${notice}`, { timeout: 30_000 }, () => {
-  it('are created when the ledger opens, once however often it opens', async () => {
-    const database = await aDatabase();
-    const first = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
-    await first.dispose();
-    const second = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
-    await second.dispose();
-
-    expect(
-      await queried(
-        database,
-        "SELECT indexname, indexdef FROM pg_indexes WHERE tablename IN ('emt_messages', 'emt_streams') AND indexname LIKE 'ledger%' ORDER BY indexname",
-      ),
-    ).toEqual(theBrainIndexes);
-  });
-
-  it('are found, not created again, by a start that an append left open does not hold up', async () => {
-    const { database } = await aLedgerOnItsOwnDatabase();
-    const open = await anAppendLeftOpen(database, 'brain/acme/alpha/late', 'noted');
-
-    const started = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
-    await started.dispose();
-    await open.query('COMMIT');
-
-    expect(
-      await queried(database, "SELECT count(*)::int AS indexes FROM pg_indexes WHERE indexname LIKE 'ledger%'"),
-    ).toEqual([{ indexes: 6 }]);
-  });
 });

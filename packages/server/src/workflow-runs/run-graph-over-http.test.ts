@@ -39,12 +39,14 @@ const review = workflowSource(
 
 const EventSchema = Schema.Struct({
   id: Schema.String,
-  cursor: Schema.String,
-  causation_id: Schema.NullOr(Schema.String),
   type: Schema.String,
   summary: Schema.String,
   data: Schema.Struct({
     name: Schema.optionalKey(Schema.String),
+    run_id: Schema.optionalKey(Schema.String),
+  }),
+  metadata: Schema.Struct({
+    causation_id: Schema.NullOr(Schema.String),
     run_id: Schema.optionalKey(Schema.String),
   }),
 });
@@ -78,14 +80,26 @@ async function reviewed(): Promise<string> {
   return runId;
 }
 
-async function everyEvent(path: string, cursor?: string): Promise<readonly Event[]> {
-  const query = cursor === undefined ? '' : `&cursor=${cursor}`;
-  const page = pageOf((await server.call('GET', `${path}${query}`)).body);
+async function pageAt(path: string, cursor: string | null = null) {
+  const query = cursor === null ? '' : `&cursor=${cursor}`;
+  return pageOf((await server.call('GET', `${path}${query}`)).body);
+}
+
+async function everyEvent(path: string, cursor: string | null = null): Promise<readonly Event[]> {
+  const page = await pageAt(path, cursor);
   return page.next_cursor === null ? page.events : [...page.events, ...(await everyEvent(path, page.next_cursor))];
 }
 
+function causeOf(event: Event | undefined): string | null | undefined {
+  return event?.metadata.causation_id;
+}
+
+function isOfRun({ data, metadata }: Event, runId: string): boolean {
+  return [data.run_id, metadata.run_id].includes(runId);
+}
+
 function startOf(events: readonly Event[], runId: string): Event | undefined {
-  return events.find(({ type, data }) => type === 'run_started' && data.run_id === runId);
+  return events.find(({ type, metadata }) => type === 'run_started' && metadata.run_id === runId);
 }
 
 function named(events: readonly Event[], type: string, name?: string): Event {
@@ -104,23 +118,27 @@ describe('the graph of a workflow run, over HTTP', { timeout: workflowTestTimeou
     const [first, second] = events.filter(({ type }) => type === 'workflow_input_applied');
 
     expect([
-      started.causation_id,
-      first?.causation_id,
-      named(events, 'step_waiting', 'judge').causation_id,
-      second?.causation_id,
-      named(events, 'step_finished', 'judge').causation_id,
-      named(events, 'step_finished', 'route').causation_id,
-      named(events, 'step_finished', 'decline').causation_id,
-      named(events, 'run_succeeded').causation_id,
+      causeOf(started),
+      causeOf(first),
+      causeOf(named(events, 'step_waiting', 'judge')),
+      causeOf(second),
+      causeOf(named(events, 'step_finished', 'judge')),
+      causeOf(named(events, 'step_finished', 'route')),
+      causeOf(named(events, 'step_finished', 'decline')),
+      causeOf(named(events, 'run_succeeded')),
     ]).toEqual([
       null,
       started.id,
       first?.id,
-      named(events, 'step_waiting', 'judge').id,
-      named(events, 'step_waiting', 'judge').id,
+      first?.id,
+      second?.id,
       named(events, 'step_finished', 'judge').id,
       named(events, 'step_finished', 'route').id,
-      named(events, 'step_finished', 'decline').id,
+      second?.id,
+    ]);
+    expect([named(events, 'step_waiting', 'judge').id, named(events, 'step_finished', 'judge').id]).toEqual([
+      `${String(first?.id)}/1`,
+      `${String(second?.id)}/1`,
     ]);
     expect(events.slice(0, 3).map(({ type }) => type)).toEqual([
       'run_started',
@@ -133,8 +151,34 @@ describe('the graph of a workflow run, over HTTP', { timeout: workflowTestTimeou
   });
 });
 
+const decodeRows = Schema.decodeUnknownSync(
+  Schema.Struct({ events: Schema.Array(Schema.Record(Schema.String, Schema.Json)) }),
+);
+
+function rowCalled(page: unknown, id: string | undefined): unknown {
+  return decodeRows(page).events.find((row) => row['id'] === id);
+}
+
+describe('one event of a workflow run, read by its id, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+  it('is the row the history shows, a step by the id of its record and its number, and the input by the id of the record', async () => {
+    const runId = await reviewed();
+    const page = (await server.call('GET', `${alpha}/runs/${runId}/history?limit=100`)).body;
+    const events = pageOf(page).events;
+    const waiting = named(events, 'step_waiting', 'judge');
+    const first = events.find(({ type }) => type === 'workflow_input_applied');
+
+    const step = await server.call('GET', `${alpha}/events/${encodeURIComponent(waiting.id)}`);
+    const input = await server.call('GET', `${alpha}/events/${String(first?.id)}`);
+    const beyond = await server.call('GET', `${alpha}/events/${String(first?.id)}%2F9`);
+
+    expect([step.status, input.status, beyond.status]).toEqual([200, 200, 404]);
+    expect([step.body, input.body]).toEqual([rowCalled(page, waiting.id), rowCalled(page, first?.id)]);
+    expect(beyond.body).toMatchObject({ reason: 'not_found' });
+  });
+});
+
 describe('the tree of a workflow run, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
-  it('reads the whole tree of a run in the feed, its child started by the waiting step, and nothing for the child', async () => {
+  it('reads the whole tree of a run in the feed, its child started by the input that started the call, and nothing for the child', async () => {
     const runId = await reviewed();
     const tree = await everyEvent(`${alpha}/events?run_id=${runId}&order=asc&limit=100`);
     const waiting = named(tree, 'step_waiting', 'judge');
@@ -142,8 +186,8 @@ describe('the tree of a workflow run, over HTTP', { timeout: workflowTestTimeout
     const ofChild = await everyEvent(`${alpha}/events?run_id=${child}&limit=100`);
     const childStarted = startOf(tree, child);
 
-    expect(childStarted?.causation_id).toBe(waiting.id);
-    expect(tree.filter(({ data }) => data.run_id === child).map(({ type }) => type)).toEqual([
+    expect(causeOf(childStarted)).toBe(waiting.id.slice(0, waiting.id.indexOf('/')));
+    expect(tree.filter((event) => isOfRun(event, child)).map(({ type }) => type)).toEqual([
       'step_waiting',
       'run_started',
       'run_succeeded',
@@ -166,15 +210,15 @@ describe('the tree of a workflow run, over HTTP', { timeout: workflowTestTimeout
 });
 
 describe('the pages of a workflow run, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
-  it('reads on from the cursor of an input in either order, the steps of that input first oldest first', async () => {
+  it('reads on from a page that ends at an input, the steps of that input first, with nothing lost or repeated', async () => {
     const runId = await reviewed();
-    const tree = await everyEvent(`${alpha}/events?run_id=${runId}&order=asc&limit=100`);
+    const feed = `${alpha}/events?run_id=${runId}&order=asc`;
+    const tree = await everyEvent(`${feed}&limit=100`);
     const at = tree.findLastIndex(({ type }) => type === 'workflow_input_applied');
-    const input = tree[at];
-    const after = await everyEvent(`${alpha}/events?run_id=${runId}&order=asc&limit=100`, input?.cursor);
-    const before = await everyEvent(`${alpha}/events?run_id=${runId}&order=desc&limit=100`, input?.cursor);
+    const upToTheInput = await pageAt(`${feed}&limit=${at + 1}`);
+    const after = await everyEvent(`${feed}&limit=100`, upToTheInput.next_cursor);
 
-    expect([after, before]).toEqual([tree.slice(at + 1), tree.slice(0, at).toReversed()]);
+    expect([upToTheInput.events, after]).toEqual([tree.slice(0, at + 1), tree.slice(at + 1)]);
     expect(after[0]?.type).toBe('step_finished');
   });
 

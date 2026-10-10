@@ -16,9 +16,9 @@ import { projectionsBehaviour, topicsOf } from './projections-behaviour.ts';
 
 const alpha = { org: 'acme', brain: 'alpha' };
 
-const began: RunFact = { type: 'run_began', at: '2026-10-01T09:00:00.000Z', fn: 'triage' };
+const began: RunFact = { type: 'run_began', data: { at: '2026-10-01T09:00:00.000Z', fn: 'triage' } };
 
-const ended: RunFact = { type: 'run_ended', status: 'failed', ms: 10, tokens: null };
+const ended: RunFact = { type: 'run_ended', data: { status: 'failed', ms: 10, tokens: null } };
 
 const everyRow: ProjectedRowsQuery = { where: [], orderBy: [], order: 'asc', limit: 100 };
 
@@ -35,7 +35,7 @@ function anAppendThatBreaksDown(entry: LedgerEntry): void {
       const ledger = await aLedger(entry, undefined, undefined, [breaking]);
       await noting(ledger, 'brain/acme/alpha/runs/r1', began);
 
-      await expect(noting(ledger, 'brain/acme/alpha/runs/r1', { type: 'run_noted' }, ended)).rejects.toThrow(
+      await expect(noting(ledger, 'brain/acme/alpha/runs/r1', { type: 'run_noted', data: {} }, ended)).rejects.toThrow(
         breakingDown,
       );
 
@@ -52,7 +52,7 @@ function aTableNotThereYet(entry: LedgerEntry): void {
     it('is made with its indexes and filled when the ledger opens, from every run stream, and earlier versions dropped', async () => {
       const database = await entry.aDatabase();
       const first = await aLedger(entry, database, undefined, [runTallyRows]);
-      await noting(first, 'brain/acme/alpha/runs/r1', began, { type: 'run_noted' });
+      await noting(first, 'brain/acme/alpha/runs/r1', began, { type: 'run_noted', data: {} });
       await noting(first, 'brain/acme/alpha/runs/r2', ended);
       await noting(first, 'brain/acme/alpha/runs/r3/nested', began);
 
@@ -92,8 +92,10 @@ function notedMany(ledger: Awaited<ReturnType<typeof aLedger>>, stream: string) 
   const appends = Array.from({ length: manyNotes / notesInAnAppend }, (_, append) =>
     Array.from({ length: notesInAnAppend }, (__, index): TopicFact => ({
       type: 'topic_noted',
-      topic: 'autumn',
-      note: `note ${append * notesInAnAppend + index}`,
+      data: {
+        topic: 'autumn',
+        note: `note ${append * notesInAnAppend + index}`,
+      },
     })),
   );
   return Effect.runPromise(
@@ -108,12 +110,24 @@ function aKeyedTableNotThereYet(entry: LedgerEntry): void {
     it('is filled from the facts of every stream of its kinds in the order they were appended, and earlier versions dropped', async () => {
       const database = await entry.aDatabase();
       const first = await aLedger(entry, database);
-      await topics(first, 'brain/acme/alpha/notes/w1', { type: 'topic_noted', topic: 'winter', note: 'never opened' });
-      await topics(first, 'brain/acme/alpha/runs/r9', { type: 'topic_opened', topic: 'spring', at: 1000 });
-      await topics(first, 'brain/acme/alpha/notes/z9', { type: 'topic_noted', topic: 'spring', note: 'first' });
-      await topics(first, 'brain/acme/alpha/notes/a1', { type: 'topic_noted', topic: 'spring', note: 'second' });
-      await topics(first, 'brain/acme/alpha/others/o1', { type: 'topic_noted', topic: 'spring', note: 'other' });
-      await topics(first, 'brain/acme/alpha/runs/r8', { type: 'topic_opened', topic: 'autumn', at: 2000 });
+      await topics(first, 'brain/acme/alpha/notes/w1', {
+        type: 'topic_noted',
+        data: { topic: 'winter', note: 'never opened' },
+      });
+      await topics(first, 'brain/acme/alpha/runs/r9', { type: 'topic_opened', data: { topic: 'spring', at: 1000 } });
+      await topics(first, 'brain/acme/alpha/notes/z9', {
+        type: 'topic_noted',
+        data: { topic: 'spring', note: 'first' },
+      });
+      await topics(first, 'brain/acme/alpha/notes/a1', {
+        type: 'topic_noted',
+        data: { topic: 'spring', note: 'second' },
+      });
+      await topics(first, 'brain/acme/alpha/others/o1', {
+        type: 'topic_noted',
+        data: { topic: 'spring', note: 'other' },
+      });
+      await topics(first, 'brain/acme/alpha/runs/r8', { type: 'topic_opened', data: { topic: 'autumn', at: 2000 } });
       await notedMany(first, 'brain/acme/alpha/notes/n1');
       await entry.queried(database, 'CREATE TABLE topics_1 (brain_key text, row_key text)');
 

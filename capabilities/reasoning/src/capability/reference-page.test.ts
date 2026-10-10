@@ -5,6 +5,7 @@ import { toolBounds } from '@beonauto/mcp';
 import { describe, expect, it } from 'vitest';
 
 import { mostOutputTokens } from '../definition/definition-settings.ts';
+import { defaultMostInputTokens } from './definition-request.ts';
 
 const page = readFileSync(new URL('../../../../docs/reference/reasoning-format.md', import.meta.url), 'utf8');
 
@@ -36,8 +37,9 @@ describe('the bounds on the public reference page of reasoning functions', () =>
   });
 
   it('give the bounds of the tool calls of a run the code holds it to', () => {
+    expect(page).toContain(`A run makes at most ${toolBounds.callsInRun} calls;`);
     expect(page).toContain(
-      `A run makes at most ${toolBounds.callsInRun} calls and receives at most ${toolBounds.resultBytesInRun / 1024} KiB of results`,
+      `at most the input tokens the operator sets with \`REASONING_MAX_INPUT_TOKENS\`, ${counted.format(defaultMostInputTokens)} by default`,
     );
     expect(page).toContain(`sends more than ${toolBounds.argumentBytes / 1024} KiB of arguments`);
   });

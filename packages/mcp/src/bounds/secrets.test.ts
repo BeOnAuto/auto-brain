@@ -86,3 +86,34 @@ describe('the secrets of the servers', () => {
     expect(secrets.scrub('Bearer minted-token-9f3e, tiny')).toBe('Bearer [redacted], tiny');
   });
 });
+
+describe('the secrets of a value', () => {
+  it('are scrubbed from every key and every string, and from a number whose digits are one', () => {
+    const secrets = secretsOf([]);
+    secrets.add('graph-api-key-4f1d9a7c2b');
+    secrets.add('31415926535');
+
+    expect(
+      secrets.scrubValue({
+        'graph-api-key-4f1d9a7c2b': 'as a key',
+        said: ['the key is graph-api-key-4f1d9a7c2b', 31_415_926_535, 7, true, null],
+        nested: { pin: 31_415_926_535 },
+      }),
+    ).toEqual({
+      '[redacted]': 'as a key',
+      said: ['the key is [redacted]', '[redacted]', 7, true, null],
+      nested: { pin: '[redacted]' },
+    });
+  });
+
+  it('drop a key that scrubs to the text of an earlier key, with its value', () => {
+    const secrets = secretsOf([]);
+    secrets.add('graph-api-key-4f1d9a7c2b');
+    secrets.add('limitless-key-3e9d');
+
+    expect(secrets.scrubValue({ 'graph-api-key-4f1d9a7c2b': 1, 'limitless-key-3e9d': 2, kept: 3 })).toEqual({
+      '[redacted]': 1,
+      kept: 3,
+    });
+  });
+});

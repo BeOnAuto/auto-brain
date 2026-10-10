@@ -16,6 +16,7 @@ export interface ProjectionDialect {
   ) => SQL;
   readonly rowsInAWrite: (columns: number) => number;
   readonly filledData: (column: unknown) => unknown;
+  readonly filledMetadata: (column: unknown) => unknown;
   readonly appendedData: (stored: unknown) => unknown;
   readonly booleanOf: (value: boolean) => boolean | number;
 }

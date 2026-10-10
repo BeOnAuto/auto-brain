@@ -1,5 +1,11 @@
-import { lastEndingOf, runEndingOf, type CalledBy, type RunEnding } from '@beonauto/definitions';
-import { streamPrefixOfBrain, type BrainAddress, type CallResult, type Conflict } from '@beonauto/operations';
+import { lastEndingOf, runEndingOf, type RunEnding } from '@beonauto/definitions';
+import {
+  streamPrefixOfBrain,
+  type BrainAddress,
+  type CalledBy,
+  type CallResult,
+  type Conflict,
+} from '@beonauto/operations';
 import { callKeyText, type RunInput, type Submission } from '@beonauto/workflow-engine';
 import { Effect } from 'effect';
 
@@ -22,7 +28,7 @@ interface CalledEnding {
 }
 
 function calledEndingOf(ending: RunEnding | undefined): CalledEnding | undefined {
-  const calledBy = ending?.called_by;
+  const calledBy = ending?.context.calledBy;
   return ending === undefined || calledBy === undefined ? undefined : { ending, calledBy };
 }
 
@@ -31,7 +37,7 @@ function failedWith({ detail }: Readonly<{ detail: string }>): DeliveryFailed {
 }
 
 function answeredWith(parts: EndingParts, brain: BrainAddress, { ending, calledBy }: CalledEnding) {
-  const runId = runKeyOf({ ...brain, runId: calledBy.run_id });
+  const runId = runKeyOf({ ...brain, runId: calledBy.runId });
   const key = { runId, reference: calledBy.reference, run: calledBy.run };
   const result = parts.resultOf(ending);
   const answered = parts
@@ -50,7 +56,7 @@ function childEndingOf(database: HostDatabase, brain: BrainAddress, child: strin
   const stream = `${streamPrefixOfBrain(brain)}runs/${child}`;
   return Effect.map(
     Effect.promise(() => database.store.read(stream, 0)),
-    ({ events }) => calledEndingOf(lastEndingOf(events)),
+    ({ messages }) => calledEndingOf(lastEndingOf(messages)),
   );
 }
 
@@ -73,12 +79,12 @@ export function childEndings(parts: EndingParts): CallConsumer {
     skippedAfterSweeps: Number.POSITIVE_INFINITY,
     batchOf: ({ brain, record }, after) =>
       Effect.sync(() => {
-        const called = after === undefined ? calledEndingOf(runEndingOf(record.data)) : undefined;
+        const called = after === undefined ? calledEndingOf(runEndingOf(record)) : undefined;
         return {
           deliveries:
             called === undefined
               ? []
-              : [{ key: 'call', workflow: called.calledBy.run_id, deliver: answeredWith(parts, brain, called) }],
+              : [{ key: 'call', workflow: called.calledBy.runId, deliver: answeredWith(parts, brain, called) }],
           through: undefined,
           more: false,
         };

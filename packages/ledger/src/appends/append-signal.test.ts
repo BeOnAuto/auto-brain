@@ -4,13 +4,13 @@ import { describe, expect, it } from 'vitest';
 
 import type { StreamStore } from '../event-store.ts';
 import { ledgerLayer } from '../sqlite3.ts';
-import { happenings, noted } from '../testing/happenings.ts';
+import { happenings, noted, stamped } from '../testing/happenings.ts';
 import { appendSignal, brainKeyOfStream, signalledOn } from './append-signal.ts';
 
 function failingStore(): StreamStore {
   return {
     mostEventsInOneAppend: 8,
-    read: () => Promise.resolve({ version: 0, events: [], lineages: [] }),
+    read: () => Promise.resolve({ version: 0, messages: [] }),
     append: () => Promise.reject(new Error('The database is gone')),
     migrate: () => Promise.resolve(),
     close: () => Promise.resolve(),
@@ -46,7 +46,9 @@ describe('the signal of an append to a brain', () => {
       heard.push(brainKey);
     });
 
-    const failed = await signalledOn(failingStore(), appends).append('brain/acme/alpha/notes', [], 0).catch(String);
+    const failed = await signalledOn(failingStore(), appends)
+      .append('brain/acme/alpha/notes', [], { expectedVersion: 0, context: stamped })
+      .catch(String);
     appends.raise('brain/acme/alpha/notes');
     stop();
     appends.raise('brain/acme/beta/notes');

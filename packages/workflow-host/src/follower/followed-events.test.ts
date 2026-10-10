@@ -1,4 +1,4 @@
-import type { RecordedEvent } from '@beonauto/operations';
+import type { Context, RecordedEvent } from '@beonauto/operations';
 import type { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -8,45 +8,60 @@ const at = '2026-10-01T09:00:00.000Z';
 
 const told = { specversion: '1.0', id: 'e1', source: '/acme', type: 'com.acme.told', time: at };
 
-type Data = Readonly<Record<string, Schema.Json>> & { readonly type: string };
+const byAdmin: Context = { by: 'acme-admin', at };
 
-function recordOf(stream: string, data: Data, correlationId: string | null = null): RecordedEvent {
-  return {
+interface Fact {
+  readonly type: string;
+  readonly data?: Schema.Json;
+}
+
+function recordOf(stream: string, { type, data = {} }: Fact, context = byAdmin, correlationId: string | null = null) {
+  const record: RecordedEvent = {
     id: `id-${stream}`,
     cursor: 'c',
     causationId: null,
     correlationId,
     stream,
     version: 1,
-    type: data.type,
+    globalPosition: 1,
+    type,
     data,
+    context,
     recordedAt: at,
   };
+  return record;
 }
 
-function published(extra: Readonly<Record<string, Schema.Json>>, correlationId: string | null = null) {
-  const data = { type: 'event_published', event: told, filled: [], ...extra, by: 'acme-admin', at };
-  return followedEventOf(recordOf('events/e1', data, correlationId), 'workflow');
+function published(context: Context = byAdmin, correlationId: string | null = null) {
+  const record = recordOf(
+    'events/e1',
+    { type: 'event_published', data: { event: told, filled: [] } },
+    context,
+    correlationId,
+  );
+  return followedEventOf(record, 'workflow');
 }
 
 function runFact(runId: string, [type, name]: readonly [string, string], correlationId: string | null) {
-  const data = {
-    type: 'run_started',
-    definition_type: type,
-    name,
-    definition_version: 1,
-    input: {},
-    by: 'acme-admin',
-    at,
-  };
-  return followedEventOf(recordOf(`runs/${runId}`, data, correlationId), 'workflow');
+  const context = { ...byAdmin, runId, definitionType: type, definitionName: name, definitionVersion: 1 };
+  return followedEventOf(
+    recordOf(`runs/${runId}`, { type: 'run_started', data: { input: {} } }, context, correlationId),
+    'workflow',
+  );
 }
 
-const emittedBy = { emitted_by: { run_id: 'r-nested', workflow: 'close', version: 1 }, depth: 2 };
+const emittedBy: Context = {
+  ...byAdmin,
+  runId: 'r-nested',
+  definitionType: 'workflow',
+  definitionName: 'close',
+  definitionVersion: 1,
+  depth: 2,
+};
 
 describe('an event published to a brain, as the follower reads it', () => {
   it('is the event at depth 1 when sent from outside, owned by no workflow', () => {
-    expect(published({})).toEqual({ event: told, depth: 1, emitter: undefined, ownedBy: [], topRun: undefined });
+    expect(published()).toEqual({ event: told, depth: 1, emitter: undefined, ownedBy: [], topRun: undefined });
   });
 
   it('when a run emitted it, is owned by the workflow of that run, and names the run that began the chain', () => {
@@ -59,6 +74,15 @@ describe('an event published to a brain, as the follower reads it', () => {
 
   it('is unreadable when its record cannot be read as a publication', () => {
     expect(followedEventOf(recordOf('events/e1', { type: 'event_published' }), 'workflow')).toBe('unreadable');
+  });
+
+  it('is owned by no workflow when the run that emitted it names no workflow', () => {
+    expect(
+      published({ ...byAdmin, runId: 'r-nested', definitionType: 'reasoning', definitionName: 'sum' }),
+    ).toMatchObject({
+      emitter: undefined,
+      ownedBy: [],
+    });
   });
 });
 
@@ -78,30 +102,39 @@ describe('a fact of a brain, as the follower reads it', () => {
   });
 
   it('about a definition, is owned by no workflow', () => {
-    const retired = { type: 'definition_retired', name: 'close', by: 'acme-admin', at };
+    const retired = recordOf(
+      'definitions/workflow',
+      { type: 'definition_retired' },
+      { ...byAdmin, definitionType: 'workflow', definitionName: 'close' },
+    );
 
-    expect(followedEventOf(recordOf('definitions/workflow', retired), 'workflow')).toMatchObject({
+    expect(followedEventOf(retired, 'workflow')).toMatchObject({
       depth: 1,
       ownedBy: [],
       topRun: undefined,
       event: { type: 'definition_retired', source: '/definitions/workflow/close' },
     });
   });
+});
 
+describe('a fact of a brain that is none, or cannot be read, as the follower reads it', () => {
   it('is unreadable when its record cannot be read, and no fact at all for a record that is none', () => {
     expect([
-      followedEventOf(recordOf('runs/r-1', { type: 'run_started' }), 'workflow'),
+      followedEventOf(
+        recordOf('runs/r-1', { type: 'run_started', data: { input: 7, calls_tools: false } }),
+        'workflow',
+      ),
       followedEventOf(recordOf('runs/r-1', { type: 'call_recorded' }), 'workflow'),
       followedEventOf(recordOf('run-logs/r-1', { type: 'input_applied' }), 'workflow'),
     ]).toEqual(['unreadable', 'none', 'none']);
   });
 
   it('is none for the records of a test of a tool, which no recall function folds and no trigger takes, with no note', () => {
-    const tested = { test_id: 't-1', server: 'graph', tool: 'search', by: 'acme-builder', at };
+    const tested = { test_id: 't-1', server: 'graph', tool: 'search' };
 
     expect([
-      followedEventOf(recordOf('tool-tests/t-1', { type: 'tool_test_started', ...tested }), 'workflow'),
-      followedEventOf(recordOf('tool-tests/t-1', { type: 'tool_test_answered', ...tested }), 'workflow'),
+      followedEventOf(recordOf('tool-tests/t-1', { type: 'tool_test_started', data: tested }), 'workflow'),
+      followedEventOf(recordOf('tool-tests/t-1', { type: 'tool_test_answered', data: tested }), 'workflow'),
       followedEventOf(recordOf('tool-tests/t-1', { type: 'tool_test_started' }), 'recall'),
     ]).toEqual(['none', 'none', 'none']);
   });
@@ -109,11 +142,11 @@ describe('a fact of a brain, as the follower reads it', () => {
 
 describe('the reads and tellings of a conversation, as the follower meets them', () => {
   it('are none, which no recall function folds and no trigger takes', () => {
-    const read = { call_id: 'c-1', server: 'chat', tool: 'thread_replies', by: 'brain:alpha', at };
+    const read = { call_id: 'c-1', server: 'chat', tool: 'thread_replies' };
 
     expect([
-      followedEventOf(recordOf('conversation-calls/c-1', { type: 'replies_read', ...read }), 'workflow'),
-      followedEventOf(recordOf('conversation-calls/c-1', { type: 'telling_started', ...read }), 'recall'),
+      followedEventOf(recordOf('conversation-calls/c-1', { type: 'replies_read', data: read }), 'workflow'),
+      followedEventOf(recordOf('conversation-calls/c-1', { type: 'telling_started', data: read }), 'recall'),
     ]).toEqual(['none', 'none']);
   });
 });

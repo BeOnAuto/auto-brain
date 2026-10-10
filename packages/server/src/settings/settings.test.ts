@@ -30,6 +30,7 @@ describe('readSettings', () => {
       ledger: { store: 'sqlite', file: 'data/ledger.db' },
       localMode: false,
       logFormat: 'json',
+      reasoning: { mostInputTokens: 2_000_000 },
       workflows: { mostDurationMs: 2_592_000_000, mostCallsAtOnce: 32, mostOpenCalls: 1000, sweepEveryMs: 1000 },
       computation: { workers: 4 },
       recall: { mostFunctions: 32, rebuildsAtOnce: 4, brainsAtOnce: 4 },
@@ -50,6 +51,7 @@ describe('readSettings given every setting', () => {
       LOG_FORMAT: 'pretty',
       OPENAI_API_KEY: 'sk-test',
       INTERACTION_OPEN_REQUESTS: '250',
+      REASONING_MAX_INPUT_TOKENS: '500000',
     });
 
     expect(interaction).toEqual({ mostOpenRequests: 250 });
@@ -63,6 +65,7 @@ describe('readSettings given every setting', () => {
       ledger: { store: 'sqlite', file: '/data/ledger.db' },
       localMode: true,
       logFormat: 'pretty',
+      reasoning: { mostInputTokens: 500_000 },
       workflows: { mostDurationMs: 2_592_000_000, mostCallsAtOnce: 32, mostOpenCalls: 1000, sweepEveryMs: 1000 },
       computation: { workers: 4 },
       recall: { mostFunctions: 32, rebuildsAtOnce: 4, brainsAtOnce: 4 },

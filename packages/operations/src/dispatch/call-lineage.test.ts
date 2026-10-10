@@ -1,16 +1,17 @@
 import { Effect, Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { BrainWriter, CallLineage, defineCommand, messageIdOf, type Decider } from '../index.ts';
+import { BrainWriter, CallLineage, defineCommand, factOf, messageIdOf, type Decider } from '../index.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { harness, toBrain } from '../testing/harness.ts';
 
-const NotedSchema = Schema.Struct({ type: Schema.Literal('noted') });
+const NotedSchema = factOf('noted', Schema.Struct({}));
 
 const notes: Decider<null, null, typeof NotedSchema.Type> = {
   initialState: null,
   evolve: () => null,
-  decide: () => Result.succeed([{ type: 'noted' }]),
+  decide: () => Result.succeed([{ type: 'noted', data: {} }]),
+  context: () => ({ at: '2026-10-05T09:00:00.000Z', by: 'tester' }),
   eventSchema: NotedSchema,
 };
 

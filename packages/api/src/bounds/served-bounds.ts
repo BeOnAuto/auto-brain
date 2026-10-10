@@ -10,7 +10,7 @@ const mostDescriptionSentences = 8;
 
 export const mostArgumentDescriptionCharacters = 300;
 
-export const mostToolsOnAConnection = 25;
+export const mostToolsOnAConnection = 26;
 
 export const mostGuideBytes = 65_536;
 

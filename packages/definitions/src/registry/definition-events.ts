@@ -1,3 +1,4 @@
+import { factOf } from '@beonauto/operations';
 import { Schema } from 'effect';
 
 import { StrippedFormsSchema } from '../capability/stripped-forms.ts';
@@ -16,28 +17,12 @@ const DefinitionContentSchema = Schema.Struct({
 
 export type DefinitionContent = typeof DefinitionContentSchema.Type;
 
-const fact = { name: Schema.String, by: Schema.String, at: Schema.String };
-
-const DefinitionCreatedSchema = Schema.Struct({
-  type: Schema.Literal('definition_created'),
-  ...fact,
-  version: Schema.Int,
-  content: DefinitionContentSchema,
-});
-
-const DefinitionUpdatedSchema = Schema.Struct({
-  type: Schema.Literal('definition_updated'),
-  ...fact,
-  version: Schema.Int,
-  content: DefinitionContentSchema,
-});
-
-const DefinitionRetiredSchema = Schema.Struct({ type: Schema.Literal('definition_retired'), ...fact });
+const SavedSchema = Schema.Struct({ content: DefinitionContentSchema });
 
 export const DefinitionEventSchema = Schema.Union([
-  DefinitionCreatedSchema,
-  DefinitionUpdatedSchema,
-  DefinitionRetiredSchema,
+  factOf('definition_created', SavedSchema),
+  factOf('definition_updated', SavedSchema),
+  factOf('definition_retired', Schema.Struct({})),
 ]);
 
 export type DefinitionEvent = typeof DefinitionEventSchema.Type;
@@ -45,5 +30,3 @@ export type DefinitionEvent = typeof DefinitionEventSchema.Type;
 export type DefinitionCreated = Extract<DefinitionEvent, { readonly type: 'definition_created' }>;
 
 export type DefinitionUpdated = Extract<DefinitionEvent, { readonly type: 'definition_updated' }>;
-
-export type DefinitionRetired = Extract<DefinitionEvent, { readonly type: 'definition_retired' }>;

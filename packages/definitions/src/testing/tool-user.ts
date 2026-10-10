@@ -1,11 +1,10 @@
+import type { CallEnded, CallStarted } from '@beonauto/mcp';
 import { Conflict, Unavailable } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
 import {
   defineCapability,
   type CapabilityAnswer,
-  type CallAnsweredFact,
-  type CallStartedFact,
   type CapabilityRejection,
   type Capability,
   type ToolCallJournal,
@@ -20,26 +19,28 @@ export interface ToolUser {
   readonly startedLate: () => Promise<readonly (number | undefined)[]>;
 }
 
-export function startOfCall(number: number): CallStartedFact {
+export function startOfCall(number: number): CallStarted {
   return {
-    type: 'tool_call_started',
     call_id: `toolu_${number}`,
     server: 'graph',
     tool: 'search',
     arguments_bytes: 2,
     arguments_sha256: 'a'.repeat(64),
+    content_kept: true,
   };
 }
 
-export function answerOfCall(number: number): CallAnsweredFact {
+export function answerOfCall(number: number): CallEnded {
   return {
     type: 'tool_call_answered',
-    number,
-    outcome: 'result',
-    result_bytes: 2,
-    result_sha256: 'b'.repeat(64),
-    duration_ms: 5,
-    jsonrpc_id: number,
+    data: {
+      is_error: false,
+      result_bytes: 2,
+      result_sha256: 'b'.repeat(64),
+      content_kept: true,
+      duration_ms: 5,
+      jsonrpc_id: number,
+    },
   };
 }
 
@@ -47,8 +48,13 @@ const decodeInput = Schema.decodeUnknownSync(
   Schema.Struct({
     calls: Schema.Int,
     ending: Schema.optionalKey(Schema.Literals(['succeed', 'unavailable', 'conflict', 'stall'])),
+    failing: Schema.optionalKey(Schema.Boolean),
   }),
 );
+
+function failureOfCall(number: number): CallEnded {
+  return { type: 'tool_call_failed', data: { because: 'timed_out', duration_ms: 30_000, jsonrpc_id: number } };
+}
 
 function numbersUpTo(count: number): readonly number[] {
   return Array.from({ length: count }, (_, index) => index + 1);
@@ -62,8 +68,9 @@ function everyStart(count: number, journal: ToolCallJournal) {
   );
 }
 
-function everyAnswer(count: number, journal: ToolCallJournal) {
-  return Effect.forEach(numbersUpTo(count), (number) => journal.answered(answerOfCall(number)), {
+function everyAnswer(count: number, journal: ToolCallJournal, failing: boolean) {
+  const endOf = failing ? failureOfCall : answerOfCall;
+  return Effect.forEach(numbersUpTo(count), (number) => journal.ended(number, endOf(number)), {
     concurrency: 'unbounded',
   });
 }
@@ -94,13 +101,13 @@ export function toolUser(): ToolUser {
     run: (_document, input, { journal }) =>
       Effect.gen(function* () {
         journals.push(journal);
-        const { calls, ending = 'succeed' } = decodeInput(input);
+        const { calls, ending = 'succeed', failing = false } = decodeInput(input);
         const started = yield* everyStart(calls, journal);
         if (ending === 'stall') {
           stalling.resolve();
           return yield* Effect.never;
         }
-        const answered = yield* everyAnswer(calls, journal);
+        const answered = yield* everyAnswer(calls, journal, failing);
         return yield* endings[ending]([...started, ...answered]);
       }),
     reachesOutside: true,
@@ -110,7 +117,7 @@ export function toolUser(): ToolUser {
   return {
     capability,
     stalled: stalling.promise,
-    recordedLate: () => Promise.all(journals.map((journal) => Effect.runPromise(journal.answered(answerOfCall(1))))),
+    recordedLate: () => Promise.all(journals.map((journal) => Effect.runPromise(journal.ended(1, answerOfCall(1))))),
     startedLate: () => Promise.all(journals.map((journal) => Effect.runPromise(journal.started(startOfCall(9))))),
   };
 }

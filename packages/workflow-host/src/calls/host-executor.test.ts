@@ -11,7 +11,7 @@ import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { runKey } from '../testing/probe-subjects.ts';
 import { hostExecutor, type Deliver, type HostExecutor } from './host-executor.ts';
 
-const origin = { version: 2, lastStep: null };
+const origin = { version: 2 };
 
 const run = { runId: runKey, attributes: { org: 'acme' } };
 
@@ -79,7 +79,7 @@ describe('the executor of the host', () => {
   it('starts again, when it resumes, a call that a host that died was running', async () => {
     const calls = await executing(neverAnswered);
     const died = calls.executorOn();
-    await Effect.runPromise(died.executor.start(call, run));
+    await Effect.runPromise(died.executor.start(call, run, origin));
     await Effect.runPromise(died.stop());
 
     const resumed = calls.executorOn();
@@ -93,9 +93,9 @@ describe('the executor of the host', () => {
   it('stops the calls it runs without reporting them as troubles', async () => {
     const calls = await executing(neverAnswered);
     const executor = calls.executorOn();
-    await Effect.runPromise(executor.executor.start(call, run));
+    await Effect.runPromise(executor.executor.start(call, run, origin));
     await Effect.runPromise(executor.executor.cancel({ kind: 'cancel_call', key: call.key }, run, origin));
-    await Effect.runPromise(executor.executor.start({ ...call, key: { ...call.key, run: 2 } }, run));
+    await Effect.runPromise(executor.executor.start({ ...call, key: { ...call.key, run: 2 } }, run, origin));
 
     await Effect.runPromise(executor.stop());
 
@@ -107,7 +107,7 @@ describe('the executor of the host, after a host died', () => {
   it('cancels a call that a host that died was running, interrupting nothing', async () => {
     const calls = await executing(neverAnswered);
     const died = calls.executorOn();
-    await Effect.runPromise(died.executor.start(call, run));
+    await Effect.runPromise(died.executor.start(call, run, origin));
     await Effect.runPromise(died.stop());
 
     const cancelled = await Effect.runPromise(
@@ -123,7 +123,7 @@ describe('the executor of the host, answering', () => {
     const finishing = Deferred.makeUnsafe<CallResult>();
     const calls = await executing(() => Deferred.await(finishing));
     const running = calls.executorOn();
-    await Effect.runPromise(running.executor.start(call, run));
+    await Effect.runPromise(running.executor.start(call, run, origin));
     const cancel = { kind: 'cancel_call', key: call.key } as const;
 
     const cancelled = await Effect.runPromise(calls.executorOn().executor.cancel(cancel, run, origin));
@@ -137,7 +137,7 @@ describe('the executor of the host, answering', () => {
   it('keeps an answer it could not give to its run, and gives it when it next resumes', async () => {
     const calls = await executing();
     const refusing = calls.executorOn(() => Effect.fail(new Error('The run is busy')));
-    await Effect.runPromise(refusing.executor.start(call, run));
+    await Effect.runPromise(refusing.executor.start(call, run, origin));
     await Effect.runPromise(refusing.idle());
 
     const giving = calls.executorOn();
@@ -161,7 +161,7 @@ describe('the executor of the host, resuming recorded answers', () => {
   ])('gives a recorded $status answer, as it was recorded, when it next resumes', async (recorded) => {
     const calls = await executing(() => Effect.succeed(recorded));
     const refusing = calls.executorOn(() => Effect.fail(new Error('The run is busy')));
-    await Effect.runPromise(refusing.executor.start(call, run));
+    await Effect.runPromise(refusing.executor.start(call, run, origin));
     await Effect.runPromise(refusing.idle());
     const answers: CallResult[] = [];
     const giving = calls.executorOn((_key, result) =>
@@ -189,7 +189,7 @@ describe('the executor of the host, failing to record an answer', () => {
     );
     const executor = calls.executorOn();
 
-    await Effect.runPromise(executor.executor.start(call, run));
+    await Effect.runPromise(executor.executor.start(call, run, origin));
     await eventually(calls.troubles, (troubles) => troubles.length > 0);
     await setTimeout(120);
     const resumedWhileWriting = await Effect.runPromise(executor.resume());
@@ -205,12 +205,14 @@ describe('the executor of the host, asked twice at once', () => {
   it('never starts a second performance of a call it is already performing', async () => {
     const calls = await executing(neverAnswered);
     const died = calls.executorOn();
-    await Effect.runPromise(died.executor.start(call, run));
+    await Effect.runPromise(died.executor.start(call, run, origin));
     await Effect.runPromise(died.stop());
 
     const resumed = calls.executorOn();
     await Effect.runPromise(
-      Effect.all([resumed.resume(), resumed.executor.start(call, run), resumed.resume()], { concurrency: 'unbounded' }),
+      Effect.all([resumed.resume(), resumed.executor.start(call, run, origin), resumed.resume()], {
+        concurrency: 'unbounded',
+      }),
     );
 
     expect(calls.performed()).toBe(2);
@@ -224,7 +226,7 @@ describe('the executor of the host, stopped', () => {
     const stopped = calls.executorOn();
     await Effect.runPromise(stopped.stop());
 
-    const started = await Effect.runPromise(stopped.executor.start(call, run));
+    const started = await Effect.runPromise(stopped.executor.start(call, run, origin));
     const resumed = await Effect.runPromise(calls.executorOn().resume());
 
     expect([started, resumed]).toEqual(['started', 1]);
@@ -237,7 +239,7 @@ describe('the executor of the host, failing', () => {
     const executor = calls.executorOn();
     calls.database.failing(true);
 
-    const start = await Effect.runPromise(Effect.flip(executor.executor.start(call, run)));
+    const start = await Effect.runPromise(Effect.flip(executor.executor.start(call, run, origin)));
     const cancel = await Effect.runPromise(
       Effect.flip(executor.executor.cancel({ kind: 'cancel_call', key: call.key }, run, origin)),
     );

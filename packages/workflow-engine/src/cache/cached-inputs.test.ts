@@ -17,7 +17,16 @@ function cancelAt(at: number): RunInput {
 const elsewhere = { cause: { kind: 'none' as const }, attributes: {} };
 
 function appendedElsewhere(driver: MemoryDriver, events: readonly RunLogEvent[]): void {
-  Effect.runSync(Effect.forEach(events, (event) => driver.ports.runStore.append(drivenRunId, event, 1, elsewhere)));
+  Effect.runSync(
+    Effect.forEach(events, (event) =>
+      driver.ports.runStore.append(
+        drivenRunId,
+        event,
+        { expectedVersion: 1, context: { at: '2026-10-01T09:00:00.000Z', by: 'tester' } },
+        elsewhere,
+      ),
+    ),
+  );
 }
 
 function ticking(times: number): ReturnType<typeof workflow> {

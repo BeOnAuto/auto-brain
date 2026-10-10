@@ -9,7 +9,7 @@ export interface TestAsked {
   readonly tool: string;
 }
 
-export type TestedOutcome = 'result' | 'tool_error' | 'server_failure' | 'timed_out';
+type TestedOutcome = 'result' | 'tool_error' | 'server_failure' | 'timed_out';
 
 export interface TestAnswer extends TestAsked {
   readonly outcome: TestedOutcome;

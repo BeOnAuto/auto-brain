@@ -1,9 +1,9 @@
 import { recordedReaderOf } from '@beonauto/ledger';
-import { Conflict, messageIdOf } from '@beonauto/operations';
+import { Conflict, messageIdOf, type Context } from '@beonauto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { alpha, at, recorded } from '../reaction-testing/brain-writes.ts';
+import { alpha, at, recorded, recordedWith } from '../reaction-testing/brain-writes.ts';
 import { eventually } from '../testing/eventually.ts';
 import { runAt, startOf, workflow } from '../testing/host-documents.ts';
 import { followedHost } from '../waiting-testing/followed-host.ts';
@@ -14,32 +14,17 @@ const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 const pausing = workflow('do:\n  - pause: { wait: PT1H }');
 
-function askedOf(type: string) {
-  return {
-    type: 'run_cancel_requested',
-    kind: 'requested',
-    reason: 'Not needed any more',
-    definition_type: type,
-    name: 'pause',
-    definition_version: 1,
-    by: 'acme-admin',
-    at,
-  };
+const askedToCancel = { type: 'run_cancel_requested', data: { kind: 'requested', reason: 'Not needed any more' } };
+
+function runOf(type: string, by = 'acme-admin'): Context {
+  return { by, at, definitionType: type, definitionName: 'pause', definitionVersion: 1 };
 }
 
 const requestStream = `${alpha}runs/${runId}`;
 
 const requestId = messageIdOf(requestStream, 1);
 
-const started = {
-  type: 'run_started',
-  definition_type: 'workflow',
-  name: 'pause',
-  definition_version: 1,
-  input: {},
-  by: 'acme-admin',
-  at,
-};
+const started = { type: 'run_started', data: { input: {} } };
 
 const cancelled = {
   status: 'rejected',
@@ -55,9 +40,9 @@ describe('a cancel request on a workflow run', () => {
     hosted.know(runId);
     await Effect.runPromise(hosted.host.start(runAt(runId), startOf(pausing)));
 
-    await recorded(database.store, requestStream, askedOf('workflow'), {
-      causationId: null,
-      correlationId: runId,
+    await recordedWith(database.store, requestStream, askedToCancel, {
+      context: runOf('workflow'),
+      lineage: { causationId: null, correlationId: runId },
     });
     const settlement = await settled(runId);
     const { records } = await Effect.runPromise(
@@ -78,9 +63,9 @@ describe('a cancel request on a run of another capability', () => {
     const waiting = recordedWaiting();
     const { database } = await followedHost({ waiting: waiting.options });
 
-    await recorded(database.store, requestStream, askedOf('interaction'), {
-      causationId: null,
-      correlationId: 'root-1',
+    await recordedWith(database.store, requestStream, askedToCancel, {
+      context: runOf('interaction'),
+      lineage: { causationId: null, correlationId: 'root-1' },
     });
     const handed = await eventually(waiting.deferredCancels, (cancels) => cancels.length > 0);
 
@@ -98,12 +83,12 @@ describe('a cancel request recorded before the host started the workflow', () =>
   it('is passed over by the follower, and the start of the run finds it and ends the run cancelled at once', async () => {
     const { database, hosted, settled } = await followedHost();
     hosted.know(runId);
-    await recorded(database.store, requestStream, started);
-    await recorded(database.store, requestStream, { ...askedOf('workflow'), at });
+    await recorded(database.store, requestStream, started, runOf('workflow'));
+    await recorded(database.store, requestStream, askedToCancel, runOf('workflow'));
     const other = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b';
     hosted.know(other);
     await Effect.runPromise(hosted.host.start(runAt(other), startOf(pausing)));
-    await recorded(database.store, `${alpha}runs/${other}`, askedOf('workflow'));
+    await recorded(database.store, `${alpha}runs/${other}`, askedToCancel, runOf('workflow'));
 
     const otherSettled = await settled(other);
     const answer = await Effect.runPromise(hosted.host.start(runAt(runId), startOf(pausing)));
@@ -114,7 +99,12 @@ describe('a cancel request recorded before the host started the workflow', () =>
   });
 });
 
-function asked(data: unknown, type = 'run_cancel_requested') {
+interface Fact {
+  readonly type: string;
+  readonly data: unknown;
+}
+
+function asked({ type, data }: Fact, context: Context = runOf('workflow')) {
   return {
     brain: { org: 'acme', brain: 'alpha' },
     brainKey: alpha,
@@ -125,8 +115,10 @@ function asked(data: unknown, type = 'run_cancel_requested') {
       correlationId: null,
       stream: `runs/${runId}`,
       version: 1,
+      globalPosition: 1,
       type,
       data,
+      context,
       recordedAt: at,
     },
   };
@@ -143,23 +135,14 @@ async function failingConsumer() {
   });
 }
 
-const endingOfAnotherCapability = {
-  type: 'run_succeeded',
-  output: null,
-  record: {},
-  definition_type: 'interaction',
-  name: 'ask',
-  definition_version: 1,
-  by: 'brain:alpha',
-  at,
-};
+const endingOfAnotherCapability = { type: 'run_succeeded', data: { output: null, record: {} } };
 
 describe('the consumer of cancel requests', () => {
   it('never skips a request, and fails a delivery the run cannot take now, to be made again', async () => {
     const consumer = await failingConsumer();
-    const { deliveries } = await Effect.runPromise(consumer.batchOf(asked(askedOf('workflow')), undefined, 100));
+    const { deliveries } = await Effect.runPromise(consumer.batchOf(asked(askedToCancel), undefined, 100));
     const failure = await Effect.runPromise(Effect.flip(Effect.forEach(deliveries, ({ deliver }) => deliver)));
-    const skipped = consumer.skipped(asked({}), { key: 'cancel', workflow: 'pause', deliver: Effect.void }, '');
+    const skipped = consumer.skipped(asked(started), { key: 'cancel', workflow: 'pause', deliver: Effect.void }, '');
 
     expect([failure.detail, consumer.skippedAfterSweeps]).toEqual(['The log of the run kept changing', Infinity]);
     expect(await Effect.runPromise(Effect.as(skipped, 'nothing skipped'))).toBe('nothing skipped');
@@ -167,22 +150,20 @@ describe('the consumer of cancel requests', () => {
 
   it('makes no delivery of a cancel before a start, nor of a record that is no request or ends another capability’s run', async () => {
     const consumer = await failingConsumer();
-    const beforeTheStart = {
-      type: 'run_cancel_requested',
-      kind: 'requested',
-      reason: 'Gone',
-      by: 'brain:alpha',
-      at,
-    };
+    const beforeTheStart = asked(
+      { type: 'run_cancel_requested', data: { kind: 'requested', reason: 'Gone' } },
+      { by: 'brain:alpha', at },
+    );
     const batches = await Effect.runPromise(
-      Effect.forEach([beforeTheStart, { type: 'event_published' }], (data: unknown) =>
-        consumer.batchOf(asked(data), undefined, 100),
-      ),
+      Effect.all([
+        consumer.batchOf(beforeTheStart, undefined, 100),
+        consumer.batchOf(asked({ type: 'event_published', data: {} }), undefined, 100),
+      ]),
     );
     const ending = await Effect.runPromise(
-      consumer.batchOf(asked(endingOfAnotherCapability, 'run_succeeded'), undefined, 100),
+      consumer.batchOf(asked(endingOfAnotherCapability, runOf('interaction', 'brain:alpha')), undefined, 100),
     );
-    const resumed = await Effect.runPromise(consumer.batchOf(asked(askedOf('workflow')), 'cancel', 100));
+    const resumed = await Effect.runPromise(consumer.batchOf(asked(askedToCancel), 'cancel', 100));
 
     expect([...batches, ending, resumed].map(({ deliveries }) => deliveries)).toEqual([[], [], [], []]);
   });

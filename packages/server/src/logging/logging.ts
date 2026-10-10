@@ -208,6 +208,14 @@ export function logWorkflows({ mostDurationMs, mostCallsAtOnce, sweepEveryMs }: 
   );
 }
 
+const counted = new Intl.NumberFormat('en');
+
+export function logReasoning(mostInputTokens: number): Effect.Effect<void> {
+  return Effect.logInfo(
+    `Reasoning functions run in this server: the model calls of a run add up to at most ${counted.format(mostInputTokens)} input tokens, and each answer of a tool is read whole where it fits the model's context window`,
+  ).pipe(Effect.annotateLogs({ most_input_tokens: mostInputTokens }));
+}
+
 export function logUnsettled({ org, brain, runId, reason }: UnsettledReport): Effect.Effect<void> {
   return Effect.logError('A run stays started because settling it failed').pipe(
     Effect.annotateLogs({ org, brain, run_id: runId, reason }),

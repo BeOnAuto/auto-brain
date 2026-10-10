@@ -1,5 +1,5 @@
 import { CallResultSchema, type CallResult } from '@beonauto/operations';
-import { CallKeySchema, type RunContext, type StartCall } from '@beonauto/workflow-engine';
+import { CallKeySchema, type OutputOrigin, type RunContext, type StartCall } from '@beonauto/workflow-engine';
 import { Effect, Schema } from 'effect';
 
 import { oneRowOf, rowsOf, WholeNumber, type DatabaseFailed, type HostDatabase } from '../database/host-database.ts';
@@ -37,7 +37,10 @@ const UnfinishedRow = Schema.Struct({
   call: CallText,
   attributes: AttributesText,
   result: Schema.NullOr(ResultText),
+  started_by: WholeNumber,
 });
+
+const StartedByRow = Schema.Struct({ started_by: Schema.NullOr(WholeNumber) });
 
 const WaitingRow = Schema.Struct({ call_key: Schema.String, call: CallText, child: Schema.String });
 
@@ -49,6 +52,7 @@ export interface UnfinishedCall {
   readonly key: string;
   readonly call: StartCall;
   readonly run: RunContext;
+  readonly origin: OutputOrigin;
   readonly result: CallResult | null;
 }
 
@@ -61,6 +65,7 @@ export interface WaitingCall {
 export interface StartedCall {
   readonly call: StartCall;
   readonly run: RunContext;
+  readonly origin: OutputOrigin;
   readonly child: string | null;
   readonly root: string;
 }
@@ -68,16 +73,23 @@ export interface StartedCall {
 export function startedRow(
   database: HostDatabase,
   key: string,
-  { call, run, child, root }: StartedCall,
+  { call, run, origin, child, root }: StartedCall,
 ): Effect.Effect<boolean, DatabaseFailed> {
   return database
     .write(
-      statement`INSERT INTO workflow_calls (call_key, run_key, state, call, attributes, child, root_id)
+      statement`INSERT INTO workflow_calls (call_key, run_key, state, call, attributes, child, root_id, started_by)
         VALUES (${key}, ${run.runId}, 'running', ${encodeCall(call)}, ${encodeAttributes(run.attributes)},
-          ${child}, ${root})
+          ${child}, ${root}, ${origin.version})
         ON CONFLICT (call_key) DO NOTHING RETURNING state`,
     )
     .pipe(Effect.map((rows) => rows.length > 0));
+}
+
+export function startedByOf(database: HostDatabase, key: string): Effect.Effect<number | null, DatabaseFailed> {
+  return rowsOf(
+    StartedByRow,
+    database.read(statement`SELECT started_by FROM workflow_calls WHERE call_key = ${key}`),
+  ).pipe(Effect.map((rows) => rows[0]?.started_by ?? null));
 }
 
 export function refusedRow(
@@ -197,15 +209,16 @@ export function unfinishedCalls(database: HostDatabase): Effect.Effect<readonly 
   return rowsOf(
     UnfinishedRow,
     database.read(
-      statement`SELECT call_key, run_key, call, attributes, result FROM workflow_calls
+      statement`SELECT call_key, run_key, call, attributes, result, started_by FROM workflow_calls
         WHERE state = 'running' OR (state = 'answered' AND delivered = 0)`,
     ),
   ).pipe(
     Effect.map((rows) =>
-      rows.map(({ call_key: key, run_key: runKey, call, attributes, result }) => ({
+      rows.map(({ call_key: key, run_key: runKey, call, attributes, result, started_by: version }) => ({
         key,
         call,
         run: { runId: runKey, attributes },
+        origin: { version },
         result,
       })),
     ),

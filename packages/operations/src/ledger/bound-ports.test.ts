@@ -239,7 +239,7 @@ const unreadableWindows: readonly (readonly [RunOutcomeWindow, string])[] = [
 describe('the read of the outcomes of runs, bound to a call', () => {
   it('reads only the brain of the call', async () => {
     const { dispatcher, ledger, run } = harness({ runOutcomes: runTallies });
-    const began: RunFact = { type: 'run_began', at: '2026-10-01T09:00:00.000Z', fn: 'triage' };
+    const began: RunFact = { type: 'run_began', data: { at: '2026-10-01T09:00:00.000Z', fn: 'triage' } };
     await Effect.runPromise(ledger.service.execute('brain/acme/alpha/runs/r1', runFacts, [began]));
     await Effect.runPromise(ledger.service.execute('brain/globex/gamma/runs/r2', runFacts, [began]));
     const window = { from: '2026-10-01', to: '2026-10-01' };
@@ -269,7 +269,7 @@ describe('the read of the outcomes of runs, bound to a call', () => {
 describe('the read of projected rows, bound to a call', () => {
   it('reads only the brain of the call, and counts its rows', async () => {
     const { dispatcher, ledger, run } = harness({ projections: [runTallyRows] });
-    const began: RunFact = { type: 'run_began', at: '2026-10-01T09:00:00.000Z', fn: 'triage' };
+    const began: RunFact = { type: 'run_began', data: { at: '2026-10-01T09:00:00.000Z', fn: 'triage' } };
     await Effect.runPromise(ledger.service.execute('brain/acme/alpha/runs/r1', runFacts, [began]));
     await Effect.runPromise(ledger.service.execute('brain/acme/beta/runs/r2', runFacts, [began]));
 

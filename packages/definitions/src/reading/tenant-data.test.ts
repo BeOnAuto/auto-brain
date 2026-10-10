@@ -27,7 +27,12 @@ describe('a run whose input and output hold U+0000', () => {
     ).toMatchObject({ status: 'succeeded', output: { runs: [{ run_id: runId }] } });
     expect(await call(getRunHistory, toAlpha(acmeAdmin, { run_id: runId }))).toMatchObject({
       status: 'succeeded',
-      output: { events: [{ data: { input_bytes: 19 } }, { data: { output_bytes: 51 } }] },
+      output: {
+        events: [
+          { data: { input: { text: 'a\u0000b' } } },
+          { data: { output: { greeting: 'Hi\u0000', input: { text: 'a\u0000b' } } } },
+        ],
+      },
     });
   });
 });

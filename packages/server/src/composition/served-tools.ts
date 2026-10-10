@@ -5,6 +5,7 @@ import type { DispatcherServices } from '@beonauto/operations';
 import type { Served } from '../lifecycle/lifecycle.ts';
 import { logServerMessage, logUntestableServer } from '../logging/logging.ts';
 import type { Settings } from '../settings/settings.ts';
+import { runtimeLedger } from './runtime-ledger.ts';
 import { interactionServedBy, type ServedInteraction } from './served-interaction.ts';
 import { reasoningServedBy, type ModelAccessOf, type ServedReasoning } from './served-reasoning.ts';
 
@@ -25,6 +26,7 @@ function toolAccessOf(
 ): ToolAccess {
   return makeToolAccess(mcp, {
     ...(timing === undefined ? {} : { timing }),
+    content: runtimeLedger(runtime).content,
     reportServerMessage: (report) => {
       void runtime.run(logServerMessage(report));
     },

@@ -53,6 +53,7 @@ const History = Schema.Struct({
         reference: Schema.optionalKey(Schema.String),
         run_id: Schema.optionalKey(Schema.String),
       }),
+      metadata: Schema.Struct({ run_id: Schema.optionalKey(Schema.String) }),
     }),
   ),
 });
@@ -96,7 +97,7 @@ async function childOfTheQueuedCall(parent: string): Promise<string> {
 async function cancelledFirst(child: string): Promise<void> {
   await until(
     () => server.call('GET', `${alpha}/events?type=run_cancel_requested&limit=100`),
-    ({ body }) => Schema.decodeUnknownSync(History)(body).events.some(({ data }) => data.run_id === child),
+    ({ body }) => Schema.decodeUnknownSync(History)(body).events.some(({ metadata }) => metadata.run_id === child),
   );
 }
 

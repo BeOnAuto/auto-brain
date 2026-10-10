@@ -2,6 +2,7 @@ import { Conflict, type Decider } from '@beonauto/operations';
 import { Result } from 'effect';
 
 import type { RunCommand } from './run-commands.ts';
+import { runContextOf } from './run-context.ts';
 import { decideOnRun } from './run-decisions.ts';
 import { RunEventSchema, type RunEvent } from './run-events.ts';
 import { evolveRun, type RunStreamState } from './run-state.ts';
@@ -10,6 +11,7 @@ export const runDecider: Decider<RunStreamState, RunCommand, RunEvent, 'not_foun
   initialState: undefined,
   evolve: evolveRun,
   decide: decideOnRun,
+  context: runContextOf,
   eventSchema: RunEventSchema,
 };
 
@@ -33,6 +35,7 @@ export const runDeciderAsRead: Decider<RunAsRead, CommandAsRead, RunEvent, 'not_
   evolve: ({ state, version }, event) => ({ state: evolveRun(state, event), version: version + 1 }),
   decide: ({ readAt, command }, { state, version }) =>
     readAt === version ? decideOnRun(command, state) : Result.fail(changedSinceRead),
+  context: ({ command }, { state }) => runContextOf(command, state),
   eventSchema: RunEventSchema,
 };
 

@@ -5,6 +5,8 @@ import type { ModelTools, ToolCallRequest, ToolCallSignals, ToolReply } from '..
 export interface ScriptedToolsOptions {
   readonly endAfter?: number;
   readonly runBoundMs?: number;
+  readonly mostInputTokens?: number;
+  readonly contextWindow?: number;
   readonly inputSchema?: Schema.JsonObject;
   readonly reply?: (request: ToolCallRequest, signals: ToolCallSignals, end: () => void) => Promise<ToolReply>;
 }
@@ -22,6 +24,8 @@ export const foundRows: ToolReply = { text: 'Found 2 rows.', isError: false };
 export function scriptedTools({
   endAfter = 1,
   runBoundMs = 600_000,
+  mostInputTokens = 2_000_000,
+  contextWindow,
   inputSchema = { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] },
   reply = () => Promise.resolve(foundRows),
 }: ScriptedToolsOptions = {}): ScriptedTools {
@@ -49,6 +53,8 @@ export function scriptedTools({
       calledAny: () => calls.length > 0,
       ended: ending.signal,
       runBoundMs,
+      mostInputTokens,
+      ...(contextWindow === undefined ? {} : { contextWindow }),
     },
     calls: () => [...calls],
     signals: () => [...signals],

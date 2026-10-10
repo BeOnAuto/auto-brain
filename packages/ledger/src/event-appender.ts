@@ -1,16 +1,15 @@
-import type { Lineage, TypedEvent } from '@beonauto/operations';
+import { checkedContext, type TypedEvent } from '@beonauto/operations';
 import { isExpectedVersionConflictError } from '@event-driven-io/emmett';
 import { Effect, type Schema } from 'effect';
 
 import { eventCodecOf } from './event-codec.ts';
-import type { EncodedEvent, StreamStore } from './event-store.ts';
+import type { AppendPlace, EncodedEvent, StreamStore } from './event-store.ts';
 import { VersionConflict } from './version-conflict.ts';
 
 export type EventAppender<Event extends TypedEvent> = (
   stream: string,
   events: readonly Event[],
-  expectedVersion: number,
-  lineage?: Lineage,
+  place: AppendPlace,
 ) => Effect.Effect<void, VersionConflict>;
 
 export function eventAppenderOf<Event extends TypedEvent>(
@@ -18,7 +17,7 @@ export function eventAppenderOf<Event extends TypedEvent>(
   eventSchema: Schema.ConstraintCodec<Event, unknown>,
 ): EventAppender<Event> {
   const { encode } = eventCodecOf(eventSchema);
-  return (stream, events, expectedVersion, lineage) => {
+  return (stream, events, place) => {
     if (events.length > store.mostEventsInOneAppend) {
       return Effect.die(
         new RangeError(
@@ -26,12 +25,16 @@ export function eventAppenderOf<Event extends TypedEvent>(
         ),
       );
     }
-    return Effect.forEach(events, encode).pipe(
-      Effect.flatMap((encoded: readonly EncodedEvent[]) =>
-        Effect.tryPromise({
-          try: () => store.append(stream, encoded, expectedVersion, lineage),
-          catch: (error) => error,
-        }),
+    return Effect.sync(() => checkedContext(place.context)).pipe(
+      Effect.flatMap((context) =>
+        Effect.forEach(events, encode).pipe(
+          Effect.flatMap((encoded: readonly EncodedEvent[]) =>
+            Effect.tryPromise({
+              try: () => store.append(stream, encoded, { ...place, context }),
+              catch: (error) => error,
+            }),
+          ),
+        ),
       ),
       Effect.catch((error) =>
         isExpectedVersionConflictError(error) ? Effect.fail(new VersionConflict()) : Effect.die(error),

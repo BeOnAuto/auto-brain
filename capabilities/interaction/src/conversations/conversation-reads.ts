@@ -33,7 +33,7 @@ export function readReplies(reading: Reading, oldest: KeptRequest): Effect.Effec
     meta: { [conversationCallIdKey]: callId },
   };
   return Effect.gen(function* () {
-    const start = parts.tools.startOf(call);
+    const start = yield* parts.tools.startOf(call);
     const called = yield* parts.tools.callOnce(call);
     const answer = readAnswerOf(route.replies, called);
     const state = yield* Effect.reduce(

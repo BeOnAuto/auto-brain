@@ -7,10 +7,10 @@ import { oneCall } from '../one-call/one-call.ts';
 import type { McpSettings } from '../settings/mcp-settings.ts';
 import { untestableNoting } from '../tool-tests/testing-guard.ts';
 import { openedRun } from './run-opening.ts';
-import type { LinkedAccess, ToolAccessOptions } from './tool-access.ts';
+import type { LinkedAccess, LinkedOptions } from './tool-access.ts';
 import { toolServersOf } from './tool-servers.ts';
 
-export function linkedAccess(settings: McpSettings, options: ToolAccessOptions): LinkedAccess {
+export function linkedAccess(settings: McpSettings, options: LinkedOptions): LinkedAccess {
   const report = options.reportServerMessage;
   const timing = options.timing ?? defaultTiming;
   const secrets = secretsOfServers(settings.servers);
@@ -28,8 +28,10 @@ export function linkedAccess(settings: McpSettings, options: ToolAccessOptions):
   return {
     configured: settings.servers.length > 0,
     testing: settings.servers,
-    open: (context, references) => openedRun({ context, references, links, secrets, timing, toolsListed, report }),
-    callOnce: (call, runCall) => oneCall(call, { links, secrets, timing, toolsListed }, runCall),
+    open: (context, references) =>
+      openedRun({ context, references, links, secrets, keepIn: options.keepIn, timing, toolsListed, report }),
+    callOnce: (call, runCall) =>
+      oneCall(call, { links, secrets, keepIn: options.keepIn, timing, toolsListed }, runCall),
     listServers: (scope, named) =>
       Effect.promise(() => toolServersOf({ scope, named }, { links, secrets, timing, toolsListed })),
     close: async () => {

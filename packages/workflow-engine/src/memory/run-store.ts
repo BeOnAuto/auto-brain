@@ -1,4 +1,5 @@
-import { VersionConflict } from '@beonauto/ledger';
+import { VersionConflict, type DecidedPlace } from '@beonauto/ledger';
+import type { Context } from '@beonauto/operations';
 import { Effect, Result, Schema } from 'effect';
 
 import { RunLogEventSchema, type PositionedEvent, type RunLogEvent } from '../run-log/run-event.ts';
@@ -10,6 +11,7 @@ type AppendFault = 'conflict' | 'unknown_outcome';
 export interface MemoryRunStore extends RunLogStore {
   readonly events: (runId: string) => readonly PositionedEvent[];
   readonly lineages: (runId: string) => readonly RecordLineage[];
+  readonly contexts: (runId: string) => readonly Context[];
   readonly snapshotOf: (runId: string) => StoredSnapshot | null;
   readonly versions: () => ReadonlyMap<string, number>;
   readonly loads: (runId: string) => number;
@@ -25,25 +27,35 @@ const decodeEvent = Schema.decodeUnknownSync(EventTextSchema);
 
 const utf8 = new TextEncoder();
 
+interface Appended {
+  readonly event: RunLogEvent;
+  readonly context: Context;
+  readonly lineage: RecordLineage;
+}
+
 interface Streams {
   readonly eventsOf: (runId: string) => readonly PositionedEvent[];
   readonly lineagesOf: (runId: string) => readonly RecordLineage[];
-  readonly push: (runId: string, event: RunLogEvent, lineage: RecordLineage) => void;
+  readonly contextsOf: (runId: string) => readonly Context[];
+  readonly push: (runId: string, appended: Appended) => void;
   readonly versions: () => ReadonlyMap<string, number>;
 }
 
 function streamsOf(): Streams {
   const streams = new Map<string, PositionedEvent[]>();
   const lineages = new Map<string, RecordLineage[]>();
+  const contexts = new Map<string, Context[]>();
   const eventsOf = (runId: string): readonly PositionedEvent[] => streams.get(runId) ?? [];
   return {
     eventsOf,
     lineagesOf: (runId) => lineages.get(runId) ?? [],
-    push: (runId, event, lineage) => {
+    contextsOf: (runId) => contexts.get(runId) ?? [],
+    push: (runId, { event, context, lineage }) => {
       const stream = streams.get(runId) ?? [];
       streams.set(runId, stream);
       stream.push({ version: stream.length + 1, event: decodeEvent(encodeEvent(event)) });
       lineages.set(runId, [...(lineages.get(runId) ?? []), lineage]);
+      contexts.set(runId, [...(contexts.get(runId) ?? []), context]);
     },
     versions: () =>
       new Map(
@@ -88,7 +100,7 @@ export function memoryRunStore(conflicts = 0): MemoryRunStore {
   const appended = (
     runId: string,
     event: RunLogEvent,
-    expectedVersion: number,
+    { expectedVersion, context }: DecidedPlace,
     lineage: RecordLineage,
   ): Effect.Effect<void, VersionConflict> => {
     const { fault } = pending;
@@ -97,7 +109,7 @@ export function memoryRunStore(conflicts = 0): MemoryRunStore {
     if (fault === 'conflict' || pending.conflicts >= 0 || streams.eventsOf(runId).length !== expectedVersion) {
       return Effect.fail(new VersionConflict());
     }
-    streams.push(runId, event, lineage);
+    streams.push(runId, { event, context, lineage });
     return fault === 'unknown_outcome' ? Effect.die(unknownOutcome) : Effect.void;
   };
   return {
@@ -107,8 +119,7 @@ export function memoryRunStore(conflicts = 0): MemoryRunStore {
         const snapshot = snapshots.snapshotOf(runId);
         return { snapshot, tail: streams.eventsOf(runId).slice(snapshot?.snapshot.version ?? 0) };
       }),
-    append: (runId, event, expectedVersion, lineage) =>
-      Effect.suspend(() => appended(runId, event, expectedVersion, lineage)),
+    append: (runId, event, place, lineage) => Effect.suspend(() => appended(runId, event, place, lineage)),
     eventsAfter: (runId, version) => Effect.sync(() => streams.eventsOf(runId).slice(version)),
     saveSnapshot: (snapshot) =>
       Effect.sync(() => {
@@ -116,6 +127,7 @@ export function memoryRunStore(conflicts = 0): MemoryRunStore {
       }),
     events: (runId) => streams.eventsOf(runId).slice(),
     lineages: streams.lineagesOf,
+    contexts: streams.contextsOf,
     snapshotOf: snapshots.snapshotOf,
     versions: streams.versions,
     loads: (runId) => loads.get(runId) ?? 0,

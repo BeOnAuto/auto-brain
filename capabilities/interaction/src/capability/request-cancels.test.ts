@@ -63,7 +63,7 @@ describe('a cancel asked after a reply answered and before its run was settled',
     await Effect.runPromise(
       replyRecorder(brain.ledger.service)(
         address,
-        { type: 'reply_taken', ...reading, answer: { choice: 'approve' } },
+        { type: 'reply_taken', data: { ...reading, answer: { choice: 'approve' } } },
         lineage,
       ),
     );
@@ -96,7 +96,7 @@ describe('a cancel asked before a reply is read', () => {
       Effect.flip(
         replyRecorder(brain.ledger.service)(
           address,
-          { type: 'reply_taken', ...reading, answer: { choice: 'approve' } },
+          { type: 'reply_taken', data: { ...reading, answer: { choice: 'approve' } } },
           lineage,
         ),
       ),

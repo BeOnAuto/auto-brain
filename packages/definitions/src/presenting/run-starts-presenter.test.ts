@@ -1,22 +1,24 @@
-import { presentationOf, type RecordedEvent } from '@beonauto/operations';
-import { Schema } from 'effect';
+import { presentationOf, type Context, type RecordedEvent } from '@beonauto/operations';
+import { nothingKept } from '@beonauto/operations/testing';
 import { describe, expect, it } from 'vitest';
 
 import { makeDefinitionPresenters } from '../index.ts';
-import { RunEventSchema, type RunEvent } from '../runs/run-events.ts';
+import type { RunEvent } from '../runs/run-events.ts';
 import { echo } from '../testing/echo.ts';
+import { testRunId as runId } from '../testing/run-facts.ts';
 
 const { present } = presentationOf(makeDefinitionPresenters([echo]));
 
-const encode = Schema.encodeSync(Schema.toCodecJson(RunEventSchema));
+const ofGreet: Context = {
+  runId,
+  by: 'acme-admin',
+  at: '2026-10-01T09:00:01.000Z',
+  definitionType: 'echo',
+  definitionName: 'greet',
+  definitionVersion: 2,
+};
 
-const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
-
-const fact = { by: 'acme-admin', at: '2026-10-01T09:00:01.000Z' };
-
-const ofGreet = { definition_type: 'echo', name: 'greet', definition_version: 2 };
-
-function recorded(event: RunEvent): RecordedEvent {
+function recorded(event: RunEvent, context: Context): RecordedEvent {
   return {
     id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
     cursor: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
@@ -24,44 +26,30 @@ function recorded(event: RunEvent): RecordedEvent {
     correlationId: runId,
     stream: `runs/${runId}`,
     version: 1,
+    globalPosition: 1,
     type: event.type,
-    data: encode(event),
+    data: event.data,
+    context,
     recordedAt: '2026-10-01T09:00:02.000Z',
   };
 }
 
-function presented(event: RunEvent) {
-  return present(recorded(event)).at(0);
+function presented(event: RunEvent, context: Context = ofGreet) {
+  const showing = { streamPrefix: 'brain/acme/alpha/', content: nothingKept, view: 'page' } as const;
+  return present(recorded(event, context), showing).at(0);
 }
 
-const shown = {
-  id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
-  cursor: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
-  causation_id: '1c2d3e4f-5a6b-5c7d-8e9f-a0b1c2d3e4f5',
-  at: '2026-10-01T09:00:01.000Z',
-};
-
 describe('the presenter of a run that answers a call of another run', () => {
-  it('shows the call it answers on its start, its reference cut at 256 bytes', () => {
-    const calledBy = {
-      run_id: '0199a3c4-7d2e-7c1a-9b3f-000000000001',
-      reference: `/do/0/${'x'.repeat(300)}`,
-      run: 2,
-    };
+  it('shows the call it answers in the metadata of its start', () => {
+    const calledBy = { runId: '0199a3c4-7d2e-7c1a-9b3f-000000000001', reference: '/do/0/ask', run: 2 };
 
     expect(
-      presented({
-        type: 'run_started',
-        definition_type: 'echo',
-        name: 'greet',
-        definition_version: 2,
-        input: {},
-        call_depth: 1,
-        called_by: calledBy,
-        ...fact,
-      }),
+      presented({ type: 'run_started', data: { input: {} } }, { ...ofGreet, callDepth: 1, calledBy }),
     ).toMatchObject({
-      data: { called_by: { ...calledBy, reference: calledBy.reference.slice(0, 256) } },
+      metadata: {
+        call_depth: 1,
+        called_by: { run_id: '0199a3c4-7d2e-7c1a-9b3f-000000000001', reference: '/do/0/ask', run: 2 },
+      },
     });
   });
 });
@@ -72,38 +60,32 @@ describe('the presenter of a cancel request', () => {
     ['deadline', 'The step that waited for the run ran out of time, so the run is being cancelled.'],
     ['parent_ended', 'The run that waited for this run ended first, so this run is being cancelled.'],
   ] as const)('says who asked for a cancel of the kind %s, with the reason cut at 1 KiB', (kind, summary) => {
-    expect(presented({ type: 'run_cancel_requested', kind, reason: 'r'.repeat(2000), ...ofGreet, ...fact })).toEqual({
-      ...shown,
+    expect(presented({ type: 'run_cancel_requested', data: { kind, reason: 'r'.repeat(2000) } })).toMatchObject({
       type: 'run_cancel_requested',
       summary,
-      data: { run_id: runId, by: 'acme-admin', kind, reason: 'r'.repeat(1024) },
+      data: { kind, reason: 'r'.repeat(1024) },
     });
   });
 
-  it('shows a cancelled run with its kind, and a failure with its incident', () => {
-    expect([
+  it('shows a cancelled run with its kind', () => {
+    expect(
       presented({
         type: 'run_rejected',
-        rejection: { reason: 'cancelled', detail: 'Not needed', kind: 'requested' },
-        ...ofGreet,
-        ...fact,
+        data: { rejection: { reason: 'cancelled', detail: 'Not needed', kind: 'requested' } },
       }),
-      presented({ type: 'run_failed', incident: 'incident-1', ...ofGreet, ...fact }),
-    ]).toMatchObject([
-      {
-        summary: 'A run did not go through: it was cancelled at the request of someone allowed to change the brain.',
-        data: { reason: 'cancelled', detail: 'Not needed', kind: 'requested' },
-      },
-      { summary: 'A run broke down because of a problem inside the server.', data: { incident: 'incident-1' } },
-    ]);
+    ).toMatchObject({
+      summary: 'A run did not go through: it was cancelled at the request of someone allowed to change the brain.',
+      data: { reason: 'cancelled', detail: 'Not needed', kind: 'requested' },
+    });
   });
 });
 
-describe('the presenter of the start of a run a trigger started', () => {
-  it('says which kind of trigger started it, and gives the trigger with its place in the document in the data', () => {
-    const startedBy = (kind: 'event' | 'cron' | 'every', reference: string) =>
-      presented({ type: 'run_started', ...ofGreet, input: [], trigger: { kind, reference }, ...fact });
+function startedBy(kind: 'event' | 'cron' | 'every', reference: string) {
+  return presented({ type: 'run_started', data: { input: [] } }, { ...ofGreet, trigger: { kind, reference } });
+}
 
+describe('the presenter of the start of a run a trigger started', () => {
+  it('says which kind of trigger started it, and gives the trigger with its place in the document in the metadata', () => {
     expect(
       [
         startedBy('event', '/schedule/on'),
@@ -115,12 +97,9 @@ describe('the presenter of the start of a run a trigger started', () => {
       'A run of the greeting “greet” was started by its cron schedule.',
       'A run of the greeting “greet” was started by its every schedule.',
     ]);
-    expect(startedBy('every', '/schedule/every')?.data).toEqual({
-      run_id: runId,
-      by: 'acme-admin',
-      ...ofGreet,
-      input_bytes: 2,
-      trigger: { kind: 'every', reference: '/schedule/every' },
+    expect(startedBy('every', '/schedule/every')).toMatchObject({
+      data: { input: [] },
+      metadata: { trigger: { kind: 'every', reference: '/schedule/every' } },
     });
   });
 });

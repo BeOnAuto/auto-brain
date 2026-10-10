@@ -81,9 +81,9 @@ describe('a start of a version that a trigger asked for', () => {
     );
 
     expect(started).toMatchObject({ status: 'succeeded', output: { started_by: 'brain:alpha' } });
-    expect(records.map(({ data }) => data)).toMatchObject([
-      { type: 'run_started', trigger },
-      { type: 'run_succeeded', trigger },
+    expect(records).toMatchObject([
+      { type: 'run_started', context: { trigger } },
+      { type: 'run_succeeded', context: { trigger } },
     ]);
   });
 });

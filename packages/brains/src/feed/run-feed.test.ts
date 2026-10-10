@@ -10,9 +10,9 @@ const ofRoot: Lineage = { causationId: null, correlationId: root.toLowerCase() }
 describe('the events of one run and the runs it started', () => {
   it('are those whose correlation is that run, in the order of the brain, and none for a run another started', async () => {
     const feed = brainFeed();
-    await feed.recordingWith('notes', { type: 'added', text: 'a' }, ofRoot);
+    await feed.recordingWith('notes', { type: 'added', data: { text: 'a' } }, ofRoot);
     await feed.recording('notes', 'added', 'b');
-    await feed.recordingWith('shelves/red', { type: 'added', text: 'c' }, ofRoot);
+    await feed.recordingWith('shelves/red', { type: 'added', data: { text: 'c' } }, ofRoot);
 
     expect([
       textsIn(await feed.reading({ run_id: root })),

@@ -14,9 +14,10 @@ import {
   type ServerToolLists,
 } from '../settings/mcp-settings.ts';
 import type { CallerContext, ServerMessage, ToolsNotOpened } from './caller-context.ts';
-import { namingOf, startsOf, type NamingCheck, type StartOf } from './entry-reads.ts';
+import { keepingIn, namingOf, startsOf, type ContentStore, type NamingCheck, type StartOf } from './entry-reads.ts';
 
 export interface ToolAccessOptions {
+  readonly content: ContentStore;
   readonly reportServerMessage: (report: ServerMessage) => void;
   readonly reportUntestable: (server: string) => void;
   readonly fetch?: LinkOptions['fetch'];
@@ -41,15 +42,20 @@ export interface ToolAccess {
 
 export type LinkedAccess = Omit<ToolAccess, 'brainsServedBy' | 'named' | 'startOf'>;
 
-async function linked(settings: McpSettings, options: ToolAccessOptions): Promise<LinkedAccess> {
+export interface LinkedOptions extends ToolAccessOptions {
+  readonly keepIn: ReturnType<typeof keepingIn>;
+}
+
+async function linked(settings: McpSettings, options: LinkedOptions): Promise<LinkedAccess> {
   const { linkedAccess } = await import('./linked-access.ts');
   return linkedAccess(settings, options);
 }
 
 export function makeToolAccess(settings: McpSettings, options: ToolAccessOptions): ToolAccess {
   const loading: { access?: Promise<LinkedAccess> } = {};
+  const keepIn = keepingIn(options.content);
   const loaded = (): Promise<LinkedAccess> => {
-    loading.access ??= linked(settings, options);
+    loading.access ??= linked(settings, { ...options, keepIn });
     return loading.access;
   };
   return {
@@ -57,7 +63,7 @@ export function makeToolAccess(settings: McpSettings, options: ToolAccessOptions
     testing: settings.servers,
     open: (context, references) => Effect.flatMap(Effect.promise(loaded), (access) => access.open(context, references)),
     named: namingOf(settings.servers),
-    startOf: startsOf(settings.servers),
+    startOf: startsOf(settings.servers, keepIn),
     callOnce: (call, runCall) => Effect.flatMap(Effect.promise(loaded), (access) => access.callOnce(call, runCall)),
     listServers: (scope, named) =>
       settings.servers.some((server) => isListedFor(server, scope, named))

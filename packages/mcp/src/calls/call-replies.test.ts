@@ -16,6 +16,8 @@ import {
 
 const aDuration: unknown = expect.any(Number);
 
+const answeredWith61Bytes: unknown = expect.objectContaining({ result_bytes: 61 });
+
 const testId = '0199b7e2-4c1d-7a3e-8f5b-6d2c1e0f9a8b';
 
 const closing: (() => Promise<void>)[] = [];
@@ -47,8 +49,6 @@ async function opened(meta: Readonly<Record<string, string>>, ...tools: readonly
   return { call, journal, messages };
 }
 
-const aReader: unknown = expect.any(Function);
-
 describe('what a call answers beside what the model sees', () => {
   it('is the outcome, the size of the whole result, how long it took and the id the server gave it, as recorded', async () => {
     const { call, journal } = await opened({ 'com.beonauto/run_id': testId }, 'search', 'denied');
@@ -63,11 +63,13 @@ describe('what a call answers beside what the model sees', () => {
         resultBytes: Buffer.byteLength(JSON.stringify({ content: [{ type: 'text', text: 'Found 2 rows for acme.' }] })),
         durationMs: aDuration,
         serverRequestId: 'call-1',
-        scrubbedResult: aReader,
+        scrubbedResult: { content: [{ type: 'text', text: 'Found 2 rows for acme.' }] },
       },
       expect.objectContaining({ isError: true, outcome: 'tool_error', serverRequestId: 'call-2' }),
     ]);
-    expect(journal.facts()).toContainEqual(expect.objectContaining({ outcome: 'result', result_bytes: 61 }));
+    expect(journal.facts()).toContainEqual(
+      expect.objectContaining({ type: 'tool_call_answered', data: answeredWith61Bytes }),
+    );
   });
 
   it('is a server failure with no result when the server fails the call', async () => {

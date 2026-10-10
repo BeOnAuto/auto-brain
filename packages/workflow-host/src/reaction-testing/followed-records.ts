@@ -24,8 +24,10 @@ export function followedRecordOf(data: Json, about: Partial<FollowedEvent> = {})
       correlationId: null,
       stream: 'events/e1',
       version: 1,
+      globalPosition: 1,
       type: 'event_published',
       data: {},
+      context: { at: time, by: 'acme-admin' },
       recordedAt: time,
     },
     event: {

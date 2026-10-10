@@ -1,5 +1,5 @@
 import { runEventOf, type RunEvent } from '@beonauto/definitions';
-import type { ProjectedMessage, ProjectedRow, KeyedProjection } from '@beonauto/operations';
+import type { Context, ProjectedMessage, ProjectedRow, KeyedProjection, Recorded } from '@beonauto/operations';
 
 import { interactionType } from '../capability/interaction-type.ts';
 import { conversationKeyOf } from '../conversations/conversation-keys.ts';
@@ -18,24 +18,27 @@ export const openRequestsName = 'open_requests';
 
 export const attemptInFlightMs = 60_000;
 
-type Fact<Type extends RunEvent['type']> = Extract<RunEvent, { readonly type: Type }>;
+type Fact<Type extends RunEvent['type']> = Recorded<Extract<RunEvent, { readonly type: Type }>>;
 
 function rowOf(row: UndueRequestRow): ProjectedRow {
   return { ...row, attempt_due_at: attemptDueAtOf(row), ending_due_at: endingDueAtOf(row) };
 }
 
-function requested(fact: Fact<'run_deferred'>, message: ProjectedMessage): ProjectedRow | undefined {
-  const request = fact.definition_type === interactionType ? requestRecordOf(fact.record) : undefined;
+function functionOf({ definitionName, definitionVersion }: Context) {
+  return { function: definitionName ?? '', version: definitionVersion ?? 1 };
+}
+
+function requested({ data, context }: Fact<'run_deferred'>, message: ProjectedMessage): ProjectedRow | undefined {
+  const request = context.definitionType === interactionType ? requestRecordOf(data.record) : undefined;
   if (request === undefined) {
     return undefined;
   }
-  const at = Date.parse(fact.at);
+  const at = Date.parse(context.at);
   const { deliver, replies } = request;
   const inInbox = deliver === undefined;
   return rowOf({
     request_id: message.id,
-    function: fact.name,
-    version: fact.definition_version,
+    ...functionOf(context),
     party: request.to,
     delivery: inInbox ? null : JSON.stringify({ server: deliver.server, tool: deliver.tool }),
     replies: replies === undefined ? null : JSON.stringify(replies),
@@ -63,35 +66,41 @@ function standingUnlessCancelling(row: OpenRequestRow, standing: OpenRequestRow[
   return row.standing === 'cancelling' ? row.standing : standing;
 }
 
-function attemptStarted(row: OpenRequestRow, fact: Fact<'delivery_started'>): ProjectedRow {
+function attemptStarted(row: OpenRequestRow, { data, context }: Fact<'delivery_started'>): ProjectedRow {
   return rowOf({
     ...row,
-    attempts: fact.number,
-    next_attempt_at: Date.parse(fact.at) + attemptInFlightMs,
+    attempts: data.number,
+    next_attempt_at: Date.parse(context.at) + attemptInFlightMs,
     standing: standingUnlessCancelling(row, 'delivering'),
   });
 }
 
-function afterFailure(row: OpenRequestRow, fact: Fact<'delivery_ended'>, at: number): UndueRequestRow {
-  const next =
-    fact.outcome === 'failed' && fact.number < attemptSchedule.attempts
-      ? nextAttemptAt({ attempt: fact.number, endedAt: at, retryAfterMs: fact.retry_after_ms })
-      : undefined;
+function nextAfter({ type, data, context }: Fact<'delivery_failed' | 'delivery_refused'>): number | undefined {
+  return type === 'delivery_failed' && data.number < attemptSchedule.attempts
+    ? nextAttemptAt({ attempt: data.number, endedAt: Date.parse(context.at), retryAfterMs: data.retry_after_ms })
+    : undefined;
+}
+
+function afterFailure(row: OpenRequestRow, fact: Fact<'delivery_failed' | 'delivery_refused'>): UndueRequestRow {
+  const next = nextAfter(fact);
   return next === undefined
     ? { ...row, next_attempt_at: null, standing: standingUnlessCancelling(row, 'undelivered') }
     : { ...row, next_attempt_at: next, standing: standingUnlessCancelling(row, 'retrying') };
 }
 
-function keptConversation({ delivered_as: deliveredAs, replies_in: repliesIn }: Fact<'delivery_ended'>) {
+function keptConversation({ data }: Fact<'delivery_succeeded'>) {
+  const { delivered_as: deliveredAs, replies_in: repliesIn } = data;
   return {
     ...(deliveredAs === undefined ? {} : { sent_conversation: deliveredAs.conversation, sent_id: deliveredAs.id }),
     ...(repliesIn === undefined ? {} : { conversation: conversationKeyOf(repliesIn) }),
   };
 }
 
-function attemptEnded(row: OpenRequestRow, fact: Fact<'delivery_ended'>): ProjectedRow {
-  const at = Date.parse(fact.at);
-  if (fact.outcome === 'delivered') {
+function attemptEnded(
+  row: OpenRequestRow,
+  fact: Fact<'delivery_succeeded' | 'delivery_failed' | 'delivery_refused'>,
+): ProjectedRow {
+  if (fact.type === 'delivery_succeeded') {
     return rowOf({
       ...row,
       ...keptConversation(fact),
@@ -99,7 +108,7 @@ function attemptEnded(row: OpenRequestRow, fact: Fact<'delivery_ended'>): Projec
       standing: standingUnlessCancelling(row, 'delivered'),
     });
   }
-  return rowOf(afterFailure(row, fact, at));
+  return rowOf(afterFailure(row, fact));
 }
 
 function endingOf(fact: Fact<'run_succeeded' | 'run_rejected' | 'run_failed'>): string {
@@ -109,7 +118,7 @@ function endingOf(fact: Fact<'run_succeeded' | 'run_rejected' | 'run_failed'>): 
   if (fact.type === 'run_failed') {
     return 'failed';
   }
-  const { rejection } = fact;
+  const { rejection } = fact.data;
   return rejection.reason === 'unanswered' ? rejection.kind : rejection.reason;
 }
 
@@ -120,18 +129,18 @@ function closed(
   return row.open ? rowOf({ ...row, open: false, next_attempt_at: null, ended: endingOf(fact) }) : undefined;
 }
 
-function worked(row: OpenRequestRow, fact: RunEvent): ProjectedRow | undefined {
+function worked(row: OpenRequestRow, fact: Recorded<RunEvent>): ProjectedRow | undefined {
   if (fact.type === 'delivery_started') {
     return attemptStarted(row, fact);
   }
-  if (fact.type === 'delivery_ended') {
+  if (fact.type === 'delivery_succeeded' || fact.type === 'delivery_failed' || fact.type === 'delivery_refused') {
     return attemptEnded(row, fact);
   }
   if (fact.type === 'reply_refused') {
     return rowOf({
       ...row,
       reply_refusals: row.reply_refusals + 1,
-      refusals_told: row.refusals_told + (fact.told ? 1 : 0),
+      refusals_told: row.refusals_told + (fact.data.told ? 1 : 0),
     });
   }
   return fact.type === 'reply_taken'
@@ -139,7 +148,7 @@ function worked(row: OpenRequestRow, fact: RunEvent): ProjectedRow | undefined {
     : undefined;
 }
 
-function changed(row: OpenRequestRow, fact: RunEvent): ProjectedRow | undefined {
+function changed(row: OpenRequestRow, fact: Recorded<RunEvent>): ProjectedRow | undefined {
   if (fact.type === 'run_cancel_requested') {
     return row.open && !settlesFromBroughtAnswer(row) ? rowOf({ ...row, standing: 'cancelling' }) : undefined;
   }
@@ -148,8 +157,8 @@ function changed(row: OpenRequestRow, fact: RunEvent): ProjectedRow | undefined 
     : worked(row, fact);
 }
 
-function rowAfter(row: ProjectedRow | undefined, event: unknown, message: ProjectedMessage): ProjectedRow | undefined {
-  const fact = runEventOf(event);
+function rowAfter(row: ProjectedRow | undefined, message: ProjectedMessage): ProjectedRow | undefined {
+  const fact = runEventOf(message);
   if (fact?.type === 'run_deferred') {
     return requested(fact, message);
   }
@@ -159,12 +168,14 @@ function rowAfter(row: ProjectedRow | undefined, event: unknown, message: Projec
 
 export const openRequests: KeyedProjection = {
   name: openRequestsName,
-  version: 5,
+  version: 6,
   kinds: ['runs'],
   types: [
     'run_deferred',
     'delivery_started',
-    'delivery_ended',
+    'delivery_succeeded',
+    'delivery_failed',
+    'delivery_refused',
     'reply_taken',
     'reply_refused',
     'run_cancel_requested',

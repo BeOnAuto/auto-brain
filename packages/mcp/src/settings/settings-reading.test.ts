@@ -82,7 +82,7 @@ describe('reading an http server', () => {
 });
 
 describe('reading a stdio server', () => {
-  it('reads a stdio entry with its own environment and arguments', () => {
+  it('reads a stdio entry with its own environment and arguments, keeping content where it says nothing of it', () => {
     const [server] = serversOf({
       limitless: { ...limitless, type: 'stdio', args: ['--port', '0'], env: { LIMITLESS_API_KEY: '${GRAPH_API_KEY}' } },
     });
@@ -93,10 +93,16 @@ describe('reading a stdio server', () => {
       command: limitless.command,
       args: ['--port', '0'],
       brains: null,
-      record_content: false,
+      record_content: true,
       request_id: null,
     });
     expect(secretValuesOf(server)).toEqual({ LIMITLESS_API_KEY: apiKey });
+  });
+
+  it('keeps no content of an entry that turns keeping off', () => {
+    expect(serversOf({ limitless: { ...limitless, record_content: false } })).toMatchObject([
+      { type: 'stdio', record_content: false },
+    ]);
   });
 
   it('reads a stdio entry with no arguments and no environment', () => {

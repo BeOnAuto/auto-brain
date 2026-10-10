@@ -1,5 +1,5 @@
 import { tick, timeOf } from '@beonauto/ledger/dataset';
-import type { Decider } from '@beonauto/operations';
+import type { Context, Decider } from '@beonauto/operations';
 import { runFacts, type RunFact } from '@beonauto/operations/testing';
 import { Effect, Result, Schema } from 'effect';
 
@@ -25,16 +25,20 @@ const largeRecordBytes = 1_048_576;
 
 const big = { org: 'o1', brain: 'big' };
 
-const RunEventSchema = Schema.StructWithRest(Schema.Struct({ type: Schema.String }), [
-  Schema.Record(Schema.String, Schema.Json),
-]);
+const RunEventSchema = Schema.Struct({ type: Schema.String, data: Schema.Record(Schema.String, Schema.Json) });
 
 type RunEvent = typeof RunEventSchema.Type;
 
-const runEvents: Decider<null, readonly RunEvent[], RunEvent> = {
+interface RunAppend {
+  readonly events: readonly RunEvent[];
+  readonly context: Context;
+}
+
+const runEvents: Decider<null, RunAppend, RunEvent> = {
   initialState: null,
   evolve: () => null,
-  decide: (events) => Result.succeed(events),
+  decide: ({ events }) => Result.succeed(events),
+  context: ({ context }) => context,
   eventSchema: RunEventSchema,
 };
 
@@ -105,32 +109,22 @@ async function theRead(bench: Bench, runs: number): Promise<void> {
 }
 
 function aNote(run: number): RunFact {
-  return { type: 'run_began', at: timeOf(run), fn: `fn-${run % 20}` };
+  return { type: 'run_began', data: { at: timeOf(run), fn: `fn-${run % 20}` } };
 }
 
-function runEventsOf(run: number): readonly (readonly RunEvent[])[] {
-  const at = timeOf(run);
+function runEventsOf(run: number): readonly RunAppend[] {
+  const context = {
+    at: timeOf(run),
+    by: 'u',
+    runId: `a-${run}`,
+    definitionType: 'reasoning',
+    definitionName: `fn-${run % 20}`,
+    definitionVersion: 1,
+  };
+  const record = { usage: { input: { total: 100 } }, prompt: 'p'.repeat(2048) };
   return [
-    [
-      {
-        type: 'run_started',
-        definition_type: 'reasoning',
-        name: `fn-${run % 20}`,
-        definition_version: 1,
-        input: {},
-        by: 'u',
-        at,
-      },
-    ],
-    [
-      {
-        type: 'run_succeeded',
-        output: 'ok',
-        record: { usage: { input: { total: 100 } }, prompt: 'p'.repeat(2048) },
-        by: 'u',
-        at,
-      },
-    ],
+    { events: [{ type: 'run_started', data: { input: {} } }], context },
+    { events: [{ type: 'run_succeeded', data: { output: 'ok', record } }], context },
   ];
 }
 
@@ -142,10 +136,10 @@ async function appendTimes(bench: Bench, kept: boolean): Promise<readonly number
     Effect.forEach(
       Array.from({ length: appends }, (_, run) => run),
       (run) =>
-        Effect.forEach(runEventsOf(run), (events) =>
+        Effect.forEach(runEventsOf(run), (append) =>
           Effect.promise(
             async () =>
-              (await timed(() => Effect.runPromise(ledger.execute(`brain/o1/big/runs/a-${run}`, runEvents, events))))
+              (await timed(() => Effect.runPromise(ledger.execute(`brain/o1/big/runs/a-${run}`, runEvents, append))))
                 .took,
           ),
         ),

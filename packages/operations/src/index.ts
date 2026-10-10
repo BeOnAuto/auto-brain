@@ -63,11 +63,41 @@ export {
   reasonOfKind,
   type KindWithType,
 } from './outcome/problem-types.ts';
-export type { Decider, StreamState, TypedEvent } from './ledger/decider.ts';
+export {
+  factOf,
+  recordedDecoder,
+  recordedWith,
+  strictRecordedDecoder,
+  type Decider,
+  type Recorded,
+  type StreamState,
+  type TypedEvent,
+} from './ledger/decider.ts';
+export {
+  CalledBySchema,
+  ContextSchema,
+  StartingTriggerSchema,
+  checkedContext,
+  contextOf,
+  forbiddenCharactersInWords,
+  holdsNoForbiddenCharacter,
+  mostReferenceBytes,
+  refusingForbiddenCharacters,
+  refusingLongReferences,
+  type CalledBy,
+  type Context,
+  type StartingTrigger,
+} from './ledger/context.ts';
+export type { BrainContentReader, RecordedContent } from './content/recorded-content.ts';
+export { bytesOfText, chunksOf, mostContentChunkBytes } from './content/content-chunks.ts';
 export type { DispatcherServices } from './dispatch/dispatcher-services.ts';
 export { makeDispatcher, type Dispatcher, type PipelineStep } from './dispatch/dispatcher.ts';
 export { cursorOfParts, cursorWithin, partsOfCursor, type CursorPart } from './reading/cursor-parts.ts';
-export { eventsPageOf, type EventPaging, type EventsPage, type PagedEvent } from './reading/event-paging.ts';
+export { eventsPageOf, type EventPaging, type EventsPage } from './reading/event-paging.ts';
+export { eventMetadataOf } from './reading/event-metadata.ts';
+export { keptContentOf } from './reading/kept-content.ts';
+export { shownData, type EventView } from './reading/shown-data.ts';
+export { ServedAsTool } from './dispatch/served-as-tool.ts';
 export type { HandlerServices } from './definition/handler-services.ts';
 export { BrainIdSchema, OrgIdSchema } from './caller/identifiers.ts';
 export { IncidentReporter, type CallSummary, type Incident } from './dispatch/incident-reporter.ts';
@@ -81,10 +111,11 @@ export {
   type RecordedPage,
   type RecordedPageRequest,
   type RecordedSelection,
+  type Trace,
 } from './reading/recorded-read.ts';
 export { IssueSchema, type Issue } from './outcome/issue.ts';
 export type { JsonSchemaDocument } from './definition/json-schema.ts';
-export { Ledger } from './ledger/ledger.ts';
+export { Ledger, type ContentKeeper, type LedgerPorts } from './ledger/ledger.ts';
 export { lineageAttributeNames, messageIdOf, noLineage, type Lineage } from './ledger/message-lineage.ts';
 export { NotFound } from './outcome/not-found.ts';
 export { defineCommand, defineQuery, type Operation } from './definition/operation.ts';
@@ -120,11 +151,26 @@ export {
   type Settled,
   type Cancelled,
 } from './outcome/outcome.ts';
-export { PagingInputFields, PagingOutputFields, defaultPageLimit } from './reading/paging-fields.ts';
+export {
+  EventPagingInputFields,
+  EventPagingOutputFields,
+  PagingInputFields,
+  PagingOutputFields,
+  defaultPageLimit,
+} from './reading/paging-fields.ts';
 export { PermissionSchema, allPermissions, permissionFor, type Permission } from './caller/permission.ts';
-export type { Presenter } from './reading/presenter.ts';
-export { presentationOf, streamKindOf, type Presentation } from './reading/presentation.ts';
-export { PublicEventSchema, mostPublicEventDataBytes, type PublicEvent } from './reading/public-event.ts';
+export type { KeptContent, PresentedFact, PresentedPart, Presenter } from './reading/presenter.ts';
+export { presentationOf, streamKindOf, type Presentation, type Showing } from './reading/presentation.ts';
+export {
+  EventMetadataSchema,
+  PublicEventSchema,
+  WholeEventSchema,
+  mostPublicEventDataBytes,
+  mostShownFieldBytes,
+  mostToolFieldBytes,
+  type EventMetadata,
+  type PublicEvent,
+} from './reading/public-event.ts';
 export type { DeclarableReason, Rejection, RejectionKind } from './outcome/rejection.ts';
 export type { InputEncoding, Registration, RegistrationOf } from './definition/registration.ts';
 export type { BrainRequest, OrgRequest } from './dispatch/request.ts';

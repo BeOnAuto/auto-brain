@@ -1,8 +1,11 @@
 import {
   conversationCallDecider,
   conversationCallStreamOf,
+  readingFailedOf,
   repliesReadOf,
   type CalledOnce,
+  type ConversationCall,
+  type Recorded,
   type StartedFields,
 } from '@beonauto/mcp';
 import type { ToolReference } from '@beonauto/mcp/policy';
@@ -23,30 +26,37 @@ export interface ReadRecord {
   readonly since: string | null;
 }
 
+function readFactOf(
+  { start, called, detail, answer, state, callId, since }: ReadRecord,
+  conversation: string,
+  recorded: Recorded,
+): ConversationCall {
+  const read = { callId, start, conversation, since };
+  if (answer.outcome === 'result') {
+    const { taken, refused } = state;
+    return repliesReadOf({ ...read, answered: answer.answered, replies: answer.considered, taken, refused }, recorded);
+  }
+  return readingFailedOf(
+    {
+      ...read,
+      because: answer.outcome,
+      ...(called === undefined ? {} : { end: called }),
+      ...(detail === undefined ? {} : { detail }),
+      retryAfterMs: answer.retryAfterMs,
+    },
+    recorded,
+  );
+}
+
 export function recordedRead(
   ledger: StreamWriter,
   { brain, row }: ConversationPlace,
-  { start, called, detail, answer, state, callId, since }: ReadRecord,
+  record: ReadRecord,
 ): Effect.Effect<void> {
-  const stream = `${streamPrefixOfBrain(brain)}${conversationCallStreamOf(callId)}`;
+  const stream = `${streamPrefixOfBrain(brain)}${conversationCallStreamOf(record.callId)}`;
   return Effect.gen(function* () {
     const at = DateTime.formatIso(yield* DateTime.now);
-    const fact = repliesReadOf(
-      {
-        callId,
-        start,
-        ...(called === undefined ? {} : { end: called }),
-        outcome: answer.outcome,
-        ...(detail === undefined ? {} : { detail }),
-        conversation: row.conversation,
-        since,
-        replies: answer.considered,
-        taken: state.taken,
-        refused: state.refused,
-        retryAfterMs: answer.retryAfterMs,
-      },
-      { by: brainCallerOf(brain).id, at },
-    );
+    const fact = readFactOf(record, row.conversation, { by: brainCallerOf(brain).id, at });
     yield* ledger
       .execute(stream, conversationCallDecider, fact, { causationId: row.last_fact, correlationId: null })
       .pipe(Effect.orDie);

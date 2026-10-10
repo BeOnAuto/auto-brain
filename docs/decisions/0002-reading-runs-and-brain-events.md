@@ -1,6 +1,6 @@
 # 0002 — Reading the runs of a brain and what happened in it
 
-**Status:** accepted (2026-10-05), revised twice after audit the same day; amended (2026-10-07): the store answers the `primitive` and `name` filters of the list of runs
+**Status:** accepted (2026-10-05), revised twice after audit the same day; amended (2026-10-07): the store answers the `primitive` and `name` filters of the list of runs; amended (2026-10-10) by [decision 0023](0023-facts-in-the-ledger.md): an event is `{ id, type, summary, data, metadata }`, with the context of its fact in `metadata`, the page keeps the cursor and no event carries one, a step's id is its record's id and its number, a field within 2 KiB is shown whole, and `get_event` reads one event whole
 
 ## Context
 

@@ -1,22 +1,29 @@
+import type { Context, Recorded } from '@beonauto/operations';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { DefinitionEvent } from './definition-events.ts';
 import { definitionVersionDecider } from './definition-versions.ts';
 
-const at = { by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
+function about(name: string, version?: number): Context {
+  return {
+    by: 'acme-admin',
+    at: '2026-10-01T09:00:00.000Z',
+    definitionType: 'echo',
+    definitionName: name,
+    ...(version === undefined ? {} : { definitionVersion: version }),
+  };
+}
 
-const history: readonly DefinitionEvent[] = [
-  { type: 'definition_created', name: 'greet', version: 1, content: { source: 'one' }, ...at },
-  { type: 'definition_created', name: 'other', version: 1, content: { source: 'else' }, ...at },
+const history: readonly Recorded<DefinitionEvent>[] = [
+  { type: 'definition_created', data: { content: { source: 'one' } }, context: about('greet', 1) },
+  { type: 'definition_created', data: { content: { source: 'else' } }, context: about('other', 1) },
   {
     type: 'definition_updated',
-    name: 'greet',
-    version: 2,
-    content: { source: 'two', stripped: { module: 'TWO' } },
-    ...at,
+    data: { content: { source: 'two', stripped: { module: 'TWO' } } },
+    context: about('greet', 2),
   },
-  { type: 'definition_retired', name: 'greet', ...at },
+  { type: 'definition_retired', data: {}, context: about('greet') },
 ];
 
 describe('a search for one version of a definition', () => {
@@ -28,6 +35,7 @@ describe('a search for one version of a definition', () => {
       found: { source: 'two', stripped: { module: 'TWO' }, position: 3 },
     });
     expect(search.decide(null, search.initialState)).toEqual(Result.succeed([]));
+    expect(search.context(null, search.initialState)).toEqual({ at: '', by: '' });
     expect(
       history.reduce(
         (found, event) => definitionVersionDecider('greet', 1).evolve(found, event),

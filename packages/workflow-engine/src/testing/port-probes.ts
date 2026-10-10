@@ -39,7 +39,7 @@ function timerOf({ run, now }: Pick<TimerSubject, 'run' | 'now'>, sequence: numb
   };
 }
 
-const armedBy: OutputOrigin = { version: 1, lastStep: null };
+const armedBy: OutputOrigin = { version: 1 };
 
 function cancelOf({ runId, timerId }: ArmTimer): {
   readonly kind: 'cancel_timer';
@@ -136,7 +136,9 @@ function cancelCallOf({ key }: StartCall): CancelCall {
   return { kind: 'cancel_call', key, reason: 'parent_ended' };
 }
 
-const cancelledBy: OutputOrigin = { version: 2, lastStep: null };
+const startedBy: OutputOrigin = { version: 1 };
+
+const cancelledBy: OutputOrigin = { version: 2 };
 
 function answeredOf(subject: ExecutorSubject, call: StartCall): Effect.Effect<string, unknown> {
   const key = callKeyText(call.key);
@@ -155,11 +157,11 @@ export const executorProbes: readonly Probe<ExecutorSubject>[] = [
     run: (subject) =>
       Effect.gen(function* () {
         const call = callOf(subject, '/do/0/first');
-        const started = yield* subject.executor.start(call, subject.run);
-        const running = yield* subject.executor.start(call, subject.run);
+        const started = yield* subject.executor.start(call, subject.run, startedBy);
+        const running = yield* subject.executor.start(call, subject.run, startedBy);
         yield* subject.finish(call, succeeded);
         const answered = yield* answeredOf(subject, call);
-        const again = yield* subject.executor.start(call, subject.run);
+        const again = yield* subject.executor.start(call, subject.run, startedBy);
         const answeredAgain = yield* answeredOf(subject, call);
         const cancel = yield* subject.executor.cancel(cancelCallOf(call), subject.run, cancelledBy);
         return [started, running, answered, again, answeredAgain, cancel];
@@ -172,7 +174,7 @@ export const executorProbes: readonly Probe<ExecutorSubject>[] = [
       Effect.gen(function* () {
         const call = callOf(subject, '/do/0/second');
         const cancelled = yield* subject.executor.cancel(cancelCallOf(call), subject.run, cancelledBy);
-        const refused = yield* subject.executor.start(call, subject.run);
+        const refused = yield* subject.executor.start(call, subject.run, startedBy);
         return [cancelled, refused, yield* answeredOf(subject, call)];
       }),
   },
@@ -182,9 +184,9 @@ export const executorProbes: readonly Probe<ExecutorSubject>[] = [
     run: (subject) =>
       Effect.gen(function* () {
         const call = callOf(subject, '/do/0/third');
-        const started = yield* subject.executor.start(call, subject.run);
+        const started = yield* subject.executor.start(call, subject.run, startedBy);
         yield* subject.loseHost(call);
-        const again = yield* subject.executor.start(call, subject.run);
+        const again = yield* subject.executor.start(call, subject.run, startedBy);
         yield* subject.finish(call, succeeded);
         return [started, again, yield* answeredOf(subject, call)];
       }),
@@ -195,9 +197,9 @@ export const executorProbes: readonly Probe<ExecutorSubject>[] = [
     run: (subject) =>
       Effect.gen(function* () {
         const call = callOf(subject, '/do/0/fourth');
-        const started = yield* subject.executor.start(call, subject.run);
+        const started = yield* subject.executor.start(call, subject.run, startedBy);
         const cancelled = yield* subject.executor.cancel(cancelCallOf(call), subject.run, cancelledBy);
-        const refused = yield* subject.executor.start(call, subject.run);
+        const refused = yield* subject.executor.start(call, subject.run, startedBy);
         return [started, cancelled, refused, yield* answeredOf(subject, call)];
       }),
   },

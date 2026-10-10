@@ -84,6 +84,7 @@ The HTTP method decides nothing. The server serves these, which `packages/server
 | `get_run_history`     | true           | false             | true             | false           |
 | `get_brain_analytics` | true           | false             | true             | false           |
 | `list_brain_events`   | true           | false             | true             | false           |
+| `get_event`           | true           | false             | true             | false           |
 | `publish_event`       | false          | false             | false            | false           |
 | `list_tool_servers`   | true           | false             | true             | true            |
 | `test_tool_call`      | false          | false             | false            | true            |
@@ -126,7 +127,7 @@ On `/orgs/{org}/mcp` the connection "manages the brains of one org", whose funct
 | Instructions of a connection | 2,000 characters                                                                         | The server refuses to start                                  |
 | A tool description           | 800 characters, 3 to 8 sentences                                                         | The server refuses to start                                  |
 | An argument's description    | 300 characters, at any depth of the input                                                | The server refuses to start                                  |
-| Tools on a connection        | 25, `get_guide` included, since [0018](../../docs/decisions/0018-testing-a-tool-call.md) | The server refuses to start                                  |
+| Tools on a connection        | 26, `get_guide` included, since [0023](../../docs/decisions/0023-facts-in-the-ledger.md) | The server refuses to start                                  |
 | A guide                      | 64 KiB                                                                                   | The server refuses to start                                  |
 | A recipe                     | 4 KiB, its format guide embedded beside it                                               | The server refuses to start                                  |
 | Guides                       | one a definition type and the terminology                                                | The server refuses to start                                  |

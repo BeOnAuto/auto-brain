@@ -13,9 +13,21 @@ const run = { org: 'acme', brain: 'alpha', id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c
 
 const stream = `brain/acme/alpha/runs/${run.id}`;
 
-const fact = { by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
+const fact = { runId: run.id, by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
 
 const ofApproval = { definition_type: 'interaction', name: 'approve-brief', definition_version: 1 };
+
+const record = {
+  to: 'ada',
+  message: 'Approve?',
+  expires_at: '2026-10-09T09:00:00.000Z',
+  requested_at: '2026-10-07T09:00:00.000Z',
+};
+
+const attempt: DeliveryStartedFact = {
+  type: 'delivery_started',
+  data: { number: 1, target: 'ada', server: 'chat', tool: 'post_message' },
+};
 
 const lineage = { causationId: 'request-1', correlationId: run.id };
 
@@ -34,15 +46,7 @@ async function aDeferredRun() {
   await Effect.runPromise(
     ledger.service.execute(stream, runDecider, {
       type: 'finish',
-      result: {
-        type: 'run_deferred',
-        record: {
-          to: 'ada',
-          message: 'Approve?',
-          expires_at: '2026-10-09T09:00:00.000Z',
-          requested_at: '2026-10-07T09:00:00.000Z',
-        },
-      },
+      result: { type: 'run_deferred', data: { record } },
       ...fact,
     }),
   );
@@ -59,20 +63,24 @@ function brainWriterOf(ledger: StreamWriter): StreamWriter {
 describe('the outbound calls of a run', () => {
   it('are recorded as the brain itself, with the lineage they are given, answering the id and time of each', async () => {
     const ledger = await aDeferredRun();
-    const record = outboundCallRecorder(ledger.service);
+    const recordCall = outboundCallRecorder(ledger.service);
 
-    const started = await Effect.runPromise(
-      record(
-        run,
-        { type: 'delivery_started', number: 1, target: 'ada', server: 'chat', tool: 'post_message' },
-        lineage,
-      ),
-    );
+    const started = await Effect.runPromise(recordCall(run, attempt, lineage));
     const startedId = started.id;
     const ended = await Effect.runPromise(
-      record(
+      recordCall(
         run,
-        { type: 'delivery_ended', number: 1, outcome: 'delivered', duration_ms: 3 },
+        {
+          type: 'delivery_succeeded',
+          data: {
+            number: 1,
+            result_bytes: 20,
+            result_sha256: 'b'.repeat(64),
+            content_kept: true,
+            duration_ms: 3,
+            jsonrpc_id: 2,
+          },
+        },
         { ...lineage, causationId: startedId },
       ),
     );
@@ -82,31 +90,24 @@ describe('the outbound calls of a run', () => {
     );
 
     expect([startedId, endedId]).toEqual([messageIdOf(stream, 3), messageIdOf(stream, 4)]);
-    expect(records.slice(2).map(({ type, causationId, data }) => [type, causationId, runEventOf(data)?.by])).toEqual([
+    expect(records.slice(2).map((each) => [each.type, each.causationId, runEventOf(each)?.context.by])).toEqual([
       ['delivery_started', 'request-1', 'brain:alpha'],
-      ['delivery_ended', startedId, 'brain:alpha'],
+      ['delivery_succeeded', startedId, 'brain:alpha'],
     ]);
-    expect(records.slice(2).map(({ data }) => runEventOf(data)?.at)).toEqual([started.at, ended.at]);
+    expect(records.slice(2).map(({ context }) => context.at)).toEqual([started.at, ended.at]);
   });
 });
 
 describe('the outbound calls of a run that another call came before', () => {
   it('are refused under a number another call took, and for a run the brain cannot hold', async () => {
     const ledger = await aDeferredRun();
-    const record = outboundCallRecorder(ledger.service);
-    const attempt: DeliveryStartedFact = {
-      type: 'delivery_started',
-      number: 1,
-      target: 'ada',
-      server: 'chat',
-      tool: 'post_message',
-    };
-    await Effect.runPromise(record(run, attempt, lineage));
+    const recordCall = outboundCallRecorder(ledger.service);
+    await Effect.runPromise(recordCall(run, attempt, lineage));
 
-    expect(await Effect.runPromise(Effect.result(record(run, attempt, lineage)))).toMatchObject(
+    expect(await Effect.runPromise(Effect.result(recordCall(run, attempt, lineage)))).toMatchObject(
       Result.fail({ _tag: 'conflict' }),
     );
-    expect(await Effect.runPromise(Effect.result(record({ ...run, id: 'not-a-run' }, attempt, lineage)))).toEqual(
+    expect(await Effect.runPromise(Effect.result(recordCall({ ...run, id: 'not-a-run' }, attempt, lineage)))).toEqual(
       Result.fail(new Conflict({ detail: 'There is no such run in this brain, so it records no work' })),
     );
   });
@@ -121,12 +122,7 @@ describe('a run as it was recorded', () => {
       run: {
         run_id: run.id,
         status: 'started',
-        record: {
-          to: 'ada',
-          message: 'Approve?',
-          expires_at: '2026-10-09T09:00:00.000Z',
-          requested_at: '2026-10-07T09:00:00.000Z',
-        },
+        record,
       },
       input: { owner: 'ada' },
       awaitsSettlement: true,
@@ -164,14 +160,20 @@ describe('a settlement made through the writer of a brain', () => {
 describe('the replies a run takes or refuses', () => {
   it('are recorded as the brain itself, with the lineage they are given, once for each reply', async () => {
     const ledger = await aDeferredRun();
-    const record = replyRecorder(ledger.service);
+    const recordReply = replyRecorder(ledger.service);
     const reading = { server: 'chat', tool: 'thread_replies', reply: { id: '1699.2', sender: 'ada' } };
 
     const taken = await Effect.runPromise(
-      record(run, { type: 'reply_taken', ...reading, answer: { choice: 'approve' } }, lineage),
+      recordReply(run, { type: 'reply_taken', data: { ...reading, answer: { choice: 'approve' } } }, lineage),
     );
     const again = await Effect.runPromise(
-      Effect.result(record(run, { type: 'reply_refused', ...reading, because: 'not_an_answer', told: false }, lineage)),
+      Effect.result(
+        recordReply(
+          run,
+          { type: 'reply_refused', data: { ...reading, because: 'not_an_answer', told: false } },
+          lineage,
+        ),
+      ),
     );
 
     expect(taken.id).toBe(messageIdOf(stream, 3));

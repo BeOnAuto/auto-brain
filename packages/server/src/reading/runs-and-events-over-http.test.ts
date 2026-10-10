@@ -150,8 +150,8 @@ describe.each(stores)('the history of a run over HTTP, on $store', ({ skipped, e
       status: 200,
       body: {
         events: [
-          { type: 'run_started', data: { run_id: succeeded, input_bytes: 27 } },
-          { type: 'run_succeeded', data: { run_id: succeeded, output_bytes: 20 } },
+          { type: 'run_started', data: { input: { text: 'the\u0000quarter' } }, metadata: { run_id: succeeded } },
+          { type: 'run_succeeded', data: { output: 'Profits\u0000rose.' }, metadata: { run_id: succeeded } },
         ],
         has_more: false,
         next_cursor: null,
@@ -214,9 +214,9 @@ describe.each(stores)('the events published to a brain over HTTP, on $store', ({
       events: [
         {
           id: aMessageId,
-          causation_id: null,
           type: 'event_published',
-          data: { event_id: 'm-1', source: '/ledger/eu', data_bytes: 4 },
+          data: { event_id: 'm-1', source: '/ledger/eu', data: 'eu' },
+          metadata: { causation_id: null },
         },
       ],
     });
@@ -264,9 +264,9 @@ async function anAppendLeftOpen(database: string): Promise<Client> {
   await client.query('BEGIN');
   await client.query(
     `SELECT success FROM emt_append_to_stream(
-      ARRAY['late-1'], ARRAY[$1::jsonb], ARRAY['{}'::jsonb], ARRAY['1'], ARRAY['note_added'], ARRAY['E'],
+      ARRAY['late-1'], ARRAY[$1::jsonb], ARRAY[$2::jsonb], ARRAY['1'], ARRAY['note_added'], ARRAY['E'],
       'brain/acme/alpha/notes', 'brain', 0, 'emt:default')`,
-    [{ json: JSON.stringify({ type: 'note_added', text: 'late' }) }],
+    [{ json: JSON.stringify({ text: 'late' }) }, { at: '2026-10-05T09:00:00.000Z', by: 'tester' }],
   );
   return client;
 }

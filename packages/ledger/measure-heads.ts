@@ -60,7 +60,10 @@ async function filled(client: Querying, url: string): Promise<void> {
   await store.migrate();
   await inTurn(times(records), (index) => {
     const text = randomBytes(recordBytes).toString('base64').slice(0, recordBytes);
-    return store.append(`${brainKey}events/e${index}`, [{ type: 'event_published', data: { text } }], 0);
+    return store.append(`${brainKey}events/e${index}`, [{ type: 'event_published', data: { text } }], {
+      expectedVersion: 0,
+      context: { at: new Date(0).toISOString(), by: 'measurer' },
+    });
   });
   await store.close();
   await client.query('VACUUM ANALYZE emt_messages');
