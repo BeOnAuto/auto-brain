@@ -45,7 +45,7 @@ interface FilterGroup {
   readonly filters: readonly MatchedFilter[];
 }
 
-export interface GroupMatched {
+interface GroupMatched {
   readonly verdicts: readonly FilterVerdict[];
   readonly stopped: readonly DslError[];
   readonly struck: boolean;
