@@ -25,7 +25,7 @@ const stoppedBecause: Readonly<Record<Exclude<Stopped, 'deadline'>, string>> = {
 };
 
 function tooLongToCheck(deadlineMs: number): string {
-  return `The document takes longer to check than the ${deadlineMs} ms a save allows its check, so saving it again would not help; simplify its types or split its program`;
+  return `The document took longer to check than the ${deadlineMs} ms a save allows; simplify its types or split its program. A busy server may also have slowed the check, so saving it again later may succeed`;
 }
 
 const notStripped: StrippedSources = { expressions: [] };

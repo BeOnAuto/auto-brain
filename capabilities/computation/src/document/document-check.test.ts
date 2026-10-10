@@ -93,7 +93,7 @@ describe('a check of a computation function that does not answer', { timeout: wo
       check: () => Promise.resolve({ ran: 'stopped', because: 'busy', milliseconds: 1 } as const),
     };
     const tooLongToCheck =
-      'The document takes longer to check than the 2000 ms a save allows its check, so saving it again would not help; simplify its types or split its program';
+      'The document took longer to check than the 2000 ms a save allows; simplify its types or split its program. A busy server may also have slowed the check, so saving it again later may succeed';
 
     expect(await Effect.runPromiseExit(computationWith(tooLong).prepared(campaignPace).check)).toEqual(
       Exit.fail(new InvalidInput({ detail: tooLongToCheck, issues: [{ pointer: '', detail: tooLongToCheck }] })),

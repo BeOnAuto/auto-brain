@@ -75,9 +75,9 @@ describe('a check that passes', () => {
 });
 
 describe('a check that does not answer', () => {
-  it('is invalid input when the check runs past its deadline on a worker that was ready, since saving it again would not help', async () => {
+  it('is invalid input when the check runs past its deadline on a worker that was ready, saying a busy server may also have slowed it', async () => {
     const detail =
-      'The document takes longer to check than the 1 ms a save allows its check, so saving it again would not help; simplify its types or split its program';
+      'The document took longer to check than the 1 ms a save allows; simplify its types or split its program. A busy server may also have slowed the check, so saving it again later may succeed';
 
     expect(await checked(answering({ ran: 'stopped', because: 'deadline', milliseconds: 1 }), 1)).toEqual(
       Exit.fail(new InvalidInput({ detail, issues: [{ pointer: '', detail }] })),
