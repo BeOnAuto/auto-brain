@@ -1,4 +1,4 @@
-export interface DateConstructing {
+interface DateConstructing {
   readonly called: boolean;
   readonly mostArguments: number;
 }

@@ -41,6 +41,6 @@ export const EvaluationRequestSchema = Schema.Union([
   Schema.Struct({ kind: Schema.Literal('close'), unit: Schema.Number }),
 ]);
 
-export type EvaluationRequest = typeof EvaluationRequestSchema.Type;
+type EvaluationRequest = typeof EvaluationRequestSchema.Type;
 
 export type AnsweredRequest = Exclude<EvaluationRequest, { readonly kind: 'close' }>;
