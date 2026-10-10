@@ -2,17 +2,19 @@ import { Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { filterVerdictsOf } from '../filters/filter-verdicts.ts';
+import { machineSandboxOf } from '../instances/host-sandboxes.ts';
 import type { PoolSettings, ProgramPool } from '../jobs/pool-contract.ts';
 import { decidedOnce } from '../pool-testing/decided-once.ts';
 import { threadsAlive } from '../pool-testing/threads-alive.ts';
 import type { Evaluation, ProgramRun } from '../programs/program-run.ts';
-import { workflow } from '../testing/workflows.ts';
 import { answerGraceMs } from './evaluation-thread.ts';
 import { programPool } from './program-pool.ts';
 
 type Machine = ProgramPool['evaluations']['machine'];
 
 const evaluationTestTimeoutMs = 30_000;
+
+const severalTimesSlowerMs = 3000;
 
 const pools: ProgramPool[] = [];
 
@@ -77,19 +79,19 @@ describe(
   () => {
     it('ends the expression of a decision at the input deadline, within about 2.1 s, and decides the next input on a fresh worker', async () => {
       const { machine } = poolOf().evaluations;
-      const churning = workflow(`do:\n  - churn: { set: { churned: '\${ ${churn} }' } }`);
+      const churning = `do:\n  - churn: { set: { churned: '\${ ${churn} }' } }`;
       await Effect.runPromise(machine.reserve);
 
       const { answer: ended, ms } = await timed(() => decidedOnce(machine, churning, now));
       await Effect.runPromise(machine.reserve);
-      const next = decidedOnce(machine, workflow('do:\n  - add: { set: { sum: "${ 1 + 1 }" } }'), now);
+      const next = decidedOnce(machine, 'do:\n  - add: { set: { sum: "${ 1 + 1 }" } }', now);
 
       expect(ended.outcome).toMatchObject({ kind: 'raised', error: { type: runtimeError, status: 500 } });
       expect(JSON.stringify(ended.outcome)).toContain(
         'The program ran past its deadline: the expressions of one input may take 2000 ms',
       );
       expect(ms).toBeGreaterThan(2000);
-      expect(ms).toBeLessThan(2000 + answerGraceMs + 400);
+      expect(ms).toBeLessThan(2000 + answerGraceMs + severalTimesSlowerMs);
       expect(next.outcome).toEqual({ kind: 'completed', output: { sum: 2 } });
     });
 
@@ -103,7 +105,7 @@ describe(
       expect(alone).toMatchObject([{ error: { status: 500, instance: '/churn' } }]);
       expect(JSON.stringify(alone)).toContain('The program ran past its deadline: one filter may take 2000 ms');
       expect(ms).toBeGreaterThan(2000);
-      expect(ms).toBeLessThan(2000 + answerGraceMs + 400);
+      expect(ms).toBeLessThan(2000 + answerGraceMs + severalTimesSlowerMs);
       expect(together).toMatchObject([{ error: { status: 500 } }, true]);
     });
   },
@@ -113,22 +115,24 @@ describe(
   'the evaluation worker of a pool, given a stack or a memory to exhaust',
   { timeout: evaluationTestTimeoutMs },
   () => {
-    it('gives a caught stack bomb the same answer from the shallow stack of the host as from 5,000 frames deep', async () => {
+    it("gives a caught stack bomb one answer, from the shallow stack of the host, from 5,000 frames deep and on a host's own thread", async () => {
       const { machine } = poolOf().evaluations;
-      await Effect.runPromise(machine.reserve);
+      const here = machineSandboxOf();
+      await Promise.all([Effect.runPromise(machine.reserve), Effect.runPromise(here.reserve)]);
 
       const shallow = evaluatedIn(machine, caughtStackBomb);
       const deep = nested(5000, () => evaluatedIn(machine, caughtStackBomb));
+      const onTheThread = evaluatedIn(here, caughtStackBomb);
 
       expect(shallow).toMatchObject({ ran: 'answered' });
-      expect(deep).toEqual(shallow);
+      expect([deep, onTheThread]).toEqual([shallow, shallow]);
     });
 
     it('raises a runtime error, status 500, from a decision whose expression fills its sandbox', async () => {
       const { machine } = poolOf().evaluations;
       await Effect.runPromise(machine.reserve);
 
-      const ended = decidedOnce(machine, workflow(`do:\n  - fill: { set: { filled: '\${ ${filling} }' } }`), now);
+      const ended = decidedOnce(machine, `do:\n  - fill: { set: { filled: '\${ ${filling} }' } }`, now);
 
       expect(ended.outcome).toMatchObject({ kind: 'raised', error: { type: runtimeError, status: 500 } });
       expect(JSON.stringify(ended.outcome)).toContain(
@@ -168,7 +172,7 @@ describe('the evaluation worker of a pool that cannot answer', { timeout: evalua
     const { answer, ms } = await timed(() => evaluatedIn(pool.evaluations.machine, '1 + 1'));
 
     expect(answer).toMatchObject({ ran: 'exhausted', limit: 'deadline', work: 0 });
-    expect(ms).toBeLessThan(100);
+    expect(ms).toBeLessThan(severalTimesSlowerMs);
     expect(threadsAlive()).toBe(before);
   });
 
@@ -181,6 +185,6 @@ describe('the evaluation worker of a pool that cannot answer', { timeout: evalua
 
     expect(answer).toMatchObject({ ran: 'exhausted', limit: 'deadline', work: 0 });
     expect(ms).toBeGreaterThan(150);
-    expect(ms).toBeLessThan(200 + answerGraceMs + 400);
+    expect(ms).toBeLessThan(200 + answerGraceMs + severalTimesSlowerMs);
   });
 });

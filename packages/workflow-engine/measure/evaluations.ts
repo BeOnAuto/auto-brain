@@ -5,7 +5,6 @@ import { filterVerdictsOf } from '../src/filters/filter-verdicts.ts';
 import { decidedOnce } from '../src/pool-testing/decided-once.ts';
 import { answerGraceMs } from '../src/program-pool/evaluation-thread.ts';
 import type { MachineSandbox } from '../src/programs/reserved-instances.ts';
-import { workflow } from '../src/testing/workflows.ts';
 import { medianMillisecondsOf, startedAt } from './common.ts';
 
 const decision = { decision: { decision: 'approve', reason: 'the budget is stated' } };
@@ -14,8 +13,8 @@ function churnOf(bytes: number): string {
   return `(() => { const big = "x".repeat(${bytes}); let total = 0; for (let round = 0; round < 1000000; round += 1) { total += JSON.stringify([big, round]).length; } return total > 0; })()`;
 }
 
-function churning(bytes: number): ReturnType<typeof workflow> {
-  return workflow(`do:\n  - churn: { set: { churned: '\${ ${churnOf(bytes)} }' } }`);
+function churning(bytes: number): string {
+  return `do:\n  - churn: { set: { churned: '\${ ${churnOf(bytes)} }' } }`;
 }
 
 function formatted(value: number, digits: number): string {

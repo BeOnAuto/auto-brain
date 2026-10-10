@@ -8,7 +8,7 @@ import { answeredFlag, EvaluationRequestSchema, readyFlag, type AnsweredRequest 
 import { expressionUnitOf, type OpenedUnit } from '../programs/expression-units.ts';
 import { filterContextOf, type FilterContext, type FilterTest } from '../programs/kept-contexts.ts';
 import type { ProgramRun } from '../programs/program-run.ts';
-import { unitMemoryBytes, workerStackBytes } from '../programs/sandbox-bounds.ts';
+import { threadStackBytes, unitMemoryBytes } from '../programs/sandbox-bounds.ts';
 import type { SandboxSettings } from '../programs/sandbox-session.ts';
 
 type PrepareRequest = Extract<AnsweredRequest, { readonly kind: 'prepare' }>;
@@ -34,7 +34,7 @@ const decodeData = Schema.decodeUnknownOption(EvaluationDataSchema);
 const decodeRequest = Schema.decodeUnknownOption(EvaluationRequestSchema);
 
 const settings: SandboxSettings = {
-  stackBytes: workerStackBytes,
+  stackBytes: threadStackBytes,
   mostAnswerBytes: unitMemoryBytes,
   clock: () => performance.timeOrigin + performance.now(),
 };
