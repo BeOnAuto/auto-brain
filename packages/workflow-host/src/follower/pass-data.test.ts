@@ -61,6 +61,7 @@ function listening(database: HostDatabase, armedBy: number) {
     armedBy,
     filters: '[{"type":"com.acme.noted"}]',
     workflow: 'wait',
+    version: 1,
     passed: false,
   });
 }

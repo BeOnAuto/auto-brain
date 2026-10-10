@@ -3,6 +3,7 @@ import { Effect } from 'effect';
 import { onTestFinished } from 'vitest';
 
 import type { HostDatabase } from '../database/host-database.ts';
+import { filterStops } from '../filtering/filter-matching.ts';
 import { systemClock } from '../loop/host-clock.ts';
 import { startReacting } from '../reactions/host-reactions.ts';
 import { refusalsOn } from '../reactions/refusals.ts';
@@ -20,7 +21,7 @@ export function followerOver(database: HostDatabase, sweepEveryMs: number): Reco
       reports: recordingReports().reports,
     },
     { ...reactions.options, appended: streamSignalOf() },
-    refusalsOn(database, Date.now),
+    { refusals: refusalsOn(database, Date.now), stops: filterStops() },
     { consumers: [], calls: [] },
   );
   onTestFinished(() => follower.stop());

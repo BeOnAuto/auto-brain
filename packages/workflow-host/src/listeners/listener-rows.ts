@@ -1,3 +1,4 @@
+import { CallKeySchema, type CallKey } from '@beonauto/workflow-engine';
 import { Effect, Schema } from 'effect';
 
 import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';
@@ -11,7 +12,15 @@ export interface ListenerRow {
   readonly armedBy: number;
   readonly filters: string;
   readonly workflow: string;
+  readonly version: number;
   readonly passed: boolean;
+}
+
+export interface ListeningPlace {
+  readonly brainKey: string;
+  readonly workflow: string;
+  readonly version: number;
+  readonly reference: string;
 }
 
 export interface ListenerPlace {
@@ -24,13 +33,23 @@ const MatchedRow = Schema.Struct({
   listener: Schema.String,
   filters: Schema.String,
   workflow: Schema.String,
+  version: WholeNumber,
 });
+
+const ListenerKeySchema = Schema.fromJsonString(Schema.Tuple([Schema.String, Schema.String, Schema.Int]));
+
+const ListenerKeyRow = Schema.Struct({ listener: Schema.String });
 
 export type MatchedListener = typeof MatchedRow.Type;
 
 const ArmedRow = Schema.Struct({ armed_by: WholeNumber });
 
 const CountRow = Schema.Struct({ listeners: WholeNumber });
+
+export function listenerKeyOf(text: string): CallKey {
+  const [runId, reference, run] = Schema.decodeUnknownSync(ListenerKeySchema)(text);
+  return Schema.decodeUnknownSync(CallKeySchema)({ runId, reference, run });
+}
 
 function typesOf(filters: string): readonly string[] {
   const read = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Array(Schema.Struct({ type: Schema.String }))));
@@ -39,10 +58,10 @@ function typesOf(filters: string): readonly string[] {
 
 export function insertedListener(database: HostDatabase, row: ListenerRow) {
   return Effect.gen(function* () {
-    const { runKey, listener, brainKey, streamId, armedBy, filters, workflow, passed } = row;
+    const { runKey, listener, brainKey, streamId, armedBy, filters, workflow, version, passed } = row;
     yield* database.write(
-      statement`INSERT INTO workflow_listeners (run_key, listener, brain_key, stream_id, armed_by, filters, workflow, passed)
-        VALUES (${runKey}, ${listener}, ${brainKey}, ${streamId}, ${armedBy}, ${filters}, ${workflow}, ${passed ? 1 : 0})
+      statement`INSERT INTO workflow_listeners (run_key, listener, brain_key, stream_id, armed_by, filters, workflow, version, passed)
+        VALUES (${runKey}, ${listener}, ${brainKey}, ${streamId}, ${armedBy}, ${filters}, ${workflow}, ${version}, ${passed ? 1 : 0})
         ON CONFLICT (run_key, listener) DO NOTHING`,
     );
     yield* database.write(
@@ -83,6 +102,19 @@ export function isListening(database: HostDatabase, { runKey, listener }: Listen
       statement`SELECT run_key FROM workflow_listeners WHERE run_key = ${runKey} AND listener = ${listener}`,
     ),
     (rows) => rows.length > 0,
+  );
+}
+
+export function isListeningAt(database: HostDatabase, { brainKey, workflow, version, reference }: ListeningPlace) {
+  return Effect.map(
+    rowsOf(
+      ListenerKeyRow,
+      database.read(
+        statement`SELECT listener FROM workflow_listeners
+          WHERE brain_key = ${brainKey} AND workflow = ${workflow} AND version = ${version}`,
+      ),
+    ),
+    (rows) => rows.some(({ listener }) => listenerKeyOf(listener).reference === reference),
   );
 }
 
@@ -179,7 +211,7 @@ export function listenersOfType(
     rowsOf(
       MatchedRow,
       database.read(
-        statement`SELECT l.run_key, l.listener, l.filters, l.workflow
+        statement`SELECT l.run_key, l.listener, l.filters, l.workflow, l.version
           FROM workflow_listener_types AS t
           JOIN workflow_listeners AS l ON l.run_key = t.run_key AND l.listener = t.listener
           WHERE t.brain_key = ${brainKey} AND t.type = ${type} AND l.passed = 1

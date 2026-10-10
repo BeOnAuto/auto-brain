@@ -3,6 +3,7 @@ import { Effect, Function } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { HostDatabase } from '../database/host-database.ts';
+import { filterStops } from '../filtering/filter-matching.ts';
 import { insertedListener } from '../listeners/listener-rows.ts';
 import { followedRecordOf } from '../reaction-testing/followed-records.ts';
 import { recordedReactions } from '../reaction-testing/recorded-reactions.ts';
@@ -33,6 +34,7 @@ function listening(database: HostDatabase): Promise<void> {
       armedBy: 1,
       filters: JSON.stringify([{ type: 'go', data: '${ $data.ready === true }' }]),
       workflow: 'waiting',
+      version: 1,
       passed: true,
     }),
   );
@@ -61,7 +63,11 @@ function decliningEveryOffer(database: HostDatabase): Declining {
           }),
       },
     },
-    { options: recordedReactions().options, refusals: { refuse: () => Effect.void, flush: () => Effect.succeed(0) } },
+    {
+      options: recordedReactions().options,
+      refusals: { refuse: () => Effect.void, flush: () => Effect.succeed(0) },
+      stops: filterStops(),
+    },
     { start: () => Effect.void, startDeferred: () => Effect.succeed(0) },
   );
   return { consumers, offered, notes };

@@ -1,6 +1,5 @@
 import type { Conflict } from '@beonauto/operations';
 import {
-  CallKeySchema,
   describeError,
   listenerFilterOf,
   type CallKey,
@@ -12,21 +11,34 @@ import { Array, Effect, Schema } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
 import {
+  groupMatchingOf,
+  stopsInARowBeforeTheVersion,
+  type FilterPlace,
+  type FilterStops,
+  type MatchFilters,
+  type MatchGroups,
+} from '../filtering/filter-matching.ts';
+import {
   DeliveryFailed,
   deliverySweeps,
   type RecordConsumer,
   type Delivery,
   type FollowedRecord,
 } from '../follower/consumers.ts';
-import { listenersOfType, type ListenerPlace, type MatchedListener } from '../listeners/listener-rows.ts';
+import {
+  listenerKeyOf,
+  listenersOfType,
+  type ListenerPlace,
+  type MatchedListener,
+} from '../listeners/listener-rows.ts';
 import { addressOfRun } from '../runs/run-address.ts';
-import { groupMatchingOf, type MatchFilters, type MatchGroups } from './filter-matching.ts';
 import type { RefuseReaction } from './refusals.ts';
 
 interface ListenerVerdict {
   readonly row: MatchedListener;
   readonly accepted: boolean;
   readonly stopped: readonly DslError[];
+  readonly struck: boolean;
 }
 
 interface Offer {
@@ -42,12 +54,11 @@ export interface OfferParts {
   readonly offer: (offer: Offer) => Effect.Effect<Submission, Conflict | Readonly<{ detail: string }>>;
   readonly declined: (runKey: string, detail: string) => Effect.Effect<void>;
   readonly match: MatchFilters;
+  readonly stops: FilterStops;
   readonly now: () => number;
 }
 
 const PlaceSchema = Schema.fromJsonString(Schema.Tuple([Schema.String, Schema.String]));
-
-const ListenerKeySchema = Schema.fromJsonString(Schema.Tuple([Schema.String, Schema.String, Schema.Int]));
 
 const FiltersSchema = Schema.fromJsonString(Schema.Array(Schema.JsonObject));
 
@@ -65,9 +76,9 @@ function keyOf(row: MatchedListener): string {
   return JSON.stringify([row.run_key, row.listener]);
 }
 
-function listenerKeyOf(text: string): CallKey {
-  const [runId, reference, run] = Schema.decodeUnknownSync(ListenerKeySchema)(text);
-  return Schema.decodeUnknownSync(CallKeySchema)({ runId, reference, run });
+function filterPlaceOf(brainKey: string, row: MatchedListener): FilterPlace {
+  const { workflow, version } = row;
+  return { kind: 'listener', brainKey, workflow, version, reference: listenerKeyOf(row.listener).reference };
 }
 
 function filtersOf(row: MatchedListener): readonly MatchedFilter[] {
@@ -81,29 +92,50 @@ function accepting(
   matchGroups: MatchGroups,
   parts: OfferParts,
   rows: readonly MatchedListener[],
-  { event }: FollowedRecord,
+  { brainKey, event }: FollowedRecord,
 ): Effect.Effect<readonly ListenerVerdict[]> {
-  const groups = rows.map((row) => ({ scope: keyOf(row), filters: filtersOf(row) }));
+  const groups = rows.map((row) => ({ place: filterPlaceOf(brainKey, row), filters: filtersOf(row) }));
   return Effect.map(matchGroups(groups, event.event, parts.now()), (matched) =>
-    Array.zipWith(rows, matched, (row, { verdicts, stopped }): ListenerVerdict => ({
+    Array.zipWith(rows, matched, (row, { verdicts, stopped, struck }): ListenerVerdict => ({
       row,
       accepted: verdicts.includes(true),
       stopped,
+      struck,
     })),
   );
 }
 
-function reportedStops(parts: OfferParts, brainKey: string, row: MatchedListener, stopped: readonly DslError[]) {
+function reportedStops(parts: OfferParts, brainKey: string, { row, stopped }: ListenerVerdict) {
   return Effect.forEach(
     stopped,
     (error) =>
       parts.refusals.refuse(
         brainKey,
         row.workflow,
-        `The filter of a run's listen task went past a bound on an event, so the event was not offered to the run, and the filter is not evaluated again while that task listens: ${describeError(error)}`,
+        `The filter of a listen task of the workflow was stopped by its deadline or its memory ${stopsInARowBeforeTheVersion} times in a row, so the brain's events are not offered through it again for this version of the workflow; events sent to its runs still reach them: ${describeError(error)}`,
       ),
     { discard: true },
   );
+}
+
+function offeredLater(row: MatchedListener): Delivery {
+  return {
+    key: keyOf(row),
+    workflow: row.workflow,
+    deliver: Effect.fail(
+      new DeliveryFailed({
+        detail:
+          "The filter of a run's listen task was stopped on the event by its deadline or its memory, so the event waits to be matched again",
+      }),
+    ),
+  };
+}
+
+function deliveriesOf(parts: OfferParts, { row, accepted, struck }: ListenerVerdict, followed: FollowedRecord) {
+  if (accepted) {
+    return [offerOf(parts, row, followed)];
+  }
+  return struck ? [offeredLater(row)] : [];
 }
 
 function emittedByTheRun(row: MatchedListener, { event }: FollowedRecord): boolean {
@@ -131,7 +163,7 @@ function offerOf(parts: OfferParts, row: MatchedListener, followed: FollowedReco
 }
 
 export function listenerOffers(parts: OfferParts): RecordConsumer {
-  const matchGroups = groupMatchingOf(parts.match);
+  const matchGroups = groupMatchingOf(parts.match, parts.stops);
   return {
     name: 'listener_offers',
     skippedAfterSweeps: deliverySweeps,
@@ -146,12 +178,10 @@ export function listenerOffers(parts: OfferParts): RecordConsumer {
         const taken = rows.slice(0, most);
         const others = taken.filter((row) => !emittedByTheRun(row, followed));
         const judged = yield* accepting(matchGroups, parts, others, followed);
-        yield* Effect.forEach(judged, ({ row, stopped }) => reportedStops(parts, followed.brainKey, row, stopped), {
-          discard: true,
-        });
+        yield* Effect.forEach(judged, (each) => reportedStops(parts, followed.brainKey, each), { discard: true });
         const lastTaken = taken.at(-1);
         return {
-          deliveries: judged.flatMap(({ row, accepted }) => (accepted ? [offerOf(parts, row, followed)] : [])),
+          deliveries: judged.flatMap((each) => deliveriesOf(parts, each, followed)),
           through: lastTaken === undefined ? undefined : keyOf(lastTaken),
           more: rows.length > most,
         };

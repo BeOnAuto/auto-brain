@@ -81,6 +81,7 @@ function deliveringEach(delivered: (id: string) => void): RecordConsumer {
                 {
                   key: followed.record.id,
                   workflow: 'note',
+                  version: 1,
                   deliver: Effect.sync(() => {
                     delivered(followed.record.id);
                   }),
@@ -103,6 +104,7 @@ function listenerFor(type: string) {
     armedBy: 1,
     filters: JSON.stringify([{ type }]),
     workflow: 'wait',
+    version: 1,
     passed: true,
   };
 }

@@ -23,7 +23,7 @@ interface Offering {
   readonly consumer: ReturnType<typeof listenerOffers>;
 }
 
-function listening(database: HostDatabase, run: string, filters: readonly Json[]) {
+function listening(database: HostDatabase, run: string, filters: readonly Json[], workflow = `wf-${run}`) {
   const runKey = `acme/alpha/${run}`;
   return Effect.runPromise(
     insertedListener(database, {
@@ -33,7 +33,8 @@ function listening(database: HostDatabase, run: string, filters: readonly Json[]
       streamId: `${brainKey}run-logs/${run}`,
       armedBy: 1,
       filters: JSON.stringify(filters),
-      workflow: `wf-${run}`,
+      workflow,
+      version: 1,
       passed: true,
     }),
   );
@@ -42,7 +43,7 @@ function listening(database: HostDatabase, run: string, filters: readonly Json[]
 function offering(database: HostDatabase, answer: (runKey: string) => Effect.Effect<Submission, Conflict>): Offering {
   const offers: string[] = [];
   const { refusals, said, say } = saidRefusals();
-  const { match, evaluated } = countingMatches();
+  const { match, stops, evaluated } = countingMatches();
   const consumer = listenerOffers({
     database,
     refusals,
@@ -55,6 +56,7 @@ function offering(database: HostDatabase, answer: (runKey: string) => Effect.Eff
       ),
     declined: (runKey, detail) => say(`${runKey} declined: ${detail}`),
     match,
+    stops,
     now: () => 0,
   });
   return { offers: () => offers, said, evaluated, consumer };
@@ -64,6 +66,16 @@ function declinedByTheFirst(runKey: string): Effect.Effect<Submission, Conflict>
   return runKey.endsWith('run-a')
     ? Effect.succeed(declinedOffer)
     : Effect.fail(new Conflict({ detail: 'The ledger cannot be reached' }));
+}
+
+function outcomesOf(consumer: Offering['consumer'], followed: ReturnType<typeof followedRecordOf>) {
+  return Effect.runPromise(
+    Effect.flatMap(consumer.batchOf(followed, undefined, 10), ({ deliveries }) =>
+      Effect.forEach(deliveries, ({ workflow, deliver }) =>
+        Effect.map(Effect.isSuccess(deliver), (made) => `${workflow} ${made ? 'delivered' : 'waits'}`),
+      ),
+    ),
+  );
 }
 
 function deliveredAll(consumer: Offering['consumer'], followed: ReturnType<typeof followedRecordOf>, most: number) {
@@ -113,22 +125,32 @@ describe('the offers of an event to the runs that listen for its type', () => {
   });
 });
 
-describe('the filter of a listening run that goes past a bound', () => {
-  it('is said once and not evaluated again while that task listens, and the filters beside it still take events', async () => {
+describe('the filter of the runs listening at one task of a version that goes past a bound', () => {
+  it('keeps the event it was stopped on by its memory waiting, and after three such stops in a row, in any of the runs, is not evaluated again for that task and version', async () => {
     const database = await openedOn(await onSQLite());
-    const working = { type: 'go', data: '${ (() => { let turns = 0; for (;;) { turns += 1; } })() }' };
-    await listening(database, 'run-a', [working, { type: 'go', data: { region: 'eu' } }]);
+    const filling = {
+      type: 'go',
+      data: '${ (() => { const kept = []; for (;;) { kept.push("x".repeat(1048576) + kept.length); } })() }',
+    };
+    await ['run-a', 'run-b', 'run-c'].reduce<Promise<unknown>>(
+      (before, run) =>
+        before.then(() => listening(database, run, [filling, { type: 'go', data: { region: 'eu' } }], 'wf')),
+      Promise.resolve(),
+    );
     const { offers, said, evaluated, consumer } = offering(database, () => Effect.succeed(applied));
+    const american = followedRecordOf({ region: 'us' });
 
-    await deliveredAll(consumer, followedRecordOf({ region: 'us' }), 10);
-    const before = evaluated().length;
+    const first = await outcomesOf(consumer, american);
+    const atFirst = evaluated().length;
+    const again = await outcomesOf(consumer, american);
     await deliveredAll(consumer, followedRecordOf({ region: 'eu' }), 10);
 
-    expect([before, evaluated().length - before]).toEqual([2, 1]);
-    expect(offers()).toEqual(['acme/alpha/run-a record-1 /do/0/wait']);
+    expect([first, again]).toEqual([['wf waits', 'wf waits'], []]);
+    expect([atFirst, evaluated().length]).toEqual([6, 12]);
+    expect(offers()).toHaveLength(3);
     expect(said()).toEqual([
       expect.stringContaining(
-        "wf-run-a: The filter of a run's listen task went past a bound on an event, so the event was not offered to the run, and the filter is not evaluated again while that task listens:",
+        "wf: The filter of a listen task of the workflow was stopped by its deadline or its memory 3 times in a row, so the brain's events are not offered through it again for this version of the workflow; events sent to its runs still reach them: ",
       ),
     ]);
   });

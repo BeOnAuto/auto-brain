@@ -82,6 +82,7 @@ function armedAt(database: HostDatabase, listener: string, armedBy: number) {
       armedBy,
       filters: '[]',
       workflow: 'wait',
+      version: 1,
       passed: false,
     }),
   );

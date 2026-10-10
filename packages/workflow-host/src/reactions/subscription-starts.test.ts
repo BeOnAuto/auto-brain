@@ -2,6 +2,7 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { HostDatabase } from '../database/host-database.ts';
+import { stopsInARowBeforeTheVersion } from '../filtering/filter-matching.ts';
 import { eventTrigger, type TriggerFilter } from '../reaction-testing/brain-writes.ts';
 import { followedRecordOf } from '../reaction-testing/followed-records.ts';
 import { starting } from '../reaction-testing/trigger-starting.ts';
@@ -12,6 +13,15 @@ import { mostReactionDepth } from './subscription-starts.ts';
 const brainKey = 'brain/acme/alpha/';
 
 const at = '2026-10-01T09:00:00.000Z';
+
+const working = { type: 'go', data: '${ (() => { let turns = 0; for (;;) { turns += 1; } })() }' };
+
+const filling = {
+  type: 'go',
+  data: '${ (() => { const kept = []; for (;;) { kept.push("x".repeat(1048576) + kept.length); } })() }',
+};
+
+const european = { type: 'go', data: { region: 'eu' } };
 
 async function subscribedAt(
   database: HostDatabase,
@@ -69,31 +79,49 @@ describe('the starts of the workflows whose trigger an event matches', () => {
 });
 
 describe('the filter of an event trigger that goes past a bound', () => {
-  it('is stopped: said once, skipped on the next events of that version and evaluated again after a new version', async () => {
+  it('does not match an event on which it does more than its work, is said once a version as a failing filter is, and is evaluated on the next event', async () => {
     const { database, delivered, starts, said, evaluated } = await starting();
-    const working = { type: 'go', data: '${ (() => { let turns = 0; for (;;) { turns += 1; } })() }' };
-    const european = { type: 'go', data: { region: 'eu' } };
     await subscribed(database, 'busy', working, european);
 
     await delivered(followedRecordOf({ region: 'us' }));
     await delivered(followedRecordOf({ region: 'eu' }));
-    await subscribedAt(database, 2, 'busy', working, european);
-    await delivered(followedRecordOf({ region: 'us' }));
-    const stopped =
-      "busy: The filter of the workflow's event trigger went past a bound on an event, so it did not match, and it is not evaluated again for this version of the workflow; a new version evaluates it again:";
 
     expect(evaluated()).toEqual([
       '/schedule/on/any/0',
       '/schedule/on/any/1',
-      '/schedule/on/any/1',
       '/schedule/on/any/0',
       '/schedule/on/any/1',
     ]);
-    expect(said()).toEqual([expect.stringContaining(stopped), expect.stringContaining(stopped)]);
-    expect(said()[0]).toContain(
-      'The program did more work than it may: an expression of a filter may do 250 checkpoints of work',
-    );
-    expect(starts().map(({ version }) => version)).toEqual([1]);
+    expect(said()).toEqual([
+      expect.stringMatching(
+        /^busy: The filter of the workflow's event trigger failed on an event, so it did not match: .*The program did more work than it may/u,
+      ),
+    ]);
+    expect(starts().map(({ workflow }) => workflow)).toEqual(['busy']);
+  });
+
+  it(`keeps the event it was stopped on by its memory waiting, is stopped for its version at the ${stopsInARowBeforeTheVersion}rd such stop in a row, and is evaluated again after a new version`, async () => {
+    const { database, tried, starts, said, evaluated } = await starting();
+    await subscribed(database, 'filling', filling, european);
+    const american = followedRecordOf({ region: 'us' });
+
+    const tries = [await tried(american), await tried(american), await tried(american)];
+    const matched = await tried(followedRecordOf({ region: 'eu' }));
+    const beforeTheVersion = evaluated().length;
+    await subscribedAt(database, 2, 'filling', filling, european);
+    const afterTheVersion = await tried(american);
+
+    expect([tries, matched]).toEqual([[['filling waits'], ['filling waits'], []], ['filling delivered']]);
+    expect(said()).toEqual([
+      expect.stringContaining(
+        "filling: The filter of the workflow's event trigger was stopped by its deadline or its memory 3 times in a row, so it is not evaluated again for this version of the workflow; a new version evaluates it again: ",
+      ),
+    ]);
+    expect([beforeTheVersion, evaluated().slice(beforeTheVersion - 1)]).toEqual([
+      7,
+      ['/schedule/on/any/1', '/schedule/on/any/0', '/schedule/on/any/1'],
+    ]);
+    expect([starts().map(({ version }) => version), afterTheVersion]).toEqual([[1], ['filling waits']]);
   });
 });
 
