@@ -103,6 +103,14 @@ describe('a run of a computation function', { timeout: workerTestTimeoutMs }, ()
       output: 9_007_199_254_740_992,
     });
   });
+
+  it('runs its program as written, its dollar signs among it, when its save stripped its types', async () => {
+    const dollars = "return [`$$`, '$&', \"$'\", '$`'].map((text: string) => text + (input as string));";
+
+    expect(await succeeded(() => computationWith().running(programDocument(functionOf(dollars)), '!'))).toMatchObject({
+      output: ['$$!', '$&!', "$'!", '$`!'],
+    });
+  });
 });
 
 describe('a computation function', () => {

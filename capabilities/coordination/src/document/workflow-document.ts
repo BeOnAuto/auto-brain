@@ -131,7 +131,9 @@ export function runnableDocument(
   const replacements: Replacements = new Map(
     workflowExpressionsOf(document).flatMap(({ pointer, source }) => {
       const javascript = runnableExpression(stripped, source);
-      return javascript === source ? [] : [[pointer, (text: string) => text.replace(source, javascript)] as const];
+      return javascript === source
+        ? []
+        : [[pointer, (text: string) => text.replace(source, () => javascript)] as const];
     }),
   );
   return replacements.size === 0 ? document : runnableObject(document, '', replacements);

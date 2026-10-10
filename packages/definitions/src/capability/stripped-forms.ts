@@ -29,7 +29,11 @@ function runnableValue(value: Schema.Json, stripped: StrippedForms): Schema.Json
     return value;
   }
   const body = enclosedBody(value);
-  return body === undefined ? value : value.replace(body, runnableExpression(stripped, body));
+  if (body === undefined) {
+    return value;
+  }
+  const javascript = runnableExpression(stripped, body);
+  return javascript === body ? value : value.replace(body, () => javascript);
 }
 
 export function runnableAttributes(

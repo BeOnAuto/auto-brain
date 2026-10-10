@@ -34,3 +34,25 @@ describe('the expressions a save keeps stripped', () => {
     });
   });
 });
+
+describe('the dollar signs of a kept expression', () => {
+  it('are kept as written, whether the save stripped the expression or not, though a replacement pattern names them', () => {
+    const dollars =
+      "${ $data.price.startsWith('$') && $data.note !== '$$' && $data.tail !== \"$'\" && $data.all !== '$&' }";
+    const typedDollars =
+      "${ ($data.price as string).startsWith('$') && $data.note !== '$$' && $data.all !== \"$&$'\" }";
+    const typedBody = " ($data.price as string).startsWith('$') && $data.note !== '$$' && $data.all !== \"$&$'\" ";
+    const strippedBody = " ($data.price          ).startsWith('$') && $data.note !== '$$' && $data.all !== \"$&$'\" ";
+
+    expect(runnableAttributes({ type: 'priced', data: dollars }, noStrippedForms)).toEqual({
+      type: 'priced',
+      data: dollars,
+    });
+    expect(
+      runnableAttributes({ type: 'priced', data: typedDollars }, { expressions: { [typedBody]: strippedBody } }),
+    ).toEqual({
+      type: 'priced',
+      data: `\${${strippedBody}}`,
+    });
+  });
+});

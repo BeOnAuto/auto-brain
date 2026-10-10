@@ -32,3 +32,16 @@ describe('the document a run of a workflow holds', () => {
     expect(runnableDocument(typed, {})).toBe(typed);
   });
 });
+
+describe('the dollar signs of an expression a run holds', () => {
+  it('are kept as written when its save stripped the expression, though a replacement pattern names them', () => {
+    const source = " ($data.note as string) + '$$' + \"$&\" + '$\\'' ";
+    const javascript = " ($data.note          ) + '$$' + \"$&\" + '$\\'' ";
+    const document = { ...typed, do: [{ only: { set: { said: `\${${source}}` } } }] };
+
+    expect(runnableDocument(document, { expressions: { [source]: javascript } })).toEqual({
+      ...typed,
+      do: [{ only: { set: { said: `\${${javascript}}` } } }],
+    });
+  });
+});
