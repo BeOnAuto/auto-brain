@@ -3,6 +3,7 @@ import { campaignPace } from '@beonauto/computation/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { workerPool, type ProgramPoolOf } from '../composition/served-computation.ts';
+import { checkRefusals, documentOf } from '../testing/servers/check-refusals.ts';
 import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
 const checkTestTimeoutMs = 30_000;
@@ -72,7 +73,36 @@ describe('a computation function checked when it is saved, over MCP', { timeout:
     });
     expect(internalTermsIn(plainTextIn(created))).toEqual([]);
   });
+});
 
+describe('each refusal of the check at save, over MCP', { timeout: checkTestTimeoutMs }, () => {
+  it('answers each refusal of the check with isError, its line and its words, as over HTTP', async () => {
+    const created = await onAlpha(workerPool, (session) =>
+      Promise.all(
+        checkRefusals.map(([, program], index) =>
+          session.callTool('create_definition', {
+            type: 'computation',
+            name: `refused-${index}`,
+            source: documentOf(program),
+          }),
+        ),
+      ),
+    );
+
+    expect(created.map((result) => ({ isError: result.isError, problem: problemIn(result) }))).toMatchObject(
+      checkRefusals.map(([, , details]) => ({
+        isError: true,
+        problem: {
+          status: 422,
+          reason: 'invalid_input',
+          errors: details.map((detail) => ({ pointer: '/source', detail })),
+        },
+      })),
+    );
+  });
+});
+
+describe('a check at save that does not answer in time, over MCP', { timeout: checkTestTimeoutMs }, () => {
   it('answers unavailable, on a create and an update, when the check does not answer in time', async () => {
     const { stall, poolOf } = stallingChecks();
     const saved = await onAlpha(poolOf, async (session) => {

@@ -32,6 +32,8 @@ const caughtStackBomb =
 
 const closed = { type: 'com.acme.closed', data: { region: 'eu' } };
 
+const runtimeError = 'https://open-workflow-specification.org/spec/1.0.0/errors/runtime';
+
 const churningFilter = { reference: '/churn', attributes: { type: 'com.acme.closed', data: `\${ ${churn} }` } };
 
 const plainFilter = { reference: '/plain', attributes: { type: 'com.acme.closed', data: '${ $data.region == "eu" }' } };
@@ -82,7 +84,7 @@ describe(
       await Effect.runPromise(machine.reserve);
       const next = decidedOnce(machine, workflow('do:\n  - add: { set: { sum: "${ 1 + 1 }" } }'), now);
 
-      expect(ended.outcome).toMatchObject({ kind: 'raised', error: { status: 500 } });
+      expect(ended.outcome).toMatchObject({ kind: 'raised', error: { type: runtimeError, status: 500 } });
       expect(JSON.stringify(ended.outcome)).toContain(
         'The program ran past its deadline: the expressions of one input may take 2000 ms',
       );
@@ -120,6 +122,18 @@ describe(
 
       expect(shallow).toMatchObject({ ran: 'answered' });
       expect(deep).toEqual(shallow);
+    });
+
+    it('raises a runtime error, status 500, from a decision whose expression fills its sandbox', async () => {
+      const { machine } = poolOf().evaluations;
+      await Effect.runPromise(machine.reserve);
+
+      const ended = decidedOnce(machine, workflow(`do:\n  - fill: { set: { filled: '\${ ${filling} }' } }`), now);
+
+      expect(ended.outcome).toMatchObject({ kind: 'raised', error: { type: runtimeError, status: 500 } });
+      expect(JSON.stringify(ended.outcome)).toContain(
+        'The program used more memory than it may: the expressions of one input may use the memory of their sandbox and no more',
+      );
     });
 
     it('ends a unit whose instance refused to grow, and answers the next unit on a fresh worker', async () => {

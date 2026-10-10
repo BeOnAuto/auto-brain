@@ -59,7 +59,10 @@ describe(
       const saved = await saving('hundred', hundred);
       const started = await server.call('POST', `${alpha}/definitions/workflow/hundred/run`, { body: { input: {} } });
 
-      expect(saved).toMatchObject({ status: 201 });
+      expect(saved).toMatchObject({
+        status: 201,
+        body: { type: 'workflow', name: 'hundred', version: 1, source: hundred },
+      });
       expect(checked.map(({ expressions }) => expressions.length)).toEqual([1, 100]);
       expect(await settledRun(server, `${alpha}/runs/${runIdIn(started.body)}`)).toMatchObject({
         body: { status: 'succeeded', output: { n: 4950 } },
