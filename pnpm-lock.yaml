@@ -540,8 +540,8 @@ importers:
         specifier: 0.9.0
         version: 0.9.0
       typescript6:
-        specifier: npm:typescript@6.0.3
-        version: typescript@6.0.3
+        specifier: npm:typescript@7.0.2
+        version: typescript@7.0.2
       yaml:
         specifier: 2.9.1
         version: 2.9.1
