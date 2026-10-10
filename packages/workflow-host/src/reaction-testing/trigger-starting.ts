@@ -46,7 +46,7 @@ function scriptedVerdictOf({ reference, attributes }: MatchedFilter): FilterVerd
     ? undefined
     : {
         error: {
-          type: 'https://open-workflow-specification.org/spec/1.0.0/errors/runtime',
+          type: 'runtime',
           status: 500,
           title: stop.title,
           instance: reference,

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { filterStops, stopsInARowBeforeTheVersion, type FilterPlace, type FilterStops } from './filter-matching.ts';
 
 const error: DslError = {
-  type: 'https://open-workflow-specification.org/spec/1.0.0/errors/runtime',
+  type: 'runtime',
   status: 500,
   instance: '/schedule/on/one',
 };
