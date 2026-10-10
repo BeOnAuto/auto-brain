@@ -3,7 +3,7 @@ import { callKeyText, DispatchFailed, type ListenerArmReceipt, type Listeners } 
 import { Effect } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
-import { filterStops, type FilterPlace, type FilterStops } from '../filtering/filter-matching.ts';
+import type { FilterPlace, FilterStops } from '../filtering/filter-matching.ts';
 import type { Refusals } from '../reactions/refusals.ts';
 import { reactionOfRun } from '../reactions/run-attributes.ts';
 import { addressOfRun, runLogStreamOf } from '../runs/run-address.ts';
@@ -34,11 +34,7 @@ function stopsForgotten(database: HostDatabase, stops: FilterStops, place: Liste
   });
 }
 
-export function sqlListeners(
-  database: HostDatabase,
-  refusals: Refusals,
-  stops: FilterStops = filterStops(),
-): Listeners {
+export function sqlListeners(database: HostDatabase, refusals: Refusals, stops: FilterStops): Listeners {
   return {
     arm: (output, run, origin) =>
       Effect.gen(function* () {

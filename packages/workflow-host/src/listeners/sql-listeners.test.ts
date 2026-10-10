@@ -29,7 +29,7 @@ const RefusalRow = Schema.Struct({ workflow: Schema.String, reason: Schema.Strin
 describe('the listeners of a brain', () => {
   it('are 4,096 in a brain at most: one more is refused and said, and its run takes only the events sent to it', async () => {
     const database = await openedOn(await onSQLite());
-    const listeners = sqlListeners(database, refusalsOn(database, Date.now));
+    const listeners = sqlListeners(database, refusalsOn(database, Date.now), filterStops());
     await Effect.runPromise(
       database.write(
         statement`WITH RECURSIVE listening (at) AS (
@@ -92,7 +92,7 @@ describe('the stops of the filter of a listen task', () => {
 describe('a listener the host tables cannot record', () => {
   it('fails to arm or cancel, to be dispatched again', async () => {
     const database = faultyDatabase(await openedOn(await onSQLite()));
-    const listeners = sqlListeners(database, refusalsOn(database, Date.now));
+    const listeners = sqlListeners(database, refusalsOn(database, Date.now), filterStops());
     const listener = listenerAt('/do/0/await');
     database.failing(true);
 

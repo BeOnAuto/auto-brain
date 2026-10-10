@@ -9,8 +9,7 @@ import { Effect, Function } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
 import { sqlWatermark } from '../dispatch/sql-watermark.ts';
-import { sqlListeners } from '../listeners/sql-listeners.ts';
-import { refusalsOn } from '../reactions/refusals.ts';
+import { listenersKeepingTheirOwnStops } from '../reaction-testing/own-stops.ts';
 import { ledgerRunLogStore } from '../runs/ledger-run-store.ts';
 import { ledgerRecordStore } from '../settlement/ledger-record-store.ts';
 import { sqlTimers } from '../timers/sql-timers.ts';
@@ -63,7 +62,7 @@ export function runStoreSubjectOn(database: HostDatabase): RunStoreSubject {
 export function listenerSubjectOn(database: HostDatabase): ListenerSubject {
   const attributes = { definition: { name: 'await-approval', version: 1 }, caller: { id: 'acme-admin' } };
   return {
-    listeners: sqlListeners(database, refusalsOn(database, Date.now)),
+    listeners: listenersKeepingTheirOwnStops(database),
     run: { runId: runKey, attributes },
     otherRun: { runId: otherRunKey, attributes },
   };

@@ -4,7 +4,7 @@ import type { RecordedEvent } from '@beonauto/operations';
 import { Effect, Option, Schema } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
-import { filterStops, type FilterStops } from '../filtering/filter-matching.ts';
+import type { FilterStops } from '../filtering/filter-matching.ts';
 import { triggersActivated, triggersRemoved } from './trigger-rows.ts';
 
 export type DefinitionRecord = Pick<RecordedEvent, 'id' | 'type' | 'data'>;
@@ -15,7 +15,7 @@ export type ApplyDefinitionRecord = (brainKey: string, record: DefinitionRecord)
 
 const decodeType = Schema.decodeUnknownOption(Schema.Struct({ type: Schema.String }));
 
-export function definitionRecordsOn(database: HostDatabase, stops: FilterStops = filterStops()): ApplyDefinitionRecord {
+export function definitionRecordsOn(database: HostDatabase, stops: FilterStops): ApplyDefinitionRecord {
   return (brainKey, { id, data }) => {
     const change = definitionChangeOf(data);
     if (change.kind === 'activated') {
