@@ -21,5 +21,3 @@ export type BrainEvent = typeof BrainEventSchema.Type;
 export type BrainCreated = Extract<BrainEvent, { readonly type: 'brain_created' }>;
 
 export type BrainUpdated = Extract<BrainEvent, { readonly type: 'brain_updated' }>;
-
-export type BrainRetired = Extract<BrainEvent, { readonly type: 'brain_retired' }>;

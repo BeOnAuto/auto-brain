@@ -164,7 +164,7 @@ Then read how the run got there:
 
 > Read the history of that run. Show each event's type and summary and, for each `workflow_input_applied` event, the steps that moved and how each ended.
 
-The tool's summary reads: Found 9 events in the history of the run, oldest first.
+The tool's summary reads: Found 9 events in the history of the run, oldest first, each with its fact and its metadata.
 
 | Type                     | Summary                                                                        | Steps that moved                                                 |
 | ------------------------ | ------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
@@ -178,7 +178,7 @@ The tool's summary reads: Found 9 events in the history of the run, oldest first
 | `step_finished`          | The step “ask for approval” finished.                                          |                                                                  |
 | `run_succeeded`          | A run finished.                                                                |                                                                  |
 
-Each event also carries `causation_id`, the `id` of the event that led to it, so the run can be drawn as a graph; each `step_waiting` names the run of the function it started, among them the run of `approve-campaign-brief` that held the request.
+Each event's `metadata` carries `causation_id`, the `id` of the event that led to it, so the run can be drawn as a graph; each `step_waiting` names the run of the function it started, among them the run of `approve-campaign-brief` that held the request.
 
 Read that run too:
 

@@ -85,7 +85,7 @@ async function settledOf(sent: ForwardedOnce, recording: Recording, shownBytes?:
   return { sent: true, answered: true, done, fact };
 }
 
-export function endedOf(sent: SentCall): CallEnded {
+function endedOf(sent: SentCall): CallEnded {
   return sent.answered
     ? { type: 'tool_call_answered', data: sent.fact }
     : { type: 'tool_call_failed', data: sent.fact };

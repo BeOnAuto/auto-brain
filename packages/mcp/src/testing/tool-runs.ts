@@ -8,7 +8,7 @@ import type { CallSignals } from '../calls/run-parts.ts';
 
 export const toolRunId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
-export type JournalledFact =
+type JournalledFact =
   | { readonly number: number; readonly type: 'tool_call_started'; readonly data: CallStarted }
   | (CallEnded & { readonly number: number });
 

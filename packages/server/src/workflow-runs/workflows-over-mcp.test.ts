@@ -49,6 +49,7 @@ const brainTools = [
   'get_run_history',
   'get_brain_analytics',
   'list_brain_events',
+  'get_event',
   'publish_event',
   'list_tool_servers',
   'test_tool_call',
@@ -128,9 +129,12 @@ const EventsSchema = Schema.Struct({
   events: Schema.Array(
     Schema.Struct({
       id: Schema.String,
-      causation_id: Schema.NullOr(Schema.String),
       type: Schema.String,
       data: Schema.Struct({ name: Schema.optionalKey(Schema.String), run_id: Schema.optionalKey(Schema.String) }),
+      metadata: Schema.Struct({
+        causation_id: Schema.NullOr(Schema.String),
+        run_id: Schema.optionalKey(Schema.String),
+      }),
     }),
   ),
 });
@@ -144,16 +148,16 @@ function stepOf(events: readonly Event[], type: string, name: string): Event | u
 }
 
 function startOf(events: readonly Event[], runId: string | undefined): Event | undefined {
-  return events.find(({ type, data }) => type === 'run_started' && data.run_id === runId);
+  return events.find(({ type, metadata }) => type === 'run_started' && metadata.run_id === runId);
 }
 
 function causesNamedNowhereIn(events: readonly Event[]): readonly string[] {
   const ids = new Set(events.map(({ id }) => id));
-  return events.flatMap(({ causation_id: cause }) => (cause === null || ids.has(cause) ? [] : [cause]));
+  return events.flatMap(({ metadata: { causation_id: cause } }) => (cause === null || ids.has(cause) ? [] : [cause]));
 }
 
 describe('the graph of a workflow run over MCP', { timeout: workflowTestTimeoutMs }, () => {
-  it('reads the steps of a run with their causes, and the whole tree of the run in the feed of its brain', async () => {
+  it('reads the steps of a run with their causes, and the whole tree of the run in the feed of its brain, its child caused by the input that started the call', async () => {
     const { history, tree } = await onAlpha([answers(jsonResult({ approve: true }))], async (session) => {
       await session.callTool('create_definition', { type: 'reasoning', name: 'verdict', source: verdict });
       await session.callTool('create_definition', { type: 'workflow', name: 'approval', source: approval });
@@ -179,6 +183,6 @@ describe('the graph of a workflow run over MCP', { timeout: workflowTestTimeoutM
 
     expect(events.filter(({ type }) => type.startsWith('step_')).length).toBeGreaterThan(0);
     expect(causesNamedNowhereIn(events)).toEqual([]);
-    expect(childStarted?.causation_id).toBe(waiting?.id);
+    expect(childStarted?.metadata.causation_id).toBe(waiting?.id.slice(0, waiting.id.indexOf('/')));
   });
 });

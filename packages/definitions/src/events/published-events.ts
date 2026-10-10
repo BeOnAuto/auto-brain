@@ -79,7 +79,7 @@ function emitterContextOf(
       };
 }
 
-export function publicationContextOf({ emittedBy, depth, by, at }: PublishEvent): Context {
+function publicationContextOf({ emittedBy, depth, by, at }: PublishEvent): Context {
   return { at, by, ...emitterContextOf(emittedBy), ...(depth === undefined ? {} : { depth }) };
 }
 

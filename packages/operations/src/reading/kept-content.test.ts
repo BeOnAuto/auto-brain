@@ -8,6 +8,7 @@ import {
   brainBoundRunOutcomesReader,
   prefixedReader,
 } from '../ledger/bound-ports.ts';
+import { nothingKept } from '../testing/index.ts';
 import { memoryLedger } from '../testing/memory-ledger.ts';
 
 const brain = { org: 'acme', brain: 'alpha' };
@@ -84,5 +85,9 @@ describe('the content kept for the events of a read', () => {
       undefined,
       undefined,
     ]);
+  });
+
+  it('is nothing for any digest when a read kept no content', () => {
+    expect(['a1', 'r1'].map((digest) => nothingKept(digest))).toEqual([undefined, undefined]);
   });
 });

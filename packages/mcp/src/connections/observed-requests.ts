@@ -31,7 +31,7 @@ export interface Observations {
   readonly lastRetryAfterMs: () => number | null;
 }
 
-export class AnswerTooLarge extends Error {}
+class AnswerTooLarge extends Error {}
 
 type Counting = (response: Readonly<Response>, mostBytes: number, tooLarge: () => void) => Response;
 

@@ -30,5 +30,3 @@ export type DefinitionEvent = typeof DefinitionEventSchema.Type;
 export type DefinitionCreated = Extract<DefinitionEvent, { readonly type: 'definition_created' }>;
 
 export type DefinitionUpdated = Extract<DefinitionEvent, { readonly type: 'definition_updated' }>;
-
-export type DefinitionRetired = Extract<DefinitionEvent, { readonly type: 'definition_retired' }>;

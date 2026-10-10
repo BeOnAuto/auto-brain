@@ -43,7 +43,7 @@ export function windowFor(
   return tools === undefined ? Effect.undefined : contextWindowOf(model);
 }
 
-export interface ToolReading {
+interface ToolReading {
   readonly mostInputTokens: number;
   readonly contextWindow: number | undefined;
 }

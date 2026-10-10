@@ -15,7 +15,7 @@ export const ToolTestEventSchema = Schema.Union([
 
 export type ToolTestEvent = typeof ToolTestEventSchema.Type;
 
-export type ToolTestStarted = Extract<ToolTestEvent, { readonly type: 'tool_test_started' }>;
+type ToolTestStarted = Extract<ToolTestEvent, { readonly type: 'tool_test_started' }>;
 
 export type ToolTestEnded = Exclude<ToolTestEvent, ToolTestStarted>;
 

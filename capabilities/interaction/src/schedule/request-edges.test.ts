@@ -20,6 +20,8 @@ const lineage = { causationId: null, correlationId: askedRunId };
 
 const failing = { outcome: 'server_failure', detail: 'The MCP server answered HTTP 503', retryAfterMs: null } as const;
 
+const endsOfADelivery: ReadonlySet<string> = new Set(['delivery_succeeded', 'delivery_failed', 'delivery_refused']);
+
 describe('a notification whose attempts fail', () => {
   it('waits for the next attempt after one that failed, and ends undelivered once the fifth failed', async () => {
     const { brain, tools, askedAt } = await askedThroughChat({ notification: true });
@@ -114,6 +116,6 @@ describe('a due request performed out of turn', () => {
     expect(await brain.runOf(askedRunId)).toMatchObject({
       output: { status: 'succeeded', output: { choice: 'reject' } },
     });
-    expect(records.map(({ type }) => type)).not.toContain('delivery_ended');
+    expect(records.map(({ type }) => type).filter((type) => endsOfADelivery.has(type))).toEqual([]);
   });
 });

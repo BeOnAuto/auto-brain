@@ -49,7 +49,8 @@ await test('MCP configuration documents recording and credential boundaries', ()
   assert.ok(configuration.includes('Only `headers`, `env` and `auth` may hold a reference'));
   assert.ok(configuration.includes('a value shorter than 8 characters is not'));
   assert.ok(configuration.includes('anyone who may read the brain reads them'));
-  assert.ok(http.includes('`tool_call_started` and `tool_call_answered`'));
+  assert.ok(http.includes('`tool_call_answered` when the tool answered'));
+  assert.ok(http.includes('`tool_call_failed` when it never answered'));
   assert.ok(http.includes('unless the operator turns `record_content` off for the server'));
   assert.ok(http.includes('absence of an answer does not prove it was cancelled before acting'));
 });

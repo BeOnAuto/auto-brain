@@ -64,7 +64,7 @@ describe('a delivery through a tool this brain may not use, over HTTP', { timeou
     );
 
     expect(facts.at(-1)).toMatchObject({
-      outcome: 'failed',
+      type: 'delivery_failed',
       because: 'tool_not_offered',
       detail: 'The MCP server chat does not list the tool post_message',
     });

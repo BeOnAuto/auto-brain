@@ -9,7 +9,7 @@ import { postgresqlEventStore } from '../src/postgresql/postgresql-event-store.t
 import { sqliteEventStore } from '../src/sqlite-event-store.ts';
 import { temporaryDatabase } from '../src/testing/temporary-database.ts';
 
-export const postgresqlServer = process.env['LEDGER_MEASURE_POSTGRESQL_URL'] ?? '';
+const postgresqlServer = process.env['LEDGER_MEASURE_POSTGRESQL_URL'] ?? '';
 
 export interface MeasuredStore {
   readonly name: string;

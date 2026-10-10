@@ -28,7 +28,7 @@ interface ForwardedCall {
   readonly retryAfterMs: number | null;
 }
 
-export interface AnsweredCall extends ForwardedCall {
+interface AnsweredCall extends ForwardedCall {
   readonly outcome: 'result' | 'tool_error';
   readonly result: ToolResult;
   readonly resultJson: string;

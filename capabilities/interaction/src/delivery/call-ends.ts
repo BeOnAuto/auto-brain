@@ -8,7 +8,7 @@ const becauseOf = {
   cancelled: 'lost',
 } as const satisfies Readonly<Record<CallFailedBecause, DeliveryFailedBecause>>;
 
-export interface CallFailure {
+interface CallFailure {
   readonly because: 'tool_error' | (typeof becauseOf)[CallFailedBecause];
   readonly retryAfterMs: number | null;
   readonly detail: string;

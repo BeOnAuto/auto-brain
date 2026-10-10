@@ -261,6 +261,8 @@ LEDGER_MEASURE_POSTGRESQL_URL=postgresql://postgres:ledger-test@127.0.0.1:19632/
 | PostgreSQL | 5 MB   | 57.0 ms  | 0.46 ms    | 25.1 ms              | yes                 |
 | PostgreSQL | 20 MB  | 229.6 ms | 0.40 ms    | 108.1 ms             | yes                 |
 
+A reasoning run that makes the 25 calls a run may, each answering 1 MB, runs, keeps every answer and reads each back whole through `get_event` in 0.65 s on SQLite and 0.92 s on PostgreSQL 18.6, the median of three runs on 2026-10-10, within the 600 s a run with tools may take (`packages/server/src/reasoning/large-answers-on-stores.test.ts`, which holds it to that bound on both stores).
+
 Measured on 2026-10-10 on the machine and versions above, at a load average of 2.4 to 2.9.
 
 ## Keyed projections

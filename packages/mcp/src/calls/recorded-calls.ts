@@ -49,7 +49,7 @@ export function recordingOf(
   return { content: settings.record_content, requestId: settings.request_id !== null, secrets, keep };
 }
 
-export function digestOf(text: string): string {
+function digestOf(text: string): string {
   return createHash('sha256').update(text, 'utf8').digest('hex');
 }
 

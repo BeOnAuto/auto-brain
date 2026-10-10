@@ -42,7 +42,12 @@ export interface SystemServer extends InteractionServer {
 
 const HistorySchema = Schema.Struct({
   events: Schema.Array(
-    Schema.Struct({ type: Schema.String, summary: Schema.String, data: Schema.Record(Schema.String, Schema.Unknown) }),
+    Schema.Struct({
+      id: Schema.String,
+      type: Schema.String,
+      summary: Schema.String,
+      data: Schema.Record(Schema.String, Schema.Unknown),
+    }),
   ),
 });
 

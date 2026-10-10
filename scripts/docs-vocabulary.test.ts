@@ -19,6 +19,10 @@ const oldWords: readonly string[] = [
   'language: jq',
   String.raw`evaluate\.language: jq`,
   'jq-ts',
+  'delivery_ended',
+  'telling_ended',
+  'arguments_json',
+  'result_json',
 ];
 
 const keptFolders: readonly string[] = ['docs/decisions/'];

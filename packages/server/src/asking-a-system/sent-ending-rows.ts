@@ -74,9 +74,13 @@ export const unreadable: ReadonlyArray<readonly [string, Row, Ending]> = [
     unworkable('The search tool of chat answered text that is not JSON, which holds nothing at /rows'),
   ],
   [
-    'an answer past 64 KiB',
-    { document: calling('large', ['    kib: 70']) },
-    unworkable('What the large tool of chat answered takes 71682 bytes as JSON, more than the 65536 an answer may'),
+    'an answer past what a run may record',
+    { document: calling('large', ['    kib: 1030']) },
+    unworkable(
+      expect.stringMatching(
+        /^What the large tool of chat answered takes \d+ bytes as JSON with the record of the run, more than the 1048576 a run may record$/u,
+      ),
+    ),
   ],
   [
     'an answer nested past 512 levels, of a tool that may change something',

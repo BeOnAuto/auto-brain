@@ -13,7 +13,7 @@ import { Config, ConfigProvider, Effect } from 'effect';
 import { InvalidSettingsError } from '../settings/invalid-settings-error.ts';
 import { countOf } from '../settings/workflow-settings.ts';
 
-export interface ReasoningBounds {
+interface ReasoningBounds {
   readonly mostInputTokens: number;
 }
 

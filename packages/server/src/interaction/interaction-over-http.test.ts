@@ -5,7 +5,7 @@ import { alpha } from '../testing/servers/reasoning-server.ts';
 import { runIdIn, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 describe('an interaction function through the inbox, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
-  it('leaves its request in the inbox and takes a checked answer as the output, once', async () => {
+  it('leaves its request in the inbox and takes a checked answer as the output, once, which its history shows', async () => {
     const server = await servingInteractions();
     const started = await server.call('POST', `${alpha}/definitions/interaction/approve-brief/run`, {
       body: { input: brief },
@@ -25,7 +25,9 @@ describe('an interaction function through the inbox, over HTTP', { timeout: work
     expect([invalid.status, answered.status, again.status, another.status]).toEqual([422, 200, 200, 409]);
     expect(invalid.body).toMatchObject({ errors: [{ pointer: '/answer/choice' }] });
     expect(await server.settled(runId)).toMatchObject({ status: 'succeeded', output: { choice: 'approve' } });
-    expect(history.text).not.toContain('approve"');
+    expect(history.body).toMatchObject({
+      events: [{ type: 'run_started' }, { type: 'interaction_requested' }, { data: { output: { choice: 'approve' } } }],
+    });
     expect(analytics.body).toMatchObject({
       runs: { succeeded: 1 },
       by_function: [{ type: 'interaction', name: 'approve-brief', runs: 1 }],

@@ -44,16 +44,18 @@ async function aRunLeftOpen(connectionString: string, output: string): Promise<C
   const client = new Client({ connectionString });
   await client.connect();
   onTestFinished(() => client.end());
-  const stream = `brain/acme/alpha/runs/${randomUUID()}`;
-  const definition = {
-    definition_type: 'reasoning',
-    name: 'late',
-    definition_version: 1,
-    by: 'acme-admin',
+  const runId = randomUUID();
+  const stream = `brain/acme/alpha/runs/${runId}`;
+  const context = {
     at: '2026-10-06T10:00:00.000Z',
+    by: 'acme-admin',
+    runId,
+    definitionType: 'reasoning',
+    definitionName: 'late',
+    definitionVersion: 1,
   };
-  const event = { type: 'run_succeeded', ...definition, output, record: {} };
-  const metadata = { messageId: messageIdOf(stream, 1), causationId: null, correlationId: null };
+  const event = { output, record: {} };
+  const metadata = { messageId: messageIdOf(stream, 1), causationId: null, correlationId: null, ...context };
   await client.query('BEGIN');
   await client.query(
     `SELECT success FROM emt_append_to_stream(

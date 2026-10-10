@@ -3,7 +3,7 @@ import { Effect } from 'effect';
 
 import type { ToolCallJournal } from '../index.ts';
 
-export type JournalledFact =
+type JournalledFact =
   | { readonly number: number; readonly type: 'tool_call_started'; readonly data: CallStarted }
   | (CallEnded & { readonly number: number });
 

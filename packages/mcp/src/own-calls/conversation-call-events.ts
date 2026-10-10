@@ -28,7 +28,7 @@ const callFailure = {
   server_request_id: CallFailedSchema.fields.server_request_id,
 };
 
-export const TellingFailedBecauseSchema = Schema.Literals([
+const TellingFailedBecauseSchema = Schema.Literals([
   'tool_error',
   'arguments_refused',
   'server_failure',
@@ -37,7 +37,7 @@ export const TellingFailedBecauseSchema = Schema.Literals([
   'tool_not_offered',
 ]);
 
-export const ReadingFailedBecauseSchema = Schema.Literals([
+const ReadingFailedBecauseSchema = Schema.Literals([
   'tool_error',
   'arguments_refused',
   'server_failure',

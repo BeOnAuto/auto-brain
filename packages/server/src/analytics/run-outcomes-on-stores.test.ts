@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { postgresqlLedgerLayer } from '@beonauto/ledger/postgresql';
 import { ledgerLayer } from '@beonauto/ledger/sqlite3';
-import { Ledger, type Decider, type RunOutcomeGroup } from '@beonauto/operations';
+import { Ledger, type Context, type Decider, type RunOutcomeGroup } from '@beonauto/operations';
 import { Effect, ManagedRuntime, Redacted, Result, Schema, type Layer } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
@@ -16,16 +16,20 @@ const postgresql = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
 const notice =
   postgresql === '' ? ', skipped: set LEDGER_TEST_POSTGRESQL_URL to the URL of a PostgreSQL server to run it' : '';
 
-const FactSchema = Schema.StructWithRest(Schema.Struct({ type: Schema.String }), [
-  Schema.Record(Schema.String, Schema.Json),
-]);
+const FactSchema = Schema.Struct({ type: Schema.String, data: Schema.JsonObject });
 
 type Fact = typeof FactSchema.Type;
 
-const facts: Decider<null, readonly Fact[], Fact> = {
+interface Written {
+  readonly fact: Fact;
+  readonly context: Context;
+}
+
+const facts: Decider<null, Written, Fact> = {
   initialState: null,
   evolve: () => null,
-  decide: (given) => Result.succeed(given),
+  decide: ({ fact }) => Result.succeed([fact]),
+  context: ({ context }) => context,
   eventSchema: FactSchema,
 };
 
@@ -60,19 +64,26 @@ function opened(layer: Layer.Layer<Ledger>): Promise<Ledger['Service']> {
   return runtime.runPromise(Ledger);
 }
 
-const fact = { by: 'acme-admin' };
-
 const usage = { input: { total: 1200, cache_read: 1000 }, output: { total: 300 } };
 
-function started(name: string, at: string, type = 'reasoning'): Fact {
-  return { type: 'run_started', definition_type: type, name, definition_version: 1, input: {}, ...fact, at };
+function ofTheRun(name: string, type: string, at: string): Context {
+  return { by: 'acme-admin', at, definitionType: type, definitionName: name, definitionVersion: 1 };
 }
 
-function finished(type: string, at: string, more: Readonly<Record<string, Schema.Json>> = {}): Fact {
-  return { type, ...fact, at, ...more };
+function started(name: string, at: string, type = 'reasoning'): Written {
+  return { fact: { type: 'run_started', data: { input: {} } }, context: ofTheRun(name, type, at) };
 }
 
-const runs: readonly (readonly [string, readonly Fact[]])[] = [
+function finished(
+  type: string,
+  at: string,
+  data: Schema.JsonObject = {},
+  [name, kind]: readonly [string, string] = ['triage', 'reasoning'],
+): Written {
+  return { fact: { type, data }, context: ofTheRun(name, kind, at) };
+}
+
+const runs: readonly (readonly [string, readonly Written[]])[] = [
   [
     'started-twice',
     [
@@ -115,8 +126,8 @@ const runs: readonly (readonly [string, readonly Fact[]])[] = [
     'workflow',
     [
       started('approval', '2026-10-01T15:00:00.000Z', 'workflow'),
-      finished('run_deferred', '2026-10-01T15:00:00.010Z', { record: {} }),
-      finished('run_succeeded', '2026-10-02T15:00:00.000Z', { output: {}, record: {} }),
+      finished('run_deferred', '2026-10-01T15:00:00.010Z', { record: {} }, ['approval', 'workflow']),
+      finished('run_succeeded', '2026-10-02T15:00:00.000Z', { output: {}, record: {} }, ['approval', 'workflow']),
     ],
   ],
   ['finish-alone', [finished('run_failed', '2026-10-02T09:00:00.000Z')]],
@@ -128,7 +139,7 @@ function written(ledger: Ledger['Service']): Promise<void> {
     Effect.forEach(
       runs,
       ([run, given]) =>
-        Effect.forEach(given, (each) => ledger.execute(`brain/acme/alpha/runs/${run}`, facts, [each]), {
+        Effect.forEach(given, (each) => ledger.execute(`brain/acme/alpha/runs/${run}`, facts, each), {
           discard: true,
         }),
       { discard: true },

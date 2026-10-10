@@ -162,7 +162,6 @@ export {
   type StepOutcome,
   type WaitsFor,
 } from './steps/step-entry.ts';
-export { stepEventIdOf } from './steps/step-ids.ts';
 export { UnreadableRun, evolveRun, loadedRunOf, stateInCurrentFormat, type LoadedRun } from './run-log/run-fold.ts';
 export type { RecordCause, RecordLineage, RunLogStore, StoredRun, StoredSnapshot } from './run-log/run-store.ts';
 export {

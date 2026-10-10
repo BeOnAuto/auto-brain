@@ -1,6 +1,6 @@
 # 0015 — Several triggers: a workflow starts on an event and on its schedules, each trigger kept and matched on its own
 
-**Status:** accepted (2026-10-08), with the amendments from the build at the end
+**Status:** accepted (2026-10-08), with the amendments from the build at the end; amended (2026-10-10) by [decision 0023](0023-facts-in-the-ledger.md): the trigger that started a run is the context of its facts, the attributes `triggerkind` and `triggerreference` of its brain events, so a filter names `triggerkind: event` where it tested `.trigger.kind` in the data, and any attribute of an event may be named
 
 ## Context
 
