@@ -45,7 +45,7 @@ const keptReplies = [
   '  schema: { type: array, maxItems: 10 }',
   '---',
   'export function fold(view: View, event: Event): View {',
-  '  const data = event.data as { output: unknown };',
+  '  const data = event.data as { output: View[number] };',
   '  return [...view, data.output].slice(-10);',
   '}',
 ].join('\n');
