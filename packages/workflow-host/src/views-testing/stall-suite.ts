@@ -2,6 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import type { SettingsOf } from '../testing/host-files.ts';
 import { secondFoldWithBudget } from './pool-faults.ts';
+import {
+  overrunningFold,
+  overrunningFolding,
+  overrunsItsDeadline,
+  steppedClock,
+  untilTried,
+} from './stepped-sweeps.ts';
 import { breakingFoldWorker, breaksTheWorker, sleepsBeforeItIsFolded } from './test-fold-workers.ts';
 import {
   collecting,
@@ -27,6 +34,10 @@ function badFold(whenBad: string): string {
 }
 
 const anyText: unknown = expect.any(String);
+
+const sweptFrom = Date.parse('2026-10-06T09:00:00.000Z');
+
+const sweepMs = 60_000;
 
 const stallingFolds: readonly (readonly [string, string, Readonly<Record<string, unknown>>])[] = [
   ['raises with the event', raisingWithTheEvent, { kind: 'raised', message: 'Error: cannot take bad', line: 31 }],
@@ -103,16 +114,21 @@ function afterTheStallTests(settingsOf: SettingsOf): void {
     expect([kept.view, stalling?.folded, stalling?.phase]).toEqual([4, 1, 'stalled']);
   });
 
-  it('is tried again when its fold runs past its deadline, counting the tries on its row, and stops after twenty', async () => {
+  it('is tried again at each sweep when its fold runs past its deadline, counting the tries on its row, and stops after the tries it may have', async () => {
     const views = await viewHarness(await settingsOf());
-    await views.saved('runs', detailsOf(badFold('for (;;) {}'), succeeded, { initial: 0 }));
-    await threeRuns(views);
-    views.start({ folding: { ...foldingOf(), budget: 1_000_000_000, foldDeadlineMs: 50 }, sweepEveryMs: 20 });
+    const clock = steppedClock(sweptFrom);
+    await views.saved('runs', detailsOf(overrunningFold, succeeded, { initial: 0 }));
+    await views.ranEach('reasoning/runs', ['good', overrunsItsDeadline, 'later']);
+    views.start({ folding: overrunningFolding(), overtimesBeforeStall: 3, clock, sweepEveryMs: sweepMs });
 
+    await untilTried(views, 'runs', 1);
+    clock.step(sweepMs);
+    await untilTried(views, 'runs', 2);
+    clock.step(sweepMs);
     const kept = await views.until('runs', isStalled);
 
     expect(kept).toMatchObject({ view: 1, folded: 1, stall: { kind: 'time', line: null } });
-    expect(kept.stall?.message).toBe('The fold was stopped by its deadline of 50 ms 20 times');
+    expect(kept.stall?.message).toBe('The fold was stopped by its deadline of 10000 ms 3 times');
   });
 }
 

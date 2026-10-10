@@ -16,20 +16,24 @@ interface Folding {
   readonly prelude: readonly string[];
   readonly whenFolding: string;
   readonly serving: string;
+  readonly clock?: { readonly starting: string; readonly now: string };
 }
 
-function foldingWorker({ prelude, whenFolding, serving }: Folding): URL {
+const hostClock = { starting: '', now: 'host.now' };
+
+export function foldingWorker({ prelude, whenFolding, serving, clock = hostClock }: Folding): URL {
   const source = [
     `import { serveJobs } from '${jobLoop}';`,
     `import { foldAnswerOf } from '${answerers}';`,
     ...prelude,
     'const fold = (request, host) => {',
     '  const events = JSON.parse(request.events);',
+    `  ${clock.starting}`,
     '  const folding = (event, view) => {',
     '    host.folding(event, view);',
     `    ${whenFolding}`,
     '  };',
-    '  return foldAnswerOf(request, { ...host, folding });',
+    `  return foldAnswerOf(request, { ...host, folding, now: ${clock.now} });`,
     '};',
     serving,
   ];

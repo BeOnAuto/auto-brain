@@ -11,7 +11,7 @@ export interface ViewReading {
   readonly gone: (name: string) => Promise<boolean>;
 }
 
-const waiting = { timeout: viewTestTimeoutMs - 5000, interval: 20 };
+export const viewWaiting = { timeout: viewTestTimeoutMs - 5000, interval: 20 };
 
 export function viewReadingOf(views: ViewsPort): ViewReading {
   const viewOf: ViewReading['viewOf'] = (name, brain = alpha) => Effect.runPromise(views.viewOf(brain, name));
@@ -24,11 +24,11 @@ export function viewReadingOf(views: ViewsPort): ViewReading {
           throw new Error(`The view of ${name} does not hold yet: ${JSON.stringify(view)}`);
         }
         return view;
-      }, waiting),
+      }, viewWaiting),
     gone: (name) =>
       vi.waitFor(async () => {
         expect(await viewOf(name)).toBeUndefined();
         return true;
-      }, waiting),
+      }, viewWaiting),
   };
 }
