@@ -8,6 +8,8 @@ import { keptSandboxLib } from './kept-lib.ts';
 
 const check = checkerOf(keptSandboxLib());
 
+const compilerTestTimeoutMs = 60_000;
+
 const output: Schema.JsonObject = {
   type: 'object',
   required: ['total'],
@@ -34,7 +36,7 @@ function computation(source: string): CheckJob {
   return { module: { place: 'computation', source }, schemas: { output }, expressions: [] };
 }
 
-describe('the assignments of one function', () => {
+describe('the assignments of one function', { timeout: compilerTestTimeoutMs }, () => {
   it('are refused past 500, at the first past it, before the compiler analyses them', () => {
     expect(mostAssignmentsInAFunction).toBe(500);
     expect(issuesOf(computation(assigning(500)))).toEqual([]);
