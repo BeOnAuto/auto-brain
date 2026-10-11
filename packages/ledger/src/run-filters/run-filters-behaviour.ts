@@ -1,12 +1,23 @@
-import type { Decider, RecordedPage, RecordedPageRequest, RecordedSelection } from '@beonauto/operations';
+import {
+  ContextSchema,
+  type Decided,
+  type Decider,
+  type RecordedPage,
+  type RecordedPageRequest,
+  type RecordedSelection,
+} from '@beonauto/operations';
 import { Effect, Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { details, inAlpha, reading, stamped, type AnyLedger, type LedgerMaker } from '../testing/happenings.ts';
 
-const RunFactSchema = Schema.Struct({ type: Schema.String, data: Schema.Struct({ detail: Schema.Json }) });
+const RunFactSchema = Schema.Struct({
+  type: Schema.String,
+  data: Schema.Struct({ detail: Schema.Json }),
+  context: ContextSchema,
+});
 
-type RunFact = typeof RunFactSchema.Type;
+type RunFact = Decided<typeof RunFactSchema.Type>;
 
 interface RunFacts {
   readonly facts: readonly RunFact[];
@@ -14,7 +25,7 @@ interface RunFacts {
   readonly definitionName?: string;
 }
 
-const runFacts: Decider<null, RunFacts, RunFact> = {
+const runFacts: Decider<null, RunFacts, typeof RunFactSchema.Type> = {
   initialState: null,
   evolve: () => null,
   decide: ({ facts }) => Result.succeed(facts),

@@ -1,14 +1,15 @@
 import {
   Ledger,
   checkedContext,
-  recordedWith,
+  recordingOf,
   type Conflict,
   type Context,
+  type Decided,
   type Decider,
   type DeclarableReason,
+  type Recorded,
   type Rejection,
   type StreamState,
-  type TypedEvent,
 } from '@beonauto/operations';
 import { Effect, Result } from 'effect';
 
@@ -27,14 +28,14 @@ export interface DecidedPlace {
   readonly context: Context;
 }
 
-export type StreamAppend<Event, Loaded = unknown> = (
+export type StreamAppend<Event extends Recorded, Loaded = unknown> = (
   stream: string,
-  events: readonly Event[],
+  events: readonly Decided<Event>[],
   place: DecidedPlace,
   loaded: Loaded,
 ) => Effect.Effect<void, VersionConflict>;
 
-export interface Decided<Loaded, State, Event> extends StreamState<State> {
+export interface Decision<Loaded, State, Event> extends StreamState<State> {
   readonly loaded: Loaded;
   readonly events: readonly Event[];
 }
@@ -42,46 +43,40 @@ export interface Decided<Loaded, State, Event> extends StreamState<State> {
 export type DecisionLoop<Loaded, State, Command, Event, R extends DeclarableReason> = (
   stream: string,
   command: Command,
-) => Effect.Effect<Decided<Loaded, State, Event>, Rejection<R> | Conflict>;
+) => Effect.Effect<Decision<Loaded, State, Event>, Rejection<R> | Conflict>;
 
 export function decisionLoop<
   Loaded extends StreamState<State>,
   State,
   Command,
-  Event extends TypedEvent,
+  Event extends Recorded,
   R extends DeclarableReason,
 >(
   load: StreamLoad<Loaded>,
   append: StreamAppend<Event, Loaded>,
   decider: Decider<State, Command, Event, R>,
 ): DecisionLoop<Loaded, State, Command, Event, R> {
+  const recorded = recordingOf(decider.eventSchema);
   const attempt = (
     stream: string,
     command: Command,
-  ): Effect.Effect<Result.Result<Decided<Loaded, State, Event>, Rejection<R>>, VersionConflict> =>
+  ): Effect.Effect<Result.Result<Decision<Loaded, State, Event>, Rejection<R>>, VersionConflict> =>
     Effect.gen(function* () {
       const loaded = yield* load(stream);
       const decided = decider.decide(command, loaded.state);
-      if (Result.isFailure(decided) || decided.success.length === 0) {
-        return Result.map(decided, (events: readonly Event[]) => ({
-          loaded,
-          events,
-          state: loaded.state,
-          version: loaded.version,
-        }));
+      if (Result.isFailure(decided)) {
+        return Result.fail(decided.failure);
       }
-      const events = decided.success;
+      if (decided.success.length === 0) {
+        return Result.succeed({ loaded, events: [], state: loaded.state, version: loaded.version });
+      }
       const context = yield* Effect.sync(() => checkedContext(decider.context(command, loaded.state)));
-      yield* append(stream, events, { expectedVersion: loaded.version, context }, loaded);
-      const recorded = recordedWith<Event>(context);
+      const events = yield* Effect.sync(() => decided.success.map((event) => recorded(event, context)));
+      yield* append(stream, decided.success, { expectedVersion: loaded.version, context }, loaded);
       return Result.succeed({
         loaded,
         events,
-        state: foldEvents(
-          decider.evolve,
-          loaded.state,
-          events.map((event) => recorded(event)),
-        ),
+        state: foldEvents(decider.evolve, loaded.state, events),
         version: loaded.version + events.length,
       });
     });

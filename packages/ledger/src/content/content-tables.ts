@@ -1,4 +1,4 @@
-import { bytesOfText, chunksOf, streamPrefixOfBrain, type RecordedContent } from '@beonauto/operations';
+import { bytesOfText, chunksOf, sha256Of, streamPrefixOfBrain, type RecordedContent } from '@beonauto/operations';
 import { SQL } from '@event-driven-io/dumbo';
 import { Effect, Schema } from 'effect';
 
@@ -71,9 +71,13 @@ async function read(execute: StatementExecutor, brainKey: string, sha256: string
   const { rows } = await execute.query(
     SQL`SELECT text FROM recorded_content_chunks WHERE brain_key = ${brainKey} AND sha256 = ${sha256} ORDER BY chunk`,
   );
-  return Schema.decodeUnknownSync(ChunkRows)(rows)
-    .map(({ text }) => text)
+  const text = Schema.decodeUnknownSync(ChunkRows)(rows)
+    .map(({ text: chunk }) => chunk)
     .join('');
+  if ((await sha256Of(text)) !== sha256) {
+    throw new Error(`The content kept under ${sha256} is not the text that digest names`);
+  }
+  return text;
 }
 
 export function recordedContentOn(execute: StatementExecutor): RecordedContent {

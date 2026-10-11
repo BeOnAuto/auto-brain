@@ -21,7 +21,7 @@ export type {
 export { cursorOf as recordedCursorOf } from './recorded/cursor.ts';
 export {
   decisionLoop,
-  type Decided,
+  type Decision,
   type DecidedPlace,
   type DecisionLoop,
   type StreamAppend,

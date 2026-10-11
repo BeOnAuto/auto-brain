@@ -2,6 +2,7 @@ import {
   InvalidCursor,
   streamPrefixOfBrain,
   type RecordedEvent,
+  type RecordedFact,
   type RecordedPage,
   type RecordedPageRequest,
   type RecordedReader,
@@ -26,22 +27,20 @@ function storedRequestOf(
   });
 }
 
-function recordedEventOf(brainKey: string): (stored: StoredRecord) => RecordedEvent {
-  return ({
-    point,
+function recordedFactOf({
+  id,
+  causationId,
+  correlationId,
+  stream,
+  version,
+  globalPosition,
+  type,
+  data,
+  metadata,
+  recordedAt,
+}: StoredRecord): RecordedFact {
+  return {
     id,
-    causationId,
-    correlationId,
-    stream,
-    version,
-    globalPosition,
-    type,
-    data,
-    metadata,
-    recordedAt,
-  }) => ({
-    id,
-    cursor: cursorOf(brainKey, point),
     causationId,
     correlationId,
     stream,
@@ -53,7 +52,11 @@ function recordedEventOf(brainKey: string): (stored: StoredRecord) => RecordedEv
     ...(metadata.traceId === undefined ? {} : { traceId: metadata.traceId }),
     ...(metadata.spanId === undefined ? {} : { spanId: metadata.spanId }),
     recordedAt,
-  });
+  };
+}
+
+function recordedEventOf(brainKey: string): (stored: StoredRecord) => RecordedEvent {
+  return (stored) => ({ ...recordedFactOf(stored), cursor: cursorOf(brainKey, stored.point) });
 }
 
 function recordedPageOf(brainKey: string): (stored: StoredPage) => RecordedPage {
@@ -83,7 +86,7 @@ export function recordedEventReaderOf(store: RecordedStore): RecordedReader['rea
   return (brain, id) => {
     const brainKey = streamPrefixOfBrain(brain);
     return Effect.promise(() => store.readRecordedEvent(brainKey, id)).pipe(
-      Effect.map((stored) => (stored === undefined ? undefined : recordedEventOf(brainKey)(stored))),
+      Effect.map((stored) => (stored === undefined ? undefined : recordedFactOf(stored))),
     );
   };
 }

@@ -29,17 +29,26 @@ const ChunkRows = Schema.Array(Schema.Struct({ chunk: Schema.Number, bytes: Sche
 
 const CountRows = Schema.Array(Schema.Struct({ count: Schema.Number }));
 
+const KeyRows = Schema.Array(Schema.Struct({ sha256: Schema.String }));
+
+function chunksOfTheDigest(sha256: string): string {
+  return `SELECT chunk, octet_length(text) AS bytes FROM recorded_content_chunks WHERE sha256 = '${sha256}' ORDER BY chunk`;
+}
+
+const keysOfTheHeads = 'SELECT sha256 FROM recorded_content_heads';
+
 function kept(ledger: Ledger['Service'], text: string, brain: BrainAddress = alpha): Promise<string> {
   const sha256 = digestOf(text);
   return Effect.runPromise(ledger.content.put(brain, sha256, text)).then(() => sha256);
 }
 
-export function contentBehaviour(entry: LedgerEntry): void {
+function contentKeptWhole(entry: LedgerEntry): void {
   describe('the content a brain recorded', () => {
     it.each([
       ['100 bytes', 100],
       ['64 KiB', 65_536],
       ['5 MB', 5_000_000],
+      ['16 MiB', 16_777_216],
     ])(
       'keeps an answer of %s whole, in chunks of at most 1 MiB cut at a code point, and joins them back exactly',
       async (_size, bytes) => {
@@ -48,14 +57,12 @@ export function contentBehaviour(entry: LedgerEntry): void {
         const text = answerOfAbout(bytes);
 
         const sha256 = await kept(ledger, text);
-        const chunks = Schema.decodeUnknownSync(ChunkRows)(
-          await entry.queried(
-            database,
-            `SELECT chunk, octet_length(text) AS bytes FROM recorded_content_chunks WHERE sha256 = '${sha256}' ORDER BY chunk`,
-          ),
-        );
+        const chunks = Schema.decodeUnknownSync(ChunkRows)(await entry.queried(database, chunksOfTheDigest(sha256)));
+        const keys = Schema.decodeUnknownSync(KeyRows)(await entry.queried(database, keysOfTheHeads));
+        const read = await Effect.runPromise(ledger.content.get(alpha, sha256));
 
-        expect(await Effect.runPromise(ledger.content.get(alpha, sha256))).toBe(text);
+        expect(read).toBe(text);
+        expect(keys).toEqual([{ sha256: digestOf(String(read)) }]);
         expect(chunks.map(({ chunk }) => chunk)).toEqual(chunks.map((_chunk, index) => index));
         expect(chunks.length).toBeGreaterThanOrEqual(Math.ceil(bytesOfText(text) / mostContentChunkBytes));
         expect(chunks.every((chunk) => chunk.bytes <= mostContentChunkBytes)).toBe(true);
@@ -78,4 +85,41 @@ export function contentBehaviour(entry: LedgerEntry): void {
       expect(await Effect.runPromise(ledger.content.get(alpha, digestOf('another answer')))).toBeUndefined();
     });
   });
+}
+
+function contentReadBack(entry: LedgerEntry): void {
+  describe('the content a brain recorded, read back', () => {
+    it('fails as a defect on a read whose chunks no longer join to the text its key names', async () => {
+      const database = await entry.aDatabase();
+      const ledger = await aLedger(entry, database);
+      const sha256 = await kept(ledger, answerOfAbout(2_500_000));
+
+      await entry.queried(database, `DELETE FROM recorded_content_chunks WHERE sha256 = '${sha256}' AND chunk = 1`);
+
+      await expect(Effect.runPromise(ledger.content.get(alpha, sha256))).rejects.toThrow(
+        `The content kept under ${sha256} is not the text that digest names`,
+      );
+    });
+
+    it('names no content until its head is written after its chunks, and a later write of the text completes it', async () => {
+      const database = await entry.aDatabase();
+      const ledger = await aLedger(entry, database);
+      const text = JSON.stringify({ rows: ['kept whole'] });
+      const sha256 = digestOf(text);
+
+      await entry.queried(
+        database,
+        `INSERT INTO recorded_content_chunks (brain_key, sha256, chunk, text) VALUES ('brain/acme/alpha/', '${sha256}', 0, '${text}')`,
+      );
+      const beforeTheHead = await Effect.runPromise(ledger.content.get(alpha, sha256));
+      await kept(ledger, text);
+
+      expect([beforeTheHead, await Effect.runPromise(ledger.content.get(alpha, sha256))]).toEqual([undefined, text]);
+    });
+  });
+}
+
+export function contentBehaviour(entry: LedgerEntry): void {
+  contentKeptWhole(entry);
+  contentReadBack(entry);
 }

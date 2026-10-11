@@ -9,6 +9,7 @@ import {
   type Context,
   type ExaminedPlace,
   type RecordedEvent,
+  type RecordedFact,
   type RecordedPage,
   type RecordedPageRequest,
   type RecordedReader,
@@ -164,11 +165,10 @@ function cursorAt(key: string, at: number): string {
   return cursorOfParts([key, String(at)]);
 }
 
-function recordedOf(key: string, record: MemoryRecord, loaded: boolean): RecordedEvent {
+function recordedFactOf(record: MemoryRecord, loaded: boolean): RecordedFact {
   const { id, causationId, correlationId, stream, streamPosition: version, type, data, context, recordedAt } = record;
   return {
     id,
-    cursor: cursorAt(key, record.position),
     causationId,
     correlationId,
     stream,
@@ -179,6 +179,10 @@ function recordedOf(key: string, record: MemoryRecord, loaded: boolean): Recorde
     context,
     recordedAt,
   };
+}
+
+function recordedOf(key: string, record: MemoryRecord, loaded: boolean): RecordedEvent {
+  return { ...recordedFactOf(record, loaded), cursor: cursorAt(key, record.position) };
 }
 
 function examinedPlaceOf(key: string, { position, heads: [first] }: ExaminedRun): ExaminedPlace {
@@ -233,7 +237,7 @@ export function memoryRecordedReader(log: readonly MemoryRecord[]): RecordedRead
       Effect.sync(() => {
         const key = streamPrefixOfBrain(brain);
         const record = log.find((each) => each.id === id && brainKeyOf(each.stream) === key);
-        return record === undefined ? undefined : recordedOf(key, record, true);
+        return record === undefined ? undefined : recordedFactOf(record, true);
       }),
   };
 }

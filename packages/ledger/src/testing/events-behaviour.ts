@@ -1,8 +1,9 @@
-import { Conflict, factOf, type Ledger } from '@beonauto/operations';
+import { ActedContextSchema, ActedOnRunContextSchema, Conflict, factOf, type Ledger } from '@beonauto/operations';
 import { memoryLedger } from '@beonauto/operations/testing';
 import { Effect, Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { stamped } from './happenings.ts';
 import { journal, type JournalEvent } from './journal.ts';
 import { aLedger, tallies, type LedgerEntry } from './ledger-entry.ts';
 import { notes } from './notes.ts';
@@ -36,7 +37,12 @@ const decided: readonly JournalEvent[] = [
 
 const talliedAboveFive = {
   ...tally,
-  eventSchema: factOf('counted', Schema.Struct({ by: Schema.Int.check(Schema.isGreaterThan(5)) })),
+  eventSchema: factOf('counted', Schema.Struct({ by: Schema.Int.check(Schema.isGreaterThan(5)) }), ActedContextSchema),
+};
+
+const talliedOnARun = {
+  ...tally,
+  eventSchema: factOf('counted', Schema.Struct({ by: Schema.Int }), ActedOnRunContextSchema),
 };
 
 function theEventsOfAStream(entry: LedgerEntry): void {
@@ -47,7 +53,7 @@ function theEventsOfAStream(entry: LedgerEntry): void {
       await Effect.runPromise(ledger.execute('brain/acme/sales/journal', journal, decided));
 
       expect(await Effect.runPromise(ledger.load('brain/acme/sales/journal', journal))).toEqual({
-        state: decided,
+        state: decided.map(({ type, data }) => ({ type, data, context: stamped })),
         version: 3,
       });
     });
@@ -72,6 +78,15 @@ function theEventsOfAStream(entry: LedgerEntry): void {
       );
       await expect(outcomeOf(ledger.execute(tallies, talliedAboveFive, [6]))).rejects.toThrow(
         'Expected a value greater than 5\n  at ["data"]["by"]',
+      );
+    });
+
+    it('are a defect when a stored event’s context is not the one its fact carries', async () => {
+      const ledger = await aLedger(entry);
+      await Effect.runPromise(ledger.execute(tallies, tally, [3]));
+
+      await expect(outcomeOf(ledger.load(tallies, talliedOnARun))).rejects.toThrow(
+        'Missing key\n  at ["context"]["runId"]',
       );
     });
   });

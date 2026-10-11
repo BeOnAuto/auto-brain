@@ -1,4 +1,4 @@
-import { Conflict, factOf, type Context, type Decider } from '@beonauto/operations';
+import { ActedOnRunContextSchema, Conflict, factOf, type Context, type Decider } from '@beonauto/operations';
 import { Effect, Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -55,8 +55,8 @@ describe('the decision loop over any store', () => {
     expect(await Effect.runPromise(loop('run/1', [1, 1]))).toEqual({
       loaded: snapshotted,
       events: [
-        { type: 'counted', data: { by: 1 } },
-        { type: 'counted', data: { by: 1 } },
+        { type: 'counted', data: { by: 1 }, context: stamped },
+        { type: 'counted', data: { by: 1 }, context: stamped },
       ],
       state: 42,
       version: 9,
@@ -86,13 +86,13 @@ describe('the decision loop over any store', () => {
   });
 });
 
-const SignedSchema = factOf('signed', Schema.Struct({ note: Schema.String }));
+const SignedSchema = factOf('signed', Schema.Struct({ note: Schema.String }), ActedOnRunContextSchema);
 
 type Signed = typeof SignedSchema.Type;
 
 const signatures: Decider<readonly string[], string, Signed> = {
   initialState: [],
-  evolve: (signed, { data, context }) => [...signed, `${data.note} by ${context.by} after ${context.runId ?? ''}`],
+  evolve: (signed, { data, context }) => [...signed, `${data.note} by ${context.by} after ${context.runId}`],
   decide: (note) => Result.succeed([{ type: 'signed', data: { note } }]),
   context: (note, signed) => ({ at: '2026-10-05T09:00:00.000Z', by: note, runId: String(signed.length) }),
   eventSchema: SignedSchema,
@@ -128,6 +128,21 @@ describe('the context of a decision', () => {
     );
 
     await expect(outcomeOf(loop('notes/1', 'held\u0000back'))).rejects.toThrow('text without control characters');
+    expect(appended).toEqual([]);
+  });
+
+  it('is refused, and nothing appended, when it is not the context its fact carries', async () => {
+    const appended: unknown[] = [];
+    const loop = decisionLoop(
+      () => Effect.succeed({ state: [], version: 0 }),
+      (_stream, events) =>
+        Effect.sync(() => {
+          appended.push(events);
+        }),
+      { ...signatures, context: (note: string) => ({ at: '2026-10-05T09:00:00.000Z', by: note }) },
+    );
+
+    await expect(outcomeOf(loop('notes/1', 'unsigned'))).rejects.toThrow('Missing key');
     expect(appended).toEqual([]);
   });
 });

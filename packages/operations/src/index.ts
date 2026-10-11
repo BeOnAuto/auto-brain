@@ -104,7 +104,7 @@ export {
   type StartingTrigger,
 } from './ledger/context.ts';
 export type { BrainContentReader, RecordedContent } from './content/recorded-content.ts';
-export { bytesOfText, chunksOf, mostContentChunkBytes } from './content/content-chunks.ts';
+export { bytesOfText, chunksOf, mostContentChunkBytes, sha256Of } from './content/content-chunks.ts';
 export type { DispatcherServices } from './dispatch/dispatcher-services.ts';
 export { makeDispatcher, type Dispatcher, type PipelineStep } from './dispatch/dispatcher.ts';
 export { cursorOfParts, cursorWithin, partsOfCursor, type CursorPart } from './reading/cursor-parts.ts';

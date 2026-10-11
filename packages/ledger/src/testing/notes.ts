@@ -1,9 +1,9 @@
-import { factOf, type Decider } from '@beonauto/operations';
+import { ActedContextSchema, factOf, type Decider } from '@beonauto/operations';
 import { Result, Schema } from 'effect';
 
 import { stamped } from './happenings.ts';
 
-const NotedSchema = factOf('noted', Schema.Record(Schema.String, Schema.Json));
+const NotedSchema = factOf('noted', Schema.Record(Schema.String, Schema.Json), ActedContextSchema);
 
 type Noted = typeof NotedSchema.Type;
 

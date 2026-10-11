@@ -1,3 +1,4 @@
+import { sha256Of } from '@beonauto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -70,8 +71,12 @@ describe('the content a brain keeps on PostgreSQL', () => {
     const writing = answering([], [], []);
     const brain = { org: 'acme', brain: 'alpha' };
 
-    const text = await Effect.runPromise(postgresqlRecordedStore(reading.query).content.get(brain, 'd1'));
-    await Effect.runPromise(postgresqlRecordedStore(writing.query).content.put(brain, 'd2', '{"b":2}'));
+    const text = await Effect.runPromise(
+      postgresqlRecordedStore(reading.query).content.get(brain, await sha256Of('{"a":1}')),
+    );
+    await Effect.runPromise(
+      postgresqlRecordedStore(writing.query).content.put(brain, await sha256Of('{"b":2}'), '{"b":2}'),
+    );
 
     expect(text).toBe('{"a":1}');
     expect(writing.asked.map(({ text: statement }) => statement.split(' ').slice(0, 3).join(' '))).toEqual([

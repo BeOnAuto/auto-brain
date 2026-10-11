@@ -8,8 +8,6 @@ const at = '2026-10-05T09:00:00.000Z';
 
 const context = { at, by: 'tester' };
 
-const aCursor: unknown = expect.any(String);
-
 const untraced: StoredRecord = {
   id: 'message-21',
   causationId: null,
@@ -34,7 +32,7 @@ function storeHolding(record: StoredRecord): RecordedStore {
 }
 
 describe('one record read by its id', () => {
-  it('carries no trace and no span when its store kept none, and is nothing for an id the store does not hold', async () => {
+  it('carries no page cursor, no trace and no span when its store kept none, and is nothing for an id the store does not hold', async () => {
     const read = recordedEventReaderOf(storeHolding(untraced));
     const alpha = { org: 'acme', brain: 'alpha' };
 
@@ -44,7 +42,6 @@ describe('one record read by its id', () => {
 
     expect(found).toEqual({
       id: 'message-21',
-      cursor: aCursor,
       causationId: null,
       correlationId: 'r1',
       stream: 'brain/acme/alpha/runs/r1',
