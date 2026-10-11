@@ -42,7 +42,18 @@
         "mostDurationMs": 2592000000,
         "longestCallMs": 600000
       },
-      "attributes": {},
+      "attributes": {
+        "org": "acme",
+        "brain": "alpha",
+        "run_id": "0199a3c4-7d2e-7c1a-9b3f-000000000302",
+        "definition": {
+          "name": "run-definition",
+          "version": 1
+        },
+        "caller": {
+          "id": "acme-admin"
+        }
+      },
       "seed": 7
     },
     {
@@ -79,7 +90,8 @@
           "name": "summarize",
           "times": 1,
           "caused_by": "input",
-          "waits_for": "call"
+          "waits_for": "call",
+          "child": "4eb15e3d-3c19-58c1-a727-dc6f6eb1ab5d"
         }
       ],
       "resumed": null,
@@ -129,6 +141,36 @@
               ]
             },
             "input": 1
+          }
+        },
+        {
+          "op": "add",
+          "path": "/attributes/org",
+          "value": "acme"
+        },
+        {
+          "op": "add",
+          "path": "/attributes/brain",
+          "value": "alpha"
+        },
+        {
+          "op": "add",
+          "path": "/attributes/run_id",
+          "value": "0199a3c4-7d2e-7c1a-9b3f-000000000302"
+        },
+        {
+          "op": "add",
+          "path": "/attributes/definition",
+          "value": {
+            "name": "run-definition",
+            "version": 1
+          }
+        },
+        {
+          "op": "add",
+          "path": "/attributes/caller",
+          "value": {
+            "id": "acme-admin"
           }
         },
         {
@@ -285,7 +327,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3297
+          "value": 3701
         }
       ],
       "outputs": [
@@ -437,7 +479,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 5110
+          "value": 5514
         }
       ],
       "outputs": [

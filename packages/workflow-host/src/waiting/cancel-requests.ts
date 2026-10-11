@@ -58,7 +58,7 @@ function cancelled(parts: CancelParts, asked: Asked): Effect.Effect<void, Delive
 
 function deliveriesOf(parts: CancelParts, { brain, record }: CallRecord): readonly Delivery[] {
   const request = cancelRequestOf(record);
-  const type = request?.context.definitionType;
+  const type = record.context.definitionType;
   if (request === undefined || type === undefined) {
     return [];
   }
@@ -67,6 +67,7 @@ function deliveriesOf(parts: CancelParts, { brain, record }: CallRecord): readon
     key: 'cancel',
     workflow: runId,
     deliver: cancelled(parts, { brain, record, request, type, runId }),
+    skipped: () => Effect.void,
   };
   return [delivery];
 }
@@ -82,6 +83,5 @@ export function cancelRequests(parts: CancelParts): CallConsumer {
         through: undefined,
         more: false,
       })),
-    skipped: () => Effect.void,
   };
 }

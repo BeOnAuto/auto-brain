@@ -3,6 +3,7 @@ import {
   newRun,
   workflowMachine,
   type ArmedTimer,
+  type JsonObject,
   type RunInput,
   type RunOutput,
   type RunState,
@@ -32,6 +33,10 @@ export interface MachineInterpretation {
 const succeedWithNull: DefinitionResponder = () => ({ status: 'succeeded', output: null });
 
 const receivedEventOf = Schema.decodeUnknownOption(ReceivedEventSchema);
+
+function attributesOf({ run, caller }: WorkflowRun): JsonObject {
+  return { org: run.org, brain: run.brain, run_id: run.id, definition: run.definition, caller: { ...caller } };
+}
 
 function drivenRun(run: WorkflowRun, respond: DefinitionResponder): MemoryDriver {
   return memoryDriver({
@@ -72,7 +77,7 @@ export async function interpretOnMachine(run: WorkflowRun, options: MachineOptio
     document: run.document,
     input: run.input,
     limits: { mostDurationMs: run.mostDuration, longestCallMs: run.longestNestedRunMs },
-    attributes: { org: run.run.org, brain: run.run.brain },
+    attributes: attributesOf(run),
   });
   const { start, host } = hooksOf(driver, run);
   options.started?.(start, host);
@@ -120,7 +125,7 @@ export function outputsAtOnce(run: WorkflowRun): readonly RunOutput[] {
       document: run.document,
       input: run.input,
       limits: { mostDurationMs: run.mostDuration, longestCallMs: run.longestNestedRunMs },
-      attributes: { org: run.run.org, brain: run.run.brain },
+      attributes: attributesOf(run),
       seed: 1,
     },
   );

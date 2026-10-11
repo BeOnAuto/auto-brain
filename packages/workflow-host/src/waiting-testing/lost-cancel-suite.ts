@@ -84,9 +84,12 @@ function endedWithoutStarting(settingsOf: SettingsOf): void {
         await untilFollowed(database, attempts);
         const pending = () => Effect.runPromise(pendingCancelRowsAfter(database, '', 10));
         await startedThenCancelled(database);
-        await recorded(database.store, `${alpha}runs/${strandedId}`, strandedCancel, ofTheRun);
+        await recorded(database.store, `${alpha}runs/${strandedId}`, strandedCancel, {
+          ...ofTheRun,
+          runId: strandedId,
+        });
         const kept = await until(pending, (rows) => rows.length === 2, attempts);
-        await recorded(database.store, lostStream, rejectedUnstarted, ofTheRun);
+        await recorded(database.store, lostStream, rejectedUnstarted, { ...ofTheRun, runId: lostRunId });
         await followedThroughTheLatest(database, attempts);
         const keptAfterTheEnding = await pending();
         await first.host.stop();

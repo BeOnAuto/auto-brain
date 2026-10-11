@@ -84,12 +84,18 @@ export function childEndings(parts: EndingParts): CallConsumer {
           deliveries:
             called === undefined
               ? []
-              : [{ key: 'call', workflow: called.calledBy.runId, deliver: answeredWith(parts, brain, called) }],
+              : [
+                  {
+                    key: 'call',
+                    workflow: called.calledBy.runId,
+                    deliver: answeredWith(parts, brain, called),
+                    skipped: () => Effect.void,
+                  },
+                ],
           through: undefined,
           more: false,
         };
       }),
-    skipped: () => Effect.void,
   };
 }
 

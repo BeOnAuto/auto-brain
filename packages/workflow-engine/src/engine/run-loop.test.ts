@@ -52,9 +52,17 @@ describe('the engine on the ledger loop', () => {
 
     await Effect.runPromise(Effect.all([submitted(store, started), submitted(store, cancelled)]));
 
+    const ofTheRun = {
+      by: 'counter',
+      runId,
+      definitionType: 'workflow',
+      definitionName: 'counted',
+      definitionVersion: 1,
+    };
+
     expect(store.contexts(runId)).toEqual([
-      { at: new Date(at).toISOString(), by: 'counter' },
-      { at: new Date(at + 1).toISOString(), by: 'counter' },
+      { at: new Date(at).toISOString(), ...ofTheRun },
+      { at: new Date(at + 1).toISOString(), ...ofTheRun },
     ]);
   });
 });

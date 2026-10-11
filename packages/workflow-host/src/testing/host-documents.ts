@@ -23,6 +23,13 @@ export function runAt(runId: string): RunAddress {
   return { org: 'acme', brain: 'alpha', runId };
 }
 
+export const testAttributes: JsonObject = {
+  org: 'acme',
+  brain: 'alpha',
+  definition: { name: 'test', version: 1 },
+  caller: { id: 'acme-admin' },
+};
+
 export function startOf(document: JsonObject, input: JsonObject = {}): RunStart {
-  return { document, input, limits: defaultLimits, attributes: { org: 'acme', brain: 'alpha' }, seed: defaultSeed };
+  return { document, input, limits: defaultLimits, attributes: testAttributes, seed: defaultSeed };
 }

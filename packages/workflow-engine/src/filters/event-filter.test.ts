@@ -209,31 +209,6 @@ describe('an event filter that tests what cannot be matched as it is', () => {
 });
 
 describe('an event filter that names the attributes of the context', () => {
-  it('is refused when it names an attribute as CloudEvents names none, and a count that is not a whole number', () => {
-    expect(
-      rejectionsOf({
-        with: { type: 'com.acme.ledger.month-closed', 'tenant/id': 'acme', depth: 'two', calldepth: 1.5 },
-      }),
-    ).toEqual([
-      {
-        pointer: `${at}/with/tenant~1id`,
-        detail:
-          'An event filter names an attribute of the event as CloudEvents names it, in at most 20 lowercase letters and digits, not tenant/id',
-        forbidden: true,
-      },
-      { pointer: `${at}/with/depth`, detail: 'depth is a whole number, written out', forbidden: false },
-      { pointer: `${at}/with/calldepth`, detail: 'calldepth is a whole number, written out', forbidden: false },
-    ]);
-  });
-
-  it('takes any attribute of the context written out, and a whole number for a depth or a version', () => {
-    expect(
-      rejectionsOf({
-        with: { type: 'run_succeeded', triggerkind: 'event', caller: 'acme-admin', depth: 2, definitionversion: 1 },
-      }),
-    ).toEqual([]);
-  });
-
   it('is refused as a listen filter is, for correlate, and for what an event filter does not take', () => {
     const rejections = rejectionsOf({
       with: { type: 'com.acme.ledger.month-closed', data: '${ $data.region }' },

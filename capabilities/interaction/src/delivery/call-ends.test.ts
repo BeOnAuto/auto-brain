@@ -9,12 +9,11 @@ const answered = {
   is_error: false,
   result_bytes: 52,
   result_sha256: 'b'.repeat(64),
-  content_kept: true,
   duration_ms: 3,
   jsonrpc_id: 1,
 };
 
-type Failure = 'server_failure' | 'cancelled' | 'timed_out' | 'arguments_refused';
+type Failure = 'server_failure' | 'cancelled' | 'timed_out' | 'too_large' | 'arguments_refused';
 
 function failedBecause(because: Failure) {
   return { because, duration_ms: 3, jsonrpc_id: 1 };
@@ -41,11 +40,12 @@ describe('the end of one call of a tool the brain makes', () => {
 });
 
 describe('the end of one call of a tool the brain makes that failed', () => {
-  it('is a failure in the words every call of the brain shares, and an interrupted call lost', () => {
+  it('is a failure in the words every call of the brain shares, an answer past the transport too large and an interrupted call lost', () => {
     expect([
       endedBecause('server_failure', 'Busy', 60_000),
       endedBecause('cancelled', ''),
       endedBecause('timed_out', 'Late'),
+      endedBecause('too_large', 'Large'),
       endedBecause('arguments_refused', 'Bad'),
     ]).toEqual([
       {
@@ -58,6 +58,7 @@ describe('the end of one call of a tool the brain makes that failed', () => {
       },
       { failed: { because: 'lost', retryAfterMs: null, detail: '', fields: failedBecause('cancelled') } },
       { failed: { because: 'timed_out', retryAfterMs: null, detail: 'Late', fields: failedBecause('timed_out') } },
+      { failed: { because: 'too_large', retryAfterMs: null, detail: 'Large', fields: failedBecause('too_large') } },
       {
         failed: {
           because: 'arguments_refused',

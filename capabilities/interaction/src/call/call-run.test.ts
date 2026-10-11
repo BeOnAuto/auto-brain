@@ -10,7 +10,7 @@ const aNumber: unknown = expect.any(Number);
 
 const aDigest: unknown = expect.stringMatching(/^[0-9a-f]{64}$/u);
 
-const answeredInFull: unknown = expect.objectContaining({ is_error: false, duration_ms: aNumber, content_kept: true });
+const answeredInFull: unknown = expect.objectContaining({ is_error: false, duration_ms: aNumber });
 
 const asSystem = makeInteractionFunctionAdapter({
   tools: noTools,
@@ -42,7 +42,6 @@ describe('a run of an interaction function that asks a system', () => {
           tool: 'thread',
           arguments_bytes: aNumber,
           arguments_sha256: aDigest,
-          content_kept: true,
           read_only: true,
         },
       },

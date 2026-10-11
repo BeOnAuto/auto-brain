@@ -69,7 +69,7 @@ describe('the filters a recall function refuses', () => {
 
     expect(issuesIn(withEvents(`\n${filters.join('\n')}`))).toEqual([
       'Line 5, /source/events/0/Tenant: An event filter names an attribute of the event as CloudEvents names it, in at most 20 lowercase letters and digits, not Tenant',
-      'Line 5, /source/events/0/depth: depth is a whole number, written out',
+      'Line 5, /source/events/0/depth: depth is a whole number from 1, written out; a run no reaction started carries no depth and a run no call started no calldepth, so a filter for such runs leaves the attribute out',
       'Line 6, /source/events/1/subject: subject is written out, not computed by an expression, so that it is matched as it is',
       'Line 6, /source/events/1/source: source is text that is not empty',
     ]);

@@ -17,7 +17,7 @@ const pausing = workflow('do:\n  - pause: { wait: PT1H }');
 const askedToCancel = { type: 'run_cancel_requested', data: { kind: 'requested', reason: 'Not needed any more' } };
 
 function runOf(type: string, by = 'acme-admin'): Context {
-  return { by, at, definitionType: type, definitionName: 'pause', definitionVersion: 1 };
+  return { by, at, runId, definitionType: type, definitionName: 'pause', definitionVersion: 1 };
 }
 
 const requestStream = `${alpha}runs/${runId}`;
@@ -142,7 +142,7 @@ describe('the consumer of cancel requests', () => {
     const consumer = await failingConsumer();
     const { deliveries } = await Effect.runPromise(consumer.batchOf(asked(askedToCancel), undefined, 100));
     const failure = await Effect.runPromise(Effect.flip(Effect.forEach(deliveries, ({ deliver }) => deliver)));
-    const skipped = consumer.skipped(asked(started), { key: 'cancel', workflow: 'pause', deliver: Effect.void }, '');
+    const skipped = Effect.forEach(deliveries, (delivery) => delivery.skipped(''));
 
     expect([failure.detail, consumer.skippedAfterSweeps]).toEqual(['The log of the run kept changing', Infinity]);
     expect(await Effect.runPromise(Effect.as(skipped, 'nothing skipped'))).toBe('nothing skipped');

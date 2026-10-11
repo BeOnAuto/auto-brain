@@ -61,10 +61,9 @@ describe('a request delivered through a tool', () => {
           tool: 'post_message',
           arguments_bytes: 73,
           arguments_sha256: aDigest,
-          content_kept: true,
         },
       },
-      { type: 'delivery_succeeded', data: { number: 1, result_sha256: aDigest, content_kept: true, jsonrpc_id: 1 } },
+      { type: 'delivery_succeeded', data: { number: 1, result_sha256: aDigest, jsonrpc_id: 1 } },
     ]);
     expect(await brain.firstOpen()).toMatchObject({ attempts: 1, standing: 'delivered' });
     expect(tools.posted()).toMatchObject([{ channel: '#approvals-ada', text: 'Please review the brief for Spring.' }]);

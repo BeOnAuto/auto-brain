@@ -83,17 +83,16 @@ function deliveringEach(delivered: (id: string) => void): RecordConsumer {
                 {
                   key: followed.record.id,
                   workflow: 'note',
-                  version: 1,
                   deliver: Effect.sync(() => {
                     delivered(followed.record.id);
                   }),
+                  skipped: () => Effect.void,
                 },
               ]
             : [],
         through: followed.record.id,
         more: false,
       }),
-    skipped: () => Effect.void,
   };
 }
 

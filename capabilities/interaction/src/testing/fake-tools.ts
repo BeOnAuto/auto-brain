@@ -55,7 +55,6 @@ function startOf({ reference, input }: Pick<OneCall, 'reference' | 'input'>): Ef
     ...reference,
     arguments_bytes: Buffer.byteLength(argumentsJson),
     arguments_sha256: digest,
-    content_kept: true,
   });
 }
 
@@ -70,7 +69,6 @@ function answeredOf(bytes: number, isError: boolean, number: number) {
     is_error: isError,
     result_bytes: bytes,
     result_sha256: digest,
-    content_kept: true,
     duration_ms: 3,
     jsonrpc_id: number,
   };

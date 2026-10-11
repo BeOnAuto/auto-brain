@@ -12,7 +12,14 @@ import { stateFormat } from '../run-log/state-format.ts';
 export const countingDecider: RunDecider = {
   initialState: newRun,
   evolve: evolveRun,
-  context: (input, state) => ({ at: isoInstantOf(inputTimeOf(state, input)), by: 'counter' }),
+  context: (input, state) => ({
+    at: isoInstantOf(inputTimeOf(state, input)),
+    by: 'counter',
+    runId: input.runId,
+    definitionType: 'workflow',
+    definitionName: 'counted',
+    definitionVersion: 1,
+  }),
   decide: (input, state) => {
     if (staleReasonOf(state, input) !== undefined) {
       return Result.succeed([]);

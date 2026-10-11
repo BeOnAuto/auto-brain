@@ -1,0 +1,36 @@
+import {
+  bytesOfReference,
+  chunksOf,
+  forbiddenCharactersInWords,
+  holdsNoForbiddenCharacter,
+  mostReferenceBytes,
+} from '@beonauto/operations';
+
+import { rejection, type Rejection } from './policy-checks.ts';
+import { kindOf, type TaskEntry } from './tasks.ts';
+
+const mostShownReferenceBytes = 120;
+
+function cutReference(reference: string): string {
+  return `${chunksOf(reference, mostShownReferenceBytes).slice(0, 1).join('')}…`;
+}
+
+export function referenceRejections({ task, reference }: TaskEntry): readonly Rejection[] {
+  if (kindOf(task) !== 'call') {
+    return [];
+  }
+  if (!holdsNoForbiddenCharacter(reference)) {
+    return [
+      rejection(reference, `The name of this task holds ${forbiddenCharactersInWords}, which a reference never holds`),
+    ];
+  }
+  const bytes = bytesOfReference(reference);
+  return bytes > mostReferenceBytes
+    ? [
+        rejection(
+          reference,
+          `The reference of this task, ${cutReference(reference)}, takes ${bytes} bytes, more than the ${mostReferenceBytes} a reference may take, since a run the task starts carries it; shorten its name or the names above it`,
+        ),
+      ]
+    : [];
+}

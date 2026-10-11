@@ -1,5 +1,5 @@
-import { brainFactOf, publishedEventOf, type CloudEvent } from '@beonauto/definitions';
-import { streamKindOf, type Context, type RecordedEvent } from '@beonauto/operations';
+import { brainFactOf, publishedEventOf, type CloudEvent, type RecordedEventPublished } from '@beonauto/definitions';
+import { streamKindOf, type RecordedEvent } from '@beonauto/operations';
 
 interface Emitter {
   readonly runId: string;
@@ -28,10 +28,14 @@ function otherRun(correlation: string | null, runId: string): string | undefined
   return correlation === null || correlation === runId ? undefined : correlation;
 }
 
-function emitterOf({ runId, definitionType, definitionName }: Context): Emitter | undefined {
-  return runId === undefined || definitionType !== 'workflow' || definitionName === undefined
-    ? undefined
-    : { runId, workflow: definitionName };
+type PublishedContext = RecordedEventPublished['context'];
+
+function emitterOf(context: PublishedContext): Emitter | undefined {
+  return 'runId' in context ? { runId: context.runId, workflow: context.definitionName } : undefined;
+}
+
+function depthOf(context: PublishedContext): number {
+  return 'runId' in context ? context.depth : 1;
 }
 
 function published(record: RecordedEvent): EventOfRecord {
@@ -42,7 +46,7 @@ function published(record: RecordedEvent): EventOfRecord {
   const emitter = emitterOf(publication.context);
   return {
     event: publication.data.event,
-    depth: publication.context.depth ?? 1,
+    depth: depthOf(publication.context),
     emitter,
     ownedBy: emitter === undefined ? [] : [emitter.workflow],
     topRun: emitter === undefined ? undefined : otherRun(record.correlationId, emitter.runId),

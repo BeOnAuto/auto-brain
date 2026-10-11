@@ -88,8 +88,17 @@ const first = exampleStream.slice(0, 1);
 
 const appendedBy: RecordLineage = { cause: { kind: 'none' }, attributes: {} };
 
+const ofTheProbedRun = {
+  at: '2026-10-01T09:00:00.000Z',
+  by: 'tester',
+  runId: 'the-probed-run',
+  definitionType: 'workflow',
+  definitionName: 'probed',
+  definitionVersion: 1,
+};
+
 function placedAt(expectedVersion: number) {
-  return { expectedVersion, context: { at: '2026-10-01T09:00:00.000Z', by: 'tester' } };
+  return { expectedVersion, context: ofTheProbedRun };
 }
 
 function appendedTo(runStore: RunLogStore, runId: string, events: typeof exampleStream): Effect.Effect<void, unknown> {

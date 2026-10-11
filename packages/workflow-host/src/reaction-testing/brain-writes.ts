@@ -1,7 +1,7 @@
 import { brainsStreamOfOrg } from '@beonauto/brains';
 import type { Trigger } from '@beonauto/definitions';
 import { eventAppenderOf, type EventStore } from '@beonauto/ledger';
-import { messageIdOf, noLineage, type Context, type Lineage } from '@beonauto/operations';
+import { ContextSchema, messageIdOf, noLineage, type Context, type Decided, type Lineage } from '@beonauto/operations';
 import type { Json } from '@beonauto/workflow-engine';
 import { Effect, Schema } from 'effect';
 
@@ -9,9 +9,9 @@ export const alpha = 'brain/acme/alpha/';
 
 export const at = '2026-10-01T09:00:00.000Z';
 
-const AnyRecordSchema = Schema.Struct({ type: Schema.String, data: Schema.JsonObject });
+const AnyRecordSchema = Schema.Struct({ type: Schema.String, data: Schema.JsonObject, context: ContextSchema });
 
-type AnyRecord = typeof AnyRecordSchema.Type;
+type AnyRecord = Decided<typeof AnyRecordSchema.Type>;
 
 export const byAdmin: Context = { by: 'acme-admin', at };
 
@@ -108,12 +108,12 @@ export function eventRecordOf(id: string, brainKey = alpha): string {
   return messageIdOf(`${brainKey}events/${id}`, 1);
 }
 
-export function definitionRetired(store: EventStore, name: string) {
+export function definitionRetired(store: EventStore, name: string, version: number) {
   return recorded(
     store,
     `${alpha}definitions/workflow`,
     { type: 'definition_retired', data: {} },
-    { ...byAdmin, definitionType: 'workflow', definitionName: name },
+    { ...byAdmin, definitionType: 'workflow', definitionName: name, definitionVersion: version },
   );
 }
 

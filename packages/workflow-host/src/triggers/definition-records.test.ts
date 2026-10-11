@@ -38,29 +38,22 @@ interface Saved {
   readonly at?: number;
 }
 
+function about(name: string, version: number, at: string) {
+  return { by: 'acme-admin', at, definitionType: 'workflow', definitionName: name, definitionVersion: version };
+}
+
 function saved({ id, name, version, triggers, at = first }: Saved): DefinitionRecord {
   const content = triggers.length === 0 ? { source: 'do: []' } : { source: 'schedule: {}', triggers };
   return {
     id,
     type: version === 1 ? 'definition_created' : 'definition_updated',
     data: { content },
-    context: {
-      by: 'acme-admin',
-      at: new Date(at).toISOString(),
-      definitionType: 'workflow',
-      definitionName: name,
-      definitionVersion: version,
-    },
+    context: about(name, version, new Date(at).toISOString()),
   };
 }
 
 function retired(id: string, name: string): DefinitionRecord {
-  return {
-    id,
-    type: 'definition_retired',
-    data: {},
-    context: { by: 'acme-admin', at: '2026-10-02T00:00:00Z', definitionType: 'workflow', definitionName: name },
-  };
+  return { id, type: 'definition_retired', data: {}, context: about(name, 1, '2026-10-02T00:00:00Z') };
 }
 
 async function applying() {

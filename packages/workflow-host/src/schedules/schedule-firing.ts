@@ -62,7 +62,7 @@ function skipped({ database, refusals }: FiringParts, firing: Firing) {
   return Effect.andThen(
     refusals.refuse(
       subscription.brainKey,
-      subscription.workflow,
+      subscription,
       `The run its ${namedOf(firing)} had due at ${dueAtOf(firing)} was skipped: the run its ${namedOf(firing)} started before still runs`,
     ),
     scheduleMovedOn(database, subscription, next, subscription.running),
@@ -74,7 +74,7 @@ function missedSaid({ refusals }: FiringParts, firing: Firing) {
   return latest > subscription.nextDue
     ? refusals.refuse(
         subscription.brainKey,
-        subscription.workflow,
+        subscription,
         `The runs its ${namedOf(firing)} had due from ${new Date(subscription.nextDue).toISOString()} to ${dueAtOf(firing)} came while the server was down, and only the latest ran`,
       )
     : Effect.void;
@@ -96,7 +96,7 @@ function startOf(firing: Firing): ReactionStart {
 }
 
 function ran(parts: FiringParts, firing: Firing) {
-  const { brainKey, workflow } = firing.subscription;
+  const { brainKey } = firing.subscription;
   const start = startOf(firing);
   return parts.start(start).pipe(
     Effect.andThen(
@@ -109,7 +109,7 @@ function ran(parts: FiringParts, firing: Firing) {
       Effect.andThen(
         parts.refusals.refuse(
           brainKey,
-          workflow,
+          firing.subscription,
           `The run its ${namedOf(firing)} had due at ${dueAtOf(firing)} could not be started: ${detail}`,
         ),
         scheduleMovedOn(parts.database, firing.subscription, firing.next, null),

@@ -43,7 +43,7 @@ describe('the context of the records of a workflow run', () => {
     });
   });
 
-  it('is the time alone, by an unknown caller, for attributes it cannot read', () => {
-    expect(runLogContextOf({ definition: 'close' }, at)).toEqual({ at, by: 'unknown' });
+  it('fails as a defect on attributes it cannot read, which the host never writes', () => {
+    expect(() => runLogContextOf({ definition: 'close' }, at)).toThrow('run_id');
   });
 });

@@ -1,5 +1,5 @@
 import type { Context } from '@beonauto/operations';
-import { Option, Schema } from 'effect';
+import { Schema } from 'effect';
 
 const RunLogAttributesSchema = Schema.Struct({
   run_id: Schema.String,
@@ -15,9 +15,7 @@ const RunLogAttributesSchema = Schema.Struct({
 
 type RunLogAttributes = typeof RunLogAttributesSchema.Type;
 
-const decodeAttributes = Schema.decodeUnknownOption(RunLogAttributesSchema);
-
-const unknownCaller = 'unknown';
+const decodeAttributes = Schema.decodeUnknownSync(RunLogAttributesSchema);
 
 function counted(count: number | undefined): number | undefined {
   return count === undefined || count < 1 ? undefined : count;
@@ -37,16 +35,14 @@ function chainOf({ depth, call_depth: callDepth, called_by: calledBy, trigger }:
 }
 
 export function runLogContextOf(attributes: Schema.JsonObject, at: string): Context {
-  return Option.match(decodeAttributes(attributes), {
-    onNone: () => ({ at, by: unknownCaller }),
-    onSome: (run) => ({
-      at,
-      by: run.caller.id,
-      runId: run.run_id,
-      definitionType: 'workflow',
-      definitionName: run.definition.name,
-      definitionVersion: run.definition.version,
-      ...chainOf(run),
-    }),
-  });
+  const run = decodeAttributes(attributes);
+  return {
+    at,
+    by: run.caller.id,
+    runId: run.run_id,
+    definitionType: 'workflow',
+    definitionName: run.definition.name,
+    definitionVersion: run.definition.version,
+    ...chainOf(run),
+  };
 }

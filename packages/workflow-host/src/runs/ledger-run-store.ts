@@ -1,5 +1,4 @@
 import { eventAppenderOf, eventCodecOf } from '@beonauto/ledger';
-import type { Recorded } from '@beonauto/operations';
 import {
   RunLogRecordSchema,
   runLogRecordOf,
@@ -49,7 +48,7 @@ export function ledgerRunLogStore(database: HostDatabase): RunLogStore {
   const eventsAfter = (runKey: string, version: number): Effect.Effect<readonly PositionedEvent[]> =>
     streamAfter(runKey, version).pipe(
       Effect.flatMap(({ messages }) => Effect.forEach(messages, codec.decode)),
-      Effect.map((records: readonly Recorded<RunLogRecord>[]) =>
+      Effect.map((records: readonly RunLogRecord[]) =>
         positioned(
           version,
           records.map(({ data }) => data),

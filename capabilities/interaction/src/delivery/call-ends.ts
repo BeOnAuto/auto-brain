@@ -5,6 +5,7 @@ const becauseOf = {
   arguments_refused: 'arguments_refused',
   server_failure: 'server_failure',
   timed_out: 'timed_out',
+  too_large: 'too_large',
   cancelled: 'lost',
 } as const satisfies Readonly<Record<CallFailedBecause, DeliveryFailedBecause>>;
 

@@ -122,6 +122,7 @@ const followerTables: readonly Statement[] = [
   statement`CREATE TABLE IF NOT EXISTS workflow_reaction_refusals (
     brain_key TEXT NOT NULL,
     workflow TEXT NOT NULL,
+    version INTEGER NOT NULL,
     minute BIGINT NOT NULL,
     count INTEGER NOT NULL,
     reason TEXT NOT NULL,

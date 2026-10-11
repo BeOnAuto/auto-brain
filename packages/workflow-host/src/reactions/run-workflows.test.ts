@@ -9,7 +9,14 @@ function startedRecord(type: string, name: string) {
   return {
     type: 'run_started',
     data: { input: {} },
-    context: { by: 'acme-admin', at: 'now', definitionType: type, definitionName: name, definitionVersion: 1 },
+    context: {
+      by: 'acme-admin',
+      at: 'now',
+      runId: `r-${name}`,
+      definitionType: type,
+      definitionName: name,
+      definitionVersion: 1,
+    },
   };
 }
 

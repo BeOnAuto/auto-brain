@@ -1,4 +1,4 @@
-import type { Context, ProjectedRow } from '@beonauto/operations';
+import type { Context, ProjectedRow, RunContext } from '@beonauto/operations';
 import { Struct } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -8,9 +8,10 @@ const messageId = '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a';
 
 const at = '2026-10-07T09:00:00.000Z';
 
-const ofTheRun: Context = {
+const ofTheRun: RunContext = {
   by: 'brain:alpha',
   at,
+  runId: 'r-approve',
   definitionType: 'interaction',
   definitionName: 'approve-brief',
   definitionVersion: 1,
@@ -88,12 +89,6 @@ describe('the open request of a run', () => {
       undefined,
     ]);
   });
-
-  it('names a function and version the context left out as none and the first', () => {
-    expect(
-      after(undefined, deferralOf(request), { by: 'brain:alpha', at, definitionType: 'interaction' }),
-    ).toMatchObject({ function: '', version: 1 });
-  });
 });
 
 describe('the open request of a run, as its request recorded it', () => {
@@ -144,7 +139,6 @@ describe('the open request of a run that ends', () => {
         tool: 'search',
         arguments_bytes: 2,
         arguments_sha256: 'a'.repeat(64),
-        content_kept: true,
       },
     };
 
@@ -163,7 +157,7 @@ const attempt: Fact = {
   data: { number: 1, target: 'ada', server: 'chat', tool: 'post_message' },
 };
 
-const answerOfTheTool = { result_bytes: 2, result_sha256: 'b'.repeat(64), content_kept: true, jsonrpc_id: 1 };
+const answerOfTheTool = { result_bytes: 2, result_sha256: 'b'.repeat(64), jsonrpc_id: 1 };
 
 const delivered: Fact = { type: 'delivery_succeeded', data: { number: 1, ...answerOfTheTool, duration_ms: 40 } };
 

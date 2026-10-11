@@ -177,9 +177,9 @@ Each event is a CloudEvent with its `id`, `type`, `source`, `time`, the time it 
 | Attribute           | Holds                                                                                                        |
 | ------------------- | ------------------------------------------------------------------------------------------------------------ |
 | `caller`            | Who acted: a caller's id, or `brain:` and the brain's name for a run a trigger started and the runs it calls |
-| `definitionversion` | The version of the definition the run executes or the event is about, a whole number                         |
-| `depth`             | How many reactions are above the run, a whole number                                                         |
-| `calldepth`         | How many calls are above a run a workflow's call started, a whole number                                     |
+| `definitionversion` | The version of the definition the run executes or the event is about, a whole number from 1                  |
+| `depth`             | How many reactions are above the run, a whole number from 1, on a run a reaction started                     |
+| `calldepth`         | How many calls are above a run a workflow's call started, a whole number from 1                              |
 | `calledby`          | The id of the run whose call started the run                                                                 |
 | `triggerkind`       | The kind of the trigger that started the run: `event`, `cron` or `every`                                     |
 | `triggerreference`  | Where in its workflow's document that trigger is                                                             |
@@ -188,15 +188,15 @@ No published event carries one of them, nor `causationid` or `correlationid`, si
 
 A filter names the events it takes:
 
-| Key                 | What an event must have                                                                                                                                                                                      |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `type`              | Required; exactly this type, written out                                                                                                                                                                     |
-| `source`            | Optional; exactly this source, written out                                                                                                                                                                   |
-| `subject`           | Optional; exactly this subject, written out, such as `reasoning/review-brief` for the runs of one reasoning function                                                                                         |
-| Any other attribute | Optional; exactly this value of the attribute, written out, such as `triggerkind: event` or `caller: brain:finance`: a whole number for `depth`, `calldepth` and `definitionversion`, and text for any other |
-| `data`              | Optional; data equal to this value, or, as an expression such as `'${ $data.revenue > 100 }'`, data for which it holds; the expression reads the event's data as `$data` and nothing else                    |
+| Key                 | What an event must have                                                                                                                                                                                             |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`              | Required; exactly this type, written out                                                                                                                                                                            |
+| `source`            | Optional; exactly this source, written out                                                                                                                                                                          |
+| `subject`           | Optional; exactly this subject, written out, such as `reasoning/review-brief` for the runs of one reasoning function                                                                                                |
+| Any other attribute | Optional; exactly this value of the attribute, written out, such as `triggerkind: event` or `caller: brain:finance`: a whole number from 1 for `depth`, `calldepth` and `definitionversion`, and text for any other |
+| `data`              | Optional; data equal to this value, or, as an expression such as `'${ $data.revenue > 100 }'`, data for which it holds; the expression reads the event's data as `$data` and nothing else                           |
 
-An event is folded when it matches any of the filters, and once only; a filter that names an attribute the event does not have does not match it. An expression holds unless it answers `false` or `null`. An attribute is named as CloudEvents names it, in at most 20 lowercase letters and digits, and any other key is rejected, and so are a computed attribute, and a `data` expression that names anything but `$data` is refused when the document is saved, with the compiler's `Cannot find name`.
+An event is folded when it matches any of the filters, and once only; a filter that names an attribute the event does not have does not match it, so a filter for runs no reaction or no call started leaves `depth` or `calldepth` out, and one that names `depth`, `calldepth` or `definitionversion` as 0 is refused when the document is saved. An expression holds unless it answers `false` or `null`. An attribute is named as CloudEvents names it, in at most 20 lowercase letters and digits, and any other key is rejected, and so are a computed attribute, and a `data` expression that names anything but `$data` is refused when the document is saved, with the compiler's `Cannot find name`.
 
 ## The module
 

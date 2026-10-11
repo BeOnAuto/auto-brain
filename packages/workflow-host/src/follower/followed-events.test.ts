@@ -105,7 +105,7 @@ describe('a fact of a brain, as the follower reads it', () => {
     const retired = recordOf(
       'definitions/workflow',
       { type: 'definition_retired' },
-      { ...byAdmin, definitionType: 'workflow', definitionName: 'close' },
+      { ...byAdmin, definitionType: 'workflow', definitionName: 'close', definitionVersion: 2 },
     );
 
     expect(followedEventOf(retired, 'workflow')).toMatchObject({

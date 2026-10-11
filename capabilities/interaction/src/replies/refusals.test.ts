@@ -47,6 +47,12 @@ describe('a reply from the answerer the rule cannot read', () => {
       text: 'To answer, reply with one of approve, reject; what follows is kept as the note.',
     });
     expect(started?.causationId).toBe(refused[0]?.id);
+    expect(started?.context).toMatchObject({
+      runId,
+      definitionType: 'interaction',
+      definitionName: 'approve-brief',
+      definitionVersion: 1,
+    });
     expect((await recordsOf(brain.ledger, 'telling_succeeded')).map(({ causationId }) => causationId)).toEqual([
       started?.id,
     ]);

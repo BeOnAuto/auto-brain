@@ -1,4 +1,5 @@
 import {
+  ActedContextSchema,
   BrainIdSchema,
   BrainReader,
   BrainWriter,
@@ -27,7 +28,7 @@ type Note = typeof NoteSchema.Type;
 
 const Nothing = Schema.Record(Schema.String, Schema.Never);
 
-const NoteAddedSchema = factOf('note_added', Schema.Struct({ note: NoteSchema }));
+const NoteAddedSchema = factOf('note_added', Schema.Struct({ note: NoteSchema }), ActedContextSchema);
 
 type NoteAdded = typeof NoteAddedSchema.Type;
 
@@ -159,7 +160,7 @@ const BrainLabelSchema = Schema.Struct({ brain: BrainIdSchema, label: Schema.Str
 
 type BrainLabel = typeof BrainLabelSchema.Type;
 
-const BrainLabelledSchema = factOf('brain_labelled', Schema.Struct({ labelled: BrainLabelSchema }));
+const BrainLabelledSchema = factOf('brain_labelled', Schema.Struct({ labelled: BrainLabelSchema }), ActedContextSchema);
 
 type BrainLabelled = typeof BrainLabelledSchema.Type;
 

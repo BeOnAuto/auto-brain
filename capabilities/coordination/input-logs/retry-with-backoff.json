@@ -58,7 +58,18 @@
         "mostDurationMs": 2592000000,
         "longestCallMs": 600000
       },
-      "attributes": {},
+      "attributes": {
+        "org": "acme",
+        "brain": "alpha",
+        "run_id": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
+        "definition": {
+          "name": "retry-with-backoff",
+          "version": 1
+        },
+        "caller": {
+          "id": "acme-admin"
+        }
+      },
       "seed": 7
     },
     {
@@ -150,7 +161,8 @@
             "outcome": "started",
             "times": 1
           },
-          "waits_for": "call"
+          "waits_for": "call",
+          "child": "5f2def8d-0781-5202-bfc8-b4dad2e6308c"
         }
       ],
       "resumed": null,
@@ -218,6 +230,36 @@
               ]
             },
             "input": 1
+          }
+        },
+        {
+          "op": "add",
+          "path": "/attributes/org",
+          "value": "acme"
+        },
+        {
+          "op": "add",
+          "path": "/attributes/brain",
+          "value": "alpha"
+        },
+        {
+          "op": "add",
+          "path": "/attributes/run_id",
+          "value": "0199a3c4-7d2e-7c1a-9b3f-000000000307"
+        },
+        {
+          "op": "add",
+          "path": "/attributes/definition",
+          "value": {
+            "name": "retry-with-backoff",
+            "version": 1
+          }
+        },
+        {
+          "op": "add",
+          "path": "/attributes/caller",
+          "value": {
+            "id": "acme-admin"
           }
         },
         {
@@ -405,7 +447,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3997
+          "value": 4405
         }
       ],
       "outputs": [
@@ -562,7 +604,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 6321
+          "value": 6729
         }
       ],
       "outputs": [
@@ -602,7 +644,8 @@
             "outcome": "raised",
             "times": 1
           },
-          "waits_for": "call"
+          "waits_for": "call",
+          "child": "3344f00b-b573-55f3-8d07-7258d35891c9"
         }
       ],
       "resumed": null,
@@ -739,7 +782,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 9092
+          "value": 9547
         }
       ],
       "outputs": [
@@ -888,7 +931,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 11417
+          "value": 11872
         }
       ],
       "outputs": [
@@ -928,7 +971,8 @@
             "outcome": "raised",
             "times": 1
           },
-          "waits_for": "call"
+          "waits_for": "call",
+          "child": "6c763b08-28e9-5af9-b73a-00bb2cf72c93"
         }
       ],
       "resumed": null,
@@ -1065,7 +1109,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 14189
+          "value": 14691
         }
       ],
       "outputs": [
@@ -1198,7 +1242,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 15821
+          "value": 16323
         }
       ],
       "outputs": [

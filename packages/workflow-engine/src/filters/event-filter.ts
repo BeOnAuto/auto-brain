@@ -1,3 +1,4 @@
+import { leastCount } from '@beonauto/operations';
 import { Function } from 'effect';
 
 import { enclosedBody } from '../dsl/expressions.ts';
@@ -47,10 +48,14 @@ function strayKeyRejections(filter: JsonObject, attributes: JsonObject, pointer:
   return [...strayKeys, ...strayAttributes];
 }
 
+function countedAttributeWords(name: string): string {
+  return `${name} is a whole number from ${leastCount}, written out; a run no reaction started carries no depth and a run no call started no calldepth, so a filter for such runs leaves the attribute out`;
+}
+
 function wholeNumberRejection(name: string, expected: Json, pointer: string): readonly Rejection[] {
-  return typeof expected === 'number' && Number.isSafeInteger(expected) && expected >= 0
+  return typeof expected === 'number' && Number.isSafeInteger(expected) && expected >= leastCount
     ? []
-    : [rejection(pointer, `${name} is a whole number, written out`)];
+    : [rejection(pointer, countedAttributeWords(name))];
 }
 
 function literalRejection(name: string, expected: Json, pointer: string): readonly Rejection[] {

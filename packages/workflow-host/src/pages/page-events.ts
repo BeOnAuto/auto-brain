@@ -54,7 +54,6 @@ function eventOf(brainKey: string, record: StoredRecord): CloudEvent | undefined
   const stream = record.stream.slice(brainKey.length);
   return brainEventOf({
     id,
-    cursor: '',
     causationId,
     correlationId,
     stream,

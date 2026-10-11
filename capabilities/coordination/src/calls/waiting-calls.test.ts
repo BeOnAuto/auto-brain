@@ -31,6 +31,7 @@ const review: StartCall = {
 const ofTheChild = {
   by: 'brain:alpha',
   at: 'now',
+  runId: 'r-review',
   definitionType: 'workflow',
   definitionName: 'review',
   definitionVersion: 1,

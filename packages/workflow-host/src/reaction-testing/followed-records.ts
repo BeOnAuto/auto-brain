@@ -48,7 +48,7 @@ export function saidRefusals(): SaidRefusals {
       said.push(line);
     });
   return {
-    refusals: { refuse: (_brainKey, workflow, reason) => say(`${workflow}: ${reason}`) },
+    refusals: { refuse: (_brainKey, { workflow }, reason) => say(`${workflow}: ${reason}`) },
     said: () => said,
     say,
   };

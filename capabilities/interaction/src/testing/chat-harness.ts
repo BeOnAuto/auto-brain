@@ -53,6 +53,7 @@ export interface Recorded {
   readonly data: unknown;
   readonly causationId: string | null;
   readonly id: string;
+  readonly context: Readonly<Record<string, unknown>>;
 }
 
 export async function recordsOf(ledger: HarnessLedger, ...types: readonly string[]): Promise<readonly Recorded[]> {

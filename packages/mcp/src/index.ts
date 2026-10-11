@@ -43,6 +43,7 @@ export {
   tellingEndedOf,
   tellingStartedOf,
   type ConversationCall,
+  type DefinitionOfTheTelling,
   type ReadingFailed,
   type Recorded,
   type RepliesRead,

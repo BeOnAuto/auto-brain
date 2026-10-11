@@ -23,13 +23,13 @@ function recordingIds(name: string, types: readonly string[], received: (id: str
                   deliver: Effect.sync(() => {
                     received(followed.event.event.id);
                   }),
+                  skipped: () => Effect.void,
                 },
               ]
             : [],
         through: followed.event.event.id,
         more: false,
       }),
-    skipped: () => Effect.void,
   };
 }
 

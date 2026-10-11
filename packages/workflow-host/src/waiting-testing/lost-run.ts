@@ -19,6 +19,7 @@ export const askedCancel = { by: 'acme-admin', kind: 'requested', reason: 'Not n
 const ofTheRun = {
   by: askedCancel.by,
   at,
+  runId: lostRunId,
   definitionType: 'workflow',
   definitionName: 'pause',
   definitionVersion: 1,

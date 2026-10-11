@@ -59,6 +59,8 @@ export {
   type DeliveryStarted,
   type ReplyRefused,
   type ReplyTaken,
+  type RecordedRunEvent,
+  type RecordedRunFact,
   type RunDeferred,
   type RunEvent,
   type RunFinished,
@@ -143,7 +145,7 @@ export {
   type EmitOutcome,
   type Emission,
 } from './events/event-emitter.ts';
-export { publishedEventOf, type EventPublished } from './events/published-events.ts';
+export { publishedEventOf, type EventPublished, type RecordedEventPublished } from './events/published-events.ts';
 export {
   ReactionRefusedSchema,
   reactionRefusalDecider,

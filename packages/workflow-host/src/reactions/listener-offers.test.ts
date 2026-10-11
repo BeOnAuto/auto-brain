@@ -163,8 +163,9 @@ describe('an offer of an event to a listening run', () => {
 
     const { deliveries } = await Effect.runPromise(consumer.batchOf(followed, undefined, 10));
     const outcomes = await Effect.runPromise(Effect.forEach(deliveries, ({ deliver }) => Effect.isSuccess(deliver)));
-    const failed = { key: 'k', workflow: 'wf-run-b', deliver: Effect.void };
-    await Effect.runPromise(consumer.skipped(followed, failed, 'The ledger cannot be reached'));
+    await Effect.runPromise(
+      Effect.forEach(deliveries.slice(1), ({ skipped }) => skipped('The ledger cannot be reached')),
+    );
 
     expect(outcomes).toEqual([true, false]);
     expect(said()).toEqual([

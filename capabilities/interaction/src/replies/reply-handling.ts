@@ -88,6 +88,11 @@ function refusedReply(reading: Reading, state: ReadingState, { request, reply, b
         server: reading.route.server,
         tool: reading.route.replies.tell?.tool ?? reading.route.delivering,
         runId: request.runId,
+        definition: {
+          definitionType: 'interaction',
+          definitionName: request.row.function,
+          definitionVersion: request.row.version,
+        },
         input,
         lineage: { causationId: made.id, correlationId: made.correlationId },
       });

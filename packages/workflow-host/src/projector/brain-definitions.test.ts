@@ -36,7 +36,13 @@ describe('the recall functions a brain keeps', () => {
       {
         type: 'definition_retired',
         data: {},
-        context: { by: 'acme-admin', at: 'now', definitionType: 'recall', definitionName: 'runs' },
+        context: {
+          by: 'acme-admin',
+          at: 'now',
+          definitionType: 'recall',
+          definitionName: 'runs',
+          definitionVersion: 1,
+        },
       },
     ]);
 

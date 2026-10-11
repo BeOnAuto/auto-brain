@@ -1,5 +1,5 @@
-import { runEventOf, type RunEvent } from '@beonauto/definitions';
-import type { Context, ProjectedMessage, ProjectedRow, KeyedProjection, Recorded } from '@beonauto/operations';
+import { runEventOf, type RecordedRunEvent, type RecordedRunFact, type RunEvent } from '@beonauto/definitions';
+import type { ProjectedMessage, ProjectedRow, KeyedProjection, RunContext } from '@beonauto/operations';
 
 import { interactionType } from '../capability/interaction-type.ts';
 import { conversationKeyOf } from '../conversations/conversation-keys.ts';
@@ -18,14 +18,14 @@ export const openRequestsName = 'open_requests';
 
 export const attemptInFlightMs = 60_000;
 
-type Fact<Type extends RunEvent['type']> = Recorded<Extract<RunEvent, { readonly type: Type }>>;
+type Fact<Type extends RunEvent['type']> = RecordedRunFact<Type>;
 
 function rowOf(row: UndueRequestRow): ProjectedRow {
   return { ...row, attempt_due_at: attemptDueAtOf(row), ending_due_at: endingDueAtOf(row) };
 }
 
-function functionOf({ definitionName, definitionVersion }: Context) {
-  return { function: definitionName ?? '', version: definitionVersion ?? 1 };
+function functionOf({ definitionName, definitionVersion }: RunContext) {
+  return { function: definitionName, version: definitionVersion };
 }
 
 function requested({ data, context }: Fact<'run_deferred'>, message: ProjectedMessage): ProjectedRow | undefined {
@@ -129,7 +129,7 @@ function closed(
   return row.open ? rowOf({ ...row, open: false, next_attempt_at: null, ended: endingOf(fact) }) : undefined;
 }
 
-function worked(row: OpenRequestRow, fact: Recorded<RunEvent>): ProjectedRow | undefined {
+function worked(row: OpenRequestRow, fact: RecordedRunEvent): ProjectedRow | undefined {
   if (fact.type === 'delivery_started') {
     return attemptStarted(row, fact);
   }
@@ -148,7 +148,7 @@ function worked(row: OpenRequestRow, fact: Recorded<RunEvent>): ProjectedRow | u
     : undefined;
 }
 
-function changed(row: OpenRequestRow, fact: Recorded<RunEvent>): ProjectedRow | undefined {
+function changed(row: OpenRequestRow, fact: RecordedRunEvent): ProjectedRow | undefined {
   if (fact.type === 'run_cancel_requested') {
     return row.open && !settlesFromBroughtAnswer(row) ? rowOf({ ...row, standing: 'cancelling' }) : undefined;
   }

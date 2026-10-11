@@ -1,14 +1,15 @@
-import type { Context, ProjectedMessage } from '@beonauto/operations';
+import type { Context, ProjectedMessage, RunContext } from '@beonauto/operations';
 import { describe, expect, it } from 'vitest';
 
 import { conversations } from './conversation-rows.ts';
 
 const stream = { kind: 'runs', id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' };
 
-function ofTheBrain(at: string): Context {
+function ofTheRun(at: string): RunContext {
   return {
     by: 'brain:alpha',
     at,
+    runId: stream.id,
     definitionType: 'interaction',
     definitionName: 'approve-brief',
     definitionVersion: 1,
@@ -19,7 +20,7 @@ const deliveredAs = { conversation: 'C0123', id: '1699.1' };
 
 const repliesIn = { server: 'chat', tool: 'thread_replies', key: 'C0123/1699.1' };
 
-const answerOfTheTool = { result_bytes: 120, result_sha256: 'b'.repeat(64), content_kept: true, jsonrpc_id: 2 };
+const answerOfTheTool = { result_bytes: 120, result_sha256: 'b'.repeat(64), jsonrpc_id: 2 };
 
 function messageOf(type: string, data: unknown, context: Context, id = 'fact-1'): ProjectedMessage {
   return { id, position: 1, type, data, context };
@@ -28,7 +29,7 @@ function messageOf(type: string, data: unknown, context: Context, id = 'fact-1')
 function deliveryEnded(at: string, keeping = true, id = 'fact-1'): ProjectedMessage {
   const delivered = { number: 1, ...answerOfTheTool, duration_ms: 5 };
   const data = keeping ? { ...delivered, delivered_as: deliveredAs, replies_in: repliesIn } : delivered;
-  return messageOf('delivery_succeeded', data, ofTheBrain(at), id);
+  return messageOf('delivery_succeeded', data, ofTheRun(at), id);
 }
 
 function read(since: string | null, type = 'replies_read', id = 'fact-1'): ProjectedMessage {

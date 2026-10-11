@@ -83,18 +83,18 @@ const causedByTheInput: unknown = expect.objectContaining({
   run_id: runId,
 });
 
-const causedByTheFirstStep: unknown = expect.objectContaining({ causation_id: `${recordId}/1` });
+const causedByTheFirstStep: unknown = expect.objectContaining({ causation_id: `${recordId}_1` });
 
 const presentedSteps = [
   {
-    id: `${recordId}/1`,
+    id: `${recordId}_1`,
     type: 'step_finished',
     summary: 'The step “ask” finished.',
     data: { name: 'ask', reference: '/do/0/ask', run: 1, times: 1 },
     metadata: causedByTheInput,
   },
   {
-    id: `${recordId}/2`,
+    id: `${recordId}_2`,
     type: 'step_waiting',
     summary: 'The step “next” waits for a function it called.',
     data: {
@@ -122,7 +122,7 @@ describe('the steps of an input a workflow took, in the history of its run', () 
       recordOf([{ ...next, outcome: 'completed', caused_by: { ...ask, outcome: 'waiting' } }]),
     );
 
-    expect(resumed).toMatchObject({ id: `${recordId}/1`, metadata: { causation_id: recordId } });
+    expect(resumed).toMatchObject({ id: `${recordId}_1`, metadata: { causation_id: recordId } });
   });
 });
 

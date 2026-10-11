@@ -176,7 +176,7 @@ describe('a version without a schedule, and a retirement', () => {
     await definitionRecorded(store, { name: 'close', version: 1, triggers: [closed, everyTrigger(aMinute)] });
     await definitionRecorded(store, { name: 'open', version: 1, triggers: [closed, cronTrigger('5 9 * * *')] });
     await definitionRecorded(store, { name: 'close', version: 2, triggers: [] });
-    await definitionRetired(store, 'open');
+    await definitionRetired(store, 'open', 1);
 
     clock.moveTo(activatedAt + 10 * aMinute);
     await published(store, { id: 'closed', type: 'com.acme.closed' });

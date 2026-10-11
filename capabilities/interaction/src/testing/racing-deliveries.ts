@@ -52,7 +52,6 @@ function broughtOf(
             number: 1,
             result_bytes: 2,
             result_sha256: 'd'.repeat(64),
-            content_kept: true,
             duration_ms: 3,
             jsonrpc_id: 1,
           },

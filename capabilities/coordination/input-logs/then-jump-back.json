@@ -36,7 +36,18 @@
         "mostDurationMs": 2592000000,
         "longestCallMs": 600000
       },
-      "attributes": {},
+      "attributes": {
+        "org": "acme",
+        "brain": "alpha",
+        "run_id": "0199a3c4-7d2e-7c1a-9b3f-000000000310",
+        "definition": {
+          "name": "then-jump-back",
+          "version": 1
+        },
+        "caller": {
+          "id": "acme-admin"
+        }
+      },
       "seed": 7
     },
     {
@@ -128,6 +139,36 @@
               ]
             },
             "input": 1
+          }
+        },
+        {
+          "op": "add",
+          "path": "/attributes/org",
+          "value": "acme"
+        },
+        {
+          "op": "add",
+          "path": "/attributes/brain",
+          "value": "alpha"
+        },
+        {
+          "op": "add",
+          "path": "/attributes/run_id",
+          "value": "0199a3c4-7d2e-7c1a-9b3f-000000000310"
+        },
+        {
+          "op": "add",
+          "path": "/attributes/definition",
+          "value": {
+            "name": "then-jump-back",
+            "version": 1
+          }
+        },
+        {
+          "op": "add",
+          "path": "/attributes/caller",
+          "value": {
+            "id": "acme-admin"
           }
         },
         {
@@ -266,7 +307,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2702
+          "value": 3059
         }
       ],
       "outputs": [
@@ -435,7 +476,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 4692
+          "value": 5049
         }
       ],
       "outputs": [
@@ -574,7 +615,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 6307
+          "value": 6664
         }
       ],
       "outputs": [

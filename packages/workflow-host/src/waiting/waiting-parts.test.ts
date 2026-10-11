@@ -52,7 +52,14 @@ describe('the answer of a run a call waits for', () => {
     const { options } = recordedWaiting();
     const database = await openedOn({ store: 'sqlite', file: aSQLiteFile() });
     const { childAnswerOf } = executorWaitingOf(database, testMachine, options);
-    const ofTheChild = { by: 'brain:alpha', at, definitionType: 'workflow', definitionName: 'check' };
+    const ofTheChild = {
+      by: 'brain:alpha',
+      at,
+      runId: 'the-child',
+      definitionType: 'workflow',
+      definitionName: 'check',
+      definitionVersion: 1,
+    };
     const calledBy = { runId: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', reference: '/do/0/ask', run: 1 };
     const checked = { type: 'run_succeeded', data: { output: 'checked', record: {} } };
     await recorded(database.store, `${alpha}runs/answered`, checked, { ...ofTheChild, calledBy });

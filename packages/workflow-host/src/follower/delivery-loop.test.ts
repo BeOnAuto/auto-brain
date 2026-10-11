@@ -40,6 +40,10 @@ function counted(
       : Effect.sync(() => {
           delivered.push(`${name} ${key}`);
         }),
+    skipped: (detail) =>
+      Effect.sync(() => {
+        skipped.push(`${key}: ${detail}`);
+      }),
   });
   const keys = Array.from({ length: count }, (_, index) => keyed(index));
   return {
@@ -55,10 +59,6 @@ function counted(
             through: taken.at(-1),
             more: left.length > most,
           };
-        }),
-      skipped: (_record, delivery, detail) =>
-        Effect.sync(() => {
-          skipped.push(`${delivery.key}: ${detail}`);
         }),
     },
     delivered: () => delivered,

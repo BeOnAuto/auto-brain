@@ -46,7 +46,18 @@
         "mostDurationMs": 2592000000,
         "longestCallMs": 600000
       },
-      "attributes": {},
+      "attributes": {
+        "org": "acme",
+        "brain": "alpha",
+        "run_id": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
+        "definition": {
+          "name": "parallel-fork",
+          "version": 1
+        },
+        "caller": {
+          "id": "acme-admin"
+        }
+      },
       "seed": 7
     },
     {
@@ -112,7 +123,8 @@
             "outcome": "started",
             "times": 1
           },
-          "waits_for": "call"
+          "waits_for": "call",
+          "child": "25306520-d07c-534f-b4d6-04d95a47a1a1"
         },
         {
           "reference": "/do/0/both/fork/branches/1/right",
@@ -126,7 +138,8 @@
             "outcome": "started",
             "times": 1
           },
-          "waits_for": "call"
+          "waits_for": "call",
+          "child": "25e13777-e100-5dcd-99a5-7bae39a0886d"
         }
       ],
       "resumed": null,
@@ -182,6 +195,36 @@
               ]
             },
             "input": 1
+          }
+        },
+        {
+          "op": "add",
+          "path": "/attributes/org",
+          "value": "acme"
+        },
+        {
+          "op": "add",
+          "path": "/attributes/brain",
+          "value": "alpha"
+        },
+        {
+          "op": "add",
+          "path": "/attributes/run_id",
+          "value": "0199a3c4-7d2e-7c1a-9b3f-000000000306"
+        },
+        {
+          "op": "add",
+          "path": "/attributes/definition",
+          "value": {
+            "name": "parallel-fork",
+            "version": 1
+          }
+        },
+        {
+          "op": "add",
+          "path": "/attributes/caller",
+          "value": {
+            "id": "acme-admin"
           }
         },
         {
@@ -417,7 +460,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 5353
+          "value": 5803
         }
       ],
       "outputs": [
@@ -569,7 +612,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 6885
+          "value": 7335
         }
       ],
       "outputs": [
@@ -686,7 +729,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 8607
+          "value": 9057
         }
       ],
       "outputs": [

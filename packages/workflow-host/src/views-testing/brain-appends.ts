@@ -62,8 +62,7 @@ function ranBy(append: Append): Ran {
   };
 }
 
-function savedBy(append: Append): BrainAppends['saved'] {
-  const definitions = new Map<string, number>();
+function savedBy(append: Append, definitions: Map<string, number>): BrainAppends['saved'] {
   return async (name, details, brain = alpha) => {
     const key = `${brainKeyOf(brain)}${name}`;
     const version = (definitions.get(key) ?? 0) + 1;
@@ -83,15 +82,17 @@ function savedBy(append: Append): BrainAppends['saved'] {
 export function brainAppends(store: EventStore, appends: AppendSignal): BrainAppends {
   const append = appendOn(store, appends);
   const ran = ranBy(append);
+  const definitions = new Map<string, number>();
   return {
     append,
-    saved: savedBy(append),
+    saved: savedBy(append, definitions),
     retired: async (name) => {
       await append(`${brainKeyOf(alpha)}definitions/recall`, [{ type: 'definition_retired', data: {} }], {
         by: 'acme-admin',
         at: savedAt,
         definitionType: 'recall',
         definitionName: name,
+        definitionVersion: Number(definitions.get(`${brainKeyOf(alpha)}${name}`)),
       });
     },
     ran,
