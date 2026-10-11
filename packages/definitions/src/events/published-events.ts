@@ -28,10 +28,15 @@ const EmitterSchema = Schema.Struct({
 
 export type Emitter = typeof EmitterSchema.Type;
 
+const PublishedByACallerContextSchema = Schema.Struct({
+  ...ActedContextSchema.fields,
+  runId: Schema.optionalKey(Schema.Never),
+});
+
 export const EventPublishedSchema = factOf(
   'event_published',
   Schema.Struct({ event: CloudEventSchema, filled: Schema.Array(FilledAttributeSchema) }),
-  Schema.Union([EmittedContextSchema, ActedContextSchema]),
+  Schema.Union([EmittedContextSchema, PublishedByACallerContextSchema]),
 );
 
 export type RecordedEventPublished = typeof EventPublishedSchema.Type;

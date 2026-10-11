@@ -76,13 +76,13 @@ describe('an event published to a brain, as the follower reads it', () => {
     expect(followedEventOf(recordOf('events/e1', { type: 'event_published' }), 'workflow')).toBe('unreadable');
   });
 
-  it('is owned by no workflow when the run that emitted it names no workflow', () => {
-    expect(
+  it('is unreadable, and starts no chain at depth 1, when its context names a run but not as an emitted event does', () => {
+    const { depth: _depth, ...withoutDepth } = emittedBy;
+
+    expect([
+      published(withoutDepth),
       published({ ...byAdmin, runId: 'r-nested', definitionType: 'reasoning', definitionName: 'sum' }),
-    ).toMatchObject({
-      emitter: undefined,
-      ownedBy: [],
-    });
+    ]).toEqual(['unreadable', 'unreadable']);
   });
 });
 

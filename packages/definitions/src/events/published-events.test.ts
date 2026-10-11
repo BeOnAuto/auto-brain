@@ -1,10 +1,12 @@
-import { Conflict } from '@beonauto/operations';
+import { Conflict, recordingOf, type Context } from '@beonauto/operations';
 import { Effect, Exit, Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { CloudEvent } from './cloud-event.ts';
 import {
+  EventPublishedSchema,
   publishedEventDecider,
+  publishedEventOf,
   publishedEventStreamOf,
   recordedPublication,
   type EventPublished,
@@ -134,5 +136,53 @@ describe('the publication a stream holds', () => {
     expect(Exit.isFailure(await Effect.runPromiseExit(recordedPublication(publishedEventDecider.initialState)))).toBe(
       true,
     );
+  });
+});
+
+const emittedContext = {
+  ...published.context,
+  runId: 'r-1',
+  definitionType: 'workflow',
+  definitionName: 'close',
+  definitionVersion: 4,
+  depth: 2,
+};
+
+const { depth: _depth, ...withoutDepth } = emittedContext;
+
+const { definitionName: _name, ...withoutName } = emittedContext;
+
+const namingARunButNotEmitted: readonly Context[] = [
+  withoutDepth,
+  withoutName,
+  { ...emittedContext, definitionVersion: 0 },
+];
+
+describe('a published event read back', () => {
+  it('is emitted by a workflow when its context names a run, and published by a caller when it names none', () => {
+    expect([
+      publishedEventOf({ ...fact, context: emittedContext }),
+      publishedEventOf({ ...fact, context: published.context }),
+    ]).toStrictEqual([
+      { ...fact, context: emittedContext },
+      { ...fact, context: published.context },
+    ]);
+  });
+
+  it('does not decode when its context names a run without the depth, the name or a version from 1 an emitted event carries', () => {
+    expect(namingARunButNotEmitted.map((context) => publishedEventOf({ ...fact, context }))).toStrictEqual([
+      undefined,
+      undefined,
+      undefined,
+    ]);
+  });
+
+  it('is refused at append when its context names a run but is not the context of an emitted event', () => {
+    const recorded = recordingOf(EventPublishedSchema);
+
+    for (const context of namingARunButNotEmitted) {
+      expect(() => recorded(fact, context)).toThrow('runId');
+    }
+    expect(recorded(fact, emittedContext)).toStrictEqual({ ...fact, context: emittedContext });
   });
 });

@@ -31,11 +31,11 @@ function otherRun(correlation: string | null, runId: string): string | undefined
 type PublishedContext = RecordedEventPublished['context'];
 
 function emitterOf(context: PublishedContext): Emitter | undefined {
-  return 'runId' in context ? { runId: context.runId, workflow: context.definitionName } : undefined;
+  return context.runId === undefined ? undefined : { runId: context.runId, workflow: context.definitionName };
 }
 
 function depthOf(context: PublishedContext): number {
-  return 'runId' in context ? context.depth : 1;
+  return context.runId === undefined ? 1 : context.depth;
 }
 
 function published(record: RecordedEvent): EventOfRecord {

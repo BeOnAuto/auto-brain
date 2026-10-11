@@ -6,9 +6,9 @@ import { cutAtCodePoint, mostDetailBytes, mostNameBytes } from './event-data.ts'
 import { eventPresenter, type Account } from './event-presenter.ts';
 
 function summaryOf(type: string, context: RecordedEventPublished['context']): string {
-  return 'runId' in context
-    ? eventEmitted(type, cutAtCodePoint(context.definitionName, mostNameBytes))
-    : eventPublished(type);
+  return context.runId === undefined
+    ? eventPublished(type)
+    : eventEmitted(type, cutAtCodePoint(context.definitionName, mostNameBytes));
 }
 
 function accountOf({ data, context }: RecordedEventPublished): Account {

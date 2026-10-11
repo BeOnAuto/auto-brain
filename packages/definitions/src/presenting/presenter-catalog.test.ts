@@ -68,6 +68,8 @@ const context: Context = {
   definitionVersion: Number.MAX_SAFE_INTEGER,
 };
 
+const emittedContext: Context = { ...context, depth: Number.MAX_SAFE_INTEGER };
+
 const largestJson = { text: 'x'.repeat(mostResultBytes - 16) };
 
 const manyIssues = Array.from({ length: 100 }, () => ({ detail: awkward, pointer: awkward }));
@@ -179,7 +181,7 @@ const utf8 = new TextEncoder();
 
 const showing = { streamPrefix: 'brain/acme/alpha/', content: () => awkward, view: 'page' } as const;
 
-function recordOf(stream: string, type: string, data: unknown): RecordedEvent {
+function recordOf(stream: string, type: string, data: unknown, recorded: Context = context): RecordedEvent {
   return {
     id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
     cursor: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
@@ -190,8 +192,8 @@ function recordOf(stream: string, type: string, data: unknown): RecordedEvent {
     globalPosition: 1,
     type,
     data,
-    context,
-    recordedAt: context.at,
+    context: recorded,
+    recordedAt: recorded.at,
   };
 }
 
@@ -233,7 +235,7 @@ describe('the largest record of every stored type', () => {
 
   it('of an event published to the brain presents within the bound of public data', () => {
     const [bytes, conforms] = presentedSizeOf(
-      recordOf(eventStream, largestEventPublished.type, largestEventPublished.data),
+      recordOf(eventStream, largestEventPublished.type, largestEventPublished.data, emittedContext),
     );
 
     expect(bytes).toBeLessThanOrEqual(mostPublicEventDataBytes);
