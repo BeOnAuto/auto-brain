@@ -27,10 +27,6 @@ function digestOf(text: string): string {
   return createHash('sha256').update(text).digest('hex');
 }
 
-function asAnswered(text: string): string {
-  return JSON.stringify({ content: [{ type: 'text', text }] });
-}
-
 async function servingTheEcho(recordContent: boolean): Promise<ReasoningServer> {
   const graph = await serveFakeMcp({ bearer: apiKey });
   onTestFinished(graph.close);
@@ -66,7 +62,7 @@ async function callEventsOf(server: ReasoningServer) {
 }
 
 describe('the digests of what a call sent and received, over HTTP', () => {
-  it('name the scrubbed text the brain kept, and the text as it was sent or received appears on no page, no event read whole and no line of the log', async () => {
+  it('name the scrubbed text the brain kept, and the key and the pin appear on no page, no event read whole and no line of the log', async () => {
     const logged = vi.spyOn(console, 'error');
     onTestFinished(() => {
       logged.mockRestore();
@@ -75,14 +71,16 @@ describe('the digests of what a call sent and received, over HTTP', () => {
 
     const { page, calls, wholes } = await callEventsOf(server);
     const seen = JSON.stringify([page, wholes, ...logged.mock.calls.flat().map(String)]);
-    const asSentAndReceived = [digestOf(JSON.stringify(sent)), digestOf(asAnswered(JSON.stringify(sent)))];
+    const keptTexts = [JSON.stringify(wholes[0]?.data['arguments']), JSON.stringify(wholes[1]?.data['result'])];
 
     expect(calls.map(({ type }) => type)).toEqual(['tool_call_started', 'tool_call_answered']);
-    expect(asSentAndReceived.filter((digest) => seen.includes(digest))).toEqual([]);
     expect(calls.map(({ data }) => [data['arguments_sha256'], data['result_sha256']])).toEqual([
-      [digestOf(JSON.stringify(wholes[0]?.data['arguments'])), undefined],
-      [undefined, digestOf(JSON.stringify(wholes[1]?.data['result']))],
+      [digestOf(String(keptTexts[0])), undefined],
+      [undefined, digestOf(String(keptTexts[1]))],
     ]);
+    expect(keptTexts.map((text) => text.includes('[redacted]'))).toEqual([true, true]);
+    expect(seen).not.toContain(apiKey);
+    expect(seen).not.toContain(pin);
   });
 
   it('are left out of the facts of a server that keeps no content, which carry their sizes, and an event read whole joins nothing', async () => {
