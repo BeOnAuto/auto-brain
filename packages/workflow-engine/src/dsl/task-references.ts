@@ -15,13 +15,22 @@ function cutReference(reference: string): string {
   return `${chunksOf(reference, mostShownReferenceBytes).slice(0, 1).join('')}…`;
 }
 
+function pointerOfTheNameHolding(reference: string): string {
+  const segments = reference.split('/');
+  const holding = segments.findIndex((segment) => !holdsNoForbiddenCharacter(segment));
+  return segments.slice(0, holding + 1).join('/');
+}
+
 export function referenceRejections({ task, reference }: TaskEntry): readonly Rejection[] {
   if (kindOf(task) !== 'call') {
     return [];
   }
   if (!holdsNoForbiddenCharacter(reference)) {
     return [
-      rejection(reference, `The name of this task holds ${forbiddenCharactersInWords}, which a reference never holds`),
+      rejection(
+        reference,
+        `The name of the task at ${pointerOfTheNameHolding(reference)} holds ${forbiddenCharactersInWords}, which a reference never holds`,
+      ),
     ];
   }
   const bytes = bytesOfReference(reference);

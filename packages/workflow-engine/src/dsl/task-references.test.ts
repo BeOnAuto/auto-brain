@@ -41,20 +41,35 @@ describe('the reference of a task that starts a run', () => {
     expect(rejectionsOf(document).map(({ pointer }) => pointer)).toEqual([`/do/0/${outer}/do/0/inner`]);
   });
 
-  it('is refused for a name holding a character a reference never holds', () => {
+  it('leaves a task that starts no run to the bounds of the document', () => {
+    const name = nameOfReferenceBytes(400);
+
+    expect(rejectionsOf({ document: header, do: [{ [name]: { set: { a: 1 } } }] })).toEqual([]);
+  });
+});
+
+describe('the names in the reference of a task that starts a run', () => {
+  it('are refused when the name of the task holds a character a reference never holds, in words that point at that name', () => {
     expect(rejectionsOf(callNamed('notify\u0000ops'))).toEqual([
       {
         pointer: '/do/0/notify\u0000ops',
         detail:
-          'The name of this task holds control characters, unpaired surrogates or noncharacters, which a reference never holds',
+          'The name of the task at /do/0/notify\u0000ops holds control characters, unpaired surrogates or noncharacters, which a reference never holds',
         forbidden: false,
       },
     ]);
   });
 
-  it('leaves a task that starts no run to the bounds of the document', () => {
-    const name = nameOfReferenceBytes(400);
+  it('are refused at the pointer of the task for such a character in the name of a task above it, in words that point at that one', () => {
+    const document = { document: header, do: [{ 'outer\uFFFEname': { do: [{ inner: notifying }] } }] };
 
-    expect(rejectionsOf({ document: header, do: [{ [name]: { set: { a: 1 } } }] })).toEqual([]);
+    expect(rejectionsOf(document)).toEqual([
+      {
+        pointer: '/do/0/outer\uFFFEname/do/0/inner',
+        detail:
+          'The name of the task at /do/0/outer\uFFFEname holds control characters, unpaired surrogates or noncharacters, which a reference never holds',
+        forbidden: false,
+      },
+    ]);
   });
 });

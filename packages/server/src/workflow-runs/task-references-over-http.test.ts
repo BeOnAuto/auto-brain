@@ -59,7 +59,7 @@ describe('the reference of a task that starts a run, over HTTP', { timeout: work
       `at /do/0/${long}: The reference of this task, /do/0/${long.slice(0, 114)}…, takes 257 bytes, more than the 256 a reference may take, since a run the task starts carries it; shorten its name or the names above it`,
     );
     const unheld: unknown = expect.stringContaining(
-      ': The name of this task holds control characters, unpaired surrogates or noncharacters, which a reference never holds',
+      ': The name of the task at /do/0/notify\u0000ops holds control characters, unpaired surrogates or noncharacters, which a reference never holds',
     );
 
     const refused = [await saved(long), await saved('notify\u0000ops')];
