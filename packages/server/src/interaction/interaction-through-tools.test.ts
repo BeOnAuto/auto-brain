@@ -27,7 +27,7 @@ function endedFacts(server: Awaited<ReturnType<typeof servingInteractions>>, run
 }
 
 describe('an interaction function that delivers through a tool, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
-  it('posts its request with one recorded call, its sizes, digests and content kept', async () => {
+  it('posts its request with one recorded call, its sizes and the digests of what it kept', async () => {
     const chat = await chatServer();
     const server = await servingInteractions(chatDelivery, chatEnvironment(chat.url));
     const runId = await server.ask('approve-brief');
@@ -47,7 +47,6 @@ describe('an interaction function that delivers through a tool, over HTTP', { ti
         tool: 'post_message',
         arguments_bytes: 73,
         arguments_sha256: aDigest,
-        content_kept: true,
         arguments: { channel: '#approvals-ada', text: 'Please review the brief for Spring.' },
       },
       {
@@ -55,7 +54,6 @@ describe('an interaction function that delivers through a tool, over HTTP', { ti
         number: 1,
         result_bytes: aNumber,
         result_sha256: aDigest,
-        content_kept: true,
         jsonrpc_id: aNumber,
         duration_ms: aNumber,
         delivered_as: { conversation: '#approvals-ada', id: '1699.000001' },
@@ -64,6 +62,24 @@ describe('an interaction function that delivers through a tool, over HTTP', { ti
     ]);
     expect(listed.body).toMatchObject({
       interactions: [{ run_id: runId, delivery: { server: 'chat', tool: 'post_message' }, standing: 'delivered' }],
+    });
+  });
+});
+
+describe('the delivery of a request, in the feed of its brain', { timeout: workflowTestTimeoutMs }, () => {
+  it('shows when the feed is filtered by the type of the fact', async () => {
+    const chat = await chatServer();
+    const server = await servingInteractions(chatDelivery, chatEnvironment(chat.url));
+    const runId = await server.ask('approve-brief');
+    await endedFacts(server, runId);
+
+    const delivered = await server.call('GET', `${alpha}/events?type=delivery_succeeded`);
+
+    expect(delivered.body).toMatchObject({
+      events: [
+        { type: 'delivery_succeeded', data: { number: 1, result_sha256: aDigest }, metadata: { run_id: runId } },
+      ],
+      has_more: false,
     });
   });
 });

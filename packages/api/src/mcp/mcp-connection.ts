@@ -3,14 +3,16 @@ import { McpServer } from '@modelcontextprotocol/server';
 
 import {
   mostInstructionCharacters,
+  mostListingBytes,
   mostToolsOnAConnection,
   requireTextWithin,
   requireWithin,
 } from '../bounds/served-bounds.ts';
 import { serveGuides, type GuideRegistry } from '../guides/guide-serving.ts';
 import { guideShelfOf, type Guide, type GuideShelf, type Recipe } from '../guides/guide-shelf.ts';
-import { guideToolName } from '../guides/guide-tool.ts';
+import { guideToolDefinitionOf, guideToolName } from '../guides/guide-tool.ts';
 import type { RunCall } from '../operations/operation-routes.ts';
+import { listingBytesOf, type ListedTool } from '../tools/tool-listing.ts';
 import {
   instructionsFor,
   recipesFollowedWith,
@@ -46,17 +48,28 @@ function instructionsOf({ endpoint, serving, shelf }: Connection, served: Served
   return instructionsFor(endpoint, served, serving.definitionTypes, shelf.recipes);
 }
 
-export function connectionOf(endpoint: McpEndpoint, serving: McpServing, everyTool: ServedTools): Connection {
+export interface EveryTool {
+  readonly served: ServedTools;
+  readonly listed: readonly ListedTool[];
+}
+
+export function connectionOf(endpoint: McpEndpoint, serving: McpServing, { served, listed }: EveryTool): Connection {
   const connection = {
     endpoint,
     serving,
     shelf: guideShelfOf(serving.guides, serving.recipes, serving.definitionTypes),
   };
-  const toolCount = [...everyTool.orgTools, ...everyTool.brainTools, guideToolName].length;
-  requireWithin(`The ${endpoint} endpoint`, toolCount, mostToolsOnAConnection, 'tools');
+  const listing = [...listed, { name: guideToolName, definition: guideToolDefinitionOf(connection.shelf) }];
+  requireWithin(`The ${endpoint} endpoint`, listing.length, mostToolsOnAConnection, 'tools');
+  requireWithin(
+    `The listing of the ${endpoint} endpoint`,
+    listingBytesOf(listing),
+    mostListingBytes[endpoint],
+    'bytes on the wire',
+  );
   requireTextWithin(
     `The instructions of the ${endpoint} endpoint`,
-    instructionsOf(connection, everyTool),
+    instructionsOf(connection, served),
     mostInstructionCharacters,
   );
   return connection;

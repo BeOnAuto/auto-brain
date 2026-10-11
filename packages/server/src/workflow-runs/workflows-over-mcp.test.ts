@@ -183,6 +183,6 @@ describe('the graph of a workflow run over MCP', { timeout: workflowTestTimeoutM
 
     expect(events.filter(({ type }) => type.startsWith('step_')).length).toBeGreaterThan(0);
     expect(causesNamedNowhereIn(events)).toEqual([]);
-    expect(childStarted?.metadata.causation_id).toBe(waiting?.id.slice(0, waiting.id.indexOf('/')));
+    expect(childStarted?.metadata.causation_id).toBe(waiting?.id.slice(0, waiting.id.indexOf('_')));
   });
 });

@@ -18,6 +18,7 @@ export {
   mostGuideBytes,
   mostGuidesBeyondTheRecipes,
   mostInstructionCharacters,
+  mostListingBytes,
   mostRecipeBytes,
   mostRecipes,
   mostToolsOnAConnection,

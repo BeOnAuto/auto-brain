@@ -91,8 +91,12 @@ describe('the description of an argument', () => {
   });
 });
 
+function toolNameOf(verb: string, index: number): string {
+  return `${verb}_${'a'.repeat(Math.floor(index / 26))}${String.fromCodePoint(97 + (index % 26))}`;
+}
+
 function askingTools(count: number) {
-  return Array.from({ length: count }, (_, index) => asking({ name: `ask_${String.fromCodePoint(97 + index)}` }));
+  return Array.from({ length: count }, (_, index) => asking({ name: toolNameOf('ask', index) }));
 }
 
 describe('the description of an argument of one shape of a union input', () => {
@@ -119,10 +123,10 @@ describe('the description of an argument of one shape of a union input', () => {
 });
 
 describe('the tools on a connection', () => {
-  it('start the server at 26 with the guide tool, and refuse to start it at 27', () => {
-    expect(starting({ operations: askingTools(25) })).not.toThrow();
-    expect(starting({ operations: askingTools(26) })).toThrow(
-      'The own org endpoint: 27 tools, more than the 26 allowed',
+  it('start the server at 32 with the guide tool, and refuse to start it at 33', () => {
+    expect(starting({ operations: askingTools(31) })).not.toThrow();
+    expect(starting({ operations: askingTools(32) })).toThrow(
+      'The own org endpoint: 33 tools, more than the 32 allowed',
     );
   });
 });

@@ -2,7 +2,14 @@ import { randomUUID } from 'node:crypto';
 
 import { postgresqlLedgerLayer } from '@beonauto/ledger/postgresql';
 import { ledgerLayer } from '@beonauto/ledger/sqlite3';
-import { Ledger, type Context, type Decider, type RunOutcomeGroup } from '@beonauto/operations';
+import {
+  ContextSchema,
+  Ledger,
+  type Context,
+  type Decided,
+  type Decider,
+  type RunOutcomeGroup,
+} from '@beonauto/operations';
 import { Effect, ManagedRuntime, Redacted, Result, Schema, type Layer } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
@@ -16,12 +23,12 @@ const postgresql = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
 const notice =
   postgresql === '' ? ', skipped: set LEDGER_TEST_POSTGRESQL_URL to the URL of a PostgreSQL server to run it' : '';
 
-const FactSchema = Schema.Struct({ type: Schema.String, data: Schema.JsonObject });
+const FactSchema = Schema.Struct({ type: Schema.String, data: Schema.JsonObject, context: ContextSchema });
 
 type Fact = typeof FactSchema.Type;
 
 interface Written {
-  readonly fact: Fact;
+  readonly fact: Decided<Fact>;
   readonly context: Context;
 }
 

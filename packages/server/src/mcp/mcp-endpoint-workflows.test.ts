@@ -76,7 +76,7 @@ async function welcomedAfterReply(session: McpSession): Promise<ToolResult> {
 }
 
 describe('/mcp with workflows', { timeout: workflowTestTimeoutMs }, () => {
-  it('lists twenty-five tools, and its instructions say how to see whether a workflow run ended or still waits', async () => {
+  it('lists twenty-six tools, and its instructions say how to see whether a workflow run ended or still waits', async () => {
     server = await servingWorkflows([]);
 
     const served = await onMcp(async (session) => ({

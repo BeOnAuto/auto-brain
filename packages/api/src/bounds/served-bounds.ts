@@ -1,5 +1,7 @@
 import { Buffer } from 'node:buffer';
 
+import type { McpEndpoint } from '../mcp/instructions.ts';
+
 export const mostInstructionCharacters = 2000;
 
 export const mostDescriptionCharacters = 800;
@@ -10,7 +12,13 @@ const mostDescriptionSentences = 8;
 
 export const mostArgumentDescriptionCharacters = 300;
 
-export const mostToolsOnAConnection = 26;
+export const mostToolsOnAConnection = 32;
+
+export const mostListingBytes: Readonly<Record<McpEndpoint, number>> = {
+  'own org': 40_000,
+  org: 9000,
+  brain: 32_000,
+};
 
 export const mostGuideBytes = 65_536;
 

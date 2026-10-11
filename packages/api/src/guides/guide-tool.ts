@@ -22,7 +22,7 @@ const strictly: SchemaAST.ParseOptions = { onExcessProperty: 'error', errors: 'a
 
 const failureOf = SchemaIssue.makeFormatterStandardSchemaV1();
 
-function guideToolDefinitionOf({ everyGuide }: GuideShelf): ToolDefinition {
+export function guideToolDefinitionOf({ everyGuide }: GuideShelf): ToolDefinition {
   return {
     title: 'Get guide',
     description,

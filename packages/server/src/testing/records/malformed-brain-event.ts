@@ -1,12 +1,19 @@
 import { ledgerLayer } from '@beonauto/ledger/sqlite3';
-import { Ledger, factOf, streamPrefixOfOrg, type Decider } from '@beonauto/operations';
+import {
+  ActedContextSchema,
+  Ledger,
+  factOf,
+  streamPrefixOfOrg,
+  type Decided,
+  type Decider,
+} from '@beonauto/operations';
 import { Effect, ManagedRuntime, Result, Schema } from 'effect';
 
-const MalformedBrain = factOf('brain_created', Schema.Struct({ brain: Schema.Number }));
+const MalformedBrain = factOf('brain_created', Schema.Struct({ brain: Schema.Number }), ActedContextSchema);
 
 type Malformed = typeof MalformedBrain.Type;
 
-const malformedRegistry: Decider<readonly Malformed[], Malformed, Malformed> = {
+const malformedRegistry: Decider<readonly Malformed[], Decided<Malformed>, Malformed> = {
   initialState: [],
   evolve: (written, event) => [...written, event],
   decide: (event) => Result.succeed([event]),

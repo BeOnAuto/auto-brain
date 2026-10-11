@@ -52,7 +52,7 @@ const answeredWithAnError: AnsweredOnce = {
   detail: 'No such thread',
 };
 
-function failedAs(because: 'arguments_refused' | 'server_failure'): AnsweredOnce {
+function failedAs(because: 'arguments_refused' | 'server_failure' | 'too_large'): AnsweredOnce {
   return {
     ...answeredAs,
     outcome: because,
@@ -143,6 +143,15 @@ describe('a telling the brain makes in a conversation', () => {
       { type: 'telling_failed', data: { call_id: 'call-2', because: 'tool_not_offered', detail: 'Not allowed' } },
       { type: 'telling_failed', data: { call_id: 'call-2', because: 'server_failure' } },
     ]);
+  });
+});
+
+describe('a telling whose tool answered past the cap of its transport', () => {
+  it('fails too large with no answer, since the server answered and failed nothing', () => {
+    expect(tellingEndedOf(telling, failedAs('too_large'), recorded).event).toEqual({
+      type: 'telling_failed',
+      data: { call_id: 'call-2', because: 'too_large', detail: 'Refused', duration_ms: 3, jsonrpc_id: 4 },
+    });
   });
 });
 

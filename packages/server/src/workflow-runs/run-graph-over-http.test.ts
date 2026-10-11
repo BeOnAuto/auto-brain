@@ -137,8 +137,8 @@ describe('the graph of a workflow run, over HTTP', { timeout: workflowTestTimeou
       second?.id,
     ]);
     expect([named(events, 'step_waiting', 'judge').id, named(events, 'step_finished', 'judge').id]).toEqual([
-      `${String(first?.id)}/1`,
-      `${String(second?.id)}/1`,
+      `${String(first?.id)}_1`,
+      `${String(second?.id)}_1`,
     ]);
     expect(events.slice(0, 3).map(({ type }) => type)).toEqual([
       'run_started',
@@ -160,20 +160,43 @@ function rowCalled(page: unknown, id: string | undefined): unknown {
 }
 
 describe('one event of a workflow run, read by its id, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
-  it('is the row the history shows, a step by the id of its record and its number, and the input by the id of the record', async () => {
+  it('is the row the history shows, a step by the id of its record, an underscore and its number, and the input by the id of the record', async () => {
     const runId = await reviewed();
     const page = (await server.call('GET', `${alpha}/runs/${runId}/history?limit=100`)).body;
-    const events = pageOf(page).events;
-    const waiting = named(events, 'step_waiting', 'judge');
-    const first = events.find(({ type }) => type === 'workflow_input_applied');
+    const [first, second] = pageOf(page).events.filter(({ type }) => type === 'workflow_input_applied');
+    const record = String(second?.id);
+    const encoded = `${alpha}/events/${record}%5F2`;
 
-    const step = await server.call('GET', `${alpha}/events/${encodeURIComponent(waiting.id)}`);
+    const asItIs = await server.call('GET', `${alpha}/events/${record}_2`);
+    const percentEncoded = await server.call('GET', encoded);
+    const decodedByAProxy = await server.call('GET', decodeURIComponent(encoded));
     const input = await server.call('GET', `${alpha}/events/${String(first?.id)}`);
-    const beyond = await server.call('GET', `${alpha}/events/${String(first?.id)}%2F9`);
+    const beyond = await server.call('GET', `${alpha}/events/${String(first?.id)}_9`);
 
-    expect([step.status, input.status, beyond.status]).toEqual([200, 200, 404]);
-    expect([step.body, input.body]).toEqual([rowCalled(page, waiting.id), rowCalled(page, first?.id)]);
-    expect(beyond.body).toMatchObject({ reason: 'not_found' });
+    expect([asItIs, percentEncoded, decodedByAProxy, input].map(({ status }) => status)).toEqual([200, 200, 200, 200]);
+    expect([asItIs.body, percentEncoded.body, decodedByAProxy.body, input.body]).toEqual([
+      rowCalled(page, `${record}_2`),
+      rowCalled(page, `${record}_2`),
+      rowCalled(page, `${record}_2`),
+      rowCalled(page, first?.id),
+    ]);
+    expect(asItIs.body).toMatchObject({ id: `${record}_2` });
+    expect(beyond).toMatchObject({ status: 404, body: { reason: 'not_found' } });
+  });
+
+  it('refuses a step numbered from 0 or with a leading zero as no id of an event', async () => {
+    const runId = await reviewed();
+    const page = (await server.call('GET', `${alpha}/runs/${runId}/history?limit=100`)).body;
+    const first = pageOf(page).events.find(({ type }) => type === 'workflow_input_applied');
+
+    const refused = await Promise.all(
+      ['_0', '_02'].map((step) => server.call('GET', `${alpha}/events/${String(first?.id)}${step}`)),
+    );
+
+    expect(refused).toMatchObject([
+      { status: 422, body: { reason: 'invalid_input' } },
+      { status: 422, body: { reason: 'invalid_input' } },
+    ]);
   });
 });
 
@@ -186,7 +209,7 @@ describe('the tree of a workflow run, over HTTP', { timeout: workflowTestTimeout
     const ofChild = await everyEvent(`${alpha}/events?run_id=${child}&limit=100`);
     const childStarted = startOf(tree, child);
 
-    expect(causeOf(childStarted)).toBe(waiting.id.slice(0, waiting.id.indexOf('/')));
+    expect(causeOf(childStarted)).toBe(waiting.id.slice(0, waiting.id.indexOf('_')));
     expect(tree.filter((event) => isOfRun(event, child)).map(({ type }) => type)).toEqual([
       'step_waiting',
       'run_started',

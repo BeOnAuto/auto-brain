@@ -73,7 +73,7 @@ describe('one event read whole by its id', { timeout: workflowTestTimeoutMs }, (
 
     const refused = [
       await server.call('GET', `${alpha}/events/${unknownEvent}`),
-      await server.call('GET', `${alpha}/events/${String(started?.id)}%2F1`),
+      await server.call('GET', `${alpha}/events/${String(started?.id)}_1`),
       await server.call('GET', `/v1/orgs/acme/brains/beta/events/${String(started?.id)}`),
     ];
     const malformed = await server.call('GET', `${alpha}/events/not-an-event`);

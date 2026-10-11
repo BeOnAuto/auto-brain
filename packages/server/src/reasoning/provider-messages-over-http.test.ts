@@ -46,14 +46,15 @@ function internalsIn({ text }: TestResponse): readonly string[] {
 }
 
 describe('a run whose gateway rejects the model', () => {
-  it('answers and records only what the status says, and gives the gateway text to the operator', async () => {
+  it('answers and records what the status says and the code the gateway gave, and gives the gateway text to the operator', async () => {
     await request(server.port, 'POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
     await request(server.port, 'POST', `${alpha}/definitions/reasoning`, { body: { name: 'hello', source } });
     const ran = await request(server.port, 'POST', `${alpha}/definitions/reasoning/hello/run`, {
       body: { input: {}, run_id: runId },
     });
     const recorded = await request(server.port, 'GET', `${alpha}/runs/${runId}`);
-    const detail = 'gateway answered HTTP 404: the model was not found; update the reasoning function definition';
+    const detail =
+      'gateway answered HTTP 404: the model was not found, with the error code 404; update the reasoning function definition';
 
     expect(ran).toMatchObject({ status: 409, body: { reason: 'conflict', detail } });
     expect(recorded).toMatchObject({

@@ -1,0 +1,83 @@
+import { foldOf, recallDocument } from '@beonauto/recall/testing';
+import { Schema } from 'effect';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
+import {
+  liveWith,
+  recallTestTimeoutMs,
+  recalled,
+  servingRecall,
+  standingUntil,
+} from '../testing/servers/recall-server.ts';
+import { runIdIn, settledRun, workflowSource } from '../testing/servers/workflow-server.ts';
+
+const tallying = workflowSource(
+  'tally',
+  'schedule:\n  on: { one: { with: { type: com.acme.ledger.closed } } }\ndo:\n  - total: { set: { tallied: true } }\n',
+);
+
+const triggeredRuns = recallDocument(
+  foldOf("return [...view, [event.subject, event.caller, event.triggerkind].join(' ')];", 'return view;'),
+  [
+    'language: typescript',
+    'source:',
+    '  events:',
+    '    - type: run_succeeded',
+    '      subject: workflow/tally',
+    '      caller: brain:alpha',
+    '      triggerkind: event',
+    'view:',
+    '  initial: []',
+  ].join('\n'),
+);
+
+const decodeRuns = Schema.decodeUnknownSync(
+  Schema.Struct({ runs: Schema.Array(Schema.Struct({ run_id: Schema.String, status: Schema.String })) }),
+);
+
+const closing: (() => Promise<void>)[] = [];
+
+afterEach(async () => {
+  await Promise.all(closing.splice(0).map((close) => close()));
+});
+
+async function servingTheTally(): Promise<ReasoningServer> {
+  const server = await servingRecall([]);
+  closing.push(server.stop);
+  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', `${alpha}/definitions/workflow`, { body: { name: 'tally', source: tallying } });
+  await server.call('POST', `${alpha}/definitions/recall`, { body: { name: 'triggered', source: triggeredRuns } });
+  return server;
+}
+
+function everyRunEnded(server: ReasoningServer, count: number): Promise<unknown> {
+  return vi.waitFor(
+    async () => {
+      const { runs } = decodeRuns((await server.call('GET', `${alpha}/runs?type=workflow&name=tally`)).body);
+      expect(runs.filter(({ status }) => status === 'succeeded')).toHaveLength(count);
+    },
+    { timeout: recallTestTimeoutMs / 2, interval: 100 },
+  );
+}
+
+describe(
+  'a recall function whose source names the subject, the caller and the trigger kind',
+  { timeout: recallTestTimeoutMs },
+  () => {
+    it('folds the runs the brain started for an event, and not the run a caller started', async () => {
+      const server = await servingTheTally();
+      const started = await server.call('POST', `${alpha}/definitions/workflow/tally/run`, { body: { input: {} } });
+      await settledRun(server, `${alpha}/runs/${runIdIn(started.body)}`);
+
+      await server.call('POST', `${alpha}/events`, {
+        body: { event: { source: '/ledger', type: 'com.acme.ledger.closed', data: { month: 'september' } } },
+      });
+      await everyRunEnded(server, 2);
+      await standingUntil(server, 'triggered', liveWith(1));
+      const answer = await recalled(server, 'triggered', {});
+
+      expect(answer.body).toMatchObject({ status: 'succeeded', output: ['workflow/tally brain:alpha event'] });
+    });
+  },
+);

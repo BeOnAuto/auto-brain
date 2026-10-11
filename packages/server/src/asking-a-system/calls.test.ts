@@ -10,6 +10,8 @@ const aNumber: unknown = expect.any(Number);
 
 const aTime: unknown = expect.any(String);
 
+const aDigest: unknown = expect.stringMatching(/^[0-9a-f]{64}$/u);
+
 const scrubbedChannel: unknown = expect.stringMatching(/^\[redacted\] x{5000}$/u);
 
 const record = { server: 'chat', tool: 'thread', read: '/messages' };
@@ -68,10 +70,10 @@ describe('the history of a run that asks a system', { timeout: workflowTestTimeo
       call_id: systemRunId,
       server: 'chat',
       tool: 'thread',
-      content_kept: true,
+      arguments_sha256: aDigest,
       arguments: { channel: 'C0123', ts: '1728379900.000050', limit: 100, inclusive: false },
     });
-    expect(history[2]?.data).toMatchObject({ is_error: false, duration_ms: aNumber, content_kept: true });
+    expect(history[2]?.data).toMatchObject({ is_error: false, duration_ms: aNumber, result_sha256: aDigest });
     expect(keysOf(history[2])).toContain('answer');
   });
 

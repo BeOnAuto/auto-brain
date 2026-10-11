@@ -81,7 +81,7 @@ function hasNoConstraint({ name, keywords }: Argument): boolean {
 }
 
 describe('the descriptions of the tools of /mcp', () => {
-  it('are twenty-five, each under 800 characters, in three to eight sentences', () => {
+  it('are twenty-six, each under 800 characters, in three to eight sentences', () => {
     expect(tools).toHaveLength(26);
     expect(tools.filter(({ description = '' }) => description.length >= 800).map(({ name }) => name)).toEqual([]);
     expect(tools.filter((tool) => isOutsideTheSentenceBound(tool)).map(({ name }) => name)).toEqual([]);

@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { brokenPromise, deniedText } from '../testing/index.ts';
+import { brokenPromise, deniedText, fakeStdioServerPath, patientTiming } from '../testing/index.ts';
 import {
   calledOnce,
   echoCall,
@@ -15,7 +15,9 @@ import {
   oneCallServer,
   failedWith,
   unopenedWith,
+  closedAfter,
 } from '../testing/one-calls.ts';
+import { reportingAccess } from '../testing/reporting-access.ts';
 
 const largeText = '\u{1F600}'.repeat(8 * 256);
 
@@ -194,4 +196,43 @@ describe('one call of a tool that declares an output schema', () => {
     });
     expect(fake.received()).toHaveLength(1);
   });
+});
+
+function stdioAccess() {
+  const { access } = reportingAccess(
+    {
+      limitless: {
+        command: process.execPath,
+        args: [fakeStdioServerPath],
+        env: { NODE_V8_COVERAGE: '${NODE_V8_COVERAGE:-}' },
+        org: 'acme',
+      },
+    },
+    { environment: { NODE_V8_COVERAGE: process.env['NODE_V8_COVERAGE'] }, timing: patientTiming },
+  );
+  closedAfter(access.close);
+  return access;
+}
+
+const tooLarge = { kind: 'answered', outcome: 'too_large', failed: { because: 'too_large' } };
+
+describe('one call whose tool answers past the cap of its transport', () => {
+  it(
+    'ends too large past 16 MiB over HTTP and past 4 MiB over stdio, the end a delivery and a telling record',
+    { timeout: 120_000 },
+    async () => {
+      const fake = await oneCallServer();
+
+      const overHttp = await calledOnce(oneCallAccess(fake.url), {
+        reference: { server: 'graph', tool: 'large' },
+        input: { kib: 16_384 },
+      });
+      const overStdio = await calledOnce(stdioAccess(), {
+        reference: { server: 'limitless', tool: 'large' },
+        input: { kib: 4097 },
+      });
+
+      expect([overHttp, overStdio]).toMatchObject([tooLarge, tooLarge]);
+    },
+  );
 });
