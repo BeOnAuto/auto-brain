@@ -48,7 +48,7 @@ export function recordingCallJournal(): RecordingCallJournal {
 }
 
 export function toolRun(journal: CallJournal, changes: Partial<Omit<CallerContext, 'journal'>> = {}): CallerContext {
-  return { id: toolRunId, org: 'acme', brain: 'alpha', meta: { [runIdKey]: toolRunId }, ...changes, journal };
+  return { id: toolRunId, org: 'acme', playbook: 'alpha', meta: { [runIdKey]: toolRunId }, ...changes, journal };
 }
 
 export function controlledSignals(): ControlledSignals {

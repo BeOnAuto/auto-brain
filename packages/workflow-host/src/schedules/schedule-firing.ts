@@ -31,9 +31,9 @@ const schedulesInOneFiring = 64;
 
 const EndedRow = Schema.Struct({ ended_at: Schema.NullOr(WholeNumber) });
 
-function brainOf(brainKey: string): { readonly org: string; readonly brain: string } {
-  const [, org = '', brain = ''] = brainKey.split('/');
-  return { org, brain };
+function playbookOf(playbookKey: string): { readonly org: string; readonly playbook: string } {
+  const [, org = '', playbook = ''] = playbookKey.split('/');
+  return { org, playbook };
 }
 
 function dueAtOf({ latest }: Firing): string {
@@ -44,15 +44,15 @@ function namedOf({ subscription }: Firing): string {
   return triggerNamed(subscription.trigger.kind);
 }
 
-function stillRuns(database: HostDatabase, brainKey: string, running: string | null): Effect.Effect<boolean> {
+function stillRuns(database: HostDatabase, playbookKey: string, running: string | null): Effect.Effect<boolean> {
   if (running === null) {
     return Effect.succeed(false);
   }
-  const { org, brain } = brainOf(brainKey);
+  const { org, playbook } = playbookOf(playbookKey);
   return Effect.orDie(
     rowsOf(
       EndedRow,
-      database.read(statement`SELECT ended_at FROM workflow_runs WHERE run_key = ${`${org}/${brain}/${running}`}`),
+      database.read(statement`SELECT ended_at FROM workflow_runs WHERE run_key = ${`${org}/${playbook}/${running}`}`),
     ),
   ).pipe(Effect.map(([row]) => row !== undefined && row.ended_at === null));
 }
@@ -61,7 +61,7 @@ function skipped({ database, refusals }: FiringParts, firing: Firing) {
   const { subscription, next } = firing;
   return Effect.andThen(
     refusals.refuse(
-      subscription.brainKey,
+      subscription.playbookKey,
       subscription.workflow,
       `The run its ${namedOf(firing)} had due at ${dueAtOf(firing)} was skipped: the run its ${namedOf(firing)} started before still runs`,
     ),
@@ -73,7 +73,7 @@ function missedSaid({ refusals }: FiringParts, firing: Firing) {
   const { subscription, latest } = firing;
   return latest > subscription.nextDue
     ? refusals.refuse(
-        subscription.brainKey,
+        subscription.playbookKey,
         subscription.workflow,
         `The runs its ${namedOf(firing)} had due from ${new Date(subscription.nextDue).toISOString()} to ${dueAtOf(firing)} came while the server was down, and only the latest ran`,
       )
@@ -81,10 +81,10 @@ function missedSaid({ refusals }: FiringParts, firing: Firing) {
 }
 
 function startOf(firing: Firing): ReactionStart {
-  const { brainKey, workflow, version, trigger, activatedBy } = firing.subscription;
+  const { playbookKey, workflow, version, trigger, activatedBy } = firing.subscription;
   const due = dueAtOf(firing);
   return {
-    ...brainOf(brainKey),
+    ...playbookOf(playbookKey),
     workflow,
     version,
     runId: reactionRunIdOf(workflow, version, trigger.reference, due),
@@ -96,7 +96,7 @@ function startOf(firing: Firing): ReactionStart {
 }
 
 function ran(parts: FiringParts, firing: Firing) {
-  const { brainKey, workflow } = firing.subscription;
+  const { playbookKey, workflow } = firing.subscription;
   const start = startOf(firing);
   return parts.start(start).pipe(
     Effect.andThen(
@@ -108,7 +108,7 @@ function ran(parts: FiringParts, firing: Firing) {
     Effect.catch(({ detail }: Readonly<{ detail: string }>) =>
       Effect.andThen(
         parts.refusals.refuse(
-          brainKey,
+          playbookKey,
           workflow,
           `The run its ${namedOf(firing)} had due at ${dueAtOf(firing)} could not be started: ${detail}`,
         ),
@@ -126,7 +126,7 @@ function fired(parts: FiringParts, subscription: Schedule) {
     next: nextAfter(trigger, activatedAt, at),
     latest: latestDue(trigger, activatedAt, nextDue, at),
   };
-  return Effect.flatMap(stillRuns(parts.database, subscription.brainKey, subscription.running), (runs) =>
+  return Effect.flatMap(stillRuns(parts.database, subscription.playbookKey, subscription.running), (runs) =>
     runs ? skipped(parts, firing) : ran(parts, firing),
   );
 }

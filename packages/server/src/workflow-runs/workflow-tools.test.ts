@@ -75,7 +75,7 @@ async function serving(...replies: readonly ScriptedReply[]): Promise<ReasoningS
     }),
   });
   closing.push(server.stop);
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   await server.call('POST', `${alpha}/definitions/reasoning`, {
     body: { name: 'graph', source: reasoningFunction('graph/search') },
   });
@@ -123,7 +123,7 @@ describe(
       expect(answers).toMatchObject([
         {
           summary:
-            'A function the workflow called did not succeed, and 3 steps moved; the workflow ended. This server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this brain.',
+            'A function the workflow called did not succeed, and 3 steps moved; the workflow ended. This server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this playbook.',
           data: {
             input: {
               status: 'rejected',

@@ -6,7 +6,7 @@ import { RunEventSchema, type RunEvent } from './run-events.ts';
 
 const encode = Schema.encodeSync(Schema.toCodecJson(RunEventSchema));
 
-const fact = { by: 'brain:alpha', at: '2026-10-01T09:00:00.000Z' };
+const fact = { by: 'playbook:alpha', at: '2026-10-01T09:00:00.000Z' };
 
 const ofCheck = { definition_type: 'workflow', name: 'check', definition_version: 1 };
 

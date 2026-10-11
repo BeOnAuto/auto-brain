@@ -36,15 +36,15 @@ const deliveryOfWords: DeliveryEvent = {
   definition_type: 'words',
   name: 'count',
   definition_version: 1,
-  by: 'brain:alpha',
+  by: 'playbook:alpha',
   at: '2026-10-01T09:00:00.000Z',
 };
 
 const run: RunContext = {
   id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
   org: 'acme',
-  brain: 'alpha',
-  caller: { id: 'acme-admin', org: 'acme', permissions: ['brain:write'], brains: '*' },
+  playbook: 'alpha',
+  caller: { id: 'acme-admin', org: 'acme', permissions: ['playbook:write'], playbooks: '*' },
   definition: { name: 'count', version: 3 },
   journal: recordingJournal(),
   lineage: { startId: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a', correlationId: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' },
@@ -189,7 +189,7 @@ describe('what a capability decides of each document and says of its runs', () =
 describe('the cancelling of a run', () => {
   it('cancels a run by settling it as cancelled with the kind and reason asked, unless it decides otherwise', () => {
     const asked = {
-      run: { org: 'acme', brain: 'alpha', id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' },
+      run: { org: 'acme', playbook: 'alpha', id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' },
       record: { step: 1 },
       kind: 'deadline',
       reason: 'The step ran out of time',

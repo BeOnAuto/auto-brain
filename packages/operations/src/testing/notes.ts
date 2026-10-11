@@ -1,8 +1,8 @@
 import { Effect, Result, Schema } from 'effect';
 
 import {
-  BrainReader,
-  BrainWriter,
+  PlaybookReader,
+  PlaybookWriter,
   Conflict,
   NotFound,
   defineCommand,
@@ -35,25 +35,25 @@ const notebook: Decider<readonly Note[], Note, NoteAdded, 'conflict'> = {
 
 const Added = Schema.Struct({ added: NoteSchema, version: Schema.Int });
 
-export const addNote = defineCommand('brain', {
+export const addNote = defineCommand('playbook', {
   name: 'add_note',
   title: 'Add note',
-  description: 'Adds a note to the brain.',
+  description: 'Adds a note to the playbook.',
   route: { method: 'POST', path: '/notes' },
   successStatus: 201,
   inputSchema: Schema.Struct(noteFields),
   outputSchema: Added,
   reasons: ['conflict'],
   handle: Effect.fnUntraced(function* (note) {
-    const { version } = yield* (yield* BrainWriter).execute('notes', notebook, note);
+    const { version } = yield* (yield* PlaybookWriter).execute('notes', notebook, note);
     return { added: note, version };
   }),
 });
 
-export const listNotes = defineQuery('brain', {
+export const listNotes = defineQuery('playbook', {
   name: 'list_notes',
   title: 'List notes',
-  description: 'Lists the notes of the brain.',
+  description: 'Lists the notes of the playbook.',
   route: { method: 'GET', path: '/notes' },
   inputSchema: Schema.Struct({
     limit: Schema.optionalKey(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 }))),
@@ -61,21 +61,21 @@ export const listNotes = defineQuery('brain', {
   outputSchema: Schema.Struct({ notes: Schema.Array(NoteSchema) }),
   reasons: [],
   handle: Effect.fnUntraced(function* ({ limit }) {
-    const { state } = yield* (yield* BrainReader).load('notes', notebook);
+    const { state } = yield* (yield* PlaybookReader).load('notes', notebook);
     return { notes: state.slice(0, limit) };
   }),
 });
 
-export const getNote = defineQuery('brain', {
+export const getNote = defineQuery('playbook', {
   name: 'get_note',
   title: 'Get note',
-  description: 'Reads one note of the brain.',
+  description: 'Reads one note of the playbook.',
   route: { method: 'GET', path: '/notes/{name}' },
   inputSchema: Schema.Struct({ name: NoteName }),
   outputSchema: NoteSchema,
   reasons: ['not_found'],
   handle: Effect.fnUntraced(function* ({ name }) {
-    const { state } = yield* (yield* BrainReader).load('notes', notebook);
+    const { state } = yield* (yield* PlaybookReader).load('notes', notebook);
     const found = state.find((note) => note.name === name);
     if (found === undefined) {
       return yield* new NotFound({ detail: `There is no note ${name}` });
@@ -84,7 +84,7 @@ export const getNote = defineQuery('brain', {
   }),
 });
 
-export const copyNote = defineCommand('brain', {
+export const copyNote = defineCommand('playbook', {
   name: 'copy_note',
   title: 'Copy note',
   description: 'Adds a note with the text of another note.',
@@ -106,10 +106,10 @@ function selectionOf(run: string | undefined, correlation: string | undefined): 
   return correlation === undefined ? { kind: 'everything' } : { kind: 'correlated', correlation };
 }
 
-export const readNoteHistory = defineQuery('brain', {
+export const readNoteHistory = defineQuery('playbook', {
   name: 'read_note_history',
   title: 'Read note history',
-  description: 'Reads one page of what the brain recorded, oldest first, taking any limit and time it is given.',
+  description: 'Reads one page of what the playbook recorded, oldest first, taking any limit and time it is given.',
   route: { method: 'GET', path: '/note-history' },
   inputSchema: Schema.Struct({
     limit: Schema.Int,
@@ -125,7 +125,7 @@ export const readNoteHistory = defineQuery('brain', {
   }),
   reasons: ['invalid_input'],
   handle: Effect.fnUntraced(function* ({ limit, cursor, since, run, correlation }) {
-    const { records, nextCursor } = yield* (yield* BrainReader).readRecorded(selectionOf(run, correlation), {
+    const { records, nextCursor } = yield* (yield* PlaybookReader).readRecorded(selectionOf(run, correlation), {
       order: 'asc',
       limit,
       ...(cursor === undefined ? {} : { cursor }),

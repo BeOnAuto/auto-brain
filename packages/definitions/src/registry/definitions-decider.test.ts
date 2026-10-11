@@ -62,7 +62,7 @@ describe('creating a definition', () => {
 
   it('is rejected while an active definition holds the name', () => {
     expect(decided(creatingGreet, greetCreated)).toEqual(
-      Result.fail(new Conflict({ detail: 'The brain already has the echo definition greet', kind: 'taken' })),
+      Result.fail(new Conflict({ detail: 'The playbook already has the echo definition greet', kind: 'taken' })),
     );
   });
 
@@ -90,9 +90,9 @@ describe('updating a definition', () => {
     expect(decided(updatingGreet(hello), greetCreated)).toStrictEqual(Result.succeed([]));
   });
 
-  it('is rejected for a definition the brain does not have', () => {
+  it('is rejected for a definition the playbook does not have', () => {
     expect(decided(updatingGreet(howdy))).toEqual(
-      Result.fail(new NotFound({ detail: 'There is no echo definition greet in this brain' })),
+      Result.fail(new NotFound({ detail: 'There is no echo definition greet in this playbook' })),
     );
   });
 
@@ -114,9 +114,9 @@ describe('retiring a definition', () => {
     expect(decided(retiringGreet, greetCreated, greetRetired)).toStrictEqual(Result.succeed([]));
   });
 
-  it('is rejected for a definition the brain does not have', () => {
+  it('is rejected for a definition the playbook does not have', () => {
     expect(decided(retiringGreet)).toEqual(
-      Result.fail(new NotFound({ detail: 'There is no echo definition greet in this brain' })),
+      Result.fail(new NotFound({ detail: 'There is no echo definition greet in this playbook' })),
     );
   });
 });
@@ -191,10 +191,10 @@ function reactingDefinitions(count: number): readonly DefinitionEvent[] {
 
 const beyondTheBound = new Conflict({
   detail:
-    'The brain already has 1024 echo definitions that start on their own, the most a brain holds; retire one, or save this one without its schedule',
+    'The playbook already has 1024 echo definitions that start on their own, the most a playbook holds; retire one, or save this one without its schedule',
 });
 
-describe('the definitions of a brain that start on their own', () => {
+describe('the definitions of a playbook that start on their own', () => {
   it('are 1,024 at most, however many triggers each has: one more is refused, created or made so by an update', () => {
     const full = reactingDefinitions(1024);
 

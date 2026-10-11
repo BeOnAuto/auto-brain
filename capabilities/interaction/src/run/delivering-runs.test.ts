@@ -9,33 +9,33 @@ const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 const brief = { campaign: 'Spring', owner: 'ada' };
 
 async function askedThrough(source: string, tools: HarnessTools, input: unknown = brief) {
-  const brain = interactionHarness({ tools });
-  await brain.define('approve-brief', source);
-  const asked = await brain.ask('approve-brief', input, runId);
-  return { brain, asked };
+  const playbook = interactionHarness({ tools });
+  await playbook.define('approve-brief', source);
+  const asked = await playbook.ask('approve-brief', input, runId);
+  return { playbook, asked };
 }
 
 const notOffered = { status: 'rejected', reason: 'unavailable', kind: 'tool_not_offered' };
 
-describe('a run whose delivery names a tool this brain may not use', () => {
-  it('is unavailable before it asks anything, for a server not configured for the brain', async () => {
-    const { brain, asked } = await askedThrough(documentOf(delivering, answering), noTools);
+describe('a run whose delivery names a tool this playbook may not use', () => {
+  it('is unavailable before it asks anything, for a server not configured for the playbook', async () => {
+    const { playbook, asked } = await askedThrough(documentOf(delivering, answering), noTools);
 
     expect(asked).toMatchObject({
       ...notOffered,
       because: 'mcp_server_not_configured',
-      detail: 'No MCP server named chat is configured for this brain',
+      detail: 'No MCP server named chat is configured for this playbook',
     });
-    expect(await brain.call(listInteractions, {})).toMatchObject({ output: { interactions: [] } });
+    expect(await playbook.call(listInteractions, {})).toMatchObject({ output: { interactions: [] } });
   });
 
-  it('is unavailable for a server the tool servers of the brain do not hold', async () => {
+  it('is unavailable for a server the tool servers of the playbook do not hold', async () => {
     const elsewhere = replacing(delivering, '  server: chat', '  server: elsewhere');
 
     expect((await askedThrough(documentOf(elsewhere, answering), fakeTools())).asked).toMatchObject({
       ...notOffered,
       because: 'mcp_server_not_configured',
-      detail: 'No MCP server named elsewhere is configured for this brain',
+      detail: 'No MCP server named elsewhere is configured for this playbook',
     });
   });
 
@@ -109,9 +109,9 @@ describe('the arguments of a delivery, at the start of its run', () => {
 
 describe('the delivery of a request, as its record keeps it', () => {
   it('is recorded as written in the request, beside its moment, with how it reads replies', async () => {
-    const { brain } = await askedThrough(documentOf(delivering, reading, answering), fakeTools());
+    const { playbook } = await askedThrough(documentOf(delivering, reading, answering), fakeTools());
 
-    expect(await brain.runOf(runId)).toMatchObject({
+    expect(await playbook.runOf(runId)).toMatchObject({
       output: {
         record: {
           deliver: { server: 'chat', tool: 'post_message', with: { text: '{{ message }}' } },

@@ -72,7 +72,7 @@ export const TellSchema = Schema.Struct({
 export const RepliesSchema = Schema.Struct({
   conversation: Schema.optionalKey(
     Schema.String.annotate({
-      description: 'A Liquid template over to, sent.conversation and sent.id rendering the key the brain reads by',
+      description: 'A Liquid template over to, sent.conversation and sent.id rendering the key the playbook reads by',
     }),
   ),
   tool: Schema.String.annotate({ description: 'The tool of the delivering server that reads what came since a point' }),

@@ -46,7 +46,7 @@ describe('a cancel from the caller of a run that has not started', () => {
   it('is recorded as the first event of its stream, without a definition, where a cancel from anyone else finds no run', () => {
     expect(decided(cancelling(true))).toStrictEqual(Result.succeed([cancelFirst]));
     expect(decided(cancelling(false))).toStrictEqual(
-      Result.fail(new NotFound({ detail: 'There is no such run in this brain' })),
+      Result.fail(new NotFound({ detail: 'There is no such run in this playbook' })),
     );
   });
 
@@ -61,8 +61,8 @@ describe('a cancel from the caller of a run that has not started', () => {
       Result.succeed([]),
     );
     expect(
-      decided({ type: 'settle', result: { type: 'run_failed' }, by: 'brain:alpha', at: later }, cancelFirst),
-    ).toStrictEqual(Result.fail(new NotFound({ detail: 'There is no such run in this brain' })));
+      decided({ type: 'settle', result: { type: 'run_failed' }, by: 'playbook:alpha', at: later }, cancelFirst),
+    ).toStrictEqual(Result.fail(new NotFound({ detail: 'There is no such run in this playbook' })));
     expect(stateAfter(cancelFirst, cancelFirst)).toStrictEqual({
       cancelledBeforeStart: { kind: 'parent_ended', reason, by: 'acme-admin' },
     });

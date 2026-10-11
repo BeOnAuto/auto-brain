@@ -1,7 +1,7 @@
 import { Effect, Function, type Schema } from 'effect';
 
 import { openHostDatabase, type DatabaseSettings } from '../src/database/host-databases.ts';
-import { alpha, at, brainCreated, recorded } from '../src/reaction-testing/brain-writes.ts';
+import { alpha, at, playbookCreated, recorded } from '../src/reaction-testing/playbook-writes.ts';
 import { header, runAt, startOf } from './measured-host.ts';
 import { childOf, waitingHost, type WaitingHost } from './waiting-host.ts';
 
@@ -51,7 +51,7 @@ async function measuredOn(
   record: (store: Store, runId: string) => Promise<void>,
 ): Promise<WaitingLatency> {
   const opened = await openHostDatabase(database, Function.constVoid);
-  await brainCreated(opened.store, 'alpha');
+  await playbookCreated(opened.store, 'alpha');
   const waiting = await waitingHost(database, opened, signalled);
   await inTurn(runs, (index) => Effect.runPromise(waiting.host.start(runAt(index), startOf(document))));
   if (document === calling) {
@@ -76,7 +76,7 @@ export function childEndingLatencyOn(database: DatabaseSettings, measured: Waiti
       type: 'run_succeeded',
       output: 'done',
       record: {},
-      by: 'brain:alpha',
+      by: 'playbook:alpha',
       called_by: { run_id: runId, reference: '/do/0/ask', run: 1 },
       ...ofTheRun,
     }),

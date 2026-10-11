@@ -60,7 +60,11 @@ describe('an event a run of the host emits', () => {
 
     await Effect.runPromise(emitter.emit(emission, run, origin));
     const { records } = await Effect.runPromise(
-      ledger.service.readRecorded({ org: 'acme', brain: 'alpha' }, { kind: 'everything' }, { order: 'asc', limit: 10 }),
+      ledger.service.readRecorded(
+        { org: 'acme', playbook: 'alpha' },
+        { kind: 'everything' },
+        { order: 'asc', limit: 10 },
+      ),
     );
 
     expect(

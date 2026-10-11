@@ -46,7 +46,7 @@ const FunctionSchema = Schema.Struct({
   runs: Count.annotate({ description: 'How many of its runs ended' }),
 });
 
-export const BrainAnalyticsSchema = Schema.Struct({
+export const PlaybookAnalyticsSchema = Schema.Struct({
   days: Count.annotate({ description: 'How many days the window holds' }),
   runs: RunsSchema,
   tokens: TokensSchema,
@@ -58,11 +58,11 @@ export const BrainAnalyticsSchema = Schema.Struct({
     description: 'The definitions that had runs end, the most runs first, then by type and name',
   }),
 }).annotate({
-  identifier: 'BrainAnalytics',
-  description: 'What the runs of a brain did over a window of days, counted by when each first started',
+  identifier: 'PlaybookAnalytics',
+  description: 'What the runs of a playbook did over a window of days, counted by when each first started',
 });
 
-export type BrainAnalytics = typeof BrainAnalyticsSchema.Type;
+export type PlaybookAnalytics = typeof PlaybookAnalyticsSchema.Type;
 
 type Runs = typeof RunsSchema.Type;
 
@@ -84,7 +84,7 @@ function inCodePointOrder(left: string, right: string): number {
   return left < right ? -1 : 1;
 }
 
-type FunctionRuns = BrainAnalytics['by_function'][number];
+type FunctionRuns = PlaybookAnalytics['by_function'][number];
 
 function mostRunsFirst(left: FunctionRuns, right: FunctionRuns): number {
   if (left.runs !== right.runs) {
@@ -114,7 +114,7 @@ export function durationOf(durations: readonly number[]): Duration {
   return sorted.length === 0 ? null : { p50: atRank(sorted, 50), p95: atRank(sorted, 95) };
 }
 
-type Summary = Pick<BrainAnalytics, 'runs' | 'tokens' | 'duration_ms'>;
+type Summary = Pick<PlaybookAnalytics, 'runs' | 'tokens' | 'duration_ms'>;
 
 function summaryOf(groups: readonly RunOutcomeGroup[]): Summary {
   const ended = groups.filter(({ status }) => status !== 'started');
@@ -125,12 +125,15 @@ function summaryOf(groups: readonly RunOutcomeGroup[]): Summary {
   };
 }
 
-function dayIn(byDay: ReadonlyMap<string, readonly RunOutcomeGroup[]>, day: string): BrainAnalytics['by_day'][number] {
+function dayIn(
+  byDay: ReadonlyMap<string, readonly RunOutcomeGroup[]>,
+  day: string,
+): PlaybookAnalytics['by_day'][number] {
   const { runs, tokens, duration_ms } = summaryOf(byDay.get(day) ?? []);
   return { day, runs, tokens, duration_ms };
 }
 
-function byFunction(groups: readonly RunOutcomeGroup[]): BrainAnalytics['by_function'] {
+function byFunction(groups: readonly RunOutcomeGroup[]): PlaybookAnalytics['by_function'] {
   const functions = new Map<string, FunctionRuns>();
   for (const group of groups) {
     const key = JSON.stringify([group.definitionType, group.name]);
@@ -140,7 +143,7 @@ function byFunction(groups: readonly RunOutcomeGroup[]): BrainAnalytics['by_func
   return [...functions.values()].filter(({ runs }) => runs > 0).toSorted((left, right) => mostRunsFirst(left, right));
 }
 
-export function analyticsOf(window: AnalyticsWindow, groups: readonly RunOutcomeGroup[]): BrainAnalytics {
+export function analyticsOf(window: AnalyticsWindow, groups: readonly RunOutcomeGroup[]): PlaybookAnalytics {
   const byDay = Map.groupBy(groups, ({ day }) => day);
   return {
     days: window.days,

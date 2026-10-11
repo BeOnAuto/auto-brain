@@ -14,7 +14,7 @@ import {
   type RecordsSelected,
   type RunsSelected,
 } from './recorded-statements.ts';
-import { brainKeyOfStream, correlationOfMessage, kindKeyOfStream } from './sqlite-indexes.ts';
+import { playbookKeyOfStream, correlationOfMessage, kindKeyOfStream } from './sqlite-indexes.ts';
 
 const defaultPartition = 'emt:default';
 
@@ -138,12 +138,12 @@ function recordsWhere(where: SQL, scope: ExaminationScope): SQL {
 }
 
 function recordsIn(selected: RecordsSelected, scope: ExaminationScope): SQL {
-  if (selected.kind === 'brain') {
-    return recordsWhere(SQL`${brainKeyOfStream} = ${scope.brainKey}`, scope);
+  if (selected.kind === 'playbook') {
+    return recordsWhere(SQL`${playbookKeyOfStream} = ${scope.playbookKey}`, scope);
   }
   if (selected.kind === 'correlated') {
     return recordsWhere(
-      SQL`${brainKeyOfStream} = ${scope.brainKey} AND ${correlationOfMessage} = ${selected.correlation}`,
+      SQL`${playbookKeyOfStream} = ${scope.playbookKey} AND ${correlationOfMessage} = ${selected.correlation}`,
       scope,
     );
   }
@@ -200,7 +200,7 @@ function firstMessagesOfRuns(scope: ExaminationScope, runs: RunsSelected): SQL {
         ${correlationOfMessage} AS correlation, octet_length(message_data) AS size,
         ${ofTheDefinitionAsked(runs)} AS of_the_definition
       FROM emt_messages
-      WHERE ${kindKeyOfStream} = ${`${scope.brainKey}runs/`} AND stream_position = 1
+      WHERE ${kindKeyOfStream} = ${`${scope.playbookKey}runs/`} AND stream_position = 1
         AND partition = ${defaultPartition} AND is_archived = FALSE${bounds(scope)}${notOfTypes('message_type', runs.notBeginningWith ?? [])}
       ORDER BY global_position ${direction(scope)}
       LIMIT ${scope.examineAtMost + 1}
@@ -258,10 +258,10 @@ function examineRuns(execute: SQLExecutor): RecordedStatements['examineRuns'] {
 }
 
 function firstPointSince(execute: SQLExecutor): RecordedStatements['firstPointSince'] {
-  return async (brainKey, since) => {
+  return async (playbookKey, since) => {
     const { rows } = await execute.query(
       SQL`SELECT global_position AS position FROM emt_messages
-        WHERE ${brainKeyOfStream} = ${brainKey} AND partition = ${defaultPartition} AND is_archived = FALSE
+        WHERE ${playbookKeyOfStream} = ${playbookKey} AND partition = ${defaultPartition} AND is_archived = FALSE
           AND created >= ${secondOf(since)}
         ORDER BY created, global_position
         LIMIT 1`,

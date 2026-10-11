@@ -28,10 +28,10 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["org:read", "org:write", "brain:read", "brain:write"]
+              "enum": ["org:read", "org:write", "playbook:read", "playbook:write"]
             }
           },
-          "brains": {
+          "playbooks": {
             "anyOf": [
               {
                 "type": "string",
@@ -51,7 +51,7 @@
             "pattern": "^[0-9a-f]{64}$"
           }
         },
-        "required": ["id", "org", "permissions", "brains", "sha256"],
+        "required": ["id", "org", "permissions", "playbooks", "sha256"],
         "additionalProperties": false
       }
     },
@@ -212,12 +212,12 @@
             "type": "string",
             "description": "The org this server serves, required"
           },
-          "brains": {
+          "playbooks": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "The brains of the org this server serves; every brain of the org when left out"
+            "description": "The playbooks of the org this server serves; every playbook of the org when left out"
           },
           "allowed": {
             "type": "array",
@@ -235,7 +235,7 @@
           },
           "record_content": {
             "type": "boolean",
-            "description": "true to record the arguments and results of calls, cut to 4 KiB, on the run that made them, where anyone who may read the brain reads them. Default false"
+            "description": "true to record the arguments and results of calls, cut to 4 KiB, on the run that made them, where anyone who may read the playbook reads them. Default false"
           },
           "request_id": {
             "type": "string",
@@ -244,7 +244,7 @@
         },
         "additionalProperties": false
       },
-      "description": "The MCP servers whose tools a function may name, each bound to an org and optionally its brains: url for a remote server, command for a process. Secrets are references such as ${GRAPH_API_KEY}. MCP_SERVERS wins over it"
+      "description": "The MCP servers whose tools a function may name, each bound to an org and optionally its playbooks: url for a remote server, command for a process. Secrets are references such as ${GRAPH_API_KEY}. MCP_SERVERS wins over it"
     }
   },
   "additionalProperties": false,

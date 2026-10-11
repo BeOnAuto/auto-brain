@@ -19,7 +19,7 @@ type Page = Parameters<AnyLedger['readRecorded']>[2];
 
 type Point = readonly string[];
 
-type Case = readonly [label: string, brain: string, selection: Selection, page: Page];
+type Case = readonly [label: string, playbook: string, selection: Selection, page: Page];
 
 interface Row {
   readonly stream: string;
@@ -53,8 +53,8 @@ function timeOf(second: number): string {
   return new Date(Date.UTC(2026, 0, 1) + second * 1000).toISOString();
 }
 
-function streamOf(brain: string, run: number): string {
-  return `brain/o1/${brain}/runs/${String(run).padStart(8, '0')}`;
+function streamOf(playbook: string, run: number): string {
+  return `playbook/o1/${playbook}/runs/${String(run).padStart(8, '0')}`;
 }
 
 interface Ending {
@@ -69,7 +69,7 @@ function endingOf(run: number): Ending {
   return run % 100 === 7 ? { type: 'run_failed' } : { type: 'run_succeeded', output: { text: text(640) } };
 }
 
-function rowsOfRun(brain: string, run: number, inputCharacters: number): readonly Row[] {
+function rowsOfRun(playbook: string, run: number, inputCharacters: number): readonly Row[] {
   const created = timeOf(run);
   const start = {
     type: 'run_started',
@@ -87,7 +87,7 @@ function rowsOfRun(brain: string, run: number, inputCharacters: number): readonl
     by: 'user-1',
     at: created,
   };
-  const stream = streamOf(brain, run);
+  const stream = streamOf(playbook, run);
   return [
     { stream, position: 1, type: start.type, data: JSON.stringify(start), created },
     { stream, position: 2, type: ending.type, data: JSON.stringify(ending), created },
@@ -172,8 +172,8 @@ async function timed<A>(attempt: () => Promise<A>): Promise<{ readonly took: num
   return { took: performance.now() - started, answer };
 }
 
-async function measured(ledger: AnyLedger, [label, brain, selection, page]: Case): Promise<string> {
-  const read = () => Effect.runPromise(ledger.readRecorded({ org: 'o1', brain }, selection, page));
+async function measured(ledger: AnyLedger, [label, playbook, selection, page]: Case): Promise<string> {
+  const read = () => Effect.runPromise(ledger.readRecorded({ org: 'o1', playbook }, selection, page));
   await Effect.runPromise(Effect.forEach([1, 2, 3], () => Effect.promise(read), { discard: true }));
   const reads = await Effect.runPromise(
     Effect.forEach(Array.from({ length: 20 }), () => Effect.promise(() => timed(read))),
@@ -189,7 +189,9 @@ async function measured(ledger: AnyLedger, [label, brain, selection, page]: Case
 async function pagesOf(layer: Layer.Layer<Ledger>, deepPoint: Point): Promise<void> {
   const { ledger, dispose } = await openLedgerWith(layer);
   const lines = await Effect.runPromise(
-    Effect.forEach(cases(cursorOf('brain/o1/big/', deepPoint)), (each) => Effect.promise(() => measured(ledger, each))),
+    Effect.forEach(cases(cursorOf('playbook/o1/big/', deepPoint)), (each) =>
+      Effect.promise(() => measured(ledger, each)),
+    ),
   );
   write(['| Page | median ms | slowest ms | runs | data |', '| --- | --- | --- | --- | --- |', ...lines].join('\n'));
   await dispose();
@@ -220,7 +222,7 @@ async function measureSQLite(): Promise<void> {
     .prepare('SELECT global_position AS p FROM emt_messages WHERE stream_id = ? AND stream_position = 1')
     .get(streamOf('big', deepRun))?.['p'];
   database.close();
-  write(`SQLite, ${runs} runs and ${largeRuns} runs of 256 KiB in another brain:`);
+  write(`SQLite, ${runs} runs and ${largeRuns} runs of 256 KiB in another playbook:`);
   await pagesOf(ledgerLayer({ fileName }), [String(deep)]);
   remove();
 }
@@ -275,7 +277,7 @@ async function measurePostgreSQL(): Promise<void> {
     'SELECT transaction_id::text AS t, global_position::text AS p FROM emt_messages WHERE stream_id = $1 AND stream_position = 1',
     [streamOf('big', deepRun)],
   );
-  write(`PostgreSQL, ${runs} runs and ${largeRuns} runs of 256 KiB in another brain:`);
+  write(`PostgreSQL, ${runs} runs and ${largeRuns} runs of 256 KiB in another playbook:`);
   await pagesOf(
     postgresqlLedgerLayer({ connectionString: url.href }),
     rows.flatMap(({ t, p }) => [t, p]),

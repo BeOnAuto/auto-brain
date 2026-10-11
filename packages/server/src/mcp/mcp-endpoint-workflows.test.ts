@@ -38,7 +38,7 @@ function onMcp<T>(use: (session: McpSession) => Promise<T>): Promise<T> {
 }
 
 async function settled(session: McpSession, runId: string): Promise<ToolResult> {
-  const reading = await session.callTool('get_run', { brain: 'sales', run_id: runId });
+  const reading = await session.callTool('get_run', { playbook: 'sales', run_id: runId });
   if (reading.structuredContent?.['status'] !== 'started') {
     return reading;
   }
@@ -47,28 +47,28 @@ async function settled(session: McpSession, runId: string): Promise<ToolResult> 
 }
 
 async function welcomedAfterReply(session: McpSession): Promise<ToolResult> {
-  await session.callTool('create_brain', { brain: 'sales', name: 'Sales' });
+  await session.callTool('create_playbook', { playbook: 'sales', name: 'Sales' });
   await session.callTool('create_definition', {
-    brain: 'sales',
+    playbook: 'sales',
     type: 'reasoning',
     name: 'greeting',
     source: greeting,
   });
   await session.callTool('create_definition', {
-    brain: 'sales',
+    playbook: 'sales',
     type: 'workflow',
     name: 'welcome',
     source: welcome,
   });
   const started = await session.callTool('run_definition', {
-    brain: 'sales',
+    playbook: 'sales',
     type: 'workflow',
     name: 'welcome',
     input: { name: 'Ada' },
   });
   const runId = String(started.structuredContent?.['run_id']);
   await session.callTool('send_run_event', {
-    brain: 'sales',
+    playbook: 'sales',
     run_id: runId,
     event: { type: 'com.acme.customer.replied', data: 'Thank you!' },
   });
@@ -91,7 +91,7 @@ describe('/mcp with workflows', { timeout: workflowTestTimeoutMs }, () => {
     );
   });
 
-  it('runs a workflow in a brain it created and sends it the event it waits for, on one connection', async () => {
+  it('runs a workflow in a playbook it created and sends it the event it waits for, on one connection', async () => {
     server = await servingWorkflows([answers(textResult('Hello, Ada.'))]);
 
     const run = await onMcp(welcomedAfterReply);

@@ -85,13 +85,13 @@ describe('logIncident', () => {
     expect(line).toContain('Error: the ledger is unreachable\\n    at ');
   });
 
-  it('logs the operation, the org, the brain and the caller of the call that failed', async () => {
-    const call = { operation: 'add_note', org: 'acme', brain: 'alpha', caller: 'acme-admin' };
+  it('logs the operation, the org, the playbook and the caller of the call that failed', async () => {
+    const call = { operation: 'add_note', org: 'acme', playbook: 'alpha', caller: 'acme-admin' };
 
     const [line] = await linesLoggedBy(logIncident({ id: 'incident-2', original: 'not an error', call }));
 
     expect(line).toContain(
-      '"annotations":{"incident":"incident-2","operation":"add_note","org":"acme","brain":"alpha","caller":"acme-admin"}',
+      '"annotations":{"incident":"incident-2","operation":"add_note","org":"acme","playbook":"alpha","caller":"acme-admin"}',
     );
     expect(line).toContain('not an error');
   });
@@ -121,14 +121,14 @@ describe('the workflow logs', () => {
     expect(line).toContain(words);
   });
 
-  it('report a run settling left started as an error with its org, brain, id and reason only', async () => {
+  it('report a run settling left started as an error with its org, playbook, id and reason only', async () => {
     const [line] = await linesLoggedBy(
-      logUnsettled({ org: 'acme', brain: 'alpha', runId: 'e-1', reason: 'The ledger has no such run' }),
+      logUnsettled({ org: 'acme', playbook: 'alpha', runId: 'e-1', reason: 'The ledger has no such run' }),
     );
 
     expect(line).toContain('"message":"A run stays started because settling it failed","level":"ERROR"');
     expect(line).toContain(
-      '"annotations":{"org":"acme","brain":"alpha","run_id":"e-1","reason":"The ledger has no such run"}',
+      '"annotations":{"org":"acme","playbook":"alpha","run_id":"e-1","reason":"The ledger has no such run"}',
     );
   });
 });
@@ -230,11 +230,11 @@ describe('the pretty log format', () => {
 
   it('writes an annotation that is not one plain word as JSON', async () => {
     const lines = await prettyLinesLoggedBy(
-      logUnsettled({ org: 'acme', brain: 'alpha', runId: 'e-1', reason: 'The ledger has no such run' }),
+      logUnsettled({ org: 'acme', playbook: 'alpha', runId: 'e-1', reason: 'The ledger has no such run' }),
     );
 
     expect(lines).toEqual([
-      '<time> ERROR A run stays started because settling it failed org=acme brain=alpha run_id=e-1 reason="The ledger has no such run"',
+      '<time> ERROR A run stays started because settling it failed org=acme playbook=alpha run_id=e-1 reason="The ledger has no such run"',
     ]);
   });
 

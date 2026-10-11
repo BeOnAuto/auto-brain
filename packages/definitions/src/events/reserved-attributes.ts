@@ -32,7 +32,7 @@ type FeedType =
   | CapabilityEventType
   | WorkflowEventType;
 
-const brainTypes: Readonly<Record<FeedType, true>> = {
+const playbookTypes: Readonly<Record<FeedType, true>> = {
   run_started: true,
   run_deferred: true,
   run_succeeded: true,
@@ -64,7 +64,7 @@ const brainTypes: Readonly<Record<FeedType, true>> = {
   reaction_refused: true,
 };
 
-export const reservedEventTypes: ReadonlySet<string> = new Set(Object.keys(brainTypes));
+export const reservedEventTypes: ReadonlySet<string> = new Set(Object.keys(playbookTypes));
 
 const reservedSourcePrefixes: readonly string[] = [runSourcePrefix, definitionSourcePrefix, callerSourcePrefix];
 
@@ -91,11 +91,11 @@ function lineageIssues(attributes: Attributes) {
     .filter((name) => Object.hasOwn(attributes, name))
     .map((name) => ({
       path: [name],
-      issue: `Expected no ${name}: ${lineageInWords} are the lineage the brain gives its own records, which no event may claim`,
+      issue: `Expected no ${name}: ${lineageInWords} are the lineage the playbook gives its own records, which no event may claim`,
     }));
 }
 
-function brainOwnAttributes(attributes: Attributes) {
+function playbookOwnAttributes(attributes: Attributes) {
   const { type, source } = attributes;
   return [
     ...lineageIssues(attributes),
@@ -103,7 +103,7 @@ function brainOwnAttributes(attributes: Attributes) {
       ? [
           {
             path: ['type'],
-            issue: `Expected a type of your own, not one the brain records itself: ${reservedTypesInWords}`,
+            issue: `Expected a type of your own, not one the playbook records itself: ${reservedTypesInWords}`,
           },
         ]
       : []),
@@ -111,11 +111,11 @@ function brainOwnAttributes(attributes: Attributes) {
       ? [
           {
             path: ['source'],
-            issue: `Expected a source of your own, not one under ${reservedSourcesInWords}, which the brain records itself`,
+            issue: `Expected a source of your own, not one under ${reservedSourcesInWords}, which the playbook records itself`,
           },
         ]
       : []),
   ];
 }
 
-export const refusingTheBrainsOwnAttributes = Schema.makeFilter(brainOwnAttributes);
+export const refusingThePlaybooksOwnAttributes = Schema.makeFilter(playbookOwnAttributes);

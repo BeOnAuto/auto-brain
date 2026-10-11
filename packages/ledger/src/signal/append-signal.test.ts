@@ -28,47 +28,47 @@ describe('the signal an append raises', () => {
   it('names every stream appended to, after the append', async () => {
     const signal = streamSignalOf();
     const heard: string[] = [];
-    signal.listen((brainKey) => {
-      heard.push(brainKey);
+    signal.listen((playbookKey) => {
+      heard.push(playbookKey);
     });
     const store = await aStoreSignalling(signal);
 
-    await store.append('brain/acme/alpha/events/e1', one, 0);
-    await store.append('org/acme/brains', one, 0);
-    await store.append('brain/acme/Beta_2/run-logs/r1', one, 0);
+    await store.append('playbook/acme/alpha/events/e1', one, 0);
+    await store.append('org/acme/playbooks', one, 0);
+    await store.append('playbook/acme/Beta_2/run-logs/r1', one, 0);
 
-    expect(heard).toEqual(['brain/acme/alpha/events/e1', 'org/acme/brains', 'brain/acme/Beta_2/run-logs/r1']);
+    expect(heard).toEqual(['playbook/acme/alpha/events/e1', 'org/acme/playbooks', 'playbook/acme/Beta_2/run-logs/r1']);
   });
 
   it('is not raised by an append that met a version conflict, nor heard once a listener has stopped', async () => {
     const signal = streamSignalOf();
     const heard: string[] = [];
-    const stop = signal.listen((brainKey) => {
-      heard.push(brainKey);
+    const stop = signal.listen((playbookKey) => {
+      heard.push(playbookKey);
     });
     const store = await aStoreSignalling(signal);
-    await store.append('brain/acme/alpha/notes', one, 0);
+    await store.append('playbook/acme/alpha/notes', one, 0);
 
     const conflicted = await outcomeOf(
-      eventAppenderOf(store, tally.eventSchema)('brain/acme/alpha/notes', [{ type: 'counted', by: 1 }], 0),
+      eventAppenderOf(store, tally.eventSchema)('playbook/acme/alpha/notes', [{ type: 'counted', by: 1 }], 0),
     );
     stop();
-    await store.append('brain/acme/alpha/notes', one, 1);
+    await store.append('playbook/acme/alpha/notes', one, 1);
 
-    expect([conflicted, heard]).toEqual([Result.fail(new VersionConflict()), ['brain/acme/alpha/notes']]);
+    expect([conflicted, heard]).toEqual([Result.fail(new VersionConflict()), ['playbook/acme/alpha/notes']]);
   });
 
   it('is the signal of the process when none is given, so every ledger of the process raises it', async () => {
     const heard: string[] = [];
-    const stop = streamAppends.listen((brainKey) => {
-      heard.push(brainKey);
+    const stop = streamAppends.listen((playbookKey) => {
+      heard.push(playbookKey);
     });
     onTestFinished(stop);
     const { ledger, dispose } = await openLedgerWith(ledgerLayer({ fileName: ':memory:' }));
     onTestFinished(dispose);
 
-    await Effect.runPromise(ledger.execute('brain/acme/gamma/notes', happenings, [noted('noted')]));
+    await Effect.runPromise(ledger.execute('playbook/acme/gamma/notes', happenings, [noted('noted')]));
 
-    expect(heard).toContain('brain/acme/gamma/notes');
+    expect(heard).toContain('playbook/acme/gamma/notes');
   });
 });

@@ -6,7 +6,7 @@ The API stores a workflow as a definition of the type `workflow`. Its source doc
 
 ## A workflow document
 
-This workflow reviews a campaign brief with the `review-campaign-brief` reasoning function from [Build your first brain](../tutorials/first-brain.md). It retries the review when the model is unavailable, then waits up to a week for an approval decision:
+This workflow reviews a campaign brief with the `review-campaign-brief` reasoning function from [Build your first playbook](../tutorials/first-playbook.md). It retries the review when the model is unavailable, then waits up to a week for an approval decision:
 
 ```yaml
 document:
@@ -121,7 +121,7 @@ A workflow whose document has a `schedule` starts on its own, besides when a cal
 
 | Trigger          | Starts a run                                                        | Input of the run                    |
 | ---------------- | ------------------------------------------------------------------- | ----------------------------------- |
-| `schedule.on`    | For each event of the brain that one of its filters matches         | A list holding the event            |
+| `schedule.on`    | For each event of the playbook that one of its filters matches      | A list holding the event            |
 | `schedule.cron`  | At each time its five fields name, in UTC                           | `{ "schedule": { "due": <time> } }` |
 | `schedule.every` | At each multiple of its period after the trigger was saved as it is | `{ "schedule": { "due": <time> } }` |
 
@@ -143,13 +143,13 @@ input:
   from: '${ Array.isArray($data) ? { month: $data[0].data.month } : { due: $data.schedule.due } }'
 ```
 
-`on.one` takes one filter and `on.any` a list of at least one and at most 64; a run starts when any of them matches. A filter names the `type` of its events as written text, and may name `source` and `subject` as written text and `data` as a value or as an expression over the event's data alone, which it reads as `$data`, such as `data: '${ $data.region === "eu" }'`; an expression that names anything else, such as `$workflow`, is refused when the document is saved, since no run exists yet. A filter is written once: a filter of `any` whose `type` and attributes an earlier one has, in any order, is refused. Each filter is held on its own to bounds of its own, 250 checkpoints of work an expression and 500 for the filter, 200 milliseconds of the server's time and a sandbox of 64 MiB, and fails no other workflow's filter. An expression that raises on an event, or does more than its work, which the event's data can cause as much as the filter, does not match that event, and the brain records that once for each version and evaluates the filter again on the next event. A filter that its deadline or its memory stops, which the event cannot cause, does not match either, and the event waits and is matched again on a later sweep; a filter so stopped 3 times in a row, with no answer between, is the filter's own defect: the brain records that once and does not evaluate it again for that version of the workflow, and the event it waited on goes on without it. A new version, with the filter made cheaper, is the remedy. The 200 milliseconds are the server's wall-clock time, so a filter near them may be stopped on a loaded server; keep a filter to a quick test of the event's data. The brain keeps what it stopped in memory, so a restart evaluates the filter again. A filter matches every event the brain records: events published with `publish_event`, events workflows emit, and the brain's own facts, such as `run_succeeded`, whose `source` is `/runs/<run id>` and whose `subject` names the definition, as `reasoning/summarize`. A run's facts carry the trigger that started it in their data, so a filter can test it, as `data: '${ $data.trigger.kind === "event" }'`.
+`on.one` takes one filter and `on.any` a list of at least one and at most 64; a run starts when any of them matches. A filter names the `type` of its events as written text, and may name `source` and `subject` as written text and `data` as a value or as an expression over the event's data alone, which it reads as `$data`, such as `data: '${ $data.region === "eu" }'`; an expression that names anything else, such as `$workflow`, is refused when the document is saved, since no run exists yet. A filter is written once: a filter of `any` whose `type` and attributes an earlier one has, in any order, is refused. Each filter is held on its own to bounds of its own, 250 checkpoints of work an expression and 500 for the filter, 200 milliseconds of the server's time and a sandbox of 64 MiB, and fails no other workflow's filter. An expression that raises on an event, or does more than its work, which the event's data can cause as much as the filter, does not match that event, and the playbook records that once for each version and evaluates the filter again on the next event. A filter that its deadline or its memory stops, which the event cannot cause, does not match either, and the event waits and is matched again on a later sweep; a filter so stopped 3 times in a row, with no answer between, is the filter's own defect: the playbook records that once and does not evaluate it again for that version of the workflow, and the event it waited on goes on without it. A new version, with the filter made cheaper, is the remedy. The 200 milliseconds are the server's wall-clock time, so a filter near them may be stopped on a loaded server; keep a filter to a quick test of the event's data. The playbook keeps what it stopped in memory, so a restart evaluates the filter again. A filter matches every event the playbook records: events published with `publish_event`, events workflows emit, and the playbook's own facts, such as `run_succeeded`, whose `source` is `/runs/<run id>` and whose `subject` names the definition, as `reasoning/summarize`. A run's facts carry the trigger that started it in their data, so a filter can test it, as `data: '${ $data.trigger.kind === "event" }'`.
 
 `cron` has the five fields minute, hour, day of month, month and day of week, read in UTC; when both day of month and day of week are restricted, a day that matches either is due. `every` is a [duration](#durations) of at least a minute, counted from when the trigger was saved as it is.
 
 A trigger applies from the moment it is saved as it is: nothing recorded before is matched. The saving itself is the first thing it can match, so a trigger that names `definition_created` also starts on the fact of its own workflow's definition being saved, which a `data` filter on the definition's name, such as `data: '${ $data.name !== "close-month" }'`, leaves out. A new version's triggers are compared with those of the version before, by kind and place: a trigger it leaves unchanged goes on as it was, with its times and its running run, and starts the new version from then on; a trigger it changes or adds applies from the new version's saving, and a changed schedule counts its times from then; a trigger it removes stops. Saving a version without a schedule, or retiring the workflow, stops every trigger. A run a trigger starts uses the version current when the event was recorded or the time came, and its `run_id` is derived from the workflow, that version, the trigger and the event or the due time, so an event or a time starts it once.
 
-A run a trigger starts acts as the brain itself: its `started_by` is `brain:` and the brain's name, and each step acts with read and write access to that brain and nothing else. It never acts for a person, so no key's permissions or revocation affect it.
+A run a trigger starts acts as the playbook itself: its `started_by` is `playbook:` and the playbook's name, and each step acts with read and write access to that playbook and nothing else. It never acts for a person, so no key's permissions or revocation affect it.
 
 These keep triggers from running away:
 
@@ -158,9 +158,9 @@ These keep triggers from running away:
 - A workflow's event trigger starts at most 60 runs of it a minute, across its filters. More wait for a later minute, at most 1,000 of them, and one more is refused. The runs of its schedules are not counted.
 - A schedule trigger has one run at a time: a time due while the run it started before still runs, of this version or of one before, is skipped. After the runtime was stopped, only the latest of the times it missed runs.
 - An event and a due time in one moment start two runs, and so do a `cron` and an `every` due at the same time.
-- A start the brain refuses, as once the brain is retired, is not tried again; one it cannot take at that moment is tried again at each sweep, about twenty times, before it is given up.
+- A start the playbook refuses, as once the playbook is retired, is not tried again; one it cannot take at that moment is tried again at each sweep, about twenty times, before it is given up.
 
-What a trigger did not start is recorded in the brain as a `reaction_refused` event of its workflow, at most once a minute, with how many and the last reason, which names the trigger by its kind; `list_brain_events` shows it beside the runs triggers started.
+What a trigger did not start is recorded in the playbook as a `reaction_refused` event of its workflow, at most once a minute, with how many and the last reason, which names the trigger by its kind; `list_playbook_events` shows it beside the runs triggers started.
 
 ## Tasks
 
@@ -207,7 +207,7 @@ A `switch` tests its cases in order and follows the `then` of the first case who
 
 ### Calling a function
 
-`call: run_definition` runs the active latest version of another definition in the same brain: `with.type` names its type, `reasoning` for a reasoning function, `interaction` for an [interaction function](interaction-format.md), `computation` for a [computation function](computation-format.md), `recall` for a [recall function](recall-format.md) or `workflow` for another workflow, and `with.name` the definition. `with.input` is a template for its input, `{}` when left out. The task's output is that run's output: the text or JSON value a reasoning function answered, the answer an interaction function took from its tool or its request, the value a computation function's program gave, what a recall function answered from its view, or the output of the workflow it ran.
+`call: run_definition` runs the active latest version of another definition in the same playbook: `with.type` names its type, `reasoning` for a reasoning function, `interaction` for an [interaction function](interaction-format.md), `computation` for a [computation function](computation-format.md), `recall` for a [recall function](recall-format.md) or `workflow` for another workflow, and `with.name` the definition. `with.input` is a template for its input, `{}` when left out. The task's output is that run's output: the text or JSON value a reasoning function answered, the answer an interaction function took from its tool or its request, the value a computation function's program gave, what a recall function answered from its view, or the output of the workflow it ran.
 
 Each time the task runs, including on a retry, it starts a separate run of the function, recorded under its own `run_id`. That run acts for the caller who started the workflow, with the permissions that caller had when the workflow started. `run_definition` takes no arguments other than `type`, `name` and `input`.
 
@@ -247,23 +247,23 @@ The error's `title` names the definition and, for a rejection, its reason; its `
 
 ### Waiting for events
 
-A `listen` task waits for events sent to the run with `send_run_event`, through [HTTP](http.md) or [MCP](mcp.md), and, through a filter that names its `type` as written text, for the events of the whole brain:
+A `listen` task waits for events sent to the run with `send_run_event`, through [HTTP](http.md) or [MCP](mcp.md), and, through a filter that names its `type` as written text, for the events of the whole playbook:
 
 - `listen.to.one` takes one event that matches its filter.
 - `listen.to.any` takes the first event that matches any filter in its list.
 - `listen.to.all` takes one event for each filter in its list, in the order the filters are listed.
 
-A filter's `with` names event attributes, such as `type`, `source`, `subject` or `data`. An event matches when each named attribute equals the event's. A value written as `${ }` is evaluated instead, with the event's attribute as `$data`, and matches when it holds; `data: '${ $data > 5 }'` takes only events whose data is greater than 5. Such an expression reads `$data` and nothing else, which the brain checks when the document is saved, so an event of the brain is matched without the run, under the bounds and rules of a trigger's filter. Its stops are counted for the task and the version of the workflow, across every run listening there: after 3 in a row by its deadline or its memory, the brain records that once and offers the brain's events through that filter to none of those runs again, so a filter that churns is evaluated at most 3 times for its version on a server, however many runs wait; an event sent to a run still reaches it.
+A filter's `with` names event attributes, such as `type`, `source`, `subject` or `data`. An event matches when each named attribute equals the event's. A value written as `${ }` is evaluated instead, with the event's attribute as `$data`, and matches when it holds; `data: '${ $data > 5 }'` takes only events whose data is greater than 5. Such an expression reads `$data` and nothing else, which the playbook checks when the document is saved, so an event of the playbook is matched without the run, under the bounds and rules of a trigger's filter. Its stops are counted for the task and the version of the workflow, across every run listening there: after 3 in a row by its deadline or its memory, the playbook records that once and offers the playbook's events through that filter to none of those runs again, so a filter that churns is evaluated at most 3 times for its version on a server, however many runs wait; an event sent to a run still reaches it.
 
 The task's output is a list with the `data` of each event it took. With `listen.read: envelope` or `raw`, the list holds the whole events: `type`, `id`, `time`, and the `source`, `subject` and `data` that were sent.
 
 An event sent before a `listen` task waits for it is kept, and the task takes the earliest event that matches. An event whose `id` the run has already received is ignored, so a sender can retry with the same id. Waiting `until` a condition, `foreach` and `correlate` are not supported.
 
-A filter whose `type` is written out, such as `type: com.example.brief.decided`, also hears the events the brain records: events published with `publish_event`, events workflows emit, and the brain's own facts. Such an event reaches the run only while the task listens; one recorded before the task began to listen, or after it ended, is not offered to it. To wait for the event about one thing the run handles, send that event to the run by its run id. With `all`, the events may come in any order. A filter that computes its `type` hears only events sent to the run. A run never takes an event it emitted itself. Send an event to the run by its run id when the run must not miss it. A brain has at most 4,096 tasks listening for its events at once; one more hears only events sent to its run.
+A filter whose `type` is written out, such as `type: com.example.brief.decided`, also hears the events the playbook records: events published with `publish_event`, events workflows emit, and the playbook's own facts. Such an event reaches the run only while the task listens; one recorded before the task began to listen, or after it ended, is not offered to it. To wait for the event about one thing the run handles, send that event to the run by its run id. With `all`, the events may come in any order. A filter that computes its `type` hears only events sent to the run. A run never takes an event it emitted itself. Send an event to the run by its run id when the run must not miss it. A playbook has at most 4,096 tasks listening for its events at once; one more hears only events sent to its run.
 
 ### Emitting an event
 
-An `emit` task records an event in the brain, as `publish_event` would, and hands its input on. `emit.event.with` holds the event's attributes: `type` and `source` are required, and `subject`, `time`, `data`, `datacontenttype`, `dataschema` and extension attributes are optional; any of them can be an expression. A `source` written out is an absolute URI, such as `https://example.com/campaigns`, as the DSL requires; write a relative one, such as `/campaigns`, as an expression, `'${ "/campaigns" }'`.
+An `emit` task records an event in the playbook, as `publish_event` would, and hands its input on. `emit.event.with` holds the event's attributes: `type` and `source` are required, and `subject`, `time`, `data`, `datacontenttype`, `dataschema` and extension attributes are optional; any of them can be an expression. A `source` written out is an absolute URI, such as `https://example.com/campaigns`, as the DSL requires; write a relative one, such as `/campaigns`, as an expression, `'${ "/campaigns" }'`.
 
 ```yaml
 - announce:
@@ -275,7 +275,7 @@ An `emit` task records an event in the brain, as `publish_event` would, and hand
           data: { brief: '${ $data.brief }' }
 ```
 
-An emitted event takes no `id`: the runtime gives it one made from the run and the task, so a run that goes on after a restart emits the event once. Its `time` is the time of the step unless the task gives one. `list_brain_events` shows it as an `event_published` event with the run and the workflow that emitted it, and a workflow whose trigger matches it starts, one level deeper than the run that emitted it. A type or a source the brain keeps for its own facts is refused when the document is saved, and fails the task with a `validation` error when an expression computes it.
+An emitted event takes no `id`: the runtime gives it one made from the run and the task, so a run that goes on after a restart emits the event once. Its `time` is the time of the step unless the task gives one. `list_playbook_events` shows it as an `event_published` event with the run and the workflow that emitted it, and a workflow whose trigger matches it starts, one level deeper than the run that emitted it. A type or a source the playbook keeps for its own facts is refused when the document is saved, and fails the task with a `validation` error when an expression computes it.
 
 ### Errors, retries and timeouts
 
@@ -348,7 +348,7 @@ This task reviews two briefs at once and outputs both reviews:
 
 ### Expressions
 
-Expressions are TypeScript, the one language of the brain: `evaluate.language` is `typescript` and `evaluate.mode` is `strict`, the defaults, and the document is refused for any other language or mode, since an expression that fails must fail. The specification's default expression language is not this runtime's. A string enclosed in `${ }` is an expression wherever a value is written, including in templates: the values of `set`, `with`, `raise.error`, durations, and object forms of `input.from`, `output.as` and `export.as`. `if`, `when`, `exceptWhen`, `for.in`, `while` and the string forms of `input.from`, `output.as` and `export.as` are expressions even without `${ }`.
+Expressions are TypeScript, the one language of the playbook: `evaluate.language` is `typescript` and `evaluate.mode` is `strict`, the defaults, and the document is refused for any other language or mode, since an expression that fails must fail. The specification's default expression language is not this runtime's. A string enclosed in `${ }` is an expression wherever a value is written, including in templates: the values of `set`, `with`, `raise.error`, durations, and object forms of `input.from`, `output.as` and `export.as`. `if`, `when`, `exceptWhen`, `for.in`, `while` and the string forms of `input.from`, `output.as` and `export.as` are expressions even without `${ }`.
 
 An expression is one TypeScript expression, which may span lines, not a list of statements. Its value is the expression's, and `undefined` gives `null`, at the top or as a member, so `'${ $input.note }'` and `'${ ({ id: $input.id, note: $input.note }) }'` are values even when the input has no note. A condition holds unless it gives `false` or `null`. Write an object in parentheses, `({ ... })`, and text with a template literal, `` `Hello, ${$data.name}` ``.
 
@@ -388,25 +388,25 @@ Line 7, column 12: at /do/1/loop/for: It needs in
 
 These are refused when a document is saved:
 
-| Refused                                                                                       | Reason given                                                               |
-| --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `run` tasks                                                                                   | The runtime does not run them                                              |
-| `call` of `http`, `grpc`, `openapi`, `asyncapi`, `a2a` or `mcp`                               | A workflow reaches the world only through its brain's functions            |
-| A `call` of anything other than `run_definition`                                              | `run_definition` is the one function                                       |
-| `schedule.after`, `schedule.on.all`, `schedule.on.until`, or a schedule that names no trigger | A trigger starts one run for each event or time                            |
-| A trigger filter without a written `type`                                                     | A trigger is matched before any run exists                                 |
-| A trigger or `listen` filter whose expression names anything but `$data`                      | The brain matches it without the run                                       |
-| A trigger filter written twice in `any`, or more than 64 filters in one trigger               | See [Triggers](#triggers)                                                  |
-| `schedule.every` shorter than a minute, or a `cron` that is not five fields or names no time  | See [Triggers](#triggers)                                                  |
-| An `emit` without `type` or `source`, with an `id`, or with a type or source the brain keeps  | See [Emitting an event](#emitting-an-event)                                |
-| `use.catalogs`, `use.extensions`, `use.functions`, `use.secrets`, `use.authentications`       | Not supported                                                              |
-| `listen` with `until`, `foreach` or `correlate`                                               | Not supported                                                              |
-| Schemas on tasks, and schemas not written inline as JSON Schema                               | Task schemas are not checked; external schemas are not fetched             |
-| A `then` naming no task in the same list, or a jump from a fork branch                        | Flow must stay within the list                                             |
-| A name in `raise.error`, `retry` or `timeout` missing from `use`                              | The reference must exist                                                   |
-| `evaluate.language` other than `typescript`, `evaluate.mode` other than `strict`              | The brain's one language is TypeScript; an expression that fails must fail |
-| An expression that is not one TypeScript expression, or names what its place lacks            | See [Expressions](#expressions)                                            |
-| Durations in years or months, or longer than a run may last                                   | See [Durations](#durations) and [Limits](#limits)                          |
+| Refused                                                                                         | Reason given                                                                  |
+| ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `run` tasks                                                                                     | The runtime does not run them                                                 |
+| `call` of `http`, `grpc`, `openapi`, `asyncapi`, `a2a` or `mcp`                                 | A workflow reaches the world only through its playbook's functions            |
+| A `call` of anything other than `run_definition`                                                | `run_definition` is the one function                                          |
+| `schedule.after`, `schedule.on.all`, `schedule.on.until`, or a schedule that names no trigger   | A trigger starts one run for each event or time                               |
+| A trigger filter without a written `type`                                                       | A trigger is matched before any run exists                                    |
+| A trigger or `listen` filter whose expression names anything but `$data`                        | The playbook matches it without the run                                       |
+| A trigger filter written twice in `any`, or more than 64 filters in one trigger                 | See [Triggers](#triggers)                                                     |
+| `schedule.every` shorter than a minute, or a `cron` that is not five fields or names no time    | See [Triggers](#triggers)                                                     |
+| An `emit` without `type` or `source`, with an `id`, or with a type or source the playbook keeps | See [Emitting an event](#emitting-an-event)                                   |
+| `use.catalogs`, `use.extensions`, `use.functions`, `use.secrets`, `use.authentications`         | Not supported                                                                 |
+| `listen` with `until`, `foreach` or `correlate`                                                 | Not supported                                                                 |
+| Schemas on tasks, and schemas not written inline as JSON Schema                                 | Task schemas are not checked; external schemas are not fetched                |
+| A `then` naming no task in the same list, or a jump from a fork branch                          | Flow must stay within the list                                                |
+| A name in `raise.error`, `retry` or `timeout` missing from `use`                                | The reference must exist                                                      |
+| `evaluate.language` other than `typescript`, `evaluate.mode` other than `strict`                | The playbook's one language is TypeScript; an expression that fails must fail |
+| An expression that is not one TypeScript expression, or names what its place lacks              | See [Expressions](#expressions)                                               |
+| Durations in years or months, or longer than a run may last                                     | See [Durations](#durations) and [Limits](#limits)                             |
 
 ## How a run ends
 
@@ -425,37 +425,37 @@ A timeout that is not caught therefore rejects the run as `unavailable`, and a c
 
 ## Limits
 
-| Limit                        | Value                                                                                                          |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Source document              | 65,536 bytes in UTF-8                                                                                          |
-| Nested task lists            | 64 levels                                                                                                      |
-| Nested values                | 512 levels                                                                                                     |
-| Work of an expression        | 250 checkpoints; the expressions of one input 500 together, in 2 seconds and a sandbox of 64 MiB               |
-| Branches of a fork           | 32                                                                                                             |
-| Duration of a run            | 30 days, unless the deployment sets between 2 hours and 365 days; a run still going at that limit is cancelled |
-| Wait for a call              | The longest its function may run, plus a minute, within what remains of the run's duration                     |
-| Calls above a run            | 8                                                                                                              |
-| Calls waiting under one run  | 1,000 under the workflow at the top of a tree, unless the deployment sets between 1 and 9,999                  |
-| Input of a run               | 256 KiB as JSON                                                                                                |
-| Input of a call              | 256 KiB as JSON                                                                                                |
-| Output of a run              | 1 MiB as JSON, together with the run's record                                                                  |
-| Data a run holds at once     | 4 MiB: the values it keeps, as JSON in UTF-8, the document, and 4 KiB for each task under way                  |
-| One value kept across a wait | 1.5 MiB (1,572,864 bytes) as JSON, less the rest of the change recorded with it                                |
-| Tasks without waiting        | 10,000                                                                                                         |
-| Inputs a run takes           | 100,000: its start, each answer of a function, each timer and each event                                       |
-| Recorded history of a run    | 512 MiB as JSON                                                                                                |
-| An event                     | 256 KiB as JSON; `type` and `id` at most 256 characters, `source` and `subject` at most 1,024                  |
-| Events waiting to be taken   | 64, or 1 MiB as JSON                                                                                           |
-| Events over a run's life     | 1,024, or 4 MiB as JSON                                                                                        |
-| Events a run emits           | 1,024, or 4 MiB as JSON, over its life                                                                         |
-| An emitted event             | 240 KiB as JSON                                                                                                |
-| Triggers of a workflow       | 3: one `on`, one `cron` and one `every`                                                                        |
-| Filters of an event trigger  | 64                                                                                                             |
-| Workflows with triggers      | 1,024 in a brain, however many triggers each has; saving one more is refused with `conflict`                   |
-| Tasks listening to a brain   | 4,096 at once; one more hears only the events sent to its run                                                  |
-| Runs a trigger starts        | 60 a minute for each workflow by its event trigger, at most 1,000 more waiting; its schedules are not counted  |
-| Depth of a chain of triggers | 8                                                                                                              |
-| `schedule.every`             | At least a minute, counted from when the trigger was saved as it is                                            |
+| Limit                         | Value                                                                                                          |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Source document               | 65,536 bytes in UTF-8                                                                                          |
+| Nested task lists             | 64 levels                                                                                                      |
+| Nested values                 | 512 levels                                                                                                     |
+| Work of an expression         | 250 checkpoints; the expressions of one input 500 together, in 2 seconds and a sandbox of 64 MiB               |
+| Branches of a fork            | 32                                                                                                             |
+| Duration of a run             | 30 days, unless the deployment sets between 2 hours and 365 days; a run still going at that limit is cancelled |
+| Wait for a call               | The longest its function may run, plus a minute, within what remains of the run's duration                     |
+| Calls above a run             | 8                                                                                                              |
+| Calls waiting under one run   | 1,000 under the workflow at the top of a tree, unless the deployment sets between 1 and 9,999                  |
+| Input of a run                | 256 KiB as JSON                                                                                                |
+| Input of a call               | 256 KiB as JSON                                                                                                |
+| Output of a run               | 1 MiB as JSON, together with the run's record                                                                  |
+| Data a run holds at once      | 4 MiB: the values it keeps, as JSON in UTF-8, the document, and 4 KiB for each task under way                  |
+| One value kept across a wait  | 1.5 MiB (1,572,864 bytes) as JSON, less the rest of the change recorded with it                                |
+| Tasks without waiting         | 10,000                                                                                                         |
+| Inputs a run takes            | 100,000: its start, each answer of a function, each timer and each event                                       |
+| Recorded history of a run     | 512 MiB as JSON                                                                                                |
+| An event                      | 256 KiB as JSON; `type` and `id` at most 256 characters, `source` and `subject` at most 1,024                  |
+| Events waiting to be taken    | 64, or 1 MiB as JSON                                                                                           |
+| Events over a run's life      | 1,024, or 4 MiB as JSON                                                                                        |
+| Events a run emits            | 1,024, or 4 MiB as JSON, over its life                                                                         |
+| An emitted event              | 240 KiB as JSON                                                                                                |
+| Triggers of a workflow        | 3: one `on`, one `cron` and one `every`                                                                        |
+| Filters of an event trigger   | 64                                                                                                             |
+| Workflows with triggers       | 1,024 in a playbook, however many triggers each has; saving one more is refused with `conflict`                |
+| Tasks listening to a playbook | 4,096 at once; one more hears only the events sent to its run                                                  |
+| Runs a trigger starts         | 60 a minute for each workflow by its event trigger, at most 1,000 more waiting; its schedules are not counted  |
+| Depth of a chain of triggers  | 8                                                                                                              |
+| `schedule.every`              | At least a minute, counted from when the trigger was saved as it is                                            |
 
 A duration written in the document that is longer than a run may last is refused when the document is saved; one that an expression computes fails its task with a `configuration` error. Exceeding the limits on held data, a value kept across a wait, tasks without waiting, inputs or history ends the run at once, rejected as `unavailable` with a `runtime` error of status 500. One event more than the event limits allow ends the run at once, rejected, and later events to it are refused with `not_found`. An emit beyond the limit on emitted events fails its task with a `runtime` error of status 500, which the workflow's `try` can catch, and an emitted event larger than 240 KiB with a `validation` error of status 400.
 

@@ -25,7 +25,7 @@ async function refusedThrough(environment: Readonly<Record<string, string>>) {
   return { refusal: refusal.body, types: decodeHistory(history.body).events.map(({ type }) => type) };
 }
 
-describe('a delivery through a tool this brain may not use, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+describe('a delivery through a tool this playbook may not use, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
   it('ends its run unavailable at the start, before anything is asked, in the words of the tool servers', async () => {
     const chat = await chatServer();
 
@@ -40,7 +40,7 @@ describe('a delivery through a tool this brain may not use, over HTTP', { timeou
         refusal: { reason: 'unavailable', kind: 'tool_not_offered', because: 'mcp_server_not_configured' },
         types: ['run_started', 'run_rejected'],
       },
-      { refusal: { detail: 'No MCP server named chat is configured for this brain' } },
+      { refusal: { detail: 'No MCP server named chat is configured for this playbook' } },
       {
         refusal: {
           because: 'tool_not_allowed',

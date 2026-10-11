@@ -7,7 +7,7 @@ import { acmeAdmin, operationServer } from '../testing/operation-server.ts';
 
 const asAdmin = { authorization: `Bearer ${acmeAdmin.key}` };
 
-const notes = '/v1/orgs/acme/brains/alpha/notes';
+const notes = '/v1/orgs/acme/playbooks/alpha/notes';
 
 const catalogOrders: ReadonlyArray<readonly [string, Parameters<typeof makeCatalog>[0]]> = [
   ['the parameterised path first', [addNote, getNote, latestNote]],
@@ -20,7 +20,7 @@ describe('the order of the routes of a catalog', () => {
 
     expect(await call(handler, `${notes}/latest`, { headers: asAdmin })).toMatchObject({
       status: 404,
-      body: { detail: 'The brain has no notes' },
+      body: { detail: 'The playbook has no notes' },
     });
   });
 

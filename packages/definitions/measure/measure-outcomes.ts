@@ -23,7 +23,7 @@ const largeRuns = 300;
 
 const largeRecordBytes = 1_048_576;
 
-const big = { org: 'o1', brain: 'big' };
+const big = { org: 'o1', playbook: 'big' };
 
 const RunEventSchema = Schema.StructWithRest(Schema.Struct({ type: Schema.String }), [
   Schema.Record(Schema.String, Schema.Json),
@@ -137,7 +137,7 @@ function runEventsOf(run: number): readonly (readonly RunEvent[])[] {
 async function appendTimes(bench: Bench, kept: boolean): Promise<readonly number[]> {
   const place = await bench.aPlace();
   const { ledger, dispose } = await openLedgerWith(bench.ledgerOn(place, kept ? runOutcomeMapping : undefined));
-  await Effect.runPromise(ledger.execute('brain/o1/big/notes', runFacts, [aNote(0)]));
+  await Effect.runPromise(ledger.execute('playbook/o1/big/notes', runFacts, [aNote(0)]));
   const times = await Effect.runPromise(
     Effect.forEach(
       Array.from({ length: appends }, (_, run) => run),
@@ -145,7 +145,7 @@ async function appendTimes(bench: Bench, kept: boolean): Promise<readonly number
         Effect.forEach(runEventsOf(run), (events) =>
           Effect.promise(
             async () =>
-              (await timed(() => Effect.runPromise(ledger.execute(`brain/o1/big/runs/a-${run}`, runEvents, events))))
+              (await timed(() => Effect.runPromise(ledger.execute(`playbook/o1/big/runs/a-${run}`, runEvents, events))))
                 .took,
           ),
         ),
@@ -220,7 +220,7 @@ if (parts.has('append')) {
   await inTurn(theAppend);
 }
 if (parts.has('fill')) {
-  write('\n| Store | Ticks of the dataset | Runs of its big brain kept | Open | Open and fill |');
+  write('\n| Store | Ticks of the dataset | Runs of its big playbook kept | Open | Open and fill |');
   write('| --- | --- | --- | --- | --- |');
   await inTurn(theFill);
 }

@@ -113,7 +113,7 @@ describe('the host database on PostgreSQL, opening', () => {
 
   it('does not open on a server that cannot be reached', async () => {
     const port = await aPortNobodyListensOn();
-    const connectionString = `postgresql://brains:a-secret@127.0.0.1:${port}/brains`;
+    const connectionString = `postgresql://playbooks:a-secret@127.0.0.1:${port}/playbooks`;
 
     await expect(openHostDatabase({ store: 'postgresql', connectionString }, Function.constVoid)).rejects.toThrow(
       `ECONNREFUSED 127.0.0.1:${port}`,

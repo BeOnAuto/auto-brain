@@ -10,9 +10,14 @@ import { alpha, servingReasoning, type ReasoningServer } from '../testing/server
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
-const builder = createApiKey({ id: 'acme-builder', org: 'acme', permissions: allPermissions, brains: '*' });
+const builder = createApiKey({ id: 'acme-builder', org: 'acme', permissions: allPermissions, playbooks: '*' });
 
-const reader = createApiKey({ id: 'acme-reader', org: 'acme', permissions: ['org:read', 'brain:read'], brains: '*' });
+const reader = createApiKey({
+  id: 'acme-reader',
+  org: 'acme',
+  permissions: ['org:read', 'playbook:read'],
+  playbooks: '*',
+});
 
 const closing: (() => Promise<void>)[] = [];
 
@@ -40,7 +45,10 @@ async function serving(): Promise<Serving> {
     }),
   });
   closing.push(server.stop);
-  await server.call('POST', '/v1/orgs/acme/brains', { key: builder.key, body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', {
+    key: builder.key,
+    body: { playbook: 'alpha', name: 'Alpha' },
+  });
   return { server, graph };
 }
 
@@ -110,7 +118,7 @@ describe('test_tool_call over HTTP', () => {
 });
 
 describe('who may test a tool over HTTP, and what the answer leaves out', () => {
-  it('refuses a key that may only read, and a retired brain, and shows no secret of the server', async () => {
+  it('refuses a key that may only read, and a retired playbook, and shows no secret of the server', async () => {
     const { server, graph } = await serving();
 
     const read = await testOf(server, 'search', { arguments: { query: 'acme' } }, reader.key);
@@ -127,8 +135,8 @@ describe('who may test a tool over HTTP, and what the answer leaves out', () => 
   });
 });
 
-describe('what a test records in the history of the brain', () => {
-  it('shows a start and an answer in the events of the brain, by type, and in the history of no run', async () => {
+describe('what a test records in the history of the playbook', () => {
+  it('shows a start and an answer in the events of the playbook, by type, and in the history of no run', async () => {
     const { server } = await serving();
 
     await testOf(server, 'search', { arguments: { query: 'acme' } });
@@ -141,7 +149,7 @@ describe('what a test records in the history of the brain', () => {
       events: [
         {
           type: 'tool_test_started',
-          summary: 'Someone allowed to change the brain tested the search tool of graph.',
+          summary: 'Someone allowed to change the playbook tested the search tool of graph.',
           causation_id: null,
           data: { server: 'graph', tool: 'search', by: 'acme-builder' },
         },
@@ -184,7 +192,7 @@ describe('what a test does not record', () => {
     expect(decodeEvents(history.body).events.map(({ type }) => type)).toEqual(['run_started', 'run_succeeded']);
   });
 
-  it('is refused as the type of an event published to the brain', async () => {
+  it('is refused as the type of an event published to the playbook', async () => {
     const { server } = await serving();
     const event = { id: 'e-1', source: '/acme', type: 'tool_test_started', specversion: '1.0' };
 

@@ -5,10 +5,10 @@ import { approvalDocument, fakeTools, interactionHarness, threadDocument } from 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 async function askedInAThread(owner: string) {
-  const brain = interactionHarness({ tools: fakeTools() });
-  await brain.define('approve-brief', threadDocument());
-  await brain.ask('approve-brief', { team: 'sales', owner, campaign: 'Spring' }, runId);
-  return brain.runOf(runId);
+  const playbook = interactionHarness({ tools: fakeTools() });
+  await playbook.define('approve-brief', threadDocument());
+  await playbook.ask('approve-brief', { team: 'sales', owner, campaign: 'Spring' }, runId);
+  return playbook.runOf(runId);
 }
 
 describe('the answerer of a request', () => {
@@ -30,12 +30,12 @@ describe('the answerer of a request', () => {
   });
 
   it('is the party the request goes to when the function gives no from', async () => {
-    const brain = interactionHarness();
-    await brain.define('approve-brief', approvalDocument());
+    const playbook = interactionHarness();
+    await playbook.define('approve-brief', approvalDocument());
 
-    await brain.ask('approve-brief', { campaign: 'Spring', owner: 'ada' }, runId);
+    await playbook.ask('approve-brief', { campaign: 'Spring', owner: 'ada' }, runId);
 
-    expect(await brain.runOf(runId)).toMatchObject({
+    expect(await playbook.runOf(runId)).toMatchObject({
       output: { record: { to: 'ada', answerer: 'ada', reply: { choice: { from: 'word' } } } },
     });
   });

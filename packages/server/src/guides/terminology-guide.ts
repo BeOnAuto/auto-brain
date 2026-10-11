@@ -114,11 +114,11 @@ export function terminologyGuideOf(page: string, served: readonly string[]): Gui
   return {
     name: 'terminology',
     title: 'Terminology',
-    description: 'What the words of a brain mean: its capabilities, function types, definitions, runs and assets.',
+    description: 'What the words of a playbook mean: its capabilities, function types, definitions, runs and assets.',
     text: [
       '# Terminology',
       '',
-      'The words of a brain, as its terminology gives them, to use with the person.',
+      'The words of a playbook, as its terminology gives them, to use with the person.',
       '',
       'The capabilities, the resource each one defines and what it does:',
       '',

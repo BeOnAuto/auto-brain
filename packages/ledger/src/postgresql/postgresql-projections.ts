@@ -3,7 +3,7 @@ import { pgFormatter } from '@event-driven-io/dumbo/pg';
 import { Schema } from 'effect';
 
 import type { StatementExecutor } from '../event-store.ts';
-import { createPostgreSQLBrainIndexes } from '../postgresql-reads/brain-indexes.ts';
+import { createPostgreSQLPlaybookIndexes } from '../postgresql-reads/playbook-indexes.ts';
 import type { Query } from '../postgresql-reads/recorded-parts.ts';
 import type { ProjectionDialect } from '../projections/projection-dialect.ts';
 import { projectionPartsOf, type KeptTables } from '../projections/projection-parts.ts';
@@ -77,7 +77,7 @@ export function postgresqlProjectionsOf(kept: KeptTables) {
   return {
     ...parts,
     afterTheSchema: async ({ execute }: { readonly execute: StatementExecutor }): Promise<void> => {
-      await createPostgreSQLBrainIndexes({ execute });
+      await createPostgreSQLPlaybookIndexes({ execute });
       await parts.prepare(execute, (work) => work(execute));
     },
   };

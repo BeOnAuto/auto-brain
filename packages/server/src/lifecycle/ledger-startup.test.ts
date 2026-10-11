@@ -48,7 +48,7 @@ describe('a server given both DATABASE_URL and LEDGER_FILE', { timeout: spawnedS
       HOST: '127.0.0.1',
       PORT: '0',
       LEDGER_FILE: '/data/ledger.db',
-      DATABASE_URL: 'postgresql://brains:a-secret-password@db.example.com/brains',
+      DATABASE_URL: 'postgresql://playbooks:a-secret-password@db.example.com/playbooks',
     });
 
     expect(await child.exited).toBe(1);

@@ -5,13 +5,13 @@ import { describe, expect, it } from 'vitest';
 
 import type { DeliveryStartedFact } from '../runs/run-commands.ts';
 import { runDecider } from '../runs/run-decider.ts';
-import { brainBoundSettler } from '../runs/run-settler.ts';
+import { playbookBoundSettler } from '../runs/run-settler.ts';
 import { outboundCallRecorder, replyRecorder } from './outbound-calls.ts';
-import { runEventOf, recordedRunIn, recordedRunInBrain } from './recorded-runs.ts';
+import { runEventOf, recordedRunIn, recordedRunInPlaybook } from './recorded-runs.ts';
 
-const run = { org: 'acme', brain: 'alpha', id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' };
+const run = { org: 'acme', playbook: 'alpha', id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' };
 
-const stream = `brain/acme/alpha/runs/${run.id}`;
+const stream = `playbook/acme/alpha/runs/${run.id}`;
 
 const fact = { by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
 
@@ -49,15 +49,15 @@ async function aDeferredRun() {
   return ledger;
 }
 
-function brainWriterOf(ledger: StreamWriter): StreamWriter {
+function playbookWriterOf(ledger: StreamWriter): StreamWriter {
   return {
     execute: (relative, decider, command, given) =>
-      ledger.execute(`brain/acme/alpha/${relative}`, decider, command, given),
+      ledger.execute(`playbook/acme/alpha/${relative}`, decider, command, given),
   };
 }
 
 describe('the outbound calls of a run', () => {
-  it('are recorded as the brain itself, with the lineage they are given, answering the id and time of each', async () => {
+  it('are recorded as the playbook itself, with the lineage they are given, answering the id and time of each', async () => {
     const ledger = await aDeferredRun();
     const record = outboundCallRecorder(ledger.service);
 
@@ -83,15 +83,15 @@ describe('the outbound calls of a run', () => {
 
     expect([startedId, endedId]).toEqual([messageIdOf(stream, 3), messageIdOf(stream, 4)]);
     expect(records.slice(2).map(({ type, causationId, data }) => [type, causationId, runEventOf(data)?.by])).toEqual([
-      ['delivery_started', 'request-1', 'brain:alpha'],
-      ['delivery_ended', startedId, 'brain:alpha'],
+      ['delivery_started', 'request-1', 'playbook:alpha'],
+      ['delivery_ended', startedId, 'playbook:alpha'],
     ]);
     expect(records.slice(2).map(({ data }) => runEventOf(data)?.at)).toEqual([started.at, ended.at]);
   });
 });
 
 describe('the outbound calls of a run that another call came before', () => {
-  it('are refused under a number another call took, and for a run the brain cannot hold', async () => {
+  it('are refused under a number another call took, and for a run the playbook cannot hold', async () => {
     const ledger = await aDeferredRun();
     const record = outboundCallRecorder(ledger.service);
     const attempt: DeliveryStartedFact = {
@@ -107,13 +107,13 @@ describe('the outbound calls of a run that another call came before', () => {
       Result.fail({ _tag: 'conflict' }),
     );
     expect(await Effect.runPromise(Effect.result(record({ ...run, id: 'not-a-run' }, attempt, lineage)))).toEqual(
-      Result.fail(new Conflict({ detail: 'There is no such run in this brain, so it records no work' })),
+      Result.fail(new Conflict({ detail: 'There is no such run in this playbook, so it records no work' })),
     );
   });
 });
 
 describe('a run as it was recorded', () => {
-  it('is read by its address or by its id in its brain, and is nothing for a run there is not', async () => {
+  it('is read by its address or by its id in its playbook, and is nothing for a run there is not', async () => {
     const ledger = await aDeferredRun();
     const read = await Effect.runPromise(recordedRunIn(ledger.service, run));
 
@@ -132,9 +132,9 @@ describe('a run as it was recorded', () => {
       awaitsSettlement: true,
       lastCall: 0,
     });
-    expect(await Effect.runPromise(recordedRunInBrain(brainReaderOf(ledger.service), run.id.toUpperCase()))).toEqual(
-      read,
-    );
+    expect(
+      await Effect.runPromise(recordedRunInPlaybook(playbookReaderOf(ledger.service), run.id.toUpperCase())),
+    ).toEqual(read);
     expect(await Effect.runPromise(recordedRunIn(ledger.service, { ...run, id: 'not-a-run' }))).toBeUndefined();
     expect(
       await Effect.runPromise(recordedRunIn(ledger.service, { ...run, id: '0199a3c4-7d2e-7c1a-9b3f-000000000000' })),
@@ -143,14 +143,14 @@ describe('a run as it was recorded', () => {
   });
 });
 
-function brainReaderOf(ledger: Parameters<typeof recordedRunIn>[0]): Parameters<typeof recordedRunInBrain>[0] {
-  return { load: (relative, decider) => ledger.load(`brain/acme/alpha/${relative}`, decider) };
+function playbookReaderOf(ledger: Parameters<typeof recordedRunIn>[0]): Parameters<typeof recordedRunInPlaybook>[0] {
+  return { load: (relative, decider) => ledger.load(`playbook/acme/alpha/${relative}`, decider) };
 }
 
-describe('a settlement made through the writer of a brain', () => {
-  it('settles a run of that brain by its id, and finds no run under an id that is not one', async () => {
+describe('a settlement made through the writer of a playbook', () => {
+  it('settles a run of that playbook by its id, and finds no run under an id that is not one', async () => {
     const ledger = await aDeferredRun();
-    const settle = brainBoundSettler(brainWriterOf(ledger.service));
+    const settle = playbookBoundSettler(playbookWriterOf(ledger.service));
 
     expect(
       await Effect.runPromise(settle(run, { status: 'succeeded', output: { choice: 'approve' }, by: 'acme-admin' })),
@@ -162,7 +162,7 @@ describe('a settlement made through the writer of a brain', () => {
 });
 
 describe('the replies a run takes or refuses', () => {
-  it('are recorded as the brain itself, with the lineage they are given, once for each reply', async () => {
+  it('are recorded as the playbook itself, with the lineage they are given, once for each reply', async () => {
     const ledger = await aDeferredRun();
     const record = replyRecorder(ledger.service);
     const reading = { server: 'chat', tool: 'thread_replies', reply: { id: '1699.2', sender: 'ada' } };

@@ -29,7 +29,7 @@ export {
 } from './reactions/reaction-options.ts';
 export { StartRejected } from './reactions/start-rejected.ts';
 export { cronRejectionOf } from './schedules/schedule-times.ts';
-export { mostListenersInABrain } from './listeners/sql-listeners.ts';
+export { mostListenersInAPlaybook } from './listeners/sql-listeners.ts';
 export { mostReactionDepth } from './reactions/subscription-starts.ts';
 export { mostDeferredStarts, mostStartsAMinute } from './reactions/start-rates.ts';
 export { mostOpenCallsOfATree, type WaitingOptions } from './waiting/waiting-options.ts';

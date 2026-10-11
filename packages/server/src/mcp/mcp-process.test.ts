@@ -44,9 +44,12 @@ async function waitingCallOn(kind: McpClientKind): Promise<WaitingCall> {
   });
   const port = await child.port;
   await withMcpSession(kind, { url: `http://127.0.0.1:${port}/orgs/acme/mcp`, headers: {} }, (session) =>
-    session.callTool('create_brain', { brain: 'alpha', name: 'Alpha' }),
+    session.callTool('create_playbook', { playbook: 'alpha', name: 'Alpha' }),
   );
-  const session = await connectMcp(kind, { url: `http://127.0.0.1:${port}/orgs/acme/brains/alpha/mcp`, headers: {} });
+  const session = await connectMcp(kind, {
+    url: `http://127.0.0.1:${port}/orgs/acme/playbooks/alpha/mcp`,
+    headers: {},
+  });
   const waiting = session.callTool('wait_forever', {}).then(
     (result) => ({ isError: result.isError, problem: problemIn(result) }),
     (error: unknown) => ({ ended: String(error) }),

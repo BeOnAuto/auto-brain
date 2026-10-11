@@ -46,7 +46,7 @@ export function daysOf({ from, days }: AnalyticsWindow): readonly string[] {
 
 function refused(pointer: string, detail: string): InvalidInput {
   return new InvalidInput({
-    detail: 'The days asked for are not a window this brain can answer',
+    detail: 'The days asked for are not a window this playbook can answer',
     issues: [{ pointer, detail }],
   });
 }

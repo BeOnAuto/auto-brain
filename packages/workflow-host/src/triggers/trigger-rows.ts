@@ -35,18 +35,18 @@ const EventRow = Schema.Struct({
   rule: Schema.fromJsonString(EventTriggerSchema),
 });
 
-function typesKept(database: HostDatabase, brainKey: string, workflow: string, types: readonly string[]) {
+function typesKept(database: HostDatabase, playbookKey: string, workflow: string, types: readonly string[]) {
   return Effect.orDie(
     Effect.andThen(
       database.write(
-        statement`DELETE FROM workflow_subscription_types WHERE brain_key = ${brainKey} AND workflow = ${workflow}`,
+        statement`DELETE FROM workflow_subscription_types WHERE playbook_key = ${playbookKey} AND workflow = ${workflow}`,
       ),
       Effect.forEach(
         [...new Set(types)],
         (type) =>
           database.write(
-            statement`INSERT INTO workflow_subscription_types (brain_key, workflow, type)
-              VALUES (${brainKey}, ${workflow}, ${type}) ON CONFLICT DO NOTHING`,
+            statement`INSERT INTO workflow_subscription_types (playbook_key, workflow, type)
+              VALUES (${playbookKey}, ${workflow}, ${type}) ON CONFLICT DO NOTHING`,
           ),
         { discard: true },
       ),
@@ -62,73 +62,77 @@ function firstDueOf(trigger: Trigger, activatedAt: number): number | null {
   return trigger.kind === 'event' ? null : nextAfter(trigger, activatedAt, activatedAt);
 }
 
-function keptTriggersOf(database: HostDatabase, brainKey: string, workflow: string): Effect.Effect<readonly Trigger[]> {
+function keptTriggersOf(
+  database: HostDatabase,
+  playbookKey: string,
+  workflow: string,
+): Effect.Effect<readonly Trigger[]> {
   return Effect.orDie(
     rowsOf(
       KeptRow,
       database.read(
-        statement`SELECT rule FROM workflow_subscriptions WHERE brain_key = ${brainKey} AND workflow = ${workflow}`,
+        statement`SELECT rule FROM workflow_subscriptions WHERE playbook_key = ${playbookKey} AND workflow = ${workflow}`,
       ),
     ),
   ).pipe(Effect.map((rows) => rows.map(({ rule }) => rule)));
 }
 
-function activatedRow(database: HostDatabase, brainKey: string, activation: Activation, trigger: Trigger) {
+function activatedRow(database: HostDatabase, playbookKey: string, activation: Activation, trigger: Trigger) {
   const { workflow, version, activatedBy, activatedAt } = activation;
   return database.write(
     statement`INSERT INTO workflow_subscriptions
-        (brain_key, workflow, reference, version, kind, rule, activated_by, activated_at, next_due, running)
-      VALUES (${brainKey}, ${workflow}, ${trigger.reference}, ${version}, ${trigger.kind}, ${JSON.stringify(trigger)},
+        (playbook_key, workflow, reference, version, kind, rule, activated_by, activated_at, next_due, running)
+      VALUES (${playbookKey}, ${workflow}, ${trigger.reference}, ${version}, ${trigger.kind}, ${JSON.stringify(trigger)},
         ${activatedBy}, ${activatedAt}, ${firstDueOf(trigger, activatedAt)}, NULL)
-      ON CONFLICT (brain_key, workflow, reference) DO UPDATE SET version = excluded.version, kind = excluded.kind,
+      ON CONFLICT (playbook_key, workflow, reference) DO UPDATE SET version = excluded.version, kind = excluded.kind,
         rule = excluded.rule, activated_by = excluded.activated_by, activated_at = excluded.activated_at,
         next_due = excluded.next_due`,
   );
 }
 
-function rowWritten(database: HostDatabase, brainKey: string, activation: Activation, change: TriggerChange) {
+function rowWritten(database: HostDatabase, playbookKey: string, activation: Activation, change: TriggerChange) {
   const { workflow, version } = activation;
   if (change.change === 'activated') {
-    return activatedRow(database, brainKey, activation, change.trigger);
+    return activatedRow(database, playbookKey, activation, change.trigger);
   }
   return change.change === 'kept'
     ? database.write(
         statement`UPDATE workflow_subscriptions SET version = ${version}
-          WHERE brain_key = ${brainKey} AND workflow = ${workflow} AND reference = ${change.trigger.reference}`,
+          WHERE playbook_key = ${playbookKey} AND workflow = ${workflow} AND reference = ${change.trigger.reference}`,
       )
     : database.write(
         statement`DELETE FROM workflow_subscriptions
-          WHERE brain_key = ${brainKey} AND workflow = ${workflow} AND reference = ${change.reference}`,
+          WHERE playbook_key = ${playbookKey} AND workflow = ${workflow} AND reference = ${change.reference}`,
       );
 }
 
-export function triggersActivated(database: HostDatabase, brainKey: string, activation: Activation) {
+export function triggersActivated(database: HostDatabase, playbookKey: string, activation: Activation) {
   return Effect.gen(function* () {
-    const kept = yield* keptTriggersOf(database, brainKey, activation.workflow);
+    const kept = yield* keptTriggersOf(database, playbookKey, activation.workflow);
     yield* Effect.orDie(
       Effect.forEach(
         triggerChangesOf(kept, activation.triggers),
-        (change) => rowWritten(database, brainKey, activation, change),
+        (change) => rowWritten(database, playbookKey, activation, change),
         { discard: true },
       ),
     );
-    yield* typesKept(database, brainKey, activation.workflow, typesOf(activation.triggers));
+    yield* typesKept(database, playbookKey, activation.workflow, typesOf(activation.triggers));
   });
 }
 
-export function triggersRemoved(database: HostDatabase, brainKey: string, workflow: string) {
+export function triggersRemoved(database: HostDatabase, playbookKey: string, workflow: string) {
   return Effect.asVoid(
     Effect.orDie(
       database.write(
-        statement`DELETE FROM workflow_subscriptions WHERE brain_key = ${brainKey} AND workflow = ${workflow}`,
+        statement`DELETE FROM workflow_subscriptions WHERE playbook_key = ${playbookKey} AND workflow = ${workflow}`,
       ),
     ),
-  ).pipe(Effect.andThen(typesKept(database, brainKey, workflow, [])));
+  ).pipe(Effect.andThen(typesKept(database, playbookKey, workflow, [])));
 }
 
 export function eventSubscriptionsOf(
   database: HostDatabase,
-  brainKey: string,
+  playbookKey: string,
   { type, after = '', most }: EventPage,
 ): Effect.Effect<readonly EventSubscription[]> {
   return Effect.orDie(
@@ -137,8 +141,8 @@ export function eventSubscriptionsOf(
       Effect.orDie(
         database.read(
           statement`SELECT s.workflow, s.version, s.rule FROM workflow_subscription_types t
-            JOIN workflow_subscriptions s ON s.brain_key = t.brain_key AND s.workflow = t.workflow AND s.kind = 'event'
-            WHERE t.brain_key = ${brainKey} AND t.type = ${type} AND t.workflow > ${after}
+            JOIN workflow_subscriptions s ON s.playbook_key = t.playbook_key AND s.workflow = t.workflow AND s.kind = 'event'
+            WHERE t.playbook_key = ${playbookKey} AND t.type = ${type} AND t.workflow > ${after}
             ORDER BY t.workflow LIMIT ${most + 1}`,
         ),
       ),
@@ -157,13 +161,13 @@ export function eventSubscriptionsOf(
 
 const TypeRow = Schema.Struct({ type: Schema.String });
 
-export function wantedTypesIn(database: HostDatabase, brainKey: string): Effect.Effect<readonly string[]> {
+export function wantedTypesIn(database: HostDatabase, playbookKey: string): Effect.Effect<readonly string[]> {
   return Effect.orDie(
     rowsOf(
       TypeRow,
       database.read(
-        statement`SELECT type FROM workflow_subscription_types WHERE brain_key = ${brainKey}
-          UNION SELECT type FROM workflow_listener_types WHERE brain_key = ${brainKey}`,
+        statement`SELECT type FROM workflow_subscription_types WHERE playbook_key = ${playbookKey}
+          UNION SELECT type FROM workflow_listener_types WHERE playbook_key = ${playbookKey}`,
       ),
     ),
   ).pipe(Effect.map((rows) => rows.map(({ type }) => type)));

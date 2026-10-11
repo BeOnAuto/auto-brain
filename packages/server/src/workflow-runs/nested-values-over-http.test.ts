@@ -67,9 +67,9 @@ afterEach(async () => {
   await server.stop();
 });
 
-async function brainWithAWaitingWorkflow(environment: Readonly<Record<string, string>>): Promise<void> {
+async function playbookWithAWaitingWorkflow(environment: Readonly<Record<string, string>>): Promise<void> {
   server = await servingReasoning([], environment);
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   await server.call('POST', `${alpha}/definitions/workflow`, { body: { name: 'waiting', source: waiting } });
 }
 
@@ -78,7 +78,7 @@ describe.each(stores)(
   { timeout: workflowTestTimeoutMs },
   ({ skipped, environment }) => {
     it.skipIf(skipped)('are taken as a run input, as the data of a sent event and of a published one', async () => {
-      await brainWithAWaitingWorkflow(await environment());
+      await playbookWithAWaitingWorkflow(await environment());
 
       const started = await server.call('POST', `${alpha}/definitions/workflow/waiting/run`, {
         body: { input: nested(512), run_id: runId },
@@ -97,7 +97,7 @@ describe.each(stores)(
     });
 
     it.skipIf(skipped)('are refused deeper than that, as invalid input, before anything is recorded', async () => {
-      await brainWithAWaitingWorkflow(await environment());
+      await playbookWithAWaitingWorkflow(await environment());
 
       const ran = await server.call('POST', `${alpha}/definitions/workflow/waiting/run`, {
         body: { input: nested(3000) },

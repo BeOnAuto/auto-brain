@@ -1,5 +1,5 @@
 import {
-  brainStreamOf,
+  playbookStreamOf,
   messageIdOf,
   rowKeyOf,
   setsAdvancedColumns,
@@ -45,9 +45,9 @@ async function keptAfter(
 }
 
 function placeOf(projection: KeyedProjection, { stream, data }: StoredMessage): RowPlace | undefined {
-  const named = brainStreamOf(stream);
+  const named = playbookStreamOf(stream);
   const key = named === undefined ? undefined : rowKeyOf(projection, data, named);
-  return named === undefined || key === undefined ? undefined : { brainKey: named.brainKey, key };
+  return named === undefined || key === undefined ? undefined : { playbookKey: named.playbookKey, key };
 }
 
 function keepingProjection(keeping: ProjectionKeeping): InlineProjection {

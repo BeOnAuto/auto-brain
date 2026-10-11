@@ -20,7 +20,7 @@ function presented(receipt: InputReceipt) {
   const event: RunLogEvent = { type: 'input_applied', format: 6, receipt, steps: [], patch: [], outputs: [] };
   const record: RecordedEvent = {
     id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
-    cursor: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
+    cursor: 'WyJwbGF5Ym9vay9hY21lL2FscGhhLyIsIjEiXQ',
     causationId: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a',
     correlationId: runId,
     stream: `run-logs/${runId}`,
@@ -44,7 +44,7 @@ describe('a cancel a workflow took, in the history of its run', () => {
     });
 
     expect(cancelled?.summary).toBe(
-      'acme-admin cancelled the workflow. It was cancelled at the request of someone allowed to change the brain.',
+      'acme-admin cancelled the workflow. It was cancelled at the request of someone allowed to change the playbook.',
     );
     expect(cancelled?.data).toMatchObject({
       input: { kind: 'cancel_requested', key: runId, cancel: { by: 'acme-admin', kind: 'requested' } },

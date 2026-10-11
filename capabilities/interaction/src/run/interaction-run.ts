@@ -67,13 +67,13 @@ export function requestRun(ports: InteractionPorts) {
   ): Effect.Effect<CapabilityAnswer, CapabilityRejection> =>
     Effect.gen(function* () {
       const admitted = yield* preparedInput(input, document.input);
-      const brain = { org: context.org, brain: context.brain };
-      yield* offered(toolsOf(routeOf(document.route ?? {})), ports, brain);
+      const playbook = { org: context.org, playbook: context.playbook };
+      yield* offered(toolsOf(routeOf(document.route ?? {})), ports, playbook);
       if (!asksLater(document)) {
         const notified = yield* requestOf(document, admitted);
         return { output: {}, record: notified };
       }
-      yield* roomFor(ports, brain);
+      yield* roomFor(ports, playbook);
       const record = yield* requestOf(document, admitted);
       yield* checkedArguments(record, { input: admitted, runId: context.id, functionName: context.definition.name });
       return { finishesLater: true, record };

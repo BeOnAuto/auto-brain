@@ -2,7 +2,7 @@
 
 # Reasoning function format
 
-A reasoning function is a definition whose `type` field is `reasoning`, in API calls, MCP arguments and workflow definitions alike. A run performs one model invocation, or, when the function names [`tools`](#tools), a loop of them with the tools of the brain's MCP servers. Skill references are still planned; the `tools` field does not load skills or inherit an external agent's context.
+A reasoning function is a definition whose `type` field is `reasoning`, in API calls, MCP arguments and workflow definitions alike. A run performs one model invocation, or, when the function names [`tools`](#tools), a loop of them with the tools of the playbook's MCP servers. Skill references are still planned; the `tools` field does not load skills or inherit an external agent's context.
 
 ## Reasoning function document format
 
@@ -45,7 +45,7 @@ Summarize the account {{ input.account }} as of {{ today }}.
 | `output.format`            | No          | `text`, the default, or `json`                        | Whether the answer is the model's text or a JSON value                                                                                                                                   |
 | `output.schema`            | With `json` | A JSON Schema                                         | The answer must match it; see [Answers that are JSON](../self-host/models.md#answers-that-are-json). Not allowed with `text`                                                             |
 | `provider_options`         | No          | An object of objects, keyed by the provider namespace | Options for `anthropic`, `openai`, `azure`, `google`, `vertex`, `googleVertex`, `amazonBedrock`, `bedrock`, or a gateway's name: only those [Provider options](#provider-options) offers |
-| `tools`                    | No          | A list of `server/tool` or `server/*`                 | The tools of the MCP servers configured for the brain that a run may call; see [Tools](#tools)                                                                                           |
+| `tools`                    | No          | A list of `server/tool` or `server/*`                 | The tools of the MCP servers configured for the playbook that a run may call; see [Tools](#tools)                                                                                        |
 
 Any other key, at any level, is rejected.
 
@@ -95,7 +95,7 @@ A document is checked without calling a model, and the same document always give
 
 ### Tools
 
-`tools` names the tools a run may call, each `server/tool` or `server/*`, from the servers in [`mcp_servers`](../self-host/configuration.md#mcp-servers) that serve the brain's org and brain. A run checks them once its model is known to be offered, and before the model is called, so a run whose model is not offered reaches no server and starts no process: a server that is not configured for the brain is `unavailable` of the kind `tool_not_offered` because `mcp_server_not_configured`, a tool outside the server's `allowed` because `tool_not_allowed`, and a tool the server does not list because `tool_not_listed`; a server that cannot be used is `unavailable` of the kind `mcp_server_failed`, because `unreachable`, `failing`, `rate_limited` or `key_refused`, the last when the server did not accept the key the runtime gives it, whose words say to check that key rather than to try again. `server/*` gives every tool the server lists that the server's `allowed` names, or every tool it lists when `allowed` is left out. `list_tool_servers` lists the servers that serve the brain and the tools each would give `server/*`, asking each server as a run does, so the names can be found rather than told ([Tool servers](http.md#tool-servers)), and `test_tool_call` calls one of them as a run would and answers what its model would see, so what a tool answers can be read before a function names it ([Testing a tool](../../reference/http.md#testing-a-tool)).
+`tools` names the tools a run may call, each `server/tool` or `server/*`, from the servers in [`mcp_servers`](../self-host/configuration.md#mcp-servers) that serve the playbook's org and playbook. A run checks them once its model is known to be offered, and before the model is called, so a run whose model is not offered reaches no server and starts no process: a server that is not configured for the playbook is `unavailable` of the kind `tool_not_offered` because `mcp_server_not_configured`, a tool outside the server's `allowed` because `tool_not_allowed`, and a tool the server does not list because `tool_not_listed`; a server that cannot be used is `unavailable` of the kind `mcp_server_failed`, because `unreachable`, `failing`, `rate_limited` or `key_refused`, the last when the server did not accept the key the runtime gives it, whose words say to check that key rather than to try again. `server/*` gives every tool the server lists that the server's `allowed` names, or every tool it lists when `allowed` is left out. `list_tool_servers` lists the servers that serve the playbook and the tools each would give `server/*`, asking each server as a run does, so the names can be found rather than told ([Tool servers](http.md#tool-servers)), and `test_tool_call` calls one of them as a run would and answers what its model would see, so what a tool answers can be read before a function names it ([Testing a tool](../../reference/http.md#testing-a-tool)).
 
 The model receives each tool under a unique name derived from `mcp__server__tool`. Characters other than letters, digits and underscores become underscores; names longer than 64 characters or sharing a normalized name receive an 8-character hash. A numeric suffix resolves any remaining collision within the run's tool list. The description is cut to 4 KiB and the server's input schema is unchanged; what in it the provider of the run's model may refuse or not hold the tool's arguments to is added to the run's `warnings`: a root that is not an object, and for Anthropic models the bounds, `oneOf` and the formats they do not enforce or accept, such as `mcp__graph__search inputSchema#/properties/query/maxLength`. Tools are not sent as strict structured outputs, so the rules a JSON output schema has for open objects and optional properties do not apply to them. The model keeps the function's output format and may call tools, several in one step, before it answers, each call forwarded with the run id in the request's metadata under `com.beonauto/run_id`:
 
@@ -191,35 +191,35 @@ Names are counted in the text inside `{{ }}` and `{% %}`: every variable, proper
 
 ## Creating and running a reasoning function
 
-The definition and run operations of [`@beonauto/definitions`](../../../packages/definitions) store reasoning function definitions and record their runs: `create_definition`, `list_definitions`, `get_definition`, `update_definition`, `retire_definition`, `run_definition` and `get_run`, under `/v1/orgs/{org}/brains/{brain}`, with `type: "reasoning"`. Give the server a key for the provider first; it reads the model settings when it starts:
+The definition and run operations of [`@beonauto/definitions`](../../../packages/definitions) store reasoning function definitions and record their runs: `create_definition`, `list_definitions`, `get_definition`, `update_definition`, `retire_definition`, `run_definition` and `get_run`, under `/v1/orgs/{org}/playbooks/{playbook}`, with `type: "reasoning"`. Give the server a key for the provider first; it reads the model settings when it starts:
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
 pnpm dev
 ```
 
-With the [reasoning function document](#reasoning-function-document-format) saved as `account-summary.md`, create a brain and the function. `jq` turns the document into a JSON string:
+With the [reasoning function document](#reasoning-function-document-format) saved as `account-summary.md`, create a playbook and the function. `jq` turns the document into a JSON string:
 
 ```bash
-curl --request POST http://localhost:8080/v1/orgs/acme/brains \
+curl --request POST http://localhost:8080/v1/orgs/acme/playbooks \
   --header 'content-type: application/json' \
-  --data '{"brain":"sales","name":"Sales"}'
+  --data '{"playbook":"sales","name":"Sales"}'
 jq --null-input --rawfile source account-summary.md '{name: "account-summary", source: $source}' |
-  curl --request POST http://localhost:8080/v1/orgs/acme/brains/sales/definitions/reasoning \
+  curl --request POST http://localhost:8080/v1/orgs/acme/playbooks/sales/definitions/reasoning \
     --header 'content-type: application/json' --data @-
 ```
 
-`create_definition` answers `201` with the definition: its `version` 1, the `description`, the `input_schema`, any `warnings`, and the document as `source`. A document with problems gets `422` with every problem under `/source`. Read it back, and list the reasoning functions in the brain:
+`create_definition` answers `201` with the definition: its `version` 1, the `description`, the `input_schema`, any `warnings`, and the document as `source`. A document with problems gets `422` with every problem under `/source`. Read it back, and list the reasoning functions in the playbook:
 
 ```bash
-curl http://localhost:8080/v1/orgs/acme/brains/sales/definitions/reasoning/account-summary
-curl http://localhost:8080/v1/orgs/acme/brains/sales/definitions/reasoning
+curl http://localhost:8080/v1/orgs/acme/playbooks/sales/definitions/reasoning/account-summary
+curl http://localhost:8080/v1/orgs/acme/playbooks/sales/definitions/reasoning
 ```
 
 Run the function. The optional `run_id` identifies the run so you can inspect it and retry according to the [retry rules](#when-a-run-is-rejected):
 
 ```bash
-curl --request POST http://localhost:8080/v1/orgs/acme/brains/sales/definitions/reasoning/account-summary/run \
+curl --request POST http://localhost:8080/v1/orgs/acme/playbooks/sales/definitions/reasoning/account-summary/run \
   --header 'content-type: application/json' \
   --data '{"input":{"account":"Globex"},"run_id":"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a"}'
 ```
@@ -241,10 +241,10 @@ curl --request POST http://localhost:8080/v1/orgs/acme/brains/sales/definitions/
 `get_run` reads it back with the [record](#what-a-run-records):
 
 ```bash
-curl http://localhost:8080/v1/orgs/acme/brains/sales/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a
+curl http://localhost:8080/v1/orgs/acme/playbooks/sales/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a
 ```
 
-An agent calls the same operations as MCP tools on `POST /mcp`, where the tools inside a brain take its id as `brain`: `get_guide` serves the format of the document as the guide `reasoning-function`, the public reference page with what this server offers at its end, and a rejection comes back as `isError` with the same problem document. A retry with the same `run_id`, definition and input returns a recorded success or invalid-input rejection without calling the model. Other failures may permit another attempt, except where tool calls may already have changed something; [rejection and retry rules](#when-a-run-is-rejected) cover those cases. `update_definition` (`PUT …/definitions/reasoning/account-summary` with a new `source`) makes version 2, and `retire_definition` (`POST …/retire`) retires the function for good. The [definitions README](../../../packages/definitions/README.md) has the rules of each operation.
+An agent calls the same operations as MCP tools on `POST /mcp`, where the tools inside a playbook take its id as `playbook`: `get_guide` serves the format of the document as the guide `reasoning-function`, the public reference page with what this server offers at its end, and a rejection comes back as `isError` with the same problem document. A retry with the same `run_id`, definition and input returns a recorded success or invalid-input rejection without calling the model. Other failures may permit another attempt, except where tool calls may already have changed something; [rejection and retry rules](#when-a-run-is-rejected) cover those cases. `update_definition` (`PUT …/definitions/reasoning/account-summary` with a new `source`) makes version 2, and `retire_definition` (`POST …/retire`) retires the function for good. The [definitions README](../../../packages/definitions/README.md) has the rules of each operation.
 
 `scripts/try-reasoning.sh` at the root of the repository does all of this against a server that is already running, with a small reasoning function of its own, and prints the run and its record. It starts nothing, and needs `curl` and `jq`:
 
@@ -252,7 +252,7 @@ An agent calls the same operations as MCP tools on `POST /mcp`, where the tools 
 scripts/try-reasoning.sh http://localhost:8080 anthropic/claude-sonnet-4-5
 ```
 
-It works in org `local`, or `AUTO_BRAIN_ORG`, creates a brain named `try-<seconds>`, and sends `AUTO_BRAIN_KEY` as the API key when it is set. CI never runs it.
+It works in org `local`, or `AUTO_BRAIN_ORG`, creates a playbook named `try-<seconds>`, and sends `AUTO_BRAIN_KEY` as the API key when it is set. CI never runs it.
 
 ## An example with a JSON answer
 
@@ -314,14 +314,14 @@ The definition operations answer every rejection as a problem document, and reco
 | The provider limits the rate of requests                                                              | `unavailable`, saying how many seconds to wait when it said                                                                                                                                               | 503  |
 | The provider cannot be reached or cannot serve now, or does not answer in time                        | `unavailable`, saying to try again later                                                                                                                                                                  | 503  |
 | A JSON answer does not match the schema                                                               | `unavailable`, with the first issues, saying to try again                                                                                                                                                 | 503  |
-| The definition names a tool the brain's MCP servers do not offer, or a server cannot be used          | `unavailable` of the kind `tool_not_offered` or `mcp_server_failed`; the model is not called                                                                                                              | 503  |
+| The definition names a tool the playbook's MCP servers do not offer, or a server cannot be used       | `unavailable` of the kind `tool_not_offered` or `mcp_server_failed`; the model is not called                                                                                                              | 503  |
 | The run called only tools their servers mark read-only and then could not finish                      | `unavailable` of the kind `tools_unfinished`, naming the tools it called in words                                                                                                                         | 503  |
 | The run called a tool its server does not mark read-only and then could not finish                    | `conflict` of the kind `effect_unknown`, naming the tools it called in words; no retry on status 503 repeats it                                                                                           | 409  |
 | The same `run_id` again, after a run that called tools and did not succeed                            | `conflict` of the kind `tools_called`; inspect the history and external effects before deliberately starting a new run                                                                                    | 409  |
 | The same `run_id` again, while a run of a reasoning function with `tools` is started                  | `conflict` of the kind `tools_called`; the run may still be in progress, so inspect its history before starting another                                                                                   | 409  |
 | The caller goes away before the answer                                                                | the run is interrupted and recorded as `failed`; in-flight tool calls are cancelled and may have external effects                                                                                         | 499  |
 
-A text answer cut off at `max_output_tokens` succeeds, with `finish_reason: "length"` in the record. A call may take 60 seconds plus 25 ms for every token of `max_output_tokens`: 85.6 seconds for the default 1024, and that covers the up to two retries of a failure that may pass (see [Retries](../self-host/models.md#retries)). The definition operations add their own rejections: `not_found` for a definition the brain does not have, and `conflict` for a retired definition or one whose document no longer parses.
+A text answer cut off at `max_output_tokens` succeeds, with `finish_reason: "length"` in the record. A call may take 60 seconds plus 25 ms for every token of `max_output_tokens`: 85.6 seconds for the default 1024, and that covers the up to two retries of a failure that may pass (see [Retries](../self-host/models.md#retries)). The definition operations add their own rejections: `not_found` for a definition the playbook does not have, and `conflict` for a retired definition or one whose document no longer parses.
 
 ## What a run records
 
@@ -339,6 +339,6 @@ A text answer cut off at `max_output_tokens` succeeds, with `finish_reason: "len
 | `duration_ms`                        | How long the call took                                                                                                |
 | `prompt`                             | The rendered `instructions` and `message`, and `truncated`                                                            |
 
-A run rejected after its model answered keeps a record too, of `usage` and `duration_ms` alone: when the answer does not match the schema or is cut off at `max_output_tokens`, when the model refused the content, when it kept calling tools in the step that withheld them, and when the answer leaves no room in the 1 MiB a run records. `get_run` shows it, and the brain's analytics count its tokens. A rejection that comes before the model answers, or a call stopped by its deadline, by the bound of a run that calls tools or by failing tool servers, records none, since no usage is known then.
+A run rejected after its model answered keeps a record too, of `usage` and `duration_ms` alone: when the answer does not match the schema or is cut off at `max_output_tokens`, when the model refused the content, when it kept calling tools in the step that withheld them, and when the answer leaves no room in the 1 MiB a run records. `get_run` shows it, and the playbook's analytics count its tokens. A rejection that comes before the model answers, or a call stopped by its deadline, by the bound of a run that calls tools or by failing tool servers, records none, since no usage is known then.
 
 The output and the record take at most 1 MiB together, the limit of the definition operations. When the prompt does not fit beside the answer, the record keeps the start of the instructions and of the message and sets `truncated: true`. The record holds no credential, and not the provider options, which the definition already holds.

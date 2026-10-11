@@ -1,11 +1,11 @@
-import type { BrainAddress, RecordedEvent } from '@beonauto/operations';
+import type { PlaybookAddress, RecordedEvent } from '@beonauto/operations';
 import { Data, type Effect } from 'effect';
 
 import type { FollowedEvent } from './followed-events.ts';
 
 export interface CallRecord {
-  readonly brain: BrainAddress;
-  readonly brainKey: string;
+  readonly playbook: PlaybookAddress;
+  readonly playbookKey: string;
   readonly record: RecordedEvent;
 }
 

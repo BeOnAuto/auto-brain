@@ -37,7 +37,7 @@ function finishing(result: RunOutcome): RunCommand {
   return { type: 'finish', result, ...start };
 }
 
-function settling(result: RunResult, by = 'brain:alpha'): RunCommand {
+function settling(result: RunResult, by = 'playbook:alpha'): RunCommand {
   return { type: 'settle', result, by, at: later };
 }
 
@@ -67,7 +67,7 @@ describe('deferring a run', () => {
 describe('settling a run', () => {
   it('records the result of a deferred run, by the actor who settled it', () => {
     expect(decided(settling(success), started, deferred)).toStrictEqual(
-      Result.succeed([{ ...success, ...ofHandOn, by: 'brain:alpha', at: later }]),
+      Result.succeed([{ ...success, ...ofHandOn, by: 'playbook:alpha', at: later }]),
     );
     expect(decided(settling(success, 'acme-admin'), started, deferred)).toStrictEqual(
       Result.succeed([{ ...success, ...ofHandOn, by: 'acme-admin', at: later }]),
@@ -113,14 +113,14 @@ describe('a settlement that does not land', () => {
     );
   });
 
-  it('is rejected for a run that runs within its call, and for one the brain does not have', () => {
+  it('is rejected for a run that runs within its call, and for one the playbook does not have', () => {
     expect(decided(settling(success), started)).toEqual(
       Result.fail(
         new Conflict({ detail: 'The run executes within the call that started it, so it cannot be settled' }),
       ),
     );
     expect(decided(settling(success))).toEqual(
-      Result.fail(new NotFound({ detail: 'There is no such run in this brain' })),
+      Result.fail(new NotFound({ detail: 'There is no such run in this playbook' })),
     );
   });
 
@@ -155,7 +155,7 @@ describe('a run whose start says it finishes later', () => {
 
   it('takes its settlement before its deferral, so a run that ends in its first input settles at once', () => {
     expect(decided(settling(success), startedLater)).toStrictEqual(
-      Result.succeed([{ ...success, ...ofHandOn, by: 'brain:alpha', at: later }]),
+      Result.succeed([{ ...success, ...ofHandOn, by: 'playbook:alpha', at: later }]),
     );
   });
 
@@ -183,7 +183,9 @@ describe('a run that answers a call of another run', () => {
       Result.succeed([calledStart]),
     );
     expect(decided(settling(success), calledStart)).toStrictEqual(
-      Result.succeed([{ ...success, ...ofHandOn, call_depth: 2, called_by: calledBy, by: 'brain:alpha', at: later }]),
+      Result.succeed([
+        { ...success, ...ofHandOn, call_depth: 2, called_by: calledBy, by: 'playbook:alpha', at: later },
+      ]),
     );
     expect(stateAfter(calledStart)).toMatchObject({ callDepth: 2, calledBy });
   });
@@ -218,7 +220,7 @@ describe('cancelling a run', () => {
     });
   });
 
-  it('is refused for a run that ended, one that runs within its call and one the brain does not have', () => {
+  it('is refused for a run that ended, one that runs within its call and one the playbook does not have', () => {
     expect(decided(cancelling(), started, deferred, { ...success, ...ofHandOn, ...start })).toEqual(
       Result.fail(new Conflict({ detail: 'The run has already ended, so there is nothing left to cancel' })),
     );
@@ -230,7 +232,9 @@ describe('cancelling a run', () => {
         }),
       ),
     );
-    expect(decided(cancelling())).toEqual(Result.fail(new NotFound({ detail: 'There is no such run in this brain' })));
+    expect(decided(cancelling())).toEqual(
+      Result.fail(new NotFound({ detail: 'There is no such run in this playbook' })),
+    );
   });
 
   it('ends as cancelled, a final result for its id that a call with its id answers again', () => {

@@ -54,7 +54,7 @@ export const topicRows: KeyedProjection = {
     { name: 'next_at', kind: 'integer' },
     { name: 'due_at', kind: 'integer' },
   ],
-  indexes: [{ name: 'due', columns: ['due_at'], acrossBrains: true, whereSet: 'due_at' }],
+  indexes: [{ name: 'due', columns: ['due_at'], acrossPlaybooks: true, whereSet: 'due_at' }],
   keyOf: (event) => Option.getOrUndefined(Option.map(decodeFact(event), ({ topic }) => topic)),
   advanced: { columns: ['open', 'next_at', 'due_at'], setBy: ['topic_opened'] },
   rowAfter: (row, event, message) =>

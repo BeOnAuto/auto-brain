@@ -24,7 +24,7 @@ const newestHundred: RecordedPageRequest = { order: 'desc', limit: 100 };
 function streamsBeginningWith(ledger: MemoryLedger, firstTypes: readonly string[]) {
   return Effect.forEach(firstTypes, (type, index) =>
     TestClock.setTime(1000 + index).pipe(
-      Effect.andThen(ledger.service.execute(`brain/acme/alpha/runs/s${index}`, happenings, { type })),
+      Effect.andThen(ledger.service.execute(`playbook/acme/alpha/runs/s${index}`, happenings, { type })),
     ),
   );
 }
@@ -34,7 +34,7 @@ function runsWithOneLeftOutEvery(every: number, count: number): readonly string[
 }
 
 function read(ledger: MemoryLedger, selection: RecordedSelection) {
-  return ledger.service.readRecorded({ org: 'acme', brain: 'alpha' }, selection, newestHundred);
+  return ledger.service.readRecorded({ org: 'acme', playbook: 'alpha' }, selection, newestHundred);
 }
 
 describe('the in-memory read of runs that leaves out the streams beginning with some types', () => {
@@ -74,7 +74,7 @@ function runsWithOneInFourOfEachDefinition(ledger: MemoryLedger) {
   return Effect.forEach(
     Array.from({ length: 28 }, (_, index) => index),
     (index) =>
-      ledger.service.execute(`brain/acme/alpha/runs/r${index}`, starts, {
+      ledger.service.execute(`playbook/acme/alpha/runs/r${index}`, starts, {
         type: 'run_started',
         definition_type: index % 4 === 0 ? 'workflow' : 'reasoning',
         name: index % 4 === 1 ? 'qualify-enquiry' : 'summary',
@@ -92,7 +92,7 @@ function everyPageOf(
 ): Effect.Effect<readonly PageFigures[], InvalidCursor> {
   return Effect.gen(function* () {
     const { records, hasMore, nextCursor } = yield* ledger.service.readRecorded(
-      { org: 'acme', brain: 'alpha' },
+      { org: 'acme', playbook: 'alpha' },
       selection,
       page,
     );
@@ -147,7 +147,7 @@ describe('the in-memory read of the runs of one definition, over a first record 
         id: 'message-1',
         causationId: null,
         correlationId: null,
-        stream: 'brain/acme/alpha/runs/r1',
+        stream: 'playbook/acme/alpha/runs/r1',
         streamPosition: 1,
         type: 'run_started',
         data: 'workflow',
@@ -155,7 +155,7 @@ describe('the in-memory read of the runs of one definition, over a first record 
       },
     ]);
     const reading = (selection: RecordedSelection) =>
-      readOneRecord({ org: 'acme', brain: 'alpha' }, selection, newestHundred).pipe(
+      readOneRecord({ org: 'acme', playbook: 'alpha' }, selection, newestHundred).pipe(
         Effect.map(({ records }) => records.map(({ data }) => data)),
       );
 

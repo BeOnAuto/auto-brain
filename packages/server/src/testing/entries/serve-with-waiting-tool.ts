@@ -1,5 +1,5 @@
 import { waitForever } from '@beonauto/api/testing';
-import { brainOperations } from '@beonauto/brains';
+import { playbookOperations } from '@beonauto/playbooks';
 
 import { compositionRoot } from '../../composition/composition-root.ts';
 import { routesServing } from '../../composition/served-routes.ts';
@@ -12,7 +12,7 @@ await runServer(
   process,
   {
     ...compositionRoot,
-    serve: (runtime) => servedBy(routesServing([...brainOperations, waitForever])(runtime)),
+    serve: (runtime) => servedBy(routesServing([...playbookOperations, waitForever])(runtime)),
     shutdownTimeoutMs: shortShutdownTimeoutMs,
   },
   stopRequestedBy(process),

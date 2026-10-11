@@ -40,15 +40,15 @@ export const indexesOfAddedColumns: readonly Statement[] = [
 ];
 
 const followerTables: readonly Statement[] = [
-  statement`CREATE TABLE IF NOT EXISTS workflow_followed_brains (
-    brain_key TEXT NOT NULL PRIMARY KEY,
+  statement`CREATE TABLE IF NOT EXISTS workflow_followed_playbooks (
+    playbook_key TEXT NOT NULL PRIMARY KEY,
     cursor TEXT,
     delivered TEXT,
     attempts INTEGER NOT NULL DEFAULT 0,
     waiting INTEGER NOT NULL DEFAULT 0,
     checked BIGINT NOT NULL DEFAULT 0
   )`,
-  statement`CREATE INDEX IF NOT EXISTS workflow_followed_brains_by_check ON workflow_followed_brains (waiting, checked)`,
+  statement`CREATE INDEX IF NOT EXISTS workflow_followed_playbooks_by_check ON workflow_followed_playbooks (waiting, checked)`,
   statement`CREATE TABLE IF NOT EXISTS workflow_followed_orgs (
     stream_id TEXT NOT NULL PRIMARY KEY,
     position BIGINT NOT NULL
@@ -61,7 +61,7 @@ const followerTables: readonly Statement[] = [
   statement`CREATE TABLE IF NOT EXISTS workflow_listeners (
     run_key TEXT NOT NULL,
     listener TEXT NOT NULL,
-    brain_key TEXT NOT NULL,
+    playbook_key TEXT NOT NULL,
     stream_id TEXT NOT NULL,
     armed_by BIGINT NOT NULL,
     filters TEXT NOT NULL,
@@ -71,16 +71,16 @@ const followerTables: readonly Statement[] = [
     PRIMARY KEY (run_key, listener)
   )`,
   statement`CREATE INDEX IF NOT EXISTS workflow_listeners_by_stream ON workflow_listeners (stream_id, passed)`,
-  statement`CREATE INDEX IF NOT EXISTS workflow_listeners_by_brain ON workflow_listeners (brain_key)`,
+  statement`CREATE INDEX IF NOT EXISTS workflow_listeners_by_playbook ON workflow_listeners (playbook_key)`,
   statement`CREATE TABLE IF NOT EXISTS workflow_listener_types (
-    brain_key TEXT NOT NULL,
+    playbook_key TEXT NOT NULL,
     type TEXT NOT NULL,
     run_key TEXT NOT NULL,
     listener TEXT NOT NULL,
-    PRIMARY KEY (brain_key, type, run_key, listener)
+    PRIMARY KEY (playbook_key, type, run_key, listener)
   )`,
   statement`CREATE TABLE IF NOT EXISTS workflow_subscriptions (
-    brain_key TEXT NOT NULL,
+    playbook_key TEXT NOT NULL,
     workflow TEXT NOT NULL,
     reference TEXT NOT NULL,
     version BIGINT NOT NULL,
@@ -90,43 +90,43 @@ const followerTables: readonly Statement[] = [
     activated_at BIGINT NOT NULL,
     next_due BIGINT,
     running TEXT,
-    PRIMARY KEY (brain_key, workflow, reference)
+    PRIMARY KEY (playbook_key, workflow, reference)
   )`,
   statement`CREATE INDEX IF NOT EXISTS workflow_subscriptions_due ON workflow_subscriptions (next_due)
     WHERE next_due IS NOT NULL`,
   statement`CREATE TABLE IF NOT EXISTS workflow_subscription_types (
-    brain_key TEXT NOT NULL,
+    playbook_key TEXT NOT NULL,
     workflow TEXT NOT NULL,
     type TEXT NOT NULL,
-    PRIMARY KEY (brain_key, workflow, type)
+    PRIMARY KEY (playbook_key, workflow, type)
   )`,
   statement`CREATE INDEX IF NOT EXISTS workflow_subscription_types_by_type
-    ON workflow_subscription_types (brain_key, type, workflow)`,
+    ON workflow_subscription_types (playbook_key, type, workflow)`,
   statement`CREATE TABLE IF NOT EXISTS workflow_reaction_rates (
-    brain_key TEXT NOT NULL,
+    playbook_key TEXT NOT NULL,
     workflow TEXT NOT NULL,
     minute BIGINT NOT NULL,
     starts INTEGER NOT NULL,
-    PRIMARY KEY (brain_key, workflow)
+    PRIMARY KEY (playbook_key, workflow)
   )`,
   statement`CREATE TABLE IF NOT EXISTS workflow_reaction_backlog (
-    brain_key TEXT NOT NULL,
+    playbook_key TEXT NOT NULL,
     workflow TEXT NOT NULL,
     run_id TEXT NOT NULL,
     start TEXT NOT NULL,
     due BIGINT NOT NULL,
     attempts INTEGER NOT NULL DEFAULT 0,
-    PRIMARY KEY (brain_key, run_id)
+    PRIMARY KEY (playbook_key, run_id)
   )`,
   statement`CREATE INDEX IF NOT EXISTS workflow_reaction_backlog_due ON workflow_reaction_backlog (due)`,
   statement`CREATE TABLE IF NOT EXISTS workflow_reaction_refusals (
-    brain_key TEXT NOT NULL,
+    playbook_key TEXT NOT NULL,
     workflow TEXT NOT NULL,
     minute BIGINT NOT NULL,
     count INTEGER NOT NULL,
     reason TEXT NOT NULL,
     recorded INTEGER NOT NULL DEFAULT 0,
-    PRIMARY KEY (brain_key, workflow)
+    PRIMARY KEY (playbook_key, workflow)
   )`,
 ];
 

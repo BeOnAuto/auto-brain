@@ -88,12 +88,12 @@ jobs:
           done
           test "$(curl --silent --fail http://127.0.0.1:8080/health)" = '{"status":"ok"}'
           test "$(docker exec smoke id -un)" = node
-          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8080/v1/orgs/demo/brains)" = 401
-          test "$(curl --silent --include http://127.0.0.1:8080/v1/orgs/demo/brains | grep --ignore-case --count '^www-authenticate: Bearer')" = 1
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 401
+          test "$(curl --silent --include http://127.0.0.1:8080/v1/orgs/demo/playbooks | grep --ignore-case --count '^www-authenticate: Bearer')" = 1
           test "$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo | grep --count --extended-regexp '^API key, shown only this once: abk_[0-9a-f]{8}_[A-Za-z0-9_-]{43}$')" = 1
           docker stop smoke
           test "$(docker inspect smoke --format '{{.State.ExitCode}}')" = 0
-      - name: Keep a brain on a volume across a restart
+      - name: Keep a playbook on a volume across a restart
         run: |
           wait_for_health() {
             for attempt in $(seq 1 30); do
@@ -103,35 +103,35 @@ jobs:
             return 1
           }
           start_server() {
-            docker run --detach --name "$1" --publish 8080:8080 --env API_KEYS --volume brains:/data auto-brain:ci
+            docker run --detach --name "$1" --publish 8080:8080 --env API_KEYS --volume playbooks:/data auto-brain:ci
             wait_for_health
           }
           stop_server() {
             docker stop "$1"
             test "$(docker inspect "$1" --format '{{.State.ExitCode}}')" = 0
           }
-          read_brain() {
-            curl --silent --fail --header "authorization: Bearer $key" http://127.0.0.1:8080/v1/orgs/demo/brains/smoke
+          read_playbook() {
+            curl --silent --fail --header "authorization: Bearer $key" http://127.0.0.1:8080/v1/orgs/demo/playbooks/smoke
           }
           issued="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
           API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
           export API_KEYS
-          docker volume create brains
+          docker volume create playbooks
           start_server first
           test "$(curl --silent --output created.json --write-out '%{http_code}' \
             --header "authorization: Bearer $key" --header 'content-type: application/json' \
-            --data '{"brain":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/brains)" = 201
-          read_brain > before-restart.json
+            --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 201
+          read_playbook > before-restart.json
           grep --quiet '"id":"smoke"' before-restart.json
           cmp created.json before-restart.json
           stop_server first
           start_server second
-          read_brain > after-restart.json
+          read_playbook > after-restart.json
           cmp before-restart.json after-restart.json
           stop_server second
-      - name: Keep a brain in PostgreSQL across a restart
+      - name: Keep a playbook in PostgreSQL across a restart
         timeout-minutes: 2
         run: |
           issued="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo)"
@@ -156,23 +156,23 @@ jobs:
             done
             return 1
           }
-          read_brain() {
+          read_playbook() {
             curl --silent --fail --max-time 10 --header "authorization: Bearer $key" \
-              http://127.0.0.1:8080/v1/orgs/demo/brains/smoke
+              http://127.0.0.1:8080/v1/orgs/demo/playbooks/smoke
           }
           docker run --detach --name ledger --network ledger --publish 8080:8080 --env API_KEYS --env DATABASE_URL \
             auto-brain:ci
           wait_for_health
           test "$(curl --silent --max-time 10 --output created.json --write-out '%{http_code}' \
             --header "authorization: Bearer $key" --header 'content-type: application/json' \
-            --data '{"brain":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/brains)" = 201
-          read_brain > before-restart.json
+            --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 201
+          read_playbook > before-restart.json
           cmp created.json before-restart.json
           docker stop ledger
           test "$(docker inspect ledger --format '{{.State.ExitCode}}')" = 0
           docker start ledger
           wait_for_health
-          read_brain > after-restart.json
+          read_playbook > after-restart.json
           cmp before-restart.json after-restart.json
           docker stop ledger
           test "$(docker inspect ledger --format '{{.State.ExitCode}}')" = 0
@@ -184,7 +184,7 @@ jobs:
           issued="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
-          reading="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo --permissions org:read,brain:read)"
+          reading="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo --permissions org:read,playbook:read)"
           read_key="$(printf '%s\n' "$reading" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$read_key"
           API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p'),$(printf '%s\n' "$reading" | sed --quiet 's/^API_KEYS entry: //p')]"
@@ -203,28 +203,28 @@ jobs:
             call_mcp_as "$key" "$1" "$2"
           }
           call_mcp /orgs/demo/mcp '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' > tools.txt
-          for tool in create_brain list_brains get_brain update_brain retire_brain; do
+          for tool in create_playbook list_playbooks get_playbook update_playbook retire_playbook; do
             grep --quiet "\"name\":\"$tool\"" tools.txt
           done
-          call_mcp /orgs/demo/mcp '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"create_brain","arguments":{"brain":"smoke","name":"Smoke test"}}}' > created.txt
+          call_mcp /orgs/demo/mcp '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"create_playbook","arguments":{"playbook":"smoke","name":"Smoke test"}}}' > created.txt
           grep --quiet '"structuredContent":{"id":"smoke","name":"Smoke test"' created.txt
-          call_mcp /orgs/demo/mcp '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_brain","arguments":{"brain":"smoke"}}}' > read.txt
+          call_mcp /orgs/demo/mcp '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_playbook","arguments":{"playbook":"smoke"}}}' > read.txt
           grep --quiet '"structuredContent":{"id":"smoke","name":"Smoke test"' read.txt
           call_mcp /mcp '{"jsonrpc":"2.0","id":4,"method":"tools/list"}' > all-tools.txt
           test "$(grep --only-matching '"name":"[a-z_]*","title"' all-tools.txt | wc -l)" -eq 25
-          for tool in list_models list_runs get_run_history get_brain_analytics list_brain_events publish_event list_tool_servers test_tool_call list_interactions answer_interaction send_run_event cancel_run get_guide; do
+          for tool in list_models list_runs get_run_history get_playbook_analytics list_playbook_events publish_event list_tool_servers test_tool_call list_interactions answer_interaction send_run_event cancel_run get_guide; do
             grep --quiet "\"name\":\"$tool\"" all-tools.txt
           done
-          call_mcp /mcp '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"list_definitions","arguments":{"brain":"smoke","type":"reasoning"}}}' > definitions.txt
+          call_mcp /mcp '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"list_definitions","arguments":{"playbook":"smoke","type":"reasoning"}}}' > definitions.txt
           grep --quiet '"structuredContent":{"definitions":\[\]}' definitions.txt
-          call_mcp /mcp '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"list_runs","arguments":{"brain":"smoke"}}}' > runs.txt
+          call_mcp /mcp '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"list_runs","arguments":{"playbook":"smoke"}}}' > runs.txt
           grep --quiet '"structuredContent":{"runs":\[\],"has_more":false,"next_cursor":null}' runs.txt
-          call_mcp /mcp '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"list_tool_servers","arguments":{"brain":"smoke"}}}' > tool-servers.txt
+          call_mcp /mcp '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"list_tool_servers","arguments":{"playbook":"smoke"}}}' > tool-servers.txt
           grep --quiet '"structuredContent":{"tool_servers":\[\]}' tool-servers.txt
           call_mcp /mcp '{"jsonrpc":"2.0","id":15,"method":"tools/call","params":{"name":"list_tool_servers","arguments":{}}}' > org-tool-servers.txt
           grep --quiet '"structuredContent":{"tool_servers":\[\]}' org-tool-servers.txt
           test "$(curl --silent --fail --header "authorization: Bearer $read_key" http://127.0.0.1:8080/v1/orgs/demo/tool-servers)" = '{"tool_servers":[]}'
-          call_mcp /mcp '{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"test_tool_call","arguments":{"brain":"smoke","server":"graph","tool":"search"}}}' > tested.txt
+          call_mcp /mcp '{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"test_tool_call","arguments":{"playbook":"smoke","server":"graph","tool":"search"}}}' > tested.txt
           grep --quiet '"isError":true' tested.txt
           grep --quiet 'mcp_server_not_configured' tested.txt
           call_mcp_as "$read_key" /mcp '{"jsonrpc":"2.0","id":14,"method":"tools/list"}' > read-tools.txt
@@ -232,7 +232,7 @@ jobs:
           test "$(grep --count '"name":"test_tool_call"' read-tools.txt)" = 0
           test "$(curl --silent --output refused.json --write-out '%{http_code}' \
             --header "authorization: Bearer $read_key" --header 'content-type: application/json' --data '{"arguments":{}}' \
-            http://127.0.0.1:8080/v1/orgs/demo/brains/smoke/tool-servers/graph/tools/search/test)" = 403
+            http://127.0.0.1:8080/v1/orgs/demo/playbooks/smoke/tool-servers/graph/tools/search/test)" = 403
           grep --quiet '"reason":"forbidden"' refused.json
           call_mcp /mcp '{"jsonrpc":"2.0","id":8,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"ci","version":"1"}}}' > initialized.txt
           grep --quiet 'Before writing a definition, read its format with get_guide' initialized.txt
@@ -242,11 +242,11 @@ jobs:
           call_mcp /mcp '{"jsonrpc":"2.0","id":10,"method":"resources/list"}' > resources.txt
           test "$(grep --only-matching '"uri":"guide://[a-z-]*"' resources.txt | wc -l)" -eq 10
           call_mcp /mcp '{"jsonrpc":"2.0","id":11,"method":"prompts/list"}' > prompts.txt
-          for prompt in first-brain remember give-tools schedule; do
+          for prompt in first-playbook remember give-tools schedule; do
             grep --quiet "\"name\":\"$prompt\"" prompts.txt
           done
-          call_mcp /mcp '{"jsonrpc":"2.0","id":12,"method":"prompts/get","params":{"name":"first-brain"}}' > first-brain.txt
-          grep --quiet 'Create my first brain.' first-brain.txt
+          call_mcp /mcp '{"jsonrpc":"2.0","id":12,"method":"prompts/get","params":{"name":"first-playbook"}}' > first-playbook.txt
+          grep --quiet 'Create my first playbook.' first-playbook.txt
           docker stop mcp
           test "$(docker inspect mcp --format '{{.State.ExitCode}}')" = 0
       - name: Run a reasoning function without model settings
@@ -265,14 +265,14 @@ jobs:
             curl --silent --output "$1" --write-out '%{http_code}' \
               --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
           }
-          brain=http://127.0.0.1:8080/v1/orgs/demo/brains/smoke
+          playbook=http://127.0.0.1:8080/v1/orgs/demo/playbooks/smoke
           source="$(printf '%s\n' '---' 'model: anthropic/claude-sonnet-4-5' '---' 'Say hello to {{ input.name }}.')"
           definition="$(jq --null-input --arg source "$source" '{name: "hello", source: $source}')"
-          test "$(call brain.json --data '{"brain":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/brains)" = 201
-          test "$(call created.json --data "$definition" "$brain/definitions/reasoning")" = 201
-          test "$(call read.json "$brain/definitions/reasoning/hello")" = 200
+          test "$(call playbook.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 201
+          test "$(call created.json --data "$definition" "$playbook/definitions/reasoning")" = 201
+          test "$(call read.json "$playbook/definitions/reasoning/hello")" = 200
           test "$(jq --raw-output .source read.json)" = "$source"
-          test "$(call ran.json --data '{"input":{"name":"CI"}}' "$brain/definitions/reasoning/hello/run")" = 503
+          test "$(call ran.json --data '{"input":{"name":"CI"}}' "$playbook/definitions/reasoning/hello/run")" = 503
           test "$(jq --raw-output .reason ran.json)" = unavailable
           test "$(jq --raw-output .detail ran.json)" = \
             'anthropic is not configured. No model provider is configured'
@@ -294,22 +294,22 @@ jobs:
             curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' \
               --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
           }
-          brain=http://127.0.0.1:8080/v1/orgs/demo/brains/smoke
+          playbook=http://127.0.0.1:8080/v1/orgs/demo/playbooks/smoke
           total="$(printf '%s\n' '---' 'language: typescript' 'input:' '  schema: {type: object, required: [rows]}' '---' \
             'export default function (input: any): Output {' \
             '  const total_cents = input.rows.reduce((sum: number, row: any) => sum + row.cost_cents, 0);' \
             '  return { total_cents, rows: input.rows.length };' '}')"
           raising="$(printf '%s\n' '---' 'language: typescript' '---' 'export default function (input: Input): Output {' \
             "  throw new Error('no rows');" '}')"
-          test "$(call brain.json --data '{"brain":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/brains)" = 201
+          test "$(call playbook.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 201
           for name in total raising; do
             definition="$(jq --null-input --arg name "$name" --arg source "${!name}" '{name: $name, source: $source}')"
-            test "$(call created.json --data "$definition" "$brain/definitions/computation")" = 201
+            test "$(call created.json --data "$definition" "$playbook/definitions/computation")" = 201
           done
           test "$(call totalled.json --data '{"input":{"rows":[{"cost_cents":1050},{"cost_cents":2075}]}}' \
-            "$brain/definitions/computation/total/run")" = 200
+            "$playbook/definitions/computation/total/run")" = 200
           test "$(jq --compact-output '[.status, .output]' totalled.json)" = '["succeeded",{"total_cents":3125,"rows":2}]'
-          test "$(call raised.json --data '{"input":{}}' "$brain/definitions/computation/raising/run")" = 409
+          test "$(call raised.json --data '{"input":{}}' "$playbook/definitions/computation/raising/run")" = 409
           test "$(jq --compact-output '[.reason, .kind, .detail]' raised.json)" = \
             '["conflict","unworkable","The program raised an error on line 5: Error: no rows"]'
           docker stop computation
@@ -331,24 +331,24 @@ jobs:
             curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' \
               --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
           }
-          brain=http://127.0.0.1:8080/v1/orgs/demo/brains/smoke
+          playbook=http://127.0.0.1:8080/v1/orgs/demo/playbooks/smoke
           source="$(printf '%s\n' '---' "to: '{{ input.owner }}'" 'expires: P1D' 'output:' \
             '  schema: {type: object, required: [choice], properties: {choice: {type: string, enum: [approve, reject]}}}' \
             '---' 'Approve the brief for {{ input.campaign }}?')"
           definition="$(jq --null-input --arg source "$source" '{name: "approve-brief", source: $source}')"
-          test "$(call brain.json --data '{"brain":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/brains)" = 201
-          test "$(call created.json --data "$definition" "$brain/definitions/interaction")" = 201
+          test "$(call playbook.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 201
+          test "$(call created.json --data "$definition" "$playbook/definitions/interaction")" = 201
           test "$(call asked.json --data '{"input":{"owner":"ada","campaign":"Spring"}}' \
-            "$brain/definitions/interaction/approve-brief/run")" = 200
+            "$playbook/definitions/interaction/approve-brief/run")" = 200
           test "$(jq --raw-output .status asked.json)" = started
           asked="$(jq --raw-output .run_id asked.json)"
-          test "$(call inbox.json "$brain/interactions?to=ada")" = 200
+          test "$(call inbox.json "$playbook/interactions?to=ada")" = 200
           test "$(jq --compact-output '[.interactions[] | [.run_id, .message]]' inbox.json)" = \
             "[[\"$asked\",\"Approve the brief for Spring?\"]]"
-          test "$(call answered.json --data '{"answer":{"choice":"approve"}}' "$brain/runs/$asked/answer")" = 200
-          test "$(call run.json "$brain/runs/$asked")" = 200
+          test "$(call answered.json --data '{"answer":{"choice":"approve"}}' "$playbook/runs/$asked/answer")" = 200
+          test "$(call run.json "$playbook/runs/$asked")" = 200
           test "$(jq --compact-output '[.status, .output]' run.json)" = '["succeeded",{"choice":"approve"}]'
-          test "$(call again.json --data '{"answer":{"choice":"reject"}}' "$brain/runs/$asked/answer")" = 409
+          test "$(call again.json --data '{"answer":{"choice":"reject"}}' "$playbook/runs/$asked/answer")" = 409
           docker stop interaction
           test "$(docker inspect interaction --format '{{.State.ExitCode}}')" = 0
       - name: Run workflows across a restart, and read the steps of a run and their causes
@@ -378,10 +378,10 @@ jobs:
             curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' \
               --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
           }
-          brain=http://127.0.0.1:8080/v1/orgs/demo/brains/smoke
+          playbook=http://127.0.0.1:8080/v1/orgs/demo/playbooks/smoke
           settled() {
             for attempt in $(seq 1 30); do
-              test "$(call "$1" "$brain/runs/$2")" = 200
+              test "$(call "$1" "$playbook/runs/$2")" = 200
               test "$(jq --raw-output .status "$1")" != started && return 0
               sleep 1
             done
@@ -394,23 +394,23 @@ jobs:
           docker volume create workflows
           start_server workflows-first
           test "$(docker logs workflows-first 2>&1 | grep --count '"message":"Workflows run in this server: ')" = 1
-          test "$(call brain.json --data '{"brain":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/brains)" = 201
+          test "$(call playbook.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 201
           for name in greet approval; do
             definition="$(jq --null-input --arg name "$name" --arg source "${!name}" '{name: $name, source: $source}')"
-            test "$(call created.json --data "$definition" "$brain/definitions/workflow")" = 201
+            test "$(call created.json --data "$definition" "$playbook/definitions/workflow")" = 201
           done
-          test "$(call greeting.json --data '{"input":{"name":"CI"}}' "$brain/definitions/workflow/greet/run")" = 200
+          test "$(call greeting.json --data '{"input":{"name":"CI"}}' "$playbook/definitions/workflow/greet/run")" = 200
           settled greeted.json "$(jq --raw-output .run_id greeting.json)"
           test "$(jq --compact-output '[.status, .output]' greeted.json)" = '["succeeded",{"greeting":"Hello, CI"}]'
-          test "$(call waiting.json --data '{}' "$brain/definitions/workflow/approval/run")" = 200
+          test "$(call waiting.json --data '{}' "$playbook/definitions/workflow/approval/run")" = 200
           waiting="$(jq --raw-output .run_id waiting.json)"
           stop_server workflows-first
           start_server workflows-second
           test "$(call sent.json --data '{"event":{"type":"com.example.approval.decided","data":{"approved":true}}}' \
-            "$brain/runs/$waiting/events")" = 200
+            "$playbook/runs/$waiting/events")" = 200
           settled approved.json "$waiting"
           test "$(jq --compact-output '[.status, .output]' approved.json)" = '["succeeded",[{"approved":true}]]'
-          test "$(call history.json "$brain/runs/$waiting/history")" = 200
+          test "$(call history.json "$playbook/runs/$waiting/history")" = 200
           jq --exit-status '(.events | INDEX(.id) as $by
             | [.[] | [.type, (.data.name // .data.input.kind), $by[.causation_id // ""].type]] | sort) == [
               ["run_started", "approval", null], ["run_succeeded", null, "step_finished"],
@@ -418,7 +418,7 @@ jobs:
               ["workflow_input_applied", "event_received", "step_waiting"],
               ["workflow_input_applied", "started", "run_started"]]' history.json
           stop_server workflows-second
-      - name: Read the analytics of a brain
+      - name: Read the analytics of a playbook
         timeout-minutes: 2
         run: |
           issued="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo)"
@@ -435,12 +435,12 @@ jobs:
             curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' \
               --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
           }
-          brain=http://127.0.0.1:8080/v1/orgs/demo/brains/smoke
+          playbook=http://127.0.0.1:8080/v1/orgs/demo/playbooks/smoke
           source="$(printf '%s\n' '---' 'model: anthropic/claude-sonnet-4-5' '---' 'Say hello to {{ input.name }}.')"
           definition="$(jq --null-input --arg source "$source" '{name: "hello", source: $source}')"
-          test "$(call created.json --data "$definition" "$brain/definitions/reasoning")" = 201
-          test "$(call ran.json --data '{"input":{"name":"CI"}}' "$brain/definitions/reasoning/hello/run")" = 503
-          test "$(call analytics.json "$brain/analytics")" = 200
+          test "$(call created.json --data "$definition" "$playbook/definitions/reasoning")" = 201
+          test "$(call ran.json --data '{"input":{"name":"CI"}}' "$playbook/definitions/reasoning/hello/run")" = 503
+          test "$(call analytics.json "$playbook/analytics")" = 200
           test "$(jq --compact-output '[.days, .runs.succeeded, .runs.rejected, .by_day[-1].day, .by_day[-1].runs.total]' \
             analytics.json)" = "[7,2,1,\"$(date --utc +%F)\",3]"
           test "$(jq --compact-output '[.by_function[] | [.type, .name, .runs]]' analytics.json)" = \
@@ -464,21 +464,21 @@ jobs:
             curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' \
               --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
           }
-          brain=http://127.0.0.1:8080/v1/orgs/demo/brains/smoke
+          playbook=http://127.0.0.1:8080/v1/orgs/demo/playbooks/smoke
           source="$(printf '%s\n' '---' 'language: typescript' 'source:' '  events:' '    - type: run_succeeded' \
             '      subject: workflow/greet' 'view:' '  initial: []' '---' 'export function fold(view: any, event: any): any {' \
             '  return [...view, event.data.output?.greeting ?? "none"];' '}')"
           definition="$(jq --null-input --arg source "$source" '{name: "greetings", source: $source}')"
-          test "$(call created.json --data "$definition" "$brain/definitions/recall")" = 201
+          test "$(call created.json --data "$definition" "$playbook/definitions/recall")" = 201
           for attempt in $(seq 1 30); do
-            test "$(call standing.json "$brain/definitions/recall/greetings")" = 200
+            test "$(call standing.json "$playbook/definitions/recall/greetings")" = 200
             test "$(jq --compact-output '[.standing.state, .standing.folded]' standing.json)" = '["live",1]' && break
             sleep 1
           done
           test "$(jq --compact-output '[.standing.state, .standing.folded]' standing.json)" = '["live",1]'
-          test "$(call recalled.json --data '{}' "$brain/definitions/recall/greetings/run")" = 200
+          test "$(call recalled.json --data '{}' "$playbook/definitions/recall/greetings/run")" = 200
           test "$(jq --compact-output '[.status, .output]' recalled.json)" = '["succeeded",["Hello, CI"]]'
-          test "$(call run.json "$brain/runs/$(jq --raw-output .run_id recalled.json)")" = 200
+          test "$(call run.json "$playbook/runs/$(jq --raw-output .run_id recalled.json)")" = 200
           test "$(jq --compact-output '[.record.view.version, .record.view.folded]' run.json)" = '[1,1]'
           docker stop recall
           test "$(docker inspect recall --format '{{.State.ExitCode}}')" = 0
@@ -500,10 +500,10 @@ jobs:
             curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' \
               --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
           }
-          brain=http://127.0.0.1:8080/v1/orgs/demo/brains/smoke
+          playbook=http://127.0.0.1:8080/v1/orgs/demo/playbooks/smoke
           ended_runs() {
             for attempt in $(seq 1 "$3"); do
-              test "$(call runs.json "$brain/runs?type=workflow&name=$1")" = 200
+              test "$(call runs.json "$playbook/runs?type=workflow&name=$1")" = 200
               jq --exit-status --argjson count "$2" '[.runs[] | select(.status != "started")] | length >= $count' \
                 runs.json > /dev/null && return 0
               sleep 1
@@ -513,20 +513,20 @@ jobs:
           closing="$(printf '%s\n' "document: { dsl: '1.0.3', namespace: smoke, name: closing, version: '1.0.0' }" \
             'schedule: { on: { one: { with: { type: com.example.ledger.closed } } }, every: PT1M }' 'do:' \
             "  - total: { set: { input: '\${ \$data }' } }")"
-          test "$(call brain.json --data '{"brain":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/brains)" = 201
+          test "$(call playbook.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 201
           definition="$(jq --null-input --arg source "$closing" '{name: "closing", source: $source}')"
-          test "$(call created.json --data "$definition" "$brain/definitions/workflow")" = 201
+          test "$(call created.json --data "$definition" "$playbook/definitions/workflow")" = 201
           test "$(jq --compact-output '[.triggers[] | [.kind, .reference]]' created.json)" = \
             '[["event","/schedule/on"],["every","/schedule/every"]]'
           test "$(call published.json \
             --data '{"event":{"source":"/ledger","type":"com.example.ledger.closed","data":{"month":"september"}}}' \
-            "$brain/events")" = 200
+            "$playbook/events")" = 200
           ended_runs closing 2 150
           test "$(jq --compact-output '[.runs[] | [.status, .started_by]]' runs.json)" = \
-            '[["succeeded","brain:smoke"],["succeeded","brain:smoke"]]'
+            '[["succeeded","playbook:smoke"],["succeeded","playbook:smoke"]]'
           for run in $(jq --raw-output '.runs[].run_id' runs.json); do
-            test "$(call "history-$run.json" "$brain/runs/$run/history")" = 200
-            test "$(call "run-$run.json" "$brain/runs/$run")" = 200
+            test "$(call "history-$run.json" "$playbook/runs/$run/history")" = 200
+            test "$(call "run-$run.json" "$playbook/runs/$run")" = 200
             case "$(jq --raw-output '.events[0].data.trigger.kind' "history-$run.json")" in
               event) test "$(jq --raw-output '.output.input[0].data.month' "run-$run.json")" = september ;;
               every) jq --exit-status '.output.input.schedule.due | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T")' \

@@ -1,4 +1,4 @@
-import type { BrainAddress } from '@beonauto/operations';
+import type { PlaybookAddress } from '@beonauto/operations';
 import { Function, Result } from 'effect';
 
 import { secretsOfServers } from '../bounds/secrets.ts';
@@ -10,7 +10,7 @@ import { namedLinks } from './tool-naming.ts';
 import type { ToolNotOffered } from './tool-not-offered.ts';
 
 export type NamingCheck = (
-  address: BrainAddress,
+  address: PlaybookAddress,
   references: readonly ToolReference[],
 ) => Result.Result<void, ToolNotOffered>;
 

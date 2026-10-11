@@ -174,7 +174,7 @@ describe('a computation function definition that is refused', () => {
         {
           pointer: '',
           detail:
-            "Line 2, /language: The brain's one language is TypeScript; write the program as a TypeScript function",
+            "Line 2, /language: The playbook's one language is TypeScript; write the program as a TypeScript function",
         },
       ],
     });

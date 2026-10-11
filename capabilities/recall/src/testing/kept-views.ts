@@ -12,7 +12,7 @@ export function keptViews(): KeptViews {
   const newest: { at: string | undefined } = { at: undefined };
   return {
     views: {
-      viewOf: (_brain, name) => Effect.sync(() => kept.get(name)),
+      viewOf: (_playbook, name) => Effect.sync(() => kept.get(name)),
       newestRecordAt: () => Effect.sync(() => newest.at),
     },
     keep: (view) => {

@@ -24,7 +24,7 @@ const { present } = presentationOf([runPresenter]);
 
 const utf8 = new TextEncoder();
 
-const cursor = 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ';
+const cursor = 'WyJwbGF5Ym9vay9hY21lL2FscGhhLyIsIjEiXQ';
 
 const recordId = '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3';
 

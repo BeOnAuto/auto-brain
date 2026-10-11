@@ -4,11 +4,11 @@ import { describe, expect, it } from 'vitest';
 
 import { runDecider, runStreamNameOf } from '../runs/run-decider.ts';
 import type { RunEvent } from '../runs/run-events.ts';
-import { brainFactOf } from './brain-facts.ts';
+import { playbookFactOf } from './playbook-facts.ts';
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
-const fact = { by: 'brain:alpha', at: '2026-10-01T09:00:05.000Z' };
+const fact = { by: 'playbook:alpha', at: '2026-10-01T09:00:05.000Z' };
 
 const ofCheck = { definition_type: 'workflow', name: 'check', definition_version: 1 };
 
@@ -33,8 +33,8 @@ function ofRun(event: RunEvent): RecordedEvent {
 describe('the facts of a run that answers a call of another run', () => {
   it('name the call it answers, and its ending the reason and kind it was rejected with', () => {
     expect([
-      brainFactOf(ofRun({ type: 'run_started', ...ofCheck, input: {}, called_by: calledBy, ...fact }))?.data,
-      brainFactOf(
+      playbookFactOf(ofRun({ type: 'run_started', ...ofCheck, input: {}, called_by: calledBy, ...fact }))?.data,
+      playbookFactOf(
         ofRun({
           type: 'run_rejected',
           rejection: { reason: 'cancelled', detail: 'Out of time', kind: 'deadline' },
@@ -43,7 +43,33 @@ describe('the facts of a run that answers a call of another run', () => {
           ...fact,
         }),
       )?.data,
-      brainFactOf(
+    ]).toEqual([
+      {
+        definition_type: 'workflow',
+        name: 'check',
+        version: 1,
+        caller: 'playbook:alpha',
+        depth: 0,
+        called_by: calledBy,
+      },
+      {
+        definition_type: 'workflow',
+        name: 'check',
+        version: 1,
+        caller: 'playbook:alpha',
+        depth: 0,
+        called_by: calledBy,
+        reason: 'cancelled',
+        kind: 'deadline',
+      },
+    ]);
+  });
+});
+
+describe('the facts of a run that answers no call', () => {
+  it('leave out the call, and the kind when the run was rejected without one', () => {
+    expect(
+      playbookFactOf(
         ofRun({
           type: 'run_rejected',
           rejection: { reason: 'conflict', detail: 'Clashed' },
@@ -51,20 +77,14 @@ describe('the facts of a run that answers a call of another run', () => {
           ...fact,
         }),
       )?.data,
-    ]).toEqual([
-      { definition_type: 'workflow', name: 'check', version: 1, caller: 'brain:alpha', depth: 0, called_by: calledBy },
-      {
-        definition_type: 'workflow',
-        name: 'check',
-        version: 1,
-        caller: 'brain:alpha',
-        depth: 0,
-        called_by: calledBy,
-        reason: 'cancelled',
-        kind: 'deadline',
-      },
-      { definition_type: 'workflow', name: 'check', version: 1, caller: 'brain:alpha', depth: 0, reason: 'conflict' },
-    ]);
+    ).toEqual({
+      definition_type: 'workflow',
+      name: 'check',
+      version: 1,
+      caller: 'playbook:alpha',
+      depth: 0,
+      reason: 'conflict',
+    });
   });
 });
 
@@ -75,14 +95,14 @@ describe('the facts of a run a trigger started', () => {
       definition_type: 'workflow',
       name: 'check',
       version: 1,
-      caller: 'brain:alpha',
+      caller: 'playbook:alpha',
       depth: 0,
       trigger,
     };
 
     expect([
-      brainFactOf(ofRun({ type: 'run_started', ...ofCheck, input: {}, trigger, ...fact }))?.data,
-      brainFactOf(ofRun({ type: 'run_failed', ...ofCheck, trigger, ...fact }))?.data,
+      playbookFactOf(ofRun({ type: 'run_started', ...ofCheck, input: {}, trigger, ...fact }))?.data,
+      playbookFactOf(ofRun({ type: 'run_failed', ...ofCheck, trigger, ...fact }))?.data,
     ]).toEqual([ofTheRun, ofTheRun]);
   });
 });

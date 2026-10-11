@@ -97,7 +97,7 @@ function askingTools(count: number) {
 
 describe('the description of an argument of one shape of a union input', () => {
   it('refuses to start the server over 300 characters', () => {
-    const shaped = defineQuery('brain', {
+    const shaped = defineQuery('playbook', {
       name: 'shape_definition',
       title: 'Shape',
       description: 'Shapes. Use it to shape. It answers.',
@@ -132,7 +132,7 @@ function workflowCalled(noun: string): DefinitionType {
 }
 
 function instructionLengthWith(noun: string): number {
-  return instructionsFor('own org', { orgTools: [], brainTools: ['get_run'] }, [workflowCalled(noun)], []).length;
+  return instructionsFor('own org', { orgTools: [], playbookTools: ['get_run'] }, [workflowCalled(noun)], []).length;
 }
 
 function servingTypeOf(noun: string): Serving {

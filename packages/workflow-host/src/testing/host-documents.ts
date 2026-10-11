@@ -20,9 +20,9 @@ export function workflow(source: string): JsonObject {
 }
 
 export function runAt(runId: string): RunAddress {
-  return { org: 'acme', brain: 'alpha', runId };
+  return { org: 'acme', playbook: 'alpha', runId };
 }
 
 export function startOf(document: JsonObject, input: JsonObject = {}): RunStart {
-  return { document, input, limits: defaultLimits, attributes: { org: 'acme', brain: 'alpha' }, seed: defaultSeed };
+  return { document, input, limits: defaultLimits, attributes: { org: 'acme', playbook: 'alpha' }, seed: defaultSeed };
 }

@@ -77,7 +77,7 @@ describe('a reasoning function that names tools', () => {
 });
 
 describe('a tool a reasoning function names that is not offered', () => {
-  it('rejects the run as unavailable when no server of that name is configured for its brain', async () => {
+  it('rejects the run as unavailable when no server of that name is configured for its playbook', async () => {
     const run = reasoningWithTools(accessTo(await graphServer(), 'globex'));
 
     expect(await run.running(naming('graph/search'))).toEqual(
@@ -97,7 +97,7 @@ describe('a tool a reasoning function names that is not offered', () => {
         expect.objectContaining({
           kind: 'tool_not_offered',
           because: 'mcp_server_not_configured',
-          detail: 'No MCP server named graph or crm is configured for this brain',
+          detail: 'No MCP server named graph or crm is configured for this playbook',
         }),
       ),
     );

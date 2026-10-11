@@ -1,10 +1,10 @@
 import {
-  BrainContext,
-  BrainReader,
-  BrainWriter,
+  PlaybookContext,
+  PlaybookReader,
+  PlaybookWriter,
   messageIdOf,
   randomUUIDv7,
-  streamPrefixOfBrain,
+  streamPrefixOfPlaybook,
   type Lineage,
 } from '@beonauto/operations';
 import { Effect } from 'effect';
@@ -16,19 +16,19 @@ import { commandMetadata } from './command-metadata.ts';
 
 export const newRunId = Effect.sync(() => randomUUIDv7());
 
-export function loadRunStream(id: string): Effect.Effect<RunStreamState, never, BrainReader> {
-  return BrainReader.use((reader) => reader.load(runStreamNameOf(id), runDecider)).pipe(
+export function loadRunStream(id: string): Effect.Effect<RunStreamState, never, PlaybookReader> {
+  return PlaybookReader.use((reader) => reader.load(runStreamNameOf(id), runDecider)).pipe(
     Effect.map(({ state }) => state),
   );
 }
 
-export function loadRun(id: string): Effect.Effect<RunState, never, BrainReader> {
+export function loadRun(id: string): Effect.Effect<RunState, never, PlaybookReader> {
   return Effect.map(loadRunStream(id), startedRunOf);
 }
 
 export const recordRun = Effect.fnUntraced(function* (id: string, command: RunStart | RunFinish, lineage: Lineage) {
   const metadata = yield* commandMetadata;
-  const { state, version } = yield* (yield* BrainWriter).execute(
+  const { state, version } = yield* (yield* PlaybookWriter).execute(
     runStreamNameOf(id),
     runDecider,
     { ...command, ...metadata },
@@ -36,6 +36,6 @@ export const recordRun = Effect.fnUntraced(function* (id: string, command: RunSt
   );
   return {
     state: startedRunOf(state),
-    messageId: messageIdOf(`${streamPrefixOfBrain(yield* BrainContext)}${runStreamNameOf(id)}`, version),
+    messageId: messageIdOf(`${streamPrefixOfPlaybook(yield* PlaybookContext)}${runStreamNameOf(id)}`, version),
   };
 });

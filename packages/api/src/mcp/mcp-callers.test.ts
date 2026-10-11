@@ -30,7 +30,7 @@ describe('the permissions of the caller of a tool', () => {
   it('list for a read-only key the queries and no command, in instructions that name no command', async () => {
     const outcome = await withMcpSession(
       'previous major',
-      endpoint('/orgs/acme/brains/alpha/mcp', acmeReader.key),
+      endpoint('/orgs/acme/playbooks/alpha/mcp', acmeReader.key),
       async (session) => ({
         tools: toolNamesIn(await session.listTools()),
         instructions: String(session.instructions),
@@ -54,44 +54,44 @@ describe('the permissions of the caller of a tool', () => {
 describe('a command a read-only key is not offered', () => {
   it('is answered as a tool the endpoint does not list', async () => {
     await expect(
-      withMcpSession('current revision', endpoint('/orgs/acme/brains/alpha/mcp', acmeReader.key), (session) =>
+      withMcpSession('current revision', endpoint('/orgs/acme/playbooks/alpha/mcp', acmeReader.key), (session) =>
         session.callTool('add_note', { name: 'read-only', text: 'no' }),
       ),
     ).rejects.toThrow('Tool add_note not found');
   });
 });
 
-describe('the brains of the caller of a tool', () => {
-  it('let a key limited to some brains call the tools of a brain it may access', async () => {
+describe('the playbooks of the caller of a tool', () => {
+  it('let a key limited to some playbooks call the tools of a playbook it may access', async () => {
     const added = await withMcpSession(
       'current revision',
-      endpoint('/orgs/acme/brains/alpha/mcp', acmeAlphaWriter.key),
+      endpoint('/orgs/acme/playbooks/alpha/mcp', acmeAlphaWriter.key),
       (session) => session.callTool('add_note', { name: 'limited', text: 'yes' }),
     );
 
     expect(added.structuredContent).toEqual({ name: 'limited', text: 'yes' });
   });
 
-  it('confine an org tool of a key limited to some brains to those brains', async () => {
+  it('confine an org tool of a key limited to some playbooks to those playbooks', async () => {
     const labelled = await withMcpSession(
       'previous revision',
       endpoint('/orgs/acme/mcp', acmeAlphaWriter.key),
       async (session) => ({
-        own: await session.callTool('label_brain', { brain: 'alpha', label: 'a' }),
-        other: await session.callTool('label_brain', { brain: 'beta', label: 'b' }),
+        own: await session.callTool('label_playbook', { playbook: 'alpha', label: 'a' }),
+        other: await session.callTool('label_playbook', { playbook: 'beta', label: 'b' }),
       }),
     );
 
-    expect(labelled.own.structuredContent).toEqual({ brain: 'alpha', label: 'a' });
+    expect(labelled.own.structuredContent).toEqual({ playbook: 'alpha', label: 'a' });
     expect(problemOf(labelled.other)).toMatchObject({ isError: true, problem: { reason: 'forbidden' } });
   });
 });
 
-describe('the brain endpoint of a brain that does not exist', () => {
-  it('lists the brain tools and answers a call with a not_found problem', async () => {
+describe('the playbook endpoint of a playbook that does not exist', () => {
+  it('lists the playbook tools and answers a call with a not_found problem', async () => {
     const outcome = await withMcpSession(
       'current revision',
-      endpoint('/orgs/acme/brains/nowhere/mcp', acmeReader.key),
+      endpoint('/orgs/acme/playbooks/nowhere/mcp', acmeReader.key),
       async (session) => ({
         tools: listedTools(await session.listTools()).length,
         called: await session.callTool('list_notes'),
@@ -105,7 +105,7 @@ describe('the brain endpoint of a brain that does not exist', () => {
         type: 'https://on.auto/problems/not_found',
         title: 'Not found',
         status: 404,
-        detail: 'There is no brain nowhere in this org',
+        detail: 'There is no playbook nowhere in this org',
         reason: 'not_found',
       },
     });

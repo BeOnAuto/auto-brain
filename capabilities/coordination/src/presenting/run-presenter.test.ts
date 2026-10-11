@@ -55,7 +55,7 @@ function eventOf(
 function recordOf(event: RunLogEvent): RecordedEvent {
   return {
     id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
-    cursor: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
+    cursor: 'WyJwbGF5Ym9vay9hY21lL2FscGhhLyIsIjEiXQ',
     causationId: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a',
     correlationId: runId,
     stream: `run-logs/${runId}`,
@@ -78,7 +78,7 @@ describe('an input a workflow took, in the history of its run', () => {
 
     expect(present(recordOf(event))).toEqual({
       id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
-      cursor: cursorWithin('WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ', 0),
+      cursor: cursorWithin('WyJwbGF5Ym9vay9hY21lL2FscGhhLyIsIjEiXQ', 0),
       causation_id: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a',
       at: '2026-10-05T09:00:00.000Z',
       type: 'workflow_input_applied',
@@ -152,7 +152,7 @@ describe('the words of a rejection of a function a workflow called', () => {
   it.each([
     [
       rejectedWith('tool_not_offered', 'mcp_server_not_configured'),
-      'A function the workflow called did not succeed. This server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this brain.',
+      'A function the workflow called did not succeed. This server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this playbook.',
     ],
     [
       rejectedWith('mcp_server_failed', 'rate_limited'),

@@ -8,7 +8,7 @@ import {
   type RecordedStatements,
   type RunsSelected,
 } from '../recorded/recorded-statements.ts';
-import { kindKeyOfStream } from './brain-indexes.ts';
+import { kindKeyOfStream } from './playbook-indexes.ts';
 import {
   binding,
   bounds,
@@ -70,7 +70,7 @@ function firstMessagesOfRuns(bind: Bind, partition: string, scope: ExaminationSc
         message_type AS type, ${timeOf('created')} AS recorded, ${lineageColumns}, message_data,
         ${ofTheDefinitionAsked(bind, runs)} AS of_the_definition
       FROM emt_messages
-      WHERE ${matchedThroughItsIndex(bind, kindKeyOfStream, `${scope.brainKey}runs/`)} AND stream_position = 1
+      WHERE ${matchedThroughItsIndex(bind, kindKeyOfStream, `${scope.playbookKey}runs/`)} AND stream_position = 1
         AND partition = ${partition} AND is_archived = FALSE${notOfTypes(bind, runs.notBeginningWith ?? [])}
         ${horizonOf(scope)}${bounds(bind, scope)}
       ORDER BY ${orderedThroughItsIndex(kindKeyOfStream, scope)}

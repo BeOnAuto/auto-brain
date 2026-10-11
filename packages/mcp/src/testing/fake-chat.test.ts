@@ -29,8 +29,8 @@ describe('the chat of the fake MCP server', () => {
       },
     });
     expect(fake.chat.posted()).toEqual([
-      { ts: '1699.000001', channel: '#approvals', user: 'brain', text: 'Approve?' },
-      { ts: '1699.000002', channel: '#approvals', user: 'brain', text: 'Thanks', thread_ts: '1699.000001' },
+      { ts: '1699.000001', channel: '#approvals', user: 'playbook', text: 'Approve?' },
+      { ts: '1699.000002', channel: '#approvals', user: 'playbook', text: 'Thanks', thread_ts: '1699.000001' },
     ]);
   });
 });

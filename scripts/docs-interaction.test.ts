@@ -22,10 +22,10 @@ const urlsInCode = (source: string): readonly string[] =>
     .filter((span) => span !== undefined && URL.canParse(span))
     .map((span) => new URL(String(span)).href);
 
-await test('interaction functions are available in a self-hosted runtime, with their format beside the other formats', () => {
+await test('interaction functions are available from a source checkout of main, not in release 1.0.1, with their format beside the other formats', () => {
   const functions = readFileSync(join(docs, 'concepts/functions.md'), 'utf8');
   const format = readFileSync(join(docs, 'reference/interaction-format.md'), 'utf8');
-  assert.match(functions, /\| Interaction +\| An interaction function +\| Available in a self-hosted runtime +\|/u);
+  assert.match(functions, /\| Interaction +\| An interaction function +\| Available +\| Not included +\|/u);
   assert.ok(markdownDestinations(functions).some((href) => href === '../reference/interaction-format.md'));
   assert.ok(routes.indexOf('/reference/reasoning-format') < routes.indexOf('/reference/interaction-format'));
   assert.ok(routes.indexOf('/reference/interaction-format') < routes.indexOf('/reference/computation-format'));

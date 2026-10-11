@@ -15,9 +15,13 @@ function conversationRead(parts: ConversationParts, place: ConversationPlace, no
 }
 
 function itemOf(parts: ConversationParts, kept: ProjectedKeyedRow): DueRequestItem {
-  const place = { brain: { org: kept.org, brain: kept.brain }, key: kept.key, row: conversationRowFrom(kept.row) };
+  const place = {
+    playbook: { org: kept.org, playbook: kept.playbook },
+    key: kept.key,
+    row: conversationRowFrom(kept.row),
+  };
   return {
-    key: `${kept.org}/${kept.brain}/${kept.key}`,
+    key: `${kept.org}/${kept.playbook}/${kept.key}`,
     callsOut: true,
     perform: (now) => Effect.suspend(() => conversationRead(parts, place, now)),
   };
@@ -27,7 +31,7 @@ const callsNothing: readonly DueRequestItem[] = [];
 
 export function conversationsDue(parts: ConversationParts): RequestsDue {
   return {
-    name: 'the conversations whose replies the brain reads',
+    name: 'the conversations whose replies the playbook reads',
     due: (now, most, callsOut) =>
       callsOut
         ? Effect.map(

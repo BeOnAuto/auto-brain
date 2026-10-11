@@ -1,6 +1,6 @@
 import { Effect, Result, Schema } from 'effect';
 
-import { BrainReader, BrainWriter, defineCommand, defineQuery, type Decider } from '../index.ts';
+import { PlaybookReader, PlaybookWriter, defineCommand, defineQuery, type Decider } from '../index.ts';
 
 const ItemSchema = Schema.Struct({ item: Schema.String });
 
@@ -19,7 +19,7 @@ const shelf: Decider<readonly string[], Item, ItemShelved> = {
 
 const Shelved = Schema.Struct({ items: Schema.Array(Schema.String) });
 
-export const putOnShelf = defineCommand('brain', {
+export const putOnShelf = defineCommand('playbook', {
   name: 'put_on_shelf',
   title: 'Put on shelf',
   description: 'Puts an item on the shelf the caller names.',
@@ -28,12 +28,12 @@ export const putOnShelf = defineCommand('brain', {
   outputSchema: Shelved,
   reasons: ['conflict'],
   handle: Effect.fnUntraced(function* ({ shelf: named, item }) {
-    const { state } = yield* (yield* BrainWriter).execute(`shelves/${named}`, shelf, { item });
+    const { state } = yield* (yield* PlaybookWriter).execute(`shelves/${named}`, shelf, { item });
     return { items: state };
   }),
 });
 
-export const readShelf = defineQuery('brain', {
+export const readShelf = defineQuery('playbook', {
   name: 'read_shelf',
   title: 'Read shelf',
   description: 'Lists the items on the shelf the caller names.',
@@ -42,7 +42,7 @@ export const readShelf = defineQuery('brain', {
   outputSchema: Shelved,
   reasons: [],
   handle: Effect.fnUntraced(function* ({ shelf: named }) {
-    const { state } = yield* (yield* BrainReader).load(`shelves/${named}`, shelf);
+    const { state } = yield* (yield* PlaybookReader).load(`shelves/${named}`, shelf);
     return { items: state };
   }),
 });

@@ -36,7 +36,7 @@ const guideNames = [
   'computation-function',
   'recall-function',
   'workflow',
-  'first-brain',
+  'first-playbook',
   'remember',
   'give-tools',
   'schedule',
@@ -106,9 +106,9 @@ describe('the prompts of the server', () => {
         given.map(({ name: argument, required }) => [argument, required]),
       ]),
     ).toEqual([
-      ['first-brain', 'Create your first brain', []],
-      ['remember', 'Make the brain remember something', [['what', true]]],
-      ['give-tools', 'Give the brain tools', [['server', false]]],
+      ['first-playbook', 'Create your first playbook', []],
+      ['remember', 'Make the playbook remember something', [['what', true]]],
+      ['give-tools', 'Give the playbook tools', [['server', false]]],
       [
         'schedule',
         'Run a workflow on a schedule',
@@ -134,7 +134,7 @@ describe('the prompts of the server', () => {
       { type: 'resource', resource: { uri: 'guide://recall-function', mimeType: 'text/markdown' } },
     ]);
     expect(asked.content.text).toMatch(
-      /^Make the brain remember what it posted today\.\n\n# Make the brain remember something\n/u,
+      /^Make the playbook remember what it posted today\.\n\n# Make the playbook remember something\n/u,
     );
   });
 });
@@ -148,18 +148,18 @@ function promptNamesIn(listed: unknown): readonly string[] {
 const acmeReader = createApiKey({
   id: 'acme-reader',
   org: 'acme',
-  permissions: ['org:read', 'brain:read'],
-  brains: '*',
+  permissions: ['org:read', 'playbook:read'],
+  playbooks: '*',
 });
 
 describe('the prompts of a connection', () => {
-  it('are the recipes whose every tool it lists: on a brain endpoint, all but making a first brain, and on an org endpoint none', async () => {
-    const [onABrain, onAnOrg] = await Promise.all([
-      onMcp((session) => session.listPrompts(), '/orgs/local/brains/alpha/mcp'),
+  it('are the recipes whose every tool it lists: on a playbook endpoint, all but making a first playbook, and on an org endpoint none', async () => {
+    const [onAPlaybook, onAnOrg] = await Promise.all([
+      onMcp((session) => session.listPrompts(), '/orgs/local/playbooks/alpha/mcp'),
       onMcp((session) => session.listPrompts(), '/orgs/local/mcp'),
     ]);
 
-    expect([promptNamesIn(onABrain), promptNamesIn(onAnOrg)]).toEqual([['remember', 'give-tools', 'schedule'], []]);
+    expect([promptNamesIn(onAPlaybook), promptNamesIn(onAnOrg)]).toEqual([['remember', 'give-tools', 'schedule'], []]);
   });
 
   it('are none for a key that may only read, whose instructions name no recipe either', async () => {
@@ -172,6 +172,6 @@ describe('the prompts of a connection', () => {
     await reading.stop();
 
     expect(promptNamesIn(served.prompts)).toEqual([]);
-    expect(served.instructions).not.toMatch(/recipe|first-brain|give-tools/u);
+    expect(served.instructions).not.toMatch(/recipe|first-playbook|give-tools/u);
   });
 });

@@ -19,7 +19,7 @@ export interface OwnCallKind<Event extends TypedEvent> {
 export interface OwnCallPlace {
   readonly writer: Pick<StreamWriter, 'execute'>;
   readonly stream: string;
-  readonly inTheBrain: string;
+  readonly inThePlaybook: string;
   readonly by: string;
   readonly lineage: Lineage;
 }
@@ -35,7 +35,7 @@ export function ownCallJournal<Event extends TypedEvent>(kind: OwnCallKind<Event
         ...place.lineage,
         causationId,
       });
-      return messageIdOf(place.inTheBrain, version);
+      return messageIdOf(place.inThePlaybook, version);
     });
   return {
     started: (fact) =>

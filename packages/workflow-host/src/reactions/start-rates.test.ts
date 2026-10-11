@@ -10,7 +10,7 @@ import { refusalsOn } from './refusals.ts';
 import { mostDeferredStarts, mostStartsAMinute, startingOn } from './start-rates.ts';
 import { StartRejected } from './start-rejected.ts';
 
-const brainKey = 'brain/acme/alpha/';
+const playbookKey = 'playbook/acme/alpha/';
 
 const minute = Date.parse('2026-10-01T09:00:00.000Z');
 
@@ -21,7 +21,7 @@ const CountRow = Schema.Struct({ count: WholeNumber });
 function startNumber(index: number): ReactionStart {
   return {
     org: 'acme',
-    brain: 'alpha',
+    playbook: 'alpha',
     workflow: 'close',
     version: 1,
     runId: `run-${index}`,
@@ -54,7 +54,7 @@ function startsOf(starting: Awaited<ReturnType<typeof startingAt>>['starting'], 
   return Effect.runPromise(
     Effect.forEach(
       Array.from({ length: count }, (_, index) => index),
-      (index) => starting.start(brainKey, startNumber(index)),
+      (index) => starting.start(playbookKey, startNumber(index)),
       { discard: true },
     ),
   );
@@ -88,7 +88,7 @@ describe('the starts a reaction makes', () => {
     await Effect.runPromise(
       Effect.forEach(
         Array.from({ length: mostStartsAMinute }, (_, index) => 1000 + index),
-        (index) => starting.start(brainKey, startNumber(index)),
+        (index) => starting.start(playbookKey, startNumber(index)),
         { discard: true },
       ),
     );
@@ -113,8 +113,8 @@ describe('the starts that wait for a later minute', () => {
         statement`WITH RECURSIVE waiting (at) AS (
             SELECT 1 UNION ALL SELECT at + 1 FROM waiting WHERE at < ${mostDeferredStarts - 1}
           )
-          INSERT INTO workflow_reaction_backlog (brain_key, workflow, run_id, start, due)
-          SELECT ${brainKey}, 'close', 'waiting-' || at, '{}', ${minute + aMinute} FROM waiting`,
+          INSERT INTO workflow_reaction_backlog (playbook_key, workflow, run_id, start, due)
+          SELECT ${playbookKey}, 'close', 'waiting-' || at, '{}', ${minute + aMinute} FROM waiting`,
       ),
     );
 
@@ -122,7 +122,7 @@ describe('the starts that wait for a later minute', () => {
     const deferred = await deferredCount(database);
     time.now = minute + aMinute;
     await Effect.runPromise(refusals.flush());
-    const { events } = await database.store.read(`${brainKey}reactions/close`);
+    const { events } = await database.store.read(`${playbookKey}reactions/close`);
 
     expect([deferred, events]).toMatchObject([
       mostDeferredStarts,
@@ -140,7 +140,7 @@ describe('the starts that wait for a later minute', () => {
   });
 });
 
-describe('a start the brain refuses', () => {
+describe('a start the playbook refuses', () => {
   it('fails, so that its delivery is tried again, and a deferred one is kept for the next minute', async () => {
     const time = { now: minute + 1000 };
     const refusing = { now: false };
@@ -150,7 +150,7 @@ describe('a start the brain refuses', () => {
     time.now = minute + aMinute;
 
     const tried = await Effect.runPromise(starting.startDeferred());
-    const failure = await Effect.runPromise(Effect.flip(starting.start(brainKey, startNumber(99))));
+    const failure = await Effect.runPromise(Effect.flip(starting.start(playbookKey, startNumber(99))));
     refusing.now = false;
     time.now = minute + 2 * aMinute;
     const again = await Effect.runPromise(starting.startDeferred());
@@ -177,7 +177,7 @@ describe('a start the brain refuses', () => {
     const left = await deferredCount(database);
     time.now = minute + (deliverySweeps + 1) * aMinute;
     await Effect.runPromise(refusals.flush());
-    const { events } = await database.store.read(`${brainKey}reactions/close`);
+    const { events } = await database.store.read(`${playbookKey}reactions/close`);
 
     expect([left, events]).toMatchObject([
       0,
@@ -186,7 +186,7 @@ describe('a start the brain refuses', () => {
   });
 });
 
-describe('a start the brain rejects for good', () => {
+describe('a start the playbook rejects for good', () => {
   it('is said and not tried again, whether it starts at once or waited for a later minute', async () => {
     const time = { now: minute + 1000 };
     const database = await openedOn(await onSQLite());
@@ -204,7 +204,7 @@ describe('a start the brain rejects for good', () => {
     const left = await deferredCount(database);
     time.now = minute + 2 * aMinute;
     await Effect.runPromise(refusals.flush());
-    const { events } = await database.store.read(`${brainKey}reactions/close`);
+    const { events } = await database.store.read(`${playbookKey}reactions/close`);
 
     expect([left, events]).toMatchObject([
       0,

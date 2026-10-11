@@ -4,7 +4,7 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { HostDatabase } from '../database/host-database.ts';
-import { alpha, at, recorded } from '../reaction-testing/brain-writes.ts';
+import { alpha, at, recorded } from '../reaction-testing/playbook-writes.ts';
 import { faultyDatabase, type FaultyDatabase } from '../testing/faulty-database.ts';
 import { openedOn, type SettingsOf } from '../testing/host-files.ts';
 import { passedOverRow, pendingCancelRowsAfter } from '../waiting/pending-cancel-rows.ts';

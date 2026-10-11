@@ -28,9 +28,9 @@ let server: ReasoningServer;
 beforeAll(async () => {
   server = await servingReasoning(mcpClientKinds.map(() => answers(textResult('Profits rose.'))));
   await withMcpSession('current revision', { url: `${server.origin}/mcp`, headers: {} }, async (session) => {
-    await session.callTool('create_brain', { brain: 'alpha', name: 'Alpha' });
+    await session.callTool('create_playbook', { playbook: 'alpha', name: 'Alpha' });
     await session.callTool('create_definition', {
-      brain: 'alpha',
+      playbook: 'alpha',
       type: 'reasoning',
       name: 'summary',
       source: summary,
@@ -87,7 +87,7 @@ interface Endpoint {
 const endpoints: readonly Endpoint[] = [
   { path: '/mcp', tools: 25, mostBytes: 40_000 },
   { path: '/orgs/local/mcp', tools: 8, mostBytes: 9000 },
-  { path: '/orgs/local/brains/alpha/mcp', tools: 19, mostBytes: 32_000 },
+  { path: '/orgs/local/playbooks/alpha/mcp', tools: 19, mostBytes: 32_000 },
 ];
 
 describe('the tools of each endpoint', () => {
@@ -122,14 +122,14 @@ function outputIn(result: ToolResult): unknown {
 }
 
 describe.each(mcpClientKinds)('the %s client on /mcp', (kind) => {
-  it('lists the tools, then accepts the results of list_tool_servers, list_brains and run_definition without compiling an output validator', async () => {
+  it('lists the tools, then accepts the results of list_tool_servers, list_playbooks and run_definition without compiling an output validator', async () => {
     const outcome = await withMcpSession(kind, { url: `${server.origin}/mcp`, headers: {} }, async (session) => {
       await session.listTools();
       const results = [
         await session.callTool('list_tool_servers', {}),
-        await session.callTool('list_brains', {}),
+        await session.callTool('list_playbooks', {}),
         await session.callTool('run_definition', {
-          brain: 'alpha',
+          playbook: 'alpha',
           type: 'reasoning',
           name: 'summary',
           input: { text: 'the quarter' },
@@ -140,14 +140,14 @@ describe.each(mcpClientKinds)('the %s client on /mcp', (kind) => {
 
     expect(outcome.compiled).toEqual([]);
     expect(outcome.results.map((result) => plainTextIn(result))).toEqual([
-      'Whoever runs this server has set up no tool server for this org, so the functions of its brains can call no tools until they set one up; the give-tools guide says what they need.',
-      'There is 1 brain: “Alpha”.',
+      'Whoever runs this server has set up no tool server for this org, so the functions of its playbooks can call no tools until they set one up; the give-tools guide says what they need.',
+      'There is 1 playbook: “Alpha”.',
       'Ran the reasoning function “summary”. Its answer: “Profits rose.”',
     ]);
     expect(outcome.results.flatMap((result) => internalTermsIn(plainTextIn(result)))).toEqual([]);
     expect(outcome.results.map(({ structuredContent }) => structuredContent)).toMatchObject([
       { tool_servers: [] },
-      { brains: [{ id: 'alpha' }] },
+      { playbooks: [{ id: 'alpha' }] },
       { status: 'succeeded', output: 'Profits rose.' },
     ]);
     expect(outcome.results.map((result) => [result.content.length, outputIn(result)])).toEqual(

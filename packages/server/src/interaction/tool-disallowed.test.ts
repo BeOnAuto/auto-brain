@@ -51,7 +51,7 @@ describe('a tool its operator disallowed after a request asked through it', { ti
     expect(unreached[1]).toEqual({
       type: 'delivery_ended',
       run_id: runId,
-      by: 'brain:alpha',
+      by: 'playbook:alpha',
       number: 1,
       outcome: 'failed',
       because: 'server_failure',

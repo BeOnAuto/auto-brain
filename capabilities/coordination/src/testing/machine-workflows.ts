@@ -72,7 +72,7 @@ export async function interpretOnMachine(run: WorkflowRun, options: MachineOptio
     document: run.document,
     input: run.input,
     limits: { mostDurationMs: run.mostDuration, longestCallMs: run.longestNestedRunMs },
-    attributes: { org: run.run.org, brain: run.run.brain },
+    attributes: { org: run.run.org, playbook: run.run.playbook },
   });
   const { start, host } = hooksOf(driver, run);
   options.started?.(start, host);
@@ -120,7 +120,7 @@ export function outputsAtOnce(run: WorkflowRun): readonly RunOutput[] {
       document: run.document,
       input: run.input,
       limits: { mostDurationMs: run.mostDuration, longestCallMs: run.longestNestedRunMs },
-      attributes: { org: run.run.org, brain: run.run.brain },
+      attributes: { org: run.run.org, playbook: run.run.playbook },
       seed: 1,
     },
   );

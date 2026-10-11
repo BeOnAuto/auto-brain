@@ -1,9 +1,9 @@
 import { Effect, Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { BrainWriter, CallLineage, defineCommand, messageIdOf, type Decider } from '../index.ts';
+import { PlaybookWriter, CallLineage, defineCommand, messageIdOf, type Decider } from '../index.ts';
 import { acmeAdmin } from '../testing/callers.ts';
-import { harness, toBrain } from '../testing/harness.ts';
+import { harness, toPlaybook } from '../testing/harness.ts';
 
 const NotedSchema = Schema.Struct({ type: Schema.Literal('noted') });
 
@@ -14,7 +14,7 @@ const notes: Decider<null, null, typeof NotedSchema.Type> = {
   eventSchema: NotedSchema,
 };
 
-const note = defineCommand('brain', {
+const note = defineCommand('playbook', {
   name: 'note',
   title: 'Note',
   description: 'Notes that it was called, with the lineage the call was given.',
@@ -32,27 +32,31 @@ const note = defineCommand('brain', {
   reasons: ['conflict'],
   handle: Effect.fnUntraced(function* () {
     const { lineage, depth, callDepth, calledBy, trigger } = yield* CallLineage;
-    const { version } = yield* (yield* BrainWriter).execute('notes', notes, null, lineage ?? undefined);
+    const { version } = yield* (yield* PlaybookWriter).execute('notes', notes, null, lineage ?? undefined);
     return { version, depth, callDepth, calledBy, trigger };
   }),
 });
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 describe('the lineage of a call', () => {
-  it('reaches a brain command as a service, which writes it beside its events, and is null when none was given', async () => {
+  it('reaches a playbook command as a service, which writes it beside its events, and is null when none was given', async () => {
     const { dispatcher, ledger, run } = harness();
     const lineage = { causationId: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3', correlationId: 'root' };
-    await run(dispatcher.dispatchToBrain(note.registration, { ...toAlpha(acmeAdmin), lineage }));
-    await run(dispatcher.dispatchToBrain(note.registration, toAlpha(acmeAdmin)));
+    await run(dispatcher.dispatchToPlaybook(note.registration, { ...toAlpha(acmeAdmin), lineage }));
+    await run(dispatcher.dispatchToPlaybook(note.registration, toAlpha(acmeAdmin)));
 
     const { records } = await Effect.runPromise(
-      ledger.service.readRecorded({ org: 'acme', brain: 'alpha' }, { kind: 'everything' }, { order: 'asc', limit: 10 }),
+      ledger.service.readRecorded(
+        { org: 'acme', playbook: 'alpha' },
+        { kind: 'everything' },
+        { order: 'asc', limit: 10 },
+      ),
     );
 
     expect(records.map(({ id, causationId, correlationId }) => ({ id, causationId, correlationId }))).toEqual([
-      { id: messageIdOf('brain/acme/alpha/notes', 1), ...lineage },
-      { id: messageIdOf('brain/acme/alpha/notes', 2), causationId: null, correlationId: null },
+      { id: messageIdOf('playbook/acme/alpha/notes', 1), ...lineage },
+      { id: messageIdOf('playbook/acme/alpha/notes', 2), causationId: null, correlationId: null },
     ]);
   });
 
@@ -60,8 +64,8 @@ describe('the lineage of a call', () => {
     const { dispatcher, run } = harness();
 
     const outcomes = [
-      await run(dispatcher.dispatchToBrain(note.registration, { ...toAlpha(acmeAdmin), depth: 3 })),
-      await run(dispatcher.dispatchToBrain(note.registration, toAlpha(acmeAdmin))),
+      await run(dispatcher.dispatchToPlaybook(note.registration, { ...toAlpha(acmeAdmin), depth: 3 })),
+      await run(dispatcher.dispatchToPlaybook(note.registration, toAlpha(acmeAdmin))),
     ];
 
     expect(outcomes).toMatchObject([
@@ -75,8 +79,8 @@ describe('the lineage of a call', () => {
     const calledBy = { run_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', reference: '/do/0/ask', run: 2 };
 
     const outcomes = [
-      await run(dispatcher.dispatchToBrain(note.registration, { ...toAlpha(acmeAdmin), callDepth: 2, calledBy })),
-      await run(dispatcher.dispatchToBrain(note.registration, toAlpha(acmeAdmin))),
+      await run(dispatcher.dispatchToPlaybook(note.registration, { ...toAlpha(acmeAdmin), callDepth: 2, calledBy })),
+      await run(dispatcher.dispatchToPlaybook(note.registration, toAlpha(acmeAdmin))),
     ];
 
     expect(outcomes).toEqual([
@@ -92,8 +96,8 @@ describe('the lineage of a run a trigger started', () => {
     const trigger = { kind: 'every' as const, reference: '/schedule/every' };
 
     const outcomes = [
-      await run(dispatcher.dispatchToBrain(note.registration, { ...toAlpha(acmeAdmin), trigger })),
-      await run(dispatcher.dispatchToBrain(note.registration, toAlpha(acmeAdmin))),
+      await run(dispatcher.dispatchToPlaybook(note.registration, { ...toAlpha(acmeAdmin), trigger })),
+      await run(dispatcher.dispatchToPlaybook(note.registration, toAlpha(acmeAdmin))),
     ];
 
     expect(outcomes).toMatchObject([

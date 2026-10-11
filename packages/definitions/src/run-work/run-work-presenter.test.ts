@@ -26,14 +26,14 @@ const encode = Schema.encodeSync(Schema.toCodecJson(RunEventSchema));
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
-const fact = { by: 'brain:alpha', at: '2026-10-01T09:00:01.000Z' };
+const fact = { by: 'playbook:alpha', at: '2026-10-01T09:00:01.000Z' };
 
 const ofAsking = { definition_type: 'asking', name: 'approve', definition_version: 1 };
 
 function presented(event: RunEvent) {
   const record: RecordedEvent = {
     id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
-    cursor: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
+    cursor: 'WyJwbGF5Ym9vay9hY21lL2FscGhhLyIsIjEiXQ',
     causationId: 'request-1',
     correlationId: runId,
     stream: `runs/${runId}`,
@@ -70,7 +70,7 @@ describe('the deferral of a run whose capability gives words of it', () => {
       {
         type: 'interaction_requested',
         summary: 'A request is waiting for an answer.',
-        data: { run_id: runId, by: 'brain:alpha', record_bytes: 115, to: 'ada' },
+        data: { run_id: runId, by: 'playbook:alpha', record_bytes: 115, to: 'ada' },
       },
     ]);
   });
@@ -115,7 +115,7 @@ describe('the start of a delivery', () => {
         summary: 'Delivery attempt 1 of the request started, through the post message tool of chat.',
         data: {
           run_id: runId,
-          by: 'brain:alpha',
+          by: 'playbook:alpha',
           number: 1,
           ...delivery,
           target: 'ada',
@@ -139,7 +139,7 @@ describe('the start of a delivery', () => {
     };
 
     expect(presented(bare)).toMatchObject([
-      { data: { run_id: runId, by: 'brain:alpha', number: 2, ...delivery, target: 'ada' } },
+      { data: { run_id: runId, by: 'playbook:alpha', number: 2, ...delivery, target: 'ada' } },
     ]);
   });
 });
@@ -153,7 +153,7 @@ describe('the end of a delivery', () => {
           'Delivery attempt 1 failed, because the tool server failed; another follows on the schedule, unless it was the last.',
         data: {
           run_id: runId,
-          by: 'brain:alpha',
+          by: 'playbook:alpha',
           number: 1,
           outcome: 'failed',
           because: 'server_failure',
@@ -221,7 +221,7 @@ describe('the end of a delivery of a capability the server no longer has', () =>
       {
         type: 'delivery_ended',
         summary: 'Delivery attempt 2 was delivered.',
-        data: { run_id: runId, by: 'brain:alpha', number: 2, outcome: 'delivered', duration_ms: 5 },
+        data: { run_id: runId, by: 'playbook:alpha', number: 2, outcome: 'delivered', duration_ms: 5 },
       },
     ]);
   });
@@ -239,7 +239,7 @@ describe('a reply the run took or refused', () => {
       {
         type: 'reply_taken',
         summary: 'A reply from the party answered the request, read through the thread replies tool of chat.',
-        data: { run_id: runId, by: 'brain:alpha', ...shownReply, answer_bytes: 20 },
+        data: { run_id: runId, by: 'playbook:alpha', ...shownReply, answer_bytes: 20 },
       },
     ]);
   });
@@ -261,14 +261,14 @@ describe('a reply the run refused', () => {
       {
         type: 'reply_refused',
         summary: 'A reply from the party was not an answer the function takes, and the party was told how to answer.',
-        data: { run_id: runId, by: 'brain:alpha', ...shownReply, because: 'not_an_answer', told: true },
+        data: { run_id: runId, by: 'playbook:alpha', ...shownReply, because: 'not_an_answer', told: true },
       },
       {
         type: 'reply_refused',
         summary: 'A reply from the party was not an answer the function takes, and nobody was told.',
         data: {
           run_id: runId,
-          by: 'brain:alpha',
+          by: 'playbook:alpha',
           ...shownReply,
           because: 'invalid',
           told: false,

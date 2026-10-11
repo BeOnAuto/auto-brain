@@ -15,7 +15,7 @@ const Settle = Schema.Struct({ type: Schema.Literal('settle') });
 
 const isSettlement = Schema.is(Schema.Union([Settle, Schema.Struct({ command: Settle })]));
 
-const address = { org: 'acme', brain: 'alpha', id: askedRunId };
+const address = { org: 'acme', playbook: 'alpha', id: askedRunId };
 
 const lineage = { causationId: null, correlationId: askedRunId };
 

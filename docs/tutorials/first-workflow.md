@@ -2,15 +2,15 @@
 
 # Build your first workflow
 
-Turn the campaign review from [Build your first brain](first-brain.md) into a workflow. It reviews a brief, then asks the campaign's owner to approve it, and waits for the answer. You will save an interaction function that asks for the approval, save the workflow, start a run, find its request in the brain's inbox, answer it, and read the finished run.
+Turn the campaign review from [Build your first playbook](first-playbook.md) into a workflow. It reviews a brief, then asks the campaign's owner to approve it, and waits for the answer. You will save an interaction function that asks for the approval, save the workflow, start a run, find its request in the playbook's inbox, answer it, and read the finished run.
 
 The campaign and figures below are sample data. This exercise makes no changes to advertising accounts or campaign budgets.
 
 ## Before you start
 
-Complete [Build your first brain](first-brain.md) first. This exercise uses its practice brain, `campaign-review-tutorial`, and its reasoning function, `review-campaign-brief`, which takes one required input, `brief`.
+Complete [Build your first playbook](first-playbook.md) first. This exercise uses its practice playbook, `campaign-review-tutorial`, and its reasoning function, `review-campaign-brief`, which takes one required input, `brief`.
 
-Your agent needs a connection with permission to create and run definitions in that brain. Every runtime offers workflows. The approval is an interaction function, which a self-hosted runtime offers, such as the one [Connect your agent](../get-started/local.md) starts; the first check below shows whether your connection offers it.
+Your agent needs a connection with permission to create and run definitions in that playbook. Every runtime offers workflows. The approval is an interaction function, which a self-hosted runtime offers, such as the one [Connect your agent](../get-started/local.md) starts; the first check below shows whether your connection offers it.
 
 ## 1. Check the tools
 
@@ -20,7 +20,7 @@ Ask your connected agent:
 
 The agent should report `list_interactions` and `answer_interaction` among the tools, and `reasoning`, `interaction` and `workflow` among the accepted values of `type`, the types of reasoning functions, interaction functions and workflows. The tools also include `send_run_event`, which sends a waiting run an event that is not the answer to a question.
 
-If neither `create_definition` nor `list_interactions` is listed, the connection uses an organization endpoint, which offers brain management and model discovery only. Connect your agent to the runtime's `/mcp` endpoint or to the brain's own endpoint before continuing; [MCP endpoint scope](../reference/mcp.md#endpoint-scope) lists them.
+If neither `create_definition` nor `list_interactions` is listed, the connection uses an organization endpoint, which offers playbook management and model discovery only. Connect your agent to the runtime's `/mcp` endpoint or to the playbook's own endpoint before continuing; [MCP endpoint scope](../reference/mcp.md#endpoint-scope) lists them.
 
 ## 2. Confirm the reasoning function
 
@@ -28,11 +28,11 @@ Ask:
 
 > In `campaign-review-tutorial`, read back the reasoning function `review-campaign-brief`. Show its version and the inputs it requires. Do not change it.
 
-You should see `review-campaign-brief`, its version, and `brief` as its required input. If the function is missing, complete Build your first brain before continuing.
+You should see `review-campaign-brief`, its version, and `brief` as its required input. If the function is missing, complete Build your first playbook before continuing.
 
 ## 3. Save the interaction function
 
-The interaction function asks one person for a decision. Its run renders the message from its input, leaves the request in the brain's inbox for the party named in `to`, and waits until someone answers, the request expires after two days, or the run is cancelled. The answer must match `output.schema`, and the answer is the run's output.
+The interaction function asks one person for a decision. Its run renders the message from its input, leaves the request in the playbook's inbox for the party named in `to`, and waits until someone answers, the request expires after two days, or the run is cancelled. The answer must match `output.schema`, and the answer is the run's output.
 
 > In `campaign-review-tutorial`, create an interaction function named `approve-campaign-brief` from the document below. Use the document unchanged as the source, with the type `interaction`. If a function with that name already exists, show it to me instead of changing it. Then show me the saved function's version and description.
 
@@ -198,8 +198,8 @@ Each call in this exercise was run against the runtime and its answers recorded.
 
 ## Review the saved workflow
 
-The brain now contains a workflow that reviews a brief with a reasoning function and asks for an approval with an interaction function, and one recorded run of it. The review criteria live in the reasoning function, the question and the shape of its answer in the interaction function, and the workflow decides when each runs.
+The playbook now contains a workflow that reviews a brief with a reasoning function and asks for an approval with an interaction function, and one recorded run of it. The review criteria live in the reasoning function, the question and the shape of its answer in the interaction function, and the workflow decides when each runs.
 
-A request can also go to a person or a system outside the brain through a tool of a tool server, such as one that posts in a chat, which the function names in `deliver`; [Interaction function format](../reference/interaction-format.md) describes the document, sending through a tool, answering by reply and how a request ends, and [Workflows and runs](../concepts/workflows.md) explains how runs start, wait and end.
+A request can also go to a person or a system outside the playbook through a tool of a tool server, such as one that posts in a chat, which the function names in `deliver`; [Interaction function format](../reference/interaction-format.md) describes the document, sending through a tool, answering by reply and how a request ends, and [Workflows and runs](../concepts/workflows.md) explains how runs start, wait and end.
 
 </div>

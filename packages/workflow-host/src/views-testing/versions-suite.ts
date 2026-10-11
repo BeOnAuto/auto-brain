@@ -46,15 +46,15 @@ function rebuildTests(settingsOf: SettingsOf): void {
 }
 
 function discoveryTests(settingsOf: SettingsOf): void {
-  it('find the first recall function of a brain and a brain created after the projector started, woken by the append, without a restart', async () => {
+  it('find the first recall function of a playbook and a playbook created after the projector started, woken by the append, without a restart', async () => {
     const views = await viewHarness(await settingsOf());
     views.start({ sweepEveryMs: 60_000 });
-    const beta = { org: 'acme', brain: 'beta' };
+    const beta = { org: 'acme', playbook: 'beta' };
 
     await views.saved('runs', counting);
     await views.ran('reasoning/runs', 1);
     await views.saved('runs', counting, beta);
-    await views.ran('reasoning/runs', 1, { brain: beta });
+    await views.ran('reasoning/runs', 1, { playbook: beta });
     const [inAlpha, inBeta] = await Promise.all([
       views.until('runs', foldedAll(1), alpha),
       views.until('runs', foldedAll(1), beta),

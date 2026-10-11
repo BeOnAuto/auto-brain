@@ -12,10 +12,10 @@ const run = {
   runId: `acme/alpha/${workflowRun}`,
   attributes: {
     org: 'acme',
-    brain: 'alpha',
+    playbook: 'alpha',
     run_id: workflowRun,
     definition: { name: 'triage', version: 2 },
-    caller: { id: 'acme-admin', org: 'acme', permissions: ['brain:read', 'brain:write'], brains: '*' },
+    caller: { id: 'acme-admin', org: 'acme', permissions: ['playbook:read', 'playbook:write'], playbooks: '*' },
     call_depth: 3,
   },
 };
@@ -28,7 +28,13 @@ const review: StartCall = {
   longestMs: 60_000,
 };
 
-const ofTheChild = { definition_type: 'workflow', name: 'review', definition_version: 1, by: 'brain:alpha', at: 'now' };
+const ofTheChild = {
+  definition_type: 'workflow',
+  name: 'review',
+  definition_version: 1,
+  by: 'playbook:alpha',
+  at: 'now',
+};
 
 function answering(result: DefinitionRunResult) {
   const asked: DefinitionRunRequest[] = [];

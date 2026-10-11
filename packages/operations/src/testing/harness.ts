@@ -3,8 +3,8 @@ import { Effect, Layer } from 'effect';
 import {
   makeDispatcher,
   settle,
-  type BrainAddress,
-  type BrainRequest,
+  type PlaybookAddress,
+  type PlaybookRequest,
   type CallerIdentity,
   type Dispatcher,
   type DispatcherServices,
@@ -16,15 +16,15 @@ import {
   type KeyedProjection,
   type Settled,
 } from '../index.ts';
-import { memoryBrainRegistry } from './memory-brain-registry.ts';
 import { memoryLedger, type MemoryLedger } from './memory-ledger.ts';
+import { memoryPlaybookRegistry } from './memory-playbook-registry.ts';
 import { recordingReporter, type ReportedIncident } from './recording-reporter.ts';
 
 export interface HarnessOptions {
   readonly steps?: readonly PipelineStep[];
   readonly reporter?: Layer.Layer<IncidentReporter>;
-  readonly brains?: readonly BrainAddress[];
-  readonly retiredBrains?: readonly BrainAddress[];
+  readonly playbooks?: readonly PlaybookAddress[];
+  readonly retiredPlaybooks?: readonly PlaybookAddress[];
   readonly runOutcomes?: RunOutcomeMapping;
   readonly projections?: readonly KeyedProjection[];
 }
@@ -40,17 +40,17 @@ export interface Harness {
   ) => Promise<Settled>;
 }
 
-const knownBrains: readonly BrainAddress[] = [
-  { org: 'acme', brain: 'alpha' },
-  { org: 'acme', brain: 'beta' },
-  { org: 'globex', brain: 'gamma' },
+const knownPlaybooks: readonly PlaybookAddress[] = [
+  { org: 'acme', playbook: 'alpha' },
+  { org: 'acme', playbook: 'beta' },
+  { org: 'globex', playbook: 'gamma' },
 ];
 
 export function harness({
   steps = [],
   reporter,
-  brains = knownBrains,
-  retiredBrains = [],
+  playbooks = knownPlaybooks,
+  retiredPlaybooks = [],
   runOutcomes,
   projections = [],
 }: HarnessOptions = {}): Harness {
@@ -58,7 +58,7 @@ export function harness({
   const recording = recordingReporter();
   const services = Layer.mergeAll(
     ledger.layer,
-    memoryBrainRegistry(brains, retiredBrains),
+    memoryPlaybookRegistry(playbooks, retiredPlaybooks),
     reporter ?? recording.layer,
   );
   const run = <A>(calls: Effect.Effect<A, never, DispatcherServices>) =>
@@ -76,6 +76,9 @@ export function toOrg(org: string): (caller: CallerIdentity, input?: unknown) =>
   return (caller, input = {}) => ({ caller, org, input, encoding: 'json' });
 }
 
-export function toBrain(org: string, brain: string): (caller: CallerIdentity, input?: unknown) => BrainRequest {
-  return (caller, input = {}) => ({ caller, org, brain, input, encoding: 'json' });
+export function toPlaybook(
+  org: string,
+  playbook: string,
+): (caller: CallerIdentity, input?: unknown) => PlaybookRequest {
+  return (caller, input = {}) => ({ caller, org, playbook, input, encoding: 'json' });
 }

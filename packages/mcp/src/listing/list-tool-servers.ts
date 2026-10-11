@@ -1,4 +1,4 @@
-import { BrainContext, InvalidInput, defineQuery } from '@beonauto/operations';
+import { PlaybookContext, InvalidInput, defineQuery } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
 import type { ToolAccess } from '../access/tool-access.ts';
@@ -7,10 +7,10 @@ import { toolServersAsked, toolServersFound, type ToolServersAsked } from './too
 import { ToolServerSchema } from './tool-server.ts';
 
 export const toolServersSentences = [
-  "Lists the tool servers this brain's functions may use, with the tools each offers, so a reasoning function names them in its tools as server/tool or server/*.",
+  "Lists the tool servers this playbook's functions may use, with the tools each offers, so a reasoning function names them in its tools as server/tool or server/*.",
   'Each tool says whether test_tool_call may test it, which shows what it answers.',
   'Each server is asked for its tools when this is called, and one that cannot be asked just now says why in place of its tools.',
-  'Use it before a reasoning function names a tool, or when the person asks which tools the brain can use; whoever runs the server sets the servers up.',
+  'Use it before a reasoning function names a tool, or when the person asks which tools the playbook can use; whoever runs the server sets the servers up.',
   '`server` lists the tools of one server alone.',
 ];
 
@@ -24,7 +24,7 @@ const ListToolServersInputSchema = Schema.Struct({ server: serverField });
 
 const ToolServersSchema = Schema.Struct({
   tool_servers: Schema.Array(ToolServerSchema).annotate({
-    description: 'The tool servers this brain may use, sorted by name; empty when none is set up for it',
+    description: 'The tool servers this playbook may use, sorted by name; empty when none is set up for it',
   }),
 });
 
@@ -34,7 +34,7 @@ export function noServerNamed(server: string, holder: string): InvalidInput {
 }
 
 export function defineListToolServers(access: Pick<ToolAccess, 'listServers'>) {
-  return defineQuery('brain', {
+  return defineQuery('playbook', {
     name: 'list_tool_servers',
     title: 'List tool servers',
     description: toolServersSentences.join(' '),
@@ -44,9 +44,9 @@ export function defineListToolServers(access: Pick<ToolAccess, 'listServers'>) {
     outputSchema: ToolServersSchema,
     reasons: ['invalid_input'],
     handle: Effect.fnUntraced(function* ({ server }: ToolServersAsked) {
-      const servers = yield* access.listServers(yield* BrainContext, server);
+      const servers = yield* access.listServers(yield* PlaybookContext, server);
       if (server !== undefined && servers.length === 0) {
-        return yield* noServerNamed(server, 'This brain');
+        return yield* noServerNamed(server, 'This playbook');
       }
       return { tool_servers: servers };
     }),

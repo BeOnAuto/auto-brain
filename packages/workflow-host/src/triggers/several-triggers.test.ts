@@ -2,6 +2,8 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { statement } from '../database/statement.ts';
+import { startsReaching, untilScheduleRuns } from '../reaction-testing/kept-triggers.ts';
+import { movedClock } from '../reaction-testing/moved-clock.ts';
 import {
   alpha,
   at,
@@ -14,9 +16,7 @@ import {
   runRecorded,
   definitionRecordAt,
   definitionRecorded,
-} from '../reaction-testing/brain-writes.ts';
-import { startsReaching, untilScheduleRuns } from '../reaction-testing/kept-triggers.ts';
-import { movedClock } from '../reaction-testing/moved-clock.ts';
+} from '../reaction-testing/playbook-writes.ts';
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
 import { until } from '../reaction-testing/until.ts';
 import { reactionRunIdOf } from '../reactions/reaction-ids.ts';
@@ -55,7 +55,7 @@ async function closingAt(start: number, onEvents = closed) {
 function closingStartedIn({ database }: ReactingHost, minute: number, starts: number) {
   return Effect.runPromise(
     database.write(
-      statement`INSERT INTO workflow_reaction_rates (brain_key, workflow, minute, starts)
+      statement`INSERT INTO workflow_reaction_rates (playbook_key, workflow, minute, starts)
         VALUES (${alpha}, 'close', ${minute}, ${starts})`,
     ),
   );
@@ -108,7 +108,7 @@ describe('a workflow with an event trigger, a cron schedule and an every schedul
 });
 
 describe('a due time of a schedule asked for again', () => {
-  it('is asked for under the same id, so the brain starts nothing again', async () => {
+  it('is asked for under the same id, so the playbook starts nothing again', async () => {
     const { reacting, clock } = await closingAt(activatedAt + 1000);
     clock.moveTo(activatedAt + 15 * aMinute);
     await startsReaching(reacting.reactions.starts, 1);

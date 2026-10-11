@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { ConversationCallEvent } from './conversation-call-events.ts';
 import { conversationCallPresenter } from './conversation-call-presenter.ts';
 
-const recorded = { by: 'brain:alpha', at: '2026-10-08T09:00:05.000Z' };
+const recorded = { by: 'playbook:alpha', at: '2026-10-08T09:00:05.000Z' };
 
 const reading = {
   type: 'replies_read',
@@ -34,7 +34,7 @@ function shown(data: ConversationCallEvent) {
     cursor: 'cursor-1',
     causationId: 'cause-1',
     correlationId: null,
-    stream: 'acme/alpha/brain/conversation-calls/call-1',
+    stream: 'acme/alpha/playbook/conversation-calls/call-1',
     version: 1,
     type: data.type,
     data,
@@ -43,7 +43,7 @@ function shown(data: ConversationCallEvent) {
   return event;
 }
 
-describe('a read the brain made in a conversation, as the brain events show it', () => {
+describe('a read the playbook made in a conversation, as the playbook events show it', () => {
   it('says what it found through which tool, with the call and its content as the server records it', () => {
     expect(
       shown({
@@ -64,10 +64,10 @@ describe('a read the brain made in a conversation, as the brain events show it',
       at: recorded.at,
       type: 'replies_read',
       summary:
-        'The brain looked for new replies in the conversation “C0123/1699.1” through the thread replies tool of chat and found 2, took 1 as an answer and refused 1.',
+        'The playbook looked for new replies in the conversation “C0123/1699.1” through the thread replies tool of chat and found 2, took 1 as an answer and refused 1.',
       data: {
         call_id: 'call-1',
-        by: 'brain:alpha',
+        by: 'playbook:alpha',
         server: 'chat',
         tool: 'thread_replies',
         arguments_bytes: 61,
@@ -86,7 +86,7 @@ describe('a read the brain made in a conversation, as the brain events show it',
   });
 });
 
-describe('a read the brain could not make in a conversation, as the brain events show it', () => {
+describe('a read the playbook could not make in a conversation, as the playbook events show it', () => {
   it('says why, with no answer where no call was answered and the wait a server asked for', () => {
     const notOffered = shown({ ...reading, outcome: 'tool_not_offered' });
     const { arguments_bytes: _bytes, arguments_sha256: _digest, ...unsent } = reading;
@@ -103,13 +103,13 @@ describe('a read the brain could not make in a conversation, as the brain events
     });
 
     expect([notOffered?.summary, timedOut?.summary]).toEqual([
-      'The brain could not read the replies of the conversation “C0123/1699.1” through the thread replies tool of chat: the tool server no longer offers the tool to this brain.',
-      'The brain could not read the replies of the conversation “C0123/1699.1” through the thread replies tool of chat: the tool server did not answer within 30 seconds.',
+      'The playbook could not read the replies of the conversation “C0123/1699.1” through the thread replies tool of chat: the tool server no longer offers the tool to this playbook.',
+      'The playbook could not read the replies of the conversation “C0123/1699.1” through the thread replies tool of chat: the tool server did not answer within 30 seconds.',
     ]);
     expect(notOffered?.data).not.toHaveProperty('duration_ms');
     expect(notSent).toMatchObject({
       summary:
-        'The brain could not read the replies of the conversation “C0123/1699.1” through the thread replies tool of chat: its arguments could not be rendered, so nothing was sent.',
+        'The playbook could not read the replies of the conversation “C0123/1699.1” through the thread replies tool of chat: its arguments could not be rendered, so nothing was sent.',
       data: { detail: 'The argument ts of the read cannot be rendered' },
     });
     expect(notSent?.data).not.toHaveProperty('arguments_bytes');
@@ -123,7 +123,7 @@ describe('a read the brain could not make in a conversation, as the brain events
   });
 });
 
-describe('a telling the brain made in a conversation, as the brain events show it', () => {
+describe('a telling the playbook made in a conversation, as the playbook events show it', () => {
   it('says through which tool it told the party how to answer, and what the tool did', () => {
     const started = shown({
       type: 'telling_started',
@@ -139,7 +139,7 @@ describe('a telling the brain made in a conversation, as the brain events show i
     const refused = shown({ type: 'telling_ended', call_id: 'call-3', outcome: 'tool_not_offered', ...recorded });
 
     expect([started?.summary, ended?.summary, refused?.summary]).toEqual([
-      'The brain told the party how to answer through the post message tool of chat.',
+      'The playbook told the party how to answer through the post message tool of chat.',
       'The tool that told the party answered.',
       'The tool that told the party was no longer offered by its server.',
     ]);

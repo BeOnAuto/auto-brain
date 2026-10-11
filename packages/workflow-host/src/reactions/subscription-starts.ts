@@ -53,24 +53,24 @@ function verdictOf(verdicts: readonly FilterVerdict[]): Verdict {
   return typeof failed === 'object' ? { error: describeError(failed.error) } : 'unmatched';
 }
 
-function placeOf(brainKey: string, { workflow, version, reference }: EventSubscription): FilterPlace {
-  return { kind: 'trigger', brainKey, workflow, version, reference };
+function placeOf(playbookKey: string, { workflow, version, reference }: EventSubscription): FilterPlace {
+  return { kind: 'trigger', playbookKey, workflow, version, reference };
 }
 
 function verdictsOf(
   matchGroups: MatchGroups,
   parts: StartParts,
   subscriptions: readonly EventSubscription[],
-  { brainKey, event: { event } }: FollowedRecord,
+  { playbookKey, event: { event } }: FollowedRecord,
 ): Effect.Effect<readonly SubscriptionVerdict[]> {
   const groups = subscriptions.map((subscription) => ({
-    place: placeOf(brainKey, subscription),
+    place: placeOf(playbookKey, subscription),
     filters: subscription.filters,
   }));
   return Effect.map(matchGroups(groups, event, parts.now()), (matched) =>
     Array.zipWith(subscriptions, matched, (subscription, { verdicts, stopped, struck }): SubscriptionVerdict => ({
       subscription,
-      place: placeOf(brainKey, subscription),
+      place: placeOf(playbookKey, subscription),
       verdict: verdictOf(verdicts),
       stopped,
       struck,
@@ -78,17 +78,17 @@ function verdictsOf(
   );
 }
 
-function isOwn(parts: StartParts, workflow: string, { brainKey, event }: FollowedRecord): Effect.Effect<boolean> {
+function isOwn(parts: StartParts, workflow: string, { playbookKey, event }: FollowedRecord): Effect.Effect<boolean> {
   if (event.ownedBy.includes(workflow)) {
     return Effect.succeed(true);
   }
   return event.topRun === undefined
     ? Effect.succeed(false)
-    : Effect.map(parts.workflowOfRun(brainKey, event.topRun), (owner) => owner === workflow);
+    : Effect.map(parts.workflowOfRun(playbookKey, event.topRun), (owner) => owner === workflow);
 }
 
 function startOf(parts: StartParts, subscription: EventSubscription, followed: FollowedRecord): Delivery {
-  const { brain, brainKey, record, event } = followed;
+  const { playbook, playbookKey, record, event } = followed;
   const { workflow, version, reference } = subscription;
   return {
     key: workflow,
@@ -96,12 +96,12 @@ function startOf(parts: StartParts, subscription: EventSubscription, followed: F
     deliver:
       event.depth > mostReactionDepth
         ? parts.refusals.refuse(
-            brainKey,
+            playbookKey,
             workflow,
             `An event matched the event trigger of the workflow at reaction depth ${event.depth}, past the ${mostReactionDepth} a chain of reactions may reach`,
           )
-        : parts.starting.start(brainKey, {
-            ...brain,
+        : parts.starting.start(playbookKey, {
+            ...playbook,
             workflow,
             version,
             runId: reactionRunIdOf(workflow, version, reference, record.id),
@@ -137,13 +137,13 @@ function deliveriesOf(parts: StartParts, judged: SubscriptionVerdict, followed: 
 }
 
 function reported(parts: StartParts, { place, verdict, stopped }: SubscriptionVerdict) {
-  const { brainKey, workflow } = place;
+  const { playbookKey, workflow } = place;
   return Effect.andThen(
     Effect.forEach(
       stopped,
       (error) =>
         parts.refusals.refuse(
-          brainKey,
+          playbookKey,
           workflow,
           `The filter of the workflow's event trigger was stopped by its deadline or its memory ${stopsInARowBeforeTheVersion} times in a row, so it is not evaluated again for this version of the workflow; a new version evaluates it again: ${describeError(error)}`,
         ),
@@ -151,7 +151,7 @@ function reported(parts: StartParts, { place, verdict, stopped }: SubscriptionVe
     ),
     typeof verdict === 'object' && parts.stops.failedFirst(place)
       ? parts.refusals.refuse(
-          brainKey,
+          playbookKey,
           workflow,
           `The filter of the workflow's event trigger failed on an event, so it did not match: ${verdict.error}`,
         )
@@ -167,7 +167,7 @@ export function subscriptionStarts(parts: StartParts): RecordConsumer {
     batchOf: (followed, after, most) =>
       Effect.gen(function* () {
         const type = followed.event.event.type;
-        const candidates = yield* eventSubscriptionsOf(parts.database, followed.brainKey, { type, after, most });
+        const candidates = yield* eventSubscriptionsOf(parts.database, followed.playbookKey, { type, after, most });
         const taken = candidates.slice(0, most);
         const judged = yield* verdictsOf(matchGroups, parts, taken, followed);
         yield* Effect.forEach(judged, (each) => reported(parts, each), { discard: true });
@@ -178,7 +178,7 @@ export function subscriptionStarts(parts: StartParts): RecordConsumer {
           more: candidates.length > most,
         };
       }),
-    skipped: ({ brainKey }, { workflow }, detail) =>
-      parts.refusals.refuse(brainKey, workflow, `The workflow could not be started by its event trigger: ${detail}`),
+    skipped: ({ playbookKey }, { workflow }, detail) =>
+      parts.refusals.refuse(playbookKey, workflow, `The workflow could not be started by its event trigger: ${detail}`),
   };
 }

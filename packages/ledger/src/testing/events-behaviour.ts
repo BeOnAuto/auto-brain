@@ -40,9 +40,9 @@ function theEventsOfAStream(entry: LedgerEntry): void {
     it('come back exactly as they were decided, through the JSON encoding of their schema', async () => {
       const ledger = await aLedger(entry);
 
-      await Effect.runPromise(ledger.execute('brain/acme/sales/journal', journal, decided));
+      await Effect.runPromise(ledger.execute('playbook/acme/sales/journal', journal, decided));
 
-      expect(await Effect.runPromise(ledger.load('brain/acme/sales/journal', journal))).toEqual({
+      expect(await Effect.runPromise(ledger.load('playbook/acme/sales/journal', journal))).toEqual({
         state: decided,
         version: 3,
       });
@@ -51,10 +51,12 @@ function theEventsOfAStream(entry: LedgerEntry): void {
     it('keep the keys of every object in the order they were written', async () => {
       const ledger = await aLedger(entry);
       await Effect.runPromise(
-        ledger.execute('brain/acme/sales/notes', notes, [{ zeta: 1, a: [2, { y: true, x: null }], longer_key: '3' }]),
+        ledger.execute('playbook/acme/sales/notes', notes, [
+          { zeta: 1, a: [2, { y: true, x: null }], longer_key: '3' },
+        ]),
       );
 
-      const { state } = await Effect.runPromise(ledger.load('brain/acme/sales/notes', notes));
+      const { state } = await Effect.runPromise(ledger.load('playbook/acme/sales/notes', notes));
 
       expect(JSON.stringify(state)).toBe('[{"zeta":1,"a":[2,{"y":true,"x":null}],"longer_key":"3"}]');
     });
@@ -74,21 +76,21 @@ function theEventsOfAStream(entry: LedgerEntry): void {
 }
 
 const names = [
-  'org/acme/brains',
-  'org/Acme/brains',
-  'org/ACME/brains',
-  'org/acme-corp/brains',
-  'org/acme_corp/brains',
-  'org/acme/brains/',
-  'org/acme//brains',
-  ' org/acme/brains',
+  'org/acme/playbooks',
+  'org/Acme/playbooks',
+  'org/ACME/playbooks',
+  'org/acme-corp/playbooks',
+  'org/acme_corp/playbooks',
+  'org/acme/playbooks/',
+  'org/acme//playbooks',
+  ' org/acme/playbooks',
   'org/acme-x',
   'org/acme-y',
-  'brain/acme/sales/definitions/reasoning',
-  'brain/acme/sales-definitions/reasoning',
-  'brain/acme/sales_definitions/reasoning',
-  'org/café/brains'.normalize('NFC'),
-  'org/café/brains'.normalize('NFD'),
+  'playbook/acme/sales/definitions/reasoning',
+  'playbook/acme/sales-definitions/reasoning',
+  'playbook/acme/sales_definitions/reasoning',
+  'org/café/playbooks'.normalize('NFC'),
+  'org/café/playbooks'.normalize('NFD'),
 ];
 
 function streamNames(entry: LedgerEntry): void {
@@ -143,9 +145,9 @@ function journalThrough(ledger: Ledger['Service']): Promise<unknown> {
   return Effect.runPromise(
     Effect.gen(function* () {
       const executed = yield* Effect.forEach(entries, (events) =>
-        ledger.execute('brain/acme/sales/journal', journal, events),
+        ledger.execute('playbook/acme/sales/journal', journal, events),
       );
-      const loaded = yield* ledger.load('brain/acme/sales/journal', journal);
+      const loaded = yield* ledger.load('playbook/acme/sales/journal', journal);
       return { executed, loaded };
     }),
   );

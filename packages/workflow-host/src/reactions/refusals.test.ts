@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
 import { reactionsStreamOf, refusalsOn } from './refusals.ts';
 
-const brainKey = 'brain/acme/alpha/';
+const playbookKey = 'playbook/acme/alpha/';
 
 const minute = Date.parse('2026-10-01T09:00:00.000Z');
 
@@ -15,7 +15,7 @@ describe('the refusals of the reactions of a workflow', () => {
     const database = await openedOn(await onSQLite());
     const time = { now: minute + 1000 };
     const refusals = refusalsOn(database, () => time.now);
-    const refuse = (reason: string) => Effect.runPromise(refusals.refuse(brainKey, 'close', reason));
+    const refuse = (reason: string) => Effect.runPromise(refusals.refuse(playbookKey, 'close', reason));
 
     await refuse('first');
     await refuse('second');
@@ -27,7 +27,7 @@ describe('the refusals of the reactions of a workflow', () => {
     const flushedAgain = await Effect.runPromise(refusals.flush());
     time.now = minute + 3 * aMinute;
     await refuse('fourth');
-    const { events } = await database.store.read(reactionsStreamOf(brainKey, 'close'));
+    const { events } = await database.store.read(reactionsStreamOf(playbookKey, 'close'));
 
     expect([flushedEarly, flushed, flushedAgain]).toEqual([0, 1, 0]);
     expect(events).toEqual([

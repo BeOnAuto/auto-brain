@@ -7,7 +7,7 @@ import {
   type Settled,
 } from '@beonauto/operations';
 import {
-  memoryBrainRegistry,
+  memoryPlaybookRegistry,
   memoryLedger,
   recordingReporter,
   type ReportedIncident,
@@ -20,13 +20,13 @@ import { defineTestToolCall } from '../tool-tests/test-tool-call.ts';
 export const toolTester: CallerIdentity = {
   id: 'acme-builder',
   org: 'acme',
-  permissions: ['brain:read', 'brain:write'],
-  brains: '*',
+  permissions: ['playbook:read', 'playbook:write'],
+  playbooks: '*',
 };
 
 export interface TestAsking {
   readonly caller?: CallerIdentity;
-  readonly brain?: string;
+  readonly playbook?: string;
   readonly signal?: AbortSignal;
 }
 
@@ -71,24 +71,24 @@ export function toolTests(
   };
   const services = Layer.mergeAll(
     writesRefused ? refusingWrites(ledger.service, refusing) : ledger.layer,
-    memoryBrainRegistry([{ org: 'acme', brain: 'alpha' }], [{ org: 'acme', brain: 'old' }]),
+    memoryPlaybookRegistry([{ org: 'acme', playbook: 'alpha' }], [{ org: 'acme', playbook: 'old' }]),
     reporter.layer,
   );
   const { registration } = defineTestToolCall(access);
   const dispatcher = makeDispatcher([]);
   return {
     registration,
-    test: (input, { caller = toolTester, brain = 'alpha', signal } = {}) =>
+    test: (input, { caller = toolTester, playbook = 'alpha', signal } = {}) =>
       Effect.runPromise(
         settle(
-          dispatcher.dispatchToBrain(registration, { caller, org: 'acme', brain, input, encoding: 'json' }),
+          dispatcher.dispatchToPlaybook(registration, { caller, org: 'acme', playbook, input, encoding: 'json' }),
           signal,
         ).pipe(Effect.provide(services)),
       ),
     recorded: async () => {
       const page = await Effect.runPromise(
         ledger.service.readRecorded(
-          { org: 'acme', brain: 'alpha' },
+          { org: 'acme', playbook: 'alpha' },
           { kind: 'everything' },
           { order: 'asc', limit: 50 },
         ),

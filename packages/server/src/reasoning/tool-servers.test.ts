@@ -51,12 +51,12 @@ async function serving(): Promise<Serving> {
         allowed: ['search', 'echo'],
       },
       crm: remote(others, { org: 'globex' }),
-      sales: remote(others, { org: 'acme', brains: ['sales'] }),
-      wiki: { url: gone.url, org: 'acme', brains: ['alpha'] },
+      sales: remote(others, { org: 'acme', playbooks: ['sales'] }),
+      wiki: { url: gone.url, org: 'acme', playbooks: ['alpha'] },
     }),
   });
   closing.push(server.stop);
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   return { server, graph, others };
 }
 
@@ -95,18 +95,22 @@ const listedForAlpha = {
 };
 
 const listedInWords =
-  "This brain's functions may use 2 tool servers. “graph” offers 2 tools: search and echo; search can be tested. “wiki” could not be asked for its tools just now.";
+  "This playbook's functions may use 2 tool servers. “graph” offers 2 tools: search and echo; search can be tested. “wiki” could not be asked for its tools just now.";
 
-function onBrain<T>(server: ReasoningServer, brain: string, use: (session: McpSession) => Promise<T>): Promise<T> {
+function onPlaybook<T>(
+  server: ReasoningServer,
+  playbook: string,
+  use: (session: McpSession) => Promise<T>,
+): Promise<T> {
   return withMcpSession(
     'current revision',
-    { url: `${server.origin}/orgs/acme/brains/${brain}/mcp`, headers: {} },
+    { url: `${server.origin}/orgs/acme/playbooks/${playbook}/mcp`, headers: {} },
     use,
   );
 }
 
 describe('list_tool_servers over HTTP', () => {
-  it('lists the servers the brain may use, with the tools the operator allows, and one it cannot reach as unavailable', async () => {
+  it('lists the servers the playbook may use, with the tools the operator allows, and one it cannot reach as unavailable', async () => {
     const { server, graph, others } = await serving();
 
     const listed = await server.call('GET', `${alpha}/tool-servers`);
@@ -130,10 +134,10 @@ describe('list_tool_servers over HTTP', () => {
     expect(text).not.toContain(graph.url);
   });
 
-  it('answers a brain the org does not have as not_found, and a retired brain as every read does', async () => {
+  it('answers a playbook the org does not have as not_found, and a retired playbook as every read does', async () => {
     const { server } = await serving();
 
-    const missing = await server.call('GET', '/v1/orgs/acme/brains/nowhere/tool-servers');
+    const missing = await server.call('GET', '/v1/orgs/acme/playbooks/nowhere/tool-servers');
     await server.call('POST', `${alpha}/retire`);
     const retired = await server.call('GET', `${alpha}/tool-servers`);
 
@@ -149,7 +153,7 @@ function refusedAs(name: string) {
       reason: 'invalid_input',
       errors: [
         {
-          detail: `This brain has no tool server named ${name}; call list_tool_servers without server to list the ones it has`,
+          detail: `This playbook has no tool server named ${name}; call list_tool_servers without server to list the ones it has`,
           pointer: '/server',
         },
       ],
@@ -158,23 +162,23 @@ function refusedAs(name: string) {
 }
 
 describe('list_tool_servers over HTTP, asked for one server', () => {
-  it('refuses the name of a server of another org, or of other brains of the org, and asks no server', async () => {
+  it('refuses the name of a server of another org, or of other playbooks of the org, and asks no server', async () => {
     const { server, graph, others } = await serving();
 
     const otherOrg = await server.call('GET', `${alpha}/tool-servers?server=crm`);
-    const otherBrain = await server.call('GET', `${alpha}/tool-servers?server=sales`);
+    const otherPlaybook = await server.call('GET', `${alpha}/tool-servers?server=sales`);
 
     expect(otherOrg).toMatchObject(refusedAs('crm'));
-    expect(otherBrain).toMatchObject(refusedAs('sales'));
+    expect(otherPlaybook).toMatchObject(refusedAs('sales'));
     expect([...graph.seen(), ...others.seen()]).toEqual([]);
   });
 });
 
 describe('list_tool_servers over MCP', () => {
-  it('is a read-only tool of the brain that lists the same, led by plain words', async () => {
+  it('is a read-only tool of the playbook that lists the same, led by plain words', async () => {
     const { server } = await serving();
 
-    const { tools, listed } = await onBrain(server, 'alpha', async (session) => ({
+    const { tools, listed } = await onPlaybook(server, 'alpha', async (session) => ({
       tools: await session.listTools(),
       listed: await session.callTool('list_tool_servers', {}),
     }));
@@ -189,12 +193,12 @@ describe('list_tool_servers over MCP', () => {
     expect(internalTermsIn(plainTextIn(listed))).toEqual([]);
   });
 
-  it('answers a brain the org does not have as not_found, and a retired brain as every read does', async () => {
+  it('answers a playbook the org does not have as not_found, and a retired playbook as every read does', async () => {
     const { server } = await serving();
 
-    const missing = await onBrain(server, 'nowhere', (session) => session.callTool('list_tool_servers', {}));
+    const missing = await onPlaybook(server, 'nowhere', (session) => session.callTool('list_tool_servers', {}));
     await server.call('POST', `${alpha}/retire`);
-    const retired = await onBrain(server, 'alpha', (session) => session.callTool('list_tool_servers', {}));
+    const retired = await onPlaybook(server, 'alpha', (session) => session.callTool('list_tool_servers', {}));
 
     expect({ isError: missing.isError, problem: problemIn(missing) }).toMatchObject({
       isError: true,
@@ -206,18 +210,18 @@ describe('list_tool_servers over MCP', () => {
 
 const [graphOfAlpha, wikiOfAlpha] = listedForAlpha.tool_servers;
 
-const graphInTheOrg = { ...graphOfAlpha, brains: ['*'] };
+const graphInTheOrg = { ...graphOfAlpha, playbooks: ['*'] };
 
-const wikiInTheOrg = { ...wikiOfAlpha, brains: ['alpha'] };
+const wikiInTheOrg = { ...wikiOfAlpha, playbooks: ['alpha'] };
 
-const salesInTheOrg = { name: 'sales', type: 'http', brains: ['sales'] };
+const salesInTheOrg = { name: 'sales', type: 'http', playbooks: ['sales'] };
 
 describe('list_tool_servers of the org over HTTP', () => {
-  it('lists every server of the org with the brains it serves, or those that serve the brain asked for', async () => {
+  it('lists every server of the org with the playbooks it serves, or those that serve the playbook asked for', async () => {
     const { server } = await serving();
 
     const listed = await server.call('GET', '/v1/orgs/acme/tool-servers');
-    const forAlpha = await server.call('GET', '/v1/orgs/acme/tool-servers?brain=alpha');
+    const forAlpha = await server.call('GET', '/v1/orgs/acme/tool-servers?playbook=alpha');
 
     expect(listed).toMatchObject({
       status: 200,
@@ -233,13 +237,13 @@ function listedOnTheOrgEndpoint(server: ReasoningServer) {
     { url: `${server.origin}/orgs/acme/mcp`, headers: {} },
     async (session) => ({
       inOrg: await session.callTool('list_tool_servers', {}),
-      inAlpha: await session.callTool('list_tool_servers', { brain: 'alpha' }),
+      inAlpha: await session.callTool('list_tool_servers', { playbook: 'alpha' }),
     }),
   );
 }
 
-describe('list_tool_servers on the org endpoint, without a brain and with one', () => {
-  it('answers for the org and for the brain', async () => {
+describe('list_tool_servers on the org endpoint, without a playbook and with one', () => {
+  it('answers for the org and for the playbook', async () => {
     const { server } = await serving();
 
     const { inOrg, inAlpha } = await listedOnTheOrgEndpoint(server);
@@ -248,7 +252,7 @@ describe('list_tool_servers on the org endpoint, without a brain and with one', 
     expect(inAlpha.structuredContent).toEqual({ tool_servers: [graphInTheOrg, wikiInTheOrg] });
     expect(plainTextIn(inAlpha)).toBe(listedInWords);
     expect(plainTextIn(inOrg)).toMatch(
-      /^The brains of this org may use 3 tool servers\. “graph”, for every brain, offers 2 tools: search and echo;/u,
+      /^The playbooks of this org may use 3 tool servers\. “graph”, for every playbook, offers 2 tools: search and echo;/u,
     );
   });
 });

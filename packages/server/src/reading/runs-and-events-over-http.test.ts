@@ -98,9 +98,9 @@ function holding(count: number): (response: TestResponse) => boolean {
     status === 200 && (Schema.is(EventsSchema)(body) ? body.events.length : runsOf(body).runs.length) === count;
 }
 
-async function brainWithTwoRuns(environment: Readonly<Record<string, string>>): Promise<void> {
+async function playbookWithTwoRuns(environment: Readonly<Record<string, string>>): Promise<void> {
   server = await servingReasoning([answers(textResult('Profits\u0000rose.'))], environment);
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   await server.call('POST', `${alpha}/definitions/reasoning`, { body: { name: 'summary', source: summary } });
   await server.call('POST', `${alpha}/definitions/reasoning/summary/run`, {
     body: { input: { text: 'the\u0000quarter' }, run_id: succeeded },
@@ -114,9 +114,9 @@ function nextPageOf({ body }: TestResponse): string {
   return `${alpha}/runs?cursor=${String(runsOf(body).next_cursor)}`;
 }
 
-describe.each(stores)('the runs of a brain over HTTP, on $store', ({ skipped, environment }) => {
+describe.each(stores)('the runs of a playbook over HTTP, on $store', ({ skipped, environment }) => {
   it.skipIf(skipped)('are listed newest first, filtered, and paged through', async () => {
-    await brainWithTwoRuns(await environment());
+    await playbookWithTwoRuns(await environment());
 
     const listed = await eventually(`${alpha}/runs`, holding(2));
     const filtered = await server.call('GET', `${alpha}/runs?status=succeeded&type=reasoning&name=summary`);
@@ -144,7 +144,7 @@ describe.each(stores)('the runs of a brain over HTTP, on $store', ({ skipped, en
 
 describe.each(stores)('the history of a run over HTTP, on $store', ({ skipped, environment }) => {
   it.skipIf(skipped)('reads a run whose input and output hold U+0000', async () => {
-    await brainWithTwoRuns(await environment());
+    await playbookWithTwoRuns(await environment());
 
     expect(await eventually(`${alpha}/runs/${succeeded}/history`, holding(2))).toMatchObject({
       status: 200,
@@ -164,9 +164,9 @@ describe.each(stores)('the history of a run over HTTP, on $store', ({ skipped, e
   });
 });
 
-describe.each(stores)('the events of a brain over HTTP, on $store', ({ skipped, environment }) => {
-  it.skipIf(skipped)('follow what happened in the brain, in plain words, by type', async () => {
-    await brainWithTwoRuns(await environment());
+describe.each(stores)('the events of a playbook over HTTP, on $store', ({ skipped, environment }) => {
+  it.skipIf(skipped)('follow what happened in the playbook, in plain words, by type', async () => {
+    await playbookWithTwoRuns(await environment());
 
     const feed = eventsOf((await eventually(`${alpha}/events`, holding(5))).body);
     const created = eventsOf((await server.call('GET', `${alpha}/events?type=definition_created`)).body);
@@ -193,10 +193,10 @@ function publishing(event: object): Promise<TestResponse> {
   return server.call('POST', `${alpha}/events`, { body: { event } });
 }
 
-describe.each(stores)('the events published to a brain over HTTP, on $store', ({ skipped, environment }) => {
+describe.each(stores)('the events published to a playbook over HTTP, on $store', ({ skipped, environment }) => {
   it.skipIf(skipped)('are recorded once for a source and id, refused when they clash, and in the feed', async () => {
     server = await servingReasoning([], await environment());
-    await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+    await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
 
     const published = await publishing(monthClosed);
     const again = await publishing(monthClosed);
@@ -221,15 +221,15 @@ describe.each(stores)('the events published to a brain over HTTP, on $store', ({
       ],
     });
     expect(eventsOf(feed.body).events.map(({ summary: words }) => words)).toEqual([
-      'The event “com.acme.ledger.month-closed” was published to the brain.',
+      'The event “com.acme.ledger.month-closed” was published to the playbook.',
     ]);
   });
 });
 
-describe.each(stores)('a retired brain over HTTP, on $store', ({ skipped, environment }) => {
+describe.each(stores)('a retired playbook over HTTP, on $store', ({ skipped, environment }) => {
   it.skipIf(skipped)('keeps its runs and events readable, while a change is refused', async () => {
-    await brainWithTwoRuns(await environment());
-    await server.call('POST', '/v1/orgs/acme/brains/alpha/retire');
+    await playbookWithTwoRuns(await environment());
+    await server.call('POST', '/v1/orgs/acme/playbooks/alpha/retire');
 
     const reads = await Promise.all(
       [`${alpha}/runs`, `${alpha}/runs/${succeeded}/history`, `${alpha}/events`].map((path) =>
@@ -243,12 +243,12 @@ describe.each(stores)('a retired brain over HTTP, on $store', ({ skipped, enviro
     expect(reads.map(({ status }) => status)).toEqual([200, 200, 200]);
     expect(change).toMatchObject({
       status: 409,
-      body: { reason: 'conflict', detail: 'The brain alpha is retired and can no longer change' },
+      body: { reason: 'conflict', detail: 'The playbook alpha is retired and can no longer change' },
     });
   });
 
-  it.skipIf(skipped)('refuse a cursor the brain did not give', async () => {
-    await brainWithTwoRuns(await environment());
+  it.skipIf(skipped)('refuse a cursor the playbook did not give', async () => {
+    await playbookWithTwoRuns(await environment());
 
     expect(await server.call('GET', `${alpha}/events?cursor=not-a-cursor`)).toMatchObject({
       status: 422,
@@ -265,7 +265,7 @@ async function anAppendLeftOpen(database: string): Promise<Client> {
   await client.query(
     `SELECT success FROM emt_append_to_stream(
       ARRAY['late-1'], ARRAY[$1::jsonb], ARRAY['{}'::jsonb], ARRAY['1'], ARRAY['note_added'], ARRAY['E'],
-      'brain/acme/alpha/notes', 'brain', 0, 'emt:default')`,
+      'playbook/acme/alpha/notes', 'playbook', 0, 'emt:default')`,
     [{ json: JSON.stringify({ type: 'note_added', text: 'late' }) }],
   );
   return client;
@@ -277,7 +277,7 @@ describe.skipIf(postgresql === '')(
     it('is an empty page oldest first, not not_found, and the events once the append commits', async () => {
       const environment = await onADatabaseOfItsOwn();
       server = await servingReasoning([answers(textResult('Profits rose.'))], environment);
-      await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+      await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
       await server.call('POST', `${alpha}/definitions/reasoning`, { body: { name: 'summary', source: summary } });
       const open = await anAppendLeftOpen(String(environment['DATABASE_URL']));
       await server.call('POST', `${alpha}/definitions/reasoning/summary/run`, {

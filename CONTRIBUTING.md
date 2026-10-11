@@ -1,6 +1,6 @@
 # Contributing to auto-brain
 
-Thanks for helping build the runtime for business brains. Bug reports, ideas and pull requests are all welcome.
+Thanks for helping build Auto Runtime, which runs the functions and workflows of playbooks. Bug reports, ideas and pull requests are all welcome.
 
 ## Before you start
 
@@ -45,7 +45,7 @@ The preview opens under `/docs/`. Read [Documentation contributions](docs/contri
 
 ## Commits and pull requests
 
-- **Commits are [conventional](https://www.conventionalcommits.org) with a scope,** for example `feat(reasoning): render the liquid body against the brain`.
+- **Commits are [conventional](https://www.conventionalcommits.org) with a scope,** for example `feat(reasoning): render the liquid body against the playbook`.
   - The scope is a package or capability folder name (`server`, `config`, `ledger`, `reasoning`, ...), or one of `global`, `deps`, `ci` and `release`.
   - `pnpm commit` walks you through it, and a git hook checks every message.
 - **The pull request title matters most.** Pull requests are squash-merged, so the title becomes the commit on `main` and the changelog entry. CI checks it too.
@@ -59,7 +59,7 @@ Function and workflow implementations live in `capabilities/<name>`. The shared 
 - `README.md` saying what the adapter runs and how it reads and writes the ledger.
 - `src/index.ts` as its public interface, with tests beside the code.
 
-Open an issue before adding an adapter or implementing a planned function type. Follow [Brain terminology](docs/concepts/terminology.md) for resource names, and [CLAUDE.md](CLAUDE.md) for the names in code. Workflow coordination is separate from the five function types.
+Open an issue before adding an adapter or implementing a planned function type. Follow [Playbook terminology](docs/concepts/terminology.md) for resource names, and [CLAUDE.md](CLAUDE.md) for the names in code. Workflow coordination is separate from the five function types.
 
 ## License
 

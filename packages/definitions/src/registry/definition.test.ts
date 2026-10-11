@@ -1,9 +1,9 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import {
-  isBrainFunctionDefinition,
+  isPlaybookFunctionDefinition,
   isWorkflowDefinition,
-  type BrainFunctionDefinition,
+  type PlaybookFunctionDefinition,
   type Definition,
   type WorkflowDefinition,
 } from '../index.ts';
@@ -29,13 +29,13 @@ const recallFunction: Definition = { ...reasoningFunction, type: 'recall', sourc
 const workflow: Definition = { ...reasoningFunction, type: 'workflow', media_type: 'application/yaml' };
 
 describe('a saved definition', () => {
-  it('is a brain function when it is a reasoning, an interaction, a computation or a recall function, and a workflow when it is a workflow', () => {
+  it('is a playbook function when it is a reasoning, an interaction, a computation or a recall function, and a workflow when it is a workflow', () => {
     const definitions = [reasoningFunction, interactionFunction, computationFunction, recallFunction, workflow];
 
-    const functions = definitions.filter((definition) => isBrainFunctionDefinition(definition));
+    const functions = definitions.filter((definition) => isPlaybookFunctionDefinition(definition));
     const workflows = definitions.filter((definition) => isWorkflowDefinition(definition));
 
-    expectTypeOf(functions).toEqualTypeOf<BrainFunctionDefinition[]>();
+    expectTypeOf(functions).toEqualTypeOf<PlaybookFunctionDefinition[]>();
     expectTypeOf(workflows).toEqualTypeOf<WorkflowDefinition[]>();
     expect([functions, workflows]).toEqual([
       [reasoningFunction, interactionFunction, computationFunction, recallFunction],
@@ -48,7 +48,7 @@ describe('a saved definition', () => {
     (type) => {
       const definition = { ...reasoningFunction, type };
 
-      expect([isBrainFunctionDefinition(definition), isWorkflowDefinition(definition)]).toEqual([false, false]);
+      expect([isPlaybookFunctionDefinition(definition), isWorkflowDefinition(definition)]).toEqual([false, false]);
     },
   );
 });

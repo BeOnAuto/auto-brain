@@ -6,7 +6,7 @@ body:
     id: problem
     attributes:
       label: The problem
-      description: What you're trying to do with a brain, and what gets in the way today.
+      description: What you're trying to do with a playbook, and what gets in the way today.
     validations:
       required: true
   - type: textarea

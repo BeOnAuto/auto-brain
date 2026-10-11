@@ -1,7 +1,7 @@
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { alpha, at, brainCreated, recorded } from '../reaction-testing/brain-writes.ts';
+import { alpha, at, playbookCreated, recorded } from '../reaction-testing/playbook-writes.ts';
 import { until } from '../reaction-testing/until.ts';
 import { openedOn, type SettingsOf } from '../testing/host-files.ts';
 import { hostedOn } from '../testing/host-runs.ts';
@@ -22,7 +22,7 @@ const aWhile = 30_000;
 
 const attempts = 2000;
 
-const ofTheRun = { definition_type: 'workflow', name: 'pause', definition_version: 1, by: 'brain:alpha', at };
+const ofTheRun = { definition_type: 'workflow', name: 'pause', definition_version: 1, by: 'playbook:alpha', at };
 
 const rejectedUnstarted = {
   type: 'run_rejected',
@@ -42,7 +42,7 @@ function diedAfterTheStart(settingsOf: SettingsOf): void {
       async () => {
         const settings = await settingsOf();
         const database = await openedOn(settings);
-        await brainCreated(database.store, 'alpha');
+        await playbookCreated(database.store, 'alpha');
         const first = await hostedOn(settings);
         await untilFollowed(database, attempts);
         await startedThenCancelled(database);
@@ -74,7 +74,7 @@ function endedWithoutStarting(settingsOf: SettingsOf): void {
       async () => {
         const settings = await settingsOf();
         const database = await openedOn(settings);
-        await brainCreated(database.store, 'alpha');
+        await playbookCreated(database.store, 'alpha');
         const first = await hostedOn(settings);
         await untilFollowed(database, attempts);
         const pending = () => Effect.runPromise(pendingCancelRowsAfter(database, '', 10));

@@ -1,12 +1,12 @@
-# brain-runtime
+# Auto Runtime
 
-The runtime for business brains, built and used through your agent.
+Auto Runtime runs the functions and workflows of your playbooks. Build them with your agent; run them on Auto.
 
 [![CI](https://github.com/BeOnAuto/auto-brain/actions/workflows/ci.yml/badge.svg)](https://github.com/BeOnAuto/auto-brain/actions/workflows/ci.yml) [![License: ELv2](https://img.shields.io/badge/license-ELv2-blue?style=flat-square)](LICENSING.md)
 
-[![Auto Studio showing a Sales Ops brain, with its functions, workflows and runs on the left and its run, token and duration charts on the right](docs/assets/studio-dashboard.png)](https://studio.on.auto)
+[![Auto Studio showing a Sales Ops playbook, with its functions, workflows and runs on the left and its run, token and duration charts on the right](docs/assets/studio-dashboard.png)](https://studio.on.auto)
 
-[Auto Studio](https://studio.on.auto) is where you watch a brain work. Open a run to follow how it reached its result, or check the charts for how busy the brain has been and what it has spent in tokens.
+[Auto Studio](https://studio.on.auto) is where you watch a playbook work. Open a run to follow how it reached its result, or check the charts for how busy the playbook has been and what it has spent in tokens.
 
 ## Documentation and help
 
@@ -20,4 +20,4 @@ Runtime code and its documentation live here. See [CONTRIBUTING.md](CONTRIBUTING
 
 ## License
 
-Auto brain-runtime is source-available under the [Elastic License 2.0](LICENSE). [LICENSING.md](LICENSING.md) explains the terms, including restrictions on offering it as a hosted or managed service. Contributions follow the [CLA](CLA.md) and [Code of Conduct](CODE_OF_CONDUCT.md).
+Auto Runtime is source-available under the [Elastic License 2.0](LICENSE). [LICENSING.md](LICENSING.md) explains the terms, including restrictions on offering it as a hosted or managed service. Contributions follow the [CLA](CLA.md) and [Code of Conduct](CODE_OF_CONDUCT.md).

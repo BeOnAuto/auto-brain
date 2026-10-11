@@ -12,9 +12,9 @@ interface Refused<Because> {
 function opened(
   access: ToolAccess,
   references: readonly ToolReference[],
-  { id, org, brain, journal }: RunContext,
+  { id, org, playbook, journal }: RunContext,
 ): Effect.Effect<RunTools, Unavailable> {
-  return access.open({ id, org, brain, journal, meta: { [runIdKey]: id } }, references).pipe(
+  return access.open({ id, org, playbook, journal, meta: { [runIdKey]: id } }, references).pipe(
     Effect.catchTags({
       tool_not_offered: ({ because, detail }: Refused<NotOfferedBecause>) =>
         Effect.fail(new Unavailable({ detail, kind: 'tool_not_offered', because })),

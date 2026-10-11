@@ -3,7 +3,7 @@ import type { Json, JsonObject } from '@beonauto/workflow-engine';
 
 export interface DefinitionCall {
   readonly org: string;
-  readonly brain: string;
+  readonly playbook: string;
   readonly caller: CallerIdentity;
   readonly reference: string;
   readonly run: number;
@@ -27,7 +27,7 @@ export type RunSettlement = Settlement;
 
 export interface SettleRequest {
   readonly org: string;
-  readonly brain: string;
+  readonly playbook: string;
   readonly definition: string;
   readonly runId: string;
   readonly settlement: RunSettlement;
@@ -39,7 +39,7 @@ export interface WorkflowRun {
   readonly run: {
     readonly id: string;
     readonly org: string;
-    readonly brain: string;
+    readonly playbook: string;
     readonly definition: { readonly name: string; readonly version: number };
   };
   readonly caller: CallerIdentity;

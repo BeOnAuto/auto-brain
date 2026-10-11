@@ -7,7 +7,7 @@ const docs = resolve(import.meta.dirname, '../docs');
 
 await test('the install step defaults to Agent on the left with Manual on the right', () => {
   const guide = readFileSync(join(docs, 'get-started/local.md'), 'utf8');
-  const install = guide.split('## 1. Install Auto Brain')[1]?.split('## 2. Configure a model provider')[0];
+  const install = guide.split('## 1. Install Auto Runtime')[1]?.split('## 2. Configure a model provider')[0];
   assert.ok(install !== undefined);
   const options = [...install.matchAll(/```(bash|text) \[(Manual|Agent)\]\n([\s\S]*?)```/gu)];
   assert.deepEqual(

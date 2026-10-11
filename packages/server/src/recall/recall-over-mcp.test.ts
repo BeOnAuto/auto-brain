@@ -20,9 +20,13 @@ afterEach(async () => {
 
 async function onAlpha<T>(server: ReasoningServer, use: (session: McpSession) => Promise<T>): Promise<T> {
   await withMcpSession('current revision', { url: `${server.origin}/orgs/acme/mcp`, headers: {} }, (session) =>
-    session.callTool('create_brain', { brain: 'alpha', name: 'Alpha' }),
+    session.callTool('create_playbook', { playbook: 'alpha', name: 'Alpha' }),
   );
-  return withMcpSession('current revision', { url: `${server.origin}/orgs/acme/brains/alpha/mcp`, headers: {} }, use);
+  return withMcpSession(
+    'current revision',
+    { url: `${server.origin}/orgs/acme/playbooks/alpha/mcp`, headers: {} },
+    use,
+  );
 }
 
 const counting = recallDocument(
@@ -41,7 +45,7 @@ function liveOverMcp(session: McpSession, folded: number, name = 'reviews'): Pro
   );
 }
 
-describe('a recall function over MCP, on the endpoint of its brain', { timeout: recallTestTimeoutMs }, () => {
+describe('a recall function over MCP, on the endpoint of its playbook', { timeout: recallTestTimeoutMs }, () => {
   it('is saved, stands live once it has folded the runs it names, and answers from its view in plain words', async () => {
     const server = await servingRecall(verdicts({ campaign: 'spring', verdict: 'approve' }));
     closing.push(server.stop);

@@ -33,7 +33,7 @@ export {
   type Telling,
 } from './own-calls/conversation-calls.ts';
 export { defineListToolServers } from './listing/list-tool-servers.ts';
-export { defineListToolServersInOrg, type BrainLookup } from './listing/list-tool-servers-in-org.ts';
+export { defineListToolServersInOrg, type PlaybookLookup } from './listing/list-tool-servers-in-org.ts';
 export { answeredInWords, toolInWords } from './names/tool-words.ts';
 export { defineTestToolCall } from './tool-tests/test-tool-call.ts';
 export { type ToolTestEvent } from './tool-tests/tool-test-events.ts';

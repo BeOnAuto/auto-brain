@@ -1,4 +1,4 @@
-import { BrainWriter, InvalidInput, defineCommand, quoted, randomUUIDv7, type Issue } from '@beonauto/operations';
+import { PlaybookWriter, InvalidInput, defineCommand, quoted, randomUUIDv7, type Issue } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
 import { commandMetadata } from '../operations/command-metadata.ts';
@@ -10,7 +10,7 @@ import {
   recordedPublication,
   type FilledAttribute,
 } from './published-events.ts';
-import { refusingTheBrainsOwnAttributes } from './reserved-attributes.ts';
+import { refusingThePlaybooksOwnAttributes } from './reserved-attributes.ts';
 
 interface Publication {
   readonly event: CloudEvent;
@@ -39,25 +39,25 @@ function refusalsOf(event: CloudEvent): readonly Issue[] {
 }
 
 const PublishedSchema = Schema.Struct({
-  id: Schema.String.annotate({ description: 'The id of the event, as given or as the brain made it' }),
+  id: Schema.String.annotate({ description: 'The id of the event, as given or as the playbook made it' }),
   time: Schema.String.annotate({
-    description: 'When the event happened, in RFC 3339: as given, or when the brain recorded it',
+    description: 'When the event happened, in RFC 3339: as given, or when the playbook recorded it',
   }),
-  recorded_at: Schema.String.annotate({ description: 'When the brain recorded the event, in ISO 8601 UTC' }),
+  recorded_at: Schema.String.annotate({ description: 'When the playbook recorded the event, in ISO 8601 UTC' }),
 });
 
-export const publishEvent = defineCommand('brain', {
+export const publishEvent = defineCommand('playbook', {
   name: 'publish_event',
   title: 'Publish event',
   description: [
-    'Publishes an event to the brain, where a workflow whose schedule names its type starts a run and a recall function that filters on it folds it,',
+    'Publishes an event to the playbook, where a workflow whose schedule names its type starts a run and a recall function that filters on it folds it,',
     'and returns its id and time.',
-    'Use it when something outside the brain happened that the brain should react to or remember; send_run_event gives an event to one waiting run instead.',
+    'Use it when something outside the playbook happened that the playbook should react to or remember; send_run_event gives an event to one waiting run instead.',
     '`event` is a CloudEvents event with a `source` and a `type`, and publishing the same source and id again records nothing, so a call can be retried with its id.',
-    "The brain's own types and sources, such as those of its runs and definitions, and the lineage attributes it gives its own records, are refused.",
+    "The playbook's own types and sources, such as those of its runs and definitions, and the lineage attributes it gives its own records, are refused.",
   ].join(' '),
   route: { method: 'POST', path: '/events' },
-  inputSchema: Schema.Struct({ event: EventToPublishSchema.check(refusingTheBrainsOwnAttributes) }),
+  inputSchema: Schema.Struct({ event: EventToPublishSchema.check(refusingThePlaybooksOwnAttributes) }),
   outputSchema: PublishedSchema,
   reasons: ['invalid_input', 'conflict'],
   handle: Effect.fnUntraced(function* ({ event }) {
@@ -67,7 +67,7 @@ export const publishEvent = defineCommand('brain', {
     if (issues.length > 0) {
       return yield* new InvalidInput({ detail: 'The event cannot be published as it is', issues });
     }
-    const { state } = yield* (yield* BrainWriter).execute(
+    const { state } = yield* (yield* PlaybookWriter).execute(
       publishedEventStreamOf(publication.event.source, publication.event.id),
       publishedEventDecider,
       { ...publication, by, at },
@@ -76,9 +76,9 @@ export const publishEvent = defineCommand('brain', {
     return { id: recorded.event.id, time: recorded.event.time, recorded_at: recorded.at };
   }),
   plainLanguage: {
-    task: 'publish an event to the brain',
-    attempt: ({ event }) => `publish the event ${quoted(event.type)} to the brain`,
+    task: 'publish an event to the playbook',
+    attempt: ({ event }) => `publish the event ${quoted(event.type)} to the playbook`,
     outcome: (_published, { event }) =>
-      `The event ${quoted(event.type)} is published to the brain. Publishing it again with the same source and id records nothing more.`,
+      `The event ${quoted(event.type)} is published to the playbook. Publishing it again with the same source and id records nothing more.`,
   },
 });

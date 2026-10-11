@@ -175,7 +175,7 @@ describe('a cancel of a waiting call', () => {
     expect(await calls.rows()).toEqual([{ state: 'cancelled', child }]);
     expect(calls.cancels()).toEqual([
       {
-        child: { org: 'acme', brain: 'alpha', runId: child },
+        child: { org: 'acme', playbook: 'alpha', runId: child },
         reason: 'deadline',
         lineage: {
           causationId: stepEventIdOf('0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', origin.lastStep),
@@ -236,7 +236,7 @@ describe('a cancel of a call whose run could not be cancelled', () => {
     expect([failure.output, failure.detail]).toEqual(['cancel_call', 'The ledger is busy']);
   });
 
-  it('fails too when the run it waits for is not one its brain can hold, and leaves the call as it was', async () => {
+  it('fails too when the run it waits for is not one its playbook can hold, and leaves the call as it was', async () => {
     const calls = await executing(() => Effect.succeed({ status: 'waiting', child }), { receipt: 'unknown_run' });
     await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/a'), run));
     await Effect.runPromise(calls.executor.idle());
@@ -246,7 +246,7 @@ describe('a cancel of a call whose run could not be cancelled', () => {
     );
 
     expect(failure.detail).toBe(
-      'The run this call waits for has an address its brain cannot hold, so it could not be cancelled',
+      'The run this call waits for has an address its playbook cannot hold, so it could not be cancelled',
     );
     expect(await calls.rows()).toEqual([{ state: 'waiting', child }]);
   });

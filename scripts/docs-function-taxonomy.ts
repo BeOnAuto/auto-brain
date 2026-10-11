@@ -48,5 +48,5 @@ export function runFunctionTaxonomy(commandArguments: readonly string[], path: s
 }
 
 if (import.meta.main) {
-  runFunctionTaxonomy(process.argv.slice(2), resolve(import.meta.dirname, '../docs/assets/brain-functions.json'));
+  runFunctionTaxonomy(process.argv.slice(2), resolve(import.meta.dirname, '../docs/assets/playbook-functions.json'));
 }

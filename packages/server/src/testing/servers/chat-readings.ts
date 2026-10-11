@@ -58,7 +58,7 @@ export function readingIn(count: number): (listed: readonly ListedInteraction[])
   return (listed) => listed.length >= count && listed.every(({ conversation }) => conversation !== null);
 }
 
-export async function brainEventsOf(server: InteractionServer): Promise<string> {
+export async function playbookEventsOf(server: InteractionServer): Promise<string> {
   return JSON.stringify((await server.call('GET', `${alpha}/events`)).body);
 }
 

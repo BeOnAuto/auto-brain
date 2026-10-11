@@ -80,7 +80,7 @@ export interface AppendedStreams {
 export interface RecordedStore {
   readonly pointLength: number;
   readonly readRecorded: (
-    brainKey: string,
+    playbookKey: string,
     selection: RecordedSelection,
     page: StoredPageRequest,
   ) => Promise<StoredPage>;
@@ -100,7 +100,7 @@ export interface EventStore extends StreamStore, RecordedStore, DefinitionStream
 
 export interface RunOutcomesStore {
   readonly readRunOutcomes: (
-    brainKey: string,
+    playbookKey: string,
     window: RunOutcomeWindow,
     selection: RunOutcomeSelection,
   ) => Promise<readonly RunOutcomeGroup[]>;

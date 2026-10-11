@@ -27,7 +27,7 @@ export interface ChatBoard {
   readonly reply: (replying: Replying) => string;
 }
 
-export const brainUser = 'brain';
+export const playbookUser = 'playbook';
 
 function argument(call: OneCall, name: string): string {
   const value = call.input[name];
@@ -56,7 +56,7 @@ export function chatBoard(): ChatBoard {
     messages.push({
       ts,
       channel,
-      user: brainUser,
+      user: playbookUser,
       text: argument(call, 'text'),
       ...threadOf(argument(call, 'thread_ts')),
     });
@@ -74,7 +74,7 @@ export function chatBoard(): ChatBoard {
   };
   return {
     answerOf: (call) => (call.reference.tool === 'thread_replies' ? read(call) : post(call)),
-    posted: () => messages.filter(({ user }) => user === brainUser),
+    posted: () => messages.filter(({ user }) => user === playbookUser),
     reply: ({ channel, thread, user, text }) => {
       const ts = nextTs();
       messages.push({ ts, channel, user, ...(text === undefined ? {} : { text }), ...threadOf(thread ?? '') });

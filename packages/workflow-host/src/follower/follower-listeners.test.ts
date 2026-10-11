@@ -2,7 +2,7 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { statement } from '../database/statement.ts';
-import { published, publishedInTurn } from '../reaction-testing/brain-writes.ts';
+import { published, publishedInTurn } from '../reaction-testing/playbook-writes.ts';
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
 import { until } from '../reaction-testing/until.ts';
 import { runAt, startOf, workflow } from '../testing/host-documents.ts';
@@ -25,18 +25,22 @@ function ended(reacting: ReactingHost, runId = waiting) {
 }
 
 describe('a run that waits for an event whose type its filter names', () => {
-  it('takes an event published to its brain, from among events meant for other runs', { timeout: 30_000 }, async () => {
-    const reacting = await reactingHost();
-    await Effect.runPromise(reacting.host.start(runAt(waiting), listening('{ type: com.acme.decided }')));
-    const others = Array.from({ length: 65 }, (_, index) => ({ id: `other-${index}`, type: 'com.acme.other' }));
-    await publishedInTurn(reacting.database.store, others);
+  it(
+    'takes an event published to its playbook, from among events meant for other runs',
+    { timeout: 30_000 },
+    async () => {
+      const reacting = await reactingHost();
+      await Effect.runPromise(reacting.host.start(runAt(waiting), listening('{ type: com.acme.decided }')));
+      const others = Array.from({ length: 65 }, (_, index) => ({ id: `other-${index}`, type: 'com.acme.other' }));
+      await publishedInTurn(reacting.database.store, others);
 
-    await published(reacting.database.store, { id: 'e1', type: 'com.acme.decided', data: { approved: true } });
-    const state = await ended(reacting);
+      await published(reacting.database.store, { id: 'e1', type: 'com.acme.decided', data: { approved: true } });
+      const state = await ended(reacting);
 
-    expect(state.outcome).toEqual({ kind: 'completed', output: [{ approved: true }] });
-    expect(state.inbox).toMatchObject({ waiting: [], received: 1 });
-  });
+      expect(state.outcome).toEqual({ kind: 'completed', output: [{ approved: true }] });
+      expect(state.inbox).toMatchObject({ waiting: [], received: 1 });
+    },
+  );
 
   it('takes only the events its filter takes over their data: the host offers those, and the run takes the first', async () => {
     const reacting = await reactingHost();

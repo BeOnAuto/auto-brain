@@ -19,7 +19,7 @@ const ofGreet = { definition_type: 'echo', name: 'greet', definition_version: 2 
 function recorded(event: RunEvent): RecordedEvent {
   return {
     id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
-    cursor: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
+    cursor: 'WyJwbGF5Ym9vay9hY21lL2FscGhhLyIsIjEiXQ',
     causationId: '1c2d3e4f-5a6b-5c7d-8e9f-a0b1c2d3e4f5',
     correlationId: runId,
     stream: `runs/${runId}`,
@@ -36,7 +36,7 @@ function presented(event: RunEvent) {
 
 const shown = {
   id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
-  cursor: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
+  cursor: 'WyJwbGF5Ym9vay9hY21lL2FscGhhLyIsIjEiXQ',
   causation_id: '1c2d3e4f-5a6b-5c7d-8e9f-a0b1c2d3e4f5',
   at: '2026-10-01T09:00:01.000Z',
 };
@@ -68,7 +68,7 @@ describe('the presenter of a run that answers a call of another run', () => {
 
 describe('the presenter of a cancel request', () => {
   it.each([
-    ['requested', 'Someone allowed to change the brain asked for the run to be cancelled.'],
+    ['requested', 'Someone allowed to change the playbook asked for the run to be cancelled.'],
     ['deadline', 'The step that waited for the run ran out of time, so the run is being cancelled.'],
     ['parent_ended', 'The run that waited for this run ended first, so this run is being cancelled.'],
   ] as const)('says who asked for a cancel of the kind %s, with the reason cut at 1 KiB', (kind, summary) => {
@@ -91,7 +91,7 @@ describe('the presenter of a cancel request', () => {
       presented({ type: 'run_failed', incident: 'incident-1', ...ofGreet, ...fact }),
     ]).toMatchObject([
       {
-        summary: 'A run did not go through: it was cancelled at the request of someone allowed to change the brain.',
+        summary: 'A run did not go through: it was cancelled at the request of someone allowed to change the playbook.',
         data: { reason: 'cancelled', detail: 'Not needed', kind: 'requested' },
       },
       { summary: 'A run broke down because of a problem inside the server.', data: { incident: 'incident-1' } },

@@ -32,13 +32,17 @@ function replaced(rows: readonly ViewRow[], kept: readonly ViewRow[], lost: read
   return rows.filter(({ name }) => !lost.includes(name)).map((row) => byName.get(row.name) ?? row);
 }
 
-function writtenOne(parts: ChangeWriting, brain: string, change: ViewChange): Effect.Effect<Written, DatabaseFailed> {
+function writtenOne(
+  parts: ChangeWriting,
+  playbook: string,
+  change: ViewChange,
+): Effect.Effect<Written, DatabaseFailed> {
   const { row } = change;
   return rowsOf(NameRow, parts.database.write(foldedWritten(row, change.next))).pipe(
     Effect.map((rows): Written => ({ change, took: rows.length > 0 })),
     Effect.tap(({ took }) =>
       took && isNewlyStalled(change)
-        ? parts.note({ kind: 'view_stalled', brain, name: row.name, version: row.version })
+        ? parts.note({ kind: 'view_stalled', playbook, name: row.name, version: row.version })
         : Effect.void,
     ),
   );
@@ -46,11 +50,11 @@ function writtenOne(parts: ChangeWriting, brain: string, change: ViewChange): Ef
 
 export function applied(
   parts: ChangeWriting,
-  brain: string,
+  playbook: string,
   pass: Pass,
   changes: readonly ViewChange[],
 ): Effect.Effect<Pass, DatabaseFailed> {
-  return Effect.forEach(changes, (change) => writtenOne(parts, brain, change)).pipe(
+  return Effect.forEach(changes, (change) => writtenOne(parts, playbook, change)).pipe(
     Effect.map((outcomes: readonly Written[]): Pass => ({
       rows: replaced(
         pass.rows,

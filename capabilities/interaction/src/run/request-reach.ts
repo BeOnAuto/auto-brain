@@ -1,6 +1,6 @@
 import { toolBounds, type ToolAccess, type ToolNotOffered } from '@beonauto/mcp';
 import type { ToolReference } from '@beonauto/mcp/policy';
-import { Unavailable, type BrainAddress, type Conflict } from '@beonauto/operations';
+import { Unavailable, type PlaybookAddress, type Conflict } from '@beonauto/operations';
 import { Effect, Result, type Schema } from 'effect';
 
 import { deliveryVariablesOf, renderedArguments, type ArgumentsFailure } from '../tool-blocks/rendered-arguments.ts';
@@ -9,29 +9,29 @@ import { unworkable } from './request-rendering.ts';
 
 export interface InteractionPorts {
   readonly tools: Pick<ToolAccess, 'named' | 'configured' | 'callOnce'>;
-  readonly openRequests: (brain: BrainAddress) => Effect.Effect<number>;
+  readonly openRequests: (playbook: PlaybookAddress) => Effect.Effect<number>;
   readonly mostOpenRequests: number;
 }
 
 export function offered(
   tools: readonly ToolReference[],
   ports: InteractionPorts,
-  brain: BrainAddress,
+  playbook: PlaybookAddress,
 ): Effect.Effect<void, Unavailable> {
-  return Result.match(ports.tools.named(brain, tools), {
+  return Result.match(ports.tools.named(playbook, tools), {
     onSuccess: () => Effect.void,
     onFailure: ({ because, detail }: Pick<ToolNotOffered, 'because' | 'detail'>) =>
       Effect.fail(new Unavailable({ detail, kind: 'tool_not_offered', because })),
   });
 }
 
-export function roomFor(ports: InteractionPorts, brain: BrainAddress): Effect.Effect<void, Unavailable> {
-  return Effect.flatMap(ports.openRequests(brain), (open) =>
+export function roomFor(ports: InteractionPorts, playbook: PlaybookAddress): Effect.Effect<void, Unavailable> {
+  return Effect.flatMap(ports.openRequests(playbook), (open) =>
     open < ports.mostOpenRequests
       ? Effect.void
       : Effect.fail(
           new Unavailable({
-            detail: `The brain holds ${open} open requests, the most it may; one must be answered, expire or be cancelled before another is asked`,
+            detail: `The playbook holds ${open} open requests, the most it may; one must be answered, expire or be cancelled before another is asked`,
             kind: 'requests_full',
           }),
         ),

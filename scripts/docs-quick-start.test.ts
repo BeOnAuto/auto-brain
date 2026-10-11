@@ -10,7 +10,7 @@ await test('the local quick start connects an agent and runs a first function wi
   assert.ok(readme.includes('](https://on.auto/docs/)'));
   const guide = readFileSync(join(docs, 'get-started/local.md'), 'utf8');
   assert.match(guide, /^# Quick start: connect your agent$/mu);
-  assert.ok(guide.includes('Start Auto Brain on your computer and connect Claude Code, Claude Desktop or Codex.'));
+  assert.ok(guide.includes('Start Auto Runtime on your computer and connect Claude Code, Claude Desktop or Codex.'));
   const walkthrough = [
     'pnpm dev\n',
     'curl http://localhost:8080/health',
@@ -18,18 +18,18 @@ await test('the local quick start connects an agent and runs a first function wi
     'Do not expose it through a tunnel or public proxy',
     'claude mcp add --transport http auto-brain http://localhost:8080/mcp',
     'codex mcp add auto-brain --url http://localhost:8080/mcp',
-    'Create a brain named Quickstart with id quickstart',
+    'Create a playbook named Quickstart with id quickstart',
     'reasoning function called check-brief',
     'ask it to run the saved function on:',
     'Promote our reporting tool to finance teams with a USD 5,000 budget.',
     'the recorded run, including its run id',
     'missing measurable goal',
-    '## 6. Give your brain tools',
+    '## 6. Give your playbook tools',
     'Create `auto-brain.yaml` at the root of the repository, which Git ignores, holding exactly this',
     'Authorization: Bearer ${SEARCH_API_KEY}',
     'The key never goes in `auto-brain.yaml`',
     'configuration.md#mcp-servers',
-    '## Hosted brains',
+    '## Hosted playbooks',
   ];
   for (const passage of walkthrough) assert.ok(guide.includes(passage), `Missing from the quick start: ${passage}`);
   const positions = walkthrough.map((passage) => guide.indexOf(passage));
@@ -38,13 +38,13 @@ await test('the local quick start connects an agent and runs a first function wi
     positions.toSorted((earlier, later) => earlier - later),
   );
   assert.doesNotMatch(guide, /<details>|workspace's MCP URL|pnpm dev:lean/u);
-  const setup = guide.slice(guide.indexOf('This setup'), guide.indexOf('## Hosted brains'));
+  const setup = guide.slice(guide.indexOf('This setup'), guide.indexOf('## Hosted playbooks'));
   assert.ok(setup.startsWith('This setup is for macOS or Linux. You need [Git]'));
   assert.doesNotMatch(setup, /Auto Cloud|request-invite|account/iu);
-  const hosted = guide.split('## Hosted brains')[1];
+  const hosted = guide.split('## Hosted playbooks')[1];
   assert.ok(hosted !== undefined);
   assert.ok(hosted.includes('Auto Cloud is currently invite-only'));
-  assert.ok(hosted.includes('You can also host your own brain'));
+  assert.ok(hosted.includes('You can also host your own playbook'));
   assert.ok(hosted.includes('](https://on.auto/request-invite)'));
   assert.ok(hosted.includes('](../self-host.md)'));
 });

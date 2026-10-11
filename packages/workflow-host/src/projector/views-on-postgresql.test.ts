@@ -44,7 +44,7 @@ async function aRunLeftOpen(connectionString: string, output: string): Promise<C
   const client = new Client({ connectionString });
   await client.connect();
   onTestFinished(() => client.end());
-  const stream = `brain/acme/alpha/runs/${randomUUID()}`;
+  const stream = `playbook/acme/alpha/runs/${randomUUID()}`;
   const definition = {
     definition_type: 'reasoning',
     name: 'late',
@@ -57,7 +57,7 @@ async function aRunLeftOpen(connectionString: string, output: string): Promise<C
   await client.query('BEGIN');
   await client.query(
     `SELECT success FROM emt_append_to_stream(
-      ARRAY[$4], ARRAY[$1::jsonb], ARRAY[$5::jsonb], ARRAY['1'], ARRAY['run_succeeded'], ARRAY['E'], $2, 'brain', $3, 'emt:default')`,
+      ARRAY[$4], ARRAY[$1::jsonb], ARRAY[$5::jsonb], ARRAY['1'], ARRAY['run_succeeded'], ARRAY['E'], $2, 'playbook', $3, 'emt:default')`,
     [{ json: JSON.stringify(event) }, stream, 0, metadata.messageId, metadata],
   );
   return client;

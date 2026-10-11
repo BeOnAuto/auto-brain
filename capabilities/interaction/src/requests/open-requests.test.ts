@@ -5,7 +5,7 @@ import { openRequests } from './open-requests.ts';
 
 const message = { id: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a', position: 2 };
 
-const fact = { by: 'brain:alpha', at: '2026-10-07T09:00:00.000Z', name: 'approve-brief', definition_version: 1 };
+const fact = { by: 'playbook:alpha', at: '2026-10-07T09:00:00.000Z', name: 'approve-brief', definition_version: 1 };
 
 const deliver = { server: 'chat', tool: 'post_message', with: { text: '{{ message }}' } };
 

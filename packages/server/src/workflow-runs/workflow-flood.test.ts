@@ -22,7 +22,7 @@ afterEach(async () => {
 
 async function waitingRun(): Promise<string> {
   server = await servingWorkflows([]);
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   await server.call('POST', `${alpha}/definitions/workflow`, { body: { name: 'waiting', source: waiting } });
   const started = await server.call('POST', `${alpha}/definitions/workflow/waiting/run`, { body: { input: {} } });
   return runIdIn(started.body);

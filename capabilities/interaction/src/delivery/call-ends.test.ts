@@ -9,7 +9,7 @@ const answered = {
   annotations: undefined,
 } as const;
 
-describe('the end of one call of a tool the brain makes', () => {
+describe('the end of one call of a tool the playbook makes', () => {
   it('is what the tool answered, its structured content where it gave one', () => {
     expect([
       endOfCall({
@@ -32,7 +32,7 @@ describe('the end of one call of a tool the brain makes', () => {
     ]);
   });
 
-  it('is a failure in the words every call of the brain shares, and an interrupted call lost', () => {
+  it('is a failure in the words every call of the playbook shares, and an interrupted call lost', () => {
     expect([
       endOfCall({
         ...answered,

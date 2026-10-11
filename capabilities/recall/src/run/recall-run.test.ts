@@ -39,7 +39,7 @@ describe('a run of a recall function', { timeout: workerTestTimeoutMs }, () => {
           output_bytes: 70,
           view: {
             version: 1,
-            checkpoint: 'YnJhaW4vYWNtZS9hbHBoYS8sNDI',
+            checkpoint: 'cGxheWJvb2svYWNtZS9hbHBoYS8sNDI',
             checkpoint_at: '2026-10-06T10:00:05.000Z',
             folded: 5,
             last_event: { id: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1b', time: '2026-10-06T10:00:04.000Z' },
@@ -101,7 +101,7 @@ describe('a run of a recall function whose view is not ready', { timeout: worker
       Exit.fail(
         new Unavailable({
           detail:
-            "The recall function “reviews” is building its view of version 1 from the brain's history: it has folded 40 events so far, and is 30 seconds behind the brain's newest record; try again in a little while",
+            "The recall function “reviews” is building its view of version 1 from the playbook's history: it has folded 40 events so far, and is 30 seconds behind the playbook's newest record; try again in a little while",
           kind: 'rebuilding',
         }),
       ),
@@ -116,7 +116,7 @@ describe('a run of a recall function whose view is not ready', { timeout: worker
       Exit.fail(
         new Conflict({
           detail:
-            "The view of the recall function “reviews” stopped at the run_succeeded event of 2026-10-06T10:00:01.000Z: its fold raised an error on line 31. Save a corrected version to build the view again from the brain's history",
+            "The view of the recall function “reviews” stopped at the run_succeeded event of 2026-10-06T10:00:01.000Z: its fold raised an error on line 31. Save a corrected version to build the view again from the playbook's history",
           kind: 'stalled',
         }),
       ),

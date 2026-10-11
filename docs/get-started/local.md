@@ -1,10 +1,10 @@
 ---
-description: Start Auto Brain on your computer and connect Claude Code, Claude Desktop or Codex.
+description: Start Auto Runtime on your computer and connect Claude Code, Claude Desktop or Codex.
 ---
 
 # Quick start: connect your agent
 
-Run Auto Brain on your computer and use your agent to create a reusable function.
+Run Auto Runtime on your computer and use your agent to create a reusable function.
 
 ::: info Auto Cloud
 Our hosted option is currently invite-only. [Request an invitation](https://on.auto/request-invite).
@@ -12,7 +12,7 @@ Our hosted option is currently invite-only. [Request an invitation](https://on.a
 
 This setup is for macOS or Linux. You need [Git](https://git-scm.com/downloads), [pnpm](https://pnpm.io/installation), and an agent such as Claude Code or Codex on the same computer. The Claude Desktop instructions below are for macOS. To run a reasoning function, Auto also needs access to a model provider. Your agent's subscription does not supply the server's model credentials.
 
-## 1. Install Auto Brain
+## 1. Install Auto Runtime
 
 Copy the Agent prompt into a coding agent with terminal access, or use the Manual tab to install it yourself.
 
@@ -118,10 +118,10 @@ If Desktop cannot find `npx`, use the full path to your `npx` executable as `com
 Ask your connected agent:
 
 ```text
-Use the auto-brain connection to list my brains and available models.
+Use the auto-brain connection to list my playbooks and available models.
 Help me choose a concrete model or alias my configured provider supports.
-Create a brain named Quickstart with id quickstart, or reuse it if it exists.
-In that brain, prepare a reasoning function called check-brief. It accepts a
+Create a playbook named Quickstart with id quickstart, or reuse it if it exists.
+In that playbook, prepare a reasoning function called check-brief. It accepts a
 brief as text and checks for an audience, a budget and a measurable goal.
 Show me the definition before saving it; do not overwrite an existing one.
 ```
@@ -134,11 +134,11 @@ Promote our reporting tool to finance teams with a USD 5,000 budget.
 
 Ask for the result and the recorded run, including its run id. The review should identify the missing measurable goal. A concrete model or configured alias is required; a wildcard such as `provider/*` is not a model to run.
 
-A client that shows MCP prompts also offers the brain's own recipes: `first-brain` makes a first brain this way, and `remember`, `give-tools` and `schedule` make a brain remember what its functions answered, give a function tools and run a workflow on a schedule. The agent reads the same recipes, and the format of each kind of definition, with `get_guide`.
+A client that shows MCP prompts also offers the playbook's own recipes: `first-playbook` makes a first playbook this way, and `remember`, `give-tools` and `schedule` make a playbook remember what its functions answered, give a function tools and run a workflow on a schedule. The agent reads the same recipes, and the format of each kind of definition, with `get_guide`.
 
-For a second run and a comparison of the results, continue with [Build your first brain](../tutorials/first-brain.md).
+For a second run and a comparison of the results, continue with [Build your first playbook](../tutorials/first-playbook.md).
 
-## 6. Give your brain tools
+## 6. Give your playbook tools
 
 A reasoning function can use the tools of an MCP server, such as a search service. You tell Auto about the server in a settings file, `auto-brain.yaml`, and keep the server's key in `.env`.
 
@@ -158,7 +158,7 @@ A reasoning function can use the tools of an MCP server, such as a search servic
 4. Ask your agent to make a function that can use the server:
 
    ```text
-   In the quickstart brain, create a reasoning function that uses the search
+   In the quickstart playbook, create a reasoning function that uses the search
    tools to find recent news about a company and sums it up in three points.
    ```
 
@@ -181,8 +181,8 @@ Definitions and run history are saved in the local ledger at `packages/server/.d
 
 The runtime is in early development and is not ready for production use.
 
-## Hosted brains
+## Hosted playbooks
 
 Auto Cloud is currently invite-only. [Request an invitation](https://on.auto/request-invite).
 
-You can also host your own brain. See the [self-hosting guide](../self-host.md) for deployment options and support.
+You can also host your own playbook. See the [self-hosting guide](../self-host.md) for deployment options and support.

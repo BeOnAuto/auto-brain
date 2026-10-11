@@ -4,7 +4,7 @@ import { Effect } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
-import { definitionStreamsPlan, theBrainIndexes } from '../postgresql-reads/index-checks.ts';
+import { definitionStreamsPlan, thePlaybookIndexes } from '../postgresql-reads/index-checks.ts';
 import { details, happenings } from '../testing/happenings.ts';
 import { ledgerBehaviour } from '../testing/ledger-behaviour.ts';
 import type { LedgerEntry } from '../testing/ledger-entry.ts';
@@ -124,7 +124,7 @@ describe.skipIf(skipped)(`The ledger on PostgreSQL${notice}`, { timeout: 30_000 
 
 type RecordedSelection = Parameters<OpenLedger['ledger']['readRecorded']>[1];
 
-const alpha = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
 const noMetadata: Readonly<Record<string, string>> = {};
 
@@ -135,7 +135,7 @@ async function anAppendLeftOpen(database: string, stream: string, type: string, 
   await client.query('BEGIN');
   await client.query(
     `SELECT success FROM emt_append_to_stream(
-      ARRAY['late-1'], ARRAY[$1::jsonb], ARRAY[$4::jsonb], ARRAY['1'], ARRAY[$2], ARRAY['E'], $3, 'brain', 0, 'emt:default')`,
+      ARRAY['late-1'], ARRAY[$1::jsonb], ARRAY[$4::jsonb], ARRAY['1'], ARRAY[$2], ARRAY['E'], $3, 'playbook', 0, 'emt:default')`,
     [{ json: JSON.stringify({ type, detail: 'late' }) }, type, stream, meta],
   );
   return client;
@@ -159,10 +159,10 @@ function reading(ledger: OpenLedger['ledger'], selection: RecordedSelection, ord
 }
 
 function noting(ledger: OpenLedger['ledger'], stream: string, type: string, detail: string): Promise<unknown> {
-  return Effect.runPromise(ledger.execute(`brain/acme/alpha/${stream}`, happenings, [{ type, detail }]));
+  return Effect.runPromise(ledger.execute(`playbook/acme/alpha/${stream}`, happenings, [{ type, detail }]));
 }
 
-const root = 'brain/acme/alpha/runs/root';
+const root = 'playbook/acme/alpha/runs/root';
 const ofTheRoot = { causationId: null, correlationId: 'root' };
 
 function notingOfRoot(ledger: OpenLedger['ledger'], type: string, detail: string): Promise<unknown> {
@@ -187,7 +187,7 @@ describe.skipIf(skipped)(`A read on PostgreSQL while an append is still open${no
     const { database, ledger } = await aLedgerOnItsOwnDatabase();
     await noting(ledger, 'notes', 'noted', 'before');
     await untilReadable(database);
-    const open = await anAppendLeftOpen(database, 'brain/acme/alpha/late', 'noted');
+    const open = await anAppendLeftOpen(database, 'playbook/acme/alpha/late', 'noted');
     await noting(ledger, 'notes', 'noted', 'after');
 
     const whileOpen = await reading(ledger, everything, 'asc');
@@ -201,7 +201,7 @@ describe.skipIf(skipped)(`A read on PostgreSQL while an append is still open${no
   it('newest first, reads every message committed, the one committed after it included', async () => {
     const { database, ledger } = await aLedgerOnItsOwnDatabase();
     await noting(ledger, 'notes', 'noted', 'before');
-    const open = await anAppendLeftOpen(database, 'brain/acme/alpha/late', 'noted');
+    const open = await anAppendLeftOpen(database, 'playbook/acme/alpha/late', 'noted');
     await noting(ledger, 'notes', 'noted', 'after');
 
     const whileOpen = await reading(ledger, everything, 'desc');
@@ -219,7 +219,7 @@ describe.skipIf(skipped)(`A read on PostgreSQL while an append is still open${no
     const correlated: RecordedSelection = { kind: 'correlated', correlation: 'root' };
     await notingOfRoot(ledger, 'run_started', 'before');
     await untilReadable(database);
-    const child = 'brain/acme/alpha/runs/child';
+    const child = 'playbook/acme/alpha/runs/child';
     const open = await anAppendLeftOpen(database, child, 'run_started', { correlationId: 'root' });
     await notingOfRoot(ledger, 'run_succeeded', 'after');
 
@@ -240,7 +240,7 @@ describe.skipIf(skipped)(
       const { database, ledger } = await aLedgerOnItsOwnDatabase();
       await noting(ledger, 'runs/r-before', 'run_started', 'before');
       await untilReadable(database);
-      const open = await anAppendLeftOpen(database, 'brain/acme/alpha/runs/r-late', 'run_started');
+      const open = await anAppendLeftOpen(database, 'playbook/acme/alpha/runs/r-late', 'run_started');
       await noting(ledger, 'runs/r-after', 'run_started', 'after');
 
       const whileOpen = await reading(ledger, runs, 'asc');
@@ -266,7 +266,7 @@ describe.skipIf(skipped)(
   },
 );
 
-describe.skipIf(skipped)(`The brain's indexes on PostgreSQL${notice}`, { timeout: 30_000 }, () => {
+describe.skipIf(skipped)(`The playbook's indexes on PostgreSQL${notice}`, { timeout: 30_000 }, () => {
   it('are created when the ledger opens, once however often it opens', async () => {
     const database = await aDatabase();
     const first = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
@@ -279,12 +279,12 @@ describe.skipIf(skipped)(`The brain's indexes on PostgreSQL${notice}`, { timeout
         database,
         "SELECT indexname, indexdef FROM pg_indexes WHERE tablename IN ('emt_messages', 'emt_streams') AND indexname LIKE 'ledger%' ORDER BY indexname",
       ),
-    ).toEqual(theBrainIndexes);
+    ).toEqual(thePlaybookIndexes);
   });
 
   it('are found, not created again, by a start that an append left open does not hold up', async () => {
     const { database } = await aLedgerOnItsOwnDatabase();
-    const open = await anAppendLeftOpen(database, 'brain/acme/alpha/late', 'noted');
+    const open = await anAppendLeftOpen(database, 'playbook/acme/alpha/late', 'noted');
 
     const started = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
     await started.dispose();

@@ -45,7 +45,7 @@ export default function (input: Input): Output {
 }
 ```
 
-`Input` and `Output` are the input and output schemas as TypeScript types, which the runtime declares for the program; see [Types](#types). For this document, `create_definition` takes `type: "computation"`, a function `name` such as `campaign-pace`, and the document as `source`. `run_definition` takes the same type and name, with `rows` and `period` in the `input` object. Both operations also require the brain id unless the MCP connection is scoped to that brain.
+`Input` and `Output` are the input and output schemas as TypeScript types, which the runtime declares for the program; see [Types](#types). For this document, `create_definition` takes `type: "computation"`, a function `name` such as `campaign-pace`, and the document as `source`. `run_definition` takes the same type and name, with `rows` and `period` in the `input` object. Both operations also require the playbook id unless the MCP connection is scoped to that playbook.
 
 Given this input:
 
@@ -89,7 +89,7 @@ the run succeeds with this output, and its record shows that it spent 0 checkpoi
 | Field           | Purpose                                                                                         |
 | --------------- | ----------------------------------------------------------------------------------------------- |
 | `description`   | Optional explanation, 1 to 1,000 characters                                                     |
-| `language`      | Required; `typescript`, the brain's one language                                                |
+| `language`      | Required; `typescript`, the playbook's one language                                             |
 | `input.schema`  | Optional JSON Schema of the input; the input may be any JSON value it allows                    |
 | `output.schema` | Optional JSON Schema of the output; an output that does not match it ends the run as a conflict |
 
@@ -118,7 +118,7 @@ The document is checked when it is saved, with the TypeScript compiler, in the s
 | `async`, `await` or a generator exported                                                                                                          | `The program is a function that answers at once; it awaits nothing`                                                                                                                |
 | More than 500 assignments to variables in one function, `+=`, `++` and the like among them, at the 501st                                          | `A function may assign to its variables at most 500 times, since the compiler's analysis of each assignment grows with the others; keep the values in a list, an object or a loop` |
 | A name the sandbox lacks: `fetch`, `setTimeout`, `console`, `process`, `Intl`, `Math.random`, `WeakRef`, `Promise`, a local-time method of `Date` | The compiler's `Cannot find name` or `Property does not exist`                                                                                                                     |
-| `language` other than `typescript`                                                                                                                | `The brain's one language is TypeScript; write the program as a TypeScript function`                                                                                               |
+| `language` other than `typescript`                                                                                                                | `The playbook's one language is TypeScript; write the program as a TypeScript function`                                                                                            |
 
 A program that is checked can still raise an error when it runs, such as `throw new Error("no rows")` or reading a field of `null`; see [How a run ends](#how-a-run-ends). The check runs on a worker of its own beside the runs, which the server starts and warms before it takes a request. Its cost is the compiler's, and it depends on the server and on how much the types make the compiler work. A save allows the check 2 seconds of the server's wall-clock time, counted from a ready checker: a check that does not answer within them leaves the document unsaved, `invalid_input`; simplify its types or split the program. A busy server may also have slowed the check, so a document near the bound may pass when it is saved again later. A save that finds no checker ready is `unavailable`; save it again.
 
@@ -183,7 +183,7 @@ Measured on Node 26.10.0 on an Apple M4 Max, the example over 3,911 rows took 4.
 
 ## In a workflow
 
-A workflow calls a computation function as it calls a reasoning function, with `call: run_definition` and `type: computation`, and the task's output is the function's output; see [Calling a function](workflow-format.md#calling-a-function). The function reaches nothing outside the brain, so a workflow may run it again freely: its result does not depend on how often it ran.
+A workflow calls a computation function as it calls a reasoning function, with `call: run_definition` and `type: computation`, and the task's output is the function's output; see [Calling a function](workflow-format.md#calling-a-function). The function reaches nothing outside the playbook, so a workflow may run it again freely: its result does not depend on how often it ran.
 
 A run rejected with `conflict` raises a `runtime` error with status 409, and the error's `kind` is `unworkable`, whether the program raised, did too much work or used too much memory. A retry gives the same result for the same input, so a retry policy should not match it: retry on status 503, which a run that was `unavailable` raises, as the example below does.
 

@@ -1,5 +1,5 @@
 import type {
-  BrainAddress,
+  PlaybookAddress,
   Decider,
   Ledger,
   RecordedEvent,
@@ -24,7 +24,7 @@ export type AnyLedger = Ledger['Service'];
 
 export type LedgerMaker = () => Promise<AnyLedger>;
 
-export const alpha: BrainAddress = { org: 'acme', brain: 'alpha' };
+export const alpha: PlaybookAddress = { org: 'acme', playbook: 'alpha' };
 
 export function happen(ledger: AnyLedger, stream: string, ...happened: readonly Happened[]): Promise<unknown> {
   return Effect.runPromise(ledger.execute(stream, happenings, happened));
@@ -38,9 +38,9 @@ export function reading(
   ledger: AnyLedger,
   selection: RecordedSelection,
   page: RecordedPageRequest,
-  brain: BrainAddress = alpha,
+  playbook: PlaybookAddress = alpha,
 ): Promise<RecordedPage> {
-  return Effect.runPromise(ledger.readRecorded(brain, selection, page));
+  return Effect.runPromise(ledger.readRecorded(playbook, selection, page));
 }
 
 const decodeHappened = Schema.decodeUnknownSync(Schema.Struct({ detail: Schema.Json }));
@@ -58,5 +58,5 @@ export function streamsAndTypes({ records }: RecordedPage): readonly string[] {
 }
 
 export function inAlpha(relative: string): string {
-  return `brain/acme/alpha/${relative}`;
+  return `playbook/acme/alpha/${relative}`;
 }

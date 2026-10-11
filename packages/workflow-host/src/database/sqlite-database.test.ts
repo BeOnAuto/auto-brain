@@ -24,8 +24,8 @@ describe('the host database on SQLite', () => {
       [
         'workflow_calls',
         'workflow_due',
-        'workflow_followed_brains',
         'workflow_followed_orgs',
+        'workflow_followed_playbooks',
         'workflow_followed_scans',
         'workflow_leases',
         'workflow_listener_types',

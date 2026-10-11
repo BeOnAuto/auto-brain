@@ -2,14 +2,14 @@ import { Conflict } from '@beonauto/operations';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { brainFactOf } from '../events/brain-facts.ts';
+import { playbookFactOf } from '../events/playbook-facts.ts';
 import type { RunCommand, ReplyFact } from '../runs/run-commands.ts';
 import { runDecider } from '../runs/run-decider.ts';
 import type { RunEvent } from '../runs/run-events.ts';
 
 const start = { by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
 
-const during = { by: 'brain:alpha', at: '2026-10-01T09:00:07.000Z' };
+const during = { by: 'playbook:alpha', at: '2026-10-01T09:00:07.000Z' };
 
 const ofApproval = { definition_type: 'interaction', name: 'approve-brief', definition_version: 3 };
 
@@ -134,7 +134,7 @@ describe('a reply the run has already seen, or may no longer take', () => {
 function recordOf(fact: ReplyFact) {
   return {
     id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
-    cursor: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
+    cursor: 'WyJwbGF5Ym9vay9hY21lL2FscGhhLyIsIjEiXQ',
     causationId: null,
     correlationId: null,
     stream: 'runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
@@ -145,8 +145,11 @@ function recordOf(fact: ReplyFact) {
   };
 }
 
-describe('the replies of a run as facts of the brain', () => {
+describe('the replies of a run as facts of the playbook', () => {
   it('are none, so no recall function folds them and no trigger fires on them', () => {
-    expect([brainFactOf(recordOf(taken)), brainFactOf(recordOf(refusal('1699.3')))]).toEqual([undefined, undefined]);
+    expect([playbookFactOf(recordOf(taken)), playbookFactOf(recordOf(refusal('1699.3')))]).toEqual([
+      undefined,
+      undefined,
+    ]);
   });
 });

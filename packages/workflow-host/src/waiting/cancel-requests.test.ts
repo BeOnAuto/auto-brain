@@ -3,7 +3,7 @@ import { Conflict, messageIdOf } from '@beonauto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { alpha, at, recorded } from '../reaction-testing/brain-writes.ts';
+import { alpha, at, recorded } from '../reaction-testing/playbook-writes.ts';
 import { eventually } from '../testing/eventually.ts';
 import { runAt, startOf, workflow } from '../testing/host-documents.ts';
 import { followedHost } from '../waiting-testing/followed-host.ts';
@@ -62,7 +62,7 @@ describe('a cancel request on a workflow run', () => {
     const settlement = await settled(runId);
     const { records } = await Effect.runPromise(
       recordedReaderOf(database.store)(
-        { org: 'acme', brain: 'alpha' },
+        { org: 'acme', playbook: 'alpha' },
         { kind: 'run', run: runId },
         { order: 'desc', limit: 1, dataOf: [] },
       ),
@@ -86,7 +86,7 @@ describe('a cancel request on a run of another capability', () => {
 
     expect(handed).toEqual([
       {
-        run: { org: 'acme', brain: 'alpha', id: runId },
+        run: { org: 'acme', playbook: 'alpha', id: runId },
         request: { kind: 'requested', reason: 'Not needed any more', by: 'acme-admin' },
         lineage: { causationId: requestId, correlationId: 'root-1' },
       },
@@ -116,8 +116,8 @@ describe('a cancel request recorded before the host started the workflow', () =>
 
 function asked(data: unknown, type = 'run_cancel_requested') {
   return {
-    brain: { org: 'acme', brain: 'alpha' },
-    brainKey: alpha,
+    playbook: { org: 'acme', playbook: 'alpha' },
+    playbookKey: alpha,
     record: {
       id: requestId,
       cursor: 'c',
@@ -150,7 +150,7 @@ const endingOfAnotherCapability = {
   definition_type: 'interaction',
   name: 'ask',
   definition_version: 1,
-  by: 'brain:alpha',
+  by: 'playbook:alpha',
   at,
 };
 
@@ -171,7 +171,7 @@ describe('the consumer of cancel requests', () => {
       type: 'run_cancel_requested',
       kind: 'requested',
       reason: 'Gone',
-      by: 'brain:alpha',
+      by: 'playbook:alpha',
       at,
     };
     const batches = await Effect.runPromise(

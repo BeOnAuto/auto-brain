@@ -19,83 +19,85 @@ const channel = '#approvals-sales';
 
 const flat = { document: threadDocument({ replies: flatReplies }) };
 
-async function delivered(brain: ChatHarness, ...runIds: readonly string[]): Promise<readonly string[]> {
-  await Promise.all(runIds.map((runId) => brain.askInThread(runId)));
-  await brain.performDue(Date.now());
-  return brain.chat.posted().map(({ ts }) => ts);
+async function delivered(playbook: ChatHarness, ...runIds: readonly string[]): Promise<readonly string[]> {
+  await Promise.all(runIds.map((runId) => playbook.askInThread(runId)));
+  await playbook.performDue(Date.now());
+  return playbook.chat.posted().map(({ ts }) => ts);
 }
 
 describe('a reply in a conversation with several open requests', () => {
   it('answers the request whose message its thread began with, and none other', async () => {
-    const brain = await chatHarness();
-    const [, secondThread] = await delivered(brain, first, second);
-    brain.chat.reply({ channel, thread: secondThread, user: answererId, text: 'approve' });
+    const playbook = await chatHarness();
+    const [, secondThread] = await delivered(playbook, first, second);
+    playbook.chat.reply({ channel, thread: secondThread, user: answererId, text: 'approve' });
 
-    await brain.performReads(Date.now() + farAhead);
+    await playbook.performReads(Date.now() + farAhead);
 
-    expect([await brain.runOf(first), await brain.runOf(second)]).toMatchObject([
+    expect([await playbook.runOf(first), await playbook.runOf(second)]).toMatchObject([
       { output: { status: 'started' } },
       { output: { status: 'succeeded', output: { choice: 'approve' } } },
     ]);
   });
 
   it('is refused as ambiguous on the newest when it names no message, and the party told to reply to one', async () => {
-    const brain = await chatHarness(flat);
-    await delivered(brain, first, second);
-    brain.chat.reply({ channel, user: answererId, text: 'approve' });
+    const playbook = await chatHarness(flat);
+    await delivered(playbook, first, second);
+    playbook.chat.reply({ channel, user: answererId, text: 'approve' });
 
-    await brain.performReads(Date.now() + farAhead);
+    await playbook.performReads(Date.now() + farAhead);
 
-    expect(await recordsOf(brain.ledger, 'reply_refused')).toMatchObject([
+    expect(await recordsOf(playbook.ledger, 'reply_refused')).toMatchObject([
       { data: { because: 'ambiguous', told: true } },
     ]);
-    expect(brain.chat.posted().at(-1)?.text).toBe(
+    expect(playbook.chat.posted().at(-1)?.text).toBe(
       'Several questions are open here; reply to the message of the one you answer.',
     );
   });
 
   it('answers the one open request of a conversation when it names no message', async () => {
-    const brain = await chatHarness(flat);
-    await delivered(brain, first);
-    brain.chat.reply({ channel, user: answererId, text: 'yes' });
+    const playbook = await chatHarness(flat);
+    await delivered(playbook, first);
+    playbook.chat.reply({ channel, user: answererId, text: 'yes' });
 
-    await brain.performReads(Date.now() + farAhead);
+    await playbook.performReads(Date.now() + farAhead);
 
-    expect(await brain.runOf(first)).toMatchObject({ output: { status: 'succeeded', output: { choice: 'approve' } } });
+    expect(await playbook.runOf(first)).toMatchObject({
+      output: { status: 'succeeded', output: { choice: 'approve' } },
+    });
   });
 });
 
-function readAgain(brain: ChatHarness, thread: string, ts: string, text: string) {
-  brain.chat.answerNext(answered({ messages: [{ ts, user: answererId, text, thread_ts: thread }] }));
+function readAgain(playbook: ChatHarness, thread: string, ts: string, text: string) {
+  playbook.chat.answerNext(answered({ messages: [{ ts, user: answererId, text, thread_ts: thread }] }));
 }
 
-describe('a reply the brain has already met', () => {
+describe('a reply the playbook has already met', () => {
   it('takes the first answer of a read, and a second reply with other words takes nothing', async () => {
-    const brain = await chatHarness();
-    const [thread] = await delivered(brain, first);
-    brain.chat.reply({ channel, thread, user: answererId, text: 'approve' });
-    brain.chat.reply({ channel, thread, user: answererId, text: 'reject' });
+    const playbook = await chatHarness();
+    const [thread] = await delivered(playbook, first);
+    playbook.chat.reply({ channel, thread, user: answererId, text: 'approve' });
+    playbook.chat.reply({ channel, thread, user: answererId, text: 'reject' });
 
-    await brain.performReads(Date.now() + farAhead);
+    await playbook.performReads(Date.now() + farAhead);
 
-    expect((await recordsOf(brain.ledger, 'reply_taken', 'reply_refused')).map(({ type }) => type)).toEqual([
+    expect((await recordsOf(playbook.ledger, 'reply_taken', 'reply_refused')).map(({ type }) => type)).toEqual([
       'reply_taken',
     ]);
-    expect(await brain.runOf(first)).toMatchObject({ output: { output: { choice: 'approve' } } });
+    expect(await playbook.runOf(first)).toMatchObject({ output: { output: { choice: 'approve' } } });
   });
 
   it('refuses a reply read twice once, and tells the party once', async () => {
-    const brain = await chatHarness();
-    const [thread = ''] = await delivered(brain, first);
-    const maybe = brain.chat.reply({ channel, thread, user: answererId, text: 'maybe' });
-    await brain.performReads(Date.now() + farAhead);
-    readAgain(brain, thread, maybe, 'maybe');
+    const playbook = await chatHarness();
+    const [thread = ''] = await delivered(playbook, first);
+    const maybe = playbook.chat.reply({ channel, thread, user: answererId, text: 'maybe' });
+    await playbook.performReads(Date.now() + farAhead);
+    readAgain(playbook, thread, maybe, 'maybe');
 
-    await brain.performReads(Date.now() + 2 * farAhead);
+    await playbook.performReads(Date.now() + 2 * farAhead);
 
-    expect(await recordsOf(brain.ledger, 'reply_refused')).toHaveLength(1);
-    expect(brain.chat.posted()).toHaveLength(2);
-    expect(brain.chat.calls().map(({ reference }) => reference.tool)).toEqual([
+    expect(await recordsOf(playbook.ledger, 'reply_refused')).toHaveLength(1);
+    expect(playbook.chat.posted()).toHaveLength(2);
+    expect(playbook.chat.calls().map(({ reference }) => reference.tool)).toEqual([
       'post_message',
       'thread_replies',
       'post_message',
@@ -104,15 +106,15 @@ describe('a reply the brain has already met', () => {
   });
 
   it('takes nothing for a request whose run is being cancelled', async () => {
-    const brain = await chatHarness();
-    const [thread] = await delivered(brain, first);
-    await brain.cancel(first);
-    brain.chat.reply({ channel, thread, user: answererId, text: 'approve' });
+    const playbook = await chatHarness();
+    const [thread] = await delivered(playbook, first);
+    await playbook.cancel(first);
+    playbook.chat.reply({ channel, thread, user: answererId, text: 'approve' });
 
-    await brain.performReads(Date.now() + farAhead);
+    await playbook.performReads(Date.now() + farAhead);
 
-    expect(await recordsOf(brain.ledger, 'reply_taken', 'reply_refused')).toEqual([]);
-    expect(await brain.firstOpen()).toMatchObject({ standing: 'cancelling' });
-    expect(brain.chat.calls().map(({ reference }) => reference.tool)).toEqual(['post_message']);
+    expect(await recordsOf(playbook.ledger, 'reply_taken', 'reply_refused')).toEqual([]);
+    expect(await playbook.firstOpen()).toMatchObject({ standing: 'cancelling' });
+    expect(playbook.chat.calls().map(({ reference }) => reference.tool)).toEqual(['post_message']);
   });
 });

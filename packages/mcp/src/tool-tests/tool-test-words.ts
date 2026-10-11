@@ -28,9 +28,9 @@ export function toolTestAttempted({ server, tool }: TestAsked): string {
 
 export const toolTestRemedies: Remedies = {
   mcp_server_not_configured:
-    'This can be put right on your side: list_tool_servers shows the tool servers this brain may use, so a test that names one of those can be tried.',
+    'This can be put right on your side: list_tool_servers shows the tool servers this playbook may use, so a test that names one of those can be tried.',
   tool_not_allowed:
-    'This can be put right on your side: list_tool_servers shows the tools this brain may use, which whoever runs the server allows, so a test that names one of those can be tried.',
+    'This can be put right on your side: list_tool_servers shows the tools this playbook may use, which whoever runs the server allows, so a test that names one of those can be tried.',
   tool_not_listed:
     'This can be put right on your side: list_tool_servers shows the tools each tool server has, so a test that names one of those can be tried.',
 };

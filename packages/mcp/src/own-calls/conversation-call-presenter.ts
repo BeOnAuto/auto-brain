@@ -31,7 +31,7 @@ const failedReadWords: Readonly<Record<Exclude<ReadOutcome, 'result'>, string>> 
   timed_out: `the tool server did not answer within ${counted.format(toolBounds.callMs / 1000)} seconds`,
   unreadable: 'what the tool answered could not be read as a list of replies',
   too_large: `the tool answered more than the ${counted.format(toolBounds.resultBytes)} bytes a read may take`,
-  tool_not_offered: 'the tool server no longer offers the tool to this brain',
+  tool_not_offered: 'the tool server no longer offers the tool to this playbook',
   not_sent: 'its arguments could not be rendered, so nothing was sent',
 };
 
@@ -95,8 +95,8 @@ function readAccount(event: RepliesRead) {
   const where = `the conversation ${quoted(named(event.conversation))} ${throughTheTool(event)}`;
   const summary =
     event.outcome === 'result'
-      ? `The brain looked for new replies in ${where} and found ${event.replies}, took ${event.taken} as an answer and refused ${event.refused}.`
-      : `The brain could not read the replies of ${where}: ${failedReadWords[event.outcome]}.`;
+      ? `The playbook looked for new replies in ${where} and found ${event.replies}, took ${event.taken} as an answer and refused ${event.refused}.`
+      : `The playbook could not read the replies of ${where}: ${failedReadWords[event.outcome]}.`;
   return {
     summary,
     data: {
@@ -120,7 +120,7 @@ function accountOf(event: ConversationCallEvent) {
   }
   if (event.type === 'telling_started') {
     return {
-      summary: `The brain told the party how to answer ${throughTheTool(event)}.`,
+      summary: `The playbook told the party how to answer ${throughTheTool(event)}.`,
       data: { ...startShown(event, toolBounds.shownContentBytes), run_id: named(event.run_id) },
     };
   }

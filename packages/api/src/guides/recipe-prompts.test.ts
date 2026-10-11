@@ -111,7 +111,7 @@ describe('a recipe asked without any arguments at all', () => {
 describe('the prompts of a connection', () => {
   it('are the recipes whose every tool the connection lists for its key', async () => {
     const listed = await Promise.all([
-      promptsListedOn('/orgs/acme/brains/alpha/mcp', acmeAdmin.key),
+      promptsListedOn('/orgs/acme/playbooks/alpha/mcp', acmeAdmin.key),
       promptsListedOn('/orgs/acme/mcp', acmeAdmin.key),
       promptsListedOn('/mcp', acmeReader.key),
     ]);

@@ -6,7 +6,7 @@ import {
   type StartedFields,
 } from '@beonauto/mcp';
 import type { ToolReference } from '@beonauto/mcp/policy';
-import { brainCallerOf, streamPrefixOfBrain, type StreamWriter } from '@beonauto/operations';
+import { playbookCallerOf, streamPrefixOfPlaybook, type StreamWriter } from '@beonauto/operations';
 import { DateTime, Effect } from 'effect';
 
 import type { ReadingState } from '../replies/reply-recording.ts';
@@ -25,10 +25,10 @@ export interface ReadRecord {
 
 export function recordedRead(
   ledger: StreamWriter,
-  { brain, row }: ConversationPlace,
+  { playbook, row }: ConversationPlace,
   { start, called, detail, answer, state, callId, since }: ReadRecord,
 ): Effect.Effect<void> {
-  const stream = `${streamPrefixOfBrain(brain)}${conversationCallStreamOf(callId)}`;
+  const stream = `${streamPrefixOfPlaybook(playbook)}${conversationCallStreamOf(callId)}`;
   return Effect.gen(function* () {
     const at = DateTime.formatIso(yield* DateTime.now);
     const fact = repliesReadOf(
@@ -45,7 +45,7 @@ export function recordedRead(
         refused: state.refused,
         retryAfterMs: answer.retryAfterMs,
       },
-      { by: brainCallerOf(brain).id, at },
+      { by: playbookCallerOf(playbook).id, at },
     );
     yield* ledger
       .execute(stream, conversationCallDecider, fact, { causationId: row.last_fact, correlationId: null })

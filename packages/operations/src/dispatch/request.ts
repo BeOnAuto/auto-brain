@@ -10,8 +10,8 @@ export interface OrgRequest {
   readonly encoding: InputEncoding;
 }
 
-export interface BrainRequest extends OrgRequest {
-  readonly brain: string;
+export interface PlaybookRequest extends OrgRequest {
+  readonly playbook: string;
   readonly lineage?: Lineage;
   readonly depth?: number;
   readonly callDepth?: number;

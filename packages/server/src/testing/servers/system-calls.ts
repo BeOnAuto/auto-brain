@@ -64,7 +64,7 @@ export async function askingASystem({
     { CHAT_KEY: chatKey, MCP_SERVERS: JSON.stringify({ chat, ...servers }), ...environment },
     timing === undefined ? {} : { toolTiming: timing },
   );
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   return {
     ...server,
     fake,

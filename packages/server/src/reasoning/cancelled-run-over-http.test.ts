@@ -37,7 +37,7 @@ async function untilTheModelIsCalled(attempts: number): Promise<void> {
 describe('a run whose client goes away while the model answers', () => {
   it('is recorded failed, never left started with nothing running', async () => {
     server = await servingReasoning([() => Effect.never]);
-    await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+    await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
     await server.call('POST', `${alpha}/definitions/reasoning`, { body: { name: 'summary', source: summary } });
 
     const givingUp = new AbortController();

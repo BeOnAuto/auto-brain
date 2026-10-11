@@ -1,8 +1,8 @@
 import {
-  BrainIdSchema,
+  PlaybookIdSchema,
   OrgIdSchema,
-  brainCallerOf,
-  streamPrefixOfBrain,
+  playbookCallerOf,
+  streamPrefixOfPlaybook,
   type Conflict,
   type Lineage,
   type StreamWriter,
@@ -29,7 +29,7 @@ export type CancelRun = (
 ) => Effect.Effect<CancelReceipt, Conflict>;
 
 const isWellFormed = Schema.is(
-  Schema.Struct({ org: OrgIdSchema, brain: BrainIdSchema, id: Schema.String.check(Schema.isUUID()) }),
+  Schema.Struct({ org: OrgIdSchema, playbook: PlaybookIdSchema, id: Schema.String.check(Schema.isUUID()) }),
 );
 
 function endedFirst(error: unknown): boolean {
@@ -42,9 +42,9 @@ export function runCanceller(ledger: StreamWriter): CancelRun {
       if (!isWellFormed(run)) {
         return 'unknown_run';
       }
-      const stream = `${streamPrefixOfBrain(run)}${runStreamNameOf(run.id.toLowerCase())}`;
+      const stream = `${streamPrefixOfPlaybook(run)}${runStreamNameOf(run.id.toLowerCase())}`;
       const at = DateTime.formatIso(yield* DateTime.now);
-      const actor = by ?? brainCallerOf(run).id;
+      const actor = by ?? playbookCallerOf(run).id;
       return yield* ledger
         .execute(stream, runDecider, { type: 'cancel', kind, reason, by: actor, at, byItsCaller: true }, lineage)
         .pipe(

@@ -1,27 +1,29 @@
 import type { StreamStore } from '../event-store.ts';
 
-export type AppendListener = (brainKey: string) => void;
+export type AppendListener = (playbookKey: string) => void;
 
 export interface AppendSignal {
   readonly raise: (stream: string) => void;
   readonly listen: (listener: AppendListener) => () => void;
 }
 
-const segmentsOfABrainKey = 3;
+const segmentsOfAPlaybookKey = 3;
 
-export function brainKeyOfStream(stream: string): string | undefined {
+export function playbookKeyOfStream(stream: string): string | undefined {
   const segments = stream.split('/');
-  return segments.length > segmentsOfABrainKey ? `${segments.slice(0, segmentsOfABrainKey).join('/')}/` : undefined;
+  return segments.length > segmentsOfAPlaybookKey
+    ? `${segments.slice(0, segmentsOfAPlaybookKey).join('/')}/`
+    : undefined;
 }
 
 export function appendSignal(): AppendSignal {
   const listeners = new Set<AppendListener>();
   return {
     raise: (stream) => {
-      const brainKey = brainKeyOfStream(stream);
-      if (brainKey !== undefined) {
+      const playbookKey = playbookKeyOfStream(stream);
+      if (playbookKey !== undefined) {
         for (const listener of listeners) {
-          listener(brainKey);
+          listener(playbookKey);
         }
       }
     },

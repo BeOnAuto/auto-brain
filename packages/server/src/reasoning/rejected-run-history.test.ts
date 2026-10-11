@@ -61,7 +61,7 @@ describe('the history of a reasoning run rejected after its model was called', (
       answers(textResult('Profits rose.', { usage: usageOf(1200, 80) })),
       () => Effect.fail(unusable),
     ]);
-    await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+    await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
     await server.call('POST', `${alpha}/definitions/reasoning`, { body: { name: 'summary', source: summary } });
     const running = (runId: string, text: string) =>
       server.call('POST', `${alpha}/definitions/reasoning/summary/run`, {
@@ -73,7 +73,7 @@ describe('the history of a reasoning run rejected after its model was called', (
     const histories = { succeeded: await historyOf(succeeded), rejected: await historyOf(rejected) };
     const overMcp = await withMcpSession(
       'current revision',
-      { url: `${server.origin}/orgs/acme/brains/alpha/mcp`, headers: {} },
+      { url: `${server.origin}/orgs/acme/playbooks/alpha/mcp`, headers: {} },
       (session) => session.callTool('get_run_history', { run_id: rejected }),
     );
 

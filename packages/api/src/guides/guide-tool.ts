@@ -10,7 +10,7 @@ import type { GuideShelf } from './guide-shelf.ts';
 export const guideToolName = 'get_guide';
 
 const description = [
-  "Reads one of the brain's guides: what its words mean, how each kind of definition is written, with its format, examples and bounds, and how the common tasks are done.",
+  "Reads one of the playbook's guides: what its words mean, how each kind of definition is written, with its format, examples and bounds, and how the common tasks are done.",
   'A format guide is read before a definition of that type is written, and a recipe before the task it names.',
   '`guide` names one of them, and the answer is its whole text in Markdown.',
 ].join(' ');

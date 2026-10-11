@@ -52,7 +52,7 @@ export function connectionOf(endpoint: McpEndpoint, serving: McpServing, everyTo
     serving,
     shelf: guideShelfOf(serving.guides, serving.recipes, serving.definitionTypes),
   };
-  const toolCount = [...everyTool.orgTools, ...everyTool.brainTools, guideToolName].length;
+  const toolCount = [...everyTool.orgTools, ...everyTool.playbookTools, guideToolName].length;
   requireWithin(`The ${endpoint} endpoint`, toolCount, mostToolsOnAConnection, 'tools');
   requireTextWithin(
     `The instructions of the ${endpoint} endpoint`,

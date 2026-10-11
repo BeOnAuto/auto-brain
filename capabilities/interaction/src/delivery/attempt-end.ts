@@ -9,7 +9,7 @@ export type AttemptEnd = Omit<DeliveryEndedFact, 'type' | 'number' | 'duration_m
 
 export interface RequestAddress {
   readonly org: string;
-  readonly brain: string;
+  readonly playbook: string;
   readonly id: string;
 }
 

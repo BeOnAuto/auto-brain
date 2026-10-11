@@ -32,10 +32,10 @@ function under2025(key: string): Readonly<Record<string, string>> {
 }
 
 const protoCalls: ReadonlyArray<readonly [string, string, string]> = [
-  ['/mcp', 'add_note', '{"brain":"alpha","name":"proto","text":"t","__proto__":"x"}'],
-  ['/mcp', 'label_brain', '{"brain":"alpha","label":"l","__proto__":{"admin":true}}'],
-  ['/orgs/acme/mcp', 'label_brain', '{"brain":"alpha","label":"l","__proto__":{"admin":true}}'],
-  ['/orgs/acme/brains/alpha/mcp', 'add_note', '{"name":"proto","text":"t","__proto__":"x"}'],
+  ['/mcp', 'add_note', '{"playbook":"alpha","name":"proto","text":"t","__proto__":"x"}'],
+  ['/mcp', 'label_playbook', '{"playbook":"alpha","label":"l","__proto__":{"admin":true}}'],
+  ['/orgs/acme/mcp', 'label_playbook', '{"playbook":"alpha","label":"l","__proto__":{"admin":true}}'],
+  ['/orgs/acme/playbooks/alpha/mcp', 'add_note', '{"name":"proto","text":"t","__proto__":"x"}'],
 ];
 
 describe('a __proto__ argument', () => {
@@ -63,28 +63,28 @@ describe('a __proto__ argument', () => {
       handler,
       '/mcp',
       under2025(acmeAlphaWriter.key),
-      toolCall('add_note', '{"brain":"beta","name":"proto","text":"t","__proto__":"x"}'),
+      toolCall('add_note', '{"playbook":"beta","name":"proto","text":"t","__proto__":"x"}'),
     );
 
     expect(problemsIn(answer)).toMatchObject([{ reason: 'forbidden' }]);
   });
 });
 
-describe('a malformed brain argument on /mcp', () => {
-  it('is invalid_input at /brain before anything else, even for a key limited to other brains', async () => {
+describe('a malformed playbook argument on /mcp', () => {
+  it('is invalid_input at /playbook before anything else, even for a key limited to other playbooks', async () => {
     const { handler } = await operationServer();
 
     const answer = await postMcp(
       handler,
       '/mcp',
       under2025(acmeAlphaWriter.key),
-      toolCall('list_notes', '{"brain":"Beta"}'),
+      toolCall('list_notes', '{"playbook":"Beta"}'),
     );
 
     expect(problemsIn(answer)).toMatchObject([
       {
         reason: 'invalid_input',
-        errors: [{ detail: 'Expected a string matching the RegExp ^[a-z][a-z0-9-]{2,47}$', pointer: '/brain' }],
+        errors: [{ detail: 'Expected a string matching the RegExp ^[a-z][a-z0-9-]{2,47}$', pointer: '/playbook' }],
       },
     ]);
   });

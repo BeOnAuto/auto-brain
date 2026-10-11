@@ -6,10 +6,10 @@ import { makeDefinitionPresenters } from '../index.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
 import { echo } from '../testing/echo.ts';
-import { asQueryString, harness, toBrain } from '../testing/harness.ts';
+import { asQueryString, harness, toPlaybook } from '../testing/harness.ts';
 import { relayedId, settledAt, withHandOn } from '../testing/relaying.ts';
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
@@ -51,7 +51,7 @@ const runLogPresenter: Presenter = {
   },
 };
 
-async function brainWithRun(presenters: readonly Presenter[] = makeDefinitionPresenters([echo])) {
+async function playbookWithRun(presenters: readonly Presenter[] = makeDefinitionPresenters([echo])) {
   const operations = definitionOperationsFor([echo], presenters);
   const definitions = harness();
   await definitions.call(
@@ -64,7 +64,7 @@ async function brainWithRun(presenters: readonly Presenter[] = makeDefinitionPre
     definitions.call(operations.getRunHistory, toAlpha(acmeAdmin, { run_id: runId, ...input }));
   const logging = (event: StandInLogEvent, recordedAt: string) =>
     definitions.run(
-      Effect.orDie(definitions.ledger.service.execute(`brain/acme/alpha/run-logs/${runId}`, runLog, event)),
+      Effect.orDie(definitions.ledger.service.execute(`playbook/acme/alpha/run-logs/${runId}`, runLog, event)),
       recordedAt,
     );
   return { ...definitions, ...operations, running, reading, logging };
@@ -85,11 +85,11 @@ function typesIn(outcome: unknown): readonly string[] {
 }
 
 describe('get_run_history', () => {
-  it('is a brain query at GET /runs/{run_id}/history that may meet not_found', async () => {
-    const { getRunHistory } = await brainWithRun();
+  it('is a playbook query at GET /runs/{run_id}/history that may meet not_found', async () => {
+    const { getRunHistory } = await playbookWithRun();
 
     expect(getRunHistory.registration).toMatchObject({
-      scope: 'brain',
+      scope: 'playbook',
       kind: 'query',
       title: 'Get run history',
       route: { method: 'GET', path: '/runs/{run_id}/history' },
@@ -101,7 +101,7 @@ describe('get_run_history', () => {
 
 describe('the history of a run', () => {
   it('holds the facts of the run oldest first, each at its own time', async () => {
-    const { running, reading } = await brainWithRun();
+    const { running, reading } = await playbookWithRun();
     await running(runId, '2026-10-01T09:00:10.000Z');
 
     expect(await reading({})).toMatchObject({
@@ -150,25 +150,25 @@ describe('the history of a run', () => {
 });
 
 async function runWithLog(presenters?: readonly Presenter[]) {
-  const brain = await brainWithRun(presenters);
-  await brain.running(runId, '2026-10-01T09:00:10.000Z');
-  await brain.logging(
+  const playbook = await playbookWithRun(presenters);
+  await playbook.running(runId, '2026-10-01T09:00:10.000Z');
+  await playbook.logging(
     { type: 'input_applied', key: 'early', at: '2026-10-01T09:00:05.000Z' },
     '2026-10-01T09:00:11.000Z',
   );
-  await brain.logging(
+  await playbook.logging(
     { type: 'state_patched', key: 'patch', at: '2026-10-01T09:00:06.000Z' },
     '2026-10-01T09:00:11.000Z',
   );
-  await brain.logging(
+  await playbook.logging(
     { type: 'input_applied', key: 'same', at: '2026-10-01T09:00:10.000Z' },
     '2026-10-01T09:00:12.000Z',
   );
-  await brain.logging(
+  await playbook.logging(
     { type: 'input_applied', key: 'late', at: '2026-10-01T09:00:20.000Z' },
     '2026-10-01T09:00:21.000Z',
   );
-  return brain;
+  return playbook;
 }
 
 const keysAndTypesOf = Schema.decodeUnknownSync(
@@ -206,7 +206,7 @@ async function everyKeyAndType(
 }
 
 describe('the history of a run with a log of its own', () => {
-  it('follows the order the brain recorded both streams in, whatever the time of each event', async () => {
+  it('follows the order the playbook recorded both streams in, whatever the time of each event', async () => {
     const { reading } = await runWithLog(withRunLog);
     const recorded = ['run_started', 'run_succeeded', 'early', 'same', 'late'];
 
@@ -246,13 +246,13 @@ describe('the history of a run with a log of its own', () => {
 const emptyAndEnded = { status: 'succeeded', output: { events: [], has_more: false, next_cursor: null } };
 
 describe('get_run_history rejecting', () => {
-  it('a run the brain does not have, with a cursor or without', async () => {
-    const { running, reading } = await brainWithRun();
+  it('a run the playbook does not have, with a cursor or without', async () => {
+    const { running, reading } = await playbookWithRun();
     await running(otherId, '2026-10-01T09:00:10.000Z');
     const notFound = {
       status: 'rejected',
       reason: 'not_found',
-      detail: `There is no run ${runId} in this brain`,
+      detail: `There is no run ${runId} in this playbook`,
     };
     const [firstOfAnother] = cursorsIn(await reading({ run_id: otherId }));
 
@@ -261,7 +261,7 @@ describe('get_run_history rejecting', () => {
   });
 
   it('a cursor that does not decode', async () => {
-    const { running, reading } = await brainWithRun();
+    const { running, reading } = await playbookWithRun();
     await running(runId, '2026-10-01T09:00:10.000Z');
 
     expect(await reading({ cursor: 'not-a-cursor' })).toMatchObject({
@@ -274,7 +274,7 @@ describe('get_run_history rejecting', () => {
 
 describe('the end of the history of a run', () => {
   it('is an empty page without a cursor', async () => {
-    const { running, reading } = await brainWithRun();
+    const { running, reading } = await playbookWithRun();
     await running(runId, '2026-10-01T09:00:10.000Z');
     const [, last] = cursorsIn(await reading({}));
 
@@ -284,7 +284,7 @@ describe('the end of the history of a run', () => {
 
 describe('a page of the history of a run whose records are all hidden', () => {
   it('is empty, and the run is found', async () => {
-    const { running, reading } = await brainWithRun([]);
+    const { running, reading } = await playbookWithRun([]);
     await running(runId, '2026-10-01T09:00:10.000Z');
 
     expect(await reading({})).toEqual(emptyAndEnded);

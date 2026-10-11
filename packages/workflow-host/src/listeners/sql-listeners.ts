@@ -1,4 +1,4 @@
-import { streamPrefixOfBrain } from '@beonauto/operations';
+import { streamPrefixOfPlaybook } from '@beonauto/operations';
 import { callKeyText, DispatchFailed, type ListenerArmReceipt, type Listeners } from '@beonauto/workflow-engine';
 import { Effect } from 'effect';
 
@@ -11,12 +11,12 @@ import {
   insertedListener,
   isListening,
   isListeningAt,
-  listenersInBrain,
+  listenersInPlaybook,
   removedListener,
   type ListeningPlace,
 } from './listener-rows.ts';
 
-export const mostListenersInABrain = 4096;
+export const mostListenersInAPlaybook = 4096;
 
 function failedTo(output: 'arm_listener' | 'cancel_listener') {
   return ({ detail }: Readonly<{ detail: string }>) => new DispatchFailed({ output, detail });
@@ -43,19 +43,19 @@ export function sqlListeners(database: HostDatabase, refusals: Refusals, stops: 
         if (yield* isListening(database, place)) {
           return 'already_armed';
         }
-        const brainKey = streamPrefixOfBrain(addressOfRun(runKey));
+        const playbookKey = streamPrefixOfPlaybook(addressOfRun(runKey));
         const { workflow, version } = reactionOfRun(run.attributes);
-        if ((yield* listenersInBrain(database, brainKey)) >= mostListenersInABrain) {
+        if ((yield* listenersInPlaybook(database, playbookKey)) >= mostListenersInAPlaybook) {
           yield* refusals.refuse(
-            brainKey,
+            playbookKey,
             workflow,
-            `A run listened for events of the brain while ${mostListenersInABrain} listeners were already open in it, the most a brain keeps; the run takes only the events sent to it`,
+            `A run listened for events of the playbook while ${mostListenersInAPlaybook} listeners were already open in it, the most a playbook keeps; the run takes only the events sent to it`,
           );
           return 'refused';
         }
         yield* insertedListener(database, {
           ...place,
-          brainKey,
+          playbookKey,
           streamId: runLogStreamOf(runKey),
           armedBy: origin.version,
           filters: JSON.stringify(output.filters),
@@ -72,8 +72,8 @@ export function sqlListeners(database: HostDatabase, refusals: Refusals, stops: 
       Effect.gen(function* () {
         const removed = yield* removedListener(database, { runKey: run.runId, listener: callKeyText(output.key) });
         const { workflow, version } = reactionOfRun(run.attributes);
-        const brainKey = streamPrefixOfBrain(addressOfRun(run.runId));
-        yield* stopsForgotten(database, stops, { brainKey, workflow, version, reference: output.key.reference });
+        const playbookKey = streamPrefixOfPlaybook(addressOfRun(run.runId));
+        yield* stopsForgotten(database, stops, { playbookKey, workflow, version, reference: output.key.reference });
         return removed ? 'cancelled' : 'not_armed';
       }).pipe(Effect.mapError(failedTo('cancel_listener'))),
   };

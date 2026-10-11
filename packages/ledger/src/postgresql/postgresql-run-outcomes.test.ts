@@ -46,28 +46,28 @@ function recording(answers: Answers): Recording {
 const began: RunFact = { type: 'run_began', at: '2026-10-01T09:00:00.000Z', fn: 'triage' };
 
 const indexes = [
-  'ledger_messages_by_brain',
-  'ledger_messages_by_brain_and_time',
+  'ledger_messages_by_playbook',
+  'ledger_messages_by_playbook_and_time',
   'ledger_messages_by_stream',
   'ledger_first_messages_by_kind',
-  'ledger_messages_by_brain_and_correlation',
+  'ledger_messages_by_playbook_and_correlation',
   'ledger_definition_streams',
 ].map((name) => ({ name }));
 
 function aLedgerWithOneRun(tables: readonly string[]): Answers {
   return (statement) => {
-    if (statement.includes('ledger_messages_by_brain')) {
+    if (statement.includes('ledger_messages_by_playbook')) {
       return indexes;
     }
     if (statement.includes('pg_class')) {
       return tables.map((name) => ({ name }));
     }
     if (statement.includes('FROM emt_streams')) {
-      return statement.includes('s.stream_id > ""') ? [{ stream: 'brain/acme/alpha/runs/r1', size: 120 }] : [];
+      return statement.includes('s.stream_id > ""') ? [{ stream: 'playbook/acme/alpha/runs/r1', size: 120 }] : [];
     }
     return [
       {
-        stream: 'brain/acme/alpha/runs/r1',
+        stream: 'playbook/acme/alpha/runs/r1',
         type: 'run_began',
         data: { json: JSON.stringify(began) },
         position: 1,
@@ -77,18 +77,18 @@ function aLedgerWithOneRun(tables: readonly string[]): Answers {
 }
 
 const keptRow =
-  'INSERT INTO run_outcomes_3 (brain_key, row_key, started_day, started_at, last_started_at, definition_type, name, status, duration_ms, input_tokens, output_tokens, cached_tokens) VALUES ("brain/acme/alpha/", "r1", "2026-10-01", "2026-10-01T09:00:00.000Z", "2026-10-01T09:00:00.000Z", "tally", "triage", "started", null, null, null, null) ON CONFLICT (brain_key, row_key) DO UPDATE SET started_day = excluded.started_day,';
+  'INSERT INTO run_outcomes_3 (playbook_key, row_key, started_day, started_at, last_started_at, definition_type, name, status, duration_ms, input_tokens, output_tokens, cached_tokens) VALUES ("playbook/acme/alpha/", "r1", "2026-10-01", "2026-10-01T09:00:00.000Z", "2026-10-01T09:00:00.000Z", "tally", "triage", "started", null, null, null, null) ON CONFLICT (playbook_key, row_key) DO UPDATE SET started_day = excluded.started_day,';
 
 describe('the table of the outcomes of runs on PostgreSQL, as the ledger opens', () => {
-  it("is created after the brain's indexes, filled from the stored run streams, and analysed", async () => {
+  it("is created after the playbook's indexes, filled from the stored run streams, and analysed", async () => {
     const { execute, commands } = recording(aLedgerWithOneRun([]));
 
     await tallied.afterTheSchema({ execute });
 
     expect(commands.map((command) => command.split(' ').slice(0, 6).join(' '))).toEqual([
       'CREATE TABLE IF NOT EXISTS run_outcomes_3',
-      'CREATE INDEX IF NOT EXISTS run_outcomes_3_by_brain_and_day',
-      'INSERT INTO run_outcomes_3 (brain_key, row_key, started_day,',
+      'CREATE INDEX IF NOT EXISTS run_outcomes_3_by_playbook_and_day',
+      'INSERT INTO run_outcomes_3 (playbook_key, row_key, started_day,',
       'ANALYZE run_outcomes_3',
     ]);
     expect(commands[2]?.startsWith(keptRow)).toBe(true);
@@ -138,7 +138,7 @@ describe('the projection of the outcomes of runs on PostgreSQL', () => {
     const message = {
       type: 'run_began',
       data: { json: JSON.stringify(began) },
-      metadata: { streamName: 'brain/acme/alpha/runs/r1', messageId: 'm1', streamPosition: 1n },
+      metadata: { streamName: 'playbook/acme/alpha/runs/r1', messageId: 'm1', streamPosition: 1n },
     };
 
     await registration?.projection.handle([message], { execute });
@@ -178,13 +178,13 @@ const group = {
 };
 
 describe('the read of the outcomes of runs on PostgreSQL', () => {
-  it('groups the rows of the brain over the days of the window by day, function and status, in one statement', async () => {
+  it('groups the rows of the playbook over the days of the window by day, function and status, in one statement', async () => {
     const { query, asked } = answering([group]);
     const read = postgresqlRunOutcomesReader(query);
     const window = { from: '2026-10-01', to: '2026-10-07' };
 
-    const groups = await read('brain/acme/alpha/', window, { definitionType: 'tally', name: 'triage' });
-    await read('brain/acme/alpha/', window, {});
+    const groups = await read('playbook/acme/alpha/', window, { definitionType: 'tally', name: 'triage' });
+    await read('playbook/acme/alpha/', window, {});
 
     expect(groups).toEqual([
       {
@@ -200,11 +200,11 @@ describe('the read of the outcomes of runs on PostgreSQL', () => {
       },
     ]);
     expect(asked.map(({ values }) => values)).toEqual([
-      ['brain/acme/alpha/', '2026-10-01', '2026-10-07', 'tally', 'triage'],
-      ['brain/acme/alpha/', '2026-10-01', '2026-10-07'],
+      ['playbook/acme/alpha/', '2026-10-01', '2026-10-07', 'tally', 'triage'],
+      ['playbook/acme/alpha/', '2026-10-01', '2026-10-07'],
     ]);
     expect(asked[0]?.text).toContain(
-      'WHERE brain_key = $1 AND started_day BETWEEN $2 AND $3 AND definition_type = $4 AND name = $5 GROUP BY started_day, definition_type, name, status',
+      'WHERE playbook_key = $1 AND started_day BETWEEN $2 AND $3 AND definition_type = $4 AND name = $5 GROUP BY started_day, definition_type, name, status',
     );
     expect(asked[1]?.text).toContain('BETWEEN $2 AND $3 GROUP BY');
   });

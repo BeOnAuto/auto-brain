@@ -17,7 +17,7 @@ type Checked<A> =
   | { readonly ok: false; readonly problems: readonly SettingProblem[] };
 
 type Transport<S extends McpServerSettings> = S extends McpServerSettings
-  ? Omit<S, 'name' | 'org' | 'brains' | 'allowed' | 'testable' | 'record_content' | 'request_id' | 'secrets'>
+  ? Omit<S, 'name' | 'org' | 'playbooks' | 'allowed' | 'testable' | 'record_content' | 'request_id' | 'secrets'>
   : never;
 
 type Auth = NonNullable<McpServerEntryFields['auth']>;
@@ -242,7 +242,7 @@ export function checkedEntry(
         ...transport.value,
         name,
         org: scope.success.org,
-        brains: scope.success.brains,
+        playbooks: scope.success.playbooks,
         ...tools.success,
         record_content: fields.record_content ?? false,
         request_id: fields.request_id ?? null,

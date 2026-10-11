@@ -4,7 +4,7 @@ import navigation from '../nav.json' with { type: 'json' };
 
 export default defineConfig({
   title: 'Auto runtime',
-  description: 'Contributor-owned documentation for the Auto brain runtime.',
+  description: 'Contributor-owned documentation for the Auto playbook runtime.',
   base: '/docs/',
   cleanUrls: true,
   srcExclude: ['decisions/**', 'engineering/**'],

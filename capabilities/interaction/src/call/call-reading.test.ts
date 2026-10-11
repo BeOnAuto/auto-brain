@@ -65,7 +65,7 @@ const countOutput = [
   '  schema: { type: object, required: [count], properties: { count: { type: number } } }',
 ];
 
-describe('a run that asks a system whose answer the brain cannot use', () => {
+describe('a run that asks a system whose answer the playbook cannot use', () => {
   it('checks what a tool answered against its own output schema, whatever schema the tool declares', async () => {
     const { fake, run } = await callRuns();
 

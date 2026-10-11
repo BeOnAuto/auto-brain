@@ -10,8 +10,8 @@ const gatewayKey = 'gateway-key-SECRET-7f3a';
 const created = createApiKey({
   id: 'ci-1',
   org: 'acme',
-  permissions: ['org:read', 'org:write', 'brain:read', 'brain:write'],
-  brains: '*',
+  permissions: ['org:read', 'org:write', 'playbook:read', 'playbook:write'],
+  playbooks: '*',
 });
 
 const fileText = `model_gateways:
@@ -27,7 +27,7 @@ allowed_origins:
 `;
 
 function fromOrigin(port: number, origin: string): Promise<number> {
-  return fetch(`http://127.0.0.1:${port}/v1/orgs/acme/brains`, {
+  return fetch(`http://127.0.0.1:${port}/v1/orgs/acme/playbooks`, {
     headers: { origin, authorization: `Bearer ${created.key}` },
   }).then(({ status }) => status);
 }

@@ -94,7 +94,7 @@ async function createdInTurn(port: number, remaining: readonly Definition[]): Pr
 }
 
 async function startedEach(port: number): Promise<ReadonlyMap<string, string>> {
-  await requestTo(port, 'POST', '', { brain: 'alpha', name: 'Alpha' });
+  await requestTo(port, 'POST', '', { playbook: 'alpha', name: 'Alpha' });
   await createdInTurn(port, definitions);
   return new Map(await Promise.all(definitions.map(({ name }) => started(port, name))));
 }

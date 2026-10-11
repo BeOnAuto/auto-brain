@@ -1,4 +1,4 @@
-import { brainFactOf, publishedEventOf, type CloudEvent, type EventPublished } from '@beonauto/definitions';
+import { playbookFactOf, publishedEventOf, type CloudEvent, type EventPublished } from '@beonauto/definitions';
 import { streamKindOf, type RecordedEvent } from '@beonauto/operations';
 import { Option, Schema } from 'effect';
 
@@ -63,7 +63,7 @@ function depthOf(data: unknown): number {
 }
 
 function fact(record: RecordedEvent, type: string): EventOfRecord {
-  const event = brainFactOf(record);
+  const event = playbookFactOf(record);
   if (event === undefined) {
     return 'unreadable';
   }

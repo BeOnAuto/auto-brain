@@ -38,7 +38,7 @@ export function recallWiring(): RecallWiring {
           definitionType: recallDefinitionType,
           pool,
           folding: recallFolding,
-          brainsAtOnce: recall.brainsAtOnce,
+          playbooksAtOnce: recall.playbooksAtOnce,
           rebuildsAtOnce: recall.rebuildsAtOnce,
           pagesPerWake: recallBounds.pagesPerWake,
           overtimesBeforeStall: recallBounds.overtimesBeforeStall,

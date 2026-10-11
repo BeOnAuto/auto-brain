@@ -42,7 +42,7 @@ async function serving(replies: readonly ScriptedReply[], hints: FakeHints = {})
     }),
   });
   onTestFinished(server.stop);
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   await server.call('POST', `${alpha}/definitions/reasoning`, { body: { name: 'summary', source } });
   return server;
 }

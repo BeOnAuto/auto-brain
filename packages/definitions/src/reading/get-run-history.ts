@@ -1,5 +1,5 @@
 import {
-  BrainReader,
+  PlaybookReader,
   PagingInputFields,
   PagingOutputFields,
   PublicEventSchema,
@@ -54,7 +54,7 @@ function holdsNoRun(heads: readonly RecordedEvent[]): boolean {
 
 function newestHeadOf(id: string) {
   return Effect.gen(function* () {
-    const { records } = yield* (yield* BrainReader).readRecorded({ kind: 'run', run: id }, newestHeadAlone);
+    const { records } = yield* (yield* PlaybookReader).readRecorded({ kind: 'run', run: id }, newestHeadAlone);
     return records;
   });
 }
@@ -67,7 +67,7 @@ function historyReader(presentation: Presentation) {
     cursor,
   }: typeof RunHistoryInput.Type) {
     const paging = { order, limit, ...(cursor === undefined ? {} : { cursor }) };
-    const page = yield* (yield* BrainReader).readRecorded({ kind: 'run', run: id }, paging);
+    const page = yield* (yield* PlaybookReader).readRecorded({ kind: 'run', run: id }, paging);
     if (page.records.every((record) => isACancel(record)) && holdsNoRun(yield* newestHeadOf(id))) {
       return yield* Effect.fail(noRunCalled(id));
     }
@@ -81,7 +81,7 @@ function historyReader(presentation: Presentation) {
 }
 
 export function defineGetRunHistory(presenters: readonly Presenter[]) {
-  return defineQuery('brain', {
+  return defineQuery('playbook', {
     name: 'get_run_history',
     title: 'Get run history',
     description,

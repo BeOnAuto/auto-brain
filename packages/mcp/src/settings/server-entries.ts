@@ -59,9 +59,9 @@ export const McpServerEntrySchema = Schema.Struct({
     }),
   ),
   org: Schema.optionalKey(Schema.String.annotate({ description: 'The org this server serves, required' })),
-  brains: Schema.optionalKey(
+  playbooks: Schema.optionalKey(
     Schema.Array(Schema.String).annotate({
-      description: 'The brains of the org this server serves; every brain of the org when left out',
+      description: 'The playbooks of the org this server serves; every playbook of the org when left out',
     }),
   ),
   allowed: Schema.optionalKey(
@@ -79,7 +79,7 @@ export const McpServerEntrySchema = Schema.Struct({
   record_content: Schema.optionalKey(
     Schema.Boolean.annotate({
       description:
-        'true to record the arguments and results of calls, cut to 4 KiB, on the run that made them, where anyone who may read the brain reads them. Default false',
+        'true to record the arguments and results of calls, cut to 4 KiB, on the run that made them, where anyone who may read the playbook reads them. Default false',
     }),
   ),
   request_id: Schema.optionalKey(

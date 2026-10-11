@@ -15,7 +15,7 @@ function errorFrom(environment: Readonly<Record<string, string>>): string {
 }
 
 describe('the interaction function settings', () => {
-  it('read the most open requests a brain may hold, 10,000 unless set', () => {
+  it('read the most open requests a playbook may hold, 10,000 unless set', () => {
     expect(
       [{}, { INTERACTION_OPEN_REQUESTS: '500' }, { INTERACTION_OPEN_REQUESTS: '1000000' }].map(
         (environment: Readonly<Record<string, string>>) => readSettings(environment).interaction.mostOpenRequests,

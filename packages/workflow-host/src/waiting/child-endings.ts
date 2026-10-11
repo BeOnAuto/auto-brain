@@ -1,5 +1,5 @@
 import { lastEndingOf, runEndingOf, type CalledBy, type RunEnding } from '@beonauto/definitions';
-import { streamPrefixOfBrain, type BrainAddress, type CallResult, type Conflict } from '@beonauto/operations';
+import { streamPrefixOfPlaybook, type PlaybookAddress, type CallResult, type Conflict } from '@beonauto/operations';
 import { callKeyText, type RunInput, type Submission } from '@beonauto/workflow-engine';
 import { Effect } from 'effect';
 
@@ -30,8 +30,8 @@ function failedWith({ detail }: Readonly<{ detail: string }>): DeliveryFailed {
   return new DeliveryFailed({ detail });
 }
 
-function answeredWith(parts: EndingParts, brain: BrainAddress, { ending, calledBy }: CalledEnding) {
-  const runId = runKeyOf({ ...brain, runId: calledBy.run_id });
+function answeredWith(parts: EndingParts, playbook: PlaybookAddress, { ending, calledBy }: CalledEnding) {
+  const runId = runKeyOf({ ...playbook, runId: calledBy.run_id });
   const key = { runId, reference: calledBy.reference, run: calledBy.run };
   const result = parts.resultOf(ending);
   const answered = parts
@@ -46,8 +46,8 @@ function answeredWith(parts: EndingParts, brain: BrainAddress, { ending, calledB
   );
 }
 
-function childEndingOf(database: HostDatabase, brain: BrainAddress, child: string) {
-  const stream = `${streamPrefixOfBrain(brain)}runs/${child}`;
+function childEndingOf(database: HostDatabase, playbook: PlaybookAddress, child: string) {
+  const stream = `${streamPrefixOfPlaybook(playbook)}runs/${child}`;
   return Effect.map(
     Effect.promise(() => database.store.read(stream, 0)),
     ({ events }) => calledEndingOf(lastEndingOf(events)),
@@ -59,8 +59,8 @@ export function childAnswersOn(
   resultOf: WaitingOptions['resultOf'],
 ): (runKey: string, child: string) => Effect.Effect<CallResult | undefined> {
   return (runKey, child) => {
-    const { org, brain } = addressOfRun(runKey);
-    return Effect.map(childEndingOf(database, { org, brain }, child), (called) =>
+    const { org, playbook } = addressOfRun(runKey);
+    return Effect.map(childEndingOf(database, { org, playbook }, child), (called) =>
       called === undefined ? undefined : resultOf(called.ending),
     );
   };
@@ -71,14 +71,14 @@ export function childEndings(parts: EndingParts): CallConsumer {
     name: 'child_endings',
     types: ['run_succeeded', 'run_rejected', 'run_failed'],
     skippedAfterSweeps: Number.POSITIVE_INFINITY,
-    batchOf: ({ brain, record }, after) =>
+    batchOf: ({ playbook, record }, after) =>
       Effect.sync(() => {
         const called = after === undefined ? calledEndingOf(runEndingOf(record.data)) : undefined;
         return {
           deliveries:
             called === undefined
               ? []
-              : [{ key: 'call', workflow: called.calledBy.run_id, deliver: answeredWith(parts, brain, called) }],
+              : [{ key: 'call', workflow: called.calledBy.run_id, deliver: answeredWith(parts, playbook, called) }],
           through: undefined,
           more: false,
         };
@@ -91,12 +91,12 @@ export function endedChildrenOn(parts: EndingParts): (runKey: string) => Effect.
   const { database } = parts;
   return (runKey) =>
     Effect.gen(function* () {
-      const { org, brain } = addressOfRun(runKey);
+      const { org, playbook } = addressOfRun(runKey);
       const waiting = yield* Effect.mapError(waitingCallsOf(database, runKey), failedWith);
       for (const { child } of waiting) {
-        const called = yield* childEndingOf(database, { org, brain }, child);
+        const called = yield* childEndingOf(database, { org, playbook }, child);
         if (called !== undefined) {
-          yield* answeredWith(parts, { org, brain }, called);
+          yield* answeredWith(parts, { org, playbook }, called);
         }
       }
     });

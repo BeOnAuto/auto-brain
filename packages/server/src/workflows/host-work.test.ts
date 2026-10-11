@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { applicationLayer } from '../composition/composition-root.ts';
 import { hostWorkOf } from './host-work.ts';
 
-const unknownRun = { org: 'acme', brain: 'alpha', id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' };
+const unknownRun = { org: 'acme', playbook: 'alpha', id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' };
 
 const lineage = { causationId: 'cancel-1', correlationId: unknownRun.id };
 

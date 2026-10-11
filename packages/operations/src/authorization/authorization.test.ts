@@ -2,26 +2,28 @@ import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { defineQuery, type CallerIdentity } from '../index.ts';
-import { labelBrain, listBrainLabels } from '../testing/brain-labels.ts';
 import { acmeAdmin, acmeAlphaReader } from '../testing/callers.ts';
-import { harness, toBrain, toOrg } from '../testing/harness.ts';
+import { harness, toPlaybook, toOrg } from '../testing/harness.ts';
 import { addNote, getNote } from '../testing/notes.ts';
+import { labelPlaybook, listPlaybookLabels } from '../testing/playbook-labels.ts';
 
 const toAcme = toOrg('acme');
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 function holding(...permissions: CallerIdentity['permissions']): CallerIdentity {
   return { ...acmeAdmin, id: 'acme-limited', permissions };
 }
 
 describe('authorization of a caller', () => {
-  it('rejects a caller of another org identically for an existing and a missing brain', async () => {
+  it('rejects a caller of another org identically for an existing and a missing playbook', async () => {
     const { dispatcher, run } = harness();
 
-    const existing = await run(dispatcher.dispatchToBrain(getNote.registration, toBrain('globex', 'gamma')(acmeAdmin)));
+    const existing = await run(
+      dispatcher.dispatchToPlaybook(getNote.registration, toPlaybook('globex', 'gamma')(acmeAdmin)),
+    );
     const missing = await run(
-      dispatcher.dispatchToBrain(getNote.registration, toBrain('globex', 'nowhere')(acmeAdmin)),
+      dispatcher.dispatchToPlaybook(getNote.registration, toPlaybook('globex', 'nowhere')(acmeAdmin)),
     );
 
     expect(existing).toEqual({
@@ -36,42 +38,46 @@ describe('authorization of a caller', () => {
     const { dispatcher, run } = harness();
 
     expect(
-      await run(dispatcher.dispatchToOrg(labelBrain.registration, toOrg('globex')(acmeAlphaReader))),
+      await run(dispatcher.dispatchToOrg(labelPlaybook.registration, toOrg('globex')(acmeAlphaReader))),
     ).toMatchObject({
       detail: 'The caller does not belong to this org',
     });
   });
+});
 
+describe('the permission an operation needs', () => {
   it('derives the permission a call needs from the kind and the scope of the operation', async () => {
     const { dispatcher, run } = harness();
 
     expect(
-      await run(dispatcher.dispatchToOrg(listBrainLabels.registration, toAcme(holding('brain:read')))),
+      await run(dispatcher.dispatchToOrg(listPlaybookLabels.registration, toAcme(holding('playbook:read')))),
     ).toMatchObject({
       reason: 'forbidden',
       detail: 'The caller lacks the org:read permission',
     });
-    expect(await run(dispatcher.dispatchToOrg(labelBrain.registration, toAcme(holding('org:read'))))).toMatchObject({
+    expect(await run(dispatcher.dispatchToOrg(labelPlaybook.registration, toAcme(holding('org:read'))))).toMatchObject({
       detail: 'The caller lacks the org:write permission',
     });
-    expect(await run(dispatcher.dispatchToBrain(getNote.registration, toAlpha(holding('org:read'))))).toMatchObject({
-      detail: 'The caller lacks the brain:read permission',
+    expect(await run(dispatcher.dispatchToPlaybook(getNote.registration, toAlpha(holding('org:read'))))).toMatchObject({
+      detail: 'The caller lacks the playbook:read permission',
     });
-    expect(await run(dispatcher.dispatchToBrain(addNote.registration, toAlpha(holding('brain:read'))))).toMatchObject({
-      detail: 'The caller lacks the brain:write permission',
+    expect(
+      await run(dispatcher.dispatchToPlaybook(addNote.registration, toAlpha(holding('playbook:read')))),
+    ).toMatchObject({
+      detail: 'The caller lacks the playbook:write permission',
     });
   });
 });
 
-const countBrains = defineQuery('org', {
-  name: 'count_brains',
-  title: 'Count brains',
-  description: 'Counts the brains the caller may read.',
-  route: { method: 'GET', path: '/brain-count' },
+const countPlaybooks = defineQuery('org', {
+  name: 'count_playbooks',
+  title: 'Count playbooks',
+  description: 'Counts the playbooks the caller may read.',
+  route: { method: 'GET', path: '/playbook-count' },
   inputSchema: Schema.Record(Schema.String, Schema.Never),
   outputSchema: Schema.Struct({ counted: Schema.Boolean }),
   reasons: [],
-  permittedBy: ['org:read', 'brain:read'],
+  permittedBy: ['org:read', 'playbook:read'],
   handle: () => Effect.succeed({ counted: true }),
 });
 
@@ -79,82 +85,90 @@ describe('an operation permitted by more than one permission', () => {
   it('reaches a caller that holds any one of them, and refuses one that holds none, naming each', async () => {
     const { dispatcher, run } = harness();
 
-    expect(await run(dispatcher.dispatchToOrg(countBrains.registration, toAcme(holding('brain:read'))))).toEqual({
+    expect(await run(dispatcher.dispatchToOrg(countPlaybooks.registration, toAcme(holding('playbook:read'))))).toEqual({
       status: 'succeeded',
       output: { counted: true },
     });
-    expect(await run(dispatcher.dispatchToOrg(countBrains.registration, toAcme(holding('org:write'))))).toMatchObject({
+    expect(
+      await run(dispatcher.dispatchToOrg(countPlaybooks.registration, toAcme(holding('org:write')))),
+    ).toMatchObject({
       reason: 'forbidden',
-      detail: 'The caller lacks the org:read or brain:read permission',
+      detail: 'The caller lacks the org:read or playbook:read permission',
     });
   });
 });
 
-describe('access to a brain', () => {
-  it('rejects a brain the caller may not access, identically whether it exists or not', async () => {
+describe('access to a playbook', () => {
+  it('rejects a playbook the caller may not access, identically whether it exists or not', async () => {
     const { dispatcher, run } = harness();
 
     const existing = await run(
-      dispatcher.dispatchToBrain(getNote.registration, toBrain('acme', 'beta')(acmeAlphaReader)),
+      dispatcher.dispatchToPlaybook(getNote.registration, toPlaybook('acme', 'beta')(acmeAlphaReader)),
     );
     const missing = await run(
-      dispatcher.dispatchToBrain(getNote.registration, toBrain('acme', 'nowhere')(acmeAlphaReader)),
+      dispatcher.dispatchToPlaybook(getNote.registration, toPlaybook('acme', 'nowhere')(acmeAlphaReader)),
     );
 
     expect(existing).toEqual({
       status: 'rejected',
       reason: 'forbidden',
-      detail: 'The caller may not access this brain',
+      detail: 'The caller may not access this playbook',
     });
     expect(missing).toEqual(existing);
   });
 
-  it('reveals that a brain is missing only to a caller that may access it', async () => {
+  it('reveals that a playbook is missing only to a caller that may access it', async () => {
     const { dispatcher, run } = harness();
 
-    expect(await run(dispatcher.dispatchToBrain(getNote.registration, toBrain('acme', 'nowhere')(acmeAdmin)))).toEqual({
+    expect(
+      await run(dispatcher.dispatchToPlaybook(getNote.registration, toPlaybook('acme', 'nowhere')(acmeAdmin))),
+    ).toEqual({
       status: 'rejected',
       reason: 'not_found',
-      detail: 'There is no brain nowhere in this org',
+      detail: 'There is no playbook nowhere in this org',
     });
   });
 
-  it('rejects an ill-formed brain id before asking the registry, without echoing it', async () => {
-    const { dispatcher, run } = harness({ brains: [{ org: 'acme', brain: 'No Brain' }] });
+  it('rejects an ill-formed playbook id before asking the registry, without echoing it', async () => {
+    const { dispatcher, run } = harness({ playbooks: [{ org: 'acme', playbook: 'No Playbook' }] });
 
-    expect(await run(dispatcher.dispatchToBrain(getNote.registration, toBrain('acme', 'No Brain')(acmeAdmin)))).toEqual(
-      {
-        status: 'rejected',
-        reason: 'not_found',
-        detail: 'There is no such brain in this org',
-      },
-    );
+    expect(
+      await run(dispatcher.dispatchToPlaybook(getNote.registration, toPlaybook('acme', 'No Playbook')(acmeAdmin))),
+    ).toEqual({
+      status: 'rejected',
+      reason: 'not_found',
+      detail: 'There is no such playbook in this org',
+    });
   });
 });
 
-describe('a retired brain', () => {
-  const retiredBrains = [{ org: 'acme', brain: 'omega' }];
-  const toOmega = toBrain('acme', 'omega');
+describe('a retired playbook', () => {
+  const retiredPlaybooks = [{ org: 'acme', playbook: 'omega' }];
+  const toOmega = toPlaybook('acme', 'omega');
 
   it('answers every query, so what it recorded stays readable', async () => {
-    const { dispatcher, run } = harness({ retiredBrains });
+    const { dispatcher, run } = harness({ retiredPlaybooks });
 
-    expect(await run(dispatcher.dispatchToBrain(getNote.registration, toOmega(acmeAdmin, { name: 'anvil' })))).toEqual({
+    expect(
+      await run(dispatcher.dispatchToPlaybook(getNote.registration, toOmega(acmeAdmin, { name: 'anvil' }))),
+    ).toEqual({
       status: 'rejected',
       reason: 'not_found',
       detail: 'There is no note anvil',
     });
   });
 
-  it('refuses every command with the conflict update_brain gives for a retired brain', async () => {
-    const { dispatcher, ledger, run } = harness({ retiredBrains });
+  it('refuses every command with the conflict update_playbook gives for a retired playbook', async () => {
+    const { dispatcher, ledger, run } = harness({ retiredPlaybooks });
 
     expect(
-      await run(dispatcher.dispatchToBrain(addNote.registration, toOmega(acmeAdmin, { name: 'anvil', text: 'heavy' }))),
+      await run(
+        dispatcher.dispatchToPlaybook(addNote.registration, toOmega(acmeAdmin, { name: 'anvil', text: 'heavy' })),
+      ),
     ).toEqual({
       status: 'rejected',
       reason: 'conflict',
-      detail: 'The brain omega is retired and can no longer change',
+      detail: 'The playbook omega is retired and can no longer change',
       kind: 'retired',
     });
     expect(ledger.streamNames()).toEqual([]);
@@ -165,41 +179,41 @@ describe('the org id of a call', () => {
   const illFormed = 'ac/me';
   const localDeveloper = { ...acmeAdmin, org: illFormed };
 
-  it('is checked after the caller, at org and at brain scope', async () => {
+  it('is checked after the caller, at org and at playbook scope', async () => {
     const { dispatcher, run } = harness();
-    const writingOnly: CallerIdentity = { ...localDeveloper, permissions: ['brain:write'] };
+    const writingOnly: CallerIdentity = { ...localDeveloper, permissions: ['playbook:write'] };
 
     expect(
-      await run(dispatcher.dispatchToOrg(listBrainLabels.registration, toOrg(illFormed)(acmeAdmin))),
+      await run(dispatcher.dispatchToOrg(listPlaybookLabels.registration, toOrg(illFormed)(acmeAdmin))),
     ).toMatchObject({
       detail: 'The caller does not belong to this org',
     });
     expect(
-      await run(dispatcher.dispatchToBrain(getNote.registration, toBrain(illFormed, 'alpha')(acmeAdmin))),
+      await run(dispatcher.dispatchToPlaybook(getNote.registration, toPlaybook(illFormed, 'alpha')(acmeAdmin))),
     ).toMatchObject({
       detail: 'The caller does not belong to this org',
     });
     expect(
-      await run(dispatcher.dispatchToOrg(listBrainLabels.registration, toOrg(illFormed)(writingOnly))),
+      await run(dispatcher.dispatchToOrg(listPlaybookLabels.registration, toOrg(illFormed)(writingOnly))),
     ).toMatchObject({
       detail: 'The caller lacks the org:read permission',
     });
     expect(
-      await run(dispatcher.dispatchToBrain(getNote.registration, toBrain(illFormed, 'alpha')(writingOnly))),
+      await run(dispatcher.dispatchToPlaybook(getNote.registration, toPlaybook(illFormed, 'alpha')(writingOnly))),
     ).toMatchObject({
-      detail: 'The caller lacks the brain:read permission',
+      detail: 'The caller lacks the playbook:read permission',
     });
   });
 
-  it('must be well formed, at org and at brain scope', async () => {
-    const { dispatcher, run } = harness({ brains: [{ org: illFormed, brain: 'alpha' }] });
+  it('must be well formed, at org and at playbook scope', async () => {
+    const { dispatcher, run } = harness({ playbooks: [{ org: illFormed, playbook: 'alpha' }] });
     const noSuchOrg = { status: 'rejected', reason: 'not_found', detail: 'There is no such org' };
 
-    expect(await run(dispatcher.dispatchToOrg(listBrainLabels.registration, toOrg(illFormed)(localDeveloper)))).toEqual(
-      noSuchOrg,
-    );
     expect(
-      await run(dispatcher.dispatchToBrain(getNote.registration, toBrain(illFormed, 'alpha')(localDeveloper))),
+      await run(dispatcher.dispatchToOrg(listPlaybookLabels.registration, toOrg(illFormed)(localDeveloper))),
+    ).toEqual(noSuchOrg);
+    expect(
+      await run(dispatcher.dispatchToPlaybook(getNote.registration, toPlaybook(illFormed, 'alpha')(localDeveloper))),
     ).toEqual(noSuchOrg);
   });
 });
@@ -208,13 +222,14 @@ describe('a rejection of authorization', () => {
   it('is a value of its own that a consumer may not spoil for later calls', async () => {
     const { dispatcher, run } = harness();
     const accessDenied = () =>
-      run(dispatcher.dispatchToBrain(getNote.registration, toBrain('acme', 'beta')(acmeAlphaReader)));
-    const abroad = () => run(dispatcher.dispatchToBrain(getNote.registration, toBrain('globex', 'gamma')(acmeAdmin)));
+      run(dispatcher.dispatchToPlaybook(getNote.registration, toPlaybook('acme', 'beta')(acmeAlphaReader)));
+    const abroad = () =>
+      run(dispatcher.dispatchToPlaybook(getNote.registration, toPlaybook('globex', 'gamma')(acmeAdmin)));
 
     Reflect.set(await accessDenied(), 'detail', 'spoiled');
     Reflect.set(await abroad(), 'detail', 'spoiled');
 
-    expect(await accessDenied()).toMatchObject({ detail: 'The caller may not access this brain' });
+    expect(await accessDenied()).toMatchObject({ detail: 'The caller may not access this playbook' });
     expect(await abroad()).toMatchObject({ detail: 'The caller does not belong to this org' });
   });
 });

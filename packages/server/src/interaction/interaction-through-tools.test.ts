@@ -34,7 +34,7 @@ describe('an interaction function that delivers through a tool, over HTTP', { ti
       {
         type: 'delivery_started',
         run_id: runId,
-        by: 'brain:alpha',
+        by: 'playbook:alpha',
         number: 1,
         delivery: { server: 'chat', tool: 'post_message' },
         target: 'ada',
@@ -44,7 +44,7 @@ describe('an interaction function that delivers through a tool, over HTTP', { ti
       {
         type: 'delivery_ended',
         run_id: runId,
-        by: 'brain:alpha',
+        by: 'playbook:alpha',
         number: 1,
         outcome: 'delivered',
         result_bytes: aNumber,

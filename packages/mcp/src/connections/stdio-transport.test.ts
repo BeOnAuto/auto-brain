@@ -35,7 +35,7 @@ function stdioSettings(args: readonly string[], changes: Partial<StdioServerSett
     org: 'acme',
     allowed: null,
     testable: [],
-    brains: null,
+    playbooks: null,
     record_content: false,
     request_id: null,
     secrets: [],

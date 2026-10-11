@@ -5,14 +5,19 @@ import { conversations } from './conversation-rows.ts';
 
 const stream = { kind: 'runs', id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' };
 
-const ofTheBrain = { definition_type: 'interaction', name: 'approve-brief', definition_version: 1, by: 'brain:alpha' };
+const ofThePlaybook = {
+  definition_type: 'interaction',
+  name: 'approve-brief',
+  definition_version: 1,
+  by: 'playbook:alpha',
+};
 
 const deliveredAs = { conversation: 'C0123', id: '1699.1' };
 
 const repliesIn = { server: 'chat', tool: 'thread_replies', key: 'C0123/1699.1' };
 
 function deliveryEnded(at: string, keeping = true) {
-  const delivered = { type: 'delivery_ended', number: 1, outcome: 'delivered', duration_ms: 5, ...ofTheBrain, at };
+  const delivered = { type: 'delivery_ended', number: 1, outcome: 'delivered', duration_ms: 5, ...ofThePlaybook, at };
   return keeping ? { ...delivered, delivered_as: deliveredAs, replies_in: repliesIn } : delivered;
 }
 
@@ -34,7 +39,7 @@ function read(since: string | null, type = 'replies_read') {
     replies: 1,
     taken: 0,
     refused: 0,
-    by: 'brain:alpha',
+    by: 'playbook:alpha',
     at: '2026-10-01T09:00:10.000Z',
   };
 }

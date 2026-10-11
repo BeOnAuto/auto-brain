@@ -11,7 +11,7 @@ import {
   published,
   definitionRecorded,
   definitionRetired,
-} from '../reaction-testing/brain-writes.ts';
+} from '../reaction-testing/playbook-writes.ts';
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
 import { refusedWhile, rejectedFor } from '../reaction-testing/recorded-reactions.ts';
 import { until } from '../reaction-testing/until.ts';
@@ -58,7 +58,7 @@ describe('a workflow whose trigger is an event', () => {
     expect(starts).toEqual([
       {
         org: 'acme',
-        brain: 'alpha',
+        playbook: 'alpha',
         workflow: 'close',
         version: 1,
         runId: reactionRunIdOf('close', 1, '/schedule/on', cause),
@@ -115,7 +115,7 @@ describe('a new version of a workflow whose trigger is an event', () => {
   });
 });
 
-describe('the follower of a brain', () => {
+describe('the follower of a playbook', () => {
   it('starts nothing again for what it delivered before the host stopped, and goes on after it', async () => {
     const first = await reactingHost();
     const { store } = first.database;
@@ -133,9 +133,9 @@ describe('the follower of a brain', () => {
   });
 });
 
-describe('a start the brain keeps refusing', () => {
+describe('a start the playbook keeps refusing', () => {
   it(
-    'holds the follower of the brain for 20 sweeps, then is skipped and said, and the follower goes on',
+    'holds the follower of the playbook for 20 sweeps, then is skipped and said, and the follower goes on',
     { timeout: 30_000 },
     async () => {
       const refusing = { now: true };
@@ -156,14 +156,14 @@ describe('a start the brain keeps refusing', () => {
       const starts = await startsReaching(reacting, 1);
 
       expect([refusals, starts.map(({ cause }) => cause)]).toEqual([
-        [{ reason: 'The workflow could not be started by its event trigger: The brain refused the start' }],
+        [{ reason: 'The workflow could not be started by its event trigger: The playbook refused the start' }],
         [messageIdOf(`${alpha}events/e2`, 1)],
       ]);
     },
   );
 });
 
-describe('a start the brain rejects for good', () => {
+describe('a start the playbook rejects for good', () => {
   it('is said at once and not tried again, and the follower goes on', async () => {
     const reacting = await reactingHost({
       failure: rejectedFor('close', 'The input is not what the workflow takes'),

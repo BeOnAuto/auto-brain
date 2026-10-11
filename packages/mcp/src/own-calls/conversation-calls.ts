@@ -17,7 +17,7 @@ export const conversationCallDecider = ownCallDecider<ConversationCallEvent>({
   after: { telling_started: 'telling_ended' },
   eventSchema: ConversationCallEventSchema,
   outOfTurn:
-    'A call of the brain in a conversation records the start of a telling once and then its end once, or a read once, so this is not recorded',
+    'A call of the playbook in a conversation records the start of a telling once and then its end once, or a read once, so this is not recorded',
 });
 
 export interface Recorded {

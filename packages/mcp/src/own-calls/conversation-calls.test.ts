@@ -5,7 +5,7 @@ import type { AnsweredOnce, CalledOnce } from '../one-call/called-once.ts';
 import { conversationCallStreamOf, type ConversationCallEvent } from './conversation-call-events.ts';
 import { conversationCallDecider, repliesReadOf, tellingEndedOf, tellingStartedOf } from './conversation-calls.ts';
 
-const recorded = { by: 'brain:alpha', at: '2026-10-08T09:00:05.000Z' };
+const recorded = { by: 'playbook:alpha', at: '2026-10-08T09:00:05.000Z' };
 
 const reference = { server: 'chat', tool: 'thread_replies' };
 
@@ -50,7 +50,7 @@ function decided(event: ConversationCallEvent, ...history: readonly Conversation
   return conversationCallDecider.decide(event, state);
 }
 
-describe('a telling the brain makes in a conversation', () => {
+describe('a telling the playbook makes in a conversation', () => {
   it('records its start with the call it sends and its end with what the tool answered', () => {
     expect(tellingStartedOf({ callId: 'call-2', runId: 'run-1' }, started, recorded)).toEqual({
       type: 'telling_started',
@@ -84,7 +84,7 @@ describe('a telling the brain makes in a conversation', () => {
   });
 });
 
-describe('a read the brain makes in a conversation', () => {
+describe('a read the playbook makes in a conversation', () => {
   it('is one fact, with the call and what the read found, and the wait a 429 asked for', () => {
     expect(repliesReadOf({ ...reading, retryAfterMs: 60_000 }, recorded)).toEqual({
       type: 'replies_read',
@@ -119,7 +119,7 @@ describe('a read the brain makes in a conversation', () => {
   });
 });
 
-describe('a read the brain could not send', () => {
+describe('a read the playbook could not send', () => {
   it('names the tool alone, with no answer and the reason in its detail', () => {
     const { arguments_bytes: _bytes, arguments_sha256: _digest, ...tool } = started;
 

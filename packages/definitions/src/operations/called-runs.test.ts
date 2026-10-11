@@ -4,10 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { defineCapability, mostCallDepth } from '../index.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
-import { harness, toBrain } from '../testing/harness.ts';
+import { harness, toPlaybook } from '../testing/harness.ts';
 import { probe } from '../testing/probe.ts';
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
@@ -36,7 +36,7 @@ const measuring = defineCapability({
     }),
 });
 
-async function brainMeasuring() {
+async function playbookMeasuring() {
   const operations = definitionOperationsFor([measuring, probe().capability]);
   const definitions = harness();
   const created = (type: string, name: string) =>
@@ -55,7 +55,7 @@ async function brainMeasuring() {
 
 describe('a run that answers a call of another run', () => {
   it('records the call and how many calls are above it on its start, and sees that depth in its context', async () => {
-    const { ledger, measured, run } = await brainMeasuring();
+    const { ledger, measured, run } = await playbookMeasuring();
 
     expect(await measured({ callDepth: 3, calledBy })).toMatchObject({
       output: { output: { callDepth: 3 } },
@@ -63,7 +63,7 @@ describe('a run that answers a call of another run', () => {
     const { records } = await run(
       Effect.orDie(
         ledger.service.readRecorded(
-          { org: 'acme', brain: 'alpha' },
+          { org: 'acme', playbook: 'alpha' },
           { kind: 'run', run: runId },
           { order: 'asc', limit: 10 },
         ),
@@ -73,8 +73,8 @@ describe('a run that answers a call of another run', () => {
   });
 
   it(`may be ${mostCallDepth} calls deep, and the ninth start is refused as a conflict that records nothing`, async () => {
-    const deep = await brainMeasuring();
-    const deeper = await brainMeasuring();
+    const deep = await playbookMeasuring();
+    const deeper = await playbookMeasuring();
 
     expect(await deep.measured({ callDepth: mostCallDepth })).toMatchObject({ status: 'succeeded' });
     expect(await deeper.measured({ callDepth: mostCallDepth + 1 })).toEqual({
@@ -89,7 +89,7 @@ describe('a run that answers a call of another run', () => {
 
 describe('the longest run of a definition, as a run resolves it', () => {
   it('is what the capability declares for the active latest version, and nothing for one it cannot run', async () => {
-    const { measured } = await brainMeasuring();
+    const { measured } = await playbookMeasuring();
 
     expect(await measured()).toMatchObject({
       output: { output: { longest: [600_000, 42_000, null, null, null], callDepth: 0 } },

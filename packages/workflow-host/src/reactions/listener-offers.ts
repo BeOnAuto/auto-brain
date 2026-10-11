@@ -76,9 +76,9 @@ function keyOf(row: MatchedListener): string {
   return JSON.stringify([row.run_key, row.listener]);
 }
 
-function filterPlaceOf(brainKey: string, row: MatchedListener): FilterPlace {
+function filterPlaceOf(playbookKey: string, row: MatchedListener): FilterPlace {
   const { workflow, version } = row;
-  return { kind: 'listener', brainKey, workflow, version, reference: listenerKeyOf(row.listener).reference };
+  return { kind: 'listener', playbookKey, workflow, version, reference: listenerKeyOf(row.listener).reference };
 }
 
 function filtersOf(row: MatchedListener): readonly MatchedFilter[] {
@@ -92,9 +92,9 @@ function accepting(
   matchGroups: MatchGroups,
   parts: OfferParts,
   rows: readonly MatchedListener[],
-  { brainKey, event }: FollowedRecord,
+  { playbookKey, event }: FollowedRecord,
 ): Effect.Effect<readonly ListenerVerdict[]> {
-  const groups = rows.map((row) => ({ place: filterPlaceOf(brainKey, row), filters: filtersOf(row) }));
+  const groups = rows.map((row) => ({ place: filterPlaceOf(playbookKey, row), filters: filtersOf(row) }));
   return Effect.map(matchGroups(groups, event.event, parts.now()), (matched) =>
     Array.zipWith(rows, matched, (row, { verdicts, stopped, struck }): ListenerVerdict => ({
       row,
@@ -105,14 +105,14 @@ function accepting(
   );
 }
 
-function reportedStops(parts: OfferParts, brainKey: string, { row, stopped }: ListenerVerdict) {
+function reportedStops(parts: OfferParts, playbookKey: string, { row, stopped }: ListenerVerdict) {
   return Effect.forEach(
     stopped,
     (error) =>
       parts.refusals.refuse(
-        brainKey,
+        playbookKey,
         row.workflow,
-        `The filter of a listen task of the workflow was stopped by its deadline or its memory ${stopsInARowBeforeTheVersion} times in a row, so the brain's events are not offered through it again for this version of the workflow; events sent to its runs still reach them: ${describeError(error)}`,
+        `The filter of a listen task of the workflow was stopped by its deadline or its memory ${stopsInARowBeforeTheVersion} times in a row, so the playbook's events are not offered through it again for this version of the workflow; events sent to its runs still reach them: ${describeError(error)}`,
       ),
     { discard: true },
   );
@@ -170,7 +170,7 @@ export function listenerOffers(parts: OfferParts): RecordConsumer {
     batchOf: (followed, after, most) =>
       Effect.gen(function* () {
         const rows = yield* listenersOfType(parts.database, {
-          brainKey: followed.brainKey,
+          playbookKey: followed.playbookKey,
           type: followed.event.event.type,
           after: placeOf(after),
           limit: most + 1,
@@ -178,7 +178,7 @@ export function listenerOffers(parts: OfferParts): RecordConsumer {
         const taken = rows.slice(0, most);
         const others = taken.filter((row) => !emittedByTheRun(row, followed));
         const judged = yield* accepting(matchGroups, parts, others, followed);
-        yield* Effect.forEach(judged, (each) => reportedStops(parts, followed.brainKey, each), { discard: true });
+        yield* Effect.forEach(judged, (each) => reportedStops(parts, followed.playbookKey, each), { discard: true });
         const lastTaken = taken.at(-1);
         return {
           deliveries: judged.flatMap((each) => deliveriesOf(parts, each, followed)),
@@ -186,7 +186,7 @@ export function listenerOffers(parts: OfferParts): RecordConsumer {
           more: rows.length > most,
         };
       }),
-    skipped: ({ brainKey }, { workflow }, detail) =>
-      parts.refusals.refuse(brainKey, workflow, `An event could not be offered to a run waiting for it: ${detail}`),
+    skipped: ({ playbookKey }, { workflow }, detail) =>
+      parts.refusals.refuse(playbookKey, workflow, `An event could not be offered to a run waiting for it: ${detail}`),
   };
 }

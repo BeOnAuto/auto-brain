@@ -37,7 +37,7 @@ function rejectedComponents(functions: CallFunctions): Readonly<Record<string, s
 
 const flowDirectives = new Set(['continue', 'exit', 'end']);
 
-export const oneLanguage = "The brain's one language is TypeScript; write the program as a TypeScript function";
+export const oneLanguage = "The playbook's one language is TypeScript; write the program as a TypeScript function";
 
 const strictMode = 'An expression that fails must fail, so evaluate.mode is strict, the default';
 

@@ -69,8 +69,8 @@ describe('the plain language of list_runs', () => {
       listed([], { cursor: 'WyJicmFpbiJd', status: 'started' }),
       listed([], { type: 'echo', name: 'greet', status: 'succeeded' }, true),
     ]).toEqual([
-      'This brain has no runs yet.',
-      'This brain has no runs of greetings.',
+      'This playbook has no runs yet.',
+      'This playbook has no runs of greetings.',
       'There are no more runs that are still running.',
       'This page holds no runs of the greeting “greet” that finished, but there are more runs to look through.',
     ]);

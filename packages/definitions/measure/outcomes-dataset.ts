@@ -53,11 +53,11 @@ function row(stream: string, position: number, data: Readonly<Record<string, unk
   return { stream, position, type: String(data['type']), data: JSON.stringify(data), created: at };
 }
 
-export function runOf(brain: string, run: number, recordBytes: number): readonly OutcomeRow[] {
+export function runOf(playbook: string, run: number, recordBytes: number): readonly OutcomeRow[] {
   const startedAt = firstMoment + (run % daysInTheWindow) * dayInMilliseconds + (run % 80_000) * 1000;
   const at = new Date(startedAt).toISOString();
   const finishedAt = new Date(startedAt + 100 + (run % 50) * 97).toISOString();
-  const stream = `brain/o1/${brain}/runs/${String(run).padStart(8, '0')}`;
+  const stream = `playbook/o1/${playbook}/runs/${String(run).padStart(8, '0')}`;
   const started = { type: 'run_started', definition_type: 'reasoning', name: `fn-${run % 20}`, definition_version: 1 };
   return [
     row(stream, 1, { ...started, input: { text: text(320) }, by: 'user-1', at }, at),

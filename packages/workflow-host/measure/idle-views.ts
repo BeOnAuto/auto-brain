@@ -16,7 +16,7 @@ export interface IdleViews {
   readonly busyMsASecond: number;
 }
 
-const brain = 'brain/acme/alpha/';
+const playbook = 'playbook/acme/alpha/';
 
 const details = {
   language: 'typescript',
@@ -42,7 +42,7 @@ function saved(index: number) {
 async function allLive(store: WorkflowStore, views: number): Promise<void> {
   const kept = await Promise.all(
     Array.from({ length: views }, (_, index) =>
-      Effect.runPromise(store.views.viewOf({ org: 'acme', brain: 'alpha' }, `view-${index}`)),
+      Effect.runPromise(store.views.viewOf({ org: 'acme', playbook: 'alpha' }, `view-${index}`)),
     ),
   );
   if (kept.every((view) => view?.phase === 'live')) {
@@ -55,7 +55,7 @@ async function allLive(store: WorkflowStore, views: number): Promise<void> {
 export async function idleViewsOn(settings: DatabaseSettings, views: number, seconds: number): Promise<IdleViews> {
   const store = await openWorkflowStore(settings, Function.constVoid);
   await store.database.store.append(
-    `${brain}definitions/recall`,
+    `${playbook}definitions/recall`,
     Array.from({ length: views }, (_, index) => saved(index)),
     0,
   );
@@ -73,7 +73,7 @@ export async function idleViewsOn(settings: DatabaseSettings, views: number, sec
         pageBudgetMs: 2000,
         mostViewBytes: 524_288,
       },
-      brainsAtOnce: 4,
+      playbooksAtOnce: 4,
       rebuildsAtOnce: 4,
       pagesPerWake: 10,
       overtimesBeforeStall: 20,

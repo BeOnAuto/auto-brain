@@ -26,7 +26,7 @@ function startedAccount(event: ToolTestStarted) {
   const server = cutAsStored(event.server, mostNameBytes);
   const tool = cutAsStored(event.tool, mostNameBytes);
   return {
-    summary: `Someone allowed to change the brain tested the ${inWords(tool)} tool of ${inWords(server)}.`,
+    summary: `Someone allowed to change the playbook tested the ${inWords(tool)} tool of ${inWords(server)}.`,
     data: {
       test_id: event.test_id,
       by: cutAsStored(event.by, mostNameBytes),

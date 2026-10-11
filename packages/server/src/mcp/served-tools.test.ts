@@ -94,24 +94,24 @@ describe('the descriptions of the tools of /mcp', () => {
     expect(tools.filter((tool) => isAddressedToTheAgent(tool)).map(({ name }) => name)).toEqual([]);
   });
 
-  it('name each type of definition with the kind it is and its guide, in create_definition, the longest description, at 788 characters in five sentences', () => {
+  it('name each type of definition with the kind it is and its guide, in create_definition, the longest description, at 794 characters in five sentences', () => {
     const description = descriptionOf('create_definition');
 
     expect(description).toContain(
       'reasoning, a reasoning function, guide reasoning-function; interaction, an interaction function, guide interaction-function; computation, a computation function, guide computation-function; recall, a recall function, guide recall-function; workflow, a workflow, guide workflow.',
     );
-    expect([description.length, sentencesOf(description)]).toEqual([788, 5]);
+    expect([description.length, sentencesOf(description)]).toEqual([794, 5]);
     expect(
       tools.filter((tool) => descriptionOf(tool.name).length > description.length).map(({ name }) => name),
     ).toEqual([]);
   });
 
-  it('say that a function that calls a tool may change something, in run_definition at 765 characters, and that a run that ends within its call cannot be cancelled, in cancel_run at 671', () => {
+  it('say that a function that calls a tool may change something, in run_definition at 768 characters, and that a run that ends within its call cannot be cancelled, in cancel_run at 671', () => {
     const [running, cancelling] = [descriptionOf('run_definition'), descriptionOf('cancel_run')];
 
-    expect(running).toContain('A function that calls a tool may change something outside the brain');
+    expect(running).toContain('A function that calls a tool may change something outside the playbook');
     expect(cancelling).toContain('or an interaction function that calls a tool, cannot be cancelled.');
-    expect([running.length, cancelling.length]).toEqual([765, 671]);
+    expect([running.length, cancelling.length]).toEqual([768, 671]);
   });
 });
 
@@ -142,11 +142,11 @@ describe('the arguments of the tools of /mcp', () => {
 type Hints = readonly [boolean, boolean, boolean, boolean];
 
 const served: Readonly<Record<string, Hints>> = {
-  create_brain: [false, false, false, false],
-  list_brains: [true, false, true, false],
-  get_brain: [true, false, true, false],
-  update_brain: [false, false, true, false],
-  retire_brain: [false, true, true, false],
+  create_playbook: [false, false, false, false],
+  list_playbooks: [true, false, true, false],
+  get_playbook: [true, false, true, false],
+  update_playbook: [false, false, true, false],
+  retire_playbook: [false, true, true, false],
   list_models: [true, false, true, true],
   create_definition: [false, false, false, false],
   list_definitions: [true, false, true, false],
@@ -158,8 +158,8 @@ const served: Readonly<Record<string, Hints>> = {
   cancel_run: [false, true, true, false],
   list_runs: [true, false, true, false],
   get_run_history: [true, false, true, false],
-  get_brain_analytics: [true, false, true, false],
-  list_brain_events: [true, false, true, false],
+  get_playbook_analytics: [true, false, true, false],
+  list_playbook_events: [true, false, true, false],
   publish_event: [false, false, false, false],
   list_tool_servers: [true, false, true, true],
   test_tool_call: [false, false, false, true],

@@ -19,7 +19,7 @@ type StartFailure = StartRefused | StartRejected;
 export type FailingStart = (start: ReactionStart) => StartFailure | null;
 
 export function refusedWhile(refusing: Readonly<{ now: boolean }>): FailingStart {
-  return () => (refusing.now ? new StartRefused({ detail: 'The brain refused the start' }) : null);
+  return () => (refusing.now ? new StartRefused({ detail: 'The playbook refused the start' }) : null);
 }
 
 export function rejectedFor(workflow: string, detail: string): FailingStart {
@@ -41,7 +41,7 @@ export function recordedReactions(behaviour: ReactionBehaviour = {}): RecordedRe
           starts.push(start);
           return Effect.void;
         }),
-      emit: (_brain, emission) =>
+      emit: (_playbook, emission) =>
         Effect.sync(() => {
           emissions.push(emission);
           return 'recorded';

@@ -6,9 +6,9 @@ import { runDecider } from './run-decider.ts';
 import { runTaken } from './run-decisions.ts';
 import type { RunEvent } from './run-events.ts';
 
-const start = { by: 'brain:alpha', at: '2026-10-01T09:00:00.000Z' };
+const start = { by: 'playbook:alpha', at: '2026-10-01T09:00:00.000Z' };
 
-const finish = { by: 'brain:alpha', at: '2026-10-01T09:00:05.000Z' };
+const finish = { by: 'playbook:alpha', at: '2026-10-01T09:00:05.000Z' };
 
 const greeting = { definition_type: 'echo', name: 'greet', input: { who: 'Ada' } };
 

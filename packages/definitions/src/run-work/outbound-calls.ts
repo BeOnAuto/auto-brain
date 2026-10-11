@@ -1,10 +1,10 @@
 import {
-  BrainIdSchema,
+  PlaybookIdSchema,
   Conflict,
   OrgIdSchema,
-  brainCallerOf,
+  playbookCallerOf,
   messageIdOf,
-  streamPrefixOfBrain,
+  streamPrefixOfPlaybook,
   type Lineage,
   type StreamWriter,
 } from '@beonauto/operations';
@@ -28,10 +28,10 @@ export type RecordRunWork<Fact> = (
 export type RecordOutboundCall = RecordRunWork<OutboundCallFact>;
 
 const isWellFormed = Schema.is(
-  Schema.Struct({ org: OrgIdSchema, brain: BrainIdSchema, id: Schema.String.check(Schema.isUUID()) }),
+  Schema.Struct({ org: OrgIdSchema, playbook: PlaybookIdSchema, id: Schema.String.check(Schema.isUUID()) }),
 );
 
-const noSuchRun = new Conflict({ detail: 'There is no such run in this brain, so it records no work' });
+const noSuchRun = new Conflict({ detail: 'There is no such run in this playbook, so it records no work' });
 
 type CommandOf<Fact> = (fact: Fact, recorded: CommandMetadata) => RunCommand;
 
@@ -41,10 +41,10 @@ function runWorkRecorder<Fact>(ledger: StreamWriter, commandOf: CommandOf<Fact>)
       if (!isWellFormed(run)) {
         return yield* noSuchRun;
       }
-      const stream = `${streamPrefixOfBrain(run)}${runStreamNameOf(run.id.toLowerCase())}`;
+      const stream = `${streamPrefixOfPlaybook(run)}${runStreamNameOf(run.id.toLowerCase())}`;
       const at = DateTime.formatIso(yield* DateTime.now);
       const { version } = yield* ledger
-        .execute(stream, runDecider, commandOf(fact, { by: brainCallerOf(run).id, at }), lineage)
+        .execute(stream, runDecider, commandOf(fact, { by: playbookCallerOf(run).id, at }), lineage)
         .pipe(Effect.catchTags({ not_found: Effect.die, cancelled: Effect.die }));
       return { id: messageIdOf(stream, version), at };
     });

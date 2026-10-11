@@ -4,7 +4,7 @@ import { Effect, Schema } from 'effect';
 import { isDefinitionTypeName, type Capability } from './capability.ts';
 
 interface PublishedOperation {
-  readonly registration: Registration<'brain'>;
+  readonly registration: Registration<'playbook'>;
 }
 
 const DefinitionTypeField = Schema.String.check(

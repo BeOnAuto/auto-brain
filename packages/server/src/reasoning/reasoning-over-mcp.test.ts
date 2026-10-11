@@ -33,8 +33,8 @@ const definitionTools = [
   'cancel_run',
   'list_runs',
   'get_run_history',
-  'get_brain_analytics',
-  'list_brain_events',
+  'get_playbook_analytics',
+  'list_playbook_events',
   'publish_event',
   'list_tool_servers',
   'test_tool_call',
@@ -58,12 +58,16 @@ afterEach(async () => {
 async function onAlpha<T>(replies: readonly ScriptedReply[], use: (session: McpSession) => Promise<T>): Promise<T> {
   server = await servingReasoning(replies);
   await withMcpSession('current revision', { url: `${server.origin}/orgs/acme/mcp`, headers: {} }, (session) =>
-    session.callTool('create_brain', { brain: 'alpha', name: 'Alpha' }),
+    session.callTool('create_playbook', { playbook: 'alpha', name: 'Alpha' }),
   );
-  return withMcpSession('current revision', { url: `${server.origin}/orgs/acme/brains/alpha/mcp`, headers: {} }, use);
+  return withMcpSession(
+    'current revision',
+    { url: `${server.origin}/orgs/acme/playbooks/alpha/mcp`, headers: {} },
+    use,
+  );
 }
 
-describe('a reasoning function definition over MCP, on the endpoint of its brain', () => {
+describe('a reasoning function definition over MCP, on the endpoint of its playbook', () => {
   it('is created, executed and read back with its run', async () => {
     const { created, ran, run } = await onAlpha([answers(textResult('Profits rose.'))], async (session) => {
       const creating = await session.callTool('create_definition', {
@@ -110,8 +114,8 @@ describe('a reasoning function definition over MCP, on the endpoint of its brain
   });
 });
 
-describe('the definition tools an agent sees on the endpoint of a brain', () => {
-  it('are the eighteen operations inside a brain and the guide tool, none of them carrying the format of a document', async () => {
+describe('the definition tools an agent sees on the endpoint of a playbook', () => {
+  it('are the eighteen operations inside a playbook and the guide tool, none of them carrying the format of a document', async () => {
     const tools = listedTools(await onAlpha([], (session) => session.listTools()));
 
     expect(tools.map(({ name }) => name)).toEqual([...definitionTools, guideToolName]);

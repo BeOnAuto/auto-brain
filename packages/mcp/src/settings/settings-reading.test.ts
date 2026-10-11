@@ -13,7 +13,7 @@ const graph = { url: 'https://graph.example.com/mcp', org: 'acme' };
 
 const limitless = { command: '/usr/local/bin/limitless-mcp-server', org: 'acme' };
 
-const clientSecret = { client_id: 'brain', client_secret: '${GRAPH_CLIENT_SECRET}' };
+const clientSecret = { client_id: 'playbook', client_secret: '${GRAPH_CLIENT_SECRET}' };
 
 function environmentOf(servers: unknown): Environment {
   return { ...secrets, MCP_SERVERS: JSON.stringify(servers) };
@@ -49,12 +49,12 @@ describe('reading an http server', () => {
     expect(Effect.runSync(readMcpSettings({}, context))).toEqual({ servers: [] });
   });
 
-  it('reads an http entry with its headers resolved and redacted, and its org and brains', () => {
+  it('reads an http entry with its headers resolved and redacted, and its org and playbooks', () => {
     const [server] = serversOf({
       graph: {
         ...graph,
         headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' },
-        brains: ['sales', 'support'],
+        playbooks: ['sales', 'support'],
         record_content: true,
         request_id: 'x-request-id',
       },
@@ -66,7 +66,7 @@ describe('reading an http server', () => {
       url: graph.url,
       auth: null,
       org: 'acme',
-      brains: ['sales', 'support'],
+      playbooks: ['sales', 'support'],
       allowed: null,
       testable: [],
       record_content: true,
@@ -92,7 +92,7 @@ describe('reading a stdio server', () => {
       type: 'stdio',
       command: limitless.command,
       args: ['--port', '0'],
-      brains: null,
+      playbooks: null,
       record_content: false,
       request_id: null,
     });
@@ -153,7 +153,7 @@ describe('the fields of the other type', () => {
   });
 });
 
-describe('the name, org and brains of a server', () => {
+describe('the name, org and playbooks of a server', () => {
   it('refuses a name a reasoning function could not write, or could mistake for a model provider or gateway', () => {
     expect(problemsOf({ Graph: graph })).toEqual([
       'MCP_SERVERS /Graph: Expected a name of 1 to 32 lowercase letters, digits and hyphens, starting with a letter',
@@ -164,14 +164,14 @@ describe('the name, org and brains of a server', () => {
     ]);
   });
 
-  it('refuses an entry without its org, or with an org or brain that is not an id, with every other problem', () => {
+  it('refuses an entry without its org, or with an org or playbook that is not an id, with every other problem', () => {
     expect(problemsOf({ Graph: { url: graph.url } })).toEqual([
       'MCP_SERVERS /Graph: Expected a name of 1 to 32 lowercase letters, digits and hyphens, starting with a letter',
       'MCP_SERVERS /Graph: Expected the org this server serves',
     ]);
-    expect(problemsOf({ graph: { ...graph, org: 'acme corp', brains: ['sales', 'Support Desk'] } })).toEqual([
+    expect(problemsOf({ graph: { ...graph, org: 'acme corp', playbooks: ['sales', 'Support Desk'] } })).toEqual([
       'MCP_SERVERS /graph/org: Expected an org id',
-      'MCP_SERVERS /graph/brains/1: Expected a brain id',
+      'MCP_SERVERS /graph/playbooks/1: Expected a playbook id',
     ]);
   });
 });

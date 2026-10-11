@@ -1,6 +1,6 @@
 import type { Effect } from 'effect';
 
-import type { BrainAddress } from '../caller/brain-context.ts';
+import type { PlaybookAddress } from '../caller/playbook-context.ts';
 
 export type ProjectedValue = string | number | boolean | null;
 
@@ -16,7 +16,7 @@ export interface ProjectedColumn {
 export interface ProjectedIndex {
   readonly name: string;
   readonly columns: readonly string[];
-  readonly acrossBrains?: boolean;
+  readonly acrossPlaybooks?: boolean;
   readonly whereSet?: string;
 }
 
@@ -68,7 +68,7 @@ export interface ProjectedRowsQuery {
 
 export interface ProjectedKeyedRow {
   readonly org: string;
-  readonly brain: string;
+  readonly playbook: string;
   readonly key: string;
   readonly row: ProjectedRow;
 }
@@ -82,12 +82,12 @@ export interface DueRowsQuery {
 export interface ProjectionReader {
   readonly readProjectedRows: (
     projection: string,
-    brain: BrainAddress,
+    playbook: PlaybookAddress,
     query: ProjectedRowsQuery,
   ) => Effect.Effect<readonly ProjectedKeyedRow[]>;
   readonly countProjectedRows: (
     projection: string,
-    brain: BrainAddress,
+    playbook: PlaybookAddress,
     where: readonly ProjectedCondition[],
   ) => Effect.Effect<number>;
   readonly readDueRows: (projection: string, query: DueRowsQuery) => Effect.Effect<readonly ProjectedKeyedRow[]>;
@@ -102,13 +102,13 @@ export interface RowAdvance {
 export interface ProjectionAdvancer {
   readonly advanceRow: (
     projection: string,
-    brain: BrainAddress,
+    playbook: PlaybookAddress,
     key: string,
     advance: RowAdvance,
   ) => Effect.Effect<void>;
 }
 
-export interface BrainProjectionReader {
+export interface PlaybookProjectionReader {
   readonly readProjectedRows: (
     projection: string,
     query: ProjectedRowsQuery,
@@ -124,22 +124,22 @@ const columnName = /^[a-z][a-z0-9_]{0,62}$/u;
 
 const streamKind = /^[a-z][a-z0-9-]{0,39}$/u;
 
-const keyColumns: ReadonlySet<string> = new Set(['brain_key', rowKeyColumn]);
+const keyColumns: ReadonlySet<string> = new Set(['playbook_key', rowKeyColumn]);
 
-const brainStream = /^(?<brainKey>[^/]+\/[^/]+\/[^/]+\/)(?<kind>[^/]+)\/(?<id>[^/]+)$/u;
+const playbookStream = /^(?<playbookKey>[^/]+\/[^/]+\/[^/]+\/)(?<kind>[^/]+)\/(?<id>[^/]+)$/u;
 
-export interface BrainStream extends ProjectedStream {
-  readonly brainKey: string;
+export interface PlaybookStream extends ProjectedStream {
+  readonly playbookKey: string;
 }
 
-export function brainStreamOf(stream: string): BrainStream | undefined {
-  const groups = brainStream.exec(stream)?.groups;
+export function playbookStreamOf(stream: string): PlaybookStream | undefined {
+  const groups = playbookStream.exec(stream)?.groups;
   return groups === undefined
     ? undefined
-    : { brainKey: String(groups['brainKey']), kind: String(groups['kind']), id: String(groups['id']) };
+    : { playbookKey: String(groups['playbookKey']), kind: String(groups['kind']), id: String(groups['id']) };
 }
 
-export function rowKeyOf(projection: KeyedProjection, event: unknown, stream: BrainStream): string | undefined {
+export function rowKeyOf(projection: KeyedProjection, event: unknown, stream: PlaybookStream): string | undefined {
   if (!projection.kinds.includes(stream.kind)) {
     return undefined;
   }

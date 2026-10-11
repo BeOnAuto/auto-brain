@@ -2,7 +2,7 @@ import { Effect } from 'effect';
 
 import {
   runStreamOf,
-  streamPrefixOfBrain,
+  streamPrefixOfPlaybook,
   type RunOutcome,
   type RunOutcomeGroup,
   type RunOutcomeMapping,
@@ -13,7 +13,7 @@ import {
 } from '../index.ts';
 
 interface KeptOutcome {
-  readonly brainKey: string;
+  readonly playbookKey: string;
   readonly row: RunOutcome;
 }
 
@@ -78,9 +78,9 @@ function stagedOutcomes(
     if (run === undefined || !types.includes(type)) {
       return staged;
     }
-    const key = `${run.brainKey}${run.runId}`;
+    const key = `${run.playbookKey}${run.runId}`;
     const row = rowAfter((staged.get(key) ?? kept.get(key))?.row, event);
-    return row === undefined ? staged : new Map([...staged, [key, { brainKey: run.brainKey, row }]]);
+    return row === undefined ? staged : new Map([...staged, [key, { playbookKey: run.playbookKey, row }]]);
   };
 }
 
@@ -101,10 +101,12 @@ export function memoryRunOutcomes(mapping: RunOutcomeMapping | undefined): Memor
         kept.set(key, outcome);
       }
     },
-    readRunOutcomes: (brain, window, selection) =>
+    readRunOutcomes: (playbook, window, selection) =>
       Effect.sync(() => {
-        const brainKey = streamPrefixOfBrain(brain);
-        const rows = [...kept.values()].flatMap((outcome) => (outcome.brainKey === brainKey ? [outcome.row] : []));
+        const playbookKey = streamPrefixOfPlaybook(playbook);
+        const rows = [...kept.values()].flatMap((outcome) =>
+          outcome.playbookKey === playbookKey ? [outcome.row] : [],
+        );
         return grouped(rows.filter((row) => isSelected(row, window, selection)));
       }),
   };

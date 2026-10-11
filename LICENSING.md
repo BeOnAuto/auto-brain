@@ -8,7 +8,7 @@ This page explains the license in plain language. If anything here conflicts wit
 
 - Read, build and modify the source.
 - Run auto-brain on your own infrastructure, in development and in production, up to the free usage threshold.
-- Create brains with it for your own business, or for clients who run them in their own environments.
+- Create playbooks with it for your own business, or for clients who run them in their own environments.
 - Redistribute it, including modified versions. Anyone who gets a copy from you must also get the license terms, and you must mark what you changed.
 
 ## When you need a commercial license
@@ -21,7 +21,7 @@ For a commercial license, contact us through [on.auto](https://on.auto).
 
 ## What ELv2 doesn't allow
 
-- **Offering auto-brain as a hosted or managed service.** You can't give third parties access to a substantial set of its features as a service, for example by reselling "auto-brain hosting". Running it for your own business, or building brains that your clients operate, is fine.
+- **Offering auto-brain as a hosted or managed service.** You can't give third parties access to a substantial set of its features as a service, for example by reselling "auto-brain hosting". Running it for your own business, or building playbooks that your clients operate, is fine.
 - **Getting around the license key.** You can't move, change, disable or circumvent the license key functionality, or remove functionality the key protects.
 - **Removing notices.** You can't alter, remove or obscure licensing, copyright or other notices.
 

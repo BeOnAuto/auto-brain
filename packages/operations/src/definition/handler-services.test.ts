@@ -1,14 +1,14 @@
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type {
-  BrainAddress,
-  BrainProjectionReader,
-  BrainRecordedReader,
-  BrainRunOutcomesReader,
-  BrainRegistry,
-  BrainReader,
-  BrainContext,
-  BrainWriter,
+  PlaybookAddress,
+  PlaybookProjectionReader,
+  PlaybookRecordedReader,
+  PlaybookRunOutcomesReader,
+  PlaybookRegistry,
+  PlaybookReader,
+  PlaybookContext,
+  PlaybookWriter,
   HandlerServices,
   IncidentReporter,
   Ledger,
@@ -21,44 +21,44 @@ import type {
 } from '../index.ts';
 
 describe('the services a handler may ask for', () => {
-  it('give an org handler nothing of a brain', () => {
-    expectTypeOf<BrainContext>().not.toExtend<HandlerServices<'org', 'command'>>();
-    expectTypeOf<BrainReader>().not.toExtend<HandlerServices<'org', 'command'>>();
-    expectTypeOf<BrainWriter>().not.toExtend<HandlerServices<'org', 'command'>>();
+  it('give an org handler nothing of a playbook', () => {
+    expectTypeOf<PlaybookContext>().not.toExtend<HandlerServices<'org', 'command'>>();
+    expectTypeOf<PlaybookReader>().not.toExtend<HandlerServices<'org', 'command'>>();
+    expectTypeOf<PlaybookWriter>().not.toExtend<HandlerServices<'org', 'command'>>();
   });
 
-  it('give a brain handler nothing of its org beyond the address of the call', () => {
-    expectTypeOf<OrgContext>().not.toExtend<HandlerServices<'brain', 'command'>>();
-    expectTypeOf<OrgReader>().not.toExtend<HandlerServices<'brain', 'command'>>();
-    expectTypeOf<OrgWriter>().not.toExtend<HandlerServices<'brain', 'command'>>();
+  it('give a playbook handler nothing of its org beyond the address of the call', () => {
+    expectTypeOf<OrgContext>().not.toExtend<HandlerServices<'playbook', 'command'>>();
+    expectTypeOf<OrgReader>().not.toExtend<HandlerServices<'playbook', 'command'>>();
+    expectTypeOf<OrgWriter>().not.toExtend<HandlerServices<'playbook', 'command'>>();
   });
 
   it('give the writer of a scope to its commands only', () => {
     expectTypeOf<OrgWriter>().not.toExtend<HandlerServices<'org', 'query'>>();
     expectTypeOf<OrgWriter>().toExtend<HandlerServices<'org', 'command'>>();
-    expectTypeOf<BrainWriter>().not.toExtend<HandlerServices<'brain', 'query'>>();
-    expectTypeOf<BrainWriter>().toExtend<HandlerServices<'brain', 'command'>>();
+    expectTypeOf<PlaybookWriter>().not.toExtend<HandlerServices<'playbook', 'query'>>();
+    expectTypeOf<PlaybookWriter>().toExtend<HandlerServices<'playbook', 'command'>>();
   });
 
-  it('never include the unbound ledger, the brain registry or the incident reporter', () => {
-    expectTypeOf<Ledger | BrainRegistry | IncidentReporter>().not.toExtend<HandlerServices<'org', 'query'>>();
+  it('never include the unbound ledger, the playbook registry or the incident reporter', () => {
+    expectTypeOf<Ledger | PlaybookRegistry | IncidentReporter>().not.toExtend<HandlerServices<'org', 'query'>>();
     expectTypeOf<Ledger>().not.toExtend<HandlerServices<'org', 'command'>>();
-    expectTypeOf<Ledger>().not.toExtend<HandlerServices<'brain', 'query'>>();
-    expectTypeOf<Ledger>().not.toExtend<HandlerServices<'brain', 'command'>>();
-    expectTypeOf<BrainRegistry>().not.toExtend<HandlerServices<'org', 'command'>>();
-    expectTypeOf<BrainRegistry>().not.toExtend<HandlerServices<'brain', 'command'>>();
+    expectTypeOf<Ledger>().not.toExtend<HandlerServices<'playbook', 'query'>>();
+    expectTypeOf<Ledger>().not.toExtend<HandlerServices<'playbook', 'command'>>();
+    expectTypeOf<PlaybookRegistry>().not.toExtend<HandlerServices<'org', 'command'>>();
+    expectTypeOf<PlaybookRegistry>().not.toExtend<HandlerServices<'playbook', 'command'>>();
     expectTypeOf<IncidentReporter>().not.toExtend<HandlerServices<'org', 'command'>>();
-    expectTypeOf<IncidentReporter>().not.toExtend<HandlerServices<'brain', 'command'>>();
+    expectTypeOf<IncidentReporter>().not.toExtend<HandlerServices<'playbook', 'command'>>();
   });
 
-  it('bind every port a handler sees to the org or brain of the call', () => {
+  it('bind every port a handler sees to the org or playbook of the call', () => {
     expectTypeOf<OrgContext['Service']>().toEqualTypeOf<OrgAddress>();
-    expectTypeOf<BrainContext['Service']>().toEqualTypeOf<BrainAddress>();
+    expectTypeOf<PlaybookContext['Service']>().toEqualTypeOf<PlaybookAddress>();
     expectTypeOf<OrgReader['Service']>().toEqualTypeOf<StreamReader>();
     expectTypeOf<OrgWriter['Service']>().toEqualTypeOf<StreamWriter>();
-    expectTypeOf<BrainReader['Service']>().toEqualTypeOf<
-      StreamReader & BrainRecordedReader & BrainRunOutcomesReader & BrainProjectionReader
+    expectTypeOf<PlaybookReader['Service']>().toEqualTypeOf<
+      StreamReader & PlaybookRecordedReader & PlaybookRunOutcomesReader & PlaybookProjectionReader
     >();
-    expectTypeOf<BrainWriter['Service']>().toEqualTypeOf<StreamWriter>();
+    expectTypeOf<PlaybookWriter['Service']>().toEqualTypeOf<StreamWriter>();
   });
 });

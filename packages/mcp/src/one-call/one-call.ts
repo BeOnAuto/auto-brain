@@ -12,7 +12,7 @@ import { answeredOnce, notOfferedOnce, type CalledOnce } from './called-once.ts'
 
 export interface OneCall {
   readonly org: string;
-  readonly brain: string;
+  readonly playbook: string;
   readonly reference: ToolReference;
   readonly input: Readonly<Record<string, unknown>>;
   readonly meta: Readonly<Record<string, string>>;

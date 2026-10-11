@@ -44,7 +44,7 @@ function runFact(runId: string, [type, name]: readonly [string, string], correla
 
 const emittedBy = { emitted_by: { run_id: 'r-nested', workflow: 'close', version: 1 }, depth: 2 };
 
-describe('an event published to a brain, as the follower reads it', () => {
+describe('an event published to a playbook, as the follower reads it', () => {
   it('is the event at depth 1 when sent from outside, owned by no workflow', () => {
     expect(published({})).toEqual({ event: told, depth: 1, emitter: undefined, ownedBy: [], topRun: undefined });
   });
@@ -62,7 +62,7 @@ describe('an event published to a brain, as the follower reads it', () => {
   });
 });
 
-describe('a fact of a brain, as the follower reads it', () => {
+describe('a fact of a playbook, as the follower reads it', () => {
   it('about a run, is owned by the workflow it ran and names the run that began the chain, one deeper', () => {
     expect([runFact('r-1', ['workflow', 'close'], 'r-top'), runFact('r-2', ['reasoning', 'sum'], 'r-2')]).toMatchObject(
       [
@@ -109,7 +109,7 @@ describe('a fact of a brain, as the follower reads it', () => {
 
 describe('the reads and tellings of a conversation, as the follower meets them', () => {
   it('are none, which no recall function folds and no trigger takes', () => {
-    const read = { call_id: 'c-1', server: 'chat', tool: 'thread_replies', by: 'brain:alpha', at };
+    const read = { call_id: 'c-1', server: 'chat', tool: 'thread_replies', by: 'playbook:alpha', at };
 
     expect([
       followedEventOf(recordOf('conversation-calls/c-1', { type: 'replies_read', ...read }), 'workflow'),

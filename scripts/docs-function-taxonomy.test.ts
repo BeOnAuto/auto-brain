@@ -22,7 +22,7 @@ import {
 function withTemporaryAsset(verify: (path: string) => void): void {
   const directory = mkdtempSync(join(tmpdir(), 'auto-brain-taxonomy-'));
   try {
-    verify(join(directory, 'assets', 'brain-functions.json'));
+    verify(join(directory, 'assets', 'playbook-functions.json'));
   } finally {
     rmSync(directory, { recursive: true });
   }

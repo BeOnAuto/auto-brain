@@ -3,14 +3,14 @@ import { describe, expect, it } from 'vitest';
 
 import type { HostDatabase } from '../database/host-database.ts';
 import { stopsInARowBeforeTheVersion } from '../filtering/filter-matching.ts';
-import { eventTrigger, type TriggerFilter } from '../reaction-testing/brain-writes.ts';
 import { followedRecordOf } from '../reaction-testing/followed-records.ts';
+import { eventTrigger, type TriggerFilter } from '../reaction-testing/playbook-writes.ts';
 import { starting, stopsByItsMemory, stopsByItsWork } from '../reaction-testing/trigger-starting.ts';
 import { triggersActivated } from '../triggers/trigger-rows.ts';
 import { reactionRunIdOf } from './reaction-ids.ts';
 import { mostReactionDepth } from './subscription-starts.ts';
 
-const brainKey = 'brain/acme/alpha/';
+const playbookKey = 'playbook/acme/alpha/';
 
 const at = '2026-10-01T09:00:00.000Z';
 
@@ -28,7 +28,7 @@ async function subscribedAt(
 ) {
   const activation = { workflow: name, version, activatedBy: `definition-${version}`, activatedAt: Date.parse(at) };
   await Effect.runPromise(
-    triggersActivated(database, brainKey, { ...activation, triggers: [eventTrigger(...filters)] }),
+    triggersActivated(database, playbookKey, { ...activation, triggers: [eventTrigger(...filters)] }),
   );
 }
 
@@ -47,7 +47,7 @@ describe('the starts of the workflows whose trigger an event matches', () => {
     expect(starts()).toEqual([
       {
         org: 'acme',
-        brain: 'alpha',
+        playbook: 'alpha',
         workflow: 'close',
         version: 1,
         runId: reactionRunIdOf('close', 1, '/schedule/on', 'record-1'),

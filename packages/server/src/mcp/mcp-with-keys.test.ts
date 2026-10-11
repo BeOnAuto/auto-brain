@@ -8,15 +8,15 @@ import { release } from '../composition/release.ts';
 import { startServer, type RunningServer } from '../lifecycle/lifecycle.ts';
 import { temporaryLedger, type TemporaryLedger } from '../testing/records/temporary-ledger.ts';
 
-const acmeAdmin = createApiKey({ id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: '*' });
+const acmeAdmin = createApiKey({ id: 'acme-admin', org: 'acme', permissions: allPermissions, playbooks: '*' });
 
-const acmeReader = createApiKey({ id: 'acme-reader', org: 'acme', permissions: ['org:read'], brains: '*' });
+const acmeReader = createApiKey({ id: 'acme-reader', org: 'acme', permissions: ['org:read'], playbooks: '*' });
 
-const acmeAlpha = createApiKey({ id: 'acme-alpha', org: 'acme', permissions: allPermissions, brains: ['alpha'] });
+const acmeAlpha = createApiKey({ id: 'acme-alpha', org: 'acme', permissions: allPermissions, playbooks: ['alpha'] });
 
 const apiKeys = JSON.stringify([acmeAdmin.entry, acmeReader.entry, acmeAlpha.entry]);
 
-const brainTools = ['create_brain', 'list_brains', 'get_brain', 'update_brain', 'retire_brain'];
+const playbookTools = ['create_playbook', 'list_playbooks', 'get_playbook', 'update_playbook', 'retire_playbook'];
 
 const definitionTools = [
   'create_definition',
@@ -29,8 +29,8 @@ const definitionTools = [
   'cancel_run',
   'list_runs',
   'get_run_history',
-  'get_brain_analytics',
-  'list_brain_events',
+  'get_playbook_analytics',
+  'list_playbook_events',
   'publish_event',
   'list_tool_servers',
   'test_tool_call',
@@ -73,7 +73,7 @@ function postInitialize(path: string, headers: Readonly<Record<string, string>>)
 }
 
 describe('the org endpoint of the server', () => {
-  it('names the release and lists the five brain tools, list_models and list_tool_servers', async () => {
+  it('names the release and lists the five playbook tools, list_models and list_tool_servers', async () => {
     const connected = await withMcpSession(
       'current revision',
       endpoint('/orgs/acme/mcp', acmeAdmin.key),
@@ -85,13 +85,13 @@ describe('the org endpoint of the server', () => {
 
     expect(connected).toEqual({
       serverVersion: release,
-      tools: [...brainTools, 'list_models', 'list_tool_servers', 'get_guide'],
+      tools: [...playbookTools, 'list_models', 'list_tool_servers', 'get_guide'],
     });
   });
 
-  it('answers a brain the org lacks as isError with a not_found problem', async () => {
+  it('answers a playbook the org lacks as isError with a not_found problem', async () => {
     const missing = await withMcpSession('previous revision', endpoint('/orgs/acme/mcp', acmeAdmin.key), (session) =>
-      session.callTool('get_brain', { brain: 'nowhere' }),
+      session.callTool('get_playbook', { playbook: 'nowhere' }),
     );
 
     expect({ isError: missing.isError, problem: problemIn(missing) }).toMatchObject({
@@ -101,21 +101,25 @@ describe('the org endpoint of the server', () => {
   });
 });
 
-describe('the brain tools of the server', () => {
-  it('create, list, read, update and retire a brain', async () => {
+describe('the playbook tools of the server', () => {
+  it('create, list, read, update and retire a playbook', async () => {
     const outcome = await withMcpSession(
       'previous major',
       endpoint('/orgs/acme/mcp', acmeAdmin.key),
       async (session) => ({
-        created: await session.callTool('create_brain', { brain: 'alpha', name: 'Alpha' }),
-        listed: await session.callTool('list_brains', {}),
-        read: await session.callTool('get_brain', { brain: 'alpha' }),
-        updated: await session.callTool('update_brain', { brain: 'alpha', name: 'Alpha prime', description: 'Notes' }),
-        retired: await session.callTool('retire_brain', { brain: 'alpha' }),
+        created: await session.callTool('create_playbook', { playbook: 'alpha', name: 'Alpha' }),
+        listed: await session.callTool('list_playbooks', {}),
+        read: await session.callTool('get_playbook', { playbook: 'alpha' }),
+        updated: await session.callTool('update_playbook', {
+          playbook: 'alpha',
+          name: 'Alpha prime',
+          description: 'Notes',
+        }),
+        retired: await session.callTool('retire_playbook', { playbook: 'alpha' }),
       }),
     );
     expect(outcome.created.structuredContent).toMatchObject({ id: 'alpha', name: 'Alpha', status: 'active' });
-    expect(outcome.listed.structuredContent).toMatchObject({ brains: [{ id: 'alpha' }] });
+    expect(outcome.listed.structuredContent).toMatchObject({ playbooks: [{ id: 'alpha' }] });
     expect(outcome.read.structuredContent).toEqual(outcome.created.structuredContent);
     expect(outcome.updated.structuredContent).toMatchObject({ name: 'Alpha prime', description: 'Notes' });
     expect(outcome.retired.structuredContent).toMatchObject({ status: 'retired' });
@@ -142,40 +146,40 @@ describe('the callers the MCP endpoints of the server reject before MCP', () => 
   });
 });
 
-describe('the permissions and brains of a key over MCP', () => {
+describe('the permissions and playbooks of a key over MCP', () => {
   it('offer a read-only key the queries of the org and no command, and serve it a query', async () => {
     const outcome = await withMcpSession(
       'current revision',
       endpoint('/orgs/acme/mcp', acmeReader.key),
       async (session) => ({
         tools: toolNamesIn(await session.listTools()),
-        listed: await session.callTool('list_brains', {}),
+        listed: await session.callTool('list_playbooks', {}),
       }),
     );
 
-    expect(outcome.tools).toEqual(['list_brains', 'get_brain', 'list_models', 'list_tool_servers', 'get_guide']);
-    expect(outcome.listed.structuredContent).toEqual({ brains: [] });
+    expect(outcome.tools).toEqual(['list_playbooks', 'get_playbook', 'list_models', 'list_tool_servers', 'get_guide']);
+    expect(outcome.listed.structuredContent).toEqual({ playbooks: [] });
   });
 
-  it('confine a key limited to some brains to the brain endpoints of those brains', async () => {
-    const other = await postInitialize('/orgs/acme/brains/beta/mcp', { authorization: `Bearer ${acmeAlpha.key}` });
+  it('confine a key limited to some playbooks to the playbook endpoints of those playbooks', async () => {
+    const other = await postInitialize('/orgs/acme/playbooks/beta/mcp', { authorization: `Bearer ${acmeAlpha.key}` });
     const own = await withMcpSession(
       'current revision',
-      endpoint('/orgs/acme/brains/alpha/mcp', acmeAlpha.key),
+      endpoint('/orgs/acme/playbooks/alpha/mcp', acmeAlpha.key),
       (session) => session.listTools(),
     );
 
     expect({ status: other.status, body: await other.json() }).toMatchObject({
       status: 403,
-      body: { detail: 'The caller may not access this brain' },
+      body: { detail: 'The caller may not access this playbook' },
     });
     expect(toolNamesIn(own)).toEqual([...definitionTools, 'get_guide']);
   });
 
-  it('lists the definition tools on the brain endpoint of a brain that does not exist, whose calls find no brain', async () => {
+  it('lists the definition tools on the playbook endpoint of a playbook that does not exist, whose calls find no playbook', async () => {
     const { tools, listed } = await withMcpSession(
       'previous major',
-      endpoint('/orgs/acme/brains/nowhere/mcp', acmeAdmin.key),
+      endpoint('/orgs/acme/playbooks/nowhere/mcp', acmeAdmin.key),
       async (session) => ({
         tools: await session.listTools(),
         listed: await session.callTool('list_definitions', { type: 'reasoning' }),

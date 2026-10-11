@@ -4,7 +4,7 @@ import { CallOutcomeSchema } from '../calls/call-facts.ts';
 
 export const conversationCallsKind = 'conversation-calls';
 
-const ofTheBrain = { by: Schema.String, at: Schema.String };
+const ofThePlaybook = { by: Schema.String, at: Schema.String };
 
 const theTool = { server: Schema.String, tool: Schema.String };
 
@@ -35,7 +35,7 @@ const TellingStartedSchema = Schema.Struct({
   run_id: Schema.String,
   ...theTool,
   ...startedFields,
-  ...ofTheBrain,
+  ...ofThePlaybook,
 });
 
 const TellingOutcomeSchema = Schema.Union([CallOutcomeSchema, Schema.Literal('tool_not_offered')]);
@@ -45,7 +45,7 @@ const TellingEndedSchema = Schema.Struct({
   call_id: Schema.String,
   outcome: TellingOutcomeSchema,
   ...answeredFields,
-  ...ofTheBrain,
+  ...ofThePlaybook,
 });
 
 const ReadOutcomeSchema = Schema.Literals([
@@ -73,7 +73,7 @@ const RepliesReadSchema = Schema.Struct({
   taken: Schema.Int,
   refused: Schema.Int,
   retry_after_ms: Schema.optionalKey(Schema.Int),
-  ...ofTheBrain,
+  ...ofThePlaybook,
 });
 
 export const ConversationCallEventSchema = Schema.Union([TellingStartedSchema, TellingEndedSchema, RepliesReadSchema]);

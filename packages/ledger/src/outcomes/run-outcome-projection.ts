@@ -75,7 +75,7 @@ function runOutcomeProjectionOf({ types, rowAfter }: RunOutcomeMapping): KeyedPr
       { name: 'output_tokens', kind: 'integer' },
       { name: 'cached_tokens', kind: 'integer' },
     ],
-    indexes: [{ name: 'by_brain_and_day', columns: ['started_day'] }],
+    indexes: [{ name: 'by_playbook_and_day', columns: ['started_day'] }],
     rowAfter: (row, event) => {
       const outcome = rowAfter(row === undefined ? undefined : outcomeOf(row), event);
       return outcome === undefined ? undefined : rowOf(outcome);

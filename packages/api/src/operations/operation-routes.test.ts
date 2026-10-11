@@ -9,7 +9,7 @@ const asAdmin = { authorization: `Bearer ${acmeAdmin.key}` };
 
 const jsonAsAdmin = { ...asAdmin, 'content-type': 'application/json' };
 
-const notes = '/v1/orgs/acme/brains/alpha/notes';
+const notes = '/v1/orgs/acme/playbooks/alpha/notes';
 
 const firstNote = '{"name":"first","text":"hello"}';
 
@@ -37,13 +37,13 @@ describe('a command or a query served over HTTP', () => {
 
   it('serves an org-scoped operation under /v1/orgs/{org}', async () => {
     const { handler } = await operationServer();
-    const betaLabel = '/v1/orgs/acme/brains/beta/label';
+    const betaLabel = '/v1/orgs/acme/playbooks/beta/label';
     await call(handler, betaLabel, { method: 'PUT', headers: jsonAsAdmin, body: '{"label":"first"}' });
     await call(handler, betaLabel, { method: 'PUT', headers: jsonAsAdmin, body: '{"label":"second"}' });
 
-    expect(await call(handler, '/v1/orgs/acme/brain-labels', { headers: asAdmin })).toMatchObject({
+    expect(await call(handler, '/v1/orgs/acme/playbook-labels', { headers: asAdmin })).toMatchObject({
       status: 200,
-      body: { labels: [{ brain: 'beta', label: 'second' }] },
+      body: { labels: [{ playbook: 'beta', label: 'second' }] },
     });
   });
 });
@@ -100,7 +100,7 @@ describe('a call that is rejected or fails', () => {
   it('answers a failure with a 500 problem identified by the urn:uuid of the incident it was reported under', async () => {
     const { handler, incidents } = await operationServer();
 
-    const answer = await call(handler, '/v1/orgs/acme/brains/alpha/broken', { headers: asAdmin });
+    const answer = await call(handler, '/v1/orgs/acme/playbooks/alpha/broken', { headers: asAdmin });
 
     expect(answer).toMatchObject({
       status: 500,
@@ -112,7 +112,7 @@ describe('a call that is rejected or fails', () => {
 });
 
 describe('a handler that checks the input', () => {
-  const lines = '/v1/orgs/acme/brains/alpha/lines';
+  const lines = '/v1/orgs/acme/playbooks/alpha/lines';
 
   it('answers input it accepts', async () => {
     const { handler } = await operationServer();
@@ -214,7 +214,7 @@ describe('a call the client leaves', () => {
   it('is cancelled when the client goes away, and reports no incident', async () => {
     const { handler, incidents } = await operationServer();
     const client = new AbortController();
-    const request = new Request('http://localhost/v1/orgs/acme/brains/alpha/waiting', {
+    const request = new Request('http://localhost/v1/orgs/acme/playbooks/alpha/waiting', {
       headers: asAdmin,
       signal: client.signal,
     });

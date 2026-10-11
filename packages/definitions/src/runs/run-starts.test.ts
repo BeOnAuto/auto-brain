@@ -6,7 +6,7 @@ import { runStartedOf } from './run-starts.ts';
 
 const encode = Schema.encodeSync(Schema.toCodecJson(RunEventSchema));
 
-const fact = { by: 'brain:alpha', at: '2026-10-01T09:00:00.000Z' };
+const fact = { by: 'playbook:alpha', at: '2026-10-01T09:00:00.000Z' };
 
 describe('the start of a run read from its record', () => {
   it('names what ran and its reaction depth, and nothing for any other record', () => {

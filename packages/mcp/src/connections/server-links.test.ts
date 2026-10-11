@@ -40,7 +40,7 @@ function httpSettings(url: string, changes: Partial<HttpServerSettings> = {}): H
     headers: new Map(),
     auth: null,
     org: 'acme',
-    brains: null,
+    playbooks: null,
     allowed: null,
     testable: [],
     record_content: false,
@@ -53,7 +53,7 @@ function httpSettings(url: string, changes: Partial<HttpServerSettings> = {}): H
 function authOf(fake: FakeMcpServer): AuthSettings {
   return {
     issuer: fake.origin,
-    client_id: 'brain',
+    client_id: 'playbook',
     scope: null,
     credential: { kind: 'client_secret', client_secret: Redacted.make(clientSecret) },
   };
@@ -260,7 +260,7 @@ describe('an http session that ends before the deadline', () => {
 
 describe('a link to an http server with an auth block', () => {
   it('sends a token minted from the client credentials, scrubbed from what the server says', async () => {
-    const fake = await fakeServer({ client: { clientId: 'brain', clientSecret, expiresInSeconds: 3600 } });
+    const fake = await fakeServer({ client: { clientId: 'playbook', clientSecret, expiresInSeconds: 3600 } });
     const { link, secrets } = linked(httpSettings(fake.url, { auth: authOf(fake) }));
 
     await link.take();
@@ -271,7 +271,7 @@ describe('a link to an http server with an auth block', () => {
   });
 
   it('authenticates again once on a 401, and fails on a second as a refused key', async () => {
-    const fake = await fakeServer({ client: { clientId: 'brain', clientSecret, expiresInSeconds: 3600 } });
+    const fake = await fakeServer({ client: { clientId: 'playbook', clientSecret, expiresInSeconds: 3600 } });
     const { link } = linked(httpSettings(fake.url, { auth: authOf(fake) }));
     const connection = await link.take();
 

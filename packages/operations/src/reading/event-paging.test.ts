@@ -10,7 +10,7 @@ import type { RecordedEvent, RecordedPage } from './recorded-read.ts';
 function recordOf(position: number, steps: number): RecordedEvent {
   return {
     id: `record-${position}`,
-    cursor: cursorOfParts(['brain/acme/alpha/', String(position)]),
+    cursor: cursorOfParts(['playbook/acme/alpha/', String(position)]),
     causationId: null,
     correlationId: null,
     stream: 'run-logs/r1',

@@ -46,12 +46,12 @@ const RunsSchema = Schema.Struct({ runs: Schema.Array(Schema.Struct({ status: Sc
 
 const decodeRuns = Schema.decodeUnknownSync(RunsSchema);
 
-interface TestedBrain {
+interface TestedPlaybook {
   readonly server: ReasoningServer;
   readonly saved: readonly number[];
 }
 
-async function servingATestedBrain(): Promise<TestedBrain> {
+async function servingATestedPlaybook(): Promise<TestedPlaybook> {
   const graph = await serveFakeMcp({ bearer: apiKey });
   closing.push(graph.close);
   const server = await servingWorkflows([], {
@@ -62,7 +62,7 @@ async function servingATestedBrain(): Promise<TestedBrain> {
     }),
   });
   closing.push(server.stop);
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   const saving = [
     await server.call('POST', `${alpha}/definitions/workflow`, { body: { name: 'on-a-test', source: onATest } }),
     await server.call('POST', `${alpha}/definitions/workflow`, { body: { name: 'on-a-closing', source: onAClosing } }),
@@ -76,9 +76,9 @@ async function runsOf(server: ReasoningServer, name: string) {
   return decodeRuns(body).runs;
 }
 
-describe('the tests of a tool in a brain', { timeout: recallTestTimeoutMs }, () => {
+describe('the tests of a tool in a playbook', { timeout: recallTestTimeoutMs }, () => {
   it('reach no recall function and start no workflow, while the events after them do', async () => {
-    const { server, saved } = await servingATestedBrain();
+    const { server, saved } = await servingATestedPlaybook();
 
     const tested = await server.call('POST', `${alpha}/tool-servers/graph/tools/search/test`, {
       body: { arguments: { query: 'acme' } },

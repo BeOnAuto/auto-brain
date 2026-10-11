@@ -19,7 +19,7 @@ const ofGreet = { definition_type: 'echo', name: 'greet', definition_version: 2 
 function recorded(event: RunEvent): RecordedEvent {
   return {
     id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
-    cursor: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
+    cursor: 'WyJwbGF5Ym9vay9hY21lL2FscGhhLyIsIjEiXQ',
     causationId: '1c2d3e4f-5a6b-5c7d-8e9f-a0b1c2d3e4f5',
     correlationId: runId,
     stream: `runs/${runId}`,
@@ -36,7 +36,7 @@ function presented(event: RunEvent) {
 
 const shown = {
   id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
-  cursor: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
+  cursor: 'WyJwbGF5Ym9vay9hY21lL2FscGhhLyIsIjEiXQ',
   causation_id: '1c2d3e4f-5a6b-5c7d-8e9f-a0b1c2d3e4f5',
   at: '2026-10-01T09:00:01.000Z',
 };

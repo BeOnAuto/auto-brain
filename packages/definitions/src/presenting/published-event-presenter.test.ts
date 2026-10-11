@@ -10,7 +10,7 @@ const { present } = presentationOf(makeDefinitionPresenters([echo]));
 
 const encode = Schema.encodeSync(Schema.toCodecJson(EventPublishedSchema));
 
-const recordId = 'WyJicmFpbi9hY21lL2FscGhhLyIsIjMiXQ';
+const recordId = 'WyJwbGF5Ym9vay9hY21lL2FscGhhLyIsIjMiXQ';
 
 function recorded(published: EventPublished): RecordedEvent {
   return {
@@ -49,7 +49,7 @@ describe('the presenter of a published event', () => {
         causation_id: null,
         at: '2026-10-01T09:00:01.000Z',
         type: 'event_published',
-        summary: 'The event “com.acme.ledger.opened” was published to the brain.',
+        summary: 'The event “com.acme.ledger.opened” was published to the playbook.',
         data: {
           event_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
           event_type: 'com.acme.ledger.opened',

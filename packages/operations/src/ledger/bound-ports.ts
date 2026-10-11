@@ -1,9 +1,9 @@
 import { Effect } from 'effect';
 
-import type { BrainAddress } from '../caller/brain-context.ts';
 import type { OrgAddress } from '../caller/org-context.ts';
+import type { PlaybookAddress } from '../caller/playbook-context.ts';
 import { InvalidInput } from '../outcome/invalid-input.ts';
-import type { BrainProjectionReader, ProjectionReader } from '../projections/keyed-projection.ts';
+import type { PlaybookProjectionReader, ProjectionReader } from '../projections/keyed-projection.ts';
 import { isCalendarDay } from '../reading/calendar-days.ts';
 import { mostRecordsInAPage } from '../reading/page-bounds.ts';
 import type {
@@ -14,8 +14,8 @@ import type {
 } from '../reading/recorded-read.ts';
 import type { RunOutcomeWindow } from '../run-outcomes/run-outcomes.ts';
 import type {
-  BrainRecordedReader,
-  BrainRunOutcomesReader,
+  PlaybookRecordedReader,
+  PlaybookRunOutcomesReader,
   RecordedReader,
   RunOutcomesReader,
   StreamReader,
@@ -36,8 +36,8 @@ export function streamPrefixOfOrg({ org }: OrgAddress): string {
   return `org/${org}/`;
 }
 
-export function streamPrefixOfBrain({ org, brain }: BrainAddress): string {
-  return `brain/${org}/${brain}/`;
+export function streamPrefixOfPlaybook({ org, playbook }: PlaybookAddress): string {
+  return `playbook/${org}/${playbook}/`;
 }
 
 export function prefixedReader(ledger: StreamReader, prefix: string): StreamReader {
@@ -79,10 +79,13 @@ const refusedCursors: Readonly<Record<InvalidCursorKind, InvalidInput>> = {
     detail: 'The cursor is malformed',
     issues: [{ detail: 'Expected a next_cursor or the cursor of an event, as a read gives it', pointer: '/cursor' }],
   }),
-  of_another_brain: new InvalidInput({
-    detail: 'The cursor was not given by a read of this brain',
+  of_another_playbook: new InvalidInput({
+    detail: 'The cursor was not given by a read of this playbook',
     issues: [
-      { detail: 'Expected a next_cursor or the cursor of an event that a read of this brain gave', pointer: '/cursor' },
+      {
+        detail: 'Expected a next_cursor or the cursor of an event that a read of this playbook gave',
+        pointer: '/cursor',
+      },
     ],
   }),
 };
@@ -94,15 +97,15 @@ function relativeTo(prefix: string): (page: RecordedPage) => RecordedPage {
   });
 }
 
-export function brainBoundRecordedReader(ledger: RecordedReader, brain: BrainAddress): BrainRecordedReader {
+export function playbookBoundRecordedReader(ledger: RecordedReader, playbook: PlaybookAddress): PlaybookRecordedReader {
   return {
     readRecorded: (selection, page) =>
       Effect.gen(function* () {
         const checkedSelection = yield* wellFormedSelection(selection);
         const checkedPage = yield* wellFormedPage(page);
-        return yield* ledger.readRecorded(brain, checkedSelection, checkedPage);
+        return yield* ledger.readRecorded(playbook, checkedSelection, checkedPage);
       }).pipe(
-        Effect.map(relativeTo(streamPrefixOfBrain(brain))),
+        Effect.map(relativeTo(streamPrefixOfPlaybook(playbook))),
         Effect.mapError(({ kind }: { readonly kind: InvalidCursorKind }) => refusedCursors[kind]),
       ),
   };
@@ -115,19 +118,25 @@ function wellFormedWindow(window: RunOutcomeWindow): Effect.Effect<RunOutcomeWin
     : Effect.die(new RangeError(`The days from ${JSON.stringify(from)} to ${JSON.stringify(to)} are not a window`));
 }
 
-export function brainBoundProjectionReader(ledger: ProjectionReader, brain: BrainAddress): BrainProjectionReader {
+export function playbookBoundProjectionReader(
+  ledger: ProjectionReader,
+  playbook: PlaybookAddress,
+): PlaybookProjectionReader {
   return {
     readProjectedRows: (projection, query) =>
       Number.isSafeInteger(query.limit) && query.limit >= 1
-        ? ledger.readProjectedRows(projection, brain, query)
+        ? ledger.readProjectedRows(projection, playbook, query)
         : Effect.die(new RangeError(`A read of projected rows takes a limit of 1 or more, not ${query.limit}`)),
-    countProjectedRows: (projection, where) => ledger.countProjectedRows(projection, brain, where),
+    countProjectedRows: (projection, where) => ledger.countProjectedRows(projection, playbook, where),
   };
 }
 
-export function brainBoundRunOutcomesReader(ledger: RunOutcomesReader, brain: BrainAddress): BrainRunOutcomesReader {
+export function playbookBoundRunOutcomesReader(
+  ledger: RunOutcomesReader,
+  playbook: PlaybookAddress,
+): PlaybookRunOutcomesReader {
   return {
     readRunOutcomes: (window, selection) =>
-      wellFormedWindow(window).pipe(Effect.flatMap((checked) => ledger.readRunOutcomes(brain, checked, selection))),
+      wellFormedWindow(window).pipe(Effect.flatMap((checked) => ledger.readRunOutcomes(playbook, checked, selection))),
   };
 }

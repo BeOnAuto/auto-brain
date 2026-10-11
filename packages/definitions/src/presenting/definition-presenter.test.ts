@@ -15,7 +15,7 @@ const fact = { name: 'greet', by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' }
 function presented(event: DefinitionEvent, type = 'echo') {
   const record: RecordedEvent = {
     id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
-    cursor: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
+    cursor: 'WyJwbGF5Ym9vay9hY21lL2FscGhhLyIsIjEiXQ',
     causationId: null,
     correlationId: null,
     stream: `definitions/${type}`,
@@ -29,7 +29,7 @@ function presented(event: DefinitionEvent, type = 'echo') {
 
 const shown = {
   id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
-  cursor: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
+  cursor: 'WyJwbGF5Ym9vay9hY21lL2FscGhhLyIsIjEiXQ',
   causation_id: null,
   at: '2026-10-01T09:00:00.000Z',
 };

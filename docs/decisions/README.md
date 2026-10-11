@@ -6,6 +6,8 @@ These records are contributor documentation. They are excluded from the public V
 
 Use a numbered Markdown filename for each decision and link to it from the affected package README. Follow [CONTRIBUTING.md](../../CONTRIBUTING.md) when proposing changes. When a decision changes user-visible behavior, update the appropriate public guide separately and state which behavior is available.
 
+Records are kept as they were written. Those before October 2026 call the resource that is now a playbook a brain, with the operations, scopes, routes and streams of that name (`create_brain`, `brain:read`, `/orgs/{org}/brains/{brain}`, `brain/...`); read each as its playbook equivalent. [Terminology](../concepts/terminology.md) holds the current words.
+
 ## Records
 
 | Record                                                                                                                                                                                   | Status                                                                         |

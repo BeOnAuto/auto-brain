@@ -1,7 +1,7 @@
 import { Effect, Result, Schema } from 'effect';
 
 import { deliveriesOfARecordInAPass, type BoundConsumer, type Delivery } from './consumers.ts';
-import type { Progress } from './followed-brains.ts';
+import type { Progress } from './followed-playbooks.ts';
 
 export type Mode = 'signal' | 'sweep';
 

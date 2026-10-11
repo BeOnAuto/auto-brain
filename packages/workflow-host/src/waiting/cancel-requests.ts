@@ -1,5 +1,5 @@
 import { cancelRequestOf, type CancelRequested } from '@beonauto/definitions';
-import type { BrainAddress, Conflict, Lineage, RecordedEvent } from '@beonauto/operations';
+import type { PlaybookAddress, Conflict, Lineage, RecordedEvent } from '@beonauto/operations';
 import type { RunInput, Submission } from '@beonauto/workflow-engine';
 import { Effect } from 'effect';
 
@@ -18,7 +18,7 @@ export interface CancelParts {
 }
 
 interface Asked {
-  readonly brain: BrainAddress;
+  readonly playbook: PlaybookAddress;
   readonly record: RecordedEvent;
   readonly request: CancelRequested;
   readonly type: string;
@@ -33,9 +33,9 @@ function lineageOf({ id, correlationId }: RecordedEvent): Lineage {
   return { causationId: id, correlationId };
 }
 
-function cancelledWorkflow(parts: CancelParts, { brain, record, request, runId }: Asked) {
+function cancelledWorkflow(parts: CancelParts, { playbook, record, request, runId }: Asked) {
   const { kind, reason, by } = request;
-  const runKey = runKeyOf({ ...brain, runId });
+  const runKey = runKeyOf({ ...playbook, runId });
   const pending = { runKey, cause: record.id, cancel: { by, kind, reason } };
   return parts.submitted({ kind: 'cancel_requested', runId: runKey, at: parts.now(), ...pending }).pipe(
     Effect.flatMap(({ outcome }) => (outcome === 'not_started' ? passedOverRow(parts.database, pending) : Effect.void)),
@@ -44,17 +44,17 @@ function cancelledWorkflow(parts: CancelParts, { brain, record, request, runId }
 }
 
 function cancelled(parts: CancelParts, asked: Asked): Effect.Effect<void, DeliveryFailed> {
-  const { brain, record, request, type, runId } = asked;
+  const { playbook, record, request, type, runId } = asked;
   if (type === parts.workflows) {
     return cancelledWorkflow(parts, asked);
   }
   const { kind, reason, by } = request;
   return parts
-    .cancelDeferred({ ...brain, id: runId }, { kind, reason, by }, lineageOf(record))
+    .cancelDeferred({ ...playbook, id: runId }, { kind, reason, by }, lineageOf(record))
     .pipe(Effect.mapError(failedWith));
 }
 
-function deliveriesOf(parts: CancelParts, { brain, record }: CallRecord): readonly Delivery[] {
+function deliveriesOf(parts: CancelParts, { playbook, record }: CallRecord): readonly Delivery[] {
   const request = cancelRequestOf(record.data);
   const type = request?.definition_type;
   if (request === undefined || type === undefined) {
@@ -64,7 +64,7 @@ function deliveriesOf(parts: CancelParts, { brain, record }: CallRecord): readon
   const delivery: Delivery = {
     key: 'cancel',
     workflow: runId,
-    deliver: cancelled(parts, { brain, record, request, type, runId }),
+    deliver: cancelled(parts, { playbook, record, request, type, runId }),
   };
   return [delivery];
 }

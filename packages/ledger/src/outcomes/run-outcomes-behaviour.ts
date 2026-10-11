@@ -1,5 +1,5 @@
 import type {
-  BrainAddress,
+  PlaybookAddress,
   Ledger,
   RunOutcomeGroup,
   RunOutcomeMapping,
@@ -14,7 +14,7 @@ type AnyLedger = Ledger['Service'];
 
 export type LedgerKeeping = (runOutcomes?: RunOutcomeMapping) => Promise<AnyLedger>;
 
-const alpha: BrainAddress = { org: 'acme', brain: 'alpha' };
+const alpha: PlaybookAddress = { org: 'acme', playbook: 'alpha' };
 
 const october: RunOutcomeWindow = { from: '2026-10-01', to: '2026-10-31' };
 
@@ -46,9 +46,9 @@ export async function reading(
   ledger: AnyLedger,
   window: RunOutcomeWindow = october,
   selection: RunOutcomeSelection = {},
-  brain: BrainAddress = alpha,
+  playbook: PlaybookAddress = alpha,
 ): Promise<readonly RunOutcomeGroup[]> {
-  return inOrder(await Effect.runPromise(ledger.readRunOutcomes(brain, window, selection)));
+  return inOrder(await Effect.runPromise(ledger.readRunOutcomes(playbook, window, selection)));
 }
 
 export function runsOf(groups: readonly RunOutcomeGroup[]): readonly string[] {
@@ -56,11 +56,11 @@ export function runsOf(groups: readonly RunOutcomeGroup[]): readonly string[] {
 }
 
 export async function fourRuns(ledger: AnyLedger): Promise<void> {
-  await noting(ledger, 'brain/acme/alpha/runs/r1', began('triage'), ended('succeeded', 120, 40));
-  await noting(ledger, 'brain/acme/alpha/runs/r2', began('triage'));
-  await noting(ledger, 'brain/acme/alpha/runs/r2', ended('succeeded', 80, 2));
-  await noting(ledger, 'brain/acme/alpha/runs/r3', began('triage'), ended('rejected', null));
-  await noting(ledger, 'brain/acme/alpha/runs/r4', began('draft', '2026-10-02T23:59:59.999Z'));
+  await noting(ledger, 'playbook/acme/alpha/runs/r1', began('triage'), ended('succeeded', 120, 40));
+  await noting(ledger, 'playbook/acme/alpha/runs/r2', began('triage'));
+  await noting(ledger, 'playbook/acme/alpha/runs/r2', ended('succeeded', 80, 2));
+  await noting(ledger, 'playbook/acme/alpha/runs/r3', began('triage'), ended('rejected', null));
+  await noting(ledger, 'playbook/acme/alpha/runs/r4', began('draft', '2026-10-02T23:59:59.999Z'));
 }
 
 export const fourRunsKept: readonly RunOutcomeGroup[] = [
@@ -108,13 +108,13 @@ function theRowOfEachRun(aLedger: LedgerKeeping): void {
       expect(await reading(ledger)).toEqual(fourRunsKept);
     });
 
-    it('keep to the days of the window, the selection, and the brain matched exactly', async () => {
+    it('keep to the days of the window, the selection, and the playbook matched exactly', async () => {
       const ledger = await aLedger(runTallies);
-      await noting(ledger, 'brain/acme/alpha/runs/r1', began('triage', '2026-09-30T23:59:59.999Z'));
-      await noting(ledger, 'brain/acme/alpha/runs/r2', began('triage', '2026-10-01T00:00:00.000Z'));
-      await noting(ledger, 'brain/acme/alpha/runs/r3', began('draft', '2026-10-01T00:00:00.000Z'));
+      await noting(ledger, 'playbook/acme/alpha/runs/r1', began('triage', '2026-09-30T23:59:59.999Z'));
+      await noting(ledger, 'playbook/acme/alpha/runs/r2', began('triage', '2026-10-01T00:00:00.000Z'));
+      await noting(ledger, 'playbook/acme/alpha/runs/r3', began('draft', '2026-10-01T00:00:00.000Z'));
       await Promise.all(
-        ['brain/acme/alpha2/runs/r4', 'brain/acme/Alpha/runs/r5', 'brain/acme/alph_/runs/r6'].map((stream) =>
+        ['playbook/acme/alpha2/runs/r4', 'playbook/acme/Alpha/runs/r5', 'playbook/acme/alph_/runs/r6'].map((stream) =>
           noting(ledger, stream, began('triage', '2026-10-01T00:00:00.000Z')),
         ),
       );
@@ -125,7 +125,7 @@ function theRowOfEachRun(aLedger: LedgerKeeping): void {
         reading(ledger, october, { name: 'draft' }),
         reading(ledger, october, { definitionType: 'other' }),
         reading(ledger, october, { definitionType: 'tally', name: 'triage' }),
-        reading(ledger, october, {}, { org: 'acme', brain: 'alph_' }),
+        reading(ledger, october, {}, { org: 'acme', playbook: 'alph_' }),
       ]);
 
       expect(pages.map((groups) => runsOf(groups))).toEqual([
@@ -140,9 +140,9 @@ function theRowOfEachRun(aLedger: LedgerKeeping): void {
 
     it('leave out other streams, a stream nested under a run, other types, and what the mapping keeps nothing of', async () => {
       const ledger = await aLedger(runTallies);
-      await noting(ledger, 'brain/acme/alpha/run-logs/r1', began('triage'));
-      await noting(ledger, 'brain/acme/alpha/runs/r2/nested', began('triage'));
-      await noting(ledger, 'brain/acme/alpha/runs/r3', ended('failed', 5), { type: 'run_noted' });
+      await noting(ledger, 'playbook/acme/alpha/run-logs/r1', began('triage'));
+      await noting(ledger, 'playbook/acme/alpha/runs/r2/nested', began('triage'));
+      await noting(ledger, 'playbook/acme/alpha/runs/r3', ended('failed', 5), { type: 'run_noted' });
 
       expect(await reading(ledger)).toEqual([]);
     });

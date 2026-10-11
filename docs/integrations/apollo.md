@@ -4,7 +4,7 @@ Use this guide to pass graph data into an existing Auto reasoning function. Your
 
 ## Before you start
 
-You need an agent connected to Auto, a saved reasoning function, and permission to read the relevant data through your graph. If you have not created a function yet, follow [Build your first brain](../tutorials/first-brain.md).
+You need an agent connected to Auto, a saved reasoning function, and permission to read the relevant data through your graph. If you have not created a function yet, follow [Build your first playbook](../tutorials/first-playbook.md).
 
 Decide which data the review needs and confirm that it may be sent to Auto and the function's model provider. Function inputs and results become part of the recorded run.
 
@@ -42,8 +42,8 @@ Have the agent read the resulting run from Auto and show its run id, definition 
 
 If a required input is missing, compare the function's input contract with the mapping. If the graph operation is unavailable, check the selected Apollo server and the connection's permissions before changing the function.
 
-## Tool access from inside the brain
+## Tool access from inside the playbook
 
-A self-hosted runtime can give reasoning functions the tools of an MCP server its operator configures, and Apollo GraphOS Agent Services can be that server. The operator adds it as a remote server whose `Authorization` header carries an application API key, bound to your org and brain. A reasoning function that lists `graph/*` in its `tools` can then search for operations and run those the application's policies allow, and each call appears in the run's history. A field the policy denies comes back to the model as a tool error, which it can explain in its answer. Auto does not require Apollo.
+A self-hosted runtime can give reasoning functions the tools of an MCP server its operator configures, and Apollo GraphOS Agent Services can be that server. The operator adds it as a remote server whose `Authorization` header carries an application API key, bound to your org and playbook. A reasoning function that lists `graph/*` in its `tools` can then search for operations and run those the application's policies allow, and each call appears in the run's history. A field the policy denies comes back to the model as a tool error, which it can explain in its answer. Auto does not require Apollo.
 
 That internal connection is separate from the two external-agent connections used in this guide, and Auto Cloud does not offer it yet. See [Tool access inside a reasoning function](../concepts/functions.md#tool-access-inside-a-reasoning-function).

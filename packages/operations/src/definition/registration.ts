@@ -20,7 +20,7 @@ export interface RegistrationOf<S extends OperationScope, K extends OperationKin
   readonly description: string;
   readonly route: Route<K>;
   readonly pathParameters: readonly string[];
-  readonly targetsBrain: boolean;
+  readonly targetsPlaybook: boolean;
   readonly successStatus: SuccessStatusByKind[K];
   readonly reachesOutside: boolean;
   readonly mayChangeOutside: boolean;

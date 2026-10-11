@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import type { StreamStore } from '../event-store.ts';
 import { ledgerLayer } from '../sqlite3.ts';
 import { happenings, noted } from '../testing/happenings.ts';
-import { appendSignal, brainKeyOfStream, signalledOn } from './append-signal.ts';
+import { appendSignal, playbookKeyOfStream, signalledOn } from './append-signal.ts';
 
 function failingStore(): StreamStore {
   return {
@@ -17,50 +17,50 @@ function failingStore(): StreamStore {
   };
 }
 
-describe('the signal of an append to a brain', () => {
-  it('is raised with the brain once the append is recorded, and not for a stream of no brain', async () => {
+describe('the signal of an append to a playbook', () => {
+  it('is raised with the playbook once the append is recorded, and not for a stream of no playbook', async () => {
     const appends = appendSignal();
     const runtime = ManagedRuntime.make(ledgerLayer({ fileName: ':memory:', appends }));
     const ledger = await runtime.runPromise(Ledger);
     const heard: string[] = [];
     const versionsSeen: Promise<number>[] = [];
-    appends.listen((brainKey) => {
-      heard.push(brainKey);
+    appends.listen((playbookKey) => {
+      heard.push(playbookKey);
       versionsSeen.push(
-        Effect.runPromise(Effect.map(ledger.load('brain/acme/alpha/notes', happenings), ({ version }) => version)),
+        Effect.runPromise(Effect.map(ledger.load('playbook/acme/alpha/notes', happenings), ({ version }) => version)),
       );
     });
 
-    await Effect.runPromise(ledger.execute('brain/acme/alpha/notes', happenings, [noted('noted', 1)]));
-    await Effect.runPromise(ledger.execute('org/acme/brains', happenings, [noted('noted', 2)]));
+    await Effect.runPromise(ledger.execute('playbook/acme/alpha/notes', happenings, [noted('noted', 1)]));
+    await Effect.runPromise(ledger.execute('org/acme/playbooks', happenings, [noted('noted', 2)]));
     const seen = await Promise.all(versionsSeen);
     await runtime.dispose();
 
-    expect([heard, seen]).toEqual([['brain/acme/alpha/'], [1]]);
+    expect([heard, seen]).toEqual([['playbook/acme/alpha/'], [1]]);
   });
 
   it('is not raised for an append that failed, and no longer reaches a listener that stopped listening', async () => {
     const appends = appendSignal();
     const heard: string[] = [];
-    const stop = appends.listen((brainKey) => {
-      heard.push(brainKey);
+    const stop = appends.listen((playbookKey) => {
+      heard.push(playbookKey);
     });
 
-    const failed = await signalledOn(failingStore(), appends).append('brain/acme/alpha/notes', [], 0).catch(String);
-    appends.raise('brain/acme/alpha/notes');
+    const failed = await signalledOn(failingStore(), appends).append('playbook/acme/alpha/notes', [], 0).catch(String);
+    appends.raise('playbook/acme/alpha/notes');
     stop();
-    appends.raise('brain/acme/beta/notes');
+    appends.raise('playbook/acme/beta/notes');
 
-    expect([failed, heard]).toEqual(['Error: The database is gone', ['brain/acme/alpha/']]);
+    expect([failed, heard]).toEqual(['Error: The database is gone', ['playbook/acme/alpha/']]);
   });
 
-  it('names a brain by its stream through the third slash, and leaves a store without a signal as it is', () => {
+  it('names a playbook by its stream through the third slash, and leaves a store without a signal as it is', () => {
     const store = failingStore();
 
     expect([
-      brainKeyOfStream('brain/acme/alpha/runs/run-1'),
-      brainKeyOfStream('brain/acme/alpha'),
+      playbookKeyOfStream('playbook/acme/alpha/runs/run-1'),
+      playbookKeyOfStream('playbook/acme/alpha'),
       signalledOn(store) === store,
-    ]).toEqual(['brain/acme/alpha/', undefined, true]);
+    ]).toEqual(['playbook/acme/alpha/', undefined, true]);
   });
 });

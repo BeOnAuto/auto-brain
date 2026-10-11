@@ -27,6 +27,9 @@ export const PublicEventSchema = Schema.Struct({
       expected: `data of at most ${mostPublicEventDataBytes} bytes as JSON in UTF-8`,
     }),
   ),
-}).annotate({ identifier: 'PublicEvent', description: 'Something that happened in the brain, as a caller reads it' });
+}).annotate({
+  identifier: 'PublicEvent',
+  description: 'Something that happened in the playbook, as a caller reads it',
+});
 
 export type PublicEvent = typeof PublicEventSchema.Type;

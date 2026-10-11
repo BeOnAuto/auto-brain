@@ -48,7 +48,7 @@ await test('MCP configuration documents recording and credential boundaries', ()
   const http = readFileSync(join(docs, 'reference/http.md'), 'utf8');
   assert.ok(configuration.includes('Only `headers`, `env` and `auth` may hold a reference'));
   assert.ok(configuration.includes('a value shorter than 8 characters is not'));
-  assert.ok(configuration.includes('anyone who may read the brain reads them'));
+  assert.ok(configuration.includes('anyone who may read the playbook reads them'));
   assert.ok(http.includes('`tool_call_started` and `tool_call_answered`'));
   assert.ok(http.includes('Content is omitted unless the operator enables `record_content`'));
   assert.ok(http.includes('absence of an answer does not prove it was cancelled before acting'));

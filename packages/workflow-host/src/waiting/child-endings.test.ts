@@ -2,7 +2,7 @@ import { Conflict } from '@beonauto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { alpha, at, recorded } from '../reaction-testing/brain-writes.ts';
+import { alpha, at, recorded } from '../reaction-testing/playbook-writes.ts';
 import { eventually } from '../testing/eventually.ts';
 import { faultyDatabase } from '../testing/faulty-database.ts';
 import { recordedWaiting, resultOfEnding } from '../waiting-testing/recorded-waiting.ts';
@@ -13,13 +13,13 @@ const child = '0199a3c4-7d2e-7c1a-9b3f-0000000000c1';
 
 const calledBy = { run_id: parentId, reference: '/do/0/ask', run: 1 };
 
-const ofTheChild = { definition_type: 'workflow', name: 'check', definition_version: 1, by: 'brain:alpha', at };
+const ofTheChild = { definition_type: 'workflow', name: 'check', definition_version: 1, by: 'playbook:alpha', at };
 
 const succeeded = { type: 'run_succeeded', output: 'checked', record: {}, ...ofTheChild, called_by: calledBy };
 
 const endingRecord = {
-  brain: { org: 'acme', brain: 'alpha' },
-  brainKey: alpha,
+  playbook: { org: 'acme', playbook: 'alpha' },
+  playbookKey: alpha,
   record: {
     id: 'record-1',
     cursor: 'record-1',

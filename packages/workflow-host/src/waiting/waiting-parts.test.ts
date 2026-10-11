@@ -2,7 +2,7 @@ import type { StartCall } from '@beonauto/workflow-engine';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { alpha, at, recorded } from '../reaction-testing/brain-writes.ts';
+import { alpha, at, recorded } from '../reaction-testing/playbook-writes.ts';
 import { testMachine } from '../testing/host-documents.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { recordedWaiting } from '../waiting-testing/recorded-waiting.ts';
@@ -52,7 +52,7 @@ describe('the answer of a run a call waits for', () => {
     const { options } = recordedWaiting();
     const database = await openedOn({ store: 'sqlite', file: aSQLiteFile() });
     const { childAnswerOf } = executorWaitingOf(database, testMachine, options);
-    const ofTheChild = { definition_type: 'workflow', name: 'check', definition_version: 1, by: 'brain:alpha', at };
+    const ofTheChild = { definition_type: 'workflow', name: 'check', definition_version: 1, by: 'playbook:alpha', at };
     const calledBy = { run_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', reference: '/do/0/ask', run: 1 };
     await recorded(database.store, `${alpha}runs/answered`, {
       type: 'run_succeeded',

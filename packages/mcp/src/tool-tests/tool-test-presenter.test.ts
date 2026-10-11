@@ -56,20 +56,20 @@ function shown(records: readonly RecordedEvent[]) {
 
 const fitsTheBound: unknown = expect.toSatisfy((data: unknown) => Buffer.byteLength(JSON.stringify(data)) <= 4096);
 
-describe('the events of a test, as the brain shows them', () => {
+describe('the events of a test, as the playbook shows them', () => {
   it('say who tested which tool of which server and how it answered, in the words of a run’s calls', async () => {
     const answered = await recordedTests({}, patientTiming.callMs, ...answering);
     const givenUp = await recordedTests({}, givenUpAfterMs, sleeping);
     const records = [...answered, ...givenUp];
 
     expect(shown(records).map(({ type, summary }) => `${type}: ${summary}`)).toEqual([
-      'tool_test_started: Someone allowed to change the brain tested the search tool of graph.',
+      'tool_test_started: Someone allowed to change the playbook tested the search tool of graph.',
       'tool_test_answered: The tested tool answered.',
-      'tool_test_started: Someone allowed to change the brain tested the denied tool of graph.',
+      'tool_test_started: Someone allowed to change the playbook tested the denied tool of graph.',
       'tool_test_answered: The tested tool answered with an error.',
-      'tool_test_started: Someone allowed to change the brain tested the broken tool of graph.',
+      'tool_test_started: Someone allowed to change the playbook tested the broken tool of graph.',
       'tool_test_answered: The tested tool failed at its server.',
-      'tool_test_started: Someone allowed to change the brain tested the sleep tool of graph.',
+      'tool_test_started: Someone allowed to change the playbook tested the sleep tool of graph.',
       'tool_test_answered: The tested tool took too long, so it was given up.',
     ]);
     expect(shown(records).map(({ causation_id: cause }) => cause)).toEqual(
@@ -112,13 +112,13 @@ const answeredWithoutARequestId = {
 };
 
 describe('an answer that carries no result and no id of the server', () => {
-  it('shows nulls where nothing was recorded, and an id the brain gave as text', () => {
+  it('shows nulls where nothing was recorded, and an id the playbook gave as text', () => {
     const [answered] = toolTestPresenter.present({
       id: '1f0e8d7c-6b5a-5d4c-8b3a-291817161514',
       cursor: 'c',
       causationId: null,
       correlationId: null,
-      stream: 'brain/acme/alpha/tool-tests/0199b7e2-4c1d-7a3e-8f5b-6d2c1e0f9a8b',
+      stream: 'playbook/acme/alpha/tool-tests/0199b7e2-4c1d-7a3e-8f5b-6d2c1e0f9a8b',
       version: 2,
       type: 'tool_test_answered',
       data: answeredWithoutARequestId,

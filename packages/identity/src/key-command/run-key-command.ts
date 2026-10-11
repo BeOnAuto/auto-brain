@@ -16,11 +16,11 @@ interface KeyOptions {
   readonly org?: string | undefined;
   readonly id?: string | undefined;
   readonly permissions?: string | undefined;
-  readonly brains?: string | undefined;
+  readonly playbooks?: string | undefined;
 }
 
 const usage =
-  'Arguments: --org <org id> [--id <key id>] [--permissions <comma-separated permissions>] [--brains <comma-separated brain ids, or *>]';
+  'Arguments: --org <org id> [--id <key id>] [--permissions <comma-separated permissions>] [--playbooks <comma-separated playbook ids, or *>]';
 
 const decodeGrant = Schema.decodeUnknownResult(KeyGrantSchema, { onExcessProperty: 'error', errors: 'all' });
 
@@ -32,7 +32,7 @@ function optionsFrom(args: readonly string[]): KeyOptions | string {
         org: { type: 'string' },
         id: { type: 'string' },
         permissions: { type: 'string' },
-        brains: { type: 'string' },
+        playbooks: { type: 'string' },
       },
       strict: true,
       allowPositionals: false,
@@ -46,8 +46,8 @@ function asOption(keys: readonly PropertyKey[]): string {
   return `--${keys.slice(0, 1).map(String).join('')}`;
 }
 
-function brainsFrom(brains: string | undefined): readonly string[] | '*' {
-  return brains === undefined || brains === '*' ? '*' : brains.split(',');
+function playbooksFrom(playbooks: string | undefined): readonly string[] | '*' {
+  return playbooks === undefined || playbooks === '*' ? '*' : playbooks.split(',');
 }
 
 function grantFrom(args: readonly string[]): KeyGrant | string {
@@ -59,7 +59,7 @@ function grantFrom(args: readonly string[]): KeyGrant | string {
     id: options.id ?? randomBytes(4).toString('hex'),
     ...(options.org === undefined ? {} : { org: options.org }),
     permissions: options.permissions?.split(',') ?? allPermissions,
-    brains: brainsFrom(options.brains),
+    playbooks: playbooksFrom(options.playbooks),
   });
   return Result.isSuccess(decoded) ? decoded.success : describeIssues(failureOf(decoded.failure.issue), asOption);
 }

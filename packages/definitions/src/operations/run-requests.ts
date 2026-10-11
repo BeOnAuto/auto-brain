@@ -1,4 +1,11 @@
-import { BrainContext, BrainReader, CallLineage, Caller, Conflict, type GivenLineage } from '@beonauto/operations';
+import {
+  PlaybookContext,
+  PlaybookReader,
+  CallLineage,
+  Caller,
+  Conflict,
+  type GivenLineage,
+} from '@beonauto/operations';
 import { Cause, Effect, Option } from 'effect';
 
 import type { Capability, PreparedDefinition, RunContext, RunLineage } from '../capability/capability.ts';
@@ -46,7 +53,7 @@ const longestRunIn = Effect.fnUntraced(function* (capability: Capability, name: 
 });
 
 const longestRunsIn = Effect.fnUntraced(function* (capabilities: readonly Capability[]) {
-  const reader = yield* BrainReader;
+  const reader = yield* PlaybookReader;
   return (type: string, name: string): Effect.Effect<number | undefined> => {
     const capability = capabilities.find((candidate) => candidate.type === type);
     return capability === undefined
@@ -54,7 +61,7 @@ const longestRunsIn = Effect.fnUntraced(function* (capabilities: readonly Capabi
       : longestRunIn(capability, name).pipe(
           Effect.option,
           Effect.map(Option.getOrUndefined),
-          Effect.provideService(BrainReader, reader),
+          Effect.provideService(PlaybookReader, reader),
         );
   };
 });
@@ -81,11 +88,11 @@ const contextOf = Effect.fnUntraced(function* (
   lineage: RunLineage,
   given: Called,
 ) {
-  const { org, brain } = yield* BrainContext;
+  const { org, playbook } = yield* PlaybookContext;
   const context: JournalledRun = {
     id,
     org,
-    brain,
+    playbook,
     caller: yield* Caller,
     definition: { name: definition.name, version: definition.version },
     journal: yield* toolCallJournal(id, lineage),

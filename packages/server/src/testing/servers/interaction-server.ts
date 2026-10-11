@@ -88,7 +88,7 @@ export async function servingInteractions(
   environment: Readonly<Record<string, string>> = {},
 ): Promise<InteractionServer> {
   const server = await interactionServerOn(environment);
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   await server.call('POST', `${alpha}/definitions/interaction`, {
     body: { name: 'approve-brief', source: approvalDocument(delivery) },
   });

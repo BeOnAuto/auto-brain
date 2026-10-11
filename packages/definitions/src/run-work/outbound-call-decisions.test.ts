@@ -15,7 +15,7 @@ import type { RunEvent } from '../runs/run-events.ts';
 
 const start = { by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
 
-const during = { by: 'brain:alpha', at: '2026-10-01T09:00:02.000Z' };
+const during = { by: 'playbook:alpha', at: '2026-10-01T09:00:02.000Z' };
 
 const request = { definition_type: 'interaction', name: 'approve-brief', input: { owner: 'ada' } };
 

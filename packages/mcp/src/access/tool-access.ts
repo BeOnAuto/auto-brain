@@ -7,7 +7,7 @@ import type { ToolServer } from '../listing/tool-server.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
 import type { CallOnce } from '../one-call/one-call.ts';
 import {
-  brainsServedBy,
+  playbooksServedBy,
   isListedFor,
   type McpSettings,
   type ServersScope,
@@ -35,11 +35,11 @@ export interface ToolAccess {
   readonly startOf: StartOf;
   readonly callOnce: CallOnce;
   readonly listServers: (scope: ServersScope, named?: string) => Effect.Effect<readonly ToolServer[]>;
-  readonly brainsServedBy: (server: string) => readonly string[];
+  readonly playbooksServedBy: (server: string) => readonly string[];
   readonly close: () => Promise<void>;
 }
 
-export type LinkedAccess = Omit<ToolAccess, 'brainsServedBy' | 'named' | 'startOf'>;
+export type LinkedAccess = Omit<ToolAccess, 'playbooksServedBy' | 'named' | 'startOf'>;
 
 async function linked(settings: McpSettings, options: ToolAccessOptions): Promise<LinkedAccess> {
   const { linkedAccess } = await import('./linked-access.ts');
@@ -63,7 +63,7 @@ export function makeToolAccess(settings: McpSettings, options: ToolAccessOptions
       settings.servers.some((server) => isListedFor(server, scope, named))
         ? Effect.flatMap(Effect.promise(loaded), (access) => access.listServers(scope, named))
         : Effect.succeed([]),
-    brainsServedBy: (server) => brainsServedBy(settings.servers, server),
+    playbooksServedBy: (server) => playbooksServedBy(settings.servers, server),
     close: async () => {
       const access = await loading.access;
       await access?.close();
