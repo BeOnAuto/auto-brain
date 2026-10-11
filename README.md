@@ -4,7 +4,7 @@ Auto Runtime runs the functions and workflows of your playbooks. Build them with
 
 [![CI](https://github.com/BeOnAuto/auto-brain/actions/workflows/ci.yml/badge.svg)](https://github.com/BeOnAuto/auto-brain/actions/workflows/ci.yml) [![License: ELv2](https://img.shields.io/badge/license-ELv2-blue?style=flat-square)](LICENSING.md)
 
-[![Auto Studio showing a Sales Ops playbook, with its functions, workflows and runs on the left and its run, token and duration charts on the right](docs/assets/studio-dashboard.png)](https://studio.on.auto)
+[![Auto Studio showing its sample Accounts Payable playbook, with its functions, workflows and runs on the left and its run, token and duration charts on the right](docs/assets/studio-dashboard.png)](https://studio.on.auto)
 
 [Auto Studio](https://studio.on.auto) is where you watch a playbook work. Open a run to follow how it reached its result, or check the charts for how busy the playbook has been and what it has spent in tokens.
 
