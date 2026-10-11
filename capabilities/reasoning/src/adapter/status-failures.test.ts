@@ -12,9 +12,12 @@ function openAiError(message: string, code: string | null = null): object {
   return { error: { message, type: 'invalid_request_error', param: null, code } };
 }
 
-async function failureFor(response: () => Response): Promise<ModelFailure> {
+async function failureFor(
+  response: () => Response,
+  environment: Readonly<Record<string, string>> = {},
+): Promise<ModelFailure> {
   const recording = recordingFetch(response);
-  const access = await accessFor({ OPENAI_API_KEY: apiKey }, { fetch: recording.fetch });
+  const access = await accessFor({ OPENAI_API_KEY: apiKey, ...environment }, { fetch: recording.fetch });
   const failure = await failed(access, textRequest('openai/gpt-5'));
   expect(exposedText(failure)).not.toContain(promptText);
   expect(exposedText(failure)).not.toContain(apiKey);
@@ -84,6 +87,34 @@ describe('a provider that signals the request too long', () => {
       provider_message: 'string too long',
       detail:
         'openai answered HTTP 400: the request was rejected as invalid, with the error code string_above_max_length',
+    });
+  });
+});
+
+describe('the error code of a rejected request', () => {
+  it('is cut at a code point past 64 characters, with the mark of a cut', async () => {
+    const code = `${'x'.repeat(63)}😀${'y'.repeat(40)}`;
+
+    const failure = await failureFor(() => jsonResponse(openAiError('Unsupported parameter', code), 400));
+
+    expect(failure.detail).toBe(
+      `openai answered HTTP 400: the request was rejected as invalid, with the error code ${'x'.repeat(63)}😀…`,
+    );
+  });
+
+  it("is scrubbed of a configured key, also where the provider's message is hidden", async () => {
+    const hidden = { OPENAI_BASE_URL: 'https://proxy.example.com/v1' };
+
+    const failure = await failureFor(
+      () => jsonResponse(openAiError('Unsupported parameter', `key_${apiKey}_refused`), 400),
+      hidden,
+    );
+
+    expect(failure).toMatchObject({
+      _tag: 'definition_invalid',
+      provider_message: null,
+      detail:
+        'openai answered HTTP 400: the request was rejected as invalid, with the error code key_[redacted]_refused',
     });
   });
 });

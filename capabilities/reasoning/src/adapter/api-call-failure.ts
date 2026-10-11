@@ -7,6 +7,7 @@ import type { ModelFailure } from '../failure/model-failure.ts';
 import { ProviderUnavailable } from '../failure/provider-unavailable.ts';
 import { RateLimited } from '../failure/rate-limited.ts';
 import { RequestTooLong } from '../failure/request-too-long.ts';
+import { clip } from '../template/prompt-filters.ts';
 
 export interface ApiCallDetails {
   readonly provider: string;
@@ -22,6 +23,8 @@ export interface ApiCallDetails {
 }
 
 const mostShownCharacters = 300;
+
+const mostShownCodeCharacters = 64;
 
 const statusReadings: ReadonlyMap<number, string> = new Map([
   [400, 'the request was rejected as invalid'],
@@ -53,9 +56,11 @@ function lengthSignalOf(status: number, data: unknown): string | undefined {
   return lengthCodes.has(type) ? `the error type ${String(type)}` : undefined;
 }
 
-function codeInWords(data: unknown): string {
+function codeInWords(data: unknown, scrub: (text: string) => string): string {
   const code = errorFieldOf(data, 'code');
-  return typeof code === 'string' && code.trim() !== '' ? `, with the error code ${code}` : '';
+  return typeof code === 'string' && code.trim() !== ''
+    ? `, with the error code ${clip(scrub(code), mostShownCodeCharacters)}`
+    : '';
 }
 
 function retryAfterSeconds(value: string, now: number): number | null {
@@ -103,7 +108,7 @@ function tooLong(details: ApiCallDetails, status: number, signal: string): Model
 }
 
 function rejectedRequest(details: ApiCallDetails, code: number): ModelFailure {
-  const { provider, data } = details;
+  const { provider, data, scrub } = details;
   const signal = lengthSignalOf(code, data);
   if (signal !== undefined) {
     return tooLong(details, code, signal);
@@ -118,7 +123,7 @@ function rejectedRequest(details: ApiCallDetails, code: number): ModelFailure {
     });
   }
   return new DefinitionInvalid({
-    detail: `${provider} answered HTTP ${code}: ${statusReadings.get(code) ?? 'the request was not accepted'}${codeInWords(data)}`,
+    detail: `${provider} answered HTTP ${code}: ${statusReadings.get(code) ?? 'the request was not accepted'}${codeInWords(data, scrub)}`,
     provider,
     status: code,
     provider_message: providerMessage(details),
