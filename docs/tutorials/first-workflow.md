@@ -146,9 +146,9 @@ The request has a `run_id` of its own: it is the run of the interaction function
 
 ## 7. Answer the request
 
-> Answer that request with the verdict `approve` and the note `Approved for the autumn launch.` Show me what the answer settled.
+> Answer that request with the verdict `approve` and the note `Approved for the autumn launch.` Show me the answer the run took.
 
-The agent should report the run of `approve-campaign-brief` `succeeded`, with the answer as its output. The tool's summary reads: The request is answered: the run that asked it succeeded, with the answer as its output.
+The agent should report the answer recorded on the run of `approve-campaign-brief`, with `answered_by`, the caller that answered, and `answered_at`; the run takes it within a second, and succeeds with it as its output. The tool's summary reads: The request is answered: the run that asked it takes the answer within a second, and get_run shows how it ended.
 
 An answer that does not match the function's `output.schema`, such as the verdict `maybe`, is refused with `invalid_input` and a pointer under `/answer`, and the request stays open.
 
@@ -182,15 +182,15 @@ Each event's `metadata` carries `causation_id`, the `id` of the event that led t
 
 Read that run too:
 
-> Read the run of `approve-campaign-brief` that you answered. Show its status, output and record.
+> Read the run of `approve-campaign-brief` that you answered. Show its status, output and history.
 
-Its record shows `answered_by`, the caller that answered, and `answered_at`. The tool's summary reads: The run of the interaction function “approve-campaign-brief” finished. Its answer: verdict: “approve” and note: “Approved for the autumn launch.”
+It succeeded with the answer as its output, and its history shows the answer as `request_answered`, with who gave it and when. The tool's summary reads: The run of the interaction function “approve-campaign-brief” finished. Its answer: verdict: “approve” and note: “Approved for the autumn launch.”
 
 ## 9. Check that the request has ended
 
 > Answer the same request again with the verdict `revise`, and show me the answer. Then list the open requests again.
 
-The agent should report the answer refused with `conflict`, since the request was already answered with another answer, and the inbox empty: No request is waiting. The same answer again would answer the run as it stands. To ask again, start a new run of the workflow: it receives a new run id and uses the same definition versions.
+The agent should report the answer refused with `conflict`, since the run already took another answer, and the inbox empty: No request is waiting. The same answer again would answer with the answer the run took. To ask again, start a new run of the workflow: it receives a new run id and uses the same definition versions.
 
 ## What was tested
 
