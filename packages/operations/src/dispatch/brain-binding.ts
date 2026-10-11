@@ -14,7 +14,7 @@ import {
 } from '../ledger/bound-ports.ts';
 import { BrainReader } from '../ledger/brain-reader.ts';
 import { BrainWriter } from '../ledger/brain-writer.ts';
-import type { LedgerPorts } from '../ledger/stream-ports.ts';
+import type { LedgerPorts } from '../ledger/ledger.ts';
 import type { BrainRequest } from './request.ts';
 
 export function runInBrain(
@@ -30,6 +30,7 @@ export function runInBrain(
       ...brainBoundRecordedReader(ledger, { org, brain }),
       ...brainBoundRunOutcomesReader(ledger, { org, brain }),
       ...brainBoundProjectionReader(ledger, { org, brain }),
+      readContent: (sha256) => ledger.content.get({ org, brain }, sha256),
     }),
   );
   const forCommands = forQueries.pipe(

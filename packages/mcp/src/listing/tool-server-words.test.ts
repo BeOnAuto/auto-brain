@@ -19,12 +19,24 @@ const gateway = ['search', 'introspect', 'execute', 'validate', 'dry_run'].map((
 
 const servers = {
   tool_servers: [
-    { name: 'graph', type: 'http', tools: [tool('search', true), tool('graph.query.v2')] },
-    { name: 'limitless', type: 'stdio', tools: [tool('getLifelogs')] },
-    { name: 'notes', type: 'http', tools: lookups },
-    { name: 'quiet', type: 'http', tools: [] },
-    { name: 'vault', type: 'http', unavailable: 'The MCP server vault could not be used', because: 'key_refused' },
-    { name: 'wiki', type: 'http', unavailable: 'The MCP server wiki could not be used', because: 'unreachable' },
+    { name: 'graph', type: 'http', record_content: true, tools: [tool('search', true), tool('graph.query.v2')] },
+    { name: 'limitless', type: 'stdio', record_content: true, tools: [tool('getLifelogs')] },
+    { name: 'notes', type: 'http', record_content: true, tools: lookups },
+    { name: 'quiet', type: 'http', record_content: true, tools: [] },
+    {
+      name: 'vault',
+      type: 'http',
+      record_content: true,
+      unavailable: 'The MCP server vault could not be used',
+      because: 'key_refused',
+    },
+    {
+      name: 'wiki',
+      type: 'http',
+      record_content: true,
+      unavailable: 'The MCP server wiki could not be used',
+      because: 'unreachable',
+    },
   ],
 };
 
@@ -58,7 +70,9 @@ describe('the plain words of list_tool_servers', () => {
   });
 
   it('name the tools of a server that can be tested, as a gateway marks its readers', () => {
-    expect(words?.outcome({ tool_servers: [{ name: 'graph', type: 'http', tools: gateway }] }, {})).toBe(
+    expect(
+      words?.outcome({ tool_servers: [{ name: 'graph', type: 'http', record_content: true, tools: gateway }] }, {}),
+    ).toBe(
       "This brain's functions may use 1 tool server. “graph” offers 5 tools: search, introspect, execute, validate, and dry run; search and introspect can be tested.",
     );
   });
@@ -84,10 +98,17 @@ describe('the plain words of list_tool_servers for the org', () => {
 
   it('name each server with the brains it serves, its tools, and say which could not be asked', () => {
     const inTheOrg = [
-      { name: 'graph', type: 'http', brains: ['*'], tools: [tool('search', true)] },
-      { name: 'notes', type: 'http', brains: ['alpha'], tools: [] },
-      { name: 'vault', type: 'http', brains: ['alpha', 'beta'], unavailable: 'Refused', because: 'key_refused' },
-      { name: 'wiki', type: 'stdio', brains: [], unavailable: 'Gone', because: 'unreachable' },
+      { name: 'graph', type: 'http', record_content: true, brains: ['*'], tools: [tool('search', true)] },
+      { name: 'notes', type: 'http', record_content: true, brains: ['alpha'], tools: [] },
+      {
+        name: 'vault',
+        type: 'http',
+        record_content: true,
+        brains: ['alpha', 'beta'],
+        unavailable: 'Refused',
+        because: 'key_refused',
+      },
+      { name: 'wiki', type: 'stdio', record_content: true, brains: [], unavailable: 'Gone', because: 'unreachable' },
     ];
 
     expect(inOrg?.outcome({ tool_servers: inTheOrg }, {})).toBe(
@@ -102,7 +123,9 @@ describe('the plain words of list_tool_servers for the org', () => {
   });
 
   it('speak of the brain asked for as the brain itself does', () => {
-    const forTheBrain = [{ name: 'graph', type: 'http', brains: ['*'], tools: [tool('search', true)] }];
+    const forTheBrain = [
+      { name: 'graph', type: 'http', record_content: true, brains: ['*'], tools: [tool('search', true)] },
+    ];
 
     expect(inOrg?.outcome({ tool_servers: forTheBrain }, { brain: 'alpha' })).toBe(
       "This brain's functions may use 1 tool server. “graph” offers 1 tool: search; search can be tested.",

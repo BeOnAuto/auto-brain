@@ -3,14 +3,15 @@ import { Effect } from 'effect';
 import {
   runStreamOf,
   streamPrefixOfBrain,
+  type ProjectedMessage,
   type RunOutcome,
   type RunOutcomeGroup,
   type RunOutcomeMapping,
   type RunOutcomeSelection,
   type RunOutcomeWindow,
   type RunOutcomesReader,
-  type TypedEvent,
 } from '../index.ts';
+import { projectedMessagesOf, type AppendedFact } from '../projections/memory-projections.ts';
 
 interface KeptOutcome {
   readonly brainKey: string;
@@ -18,7 +19,7 @@ interface KeptOutcome {
 }
 
 export interface MemoryRunOutcomes {
-  readonly project: (stream: string, events: readonly TypedEvent[], encoded: readonly unknown[]) => void;
+  readonly project: (stream: string, facts: readonly AppendedFact[], firstPosition: number) => void;
   readonly readRunOutcomes: RunOutcomesReader['readRunOutcomes'];
 }
 
@@ -69,17 +70,14 @@ function stagedOutcomes(
   { types, rowAfter }: RunOutcomeMapping,
   kept: ReadonlyMap<string, KeptOutcome>,
   stream: string,
-): (
-  staged: ReadonlyMap<string, KeptOutcome>,
-  [type, event]: readonly [string, unknown],
-) => ReadonlyMap<string, KeptOutcome> {
+): (staged: ReadonlyMap<string, KeptOutcome>, message: ProjectedMessage) => ReadonlyMap<string, KeptOutcome> {
   const run = runStreamOf(stream);
-  return (staged, [type, event]) => {
-    if (run === undefined || !types.includes(type)) {
+  return (staged, message) => {
+    if (run === undefined || !types.includes(message.type)) {
       return staged;
     }
     const key = `${run.brainKey}${run.runId}`;
-    const row = rowAfter((staged.get(key) ?? kept.get(key))?.row, event);
+    const row = rowAfter((staged.get(key) ?? kept.get(key))?.row, message);
     return row === undefined ? staged : new Map([...staged, [key, { brainKey: run.brainKey, row }]]);
   };
 }
@@ -87,14 +85,14 @@ function stagedOutcomes(
 export function memoryRunOutcomes(mapping: RunOutcomeMapping | undefined): MemoryRunOutcomes {
   const kept = new Map<string, KeptOutcome>();
   return {
-    project: (stream, events, encoded) => {
+    project: (stream, facts, firstPosition) => {
       if (mapping === undefined) {
         return;
       }
-      const facts = events.map(({ type }, index): readonly [string, unknown] => [type, encoded[index]]);
+      const messages = projectedMessagesOf(stream, facts, firstPosition);
       const stage = stagedOutcomes(mapping, kept, stream);
-      const staged = facts.reduce<ReadonlyMap<string, KeptOutcome>>(
-        (outcomes, fact) => stage(outcomes, fact),
+      const staged = messages.reduce<ReadonlyMap<string, KeptOutcome>>(
+        (outcomes, message) => stage(outcomes, message),
         new Map(),
       );
       for (const [key, outcome] of staged) {

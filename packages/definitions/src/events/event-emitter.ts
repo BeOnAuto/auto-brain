@@ -59,9 +59,9 @@ export function eventEmitter(ledger: Ledger['Service']): EmitEvent {
       return Effect.succeed('refused');
     }
     const stream = `${streamPrefixOfBrain(brain)}${publishedEventStreamOf(cloudEvent.source, cloudEvent.id)}`;
-    const publication = { event: cloudEvent, filled: [], emitted_by: emitter, depth, by, at };
+    const publication = { event: cloudEvent, filled: [], emittedBy: emitter, depth, by, at };
     return ledger.execute(stream, publishedEventDecider, publication, lineage).pipe(
-      Effect.map(({ state }): EmitOutcome => (state?.at === at ? 'recorded' : 'already_recorded')),
+      Effect.map(({ state }): EmitOutcome => (state?.context.at === at ? 'recorded' : 'already_recorded')),
       Effect.catchTag('conflict', refusedUnlessChanging),
     );
   };

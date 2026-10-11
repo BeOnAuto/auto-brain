@@ -15,7 +15,7 @@ const unknownRun = { org: 'acme', brain: 'alpha', id: '0199a3c4-7d2e-7c1a-9b3f-2
 const lineage = { causationId: 'cancel-1', correlationId: unknownRun.id };
 
 describe('the machine the workflow host decides runs with', () => {
-  it("is the coordination's functions and runtime on the pool's sandbox, so no setting of the server reaches the machine's bound on tasks without waiting", async () => {
+  it("is the coordination's functions, runtime and context of each record on the pool's sandbox, so no setting of the server reaches the machine's bound on tasks without waiting", async () => {
     const runtime = await makeAppRuntime(applicationLayer(ledgerLayer({ fileName: ':memory:' })));
     const pool = programPool({ workers: 1, heapMegabytes: 64 });
     const { machine } = hostWorkOf(runtime, makeDispatcher([]), {
@@ -25,7 +25,7 @@ describe('the machine the workflow host decides runs with', () => {
     });
     await Promise.all([pool.close(), runtime.dispose()]);
 
-    expect(Object.keys(machine).toSorted()).toEqual(['functions', 'runtime', 'sandbox']);
+    expect(Object.keys(machine).toSorted()).toEqual(['contextOf', 'functions', 'runtime', 'sandbox']);
     expect(machine.sandbox).toBe(pool.evaluations.machine);
     expect(Object.keys(machine.sandbox)).not.toContain('mostStepsWithoutWaiting');
   });

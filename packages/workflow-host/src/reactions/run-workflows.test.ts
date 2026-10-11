@@ -8,12 +8,15 @@ const brainKey = 'brain/acme/alpha/';
 function startedRecord(type: string, name: string) {
   return {
     type: 'run_started',
-    definition_type: type,
-    name,
-    definition_version: 1,
-    input: {},
-    by: 'acme-admin',
-    at: 'now',
+    data: { input: {} },
+    context: {
+      by: 'acme-admin',
+      at: 'now',
+      runId: `r-${name}`,
+      definitionType: type,
+      definitionName: name,
+      definitionVersion: 1,
+    },
   };
 }
 
@@ -26,7 +29,7 @@ function counting() {
   const reads: string[] = [];
   const read = (stream: string) => {
     reads.push(stream.slice(brainKey.length));
-    return Promise.resolve({ events: streams.get(stream) ?? [] });
+    return Promise.resolve({ messages: streams.get(stream) ?? [] });
   };
   return { read, reads: () => reads };
 }

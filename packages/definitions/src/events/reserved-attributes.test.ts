@@ -1,4 +1,4 @@
-import { toolTestPresenter } from '@beonauto/mcp';
+import { conversationCallPresenter, toolTestPresenter } from '@beonauto/mcp';
 import { Result, Schema, SchemaIssue } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -6,12 +6,10 @@ import { makeDefinitionPresenters } from '../index.ts';
 import { echo } from '../testing/echo.ts';
 import { isReservedSource, refusingTheBrainsOwnAttributes, reservedEventTypes } from './reserved-attributes.ts';
 
-const EventSchema = Schema.Struct({
-  type: Schema.String,
-  source: Schema.optionalKey(Schema.String),
-  causationid: Schema.optionalKey(Schema.String),
-  correlationid: Schema.optionalKey(Schema.String),
-}).check(refusingTheBrainsOwnAttributes);
+const EventSchema = Schema.StructWithRest(
+  Schema.Struct({ type: Schema.String, source: Schema.optionalKey(Schema.String) }),
+  [Schema.Record(Schema.String, Schema.Union([Schema.String, Schema.Int]))],
+).check(refusingTheBrainsOwnAttributes);
 
 const decode = Schema.decodeUnknownResult(EventSchema, { errors: 'all' });
 
@@ -33,15 +31,21 @@ const typesOfTheBrain = [
   'run_cancel_requested',
   'tool_call_started',
   'tool_call_answered',
+  'tool_call_failed',
   'delivery_started',
-  'delivery_ended',
+  'delivery_succeeded',
+  'delivery_failed',
+  'delivery_refused',
   'reply_taken',
   'reply_refused',
   'tool_test_started',
   'tool_test_answered',
+  'tool_test_failed',
   'replies_read',
+  'reading_failed',
   'telling_started',
-  'telling_ended',
+  'telling_succeeded',
+  'telling_failed',
   'interaction_requested',
   'definition_created',
   'definition_updated',
@@ -59,8 +63,8 @@ const typesOfTheBrain = [
 describe('the types and sources of what the brain records itself', () => {
   it('are reserved for the brain: every type its runs and definitions record, and every type its feed shows', () => {
     expect([...reservedEventTypes]).toEqual(typesOfTheBrain);
-    const shown = [...makeDefinitionPresenters([echo]), toolTestPresenter].flatMap(({ publicNames }) =>
-      Object.values(publicNames).flat(),
+    const shown = [...makeDefinitionPresenters([echo]), toolTestPresenter, conversationCallPresenter].flatMap(
+      ({ publicNames }) => Object.values(publicNames).flat(),
     );
     expect(shown.filter((name) => !reservedEventTypes.has(name))).toEqual([]);
     expect(
@@ -85,21 +89,48 @@ describe('the types and sources of what the brain records itself', () => {
         'reply_refused',
         'replies_read',
         'telling_started',
-        'telling_ended',
+        'telling_succeeded',
+        'delivery_failed',
         'event_published',
         'workflow_input_applied',
         'step_waiting',
       ].map((type) => refusals({ type }).length),
-    ).toEqual([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
+    ).toEqual([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
     expect(refusals({ type: 'com.acme.ledger.month-closed', source: '/ledger/eu' })).toEqual([]);
   });
 });
 
-describe('the lineage the brain gives its own records', () => {
-  it('is refused in an event from outside, which may not claim it', () => {
+const reservedInWords =
+  'causationid, correlationid, caller, definitionversion, depth, calldepth, calledby, triggerkind and triggerreference are the lineage and context the brain gives its own records, which no event may claim';
+
+describe('the lineage and the context the brain gives its own records', () => {
+  it('are refused in an event from outside, which may not claim them', () => {
     expect(refusals({ type: 'com.acme.approved', causationid: 'm-1', correlationid: 'r-1' })).toEqual([
-      '/causationid: Expected no causationid: causationid and correlationid are the lineage the brain gives its own records, which no event may claim',
-      '/correlationid: Expected no correlationid: causationid and correlationid are the lineage the brain gives its own records, which no event may claim',
+      `/causationid: Expected no causationid: ${reservedInWords}`,
+      `/correlationid: Expected no correlationid: ${reservedInWords}`,
+    ]);
+  });
+
+  it('are refused for each attribute of the context of a run, so no event can claim a caller or a depth', () => {
+    const claimed = {
+      type: 'com.acme.approved',
+      caller: 'acme-admin',
+      definitionversion: 2,
+      depth: 1,
+      calldepth: 1,
+      calledby: 'r-0',
+      triggerkind: 'event',
+      triggerreference: '/schedule/on',
+    };
+
+    expect(refusals(claimed).map((refusal) => refusal.slice(0, refusal.indexOf(':')))).toEqual([
+      '/caller',
+      '/definitionversion',
+      '/depth',
+      '/calldepth',
+      '/calledby',
+      '/triggerkind',
+      '/triggerreference',
     ]);
   });
 });

@@ -206,22 +206,9 @@ describe('an event filter that tests what cannot be matched as it is', () => {
       })),
     );
   });
+});
 
-  it('is refused when it tests an attribute other than type, source, subject and data', () => {
-    expect(rejectionsOf({ with: { type: 'com.acme.ledger.month-closed', 'tenant/id': 'acme', id: 'm-1' } })).toEqual([
-      {
-        pointer: `${at}/with/tenant~1id`,
-        detail: 'An event filter matched over the event alone tests type, source, subject and data, not tenant/id',
-        forbidden: true,
-      },
-      {
-        pointer: `${at}/with/id`,
-        detail: 'An event filter matched over the event alone tests type, source, subject and data, not id',
-        forbidden: true,
-      },
-    ]);
-  });
-
+describe('an event filter that names the attributes of the context', () => {
   it('is refused as a listen filter is, for correlate, and for what an event filter does not take', () => {
     const rejections = rejectionsOf({
       with: { type: 'com.acme.ledger.month-closed', data: '${ $data.region }' },

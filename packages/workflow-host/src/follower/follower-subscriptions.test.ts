@@ -81,7 +81,7 @@ describe('the records a workflow whose trigger is an event reacts to', () => {
     await published(store, { id: 'early', type: 'com.acme.closed' });
     await definitionRecorded(store, { name: 'close', version: 1, triggers: [closed] });
     await published(store, { id: 'between', type: 'com.acme.closed' });
-    await definitionRetired(store, 'close');
+    await definitionRetired(store, 'close', 1);
     await published(store, { id: 'late', type: 'com.acme.closed' });
 
     await sentinelPassed(reacting, 's1');

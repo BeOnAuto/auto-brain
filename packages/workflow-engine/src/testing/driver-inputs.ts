@@ -27,7 +27,18 @@ export const testFunctions: CallFunctions = {
 
 export const testRuntime: JsonObject = { name: 'workflow-engine', version: '1', metadata: {} };
 
-export const testSettings: MachineSettings = { functions: testFunctions, runtime: testRuntime };
+export const testSettings: MachineSettings = {
+  functions: testFunctions,
+  runtime: testRuntime,
+  contextOf: (_, at) => ({
+    at,
+    by: 'tester',
+    runId: 'the-run-of-the-test',
+    definitionType: 'workflow',
+    definitionName: 'tested',
+    definitionVersion: 1,
+  }),
+};
 
 export function testMachineOf(sandbox: MachineSandbox, settings: MachineSettings = testSettings): MachineOptions {
   return { ...settings, sandbox };

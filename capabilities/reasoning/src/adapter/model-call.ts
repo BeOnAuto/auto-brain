@@ -3,7 +3,7 @@ import { Result } from 'effect';
 
 import type { ModelFailure } from '../failure/model-failure.ts';
 import type { ModelRequest, ToolCallSignals } from '../model/model-request.ts';
-import { toolLoop } from '../tools/tool-loop.ts';
+import { toolLoop, turnsOf } from '../tools/tool-loop.ts';
 import { projected, readOutput, settledAnswer, type Answered } from './answer-settling.ts';
 import { callSettingsOf, promptOf, providerOptionsOf, retriesOf } from './call-options.ts';
 import { jsonOutput } from './json-output.ts';
@@ -14,22 +14,40 @@ type DoGenerate = Parameters<NonNullable<LanguageModelMiddleware['wrapGenerate']
 
 type Settled = Result.Result<Answered, ModelFailure>;
 
-function callOf(request: ModelRequest, step: StepDeadline) {
+type Turns = ReturnType<typeof turnsOf>;
+
+function callOf(request: ModelRequest, step: StepDeadline, turns: Turns) {
   return {
     ...promptOf(request),
     ...callSettingsOf(request.settings),
     ...providerOptionsOf(request.provider_options),
-    onLanguageModelCallStart: step.started,
-    onLanguageModelCallEnd: step.ended,
+    onLanguageModelCallStart: (sent: Parameters<Turns['started']>[0]) => {
+      step.started();
+      turns.started(sent);
+    },
+    onLanguageModelCallEnd: (answered: Parameters<Turns['ended']>[0]) => {
+      step.ended();
+      turns.ended(answered);
+    },
     maxRetries: retriesOf(request),
   };
 }
 
-export async function callModel(
+interface CallHooks {
+  readonly step: StepDeadline;
+  readonly turns: Turns;
+}
+
+export interface CallingModel {
+  readonly turns: Turns;
+  readonly settled: Promise<Settled>;
+}
+
+async function modelAnswer(
   target: ModelTarget,
   request: ModelRequest,
   signals: ToolCallSignals,
-  step: StepDeadline,
+  { step, turns }: CallHooks,
 ): Promise<Settled> {
   const response: { id: string | null } = { id: null };
   const model = wrapLanguageModel({
@@ -42,11 +60,11 @@ export async function callModel(
       },
     },
   });
-  const loop = toolLoop(request.tools, signals.cancelled);
+  const loop = toolLoop(request.tools, signals.cancelled, turns);
   const { tools, prepareStep, stopWhen } = loop;
   const call = {
     model,
-    ...callOf(request, step),
+    ...callOf(request, step, turns),
     tools: { ...tools },
     prepareStep,
     stopWhen,
@@ -73,4 +91,14 @@ export async function callModel(
       request.tools,
     )
   );
+}
+
+export function callingModel(
+  target: ModelTarget,
+  request: ModelRequest,
+  signals: ToolCallSignals,
+  step: StepDeadline,
+): CallingModel {
+  const turns = turnsOf(request.tools);
+  return { turns, settled: modelAnswer(target, request, signals, { step, turns }) };
 }

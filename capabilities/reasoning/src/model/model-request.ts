@@ -52,6 +52,7 @@ export interface ToolReply {
 export interface ToolCallRequest {
   readonly callId: string;
   readonly input: Readonly<Record<string, unknown>>;
+  readonly room?: number;
 }
 
 export interface ToolCallSignals {
@@ -72,6 +73,8 @@ export interface ModelTools {
   readonly calledAny: () => boolean;
   readonly ended: Readonly<AbortSignal>;
   readonly runBoundMs: number;
+  readonly mostInputTokens: number;
+  readonly contextWindow?: number;
 }
 
 export interface ModelRequest {

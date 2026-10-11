@@ -25,7 +25,11 @@ const timing = workflowSource('timing', 'do:\n  - slow: { timeout: { after: PT1S
 const inputsOf = Schema.decodeUnknownSync(
   Schema.Struct({
     events: Schema.Array(
-      Schema.Struct({ id: Schema.String, causation_id: Schema.NullOr(Schema.String), type: Schema.String }),
+      Schema.Struct({
+        id: Schema.String,
+        type: Schema.String,
+        metadata: Schema.Struct({ causation_id: Schema.NullOr(Schema.String) }),
+      }),
     ),
   }),
 );
@@ -47,6 +51,7 @@ describe('main with workflows', { timeout: workflowTestTimeoutMs }, () => {
     expect(child.output().stdout).toBe(`auto-brain listening on port ${port}\n`);
     expect(startUpLines.slice(1)).toEqual([
       `INFO The ledger is kept in the file ${ledger.fileName}`,
+      "INFO Reasoning functions run in this server: the model calls of a run add up to at most 2,000,000 input tokens, and each answer of a tool is read whole where it fits the model's context window",
       'INFO Workflows run in this server: a run lasts at most 30 days, at most 32 of their calls run at once, and the runs are swept every 1000 ms',
     ]);
     expect(startUpLines[0]).toMatch(/^WARN Local mode is on: /u);
@@ -83,7 +88,7 @@ describe('a server started again on the ledger of its workflows', { timeout: wor
     expect(sent.status).toBe(200);
     expect(approved).toMatchObject({ status: 'succeeded', output: { by: 'Ada' } });
     expect(pausedSettled).toMatchObject({ status: 'succeeded', output: { paused: true } });
-    expect(inputs.map(({ causation_id: causationId }) => causationId).at(-1)).toBe(inputs[0]?.id);
+    expect(inputs.map(({ metadata }) => metadata.causation_id).at(-1)).toBe(inputs[0]?.id);
     expect(await second.exited).toBe(0);
   });
 });

@@ -1,12 +1,19 @@
-import type { RunOutcome } from '@beonauto/operations';
+import type { Context, ProjectedMessage, RunOutcome } from '@beonauto/operations';
 import { describe, expect, it } from 'vitest';
 
 import { runOutcomeMapping } from './run-outcome-mapping.ts';
 
-const fact = { by: 'acme-admin' };
+function messageOf(type: string, data: unknown, context: Context): ProjectedMessage {
+  return { id: 'm-1', position: 1, type, data, context };
+}
 
-function startedAt(at: string, name = 'triage', type = 'reasoning') {
-  return { type: 'run_started', definition_type: type, name, definition_version: 1, input: {}, ...fact, at };
+function startedAt(at: string, name = 'triage', type = 'reasoning'): ProjectedMessage {
+  const context = { at, by: 'acme-admin', definitionType: type, definitionName: name, definitionVersion: 1 };
+  return messageOf('run_started', { input: {} }, context);
+}
+
+function endedAt(at: string, type: string, data: object = {}): ProjectedMessage {
+  return messageOf(type, data, { at, by: 'acme-admin' });
 }
 
 const usage = {
@@ -15,10 +22,10 @@ const usage = {
   total: 1500,
 };
 
-function keptAfter(...events: readonly unknown[]): RunOutcome | undefined {
+function keptAfter(...messages: readonly ProjectedMessage[]): RunOutcome | undefined {
   let row: RunOutcome | undefined;
-  for (const event of events) {
-    row = runOutcomeMapping.rowAfter(row, event) ?? row;
+  for (const message of messages) {
+    row = runOutcomeMapping.rowAfter(row, message) ?? row;
   }
   return row;
 }
@@ -40,16 +47,19 @@ describe('the outcome of a run', () => {
     expect(runOutcomeMapping.types).toEqual(['run_started', 'run_succeeded', 'run_failed', 'run_rejected']);
   });
 
-  it('is started from its first start', () => {
+  it('is started from its first start, with the definition of its context', () => {
     expect(keptAfter(started)).toEqual({ ...firstStart, status: 'started', durationMs: null, ...noTokens });
   });
 });
 
 describe('the outcome of a run that ended', () => {
   it('takes the tokens a reasoning run recorded and its duration from start to end when it succeeds', () => {
-    const succeeded = { type: 'run_succeeded', output: 'ok', record: { usage, duration_ms: 900 }, ...fact };
+    const succeeded = endedAt('2026-10-01T09:00:01.250Z', 'run_succeeded', {
+      output: 'ok',
+      record: { usage, duration_ms: 900 },
+    });
 
-    expect(keptAfter(started, { ...succeeded, at: '2026-10-01T09:00:01.250Z' })).toEqual({
+    expect(keptAfter(started, succeeded)).toEqual({
       ...firstStart,
       status: 'succeeded',
       durationMs: 1250,
@@ -61,8 +71,8 @@ describe('the outcome of a run that ended', () => {
 
   it('takes the duration of a workflow run, whose record holds no tokens', () => {
     const workflow = startedAt('2026-10-01T09:00:00.000Z', 'approval', 'workflow');
-    const deferred = { type: 'run_deferred', record: { run: 'r1' }, ...fact, at: '2026-10-01T09:00:00.100Z' };
-    const succeeded = { type: 'run_succeeded', output: {}, record: {}, ...fact, at: '2026-10-02T09:00:00.000Z' };
+    const deferred = endedAt('2026-10-01T09:00:00.100Z', 'run_deferred', { record: { run: 'r1' } });
+    const succeeded = endedAt('2026-10-02T09:00:00.000Z', 'run_succeeded', { output: {}, record: {} });
 
     expect(keptAfter(workflow, deferred, succeeded)).toEqual({
       ...firstStart,
@@ -75,7 +85,7 @@ describe('the outcome of a run that ended', () => {
   });
 
   it('takes the duration of a failed run, with no tokens', () => {
-    expect(keptAfter(started, { type: 'run_failed', ...fact, at: '2026-10-01T09:00:02.000Z' })).toEqual({
+    expect(keptAfter(started, endedAt('2026-10-01T09:00:02.000Z', 'run_failed'))).toEqual({
       ...firstStart,
       status: 'failed',
       durationMs: 2000,
@@ -87,9 +97,12 @@ describe('the outcome of a run that ended', () => {
 describe('the outcome of a rejected run', () => {
   it('counts the tokens of a rejected run that recorded them, never a duration', () => {
     const rejection = { reason: 'unavailable', detail: 'The answer is not JSON' };
-    const rejected = { type: 'run_rejected', rejection, ...fact, at: '2026-10-01T09:00:03.000Z' };
+    const at = '2026-10-01T09:00:03.000Z';
 
-    expect([keptAfter(started, { ...rejected, record: { usage } }), keptAfter(started, rejected)]).toEqual([
+    expect([
+      keptAfter(started, endedAt(at, 'run_rejected', { rejection, record: { usage } })),
+      keptAfter(started, endedAt(at, 'run_rejected', { rejection })),
+    ]).toEqual([
       { ...firstStart, status: 'rejected', durationMs: null, inputTokens: 1200, outputTokens: 300, cachedTokens: 1000 },
       { ...firstStart, status: 'rejected', durationMs: null, ...noTokens },
     ]);
@@ -102,15 +115,9 @@ function spent(input: number, output: number) {
 
 describe('the outcome of a run started again or measured oddly', () => {
   it('keeps its first start when started again, and measures the attempt started last', () => {
-    const failed = { type: 'run_failed', ...fact, at: '2026-10-01T09:01:00.000Z' };
+    const failed = endedAt('2026-10-01T09:01:00.000Z', 'run_failed');
     const again = startedAt('2026-10-02T10:00:00.000Z', 'renamed');
-    const succeeded = {
-      type: 'run_succeeded',
-      output: 'ok',
-      record: {},
-      ...fact,
-      at: '2026-10-02T10:00:05.000Z',
-    };
+    const succeeded = endedAt('2026-10-02T10:00:05.000Z', 'run_succeeded', { output: 'ok', record: {} });
 
     expect([keptAfter(started, failed, again), keptAfter(started, failed, again, succeeded)]).toEqual([
       { ...firstStart, lastStartedAt: '2026-10-02T10:00:00.000Z', status: 'started', durationMs: null, ...noTokens },
@@ -119,21 +126,12 @@ describe('the outcome of a run started again or measured oddly', () => {
   });
 
   it('adds up the tokens of every attempt, while it measures the last one alone', () => {
-    const rejected = {
-      type: 'run_rejected',
+    const rejected = endedAt('2026-10-01T09:00:02.000Z', 'run_rejected', {
       rejection: { reason: 'unavailable', detail: 'The answer is not JSON' },
       record: spent(500, 40),
-      ...fact,
-      at: '2026-10-01T09:00:02.000Z',
-    };
+    });
     const again = startedAt('2026-10-01T10:00:00.000Z');
-    const succeeded = {
-      type: 'run_succeeded',
-      output: 'ok',
-      record: spent(100, 10),
-      ...fact,
-      at: '2026-10-01T10:00:00.300Z',
-    };
+    const succeeded = endedAt('2026-10-01T10:00:00.300Z', 'run_succeeded', { output: 'ok', record: spent(100, 10) });
 
     expect([keptAfter(started, rejected, again), keptAfter(started, rejected, again, succeeded)]).toMatchObject([
       { status: 'started', inputTokens: 500, outputTokens: 40, cachedTokens: null },
@@ -144,7 +142,7 @@ describe('the outcome of a run started again or measured oddly', () => {
 
 describe('the outcome of a run with a finish it cannot measure', () => {
   it('is kept with the day of its finish when the finish comes without a start', () => {
-    expect(keptAfter({ type: 'run_failed', ...fact, at: '2026-10-03T23:59:59.999Z' })).toEqual({
+    expect(keptAfter(endedAt('2026-10-03T23:59:59.999Z', 'run_failed'))).toEqual({
       startedDay: '2026-10-03',
       startedAt: '2026-10-03T23:59:59.999Z',
       lastStartedAt: '2026-10-03T23:59:59.999Z',
@@ -165,15 +163,14 @@ describe('the outcome of a run with a finish it cannot measure', () => {
       ...noTokens,
     };
 
-    expect(
-      runOutcomeMapping.rowAfter(row, { type: 'run_failed', ...fact, at: '2026-10-01T09:00:01.000Z' }),
-    ).toMatchObject({ status: 'failed', durationMs: null });
+    expect(runOutcomeMapping.rowAfter(row, endedAt('2026-10-01T09:00:01.000Z', 'run_failed'))).toMatchObject({
+      status: 'failed',
+      durationMs: null,
+    });
   });
 
   it('takes no duration below zero, when a finish is recorded before its start by another clock', () => {
-    expect(keptAfter(started, { type: 'run_failed', ...fact, at: '2026-10-01T08:59:59.000Z' })).toMatchObject({
-      durationMs: 0,
-    });
+    expect(keptAfter(started, endedAt('2026-10-01T08:59:59.000Z', 'run_failed'))).toMatchObject({ durationMs: 0 });
   });
 });
 
@@ -186,29 +183,29 @@ const notTokens: readonly unknown[] = [
   { usage: { input: [12] } },
 ];
 
-const notRunEvents: readonly unknown[] = [
-  null,
-  'run_started',
-  7,
-  [],
-  { type: 'run_started', definition_type: 'reasoning', at: '2026-10-01T09:00:00.000Z' },
-  { type: 'run_started', definition_type: 'reasoning', name: 'triage', at: 'not a time' },
-  { type: 'run_succeeded' },
-  { type: 'run_deferred', at: '2026-10-01T09:00:00.000Z' },
-  { type: 'tool_call_started', at: '2026-10-01T09:00:00.000Z' },
+const notRunEvents: readonly ProjectedMessage[] = [
+  messageOf('run_started', { input: {} }, { at: '2026-10-01T09:00:00.000Z', by: 'u', definitionType: 'reasoning' }),
+  messageOf(
+    'run_started',
+    { input: {} },
+    { at: 'not a time', by: 'u', definitionType: 'reasoning', definitionName: 't' },
+  ),
+  messageOf('run_succeeded', 'not a fact', { at: '2026-10-01T09:00:00.000Z', by: 'u' }),
+  endedAt('2026-10-01T09:00:00.000Z', 'run_deferred', { record: {} }),
+  endedAt('2026-10-01T09:00:00.000Z', 'tool_call_started'),
 ];
 
 describe('what the outcome of a run leaves as it is', () => {
   it.each(notTokens)('is the tokens of a record that holds no counts, %j', (record) => {
-    const succeeded = { type: 'run_succeeded', output: 'ok', record, ...fact, at: '2026-10-01T09:00:01.000Z' };
+    const succeeded = endedAt('2026-10-01T09:00:01.000Z', 'run_succeeded', { output: 'ok', record });
 
     expect(keptAfter(started, succeeded)).toMatchObject(noTokens);
   });
 
-  it.each(notRunEvents)('is the row, for an event it does not understand, %j', (event) => {
+  it.each(notRunEvents)('is the row, for an event it does not understand, %j', (message) => {
     const row = keptAfter(started);
 
-    expect([runOutcomeMapping.rowAfter(row, event), runOutcomeMapping.rowAfter(undefined, event)]).toEqual([
+    expect([runOutcomeMapping.rowAfter(row, message), runOutcomeMapping.rowAfter(undefined, message)]).toEqual([
       undefined,
       undefined,
     ]);

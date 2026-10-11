@@ -22,7 +22,7 @@ type Rejection = Extract<LiteralFilterReading, { readonly rejections: unknown }>
 const events = '/source/events';
 
 const notAMapping =
-  'A filter is a mapping of the attributes an event must have: type, and optionally source, subject and data';
+  'A filter is a mapping of the attributes an event must have: type, and optionally any other attribute of the event and its data';
 
 function isAttributes(filter: Schema.Json): filter is Schema.JsonObject {
   return Predicate.isObject(filter) && !Array.isArray(filter);

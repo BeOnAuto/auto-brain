@@ -51,7 +51,7 @@ const emission: EmitEvent = {
   event,
 };
 
-const origin = { version: 4, lastStep: null };
+const origin = { version: 4 };
 
 describe('an event a run of the host emits', () => {
   it('is recorded as the run emitted it, one deeper, caused by the run record and in the chain of the run', async () => {
@@ -63,20 +63,22 @@ describe('an event a run of the host emits', () => {
       ledger.service.readRecorded({ org: 'acme', brain: 'alpha' }, { kind: 'everything' }, { order: 'asc', limit: 10 }),
     );
 
-    expect(
-      records.map(({ causationId, correlationId, data }) => [causationId, correlationId, publishedEventOf(data)]),
-    ).toEqual([
+    expect(records.map((record) => [record.causationId, record.correlationId, publishedEventOf(record)])).toEqual([
       [
         messageIdOf(runLogStreamOf(run.runId), 4),
         'r-top',
         {
           type: 'event_published',
-          event,
-          filled: [],
-          emitted_by: { run_id: runId, workflow: 'close-the-month', version: 2 },
-          depth: 2,
-          by: 'acme-admin',
-          at: '2026-10-01T09:00:01.000Z',
+          data: { event, filled: [] },
+          context: {
+            at: '2026-10-01T09:00:01.000Z',
+            by: 'acme-admin',
+            runId,
+            definitionType: 'workflow',
+            definitionName: 'close-the-month',
+            definitionVersion: 2,
+            depth: 2,
+          },
         },
       ],
     ]);

@@ -1,4 +1,4 @@
-import { Option, Schema } from 'effect';
+import { Schema } from 'effect';
 
 const ReactionAttributesSchema = Schema.Struct({
   definition: Schema.Struct({ name: Schema.String, version: Schema.Int }),
@@ -15,19 +15,15 @@ export interface RunReaction {
   readonly correlation: string | undefined;
 }
 
-const decodeAttributes = Schema.decodeUnknownOption(ReactionAttributesSchema);
-
-const unnamed: RunReaction = { workflow: 'workflow', version: 0, caller: 'unknown', depth: 0, correlation: undefined };
+const decodeAttributes = Schema.decodeUnknownSync(ReactionAttributesSchema);
 
 export function reactionOfRun(attributes: Schema.JsonObject): RunReaction {
-  return Option.match(decodeAttributes(attributes), {
-    onNone: () => unnamed,
-    onSome: ({ definition, caller, depth = 0, lineage }) => ({
-      workflow: definition.name,
-      version: definition.version,
-      caller: caller.id,
-      depth,
-      correlation: lineage?.correlation,
-    }),
-  });
+  const { definition, caller, depth = 0, lineage } = decodeAttributes(attributes);
+  return {
+    workflow: definition.name,
+    version: definition.version,
+    caller: caller.id,
+    depth,
+    correlation: lineage?.correlation,
+  };
 }

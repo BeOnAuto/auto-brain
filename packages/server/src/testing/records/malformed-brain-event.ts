@@ -1,15 +1,23 @@
 import { ledgerLayer } from '@beonauto/ledger/sqlite3';
-import { Ledger, streamPrefixOfOrg, type Decider } from '@beonauto/operations';
+import {
+  ActedContextSchema,
+  Ledger,
+  factOf,
+  streamPrefixOfOrg,
+  type Decided,
+  type Decider,
+} from '@beonauto/operations';
 import { Effect, ManagedRuntime, Result, Schema } from 'effect';
 
-const MalformedBrain = Schema.Struct({ type: Schema.Literal('brain_created'), brain: Schema.Number });
+const MalformedBrain = factOf('brain_created', Schema.Struct({ brain: Schema.Number }), ActedContextSchema);
 
 type Malformed = typeof MalformedBrain.Type;
 
-const malformedRegistry: Decider<readonly Malformed[], Malformed, Malformed> = {
+const malformedRegistry: Decider<readonly Malformed[], Decided<Malformed>, Malformed> = {
   initialState: [],
   evolve: (written, event) => [...written, event],
   decide: (event) => Result.succeed([event]),
+  context: () => ({ by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' }),
   eventSchema: MalformedBrain,
 };
 
@@ -20,7 +28,7 @@ export async function appendMalformedBrainEvent(fileName: string, org: string): 
       const ledger = yield* Ledger;
       yield* ledger.execute(`${streamPrefixOfOrg({ org })}brains`, malformedRegistry, {
         type: 'brain_created',
-        brain: 42,
+        data: { brain: 42 },
       });
     }),
   );

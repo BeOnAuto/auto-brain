@@ -92,6 +92,8 @@ const contextOf = Effect.fnUntraced(function* (
     lineage,
     depth: given.depth,
     callDepth: given.callDepth,
+    ...(given.calledBy === null ? {} : { calledBy: given.calledBy }),
+    ...(given.trigger === null ? {} : { trigger: given.trigger }),
     longestRunOf: yield* longestRunsIn(given.capabilities),
   };
   return context;

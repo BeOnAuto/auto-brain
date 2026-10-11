@@ -1,7 +1,13 @@
 import { streamSignalOf } from '@beonauto/ledger';
 import { describe, expect, it } from 'vitest';
 
-import { brainCreated, eventTrigger, published, definitionRecorded } from '../reaction-testing/brain-writes.ts';
+import {
+  brainCreated,
+  byAdmin,
+  definitionRecorded,
+  eventTrigger,
+  published,
+} from '../reaction-testing/brain-writes.ts';
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
 import { until } from '../reaction-testing/until.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
@@ -45,7 +51,7 @@ describe('the brains another process writes to, which raises no signal here', ()
 
       await brainCreated(store, 'beta');
       await definitionRecorded(store, { name: 'close', version: 1, triggers: [closed] }, beta);
-      await published(store, { id: 'first', type: 'com.acme.closed' }, {}, beta);
+      await published(store, { id: 'first', type: 'com.acme.closed' }, byAdmin, beta);
       const starts = await startsReaching(reacting, 1);
 
       expect(starts.map(({ brain, workflow }) => [brain, workflow])).toEqual([['beta', 'close']]);

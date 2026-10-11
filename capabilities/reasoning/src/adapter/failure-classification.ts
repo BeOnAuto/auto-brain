@@ -29,6 +29,7 @@ export interface FailureContext {
   readonly now: number;
   readonly showsProviderMessages: boolean;
   readonly scrub: (text: string) => string;
+  readonly lastInputTokens: number | null;
 }
 
 export interface ProviderText {
@@ -67,7 +68,7 @@ const outbound: Recognizer = (error, { provider, configured }) => {
 const wrappedCredentials: Recognizer = (error, { provider }) =>
   error instanceof Error && error.message.includes(credentialLookupMarker) ? credentialsUnavailable(provider) : null;
 
-const apiCall: Recognizer = (error, { provider, now, showsProviderMessages, scrub }) =>
+const apiCall: Recognizer = (error, { provider, now, showsProviderMessages, scrub, lastInputTokens }) =>
   APICallError.isInstance(error)
     ? apiCallFailure({
         provider,
@@ -79,6 +80,7 @@ const apiCall: Recognizer = (error, { provider, now, showsProviderMessages, scru
         now,
         showsMessage: showsProviderMessages,
         scrub,
+        lastInputTokens,
       })
     : null;
 

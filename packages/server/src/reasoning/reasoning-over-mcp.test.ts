@@ -35,6 +35,7 @@ const definitionTools = [
   'get_run_history',
   'get_brain_analytics',
   'list_brain_events',
+  'get_event',
   'publish_event',
   'list_tool_servers',
   'test_tool_call',
@@ -133,7 +134,7 @@ describe('the definition tools an agent sees on the endpoint of a brain', () => 
     const tools = listedTools(await onAlpha([], (session) => session.listTools()));
     const schemas = tools.map(({ inputSchema }) => inputSchema);
 
-    expect(schemas).toHaveLength(19);
+    expect(schemas).toHaveLength(20);
     expect(schemas.map((schema) => schema['type'])).toEqual(schemas.map(() => 'object'));
     expect(schemas.flatMap((schema) => danglingReferencesIn(schema))).toEqual([]);
   });

@@ -45,7 +45,7 @@ function started(
   { runs, mostDurationMs, longestCallMs }: WorkflowAdapterDependencies,
   document: WorkflowDefinitionDocument,
   input: Schema.Json,
-  { id, org, brain, caller, definition, lineage, depth, callDepth, longestRunOf }: RunContext,
+  { id, org, brain, caller, definition, lineage, depth, callDepth, calledBy, trigger, longestRunOf }: RunContext,
 ): Effect.Effect<FinishesLater, Conflict | Unavailable> {
   return Effect.gen(function* () {
     const seed = yield* Random.nextIntBetween(0, mostSeed);
@@ -57,6 +57,8 @@ function started(
       caller,
       depth,
       call_depth: callDepth,
+      ...(calledBy === undefined ? {} : { called_by: calledBy }),
+      ...(trigger === undefined ? {} : { trigger }),
       lineage: { start: lineage.startId, correlation: lineage.correlationId },
     };
     const longestCallMsByTask = yield* longestCallsOf(document, longestRunOf);

@@ -5,7 +5,13 @@ export interface OutcomeRow {
   readonly position: number;
   readonly type: string;
   readonly data: string;
+  readonly metadata: string;
   readonly created: string;
+}
+
+interface Fact {
+  readonly type: string;
+  readonly data: Readonly<Record<string, unknown>>;
 }
 
 const daysInTheWindow = 30;
@@ -33,34 +39,55 @@ function usageOf(run: number) {
   return { input: { total: 1000 + (run % 500), cache_read: 600 }, output: { total: 200 + (run % 50) } };
 }
 
-function finishOf(run: number, at: string, recordBytes: number): Readonly<Record<string, unknown>> {
-  const status = statusOf(run);
-  const fact = { type: status, by: 'user-1', at };
-  if (status === 'run_failed') {
-    return fact;
+function finishOf(run: number, recordBytes: number): Fact {
+  const type = statusOf(run);
+  if (type === 'run_failed') {
+    return { type, data: {} };
   }
-  if (status === 'run_rejected') {
+  if (type === 'run_rejected') {
     return {
-      ...fact,
-      rejection: { reason: 'unavailable', detail: 'The answer is not JSON' },
-      record: { usage: usageOf(run) },
+      type,
+      data: { rejection: { reason: 'unavailable', detail: 'The answer is not JSON' }, record: { usage: usageOf(run) } },
     };
   }
-  return { ...fact, output: { text: text(640) }, record: { usage: usageOf(run), prompt: text(recordBytes) } };
+  return { type, data: { output: { text: text(640) }, record: { usage: usageOf(run), prompt: text(recordBytes) } } };
 }
 
-function row(stream: string, position: number, data: Readonly<Record<string, unknown>>, at: string): OutcomeRow {
-  return { stream, position, type: String(data['type']), data: JSON.stringify(data), created: at };
+function runIdOf(run: number): string {
+  return String(run).padStart(8, '0');
+}
+
+function contextOf(run: number, at: string): string {
+  return JSON.stringify({
+    correlationId: runIdOf(run),
+    at,
+    by: 'user-1',
+    runId: runIdOf(run),
+    definitionType: 'reasoning',
+    definitionName: `fn-${run % 20}`,
+    definitionVersion: 1,
+  });
+}
+
+function rowsOfRun(stream: string, run: number): (position: number, fact: Fact, at: string) => OutcomeRow {
+  return (position, { type, data }, at) => ({
+    stream,
+    position,
+    type,
+    data: JSON.stringify(data),
+    metadata: contextOf(run, at),
+    created: at,
+  });
 }
 
 export function runOf(brain: string, run: number, recordBytes: number): readonly OutcomeRow[] {
   const startedAt = firstMoment + (run % daysInTheWindow) * dayInMilliseconds + (run % 80_000) * 1000;
   const at = new Date(startedAt).toISOString();
   const finishedAt = new Date(startedAt + 100 + (run % 50) * 97).toISOString();
-  const stream = `brain/o1/${brain}/runs/${String(run).padStart(8, '0')}`;
-  const started = { type: 'run_started', definition_type: 'reasoning', name: `fn-${run % 20}`, definition_version: 1 };
+  const stream = `brain/o1/${brain}/runs/${runIdOf(run)}`;
+  const row = rowsOfRun(stream, run);
   return [
-    row(stream, 1, { ...started, input: { text: text(320) }, by: 'user-1', at }, at),
-    row(stream, 2, finishOf(run, finishedAt, recordBytes), finishedAt),
+    row(1, { type: 'run_started', data: { input: { text: text(320) } } }, at),
+    row(2, finishOf(run, recordBytes), finishedAt),
   ];
 }

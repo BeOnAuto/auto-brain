@@ -1,3 +1,4 @@
+import { mostListingBytes } from '@beonauto/api';
 import {
   internalTermsIn,
   listedTools,
@@ -81,13 +82,14 @@ async function listingOnTheWire(path: string): Promise<ListingOnTheWire> {
 interface Endpoint {
   readonly path: string;
   readonly tools: number;
+  readonly bytes: number;
   readonly mostBytes: number;
 }
 
 const endpoints: readonly Endpoint[] = [
-  { path: '/mcp', tools: 25, mostBytes: 40_000 },
-  { path: '/orgs/local/mcp', tools: 8, mostBytes: 9000 },
-  { path: '/orgs/local/brains/alpha/mcp', tools: 19, mostBytes: 32_000 },
+  { path: '/mcp', tools: 26, bytes: 39_248, mostBytes: mostListingBytes['own org'] },
+  { path: '/orgs/local/mcp', tools: 8, bytes: 8157, mostBytes: mostListingBytes.org },
+  { path: '/orgs/local/brains/alpha/mcp', tools: 20, bytes: 31_037, mostBytes: mostListingBytes.brain },
 ];
 
 describe('the tools of each endpoint', () => {
@@ -106,11 +108,11 @@ describe('the tools of each endpoint', () => {
 
 describe('the listing of each endpoint', () => {
   it.each(endpoints)(
-    'on $path answers 200 with its $tools tools in at most $mostBytes bytes on the wire',
-    async ({ path, tools, mostBytes }) => {
-      const { status, bytes, toolCount } = await listingOnTheWire(path);
+    'on $path answers 200 with its $tools tools in $bytes bytes on the wire, within the $mostBytes the server starts with',
+    async ({ path, tools, bytes, mostBytes }) => {
+      const listing = await listingOnTheWire(path);
 
-      expect({ status, toolCount }).toEqual({ status: 200, toolCount: tools });
+      expect(listing).toEqual({ status: 200, bytes, toolCount: tools });
       expect(bytes).toBeLessThanOrEqual(mostBytes);
     },
   );

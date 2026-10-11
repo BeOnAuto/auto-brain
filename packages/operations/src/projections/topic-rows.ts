@@ -1,20 +1,34 @@
 import { Option, Result, Schema } from 'effect';
 
-import type { Decider } from '../ledger/decider.ts';
+import { ActedContextSchema, type Context } from '../ledger/context.ts';
+import { factOf, type Decided, type Decider } from '../ledger/decider.ts';
 import type { KeyedProjection, ProjectedMessage, ProjectedRow } from './keyed-projection.ts';
 
-const OpenedSchema = Schema.Struct({ type: Schema.Literal('topic_opened'), topic: Schema.String, at: Schema.Int });
+const OpenedSchema = factOf(
+  'topic_opened',
+  Schema.Struct({ topic: Schema.String, at: Schema.Int }),
+  ActedContextSchema,
+);
 
-const NotedSchema = Schema.Struct({ type: Schema.Literal('topic_noted'), topic: Schema.String, note: Schema.String });
+const NotedSchema = factOf(
+  'topic_noted',
+  Schema.Struct({ topic: Schema.String, note: Schema.String }),
+  ActedContextSchema,
+);
 
 const TopicFactSchema = Schema.Union([OpenedSchema, NotedSchema]);
 
-export type TopicFact = typeof TopicFactSchema.Type;
+type RecordedTopicFact = typeof TopicFactSchema.Type;
 
-export const topicFacts: Decider<null, readonly TopicFact[], TopicFact> = {
+export type TopicFact = Decided<RecordedTopicFact>;
+
+const topicContext: Context = { at: '2026-10-05T09:00:00.000Z', by: 'topics' };
+
+export const topicFacts: Decider<null, readonly TopicFact[], RecordedTopicFact> = {
   initialState: null,
   evolve: () => null,
   decide: (facts) => Result.succeed(facts),
+  context: () => topicContext,
   eventSchema: TopicFactSchema,
 };
 
@@ -24,13 +38,13 @@ export const topicWaitMs = 5000;
 
 function rowAfterFact(
   row: ProjectedRow | undefined,
-  fact: TopicFact,
+  fact: RecordedTopicFact,
   { id }: ProjectedMessage,
 ): ProjectedRow | undefined {
   if (fact.type === 'topic_opened') {
-    const nextAt = fact.at + topicWaitMs;
+    const nextAt = fact.data.at + topicWaitMs;
     return {
-      topic: fact.topic,
+      topic: fact.data.topic,
       note: row?.['note'] ?? null,
       last_message: id,
       open: true,
@@ -38,7 +52,7 @@ function rowAfterFact(
       due_at: nextAt,
     };
   }
-  return row === undefined ? undefined : { ...row, note: fact.note, last_message: id };
+  return row === undefined ? undefined : { ...row, note: fact.data.note, last_message: id };
 }
 
 export const topicRows: KeyedProjection = {
@@ -55,8 +69,8 @@ export const topicRows: KeyedProjection = {
     { name: 'due_at', kind: 'integer' },
   ],
   indexes: [{ name: 'due', columns: ['due_at'], acrossBrains: true, whereSet: 'due_at' }],
-  keyOf: (event) => Option.getOrUndefined(Option.map(decodeFact(event), ({ topic }) => topic)),
+  keyOf: (message) => Option.getOrUndefined(Option.map(decodeFact(message), (fact) => fact.data.topic)),
   advanced: { columns: ['open', 'next_at', 'due_at'], setBy: ['topic_opened'] },
-  rowAfter: (row, event, message) =>
-    Option.getOrUndefined(Option.flatMapNullishOr(decodeFact(event), (fact) => rowAfterFact(row, fact, message))),
+  rowAfter: (row, message) =>
+    Option.getOrUndefined(Option.flatMapNullishOr(decodeFact(message), (fact) => rowAfterFact(row, fact, message))),
 };

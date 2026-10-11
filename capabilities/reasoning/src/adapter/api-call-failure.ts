@@ -6,6 +6,8 @@ import { DefinitionInvalid } from '../failure/definition-invalid.ts';
 import type { ModelFailure } from '../failure/model-failure.ts';
 import { ProviderUnavailable } from '../failure/provider-unavailable.ts';
 import { RateLimited } from '../failure/rate-limited.ts';
+import { RequestTooLong } from '../failure/request-too-long.ts';
+import { clip } from '../template/prompt-filters.ts';
 
 export interface ApiCallDetails {
   readonly provider: string;
@@ -17,25 +19,48 @@ export interface ApiCallDetails {
   readonly now: number;
   readonly showsMessage: boolean;
   readonly scrub: (text: string) => string;
+  readonly lastInputTokens: number | null;
 }
 
 const mostShownCharacters = 300;
 
+const mostShownCodeCharacters = 64;
+
 const statusReadings: ReadonlyMap<number, string> = new Map([
   [400, 'the request was rejected as invalid'],
   [404, 'the model was not found'],
-  [413, 'the request was too large'],
   [422, 'the request was rejected as invalid'],
 ]);
 
 const contentFilterCodes: ReadonlySet<unknown> = new Set(['content_filter', 'content_policy_violation']);
 
+const lengthCodes: ReadonlySet<unknown> = new Set(['context_length_exceeded', 'request_too_large']);
+
 const unavailableStatuses: ReadonlySet<number> = new Set([408, 409]);
 
-function errorCodeOf(data: unknown): unknown {
-  return Predicate.hasProperty(data, 'error') && Predicate.hasProperty(data.error, 'code')
-    ? data.error.code
+function errorFieldOf(data: unknown, field: 'code' | 'type'): unknown {
+  return Predicate.hasProperty(data, 'error') && Predicate.hasProperty(data.error, field)
+    ? data.error[field]
     : undefined;
+}
+
+function lengthSignalOf(status: number, data: unknown): string | undefined {
+  if (status === 413) {
+    return 'HTTP 413';
+  }
+  const code = errorFieldOf(data, 'code');
+  if (lengthCodes.has(code)) {
+    return `the error code ${String(code)}`;
+  }
+  const type = errorFieldOf(data, 'type');
+  return lengthCodes.has(type) ? `the error type ${String(type)}` : undefined;
+}
+
+function codeInWords(data: unknown, scrub: (text: string) => string): string {
+  const code = errorFieldOf(data, 'code');
+  return typeof code === 'string' && code.trim() !== ''
+    ? `, with the error code ${clip(scrub(code), mostShownCodeCharacters)}`
+    : '';
 }
 
 function retryAfterSeconds(value: string, now: number): number | null {
@@ -70,9 +95,25 @@ function providerMessage({ message, responseBody, showsMessage, scrub }: ApiCall
   return unusable ? null : scrub(trimmed.replace(laterLines, '')).slice(0, mostShownCharacters);
 }
 
+function tooLong(details: ApiCallDetails, status: number, signal: string): ModelFailure {
+  const { provider } = details;
+  return new RequestTooLong({
+    detail: `${provider} refused the request as longer than the model takes, by ${signal}`,
+    provider,
+    status,
+    signal,
+    provider_message: providerMessage(details),
+    last_input_tokens: details.lastInputTokens,
+  });
+}
+
 function rejectedRequest(details: ApiCallDetails, code: number): ModelFailure {
-  const { provider, data } = details;
-  if (contentFilterCodes.has(errorCodeOf(data))) {
+  const { provider, data, scrub } = details;
+  const signal = lengthSignalOf(code, data);
+  if (signal !== undefined) {
+    return tooLong(details, code, signal);
+  }
+  if (contentFilterCodes.has(errorFieldOf(data, 'code'))) {
     return new ContentRefused({
       detail: `${provider} refused the request under its content policy`,
       provider,
@@ -82,7 +123,7 @@ function rejectedRequest(details: ApiCallDetails, code: number): ModelFailure {
     });
   }
   return new DefinitionInvalid({
-    detail: `${provider} answered HTTP ${code}: ${statusReadings.get(code) ?? 'the request was not accepted'}`,
+    detail: `${provider} answered HTTP ${code}: ${statusReadings.get(code) ?? 'the request was not accepted'}${codeInWords(data, scrub)}`,
     provider,
     status: code,
     provider_message: providerMessage(details),

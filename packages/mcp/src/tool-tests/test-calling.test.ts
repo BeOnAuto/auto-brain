@@ -19,6 +19,7 @@ function runToolsOffering(offered: readonly OfferedTool[]): RunTools {
     calledAny: () => false,
     calledOnlyReadOnly: () => true,
     usedInWords: () => 'no tool',
+    answeredBytes: () => 0,
     close: () => Promise.resolve(),
   };
 }

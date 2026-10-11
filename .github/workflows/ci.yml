@@ -211,8 +211,8 @@ jobs:
           call_mcp /orgs/demo/mcp '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_brain","arguments":{"brain":"smoke"}}}' > read.txt
           grep --quiet '"structuredContent":{"id":"smoke","name":"Smoke test"' read.txt
           call_mcp /mcp '{"jsonrpc":"2.0","id":4,"method":"tools/list"}' > all-tools.txt
-          test "$(grep --only-matching '"name":"[a-z_]*","title"' all-tools.txt | wc -l)" -eq 25
-          for tool in list_models list_runs get_run_history get_brain_analytics list_brain_events publish_event list_tool_servers test_tool_call list_interactions answer_interaction send_run_event cancel_run get_guide; do
+          test "$(grep --only-matching '"name":"[a-z_]*","title"' all-tools.txt | wc -l)" -eq 26
+          for tool in list_models list_runs get_run_history get_event get_brain_analytics list_brain_events publish_event list_tool_servers test_tool_call list_interactions answer_interaction send_run_event cancel_run get_guide; do
             grep --quiet "\"name\":\"$tool\"" all-tools.txt
           done
           call_mcp /mcp '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"list_definitions","arguments":{"brain":"smoke","type":"reasoning"}}}' > definitions.txt
@@ -412,10 +412,11 @@ jobs:
           test "$(jq --compact-output '[.status, .output]' approved.json)" = '["succeeded",[{"approved":true}]]'
           test "$(call history.json "$brain/runs/$waiting/history")" = 200
           jq --exit-status '(.events | INDEX(.id) as $by
-            | [.[] | [.type, (.data.name // .data.input.kind), $by[.causation_id // ""].type]] | sort) == [
-              ["run_started", "approval", null], ["run_succeeded", null, "step_finished"],
-              ["step_finished", "decide", "step_waiting"], ["step_waiting", "decide", "workflow_input_applied"],
-              ["workflow_input_applied", "event_received", "step_waiting"],
+            | [.[] | [.type, (if .type == "run_started" then .metadata.definition.name else .data.name // .data.input.kind end),
+              $by[.metadata.causation_id // ""].type]] | sort) == [
+              ["run_started", "approval", null], ["run_succeeded", null, "workflow_input_applied"],
+              ["step_finished", "decide", "workflow_input_applied"], ["step_waiting", "decide", "workflow_input_applied"],
+              ["workflow_input_applied", "event_received", "workflow_input_applied"],
               ["workflow_input_applied", "started", "run_started"]]' history.json
           stop_server workflows-second
       - name: Read the analytics of a brain
@@ -527,13 +528,13 @@ jobs:
           for run in $(jq --raw-output '.runs[].run_id' runs.json); do
             test "$(call "history-$run.json" "$brain/runs/$run/history")" = 200
             test "$(call "run-$run.json" "$brain/runs/$run")" = 200
-            case "$(jq --raw-output '.events[0].data.trigger.kind' "history-$run.json")" in
+            case "$(jq --raw-output '.events[0].metadata.trigger.kind' "history-$run.json")" in
               event) test "$(jq --raw-output '.output.input[0].data.month' "run-$run.json")" = september ;;
               every) jq --exit-status '.output.input.schedule.due | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T")' \
                 "run-$run.json" > /dev/null ;;
             esac
           done
-          test "$(jq --slurp --compact-output 'map(.events[0] | [.data.trigger.kind, .summary]) | sort' history-*.json)" = \
+          test "$(jq --slurp --compact-output 'map(.events[0] | [.metadata.trigger.kind, .summary]) | sort' history-*.json)" = \
             '[["event","A run of the workflow “closing” was started by its event trigger."],["every","A run of the workflow “closing” was started by its every schedule."]]'
           docker stop reactions
           test "$(docker inspect reactions --format '{{.State.ExitCode}}')" = 0

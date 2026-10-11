@@ -41,6 +41,7 @@ describe('the hints a listing shows of each tool', () => {
       {
         name: 'graph',
         type: 'http',
+        record_content: true,
         tools: [
           {
             name: 'search',

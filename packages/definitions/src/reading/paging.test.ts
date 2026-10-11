@@ -120,6 +120,7 @@ describe('the bounds of a page of runs', { timeout: 30_000 }, () => {
           definition_version: 1,
           calls_tools: false,
           input: {},
+          runId: idOf(index),
           by: 'acme-admin',
           at: '2026-10-01T09:00:00.000Z',
         }),

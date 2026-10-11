@@ -122,18 +122,20 @@ describe('the starts that wait for a later minute', () => {
     const deferred = await deferredCount(database);
     time.now = minute + aMinute;
     await Effect.runPromise(refusals.flush());
-    const { events } = await database.store.read(`${brainKey}reactions/close`);
+    const { messages } = await database.store.read(`${brainKey}reactions/close`);
 
-    expect([deferred, events]).toMatchObject([
+    expect([deferred, messages]).toMatchObject([
       mostDeferredStarts,
       [
         {
           type: 'reaction_refused',
-          workflow: 'close',
-          count: 2,
-          reason:
-            'The workflow was started by its event trigger 60 times a minute and 1000 starts already waited for a later minute, the most it keeps; this start was refused',
-          minute: '2026-10-01T09:00:00.000Z',
+          data: {
+            count: 2,
+            reason:
+              'The workflow was started by its event trigger 60 times a minute and 1000 starts already waited for a later minute, the most it keeps; this start was refused',
+            minute: '2026-10-01T09:00:00.000Z',
+          },
+          context: { definitionName: 'close' },
         },
       ],
     ]);
@@ -177,11 +179,16 @@ describe('a start the brain refuses', () => {
     const left = await deferredCount(database);
     time.now = minute + (deliverySweeps + 1) * aMinute;
     await Effect.runPromise(refusals.flush());
-    const { events } = await database.store.read(`${brainKey}reactions/close`);
+    const { messages } = await database.store.read(`${brainKey}reactions/close`);
 
-    expect([left, events]).toMatchObject([
+    expect([left, messages]).toMatchObject([
       0,
-      [{ type: 'reaction_refused', reason: 'The workflow could not be started by its event trigger: refused' }],
+      [
+        {
+          type: 'reaction_refused',
+          data: { reason: 'The workflow could not be started by its event trigger: refused' },
+        },
+      ],
     ]);
   });
 });
@@ -204,16 +211,18 @@ describe('a start the brain rejects for good', () => {
     const left = await deferredCount(database);
     time.now = minute + 2 * aMinute;
     await Effect.runPromise(refusals.flush());
-    const { events } = await database.store.read(`${brainKey}reactions/close`);
+    const { messages } = await database.store.read(`${brainKey}reactions/close`);
 
-    expect([left, events]).toMatchObject([
+    expect([left, messages]).toMatchObject([
       0,
       [
         {
-          count: mostStartsAMinute,
-          reason: 'The workflow could not be started by its event trigger: The input is not what the workflow takes',
+          data: {
+            count: mostStartsAMinute,
+            reason: 'The workflow could not be started by its event trigger: The input is not what the workflow takes',
+          },
         },
-        { count: 1 },
+        { data: { count: 1 } },
       ],
     ]);
   });

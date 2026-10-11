@@ -52,7 +52,7 @@ async function serving(): Promise<Serving> {
       },
       crm: remote(others, { org: 'globex' }),
       sales: remote(others, { org: 'acme', brains: ['sales'] }),
-      wiki: { url: gone.url, org: 'acme', brains: ['alpha'] },
+      wiki: { url: gone.url, org: 'acme', brains: ['alpha'], record_content: false },
     }),
   });
   closing.push(server.stop);
@@ -65,6 +65,7 @@ const listedForAlpha = {
     {
       name: 'graph',
       type: 'http',
+      record_content: true,
       tools: [
         {
           name: 'search',
@@ -88,6 +89,7 @@ const listedForAlpha = {
     {
       name: 'wiki',
       type: 'http',
+      record_content: false,
       unavailable: 'The MCP server wiki could not be used: The MCP server could not be reached',
       because: 'unreachable',
     },

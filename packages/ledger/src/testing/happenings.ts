@@ -1,22 +1,32 @@
-import type {
-  BrainAddress,
-  Decider,
-  Ledger,
-  RecordedEvent,
-  RecordedPage,
-  RecordedPageRequest,
-  RecordedSelection,
+import {
+  ContextSchema,
+  type BrainAddress,
+  type Context,
+  type Decided,
+  type Decider,
+  type Ledger,
+  type RecordedFact,
+  type RecordedPage,
+  type RecordedPageRequest,
+  type RecordedSelection,
 } from '@beonauto/operations';
 import { Effect, Result, Schema } from 'effect';
 
-const HappenedSchema = Schema.Struct({ type: Schema.String, detail: Schema.Json });
+const HappenedSchema = Schema.Struct({
+  type: Schema.String,
+  data: Schema.Struct({ detail: Schema.Json }),
+  context: ContextSchema,
+});
 
-export type Happened = typeof HappenedSchema.Type;
+export type Happened = Decided<typeof HappenedSchema.Type>;
 
-export const happenings: Decider<null, readonly Happened[], Happened> = {
+export const stamped: Context = { at: '2026-10-05T09:00:00.000Z', by: 'tester' };
+
+export const happenings: Decider<null, readonly Happened[], typeof HappenedSchema.Type> = {
   initialState: null,
   evolve: () => null,
   decide: (happened) => Result.succeed(happened),
+  context: () => stamped,
   eventSchema: HappenedSchema,
 };
 
@@ -31,7 +41,7 @@ export function happen(ledger: AnyLedger, stream: string, ...happened: readonly 
 }
 
 export function noted(type: string, detail: Schema.Json = null): Happened {
-  return { type, detail };
+  return { type, data: { detail } };
 }
 
 export function reading(
@@ -45,7 +55,7 @@ export function reading(
 
 const decodeHappened = Schema.decodeUnknownSync(Schema.Struct({ detail: Schema.Json }));
 
-export function detailsOf(records: readonly RecordedEvent[]): readonly Schema.Json[] {
+export function detailsOf(records: readonly RecordedFact[]): readonly Schema.Json[] {
   return records.map(({ data }) => decodeHappened(data).detail);
 }
 

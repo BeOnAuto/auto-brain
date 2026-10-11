@@ -76,11 +76,14 @@ describe('the waiting entry an input resumed', () => {
 });
 
 describe('the cause the engine gives the run store with each record', () => {
-  it('is the start, the waiting entry it resumed, the timer that fired, or nothing, with the attributes of the run', () => {
+  it('is the start, the timer that fired, the waiting entry an answer resumed, or nothing, with the attributes of the run', () => {
     const run = drivenRun(
       workflow('do:\n  - pause: { wait: PT1S }\n  - slow: { timeout: { after: PT1S }, wait: PT1H }'),
     );
     const runId = run.ended.runId;
+    const asked = drivenRun(workflow('do:\n  - ask: { call: notify, with: { to: ada } }'), {
+      respond: () => ({ result: { status: 'succeeded', output: null } }),
+    });
     const cancelled = drivenRun(workflow('do:\n  - slow: { wait: PT1H }'), {
       meanwhile: (driver, running) => {
         driver.cancel(running);
@@ -89,8 +92,12 @@ describe('the cause the engine gives the run store with each record', () => {
 
     expect(causesAlong(run, runId)).toEqual([
       { kind: 'start' },
-      { kind: 'resumed', step: { reference: '/do/0/pause', run: 1, outcome: 'waiting', times: 1 } },
+      { kind: 'timer', timerId: timersArmedIn(run.events, 'wait')[0]?.timerId },
       { kind: 'timer', timerId: timersArmedIn(run.events, 'timeout')[0]?.timerId },
+    ]);
+    expect(causesAlong(asked, asked.ended.runId)).toEqual([
+      { kind: 'start' },
+      { kind: 'resumed', step: { reference: '/do/0/ask', run: 1, outcome: 'waiting', times: 1 } },
     ]);
     expect(causesAlong(cancelled, runId)).toEqual([{ kind: 'start' }, { kind: 'none' }]);
     expect(run.driver.ports.runStore.lineages(runId).map(({ attributes }) => attributes)).toEqual([{}, {}, {}]);

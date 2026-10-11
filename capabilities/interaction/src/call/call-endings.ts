@@ -1,5 +1,6 @@
 import { Buffer } from 'node:buffer';
 
+import { mostResultBytes } from '@beonauto/definitions';
 import { issuesDetail } from '@beonauto/definitions/json-schema';
 import { answerDocument, isReadOnly, toolInWords, type AnsweredOnce, type CalledOnce } from '@beonauto/mcp';
 import { capitalized, Conflict, Unavailable } from '@beonauto/operations';
@@ -7,8 +8,7 @@ import { measureOf, mostValueDepth } from '@beonauto/workflow-engine/dsl';
 import { Effect, Result, Schema } from 'effect';
 
 import type { CallDocument } from '../document/interaction-document.ts';
-import { checkedAnswer } from '../requests/answer-check.ts';
-import { interactionBounds } from '../run/run-bounds.ts';
+import { matchedAnswer } from '../requests/answer-check.ts';
 import { valueAt } from '../tool-blocks/json-pointers.ts';
 
 const isJson = Schema.is(Schema.Json);
@@ -45,16 +45,16 @@ function unreadableAfter({ annotations }: Answered): (detail: string) => Ending 
 
 function checkedValue(document: CallDocument, value: Schema.Json, { named, at, unreadable }: Reading): Ending {
   const what = `What ${named} answered${at}`;
-  const bytes = Buffer.byteLength(JSON.stringify(value), 'utf8');
-  if (bytes > interactionBounds.answerBytes) {
+  const bytes = Buffer.byteLength(JSON.stringify({ output: value, record: recordOf(document) }), 'utf8');
+  if (bytes > mostResultBytes) {
     return unreadable(
-      `${what} takes ${bytes} bytes as JSON, more than the ${interactionBounds.answerBytes} an answer may`,
+      `${what} takes ${bytes} bytes as JSON with the record of the run, more than the ${mostResultBytes} a run may record`,
     );
   }
   if (measureOf(value) === undefined) {
     return unreadable(`${what} nests deeper than the ${mostValueDepth} levels a value may`);
   }
-  return Result.match(checkedAnswer(value, document.output.schema.document), {
+  return Result.match(matchedAnswer(value, document.output.schema.document), {
     onSuccess: (output) => Effect.succeed({ output, record: recordOf(document) }),
     onFailure: (issues) => unreadable(`${what} does not match the output schema: ${issuesDetail(issues, 'answer')}`),
   });
@@ -99,7 +99,7 @@ function endedWith(document: CallDocument, called: AnsweredOnce): Ending {
   if (called.outcome === 'result') {
     return answeredWith(document, called);
   }
-  if (called.outcome === 'tool_error' && called.fields.result_bytes === null) {
+  if (called.outcome === 'arguments_refused') {
     return unworkable(`${capitalized(named)} refused the arguments: ${called.detail}`);
   }
   return called.outcome === 'tool_error'

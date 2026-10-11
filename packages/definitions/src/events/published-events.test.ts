@@ -1,14 +1,17 @@
-import { Conflict } from '@beonauto/operations';
+import { Conflict, recordingOf, type Context } from '@beonauto/operations';
 import { Effect, Exit, Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { CloudEvent } from './cloud-event.ts';
 import {
+  EventPublishedSchema,
   publishedEventDecider,
+  publishedEventOf,
   publishedEventStreamOf,
   recordedPublication,
   type EventPublished,
   type PublishEvent,
+  type RecordedEventPublished,
 } from './published-events.ts';
 
 const nameBasedUuid = /^events\/[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -26,11 +29,13 @@ const monthClosed: CloudEvent = {
 
 const first: PublishEvent = { event: monthClosed, filled: [], by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
 
-const published: EventPublished = { type: 'event_published', ...first };
+const fact: EventPublished = { type: 'event_published', data: { event: monthClosed, filled: [] } };
+
+const published: RecordedEventPublished = { ...fact, context: { at: first.at, by: first.by } };
 
 const again = { by: 'acme-admin', at: '2026-10-01T09:05:00.000Z' };
 
-function decidedAfter(publish: PublishEvent, recorded: EventPublished = published) {
+function decidedAfter(publish: PublishEvent, recorded: RecordedEventPublished = published) {
   return publishedEventDecider.decide(publish, publishedEventDecider.evolve(undefined, recorded));
 }
 
@@ -65,12 +70,28 @@ describe('the stream of a published event', () => {
 });
 
 describe('publishing an event', () => {
-  it('records it on a stream nobody wrote', () => {
+  it('records it on a stream nobody wrote, with who published it and when as its context', () => {
     expect(publishedEventDecider.decide(first, publishedEventDecider.initialState)).toStrictEqual(
-      Result.succeed([published]),
+      Result.succeed([fact]),
     );
+    expect(publishedEventDecider.context(first, publishedEventDecider.initialState)).toStrictEqual(published.context);
   });
 
+  it('takes the run and the workflow that emitted it, and its depth, as its context', () => {
+    const emitted = { ...first, emittedBy: { run_id: 'r-1', workflow: 'close', version: 4 }, depth: 2 };
+
+    expect(publishedEventDecider.context(emitted, publishedEventDecider.initialState)).toStrictEqual({
+      ...published.context,
+      runId: 'r-1',
+      definitionType: 'workflow',
+      definitionName: 'close',
+      definitionVersion: 4,
+      depth: 2,
+    });
+  });
+});
+
+describe('publishing the same event again', () => {
   it('records nothing for the same event again, in any order of its keys', () => {
     const reordered = Object.fromEntries(Object.entries(monthClosed).toReversed());
 
@@ -82,7 +103,7 @@ describe('publishing an event', () => {
 
   it('compares only what both callers gave, so a time the brain filled in on either side is left out', () => {
     const later = { ...monthClosed, time: '2026-10-01T09:05:00.000Z' };
-    const timeFilledFirst: EventPublished = { ...published, filled: ['time'] };
+    const timeFilledFirst: RecordedEventPublished = { ...published, data: { ...published.data, filled: ['time'] } };
 
     expect(decidedAfter({ event: later, filled: ['time'], ...again })).toStrictEqual(Result.succeed([]));
     expect(decidedAfter({ event: later, filled: [], ...again }, timeFilledFirst)).toStrictEqual(Result.succeed([]));
@@ -115,5 +136,53 @@ describe('the publication a stream holds', () => {
     expect(Exit.isFailure(await Effect.runPromiseExit(recordedPublication(publishedEventDecider.initialState)))).toBe(
       true,
     );
+  });
+});
+
+const emittedContext = {
+  ...published.context,
+  runId: 'r-1',
+  definitionType: 'workflow',
+  definitionName: 'close',
+  definitionVersion: 4,
+  depth: 2,
+};
+
+const { depth: _depth, ...withoutDepth } = emittedContext;
+
+const { definitionName: _name, ...withoutName } = emittedContext;
+
+const namingARunButNotEmitted: readonly Context[] = [
+  withoutDepth,
+  withoutName,
+  { ...emittedContext, definitionVersion: 0 },
+];
+
+describe('a published event read back', () => {
+  it('is emitted by a workflow when its context names a run, and published by a caller when it names none', () => {
+    expect([
+      publishedEventOf({ ...fact, context: emittedContext }),
+      publishedEventOf({ ...fact, context: published.context }),
+    ]).toStrictEqual([
+      { ...fact, context: emittedContext },
+      { ...fact, context: published.context },
+    ]);
+  });
+
+  it('does not decode when its context names a run without the depth, the name or a version from 1 an emitted event carries', () => {
+    expect(namingARunButNotEmitted.map((context) => publishedEventOf({ ...fact, context }))).toStrictEqual([
+      undefined,
+      undefined,
+      undefined,
+    ]);
+  });
+
+  it('is refused at append when its context names a run but is not the context of an emitted event', () => {
+    const recorded = recordingOf(EventPublishedSchema);
+
+    for (const context of namingARunButNotEmitted) {
+      expect(() => recorded(fact, context)).toThrow('runId');
+    }
+    expect(recorded(fact, emittedContext)).toStrictEqual({ ...fact, context: emittedContext });
   });
 });

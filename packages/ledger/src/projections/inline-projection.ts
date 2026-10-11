@@ -1,3 +1,4 @@
+import { contextOf, type Context } from '@beonauto/operations';
 import { Schema } from 'effect';
 
 import type { StatementExecutor } from '../event-store.ts';
@@ -6,6 +7,7 @@ export interface StoredMessage {
   readonly stream: string;
   readonly type: string;
   readonly data: unknown;
+  readonly context: Context;
   readonly id: string;
   readonly position: number;
 }
@@ -37,7 +39,11 @@ const AppendedMessageSchema = Schema.Struct({
   }),
 });
 
+const AppendedMetadataSchema = Schema.Struct({ metadata: Schema.Unknown });
+
 const decodeAppendedMessage = Schema.decodeUnknownSync(AppendedMessageSchema);
+
+const decodeAppendedMetadata = Schema.decodeUnknownSync(AppendedMetadataSchema);
 
 function storedMessageOf(message: unknown): StoredMessage {
   const { type, data, metadata } = decodeAppendedMessage(message);
@@ -45,6 +51,7 @@ function storedMessageOf(message: unknown): StoredMessage {
     stream: metadata.streamName,
     type,
     data,
+    context: contextOf(decodeAppendedMetadata(message).metadata),
     id: metadata.messageId,
     position: Number(metadata.streamPosition),
   };

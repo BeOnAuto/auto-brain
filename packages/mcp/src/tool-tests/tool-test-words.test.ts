@@ -39,6 +39,12 @@ describe('the plain words of test_tool_call', () => {
     );
   });
 
+  it('say that the tool answered more than one call may take', () => {
+    expect(words?.outcome({ ...answer, outcome: 'too_large', result_bytes: null }, asked)).toBe(
+      'The search tool of graph answered more than one call may take, so its answer was not read; ask it for less, a page at a time.',
+    );
+  });
+
   it('say that the tool answered an error, that its server failed, or that it did not answer in time', () => {
     const toolError = { ...answer, outcome: 'tool_error', text: 'The field salary is denied.' };
     const serverFailure = {

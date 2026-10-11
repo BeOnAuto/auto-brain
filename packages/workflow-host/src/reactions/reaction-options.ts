@@ -1,5 +1,6 @@
-import type { EmitEvent, StartingTrigger } from '@beonauto/definitions';
+import type { EmitEvent } from '@beonauto/definitions';
 import type { StreamSignal } from '@beonauto/ledger';
+import type { StartingTrigger } from '@beonauto/operations';
 import type { FilterSandbox } from '@beonauto/workflow-engine';
 import { Data, type Effect, type Schema } from 'effect';
 

@@ -54,7 +54,18 @@
         "mostDurationMs": 2592000000,
         "longestCallMs": 600000
       },
-      "attributes": {},
+      "attributes": {
+        "org": "acme",
+        "brain": "alpha",
+        "run_id": "0199a3c4-7d2e-7c1a-9b3f-000000000304",
+        "definition": {
+          "name": "fork-compete",
+          "version": 1
+        },
+        "caller": {
+          "id": "acme-admin"
+        }
+      },
       "seed": 7
     }
   ],
@@ -180,6 +191,36 @@
           }
         },
         {
+          "op": "add",
+          "path": "/attributes/org",
+          "value": "acme"
+        },
+        {
+          "op": "add",
+          "path": "/attributes/brain",
+          "value": "alpha"
+        },
+        {
+          "op": "add",
+          "path": "/attributes/run_id",
+          "value": "0199a3c4-7d2e-7c1a-9b3f-000000000304"
+        },
+        {
+          "op": "add",
+          "path": "/attributes/definition",
+          "value": {
+            "name": "fork-compete",
+            "version": 1
+          }
+        },
+        {
+          "op": "add",
+          "path": "/attributes/caller",
+          "value": {
+            "id": "acme-admin"
+          }
+        },
+        {
           "op": "replace",
           "path": "/limits/mostDurationMs",
           "value": 2592000000
@@ -270,7 +311,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2487
+          "value": 2842
         }
       ],
       "outputs": [

@@ -13,6 +13,8 @@ import {
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
+const aSize: unknown = expect.any(Number);
+
 function textOf(text: string): FakeAnswer {
   return { outcome: 'result', answer: { content: [{ type: 'text', text }] }, detail: '', retryAfterMs: null };
 }
@@ -29,7 +31,7 @@ async function readAfter(answer: FakeAnswer) {
   brain.chat.answerNext(answer);
   const before = Date.now();
   await brain.performReads(before + farAhead);
-  const [read] = await recordsOf(brain.ledger, 'replies_read');
+  const [read] = await recordsOf(brain.ledger, 'reading_failed');
   const [row] = await conversationRows(brain.ledger);
   return { brain, read, row: row?.row, before };
 }
@@ -54,15 +56,15 @@ describe('a read that fails', () => {
     ];
 
     expect(await Promise.all(answers.map((answer) => failedRead(answer)))).toMatchObject([
-      [{ outcome: 'too_large', replies: 0 }, true],
-      [{ outcome: 'unreadable' }, true],
-      [{ outcome: 'unreadable' }, true],
-      [{ outcome: 'unreadable' }, true],
-      [{ outcome: 'tool_error' }, true],
-      [{ outcome: 'timed_out' }, true],
-      [{ outcome: 'server_failure' }, true],
-      [{ outcome: 'server_failure' }, true],
-      [{ outcome: 'tool_not_offered', server: 'chat', tool: 'thread_replies' }, true],
+      [{ because: 'too_large', result_bytes: aSize }, true],
+      [{ because: 'unreadable' }, true],
+      [{ because: 'unreadable' }, true],
+      [{ because: 'unreadable' }, true],
+      [{ because: 'tool_error' }, true],
+      [{ because: 'timed_out' }, true],
+      [{ because: 'cancelled' }, true],
+      [{ because: 'server_failure' }, true],
+      [{ because: 'tool_not_offered', server: 'chat', tool: 'thread_replies' }, true],
     ]);
   });
 
@@ -73,7 +75,7 @@ describe('a read that fails', () => {
       retryAfterMs: 120_000,
     });
 
-    expect(read?.data).toMatchObject({ outcome: 'server_failure', retry_after_ms: 120_000 });
+    expect(read?.data).toMatchObject({ because: 'server_failure', retry_after_ms: 120_000 });
     expect(Number(row?.['next_read_at'])).toBeGreaterThanOrEqual(before + 120_000);
   });
 });
@@ -86,7 +88,7 @@ describe('a conversation whose reading tool its operator disallowed', () => {
     await brain.performReads(Date.now() + farAhead);
     const [row] = await conversationRows(brain.ledger);
 
-    expect(await recordsOf(brain.ledger, 'replies_read')).toMatchObject([{ data: { outcome: 'tool_not_offered' } }]);
+    expect(await recordsOf(brain.ledger, 'reading_failed')).toMatchObject([{ data: { because: 'tool_not_offered' } }]);
     expect(row?.row).toMatchObject({ open: true, reads: 1 });
     expect(await brain.firstOpen()).toMatchObject({ standing: 'delivered' });
   });
@@ -112,7 +114,10 @@ describe('a listed reply without an identity or a sender that fits', () => {
       { ts: 'x'.repeat(300), user: answererId, text: 'approve' },
       { ts: '9.2', user: 'U'.repeat(300), text: 'approve' },
     ];
-    const { brain, read } = await readAfter(answered({ messages: listed }));
+    const brain = await deliveredInThread();
+    brain.chat.answerNext(answered({ messages: listed }));
+    await brain.performReads(Date.now() + farAhead);
+    const [read] = await recordsOf(brain.ledger, 'replies_read');
 
     expect(read?.data).toMatchObject({ replies: 4, taken: 0, refused: 0, since: '9.2' });
     expect(await brain.firstOpen()).toMatchObject({ standing: 'delivered' });

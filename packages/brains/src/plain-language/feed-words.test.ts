@@ -13,12 +13,18 @@ const { plainLanguage } = defineListBrainEvents([notes]).registration;
 
 const event = {
   id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
-  cursor: 'WyJicmFpbiJd',
-  causation_id: null,
-  at: '2026-10-01T09:00:00.000Z',
   type: 'note_added',
   summary: 'A note was added.',
   data: {},
+  metadata: {
+    stream: 'brain/acme/alpha/notes',
+    position: 1,
+    global_position: 7,
+    correlation_id: null,
+    causation_id: null,
+    at: '2026-10-01T09:00:00.000Z',
+    by: 'acme-admin',
+  },
 };
 
 function found(events: readonly unknown[], request: object = {}, hasMore = false): string | undefined {
@@ -33,10 +39,10 @@ describe('the plain language of list_brain_events', () => {
       found(Array.from({ length: 100 }, () => event)),
       found([event], { run_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' }),
     ]).toEqual([
-      'Found 2 events in this brain, newest first.',
-      'Found 1 event of the kind asked for in this brain since the time given, oldest first. More remain after these.',
-      'Found one hundred events in this brain, newest first.',
-      'Found 1 event of the run asked for in this brain, newest first.',
+      'Found 2 events in this brain, newest first, each with its fact and its metadata.',
+      'Found 1 event of the kind asked for in this brain since the time given, oldest first, each with its fact and its metadata. More remain after these.',
+      'Found one hundred events in this brain, newest first, each with its fact and its metadata.',
+      'Found 1 event of the run asked for in this brain, newest first, each with its fact and its metadata.',
     ]);
   });
 

@@ -17,7 +17,11 @@ const decodeListed = Schema.decodeUnknownSync(
 const decodeHistory = Schema.decodeUnknownSync(
   Schema.Struct({
     events: Schema.Array(
-      Schema.Struct({ id: Schema.String, type: Schema.String, causation_id: Schema.NullOr(Schema.String) }),
+      Schema.Struct({
+        id: Schema.String,
+        type: Schema.String,
+        metadata: Schema.Struct({ causation_id: Schema.NullOr(Schema.String) }),
+      }),
     ),
   }),
 );
@@ -25,7 +29,7 @@ const decodeHistory = Schema.decodeUnknownSync(
 function causesIn(history: unknown): readonly (readonly [string, string | null | undefined])[] {
   const { events } = decodeHistory(history);
   const typeOf = new Map(events.map(({ id, type }) => [id, type]));
-  return events.map(({ type, causation_id: cause }) => [type, cause === null ? null : typeOf.get(cause)]);
+  return events.map(({ type, metadata: { causation_id: cause } }) => [type, cause === null ? null : typeOf.get(cause)]);
 }
 
 export interface InteractionServer extends ReasoningServer {

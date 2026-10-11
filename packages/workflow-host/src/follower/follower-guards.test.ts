@@ -5,11 +5,12 @@ import { rowsOf } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
 import {
   alpha,
+  definitionRecorded,
+  emittedContext,
   eventTrigger,
   published,
   recorded,
   runRecorded,
-  definitionRecorded,
 } from '../reaction-testing/brain-writes.ts';
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
 import { until } from '../reaction-testing/until.ts';
@@ -28,10 +29,6 @@ async function startsOnceTheSentinelPassed(reacting: ReactingHost) {
     () => Promise.resolve(reacting.reactions.starts()),
     (starts) => starts.some(({ workflow }) => workflow === 'watch'),
   );
-}
-
-function emittedBy(runId: string, workflow: string, depth: number) {
-  return { emitted_by: { run_id: runId, workflow, version: 1 }, depth };
 }
 
 describe('a workflow that reacts to the facts of the brain', () => {
@@ -55,7 +52,8 @@ describe('a workflow that reacts to the facts of the brain', () => {
             type: 'run_succeeded',
             source: '/runs/r-sum',
             subject: 'reasoning/sum',
-            data: { output: 'done', depth: 2 },
+            depth: 2,
+            data: { output: 'done' },
           },
         ],
       },
@@ -73,7 +71,7 @@ describe('a workflow and its own runs', () => {
     await runRecorded(store, { runId: 'r-top', type: 'workflow', name: 'follow' });
     const nested = { runId: 'r-nested', type: 'reasoning', name: 'sum', correlation: 'r-top' };
     await runRecorded(store, nested, 'run_succeeded');
-    await published(store, { id: 'told', type: 'com.acme.told' }, emittedBy('r-top', 'follow', 1));
+    await published(store, { id: 'told', type: 'com.acme.told' }, emittedContext('r-top', 'follow', 1));
     const starts = await startsOnceTheSentinelPassed(reacting);
 
     expect(starts.map(({ workflow }) => workflow)).toEqual(['watch']);
@@ -86,8 +84,8 @@ describe('a chain of reactions', () => {
     const { store } = reacting.database;
     await definitionRecorded(store, { name: 'deep', version: 1, triggers: [eventTrigger(told)] });
 
-    await published(store, { id: 'eighth', type: 'com.acme.told' }, emittedBy('r1', 'other', 8));
-    await published(store, { id: 'ninth', type: 'com.acme.told' }, emittedBy('r2', 'other', 9));
+    await published(store, { id: 'eighth', type: 'com.acme.told' }, emittedContext('r1', 'other', 8));
+    await published(store, { id: 'ninth', type: 'com.acme.told' }, emittedContext('r2', 'other', 9));
     const starts = await startsOnceTheSentinelPassed(reacting);
     const refusals = await Effect.runPromise(
       rowsOf(RefusalRow, reacting.database.read(statement`SELECT workflow, reason FROM workflow_reaction_refusals`)),
@@ -119,11 +117,7 @@ describe('a brain whose run log holds a record its dispatch never covers', () =>
         version: 1,
         triggers: [eventTrigger({ type: 'com.acme.closed' })],
       });
-      await recorded(store, `${alpha}run-logs/r-stuck`, {
-        type: 'input_applied',
-        input: {},
-        at: '2026-10-01T09:00:00.000Z',
-      });
+      await recorded(store, `${alpha}run-logs/r-stuck`, { type: 'input_applied', data: { input: {} } });
       await published(store, { id: 'closed', type: 'com.acme.closed' });
 
       const starts = await until(

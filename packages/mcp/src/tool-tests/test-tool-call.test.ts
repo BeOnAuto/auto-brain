@@ -1,3 +1,5 @@
+import { Buffer } from 'node:buffer';
+
 import { Effect, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -118,5 +120,16 @@ describe('a test of a tool its server marks read-only', () => {
     expect(fake.received()).toEqual([
       { tool: 'search', arguments: { query: 'acme' }, meta: { 'com.beonauto/tool_test_id': testIdOf(tested) } },
     ]);
+  });
+});
+
+describe('the size a test of a tool answers', () => {
+  it('answers the size of the answer as kept, scrubbed of the secrets of its server', async () => {
+    const { test } = await testerOf({ testable: ['echo'] });
+    const kept = JSON.stringify({ content: [{ type: 'text', text: JSON.stringify({ said: 'the key [redacted]' }) }] });
+
+    expect(await test({ server: 'graph', tool: 'echo', arguments: { said: `the key ${fakeApiKey}` } })).toMatchObject({
+      output: { outcome: 'result', result_bytes: Buffer.byteLength(kept) },
+    });
   });
 });

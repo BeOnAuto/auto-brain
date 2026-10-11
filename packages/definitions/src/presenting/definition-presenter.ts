@@ -4,9 +4,13 @@ import type { Presenter } from '@beonauto/operations';
 
 import type { DefinitionWords } from '../plain-language/definition-words.ts';
 import { definitionCreated, definitionRetired, definitionUpdated } from '../plain-language/event-words.ts';
-import { DefinitionEventSchema, type DefinitionContent, type DefinitionEvent } from '../registry/definition-events.ts';
+import {
+  DefinitionEventSchema,
+  type DefinitionContent,
+  type RecordedDefinitionEvent,
+} from '../registry/definition-events.ts';
 import { jsonBytesOf } from '../runs/recorded-size.ts';
-import { cutAtCodePoint, firstCharacters, mostCallerBytes, mostDescriptionCharacters } from './event-data.ts';
+import { firstCharacters, mostDescriptionCharacters } from './event-data.ts';
 import { eventPresenter, type Account } from './event-presenter.ts';
 
 function contentShown({ source, description, input_schema, output_schema, warnings = [] }: DefinitionContent) {
@@ -19,31 +23,25 @@ function contentShown({ source, description, input_schema, output_schema, warnin
   };
 }
 
-function accountOf(words: DefinitionWords, event: DefinitionEvent, definitionType: string): Account {
-  const { name } = event;
-  const fact = { definition_type: definitionType, name, by: cutAtCodePoint(event.by, mostCallerBytes) };
+function accountOf(words: DefinitionWords, event: RecordedDefinitionEvent, definitionType: string): Account {
+  const { definitionName: name, definitionVersion: version } = event.context;
   if (event.type === 'definition_retired') {
-    return { summary: definitionRetired(words, definitionType, name), data: fact };
+    return { summary: definitionRetired(words, definitionType, name), data: {} };
   }
-  const { version, content } = event;
   return {
     summary:
       event.type === 'definition_created'
         ? definitionCreated(words, definitionType, name)
         : definitionUpdated(words, definitionType, name, version),
-    data: { ...fact, version, ...contentShown(content) },
+    data: contentShown(event.data.content),
   };
 }
 
 export function definitionPresenter(words: DefinitionWords): Presenter {
-  return eventPresenter<DefinitionEvent['type'], DefinitionEvent>({
+  return eventPresenter<RecordedDefinitionEvent>({
     streamKind: 'definitions',
     eventSchema: DefinitionEventSchema,
-    publicNames: {
-      definition_created: ['definition_created'],
-      definition_updated: ['definition_updated'],
-      definition_retired: ['definition_retired'],
-    },
+    types: ['definition_created', 'definition_updated', 'definition_retired'],
     account: (event, definitionType) => accountOf(words, event, definitionType),
   });
 }

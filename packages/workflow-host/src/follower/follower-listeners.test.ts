@@ -2,7 +2,7 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { statement } from '../database/statement.ts';
-import { published, publishedInTurn } from '../reaction-testing/brain-writes.ts';
+import { emittedContext, published, publishedInTurn } from '../reaction-testing/brain-writes.ts';
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
 import { until } from '../reaction-testing/until.ts';
 import { runAt, startOf, workflow } from '../testing/host-documents.ts';
@@ -74,7 +74,7 @@ describe('an offer to a run that waits for an event', () => {
     await published(
       reacting.database.store,
       { id: 'own', type: 'com.acme.decided' },
-      { emitted_by: { run_id: waiting, workflow: 'test', version: 1 }, depth: 1 },
+      emittedContext(waiting, 'test', 1),
     );
     await published(reacting.database.store, { id: 'theirs', type: 'com.acme.decided', data: 'theirs' });
     const state = await ended(reacting);

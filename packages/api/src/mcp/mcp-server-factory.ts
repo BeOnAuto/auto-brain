@@ -13,7 +13,7 @@ import { brainArgumentOf, withoutBrain } from '../tools/brain-argument.ts';
 import { callbackFor, type Arguments, type CalledTool, type Dispatch } from '../tools/tool-callback.ts';
 import { toolDefinitionOf, toolDefinitionTakingBrainOf, type ToolDefinition } from '../tools/tool-definition.ts';
 import type { ServedTools } from './instructions.ts';
-import { connectionOf, serverOf, type Connection, type McpServing } from './mcp-connection.ts';
+import { connectionOf, serverOf, type Connection, type EveryTool, type McpServing } from './mcp-connection.ts';
 
 export interface ToolServing extends McpServing {
   readonly reportThrown: ReportThrown;
@@ -68,6 +68,19 @@ function servedTools(
   brainOffers: readonly Offered<Registration>[],
 ): ServedTools {
   return { orgTools: namesOf(orgOffers), brainTools: namesOf(brainOffers) };
+}
+
+function everyToolOf(
+  orgOffers: readonly Offered<Registration>[],
+  brainOffers: readonly Offered<Registration>[],
+): EveryTool {
+  return {
+    served: servedTools(orgOffers, brainOffers),
+    listed: [...orgOffers, ...brainOffers].map(({ registration, definition }) => ({
+      name: registration.name,
+      definition,
+    })),
+  };
 }
 
 function asGiven(input: Arguments): Arguments {
@@ -136,7 +149,7 @@ function brainArgumentDispatchOf(
 
 export function orgServerFactory(serving: ToolServing): McpServerFactory {
   const orgOffers = offered(serving.catalog.operationsIn('org'), toolDefinitionOf);
-  const connection = connectionOf('org', serving, servedTools(orgOffers, []));
+  const connection = connectionOf('org', serving, everyToolOf(orgOffers, []));
   return (context) => {
     const call = orgCallOf(context);
     const listed = permittedTo(call.caller, orgOffers);
@@ -147,7 +160,7 @@ export function orgServerFactory(serving: ToolServing): McpServerFactory {
 
 export function brainServerFactory(serving: ToolServing): McpServerFactory {
   const brainOffers = offered(serving.catalog.operationsIn('brain'), toolDefinitionOf);
-  const connection = connectionOf('brain', serving, servedTools([], brainOffers));
+  const connection = connectionOf('brain', serving, everyToolOf([], brainOffers));
   return (context) => {
     const call = brainCallOf(context);
     const listed = permittedTo(call.caller, brainOffers);
@@ -171,7 +184,7 @@ export function catalogServerFactory(serving: ToolServing): McpServerFactory {
     namedInBrainAlone(serving.catalog.operationsIn('brain'), orgRegistrations),
     toolDefinitionTakingBrainOf,
   );
-  const connection = connectionOf('own org', serving, servedTools(orgOffers, brainOffers));
+  const connection = connectionOf('own org', serving, everyToolOf(orgOffers, brainOffers));
   return (context) => {
     const call = orgCallOf(context);
     const listedInOrg = permittedTo(call.caller, orgOffers);

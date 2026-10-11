@@ -2,7 +2,7 @@ import { cancelRequestOf } from '@beonauto/definitions';
 import { recordedReaderOf } from '@beonauto/ledger';
 import { messageIdOf, streamPrefixOfBrain, type Conflict } from '@beonauto/operations';
 import type { CancelOrder, RunInput, Submission } from '@beonauto/workflow-engine';
-import { Effect, Schema, type Cause } from 'effect';
+import { Effect, type Cause } from 'effect';
 
 import type { DatabaseFailed, HostDatabase } from '../database/host-database.ts';
 import { addressOfRun, runKeyOf, type RunAddress } from '../runs/run-address.ts';
@@ -13,24 +13,22 @@ interface PendingCancel {
   readonly cause: string;
 }
 
-const isStart = Schema.is(Schema.Struct({ type: Schema.Literal('run_started') }));
-
-function isCancelRequest(data: unknown): boolean {
-  return cancelRequestOf(data) !== undefined;
+function isCancelRequest(message: unknown): boolean {
+  return cancelRequestOf(message) !== undefined;
 }
 
 function pendingCancelOf(database: HostDatabase, run: RunAddress): Effect.Effect<PendingCancel | undefined> {
   const stream = `${streamPrefixOfBrain(run)}runs/${run.runId}`;
   return Effect.map(
     Effect.promise(() => database.store.read(stream, 0)),
-    ({ events }): PendingCancel | undefined => {
-      const started = events.findLastIndex((data) => isStart(data));
-      const asked = events.findIndex((data, index) => index > started && isCancelRequest(data));
-      const request = cancelRequestOf(events[asked]);
+    ({ messages }): PendingCancel | undefined => {
+      const started = messages.findLastIndex(({ type }) => type === 'run_started');
+      const asked = messages.findIndex((message, index) => index > started && isCancelRequest(message));
+      const request = cancelRequestOf(messages[asked]);
       return request === undefined
         ? undefined
         : {
-            cancel: { by: request.by, kind: request.kind, reason: request.reason },
+            cancel: { by: request.context.by, kind: request.data.kind, reason: request.data.reason },
             cause: messageIdOf(stream, asked + 1),
           };
     },

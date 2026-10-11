@@ -8,6 +8,7 @@ import { ToolsStopped } from '../failure/tools-stopped.ts';
 import type { ModelTools } from '../model/model-request.ts';
 import { finalStepMessages, type StepMessage } from './final-step.ts';
 import { offeredTools } from './offered-tools.ts';
+import { turnMeter, type TurnMeter } from './turn-meter.ts';
 
 interface FinalStep {
   readonly activeTools: never[];
@@ -46,16 +47,27 @@ function unanswered(
     : undefined;
 }
 
-export function toolLoop(tools: ModelTools | undefined, cancelled: Readonly<AbortSignal>): ToolLoop {
+function spentEverything(tools: ModelTools, turns: TurnMeter): boolean {
+  return tools.callsEnded() || turns.leavesNoNextTurn();
+}
+
+export function turnsOf(tools: ModelTools | undefined): TurnMeter {
+  return turnMeter({
+    contextWindow: tools?.contextWindow,
+    mostInputTokens: tools?.mostInputTokens ?? Number.POSITIVE_INFINITY,
+  });
+}
+
+export function toolLoop(tools: ModelTools | undefined, cancelled: Readonly<AbortSignal>, turns: TurnMeter): ToolLoop {
   const state = { final: false };
   const stopWhen = (): boolean => state.final;
   if (tools === undefined) {
     return { tools: {}, prepareStep: () => ({}), stopWhen, unanswered: neverUnanswered };
   }
   return {
-    tools: offeredTools(tools, cancelled),
+    tools: offeredTools(tools, cancelled, turns),
     prepareStep: ({ messages }) => {
-      if (state.final || !tools.callsEnded()) {
+      if (state.final || !spentEverything(tools, turns)) {
         return {};
       }
       state.final = true;

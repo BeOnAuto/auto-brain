@@ -19,6 +19,7 @@ export interface Delivery {
   readonly key: string;
   readonly workflow: string;
   readonly deliver: Effect.Effect<void, DeliveryFailed>;
+  readonly skipped: (detail: string) => Effect.Effect<void>;
 }
 
 interface Batch {
@@ -31,7 +32,6 @@ export interface RecordConsumer<Followed extends CallRecord = FollowedRecord> {
   readonly name: string;
   readonly skippedAfterSweeps: number;
   readonly batchOf: (followed: Followed, after: string | undefined, most: number) => Effect.Effect<Batch>;
-  readonly skipped: (followed: Followed, delivery: Delivery, detail: string) => Effect.Effect<void>;
 }
 
 export interface Consumer extends RecordConsumer {
@@ -46,7 +46,6 @@ export interface BoundConsumer {
   readonly name: string;
   readonly skippedAfterSweeps: number;
   readonly batchOf: (after: string | undefined, most: number) => Effect.Effect<Batch>;
-  readonly skipped: (delivery: Delivery, detail: string) => Effect.Effect<void>;
 }
 
 export function boundTo<Followed extends CallRecord>(
@@ -57,7 +56,6 @@ export function boundTo<Followed extends CallRecord>(
     name: consumer.name,
     skippedAfterSweeps: consumer.skippedAfterSweeps,
     batchOf: (after, most) => consumer.batchOf(followed, after, most),
-    skipped: (delivery, detail) => consumer.skipped(followed, delivery, detail),
   };
 }
 

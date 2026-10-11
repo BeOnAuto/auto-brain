@@ -1,4 +1,4 @@
-import { cursorWithin, type Presenter } from '@beonauto/operations';
+import type { Presenter } from '@beonauto/operations';
 import {
   RunLogEventSchema,
   type EarlierStep,
@@ -10,7 +10,7 @@ import { Schema } from 'effect';
 
 import { cutAtCodePoint } from './cut-text.ts';
 import { summaryOf } from './run-words.ts';
-import { stepEventsOf, stepEventTypes } from './step-events.ts';
+import { stepFactsOf, stepEventTypes } from './step-events.ts';
 
 const mostStepsShown = 5;
 
@@ -61,7 +61,6 @@ function stepShown({ reference, run, outcome }: Step | EarlierStep): Schema.Json
 
 function dataOf({ receipt, steps, outputs }: RunLogEvent, runId: string): Schema.JsonObject {
   return {
-    run_id: runId,
     input: inputShown(receipt, runId),
     step_count: steps.length,
     steps: steps.slice(0, mostStepsShown).map((step) => stepShown(step)),
@@ -75,15 +74,7 @@ export const runPresenter: Presenter = {
   present: (recorded) => {
     const event = decodeRunLogEvent(recorded.data);
     const runId = recorded.stream.slice(runLogsKind.length + 1);
-    const record = {
-      id: recorded.id,
-      cursor: cursorWithin(recorded.cursor, 0),
-      causation_id: recorded.causationId,
-      at: new Date(event.receipt.at).toISOString(),
-      type: 'workflow_input_applied',
-      summary: summaryOf(event),
-      data: dataOf(event, runId),
-    };
-    return [record, ...stepEventsOf(recorded, event, runId)];
+    const record = { type: 'workflow_input_applied', summary: summaryOf(event), data: dataOf(event, runId) };
+    return [record, ...stepFactsOf(event)];
   },
 };

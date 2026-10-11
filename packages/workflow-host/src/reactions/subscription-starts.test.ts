@@ -122,6 +122,41 @@ describe('the filter of an event trigger that goes past a bound', () => {
   });
 });
 
+describe('a filter that names a count of the context', () => {
+  it('matches the first run a reaction started by depth 1, and no run of another depth', async () => {
+    const { database, delivered, starts } = await starting();
+    await subscribed(database, 'first', { type: 'run_succeeded', depth: 1 });
+    await subscribed(database, 'second', { type: 'run_succeeded', depth: 2 });
+    const firstRun = {
+      specversion: '1.0' as const,
+      id: 'record-1',
+      source: '/runs/r-1',
+      type: 'run_succeeded',
+      subject: 'workflow/close',
+      time: at,
+      depth: 1,
+      caller: 'brain:alpha',
+      definitionversion: 1,
+    };
+
+    await delivered(followedRecordOf(null, { event: firstRun, depth: 2 }));
+
+    expect(starts().map(({ workflow }) => workflow)).toEqual(['first']);
+  });
+});
+
+describe('an event a filter was stopped on, kept waiting', () => {
+  it('is said as a start skipped, with the version of the workflow, when it waited too long', async () => {
+    const { database, consumer, said } = await starting();
+    await subscribed(database, 'filling', filling);
+
+    const { deliveries } = await Effect.runPromise(consumer.batchOf(followedRecordOf({ region: 'us' }), undefined, 10));
+    await Effect.runPromise(Effect.forEach(deliveries, ({ skipped }) => skipped('it waited too long')));
+
+    expect(said()).toEqual(['filling: The workflow could not be started by its event trigger: it waited too long']);
+  });
+});
+
 describe('the event triggers an event is matched against', () => {
   it('are those that name its type, so the filters of other types are never evaluated on it', async () => {
     const { database, delivered, starts, said } = await starting();
@@ -170,7 +205,7 @@ describe('the subscriptions an event is matched against', () => {
 
     const first = await Effect.runPromise(consumer.batchOf(followed, undefined, 2));
     const second = await Effect.runPromise(consumer.batchOf(followed, first.through, 2));
-    await Effect.runPromise(consumer.skipped(followed, { key: 'c', workflow: 'c', deliver: Effect.void }, 'refused'));
+    await Effect.runPromise(Effect.forEach(second.deliveries, ({ skipped }) => skipped('refused')));
 
     expect([first.deliveries.length, first.through, first.more, second.deliveries.length, second.more]).toEqual([
       2,

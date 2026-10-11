@@ -39,7 +39,7 @@ const cancelled = Effect.fnUntraced(function* (id: string, reason: string | unde
     .execute(
       runStreamNameOf(id),
       runDecider,
-      { type: 'cancel', kind: 'requested', reason: reason ?? `Cancelled at the request of ${by}`, by, at },
+      { type: 'cancel', kind: 'requested', reason: reason ?? `Cancelled at the request of ${by}`, runId: id, by, at },
       { causationId: null, correlationId },
     )
     .pipe(Effect.catchTag('cancelled', Effect.die));

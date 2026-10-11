@@ -83,10 +83,15 @@ describe('the tool servers a brain may use', () => {
     const listing = await listed(servers);
 
     expect(listing).toMatchObject([
-      { name: 'graph', type: 'http', tools: [searchTool, echoTool] },
-      { name: 'notes', type: 'http', tools: fakeToolNames.map((name) => ({ name })) },
-      { name: 'support', type: 'http', tools: [{ name: 'profile', description: '', input_schema: nothingTaken }] },
-      { name: 'wiki', type: 'http', tools: [] },
+      { name: 'graph', type: 'http', record_content: true, tools: [searchTool, echoTool] },
+      { name: 'notes', type: 'http', record_content: true, tools: fakeToolNames.map((name) => ({ name })) },
+      {
+        name: 'support',
+        type: 'http',
+        record_content: true,
+        tools: [{ name: 'profile', description: '', input_schema: nothingTaken }],
+      },
+      { name: 'wiki', type: 'http', record_content: true, tools: [] },
     ]);
   });
 
@@ -100,6 +105,7 @@ describe('the tool servers a brain may use', () => {
       {
         name: 'graph',
         type: 'http',
+        record_content: true,
         tools: [
           {
             name: 'verbose',
@@ -122,9 +128,23 @@ describe('the tool servers a listing asks', () => {
     const listing = await listed(servers, {}, 'graph');
     const unknown = await listed(servers, {}, 'mail');
 
-    expect(listing).toEqual([{ name: 'graph', type: 'http', tools: [echoTool] }]);
+    expect(listing).toEqual([{ name: 'graph', type: 'http', record_content: true, tools: [echoTool] }]);
     expect(unknown).toEqual([]);
     expect(other.seen()).toEqual([]);
+  });
+
+  it('say whether each keeps the content of its calls, as its entry has it and true where it is left out', async () => {
+    const fake = await fakeServer();
+
+    const listing = await listed({
+      graph: remote(fake, { allowed: ['echo'] }),
+      wiki: remote(fake, { allowed: ['echo'], record_content: false }),
+    });
+
+    expect(listing).toEqual([
+      { name: 'graph', type: 'http', record_content: true, tools: [echoTool] },
+      { name: 'wiki', type: 'http', record_content: false, tools: [echoTool] },
+    ]);
   });
 
   it('are none, and no server is asked, when none serves the brain', async () => {
@@ -145,8 +165,13 @@ describe('a tool server whose entry leaves allowed out', () => {
     const listing = await listed({ graph: remote(fake, { allowed: ['echo'] }), open: remote(open) });
 
     expect(listing).toEqual([
-      { name: 'graph', type: 'http', tools: [echoTool] },
-      { name: 'open', type: 'http', tools: fakeToolNames.map((name): unknown => expect.objectContaining({ name })) },
+      { name: 'graph', type: 'http', record_content: true, tools: [echoTool] },
+      {
+        name: 'open',
+        type: 'http',
+        record_content: true,
+        tools: fakeToolNames.map((name): unknown => expect.objectContaining({ name })),
+      },
     ]);
     expect(open.seen().filter(({ rpc }) => rpc === 'tools/list')).toHaveLength(1);
   });
@@ -164,7 +189,7 @@ describe('a tool server that is a process', () => {
 
     const listing = await listed({ limitless });
 
-    expect(listing).toEqual([{ name: 'limitless', type: 'stdio', tools: [searchTool] }]);
+    expect(listing).toEqual([{ name: 'limitless', type: 'stdio', record_content: true, tools: [searchTool] }]);
   });
 });
 
@@ -238,6 +263,7 @@ describe('the secrets of a tool server', () => {
       {
         name: 'graph',
         type: 'http',
+        record_content: true,
         tools: [
           {
             name: 'search',

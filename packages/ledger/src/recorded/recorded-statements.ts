@@ -1,27 +1,58 @@
 import {
   boundedPage,
+  contextOf,
   mostExaminedInAPage,
   type Examined,
   type RecordedOrder,
   type RecordedSelection,
 } from '@beonauto/operations';
+import { Schema } from 'effect';
 
 import type {
   MessageLineage,
   RecordedPoint,
   RecordedStore,
+  StoredMetadata,
   StoredPage,
   StoredPageRequest,
   StoredPlace,
+  StoredRecord,
 } from '../event-store.ts';
 
 export interface RecordHead extends MessageLineage {
   readonly point: RecordedPoint;
   readonly stream: string;
   readonly version: number;
+  readonly globalPosition: number;
   readonly type: string;
+  readonly metadata: StoredMetadata;
   readonly recordedAt: string;
   readonly size: number;
+}
+
+const TraceSchema = Schema.Struct({
+  causationId: Schema.optionalKey(Schema.NullOr(Schema.String)),
+  traceId: Schema.optionalKey(Schema.String),
+  spanId: Schema.optionalKey(Schema.String),
+});
+
+const decodeTrace = Schema.decodeUnknownSync(TraceSchema);
+
+export interface ReadMetadata {
+  readonly causationId: string | null;
+  readonly metadata: StoredMetadata;
+}
+
+export function readMetadataOf(stored: unknown): ReadMetadata {
+  const { causationId = null, traceId, spanId } = decodeTrace(stored);
+  return {
+    causationId,
+    metadata: {
+      context: contextOf(stored),
+      ...(traceId === undefined ? {} : { traceId }),
+      ...(spanId === undefined ? {} : { spanId }),
+    },
+  };
 }
 
 export interface ExaminedItem extends Examined {
@@ -50,20 +81,6 @@ export interface RecordedStatements {
 
 export type RunsSelected = Extract<RecordedSelection, { readonly kind: 'runs' }>;
 
-export interface FieldAsked {
-  readonly field: 'definition_type' | 'name';
-  readonly value: string;
-  readonly asWritten: string;
-}
-
-function fieldAsked(field: FieldAsked['field'], value: string | undefined): readonly FieldAsked[] {
-  return value === undefined ? [] : [{ field, value, asWritten: `"${field}":${JSON.stringify(value)}` }];
-}
-
-export function fieldsAskedOf({ name, definitionType }: RunsSelected): readonly FieldAsked[] {
-  return [...fieldAsked('name', name), ...fieldAsked('definition_type', definitionType)];
-}
-
 export type RecordsSelected =
   | { readonly kind: 'brain' }
   | { readonly kind: 'streams'; readonly streams: readonly string[] }
@@ -74,7 +91,7 @@ export function pointKey(point: RecordedPoint): string {
 }
 
 function asksForOneDefinition(selection: RecordedSelection): boolean {
-  return selection.kind === 'runs' && fieldsAskedOf(selection).length > 0;
+  return selection.kind === 'runs' && (selection.definitionType !== undefined || selection.name !== undefined);
 }
 
 function scopeOf(
@@ -131,6 +148,11 @@ function sizedBy(loads: Loads, dataOf: readonly string[] | undefined, item: Exam
     : { ...item, size: item.heads.filter((head) => loads(head)).reduce((sum, { size }) => sum + size, 0) };
 }
 
+export function recordOf(head: RecordHead, data: unknown): StoredRecord {
+  const { point, id, causationId, correlationId, stream, version, globalPosition, type, metadata, recordedAt } = head;
+  return { point, id, causationId, correlationId, stream, version, globalPosition, type, data, metadata, recordedAt };
+}
+
 function placeOf({ point, heads: [first] }: ExaminedItem): StoredPlace {
   return { point, recordedAt: first.recordedAt };
 }
@@ -148,17 +170,7 @@ async function pageWithin(
   const loaded = heads.filter((head) => loads(head));
   const data =
     loaded.length === 0 ? new Map<string, unknown>() : await statements.dataAt(loaded.map(({ point }) => point));
-  const records = heads.map(({ point, id, causationId, correlationId, stream, version, type, recordedAt }) => ({
-    point,
-    id,
-    causationId,
-    correlationId,
-    stream,
-    version,
-    type,
-    recordedAt,
-    data: data.get(pointKey(point)),
-  }));
+  const records = heads.map((head) => recordOf(head, data.get(pointKey(head.point))));
   return {
     records,
     ...(resumeAfter === undefined ? {} : { resumeAfter: resumeAfter.point }),

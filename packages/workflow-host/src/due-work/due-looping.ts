@@ -57,9 +57,7 @@ export async function dueLooping(
     troubles: () => troubles,
     armTimer: async (dueAt, timerId = '1') => {
       const timer: ArmTimer = { kind: 'arm_timer', runId: runKey, timerId, dueAt, purpose: 'wait' };
-      await Effect.runPromise(
-        timers.timers.arm(timer, { runId: runKey, attributes: {} }, { version: 1, lastStep: null }),
-      );
+      await Effect.runPromise(timers.timers.arm(timer, { runId: runKey, attributes: {} }, { version: 1 }));
     },
   };
 }

@@ -28,7 +28,8 @@ const sqliteProjectionDialect: ProjectionDialect = {
       ORDER BY s.stream_id
       LIMIT ${count}`,
   messagesOf: (streams, types) =>
-    SQL`SELECT stream_id AS stream, message_type AS type, message_data AS data, stream_position AS position
+    SQL`SELECT stream_id AS stream, message_type AS type, message_data AS data, message_metadata AS metadata,
+        stream_position AS position
       FROM emt_messages
       WHERE stream_id IN (SELECT value FROM json_each(${JSON.stringify(streams)}))
         AND message_type IN (SELECT value FROM json_each(${JSON.stringify(types)}))
@@ -36,7 +37,7 @@ const sqliteProjectionDialect: ProjectionDialect = {
       ORDER BY stream_id, stream_position`,
   messagesInOrderAfter: (after, count, kinds, types) =>
     SQL`SELECT CAST(m.global_position AS TEXT) AS point, m.stream_id AS stream, m.message_type AS type,
-        m.message_data AS data, m.stream_position AS position
+        m.message_data AS data, m.message_metadata AS metadata, m.stream_position AS position
       FROM emt_messages AS m
       WHERE m.global_position > ${Number(after ?? '0')}
         AND m.message_type IN (SELECT value FROM json_each(${JSON.stringify(types)}))
@@ -46,6 +47,7 @@ const sqliteProjectionDialect: ProjectionDialect = {
       LIMIT ${count}`,
   rowsInAWrite: (columns) => Math.max(1, Math.floor(mostParameters / (columns + 2))),
   filledData: (column) => decodeText(column),
+  filledMetadata: (column) => decodeText(column),
   appendedData: (stored) => stored,
   booleanOf: (value) => (value ? 1 : 0),
 };

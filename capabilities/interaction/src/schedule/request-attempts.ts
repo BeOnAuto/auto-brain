@@ -14,7 +14,7 @@ function settlementAfter({ row }: DueRequest, number: number, end: AttemptEnd, a
   if (row.answers) {
     return undefined;
   }
-  if (end.outcome === 'delivered') {
+  if (end.type === 'delivery_succeeded') {
     return deliveredSettlement(at);
   }
   return isLastAttempt(end, number) ? undeliveredSettlement(routeOfRow(row)) : undefined;

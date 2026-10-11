@@ -1,15 +1,19 @@
 import { Effect } from 'effect';
 
 import type { CallerContext } from '../access/caller-context.ts';
-import type { CallStarted } from '../calls/call-facts.ts';
+import type { CallEnded, CallStarted } from '../calls/call-facts.ts';
 import { runIdKey } from '../calls/call-meta.ts';
-import type { CallJournal, RecordedCall } from '../calls/recorded-calls.ts';
+import type { CallJournal } from '../calls/recorded-calls.ts';
 import type { CallSignals } from '../calls/run-parts.ts';
 
 export const toolRunId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
+type JournalledFact =
+  | { readonly number: number; readonly type: 'tool_call_started'; readonly data: CallStarted }
+  | (CallEnded & { readonly number: number });
+
 export interface RecordingCallJournal extends CallJournal {
-  readonly facts: () => readonly RecordedCall[];
+  readonly facts: () => readonly JournalledFact[];
   readonly refuseStartsFromNowOn: () => void;
 }
 
@@ -26,18 +30,18 @@ export function inTurn<A, B>(items: readonly A[], step: (item: A) => Promise<B>)
 }
 
 export function recordingCallJournal(): RecordingCallJournal {
-  const facts: RecordedCall[] = [];
+  const facts: JournalledFact[] = [];
   const state = { refusing: false, last: 0 };
-  const numbered = (fact: CallStarted): number => {
+  const numbered = (data: CallStarted): number => {
     state.last += 1;
-    facts.push({ ...fact, number: state.last });
+    facts.push({ number: state.last, type: 'tool_call_started', data });
     return state.last;
   };
   return {
     started: (fact) => Effect.sync(() => (state.refusing ? undefined : numbered(fact))),
-    answered: (fact) =>
+    ended: (number, fact) =>
       Effect.sync(() => {
-        facts.push(fact);
+        facts.push({ ...fact, number });
         return true;
       }),
     facts: () => [...facts],

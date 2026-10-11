@@ -1,3 +1,5 @@
+import type { Context } from '@beonauto/operations';
+
 import type { CallFunctions } from '../dsl/call-functions.ts';
 import { objectField, type Json, type JsonObject } from '../dsl/json.ts';
 import type { Components } from '../dsl/policy-checks.ts';
@@ -11,6 +13,7 @@ import type { ValueTable } from './run-tables.ts';
 export interface MachineSettings {
   readonly functions: CallFunctions;
   readonly runtime: JsonObject;
+  readonly contextOf: (attributes: JsonObject, at: string) => Context;
 }
 
 export interface MachineOptions extends MachineSettings {

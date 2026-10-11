@@ -20,6 +20,8 @@ const lineage = { causationId: null, correlationId: askedRunId };
 
 const failing = { outcome: 'server_failure', detail: 'The MCP server answered HTTP 503', retryAfterMs: null } as const;
 
+const endsOfADelivery: ReadonlySet<string> = new Set(['delivery_succeeded', 'delivery_failed', 'delivery_refused']);
+
 describe('a notification whose attempts fail', () => {
   it('waits for the next attempt after one that failed, and ends undelivered once the fifth failed', async () => {
     const { brain, tools, askedAt } = await askedThroughChat({ notification: true });
@@ -49,16 +51,12 @@ describe('a notification whose attempts fail', () => {
     await Effect.runPromise(
       record(
         address,
-        { type: 'delivery_started', number: 1, target: 'ada', server: 'chat', tool: 'post_message' },
+        { type: 'delivery_started', data: { number: 1, target: 'ada', server: 'chat', tool: 'post_message' } },
         lineage,
       ),
     );
     await Effect.runPromise(
-      record(
-        address,
-        { type: 'delivery_ended', number: 1, outcome: 'refused', because: 'too_large', duration_ms: 3 },
-        lineage,
-      ),
+      record(address, { type: 'delivery_refused', data: { number: 1, because: 'too_large', duration_ms: 3 } }, lineage),
     );
 
     await brain.performDue(askedAt);
@@ -118,6 +116,6 @@ describe('a due request performed out of turn', () => {
     expect(await brain.runOf(askedRunId)).toMatchObject({
       output: { status: 'succeeded', output: { choice: 'reject' } },
     });
-    expect(records.map(({ type }) => type)).not.toContain('delivery_ended');
+    expect(records.map(({ type }) => type).filter((type) => endsOfADelivery.has(type))).toEqual([]);
   });
 });

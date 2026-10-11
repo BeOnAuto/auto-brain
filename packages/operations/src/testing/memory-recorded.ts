@@ -1,4 +1,4 @@
-import { Effect, Option, Schema } from 'effect';
+import { Effect, Option } from 'effect';
 
 import {
   InvalidCursor,
@@ -6,8 +6,10 @@ import {
   mostExaminedInAPage,
   streamPrefixOfBrain,
   type BrainAddress,
+  type Context,
   type ExaminedPlace,
   type RecordedEvent,
+  type RecordedFact,
   type RecordedPage,
   type RecordedPageRequest,
   type RecordedReader,
@@ -24,6 +26,7 @@ export interface MemoryRecord {
   readonly streamPosition: number;
   readonly type: string;
   readonly data: unknown;
+  readonly context: Context;
   readonly recordedAt: string;
 }
 
@@ -41,13 +44,6 @@ interface Resumed {
 }
 
 type RunsSelection = Extract<RecordedSelection, { readonly kind: 'runs' }>;
-
-const DefinitionHeldSchema = Schema.Struct({
-  definition_type: Schema.optionalKey(Schema.Unknown),
-  name: Schema.optionalKey(Schema.Unknown),
-});
-
-const holdsADefinition = Schema.is(DefinitionHeldSchema);
 
 const positionPattern = /^[1-9]\d{0,14}$/u;
 
@@ -141,18 +137,12 @@ function examinedRecords(
   });
 }
 
-function holdsWhatWasAsked(asked: string | undefined, held: unknown): boolean {
+function holdsWhatWasAsked(asked: string | undefined, held: string | undefined): boolean {
   return asked === undefined || held === asked;
 }
 
-function isOfTheDefinitionAsked({ definitionType, name }: RunsSelection, { data }: MemoryRecord): boolean {
-  const asksForNone = definitionType === undefined && name === undefined;
-  return (
-    asksForNone ||
-    (holdsADefinition(data) &&
-      holdsWhatWasAsked(definitionType, data.definition_type) &&
-      holdsWhatWasAsked(name, data.name))
-  );
+function isOfTheDefinitionAsked({ definitionType, name }: RunsSelection, { context }: MemoryRecord): boolean {
+  return holdsWhatWasAsked(definitionType, context.definitionType) && holdsWhatWasAsked(name, context.definitionName);
 }
 
 function examinedRuns(
@@ -175,19 +165,24 @@ function cursorAt(key: string, at: number): string {
   return cursorOfParts([key, String(at)]);
 }
 
-function recordedOf(key: string, page: RecordedPageRequest, record: MemoryRecord): RecordedEvent {
-  const { id, causationId, correlationId, stream, streamPosition: version, type, data, recordedAt } = record;
+function recordedFactOf(record: MemoryRecord, loaded: boolean): RecordedFact {
+  const { id, causationId, correlationId, stream, streamPosition: version, type, data, context, recordedAt } = record;
   return {
     id,
-    cursor: cursorAt(key, record.position),
     causationId,
     correlationId,
     stream,
     version,
+    globalPosition: record.position,
     type,
-    data: loads(page, record) ? data : undefined,
+    data: loaded ? data : undefined,
+    context,
     recordedAt,
   };
+}
+
+function recordedOf(key: string, record: MemoryRecord, loaded: boolean): RecordedEvent {
+  return { ...recordedFactOf(record, loaded), cursor: cursorAt(key, record.position) };
 }
 
 function examinedPlaceOf(key: string, { position, heads: [first] }: ExaminedRun): ExaminedPlace {
@@ -223,7 +218,7 @@ function pageOf(
     const { delivered, resumeAfter, lastExamined } = boundedPage(examined, page.limit, cap);
     const nextCursor = resumeAfter === undefined ? null : cursorAt(key, resumeAfter.position);
     return {
-      records: delivered.flatMap(({ heads }) => heads.map((head) => recordedOf(key, page, head))),
+      records: delivered.flatMap(({ heads }) => heads.map((head) => recordedOf(key, head, loads(page, head)))),
       hasMore: nextCursor !== null,
       nextCursor,
       lastExamined: lastExamined === undefined ? null : examinedPlaceOf(key, lastExamined),
@@ -231,10 +226,18 @@ function pageOf(
   };
 }
 
-export function memoryRecordedReader(log: readonly MemoryRecord[]): RecordedReader['readRecorded'] {
-  return (brain: BrainAddress, selection, page) =>
-    Effect.suspend(() => {
-      const key = streamPrefixOfBrain(brain);
-      return resumedFrom(page, key).pipe(Effect.map(pageOf(log, key, selection, page)));
-    });
+export function memoryRecordedReader(log: readonly MemoryRecord[]): RecordedReader {
+  return {
+    readRecorded: (brain: BrainAddress, selection, page) =>
+      Effect.suspend(() => {
+        const key = streamPrefixOfBrain(brain);
+        return resumedFrom(page, key).pipe(Effect.map(pageOf(log, key, selection, page)));
+      }),
+    readRecordedEvent: (brain, id) =>
+      Effect.sync(() => {
+        const key = streamPrefixOfBrain(brain);
+        const record = log.find((each) => each.id === id && brainKeyOf(each.stream) === key);
+        return record === undefined ? undefined : recordedFactOf(record, true);
+      }),
+  };
 }

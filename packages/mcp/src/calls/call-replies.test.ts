@@ -3,6 +3,8 @@ import { Buffer } from 'node:buffer';
 import { Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { noCalls } from '../bounds/call-bounds.ts';
+import { ignored } from '../connections/ignored.ts';
 import {
   controlledSignals,
   fakeApiKey,
@@ -13,8 +15,11 @@ import {
   serveFakeMcp,
   toolRun,
 } from '../testing/index.ts';
+import { callReplyOf, failureCounted } from './call-replies.ts';
 
 const aDuration: unknown = expect.any(Number);
+
+const answeredWith61Bytes: unknown = expect.objectContaining({ result_bytes: 61 });
 
 const testId = '0199b7e2-4c1d-7a3e-8f5b-6d2c1e0f9a8b';
 
@@ -47,8 +52,6 @@ async function opened(meta: Readonly<Record<string, string>>, ...tools: readonly
   return { call, journal, messages };
 }
 
-const aReader: unknown = expect.any(Function);
-
 describe('what a call answers beside what the model sees', () => {
   it('is the outcome, the size of the whole result, how long it took and the id the server gave it, as recorded', async () => {
     const { call, journal } = await opened({ 'com.beonauto/run_id': testId }, 'search', 'denied');
@@ -63,11 +66,13 @@ describe('what a call answers beside what the model sees', () => {
         resultBytes: Buffer.byteLength(JSON.stringify({ content: [{ type: 'text', text: 'Found 2 rows for acme.' }] })),
         durationMs: aDuration,
         serverRequestId: 'call-1',
-        scrubbedResult: aReader,
+        scrubbedResult: { content: [{ type: 'text', text: 'Found 2 rows for acme.' }] },
       },
       expect.objectContaining({ isError: true, outcome: 'tool_error', serverRequestId: 'call-2' }),
     ]);
-    expect(journal.facts()).toContainEqual(expect.objectContaining({ outcome: 'result', result_bytes: 61 }));
+    expect(journal.facts()).toContainEqual(
+      expect.objectContaining({ type: 'tool_call_answered', data: answeredWith61Bytes }),
+    );
   });
 
   it('is a server failure with no result when the server fails the call', async () => {
@@ -94,5 +99,27 @@ describe('a failed call reported to the operator', () => {
       { server: 'graph', run_id: testId, tool_test_id: null },
       { server: 'graph', run_id: null, tool_test_id: testId },
     ]);
+  });
+});
+
+describe('an answer past the cap of the transport', () => {
+  it('is no failure of the server, which answered, so it ends none of the calls of a run', () => {
+    const tooLarge = {
+      outcome: 'too_large',
+      result: null,
+      resultJson: null,
+      message: 'The MCP server answered more than the 16777216 bytes one call may take',
+      failure: 'too_large',
+      jsonrpcId: 4,
+      serverRequestId: null,
+      retryAfterMs: null,
+    } as const;
+    const replying = { server: 'graph', meta: {}, scrub: (text: string) => text, report: ignored };
+
+    expect(failureCounted(noCalls, tooLarge, replying)).toEqual({ tally: noCalls, value: undefined });
+    expect(callReplyOf({ text: 'Too large.', isError: true }, tooLarge, 12)).toMatchObject({
+      outcome: 'too_large',
+      resultBytes: null,
+    });
   });
 });

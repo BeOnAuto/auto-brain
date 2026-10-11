@@ -1,9 +1,9 @@
-import { Conflict, NotFound } from '@beonauto/operations';
-import { Result } from 'effect';
+import { Conflict, NotFound, type Context, type DefinitionContext } from '@beonauto/operations';
+import { Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { DefinitionCommand } from './definition-commands.ts';
-import type { DefinitionContent, DefinitionEvent } from './definition-events.ts';
+import type { DefinitionContent, RecordedDefinitionEvent } from './definition-events.ts';
 import { definitionsDecider, definitionTypeStreamOf } from './definitions-decider.ts';
 
 const echoDefinitions = definitionsDecider('echo');
@@ -21,30 +21,40 @@ const hello: DefinitionContent = {
 
 const howdy: DefinitionContent = { source: '{"greeting": "Howdy"}' };
 
-const greetCreated: DefinitionEvent = {
-  type: 'definition_created',
-  name: 'greet',
-  version: 1,
-  content: hello,
-  ...creation,
-};
+type RecordedDefinition = RecordedDefinitionEvent;
 
-const greetUpdated: DefinitionEvent = {
+function ofTheDefinition(name: string, when: Pick<Context, 'by' | 'at'>, version: number): DefinitionContext {
+  return { ...when, definitionType: 'echo', definitionName: name, definitionVersion: version };
+}
+
+function created(name: string, content: DefinitionContent): RecordedDefinition {
+  return { type: 'definition_created', data: { content }, context: ofTheDefinition(name, creation, 1) };
+}
+
+const greetCreated = created('greet', hello);
+
+const greetUpdated: RecordedDefinition = {
   type: 'definition_updated',
-  name: 'greet',
-  version: 2,
-  content: howdy,
-  ...change,
+  data: { content: howdy },
+  context: ofTheDefinition('greet', change, 2),
 };
 
-const greetRetired: DefinitionEvent = { type: 'definition_retired', name: 'greet', ...change };
+function retired(name: string, at = change.at, version = 1): RecordedDefinition {
+  return { type: 'definition_retired', data: {}, context: ofTheDefinition(name, { ...change, at }, version) };
+}
 
-function registryAfter(...events: readonly DefinitionEvent[]) {
+const greetRetired = retired('greet');
+
+function registryAfter(...events: readonly RecordedDefinition[]) {
   return events.reduce((registry, event) => echoDefinitions.evolve(registry, event), echoDefinitions.initialState);
 }
 
-function decided(command: DefinitionCommand, ...history: readonly DefinitionEvent[]) {
+function decided(command: DefinitionCommand, ...history: readonly RecordedDefinition[]) {
   return echoDefinitions.decide(command, registryAfter(...history));
+}
+
+function contextOf(command: DefinitionCommand, ...history: readonly RecordedDefinition[]) {
+  return echoDefinitions.context(command, registryAfter(...history));
 }
 
 const creatingGreet: DefinitionCommand = { type: 'create', name: 'greet', content: hello, ...creation };
@@ -56,8 +66,11 @@ function updatingGreet(content: DefinitionContent): DefinitionCommand {
 const retiringGreet: DefinitionCommand = { type: 'retire', name: 'greet', ...change };
 
 describe('creating a definition', () => {
-  it('records it at version 1 with its content, who created it and when', () => {
-    expect(decided(creatingGreet)).toStrictEqual(Result.succeed([greetCreated]));
+  it('records its content, with the definition at version 1, who created it and when as its context', () => {
+    expect(decided(creatingGreet)).toStrictEqual(
+      Result.succeed([{ type: 'definition_created', data: { content: hello } }]),
+    );
+    expect(contextOf(creatingGreet)).toStrictEqual(greetCreated.context);
   });
 
   it('is rejected while an active definition holds the name', () => {
@@ -79,11 +92,19 @@ describe('creating a definition', () => {
 });
 
 describe('updating a definition', () => {
-  it('records a new version, one more than the last', () => {
-    expect(decided(updatingGreet(howdy), greetCreated)).toStrictEqual(Result.succeed([greetUpdated]));
-    expect(decided(updatingGreet(hello), greetCreated, greetUpdated)).toStrictEqual(
-      Result.succeed([{ type: 'definition_updated', name: 'greet', version: 3, content: hello, ...change }]),
+  it('records a new version, one more than the last, as its context', () => {
+    expect(decided(updatingGreet(howdy), greetCreated)).toStrictEqual(
+      Result.succeed([{ type: 'definition_updated', data: { content: howdy } }]),
     );
+    expect([
+      contextOf(updatingGreet(howdy), greetCreated),
+      contextOf(updatingGreet(hello), greetCreated, greetUpdated),
+      contextOf(updatingGreet(hello)),
+    ]).toStrictEqual([
+      greetUpdated.context,
+      ofTheDefinition('greet', change, 3),
+      { ...change, definitionType: 'echo', definitionName: 'greet' },
+    ]);
   });
 
   it('records nothing when the document is the same', () => {
@@ -106,8 +127,11 @@ describe('updating a definition', () => {
 });
 
 describe('retiring a definition', () => {
-  it('records the retirement of an active definition', () => {
-    expect(decided(retiringGreet, greetCreated)).toStrictEqual(Result.succeed([greetRetired]));
+  it('records the retirement of an active definition, with the version it retires in its context', () => {
+    expect(decided(retiringGreet, greetCreated)).toStrictEqual(
+      Result.succeed([{ type: 'definition_retired', data: {} }]),
+    );
+    expect(contextOf(retiringGreet, greetCreated)).toStrictEqual(greetRetired.context);
   });
 
   it('records nothing for a definition that is already retired', () => {
@@ -130,9 +154,9 @@ describe('the definitions of a capability', () => {
   it('hold each definition as its events left it, its content replaced by every update', () => {
     const registry = registryAfter(
       greetCreated,
-      { type: 'definition_created', name: 'wave', version: 1, content: howdy, ...creation },
+      created('wave', howdy),
       greetUpdated,
-      { ...greetRetired, at: '2026-10-03T08:00:00.000Z' },
+      retired('greet', '2026-10-03T08:00:00.000Z', 2),
     );
 
     expect([...registry.values()]).toStrictEqual([
@@ -157,6 +181,16 @@ describe('the definitions of a capability', () => {
       },
     ]);
   });
+});
+
+describe('the definitions of a capability, from what their facts say', () => {
+  it('refuse a fact recorded without the definition and version it is about', () => {
+    const decode = Schema.decodeUnknownSync(echoDefinitions.eventSchema);
+    const { definitionVersion: _version, ...unversioned } = greetUpdated.context;
+
+    expect(() => decode({ ...greetCreated, context: creation })).toThrow('definitionType');
+    expect(() => decode({ ...greetUpdated, context: unversioned })).toThrow('definitionVersion');
+  });
 
   it('ignore an event about a definition they never saw created', () => {
     expect(registryAfter(greetUpdated, greetRetired).size).toBe(0);
@@ -179,14 +213,8 @@ const threeTriggers: DefinitionContent['triggers'] = [
 
 const reacting: DefinitionContent = { source: '{"greeting": "Hello", "triggers": "three"}', triggers: threeTriggers };
 
-function reactingDefinitions(count: number): readonly DefinitionEvent[] {
-  return Array.from({ length: count }, (_, index) => ({
-    type: 'definition_created',
-    name: `reacting-${index}`,
-    version: 1,
-    content: reacting,
-    ...creation,
-  }));
+function reactingDefinitions(count: number): readonly RecordedDefinition[] {
+  return Array.from({ length: count }, (_, index) => created(`reacting-${index}`, reacting));
 }
 
 const beyondTheBound = new Conflict({
@@ -202,13 +230,16 @@ describe('the definitions of a brain that start on their own', () => {
       decided({ ...creatingGreet, content: reacting }, ...full),
       decided(updatingGreet(reacting), greetCreated, ...full),
       decided({ ...creatingGreet, content: hello }, ...full),
-    ]).toEqual([Result.fail(beyondTheBound), Result.fail(beyondTheBound), Result.succeed([greetCreated])]);
+    ]).toEqual([
+      Result.fail(beyondTheBound),
+      Result.fail(beyondTheBound),
+      Result.succeed([{ type: 'definition_created', data: { content: hello } }]),
+    ]);
   });
 
   it('are counted after a version replaces another, and without the retired ones', () => {
     const almost = reactingDefinitions(1023);
-    const retired: DefinitionEvent = { type: 'definition_retired', name: 'reacting-0', ...change };
-    const reactingGreet: DefinitionEvent = { ...greetCreated, content: reacting };
+    const reactingGreet = created('greet', reacting);
 
     expect([
       Result.isSuccess(
@@ -219,7 +250,11 @@ describe('the definitions of a brain that start on their own', () => {
         ),
       ),
       Result.isSuccess(
-        decided({ ...creatingGreet, name: 'other', content: reacting }, ...reactingDefinitions(1024), retired),
+        decided(
+          { ...creatingGreet, name: 'other', content: reacting },
+          ...reactingDefinitions(1024),
+          retired('reacting-0'),
+        ),
       ),
     ]).toEqual([true, true]);
   });

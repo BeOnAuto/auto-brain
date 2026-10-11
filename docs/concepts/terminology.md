@@ -73,19 +73,21 @@ An interaction function asks a system and answers at once, or asks a person and 
 
 ## Supporting assets
 
-| Term             | Meaning                                                                                                  |
-| ---------------- | -------------------------------------------------------------------------------------------------------- |
-| Prompt           | Instructions and input framing supplied to a language model by a reasoning function.                     |
-| Skill            | A reusable package of task guidance and associated resources.                                            |
-| Tool             | A calling interface for an operation, including an external operation or a function exposed to a caller. |
-| Language model   | A model used by a reasoning function.                                                                    |
-| Predictive model | A model created or used by a prediction function.                                                        |
-| Source           | Information a function can consult.                                                                      |
-| Event            | A recorded fact that something happened.                                                                 |
-| Schedule         | Timing configuration for a schedule trigger, in UTC.                                                     |
-| Projection       | A defined derivation of a view or state from event history.                                              |
-| Memory           | The broader ability to retain information and make it available.                                         |
-| Event ledger     | One source of recorded history.                                                                          |
+| Term             | Meaning                                                                                                               |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Prompt           | Instructions and input framing supplied to a language model by a reasoning function.                                  |
+| Skill            | A reusable package of task guidance and associated resources.                                                         |
+| Tool             | A calling interface for an operation, including an external operation or a function exposed to a caller.              |
+| Language model   | A model used by a reasoning function.                                                                                 |
+| Predictive model | A model created or used by a prediction function.                                                                     |
+| Source           | Information a function can consult.                                                                                   |
+| Event            | A recorded fact that something happened, its type named in the past tense for what happened, as `delivery_failed` is. |
+| Event data       | The fact itself: what happened, and nothing of who acted, when, or the run it belongs to.                             |
+| Event metadata   | Where an event is recorded, when it happened, who acted, and the definition, run and chain it belongs to.             |
+| Schedule         | Timing configuration for a schedule trigger, in UTC.                                                                  |
+| Projection       | A defined derivation of a view or state from event history.                                                           |
+| Memory           | The broader ability to retain information and make it available.                                                      |
+| Event ledger     | One source of recorded history.                                                                                       |
 
 A reasoning function has a prompt; the prompt is not the entire configured function. A function exposed as a tool keeps its function type and identity. A skill supplies guidance rather than naming every executable component. Recall answers from what the brain keeps; memory, projections and the event ledger retain their distinct meanings.
 

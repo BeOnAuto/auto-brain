@@ -1,8 +1,9 @@
-import { Conflict, type Ledger } from '@beonauto/operations';
+import { ActedContextSchema, ActedOnRunContextSchema, Conflict, factOf, type Ledger } from '@beonauto/operations';
 import { memoryLedger } from '@beonauto/operations/testing';
 import { Effect, Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { stamped } from './happenings.ts';
 import { journal, type JournalEvent } from './journal.ts';
 import { aLedger, tallies, type LedgerEntry } from './ledger-entry.ts';
 import { notes } from './notes.ts';
@@ -12,27 +13,36 @@ import { tally, type Amounts } from './tally.ts';
 const decided: readonly JournalEvent[] = [
   {
     type: 'entry_written',
-    at: new Date('2026-09-30T23:59:59.999Z'),
-    amount: 12_345_678_901_234_567_890n,
-    ratio: Number.NaN,
-    tags: [],
-    source: null,
+    data: {
+      at: new Date('2026-09-30T23:59:59.999Z'),
+      amount: 12_345_678_901_234_567_890n,
+      ratio: Number.NaN,
+      tags: [],
+      source: null,
+    },
   },
   {
     type: 'entry_written',
-    at: new Date(0),
-    amount: -1n,
-    ratio: Number.NEGATIVE_INFINITY,
-    tags: ['quarter-end', 'café', '"quoted"', 'line\nbreak', 'a NUL \u0000 inside', 'half a pair \uD800 alone'],
-    memo: 'Tab\there, emoji 🧾, and a backslash \\',
-    source: { name: 'Ledger of record' },
+    data: {
+      at: new Date(0),
+      amount: -1n,
+      ratio: Number.NEGATIVE_INFINITY,
+      tags: ['quarter-end', 'café', '"quoted"', 'line\nbreak', 'a NUL \u0000 inside', 'half a pair \uD800 alone'],
+      memo: 'Tab\there, emoji 🧾, and a backslash \\',
+      source: { name: 'Ledger of record' },
+    },
   },
-  { type: 'entry_struck', reason: 'Written twice' },
+  { type: 'entry_struck', data: { reason: 'Written twice' } },
 ];
 
 const talliedAboveFive = {
   ...tally,
-  eventSchema: Schema.Struct({ type: Schema.Literal('counted'), by: Schema.Int.check(Schema.isGreaterThan(5)) }),
+  eventSchema: factOf('counted', Schema.Struct({ by: Schema.Int.check(Schema.isGreaterThan(5)) }), ActedContextSchema),
+};
+
+const talliedOnARun = {
+  ...tally,
+  eventSchema: factOf('counted', Schema.Struct({ by: Schema.Int }), ActedOnRunContextSchema),
 };
 
 function theEventsOfAStream(entry: LedgerEntry): void {
@@ -43,7 +53,7 @@ function theEventsOfAStream(entry: LedgerEntry): void {
       await Effect.runPromise(ledger.execute('brain/acme/sales/journal', journal, decided));
 
       expect(await Effect.runPromise(ledger.load('brain/acme/sales/journal', journal))).toEqual({
-        state: decided,
+        state: decided.map(({ type, data }) => ({ type, data, context: stamped })),
         version: 3,
       });
     });
@@ -64,10 +74,19 @@ function theEventsOfAStream(entry: LedgerEntry): void {
       await Effect.runPromise(ledger.execute(tallies, tally, [3]));
 
       await expect(outcomeOf(ledger.load(tallies, talliedAboveFive))).rejects.toThrow(
-        'Expected a value greater than 5\n  at ["by"]',
+        'Expected a value greater than 5\n  at ["data"]["by"]',
       );
       await expect(outcomeOf(ledger.execute(tallies, talliedAboveFive, [6]))).rejects.toThrow(
-        'Expected a value greater than 5\n  at ["by"]',
+        'Expected a value greater than 5\n  at ["data"]["by"]',
+      );
+    });
+
+    it('are a defect when a stored event’s context is not the one its fact carries', async () => {
+      const ledger = await aLedger(entry);
+      await Effect.runPromise(ledger.execute(tallies, tally, [3]));
+
+      await expect(outcomeOf(ledger.load(tallies, talliedOnARun))).rejects.toThrow(
+        'Missing key\n  at ["context"]["runId"]',
       );
     });
   });
@@ -123,18 +142,20 @@ function tallyThrough(ledger: Ledger['Service']): Promise<unknown> {
 }
 
 const entries: readonly (readonly JournalEvent[])[] = [
-  [{ type: 'entry_written', at: new Date(86_400_000), amount: 7n, ratio: 0.5, tags: ['a'], source: null }],
+  [{ type: 'entry_written', data: { at: new Date(86_400_000), amount: 7n, ratio: 0.5, tags: ['a'], source: null } }],
   [],
   [
-    { type: 'entry_struck', reason: 'Wrong amount' },
+    { type: 'entry_struck', data: { reason: 'Wrong amount' } },
     {
       type: 'entry_written',
-      at: new Date(0),
-      amount: -7n,
-      ratio: Number.POSITIVE_INFINITY,
-      tags: [],
-      memo: 'Corrected',
-      source: { name: 'Review' },
+      data: {
+        at: new Date(0),
+        amount: -7n,
+        ratio: Number.POSITIVE_INFINITY,
+        tags: [],
+        memo: 'Corrected',
+        source: { name: 'Review' },
+      },
     },
   ],
 ];

@@ -119,12 +119,19 @@ async function brainsCalled(session: McpSession): Promise<Called> {
   ];
 }
 
+const EventsSchema = Schema.Struct({ events: Schema.NonEmptyArray(Schema.Struct({ id: Schema.String })) });
+
+function firstEventIn({ structuredContent }: ToolResult): string {
+  return Schema.decodeUnknownSync(EventsSchema)(structuredContent).events[0].id;
+}
+
 async function reasonFunctionsCalled(session: McpSession): Promise<Called> {
   const reasonFunction = { type: 'reasoning', name: 'summary' };
   const created = await session.callTool('create_definition', inSales({ ...reasonFunction, source: summary }));
   const ran = await session.callTool('run_definition', inSales({ ...reasonFunction, input: { text: 'the quarter' } }));
   const runId = String(ran.structuredContent?.['run_id']);
   const revised = summary.replace('Summarize: ', 'Sum up: ');
+  const listed = await session.callTool('list_brain_events', inSales({ limit: 3 }));
   return [
     ['create_definition', created],
     ['list_definitions', await session.callTool('list_definitions', inSales({ type: 'reasoning' }))],
@@ -138,7 +145,8 @@ async function reasonFunctionsCalled(session: McpSession): Promise<Called> {
       'publish_event',
       await session.callTool('publish_event', inSales({ event: { source: '/crm', type: 'com.acme.deal.won' } })),
     ],
-    ['list_brain_events', await session.callTool('list_brain_events', inSales({ limit: 3 }))],
+    ['list_brain_events', listed],
+    ['get_event', await session.callTool('get_event', inSales({ event_id: firstEventIn(listed) }))],
     ['list_brain_events', await session.callTool('list_brain_events', { brain: 'old-sales' })],
     ['get_brain_analytics', await session.callTool('get_brain_analytics', inSales({ days: 30 }))],
     ['list_tool_servers', await session.callTool('list_tool_servers', inSales({}))],

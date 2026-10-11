@@ -17,6 +17,7 @@ const brainIndexes = [
   'ledger_messages_by_brain',
   'ledger_messages_by_brain_and_correlation',
   'ledger_messages_by_brain_and_time',
+  'ledger_messages_by_id',
   'ledger_messages_by_stream',
 ];
 
@@ -96,5 +97,26 @@ describe('an event store on SQLite given hooks of its own', () => {
     await store.migrate();
 
     expect([hooked, indexesOf(fileName)]).toEqual([['after the schema'], brainIndexes]);
+  });
+});
+
+describe('the read of one message by its id on SQLite', () => {
+  it('walks the index on the message id', async () => {
+    const fileName = aDatabaseFile();
+    const opened = await openLedger(fileName);
+    await opened.dispose();
+    const database = new DatabaseSync(fileName, { readOnly: true });
+    onTestFinished(() => {
+      database.close();
+    });
+
+    const plan = database
+      .prepare(
+        "EXPLAIN QUERY PLAN SELECT global_position FROM emt_messages WHERE message_id = 'id' AND partition = 'emt:default'",
+      )
+      .all()
+      .map((row: Readonly<Record<string, unknown>>) => String(row['detail']));
+
+    expect(plan.join(' ')).toContain('USING INDEX ledger_messages_by_id');
   });
 });

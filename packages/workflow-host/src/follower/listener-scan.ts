@@ -17,9 +17,13 @@ function listenersOfRun(database: HostDatabase, runKey: string) {
   return Effect.gen(function* () {
     const { state, version } = loadedRunOf(yield* ledgerRunLogStore(database).load(runKey));
     const document = state.workflow?.document ?? {};
+    const listeners = Object.entries(state.listeners);
+    if (listeners.length === 0) {
+      return;
+    }
     const reaction = reactionOfRun(state.attributes);
     yield* Effect.forEach(
-      Object.entries(state.listeners),
+      listeners,
       ([listener, key]: readonly [string, CallKey]) =>
         insertedListener(database, {
           runKey,

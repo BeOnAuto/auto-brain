@@ -1,8 +1,11 @@
+import { ContextReference } from '@beonauto/operations';
 import { Schema } from 'effect';
 
-const ReferenceField = Schema.String.annotate({
-  description: 'Where the document names it, as a JSON pointer, which no later version renumbers',
-});
+const referenceWords = 'Where the document names it, as a JSON pointer, which no later version renumbers';
+
+const ReferenceField = Schema.String.annotate({ description: referenceWords });
+
+const TriggerReferenceField = ContextReference.annotate({ description: referenceWords });
 
 const TriggerFilterSchema = Schema.Struct({
   reference: ReferenceField,
@@ -14,7 +17,7 @@ const TriggerFilterSchema = Schema.Struct({
 
 export const EventTriggerSchema = Schema.Struct({
   kind: Schema.Literal('event'),
-  reference: ReferenceField,
+  reference: TriggerReferenceField,
   filters: Schema.Array(TriggerFilterSchema).annotate({
     description: 'The filters of the events that start a run; an event that any of them matches starts one',
   }),
@@ -22,13 +25,13 @@ export const EventTriggerSchema = Schema.Struct({
 
 const CronTriggerSchema = Schema.Struct({
   kind: Schema.Literal('cron'),
-  reference: ReferenceField,
+  reference: TriggerReferenceField,
   expression: Schema.String.annotate({ description: 'The five fields of its times, read in UTC' }),
 });
 
 const EveryTriggerSchema = Schema.Struct({
   kind: Schema.Literal('every'),
-  reference: ReferenceField,
+  reference: TriggerReferenceField,
   milliseconds: Schema.Int.annotate({ description: 'Its period, counted from when the trigger was saved as it is' }),
 });
 
@@ -45,12 +48,6 @@ export type EventTrigger = Extract<Trigger, { readonly kind: 'event' }>;
 export type ScheduleTrigger = Exclude<Trigger, EventTrigger>;
 
 export type TriggerFilter = EventTrigger['filters'][number];
-
-const TriggerKindSchema = Schema.Literals(['event', 'cron', 'every']);
-
-export const StartingTriggerSchema = Schema.Struct({ kind: TriggerKindSchema, reference: Schema.String });
-
-export type StartingTrigger = typeof StartingTriggerSchema.Type;
 
 export function hasTriggers({ triggers }: { readonly triggers?: readonly Trigger[] }): boolean {
   return triggers !== undefined && triggers.length > 0;

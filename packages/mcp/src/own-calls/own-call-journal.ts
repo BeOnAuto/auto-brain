@@ -1,19 +1,21 @@
-import { messageIdOf, type Decider, type Lineage, type StreamWriter, type TypedEvent } from '@beonauto/operations';
+import {
+  messageIdOf,
+  type Decided,
+  type Decider,
+  type Lineage,
+  type Recorded,
+  type StreamWriter,
+} from '@beonauto/operations';
 import { DateTime, Effect, Exit, Ref } from 'effect';
 
-import type { CallStarted } from '../calls/call-facts.ts';
-import type { CallJournal, NumberedAnswer } from '../calls/recorded-calls.ts';
-import type { OwnCallTurn } from './own-call-decider.ts';
+import type { CallEnded, CallStarted } from '../calls/call-facts.ts';
+import type { CallJournal } from '../calls/recorded-calls.ts';
+import type { OwnCall, OwnCallTurn } from './own-call-decider.ts';
 
-interface Recorded {
-  readonly by: string;
-  readonly at: string;
-}
-
-export interface OwnCallKind<Event extends TypedEvent> {
-  readonly decider: Decider<OwnCallTurn<Event>, Event, Event, 'conflict'>;
-  readonly started: (fact: CallStarted, recorded: Recorded) => Event;
-  readonly answered: (fact: NumberedAnswer, recorded: Recorded) => Event;
+export interface OwnCallKind<Event extends Recorded> {
+  readonly decider: Decider<OwnCallTurn<Event>, OwnCall<Event>, Event, 'conflict'>;
+  readonly started: (fact: CallStarted) => Decided<Event>;
+  readonly ended: (fact: CallEnded) => Decided<Event>;
 }
 
 export interface OwnCallPlace {
@@ -26,30 +28,29 @@ export interface OwnCallPlace {
 
 const theOnlyCall = 1;
 
-export function ownCallJournal<Event extends TypedEvent>(kind: OwnCallKind<Event>, place: OwnCallPlace): CallJournal {
+export function ownCallJournal<Event extends Recorded>(kind: OwnCallKind<Event>, place: OwnCallPlace): CallJournal {
   const startId = Ref.makeUnsafe<string | null>(null);
-  const appended = (event: (recorded: Recorded) => Event, causationId: string | null) =>
+  const appended = (event: Decided<Event>, causationId: string | null) =>
     Effect.gen(function* () {
       const at = DateTime.formatIso(yield* DateTime.now);
-      const { version } = yield* place.writer.execute(place.stream, kind.decider, event({ by: place.by, at }), {
-        ...place.lineage,
-        causationId,
-      });
+      const { version } = yield* place.writer.execute(
+        place.stream,
+        kind.decider,
+        { event, context: { at, by: place.by } },
+        { ...place.lineage, causationId },
+      );
       return messageIdOf(place.inTheBrain, version);
     });
   return {
     started: (fact) =>
-      appended((recorded) => kind.started(fact, recorded), place.lineage.causationId).pipe(
+      appended(kind.started(fact), place.lineage.causationId).pipe(
         Effect.orDie,
         Effect.flatMap((id) => Ref.set(startId, id)),
         Effect.as(theOnlyCall),
       ),
-    answered: (fact) =>
+    ended: (_number, fact) =>
       Effect.flatMap(Ref.get(startId), (causationId) =>
-        appended((recorded) => kind.answered(fact, recorded), causationId).pipe(
-          Effect.exit,
-          Effect.map(Exit.isSuccess),
-        ),
+        appended(kind.ended(fact), causationId).pipe(Effect.exit, Effect.map(Exit.isSuccess)),
       ),
   };
 }

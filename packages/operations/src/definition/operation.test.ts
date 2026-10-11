@@ -173,6 +173,7 @@ function readerOf({ service }: MemoryLedger): BrainReader['Service'] {
     ...brainBoundRecordedReader(service, alpha),
     ...brainBoundRunOutcomesReader(service, alpha),
     ...brainBoundProjectionReader(service, alpha),
+    readContent: (sha256) => service.content.get(alpha, sha256),
   };
 }
 

@@ -1,7 +1,6 @@
 import { Data, type Effect, type Schema } from 'effect';
 
 import type { PositionedEvent } from '../run-log/run-event.ts';
-import type { StepKey } from '../steps/step-entry.ts';
 import type { RunOutput } from './run-output.ts';
 
 export interface DispatchWatermark {
@@ -17,7 +16,6 @@ export interface RunContext {
 
 export interface OutputOrigin {
   readonly version: number;
-  readonly lastStep: StepKey | null;
 }
 
 export interface PositionedOutput {

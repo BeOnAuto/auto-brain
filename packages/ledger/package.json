@@ -15,6 +15,8 @@
     "measure": "node measure.ts",
     "measure:heads": "node measure-heads.ts",
     "measure:run-filters": "node measure-run-filters.ts",
+    "measure:message-index": "node measure/message-index.ts",
+    "measure:content": "node measure/recorded-content.ts",
     "lint": "oxlint -c ../../.oxlintrc.json",
     "typecheck": "tsc",
     "test": "vitest run --coverage"

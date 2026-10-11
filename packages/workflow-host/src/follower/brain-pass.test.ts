@@ -23,8 +23,10 @@ function recordAt(stream: string, position: number): RecordedEvent {
     correlationId: null,
     stream: `${brainKey}${stream}`,
     version: 1,
+    globalPosition: position,
     type: 'note_written',
     data: null,
+    context: { at: '2026-10-01T09:00:00.000Z', by: 'acme-admin' },
     recordedAt: '2026-10-01T09:00:00.000Z',
   };
 }
@@ -81,17 +83,16 @@ function deliveringEach(delivered: (id: string) => void): RecordConsumer {
                 {
                   key: followed.record.id,
                   workflow: 'note',
-                  version: 1,
                   deliver: Effect.sync(() => {
                     delivered(followed.record.id);
                   }),
+                  skipped: () => Effect.void,
                 },
               ]
             : [],
         through: followed.record.id,
         more: false,
       }),
-    skipped: () => Effect.void,
   };
 }
 

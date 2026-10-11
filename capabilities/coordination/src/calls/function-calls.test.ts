@@ -1,4 +1,5 @@
-import { stepEventIdOf, type StartCall } from '@beonauto/workflow-engine';
+import { messageIdOf } from '@beonauto/operations';
+import type { StartCall } from '@beonauto/workflow-engine';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -32,12 +33,9 @@ function callWith(arguments_: StartCall['arguments']): StartCall {
 
 const classify = callWith({ type: 'reasoning', name: 'classify', input: { ticket: 7 } });
 
-const waitingOfTheCall = stepEventIdOf(workflowRun, {
-  reference: '/do/0/classify',
-  run: 1,
-  outcome: 'waiting',
-  times: 1,
-});
+const origin = { version: 3 };
+
+const waitingOfTheCall = messageIdOf(`brain/acme/alpha/run-logs/${workflowRun}`, origin.version);
 
 function answering(result: DefinitionRunResult) {
   const asked: DefinitionRunRequest[] = [];
@@ -56,7 +54,9 @@ describe('a workflow call to a saved definition', () => {
     async (type) => {
       const { perform, asked } = answering({ status: 'succeeded', output: { urgency: 'high' } });
 
-      const result = await Effect.runPromise(perform(callWith({ type, name: 'classify', input: { ticket: 7 } }), run));
+      const result = await Effect.runPromise(
+        perform(callWith({ type, name: 'classify', input: { ticket: 7 } }), run, origin),
+      );
 
       expect(result).toEqual({ status: 'succeeded', output: { urgency: 'high' } });
       expect(asked).toEqual([
@@ -77,11 +77,11 @@ describe('a workflow call to a saved definition', () => {
     },
   );
 
-  it('starts the definition caused by the wait of its step, and belonging to the run the workflow belongs to', async () => {
+  it('starts the definition caused by the record that started its call, and belonging to the run the workflow belongs to', async () => {
     const { perform, asked } = answering({ status: 'succeeded', output: null });
     const belonging = { ...run, attributes: { ...run.attributes, lineage: { start: 'started', correlation: 'root' } } };
 
-    await Effect.runPromise(perform(classify, belonging));
+    await Effect.runPromise(perform(classify, belonging, origin));
 
     expect(asked.map(({ lineage }) => lineage)).toEqual([{ causationId: waitingOfTheCall, correlationId: 'root' }]);
   });
@@ -90,7 +90,7 @@ describe('a workflow call to a saved definition', () => {
     const { perform, asked } = answering({ status: 'succeeded', output: null });
     const reacting = { ...run, attributes: { ...run.attributes, depth: 3 } };
 
-    await Effect.runPromise(perform(classify, reacting));
+    await Effect.runPromise(perform(classify, reacting, origin));
 
     expect(asked.map(({ depth }) => depth)).toEqual([3]);
   });
@@ -100,7 +100,7 @@ describe('a workflow call with invalid arguments', () => {
   it('executes nothing when they do not name a definition it may execute', async () => {
     const { perform, asked } = answering({ status: 'succeeded', output: null });
 
-    const result = await Effect.runPromise(perform(callWith('classify'), run));
+    const result = await Effect.runPromise(perform(callWith('classify'), run, origin));
 
     expect(result).toEqual({
       status: 'rejected',
@@ -115,7 +115,7 @@ describe('a call of a workflow whose run names no caller', () => {
   it('fails for a run that names no brain or caller', async () => {
     const { perform } = answering({ status: 'succeeded', output: null });
 
-    expect(await Effect.runPromise(perform(classify, { ...run, attributes: {} }))).toEqual({
+    expect(await Effect.runPromise(perform(classify, { ...run, attributes: {} }, origin))).toEqual({
       status: 'failed',
       detail: 'The run names no brain and no caller to run a definition for',
     });
@@ -131,7 +131,7 @@ describe('the answer of a definition a workflow called', () => {
       issues: [{ detail: 'Expected a string', pointer: '/input/ticket' }],
     });
 
-    expect(await Effect.runPromise(perform(classify, run))).toEqual({
+    expect(await Effect.runPromise(perform(classify, run, origin))).toEqual({
       status: 'rejected',
       reason: 'invalid_input',
       detail: 'Wrong (/input/ticket: Expected a string)',
@@ -142,11 +142,11 @@ describe('the answer of a definition a workflow called', () => {
     const failed = answering({ status: 'failed', detail: 'The run failed with incident i-1' });
     const large = answering({ status: 'succeeded', output: 'x'.repeat(1_048_576) });
 
-    expect(await Effect.runPromise(failed.perform(classify, run))).toEqual({
+    expect(await Effect.runPromise(failed.perform(classify, run, origin))).toEqual({
       status: 'failed',
       detail: 'The run failed with incident i-1',
     });
-    expect(await Effect.runPromise(large.perform(classify, run))).toEqual({
+    expect(await Effect.runPromise(large.perform(classify, run, origin))).toEqual({
       status: 'failed',
       detail: 'The run returned 1048578 bytes as JSON, more than the 1048576 a workflow takes',
     });
@@ -155,7 +155,7 @@ describe('the answer of a definition a workflow called', () => {
   it('carries a rejection without issues as it is', async () => {
     const { perform } = answering({ status: 'rejected', reason: 'unavailable', detail: 'Busy' });
 
-    expect(await Effect.runPromise(perform(classify, run))).toEqual({
+    expect(await Effect.runPromise(perform(classify, run, origin))).toEqual({
       status: 'rejected',
       reason: 'unavailable',
       detail: 'Busy',
@@ -173,7 +173,7 @@ describe('a call whose definition is rejected with a kind and because', () => {
       because: 'mcp_server_not_configured',
     });
 
-    expect(await Effect.runPromise(perform(classify, run))).toEqual({
+    expect(await Effect.runPromise(perform(classify, run, origin))).toEqual({
       status: 'rejected',
       reason: 'unavailable',
       detail: 'No tool server of that name',

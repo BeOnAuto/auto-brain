@@ -32,7 +32,8 @@ describe('a cancel request the workflow host records on a run', () => {
     expect(records.at(-1)).toMatchObject({
       type: 'run_cancel_requested',
       ...lineage,
-      data: { kind: 'deadline', reason: deadline.reason, by: 'brain:alpha' },
+      data: { kind: 'deadline', reason: deadline.reason },
+      context: { by: 'brain:alpha' },
     });
   });
 

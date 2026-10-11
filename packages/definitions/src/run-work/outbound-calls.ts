@@ -41,10 +41,11 @@ function runWorkRecorder<Fact>(ledger: StreamWriter, commandOf: CommandOf<Fact>)
       if (!isWellFormed(run)) {
         return yield* noSuchRun;
       }
-      const stream = `${streamPrefixOfBrain(run)}${runStreamNameOf(run.id.toLowerCase())}`;
+      const runId = run.id.toLowerCase();
+      const stream = `${streamPrefixOfBrain(run)}${runStreamNameOf(runId)}`;
       const at = DateTime.formatIso(yield* DateTime.now);
       const { version } = yield* ledger
-        .execute(stream, runDecider, commandOf(fact, { by: brainCallerOf(run).id, at }), lineage)
+        .execute(stream, runDecider, commandOf(fact, { runId, by: brainCallerOf(run).id, at }), lineage)
         .pipe(Effect.catchTags({ not_found: Effect.die, cancelled: Effect.die }));
       return { id: messageIdOf(stream, version), at };
     });

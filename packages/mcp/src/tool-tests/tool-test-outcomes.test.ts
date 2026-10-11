@@ -29,7 +29,7 @@ function filling(bytes: number) {
 }
 
 const cutLarge: unknown = expect.stringMatching(
-  /^(?:😀)+\n\[The answer was cut to 65536 of its 81920 bytes; ask for fewer rows, fields or depth to see the rest\.\]$/u,
+  /^(?:😀)+\n\[The answer was cut to 65,\d{3} of its 81,920 bytes, to fit what the model may still read; ask for fewer rows, fields or depth to see the rest\.\]$/u,
 );
 
 describe('a test whose tool does not answer as asked', () => {
@@ -70,14 +70,34 @@ describe('a test whose tool does not answer as asked', () => {
       },
     });
   });
+});
 
-  it('cuts an answer over 64 KiB as a run cuts it, and counts the whole result', async () => {
+describe('a test whose tool answers more than one call may take', () => {
+  it('succeeds as too large, with no answer counted', { timeout: 120_000 }, async () => {
     const { test } = await testsWith();
 
-    expect(await test({ server: 'graph', tool: 'large', arguments: { kib: 80 } })).toMatchObject({
+    expect(await test({ server: 'graph', tool: 'large', arguments: { kib: 16_384 } })).toMatchObject({
+      status: 'succeeded',
+      output: {
+        outcome: 'too_large',
+        text: 'The MCP server answered more than the 16,777,216 bytes one call over HTTP may take',
+        result_bytes: null,
+      },
+    });
+  });
+});
+
+describe('a test whose tool answers more than a reply shows', () => {
+  it('cuts an answer over 64 KiB where it stays valid, leaves its document out, and counts the whole result', async () => {
+    const { test } = await testsWith();
+
+    const tested = await test({ server: 'graph', tool: 'large', arguments: { kib: 80 } });
+
+    expect(tested).toMatchObject({
       status: 'succeeded',
       output: { outcome: 'result', text: cutLarge, result_bytes: moreThanWasShown },
     });
+    expect(tested).not.toHaveProperty('output.answer');
   });
 });
 

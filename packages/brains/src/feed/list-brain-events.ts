@@ -1,12 +1,16 @@
 import {
+  BrainContext,
   BrainReader,
-  PagingInputFields,
-  PagingOutputFields,
+  EventPagingInputFields,
+  EventPagingOutputFields,
   PublicEventSchema,
   defaultPageLimit,
   defineQuery,
   eventsPageOf,
+  keptContentOf,
+  mostPublicEventDataBytes,
   presentationOf,
+  streamPrefixOfBrain,
   type Presentation,
   type Presenter,
   type RecordedSelection,
@@ -17,7 +21,8 @@ import { eventsFound } from '../plain-language/feed-words.ts';
 
 const description = [
   'Lists what happened in the brain a page at a time, newest first: definitions saved and retired, runs started and how they ended,',
-  'the steps of workflow runs, tool calls, and the events published to it, each with a summary in plain words.',
+  'the steps of workflow runs, tool calls, and the events published to it, each with a summary in plain words,',
+  'its fact as data with a large field as its size, and its metadata; get_event reads one event whole.',
   "Use it to follow the brain's activity or to find the events a recall function or a workflow's schedule can take; get_run_history reads one run alone.",
   '`type` keeps one type of event, `run_id` one run and every run it started, `since` what was recorded from that time on,',
   'and `cursor` is the next_cursor of the page before.',
@@ -32,20 +37,20 @@ const RunIdField = Schema.String.annotate({
 
 function feedInput(publicTypes: readonly string[]) {
   return Schema.Struct({
-    cursor: PagingInputFields.cursor,
-    since: PagingInputFields.since,
+    cursor: EventPagingInputFields.cursor,
+    since: EventPagingInputFields.since,
     type: Schema.optionalKey(
       Schema.Literals(publicTypes).annotate({ description: 'Only the events of this type, by its public name' }),
     ),
     run_id: Schema.optionalKey(RunIdField),
-    order: PagingInputFields.order,
-    limit: PagingInputFields.limit,
+    order: EventPagingInputFields.order,
+    limit: EventPagingInputFields.limit,
   });
 }
 
 type FeedInput = ReturnType<typeof feedInput>['Type'];
 
-const EventsPage = Schema.Struct({ events: Schema.Array(PublicEventSchema), ...PagingOutputFields });
+const EventsPage = Schema.Struct({ events: Schema.Array(PublicEventSchema), ...EventPagingOutputFields });
 
 function requireSomePublicType(publicTypes: readonly string[]): void {
   if (publicTypes.length === 0) {
@@ -66,11 +71,14 @@ function feedReader(presentation: Presentation) {
       ...(since === undefined ? {} : { since }),
       ...(type === undefined ? {} : { types: presentation.storedTypesOf(type) }),
     });
+    const content = yield* keptContentOf(page.records, mostPublicEventDataBytes);
+    const showing = { streamPrefix: streamPrefixOfBrain(yield* BrainContext), content, view: 'page' } as const;
     const { events, hasMore, nextCursor } = eventsPageOf(presentation, page, {
       ...paging,
+      showing,
       ...(type === undefined ? {} : { keeps: (event) => event.type === type }),
     });
-    return { events: events.map(({ event }) => event), has_more: hasMore, next_cursor: nextCursor };
+    return { events, has_more: hasMore, next_cursor: nextCursor };
   });
 }
 

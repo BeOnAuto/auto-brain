@@ -3,9 +3,12 @@ import { TestClock } from 'effect/testing';
 import { describe, expect, it } from 'vitest';
 
 import {
+  ContextSchema,
   InvalidCursor,
   cursorOfParts,
   messageIdOf,
+  type Context,
+  type Decided,
   type Decider,
   type RecordedPage,
   type RecordedPageRequest,
@@ -13,14 +16,21 @@ import {
 } from '../index.ts';
 import { memoryLedger, type MemoryLedger } from './memory-ledger.ts';
 
-const HappenedSchema = Schema.Struct({ type: Schema.String, note: Schema.String });
+const HappenedSchema = Schema.Struct({
+  type: Schema.String,
+  data: Schema.Struct({ note: Schema.String }),
+  context: ContextSchema,
+});
 
-type Happened = typeof HappenedSchema.Type;
+type Happened = Decided<typeof HappenedSchema.Type>;
 
-const happenings: Decider<null, readonly Happened[], Happened> = {
+const noted: Context = { at: '2026-10-05T09:00:00.000Z', by: 'tester' };
+
+const happenings: Decider<null, readonly Happened[], typeof HappenedSchema.Type> = {
   initialState: null,
   evolve: () => null,
   decide: (happened) => Result.succeed(happened),
+  context: () => noted,
   eventSchema: HappenedSchema,
 };
 
@@ -32,7 +42,7 @@ function recording(ledger: MemoryLedger, at: number, stream: string, ...types: r
       ledger.service.execute(
         stream,
         happenings,
-        types.map((type) => ({ type, note: type })),
+        types.map((type) => ({ type, data: { note: type } })),
       ),
     ),
   );
@@ -247,7 +257,7 @@ describe('the in-memory lineage of what a brain recorded', () => {
         yield* ledger.service.execute(
           'brain/acme/alpha/run-logs/r1',
           happenings,
-          [{ type: 'noted', note: '' }],
+          [{ type: 'noted', data: { note: '' } }],
           lineage,
         );
         return yield* Effect.all([

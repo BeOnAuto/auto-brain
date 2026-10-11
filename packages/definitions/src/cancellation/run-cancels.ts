@@ -42,15 +42,15 @@ export function runCanceller(ledger: StreamWriter): CancelRun {
       if (!isWellFormed(run)) {
         return 'unknown_run';
       }
-      const stream = `${streamPrefixOfBrain(run)}${runStreamNameOf(run.id.toLowerCase())}`;
+      const runId = run.id.toLowerCase();
+      const stream = `${streamPrefixOfBrain(run)}${runStreamNameOf(runId)}`;
       const at = DateTime.formatIso(yield* DateTime.now);
       const actor = by ?? brainCallerOf(run).id;
-      return yield* ledger
-        .execute(stream, runDecider, { type: 'cancel', kind, reason, by: actor, at, byItsCaller: true }, lineage)
-        .pipe(
-          Effect.as<CancelReceipt>('requested'),
-          Effect.catchTags({ not_found: Effect.die, cancelled: Effect.die }),
-          Effect.catchIf(endedFirst, () => Effect.succeed<CancelReceipt>('ended')),
-        );
+      const cancel = { type: 'cancel', kind, reason, runId, by: actor, at, byItsCaller: true } as const;
+      return yield* ledger.execute(stream, runDecider, cancel, lineage).pipe(
+        Effect.as<CancelReceipt>('requested'),
+        Effect.catchTags({ not_found: Effect.die, cancelled: Effect.die }),
+        Effect.catchIf(endedFirst, () => Effect.succeed<CancelReceipt>('ended')),
+      );
     });
 }

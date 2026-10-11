@@ -7,13 +7,14 @@ import type { LanguageModel } from '../model/language-model.ts';
 import type { DefinitionRejection } from './model-rejection.ts';
 import { preparedInput } from './prepared-input.ts';
 import { renderedPrompt } from './rendered-prompt.ts';
-import { answerOf } from './run-answer.ts';
+import { answerOf, type Answering } from './run-answer.ts';
 import { finishedWith } from './spending-record.ts';
 
 export interface RunServices {
   readonly languageModel: LanguageModel['Service'];
   readonly clock?: Clock.Clock;
   readonly tools: ToolAccess;
+  readonly reading?: Answering['reading'];
 }
 
 function outputOf({ text, json }: { readonly text: string; readonly json?: Schema.Json }): Schema.Json {
@@ -24,6 +25,7 @@ export function definitionRun({
   languageModel,
   clock,
   tools: access,
+  reading,
 }: RunServices): (
   definition: ReasoningFunctionDefinitionDocument,
   input: Schema.Json,
@@ -38,7 +40,7 @@ export function definitionRun({
     const fields = yield* preparedInput(input, definition.input);
     const now = new Date(yield* currentTime).toISOString();
     const prompt = yield* renderedPrompt(definition.template, { input: fields, today: now.slice(0, 10), now });
-    const result = yield* answerOf({ languageModel, access, definition, prompt, run });
+    const result = yield* answerOf({ languageModel, access, reading, definition, prompt, run });
     return yield* finishedWith(outputOf(result), {
       prompt,
       settings: definition.settings,

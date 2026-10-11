@@ -2,6 +2,7 @@ import { Effect, Result } from 'effect';
 
 import type { Timing } from '../bounds/call-bounds.ts';
 import type { Secrets } from '../bounds/secrets.ts';
+import type { KeepIn } from '../calls/recorded-calls.ts';
 import { runTools, type RunTools } from '../calls/run-tools.ts';
 import { ignored } from '../connections/ignored.ts';
 import type { CallerContext, ServerMessage, ToolsNotOpened } from './caller-context.ts';
@@ -12,6 +13,7 @@ import { namedLinks, notListed, offeredOn, unlistedOn, type Listed, type Naming 
 export interface Opening extends Naming, Pick<ToolsListing, 'toolsListed'> {
   readonly context: CallerContext;
   readonly secrets: Secrets;
+  readonly keepIn: KeepIn;
   readonly timing: Timing;
   readonly report: (message: ServerMessage) => void;
 }
@@ -41,6 +43,7 @@ export function openedRun(opening: Opening): Effect.Effect<RunTools, ToolsNotOpe
     }
     return runTools({
       ...opening,
+      keep: opening.keepIn(opening.context),
       slots: listed.map(({ slot }) => slot),
       offered: listed.flatMap((each) => offeredOn(each, opening)),
       run: Effect.runPromiseWith(context),

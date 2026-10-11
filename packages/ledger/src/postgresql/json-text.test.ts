@@ -5,6 +5,7 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { emmettEventStore, type EmmettStore } from '../emmett/emmett-event-store.ts';
 import { eventAppenderOf, VersionConflict } from '../index.ts';
+import { stamped } from '../testing/happenings.ts';
 import { outcomeOf } from '../testing/open-ledger.ts';
 import { tally } from '../testing/tally.ts';
 import { dataAsJsonText } from './json-text.ts';
@@ -29,12 +30,12 @@ describe('the data of an event kept as its JSON text', () => {
     const store = emmettEventStore(emmett, { data: dataAsJsonText, mostEventsInOneAppend: 64 });
     await store.migrate();
 
-    await store.append(run, [{ type: 'noted', data: awkward }], 0);
+    await store.append(run, [{ type: 'noted', data: awkward }], { expectedVersion: 0, context: stamped });
     const read = await store.read(run);
     const stored = await emmett.readStream(run);
 
-    expect(read).toMatchObject({ version: 1, events: [awkward] });
-    expect(JSON.stringify(read.events)).toBe(JSON.stringify([awkward]));
+    expect(read).toMatchObject({ version: 1, messages: [{ data: awkward }] });
+    expect(JSON.stringify(read.messages.map(({ data }) => data))).toBe(JSON.stringify([awkward]));
     expect(
       stored.events.map(({ type, data }: { readonly type: string; readonly data: unknown }) => ({ type, data })),
     ).toEqual([{ type: 'noted', data: { json: JSON.stringify(awkward) } }]);
@@ -43,11 +44,16 @@ describe('the data of an event kept as its JSON text', () => {
   it('is appended only at the version expected, and a wrong version meets a version conflict', async () => {
     const store = emmettEventStore(anEmmettStore(), { data: dataAsJsonText, mostEventsInOneAppend: 64 });
     await store.migrate();
-    await store.append(run, [{ type: 'noted', data: awkward }], 0);
+    await store.append(run, [{ type: 'noted', data: awkward }], { expectedVersion: 0, context: stamped });
 
-    expect(await outcomeOf(eventAppenderOf(store, tally.eventSchema)(run, [{ type: 'counted', by: 1 }], 0))).toEqual(
-      Result.fail(new VersionConflict()),
-    );
-    expect(await store.read(run)).toMatchObject({ version: 1, events: [awkward] });
+    expect(
+      await outcomeOf(
+        eventAppenderOf(store, tally.eventSchema)(run, [{ type: 'counted', data: { by: 1 } }], {
+          expectedVersion: 0,
+          context: stamped,
+        }),
+      ),
+    ).toEqual(Result.fail(new VersionConflict()));
+    expect(await store.read(run)).toMatchObject({ version: 1, messages: [{ data: awkward }] });
   });
 });

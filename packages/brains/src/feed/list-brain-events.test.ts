@@ -39,7 +39,9 @@ describe('list_brain_events', () => {
       'The events of a brain need a presenter that shows at least one type of event',
     );
   });
+});
 
+describe('the events list_brain_events reads', () => {
   it('reads what the brain recorded newest first, hiding what no presenter shows', async () => {
     const { reading } = await brainWithEvents();
 
@@ -48,7 +50,17 @@ describe('list_brain_events', () => {
       status: 'succeeded',
       output: {
         events: [
-          { at: '2026-10-01T09:05:00.000Z', type: 'note_kept', summary: 'Something happened.', data: { text: 'e' } },
+          {
+            type: 'note_kept',
+            summary: 'Something happened.',
+            data: { text: 'e' },
+            metadata: {
+              stream: 'brain/acme/alpha/notes',
+              position: 3,
+              at: '2026-10-01T09:05:00.000Z',
+              by: 'acme-admin',
+            },
+          },
         ],
         has_more: true,
       },

@@ -8,13 +8,18 @@ import { askedRunId, askedThroughChat, type HarnessLedger, type InteractionHarne
 
 const minute = 60_000;
 
+const unrenderable: unknown = expect.objectContaining({
+  because: 'unworkable',
+  detail: 'The argument text of the call that delivers the request reads a value it does not have',
+});
+
 const someText: unknown = expect.any(String);
 
 const failing = { outcome: 'server_failure', detail: 'The MCP server answered HTTP 503', retryAfterMs: null } as const;
 
 const Deferring = Schema.Struct({
   type: Schema.Literal('finish'),
-  result: Schema.Struct({ type: Schema.Literal('run_deferred'), record: Schema.JsonObject }),
+  result: Schema.Struct({ type: Schema.Literal('run_deferred'), data: Schema.Struct({ record: Schema.JsonObject }) }),
 });
 
 const isDeferring = Schema.is(Deferring);
@@ -29,8 +34,13 @@ function recordedWith(ledger: HarnessLedger, arguments_: Readonly<Record<string,
         return ledger.service.execute(stream, decider, command, given);
       }
       const deliver = { server: 'chat', tool: 'post_message', with: arguments_ };
-      const record = { ...command.result.record, deliver };
-      return ledger.service.execute(stream, decider, { ...command, result: { ...command.result, record } }, given);
+      const record = { ...command.result.data.record, deliver };
+      return ledger.service.execute(
+        stream,
+        decider,
+        { ...command, result: { ...command.result, data: { record } } },
+        given,
+      );
     },
   };
   return { service, layer: Layer.succeed(Ledger, service) };
@@ -45,10 +55,15 @@ async function endedOf(brain: InteractionHarness): Promise<readonly unknown[]> {
     brain.ledger.service.readRecorded(
       { org: 'acme', brain: 'alpha' },
       { kind: 'run', run: askedRunId },
-      { order: 'asc', limit: 20, types: ['delivery_ended'], dataOf: ['delivery_ended'] },
+      {
+        order: 'asc',
+        limit: 20,
+        types: ['delivery_succeeded', 'delivery_failed', 'delivery_refused'],
+        dataOf: ['delivery_succeeded', 'delivery_failed', 'delivery_refused'],
+      },
     ),
   );
-  return records.map(({ data }) => data);
+  return records.map(({ type, data }) => ({ type, data }));
 }
 
 describe('a delivery that fails for a while', () => {
@@ -101,7 +116,9 @@ describe('a delivery whose arguments grew past what a call may send', () => {
     expect(await brain.runOf(askedRunId)).toMatchObject({
       output: { status: 'rejected', rejection: { reason: 'unanswered', kind: 'undelivered' } },
     });
-    expect(await endedOf(brain)).toMatchObject([{ outcome: 'refused', because: 'too_large', detail: largeWords }]);
+    expect(await endedOf(brain)).toMatchObject([
+      { type: 'delivery_refused', data: { because: 'too_large', detail: largeWords } },
+    ]);
   });
 
   it('is refused as unworkable, with what went wrong, when its recorded arguments cannot be rendered', async () => {
@@ -111,13 +128,7 @@ describe('a delivery whose arguments grew past what a call may send', () => {
     await brain.performDue(askedAt);
 
     expect(tools.calls()).toEqual([]);
-    expect(await endedOf(brain)).toEqual([
-      expect.objectContaining({
-        outcome: 'refused',
-        because: 'unworkable',
-        detail: 'The argument text of the call that delivers the request reads a value it does not have',
-      }),
-    ]);
+    expect(await endedOf(brain)).toEqual([{ type: 'delivery_refused', data: unrenderable }]);
   });
 });
 

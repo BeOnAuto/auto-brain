@@ -16,7 +16,7 @@ describe('an attempt the server stopped in', () => {
     await Effect.runPromise(
       outboundCallRecorder(brain.ledger.service)(
         address,
-        { type: 'delivery_started', number: 1, target: 'ada', server: 'chat', tool: 'post_message' },
+        { type: 'delivery_started', data: { number: 1, target: 'ada', server: 'chat', tool: 'post_message' } },
         { causationId: null, correlationId: askedRunId },
       ),
     );

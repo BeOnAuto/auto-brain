@@ -9,7 +9,7 @@ import { armedByOf, sqlTimers } from './sql-timers.ts';
 
 const run = { runId: runKey, attributes: {} };
 
-const armedBy = { version: 3, lastStep: null };
+const armedBy = { version: 3 };
 
 function timerDue(timerId: string, dueAt: number): ArmTimer {
   return { kind: 'arm_timer', runId: runKey, timerId, dueAt, purpose: 'wait' };

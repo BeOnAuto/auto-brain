@@ -18,17 +18,10 @@ type Opened = Awaited<ReturnType<typeof openHostDatabase>>;
 const Places = Schema.Array(Schema.Struct({ cursor: Schema.NullOr(Schema.String) }));
 
 function finishOf(index: number) {
-  return {
-    type: 'run_succeeded',
-    output: { index },
-    record: {},
-    definition_type: 'workflow',
-    name: 'measured',
-    definition_version: 1,
-    by: 'acme-admin',
-    at,
-  };
+  return { type: 'run_succeeded', data: { output: { index }, record: {} } };
 }
+
+const ofTheRun = { by: 'acme-admin', at, definitionType: 'workflow', definitionName: 'measured', definitionVersion: 1 };
 
 async function placesOf(opened: Opened): Promise<readonly (string | null)[]> {
   const rows = await Effect.runPromise(
@@ -62,7 +55,7 @@ async function untilAt(opened: Opened, cursor: string | null): Promise<void> {
 
 async function finishedInTurn(opened: Opened, count: number, index = 0): Promise<void> {
   if (index < count) {
-    await recorded(opened.store, `${alpha}runs/${runAt(index).runId}`, finishOf(index));
+    await recorded(opened.store, `${alpha}runs/${runAt(index).runId}`, finishOf(index), ofTheRun);
     await finishedInTurn(opened, count, index + 1);
   }
 }

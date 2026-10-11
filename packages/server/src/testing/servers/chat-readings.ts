@@ -67,7 +67,7 @@ export function readRecorded(events: string): boolean {
 }
 
 export function readAndTold(events: string): boolean {
-  return readRecorded(events) && events.includes('telling_ended');
+  return readRecorded(events) && /telling_(?:succeeded|failed)/u.test(events);
 }
 
 export function readsOf(chat: Pick<FakeMcpServer, 'received'>): Promise<readonly unknown[]> {

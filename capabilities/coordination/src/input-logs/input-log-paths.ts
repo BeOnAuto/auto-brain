@@ -23,6 +23,10 @@ export interface InputLogPath {
   readonly meanwhile?: (driver: MemoryDriver, runId: string) => void;
 }
 
+function attributesOf(name: string, runId: string): JsonObject {
+  return { org: 'acme', brain: 'alpha', run_id: runId, definition: { name, version: 1 }, caller: { id: 'acme-admin' } };
+}
+
 function summarizing({ name, input }: DefinitionArguments): CallResult {
   return { status: 'succeeded', output: { summary: `${name} of ${JSON.stringify(input)}` } };
 }
@@ -241,7 +245,12 @@ export function inputLogOf(name: string): InputLog {
     machine: workflowMachineSettings,
     respond: responderOf(path.answer ?? summarizing),
   });
-  driver.start({ runId, document: workflow(path.source), input: path.input ?? {} });
+  driver.start({
+    runId,
+    document: workflow(path.source),
+    input: path.input ?? {},
+    attributes: attributesOf(path.name, runId),
+  });
   path.meanwhile?.(driver, runId);
   driver.runUntilEnded(runId);
   return {

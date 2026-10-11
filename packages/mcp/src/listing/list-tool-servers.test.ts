@@ -57,9 +57,9 @@ async function fakeServer(): Promise<FakeMcpServer> {
   return fake;
 }
 
-const echoing = { name: 'graph', type: 'http', tools: [{ name: 'echo' }] };
+const echoing = { name: 'graph', type: 'http', record_content: true, tools: [{ name: 'echo' }] };
 
-const searching = { name: 'wiki', type: 'http', tools: [{ name: 'search' }] };
+const searching = { name: 'wiki', type: 'http', record_content: true, tools: [{ name: 'search' }] };
 
 describe('list_tool_servers', () => {
   it('is a query of the brain at GET /tool-servers that reaches the servers outside', async () => {

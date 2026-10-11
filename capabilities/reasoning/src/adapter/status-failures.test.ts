@@ -12,9 +12,12 @@ function openAiError(message: string, code: string | null = null): object {
   return { error: { message, type: 'invalid_request_error', param: null, code } };
 }
 
-async function failureFor(response: () => Response): Promise<ModelFailure> {
+async function failureFor(
+  response: () => Response,
+  environment: Readonly<Record<string, string>> = {},
+): Promise<ModelFailure> {
   const recording = recordingFetch(response);
-  const access = await accessFor({ OPENAI_API_KEY: apiKey }, { fetch: recording.fetch });
+  const access = await accessFor({ OPENAI_API_KEY: apiKey, ...environment }, { fetch: recording.fetch });
   const failure = await failed(access, textRequest('openai/gpt-5'));
   expect(exposedText(failure)).not.toContain(promptText);
   expect(exposedText(failure)).not.toContain(apiKey);
@@ -34,7 +37,6 @@ describe('a provider that rejects the request', () => {
   it.each([
     [400, 'the request was rejected as invalid'],
     [404, 'the model was not found'],
-    [413, 'the request was too large'],
     [422, 'the request was rejected as invalid'],
     [418, 'the request was not accepted'],
   ])(
@@ -51,6 +53,70 @@ describe('a provider that rejects the request', () => {
       });
     },
   );
+});
+
+describe('a provider that signals the request too long', () => {
+  it.each([
+    ['HTTP 413', 413, openAiError('Request Entity Too Large')],
+    ['the error code context_length_exceeded', 400, openAiError('Too many tokens', 'context_length_exceeded')],
+    [
+      'the error type request_too_large',
+      400,
+      { error: { message: 'Too many tokens', type: 'request_too_large', param: null, code: null } },
+    ],
+  ])('fails as request_too_long by %s', async (signal, status, body) => {
+    const failure = await failureFor(() => jsonResponse(body, status));
+
+    expect(failure).toMatchObject({
+      _tag: 'request_too_long',
+      provider: 'openai',
+      status,
+      signal,
+      detail: `openai refused the request as longer than the model takes, by ${signal}`,
+      last_input_tokens: null,
+    });
+  });
+
+  it('claims no length for a message that says too long without a signal, and names the code the body carries', async () => {
+    const failure = await failureFor(() =>
+      jsonResponse(openAiError('string too long', 'string_above_max_length'), 400),
+    );
+
+    expect(failure).toMatchObject({
+      _tag: 'definition_invalid',
+      provider_message: 'string too long',
+      detail:
+        'openai answered HTTP 400: the request was rejected as invalid, with the error code string_above_max_length',
+    });
+  });
+});
+
+describe('the error code of a rejected request', () => {
+  it('is cut at a code point past 64 characters, with the mark of a cut', async () => {
+    const code = `${'x'.repeat(63)}😀${'y'.repeat(40)}`;
+
+    const failure = await failureFor(() => jsonResponse(openAiError('Unsupported parameter', code), 400));
+
+    expect(failure.detail).toBe(
+      `openai answered HTTP 400: the request was rejected as invalid, with the error code ${'x'.repeat(63)}😀…`,
+    );
+  });
+
+  it("is scrubbed of a configured key, also where the provider's message is hidden", async () => {
+    const hidden = { OPENAI_BASE_URL: 'https://proxy.example.com/v1' };
+
+    const failure = await failureFor(
+      () => jsonResponse(openAiError('Unsupported parameter', `key_${apiKey}_refused`), 400),
+      hidden,
+    );
+
+    expect(failure).toMatchObject({
+      _tag: 'definition_invalid',
+      provider_message: null,
+      detail:
+        'openai answered HTTP 400: the request was rejected as invalid, with the error code key_[redacted]_refused',
+    });
+  });
 });
 
 describe('the provider message of a rejected request', () => {

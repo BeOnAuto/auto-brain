@@ -26,13 +26,14 @@ export function definitionRunResultOf(outcome: Outcome): DefinitionRunResult {
 
 export function endedRunResultOf(ending: RunEnding): EndedRunResult {
   if (ending.type === 'run_succeeded') {
-    return { status: 'succeeded', output: ending.output };
+    return { status: 'succeeded', output: ending.data.output };
   }
   if (ending.type === 'run_failed') {
+    const { incident } = ending.data;
     return {
       status: 'failed',
-      detail: ending.incident === undefined ? 'The run failed' : `The run failed with incident ${ending.incident}`,
+      detail: incident === undefined ? 'The run failed' : `The run failed with incident ${incident}`,
     };
   }
-  return { status: 'rejected', ...ending.rejection };
+  return { status: 'rejected', ...ending.data.rejection };
 }

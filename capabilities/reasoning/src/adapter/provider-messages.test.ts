@@ -180,7 +180,7 @@ describe('the message of a gateway', () => {
       _tag: 'definition_invalid',
       provider: 'gateway',
       status: 404,
-      detail: 'gateway answered HTTP 404: the model was not found',
+      detail: 'gateway answered HTTP 404: the model was not found, with the error code 404',
       provider_message: null,
     });
     expect(gatewayInternals.filter((internal) => exposedText(failure).includes(internal))).toEqual([]);

@@ -53,10 +53,11 @@ describe('a tool server that cannot be asked for its tools', () => {
       {
         name: 'graph',
         type: 'http',
+        record_content: true,
         unavailable: 'The MCP server graph could not be used: The MCP server could not be reached',
         because: 'unreachable',
       },
-      { name: 'wiki', type: 'http', tools: [echoTool] },
+      { name: 'wiki', type: 'http', record_content: true, tools: [echoTool] },
     ]);
   });
 
@@ -71,6 +72,7 @@ describe('a tool server that cannot be asked for its tools', () => {
       {
         name: 'graph',
         type: 'http',
+        record_content: true,
         unavailable: 'The MCP server graph could not be used: The MCP server answered HTTP 503',
         because: 'failing',
       },
@@ -90,6 +92,7 @@ describe('the words of a tool server that cannot be asked', () => {
       {
         name: 'graph',
         type: 'http',
+        record_content: true,
         unavailable: `The MCP server graph could not be used: ${refusal}`.slice(0, toolBounds.failureBytes),
         because: 'failing',
       },
@@ -109,6 +112,7 @@ describe('a tool server that answers its opening HTTP 403, as a gateway answers 
       {
         name: 'graph',
         type: 'http',
+        record_content: true,
         unavailable: 'The MCP server graph could not be used: The MCP server answered HTTP 403',
         because: 'failing',
       },

@@ -19,7 +19,9 @@ const listing = /s\.stream_id > "([^"]*)" .* LIMIT (\d+)$/u;
 
 const keptRun = /"brain\/acme\/alpha\/", "(r\d+)"/gu;
 
-const began = JSON.stringify({ type: 'run_began', at: '2026-10-01T09:00:00.000Z', fn: 'triage' });
+const began = JSON.stringify({ at: '2026-10-01T09:00:00.000Z', fn: 'triage' });
+
+const stampedAsStored = { at: '2026-10-01T09:00:00.000Z', by: 'tallies' };
 
 export function runIdsOf(count: number): readonly string[] {
   return Array.from({ length: count }, (_, index) => `r${String(index).padStart(3, '0')}`);
@@ -34,6 +36,7 @@ export function aRecordedFillOf(
   sizes: readonly number[],
   describing: (sql: SQL) => string,
   dataOf: (json: string) => unknown,
+  metadataOf: (json: string) => unknown,
 ): RecordedFill {
   const stored = storedOf(sizes);
   const listings: number[] = [];
@@ -47,7 +50,13 @@ export function aRecordedFillOf(
       return stored.filter(({ stream }) => stream > String(after)).slice(0, Number(limit));
     }
     return statement.includes('FROM emt_messages')
-      ? stored.map(({ stream }) => ({ stream, type: 'run_began', data: dataOf(began), position: 1 }))
+      ? stored.map(({ stream }) => ({
+          stream,
+          type: 'run_began',
+          data: dataOf(began),
+          metadata: metadataOf(JSON.stringify(stampedAsStored)),
+          position: 1,
+        }))
       : [];
   };
   return {

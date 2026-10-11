@@ -1,7 +1,7 @@
 import { Schema } from 'effect';
 
 import type { RecordedPoint } from '../event-store.ts';
-import type { ExaminationScope, RecordHead } from '../recorded/recorded-statements.ts';
+import { readMetadataOf, type ExaminationScope, type RecordHead } from '../recorded/recorded-statements.ts';
 
 export type Query = (text: string, values: readonly unknown[]) => Promise<readonly unknown[]>;
 
@@ -24,7 +24,7 @@ export const PointFields = { transaction: Schema.String, position: Schema.String
 
 const LineageFields = {
   id: Schema.String,
-  causation: Schema.NullOr(Schema.String),
+  metadata: Schema.Unknown,
   correlation: Schema.NullOr(Schema.String),
 };
 
@@ -38,7 +38,7 @@ export const HeadFields = {
   size: Schema.Int,
 };
 
-export const lineageColumns = `message_id AS id, message_metadata ->> 'causationId' AS causation,
+export const lineageColumns = `message_id AS id, message_metadata AS metadata,
   message_metadata ->> 'correlationId' AS correlation`;
 
 export function timeOf(column: string): string {
@@ -113,12 +113,6 @@ export function sizeOf({ wanted, types }: Sized, { sized }: ExaminationScope, me
     : `CASE WHEN ${wanted} AND ${type} = ANY(${types}::text[]) THEN octet_length(${message}.message_data ->> 'json') ELSE 0 END`;
 }
 
-const escapedBackslashOrEscapeJsonbRefuses = String.raw`(\\\\)|\\u(?:0000|d[89a-f][0-9a-f]{2})`;
-
-export function eventAsJsonb(bind: Bind, data: string): string {
-  return `regexp_replace(${data} ->> 'json', ${bind(escapedBackslashOrEscapeJsonbRefuses)}, ${bind(String.raw`\1`)}, 'gi')::jsonb`;
-}
-
 interface HeadRow {
   readonly transaction: string;
   readonly position: string;
@@ -127,7 +121,7 @@ interface HeadRow {
   readonly type: string;
   readonly recorded: string;
   readonly id: string;
-  readonly causation: string | null;
+  readonly metadata: unknown;
   readonly correlation: string | null;
   readonly size: number;
 }
@@ -140,18 +134,21 @@ export function headOf({
   type,
   recorded,
   id,
-  causation,
+  metadata,
   correlation,
   size,
 }: HeadRow): RecordHead {
+  const read = readMetadataOf(metadata);
   return {
     point: [transaction, position],
     id,
-    causationId: causation,
+    causationId: read.causationId,
     correlationId: correlation,
     stream,
     version,
+    globalPosition: Number(position),
     type,
+    metadata: read.metadata,
     recordedAt: recorded,
     size,
   };

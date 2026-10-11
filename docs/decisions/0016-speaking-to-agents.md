@@ -1,6 +1,6 @@
 # 0016 — Speaking to agents: what the brain says when an agent connects, measured against the servers that do it best
 
-**Status:** accepted (2026-10-07), with the amendments from the build at the end; amended (2026-10-09): the tools advertise no output schema
+**Status:** accepted (2026-10-07), with the amendments from the build at the end; amended (2026-10-09): the tools advertise no output schema; amended (2026-10-11): the bound on the tools of a connection is set by reason
 
 ## Context
 
@@ -200,3 +200,29 @@ The protocol gives a server one way to say that its tools changed, `tools.listCh
 ### Self-check
 
 Read on 2026-10-09 against `origin/main` at 9203df9d: `tool-definition.ts:55` builds the output schema, `tool-schema.ts:69-72` makes it self-contained, `tool-result.ts:51-61` builds the result, `mcp-routes.ts:80` serves stateless and `mcp-connection.ts:43` announces no changes. The client behaviour was read in the official SDK's client and in the desktop client's bundle, and the single listing in its logs. The counts, 150 closed structs and the schemas' bytes of each listing, were measured over the listings served at 9203df9d. The amendment names no client vendor in its decision, no platform and no customer.
+
+## Amendment (2026-10-11): the bound on the tools of a connection is set by reason
+
+Decided against `origin/feat/facts-in-the-ledger` at 1f3a2397, where [decision 0023](0023-facts-in-the-ledger.md) adds `get_event`.
+
+### Context
+
+§8 bounds the tools on a connection at "25, since 0018", with a reason that names the products nearest beyond ours, which list 33 and 36 tools flat and group beyond 70, and what to do when the bound is reached. The number has tracked the count served: 22 in §4, 24 in the note "Tools on a connection" above when interaction functions landed, 25 in the note of 2026-10-08 when 0018 added `test_tool_call`, which warned that a bound that moves by one for each tool is no bound, and 26 on the branch, where 0023 adds `get_event` and its point 11 raises `mostToolsOnAConnection` (`packages/api/src/bounds/served-bounds.ts:13`), the count checked when the server starts (`mcp/mcp-connection.ts:55-56`). Measured over a server started from the branch in local mode: `/mcp` lists 26 tools in 39,207 bytes on the wire, the org endpoint 8 in 8,157 and the brain endpoint 20 in 30,996, which the server's test holds under 40,000, 9,000 and 32,000 (`packages/server/src/mcp/served-schemas.test.ts:86-90`) and which nothing checks when the server starts; the instructions take 1,882, 1,514 and 1,842 characters of 2,000. `get_run_history` and `list_brain_events` are two reads: one run's own events, oldest first, and the brain's events or one run's tree, newest first (`packages/definitions/src/reading/get-run-history.ts:70,75`; `packages/brains/src/feed/list-brain-events.ts:61-63,67`).
+
+### Decision
+
+- The binding bound on a connection is the bytes of its listing on the wire, 40,000 on `/mcp`, 9,000 on the org endpoint and 32,000 on the brain endpoint, enforced when the server starts beside the instructions and the descriptions, as §8's other bounds are, and measured in the server's test as today. A listing is what an agent's client loads whole and holds for the connection, so its size is what a bound protects.
+- The count is a limit, 32, below the smallest leader that lists its tools flat, 33, and it does not move when a tool is added; `mostToolsOnAConnection` is 32, and the server starts with 26.
+- A tool is added by a decision record that says why it is not a filter or an argument on an existing tool. `get_event` is the list-and-get pair over the event row, as `get_run` stands beside `list_runs`; `get_run_history` and `list_brain_events` are two reads with different scopes and defaults, one run's own events oldest first against the run's whole tree newest first, and one tool for both would carry a parameter to say which read is meant.
+- When either bound is reached, the tools group by endpoint or into a catalogue pair as Sentry's, as §8 says.
+- §8's row "Tools on a connection" is read as this: the listing's bytes bind, the count is a limit of 32, and the reason is the leaders' flat listings, not the count served. The previous number tracked the count served, 22, then 24, then 25, which is what the note of 2026-10-08 warned against.
+
+### Verification the build must include
+
+- The server starting with the three listings within their bytes and refusing to start with a listing one byte over, in the test that holds the bounds of §8 at the bound and one beyond; the three listings measured and pinned at 39,248, 8,157 and 31,037 bytes, as 0023's amendment of the same day leaves them.
+- `mostToolsOnAConnection` 32: the server starting at 32 tools and refusing 33, where the test holds 26 and 27 today (`packages/api/src/bounds/served-bounds.test.ts:121-128`); the test names that say "twenty-five" saying what they count (`packages/server/src/mcp/served-tools.test.ts:84`; `mcp-endpoint-workflows.test.ts:79`).
+- The api README's row of the bound reading the limit and this record, and the MCP reference's count of tools unchanged at twenty-six.
+
+### Self-check
+
+Read on 2026-10-11 against `origin/feat/facts-in-the-ledger` at 1f3a2397: `served-bounds.ts:13` holds 26, `mcp-connection.ts:55-56` checks the count at start, `served-schemas.test.ts:86-90` holds the byte bounds and the counts, and the three listings were measured over a server started from the branch in local mode. The amendment names the products §8 already names and no customer, no person and no platform.

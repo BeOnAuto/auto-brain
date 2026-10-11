@@ -119,11 +119,12 @@ describe('the journal of a run, given an answer to a call it has no start of', (
         input: {},
         definition_version: 1,
         calls_tools: true,
+        runId,
         by: 'acme-admin',
         at: '2026-10-01T09:00:00.000Z',
       });
       const journal = yield* toolCallJournal(runId, { startId: idAt(1), correlationId: runId });
-      return yield* journal.answered(answerOfCall(9));
+      return yield* journal.ended(9, answerOfCall(9));
     }).pipe(
       Effect.provideService(BrainWriter, {
         execute: (relative, decider, command, lineage) =>

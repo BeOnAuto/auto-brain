@@ -9,6 +9,10 @@ const RunAttributesSchema = Schema.Struct({
   caller: CallerIdentitySchema,
   depth: Schema.optionalKey(Schema.Int),
   call_depth: Schema.optionalKey(Schema.Int),
+  called_by: Schema.optionalKey(Schema.Struct({ run_id: Schema.String, reference: Schema.String, run: Schema.Int })),
+  trigger: Schema.optionalKey(
+    Schema.Struct({ kind: Schema.Literals(['event', 'cron', 'every']), reference: Schema.String }),
+  ),
   lineage: Schema.optionalKey(Schema.Struct({ start: Schema.String, correlation: Schema.String })),
 });
 

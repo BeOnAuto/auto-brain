@@ -27,15 +27,15 @@ function digestOf(value: Schema.Json): string {
 }
 
 export function succeedsWith(result: RunResult, output: Schema.Json): boolean {
-  return result.type === 'run_succeeded' && digestOf(result.output) === digestOf(output);
+  return result.type === 'run_succeeded' && digestOf(result.data.output) === digestOf(output);
 }
 
 export function settlementKeyOf(result: RunResult): string {
   if (result.type === 'run_succeeded') {
-    return JSON.stringify([result.type, digestOf(result.output)]);
+    return JSON.stringify([result.type, digestOf(result.data.output)]);
   }
   if (result.type === 'run_rejected') {
-    const { rejection } = result;
+    const { rejection } = result.data;
     const kind = 'kind' in rejection ? rejection.kind : undefined;
     return JSON.stringify([result.type, rejection.reason, kind ?? null]);
   }

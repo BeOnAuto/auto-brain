@@ -210,7 +210,6 @@ describe('the history of a workflow run, over HTTP', { timeout: workflowTestTime
         type: 'workflow_input_applied',
         summary: 'The workflow started, and 1 step moved.',
         data: {
-          run_id: runId,
           input: { kind: 'started', key: runId },
           step_count: 1,
           steps: [{ task: '/do/0/judge', run: 1, outcome: 'waiting' }],
@@ -221,7 +220,6 @@ describe('the history of a workflow run, over HTTP', { timeout: workflowTestTime
         type: 'workflow_input_applied',
         summary: 'A function the workflow called answered, and 3 steps moved; the workflow ended.',
         data: {
-          run_id: runId,
           input: { kind: 'call_answered', key: callKey, status: 'succeeded' },
           step_count: 3,
           steps: [

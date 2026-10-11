@@ -7,12 +7,13 @@ import type { LanguageModel } from '../model/language-model.ts';
 import type { ModelResult } from '../model/model-result.ts';
 import type { RenderedPrompt } from '../template/compiled-template.ts';
 import { withTools } from '../tools/tool-opening.ts';
-import { requestFor } from './definition-request.ts';
+import { requestFor, unknownWindows, windowFor, type ModelReading } from './definition-request.ts';
 import { rejections, spendingSince, type DefinitionRejection } from './model-rejection.ts';
 
 export interface Answering {
   readonly languageModel: LanguageModel['Service'];
   readonly access: ToolAccess;
+  readonly reading: ModelReading | undefined;
   readonly definition: ReasoningFunctionDefinitionDocument;
   readonly prompt: RenderedPrompt;
   readonly run: RunContext;
@@ -21,6 +22,7 @@ export interface Answering {
 export function answerOf({
   languageModel,
   access,
+  reading = unknownWindows,
   definition,
   prompt,
   run,
@@ -34,10 +36,12 @@ export function answerOf({
   return Effect.andThen(
     admitted,
     withTools(access, definition.tools, run, (tools) =>
-      Effect.flatMap(Clock.currentTimeMillis, (started) =>
-        languageModel
-          .generate(requestFor(definition, prompt, run, tools))
-          .pipe(Effect.catchTags(rejections(maxOutputTokens, spendingSince(started), tools))),
+      Effect.flatMap(windowFor(reading, definition.model, tools), (contextWindow) =>
+        Effect.flatMap(Clock.currentTimeMillis, (started) =>
+          languageModel
+            .generate(requestFor(definition, prompt, run, { tools, reading: { ...reading, contextWindow } }))
+            .pipe(Effect.catchTags(rejections(maxOutputTokens, spendingSince(started), tools))),
+        ),
       ),
     ),
   );

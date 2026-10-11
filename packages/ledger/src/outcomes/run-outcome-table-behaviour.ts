@@ -95,11 +95,11 @@ function aNewTableVersion(entry: LedgerEntry): void {
         const database = await entry.aDatabase();
         const writing = await aLedger(entry, database);
         await fourRuns(writing);
-        await noting(writing, 'brain/acme/alpha/runs/r6', ended('failed', 1), { type: 'run_noted' });
+        await noting(writing, 'brain/acme/alpha/runs/r6', ended('failed', 1), { type: 'run_noted', data: {} });
         await noting(writing, 'brain/acme/alpha/runs/r7/nested', began('triage'));
-        await noting(writing, 'brain/acme/alpha/runs/r8', { type: 'run_noted' });
+        await noting(writing, 'brain/acme/alpha/runs/r8', { type: 'run_noted', data: {} });
         await manyRuns(entry, database, 1000);
-        await entry.queried(database, 'CREATE TABLE run_outcomes_2 (brain_key text, row_key text)');
+        await entry.queried(database, 'CREATE TABLE run_outcomes_3 (brain_key text, row_key text)');
 
         const filled = await aLedger(entry, database, runTallies);
 
@@ -108,7 +108,7 @@ function aNewTableVersion(entry: LedgerEntry): void {
           { runs: 1000 },
         ]);
         expect((await reading(filled)).filter(({ name }) => name !== 'many')).toEqual(fourRunsKept);
-        expect(await tablesIn(entry, database)).toEqual([{ name: 'run_outcomes_3' }]);
+        expect(await tablesIn(entry, database)).toEqual([{ name: 'run_outcomes_4' }]);
       },
     );
   });
@@ -137,7 +137,7 @@ function aFillInterruptedOrDone(entry: LedgerEntry): void {
     it('is not done again by a ledger that finds the table', async () => {
       const database = await entry.aDatabase();
       await fourRuns(await aLedger(entry, database, runTallies));
-      await entry.queried(database, "DELETE FROM run_outcomes_3 WHERE row_key = 'r4'");
+      await entry.queried(database, "DELETE FROM run_outcomes_4 WHERE row_key = 'r4'");
 
       const reopened = await aLedger(entry, database, runTallies);
 
@@ -152,7 +152,7 @@ function aFillInterruptedOrDone(entry: LedgerEntry): void {
 const mebibyte = 1024 * 1024;
 
 function largeEnd(ms: number, note: string): RunFact {
-  return { type: 'run_ended', status: 'succeeded', ms, tokens: null, note };
+  return { type: 'run_ended', data: { status: 'succeeded', ms, tokens: null, note } };
 }
 
 function aFillOfLargeRecords(entry: LedgerEntry): void {

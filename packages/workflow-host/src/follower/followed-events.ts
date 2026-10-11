@@ -1,6 +1,5 @@
-import { brainFactOf, publishedEventOf, type CloudEvent, type EventPublished } from '@beonauto/definitions';
+import { brainFactOf, publishedEventOf, type CloudEvent, type RecordedEventPublished } from '@beonauto/definitions';
 import { streamKindOf, type RecordedEvent } from '@beonauto/operations';
-import { Option, Schema } from 'effect';
 
 interface Emitter {
   readonly runId: string;
@@ -25,26 +24,29 @@ const definitionFacts: ReadonlySet<string> = new Set([
   'definition_retired',
 ]);
 
-const decodeDepth = Schema.decodeUnknownOption(Schema.Struct({ depth: Schema.Int }));
-
 function otherRun(correlation: string | null, runId: string): string | undefined {
   return correlation === null || correlation === runId ? undefined : correlation;
 }
 
-function emitterOf(publication: EventPublished): Emitter | undefined {
-  const emitted = publication.emitted_by;
-  return emitted === undefined ? undefined : { runId: emitted.run_id, workflow: emitted.workflow };
+type PublishedContext = RecordedEventPublished['context'];
+
+function emitterOf(context: PublishedContext): Emitter | undefined {
+  return context.runId === undefined ? undefined : { runId: context.runId, workflow: context.definitionName };
+}
+
+function depthOf(context: PublishedContext): number {
+  return context.runId === undefined ? 1 : context.depth;
 }
 
 function published(record: RecordedEvent): EventOfRecord {
-  const publication = publishedEventOf(record.data);
+  const publication = publishedEventOf(record);
   if (publication === undefined) {
     return 'unreadable';
   }
-  const emitter = emitterOf(publication);
+  const emitter = emitterOf(publication.context);
   return {
-    event: publication.event,
-    depth: publication.depth ?? 1,
+    event: publication.data.event,
+    depth: depthOf(publication.context),
     emitter,
     ownedBy: emitter === undefined ? [] : [emitter.workflow],
     topRun: emitter === undefined ? undefined : otherRun(record.correlationId, emitter.runId),
@@ -55,19 +57,12 @@ function workflowsOfSubject(subject: string | undefined, type: string): readonly
   return subject?.startsWith(`${type}/`) === true ? [subject.slice(type.length + 1)] : [];
 }
 
-function depthOf(data: unknown): number {
-  return Option.getOrElse(
-    Option.map(decodeDepth(data), ({ depth }) => depth),
-    () => 0,
-  );
-}
-
 function fact(record: RecordedEvent, type: string): EventOfRecord {
   const event = brainFactOf(record);
   if (event === undefined) {
     return 'unreadable';
   }
-  const depth = depthOf(event.data) + 1;
+  const depth = (record.context.depth ?? 0) + 1;
   if (!runFacts.has(record.type)) {
     return { event, depth, emitter: undefined, ownedBy: [], topRun: undefined };
   }

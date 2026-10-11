@@ -1,8 +1,7 @@
-import type { Decider } from '@beonauto/operations';
-import { Result } from 'effect';
+import type { Fold } from '@beonauto/operations';
 
 import type { StrippedForms } from '../capability/stripped-forms.ts';
-import { DefinitionEventSchema, type DefinitionEvent } from './definition-events.ts';
+import { DefinitionEventSchema, type RecordedDefinitionEvent } from './definition-events.ts';
 
 export interface RecordedVersion {
   readonly source: string;
@@ -18,28 +17,22 @@ export interface VersionSearch {
 function evolvedSearch(
   name: string,
   version: number,
-): (search: VersionSearch, event: DefinitionEvent) => VersionSearch {
+): (search: VersionSearch, event: RecordedDefinitionEvent) => VersionSearch {
   return ({ position, found }, event) => {
     const at = position + 1;
-    const isTheVersion = event.type !== 'definition_retired' && event.name === name && event.version === version;
-    return {
-      position: at,
-      found: isTheVersion
-        ? {
-            source: event.content.source,
-            ...(event.content.stripped === undefined ? {} : { stripped: event.content.stripped }),
-            position: at,
-          }
-        : found,
-    };
+    const { definitionName, definitionVersion } = event.context;
+    if (event.type === 'definition_retired' || definitionName !== name || definitionVersion !== version) {
+      return { position: at, found };
+    }
+    const { source, stripped } = event.data.content;
+    return { position: at, found: { source, ...(stripped === undefined ? {} : { stripped }), position: at } };
   };
 }
 
-export function definitionVersionDecider(name: string, version: number): Decider<VersionSearch, null, DefinitionEvent> {
+export function definitionVersionFold(name: string, version: number): Fold<VersionSearch, RecordedDefinitionEvent> {
   return {
     initialState: { position: 0, found: undefined },
     evolve: evolvedSearch(name, version),
-    decide: () => Result.succeed([]),
     eventSchema: DefinitionEventSchema,
   };
 }

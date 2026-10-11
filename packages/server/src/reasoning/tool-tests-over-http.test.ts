@@ -142,10 +142,14 @@ describe('what a test records in the history of the brain', () => {
         {
           type: 'tool_test_started',
           summary: 'Someone allowed to change the brain tested the search tool of graph.',
-          causation_id: null,
-          data: { server: 'graph', tool: 'search', by: 'acme-builder' },
+          data: { server: 'graph', tool: 'search' },
+          metadata: { causation_id: null, by: 'acme-builder' },
         },
-        { type: 'tool_test_answered', summary: 'The tested tool answered.', data: { outcome: 'result' } },
+        {
+          type: 'tool_test_answered',
+          summary: 'The tested tool answered.',
+          data: { is_error: false, answer: 'Found 2 rows for acme.' },
+        },
       ],
     });
     expect([starts.body, answers.body]).toMatchObject([

@@ -6,6 +6,16 @@ import { Result, type Schema } from 'effect';
 
 import { interactionBounds } from '../run/run-bounds.ts';
 
+export function matchedAnswer(
+  answer: Schema.Json,
+  schema: Schema.JsonObject,
+): Result.Result<Schema.Json, readonly Issue[]> {
+  const compiled = compileJsonSchema(schema, { what: 'answer', nesting: interactionBounds.answerDepth });
+  return Result.isFailure(compiled)
+    ? Result.fail([{ pointer: '', detail: 'The answer schema of the request cannot be read' }])
+    : compiled.success.validate(answer);
+}
+
 export function checkedAnswer(
   answer: Schema.Json,
   schema: Schema.JsonObject,
@@ -19,8 +29,5 @@ export function checkedAnswer(
       },
     ]);
   }
-  const compiled = compileJsonSchema(schema, { what: 'answer', nesting: interactionBounds.answerDepth });
-  return Result.isFailure(compiled)
-    ? Result.fail([{ pointer: '', detail: 'The answer schema of the request cannot be read' }])
-    : compiled.success.validate(answer);
+  return matchedAnswer(answer, schema);
 }

@@ -49,17 +49,14 @@ describe('a tool its operator disallowed after a request asked through it', { ti
     const answered = await second.answer(runId, { answer: { choice: 'approve' } });
 
     expect(unreached[1]).toEqual({
-      type: 'delivery_ended',
-      run_id: runId,
-      by: 'brain:alpha',
+      type: 'delivery_failed',
       number: 1,
-      outcome: 'failed',
       because: 'server_failure',
       detail: 'The MCP server chat could not be used: The MCP server could not be reached',
       duration_ms: aNumber,
     });
     expect(facts.at(-1)).toMatchObject({
-      outcome: 'failed',
+      type: 'delivery_failed',
       because: 'tool_not_offered',
       detail: 'The operator of this server does not allow chat/post_message',
     });

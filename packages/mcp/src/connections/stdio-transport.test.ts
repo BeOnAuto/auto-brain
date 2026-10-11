@@ -153,17 +153,14 @@ describe('what a stdio server writes', { timeout: stdioTestTimeoutMs }, () => {
     ]);
   });
 
-  it('closes a process that writes more than its output may take at once', async () => {
+  it('closes a process that writes more than its output may take at once, and marks the call it answered too large', async () => {
     const { link } = linked(stdioSettings([]));
     const connection = await link.take();
 
     const settled = await called(connection, 'large', { kib: 4200 });
     await connection.closed;
 
-    expect(failureOfCall(settled)).toEqual({
-      kind: 'closed',
-      message: 'The connection to the MCP server closed',
-    });
+    expect(settled).toMatchObject({ observed: { response: { tooLarge: true } } });
   });
 
   it('sees a process exit while it is called', async () => {
@@ -185,7 +182,7 @@ describe('draining the stdio transport', { timeout: stdioTestTimeoutMs }, () => 
     const output: string[] = [];
     const transport = new StdioProcessTransport(
       { command: process.execPath, args: ['--eval', `process.stdout.write(${batch}.repeat(20000))`], env: {} },
-      observations(null),
+      observations(null, Infinity),
       {
         scrub: String,
         report: (line) => {

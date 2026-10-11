@@ -1,3 +1,4 @@
+import { DefinitionContextSchema, factOf, type Decided } from '@beonauto/operations';
 import { Schema } from 'effect';
 
 import { StrippedFormsSchema } from '../capability/stripped-forms.ts';
@@ -16,34 +17,18 @@ const DefinitionContentSchema = Schema.Struct({
 
 export type DefinitionContent = typeof DefinitionContentSchema.Type;
 
-const fact = { name: Schema.String, by: Schema.String, at: Schema.String };
-
-const DefinitionCreatedSchema = Schema.Struct({
-  type: Schema.Literal('definition_created'),
-  ...fact,
-  version: Schema.Int,
-  content: DefinitionContentSchema,
-});
-
-const DefinitionUpdatedSchema = Schema.Struct({
-  type: Schema.Literal('definition_updated'),
-  ...fact,
-  version: Schema.Int,
-  content: DefinitionContentSchema,
-});
-
-const DefinitionRetiredSchema = Schema.Struct({ type: Schema.Literal('definition_retired'), ...fact });
+const SavedSchema = Schema.Struct({ content: DefinitionContentSchema });
 
 export const DefinitionEventSchema = Schema.Union([
-  DefinitionCreatedSchema,
-  DefinitionUpdatedSchema,
-  DefinitionRetiredSchema,
+  factOf('definition_created', SavedSchema, DefinitionContextSchema),
+  factOf('definition_updated', SavedSchema, DefinitionContextSchema),
+  factOf('definition_retired', Schema.Struct({}), DefinitionContextSchema),
 ]);
 
-export type DefinitionEvent = typeof DefinitionEventSchema.Type;
+export type RecordedDefinitionEvent = typeof DefinitionEventSchema.Type;
 
-export type DefinitionCreated = Extract<DefinitionEvent, { readonly type: 'definition_created' }>;
+export type DefinitionEvent = Decided<RecordedDefinitionEvent>;
 
-export type DefinitionUpdated = Extract<DefinitionEvent, { readonly type: 'definition_updated' }>;
+export type DefinitionCreated = Extract<RecordedDefinitionEvent, { readonly type: 'definition_created' }>;
 
-export type DefinitionRetired = Extract<DefinitionEvent, { readonly type: 'definition_retired' }>;
+export type DefinitionUpdated = Extract<RecordedDefinitionEvent, { readonly type: 'definition_updated' }>;

@@ -1,8 +1,13 @@
 import { Buffer } from 'node:buffer';
 
-import { answerDocument, toolBounds, type CalledOnce, type ReadOutcome } from '@beonauto/mcp';
+import {
+  answerDocument,
+  toolBounds,
+  type CallAnswered,
+  type CalledOnce,
+  type ReadingFailedBecause,
+} from '@beonauto/mcp';
 
-import { endOfCall } from '../delivery/call-ends.ts';
 import { isBoundedPart } from '../delivery/sent-messages.ts';
 import type { Reply } from '../replies/reply-taking.ts';
 import { textAt, valueAt } from '../tool-blocks/json-pointers.ts';
@@ -10,15 +15,18 @@ import type { Replies } from '../tool-blocks/tool-block-schemas.ts';
 
 type ReplyPointers = Replies['read']['each'];
 
-export interface ReadAnswer {
-  readonly outcome: ReadOutcome;
+interface ReadOf {
   readonly replies: readonly Reply[];
   readonly ids: readonly string[];
   readonly considered: number;
   readonly retryAfterMs: number | null;
 }
 
-export function failedRead(outcome: ReadOutcome, retryAfterMs: number | null = null): ReadAnswer {
+export type ReadAnswer =
+  | (ReadOf & { readonly outcome: 'result'; readonly answered: CallAnswered })
+  | (ReadOf & { readonly outcome: ReadingFailedBecause });
+
+export function failedRead(outcome: ReadingFailedBecause, retryAfterMs: number | null = null): ReadAnswer {
   return { outcome, replies: [], ids: [], considered: 0, retryAfterMs };
 }
 
@@ -36,11 +44,12 @@ function replyOf(item: unknown, each: ReplyPointers): readonly Reply[] {
   return [{ id, sender, text: textAt(item, each.text), to: each.to === undefined ? undefined : textAt(item, each.to) }];
 }
 
-function listed(replies: Replies, document: unknown): ReadAnswer {
+function listed(replies: Replies, document: unknown, answered: CallAnswered): ReadAnswer {
   const list = valueAt(document, replies.read.list);
   return Array.isArray(list)
     ? {
         outcome: 'result',
+        answered,
         replies: list.flatMap((item: unknown) => replyOf(item, replies.read.each)),
         ids: list.flatMap((item: unknown) => idOf(item, replies.read.each)),
         considered: list.length,
@@ -53,16 +62,14 @@ export function readAnswerOf(replies: Replies, called: CalledOnce): ReadAnswer {
   if (called.kind === 'unopened') {
     return failedRead(called.refused === 'tool_not_offered' ? 'tool_not_offered' : 'server_failure');
   }
-  const end = endOfCall(called);
-  if ('failed' in end) {
-    const { because, retryAfterMs } = end.failed;
-    return failedRead(because === 'timed_out' || because === 'tool_error' ? because : 'server_failure', retryAfterMs);
+  if (called.outcome !== 'result') {
+    return failedRead(called.outcome, called.retryAfterMs);
   }
-  const document = answerDocument(end.answered);
+  const document = answerDocument(called.answer);
   if (document === undefined) {
     return failedRead('unreadable');
   }
-  return Buffer.byteLength(JSON.stringify(document), 'utf8') > toolBounds.resultBytes
+  return Buffer.byteLength(JSON.stringify(document), 'utf8') > toolBounds.readAnswerBytes
     ? failedRead('too_large')
-    : listed(replies, document);
+    : listed(replies, document, called.answered);
 }

@@ -44,3 +44,23 @@ export const PagingOutputFields = {
     description: 'The cursor that reads the page after this one, null when nothing remains',
   }),
 };
+
+export const EventPagingInputFields = {
+  limit: PagingInputFields.limit,
+  cursor: Schema.optionalKey(
+    Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(longestCursor)).annotate({
+      description: 'The next_cursor of the page before, to read on after it',
+    }),
+  ),
+  order: PagingInputFields.order,
+  since: PagingInputFields.since,
+};
+
+export const EventPagingOutputFields = {
+  has_more: Schema.Boolean.annotate({
+    description: 'Whether more remains to read after this page, which may hold fewer events than its limit, or none',
+  }),
+  next_cursor: Schema.NullOr(Schema.String).annotate({
+    description: 'The cursor that reads the page after this one, null when nothing remains',
+  }),
+};

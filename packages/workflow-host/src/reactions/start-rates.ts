@@ -1,4 +1,5 @@
-import { StartingTriggerSchema, triggerNamed } from '@beonauto/definitions';
+import { triggerNamed } from '@beonauto/definitions';
+import { StartingTriggerSchema } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
 import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';
@@ -88,7 +89,7 @@ function started(
 ): Effect.Effect<void, DeliveryFailed> {
   return startReaction(start).pipe(
     Effect.catchTag('start_rejected', ({ detail }: Readonly<{ detail: string }>) =>
-      refusals.refuse(brainKey, start.workflow, unstarted(start, detail)),
+      refusals.refuse(brainKey, start, unstarted(start, detail)),
     ),
     Effect.mapError(({ detail }: Readonly<{ detail: string }>) => new DeliveryFailed({ detail })),
   );
@@ -99,7 +100,7 @@ function deferredStart({ database, refusals }: StartingParts, brainKey: string, 
     deferred >= mostDeferredStarts
       ? refusals.refuse(
           brainKey,
-          start.workflow,
+          start,
           `The workflow was started by its ${triggerNamed(start.trigger.kind)} ${mostStartsAMinute} times a minute and ${mostDeferredStarts} starts already waited for a later minute, the most it keeps; this start was refused`,
         )
       : Effect.asVoid(
@@ -141,7 +142,7 @@ function failedWhenDue(parts: StartingParts, deferred: Deferred, minute: number,
   return attempts < deliverySweeps
     ? deferredAgain(parts, deferred, minute, attempts)
     : Effect.andThen(
-        parts.refusals.refuse(deferred.brain_key, deferred.start.workflow, unstarted(deferred.start, detail)),
+        parts.refusals.refuse(deferred.brain_key, deferred.start, unstarted(deferred.start, detail)),
         withoutDeferred(parts.database, deferred),
       );
 }

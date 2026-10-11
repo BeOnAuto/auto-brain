@@ -72,8 +72,8 @@ export const publishEvent = defineCommand('brain', {
       publishedEventDecider,
       { ...publication, by, at },
     );
-    const recorded = yield* recordedPublication(state);
-    return { id: recorded.event.id, time: recorded.event.time, recorded_at: recorded.at };
+    const { data, context } = yield* recordedPublication(state);
+    return { id: data.event.id, time: data.event.time, recorded_at: context.at };
   }),
   plainLanguage: {
     task: 'publish an event to the brain',

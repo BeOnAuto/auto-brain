@@ -30,19 +30,17 @@ const NameRows = Schema.Array(Schema.Struct({ name: Schema.String }));
 
 const StreamRows = Schema.Array(Schema.Struct({ stream: Schema.String, size: Schema.Number }));
 
-const MessageRows = Schema.Array(
-  Schema.Struct({ stream: Schema.String, type: Schema.String, data: Schema.Unknown, position: Schema.Number }),
-);
+const MessageFields = {
+  stream: Schema.String,
+  type: Schema.String,
+  data: Schema.Unknown,
+  metadata: Schema.Unknown,
+  position: Schema.Number,
+};
 
-const OrderedMessageRows = Schema.Array(
-  Schema.Struct({
-    point: Schema.String,
-    stream: Schema.String,
-    type: Schema.String,
-    data: Schema.Unknown,
-    position: Schema.Number,
-  }),
-);
+const MessageRows = Schema.Array(Schema.Struct(MessageFields));
+
+const OrderedMessageRows = Schema.Array(Schema.Struct({ point: Schema.String, ...MessageFields }));
 
 const decodeObjects = Schema.decodeUnknownSync(Schema.Array(Schema.Record(Schema.String, Schema.Unknown)));
 

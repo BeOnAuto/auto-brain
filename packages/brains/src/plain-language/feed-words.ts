@@ -37,9 +37,19 @@ function nothingFound(request: FeedRequest): string {
 export function eventsFound({ events, has_more: hasMore }: Feed, request: FeedRequest): string {
   if (events.length > 0) {
     const found = `Found ${counted(events.length, eventNoun)}${ofTheKind(request)} in this brain${sinceTheTime(request)}`;
-    return `${found}, ${orderInWords[request.order ?? 'desc']}.${hasMore ? ' More remain after these.' : ''}`;
+    const order = orderInWords[request.order ?? 'desc'];
+    return `${found}, ${order}, each with its fact and its metadata.${hasMore ? ' More remain after these.' : ''}`;
   }
   return hasMore
     ? `This page shows nothing${ofTheKind(request)}, but there is more of this brain to read.`
     : nothingFound(request);
+}
+
+interface FoundEvent {
+  readonly type: string;
+  readonly summary: string;
+}
+
+export function eventFound({ type, summary }: FoundEvent): string {
+  return `Found the ${type} event, whole: ${summary}`;
 }

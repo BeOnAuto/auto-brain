@@ -18,10 +18,10 @@ export interface RecordedWaiting {
 
 export function resultOfEnding(ending: RunEnding): CallResult {
   if (ending.type === 'run_succeeded') {
-    return { status: 'succeeded', output: ending.output };
+    return { status: 'succeeded', output: ending.data.output };
   }
   return ending.type === 'run_rejected'
-    ? { status: 'rejected', reason: ending.rejection.reason, detail: ending.rejection.detail }
+    ? { status: 'rejected', reason: ending.data.rejection.reason, detail: ending.data.rejection.detail }
     : { status: 'failed', detail: 'The run broke down' };
 }
 

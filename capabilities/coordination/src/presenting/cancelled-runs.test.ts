@@ -1,5 +1,6 @@
 import { internalTermsIn } from '@beonauto/api/testing';
 import { presentationOf, type RecordedEvent } from '@beonauto/operations';
+import { nothingKept } from '@beonauto/operations/testing';
 import { RunLogEventSchema, callKeyText, type InputReceipt, type RunLogEvent } from '@beonauto/workflow-engine';
 import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
@@ -16,6 +17,8 @@ const encodeEvent = Schema.encodeSync(Schema.toCodecJson(RunLogEventSchema));
 
 const presentation = presentationOf([runPresenter]);
 
+const showing = { streamPrefix: 'brain/acme/alpha/', content: nothingKept, view: 'page' } as const;
+
 function presented(receipt: InputReceipt) {
   const event: RunLogEvent = { type: 'input_applied', format: 6, receipt, steps: [], patch: [], outputs: [] };
   const record: RecordedEvent = {
@@ -25,11 +28,20 @@ function presented(receipt: InputReceipt) {
     correlationId: runId,
     stream: `run-logs/${runId}`,
     version: 1,
+    globalPosition: 1,
     type: event.type,
     data: encodeEvent(event),
+    context: {
+      at: '2026-10-05T09:00:00.000Z',
+      by: 'acme-admin',
+      runId,
+      definitionType: 'workflow',
+      definitionName: 'triage',
+      definitionVersion: 1,
+    },
     recordedAt: '2026-10-05T09:00:00.000Z',
   };
-  return presentation.present(record).at(0);
+  return presentation.present(record, showing).at(0);
 }
 
 const callKey = callKeyText({ runId: runKey, reference: '/do/0/review', run: 1 });

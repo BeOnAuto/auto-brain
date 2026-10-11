@@ -1,32 +1,49 @@
 import { Effect, Option, Result, Schema } from 'effect';
 
 import {
+  ActedContextSchema,
   BrainReader,
   defineQuery,
+  factOf,
+  type Context,
+  type Decided,
   type Decider,
+  type ProjectedMessage,
   type RunOutcome,
   type RunOutcomeGroup,
   type RunOutcomeMapping,
 } from '../index.ts';
 
-const BeganSchema = Schema.Struct({ type: Schema.Literal('run_began'), at: Schema.String, fn: Schema.String });
+const BeganSchema = factOf('run_began', Schema.Struct({ at: Schema.String, fn: Schema.String }), ActedContextSchema);
 
-const EndedSchema = Schema.Struct({
-  type: Schema.Literal('run_ended'),
-  status: Schema.Literals(['succeeded', 'failed', 'rejected']),
-  ms: Schema.NullOr(Schema.Int),
-  tokens: Schema.NullOr(Schema.Int),
-  note: Schema.optionalKey(Schema.String),
-});
+const EndedSchema = factOf(
+  'run_ended',
+  Schema.Struct({
+    status: Schema.Literals(['succeeded', 'failed', 'rejected']),
+    ms: Schema.NullOr(Schema.Int),
+    tokens: Schema.NullOr(Schema.Int),
+    note: Schema.optionalKey(Schema.String),
+  }),
+  ActedContextSchema,
+);
 
-const RunFactSchema = Schema.Union([BeganSchema, EndedSchema, Schema.Struct({ type: Schema.Literal('run_noted') })]);
+const RunFactSchema = Schema.Union([
+  BeganSchema,
+  EndedSchema,
+  factOf('run_noted', Schema.Struct({}), ActedContextSchema),
+]);
 
-export type RunFact = typeof RunFactSchema.Type;
+type RecordedRunFact = typeof RunFactSchema.Type;
 
-export const runFacts: Decider<null, readonly RunFact[], RunFact> = {
+export type RunFact = Decided<RecordedRunFact>;
+
+export const talliedContext: Context = { at: '2026-10-05T09:00:00.000Z', by: 'tallies' };
+
+export const runFacts: Decider<null, readonly RunFact[], RecordedRunFact> = {
   initialState: null,
   evolve: () => null,
   decide: (facts) => Result.succeed(facts),
+  context: () => talliedContext,
   eventSchema: RunFactSchema,
 };
 
@@ -36,7 +53,7 @@ const decodeFact = Schema.decodeUnknownOption(TalliedSchema);
 
 function tallied(row: RunOutcome | undefined, fact: typeof TalliedSchema.Type): RunOutcome | undefined {
   if (fact.type === 'run_began') {
-    const { at, fn } = fact;
+    const { at, fn } = fact.data;
     const started = {
       startedDay: at.slice(0, 10),
       startedAt: at,
@@ -56,14 +73,14 @@ function tallied(row: RunOutcome | undefined, fact: typeof TalliedSchema.Type): 
   if (row === undefined) {
     return undefined;
   }
-  const { status, ms, tokens } = fact;
+  const { status, ms, tokens } = fact.data;
   return { ...row, status, durationMs: ms, inputTokens: tokens, outputTokens: tokens, cachedTokens: tokens };
 }
 
 export const runTallies: RunOutcomeMapping = {
   types: ['run_began', 'run_ended'],
-  rowAfter: (row, event) =>
-    Option.getOrUndefined(Option.flatMapNullishOr(decodeFact(event), (fact) => tallied(row, fact))),
+  rowAfter: (row, { type, data, context }: ProjectedMessage) =>
+    Option.getOrUndefined(Option.flatMapNullishOr(decodeFact({ type, data, context }), (fact) => tallied(row, fact))),
 };
 
 const GroupSchema = Schema.Struct({

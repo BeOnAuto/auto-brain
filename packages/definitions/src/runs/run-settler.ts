@@ -54,7 +54,7 @@ const isWellFormed = Schema.is(
 
 const decodeSuccess = Schema.decodeUnknownEffect(Schema.Struct({ output: Schema.Json, record: Schema.JsonObject }));
 
-const failure: RunResult = { type: 'run_failed' };
+const failure: RunResult = { type: 'run_failed', data: {} };
 
 function rejectionOf(settlement: SettledRejection): RunRejection {
   if (settlement.reason === 'invalid_input') {
@@ -80,11 +80,16 @@ function rejectedWith(settlement: SettledRejection): Effect.Effect<RunResult> {
   const { record } = settlement;
   const rejection = rejectionOf(settlement);
   return record === undefined
-    ? Effect.succeed({ type: 'run_rejected', rejection })
-    : Effect.as(withinResultLimit(record), { type: 'run_rejected', rejection, record });
+    ? Effect.succeed({ type: 'run_rejected', data: { rejection } })
+    : Effect.as(withinResultLimit(record), { type: 'run_rejected', data: { rejection, record } });
 }
 
 const noSuchRun = new NotFound({ detail: 'There is no such run in this brain' });
+
+interface SettledRun {
+  readonly stream: string;
+  readonly runId: string;
+}
 
 function streamOf(address: RunStreamAddress): Effect.Effect<string, NotFound> {
   return isWellFormed(address)
@@ -101,14 +106,14 @@ function resultOf(settlement: Settlement): Effect.Effect<RunResult> {
     return decodeSuccess({ output: settlement.output, record: settlement.record ?? {} }).pipe(
       Effect.orDie,
       Effect.tap(({ output, record }) => withinResultLimit(output, record)),
-      Effect.map(({ output, record }): RunResult => ({ type: 'run_succeeded', output, record })),
+      Effect.map(({ output, record }): RunResult => ({ type: 'run_succeeded', data: { output, record } })),
     );
   }
   if (settlement.status === 'rejected') {
     return rejectedWith(settlement);
   }
   const { incident } = settlement;
-  return Effect.succeed(incident === undefined ? failure : { type: 'run_failed', incident });
+  return Effect.succeed(incident === undefined ? failure : { type: 'run_failed', data: { incident } });
 }
 
 function settledOnLatest(ledger: StreamWriter): SettledOn {
@@ -127,20 +132,20 @@ function settlerOver(
   settledOn: SettledOn,
   streamNamed: (address: RunStreamAddress) => Effect.Effect<string, NotFound>,
 ): SettleRun {
-  const settle = Effect.fnUntraced(function* (stream: string, result: RunResult, by: string, lineage?: Lineage) {
+  const settle = Effect.fnUntraced(function* (target: SettledRun, result: RunResult, by: string, lineage?: Lineage) {
     const at = DateTime.formatIso(yield* DateTime.now);
-    return yield* settledOn(stream, { type: 'settle', result, by, at }, lineage).pipe(
+    return yield* settledOn(target.stream, { type: 'settle', result, runId: target.runId, by, at }, lineage).pipe(
       Effect.catchTag('cancelled', Effect.die),
     );
   });
   return (run, settlement, lineage) =>
     Effect.gen(function* () {
-      const stream = yield* streamNamed(run);
+      const target = { stream: yield* streamNamed(run), runId: run.id.toLowerCase() };
       const by = settlement.by ?? brainCallerOf(run).id;
       const result = yield* resultOf(settlement).pipe(
-        Effect.tapDefect(() => Effect.ignore(settle(stream, failure, by, lineage))),
+        Effect.tapDefect(() => Effect.ignore(settle(target, failure, by, lineage))),
       );
-      const { state } = yield* settle(stream, result, by, lineage);
+      const { state } = yield* settle(target, result, by, lineage);
       return yield* runOf(run.id.toLowerCase(), state);
     });
 }

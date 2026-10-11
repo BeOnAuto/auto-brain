@@ -52,8 +52,10 @@ const record: RecordedEvent = {
   correlationId: null,
   stream,
   version: 2,
+  globalPosition: 2,
   type: 'input_applied',
   data: null,
+  context: { at: '2026-10-01T09:00:00.000Z', by: 'acme-admin' },
   recordedAt: '2026-10-01T09:00:00.000Z',
 };
 

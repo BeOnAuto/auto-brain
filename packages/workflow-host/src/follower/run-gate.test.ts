@@ -57,8 +57,10 @@ function runRecord(version: number): RecordedEvent {
     correlationId: null,
     stream,
     version,
+    globalPosition: version,
     type: 'input_applied',
     data: null,
+    context: { at: '2026-10-01T09:00:00.000Z', by: 'acme-admin' },
     recordedAt: '2026-10-01T09:00:00.000Z',
   };
 }

@@ -111,17 +111,23 @@ function reportedStops(parts: OfferParts, brainKey: string, { row, stopped }: Li
     (error) =>
       parts.refusals.refuse(
         brainKey,
-        row.workflow,
+        row,
         `The filter of a listen task of the workflow was stopped by its deadline or its memory ${stopsInARowBeforeTheVersion} times in a row, so the brain's events are not offered through it again for this version of the workflow; events sent to its runs still reach them: ${describeError(error)}`,
       ),
     { discard: true },
   );
 }
 
-function offeredLater(row: MatchedListener): Delivery {
+function skippedOffer(parts: OfferParts, row: MatchedListener, { brainKey }: FollowedRecord) {
+  return (detail: string) =>
+    parts.refusals.refuse(brainKey, row, `An event could not be offered to a run waiting for it: ${detail}`);
+}
+
+function offeredLater(parts: OfferParts, row: MatchedListener, followed: FollowedRecord): Delivery {
   return {
     key: keyOf(row),
     workflow: row.workflow,
+    skipped: skippedOffer(parts, row, followed),
     deliver: Effect.fail(
       new DeliveryFailed({
         detail:
@@ -135,7 +141,7 @@ function deliveriesOf(parts: OfferParts, { row, accepted, struck }: ListenerVerd
   if (accepted) {
     return [offerOf(parts, row, followed)];
   }
-  return struck ? [offeredLater(row)] : [];
+  return struck ? [offeredLater(parts, row, followed)] : [];
 }
 
 function emittedByTheRun(row: MatchedListener, { event }: FollowedRecord): boolean {
@@ -146,6 +152,7 @@ function offerOf(parts: OfferParts, row: MatchedListener, followed: FollowedReco
   return {
     key: keyOf(row),
     workflow: row.workflow,
+    skipped: skippedOffer(parts, row, followed),
     deliver: parts
       .offer({
         runKey: row.run_key,
@@ -186,7 +193,5 @@ export function listenerOffers(parts: OfferParts): RecordConsumer {
           more: rows.length > most,
         };
       }),
-    skipped: ({ brainKey }, { workflow }, detail) =>
-      parts.refusals.refuse(brainKey, workflow, `An event could not be offered to a run waiting for it: ${detail}`),
   };
 }

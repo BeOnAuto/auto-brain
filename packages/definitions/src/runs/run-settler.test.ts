@@ -1,4 +1,4 @@
-import { Conflict, NotFound } from '@beonauto/operations';
+import { Conflict, NotFound, type RecordedEvent } from '@beonauto/operations';
 import { Effect, Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -154,8 +154,9 @@ describe('a settlement whose output is too large or is not JSON', () => {
   });
 });
 
-function finishIn(page: { readonly records: readonly { readonly data: unknown }[] }): unknown {
-  return page.records.at(-1)?.data;
+function finishIn(page: { readonly records: readonly RecordedEvent[] }) {
+  const finish = page.records.at(-1);
+  return { type: finish?.type, data: finish?.data, by: finish?.context.by };
 }
 
 const everything = { kind: 'everything' } as const;
@@ -269,7 +270,7 @@ describe('what a settlement records', () => {
       ),
     );
 
-    expect(finishIn(page)).toMatchObject({ type: 'run_failed', incident: 'incident-1' });
+    expect(finishIn(page)).toMatchObject({ type: 'run_failed', data: { incident: 'incident-1' } });
   });
 
   it('records the actor who settled it, the brain itself when none is named', async () => {

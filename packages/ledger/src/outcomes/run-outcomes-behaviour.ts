@@ -23,7 +23,7 @@ export function noting(ledger: AnyLedger, stream: string, ...facts: readonly Run
 }
 
 export function began(fn: string, at = '2026-10-01T09:00:00.000Z'): RunFact {
-  return { type: 'run_began', at, fn };
+  return { type: 'run_began', data: { at, fn } };
 }
 
 export function ended(
@@ -31,7 +31,7 @@ export function ended(
   ms: number | null,
   tokens: number | null = null,
 ): RunFact {
-  return { type: 'run_ended', status, ms, tokens };
+  return { type: 'run_ended', data: { status, ms, tokens } };
 }
 
 function inOrder(groups: readonly RunOutcomeGroup[]): readonly RunOutcomeGroup[] {
@@ -142,7 +142,7 @@ function theRowOfEachRun(aLedger: LedgerKeeping): void {
       const ledger = await aLedger(runTallies);
       await noting(ledger, 'brain/acme/alpha/run-logs/r1', began('triage'));
       await noting(ledger, 'brain/acme/alpha/runs/r2/nested', began('triage'));
-      await noting(ledger, 'brain/acme/alpha/runs/r3', ended('failed', 5), { type: 'run_noted' });
+      await noting(ledger, 'brain/acme/alpha/runs/r3', ended('failed', 5), { type: 'run_noted', data: {} });
 
       expect(await reading(ledger)).toEqual([]);
     });

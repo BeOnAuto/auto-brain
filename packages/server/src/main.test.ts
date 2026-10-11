@@ -55,17 +55,16 @@ function logLines(stderr: string): readonly { readonly message: string; readonly
   return stderr
     .split('\n')
     .filter((line) => line !== '')
-    .map((line) => {
-      const { message, level } = decodeLogLine(line);
-      return { message, level };
-    });
+    .map((line) => decodeLogLine(line));
 }
 
 const noModelProvider =
   'No model provider is configured, so reasoning functions cannot run; set ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY or MODEL_GATEWAYS';
 
-const workflowsRun =
-  'Workflows run in this server: a run lasts at most 30 days, at most 32 of their calls run at once, and the runs are swept every 1000 ms';
+const functionsRun: readonly string[] = [
+  "Reasoning functions run in this server: the model calls of a run add up to at most 2,000,000 input tokens, and each answer of a tool is read whole where it fits the model's context window",
+  'Workflows run in this server: a run lasts at most 30 days, at most 32 of their calls run at once, and the runs are swept every 1000 ms',
+];
 
 const ledgerKept = `The ledger is kept in the file ${ledger.fileName}`;
 
@@ -94,7 +93,7 @@ function messagesOf(stderr: string): readonly string[] {
 }
 
 function startInLocalMode(...after: readonly string[]): readonly unknown[] {
-  return [expect.stringMatching(/^Local mode is on: /u), ledgerKept, noModelProvider, workflowsRun, ...after];
+  return [expect.stringMatching(/^Local mode is on: /u), ledgerKept, noModelProvider, ...functionsRun, ...after];
 }
 
 describe('main', { timeout: spawnedServerTestTimeoutMs }, () => {
@@ -205,7 +204,7 @@ describe('main with settings', { timeout: spawnedServerTestTimeoutMs }, () => {
     expect({ withoutKey: withoutKey.status, withKey: withKey.status }).toEqual({ withoutKey: 401, withKey: 200 });
     expect(withoutKey.headers.get('www-authenticate')).toBe('Bearer');
     expect(child.output().stdout).toBe(`auto-brain listening on port ${port}\n`);
-    expect(messagesOf(child.output().stderr)).toEqual([ledgerKept, noModelProvider, workflowsRun]);
+    expect(messagesOf(child.output().stderr)).toEqual([ledgerKept, noModelProvider, ...functionsRun]);
   });
 
   it.each(invalidSettings)(

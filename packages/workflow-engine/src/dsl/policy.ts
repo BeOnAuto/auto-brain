@@ -21,6 +21,7 @@ import {
   type Rejection,
 } from './policy-checks.ts';
 import { commonRejections, ownRejections } from './task-policy.ts';
+import { referenceRejections } from './task-references.ts';
 import { kindOf, pointerTo, taskEntries, type TaskEntry } from './tasks.ts';
 
 type Policy = (document: JsonObject) => readonly Rejection[];
@@ -141,7 +142,8 @@ function taskListRejections(
 }
 
 function taskRejections(entry: TaskEntry, components: Components, functions: CallFunctions): readonly Rejection[] {
-  return ownRejections(entry, components, functions).concat(
+  return referenceRejections(entry).concat(
+    ownRejections(entry, components, functions),
     commonRejections(entry, components),
     nestedRejections(entry, components, functions),
   );

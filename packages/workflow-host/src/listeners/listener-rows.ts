@@ -1,7 +1,7 @@
 import { CallKeySchema, type CallKey } from '@beonauto/workflow-engine';
 import { Effect, Schema } from 'effect';
 
-import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';
+import { rowsOf, WholeNumber, type DatabaseFailed, type HostDatabase } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
 
 export interface ListenerRow {
@@ -221,4 +221,19 @@ export function listenersOfType(
       ),
     ),
   );
+}
+
+const ArmedByRow = Schema.Struct({ armed_by: WholeNumber });
+
+export function armedByOfListener(
+  database: HostDatabase,
+  runKey: string,
+  listener: string,
+): Effect.Effect<number | null, DatabaseFailed> {
+  return rowsOf(
+    ArmedByRow,
+    database.read(
+      statement`SELECT armed_by FROM workflow_listeners WHERE run_key = ${runKey} AND listener = ${listener}`,
+    ),
+  ).pipe(Effect.map((rows) => rows[0]?.armed_by ?? null));
 }

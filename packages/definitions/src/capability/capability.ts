@@ -1,9 +1,18 @@
-import type { CallerIdentity, Conflict, InvalidInput, Noun, Settlement, Unavailable } from '@beonauto/operations';
+import type { CallEnded, CallStarted } from '@beonauto/mcp';
+import type {
+  CallerIdentity,
+  CallLink,
+  Conflict,
+  InvalidInput,
+  Noun,
+  Settlement,
+  TriggerLink,
+  Unavailable,
+} from '@beonauto/operations';
 import { Effect, type Schema } from 'effect';
 
 import type { Trigger } from '../registry/definition-triggers.ts';
 import { deliveryEnded, deliveryStarted } from '../run-work/delivery-words.ts';
-import type { CallAnsweredFact, CallStartedFact } from '../runs/run-commands.ts';
 import type { CancelRequestKind, DeliveryEvent } from '../runs/run-events.ts';
 import type { BroughtAnswer } from '../runs/run-state.ts';
 import { noStrippedForms, type StrippedForms } from './stripped-forms.ts';
@@ -28,8 +37,8 @@ export interface StandingRequest {
 export type Standing = (request: StandingRequest) => Effect.Effect<Schema.JsonObject | undefined>;
 
 export interface ToolCallJournal {
-  readonly started: (fact: CallStartedFact) => Effect.Effect<number | undefined>;
-  readonly answered: (fact: CallAnsweredFact) => Effect.Effect<boolean>;
+  readonly started: (fact: CallStarted) => Effect.Effect<number | undefined>;
+  readonly ended: (number: number, fact: CallEnded) => Effect.Effect<boolean>;
 }
 
 export interface RunLineage {
@@ -47,6 +56,8 @@ export interface RunContext {
   readonly lineage: RunLineage;
   readonly depth: number;
   readonly callDepth: number;
+  readonly calledBy?: CallLink;
+  readonly trigger?: TriggerLink;
   readonly longestRunOf: (type: string, name: string) => Effect.Effect<number | undefined>;
 }
 

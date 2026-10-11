@@ -7,13 +7,15 @@ function causeOf(input: RunInput, { resumed }: RunLogEvent): RecordCause {
   if (input.kind === 'started') {
     return { kind: 'start' };
   }
-  if (resumed !== undefined && resumed !== null) {
-    return { kind: 'resumed', step: { ...resumed, outcome: 'waiting' } };
+  if (input.kind === 'timer_fired') {
+    return { kind: 'timer', timerId: input.timerId };
   }
   if (input.kind === 'cancel_requested' && input.cause !== undefined) {
     return { kind: 'given', id: input.cause };
   }
-  return input.kind === 'timer_fired' ? { kind: 'timer', timerId: input.timerId } : { kind: 'none' };
+  return resumed === undefined || resumed === null
+    ? { kind: 'none' }
+    : { kind: 'resumed', step: { ...resumed, outcome: 'waiting' } };
 }
 
 export function recordLineageOf(input: RunInput, state: RunState, event: RunLogEvent): RecordLineage {

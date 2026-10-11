@@ -31,6 +31,7 @@ const definitionTools = [
   'get_run_history',
   'get_brain_analytics',
   'list_brain_events',
+  'get_event',
   'publish_event',
   'list_tool_servers',
   'test_tool_call',

@@ -1,6 +1,7 @@
 import type { RunContext } from '@beonauto/definitions';
 import type { RunTools } from '@beonauto/mcp';
 import { runBoundMs } from '@beonauto/mcp/policy';
+import { Effect } from 'effect';
 
 import { mostOutputTokens } from '../definition/definition-settings.ts';
 import type { ReasoningFunctionDefinitionDocument } from '../definition/reasoning-function-definition.ts';
@@ -22,15 +23,57 @@ export function longestRunMsOf({ settings, tools }: ReasoningFunctionDefinitionD
   return tools.length === 0 ? timeoutMs : runBoundMs(timeoutMs);
 }
 
-function modelToolsOf({ offered, callsEnded, calledAny, ended }: RunTools, timeoutMs: number): ModelTools {
-  return { offered, callsEnded, calledAny, ended, runBoundMs: runBoundMs(timeoutMs) };
+export const defaultMostInputTokens = 2_000_000;
+
+export interface ModelReading {
+  readonly mostInputTokens: number;
+  readonly contextWindowOf: (model: string) => Effect.Effect<number | undefined>;
+}
+
+export const unknownWindows: ModelReading = {
+  mostInputTokens: defaultMostInputTokens,
+  contextWindowOf: () => Effect.undefined,
+};
+
+export function windowFor(
+  { contextWindowOf }: ModelReading,
+  model: string,
+  tools: RunTools | undefined,
+): Effect.Effect<number | undefined> {
+  return tools === undefined ? Effect.undefined : contextWindowOf(model);
+}
+
+interface ToolReading {
+  readonly mostInputTokens: number;
+  readonly contextWindow: number | undefined;
+}
+
+export interface RequestTools {
+  readonly tools: RunTools | undefined;
+  readonly reading: ToolReading;
+}
+
+function modelToolsOf(
+  { offered, callsEnded, calledAny, ended }: RunTools,
+  { mostInputTokens, contextWindow }: ToolReading,
+  timeoutMs: number,
+): ModelTools {
+  return {
+    offered,
+    callsEnded,
+    calledAny,
+    ended,
+    runBoundMs: runBoundMs(timeoutMs),
+    mostInputTokens,
+    ...(contextWindow === undefined ? {} : { contextWindow }),
+  };
 }
 
 export function requestFor(
   definition: ReasoningFunctionDefinitionDocument,
   { instructions, message }: RenderedPrompt,
   run: RunContext,
-  tools?: RunTools,
+  using?: RequestTools,
 ): ModelRequest {
   const timeoutMs = timeoutFor(definition.settings.max_output_tokens);
   return {
@@ -42,6 +85,6 @@ export function requestFor(
     ...(definition.provider_options === undefined ? {} : { provider_options: definition.provider_options }),
     timeout_ms: timeoutMs,
     run_id: run.id,
-    ...(tools === undefined ? {} : { tools: modelToolsOf(tools, timeoutMs) }),
+    ...(using?.tools === undefined ? {} : { tools: modelToolsOf(using.tools, using.reading, timeoutMs) }),
   };
 }

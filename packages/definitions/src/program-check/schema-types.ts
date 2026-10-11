@@ -24,6 +24,13 @@ const eventDeclaration = [
   '  data?: Json;',
   '  causationid?: string;',
   '  correlationid?: string;',
+  '  caller?: string;',
+  '  definitionversion?: number;',
+  '  depth?: number;',
+  '  calldepth?: number;',
+  '  calledby?: string;',
+  '  triggerkind?: string;',
+  '  triggerreference?: string;',
   '}',
 ].join('\n');
 

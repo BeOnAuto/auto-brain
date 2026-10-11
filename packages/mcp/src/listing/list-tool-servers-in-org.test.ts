@@ -79,11 +79,17 @@ async function fakeServer(): Promise<FakeMcpServer> {
   return fake;
 }
 
-const echoing = { name: 'graph', type: 'http', brains: ['*'], tools: [{ name: 'echo' }] };
+const echoing = { name: 'graph', type: 'http', record_content: true, brains: ['*'], tools: [{ name: 'echo' }] };
 
-const searching = { name: 'notes', type: 'http', brains: ['beta', 'alpha'], tools: [{ name: 'search' }] };
+const searching = {
+  name: 'notes',
+  type: 'http',
+  record_content: true,
+  brains: ['beta', 'alpha'],
+  tools: [{ name: 'search' }],
+};
 
-const selling = { name: 'sales', type: 'http', brains: ['beta'], tools: [{ name: 'echo' }] };
+const selling = { name: 'sales', type: 'http', record_content: true, brains: ['beta'], tools: [{ name: 'echo' }] };
 
 describe('list_tool_servers of the org', () => {
   it('is a query of the org at GET /tool-servers, permitted to a key that may read the org or a brain', async () => {

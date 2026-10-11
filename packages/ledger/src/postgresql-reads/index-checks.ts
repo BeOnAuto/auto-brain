@@ -28,6 +28,10 @@ export const theBrainIndexes = [
     indexdef: `CREATE INDEX ledger_messages_by_brain_and_time ON ONLY public.emt_messages USING btree ("substring"(stream_id, '^(?:[^/]*/){3}'::text), created, transaction_id, global_position)`,
   },
   {
+    indexname: 'ledger_messages_by_id',
+    indexdef: 'CREATE INDEX ledger_messages_by_id ON ONLY public.emt_messages USING btree (message_id)',
+  },
+  {
     indexname: 'ledger_messages_by_stream',
     indexdef:
       'CREATE INDEX ledger_messages_by_stream ON ONLY public.emt_messages USING btree (stream_id, transaction_id, global_position)',

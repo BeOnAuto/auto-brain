@@ -31,7 +31,7 @@ export const recordRun = Effect.fnUntraced(function* (id: string, command: RunSt
   const { state, version } = yield* (yield* BrainWriter).execute(
     runStreamNameOf(id),
     runDecider,
-    { ...command, ...metadata },
+    { ...command, ...metadata, runId: id },
     lineage,
   );
   return {

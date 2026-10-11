@@ -16,7 +16,7 @@ export interface DefinitionWords {
   readonly allKinds: string;
   readonly nounOf: (type: string) => Noun;
   readonly named: (type: string, name: string) => string;
-  readonly runWordsOf: (type: string) => RunWords;
+  readonly runWordsOf: (type: string | undefined) => RunWords;
   readonly deferralTypes: readonly string[];
 }
 

@@ -1,18 +1,13 @@
 import { Conflict, type Rejection } from '@beonauto/operations';
 import { Result } from 'effect';
 
-import type { CommandMetadata, RunOutboundCall, RunReply, RunToolCall } from '../runs/run-commands.ts';
+import type { RunOutboundCall, RunReply, RunToolCall } from '../runs/run-commands.ts';
 import type { RunEvent } from '../runs/run-events.ts';
 import { isRunning, type RunState, type RecordedRunState } from '../runs/run-state.ts';
 
 type Decision = Result.Result<readonly RunEvent[], Rejection<'conflict'>>;
 
 const runEnded = new Conflict({ detail: 'The run has ended, so it records no more of its work' });
-
-export function ofTheDefinition({ run }: RecordedRunState) {
-  const { type, name, definition_version } = run;
-  return { definition_type: type, name, definition_version };
-}
 
 function nextCallOf(state: RecordedRunState, number: number | undefined): Result.Result<number, Conflict> {
   const next = state.lastCall + 1;
@@ -25,14 +20,16 @@ function nextCallOf(state: RecordedRunState, number: number | undefined): Result
       );
 }
 
-export function decideToolCall({ fact, by, at }: RunToolCall & CommandMetadata, state: RunState): Decision {
+export function decideToolCall({ fact }: RunToolCall, state: RunState): Decision {
   if (state === undefined || !isRunning(state)) {
     return Result.fail(runEnded);
   }
-  if (fact.type === 'tool_call_answered') {
-    return Result.succeed([{ ...fact, by, at }]);
+  if (fact.type !== 'tool_call_started') {
+    return Result.succeed([fact]);
   }
-  return Result.map(nextCallOf(state, fact.number), (number) => [{ ...fact, number, by, at }]);
+  return Result.map(nextCallOf(state, fact.data.number), (number): readonly RunEvent[] => [
+    { type: fact.type, data: { ...fact.data, number } },
+  ]);
 }
 
 function attemptEndable(state: RecordedRunState, number: number): Result.Result<number, Conflict> {
@@ -51,14 +48,13 @@ function attemptStartable(state: RecordedRunState, number: number): Result.Resul
   return state.cancel === undefined ? nextCallOf(state, number) : Result.fail(beingCancelled);
 }
 
-export function decideOutboundCall({ fact, by, at }: RunOutboundCall & CommandMetadata, state: RunState): Decision {
+export function decideOutboundCall({ fact }: RunOutboundCall, state: RunState): Decision {
   if (state === undefined || !isRunning(state)) {
     return Result.fail(runEnded);
   }
-  const recorded = { ...fact, ...ofTheDefinition(state), by, at };
-  const allowed =
-    fact.type === 'delivery_ended' ? attemptEndable(state, fact.number) : attemptStartable(state, fact.number);
-  return Result.map(allowed, () => [recorded]);
+  const { number } = fact.data;
+  const allowed = fact.type === 'delivery_started' ? attemptStartable(state, number) : attemptEndable(state, number);
+  return Result.map(allowed, () => [fact]);
 }
 
 export const replyBounds = { refusals: 10 } as const;
@@ -79,7 +75,7 @@ function replyRefusal(state: RecordedRunState, fact: RunReply['fact']): Conflict
   if (state.cancel !== undefined) {
     return replyWhileCancelling;
   }
-  if (state.repliesSeen.includes(fact.reply.id)) {
+  if (state.repliesSeen.includes(fact.data.reply.id)) {
     return replySeen;
   }
   if (state.broughtAnswer !== null) {
@@ -88,12 +84,10 @@ function replyRefusal(state: RecordedRunState, fact: RunReply['fact']): Conflict
   return fact.type === 'reply_taken' || state.replyRefusals < replyBounds.refusals ? undefined : refusedEnough;
 }
 
-export function decideReply({ fact, by, at }: RunReply & CommandMetadata, state: RunState): Decision {
+export function decideReply({ fact }: RunReply, state: RunState): Decision {
   if (state === undefined || !isRunning(state)) {
     return Result.fail(runEnded);
   }
   const refusal = replyRefusal(state, fact);
-  return refusal === undefined
-    ? Result.succeed([{ ...fact, ...ofTheDefinition(state), by, at }])
-    : Result.fail(refusal);
+  return refusal === undefined ? Result.succeed([fact]) : Result.fail(refusal);
 }

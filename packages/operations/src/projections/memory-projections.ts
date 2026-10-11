@@ -2,7 +2,7 @@ import { Effect } from 'effect';
 
 import type { BrainAddress } from '../caller/brain-context.ts';
 import { streamPrefixOfBrain } from '../ledger/bound-ports.ts';
-import type { TypedEvent } from '../ledger/decider.ts';
+import type { Context } from '../ledger/context.ts';
 import { messageIdOf } from '../ledger/message-lineage.ts';
 import {
   brainStreamOf,
@@ -15,6 +15,7 @@ import {
   type KeyedProjection,
   type ProjectedCondition,
   type ProjectedKeyedRow,
+  type ProjectedMessage,
   type ProjectedRow,
   type ProjectedRowsQuery,
   type ProjectedValue,
@@ -23,24 +24,19 @@ import {
   type RowAdvance,
 } from './keyed-projection.ts';
 
+export interface AppendedFact {
+  readonly type: string;
+  readonly data: unknown;
+  readonly context: Context;
+}
+
 export interface MemoryProjections extends ProjectionReader, ProjectionAdvancer {
-  readonly project: (
-    stream: string,
-    events: readonly TypedEvent[],
-    encoded: readonly unknown[],
-    firstPosition: number,
-  ) => void;
+  readonly project: (stream: string, facts: readonly AppendedFact[], firstPosition: number) => void;
 }
 
 interface Table {
   readonly projection: KeyedProjection;
   readonly rows: Map<string, ProjectedKeyedRow>;
-}
-
-interface Fact {
-  readonly type: string;
-  readonly data: unknown;
-  readonly position: number;
 }
 
 const brainKey = /^brain\/(?<org>[^/]+)\/(?<brain>[^/]+)\/$/u;
@@ -94,21 +90,21 @@ interface Staged {
   readonly kept: ProjectedKeyedRow;
 }
 
-function keyedFacts(projection: KeyedProjection, named: BrainStream, facts: readonly Fact[]) {
-  return facts
+function keyedMessages(projection: KeyedProjection, named: BrainStream, messages: readonly ProjectedMessage[]) {
+  return messages
     .filter(({ type }) => projection.types.includes(type))
-    .flatMap((fact) => {
-      const key = rowKeyOf(projection, fact.data, named);
-      return key === undefined ? [] : [{ ...fact, key }];
+    .flatMap((message) => {
+      const key = rowKeyOf(projection, message, named);
+      return key === undefined ? [] : [{ message, key }];
     });
 }
 
-function staged({ projection, rows }: Table, stream: string, named: BrainStream, facts: readonly Fact[]) {
+function staged({ projection, rows }: Table, named: BrainStream, messages: readonly ProjectedMessage[]) {
   const changed = new Map<string, ProjectedKeyedRow>();
-  for (const { data, position, key } of keyedFacts(projection, named, facts)) {
+  for (const { message, key } of keyedMessages(projection, named, messages)) {
     const stored = `${named.brainKey}${key}`;
     const row = (changed.get(stored) ?? rows.get(stored))?.row;
-    const next = projection.rowAfter(row, data, { id: messageIdOf(stream, position), position });
+    const next = projection.rowAfter(row, message);
     if (next !== undefined) {
       changed.set(stored, keyedRowOf(named.brainKey, key, next));
     }
@@ -125,18 +121,25 @@ function orderedKeyOf(orderBy: readonly string[], { row, key }: ProjectedKeyedRo
   return [...orderBy.map((column) => row[column]), key];
 }
 
+export function projectedMessagesOf(
+  stream: string,
+  facts: readonly AppendedFact[],
+  firstPosition: number,
+): readonly ProjectedMessage[] {
+  return facts.map(({ type, data, context }, index) => {
+    const position = firstPosition + index;
+    return { id: messageIdOf(stream, position), position, type, data, context };
+  });
+}
+
 function projectedOn(tables: readonly Table[]): MemoryProjections['project'] {
-  return (stream, events, encoded, firstPosition) => {
+  return (stream, facts, firstPosition) => {
     const named = brainStreamOf(stream);
     if (named === undefined) {
       return;
     }
-    const facts = events.map(({ type }, index): Fact => ({
-      type,
-      data: encoded[index],
-      position: firstPosition + index,
-    }));
-    const changes = tables.flatMap((table) => staged(table, stream, named, facts));
+    const messages = projectedMessagesOf(stream, facts, firstPosition);
+    const changes = tables.flatMap((table) => staged(table, named, messages));
     for (const { rows, stored, kept } of changes) {
       rows.set(stored, kept);
     }

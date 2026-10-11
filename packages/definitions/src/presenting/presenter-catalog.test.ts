@@ -3,6 +3,8 @@ import {
   mostPublicEventDataBytes,
   presentationOf,
   streamKindOf,
+  type Context,
+  type Decided,
   type RecordedEvent,
 } from '@beonauto/operations';
 import { Result, Schema, SchemaAST } from 'effect';
@@ -28,7 +30,7 @@ const definitionsOfTheLongestType = definitionsDecider(longestType);
 
 const eventStream = publishedEventStreamOf('/ledger/eu', 'm-1');
 
-type DefinitionEvent = typeof definitionsOfTheLongestType.eventSchema.Type;
+type DefinitionEvent = Decided<typeof definitionsOfTheLongestType.eventSchema.Type>;
 
 function storedTypesOf(ast: SchemaAST.AST): readonly string[] {
   const members = SchemaAST.isUnion(ast) ? ast.types : [ast];
@@ -57,71 +59,88 @@ const decisionsByKind = new Map(
 
 const awkward = '\u0000'.repeat(64 * 1024);
 
-const fact = { by: awkward, at: '2026-10-01T09:00:00.000Z' };
-
-const ofTheLongestNames = {
-  definition_type: longestType,
-  name: 'n'.repeat(48),
-  definition_version: Number.MAX_SAFE_INTEGER,
+const context: Context = {
+  at: '2026-10-01T09:00:00.000Z',
+  by: 'acme-admin',
+  runId,
+  definitionType: longestType,
+  definitionName: 'n'.repeat(48),
+  definitionVersion: Number.MAX_SAFE_INTEGER,
 };
+
+const emittedContext: Context = { ...context, depth: Number.MAX_SAFE_INTEGER };
 
 const largestJson = { text: 'x'.repeat(mostResultBytes - 16) };
 
 const manyIssues = Array.from({ length: 100 }, () => ({ detail: awkward, pointer: awkward }));
 
+const largestCall = {
+  number: Number.MAX_SAFE_INTEGER,
+  call_id: awkward,
+  server: awkward,
+  tool: awkward,
+  arguments_bytes: Number.MAX_SAFE_INTEGER,
+  arguments_sha256: awkward,
+};
+
+const largestAnswer = {
+  number: Number.MAX_SAFE_INTEGER,
+  result_bytes: Number.MAX_SAFE_INTEGER,
+  result_sha256: awkward,
+  duration_ms: Number.MAX_SAFE_INTEGER,
+  jsonrpc_id: awkward,
+  server_request_id: awkward,
+};
+
+const largestReply = { server: awkward, tool: awkward, reply: { id: awkward, sender: awkward } };
+
 const largestRunEvents: readonly RunEvent[] = [
-  {
-    type: 'run_started',
-    definition_type: longestType,
-    name: 'n'.repeat(48),
-    definition_version: Number.MAX_SAFE_INTEGER,
-    input: { text: 'x'.repeat(mostInputBytes - 16) },
-    ...fact,
-  },
-  { type: 'run_succeeded', output: largestJson, record: largestJson, ...ofTheLongestNames, ...fact },
+  { type: 'run_started', data: { input: { text: 'x'.repeat(mostInputBytes - 16) } } },
+  { type: 'run_succeeded', data: { output: largestJson, record: largestJson } },
   {
     type: 'run_rejected',
-    rejection: { reason: 'invalid_input', detail: awkward, issues: manyIssues },
-    record: largestJson,
-    ...ofTheLongestNames,
-    ...fact,
+    data: { rejection: { reason: 'invalid_input', detail: awkward, issues: manyIssues }, record: largestJson },
   },
   {
     type: 'run_rejected',
-    rejection: {
-      reason: 'unavailable',
-      detail: awkward,
-      kind: 'model_not_offered',
-      because: 'provider_not_configured',
+    data: {
+      rejection: {
+        reason: 'unavailable',
+        detail: awkward,
+        kind: 'model_not_offered',
+        because: 'provider_not_configured',
+      },
     },
-    ...ofTheLongestNames,
-    ...fact,
   },
-  { type: 'run_rejected', rejection: { reason: 'conflict', detail: awkward }, ...ofTheLongestNames, ...fact },
-  { type: 'run_failed', ...ofTheLongestNames, ...fact },
+  { type: 'run_rejected', data: { rejection: { reason: 'conflict', detail: awkward } } },
+  { type: 'run_failed', data: { incident: awkward } },
+  { type: 'run_cancel_requested', data: { kind: 'requested', reason: awkward } },
+  { type: 'tool_call_started', data: largestCall },
+  { type: 'tool_call_answered', data: { ...largestAnswer, is_error: true } },
   {
-    type: 'tool_call_started',
-    number: Number.MAX_SAFE_INTEGER,
-    call_id: awkward,
-    server: awkward,
-    tool: awkward,
-    arguments_bytes: Number.MAX_SAFE_INTEGER,
-    arguments_sha256: awkward,
-    arguments_json: awkward,
-    ...fact,
+    type: 'tool_call_failed',
+    data: {
+      number: 1,
+      because: 'server_failure',
+      detail: awkward,
+      duration_ms: 1,
+      jsonrpc_id: awkward,
+      server_request_id: awkward,
+    },
   },
+  { type: 'delivery_started', data: { ...largestCall, target: awkward } },
   {
-    type: 'tool_call_answered',
-    number: Number.MAX_SAFE_INTEGER,
-    outcome: 'server_failure',
-    result_bytes: Number.MAX_SAFE_INTEGER,
-    result_sha256: awkward,
-    duration_ms: Number.MAX_SAFE_INTEGER,
-    jsonrpc_id: awkward,
-    server_request_id: awkward,
-    result_json: awkward,
-    ...fact,
+    type: 'delivery_succeeded',
+    data: {
+      ...largestAnswer,
+      delivered_as: { conversation: awkward, id: awkward },
+      replies_in: { server: awkward, tool: awkward, key: awkward },
+    },
   },
+  { type: 'delivery_failed', data: { ...largestAnswer, because: 'tool_error', detail: awkward, retry_after_ms: 1 } },
+  { type: 'delivery_refused', data: { number: 1, because: 'too_large', detail: awkward, duration_ms: 1 } },
+  { type: 'reply_taken', data: { ...largestReply, answer: largestJson } },
+  { type: 'reply_refused', data: { ...largestReply, because: 'invalid', issues: manyIssues, told: true } },
 ];
 
 const largestContent = {
@@ -133,45 +152,36 @@ const largestContent = {
 };
 
 const largestDefinitionEvents: readonly DefinitionEvent[] = [
-  { type: 'definition_created', name: 'n'.repeat(48), version: 1, content: largestContent, ...fact },
-  {
-    type: 'definition_updated',
-    name: 'n'.repeat(48),
-    version: Number.MAX_SAFE_INTEGER,
-    content: largestContent,
-    ...fact,
-  },
-  { type: 'definition_retired', name: 'n'.repeat(48), ...fact },
+  { type: 'definition_created', data: { content: largestContent } },
+  { type: 'definition_updated', data: { content: largestContent } },
+  { type: 'definition_retired', data: {} },
 ];
 
 const awkwardText = (most: number) => '"'.repeat(most);
 
 const largestEventPublished: EventPublished = {
   type: 'event_published',
-  event: {
-    specversion: '1.0',
-    id: awkwardText(256),
-    source: 'x'.repeat(1024),
-    type: awkwardText(256),
-    subject: awkwardText(1024),
-    time: '2026-10-01T09:00:00.123456789+02:00',
-    data: { text: 'x'.repeat(200 * 1024) },
+  data: {
+    event: {
+      specversion: '1.0',
+      id: awkwardText(256),
+      source: 'x'.repeat(1024),
+      type: awkwardText(256),
+      subject: awkwardText(1024),
+      time: '2026-10-01T09:00:00.123456789+02:00',
+      data: { text: 'x'.repeat(200 * 1024) },
+    },
+    filled: ['id', 'time'],
   },
-  filled: ['id', 'time'],
-  ...fact,
 };
-
-const encodeRunEvent = Schema.encodeSync(Schema.toCodecJson(runDecider.eventSchema));
-
-const encodeDefinitionEvent = Schema.encodeSync(Schema.toCodecJson(definitionsOfTheLongestType.eventSchema));
-
-const encodeEventPublished = Schema.encodeSync(Schema.toCodecJson(publishedEventDecider.eventSchema));
 
 const decodePublicEvent = Schema.decodeUnknownResult(PublicEventSchema);
 
 const utf8 = new TextEncoder();
 
-function recordOf(stream: string, type: string, data: unknown): RecordedEvent {
+const showing = { streamPrefix: 'brain/acme/alpha/', content: () => awkward, view: 'page' } as const;
+
+function recordOf(stream: string, type: string, data: unknown, recorded: Context = context): RecordedEvent {
   return {
     id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
     cursor: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
@@ -179,14 +189,16 @@ function recordOf(stream: string, type: string, data: unknown): RecordedEvent {
     correlationId: null,
     stream,
     version: 1,
+    globalPosition: 1,
     type,
     data,
-    recordedAt: fact.at,
+    context: recorded,
+    recordedAt: recorded.at,
   };
 }
 
 function presentedSizeOf(record: RecordedEvent): readonly [bytes: number, conforms: boolean] {
-  const [presented] = present(record);
+  const [presented] = present(record, showing);
   return [utf8.encode(JSON.stringify(presented?.data)).byteLength, Result.isSuccess(decodePublicEvent(presented))];
 }
 
@@ -196,9 +208,7 @@ describe('the presenters of the stream kinds of a brain', () => {
   });
 
   it('hide a stream kind none of them presents', () => {
-    const failed: RunEvent = { type: 'run_failed', ...ofTheLongestNames, by: 'acme-admin', at: fact.at };
-
-    expect(present(recordOf(`run-logs/${runId}`, failed.type, encodeRunEvent(failed)))).toEqual([]);
+    expect(present(recordOf(`run-logs/${runId}`, 'run_failed', {}), showing)).toEqual([]);
   });
 });
 
@@ -206,7 +216,7 @@ describe('the largest record of every stored type', () => {
   it.each(largestRunEvents.map((event) => [event.type, event] as const))(
     'of a run, %s, presents within the bound of public data',
     (type, event) => {
-      const [bytes, conforms] = presentedSizeOf(recordOf(runStream, type, encodeRunEvent(event)));
+      const [bytes, conforms] = presentedSizeOf(recordOf(runStream, type, event.data));
 
       expect(bytes).toBeLessThanOrEqual(mostPublicEventDataBytes);
       expect(conforms).toBe(true);
@@ -216,7 +226,7 @@ describe('the largest record of every stored type', () => {
   it.each(largestDefinitionEvents.map((event) => [event.type, event] as const))(
     'of the definitions of a capability, %s, presents within the bound of public data',
     (type, event) => {
-      const [bytes, conforms] = presentedSizeOf(recordOf(definitionStream, type, encodeDefinitionEvent(event)));
+      const [bytes, conforms] = presentedSizeOf(recordOf(definitionStream, type, event.data));
 
       expect(bytes).toBeLessThanOrEqual(mostPublicEventDataBytes);
       expect(conforms).toBe(true);
@@ -225,7 +235,7 @@ describe('the largest record of every stored type', () => {
 
   it('of an event published to the brain presents within the bound of public data', () => {
     const [bytes, conforms] = presentedSizeOf(
-      recordOf(eventStream, largestEventPublished.type, encodeEventPublished(largestEventPublished)),
+      recordOf(eventStream, largestEventPublished.type, largestEventPublished.data, emittedContext),
     );
 
     expect(bytes).toBeLessThanOrEqual(mostPublicEventDataBytes);

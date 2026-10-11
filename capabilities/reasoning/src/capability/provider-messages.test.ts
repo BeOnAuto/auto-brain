@@ -30,7 +30,8 @@ describe('a run whose gateway rejects the definition', () => {
     expect(exit).toEqual(
       Exit.fail(
         new Conflict({
-          detail: 'gateway answered HTTP 404: the model was not found; update the reasoning function definition',
+          detail:
+            'gateway answered HTTP 404: the model was not found, with the error code 404; update the reasoning function definition',
           kind: 'unworkable',
         }),
       ),
@@ -53,7 +54,7 @@ describe('a run whose gateway rejects the definition', () => {
     expect(exit).toEqual(
       Exit.fail(
         new Conflict({
-          detail: `gateway answered HTTP 404: the model was not found; update the reasoning function definition. The provider said: ${gatewayErrorText.slice(0, 300)}`,
+          detail: `gateway answered HTTP 404: the model was not found, with the error code 404; update the reasoning function definition. The provider said: ${gatewayErrorText.slice(0, 300)}`,
           kind: 'unworkable',
         }),
       ),

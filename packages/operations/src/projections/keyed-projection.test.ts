@@ -21,7 +21,13 @@ describe('the stream of a brain a fact was appended to', () => {
 });
 
 describe('the key of the row a fact changes', () => {
-  const opened = { type: 'topic_opened', topic: 'spring', at: 0 };
+  const opened = {
+    id: 'message-1',
+    position: 1,
+    type: 'topic_opened',
+    data: { topic: 'spring', at: 0 },
+    context: { at: '2026-10-05T09:00:00.000Z', by: 'topics' },
+  };
 
   it('is the stream’s id by default, what the mapping says otherwise, and none for a kind it does not fold', () => {
     const run = { brainKey: 'brain/acme/alpha/', kind: 'runs', id: 'r1' };

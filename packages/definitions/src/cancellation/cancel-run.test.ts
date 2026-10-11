@@ -34,15 +34,17 @@ describe('cancel_run', () => {
           { type: 'run_started' },
           {
             type: 'run_cancel_requested',
-            at: cancelledAt,
             summary: 'Someone allowed to change the brain asked for the run to be cancelled.',
-            data: { run_id: relayedId, by: 'acme-admin', kind: 'requested', reason: 'Not needed any more' },
+            data: { kind: 'requested', reason: 'Not needed any more' },
+            metadata: { at: cancelledAt, run_id: relayedId, by: 'acme-admin' },
           },
         ],
       },
     });
   });
+});
 
+describe('cancel_run asked again, or without a reason', () => {
   it('says who asked when no reason is given, and records nothing more when asked again before the run ended', async () => {
     const { cancelling, running, ledger, run } = await withHandOn();
     await running();
@@ -55,17 +57,20 @@ describe('cancel_run', () => {
       ),
     );
 
-    expect(records.filter(({ type }) => type === 'run_cancel_requested').map(({ data }) => data)).toEqual([
-      {
-        type: 'run_cancel_requested',
-        kind: 'requested',
-        reason: 'Cancelled at the request of acme-admin',
-        definition_type: 'relay',
-        name: 'hand-on',
-        definition_version: 1,
-        by: 'acme-admin',
-        at: cancelledAt,
-      },
+    expect(
+      records.filter(({ type }) => type === 'run_cancel_requested').map(({ data, context }) => [data, context]),
+    ).toEqual([
+      [
+        { kind: 'requested', reason: 'Cancelled at the request of acme-admin' },
+        {
+          at: cancelledAt,
+          by: 'acme-admin',
+          runId: relayedId,
+          definitionType: 'relay',
+          definitionName: 'hand-on',
+          definitionVersion: 1,
+        },
+      ],
     ]);
   });
 });

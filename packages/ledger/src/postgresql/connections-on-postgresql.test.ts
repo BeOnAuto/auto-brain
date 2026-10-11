@@ -156,20 +156,24 @@ describe.skipIf(skipped)(`A ledger whose PostgreSQL database ends its connection
     expect(logged.filter((line) => !line.includes(lostConnection))).toEqual([]);
   });
 
-  it("keeps each event as its JSON text in Emmett's messages table", async () => {
+  it("keeps each event's data as its JSON text and its context as plain jsonb in Emmett's messages table", async () => {
     const database = await aDatabase();
     const { ledger, dispose } = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
     await Effect.runPromise(ledger.execute('org/acme/tallies', tally, [2]));
     await dispose();
 
     expect(
-      await queried(database, 'SELECT stream_id, stream_position::int, message_type, message_data FROM emt_messages'),
+      await queried(
+        database,
+        "SELECT stream_id, stream_position::int, message_type, message_data, message_metadata ->> 'by' AS by FROM emt_messages",
+      ),
     ).toEqual([
       {
         stream_id: 'org/acme/tallies',
         stream_position: 1,
         message_type: 'counted',
-        message_data: { json: '{"type":"counted","by":2}' },
+        message_data: { json: '{"by":2}' },
+        by: 'tester',
       },
     ]);
   });

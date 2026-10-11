@@ -5,7 +5,7 @@ import type { ModelRequest } from '../model/model-request.ts';
 import type { Answered } from './answer-settling.ts';
 import { scrubberFor, type CallPolicy } from './call-policy.ts';
 import { classified, operatorHintOf, providerTextOf, type ProviderText } from './failure-classification.ts';
-import { callModel } from './model-call.ts';
+import { callingModel } from './model-call.ts';
 import type { ModelTarget } from './model-resolution.ts';
 import { deadlinesOf, stoppedFailure } from './stopped-call.ts';
 import type { UnclassifiedModelError } from './unclassified-model-error.ts';
@@ -31,9 +31,10 @@ export async function settledCall(
   const cancelled = AbortSignal.any([interruption, request.signal].filter((signal) => signal !== undefined));
   const { whole, step } = deadlines;
   const stops = [cancelled, whole?.signal, step.signal, request.tools?.ended].filter((signal) => signal !== undefined);
+  const calling = callingModel(target, request, { signal: AbortSignal.any(stops), cancelled }, step);
   try {
     return {
-      settled: await callModel(target, request, { signal: AbortSignal.any(stops), cancelled }, step),
+      settled: await calling.settled,
       providerText: null,
       operatorHint: null,
     };
@@ -46,6 +47,7 @@ export async function settledCall(
       now: Date.now(),
       showsProviderMessages: policy.showsProviderMessages(provider),
       scrub,
+      lastInputTokens: calling.turns.lastInputTokens(),
     };
     return {
       settled: Result.fail(stoppedFailure(provider, request, deadlines) ?? classified(error, context)),

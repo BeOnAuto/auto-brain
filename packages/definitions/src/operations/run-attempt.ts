@@ -14,19 +14,17 @@ const decodeExecuted = Schema.decodeUnknownEffect(
   ]),
 );
 
-export const failedAttempt: RunResult = { type: 'run_failed' };
+export const failedAttempt: RunResult = { type: 'run_failed', data: {} };
 
 export const interruptedAttempt: InterruptedAttempt = { type: 'run_interrupted' };
 
 function recordedOutcome(ran: CapabilityAnswer): Effect.Effect<RunOutcome> {
   return 'finishesLater' in ran
-    ? withinResultLimit(ran.record).pipe(Effect.map((): RunOutcome => ({ type: 'run_deferred', record: ran.record })))
+    ? withinResultLimit(ran.record).pipe(
+        Effect.map((): RunOutcome => ({ type: 'run_deferred', data: { record: ran.record } })),
+      )
     : withinResultLimit(ran.output, ran.record).pipe(
-        Effect.map((): RunOutcome => ({
-          type: 'run_succeeded',
-          output: ran.output,
-          record: ran.record,
-        })),
+        Effect.map((): RunOutcome => ({ type: 'run_succeeded', data: { output: ran.output, record: ran.record } })),
       );
 }
 
@@ -42,12 +40,12 @@ interface Recorded {
 
 function rejectedWith(rejection: RunRejection, { record }: Recorded): Effect.Effect<RunResult> {
   if (record === undefined) {
-    return Effect.succeed({ type: 'run_rejected', rejection });
+    return Effect.succeed({ type: 'run_rejected', data: { rejection } });
   }
   return decodeRecord(record).pipe(
     Effect.orDie,
     Effect.tap((checked) => withinResultLimit(checked)),
-    Effect.map((checked): RunResult => ({ type: 'run_rejected', rejection, record: checked })),
+    Effect.map((checked): RunResult => ({ type: 'run_rejected', data: { rejection, record: checked } })),
   );
 }
 

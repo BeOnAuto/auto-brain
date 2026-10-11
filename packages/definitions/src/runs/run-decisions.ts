@@ -1,9 +1,8 @@
 import { Conflict, NotFound, RunCancelled, type Rejection } from '@beonauto/operations';
 import { Equal, Result } from 'effect';
 
-import { decideOutboundCall, decideReply, decideToolCall, ofTheDefinition } from '../run-work/work-decisions.ts';
+import { decideOutboundCall, decideReply, decideToolCall } from '../run-work/work-decisions.ts';
 import type {
-  CommandMetadata,
   RunCancel,
   RunCommand,
   RunFinish,
@@ -96,27 +95,14 @@ function startedCallingToolsBefore(start: RunStart, state: RunState): boolean {
   return state !== undefined && isRunning(state) && (state.callsTools || start.calls_tools);
 }
 
-function counted(name: 'depth' | 'call_depth', count: number): Readonly<Record<string, number>> {
-  return count > 0 ? { [name]: count } : {};
-}
-
-function startedEvent(start: RunStart & CommandMetadata): RunEvent {
-  const { definition_type, name, definition_version, input, calls_tools, finishes_later, by, at } = start;
-  const { depth = 0, call_depth: callDepth = 0, called_by: calledBy, trigger } = start;
+function startedEvent({ input, calls_tools, finishes_later }: RunStart): RunEvent {
   return {
     type: 'run_started',
-    definition_type,
-    name,
-    definition_version,
-    input,
-    ...(calls_tools ? { calls_tools } : {}),
-    ...(finishes_later === true ? { finishes_later } : {}),
-    ...counted('depth', depth),
-    ...counted('call_depth', callDepth),
-    ...(calledBy === undefined ? {} : { called_by: calledBy }),
-    ...(trigger === undefined ? {} : { trigger }),
-    by,
-    at,
+    data: {
+      input,
+      ...(calls_tools ? { calls_tools } : {}),
+      ...(finishes_later === true ? { finishes_later } : {}),
+    },
   };
 }
 
@@ -124,13 +110,13 @@ function startsAgain(start: RunStart, state: RecordedRunState): boolean {
   return !isRunning(state) && !needsNoRun(state) && !mayHaveChangedSomething(state) && isSameRequest(state, start);
 }
 
-function decideCreateOnly(start: RunStart & CommandMetadata, state: RunState): Decision {
+function decideCreateOnly(start: RunStart, state: RunState): Decision {
   return state === undefined || startsAgain(start, state)
     ? Result.succeed([startedEvent(start)])
     : Result.fail(runTaken);
 }
 
-function decideStart(start: RunStart & CommandMetadata, state: RunStreamState): Decision {
+function decideStart(start: RunStart, state: RunStreamState): Decision {
   const cancelled = cancelledBeforeItsStart(state);
   if (cancelled !== undefined) {
     return Result.fail(cancelled);
@@ -148,25 +134,6 @@ function decideStart(start: RunStart & CommandMetadata, state: RunStreamState): 
   });
 }
 
-function ofTheStart({ run, depth, callDepth, calledBy, trigger }: RecordedRunState) {
-  const { type: definitionType, name, definition_version } = run;
-  return {
-    definition_type: definitionType,
-    name,
-    definition_version,
-    ...counted('depth', depth),
-    ...counted('call_depth', callDepth),
-    ...(calledBy === undefined ? {} : { called_by: calledBy }),
-    ...(trigger === undefined ? {} : { trigger }),
-  };
-}
-
-function recordedOutcome(result: RunOutcome, state: RecordedRunState, metadata: CommandMetadata): RunEvent {
-  return result.type === 'run_deferred'
-    ? { ...result, ...ofTheDefinition(state), ...metadata }
-    : { ...result, ...ofTheStart(state), ...metadata };
-}
-
 function isDeferralAfterItsResult(result: RunOutcome, state: RecordedRunState): boolean {
   return result.type === 'run_deferred' && state.result !== undefined;
 }
@@ -176,18 +143,16 @@ function outcomeOfAttempt(result: RunOutcome | InterruptedAttempt, { cancel }: R
     return result;
   }
   return cancel === undefined
-    ? { type: 'run_failed' }
-    : { type: 'run_rejected', rejection: { reason: 'cancelled', kind: cancel.kind, detail: cancel.reason } };
+    ? { type: 'run_failed', data: {} }
+    : { type: 'run_rejected', data: { rejection: { reason: 'cancelled', kind: cancel.kind, detail: cancel.reason } } };
 }
 
-function decideFinish({ result, by, at }: RunFinish & CommandMetadata, state: RunState): Decision {
+function decideFinish({ result }: RunFinish, state: RunState): Decision {
   if (state === undefined) {
     return nothingToRecord;
   }
   const outcome = outcomeOfAttempt(result, state);
-  return needsNoRun(state) || isDeferralAfterItsResult(outcome, state)
-    ? nothingToRecord
-    : Result.succeed([recordedOutcome(outcome, state, { by, at })]);
+  return needsNoRun(state) || isDeferralAfterItsResult(outcome, state) ? nothingToRecord : Result.succeed([outcome]);
 }
 
 export const endedWithAnotherResult = new Conflict({ detail: 'The run already ended with another result' });
@@ -216,12 +181,15 @@ function decideSettlement(settlement: RunSettlement, state: RunState): Decision 
   if (answeredOtherwise(state, settlement)) {
     return Result.fail(answeredByAReply);
   }
-  const { result, by, at } = settlement;
   return takesSettlement(state)
-    ? Result.succeed([recordedOutcome(result, state, { by, at })])
+    ? Result.succeed([settlement.result])
     : Result.fail(
         new Conflict({ detail: 'The run executes within the call that started it, so it cannot be settled' }),
       );
+}
+
+function cancelRequested({ kind, reason }: RunCancel): RunEvent {
+  return { type: 'run_cancel_requested', data: { kind, reason } };
 }
 
 function cancelOfARun(cancel: RunCancel, run: RecordedRunState): Decision {
@@ -231,22 +199,7 @@ function cancelOfARun(cancel: RunCancel, run: RecordedRunState): Decision {
   if (!takesSettlement(run) && cancel.byItsCaller !== true) {
     return Result.fail(runsWithinItsCall);
   }
-  const { kind, reason, by, at } = cancel;
-  const { type: definitionType, name, definition_version } = run.run;
-  return run.cancel === undefined
-    ? Result.succeed([
-        {
-          type: 'run_cancel_requested',
-          kind,
-          reason,
-          definition_type: definitionType,
-          name,
-          definition_version,
-          by,
-          at,
-        },
-      ])
-    : nothingToRecord;
+  return run.cancel === undefined ? Result.succeed([cancelRequested(cancel)]) : nothingToRecord;
 }
 
 function decideCancel(cancel: RunCancel, state: RunStreamState): Decision {
@@ -257,10 +210,7 @@ function decideCancel(cancel: RunCancel, state: RunStreamState): Decision {
   if (run !== undefined) {
     return cancelOfARun(cancel, run);
   }
-  const { kind, reason, by, at } = cancel;
-  return cancel.byItsCaller === true
-    ? Result.succeed([{ type: 'run_cancel_requested', kind, reason, by, at }])
-    : Result.fail(noSuchRun);
+  return cancel.byItsCaller === true ? Result.succeed([cancelRequested(cancel)]) : Result.fail(noSuchRun);
 }
 
 export function decideOnRun(command: RunCommand, state: RunStreamState): Decision {

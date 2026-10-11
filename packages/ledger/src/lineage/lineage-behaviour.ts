@@ -3,11 +3,13 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import {
+  alpha,
   details,
   happenings,
   inAlpha,
   noted,
   reading,
+  stamped,
   type AnyLedger,
   type LedgerMaker,
 } from '../testing/happenings.ts';
@@ -101,8 +103,51 @@ function aReadFromInsideARecord(aLedger: LedgerMaker): void {
   });
 }
 
+function oneEventByItsId(aLedger: LedgerMaker): void {
+  describe('the read of one event by its id', () => {
+    it('answers the event of the brain with its data, context and place, and nothing of another brain or none', async () => {
+      const ledger = await aLedger();
+      await happenWith(ledger, inAlpha(`runs/${root}`), { causationId: null, correlationId: root }, 'start');
+      await happenWith(ledger, inAlpha(`runs/${root}`), { causationId: null, correlationId: root }, 'finish');
+      await happenWith(ledger, 'brain/acme/beta/notes', { causationId: null, correlationId: null }, 'elsewhere');
+      const finished = messageIdOf(inAlpha(`runs/${root}`), 2);
+
+      const read = await Promise.all(
+        [finished, messageIdOf('brain/acme/beta/notes', 1), 'no such event'].map((id) =>
+          Effect.runPromise(ledger.readRecordedEvent(alpha, id)),
+        ),
+      );
+
+      expect(read[0]).toMatchObject({
+        id: finished,
+        stream: inAlpha(`runs/${root}`),
+        version: 2,
+        type: 'noted',
+        data: { detail: 'finish' },
+        context: stamped,
+        correlationId: root,
+      });
+      expect(read.slice(1)).toEqual([undefined, undefined]);
+    });
+
+    it('gives each record its context and a place across the ledger that grows with each message', async () => {
+      const ledger = await aLedger();
+      await happenWith(ledger, inAlpha('notes'), { causationId: null, correlationId: null }, 'first');
+      await happenWith(ledger, 'brain/acme/beta/notes', { causationId: null, correlationId: null }, 'elsewhere');
+      await happenWith(ledger, inAlpha('notes'), { causationId: null, correlationId: null }, 'second');
+
+      const { records } = await reading(ledger, { kind: 'everything' }, { order: 'asc', limit: 10 });
+      const [first, second] = records.map(({ globalPosition }) => globalPosition);
+
+      expect(records.map(({ context }) => context)).toEqual([stamped, stamped]);
+      expect(Number(second) - Number(first)).toBeGreaterThan(1);
+    });
+  });
+}
+
 export function lineageBehaviour(aLedger: LedgerMaker): void {
   idsOfARead(aLedger);
+  oneEventByItsId(aLedger);
   aReadByCorrelation(aLedger);
   aReadFromInsideARecord(aLedger);
 }

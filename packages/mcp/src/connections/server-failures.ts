@@ -9,7 +9,8 @@ export type FailureKind =
   | 'closed'
   | 'timed_out'
   | 'refused'
-  | 'key_refused';
+  | 'key_refused'
+  | 'too_large';
 
 export interface ServerFailure {
   readonly kind: FailureKind;

@@ -1,4 +1,4 @@
-import { Conflict, type Rejection } from '@beonauto/operations';
+import { Conflict, type Context, type Rejection } from '@beonauto/operations';
 import { Result } from 'effect';
 
 import type { BrainCommand, BrainCreation, BrainRetirement, BrainUpdate, CommandMetadata } from './brain-commands.ts';
@@ -25,20 +25,14 @@ function takenBy({ id, status }: Brain): Conflict {
   });
 }
 
-function decideCreation(
-  { brain, name, description, by, at }: BrainCreation & CommandMetadata,
-  registry: Registry,
-): Decision {
+function decideCreation({ brain, name, description }: BrainCreation, registry: Registry): Decision {
   const existing = registry.get(brain);
   return existing === undefined
-    ? recording({ type: 'brain_created', brain, name, description, by, at })
+    ? recording({ type: 'brain_created', data: { brain, name, description } })
     : Result.fail(takenBy(existing));
 }
 
-function decideUpdate(
-  { brain, name, description, by, at }: BrainUpdate & CommandMetadata,
-  registry: Registry,
-): Decision {
+function decideUpdate({ brain, name, description }: BrainUpdate, registry: Registry): Decision {
   const existing = registry.get(brain);
   if (existing === undefined) {
     return Result.fail(brainNotFound(brain));
@@ -55,20 +49,20 @@ function decideUpdate(
   }
   return recording({
     type: 'brain_updated',
-    brain,
-    by,
-    at,
-    ...(renamed ? { name } : {}),
-    ...(redescribed ? { description } : {}),
+    data: { brain, ...(renamed ? { name } : {}), ...(redescribed ? { description } : {}) },
   });
 }
 
-function decideRetirement({ brain, by, at }: BrainRetirement & CommandMetadata, registry: Registry): Decision {
+function decideRetirement({ brain }: BrainRetirement, registry: Registry): Decision {
   const existing = registry.get(brain);
   if (existing === undefined) {
     return Result.fail(brainNotFound(brain));
   }
-  return existing.status === 'retired' ? nothingToRecord : recording({ type: 'brain_retired', brain, by, at });
+  return existing.status === 'retired' ? nothingToRecord : recording({ type: 'brain_retired', data: { brain } });
+}
+
+export function registryContextOf({ by, at }: CommandMetadata): Context {
+  return { at, by };
 }
 
 export function decideOnRegistry(command: BrainCommand, registry: Registry): Decision {

@@ -235,7 +235,7 @@
           },
           "record_content": {
             "type": "boolean",
-            "description": "true to record the arguments and results of calls, cut to 4 KiB, on the run that made them, where anyone who may read the brain reads them. Default false"
+            "description": "Whether the arguments and the answers of this server's calls are kept whole, scrubbed of secrets, in the brain's ledger, where anyone who may read the brain reads them; false keeps their sizes and digests alone. Default true"
           },
           "request_id": {
             "type": "string",

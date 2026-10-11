@@ -65,14 +65,47 @@ function waitFor(retryAfterMs: number | null): string {
   return seconds === 1 ? 'in 1 second' : `in ${seconds} seconds`;
 }
 
+const counted = new Intl.NumberFormat('en');
+
+function saidBy(providerMessage: string | null): string {
+  return providerMessage === null ? '' : `. The provider said: ${providerMessage}`;
+}
+
 function definitionRefused({ detail, provider_message, issues }: RejectedDefinition): Effect.Effect<never, Conflict> {
-  const said = provider_message === null ? '' : `. The provider said: ${provider_message}`;
   return Effect.fail(
     new Conflict({
-      detail: `${detail}${listed(issues)}; update the reasoning function definition${said}`,
+      detail: `${detail}${listed(issues)}; update the reasoning function definition${saidBy(provider_message)}`,
       kind: 'unworkable',
     }),
   );
+}
+
+interface TooLong extends Detailed {
+  readonly provider_message: string | null;
+  readonly last_input_tokens: number | null;
+}
+
+function lastTurnInWords(inputTokens: number | null): string {
+  return inputTokens === null
+    ? ''
+    : `, and the provider counted ${counted.format(inputTokens)} input tokens in the last turn it answered`;
+}
+
+function adviceOn(tools: RunTools | undefined, lastInputTokens: number | null): string {
+  const answered = tools?.answeredBytes() ?? 0;
+  return answered > 0
+    ? `; the tools of this run answered ${counted.format(answered)} bytes, which the model reads whole${lastTurnInWords(lastInputTokens)}, so ask the tools for a page of what they hold`
+    : '; shorten the prompt or the input of the reasoning function';
+}
+
+function tooLongRefused(tools: RunTools | undefined) {
+  return ({ detail, provider_message, last_input_tokens }: TooLong): Effect.Effect<never, Conflict> =>
+    Effect.fail(
+      new Conflict({
+        detail: `${detail}${adviceOn(tools, last_input_tokens)}${saidBy(provider_message)}`,
+        kind: 'unworkable',
+      }),
+    );
 }
 
 export function rejections(maxOutputTokens: number, spending: Spending, tools?: RunTools) {
@@ -81,6 +114,7 @@ export function rejections(maxOutputTokens: number, spending: Spending, tools?: 
   return {
     cancelled: () => Effect.interrupt,
     definition_invalid: definitionRefused,
+    request_too_long: tooLongRefused(tools),
     output_invalid: ({ detail, provider, finish_reason, issues, usage }: InvalidAnswer) =>
       Effect.flatMap(spending(usage), (spent): Effect.Effect<never, Conflict | Unavailable> =>
         finish_reason === 'length'

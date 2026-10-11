@@ -2,16 +2,19 @@ import { Conflict, type Decider } from '@beonauto/operations';
 import { Result } from 'effect';
 
 import type { RunCommand } from './run-commands.ts';
+import { runContextOf } from './run-context.ts';
 import { decideOnRun } from './run-decisions.ts';
-import { RunEventSchema, type RunEvent } from './run-events.ts';
+import { RunEventSchema, type RecordedRunEvent } from './run-events.ts';
 import { evolveRun, type RunStreamState } from './run-state.ts';
 
-export const runDecider: Decider<RunStreamState, RunCommand, RunEvent, 'not_found' | 'conflict' | 'cancelled'> = {
-  initialState: undefined,
-  evolve: evolveRun,
-  decide: decideOnRun,
-  eventSchema: RunEventSchema,
-};
+export const runDecider: Decider<RunStreamState, RunCommand, RecordedRunEvent, 'not_found' | 'conflict' | 'cancelled'> =
+  {
+    initialState: undefined,
+    evolve: evolveRun,
+    decide: decideOnRun,
+    context: runContextOf,
+    eventSchema: RunEventSchema,
+  };
 
 interface RunAsRead {
   readonly state: RunStreamState;
@@ -28,11 +31,17 @@ export const changedSinceRead = new Conflict({
   kind: 'concurrent_change',
 });
 
-export const runDeciderAsRead: Decider<RunAsRead, CommandAsRead, RunEvent, 'not_found' | 'conflict' | 'cancelled'> = {
+export const runDeciderAsRead: Decider<
+  RunAsRead,
+  CommandAsRead,
+  RecordedRunEvent,
+  'not_found' | 'conflict' | 'cancelled'
+> = {
   initialState: { state: undefined, version: 0 },
   evolve: ({ state, version }, event) => ({ state: evolveRun(state, event), version: version + 1 }),
   decide: ({ readAt, command }, { state, version }) =>
     readAt === version ? decideOnRun(command, state) : Result.fail(changedSinceRead),
+  context: ({ command }, { state }) => runContextOf(command, state),
   eventSchema: RunEventSchema,
 };
 

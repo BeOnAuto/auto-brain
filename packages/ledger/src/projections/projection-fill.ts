@@ -2,7 +2,7 @@ import { brainStreamOf, projectedTableOf, rowKeyOf, type ProjectedRow } from '@b
 
 import type { StatementExecutor } from '../event-store.ts';
 import { inTurn } from './inline-projection.ts';
-import { replayedRow, type ProjectionKeeping, type ReplayedMessage } from './projection-keeping.ts';
+import { filledMessageOf, replayedRow, type ProjectionKeeping, type ReplayedMessage } from './projection-keeping.ts';
 import {
   createdTable,
   messagesIn,
@@ -116,10 +116,11 @@ interface PlacedMessage {
   readonly stored: string;
 }
 
-function placedMessages({ dialect, projection }: ProjectionKeeping, messages: readonly Ordered[]) {
+function placedMessages(keeping: ProjectionKeeping, messages: readonly Ordered[]) {
   return messages.flatMap((message): readonly PlacedMessage[] => {
     const named = brainStreamOf(message.stream);
-    const key = named === undefined ? undefined : rowKeyOf(projection, dialect.filledData(message.data), named);
+    const key =
+      named === undefined ? undefined : rowKeyOf(keeping.projection, filledMessageOf(keeping, message), named);
     return named === undefined || key === undefined
       ? []
       : [{ message, place: { brainKey: named.brainKey, key }, stored: `${named.brainKey}${key}` }];

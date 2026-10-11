@@ -7,7 +7,7 @@ import {
 } from '@beonauto/operations';
 import { Schema } from 'effect';
 
-const runOutcomesVersion = 3;
+const runOutcomesVersion = 4;
 
 export const runOutcomesTable = `run_outcomes_${runOutcomesVersion}`;
 
@@ -76,8 +76,8 @@ function runOutcomeProjectionOf({ types, rowAfter }: RunOutcomeMapping): KeyedPr
       { name: 'cached_tokens', kind: 'integer' },
     ],
     indexes: [{ name: 'by_brain_and_day', columns: ['started_day'] }],
-    rowAfter: (row, event) => {
-      const outcome = rowAfter(row === undefined ? undefined : outcomeOf(row), event);
+    rowAfter: (row, message) => {
+      const outcome = rowAfter(row === undefined ? undefined : outcomeOf(row), message);
       return outcome === undefined ? undefined : rowOf(outcome);
     },
   };

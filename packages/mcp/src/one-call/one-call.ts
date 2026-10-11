@@ -3,7 +3,7 @@ import { Array as Arr, Effect, Option, Result } from 'effect';
 import type { Listing } from '../access/server-listing.ts';
 import { namedLinks } from '../access/tool-naming.ts';
 import type { ToolNotOffered } from '../access/tool-not-offered.ts';
-import { recordingOf, type CallJournal } from '../calls/recorded-calls.ts';
+import { recordingOf, type CallJournal, type KeepIn } from '../calls/recorded-calls.ts';
 import { journalledCall, type CallJournalling } from '../calls/tool-caller.ts';
 import type { ServerLink } from '../connections/server-links.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
@@ -28,6 +28,7 @@ export type CallOnce = (call: OneCall, runCall?: RunCall) => Effect.Effect<Calle
 
 export interface OneCallAccess extends Listing {
   readonly links: ReadonlyMap<string, ServerLink>;
+  readonly keepIn: KeepIn;
 }
 
 type Journalling = (readOnly: boolean) => CallJournalling;
@@ -46,7 +47,7 @@ async function calledOnce(call: OneCall, link: ServerLink, { access, journalling
     return opened;
   }
   const { slot, tool, readOnly } = opened;
-  const recording = recordingOf(link.settings, access.secrets.scrub);
+  const recording = recordingOf(link.settings, access.secrets, access.keepIn(call));
   const { callMs } = access.timing;
   const longestRetryWaitMs = Math.min(call.longestRetryWaitMs ?? 0, access.timing.longestRetryWaitMs);
   const forwarding = { slot, tool: tool.name, input: call.input, meta: call.meta, callMs, longestRetryWaitMs, signal };
@@ -55,7 +56,7 @@ async function calledOnce(call: OneCall, link: ServerLink, { access, journalling
     if (!journey.sent) {
       throw new Error(notRecorded);
     }
-    return answeredOnce(journey.done, { durationMs: journey.durationMs, recording, annotations: tool.annotations });
+    return answeredOnce(journey, access.secrets.scrub, tool.annotations);
   } finally {
     await slot.release();
   }
@@ -70,8 +71,8 @@ function journallingOf(runCall: RunCall | undefined, awaited: Awaiting): Journal
         callId: runCall.callId,
         readOnly,
         started: (fact) => awaited(runCall.journal.started(fact)),
-        answered: async (fact) => {
-          await awaited(runCall.journal.answered(fact));
+        ended: async (number, fact) => {
+          await awaited(runCall.journal.ended(number, fact));
         },
       });
 }

@@ -10,6 +10,10 @@ const aNumber: unknown = expect.any(Number);
 
 const aTime: unknown = expect.any(String);
 
+const aDigest: unknown = expect.stringMatching(/^[0-9a-f]{64}$/u);
+
+const scrubbedChannel: unknown = expect.stringMatching(/^\[redacted\] x{5000}$/u);
+
 const record = { server: 'chat', tool: 'thread', read: '/messages' };
 
 function keysOf(event: HistoryEvent | undefined): readonly string[] {
@@ -49,7 +53,7 @@ describe('an interaction function that asks a system, over HTTP', { timeout: wor
 });
 
 describe('the history of a run that asks a system', { timeout: workflowTestTimeoutMs }, () => {
-  it('records the call on the run, its start under the id of the run, in the words of the history', async () => {
+  it('records the call on the run, its start under the id of the run, in the words of the history, with what it sent and what it read', async () => {
     const server = await askingASystem();
     await server.define('thread-replies');
     await server.runCall('thread-replies');
@@ -62,20 +66,27 @@ describe('the history of a run that asks a system', { timeout: workflowTestTimeo
       ['tool_call_answered', 'Tool call 1 answered.'],
       ['run_succeeded', 'A run finished.'],
     ]);
-    expect(history[1]?.data).toMatchObject({ call_id: systemRunId, server: 'chat', tool: 'thread' });
-    expect(history[2]?.data).toMatchObject({ outcome: 'result', duration_ms: aNumber });
-    expect([...keysOf(history[1]), ...keysOf(history[2])]).not.toContain('arguments_json');
+    expect(history[1]?.data).toMatchObject({
+      call_id: systemRunId,
+      server: 'chat',
+      tool: 'thread',
+      arguments_sha256: aDigest,
+      arguments: { channel: 'C0123', ts: '1728379900.000050', limit: 100, inclusive: false },
+    });
+    expect(history[2]?.data).toMatchObject({ is_error: false, duration_ms: aNumber, result_sha256: aDigest });
+    expect(keysOf(history[2])).toContain('answer');
   });
 
-  it('keeps the arguments and the answer, scrubbed and shown at 2 KiB, only where its server records content', async () => {
-    const server = await askingASystem({ entry: { record_content: true } });
+  it('keeps the arguments scrubbed, shows their size past 2 KiB, and reads them whole as one event', async () => {
+    const server = await askingASystem();
     await server.define('thread-replies');
     await server.runCall('thread-replies', { ...threadInput, channel: `${chatKey} ${'x'.repeat(5000)}` });
 
-    const [, started, answered] = await server.history(systemRunId);
+    const [, started] = await server.history(systemRunId);
+    const whole = await server.call('GET', `${alpha}/events/${String(started?.id)}`);
 
-    expect(String(started?.data['arguments_json'])).toMatch(/^\{"channel":"\[redacted\] x+/u);
-    expect(String(started?.data['arguments_json']).length).toBeLessThanOrEqual(2048);
-    expect(String(answered?.data['result_json'])).toMatch(/^\{"content":\[\{"type":"text","text":"2 replies/u);
+    expect(keysOf(started)).not.toContain('arguments');
+    expect(started?.data['arguments_bytes']).toBeGreaterThan(5000);
+    expect(whole.body).toMatchObject({ data: { arguments: { channel: scrubbedChannel } } });
   });
 });

@@ -69,7 +69,13 @@ describe('a run that answers a call of another run', () => {
         ),
       ),
     );
-    expect(records[0]?.data).toMatchObject({ type: 'run_started', call_depth: 3, called_by: calledBy });
+    expect(records[0]).toMatchObject({
+      type: 'run_started',
+      context: {
+        callDepth: 3,
+        calledBy: { runId: calledBy.run_id, reference: calledBy.reference, run: calledBy.run },
+      },
+    });
   });
 
   it(`may be ${mostCallDepth} calls deep, and the ninth start is refused as a conflict that records nothing`, async () => {

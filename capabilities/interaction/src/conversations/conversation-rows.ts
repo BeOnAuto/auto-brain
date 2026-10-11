@@ -1,11 +1,6 @@
 import { runEventOf, type RepliesIn } from '@beonauto/definitions';
-import {
-  ConversationCallEventSchema,
-  conversationCallsKind,
-  type ConversationCallEvent,
-  type RepliesRead,
-} from '@beonauto/mcp';
-import type { KeyedProjection, ProjectedMessage, ProjectedRow } from '@beonauto/operations';
+import { ConversationCallEventSchema, conversationCallsKind, type ReadingRecorded } from '@beonauto/mcp';
+import { recordedDecoder, type KeyedProjection, type ProjectedMessage, type ProjectedRow } from '@beonauto/operations';
 import { Option, Schema } from 'effect';
 
 import { firstReadWaitMs } from './cadence.ts';
@@ -34,7 +29,7 @@ export const conversationRowFrom: (row: ProjectedRow) => ConversationRow =
 
 const decodeRow = Schema.decodeUnknownOption(ConversationRowSchema);
 
-const decodeCall = Schema.decodeUnknownOption(Schema.toCodecJson(ConversationCallEventSchema));
+const decodeCall = recordedDecoder(ConversationCallEventSchema);
 
 export interface Cadence {
   readonly open: boolean;
@@ -62,21 +57,22 @@ interface Read {
 
 type ConversationFact = Join | Read;
 
-function isRepliesRead(event: ConversationCallEvent): event is RepliesRead {
-  return event.type === 'replies_read';
+function isReading(event: { readonly type: string }): event is ReadingRecorded {
+  return event.type === 'replies_read' || event.type === 'reading_failed';
 }
 
-function readOf({ server, tool, conversation, since }: RepliesRead): Read {
+function readOf({ data }: ReadingRecorded): Read {
+  const { server, tool, conversation, since } = data;
   return { kind: 'read', place: { server, tool, key: conversation }, since };
 }
 
-function factOf(event: unknown): ConversationFact | undefined {
-  const fact = runEventOf(event);
-  if (fact?.type === 'delivery_ended') {
-    const place = fact.replies_in;
-    return place === undefined ? undefined : { kind: 'join', place, at: Date.parse(fact.at) };
+function factOf(message: ProjectedMessage): ConversationFact | undefined {
+  const fact = runEventOf(message);
+  if (fact?.type === 'delivery_succeeded') {
+    const place = fact.data.replies_in;
+    return place === undefined ? undefined : { kind: 'join', place, at: Date.parse(fact.context.at) };
   }
-  return Option.getOrUndefined(Option.map(Option.filter(decodeCall(event), isRepliesRead), readOf));
+  return Option.getOrUndefined(Option.map(Option.filter(decodeCall(message), isReading), readOf));
 }
 
 function joined(row: ConversationRow | undefined, { place, at }: Join, { id }: ProjectedMessage): ProjectedRow {
@@ -93,8 +89,8 @@ function joined(row: ConversationRow | undefined, { place, at }: Join, { id }: P
   };
 }
 
-function rowAfter(row: ProjectedRow | undefined, event: unknown, message: ProjectedMessage): ProjectedRow | undefined {
-  const fact = factOf(event);
+function rowAfter(row: ProjectedRow | undefined, message: ProjectedMessage): ProjectedRow | undefined {
+  const fact = factOf(message);
   const kept = row === undefined ? undefined : Option.getOrUndefined(decodeRow(row));
   if (fact?.kind === 'join') {
     return joined(kept, fact, message);
@@ -104,9 +100,9 @@ function rowAfter(row: ProjectedRow | undefined, event: unknown, message: Projec
 
 export const conversations: KeyedProjection = {
   name: conversationsName,
-  version: 2,
+  version: 3,
   kinds: ['runs', conversationCallsKind],
-  types: ['delivery_ended', 'replies_read'],
+  types: ['delivery_succeeded', 'replies_read', 'reading_failed'],
   columns: [
     { name: 'server', kind: 'text' },
     { name: 'tool', kind: 'text' },
@@ -121,10 +117,10 @@ export const conversations: KeyedProjection = {
     { name: 'due_at', kind: 'integer' },
   ],
   indexes: [{ name: 'due', columns: ['due_at'], acrossBrains: true, whereSet: 'due_at' }],
-  keyOf: (event) => {
-    const fact = factOf(event);
+  keyOf: (message) => {
+    const fact = factOf(message);
     return fact === undefined ? undefined : conversationKeyOf(fact.place);
   },
-  advanced: { columns: ['open', 'active_at', 'reads', 'next_read_at', 'due_at'], setBy: ['delivery_ended'] },
+  advanced: { columns: ['open', 'active_at', 'reads', 'next_read_at', 'due_at'], setBy: ['delivery_succeeded'] },
   rowAfter,
 };

@@ -68,21 +68,21 @@ mcp_servers:
     org: acme
 ```
 
-| Field            | For     | What it holds                                                                                                                                                       |
-| ---------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `type`           | both    | `http` or `stdio`; taken from `url` or `command` when left out                                                                                                      |
-| `url`            | `http`  | The server, spoken to over Streamable HTTP                                                                                                                          |
-| `headers`        | `http`  | Headers sent with every request; the values of their references are secrets                                                                                         |
-| `auth`           | `http`  | OAuth client credentials instead of a header: `issuer`, `client_id`, `client_secret` or `private_key` with `algorithm`, and `scope`                                 |
-| `command`        | `stdio` | An installed, pinned command, started when a run or a listing first needs it and stopped with the server                                                            |
-| `args`           | `stdio` | Its arguments                                                                                                                                                       |
-| `env`            | `stdio` | Its whole environment; the values of its references are secrets. It inherits nothing else from the server, so give `PATH` or an absolute command                    |
-| `org`            | both    | The org whose functions may use the server; required                                                                                                                |
-| `brains`         | both    | The brains of that org that may use it; every brain of the org when left out                                                                                        |
-| `allowed`        | both    | The tools of the server a function may name, each named as the server lists it, without the server's name and without `*`; every tool of the server when left out   |
-| `testable`       | both    | The tools `test_tool_call` may test although the server does not mark them read-only, each among `allowed`; only the tools the server marks read-only when left out |
-| `record_content` | both    | `true` to record the arguments and results of calls, scrubbed and cut to 4 KiB as stored, in the history of the run, where anyone who may read the brain reads them |
-| `request_id`     | both    | The response header, or the key of a result's metadata, in which the server returns its own id of a request, recorded with each call                                |
+| Field            | For     | What it holds                                                                                                                                                                                                                |
+| ---------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`           | both    | `http` or `stdio`; taken from `url` or `command` when left out                                                                                                                                                               |
+| `url`            | `http`  | The server, spoken to over Streamable HTTP                                                                                                                                                                                   |
+| `headers`        | `http`  | Headers sent with every request; the values of their references are secrets                                                                                                                                                  |
+| `auth`           | `http`  | OAuth client credentials instead of a header: `issuer`, `client_id`, `client_secret` or `private_key` with `algorithm`, and `scope`                                                                                          |
+| `command`        | `stdio` | An installed, pinned command, started when a run or a listing first needs it and stopped with the server                                                                                                                     |
+| `args`           | `stdio` | Its arguments                                                                                                                                                                                                                |
+| `env`            | `stdio` | Its whole environment; the values of its references are secrets. It inherits nothing else from the server, so give `PATH` or an absolute command                                                                             |
+| `org`            | both    | The org whose functions may use the server; required                                                                                                                                                                         |
+| `brains`         | both    | The brains of that org that may use it; every brain of the org when left out                                                                                                                                                 |
+| `allowed`        | both    | The tools of the server a function may name, each named as the server lists it, without the server's name and without `*`; every tool of the server when left out                                                            |
+| `testable`       | both    | The tools `test_tool_call` may test although the server does not mark them read-only, each among `allowed`; only the tools the server marks read-only when left out                                                          |
+| `record_content` | both    | Whether the arguments and answers of calls are kept whole, scrubbed of secrets, in the brain's ledger, where anyone who may read the brain reads them; `true` when left out, and `false` keeps their sizes and digests alone |
+| `request_id`     | both    | The response header, or the key of a result's metadata, in which the server returns its own id of a request, recorded with each call                                                                                         |
 
 A secret is a value a `${NAME}` reference takes from the environment, a credential of an `auth` block, or a token minted from one, and nothing else: a header such as `X-Region: production-eu` is not, so it is never scrubbed. A secret is scrubbed from every message, event and result, as written and as it appears inside JSON, where a quote, a backslash or a line break in it is escaped; a value shorter than 8 characters is not, since scrubbing it would erase ordinary words, so give a server a key at least that long. Only `headers`, `env` and `auth` may hold a reference; one in `url`, `command` or `args` stops the server at start, since an argument shows in the machine's list of processes and a URL is not a header.
 
@@ -96,7 +96,7 @@ The server checks every entry at start and stops, naming the setting and the pla
 
 ## Interaction functions
 
-An interaction function calls a tool of a server in `mcp_servers` and answers with its result, naming it in its own document under `call` ([decision 0021](../../decisions/0021-asking-a-system.md)), or sends its request through such a tool, named under `deliver`, or leaves it in the brain's inbox, and may read the replies to what it sent through another tool of that server ([decision 0010](../../decisions/0010-interaction-functions.md)). Nothing is configured for it beyond the tool server: the entry's `allowed` names the tools its functions may use, checked again at every call, every attempt and every read, and its `record_content` records what they send and what the tool answers.
+An interaction function calls a tool of a server in `mcp_servers` and answers with its result, naming it in its own document under `call` ([decision 0021](../../decisions/0021-asking-a-system.md)), or sends its request through such a tool, named under `deliver`, or leaves it in the brain's inbox, and may read the replies to what it sent through another tool of that server ([decision 0010](../../decisions/0010-interaction-functions.md)). Nothing is configured for it beyond the tool server: the entry's `allowed` names the tools its functions may use, checked again at every call, every attempt and every read, and its `record_content`, on unless the entry turns it off, keeps what they send and what the tool answers.
 
 One setting goes with interaction functions:
 

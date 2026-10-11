@@ -56,27 +56,28 @@ function kindKeyOfStream(): string {
 }
 
 const sqliteAggregate = `SELECT coalesce(sum(runs), 0) AS runs FROM (
-  SELECT substr(json_extract(s.message_data, '$.at'), 1, 10) AS day, json_extract(s.message_data, '$.definition_type') AS definition_type,
-    json_extract(s.message_data, '$.name') AS name, f.message_type AS status, count(*) AS runs,
+  SELECT substr(json_extract(s.message_metadata, '$.at'), 1, 10) AS day,
+    json_extract(s.message_metadata, '$.definitionType') AS definition_type,
+    json_extract(s.message_metadata, '$.definitionName') AS name, f.message_type AS status, count(*) AS runs,
     sum(json_extract(f.message_data, '$.record.usage.input.total')) AS input_tokens,
     sum(json_extract(f.message_data, '$.record.usage.output.total')) AS output_tokens,
     sum(json_extract(f.message_data, '$.record.usage.input.cache_read')) AS cached_tokens,
-    json_group_array(CAST((julianday(json_extract(f.message_data, '$.at'))
-      - julianday(json_extract(s.message_data, '$.at'))) * 86400000 AS INTEGER)) AS durations
+    json_group_array(CAST((julianday(json_extract(f.message_metadata, '$.at'))
+      - julianday(json_extract(s.message_metadata, '$.at'))) * 86400000 AS INTEGER)) AS durations
   FROM (
-    SELECT stream_id, message_data FROM emt_messages
+    SELECT stream_id, message_metadata FROM emt_messages
     WHERE substr(stream_id, 1, ${kindKeyOfStream()}) = 'brain/o1/big/runs/' AND stream_position = 1
   ) AS s
   JOIN emt_messages AS f ON f.stream_id = s.stream_id AND f.stream_position = (
     SELECT max(m.stream_position) FROM emt_messages AS m WHERE m.stream_id = s.stream_id)
-  WHERE substr(json_extract(s.message_data, '$.at'), 1, 10) BETWEEN '${firstDay}' AND '${lastDay}'
+  WHERE substr(json_extract(s.message_metadata, '$.at'), 1, 10) BETWEEN '${firstDay}' AND '${lastDay}'
   GROUP BY day, definition_type, name, status)`;
 
 function sqliteWrite(fileName: string, count: number, rowsOf: RowsOf): void {
   const database = new DatabaseSync(fileName);
   const message = database.prepare(`INSERT INTO emt_messages (stream_id, stream_position, partition, message_kind,
     message_data, message_metadata, message_schema_version, message_type, message_id, is_archived, created)
-    VALUES (?, ?, 'emt:default', 'E', ?, '{}', '1', ?, ?, 0, ?)`);
+    VALUES (?, ?, 'emt:default', 'E', ?, ?, '1', ?, ?, 0, ?)`);
   const stream = database.prepare(`INSERT INTO emt_streams (stream_id, stream_position, partition, stream_type,
     stream_metadata, is_archived) VALUES (?, ?, 'emt:default', 'brain', '[]', 0)
     ON CONFLICT DO UPDATE SET stream_position = excluded.stream_position`);
@@ -87,6 +88,7 @@ function sqliteWrite(fileName: string, count: number, rowsOf: RowsOf): void {
         row.stream,
         row.position,
         row.data,
+        row.metadata,
         row.type,
         `m${first}-${index}`,
         row.created.slice(0, 19).replace('T', ' '),
@@ -123,32 +125,34 @@ export const onSQLite: Bench = {
 };
 
 const postgresqlAggregate = `WITH s AS (
-    SELECT stream_id, (message_data ->> 'json')::jsonb AS e FROM emt_messages
+    SELECT stream_id, message_metadata AS c FROM emt_messages
     WHERE substring(stream_id FROM '^(?:[^/]*/){4}') = ANY($1::text[]) AND stream_position = 1
   ), runs AS (
-    SELECT left(s.e ->> 'at', 10) AS day, s.e ->> 'definition_type' AS definition_type, s.e ->> 'name' AS name,
-      latest.message_type AS status, (latest.message_data ->> 'json')::jsonb AS f, s.e ->> 'at' AS started_at
+    SELECT left(s.c ->> 'at', 10) AS day, s.c ->> 'definitionType' AS definition_type, s.c ->> 'definitionName' AS name,
+      latest.message_type AS status, (latest.message_data ->> 'json')::jsonb AS f, s.c ->> 'at' AS started_at,
+      latest.message_metadata ->> 'at' AS finished_at
     FROM s CROSS JOIN LATERAL (
-      SELECT message_type, message_data FROM emt_messages AS m WHERE m.stream_id = s.stream_id
+      SELECT message_type, message_data, message_metadata FROM emt_messages AS m WHERE m.stream_id = s.stream_id
       ORDER BY m.transaction_id DESC, m.global_position DESC LIMIT 1
     ) AS latest
-    WHERE left(s.e ->> 'at', 10) BETWEEN $2 AND $3
+    WHERE left(s.c ->> 'at', 10) BETWEEN $2 AND $3
   )
   SELECT coalesce(sum(runs), 0)::int AS runs FROM (
     SELECT day, definition_type, name, status, count(*) AS runs,
       sum((f -> 'record' -> 'usage' -> 'input' ->> 'total')::bigint) AS input_tokens,
       sum((f -> 'record' -> 'usage' -> 'output' ->> 'total')::bigint) AS output_tokens,
       sum((f -> 'record' -> 'usage' -> 'input' ->> 'cache_read')::bigint) AS cached_tokens,
-      json_agg((extract(epoch FROM (f ->> 'at')::timestamptz - started_at::timestamptz) * 1000)::bigint) AS durations
+      json_agg((extract(epoch FROM finished_at::timestamptz - started_at::timestamptz) * 1000)::bigint) AS durations
     FROM runs GROUP BY day, definition_type, name, status
   ) AS groups`;
 
 const postgresqlRows = `INSERT INTO emt_messages (stream_id, stream_position, partition, message_kind, message_data,
     message_metadata, message_schema_version, message_type, message_id, is_archived, transaction_id, created)
-  SELECT r.stream, r.position, 'emt:default', 'E', jsonb_build_object('json', r.data), '{}', '1', r.type,
+  SELECT r.stream, r.position, 'emt:default', 'E', jsonb_build_object('json', r.data), r.metadata::jsonb, '1', r.type,
     'm' || $2 || '-' || r.n, false, pg_current_xact_id(), r.created::timestamptz
-  FROM ROWS FROM (jsonb_to_recordset($1::jsonb) AS (stream text, position int, type text, data text, created text))
-    WITH ORDINALITY AS r(stream, position, type, data, created, n)
+  FROM ROWS FROM (jsonb_to_recordset($1::jsonb)
+    AS (stream text, position int, type text, data text, metadata text, created text))
+    WITH ORDINALITY AS r(stream, position, type, data, metadata, created, n)
   ORDER BY r.n`;
 
 const postgresqlStreams = `INSERT INTO emt_streams (stream_id, stream_position, partition, stream_type, stream_metadata, is_archived)

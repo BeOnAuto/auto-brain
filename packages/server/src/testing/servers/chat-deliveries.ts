@@ -26,17 +26,23 @@ export function chatEnvironment(
 }
 
 const HistorySchema = Schema.Struct({
-  events: Schema.Array(Schema.Struct({ type: Schema.String, data: Schema.Record(Schema.String, Schema.Unknown) })),
+  events: Schema.Array(
+    Schema.Struct({ id: Schema.String, type: Schema.String, data: Schema.Record(Schema.String, Schema.Unknown) }),
+  ),
 });
 
 const decodeHistory = Schema.decodeUnknownSync(HistorySchema);
+
+type DeliveryRow = (typeof HistorySchema.Type)['events'][number];
+
+export async function deliveryRowsOf(server: InteractionServer, runId: string): Promise<readonly DeliveryRow[]> {
+  const history = await server.call('GET', `${alpha}/runs/${runId}/history`);
+  return decodeHistory(history.body).events.filter(({ type }) => type.startsWith('delivery_'));
+}
 
 export async function deliveryHistoryOf(
   server: InteractionServer,
   runId: string,
 ): Promise<readonly Readonly<Record<string, unknown>>[]> {
-  const history = await server.call('GET', `${alpha}/runs/${runId}/history`);
-  return decodeHistory(history.body)
-    .events.filter(({ type }) => type === 'delivery_started' || type === 'delivery_ended')
-    .map(({ type, data }) => Object.assign({ type }, data));
+  return (await deliveryRowsOf(server, runId)).map(({ type, data }) => Object.assign({ type }, data));
 }

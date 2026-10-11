@@ -12,7 +12,7 @@ const toAlpha = toBrain('acme', 'alpha');
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
-const at = { by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
+const at = { runId, by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
 
 const typesOf = Schema.decodeUnknownSync(
   Schema.Struct({ output: Schema.Struct({ events: Schema.Array(Schema.Struct({ type: Schema.String })) }) }),
@@ -86,6 +86,15 @@ describe('the journal of a run', () => {
   });
 });
 
+describe('the journal of a run whose calls failed', () => {
+  it('records how each call failed after its start', async () => {
+    const { running, history } = await brainWithToolUser();
+    await running({ calls: 1, failing: true });
+
+    expect(await history()).toEqual(['run_started', 'tool_call_started', 'tool_call_failed', 'run_succeeded']);
+  });
+});
+
 describe('the journal of a run that has finished', () => {
   it('records nothing more', async () => {
     const { running, history, user } = await brainWithToolUser();
@@ -147,7 +156,7 @@ describe('a run that called tools', () => {
         calls_tools: true,
         ...at,
       },
-      { type: 'tool_call', fact: startOfCall(1), ...at },
+      { type: 'tool_call', fact: { type: 'tool_call_started', data: startOfCall(1) }, ...at },
     );
 
     expect(await running({})).toMatchObject({ status: 'rejected', reason: 'conflict', kind: 'tools_called' });

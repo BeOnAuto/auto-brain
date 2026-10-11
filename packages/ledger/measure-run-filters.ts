@@ -26,6 +26,7 @@ interface Row {
   readonly position: number;
   readonly type: string;
   readonly data: string;
+  readonly metadata: string;
   readonly created: string;
 }
 
@@ -59,38 +60,34 @@ function streamOf(brain: string, run: number): string {
 
 interface Ending {
   readonly type: string;
-  readonly [fact: string]: unknown;
+  readonly data: Readonly<Record<string, unknown>>;
 }
 
 function endingOf(run: number): Ending {
   if (run % 20 === 10) {
-    return { type: 'run_rejected', rejection: { reason: 'unavailable', detail: 'try again later' } };
+    return { type: 'run_rejected', data: { rejection: { reason: 'unavailable', detail: 'try again later' } } };
   }
-  return run % 100 === 7 ? { type: 'run_failed' } : { type: 'run_succeeded', output: { text: text(640) } };
+  return run % 100 === 7
+    ? { type: 'run_failed', data: {} }
+    : { type: 'run_succeeded', data: { output: { text: text(640) }, record: {} } };
 }
 
 function rowsOfRun(brain: string, run: number, inputCharacters: number): readonly Row[] {
   const created = timeOf(run);
-  const start = {
-    type: 'run_started',
-    definition_type: run % 10 === 0 ? 'workflow' : 'reasoning',
-    name: `definition-${run % 10}`,
-    definition_version: 1,
-    input: { text: text(inputCharacters) },
-    by: 'user-1',
+  const metadata = JSON.stringify({
     at: created,
-  };
-  const ending = {
-    ...endingOf(run),
-    definition_type: start.definition_type,
-    name: start.name,
     by: 'user-1',
-    at: created,
-  };
+    runId: String(run).padStart(8, '0'),
+    definitionType: run % 10 === 0 ? 'workflow' : 'reasoning',
+    definitionName: `definition-${run % 10}`,
+    definitionVersion: 1,
+  });
+  const start = { input: { text: text(inputCharacters) } };
+  const ending = endingOf(run);
   const stream = streamOf(brain, run);
   return [
-    { stream, position: 1, type: start.type, data: JSON.stringify(start), created },
-    { stream, position: 2, type: ending.type, data: JSON.stringify(ending), created },
+    { stream, position: 1, type: 'run_started', data: JSON.stringify(start), metadata, created },
+    { stream, position: 2, type: ending.type, data: JSON.stringify(ending.data), metadata, created },
   ];
 }
 
@@ -202,13 +199,14 @@ async function measureSQLite(): Promise<void> {
   const database = new DatabaseSync(fileName);
   const insert = database.prepare(`INSERT INTO emt_messages (stream_id, stream_position, partition, message_kind,
     message_data, message_metadata, message_schema_version, message_type, message_id, is_archived, created)
-    VALUES (?, ?, 'emt:default', 'E', ?, '{}', '1', ?, ?, 0, ?)`);
+    VALUES (?, ?, 'emt:default', 'E', ?, ?, '1', ?, ?, 0, ?)`);
   database.exec('BEGIN');
   for (const row of [...rowsOf(0, runs), ...largeRowsOf(0, largeRuns)]) {
     insert.run(
       row.stream,
       row.position,
       row.data,
+      row.metadata,
       row.type,
       `${row.stream}#${row.position}`,
       row.created.slice(0, 19).replace('T', ' '),
@@ -230,10 +228,11 @@ async function filledWithPostgreSQL(client: Readonly<Pick<Client, 'query'>>): Pr
     client.query(
       `INSERT INTO emt_messages (stream_id, stream_position, partition, message_kind, message_data,
         message_metadata, message_schema_version, message_type, message_id, is_archived, transaction_id, created)
-      SELECT r.stream, r.position, 'emt:default', 'E', jsonb_build_object('json', r.data), '{}', '1',
+      SELECT r.stream, r.position, 'emt:default', 'E', jsonb_build_object('json', r.data), r.metadata::jsonb, '1',
         r.type, r.stream || '#' || r.position, false, pg_current_xact_id(), r.created::timestamptz
-      FROM ROWS FROM (jsonb_to_recordset($1::jsonb) AS (stream text, position int, type text, data text, created text))
-        WITH ORDINALITY AS r(stream, position, type, data, created, n)
+      FROM ROWS FROM (jsonb_to_recordset($1::jsonb)
+          AS (stream text, position int, type text, data text, metadata text, created text))
+        WITH ORDINALITY AS r(stream, position, type, data, metadata, created, n)
       ORDER BY r.n`,
       [JSON.stringify(rows)],
     );

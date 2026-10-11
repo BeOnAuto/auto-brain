@@ -1,7 +1,7 @@
 import type { RunEnding } from '@beonauto/definitions';
 import { invalidArguments, type CallResult } from '@beonauto/operations';
-import { jsonBytesOf, stepEventIdOf } from '@beonauto/workflow-engine';
-import type { CallAnswer, Perform } from '@beonauto/workflow-host';
+import { jsonBytesOf } from '@beonauto/workflow-engine';
+import { recordIdOf, type CallAnswer, type Perform } from '@beonauto/workflow-host';
 import { Effect, Option } from 'effect';
 
 import { isArgumentsProblem, definitionArgumentsOf } from '../document/definition-arguments.ts';
@@ -58,7 +58,7 @@ function callAnswerOf(result: DefinitionRunResult, child: string): CallAnswer {
 }
 
 export function definitionCalls(runDefinition: RunDefinition): Perform {
-  return (call, run) =>
+  return (call, run, origin) =>
     Option.match(attributesOfRun(run.attributes), {
       onNone: () => Effect.succeed(noCaller),
       onSome: ({ org, brain, run_id: workflowRun, caller, lineage, depth = 0, call_depth = 0 }) => {
@@ -68,7 +68,7 @@ export function definitionCalls(runDefinition: RunDefinition): Perform {
         }
         const { reference, run: count } = call.key;
         const runId = nestedRunId(workflowRun, reference, count);
-        const waiting = stepEventIdOf(workflowRun, { reference, run: count, outcome: 'waiting', times: 1 });
+        const startedBy = recordIdOf(run.runId, origin.version);
         const correlationId = lineage?.correlation ?? workflowRun;
         return runDefinition({
           org,
@@ -76,7 +76,7 @@ export function definitionCalls(runDefinition: RunDefinition): Perform {
           caller,
           ...definition,
           runId,
-          lineage: { causationId: waiting, correlationId },
+          lineage: { causationId: startedBy, correlationId },
           depth,
           callDepth: call_depth + 1,
           calledBy: { run_id: workflowRun, reference, run: count },

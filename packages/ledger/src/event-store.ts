@@ -1,7 +1,9 @@
 import type {
+  Context,
   ProjectionAdvancer,
   ProjectionReader,
   Lineage,
+  RecordedContent,
   RecordedOrder,
   RecordedSelection,
   RunOutcomeGroup,
@@ -20,10 +22,22 @@ export interface MessageLineage extends Lineage {
   readonly id: string;
 }
 
+export interface RecordedMessage {
+  readonly type: string;
+  readonly data: unknown;
+  readonly context: Context;
+  readonly lineage: MessageLineage;
+}
+
+export interface AppendPlace {
+  readonly expectedVersion: number;
+  readonly context: Context;
+  readonly lineage?: Lineage;
+}
+
 export interface RecordedStream {
   readonly version: number;
-  readonly events: readonly unknown[];
-  readonly lineages: readonly MessageLineage[];
+  readonly messages: readonly RecordedMessage[];
 }
 
 export type RecordedPoint = readonly string[];
@@ -38,13 +52,21 @@ export interface StoredPageRequest {
   readonly dataOf?: readonly string[];
 }
 
-interface StoredRecord extends MessageLineage {
+export interface StoredRecord extends MessageLineage {
   readonly point: RecordedPoint;
   readonly stream: string;
   readonly version: number;
+  readonly globalPosition: number;
   readonly type: string;
   readonly data: unknown;
+  readonly metadata: StoredMetadata;
   readonly recordedAt: string;
+}
+
+export interface StoredMetadata {
+  readonly context: Context;
+  readonly traceId?: string;
+  readonly spanId?: string;
 }
 
 export interface StoredPlace {
@@ -61,12 +83,7 @@ export interface StoredPage {
 export interface StreamStore {
   readonly mostEventsInOneAppend: number;
   readonly read: (stream: string, after?: number) => Promise<RecordedStream>;
-  readonly append: (
-    stream: string,
-    events: readonly EncodedEvent[],
-    expectedVersion: number,
-    lineage?: Lineage,
-  ) => Promise<void>;
+  readonly append: (stream: string, events: readonly EncodedEvent[], place: AppendPlace) => Promise<void>;
   readonly migrate: () => Promise<void>;
   readonly close: () => Promise<void>;
 }
@@ -85,6 +102,7 @@ export interface RecordedStore {
     page: StoredPageRequest,
   ) => Promise<StoredPage>;
   readonly readAppended: (after: RecordedPoint | undefined, most: number) => Promise<AppendedStreams>;
+  readonly readRecordedEvent: (brainKey: string, id: string) => Promise<StoredRecord | undefined>;
 }
 
 export interface DefinitionStream {
@@ -106,7 +124,11 @@ export interface RunOutcomesStore {
   ) => Promise<readonly RunOutcomeGroup[]>;
 }
 
-export interface LedgerStore extends EventStore, RunOutcomesStore, ProjectionReader, ProjectionAdvancer {}
+export interface ContentStore {
+  readonly content: RecordedContent;
+}
+
+export interface LedgerStore extends EventStore, RunOutcomesStore, ProjectionReader, ProjectionAdvancer, ContentStore {}
 
 export interface StatementExecutor {
   readonly query: (sql: SQL) => Promise<{ readonly rows: readonly unknown[] }>;

@@ -31,9 +31,8 @@ const ListedRuns = Schema.Struct({
 
 const StartSchema = Schema.Struct({
   type: Schema.String,
-  causation_id: Schema.NullOr(Schema.String),
   summary: Schema.String,
-  data: Schema.Struct({ trigger: TriggerSchema }),
+  metadata: Schema.Struct({ causation_id: Schema.NullOr(Schema.String), trigger: TriggerSchema }),
 });
 
 const HistoryPage = Schema.Struct({ events: Schema.NonEmptyArray(Schema.Unknown) });
@@ -87,7 +86,7 @@ async function startOf(runId: string): Promise<Start> {
 }
 
 function startByKind(kind: string): Start | undefined {
-  return seen.starts.find(({ data }) => data.trigger.kind === kind);
+  return seen.starts.find(({ metadata }) => metadata.trigger.kind === kind);
 }
 
 async function triggeredThreeTimes(): Promise<Seen> {
@@ -146,7 +145,7 @@ describe('a workflow with an event trigger, a cron schedule and an every schedul
       ['succeeded', 'brain:alpha'],
     ]);
     expect(
-      seen.starts.map(({ data }) => data.trigger.kind).toSorted((first, second) => first.localeCompare(second)),
+      seen.starts.map(({ metadata }) => metadata.trigger.kind).toSorted((first, second) => first.localeCompare(second)),
     ).toEqual(['cron', 'event', 'every']);
   });
 
@@ -155,20 +154,23 @@ describe('a workflow with an event trigger, a cron schedule and an every schedul
       {
         type: 'run_started',
         summary: 'A run of the workflow “close-the-month” was started by its event trigger.',
-        causation_id: seen.eventRecord,
-        data: { trigger: { kind: 'event', reference: '/schedule/on' } },
+        metadata: { causation_id: seen.eventRecord, trigger: { kind: 'event', reference: '/schedule/on' } },
       },
       {
         type: 'run_started',
         summary: 'A run of the workflow “close-the-month” was started by its cron schedule.',
-        causation_id: seen.definition.triggers_since,
-        data: { trigger: { kind: 'cron', reference: '/schedule/cron' } },
+        metadata: {
+          causation_id: seen.definition.triggers_since,
+          trigger: { kind: 'cron', reference: '/schedule/cron' },
+        },
       },
       {
         type: 'run_started',
         summary: 'A run of the workflow “close-the-month” was started by its every schedule.',
-        causation_id: seen.definition.triggers_since,
-        data: { trigger: { kind: 'every', reference: '/schedule/every' } },
+        metadata: {
+          causation_id: seen.definition.triggers_since,
+          trigger: { kind: 'every', reference: '/schedule/every' },
+        },
       },
     ]);
     expect(seen.startOverMcp).toEqual(seen.starts[0]);

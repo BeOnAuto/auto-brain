@@ -1,19 +1,31 @@
 import { Effect, Result, Schema } from 'effect';
 
-import { BrainIdSchema, NotFound, OrgReader, OrgWriter, defineCommand, defineQuery, type Decider } from '../index.ts';
+import {
+  ActedContextSchema,
+  BrainIdSchema,
+  NotFound,
+  OrgReader,
+  OrgWriter,
+  defineCommand,
+  defineQuery,
+  factOf,
+  type Decider,
+} from '../index.ts';
+import { testedContext } from './callers.ts';
 
 const BrainLabelSchema = Schema.Struct({ brain: BrainIdSchema, label: Schema.String });
 
 type BrainLabel = typeof BrainLabelSchema.Type;
 
-const BrainLabelledSchema = Schema.Struct({ type: Schema.Literal('brain_labelled'), labelled: BrainLabelSchema });
+const BrainLabelledSchema = factOf('brain_labelled', BrainLabelSchema, ActedContextSchema);
 
 type BrainLabelled = typeof BrainLabelledSchema.Type;
 
 const labelBook: Decider<readonly BrainLabel[], BrainLabel, BrainLabelled> = {
   initialState: [],
-  evolve: (labels, { labelled }) => [...labels.filter(({ brain }) => brain !== labelled.brain), labelled],
-  decide: (labelled) => Result.succeed([{ type: 'brain_labelled', labelled }]),
+  evolve: (labels, { data: labelled }) => [...labels.filter(({ brain }) => brain !== labelled.brain), labelled],
+  decide: (labelled) => Result.succeed([{ type: 'brain_labelled', data: labelled }]),
+  context: () => testedContext,
   eventSchema: BrainLabelledSchema,
 };
 

@@ -2,7 +2,13 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { DatabaseFailed, type HostDatabase } from '../database/host-database.ts';
-import { brainCreated, eventTrigger, published, definitionRecorded } from '../reaction-testing/brain-writes.ts';
+import {
+  brainCreated,
+  byAdmin,
+  definitionRecorded,
+  eventTrigger,
+  published,
+} from '../reaction-testing/brain-writes.ts';
 import { followerOver } from '../reaction-testing/follower-over.ts';
 import { until } from '../reaction-testing/until.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
@@ -55,7 +61,7 @@ describe('a brain another process creates, swept before its registry could be re
 
       await brainCreated(database.store, 'beta');
       await definitionRecorded(database.store, { name: 'close', version: 1, triggers: [trigger] }, beta);
-      await published(database.store, { id: 'first', type: 'com.acme.closed' }, {}, beta);
+      await published(database.store, { id: 'first', type: 'com.acme.closed' }, byAdmin, beta);
       held.release();
       const starts = await until(
         () => Promise.resolve(reactions.starts()),

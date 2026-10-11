@@ -24,7 +24,7 @@ const calling: Schema.JsonObject = { document: header, do: [{ ask: { call: 'noti
 
 const pausing: Schema.JsonObject = { document: header, do: [{ pause: { wait: 'PT1H' } }] };
 
-const ofTheRun = { definition_type: 'workflow', name: 'measured', definition_version: 1, at };
+const ofTheRun = { at, definitionType: 'workflow', definitionName: 'measured', definitionVersion: 1 };
 
 function percentile(sorted: readonly number[], fraction: number): number {
   return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * fraction))] ?? 0;
@@ -72,25 +72,22 @@ async function measuredOn(
 
 export function childEndingLatencyOn(database: DatabaseSettings, measured: WaitingCase): Promise<WaitingLatency> {
   return measuredOn(database, measured, calling, (store, runId) =>
-    recorded(store, `${alpha}runs/${childOf(runId)}`, {
-      type: 'run_succeeded',
-      output: 'done',
-      record: {},
-      by: 'brain:alpha',
-      called_by: { run_id: runId, reference: '/do/0/ask', run: 1 },
-      ...ofTheRun,
-    }),
+    recorded(
+      store,
+      `${alpha}runs/${childOf(runId)}`,
+      { type: 'run_succeeded', data: { output: 'done', record: {} } },
+      { ...ofTheRun, by: 'brain:alpha', calledBy: { runId, reference: '/do/0/ask', run: 1 } },
+    ),
   );
 }
 
 export function cancelLatencyOn(database: DatabaseSettings, measured: WaitingCase): Promise<WaitingLatency> {
   return measuredOn(database, measured, pausing, (store, runId) =>
-    recorded(store, `${alpha}runs/${runId}`, {
-      type: 'run_cancel_requested',
-      kind: 'requested',
-      reason: 'Measured',
-      by: 'acme-admin',
-      ...ofTheRun,
-    }),
+    recorded(
+      store,
+      `${alpha}runs/${runId}`,
+      { type: 'run_cancel_requested', data: { kind: 'requested', reason: 'Measured' } },
+      { ...ofTheRun, by: 'acme-admin' },
+    ),
   );
 }

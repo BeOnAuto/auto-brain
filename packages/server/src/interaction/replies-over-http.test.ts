@@ -45,7 +45,7 @@ describe(
       expect(await deliveryHistoryOf(server, runId)).toMatchObject([
         { type: 'delivery_started' },
         {
-          type: 'delivery_ended',
+          type: 'delivery_succeeded',
           delivered_as: { conversation: '#approvals-ada', id: '1699.000001' },
           replies_in: { server: 'chat', tool: 'thread_replies', key: '#approvals-ada/1699.000001' },
         },

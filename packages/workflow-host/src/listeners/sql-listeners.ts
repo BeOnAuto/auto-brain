@@ -44,11 +44,12 @@ export function sqlListeners(database: HostDatabase, refusals: Refusals, stops: 
           return 'already_armed';
         }
         const brainKey = streamPrefixOfBrain(addressOfRun(runKey));
-        const { workflow, version } = reactionOfRun(run.attributes);
+        const reaction = reactionOfRun(run.attributes);
+        const { workflow, version } = reaction;
         if ((yield* listenersInBrain(database, brainKey)) >= mostListenersInABrain) {
           yield* refusals.refuse(
             brainKey,
-            workflow,
+            reaction,
             `A run listened for events of the brain while ${mostListenersInABrain} listeners were already open in it, the most a brain keeps; the run takes only the events sent to it`,
           );
           return 'refused';

@@ -9,7 +9,7 @@ import {
 import { Effect, Schema, Struct } from 'effect';
 
 import { runDecider, runStreamNameOf } from '../runs/run-decider.ts';
-import { RunEventSchema, type RunEvent } from '../runs/run-events.ts';
+import { RunEventSchema, type RecordedRunEvent } from '../runs/run-events.ts';
 import { runOf } from '../runs/run-lookup.ts';
 import { evolveRun, startedRunOf, type RunStreamState } from '../runs/run-state.ts';
 import { RunSchema, type Run, type RunRejection } from '../runs/run.ts';
@@ -66,10 +66,21 @@ function listedOf(run: Run): ListedRun {
   return run.rejection === undefined ? listed : { ...listed, rejection: listedRejectionOf(run.rejection) };
 }
 
+function recordedRunEventOf({
+  type,
+  data,
+  context,
+}: RecordedEvent): Effect.Effect<RecordedRunEvent, Schema.SchemaError> {
+  return decodeEvent({ type, data, context });
+}
+
 function listedRunOf(stream: string, heads: readonly RecordedEvent[]): Effect.Effect<ListedRun> {
-  return Effect.forEach(heads, ({ data }) => decodeEvent(data)).pipe(
-    Effect.map((events: readonly RunEvent[]) =>
-      events.reduce((state: RunStreamState, event: RunEvent) => evolveRun(state, event), runDecider.initialState),
+  return Effect.forEach(heads, recordedRunEventOf).pipe(
+    Effect.map((events: readonly RecordedRunEvent[]) =>
+      events.reduce(
+        (state: RunStreamState, event: RecordedRunEvent) => evolveRun(state, event),
+        runDecider.initialState,
+      ),
     ),
     Effect.flatMap((state) => runOf(stream.slice(runStreamPrefix.length), startedRunOf(state))),
     Effect.orDie,
