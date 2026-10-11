@@ -43,7 +43,6 @@ describe('one call of a tool', () => {
         is_error: false,
         result_bytes: 95,
         result_sha256: aDigest,
-        content_kept: true,
         duration_ms: aNumber,
         jsonrpc_id: aNumber,
       },
@@ -57,7 +56,6 @@ describe('one call of a tool', () => {
       tool: 'echo',
       arguments_bytes: 48,
       arguments_sha256: aDigest,
-      content_kept: true,
     });
     expect(fake.received()).toEqual([
       {
@@ -92,22 +90,28 @@ describe('what one call answers of its tool', () => {
     const access = oneCallAccess(fake.url);
     const call = { ...echoCall, input: { token: oneCallKey } };
     const sent = JSON.stringify(call.input);
-    const answered = JSON.stringify({ content: [{ type: 'text', text: sent }] });
+    const keptAnswer = JSON.stringify({ content: [{ type: 'text', text: scrubbed }] });
 
     const called = await calledOnce(access, call);
     const starts = await Effect.runPromise(
       Effect.all([access.startOf(call), access.startOf({ ...call, reference: { server: 'wiki', tool: 'echo' } })]),
     );
 
-    expect(starts).toMatchObject([
-      { arguments_sha256: digest(sent), content_kept: true },
-      { server: 'wiki', arguments_bytes: 36, content_kept: false },
+    expect(starts).toEqual([
+      {
+        server: 'graph',
+        tool: 'echo',
+        arguments_bytes: Buffer.byteLength(scrubbed),
+        arguments_sha256: digest(scrubbed),
+      },
+      { server: 'wiki', tool: 'echo', arguments_bytes: Buffer.byteLength(scrubbed) },
     ]);
-    expect(called).toMatchObject({ answered: { result_sha256: digest(answered), content_kept: true } });
-    await expect(Effect.runPromise(access.content.get(alpha, digest(sent)))).resolves.toBe(scrubbed);
-    await expect(Effect.runPromise(access.content.get(alpha, digest(answered)))).resolves.toBe(
-      JSON.stringify({ content: [{ type: 'text', text: scrubbed }] }),
-    );
+    expect(called).toMatchObject({
+      answered: { result_bytes: Buffer.byteLength(keptAnswer), result_sha256: digest(keptAnswer) },
+    });
+    expect(JSON.stringify([starts, called])).not.toContain(digest(sent));
+    await expect(Effect.runPromise(access.content.get(alpha, digest(scrubbed)))).resolves.toBe(scrubbed);
+    await expect(Effect.runPromise(access.content.get(alpha, digest(keptAnswer)))).resolves.toBe(keptAnswer);
   });
 });
 

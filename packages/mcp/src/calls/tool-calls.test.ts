@@ -2,7 +2,8 @@ import { Buffer } from 'node:buffer';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { Timing } from '../bounds/call-bounds.ts';
+import { shownWithin, type Timing } from '../bounds/call-bounds.ts';
+import { answerOf, resultText } from '../bounds/tool-results.ts';
 import {
   brokenPromise,
   deniedText,
@@ -106,6 +107,29 @@ describe('a large result of a call', () => {
       type: 'tool_call_answered',
       data: { result_bytes: aSize, shown_bytes: Buffer.byteLength(read) },
     });
+  });
+});
+
+describe('the size a reader meets of an answer', () => {
+  it('is the size of the kept text, scrubbed, on the fact, in the reply and in what the run answered', async () => {
+    const { call, journal, tools } = await runWith(['echo']);
+    const kept = JSON.stringify({ content: [{ type: 'text', text: JSON.stringify({ said: 'the key [redacted]' }) }] });
+
+    const reply = await call('echo', { said: `the key ${fakeApiKey}` });
+
+    expect([reply.resultBytes, tools.answeredBytes()]).toEqual([Buffer.byteLength(kept), Buffer.byteLength(kept)]);
+    expect(journal.facts().at(-1)).toMatchObject({ data: { result_bytes: Buffer.byteLength(kept) } });
+  });
+
+  it('gives what the model read again from the kept answer and the size the fact says it read', async () => {
+    const { call, journal } = await runWith(['large']);
+    const kept = JSON.stringify({ content: [{ type: 'text', text: '😀'.repeat(80 * 256) }] });
+
+    const reply = await call('large', { kib: 80 }, undefined, 65_536);
+    const shownBytes = Number(Reflect.get(new Object(journal.facts().at(-1)?.data), 'shown_bytes'));
+
+    expect(reply.text.startsWith(shownWithin(resultText(answerOf(kept)), shownBytes))).toBe(true);
+    expect(Buffer.byteLength(shownWithin(resultText(answerOf(kept)), shownBytes))).toBe(shownBytes);
   });
 });
 

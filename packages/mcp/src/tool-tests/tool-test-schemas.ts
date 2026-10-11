@@ -26,7 +26,13 @@ export const TestToolCallInputSchema = Schema.Struct({
   ),
 });
 
-export const TestedOutcomeSchema = Schema.Literals(['result', 'tool_error', 'server_failure', 'timed_out']);
+export const TestedOutcomeSchema = Schema.Literals([
+  'result',
+  'tool_error',
+  'server_failure',
+  'timed_out',
+  'too_large',
+]);
 
 export const ToolTestedSchema = Schema.Struct({
   test_id: Schema.String.annotate({
@@ -36,7 +42,7 @@ export const ToolTestedSchema = Schema.Struct({
   tool: Schema.String.annotate({ description: 'The tool, as given' }),
   outcome: TestedOutcomeSchema.annotate({
     description:
-      "result when the tool answered; tool_error when it answered an error or refused the arguments, which a run's model may recover from; server_failure when its server failed on the call; timed_out when it did not answer in time",
+      "result when the tool answered; tool_error when it answered an error or refused the arguments, which a run's model may recover from; server_failure when its server failed on the call; timed_out when it did not answer in time; too_large when it answered more than one call may take",
   }),
   text: Schema.String.annotate({
     description:
@@ -49,7 +55,8 @@ export const ToolTestedSchema = Schema.Struct({
     }),
   ),
   result_bytes: Schema.NullOr(Schema.Int).annotate({
-    description: 'The size of the whole result as its server gave it, before the cut; null when there is none',
+    description:
+      "The size of the whole result as kept, scrubbed of its server's secrets, before the cut; null when there is none",
   }),
   duration_ms: Schema.Int.annotate({ description: 'How long the call took, in milliseconds' }),
   server_request_id: Schema.optionalKey(

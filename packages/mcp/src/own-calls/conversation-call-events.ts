@@ -1,4 +1,4 @@
-import { factOf } from '@beonauto/operations';
+import { ActedContextSchema, RunContextSchema, factOf, type Decided } from '@beonauto/operations';
 import { Schema, Struct } from 'effect';
 
 import { CallAnsweredSchema, CallFailedSchema, CallSentSchema } from '../calls/call-facts.ts';
@@ -17,8 +17,7 @@ function optionalOf<Field extends Schema.Top>(field: Field) {
 
 const answerOnAFailure = {
   result_bytes: optionalOf(answeredFields.result_bytes),
-  result_sha256: optionalOf(answeredFields.result_sha256),
-  content_kept: optionalOf(answeredFields.content_kept),
+  result_sha256: answeredFields.result_sha256,
 };
 
 const callFailure = {
@@ -34,6 +33,7 @@ const TellingFailedBecauseSchema = Schema.Literals([
   'server_failure',
   'timed_out',
   'cancelled',
+  'too_large',
   'tool_not_offered',
 ]);
 
@@ -58,15 +58,16 @@ const theConversation = {
 
 const readArguments = {
   arguments_bytes: optionalOf(sentFields.arguments_bytes),
-  arguments_sha256: optionalOf(sentFields.arguments_sha256),
+  arguments_sha256: sentFields.arguments_sha256,
 };
 
 export const ConversationCallEventSchema = Schema.Union([
-  factOf('telling_started', Schema.Struct({ ...ofTheCall, ...sentFields })),
-  factOf('telling_succeeded', Schema.Struct({ ...ofTheCall, ...answeredFields })),
+  factOf('telling_started', Schema.Struct({ ...ofTheCall, ...sentFields }), RunContextSchema),
+  factOf('telling_succeeded', Schema.Struct({ ...ofTheCall, ...answeredFields }), RunContextSchema),
   factOf(
     'telling_failed',
     Schema.Struct({ ...ofTheCall, ...callFailure, because: TellingFailedBecauseSchema, ...answerOnAFailure }),
+    RunContextSchema,
   ),
   factOf(
     'replies_read',
@@ -79,6 +80,7 @@ export const ConversationCallEventSchema = Schema.Union([
       taken: Schema.Int,
       refused: Schema.Int,
     }),
+    ActedContextSchema,
   ),
   factOf(
     'reading_failed',
@@ -91,10 +93,13 @@ export const ConversationCallEventSchema = Schema.Union([
       retry_after_ms: Schema.optionalKey(Schema.Int),
       ...answerOnAFailure,
     }),
+    ActedContextSchema,
   ),
 ]);
 
-export type ConversationCallEvent = typeof ConversationCallEventSchema.Type;
+export type RecordedConversationCall = typeof ConversationCallEventSchema.Type;
+
+export type ConversationCallEvent = Decided<RecordedConversationCall>;
 
 export type TellingStarted = Extract<ConversationCallEvent, { readonly type: 'telling_started' }>;
 

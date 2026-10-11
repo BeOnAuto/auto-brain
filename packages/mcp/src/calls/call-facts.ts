@@ -6,8 +6,7 @@ export const CallSentSchema = Schema.Struct({
   server: Schema.String,
   tool: Schema.String,
   arguments_bytes: Schema.Int,
-  arguments_sha256: Schema.String,
-  content_kept: Schema.Boolean,
+  arguments_sha256: Schema.optionalKey(Schema.String),
   read_only: Schema.optionalKey(Schema.Literal(true)),
 });
 
@@ -16,8 +15,7 @@ export const CallStartedSchema = Schema.Struct({ call_id: Schema.String, ...Call
 export const CallAnsweredSchema = Schema.Struct({
   is_error: Schema.Boolean,
   result_bytes: Schema.Int,
-  result_sha256: Schema.String,
-  content_kept: Schema.Boolean,
+  result_sha256: Schema.optionalKey(Schema.String),
   shown_bytes: Schema.optionalKey(Schema.Int),
   duration_ms: Schema.Int,
   jsonrpc_id: JsonRpcIdSchema,
@@ -29,6 +27,7 @@ export const CallFailedBecauseSchema = Schema.Literals([
   'server_failure',
   'timed_out',
   'cancelled',
+  'too_large',
 ]);
 
 export const CallFailedSchema = Schema.Struct({

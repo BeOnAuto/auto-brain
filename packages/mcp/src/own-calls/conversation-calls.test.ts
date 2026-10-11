@@ -1,9 +1,10 @@
+import { recordingOf } from '@beonauto/operations';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { CallAnswered } from '../calls/call-facts.ts';
 import type { AnsweredOnce, CalledOnce } from '../one-call/called-once.ts';
-import { conversationCallStreamOf } from './conversation-call-events.ts';
+import { ConversationCallEventSchema, conversationCallStreamOf } from './conversation-call-events.ts';
 import {
   conversationCallDecider,
   readingFailedOf,
@@ -17,13 +18,12 @@ const recorded = { by: 'brain:alpha', at: '2026-10-08T09:00:05.000Z' };
 
 const reference = { server: 'chat', tool: 'thread_replies' };
 
-const started = { ...reference, arguments_bytes: 40, arguments_sha256: 'a'.repeat(64), content_kept: true };
+const started = { ...reference, arguments_bytes: 40, arguments_sha256: 'a'.repeat(64) };
 
 const answeredFact: CallAnswered = {
   is_error: false,
   result_bytes: 61,
   result_sha256: 'b'.repeat(64),
-  content_kept: true,
   duration_ms: 7,
   jsonrpc_id: 2,
 };
@@ -31,7 +31,6 @@ const answeredFact: CallAnswered = {
 const theAnswer = {
   result_bytes: 61,
   result_sha256: 'b'.repeat(64),
-  content_kept: true,
   duration_ms: 7,
   jsonrpc_id: 2,
 };
@@ -69,9 +68,13 @@ const notOffered: CalledOnce = {
   detail: 'Not allowed',
 };
 
-const telling = { callId: 'call-2', runId: 'run-1' };
+const ofTheRequest = { definitionType: 'interaction', definitionName: 'approve-report', definitionVersion: 2 };
 
-const inTheRun = { ...recorded, runId: 'run-1' };
+const telling = { callId: 'call-2', runId: 'run-1', definition: ofTheRequest };
+
+const inTheRun = { ...recorded, runId: 'run-1', ...ofTheRequest };
+
+const recordedCall = recordingOf(ConversationCallEventSchema);
 
 const place = { callId: 'call-1', start: started, conversation: 'C0123/1699.1', since: '1699.3' };
 
@@ -87,14 +90,14 @@ const ofThePlace = {
 
 function decided(call: ConversationCall, ...history: readonly ConversationCall[]) {
   const state = history.reduce(
-    (kept, each) => conversationCallDecider.evolve(kept, { ...each.event, context: each.context }),
+    (kept, each) => conversationCallDecider.evolve(kept, recordedCall(each.event, each.context)),
     conversationCallDecider.initialState,
   );
   return conversationCallDecider.decide(call, state);
 }
 
 describe('a telling the brain makes in a conversation', () => {
-  it('records its start with the call it sends, in the run it serves', () => {
+  it('records its start with the call it sends, in the run it serves and with the definition of its request', () => {
     expect(tellingStartedOf(telling, started, recorded)).toEqual({
       event: { type: 'telling_started', data: { call_id: 'call-2', ...started } },
       context: inTheRun,
@@ -166,6 +169,24 @@ describe('a read the brain makes in a conversation', () => {
         data: { ...ofThePlace, ...theAnswer, because: 'unreadable', detail: 'Not a list', retry_after_ms: 60_000 },
       },
       context: recorded,
+    });
+  });
+});
+
+describe('a read of a server that keeps no content', () => {
+  it('records the size of its arguments and no digest', () => {
+    const { arguments_sha256: _digest, ...unkept } = started;
+
+    expect(
+      readingFailedOf({ ...place, start: unkept, because: 'timed_out', retryAfterMs: null }, recorded).event.data,
+    ).toEqual({
+      call_id: 'call-1',
+      server: 'chat',
+      tool: 'thread_replies',
+      conversation: 'C0123/1699.1',
+      since: '1699.3',
+      arguments_bytes: 40,
+      because: 'timed_out',
     });
   });
 });

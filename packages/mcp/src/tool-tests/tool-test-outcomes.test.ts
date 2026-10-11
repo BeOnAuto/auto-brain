@@ -72,6 +72,21 @@ describe('a test whose tool does not answer as asked', () => {
   });
 });
 
+describe('a test whose tool answers more than one call may take', () => {
+  it('succeeds as too large, with no answer counted', { timeout: 120_000 }, async () => {
+    const { test } = await testsWith();
+
+    expect(await test({ server: 'graph', tool: 'large', arguments: { kib: 16_384 } })).toMatchObject({
+      status: 'succeeded',
+      output: {
+        outcome: 'too_large',
+        text: 'The MCP server answered more than the 16,777,216 bytes one call over HTTP may take',
+        result_bytes: null,
+      },
+    });
+  });
+});
+
 describe('a test whose tool answers more than a reply shows', () => {
   it('cuts an answer over 64 KiB where it stays valid, leaves its document out, and counts the whole result', async () => {
     const { test } = await testsWith();

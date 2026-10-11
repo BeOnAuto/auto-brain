@@ -3,6 +3,8 @@ import { Buffer } from 'node:buffer';
 import { Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { noCalls } from '../bounds/call-bounds.ts';
+import { ignored } from '../connections/ignored.ts';
 import {
   controlledSignals,
   fakeApiKey,
@@ -13,6 +15,7 @@ import {
   serveFakeMcp,
   toolRun,
 } from '../testing/index.ts';
+import { callReplyOf, failureCounted } from './call-replies.ts';
 
 const aDuration: unknown = expect.any(Number);
 
@@ -96,5 +99,27 @@ describe('a failed call reported to the operator', () => {
       { server: 'graph', run_id: testId, tool_test_id: null },
       { server: 'graph', run_id: null, tool_test_id: testId },
     ]);
+  });
+});
+
+describe('an answer past the cap of the transport', () => {
+  it('is no failure of the server, which answered, so it ends none of the calls of a run', () => {
+    const tooLarge = {
+      outcome: 'too_large',
+      result: null,
+      resultJson: null,
+      message: 'The MCP server answered more than the 16777216 bytes one call may take',
+      failure: 'too_large',
+      jsonrpcId: 4,
+      serverRequestId: null,
+      retryAfterMs: null,
+    } as const;
+    const replying = { server: 'graph', meta: {}, scrub: (text: string) => text, report: ignored };
+
+    expect(failureCounted(noCalls, tooLarge, replying)).toEqual({ tally: noCalls, value: undefined });
+    expect(callReplyOf({ text: 'Too large.', isError: true }, tooLarge, 12)).toMatchObject({
+      outcome: 'too_large',
+      resultBytes: null,
+    });
   });
 });

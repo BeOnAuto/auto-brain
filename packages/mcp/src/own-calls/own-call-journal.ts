@@ -1,14 +1,21 @@
-import { messageIdOf, type Decider, type Lineage, type StreamWriter, type TypedEvent } from '@beonauto/operations';
+import {
+  messageIdOf,
+  type Decided,
+  type Decider,
+  type Lineage,
+  type Recorded,
+  type StreamWriter,
+} from '@beonauto/operations';
 import { DateTime, Effect, Exit, Ref } from 'effect';
 
 import type { CallEnded, CallStarted } from '../calls/call-facts.ts';
 import type { CallJournal } from '../calls/recorded-calls.ts';
 import type { OwnCall, OwnCallTurn } from './own-call-decider.ts';
 
-export interface OwnCallKind<Event extends TypedEvent> {
+export interface OwnCallKind<Event extends Recorded> {
   readonly decider: Decider<OwnCallTurn<Event>, OwnCall<Event>, Event, 'conflict'>;
-  readonly started: (fact: CallStarted) => Event;
-  readonly ended: (fact: CallEnded) => Event;
+  readonly started: (fact: CallStarted) => Decided<Event>;
+  readonly ended: (fact: CallEnded) => Decided<Event>;
 }
 
 export interface OwnCallPlace {
@@ -21,9 +28,9 @@ export interface OwnCallPlace {
 
 const theOnlyCall = 1;
 
-export function ownCallJournal<Event extends TypedEvent>(kind: OwnCallKind<Event>, place: OwnCallPlace): CallJournal {
+export function ownCallJournal<Event extends Recorded>(kind: OwnCallKind<Event>, place: OwnCallPlace): CallJournal {
   const startId = Ref.makeUnsafe<string | null>(null);
-  const appended = (event: Event, causationId: string | null) =>
+  const appended = (event: Decided<Event>, causationId: string | null) =>
     Effect.gen(function* () {
       const at = DateTime.formatIso(yield* DateTime.now);
       const { version } = yield* place.writer.execute(

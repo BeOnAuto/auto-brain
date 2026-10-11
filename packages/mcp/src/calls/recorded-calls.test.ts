@@ -103,7 +103,7 @@ async function recordedCalls(
 }
 
 describe('the facts of a call', () => {
-  it('record the size and digest of the arguments and the answer, that the content was kept, and that its server marks the tool read-only', async () => {
+  it('record the size and digest of the arguments and the answer as kept, and that its server marks the tool read-only', async () => {
     const { facts } = await recordedCalls({}, [['graph/search', { query: 'acme' }]]);
 
     expect(facts).toEqual([
@@ -116,7 +116,6 @@ describe('the facts of a call', () => {
           tool: 'search',
           arguments_bytes: 16,
           arguments_sha256: digest('{"query":"acme"}'),
-          content_kept: true,
           read_only: true,
         },
       },
@@ -127,7 +126,6 @@ describe('the facts of a call', () => {
           is_error: false,
           result_bytes: Buffer.byteLength(textAnswer('Found 2 rows for acme.')),
           result_sha256: digest(textAnswer('Found 2 rows for acme.')),
-          content_kept: true,
           duration_ms: aNumber,
           jsonrpc_id: aNumber,
         },
@@ -147,27 +145,41 @@ describe('the facts of a call', () => {
 });
 
 describe('the content of a call', () => {
-  it('is kept whole as the protocol answer, scrubbed of secrets in keys, in values and as numbers', async () => {
+  it('is kept whole as the protocol answer, scrubbed of secrets in keys, in values and as numbers, sized and digested as kept', async () => {
     const input = { [fakeApiKey]: 'as a key', value: `the key ${fakeApiKey}`, pin: numericSecret };
+    const keptArguments = '{"[redacted]":"as a key","value":"the key [redacted]","pin":"[redacted]"}';
+    const keptAnswer = textAnswer('{"[redacted]":"as a key","value":"the key [redacted]","pin":[redacted]}');
     const { facts, kept } = await recordedCalls({}, [['graph/echo', input]]);
     const [started, answered] = facts;
 
-    expect(started?.data).toMatchObject({ arguments_sha256: digest(JSON.stringify(input)), content_kept: true });
-    expect(answered?.data).toMatchObject({ result_sha256: digest(textAnswer(JSON.stringify(input))) });
-    await expect(kept(digest(JSON.stringify(input)))).resolves.toBe(
-      '{"[redacted]":"as a key","value":"the key [redacted]","pin":"[redacted]"}',
-    );
-    await expect(kept(digest(textAnswer(JSON.stringify(input))))).resolves.toBe(
-      textAnswer('{"[redacted]":"as a key","value":"the key [redacted]","pin":[redacted]}'),
-    );
+    expect(started?.data).toMatchObject({
+      arguments_bytes: Buffer.byteLength(keptArguments),
+      arguments_sha256: digest(keptArguments),
+    });
+    expect(answered?.data).toMatchObject({
+      result_bytes: Buffer.byteLength(keptAnswer),
+      result_sha256: digest(keptAnswer),
+    });
+    await expect(kept(digest(keptArguments))).resolves.toBe(keptArguments);
+    await expect(kept(digest(keptAnswer))).resolves.toBe(keptAnswer);
   });
 
-  it('is kept as it was answered when nothing was scrubbed from it, so its digest verifies it', async () => {
+  it('is never digested as it was received when a secret was scrubbed from it', async () => {
+    const input = { [fakeApiKey]: 'as a key', value: `the key ${fakeApiKey}`, pin: numericSecret };
+    const { facts, kept } = await recordedCalls({}, [['graph/echo', input]]);
+    const received = [digest(JSON.stringify(input)), digest(textAnswer(JSON.stringify(input)))];
+
+    expect(received.filter((sha256) => JSON.stringify(facts).includes(sha256))).toEqual([]);
+    await expect(Promise.all(received.map((sha256) => kept(sha256)))).resolves.toEqual([undefined, undefined]);
+  });
+
+  it('is kept under the digest of its own text, the key a reader joins it by', async () => {
     const answer = '{"content":[],"structuredContent":{"name":"Ada","rows":2}}';
     const { facts, kept } = await recordedCalls({}, [['graph/profile', {}]]);
+    const sha256 = String(Reflect.get(new Object(facts[1]?.data), 'result_sha256'));
 
-    expect(facts[1]?.data).toMatchObject({ result_sha256: digest(answer), content_kept: true });
-    await expect(kept(digest(answer))).resolves.toBe(answer);
+    expect(sha256).toBe(digest(answer));
+    expect(digest(String(await kept(sha256)))).toBe(sha256);
   });
 });
 
@@ -181,21 +193,24 @@ describe('the content of calls that answer alike, or of a server that keeps none
     const sha256 = digest(textAnswer('Found 2 rows for same.'));
 
     expect(twice.facts.map(({ data }) => data)).toEqual([
-      expect.objectContaining({ arguments_sha256: digest('{"query":"same"}'), content_kept: true }),
-      expect.objectContaining({ result_sha256: sha256, content_kept: true }),
-      expect.objectContaining({ arguments_sha256: digest('{"query":"same"}'), content_kept: true }),
-      expect.objectContaining({ result_sha256: sha256, content_kept: true }),
+      expect.objectContaining({ arguments_sha256: digest('{"query":"same"}') }),
+      expect.objectContaining({ result_sha256: sha256 }),
+      expect.objectContaining({ arguments_sha256: digest('{"query":"same"}') }),
+      expect.objectContaining({ result_sha256: sha256 }),
     ]);
     await expect(twice.kept(sha256)).resolves.toBe(textAnswer('Found 2 rows for same.'));
     expect(unkept.facts.map(({ data }) => data)).toEqual([
-      expect.objectContaining({ content_kept: false }),
-      expect.objectContaining({ result_sha256: sha256, content_kept: false }),
+      expect.objectContaining({ arguments_bytes: Buffer.byteLength('{"query":"same"}') }),
+      expect.objectContaining({ result_bytes: Buffer.byteLength(textAnswer('Found 2 rows for same.')) }),
     ]);
+    expect(JSON.stringify(unkept.facts)).not.toMatch(/_sha256/u);
     await expect(unkept.kept(sha256)).resolves.toBeUndefined();
   });
+});
 
+describe('the content of a large answer', () => {
   it(
-    'is kept whole at 5 MB and at 16 MiB over HTTP, and a larger answer fails the call',
+    'is kept whole at 5 MB and at 16 MiB over HTTP, and a larger answer fails the call as too large',
     { timeout: 120_000 },
     async () => {
       const kib = toolBounds.httpAnswerBytes / 1024;
@@ -211,10 +226,20 @@ describe('the content of calls that answer alike, or of a server that keeps none
       expect(answers.map(({ type, data }) => [type, data])).toEqual([
         ['tool_call_answered', expect.objectContaining({ result_bytes: Buffer.byteLength(fiveMegabytes) })],
         ['tool_call_answered', expect.objectContaining({ result_bytes: Buffer.byteLength(sixteenMebibytes) })],
-        ['tool_call_failed', expect.objectContaining({ because: 'server_failure' })],
+        ['tool_call_failed', expect.objectContaining({ because: 'too_large' })],
       ]);
       await expect(kept(digest(fiveMegabytes))).resolves.toBe(fiveMegabytes);
       await expect(kept(digest(sixteenMebibytes))).resolves.toBe(sixteenMebibytes);
+    },
+  );
+
+  it(
+    'fails the call as too large when a stdio server writes more than its output may take at once',
+    { timeout: 120_000 },
+    async () => {
+      const { facts } = await recordedCalls({}, [['limitless/large', { kib: 4097 }]]);
+
+      expect(facts.at(-1)).toMatchObject({ type: 'tool_call_failed', data: { because: 'too_large' } });
     },
   );
 });

@@ -12,7 +12,14 @@ interface ModelWords {
   readonly shownBytes?: number;
 }
 
-export type ReplyOutcome = 'result' | 'tool_error' | 'server_failure' | 'timed_out' | 'cancelled' | 'not_sent';
+export type ReplyOutcome =
+  | 'result'
+  | 'tool_error'
+  | 'server_failure'
+  | 'timed_out'
+  | 'cancelled'
+  | 'too_large'
+  | 'not_sent';
 
 export interface CallReply extends ModelWords {
   readonly outcome: ReplyOutcome;
@@ -62,7 +69,10 @@ export function serverFailedText(server: string, said: string): string {
 export function replyOf(done: Delivered, replying: Pick<Replying, 'server' | 'scrub'>, room?: number): ModelWords {
   if (done.resultJson === null) {
     const said = errorTextForModel(done.message, replying.scrub);
-    const text = done.outcome === 'arguments_refused' ? said : serverFailedText(replying.server, said);
+    const text =
+      done.outcome === 'arguments_refused' || done.outcome === 'too_large'
+        ? said
+        : serverFailedText(replying.server, said);
     return { text, isError: true };
   }
   return { ...shownResult(resultText(done.scrubbed), room), isError: done.outcome === 'tool_error' };
@@ -72,11 +82,11 @@ function replyOutcomeOf(outcome: ForwardedOutcome): ReplyOutcome {
   return outcome === 'arguments_refused' ? 'tool_error' : outcome;
 }
 
-export function callReplyOf(words: ModelWords, done: Forwarded, durationMs: number): CallReply {
+export function callReplyOf(words: ModelWords, done: Delivered, durationMs: number): CallReply {
   return {
     ...words,
     outcome: replyOutcomeOf(done.outcome),
-    resultBytes: done.resultJson === null ? null : bytesOf(done.resultJson),
+    resultBytes: 'keptJson' in done ? bytesOf(done.keptJson) : null,
     durationMs,
     serverRequestId: done.serverRequestId,
   };

@@ -1,21 +1,21 @@
-import { Conflict, type Context, type Decider, type TypedEvent } from '@beonauto/operations';
+import { Conflict, type Context, type Decided, type Decider, type Recorded } from '@beonauto/operations';
 import { Result, type Schema } from 'effect';
 
-export type OwnCallTurn<Event extends TypedEvent> = 'none' | Event['type'];
+export type OwnCallTurn<Event extends Recorded> = 'none' | Event['type'];
 
-export interface OwnCall<Event extends TypedEvent> {
-  readonly event: Event;
+export interface OwnCall<Event extends Recorded> {
+  readonly event: Decided<Event>;
   readonly context: Context;
 }
 
-export interface OwnCallTurns<Event extends TypedEvent> {
+export interface OwnCallTurns<Event extends Recorded> {
   readonly first: readonly Event['type'][];
   readonly after: Readonly<Partial<Record<Event['type'], readonly Event['type'][]>>>;
   readonly eventSchema: Schema.ConstraintCodec<Event, unknown>;
   readonly outOfTurn: string;
 }
 
-export function ownCallDecider<Event extends TypedEvent>({
+export function ownCallDecider<Event extends Recorded>({
   first,
   after,
   eventSchema,

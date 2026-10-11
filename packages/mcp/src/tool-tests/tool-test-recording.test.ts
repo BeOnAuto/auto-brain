@@ -18,6 +18,8 @@ const aTime: unknown = expect.any(String);
 
 const aNumber: unknown = expect.any(Number);
 
+const aDigest: unknown = expect.stringMatching(/^[0-9a-f]{64}$/u);
+
 const alpha = { org: 'acme', brain: 'alpha' };
 
 async function testsOn(entry: Readonly<Record<string, unknown>> = {}) {
@@ -59,7 +61,6 @@ describe('what a test records', () => {
           tool: 'search',
           arguments_bytes: Buffer.byteLength(argumentsJson),
           arguments_sha256: digestOf(argumentsJson),
-          content_kept: true,
           read_only: true,
         },
         context: { by: 'acme-builder', at: aTime },
@@ -86,12 +87,20 @@ describe('the content a test records', () => {
     await notKeeping.test({ server: 'graph', tool: 'echo', arguments: said });
     const [kept, unkept] = [await keeping.recorded(), await notKeeping.recorded()];
 
-    await expect(keeping.kept(digestOf(JSON.stringify(said)))).resolves.toBe(scrubbed);
-    await expect(notKeeping.kept(digestOf(JSON.stringify(said)))).resolves.toBeUndefined();
+    await expect(keeping.kept(digestOf(scrubbed))).resolves.toBe(scrubbed);
+    await expect(notKeeping.kept(digestOf(scrubbed))).resolves.toBeUndefined();
     expect([kept.map(({ data }) => data), unkept.map(({ data }) => data)]).toEqual([
-      [expect.objectContaining({ content_kept: true }), expect.objectContaining({ content_kept: true })],
-      [expect.objectContaining({ content_kept: false }), expect.objectContaining({ content_kept: false })],
+      [
+        expect.objectContaining({ arguments_bytes: Buffer.byteLength(scrubbed), arguments_sha256: digestOf(scrubbed) }),
+        expect.objectContaining({ result_sha256: aDigest }),
+      ],
+      [
+        expect.not.objectContaining({ arguments_sha256: aDigest }),
+        expect.not.objectContaining({ result_sha256: aDigest }),
+      ],
     ]);
+    expect(unkept[0]?.data).toMatchObject({ arguments_bytes: Buffer.byteLength(scrubbed) });
     expect(JSON.stringify([...kept, ...unkept])).not.toContain(fakeApiKey);
+    expect(JSON.stringify([...kept, ...unkept])).not.toContain(digestOf(JSON.stringify(said)));
   });
 });

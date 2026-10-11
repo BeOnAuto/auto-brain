@@ -4,13 +4,13 @@ import { Schema } from 'effect';
 import { cutAsStored } from '../bounds/text-bytes.ts';
 import { callFieldsShown, keptAnswerOf, keptArgumentsOf } from '../calls/shown-calls.ts';
 import { answeredInWords, failedInWords, inWords } from '../names/tool-words.ts';
-import { ToolTestEventSchema, toolTestsKind, type ToolTestEvent } from './tool-test-events.ts';
+import { ToolTestEventSchema, toolTestsKind, type RecordedToolTest } from './tool-test-events.ts';
 
 const mostNameBytes = 256;
 
 const decodeToolTestEvent = Schema.decodeUnknownSync(Schema.toCodecJson(ToolTestEventSchema));
 
-function factOf(event: ToolTestEvent, content: KeptContent): PresentedFact {
+function factOf(event: RecordedToolTest, content: KeptContent): PresentedFact {
   if (event.type === 'tool_test_started') {
     const { data } = event;
     const server = cutAsStored(data.server, mostNameBytes);
@@ -40,5 +40,5 @@ export const toolTestPresenter: Presenter = {
     tool_test_answered: ['tool_test_answered'],
     tool_test_failed: ['tool_test_failed'],
   },
-  present: ({ type, data }, content) => [factOf(decodeToolTestEvent({ type, data }), content)],
+  present: ({ type, data, context }, content) => [factOf(decodeToolTestEvent({ type, data, context }), content)],
 };

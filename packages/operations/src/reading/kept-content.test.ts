@@ -56,11 +56,11 @@ function keptOf(records: readonly RecordedEvent[], mostBytes: number, digests: r
 }
 
 describe('the content kept for the events of a read', () => {
-  it('reads the content of every digest a fact kept, within the bound of the read', async () => {
+  it('reads the content of every digest a fact has, by the size of the kept text, within the bound of the read', async () => {
     const records = [
-      recordOf({ arguments_bytes: 13, arguments_sha256: 'a1', content_kept: true }),
-      recordOf({ result_bytes: 14, result_sha256: 'r1', content_kept: true }),
-      recordOf({ result_bytes: 9000, result_sha256: 'r2', content_kept: true }),
+      recordOf({ arguments_bytes: 13, arguments_sha256: 'a1' }),
+      recordOf({ result_bytes: 14, result_sha256: 'r1' }),
+      recordOf({ result_bytes: 9000, result_sha256: 'r2' }),
     ];
 
     await expect(keptOf(records, 4096, ['a1', 'r1', 'r2'])).resolves.toEqual([
@@ -71,13 +71,13 @@ describe('the content kept for the events of a read', () => {
     await expect(keptOf(records, Infinity, ['r2'])).resolves.toEqual(['{"content":[{"type":"text","text":"large"}]}']);
   });
 
-  it('reads nothing for a fact that kept no content, or for data that is not a fact of a call', async () => {
+  it('reads nothing for a fact that carries sizes and no digest, or for data that is not a fact of a call', async () => {
     const records = [
-      recordOf({ arguments_bytes: 13, arguments_sha256: 'a1', content_kept: false }),
-      recordOf({ result_sha256: 'r1', content_kept: true }),
-      recordOf({ result_bytes: 14, result_sha256: 7, content_kept: true }),
+      recordOf({ arguments_bytes: 13 }),
+      recordOf({ result_sha256: 'r1' }),
+      recordOf({ result_bytes: 14, result_sha256: 7 }),
       recordOf('text'),
-      recordOf({ result_bytes: 14, result_sha256: 'missing', content_kept: true }),
+      recordOf({ result_bytes: 14, result_sha256: 'missing' }),
     ];
 
     await expect(keptOf(records, Infinity, ['a1', 'r1', 'missing'])).resolves.toEqual([

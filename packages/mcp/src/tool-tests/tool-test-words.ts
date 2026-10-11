@@ -9,7 +9,7 @@ export interface TestAsked {
   readonly tool: string;
 }
 
-type TestedOutcome = 'result' | 'tool_error' | 'server_failure' | 'timed_out';
+type TestedOutcome = 'result' | 'tool_error' | 'server_failure' | 'timed_out' | 'too_large';
 
 export interface TestAnswer extends TestAsked {
   readonly outcome: TestedOutcome;
@@ -52,6 +52,8 @@ const wordsOf: Readonly<Record<TestedOutcome, (answer: TestAnswer) => string>> =
     `The tool server ${quoted(answer.server)} failed to answer the test: ${failureOf(answer)}. It may or may not have received the call.`,
   timed_out: (answer) =>
     `The tool server ${quoted(answer.server)} did not answer the test within ${measured.format(toolBounds.callMs / 1000)} seconds; it may still have received the call.`,
+  too_large: (answer) =>
+    `${capitalized(toolInWords(answer))} answered more than one call may take, so its answer was not read; ask it for less, a page at a time.`,
 };
 
 export function toolTested(answer: TestAnswer): string {

@@ -15,6 +15,7 @@ export const toolBounds = {
   testedAnswerBytes: 65_536,
   readAnswerBytes: 65_536,
   httpAnswerBytes: 16_777_216,
+  stdioOutputBytes: 4_194_304,
 } as const;
 
 export interface Timing {

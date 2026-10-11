@@ -1,4 +1,4 @@
-import type { Context } from '@beonauto/operations';
+import type { Context, RunContext } from '@beonauto/operations';
 import { Struct } from 'effect';
 
 import type { CallAnswered } from '../calls/call-facts.ts';
@@ -7,7 +7,7 @@ import type { ToolReference } from '../names/tool-reference.ts';
 import type { CalledOnce } from '../one-call/called-once.ts';
 import {
   ConversationCallEventSchema,
-  type ConversationCallEvent,
+  type RecordedConversationCall,
   type ReadingFailedBecause,
   type ReadingRecorded,
   type TellingEnded,
@@ -15,7 +15,7 @@ import {
 } from './conversation-call-events.ts';
 import { ownCallDecider, type OwnCall } from './own-call-decider.ts';
 
-export const conversationCallDecider = ownCallDecider<ConversationCallEvent>({
+export const conversationCallDecider = ownCallDecider<RecordedConversationCall>({
   first: ['telling_started', 'replies_read', 'reading_failed'],
   after: { telling_started: ['telling_succeeded', 'telling_failed'] },
   eventSchema: ConversationCallEventSchema,
@@ -25,11 +25,14 @@ export const conversationCallDecider = ownCallDecider<ConversationCallEvent>({
 
 export type Recorded = Pick<Context, 'by' | 'at'>;
 
-export type ConversationCall = OwnCall<ConversationCallEvent>;
+export type ConversationCall = OwnCall<RecordedConversationCall>;
+
+export type DefinitionOfTheTelling = Pick<RunContext, 'definitionType' | 'definitionName' | 'definitionVersion'>;
 
 export interface Telling {
   readonly callId: string;
   readonly runId: string;
+  readonly definition: DefinitionOfTheTelling;
 }
 
 function answeredOf(answered: CallAnswered) {
@@ -47,13 +50,13 @@ function detailOf(detail: string | undefined) {
   return detail === undefined || detail === '' ? {} : { detail };
 }
 
-export function tellingStartedOf(
-  { callId, runId }: Telling,
-  start: StartedFields,
-  recorded: Recorded,
-): ConversationCall {
-  const event: TellingStarted = { type: 'telling_started', data: { call_id: callId, ...start } };
-  return { event, context: { ...recorded, runId } };
+function tellingContextOf({ runId, definition }: Telling, recorded: Recorded): Context {
+  return { ...recorded, runId, ...definition };
+}
+
+export function tellingStartedOf(telling: Telling, start: StartedFields, recorded: Recorded): ConversationCall {
+  const event: TellingStarted = { type: 'telling_started', data: { call_id: telling.callId, ...start } };
+  return { event, context: tellingContextOf(telling, recorded) };
 }
 
 function tellingEnd(callId: string, end: CalledOnce): TellingEnded {
@@ -71,7 +74,7 @@ function tellingEnd(callId: string, end: CalledOnce): TellingEnded {
 }
 
 export function tellingEndedOf(telling: Telling, end: CalledOnce, recorded: Recorded): ConversationCall {
-  return { event: tellingEnd(telling.callId, end), context: { ...recorded, runId: telling.runId } };
+  return { event: tellingEnd(telling.callId, end), context: tellingContextOf(telling, recorded) };
 }
 
 interface ReadPlace {
@@ -96,9 +99,11 @@ export interface ReadingFailed extends ReadPlace {
 }
 
 function argumentsOf(start: StartedFields | ToolReference) {
-  return 'arguments_bytes' in start
-    ? { arguments_bytes: start.arguments_bytes, arguments_sha256: start.arguments_sha256 }
-    : {};
+  if (!('arguments_bytes' in start)) {
+    return {};
+  }
+  const { arguments_bytes, arguments_sha256 } = start;
+  return { arguments_bytes, ...(arguments_sha256 === undefined ? {} : { arguments_sha256 }) };
 }
 
 function ofTheRead({ callId, start, conversation, since }: ReadPlace) {

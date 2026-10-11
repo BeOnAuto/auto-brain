@@ -10,6 +10,7 @@ export const failedInWords: Readonly<Record<CallFailedBecause, string>> = {
   server_failure: 'failed at its server',
   timed_out: 'took too long, so it was given up',
   cancelled: 'was cancelled when the run ended',
+  too_large: 'answered more than one call may take, so its answer was not read',
 };
 
 const conjunction = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' });

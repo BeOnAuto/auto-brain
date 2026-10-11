@@ -16,12 +16,11 @@ const started = calls.started({
   tool: 'search',
   arguments_bytes: 2,
   arguments_sha256: 'a',
-  content_kept: true,
 });
 
 const answered = calls.ended({
   type: 'tool_call_answered',
-  data: { is_error: false, result_bytes: 61, result_sha256: 'b', content_kept: true, duration_ms: 3, jsonrpc_id: 2 },
+  data: { is_error: false, result_bytes: 61, result_sha256: 'b', duration_ms: 3, jsonrpc_id: 2 },
 });
 
 const failed = calls.ended({
@@ -54,7 +53,6 @@ describe('the record of a test', () => {
           tool: 'search',
           arguments_bytes: 2,
           arguments_sha256: 'a',
-          content_kept: true,
         },
       },
       {
@@ -64,7 +62,6 @@ describe('the record of a test', () => {
           is_error: false,
           result_bytes: 61,
           result_sha256: 'b',
-          content_kept: true,
           duration_ms: 3,
           jsonrpc_id: 2,
         },

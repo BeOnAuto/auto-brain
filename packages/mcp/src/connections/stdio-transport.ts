@@ -4,6 +4,7 @@ import { setTimeout } from 'node:timers/promises';
 
 import { ReadBuffer, type JSONRPCMessage, type Transport } from '@modelcontextprotocol/client';
 
+import { toolBounds } from '../bounds/call-bounds.ts';
 import { ignored } from './ignored.ts';
 import { boundedReport, type OutputReport } from './mcp-connection.ts';
 import type { Observations, SendOptions } from './observed-requests.ts';
@@ -32,15 +33,13 @@ function lineReporter(output: OutputReport): (chunk: string) => void {
   };
 }
 
-const mostOutputBytes = 4_194_304;
-
 export class StdioProcessTransport implements Transport {
   onclose?: Transport['onclose'];
   onerror?: Transport['onerror'];
   onmessage?: Transport['onmessage'];
   readonly #child: ChildProcessWithoutNullStreams;
   readonly #observations: Observations;
-  readonly #readBuffer = new ReadBuffer({ maxBufferSize: mostOutputBytes });
+  readonly #readBuffer = new ReadBuffer({ maxBufferSize: toolBounds.stdioOutputBytes });
   readonly #spawned: Promise<unknown>;
   readonly #closed: Promise<unknown>;
 
@@ -72,6 +71,7 @@ export class StdioProcessTransport implements Transport {
     try {
       this.#readBuffer.append(chunk);
     } catch (error) {
+      this.#observations.noteOverflow();
       this.onerror?.(new Error('The MCP server wrote more than its output may take at once', { cause: error }));
       void this.close();
       return;

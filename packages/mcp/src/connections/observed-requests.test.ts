@@ -17,7 +17,7 @@ describe('the requests a connection observes', () => {
 
     expect(observed.take(marker)).toEqual({
       id: 7,
-      response: { status: 429, retryAfterMs: 2000, serverRequestId: 'r-1', tooLarge: false },
+      response: { retryAfterMs: 2000, serverRequestId: 'r-1', tooLarge: false },
     });
     expect(observed.take(marker)).toEqual({ id: null, response: null });
     expect(observed.lastRetryAfterMs()).toBe(2000);

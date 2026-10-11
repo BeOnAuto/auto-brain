@@ -43,6 +43,7 @@ export interface FailedCall extends ForwardedCall {
 export type Forwarded = AnsweredCall | FailedCall;
 
 export interface ScrubbedAnswer extends AnsweredCall {
+  readonly keptJson: string;
   readonly scrubbed: ToolAnswer;
 }
 
@@ -55,7 +56,12 @@ interface Attempt {
 
 const unobserved: Observed = { id: null, response: null };
 
-const tooLargeWords = `The MCP server answered more than the ${toolBounds.httpAnswerBytes} bytes one call may take`;
+const counted = new Intl.NumberFormat('en');
+
+const tooLargeWords: Readonly<Record<ServerSlot['settings']['type'], string>> = {
+  http: `The MCP server answered more than the ${counted.format(toolBounds.httpAnswerBytes)} bytes one call over HTTP may take`,
+  stdio: `The MCP server wrote more than the ${counted.format(toolBounds.stdioOutputBytes)} bytes a stdio server may write at once`,
+};
 
 function requestIdOf(forwarding: Forwarding, observed: Observed, result: ToolResult): string | null {
   const key = forwarding.slot.settings.request_id;
@@ -144,7 +150,7 @@ async function attempted(forwarding: Forwarding, attempt: Attempt): Promise<Forw
     return answered(forwarding, settled);
   }
   if (settled.observed.response?.tooLarge === true) {
-    return failed('server_failure', 'too_large', tooLargeWords, settled.observed);
+    return failed('too_large', 'too_large', tooLargeWords[forwarding.slot.settings.type], settled.observed);
   }
   const halted = stopped(forwarding, attempt, settled.observed);
   if (halted !== undefined) {

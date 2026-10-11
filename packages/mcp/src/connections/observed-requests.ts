@@ -7,7 +7,6 @@ type RequestId = string | number;
 type Marker = (resumptionToken: string) => void;
 
 interface ObservedResponse {
-  readonly status: number;
   readonly retryAfterMs: number | null;
   readonly serverRequestId: string | null;
   readonly tooLarge: boolean;
@@ -27,6 +26,7 @@ export interface Observations {
   readonly noteSent: (message: unknown, options: Readonly<SendOptions> | undefined) => void;
   readonly noteAnswered: (body: unknown, response: Readonly<Response>) => Response;
   readonly whenTooLarge: (marker: Marker, stop: () => void) => void;
+  readonly noteOverflow: () => void;
   readonly take: (marker: Marker) => Observed;
   readonly lastRetryAfterMs: () => number | null;
 }
@@ -90,12 +90,31 @@ export function retryAfterMsOf(value: string | null, now: number): number | null
 
 type Observing = (response: Readonly<Response>, requestIdHeader: string | null) => ObservedResponse;
 
+const unanswered: ObservedResponse = { retryAfterMs: null, serverRequestId: null, tooLarge: false };
+
 const observedOf: Observing = (response, requestIdHeader) => ({
-  status: response.status,
   retryAfterMs: retryAfterMsOf(response.headers.get('retry-after'), Date.now()),
   serverRequestId: requestIdHeader === null ? null : response.headers.get(requestIdHeader),
   tooLarge: false,
 });
+
+type StopOf = (id: RequestId) => (() => void) | undefined;
+
+function stopsOf(sent: ReadonlyMap<Marker, RequestId>, stops: ReadonlyMap<Marker, () => void>): StopOf {
+  return (id) =>
+    [...sent]
+      .flatMap(([marker, sentId]: readonly [Marker, RequestId]) => (sentId === id ? [stops.get(marker)] : []))
+      .at(0);
+}
+
+function overflowOf(answered: Map<RequestId, ObservedResponse | null>, stopOf: StopOf): () => void {
+  return () => {
+    for (const [id, observed] of answered) {
+      answered.set(id, { ...(observed ?? unanswered), tooLarge: true });
+      stopOf(id)?.();
+    }
+  };
+}
 
 export function observations(requestId: string | null, mostAnswerBytes: number): Observations {
   const requestIdHeader = requestId !== null && headerName.test(requestId) ? requestId : null;
@@ -103,10 +122,7 @@ export function observations(requestId: string | null, mostAnswerBytes: number):
   const answered = new Map<RequestId, ObservedResponse | null>();
   const stops = new Map<Marker, () => void>();
   const latest: { retryAfterMs: number | null } = { retryAfterMs: null };
-  const stopOf = (id: RequestId): (() => void) | undefined =>
-    [...sent]
-      .flatMap(([marker, sentId]: readonly [Marker, RequestId]) => (sentId === id ? [stops.get(marker)] : []))
-      .at(0);
+  const stopOf = stopsOf(sent, stops);
   return {
     mark: () => ignored.bind(null),
     noteSent: (message, options) => {
@@ -133,6 +149,7 @@ export function observations(requestId: string | null, mostAnswerBytes: number):
     whenTooLarge: (marker, stop) => {
       stops.set(marker, stop);
     },
+    noteOverflow: overflowOf(answered, stopOf),
     take: (marker) => {
       const id = sent.get(marker);
       sent.delete(marker);

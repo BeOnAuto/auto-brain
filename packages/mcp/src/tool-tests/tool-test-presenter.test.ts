@@ -97,7 +97,6 @@ describe('the events of a test, as the brain shows them', () => {
       server: 'graph',
       tool: 'echo',
       arguments_bytes: Buffer.byteLength(JSON.stringify({ said: 'hello' })),
-      content_kept: true,
       arguments: { said: 'hello' },
     });
     expect(answered?.data).toMatchObject({
@@ -114,7 +113,6 @@ describe('an answer that carries no id of the server', () => {
     const [failed] = toolTestPresenter.present(
       {
         id: '1f0e8d7c-6b5a-5d4c-8b3a-291817161514',
-        cursor: 'c',
         causationId: null,
         correlationId: null,
         stream: 'tool-tests/0199b7e2-4c1d-7a3e-8f5b-6d2c1e0f9a8b',

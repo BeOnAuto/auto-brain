@@ -36,7 +36,7 @@ export interface StartingCall {
 }
 
 export interface CallAnswer {
-  readonly answerJson: string;
+  readonly keptJson: string;
   readonly jsonrpcId: string | number | null;
   readonly serverRequestId: string | null;
 }
@@ -58,23 +58,23 @@ export function scrubbedJsonOf(json: string, { secrets }: Pick<Recording, 'secre
   return JSON.stringify(secrets.scrubValue(parsed));
 }
 
-async function kept(recording: Recording, sha256: string, json: string): Promise<boolean> {
+async function keptDigestOf(kept: string, recording: Recording): Promise<string | undefined> {
   if (!recording.content) {
-    return false;
+    return undefined;
   }
-  await recording.keep(sha256, scrubbedJsonOf(json, recording));
-  return true;
+  const sha256 = digestOf(kept);
+  await recording.keep(sha256, kept);
+  return sha256;
 }
 
 export async function startedFields(call: StartingCall, recording: Recording): Promise<StartedFields> {
-  const sent = JSON.stringify(call.input);
-  const sha256 = digestOf(sent);
+  const kept = scrubbedJsonOf(JSON.stringify(call.input), recording);
+  const sha256 = await keptDigestOf(kept, recording);
   return {
     server: call.server,
     tool: call.tool,
-    arguments_bytes: bytesOf(sent),
-    arguments_sha256: sha256,
-    content_kept: await kept(recording, sha256, sent),
+    arguments_bytes: bytesOf(kept),
+    ...(sha256 === undefined ? {} : { arguments_sha256: sha256 }),
   };
 }
 
@@ -83,11 +83,10 @@ function requestIdOf({ serverRequestId }: Pick<CallAnswer, 'serverRequestId'>, {
 }
 
 export async function answeredFields(answer: CallAnswer, recording: Recording): Promise<AnsweredFields> {
-  const sha256 = digestOf(answer.answerJson);
+  const sha256 = await keptDigestOf(answer.keptJson, recording);
   return {
-    result_bytes: bytesOf(answer.answerJson),
-    result_sha256: sha256,
-    content_kept: await kept(recording, sha256, answer.answerJson),
+    result_bytes: bytesOf(answer.keptJson),
+    ...(sha256 === undefined ? {} : { result_sha256: sha256 }),
     jsonrpc_id: answer.jsonrpcId,
     ...requestIdOf(answer, recording),
   };

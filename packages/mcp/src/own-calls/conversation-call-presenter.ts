@@ -8,7 +8,7 @@ import { failedInWords, toolInWords } from '../names/tool-words.ts';
 import {
   ConversationCallEventSchema,
   conversationCallsKind,
-  type ConversationCallEvent,
+  type RecordedConversationCall,
   type ReadingFailedBecause,
   type TellingFailedBecause,
 } from './conversation-call-events.ts';
@@ -58,7 +58,7 @@ function whereOf(data: OnTheConversation): string {
   return `the conversation ${quoted(named(data.conversation))} ${throughTheTool(data)}`;
 }
 
-type Reading = Extract<ConversationCallEvent, { readonly type: 'replies_read' | 'reading_failed' }>;
+type Reading = Extract<RecordedConversationCall, { readonly type: 'replies_read' | 'reading_failed' }>;
 
 function readingFact(event: Reading, content: KeptContent): PresentedFact {
   const shown = { ...keptArgumentsOf(event.data, content), ...keptAnswerOf(event.data, content) };
@@ -78,7 +78,7 @@ function readingFact(event: Reading, content: KeptContent): PresentedFact {
   };
 }
 
-function factOf(event: ConversationCallEvent, content: KeptContent): PresentedFact {
+function factOf(event: RecordedConversationCall, content: KeptContent): PresentedFact {
   if (event.type === 'replies_read' || event.type === 'reading_failed') {
     return readingFact(event, content);
   }
@@ -115,5 +115,5 @@ export const conversationCallPresenter: Presenter = {
     replies_read: ['replies_read'],
     reading_failed: ['reading_failed'],
   },
-  present: ({ type, data }, content) => [factOf(decodeConversationCall({ type, data }), content)],
+  present: ({ type, data, context }, content) => [factOf(decodeConversationCall({ type, data, context }), content)],
 };

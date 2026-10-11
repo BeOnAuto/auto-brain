@@ -47,7 +47,11 @@ export type ShownBytesOf = (sent: ForwardedOnce) => number | undefined;
 const unsent: JournalledCall = { sent: false };
 
 function scrubbedOf(done: Forwarded, recording: Recording): Delivered {
-  return done.resultJson === null ? done : { ...done, scrubbed: answerOf(scrubbedJsonOf(done.resultJson, recording)) };
+  if (done.resultJson === null) {
+    return done;
+  }
+  const keptJson = scrubbedJsonOf(done.resultJson, recording);
+  return { ...done, keptJson, scrubbed: answerOf(keptJson) };
 }
 
 async function forwardedOnce(forwarding: Forwarding, recording: Recording): Promise<ForwardedOnce> {
@@ -68,7 +72,7 @@ async function startOf(
 
 async function settledOf(sent: ForwardedOnce, recording: Recording, shownBytes?: number): Promise<SentCall> {
   const { done, durationMs } = sent;
-  if (done.resultJson === null) {
+  if (!('keptJson' in done)) {
     return {
       sent: true,
       answered: false,
@@ -78,7 +82,7 @@ async function settledOf(sent: ForwardedOnce, recording: Recording, shownBytes?:
   }
   const fact: CallAnswered = {
     is_error: done.outcome === 'tool_error',
-    ...(await answeredFields({ ...done, answerJson: done.resultJson }, recording)),
+    ...(await answeredFields(done, recording)),
     ...(shownBytes === undefined ? {} : { shown_bytes: shownBytes }),
     duration_ms: durationMs,
   };

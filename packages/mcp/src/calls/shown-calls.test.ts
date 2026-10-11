@@ -14,30 +14,29 @@ const content: KeptContent = (sha256) => kept[sha256];
 
 describe('the content a fact of a call kept, as a reader sees it', () => {
   it('is the arguments as the object they were sent as', () => {
-    expect(keptArgumentsOf({ arguments_sha256: 'sent', content_kept: true }, content)).toEqual({
+    expect(keptArgumentsOf({ arguments_sha256: 'sent' }, content)).toEqual({
       arguments: { query: 'acme' },
     });
   });
 
   it('is the answer as the server gave it, with the document a reader of the answer reads', () => {
-    expect(keptAnswerOf({ result_sha256: 'structured', content_kept: true }, content)).toEqual({
+    expect(keptAnswerOf({ result_sha256: 'structured' }, content)).toEqual({
       result: { content: [], structuredContent: { rows: 2 } },
       answer: { rows: 2 },
     });
-    expect(keptAnswerOf({ result_sha256: 'empty', content_kept: true }, content)).toEqual({
+    expect(keptAnswerOf({ result_sha256: 'empty' }, content)).toEqual({
       result: { content: [] },
     });
   });
 
-  it('is nothing where the fact kept none, names no digest, or the kept text cannot be read', () => {
+  it('is nothing where the fact names no digest, as one whose content was not kept, or the kept text cannot be read', () => {
     expect([
-      keptArgumentsOf({ arguments_sha256: 'sent', content_kept: false }, content),
-      keptArgumentsOf({ content_kept: true }, content),
-      keptArgumentsOf({ arguments_sha256: 'broken', content_kept: true }, content),
-      keptAnswerOf({ result_sha256: 'structured' }, content),
-      keptAnswerOf({ result_sha256: 'missing', content_kept: true }, content),
-      keptAnswerOf({ result_sha256: 'broken', content_kept: true }, content),
-    ]).toEqual([{}, {}, {}, {}, {}, {}]);
+      keptArgumentsOf({}, content),
+      keptArgumentsOf({ arguments_sha256: 'broken' }, content),
+      keptAnswerOf({}, content),
+      keptAnswerOf({ result_sha256: 'missing' }, content),
+      keptAnswerOf({ result_sha256: 'broken' }, content),
+    ]).toEqual([{}, {}, {}, {}, {}]);
   });
 });
 

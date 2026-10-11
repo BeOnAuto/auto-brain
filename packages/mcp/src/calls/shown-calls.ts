@@ -7,17 +7,16 @@ import { answerDocument, answerOf } from '../bounds/tool-results.ts';
 const decodeJson = Schema.decodeUnknownOption(Schema.fromJsonString(Schema.Json));
 
 interface KeptFacts {
-  readonly content_kept?: boolean;
   readonly arguments_sha256?: string;
   readonly result_sha256?: string;
 }
 
-function keptText(digest: string | undefined, kept: boolean | undefined, content: KeptContent): string | undefined {
-  return digest === undefined || kept !== true ? undefined : content(digest);
+function keptText(digest: string | undefined, content: KeptContent): string | undefined {
+  return digest === undefined ? undefined : content(digest);
 }
 
 export function keptArgumentsOf(fact: KeptFacts, content: KeptContent): { readonly arguments?: Schema.Json } {
-  const text = keptText(fact.arguments_sha256, fact.content_kept, content);
+  const text = keptText(fact.arguments_sha256, content);
   if (text === undefined) {
     return {};
   }
@@ -36,7 +35,7 @@ export function keptAnswerOf(
   fact: KeptFacts,
   content: KeptContent,
 ): { readonly result?: Schema.Json; readonly answer?: Schema.Json } {
-  const text = keptText(fact.result_sha256, fact.content_kept, content);
+  const text = keptText(fact.result_sha256, content);
   if (text === undefined) {
     return {};
   }

@@ -7,7 +7,7 @@ import type { RecordedFact } from './recorded-read.ts';
 const digestEnding = '_sha256';
 
 function digestsKeptIn(data: unknown, mostBytes: number): readonly string[] {
-  if (!Predicate.isObject(data) || Reflect.get(data, 'content_kept') !== true) {
+  if (!Predicate.isObject(data)) {
     return [];
   }
   const digests: string[] = [];

@@ -102,6 +102,24 @@ describe('showing a result', () => {
     expect(JSON.parse(read)).toStrictEqual(rowsOfJson);
     expect(read).toBe(shownWithin(rows, Number(shown.shownBytes)));
   });
+
+  it('cuts a JSON object after its last complete member, and a long string inside it, so the read can be given again', () => {
+    const members = JSON.stringify(
+      Object.fromEntries(Array.from({ length: 60 }, (_, index) => [`field_${index}`, index])),
+    );
+    const story = JSON.stringify({ title: 'Minutes', body: 'é and words '.repeat(400) });
+    const [object, string] = [shownResult(members, 300), shownResult(story, 300)];
+    const [objectRead, stringRead] = [object, string].map((shown) => shown.text.slice(0, shown.text.indexOf('\n[')));
+
+    expect([JSON.parse(String(objectRead)), JSON.parse(String(stringRead))]).toMatchObject([
+      { field_0: 0 },
+      { title: 'Minutes' },
+    ]);
+    expect([objectRead, stringRead]).toEqual([
+      shownWithin(members, Number(object.shownBytes)),
+      shownWithin(story, Number(string.shownBytes)),
+    ]);
+  });
 });
 
 describe('the failures and the time of a run', () => {

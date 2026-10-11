@@ -1,4 +1,4 @@
-import type { KeptContent } from '@beonauto/operations';
+import type { Context, KeptContent } from '@beonauto/operations';
 import { nothingKept } from '@beonauto/operations/testing';
 import { describe, expect, it } from 'vitest';
 
@@ -20,7 +20,6 @@ const thePlace = {
 const answered = {
   result_bytes: 120,
   result_sha256: 'b'.repeat(64),
-  content_kept: true,
   duration_ms: 7,
   jsonrpc_id: 'rpc-2',
   server_request_id: 'req-9',
@@ -33,11 +32,24 @@ const kept: Readonly<Record<string, string>> = {
 
 const keptContent: KeptContent = (sha256) => kept[sha256];
 
-function shown(event: ConversationCallEvent, content: KeptContent = keptContent) {
+const acted = { at, by: 'brain:alpha' };
+
+const inTheRun = {
+  ...acted,
+  runId: 'run-1',
+  definitionType: 'interaction',
+  definitionName: 'approve-report',
+  definitionVersion: 1,
+};
+
+function contextOf({ type }: ConversationCallEvent): Context {
+  return type.startsWith('telling_') ? inTheRun : acted;
+}
+
+function shown(event: ConversationCallEvent, content: KeptContent = keptContent, context = contextOf(event)) {
   const [fact] = conversationCallPresenter.present(
     {
       id: 'event-1',
-      cursor: 'cursor-1',
       causationId: 'cause-1',
       correlationId: null,
       stream: 'conversation-calls/call-1',
@@ -45,7 +57,7 @@ function shown(event: ConversationCallEvent, content: KeptContent = keptContent)
       globalPosition: 9,
       type: event.type,
       data: event.data,
-      context: { at, by: 'brain:alpha' },
+      context,
       recordedAt: at,
     },
     content,
@@ -78,11 +90,13 @@ describe('a read the brain made in a conversation, as the brain events show it',
     });
   });
 
-  it('shows no content the read did not keep, even when another read kept the same', () => {
+  it('shows no content the read did not keep, even when another read kept the same, since its fact names no digest', () => {
+    const { arguments_sha256: _arguments, ...unkeptPlace } = thePlace;
+    const { result_sha256: _result, ...unkeptAnswer } = answered;
     const read = shown(
       {
         type: 'replies_read',
-        data: { ...thePlace, ...answered, content_kept: false, replies: 0, taken: 0, refused: 0 },
+        data: { ...unkeptPlace, ...unkeptAnswer, replies: 0, taken: 0, refused: 0 },
       },
       keptContent,
     );
@@ -135,7 +149,6 @@ describe('a telling the brain made in a conversation, as the brain events show i
         tool: 'post_message',
         arguments_bytes: 80,
         arguments_sha256: 'c'.repeat(64),
-        content_kept: true,
       },
     });
     const succeeded = shown({ type: 'telling_succeeded', data: { call_id: 'call-2', ...answered } });
@@ -152,9 +165,19 @@ describe('a telling the brain made in a conversation, as the brain events show i
       'The tool that told the party was no longer offered by its server.',
     ]);
     expect([started?.data, succeeded?.data, failed?.data]).toMatchObject([
-      { call_id: 'call-2', arguments_bytes: 80, content_kept: true },
+      { call_id: 'call-2', arguments_bytes: 80 },
       { ...answered, answer: { messages: [] } },
       { because: 'tool_error', detail: 'No channel', answer: { messages: [] } },
     ]);
+  });
+
+  it('says the tool answered more than a call may take, and fails on a telling recorded without its definition', () => {
+    const tooLarge = shown({ type: 'telling_failed', data: { call_id: 'call-5', because: 'too_large' } });
+    const telling = { type: 'telling_failed', data: { call_id: 'call-6', because: 'cancelled' } } as const;
+
+    expect(tooLarge?.summary).toBe(
+      'The tool that told the party answered more than one call may take, so its answer was not read.',
+    );
+    expect(() => shown(telling, keptContent, { ...acted, runId: 'run-1' })).toThrow('definitionType');
   });
 });

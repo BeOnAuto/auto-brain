@@ -40,7 +40,6 @@ describe('a call recorded on its run', () => {
           tool: 'echo',
           arguments_bytes: 48,
           arguments_sha256: aDigest,
-          content_kept: true,
         },
       },
       {
@@ -50,7 +49,6 @@ describe('a call recorded on its run', () => {
           is_error: false,
           result_bytes: 95,
           result_sha256: aDigest,
-          content_kept: true,
           jsonrpc_id: aNumber,
           duration_ms: aNumber,
         },
