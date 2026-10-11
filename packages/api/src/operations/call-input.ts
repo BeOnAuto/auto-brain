@@ -1,15 +1,27 @@
-import type { InputEncoding, Registration } from '@beonauto/operations';
+import {
+  isStreamedBody,
+  type HttpBody,
+  type InputEncoding,
+  type Registration,
+  type StreamedContent,
+} from '@beonauto/operations';
 import { Result } from 'effect';
 import type { Context } from 'hono';
 
 import type { ApiEnv } from '../api-env.ts';
 import { problemOf, type Problem } from '../problem/problem.ts';
-import { parseJsonBody, type JsonObject } from './request-body.ts';
+import { bodyTextOf, parseJsonBody, type JsonObject } from './request-body.ts';
+import { streamedBodyOf } from './streamed-body.ts';
 
 export interface CallInput {
   readonly input: JsonObject;
   readonly encoding: InputEncoding;
+  readonly body?: StreamedContent;
 }
+
+const jsonBody: HttpBody = { kind: 'json' };
+
+const bodyOnNone = Result.fail(problemOf('bad_request', 'This operation takes no body'));
 
 const queryOnCommand = Result.fail(
   problemOf('bad_request', 'A command takes no query parameters; send its input in the JSON body'),
@@ -36,6 +48,10 @@ function combined(
     : givenTwice(repeated);
 }
 
+async function noBodyIn(request: Request): Promise<Result.Result<JsonObject, Problem>> {
+  return Result.flatMap(await bodyTextOf(request), (text) => (text === '' ? Result.succeed({}) : bodyOnNone));
+}
+
 export async function parseCallInput(
   c: Context<ApiEnv>,
   registration: Registration,
@@ -48,5 +64,14 @@ export async function parseCallInput(
   if (query.size > 0) {
     return queryOnCommand;
   }
-  return Result.flatMap(await parseJsonBody(c.req.raw), (given) => combined(pathFields, given, 'json'));
+  const body = registration.servedOverHttpAlone ?? jsonBody;
+  if (isStreamedBody(body)) {
+    return Result.map(streamedBodyOf(c.req.raw, body), (streamed) => ({
+      input: pathFields,
+      encoding: 'json',
+      body: streamed,
+    }));
+  }
+  const given = body.kind === 'json' ? await parseJsonBody(c.req.raw) : await noBodyIn(c.req.raw);
+  return Result.flatMap(given, (fields) => combined(pathFields, fields, 'json'));
 }

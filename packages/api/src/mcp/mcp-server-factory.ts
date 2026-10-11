@@ -50,6 +50,10 @@ function offered<R extends Registration>(
   }));
 }
 
+function servedAsTools<R extends Registration>(registrations: readonly R[]): readonly R[] {
+  return registrations.filter(({ servedOverHttpAlone }) => servedOverHttpAlone === undefined);
+}
+
 function permittedTo<R extends Registration>(
   { permissions }: CallerIdentity,
   offers: readonly Offered<R>[],
@@ -148,7 +152,7 @@ function brainArgumentDispatchOf(
 }
 
 export function orgServerFactory(serving: ToolServing): McpServerFactory {
-  const orgOffers = offered(serving.catalog.operationsIn('org'), toolDefinitionOf);
+  const orgOffers = offered(servedAsTools(serving.catalog.operationsIn('org')), toolDefinitionOf);
   const connection = connectionOf('org', serving, everyToolOf(orgOffers, []));
   return (context) => {
     const call = orgCallOf(context);
@@ -159,7 +163,7 @@ export function orgServerFactory(serving: ToolServing): McpServerFactory {
 }
 
 export function brainServerFactory(serving: ToolServing): McpServerFactory {
-  const brainOffers = offered(serving.catalog.operationsIn('brain'), toolDefinitionOf);
+  const brainOffers = offered(servedAsTools(serving.catalog.operationsIn('brain')), toolDefinitionOf);
   const connection = connectionOf('brain', serving, everyToolOf([], brainOffers));
   return (context) => {
     const call = brainCallOf(context);
@@ -178,10 +182,10 @@ function namedInBrainAlone(
 }
 
 export function catalogServerFactory(serving: ToolServing): McpServerFactory {
-  const orgRegistrations = serving.catalog.operationsIn('org');
+  const orgRegistrations = servedAsTools(serving.catalog.operationsIn('org'));
   const orgOffers = offered(orgRegistrations, toolDefinitionOf);
   const brainOffers = offered(
-    namedInBrainAlone(serving.catalog.operationsIn('brain'), orgRegistrations),
+    namedInBrainAlone(servedAsTools(serving.catalog.operationsIn('brain')), orgRegistrations),
     toolDefinitionTakingBrainOf,
   );
   const connection = connectionOf('own org', serving, everyToolOf(orgOffers, brainOffers));

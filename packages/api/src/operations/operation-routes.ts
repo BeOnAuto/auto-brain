@@ -29,13 +29,13 @@ function dispatched(
   dispatcher: Dispatcher,
   registration: Registration,
   c: Context<ApiEnv>,
-  { input, encoding }: CallInput,
+  given: CallInput,
 ): Effect.Effect<Outcome, never, DispatcherServices> {
   const org = String(c.req.param('org'));
   const caller = c.get('principal').callerIn(org);
   return registration.scope === 'org'
-    ? dispatcher.dispatchToOrg(registration, { caller, org, input, encoding })
-    : dispatcher.dispatchToBrain(registration, { caller, org, brain: String(c.req.param('brain')), input, encoding });
+    ? dispatcher.dispatchToOrg(registration, { caller, org, ...given })
+    : dispatcher.dispatchToBrain(registration, { caller, org, brain: String(c.req.param('brain')), ...given });
 }
 
 function handlerFor(registration: Registration, { dispatcher, runCall }: OperationRoutesOptions): RouteHandler {
