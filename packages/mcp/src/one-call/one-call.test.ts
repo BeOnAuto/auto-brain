@@ -1,6 +1,7 @@
 import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
 
+import { keptTextOf } from '@beonauto/operations/testing';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -111,8 +112,8 @@ describe('what one call answers of its tool', () => {
       answered: { result_bytes: Buffer.byteLength(keptAnswer), result_sha256: digest(keptAnswer) },
     });
     expect(JSON.stringify([starts, called])).not.toContain(oneCallKey);
-    await expect(Effect.runPromise(access.content.get(alpha, digest(scrubbed)))).resolves.toBe(scrubbed);
-    await expect(Effect.runPromise(access.content.get(alpha, digest(keptAnswer)))).resolves.toBe(keptAnswer);
+    await expect(keptTextOf(access.content, alpha, digest(scrubbed))).resolves.toBe(scrubbed);
+    await expect(keptTextOf(access.content, alpha, digest(keptAnswer))).resolves.toBe(keptAnswer);
   });
 });
 

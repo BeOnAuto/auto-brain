@@ -1,7 +1,8 @@
 import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
 
-import { Effect, Schema } from 'effect';
+import { keptTextOf } from '@beonauto/operations/testing';
+import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { fakeApiKey, patientTiming, reportingAccess, serveFakeMcp, toolTests } from '../testing/index.ts';
@@ -31,7 +32,7 @@ async function testsOn(entry: Readonly<Record<string, unknown>> = {}) {
     { timing: patientTiming, environment: { GRAPH_API_KEY: fakeApiKey } },
   );
   closing.push(access.close);
-  const kept = (sha256: string) => Effect.runPromise(content.get(alpha, sha256));
+  const kept = (sha256: string) => keptTextOf(content, alpha, sha256);
   return { fake, kept, ...toolTests(access) };
 }
 

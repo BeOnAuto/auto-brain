@@ -1,8 +1,7 @@
 import { Buffer } from 'node:buffer';
 
 import type { KeptContent, RecordedEvent } from '@beonauto/operations';
-import { nothingKept } from '@beonauto/operations/testing';
-import { Effect } from 'effect';
+import { keptTextOf, nothingKept } from '@beonauto/operations/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
@@ -49,7 +48,7 @@ async function recordedTests(entry: Readonly<Record<string, unknown>>, callMs: n
   const digests = records
     .flatMap(({ data }) => digestFields.map((field): unknown => Reflect.get(new Object(data), field)))
     .filter((digest): digest is string => typeof digest === 'string');
-  const texts = await Promise.all(digests.map((digest) => Effect.runPromise(content.get(alpha, digest))));
+  const texts = await Promise.all(digests.map((digest) => keptTextOf(content, alpha, digest)));
   const kept = new Map(digests.map((digest, index) => [digest, texts[index]]));
   return { records, content: (sha256: string) => kept.get(sha256) };
 }
