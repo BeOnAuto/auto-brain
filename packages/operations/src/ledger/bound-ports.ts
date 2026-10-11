@@ -8,7 +8,7 @@ import { isCalendarDay } from '../reading/calendar-days.ts';
 import { mostRecordsInAPage } from '../reading/page-bounds.ts';
 import type {
   InvalidCursorKind,
-  RecordedEvent,
+  RecordedFact,
   RecordedPage,
   RecordedPageRequest,
   RecordedSelection,
@@ -43,8 +43,8 @@ export function streamPrefixOfBrain({ org, brain }: BrainAddress): string {
 
 export function prefixedReader(ledger: StreamReader, prefix: string): StreamReader {
   return {
-    load: (stream, decider) =>
-      wellFormed(stream).pipe(Effect.flatMap((relative) => ledger.load(`${prefix}${relative}`, decider))),
+    load: (stream, fold) =>
+      wellFormed(stream).pipe(Effect.flatMap((relative) => ledger.load(`${prefix}${relative}`, fold))),
   };
 }
 
@@ -88,7 +88,7 @@ const refusedCursors: Readonly<Record<InvalidCursorKind, InvalidInput>> = {
   }),
 };
 
-function recordRelativeTo(prefix: string): (record: RecordedEvent) => RecordedEvent {
+function recordRelativeTo(prefix: string): <Record extends RecordedFact>(record: Record) => Record {
   return (record) => ({ ...record, stream: record.stream.slice(prefix.length) });
 }
 

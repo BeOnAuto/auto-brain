@@ -7,16 +7,14 @@ import {
   checkedContext,
   messageIdOf,
   noLineage,
-  recordedWith,
+  recordingOf,
   type Context,
-  type Decider,
-  type DeclarableReason,
+  type Fold,
   type Lineage,
   type Recorded,
   type RunOutcomeMapping,
   type KeyedProjection,
   type StreamState,
-  type TypedEvent,
 } from '../index.ts';
 import { memoryProjections, type AppendedFact, type MemoryProjections } from '../projections/memory-projections.ts';
 import { memoryRunOutcomes, type MemoryRunOutcomes } from '../run-outcomes/memory-run-outcomes.ts';
@@ -46,37 +44,27 @@ const EncodedFactSchema = Schema.Struct({ type: Schema.String, data: Schema.Unkn
 
 const encodedFactOf = Schema.decodeUnknownSync(EncodedFactSchema);
 
-function folded<State, Command, Event extends TypedEvent, R extends DeclarableReason>(
-  decider: Decider<State, Command, Event, R>,
+function folded<State, Event extends Recorded>(
+  fold: Fold<State, Event>,
   stored: readonly AppendedFact[],
 ): Effect.Effect<StreamState<State>> {
-  const decodeEvent = Schema.decodeUnknownEffect(Schema.toCodecJson(decider.eventSchema));
-  return Effect.forEach(stored, ({ type, data, context }) =>
-    Effect.map(Effect.orDie(decodeEvent({ type, data })), recordedWith<Event>(context)),
-  ).pipe(
-    Effect.map((events: readonly Recorded<Event>[]) => ({
-      state: foldedOver(decider, decider.initialState, events),
+  const decodeEvent = Schema.decodeUnknownEffect(Schema.toCodecJson(fold.eventSchema));
+  return Effect.forEach(stored, ({ type, data, context }) => Effect.orDie(decodeEvent({ type, data, context }))).pipe(
+    Effect.map((events: readonly Event[]) => ({
+      state: foldedOver(fold, fold.initialState, events),
       version: events.length,
     })),
   );
 }
 
-function recordedEvents<Event extends TypedEvent>(
-  events: readonly Event[],
-  context: Context,
-): readonly Recorded<Event>[] {
-  const recorded = recordedWith<Event>(context);
-  return events.map((event) => recorded(event));
-}
-
-function foldedOver<State, Command, Event extends TypedEvent, R extends DeclarableReason>(
-  decider: Decider<State, Command, Event, R>,
+function foldedOver<State, Event extends Recorded>(
+  fold: Fold<State, Event>,
   from: State,
-  events: readonly Recorded<Event>[],
+  events: readonly Event[],
 ): State {
   let state = from;
   for (const event of events) {
-    state = decider.evolve(state, event);
+    state = fold.evolve(state, event);
   }
   return state;
 }
@@ -105,7 +93,7 @@ function appendedTo(kept: Kept, { stream, stored, lineage }: Appended, at: numbe
   kept.streams.set(stream, [...storedIn(kept, stream), ...stored]);
 }
 
-function encodedWith<Event extends TypedEvent>(
+function encodedWith<Event extends Recorded>(
   eventSchema: Schema.ConstraintCodec<Event, unknown>,
   context: Context,
 ): (event: Event) => Effect.Effect<AppendedFact> {
@@ -137,12 +125,11 @@ function executedOn(kept: Kept): Ledger['Service']['execute'] {
         return { state, version };
       }
       const context = yield* Effect.sync(() => checkedContext(decider.context(command, state)));
-      const stored = yield* Effect.forEach(decided.success, encodedWith(decider.eventSchema, context));
+      const recorded = recordingOf(decider.eventSchema);
+      const events = yield* Effect.sync(() => decided.success.map((event) => recorded(event, context)));
+      const stored = yield* Effect.forEach(events, encodedWith(decider.eventSchema, context));
       appendedTo(kept, { stream, stored, lineage }, yield* Clock.currentTimeMillis);
-      return {
-        state: foldedOver(decider, state, recordedEvents(decided.success, context)),
-        version: version + decided.success.length,
-      };
+      return { state: foldedOver(decider, state, events), version: version + events.length };
     });
 }
 
@@ -163,7 +150,7 @@ export function memoryLedger(
   const { projected } = kept;
   const recordedReader = memoryRecordedReader(kept.log);
   const service = Ledger.of({
-    load: (stream, decider) => Effect.suspend(() => folded(decider, storedIn(kept, stream))),
+    load: (stream, fold) => Effect.suspend(() => folded(fold, storedIn(kept, stream))),
     execute: executedOn(kept),
     readRecorded: recordedReader.readRecorded,
     readRecordedEvent: recordedReader.readRecordedEvent,

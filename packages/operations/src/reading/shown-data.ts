@@ -6,8 +6,6 @@ export type EventView = 'page' | 'whole' | 'tool';
 
 const largeFields: readonly string[] = ['input', 'output', 'record', 'answer', 'arguments', 'result', 'data'];
 
-const contentFields: readonly string[] = ['arguments', 'result', 'answer'];
-
 const utf8 = new TextEncoder();
 
 function bytesOf(value: unknown): number {
@@ -68,5 +66,5 @@ export function shownData(data: Schema.JsonObject, view: EventView): Schema.Json
   if (view === 'page') {
     return withinThePage(data);
   }
-  return view === 'tool' ? sizedPast(data, contentFields, mostToolFieldBytes) : data;
+  return view === 'tool' ? sizedPast(data, largeFields, mostToolFieldBytes) : data;
 }

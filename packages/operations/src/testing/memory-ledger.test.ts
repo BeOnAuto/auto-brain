@@ -3,10 +3,12 @@ import { TestClock } from 'effect/testing';
 import { describe, expect, it } from 'vitest';
 
 import {
+  ContextSchema,
   InvalidCursor,
   cursorOfParts,
   messageIdOf,
   type Context,
+  type Decided,
   type Decider,
   type RecordedPage,
   type RecordedPageRequest,
@@ -14,13 +16,17 @@ import {
 } from '../index.ts';
 import { memoryLedger, type MemoryLedger } from './memory-ledger.ts';
 
-const HappenedSchema = Schema.Struct({ type: Schema.String, data: Schema.Struct({ note: Schema.String }) });
+const HappenedSchema = Schema.Struct({
+  type: Schema.String,
+  data: Schema.Struct({ note: Schema.String }),
+  context: ContextSchema,
+});
 
-type Happened = typeof HappenedSchema.Type;
+type Happened = Decided<typeof HappenedSchema.Type>;
 
 const noted: Context = { at: '2026-10-05T09:00:00.000Z', by: 'tester' };
 
-const happenings: Decider<null, readonly Happened[], Happened> = {
+const happenings: Decider<null, readonly Happened[], typeof HappenedSchema.Type> = {
   initialState: null,
   evolve: () => null,
   decide: (happened) => Result.succeed(happened),

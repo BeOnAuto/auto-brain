@@ -2,17 +2,19 @@ import { Effect, Option, Schema } from 'effect';
 
 import { defineQuery } from '../definition/operation.ts';
 import { BrainReader } from '../ledger/brain-reader.ts';
+import { ActedContextSchema } from '../ledger/context.ts';
 import { factOf } from '../ledger/decider.ts';
 import type { KeyedProjection, ProjectedMessage, ProjectedRow } from './keyed-projection.ts';
 
-const BeganSchema = factOf('run_began', Schema.Struct({ at: Schema.String, fn: Schema.String }));
+const BeganSchema = factOf('run_began', Schema.Struct({ at: Schema.String, fn: Schema.String }), ActedContextSchema);
 
 const EndedSchema = factOf(
   'run_ended',
   Schema.Struct({ status: Schema.Literals(['succeeded', 'failed', 'rejected']) }),
+  ActedContextSchema,
 );
 
-const NotedSchema = factOf('run_noted', Schema.Struct({}));
+const NotedSchema = factOf('run_noted', Schema.Struct({}), ActedContextSchema);
 
 const decodeFact = Schema.decodeUnknownOption(Schema.Union([BeganSchema, EndedSchema, NotedSchema]));
 
@@ -65,7 +67,7 @@ export function tallyRowsOf(version: number, fail?: (row: ProjectedRow) => boole
     ],
     rowAfter: (row, message) =>
       Option.getOrUndefined(
-        Option.flatMapNullishOr(decodeFact({ type: message.type, data: message.data }), (fact) => {
+        Option.flatMapNullishOr(decodeFact(message), (fact) => {
           const next = rowAfterFact(row, fact, message);
           if (next !== undefined && fail?.(next) === true) {
             throw new Error('The projection broke down');

@@ -66,26 +66,41 @@ export {
 export {
   factOf,
   recordedDecoder,
-  recordedWith,
+  recordingOf,
   strictRecordedDecoder,
+  type Decided,
   type Decider,
+  type Fold,
   type Recorded,
   type StreamState,
   type TypedEvent,
 } from './ledger/decider.ts';
 export {
+  ActedContextSchema,
+  ActedOnRunContextSchema,
   CalledBySchema,
+  ContextReference,
   ContextSchema,
+  DefinitionContextSchema,
+  EmittedContextSchema,
+  RunContextSchema,
   StartingTriggerSchema,
+  bytesOfReference,
   checkedContext,
   contextOf,
   forbiddenCharactersInWords,
   holdsNoForbiddenCharacter,
+  leastCount,
   mostReferenceBytes,
   refusingForbiddenCharacters,
   refusingLongReferences,
+  type ActedContext,
+  type ActedOnRunContext,
   type CalledBy,
   type Context,
+  type DefinitionContext,
+  type EmittedContext,
+  type RunContext,
   type StartingTrigger,
 } from './ledger/context.ts';
 export type { BrainContentReader, RecordedContent } from './content/recorded-content.ts';
@@ -107,6 +122,7 @@ export {
   type ExaminedPlace,
   type InvalidCursorKind,
   type RecordedEvent,
+  type RecordedFact,
   type RecordedOrder,
   type RecordedPage,
   type RecordedPageRequest,
@@ -160,7 +176,13 @@ export {
 } from './reading/paging-fields.ts';
 export { PermissionSchema, allPermissions, permissionFor, type Permission } from './caller/permission.ts';
 export type { KeptContent, PresentedFact, PresentedPart, Presenter } from './reading/presenter.ts';
-export { presentationOf, streamKindOf, type Presentation, type Showing } from './reading/presentation.ts';
+export {
+  presentationOf,
+  stepIdSeparator,
+  streamKindOf,
+  type Presentation,
+  type Showing,
+} from './reading/presentation.ts';
 export {
   EventMetadataSchema,
   PublicEventSchema,

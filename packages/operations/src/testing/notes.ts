@@ -7,6 +7,7 @@ import {
   NotFound,
   defineCommand,
   defineQuery,
+  ActedContextSchema,
   factOf,
   type Decider,
   type RecordedSelection,
@@ -21,7 +22,7 @@ const NoteSchema = Schema.Struct(noteFields).annotate({ identifier: 'Note' });
 
 type Note = typeof NoteSchema.Type;
 
-const NoteAddedSchema = factOf('note_added', NoteSchema);
+const NoteAddedSchema = factOf('note_added', NoteSchema, ActedContextSchema);
 
 type NoteAdded = typeof NoteAddedSchema.Type;
 

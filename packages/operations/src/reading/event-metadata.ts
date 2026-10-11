@@ -1,6 +1,6 @@
 import type { CalledBy, Context, StartingTrigger } from '../ledger/context.ts';
 import type { EventMetadata } from './public-event.ts';
-import type { RecordedEvent, Trace } from './recorded-read.ts';
+import type { RecordedFact, Trace } from './recorded-read.ts';
 
 type Chain = Pick<EventMetadata, 'run_id' | 'definition' | 'called_by' | 'call_depth' | 'depth' | 'trigger'>;
 
@@ -45,7 +45,7 @@ function traceOf({ traceId, spanId }: Trace): Pick<EventMetadata, 'trace_id' | '
   };
 }
 
-export function eventMetadataOf(recorded: RecordedEvent, streamPrefix: string): EventMetadata {
+export function eventMetadataOf(recorded: RecordedFact, streamPrefix: string): EventMetadata {
   const { context } = recorded;
   return {
     stream: `${streamPrefix}${recorded.stream}`,

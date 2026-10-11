@@ -29,9 +29,8 @@ export interface Trace {
   readonly spanId?: string;
 }
 
-export interface RecordedEvent extends Trace {
+export interface RecordedFact extends Trace {
   readonly id: string;
-  readonly cursor: string;
   readonly causationId: string | null;
   readonly correlationId: string | null;
   readonly stream: string;
@@ -41,6 +40,10 @@ export interface RecordedEvent extends Trace {
   readonly data: unknown;
   readonly context: Context;
   readonly recordedAt: string;
+}
+
+export interface RecordedEvent extends RecordedFact {
+  readonly cursor: string;
 }
 
 export interface ExaminedPlace {

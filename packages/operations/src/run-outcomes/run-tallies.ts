@@ -1,10 +1,12 @@
 import { Effect, Option, Result, Schema } from 'effect';
 
 import {
+  ActedContextSchema,
   BrainReader,
   defineQuery,
   factOf,
   type Context,
+  type Decided,
   type Decider,
   type ProjectedMessage,
   type RunOutcome,
@@ -12,7 +14,7 @@ import {
   type RunOutcomeMapping,
 } from '../index.ts';
 
-const BeganSchema = factOf('run_began', Schema.Struct({ at: Schema.String, fn: Schema.String }));
+const BeganSchema = factOf('run_began', Schema.Struct({ at: Schema.String, fn: Schema.String }), ActedContextSchema);
 
 const EndedSchema = factOf(
   'run_ended',
@@ -22,15 +24,22 @@ const EndedSchema = factOf(
     tokens: Schema.NullOr(Schema.Int),
     note: Schema.optionalKey(Schema.String),
   }),
+  ActedContextSchema,
 );
 
-const RunFactSchema = Schema.Union([BeganSchema, EndedSchema, factOf('run_noted', Schema.Struct({}))]);
+const RunFactSchema = Schema.Union([
+  BeganSchema,
+  EndedSchema,
+  factOf('run_noted', Schema.Struct({}), ActedContextSchema),
+]);
 
-export type RunFact = typeof RunFactSchema.Type;
+type RecordedRunFact = typeof RunFactSchema.Type;
+
+export type RunFact = Decided<RecordedRunFact>;
 
 export const talliedContext: Context = { at: '2026-10-05T09:00:00.000Z', by: 'tallies' };
 
-export const runFacts: Decider<null, readonly RunFact[], RunFact> = {
+export const runFacts: Decider<null, readonly RunFact[], RecordedRunFact> = {
   initialState: null,
   evolve: () => null,
   decide: (facts) => Result.succeed(facts),
@@ -70,8 +79,8 @@ function tallied(row: RunOutcome | undefined, fact: typeof TalliedSchema.Type): 
 
 export const runTallies: RunOutcomeMapping = {
   types: ['run_began', 'run_ended'],
-  rowAfter: (row, { type, data }: ProjectedMessage) =>
-    Option.getOrUndefined(Option.flatMapNullishOr(decodeFact({ type, data }), (fact) => tallied(row, fact))),
+  rowAfter: (row, { type, data, context }: ProjectedMessage) =>
+    Option.getOrUndefined(Option.flatMapNullishOr(decodeFact({ type, data, context }), (fact) => tallied(row, fact))),
 };
 
 const GroupSchema = Schema.Struct({

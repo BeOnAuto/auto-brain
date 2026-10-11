@@ -1,6 +1,6 @@
 import type { Schema } from 'effect';
 
-import type { RecordedEvent } from './recorded-read.ts';
+import type { RecordedFact } from './recorded-read.ts';
 
 export interface PresentedPart {
   readonly number: number;
@@ -19,5 +19,5 @@ export type KeptContent = (sha256: string) => string | undefined;
 export interface Presenter {
   readonly streamKind: string;
   readonly publicNames: Readonly<Record<string, readonly string[]>>;
-  readonly present: (recorded: RecordedEvent, content: KeptContent) => readonly PresentedFact[];
+  readonly present: (recorded: RecordedFact, content: KeptContent) => readonly PresentedFact[];
 }

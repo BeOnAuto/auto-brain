@@ -58,7 +58,7 @@ export type EventMetadata = typeof EventMetadataSchema.Type;
 const eventFields = {
   id: Schema.String.annotate({
     description:
-      "The id of the event, the same on every read; a workflow's step is its record's id, a slash and its number",
+      "The id of the event, the same on every read; a workflow's step is its record's id, an underscore and its number",
   }),
   type: Schema.String.annotate({ description: 'What kind of event it is, a stable public name' }),
   summary: Schema.String.annotate({ description: 'What happened, in plain words' }),
@@ -67,7 +67,7 @@ const eventFields = {
 export const PublicEventSchema = Schema.Struct({
   ...eventFields,
   data: Schema.JsonObject.annotate({
-    description: `The fact, at most ${mostPublicEventDataBytes} bytes as JSON in UTF-8, with a large field as its size`,
+    description: `The fact, at most ${mostPublicEventDataBytes} bytes as JSON in UTF-8, with an input, output, record, answer, arguments or data past ${mostShownFieldBytes} bytes as its size`,
   }).check(
     Schema.makeFilter(fitsInPublicEventData, {
       expected: `data of at most ${mostPublicEventDataBytes} bytes as JSON in UTF-8`,
@@ -79,7 +79,7 @@ export const PublicEventSchema = Schema.Struct({
 export const WholeEventSchema = Schema.Struct({
   ...eventFields,
   data: Schema.JsonObject.annotate({
-    description: `The fact with its fields whole; over MCP, arguments, a result or an answer past ${mostToolFieldBytes} bytes appears as its size`,
+    description: `The fact with its fields whole; over MCP, an input, output, record, answer, arguments, result or data past ${mostToolFieldBytes} bytes appears as its size`,
   }),
   metadata: EventMetadataSchema,
 }).annotate({ identifier: 'WholeEvent', description: 'One event of the brain, read whole' });

@@ -2,15 +2,22 @@ import { Effect, Result, Schema } from 'effect';
 import { TestClock } from 'effect/testing';
 import { describe, expect, it } from 'vitest';
 
-import type { Decider, InvalidCursor, RecordedPageRequest, RecordedSelection } from '../index.ts';
+import {
+  ContextSchema,
+  type Decided,
+  type Decider,
+  type InvalidCursor,
+  type RecordedPageRequest,
+  type RecordedSelection,
+} from '../index.ts';
 import { memoryLedger, type MemoryLedger } from './memory-ledger.ts';
 import { memoryRecordedReader } from './memory-recorded.ts';
 
-const HappenedSchema = Schema.Struct({ type: Schema.String, data: Schema.Struct({}) });
+const HappenedSchema = Schema.Struct({ type: Schema.String, data: Schema.Struct({}), context: ContextSchema });
 
-type Happened = typeof HappenedSchema.Type;
+type Happened = Decided<typeof HappenedSchema.Type>;
 
-const happenings: Decider<null, Happened, Happened> = {
+const happenings: Decider<null, Happened, typeof HappenedSchema.Type> = {
   initialState: null,
   evolve: () => null,
   decide: (happened) => Result.succeed([happened]),
@@ -60,7 +67,11 @@ describe('the in-memory read of runs that leaves out the streams beginning with 
   });
 });
 
-const StartSchema = Schema.Struct({ type: Schema.Literal('run_started'), data: Schema.Struct({}) });
+const StartSchema = Schema.Struct({
+  type: Schema.Literal('run_started'),
+  data: Schema.Struct({}),
+  context: ContextSchema,
+});
 
 interface Start {
   readonly definitionType: string;

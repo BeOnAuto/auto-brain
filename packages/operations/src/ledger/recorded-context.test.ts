@@ -2,11 +2,11 @@ import { Effect, Exit, Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { memoryLedger, type MemoryLedger } from '../testing/memory-ledger.ts';
-import type { Context } from './context.ts';
+import { ActedContextSchema, ActedOnRunContextSchema, type Context } from './context.ts';
 import { factOf, type Decider } from './decider.ts';
 import { messageIdOf } from './message-lineage.ts';
 
-const NotedSchema = factOf('noted', Schema.Struct({ note: Schema.String }));
+const NotedSchema = factOf('noted', Schema.Struct({ note: Schema.String }), ActedContextSchema);
 
 type Noted = typeof NotedSchema.Type;
 
@@ -107,5 +107,27 @@ describe('the in-memory context of a decision', () => {
       ['first by first-writer', 'second by second-writer'],
       ['first by first-writer', 'second by second-writer'],
     ]);
+  });
+});
+
+describe('the in-memory context a fact carries', () => {
+  it('refuses a context that is not the one its fact carries, and appends nothing', async () => {
+    const ledger = memoryLedger();
+    const RunNotedSchema = factOf('noted', Schema.Struct({ note: Schema.String }), ActedOnRunContextSchema);
+    const unaddressed: Decider<readonly string[], string, typeof RunNotedSchema.Type> = {
+      ...notes,
+      evolve: (seen) => seen,
+      eventSchema: RunNotedSchema,
+    };
+
+    const signedExit = await Effect.runPromiseExit(
+      ledger.service.execute('brain/acme/alpha/notes/signed', unaddressed, 'signed'),
+    );
+    const unsignedExit = await Effect.runPromiseExit(
+      ledger.service.execute('brain/acme/alpha/notes/unsigned', unaddressed, 'unsigned'),
+    );
+
+    expect([Exit.isSuccess(signedExit), Exit.isFailure(unsignedExit)]).toEqual([true, true]);
+    expect(ledger.streamNames()).toEqual(['brain/acme/alpha/notes/signed']);
   });
 });

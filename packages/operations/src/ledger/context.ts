@@ -16,45 +16,79 @@ export const mostReferenceBytes = 256;
 
 const utf8 = new TextEncoder();
 
+export function bytesOfReference(reference: string): number {
+  return utf8.encode(reference).byteLength;
+}
+
 function isWithinTheReferenceBound(reference: string): boolean {
-  return utf8.encode(reference).byteLength <= mostReferenceBytes;
+  return bytesOfReference(reference) <= mostReferenceBytes;
 }
 
 export const refusingLongReferences = Schema.makeFilter(isWithinTheReferenceBound, {
   expected: `a reference of at most ${mostReferenceBytes} bytes in UTF-8`,
 });
 
+export const leastCount = 1;
+
 const ContextText = Schema.String.check(refusingForbiddenCharacters);
 
-const ContextReference = ContextText.check(refusingLongReferences);
+export const ContextReference = ContextText.check(refusingLongReferences);
 
-const Counted = Schema.Int.check(Schema.isGreaterThanOrEqualTo(1));
+const Counted = Schema.Int.check(Schema.isGreaterThanOrEqualTo(leastCount));
 
 export const CalledBySchema = Schema.Struct({ runId: ContextText, reference: ContextReference, run: Counted });
 
 export type CalledBy = typeof CalledBySchema.Type;
 
-export const StartingTriggerSchema = Schema.Struct({
-  kind: Schema.Literals(['event', 'cron', 'every']),
-  reference: ContextReference,
-});
+const TriggerKindSchema = Schema.Literals(['event', 'cron', 'every']);
+
+export const StartingTriggerSchema = Schema.Struct({ kind: TriggerKindSchema, reference: ContextReference });
 
 export type StartingTrigger = typeof StartingTriggerSchema.Type;
 
-export const ContextSchema = Schema.Struct({
-  at: ContextText,
-  by: ContextText,
-  runId: Schema.optionalKey(ContextText),
-  definitionType: Schema.optionalKey(ContextText),
-  definitionName: Schema.optionalKey(ContextText),
-  definitionVersion: Schema.optionalKey(Counted),
+const acted = { at: ContextText, by: ContextText };
+
+const onTheRun = { runId: ContextText };
+
+const ofTheDefinition = { definitionType: ContextText, definitionName: ContextText, definitionVersion: Counted };
+
+const chain = {
   calledBy: Schema.optionalKey(CalledBySchema),
   callDepth: Schema.optionalKey(Counted),
   depth: Schema.optionalKey(Counted),
   trigger: Schema.optionalKey(StartingTriggerSchema),
+};
+
+export const ContextSchema = Schema.Struct({
+  ...acted,
+  runId: Schema.optionalKey(onTheRun.runId),
+  definitionType: Schema.optionalKey(ofTheDefinition.definitionType),
+  definitionName: Schema.optionalKey(ofTheDefinition.definitionName),
+  definitionVersion: Schema.optionalKey(ofTheDefinition.definitionVersion),
+  ...chain,
 });
 
 export type Context = typeof ContextSchema.Type;
+
+export const ActedContextSchema = Schema.Struct(acted);
+
+export type ActedContext = typeof ActedContextSchema.Type;
+
+export const ActedOnRunContextSchema = Schema.Struct({ ...acted, ...onTheRun });
+
+export type ActedOnRunContext = typeof ActedOnRunContextSchema.Type;
+
+export const DefinitionContextSchema = Schema.Struct({ ...acted, ...ofTheDefinition });
+
+export type DefinitionContext = typeof DefinitionContextSchema.Type;
+
+export const RunContextSchema = Schema.Struct({ ...acted, ...onTheRun, ...ofTheDefinition, ...chain });
+
+export type RunContext = typeof RunContextSchema.Type;
+
+export const EmittedContextSchema = Schema.Struct({ ...RunContextSchema.fields, depth: Counted });
+
+export type EmittedContext = typeof EmittedContextSchema.Type;
 
 const readContext = Schema.decodeUnknownSync(ContextSchema);
 

@@ -1,6 +1,7 @@
 import { Effect, Result, Schema } from 'effect';
 
 import {
+  ActedContextSchema,
   BrainIdSchema,
   NotFound,
   OrgReader,
@@ -16,7 +17,7 @@ const BrainLabelSchema = Schema.Struct({ brain: BrainIdSchema, label: Schema.Str
 
 type BrainLabel = typeof BrainLabelSchema.Type;
 
-const BrainLabelledSchema = factOf('brain_labelled', BrainLabelSchema);
+const BrainLabelledSchema = factOf('brain_labelled', BrainLabelSchema, ActedContextSchema);
 
 type BrainLabelled = typeof BrainLabelledSchema.Type;
 

@@ -6,6 +6,7 @@ import {
   type PresentedFact,
   type Presenter,
   type RecordedEvent,
+  type RecordedFact,
   type Showing,
 } from '../index.ts';
 import { nothingKept } from './kept-content.ts';
@@ -28,7 +29,7 @@ function recorded(stream: string, type: string): RecordedEvent {
   };
 }
 
-function shown({ type }: RecordedEvent): PresentedFact {
+function shown({ type }: RecordedFact): PresentedFact {
   return { type: `shown_${type}`, summary: 'Something happened.', data: { text: 'small' } };
 }
 
@@ -110,8 +111,8 @@ describe('the presentation of what a brain recorded', () => {
 
     expect(rows.map(({ id, metadata: { causation_id: cause } }) => [id, cause])).toEqual([
       ['run-logs/r1:input_applied', 'cause'],
-      ['run-logs/r1:input_applied/1', 'run-logs/r1:input_applied'],
-      ['run-logs/r1:input_applied/2', 'run-logs/r1:input_applied/1'],
+      ['run-logs/r1:input_applied_1', 'run-logs/r1:input_applied'],
+      ['run-logs/r1:input_applied_2', 'run-logs/r1:input_applied_1'],
     ]);
     expect(rows[0]?.data).toEqual({ answer: 'content of input_applied' });
   });

@@ -1,20 +1,30 @@
 import { Option, Result, Schema } from 'effect';
 
-import type { Context } from '../ledger/context.ts';
-import { factOf, type Decider } from '../ledger/decider.ts';
+import { ActedContextSchema, type Context } from '../ledger/context.ts';
+import { factOf, type Decided, type Decider } from '../ledger/decider.ts';
 import type { KeyedProjection, ProjectedMessage, ProjectedRow } from './keyed-projection.ts';
 
-const OpenedSchema = factOf('topic_opened', Schema.Struct({ topic: Schema.String, at: Schema.Int }));
+const OpenedSchema = factOf(
+  'topic_opened',
+  Schema.Struct({ topic: Schema.String, at: Schema.Int }),
+  ActedContextSchema,
+);
 
-const NotedSchema = factOf('topic_noted', Schema.Struct({ topic: Schema.String, note: Schema.String }));
+const NotedSchema = factOf(
+  'topic_noted',
+  Schema.Struct({ topic: Schema.String, note: Schema.String }),
+  ActedContextSchema,
+);
 
 const TopicFactSchema = Schema.Union([OpenedSchema, NotedSchema]);
 
-export type TopicFact = typeof TopicFactSchema.Type;
+type RecordedTopicFact = typeof TopicFactSchema.Type;
+
+export type TopicFact = Decided<RecordedTopicFact>;
 
 const topicContext: Context = { at: '2026-10-05T09:00:00.000Z', by: 'topics' };
 
-export const topicFacts: Decider<null, readonly TopicFact[], TopicFact> = {
+export const topicFacts: Decider<null, readonly TopicFact[], RecordedTopicFact> = {
   initialState: null,
   evolve: () => null,
   decide: (facts) => Result.succeed(facts),
@@ -28,7 +38,7 @@ export const topicWaitMs = 5000;
 
 function rowAfterFact(
   row: ProjectedRow | undefined,
-  fact: TopicFact,
+  fact: RecordedTopicFact,
   { id }: ProjectedMessage,
 ): ProjectedRow | undefined {
   if (fact.type === 'topic_opened') {
@@ -59,12 +69,8 @@ export const topicRows: KeyedProjection = {
     { name: 'due_at', kind: 'integer' },
   ],
   indexes: [{ name: 'due', columns: ['due_at'], acrossBrains: true, whereSet: 'due_at' }],
-  keyOf: ({ type, data }) => Option.getOrUndefined(Option.map(decodeFact({ type, data }), (fact) => fact.data.topic)),
+  keyOf: (message) => Option.getOrUndefined(Option.map(decodeFact(message), (fact) => fact.data.topic)),
   advanced: { columns: ['open', 'next_at', 'due_at'], setBy: ['topic_opened'] },
   rowAfter: (row, message) =>
-    Option.getOrUndefined(
-      Option.flatMapNullishOr(decodeFact({ type: message.type, data: message.data }), (fact) =>
-        rowAfterFact(row, fact, message),
-      ),
-    ),
+    Option.getOrUndefined(Option.flatMapNullishOr(decodeFact(message), (fact) => rowAfterFact(row, fact, message))),
 };

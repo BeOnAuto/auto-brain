@@ -1,13 +1,21 @@
 import { Effect, Result, Schema } from 'effect';
 
-import { BrainReader, BrainWriter, defineCommand, defineQuery, factOf, type Decider } from '../index.ts';
+import {
+  ActedContextSchema,
+  BrainReader,
+  BrainWriter,
+  defineCommand,
+  defineQuery,
+  factOf,
+  type Decider,
+} from '../index.ts';
 import { testedContext } from './callers.ts';
 
 const ItemSchema = Schema.Struct({ item: Schema.String });
 
 type Item = typeof ItemSchema.Type;
 
-const ItemShelvedSchema = factOf('item_shelved', ItemSchema);
+const ItemShelvedSchema = factOf('item_shelved', ItemSchema, ActedContextSchema);
 
 type ItemShelved = typeof ItemShelvedSchema.Type;
 

@@ -58,9 +58,11 @@ describe('the data of an event read whole', () => {
     expect(shownData(data, 'whole')).toBe(data);
   });
 
-  it('as a tool shows the arguments, the result and the answer whole within 64 KiB and as their sizes past it', () => {
+  it('as a tool shows every field that may be large whole within 64 KiB and as its size past it', () => {
     const data = {
+      input: { asked: 'x' },
       output: textOfBytes(mostToolFieldBytes + 1),
+      record: textOfBytes(mostToolFieldBytes),
       arguments_bytes: 12,
       arguments: { query: 'x' },
       result_bytes: mostToolFieldBytes * 2,
@@ -69,7 +71,9 @@ describe('the data of an event read whole', () => {
     };
 
     expect(shownData(data, 'tool')).toEqual({
-      output: data.output,
+      input: { asked: 'x' },
+      output_bytes: mostToolFieldBytes + 1,
+      record: data.record,
       arguments_bytes: 12,
       arguments: { query: 'x' },
       result_bytes: mostToolFieldBytes * 2,

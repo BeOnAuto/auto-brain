@@ -1,7 +1,7 @@
 import { eventMetadataOf } from './event-metadata.ts';
 import type { KeptContent, PresentedFact, PresentedPart, Presenter } from './presenter.ts';
 import type { EventMetadata, PublicEvent } from './public-event.ts';
-import type { RecordedEvent } from './recorded-read.ts';
+import type { RecordedFact } from './recorded-read.ts';
 import { shownData, type EventView } from './shown-data.ts';
 
 export interface Showing {
@@ -11,7 +11,7 @@ export interface Showing {
 }
 
 export interface Presentation {
-  readonly present: (recorded: RecordedEvent, showing: Showing) => readonly PublicEvent[];
+  readonly present: (recorded: RecordedFact, showing: Showing) => readonly PublicEvent[];
   readonly publicTypes: readonly string[];
   readonly storedTypesOf: (publicType: string) => readonly string[];
 }
@@ -46,11 +46,13 @@ function presentingOf(presenter: Presenter): Presenting {
   return { presenter, presented: new Set(presented) };
 }
 
+export const stepIdSeparator = '_';
+
 function partIdOf(id: string, number: number): string {
-  return number === 0 ? id : `${id}/${number}`;
+  return number === 0 ? id : `${id}${stepIdSeparator}${number}`;
 }
 
-function rowOf(recorded: RecordedEvent, metadata: EventMetadata, view: EventView) {
+function rowOf(recorded: RecordedFact, metadata: EventMetadata, view: EventView) {
   const causationOf = (part: PresentedPart): EventMetadata => ({
     ...metadata,
     causation_id: partIdOf(recorded.id, part.causedBy),
@@ -64,7 +66,7 @@ function rowOf(recorded: RecordedEvent, metadata: EventMetadata, view: EventView
   });
 }
 
-function rowsOf(presenter: Presenter, recorded: RecordedEvent, showing: Showing): readonly PublicEvent[] {
+function rowsOf(presenter: Presenter, recorded: RecordedFact, showing: Showing): readonly PublicEvent[] {
   const row = rowOf(recorded, eventMetadataOf(recorded, showing.streamPrefix), showing.view);
   return presenter.present(recorded, showing.content).map((fact) => row(fact));
 }

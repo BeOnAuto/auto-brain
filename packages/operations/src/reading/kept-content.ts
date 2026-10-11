@@ -2,7 +2,7 @@ import { Effect, Predicate } from 'effect';
 
 import { BrainReader } from '../ledger/brain-reader.ts';
 import type { KeptContent } from './presenter.ts';
-import type { RecordedEvent } from './recorded-read.ts';
+import type { RecordedFact } from './recorded-read.ts';
 
 const digestEnding = '_sha256';
 
@@ -23,7 +23,7 @@ function digestsKeptIn(data: unknown, mostBytes: number): readonly string[] {
 export const nothingKept: KeptContent = (sha256) => new Map<string, string>().get(sha256);
 
 export function keptContentOf(
-  records: readonly RecordedEvent[],
+  records: readonly RecordedFact[],
   mostBytes: number,
 ): Effect.Effect<KeptContent, never, BrainReader> {
   const digests = [...new Set(records.flatMap(({ data }) => digestsKeptIn(data, mostBytes)))];

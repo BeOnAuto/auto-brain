@@ -6,7 +6,7 @@ import { eventsPageOf, type EventPaging, type EventsPage } from './event-paging.
 import { nothingKept } from './kept-content.ts';
 import { presentationOf, type Showing } from './presentation.ts';
 import type { PresentedFact } from './presenter.ts';
-import type { RecordedEvent, RecordedPage } from './recorded-read.ts';
+import type { RecordedEvent, RecordedFact, RecordedPage } from './recorded-read.ts';
 
 function recordOf(position: number, steps: number): RecordedEvent {
   return {
@@ -31,7 +31,7 @@ function factOf(position: number, index: number): PresentedFact {
   return index === 0 ? fact : { ...fact, type: 'stepped', part: { number: index, causedBy: index - 1 } };
 }
 
-function eventsOf({ data }: RecordedEvent): readonly PresentedFact[] {
+function eventsOf({ data }: RecordedFact): readonly PresentedFact[] {
   const { position, steps } = decodeMoved(data);
   return Array.from({ length: steps + 1 }, (_, index) => factOf(position, index));
 }
@@ -67,7 +67,7 @@ describe('a page of events', () => {
     const page = eventsPageOf(presentation, pageOf([first, second], 'later'), pagingOf({ order: 'asc', limit: 10 }));
 
     expect([idsOf(page), page.hasMore, page.nextCursor]).toEqual([
-      ['record-1', 'record-1/1', 'record-1/2', 'record-2', 'record-2/1'],
+      ['record-1', 'record-1_1', 'record-1_2', 'record-2', 'record-2_1'],
       true,
       'later',
     ]);
@@ -86,17 +86,17 @@ describe('a page of events', () => {
     });
 
     expect([idsOf(page), page.hasMore, page.nextCursor]).toEqual([
-      ['record-1', 'record-1/1'],
+      ['record-1', 'record-1_1'],
       true,
       cursorWithin(first.cursor, 1),
     ]);
-    expect(idsOf(next)).toEqual(['record-1/2', 'record-2', 'record-2/1']);
+    expect(idsOf(next)).toEqual(['record-1_2', 'record-2', 'record-2_1']);
   });
 
   it('ends at the cursor of a record whose events it answered every one of', () => {
     const page = eventsPageOf(presentation, pageOf([first, second]), pagingOf({ order: 'asc', limit: 3 }));
 
-    expect([idsOf(page), page.nextCursor]).toEqual([['record-1', 'record-1/1', 'record-1/2'], first.cursor]);
+    expect([idsOf(page), page.nextCursor]).toEqual([['record-1', 'record-1_1', 'record-1_2'], first.cursor]);
   });
 });
 
@@ -111,7 +111,7 @@ describe('a page of events newest first, or of some of them', () => {
     });
 
     expect([idsOf(page), page.nextCursor]).toEqual([
-      ['record-2/1', 'record-2', 'record-1/2', 'record-1/1'],
+      ['record-2_1', 'record-2', 'record-1_2', 'record-1_1'],
       cursorWithin(first.cursor, 1),
     ]);
     expect(idsOf(next)).toEqual(['record-1']);
@@ -126,6 +126,6 @@ describe('a page of events newest first, or of some of them', () => {
       showing,
     });
 
-    expect(idsOf(page)).toEqual(['record-2/1']);
+    expect(idsOf(page)).toEqual(['record-2_1']);
   });
 });

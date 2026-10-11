@@ -1,11 +1,19 @@
 import { Effect, Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { BrainWriter, CallLineage, defineCommand, factOf, messageIdOf, type Decider } from '../index.ts';
+import {
+  ActedContextSchema,
+  BrainWriter,
+  CallLineage,
+  defineCommand,
+  factOf,
+  messageIdOf,
+  type Decider,
+} from '../index.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { harness, toBrain } from '../testing/harness.ts';
 
-const NotedSchema = factOf('noted', Schema.Struct({}));
+const NotedSchema = factOf('noted', Schema.Struct({}), ActedContextSchema);
 
 const notes: Decider<null, null, typeof NotedSchema.Type> = {
   initialState: null,
