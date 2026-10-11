@@ -2,7 +2,7 @@ import { SQL, type SQLExecutor } from '@event-driven-io/dumbo';
 import { Schema } from 'effect';
 
 import { sqliteAppended } from '../appended/sqlite-appended.ts';
-import { recordedContentOn } from '../content/content-tables.ts';
+import { sqliteContentOn } from '../content/content-store.ts';
 import { sqliteDefinitionStreams } from '../definitions/sqlite-definition-streams.ts';
 import type { ContentStore, DefinitionStreamsStore, RecordedStore } from '../event-store.ts';
 import {
@@ -132,7 +132,7 @@ function recordWithId(execute: SQLExecutor): RecordedStore['readRecordedEvent'] 
 export function sqliteRecordedStore(execute: SQLExecutor): RecordedStore & DefinitionStreamsStore & ContentStore {
   return {
     ...sqliteDefinitionStreams(execute),
-    content: recordedContentOn(execute),
+    content: sqliteContentOn(execute),
     pointLength: 1,
     readAppended: sqliteAppended(execute),
     readRecordedEvent: recordWithId(execute),

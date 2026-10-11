@@ -1,4 +1,4 @@
-import { sha256Of } from '@beonauto/operations';
+import { contentOfText, sha256Of, textOfContent } from '@beonauto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -66,23 +66,33 @@ describe('one record read by its message id on PostgreSQL', () => {
 });
 
 describe('the content a brain keeps on PostgreSQL', () => {
-  it('joins the chunks of a digest the brain holds, in their order, and writes them, then the head, once', async () => {
-    const reading = answering([{ chunks: 2 }], [{ text: '{"a":' }, { text: '1}' }]);
+  it('streams the chunks of a digest the brain holds, in their order, and writes them, then the head, once', async () => {
+    const reading = answering(
+      [{ bytes: 7, chunks: 2, media_type: 'application/json' }],
+      [{ data: Buffer.from('{"a":') }],
+      [{ data: Buffer.from('1}') }],
+    );
     const writing = answering([], [], []);
     const brain = { org: 'acme', brain: 'alpha' };
 
-    const text = await Effect.runPromise(
+    const kept = await Effect.runPromise(
       postgresqlRecordedStore(reading.query).content.get(brain, await sha256Of('{"a":1}')),
     );
     await Effect.runPromise(
-      postgresqlRecordedStore(writing.query).content.put(brain, await sha256Of('{"b":2}'), '{"b":2}'),
+      postgresqlRecordedStore(writing.query).content.put(
+        brain,
+        await sha256Of('{"b":2}'),
+        contentOfText('{"b":2}', 'application/json'),
+      ),
     );
 
-    expect(text).toBe('{"a":1}');
+    expect(await Effect.runPromise(Effect.flatMap(Effect.fromNullishOr(kept), textOfContent))).toBe('{"a":1}');
     expect(writing.asked.map(({ text: statement }) => statement.split(' ').slice(0, 3).join(' '))).toEqual([
-      'SELECT chunks FROM',
+      'SELECT CAST(bytes AS',
       'INSERT INTO recorded_content_chunks',
       'INSERT INTO recorded_content_heads',
     ]);
+    expect(writing.asked[1]?.text).toContain("decode($4, 'hex')");
+    expect(writing.asked[1]?.values[3]).toBe(Buffer.from('{"b":2}').toString('hex'));
   });
 });
