@@ -121,15 +121,9 @@ type FactNamed<Type extends RunEvent['type']> = Extract<RunEvent, { readonly typ
 
 export type RecordedRunFact<Type extends RunEvent['type']> = Extract<RecordedRunEvent, { readonly type: Type }>;
 
-export type RunStarted = FactNamed<'run_started'>;
-
 export type RunDeferred = FactNamed<'run_deferred'>;
 
-export type RunCancelRequested = FactNamed<'run_cancel_requested'>;
-
-export type CancelRequestKind = RunCancelRequested['data']['kind'];
-
-export type ToolCallEvent = FactNamed<'tool_call_started' | 'tool_call_answered' | 'tool_call_failed'>;
+export type CancelRequestKind = FactNamed<'run_cancel_requested'>['data']['kind'];
 
 export type ToolCallStarted = FactNamed<'tool_call_started'>;
 

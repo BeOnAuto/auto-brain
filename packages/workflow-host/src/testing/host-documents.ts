@@ -23,7 +23,7 @@ export function runAt(runId: string): RunAddress {
   return { org: 'acme', brain: 'alpha', runId };
 }
 
-export const testAttributes: JsonObject = {
+const testAttributes: JsonObject = {
   org: 'acme',
   brain: 'alpha',
   definition: { name: 'test', version: 1 },

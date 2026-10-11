@@ -6,7 +6,7 @@ import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-databas
 import { statement } from '../database/statement.ts';
 import { brainOfKey } from '../follower/record-steps.ts';
 
-export interface RefusedWorkflow {
+interface RefusedWorkflow {
   readonly workflow: string;
   readonly version: number;
 }
