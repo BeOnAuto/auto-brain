@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { makeDefinitionPresenters } from '../index.ts';
 import type { RunEvent } from '../runs/run-events.ts';
+import { askedRequest, asking } from '../testing/asking.ts';
 import { echo } from '../testing/echo.ts';
 import { testRunId } from '../testing/run-facts.ts';
 
@@ -101,6 +102,54 @@ describe('the presenter of work that finishes later', () => {
       [],
       ['run_deferred'],
     ]);
+  });
+
+  it('presents it under the public type and in the words its capability gives, and in none for a capability the server no longer has', () => {
+    const deferred: RunEvent = { type: 'run_deferred', data: { record: askedRequest } };
+    const runs = makeDefinitionPresenters([echo, asking]).find(({ streamKind }) => streamKind === 'runs');
+    const ofAsking = { ...ofGreet, definitionType: 'asking' };
+
+    expect([
+      runs?.present(recorded(deferred, ofAsking), keptContent),
+      runs?.present(recorded(deferred, { ...ofGreet, definitionType: 'gone' }), keptContent),
+      runs?.publicNames['run_deferred'],
+    ]).toEqual([
+      [{ type: 'asking_requested', summary: 'A question waits for its answer.', data: { record: askedRequest } }],
+      [],
+      ['run_deferred', 'asking_requested'],
+    ]);
+  });
+});
+
+describe('the presenter of the answer a run took and of the facts its capability declares', () => {
+  it('presents the answer a run took, with whom the caller answered for or the reply that brought it', () => {
+    const reply = { id: '1699.2', sender: 'ada' };
+
+    expect([
+      presented({ type: 'request_answered', data: { answer: { choice: 'approve' } } }),
+      presented({ type: 'request_answered', data: { answer: { choice: 'approve' }, claimed_for: 'ada' } }),
+      presented({ type: 'request_answered', data: { answer: { choice: 'reject' }, reply } }),
+    ]).toMatchObject([
+      {
+        type: 'request_answered',
+        summary: 'The request was answered, and the run takes the answer.',
+        data: { answer: { choice: 'approve' } },
+      },
+      { data: { answer: { choice: 'approve' }, claimed_for: 'ada' } },
+      {
+        summary: 'A reply from the party answered the request, and the run takes the answer.',
+        data: { answer: { choice: 'reject' }, reply },
+      },
+    ]);
+  });
+
+  it('presents nothing of a fact no capability of the brain declares, and a declared one in its capability’s words', () => {
+    const runs = makeDefinitionPresenters([echo, asking]).find(({ streamKind }) => streamKind === 'runs');
+    const stored = { ...recorded({ type: 'run_failed', data: {} }), type: 'delivery_started', data: { number: 1 } };
+
+    expect([runs?.present(stored, keptContent), runs?.present({ ...stored, type: 'nudge_sent' }, keptContent)]).toEqual(
+      [[], [{ type: 'nudge_sent', summary: 'Nudge 1 was sent.', data: { number: 1 } }]],
+    );
   });
 });
 

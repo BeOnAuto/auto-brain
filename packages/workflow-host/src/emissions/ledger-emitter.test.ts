@@ -1,4 +1,4 @@
-import { eventEmitter, publishedEventOf } from '@beonauto/definitions';
+import { brainOwnNamesOf, eventEmitter, publishedEventOf } from '@beonauto/definitions';
 import { Conflict, messageIdOf } from '@beonauto/operations';
 import { memoryLedger } from '@beonauto/operations/testing';
 import type { EmitEvent } from '@beonauto/workflow-engine';
@@ -10,6 +10,8 @@ import { runLogStreamOf } from '../runs/run-address.ts';
 import { ledgerEmitter } from './ledger-emitter.ts';
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+
+const brainOwnNames = brainOwnNamesOf([]);
 
 const run = {
   runId: `acme/alpha/${runId}`,
@@ -31,7 +33,7 @@ function ticking(): () => number {
 
 describe('the emitter of the host', () => {
   it.each(emitterProbes)('$title', async (probe) => {
-    const emitter = ledgerEmitter(eventEmitter(memoryLedger().service), ticking());
+    const emitter = ledgerEmitter(eventEmitter(memoryLedger().service, brainOwnNames), ticking());
 
     expect(await Effect.runPromise(probe.run({ emitter, run }))).toEqual(probe.expected);
   });
@@ -56,7 +58,7 @@ const origin = { version: 4 };
 describe('an event a run of the host emits', () => {
   it('is recorded as the run emitted it, one deeper, caused by the run record and in the chain of the run', async () => {
     const ledger = memoryLedger();
-    const emitter = ledgerEmitter(eventEmitter(ledger.service), ticking());
+    const emitter = ledgerEmitter(eventEmitter(ledger.service, brainOwnNames), ticking());
 
     await Effect.runPromise(emitter.emit(emission, run, origin));
     const { records } = await Effect.runPromise(

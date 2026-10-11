@@ -1,9 +1,11 @@
-import type { ConversationCallEvent, ToolTestEvent } from '@beonauto/mcp';
+import type { ToolTestEvent } from '@beonauto/mcp';
 import { lineageAttributeNames } from '@beonauto/operations';
 import { Schema } from 'effect';
 
+import type { Capability } from '../capability/capability.ts';
 import type { DefinitionEvent } from '../registry/definition-events.ts';
-import type { RunEvent } from '../runs/run-events.ts';
+import { declaredFactsOf, ownedStreamsOf } from '../run-work/declared-facts.ts';
+import { coreRunFactTypes } from '../runs/run-events.ts';
 import type { EventPublished } from './published-events.ts';
 
 export const runSourcePrefix = '/runs/';
@@ -11,8 +13,6 @@ export const runSourcePrefix = '/runs/';
 export const definitionSourcePrefix = '/definitions/';
 
 export const callerSourcePrefix = '/callers/';
-
-type CapabilityEventType = 'interaction_requested';
 
 type WorkflowEventType =
   | 'workflow_input_applied'
@@ -23,40 +23,12 @@ type WorkflowEventType =
   | 'step_skipped'
   | 'reaction_refused';
 
-type FeedType =
-  | RunEvent['type']
-  | ToolTestEvent['type']
-  | ConversationCallEvent['type']
-  | DefinitionEvent['type']
-  | EventPublished['type']
-  | CapabilityEventType
-  | WorkflowEventType;
+type FeedType = ToolTestEvent['type'] | DefinitionEvent['type'] | EventPublished['type'] | WorkflowEventType;
 
-const brainTypes: Readonly<Record<FeedType, true>> = {
-  run_started: true,
-  run_deferred: true,
-  run_succeeded: true,
-  run_rejected: true,
-  run_failed: true,
-  run_cancel_requested: true,
-  tool_call_started: true,
-  tool_call_answered: true,
-  tool_call_failed: true,
-  delivery_started: true,
-  delivery_succeeded: true,
-  delivery_failed: true,
-  delivery_refused: true,
-  reply_taken: true,
-  reply_refused: true,
+const feedTypes: Readonly<Record<FeedType, true>> = {
   tool_test_started: true,
   tool_test_answered: true,
   tool_test_failed: true,
-  replies_read: true,
-  reading_failed: true,
-  telling_started: true,
-  telling_succeeded: true,
-  telling_failed: true,
-  interaction_requested: true,
   definition_created: true,
   definition_updated: true,
   definition_retired: true,
@@ -70,11 +42,28 @@ const brainTypes: Readonly<Record<FeedType, true>> = {
   reaction_refused: true,
 };
 
-export const reservedEventTypes: ReadonlySet<string> = new Set(Object.keys(brainTypes));
+type NamingCapability = Pick<Capability, 'facts' | 'runWords'>;
+
+function deferralTypesOf(capabilities: readonly NamingCapability[]): readonly string[] {
+  return capabilities.map(({ runWords }) => runWords.deferralType).filter((type) => type !== 'run_deferred');
+}
+
+function streamTypesOf(capabilities: readonly NamingCapability[]): readonly string[] {
+  const names = ownedStreamsOf(capabilities).map(({ publicNames }) => publicNames);
+  return [...names.flatMap((named) => Object.keys(named)), ...names.flatMap((named) => Object.values(named).flat())];
+}
+
+function brainTypesOf(capabilities: readonly NamingCapability[]): ReadonlySet<string> {
+  return new Set([
+    ...coreRunFactTypes,
+    ...declaredFactsOf(capabilities).map(({ type }) => type),
+    ...streamTypesOf(capabilities),
+    ...deferralTypesOf(capabilities),
+    ...Object.keys(feedTypes),
+  ]);
+}
 
 const reservedSourcePrefixes: readonly string[] = [runSourcePrefix, definitionSourcePrefix, callerSourcePrefix];
-
-const reservedTypesInWords = [...reservedEventTypes].join(', ');
 
 export const reservedSourcesInWords = new Intl.ListFormat('en-GB', { type: 'disjunction' }).format(
   reservedSourcePrefixes,
@@ -113,27 +102,37 @@ function lineageIssues(attributes: Attributes) {
     }));
 }
 
-function brainOwnAttributes(attributes: Attributes) {
-  const { type, source } = attributes;
-  return [
-    ...lineageIssues(attributes),
-    ...(reservedEventTypes.has(type)
-      ? [
-          {
-            path: ['type'],
-            issue: `Expected a type of your own, not one the brain records itself: ${reservedTypesInWords}`,
-          },
-        ]
-      : []),
-    ...(source !== undefined && isReservedSource(source)
-      ? [
-          {
-            path: ['source'],
-            issue: `Expected a source of your own, not one under ${reservedSourcesInWords}, which the brain records itself`,
-          },
-        ]
-      : []),
-  ];
+function brainOwnAttributesOf(types: ReadonlySet<string>) {
+  const typesInWords = [...types].join(', ');
+  return (attributes: Attributes) => {
+    const { type, source } = attributes;
+    return [
+      ...lineageIssues(attributes),
+      ...(types.has(type)
+        ? [{ path: ['type'], issue: `Expected a type of your own, not one the brain records itself: ${typesInWords}` }]
+        : []),
+      ...(source !== undefined && isReservedSource(source)
+        ? [
+            {
+              path: ['source'],
+              issue: `Expected a source of your own, not one under ${reservedSourcesInWords}, which the brain records itself`,
+            },
+          ]
+        : []),
+    ];
+  };
 }
 
-export const refusingTheBrainsOwnAttributes = Schema.makeFilter(brainOwnAttributes);
+function refusingOf(types: ReadonlySet<string>) {
+  return Schema.makeFilter(brainOwnAttributesOf(types));
+}
+
+export interface BrainOwnNames {
+  readonly types: ReadonlySet<string>;
+  readonly refusingTheBrainsOwnAttributes: ReturnType<typeof refusingOf>;
+}
+
+export function brainOwnNamesOf(capabilities: readonly NamingCapability[]): BrainOwnNames {
+  const types = brainTypesOf(capabilities);
+  return { types, refusingTheBrainsOwnAttributes: refusingOf(types) };
+}

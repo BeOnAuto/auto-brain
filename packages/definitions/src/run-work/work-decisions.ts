@@ -1,13 +1,23 @@
 import { Conflict, type Rejection } from '@beonauto/operations';
 import { Result } from 'effect';
 
-import type { RunOutboundCall, RunReply, RunToolCall } from '../runs/run-commands.ts';
+import { takesAnAnswer } from '../requests/request-record.ts';
+import type { CapabilityFact, RunAnswer, RunToolCall, RunWork } from '../runs/run-commands.ts';
 import type { RunEvent } from '../runs/run-events.ts';
-import { isRunning, type RunState, type RecordedRunState } from '../runs/run-state.ts';
+import {
+  awaitsSettlement,
+  isRunning,
+  takesSettlement,
+  type RecordedRunState,
+  type RunState,
+} from '../runs/run-state.ts';
+import { digestOf } from '../runs/settlement-keys.ts';
 
 type Decision = Result.Result<readonly RunEvent[], Rejection<'conflict'>>;
 
-const runEnded = new Conflict({ detail: 'The run has ended, so it records no more of its work' });
+export type AdmitsFact = (fact: CapabilityFact) => boolean;
+
+export const runEnded = new Conflict({ detail: 'The run has ended, so it records no more of its work' });
 
 function nextCallOf(state: RecordedRunState, number: number | undefined): Result.Result<number, Conflict> {
   const next = state.lastCall + 1;
@@ -32,62 +42,38 @@ export function decideToolCall({ fact }: RunToolCall, state: RunState): Decision
   ]);
 }
 
-function attemptEndable(state: RecordedRunState, number: number): Result.Result<number, Conflict> {
-  return state.deliveryInFlight === number
-    ? Result.succeed(number)
-    : Result.fail(
-        new Conflict({
-          detail: `Delivery ${number} is not the attempt of the run in flight, so it cannot end; another attempt ended it, or it never started`,
-        }),
-      );
+function undeclared({ type }: CapabilityFact): Conflict {
+  return new Conflict({
+    detail: `No capability of this brain declares the fact ${type}, so the run does not record it`,
+  });
 }
 
-const beingCancelled = new Conflict({ detail: 'The run is being cancelled, so it starts no more deliveries' });
-
-function attemptStartable(state: RecordedRunState, number: number): Result.Result<number, Conflict> {
-  return state.cancel === undefined ? nextCallOf(state, number) : Result.fail(beingCancelled);
-}
-
-export function decideOutboundCall({ fact }: RunOutboundCall, state: RunState): Decision {
-  if (state === undefined || !isRunning(state)) {
+export function decideWork({ fact }: RunWork, state: RunState, admits: AdmitsFact): Decision {
+  if (state === undefined || !takesSettlement(state)) {
     return Result.fail(runEnded);
   }
-  const { number } = fact.data;
-  const allowed = fact.type === 'delivery_started' ? attemptStartable(state, number) : attemptEndable(state, number);
-  return Result.map(allowed, () => [fact]);
+  return admits(fact) ? Result.succeed([{ type: 'work', data: { fact } }]) : Result.fail(undeclared(fact));
 }
 
-export const replyBounds = { refusals: 10 } as const;
-
-const replySeen = new Conflict({ detail: 'The run has taken or refused this reply already, so it records it once' });
-
-const answeredAlready = new Conflict({
-  detail: 'The run was answered by a reply already, so it takes no further reply',
+export const answeredAlready = new Conflict({
+  detail: 'The run already took another answer, and a run takes one answer, so it takes no other',
 });
 
-const replyWhileCancelling = new Conflict({ detail: 'The run is being cancelled, so it takes no reply' });
+const takesNoAnswer = new Conflict({ detail: 'The run waits on no request that takes an answer' });
 
-const refusedEnough = new Conflict({
-  detail: `The run has refused ${replyBounds.refusals} replies, the most it records, so it records no more`,
+export const endedUnanswered = new Conflict({
+  detail: 'The run is not waiting for an answer: it has ended, or has not asked yet, so it takes none',
 });
 
-function replyRefusal(state: RecordedRunState, fact: RunReply['fact']): Conflict | undefined {
-  if (state.cancel !== undefined) {
-    return replyWhileCancelling;
+export function decideAnswer({ answer }: RunAnswer, state: RunState): Decision {
+  const taken = state?.answer ?? null;
+  if (taken !== null) {
+    return digestOf(taken.answer) === digestOf(answer.answer) ? Result.succeed([]) : Result.fail(answeredAlready);
   }
-  if (state.repliesSeen.includes(fact.data.reply.id)) {
-    return replySeen;
+  if (state === undefined || !awaitsSettlement(state)) {
+    return Result.fail(endedUnanswered);
   }
-  if (state.broughtAnswer !== null) {
-    return answeredAlready;
-  }
-  return fact.type === 'reply_taken' || state.replyRefusals < replyBounds.refusals ? undefined : refusedEnough;
-}
-
-export function decideReply({ fact }: RunReply, state: RunState): Decision {
-  if (state === undefined || !isRunning(state)) {
-    return Result.fail(runEnded);
-  }
-  const refusal = replyRefusal(state, fact);
-  return refusal === undefined ? Result.succeed([fact]) : Result.fail(refusal);
+  return takesAnAnswer(state.record)
+    ? Result.succeed([{ type: 'request_answered', data: answer }])
+    : Result.fail(takesNoAnswer);
 }

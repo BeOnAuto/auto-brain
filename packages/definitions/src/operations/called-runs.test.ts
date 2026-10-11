@@ -2,6 +2,7 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { defineCapability, mostCallDepth } from '../index.ts';
+import { answeringLaterMs, answeringNowMs, asking } from '../testing/asking.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
 import { harness, toBrain } from '../testing/harness.ts';
@@ -31,18 +32,22 @@ const measuring = defineCapability({
         yield* run.longestRunOf('probe', 'missing'),
         yield* run.longestRunOf('probe', 'retired'),
         yield* run.longestRunOf('nothing', 'at-all'),
+        yield* run.longestRunOf('asking', 'approve', { now: true }),
+        yield* run.longestRunOf('asking', 'approve', { campaign: 'Spring' }),
+        yield* run.longestRunOf('asking', 'approve'),
       ];
       return { output: { longest: longest.map((ms) => ms ?? null), callDepth: run.callDepth }, record: {} };
     }),
 });
 
 async function brainMeasuring() {
-  const operations = definitionOperationsFor([measuring, probe().capability]);
+  const operations = definitionOperationsFor([measuring, probe().capability, asking]);
   const definitions = harness();
   const created = (type: string, name: string) =>
     definitions.call(operations.createDefinition, toAlpha(acmeAdmin, { type, name, source: 'text' }));
   await created('measuring', 'itself');
   await created('probe', 'plain');
+  await created('asking', 'approve');
   await created('probe', 'retired');
   await definitions.call(operations.retireDefinition, toAlpha(acmeAdmin, { type: 'probe', name: 'retired' }));
   const measured = (depths: { readonly callDepth?: number; readonly calledBy?: typeof calledBy } = {}) =>
@@ -94,11 +99,16 @@ describe('a run that answers a call of another run', () => {
 });
 
 describe('the longest run of a definition, as a run resolves it', () => {
-  it('is what the capability declares for the active latest version, and nothing for one it cannot run', async () => {
+  it('is what the capability declares for the active latest version and the input given, its longest for none, and nothing for one it cannot run', async () => {
     const { measured } = await brainMeasuring();
 
     expect(await measured()).toMatchObject({
-      output: { output: { longest: [600_000, 42_000, null, null, null], callDepth: 0 } },
+      output: {
+        output: {
+          longest: [600_000, 42_000, null, null, null, answeringNowMs, answeringLaterMs, answeringLaterMs],
+          callDepth: 0,
+        },
+      },
     });
   });
 });

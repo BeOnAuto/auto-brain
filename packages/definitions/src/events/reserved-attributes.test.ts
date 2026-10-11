@@ -1,10 +1,13 @@
-import { conversationCallPresenter, toolTestPresenter } from '@beonauto/mcp';
+import { toolTestPresenter } from '@beonauto/mcp';
 import { Result, Schema, SchemaIssue } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { makeDefinitionPresenters } from '../index.ts';
+import { asking } from '../testing/asking.ts';
 import { echo } from '../testing/echo.ts';
-import { isReservedSource, refusingTheBrainsOwnAttributes, reservedEventTypes } from './reserved-attributes.ts';
+import { brainOwnNamesOf, isReservedSource } from './reserved-attributes.ts';
+
+const { types, refusingTheBrainsOwnAttributes } = brainOwnNamesOf([echo, asking]);
 
 const EventSchema = Schema.StructWithRest(
   Schema.Struct({ type: Schema.String, source: Schema.optionalKey(Schema.String) }),
@@ -32,21 +35,13 @@ const typesOfTheBrain = [
   'tool_call_started',
   'tool_call_answered',
   'tool_call_failed',
-  'delivery_started',
-  'delivery_succeeded',
-  'delivery_failed',
-  'delivery_refused',
-  'reply_taken',
-  'reply_refused',
+  'request_answered',
+  'nudge_sent',
+  'nudge_read',
+  'asking_requested',
   'tool_test_started',
   'tool_test_answered',
   'tool_test_failed',
-  'replies_read',
-  'reading_failed',
-  'telling_started',
-  'telling_succeeded',
-  'telling_failed',
-  'interaction_requested',
   'definition_created',
   'definition_updated',
   'definition_retired',
@@ -61,17 +56,22 @@ const typesOfTheBrain = [
 ];
 
 describe('the types and sources of what the brain records itself', () => {
-  it('are reserved for the brain: every type its runs and definitions record, and every type its feed shows', () => {
-    expect([...reservedEventTypes]).toEqual(typesOfTheBrain);
-    const shown = [...makeDefinitionPresenters([echo]), toolTestPresenter, conversationCallPresenter].flatMap(
-      ({ publicNames }) => Object.values(publicNames).flat(),
+  it('are reserved for the brain: every type its runs and definitions record, those its capabilities declare, and every type its feed shows', () => {
+    expect([...types]).toEqual(typesOfTheBrain);
+    const shown = [...makeDefinitionPresenters([echo, asking]), toolTestPresenter].flatMap(({ publicNames }) =>
+      Object.values(publicNames).flat(),
     );
-    expect(shown.filter((name) => !reservedEventTypes.has(name))).toEqual([]);
+    expect(shown.filter((name) => !types.has(name))).toEqual([]);
     expect(
       ['/runs/1', '/definitions/reasoning/summary', '/callers/acme-admin', '/runs', 'runs/1', '/ledger/eu'].map(
         (source) => isReservedSource(source),
       ),
     ).toEqual([true, true, true, false, false, false]);
+  });
+
+  it('are none of a capability beyond the brain’s own when no capability declares a fact', () => {
+    expect([...brainOwnNamesOf([echo]).types].filter((type) => !types.has(type))).toEqual([]);
+    expect([...brainOwnNamesOf([echo]).types]).not.toContain('nudge_sent');
   });
 
   it('are refused in an event from outside, each where it is given', () => {
@@ -85,17 +85,15 @@ describe('the types and sources of what the brain records itself', () => {
         'tool_call_started',
         'tool_test_started',
         'tool_test_answered',
-        'reply_taken',
-        'reply_refused',
-        'replies_read',
-        'telling_started',
-        'telling_succeeded',
-        'delivery_failed',
+        'request_answered',
+        'nudge_sent',
+        'nudge_read',
+        'asking_requested',
         'event_published',
         'workflow_input_applied',
         'step_waiting',
       ].map((type) => refusals({ type }).length),
-    ).toEqual([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
+    ).toEqual([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
     expect(refusals({ type: 'com.acme.ledger.month-closed', source: '/ledger/eu' })).toEqual([]);
   });
 });

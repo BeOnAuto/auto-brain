@@ -1,5 +1,5 @@
 import { BrainContext, BrainReader, CallLineage, Caller, Conflict, type GivenLineage } from '@beonauto/operations';
-import { Cause, Effect, Option } from 'effect';
+import { Cause, Effect, Option, type Schema } from 'effect';
 
 import type { Capability, PreparedDefinition, RunContext, RunLineage } from '../capability/capability.ts';
 import type { RunOutcome, RunRequest, InterruptedAttempt } from '../runs/run-commands.ts';
@@ -40,18 +40,18 @@ function tooDeep(callDepth: number): Conflict {
   });
 }
 
-const longestRunIn = Effect.fnUntraced(function* (capability: Capability, name: string) {
+const longestRunIn = Effect.fnUntraced(function* (capability: Capability, name: string, input?: Schema.Json) {
   const { prepared } = yield* preparedDefinition(capability, name);
-  return prepared.longestRunMs;
+  return prepared.longestRunMs(input);
 });
 
 const longestRunsIn = Effect.fnUntraced(function* (capabilities: readonly Capability[]) {
   const reader = yield* BrainReader;
-  return (type: string, name: string): Effect.Effect<number | undefined> => {
+  return (type: string, name: string, input?: Schema.Json): Effect.Effect<number | undefined> => {
     const capability = capabilities.find((candidate) => candidate.type === type);
     return capability === undefined
       ? Effect.undefined
-      : longestRunIn(capability, name).pipe(
+      : longestRunIn(capability, name, input).pipe(
           Effect.option,
           Effect.map(Option.getOrUndefined),
           Effect.provideService(BrainReader, reader),
@@ -66,7 +66,7 @@ function startOf(request: RunRequest, { definition, prepared, createOnly }: Prep
     ...request,
     definition_version: definition.version,
     calls_tools: prepared.callsTools,
-    finishes_later: prepared.finishesLater,
+    finishes_later: prepared.finishesLater(request.input),
     depth,
     call_depth: callDepth,
     ...(calledBy === null ? {} : { called_by: calledBy }),

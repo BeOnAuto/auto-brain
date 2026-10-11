@@ -4,7 +4,7 @@ import { Effect, Option, Result, Schema, SchemaIssue } from 'effect';
 import { jsonBytesOf } from '../runs/recorded-size.ts';
 import { CloudEventSchema, mostPublishedEventBytes, type CloudEvent } from './cloud-event.ts';
 import { publishedEventDecider, publishedEventStreamOf, type Emitter } from './published-events.ts';
-import { refusingTheBrainsOwnAttributes } from './reserved-attributes.ts';
+import type { BrainOwnNames } from './reserved-attributes.ts';
 
 export interface Emission {
   readonly event: Schema.Json;
@@ -22,28 +22,31 @@ export type EmitEvent = (
   lineage: Lineage,
 ) => Effect.Effect<EmitOutcome, Conflict>;
 
-const EmittedEventSchema = CloudEventSchema.check(refusingTheBrainsOwnAttributes);
-
-const decodeEvent = Schema.decodeUnknownOption(EmittedEventSchema);
-
-const decodeEmitted = Schema.decodeUnknownResult(EmittedEventSchema);
+export interface EmittedEvents {
+  readonly eventOf: (event: Schema.Json) => CloudEvent | undefined;
+  readonly refusalOf: (event: Schema.Json) => string | undefined;
+}
 
 const formatIssues = SchemaIssue.makeFormatterDefault();
 
-export function emittedEventOf(event: Schema.Json): CloudEvent | undefined {
-  return Option.getOrUndefined(
-    Option.filter(decodeEvent(event), (decoded) => jsonBytesOf(decoded) <= mostPublishedEventBytes),
-  );
-}
-
-export function emittedEventRefusal(event: Schema.Json): string | undefined {
-  return Option.getOrUndefined(
-    Option.map(Result.getFailure(decodeEmitted(event)), ({ issue }: { readonly issue: SchemaIssue.Issue }) =>
-      formatIssues(issue)
-        .replaceAll(/\n\s+at \["?([^"\]]*)"?\]/gu, ' (at $1)')
-        .replaceAll('\n', '; '),
-    ),
-  );
+export function emittedEventsOf({ refusingTheBrainsOwnAttributes }: BrainOwnNames): EmittedEvents {
+  const EmittedEventSchema = CloudEventSchema.check(refusingTheBrainsOwnAttributes);
+  const decodeEvent = Schema.decodeUnknownOption(EmittedEventSchema);
+  const decodeEmitted = Schema.decodeUnknownResult(EmittedEventSchema);
+  return {
+    eventOf: (event) =>
+      Option.getOrUndefined(
+        Option.filter(decodeEvent(event), (decoded) => jsonBytesOf(decoded) <= mostPublishedEventBytes),
+      ),
+    refusalOf: (event) =>
+      Option.getOrUndefined(
+        Option.map(Result.getFailure(decodeEmitted(event)), ({ issue }: { readonly issue: SchemaIssue.Issue }) =>
+          formatIssues(issue)
+            .replaceAll(/\n\s+at \["?([^"\]]*)"?\]/gu, ' (at $1)')
+            .replaceAll('\n', '; '),
+        ),
+      ),
+  };
 }
 
 function refusedUnlessChanging({ detail, kind }: Readonly<Pick<Conflict, 'detail' | 'kind'>>) {
@@ -52,9 +55,10 @@ function refusedUnlessChanging({ detail, kind }: Readonly<Pick<Conflict, 'detail
     : Effect.succeed<EmitOutcome>('refused');
 }
 
-export function eventEmitter(ledger: Ledger['Service']): EmitEvent {
+export function eventEmitter(ledger: Ledger['Service'], names: BrainOwnNames): EmitEvent {
+  const { eventOf } = emittedEventsOf(names);
   return (brain, { event, emitter, depth, by, at }, lineage) => {
-    const cloudEvent = emittedEventOf(event);
+    const cloudEvent = eventOf(event);
     if (cloudEvent === undefined) {
       return Effect.succeed('refused');
     }

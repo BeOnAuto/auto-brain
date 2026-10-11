@@ -1,9 +1,16 @@
 import { callFieldsShown, keptAnswerOf, keptArgumentsOf } from '@beonauto/mcp';
-import { strictRecordedDecoder, type KeptContent, type PresentedFact, type Presenter } from '@beonauto/operations';
+import {
+  strictRecordedDecoder,
+  type KeptContent,
+  type PresentedFact,
+  type Presenter,
+  type RecordedFact,
+} from '@beonauto/operations';
 
 import type { DefinitionWords } from '../plain-language/definition-words.ts';
 import {
   cancelAsked,
+  requestAnswered,
   runBrokeDown,
   runFinished,
   runRejected,
@@ -12,8 +19,15 @@ import {
   toolCalled,
   toolFailed,
 } from '../plain-language/event-words.ts';
-import { deferralAccount, deliveryAccount, replyAccount } from '../run-work/run-work-accounts.ts';
-import { RunEventSchema, type RecordedRunEvent, type RecordedRunFact, type RunEvent } from '../runs/run-events.ts';
+import type { DeclaredFact } from '../run-work/declared-facts.ts';
+import { deferralAccount } from '../run-work/run-work-accounts.ts';
+import {
+  RunEventSchema,
+  coreRunFactTypes,
+  type RecordedRunEvent,
+  type RecordedRunFact,
+  type RunEvent,
+} from '../runs/run-events.ts';
 import type { RunRejection } from '../runs/run.ts';
 import { cutAtCodePoint, issuesShown, mostDetailBytes, mostNameBytes } from './event-data.ts';
 
@@ -74,6 +88,19 @@ function cancelFact({ type, data }: Shown<'run_cancel_requested'>): PresentedFac
   };
 }
 
+function answerFact({ type, data }: Shown<'request_answered'>): PresentedFact {
+  const { answer, claimed_for: claimedFor, reply } = data;
+  return {
+    type,
+    summary: requestAnswered(reply !== undefined),
+    data: {
+      answer,
+      ...(claimedFor === undefined ? {} : { claimed_for: named(claimedFor) }),
+      ...(reply === undefined ? {} : { reply: { id: named(reply.id), sender: named(reply.sender) } }),
+    },
+  };
+}
+
 function endingFact(event: Shown<'run_succeeded' | 'run_rejected' | 'run_failed'>): PresentedFact {
   if (event.type === 'run_succeeded') {
     return { type: event.type, summary: runFinished, data: event.data };
@@ -91,8 +118,6 @@ const toolCallTypes: ReadonlySet<string> = new Set(['tool_call_started', 'tool_c
 
 const endingTypes: ReadonlySet<string> = new Set(['run_succeeded', 'run_rejected', 'run_failed']);
 
-const replyTypes: ReadonlySet<string> = new Set(['reply_taken', 'reply_refused']);
-
 function isToolCall(event: RecordedRunEvent): event is ToolCallShown {
   return toolCallTypes.has(event.type);
 }
@@ -101,19 +126,14 @@ function isEnding(event: RecordedRunEvent): event is Shown<'run_succeeded' | 'ru
   return endingTypes.has(event.type);
 }
 
-function isReply(event: RecordedRunEvent): event is Shown<'reply_taken' | 'reply_refused'> {
-  return replyTypes.has(event.type);
-}
+type CoreShown = Exclude<RecordedRunEvent, Shown<'work'>>;
 
-function runFactOf(words: DefinitionWords, event: RecordedRunEvent, content: KeptContent): PresentedFact | undefined {
+function coreFactOf(words: DefinitionWords, event: CoreShown, content: KeptContent): PresentedFact | undefined {
   if (event.type === 'run_deferred') {
     return deferralAccount(words.runWordsOf(event.context.definitionType), event.data);
   }
   if (isToolCall(event)) {
     return toolCallFact(event, content);
-  }
-  if (isReply(event)) {
-    return replyAccount(event);
   }
   if (event.type === 'run_started') {
     return startFact(words, event);
@@ -121,36 +141,35 @@ function runFactOf(words: DefinitionWords, event: RecordedRunEvent, content: Kep
   if (event.type === 'run_cancel_requested') {
     return cancelFact(event);
   }
-  return isEnding(event)
-    ? endingFact(event)
-    : deliveryAccount(words.runWordsOf(event.context.definitionType), event, content);
+  return isEnding(event) ? endingFact(event) : answerFact(event);
 }
-
-const shownNames: Readonly<Record<Exclude<RunEvent['type'], 'run_deferred'>, readonly [string]>> = {
-  run_started: ['run_started'],
-  run_succeeded: ['run_succeeded'],
-  run_rejected: ['run_rejected'],
-  run_failed: ['run_failed'],
-  run_cancel_requested: ['run_cancel_requested'],
-  tool_call_started: ['tool_call_started'],
-  tool_call_answered: ['tool_call_answered'],
-  tool_call_failed: ['tool_call_failed'],
-  delivery_started: ['delivery_started'],
-  delivery_succeeded: ['delivery_succeeded'],
-  delivery_failed: ['delivery_failed'],
-  delivery_refused: ['delivery_refused'],
-  reply_taken: ['reply_taken'],
-  reply_refused: ['reply_refused'],
-};
 
 const decodeRunEvent = strictRecordedDecoder(RunEventSchema);
 
-export function runPresenter(words: DefinitionWords): Presenter {
+function presentedBy(words: DefinitionWords, declared: readonly DeclaredFact[]) {
+  const byType = new Map(declared.map((fact) => [fact.type, fact]));
+  return (recorded: RecordedFact, content: KeptContent): PresentedFact | undefined => {
+    const fact = byType.get(recorded.type);
+    if (fact !== undefined) {
+      return fact.present(recorded, content);
+    }
+    const event = decodeRunEvent(recorded);
+    return event.type === 'work' ? undefined : coreFactOf(words, event, content);
+  };
+}
+
+function shownNamesOf(declared: readonly DeclaredFact[]): Readonly<Record<string, readonly string[]>> {
+  const shown = [...coreRunFactTypes.filter((type) => type !== 'run_deferred'), ...declared.map(({ type }) => type)];
+  return Object.fromEntries(shown.map((type) => [type, [type]]));
+}
+
+export function runPresenter(words: DefinitionWords, declared: readonly DeclaredFact[]): Presenter {
+  const present = presentedBy(words, declared);
   return {
     streamKind: 'runs',
-    publicNames: { ...shownNames, run_deferred: words.deferralTypes },
+    publicNames: { ...shownNamesOf(declared), run_deferred: words.deferralTypes },
     present: (recorded, content) => {
-      const fact = runFactOf(words, decodeRunEvent(recorded), content);
+      const fact = present(recorded, content);
       return fact === undefined ? [] : [fact];
     },
   };

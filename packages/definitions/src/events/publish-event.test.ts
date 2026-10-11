@@ -3,11 +3,11 @@ import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { makeDefinitionPresenters } from '../index.ts';
+import { publishEventToAskingBrain as publishEvent } from '../testing/asking.ts';
 import { acmeAdmin, acmeReader } from '../testing/callers.ts';
 import { echo } from '../testing/echo.ts';
 import { firstMoment, harness, toBrain } from '../testing/harness.ts';
 import { mostPublishedEventBytes } from './cloud-event.ts';
-import { publishEvent } from './publish-event.ts';
 import { publishedEventDecider, publishedEventStreamOf } from './published-events.ts';
 
 const listBrainEvents = defineListBrainEvents(makeDefinitionPresenters([echo]));
@@ -135,16 +135,20 @@ describe('publishing an event again', () => {
 });
 
 describe('an event the brain does not take', () => {
-  it('is rejected under a type or a source that are the brain’s own', async () => {
+  it('is rejected under a type or a source that are the brain’s own, or a type a capability of the brain declares', async () => {
     const definitions = harness();
 
-    expect(
+    expect([
       await definitions.call(publishEvent, publishing({ source: '/runs/0199a3c4', type: 'run_succeeded' })),
-    ).toMatchObject({
-      status: 'rejected',
-      reason: 'invalid_input',
-      issues: [{ pointer: '/event/type' }, { pointer: '/event/source' }],
-    });
+      await definitions.call(publishEvent, publishing({ source: '/ledger/eu', type: 'nudge_sent' })),
+    ]).toMatchObject([
+      {
+        status: 'rejected',
+        reason: 'invalid_input',
+        issues: [{ pointer: '/event/type' }, { pointer: '/event/source' }],
+      },
+      { status: 'rejected', reason: 'invalid_input', issues: [{ pointer: '/event/type' }] },
+    ]);
     expect(definitions.ledger.streamNames()).toEqual([]);
   });
 

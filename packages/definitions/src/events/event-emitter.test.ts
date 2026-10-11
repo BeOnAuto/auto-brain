@@ -4,8 +4,19 @@ import { Effect, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { publishedEventPresenter } from '../presenting/published-event-presenter.ts';
-import { emittedEventRefusal, eventEmitter, type Emission } from './event-emitter.ts';
+import { asking } from '../testing/asking.ts';
+import { echo } from '../testing/echo.ts';
+import { emittedEventsOf, eventEmitter as eventEmitterOf, type Emission } from './event-emitter.ts';
 import { publishedEventOf } from './published-events.ts';
+import { brainOwnNamesOf } from './reserved-attributes.ts';
+
+const names = brainOwnNamesOf([echo, asking]);
+
+const emittedEventRefusal = emittedEventsOf(names).refusalOf;
+
+function eventEmitter(ledger: Parameters<typeof eventEmitterOf>[0]) {
+  return eventEmitterOf(ledger, names);
+}
 
 const alpha = { org: 'acme', brain: 'alpha' };
 
@@ -83,12 +94,13 @@ describe('an event a workflow emits that the brain does not record', () => {
     const outcomes = await Effect.runPromise(
       Effect.all([
         emit(alpha, emission(toldWith('type', 'run_succeeded')), lineage),
+        emit(alpha, emission(toldWith('type', 'nudge_sent')), lineage),
         emit(alpha, emission(toldWith('source', '')), lineage),
         emit(alpha, emission(toldWith('data', { region: 'us' })), lineage),
       ]),
     );
 
-    expect(outcomes).toEqual(['refused', 'refused', 'refused']);
+    expect(outcomes).toEqual(['refused', 'refused', 'refused', 'refused']);
     expect(ledger.streamNames()).toHaveLength(1);
   });
 

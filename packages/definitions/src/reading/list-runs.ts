@@ -56,23 +56,26 @@ function streamsOfRuns(type: string | undefined, name: string | undefined): Reco
   };
 }
 
-const listRuns = Effect.fnUntraced(function* ({ type, name, status, limit = defaultPageLimit, cursor }: ListRunsInput) {
-  const page = yield* (yield* BrainReader).readRecorded(streamsOfRuns(type, name), {
-    order: 'desc',
-    limit,
-    ...(cursor === undefined ? {} : { cursor }),
-    ...(status === undefined ? {} : { types: storedTypesByStatus[status] }),
+function runsListedBy(byStatus: ReturnType<typeof storedTypesByStatus>) {
+  return Effect.fnUntraced(function* ({ type, name, status, limit = defaultPageLimit, cursor }: ListRunsInput) {
+    const page = yield* (yield* BrainReader).readRecorded(streamsOfRuns(type, name), {
+      order: 'desc',
+      limit,
+      ...(cursor === undefined ? {} : { cursor }),
+      ...(status === undefined ? {} : { types: byStatus[status] }),
+    });
+    return {
+      runs: yield* listedRunsOf(page.records),
+      has_more: page.hasMore,
+      next_cursor: page.nextCursor,
+    };
   });
-  return {
-    runs: yield* listedRunsOf(page.records),
-    has_more: page.hasMore,
-    next_cursor: page.nextCursor,
-  };
-});
+}
 
 export function defineListRuns(capabilities: readonly Capability[]) {
   const known = knownCapabilities(capabilities);
   const words = definitionWordsFor(capabilities);
+  const listRuns = runsListedBy(storedTypesByStatus(capabilities));
   const operation = defineQuery('brain', {
     name: 'list_runs',
     title: 'List runs',

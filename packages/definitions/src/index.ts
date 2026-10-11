@@ -36,48 +36,41 @@ export {
   runnableExpression,
   type StrippedForms,
 } from './capability/stripped-forms.ts';
-export type {
-  DeliveryEndedFact,
-  DeliveryStartedFact,
-  OutboundCallFact,
-  ReplyFact,
-  RunOutcome,
-  RunResult,
-} from './runs/run-commands.ts';
+export type { AnswerFact, CapabilityFact, RunOutcome, RunResult } from './runs/run-commands.ts';
 export {
   CancelRequestKindSchema,
-  DeliveryFailedBecauseSchema,
-  DeliveryRefusedBecauseSchema,
-  ReplyRefusalSchema,
+  RequestAnsweredSchema,
   RunEventSchema,
   type CancelRequestKind,
-  type DeliveredAs,
-  type DeliveryEnded,
-  type DeliveryEvent,
-  type DeliveryFailedBecause,
-  type DeliveryRefusedBecause,
-  type DeliveryStarted,
-  type ReplyRefused,
-  type ReplyTaken,
   type RecordedRunEvent,
   type RecordedRunFact,
+  type RequestAnswered,
   type RunDeferred,
   type RunEvent,
   type RunFinished,
-  type RepliesIn,
   type ReplyIdentity,
-  type ReplyRefusal,
 } from './runs/run-events.ts';
+export type { RecordedAnswer, RecordedWork } from './runs/run-state.ts';
+export { RequestRecordSchema, isRequestRecord, takesAnAnswer, type RequestRecord } from './requests/request-record.ts';
 export { runEventOf, recordedRunIn, recordedRunInBrain, type RecordedRun } from './run-work/recorded-runs.ts';
 export {
-  outboundCallRecorder,
-  replyRecorder,
-  type RecordedOutboundCall,
-  type RecordOutboundCall,
-  type RecordRunWork,
-} from './run-work/outbound-calls.ts';
-export { replyBounds } from './run-work/work-decisions.ts';
-export { deliveryEnded, deliveryStarted, throughTheTool } from './run-work/delivery-words.ts';
+  declaredFact,
+  noFacts,
+  runFactsOf,
+  type CapabilityFacts,
+  type DeclaredFact,
+  type RunFacts,
+} from './run-work/declared-facts.ts';
+export {
+  brainBoundAnswerer,
+  workRecorder,
+  type AnswerRun,
+  type RecordWork,
+  type RecordedWorkAt,
+  type Work,
+  type WorkRule,
+} from './run-work/work-recorder.ts';
+export { answeredAlready, endedUnanswered, runEnded } from './run-work/work-decisions.ts';
 export { mostCallDepth } from './operations/run-requests.ts';
 export {
   cancelRequestOf,
@@ -105,13 +98,14 @@ export {
   type SettleRun,
   type Settlement,
 } from './runs/run-settler.ts';
-export { answeredByAReply } from './runs/run-decisions.ts';
+export { answeredFirst } from './runs/run-decisions.ts';
 export { defineGetRun, getRun } from './operations/get-run.ts';
 export { defineGetRunHistory } from './reading/get-run-history.ts';
 export { defineListRuns } from './reading/list-runs.ts';
 export { ListedRunSchema, type ListedRun } from './reading/listed-run.ts';
 export { RunIdInputField } from './operations/definition-fields.ts';
 export { makeDefinitionPresenters } from './presenting/definition-presenters.ts';
+export { cutAtCodePoint, issuesShown, mostNameBytes } from './presenting/event-data.ts';
 export { brainEventOf, brainFactOf } from './events/brain-facts.ts';
 export {
   DefinitionEventSchema,
@@ -120,12 +114,12 @@ export {
 } from './registry/definition-events.ts';
 export { definitionTypeStreamOf } from './registry/definitions-decider.ts';
 export {
+  brainOwnNamesOf,
   callerSourcePrefix,
   isReservedSource,
-  refusingTheBrainsOwnAttributes,
   contextAttributeNames,
-  reservedEventTypes,
   reservedSourcesInWords,
+  type BrainOwnNames,
 } from './events/reserved-attributes.ts';
 export {
   CloudEventSchema,
@@ -136,14 +130,14 @@ export {
   mostPublishedEventBytes,
   type CloudEvent,
 } from './events/cloud-event.ts';
-export { publishEvent } from './events/publish-event.ts';
+export { definePublishEvent } from './events/publish-event.ts';
 export {
-  emittedEventOf,
-  emittedEventRefusal,
+  emittedEventsOf,
   eventEmitter,
   type EmitEvent,
   type EmitOutcome,
   type Emission,
+  type EmittedEvents,
 } from './events/event-emitter.ts';
 export { publishedEventOf, type EventPublished, type RecordedEventPublished } from './events/published-events.ts';
 export {
