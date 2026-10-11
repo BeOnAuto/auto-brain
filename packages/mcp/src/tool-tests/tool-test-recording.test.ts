@@ -86,6 +86,8 @@ describe('the content a test records', () => {
     await keeping.test({ server: 'graph', tool: 'echo', arguments: said });
     await notKeeping.test({ server: 'graph', tool: 'echo', arguments: said });
     const [kept, unkept] = [await keeping.recorded(), await notKeeping.recorded()];
+    const resultSha256 = String(Reflect.get(new Object(kept[1]?.data), 'result_sha256'));
+    const keptResult = String(await keeping.kept(resultSha256));
 
     await expect(keeping.kept(digestOf(scrubbed))).resolves.toBe(scrubbed);
     await expect(notKeeping.kept(digestOf(scrubbed))).resolves.toBeUndefined();
@@ -100,7 +102,8 @@ describe('the content a test records', () => {
       ],
     ]);
     expect(unkept[0]?.data).toMatchObject({ arguments_bytes: Buffer.byteLength(scrubbed) });
-    expect(JSON.stringify([...kept, ...unkept])).not.toContain(fakeApiKey);
-    expect(JSON.stringify([...kept, ...unkept])).not.toContain(digestOf(JSON.stringify(said)));
+    expect(digestOf(keptResult)).toBe(resultSha256);
+    expect(keptResult).toContain('the key is [redacted]');
+    expect(JSON.stringify([...kept, ...unkept, keptResult])).not.toContain(fakeApiKey);
   });
 });

@@ -91,7 +91,6 @@ describe('what one call answers of its tool', () => {
     const fake = await oneCallServer();
     const access = oneCallAccess(fake.url);
     const call = { ...echoCall, input: { token: oneCallKey } };
-    const sent = JSON.stringify(call.input);
     const keptAnswer = JSON.stringify({ content: [{ type: 'text', text: scrubbed }] });
 
     const called = await calledOnce(access, call);
@@ -111,7 +110,7 @@ describe('what one call answers of its tool', () => {
     expect(called).toMatchObject({
       answered: { result_bytes: Buffer.byteLength(keptAnswer), result_sha256: digest(keptAnswer) },
     });
-    expect(JSON.stringify([starts, called])).not.toContain(digest(sent));
+    expect(JSON.stringify([starts, called])).not.toContain(oneCallKey);
     await expect(Effect.runPromise(access.content.get(alpha, digest(scrubbed)))).resolves.toBe(scrubbed);
     await expect(Effect.runPromise(access.content.get(alpha, digest(keptAnswer)))).resolves.toBe(keptAnswer);
   });

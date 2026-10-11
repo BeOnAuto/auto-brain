@@ -164,13 +164,19 @@ describe('the content of a call', () => {
     await expect(kept(digest(keptAnswer))).resolves.toBe(keptAnswer);
   });
 
-  it('is never digested as it was received when a secret was scrubbed from it', async () => {
+  it('is digested only as kept, and the key is in nothing recorded or kept, when a secret was scrubbed from it', async () => {
     const input = { [fakeApiKey]: 'as a key', value: `the key ${fakeApiKey}`, pin: numericSecret };
+    const keptArguments = '{"[redacted]":"as a key","value":"the key [redacted]","pin":"[redacted]"}';
+    const keptAnswer = textAnswer('{"[redacted]":"as a key","value":"the key [redacted]","pin":[redacted]}');
     const { facts, kept } = await recordedCalls({}, [['graph/echo', input]]);
-    const received = [digest(JSON.stringify(input)), digest(textAnswer(JSON.stringify(input)))];
+    const digests = JSON.stringify(facts).match(/[0-9a-f]{64}/gu);
+    const keptTexts = await Promise.all([digest(keptArguments), digest(keptAnswer)].map((sha256) => kept(sha256)));
+    const recordedOrKept = JSON.stringify([facts, keptTexts]);
 
-    expect(received.filter((sha256) => JSON.stringify(facts).includes(sha256))).toEqual([]);
-    await expect(Promise.all(received.map((sha256) => kept(sha256)))).resolves.toEqual([undefined, undefined]);
+    expect(digests).toEqual([digest(keptArguments), digest(keptAnswer)]);
+    expect(keptTexts).toEqual([keptArguments, keptAnswer]);
+    expect(recordedOrKept).not.toContain(fakeApiKey);
+    expect(recordedOrKept).not.toContain(String(numericSecret));
   });
 
   it('is kept under the digest of its own text, the key a reader joins it by', async () => {
