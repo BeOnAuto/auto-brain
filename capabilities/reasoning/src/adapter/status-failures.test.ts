@@ -34,7 +34,6 @@ describe('a provider that rejects the request', () => {
   it.each([
     [400, 'the request was rejected as invalid'],
     [404, 'the model was not found'],
-    [413, 'the request was too large'],
     [422, 'the request was rejected as invalid'],
     [418, 'the request was not accepted'],
   ])(
@@ -51,6 +50,42 @@ describe('a provider that rejects the request', () => {
       });
     },
   );
+});
+
+describe('a provider that signals the request too long', () => {
+  it.each([
+    ['HTTP 413', 413, openAiError('Request Entity Too Large')],
+    ['the error code context_length_exceeded', 400, openAiError('Too many tokens', 'context_length_exceeded')],
+    [
+      'the error type request_too_large',
+      400,
+      { error: { message: 'Too many tokens', type: 'request_too_large', param: null, code: null } },
+    ],
+  ])('fails as request_too_long by %s', async (signal, status, body) => {
+    const failure = await failureFor(() => jsonResponse(body, status));
+
+    expect(failure).toMatchObject({
+      _tag: 'request_too_long',
+      provider: 'openai',
+      status,
+      signal,
+      detail: `openai refused the request as longer than the model takes, by ${signal}`,
+      last_input_tokens: null,
+    });
+  });
+
+  it('claims no length for a message that says too long without a signal, and names the code the body carries', async () => {
+    const failure = await failureFor(() =>
+      jsonResponse(openAiError('string too long', 'string_above_max_length'), 400),
+    );
+
+    expect(failure).toMatchObject({
+      _tag: 'definition_invalid',
+      provider_message: 'string too long',
+      detail:
+        'openai answered HTTP 400: the request was rejected as invalid, with the error code string_above_max_length',
+    });
+  });
 });
 
 describe('the provider message of a rejected request', () => {

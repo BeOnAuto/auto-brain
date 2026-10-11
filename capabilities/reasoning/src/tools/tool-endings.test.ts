@@ -3,7 +3,14 @@ import { Conflict, Unavailable } from '@beonauto/operations';
 import { Effect, Exit } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { ContentRefused, DefinitionInvalid, TimedOut, ToolsStopped, type ToolsStoppedBecause } from '../index.ts';
+import {
+  ContentRefused,
+  DefinitionInvalid,
+  RequestTooLong,
+  TimedOut,
+  ToolsStopped,
+  type ToolsStoppedBecause,
+} from '../index.ts';
 import { callingTools, type ScriptedCall } from '../testing/calling-tools.ts';
 import { documentOf } from '../testing/definition-documents.ts';
 import { reasoningWithTools, type ToolRun } from '../testing/reasoning-runs.ts';
@@ -191,29 +198,67 @@ function answeredBytesOf({ journal }: ToolRun): readonly number[] {
 const refusedAsInvalid =
   'anthropic answered HTTP 400: the request was rejected as invalid; update the reasoning function definition';
 
-describe('a run whose provider refuses its request as too long after its tools answered', () => {
-  it('is unworkable, with the size of what the tools answered where the provider names the context', async () => {
-    const tooLong = 'prompt is too long: 213456 tokens > 200000 maximum';
-    const run = toolRun(await graphServer(), callingTools(searched, refusedSaying(tooLong)));
+function refusedAsTooLong(lastInputTokens: number | null, providerMessage: string | null = null): ScriptedReply {
+  return () =>
+    Effect.fail(
+      new RequestTooLong({
+        detail: 'anthropic refused the request as longer than the model takes, by HTTP 413',
+        provider: 'anthropic',
+        status: 413,
+        signal: 'HTTP 413',
+        provider_message: providerMessage,
+        last_input_tokens: lastInputTokens,
+      }),
+    );
+}
+
+const tooLongByStatus = 'anthropic refused the request as longer than the model takes, by HTTP 413';
+
+describe('a run whose provider signals its request too long after its tools answered', () => {
+  it('is unworkable, with the bytes the tools answered and the input tokens of the last turn, advising a page', async () => {
+    const said = 'prompt is too long: 213456 tokens > 200000 maximum';
+    const run = toolRun(await graphServer(), callingTools(searched, refusedAsTooLong(190_000, said)));
     const ran = await run.running(source);
 
     expect(ran).toEqual(
       Exit.fail(
         new Conflict({
-          detail: `${refusedAsInvalid}, since the tools of this run answered ${answeredBytesOf(run).join()} bytes, which the model reads whole, so ask them for a page of what they hold. The provider said: ${tooLong}`,
+          detail: `${tooLongByStatus}; the tools of this run answered ${answeredBytesOf(run).join()} bytes, which the model reads whole, and the provider counted 190,000 input tokens in the last turn it answered, so ask the tools for a page of what they hold. The provider said: ${said}`,
           kind: 'unworkable',
         }),
       ),
     );
   });
 
-  it('is unworkable in the words it had when the provider names something else', async () => {
-    const reply = callingTools(searched, refusedSaying('The model gpt-6 does not exist'));
+  it('names the bytes alone when the provider reported no input tokens, and the prompt when no tool answered', async () => {
+    const run = toolRun(await graphServer(), callingTools(searched, refusedAsTooLong(null)));
+    const ran = await run.running(source);
+
+    expect([ran, await ending(await graphServer(), refusedAsTooLong(null))]).toEqual([
+      Exit.fail(
+        new Conflict({
+          detail: `${tooLongByStatus}; the tools of this run answered ${answeredBytesOf(run).join()} bytes, which the model reads whole, so ask the tools for a page of what they hold`,
+          kind: 'unworkable',
+        }),
+      ),
+      Exit.fail(
+        new Conflict({
+          detail: `${tooLongByStatus}; shorten the prompt or the input of the reasoning function`,
+          kind: 'unworkable',
+        }),
+      ),
+    ]);
+  });
+});
+
+describe('a run whose provider refuses its request without a signal of length', () => {
+  it('is unworkable in the words it had, with no claim of length, whatever its message says', async () => {
+    const reply = callingTools(searched, refusedSaying('string too long'));
 
     expect(await ending(await graphServer(), reply)).toEqual(
       Exit.fail(
         new Conflict({
-          detail: `${refusedAsInvalid}. The provider said: The model gpt-6 does not exist`,
+          detail: `${refusedAsInvalid}. The provider said: string too long`,
           kind: 'unworkable',
         }),
       ),

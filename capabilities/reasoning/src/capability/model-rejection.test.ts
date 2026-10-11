@@ -12,6 +12,7 @@ import {
   ProviderUnavailable,
   RateLimited,
   DefinitionInvalid,
+  RequestTooLong,
   TimedOut,
   type ModelFailure,
 } from '../index.ts';
@@ -25,6 +26,29 @@ const jsonDefinition = documentOf(
 function failingWith(failure: () => ModelFailure): Promise<Run> {
   return reasoningWith(() => Effect.fail(failure())).running(jsonDefinition, { text: 'x' });
 }
+
+describe('a provider that signals the request of a run without tools too long', () => {
+  it('is unworkable, saying the request was too long by its signal, and advising a shorter prompt', async () => {
+    const failure = new RequestTooLong({
+      detail: 'openai refused the request as longer than the model takes, by the error code context_length_exceeded',
+      provider: 'openai',
+      status: 400,
+      signal: 'the error code context_length_exceeded',
+      provider_message: null,
+      last_input_tokens: null,
+    });
+
+    expect(await failingWith(() => failure)).toEqual(
+      Exit.fail(
+        new Conflict({
+          detail:
+            'openai refused the request as longer than the model takes, by the error code context_length_exceeded; shorten the prompt or the input of the reasoning function',
+          kind: 'unworkable',
+        }),
+      ),
+    );
+  });
+});
 
 describe('a provider that rejects the definition', () => {
   it('is a conflict that carries the bounded message of the provider', async () => {

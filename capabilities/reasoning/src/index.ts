@@ -22,6 +22,7 @@ export { ProviderNotConfigured } from './failure/provider-not-configured.ts';
 export { ProviderUnavailable } from './failure/provider-unavailable.ts';
 export { RateLimited } from './failure/rate-limited.ts';
 export { DefinitionInvalid } from './failure/definition-invalid.ts';
+export { RequestTooLong } from './failure/request-too-long.ts';
 export { TimedOut } from './failure/timed-out.ts';
 export { ToolsStopped, type ToolsStoppedBecause } from './failure/tools-stopped.ts';
 export { LanguageModel } from './model/language-model.ts';

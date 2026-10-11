@@ -96,6 +96,10 @@ const providers: readonly Provider[] = [
 
 const aCallId: unknown = expect.any(String);
 
+function withoutUsage(reply: object): object {
+  return { ...reply, usage: { input_tokens: 0, output_tokens: 0 } };
+}
+
 const transcript = [`Called ${searchTool} with {\\"query\\":\\"acme\\"}.`, toolsWithdrawn];
 
 const fencedResults =
@@ -160,14 +164,62 @@ describe('a run whose model calls have spent the input tokens the operator allow
 });
 
 describe('a call of a run whose model has a known context window', () => {
-  it('gives the tool the room the answer has beside the conversation so far, within the window', async () => {
+  it('gives the tool the room the window holds past the turn the provider counted, at the ratio the turn measured', async () => {
     const { tools, calls } = scriptedTools({ contextWindow: 10_000 });
+    const { tools: tighter, calls: tighterCalls } = scriptedTools({ contextWindow: 5_021 });
 
     await twoSteps(anthropic, anthropic.text('Acme has 2 rows.'), (model) => textRequest(model, { tools }));
-    const rooms = calls().map(({ room }) => Number(room));
+    await twoSteps(anthropic, anthropic.text('Acme has 2 rows.'), (model) => textRequest(model, { tools: tighter }));
+    const [room, tighterRoom] = [...calls(), ...tighterCalls()].map(({ room: given }) => Number(given));
 
-    expect(rooms).toHaveLength(1);
-    expect(Math.min(...rooms)).toBeGreaterThan(0);
-    expect(Math.max(...rooms)).toBeLessThan((10_000 - 256) * 3);
+    expect(Number.isInteger(room)).toBe(true);
+    expect(Number(room) / Number(tighterRoom)).toBeCloseTo((10_000 - 30 - 12) / (5_021 - 30 - 12), 3);
+  });
+
+  it('gives a tool no room when the provider counted no input tokens of the turn, so its answer is read whole', async () => {
+    const { tools, calls } = scriptedTools({ contextWindow: 10_000 });
+    const uncounted = {
+      ...anthropic,
+      toolCall: (name: string, input: unknown) => withoutUsage(anthropic.toolCall(name, input)),
+    };
+
+    await twoSteps(uncounted, anthropic.text('Acme has 2 rows.'), (model) => textRequest(model, { tools }));
+
+    expect(calls().map(({ room }) => room)).toEqual([undefined]);
+  });
+});
+
+function threeCalls(name: string, input: unknown): object {
+  const reply = anthropicToolCall(name, input);
+  const content = [1, 2, 3].map((call) => ({ type: 'tool_use', id: `toolu_call_${call}`, name, input }));
+  return { ...reply, content };
+}
+
+describe('the calls of one turn', () => {
+  it('share the room of the turn equally, each given a third of it when there are three', async () => {
+    const { tools: alone, calls: aloneCalls } = scriptedTools({ contextWindow: 10_000, endAfter: 25 });
+    const { tools: together, calls: togetherCalls } = scriptedTools({ contextWindow: 10_000, endAfter: 25 });
+    const threeAtOnce = { ...anthropic, toolCall: threeCalls };
+
+    await twoSteps(anthropic, anthropic.text('Acme has 2 rows.'), (model) => textRequest(model, { tools: alone }));
+    await twoSteps(threeAtOnce, anthropic.text('Acme has 2 rows.'), (model) => textRequest(model, { tools: together }));
+    const [room] = aloneCalls().map(({ room: given }) => Number(given));
+
+    expect(togetherCalls().map(({ room: given }) => given)).toEqual([1, 2, 3].map(() => Math.floor(Number(room) / 3)));
+  });
+});
+
+describe('a run whose next turn its budget of input tokens would not pay for', () => {
+  it('makes that turn its last, without tools, and keeps every turn it made within the budget', async () => {
+    const { tools, calls } = scriptedTools({ endAfter: 25, mostInputTokens: 100 });
+
+    const { result, last } = await twoSteps(anthropic, anthropic.text('Acme has 2 rows.'), (model) =>
+      textRequest(model, { tools }),
+    );
+
+    expect(calls()).toHaveLength(1);
+    expect(last).toContain(toolsWithdrawn);
+    expect(last).not.toContain(`"name":"${searchTool}"`);
+    expect(Number(result.usage?.input.total)).toBeLessThanOrEqual(100);
   });
 });
