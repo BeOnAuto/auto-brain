@@ -17,16 +17,26 @@ describe('an interaction function through the inbox, over HTTP', { timeout: work
     const answered = await server.answer(runId, { answer: { choice: 'approve' }, claimed_for: 'the campaign team' });
     const again = await server.answer(runId, { answer: { choice: 'approve' } });
     const another = await server.answer(runId, { answer: { choice: 'reject' } });
+    const settled = await server.settled(runId);
     const history = await server.call('GET', `${alpha}/runs/${runId}/history`);
     const analytics = await server.call('GET', `${alpha}/analytics?type=interaction`);
 
     expect(started).toMatchObject({ status: 200, body: { status: 'started' } });
-    expect(listed).toMatchObject({ status: 200, body: { interactions: [{ run_id: runId }] } });
+    expect(listed).toMatchObject({ status: 200, body: { interactions: [{ run_id: runId, type: 'interaction' }] } });
     expect([invalid.status, answered.status, again.status, another.status]).toEqual([422, 200, 200, 409]);
+    expect([answered.body, again.body]).toMatchObject([
+      { run_id: runId, answer: { choice: 'approve' }, claimed_for: 'the campaign team', answered_by: 'local' },
+      { claimed_for: 'the campaign team' },
+    ]);
     expect(invalid.body).toMatchObject({ errors: [{ pointer: '/answer/choice' }] });
-    expect(await server.settled(runId)).toMatchObject({ status: 'succeeded', output: { choice: 'approve' } });
+    expect(settled).toMatchObject({ status: 'succeeded', output: { choice: 'approve' } });
     expect(history.body).toMatchObject({
-      events: [{ type: 'run_started' }, { type: 'interaction_requested' }, { data: { output: { choice: 'approve' } } }],
+      events: [
+        { type: 'run_started' },
+        { type: 'interaction_requested' },
+        { type: 'request_answered', data: { answer: { choice: 'approve' }, claimed_for: 'the campaign team' } },
+        { data: { output: { choice: 'approve' } } },
+      ],
     });
     expect(analytics.body).toMatchObject({
       runs: { succeeded: 1 },

@@ -7,6 +7,7 @@ import {
   type RunDefinition,
 } from '@beonauto/coordination';
 import {
+  brainOwnNamesOf,
   defineRunDefinition,
   deferredCanceller,
   runCanceller,
@@ -84,11 +85,12 @@ export function hostWorkOf(
   dispatcher: Dispatcher,
   { capabilities, startVersion, evaluations }: WorkParts,
 ): HostWork {
+  const names = brainOwnNamesOf(capabilities);
   return {
-    machine: workflowMachineOptionsOf(evaluations.machine),
+    machine: workflowMachineOptionsOf(evaluations.machine, names),
     perform: definitionCalls(nestedRuns(runtime, dispatcher, defineRunDefinition(capabilities))),
     settle: settlements(runtime),
-    reactions: { ...reactionsOf(runtime, dispatcher, startVersion), filters: evaluations.filters },
+    reactions: { ...reactionsOf(runtime, dispatcher, { startVersion, names }), filters: evaluations.filters },
     waiting: waitingOf(runtime, capabilities),
   };
 }

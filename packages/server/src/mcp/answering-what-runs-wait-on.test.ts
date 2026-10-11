@@ -182,10 +182,7 @@ describe(
         'Here is the draft for September: approve, revise or skip?',
         draftAnswerSchema,
       ]);
-      expect(outcome.answered.structuredContent).toMatchObject({
-        status: 'succeeded',
-        output: { decision: 'approve' },
-      });
+      expect(outcome.answered.structuredContent).toMatchObject({ answer: { decision: 'approve' } });
       expect(outcome.ended).toMatchObject({ status: 'succeeded', output: { decision: 'approve' } });
       expect(outcome.openOnceAnswered).toEqual([]);
       expect(outcome.openForOctober.map(({ message }) => message)).toEqual([
@@ -209,6 +206,6 @@ describe('the shape of the answer an open request takes, as the agent reads it',
     expect(descriptionIn(meetings.surfaces, 'answer_interaction')).toContain(
       "`answer` takes the shape of the request's answer_schema, which list_interactions shows,",
     );
-    expect([description.length, sentencesOf(description).length]).toEqual([724, 5]);
+    expect([description.length, sentencesOf(description).length]).toEqual([700, 5]);
   });
 });

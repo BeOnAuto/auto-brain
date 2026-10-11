@@ -5,9 +5,8 @@ import {
   askedRunId,
   askedThroughChat,
   attemptedThenStopped,
-  broughtBeforeSettling,
+  broughtBeforeDeciding,
   recordedReply,
-  takenReply,
   type HarnessLedger,
   type InteractionHarness,
 } from '@beonauto/interaction/testing';
@@ -76,11 +75,11 @@ const approved = {
   output: {
     status: 'succeeded',
     output: { choice: 'approve' },
-    record: { answered_by: 'brain:alpha', reply: takenReply },
+    record: {},
   },
 };
 
-function replyTaken(brain: InteractionHarness): Promise<unknown> {
+function answeredByAReply(brain: InteractionHarness): Promise<unknown> {
   return recordedReply(brain.ledger, { choice: 'approve' });
 }
 
@@ -90,12 +89,12 @@ describe.each(stores)(
     it.skipIf(skipped)('settles an answer a reply brought from the reply, after the expiry too', async () => {
       const asked = await askedThroughChat({ ledger: await aLedger() });
       await asked.brain.performDue(asked.askedAt);
-      await replyTaken(asked.brain);
+      await answeredByAReply(asked.brain);
 
       const afterStop = await asked.brain.firstOpen();
       await asked.brain.performDue(asked.askedAt + 3 * days);
 
-      expect(afterStop).toMatchObject({ standing: 'answered' });
+      expect(afterStop).toBeUndefined();
       expect(await asked.brain.runOf(askedRunId)).toMatchObject(approved);
       expect(asked.tools.calls()).toHaveLength(1);
     });
@@ -116,7 +115,7 @@ describe.each(stores)(
 
 describe.each(stores)('a reply taken while another settlement is under way, on $store', ({ skipped, aLedger }) => {
   it.skipIf(skipped)('refuses an answer given meanwhile, and the run settles with the reply’s', async () => {
-    const racing = broughtBeforeSettling(await aLedger(), { choice: 'approve' });
+    const racing = broughtBeforeDeciding(await aLedger(), { choice: 'approve' });
     const asked = await askedThroughChat({ ledger: racing.ledger });
     await racing.started();
 
@@ -132,7 +131,7 @@ describe.each(stores)('a reply taken while another settlement is under way, on $
 
   it.skipIf(skipped)('settles a cancel asked after the reply with the reply’s answer', async () => {
     const asked = await askedThroughChat({ ledger: await aLedger() });
-    await replyTaken(asked.brain);
+    await answeredByAReply(asked.brain);
 
     await asked.brain.cancel(askedRunId);
     await asked.brain.performDue(Date.now());
@@ -145,7 +144,7 @@ describe.each(stores)(
   'a notification delivered while a cancel of its run is under way, on $store',
   ({ skipped, aLedger }) => {
     it.skipIf(skipped)('succeeds as delivered, the cancel reading the run again once it changed', async () => {
-      const racing = broughtBeforeSettling(await aLedger());
+      const racing = broughtBeforeDeciding(await aLedger());
       const asked = await askedThroughChat({ notification: true, ledger: racing.ledger });
       await racing.started();
 

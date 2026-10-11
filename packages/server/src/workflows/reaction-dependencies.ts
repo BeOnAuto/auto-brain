@@ -1,5 +1,5 @@
 import type { AppRuntime } from '@beonauto/api';
-import { eventEmitter, type BrainOperation } from '@beonauto/definitions';
+import { eventEmitter, type BrainOperation, type BrainOwnNames } from '@beonauto/definitions';
 import {
   brainCallerOf,
   Ledger,
@@ -14,6 +14,11 @@ import { Effect } from 'effect';
 import { inRuntime } from './in-runtime.ts';
 
 const workflows = 'workflow';
+
+export interface Reacting {
+  readonly startVersion: BrainOperation;
+  readonly names: BrainOwnNames;
+}
 
 function requestOf({
   org,
@@ -53,7 +58,7 @@ function startAnswered(outcome: Outcome): Effect.Effect<void, StartRefused | Sta
 export function reactionsOf(
   runtime: AppRuntime<DispatcherServices>,
   dispatcher: Dispatcher,
-  startVersion: BrainOperation,
+  { startVersion, names }: Reacting,
 ): ReactionOptions {
   return {
     definitionType: workflows,
@@ -65,7 +70,7 @@ export function reactionsOf(
     emit: (brain, emission, lineage) =>
       inRuntime(
         runtime,
-        Effect.flatMap(Effect.service(Ledger), (ledger) => eventEmitter(ledger)(brain, emission, lineage)),
+        Effect.flatMap(Effect.service(Ledger), (ledger) => eventEmitter(ledger, names)(brain, emission, lineage)),
       ),
   };
 }

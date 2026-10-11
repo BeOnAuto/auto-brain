@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { terminologyGuideOf } from './terminology-guide.ts';
 
-const theRequestTerm = 'Interaction:\n\n- Request: What a run of an interaction function that asks a person asks';
+const theRequestTerm = 'Interaction:\n\n- Request: What a run of a function waits on when it asks a person';
 
 const page = readFileSync(new URL('../../../../docs/concepts/terminology.md', import.meta.url), 'utf8');
 

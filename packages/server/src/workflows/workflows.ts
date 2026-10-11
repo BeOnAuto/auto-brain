@@ -6,7 +6,7 @@ import {
   runPresenter,
   type ExpressionCheck,
 } from '@beonauto/coordination';
-import { defineStartVersion, type BrainOperation, type Capability } from '@beonauto/definitions';
+import { brainOwnNamesOf, defineStartVersion, type BrainOperation, type Capability } from '@beonauto/definitions';
 import { makeCatalog, makeDispatcher, type DispatcherServices, type Registration } from '@beonauto/operations';
 import type { WorkflowHost } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
@@ -43,11 +43,13 @@ function onceOpened(opening: Promise<WorkflowHost>): Pick<WorkflowHost, 'start'>
 export async function serveWorkflows(runtime: AppRuntime<DispatcherServices>, parts: WorkflowParts): Promise<Served> {
   const dispatcher = makeDispatcher([]);
   const opening = Promise.withResolvers<WorkflowHost>();
+  const names = brainOwnNamesOf(parts.capabilities);
   const workflow = makeWorkflowAdapter({
     runs: onceOpened(opening.promise),
     check: parts.check,
     mostDurationMs: parts.workflows.mostDurationMs,
     longestCallMs: longestCallOf(parts.capabilities),
+    names,
   });
   const capabilities = [...parts.capabilities, workflow];
   const host = await openedHost(runtime, dispatcher, { ...parts, capabilities }, defineStartVersion(capabilities));
@@ -56,7 +58,7 @@ export async function serveWorkflows(runtime: AppRuntime<DispatcherServices>, pa
     ...parts.orgOperations,
     ...brainOperationsServing(capabilities, [runPresenter]),
     ...parts.brainOperations,
-    defineSendRunEvent(host),
+    defineSendRunEvent(host, names),
   ]);
   return { routes: routesFor(runtime, catalog, dispatcher, capabilities), stopWork: host.stop };
 }
