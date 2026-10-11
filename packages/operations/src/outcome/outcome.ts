@@ -1,5 +1,6 @@
 import type { Schema } from 'effect';
 
+import type { StreamedContent } from '../content/streamed-content.ts';
 import { cappedIssues, type Issue } from './issue.ts';
 import type { RejectionBecause } from './rejection-because.ts';
 import type { DeclarableReason, RejectionKind } from './rejection.ts';
@@ -9,6 +10,7 @@ export type RejectionReason = 'forbidden' | DeclarableReason;
 export interface Succeeded {
   readonly status: 'succeeded';
   readonly output: Schema.JsonObject;
+  readonly streamed?: StreamedContent;
 }
 
 export interface Rejected {
@@ -35,6 +37,10 @@ export type Settled = Outcome | Cancelled;
 
 export function succeeded(output: Schema.JsonObject): Succeeded {
   return { status: 'succeeded', output };
+}
+
+export function streamedSucceeded(streamed: StreamedContent): Succeeded {
+  return { status: 'succeeded', output: {}, streamed };
 }
 
 export function rejected(

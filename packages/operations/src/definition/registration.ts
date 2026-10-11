@@ -1,16 +1,12 @@
-import type { Effect } from 'effect';
-
 import type { OperationKind, OperationScope } from '../caller/operation-scope.ts';
 import type { Permission } from '../caller/permission.ts';
-import type { Succeeded, Rejected } from '../outcome/outcome.ts';
 import type { DeclarableReason } from '../outcome/rejection.ts';
 import type { RegisteredPlainLanguage } from '../plain-language/plain-language.ts';
-import type { SuccessStatusByKind } from './definition.ts';
+import type { HttpBody, SuccessStatusByKind } from './definition.ts';
 import type { HandlerServices } from './handler-services.ts';
 import type { JsonSchemaDocument } from './json-schema.ts';
+import type { RegisteredRun } from './registered-run.ts';
 import type { Route } from './route.ts';
-
-export type InputEncoding = 'json' | 'strings';
 
 export interface RegistrationOf<S extends OperationScope, K extends OperationKind> {
   readonly scope: S;
@@ -30,7 +26,8 @@ export interface RegistrationOf<S extends OperationScope, K extends OperationKin
   readonly reasons: readonly DeclarableReason[];
   readonly input: JsonSchemaDocument;
   readonly plainLanguage?: RegisteredPlainLanguage;
-  readonly run: (input: unknown, encoding: InputEncoding) => Effect.Effect<Succeeded, Rejected, HandlerServices<S, K>>;
+  readonly servedOverHttpAlone?: HttpBody;
+  readonly run: RegisteredRun<HandlerServices<S, K>>;
 }
 
 export type Registration<S extends OperationScope = OperationScope> = {

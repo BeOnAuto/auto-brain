@@ -1,5 +1,6 @@
 import { Effect, Predicate } from 'effect';
 
+import { textOfContent } from '../content/streamed-content.ts';
 import { BrainReader } from '../ledger/brain-reader.ts';
 import type { KeptContent } from './presenter.ts';
 import type { RecordedFact } from './recorded-read.ts';
@@ -31,9 +32,9 @@ export function keptContentOf(
     const reader = yield* BrainReader;
     const kept = new Map<string, string>();
     for (const digest of digests) {
-      const text = yield* reader.readContent(digest);
-      if (text !== undefined) {
-        kept.set(digest, text);
+      const content = yield* reader.readContent(digest);
+      if (content !== undefined) {
+        kept.set(digest, yield* textOfContent(content));
       }
     }
     return (sha256: string) => kept.get(sha256);

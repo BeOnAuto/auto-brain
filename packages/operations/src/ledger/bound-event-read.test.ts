@@ -1,7 +1,7 @@
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { messageIdOf, streamPrefixOfBrain } from '../index.ts';
+import { contentOfText, messageIdOf, sha256Of, streamPrefixOfBrain } from '../index.ts';
 import { acmeAdmin, globexAdmin } from '../testing/callers.ts';
 import { harness, toBrain } from '../testing/harness.ts';
 import { addNote, readNoteContent, readNoteEvent } from '../testing/notes.ts';
@@ -34,12 +34,21 @@ describe('the read of one event, bound to a call', () => {
 describe('the read of a recorded content, bound to a call', () => {
   it('reads a content of the brain of the call by its digest, and none of another brain', async () => {
     const { dispatcher, ledger, run } = harness();
-    await Effect.runPromise(ledger.service.content.put({ org: 'acme', brain: 'alpha' }, 'digest', '{"rows":[]}'));
-    await Effect.runPromise(ledger.service.content.put({ org: 'globex', brain: 'gamma' }, 'other', '{}'));
+    const [digest, other] = await Promise.all([sha256Of('{"rows":[]}'), sha256Of('{}')]);
+    await Effect.runPromise(
+      ledger.service.content.put(
+        { org: 'acme', brain: 'alpha' },
+        digest,
+        contentOfText('{"rows":[]}', 'application/json'),
+      ),
+    );
+    await Effect.runPromise(
+      ledger.service.content.put({ org: 'globex', brain: 'gamma' }, other, contentOfText('{}', 'application/json')),
+    );
 
     expect(
       await Promise.all(
-        ['digest', 'other'].map((sha256) =>
+        [digest, other].map((sha256) =>
           run(dispatcher.dispatchToBrain(readNoteContent.registration, toAlpha(acmeAdmin, { sha256 }))),
         ),
       ),

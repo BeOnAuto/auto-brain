@@ -104,7 +104,17 @@ export {
   type StartingTrigger,
 } from './ledger/context.ts';
 export type { BrainContentReader, RecordedContent } from './content/recorded-content.ts';
-export { bytesOfText, chunksOf, mostContentChunkBytes, sha256Of } from './content/content-chunks.ts';
+export {
+  bytesOfText,
+  chunksOf,
+  mostContentChunkBytes,
+  notTheBytesOfItsDigest,
+  requireAsDeclared,
+  sha256Of,
+  type Digested,
+} from './content/content-chunks.ts';
+export { contentOfBytes, contentOfText, textOfContent, type StreamedContent } from './content/streamed-content.ts';
+export { sha256Digest, type Sha256Digest } from './content/sha256-digest.ts';
 export type { DispatcherServices } from './dispatch/dispatcher-services.ts';
 export { makeDispatcher, type Dispatcher, type PipelineStep } from './dispatch/dispatcher.ts';
 export { cursorOfParts, cursorWithin, partsOfCursor, type CursorPart } from './reading/cursor-parts.ts';
@@ -135,6 +145,9 @@ export { Ledger, type ContentKeeper, type LedgerPorts } from './ledger/ledger.ts
 export { lineageAttributeNames, messageIdOf, noLineage, type Lineage } from './ledger/message-lineage.ts';
 export { NotFound } from './outcome/not-found.ts';
 export { defineCommand, defineQuery, type Operation } from './definition/operation.ts';
+export { defineHttpOperation, type HttpOperation } from './definition/http-operation.ts';
+export { isStreamedBody, mediaTypeOfBody } from './definition/http-body.ts';
+export type { BodyKind, HttpBody, HttpDefinition, StreamedBody, StreamedBodyKind } from './definition/definition.ts';
 export { OrgReader } from './ledger/org-reader.ts';
 export {
   explanationOf,
@@ -194,7 +207,8 @@ export {
   type PublicEvent,
 } from './reading/public-event.ts';
 export type { DeclarableReason, Rejection, RejectionKind } from './outcome/rejection.ts';
-export type { InputEncoding, Registration, RegistrationOf } from './definition/registration.ts';
+export type { InputEncoding } from './definition/registered-run.ts';
+export type { Registration, RegistrationOf } from './definition/registration.ts';
 export type { BrainRequest, OrgRequest } from './dispatch/request.ts';
 export type { Method, Route } from './definition/route.ts';
 export type { OperationKind, OperationScope } from './caller/operation-scope.ts';

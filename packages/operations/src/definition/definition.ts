@@ -2,6 +2,7 @@ import type { Effect, Schema } from 'effect';
 
 import type { OperationKind, OperationScope } from '../caller/operation-scope.ts';
 import type { Permission } from '../caller/permission.ts';
+import type { StreamedContent } from '../content/streamed-content.ts';
 import type { DeclarableReason, Rejection } from '../outcome/rejection.ts';
 import type { PlainLanguage } from '../plain-language/plain-language.ts';
 import type { PathParameters, Route } from './route.ts';
@@ -55,4 +56,54 @@ export interface Definition<
   readonly reasons: readonly R[];
   readonly handle: (input: In['Type']) => Effect.Effect<Out['Type'], NoInfer<Rejection<R>>, Services>;
   readonly plainLanguage?: PlainLanguage<NoInfer<In['Type']>, NoInfer<Out['Type']>>;
+}
+
+export type StreamedBodyKind = 'octet-stream' | 'csv';
+
+export type BodyKind = 'json' | 'none' | StreamedBodyKind;
+
+export interface StreamedBody {
+  readonly kind: StreamedBodyKind;
+  readonly mostBytes: number;
+}
+
+export type HttpBody = { readonly kind: 'json' } | { readonly kind: 'none' } | StreamedBody;
+
+interface BodyKindsByOperationKind {
+  readonly query: 'none';
+  readonly command: BodyKind;
+}
+
+export type HttpBodyOf<K extends OperationKind> = Extract<HttpBody, { readonly kind: BodyKindsByOperationKind[K] }>;
+
+export interface BodyArguments {
+  readonly json: readonly [];
+  readonly none: readonly [];
+  readonly 'octet-stream': readonly [body: StreamedContent];
+  readonly csv: readonly [body: StreamedContent];
+}
+
+export interface HttpDefinition<
+  K extends OperationKind,
+  P extends string,
+  B extends HttpBodyOf<K>,
+  In extends ObjectSchema,
+  Out extends ObjectSchema,
+  R extends DeclarableReason,
+  Services,
+> {
+  readonly name: string;
+  readonly title: string;
+  readonly description: string;
+  readonly route: Route<K, P>;
+  readonly body: B;
+  readonly successStatus?: SuccessStatusByKind[K];
+  readonly permittedBy?: readonly Permission[];
+  readonly inputSchema: In;
+  readonly outputSchema: Out;
+  readonly reasons: readonly R[];
+  readonly handle: (
+    input: In['Type'],
+    ...body: BodyArguments[B['kind']]
+  ) => Effect.Effect<Out['Type'] | StreamedContent, NoInfer<Rejection<R>>, Services>;
 }

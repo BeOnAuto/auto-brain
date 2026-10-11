@@ -12,7 +12,7 @@ import type { OrgRequest } from './request.ts';
 
 export function runInOrg(
   registration: Registration<'org'>,
-  { caller, org, input, encoding }: OrgRequest,
+  { caller, org, input, encoding, body }: OrgRequest,
   ledger: StreamReader & StreamWriter,
 ): Effect.Effect<Succeeded, Rejected> {
   const prefix = streamPrefixOfOrg({ org });
@@ -21,8 +21,8 @@ export function runInOrg(
     Context.add(OrgReader, prefixedReader(ledger, prefix)),
   );
   return registration.kind === 'query'
-    ? registration.run(input, encoding).pipe(Effect.provideContext(forQueries))
+    ? registration.run(input, encoding, body).pipe(Effect.provideContext(forQueries))
     : registration
-        .run(input, encoding)
+        .run(input, encoding, body)
         .pipe(Effect.provideContext(forQueries.pipe(Context.add(OrgWriter, prefixedWriter(ledger, prefix)))));
 }

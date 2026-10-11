@@ -1,6 +1,7 @@
 import type { CallLink, TriggerLink } from '../caller/call-lineage.ts';
 import type { CallerIdentity } from '../caller/caller.ts';
-import type { InputEncoding } from '../definition/registration.ts';
+import type { StreamedContent } from '../content/streamed-content.ts';
+import type { InputEncoding } from '../definition/registered-run.ts';
 import type { Lineage } from '../ledger/message-lineage.ts';
 
 export interface OrgRequest {
@@ -8,6 +9,7 @@ export interface OrgRequest {
   readonly org: string;
   readonly input: unknown;
   readonly encoding: InputEncoding;
+  readonly body?: StreamedContent;
 }
 
 export interface BrainRequest extends OrgRequest {
