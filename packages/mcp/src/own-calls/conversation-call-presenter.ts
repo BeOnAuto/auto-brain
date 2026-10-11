@@ -31,6 +31,8 @@ const failedReadWords: Readonly<Record<ReadingFailedBecause, string>> = {
   not_sent: 'its arguments could not be rendered, so nothing was sent',
 };
 
+const pastTheTransportsCap = `the tool server answered more than its transport lets one call take, ${counted.format(toolBounds.httpAnswerBytes)} bytes over HTTP and ${counted.format(toolBounds.stdioOutputBytes)} from a stdio server, so its answer was not read`;
+
 const failedTellingWords: Readonly<Record<TellingFailedBecause, string>> = {
   ...failedInWords,
   tool_error: 'answered with an error of its own',
@@ -60,6 +62,14 @@ function whereOf(data: OnTheConversation): string {
 
 type Reading = Extract<RecordedConversationCall, { readonly type: 'replies_read' | 'reading_failed' }>;
 
+type ReadingFailed = Extract<Reading, { readonly type: 'reading_failed' }>['data'];
+
+function failedReadingInWords(data: ReadingFailed): string {
+  return data.because === 'too_large' && data.result_bytes === undefined
+    ? pastTheTransportsCap
+    : failedReadWords[data.because];
+}
+
 function readingFact(event: Reading, content: KeptContent): PresentedFact {
   const shown = { ...keptArgumentsOf(event.data, content), ...keptAnswerOf(event.data, content) };
   if (event.type === 'replies_read') {
@@ -73,7 +83,7 @@ function readingFact(event: Reading, content: KeptContent): PresentedFact {
   const { data } = event;
   return {
     type: event.type,
-    summary: `The brain could not read the replies of ${whereOf(data)}: ${failedReadWords[data.because]}.`,
+    summary: `The brain could not read the replies of ${whereOf(data)}: ${failedReadingInWords(data)}.`,
     data: { ...callFieldsShown(data), ...shown },
   };
 }

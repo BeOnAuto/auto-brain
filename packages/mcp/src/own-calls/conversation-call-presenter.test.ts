@@ -139,6 +139,30 @@ describe('a read the brain could not make in a conversation, as the brain events
   });
 });
 
+describe('a read whose answer was too large, as the brain events show it', () => {
+  it('names the bytes a read may take when the tool answered past them, and the cap of the transport when that cap stopped the answer', () => {
+    const pastTheRead = shown({ type: 'reading_failed', data: { ...thePlace, ...answered, because: 'too_large' } });
+    const pastTheCap = shown({
+      type: 'reading_failed',
+      data: {
+        ...thePlace,
+        because: 'too_large',
+        detail: 'The MCP server answered more than the 16,777,216 bytes one call over HTTP may take',
+        duration_ms: 40,
+        jsonrpc_id: 3,
+      },
+    });
+
+    expect([pastTheRead?.summary, pastTheCap?.summary]).toEqual([
+      'The brain could not read the replies of the conversation “C0123/1699.1” through the thread replies tool of chat: the tool answered more than the 65,536 bytes a read may take.',
+      'The brain could not read the replies of the conversation “C0123/1699.1” through the thread replies tool of chat: the tool server answered more than its transport lets one call take, 16,777,216 bytes over HTTP and 4,194,304 from a stdio server, so its answer was not read.',
+    ]);
+    expect(pastTheCap?.data).toMatchObject({
+      detail: 'The MCP server answered more than the 16,777,216 bytes one call over HTTP may take',
+    });
+  });
+});
+
 describe('a telling the brain made in a conversation, as the brain events show it', () => {
   it('says through which tool it told the party how to answer, and what the tool did', () => {
     const started = shown({
