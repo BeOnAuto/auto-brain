@@ -43,6 +43,8 @@ const request = {
   deliver,
 };
 
+const build = { ...Struct.omit(request, ['deliver']), build: { brief_sha256: 'c'.repeat(64) } };
+
 function deferralOf(record: object): Fact {
   return { type: 'run_deferred', data: { record } };
 }
@@ -52,14 +54,16 @@ const open = after(undefined, deferralOf(request));
 const failedRun: Fact = { type: 'run_failed', data: {} };
 
 describe('the open request of a run', () => {
-  it('is made by the deferral of an interaction function alone', () => {
+  it('is made by the deferral of a run whose record is a request, whatever the type of its function, which it keeps', () => {
     expect([
       open,
-      after(undefined, deferralOf(request), { ...ofTheRun, definitionType: 'workflow' }),
+      after(undefined, deferralOf(build), { ...ofTheRun, definitionType: 'prediction', definitionName: 'demand' }),
       after(undefined, deferralOf({ run: 'x' })),
+      after(undefined, deferralOf({ run: 'x' }), { ...ofTheRun, definitionType: 'workflow' }),
     ]).toEqual([
       {
         request_id: messageId,
+        type: 'interaction',
         function: 'approve-brief',
         version: 1,
         party: 'ada',
@@ -85,6 +89,14 @@ describe('the open request of a run', () => {
         reply_refusals: 0,
         refusals_told: 0,
       },
+      expect.objectContaining({
+        type: 'prediction',
+        function: 'demand',
+        delivery: null,
+        standing: 'in_inbox',
+        answers: true,
+        ending_due_at: Date.parse(request.expires_at),
+      }),
       undefined,
       undefined,
     ]);
@@ -162,13 +174,8 @@ const answerOfTheTool = { result_bytes: 2, result_sha256: 'b'.repeat(64), jsonrp
 const delivered: Fact = { type: 'delivery_succeeded', data: { number: 1, ...answerOfTheTool, duration_ms: 40 } };
 
 const taken: Fact = {
-  type: 'reply_taken',
-  data: {
-    server: 'chat',
-    tool: 'thread_replies',
-    reply: { id: '1699.2', sender: 'ada' },
-    answer: { choice: 'approve' },
-  },
+  type: 'request_answered',
+  data: { answer: { choice: 'approve' }, reply: { id: '1699.2', sender: 'ada' } },
 };
 
 describe('the open request of a run asked to cancel', () => {
@@ -192,17 +199,35 @@ describe('the open request of a run asked to cancel', () => {
   });
 });
 
-describe('the open request of a run a reply answered', () => {
-  it('stands answered once a reply answered it, due at once, and a cancel asked after leaves it so', () => {
+describe('the open request of a run that took an answer', () => {
+  it('stands answered and closes on the answer, due at once to settle, and a cancel or an attempt ending after leaves it so', () => {
     const answered = after(open, taken);
+    const deliveredAfter = after(after(after(open, attempt), taken), delivered);
 
-    expect([answered, after(answered, cancelAsked)]).toMatchObject([
-      { standing: 'answered', ending_due_at: Date.parse(at), attempt_due_at: null },
+    expect([answered, after(answered, cancelAsked), deliveredAfter]).toMatchObject([
+      { standing: 'answered', open: false, ended: null, ending_due_at: Date.parse(at), attempt_due_at: null },
       undefined,
+      { standing: 'answered', open: false, ending_due_at: Date.parse(at), attempt_due_at: null },
     ]);
   });
 
-  it('is left alone once its run has ended', () => {
-    expect(after(after(open, failedRun), cancelAsked)).toBeUndefined();
+  it('closes on the ending its run settles with, and of a function the brain does not settle from its answer, waits for its run', () => {
+    const ofABuild = { ...ofTheRun, definitionType: 'prediction' };
+    const answeredBuild = after(after(undefined, deferralOf(request), ofABuild), taken, ofABuild);
+
+    expect([
+      after(after(open, taken), { type: 'run_succeeded', data: { output: { choice: 'approve' }, record: {} } }),
+      answeredBuild,
+    ]).toMatchObject([
+      { standing: 'answered', open: false, ended: 'answered', ending_due_at: null },
+      { standing: 'answered', open: false, ended: null, ending_due_at: null, attempt_due_at: null },
+    ]);
+  });
+
+  it('is left alone once its run has ended, and by a fact another capability declares', () => {
+    expect([
+      after(after(open, failedRun), cancelAsked),
+      after(open, { type: 'nudge_sent', data: { number: 1 } }),
+    ]).toEqual([undefined, undefined]);
   });
 });

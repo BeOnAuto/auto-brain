@@ -1,6 +1,7 @@
 import type { ProjectedRow } from '@beonauto/operations';
 import { Option, Schema } from 'effect';
 
+import { interactionType } from '../capability/interaction-type.ts';
 import { routeOf, type Route } from '../tool-blocks/routes.ts';
 import { RepliesSchema } from '../tool-blocks/tool-block-schemas.ts';
 
@@ -17,6 +18,7 @@ export const StandingSchema = Schema.Literals([
 
 const OpenRequestRowSchema = Schema.Struct({
   request_id: Schema.String,
+  type: Schema.String,
   function: Schema.String,
   version: Schema.Int,
   party: Schema.String,
@@ -53,31 +55,38 @@ export function requestRowOf(row: ProjectedRow | undefined): OpenRequestRow | un
   return row === undefined ? undefined : Option.getOrUndefined(decodeRow(row));
 }
 
-export function settlesFromBroughtAnswer({ answers, standing }: Pick<OpenRequestRow, 'answers' | 'standing'>): boolean {
-  return standing === 'answered' || (!answers && standing === 'delivered');
+export function settlesFromAnswer({
+  type,
+  answers,
+  standing,
+}: Pick<OpenRequestRow, 'type' | 'answers' | 'standing'>): boolean {
+  return (standing === 'answered' && type === interactionType) || (!answers && standing === 'delivered');
 }
 
 export type UndueRequestRow = Omit<OpenRequestRow, 'attempt_due_at' | 'ending_due_at'>;
 
 function settlesNow(row: UndueRequestRow): boolean {
-  return settlesFromBroughtAnswer(row) || (!row.answers && row.standing === 'undelivered');
+  return settlesFromAnswer(row) || (!row.answers && row.standing === 'undelivered');
 }
 
-function stillDue(row: UndueRequestRow): boolean {
-  return row.open && row.standing !== 'cancelling';
+function awaitsTheBrain(row: UndueRequestRow): boolean {
+  return row.ended === null && row.standing !== 'cancelling';
 }
 
 export function attemptDueAtOf(row: UndueRequestRow): number | null {
   const awaitsAttempt = row.standing === 'to_deliver' || row.standing === 'retrying';
-  return stillDue(row) && awaitsAttempt ? row.next_attempt_at : null;
+  return row.open && awaitsTheBrain(row) && awaitsAttempt ? row.next_attempt_at : null;
 }
 
 export function endingDueAtOf(row: UndueRequestRow): number | null {
-  if (!stillDue(row)) {
+  if (!awaitsTheBrain(row)) {
     return null;
   }
   if (settlesNow(row)) {
     return row.requested_at;
+  }
+  if (!row.open) {
+    return null;
   }
   const lostAt = row.standing === 'delivering' ? row.next_attempt_at : null;
   return Math.min(row.expires_at, lostAt ?? Number.POSITIVE_INFINITY);

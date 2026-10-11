@@ -138,7 +138,7 @@ describe('the answer shape of an open request', () => {
     });
     expect(await brain.call(answer, { run_id: runIds[0], answer: { choice: 'approve' } })).toMatchObject({
       status: 'succeeded',
-      output: { status: 'succeeded', output: { choice: 'approve' } },
+      output: { answer: { choice: 'approve' } },
     });
   });
 });

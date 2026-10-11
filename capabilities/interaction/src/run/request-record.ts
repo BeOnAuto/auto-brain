@@ -1,30 +1,26 @@
+import { RequestRecordSchema } from '@beonauto/definitions';
 import { Option, Schema } from 'effect';
 
 import { ReplyRuleSchema } from '../replies/reply-rule.ts';
 import { RepliesSchema, DeliverBlockSchema } from '../tool-blocks/tool-block-schemas.ts';
 
-const RequestRecordSchema = Schema.Struct({
-  to: Schema.String,
-  message: Schema.String,
-  answer_schema: Schema.optionalKey(Schema.JsonObject),
-  answerer: Schema.optionalKey(Schema.String),
+const InteractionRequestSchema = Schema.Struct({
+  ...RequestRecordSchema.fields,
   reply: Schema.optionalKey(ReplyRuleSchema),
-  expires_at: Schema.String,
-  requested_at: Schema.String,
   deliver: Schema.optionalKey(DeliverBlockSchema),
   replies: Schema.optionalKey(RepliesSchema),
 });
 
-export type RequestRecord = typeof RequestRecordSchema.Type;
+export type RequestRecord = typeof InteractionRequestSchema.Type;
 
-const DeliveringRecordSchema = Schema.Struct({ ...RequestRecordSchema.fields, deliver: DeliverBlockSchema });
+const DeliveringRecordSchema = Schema.Struct({ ...InteractionRequestSchema.fields, deliver: DeliverBlockSchema });
 
 export type DeliveringRecord = typeof DeliveringRecordSchema.Type;
 
 export const deliveringRecordOf: (record: unknown) => DeliveringRecord =
   Schema.decodeUnknownSync(DeliveringRecordSchema);
 
-const decodeRecord = Schema.decodeUnknownOption(RequestRecordSchema);
+const decodeRecord = Schema.decodeUnknownOption(InteractionRequestSchema);
 
 export function requestRecordOf(record: unknown): RequestRecord | undefined {
   return Option.getOrUndefined(decodeRecord(record));

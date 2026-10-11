@@ -1,6 +1,4 @@
-import type { ReplyIdentity, Settlement } from '@beonauto/definitions';
-import { brainCallerOf, type BrainAddress } from '@beonauto/operations';
-import type { Schema } from 'effect';
+import type { RecordedAnswer, Settlement } from '@beonauto/definitions';
 
 import type { DeliveredRecord } from '../run/request-record.ts';
 import { throughWords, type Route } from '../tool-blocks/routes.ts';
@@ -14,15 +12,8 @@ export function expiredSettlement({ expires_at: expiresAt }: { readonly expires_
   };
 }
 
-export interface BroughtAnswer {
-  readonly answer: Schema.Json;
-  readonly at: string;
-  readonly reply: ReplyIdentity;
-}
-
-export function answeredSettlement(brain: BrainAddress, { answer, at, reply }: BroughtAnswer): Settlement {
-  const by = brainCallerOf(brain).id;
-  return { status: 'succeeded', output: answer, record: { answered_by: by, answered_at: at, reply }, by };
+export function answeredSettlement({ answer, by }: Pick<RecordedAnswer, 'answer' | 'by'>): Settlement {
+  return { status: 'succeeded', output: answer, record: {}, by };
 }
 
 export function deliveredSettlement(at: string): Settlement {

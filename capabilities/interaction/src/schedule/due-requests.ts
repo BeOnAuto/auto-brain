@@ -2,11 +2,11 @@ import type { ProjectedKeyedRow } from '@beonauto/operations';
 import { Effect } from 'effect';
 
 import { openRequestsName } from '../requests/open-requests.ts';
-import { requestRowFrom, routeOfRow, settlesFromBroughtAnswer, type OpenRequestRow } from '../requests/request-rows.ts';
+import { requestRowFrom, routeOfRow, settlesFromAnswer, type OpenRequestRow } from '../requests/request-rows.ts';
 import type { DeliveryParts, DueRequest } from './delivery-parts.ts';
 import { lostAttempt, nextAttempt } from './request-attempts.ts';
 import { expiredSettlement, undeliveredSettlement } from './request-endings.ts';
-import { correlationOf, settled, settledFromBroughtAnswer } from './request-ledger.ts';
+import { correlationOf, settled, settledFromAnswer } from './request-ledger.ts';
 
 export interface DueRequestItem {
   readonly key: string;
@@ -14,11 +14,11 @@ export interface DueRequestItem {
   readonly perform: (now: number) => Effect.Effect<void>;
 }
 
-type DueAction = 'settle_from_brought_answer' | 'expire' | 'end_undelivered' | 'wait' | 'end_lost' | 'attempt';
+type DueAction = 'settle_from_answer' | 'expire' | 'end_undelivered' | 'wait' | 'end_lost' | 'attempt';
 
 function dueActionOf(row: OpenRequestRow, now: number): DueAction {
-  if (settlesFromBroughtAnswer(row)) {
-    return 'settle_from_brought_answer';
+  if (settlesFromAnswer(row)) {
+    return 'settle_from_answer';
   }
   if (now >= row.expires_at) {
     return 'expire';
@@ -41,7 +41,7 @@ export interface RequestsDue {
 function performedNow(parts: DeliveryParts, request: DueRequest, now: number): Effect.Effect<void> {
   const { row, address, lineage } = request;
   const performed: Readonly<Record<DueAction, () => Effect.Effect<void>>> = {
-    settle_from_brought_answer: () => settledFromBroughtAnswer(parts.ledger, request),
+    settle_from_answer: () => settledFromAnswer(parts.ledger, request),
     expire: () => settled(parts.ledger, address, expiredSettlement(row), lineage),
     end_undelivered: () => settled(parts.ledger, address, undeliveredSettlement(routeOfRow(row)), lineage),
     wait: () => Effect.void,
@@ -76,7 +76,7 @@ function soonestOf(times: readonly (number | null)[]): number | null {
 
 export function requestsDue(parts: DeliveryParts): RequestsDue {
   return {
-    name: 'the open requests of interaction functions',
+    name: 'the open requests of the brain',
     due: (now, most, callsOut) =>
       Effect.map(
         parts.ledger.readDueRows(openRequestsName, {

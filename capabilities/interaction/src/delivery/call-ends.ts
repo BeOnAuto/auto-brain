@@ -1,5 +1,6 @@
-import type { DeliveryFailedBecause } from '@beonauto/definitions';
 import type { AnsweredOnce, CallAnswer, CallAnswered, CallFailed, CallFailedBecause } from '@beonauto/mcp';
+
+import type { DeliveryFailedBecause } from '../facts/run-facts.ts';
 
 const becauseOf = {
   arguments_refused: 'arguments_refused',

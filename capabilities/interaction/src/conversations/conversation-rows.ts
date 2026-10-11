@@ -1,8 +1,9 @@
-import { runEventOf, type RepliesIn } from '@beonauto/definitions';
 import { ConversationCallEventSchema, conversationCallsKind, type ReadingRecorded } from '@beonauto/mcp';
 import { recordedDecoder, type KeyedProjection, type ProjectedMessage, type ProjectedRow } from '@beonauto/operations';
 import { Option, Schema } from 'effect';
 
+import { interactionFactOf } from '../facts/run-facts.ts';
+import type { RepliesIn } from '../tool-blocks/tool-block-schemas.ts';
 import { firstReadWaitMs } from './cadence.ts';
 import { conversationKeyOf } from './conversation-keys.ts';
 
@@ -67,7 +68,7 @@ function readOf({ data }: ReadingRecorded): Read {
 }
 
 function factOf(message: ProjectedMessage): ConversationFact | undefined {
-  const fact = runEventOf(message);
+  const fact = interactionFactOf(message);
   if (fact?.type === 'delivery_succeeded') {
     const place = fact.data.replies_in;
     return place === undefined ? undefined : { kind: 'join', place, at: Date.parse(fact.context.at) };

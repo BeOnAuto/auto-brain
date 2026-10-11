@@ -78,8 +78,8 @@ describe('a reply the brain has already met', () => {
 
     await brain.performReads(Date.now() + farAhead);
 
-    expect((await recordsOf(brain.ledger, 'reply_taken', 'reply_refused')).map(({ type }) => type)).toEqual([
-      'reply_taken',
+    expect((await recordsOf(brain.ledger, 'request_answered', 'reply_refused')).map(({ type }) => type)).toEqual([
+      'request_answered',
     ]);
     expect(await brain.runOf(first)).toMatchObject({ output: { output: { choice: 'approve' } } });
   });
@@ -111,7 +111,7 @@ describe('a reply the brain has already met', () => {
 
     await brain.performReads(Date.now() + farAhead);
 
-    expect(await recordsOf(brain.ledger, 'reply_taken', 'reply_refused')).toEqual([]);
+    expect(await recordsOf(brain.ledger, 'request_answered', 'reply_refused')).toEqual([]);
     expect(await brain.firstOpen()).toMatchObject({ standing: 'cancelling' });
     expect(brain.chat.calls().map(({ reference }) => reference.tool)).toEqual(['post_message']);
   });

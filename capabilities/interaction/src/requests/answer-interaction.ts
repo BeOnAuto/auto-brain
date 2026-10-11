@@ -2,16 +2,13 @@ import { Buffer } from 'node:buffer';
 
 import {
   RunIdInputField,
-  RunSchema,
-  answeredByAReply,
-  brainBoundSettler,
+  brainBoundAnswerer,
   recordedRunInBrain,
   type RecordedRun,
   refusingBlankText,
   refusingForbiddenCharacters,
 } from '@beonauto/definitions';
 import {
-  BrainContext,
   BrainReader,
   BrainWriter,
   Caller,
@@ -20,11 +17,11 @@ import {
   type InvalidInput,
   defineCommand,
 } from '@beonauto/operations';
-import { Clock, Effect, Schema } from 'effect';
+import { Effect, Schema } from 'effect';
 
 import { interactionBounds } from '../run/run-bounds.ts';
 import { answerFor } from './answering.ts';
-import { correlationOfRun, openRequestRowIn } from './request-reads.ts';
+import { correlationOfRun, openRequestRowIn, recordedAnswerOf, type RecordedAnswerFact } from './request-reads.ts';
 
 const ClaimedForField = Schema.String.annotate({
   description: `Whom the caller says it answers for, kept with the answer as a claim and never checked, at most ${interactionBounds.claimBytes} bytes`,
@@ -37,20 +34,32 @@ const ClaimedForField = Schema.String.annotate({
 );
 
 const description = [
-  "Answers a request an interaction function's run waits on, and settles the run for good:",
-  'the run succeeds with the answer as its output, which reaches the workflow step that waits for it.',
+  "Answers a request a function's run waits on; the run takes the answer within a second,",
+  "and an interaction function's run succeeds with it as its output, reaching the workflow step that waits for it.",
   'Use it when the person approves, rejects, revises or otherwise answers a request list_interactions shows, wherever it reached them;',
   'a new run asks again and answers nothing, and send_run_event gives an event to a waiting workflow instead.',
   '`run_id` is the run of the request, and `answer` takes the shape of the request\'s answer_schema, which list_interactions shows, such as {"decision": "approve"}.',
   '`claimed_for` is whom the caller says it answers for, kept as a claim.',
-  'The same answer again answers the run as it stands, and an answer that does not match leaves the request open.',
+  'The same answer again answers as before, another is a conflict, and one that does not match leaves the request open.',
 ].join(' ');
+
+const AnsweredRequestSchema = Schema.Struct({
+  run_id: Schema.String.annotate({ description: 'The run that took the answer' }),
+  answer_id: Schema.String.annotate({ description: 'The id of the fact the answer is recorded as, for get_event' }),
+  answer: Schema.Json.annotate({ description: 'The answer the run took' }),
+  claimed_for: Schema.optionalKey(Schema.String.annotate({ description: 'Whom the answer was claimed for' })),
+  reply: Schema.optionalKey(
+    Schema.Struct({ id: Schema.String, sender: Schema.String }).annotate({
+      description: 'The reply that brought the answer, when a reply did',
+    }),
+  ),
+  answered_by: Schema.String.annotate({ description: 'The id of the caller the answer came from' }),
+  answered_at: Schema.String.annotate({ description: 'When the answer was recorded, in ISO 8601 UTC' }),
+}).annotate({ identifier: 'AnsweredRequest', description: 'The answer a request took, as its run recorded it' });
 
 const answerSchemaOf = Schema.decodeUnknownSync(Schema.Struct({ answer_schema: Schema.JsonObject }));
 
-const notARequest = new Conflict({
-  detail: 'The run is not a request of an interaction function that waits for an answer',
-});
+const notARequest = new Conflict({ detail: 'The run is not a request of a function that waits for an answer' });
 
 const takesNoAnswer = new Conflict({ detail: 'The request is a notification, which takes no answer' });
 
@@ -67,8 +76,19 @@ function checkedFor(run: RecordedRun, answer: Schema.Json): Effect.Effect<Schema
   return answerFor(answer, answerSchemaOf(run.run.record).answer_schema);
 }
 
+function shownOf(id: string, { id: answerId, answer, claimedFor, reply, by, at }: RecordedAnswerFact) {
+  return {
+    run_id: id,
+    answer_id: answerId,
+    answer,
+    ...(claimedFor === undefined ? {} : { claimed_for: claimedFor }),
+    ...(reply === undefined ? {} : { reply }),
+    answered_by: by,
+    answered_at: at,
+  };
+}
+
 const answered = Effect.fnUntraced(function* ({ id, answer, claimedFor }: Answering) {
-  const brain = yield* BrainContext;
   const { id: answeredBy } = yield* Caller;
   const row = yield* openRequestRowIn(id);
   const run = yield* recordedRunInBrain(yield* BrainReader, id);
@@ -81,21 +101,14 @@ const answered = Effect.fnUntraced(function* ({ id, answer, claimedFor }: Answer
   if (!row.answers) {
     return yield* takesNoAnswer;
   }
-  if (row.standing === 'answered') {
-    return yield* answeredByAReply;
-  }
-  const output = yield* checkedFor(run, answer);
-  const at = new Date(yield* Clock.currentTimeMillis).toISOString();
-  const record = {
-    answered_by: answeredBy,
-    ...(claimedFor === undefined ? {} : { claimed_for: claimedFor }),
-    answered_at: at,
-  };
-  return yield* brainBoundSettler(yield* BrainWriter)(
-    { ...brain, id },
-    { status: 'succeeded', output, record, by: answeredBy },
+  const checked = yield* checkedFor(run, answer);
+  yield* brainBoundAnswerer(yield* BrainWriter)(
+    id,
+    { answer: checked, ...(claimedFor === undefined ? {} : { claimed_for: claimedFor }) },
+    answeredBy,
     { causationId: row.request_id, correlationId: yield* correlationOfRun(id) },
-  ).pipe(Effect.catchTag('not_found', Effect.die));
+  );
+  return shownOf(id, yield* recordedAnswerOf(id));
 });
 
 export const answerInteraction = defineCommand('brain', {
@@ -110,12 +123,13 @@ export const answerInteraction = defineCommand('brain', {
     answer: Schema.Json.annotate({ description: 'The answer, a JSON value the answer schema of the request takes' }),
     claimed_for: Schema.optionalKey(ClaimedForField),
   }),
-  outputSchema: RunSchema,
+  outputSchema: AnsweredRequestSchema,
   reasons: ['invalid_input', 'not_found', 'conflict'],
   handle: ({ run_id: id, answer, claimed_for: claimedFor }) => answered({ id, answer, claimedFor }),
   plainLanguage: {
     task: 'answer a request',
     attempt: () => 'answer the request',
-    outcome: () => 'The request is answered: the run that asked it succeeded, with the answer as its output.',
+    outcome: () =>
+      'The request is answered: the run that asked it takes the answer within a second, and get_run shows how it ended.',
   },
 });

@@ -9,6 +9,8 @@ import {
   askedThroughChat,
   interactionHarness,
   notificationDocument,
+  recordedReply,
+  takenReply,
 } from '../testing/index.ts';
 import { checkedAnswer } from './answer-check.ts';
 import { answerInteraction } from './answer-interaction.ts';
@@ -38,6 +40,7 @@ const outputOf = Schema.decodeUnknownSync(
 
 const interaction = {
   run_id: runId,
+  type: 'interaction',
   function: 'approve-brief',
   version: 1,
   to: 'ada',
@@ -92,7 +95,7 @@ describe('a request asked through the inbox', () => {
 });
 
 describe('an answer to a request', () => {
-  it('settles its run with the answer as its output, recorded with who answered and the claim', async () => {
+  it('is recorded on the run with who answered and the claim, and the run takes it at the next due work', async () => {
     const { brain } = await askedApproval();
 
     const answered = await brain.call(answer, {
@@ -100,31 +103,57 @@ describe('an answer to a request', () => {
       answer: { choice: 'approve' },
       claimed_for: 'ada',
     });
+    const before = await brain.runOf(runId);
+    const listed = await brain.call(listInteractions, {});
+    await brain.performDue(Date.now());
 
-    expect(answered).toMatchObject({
+    expect(answered).toEqual({
       status: 'succeeded',
-      output: { run_id: runId, status: 'succeeded', output: { choice: 'approve' } },
-    });
-    expect(await brain.runOf(runId)).toMatchObject({
       output: {
-        status: 'succeeded',
-        record: { answered_by: acmeAdmin.id, claimed_for: 'ada', answered_at: someText },
+        run_id: runId,
+        answer_id: someText,
+        answer: { choice: 'approve' },
+        claimed_for: 'ada',
+        answered_by: acmeAdmin.id,
+        answered_at: someText,
       },
     });
-    expect(await brain.call(listInteractions, {})).toMatchObject({ output: { interactions: [] } });
+    expect([before, listed]).toMatchObject([{ output: { status: 'started' } }, { output: { interactions: [] } }]);
+    expect(await brain.runOf(runId)).toMatchObject({
+      output: { status: 'succeeded', output: { choice: 'approve' }, record: {} },
+    });
   });
+});
 
-  it('answers what landed for the same answer again, and is a conflict for another one', async () => {
+describe('an answer to a request that took one', () => {
+  it('answers the answer the run took for the same answer again, and is a conflict for another one', async () => {
     const { brain } = await askedApproval();
-    await brain.call(answer, { run_id: runId, answer: { choice: 'approve' } });
+    const first = await brain.call(answer, { run_id: runId, answer: { choice: 'approve' } });
+    await brain.performDue(Date.now());
 
     expect([
-      await brain.call(answer, { run_id: runId, answer: { choice: 'approve' } }),
+      await brain.call(answer, { run_id: runId, answer: { choice: 'approve' }, claimed_for: 'ada' }),
       await brain.call(answer, { run_id: runId, answer: { choice: 'reject' } }),
     ]).toMatchObject([
-      { status: 'succeeded', output: { status: 'succeeded' } },
-      { status: 'rejected', reason: 'conflict', detail: 'The run already ended with another result' },
+      first,
+      {
+        status: 'rejected',
+        reason: 'conflict',
+        detail: 'The run already took another answer, and a run takes one answer, so it takes no other',
+      },
     ]);
+  });
+});
+
+describe('an answer to a request a reply answered first', () => {
+  it('answers the answer the reply brought when it is the same, with the reply that brought it', async () => {
+    const { brain } = await askedThroughChat();
+    await recordedReply(brain.ledger, { choice: 'approve' });
+
+    expect(await brain.call(answer, { run_id: askedRunId, answer: { choice: 'approve' } })).toMatchObject({
+      status: 'succeeded',
+      output: { answer: { choice: 'approve' }, reply: takenReply, answered_by: 'brain:alpha' },
+    });
   });
 });
 
@@ -155,7 +184,7 @@ describe('an answer the request does not take', () => {
       {
         status: 'rejected',
         reason: 'conflict',
-        detail: 'The run is not a request of an interaction function that waits for an answer',
+        detail: 'The run is not a request of a function that waits for an answer',
       },
     ]);
   });
@@ -215,7 +244,7 @@ describe('the words of answers and requests', () => {
       ),
     ]).toEqual([
       'answer the request',
-      'The request is answered: the run that asked it succeeded, with the answer as its output.',
+      'The request is answered: the run that asked it takes the answer within a second, and get_run shows how it ended.',
       'list the open requests',
       'No request is waiting.',
       'Found 1 request waiting on this page.',

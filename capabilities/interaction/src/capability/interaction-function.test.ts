@@ -14,23 +14,20 @@ import { describeAnswer, interactionRunWords } from './interaction-words.ts';
 describe('the interaction capability', () => {
   it('prepares a question to finish later within its expiry, and a notification to the inbox to finish at once', () => {
     const { capability } = interactionHarness();
+    const input = { campaign: 'Spring', owner: 'ada' };
+    const prepared = [approvalDocument(), notificationDocument(), notificationDocument(chatDelivery)].map((document) =>
+      Effect.runSync(capability.prepare(document)),
+    );
 
-    expect([
-      Effect.runSync(capability.prepare(approvalDocument())),
-      Effect.runSync(capability.prepare(notificationDocument())),
-      Effect.runSync(capability.prepare(notificationDocument(chatDelivery))),
-    ]).toMatchObject([
-      {
-        finishesLater: true,
-        longestRunMs: 172_800_000,
-        whenCancelled: 'finish',
-        summary: { details: { expires: 'P2D' } },
-      },
-      { finishesLater: false, longestRunMs: 3_600_000 },
-      {
-        finishesLater: true,
-        summary: { details: { expires: 'PT1H', deliver: { server: 'chat', tool: 'post_message' } } },
-      },
+    expect(prepared).toMatchObject([
+      { whenCancelled: 'finish', summary: { details: { expires: 'P2D' } } },
+      {},
+      { summary: { details: { expires: 'PT1H', deliver: { server: 'chat', tool: 'post_message' } } } },
+    ]);
+    expect(prepared.map(({ finishesLater, longestRunMs }) => [finishesLater(input), longestRunMs(input)])).toEqual([
+      [true, 172_800_000],
+      [false, 3_600_000],
+      [true, 3_600_000],
     ]);
   });
 

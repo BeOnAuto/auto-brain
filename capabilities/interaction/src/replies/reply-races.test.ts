@@ -55,31 +55,33 @@ function readOver(brain: ChatHarness, ledger: ConversationLedger) {
 }
 
 describe('a reply taken, whose settlement the server stopped before', () => {
-  it('is settled from the reply after a restart, with the reply as evidence', async () => {
+  it('is settled from the answer the reply brought after a restart, which left the list of open requests at once', async () => {
     const brain = await repliedInThread();
 
     const exit = await readOver(brain, stoppingBeforeSettling(brain.ledger.service));
     const afterStop = await brain.firstOpen();
     await brain.performDue(Date.now());
 
-    expect([Exit.isFailure(exit), afterStop]).toMatchObject([true, { standing: 'answered' }]);
+    expect([Exit.isFailure(exit), afterStop]).toEqual([true, undefined]);
     expect(await brain.runOf(runId)).toMatchObject({
-      output: {
-        status: 'succeeded',
-        output: { choice: 'approve' },
-        record: { answered_by: 'brain:alpha', reply: { sender: answererId } },
-      },
+      output: { status: 'succeeded', output: { choice: 'approve' }, record: {} },
     });
+    expect(await recordsOf(brain.ledger, 'request_answered')).toMatchObject([
+      { data: { answer: { choice: 'approve' }, reply: { sender: answererId } } },
+    ]);
   });
 });
 
 describe('a reply to a request answered while the conversation was read', () => {
-  it('takes nothing, and the answer given first stands', async () => {
+  it('takes nothing, and the answer given first is the one the run takes', async () => {
     const brain = await repliedInThread();
 
     await readOver(brain, answeredMeanwhile(brain));
+    await brain.performDue(Date.now());
 
-    expect(await recordsOf(brain.ledger, 'reply_taken', 'reply_refused')).toEqual([]);
+    expect(
+      (await recordsOf(brain.ledger, 'request_answered', 'reply_refused')).map(({ type, data }) => [type, data]),
+    ).toEqual([['request_answered', { answer: { choice: 'reject' } }]]);
     expect(await brain.runOf(runId)).toMatchObject({ output: { output: { choice: 'reject' } } });
   });
 });

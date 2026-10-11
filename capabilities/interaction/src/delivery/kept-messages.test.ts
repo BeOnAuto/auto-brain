@@ -1,7 +1,7 @@
-import { runEventOf } from '@beonauto/definitions';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { interactionFactOf } from '../facts/run-facts.ts';
 import {
   alpha,
   answered,
@@ -21,7 +21,7 @@ async function deliveryEndOf(brain: ChatHarness) {
   const { records } = await Effect.runPromise(
     brain.ledger.service.readRecorded(alpha, { kind: 'run', run: runId }, { order: 'asc', limit: 20 }),
   );
-  return records.map((record) => runEventOf(record)).find((event) => event?.type === 'delivery_succeeded');
+  return records.map((record) => interactionFactOf(record)).find((event) => event?.type === 'delivery_succeeded');
 }
 
 async function deliveredWith(answer?: FakeAnswer, document?: string) {

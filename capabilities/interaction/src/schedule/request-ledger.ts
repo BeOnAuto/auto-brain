@@ -1,9 +1,11 @@
 import {
+  runEventOf,
   runSettler,
-  outboundCallRecorder,
-  type OutboundCallFact,
-  type RecordedOutboundCall,
+  workRecorder,
+  type RecordedWorkAt,
   type Settlement,
+  type Work,
+  type WorkRule,
 } from '@beonauto/definitions';
 import type {
   Lineage,
@@ -16,6 +18,9 @@ import type {
 import { Effect, Schema } from 'effect';
 
 import type { RequestAddress } from '../delivery/attempt-end.ts';
+import { interactionRunFacts } from '../facts/declared-facts.ts';
+import type { DeliveryEvent } from '../facts/run-facts.ts';
+import { deliveryRule } from '../facts/work-rules.ts';
 import type { DueRequest } from './delivery-parts.ts';
 import { answeredSettlement, deliveredSettlement } from './request-endings.ts';
 
@@ -27,24 +32,6 @@ export interface RequestLedger
     Pick<ProjectionReader, 'readDueRows' | 'nextDueOf'> {}
 
 const decodeFirst = Schema.decodeUnknownSync(Schema.NonEmptyArray(Schema.Struct({ correlationId: Schema.String })));
-
-const broughtAt = { id: Schema.String, context: Schema.Struct({ at: Schema.String }) };
-
-const decodeLastBrought = Schema.decodeUnknownSync(
-  Schema.NonEmptyArray(
-    Schema.Union([
-      Schema.Struct({ ...broughtAt, type: Schema.Literal('delivery_succeeded') }),
-      Schema.Struct({
-        ...broughtAt,
-        type: Schema.Literal('reply_taken'),
-        data: Schema.Struct({
-          answer: Schema.Json,
-          reply: Schema.Struct({ id: Schema.String, sender: Schema.String }),
-        }),
-      }),
-    ]),
-  ),
-);
 
 export function correlationOf(
   ledger: Pick<RecordedReader, 'readRecorded'>,
@@ -68,31 +55,60 @@ export function settled(
   );
 }
 
-export function recordedCall(
-  ledger: StreamWriter,
-  address: RequestAddress,
-  fact: OutboundCallFact,
-  lineage: Lineage,
-): Effect.Effect<RecordedOutboundCall | undefined> {
-  return outboundCallRecorder(ledger)(address, fact, lineage).pipe(Effect.catchTag('conflict', () => Effect.undefined));
+export interface RuledWork {
+  readonly work: Work;
+  readonly rule: WorkRule;
 }
 
-const lastBrought: RecordedPageRequest = {
+export function recordedWork(
+  ledger: StreamReader & StreamWriter,
+  address: RequestAddress,
+  { work, rule }: RuledWork,
+  lineage: Lineage,
+): Effect.Effect<RecordedWorkAt | undefined> {
+  return workRecorder(ledger, interactionRunFacts)(address, work, lineage, rule).pipe(
+    Effect.catchTag('conflict', () => Effect.undefined),
+  );
+}
+
+export function recordedCall(
+  ledger: StreamReader & StreamWriter,
+  address: RequestAddress,
+  fact: DeliveryEvent,
+  lineage: Lineage,
+): Effect.Effect<RecordedWorkAt | undefined> {
+  return recordedWork(ledger, address, { work: { type: 'work', fact }, rule: deliveryRule(fact) }, lineage);
+}
+
+const lastDelivered: RecordedPageRequest = { order: 'desc', limit: 1, types: ['delivery_succeeded'], dataOf: [] };
+
+const lastAnswered: RecordedPageRequest = {
   order: 'desc',
   limit: 1,
-  types: ['delivery_succeeded', 'reply_taken'],
-  dataOf: ['reply_taken'],
+  types: ['request_answered'],
+  dataOf: ['request_answered'],
 };
 
-export function settledFromBroughtAnswer(ledger: RequestLedger, { address, lineage }: DueRequest): Effect.Effect<void> {
-  return ledger.readRecorded(address, { kind: 'run', run: address.id }, lastBrought).pipe(
-    Effect.orDie,
-    Effect.flatMap(({ records }) => {
-      const [last] = decodeLastBrought(records);
-      const { at } = last.context;
-      const settlement =
-        last.type === 'reply_taken' ? answeredSettlement(address, { ...last.data, at }) : deliveredSettlement(at);
-      return settled(ledger, address, settlement, { ...lineage, causationId: last.id });
-    }),
-  );
+const decodeLast = Schema.decodeUnknownSync(
+  Schema.NonEmptyArray(Schema.Struct({ id: Schema.String, context: Schema.Struct({ at: Schema.String }) })),
+);
+
+function settlementOf(recorded: unknown, at: string): Settlement {
+  const fact = runEventOf(recorded);
+  return fact?.type === 'request_answered'
+    ? answeredSettlement({ answer: fact.data.answer, by: fact.context.by })
+    : deliveredSettlement(at);
+}
+
+export function settledFromAnswer(ledger: RequestLedger, { address, row, lineage }: DueRequest): Effect.Effect<void> {
+  return ledger
+    .readRecorded(address, { kind: 'run', run: address.id }, row.answers ? lastAnswered : lastDelivered)
+    .pipe(
+      Effect.orDie,
+      Effect.flatMap(({ records }) => {
+        const [last] = decodeLast(records);
+        const settlement = settlementOf(records[0], last.context.at);
+        return settled(ledger, address, settlement, { ...lineage, causationId: last.id });
+      }),
+    );
 }

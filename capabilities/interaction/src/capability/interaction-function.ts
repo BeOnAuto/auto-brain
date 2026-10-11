@@ -7,6 +7,7 @@ import {
 
 import { callRun, longestCallRunMs } from '../call/call-run.ts';
 import type { InteractionFunctionDefinitionDocument } from '../document/interaction-document.ts';
+import { interactionFacts } from '../facts/declared-facts.ts';
 import { asksLater, requestRun } from '../run/interaction-run.ts';
 import type { InteractionPorts } from '../run/request-reach.ts';
 import { parse, summarize } from './definition-reading.ts';
@@ -48,6 +49,7 @@ export function makeInteractionFunctionAdapter(ports: InteractionPorts): Capabil
     finishesLater,
     longestRunOf,
     runWords: interactionRunWords,
+    facts: interactionFacts,
     cancel: cancelledRequest,
   });
 }
