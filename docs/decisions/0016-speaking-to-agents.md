@@ -219,7 +219,7 @@ Decided against `origin/feat/facts-in-the-ledger` at 1f3a2397, where [decision 0
 
 ### Verification the build must include
 
-- The server starting with the three listings within their bytes and refusing to start with a listing one byte over, in the test that holds the bounds of §8 at the bound and one beyond; the three listings measured and pinned at 39,207, 8,157 and 30,996 bytes.
+- The server starting with the three listings within their bytes and refusing to start with a listing one byte over, in the test that holds the bounds of §8 at the bound and one beyond; the three listings measured and pinned at 39,248, 8,157 and 31,037 bytes, as 0023's amendment of the same day leaves them.
 - `mostToolsOnAConnection` 32: the server starting at 32 tools and refusing 33, where the test holds 26 and 27 today (`packages/api/src/bounds/served-bounds.test.ts:121-128`); the test names that say "twenty-five" saying what they count (`packages/server/src/mcp/served-tools.test.ts:84`; `mcp-endpoint-workflows.test.ts:79`).
 - The api README's row of the bound reading the limit and this record, and the MCP reference's count of tools unchanged at twenty-six.
 
