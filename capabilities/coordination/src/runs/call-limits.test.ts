@@ -1,4 +1,4 @@
-import { Effect } from 'effect';
+import { Effect, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { workflow } from '../testing/workflows.ts';
@@ -40,5 +40,26 @@ describe('the longest call of each step of a workflow', () => {
 
     expect(Object.keys(limits)).not.toContain('/do/2/computed');
     expect(Object.keys(limits)).not.toContain('/do/3/unsaved');
+  });
+});
+
+const counting = workflow(`
+do:
+  - listed: { call: run_definition, with: { type: counting, name: items, input: [1, 2, { more: [3] }] } }
+  - computed: { call: run_definition, with: { type: counting, name: items, input: [1, '\${ $data.next }'] } }
+  - deeper: { call: run_definition, with: { type: counting, name: items, input: { items: [{ name: '\${ $data }' }] } } }
+`);
+
+function countingLongestRunOf(_type: string, _name: string, input?: Schema.Json): Effect.Effect<number> {
+  return Effect.succeed(input === undefined ? 600_000 : JSON.stringify(input).length * 1000);
+}
+
+describe('the longest call of a step that gives the function its input written out', () => {
+  it('is the longest run of that input, and the longest of any input when an expression computes any part of it', async () => {
+    expect(await Effect.runPromise(longestCallsOf(counting, countingLongestRunOf))).toEqual({
+      '/do/0/listed': JSON.stringify([1, 2, { more: [3] }]).length * 1000 + callMarginMs,
+      '/do/1/computed': 600_000 + callMarginMs,
+      '/do/2/deeper': 600_000 + callMarginMs,
+    });
   });
 });

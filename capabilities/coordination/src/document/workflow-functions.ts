@@ -1,9 +1,4 @@
-import {
-  definitionResourceLabel,
-  emittedEventRefusal,
-  isReservedSource,
-  reservedEventTypes,
-} from '@beonauto/definitions';
+import { definitionResourceLabel, emittedEventsOf, isReservedSource, type BrainOwnNames } from '@beonauto/definitions';
 import {
   type CallFunctions,
   field,
@@ -42,43 +37,54 @@ function definitionDescribed(name: string, arguments_: Json): string {
   return type === undefined || definition === undefined ? name : `the ${definitionResourceLabel(type)} ${definition}`;
 }
 
-function emitRejections(attributes: JsonObject, pointer: string): readonly Rejection[] {
-  const type = field(attributes, 'type');
-  const source = field(attributes, 'source');
-  const reservedType =
-    typeof type === 'string' && reservedEventTypes.has(type)
-      ? [
-          rejection(
-            `${pointer}/type`,
-            `The type ${type} is one the brain records itself; give the event a type of your own`,
-          ),
-        ]
-      : [];
-  const reservedSource =
-    typeof source === 'string' && isReservedSource(source)
-      ? [
-          rejection(
-            `${pointer}/source`,
-            `The source ${source} is one the brain records itself; give the event a source of your own`,
-          ),
-        ]
-      : [];
-  return reservedType.concat(reservedSource);
+function emitRejectionsOf({ types }: BrainOwnNames) {
+  return (attributes: JsonObject, pointer: string): readonly Rejection[] => {
+    const type = field(attributes, 'type');
+    const source = field(attributes, 'source');
+    const reservedType =
+      typeof type === 'string' && types.has(type)
+        ? [
+            rejection(
+              `${pointer}/type`,
+              `The type ${type} is one the brain records itself; give the event a type of your own`,
+            ),
+          ]
+        : [];
+    const reservedSource =
+      typeof source === 'string' && isReservedSource(source)
+        ? [
+            rejection(
+              `${pointer}/source`,
+              `The source ${source} is one the brain records itself; give the event a source of your own`,
+            ),
+          ]
+        : [];
+    return reservedType.concat(reservedSource);
+  };
 }
 
-function emitRefusal(event: JsonObject): string | undefined {
-  const refusal = emittedEventRefusal(event);
-  return refusal === undefined ? undefined : `The event to emit is not one the brain takes: ${refusal}`;
+function emitRefusalOf(names: BrainOwnNames) {
+  const { refusalOf } = emittedEventsOf(names);
+  return (event: JsonObject): string | undefined => {
+    const refusal = refusalOf(event);
+    return refusal === undefined ? undefined : `The event to emit is not one the brain takes: ${refusal}`;
+  };
 }
 
-export const workflowFunctions: CallFunctions = {
-  argumentChecks: { [runDefinitionFunction]: runDefinitionRejections },
-  describe: definitionDescribed,
-  emitRejections,
-  emitRefusal,
-  scheduleRejections,
-  howAWorkflowReachesTheWorld: 'a workflow reaches the world only through its brain functions',
-  howAWorkflowStarts: 'run the workflow with run_definition',
-};
+export function workflowFunctionsOf(names: BrainOwnNames): CallFunctions {
+  return {
+    argumentChecks: { [runDefinitionFunction]: runDefinitionRejections },
+    describe: definitionDescribed,
+    emitRejections: emitRejectionsOf(names),
+    emitRefusal: emitRefusalOf(names),
+    scheduleRejections,
+    howAWorkflowReachesTheWorld: 'a workflow reaches the world only through its brain functions',
+    howAWorkflowStarts: 'run the workflow with run_definition',
+  };
+}
 
-export const workflowPolicy = policyOf(workflowFunctions);
+export type WorkflowPolicy = ReturnType<typeof policyOf>;
+
+export function workflowPolicyOf(names: BrainOwnNames): WorkflowPolicy {
+  return policyOf(workflowFunctionsOf(names));
+}

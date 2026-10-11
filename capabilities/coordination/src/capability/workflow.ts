@@ -1,6 +1,7 @@
 import {
   defineCapability,
   outputInWords,
+  type BrainOwnNames,
   type RunContext,
   type FinishesLater,
   type Capability,
@@ -11,8 +12,8 @@ import { Effect, Random, type Schema } from 'effect';
 
 import { checkedExpressions, type ExpressionCheck } from '../document/expression-check.ts';
 import {
-  readWorkflowDocument,
   runnableDocument,
+  workflowReaderOf,
   type ReadWorkflow,
   type WorkflowDefinitionDocument,
 } from '../document/workflow-document.ts';
@@ -26,6 +27,7 @@ export interface WorkflowAdapterDependencies {
   readonly check: ExpressionCheck;
   readonly mostDurationMs: number;
   readonly longestCallMs: number;
+  readonly names: BrainOwnNames;
 }
 
 const ranBefore =
@@ -71,6 +73,7 @@ function started(
 }
 
 export function makeWorkflowAdapter(dependencies: WorkflowAdapterDependencies): Capability {
+  const readWorkflowDocument = workflowReaderOf(dependencies.names);
   return defineCapability({
     type: 'workflow',
     title: 'Workflow',

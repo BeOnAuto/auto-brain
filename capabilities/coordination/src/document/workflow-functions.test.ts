@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import { testBrainNames, testWorkflowPolicy as workflowPolicy } from '../testing/test-sandbox.ts';
 import { workflow } from '../testing/workflows.ts';
-import { workflowFunctions, workflowPolicy } from './workflow-functions.ts';
+import { workflowFunctionsOf } from './workflow-functions.ts';
+
+const workflowFunctions = workflowFunctionsOf(testBrainNames);
 
 function rejectedIn(tasks: string): readonly string[] {
   return workflowPolicy(workflow(`do:\n${tasks}`)).map(({ pointer, detail }) => `${pointer}: ${detail}`);

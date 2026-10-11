@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 
 import { brainOn } from '../testing/brain.ts';
 import { testExpressionCheck } from '../testing/expression-checks.ts';
+import { testBrainNames } from '../testing/test-sandbox.ts';
 import { makeWorkflowAdapter } from './workflow.ts';
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-555555555551';
@@ -30,6 +31,7 @@ describe('a run whose call is cancelled while its workflow starts', () => {
       check: testExpressionCheck,
       mostDurationMs: 2_592_000_000,
       longestCallMs: 1000,
+      names: testBrainNames,
     });
     const brain = brainOn(memoryLedger(), [workflow]);
     await brain.call(brain.createDefinition, { type: 'workflow', name: 'flow', source: flow });

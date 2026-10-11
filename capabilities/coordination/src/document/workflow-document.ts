@@ -1,5 +1,5 @@
 import { readYaml, type LocatedProblem, type Position, type YamlKind } from '@beonauto/config';
-import { runnableExpression, type StrippedForms } from '@beonauto/definitions';
+import { runnableExpression, type BrainOwnNames, type StrippedForms } from '@beonauto/definitions';
 import { InvalidInput, type Issue } from '@beonauto/operations';
 import {
   durationLimitRejections,
@@ -18,7 +18,7 @@ import {
 import { Effect } from 'effect';
 
 import { dslProblems, type Problem } from './dsl-validation.ts';
-import { workflowPolicy } from './workflow-functions.ts';
+import { workflowPolicyOf, type WorkflowPolicy } from './workflow-functions.ts';
 
 const thirtyDays = 2_592_000_000;
 
@@ -43,8 +43,9 @@ export interface LocatedIssue {
 
 export const notRunnable = 'The workflow document is not a workflow this runtime runs';
 
-export function readWorkflowDocument(
+function readWorkflowDocument(
   source: string,
+  policy: WorkflowPolicy,
   mostDuration = thirtyDays,
 ): Effect.Effect<ReadWorkflow, InvalidInput> {
   return Effect.suspend(() => {
@@ -53,7 +54,7 @@ export function readWorkflowDocument(
       return Effect.fail(invalidDocument('The workflow document is not YAML this runtime reads', reading.problems));
     }
     const { value, locate } = reading.document;
-    const rejections = workflowPolicy(value);
+    const rejections = policy(value);
     const unreadable =
       nestingRejections(value).length > 0 || rejections.some(({ pointer }) => pointer === '/document/dsl');
     const problems = [
@@ -71,11 +72,19 @@ export function readWorkflowDocument(
   });
 }
 
+export function workflowReaderOf(
+  names: BrainOwnNames,
+): (source: string, mostDuration?: number) => Effect.Effect<ReadWorkflow, InvalidInput> {
+  const policy = workflowPolicyOf(names);
+  return (source, mostDuration) => readWorkflowDocument(source, policy, mostDuration);
+}
+
 export function parseWorkflowDocument(
   source: string,
+  policy: WorkflowPolicy,
   mostDuration = thirtyDays,
 ): Effect.Effect<WorkflowDefinitionDocument, InvalidInput> {
-  return Effect.map(readWorkflowDocument(source, mostDuration), ({ document }) => document);
+  return Effect.map(readWorkflowDocument(source, policy, mostDuration), ({ document }) => document);
 }
 
 function isShadowed({ pointer }: Problem, rejections: readonly Rejection[]): boolean {

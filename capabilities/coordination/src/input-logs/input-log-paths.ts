@@ -7,8 +7,7 @@ import {
   definitionArgumentsOf,
   type DefinitionArguments,
 } from '../document/definition-arguments.ts';
-import { workflowMachineSettings } from '../runs/workflow-machine-options.ts';
-import { testSandbox } from '../testing/test-sandbox.ts';
+import { testSandbox, testWorkflowSettings } from '../testing/test-sandbox.ts';
 import { workflow } from '../testing/workflows.ts';
 import type { InputLog } from './input-log-corpus.ts';
 
@@ -242,7 +241,7 @@ export function inputLogOf(name: string): InputLog {
   const runId = `0199a3c4-7d2e-7c1a-9b3f-${String(300 + number).padStart(12, '0')}`;
   const driver = memoryDriver({
     sandbox: testSandbox,
-    machine: workflowMachineSettings,
+    machine: testWorkflowSettings,
     respond: responderOf(path.answer ?? summarizing),
   });
   driver.start({

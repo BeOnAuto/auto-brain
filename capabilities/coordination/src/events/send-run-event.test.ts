@@ -4,6 +4,7 @@ import { HostElsewhere, HostStopped } from '@beonauto/workflow-host';
 import { Effect, type Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { testBrainNames } from '../testing/test-sandbox.ts';
 import { workflowBrain, type WorkflowBrain } from '../testing/workflow-brain.ts';
 import { acmeCaller } from '../testing/workflows.ts';
 import { defineSendRunEvent } from './send-run-event.ts';
@@ -33,7 +34,7 @@ function nested(levels: number): Schema.Json {
 
 beforeAll(async () => {
   brain = await workflowBrain();
-  sendEvent = defineSendRunEvent(brain.host);
+  sendEvent = defineSendRunEvent(brain.host, testBrainNames);
   await brain.call(brain.createDefinition, { type: 'workflow', name: 'approval', source: approval });
   await brain.call(brain.createDefinition, { type: 'workflow', name: 'envelope', source: envelope });
   await brain.call(brain.createDefinition, { type: 'echo', name: 'greet', source: '{"greeting": "Hello"}' });
@@ -117,7 +118,7 @@ describe('send_run_event to no running workflow', () => {
     'is rejected as not found when the run on the host answers %s',
     async (answer) => {
       const runId = idOf(5);
-      const answering = defineSendRunEvent({ deliver: () => Effect.succeed(answer) });
+      const answering = defineSendRunEvent({ deliver: () => Effect.succeed(answer) }, testBrainNames);
       await startedApproval(runId);
 
       expect(await brain.call(answering, { run_id: runId, event: { type: 'x' } })).toEqual({
@@ -133,9 +134,10 @@ describe('send_run_event that cannot be delivered', () => {
   it('is rejected as unavailable when the workflow cannot take it at that moment', async () => {
     const runId = idOf(6);
     await startedApproval(runId);
-    const stopping = defineSendRunEvent({
-      deliver: () => Effect.fail(new HostStopped({ detail: 'The server is stopping' })),
-    });
+    const stopping = defineSendRunEvent(
+      { deliver: () => Effect.fail(new HostStopped({ detail: 'The server is stopping' })) },
+      testBrainNames,
+    );
 
     expect(await brain.call(stopping, { run_id: runId, event: { type: 'x' } })).toEqual({
       status: 'rejected',
@@ -148,7 +150,7 @@ describe('send_run_event that cannot be delivered', () => {
     const runId = idOf(19);
     await startedApproval(runId);
     const detail = 'The workflows of this database run in another server';
-    const elsewhere = defineSendRunEvent({ deliver: () => Effect.fail(new HostElsewhere({ detail })) });
+    const elsewhere = defineSendRunEvent({ deliver: () => Effect.fail(new HostElsewhere({ detail })) }, testBrainNames);
 
     expect(await brain.call(elsewhere, { run_id: runId, event: { type: 'x' } })).toEqual({
       status: 'rejected',

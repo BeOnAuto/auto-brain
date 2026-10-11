@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { workflowPolicy } from '../document/workflow-functions.ts';
+import { testWorkflowPolicy as workflowPolicy } from '../testing/test-sandbox.ts';
 import { interpret, workflow } from '../testing/workflows.ts';
 
 function emitting(attributes: string) {

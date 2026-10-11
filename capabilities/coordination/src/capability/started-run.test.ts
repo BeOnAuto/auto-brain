@@ -1,13 +1,19 @@
-import { echo, noLongestRuns, recordingJournal } from '@beonauto/definitions/testing';
+import {
+  answeringLaterMs,
+  answeringNowMs,
+  asking,
+  echo,
+  noLongestRuns,
+  recordingJournal,
+} from '@beonauto/definitions/testing';
 import { memoryLedger } from '@beonauto/operations/testing';
-import type { RunStart, WorkflowHost } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { callMarginMs } from '../runs/call-limits.ts';
 import { brainOn } from '../testing/brain.ts';
-import { testExpressionCheck } from '../testing/expression-checks.ts';
+import { recordingStarts, recordingWorkflows } from '../testing/recording-starts.ts';
 import { acmeCaller } from '../testing/workflows.ts';
-import { makeWorkflowAdapter } from './workflow.ts';
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-555555555552';
 
@@ -19,27 +25,6 @@ const calling = [
   '  - greet: { call: run_definition, with: { type: echo, name: greet } }',
   '  - nested: { call: run_definition, with: { type: workflow, name: flow } }',
 ].join('\n');
-
-function recordingStarts() {
-  const starts: RunStart[] = [];
-  const recording: Pick<WorkflowHost, 'start'> = {
-    start: (_run, start) =>
-      Effect.sync(() => {
-        starts.push(start);
-        return 'started';
-      }),
-  };
-  return { starts, recording };
-}
-
-function recordingWorkflows(recording: Pick<WorkflowHost, 'start'>) {
-  return makeWorkflowAdapter({
-    runs: recording,
-    check: testExpressionCheck,
-    mostDurationMs: 2_592_000_000,
-    longestCallMs: 1000,
-  });
-}
 
 describe('the run a run of a workflow starts', () => {
   it('is known by its brain, its run, its version, its caller, its reaction depth and its lineage', async () => {
@@ -109,6 +94,37 @@ describe('the calls of the run a run of a workflow starts', () => {
         mostDurationMs: 2_592_000_000,
         longestCallMs: 1000,
         longestCallMsByTask: { '/do/0/greet': 660_000, '/do/1/nested': 2_592_060_000 },
+      },
+    ]);
+  });
+});
+
+const askingInTurn = [
+  "document: { dsl: '1.0.3', namespace: acme, name: asking, version: '1.0.0' }",
+  'do:',
+  '  - now: { call: run_definition, with: { type: asking, name: approve, input: { now: true } } }',
+  '  - later: { call: run_definition, with: { type: asking, name: approve, input: { campaign: Spring } } }',
+  '  - plain: { call: run_definition, with: { type: asking, name: approve } }',
+  "  - computed: { call: run_definition, with: { type: asking, name: approve, input: '${ $data }' } }",
+  "  - inside: { call: run_definition, with: { type: asking, name: approve, input: { now: '${ $data.now }' } } }",
+].join('\n');
+
+describe('the calls of a workflow to a function whose runs last as long as their input says', () => {
+  it('waits for each call as long as the call’s literal input may run, and as long as any input may otherwise', async () => {
+    const { starts, recording } = recordingStarts();
+    const brain = brainOn(memoryLedger(), [recordingWorkflows(recording), asking]);
+    await brain.call(brain.createDefinition, { type: 'asking', name: 'approve', source: 'Approve the brief?' });
+    await brain.call(brain.createDefinition, { type: 'workflow', name: 'asking', source: askingInTurn });
+
+    await brain.call(brain.runDefinition, { type: 'workflow', name: 'asking', run_id: runId });
+
+    expect(starts.map(({ limits }) => limits.longestCallMsByTask)).toEqual([
+      {
+        '/do/0/now': answeringNowMs + callMarginMs,
+        '/do/1/later': answeringLaterMs + callMarginMs,
+        '/do/2/plain': answeringLaterMs + callMarginMs,
+        '/do/3/computed': answeringLaterMs + callMarginMs,
+        '/do/4/inside': answeringLaterMs + callMarginMs,
       },
     ]);
   });
