@@ -36,18 +36,22 @@ describe('the change a record of a definition makes to what starts on its own', 
     expect([
       changeOf({ type: 'definition_created', data: { content: reacting } }),
       changeOf({ type: 'definition_updated', data: { content: plain } }, 'close', 2),
-      unversioned({ type: 'definition_retired', data: {} }),
+      changeOf({ type: 'definition_retired', data: {} }, 'close', 2),
       changeOf({ type: 'definition_created', data: { content: plain } }, 'plain'),
-      definitionChangeOf({ type: 'definition_created', context: at }),
-      unversioned({ type: 'definition_created', data: { content: reacting } }),
     ]).toEqual([
       { kind: 'activated', name: 'close', version: 1, triggers, at: at.at },
       { kind: 'deactivated', name: 'close' },
       { kind: 'deactivated', name: 'close' },
       { kind: 'unchanged' },
-      { kind: 'unreadable' },
-      { kind: 'activated', name: 'close', version: 1, triggers, at: at.at },
     ]);
+  });
+
+  it('is unreadable for a record without its data, or without the version it is about', () => {
+    expect([
+      definitionChangeOf({ type: 'definition_created', context: at }),
+      unversioned({ type: 'definition_created', data: { content: reacting } }),
+      unversioned({ type: 'definition_retired', data: {} }),
+    ]).toEqual([{ kind: 'unreadable' }, { kind: 'unreadable' }, { kind: 'unreadable' }]);
   });
 });
 

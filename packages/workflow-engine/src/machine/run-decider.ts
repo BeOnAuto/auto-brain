@@ -1,4 +1,4 @@
-import { factOf, type Context, type Decider } from '@beonauto/operations';
+import { RunContextSchema, factOf, type Context, type Decided, type Decider } from '@beonauto/operations';
 import { Result } from 'effect';
 
 import { RunLogEventSchema, type RunLogEvent } from '../run-log/run-event.ts';
@@ -12,11 +12,11 @@ export interface RunDecider {
   readonly context: (input: RunInput, state: RunState) => Context;
 }
 
-export const RunLogRecordSchema = factOf('input_applied', RunLogEventSchema);
+export const RunLogRecordSchema = factOf('input_applied', RunLogEventSchema, RunContextSchema);
 
 export type RunLogRecord = typeof RunLogRecordSchema.Type;
 
-export function runLogRecordOf(event: RunLogEvent): RunLogRecord {
+export function runLogRecordOf(event: RunLogEvent): Decided<RunLogRecord> {
   return { type: 'input_applied', data: event };
 }
 

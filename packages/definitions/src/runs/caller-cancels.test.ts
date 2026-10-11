@@ -1,11 +1,11 @@
-import { Conflict, NotFound, RunCancelled, type Recorded } from '@beonauto/operations';
+import { Conflict, NotFound, RunCancelled } from '@beonauto/operations';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { recordedWith, runStateAfter, testRunId } from '../testing/run-facts.ts';
 import type { RunCommand } from './run-commands.ts';
 import { runDecider } from './run-decider.ts';
-import type { RunEvent } from './run-events.ts';
+import type { RecordedRunEvent, RunEvent } from './run-events.ts';
 
 const start = { runId: testRunId, by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
 
@@ -23,11 +23,11 @@ const cancelAsked: RunEvent = { type: 'run_cancel_requested', data: { kind: 'par
 
 const cancelFirst = recordedWith(start)(cancelAsked);
 
-function stateAfter(...events: readonly Recorded<RunEvent>[]) {
+function stateAfter(...events: readonly RecordedRunEvent[]) {
   return runStateAfter(events);
 }
 
-function decided(command: RunCommand, ...history: readonly Recorded<RunEvent>[]) {
+function decided(command: RunCommand, ...history: readonly RecordedRunEvent[]) {
   return runDecider.decide(command, stateAfter(...history));
 }
 

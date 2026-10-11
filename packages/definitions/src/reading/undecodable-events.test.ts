@@ -1,4 +1,4 @@
-import { factOf, type Decider } from '@beonauto/operations';
+import { ActedOnRunContextSchema, factOf, type Decided, type Decider } from '@beonauto/operations';
 import { Effect, Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -11,9 +11,9 @@ const toAlpha = toBrain('acme', 'alpha');
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
-const BrokenSchema = factOf('run_started', Schema.Struct({ at: Schema.String }));
+const BrokenSchema = factOf('run_started', Schema.Struct({ at: Schema.String }), ActedOnRunContextSchema);
 
-const broken: Decider<null, typeof BrokenSchema.Type, typeof BrokenSchema.Type> = {
+const broken: Decider<null, Decided<typeof BrokenSchema.Type>, typeof BrokenSchema.Type> = {
   initialState: null,
   evolve: (state) => state,
   decide: (event) => Result.succeed([event]),

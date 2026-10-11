@@ -11,7 +11,7 @@ import { Effect } from 'effect';
 import { definitionResourceLabel } from '../capability/function-terminology.ts';
 import type { DefinitionCommandData } from '../registry/definition-commands.ts';
 import type { DefinitionRegistry } from '../registry/definition-registry.ts';
-import { definitionVersionDecider, type RecordedVersion } from '../registry/definition-versions.ts';
+import { definitionVersionFold, type RecordedVersion } from '../registry/definition-versions.ts';
 import type { StoredDefinition } from '../registry/definition.ts';
 import { definitionsDecider, definitionTypeStreamOf } from '../registry/definitions-decider.ts';
 import { findDefinition } from '../registry/registry-lookup.ts';
@@ -29,7 +29,7 @@ function recordedVersionOf(
   version: number,
 ): Effect.Effect<RecordedVersion, NotFound, BrainReader> {
   return BrainReader.use((reader) =>
-    reader.load(definitionTypeStreamOf(type), definitionVersionDecider(name, version)),
+    reader.load(definitionTypeStreamOf(type), definitionVersionFold(name, version)),
   ).pipe(
     Effect.flatMap(({ state: { found } }) =>
       found === undefined

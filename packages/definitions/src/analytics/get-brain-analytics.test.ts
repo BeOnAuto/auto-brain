@@ -3,7 +3,7 @@ import { Effect, Result, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { defineGetBrainAnalytics } from '../index.ts';
-import { RunEventSchema, type RunEvent } from '../runs/run-events.ts';
+import { RunEventSchema, type RecordedRunEvent, type RunEvent } from '../runs/run-events.ts';
 import type { RunRejection } from '../runs/run.ts';
 import { acmeReader } from '../testing/callers.ts';
 import { echo } from '../testing/echo.ts';
@@ -20,7 +20,7 @@ interface Writing {
   readonly context: Context;
 }
 
-const runEvents: Decider<null, Writing, RunEvent> = {
+const runEvents: Decider<null, Writing, RecordedRunEvent> = {
   initialState: null,
   evolve: () => null,
   decide: ({ event }) => Result.succeed([event]),
@@ -31,7 +31,14 @@ const runEvents: Decider<null, Writing, RunEvent> = {
 const now = '2026-10-06T12:00:00.000Z';
 
 function ofTheRun(name: string, type: string, at: string) {
-  return { at, by: 'acme-admin', definitionType: type, definitionName: name, definitionVersion: 1 };
+  return {
+    at,
+    by: 'acme-admin',
+    runId: `run-of-${name}`,
+    definitionType: type,
+    definitionName: name,
+    definitionVersion: 1,
+  };
 }
 
 const usage = { input: { total: 1200, cache_read: 1000 }, output: { total: 300 } };

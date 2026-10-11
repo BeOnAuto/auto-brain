@@ -1,4 +1,4 @@
-import { factOf, type Decider, type Presenter } from '@beonauto/operations';
+import { ActedOnRunContextSchema, factOf, type Decided, type Decider, type Presenter } from '@beonauto/operations';
 import { Effect, Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -17,16 +17,19 @@ const otherId = '0199a3c4-7d2e-7c1a-9b3f-000000000001';
 
 const KeySchema = Schema.Struct({ key: Schema.String });
 
-const StandInLogEventSchema = Schema.Union([factOf('input_applied', KeySchema), factOf('state_patched', KeySchema)]);
+const StandInLogEventSchema = Schema.Union([
+  factOf('input_applied', KeySchema, ActedOnRunContextSchema),
+  factOf('state_patched', KeySchema, ActedOnRunContextSchema),
+]);
 
-type StandInLogEvent = typeof StandInLogEventSchema.Type;
+type StandInLogEvent = Decided<typeof StandInLogEventSchema.Type>;
 
 interface Logging {
   readonly event: StandInLogEvent;
   readonly at: string;
 }
 
-const runLog: Decider<null, Logging, StandInLogEvent> = {
+const runLog: Decider<null, Logging, typeof StandInLogEventSchema.Type> = {
   initialState: null,
   evolve: (state) => state,
   decide: ({ event }) => Result.succeed([event]),

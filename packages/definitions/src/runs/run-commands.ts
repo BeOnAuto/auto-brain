@@ -1,7 +1,6 @@
-import type { CallLink } from '@beonauto/operations';
+import type { CallLink, StartingTrigger } from '@beonauto/operations';
 import type { Schema } from 'effect';
 
-import type { StartingTrigger } from '../registry/definition-triggers.ts';
 import type {
   CancelRequestKind,
   DeliveryEnded,

@@ -4,6 +4,7 @@ import {
   presentationOf,
   streamKindOf,
   type Context,
+  type Decided,
   type RecordedEvent,
 } from '@beonauto/operations';
 import { Result, Schema, SchemaAST } from 'effect';
@@ -29,7 +30,7 @@ const definitionsOfTheLongestType = definitionsDecider(longestType);
 
 const eventStream = publishedEventStreamOf('/ledger/eu', 'm-1');
 
-type DefinitionEvent = typeof definitionsOfTheLongestType.eventSchema.Type;
+type DefinitionEvent = Decided<typeof definitionsOfTheLongestType.eventSchema.Type>;
 
 function storedTypesOf(ast: SchemaAST.AST): readonly string[] {
   const members = SchemaAST.isUnion(ast) ? ast.types : [ast];
@@ -78,14 +79,12 @@ const largestCall = {
   tool: awkward,
   arguments_bytes: Number.MAX_SAFE_INTEGER,
   arguments_sha256: awkward,
-  content_kept: true,
 };
 
 const largestAnswer = {
   number: Number.MAX_SAFE_INTEGER,
   result_bytes: Number.MAX_SAFE_INTEGER,
   result_sha256: awkward,
-  content_kept: true,
   duration_ms: Number.MAX_SAFE_INTEGER,
   jsonrpc_id: awkward,
   server_request_id: awkward,

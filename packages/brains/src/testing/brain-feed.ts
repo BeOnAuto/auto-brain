@@ -1,5 +1,7 @@
 import {
+  ActedContextSchema,
   factOf,
+  type Decided,
   type Decider,
   type Lineage,
   type Outcome,
@@ -16,20 +18,20 @@ import { harness, toBrain } from './harness.ts';
 const TextSchema = Schema.Struct({ text: Schema.String });
 
 const FactSchema = Schema.Union([
-  factOf('added', TextSchema),
-  factOf('hidden', TextSchema),
-  factOf('kept', TextSchema),
-  factOf('moved', TextSchema),
+  factOf('added', TextSchema, ActedContextSchema),
+  factOf('hidden', TextSchema, ActedContextSchema),
+  factOf('kept', TextSchema, ActedContextSchema),
+  factOf('moved', TextSchema, ActedContextSchema),
 ]);
 
-export type Fact = typeof FactSchema.Type;
+export type Fact = Decided<typeof FactSchema.Type>;
 
 interface Recording {
   readonly fact: Fact;
   readonly at: string;
 }
 
-const recorder: Decider<null, Recording, Fact> = {
+const recorder: Decider<null, Recording, typeof FactSchema.Type> = {
   initialState: null,
   evolve: (state) => state,
   decide: ({ fact }) => Result.succeed([fact]),

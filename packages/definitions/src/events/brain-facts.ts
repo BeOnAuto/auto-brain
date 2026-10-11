@@ -1,16 +1,21 @@
-import { recordedDecoder, streamKindOf, type Context, type Recorded, type RecordedEvent } from '@beonauto/operations';
+import {
+  recordedDecoder,
+  streamKindOf,
+  type DefinitionContext,
+  type RecordedFact,
+  type RunContext,
+} from '@beonauto/operations';
 import { Option, type Schema } from 'effect';
 
-import { DefinitionEventSchema, type DefinitionEvent } from '../registry/definition-events.ts';
-import { definitionNameOf } from '../registry/definition-registry.ts';
+import { DefinitionEventSchema, type RecordedDefinitionEvent } from '../registry/definition-events.ts';
 import { jsonBytesOf, nestsWithin } from '../runs/recorded-size.ts';
-import { RunEventSchema, type RunEvent, type RunFinished, type RunStarted } from '../runs/run-events.ts';
+import { RunEventSchema, type RecordedRunEvent, type RecordedRunFact } from '../runs/run-events.ts';
 import type { RunRejection } from '../runs/run.ts';
 import { mostEventDataDepth, mostPublishedEventBytes, type CloudEvent } from './cloud-event.ts';
 import { EventPublishedSchema } from './published-events.ts';
 import { runSourcePrefix, definitionSourcePrefix } from './reserved-attributes.ts';
 
-type RunFact = RunStarted | RunFinished;
+type RunFact = RecordedRunFact<'run_started' | 'run_succeeded' | 'run_rejected' | 'run_failed'>;
 
 type Extensions = Readonly<Record<string, string | number>>;
 
@@ -24,30 +29,26 @@ const decodePublished = recordedDecoder(EventPublishedSchema);
 
 const publishedEventsKind = 'events';
 
-function isRunFact(event: Recorded<RunEvent>): event is Recorded<RunFact> {
+function isRunFact(event: RecordedRunEvent): event is RunFact {
   return runFactTypes.some((type) => type === event.type);
 }
 
-function triggerOf({ trigger }: Context): Extensions {
+type FactContext = DefinitionContext & Partial<Pick<RunContext, 'depth' | 'callDepth' | 'calledBy' | 'trigger'>>;
+
+function triggerOf({ trigger }: FactContext): Extensions {
   return trigger === undefined ? {} : { triggerkind: trigger.kind, triggerreference: trigger.reference };
 }
 
-function extensionsOf(context: Context): Extensions {
+function extensionsOf(context: FactContext): Extensions {
   const { by, definitionVersion, depth, callDepth, calledBy } = context;
   return {
     caller: by,
-    ...(definitionVersion === undefined ? {} : { definitionversion: definitionVersion }),
+    definitionversion: definitionVersion,
     ...(depth === undefined ? {} : { depth }),
     ...(callDepth === undefined ? {} : { calldepth: callDepth }),
     ...(calledBy === undefined ? {} : { calledby: calledBy.runId }),
     ...triggerOf(context),
   };
-}
-
-function subjectOf({ definitionType, definitionName }: Context): { readonly subject?: string } {
-  return definitionType === undefined || definitionName === undefined
-    ? {}
-    : { subject: `${definitionType}/${definitionName}` };
 }
 
 function withOutput(fact: CloudEvent, output: Schema.Json): CloudEvent {
@@ -62,14 +63,14 @@ function rejectionOf(rejection: RunRejection): Schema.JsonObject {
   return kind === undefined ? { reason: rejection.reason } : { reason: rejection.reason, kind };
 }
 
-function runFactOf(id: string, run: string, event: Recorded<RunFact>): CloudEvent {
+function runFactOf(id: string, run: string, event: RunFact): CloudEvent {
   const { context } = event;
   const fact: CloudEvent = {
     specversion: '1.0',
     id,
     source: `${runSourcePrefix}${run}`,
     type: event.type,
-    ...subjectOf(context),
+    subject: `${context.definitionType}/${context.definitionName}`,
     time: context.at,
     ...extensionsOf(context),
   };
@@ -79,22 +80,18 @@ function runFactOf(id: string, run: string, event: Recorded<RunFact>): CloudEven
   return event.type === 'run_rejected' ? { ...fact, data: rejectionOf(event.data.rejection) } : fact;
 }
 
-function definitionFactOf(
-  id: string,
-  definitionType: string,
-  { type, context }: Recorded<DefinitionEvent>,
-): CloudEvent {
+function definitionFactOf(id: string, definitionType: string, { type, context }: RecordedDefinitionEvent): CloudEvent {
   return {
     specversion: '1.0',
     id,
-    source: `${definitionSourcePrefix}${definitionType}/${definitionNameOf(context)}`,
+    source: `${definitionSourcePrefix}${definitionType}/${context.definitionName}`,
     type,
     time: context.at,
     ...extensionsOf(context),
   };
 }
 
-function factOf(record: RecordedEvent): CloudEvent | undefined {
+function factOf(record: RecordedFact): CloudEvent | undefined {
   const { id, stream } = record;
   const kind = streamKindOf(stream);
   const named = stream.slice(kind.length + 1);
@@ -107,19 +104,19 @@ function factOf(record: RecordedEvent): CloudEvent | undefined {
   return Option.getOrUndefined(Option.map(runFact, (event) => runFactOf(id, named, event)));
 }
 
-function lineageOf({ causationId, correlationId }: RecordedEvent): Readonly<Record<string, string>> {
+function lineageOf({ causationId, correlationId }: RecordedFact): Readonly<Record<string, string>> {
   return {
     ...(causationId === null ? {} : { causationid: causationId }),
     ...(correlationId === null ? {} : { correlationid: correlationId }),
   };
 }
 
-export function brainFactOf(record: RecordedEvent): CloudEvent | undefined {
+export function brainFactOf(record: RecordedFact): CloudEvent | undefined {
   const fact = factOf(record);
   return fact === undefined ? undefined : { ...fact, ...lineageOf(record) };
 }
 
-export function brainEventOf(record: RecordedEvent): CloudEvent | undefined {
+export function brainEventOf(record: RecordedFact): CloudEvent | undefined {
   if (streamKindOf(record.stream) !== publishedEventsKind || record.type !== 'event_published') {
     return brainFactOf(record);
   }

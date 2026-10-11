@@ -1,5 +1,5 @@
 import { tick, timeOf } from '@beonauto/ledger/dataset';
-import type { Context, Decider } from '@beonauto/operations';
+import { ContextSchema, type Context, type Decided, type Decider } from '@beonauto/operations';
 import { runFacts, type RunFact } from '@beonauto/operations/testing';
 import { Effect, Result, Schema } from 'effect';
 
@@ -25,16 +25,20 @@ const largeRecordBytes = 1_048_576;
 
 const big = { org: 'o1', brain: 'big' };
 
-const RunEventSchema = Schema.Struct({ type: Schema.String, data: Schema.Record(Schema.String, Schema.Json) });
+const RunEventSchema = Schema.Struct({
+  type: Schema.String,
+  data: Schema.Record(Schema.String, Schema.Json),
+  context: ContextSchema,
+});
 
-type RunEvent = typeof RunEventSchema.Type;
+type RunEvent = Decided<typeof RunEventSchema.Type>;
 
 interface RunAppend {
   readonly events: readonly RunEvent[];
   readonly context: Context;
 }
 
-const runEvents: Decider<null, RunAppend, RunEvent> = {
+const runEvents: Decider<null, RunAppend, typeof RunEventSchema.Type> = {
   initialState: null,
   evolve: () => null,
   decide: ({ events }) => Result.succeed(events),

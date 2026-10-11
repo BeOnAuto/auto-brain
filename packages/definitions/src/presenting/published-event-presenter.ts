@@ -1,17 +1,17 @@
-import type { Presenter, Recorded } from '@beonauto/operations';
+import type { Presenter } from '@beonauto/operations';
 
-import { EventPublishedSchema, type EventPublished } from '../events/published-events.ts';
+import { EventPublishedSchema, type RecordedEventPublished } from '../events/published-events.ts';
 import { eventEmitted, eventPublished } from '../plain-language/event-words.ts';
 import { cutAtCodePoint, mostDetailBytes, mostNameBytes } from './event-data.ts';
 import { eventPresenter, type Account } from './event-presenter.ts';
 
-function summaryOf(type: string, { runId, definitionName }: Recorded<EventPublished>['context']): string {
-  return runId === undefined || definitionName === undefined
-    ? eventPublished(type)
-    : eventEmitted(type, cutAtCodePoint(definitionName, mostNameBytes));
+function summaryOf(type: string, context: RecordedEventPublished['context']): string {
+  return 'runId' in context
+    ? eventEmitted(type, cutAtCodePoint(context.definitionName, mostNameBytes))
+    : eventPublished(type);
 }
 
-function accountOf({ data, context }: Recorded<EventPublished>): Account {
+function accountOf({ data, context }: RecordedEventPublished): Account {
   const { event, filled } = data;
   const type = cutAtCodePoint(event.type, mostNameBytes);
   return {
@@ -28,7 +28,7 @@ function accountOf({ data, context }: Recorded<EventPublished>): Account {
   };
 }
 
-export const publishedEventPresenter: Presenter = eventPresenter<EventPublished>({
+export const publishedEventPresenter: Presenter = eventPresenter<RecordedEventPublished>({
   streamKind: 'events',
   eventSchema: EventPublishedSchema,
   types: ['event_published'],

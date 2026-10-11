@@ -1,13 +1,13 @@
-import { Option, Schema } from 'effect';
+import { recordedDecoder } from '@beonauto/operations';
+import { Option } from 'effect';
 
 import { BrainEventSchema } from './brain-events.ts';
 
-const decodeBrainEvent = Schema.decodeUnknownOption(Schema.toCodecJson(BrainEventSchema));
+const decodeBrainEvent = recordedDecoder(BrainEventSchema);
 
-export function brainCreatedOf(recorded: { readonly type: string; readonly data: unknown }): string | undefined {
-  const { type, data } = recorded;
+export function brainCreatedOf(recorded: unknown): string | undefined {
   return Option.getOrUndefined(
-    Option.flatMap(decodeBrainEvent({ type, data }), (event) =>
+    Option.flatMap(decodeBrainEvent(recorded), (event) =>
       event.type === 'brain_created' ? Option.some(event.data.brain) : Option.none(),
     ),
   );

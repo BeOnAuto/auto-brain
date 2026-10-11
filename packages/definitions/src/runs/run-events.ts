@@ -1,5 +1,5 @@
 import { CallAnsweredSchema, CallFailedSchema, CallSentSchema, CallStartedSchema } from '@beonauto/mcp';
-import { IssueSchema, factOf } from '@beonauto/operations';
+import { ActedOnRunContextSchema, IssueSchema, RunContextSchema, factOf, type Decided } from '@beonauto/operations';
 import { Schema, Struct } from 'effect';
 
 import { RunRejectionSchema } from './run.ts';
@@ -17,6 +17,7 @@ export const DeliveryFailedBecauseSchema = Schema.Literals([
   'arguments_refused',
   'server_failure',
   'timed_out',
+  'too_large',
   'tool_not_offered',
   'lost',
 ]);
@@ -33,8 +34,7 @@ const DeliveryStartedSchema = Schema.Struct({
   server: sent.server,
   tool: sent.tool,
   arguments_bytes: Schema.optionalKey(sent.arguments_bytes),
-  arguments_sha256: Schema.optionalKey(sent.arguments_sha256),
-  content_kept: Schema.optionalKey(sent.content_kept),
+  arguments_sha256: sent.arguments_sha256,
 });
 
 const DeliverySucceededSchema = Schema.Struct({
@@ -51,8 +51,7 @@ const DeliveryFailedSchema = Schema.Struct({
   detail: Schema.optionalKey(Schema.String),
   retry_after_ms: Schema.optionalKey(Schema.Int),
   result_bytes: Schema.optionalKey(answered.result_bytes),
-  result_sha256: Schema.optionalKey(answered.result_sha256),
-  content_kept: Schema.optionalKey(answered.content_kept),
+  result_sha256: answered.result_sha256,
   duration_ms: Schema.Int,
   jsonrpc_id: Schema.optionalKey(answered.jsonrpc_id),
   server_request_id: answered.server_request_id,
@@ -79,23 +78,29 @@ export const RunEventSchema = Schema.Union([
       calls_tools: Schema.optionalKey(Schema.Literal(true)),
       finishes_later: Schema.optionalKey(Schema.Literal(true)),
     }),
+    RunContextSchema,
   ),
-  factOf('run_deferred', Schema.Struct({ record: Schema.JsonObject })),
-  factOf('run_succeeded', Schema.Struct({ output: Schema.Json, record: Schema.JsonObject })),
+  factOf('run_deferred', Schema.Struct({ record: Schema.JsonObject }), RunContextSchema),
+  factOf('run_succeeded', Schema.Struct({ output: Schema.Json, record: Schema.JsonObject }), RunContextSchema),
   factOf(
     'run_rejected',
     Schema.Struct({ rejection: RunRejectionSchema, record: Schema.optionalKey(Schema.JsonObject) }),
+    RunContextSchema,
   ),
-  factOf('run_failed', Schema.Struct({ incident: Schema.optionalKey(Schema.String) })),
-  factOf('run_cancel_requested', Schema.Struct({ kind: CancelRequestKindSchema, reason: Schema.String })),
-  factOf('tool_call_started', Schema.Struct({ ...numbered, ...CallStartedSchema.fields })),
-  factOf('tool_call_answered', Schema.Struct({ ...numbered, ...CallAnsweredSchema.fields })),
-  factOf('tool_call_failed', Schema.Struct({ ...numbered, ...CallFailedSchema.fields })),
-  factOf('delivery_started', DeliveryStartedSchema),
-  factOf('delivery_succeeded', DeliverySucceededSchema),
-  factOf('delivery_failed', DeliveryFailedSchema),
-  factOf('delivery_refused', DeliveryRefusedSchema),
-  factOf('reply_taken', Schema.Struct({ ...ofTheReading, answer: Schema.Json })),
+  factOf('run_failed', Schema.Struct({ incident: Schema.optionalKey(Schema.String) }), RunContextSchema),
+  factOf(
+    'run_cancel_requested',
+    Schema.Struct({ kind: CancelRequestKindSchema, reason: Schema.String }),
+    ActedOnRunContextSchema,
+  ),
+  factOf('tool_call_started', Schema.Struct({ ...numbered, ...CallStartedSchema.fields }), RunContextSchema),
+  factOf('tool_call_answered', Schema.Struct({ ...numbered, ...CallAnsweredSchema.fields }), RunContextSchema),
+  factOf('tool_call_failed', Schema.Struct({ ...numbered, ...CallFailedSchema.fields }), RunContextSchema),
+  factOf('delivery_started', DeliveryStartedSchema, RunContextSchema),
+  factOf('delivery_succeeded', DeliverySucceededSchema, RunContextSchema),
+  factOf('delivery_failed', DeliveryFailedSchema, RunContextSchema),
+  factOf('delivery_refused', DeliveryRefusedSchema, RunContextSchema),
+  factOf('reply_taken', Schema.Struct({ ...ofTheReading, answer: Schema.Json }), RunContextSchema),
   factOf(
     'reply_refused',
     Schema.Struct({
@@ -104,12 +109,17 @@ export const RunEventSchema = Schema.Union([
       issues: Schema.optionalKey(Schema.Array(IssueSchema)),
       told: Schema.Boolean,
     }),
+    RunContextSchema,
   ),
 ]);
 
-export type RunEvent = typeof RunEventSchema.Type;
+export type RecordedRunEvent = typeof RunEventSchema.Type;
+
+export type RunEvent = Decided<RecordedRunEvent>;
 
 type FactNamed<Type extends RunEvent['type']> = Extract<RunEvent, { readonly type: Type }>;
+
+export type RecordedRunFact<Type extends RunEvent['type']> = Extract<RecordedRunEvent, { readonly type: Type }>;
 
 export type RunStarted = FactNamed<'run_started'>;
 

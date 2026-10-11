@@ -1,7 +1,6 @@
 import { answeredInWords, failedInWords, toolInWords, type CallFailedBecause } from '@beonauto/mcp';
-import { capitalized, explanationOf, plainNumber, quoted } from '@beonauto/operations';
+import { capitalized, explanationOf, plainNumber, quoted, type StartingTrigger } from '@beonauto/operations';
 
-import type { StartingTrigger } from '../registry/definition-triggers.ts';
 import type { CancelRequestKind } from '../runs/run-events.ts';
 import type { RunRejection } from '../runs/run.ts';
 import type { DefinitionWords } from './definition-words.ts';

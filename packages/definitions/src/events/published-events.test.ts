@@ -1,4 +1,4 @@
-import { Conflict, type Recorded } from '@beonauto/operations';
+import { Conflict } from '@beonauto/operations';
 import { Effect, Exit, Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -9,6 +9,7 @@ import {
   recordedPublication,
   type EventPublished,
   type PublishEvent,
+  type RecordedEventPublished,
 } from './published-events.ts';
 
 const nameBasedUuid = /^events\/[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -28,11 +29,11 @@ const first: PublishEvent = { event: monthClosed, filled: [], by: 'acme-admin', 
 
 const fact: EventPublished = { type: 'event_published', data: { event: monthClosed, filled: [] } };
 
-const published: Recorded<EventPublished> = { ...fact, context: { at: first.at, by: first.by } };
+const published: RecordedEventPublished = { ...fact, context: { at: first.at, by: first.by } };
 
 const again = { by: 'acme-admin', at: '2026-10-01T09:05:00.000Z' };
 
-function decidedAfter(publish: PublishEvent, recorded: Recorded<EventPublished> = published) {
+function decidedAfter(publish: PublishEvent, recorded: RecordedEventPublished = published) {
   return publishedEventDecider.decide(publish, publishedEventDecider.evolve(undefined, recorded));
 }
 
@@ -100,7 +101,7 @@ describe('publishing the same event again', () => {
 
   it('compares only what both callers gave, so a time the brain filled in on either side is left out', () => {
     const later = { ...monthClosed, time: '2026-10-01T09:05:00.000Z' };
-    const timeFilledFirst: Recorded<EventPublished> = { ...published, data: { ...published.data, filled: ['time'] } };
+    const timeFilledFirst: RecordedEventPublished = { ...published, data: { ...published.data, filled: ['time'] } };
 
     expect(decidedAfter({ event: later, filled: ['time'], ...again })).toStrictEqual(Result.succeed([]));
     expect(decidedAfter({ event: later, filled: [], ...again }, timeFilledFirst)).toStrictEqual(Result.succeed([]));

@@ -32,7 +32,6 @@ describe('the words of a delivery', () => {
         number: 2,
         result_bytes: 20,
         result_sha256: 'b'.repeat(64),
-        content_kept: true,
         duration_ms: 10,
         jsonrpc_id: 2,
       },
@@ -53,6 +52,7 @@ describe('the words of a delivery', () => {
 describe('the words of a delivery that did not land', () => {
   const failures: ReadonlyArray<readonly [DeliveryFailedBecause, string]> = [
     ['timed_out', 'the tool server did not answer in time'],
+    ['too_large', 'the tool answered more than one call may take'],
     ['tool_not_offered', 'this server no longer offers the tool it names'],
     ['tool_error', 'the tool answered with an error'],
     ['arguments_refused', 'the tool server refused its arguments'],

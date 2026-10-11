@@ -1,11 +1,14 @@
 import { Buffer } from 'node:buffer';
 
-import type { Presenter, Recorded } from '@beonauto/operations';
+import type { Presenter } from '@beonauto/operations';
 
 import type { DefinitionWords } from '../plain-language/definition-words.ts';
 import { definitionCreated, definitionRetired, definitionUpdated } from '../plain-language/event-words.ts';
-import { DefinitionEventSchema, type DefinitionContent, type DefinitionEvent } from '../registry/definition-events.ts';
-import { definitionNameOf } from '../registry/definition-registry.ts';
+import {
+  DefinitionEventSchema,
+  type DefinitionContent,
+  type RecordedDefinitionEvent,
+} from '../registry/definition-events.ts';
 import { jsonBytesOf } from '../runs/recorded-size.ts';
 import { firstCharacters, mostDescriptionCharacters } from './event-data.ts';
 import { eventPresenter, type Account } from './event-presenter.ts';
@@ -20,12 +23,11 @@ function contentShown({ source, description, input_schema, output_schema, warnin
   };
 }
 
-function accountOf(words: DefinitionWords, event: Recorded<DefinitionEvent>, definitionType: string): Account {
-  const name = definitionNameOf(event.context);
+function accountOf(words: DefinitionWords, event: RecordedDefinitionEvent, definitionType: string): Account {
+  const { definitionName: name, definitionVersion: version } = event.context;
   if (event.type === 'definition_retired') {
     return { summary: definitionRetired(words, definitionType, name), data: {} };
   }
-  const { definitionVersion: version = 1 } = event.context;
   return {
     summary:
       event.type === 'definition_created'
@@ -36,7 +38,7 @@ function accountOf(words: DefinitionWords, event: Recorded<DefinitionEvent>, def
 }
 
 export function definitionPresenter(words: DefinitionWords): Presenter {
-  return eventPresenter<DefinitionEvent>({
+  return eventPresenter<RecordedDefinitionEvent>({
     streamKind: 'definitions',
     eventSchema: DefinitionEventSchema,
     types: ['definition_created', 'definition_updated', 'definition_retired'],

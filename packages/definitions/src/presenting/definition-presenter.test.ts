@@ -72,22 +72,25 @@ describe('the presenter of the changes to a definition', () => {
   });
 
   it('presents a retirement with no data, and names a definition of a capability the server does not offer as an item', () => {
-    expect(presented({ type: 'definition_retired', data: {} }, undefined, 'gone')).toMatchObject({
+    expect(presented({ type: 'definition_retired', data: {} }, 4, 'gone')).toMatchObject({
       type: 'definition_retired',
       summary: 'The item “greet” was retired.',
       data: {},
-      metadata: { definition: { type: 'gone', name: 'greet' } },
+      metadata: { definition: { type: 'gone', name: 'greet', version: 4 } },
     });
   });
 
-  it('shows the first three hundred characters of a description, and an update recorded without its version as the first', () => {
+  it('shows the first three hundred characters of a description', () => {
     const description = `${'😀'.repeat(299)}ab`;
 
     expect(
       presented({ type: 'definition_created', data: { content: { source: 'Hi', description } } }, 1),
     ).toMatchObject({ data: { description: `${'😀'.repeat(299)}a` } });
-    expect(presented({ type: 'definition_updated', data: { content: { source: 'Hi' } } })).toMatchObject({
-      summary: 'The greeting “greet” was updated to version 1.',
-    });
+  });
+
+  it('fails on an update recorded without its version, which a presenter never hides', () => {
+    expect(() => presented({ type: 'definition_updated', data: { content: { source: 'Hi' } } })).toThrow(
+      'definitionVersion',
+    );
   });
 });

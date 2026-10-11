@@ -1,4 +1,4 @@
-import { decisionLoop, type Decided, type DecisionLoop, type StreamAppend } from '@beonauto/ledger';
+import { decisionLoop, type Decision, type DecisionLoop, type StreamAppend } from '@beonauto/ledger';
 import { Data, Effect } from 'effect';
 
 import { cachedLoadOf, keptAfter, runCacheOf, type RunCache } from '../cache/run-cache.ts';
@@ -10,7 +10,7 @@ import type { LoadedRun } from '../run-log/run-fold.ts';
 import type { RunLogStore } from '../run-log/run-store.ts';
 import { recordLineageOf } from './record-lineage.ts';
 
-export type RunDecision = Decided<LoadedRun, RunState, RunLogEvent>;
+export type RunDecision = Decision<LoadedRun, RunState, RunLogEvent>;
 
 export class SplitDecision extends Data.TaggedError('split_decision')<{
   readonly runId: string;

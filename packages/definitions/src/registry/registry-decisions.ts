@@ -128,11 +128,14 @@ function decideRetirement(
 }
 
 function versionSaved(command: DefinitionCommand, registry: DefinitionRegistry): Pick<Context, 'definitionVersion'> {
-  if (command.type === 'retire') {
+  const existing = registry.get(command.name);
+  if (command.type === 'create') {
+    return { definitionVersion: 1 };
+  }
+  if (existing === undefined) {
     return {};
   }
-  const existing = registry.get(command.name);
-  return { definitionVersion: command.type === 'create' || existing === undefined ? 1 : existing.version + 1 };
+  return { definitionVersion: command.type === 'retire' ? existing.version : existing.version + 1 };
 }
 
 export function definitionContextOf(type: string, command: DefinitionCommand, registry: DefinitionRegistry): Context {

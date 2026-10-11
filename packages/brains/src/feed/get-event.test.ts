@@ -14,7 +14,8 @@ const calls: Presenter = {
   publicNames: { added: ['call_answered'] },
   present: ({ data }) => {
     const { text } = decodeText(data);
-    return [{ type: 'call_answered', summary: 'A tool answered.', data: { text, result: text.repeat(70_000) } }];
+    const answered = { text, result: text.repeat(70_000), output: text.repeat(1_048_576) };
+    return [{ type: 'call_answered', summary: 'A tool answered.', data: answered }];
   },
 };
 
@@ -33,6 +34,8 @@ const steps: Presenter = {
 const getEvent = defineGetEvent([presenterOf('notes', { added: 'note_added' }), calls, steps]);
 
 const noteId = messageIdOf('brain/acme/alpha/notes', 1);
+
+const notAnEventId: unknown = expect.stringContaining('an underscore and a number from 1');
 
 async function feedWithEvents() {
   const feed = brainFeed();
@@ -61,13 +64,13 @@ describe('one event read whole', () => {
     const feed = await feedWithEvents();
     const recordId = messageIdOf('brain/acme/alpha/run-logs/r1', 1);
 
-    expect(await feed.callInBrain(getEvent, toAlpha(acmeAdmin, { event_id: `${recordId}/1` }))).toMatchObject({
+    expect(await feed.callInBrain(getEvent, toAlpha(acmeAdmin, { event_id: `${recordId}_1` }))).toMatchObject({
       status: 'succeeded',
-      output: { id: `${recordId}/1`, type: 'run_stepped', metadata: { causation_id: recordId } },
+      output: { id: `${recordId}_1`, type: 'run_stepped', metadata: { causation_id: recordId } },
     });
   });
 
-  it('holds every field whole over HTTP, and a result past 64 KiB as its size as a tool', async () => {
+  it('holds every field whole over HTTP, and a result or an output past 64 KiB as its size as a tool', async () => {
     const feed = await feedWithEvents();
     const request = toAlpha(acmeAdmin, { event_id: messageIdOf('brain/acme/alpha/calls/c1', 1) });
     const asTool = await feed.run(
@@ -77,9 +80,9 @@ describe('one event read whole', () => {
     );
 
     expect(await feed.callInBrain(getEvent, request)).toMatchObject({
-      output: { data: { text: 'y', result: 'y'.repeat(70_000) } },
+      output: { data: { text: 'y', result: 'y'.repeat(70_000), output: 'y'.repeat(1_048_576) } },
     });
-    expect(asTool).toMatchObject({ output: { data: { text: 'y', result_bytes: 70_002 } } });
+    expect(asTool).toMatchObject({ output: { data: { text: 'y', result_bytes: 70_002, output_bytes: 1_048_578 } } });
   });
 });
 
@@ -91,7 +94,7 @@ describe('an event that cannot be read', () => {
 
     expect([
       await feed.callInBrain(getEvent, toAlpha(acmeAdmin, { event_id: unknown })),
-      await feed.callInBrain(getEvent, toAlpha(acmeAdmin, { event_id: `${noteId}/1` })),
+      await feed.callInBrain(getEvent, toAlpha(acmeAdmin, { event_id: `${noteId}_1` })),
       await feed.callInBrain(getEvent, ofAnotherBrain),
     ]).toMatchObject([
       { status: 'rejected', reason: 'not_found', detail: `The brain holds no event ${unknown}` },
@@ -100,14 +103,19 @@ describe('an event that cannot be read', () => {
     ]);
   });
 
-  it('is refused for an id that is not the id of an event', async () => {
+  it('is refused for an id that is not the id of an event, a step numbered from 0 or with a leading zero, or a slash', async () => {
     const feed = await feedWithEvents();
+    const refused = ['note-1', `${noteId}_0`, `${noteId}_02`, `${noteId}/1`, `${noteId}_1234567`];
 
-    expect(await feed.callInBrain(getEvent, toAlpha(acmeAdmin, { event_id: 'note-1' }))).toMatchObject({
-      status: 'rejected',
-      reason: 'invalid_input',
-      issues: [{ pointer: '/event_id' }],
-    });
+    expect(
+      await Promise.all(refused.map((id) => feed.callInBrain(getEvent, toAlpha(acmeAdmin, { event_id: id })))),
+    ).toMatchObject(
+      refused.map(() => ({
+        status: 'rejected',
+        reason: 'invalid_input',
+        issues: [{ pointer: '/event_id', detail: notAnEventId }],
+      })),
+    );
   });
 });
 

@@ -1,11 +1,11 @@
-import { Conflict, type Recorded } from '@beonauto/operations';
+import { Conflict } from '@beonauto/operations';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { recordedWith, runStateAfter, testRunId } from '../testing/run-facts.ts';
 import type { RunCommand } from './run-commands.ts';
 import { runDecider } from './run-decider.ts';
-import type { RunEvent } from './run-events.ts';
+import type { RecordedRunEvent, RunEvent } from './run-events.ts';
 
 const start = { runId: testRunId, by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
 
@@ -32,11 +32,11 @@ const anotherRequest = new Conflict({
   detail: 'The run id belongs to a run of another definition or with another input',
 });
 
-function stateAfter(...events: readonly Recorded<RunEvent>[]) {
+function stateAfter(...events: readonly RecordedRunEvent[]) {
   return runStateAfter(events);
 }
 
-function decided(command: RunCommand, ...history: readonly Recorded<RunEvent>[]) {
+function decided(command: RunCommand, ...history: readonly RecordedRunEvent[]) {
   return runDecider.decide(command, stateAfter(...history));
 }
 

@@ -8,10 +8,14 @@ import type {
   DeliveryStarted,
 } from '../runs/run-events.ts';
 
-const becauseWords: Readonly<Record<DeliveryFailedBecause | DeliveryRefusedBecause, string>> = {
-  timed_out: 'the tool server did not answer in time',
+const refusedWords: Readonly<Record<DeliveryRefusedBecause, string>> = {
   too_large: 'its arguments are larger than a call may send',
   unworkable: 'its arguments cannot be rendered for this request',
+};
+
+const failedWords: Readonly<Record<DeliveryFailedBecause, string>> = {
+  timed_out: 'the tool server did not answer in time',
+  too_large: 'the tool answered more than one call may take',
   tool_not_offered: 'this server no longer offers the tool it names',
   tool_error: 'the tool answered with an error',
   arguments_refused: 'the tool server refused its arguments',
@@ -38,6 +42,6 @@ export function deliveryEnded({ type, data }: DeliveryEnded): string {
     return `${attempt} was delivered.`;
   }
   return type === 'delivery_failed'
-    ? `${attempt} failed, because ${becauseWords[data.because]}; another follows on the schedule, unless it was the last.`
-    : `${attempt} was refused, because ${becauseWords[data.because]}, so it is not tried again.`;
+    ? `${attempt} failed, because ${failedWords[data.because]}; another follows on the schedule, unless it was the last.`
+    : `${attempt} was refused, because ${refusedWords[data.because]}, so it is not tried again.`;
 }

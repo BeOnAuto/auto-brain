@@ -1,11 +1,11 @@
-import { Conflict, type Context, type Recorded } from '@beonauto/operations';
+import { Conflict, type Context } from '@beonauto/operations';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { recordedWith, runStateAfter, testRunId } from '../testing/run-facts.ts';
 import type { RunCommand, RunResult } from './run-commands.ts';
 import { runDecider, runStreamNameOf } from './run-decider.ts';
-import type { RunEvent } from './run-events.ts';
+import type { RecordedRunEvent, RunEvent } from './run-events.ts';
 import { startedRunOf } from './run-state.ts';
 
 const start = { runId: testRunId, by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
@@ -51,11 +51,11 @@ const startedAt = recordedWith(atTheStart);
 
 const finishedAt = recordedWith(atTheFinish);
 
-function stateAfter(...events: readonly Recorded<RunEvent>[]) {
+function stateAfter(...events: readonly RecordedRunEvent[]) {
   return runStateAfter(events);
 }
 
-function decided(command: RunCommand, ...history: readonly Recorded<RunEvent>[]) {
+function decided(command: RunCommand, ...history: readonly RecordedRunEvent[]) {
   return runDecider.decide(command, stateAfter(...history));
 }
 
@@ -234,11 +234,7 @@ describe('the attempts of a run', () => {
     expect(stateAfter(finishedAt(succeeded), finishedAt(failed))).toBeUndefined();
   });
 
-  it('hold a start recorded without its definition as a run of no definition', () => {
-    expect(startedRunOf(stateAfter(recordedWith(start)(started)))?.run).toMatchObject({
-      type: '',
-      name: '',
-      definition_version: 0,
-    });
+  it('refuse a start recorded without its definition, which no run is without', () => {
+    expect(() => recordedWith(start)(started)).toThrow('definitionType');
   });
 });

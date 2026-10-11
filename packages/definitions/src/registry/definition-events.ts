@@ -1,4 +1,4 @@
-import { factOf } from '@beonauto/operations';
+import { DefinitionContextSchema, factOf, type Decided } from '@beonauto/operations';
 import { Schema } from 'effect';
 
 import { StrippedFormsSchema } from '../capability/stripped-forms.ts';
@@ -20,13 +20,15 @@ export type DefinitionContent = typeof DefinitionContentSchema.Type;
 const SavedSchema = Schema.Struct({ content: DefinitionContentSchema });
 
 export const DefinitionEventSchema = Schema.Union([
-  factOf('definition_created', SavedSchema),
-  factOf('definition_updated', SavedSchema),
-  factOf('definition_retired', Schema.Struct({})),
+  factOf('definition_created', SavedSchema, DefinitionContextSchema),
+  factOf('definition_updated', SavedSchema, DefinitionContextSchema),
+  factOf('definition_retired', Schema.Struct({}), DefinitionContextSchema),
 ]);
 
-export type DefinitionEvent = typeof DefinitionEventSchema.Type;
+export type RecordedDefinitionEvent = typeof DefinitionEventSchema.Type;
 
-export type DefinitionCreated = Extract<DefinitionEvent, { readonly type: 'definition_created' }>;
+export type DefinitionEvent = Decided<RecordedDefinitionEvent>;
 
-export type DefinitionUpdated = Extract<DefinitionEvent, { readonly type: 'definition_updated' }>;
+export type DefinitionCreated = Extract<RecordedDefinitionEvent, { readonly type: 'definition_created' }>;
+
+export type DefinitionUpdated = Extract<RecordedDefinitionEvent, { readonly type: 'definition_updated' }>;

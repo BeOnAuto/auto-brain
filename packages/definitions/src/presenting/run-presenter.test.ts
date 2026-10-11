@@ -69,11 +69,18 @@ describe('the presenter of the events of a run', () => {
     });
   });
 
-  it('presents an input past 2 KiB as its size, and a start recorded without its definition still', () => {
-    const { by, at } = ofGreet;
-    const started = presented({ type: 'run_started', data: { input: 'x'.repeat(3000) } }, { runId: testRunId, by, at });
+  it('presents an input past 2 KiB as its size', () => {
+    const started = presented({ type: 'run_started', data: { input: 'x'.repeat(3000) } });
 
-    expect(started).toMatchObject({ summary: 'A run of the item “” started.', data: { input_bytes: 3002 } });
+    expect(started).toMatchObject({ data: { input_bytes: 3002 } });
+  });
+
+  it('fails on a fact of a run recorded without its definition, which a presenter never hides', () => {
+    const { by, at } = ofGreet;
+
+    expect(() => presented({ type: 'run_started', data: { input: {} } }, { runId: testRunId, by, at })).toThrow(
+      'definitionType',
+    );
   });
 
   it('fails on a record that is not a fact of a run, which the ledger never holds', () => {
@@ -171,7 +178,6 @@ const sent = {
   tool: 'get_lifelogs',
   arguments_bytes: 17,
   arguments_sha256: 'a'.repeat(64),
-  content_kept: true,
 };
 
 const answer = {
@@ -179,7 +185,6 @@ const answer = {
   is_error: false,
   result_bytes: 42,
   result_sha256: 'b'.repeat(64),
-  content_kept: true,
   duration_ms: 120,
   jsonrpc_id: 7,
 };
@@ -195,15 +200,18 @@ describe('the presenter of the start of a tool call', () => {
 
   it('shows that its server marks the tool read-only, and keeps nothing of a name but letters and digits in words', () => {
     expect([
-      presented({ type: 'tool_call_started', data: { ...sent, read_only: true, content_kept: false } }),
+      presented({ type: 'tool_call_started', data: { ...sent, read_only: true } }),
       presented({ type: 'tool_call_started', data: { ...sent, tool: 'files/read.v2', server: 'graph-eu' } }),
     ]).toMatchObject([
-      { data: { read_only: true, content_kept: false } },
+      { data: { read_only: true } },
       { summary: 'A run made tool call 3, to the files read v2 tool of graph eu.' },
     ]);
-    expect(presented({ type: 'tool_call_started', data: { ...sent, content_kept: false } })?.data).not.toHaveProperty(
-      'arguments',
-    );
+  });
+
+  it('shows no arguments for a call whose server keeps no content, since its fact names no digest', () => {
+    const { arguments_sha256: _digest, ...unkept } = sent;
+
+    expect(presented({ type: 'tool_call_started', data: unkept })?.data).not.toHaveProperty('arguments');
   });
 });
 

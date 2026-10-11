@@ -1,4 +1,4 @@
-import { Conflict, type Recorded } from '@beonauto/operations';
+import { Conflict } from '@beonauto/operations';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -11,7 +11,7 @@ import type {
 } from '../runs/run-commands.ts';
 import { runDecider } from '../runs/run-decider.ts';
 import { answeredByAReply } from '../runs/run-decisions.ts';
-import type { RunEvent } from '../runs/run-events.ts';
+import type { RecordedRunEvent, RunEvent } from '../runs/run-events.ts';
 import { recordedWith, runStateAfter, testRunId } from '../testing/run-facts.ts';
 
 const start = { runId: testRunId, by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
@@ -58,11 +58,11 @@ const attemptStarted = meanwhile(attempt);
 
 const attemptEnded = meanwhile(ended);
 
-function stateAfter(...events: readonly Recorded<RunEvent>[]) {
+function stateAfter(...events: readonly RecordedRunEvent[]) {
   return runStateAfter(events);
 }
 
-function decided(command: RunCommand, ...history: readonly Recorded<RunEvent>[]) {
+function decided(command: RunCommand, ...history: readonly RecordedRunEvent[]) {
   return runDecider.decide(command, stateAfter(...history));
 }
 
@@ -203,7 +203,6 @@ describe('the end of a delivery that delivered', () => {
         number: 1,
         result_bytes: 20,
         result_sha256: 'b'.repeat(64),
-        content_kept: true,
         duration_ms: 40,
         jsonrpc_id: 2,
       },

@@ -1,9 +1,9 @@
-import { Conflict, NotFound, type Context, type Recorded } from '@beonauto/operations';
-import { Result } from 'effect';
+import { Conflict, NotFound, type Context, type DefinitionContext } from '@beonauto/operations';
+import { Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { DefinitionCommand } from './definition-commands.ts';
-import type { DefinitionContent, DefinitionEvent } from './definition-events.ts';
+import type { DefinitionContent, RecordedDefinitionEvent } from './definition-events.ts';
 import { definitionsDecider, definitionTypeStreamOf } from './definitions-decider.ts';
 
 const echoDefinitions = definitionsDecider('echo');
@@ -21,15 +21,10 @@ const hello: DefinitionContent = {
 
 const howdy: DefinitionContent = { source: '{"greeting": "Howdy"}' };
 
-type RecordedDefinition = Recorded<DefinitionEvent>;
+type RecordedDefinition = RecordedDefinitionEvent;
 
-function ofTheDefinition(name: string, when: Pick<Context, 'by' | 'at'>, version?: number): Context {
-  return {
-    ...when,
-    definitionType: 'echo',
-    definitionName: name,
-    ...(version === undefined ? {} : { definitionVersion: version }),
-  };
+function ofTheDefinition(name: string, when: Pick<Context, 'by' | 'at'>, version: number): DefinitionContext {
+  return { ...when, definitionType: 'echo', definitionName: name, definitionVersion: version };
 }
 
 function created(name: string, content: DefinitionContent): RecordedDefinition {
@@ -44,8 +39,8 @@ const greetUpdated: RecordedDefinition = {
   context: ofTheDefinition('greet', change, 2),
 };
 
-function retired(name: string, at = change.at): RecordedDefinition {
-  return { type: 'definition_retired', data: {}, context: ofTheDefinition(name, { ...change, at }) };
+function retired(name: string, at = change.at, version = 1): RecordedDefinition {
+  return { type: 'definition_retired', data: {}, context: ofTheDefinition(name, { ...change, at }, version) };
 }
 
 const greetRetired = retired('greet');
@@ -105,7 +100,11 @@ describe('updating a definition', () => {
       contextOf(updatingGreet(howdy), greetCreated),
       contextOf(updatingGreet(hello), greetCreated, greetUpdated),
       contextOf(updatingGreet(hello)),
-    ]).toStrictEqual([greetUpdated.context, ofTheDefinition('greet', change, 3), ofTheDefinition('greet', change, 1)]);
+    ]).toStrictEqual([
+      greetUpdated.context,
+      ofTheDefinition('greet', change, 3),
+      { ...change, definitionType: 'echo', definitionName: 'greet' },
+    ]);
   });
 
   it('records nothing when the document is the same', () => {
@@ -128,7 +127,7 @@ describe('updating a definition', () => {
 });
 
 describe('retiring a definition', () => {
-  it('records the retirement of an active definition, with no version in its context', () => {
+  it('records the retirement of an active definition, with the version it retires in its context', () => {
     expect(decided(retiringGreet, greetCreated)).toStrictEqual(
       Result.succeed([{ type: 'definition_retired', data: {} }]),
     );
@@ -157,7 +156,7 @@ describe('the definitions of a capability', () => {
       greetCreated,
       created('wave', howdy),
       greetUpdated,
-      retired('greet', '2026-10-03T08:00:00.000Z'),
+      retired('greet', '2026-10-03T08:00:00.000Z', 2),
     );
 
     expect([...registry.values()]).toStrictEqual([
@@ -185,10 +184,12 @@ describe('the definitions of a capability', () => {
 });
 
 describe('the definitions of a capability, from what their facts say', () => {
-  it('hold a fact recorded without its name or version as a definition of no name at the next version', () => {
-    const registry = registryAfter({ ...greetCreated, context: creation }, { ...greetUpdated, context: { ...change } });
+  it('refuse a fact recorded without the definition and version it is about', () => {
+    const decode = Schema.decodeUnknownSync(echoDefinitions.eventSchema);
+    const { definitionVersion: _version, ...unversioned } = greetUpdated.context;
 
-    expect([...registry.values()]).toMatchObject([{ name: '', version: 2 }]);
+    expect(() => decode({ ...greetCreated, context: creation })).toThrow('definitionType');
+    expect(() => decode({ ...greetUpdated, context: unversioned })).toThrow('definitionVersion');
   });
 
   it('ignore an event about a definition they never saw created', () => {

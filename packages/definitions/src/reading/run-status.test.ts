@@ -34,7 +34,6 @@ const latestOfEveryType: Readonly<Record<RunEvent['type'], RunEvent>> = {
       ...ofTheTool,
       arguments_bytes: 2,
       arguments_sha256: 'a'.repeat(64),
-      content_kept: true,
     },
   },
   tool_call_answered: {
@@ -44,7 +43,6 @@ const latestOfEveryType: Readonly<Record<RunEvent['type'], RunEvent>> = {
       is_error: false,
       result_bytes: 2,
       result_sha256: 'b'.repeat(64),
-      content_kept: true,
       duration_ms: 5,
       jsonrpc_id: 1,
     },
@@ -60,7 +58,6 @@ const latestOfEveryType: Readonly<Record<RunEvent['type'], RunEvent>> = {
       number: 1,
       result_bytes: 2,
       result_sha256: 'b'.repeat(64),
-      content_kept: true,
       duration_ms: 5,
       jsonrpc_id: 1,
     },

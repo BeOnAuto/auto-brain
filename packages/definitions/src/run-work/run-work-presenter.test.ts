@@ -89,7 +89,6 @@ describe('the start of a delivery', () => {
         tool: 'post_message',
         arguments_bytes: 37,
         arguments_sha256: 'a'.repeat(64),
-        content_kept: true,
       },
     };
 
@@ -164,15 +163,13 @@ describe('the end of a delivery', () => {
   });
 });
 
-describe('the end of a delivery that answered and kept no conversation', () => {
-  it('shows what the tool answered alone', () => {
+describe('the end of a delivery that answered, of a server that keeps no content, and kept no conversation', () => {
+  it('shows the size of what the tool answered alone', () => {
     const delivered: RunEvent = {
       type: 'delivery_succeeded',
       data: {
         number: 1,
         result_bytes: 52,
-        result_sha256: 'b'.repeat(64),
-        content_kept: false,
         jsonrpc_id: 3,
         duration_ms: 5,
       },
@@ -181,8 +178,6 @@ describe('the end of a delivery that answered and kept no conversation', () => {
     expect(presented(delivered)[0]?.data).toEqual({
       number: 1,
       result_bytes: 52,
-      result_sha256: 'b'.repeat(64),
-      content_kept: false,
       jsonrpc_id: 3,
       duration_ms: 5,
     });
@@ -197,7 +192,6 @@ describe('the end of a delivery that answered', () => {
         number: 1,
         result_bytes: 52,
         result_sha256: 'b'.repeat(64),
-        content_kept: true,
         jsonrpc_id: 3,
         server_request_id: 'call-1',
         duration_ms: 5,

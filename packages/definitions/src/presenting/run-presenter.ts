@@ -1,11 +1,5 @@
 import { callFieldsShown, keptAnswerOf, keptArgumentsOf } from '@beonauto/mcp';
-import {
-  strictRecordedDecoder,
-  type KeptContent,
-  type PresentedFact,
-  type Presenter,
-  type Recorded,
-} from '@beonauto/operations';
+import { strictRecordedDecoder, type KeptContent, type PresentedFact, type Presenter } from '@beonauto/operations';
 
 import type { DefinitionWords } from '../plain-language/definition-words.ts';
 import {
@@ -19,11 +13,13 @@ import {
   toolFailed,
 } from '../plain-language/event-words.ts';
 import { deferralAccount, deliveryAccount, replyAccount } from '../run-work/run-work-accounts.ts';
-import { RunEventSchema, type RunEvent, type ToolCallEvent } from '../runs/run-events.ts';
+import { RunEventSchema, type RecordedRunEvent, type RecordedRunFact, type RunEvent } from '../runs/run-events.ts';
 import type { RunRejection } from '../runs/run.ts';
 import { cutAtCodePoint, issuesShown, mostDetailBytes, mostNameBytes } from './event-data.ts';
 
-type Shown<Type extends RunEvent['type']> = Recorded<Extract<RunEvent, { readonly type: Type }>>;
+type Shown<Type extends RunEvent['type']> = RecordedRunFact<Type>;
+
+type ToolCallShown = Shown<'tool_call_started' | 'tool_call_answered' | 'tool_call_failed'>;
 
 function rejectionShown(rejection: RunRejection) {
   const detail = cutAtCodePoint(rejection.detail, mostDetailBytes);
@@ -42,7 +38,7 @@ function named(text: string): string {
   return cutAtCodePoint(text, mostNameBytes);
 }
 
-function toolCallFact(event: Recorded<ToolCallEvent>, content: KeptContent): PresentedFact {
+function toolCallFact(event: ToolCallShown, content: KeptContent): PresentedFact {
   if (event.type === 'tool_call_started') {
     const { data } = event;
     const server = named(data.server);
@@ -66,7 +62,7 @@ function toolCallFact(event: Recorded<ToolCallEvent>, content: KeptContent): Pre
 }
 
 function startFact(words: DefinitionWords, { type, data, context }: Shown<'run_started'>): PresentedFact {
-  const { definitionType = '', definitionName = '', trigger } = context;
+  const { definitionType, definitionName, trigger } = context;
   return { type, summary: runStarted(words, definitionType, definitionName, trigger), data };
 }
 
@@ -97,22 +93,21 @@ const endingTypes: ReadonlySet<string> = new Set(['run_succeeded', 'run_rejected
 
 const replyTypes: ReadonlySet<string> = new Set(['reply_taken', 'reply_refused']);
 
-function isToolCall(event: Recorded<RunEvent>): event is Recorded<ToolCallEvent> {
+function isToolCall(event: RecordedRunEvent): event is ToolCallShown {
   return toolCallTypes.has(event.type);
 }
 
-function isEnding(event: Recorded<RunEvent>): event is Shown<'run_succeeded' | 'run_rejected' | 'run_failed'> {
+function isEnding(event: RecordedRunEvent): event is Shown<'run_succeeded' | 'run_rejected' | 'run_failed'> {
   return endingTypes.has(event.type);
 }
 
-function isReply(event: Recorded<RunEvent>): event is Shown<'reply_taken' | 'reply_refused'> {
+function isReply(event: RecordedRunEvent): event is Shown<'reply_taken' | 'reply_refused'> {
   return replyTypes.has(event.type);
 }
 
-function runFactOf(words: DefinitionWords, event: Recorded<RunEvent>, content: KeptContent): PresentedFact | undefined {
-  const runWords = words.runWordsOf(event.context.definitionType);
+function runFactOf(words: DefinitionWords, event: RecordedRunEvent, content: KeptContent): PresentedFact | undefined {
   if (event.type === 'run_deferred') {
-    return deferralAccount(runWords, event.data);
+    return deferralAccount(words.runWordsOf(event.context.definitionType), event.data);
   }
   if (isToolCall(event)) {
     return toolCallFact(event, content);
@@ -126,7 +121,9 @@ function runFactOf(words: DefinitionWords, event: Recorded<RunEvent>, content: K
   if (event.type === 'run_cancel_requested') {
     return cancelFact(event);
   }
-  return isEnding(event) ? endingFact(event) : deliveryAccount(runWords, event, content);
+  return isEnding(event)
+    ? endingFact(event)
+    : deliveryAccount(words.runWordsOf(event.context.definitionType), event, content);
 }
 
 const shownNames: Readonly<Record<Exclude<RunEvent['type'], 'run_deferred'>, readonly [string]>> = {

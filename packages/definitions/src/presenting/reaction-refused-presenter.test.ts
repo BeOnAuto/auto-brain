@@ -35,6 +35,7 @@ describe('the presenter of the refused reactions of a workflow', () => {
       by: 'brain:alpha',
       definitionType: 'workflow',
       definitionName: 'close-the-month',
+      definitionVersion: 2,
     };
     const data = { count: 3, reason, minute: '2026-10-01T09:00:00.000Z' };
 
@@ -44,7 +45,7 @@ describe('the presenter of the refused reactions of a workflow', () => {
         summary:
           'The workflow “close-the-month” was not started every time its triggers called for it in a minute; the details say how often and why.',
         data,
-        metadata: { definition: { type: 'workflow', name: 'close-the-month' } },
+        metadata: { definition: { type: 'workflow', name: 'close-the-month', version: 2 } },
       },
     ]);
   });

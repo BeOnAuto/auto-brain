@@ -76,7 +76,6 @@ describe('the outbound calls of a run', () => {
             number: 1,
             result_bytes: 20,
             result_sha256: 'b'.repeat(64),
-            content_kept: true,
             duration_ms: 3,
             jsonrpc_id: 2,
           },

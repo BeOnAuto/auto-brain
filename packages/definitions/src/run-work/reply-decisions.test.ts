@@ -1,11 +1,11 @@
-import { Conflict, type Recorded } from '@beonauto/operations';
+import { Conflict } from '@beonauto/operations';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { brainFactOf } from '../events/brain-facts.ts';
 import type { RunCommand, ReplyFact } from '../runs/run-commands.ts';
 import { runDecider } from '../runs/run-decider.ts';
-import type { RunEvent } from '../runs/run-events.ts';
+import type { RecordedRunEvent } from '../runs/run-events.ts';
 import { recordedWith, runStateAfter, testRunId } from '../testing/run-facts.ts';
 
 const start = { runId: testRunId, by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
@@ -46,7 +46,7 @@ function refusal(id: string): ReplyFact {
   return { type: 'reply_refused', data: { ...reading, reply: reply(id), because: 'not_an_answer', told: true } };
 }
 
-function stateAfter(...events: readonly Recorded<RunEvent>[]) {
+function stateAfter(...events: readonly RecordedRunEvent[]) {
   return runStateAfter(events);
 }
 
@@ -54,11 +54,11 @@ function replying(fact: ReplyFact): RunCommand {
   return { type: 'reply', fact, ...during };
 }
 
-function decided(fact: ReplyFact, ...history: readonly Recorded<RunEvent>[]) {
+function decided(fact: ReplyFact, ...history: readonly RecordedRunEvent[]) {
   return runDecider.decide(replying(fact), stateAfter(...history));
 }
 
-function recorded(fact: ReplyFact): Recorded<RunEvent> {
+function recorded(fact: ReplyFact): RecordedRunEvent {
   return meanwhile(fact);
 }
 

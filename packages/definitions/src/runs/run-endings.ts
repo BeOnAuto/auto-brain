@@ -1,19 +1,19 @@
-import { recordedDecoder, type Recorded } from '@beonauto/operations';
+import { recordedDecoder } from '@beonauto/operations';
 import { Option } from 'effect';
 
-import { RunEventSchema, type RunCancelRequested, type RunEvent, type RunFinished } from './run-events.ts';
+import { RunEventSchema, type RecordedRunEvent, type RecordedRunFact } from './run-events.ts';
 
-export type RunEnding = Recorded<RunFinished>;
+export type RunEnding = RecordedRunFact<'run_succeeded' | 'run_rejected' | 'run_failed'>;
 
-export type CancelRequested = Recorded<RunCancelRequested>;
+export type CancelRequested = RecordedRunFact<'run_cancel_requested'>;
 
 const decodeRunEvent = recordedDecoder(RunEventSchema);
 
-function isEnding(event: Recorded<RunEvent>): event is RunEnding {
+function isEnding(event: RecordedRunEvent): event is RunEnding {
   return event.type === 'run_succeeded' || event.type === 'run_rejected' || event.type === 'run_failed';
 }
 
-function isCancelRequest(event: Recorded<RunEvent>): event is CancelRequested {
+function isCancelRequest(event: RecordedRunEvent): event is CancelRequested {
   return event.type === 'run_cancel_requested';
 }
 

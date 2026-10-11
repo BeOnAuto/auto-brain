@@ -111,7 +111,11 @@ export { ListedRunSchema, type ListedRun } from './reading/listed-run.ts';
 export { RunIdInputField } from './operations/definition-fields.ts';
 export { makeDefinitionPresenters } from './presenting/definition-presenters.ts';
 export { brainEventOf, brainFactOf } from './events/brain-facts.ts';
-export { DefinitionEventSchema, type DefinitionEvent } from './registry/definition-events.ts';
+export {
+  DefinitionEventSchema,
+  type DefinitionEvent,
+  type RecordedDefinitionEvent,
+} from './registry/definition-events.ts';
 export { definitionTypeStreamOf } from './registry/definitions-decider.ts';
 export {
   callerSourcePrefix,
@@ -140,18 +144,22 @@ export {
   type Emission,
 } from './events/event-emitter.ts';
 export { publishedEventOf, type EventPublished } from './events/published-events.ts';
-export { ReactionRefusedSchema, reactionsStreamKind, type ReactionRefused } from './events/reaction-refusals.ts';
+export {
+  ReactionRefusedSchema,
+  reactionRefusalDecider,
+  reactionsStreamKind,
+  type ReactionRefusal,
+  type ReactionRefused,
+  type RecordedReactionRefused,
+} from './events/reaction-refusals.ts';
 export { mostReactingDefinitions } from './registry/registry-decisions.ts';
 export { definitionChangeOf, type DefinitionChange } from './registry/definition-changes.ts';
-export { definitionNameOf } from './registry/definition-registry.ts';
 export {
   EventTriggerSchema,
   ScheduleTriggerSchema,
-  StartingTriggerSchema,
   TriggerSchema,
   type EventTrigger,
   type ScheduleTrigger,
-  type StartingTrigger,
   type Trigger,
   type TriggerFilter,
 } from './registry/definition-triggers.ts';

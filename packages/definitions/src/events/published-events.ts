@@ -1,7 +1,16 @@
 import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
 
-import { Conflict, factOf, recordedDecoder, type Context, type Decider, type Recorded } from '@beonauto/operations';
+import {
+  ActedContextSchema,
+  Conflict,
+  EmittedContextSchema,
+  factOf,
+  recordedDecoder,
+  type Context,
+  type Decided,
+  type Decider,
+} from '@beonauto/operations';
 import { Effect, Equal, Option, Result, Schema } from 'effect';
 
 import { CloudEventSchema, type CloudEvent } from './cloud-event.ts';
@@ -22,9 +31,12 @@ export type Emitter = typeof EmitterSchema.Type;
 export const EventPublishedSchema = factOf(
   'event_published',
   Schema.Struct({ event: CloudEventSchema, filled: Schema.Array(FilledAttributeSchema) }),
+  Schema.Union([EmittedContextSchema, ActedContextSchema]),
 );
 
-export type EventPublished = typeof EventPublishedSchema.Type;
+export type RecordedEventPublished = typeof EventPublishedSchema.Type;
+
+export type EventPublished = Decided<RecordedEventPublished>;
 
 export interface PublishEvent {
   readonly event: CloudEvent;
@@ -35,7 +47,7 @@ export interface PublishEvent {
   readonly at: string;
 }
 
-export type PublishedEventState = Recorded<EventPublished> | undefined;
+export type PublishedEventState = RecordedEventPublished | undefined;
 
 const publishedEvents = Buffer.from('e897efc8cb4b47b2b2ba2be1a76aeefb', 'hex');
 
@@ -50,7 +62,7 @@ function given(event: CloudEvent, filled: ReadonlySet<string>): Schema.JsonObjec
   return filled.has('time') ? attributes : { ...attributes, time: instantOf(event.time) };
 }
 
-function isSameEvent({ data }: EventPublished, { event, filled }: PublishEvent): boolean {
+function isSameEvent({ data }: RecordedEventPublished, { event, filled }: PublishEvent): boolean {
   const filledOnEitherSide = new Set([...data.filled, ...filled]);
   return Equal.equals(given(data.event, filledOnEitherSide), given(event, filledOnEitherSide));
 }
@@ -83,7 +95,7 @@ function publicationContextOf({ emittedBy, depth, by, at }: PublishEvent): Conte
   return { at, by, ...emitterContextOf(emittedBy), ...(depth === undefined ? {} : { depth }) };
 }
 
-export const publishedEventDecider: Decider<PublishedEventState, PublishEvent, EventPublished, 'conflict'> = {
+export const publishedEventDecider: Decider<PublishedEventState, PublishEvent, RecordedEventPublished, 'conflict'> = {
   initialState: undefined,
   evolve: (_earlier, published) => published,
   decide: decideOnPublishing,
@@ -102,7 +114,7 @@ export function publishedEventStreamOf(source: string, id: string): string {
   return `events/${[hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20, 32)].join('-')}`;
 }
 
-export function recordedPublication(state: PublishedEventState): Effect.Effect<Recorded<EventPublished>> {
+export function recordedPublication(state: PublishedEventState): Effect.Effect<RecordedEventPublished> {
   return state === undefined
     ? Effect.die(new Error('The stream of a published event holds no event once it is published'))
     : Effect.succeed(state);
@@ -110,6 +122,6 @@ export function recordedPublication(state: PublishedEventState): Effect.Effect<R
 
 const decodePublished = recordedDecoder(EventPublishedSchema);
 
-export function publishedEventOf(recorded: unknown): Recorded<EventPublished> | undefined {
+export function publishedEventOf(recorded: unknown): RecordedEventPublished | undefined {
   return Option.getOrUndefined(decodePublished(recorded));
 }

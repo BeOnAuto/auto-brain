@@ -26,7 +26,6 @@ export function startOfCall(number: number): CallStarted {
     tool: 'search',
     arguments_bytes: 2,
     arguments_sha256: 'a'.repeat(64),
-    content_kept: true,
   };
 }
 
@@ -37,7 +36,6 @@ export function answerOfCall(number: number): CallEnded {
       is_error: false,
       result_bytes: 2,
       result_sha256: 'b'.repeat(64),
-      content_kept: true,
       duration_ms: 5,
       jsonrpc_id: number,
     },

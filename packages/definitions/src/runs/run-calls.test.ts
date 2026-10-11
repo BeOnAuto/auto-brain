@@ -1,11 +1,11 @@
-import { Conflict, type Recorded } from '@beonauto/operations';
+import { Conflict } from '@beonauto/operations';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { recordedWith, runStateAfter, testRunId } from '../testing/run-facts.ts';
 import type { CallStartedFact, RunCommand, ToolCallFact } from './run-commands.ts';
 import { runDecider } from './run-decider.ts';
-import type { RunEvent } from './run-events.ts';
+import type { RecordedRunEvent, RunEvent } from './run-events.ts';
 import { lastCallOf, startedRunOf } from './run-state.ts';
 
 const start = { runId: testRunId, by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
@@ -38,11 +38,11 @@ const unavailable = atTheFinish({
 
 const failed = atTheFinish({ type: 'run_failed', data: {} });
 
-function stateAfter(...events: readonly Recorded<RunEvent>[]) {
+function stateAfter(...events: readonly RecordedRunEvent[]) {
   return runStateAfter(events);
 }
 
-function decided(command: RunCommand, ...history: readonly Recorded<RunEvent>[]) {
+function decided(command: RunCommand, ...history: readonly RecordedRunEvent[]) {
   return runDecider.decide(command, stateAfter(...history));
 }
 
@@ -56,7 +56,6 @@ const sent = {
   tool: 'search',
   arguments_bytes: 17,
   arguments_sha256: 'a'.repeat(64),
-  content_kept: true,
 };
 
 const called: CallStartedFact = { type: 'tool_call_started', data: sent };
@@ -68,7 +67,6 @@ const answered: ToolCallFact = {
     is_error: false,
     result_bytes: 42,
     result_sha256: 'b'.repeat(64),
-    content_kept: true,
     duration_ms: 120,
     jsonrpc_id: 3,
   },

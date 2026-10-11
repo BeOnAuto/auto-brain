@@ -1,10 +1,12 @@
-import { Conflict, NotFound, type Context, type Recorded } from '@beonauto/operations';
+import { Conflict, NotFound, recordingOf, type Context } from '@beonauto/operations';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { BrainCommand } from './brain-commands.ts';
-import type { BrainEvent } from './brain-events.ts';
+import type { BrainEvent, RecordedBrainEvent } from './brain-events.ts';
 import { registryDecider } from './registry-decider.ts';
+
+const recordedBrainEvent = recordingOf(registryDecider.eventSchema);
 
 const creation = { by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
 
@@ -22,11 +24,11 @@ const recordedWhen = new Map<BrainEvent, Context>([
   [alphaRetired, change],
 ]);
 
-function recorded(event: BrainEvent, context: Context = recordedWhen.get(event) ?? change): Recorded<BrainEvent> {
-  return { ...event, context };
+function recorded(event: BrainEvent, context: Context = recordedWhen.get(event) ?? change): RecordedBrainEvent {
+  return recordedBrainEvent(event, context);
 }
 
-function registryAfter(...events: readonly (BrainEvent | Recorded<BrainEvent>)[]) {
+function registryAfter(...events: readonly (BrainEvent | RecordedBrainEvent)[]) {
   return events.reduce(
     (registry, event) => registryDecider.evolve(registry, 'context' in event ? event : recorded(event)),
     registryDecider.initialState,

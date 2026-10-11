@@ -4,13 +4,12 @@ import {
   UnansweredKindSchema,
   RejectionBecauseSchema,
   UnavailableKindSchema,
-  type Recorded,
   type RecordedEvent,
 } from '@beonauto/operations';
 import { Effect, Schema, Struct } from 'effect';
 
 import { runDecider, runStreamNameOf } from '../runs/run-decider.ts';
-import { RunEventSchema, type RunEvent } from '../runs/run-events.ts';
+import { RunEventSchema, type RecordedRunEvent } from '../runs/run-events.ts';
 import { runOf } from '../runs/run-lookup.ts';
 import { evolveRun, startedRunOf, type RunStreamState } from '../runs/run-state.ts';
 import { RunSchema, type Run, type RunRejection } from '../runs/run.ts';
@@ -71,15 +70,15 @@ function recordedRunEventOf({
   type,
   data,
   context,
-}: RecordedEvent): Effect.Effect<Recorded<RunEvent>, Schema.SchemaError> {
-  return Effect.map(decodeEvent({ type, data }), (event) => ({ ...event, context }));
+}: RecordedEvent): Effect.Effect<RecordedRunEvent, Schema.SchemaError> {
+  return decodeEvent({ type, data, context });
 }
 
 function listedRunOf(stream: string, heads: readonly RecordedEvent[]): Effect.Effect<ListedRun> {
   return Effect.forEach(heads, recordedRunEventOf).pipe(
-    Effect.map((events: readonly Recorded<RunEvent>[]) =>
+    Effect.map((events: readonly RecordedRunEvent[]) =>
       events.reduce(
-        (state: RunStreamState, event: Recorded<RunEvent>) => evolveRun(state, event),
+        (state: RunStreamState, event: RecordedRunEvent) => evolveRun(state, event),
         runDecider.initialState,
       ),
     ),

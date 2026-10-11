@@ -3,13 +3,12 @@ import {
   OrgIdSchema,
   recordedDecoder,
   streamPrefixOfBrain,
-  type Recorded,
   type StreamReader,
 } from '@beonauto/operations';
 import { Effect, Option, Schema } from 'effect';
 
 import { runDecider, runStreamNameOf } from '../runs/run-decider.ts';
-import { RunEventSchema, type RunEvent } from '../runs/run-events.ts';
+import { RunEventSchema, type RecordedRunEvent } from '../runs/run-events.ts';
 import { runDetailOf } from '../runs/run-lookup.ts';
 import type { RunStreamAddress } from '../runs/run-settler.ts';
 import { startedRunOf, takesSettlement, type RunStreamState } from '../runs/run-state.ts';
@@ -28,7 +27,7 @@ const isWellFormed = Schema.is(
 
 const decodeRunEvent = recordedDecoder(RunEventSchema);
 
-export function runEventOf(recorded: unknown): Recorded<RunEvent> | undefined {
+export function runEventOf(recorded: unknown): RecordedRunEvent | undefined {
   return Option.getOrUndefined(decodeRunEvent(recorded));
 }
 

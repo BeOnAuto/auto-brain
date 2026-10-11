@@ -1,0 +1,59 @@
+import { presentationOf } from '@beonauto/operations';
+import { memoryLedger, nothingKept } from '@beonauto/operations/testing';
+import { Effect } from 'effect';
+import { describe, expect, it } from 'vitest';
+
+import { makeDefinitionPresenters } from '../index.ts';
+import { echo } from '../testing/echo.ts';
+import { reactionRefusalDecider } from './reaction-refusals.ts';
+
+const alpha = { org: 'acme', brain: 'alpha' };
+
+const prefix = 'brain/acme/alpha/';
+
+const refusal = {
+  brain: alpha,
+  workflow: 'close-the-month',
+  version: 3,
+  refused: { count: 2, reason: 'Past the bound of a chain', minute: '2026-10-01T09:00:00.000Z' },
+  at: '2026-10-01T09:01:00.000Z',
+};
+
+describe('a refused reaction of a workflow', () => {
+  it('is recorded through its decider with the brain as its actor and the workflow and its version as its context', async () => {
+    const ledger = memoryLedger();
+    const stream = 'brain/acme/alpha/reactions/close-the-month';
+
+    await Effect.runPromise(ledger.service.execute(stream, reactionRefusalDecider, refusal));
+    const page = await Effect.runPromise(
+      ledger.service.readRecorded(alpha, { kind: 'everything' }, { order: 'asc', limit: 10 }),
+    );
+    const rows = page.records.flatMap((record) =>
+      presentationOf(makeDefinitionPresenters([echo])).present(
+        { ...record, stream: record.stream.slice(prefix.length) },
+        {
+          streamPrefix: prefix,
+          content: nothingKept,
+          view: 'page',
+        },
+      ),
+    );
+
+    expect(page.records.map(({ type, data, context }) => ({ type, data, context }))).toEqual([
+      {
+        type: 'reaction_refused',
+        data: refusal.refused,
+        context: {
+          at: refusal.at,
+          by: 'brain:alpha',
+          definitionType: 'workflow',
+          definitionName: 'close-the-month',
+          definitionVersion: 3,
+        },
+      },
+    ]);
+    expect(rows).toMatchObject([
+      { type: 'reaction_refused', metadata: { definition: { type: 'workflow', name: 'close-the-month', version: 3 } } },
+    ]);
+  });
+});

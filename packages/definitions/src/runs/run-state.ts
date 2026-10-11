@@ -1,16 +1,8 @@
-import type { CalledBy, Context, Recorded, StartingTrigger } from '@beonauto/operations';
+import type { CalledBy, RunContext, StartingTrigger } from '@beonauto/operations';
 import type { Schema } from 'effect';
 
 import type { RunResult } from './run-commands.ts';
-import type {
-  CancelRequestKind,
-  DeliveryEnded,
-  RunEvent,
-  RunFinished,
-  RunStarted,
-  ReplyEvent,
-  ReplyIdentity,
-} from './run-events.ts';
+import type { CancelRequestKind, RecordedRunEvent, RecordedRunFact, ReplyIdentity } from './run-events.ts';
 import type { RunRecord } from './run.ts';
 
 export interface AskedCancel {
@@ -78,11 +70,13 @@ function callsBefore(earlier: RunState): CallsBefore {
       };
 }
 
-function definitionOf({ definitionType, definitionName, definitionVersion }: Context) {
-  return { type: definitionType ?? '', name: definitionName ?? '', definition_version: definitionVersion ?? 0 };
+function definitionOf({ definitionType, definitionName, definitionVersion }: RunContext) {
+  return { type: definitionType, name: definitionName, definition_version: definitionVersion };
 }
 
-function startedRun({ data, context }: Recorded<RunStarted>, earlier: RunState): RecordedRunState {
+type RecordedFinish = RecordedRunFact<'run_succeeded' | 'run_rejected' | 'run_failed'>;
+
+function startedRun({ data, context }: RecordedRunFact<'run_started'>, earlier: RunState): RecordedRunState {
   const { input, calls_tools, finishes_later } = data;
   const { at, by, depth = 0, callDepth = 0, calledBy, trigger } = context;
   return {
@@ -104,7 +98,7 @@ function startedRun({ data, context }: Recorded<RunStarted>, earlier: RunState):
   };
 }
 
-function resultOf(event: RunFinished): RunResult {
+function resultOf(event: RecordedFinish): RunResult {
   if (event.type === 'run_rejected') {
     return { type: event.type, data: { rejection: event.data.rejection } };
   }
@@ -129,23 +123,29 @@ function finishedRecord(
   return { ...attempt, status: 'failed' };
 }
 
-function recordOf(event: RunFinished): Schema.JsonObject | undefined {
+function recordOf(event: RecordedFinish): Schema.JsonObject | undefined {
   return event.type === 'run_failed' ? undefined : event.data.record;
 }
 
-function finishedRun(state: RecordedRunState, event: Recorded<RunFinished>): RecordedRunState {
+function finishedRun(state: RecordedRunState, event: RecordedFinish): RecordedRunState {
   const result = resultOf(event);
   const finished = { ...state, run: finishedRecord(state.run, result, event.context.at), result };
   const record = recordOf(event);
   return record === undefined ? finished : { ...finished, record };
 }
 
-function endedDelivery(state: RecordedRunState, { type, context }: Recorded<DeliveryEnded>): RecordedRunState {
+function endedDelivery(
+  state: RecordedRunState,
+  { type, context }: RecordedRunFact<'delivery_succeeded' | 'delivery_failed' | 'delivery_refused'>,
+): RecordedRunState {
   const ended = { ...state, deliveryInFlight: null };
   return type === 'delivery_succeeded' ? { ...ended, deliveredAt: context.at } : ended;
 }
 
-function repliedTo(state: RecordedRunState, { type, data, context }: Recorded<ReplyEvent>): RecordedRunState {
+function repliedTo(
+  state: RecordedRunState,
+  { type, data, context }: RecordedRunFact<'reply_taken' | 'reply_refused'>,
+): RecordedRunState {
   const seen = { ...state, repliesSeen: [...state.repliesSeen, data.reply.id] };
   if (type === 'reply_refused') {
     return { ...seen, replyRefusals: state.replyRefusals + 1 };
@@ -153,7 +153,9 @@ function repliedTo(state: RecordedRunState, { type, data, context }: Recorded<Re
   return { ...seen, broughtAnswer: { answer: data.answer, at: context.at, reply: data.reply } };
 }
 
-function evolveWork(state: RecordedRunState, event: Recorded<Exclude<RunEvent, RunStarted>>): RecordedRunState {
+type RecordedAfterTheStart = Exclude<RecordedRunEvent, RecordedRunFact<'run_started'>>;
+
+function evolveWork(state: RecordedRunState, event: RecordedAfterTheStart): RecordedRunState {
   if (event.type === 'reply_taken' || event.type === 'reply_refused') {
     return repliedTo(state, event);
   }
@@ -174,7 +176,7 @@ function evolveWork(state: RecordedRunState, event: Recorded<Exclude<RunEvent, R
   return state;
 }
 
-function evolveStarted(state: RecordedRunState, event: Recorded<Exclude<RunEvent, RunStarted>>): RecordedRunState {
+function evolveStarted(state: RecordedRunState, event: RecordedAfterTheStart): RecordedRunState {
   if (event.type === 'run_cancel_requested') {
     const { kind, reason } = event.data;
     return { ...state, cancel: { kind, reason, by: event.context.by } };
@@ -187,7 +189,7 @@ function evolveStarted(state: RecordedRunState, event: Recorded<Exclude<RunEvent
     : evolveWork(state, event);
 }
 
-export function evolveRun(state: RunStreamState, event: Recorded<RunEvent>): RunStreamState {
+export function evolveRun(state: RunStreamState, event: RecordedRunEvent): RunStreamState {
   if (event.type === 'run_started') {
     return startedRun(event, startedRunOf(state));
   }

@@ -1,6 +1,5 @@
-import type { CallLink, Context } from '@beonauto/operations';
+import type { CallLink, Context, StartingTrigger } from '@beonauto/operations';
 
-import type { StartingTrigger } from '../registry/definition-triggers.ts';
 import type { RunCommand, RunStart } from './run-commands.ts';
 import { startedRunOf, type RecordedRunState, type RunStreamState } from './run-state.ts';
 

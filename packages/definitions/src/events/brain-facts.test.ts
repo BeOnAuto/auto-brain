@@ -1,4 +1,4 @@
-import type { Context, RecordedEvent } from '@beonauto/operations';
+import type { Context, RecordedFact } from '@beonauto/operations';
 import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -27,7 +27,6 @@ const isCloudEvent = Schema.is(CloudEventSchema);
 
 const about = {
   id: recordId,
-  cursor: recordId,
   causationId: null,
   correlationId: null,
   version: 1,
@@ -35,11 +34,11 @@ const about = {
   recordedAt: at,
 };
 
-function ofRun(event: RunEvent, context: Context = ofSummary): RecordedEvent {
+function ofRun(event: RunEvent, context: Context = ofSummary): RecordedFact {
   return { ...about, stream: runStreamNameOf(runId), type: event.type, data: event.data, context };
 }
 
-function ofDefinitions(event: DefinitionEvent, context: Context): RecordedEvent {
+function ofDefinitions(event: DefinitionEvent, context: Context): RecordedFact {
   return { ...about, stream: definitionTypeStreamOf('reasoning'), type: event.type, data: event.data, context };
 }
 
@@ -95,17 +94,14 @@ describe('the facts of a run as events', () => {
 });
 
 describe('the facts of a run as events, by what the run recorded', () => {
-  it('carry the output of a success that fits an event, and no subject for a run recorded without its definition', () => {
+  it('carry the output of a success that fits an event, and are no event for a run recorded without its definition', () => {
     const output = { summary: 'Profits rose.' };
     const { at: time, by } = ofSummary;
 
     expect([
       brainFactOf(ofRun({ type: 'run_succeeded', data: { output, record: { model: 'm' } } })),
-      brainFactOf(ofRun({ type: 'run_failed', data: {} }, { at: time, by })),
-    ]).toEqual([
-      { ...aboutTheRun, type: 'run_succeeded', data: { output } },
-      { specversion: '1.0', id: recordId, source: `/runs/${runId}`, type: 'run_failed', time, caller: by },
-    ]);
+      brainFactOf(ofRun({ type: 'run_failed', data: {} }, { at: time, by, runId })),
+    ]).toEqual([{ ...aboutTheRun, type: 'run_succeeded', data: { output } }, undefined]);
   });
 });
 
@@ -128,11 +124,12 @@ describe('the records of a run that are no facts', () => {
 const content = { source: '---\nmodel: anthropic/claude-sonnet-4-5\n---\nSummarize.' };
 
 describe('the facts of a definition as events', () => {
-  it('are its creation, its changes and its retirement, about the definition, with no subject and no data', () => {
+  it('are its creation, its changes and its retirement, about the definition and its version, with no subject and no data', () => {
     const named = { at, by: 'acme-admin', definitionType: 'reasoning', definitionName: 'summary' };
     const facts = [
       ofDefinitions({ type: 'definition_created', data: { content } }, { ...named, definitionVersion: 1 }),
       ofDefinitions({ type: 'definition_updated', data: { content } }, { ...named, definitionVersion: 2 }),
+      ofDefinitions({ type: 'definition_retired', data: {} }, { ...named, definitionVersion: 2 }),
       ofDefinitions({ type: 'definition_retired', data: {} }, named),
     ].map((recorded) => brainFactOf(recorded));
     const aboutTheDefinition = {
@@ -146,15 +143,16 @@ describe('the facts of a definition as events', () => {
     expect(facts).toEqual([
       { ...aboutTheDefinition, type: 'definition_created', definitionversion: 1 },
       { ...aboutTheDefinition, type: 'definition_updated', definitionversion: 2 },
-      { ...aboutTheDefinition, type: 'definition_retired' },
+      { ...aboutTheDefinition, type: 'definition_retired', definitionversion: 2 },
+      undefined,
     ]);
-    expect(facts.every((event) => isCloudEvent(event))).toBe(true);
+    expect(facts.slice(0, 3).every((event) => isCloudEvent(event))).toBe(true);
   });
 });
 
 describe('the records that are no facts of the brain', () => {
   it('are the records it cannot read as what their stream holds, which it answers with none, never a failure', () => {
-    const unreadable: readonly RecordedEvent[] = [
+    const unreadable: readonly RecordedFact[] = [
       { ...ofRun({ type: 'run_failed', data: {} }), data: { incident: 7 } },
       { ...ofDefinitions({ type: 'definition_created', data: { content } }, ofSummary), data: 'not an event' },
       { ...ofRun({ type: 'run_started', data: { input: {} } }), data: null },
@@ -164,7 +162,7 @@ describe('the records that are no facts of the brain', () => {
   });
 
   it('are the run logs and every other stream kind, tool tests and conversation reads among them', () => {
-    const others: readonly RecordedEvent[] = [
+    const others: readonly RecordedFact[] = [
       { ...about, stream: `run-logs/${runId}`, type: 'input_applied', data: {}, context: ofSummary },
       { ...about, stream: 'events/0199a3c4', type: 'event_published', data: {}, context: ofSummary },
       { ...about, stream: 'tool-tests/0199b7e2', type: 'tool_test_started', data: {}, context: ofSummary },
@@ -198,7 +196,7 @@ const published = {
   data: { region: 'eu' },
 };
 
-function ofPublished(data: unknown, type = 'event_published'): RecordedEvent {
+function ofPublished(data: unknown, type = 'event_published'): RecordedFact {
   return {
     ...about,
     causationId: 'c-1',

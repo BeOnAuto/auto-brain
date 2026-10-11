@@ -1,4 +1,4 @@
-import { strictRecordedDecoder, type Presenter, type Recorded, type TypedEvent } from '@beonauto/operations';
+import { strictRecordedDecoder, type Presenter, type Recorded } from '@beonauto/operations';
 import type { Schema } from 'effect';
 
 export interface Account {
@@ -6,14 +6,14 @@ export interface Account {
   readonly data: Schema.JsonObject;
 }
 
-export interface EventPresenting<Event extends TypedEvent> {
+export interface EventPresenting<Event extends Recorded> {
   readonly streamKind: string;
   readonly eventSchema: Schema.ConstraintCodec<Event, unknown>;
   readonly types: readonly Event['type'][];
-  readonly account: (event: Recorded<Event>, subject: string) => Account;
+  readonly account: (event: Event, subject: string) => Account;
 }
 
-export function eventPresenter<Event extends TypedEvent>({
+export function eventPresenter<Event extends Recorded>({
   streamKind,
   eventSchema,
   types,
