@@ -1,12 +1,12 @@
-import type { Catalog, OperationScope, Registration } from '@beonauto/operations';
+import type { Catalog, OperationScope, RouteRegistration } from '@beonauto/operations';
 
 export interface RouteEntry {
-  readonly registration: Registration;
+  readonly registration: RouteRegistration;
   readonly path: string;
 }
 
 interface Templated {
-  readonly registration: Registration;
+  readonly registration: RouteRegistration;
   readonly template: string;
 }
 
@@ -17,7 +17,7 @@ const prefixes: Readonly<Record<OperationScope, string>> = {
 
 const parameter = /\{(\w+)\}/gu;
 
-function templateOf(registration: Registration): Templated {
+function templateOf(registration: RouteRegistration): Templated {
   return { registration, template: `${prefixes[registration.scope]}${registration.route.path}` };
 }
 

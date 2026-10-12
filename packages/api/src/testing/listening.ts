@@ -1,7 +1,7 @@
 import { once } from 'node:events';
-import { createServer } from 'node:http';
+import { createServer, request, type IncomingHttpHeaders } from 'node:http';
 
-import { Schema } from 'effect';
+import { Function, Schema } from 'effect';
 
 import type { ApiHandler } from '../index.ts';
 
@@ -13,8 +13,8 @@ export interface Listening {
 const portOf = Schema.decodeUnknownSync(Schema.Struct({ port: Schema.Number }));
 
 export async function listenOnLoopback(handler: ApiHandler): Promise<Listening> {
-  const server = createServer((request, response) => {
-    void handler.listener(request, response);
+  const server = createServer((incoming, outgoing) => {
+    void handler.listener(incoming, outgoing);
   });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -29,4 +29,54 @@ export async function listenOnLoopback(handler: ApiHandler): Promise<Listening> 
       await handler.close();
     },
   };
+}
+
+export interface Sent {
+  readonly method?: string;
+  readonly headers: Readonly<Record<string, string>>;
+  readonly body?: string;
+  readonly bodyLeftOpen?: boolean;
+}
+
+export interface Received {
+  readonly status: number;
+  readonly headers: IncomingHttpHeaders;
+  readonly body: string;
+  readonly whole: boolean;
+}
+
+export const unanswered: Received = { status: 0, headers: {}, body: '', whole: false };
+
+export function exchanged(
+  origin: string,
+  path: string,
+  { method = 'GET', headers, body, bodyLeftOpen = false }: Sent,
+): Promise<Received> {
+  return new Promise((resolve) => {
+    const sent = request(`${origin}${path}`, { method, headers }, (response) => {
+      let text = '';
+      response.setEncoding('utf8');
+      response.on('data', (piece: string) => {
+        text += piece;
+      });
+      response.on('error', Function.constVoid);
+      response.on('close', () => {
+        sent.destroy();
+        resolve({
+          status: Number(response.statusCode),
+          headers: response.headers,
+          body: text,
+          whole: response.complete,
+        });
+      });
+    });
+    sent.on('error', () => {
+      resolve(unanswered);
+    });
+    if (bodyLeftOpen) {
+      sent.flushHeaders();
+      return;
+    }
+    sent.end(body);
+  });
 }

@@ -9,7 +9,7 @@ import {
 import { Layer } from 'effect';
 
 import { makeAppRuntime, mcpRoutes, operationRoutes, type ApiHandler, type AppRuntime } from '../index.ts';
-import { createTestHandler } from './api-calls.ts';
+import { createTestHandler, type ReportedIncident as ReportedThrown } from './api-calls.ts';
 import { testDefinitionTypes, testGuides, testRecipes } from './guides.ts';
 import { notebookOperations } from './notebook.ts';
 
@@ -17,6 +17,7 @@ export interface OperationServer {
   readonly handler: ApiHandler;
   readonly runtime: AppRuntime<DispatcherServices>;
   readonly incidents: () => readonly ReportedIncident[];
+  readonly thrown: () => readonly ReportedThrown[];
   readonly mcpErrors: () => readonly string[];
 }
 
@@ -89,6 +90,12 @@ export async function operationServer({
       },
     }),
   ];
-  const { handler } = createTestHandler({ authenticator, allowedOrigins, routes });
-  return { handler, runtime, incidents: recording.reported, mcpErrors: () => [...mcpErrors] };
+  const { handler, reported } = createTestHandler({ authenticator, allowedOrigins, routes });
+  return {
+    handler,
+    runtime,
+    incidents: recording.reported,
+    thrown: () => [...reported],
+    mcpErrors: () => [...mcpErrors],
+  };
 }

@@ -1,7 +1,9 @@
 import {
   type CallerIdentity,
+  type OperationScope,
   type RegisteredPlainLanguage,
   type Registration,
+  type RouteRegistration,
   type Dispatcher,
 } from '@beonauto/operations';
 import type { McpServer } from '@modelcontextprotocol/server';
@@ -50,8 +52,10 @@ function offered<R extends Registration>(
   }));
 }
 
-function servedAsTools<R extends Registration>(registrations: readonly R[]): readonly R[] {
-  return registrations.filter(({ servedOverHttpAlone }) => servedOverHttpAlone === undefined);
+function servedAsTools<S extends OperationScope>(
+  registrations: readonly RouteRegistration<S>[],
+): readonly Registration<S>[] {
+  return registrations.filter((registration) => registration.servedOverHttpAlone === undefined);
 }
 
 function permittedTo<R extends Registration>(

@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 
 import type { ApiHandler } from '../index.ts';
 import { call } from '../testing/api-calls.ts';
 import { blobOperations } from '../testing/blob-operations.ts';
+import { exchanged, listenOnLoopback } from '../testing/listening.ts';
 import { messagesIn, postMcp, requestOf } from '../testing/mcp-requests.ts';
 import { notebookOperations } from '../testing/notebook.ts';
 import { acmeAdmin, operationServer } from '../testing/operation-server.ts';
@@ -23,42 +24,11 @@ function withBlobs() {
   return operationServer({ operations: [...notebookOperations, ...servedOverHttpAlone] });
 }
 
-interface Sent {
-  readonly method?: string;
-  readonly headers: Headers;
-  readonly body?: string | ReadableStream<Uint8Array>;
-}
-
-interface Fetched {
-  readonly status: number;
-  readonly headers: globalThis.Headers;
-  readonly text: string;
-}
-
-async function fetched(handler: ApiHandler, path: string, { method = 'GET', headers, body }: Sent): Promise<Fetched> {
-  const init: RequestInit = body === undefined ? { method, headers } : { method, headers, body, duplex: 'half' };
-  const response = await handler.fetch(new Request(`http://localhost${path}`, init));
-  return { status: response.status, headers: response.headers, text: await response.text() };
-}
-
-interface Pulled {
-  readonly stream: ReadableStream<Uint8Array>;
-  readonly pulls: () => number;
-}
-
-function countingPulls(): Pulled {
-  let pulls = 0;
-  const stream = new ReadableStream<Uint8Array>(
-    {
-      pull: (controller) => {
-        pulls += 1;
-        controller.enqueue(new Uint8Array(4));
-        controller.close();
-      },
-    },
-    { highWaterMark: 0 },
-  );
-  return { stream, pulls: () => pulls };
+async function listeningWithBlobs() {
+  const server = await withBlobs();
+  const listening = await listenOnLoopback(server.handler);
+  onTestFinished(() => listening.close());
+  return { ...server, origin: listening.origin };
 }
 
 interface Streamed {
@@ -86,77 +56,87 @@ const streamedBodies: readonly Streamed[] = [
   },
 ];
 
-describe('an operation served over HTTP alone, answering over HTTP', () => {
+describe('an operation served over HTTP alone, taking a stream over the wire', () => {
   it.each(streamedBodies)(
-    'hands its handler $body as a stream with its media type and length, and answers with that stream',
+    'hands its handler $body as a stream with its media type and length, and answers with that stream, its media type and its length',
     async ({ method, path, contentType, mediaType }) => {
-      const { handler } = await withBlobs();
-      const headers = { ...asAdmin, 'content-type': contentType, 'content-length': '10' };
+      const { origin } = await listeningWithBlobs();
 
-      const answer = await fetched(handler, path, { method, headers, body: 'series,day' });
+      const answer = await exchanged(origin, path, {
+        method,
+        headers: { ...asAdmin, 'content-type': contentType, 'content-length': '10' },
+        body: 'series,day',
+      });
 
-      expect([answer.status, answer.text]).toEqual([200, 'series,day']);
-      expect([answer.headers.get('content-type'), answer.headers.get('content-length')]).toEqual([mediaType, '10']);
+      expect([answer.status, answer.body, answer.whole]).toEqual([200, 'series,day', true]);
+      expect([answer.headers['content-type'], answer.headers['content-length']]).toEqual([mediaType, '10']);
     },
   );
 
-  it('answers a query that takes no body with the stream it makes, and JSON where its handler answers JSON', async () => {
-    const { handler } = await withBlobs();
+  it('answers an empty body sent with a Content-Length of 0 as an empty stream, over the wire and from a request in process that carries none', async () => {
+    const { origin, handler } = await listeningWithBlobs();
+    const sent = { method: 'POST', headers: { ...asOctets, 'content-length': '0' } };
 
-    const read = await fetched(handler, `${blobs}/b1`, { headers: asAdmin });
-    const renamed = await call(handler, `${blobs}/b1/rename`, { method: 'POST', headers: asJson, body: '{"to":"b2"}' });
-    const cleared = await call(handler, `${blobs}/clear`, { method: 'POST', headers: asAdmin });
+    const answer = await exchanged(origin, `${blobs}/b1`, sent);
+    const inProcess = await call(handler, `${blobs}/b1`, sent);
 
-    expect([read.status, read.text, read.headers.get('content-type'), read.headers.get('cache-control')]).toEqual([
+    expect([answer.status, answer.body, answer.headers['content-length'], answer.whole]).toEqual([200, '', '0', true]);
+    expect([inProcess.status, inProcess.text]).toEqual([200, '']);
+  });
+});
+
+describe('an operation served over HTTP alone, answering over the wire', () => {
+  it('answers a query that takes no body with the stream it makes, in the media type its answer declares, and JSON where its answer is JSON', async () => {
+    const { origin } = await listeningWithBlobs();
+
+    const read = await exchanged(origin, `${blobs}/b1`, { headers: asAdmin });
+    const renamed = await exchanged(origin, `${blobs}/b1/rename`, {
+      method: 'POST',
+      headers: asJson,
+      body: '{"to":"b2"}',
+    });
+    const cleared = await exchanged(origin, `${blobs}/clear`, { method: 'POST', headers: asAdmin });
+
+    expect([read.status, read.body, read.headers['content-type'], read.headers['cache-control']]).toEqual([
       200,
       'blob b1',
       'text/plain',
       'no-store',
     ]);
-    expect([renamed.body, cleared.body]).toEqual([{ renamed: 'b2' }, { cleared: true }]);
-  });
-
-  it('answers an empty body sent with a Content-Length of 0 as an empty stream', async () => {
-    const { handler } = await withBlobs();
-
-    const answer = await fetched(handler, `${blobs}/b1`, {
-      method: 'POST',
-      headers: { ...asOctets, 'content-length': '0' },
-    });
-
-    expect([answer.status, answer.text, answer.headers.get('content-length')]).toEqual([200, '', '0']);
+    expect([renamed.headers['content-type'], JSON.parse(renamed.body), JSON.parse(cleared.body)]).toEqual([
+      'application/json',
+      { renamed: 'b2' },
+      { cleared: true },
+    ]);
   });
 });
 
 describe('an operation served over HTTP alone, refusing a body', () => {
-  it('refuses a body without a Content-Length with 411, and one longer than it takes with 413, before reading it', async () => {
-    const { handler } = await withBlobs();
-    const unmeasured = countingPulls();
-    const oversized = countingPulls();
+  it('refuses a body without a Content-Length with 411, and one longer than it takes with 413, while the body is still unsent', async () => {
+    const { origin } = await listeningWithBlobs();
 
-    const withoutLength = await fetched(handler, `${blobs}/b1`, {
+    const withoutLength = await exchanged(origin, `${blobs}/b1`, {
       method: 'POST',
-      headers: asOctets,
-      body: unmeasured.stream,
+      headers: { ...asOctets, 'transfer-encoding': 'chunked' },
+      bodyLeftOpen: true,
     });
-    const tooLong = await fetched(handler, `${blobs}/b1`, {
+    const tooLong = await exchanged(origin, `${blobs}/b1`, {
       method: 'POST',
       headers: { ...asOctets, 'content-length': '1025' },
-      body: oversized.stream,
+      bodyLeftOpen: true,
     });
 
-    expect([withoutLength.status, JSON.parse(withoutLength.text)]).toEqual([
+    expect([withoutLength.status, JSON.parse(withoutLength.body)]).toEqual([
       411,
       expect.objectContaining({ reason: 'length_required', detail: 'A body must be sent with a Content-Length' }),
     ]);
-    expect([tooLong.status, JSON.parse(tooLong.text)]).toEqual([
+    expect([tooLong.status, JSON.parse(tooLong.body)]).toEqual([
       413,
       expect.objectContaining({
         reason: 'content_too_large',
         detail: 'The body is larger than the 1,024 bytes this operation takes',
       }),
     ]);
-    expect([unmeasured.pulls(), oversized.pulls()]).toEqual([0, 0]);
   });
 });
 

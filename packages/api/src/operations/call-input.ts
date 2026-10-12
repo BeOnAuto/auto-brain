@@ -2,7 +2,7 @@ import {
   isStreamedBody,
   type HttpBody,
   type InputEncoding,
-  type Registration,
+  type RouteRegistration,
   type StreamedContent,
 } from '@beonauto/operations';
 import { Result } from 'effect';
@@ -54,7 +54,7 @@ async function noBodyIn(request: Request): Promise<Result.Result<JsonObject, Pro
 
 export async function parseCallInput(
   c: Context<ApiEnv>,
-  registration: Registration,
+  registration: RouteRegistration,
 ): Promise<Result.Result<CallInput, Problem>> {
   const pathFields = Object.fromEntries(registration.pathParameters.map((name) => [name, c.req.param(name)]));
   const query = new URL(c.req.url).searchParams;
