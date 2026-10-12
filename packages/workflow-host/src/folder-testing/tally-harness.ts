@@ -8,7 +8,16 @@ import type { Projector } from '../projector/projector.ts';
 import { alphaKey } from '../views-testing/view-documents.ts';
 import { viewHarness, type ViewHarness } from '../views-testing/view-harness.ts';
 import { viewWaiting } from '../views-testing/view-reading.ts';
-import { talliesOf, tallyFolderOf, tallyOf, tallyType, type TallyDetails, type TallyRow } from './tally-folder.ts';
+import {
+  talliedOutputsOf,
+  talliesOf,
+  tallyFolderOf,
+  tallyOf,
+  tallyType,
+  type TalliedOutput,
+  type TallyDetails,
+  type TallyRow,
+} from './tally-folder.ts';
 
 type StartOf = NonNullable<Parameters<ViewHarness['start']>[0]>;
 
@@ -23,6 +32,7 @@ export interface TallyHarness extends ViewHarness {
   readonly savedTally: (name: string, details: Schema.Json) => Promise<void>;
   readonly retiredTally: (name: string) => Promise<void>;
   readonly tallies: () => Promise<readonly TallyRow[]>;
+  readonly outputs: () => Promise<readonly TalliedOutput[]>;
   readonly untilTally: (details: TallyDetails, holds: (row: TallyRow) => boolean) => Promise<TallyRow>;
   readonly goneTally: (details: TallyDetails) => Promise<void>;
   readonly startWithTallies: (more?: StartOf, rebuildsAtOnce?: number) => Projector;
@@ -42,15 +52,16 @@ function contextOf(name: string, version: number) {
 function watchingTallies(): TallyWatch {
   const seen: (readonly TallyRow[])[] = [];
   return {
-    through: (database) => ({
-      ...database,
-      write: (statement) =>
-        Effect.tap(database.write(statement), () =>
-          Effect.map(talliesOf(database, alphaKey), (rows) => {
-            seen.push(rows);
-          }),
-        ),
-    }),
+    through: (database) => {
+      const rowsRead = Effect.map(talliesOf(database, alphaKey), (rows) => {
+        seen.push(rows);
+      });
+      return {
+        ...database,
+        write: (statement) => Effect.tap(database.write(statement), () => rowsRead),
+        transaction: (statements) => Effect.tap(database.transaction(statements), () => rowsRead),
+      };
+    },
     phasesOf: (details) =>
       seen.flatMap((rows) => rows.filter(({ tally }) => tally === tallyOf(details)).map(({ phase }) => phase)),
   };
@@ -78,6 +89,7 @@ export async function tallyHarness(settings: DatabaseSettings): Promise<TallyHar
       );
     },
     tallies,
+    outputs: () => Effect.runPromise(talliedOutputsOf(views.store.database, alphaKey)),
     untilTally: (details, holds) =>
       vi.waitFor(async () => {
         const row = await named(details);

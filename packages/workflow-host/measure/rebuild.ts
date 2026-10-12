@@ -9,7 +9,7 @@ import { openWorkflowStore } from '../src/host/workflow-store.ts';
 import { systemClock } from '../src/loop/host-clock.ts';
 import { startProjector } from '../src/projector/projector.ts';
 import { reviewsFold } from '../src/views-testing/campaign-reviews.ts';
-import { measuredViews } from './measured-views.ts';
+import { measuredViewOf, measuredViews } from './measured-views.ts';
 
 export interface Rebuild {
   readonly events: number;
@@ -135,7 +135,7 @@ export async function rebuildOn(settings: DatabaseSettings, events: number): Pro
 }
 
 async function liveAfter(store: Awaited<ReturnType<typeof openWorkflowStore>>, events: number): Promise<unknown> {
-  const kept = await Effect.runPromise(store.views.viewOf({ org: 'acme', brain: 'alpha' }, 'reviews'));
+  const kept = await measuredViewOf(store.database, 'reviews');
   if (kept?.phase === 'live' && kept.folded === events) {
     return kept.view;
   }

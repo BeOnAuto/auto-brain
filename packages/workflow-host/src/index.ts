@@ -39,7 +39,7 @@ export type { Point } from './pages/history-points.ts';
 export type { FoldedEvent, KeptView, StallCause, StalledEvent, ViewStall } from './views/view-rows.ts';
 export { viewsFolder } from './views/views-folder.ts';
 export type { FoldingSettings, ViewsFolding } from './views/views-folding.ts';
-export type { ViewsPort } from './views/views-port.ts';
+export { viewsPortOn, type ViewsPort } from './views/views-port.ts';
 export type { HostClock } from './loop/host-clock.ts';
 export type { RunAddress } from './runs/run-address.ts';
 export { runLogContextOf } from './runs/run-log-context.ts';

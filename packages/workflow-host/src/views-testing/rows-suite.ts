@@ -64,6 +64,7 @@ function rowsAfterEachWrite(views: ViewHarness) {
   const watched: HostDatabase = {
     ...database,
     write: (statement) => Effect.tap(database.write(statement), () => rowsRead),
+    transaction: (statements) => Effect.tap(database.transaction(statements), () => rowsRead),
   };
   return { database: watched, seen: () => seen };
 }

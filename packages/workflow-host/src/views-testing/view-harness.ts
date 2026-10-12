@@ -36,7 +36,7 @@ export async function viewHarness(
   });
   return {
     ...brainAppends(store.database.store, appends),
-    ...viewReadingOf(store.views),
+    ...viewReadingOf(store.database),
     ...projectors,
     store,
     reports,

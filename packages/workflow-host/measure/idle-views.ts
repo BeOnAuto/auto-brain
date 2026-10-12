@@ -8,7 +8,7 @@ import { statement } from '../src/database/statement.ts';
 import { openWorkflowStore, type WorkflowStore } from '../src/host/workflow-store.ts';
 import { systemClock } from '../src/loop/host-clock.ts';
 import { startProjector } from '../src/projector/projector.ts';
-import { measuredViews } from './measured-views.ts';
+import { measuredViewOf, measuredViews } from './measured-views.ts';
 
 export interface IdleViews {
   readonly views: number;
@@ -52,9 +52,7 @@ async function savedInTurn(store: WorkflowStore, views: number, index = 0): Prom
 
 async function allLive(store: WorkflowStore, views: number): Promise<void> {
   const kept = await Promise.all(
-    Array.from({ length: views }, (_, index) =>
-      Effect.runPromise(store.views.viewOf({ org: 'acme', brain: 'alpha' }, `view-${index}`)),
-    ),
+    Array.from({ length: views }, (_, index) => measuredViewOf(store.database, `view-${index}`)),
   );
   if (kept.every((view) => view?.phase === 'live')) {
     return;

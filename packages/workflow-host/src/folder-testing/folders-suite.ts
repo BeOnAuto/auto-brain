@@ -3,11 +3,19 @@ import { setTimeout } from 'node:timers/promises';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import type { Writing } from '../projector/folder.ts';
 import { definitionsByType } from '../projector/projector-schedule.ts';
 import { reconciledRows, type DefinitionsKept } from '../projector/reconciled-rows.ts';
-import type { SettingsOf } from '../testing/host-files.ts';
+import { openedOn, type SettingsOf } from '../testing/host-files.ts';
 import { alphaKey, counting, foldedAll, liveWith, viewTestTimeoutMs } from '../views-testing/view-documents.ts';
-import { tallyFolderOf, type TallyDetails, type TallyRow } from './tally-folder.ts';
+import {
+  talliesOf,
+  tallyFolderOf,
+  tallyOf,
+  type TallyChange,
+  type TallyDetails,
+  type TallyRow,
+} from './tally-folder.ts';
 import { tallyHarness, type TallyHarness } from './tally-harness.ts';
 
 const succeeded: TallyDetails = { counts: 'run_succeeded' };
@@ -30,6 +38,18 @@ function keptBy(tallies: TallyHarness): DefinitionsKept {
 
 function namedBy(rows: readonly TallyRow[], { counts }: TallyDetails): TallyRow | undefined {
   return rows.find((row) => row.counts === counts && row.stallsOn === null);
+}
+
+function outputsCounted(details: TallyDetails, outputs: readonly string[]) {
+  return outputs.map((output) => ({ tally: tallyOf(details), output, counted: 1 }));
+}
+
+function writingBy(tallies: TallyHarness): Writing {
+  return { database: tallies.store.database, brain: alphaKey, note: tallies.reports.reports.note };
+}
+
+function withOutputs(change: TallyChange, next: Partial<TallyChange['next']> = {}): TallyChange {
+  return { ...change, next: { ...change.next, ...next }, outputs: [['"elsewhere"', 1]] };
 }
 
 async function readsWhile(tallies: TallyHarness, work: () => Promise<unknown>): Promise<number> {
@@ -57,6 +77,7 @@ function sharingTests(settingsOf: SettingsOf): void {
     });
 
     expect(shared).toBe(1);
+    expect(await tallies.outputs()).toEqual(outputsCounted(succeeded, ['1', '2', '3']));
   });
 }
 
@@ -80,6 +101,9 @@ function phaseTests(settingsOf: SettingsOf): void {
 
     expect(phasesOf(slotted)).toEqual({ run_succeeded: 'rebuilding', run_started: 'waiting' });
     expect(stalled.counted).toBe(1);
+    expect((await tallies.outputs()).filter(({ tally }) => tally === tallyOf(poisoned))).toEqual(
+      outputsCounted(poisoned, ['"fine"']),
+    );
   });
 }
 
@@ -127,25 +151,63 @@ function definitionTests(settingsOf: SettingsOf): void {
     const sinceBuilt = watch.phasesOf(succeeded).slice(builtUntil);
     await tallies.retiredTally('another');
     await tallies.goneTally(succeeded);
+    const left = await tallies.outputs();
 
     expect([shared.length, both.length, rebuilt.counted]).toEqual([1, 2, 2]);
+    expect([...new Set(left.map(({ tally }) => tally))]).toEqual([tallyOf(poisoned)]);
     expect([...new Set(sinceBuilt)]).toEqual(['live']);
     expect(namedBy(both, succeeded)?.saved).toBe(namedBy(shared, succeeded)?.saved);
   });
 }
 
 function rowTests(settingsOf: SettingsOf): void {
-  it('takes no write from a pass that read its row before another wrote it', async () => {
+  it('takes no write, neither its outputs nor its row, from a pass that read its row before another wrote it', async () => {
     const tallies = await tallyHarness(await settingsOf());
     await tallies.savedTally('succeeded', succeeded);
     const folder = tallyFolderOf(1);
     const rows = await Effect.runPromise(reconciledRows(folder, keptBy(tallies), alphaKey));
-    const writing = { database: tallies.store.database, brain: alphaKey, note: tallies.reports.reports.note };
 
-    const stale = rows.map((row) => folder.unchanged({ ...row, checkpointText: 'not its checkpoint' }));
-    const written = await Promise.all(stale.map((change) => Effect.runPromise(folder.write(writing, change))));
+    const stale = rows.map((row) => withOutputs(folder.unchanged({ ...row, checkpointText: 'not its checkpoint' })));
+    const written = await Promise.all(
+      stale.map((change) => Effect.runPromise(folder.write(writingBy(tallies), change))),
+    );
 
     expect([written, stale.map((change) => folder.hasChanged(change))]).toEqual([[undefined], [false]]);
+    expect([await tallies.tallies(), await tallies.outputs()]).toEqual([rows, []]);
+  });
+
+  it('keeps nothing of a write that fails midway, neither the outputs written before the failure nor its row', async () => {
+    const tallies = await tallyHarness(await settingsOf());
+    await tallies.savedTally('succeeded', succeeded);
+    const folder = tallyFolderOf(1);
+    const rows = await Effect.runPromise(reconciledRows(folder, keptBy(tallies), alphaKey));
+
+    const failing = rows.map((row) => withOutputs(folder.unchanged(row), { counted: -1 }));
+    const failures = await Promise.all(
+      failing.map((change) => Effect.runPromise(Effect.flip(folder.write(writingBy(tallies), change)))),
+    );
+
+    expect(failures.map(({ detail }: { readonly detail: string }) => /check/iu.test(detail))).toEqual([true]);
+    expect([await tallies.tallies(), await tallies.outputs()]).toEqual([rows, []]);
+  });
+}
+
+function tableTests(settingsOf: SettingsOf): void {
+  it('has its tables made on every open of the store, so they are made where missing and keep their rows where not', async () => {
+    const settings = await settingsOf();
+    const tallies = await tallyHarness(settings);
+    await tallies.savedTally('succeeded', succeeded);
+    await tallies.ran('reasoning/runs', 1);
+    const projector = tallies.startWithTallies();
+    const before = await tallies.untilTally(succeeded, liveCounting(1));
+    await projector.stop();
+
+    const reopened = await openedOn(settings, tallyFolderOf(1).tables);
+
+    expect([await Effect.runPromise(talliesOf(reopened, alphaKey)), await tallies.outputs()]).toEqual([
+      [before],
+      outputsCounted(succeeded, ['1']),
+    ]);
   });
 }
 
@@ -156,5 +218,6 @@ export function foldersSuite(settingsOf: SettingsOf): void {
     restartTests(settingsOf);
     definitionTests(settingsOf);
     rowTests(settingsOf);
+    tableTests(settingsOf);
   });
 }

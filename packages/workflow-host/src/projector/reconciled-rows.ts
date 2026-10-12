@@ -1,7 +1,6 @@
 import { Effect } from 'effect';
 
 import type { DatabaseFailed, HostDatabase } from '../database/host-database.ts';
-import type { Statement } from '../database/statement.ts';
 import { definitionsAfter, definitionStreamOf, noDefinitions, type BrainDefinitions } from './brain-definitions.ts';
 import type { Folder, PassedChange, PassedRow, Reconciling, RowPhase } from './folder.ts';
 
@@ -44,18 +43,19 @@ function placedOf<Row extends PassedRow, Change extends PassedChange<Row>>(
 
 function changesOf<Row extends PassedRow, Change extends PassedChange<Row>>(
   folder: Folder<Row, Change>,
+  { database }: DefinitionsKept,
   reconciling: Reconciling,
   rows: readonly Row[],
-): readonly Statement[] {
+): readonly Effect.Effect<readonly unknown[], DatabaseFailed>[] {
   const { fresh, dropped } = folder.reconcile(reconciling, rows);
   const leaving = new Set([...fresh.map(({ key }) => key), ...dropped.map((row) => folder.keyOf(row))]);
   const stillBuilding = rows.filter((row) => isBuilding(row) && !leaving.has(folder.keyOf(row)));
   const slots = slotsOf([...stillBuilding.map((row) => placedOf(folder, row)), ...fresh], folder.rebuildsAtOnce);
   const promoted = stillBuilding.filter((row) => row.phase === 'waiting' && slots.has(folder.keyOf(row)));
   return [
-    ...promoted.map((row) => folder.phased(row, 'rebuilding')),
-    ...dropped.flatMap((row) => folder.dropped(row)),
-    ...fresh.map(({ key, added }) => added(phaseIn(slots, key))),
+    ...promoted.map((row) => database.write(folder.phased(row, 'rebuilding'))),
+    ...dropped.map((row) => database.transaction(folder.dropped(row))),
+    ...fresh.map(({ key, added }) => database.write(added(phaseIn(slots, key)))),
   ];
 }
 
@@ -95,8 +95,8 @@ export function reconciledRows<Row extends PassedRow, Change extends PassedChang
   return Effect.gen(function* () {
     const definitions = yield* definitionsOf(folder, kept, brain);
     const before = yield* folder.rowsOf(database, brain);
-    const changes = changesOf(folder, { brain, definitions }, before);
-    yield* Effect.forEach(changes, database.write, { discard: true });
+    const changes = changesOf(folder, kept, { brain, definitions }, before);
+    yield* Effect.all(changes, { discard: true });
     const rows = changes.length === 0 ? before : yield* folder.rowsOf(database, brain);
     const phased = phasedBySlots(folder, rows);
     const moved = phased.filter((row, index) => row.phase !== rows[index]?.phase);

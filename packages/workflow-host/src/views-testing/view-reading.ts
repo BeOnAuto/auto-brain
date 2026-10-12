@@ -6,7 +6,7 @@ import type { HostDatabase } from '../database/host-database.ts';
 import { definitionsByType } from '../projector/projector-schedule.ts';
 import { reconciledRows } from '../projector/reconciled-rows.ts';
 import type { KeptView, ViewRow } from '../views/view-rows.ts';
-import type { ViewsPort } from '../views/views-port.ts';
+import { viewsPortOn } from '../views/views-port.ts';
 import { alpha, alphaKey, viewsFolderOver, viewTestTimeoutMs, type Brain } from './view-documents.ts';
 
 export interface ViewReading {
@@ -17,7 +17,8 @@ export interface ViewReading {
 
 export const viewWaiting = { timeout: viewTestTimeoutMs - 5000, interval: 20 };
 
-export function viewReadingOf(views: ViewsPort): ViewReading {
+export function viewReadingOf(database: HostDatabase): ViewReading {
+  const views = viewsPortOn(database);
   const viewOf: ViewReading['viewOf'] = (name, brain = alpha) => Effect.runPromise(views.viewOf(brain, name));
   return {
     viewOf,

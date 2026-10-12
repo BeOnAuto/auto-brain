@@ -16,8 +16,16 @@ const talliesTable = statement`CREATE TABLE IF NOT EXISTS folder_tallies (
     phase TEXT NOT NULL,
     checkpoint TEXT NOT NULL,
     checkpoint_at TEXT,
-    counted BIGINT NOT NULL,
+    counted BIGINT NOT NULL CHECK (counted >= 0),
     PRIMARY KEY (brain, tally)
+  )`;
+
+const outputsTable = statement`CREATE TABLE IF NOT EXISTS folder_tally_outputs (
+    brain TEXT NOT NULL,
+    tally TEXT NOT NULL,
+    output TEXT NOT NULL,
+    counted BIGINT NOT NULL,
+    PRIMARY KEY (brain, tally, output)
   )`;
 
 const TallyDetailsSchema = Schema.Struct({
@@ -43,6 +51,10 @@ const StoredTallySchema = Schema.Struct({
 
 const TallyNameSchema = Schema.Struct({ tally: Schema.String });
 
+const TalliedOutputSchema = Schema.Struct({ tally: Schema.String, output: Schema.String, counted: WholeNumber });
+
+export type TalliedOutput = typeof TalliedOutputSchema.Type;
+
 const BrainSchema = Schema.Struct({ brain: Schema.String });
 
 const decodeDetails = Schema.decodeUnknownOption(TallyDetailsSchema);
@@ -65,9 +77,12 @@ export interface TallyRow extends TallyNext {
   readonly checkpointText: string;
 }
 
+type OutputCount = readonly [output: string, counted: number];
+
 export interface TallyChange {
   readonly row: TallyRow;
   readonly next: TallyNext;
+  readonly outputs: readonly OutputCount[];
 }
 
 export function tallyOf({ counts, stallsOn }: TallyDetails): string {
@@ -96,6 +111,15 @@ export function talliesOf(database: HostDatabase, brain: string): Effect.Effect<
   return Effect.map(rowsOf(StoredTallySchema, database.read(read)), (rows) => rows.map((row) => tallyRowOf(row)));
 }
 
+export function talliedOutputsOf(
+  database: HostDatabase,
+  brain: string,
+): Effect.Effect<readonly TalliedOutput[], DatabaseFailed> {
+  const read = statement`SELECT tally, output, counted FROM folder_tally_outputs WHERE brain = ${brain}
+    ORDER BY tally, output`;
+  return rowsOf(TalliedOutputSchema, database.read(read));
+}
+
 function wantedOf({ functions }: BrainDefinitions): ReadonlyMap<string, number> {
   const wanted = new Map<string, number>();
   for (const { details, saved } of functions.values()) {
@@ -117,7 +141,10 @@ function phased({ brain, tally }: TallyRow, phase: RowPhase): Statement {
 }
 
 function dropped({ brain, tally }: TallyRow): readonly Statement[] {
-  return [statement`DELETE FROM folder_tallies WHERE brain = ${brain} AND tally = ${tally}`];
+  return [
+    statement`DELETE FROM folder_tally_outputs WHERE brain = ${brain} AND tally = ${tally}`,
+    statement`DELETE FROM folder_tallies WHERE brain = ${brain} AND tally = ${tally}`,
+  ];
 }
 
 function plannedTallies({ brain, definitions }: Reconciling, rows: readonly TallyRow[]): Reconciled<TallyRow> {
@@ -147,21 +174,30 @@ function endOf(row: TallyRow, page: ReadPage): Pick<TallyNext, 'checkpoint' | 'c
     : { checkpoint: row.checkpoint, checkpointAt: row.checkpointAt };
 }
 
+function outputCountsOf(counted: readonly PageEvent[]): readonly OutputCount[] {
+  const byOutput = Map.groupBy(counted, (placed) => JSON.stringify(outputOf(placed) ?? null));
+  return [...byOutput]
+    .map(([output, events]: readonly [string, readonly PageEvent[]]): OutputCount => [output, events.length])
+    .toSorted(([one], [other]) => one.localeCompare(other));
+}
+
 function foldedTally(row: TallyRow, page: ReadPage): TallyChange {
   const considered = page.events.filter(
     ({ point, event }) => isAfter(point, row.checkpoint) && event.type === row.counts,
   );
   const stalling = considered.find((placed) => row.stallsOn !== null && outputOf(placed) === row.stallsOn);
   if (stalling === undefined) {
-    return { row, next: { ...endOf(row, page), phase: row.phase, counted: row.counted + considered.length } };
+    const next = { ...endOf(row, page), phase: row.phase, counted: row.counted + considered.length };
+    return { row, next, outputs: outputCountsOf(considered) };
   }
+  const counted = considered.slice(0, considered.indexOf(stalling));
   const next: TallyNext = {
     checkpoint: stalling.point,
     checkpointAt: stalling.recordedAt,
     phase: 'stalled',
-    counted: row.counted + considered.indexOf(stalling),
+    counted: row.counted + counted.length,
   };
-  return { row, next };
+  return { row, next, outputs: outputCountsOf(counted) };
 }
 
 function hasTallyChanged({ row, next }: TallyChange): boolean {
@@ -175,15 +211,22 @@ function foldedTallies(rows: readonly TallyRow[], page: ReadPage): FoldedChanges
   return { changes, resting: [], complete: true, again: false };
 }
 
+function outputAdded({ brain, tally }: TallyRow, [output, counted]: OutputCount): Statement {
+  return statement`INSERT INTO folder_tally_outputs (brain, tally, output, counted)
+    VALUES (${brain}, ${tally}, ${output}, ${counted})
+    ON CONFLICT (brain, tally, output) DO UPDATE SET counted = folder_tally_outputs.counted + excluded.counted`;
+}
+
 function writtenTally(
   { database }: Writing,
-  { row, next }: TallyChange,
+  { row, next, outputs }: TallyChange,
 ): Effect.Effect<TallyRow | undefined, DatabaseFailed> {
-  const write = statement`UPDATE folder_tallies SET phase = ${next.phase}, checkpoint = ${pointText(next.checkpoint)},
+  const moved = statement`UPDATE folder_tallies SET phase = ${next.phase}, checkpoint = ${pointText(next.checkpoint)},
       checkpoint_at = ${next.checkpointAt}, counted = ${next.counted}
     WHERE brain = ${row.brain} AND tally = ${row.tally} AND checkpoint = ${row.checkpointText}
     RETURNING tally`;
-  return Effect.map(rowsOf(TallyNameSchema, database.write(write)), (took) =>
+  const written = database.transaction([...outputs.map((counted) => outputAdded(row, counted)), moved]);
+  return Effect.map(rowsOf(TallyNameSchema, written), (took) =>
     took.length === 0 ? undefined : { ...row, ...next, checkpointText: pointText(next.checkpoint) },
   );
 }
@@ -191,7 +234,7 @@ function writtenTally(
 export function tallyFolderOf(rebuildsAtOnce: number): Folder<TallyRow, TallyChange> {
   return {
     definitionType: tallyType,
-    tables: [talliesTable],
+    tables: [talliesTable, outputsTable],
     rebuildsAtOnce,
     keptOf: (details) => details,
     keyOf: ({ tally }) => tally,
@@ -210,8 +253,9 @@ export function tallyFolderOf(rebuildsAtOnce: number): Folder<TallyRow, TallyCha
     unchanged: (row) => ({
       row,
       next: { phase: row.phase, checkpoint: row.checkpoint, checkpointAt: row.checkpointAt, counted: row.counted },
+      outputs: [],
     }),
-    joinedLive: ({ row, next }) => ({ row, next: { ...next, phase: 'live' } }),
+    joinedLive: (change) => ({ ...change, next: { ...change.next, phase: 'live' } }),
     hasChanged: hasTallyChanged,
   };
 }
