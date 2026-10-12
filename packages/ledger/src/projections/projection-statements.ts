@@ -48,9 +48,15 @@ export function tableOf(projection: KeyedProjection): SQL {
   return SQL`${SQL.plain(projectedTableOf(projection))}`;
 }
 
-function indexStatement(projection: KeyedProjection, index: ProjectedIndex): SQL {
+function indexedColumnsOf(dialect: ProjectionDialect, index: ProjectedIndex): readonly string[] {
+  return index.acrossBrains === true
+    ? index.columns
+    : ['brain_key', ...index.columns].map((column) => `${column}${dialect.brainIndexNulls}`);
+}
+
+function indexStatement(dialect: ProjectionDialect, projection: KeyedProjection, index: ProjectedIndex): SQL {
   const table = projectedTableOf(projection);
-  const columns = [...(index.acrossBrains === true ? [] : ['brain_key']), ...index.columns].join(', ');
+  const columns = indexedColumnsOf(dialect, index).join(', ');
   const where = index.whereSet === undefined ? '' : ` WHERE ${index.whereSet} IS NOT NULL`;
   return SQL`CREATE INDEX IF NOT EXISTS ${SQL.plain(`${table}_${index.name}`)} ON ${tableOf(projection)} (${SQL.plain(columns)})${SQL.plain(where)}`;
 }
@@ -65,7 +71,7 @@ export function createdTable(dialect: ProjectionDialect, projection: KeyedProjec
       ${SQL.plain(columns)},
       PRIMARY KEY (brain_key, row_key)
     )`,
-    ...projection.indexes.map((index) => indexStatement(projection, index)),
+    ...projection.indexes.map((index) => indexStatement(dialect, projection, index)),
   ];
 }
 

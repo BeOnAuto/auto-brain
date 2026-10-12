@@ -5,6 +5,7 @@ import { Schema } from 'effect';
 export interface ProjectionDialect {
   readonly tableVersions: (name: string) => SQL;
   readonly columnTypes: Readonly<Record<ProjectedColumnKind, string>>;
+  readonly brainIndexNulls: string;
   readonly asNumber: (expression: string) => string;
   readonly streamsAfter: (after: string, count: number, kinds: readonly string[], types: readonly string[]) => SQL;
   readonly messagesOf: (streams: readonly string[], types: readonly string[]) => SQL;
