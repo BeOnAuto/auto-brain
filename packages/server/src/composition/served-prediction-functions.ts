@@ -2,6 +2,7 @@ import type { AppRuntime } from '@on.auto/api';
 import type { Capability } from '@on.auto/definitions';
 import type { DispatcherServices, HttpRegistration } from '@on.auto/operations';
 import { datasetFolder, datasetsPortOn, makePredictionFunctionAdapter, uploadDataset } from '@on.auto/prediction';
+import { recallBounds } from '@on.auto/recall';
 import type { ProgramPool } from '@on.auto/workflow-engine/dsl';
 import { someFolder, type SomeFolder, type WorkflowStore } from '@on.auto/workflow-host';
 
@@ -19,7 +20,9 @@ export interface ServedPredictionFunctions extends ServedPrediction {
 }
 
 export function datasetsFolderOf(pool: ProgramPool): SomeFolder {
-  return someFolder(datasetFolder({ filters: pool.evaluations.filters }));
+  return someFolder(
+    datasetFolder({ filters: pool.evaluations.filters, triesBeforeStall: recallBounds.overtimesBeforeStall }),
+  );
 }
 
 export async function predictionFunctionsServedBy(

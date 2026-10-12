@@ -44,6 +44,12 @@ function viewStalled({ playbook, name, version }: NoteOf<'view_stalled'>): Effec
   ).pipe(Effect.annotateLogs({ playbook, recall_function: name, version }));
 }
 
+function datasetStalled({ playbook, dataSha256, record, detail }: NoteOf<'dataset_stalled'>): Effect.Effect<void> {
+  return Effect.logWarning(
+    'The dataset of a prediction function stopped at an event its data test could not get through within its time and memory, and folds nothing more; a data part that changes starts a dataset of its own',
+  ).pipe(Effect.annotateLogs({ playbook, data_sha256: dataSha256, record, detail }));
+}
+
 function offerDeclined({ run, detail }: NoteOf<'offer_declined'>): Effect.Effect<void> {
   return Effect.logWarning(
     'A run waiting for an event of its playbook did not take one, since its filter failed on the event',
@@ -69,6 +75,7 @@ const loggers: { readonly [Kind in HostNote['kind']]: (note: NoteOf<Kind>) => Ef
   settled_after_back_off: settledAfterBackingOff,
   record_passed_over: passedOver,
   view_stalled: viewStalled,
+  dataset_stalled: datasetStalled,
   offer_declined: offerDeclined,
   record_unreadable: recordUnreadable,
   run_record_passed: runRecordPassed,
