@@ -1,3 +1,4 @@
+import type { RecordWork } from '@beonauto/definitions';
 import type { ToolAccess } from '@beonauto/mcp';
 import type { PlaybookAddress, ProjectionAdvancer, ProjectionReader } from '@beonauto/operations';
 import type { Effect } from 'effect';
@@ -12,6 +13,7 @@ export interface ConversationLedger
 export interface ConversationParts {
   readonly ledger: ConversationLedger;
   readonly tools: Pick<ToolAccess, 'startOf' | 'callOnce'>;
+  readonly record: RecordWork;
 }
 
 export interface ConversationPlace {

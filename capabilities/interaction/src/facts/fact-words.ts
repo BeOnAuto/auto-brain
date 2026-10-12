@@ -6,7 +6,8 @@ import type {
   DeliveryFailedBecause,
   DeliveryRefusedBecause,
   DeliveryStarted,
-} from '../runs/run-events.ts';
+  ReplyRefused,
+} from './run-facts.ts';
 
 const refusedWords: Readonly<Record<DeliveryRefusedBecause, string>> = {
   too_large: 'its arguments are larger than a call may send',
@@ -23,17 +24,8 @@ const failedWords: Readonly<Record<DeliveryFailedBecause, string>> = {
   lost: 'the server stopped before it learned how the attempt ended',
 };
 
-interface OnTheTool {
-  readonly server: string;
-  readonly tool: string;
-}
-
-export function throughTheTool({ server, tool }: OnTheTool): string {
-  return `through ${toolInWords({ server, tool })}`;
-}
-
 export function deliveryStarted({ data }: DeliveryStarted): string {
-  return `Delivery attempt ${plainNumber(data.number)} of the request started, ${throughTheTool(data)}.`;
+  return `Delivery attempt ${plainNumber(data.number)} of the request started, through ${toolInWords(data)}.`;
 }
 
 export function deliveryEnded({ type, data }: DeliveryEnded): string {
@@ -44,4 +36,9 @@ export function deliveryEnded({ type, data }: DeliveryEnded): string {
   return type === 'delivery_failed'
     ? `${attempt} failed, because ${failedWords[data.because]}; another follows on the schedule, unless it was the last.`
     : `${attempt} was refused, because ${refusedWords[data.because]}, so it is not tried again.`;
+}
+
+export function replyRefused({ data }: ReplyRefused): string {
+  const told = data.told ? 'the party was told how to answer' : 'nobody was told';
+  return `A reply from the party was not an answer the function takes, and ${told}.`;
 }

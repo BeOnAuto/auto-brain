@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { runDecider } from '../runs/run-decider.ts';
+import { declaredFactsOf } from '../run-work/declared-facts.ts';
 import type { RunEvent } from '../runs/run-events.ts';
 import { evolveRun, startedRunOf } from '../runs/run-state.ts';
+import { asking } from '../testing/asking.ts';
 import { recordedWith, testRunId } from '../testing/run-facts.ts';
 import { storedTypesByStatus } from './run-status.ts';
 
@@ -10,8 +11,8 @@ const recorded = recordedWith({
   runId: testRunId,
   by: 'acme-admin',
   at: '2026-10-01T09:00:00.000Z',
-  definitionType: 'echo',
-  definitionName: 'greet',
+  definitionType: 'asking',
+  definitionName: 'approve',
   definitionVersion: 1,
 });
 
@@ -19,7 +20,7 @@ const start: RunEvent = { type: 'run_started', data: { input: {} } };
 
 const ofTheTool = { server: 'chat', tool: 'post_message' };
 
-const latestOfEveryType: Readonly<Record<RunEvent['type'], RunEvent>> = {
+const latestOfEveryType: Readonly<Record<string, RunEvent>> = {
   run_started: start,
   run_deferred: { type: 'run_deferred', data: { record: {} } },
   run_succeeded: { type: 'run_succeeded', data: { output: null, record: {} } },
@@ -51,49 +52,24 @@ const latestOfEveryType: Readonly<Record<RunEvent['type'], RunEvent>> = {
     type: 'tool_call_failed',
     data: { number: 1, because: 'timed_out', duration_ms: 5, jsonrpc_id: 1 },
   },
-  delivery_started: { type: 'delivery_started', data: { number: 1, target: 'ada', ...ofTheTool } },
-  delivery_succeeded: {
-    type: 'delivery_succeeded',
-    data: {
-      number: 1,
-      result_bytes: 2,
-      result_sha256: 'b'.repeat(64),
-      duration_ms: 5,
-      jsonrpc_id: 1,
-    },
-  },
-  delivery_failed: { type: 'delivery_failed', data: { number: 1, because: 'lost', duration_ms: 5 } },
-  delivery_refused: { type: 'delivery_refused', data: { number: 1, because: 'too_large', duration_ms: 0 } },
-  reply_taken: {
-    type: 'reply_taken',
-    data: { server: 'chat', tool: 'thread_replies', reply: { id: '1699.2', sender: 'ada' }, answer: {} },
-  },
-  reply_refused: {
-    type: 'reply_refused',
-    data: {
-      server: 'chat',
-      tool: 'thread_replies',
-      reply: { id: '1699.3', sender: 'ada' },
-      because: 'not_an_answer',
-      told: true,
-    },
-  },
+  request_answered: { type: 'request_answered', data: { answer: { choice: 'approve' } } },
+  nudge_sent: { type: 'work', data: { fact: { type: 'nudge_sent', data: { number: 1 } } } },
 };
 
-const statusByStoredType = Object.entries(storedTypesByStatus).flatMap(
-  ([status, types]: readonly [string, readonly string[]]) => types.map((type) => [type, status] as const),
+const byStatus = storedTypesByStatus(declaredFactsOf([asking]));
+
+const statusByStoredType = Object.entries(byStatus).flatMap(([status, types]: readonly [string, readonly string[]]) =>
+  types.map((type) => [type, status] as const),
 );
 
-const latestByType = new Map<string, RunEvent>(Object.values(latestOfEveryType).map((event) => [event.type, event]));
-
 function statusAfter(type: string): string | undefined {
-  const latest = latestByType.get(type);
-  const started = evolveRun(runDecider.initialState, recorded(start));
+  const latest = latestOfEveryType[type];
+  const started = evolveRun(undefined, recorded(start));
   return latest === undefined ? undefined : startedRunOf(evolveRun(started, recorded(latest)))?.run.status;
 }
 
 describe('the stored types of a status', () => {
-  it('name every fact of a run once', () => {
+  it('name every fact of a run once, those the capabilities of the playbook declare among them', () => {
     expect(statusByStoredType.map(([type]) => type).toSorted()).toEqual(Object.keys(latestOfEveryType).toSorted());
   });
 

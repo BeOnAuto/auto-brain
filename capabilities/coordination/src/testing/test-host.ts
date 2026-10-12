@@ -6,11 +6,12 @@ import { Effect, Function } from 'effect';
 import { callResultOfEnding, definitionCalls } from '../calls/function-calls.ts';
 import { workflowMachineOptionsOf } from '../runs/workflow-machine-options.ts';
 import type { Playbook } from './playbook.ts';
+import { testPlaybookNames } from './test-sandbox.ts';
 
 export function testHost(nested: Playbook): Promise<WorkflowHost> {
   return openWorkflowHost({
     database: { store: 'sqlite', file: ':memory:' },
-    machine: workflowMachineOptionsOf(machineSandboxOf()),
+    machine: workflowMachineOptionsOf(machineSandboxOf(), testPlaybookNames),
     perform: definitionCalls(nested.executeNested),
     settle: nested.settle,
     reports: {

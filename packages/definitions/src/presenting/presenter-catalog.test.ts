@@ -14,15 +14,15 @@ import { publishedEventDecider, publishedEventStreamOf, type EventPublished } fr
 import { makeDefinitionPresenters } from '../index.ts';
 import { definitionsDecider, definitionTypeStreamOf } from '../registry/definitions-decider.ts';
 import { mostInputBytes, mostResultBytes } from '../runs/recorded-size.ts';
-import { runDecider, runStreamNameOf } from '../runs/run-decider.ts';
-import type { RunEvent } from '../runs/run-events.ts';
+import { coreRunFactTypes, type RunEvent } from '../runs/run-events.ts';
+import { asking } from '../testing/asking.ts';
 import { echo } from '../testing/echo.ts';
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 const longestType = 'p'.repeat(32);
 
-const runStream = runStreamNameOf(runId);
+const runStream = `runs/${runId}`;
 
 const definitionStream = definitionTypeStreamOf(longestType);
 
@@ -44,12 +44,13 @@ function storedTypesOf(ast: SchemaAST.AST): readonly string[] {
 }
 
 const catalog = [
-  { stream: runStream, storedTypes: storedTypesOf(runDecider.eventSchema.ast) },
+  { stream: runStream, storedTypes: [...coreRunFactTypes, 'nudge_sent'] },
   { stream: definitionStream, storedTypes: storedTypesOf(definitionsOfTheLongestType.eventSchema.ast) },
   { stream: eventStream, storedTypes: storedTypesOf(publishedEventDecider.eventSchema.ast) },
+  { stream: 'nudges/1', storedTypes: ['nudge_read'] },
 ] as const;
 
-const presenters = makeDefinitionPresenters([echo]);
+const presenters = makeDefinitionPresenters([echo, asking]);
 
 const { present } = presentationOf(presenters);
 
@@ -92,7 +93,7 @@ const largestAnswer = {
   server_request_id: awkward,
 };
 
-const largestReply = { server: awkward, tool: awkward, reply: { id: awkward, sender: awkward } };
+const largestReply = { id: awkward, sender: awkward };
 
 const largestRunEvents: readonly RunEvent[] = [
   { type: 'run_started', data: { input: { text: 'x'.repeat(mostInputBytes - 16) } } },
@@ -128,19 +129,10 @@ const largestRunEvents: readonly RunEvent[] = [
       server_request_id: awkward,
     },
   },
-  { type: 'delivery_started', data: { ...largestCall, target: awkward } },
   {
-    type: 'delivery_succeeded',
-    data: {
-      ...largestAnswer,
-      delivered_as: { conversation: awkward, id: awkward },
-      replies_in: { server: awkward, tool: awkward, key: awkward },
-    },
+    type: 'request_answered',
+    data: { answer: largestJson, claimed_for: awkward, reply: largestReply },
   },
-  { type: 'delivery_failed', data: { ...largestAnswer, because: 'tool_error', detail: awkward, retry_after_ms: 1 } },
-  { type: 'delivery_refused', data: { number: 1, because: 'too_large', detail: awkward, duration_ms: 1 } },
-  { type: 'reply_taken', data: { ...largestReply, answer: largestJson } },
-  { type: 'reply_refused', data: { ...largestReply, because: 'invalid', issues: manyIssues, told: true } },
 ];
 
 const largestContent = {
@@ -207,8 +199,21 @@ describe('the presenters of the stream kinds of a playbook', () => {
     expect(decisionsByKind.get(streamKindOf(stream))).toEqual(storedTypes.toSorted());
   });
 
-  it('hide a stream kind none of them presents', () => {
-    expect(present(recordOf(`run-logs/${runId}`, 'run_failed', {}), showing)).toEqual([]);
+  it('hide a stream kind none of them presents, and a fact of a run no capability of the playbook declares', () => {
+    expect([
+      present(recordOf(`run-logs/${runId}`, 'run_failed', {}), showing),
+      present(recordOf(runStream, 'delivery_started', { number: 1 }), showing),
+    ]).toEqual([[], []]);
+  });
+
+  it('present the facts a capability declares, on its runs and in the stream kinds it owns, in its words', () => {
+    expect([
+      ...present(recordOf(runStream, 'nudge_sent', { number: 2 }), showing),
+      ...present(recordOf('nudges/1', 'nudge_read', {}), showing),
+    ]).toMatchObject([
+      { type: 'nudge_sent', summary: 'Nudge 2 was sent.', data: { number: 2 } },
+      { type: 'nudge_read', summary: 'A nudge was read.' },
+    ]);
   });
 });
 

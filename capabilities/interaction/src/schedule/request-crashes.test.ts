@@ -7,16 +7,15 @@ import {
   askedRunId,
   askedThroughChat,
   attemptedThenStopped,
-  broughtBeforeSettling,
+  broughtBeforeDeciding,
   recordedReply,
-  takenReply,
 } from '../testing/index.ts';
 
 const days = 24 * 60 * 60_000;
 
 const anyTime: unknown = expect.any(String);
 
-const answeredByTheReply = { answered_by: 'playbook:alpha', reply: takenReply };
+const settledByThePlaybook = { record: {} };
 
 describe('an answer a reply brought, whose settlement the server stopped before', () => {
   it('is settled from the reply after a restart, as the playbook, with no attempt made again', async () => {
@@ -27,10 +26,10 @@ describe('an answer a reply brought, whose settlement the server stopped before'
     const afterStop = await playbook.firstOpen();
     const performed = await playbook.performDue(Date.now());
 
-    expect([afterStop, performed]).toMatchObject([{ attempts: 1, standing: 'answered' }, 1]);
+    expect([afterStop, performed]).toEqual([undefined, 1]);
     expect(await playbook.runOf(askedRunId)).toMatchObject({
       status: 'succeeded',
-      output: { status: 'succeeded', output: { choice: 'approve' }, record: answeredByTheReply },
+      output: { status: 'succeeded', output: { choice: 'approve' }, ...settledByThePlaybook },
     });
     expect(tools.calls()).toHaveLength(1);
   });
@@ -88,15 +87,15 @@ describe('an answer a reply brought and another one given meanwhile', () => {
     expect(meanwhile).toMatchObject({
       status: 'rejected',
       reason: 'conflict',
-      detail: 'The run was answered by a reply, so that answer alone settles it',
+      detail: 'The run already took another answer, and a run takes one answer, so it takes no other',
     });
     expect(await playbook.runOf(askedRunId)).toMatchObject({
-      output: { status: 'succeeded', output: { choice: 'approve' }, record: answeredByTheReply },
+      output: { status: 'succeeded', output: { choice: 'approve' }, ...settledByThePlaybook },
     });
   });
 
   it('refuses the other when a reply is taken between the read of the request and the settlement', async () => {
-    const racing = broughtBeforeSettling(memoryLedger(undefined, [openRequests]), { choice: 'approve' });
+    const racing = broughtBeforeDeciding(memoryLedger(undefined, [openRequests]), { choice: 'approve' });
     const asked = await askedThroughChat({ ledger: racing.ledger });
     await racing.started();
 
@@ -108,7 +107,7 @@ describe('an answer a reply brought and another one given meanwhile', () => {
 
     expect(meanwhile).toMatchObject({ status: 'rejected', reason: 'conflict' });
     expect(await asked.playbook.runOf(askedRunId)).toMatchObject({
-      output: { status: 'succeeded', output: { choice: 'approve' }, record: answeredByTheReply },
+      output: { status: 'succeeded', output: { choice: 'approve' }, ...settledByThePlaybook },
     });
   });
 });

@@ -1,13 +1,13 @@
 import { IncidentReporter, type DispatcherServices, type Ledger } from '@beonauto/operations';
 import { ledgerPlaybookRegistry } from '@beonauto/playbooks';
-import type { HostClock } from '@beonauto/workflow-host';
 import { Layer } from 'effect';
 
 import { defaultServerOptions, type ServerOptions } from '../lifecycle/lifecycle.ts';
 import { logContentStore, logIncident, logLedger } from '../logging/logging.ts';
-import { serveWorkflows } from '../workflows/workflows.ts';
+import { serveWorkflows, type WorkflowParts } from '../workflows/workflows.ts';
+import { functionWiringOf, type FunctionWiring } from './function-wiring.ts';
 import { ledgerLayerFor } from './ledger-store.ts';
-import { functionWiringOf, functionsServedBy, type FunctionWiring } from './served-functions.ts';
+import { functionsServedBy } from './served-functions.ts';
 import { loggedModelAccess } from './served-reasoning.ts';
 
 const loggingIncidentReporter = Layer.succeed(IncidentReporter, IncidentReporter.of({ report: logIncident }));
@@ -19,7 +19,7 @@ export function applicationLayer(ledger: Layer.Layer<Ledger>): Layer.Layer<Dispa
 export function compositionRootWith(
   modelAccessOf: FunctionWiring['modelAccessOf'],
   programPoolOf?: FunctionWiring['programPoolOf'],
-  clock?: HostClock,
+  clock?: WorkflowParts['clock'],
   toolTiming?: FunctionWiring['toolTiming'],
 ): ServerOptions<DispatcherServices> {
   const wiring = functionWiringOf(modelAccessOf, programPoolOf, toolTiming);

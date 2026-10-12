@@ -21,7 +21,8 @@ import { StandingSchema, requestRowFrom, routeOfRow, type OpenRequestRow } from 
 
 const InteractionSchema = Schema.Struct({
   run_id: Schema.String.annotate({ description: 'The run of the request, to answer with answer_interaction' }),
-  function: Schema.String.annotate({ description: 'The interaction function that asked' }),
+  type: Schema.String.annotate({ description: 'The type of the function that asked' }),
+  function: Schema.String.annotate({ description: 'The function that asked' }),
   version: Schema.Int.annotate({ description: 'The version of the function that asked' }),
   to: Schema.String.annotate({ description: 'The party the request goes to' }),
   delivery: Schema.NullOr(Schema.Struct({ server: Schema.String, tool: Schema.String })).annotate({
@@ -51,9 +52,9 @@ const InteractionSchema = Schema.Struct({
   }),
   standing: StandingSchema.annotate({
     description:
-      'How its delivery stands: in_inbox, to_deliver, delivering, delivered, retrying, undelivered once every attempt failed, answered by a reply while its run is settled, or cancelling once a cancel was asked',
+      'How its delivery stands: in_inbox, to_deliver, delivering, delivered, retrying, undelivered once every attempt failed, or cancelling once a cancel was asked; an answered request leaves the list',
   }),
-}).annotate({ identifier: 'Interaction', description: 'An open request of an interaction function' });
+}).annotate({ identifier: 'Interaction', description: 'An open request of a function' });
 
 const requestNoun = { one: 'request', other: 'requests' };
 
@@ -70,12 +71,12 @@ function refusedInWords(interactions: readonly { readonly reply_refusals: number
 const FilterText = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256));
 
 const description = [
-  'Lists the open requests of the playbook, newest first: what each interaction function asked, of whom, through which tool, or in the inbox,',
+  'Lists the open requests of the playbook, newest first: what each function asked, of whom, through which tool, or in the inbox,',
   'until when and how its delivery stands, with the `run_id` that answer_interaction takes.',
   'Each carries its `answer_schema`, the shape answer_interaction checks an answer against, as recorded when it was asked,',
   'which get_definition may no longer show; null for a notification.',
   'Use it when the person asks what the playbook is waiting on, or to find the request they answer.',
-  '`to` keeps the requests to one party and `function` those of one interaction function, and `cursor` is the next_cursor of the page before.',
+  '`to` keeps the requests to one party, `type` to one type of function and `function` to one name, which with `type` names one function; `cursor` is the next_cursor of the page before.',
   'Every reader of the playbook sees each party and message, as a run’s input is seen.',
 ].join(' ');
 
@@ -108,6 +109,7 @@ function shownOf({ key, row }: ProjectedKeyedRow) {
   return [
     {
       run_id: key,
+      type: kept.type,
       function: kept.function,
       version: kept.version,
       to: kept.party,
@@ -128,20 +130,28 @@ function shownOf({ key, row }: ProjectedKeyedRow) {
 
 interface Listing {
   readonly to?: string | undefined;
+  readonly type?: string | undefined;
   readonly function?: string | undefined;
   readonly limit?: number | undefined;
   readonly cursor?: string | undefined;
 }
 
-const listed = Effect.fnUntraced(function* ({ to, function: name, limit = defaultPageLimit, cursor }: Listing) {
+function conditionsOf({ to, type, function: name }: Listing): readonly ProjectedCondition[] {
+  const asked: readonly (readonly [string, string | undefined])[] = [
+    ['party', to],
+    ['type', type],
+    ['function', name],
+  ];
+  return [
+    { column: 'open', equals: true },
+    ...asked.flatMap(([column, equals]) => (equals === undefined ? [] : [{ column, equals }])),
+  ];
+}
+
+const listed = Effect.fnUntraced(function* (listing: Listing) {
+  const { limit = defaultPageLimit, cursor } = listing;
   const after = yield* afterOf(cursor);
-  const where: ProjectedCondition[] = [{ column: 'open', equals: true }];
-  if (to !== undefined) {
-    where.push({ column: 'party', equals: to });
-  }
-  if (name !== undefined) {
-    where.push({ column: 'function', equals: name });
-  }
+  const where = conditionsOf(listing);
   const rows = yield* (yield* PlaybookReader).readProjectedRows(openRequestsName, {
     where,
     orderBy: ['requested_at'],
@@ -166,8 +176,9 @@ export const listInteractions = defineQuery('playbook', {
   route: { method: 'GET', path: '/interactions' },
   inputSchema: Schema.Struct({
     to: Schema.optionalKey(FilterText.annotate({ description: 'Only the requests to this party' })),
+    type: Schema.optionalKey(FilterText.annotate({ description: 'Only the requests of functions of this type' })),
     function: Schema.optionalKey(
-      FilterText.annotate({ description: 'Only the requests of this interaction function' }),
+      FilterText.annotate({ description: 'Only the requests of functions of this name, of the type given if any' }),
     ),
     limit: PagingInputFields.limit,
     cursor: PagingInputFields.cursor,

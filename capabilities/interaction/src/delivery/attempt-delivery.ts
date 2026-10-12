@@ -27,7 +27,7 @@ function recordedStart(
   call?: StartedFields,
 ): Effect.Effect<string | undefined> {
   return Effect.map(
-    recordedCall(parts.ledger, request.address, startedFact(attempting, call), request.lineage),
+    recordedCall(parts.record, request.address, startedFact(attempting, call), request.lineage),
     (made) => made?.id,
   );
 }

@@ -1,6 +1,6 @@
 # 0019 — The answer shape of an open request: the listing shows the schema each request recorded
 
-**Status:** accepted (2026-10-08); built 2026-10-08, with the amendments at the end
+**Status:** accepted (2026-10-08); built 2026-10-08, with the amendments at the end; amended (2026-10-11) by [decision 0012](0012-prediction-functions.md): the record a request is listed from is the request in the one shape `@beonauto/definitions` gives every request, `RequestRecordSchema`, the open requests list a request of any function with its type, and an answer is one fact on the run, `request_answered`
 
 ## Context
 

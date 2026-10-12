@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import { testExpressionCheck } from '../testing/expression-checks.ts';
 import { playbookOn } from '../testing/playbook.ts';
+import { testPlaybookNames } from '../testing/test-sandbox.ts';
 import { makeWorkflowAdapter, type WorkflowAdapterDependencies } from './workflow.ts';
 
 const neverStarted: WorkflowAdapterDependencies = {
@@ -13,6 +14,7 @@ const neverStarted: WorkflowAdapterDependencies = {
   check: testExpressionCheck,
   mostDurationMs: 30 * 24 * 3_600_000,
   longestCallMs: 660_000,
+  names: testPlaybookNames,
 };
 
 const flow = `document: { dsl: '1.0.3', namespace: acme, name: flow, version: '1.0.0' }\ndo: []\n`;

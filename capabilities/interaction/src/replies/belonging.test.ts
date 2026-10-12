@@ -32,6 +32,7 @@ describe('a reply in a conversation with several open requests', () => {
     playbook.chat.reply({ channel, thread: secondThread, user: answererId, text: 'approve' });
 
     await playbook.performReads(Date.now() + farAhead);
+    await playbook.performDue(Date.now());
 
     expect([await playbook.runOf(first), await playbook.runOf(second)]).toMatchObject([
       { output: { status: 'started' } },
@@ -60,6 +61,7 @@ describe('a reply in a conversation with several open requests', () => {
     playbook.chat.reply({ channel, user: answererId, text: 'yes' });
 
     await playbook.performReads(Date.now() + farAhead);
+    await playbook.performDue(Date.now());
 
     expect(await playbook.runOf(first)).toMatchObject({
       output: { status: 'succeeded', output: { choice: 'approve' } },
@@ -79,9 +81,10 @@ describe('a reply the playbook has already met', () => {
     playbook.chat.reply({ channel, thread, user: answererId, text: 'reject' });
 
     await playbook.performReads(Date.now() + farAhead);
+    await playbook.performDue(Date.now());
 
-    expect((await recordsOf(playbook.ledger, 'reply_taken', 'reply_refused')).map(({ type }) => type)).toEqual([
-      'reply_taken',
+    expect((await recordsOf(playbook.ledger, 'request_answered', 'reply_refused')).map(({ type }) => type)).toEqual([
+      'request_answered',
     ]);
     expect(await playbook.runOf(first)).toMatchObject({ output: { output: { choice: 'approve' } } });
   });
@@ -113,7 +116,7 @@ describe('a reply the playbook has already met', () => {
 
     await playbook.performReads(Date.now() + farAhead);
 
-    expect(await recordsOf(playbook.ledger, 'reply_taken', 'reply_refused')).toEqual([]);
+    expect(await recordsOf(playbook.ledger, 'request_answered', 'reply_refused')).toEqual([]);
     expect(await playbook.firstOpen()).toMatchObject({ standing: 'cancelling' });
     expect(playbook.chat.calls().map(({ reference }) => reference.tool)).toEqual(['post_message']);
   });

@@ -47,18 +47,20 @@ function tooDeep(callDepth: number): Conflict {
   });
 }
 
-const longestRunIn = Effect.fnUntraced(function* (capability: Capability, name: string) {
+type LongestOf = (prepared: PreparedDefinition) => number;
+
+const longestRunIn = Effect.fnUntraced(function* (capability: Capability, name: string, longestOf: LongestOf) {
   const { prepared } = yield* preparedDefinition(capability, name);
-  return prepared.longestRunMs;
+  return longestOf(prepared);
 });
 
 const longestRunsIn = Effect.fnUntraced(function* (capabilities: readonly Capability[]) {
   const reader = yield* PlaybookReader;
-  return (type: string, name: string): Effect.Effect<number | undefined> => {
+  return (type: string, name: string, longestOf: LongestOf): Effect.Effect<number | undefined> => {
     const capability = capabilities.find((candidate) => candidate.type === type);
     return capability === undefined
       ? Effect.undefined
-      : longestRunIn(capability, name).pipe(
+      : longestRunIn(capability, name, longestOf).pipe(
           Effect.option,
           Effect.map(Option.getOrUndefined),
           Effect.provideService(PlaybookReader, reader),
@@ -73,7 +75,7 @@ function startOf(request: RunRequest, { definition, prepared, createOnly }: Prep
     ...request,
     definition_version: definition.version,
     calls_tools: prepared.callsTools,
-    finishes_later: prepared.finishesLater,
+    finishes_later: prepared.finishesLaterFor(request.input),
     depth,
     call_depth: callDepth,
     ...(calledBy === null ? {} : { called_by: calledBy }),
@@ -89,6 +91,7 @@ const contextOf = Effect.fnUntraced(function* (
   given: Called,
 ) {
   const { org, playbook } = yield* PlaybookContext;
+  const longestRun = yield* longestRunsIn(given.capabilities);
   const context: JournalledRun = {
     id,
     org,
@@ -101,7 +104,8 @@ const contextOf = Effect.fnUntraced(function* (
     callDepth: given.callDepth,
     ...(given.calledBy === null ? {} : { calledBy: given.calledBy }),
     ...(given.trigger === null ? {} : { trigger: given.trigger }),
-    longestRunOf: yield* longestRunsIn(given.capabilities),
+    longestRunOf: (type, name) => longestRun(type, name, ({ longestRunMs }) => longestRunMs),
+    longestRunFor: (type, name, input) => longestRun(type, name, ({ longestRunMsFor }) => longestRunMsFor(input)),
   };
   return context;
 });

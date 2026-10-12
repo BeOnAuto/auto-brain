@@ -19,12 +19,8 @@ function canonical(value: Schema.Json): Schema.Json {
   );
 }
 
-function digestOf(value: Schema.Json): string {
+export function digestOf(value: Schema.Json): string {
   return sha256Of(JSON.stringify(canonical(value)));
-}
-
-export function succeedsWith(result: RunResult, output: Schema.Json): boolean {
-  return result.type === 'run_succeeded' && digestOf(result.data.output) === digestOf(output);
 }
 
 export function settlementKeyOf(result: RunResult): string {

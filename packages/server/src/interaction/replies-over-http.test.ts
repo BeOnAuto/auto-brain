@@ -37,10 +37,23 @@ describe(
       const events = await until(() => playbookEventsOf(server), readRecorded);
 
       expect(listed).toMatchObject({ conversation: '#approvals-ada/1699.000001', answerer: 'ada', reply_refusals: 0 });
-      expect(settled).toMatchObject({
-        status: 'succeeded',
-        output: { choice: 'approve' },
-        record: { answered_by: 'playbook:alpha', reply: { id: '1699.000002', sender: 'ada' } },
+      expect(settled).toMatchObject({ status: 'succeeded', output: { choice: 'approve' }, record: {} });
+      expect(await server.call('GET', `${alpha}/runs/${runId}/history`)).toMatchObject({
+        body: {
+          events: [
+            { type: 'run_started' },
+            { type: 'interaction_requested' },
+            { type: 'delivery_started' },
+            { type: 'delivery_succeeded' },
+            {
+              type: 'request_answered',
+              summary: 'A reply from the party answered the request, and the run takes the answer.',
+              data: { answer: { choice: 'approve' }, reply: { id: '1699.000002', sender: 'ada' } },
+              metadata: { by: 'playbook:alpha' },
+            },
+            { type: 'run_succeeded' },
+          ],
+        },
       });
       expect(await deliveryHistoryOf(server, runId)).toMatchObject([
         { type: 'delivery_started' },
@@ -54,7 +67,13 @@ describe(
         'The playbook looked for new replies in the conversation “#approvals-ada/1699.000001” through the thread replies tool of chat and found 2, took 1 as an answer and refused 0.',
       );
     });
+  },
+);
 
+describe(
+  'a request whose function reads the replies to its message and changed since it asked, over HTTP',
+  { timeout: workflowTestTimeoutMs },
+  () => {
     it('is read as it was asked, though its function changed since', async () => {
       const chat = await chatServer();
       const server = await servingInteractions(threaded, chatEnvironment(chat.url));

@@ -1,7 +1,7 @@
 import { Conflict, NotFound, RunCancelled, type Rejection } from '@beonauto/operations';
 import { Equal, Result } from 'effect';
 
-import { decideOutboundCall, decideReply, decideToolCall } from '../run-work/work-decisions.ts';
+import { decideAnswer, decideToolCall, decideWork, type AdmitsFact } from '../run-work/work-decisions.ts';
 import type {
   RunCancel,
   RunCommand,
@@ -26,7 +26,7 @@ import {
   type RunStreamState,
   type RecordedRunState,
 } from './run-state.ts';
-import { settlementKeyOf, succeedsWith } from './settlement-keys.ts';
+import { settlementKeyOf } from './settlement-keys.ts';
 import { startedCallingTools, toolsOnlyRead, toolsWereCalled } from './tool-refusals.ts';
 
 type Decision = Result.Result<readonly RunEvent[], Rejection<'not_found' | 'conflict' | 'cancelled'>>;
@@ -157,12 +157,12 @@ function decideFinish({ result }: RunFinish, state: RunState): Decision {
 
 export const endedWithAnotherResult = new Conflict({ detail: 'The run already ended with another result' });
 
-export const answeredByAReply = new Conflict({
-  detail: 'The run was answered by a reply, so that answer alone settles it',
+export const answeredFirst = new Conflict({
+  detail: 'The run took an answer, so it did not go unanswered; that answer settles it',
 });
 
-function answeredOtherwise({ broughtAnswer }: RecordedRunState, { result }: RunSettlement): boolean {
-  return broughtAnswer !== null && !succeedsWith(result, broughtAnswer.answer);
+function unansweredThoughAnswered({ answer }: RecordedRunState, { result }: RunSettlement): boolean {
+  return answer !== null && result.type === 'run_rejected' && result.data.rejection.reason === 'unanswered';
 }
 
 function settledAlready(state: RecordedRunState, settlement: RunSettlement): Decision {
@@ -178,8 +178,8 @@ function decideSettlement(settlement: RunSettlement, state: RunState): Decision 
   if (!isRunning(state)) {
     return settledAlready(state, settlement);
   }
-  if (answeredOtherwise(state, settlement)) {
-    return Result.fail(answeredByAReply);
+  if (unansweredThoughAnswered(state, settlement)) {
+    return Result.fail(answeredFirst);
   }
   return takesSettlement(state)
     ? Result.succeed([settlement.result])
@@ -213,7 +213,7 @@ function decideCancel(cancel: RunCancel, state: RunStreamState): Decision {
   return cancel.byItsCaller === true ? Result.succeed([cancelRequested(cancel)]) : Result.fail(noSuchRun);
 }
 
-export function decideOnRun(command: RunCommand, state: RunStreamState): Decision {
+export function decideOnRun(command: RunCommand, state: RunStreamState, admits: AdmitsFact): Decision {
   if (command.type === 'start') {
     return decideStart(command, state);
   }
@@ -224,11 +224,11 @@ export function decideOnRun(command: RunCommand, state: RunStreamState): Decisio
   if (command.type === 'tool_call') {
     return decideToolCall(command, run);
   }
-  if (command.type === 'outbound_call') {
-    return decideOutboundCall(command, run);
+  if (command.type === 'work') {
+    return decideWork(command, run, admits);
   }
-  if (command.type === 'reply') {
-    return decideReply(command, run);
+  if (command.type === 'answer') {
+    return decideAnswer(command, run);
   }
   return command.type === 'finish' ? decideFinish(command, run) : decideSettlement(command, run);
 }

@@ -1,4 +1,4 @@
-import type { RepliesIn } from '@beonauto/definitions';
+import type { RepliesIn } from '../tool-blocks/tool-block-schemas.ts';
 
 export function conversationKeyOf({ server, tool, key }: RepliesIn): string {
   return `${server}/${tool}/${key}`;
