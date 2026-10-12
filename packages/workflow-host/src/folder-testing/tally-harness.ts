@@ -1,0 +1,79 @@
+import { Effect, type Schema } from 'effect';
+import { vi } from 'vitest';
+
+import type { DatabaseSettings } from '../database/host-databases.ts';
+import { definitionStreamOf } from '../projector/brain-definitions.ts';
+import { someFolder } from '../projector/folder.ts';
+import type { Projector } from '../projector/projector.ts';
+import { alphaKey } from '../views-testing/view-documents.ts';
+import { viewHarness, type ViewHarness } from '../views-testing/view-harness.ts';
+import { viewWaiting } from '../views-testing/view-reading.ts';
+import {
+  talliesOf,
+  talliesTable,
+  tallyFolder,
+  tallyOf,
+  tallyType,
+  type TallyDetails,
+  type TallyRow,
+} from './tally-folder.ts';
+
+type StartOf = Parameters<ViewHarness['start']>[0];
+
+export interface TallyHarness extends ViewHarness {
+  readonly savedTally: (name: string, details: Schema.Json) => Promise<void>;
+  readonly retiredTally: (name: string) => Promise<void>;
+  readonly tallies: () => Promise<readonly TallyRow[]>;
+  readonly untilTally: (details: TallyDetails, holds: (row: TallyRow) => boolean) => Promise<TallyRow>;
+  readonly goneTally: (details: TallyDetails) => Promise<void>;
+  readonly startWithTallies: (more?: StartOf) => Projector;
+}
+
+const savedAt = '2026-10-06T09:00:00.000Z';
+
+const tallyStream = definitionStreamOf(alphaKey, tallyType);
+
+function contextOf(name: string, version: number) {
+  return { by: 'acme-admin', at: savedAt, definitionType: tallyType, definitionName: name, definitionVersion: version };
+}
+
+export async function tallyHarness(settings: DatabaseSettings): Promise<TallyHarness> {
+  const views = await viewHarness(settings);
+  await Effect.runPromise(views.store.database.write(talliesTable));
+  const versions = new Map<string, number>();
+  const tallies = () => Effect.runPromise(talliesOf(views.store.database, alphaKey));
+  const named = async (details: TallyDetails) => (await tallies()).find(({ tally }) => tally === tallyOf(details));
+  return {
+    ...views,
+    savedTally: async (name, details) => {
+      const version = (versions.get(name) ?? 0) + 1;
+      versions.set(name, version);
+      const type = version === 1 ? 'definition_created' : 'definition_updated';
+      const content = { source: `the ${name} tally, version ${version}`, details };
+      await views.append(tallyStream, [{ type, data: { content } }], contextOf(name, version));
+    },
+    retiredTally: async (name) => {
+      await views.append(
+        tallyStream,
+        [{ type: 'definition_retired', data: {} }],
+        contextOf(name, Number(versions.get(name))),
+      );
+    },
+    tallies,
+    untilTally: (details, holds) =>
+      vi.waitFor(async () => {
+        const row = await named(details);
+        if (row === undefined || !holds(row)) {
+          throw new Error(`The tally of ${tallyOf(details)} does not hold yet: ${JSON.stringify(row)}`);
+        }
+        return row;
+      }, viewWaiting),
+    goneTally: (details) =>
+      vi.waitFor(async () => {
+        if ((await named(details)) !== undefined) {
+          throw new Error(`The tally of ${tallyOf(details)} is still kept`);
+        }
+      }, viewWaiting),
+    startWithTallies: (more = {}) => views.start({ ...more, besides: [someFolder(tallyFolder)] }),
+  };
+}

@@ -1,6 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { programPool, unitMemoryBytes, workerStackBytes } from '@beonauto/workflow-engine/dsl';
+import { programPool } from '@beonauto/workflow-engine/dsl';
 import { Effect, Function } from 'effect';
 
 import type { HostDatabase } from '../src/database/host-database.ts';
@@ -9,6 +9,7 @@ import { openWorkflowStore } from '../src/host/workflow-store.ts';
 import { systemClock } from '../src/loop/host-clock.ts';
 import { startProjector } from '../src/projector/projector.ts';
 import { reviewsFold } from '../src/views-testing/campaign-reviews.ts';
+import { measuredViews } from './measured-views.ts';
 
 export interface Rebuild {
   readonly events: number;
@@ -108,22 +109,7 @@ export async function rebuildOn(settings: DatabaseSettings, events: number): Pro
   const started = performance.now();
   const projector = startProjector({
     database: counting.database,
-    settings: {
-      definitionType: 'recall',
-      pool,
-      folding: {
-        budget: 500,
-        memoryBytes: unitMemoryBytes,
-        stackBytes: workerStackBytes,
-        foldDeadlineMs: 10_000,
-        pageBudgetMs: 2000,
-        mostViewBytes: 524_288,
-      },
-      brainsAtOnce: 4,
-      rebuildsAtOnce: 4,
-      pagesPerWake: 10,
-      overtimesBeforeStall: 20,
-    },
+    settings: measuredViews(pool),
     reports: {
       unsettled: () => Effect.void,
       trouble: () => Effect.void,

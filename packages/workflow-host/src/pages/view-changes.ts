@@ -136,6 +136,15 @@ export function salvagedTryOf(row: ViewRow, folded: FoldedView, salvage: FoldedP
   return { row, next: triedAgain(row, advance, endOf(row, folded, salvage), lost) };
 }
 
+export function unchangedOf(row: ViewRow): ViewChange {
+  const { checkpoint, checkpointAt, lastEvent, folded, overtimes, phase } = row;
+  return { row, next: { checkpoint, checkpointAt, lastEvent, folded, overtimes, phase } };
+}
+
+export function liveFrom({ row, next }: ViewChange): ViewChange {
+  return { row, next: { ...next, phase: 'live' } };
+}
+
 export function hasChanged({ row, next }: ViewChange): boolean {
   return (
     next.phase !== row.phase ||

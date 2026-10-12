@@ -1,40 +1,31 @@
 import { Effect } from 'effect';
+import { Schema } from 'effect';
 
 import { rowsOf, type DatabaseFailed, type HostDatabase } from '../database/host-database.ts';
 import type { Statement } from '../database/statement.ts';
-import { viewDetailsOf, type ViewDetails } from '../views/view-details.ts';
-import type { ViewPhase, ViewRow } from '../views/view-rows.ts';
-import { viewRowOf, ViewRowSchema } from '../views/view-rows.ts';
-import { phaseSet, viewAdded, viewDropped, viewRenewed, viewsOfBrain, type NewView } from '../views/view-statements.ts';
+import type { BrainDefinitions, KeptFunction } from '../projector/brain-definitions.ts';
+import type { Reconciling, RowPhase } from '../projector/folder.ts';
+import { viewDetailsOf, type ViewDetails } from './view-details.ts';
+import { viewRowOf, ViewRowSchema, type ViewRow } from './view-rows.ts';
 import {
-  definitionsAfter,
-  definitionStreamOf,
-  noDefinitions,
-  type BrainDefinitions,
-  type KeptFunction,
-} from './brain-definitions.ts';
+  brainsWithViews,
+  phaseSet,
+  viewAdded,
+  viewDropped,
+  viewRenewed,
+  viewsOfBrain,
+  type NewView,
+} from './view-statements.ts';
 
-export interface Reconciling {
-  readonly database: HostDatabase;
-  readonly definitionType: string;
-  readonly rebuildsAtOnce: number;
-  readonly definitions: Map<string, BrainDefinitions>;
+const BrainRow = Schema.Struct({ brain: Schema.String });
+
+export function brainsWithViewsIn(database: HostDatabase): Effect.Effect<readonly string[], DatabaseFailed> {
+  return Effect.map(rowsOf(BrainRow, database.read(brainsWithViews)), (rows) => rows.map(({ brain }) => brain));
 }
 
 export function rowsOfBrain(database: HostDatabase, brain: string): Effect.Effect<readonly ViewRow[], DatabaseFailed> {
   return rowsOf(ViewRowSchema, database.read(viewsOfBrain(brain))).pipe(
     Effect.map((rows) => rows.map((row) => viewRowOf(row))),
-  );
-}
-
-function definitionsOf({ database, definitionType, definitions }: Reconciling, brain: string) {
-  const known = definitions.get(brain) ?? noDefinitions;
-  return Effect.promise(() => database.store.read(definitionStreamOf(brain, definitionType), known.version)).pipe(
-    Effect.map(({ messages }) => {
-      const next = definitionsAfter(known, messages);
-      definitions.set(brain, next);
-      return next;
-    }),
   );
 }
 
@@ -57,7 +48,7 @@ function slotsOf(building: readonly Saved[], rebuildsAtOnce: number): ReadonlySe
   return new Set(inOrderSaved.slice(0, rebuildsAtOnce).map(({ name }) => name));
 }
 
-function phaseIn(slots: ReadonlySet<string>, name: string): ViewPhase {
+function phaseIn(slots: ReadonlySet<string>, name: string): RowPhase {
   return slots.has(name) ? 'rebuilding' : 'waiting';
 }
 
@@ -68,7 +59,7 @@ function freshOf(name: string, kept: KeptFunction, row: ViewRow | undefined): re
     : [{ name, saved: kept.saved, version: kept.version, details }];
 }
 
-function newViewOf(brain: string, { name, saved, version, details }: FreshFunction, phase: ViewPhase): NewView {
+function newViewOf(brain: string, { name, saved, version, details }: FreshFunction, phase: RowPhase): NewView {
   return {
     brain,
     name,
@@ -112,15 +103,15 @@ function phasesOf(rows: readonly ViewRow[], rebuildsAtOnce: number): readonly Vi
   return rows.map((row) => (isBuilding(row) ? { ...row, phase: phaseIn(slots, row.name) } : row));
 }
 
-export function reconciled(parts: Reconciling, brain: string): Effect.Effect<readonly ViewRow[], DatabaseFailed> {
-  const { database } = parts;
+export function reconciledViews(
+  { database, brain, definitions, rebuildsAtOnce }: Reconciling,
+  before: readonly ViewRow[],
+): Effect.Effect<readonly ViewRow[], DatabaseFailed> {
   return Effect.gen(function* () {
-    const definitions = yield* definitionsOf(parts, brain);
-    const before = yield* rowsOfBrain(database, brain);
-    const changes = changesOf(brain, before, definitions, parts.rebuildsAtOnce);
+    const changes = changesOf(brain, before, definitions, rebuildsAtOnce);
     yield* Effect.forEach(changes, database.write, { discard: true });
     const rows = changes.length === 0 ? before : yield* rowsOfBrain(database, brain);
-    const phased = phasesOf(rows, parts.rebuildsAtOnce);
+    const phased = phasesOf(rows, rebuildsAtOnce);
     const moved = phased.filter((row, index) => row.phase !== rows[index]?.phase);
     yield* Effect.forEach(moved, (row) => database.write(phaseSet(row, row.phase)), { discard: true });
     return phased;

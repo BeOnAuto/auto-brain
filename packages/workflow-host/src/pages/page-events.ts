@@ -1,7 +1,6 @@
 import { brainEventOf, definitionTypeStreamOf, type CloudEvent } from '@beonauto/definitions';
 import type { EventStore, StoredPage, StoredPlace } from '@beonauto/ledger';
 
-import { recordsInAPage } from '../projector/projector-settings.ts';
 import type { Point } from '../views/view-points.ts';
 
 export interface PageEvent {
@@ -11,6 +10,8 @@ export interface PageEvent {
   readonly event: CloudEvent;
 }
 
+const recordsInAPage = 1000;
+
 interface PassedOver {
   readonly record: string;
   readonly reason: 'unreadable';
@@ -18,7 +19,7 @@ interface PassedOver {
 
 export interface ReadPage {
   readonly events: readonly PageEvent[];
-  readonly definitionsSeen: boolean;
+  readonly definitionsSeen: ReadonlySet<string>;
   readonly passedOver: readonly PassedOver[];
   readonly lastExamined: StoredPlace | undefined;
   readonly atTheEnd: boolean;
@@ -28,24 +29,24 @@ interface PageRead {
   readonly brainKey: string;
   readonly after: Point | undefined;
   readonly types: readonly string[];
-  readonly definitionType: string;
+  readonly definitionTypes: readonly string[];
 }
 
 type StoredRecord = StoredPage['records'][number];
 
-const definitionTypes = ['definition_created', 'definition_updated', 'definition_retired'];
+const definitionEvents = ['definition_created', 'definition_updated', 'definition_retired'];
 
 const factTypes: ReadonlySet<string> = new Set([
   'run_started',
   'run_succeeded',
   'run_rejected',
   'run_failed',
-  ...definitionTypes,
+  ...definitionEvents,
 ]);
 
 export function typesToRead(named: readonly string[]): readonly string[] {
   const published = named.some((type) => !factTypes.has(type)) ? ['event_published'] : [];
-  const read = new Set([...named.filter((type) => factTypes.has(type)), ...published, ...definitionTypes]);
+  const read = new Set([...named.filter((type) => factTypes.has(type)), ...published, ...definitionEvents]);
   return [...read].toSorted();
 }
 
@@ -87,7 +88,7 @@ function isPassedOver(placed: PageEvent | PassedOver): placed is PassedOver {
 
 export async function readPage(
   store: EventStore,
-  { brainKey, after, types, definitionType }: PageRead,
+  { brainKey, after, types, definitionTypes }: PageRead,
 ): Promise<ReadPage> {
   const page = await store.readRecorded(
     brainKey,
@@ -95,10 +96,12 @@ export async function readPage(
     { order: 'asc', limit: recordsInAPage, types, ...(after === undefined ? {} : { after }) },
   );
   const placed = page.records.map((record) => placedOf(brainKey, record));
-  const definitions = `${brainKey}${definitionTypeStreamOf(definitionType)}`;
+  const streams = new Set(page.records.map(({ stream }) => stream));
   return {
     events: placed.filter((each) => isPageEvent(each)),
-    definitionsSeen: page.records.some(({ stream }) => stream === definitions),
+    definitionsSeen: new Set(
+      definitionTypes.filter((type) => streams.has(`${brainKey}${definitionTypeStreamOf(type)}`)),
+    ),
     passedOver: placed.filter((each) => isPassedOver(each)),
     lastExamined: page.lastExamined,
     atTheEnd: page.resumeAfter === undefined,

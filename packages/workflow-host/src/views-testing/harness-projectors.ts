@@ -1,8 +1,8 @@
 import type { HostDatabase } from '../database/host-database.ts';
 import type { HostReports } from '../host/host-reports.ts';
 import { systemClock, type HostClock } from '../loop/host-clock.ts';
-import type { ProjectorSettings } from '../projector/projector-settings.ts';
 import { startProjector, type Projector } from '../projector/projector.ts';
+import type { ViewSettingsOf, ViewsProjecting } from './view-documents.ts';
 
 interface CountingDatabase {
   readonly database: HostDatabase;
@@ -35,7 +35,7 @@ function countingDatabase(database: HostDatabase): CountingDatabase {
   };
 }
 
-type StartOf = Partial<ProjectorSettings> & {
+type StartOf = Partial<ViewsProjecting> & {
   readonly sweepEveryMs?: number;
   readonly clock?: HostClock;
   readonly through?: (database: HostDatabase) => HostDatabase;
@@ -55,7 +55,7 @@ export interface HarnessProjectors {
 export interface ProjectorsOf {
   readonly database: HostDatabase;
   readonly reports: HostReports;
-  readonly settingsOf: (more?: Partial<ProjectorSettings>) => ProjectorSettings;
+  readonly settingsOf: ViewSettingsOf;
 }
 
 export function harnessProjectors({ database, reports, settingsOf }: ProjectorsOf): HarnessProjectors {

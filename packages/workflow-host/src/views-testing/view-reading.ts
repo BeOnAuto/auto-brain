@@ -1,9 +1,14 @@
+import type { ProgramPool } from '@beonauto/workflow-engine/dsl';
 import { Effect } from 'effect';
 import { expect, vi } from 'vitest';
 
-import type { KeptView } from '../views/view-rows.ts';
+import type { DatabaseFailed, HostDatabase } from '../database/host-database.ts';
+import { reconciledRows } from '../projector/folder-pass.ts';
+import { definitionsByType } from '../projector/projector-schedule.ts';
+import { rowsOfBrain } from '../views/view-reconciling.ts';
+import type { KeptView, ViewRow } from '../views/view-rows.ts';
 import type { ViewsPort } from '../views/views-port.ts';
-import { alpha, viewTestTimeoutMs, type Brain } from './view-documents.ts';
+import { alpha, alphaKey, viewsFolderOver, viewTestTimeoutMs, type Brain } from './view-documents.ts';
 
 export interface ViewReading {
   readonly viewOf: (name: string, brain?: Brain) => Promise<KeptView | undefined>;
@@ -31,4 +36,18 @@ export function viewReadingOf(views: ViewsPort): ViewReading {
         return true;
       }, viewWaiting),
   };
+}
+
+export function viewRowsOf(database: HostDatabase): Effect.Effect<readonly ViewRow[], DatabaseFailed> {
+  return rowsOfBrain(database, alphaKey);
+}
+
+export function viewsReconciled(
+  pool: ProgramPool,
+  database: HostDatabase,
+  rebuildsAtOnce: number,
+): () => Promise<readonly ViewRow[]> {
+  const kept = { database, rebuildsAtOnce, definitions: definitionsByType().of };
+  const folder = viewsFolderOver(pool);
+  return () => Effect.runPromise(reconciledRows(folder, kept, alphaKey));
 }

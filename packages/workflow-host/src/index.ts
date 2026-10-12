@@ -9,7 +9,22 @@ export type { HostNote, HostReports, UnsettledRun } from './host/host-reports.ts
 export { HostElsewhere, type DeliveryAnswer, type RunStart, type StartAnswer } from './host/run-requests.ts';
 export { openWorkflowHost, type HostOptions, type WorkflowHost } from './host/workflow-host.ts';
 export { openWorkflowStore, type WorkflowStore } from './host/workflow-store.ts';
-export type { FoldingSettings, ProjectorSettings } from './projector/projector-settings.ts';
+export type { DatabaseFailed, HostDatabase } from './database/host-database.ts';
+export type { Statement } from './database/statement.ts';
+export type { PageEvent, ReadPage } from './pages/page-events.ts';
+export type { BrainDefinitions, KeptFunction, KeptOf } from './projector/brain-definitions.ts';
+export {
+  someFolder,
+  type FoldedChanges,
+  type Folder,
+  type PassedChange,
+  type PassedRow,
+  type Reconciling,
+  type RowPhase,
+  type SomeFolder,
+  type Writing,
+} from './projector/folder.ts';
+export type { ProjectorSettings } from './projector/projector-settings.ts';
 export {
   ViewDetailsSchema,
   ViewFilterSchema,
@@ -17,7 +32,10 @@ export {
   type ViewDetails,
   type ViewFilter,
 } from './views/view-details.ts';
-export type { FoldedEvent, KeptView, StallCause, StalledEvent, ViewPhase, ViewStall } from './views/view-rows.ts';
+export type { Point } from './views/view-points.ts';
+export type { FoldedEvent, KeptView, StallCause, StalledEvent, ViewStall } from './views/view-rows.ts';
+export { viewsFolder } from './views/views-folder.ts';
+export type { FoldingSettings, ViewsFolding } from './views/views-folding.ts';
 export type { ViewsPort } from './views/views-port.ts';
 export type { HostClock } from './loop/host-clock.ts';
 export type { RunAddress } from './runs/run-address.ts';

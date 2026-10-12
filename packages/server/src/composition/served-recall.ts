@@ -4,7 +4,13 @@ import { appendSignal, type AppendSignal } from '@beonauto/ledger';
 import type { DispatcherServices } from '@beonauto/operations';
 import { makeRecallFunctionAdapter, recallBounds, recallDefinitionType, recallFolding } from '@beonauto/recall';
 import type { ProgramPool } from '@beonauto/workflow-engine/dsl';
-import { openWorkflowStore, type ProjectorSettings, type WorkflowStore } from '@beonauto/workflow-host';
+import {
+  openWorkflowStore,
+  someFolder,
+  viewsFolder,
+  type ProjectorSettings,
+  type WorkflowStore,
+} from '@beonauto/workflow-host';
 
 import type { Settings } from '../settings/settings.ts';
 import { hostDatabaseOf } from '../workflows/host-dependencies.ts';
@@ -35,13 +41,19 @@ export function recallWiring(): RecallWiring {
         capability: makeRecallFunctionAdapter({ pool, views: store.views, mostFunctions: recall.mostFunctions }),
         store,
         views: {
-          definitionType: recallDefinitionType,
-          pool,
-          folding: recallFolding,
+          folders: [
+            someFolder(
+              viewsFolder({
+                definitionType: recallDefinitionType,
+                pool,
+                folding: recallFolding,
+                overtimesBeforeStall: recallBounds.overtimesBeforeStall,
+              }),
+            ),
+          ],
           brainsAtOnce: recall.brainsAtOnce,
           rebuildsAtOnce: recall.rebuildsAtOnce,
           pagesPerWake: recallBounds.pagesPerWake,
-          overtimesBeforeStall: recallBounds.overtimesBeforeStall,
           appends,
         },
       };
