@@ -1,4 +1,4 @@
-import type { TroublingReceipt } from '@beonauto/workflow-engine';
+import type { TroublingReceipt } from '@on.auto/workflow-engine';
 import type { Effect } from 'effect';
 
 import type { Trouble } from '../calls/host-executor.ts';

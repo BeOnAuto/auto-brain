@@ -1,4 +1,4 @@
-import type { FrontMatterSection, FrontMatterShape } from '@beonauto/definitions/document';
+import type { FrontMatterSection, FrontMatterShape } from '@on.auto/definitions/document';
 import { Schema } from 'effect';
 
 import { grains } from '../periods/grains.ts';

@@ -1,4 +1,4 @@
-import { parsedTemplate, templateEngine } from '@beonauto/definitions/template';
+import { parsedTemplate, templateEngine } from '@on.auto/definitions/template';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 

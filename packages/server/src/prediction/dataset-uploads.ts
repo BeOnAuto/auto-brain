@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { request } from 'node:http';
 
-import { Ledger, textOfContent } from '@beonauto/operations';
+import { Ledger, textOfContent } from '@on.auto/operations';
 import { Effect, ManagedRuntime } from 'effect';
 
 import { ledgerLayerFor } from '../composition/ledger-store.ts';

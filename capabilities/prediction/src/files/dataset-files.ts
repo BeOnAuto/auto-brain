@@ -1,4 +1,4 @@
-import { cursorOfParts } from '@beonauto/operations';
+import { cursorOfParts } from '@on.auto/operations';
 import { Effect, Option } from 'effect';
 
 import { predictionBounds } from '../capability/prediction-bounds.ts';

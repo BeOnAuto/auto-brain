@@ -1,4 +1,4 @@
-import { rowsOf, statement, WholeNumber, type HostDatabase } from '@beonauto/workflow-host';
+import { rowsOf, statement, WholeNumber, type HostDatabase } from '@on.auto/workflow-host';
 import { Effect, Schema } from 'effect';
 
 import { MeasureStateSchema } from '../dataset/row-measures.ts';

@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 
-import { sha256Of } from '@beonauto/operations';
+import { sha256Of } from '@on.auto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

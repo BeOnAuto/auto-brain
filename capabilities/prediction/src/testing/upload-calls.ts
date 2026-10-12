@@ -8,13 +8,13 @@ import {
   type Settled,
   type StreamedContent,
   type Succeeded,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import {
   memoryLedger,
   memoryPlaybookRegistry,
   memoryRecordedContent,
   recordingReporter,
-} from '@beonauto/operations/testing';
+} from '@on.auto/operations/testing';
 import { Effect, Layer } from 'effect';
 
 import { uploadDataset } from '../upload/upload-dataset.ts';

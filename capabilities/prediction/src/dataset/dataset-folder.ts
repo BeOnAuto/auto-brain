@@ -1,4 +1,4 @@
-import type { FilterSandbox } from '@beonauto/workflow-engine';
+import type { FilterSandbox } from '@on.auto/workflow-engine';
 import {
   rowsOf,
   type DatabaseFailed,
@@ -8,7 +8,7 @@ import {
   type Reconciled,
   type Reconciling,
   type RowPhase,
-} from '@beonauto/workflow-host';
+} from '@on.auto/workflow-host';
 import { Effect, Schema } from 'effect';
 
 import { predictionBounds, predictionDefinitionType } from '../capability/prediction-bounds.ts';

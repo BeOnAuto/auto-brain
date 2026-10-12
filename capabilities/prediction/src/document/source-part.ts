@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
 
-import type { DocumentIssue, SourceLines } from '@beonauto/definitions/document';
-import { readDuration } from '@beonauto/workflow-engine/dsl';
+import type { DocumentIssue, SourceLines } from '@on.auto/definitions/document';
+import { readDuration } from '@on.auto/workflow-engine/dsl';
 
 import { predictionBounds } from '../capability/prediction-bounds.ts';
 import { checkedFrom, refusedAt, type Checked } from './checked-parts.ts';

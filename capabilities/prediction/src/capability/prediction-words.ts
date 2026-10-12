@@ -1,5 +1,5 @@
-import { outputInWords } from '@beonauto/definitions';
-import { plainNumber, quoted } from '@beonauto/operations';
+import { outputInWords } from '@on.auto/definitions';
+import { plainNumber, quoted } from '@on.auto/operations';
 import { Option, Schema } from 'effect';
 
 const PredictionSchema = Schema.Struct({

@@ -1,4 +1,4 @@
-import type { DocumentIssue, SourceLines } from '@beonauto/definitions/document';
+import type { DocumentIssue, SourceLines } from '@on.auto/definitions/document';
 
 import { refusedAt } from '../document/checked-parts.ts';
 import type { DatasetFilter } from '../document/prediction-document.ts';

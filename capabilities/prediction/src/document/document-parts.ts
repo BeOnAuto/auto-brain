@@ -1,4 +1,4 @@
-import type { DocumentIssue, DocumentParts, ReadFrontMatter } from '@beonauto/definitions/document';
+import type { DocumentIssue, DocumentParts, ReadFrontMatter } from '@on.auto/definitions/document';
 import { Result } from 'effect';
 
 import { compiledBrief } from '../brief/brief-template.ts';

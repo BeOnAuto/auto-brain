@@ -1,5 +1,5 @@
-import { streamPrefixOfPlaybook, type PlaybookAddress } from '@beonauto/operations';
-import { rowsOf, type HostDatabase } from '@beonauto/workflow-host';
+import { streamPrefixOfPlaybook, type PlaybookAddress } from '@on.auto/operations';
+import { rowsOf, type HostDatabase } from '@on.auto/workflow-host';
 import { Effect } from 'effect';
 
 import { datasetRowOf, StoredDatasetSchema, type DatasetRow } from './dataset-rows.ts';

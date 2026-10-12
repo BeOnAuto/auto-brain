@@ -3,10 +3,10 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { postgresqlLedgerLayer } from '@beonauto/ledger/postgresql';
-import { ledgerLayer } from '@beonauto/ledger/sqlite3';
-import type { Ledger } from '@beonauto/operations';
-import type { DatabaseSettings } from '@beonauto/workflow-host';
+import { postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
+import { ledgerLayer } from '@on.auto/ledger/sqlite3';
+import type { Ledger } from '@on.auto/operations';
+import type { DatabaseSettings } from '@on.auto/workflow-host';
 import type { Layer } from 'effect';
 import { Client } from 'pg';
 

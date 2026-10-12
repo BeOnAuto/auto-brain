@@ -5,7 +5,7 @@ import {
   type ContentRefusedBecause,
   type RecordedContent,
   type StreamedContent,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Effect, Result, Schema } from 'effect';
 
 import { predictionBounds } from '../capability/prediction-bounds.ts';

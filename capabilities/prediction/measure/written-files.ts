@@ -1,8 +1,8 @@
 import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
 
-import { Ledger, textOfContent, type RecordedContent } from '@beonauto/operations';
-import type { HostDatabase } from '@beonauto/workflow-host';
+import { Ledger, textOfContent, type RecordedContent } from '@on.auto/operations';
+import type { HostDatabase } from '@on.auto/workflow-host';
 import { Effect, type Layer, ManagedRuntime } from 'effect';
 
 import { writtenDatasetFiles } from '../src/files/dataset-files.ts';

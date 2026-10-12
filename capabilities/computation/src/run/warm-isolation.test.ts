@@ -1,5 +1,5 @@
-import { nothingSaved } from '@beonauto/definitions/testing';
-import type { Json, PoolOutcome, ProgramPool, ProgramRequest } from '@beonauto/workflow-engine/dsl';
+import { nothingSaved } from '@on.auto/definitions/testing';
+import type { Json, PoolOutcome, ProgramPool, ProgramRequest } from '@on.auto/workflow-engine/dsl';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

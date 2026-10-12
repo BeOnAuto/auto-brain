@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 
-import { instructionsFor, type McpEndpoint } from '@beonauto/api';
+import { instructionsFor, type McpEndpoint } from '@on.auto/api';
 import {
   danglingReferencesIn,
   guideToolName,
@@ -10,8 +10,8 @@ import {
   withMcpSession,
   type ListedTool,
   type McpSession,
-} from '@beonauto/api/testing';
-import { answers, textResult } from '@beonauto/reasoning/testing';
+} from '@on.auto/api/testing';
+import { answers, textResult } from '@on.auto/reasoning/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 

@@ -1,4 +1,4 @@
-import { DatabaseFailed, type HostDatabase } from '@beonauto/workflow-host';
+import { DatabaseFailed, type HostDatabase } from '@on.auto/workflow-host';
 import { Effect, Exit, Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 

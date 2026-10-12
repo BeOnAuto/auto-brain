@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
-import { listedTools, withMcpSession } from '@beonauto/api/testing';
-import { uploadedWeeklyOrders } from '@beonauto/prediction/testing';
+import { listedTools, withMcpSession } from '@on.auto/api/testing';
+import { uploadedWeeklyOrders } from '@on.auto/prediction/testing';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 

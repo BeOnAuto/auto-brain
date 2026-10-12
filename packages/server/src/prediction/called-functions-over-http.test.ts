@@ -1,5 +1,5 @@
-import { approvalDocument } from '@beonauto/interaction/testing';
-import { weeklyOrdersWith } from '@beonauto/prediction/testing';
+import { approvalDocument } from '@on.auto/interaction/testing';
+import { weeklyOrdersWith } from '@on.auto/prediction/testing';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';

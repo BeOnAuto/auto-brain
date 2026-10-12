@@ -1,4 +1,4 @@
-import type { DocumentIssue, SourceLines } from '@beonauto/definitions/document';
+import type { DocumentIssue, SourceLines } from '@on.auto/definitions/document';
 import { Result } from 'effect';
 
 import { checkedFrom, refusedAt, type Checked } from '../document/checked-parts.ts';

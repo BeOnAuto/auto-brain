@@ -1,4 +1,4 @@
-import { weeklyOrders } from '@beonauto/prediction/testing';
+import { weeklyOrders } from '@on.auto/prediction/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';

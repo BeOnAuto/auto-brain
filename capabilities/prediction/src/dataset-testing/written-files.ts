@@ -1,6 +1,6 @@
-import { textOfContent, type RecordedContent } from '@beonauto/operations';
-import { memoryRecordedContent } from '@beonauto/operations/testing';
-import type { HostDatabase } from '@beonauto/workflow-host';
+import { textOfContent, type RecordedContent } from '@on.auto/operations';
+import { memoryRecordedContent } from '@on.auto/operations/testing';
+import type { HostDatabase } from '@on.auto/workflow-host';
 import { Effect, Option } from 'effect';
 
 import type { PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';

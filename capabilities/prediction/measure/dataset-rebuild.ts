@@ -1,8 +1,8 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { filterSandboxOf } from '@beonauto/workflow-engine/dsl';
-import { someFolder, type DatabaseSettings, type HostDatabase } from '@beonauto/workflow-host';
-import { projectedFolders, type ProjectedFolders } from '@beonauto/workflow-host/testing';
+import { filterSandboxOf } from '@on.auto/workflow-engine/dsl';
+import { someFolder, type DatabaseSettings, type HostDatabase } from '@on.auto/workflow-host';
+import { projectedFolders, type ProjectedFolders } from '@on.auto/workflow-host/testing';
 import { Effect } from 'effect';
 
 import { datasetFolder, datasetsOf } from '../src/dataset/dataset-folder.ts';

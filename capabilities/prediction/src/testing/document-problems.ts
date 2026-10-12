@@ -1,4 +1,4 @@
-import { issueText } from '@beonauto/definitions/document';
+import { issueText } from '@on.auto/definitions/document';
 import { Result } from 'effect';
 
 import { parsePredictionDocument } from '../document/document-parsing.ts';

@@ -1,5 +1,5 @@
-import type { SavedDefinition } from '@beonauto/definitions';
-import { nothingSaved } from '@beonauto/definitions/testing';
+import type { SavedDefinition } from '@on.auto/definitions';
+import { nothingSaved } from '@on.auto/definitions/testing';
 import { Cause, Effect, Exit, Struct, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

@@ -1,4 +1,4 @@
-import type { RowPhase } from '@beonauto/workflow-host';
+import type { RowPhase } from '@on.auto/workflow-host';
 import { Data } from 'effect';
 
 import { predictionBounds } from '../capability/prediction-bounds.ts';

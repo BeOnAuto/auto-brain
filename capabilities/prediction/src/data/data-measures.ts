@@ -1,4 +1,4 @@
-import type { DocumentIssue, SourceLines } from '@beonauto/definitions/document';
+import type { DocumentIssue, SourceLines } from '@on.auto/definitions/document';
 import type { Schema } from 'effect';
 
 import { predictionBounds } from '../capability/prediction-bounds.ts';

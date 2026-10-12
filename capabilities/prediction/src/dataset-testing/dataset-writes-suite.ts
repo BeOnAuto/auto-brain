@@ -1,4 +1,4 @@
-import { filterSandboxOf } from '@beonauto/workflow-engine/dsl';
+import { filterSandboxOf } from '@on.auto/workflow-engine/dsl';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

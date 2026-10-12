@@ -1,8 +1,8 @@
-import { noStrippedForms, type SavedDefinitions, type StrippedForms } from '@beonauto/definitions';
-import { checkedAtSave, type CheckedDocument } from '@beonauto/definitions/check';
-import { reportedIssues, type DocumentIssue } from '@beonauto/definitions/document';
-import type { InvalidInput, Unavailable } from '@beonauto/operations';
-import type { CheckIssue, ProgramPool } from '@beonauto/workflow-engine/dsl';
+import { noStrippedForms, type SavedDefinitions, type StrippedForms } from '@on.auto/definitions';
+import { checkedAtSave, type CheckedDocument } from '@on.auto/definitions/check';
+import { reportedIssues, type DocumentIssue } from '@on.auto/definitions/document';
+import type { InvalidInput, Unavailable } from '@on.auto/operations';
+import type { CheckIssue, ProgramPool } from '@on.auto/workflow-engine/dsl';
 import { Effect } from 'effect';
 
 import type { PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';

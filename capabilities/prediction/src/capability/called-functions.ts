@@ -1,5 +1,5 @@
-import type { SavedDefinition, SavedDefinitions } from '@beonauto/definitions';
-import { compileJsonSchema, issueAt, type DocumentIssue } from '@beonauto/definitions/document';
+import type { SavedDefinition, SavedDefinitions } from '@on.auto/definitions';
+import { compileJsonSchema, issueAt, type DocumentIssue } from '@on.auto/definitions/document';
 import { Effect, Predicate, Result, type Schema } from 'effect';
 
 import type { PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';

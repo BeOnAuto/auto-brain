@@ -4,8 +4,8 @@ import {
   functionResourceLabels,
   type Capability,
   type CapabilityFacts,
-} from '@beonauto/definitions';
-import type { ProgramPool } from '@beonauto/workflow-engine/dsl';
+} from '@on.auto/definitions';
+import type { ProgramPool } from '@on.auto/workflow-engine/dsl';
 
 import type { DatasetsPort } from '../dataset/datasets-port.ts';
 import { predictionRun } from '../run/prediction-run.ts';

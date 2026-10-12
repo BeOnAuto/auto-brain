@@ -1,4 +1,4 @@
-import { PlaybookReader } from '@beonauto/operations';
+import { PlaybookReader } from '@on.auto/operations';
 import { Effect } from 'effect';
 
 import type { SavedDefinition, SavedDefinitions } from '../capability/saved-definitions.ts';

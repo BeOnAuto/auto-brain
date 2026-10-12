@@ -1,5 +1,5 @@
-import type { Standing } from '@beonauto/definitions';
-import { cursorOfParts } from '@beonauto/operations';
+import type { Standing } from '@on.auto/definitions';
+import { cursorOfParts } from '@on.auto/operations';
 import { Effect, Option, Schema } from 'effect';
 
 import type { DatasetRow } from '../dataset/dataset-rows.ts';

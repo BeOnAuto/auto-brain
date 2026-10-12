@@ -1,4 +1,4 @@
-import { NotFound, alternatives, articled, type JsonSchemaDocument, type Registration } from '@beonauto/operations';
+import { NotFound, alternatives, articled, type JsonSchemaDocument, type Registration } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 
 import { isDefinitionTypeName, type Capability } from './capability.ts';

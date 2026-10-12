@@ -1,20 +1,20 @@
-import type { AppRuntime } from '@beonauto/api';
-import { callMarginMs, defineSendRunEvent, makeWorkflowAdapter, type ExpressionCheck } from '@beonauto/coordination';
+import type { AppRuntime } from '@on.auto/api';
+import { callMarginMs, defineSendRunEvent, makeWorkflowAdapter, type ExpressionCheck } from '@on.auto/coordination';
 import {
   defineStartVersion,
   type PlaybookOperation,
   type PlaybookOwnNames,
   type Capability,
   type CapabilityFacts,
-} from '@beonauto/definitions';
+} from '@on.auto/definitions';
 import {
   makeCatalog,
   makeDispatcher,
   type DispatcherServices,
   type HttpRegistration,
   type Registration,
-} from '@beonauto/operations';
-import type { WorkflowHost } from '@beonauto/workflow-host';
+} from '@on.auto/operations';
+import type { WorkflowHost } from '@on.auto/workflow-host';
 import { Effect } from 'effect';
 
 import { playbookOperationsServing } from '../composition/playbook-operations.ts';

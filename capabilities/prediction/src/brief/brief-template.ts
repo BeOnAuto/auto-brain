@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 
-import type { DocumentIssue, DocumentParts } from '@beonauto/definitions/document';
+import type { DocumentIssue, DocumentParts } from '@on.auto/definitions/document';
 import {
   outputText,
   parsedTemplate,
@@ -9,7 +9,7 @@ import {
   type ParsedTemplate,
   type RenderFailure,
   type TemplateEngine,
-} from '@beonauto/definitions/template';
+} from '@on.auto/definitions/template';
 import { Predicate, Result, type Schema } from 'effect';
 import { toValue } from 'liquidjs';
 

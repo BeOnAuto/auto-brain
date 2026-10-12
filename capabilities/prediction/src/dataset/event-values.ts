@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 
-import type { PageEvent } from '@beonauto/workflow-host';
+import type { PageEvent } from '@on.auto/workflow-host';
 
 import { predictionBounds } from '../capability/prediction-bounds.ts';
 import { eventTime, valueAt } from '../data/data-pointers.ts';

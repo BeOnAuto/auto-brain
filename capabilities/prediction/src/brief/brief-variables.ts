@@ -1,5 +1,5 @@
-import type { DocumentIssue } from '@beonauto/definitions/document';
-import type { VariableReference, VariableSegment } from '@beonauto/definitions/template';
+import type { DocumentIssue } from '@on.auto/definitions/document';
+import type { VariableReference, VariableSegment } from '@on.auto/definitions/template';
 
 type Shape = 'value' | 'text' | { readonly fields: Readonly<Record<string, Shape>> } | { readonly items: Shape };
 

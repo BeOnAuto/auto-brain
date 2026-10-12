@@ -1,4 +1,4 @@
-import type { FilterSandbox } from '@beonauto/workflow-engine';
+import type { FilterSandbox } from '@on.auto/workflow-engine';
 import {
   comparePoints,
   isAfter,
@@ -7,7 +7,7 @@ import {
   type HostDatabase,
   type PageEvent,
   type ReadPage,
-} from '@beonauto/workflow-host';
+} from '@on.auto/workflow-host';
 import { Effect } from 'effect';
 
 import { predictionBounds } from '../capability/prediction-bounds.ts';

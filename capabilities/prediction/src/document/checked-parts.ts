@@ -1,4 +1,4 @@
-import { issueAt, type DocumentIssue, type SourceLines } from '@beonauto/definitions/document';
+import { issueAt, type DocumentIssue, type SourceLines } from '@on.auto/definitions/document';
 import { Predicate, Result, type Schema } from 'effect';
 
 import { predictionBounds } from '../capability/prediction-bounds.ts';

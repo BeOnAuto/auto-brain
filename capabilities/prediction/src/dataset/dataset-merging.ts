@@ -1,4 +1,4 @@
-import { rowsOf, WholeNumber, type DatabaseFailed, type HostDatabase } from '@beonauto/workflow-host';
+import { rowsOf, WholeNumber, type DatabaseFailed, type HostDatabase } from '@on.auto/workflow-host';
 import { Array, Effect, Schema } from 'effect';
 
 import type { DatasetData, DatasetMeasure } from './dataset-data.ts';

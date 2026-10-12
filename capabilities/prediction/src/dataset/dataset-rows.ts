@@ -1,4 +1,4 @@
-import { pointIn, WholeNumber, type Point, type RowPhase } from '@beonauto/workflow-host';
+import { pointIn, WholeNumber, type Point, type RowPhase } from '@on.auto/workflow-host';
 import { Schema } from 'effect';
 
 import { decodeStoredData, type DatasetData } from './dataset-data.ts';

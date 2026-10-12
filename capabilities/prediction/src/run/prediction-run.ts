@@ -1,6 +1,6 @@
-import type { CapabilityAnswer, CapabilityRejection } from '@beonauto/definitions';
-import { Conflict, InvalidInput, Unavailable } from '@beonauto/operations';
-import { measureOf, mostValueDepth } from '@beonauto/workflow-engine/dsl';
+import type { CapabilityAnswer, CapabilityRejection } from '@on.auto/definitions';
+import { Conflict, InvalidInput, Unavailable } from '@on.auto/operations';
+import { measureOf, mostValueDepth } from '@on.auto/workflow-engine/dsl';
 import { Effect, Predicate, Result, type Schema } from 'effect';
 
 import type { PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';

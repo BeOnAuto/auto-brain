@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 
-import type { HostDatabase } from '@beonauto/workflow-host';
+import type { HostDatabase } from '@on.auto/workflow-host';
 import { Array, Effect } from 'effect';
 
 import type { DatasetData } from '../dataset/dataset-data.ts';

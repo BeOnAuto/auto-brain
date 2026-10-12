@@ -1,5 +1,5 @@
-import { enclosedBody, filterVerdictsOf, type FilterSandbox, type FilterVerdict } from '@beonauto/workflow-engine';
-import type { PageEvent } from '@beonauto/workflow-host';
+import { enclosedBody, filterVerdictsOf, type FilterSandbox, type FilterVerdict } from '@on.auto/workflow-engine';
+import type { PageEvent } from '@on.auto/workflow-host';
 import { Effect, type Schema } from 'effect';
 
 import { canonicalJson } from '../data/data-digest.ts';

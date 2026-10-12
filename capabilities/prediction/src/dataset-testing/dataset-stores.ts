@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { DatabaseSettings } from '@beonauto/workflow-host';
+import type { DatabaseSettings } from '@on.auto/workflow-host';
 import { onTestFinished } from 'vitest';
 
 export type SettingsOf = () => Promise<DatabaseSettings>;

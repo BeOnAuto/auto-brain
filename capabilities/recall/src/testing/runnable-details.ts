@@ -1,5 +1,5 @@
-import { nothingSaved } from '@beonauto/definitions/testing';
-import type { ViewDetails } from '@beonauto/workflow-host';
+import { nothingSaved } from '@on.auto/definitions/testing';
+import type { ViewDetails } from '@on.auto/workflow-host';
 import { Effect, Result } from 'effect';
 
 import { parseRecallDocument } from '../document/document-parsing.ts';

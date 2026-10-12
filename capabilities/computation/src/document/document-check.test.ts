@@ -1,5 +1,5 @@
-import { nothingSaved } from '@beonauto/definitions/testing';
-import { InvalidInput, Unavailable } from '@beonauto/operations';
+import { nothingSaved } from '@on.auto/definitions/testing';
+import { InvalidInput, Unavailable } from '@on.auto/operations';
 import { Effect, Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 

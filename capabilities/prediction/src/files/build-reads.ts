@@ -3,8 +3,8 @@ import {
   type ContentKept,
   type PlaybookAddress,
   type RecordedContent,
-} from '@beonauto/operations';
-import { rowsOf, type HostDatabase } from '@beonauto/workflow-host';
+} from '@on.auto/operations';
+import { rowsOf, type HostDatabase } from '@on.auto/workflow-host';
 import { Effect, Result } from 'effect';
 
 import { datasetRowOf, StoredDatasetSchema, type DatasetRow } from '../dataset/dataset-rows.ts';

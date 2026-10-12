@@ -1,4 +1,4 @@
-import { statement, type RowPhase, type Statement, type StatementValue } from '@beonauto/workflow-host';
+import { statement, type RowPhase, type Statement, type StatementValue } from '@on.auto/workflow-host';
 
 export const datasetsTable = statement`CREATE TABLE IF NOT EXISTS prediction_datasets (
     playbook_key TEXT NOT NULL,

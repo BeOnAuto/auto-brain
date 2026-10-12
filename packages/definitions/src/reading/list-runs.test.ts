@@ -1,4 +1,4 @@
-import type { Outcome } from '@beonauto/operations';
+import type { Outcome } from '@on.auto/operations';
 import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

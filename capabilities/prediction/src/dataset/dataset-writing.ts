@@ -5,7 +5,7 @@ import {
   type DatabaseFailed,
   type Statement,
   type Writing,
-} from '@beonauto/workflow-host';
+} from '@on.auto/workflow-host';
 import { Effect, Schema } from 'effect';
 
 import { predictionBounds } from '../capability/prediction-bounds.ts';

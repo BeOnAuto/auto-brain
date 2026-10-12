@@ -1,4 +1,4 @@
-import { sha256Digest, sha256Of } from '@beonauto/operations';
+import { sha256Digest, sha256Of } from '@on.auto/operations';
 import { describe, expect, it } from 'vitest';
 
 import { chunked, failingAfter, uploading } from '../testing/upload-calls.ts';

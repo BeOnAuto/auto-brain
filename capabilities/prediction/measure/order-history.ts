@@ -1,4 +1,4 @@
-import type { ProjectedFolders } from '@beonauto/workflow-host/testing';
+import type { ProjectedFolders } from '@on.auto/workflow-host/testing';
 import { Result } from 'effect';
 
 import { datasetDetailsOf } from '../src/capability/prediction-definitions.ts';

@@ -1,4 +1,4 @@
-import type { DocumentIssue, SourceLines } from '@beonauto/definitions/document';
+import type { DocumentIssue, SourceLines } from '@on.auto/definitions/document';
 
 import { predictionBounds } from '../capability/prediction-bounds.ts';
 import { checkedFrom, isWhole, nameIssues, refusedAt, type Checked } from './checked-parts.ts';

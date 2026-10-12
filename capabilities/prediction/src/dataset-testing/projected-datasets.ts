@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
-import { filterSandboxOf } from '@beonauto/workflow-engine/dsl';
-import { someFolder, type DatabaseSettings } from '@beonauto/workflow-host';
-import { projectedFolders, type ProjectedFolders } from '@beonauto/workflow-host/testing';
+import { filterSandboxOf } from '@on.auto/workflow-engine/dsl';
+import { someFolder, type DatabaseSettings } from '@on.auto/workflow-host';
+import { projectedFolders, type ProjectedFolders } from '@on.auto/workflow-host/testing';
 import { Effect, Option, Result, type Schema } from 'effect';
 import { expect, onTestFinished, vi } from 'vitest';
 

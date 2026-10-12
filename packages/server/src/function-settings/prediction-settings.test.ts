@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 
-import type { Environment } from '@beonauto/config';
+import type { Environment } from '@on.auto/config';
 import { describe, expect, it } from 'vitest';
 
 import { readSettings } from '../settings/settings.ts';

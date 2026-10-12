@@ -4,7 +4,7 @@ import {
   splitDocument,
   type DocumentParts,
   type ReadFrontMatter,
-} from '@beonauto/definitions/document';
+} from '@on.auto/definitions/document';
 import { Result } from 'effect';
 
 import { largestBriefVariables } from '../brief/brief-dataset.ts';

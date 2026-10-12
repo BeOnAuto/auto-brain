@@ -1,4 +1,4 @@
-import { sha256Digest } from '@beonauto/operations';
+import { sha256Digest } from '@on.auto/operations';
 
 import { CsvFault } from './csv-fault.ts';
 import { CsvReader } from './csv-records.ts';

@@ -1,9 +1,9 @@
-import type { AppRuntime } from '@beonauto/api';
-import type { Capability } from '@beonauto/definitions';
-import { appendSignal, type AppendSignal } from '@beonauto/ledger';
-import type { DispatcherServices } from '@beonauto/operations';
-import { makeRecallFunctionAdapter, recallBounds, recallDefinitionType, recallFolding } from '@beonauto/recall';
-import type { ProgramPool } from '@beonauto/workflow-engine/dsl';
+import type { AppRuntime } from '@on.auto/api';
+import type { Capability } from '@on.auto/definitions';
+import { appendSignal, type AppendSignal } from '@on.auto/ledger';
+import type { DispatcherServices } from '@on.auto/operations';
+import { makeRecallFunctionAdapter, recallBounds, recallDefinitionType, recallFolding } from '@on.auto/recall';
+import type { ProgramPool } from '@on.auto/workflow-engine/dsl';
 import {
   openWorkflowStore,
   someFolder,
@@ -12,7 +12,7 @@ import {
   type ProjectorSettings,
   type SomeFolder,
   type WorkflowStore,
-} from '@beonauto/workflow-host';
+} from '@on.auto/workflow-host';
 
 import type { Settings } from '../settings/settings.ts';
 import { hostDatabaseOf } from '../workflows/host-dependencies.ts';

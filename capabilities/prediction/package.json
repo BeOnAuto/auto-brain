@@ -1,5 +1,5 @@
 {
-  "name": "@beonauto/prediction",
+  "name": "@on.auto/prediction",
   "version": "0.0.0",
   "private": true,
   "license": "Elastic-2.0",
@@ -15,15 +15,15 @@
     "measure": "node measure.ts"
   },
   "dependencies": {
-    "@beonauto/definitions": "workspace:*",
-    "@beonauto/operations": "workspace:*",
-    "@beonauto/workflow-engine": "workspace:*",
-    "@beonauto/workflow-host": "workspace:*",
+    "@on.auto/definitions": "workspace:*",
+    "@on.auto/operations": "workspace:*",
+    "@on.auto/workflow-engine": "workspace:*",
+    "@on.auto/workflow-host": "workspace:*",
     "effect": "catalog:",
     "liquidjs": "10.29.0"
   },
   "devDependencies": {
-    "@beonauto/ledger": "workspace:*",
+    "@on.auto/ledger": "workspace:*",
     "@types/pg": "8.23.1",
     "@vitest/coverage-v8": "catalog:",
     "pg": "8.23.1",

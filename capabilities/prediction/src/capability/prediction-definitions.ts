@@ -1,6 +1,6 @@
-import type { DefinitionSummary } from '@beonauto/definitions';
-import { issueText, type DocumentIssue } from '@beonauto/definitions/document';
-import { InvalidInput } from '@beonauto/operations';
+import type { DefinitionSummary } from '@on.auto/definitions';
+import { issueText, type DocumentIssue } from '@on.auto/definitions/document';
+import { InvalidInput } from '@on.auto/operations';
 import { Effect, Result, type Schema } from 'effect';
 
 import { dataJsonOf } from '../data/data-digest.ts';

@@ -1,9 +1,9 @@
-import type { AppRuntime } from '@beonauto/api';
-import type { Capability } from '@beonauto/definitions';
-import type { DispatcherServices, HttpRegistration } from '@beonauto/operations';
-import { datasetFolder, datasetsPortOn, makePredictionFunctionAdapter, uploadDataset } from '@beonauto/prediction';
-import type { ProgramPool } from '@beonauto/workflow-engine/dsl';
-import { someFolder, type SomeFolder, type WorkflowStore } from '@beonauto/workflow-host';
+import type { AppRuntime } from '@on.auto/api';
+import type { Capability } from '@on.auto/definitions';
+import type { DispatcherServices, HttpRegistration } from '@on.auto/operations';
+import { datasetFolder, datasetsPortOn, makePredictionFunctionAdapter, uploadDataset } from '@on.auto/prediction';
+import type { ProgramPool } from '@on.auto/workflow-engine/dsl';
+import { someFolder, type SomeFolder, type WorkflowStore } from '@on.auto/workflow-host';
 
 import type { PredictionSettings } from '../function-settings/prediction-settings.ts';
 import { runtimeLedger } from './runtime-ledger.ts';

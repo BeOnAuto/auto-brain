@@ -1,4 +1,4 @@
-import { noStrippedForms, runnableAttributes, type StrippedForms } from '@beonauto/definitions';
+import { noStrippedForms, runnableAttributes, type StrippedForms } from '@on.auto/definitions';
 import { Option, Schema } from 'effect';
 
 import { aggregations } from '../document/front-matter.ts';

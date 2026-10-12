@@ -1,4 +1,4 @@
-import type { HostDatabase } from '@beonauto/workflow-host';
+import type { HostDatabase } from '@on.auto/workflow-host';
 import { Effect } from 'effect';
 import { expect, vi } from 'vitest';
 

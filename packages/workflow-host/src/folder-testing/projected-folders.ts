@@ -1,5 +1,5 @@
-import { appendSignal, type EncodedEvent } from '@beonauto/ledger';
-import type { Context } from '@beonauto/operations';
+import { appendSignal, type EncodedEvent } from '@on.auto/ledger';
+import type { Context } from '@on.auto/operations';
 
 import type { HostDatabase } from '../database/host-database.ts';
 import type { DatabaseSettings } from '../database/host-databases.ts';

@@ -1,5 +1,5 @@
-import { InvalidPortError, type Environment } from '@beonauto/config';
-import { createApiKey } from '@beonauto/identity';
+import { InvalidPortError, type Environment } from '@on.auto/config';
+import { createApiKey } from '@on.auto/identity';
 import { describe, expect, it } from 'vitest';
 
 import { readSettings } from './settings.ts';

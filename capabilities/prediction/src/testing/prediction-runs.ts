@@ -6,10 +6,10 @@ import type {
   RunContext,
   SavedDefinition,
   SavedDefinitions,
-} from '@beonauto/definitions';
-import { noLongestRuns, recordingJournal } from '@beonauto/definitions/testing';
-import { allPermissions } from '@beonauto/operations';
-import { programPool, type ProgramPool } from '@beonauto/workflow-engine/dsl';
+} from '@on.auto/definitions';
+import { noLongestRuns, recordingJournal } from '@on.auto/definitions/testing';
+import { allPermissions } from '@on.auto/operations';
+import { programPool, type ProgramPool } from '@on.auto/workflow-engine/dsl';
 import { Effect, type Exit, type Schema } from 'effect';
 import { afterEach } from 'vitest';
 

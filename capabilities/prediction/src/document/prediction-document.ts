@@ -1,5 +1,5 @@
-import type { CompiledSchema } from '@beonauto/definitions/document';
-import type { ParsedTemplate } from '@beonauto/definitions/template';
+import type { CompiledSchema } from '@on.auto/definitions/document';
+import type { ParsedTemplate } from '@on.auto/definitions/template';
 import type { Schema } from 'effect';
 
 import type { Grain } from '../periods/grains.ts';
