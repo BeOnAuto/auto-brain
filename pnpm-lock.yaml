@@ -316,6 +316,9 @@ importers:
       '@on.auto/api':
         specifier: workspace:*
         version: link:../../packages/api
+      '@on.auto/prediction':
+        specifier: workspace:*
+        version: link:../prediction
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.2(vitest@5.0.2)
