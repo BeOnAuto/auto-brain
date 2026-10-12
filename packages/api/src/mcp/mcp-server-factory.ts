@@ -7,11 +7,17 @@ import {
 import type { McpServer } from '@modelcontextprotocol/server';
 import { Effect, Result } from 'effect';
 
-import { brainCallOf, orgCallOf, type BrainCall, type HandedOff, type OrgCall } from '../hand-off/caller-hand-off.ts';
+import {
+  playbookCallOf,
+  orgCallOf,
+  type PlaybookCall,
+  type HandedOff,
+  type OrgCall,
+} from '../hand-off/caller-hand-off.ts';
 import type { ReportThrown } from '../problem/error-boundary.ts';
-import { brainArgumentOf, withoutBrain } from '../tools/brain-argument.ts';
+import { playbookArgumentOf, withoutPlaybook } from '../tools/playbook-argument.ts';
 import { callbackFor, type Arguments, type CalledTool, type Dispatch } from '../tools/tool-callback.ts';
-import { toolDefinitionOf, toolDefinitionTakingBrainOf, type ToolDefinition } from '../tools/tool-definition.ts';
+import { toolDefinitionOf, toolDefinitionTakingPlaybookOf, type ToolDefinition } from '../tools/tool-definition.ts';
 import type { ServedTools } from './instructions.ts';
 import { connectionOf, serverOf, type Connection, type EveryTool, type McpServing } from './mcp-connection.ts';
 
@@ -65,18 +71,18 @@ function namesOf(offers: readonly Offered<Registration>[]): readonly string[] {
 
 function servedTools(
   orgOffers: readonly Offered<Registration>[],
-  brainOffers: readonly Offered<Registration>[],
+  playbookOffers: readonly Offered<Registration>[],
 ): ServedTools {
-  return { orgTools: namesOf(orgOffers), brainTools: namesOf(brainOffers) };
+  return { orgTools: namesOf(orgOffers), playbookTools: namesOf(playbookOffers) };
 }
 
 function everyToolOf(
   orgOffers: readonly Offered<Registration>[],
-  brainOffers: readonly Offered<Registration>[],
+  playbookOffers: readonly Offered<Registration>[],
 ): EveryTool {
   return {
-    served: servedTools(orgOffers, brainOffers),
-    listed: [...orgOffers, ...brainOffers].map(({ registration, definition }) => ({
+    served: servedTools(orgOffers, playbookOffers),
+    listed: [...orgOffers, ...playbookOffers].map(({ registration, definition }) => ({
       name: registration.name,
       definition,
     })),
@@ -127,23 +133,23 @@ function orgDispatchOf(
   return (registration) => (input) => dispatcher.dispatchToOrg(registration, { caller, org, input, encoding: 'json' });
 }
 
-function brainDispatchOf(
+function playbookDispatchOf(
   dispatcher: Dispatcher,
-  { caller, org, brain }: BrainCall,
-): (registration: Registration<'brain'>) => Dispatch {
+  { caller, org, playbook }: PlaybookCall,
+): (registration: Registration<'playbook'>) => Dispatch {
   return (registration) => (input) =>
-    dispatcher.dispatchToBrain(registration, { caller, org, brain, input, encoding: 'json' });
+    dispatcher.dispatchToPlaybook(registration, { caller, org, playbook, input, encoding: 'json' });
 }
 
-function brainArgumentDispatchOf(
+function playbookArgumentDispatchOf(
   dispatcher: Dispatcher,
   { caller, org }: OrgCall,
-): (registration: Registration<'brain'>) => Dispatch {
+): (registration: Registration<'playbook'>) => Dispatch {
   return (registration) => (input) => {
-    const argument = brainArgumentOf(input);
+    const argument = playbookArgumentOf(input);
     return Result.isFailure(argument)
       ? Effect.succeed(argument.failure)
-      : dispatcher.dispatchToBrain(registration, { caller, org, ...argument.success, encoding: 'json' });
+      : dispatcher.dispatchToPlaybook(registration, { caller, org, ...argument.success, encoding: 'json' });
   };
 }
 
@@ -158,41 +164,41 @@ export function orgServerFactory(serving: ToolServing): McpServerFactory {
   };
 }
 
-export function brainServerFactory(serving: ToolServing): McpServerFactory {
-  const brainOffers = offered(serving.catalog.operationsIn('brain'), toolDefinitionOf);
-  const connection = connectionOf('brain', serving, everyToolOf([], brainOffers));
+export function playbookServerFactory(serving: ToolServing): McpServerFactory {
+  const playbookOffers = offered(serving.catalog.operationsIn('playbook'), toolDefinitionOf);
+  const connection = connectionOf('playbook', serving, everyToolOf([], playbookOffers));
   return (context) => {
-    const call = brainCallOf(context);
-    const listed = permittedTo(call.caller, brainOffers);
-    const tools = toolsOf(listed, brainDispatchOf(serving.dispatcher, call));
+    const call = playbookCallOf(context);
+    const listed = permittedTo(call.caller, playbookOffers);
+    const tools = toolsOf(listed, playbookDispatchOf(serving.dispatcher, call));
     return serverWithTools({ connection, serving, call }, servedTools([], listed), tools);
   };
 }
 
-function namedInBrainAlone(
-  brainRegistrations: readonly Registration<'brain'>[],
+function namedInPlaybookAlone(
+  playbookRegistrations: readonly Registration<'playbook'>[],
   orgRegistrations: readonly Registration<'org'>[],
-): readonly Registration<'brain'>[] {
+): readonly Registration<'playbook'>[] {
   const orgNames = new Set(orgRegistrations.map(({ name }) => name));
-  return brainRegistrations.filter(({ name }) => !orgNames.has(name));
+  return playbookRegistrations.filter(({ name }) => !orgNames.has(name));
 }
 
 export function catalogServerFactory(serving: ToolServing): McpServerFactory {
   const orgRegistrations = serving.catalog.operationsIn('org');
   const orgOffers = offered(orgRegistrations, toolDefinitionOf);
-  const brainOffers = offered(
-    namedInBrainAlone(serving.catalog.operationsIn('brain'), orgRegistrations),
-    toolDefinitionTakingBrainOf,
+  const playbookOffers = offered(
+    namedInPlaybookAlone(serving.catalog.operationsIn('playbook'), orgRegistrations),
+    toolDefinitionTakingPlaybookOf,
   );
-  const connection = connectionOf('own org', serving, everyToolOf(orgOffers, brainOffers));
+  const connection = connectionOf('own org', serving, everyToolOf(orgOffers, playbookOffers));
   return (context) => {
     const call = orgCallOf(context);
     const listedInOrg = permittedTo(call.caller, orgOffers);
-    const listedInBrain = permittedTo(call.caller, brainOffers);
+    const listedInPlaybook = permittedTo(call.caller, playbookOffers);
     const tools = [
       ...toolsOf(listedInOrg, orgDispatchOf(serving.dispatcher, call)),
-      ...toolsOf(listedInBrain, brainArgumentDispatchOf(serving.dispatcher, call), withoutBrain),
+      ...toolsOf(listedInPlaybook, playbookArgumentDispatchOf(serving.dispatcher, call), withoutPlaybook),
     ];
-    return serverWithTools({ connection, serving, call }, servedTools(listedInOrg, listedInBrain), tools);
+    return serverWithTools({ connection, serving, call }, servedTools(listedInOrg, listedInPlaybook), tools);
   };
 }

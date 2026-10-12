@@ -33,12 +33,12 @@ export function started(
   input: Schema.Json,
   run: RunContext,
 ): Effect.Effect<FinishesLater, Conflict | Unavailable> {
-  const { id, org, brain, caller, definition, lineage, depth, callDepth, calledBy, trigger } = run;
+  const { id, org, playbook, caller, definition, lineage, depth, callDepth, calledBy, trigger } = run;
   return Effect.gen(function* () {
     const seed = yield* Random.nextIntBetween(0, mostSeed);
     const attributes: RunAttributes = {
       org,
-      brain,
+      playbook,
       run_id: id,
       definition,
       caller,
@@ -51,7 +51,7 @@ export function started(
     const longestCallMsByTask = yield* longestCallsOf(document, run);
     const limits = { mostDurationMs, longestCallMs, longestCallMsByTask };
     const answer = yield* runs
-      .start({ org, brain, runId: id }, { document, input, limits, attributes, seed })
+      .start({ org, playbook, runId: id }, { document, input, limits, attributes, seed })
       .pipe(Effect.mapError(unavailableUnless(notNow)));
     return yield* finishedLaterOr(answer);
   });

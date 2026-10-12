@@ -16,7 +16,7 @@ import {
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
-const alpha = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
 const closing: (() => Promise<void>)[] = [];
 
@@ -68,16 +68,16 @@ const echoTool = {
   testable: false,
 };
 
-describe('the tool servers a brain may use', () => {
-  it('are those that serve its org and brain, by name, each with the tools its entry allows', async () => {
+describe('the tool servers a playbook may use', () => {
+  it('are those that serve its org and playbook, by name, each with the tools its entry allows', async () => {
     const fake = await fakeServer();
     const servers = {
       wiki: remote(fake, { allowed: ['unlisted'] }),
       notes: remote(fake),
       graph: remote(fake, { allowed: ['search', 'echo'] }),
       crm: remote(fake, { org: 'globex' }),
-      sales: remote(fake, { brains: ['sales'] }),
-      support: remote(fake, { brains: ['alpha', 'support'], allowed: ['profile'] }),
+      sales: remote(fake, { playbooks: ['sales'] }),
+      support: remote(fake, { playbooks: ['alpha', 'support'], allowed: ['profile'] }),
     };
 
     const listing = await listed(servers);
@@ -147,10 +147,13 @@ describe('the tool servers a listing asks', () => {
     ]);
   });
 
-  it('are none, and no server is asked, when none serves the brain', async () => {
+  it('are none, and no server is asked, when none serves the playbook', async () => {
     const fake = await fakeServer();
 
-    const listing = await listed({ crm: remote(fake, { org: 'globex' }), sales: remote(fake, { brains: ['sales'] }) });
+    const listing = await listed({
+      crm: remote(fake, { org: 'globex' }),
+      sales: remote(fake, { playbooks: ['sales'] }),
+    });
 
     expect(listing).toEqual([]);
     expect(fake.seen()).toEqual([]);
@@ -158,7 +161,7 @@ describe('the tool servers a listing asks', () => {
 });
 
 describe('a tool server whose entry leaves allowed out', () => {
-  it('is asked, as every server serving the brain is, and lists every tool it has', async () => {
+  it('is asked, as every server serving the playbook is, and lists every tool it has', async () => {
     const fake = await fakeServer();
     const open = await fakeServer();
 

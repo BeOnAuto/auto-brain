@@ -23,43 +23,43 @@ const PageSchema = Schema.Struct({
 
 const decodePage = Schema.decodeUnknownSync(PageSchema);
 
-async function brainWithThreeRequests() {
-  const brain = interactionHarness();
-  await brain.define('approve-brief', approvalDocument());
-  await brain.define('approve-budget', approvalDocument());
-  await brain.ask('approve-brief', { campaign: 'Spring', owner: 'ada' }, String(runIds[0]));
-  await brain.ask('approve-budget', { campaign: 'Summer', owner: 'ada' }, String(runIds[1]));
-  await brain.ask('approve-brief', { campaign: 'Autumn', owner: 'grace' }, String(runIds[2]));
-  return brain;
+async function playbookWithThreeRequests() {
+  const playbook = interactionHarness();
+  await playbook.define('approve-brief', approvalDocument());
+  await playbook.define('approve-budget', approvalDocument());
+  await playbook.ask('approve-brief', { campaign: 'Spring', owner: 'ada' }, String(runIds[0]));
+  await playbook.ask('approve-budget', { campaign: 'Summer', owner: 'ada' }, String(runIds[1]));
+  await playbook.ask('approve-brief', { campaign: 'Autumn', owner: 'grace' }, String(runIds[2]));
+  return playbook;
 }
 
-async function listed(brain: Awaited<ReturnType<typeof brainWithThreeRequests>>, input: object) {
-  const page = decodePage(await brain.call(listInteractions, input));
+async function listed(playbook: Awaited<ReturnType<typeof playbookWithThreeRequests>>, input: object) {
+  const page = decodePage(await playbook.call(listInteractions, input));
   return { ids: page.output.interactions.map(({ run_id: id }) => id), page: page.output };
 }
 
-describe('the open requests of a brain', () => {
+describe('the open requests of a playbook', () => {
   it('are listed newest first, kept to one party or one function when asked', async () => {
-    const brain = await brainWithThreeRequests();
+    const playbook = await playbookWithThreeRequests();
 
     expect([
-      (await listed(brain, {})).ids,
-      (await listed(brain, { to: 'ada' })).ids,
-      (await listed(brain, { function: 'approve-brief' })).ids,
-      (await listed(brain, { to: 'ada', function: 'approve-brief' })).ids,
+      (await listed(playbook, {})).ids,
+      (await listed(playbook, { to: 'ada' })).ids,
+      (await listed(playbook, { function: 'approve-brief' })).ids,
+      (await listed(playbook, { to: 'ada', function: 'approve-brief' })).ids,
     ]).toEqual([runIds.toReversed(), [runIds[1], runIds[0]], [runIds[2], runIds[0]], [runIds[0]]]);
   });
 
   it('are read on from the cursor of a page, and refuse a cursor list_interactions did not give', async () => {
-    const brain = await brainWithThreeRequests();
-    const first = await listed(brain, { limit: 2 });
+    const playbook = await playbookWithThreeRequests();
+    const first = await listed(playbook, { limit: 2 });
 
     expect(first).toMatchObject({ ids: [runIds[2], runIds[1]], page: { has_more: true } });
-    expect(await listed(brain, { limit: 2, cursor: first.page.next_cursor })).toMatchObject({
+    expect(await listed(playbook, { limit: 2, cursor: first.page.next_cursor })).toMatchObject({
       ids: [runIds[0]],
       page: { has_more: false, next_cursor: null },
     });
-    expect(await brain.call(listInteractions, { cursor: 'bm90LWEtY3Vyc29y' })).toMatchObject({
+    expect(await playbook.call(listInteractions, { cursor: 'bm90LWEtY3Vyc29y' })).toMatchObject({
       status: 'rejected',
       reason: 'invalid_input',
       issues: [{ pointer: '/cursor' }],
@@ -69,16 +69,16 @@ describe('the open requests of a brain', () => {
 
 describe('the open requests of functions of one name', () => {
   it('are of one function when kept to its name and its type, since a name is unique only within its type', async () => {
-    const brain = interactionHarness({ others: [nudging] });
-    await brain.define('approve', approvalDocument());
-    await brain.ask('approve', { campaign: 'Spring', owner: 'ada' }, String(runIds[0]));
-    await brain.defineAs('nudging', 'approve', 'Approve?');
-    await brain.askAs('nudging', 'approve', {}, String(runIds[1]));
+    const playbook = interactionHarness({ others: [nudging] });
+    await playbook.define('approve', approvalDocument());
+    await playbook.ask('approve', { campaign: 'Spring', owner: 'ada' }, String(runIds[0]));
+    await playbook.defineAs('nudging', 'approve', 'Approve?');
+    await playbook.askAs('nudging', 'approve', {}, String(runIds[1]));
 
     expect([
-      (await listed(brain, { function: 'approve' })).ids,
-      (await listed(brain, { function: 'approve', type: 'interaction' })).ids,
-      (await listed(brain, { type: 'nudging' })).ids,
+      (await listed(playbook, { function: 'approve' })).ids,
+      (await listed(playbook, { function: 'approve', type: 'interaction' })).ids,
+      (await listed(playbook, { type: 'nudging' })).ids,
     ]).toEqual([[runIds[1], runIds[0]], [runIds[0]], [runIds[1]]]);
   });
 });
@@ -116,8 +116,8 @@ const ShapesSchema = Schema.Struct({
 
 const decodeShapes = Schema.decodeUnknownSync(ShapesSchema);
 
-async function shapesIn(brain: ReturnType<typeof interactionHarness>) {
-  return decodeShapes(await brain.call(listInteractions, {})).output.interactions;
+async function shapesIn(playbook: ReturnType<typeof interactionHarness>) {
+  return decodeShapes(await playbook.call(listInteractions, {})).output.interactions;
 }
 
 const answer = answerInteraction;
@@ -129,30 +129,30 @@ describe('the answer shape of an open request', () => {
     await questioning.ask('approve-brief', { campaign: 'Spring', owner: 'ada' }, String(runIds[0]));
     const telling = await askedThroughChat({ notification: true });
 
-    expect([await shapesIn(questioning), await shapesIn(telling.brain)]).toEqual([
+    expect([await shapesIn(questioning), await shapesIn(telling.playbook)]).toEqual([
       [{ version: 1, takes_answer: true, answer_schema: approvalSchema }],
       [{ version: 1, takes_answer: false, answer_schema: null }],
     ]);
   });
 
   it('stays the one of the version that asked once its function changes, which is the one an answer is checked against', async () => {
-    const brain = interactionHarness();
-    await brain.define('approve-brief', approvalDocument());
-    await brain.ask('approve-brief', { campaign: 'Spring', owner: 'ada' }, String(runIds[0]));
-    const changed = await brain.call(defineUpdateDefinition([brain.capability]), {
+    const playbook = interactionHarness();
+    await playbook.define('approve-brief', approvalDocument());
+    await playbook.ask('approve-brief', { campaign: 'Spring', owner: 'ada' }, String(runIds[0]));
+    const changed = await playbook.call(defineUpdateDefinition([playbook.capability]), {
       type: 'interaction',
       name: 'approve-brief',
       source: decisionDocument,
     });
-    const shapes = await shapesIn(brain);
+    const shapes = await shapesIn(playbook);
 
     expect(changed).toMatchObject({ status: 'succeeded', output: { version: 2 } });
     expect(shapes).toEqual([{ version: 1, takes_answer: true, answer_schema: approvalSchema }]);
-    expect(await brain.call(answer, { run_id: runIds[0], answer: { decision: 'approve' } })).toMatchObject({
+    expect(await playbook.call(answer, { run_id: runIds[0], answer: { decision: 'approve' } })).toMatchObject({
       status: 'rejected',
       reason: 'invalid_input',
     });
-    expect(await brain.call(answer, { run_id: runIds[0], answer: { choice: 'approve' } })).toMatchObject({
+    expect(await playbook.call(answer, { run_id: runIds[0], answer: { choice: 'approve' } })).toMatchObject({
       status: 'succeeded',
       output: { answer: { choice: 'approve' } },
     });

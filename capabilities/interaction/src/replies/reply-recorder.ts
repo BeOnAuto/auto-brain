@@ -21,7 +21,7 @@ export function recordedReplyWork(
   reply: Reply,
   work: Work,
 ): Effect.Effect<RecordedReply | undefined> {
-  const address = { ...place.brain, id: request.runId };
+  const address = { ...place.playbook, id: request.runId };
   const rule = replyRule(reply.id, work.type === 'work');
   return Effect.flatMap(correlationOf(parts.ledger, address), (correlationId) =>
     recordedWork(parts.record, address, { work, rule }, { causationId: place.row.last_fact, correlationId }).pipe(

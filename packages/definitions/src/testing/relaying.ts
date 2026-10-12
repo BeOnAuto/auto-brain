@@ -1,10 +1,10 @@
-import type { BrainRequest, Lineage } from '@beonauto/operations';
+import type { PlaybookRequest, Lineage } from '@beonauto/operations';
 import { Effect } from 'effect';
 
 import { runSettler, type RunStreamAddress, type Settlement } from '../index.ts';
 import { acmeAdmin } from './callers.ts';
 import { definitionOperationsFor } from './definition-operations.ts';
-import { harness, toBrain } from './harness.ts';
+import { harness, toPlaybook } from './harness.ts';
 import { probe } from './probe.ts';
 import { relay } from './relay.ts';
 
@@ -14,11 +14,11 @@ export const settledAt = '2026-10-01T11:00:00.000Z';
 
 export const cancelledAt = '2026-10-01T10:00:00.000Z';
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
-const relayed: RunStreamAddress = { org: 'acme', brain: 'alpha', id: relayedId };
+const relayed: RunStreamAddress = { org: 'acme', playbook: 'alpha', id: relayedId };
 
-function handingOn(input: unknown): BrainRequest {
+function handingOn(input: unknown): PlaybookRequest {
   return toAlpha(acmeAdmin, { type: 'relay', name: 'hand-on', input, run_id: relayedId });
 }
 

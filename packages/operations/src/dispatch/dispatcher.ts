@@ -1,23 +1,23 @@
 import { Effect } from 'effect';
 
 import {
-  authorizeBrainCall,
+  authorizePlaybookCall,
   authorizeOrgCall,
-  confirmBrainTakesCall,
+  confirmPlaybookTakesCall,
   confirmOrgExists,
 } from '../authorization/authorization.ts';
 import type { Registration } from '../definition/registration.ts';
 import { Ledger } from '../ledger/ledger.ts';
 import type { Outcome, Rejected } from '../outcome/outcome.ts';
-import { runInBrain } from './brain-binding.ts';
 import { withoutDispatcherServices, type DispatcherServices } from './dispatcher-services.ts';
 import { withErrorBoundary } from './error-boundary.ts';
 import { runInOrg } from './org-binding.ts';
-import type { BrainRequest, OrgRequest } from './request.ts';
+import { runInPlaybook } from './playbook-binding.ts';
+import type { PlaybookRequest, OrgRequest } from './request.ts';
 
 export type PipelineStep = (
   registration: Registration,
-  request: OrgRequest | BrainRequest,
+  request: OrgRequest | PlaybookRequest,
 ) => Effect.Effect<void, Rejected>;
 
 export interface Dispatcher {
@@ -25,14 +25,14 @@ export interface Dispatcher {
     registration: Registration<'org'>,
     request: OrgRequest,
   ) => Effect.Effect<Outcome, never, DispatcherServices>;
-  readonly dispatchToBrain: (
-    registration: Registration<'brain'>,
-    request: BrainRequest,
+  readonly dispatchToPlaybook: (
+    registration: Registration<'playbook'>,
+    request: PlaybookRequest,
   ) => Effect.Effect<Outcome, never, DispatcherServices>;
 }
 
 export function makeDispatcher(steps: readonly PipelineStep[]): Dispatcher {
-  const passSteps = (registration: Registration, request: OrgRequest | BrainRequest) =>
+  const passSteps = (registration: Registration, request: OrgRequest | PlaybookRequest) =>
     Effect.forEach(steps, (step) => step(registration, request), { discard: true });
   return {
     dispatchToOrg: (registration, request) =>
@@ -46,16 +46,16 @@ export function makeDispatcher(steps: readonly PipelineStep[]): Dispatcher {
         }),
         { operation: registration.name, org: request.org, caller: request.caller.id },
       ),
-    dispatchToBrain: (registration, request) =>
+    dispatchToPlaybook: (registration, request) =>
       withErrorBoundary(
         Effect.gen(function* () {
-          yield* authorizeBrainCall(registration, request);
-          yield* confirmBrainTakesCall(registration, request);
+          yield* authorizePlaybookCall(registration, request);
+          yield* confirmPlaybookTakesCall(registration, request);
           yield* passSteps(registration, request);
           const ledger = yield* Ledger;
-          return yield* runInBrain(registration, request, ledger).pipe(withoutDispatcherServices);
+          return yield* runInPlaybook(registration, request, ledger).pipe(withoutDispatcherServices);
         }),
-        { operation: registration.name, org: request.org, brain: request.brain, caller: request.caller.id },
+        { operation: registration.name, org: request.org, playbook: request.playbook, caller: request.caller.id },
       ),
   };
 }

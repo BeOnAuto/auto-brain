@@ -2,12 +2,12 @@ import type { StreamWriter } from '@beonauto/operations';
 import { Effect, Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { brainBoundSettler, recordedRunIn, recordedRunInBrain, runEventOf } from '../index.ts';
+import { playbookBoundSettler, recordedRunIn, recordedRunInPlaybook, runEventOf } from '../index.ts';
 import { asked, askedRun as run, askedRunId, attempted, question } from '../testing/asked-runs.ts';
 import { askedRequest } from '../testing/asking.ts';
 
 describe('a run as it was recorded', () => {
-  it('is read by its address or by its id in its brain, and is nothing for a run there is not', async () => {
+  it('is read by its address or by its id in its playbook, and is nothing for a run there is not', async () => {
     const { ledger } = await asked();
     const read = await Effect.runPromise(recordedRunIn(ledger.service, run));
 
@@ -18,8 +18,8 @@ describe('a run as it was recorded', () => {
     });
     expect(
       await Effect.runPromise(
-        recordedRunInBrain(
-          { load: (relative, decider) => ledger.service.load(`brain/acme/alpha/${relative}`, decider) },
+        recordedRunInPlaybook(
+          { load: (relative, decider) => ledger.service.load(`playbook/acme/alpha/${relative}`, decider) },
           askedRunId.toUpperCase(),
         ),
       ),
@@ -32,14 +32,14 @@ describe('a run as it was recorded', () => {
   });
 });
 
-describe('a settlement made through the writer of a brain', () => {
-  it('settles a run of that brain by its id, and finds no run under an id that is not one', async () => {
+describe('a settlement made through the writer of a playbook', () => {
+  it('settles a run of that playbook by its id, and finds no run under an id that is not one', async () => {
     const { ledger } = await asked();
     const writer: StreamWriter = {
       execute: (relative, decider, command, given) =>
-        ledger.service.execute(`brain/acme/alpha/${relative}`, decider, command, given),
+        ledger.service.execute(`playbook/acme/alpha/${relative}`, decider, command, given),
     };
-    const settle = brainBoundSettler(writer);
+    const settle = playbookBoundSettler(writer);
 
     expect(
       await Effect.runPromise(settle(run, { status: 'succeeded', output: { choice: 'approve' }, by: 'acme-admin' })),

@@ -9,7 +9,7 @@ const messageId = '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a';
 const at = '2026-10-07T09:00:00.000Z';
 
 const ofTheRun: RunContext = {
-  by: 'brain:alpha',
+  by: 'playbook:alpha',
   at,
   runId: 'r-approve',
   definitionType: 'interaction',
@@ -104,7 +104,7 @@ describe('the open request of a run', () => {
 });
 
 describe('the open request of a run whose request carries blocks the interaction does not read', () => {
-  it('is kept in the brain’s shape, its blocks as written, waiting in the inbox until it expires', () => {
+  it('is kept in the playbook’s shape, its blocks as written, waiting in the inbox until it expires', () => {
     const elsewhere = {
       ...Struct.omit(request, ['deliver']),
       deliver: { through: 'carrier-pigeon' },
@@ -235,7 +235,7 @@ describe('the open request of a run that took an answer', () => {
     ]);
   });
 
-  it('closes on the ending its run settles with, and of a function the brain does not settle from its answer, waits for its run', () => {
+  it('closes on the ending its run settles with, and of a function the playbook does not settle from its answer, waits for its run', () => {
     const ofABuild = { ...ofTheRun, definitionType: 'prediction' };
     const answeredBuild = after(after(undefined, deferralOf(request), ofABuild), taken, ofABuild);
 

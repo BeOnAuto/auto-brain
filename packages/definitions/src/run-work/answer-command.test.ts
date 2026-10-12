@@ -1,11 +1,11 @@
-import { Conflict, streamPrefixOfBrain, type StreamWriter } from '@beonauto/operations';
+import { Conflict, streamPrefixOfPlaybook, type StreamWriter } from '@beonauto/operations';
 import { Effect, Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import {
   answeredAlready,
   answeredFirst,
-  brainBoundAnswerer,
+  playbookBoundAnswerer,
   cancelledUnanswered,
   endedUnanswered,
   runCanceller,
@@ -37,7 +37,7 @@ describe('the answer to a request a run waits on', () => {
     expect((await state())?.answer).toEqual({
       answer: { choice: 'approve' },
       claimedFor: 'ada',
-      by: 'brain:alpha',
+      by: 'playbook:alpha',
       at: answered.at,
     });
   });
@@ -53,7 +53,7 @@ describe('the answer to a request a run waits on', () => {
     expect((await state())?.answer).toEqual({
       answer: { choice: 'reject' },
       reply,
-      by: 'brain:alpha',
+      by: 'playbook:alpha',
       at: answered.at,
     });
   });
@@ -135,13 +135,13 @@ describe('the settlement of a run that took an answer', () => {
 });
 
 describe('the answer a caller gives to a request a run waits on', () => {
-  it('is recorded on the run of the brain as the caller that gave it, and another answer after it is a conflict', async () => {
+  it('is recorded on the run of the playbook as the caller that gave it, and another answer after it is a conflict', async () => {
     const { ledger, recorded } = await asked();
     const inAlpha: StreamWriter = {
       execute: (stream, decider, command, given) =>
-        ledger.service.execute(`${streamPrefixOfBrain(run)}${stream}`, decider, command, given),
+        ledger.service.execute(`${streamPrefixOfPlaybook(run)}${stream}`, decider, command, given),
     };
-    const answer = brainBoundAnswerer(inAlpha);
+    const answer = playbookBoundAnswerer(inAlpha);
 
     await Effect.runPromise(answer(run.id.toUpperCase(), { answer: { choice: 'approve' } }, 'ada', lineage));
 

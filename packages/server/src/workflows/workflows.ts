@@ -2,8 +2,8 @@ import type { AppRuntime } from '@beonauto/api';
 import { callMarginMs, defineSendRunEvent, makeWorkflowAdapter, type ExpressionCheck } from '@beonauto/coordination';
 import {
   defineStartVersion,
-  type BrainOperation,
-  type BrainOwnNames,
+  type PlaybookOperation,
+  type PlaybookOwnNames,
   type Capability,
   type CapabilityFacts,
 } from '@beonauto/definitions';
@@ -11,7 +11,7 @@ import { makeCatalog, makeDispatcher, type DispatcherServices, type Registration
 import type { WorkflowHost } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
 
-import { brainOperationsServing } from '../composition/brain-operations.ts';
+import { playbookOperationsServing } from '../composition/playbook-operations.ts';
 import { routesFor } from '../composition/served-routes.ts';
 import type { Served } from '../lifecycle/lifecycle.ts';
 import { openedHost, type HostParts } from './host-dependencies.ts';
@@ -22,10 +22,10 @@ interface OrgOperation {
 
 export interface WorkflowParts extends HostParts {
   readonly orgOperations: readonly OrgOperation[];
-  readonly brainOperations: readonly BrainOperation[];
+  readonly playbookOperations: readonly PlaybookOperation[];
   readonly check: ExpressionCheck;
   readonly facts: CapabilityFacts;
-  readonly names: BrainOwnNames;
+  readonly names: PlaybookOwnNames;
 }
 
 export function longestCallOf(capabilities: readonly Pick<Capability, 'longestAnyRunMs'>[]): number {
@@ -63,8 +63,8 @@ export async function serveWorkflows(runtime: AppRuntime<DispatcherServices>, pa
   opening.resolve(host);
   const catalog = makeCatalog([
     ...parts.orgOperations,
-    ...brainOperationsServing(capabilities, parts),
-    ...parts.brainOperations,
+    ...playbookOperationsServing(capabilities, parts),
+    ...parts.playbookOperations,
     defineSendRunEvent(host, names),
   ]);
   return { routes: routesFor(runtime, catalog, dispatcher, capabilities), stopWork: host.stop };

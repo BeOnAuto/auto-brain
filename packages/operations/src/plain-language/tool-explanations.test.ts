@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { explanationOf, unsuccessfulWords, type ExplainedRejection, type Remedies } from '../index.ts';
 
 const toolsNamed =
-  'This can be put right on your side: whoever runs the server decides which tool servers and tools this brain may use, which list_tool_servers shows, so once it names only those, it can be tried again.';
+  'This can be put right on your side: whoever runs the server decides which tool servers and tools this playbook may use, which list_tool_servers shows, so once it names only those, it can be tried again.';
 
 const serverFailed =
   'Nothing was called through it, so it can be tried again later; if it keeps happening, whoever runs the server can look into that tool server.';
@@ -29,9 +29,9 @@ const unfinishedBecauses = [
 
 const toolEndings: ReadonlyArray<readonly [string, ExplainedRejection, string, string]> = [
   [
-    'a tool server not set up for the brain',
+    'a tool server not set up for the playbook',
     { reason: 'unavailable', kind: 'tool_not_offered', because: 'mcp_server_not_configured' },
-    'this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this brain',
+    'this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this playbook',
     toolsNamed,
   ],
   [
@@ -127,7 +127,7 @@ describe('explanationOf a run that needs tools', () => {
   });
 });
 
-const serverNamed = 'list_tool_servers shows the tool servers this brain may use.';
+const serverNamed = 'list_tool_servers shows the tool servers this playbook may use.';
 
 const ownRemedies: Remedies = { mcp_server_not_configured: serverNamed };
 
@@ -148,7 +148,7 @@ describe('the remedies an operation gives of its own', () => {
 
   it('end the words of a refusal for their because', () => {
     expect(unsuccessfulWords('test the tool', 'command', notConfigured, ownRemedies)).toBe(
-      `Could not test the tool: this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this brain. Nothing was changed. ${serverNamed}`,
+      `Could not test the tool: this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this playbook. Nothing was changed. ${serverNamed}`,
     );
   });
 });

@@ -1,5 +1,5 @@
 import type { CallEnded } from '@beonauto/mcp';
-import { BrainContext, BrainWriter, Caller, messageIdOf, streamPrefixOfBrain } from '@beonauto/operations';
+import { PlaybookContext, PlaybookWriter, Caller, messageIdOf, streamPrefixOfPlaybook } from '@beonauto/operations';
 import { DateTime, Effect, Exit, Ref, Semaphore } from 'effect';
 
 import type { RunLineage, ToolCallJournal } from '../capability/capability.ts';
@@ -37,8 +37,8 @@ function endedFact(number: number, fact: CallEnded): ToolCallFact {
 }
 
 export const toolCallJournal = Effect.fnUntraced(function* (id: string, lineage: RunLineage) {
-  const writer = yield* BrainWriter;
-  const stream = `${streamPrefixOfBrain(yield* BrainContext)}${runStreamNameOf(id)}`;
+  const writer = yield* PlaybookWriter;
+  const stream = `${streamPrefixOfPlaybook(yield* PlaybookContext)}${runStreamNameOf(id)}`;
   const { id: by } = yield* Caller;
   const permit = yield* Semaphore.make(1);
   const calls = yield* Ref.make<Calls>({ answered: lineage.startId, started: new Map() });

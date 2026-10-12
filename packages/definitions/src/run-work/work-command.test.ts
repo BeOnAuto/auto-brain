@@ -36,7 +36,7 @@ describe('a run of a capability that answers by its input', () => {
 });
 
 describe('the work a capability records on a run that finishes later', () => {
-  it('is recorded under the name its capability declares, as the brain itself, with the lineage it is given', async () => {
+  it('is recorded under the name its capability declares, as the playbook itself, with the lineage it is given', async () => {
     const { record, recorded, state } = await asked();
 
     const first = await Effect.runPromise(record(run, nudge(1), lineage));
@@ -46,8 +46,8 @@ describe('the work a capability records on a run that finishes later', () => {
     expect(
       (await recorded()).slice(2).map(({ type, data, causationId, context }) => [type, data, causationId, context.by]),
     ).toEqual([
-      ['nudge_sent', { number: 1 }, 'request-1', 'brain:alpha'],
-      ['nudge_sent', { number: 2 }, first.id, 'brain:alpha'],
+      ['nudge_sent', { number: 1 }, 'request-1', 'playbook:alpha'],
+      ['nudge_sent', { number: 2 }, first.id, 'playbook:alpha'],
     ]);
     expect((await state())?.work).toEqual([
       { type: 'nudge_sent', data: { number: 1 }, at: first.at },
@@ -55,7 +55,7 @@ describe('the work a capability records on a run that finishes later', () => {
     ]);
   });
 
-  it('is refused when no capability of the brain declares it, when its capability’s own rule refuses it, and for a run the brain cannot hold', async () => {
+  it('is refused when no capability of the playbook declares it, when its capability’s own rule refuses it, and for a run the playbook cannot hold', async () => {
     const { record } = await asked();
     const enough = new Conflict({ detail: 'The run has been nudged enough' });
 
@@ -66,11 +66,11 @@ describe('the work a capability records on a run that finishes later', () => {
     ]).toEqual([
       Result.fail(
         new Conflict({
-          detail: 'No capability of this brain declares the fact delivery_started, so the run does not record it',
+          detail: 'No capability of this playbook declares the fact delivery_started, so the run does not record it',
         }),
       ),
       Result.fail(enough),
-      Result.fail(new Conflict({ detail: 'There is no such run in this brain, so it records no work' })),
+      Result.fail(new Conflict({ detail: 'There is no such run in this playbook, so it records no work' })),
     ]);
   });
 });
@@ -90,7 +90,7 @@ describe('the work a capability records on a run that has ended', () => {
   });
 });
 
-describe('the work a capability records on a run that changes under it, or on a brain that knows no capability', () => {
+describe('the work a capability records on a run that changes under it, or on a playbook that knows no capability', () => {
   it('is read again when the run changed between its read and its record, and then recorded', async () => {
     const { ledger, recorded } = await asked();
     const other = workRecorder(ledger.service, askingFacts);
@@ -116,7 +116,7 @@ describe('the work a capability records on a run that changes under it, or on a 
     expect(await attempted(record(run, nudge(1), lineage))).toEqual(
       Result.fail(
         new Conflict({
-          detail: 'No capability of this brain declares the fact nudge_sent, so the run does not record it',
+          detail: 'No capability of this playbook declares the fact nudge_sent, so the run does not record it',
         }),
       ),
     );

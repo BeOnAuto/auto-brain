@@ -69,7 +69,7 @@ function statusAfter(type: string): string | undefined {
 }
 
 describe('the stored types of a status', () => {
-  it('name every fact of a run once, those the capabilities of the brain declare among them', () => {
+  it('name every fact of a run once, those the capabilities of the playbook declare among them', () => {
     expect(statusByStoredType.map(([type]) => type).toSorted()).toEqual(Object.keys(latestOfEveryType).toSorted());
   });
 

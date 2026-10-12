@@ -25,7 +25,7 @@ function answering(rows: readonly unknown[]): { readonly query: Query; readonly 
 }
 
 const stored = {
-  brain_key: 'brain/acme/alpha/',
+  playbook_key: 'playbook/acme/alpha/',
   row_key: 'r1',
   fn: 'triage',
   began_at: 1000,
@@ -36,7 +36,7 @@ const stored = {
   last_message: 'm1',
 };
 
-const alpha = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
 function readerOf(query: Query) {
   return postgresqlProjectionsOf({ projections: [runTallyRows, topicRows] }).readerOn({
@@ -63,7 +63,7 @@ describe('the reads of a projection on PostgreSQL', () => {
     expect(rows).toEqual([
       {
         org: 'acme',
-        brain: 'alpha',
+        playbook: 'alpha',
         key: 'r1',
         row: {
           fn: 'triage',
@@ -78,15 +78,15 @@ describe('the reads of a projection on PostgreSQL', () => {
     ]);
     expect(asked).toEqual([
       {
-        text: 'SELECT brain_key, row_key, fn, began_at::float8 AS began_at, status, facts::float8 AS facts, open, due_at::float8 AS due_at, last_message FROM run_tallies_2 WHERE brain_key = $1 AND open = $2 AND (began_at, row_key) < ($3, $4) ORDER BY began_at DESC NULLS LAST, row_key DESC NULLS LAST LIMIT $5',
-        values: ['brain/acme/alpha/', true, 2000, 'r9', 20],
+        text: 'SELECT playbook_key, row_key, fn, began_at::float8 AS began_at, status, facts::float8 AS facts, open, due_at::float8 AS due_at, last_message FROM run_tallies_2 WHERE playbook_key = $1 AND open = $2 AND (began_at, row_key) < ($3, $4) ORDER BY began_at DESC NULLS LAST, row_key DESC NULLS LAST LIMIT $5',
+        values: ['playbook/acme/alpha/', true, 2000, 'r9', 20],
       },
     ]);
   });
 });
 
 describe('the counts and due times of a projection on PostgreSQL', () => {
-  it('count, read what is due across brains, and the soonest due time', async () => {
+  it('count, read what is due across playbooks, and the soonest due time', async () => {
     const counts = answering([{ count: 3 }]);
     const due = answering([stored]);
     const soonest = answering([{ due: 61_000 }]);
@@ -103,8 +103,8 @@ describe('the counts and due times of a projection on PostgreSQL', () => {
     ).toMatchObject([{ key: 'r1', row: { open: true } }]);
     expect(await Effect.runPromise(readerOf(soonest.query).nextDueOf('run_tallies', 'due_at', 0))).toBe(61_000);
     expect([...counts.asked, ...due.asked, ...soonest.asked].map(({ text }) => text)).toEqual([
-      'SELECT CAST(count(*) AS INTEGER) AS count FROM run_tallies_2 WHERE brain_key = $1',
-      'SELECT brain_key, row_key, fn, began_at::float8 AS began_at, status, facts::float8 AS facts, open, due_at::float8 AS due_at, last_message FROM run_tallies_2 WHERE due_at IS NOT NULL AND due_at <= $1 ORDER BY due_at, brain_key, row_key LIMIT $2',
+      'SELECT CAST(count(*) AS INTEGER) AS count FROM run_tallies_2 WHERE playbook_key = $1',
+      'SELECT playbook_key, row_key, fn, began_at::float8 AS began_at, status, facts::float8 AS facts, open, due_at::float8 AS due_at, last_message FROM run_tallies_2 WHERE due_at IS NOT NULL AND due_at <= $1 ORDER BY due_at, playbook_key, row_key LIMIT $2',
       'SELECT min(due_at)::float8 AS due FROM run_tallies_2 WHERE due_at IS NOT NULL AND due_at > $1',
     ]);
   });
@@ -144,8 +144,8 @@ describe('the advance of a row of a projection on PostgreSQL', () => {
     expect(Exit.isFailure(refused)).toBe(true);
     expect(asked).toEqual([
       {
-        text: 'UPDATE topics_2 SET open = $1, next_at = $2 WHERE brain_key = $3 AND row_key = $4 AND last_message = $5',
-        values: [false, 9000, 'brain/acme/alpha/', 'spring', 'm-1'],
+        text: 'UPDATE topics_2 SET open = $1, next_at = $2 WHERE playbook_key = $3 AND row_key = $4 AND last_message = $5',
+        values: [false, 9000, 'playbook/acme/alpha/', 'spring', 'm-1'],
       },
     ]);
   });
@@ -185,7 +185,7 @@ const keyed = postgresqlProjectionsOf({ projections: [topicRows] });
 function noted(point: number, topic: string) {
   return {
     point: `7/${point}`,
-    stream: `brain/acme/alpha/notes/n${point}`,
+    stream: `playbook/acme/alpha/notes/n${point}`,
     type: 'topic_opened',
     data: { json: JSON.stringify({ topic, at: point }) },
     metadata: { at: '2026-10-05T09:00:00.000Z', by: 'topics' },
@@ -233,7 +233,7 @@ function appendedNote(type: string, data: unknown) {
     type,
     data: { json: JSON.stringify(data) },
     metadata: {
-      streamName: 'brain/acme/alpha/notes/n1',
+      streamName: 'playbook/acme/alpha/notes/n1',
       messageId: 'm2',
       streamPosition: 2n,
       at: '2026-10-05T09:00:00.000Z',

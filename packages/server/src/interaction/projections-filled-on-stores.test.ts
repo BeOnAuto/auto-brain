@@ -131,20 +131,20 @@ const decodeListing = Schema.decodeUnknownSync(
 
 describe.each(stores)('the projections of the requests and the conversations on $store', ({ skipped, aPlace }) => {
   it.skipIf(skipped)(
-    'are filled from the history of the brain when their tables are new, each row as the appends folded it, the cadence its reader advances aside',
+    'are filled from the history of the playbook when their tables are new, each row as the appends folded it, the cadence its reader advances aside',
     async () => {
       const place = await aPlace();
-      const brain = await chatHarness({ ledger: await place.open(), others: [nudging] });
-      await brain.askInThread(runId);
-      await brain.askInThread(answeredId);
-      await brain.performDue(Date.now());
-      const [thread = ''] = brain.chat.posted().map(({ ts }) => ts);
-      brain.chat.reply({ channel: '#approvals-sales', thread, user: answererId, text: 'maybe later' });
-      await brain.performReads(Date.now() + farAhead);
-      await brain.call(answerInteraction, { run_id: answeredId, answer: { choice: 'approve' } });
-      await brain.defineAs('nudging', 'forecast', 'Go?');
-      await brain.askAs('nudging', 'forecast', {}, nudgedId);
-      const kept = await rowsOf(brain.ledger);
+      const playbook = await chatHarness({ ledger: await place.open(), others: [nudging] });
+      await playbook.askInThread(runId);
+      await playbook.askInThread(answeredId);
+      await playbook.performDue(Date.now());
+      const [thread = ''] = playbook.chat.posted().map(({ ts }) => ts);
+      playbook.chat.reply({ channel: '#approvals-sales', thread, user: answererId, text: 'maybe later' });
+      await playbook.performReads(Date.now() + farAhead);
+      await playbook.call(answerInteraction, { run_id: answeredId, answer: { choice: 'approve' } });
+      await playbook.defineAs('nudging', 'forecast', 'Go?');
+      await playbook.askAs('nudging', 'forecast', {}, nudgedId);
+      const kept = await rowsOf(playbook.ledger);
 
       await place.dropTables();
       const filled = await rowsOf(await place.open());
@@ -162,14 +162,14 @@ describe.each(stores)('the projections of the requests and the conversations on 
 
 describe.each(stores)('the open requests listed on $store', ({ skipped, aPlace }) => {
   it.skipIf(skipped)('are those of one type, or of one function with its type or without, newest first', async () => {
-    const brain = await chatHarness({ ledger: await (await aPlace()).open(), others: [nudging] });
-    await brain.askInThread(runId);
-    await brain.defineAs('nudging', 'forecast', 'Go?');
-    await brain.askAs('nudging', 'forecast', {}, nudgedId);
-    await brain.defineAs('nudging', 'approve-brief', 'Approve?');
-    await brain.askAs('nudging', 'approve-brief', {}, namesakeId);
+    const playbook = await chatHarness({ ledger: await (await aPlace()).open(), others: [nudging] });
+    await playbook.askInThread(runId);
+    await playbook.defineAs('nudging', 'forecast', 'Go?');
+    await playbook.askAs('nudging', 'forecast', {}, nudgedId);
+    await playbook.defineAs('nudging', 'approve-brief', 'Approve?');
+    await playbook.askAs('nudging', 'approve-brief', {}, namesakeId);
     const listed = async (filters: Readonly<Record<string, string>>) =>
-      decodeListing(await brain.call(listInteractions, filters)).output.interactions.map(({ run_id: id }) => id);
+      decodeListing(await playbook.call(listInteractions, filters)).output.interactions.map(({ run_id: id }) => id);
 
     expect([
       await listed({ type: 'nudging' }),

@@ -34,7 +34,7 @@ const succeedWithNull: DefinitionResponder = () => ({ status: 'succeeded', outpu
 const receivedEventOf = Schema.decodeUnknownOption(ReceivedEventSchema);
 
 function attributesOf({ run, caller }: WorkflowRun): JsonObject {
-  return { org: run.org, brain: run.brain, run_id: run.id, definition: run.definition, caller: { ...caller } };
+  return { org: run.org, playbook: run.playbook, run_id: run.id, definition: run.definition, caller: { ...caller } };
 }
 
 function drivenRun(run: WorkflowRun, respond: DefinitionResponder): MemoryDriver {

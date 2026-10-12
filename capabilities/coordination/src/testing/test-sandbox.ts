@@ -1,4 +1,4 @@
-import { brainOwnNamesOf, type BrainOwnNames } from '@beonauto/definitions';
+import { playbookOwnNamesOf, type PlaybookOwnNames } from '@beonauto/definitions';
 import { echo } from '@beonauto/definitions/testing';
 import {
   reusedSandbox,
@@ -14,10 +14,10 @@ import { workflowMachineOptionsOf, workflowMachineSettingsOf } from '../runs/wor
 
 export const testSandbox: MachineSandbox = reusedSandbox(await freshInstance(unitMemoryBytes), () => 0);
 
-export const testBrainNames: BrainOwnNames = brainOwnNamesOf([echo, workflowFacts]);
+export const testPlaybookNames: PlaybookOwnNames = playbookOwnNamesOf([echo, workflowFacts]);
 
-export const testWorkflowPolicy: WorkflowPolicy = workflowPolicyOf(testBrainNames);
+export const testWorkflowPolicy: WorkflowPolicy = workflowPolicyOf(testPlaybookNames);
 
-export const testWorkflowSettings: MachineSettings = workflowMachineSettingsOf(testBrainNames);
+export const testWorkflowSettings: MachineSettings = workflowMachineSettingsOf(testPlaybookNames);
 
-export const testWorkflowOptions: MachineOptions = workflowMachineOptionsOf(testSandbox, testBrainNames);
+export const testWorkflowOptions: MachineOptions = workflowMachineOptionsOf(testSandbox, testPlaybookNames);

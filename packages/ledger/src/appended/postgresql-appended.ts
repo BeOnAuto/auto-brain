@@ -1,7 +1,7 @@
 import { Schema } from 'effect';
 
 import type { AppendedStreams, RecordedStore } from '../event-store.ts';
-import { kindKeyOfStream } from '../postgresql-reads/brain-indexes.ts';
+import { kindKeyOfStream } from '../postgresql-reads/playbook-indexes.ts';
 import {
   binding,
   defaultPartition,

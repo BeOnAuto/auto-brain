@@ -1,24 +1,24 @@
 import { describe, expect, it } from 'vitest';
 
-import { testBrainNames, testWorkflowPolicy as workflowPolicy } from '../testing/test-sandbox.ts';
+import { testPlaybookNames, testWorkflowPolicy as workflowPolicy } from '../testing/test-sandbox.ts';
 import { workflow } from '../testing/workflows.ts';
 import { workflowFunctionsOf } from './workflow-functions.ts';
 
-const workflowFunctions = workflowFunctionsOf(testBrainNames);
+const workflowFunctions = workflowFunctionsOf(testPlaybookNames);
 
 function rejectedIn(tasks: string): readonly string[] {
   return workflowPolicy(workflow(`do:\n${tasks}`)).map(({ pointer, detail }) => `${pointer}: ${detail}`);
 }
 
 describe('the functions a workflow calls', () => {
-  it('are run_definition alone: a workflow reaches the world through the definitions of its brain', () => {
+  it('are run_definition alone: a workflow reaches the world through the definitions of its playbook', () => {
     expect(
       rejectedIn(`
   - fetch: { call: http, with: {} }
   - log: { call: log, with: {} }
 `),
     ).toEqual([
-      '/do/0/fetch/call: call: http is not allowed: a workflow reaches the world only through its brain functions; call run_definition',
+      '/do/0/fetch/call: call: http is not allowed: a workflow reaches the world only through its playbook functions; call run_definition',
       '/do/1/log/call: call: log names no function; the one function is run_definition',
     ]);
   });

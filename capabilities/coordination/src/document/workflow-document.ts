@@ -1,5 +1,5 @@
 import { readYaml, type LocatedProblem, type Position, type YamlKind } from '@beonauto/config';
-import { runnableExpression, type BrainOwnNames, type StrippedForms } from '@beonauto/definitions';
+import { runnableExpression, type PlaybookOwnNames, type StrippedForms } from '@beonauto/definitions';
 import { InvalidInput, type Issue } from '@beonauto/operations';
 import {
   durationLimitRejections,
@@ -73,7 +73,7 @@ function readWorkflowDocument(
 }
 
 export function workflowReaderOf(
-  names: BrainOwnNames,
+  names: PlaybookOwnNames,
 ): (source: string, mostDuration?: number) => Effect.Effect<ReadWorkflow, InvalidInput> {
   const policy = workflowPolicyOf(names);
   return (source, mostDuration) => readWorkflowDocument(source, policy, mostDuration);

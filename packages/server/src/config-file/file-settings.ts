@@ -66,7 +66,7 @@ export const fileSettings: readonly FileSetting[] = [
     'MCP_SERVERS',
     McpServersSchema.annotate({
       description:
-        'The MCP servers whose tools a function may name, each bound to an org and optionally its brains: url for a remote server, command for a process. Secrets are references such as ${GRAPH_API_KEY}. MCP_SERVERS wins over it',
+        'The MCP servers whose tools a function may name, each bound to an org and optionally its playbooks: url for a remote server, command for a process. Secrets are references such as ${GRAPH_API_KEY}. MCP_SERVERS wins over it',
     }),
     asJson,
     { references: 'kept' },

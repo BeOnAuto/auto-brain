@@ -13,11 +13,11 @@ export function defineListDefinitions(capabilities: readonly Capability[]) {
   const known = knownCapabilities(capabilities);
   const words = definitionWordsFor(capabilities);
   return known.publish(
-    defineQuery('brain', {
+    defineQuery('playbook', {
       name: 'list_definitions',
       title: 'List definitions',
       description: [
-        'Lists the definitions of one type in the brain, sorted by name, each with its version, its status and what its document says it does, without the document.',
+        'Lists the definitions of one type in the playbook, sorted by name, each with its version, its status and what its document says it does, without the document.',
         'Use it to find a function or workflow the person names, or to see which exist before one is made; get_definition reads one with its document.',
         '`type` is the type to list, and `include_retired` adds the retired definitions, which are left out otherwise.',
       ].join(' '),

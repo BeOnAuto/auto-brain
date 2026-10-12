@@ -7,9 +7,9 @@ import { runDecider } from './run-decider.ts';
 import { runTaken } from './run-decisions.ts';
 import type { RunEvent } from './run-events.ts';
 
-const start = { runId: testRunId, by: 'brain:alpha', at: '2026-10-01T09:00:00.000Z' };
+const start = { runId: testRunId, by: 'playbook:alpha', at: '2026-10-01T09:00:00.000Z' };
 
-const finish = { runId: testRunId, by: 'brain:alpha', at: '2026-10-01T09:00:05.000Z' };
+const finish = { runId: testRunId, by: 'playbook:alpha', at: '2026-10-01T09:00:05.000Z' };
 
 const ofGreet = { definitionType: 'echo', definitionName: 'greet', definitionVersion: 1 };
 

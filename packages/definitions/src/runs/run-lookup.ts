@@ -5,7 +5,7 @@ import { startedRunOf, type RunStreamState, type RecordedRunState } from './run-
 import type { Run, RunDetail, RunRejection } from './run.ts';
 
 export function noRunCalled(id: string): NotFound {
-  return new NotFound({ detail: `There is no run ${id} in this brain` });
+  return new NotFound({ detail: `There is no run ${id} in this playbook` });
 }
 
 function recorded(id: string, stream: RunStreamState): Effect.Effect<RecordedRunState, NotFound> {

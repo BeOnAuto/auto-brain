@@ -1,5 +1,5 @@
-import { servesBrain } from '@beonauto/config';
-import { capitalized, type BrainAddress } from '@beonauto/operations';
+import { servesPlaybook } from '@beonauto/config';
+import { capitalized, type PlaybookAddress } from '@beonauto/operations';
 import { Result } from 'effect';
 
 import type { ListedTool } from '../bounds/tool-results.ts';
@@ -11,7 +11,7 @@ import type { McpServerSettings } from '../settings/mcp-settings.ts';
 import { ToolNotOffered } from './tool-not-offered.ts';
 
 export interface Settled {
-  readonly settings: Pick<McpServerSettings, 'org' | 'brains' | 'allowed'>;
+  readonly settings: Pick<McpServerSettings, 'org' | 'playbooks' | 'allowed'>;
 }
 
 export interface NamingOn<Link extends Settled> {
@@ -44,7 +44,7 @@ function notConfigured(named: readonly ToolReference[]): ToolNotOffered {
   const servers = disjunction.format(new Set(named.map(({ server }) => server)));
   return new ToolNotOffered({
     because: 'mcp_server_not_configured',
-    detail: `No MCP server named ${servers} is configured for this brain`,
+    detail: `No MCP server named ${servers} is configured for this playbook`,
   });
 }
 
@@ -70,12 +70,12 @@ export function notListed(missing: readonly ToolReference[]): ToolNotOffered {
   return new ToolNotOffered({ because: 'tool_not_listed', detail: capitalized(conjunction.format(unlisted)) });
 }
 
-function isServing<Link extends Settled>(named: NamedLink<Link>, address: BrainAddress): named is ServingLink<Link> {
-  return named.link !== undefined && servesBrain(named.link.settings, address);
+function isServing<Link extends Settled>(named: NamedLink<Link>, address: PlaybookAddress): named is ServingLink<Link> {
+  return named.link !== undefined && servesPlaybook(named.link.settings, address);
 }
 
 export function namedLinks<Link extends Settled>(
-  address: BrainAddress,
+  address: PlaybookAddress,
   { references, links }: NamingOn<Link>,
 ): Result.Result<readonly Link[], ToolNotOffered> {
   const named = references.map((reference): NamedLink<Link> => ({ reference, link: links.get(reference.server) }));

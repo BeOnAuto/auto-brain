@@ -3,7 +3,7 @@ import { field, isObject, objectField, textField, type Json, type JsonObject } f
 import { caughtRaise } from '../dsl/raised-error.ts';
 import { eventFiltersOf, type LocatedFilter } from '../dsl/task-policy.ts';
 import { callKeyText, type CallKey } from '../executor/call-key.ts';
-import { brainWideFilterOf, hasAttributes } from '../filters/event-filter.ts';
+import { playbookWideFilterOf, hasAttributes } from '../filters/event-filter.ts';
 import type { FrameBody, TaskFrame, ValueId } from '../machine/run-state.ts';
 import { doneOf, waitingOn, type BodyAdvance, type Invocation, type Machine, type Signal } from '../runner/advance.ts';
 import type { ListenFrame } from '../runner/frame-search.ts';
@@ -80,9 +80,9 @@ function isSatisfied(listening: Listening, consumed: Slots): boolean {
   return listening.all ? filled >= listening.filters.length : filled > 0;
 }
 
-function brainWideFiltersOf(listening: Listening): readonly JsonObject[] {
+function playbookWideFiltersOf(listening: Listening): readonly JsonObject[] {
   return listening.filters.flatMap((filter) => {
-    const attributes = brainWideFilterOf(filter);
+    const attributes = playbookWideFilterOf(filter);
     return attributes === undefined ? [] : [attributes];
   });
 }
@@ -105,9 +105,9 @@ function settled(invocation: Invocation, consumed: Slots, waited: number): BodyA
   }
   const { session } = invocation.machine;
   session.beforeWaiting();
-  const brainWide = brainWideFiltersOf(listening);
-  if (brainWide.length > 0) {
-    session.listeners.arm(keyOf(invocation), brainWide);
+  const playbookWide = playbookWideFiltersOf(listening);
+  if (playbookWide.length > 0) {
+    session.listeners.arm(keyOf(invocation), playbookWide);
   }
   const { reference } = invocation.entry;
   session.record({ reference, run: invocation.frame.run, outcome: 'waiting', waitsFor: 'event', times: waited + 1 });
@@ -166,7 +166,7 @@ interface OpenSlot {
 function openSlotsOf(listening: Listening, body: ListenBody): readonly OpenSlot[] {
   const slots = slotsOf(listening, body.consumed);
   return listening.filters.flatMap((filter, index) =>
-    brainWideFilterOf(filter) !== undefined && (!listening.all || slots[index] === null) ? [{ index, filter }] : [],
+    playbookWideFilterOf(filter) !== undefined && (!listening.all || slots[index] === null) ? [{ index, filter }] : [],
   );
 }
 

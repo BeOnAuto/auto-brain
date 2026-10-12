@@ -163,7 +163,7 @@ describe('the words of an answer', () => {
     ]);
   });
 
-  it('name the deferral in the history by the type the brain reserves for requests', () => {
+  it('name the deferral in the history by the type the playbook reserves for requests', () => {
     const presenters = makeDefinitionPresenters([interactionHarness().capability]);
 
     expect(presenters[0]?.publicNames['run_deferred']).toEqual(['run_deferred', 'interaction_requested']);

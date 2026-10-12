@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Json, JsonObject } from './json.ts';
 import { holdsAnExpression, workflowExpressionsOf } from './workflow-expressions.ts';
 
-const header = { dsl: '1.0.0', namespace: 'brain', name: 'publish-brief', version: '1.0.0' };
+const header = { dsl: '1.0.0', namespace: 'playbook', name: 'publish-brief', version: '1.0.0' };
 
 function placesOf(document: JsonObject): Readonly<Record<string, readonly [string, string]>> {
   return Object.fromEntries(

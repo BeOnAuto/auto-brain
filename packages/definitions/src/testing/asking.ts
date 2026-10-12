@@ -1,7 +1,13 @@
 import { RunContextSchema, factOf, type Presenter } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
-import { brainOwnNamesOf, declaredFact, defineCapability, definePublishEvent, type RequestRecord } from '../index.ts';
+import {
+  playbookOwnNamesOf,
+  declaredFact,
+  defineCapability,
+  definePublishEvent,
+  type RequestRecord,
+} from '../index.ts';
 import { echo } from './echo.ts';
 
 const NudgeSentSchema = factOf('nudge_sent', Schema.Struct({ number: Schema.Int }), RunContextSchema);
@@ -61,6 +67,6 @@ export const asking = defineCapability({
   },
 });
 
-const askingBrainNames = brainOwnNamesOf([echo, asking]);
+const askingPlaybookNames = playbookOwnNamesOf([echo, asking]);
 
-export const publishEventToAskingBrain = definePublishEvent(askingBrainNames);
+export const publishEventToAskingPlaybook = definePublishEvent(askingPlaybookNames);

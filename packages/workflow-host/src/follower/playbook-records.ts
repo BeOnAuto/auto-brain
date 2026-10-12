@@ -1,0 +1,58 @@
+import { recordedReaderOf, type EventStore } from '@beonauto/ledger';
+import type { PlaybookAddress, RecordedEvent, RecordedPage } from '@beonauto/operations';
+import { Effect } from 'effect';
+
+const recordsInAPage = 100;
+
+const definitionTypes: readonly string[] = ['definition_created', 'definition_updated', 'definition_retired'];
+
+const factTypes: ReadonlySet<string> = new Set([
+  'run_started',
+  'run_succeeded',
+  'run_rejected',
+  'run_failed',
+  ...definitionTypes,
+]);
+
+export const noRecordTypes: ReadonlySet<string> = new Set();
+
+export function recordTypesOf(eventTypes: readonly string[]): ReadonlySet<string> {
+  const facts = eventTypes.filter((type) => factTypes.has(type));
+  return new Set(facts.length < eventTypes.length ? [...facts, 'event_published'] : facts);
+}
+
+export interface PlaybookRecords {
+  readonly after: (
+    playbook: PlaybookAddress,
+    cursor: string | null,
+    delivers: ReadonlySet<string>,
+  ) => Effect.Effect<RecordedPage>;
+  readonly tail: (playbook: PlaybookAddress) => Effect.Effect<string | null>;
+}
+
+export function relativeRecord(playbookKey: string, record: RecordedEvent): RecordedEvent {
+  return { ...record, stream: record.stream.slice(playbookKey.length) };
+}
+
+export function playbookRecordsOf(store: EventStore): PlaybookRecords {
+  const read = recordedReaderOf(store);
+  return {
+    after: (playbook, cursor, delivers) =>
+      Effect.orDie(
+        read(
+          playbook,
+          { kind: 'everything' },
+          {
+            order: 'asc',
+            limit: recordsInAPage,
+            dataOf: [...new Set([...definitionTypes, ...delivers])],
+            ...(cursor === null ? {} : { cursor }),
+          },
+        ),
+      ),
+    tail: (playbook) =>
+      Effect.orDie(read(playbook, { kind: 'everything' }, { order: 'desc', limit: 1, dataOf: [] })).pipe(
+        Effect.map(({ records }) => records.reduce<string | null>((_, { cursor }) => cursor, null)),
+      ),
+  };
+}

@@ -1,4 +1,4 @@
-import type { BrainOwnNames } from '@beonauto/definitions';
+import type { PlaybookOwnNames } from '@beonauto/definitions';
 import type { JsonObject, MachineOptions, MachineSandbox, MachineSettings } from '@beonauto/workflow-engine';
 import { runLogContextOf } from '@beonauto/workflow-host';
 
@@ -11,7 +11,7 @@ const runtimeDescriptor: JsonObject = {
   metadata: { type: 'workflow' },
 };
 
-export function workflowMachineSettingsOf(names: BrainOwnNames): MachineSettings {
+export function workflowMachineSettingsOf(names: PlaybookOwnNames): MachineSettings {
   return {
     functions: { ...workflowFunctionsOf(names), childOf: childRunOf },
     runtime: runtimeDescriptor,
@@ -19,6 +19,6 @@ export function workflowMachineSettingsOf(names: BrainOwnNames): MachineSettings
   };
 }
 
-export function workflowMachineOptionsOf(sandbox: MachineSandbox, names: BrainOwnNames): MachineOptions {
+export function workflowMachineOptionsOf(sandbox: MachineSandbox, names: PlaybookOwnNames): MachineOptions {
   return { ...workflowMachineSettingsOf(names), sandbox };
 }

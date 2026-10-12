@@ -35,7 +35,7 @@ export type Claim = 'run' | 'answer';
 
 const nothingToRecord: Decision = Result.succeed([]);
 
-const noSuchRun = new NotFound({ detail: 'There is no such run in this brain' });
+const noSuchRun = new NotFound({ detail: 'There is no such run in this playbook' });
 
 export const runTaken = new Conflict({
   detail: 'A run under this id is going or has ended with a result, so this start records nothing',

@@ -18,7 +18,7 @@ const Deciding = Schema.Struct({ type: Schema.Literals(['settle', 'answer']) });
 
 const isDeciding = Schema.is(Schema.Union([Deciding, Schema.Struct({ command: Deciding })]));
 
-const address = { org: 'acme', brain: 'alpha', id: askedRunId };
+const address = { org: 'acme', playbook: 'alpha', id: askedRunId };
 
 const lineage = { causationId: null, correlationId: askedRunId };
 

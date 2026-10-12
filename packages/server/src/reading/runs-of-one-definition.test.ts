@@ -92,7 +92,7 @@ afterEach(async () => {
 
 async function threeReasoningRunsBehindFiveComputationRuns(environment: Readonly<Record<string, string>>) {
   server = await servingReasoning([], environment);
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   await server.call('POST', `${alpha}/definitions/reasoning`, { body: { name: 'summary', source: summary } });
   await server.call('POST', `${alpha}/definitions/computation`, { body: { name: 'echoed', source: echoed } });
   await inTurn(reasoningRuns, (runId) =>
@@ -120,7 +120,7 @@ async function overHttp(cursor?: string): Promise<RunsPage> {
 function overMcp(): Promise<readonly RunsPage[]> {
   return withMcpSession(
     'current revision',
-    { url: `${server.origin}/orgs/acme/brains/alpha/mcp`, headers: {} },
+    { url: `${server.origin}/orgs/acme/playbooks/alpha/mcp`, headers: {} },
     async (session) => {
       const first = await session.callTool('list_runs', { type: 'reasoning', limit: 2 });
       const firstPage = runsPageOf(first.structuredContent);

@@ -148,9 +148,9 @@ export const beforeAnything: ReadonlyArray<readonly [string, Row, Ending]> = [
     unworkable('The arguments of the call take 16415 bytes, more than the 16384 a call may send'),
   ],
   [
-    'a server that does not serve the brain',
-    { server: { entry: { brains: ['beta'] } } },
-    sentNothing('mcp_server_not_configured', 'No MCP server named chat is configured for this brain'),
+    'a server that does not serve the playbook',
+    { server: { entry: { playbooks: ['beta'] } } },
+    sentNothing('mcp_server_not_configured', 'No MCP server named chat is configured for this playbook'),
   ],
   [
     'a tool the operator does not allow',

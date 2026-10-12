@@ -4,7 +4,7 @@ import { Effect } from 'effect';
 
 import { makeWorkflowAdapter } from '../capability/workflow.ts';
 import { testExpressionCheck } from './expression-checks.ts';
-import { testBrainNames } from './test-sandbox.ts';
+import { testPlaybookNames } from './test-sandbox.ts';
 
 export interface RecordingStarts {
   readonly starts: readonly RunStart[];
@@ -29,6 +29,6 @@ export function recordingWorkflows(recording: Pick<WorkflowHost, 'start'>): Capa
     check: testExpressionCheck,
     mostDurationMs: 2_592_000_000,
     longestCallMs: 1000,
-    names: testBrainNames,
+    names: testPlaybookNames,
   });
 }

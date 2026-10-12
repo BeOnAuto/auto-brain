@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import type { StatementExecutor } from '../event-store.ts';
 import { recordedContentOn } from './content-tables.ts';
 
-const alpha = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
 function described(sql: SQL): string {
   return SQL.describe(sql, sqliteFormatter).replaceAll(/\s+/gu, ' ').trim();
@@ -52,7 +52,7 @@ describe('the writes of a recorded content', () => {
     ]);
   });
 
-  it('write nothing for a digest the brain holds, and read no chunk of one it does not', async () => {
+  it('write nothing for a digest the playbook holds, and read no chunk of one it does not', async () => {
     const held = recordingFinding([{ chunks: 1 }]);
     const missing = recordingFinding([]);
 

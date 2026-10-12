@@ -14,14 +14,14 @@ const description = [
   "Use it to run a saved definition at the person's request; a workflow's steps call it the same way.",
   '`type` and `name` say which definition, `input` is the value it takes, as the input_schema get_definition shows,',
   'and `run_id` is optional: give the same id to retry safely, since a run that ended or waits answers as it stands and one that failed runs again.',
-  'A function that calls a tool may change something outside the brain, so a run of one that did not succeed is never run again under its id;',
+  'A function that calls a tool may change something outside the playbook, so a run of one that did not succeed is never run again under its id;',
   'get_run_history shows what it called.',
 ].join(' ');
 
 export function defineRunDefinition(capabilities: readonly Capability[]) {
   const known = knownCapabilities(capabilities);
   return known.publish(
-    defineCommand('brain', {
+    defineCommand('playbook', {
       name: 'run_definition',
       title: 'Run definition',
       description,

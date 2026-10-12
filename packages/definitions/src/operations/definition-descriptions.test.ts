@@ -7,7 +7,7 @@ import { probe } from '../testing/probe.ts';
 
 const operations = makeDefinitionOperations([echo, probe().capability]).map(({ registration }) => registration);
 
-const onRuns = new Set(['get_run', 'cancel_run', 'list_runs', 'get_run_history', 'get_brain_analytics']);
+const onRuns = new Set(['get_run', 'cancel_run', 'list_runs', 'get_run_history', 'get_playbook_analytics']);
 
 const takingAType = operations.filter(({ name }) => !onRuns.has(name));
 
@@ -16,7 +16,7 @@ function described(name: string): string {
 }
 
 describe('the description of create_definition', () => {
-  it('names each definition type the brain runs, the kind of definition it is and the guide to its format', () => {
+  it('names each definition type the playbook runs, the kind of definition it is and the guide to its format', () => {
     expect(described('create_definition')).toContain(
       "`type` is the definition's type and `name` is how workflows and tools refer to it: echo, a greeting, guide echo; probe, a probe, guide probe.",
     );

@@ -8,7 +8,7 @@ import {
   requireTextWithin,
 } from '../bounds/served-bounds.ts';
 import { argumentDescriptionsIn } from './argument-descriptions.ts';
-import { withBrainArgument } from './brain-argument.ts';
+import { withPlaybookArgument } from './playbook-argument.ts';
 import { advertisedSchema, selfContainedSchemaOf, type JsonSchema } from './tool-schema.ts';
 
 export interface ToolDefinition {
@@ -59,6 +59,6 @@ export function toolDefinitionOf(registration: Registration): ToolDefinition {
   return definitionWith(registration, selfContainedSchemaOf(registration.input));
 }
 
-export function toolDefinitionTakingBrainOf(registration: Registration<'brain'>): ToolDefinition {
-  return definitionWith(registration, withBrainArgument(selfContainedSchemaOf(registration.input)));
+export function toolDefinitionTakingPlaybookOf(registration: Registration<'playbook'>): ToolDefinition {
+  return definitionWith(registration, withPlaybookArgument(selfContainedSchemaOf(registration.input)));
 }

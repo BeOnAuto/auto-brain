@@ -60,7 +60,7 @@
       },
       "attributes": {
         "org": "acme",
-        "brain": "alpha",
+        "playbook": "alpha",
         "run_id": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
         "definition": {
           "name": "retry-with-backoff",
@@ -239,7 +239,7 @@
         },
         {
           "op": "add",
-          "path": "/attributes/brain",
+          "path": "/attributes/playbook",
           "value": "alpha"
         },
         {
@@ -447,7 +447,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 4405
+          "value": 4408
         }
       ],
       "outputs": [
@@ -604,7 +604,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 6729
+          "value": 6732
         }
       ],
       "outputs": [
@@ -782,7 +782,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 9547
+          "value": 9550
         }
       ],
       "outputs": [
@@ -931,7 +931,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 11872
+          "value": 11875
         }
       ],
       "outputs": [
@@ -1109,7 +1109,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 14691
+          "value": 14694
         }
       ],
       "outputs": [
@@ -1242,7 +1242,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 16323
+          "value": 16326
         }
       ],
       "outputs": [

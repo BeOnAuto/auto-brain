@@ -1,9 +1,9 @@
 import type { AppRuntime } from '@beonauto/api';
-import { eventEmitter, type BrainOperation, type BrainOwnNames } from '@beonauto/definitions';
+import { eventEmitter, type PlaybookOperation, type PlaybookOwnNames } from '@beonauto/definitions';
 import {
-  brainCallerOf,
+  playbookCallerOf,
   Ledger,
-  type BrainRequest,
+  type PlaybookRequest,
   type Dispatcher,
   type DispatcherServices,
   type Outcome,
@@ -16,13 +16,13 @@ import { inRuntime } from './in-runtime.ts';
 const workflows = 'workflow';
 
 export interface Reacting {
-  readonly startVersion: BrainOperation;
-  readonly names: BrainOwnNames;
+  readonly startVersion: PlaybookOperation;
+  readonly names: PlaybookOwnNames;
 }
 
 function requestOf({
   org,
-  brain,
+  playbook,
   workflow,
   version,
   input,
@@ -30,11 +30,11 @@ function requestOf({
   depth,
   cause,
   trigger,
-}: ReactionStart): BrainRequest {
+}: ReactionStart): PlaybookRequest {
   return {
-    caller: brainCallerOf({ org, brain }),
+    caller: playbookCallerOf({ org, playbook }),
     org,
-    brain,
+    playbook,
     input: { type: workflows, name: workflow, version, input, run_id: runId },
     encoding: 'json',
     lineage: { causationId: cause, correlationId: runId },
@@ -64,13 +64,13 @@ export function reactionsOf(
     definitionType: workflows,
     start: (start) =>
       Effect.flatMap(
-        inRuntime(runtime, dispatcher.dispatchToBrain(startVersion.registration, requestOf(start))),
+        inRuntime(runtime, dispatcher.dispatchToPlaybook(startVersion.registration, requestOf(start))),
         startAnswered,
       ),
-    emit: (brain, emission, lineage) =>
+    emit: (playbook, emission, lineage) =>
       inRuntime(
         runtime,
-        Effect.flatMap(Effect.service(Ledger), (ledger) => eventEmitter(ledger, names)(brain, emission, lineage)),
+        Effect.flatMap(Effect.service(Ledger), (ledger) => eventEmitter(ledger, names)(playbook, emission, lineage)),
       ),
   };
 }

@@ -44,7 +44,7 @@ export function decideToolCall({ fact }: RunToolCall, state: RunState): Decision
 
 function undeclared({ type }: CapabilityFact): Conflict {
   return new Conflict({
-    detail: `No capability of this brain declares the fact ${type}, so the run does not record it`,
+    detail: `No capability of this playbook declares the fact ${type}, so the run does not record it`,
   });
 }
 

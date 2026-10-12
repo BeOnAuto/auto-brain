@@ -57,9 +57,9 @@ export async function aLedgerReadingWhatCommitted(entry: LedgerEntry): Promise<L
   const ledger = await aLedger(entry, database);
   return {
     ...ledger,
-    readRecorded: (brain, selection, page) =>
+    readRecorded: (playbook, selection, page) =>
       Effect.promise(() => entry.untilReadable(database)).pipe(
-        Effect.andThen(ledger.readRecorded(brain, selection, page)),
+        Effect.andThen(ledger.readRecorded(playbook, selection, page)),
       ),
   };
 }

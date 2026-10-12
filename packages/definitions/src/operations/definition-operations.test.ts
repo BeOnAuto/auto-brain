@@ -1,5 +1,5 @@
-import { brainOperations } from '@beonauto/brains';
 import { makeCatalog } from '@beonauto/operations';
+import { playbookOperations } from '@beonauto/playbooks';
 import { describe, expect, it } from 'vitest';
 
 import { makeDefinitionOperations } from '../index.ts';
@@ -11,8 +11,8 @@ const operations = makeDefinitionOperations([echo, probe().capability]);
 const catalog = makeCatalog(operations);
 
 describe('the definition operations', () => {
-  it('make one catalog of eleven brain operations', () => {
-    expect(catalog.operationsIn('brain').map(({ name, title }) => `${name}: ${title}`)).toEqual([
+  it('make one catalog of eleven playbook operations', () => {
+    expect(catalog.operationsIn('playbook').map(({ name, title }) => `${name}: ${title}`)).toEqual([
       'create_definition: Create definition',
       'list_definitions: List definitions',
       'get_definition: Get definition',
@@ -23,12 +23,12 @@ describe('the definition operations', () => {
       'cancel_run: Cancel run',
       'list_runs: List runs',
       'get_run_history: Get run history',
-      'get_brain_analytics: Get brain analytics',
+      'get_playbook_analytics: Get playbook analytics',
     ]);
     expect(catalog.operationsIn('org')).toEqual([]);
   });
 
-  it('answer at eleven routes relative to the brain', () => {
+  it('answer at eleven routes relative to the playbook', () => {
     expect(catalog.operations.map(({ route }) => `${route.method} ${route.path}`)).toEqual([
       'POST /definitions/{type}',
       'GET /definitions/{type}',
@@ -46,13 +46,13 @@ describe('the definition operations', () => {
 });
 
 describe('a catalog of the definition operations', () => {
-  it('takes the brain operations as well, without a clash of names or routes', () => {
-    expect(makeCatalog([...brainOperations, ...operations]).operations.map(({ name }) => name)).toEqual([
-      'create_brain',
-      'list_brains',
-      'get_brain',
-      'update_brain',
-      'retire_brain',
+  it('takes the playbook operations as well, without a clash of names or routes', () => {
+    expect(makeCatalog([...playbookOperations, ...operations]).operations.map(({ name }) => name)).toEqual([
+      'create_playbook',
+      'list_playbooks',
+      'get_playbook',
+      'update_playbook',
+      'retire_playbook',
       'create_definition',
       'list_definitions',
       'get_definition',
@@ -63,7 +63,7 @@ describe('a catalog of the definition operations', () => {
       'cancel_run',
       'list_runs',
       'get_run_history',
-      'get_brain_analytics',
+      'get_playbook_analytics',
     ]);
   });
 });

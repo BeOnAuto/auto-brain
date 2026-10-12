@@ -4,8 +4,8 @@ import {
   InvalidCursor,
   boundedPage,
   mostExaminedInAPage,
-  streamPrefixOfBrain,
-  type BrainAddress,
+  streamPrefixOfPlaybook,
+  type PlaybookAddress,
   type Context,
   type ExaminedPlace,
   type RecordedEvent,
@@ -49,7 +49,7 @@ const positionPattern = /^[1-9]\d{0,14}$/u;
 
 const utf8 = new TextEncoder();
 
-function brainKeyOf(stream: string): string | undefined {
+function playbookKeyOf(stream: string): string | undefined {
   const segments = stream.split('/');
   return segments.length > 3 ? `${segments.slice(0, 3).join('/')}/` : undefined;
 }
@@ -65,7 +65,7 @@ function resumedOf(key: string): (parts: readonly CursorPart[]) => Effect.Effect
     }
     return cursorKey === key
       ? Effect.succeed({ position: Number(at), inclusive: within !== undefined })
-      : Effect.fail(new InvalidCursor({ kind: 'of_another_brain' }));
+      : Effect.fail(new InvalidCursor({ kind: 'of_another_playbook' }));
   };
 }
 
@@ -109,12 +109,12 @@ function byTimeThenPosition(left: MemoryRecord, right: MemoryRecord): number {
   return apart === 0 ? left.position - right.position : apart;
 }
 
-function firstSince(inBrain: readonly MemoryRecord[], since: string | undefined): number | undefined {
+function firstSince(inPlaybook: readonly MemoryRecord[], since: string | undefined): number | undefined {
   if (since === undefined) {
     return 0;
   }
   const from = Date.parse(since);
-  return inBrain
+  return inPlaybook
     .filter(({ recordedAt }) => Date.parse(recordedAt) >= from)
     .toSorted(byTimeThenPosition)
     .at(0)?.position;
@@ -204,9 +204,9 @@ function pageOf(
 ): (resumed: Resumed) => RecordedPage {
   return (resumed) => {
     const isBeyond = beyond(resumed, page.order);
-    const inBrain = log.filter(({ stream }) => brainKeyOf(stream) === key);
-    const from = firstSince(inBrain, page.since) ?? Number.POSITIVE_INFINITY;
-    const inOrder = page.order === 'asc' ? inBrain : inBrain.toReversed();
+    const inPlaybook = log.filter(({ stream }) => playbookKeyOf(stream) === key);
+    const from = firstSince(inPlaybook, page.since) ?? Number.POSITIVE_INFINITY;
+    const inOrder = page.order === 'asc' ? inPlaybook : inPlaybook.toReversed();
     const candidates = inOrder.filter(
       (record) => inSelection(key, selection)(record) && record.position >= from && isBeyond(record.position),
     );
@@ -228,15 +228,15 @@ function pageOf(
 
 export function memoryRecordedReader(log: readonly MemoryRecord[]): RecordedReader {
   return {
-    readRecorded: (brain: BrainAddress, selection, page) =>
+    readRecorded: (playbook: PlaybookAddress, selection, page) =>
       Effect.suspend(() => {
-        const key = streamPrefixOfBrain(brain);
+        const key = streamPrefixOfPlaybook(playbook);
         return resumedFrom(page, key).pipe(Effect.map(pageOf(log, key, selection, page)));
       }),
-    readRecordedEvent: (brain, id) =>
+    readRecordedEvent: (playbook, id) =>
       Effect.sync(() => {
-        const key = streamPrefixOfBrain(brain);
-        const record = log.find((each) => each.id === id && brainKeyOf(each.stream) === key);
+        const key = streamPrefixOfPlaybook(playbook);
+        const record = log.find((each) => each.id === id && playbookKeyOf(each.stream) === key);
         return record === undefined ? undefined : recordedFactOf(record, true);
       }),
   };

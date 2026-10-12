@@ -104,7 +104,7 @@ export type IsDeclared = (fact: StoredFact) => boolean;
 
 export function runEventSchemaOf(isDeclared: IsDeclared) {
   const declared = CapabilityFactSchema.check(
-    Schema.makeFilter(isDeclared, { expected: 'a fact a capability of this brain declares' }),
+    Schema.makeFilter(isDeclared, { expected: 'a fact a capability of this playbook declares' }),
   );
   return Schema.Union([...coreFactSchemas, declared.pipe(Schema.decodeTo(WorkSchema, asWork))]);
 }

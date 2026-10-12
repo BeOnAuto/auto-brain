@@ -240,8 +240,8 @@ export const openRequests: KeyedProjection = {
     { name: 'by_function', columns: ['open', 'function', 'requested_at', 'row_key'] },
     { name: 'by_type', columns: ['open', 'type', 'requested_at', 'row_key'] },
     { name: 'by_conversation', columns: ['open', 'conversation', 'requested_at', 'row_key'] },
-    { name: 'attempts_due', columns: ['attempt_due_at'], acrossBrains: true, whereSet: 'attempt_due_at' },
-    { name: 'endings_due', columns: ['ending_due_at'], acrossBrains: true, whereSet: 'ending_due_at' },
+    { name: 'attempts_due', columns: ['attempt_due_at'], acrossPlaybooks: true, whereSet: 'attempt_due_at' },
+    { name: 'endings_due', columns: ['ending_due_at'], acrossPlaybooks: true, whereSet: 'ending_due_at' },
   ],
   rowAfter,
 };

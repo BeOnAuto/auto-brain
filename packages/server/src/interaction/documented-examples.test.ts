@@ -15,7 +15,7 @@ const decodeAnswer = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Recor
 describe('the example of the interaction function format', { timeout: workflowTestTimeoutMs }, () => {
   it('asks through the inbox in a workflow that takes the answer the page shows as its output', async () => {
     const server = await interactionServerOn({});
-    await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+    await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
     await server.call('POST', `${alpha}/definitions/interaction`, {
       body: { name: 'approve-brief', source: reference.get('markdown') },
     });

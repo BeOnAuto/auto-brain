@@ -2,7 +2,7 @@ import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { oneRowOf, rowsOf, type HostDatabase } from '../database/host-database.ts';
-import { reconciled, rowsOfBrain, type Reconciling } from '../projector/view-reconciling.ts';
+import { reconciled, rowsOfPlaybook, type Reconciling } from '../projector/view-reconciling.ts';
 import type { SettingsOf } from '../testing/host-files.ts';
 import { viewRowOf, ViewRowSchema, type ViewRow } from '../views/view-rows.ts';
 import { foldedWritten, viewDropped, viewNamed, type FoldedRow } from '../views/view-statements.ts';
@@ -55,7 +55,7 @@ function rowNamed(views: ViewHarness, name: string): Promise<ViewRow> {
 function rowsAfterEachWrite(views: ViewHarness) {
   const { database } = views.store;
   const seen: PhasedRows[] = [];
-  const rowsRead = Effect.map(rowsOfBrain(database, alphaKey), (rows) => {
+  const rowsRead = Effect.map(rowsOfPlaybook(database, alphaKey), (rows) => {
     seen.push(rows.map(({ name, phase }) => ({ name, phase })));
   });
   const watched: HostDatabase = {
@@ -66,7 +66,7 @@ function rowsAfterEachWrite(views: ViewHarness) {
 }
 
 function rowsOfAlpha(views: ViewHarness): Promise<readonly ViewRow[]> {
-  return Effect.runPromise(rowsOfBrain(views.store.database, alphaKey));
+  return Effect.runPromise(rowsOfPlaybook(views.store.database, alphaKey));
 }
 
 function slotTests(settingsOf: SettingsOf): void {
@@ -178,7 +178,7 @@ function handOverTests(settingsOf: SettingsOf): void {
 }
 
 function fewerSlotsTests(settingsOf: SettingsOf): void {
-  it('move back to waiting the views past the slots when the brain may build fewer at once', async () => {
+  it('move back to waiting the views past the slots when the playbook may build fewer at once', async () => {
     const views = await viewHarness(await settingsOf());
     await views.saved('first', counting);
     await views.saved('second', counting);

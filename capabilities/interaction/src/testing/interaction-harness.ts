@@ -6,7 +6,7 @@ import {
   defineGetRun,
   runFactsOf,
   workRecorder,
-  type BrainOperation,
+  type PlaybookOperation,
   type Capability,
   type RecordWork,
 } from '@beonauto/definitions';
@@ -18,7 +18,7 @@ import {
   type Ledger,
   type Outcome,
 } from '@beonauto/operations';
-import { memoryBrainRegistry, memoryLedger, recordingReporter } from '@beonauto/operations/testing';
+import { memoryPlaybookRegistry, memoryLedger, recordingReporter } from '@beonauto/operations/testing';
 import { Effect, Layer } from 'effect';
 
 import { makeInteractionFunctionAdapter } from '../capability/interaction-function.ts';
@@ -27,9 +27,9 @@ import { requestsDue, type DueRequestItem, type RequestsDue } from '../schedule/
 import { noTools, type ToolPorts } from './fake-tools.ts';
 import { dueInBothLanes, firstOpenOf, performedAll, performedEach } from './harness-parts.ts';
 
-export const acmeAdmin: CallerIdentity = { id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: '*' };
+export const acmeAdmin: CallerIdentity = { id: 'acme-admin', org: 'acme', permissions: allPermissions, playbooks: '*' };
 
-export const alpha = { org: 'acme', brain: 'alpha' };
+export const alpha = { org: 'acme', playbook: 'alpha' };
 
 type RequestLedger = Parameters<typeof requestsDue>[0]['ledger'];
 
@@ -53,7 +53,7 @@ export interface InteractionHarness {
   readonly capabilities: readonly Capability[];
   readonly record: RecordWork;
   readonly due: RequestsDue;
-  readonly call: (operation: BrainOperation, input: unknown, caller?: CallerIdentity) => Promise<Outcome>;
+  readonly call: (operation: PlaybookOperation, input: unknown, caller?: CallerIdentity) => Promise<Outcome>;
   readonly define: (name: string, source: string) => Promise<Outcome>;
   readonly ask: (name: string, input: unknown, runId: string) => Promise<Outcome>;
   readonly defineAs: (type: string, name: string, source: string) => Promise<Outcome>;
@@ -73,16 +73,16 @@ export function interactionHarness(options: HarnessOptions = {}): InteractionHar
   const tools = options.tools ?? noTools;
   const capability = makeInteractionFunctionAdapter({
     tools,
-    openRequests: (brain) =>
-      ledger.service.countProjectedRows(openRequestsName, brain, [{ column: 'open', equals: true }]),
+    openRequests: (playbook) =>
+      ledger.service.countProjectedRows(openRequestsName, playbook, [{ column: 'open', equals: true }]),
     mostOpenRequests: options.mostOpenRequests ?? 10_000,
   });
-  const services = Layer.mergeAll(ledger.layer, memoryBrainRegistry([alpha]), recordingReporter().layer);
+  const services = Layer.mergeAll(ledger.layer, memoryPlaybookRegistry([alpha]), recordingReporter().layer);
   const dispatcher = makeDispatcher([]);
   const run = <A>(calls: Effect.Effect<A, never, DispatcherServices>) =>
     Effect.runPromise(calls.pipe(Effect.provide(services)));
   const call: InteractionHarness['call'] = (operation, input, caller = acmeAdmin) =>
-    run(dispatcher.dispatchToBrain(operation.registration, { caller, ...alpha, input, encoding: 'json' }));
+    run(dispatcher.dispatchToPlaybook(operation.registration, { caller, ...alpha, input, encoding: 'json' }));
   const capabilities = [capability, ...(options.others ?? [])];
   const facts = runFactsOf(declaredFactsOf(capabilities));
   const dueOver = (over: RequestLedger): RequestsDue =>

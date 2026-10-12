@@ -11,7 +11,7 @@ const header = [
   "const about = { title: 'Probe', description: 'Probe.' };",
 ];
 
-function defined(definer: 'defineQuery' | 'defineCommand', scope: 'org' | 'brain', lines: readonly string[]) {
+function defined(definer: 'defineQuery' | 'defineCommand', scope: 'org' | 'playbook', lines: readonly string[]) {
   return [
     ...header,
     `export const probe = Operations.${definer}('${scope}', {`,
@@ -45,7 +45,7 @@ function asking(service: string): string {
 function callingOther(definer: 'defineQuery' | 'defineCommand', route: string, service: string) {
   return [
     ...header,
-    `const other = Operations.${definer}('brain', { ...about, name: 'other',`,
+    `const other = Operations.${definer}('playbook', { ...about, name: 'other',`,
     route,
     ...emptyInputAndOutput,
     asking(service),
@@ -55,7 +55,7 @@ function callingOther(definer: 'defineQuery' | 'defineCommand', route: string, s
 
 function callerOfOther(definer: 'defineQuery' | 'defineCommand', route: string) {
   return [
-    `export const probe = Operations.${definer}('brain', { ...about, name: 'probe',`,
+    `export const probe = Operations.${definer}('playbook', { ...about, name: 'probe',`,
     route,
     ...emptyInputAndOutput,
     '  handle: () => other.call({}),',
@@ -69,28 +69,28 @@ const accepted: Readonly<Record<string, readonly string[]>> = {
     ...emptyInputAndOutput,
     asking('OrgWriter'),
   ]),
-  'brain-command-asks-brain-writer.ts': defined('defineCommand', 'brain', [
+  'playbook-command-asks-playbook-writer.ts': defined('defineCommand', 'playbook', [
     post,
     ...emptyInputAndOutput,
-    asking('BrainWriter'),
+    asking('PlaybookWriter'),
   ]),
-  'org-query-names-a-brain-in-its-route.ts': defined('defineQuery', 'org', [
-    "  route: { method: 'GET', path: '/brains/{brain}' },",
-    '  inputSchema: Schema.Struct({ brain: Schema.String }),',
+  'org-query-names-a-playbook-in-its-route.ts': defined('defineQuery', 'org', [
+    "  route: { method: 'GET', path: '/playbooks/{playbook}' },",
+    '  inputSchema: Schema.Struct({ playbook: Schema.String }),',
     '  outputSchema: Empty,',
     '  reasons: [],',
     answering,
   ]),
-  'command-created.ts': defined('defineCommand', 'brain', [
+  'command-created.ts': defined('defineCommand', 'playbook', [
     post,
     '  successStatus: 201,',
     ...emptyInputAndOutput,
     answering,
   ]),
-  'declared-rejection.ts': defined('defineCommand', 'brain', [post, ...declaring('conflict', conflicting)]),
-  'declared-invalid-input.ts': defined('defineQuery', 'brain', [get, ...declaring('invalid_input', refusingInput)]),
+  'declared-rejection.ts': defined('defineCommand', 'playbook', [post, ...declaring('conflict', conflicting)]),
+  'declared-invalid-input.ts': defined('defineQuery', 'playbook', [get, ...declaring('invalid_input', refusingInput)]),
   'command-calls-query.ts': [
-    ...callingOther('defineQuery', get, 'BrainReader'),
+    ...callingOther('defineQuery', get, 'PlaybookReader'),
     ...callerOfOther('defineCommand', post),
   ],
 };
@@ -101,50 +101,50 @@ interface Rejection {
 }
 
 const rejected: Readonly<Record<string, Rejection>> = {
-  'org-query-asks-brain-context.ts': {
-    because: "Type 'BrainContext' is not assignable to type 'Caller | OrgContext | OrgReader'",
-    source: defined('defineQuery', 'org', [get, ...emptyInputAndOutput, asking('BrainContext')]),
+  'org-query-asks-playbook-context.ts': {
+    because: "Type 'PlaybookContext' is not assignable to type 'Caller | OrgContext | OrgReader'",
+    source: defined('defineQuery', 'org', [get, ...emptyInputAndOutput, asking('PlaybookContext')]),
   },
-  'org-command-asks-brain-writer.ts': {
-    because: "Type 'BrainWriter' is not assignable to type 'Caller | OrgContext | OrgReader | OrgWriter'",
-    source: defined('defineCommand', 'org', [post, ...emptyInputAndOutput, asking('BrainWriter')]),
+  'org-command-asks-playbook-writer.ts': {
+    because: "Type 'PlaybookWriter' is not assignable to type 'Caller | OrgContext | OrgReader | OrgWriter'",
+    source: defined('defineCommand', 'org', [post, ...emptyInputAndOutput, asking('PlaybookWriter')]),
   },
-  'brain-query-asks-org-reader.ts': {
-    because: "Type 'OrgReader' is not assignable to type 'BrainContext | BrainReader | Caller'",
-    source: defined('defineQuery', 'brain', [get, ...emptyInputAndOutput, asking('OrgReader')]),
+  'playbook-query-asks-org-reader.ts': {
+    because: "Type 'OrgReader' is not assignable to type 'Caller | PlaybookContext | PlaybookReader'",
+    source: defined('defineQuery', 'playbook', [get, ...emptyInputAndOutput, asking('OrgReader')]),
   },
   'org-query-asks-org-writer.ts': {
     because: "Type 'OrgWriter' is not assignable to type 'Caller | OrgContext | OrgReader'",
     source: defined('defineQuery', 'org', [get, ...emptyInputAndOutput, asking('OrgWriter')]),
   },
-  'brain-query-asks-brain-writer.ts': {
-    because: "Type 'BrainWriter' is not assignable to type 'BrainContext | BrainReader | Caller'",
-    source: defined('defineQuery', 'brain', [get, ...emptyInputAndOutput, asking('BrainWriter')]),
+  'playbook-query-asks-playbook-writer.ts': {
+    because: "Type 'PlaybookWriter' is not assignable to type 'Caller | PlaybookContext | PlaybookReader'",
+    source: defined('defineQuery', 'playbook', [get, ...emptyInputAndOutput, asking('PlaybookWriter')]),
   },
   'query-calls-command.ts': {
-    because: "Type 'BrainWriter' is not assignable to type 'BrainContext | BrainReader | Caller'",
-    source: [...callingOther('defineCommand', post, 'BrainWriter'), ...callerOfOther('defineQuery', get)],
+    because: "Type 'PlaybookWriter' is not assignable to type 'Caller | PlaybookContext | PlaybookReader'",
+    source: [...callingOther('defineCommand', post, 'PlaybookWriter'), ...callerOfOther('defineQuery', get)],
   },
   'command-asks-ledger.ts': {
     because:
-      "Type 'Ledger' is not assignable to type 'BrainContext | BrainReader | BrainWriter | CallLineage | Caller'",
-    source: defined('defineCommand', 'brain', [post, ...emptyInputAndOutput, asking('Ledger')]),
+      "Type 'Ledger' is not assignable to type 'CallLineage | Caller | PlaybookContext | PlaybookReader | PlaybookWriter'",
+    source: defined('defineCommand', 'playbook', [post, ...emptyInputAndOutput, asking('Ledger')]),
   },
-  'command-asks-brain-registry.ts': {
-    because: "Type 'BrainRegistry' is not assignable to type 'Caller | OrgContext | OrgReader | OrgWriter'",
-    source: defined('defineCommand', 'org', [post, ...emptyInputAndOutput, asking('BrainRegistry')]),
+  'command-asks-playbook-registry.ts': {
+    because: "Type 'PlaybookRegistry' is not assignable to type 'Caller | OrgContext | OrgReader | OrgWriter'",
+    source: defined('defineCommand', 'org', [post, ...emptyInputAndOutput, asking('PlaybookRegistry')]),
   },
   'query-asks-incident-reporter.ts': {
-    because: "Type 'IncidentReporter' is not assignable to type 'BrainContext | BrainReader | Caller'",
-    source: defined('defineQuery', 'brain', [get, ...emptyInputAndOutput, asking('IncidentReporter')]),
+    because: "Type 'IncidentReporter' is not assignable to type 'Caller | PlaybookContext | PlaybookReader'",
+    source: defined('defineQuery', 'playbook', [get, ...emptyInputAndOutput, asking('IncidentReporter')]),
   },
   'undeclared-rejection.ts': {
     because: "Type 'Conflict' is not assignable to type 'NotFound'",
-    source: defined('defineCommand', 'brain', [post, ...declaring('not_found', conflicting)]),
+    source: defined('defineCommand', 'playbook', [post, ...declaring('not_found', conflicting)]),
   },
   'undeclared-invalid-input.ts': {
     because: "Type 'InvalidInput' is not assignable to type 'Conflict'",
-    source: defined('defineCommand', 'brain', [post, ...declaring('conflict', refusingInput)]),
+    source: defined('defineCommand', 'playbook', [post, ...declaring('conflict', refusingInput)]),
   },
   'org-input-names-org.ts': {
     because: "Types of property 'org' are incompatible",
@@ -156,11 +156,11 @@ const rejected: Readonly<Record<string, Rejection>> = {
       answering,
     ]),
   },
-  'brain-input-names-brain.ts': {
-    because: "Types of property 'brain' are incompatible",
-    source: defined('defineQuery', 'brain', [
+  'playbook-input-names-playbook.ts': {
+    because: "Types of property 'playbook' are incompatible",
+    source: defined('defineQuery', 'playbook', [
       get,
-      '  inputSchema: Schema.Struct({ brain: Schema.String }),',
+      '  inputSchema: Schema.Struct({ playbook: Schema.String }),',
       '  outputSchema: Empty,',
       '  reasons: [],',
       answering,
@@ -168,7 +168,7 @@ const rejected: Readonly<Record<string, Rejection>> = {
   },
   'path-parameter-missing-from-input.ts': {
     because: "Property 'name' is missing",
-    source: defined('defineQuery', 'brain', [
+    source: defined('defineQuery', 'playbook', [
       "  route: { method: 'GET', path: '/probe/{name}' },",
       ...emptyInputAndOutput,
       answering,
@@ -176,7 +176,7 @@ const rejected: Readonly<Record<string, Rejection>> = {
   },
   'path-parameter-not-a-string.ts': {
     because: "Types of property 'size' are incompatible",
-    source: defined('defineQuery', 'brain', [
+    source: defined('defineQuery', 'playbook', [
       "  route: { method: 'GET', path: '/probe/{size}' },",
       '  inputSchema: Schema.Struct({ size: Schema.Number }),',
       '  outputSchema: Empty,',
@@ -184,11 +184,11 @@ const rejected: Readonly<Record<string, Rejection>> = {
       answering,
     ]),
   },
-  'record-keys-name-org-and-brain.ts': {
+  'record-keys-name-org-and-playbook.ts': {
     because: "Types of property 'org' are incompatible",
-    source: defined('defineQuery', 'brain', [
+    source: defined('defineQuery', 'playbook', [
       get,
-      "  inputSchema: Schema.Record(Schema.Literals(['brain', 'org']), Schema.String),",
+      "  inputSchema: Schema.Record(Schema.Literals(['playbook', 'org']), Schema.String),",
       '  outputSchema: Empty,',
       '  reasons: [],',
       answering,
@@ -196,7 +196,7 @@ const rejected: Readonly<Record<string, Rejection>> = {
   },
   'path-parameter-missing-from-a-member.ts': {
     because: "Property 'name' is missing",
-    source: defined('defineQuery', 'brain', [
+    source: defined('defineQuery', 'playbook', [
       "  route: { method: 'GET', path: '/probe/{name}' },",
       '  inputSchema: Schema.Union([Schema.Struct({ name: Schema.String }), Schema.Struct({ other: Schema.String })]),',
       '  outputSchema: Empty,',
@@ -206,7 +206,7 @@ const rejected: Readonly<Record<string, Rejection>> = {
   },
   'path-parameter-optional.ts': {
     because: "Property 'name' is optional",
-    source: defined('defineQuery', 'brain', [
+    source: defined('defineQuery', 'playbook', [
       "  route: { method: 'GET', path: '/probe/{name}' },",
       '  inputSchema: Schema.Struct({ name: Schema.optionalKey(Schema.String) }),',
       '  outputSchema: Empty,',
@@ -216,7 +216,7 @@ const rejected: Readonly<Record<string, Rejection>> = {
   },
   'path-not-relative-to-scope.ts': {
     because: "Type '\"probe\"' is not assignable to type '`/${string}`'",
-    source: defined('defineQuery', 'brain', [
+    source: defined('defineQuery', 'playbook', [
       "  route: { method: 'GET', path: 'probe' },",
       ...emptyInputAndOutput,
       answering,
@@ -224,19 +224,19 @@ const rejected: Readonly<Record<string, Rejection>> = {
   },
   'query-posts.ts': {
     because: 'Type \'"POST"\' is not assignable to type \'"GET"\'',
-    source: defined('defineQuery', 'brain', [post, ...emptyInputAndOutput, answering]),
+    source: defined('defineQuery', 'playbook', [post, ...emptyInputAndOutput, answering]),
   },
   'command-gets.ts': {
     because: 'Type \'"GET"\' is not assignable to type \'"POST" | "PUT"\'',
-    source: defined('defineCommand', 'brain', [get, ...emptyInputAndOutput, answering]),
+    source: defined('defineCommand', 'playbook', [get, ...emptyInputAndOutput, answering]),
   },
   'query-created.ts': {
     because: "Type '201' is not assignable to type '200'",
-    source: defined('defineQuery', 'brain', [get, '  successStatus: 201,', ...emptyInputAndOutput, answering]),
+    source: defined('defineQuery', 'playbook', [get, '  successStatus: 201,', ...emptyInputAndOutput, answering]),
   },
   'input-not-an-object.ts': {
     because: "Type 'string' is not assignable to type 'ObjectValue'",
-    source: defined('defineQuery', 'brain', [
+    source: defined('defineQuery', 'playbook', [
       get,
       '  inputSchema: Schema.String,',
       '  outputSchema: Empty,',
@@ -246,7 +246,7 @@ const rejected: Readonly<Record<string, Rejection>> = {
   },
   'output-not-an-object.ts': {
     because: "Type 'number' is not assignable to type 'ObjectValue'",
-    source: defined('defineQuery', 'brain', [
+    source: defined('defineQuery', 'playbook', [
       get,
       '  inputSchema: Empty,',
       '  outputSchema: Schema.Number,',

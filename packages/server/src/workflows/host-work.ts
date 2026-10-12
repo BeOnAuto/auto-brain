@@ -11,8 +11,8 @@ import {
   deferredCanceller,
   runCanceller,
   runSettler,
-  type BrainOperation,
-  type BrainOwnNames,
+  type PlaybookOperation,
+  type PlaybookOwnNames,
   type Capability,
   type SettleRun,
 } from '@beonauto/definitions';
@@ -28,23 +28,23 @@ export type HostWork = Pick<HostOptions, 'machine' | 'perform' | 'settle' | 'rea
 
 export interface WorkParts {
   readonly capabilities: readonly Capability[];
-  readonly startVersion: BrainOperation;
+  readonly startVersion: PlaybookOperation;
   readonly evaluations: Evaluations;
-  readonly names: BrainOwnNames;
+  readonly names: PlaybookOwnNames;
 }
 
 function nestedRuns(
   runtime: AppRuntime<DispatcherServices>,
   dispatcher: Dispatcher,
-  runDefinition: BrainOperation,
+  runDefinition: PlaybookOperation,
 ): RunDefinition {
-  return ({ org, brain, caller, type, name, input, runId, lineage, depth, callDepth, calledBy }) =>
+  return ({ org, playbook, caller, type, name, input, runId, lineage, depth, callDepth, calledBy }) =>
     inRuntime(
       runtime,
-      dispatcher.dispatchToBrain(runDefinition.registration, {
+      dispatcher.dispatchToPlaybook(runDefinition.registration, {
         caller,
         org,
-        brain,
+        playbook,
         input: { type, name, input, run_id: runId },
         encoding: 'json',
         lineage,

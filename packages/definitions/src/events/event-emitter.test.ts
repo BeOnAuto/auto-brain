@@ -8,9 +8,9 @@ import { asking } from '../testing/asking.ts';
 import { echo } from '../testing/echo.ts';
 import { emittedEventsOf, eventEmitter as eventEmitterOf, type Emission } from './event-emitter.ts';
 import { publishedEventOf } from './published-events.ts';
-import { brainOwnNamesOf } from './reserved-attributes.ts';
+import { playbookOwnNamesOf } from './reserved-attributes.ts';
 
-const names = brainOwnNamesOf([echo, asking]);
+const names = playbookOwnNamesOf([echo, asking]);
 
 const emittedEventRefusal = emittedEventsOf(names).refusalOf;
 
@@ -18,7 +18,7 @@ function eventEmitter(ledger: Parameters<typeof eventEmitterOf>[0]) {
   return eventEmitterOf(ledger, names);
 }
 
-const alpha = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
 const told: Schema.JsonObject = {
   specversion: '1.0',
@@ -85,8 +85,8 @@ describe('an event a workflow emits', () => {
   });
 });
 
-describe('an event a workflow emits that the brain does not record', () => {
-  it('is refused, and recorded nowhere, when it is no event the brain takes or another holds its source and id', async () => {
+describe('an event a workflow emits that the playbook does not record', () => {
+  it('is refused, and recorded nowhere, when it is no event the playbook takes or another holds its source and id', async () => {
     const ledger = memoryLedger();
     const emit = eventEmitter(ledger.service);
     await Effect.runPromise(emit(alpha, emission(told), lineage));
@@ -117,7 +117,7 @@ describe('an event a workflow emits that the brain does not record', () => {
 });
 
 describe('the refusal of an event a workflow would emit', () => {
-  it('is none for an event the brain records, and says where any other breaks its rules', () => {
+  it('is none for an event the playbook records, and says where any other breaks its rules', () => {
     expect([
       emittedEventRefusal(told),
       emittedEventRefusal('text'),
@@ -127,7 +127,7 @@ describe('the refusal of an event a workflow would emit', () => {
       undefined,
       'Expected object',
       'Expected a URI reference that is not empty, such as /ledger/eu or https://acme.example/ledger (at source)',
-      expect.stringMatching(/^Expected a type of your own, not one the brain records itself: .* \(at type\)$/u),
+      expect.stringMatching(/^Expected a type of your own, not one the playbook records itself: .* \(at type\)$/u),
     ]);
   });
 });

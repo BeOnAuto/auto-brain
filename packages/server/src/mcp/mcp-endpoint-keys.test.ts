@@ -15,40 +15,40 @@ import { servingReasoning, type ReasoningServer } from '../testing/servers/reaso
 
 const listResultOf = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Struct({ result: Schema.Unknown })));
 
-const acmeAdmin = createApiKey({ id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: '*' });
+const acmeAdmin = createApiKey({ id: 'acme-admin', org: 'acme', permissions: allPermissions, playbooks: '*' });
 
 const acmeReader = createApiKey({
   id: 'acme-reader',
   org: 'acme',
-  permissions: ['org:read', 'brain:read'],
-  brains: '*',
+  permissions: ['org:read', 'playbook:read'],
+  playbooks: '*',
 });
 
-const acmeAlpha = createApiKey({ id: 'acme-alpha', org: 'acme', permissions: allPermissions, brains: ['alpha'] });
+const acmeAlpha = createApiKey({ id: 'acme-alpha', org: 'acme', permissions: allPermissions, playbooks: ['alpha'] });
 
-const acmeBrainReader = createApiKey({
-  id: 'acme-brain-reader',
+const acmePlaybookReader = createApiKey({
+  id: 'acme-playbook-reader',
   org: 'acme',
-  permissions: ['brain:read'],
-  brains: '*',
+  permissions: ['playbook:read'],
+  playbooks: '*',
 });
 
-const queriesInsideABrain = [
+const queriesInsideAPlaybook = [
   'list_definitions',
   'get_definition',
   'get_run',
   'list_runs',
   'get_run_history',
-  'get_brain_analytics',
-  'list_brain_events',
+  'get_playbook_analytics',
+  'list_playbook_events',
   'get_event',
   'list_interactions',
 ];
 
 const commands = [
-  'create_brain',
-  'update_brain',
-  'retire_brain',
+  'create_playbook',
+  'update_playbook',
+  'retire_playbook',
   'create_definition',
   'update_definition',
   'retire_definition',
@@ -60,13 +60,13 @@ const commands = [
   'send_run_event',
 ];
 
-const globexAdmin = createApiKey({ id: 'globex-admin', org: 'globex', permissions: allPermissions, brains: '*' });
+const globexAdmin = createApiKey({ id: 'globex-admin', org: 'globex', permissions: allPermissions, playbooks: '*' });
 
 const apiKeys = JSON.stringify([
   acmeAdmin.entry,
   acmeReader.entry,
   acmeAlpha.entry,
-  acmeBrainReader.entry,
+  acmePlaybookReader.entry,
   globexAdmin.entry,
 ]);
 
@@ -74,8 +74,14 @@ let server: ReasoningServer;
 
 beforeEach(async () => {
   server = await servingReasoning([], { API_KEYS: apiKeys });
-  await server.call('POST', '/v1/orgs/acme/brains', { key: acmeAdmin.key, body: { brain: 'alpha', name: 'Alpha' } });
-  await server.call('POST', '/v1/orgs/acme/brains', { key: acmeAdmin.key, body: { brain: 'beta', name: 'Beta' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', {
+    key: acmeAdmin.key,
+    body: { playbook: 'alpha', name: 'Alpha' },
+  });
+  await server.call('POST', '/v1/orgs/acme/playbooks', {
+    key: acmeAdmin.key,
+    body: { playbook: 'beta', name: 'Beta' },
+  });
 });
 
 afterEach(async () => {
@@ -91,52 +97,52 @@ function asKey<T>(
 }
 
 describe('the org of a key on /mcp', () => {
-  it('is the only one the key reaches, whatever brain or org the arguments name', async () => {
+  it('is the only one the key reaches, whatever playbook or org the arguments name', async () => {
     const outcome = await asKey(globexAdmin.key, async (session) => ({
-      listed: await session.callTool('list_brains', {}),
-      read: await session.callTool('get_brain', { brain: 'alpha' }),
-      definitions: await session.callTool('list_definitions', { brain: 'alpha', type: 'reasoning' }),
-      named: await session.callTool('list_brains', { org: 'acme' }),
+      listed: await session.callTool('list_playbooks', {}),
+      read: await session.callTool('get_playbook', { playbook: 'alpha' }),
+      definitions: await session.callTool('list_definitions', { playbook: 'alpha', type: 'reasoning' }),
+      named: await session.callTool('list_playbooks', { org: 'acme' }),
     }));
 
-    expect(outcome.listed.structuredContent).toEqual({ brains: [] });
+    expect(outcome.listed.structuredContent).toEqual({ playbooks: [] });
     expect(problemIn(outcome.read)).toMatchObject({ reason: 'not_found' });
     expect(problemIn(outcome.definitions)).toMatchObject({
       reason: 'not_found',
-      detail: 'There is no brain alpha in this org',
+      detail: 'There is no playbook alpha in this org',
     });
     expect(problemIn(outcome.named)).toMatchObject({ reason: 'invalid_input', errors: [{ pointer: '/org' }] });
   });
 });
 
-describe('a key limited to one brain on /mcp', () => {
-  it('lists only that brain and is refused every other with forbidden', async () => {
+describe('a key limited to one playbook on /mcp', () => {
+  it('lists only that playbook and is refused every other with forbidden', async () => {
     const outcome = await asKey(acmeAlpha.key, async (session) => ({
-      listed: await session.callTool('list_brains', {}),
-      own: await session.callTool('list_definitions', { brain: 'alpha', type: 'reasoning' }),
-      other: await session.callTool('list_definitions', { brain: 'beta', type: 'reasoning' }),
+      listed: await session.callTool('list_playbooks', {}),
+      own: await session.callTool('list_definitions', { playbook: 'alpha', type: 'reasoning' }),
+      other: await session.callTool('list_definitions', { playbook: 'beta', type: 'reasoning' }),
     }));
 
-    expect(outcome.listed.structuredContent).toMatchObject({ brains: [{ id: 'alpha' }] });
+    expect(outcome.listed.structuredContent).toMatchObject({ playbooks: [{ id: 'alpha' }] });
     expect(outcome.own.structuredContent).toEqual({ definitions: [] });
     expect(problemIn(outcome.other)).toMatchObject({
       reason: 'forbidden',
-      detail: 'The caller may not access this brain',
+      detail: 'The caller may not access this playbook',
     });
   });
 });
 
-describe('the tool servers on /mcp, for a key limited to one brain', () => {
-  it('are those of its brain, and those of the whole org are refused it with words that say to name its brain', async () => {
+describe('the tool servers on /mcp, for a key limited to one playbook', () => {
+  it('are those of its playbook, and those of the whole org are refused it with words that say to name its playbook', async () => {
     const outcome = await asKey(acmeAlpha.key, async (session) => ({
-      own: await session.callTool('list_tool_servers', { brain: 'alpha' }),
+      own: await session.callTool('list_tool_servers', { playbook: 'alpha' }),
       org: await session.callTool('list_tool_servers', {}),
     }));
 
     expect(outcome.own.structuredContent).toEqual({ tool_servers: [] });
     expect(problemIn(outcome.org)).toMatchObject({
       reason: 'forbidden',
-      detail: 'The caller may access only some brains of this org; name one of them in brain',
+      detail: 'The caller may access only some playbooks of this org; name one of them in playbook',
     });
   });
 });
@@ -145,58 +151,58 @@ describe('a read-only key on /mcp', () => {
   it('is served its queries and offered no command', async () => {
     const outcome = await asKey(acmeReader.key, async (session) => ({
       tools: toolNamesIn(await session.listTools()),
-      listed: await session.callTool('list_brains', {}),
+      listed: await session.callTool('list_playbooks', {}),
     }));
 
     expect(outcome.tools).toEqual([
-      'list_brains',
-      'get_brain',
+      'list_playbooks',
+      'get_playbook',
       'list_models',
       'list_tool_servers',
-      ...queriesInsideABrain,
+      ...queriesInsideAPlaybook,
       'get_guide',
     ]);
-    expect(outcome.listed.structuredContent).toMatchObject({ brains: [{ id: 'alpha' }, { id: 'beta' }] });
+    expect(outcome.listed.structuredContent).toMatchObject({ playbooks: [{ id: 'alpha' }, { id: 'beta' }] });
   });
 
   it('answers a command it is not offered as a tool the endpoint does not list', async () => {
     await expect(
-      asKey(acmeReader.key, (session) => session.callTool('create_brain', { brain: 'gamma', name: 'Gamma' })),
-    ).rejects.toThrow('Tool create_brain not found');
+      asKey(acmeReader.key, (session) => session.callTool('create_playbook', { playbook: 'gamma', name: 'Gamma' })),
+    ).rejects.toThrow('Tool create_playbook not found');
   });
 });
 
-describe('a key that may only read inside brains, on /mcp', () => {
-  it('lists the brains it may read, the queries inside a brain and no command, and its instructions name no command', async () => {
-    const outcome = await asKey(acmeBrainReader.key, async (session) => ({
+describe('a key that may only read inside playbooks, on /mcp', () => {
+  it('lists the playbooks it may read, the queries inside a playbook and no command, and its instructions name no command', async () => {
+    const outcome = await asKey(acmePlaybookReader.key, async (session) => ({
       tools: toolNamesIn(await session.listTools()),
       instructions: String(session.instructions),
-      listed: await session.callTool('list_brains', {}),
+      listed: await session.callTool('list_playbooks', {}),
     }));
 
-    expect(outcome.tools).toEqual(['list_brains', 'list_tool_servers', ...queriesInsideABrain, 'get_guide']);
+    expect(outcome.tools).toEqual(['list_playbooks', 'list_tool_servers', ...queriesInsideAPlaybook, 'get_guide']);
     expect(commands.filter((name) => outcome.instructions.includes(name))).toEqual([]);
     expect(outcome.instructions).toContain(
-      "This connection acts in the caller's own org: list_brains shows its brains. get_guide holds what these words mean",
+      "This connection acts in the caller's own org: list_playbooks shows its playbooks. get_guide holds what these words mean",
     );
-    expect(outcome.listed.structuredContent).toMatchObject({ brains: [{ id: 'alpha' }, { id: 'beta' }] });
+    expect(outcome.listed.structuredContent).toMatchObject({ playbooks: [{ id: 'alpha' }, { id: 'beta' }] });
   });
 });
 
 describe.each(mcpClientKinds)('the %s client on /mcp', (kind) => {
-  it('lists the twenty-six tools and reads a brain of its org', async () => {
+  it('lists the twenty-six tools and reads a playbook of its org', async () => {
     const outcome = await asKey(
       acmeAdmin.key,
       async (session) => ({
         protocolVersion: session.protocolVersion,
         tools: toolNamesIn(await session.listTools()).length,
-        brain: await session.callTool('get_brain', { brain: 'alpha' }),
+        playbook: await session.callTool('get_playbook', { playbook: 'alpha' }),
       }),
       kind,
     );
 
     expect(outcome.tools).toBe(26);
-    expect(outcome.brain.structuredContent).toMatchObject({ id: 'alpha' });
+    expect(outcome.playbook.structuredContent).toMatchObject({ id: 'alpha' });
   });
 });
 

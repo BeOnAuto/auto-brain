@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { acmeAdmin, acmeAlphaKeeper } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
 import { echo } from '../testing/echo.ts';
-import { firstMoment, harness, toBrain } from '../testing/harness.ts';
+import { firstMoment, harness, toPlaybook } from '../testing/harness.ts';
 import { probe } from '../testing/probe.ts';
 
 const { createDefinition, getDefinition, retireDefinition, updateDefinition } = definitionOperationsFor([
@@ -12,7 +12,7 @@ const { createDefinition, getDefinition, retireDefinition, updateDefinition } = 
   probe().capability,
 ]);
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 const later = '2026-10-02T14:15:00.000Z';
 
@@ -29,9 +29,9 @@ function updatingGreet(source: string) {
 }
 
 describe('update_definition', () => {
-  it('is a brain command at PUT /definitions/{type}/{name}', () => {
+  it('is a playbook command at PUT /definitions/{type}/{name}', () => {
     expect(updateDefinition.registration).toMatchObject({
-      scope: 'brain',
+      scope: 'playbook',
       kind: 'command',
       title: 'Update definition',
       route: { method: 'PUT', path: '/definitions/{type}/{name}' },
@@ -94,14 +94,14 @@ describe('update_definition rejecting', () => {
     });
   });
 
-  it('a definition the brain does not have, a retired definition and a type the server does not run', async () => {
+  it('a definition the playbook does not have, a retired definition and a type the server does not run', async () => {
     const { call } = await withGreet();
     await call(retireDefinition, toAlpha(acmeAdmin, { type: 'echo', name: 'greet' }));
 
     expect(await call(updateDefinition, toAlpha(acmeAdmin, { type: 'echo', name: 'wave', source: hello }))).toEqual({
       status: 'rejected',
       reason: 'not_found',
-      detail: 'There is no echo definition wave in this brain',
+      detail: 'There is no echo definition wave in this playbook',
     });
     expect(await call(updateDefinition, updatingGreet('{"greeting": "Howdy"}'))).toEqual({
       status: 'rejected',

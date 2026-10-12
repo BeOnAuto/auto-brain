@@ -13,7 +13,7 @@ const announcing = workflow(`do:
 `);
 
 describe('a workflow run by the host that emits an event', () => {
-  it('hands the event to the brain as emitted by the run and its workflow, one deeper than the run', async () => {
+  it('hands the event to the playbook as emitted by the run and its workflow, one deeper than the run', async () => {
     const reacting = await reactingHost();
     const start = startOf(announcing);
     const attributes = { ...start.attributes, definition: { name: 'close', version: 3 }, caller: { id: 'acme-admin' } };

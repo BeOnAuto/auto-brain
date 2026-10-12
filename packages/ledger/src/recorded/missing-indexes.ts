@@ -5,12 +5,12 @@ export interface IndexExecutor {
   readonly command: (sql: SQL) => Promise<unknown>;
 }
 
-export interface BrainIndex {
+export interface PlaybookIndex {
   readonly name: string;
   readonly create: () => SQL;
 }
 
-async function createEach(execute: IndexExecutor, indexes: readonly BrainIndex[]): Promise<number> {
+async function createEach(execute: IndexExecutor, indexes: readonly PlaybookIndex[]): Promise<number> {
   const [first, ...rest] = indexes;
   if (first === undefined) {
     return 0;
@@ -21,7 +21,7 @@ async function createEach(execute: IndexExecutor, indexes: readonly BrainIndex[]
 
 export function createMissingIndexes(
   execute: IndexExecutor,
-  indexes: readonly BrainIndex[],
+  indexes: readonly PlaybookIndex[],
   existing: ReadonlySet<string>,
 ): Promise<number> {
   return createEach(

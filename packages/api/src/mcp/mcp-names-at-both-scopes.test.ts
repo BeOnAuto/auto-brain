@@ -1,4 +1,4 @@
-import { BrainIdSchema, defineQuery } from '@beonauto/operations';
+import { PlaybookIdSchema, defineQuery } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -11,16 +11,16 @@ import { listedTools, toolNamesIn, type ListedTool } from '../testing/tool-listi
 const listNotesOfTheOrg = defineQuery('org', {
   name: 'list_notes',
   title: 'List notes',
-  description: 'Lists where the notes are kept. Use it to find the notes. `brain` keeps those of one brain.',
+  description: 'Lists where the notes are kept. Use it to find the notes. `playbook` keeps those of one playbook.',
   route: { method: 'GET', path: '/notes' },
   inputSchema: Schema.Struct({
-    brain: Schema.optionalKey(
-      BrainIdSchema.annotate({ description: 'The brain whose notes to list; every brain without it' }),
+    playbook: Schema.optionalKey(
+      PlaybookIdSchema.annotate({ description: 'The playbook whose notes to list; every playbook without it' }),
     ),
   }),
   outputSchema: Schema.Struct({ kept_for: Schema.String }),
   reasons: [],
-  handle: ({ brain = 'the org' }) => Effect.succeed({ kept_for: brain }),
+  handle: ({ playbook = 'the org' }) => Effect.succeed({ kept_for: playbook }),
   plainLanguage: { task: 'list the notes', attempt: () => 'list the notes', outcome: () => 'Listed the notes.' },
 });
 
@@ -53,30 +53,30 @@ function listNotesIn(tools: readonly ListedTool[]): ListedTool | undefined {
   return tools.find(({ name }) => name === 'list_notes');
 }
 
-describe('a name used by an org operation and a brain operation', () => {
-  it('is one tool on /mcp, the org operation, whose brain is its own and optional, and each operation on its endpoint', async () => {
-    const [own, org, brain] = await Promise.all([
+describe('a name used by an org operation and a playbook operation', () => {
+  it('is one tool on /mcp, the org operation, whose playbook is its own and optional, and each operation on its endpoint', async () => {
+    const [own, org, playbook] = await Promise.all([
       listingOn('/mcp'),
       listingOn('/orgs/acme/mcp'),
-      listingOn('/orgs/acme/brains/alpha/mcp'),
+      listingOn('/orgs/acme/playbooks/alpha/mcp'),
     ]);
 
     expect(toolNamesIn({ tools: own }).filter((name) => name === 'list_notes')).toHaveLength(1);
     expect(listNotesIn(own)).toEqual(listNotesIn(org));
-    expect(listNotesIn(own)?.inputSchema).toMatchObject({ properties: { brain: { type: 'string' } } });
+    expect(listNotesIn(own)?.inputSchema).toMatchObject({ properties: { playbook: { type: 'string' } } });
     expect(listNotesIn(own)?.inputSchema['required']).toBeUndefined();
-    expect(listNotesIn(brain)?.description).toBe(
+    expect(listNotesIn(playbook)?.description).toBe(
       notebookOperations.find(({ registration }) => registration.name === 'list_notes')?.registration.description,
     );
   });
 
-  it('answers on /mcp for the org without a brain, and for the brain it is given', async () => {
+  it('answers on /mcp for the org without a playbook, and for the playbook it is given', async () => {
     const answered = await onMcp('/mcp', async (session) => ({
       inOrg: await session.callTool('list_notes', {}),
-      inBrain: await session.callTool('list_notes', { brain: 'beta' }),
+      inPlaybook: await session.callTool('list_notes', { playbook: 'beta' }),
     }));
 
-    expect([answered.inOrg.structuredContent, answered.inBrain.structuredContent]).toEqual([
+    expect([answered.inOrg.structuredContent, answered.inPlaybook.structuredContent]).toEqual([
       { kept_for: 'the org' },
       { kept_for: 'beta' },
     ]);

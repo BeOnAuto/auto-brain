@@ -11,7 +11,7 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { callMarginMs } from '../runs/call-limits.ts';
-import { brainOn } from '../testing/brain.ts';
+import { playbookOn } from '../testing/playbook.ts';
 import { recordingStarts, recordingWorkflows } from '../testing/recording-starts.ts';
 import { acmeCaller } from '../testing/workflows.ts';
 
@@ -27,20 +27,20 @@ const calling = [
 ].join('\n');
 
 describe('the run a run of a workflow starts', () => {
-  it('is known by its brain, its run, its version, its caller, its reaction depth and its lineage', async () => {
+  it('is known by its playbook, its run, its version, its caller, its reaction depth and its lineage', async () => {
     const { starts, recording } = recordingStarts();
-    const brain = brainOn(memoryLedger(), [recordingWorkflows(recording)]);
-    await brain.call(brain.createDefinition, { type: 'workflow', name: 'flow', source: flow });
+    const playbook = playbookOn(memoryLedger(), [recordingWorkflows(recording)]);
+    await playbook.call(playbook.createDefinition, { type: 'workflow', name: 'flow', source: flow });
 
-    await brain.call(brain.runDefinition, { type: 'workflow', name: 'flow', run_id: runId });
+    await playbook.call(playbook.runDefinition, { type: 'workflow', name: 'flow', run_id: runId });
 
     expect(starts.map(({ attributes }) => attributes)).toMatchObject([
       {
         org: 'acme',
-        brain: 'alpha',
+        playbook: 'alpha',
         run_id: runId,
         definition: { name: 'flow', version: 1 },
-        caller: acmeCaller,
+        caller: { id: 'acme-admin', org: 'acme', playbooks: '*', permissions: ['playbook:read', 'playbook:write'] },
         depth: 0,
         call_depth: 0,
         lineage: { correlation: runId },
@@ -56,7 +56,7 @@ describe('the run a run of a workflow starts for a call or a trigger', () => {
     const context = {
       id: runId,
       org: 'acme',
-      brain: 'alpha',
+      playbook: 'alpha',
       caller: acmeCaller,
       definition: { name: 'flow', version: 1 },
       journal: recordingJournal(),
@@ -82,12 +82,12 @@ describe('the run a run of a workflow starts for a call or a trigger', () => {
 describe('the calls of the run a run of a workflow starts', () => {
   it('waits for each call that names its definition no longer than that definition may run, with a minute more', async () => {
     const { starts, recording } = recordingStarts();
-    const brain = brainOn(memoryLedger(), [recordingWorkflows(recording), echo]);
-    await brain.call(brain.createDefinition, { type: 'echo', name: 'greet', source: '{"greeting": "Hello"}' });
-    await brain.call(brain.createDefinition, { type: 'workflow', name: 'flow', source: flow });
-    await brain.call(brain.createDefinition, { type: 'workflow', name: 'calling', source: calling });
+    const playbook = playbookOn(memoryLedger(), [recordingWorkflows(recording), echo]);
+    await playbook.call(playbook.createDefinition, { type: 'echo', name: 'greet', source: '{"greeting": "Hello"}' });
+    await playbook.call(playbook.createDefinition, { type: 'workflow', name: 'flow', source: flow });
+    await playbook.call(playbook.createDefinition, { type: 'workflow', name: 'calling', source: calling });
 
-    await brain.call(brain.runDefinition, { type: 'workflow', name: 'calling', run_id: runId });
+    await playbook.call(playbook.runDefinition, { type: 'workflow', name: 'calling', run_id: runId });
 
     expect(starts.map(({ limits }) => limits)).toEqual([
       {
@@ -112,11 +112,11 @@ const askingInTurn = [
 describe('the calls of a workflow to a function whose runs last as long as their input says', () => {
   it('waits for each call as long as the call’s literal input may run, and as long as any input may otherwise', async () => {
     const { starts, recording } = recordingStarts();
-    const brain = brainOn(memoryLedger(), [recordingWorkflows(recording), asking]);
-    await brain.call(brain.createDefinition, { type: 'asking', name: 'approve', source: 'Approve the brief?' });
-    await brain.call(brain.createDefinition, { type: 'workflow', name: 'asking', source: askingInTurn });
+    const playbook = playbookOn(memoryLedger(), [recordingWorkflows(recording), asking]);
+    await playbook.call(playbook.createDefinition, { type: 'asking', name: 'approve', source: 'Approve the brief?' });
+    await playbook.call(playbook.createDefinition, { type: 'workflow', name: 'asking', source: askingInTurn });
 
-    await brain.call(brain.runDefinition, { type: 'workflow', name: 'asking', run_id: runId });
+    await playbook.call(playbook.runDefinition, { type: 'workflow', name: 'asking', run_id: runId });
 
     expect(starts.map(({ limits }) => limits.longestCallMsByTask)).toEqual([
       {

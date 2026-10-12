@@ -80,11 +80,11 @@ function rowsOfRun(stream: string, run: number): (position: number, fact: Fact, 
   });
 }
 
-export function runOf(brain: string, run: number, recordBytes: number): readonly OutcomeRow[] {
+export function runOf(playbook: string, run: number, recordBytes: number): readonly OutcomeRow[] {
   const startedAt = firstMoment + (run % daysInTheWindow) * dayInMilliseconds + (run % 80_000) * 1000;
   const at = new Date(startedAt).toISOString();
   const finishedAt = new Date(startedAt + 100 + (run % 50) * 97).toISOString();
-  const stream = `brain/o1/${brain}/runs/${runIdOf(run)}`;
+  const stream = `playbook/o1/${playbook}/runs/${runIdOf(run)}`;
   const row = rowsOfRun(stream, run);
   return [
     row(1, { type: 'run_started', data: { input: { text: text(320) } } }, at),

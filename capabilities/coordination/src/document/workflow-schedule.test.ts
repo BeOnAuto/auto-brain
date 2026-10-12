@@ -101,7 +101,7 @@ describe('the events that start a workflow', () => {
         '/schedule/on/all: A trigger starts a run for every event that matches it, so it takes one or any; all, which waits for several events, is for a listen task',
       ],
       [
-        '/schedule/on/until: A trigger matches every event of its brain while its version is active, so it takes no until',
+        '/schedule/on/until: A trigger matches every event of its playbook while its version is active, so it takes no until',
       ],
     ]);
   });

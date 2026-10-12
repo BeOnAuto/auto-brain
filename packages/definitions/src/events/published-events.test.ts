@@ -101,7 +101,7 @@ describe('publishing the same event again', () => {
     );
   });
 
-  it('compares only what both callers gave, so a time the brain filled in on either side is left out', () => {
+  it('compares only what both callers gave, so a time the playbook filled in on either side is left out', () => {
     const later = { ...monthClosed, time: '2026-10-01T09:05:00.000Z' };
     const timeFilledFirst: RecordedEventPublished = { ...published, data: { ...published.data, filled: ['time'] } };
 

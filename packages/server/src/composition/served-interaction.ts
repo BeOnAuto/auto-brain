@@ -1,5 +1,5 @@
 import type { AppRuntime } from '@beonauto/api';
-import type { BrainOperation, Capability, RecordWork } from '@beonauto/definitions';
+import type { PlaybookOperation, Capability, RecordWork } from '@beonauto/definitions';
 import {
   answerInteraction,
   conversationsDue,
@@ -17,7 +17,7 @@ import { runtimeLedger } from './runtime-ledger.ts';
 
 export interface ServedInteraction {
   readonly capability: Capability;
-  readonly operations: readonly BrainOperation[];
+  readonly operations: readonly PlaybookOperation[];
   readonly dueWorkOf: (record: RecordWork) => readonly RequestsDue[];
 }
 
@@ -30,7 +30,8 @@ export function interactionServedBy(
   return {
     capability: makeInteractionFunctionAdapter({
       tools,
-      openRequests: (brain) => ledger.countProjectedRows(openRequestsName, brain, [{ column: 'open', equals: true }]),
+      openRequests: (playbook) =>
+        ledger.countProjectedRows(openRequestsName, playbook, [{ column: 'open', equals: true }]),
       mostOpenRequests: interaction.mostOpenRequests,
     }),
     operations: [answerInteraction, listInteractions],

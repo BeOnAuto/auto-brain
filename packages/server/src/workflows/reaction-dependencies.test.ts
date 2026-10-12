@@ -1,8 +1,8 @@
 import { makeAppRuntime } from '@beonauto/api';
-import { brainOwnNamesOf, defineStartVersion } from '@beonauto/definitions';
+import { playbookOwnNamesOf, defineStartVersion } from '@beonauto/definitions';
 import { echo } from '@beonauto/definitions/testing';
 import { ledgerLayer } from '@beonauto/ledger/sqlite3';
-import type { BrainRequest, Dispatcher, Outcome } from '@beonauto/operations';
+import type { PlaybookRequest, Dispatcher, Outcome } from '@beonauto/operations';
 import { StartRefused, StartRejected } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
@@ -12,7 +12,7 @@ import { reactionsOf } from './reaction-dependencies.ts';
 
 const start = {
   org: 'acme',
-  brain: 'alpha',
+  playbook: 'alpha',
   workflow: 'close-the-month',
   version: 2,
   runId: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
@@ -25,30 +25,35 @@ const start = {
 async function reactingWith(answers: readonly Outcome[]) {
   const runtime = await makeAppRuntime(applicationLayer(ledgerLayer({ fileName: ':memory:' })));
   onTestFinished(() => runtime.dispose());
-  const requests: BrainRequest[] = [];
+  const requests: PlaybookRequest[] = [];
   const dispatcher: Dispatcher = {
     dispatchToOrg: () => Effect.die(new Error('The reactions dispatch to no org')),
-    dispatchToBrain: (_registration, request) =>
+    dispatchToPlaybook: (_registration, request) =>
       Effect.sync(() => {
         requests.push(request);
         return answers[requests.length - 1] ?? { status: 'succeeded', output: {} };
       }),
   };
-  const reacting = { startVersion: defineStartVersion([echo]), names: brainOwnNamesOf([echo]) };
+  const reacting = { startVersion: defineStartVersion([echo]), names: playbookOwnNamesOf([echo]) };
   return { reactions: reactionsOf(runtime, dispatcher, reacting), requests };
 }
 
 describe('a start of a workflow its trigger matched', () => {
-  it('is asked of the brain as the brain itself, once under the id it was given, caused by what it matched, with its trigger', async () => {
+  it('is asked of the playbook as the playbook itself, once under the id it was given, caused by what it matched, with its trigger', async () => {
     const { reactions, requests } = await reactingWith([]);
 
     await Effect.runPromise(reactions.start(start));
 
     expect(requests).toEqual([
       {
-        caller: { id: 'brain:alpha', org: 'acme', permissions: ['brain:read', 'brain:write'], brains: ['alpha'] },
+        caller: {
+          id: 'playbook:alpha',
+          org: 'acme',
+          permissions: ['playbook:read', 'playbook:write'],
+          playbooks: ['alpha'],
+        },
         org: 'acme',
-        brain: 'alpha',
+        playbook: 'alpha',
         input: {
           type: 'workflow',
           name: 'close-the-month',
@@ -64,7 +69,7 @@ describe('a start of a workflow its trigger matched', () => {
     ]);
   });
 
-  it('is tried again when the brain cannot take it now, and not when it never will', async () => {
+  it('is tried again when the playbook cannot take it now, and not when it never will', async () => {
     const { reactions } = await reactingWith([
       { status: 'rejected', reason: 'unavailable', detail: 'The ledger is busy' },
       { status: 'failed', incident: 'i-1' },
@@ -94,12 +99,12 @@ describe('an event a workflow emits', () => {
       },
       emitter: { run_id: start.runId, workflow: 'announce', version: 1 },
       depth: 1,
-      by: 'brain:alpha',
+      by: 'playbook:alpha',
       at: '2026-10-01T09:00:00.000Z',
     };
 
     const outcome = await Effect.runPromise(
-      reactions.emit({ org: 'acme', brain: 'alpha' }, emission, {
+      reactions.emit({ org: 'acme', playbook: 'alpha' }, emission, {
         causationId: null,
         correlationId: start.runId,
       }),

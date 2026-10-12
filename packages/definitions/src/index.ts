@@ -52,7 +52,7 @@ export {
 } from './runs/run-events.ts';
 export { recordedAnswerOf, type RecordedAnswer, type RecordedAnswerFact, type RecordedWork } from './runs/run-state.ts';
 export { RequestRecordSchema, isRequestRecord, takesAnAnswer, type RequestRecord } from './requests/request-record.ts';
-export { runEventOf, recordedRunIn, recordedRunInBrain, type RecordedRun } from './run-work/recorded-runs.ts';
+export { runEventOf, recordedRunIn, recordedRunInPlaybook, type RecordedRun } from './run-work/recorded-runs.ts';
 export {
   composedFactsOf,
   declaredFact,
@@ -65,7 +65,7 @@ export {
   type RunFacts,
 } from './run-work/declared-facts.ts';
 export {
-  brainBoundAnswerer,
+  playbookBoundAnswerer,
   workRecorder,
   type AnswerRun,
   type RecordWork,
@@ -95,7 +95,7 @@ export {
   type RunDetail,
 } from './runs/run.ts';
 export {
-  brainBoundSettler,
+  playbookBoundSettler,
   runSettler,
   type RunStreamAddress,
   type SettleRun,
@@ -109,7 +109,7 @@ export { ListedRunSchema, type ListedRun } from './reading/listed-run.ts';
 export { RunIdInputField } from './operations/definition-fields.ts';
 export { makeDefinitionPresenters } from './presenting/definition-presenters.ts';
 export { cutAtCodePoint, issuesShown, mostNameBytes } from './presenting/event-data.ts';
-export { brainEventOf, brainFactOf } from './events/brain-facts.ts';
+export { playbookEventOf, playbookFactOf } from './events/playbook-facts.ts';
 export {
   DefinitionEventSchema,
   type DefinitionEvent,
@@ -117,12 +117,12 @@ export {
 } from './registry/definition-events.ts';
 export { definitionTypeStreamOf } from './registry/definitions-decider.ts';
 export {
-  brainOwnNamesOf,
+  playbookOwnNamesOf,
   callerSourcePrefix,
   isReservedSource,
   contextAttributeNames,
   reservedSourcesInWords,
-  type BrainOwnNames,
+  type PlaybookOwnNames,
 } from './events/reserved-attributes.ts';
 export {
   CloudEventSchema,
@@ -169,9 +169,9 @@ export { mostInputBytes, mostInputDepth, mostResultBytes } from './runs/recorded
 export {
   ListedDefinitionSchema,
   DefinitionSchema,
-  isBrainFunctionDefinition,
+  isPlaybookFunctionDefinition,
   isWorkflowDefinition,
-  type BrainFunctionDefinition,
+  type PlaybookFunctionDefinition,
   type ComputationFunctionDefinition,
   type InteractionFunctionDefinition,
   type RecallFunctionDefinition,
@@ -180,8 +180,8 @@ export {
   type ListedDefinition,
   type Definition,
 } from './registry/definition.ts';
-export { makeDefinitionOperations, type BrainOperation } from './operations/definition-operations.ts';
-export { defineGetBrainAnalytics } from './analytics/get-brain-analytics.ts';
+export { makeDefinitionOperations, type PlaybookOperation } from './operations/definition-operations.ts';
+export { defineGetPlaybookAnalytics } from './analytics/get-playbook-analytics.ts';
 export { runOutcomeMapping } from './analytics/run-outcome-mapping.ts';
 export {
   definitionResourceLabel,

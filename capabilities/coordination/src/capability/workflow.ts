@@ -1,7 +1,7 @@
 import {
   defineCapability,
   outputInWords,
-  type BrainOwnNames,
+  type PlaybookOwnNames,
   type Capability,
   type DeclaringCapability,
 } from '@beonauto/definitions';
@@ -16,7 +16,7 @@ import { started, type WorkflowStarts } from '../runs/run-start.ts';
 
 export interface WorkflowAdapterDependencies extends WorkflowStarts {
   readonly check: ExpressionCheck;
-  readonly names: BrainOwnNames;
+  readonly names: PlaybookOwnNames;
 }
 
 export const workflowFacts: DeclaringCapability = { type: 'workflow', facts: { onRuns: [], streams: [runPresenter] } };

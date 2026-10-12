@@ -1,16 +1,16 @@
 import { reactingOn } from '../reactions/reacting.ts';
 import type { ReactionUse } from '../reactions/reaction-consumers.ts';
-import { brainSweepsOn } from '../sweeps/brain-sweeps.ts';
-import { brainDiscoveryOn } from './brain-discovery.ts';
-import { passOf, type PassParts } from './brain-pass.ts';
-import type { BrainRecords } from './brain-records.ts';
-import { followedBrainsOn } from './followed-brains.ts';
+import { playbookSweepsOn } from '../sweeps/playbook-sweeps.ts';
+import { followedPlaybooksOn } from './followed-playbooks.ts';
 import type { FollowerHost } from './follower-host.ts';
 import { startFollower, type Follower, type FollowerParts } from './follower-loop.ts';
-import { brainOfKey, type StepParts } from './record-steps.ts';
+import { playbookDiscoveryOn } from './playbook-discovery.ts';
+import { passOf, type PassParts } from './playbook-pass.ts';
+import type { PlaybookRecords } from './playbook-records.ts';
+import { playbookOfKey, type StepParts } from './record-steps.ts';
 
 export interface FollowerAssembly extends ReactionUse {
-  readonly records: BrainRecords;
+  readonly records: PlaybookRecords;
   readonly appended: FollowerParts['appended'];
   readonly pace: FollowerParts['pace'];
   readonly consumers: PassParts['registered'];
@@ -19,31 +19,31 @@ export interface FollowerAssembly extends ReactionUse {
 
 export function followerOn(host: FollowerHost, assembly: FollowerAssembly): Follower {
   const { database, clock, reports } = host;
-  const brains = followedBrainsOn(database);
+  const playbooks = followedPlaybooksOn(database);
   const reacting = reactingOn(host, assembly);
-  const unreadable: StepParts['unreadable'] = (brainKey, { id, type }) =>
-    reports.note({ kind: 'record_unreadable', ...brainOfKey(brainKey), recordId: id, type });
+  const unreadable: StepParts['unreadable'] = (playbookKey, { id, type }) =>
+    reports.note({ kind: 'record_unreadable', ...playbookOfKey(playbookKey), recordId: id, type });
   const pass = passOf({
     database,
     records: assembly.records,
-    brains,
+    playbooks,
     consumers: reacting.consumers,
     registered: assembly.consumers,
     calls: assembly.calls,
     definitionType: assembly.options.definitionType,
     applyDefinitionRecord: reacting.applyDefinitionRecord,
     unreadable,
-    passedEarly: (brainKey, { stream, version }, sweeps) =>
+    passedEarly: (playbookKey, { stream, version }, sweeps) =>
       reports.note({
         kind: 'run_record_passed',
-        run: { ...brainOfKey(brainKey), runId: stream.slice(stream.lastIndexOf('/') + 1) },
+        run: { ...playbookOfKey(playbookKey), runId: stream.slice(stream.lastIndexOf('/') + 1) },
         version,
         sweeps,
       }),
   });
-  const discovery = brainDiscoveryOn({
+  const discovery = playbookDiscoveryOn({
     database,
-    brains,
+    playbooks,
     records: assembly.records,
     applyDefinitionRecord: reacting.applyDefinitionRecord,
     unreadable,
@@ -52,7 +52,7 @@ export function followerOn(host: FollowerHost, assembly: FollowerAssembly): Foll
   return startFollower({
     pass,
     discovery,
-    sweeps: brainSweepsOn(database.store, brains),
+    sweeps: playbookSweepsOn(database.store, playbooks),
     upkeep: reacting.upkeep,
     appended: assembly.appended,
     clock,

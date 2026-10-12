@@ -28,7 +28,7 @@ async function testedAndCalled(tool: string, input: Readonly<Record<string, unkn
   const { access } = reportingAccess({ graph }, { timing: patientTiming, environment: { GRAPH_API_KEY: fakeApiKey } });
   closing.push(access.close);
   const tested = decodeTested(await toolTests(access).test({ server: 'graph', tool, arguments: input })).output;
-  const call = { org: 'acme', brain: 'alpha', reference: { server: 'graph', tool }, input, meta: {} };
+  const call = { org: 'acme', playbook: 'alpha', reference: { server: 'graph', tool }, input, meta: {} };
   const called = await Effect.runPromise(access.callOnce(call));
   return {
     tested,

@@ -35,7 +35,13 @@ function dispatched(
   const caller = c.get('principal').callerIn(org);
   return registration.scope === 'org'
     ? dispatcher.dispatchToOrg(registration, { caller, org, input, encoding })
-    : dispatcher.dispatchToBrain(registration, { caller, org, brain: String(c.req.param('brain')), input, encoding });
+    : dispatcher.dispatchToPlaybook(registration, {
+        caller,
+        org,
+        playbook: String(c.req.param('playbook')),
+        input,
+        encoding,
+      });
 }
 
 function handlerFor(registration: Registration, { dispatcher, runCall }: OperationRoutesOptions): RouteHandler {

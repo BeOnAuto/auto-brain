@@ -26,7 +26,7 @@ export const postgresqlProjectionDialect: ProjectionDialect = {
   tableVersions: (name) => SQL`SELECT relname AS name FROM pg_class
     WHERE relkind IN ('r', 'p') AND relname ~ ${`^${name}_[0-9]+$`} AND pg_table_is_visible(oid)`,
   columnTypes: { text: 'text', integer: 'bigint', boolean: 'boolean' },
-  brainIndexNulls: ' NULLS FIRST',
+  playbookIndexNulls: ' NULLS FIRST',
   asNumber: (expression) => `${expression}::float8`,
   streamsAfter: (after, count, kinds, types) =>
     SQL`SELECT s.stream_id AS stream, (

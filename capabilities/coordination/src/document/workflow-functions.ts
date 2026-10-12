@@ -1,4 +1,9 @@
-import { definitionResourceLabel, emittedEventsOf, isReservedSource, type BrainOwnNames } from '@beonauto/definitions';
+import {
+  definitionResourceLabel,
+  emittedEventsOf,
+  isReservedSource,
+  type PlaybookOwnNames,
+} from '@beonauto/definitions';
 import {
   type CallFunctions,
   field,
@@ -37,7 +42,7 @@ function definitionDescribed(name: string, arguments_: Json): string {
   return type === undefined || definition === undefined ? name : `the ${definitionResourceLabel(type)} ${definition}`;
 }
 
-function emitRejectionsOf({ types }: BrainOwnNames) {
+function emitRejectionsOf({ types }: PlaybookOwnNames) {
   return (attributes: JsonObject, pointer: string): readonly Rejection[] => {
     const type = field(attributes, 'type');
     const source = field(attributes, 'source');
@@ -46,7 +51,7 @@ function emitRejectionsOf({ types }: BrainOwnNames) {
         ? [
             rejection(
               `${pointer}/type`,
-              `The type ${type} is one the brain records itself; give the event a type of your own`,
+              `The type ${type} is one the playbook records itself; give the event a type of your own`,
             ),
           ]
         : [];
@@ -55,7 +60,7 @@ function emitRejectionsOf({ types }: BrainOwnNames) {
         ? [
             rejection(
               `${pointer}/source`,
-              `The source ${source} is one the brain records itself; give the event a source of your own`,
+              `The source ${source} is one the playbook records itself; give the event a source of your own`,
             ),
           ]
         : [];
@@ -63,28 +68,28 @@ function emitRejectionsOf({ types }: BrainOwnNames) {
   };
 }
 
-function emitRefusalOf(names: BrainOwnNames) {
+function emitRefusalOf(names: PlaybookOwnNames) {
   const { refusalOf } = emittedEventsOf(names);
   return (event: JsonObject): string | undefined => {
     const refusal = refusalOf(event);
-    return refusal === undefined ? undefined : `The event to emit is not one the brain takes: ${refusal}`;
+    return refusal === undefined ? undefined : `The event to emit is not one the playbook takes: ${refusal}`;
   };
 }
 
-export function workflowFunctionsOf(names: BrainOwnNames): CallFunctions {
+export function workflowFunctionsOf(names: PlaybookOwnNames): CallFunctions {
   return {
     argumentChecks: { [runDefinitionFunction]: runDefinitionRejections },
     describe: definitionDescribed,
     emitRejections: emitRejectionsOf(names),
     emitRefusal: emitRefusalOf(names),
     scheduleRejections,
-    howAWorkflowReachesTheWorld: 'a workflow reaches the world only through its brain functions',
+    howAWorkflowReachesTheWorld: 'a workflow reaches the world only through its playbook functions',
     howAWorkflowStarts: 'run the workflow with run_definition',
   };
 }
 
 export type WorkflowPolicy = ReturnType<typeof policyOf>;
 
-export function workflowPolicyOf(names: BrainOwnNames): WorkflowPolicy {
+export function workflowPolicyOf(names: PlaybookOwnNames): WorkflowPolicy {
   return policyOf(workflowFunctionsOf(names));
 }

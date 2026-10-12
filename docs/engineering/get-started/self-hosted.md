@@ -1,4 +1,4 @@
-# Build your first brain with your agent
+# Build your first playbook with your agent
 
 This guide uses a local checkout. You need a terminal to start the runtime, but your agent creates the definitions and runs them through MCP. The runtime is in early development and is not ready for production use.
 
@@ -35,7 +35,7 @@ pnpm dev
 `pnpm dev` starts the server, which runs workflows itself, in [local mode](../self-host/security.md#local-mode), on `http://localhost:8080`. Once it is up, it says so:
 
 ```text
-10:42:44.130 INFO  [dev] auto-brain is ready
+10:42:44.130 INFO  [dev] Auto Runtime is ready
   server     http://localhost:8080
   models     anthropic
   MCP        http://localhost:8080/mcp
@@ -52,7 +52,7 @@ You can begin by asking: "Given what you know about my work, suggest a small reu
 
 Name a model your provider serves, such as `anthropic/claude-sonnet-4-5` or `gateway/<a model id your gateway serves>`. The assistant learns which providers the server has, but not which models your account offers.
 
-1. "Create a brain called support for our customer support team."
+1. "Create a playbook called support for our customer support team."
 2. "In support, create a reasoning function that classifies a support ticket by category (billing, bug, account or other) and urgency (low, normal or high), answering in JSON. Configure its prompt to follow those criteria, and run it on: I was charged twice for March and nobody has answered for three days."
 3. "How many tokens did that run use, and what exactly was sent to the model?"
 4. "Change the prompt so that anything about money is billing and at least normal urgency, then run it on the same ticket again."

@@ -1,8 +1,8 @@
 import type { DefinitionType, McpEndpoint, RecipeCalls, ServedTools } from '../mcp/instructions.ts';
 
-const managingBrains = ['create_brain', 'list_brains', 'get_brain', 'update_brain', 'retire_brain'];
+const managingPlaybooks = ['create_playbook', 'list_playbooks', 'get_playbook', 'update_playbook', 'retire_playbook'];
 
-const insideABrain = [
+const insideAPlaybook = [
   'create_definition',
   'list_definitions',
   'get_definition',
@@ -13,8 +13,8 @@ const insideABrain = [
   'cancel_run',
   'list_runs',
   'get_run_history',
-  'get_brain_analytics',
-  'list_brain_events',
+  'get_playbook_analytics',
+  'list_playbook_events',
   'publish_event',
   'list_tool_servers',
   'test_tool_call',
@@ -24,14 +24,14 @@ const insideABrain = [
   'get_guide',
 ];
 
-export const queriesInsideABrain = [
+export const queriesInsideAPlaybook = [
   'list_definitions',
   'get_definition',
   'get_run',
   'list_runs',
   'get_run_history',
-  'get_brain_analytics',
-  'list_brain_events',
+  'get_playbook_analytics',
+  'list_playbook_events',
   'list_tool_servers',
   'list_interactions',
   'get_guide',
@@ -39,13 +39,16 @@ export const queriesInsideABrain = [
 
 const discovering = ['list_models', 'list_tool_servers'];
 
-export const orgEndpoint: ServedTools = { orgTools: [...managingBrains, ...discovering, 'get_guide'], brainTools: [] };
+export const orgEndpoint: ServedTools = {
+  orgTools: [...managingPlaybooks, ...discovering, 'get_guide'],
+  playbookTools: [],
+};
 
-export const brainEndpoint: ServedTools = { orgTools: [], brainTools: insideABrain };
+export const playbookEndpoint: ServedTools = { orgTools: [], playbookTools: insideAPlaybook };
 
 export const ownOrg: ServedTools = {
-  orgTools: [...managingBrains, ...discovering],
-  brainTools: insideABrain.filter((name) => !discovering.includes(name)),
+  orgTools: [...managingPlaybooks, ...discovering],
+  playbookTools: insideAPlaybook.filter((name) => !discovering.includes(name)),
 };
 
 export const definitionTypes: readonly DefinitionType[] = [
@@ -58,8 +61,8 @@ export const definitionTypes: readonly DefinitionType[] = [
 
 export const recipes: readonly RecipeCalls[] = [
   {
-    name: 'first-brain',
-    calls: ['list_brains', 'create_brain', 'create_definition', 'test_tool_call', 'run_definition'],
+    name: 'first-playbook',
+    calls: ['list_playbooks', 'create_playbook', 'create_definition', 'test_tool_call', 'run_definition'],
   },
   { name: 'remember', calls: ['list_definitions', 'create_definition', 'update_definition', 'run_definition'] },
   {
@@ -71,6 +74,6 @@ export const recipes: readonly RecipeCalls[] = [
 
 export const everyEndpoint: readonly (readonly [McpEndpoint, ServedTools])[] = [
   ['org', orgEndpoint],
-  ['brain', brainEndpoint],
+  ['playbook', playbookEndpoint],
   ['own org', ownOrg],
 ];

@@ -13,11 +13,11 @@ import {
 import { asking } from '../testing/asking.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
-import { harness, toBrain } from '../testing/harness.ts';
+import { harness, toPlaybook } from '../testing/harness.ts';
 import { relay } from '../testing/relay.ts';
 import { relayedId, withHandOn } from '../testing/relaying.ts';
 
-const relayed = { org: 'acme', brain: 'alpha', id: relayedId };
+const relayed = { org: 'acme', playbook: 'alpha', id: relayedId };
 
 const lineage = { causationId: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a', correlationId: relayedId };
 
@@ -82,7 +82,7 @@ describe('a cancel of a run of another capability that finishes later', () => {
 });
 
 describe('a cancel of a run of another capability, as asked', () => {
-  it('settles it by the brain itself when the request names no actor', async () => {
+  it('settles it by the playbook itself when the request names no actor', async () => {
     const { running, ledger, run } = await withHandOn();
     await running();
 
@@ -92,14 +92,14 @@ describe('a cancel of a run of another capability, as asked', () => {
     const { records } = await run(
       Effect.orDie(
         ledger.service.readRecorded(
-          { org: 'acme', brain: 'alpha' },
+          { org: 'acme', playbook: 'alpha' },
           { kind: 'everything' },
           { order: 'asc', limit: 20 },
         ),
       ),
     );
 
-    expect(records.at(-1)).toMatchObject({ type: 'run_rejected', context: { by: 'brain:alpha' } });
+    expect(records.at(-1)).toMatchObject({ type: 'run_rejected', context: { by: 'playbook:alpha' } });
   });
 });
 
@@ -118,7 +118,7 @@ describe('a cancel its capability settles otherwise', () => {
     const { records } = await run(
       Effect.orDie(
         ledger.service.readRecorded(
-          { org: 'acme', brain: 'alpha' },
+          { org: 'acme', playbook: 'alpha' },
           { kind: 'everything' },
           { order: 'asc', limit: 20 },
         ),
@@ -148,7 +148,7 @@ describe('a cancel of a run of another capability, as asked, when its hook break
 });
 
 describe('a cancel of a run of another capability that is over', () => {
-  it('does nothing for a run that has ended, and for one the brain does not have', async () => {
+  it('does nothing for a run that has ended, and for one the playbook does not have', async () => {
     const { running, ledger, reading, settling } = await withHandOn();
     await running();
     await settling({ status: 'succeeded', output: 'handed on', record: {} });
@@ -231,7 +231,7 @@ describe('a cancel of a run whose start says it finishes later, before it record
     });
     const operations = definitionOperationsFor([pending]);
     const definitions = harness();
-    const toAlpha = toBrain('acme', 'alpha');
+    const toAlpha = toPlaybook('acme', 'alpha');
     await definitions.call(
       operations.createDefinition,
       toAlpha(acmeAdmin, { type: 'pending', name: 'slow', source: 'x' }),

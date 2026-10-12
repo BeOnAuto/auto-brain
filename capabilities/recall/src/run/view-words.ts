@@ -48,16 +48,16 @@ export function rebuildingDetail(
 ): string {
   const named = `The recall function ${quoted(name)}`;
   if (kept === undefined || kept.version !== version) {
-    return `${named} has not begun to build its view of version ${version} from the brain's history yet; ${tryAgain}`;
+    return `${named} has not begun to build its view of version ${version} from the playbook's history yet; ${tryAgain}`;
   }
   if (kept.phase === 'waiting') {
-    return `${named} waits to build its view of version ${version}, behind other recall functions of this brain being built; ${tryAgain}`;
+    return `${named} waits to build its view of version ${version}, behind other recall functions of this playbook being built; ${tryAgain}`;
   }
   const behind = lagInWords(lagOf(newestAt, kept.checkpointAt));
-  return `${named} is building its view of version ${version} from the brain's history: it has folded ${counted(kept.folded, { one: 'event', other: 'events' })} so far, and is ${behind} behind the brain's newest record; ${tryAgain}`;
+  return `${named} is building its view of version ${version} from the playbook's history: it has folded ${counted(kept.folded, { one: 'event', other: 'events' })} so far, and is ${behind} behind the playbook's newest record; ${tryAgain}`;
 }
 
 export function stalledDetail(name: string, { event, kind, line }: ViewStall): string {
   const where = line === null ? '' : ` on line ${line}`;
-  return `The view of the recall function ${quoted(name)} stopped at the ${event.type} event of ${event.time}: ${wordsOfStall[kind]}${where}. Save a corrected version to build the view again from the brain's history`;
+  return `The view of the recall function ${quoted(name)} stopped at the ${event.type} event of ${event.time}: ${wordsOfStall[kind]}${where}. Save a corrected version to build the view again from the playbook's history`;
 }

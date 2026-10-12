@@ -43,7 +43,7 @@ function recorded(event: RunEvent, context: Context = ofGreet): RecordedEvent {
 
 function presented(event: RunEvent, context: Context = ofGreet) {
   return present(recorded(event, context), {
-    streamPrefix: 'brain/acme/alpha/',
+    streamPrefix: 'playbook/acme/alpha/',
     content: keptContent,
     view: 'page',
   }).at(0);
@@ -57,7 +57,7 @@ describe('the presenter of the events of a run', () => {
       summary: 'A run of the greeting “greet” started.',
       data: { input: { who: 'Ada' } },
       metadata: {
-        stream: `brain/acme/alpha/runs/${testRunId}`,
+        stream: `playbook/acme/alpha/runs/${testRunId}`,
         position: 1,
         global_position: 11,
         correlation_id: testRunId,
@@ -143,7 +143,7 @@ describe('the presenter of the answer a run took and of the facts its capability
     ]);
   });
 
-  it('presents nothing of a fact no capability of the brain declares, and a declared one in its capability’s words', () => {
+  it('presents nothing of a fact no capability of the playbook declares, and a declared one in its capability’s words', () => {
     const runs = makeDefinitionPresenters([echo, asking]).find(({ streamKind }) => streamKind === 'runs');
     const stored = { ...recorded({ type: 'run_failed', data: {} }), type: 'delivery_started', data: { number: 1 } };
 

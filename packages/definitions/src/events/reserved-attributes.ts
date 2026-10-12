@@ -14,9 +14,9 @@ export const definitionSourcePrefix = '/definitions/';
 
 export const callerSourcePrefix = '/callers/';
 
-type BrainFeedType = DefinitionEvent['type'] | EventPublished['type'] | ReactionRefused['type'];
+type PlaybookFeedType = DefinitionEvent['type'] | EventPublished['type'] | ReactionRefused['type'];
 
-const brainFeedTypes: Readonly<Record<BrainFeedType, true>> = {
+const playbookFeedTypes: Readonly<Record<PlaybookFeedType, true>> = {
   definition_created: true,
   definition_updated: true,
   definition_retired: true,
@@ -34,13 +34,13 @@ function streamTypesOf({ streams }: CapabilityFacts): readonly string[] {
   return streams.flatMap(({ publicNames }) => Object.values(publicNames).flat());
 }
 
-function brainTypesOf(capabilities: readonly NamingCapability[], facts: CapabilityFacts): ReadonlySet<string> {
+function playbookTypesOf(capabilities: readonly NamingCapability[], facts: CapabilityFacts): ReadonlySet<string> {
   return new Set([
     ...coreRunFactTypes,
     ...facts.onRuns.map(({ type }) => type),
     ...deferralTypesOf(capabilities),
     ...streamTypesOf(facts),
-    ...Object.keys(brainFeedTypes),
+    ...Object.keys(playbookFeedTypes),
   ]);
 }
 
@@ -79,24 +79,29 @@ function lineageIssues(attributes: Attributes) {
     .filter((name) => Object.hasOwn(attributes, name))
     .map((name) => ({
       path: [name],
-      issue: `Expected no ${name}: ${reservedAttributesInWords} are the lineage and context the brain gives its own records, which no event may claim`,
+      issue: `Expected no ${name}: ${reservedAttributesInWords} are the lineage and context the playbook gives its own records, which no event may claim`,
     }));
 }
 
-function brainOwnAttributesOf(types: ReadonlySet<string>) {
+function playbookOwnAttributesOf(types: ReadonlySet<string>) {
   const typesInWords = [...types].join(', ');
   return (attributes: Attributes) => {
     const { type, source } = attributes;
     return [
       ...lineageIssues(attributes),
       ...(types.has(type)
-        ? [{ path: ['type'], issue: `Expected a type of your own, not one the brain records itself: ${typesInWords}` }]
+        ? [
+            {
+              path: ['type'],
+              issue: `Expected a type of your own, not one the playbook records itself: ${typesInWords}`,
+            },
+          ]
         : []),
       ...(source !== undefined && isReservedSource(source)
         ? [
             {
               path: ['source'],
-              issue: `Expected a source of your own, not one under ${reservedSourcesInWords}, which the brain records itself`,
+              issue: `Expected a source of your own, not one under ${reservedSourcesInWords}, which the playbook records itself`,
             },
           ]
         : []),
@@ -105,18 +110,18 @@ function brainOwnAttributesOf(types: ReadonlySet<string>) {
 }
 
 function refusingOf(types: ReadonlySet<string>) {
-  return Schema.makeFilter(brainOwnAttributesOf(types));
+  return Schema.makeFilter(playbookOwnAttributesOf(types));
 }
 
-export interface BrainOwnNames {
+export interface PlaybookOwnNames {
   readonly types: ReadonlySet<string>;
-  readonly refusingTheBrainsOwnAttributes: ReturnType<typeof refusingOf>;
+  readonly refusingThePlaybooksOwnAttributes: ReturnType<typeof refusingOf>;
 }
 
-export function brainOwnNamesOf(
+export function playbookOwnNamesOf(
   capabilities: readonly NamingCapability[],
   facts: CapabilityFacts = composedFactsOf(capabilities),
-): BrainOwnNames {
-  const types = brainTypesOf(capabilities, facts);
-  return { types, refusingTheBrainsOwnAttributes: refusingOf(types) };
+): PlaybookOwnNames {
+  const types = playbookTypesOf(capabilities, facts);
+  return { types, refusingThePlaybooksOwnAttributes: refusingOf(types) };
 }

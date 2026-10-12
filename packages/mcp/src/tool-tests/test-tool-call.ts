@@ -15,7 +15,7 @@ const description = [
   "Use it to learn what a tool answers before a function names it, to find an id a prompt needs, such as a channel's, or to check that a server answers, in place of a function made to look.",
   'Only a tool its server marks read-only, or that whoever runs this server lists as safe to test, can be tested, and list_tool_servers says which.',
   '`server` and `tool` name the tool as list_tool_servers lists it, and `arguments` is the object its input_schema takes.',
-  "The call is recorded in the brain's history, with its content where the server's entry records it, and it is live: a tool listed as safe to test may still change something.",
+  "The call is recorded in the playbook's history, with its content where the server's entry records it, and it is live: a tool listed as safe to test may still change something.",
 ].join(' ');
 
 function unavailableOf({ _tag: kind, because, detail }: Pick<ToolsNotOpened, '_tag' | 'because' | 'detail'>) {
@@ -23,7 +23,7 @@ function unavailableOf({ _tag: kind, because, detail }: Pick<ToolsNotOpened, '_t
 }
 
 export function defineTestToolCall(access: Pick<ToolAccess, 'open' | 'testing'>) {
-  return defineCommand('brain', {
+  return defineCommand('playbook', {
     name: 'test_tool_call',
     title: 'Test a tool call',
     description,

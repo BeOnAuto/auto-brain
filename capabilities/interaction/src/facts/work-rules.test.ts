@@ -8,17 +8,17 @@ import { askedRunId, askedThroughChat, type InteractionHarness } from '../testin
 import type { DeliveryEvent } from './run-facts.ts';
 import { deliveryRule, interactionWorkOf, replyBounds, replyRule } from './work-rules.ts';
 
-const address = { org: 'acme', brain: 'alpha', id: askedRunId };
+const address = { org: 'acme', playbook: 'alpha', id: askedRunId };
 
 const lineage = { causationId: null, correlationId: askedRunId };
 
-function recording(brain: InteractionHarness) {
+function recording(playbook: InteractionHarness) {
   return (work: Work, rule: WorkRule) =>
-    Effect.runPromise(Effect.result(Effect.asVoid(brain.record(address, work, lineage, rule))));
+    Effect.runPromise(Effect.result(Effect.asVoid(playbook.record(address, work, lineage, rule))));
 }
 
-function delivering(brain: InteractionHarness) {
-  const recorded = recording(brain);
+function delivering(playbook: InteractionHarness) {
+  const recorded = recording(playbook);
   return (fact: DeliveryEvent) => recorded({ type: 'work', fact }, deliveryRule(fact));
 }
 
@@ -38,8 +38,8 @@ function notInFlight(number: number): Conflict {
 
 describe('the delivery attempts of a request', () => {
   it('are recorded in order, each ended once while in flight, so an attempt two hosts make is recorded once', async () => {
-    const { brain } = await askedThroughChat();
-    const deliver = delivering(brain);
+    const { playbook } = await askedThroughChat();
+    const deliver = delivering(playbook);
 
     expect([
       await deliver(started(1)),
@@ -66,14 +66,14 @@ describe('the delivery attempts of a request', () => {
   it('start no more once a cancel is asked or the request was answered, though the attempt in flight may still end', async () => {
     const cancelling = await askedThroughChat();
     const answered = await askedThroughChat();
-    await delivering(cancelling.brain)(started(1));
-    await cancelling.brain.cancel(askedRunId);
-    await answered.brain.call(answerInteraction, { run_id: askedRunId, answer: { choice: 'approve' } });
+    await delivering(cancelling.playbook)(started(1));
+    await cancelling.playbook.cancel(askedRunId);
+    await answered.playbook.call(answerInteraction, { run_id: askedRunId, answer: { choice: 'approve' } });
 
     expect([
-      await delivering(cancelling.brain)(failed(1)),
-      await delivering(cancelling.brain)(started(2)),
-      await delivering(answered.brain)(started(1)),
+      await delivering(cancelling.playbook)(failed(1)),
+      await delivering(cancelling.playbook)(started(2)),
+      await delivering(answered.playbook)(started(1)),
     ]).toEqual([
       Result.void,
       Result.fail(new Conflict({ detail: 'The run is being cancelled, so it starts no more deliveries' })),
@@ -102,8 +102,8 @@ const replySeen = new Conflict({ detail: 'The run has taken or refused this repl
 
 describe('the replies a request takes or refuses', () => {
   it('are each recorded once, refused at most ten times, and none is taken or refused once the run took an answer', async () => {
-    const { brain } = await askedThroughChat();
-    const record = recording(brain);
+    const { playbook } = await askedThroughChat();
+    const record = recording(playbook);
     const refuse = (id: string) => record(refusal(id), replyRule(id, true));
     const refusals = await Effect.runPromise(
       Effect.forEach(
@@ -131,9 +131,9 @@ describe('the replies a request takes or refuses', () => {
   });
 
   it('take no answer once a cancel is asked, by the rule every answer meets, and record no refusal then', async () => {
-    const { brain } = await askedThroughChat();
-    await brain.cancel(askedRunId);
-    const record = recording(brain);
+    const { playbook } = await askedThroughChat();
+    await playbook.cancel(askedRunId);
+    const record = recording(playbook);
 
     expect([
       await record(taking('r-1'), replyRule('r-1', false)),

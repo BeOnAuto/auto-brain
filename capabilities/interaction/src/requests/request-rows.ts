@@ -77,17 +77,17 @@ function settlesNow(row: UndueRequestRow): boolean {
   return settlementDueOf(row) !== undefined || endsUndelivered(row);
 }
 
-function awaitsTheBrain(row: UndueRequestRow): boolean {
+function awaitsThePlaybook(row: UndueRequestRow): boolean {
   return row.ended === null && row.standing !== 'cancelling';
 }
 
 export function attemptDueAtOf(row: UndueRequestRow): number | null {
   const awaitsAttempt = row.standing === 'to_deliver' || row.standing === 'retrying';
-  return row.open && awaitsTheBrain(row) && awaitsAttempt ? row.next_attempt_at : null;
+  return row.open && awaitsThePlaybook(row) && awaitsAttempt ? row.next_attempt_at : null;
 }
 
 export function endingDueAtOf(row: UndueRequestRow): number | null {
-  if (!awaitsTheBrain(row)) {
+  if (!awaitsThePlaybook(row)) {
     return null;
   }
   if (settlesNow(row)) {

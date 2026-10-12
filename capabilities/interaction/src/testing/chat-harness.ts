@@ -37,11 +37,11 @@ export const farAhead = 3_600_000;
 export async function chatHarness(options: ChatHarnessOptions = {}): Promise<ChatHarness> {
   const chat = fakeTools(options.duringCall);
   const ledger = options.ledger ?? memoryLedger(undefined, [openRequests, conversations]);
-  const brain = interactionHarness({ ledger, tools: chat, others: options.others ?? [] });
-  const reads = conversationsDue({ ledger: ledger.service, tools: chat, record: brain.record });
-  await brain.define('approve-brief', options.document ?? threadDocument());
+  const playbook = interactionHarness({ ledger, tools: chat, others: options.others ?? [] });
+  const reads = conversationsDue({ ledger: ledger.service, tools: chat, record: playbook.record });
+  await playbook.define('approve-brief', options.document ?? threadDocument());
   return {
-    ...brain,
+    ...playbook,
     chat,
     reads,
     performReads: async (now) => {
@@ -50,7 +50,7 @@ export async function chatHarness(options: ChatHarnessOptions = {}): Promise<Cha
       return items.length;
     },
     askInThread: async (runId, owner = answererId, team = 'sales') => {
-      await brain.ask('approve-brief', { team, owner, campaign: 'Spring' }, runId);
+      await playbook.ask('approve-brief', { team, owner, campaign: 'Spring' }, runId);
     },
   };
 }

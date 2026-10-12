@@ -12,10 +12,10 @@ const run = {
   runId: `acme/alpha/${workflowRun}`,
   attributes: {
     org: 'acme',
-    brain: 'alpha',
+    playbook: 'alpha',
     run_id: workflowRun,
     definition: { name: 'triage', version: 2 },
-    caller: { id: 'acme-admin', org: 'acme', permissions: ['brain:read', 'brain:write'], brains: '*' },
+    caller: { id: 'acme-admin', org: 'acme', permissions: ['playbook:read', 'playbook:write'], playbooks: '*' },
     call_depth: 3,
   },
 };
@@ -29,7 +29,7 @@ const review: StartCall = {
 };
 
 const ofTheChild = {
-  by: 'brain:alpha',
+  by: 'playbook:alpha',
   at: 'now',
   runId: 'r-review',
   definitionType: 'workflow',

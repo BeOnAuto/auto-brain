@@ -26,7 +26,7 @@ describe('a workflow run that succeeds', () => {
         kind: 'settle',
         request: {
           org: 'acme',
-          brain: 'alpha',
+          playbook: 'alpha',
           definition: 'test-flow',
           runId,
           settlement: { status: 'succeeded', output: { greeting: 'Hello, Ada' } },

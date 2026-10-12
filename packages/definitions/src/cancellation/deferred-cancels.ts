@@ -1,6 +1,6 @@
 import {
-  brainCallerOf,
-  streamPrefixOfBrain,
+  playbookCallerOf,
+  streamPrefixOfPlaybook,
   type Conflict,
   type Lineage,
   type NotFound,
@@ -47,7 +47,7 @@ export function deferredCanceller(
   const settle = runSettlerAsRead(ledger);
   const settledAsRead: SettleCancelled = (run, { kind, reason, by }, lineage) =>
     Effect.gen(function* () {
-      const stream = `${streamPrefixOfBrain(run)}${runStreamNameOf(run.id.toLowerCase())}`;
+      const stream = `${streamPrefixOfPlaybook(run)}${runStreamNameOf(run.id.toLowerCase())}`;
       const read = (yield* ledger.load(stream, runDeciderAsRead)).state;
       const state = startedRunOf(read.state);
       if (state === undefined || !takesSettlement(state)) {
@@ -62,7 +62,7 @@ export function deferredCanceller(
         answer: state.answer,
         work: state.work,
       });
-      const actor = settlement.by ?? by ?? brainCallerOf(run).id;
+      const actor = settlement.by ?? by ?? playbookCallerOf(run).id;
       yield* settle(run, { ...settlement, by: actor }, read.version, lineage).pipe(
         Effect.asVoid,
         Effect.catchIf(endedOtherwise, () => Effect.void),

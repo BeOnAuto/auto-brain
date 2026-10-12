@@ -6,10 +6,10 @@ const at = '2026-10-01T09:00:00.000Z';
 
 const attributes = {
   org: 'acme',
-  brain: 'alpha',
+  playbook: 'alpha',
   run_id: 'r-1',
   definition: { name: 'close', version: 2 },
-  caller: { id: 'acme-admin', org: 'acme', permissions: [], brains: '*' },
+  caller: { id: 'acme-admin', org: 'acme', permissions: [], playbooks: '*' },
   depth: 0,
   call_depth: 0,
 };

@@ -3,7 +3,7 @@ import { Schema } from 'effect';
 import { compositionRoot } from '../src/composition/composition-root.ts';
 import { startServer, type RunningServer } from '../src/lifecycle/lifecycle.ts';
 
-export const brain = '/v1/orgs/local/brains/measure';
+export const playbook = '/v1/orgs/local/playbooks/measure';
 
 export interface MeasuredServer {
   readonly call: (method: string, path: string, body?: unknown) => Promise<unknown>;

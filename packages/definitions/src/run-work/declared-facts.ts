@@ -71,17 +71,17 @@ function requireDeclaredOnce(what: string, declarations: readonly Declaration[])
 function requireNoCoreName(declarations: readonly Declaration[]): void {
   const core = declarations.find(({ name }) => isCoreRunFactType(name));
   if (core !== undefined) {
-    throw new Error(`The fact ${core.name} that the capability ${core.by} declares is one the brain records itself`);
+    throw new Error(`The fact ${core.name} that the capability ${core.by} declares is one the playbook records itself`);
   }
 }
 
-export const brainStreamKinds: readonly string[] = ['runs', 'definitions', 'events', reactionsStreamKind];
+export const playbookStreamKinds: readonly string[] = ['runs', 'definitions', 'events', reactionsStreamKind];
 
-function requireNoBrainStreamKind(declarations: readonly Declaration[]): void {
-  const brains = declarations.find(({ name }) => brainStreamKinds.includes(name));
-  if (brains !== undefined) {
+function requireNoPlaybookStreamKind(declarations: readonly Declaration[]): void {
+  const claimed = declarations.find(({ name }) => playbookStreamKinds.includes(name));
+  if (claimed !== undefined) {
     throw new Error(
-      `The stream kind ${brains.name} that the capability ${brains.by} declares is one the brain records on itself`,
+      `The stream kind ${claimed.name} that the capability ${claimed.by} declares is one the playbook records on itself`,
     );
   }
 }
@@ -105,7 +105,7 @@ function ownedStreamsOf(capabilities: readonly DeclaringCapability[]): readonly 
   const declarations = capabilities.flatMap(({ type: by, facts }) =>
     facts.streams.map(({ streamKind }) => ({ name: streamKind, by })),
   );
-  requireNoBrainStreamKind(declarations);
+  requireNoPlaybookStreamKind(declarations);
   requireDeclaredOnce('stream kind', declarations);
   return capabilities.flatMap(({ facts }) => facts.streams);
 }

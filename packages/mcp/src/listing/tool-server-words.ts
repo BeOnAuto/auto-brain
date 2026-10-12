@@ -1,7 +1,7 @@
 import { counted, listed, plainNumber, quoted, type Noun } from '@beonauto/operations';
 
 import { inWords } from '../names/tool-words.ts';
-import { everyBrain } from '../settings/mcp-settings.ts';
+import { everyPlaybook } from '../settings/mcp-settings.ts';
 import type { OrgToolServer, ServerTool, ToolServer } from './tool-server.ts';
 
 export interface ToolServersAsked {
@@ -9,7 +9,7 @@ export interface ToolServersAsked {
 }
 
 export interface OrgToolServersAsked extends ToolServersAsked {
-  readonly brain?: string;
+  readonly playbook?: string;
 }
 
 export interface ToolServers {
@@ -53,23 +53,25 @@ function serverInWords(server: ToolServer, { named, user }: Speaking): string {
     : `${named} offers ${counted(server.tools.length, toolNoun)}: ${namesOf(server.tools)}; ${testableAmong(server.tools)}.`;
 }
 
-function brainsInWords(brains: readonly string[]): string {
-  if (brains.includes(everyBrain)) {
-    return 'every brain';
+function playbooksInWords(playbooks: readonly string[]): string {
+  if (playbooks.includes(everyPlaybook)) {
+    return 'every playbook';
   }
-  const named = listed(brains.map((brain) => quoted(brain)));
-  return brains.length === 0 ? 'no brain' : `${brains.length === 1 ? 'the brain' : 'the brains'} ${named}`;
+  const named = listed(playbooks.map((playbook) => quoted(playbook)));
+  return playbooks.length === 0
+    ? 'no playbook'
+    : `${playbooks.length === 1 ? 'the playbook' : 'the playbooks'} ${named}`;
 }
 
 const noServer =
-  'Whoever runs this server has set up no tool server for this brain, so its functions can call no tools until they set one up; the give-tools guide says what they need.';
+  'Whoever runs this server has set up no tool server for this playbook, so its functions can call no tools until they set one up; the give-tools guide says what they need.';
 
 const noServerInOrg =
-  'Whoever runs this server has set up no tool server for this org, so the functions of its brains can call no tools until they set one up; the give-tools guide says what they need.';
+  'Whoever runs this server has set up no tool server for this org, so the functions of its playbooks can call no tools until they set one up; the give-tools guide says what they need.';
 
 export function toolServersAsked({ server }: ToolServersAsked): string {
   return server === undefined
-    ? "list the tool servers this brain's functions may use"
+    ? "list the tool servers this playbook's functions may use"
     : `list the tools of the tool server ${quoted(server)}`;
 }
 
@@ -77,32 +79,32 @@ export function toolServersFound({ tool_servers: servers }: ToolServers): string
   if (servers.length === 0) {
     return noServer;
   }
-  const opening = `This brain's functions may use ${counted(servers.length, serverNoun)}.`;
+  const opening = `This playbook's functions may use ${counted(servers.length, serverNoun)}.`;
   return [
     opening,
-    ...servers.map((server) => serverInWords(server, { named: quoted(server.name), user: 'this brain' })),
+    ...servers.map((server) => serverInWords(server, { named: quoted(server.name), user: 'this playbook' })),
   ].join(' ');
 }
 
 export function orgToolServersAsked(asked: OrgToolServersAsked): string {
-  return asked.brain === undefined && asked.server === undefined
-    ? 'list the tool servers the brains of this org may use'
+  return asked.playbook === undefined && asked.server === undefined
+    ? 'list the tool servers the playbooks of this org may use'
     : toolServersAsked(asked);
 }
 
 function orgServerInWords(server: OrgToolServer): string {
-  const named = `${quoted(server.name)}, for ${brainsInWords(server.brains)},`;
+  const named = `${quoted(server.name)}, for ${playbooksInWords(server.playbooks)},`;
   return serverInWords(server, { named, user: 'a function' });
 }
 
-export function orgToolServersFound(answer: OrgToolServers, { brain }: OrgToolServersAsked): string {
+export function orgToolServersFound(answer: OrgToolServers, { playbook }: OrgToolServersAsked): string {
   const servers = answer.tool_servers;
-  if (brain !== undefined) {
+  if (playbook !== undefined) {
     return toolServersFound(answer);
   }
   if (servers.length === 0) {
     return noServerInOrg;
   }
-  const opening = `The brains of this org may use ${counted(servers.length, serverNoun)}.`;
+  const opening = `The playbooks of this org may use ${counted(servers.length, serverNoun)}.`;
   return [opening, ...servers.map((server) => orgServerInWords(server))].join(' ');
 }

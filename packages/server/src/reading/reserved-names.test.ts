@@ -41,7 +41,7 @@ const reserved = [
   'reaction_refused',
 ];
 
-const ofTheBrain = 'Expected a type of your own, not one the brain records itself: ';
+const ofThePlaybook = 'Expected a type of your own, not one the playbook records itself: ';
 
 const decodeRefusal = Schema.decodeUnknownSync(
   Schema.Struct({
@@ -50,17 +50,17 @@ const decodeRefusal = Schema.decodeUnknownSync(
   }),
 );
 
-describe('the types a business may not publish to its brain', () => {
-  it('are the facts the brain records, those its capabilities declare and every type its feed shows', async () => {
+describe('the types a business may not publish to its playbook', () => {
+  it('are the facts the playbook records, those its capabilities declare and every type its feed shows', async () => {
     const server = await servingReasoning([]);
     onTestFinished(server.stop);
-    await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+    await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
 
     const refused = await server.call('POST', `${alpha}/events`, {
       body: { event: { source: '/ledger/eu', type: 'request_answered' } },
     });
     const [{ detail }] = decodeRefusal(refused.body).errors;
-    const named = detail.replace(ofTheBrain, '').split(', ');
+    const named = detail.replace(ofThePlaybook, '').split(', ');
 
     expect(refused.status).toBe(422);
     expect(named).toEqual(reserved);

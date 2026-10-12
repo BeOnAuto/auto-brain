@@ -1,7 +1,7 @@
 import { runStartedOf } from '@beonauto/definitions';
 import { Effect } from 'effect';
 
-export type WorkflowOfRun = (brainKey: string, runId: string) => Effect.Effect<string | undefined>;
+export type WorkflowOfRun = (playbookKey: string, runId: string) => Effect.Effect<string | undefined>;
 
 export type ReadStream = (stream: string) => Promise<{ readonly messages: readonly unknown[] }>;
 
@@ -13,8 +13,8 @@ export function workflowsOfRuns(read: ReadStream, type: string, mostRemembered =
     const started = runStartedOf(messages[0]);
     return started?.definitionType === type ? started.definitionName : undefined;
   };
-  return (brainKey, runId) => {
-    const stream = `${brainKey}runs/${runId}`;
+  return (playbookKey, runId) => {
+    const stream = `${playbookKey}runs/${runId}`;
     if (remembered.has(stream)) {
       return Effect.succeed(remembered.get(stream));
     }

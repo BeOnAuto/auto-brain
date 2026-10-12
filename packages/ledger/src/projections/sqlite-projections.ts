@@ -14,7 +14,7 @@ const decodeText = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown
 const sqliteProjectionDialect: ProjectionDialect = {
   tableVersions: (name) => SQL`SELECT name FROM sqlite_master WHERE type = 'table' AND name GLOB ${`${name}_*`}`,
   columnTypes: { text: 'TEXT', integer: 'INTEGER', boolean: 'INTEGER' },
-  brainIndexNulls: '',
+  playbookIndexNulls: '',
   asNumber: (expression) => expression,
   streamsAfter: (after, count, kinds, types) =>
     SQL`SELECT s.stream_id AS stream, (

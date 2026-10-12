@@ -61,7 +61,7 @@ async function serving(fake: FakeMcpServer, ...replies: readonly ScriptedReply[]
     }),
   });
   closing.push(server.stop);
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   await server.call('POST', `${alpha}/definitions/reasoning`, {
     body: { name: 'graph', source: reasoningFunction('graph/search') },
   });
@@ -210,7 +210,7 @@ describe('the secrets of a server, over HTTP', () => {
   });
 });
 
-describe('a retired brain whose functions called tools, over HTTP', () => {
+describe('a retired playbook whose functions called tools, over HTTP', () => {
   it('keeps the calls readable in the history of its runs, and runs nothing more', async () => {
     const fake = await fakeGraph();
     const server = await serving(fake, searched('graph'));

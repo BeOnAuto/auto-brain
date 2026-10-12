@@ -140,7 +140,7 @@ describe('a request nobody answered', () => {
 });
 
 describe('room for a request the server cannot give', () => {
-  it('asks for a retry once the brain has room for a request', () => {
+  it('asks for a retry once the playbook has room for a request', () => {
     expect(retryAfterOf({ kind: 'requests_full' })).toBe('5');
   });
 });

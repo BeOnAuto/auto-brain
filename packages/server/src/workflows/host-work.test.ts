@@ -1,5 +1,5 @@
 import { makeAppRuntime } from '@beonauto/api';
-import { brainOwnNamesOf, defineStartVersion } from '@beonauto/definitions';
+import { playbookOwnNamesOf, defineStartVersion } from '@beonauto/definitions';
 import { echo } from '@beonauto/definitions/testing';
 import { ledgerLayer } from '@beonauto/ledger/sqlite3';
 import { makeDispatcher } from '@beonauto/operations';
@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { applicationLayer } from '../composition/composition-root.ts';
 import { hostWorkOf } from './host-work.ts';
 
-const unknownRun = { org: 'acme', brain: 'alpha', id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' };
+const unknownRun = { org: 'acme', playbook: 'alpha', id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' };
 
 const lineage = { causationId: 'cancel-1', correlationId: unknownRun.id };
 
@@ -21,7 +21,7 @@ describe('the machine the workflow host decides runs with', () => {
     const { machine } = hostWorkOf(runtime, makeDispatcher([]), {
       capabilities: [echo],
       startVersion: defineStartVersion([echo]),
-      names: brainOwnNamesOf([echo]),
+      names: playbookOwnNamesOf([echo]),
       evaluations: pool.evaluations,
     });
     await Promise.all([pool.close(), runtime.dispose()]);
@@ -38,7 +38,7 @@ describe('the cancels the workflow host hands to the runtime of the server', () 
     const { waiting } = hostWorkOf(runtime, makeDispatcher([]), {
       capabilities: [echo],
       startVersion: defineStartVersion([echo]),
-      names: brainOwnNamesOf([echo]),
+      names: playbookOwnNamesOf([echo]),
       evaluations: { machine: machineSandboxOf(), filters: filterSandboxOf() },
     });
 

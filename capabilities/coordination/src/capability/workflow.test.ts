@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { workflowBrain, type WorkflowBrain } from '../testing/workflow-brain.ts';
+import { workflowPlaybook, type WorkflowPlaybook } from '../testing/workflow-playbook.ts';
 
-let brain: WorkflowBrain;
+let playbook: WorkflowPlaybook;
 
 const header = `document:
   dsl: '1.0.3'
@@ -39,17 +39,17 @@ do:
 `;
 
 beforeAll(async () => {
-  brain = await workflowBrain();
-  await brain.call(brain.createDefinition, { type: 'echo', name: 'greet', source: '{"greeting": "Hello"}' });
-  await brain.call(brain.createDefinition, { type: 'workflow', name: 'greeting-flow', source: greetingFlow });
+  playbook = await workflowPlaybook();
+  await playbook.call(playbook.createDefinition, { type: 'echo', name: 'greet', source: '{"greeting": "Hello"}' });
+  await playbook.call(playbook.createDefinition, { type: 'workflow', name: 'greeting-flow', source: greetingFlow });
 });
 
 afterAll(async () => {
-  await brain.close();
+  await playbook.close();
 });
 
 function creating(name: string, source: string) {
-  return brain.call(brain.createDefinition, { type: 'workflow', name, source });
+  return playbook.call(playbook.createDefinition, { type: 'workflow', name, source });
 }
 
 describe('creating a workflow definition', () => {
@@ -108,7 +108,7 @@ describe('creating a workflow definition the runtime does not run', () => {
       issues: [
         {
           detail:
-            'Line 7, column 20: at /do/0/fetch/call: call: http is not allowed: a workflow reaches the world only through its brain functions; call run_definition',
+            'Line 7, column 20: at /do/0/fetch/call: call: http is not allowed: a workflow reaches the world only through its playbook functions; call run_definition',
           pointer: '/source',
         },
       ],

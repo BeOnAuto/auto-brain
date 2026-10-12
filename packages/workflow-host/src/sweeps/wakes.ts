@@ -1,11 +1,13 @@
-import { brainKeyOfStream } from '@beonauto/ledger';
+import { playbookKeyOfStream } from '@beonauto/ledger';
+import { streamPrefixOfPlaybook } from '@beonauto/operations';
 
-import { isOrgRegistry } from '../follower/brain-discovery.ts';
+import { isOrgRegistry } from '../follower/playbook-discovery.ts';
+import { playbookOfKey } from '../follower/record-steps.ts';
 
 export interface Wakes {
   readonly woken: (stream: string) => void;
-  readonly brainAgain: (brainKey: string) => void;
-  readonly brainsWoken: () => readonly string[];
+  readonly playbookAgain: (playbookKey: string) => void;
+  readonly playbooksWoken: () => readonly string[];
   readonly registriesWoken: () => readonly string[];
   readonly anyWoken: () => boolean;
   readonly nextSignal: () => Promise<void>;
@@ -14,11 +16,15 @@ export interface Wakes {
   readonly nextSweepAt: () => number;
 }
 
-export function followedBrainOf(stream: string): string | undefined {
-  const brainKey = brainKeyOfStream(stream);
-  return brainKey === undefined || !brainKey.startsWith('brain/') || stream.startsWith(`${brainKey}run-logs/`)
+function isPlaybookKey(playbookKey: string): boolean {
+  return streamPrefixOfPlaybook(playbookOfKey(playbookKey)) === playbookKey;
+}
+
+export function followedPlaybookOf(stream: string): string | undefined {
+  const playbookKey = playbookKeyOfStream(stream);
+  return playbookKey === undefined || !isPlaybookKey(playbookKey) || stream.startsWith(`${playbookKey}run-logs/`)
     ? undefined
-    : brainKey;
+    : playbookKey;
 }
 
 function takenFrom(keys: Set<string>): readonly string[] {
@@ -28,26 +34,26 @@ function takenFrom(keys: Set<string>): readonly string[] {
 }
 
 export function wakesOf(sweepEveryMs: number): Wakes {
-  const brains = new Set<string>();
+  const playbooks = new Set<string>();
   const registries = new Set<string>();
   const state = { signal: Promise.withResolvers<void>(), lastSweptAt: 0 };
   return {
     woken: (stream) => {
-      const brainKey = followedBrainOf(stream);
-      if (brainKey !== undefined) {
-        brains.add(brainKey);
+      const playbookKey = followedPlaybookOf(stream);
+      if (playbookKey !== undefined) {
+        playbooks.add(playbookKey);
       }
       if (isOrgRegistry(stream)) {
         registries.add(stream);
       }
       state.signal.resolve();
     },
-    brainAgain: (brainKey) => {
-      brains.add(brainKey);
+    playbookAgain: (playbookKey) => {
+      playbooks.add(playbookKey);
     },
-    brainsWoken: () => takenFrom(brains),
+    playbooksWoken: () => takenFrom(playbooks),
     registriesWoken: () => takenFrom(registries),
-    anyWoken: () => brains.size > 0 || registries.size > 0,
+    anyWoken: () => playbooks.size > 0 || registries.size > 0,
     nextSignal: () => {
       state.signal = Promise.withResolvers();
       return state.signal.promise;

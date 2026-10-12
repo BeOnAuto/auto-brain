@@ -9,7 +9,7 @@ const { present, storedTypesOf } = presentationOf(makeDefinitionPresenters([inte
 
 const ofAsking: Context = {
   runId: askedRunId,
-  by: 'brain:alpha',
+  by: 'playbook:alpha',
   at: '2026-10-01T09:00:01.000Z',
   definitionType: 'interaction',
   definitionName: 'approve',
@@ -37,7 +37,7 @@ function presented({ type, data }: InteractionFact) {
     context: ofAsking,
     recordedAt: '2026-10-01T09:00:02.000Z',
   };
-  const showing = { streamPrefix: 'brain/acme/alpha/', content: keptContent, view: 'whole' } as const;
+  const showing = { streamPrefix: 'playbook/acme/alpha/', content: keptContent, view: 'whole' } as const;
   return present(record, showing).map(({ type: shown, summary, data: shownData }) => ({
     type: shown,
     summary,
@@ -45,7 +45,7 @@ function presented({ type, data }: InteractionFact) {
   }));
 }
 
-describe('the facts of a delivery and of a reply, as the brain shows them', () => {
+describe('the facts of a delivery and of a reply, as the playbook shows them', () => {
   it('are named as they are recorded, as the interaction capability declares them', () => {
     expect(
       ['delivery_started', 'delivery_succeeded', 'delivery_failed', 'delivery_refused', 'reply_refused'].map((type) =>

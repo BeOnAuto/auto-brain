@@ -1,5 +1,5 @@
 import {
-  BrainReader,
+  PlaybookReader,
   InvalidInput,
   PagingInputFields,
   PagingOutputFields,
@@ -40,15 +40,15 @@ const InteractionSchema = Schema.Struct({
   attempts: Schema.Int.annotate({ description: 'The delivery attempts made so far' }),
   conversation: Schema.NullOr(Schema.String).annotate({
     description:
-      'The conversation the brain reads replies in, as its delivery keys it, while the request takes an answer and its delivery reads replies; null for a request answered through answer_interaction alone.',
+      'The conversation the playbook reads replies in, as its delivery keys it, while the request takes an answer and its delivery reads replies; null for a request answered through answer_interaction alone.',
   }),
   answerer: Schema.NullOr(Schema.String).annotate({
     description:
-      "The party whose reply the brain takes as the answer, the function's from, or its to when it gives no from; null for a request that takes no reply.",
+      "The party whose reply the playbook takes as the answer, the function's from, or its to when it gives no from; null for a request that takes no reply.",
   }),
   reply_refusals: Schema.Int.annotate({
     description:
-      'How many replies from the answerer the brain refused because they were not an answer the function takes, each told how to answer where its reading tells.',
+      'How many replies from the answerer the playbook refused because they were not an answer the function takes, each told how to answer where its reading tells.',
   }),
   standing: StandingSchema.annotate({
     description:
@@ -71,13 +71,13 @@ function refusedInWords(interactions: readonly { readonly reply_refusals: number
 const FilterText = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256));
 
 const description = [
-  'Lists the open requests of the brain, newest first: what each function asked, of whom, through which tool, or in the inbox,',
+  'Lists the open requests of the playbook, newest first: what each function asked, of whom, through which tool, or in the inbox,',
   'until when and how its delivery stands, with the `run_id` that answer_interaction takes.',
   'Each carries its `answer_schema`, the shape answer_interaction checks an answer against, as recorded when it was asked,',
   'which get_definition may no longer show; null for a notification.',
-  'Use it when the person asks what the brain is waiting on, or to find the request they answer.',
+  'Use it when the person asks what the playbook is waiting on, or to find the request they answer.',
   '`to` keeps the requests to one party, `type` to one type of function and `function` to one name, which with `type` names one function; `cursor` is the next_cursor of the page before.',
-  'Every reader of the brain sees each party and message, as a run’s input is seen.',
+  'Every reader of the playbook sees each party and message, as a run’s input is seen.',
 ].join(' ');
 
 const CursorSchema = Schema.Tuple([Schema.Int, Schema.String]);
@@ -152,7 +152,7 @@ const listed = Effect.fnUntraced(function* (listing: Listing) {
   const { limit = defaultPageLimit, cursor } = listing;
   const after = yield* afterOf(cursor);
   const where = conditionsOf(listing);
-  const rows = yield* (yield* BrainReader).readProjectedRows(openRequestsName, {
+  const rows = yield* (yield* PlaybookReader).readProjectedRows(openRequestsName, {
     where,
     orderBy: ['requested_at'],
     order: 'desc',
@@ -169,7 +169,7 @@ const listed = Effect.fnUntraced(function* (listing: Listing) {
   };
 });
 
-export const listInteractions = defineQuery('brain', {
+export const listInteractions = defineQuery('playbook', {
   name: 'list_interactions',
   title: 'List open requests',
   description,

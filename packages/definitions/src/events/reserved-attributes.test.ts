@@ -4,14 +4,14 @@ import { describe, expect, it } from 'vitest';
 import { makeDefinitionPresenters } from '../index.ts';
 import { asking, nudgesPresenter } from '../testing/asking.ts';
 import { echo } from '../testing/echo.ts';
-import { brainOwnNamesOf, isReservedSource } from './reserved-attributes.ts';
+import { playbookOwnNamesOf, isReservedSource } from './reserved-attributes.ts';
 
-const { types, refusingTheBrainsOwnAttributes } = brainOwnNamesOf([echo, asking]);
+const { types, refusingThePlaybooksOwnAttributes } = playbookOwnNamesOf([echo, asking]);
 
 const EventSchema = Schema.StructWithRest(
   Schema.Struct({ type: Schema.String, source: Schema.optionalKey(Schema.String) }),
   [Schema.Record(Schema.String, Schema.Union([Schema.String, Schema.Int]))],
-).check(refusingTheBrainsOwnAttributes);
+).check(refusingThePlaybooksOwnAttributes);
 
 const decode = Schema.decodeUnknownResult(EventSchema, { errors: 'all' });
 
@@ -24,7 +24,7 @@ function refusals(event: unknown): readonly string[] {
       );
 }
 
-const typesOfTheBrain = [
+const typesOfThePlaybook = [
   'run_started',
   'run_deferred',
   'run_succeeded',
@@ -45,9 +45,9 @@ const typesOfTheBrain = [
   'reaction_refused',
 ];
 
-describe('the types and sources of what the brain records itself', () => {
-  it('are reserved for the brain: every type its runs and definitions record, those its capabilities declare, and every type its feed shows', () => {
-    expect([...types]).toEqual(typesOfTheBrain);
+describe('the types and sources of what the playbook records itself', () => {
+  it('are reserved for the playbook: every type its runs and definitions record, those its capabilities declare, and every type its feed shows', () => {
+    expect([...types]).toEqual(typesOfThePlaybook);
     const shown = makeDefinitionPresenters([echo, asking]).flatMap(({ publicNames }) =>
       Object.values(publicNames).flat(),
     );
@@ -59,21 +59,21 @@ describe('the types and sources of what the brain records itself', () => {
     ).toEqual([true, true, true, false, false, false]);
   });
 
-  it('are none of a capability beyond the brain’s own when no capability declares a fact', () => {
-    expect([...brainOwnNamesOf([echo]).types].filter((type) => !types.has(type))).toEqual([]);
-    expect([...brainOwnNamesOf([echo]).types]).not.toContain('nudge_sent');
+  it('are none of a capability beyond the playbook’s own when no capability declares a fact', () => {
+    expect([...playbookOwnNamesOf([echo]).types].filter((type) => !types.has(type))).toEqual([]);
+    expect([...playbookOwnNamesOf([echo]).types]).not.toContain('nudge_sent');
   });
 
   it('are those of facts declared before their capability is made, which say no words of a deferral', () => {
-    const declared = brainOwnNamesOf([echo, { type: 'nudging', facts: { onRuns: [], streams: [nudgesPresenter] } }]);
+    const declared = playbookOwnNamesOf([echo, { type: 'nudging', facts: { onRuns: [], streams: [nudgesPresenter] } }]);
 
-    expect([...declared.types].filter((type) => !brainOwnNamesOf([echo]).types.has(type))).toEqual(['nudge_read']);
+    expect([...declared.types].filter((type) => !playbookOwnNamesOf([echo]).types.has(type))).toEqual(['nudge_read']);
   });
 
   it('are refused in an event from outside, each where it is given', () => {
     expect(refusals({ type: 'run_succeeded', source: '/runs/0199a3c4' })).toEqual([
-      `/type: Expected a type of your own, not one the brain records itself: ${typesOfTheBrain.join(', ')}`,
-      '/source: Expected a source of your own, not one under /runs/, /definitions/ or /callers/, which the brain records itself',
+      `/type: Expected a type of your own, not one the playbook records itself: ${typesOfThePlaybook.join(', ')}`,
+      '/source: Expected a source of your own, not one under /runs/, /definitions/ or /callers/, which the playbook records itself',
     ]);
     expect(
       [
@@ -92,9 +92,9 @@ describe('the types and sources of what the brain records itself', () => {
 });
 
 const reservedInWords =
-  'causationid, correlationid, caller, definitionversion, depth, calldepth, calledby, triggerkind and triggerreference are the lineage and context the brain gives its own records, which no event may claim';
+  'causationid, correlationid, caller, definitionversion, depth, calldepth, calledby, triggerkind and triggerreference are the lineage and context the playbook gives its own records, which no event may claim';
 
-describe('the lineage and the context the brain gives its own records', () => {
+describe('the lineage and the context the playbook gives its own records', () => {
   it('are refused in an event from outside, which may not claim them', () => {
     expect(refusals({ type: 'com.acme.approved', causationid: 'm-1', correlationid: 'r-1' })).toEqual([
       `/causationid: Expected no causationid: ${reservedInWords}`,

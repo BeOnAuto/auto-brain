@@ -58,7 +58,7 @@ export type { EnginePorts } from './engine/engine-ports.ts';
 export type { Submission, SweepReport, Wake, WorkflowEngine } from './engine/workflow-engine.ts';
 export { CallKeySchema, callKeyText, type CallKey } from './executor/call-key.ts';
 export {
-  brainWideFilterOf,
+  playbookWideFilterOf,
   listenFiltersOf,
   listenerFilterOf,
   literalFilterOf,

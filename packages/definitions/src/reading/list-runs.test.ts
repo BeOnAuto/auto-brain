@@ -5,11 +5,11 @@ import { describe, expect, it } from 'vitest';
 import { acmeAdmin, globexAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
 import { echo } from '../testing/echo.ts';
-import { asQueryString, harness, toBrain } from '../testing/harness.ts';
+import { asQueryString, harness, toPlaybook } from '../testing/harness.ts';
 import { probe } from '../testing/probe.ts';
 import { relay } from '../testing/relay.ts';
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 const callerChosen = 'ffffffff-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
@@ -37,7 +37,7 @@ const plain: DefinitionName = ['probe', 'plain'];
 
 const handOn: DefinitionName = ['relay', 'hand-on'];
 
-async function brainWithRuns() {
+async function playbookWithRuns() {
   const prober = probe();
   const relayer = relay();
   const operations = definitionOperationsFor([echo, prober.capability, relayer.capability]);
@@ -54,9 +54,9 @@ async function brainWithRuns() {
   return { ...definitions, ...operations, prober, running, listing };
 }
 
-async function brainWithEveryEnding() {
-  const brain = await brainWithRuns();
-  const { running, prober } = brain;
+async function playbookWithEveryEnding() {
+  const playbook = await playbookWithRuns();
+  const { running, prober } = playbook;
   await running(greet, { who: 'Ada' }, callerChosen, '2026-10-01T09:01:00.000Z');
   await running(plain, { reject: true }, hashedChild, '2026-10-01T09:02:00.000Z');
   prober.sufferOnNextRun('unavailable');
@@ -66,7 +66,7 @@ async function brainWithEveryEnding() {
   await running(plain, {}, '33333333-7d2e-7c1a-9b3f-2f1e0d9c8b7a', '2026-10-01T09:05:00.000Z');
   await running(wave, {}, '44444444-7d2e-7c1a-9b3f-2f1e0d9c8b7a', '2026-10-01T09:06:00.000Z');
   await running(plain, {}, startedTwice, '2026-10-01T09:07:00.000Z');
-  return brain;
+  return playbook;
 }
 
 const everyEndingNewestFirst = [
@@ -133,11 +133,11 @@ const everyEndingNewestFirst = [
 ];
 
 describe('list_runs', () => {
-  it('is a brain query at GET /runs that names the capabilities it may filter by', () => {
+  it('is a playbook query at GET /runs that names the capabilities it may filter by', () => {
     const { listRuns } = definitionOperationsFor([echo, probe().capability]);
 
     expect(listRuns.registration).toMatchObject({
-      scope: 'brain',
+      scope: 'playbook',
       kind: 'query',
       title: 'List runs',
       route: { method: 'GET', path: '/runs' },
@@ -155,7 +155,7 @@ describe('list_runs', () => {
   });
 
   it('lists the runs newest first by their first start, whatever their ids, without outputs, records or issues', async () => {
-    const { listing } = await brainWithEveryEnding();
+    const { listing } = await playbookWithEveryEnding();
 
     expect(await listing()).toEqual({
       status: 'succeeded',
@@ -171,7 +171,7 @@ describe('list_runs', () => {
 describe('a run listed after it started again', () => {
   it('shows a run started again and still running by its latest start, in the place of its first', async () => {
     const { callCancelledWhen, runDefinition, running, listing, prober, call, updateDefinition } =
-      await brainWithRuns();
+      await playbookWithRuns();
     prober.sufferOnNextRun('unavailable');
     await running(plain, {}, startedTwice, '2026-10-01T09:01:00.000Z');
     await running(greet, {}, callerChosen, '2026-10-01T09:02:00.000Z');
@@ -199,7 +199,7 @@ describe('a run listed after it started again', () => {
 
 describe('a run listed after it did not go through', () => {
   it('shows the reason, kind and because of a rejection, and never its detail', async () => {
-    const { running, listing, prober } = await brainWithRuns();
+    const { running, listing, prober } = await playbookWithRuns();
     prober.sufferOnNextRun('unoffered');
     await running(plain, {}, callerChosen, '2026-10-01T09:01:00.000Z');
     prober.sufferOnNextRun('unworkable');
@@ -224,7 +224,7 @@ describe('a run listed after it did not go through', () => {
 
 describe('a conflict in the list of runs', () => {
   it('shows its reason alone when it has no kind', async () => {
-    const { running, listing, prober } = await brainWithRuns();
+    const { running, listing, prober } = await playbookWithRuns();
     prober.sufferOnNextRun('conflict');
     await running(plain, {}, callerChosen, '2026-10-01T09:01:00.000Z');
 
@@ -246,7 +246,7 @@ describe('list_runs filtering', () => {
     [{ type: 'probe', name: 'plain', status: 'succeeded' }, ['00000000']],
     [{ type: 'echo', name: 'plain' }, []],
   ] as const)('keeps the runs %j', async (filters, kept) => {
-    const { listing } = await brainWithEveryEnding();
+    const { listing } = await playbookWithEveryEnding();
 
     const listed = await listing(filters);
 
@@ -255,7 +255,7 @@ describe('list_runs filtering', () => {
   });
 
   it('refuses a type the server does not run, naming the types it runs', async () => {
-    const { listing } = await brainWithEveryEnding();
+    const { listing } = await playbookWithEveryEnding();
 
     expect(await listing({ type: 'gone' })).toMatchObject({
       status: 'rejected',
@@ -265,7 +265,7 @@ describe('list_runs filtering', () => {
   });
 
   it('reads its filters, limit and cursor from a query string', async () => {
-    const { call, listRuns } = await brainWithEveryEnding();
+    const { call, listRuns } = await playbookWithEveryEnding();
 
     expect(await call(listRuns, asQueryString(toAlpha(acmeAdmin, { status: 'succeeded', limit: '1' })))).toMatchObject({
       status: 'succeeded',
@@ -274,7 +274,7 @@ describe('list_runs filtering', () => {
   });
 
   it('refuses a status, name or limit it does not know', async () => {
-    const { listing } = await brainWithRuns();
+    const { listing } = await playbookWithRuns();
 
     expect(await listing({ status: 'deferred', name: 'No', limit: 0 })).toMatchObject({
       status: 'rejected',
@@ -284,15 +284,15 @@ describe('list_runs filtering', () => {
   });
 });
 
-describe('the runs of a brain', () => {
+describe('the runs of a playbook', () => {
   it('are its own alone', async () => {
-    const { listing, call, listRuns } = await brainWithEveryEnding();
+    const { listing, call, listRuns } = await playbookWithEveryEnding();
 
-    expect(await call(listRuns, toBrain('globex', 'gamma')(globexAdmin))).toEqual({
+    expect(await call(listRuns, toPlaybook('globex', 'gamma')(globexAdmin))).toEqual({
       status: 'succeeded',
       output: { runs: [], has_more: false, next_cursor: null },
     });
-    expect(await call(listRuns, toBrain('acme', 'beta')(acmeAdmin))).toMatchObject({
+    expect(await call(listRuns, toPlaybook('acme', 'beta')(acmeAdmin))).toMatchObject({
       output: { runs: [] },
     });
     expect(await listing()).toMatchObject({ output: { runs: { length: 6 } } });

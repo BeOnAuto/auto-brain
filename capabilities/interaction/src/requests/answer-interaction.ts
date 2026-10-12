@@ -2,15 +2,15 @@ import { Buffer } from 'node:buffer';
 
 import {
   RunIdInputField,
-  brainBoundAnswerer,
-  recordedRunInBrain,
+  playbookBoundAnswerer,
+  recordedRunInPlaybook,
   type RecordedRun,
   refusingBlankText,
   refusingForbiddenCharacters,
 } from '@beonauto/definitions';
 import {
-  BrainReader,
-  BrainWriter,
+  PlaybookReader,
+  PlaybookWriter,
   Caller,
   Conflict,
   NotFound,
@@ -91,9 +91,9 @@ function shownOf(id: string, { id: answerId, answer, claimedFor, reply, by, at }
 const answered = Effect.fnUntraced(function* ({ id, answer, claimedFor }: Answering) {
   const { id: answeredBy } = yield* Caller;
   const row = yield* openRequestRowIn(id);
-  const run = yield* recordedRunInBrain(yield* BrainReader, id);
+  const run = yield* recordedRunInPlaybook(yield* PlaybookReader, id);
   if (run === undefined) {
-    return yield* new NotFound({ detail: 'There is no such run in this brain' });
+    return yield* new NotFound({ detail: 'There is no such run in this playbook' });
   }
   if (row === undefined) {
     return yield* notARequest;
@@ -102,7 +102,7 @@ const answered = Effect.fnUntraced(function* ({ id, answer, claimedFor }: Answer
     return yield* takesNoAnswer;
   }
   const checked = yield* checkedFor(run, answer);
-  yield* brainBoundAnswerer(yield* BrainWriter)(
+  yield* playbookBoundAnswerer(yield* PlaybookWriter)(
     id,
     { answer: checked, ...(claimedFor === undefined ? {} : { claimed_for: claimedFor }) },
     answeredBy,
@@ -111,7 +111,7 @@ const answered = Effect.fnUntraced(function* ({ id, answer, claimedFor }: Answer
   return shownOf(id, yield* answerTakenBy(id));
 });
 
-export const answerInteraction = defineCommand('brain', {
+export const answerInteraction = defineCommand('playbook', {
   name: 'answer_interaction',
   title: 'Answer a request',
   description,

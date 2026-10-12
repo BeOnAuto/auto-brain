@@ -20,7 +20,7 @@ import { factOf, recordingOf } from './decider.ts';
 
 const ofACall: Context = {
   at: '2026-10-09T12:43:51.435Z',
-  by: 'brain:finance',
+  by: 'playbook:finance',
   runId: 'ccd1dbdd',
   definitionType: 'interaction',
   definitionName: 'approve-report',
@@ -37,7 +37,7 @@ describe('the context of a recorded message', () => {
       contextOf({
         ...ofACall,
         messageId: '419f8fb7',
-        streamName: 'brain/acme/finance/runs/ccd1dbdd',
+        streamName: 'playbook/acme/finance/runs/ccd1dbdd',
         streamPosition: '1',
         correlationId: 'run-0',
         causationId: null,
@@ -48,7 +48,7 @@ describe('the context of a recorded message', () => {
 
   it('refuses text with a control character, an unpaired surrogate or a noncharacter, and a long reference', () => {
     const refused = [
-      { ...ofACall, by: 'brain:\u0000finance' },
+      { ...ofACall, by: 'playbook:\u0000finance' },
       { ...ofACall, definitionName: 'approve\uD800' },
       { ...ofACall, runId: 'run￾' },
       { ...ofACall, calledBy: { runId: 'run-0', reference: `/${'a'.repeat(256)}`, run: 1 } },

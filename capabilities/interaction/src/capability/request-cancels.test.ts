@@ -29,13 +29,13 @@ const at = '2026-10-07T09:00:00.000Z';
 
 const anyTime: unknown = expect.any(String);
 
-const address = { org: 'acme', brain: 'alpha', id: askedRunId };
+const address = { org: 'acme', playbook: 'alpha', id: askedRunId };
 
 const asked = { run: address, kind: 'requested', reason: 'Not needed any more' } as const;
 
 const cancelledAsAsked = { status: 'rejected', reason: 'cancelled', kind: 'requested', detail: asked.reason };
 
-const taken = { answer: 'yes', reply: takenReply, by: 'brain:alpha', at };
+const taken = { answer: 'yes', reply: takenReply, by: 'playbook:alpha', at };
 
 const delivered = {
   type: 'delivery_succeeded',
@@ -43,7 +43,7 @@ const delivered = {
   at,
 };
 
-const answeredByTheBrain = { status: 'succeeded', output: 'yes', record: {}, by: 'brain:alpha' };
+const answeredByThePlaybook = { status: 'succeeded', output: 'yes', record: {}, by: 'playbook:alpha' };
 
 describe('the cancel of a request', () => {
   it('settles with the answer the run took, or as delivered for a notification, and else as asked', () => {
@@ -55,7 +55,7 @@ describe('the cancel of a request', () => {
       cancelledRequest({ ...asked, record: question, answer: null, work: [] }),
       cancelledRequest({ ...asked, record: { run: 'x' }, answer: taken, work: [delivered] }),
     ]).toEqual([
-      answeredByTheBrain,
+      answeredByThePlaybook,
       { status: 'succeeded', output: {}, record: { delivered_at: at } },
       cancelledAsAsked,
       cancelledAsAsked,
@@ -65,9 +65,9 @@ describe('the cancel of a request', () => {
   });
 });
 
-async function standingOf(brain: InteractionHarness) {
+async function standingOf(playbook: InteractionHarness) {
   const [kept] = await Effect.runPromise(
-    brain.ledger.service.readProjectedRows(openRequestsName, alpha, {
+    playbook.ledger.service.readProjectedRows(openRequestsName, alpha, {
       where: [{ column: 'row_key', equals: askedRunId }],
       orderBy: [],
       order: 'asc',
@@ -79,18 +79,22 @@ async function standingOf(brain: InteractionHarness) {
 
 describe('a cancel asked after a reply answered and before its run was settled', () => {
   it('leaves the request to settle with the answer, and settles it so itself, as whoever gave the answer', async () => {
-    const { brain } = await askedThroughChat();
+    const { playbook } = await askedThroughChat();
     const lineage = { causationId: null, correlationId: askedRunId };
-    await recordedReply(brain.ledger, { choice: 'approve' });
+    await recordedReply(playbook.ledger, { choice: 'approve' });
 
-    await brain.cancel(askedRunId);
-    const afterTheCancel = await standingOf(brain);
+    await playbook.cancel(askedRunId);
+    const afterTheCancel = await standingOf(playbook);
     await Effect.runPromise(
-      deferredCanceller([brain.capability], brain.ledger.service)(address, { ...asked, by: 'acme-admin' }, lineage),
+      deferredCanceller([playbook.capability], playbook.ledger.service)(
+        address,
+        { ...asked, by: 'acme-admin' },
+        lineage,
+      ),
     );
 
     expect(afterTheCancel).toEqual({ open: false, standing: 'answered' });
-    expect(await brain.runOf(askedRunId)).toMatchObject({
+    expect(await playbook.runOf(askedRunId)).toMatchObject({
       output: { status: 'succeeded', output: { choice: 'approve' }, record: {} },
     });
   });
@@ -98,13 +102,13 @@ describe('a cancel asked after a reply answered and before its run was settled',
 
 describe('a cancel asked before a reply is read', () => {
   it('wins: the reply is not taken, and the run ends cancelled', async () => {
-    const { brain } = await askedThroughChat();
+    const { playbook } = await askedThroughChat();
     const lineage = { causationId: null, correlationId: askedRunId };
 
-    await brain.cancel(askedRunId);
+    await playbook.cancel(askedRunId);
     const refused = await Effect.runPromise(
       Effect.flip(
-        brain.record(
+        playbook.record(
           address,
           { type: 'answer', answer: { answer: { choice: 'approve' }, reply: takenReply } },
           lineage,
@@ -113,11 +117,15 @@ describe('a cancel asked before a reply is read', () => {
       ),
     );
     await Effect.runPromise(
-      deferredCanceller([brain.capability], brain.ledger.service)(address, { ...asked, by: 'acme-admin' }, lineage),
+      deferredCanceller([playbook.capability], playbook.ledger.service)(
+        address,
+        { ...asked, by: 'acme-admin' },
+        lineage,
+      ),
     );
 
     expect(refused).toEqual(cancelledUnanswered);
-    expect(await brain.runOf(askedRunId)).toMatchObject({
+    expect(await playbook.runOf(askedRunId)).toMatchObject({
       output: { status: 'rejected', rejection: { reason: 'cancelled', kind: 'requested' } },
     });
   });
@@ -129,10 +137,10 @@ describe('a cancel whose notification is delivered between its read of the run a
     const delivering = await askedThroughChat({ notification: true, ledger: racing.ledger });
     await racing.started();
 
-    await delivering.brain.cancel(askedRunId);
-    await racing.cancelSettled(delivering.brain.capability);
+    await delivering.playbook.cancel(askedRunId);
+    await racing.cancelSettled(delivering.playbook.capability);
 
-    expect(await delivering.brain.runOf(askedRunId)).toMatchObject({
+    expect(await delivering.playbook.runOf(askedRunId)).toMatchObject({
       output: { status: 'succeeded', output: {}, record: { delivered_at: anyTime } },
     });
   });

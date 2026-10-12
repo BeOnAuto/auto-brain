@@ -14,12 +14,12 @@ import {
   type OperationServer,
 } from '../testing/operation-server.ts';
 import { danglingReferencesIn } from '../testing/self-contained.ts';
-import { guideToolName, listedTools, takingBrain, toolNamesIn, type ListedTool } from '../testing/tool-listing.ts';
+import { guideToolName, listedTools, takingPlaybook, toolNamesIn, type ListedTool } from '../testing/tool-listing.ts';
 import { instructionsFor } from './instructions.ts';
 
-const orgTools = ['label_brain', 'list_labels'];
+const orgTools = ['label_playbook', 'list_labels'];
 
-const brainTools = [
+const playbookTools = [
   'add_note',
   'check_lines',
   'list_notes',
@@ -60,22 +60,22 @@ function listingOn(path: string): Promise<readonly ListedTool[]> {
 }
 
 describe('the tools of /mcp', () => {
-  it('are the tools of the org endpoint as they are, then those of a brain endpoint taking a brain', async () => {
-    const [own, org, brain] = await Promise.all([
+  it('are the tools of the org endpoint as they are, then those of a playbook endpoint taking a playbook', async () => {
+    const [own, org, playbook] = await Promise.all([
       listingOn('/mcp'),
       listingOn('/orgs/acme/mcp'),
-      listingOn('/orgs/acme/brains/alpha/mcp'),
+      listingOn('/orgs/acme/playbooks/alpha/mcp'),
     ]);
 
     const guide = own.find(({ name }) => name === guideToolName);
 
-    expect(own.map(({ name }) => name)).toEqual([...orgTools, ...brainTools, guideToolName]);
+    expect(own.map(({ name }) => name)).toEqual([...orgTools, ...playbookTools, guideToolName]);
     expect(own).toEqual([
       ...org.filter(({ name }) => name !== guideToolName),
-      ...brain.filter(({ name }) => name !== guideToolName).map((tool) => takingBrain(tool)),
+      ...playbook.filter(({ name }) => name !== guideToolName).map((tool) => takingPlaybook(tool)),
       guide,
     ]);
-    expect([org.at(-1), brain.at(-1)]).toEqual([guide, guide]);
+    expect([org.at(-1), playbook.at(-1)]).toEqual([guide, guide]);
   });
 
   it('have self-contained input schemas with an object root, and no output schema', async () => {
@@ -93,7 +93,7 @@ describe('the tools of /mcp', () => {
     expect(instructions).toBe(
       instructionsFor(
         'own org',
-        { orgTools, brainTools },
+        { orgTools, playbookTools },
         [{ type: 'notes', noun: 'note', guide: 'notebook' }],
         [{ name: 'take-a-note', calls: ['add_note'] }],
       ),
@@ -102,12 +102,12 @@ describe('the tools of /mcp', () => {
   });
 });
 
-describe('a brain tool on /mcp', () => {
-  it('acts in the brain its argument names, in the org of the key', async () => {
+describe('a playbook tool on /mcp', () => {
+  it('acts in the playbook its argument names, in the org of the key', async () => {
     const outcome = await asKey(acmeAdmin.key, async (session) => ({
-      added: await session.callTool('add_note', { brain: 'beta', name: 'own-org', text: 'hi' }),
-      read: await session.callTool('get_note', { brain: 'beta', name: 'own-org' }),
-      elsewhere: await session.callTool('get_note', { brain: 'alpha', name: 'own-org' }),
+      added: await session.callTool('add_note', { playbook: 'beta', name: 'own-org', text: 'hi' }),
+      read: await session.callTool('get_note', { playbook: 'beta', name: 'own-org' }),
+      elsewhere: await session.callTool('get_note', { playbook: 'alpha', name: 'own-org' }),
     }));
 
     expect(outcome.added.structuredContent).toEqual({ name: 'own-org', text: 'hi' });
@@ -115,10 +115,10 @@ describe('a brain tool on /mcp', () => {
     expect(problemIn(outcome.elsewhere)).toMatchObject({ reason: 'not_found', detail: 'There is no note own-org' });
   });
 
-  it('answers an operation whose input has no field, given only the brain, with its result and its plain words', async () => {
+  it('answers an operation whose input has no field, given only the playbook, with its result and its plain words', async () => {
     const latest = await asKey(acmeAdmin.key, async (session) => {
-      await session.callTool('add_note', { brain: 'beta', name: 'latest', text: 'the last note' });
-      return session.callTool('latest_note', { brain: 'beta' });
+      await session.callTool('add_note', { playbook: 'beta', name: 'latest', text: 'the last note' });
+      return session.callTool('latest_note', { playbook: 'beta' });
     });
 
     expect(latest.isError).toBeUndefined();
@@ -126,43 +126,49 @@ describe('a brain tool on /mcp', () => {
     expect(plainTextIn(latest)).toBe('The latest note is “latest”.');
   });
 
-  it('answers a call without a brain with invalid_input pointing at /brain', async () => {
+  it('answers a call without a playbook with invalid_input pointing at /playbook', async () => {
     const result = await asKey(acmeAdmin.key, (session) => session.callTool('list_notes', {}));
 
     expect({ isError: result.isError, problem: problemIn(result) }).toMatchObject({
       isError: true,
-      problem: { reason: 'invalid_input', errors: [{ detail: 'Missing key', pointer: '/brain' }] },
+      problem: { reason: 'invalid_input', errors: [{ detail: 'Missing key', pointer: '/playbook' }] },
     });
   });
 
-  it('answers a brain the org does not have with not_found', async () => {
-    const result = await asKey(acmeAdmin.key, (session) => session.callTool('list_notes', { brain: 'nowhere' }));
+  it('answers a playbook the org does not have with not_found', async () => {
+    const result = await asKey(acmeAdmin.key, (session) => session.callTool('list_notes', { playbook: 'nowhere' }));
 
-    expect(problemIn(result)).toMatchObject({ reason: 'not_found', detail: 'There is no brain nowhere in this org' });
+    expect(problemIn(result)).toMatchObject({
+      reason: 'not_found',
+      detail: 'There is no playbook nowhere in this org',
+    });
   });
 });
 
 describe('the callers of /mcp', () => {
-  it('reach only the brains of their own org, whatever the arguments name', async () => {
+  it('reach only the playbooks of their own org, whatever the arguments name', async () => {
     const outcome = await asKey(globexAdmin.key, async (session) => ({
-      named: await session.callTool('list_notes', { brain: 'alpha' }),
-      withOrg: await session.callTool('list_notes', { brain: 'alpha', org: 'acme' }),
-      own: await session.callTool('list_notes', { brain: 'gamma' }),
+      named: await session.callTool('list_notes', { playbook: 'alpha' }),
+      withOrg: await session.callTool('list_notes', { playbook: 'alpha', org: 'acme' }),
+      own: await session.callTool('list_notes', { playbook: 'gamma' }),
     }));
 
     expect(problemIn(outcome.named)).toMatchObject({
       reason: 'not_found',
-      detail: 'There is no brain alpha in this org',
+      detail: 'There is no playbook alpha in this org',
     });
     expect(problemIn(outcome.withOrg)).toMatchObject({ reason: 'not_found' });
     expect(outcome.own.structuredContent).toEqual({ notes: [] });
   });
 
-  it('are refused a brain outside their key, and are offered no command their key does not permit', async () => {
-    const limited = await asKey(acmeAlphaWriter.key, (session) => session.callTool('list_notes', { brain: 'beta' }));
+  it('are refused a playbook outside their key, and are offered no command their key does not permit', async () => {
+    const limited = await asKey(acmeAlphaWriter.key, (session) => session.callTool('list_notes', { playbook: 'beta' }));
     const offered = await asKey(acmeReader.key, async (session) => toolNamesIn(await session.listTools()));
 
-    expect(problemIn(limited)).toMatchObject({ reason: 'forbidden', detail: 'The caller may not access this brain' });
+    expect(problemIn(limited)).toMatchObject({
+      reason: 'forbidden',
+      detail: 'The caller may not access this playbook',
+    });
     expect(offered).toEqual([
       'list_labels',
       'list_notes',
@@ -174,7 +180,7 @@ describe('the callers of /mcp', () => {
     ]);
     await expect(
       asKey(acmeReader.key, (session) =>
-        session.callTool('add_note', { brain: 'alpha', name: 'read-only', text: 'no' }),
+        session.callTool('add_note', { playbook: 'alpha', name: 'read-only', text: 'no' }),
       ),
     ).rejects.toThrow('Tool add_note not found');
   });
@@ -191,12 +197,14 @@ describe('the org of /mcp without a key', () => {
       local.handler,
       '/mcp',
       { ...onLocalhost, 'mcp-protocol-version': '2025-11-25' },
-      requestOf(1, 'tools/call', { name: 'label_brain', arguments: { brain: 'alpha', label: 'mine' } }),
+      requestOf(1, 'tools/call', { name: 'label_playbook', arguments: { playbook: 'alpha', label: 'mine' } }),
     );
-    const labels = await call(local.handler, '/v1/orgs/local/brain-labels', { headers: onLocalhost });
+    const labels = await call(local.handler, '/v1/orgs/local/playbook-labels', { headers: onLocalhost });
 
-    expect(messagesIn(labelled)).toMatchObject([{ result: { structuredContent: { brain: 'alpha', label: 'mine' } } }]);
-    expect(labels.body).toEqual({ labels: [{ brain: 'alpha', label: 'mine' }] });
+    expect(messagesIn(labelled)).toMatchObject([
+      { result: { structuredContent: { playbook: 'alpha', label: 'mine' } } },
+    ]);
+    expect(labels.body).toEqual({ labels: [{ playbook: 'alpha', label: 'mine' }] });
   });
 
   it('answers a request without a key with a 401 challenge, and GET with 405 and Allow: POST', async () => {
@@ -212,17 +220,17 @@ describe('the org of /mcp without a key', () => {
 });
 
 describe.each(mcpClientKinds)('the %s client on /mcp', (kind) => {
-  it('lists every tool and calls a brain tool', async () => {
+  it('lists every tool and calls a playbook tool', async () => {
     const outcome = await withMcpSession(
       kind,
       { url: `${listening.origin}/mcp`, headers: { authorization: `Bearer ${acmeAdmin.key}` } },
       async (session) => ({
         tools: listedTools(await session.listTools()).map(({ name }) => name),
-        notes: await session.callTool('list_notes', { brain: 'alpha' }),
+        notes: await session.callTool('list_notes', { playbook: 'alpha' }),
       }),
     );
 
-    expect(outcome.tools).toEqual([...orgTools, ...brainTools, guideToolName]);
+    expect(outcome.tools).toEqual([...orgTools, ...playbookTools, guideToolName]);
     expect(outcome.notes.isError).toBeUndefined();
   });
 });

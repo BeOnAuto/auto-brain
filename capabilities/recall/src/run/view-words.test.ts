@@ -22,8 +22,8 @@ const stallWords: readonly (readonly [StallCause, string])[] = [
   ['refused', 'its module does not load on this server'],
 ];
 
-describe('how far a view lags the brain', () => {
-  it('is the time between the brain’s newest record and the record at the checkpoint, unknown until both are known', () => {
+describe('how far a view lags the playbook', () => {
+  it('is the time between the playbook’s newest record and the record at the checkpoint, unknown until both are known', () => {
     expect([
       lagOf('2026-10-06T10:02:05.000Z', '2026-10-06T10:00:05.000Z'),
       lagOf('2026-10-06T10:00:05.000Z', '2026-10-06T10:00:06.000Z'),
@@ -48,13 +48,13 @@ describe('the detail of a run while its view is built', () => {
     const building = liveView({}, { phase: 'rebuilding', folded: 1200, checkpointAt: '2026-10-06T10:00:05.000Z' });
 
     expect(rebuildingDetail('reviews', 2, liveView({}), '2026-10-06T10:02:05.000Z')).toBe(
-      "The recall function “reviews” has not begun to build its view of version 2 from the brain's history yet; try again in a little while",
+      "The recall function “reviews” has not begun to build its view of version 2 from the playbook's history yet; try again in a little while",
     );
     expect(rebuildingDetail('reviews', 1, liveView({}, { phase: 'waiting' }), '2026-10-06T10:02:05.000Z')).toBe(
-      'The recall function “reviews” waits to build its view of version 1, behind other recall functions of this brain being built; try again in a little while',
+      'The recall function “reviews” waits to build its view of version 1, behind other recall functions of this playbook being built; try again in a little while',
     );
     expect(rebuildingDetail('reviews', 1, building, '2026-10-06T10:02:05.000Z')).toBe(
-      "The recall function “reviews” is building its view of version 1 from the brain's history: it has folded 1200 events so far, and is 2 minutes behind the brain's newest record; try again in a little while",
+      "The recall function “reviews” is building its view of version 1 from the playbook's history: it has folded 1200 events so far, and is 2 minutes behind the playbook's newest record; try again in a little while",
     );
   });
 });
@@ -66,7 +66,7 @@ describe('the detail of a run whose view stalled', () => {
       const detail = stalledDetail('reviews', { event: stalledEvent, kind, message: 'cannot take bad', line: null });
 
       expect(detail).toBe(
-        `The view of the recall function “reviews” stopped at the run_succeeded event of 2026-10-06T10:00:01.000Z: ${words}. Save a corrected version to build the view again from the brain's history`,
+        `The view of the recall function “reviews” stopped at the run_succeeded event of 2026-10-06T10:00:01.000Z: ${words}. Save a corrected version to build the view again from the playbook's history`,
       );
     },
   );

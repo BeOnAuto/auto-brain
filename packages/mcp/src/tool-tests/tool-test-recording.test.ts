@@ -20,7 +20,7 @@ const aNumber: unknown = expect.any(Number);
 
 const aDigest: unknown = expect.stringMatching(/^[0-9a-f]{64}$/u);
 
-const alpha = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
 async function testsOn(entry: Readonly<Record<string, unknown>> = {}) {
   const fake = await serveFakeMcp({ bearer: fakeApiKey });
@@ -51,7 +51,7 @@ describe('what a test records', () => {
 
     expect([started, answered]).toEqual([
       expect.objectContaining({
-        stream: `brain/acme/alpha/tool-tests/${testId}`,
+        stream: `playbook/acme/alpha/tool-tests/${testId}`,
         type: 'tool_test_started',
         causationId: null,
         correlationId: null,
@@ -66,7 +66,7 @@ describe('what a test records', () => {
         context: { by: 'acme-builder', at: aTime },
       }),
       expect.objectContaining({
-        stream: `brain/acme/alpha/tool-tests/${testId}`,
+        stream: `playbook/acme/alpha/tool-tests/${testId}`,
         type: 'tool_test_answered',
         causationId: started?.id,
         data: answeredData,

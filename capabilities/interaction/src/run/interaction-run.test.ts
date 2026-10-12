@@ -20,8 +20,8 @@ function containing(text: string): unknown {
 const aRun: RunContext = {
   id: runId,
   org: 'acme',
-  brain: 'alpha',
-  caller: { id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: '*' },
+  playbook: 'alpha',
+  caller: { id: 'acme-admin', org: 'acme', permissions: allPermissions, playbooks: '*' },
   definition: { name: 'approve-brief', version: 1 },
   journal: recordingJournal(),
   lineage: { startId: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a', correlationId: runId },
@@ -35,34 +35,34 @@ function openDocument(to: string, message: string): string {
 }
 
 async function askedWith(source: string, input: unknown) {
-  const brain = interactionHarness();
-  await brain.define('ask', source);
-  return brain.ask('ask', input, runId);
+  const playbook = interactionHarness();
+  await playbook.define('ask', source);
+  return playbook.ask('ask', input, runId);
 }
 
 describe('a notification to the inbox', () => {
   it('succeeds at once with an empty output, keeping what it said, and waits for nothing', async () => {
-    const brain = interactionHarness();
-    await brain.define('tell', notificationDocument());
+    const playbook = interactionHarness();
+    await playbook.define('tell', notificationDocument());
 
-    expect(await brain.ask('tell', { campaign: 'Spring', owner: 'ada' }, runId)).toMatchObject({
+    expect(await playbook.ask('tell', { campaign: 'Spring', owner: 'ada' }, runId)).toMatchObject({
       status: 'succeeded',
       output: { status: 'succeeded', output: {} },
     });
-    expect(await brain.runOf(runId)).toMatchObject({
+    expect(await playbook.runOf(runId)).toMatchObject({
       output: { record: { to: 'ada', message: 'The brief for Spring is out.', requested_at: anyText } },
     });
-    expect(await brain.call(listInteractions, {})).toMatchObject({ output: { interactions: [] } });
+    expect(await playbook.call(listInteractions, {})).toMatchObject({ output: { interactions: [] } });
   });
 });
 
 describe('a run that cannot ask now', () => {
-  it('is unavailable when the brain holds all the requests it may', async () => {
-    const brain = interactionHarness({ mostOpenRequests: 1 });
-    await brain.define('approve', approvalDocument());
-    await brain.ask('approve', { campaign: 'Spring', owner: 'ada' }, runId);
+  it('is unavailable when the playbook holds all the requests it may', async () => {
+    const playbook = interactionHarness({ mostOpenRequests: 1 });
+    await playbook.define('approve', approvalDocument());
+    await playbook.ask('approve', { campaign: 'Spring', owner: 'ada' }, runId);
 
-    expect(await brain.ask('approve', { campaign: 'Autumn', owner: 'ada' }, otherRunId)).toMatchObject({
+    expect(await playbook.ask('approve', { campaign: 'Autumn', owner: 'ada' }, otherRunId)).toMatchObject({
       status: 'rejected',
       reason: 'unavailable',
       kind: 'requests_full',
@@ -115,8 +115,8 @@ describe('a message the request cannot carry', () => {
 
   it('rejects an input the input schema refuses, or nested deeper than a run takes', async () => {
     const deep = Array.from({ length: 600 }).reduce<Schema.Json>((inner) => [inner], 'x');
-    const brain = interactionHarness();
-    const prepared = Effect.runSync(brain.capability.prepare(approvalDocument()));
+    const playbook = interactionHarness();
+    const prepared = Effect.runSync(playbook.capability.prepare(approvalDocument()));
 
     expect([
       await askedWith(approvalDocument(), { campaign: 'Spring' }),

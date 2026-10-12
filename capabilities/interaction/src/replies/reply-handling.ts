@@ -77,7 +77,7 @@ function refusedReply(reading: Reading, state: ReadingState, { request, reply, b
     }
     if (input !== undefined) {
       yield* told(reading.parts, {
-        brain: reading.place.brain,
+        playbook: reading.place.playbook,
         server: reading.route.server,
         tool: reading.route.replies.tell?.tool ?? reading.route.delivering,
         runId: request.runId,

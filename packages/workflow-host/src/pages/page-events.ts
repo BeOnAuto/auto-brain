@@ -1,4 +1,4 @@
-import { brainEventOf, definitionTypeStreamOf, type CloudEvent } from '@beonauto/definitions';
+import { playbookEventOf, definitionTypeStreamOf, type CloudEvent } from '@beonauto/definitions';
 import type { EventStore, StoredPage, StoredPlace } from '@beonauto/ledger';
 
 import { recordsInAPage } from '../projector/projector-settings.ts';
@@ -25,7 +25,7 @@ export interface ReadPage {
 }
 
 interface PageRead {
-  readonly brainKey: string;
+  readonly playbookKey: string;
   readonly after: Point | undefined;
   readonly types: readonly string[];
   readonly definitionType: string;
@@ -49,10 +49,10 @@ export function typesToRead(named: readonly string[]): readonly string[] {
   return [...read].toSorted();
 }
 
-function eventOf(brainKey: string, record: StoredRecord): CloudEvent | undefined {
+function eventOf(playbookKey: string, record: StoredRecord): CloudEvent | undefined {
   const { id, causationId, correlationId, version, globalPosition, type, data, metadata, recordedAt } = record;
-  const stream = record.stream.slice(brainKey.length);
-  return brainEventOf({
+  const stream = record.stream.slice(playbookKey.length);
+  return playbookEventOf({
     id,
     causationId,
     correlationId,
@@ -70,8 +70,8 @@ function hasAMoment({ time }: CloudEvent): boolean {
   return time === undefined || Number.isFinite(Date.parse(time));
 }
 
-function placedOf(brainKey: string, record: StoredRecord): PageEvent | PassedOver {
-  const event = eventOf(brainKey, record);
+function placedOf(playbookKey: string, record: StoredRecord): PageEvent | PassedOver {
+  const event = eventOf(playbookKey, record);
   return event === undefined || !hasAMoment(event)
     ? { record: record.id, reason: 'unreadable' }
     : { point: record.point, recordedAt: record.recordedAt, record: record.id, event };
@@ -87,15 +87,15 @@ function isPassedOver(placed: PageEvent | PassedOver): placed is PassedOver {
 
 export async function readPage(
   store: EventStore,
-  { brainKey, after, types, definitionType }: PageRead,
+  { playbookKey, after, types, definitionType }: PageRead,
 ): Promise<ReadPage> {
   const page = await store.readRecorded(
-    brainKey,
+    playbookKey,
     { kind: 'everything' },
     { order: 'asc', limit: recordsInAPage, types, ...(after === undefined ? {} : { after }) },
   );
-  const placed = page.records.map((record) => placedOf(brainKey, record));
-  const definitions = `${brainKey}${definitionTypeStreamOf(definitionType)}`;
+  const placed = page.records.map((record) => placedOf(playbookKey, record));
+  const definitions = `${playbookKey}${definitionTypeStreamOf(definitionType)}`;
   return {
     events: placed.filter((each) => isPageEvent(each)),
     definitionsSeen: page.records.some(({ stream }) => stream === definitions),

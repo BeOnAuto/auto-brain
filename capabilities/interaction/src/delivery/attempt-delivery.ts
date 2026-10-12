@@ -36,7 +36,7 @@ function callOf({ request, record }: DeliveryPlan, input: OneCall['input']): One
   const { address, row } = request;
   return {
     org: address.org,
-    brain: address.brain,
+    playbook: address.playbook,
     reference: { server: record.deliver.server, tool: record.deliver.tool },
     input,
     meta: { [runIdKey]: address.id, [deliveryIdKey]: row.request_id },

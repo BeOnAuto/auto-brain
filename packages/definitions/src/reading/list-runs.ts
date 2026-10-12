@@ -1,5 +1,5 @@
 import {
-  BrainReader,
+  PlaybookReader,
   PagingInputFields,
   PagingOutputFields,
   defaultPageLimit,
@@ -19,7 +19,7 @@ import { ListedRunSchema, listedRunsOf } from './listed-run.ts';
 import type { StoredTypesByStatus } from './run-status.ts';
 
 const description = [
-  'Lists the runs of the brain a page at a time, newest first, each with its definition, its status, who started it and when it ended, without its output.',
+  'Lists the runs of the playbook a page at a time, newest first, each with its definition, its status, who started it and when it ended, without its output.',
   'Use it to find a run the person means, such as the runs of a scheduled workflow; get_run reads one run in full.',
   '`type` and `name` keep the runs of one definition and `status` those in one status.',
   `A filtered page looks at up to ${mostExaminedInAPage} runs, so it may hold fewer runs than \`limit\`, or none, while has_more is true.`,
@@ -58,7 +58,7 @@ function streamsOfRuns(type: string | undefined, name: string | undefined): Reco
 
 function runsListedBy(byStatus: StoredTypesByStatus) {
   return Effect.fnUntraced(function* ({ type, name, status, limit = defaultPageLimit, cursor }: ListRunsInput) {
-    const page = yield* (yield* BrainReader).readRecorded(streamsOfRuns(type, name), {
+    const page = yield* (yield* PlaybookReader).readRecorded(streamsOfRuns(type, name), {
       order: 'desc',
       limit,
       ...(cursor === undefined ? {} : { cursor }),
@@ -76,7 +76,7 @@ export function defineListRuns(capabilities: readonly Capability[], byStatus: St
   const known = knownCapabilities(capabilities);
   const words = definitionWordsFor(capabilities);
   const listRuns = runsListedBy(byStatus);
-  const operation = defineQuery('brain', {
+  const operation = defineQuery('playbook', {
     name: 'list_runs',
     title: 'List runs',
     description,

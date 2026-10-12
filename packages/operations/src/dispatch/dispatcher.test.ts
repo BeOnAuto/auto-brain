@@ -2,13 +2,13 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { rejected, type PipelineStep } from '../index.ts';
-import { labelBrain } from '../testing/brain-labels.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { publishDraft } from '../testing/drafts.ts';
-import { harness, toBrain, toOrg } from '../testing/harness.ts';
+import { harness, toPlaybook, toOrg } from '../testing/harness.ts';
 import { addNote, copyNote, getNote, listNotes } from '../testing/notes.ts';
+import { labelPlaybook } from '../testing/playbook-labels.ts';
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 const closedToCommands: PipelineStep = ({ kind }) =>
   kind === 'command' ? Effect.fail(rejected('unavailable', 'The org has used its operations')) : Effect.void;
@@ -26,10 +26,10 @@ function recordedSteps(): { readonly steps: readonly PipelineStep[]; readonly pa
 
 describe('a dispatched handler', () => {
   it('may call another operation of its scope within the same call', async () => {
-    const { dispatcher, run } = harness();
+    const { dispatcher: calls, run } = harness();
     const copying = (name: string, copy: string) =>
-      run(dispatcher.dispatchToBrain(copyNote.registration, toAlpha(acmeAdmin, { name, copy })));
-    await run(dispatcher.dispatchToBrain(addNote.registration, toAlpha(acmeAdmin, { name: 'anvil', text: 'heavy' })));
+      run(calls.dispatchToPlaybook(copyNote.registration, toAlpha(acmeAdmin, { name, copy })));
+    await run(calls.dispatchToPlaybook(addNote.registration, toAlpha(acmeAdmin, { name: 'anvil', text: 'heavy' })));
 
     expect(await copying('anvil', 'twin')).toEqual({
       status: 'succeeded',
@@ -43,14 +43,14 @@ describe('a dispatched handler', () => {
   });
 
   it('rejects with a reason it declares', async () => {
-    const { dispatcher, run } = harness();
+    const { dispatcher: calls, run } = harness();
     const anvil = toAlpha(acmeAdmin, { name: 'anvil', text: 'heavy' });
 
-    expect(await run(dispatcher.dispatchToBrain(addNote.registration, anvil))).toEqual({
+    expect(await run(calls.dispatchToPlaybook(addNote.registration, anvil))).toEqual({
       status: 'succeeded',
       output: { added: { name: 'anvil', text: 'heavy' }, version: 1 },
     });
-    expect(await run(dispatcher.dispatchToBrain(addNote.registration, anvil))).toEqual({
+    expect(await run(calls.dispatchToPlaybook(addNote.registration, anvil))).toEqual({
       status: 'rejected',
       reason: 'conflict',
       detail: 'A note named anvil exists',
@@ -58,9 +58,9 @@ describe('a dispatched handler', () => {
   });
 
   it('is rejected with a conflict of a concurrent change when a concurrent write to its stream causes a version conflict', async () => {
-    const { dispatcher, run } = harness();
+    const { dispatcher: calls, run } = harness();
     const adding = (name: string) =>
-      dispatcher.dispatchToBrain(addNote.registration, toAlpha(acmeAdmin, { name, text: name }));
+      calls.dispatchToPlaybook(addNote.registration, toAlpha(acmeAdmin, { name, text: name }));
 
     expect(await run(Effect.all([adding('anvil'), adding('bolt')], { concurrency: 'unbounded' }))).toEqual([
       { status: 'succeeded', output: { added: { name: 'anvil', text: 'anvil' }, version: 1 } },
@@ -76,9 +76,9 @@ describe('a dispatched handler', () => {
 
 describe('a dispatched handler rejecting with invalid input', () => {
   it('is rejected with invalid_input, its detail and the issues it points at', async () => {
-    const { dispatcher, run } = harness();
+    const { dispatcher: calls, run } = harness();
     const publishing = (lines: readonly string[]) =>
-      run(dispatcher.dispatchToBrain(publishDraft.registration, toAlpha(acmeAdmin, { lines })));
+      run(calls.dispatchToPlaybook(publishDraft.registration, toAlpha(acmeAdmin, { lines })));
 
     expect(await publishing(['Fine', 'wrong', 'Good', 'bad'])).toEqual({
       status: 'rejected',
@@ -93,10 +93,10 @@ describe('a dispatched handler rejecting with invalid input', () => {
   });
 
   it('answers at most one hundred of its issues', async () => {
-    const { dispatcher, run } = harness();
+    const { dispatcher: calls, run } = harness();
     const lines = Array.from({ length: 150 }, () => 'lowercase');
 
-    expect(await run(dispatcher.dispatchToBrain(publishDraft.registration, toAlpha(acmeAdmin, { lines })))).toEqual({
+    expect(await run(calls.dispatchToPlaybook(publishDraft.registration, toAlpha(acmeAdmin, { lines })))).toEqual({
       status: 'rejected',
       reason: 'invalid_input',
       detail: 'The draft has lines to fix',
@@ -109,17 +109,17 @@ describe('a dispatched handler rejecting with invalid input', () => {
 });
 
 describe('pipeline steps', () => {
-  it('run in order once a call is authorized and its brain exists, before its input is decoded', async () => {
+  it('run in order once a call is authorized and its playbook exists, before its input is decoded', async () => {
     const { steps, passed } = recordedSteps();
-    const { dispatcher, run } = harness({ steps });
+    const { dispatcher: calls, run } = harness({ steps });
 
     await run(
-      dispatcher.dispatchToBrain(getNote.registration, toBrain('globex', 'gamma')(acmeAdmin, { name: 'gear' })),
+      calls.dispatchToPlaybook(getNote.registration, toPlaybook('globex', 'gamma')(acmeAdmin, { name: 'gear' })),
     );
     await run(
-      dispatcher.dispatchToBrain(getNote.registration, toBrain('acme', 'nowhere')(acmeAdmin, { name: 'gear' })),
+      calls.dispatchToPlaybook(getNote.registration, toPlaybook('acme', 'nowhere')(acmeAdmin, { name: 'gear' })),
     );
-    const invalid = await run(dispatcher.dispatchToBrain(getNote.registration, toAlpha(acmeAdmin, { name: 7 })));
+    const invalid = await run(calls.dispatchToPlaybook(getNote.registration, toAlpha(acmeAdmin, { name: 7 })));
 
     expect(invalid).toMatchObject({ reason: 'invalid_input' });
     expect(passed()).toEqual(['first get_note in acme', 'second get_note in acme']);
@@ -128,9 +128,9 @@ describe('pipeline steps', () => {
   it('reject with at most one hundred issues, each holding only its detail and pointer', async () => {
     const issues = Array.from({ length: 150 }, (_unused, index) => ({ detail: 'busy', pointer: `/${index}`, at: 1 }));
     const crowded: PipelineStep = () => Effect.fail(rejected('unavailable', 'The org is busy', issues));
-    const { dispatcher, run } = harness({ steps: [crowded] });
+    const { dispatcher: calls, run } = harness({ steps: [crowded] });
 
-    const outcome = await run(dispatcher.dispatchToBrain(listNotes.registration, toAlpha(acmeAdmin)));
+    const outcome = await run(calls.dispatchToPlaybook(listNotes.registration, toAlpha(acmeAdmin)));
 
     expect(outcome).toEqual({
       status: 'rejected',
@@ -141,18 +141,18 @@ describe('pipeline steps', () => {
   });
 
   it('may reject a call before its handler runs', async () => {
-    const { dispatcher, run } = harness({ steps: [closedToCommands] });
+    const { dispatcher: calls, run } = harness({ steps: [closedToCommands] });
     const unavailable = { status: 'rejected', reason: 'unavailable', detail: 'The org has used its operations' };
 
     expect(
-      await run(dispatcher.dispatchToBrain(addNote.registration, toAlpha(acmeAdmin, { name: 'anvil', text: 'x' }))),
+      await run(calls.dispatchToPlaybook(addNote.registration, toAlpha(acmeAdmin, { name: 'anvil', text: 'x' }))),
     ).toEqual(unavailable);
     expect(
       await run(
-        dispatcher.dispatchToOrg(labelBrain.registration, toOrg('acme')(acmeAdmin, { brain: 'alpha', label: 'x' })),
+        calls.dispatchToOrg(labelPlaybook.registration, toOrg('acme')(acmeAdmin, { playbook: 'alpha', label: 'x' })),
       ),
     ).toEqual(unavailable);
-    expect(await run(dispatcher.dispatchToBrain(listNotes.registration, toAlpha(acmeAdmin)))).toEqual({
+    expect(await run(calls.dispatchToPlaybook(listNotes.registration, toAlpha(acmeAdmin)))).toEqual({
       status: 'succeeded',
       output: { notes: [] },
     });

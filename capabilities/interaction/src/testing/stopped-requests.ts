@@ -16,8 +16,8 @@ function stoppingBeforeSettling(ledger: RequestLedger): RequestLedger {
   };
 }
 
-export async function attemptedThenStopped({ brain, askedAt }: AskedRequest): Promise<boolean> {
-  const stopping = brain.dueOver(stoppingBeforeSettling(brain.ledger.service));
+export async function attemptedThenStopped({ playbook, askedAt }: AskedRequest): Promise<boolean> {
+  const stopping = playbook.dueOver(stoppingBeforeSettling(playbook.ledger.service));
   const items = await dueInBothLanes(stopping, askedAt);
   const exit = await Effect.runPromise(Effect.exit(Effect.forEach(items, (item) => item.perform(askedAt))));
   return Exit.isFailure(exit);

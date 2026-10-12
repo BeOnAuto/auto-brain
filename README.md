@@ -1,23 +1,25 @@
-# brain-runtime
+# Auto Runtime
 
-The runtime for business brains, built and used through your agent.
+**Describe how you want the work done.** Auto builds a working playbook you can test, change and run again. You decide when it runs and what it is allowed to do.
 
-[![CI](https://github.com/BeOnAuto/auto-brain/actions/workflows/ci.yml/badge.svg)](https://github.com/BeOnAuto/auto-brain/actions/workflows/ci.yml) [![License: ELv2](https://img.shields.io/badge/license-ELv2-blue?style=flat-square)](LICENSING.md)
+A playbook contains one **brain**, its reusable function collection, and **workflows** that coordinate those functions. Functions can also run directly. Each function or workflow call produces a **run** with its result and the versions used. Connections provide authorized access to external services.
 
-[![Auto Studio showing a Sales Ops brain, with its functions, workflows and runs on the left and its run, token and duration charts on the right](docs/assets/studio-dashboard.png)](https://studio.on.auto)
+Your agent builds and directs the work. **Auto Runtime** stores and executes it; [**Auto Studio**](https://studio.on.auto) lets you inspect and manage it.
 
-[Auto Studio](https://studio.on.auto) is where you watch a brain work. Open a run to follow how it reached its result, or check the charts for how busy the brain has been and what it has spent in tokens.
+[![CI](https://github.com/BeOnAuto/auto-brain/actions/workflows/ci.yml/badge.svg)](https://github.com/BeOnAuto/auto-brain/actions/workflows/ci.yml)
 
-## Documentation and help
+## Get started
 
-Please visit the [Auto documentation site](https://on.auto/docs/) for instructions.
+Follow the [local setup guide](docs/get-started/local.md) or browse the [Auto documentation](https://on.auto/docs/). See [function availability](docs/concepts/functions.md#availability) for implemented capabilities. The repository, the configuration file and the container image are named `auto-brain`, for the runtime.
 
-For bugs and questions, [open an issue](https://github.com/BeOnAuto/auto-brain/issues/new/choose). Report vulnerabilities through [SECURITY.md](SECURITY.md).
+![Auto Studio showing the Accounts Payable playbook, its Brain, workflows, pending decisions and sample runs](docs/assets/studio-dashboard.png)
 
-## Contribute
+_Local runtime with synthetic Accounts Payable data._
 
-Runtime code and its documentation live here. See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and checks, and [Documentation contributions](docs/contributing/documentation.md) to preview or improve a guide. Documentation pull requests can be reviewed without the private website repository or service credentials.
+## Contribute and get help
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and checks, and [documentation contributions](docs/contributing/documentation.md) to preview a guide. [Open an issue](https://github.com/BeOnAuto/auto-brain/issues/new/choose) for bugs and questions; report vulnerabilities through [SECURITY.md](SECURITY.md).
 
 ## License
 
-Auto brain-runtime is source-available under the [Elastic License 2.0](LICENSE). [LICENSING.md](LICENSING.md) explains the terms, including restrictions on offering it as a hosted or managed service. Contributions follow the [CLA](CLA.md) and [Code of Conduct](CODE_OF_CONDUCT.md).
+Auto Runtime is source-available under the [Elastic License 2.0](LICENSE). [LICENSING.md](LICENSING.md) explains the terms. Contributions follow the [CLA](CLA.md) and [Code of Conduct](CODE_OF_CONDUCT.md).

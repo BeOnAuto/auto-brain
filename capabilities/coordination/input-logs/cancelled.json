@@ -27,7 +27,7 @@
       },
       "attributes": {
         "org": "acme",
-        "brain": "alpha",
+        "playbook": "alpha",
         "run_id": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
         "definition": {
           "name": "cancelled",
@@ -111,7 +111,7 @@
         },
         {
           "op": "add",
-          "path": "/attributes/brain",
+          "path": "/attributes/playbook",
           "value": "alpha"
         },
         {
@@ -255,7 +255,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2659
+          "value": 2662
         }
       ],
       "outputs": [
@@ -345,7 +345,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3844
+          "value": 3847
         }
       ],
       "outputs": [

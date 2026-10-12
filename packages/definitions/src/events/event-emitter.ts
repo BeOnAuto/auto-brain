@@ -1,10 +1,16 @@
-import { Conflict, streamPrefixOfBrain, type BrainAddress, type Ledger, type Lineage } from '@beonauto/operations';
+import {
+  Conflict,
+  streamPrefixOfPlaybook,
+  type PlaybookAddress,
+  type Ledger,
+  type Lineage,
+} from '@beonauto/operations';
 import { Effect, Option, Result, Schema, SchemaIssue } from 'effect';
 
 import { jsonBytesOf } from '../runs/recorded-size.ts';
 import { CloudEventSchema, mostPublishedEventBytes, type CloudEvent } from './cloud-event.ts';
 import { publishedEventDecider, publishedEventStreamOf, type Emitter } from './published-events.ts';
-import type { BrainOwnNames } from './reserved-attributes.ts';
+import type { PlaybookOwnNames } from './reserved-attributes.ts';
 
 export interface Emission {
   readonly event: Schema.Json;
@@ -17,7 +23,7 @@ export interface Emission {
 export type EmitOutcome = 'recorded' | 'already_recorded' | 'refused';
 
 export type EmitEvent = (
-  brain: BrainAddress,
+  playbook: PlaybookAddress,
   emission: Emission,
   lineage: Lineage,
 ) => Effect.Effect<EmitOutcome, Conflict>;
@@ -29,8 +35,8 @@ export interface EmittedEvents {
 
 const formatIssues = SchemaIssue.makeFormatterDefault();
 
-export function emittedEventsOf({ refusingTheBrainsOwnAttributes }: BrainOwnNames): EmittedEvents {
-  const EmittedEventSchema = CloudEventSchema.check(refusingTheBrainsOwnAttributes);
+export function emittedEventsOf({ refusingThePlaybooksOwnAttributes }: PlaybookOwnNames): EmittedEvents {
+  const EmittedEventSchema = CloudEventSchema.check(refusingThePlaybooksOwnAttributes);
   const decodeEvent = Schema.decodeUnknownOption(EmittedEventSchema);
   const decodeEmitted = Schema.decodeUnknownResult(EmittedEventSchema);
   return {
@@ -55,14 +61,14 @@ function refusedUnlessChanging({ detail, kind }: Readonly<Pick<Conflict, 'detail
     : Effect.succeed<EmitOutcome>('refused');
 }
 
-export function eventEmitter(ledger: Ledger['Service'], names: BrainOwnNames): EmitEvent {
+export function eventEmitter(ledger: Ledger['Service'], names: PlaybookOwnNames): EmitEvent {
   const { eventOf } = emittedEventsOf(names);
-  return (brain, { event, emitter, depth, by, at }, lineage) => {
+  return (playbook, { event, emitter, depth, by, at }, lineage) => {
     const cloudEvent = eventOf(event);
     if (cloudEvent === undefined) {
       return Effect.succeed('refused');
     }
-    const stream = `${streamPrefixOfBrain(brain)}${publishedEventStreamOf(cloudEvent.source, cloudEvent.id)}`;
+    const stream = `${streamPrefixOfPlaybook(playbook)}${publishedEventStreamOf(cloudEvent.source, cloudEvent.id)}`;
     const publication = { event: cloudEvent, filled: [], emittedBy: emitter, depth, by, at };
     return ledger.execute(stream, publishedEventDecider, publication, lineage).pipe(
       Effect.map(({ state }): EmitOutcome => (state?.context.at === at ? 'recorded' : 'already_recorded')),

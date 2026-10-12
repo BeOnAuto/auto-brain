@@ -47,18 +47,18 @@ async function refusalOf(access: ReturnType<typeof accessTo>['access'], ...writt
 }
 
 describe('a tool that is not offered', () => {
-  it('names a server that is not configured, or not for this org or brain', async () => {
+  it('names a server that is not configured, or not for this org or playbook', async () => {
     const fake = await fakeServer();
     const { access } = accessTo({
       graph: graphOf(fake, { org: 'globex' }),
-      crm: graphOf(fake, { brains: ['sales'] }),
+      crm: graphOf(fake, { playbooks: ['sales'] }),
       wiki: graphOf(fake),
     });
 
     expect(await refusalOf(access, 'wiki/search', 'graph/search', 'crm/search', 'mail/send')).toMatchObject({
       _tag: 'tool_not_offered',
       because: 'mcp_server_not_configured',
-      detail: 'No MCP server named graph, crm, or mail is configured for this brain',
+      detail: 'No MCP server named graph, crm, or mail is configured for this playbook',
     });
     expect(fake.seen()).toEqual([]);
   });

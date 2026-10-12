@@ -7,9 +7,9 @@ import {
   isWorkflowRun,
   refusingBlankText,
   refusingForbiddenCharacters,
-  type BrainOwnNames,
+  type PlaybookOwnNames,
 } from '@beonauto/definitions';
-import { BrainContext, Caller, defineCommand, NotFound, quoted } from '@beonauto/operations';
+import { PlaybookContext, Caller, defineCommand, NotFound, quoted } from '@beonauto/operations';
 import { jsonBytesOf, measureOf, mostValueDepth } from '@beonauto/workflow-engine';
 import type { WorkflowHost } from '@beonauto/workflow-host';
 import { DateTime, Effect, Schema, SchemaTransformation } from 'effect';
@@ -24,7 +24,7 @@ const mostTextLength = 1024;
 
 const mostDataDepth = mostValueDepth - 2;
 
-const noRunningWorkflow = 'The brain has no active workflow run with that id';
+const noRunningWorkflow = 'The playbook has no active workflow run with that id';
 
 const notNow = 'The workflow cannot take the event now; try again shortly';
 
@@ -60,7 +60,7 @@ const EventFields = {
   ),
 };
 
-function eventSchemaOf({ refusingTheBrainsOwnAttributes }: BrainOwnNames) {
+function eventSchemaOf({ refusingThePlaybooksOwnAttributes }: PlaybookOwnNames) {
   return Schema.Struct({
     ...EventFields,
     id: Schema.optionalKey(
@@ -77,7 +77,7 @@ function eventSchemaOf({ refusingTheBrainsOwnAttributes }: BrainOwnNames) {
       Schema.makeFilter((event: Schema.Json) => jsonBytesOf(event) <= mostEventBytes, {
         expected: `an event of at most ${mostEventBytes} bytes as JSON in UTF-8`,
       }),
-      refusingTheBrainsOwnAttributes,
+      refusingThePlaybooksOwnAttributes,
     );
 }
 
@@ -92,15 +92,15 @@ const DeliveredEventSchema = Schema.Struct({
 
 const description = [
   'Gives an event to one workflow run that is still going, for a step that listens for it, such as an approval, and returns the event with its id.',
-  'Use it when the person answers what a run waits for; it does not start a run, and publish_event gives an event to the brain as a whole.',
+  'Use it when the person answers what a run waits for; it does not start a run, and publish_event gives an event to the playbook as a whole.',
   "`run_id` is the workflow run's id and `event` has a `type` and an optional `source`, `subject`, `data` and `id`;",
   'an event whose id the run already received is ignored, so a call can be retried with its id.',
   'An event no step takes yet waits in the run.',
-  "The brain's own types and sources, and the lineage attributes it gives its own records, are refused.",
+  "The playbook's own types and sources, and the lineage attributes it gives its own records, are refused.",
 ].join(' ');
 
-export function defineSendRunEvent(runs: Pick<WorkflowHost, 'deliver'>, names: BrainOwnNames) {
-  return defineCommand('brain', {
+export function defineSendRunEvent(runs: Pick<WorkflowHost, 'deliver'>, names: PlaybookOwnNames) {
+  return defineCommand('playbook', {
     name: 'send_run_event',
     title: 'Send event to workflow run',
     description,
@@ -116,7 +116,7 @@ export function defineSendRunEvent(runs: Pick<WorkflowHost, 'deliver'>, names: B
       if (!isWorkflowRun(run) || run.status !== 'started') {
         return yield* new NotFound({ detail: noRunningWorkflow });
       }
-      const { org, brain } = yield* BrainContext;
+      const { org, playbook } = yield* PlaybookContext;
       const { id: caller } = yield* Caller;
       const delivered = {
         ...event,
@@ -125,7 +125,7 @@ export function defineSendRunEvent(runs: Pick<WorkflowHost, 'deliver'>, names: B
         time: DateTime.formatIso(yield* DateTime.now),
       };
       const answer = yield* runs
-        .deliver({ org, brain, runId }, delivered)
+        .deliver({ org, playbook, runId }, delivered)
         .pipe(Effect.mapError(unavailableUnless(notNow)));
       if (answer !== 'delivered') {
         return yield* new NotFound({ detail: noRunningWorkflow });
