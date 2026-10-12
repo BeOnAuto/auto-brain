@@ -31,6 +31,7 @@ model_aliases:
 | The models listed for Bedrock, Azure or Vertex       | `declared_models` in the file, a list of model ids for each provider prefix             | [Listing the models](models.md#listing-the-models)                                      |
 | Only some models                                     | `allowed_models` in the file, such as `[anthropic/*, gateway/llama-3.3-70b]`            | [Listing the models](models.md#listing-the-models)                                      |
 | An outbound proxy or a private certificate authority | `NODE_USE_ENV_PROXY=1`, `HTTPS_PROXY` and `NODE_EXTRA_CA_CERTS`                         | [Proxy and CA](models.md#behind-an-outbound-proxy-with-a-private-certificate-authority) |
+| The ledger in Amazon RDS without a database password | `DATABASE_URL` without a password and `DATABASE_CREDENTIALS=aws-iam`                    | [Without a password](container.md#without-a-password-on-amazon-rds)                     |
 | Tools that functions may call                        | `mcp_servers` in the file, each entry's `allowed` to allow only some of its tools       | [MCP servers](#mcp-servers)                                                             |
 | The requests interaction functions may keep open     | `INTERACTION_OPEN_REQUESTS`                                                             | [Interaction functions](#interaction-functions)                                         |
 

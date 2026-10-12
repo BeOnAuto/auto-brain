@@ -10,7 +10,7 @@ import {
   type ChatHarness,
   type HarnessLedger,
 } from '@on.auto/interaction/testing';
-import { postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
+import { plainPoolsOn, postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
 import { ledgerLayer } from '@on.auto/ledger/sqlite3';
 import { Ledger } from '@on.auto/operations';
 import { Effect, Layer, ManagedRuntime } from 'effect';
@@ -55,7 +55,7 @@ async function onPostgreSQL(): Promise<HarnessLedger> {
   onTestFinished(() => administer(`DROP DATABASE ${name} WITH (FORCE)`));
   const url = new URL(postgresql);
   url.pathname = `/${name}`;
-  return opened(postgresqlLedgerLayer({ connectionString: url.href, projections }));
+  return opened(postgresqlLedgerLayer({ pools: plainPoolsOn(url.href), projections }));
 }
 
 interface Store {

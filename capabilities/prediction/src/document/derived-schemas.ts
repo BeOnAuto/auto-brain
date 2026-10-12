@@ -23,9 +23,9 @@ function horizonOf({ horizons, accumulates }: Predicts): { readonly horizon?: Sc
     : {};
 }
 
-function questionWords({ unit, accumulates }: Predicts): string {
+function questionWords({ target, unit, accumulates }: Predicts): string {
   return accumulates === undefined
-    ? `A question: the series and the horizon to predict, in ${unit}`
+    ? `A question: the series and the horizon to predict its ${target} at, in ${unit}`
     : `A question: the series whose total in ${unit} to the end of the ${accumulates} after its last observed period to predict`;
 }
 

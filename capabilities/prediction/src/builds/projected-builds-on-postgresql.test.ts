@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Client } from 'pg';
+import { Client, Pool } from 'pg';
 import { describe, onTestFinished } from 'vitest';
 
 import { projectedBuildsSuite } from '../build-testing/projected-builds-suite.ts';
@@ -31,7 +31,7 @@ const onPostgreSQL: SettingsOf = async () => {
   });
   const database = new URL(server);
   database.pathname = `/${name}`;
-  return { store: 'postgresql', connectionString: database.href };
+  return { store: 'postgresql', pools: ({ max }) => new Pool({ connectionString: database.href, max }) };
 };
 
 describe.skipIf(skipped)(`the builds of prediction functions over projected datasets on PostgreSQL${notice}`, () => {

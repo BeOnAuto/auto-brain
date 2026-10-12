@@ -1,3 +1,5 @@
+import type { PostgreSQLPools } from '@on.auto/ledger/postgresql';
+
 import type { HostDatabase } from './host-database.ts';
 import { openPostgreSQLDatabase } from './postgresql-database.ts';
 import { openSQLiteDatabase } from './sqlite-database.ts';
@@ -5,7 +7,7 @@ import type { Statement } from './statement.ts';
 
 export type DatabaseSettings =
   | { readonly store: 'sqlite'; readonly file: string }
-  | { readonly store: 'postgresql'; readonly connectionString: string };
+  | { readonly store: 'postgresql'; readonly pools: PostgreSQLPools };
 
 export function openHostDatabase(
   settings: DatabaseSettings,
@@ -14,5 +16,5 @@ export function openHostDatabase(
 ): Promise<HostDatabase> {
   return settings.store === 'sqlite'
     ? openSQLiteDatabase(settings.file, tables)
-    : openPostgreSQLDatabase({ connectionString: settings.connectionString, reportLostConnection, tables });
+    : openPostgreSQLDatabase({ pools: settings.pools, reportLostConnection, tables });
 }

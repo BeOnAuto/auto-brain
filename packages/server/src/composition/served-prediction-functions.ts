@@ -12,6 +12,7 @@ import {
   uploadCandidate,
   uploadDataset,
 } from '@on.auto/prediction';
+import { recallBounds } from '@on.auto/recall';
 import type { ProgramPool } from '@on.auto/workflow-engine/dsl';
 import { someFolder, type DueWork, type SomeFolder, type WorkflowStore } from '@on.auto/workflow-host';
 
@@ -30,7 +31,9 @@ export interface ServedPredictionFunctions extends ServedPrediction {
 }
 
 export function datasetsFolderOf(pool: ProgramPool): SomeFolder {
-  return someFolder(datasetFolder({ filters: pool.evaluations.filters }));
+  return someFolder(
+    datasetFolder({ filters: pool.evaluations.filters, triesBeforeStall: recallBounds.overtimesBeforeStall }),
+  );
 }
 
 export async function predictionFunctionsServedBy(

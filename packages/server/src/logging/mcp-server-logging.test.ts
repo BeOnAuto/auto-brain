@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { linesLoggedBy } from '../testing/records/logged-lines.ts';
-import { logServerMessage, logUntestableServer } from './logging.ts';
+import { logServerMessage, logUntestableServer } from './mcp-server-logging.ts';
 
 describe('logServerMessage', () => {
   it('tells a line an MCP server wrote, as information', async () => {

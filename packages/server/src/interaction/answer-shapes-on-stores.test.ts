@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 
-import { postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
+import { plainPoolsOn, postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
 import { ledgerLayer } from '@on.auto/ledger/sqlite3';
 import { Schema } from 'effect';
 import { Client } from 'pg';
@@ -82,7 +82,11 @@ async function onPostgreSQL(): Promise<ProjectionStore> {
   const url = database.href;
   return {
     environment: { LEDGER_FILE: '', DATABASE_URL: url },
-    ledgerKeeping: (projection) => postgresqlLedgerLayer({ connectionString: url, projections: [projection] }),
+    ledgerKeeping: (projection) =>
+      postgresqlLedgerLayer({
+        pools: plainPoolsOn(url),
+        projections: [projection],
+      }),
     tablesOf: (projection) =>
       namesAnswered(url, 'SELECT tablename AS name FROM pg_tables WHERE tablename ~ $1 ORDER BY tablename', [
         `^${projection}_[0-9]+$`,

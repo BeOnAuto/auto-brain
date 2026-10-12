@@ -722,6 +722,9 @@ importers:
       '@aws-sdk/credential-providers':
         specifier: 3.1144.0
         version: 3.1144.0
+      '@aws-sdk/rds-signer':
+        specifier: 3.1144.0
+        version: 3.1144.0
       effect:
         specifier: 'catalog:'
         version: 4.0.0
@@ -808,6 +811,9 @@ importers:
       effect:
         specifier: 'catalog:'
         version: 4.0.0
+      pg:
+        specifier: 8.23.1
+        version: 8.23.1
     devDependencies:
       '@types/pg':
         specifier: 8.23.1
@@ -815,9 +821,6 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.2(vitest@5.0.2)
-      pg:
-        specifier: 8.23.1
-        version: 8.23.1
       vitest:
         specifier: 'catalog:'
         version: 5.0.2(@opentelemetry/api@1.9.1)(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
@@ -1109,6 +1112,10 @@ packages:
 
   '@aws-sdk/nested-clients@3.997.46':
     resolution: {integrity: sha512-oRxtBcka/JGHGs9l9p9IVajGoTP8vTPmoAzdHGy4Qcy9P5vPnDf6nhIeM/COQNY9k/OahImTRaLkHftoXvfcmQ==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/rds-signer@3.1144.0':
+    resolution: {integrity: sha512-V8Wclc0cacNqezE3wVqGhIvcC1j41sJZtVCKnHP+J2eRz0HHGWPIV9PYd4XjfK7LrXyrInrWwFRa/Z2VkIFGmw==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/signature-v4-multi-region@3.996.47':
@@ -5598,6 +5605,15 @@ snapshots:
       '@smithy/core': 3.35.1
       '@smithy/fetch-http-handler': 5.8.0
       '@smithy/node-http-handler': 4.12.1
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@aws-sdk/rds-signer@3.1144.0':
+    dependencies:
+      '@aws-sdk/core': 3.978.2
+      '@aws-sdk/credential-providers': 3.1144.0
+      '@smithy/core': 3.35.2
+      '@smithy/signature-v4': 5.7.4
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 

@@ -76,11 +76,11 @@ function existingRows(database: HostDatabase, row: DatasetRow, contributions: re
     ')',
   );
   const known = composed(
-    'SELECT DISTINCT series FROM prediction_rows',
+    'WITH probe (series) AS (VALUES ',
+    ...tuples(series.map((named) => [named])),
+    ') SELECT series FROM probe WHERE (SELECT 1 FROM prediction_rows',
     ...where,
-    ' AND series IN (',
-    each(series),
-    ')',
+    ' AND prediction_rows.series = probe.series LIMIT 1) IS NOT NULL',
   );
   return Effect.all([rowsOf(StoredRowSchema, database.read(kept)), rowsOf(SeriesSchema, database.read(known))]);
 }

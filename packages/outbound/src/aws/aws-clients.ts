@@ -1,4 +1,5 @@
 import { fromNodeProviderChain } from '@aws-sdk/credential-providers';
+import { Signer } from '@aws-sdk/rds-signer';
 
 import type { ProxySettings } from '../proxy/proxy-settings.ts';
 
@@ -12,6 +13,15 @@ export interface AwsClientSettings {
 
 export type AwsCredentialChain = ReturnType<typeof fromNodeProviderChain>;
 
+export interface DatabaseTokenRequest {
+  readonly hostname: string;
+  readonly port: number;
+  readonly username: string;
+  readonly region: string;
+}
+
+export type DatabaseTokenSigner = () => Promise<string>;
+
 export function awsClientSettingsOf(proxy: ProxySettings): AwsClientSettings {
   if (!proxy.enabled) {
     return {};
@@ -22,4 +32,9 @@ export function awsClientSettingsOf(proxy: ProxySettings): AwsClientSettings {
 
 export function awsCredentialChain(proxy: ProxySettings): AwsCredentialChain {
   return fromNodeProviderChain({ clientConfig: awsClientSettingsOf(proxy) });
+}
+
+export function awsDatabaseTokenSigner(proxy: ProxySettings, request: DatabaseTokenRequest): DatabaseTokenSigner {
+  const signer = new Signer({ ...request, credentials: awsCredentialChain(proxy) });
+  return () => signer.getAuthToken();
 }

@@ -1,29 +1,20 @@
-import { noStrippedForms, type SavedDefinitions, type StrippedForms } from '@on.auto/definitions';
+import { noStrippedForms } from '@on.auto/definitions';
 import { checkedAtSave, type CheckedDocument } from '@on.auto/definitions/check';
 import { reportedIssues, type DocumentIssue } from '@on.auto/definitions/document';
-import type { InvalidInput, Unavailable } from '@on.auto/operations';
 import type { CheckIssue, ProgramPool } from '@on.auto/workflow-engine/dsl';
 import { Effect } from 'effect';
 
+import { briefIssuesOverTheLargestDataset } from '../brief/brief-dataset.ts';
 import type { PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';
 import { calledFunctionIssues } from './called-functions.ts';
-import { invalidDefinition } from './prediction-definitions.ts';
+import { invalidDefinition, type PredictionCheck } from './prediction-definitions.ts';
 import { uploadedDatasetIssues } from './uploaded-datasets.ts';
-
-export type PredictionCheck = (
-  document: PredictionFunctionDefinitionDocument,
-  source: string,
-  saved: SavedDefinitions,
-) => Effect.Effect<StrippedForms, InvalidInput | Unavailable>;
 
 const dataNames = ['$data'];
 
 const nothingToCheck: CheckedDocument = { stripped: noStrippedForms };
 
-function expressionsChecked(
-  pool: ProgramPool,
-  { dataExpressions }: PredictionFunctionDefinitionDocument,
-): Effect.Effect<CheckedDocument, InvalidInput | Unavailable> {
+function expressionsChecked(pool: ProgramPool, { dataExpressions }: PredictionFunctionDefinitionDocument) {
   return dataExpressions.length === 0
     ? Effect.succeed(nothingToCheck)
     : checkedAtSave(pool, {
@@ -45,6 +36,7 @@ export function predictionCheck(pool: ProgramPool): PredictionCheck {
   return (document, _source, saved) =>
     Effect.gen(function* () {
       const found = [
+        ...briefIssuesOverTheLargestDataset(document),
         ...(yield* calledFunctionIssues(document, saved)),
         ...(yield* uploadedDatasetIssues(document, saved)),
       ];

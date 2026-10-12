@@ -34,12 +34,12 @@
     "@on.auto/recall": "workspace:*",
     "@on.auto/workflow-engine": "workspace:*",
     "@on.auto/workflow-host": "workspace:*",
-    "effect": "catalog:"
+    "effect": "catalog:",
+    "pg": "8.23.1"
   },
   "devDependencies": {
     "@types/pg": "8.23.1",
     "@vitest/coverage-v8": "catalog:",
-    "pg": "8.23.1",
     "vitest": "catalog:"
   }
 }

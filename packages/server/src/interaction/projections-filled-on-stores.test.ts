@@ -11,7 +11,7 @@ import {
   nudging,
   type HarnessLedger,
 } from '@on.auto/interaction/testing';
-import { postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
+import { plainPoolsOn, postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
 import { ledgerLayer } from '@on.auto/ledger/sqlite3';
 import { Ledger, projectedTableOf } from '@on.auto/operations';
 import { Effect, Layer, ManagedRuntime, Schema } from 'effect';
@@ -85,7 +85,7 @@ async function onPostgreSQL(): Promise<Place> {
   const url = new URL(postgresql);
   url.pathname = `/${name}`;
   return {
-    open: () => opened(postgresqlLedgerLayer({ connectionString: url.href, projections })),
+    open: () => opened(postgresqlLedgerLayer({ pools: plainPoolsOn(url.href), projections })),
     dropTables: () => administer(url.href, tables.map((table) => `DROP TABLE ${table}`).join('; ')),
   };
 }

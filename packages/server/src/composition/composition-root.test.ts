@@ -7,8 +7,8 @@ import { Effect, Layer, ManagedRuntime } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { logsToStderr } from '../logging/logging.ts';
+import { applicationLayer } from './application-layer.ts';
 import { factsComposedOf } from './composed-facts.ts';
-import { applicationLayer } from './composition-root.ts';
 
 const acmeAdmin: CallerIdentity = { id: 'acme-admin', org: 'acme', permissions: allPermissions, playbooks: '*' };
 

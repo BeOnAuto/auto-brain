@@ -5,7 +5,7 @@ import { describe, onTestFinished } from 'vitest';
 
 import { reactionSuite } from '../reaction-testing/reaction-suite.ts';
 import { failureSuite } from '../testing/failure-suite.ts';
-import type { SettingsOf } from '../testing/host-files.ts';
+import { databaseSettingsOf, type ProcessDatabasesOf } from '../testing/host-processes.ts';
 import { claimSuite, leaseSuite } from '../testing/lease-suite.ts';
 import { longRunSuite } from '../testing/long-run-suite.ts';
 import { portSuite } from '../testing/port-suite.ts';
@@ -27,7 +27,7 @@ async function administered(statement: string): Promise<void> {
   }
 }
 
-const onPostgreSQL: SettingsOf = async () => {
+const processDatabaseOnPostgreSQL: ProcessDatabasesOf = async () => {
   const name = `workflow_host_${randomUUID().replaceAll('-', '')}`;
   await administered(`CREATE DATABASE ${name}`);
   await administered(`ALTER DATABASE ${name} SET synchronous_commit = off`);
@@ -38,6 +38,8 @@ const onPostgreSQL: SettingsOf = async () => {
   database.pathname = `/${name}`;
   return { store: 'postgresql', connectionString: database.href };
 };
+
+const onPostgreSQL = async () => databaseSettingsOf(await processDatabaseOnPostgreSQL());
 
 describe.skipIf(skipped)(`the host on PostgreSQL${notice}`, () => {
   describe('its ports', () => {
@@ -53,7 +55,7 @@ describe.skipIf(skipped)(`the host on PostgreSQL${notice}`, () => {
   });
 
   describe('killed while it dispatches, then started again', () => {
-    failureSuite(onPostgreSQL);
+    failureSuite(processDatabaseOnPostgreSQL);
   });
 
   describe('the reactions of its playbooks', () => {
@@ -61,7 +63,7 @@ describe.skipIf(skipped)(`the host on PostgreSQL${notice}`, () => {
   });
 
   describe('one of two hosts on one database', () => {
-    leaseSuite(onPostgreSQL);
-    claimSuite(onPostgreSQL, 'database');
+    leaseSuite(processDatabaseOnPostgreSQL);
+    claimSuite(processDatabaseOnPostgreSQL, 'database');
   });
 });

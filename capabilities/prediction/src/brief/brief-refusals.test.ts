@@ -1,6 +1,9 @@
+import { nothingSaved } from '@on.auto/definitions/testing';
+import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { problemsOf } from '../testing/document-problems.ts';
+import { predictionRuns } from '../testing/prediction-runs.ts';
 import { weeklyOrdersLines, weeklyOrdersWith } from '../testing/weekly-orders.ts';
 
 const firstLine =
@@ -50,37 +53,56 @@ const refused: ReadonlyArray<readonly [string, string, readonly string[]]> = [
     [`Line 28: function.rules.size.first is not a part of function; ${shape}`],
   ],
   [
-    'a brief past 64 KiB over the largest dataset',
-    `{% for row in (1..dataset.rows) %}${'0123456789abcdef'.repeat(64)}{% endfor %}`,
-    [
-      'Line 28: The brief renders to more than 65,536 bytes over the largest dataset the bounds admit; shorten it or loop over less',
-    ],
-  ],
-  [
-    'a list where text goes',
-    'Horizons: {{ dataset.horizons }}',
-    ['Line 28: The brief writes a list or a mapping where text goes; write its items, or use the json filter'],
-  ],
-  [
-    'a feature the dataset does not have',
-    'Fit {{ dataset.features[5].name }}',
-    ['Line 28: The brief reads dataset.features.5, which the largest dataset the bounds admit does not have'],
-  ],
-  [
-    'a loop longer than a template may render',
-    '{% for row in (1..dataset.rows) %}{% for again in (1..dataset.rows) %}{% endfor %}{% endfor %}',
-    ['Line 28: The brief takes more time to render than a template may, over the largest dataset the bounds admit'],
-  ],
-  [
     'a tag never closed',
     '{% for rule in function.rules %}{{ rule }}',
     ['Line 28: tag {% for rule in function.rules %} not closed'],
   ],
 ];
 
+const refusedAtSave: ReadonlyArray<readonly [string, string, string]> = [
+  [
+    'a brief past 64 KiB over the largest dataset',
+    `{% for row in (1..dataset.rows) %}${'0123456789abcdef'.repeat(64)}{% endfor %}`,
+    'Line 28: The brief renders to more than 65,536 bytes over the largest dataset the bounds admit; shorten it or loop over less',
+  ],
+  [
+    'a list where text goes',
+    'Horizons: {{ dataset.horizons }}',
+    'Line 28: The brief writes a list or a mapping where text goes; write its items, or use the json filter',
+  ],
+  [
+    'a feature the dataset does not have',
+    'Fit {{ dataset.features[5].name }}',
+    'Line 28: The brief reads dataset.features[5], which the largest dataset the bounds admit does not have',
+  ],
+  [
+    'a loop longer than a template may render',
+    '{% for row in (1..dataset.rows) %}{% for again in (1..dataset.rows) %}{% endfor %}{% endfor %}',
+    'Line 28: The brief takes more time to render than a template may, over the largest dataset the bounds admit',
+  ],
+];
+
+function savedProblemsOf(source: string): Promise<unknown> {
+  return Effect.runPromise(Effect.flip(predictionRuns().prepared(source).check(nothingSaved)));
+}
+
 describe('the brief of a prediction function', () => {
   it.each(refused)('is refused for %s, naming its line', (_fault, body, problems) => {
     expect(problemsOf(withBrief(body))).toEqual(problems);
+  });
+
+  it.each(refusedAtSave)(
+    'is read without rendering, and refused at save for %s over the largest dataset, naming its line',
+    async (_fault, body, problem) => {
+      expect(problemsOf(withBrief(body))).toEqual([]);
+      expect(await savedProblemsOf(withBrief(body))).toMatchObject({ issues: [{ pointer: '', detail: problem }] });
+    },
+  );
+
+  it('renders at save over the largest dataset of a function that names no season', async () => {
+    const seasonless = weeklyOrdersWith(['  season: 52', ''], [firstLine, 'Its season: {{ dataset.periods.season }}']);
+
+    expect(await Effect.runPromise(predictionRuns().prepared(seasonless).check(nothingSaved))).toEqual({});
   });
 
   it('reads the parts of dataset and function, their sizes, and the items of their lists', () => {

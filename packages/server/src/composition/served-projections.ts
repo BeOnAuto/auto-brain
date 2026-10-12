@@ -9,13 +9,13 @@ import {
   someFolder,
   viewsFolder,
   viewsPortOn,
+  type DatabaseSettings,
   type ProjectorSettings,
   type SomeFolder,
   type WorkflowStore,
 } from '@on.auto/workflow-host';
 
 import type { Settings } from '../settings/settings.ts';
-import { hostDatabaseOf } from '../workflows/host-dependencies.ts';
 import { hostReports } from '../workflows/host-reports.ts';
 
 interface ServedProjections {
@@ -24,11 +24,15 @@ interface ServedProjections {
   readonly projector: ProjectorSettings;
 }
 
+interface ProjectedOn extends Pick<Settings, 'recall'> {
+  readonly database: DatabaseSettings;
+}
+
 export interface ProjectionWiring {
   readonly appends: AppendSignal;
   readonly served: (
     runtime: AppRuntime<DispatcherServices>,
-    settings: Settings,
+    on: ProjectedOn,
     pool: ProgramPool,
     besides: readonly SomeFolder[],
   ) => Promise<ServedProjections>;
@@ -38,7 +42,7 @@ export function projectionWiring(): ProjectionWiring {
   const appends = appendSignal();
   return {
     appends,
-    served: async (runtime, { ledger, recall }, pool, besides) => {
+    served: async (runtime, { recall, database }, pool, besides) => {
       const views = viewsFolder({
         definitionType: recallDefinitionType,
         pool,
@@ -47,7 +51,7 @@ export function projectionWiring(): ProjectionWiring {
         rebuildsAtOnce: recall.rebuildsAtOnce,
       });
       const folders = [someFolder(views), ...besides];
-      const store = await openWorkflowStore(hostDatabaseOf(ledger), hostReports(runtime).lostConnection, folders);
+      const store = await openWorkflowStore(database, hostReports(runtime).lostConnection, folders);
       return {
         recall: makeRecallFunctionAdapter({
           pool,

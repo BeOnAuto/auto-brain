@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
+import { plainPoolsOn, postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
 import { ledgerLayer } from '@on.auto/ledger/sqlite3';
 import {
   ContextSchema,
@@ -10,12 +10,12 @@ import {
   type Decider,
   type RunOutcomeGroup,
 } from '@on.auto/operations';
-import { Effect, ManagedRuntime, Redacted, Result, Schema, type Layer } from 'effect';
+import type { DatabaseSettings } from '@on.auto/workflow-host';
+import { Effect, ManagedRuntime, Result, Schema, type Layer } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { ledgerLayerOf } from '../composition/ledger-store.ts';
-import type { LedgerSettings } from '../settings/ledger-settings.ts';
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
 
 const postgresql = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
@@ -50,16 +50,16 @@ async function administer(statement: string): Promise<void> {
   }
 }
 
-async function aPostgreSQLLedger(): Promise<LedgerSettings> {
+async function aPostgreSQLLedger(): Promise<DatabaseSettings> {
   const name = `outcomes_${randomUUID().replaceAll('-', '')}`;
   await administer(`CREATE DATABASE ${name}`);
   onTestFinished(() => administer(`DROP DATABASE ${name} WITH (FORCE)`));
   const url = new URL(postgresql);
   url.pathname = `/${name}`;
-  return { store: 'postgresql', url: Redacted.make(url.href), host: url.host, database: name };
+  return { store: 'postgresql', pools: plainPoolsOn(url.href) };
 }
 
-function anSQLiteLedger(): Promise<LedgerSettings> {
+function anSQLiteLedger(): Promise<DatabaseSettings> {
   const ledger = temporaryLedger();
   onTestFinished(ledger.remove);
   return Promise.resolve({ store: 'sqlite', file: ledger.fileName });
@@ -154,10 +154,10 @@ function written(ledger: Ledger['Service']): Promise<void> {
   );
 }
 
-function withoutTheProjection(settings: LedgerSettings): Layer.Layer<Ledger> {
-  return settings.store === 'sqlite'
-    ? ledgerLayer({ fileName: settings.file })
-    : postgresqlLedgerLayer({ connectionString: Redacted.value(settings.url) });
+function withoutTheProjection(database: DatabaseSettings): Layer.Layer<Ledger> {
+  return database.store === 'sqlite'
+    ? ledgerLayer({ fileName: database.file })
+    : postgresqlLedgerLayer({ pools: database.pools });
 }
 
 function lineOf(group: RunOutcomeGroup): string {
@@ -185,7 +185,7 @@ const kept = [
 interface Store {
   readonly store: string;
   readonly skipped: boolean;
-  readonly aLedger: () => Promise<LedgerSettings>;
+  readonly aLedger: () => Promise<DatabaseSettings>;
 }
 
 const stores: readonly Store[] = [

@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { plainPoolsOn } from '@on.auto/ledger/postgresql';
 import { Client } from 'pg';
 
 import type { DatabaseSettings } from '../src/database/host-databases.ts';
@@ -51,7 +52,7 @@ function onPostgreSQL(server: string): MeasuredStore {
       names.push(name);
       const database = new URL(server);
       database.pathname = `/${name}`;
-      return { store: 'postgresql', connectionString: database.href };
+      return { store: 'postgresql', pools: plainPoolsOn(database.href) };
     },
     removeAll: async () => {
       await Promise.all(names.splice(0).map((name) => administered(server, `DROP DATABASE ${name} WITH (FORCE)`)));

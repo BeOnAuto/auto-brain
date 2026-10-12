@@ -31,6 +31,7 @@ describe('the ledger settings', () => {
       url: databaseUrl,
       host: 'db.example.com:5432',
       database: 'playbooks',
+      credentials: { kind: 'url' },
     });
   });
 
@@ -46,7 +47,7 @@ describe('the ledger settings', () => {
     const settings = readSettings({ DATABASE_URL: databaseUrl });
 
     expect(JSON.stringify(settings.ledger)).toBe(
-      '{"store":"postgresql","url":"<redacted>","host":"db.example.com:5432","database":"playbooks"}',
+      '{"store":"postgresql","url":"<redacted>","host":"db.example.com:5432","database":"playbooks","credentials":{"kind":"url"}}',
     );
     expect(inspect(settings, { depth: Number.POSITIVE_INFINITY })).not.toContain(password);
   });

@@ -14,7 +14,7 @@ import {
   tick,
   timeOf,
 } from './measure/dataset.ts';
-import { postgresqlLedgerLayer } from './src/postgresql/postgresql-ledger.ts';
+import { plainPoolsOn, postgresqlLedgerLayer } from './src/postgresql/postgresql-ledger.ts';
 import { cursorOf } from './src/recorded/cursor.ts';
 import { ledgerLayer } from './src/sqlite3.ts';
 import { openLedgerWith, type OpenLedger } from './src/testing/open-ledger.ts';
@@ -259,7 +259,7 @@ async function measurePostgreSQL(): Promise<void> {
   await administration.query(`CREATE DATABASE ${name}`);
   const url = new URL(postgresqlServer);
   url.pathname = `/${name}`;
-  const creating = await openLedgerWith(postgresqlLedgerLayer({ connectionString: url.href }));
+  const creating = await openLedgerWith(postgresqlLedgerLayer({ pools: plainPoolsOn(url.href) }));
   await creating.dispose();
   const client = new Client({ connectionString: url.href });
   await client.connect();
@@ -281,7 +281,7 @@ async function measurePostgreSQL(): Promise<void> {
     await client.query('ANALYZE emt_messages');
   };
   await pagesOf(
-    postgresqlLedgerLayer({ connectionString: url.href }),
+    postgresqlLedgerLayer({ pools: plainPoolsOn(url.href) }),
     (stream, at) => points.get(`${stream}#${at}`) ?? [],
     othersWrite,
   );

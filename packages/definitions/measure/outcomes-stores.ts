@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-import { postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
+import { plainPoolsOn, postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
 import { ledgerLayer } from '@on.auto/ledger/sqlite3';
 import { Ledger, type RunOutcomeMapping } from '@on.auto/operations';
 import { Effect, ManagedRuntime, type Layer } from 'effect';
@@ -212,7 +212,10 @@ export function onPostgreSQL(server: string): Bench {
       return { location: url.href, drop };
     },
     ledgerOn: ({ location }, runOutcomes) =>
-      postgresqlLedgerLayer({ connectionString: location, ...(runOutcomes === undefined ? {} : { runOutcomes }) }),
+      postgresqlLedgerLayer({
+        pools: plainPoolsOn(location),
+        ...(runOutcomes === undefined ? {} : { runOutcomes }),
+      }),
     write: ({ location }, count, rowsOf) =>
       connected(location, async (client) => {
         await client.query('SET synchronous_commit = off');

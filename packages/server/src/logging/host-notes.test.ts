@@ -97,6 +97,27 @@ describe('the note of an event a projection passed over', () => {
   });
 });
 
+describe('the note of a dataset that stalled', () => {
+  it('warns that the dataset folds nothing more, naming the playbook, the dataset, the event and why', async () => {
+    const [line] = await linesLoggedBy(
+      logHostNote({
+        kind: 'dataset_stalled',
+        playbook: 'playbook/acme/alpha/',
+        dataSha256: '3f2ac1d0e4b5',
+        record: 'r-3',
+        detail: 'Its data test was stopped 20 times without a page folded whole, the last at this event',
+      }),
+    );
+
+    expect(line).toContain(
+      '"message":"The dataset of a prediction function stopped at an event its data test could not get through within its time and memory, and folds nothing more; a data part that changes starts a dataset of its own","level":"WARN"',
+    );
+    expect(line).toContain(
+      '"annotations":{"playbook":"playbook/acme/alpha/","data_sha256":"3f2ac1d0e4b5","record":"r-3","detail":"Its data test was stopped 20 times without a page folded whole, the last at this event"}',
+    );
+  });
+});
+
 describe('the note of a record of a run passed before its outputs were dispatched', () => {
   it('warns that a listener the record armed takes no event recorded before it is kept', async () => {
     const [line] = await linesLoggedBy(logHostNote({ kind: 'run_record_passed', run, version: 4, sweeps: 20 }));
