@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Json, JsonObject } from '../dsl/json.ts';
 import { filterSandboxOf } from '../instances/host-sandboxes.ts';
 import {
-  brainWideFilterOf,
+  playbookWideFilterOf,
   listenFiltersOf,
   listenerFilterOf,
   literalFilterOf,
@@ -237,7 +237,7 @@ describe('a filter of a listen task that reaches events beyond its run', () => {
       'not a filter',
     ];
 
-    expect(filters.map((filter) => brainWideFilterOf(filter))).toEqual([
+    expect(filters.map((filter) => playbookWideFilterOf(filter))).toEqual([
       { type: 'com.acme.closed', source: '/ledger' },
       undefined,
       undefined,

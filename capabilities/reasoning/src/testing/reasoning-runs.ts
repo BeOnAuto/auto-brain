@@ -20,8 +20,8 @@ const anthropicOnly = { providers: ['anthropic'], aliases: [] };
 export const runContext: RunContext = {
   id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
   org: 'acme',
-  brain: 'alpha',
-  caller: { id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: '*' },
+  playbook: 'alpha',
+  caller: { id: 'acme-admin', org: 'acme', permissions: allPermissions, playbooks: '*' },
   definition: { name: 'summary', version: 1 },
   journal: recordingJournal(),
   lineage: { startId: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a', correlationId: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' },

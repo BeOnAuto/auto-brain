@@ -174,7 +174,10 @@ describe('the Node listener', () => {
   });
 
   it.each([
-    ['a Host header that is not a host name', 'GET /health HTTP/1.1\r\nHost: auto brain\r\nConnection: close\r\n\r\n'],
+    [
+      'a Host header that is not a host name',
+      'GET /health HTTP/1.1\r\nHost: auto playbook\r\nConnection: close\r\n\r\n',
+    ],
     ['no Host header at all', 'GET /health HTTP/1.0\r\n\r\n'],
   ])('answers a request with %s with a 400 problem document', async (_case, raw) => {
     const { port, close } = await serve(createTestHandler().handler);

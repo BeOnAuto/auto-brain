@@ -11,21 +11,21 @@ export type DefinitionRecord = Pick<RecordedEvent, 'id' | 'type' | 'data' | 'con
 
 type DefinitionApplied = 'applied' | 'unreadable';
 
-export type ApplyDefinitionRecord = (brainKey: string, record: DefinitionRecord) => Effect.Effect<DefinitionApplied>;
+export type ApplyDefinitionRecord = (playbookKey: string, record: DefinitionRecord) => Effect.Effect<DefinitionApplied>;
 
 export function definitionRecordsOn(database: HostDatabase, stops: FilterStops): ApplyDefinitionRecord {
-  return (brainKey, record) => {
+  return (playbookKey, record) => {
     const { id } = record;
     const change = definitionChangeOf(record);
     if (change.kind === 'activated') {
       const { name: workflow, version, triggers, at } = change;
       const activation = { workflow, version, triggers, activatedBy: id, activatedAt: Date.parse(at) };
-      stops.activated(brainKey, workflow, version);
-      return Effect.as(triggersActivated(database, brainKey, activation), 'applied');
+      stops.activated(playbookKey, workflow, version);
+      return Effect.as(triggersActivated(database, playbookKey, activation), 'applied');
     }
     if (change.kind === 'deactivated') {
-      stops.retired(brainKey, change.name);
-      return Effect.as(triggersRemoved(database, brainKey, change.name), 'applied');
+      stops.retired(playbookKey, change.name);
+      return Effect.as(triggersRemoved(database, playbookKey, change.name), 'applied');
     }
     return Effect.succeed(change.kind === 'unreadable' ? 'unreadable' : 'applied');
   };

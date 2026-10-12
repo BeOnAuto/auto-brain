@@ -13,8 +13,8 @@ function errorFrom(environment: Environment): unknown {
 }
 
 describe('the recall function settings', () => {
-  it('keep at most 32 recall functions a brain, build 4 views of a brain at once and follow 4 brains at once when nothing is set', () => {
-    expect(readSettings({}).recall).toEqual({ mostFunctions: 32, rebuildsAtOnce: 4, brainsAtOnce: 4 });
+  it('keep at most 32 recall functions a playbook, build 4 views of a playbook at once and follow 4 playbooks at once when nothing is set', () => {
+    expect(readSettings({}).recall).toEqual({ mostFunctions: 32, rebuildsAtOnce: 4, playbooksAtOnce: 4 });
   });
 
   it('read each of the three', () => {
@@ -22,9 +22,9 @@ describe('the recall function settings', () => {
       readSettings({
         RECALL_MAX_FUNCTIONS: ' 100 ',
         RECALL_MAX_REBUILDS: '2',
-        RECALL_BRAINS_AT_ONCE: '8',
+        RECALL_PLAYBOOKS_AT_ONCE: '8',
       }).recall,
-    ).toEqual({ mostFunctions: 100, rebuildsAtOnce: 2, brainsAtOnce: 8 });
+    ).toEqual({ mostFunctions: 100, rebuildsAtOnce: 2, playbooksAtOnce: 8 });
   });
 
   it('stop the server from starting when one is out of its range or not a whole number, naming each', () => {
@@ -33,11 +33,11 @@ describe('the recall function settings', () => {
         errorFrom({
           RECALL_MAX_FUNCTIONS: '0',
           RECALL_MAX_REBUILDS: '65',
-          RECALL_BRAINS_AT_ONCE: 'many',
+          RECALL_PLAYBOOKS_AT_ONCE: 'many',
         }),
       ),
     ).toBe(
-      'InvalidSettingsError: The recall function settings are invalid. RECALL_MAX_FUNCTIONS: Expected a whole number from 1 to 1000, such as 32; RECALL_MAX_REBUILDS: Expected a whole number from 1 to 64, such as 4; RECALL_BRAINS_AT_ONCE: Expected a whole number from 1 to 64, such as 4',
+      'InvalidSettingsError: The recall function settings are invalid. RECALL_MAX_FUNCTIONS: Expected a whole number from 1 to 1000, such as 32; RECALL_MAX_REBUILDS: Expected a whole number from 1 to 64, such as 4; RECALL_PLAYBOOKS_AT_ONCE: Expected a whole number from 1 to 64, such as 4',
     );
   });
 });

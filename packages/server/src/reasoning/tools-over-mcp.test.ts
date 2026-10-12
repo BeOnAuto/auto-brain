@@ -58,17 +58,21 @@ async function fakeGraph(): Promise<FakeMcpServer> {
 }
 
 function onAlpha<T>(server: ReasoningServer, use: (session: McpSession) => Promise<T>): Promise<T> {
-  return withMcpSession('current revision', { url: `${server.origin}/orgs/acme/brains/alpha/mcp`, headers: {} }, use);
+  return withMcpSession(
+    'current revision',
+    { url: `${server.origin}/orgs/acme/playbooks/alpha/mcp`, headers: {} },
+    use,
+  );
 }
 
-async function withBrain(server: ReasoningServer): Promise<void> {
+async function withPlaybook(server: ReasoningServer): Promise<void> {
   await withMcpSession('current revision', { url: `${server.origin}/orgs/acme/mcp`, headers: {} }, (session) =>
-    session.callTool('create_brain', { brain: 'alpha', name: 'Alpha' }),
+    session.callTool('create_playbook', { playbook: 'alpha', name: 'Alpha' }),
   );
 }
 
 async function executedTwice(server: ReasoningServer, document = source) {
-  await withBrain(server);
+  await withPlaybook(server);
   return onAlpha(server, async (session) => {
     await session.callTool('create_definition', { type: 'reasoning', name: 'summary', source: document });
     const running = { type: 'reasoning', name: 'summary', input: {}, run_id: runId };

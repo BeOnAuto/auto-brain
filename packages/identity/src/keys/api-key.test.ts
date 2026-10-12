@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { authenticatorFor, createApiKey, type ApiKey, type KeyGrant } from '../index.ts';
 
-const grant: KeyGrant = { id: 'ci-1', org: 'acme', permissions: ['brain:read'], brains: ['alpha'] };
+const grant: KeyGrant = { id: 'ci-1', org: 'acme', permissions: ['playbook:read'], playbooks: ['alpha'] };
 
 const keyWithTheSecretBytes0To31 = 'abk_ci-1_AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8';
 

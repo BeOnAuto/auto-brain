@@ -16,7 +16,7 @@ export function asking({
   outcome = 'Asked.',
   attempt = 'ask',
 }: Asking) {
-  return defineQuery('brain', {
+  return defineQuery('playbook', {
     name,
     title: 'Ask',
     description,

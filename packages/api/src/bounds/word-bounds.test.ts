@@ -11,7 +11,7 @@ async function plainWordsOf(operation: ReturnType<typeof asking>, question?: str
   const listening = await listenOnLoopback(server.handler);
   const result: ToolResult = await withMcpSession(
     'current revision',
-    { url: `${listening.origin}/orgs/acme/brains/alpha/mcp`, headers: { authorization: `Bearer ${acmeAdmin.key}` } },
+    { url: `${listening.origin}/orgs/acme/playbooks/alpha/mcp`, headers: { authorization: `Bearer ${acmeAdmin.key}` } },
     (session) => session.callTool(operation.registration.name, question === undefined ? {} : { question }),
   );
   await listening.close();

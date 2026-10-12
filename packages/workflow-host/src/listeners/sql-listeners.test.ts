@@ -8,7 +8,7 @@ import { filterStops, type FilterPlace } from '../filtering/filter-matching.ts';
 import { refusalsOn } from '../reactions/refusals.ts';
 import { faultyDatabase } from '../testing/faulty-database.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
-import { mostListenersInABrain, sqlListeners } from './sql-listeners.ts';
+import { mostListenersInAPlaybook, sqlListeners } from './sql-listeners.ts';
 
 const attributes = { definition: { name: 'await-approval', version: 1 }, caller: { id: 'acme-admin' } };
 
@@ -26,17 +26,17 @@ function awaitingKeyOf(runId: string) {
 
 const RefusalRow = Schema.Struct({ workflow: Schema.String, reason: Schema.String });
 
-describe('the listeners of a brain', () => {
-  it('are 4,096 in a brain at most: one more is refused and said, and its run takes only the events sent to it', async () => {
+describe('the listeners of a playbook', () => {
+  it('are 4,096 in a playbook at most: one more is refused and said, and its run takes only the events sent to it', async () => {
     const database = await openedOn(await onSQLite());
     const listeners = sqlListeners(database, refusalsOn(database, Date.now), filterStops());
     await Effect.runPromise(
       database.write(
         statement`WITH RECURSIVE listening (at) AS (
-            SELECT 1 UNION ALL SELECT at + 1 FROM listening WHERE at < ${mostListenersInABrain - 1}
+            SELECT 1 UNION ALL SELECT at + 1 FROM listening WHERE at < ${mostListenersInAPlaybook - 1}
           )
-          INSERT INTO workflow_listeners (run_key, listener, brain_key, stream_id, armed_by, filters, workflow, version, passed)
-          SELECT 'acme/alpha/r' || at, 'listener', 'brain/acme/alpha/', 'brain/acme/alpha/run-logs/r' || at, 1, '[]',
+          INSERT INTO workflow_listeners (run_key, listener, playbook_key, stream_id, armed_by, filters, workflow, version, passed)
+          SELECT 'acme/alpha/r' || at, 'listener', 'playbook/acme/alpha/', 'playbook/acme/alpha/run-logs/r' || at, 1, '[]',
             'other', 1, 1
           FROM listening`,
       ),
@@ -54,7 +54,7 @@ describe('the listeners of a brain', () => {
       {
         workflow: 'await-approval',
         reason:
-          'A run listened for events of the brain while 4096 listeners were already open in it, the most a brain keeps; the run takes only the events sent to it',
+          'A run listened for events of the playbook while 4096 listeners were already open in it, the most a playbook keeps; the run takes only the events sent to it',
       },
     ]);
   });
@@ -68,7 +68,7 @@ describe('the stops of the filter of a listen task', () => {
     const other = { ...run, runId: 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b' };
     const place: FilterPlace = {
       kind: 'listener',
-      brainKey: 'brain/acme/alpha/',
+      playbookKey: 'playbook/acme/alpha/',
       workflow: 'await-approval',
       version: 1,
       reference: '/do/0/await',

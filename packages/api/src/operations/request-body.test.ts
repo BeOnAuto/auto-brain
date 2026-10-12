@@ -14,7 +14,7 @@ const asAdmin: Headers = { authorization: `Bearer ${acmeAdmin.key}` };
 
 const jsonAsAdmin: Headers = { ...asAdmin, 'content-type': 'application/json' };
 
-const notes = '/v1/orgs/acme/brains/alpha/notes';
+const notes = '/v1/orgs/acme/playbooks/alpha/notes';
 
 const mebibyte = 1024 * 1024;
 

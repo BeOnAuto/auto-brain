@@ -10,9 +10,9 @@ import { RunIdInputField, InputField, DefinitionNameField } from './definition-f
 import { startVersionOnce } from './run-requests.ts';
 
 const description = [
-  'Starts a run of one version of a definition under a run id, once: when the brain has a run under that id,',
+  'Starts a run of one version of a definition under a run id, once: when the playbook has a run under that id,',
   'it answers that run as it stands and starts nothing. The workflow host calls it in the process for the runs',
-  'that triggers start, as the brain itself, with their reaction depth, lineage and trigger in the request; no transport serves it.',
+  'that triggers start, as the playbook itself, with their reaction depth, lineage and trigger in the request; no transport serves it.',
 ].join(' ');
 
 export function defineStartVersion(capabilities: readonly Capability[]) {
@@ -20,7 +20,7 @@ export function defineStartVersion(capabilities: readonly Capability[]) {
   const words = runPlainLanguage(capabilities);
   const definitionWords = definitionWordsFor(capabilities);
   return known.publish(
-    defineCommand('brain', {
+    defineCommand('playbook', {
       name: 'start_definition_version',
       title: 'Start a version once',
       description,

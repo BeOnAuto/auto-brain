@@ -48,7 +48,7 @@
       },
       "attributes": {
         "org": "acme",
-        "brain": "alpha",
+        "playbook": "alpha",
         "run_id": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
         "definition": {
           "name": "parallel-fork",
@@ -204,7 +204,7 @@
         },
         {
           "op": "add",
-          "path": "/attributes/brain",
+          "path": "/attributes/playbook",
           "value": "alpha"
         },
         {
@@ -460,7 +460,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 5803
+          "value": 5806
         }
       ],
       "outputs": [
@@ -612,7 +612,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 7335
+          "value": 7338
         }
       ],
       "outputs": [
@@ -729,7 +729,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 9057
+          "value": 9060
         }
       ],
       "outputs": [

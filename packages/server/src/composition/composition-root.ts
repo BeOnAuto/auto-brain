@@ -1,5 +1,5 @@
-import { ledgerBrainRegistry } from '@beonauto/brains';
 import { IncidentReporter, type DispatcherServices, type Ledger } from '@beonauto/operations';
+import { ledgerPlaybookRegistry } from '@beonauto/playbooks';
 import type { HostClock } from '@beonauto/workflow-host';
 import { Layer } from 'effect';
 
@@ -13,7 +13,7 @@ import { loggedModelAccess } from './served-reasoning.ts';
 const loggingIncidentReporter = Layer.succeed(IncidentReporter, IncidentReporter.of({ report: logIncident }));
 
 export function applicationLayer(ledger: Layer.Layer<Ledger>): Layer.Layer<DispatcherServices> {
-  return Layer.mergeAll(ledger, ledgerBrainRegistry.pipe(Layer.provide(ledger)), loggingIncidentReporter);
+  return Layer.mergeAll(ledger, ledgerPlaybookRegistry.pipe(Layer.provide(ledger)), loggingIncidentReporter);
 }
 
 export function compositionRootWith(

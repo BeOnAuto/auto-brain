@@ -58,6 +58,6 @@ export interface RecordedPage {
   readonly lastExamined: ExaminedPlace | null;
 }
 
-export type InvalidCursorKind = 'malformed' | 'of_another_brain';
+export type InvalidCursorKind = 'malformed' | 'of_another_playbook';
 
 export class InvalidCursor extends Data.TaggedError('invalid_cursor')<{ readonly kind: InvalidCursorKind }> {}

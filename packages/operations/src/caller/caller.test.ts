@@ -1,25 +1,25 @@
 import { Schema } from 'effect';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
-import { CallerIdentitySchema, brainCallerOf, canAccessBrain, type CallerIdentity } from '../index.ts';
+import { CallerIdentitySchema, playbookCallerOf, canAccessPlaybook, type CallerIdentity } from '../index.ts';
 
 const isCallerIdentity = Schema.is(CallerIdentitySchema);
 
-const keyHolder = { id: 'build-bot', org: 'acme', permissions: ['brain:read', 'org:read'], brains: ['alpha'] };
+const keyHolder = { id: 'build-bot', org: 'acme', permissions: ['playbook:read', 'org:read'], playbooks: ['alpha'] };
 
 describe('a caller identity', () => {
   it('decodes into the identity the dispatcher takes', () => {
     expectTypeOf<typeof CallerIdentitySchema.Type>().toExtend<CallerIdentity>();
     expect(Schema.decodeUnknownSync(CallerIdentitySchema)(keyHolder)).toEqual(keyHolder);
-    expect(isCallerIdentity({ ...keyHolder, brains: '*' })).toBe(true);
+    expect(isCallerIdentity({ ...keyHolder, playbooks: '*' })).toBe(true);
   });
 
   const malformed: ReadonlyArray<readonly [string, unknown]> = [
     ['an empty id', { ...keyHolder, id: '' }],
     ['an ill-formed org', { ...keyHolder, org: 'ac/me' }],
     ['an unknown permission', { ...keyHolder, permissions: ['org:admin'] }],
-    ['brains as a plain string', { ...keyHolder, brains: 'alphabet-beta' }],
-    ['an ill-formed brain', { ...keyHolder, brains: ['Alpha'] }],
+    ['playbooks as a plain string', { ...keyHolder, playbooks: 'alphabet-beta' }],
+    ['an ill-formed playbook', { ...keyHolder, playbooks: ['Alpha'] }],
   ];
 
   it.each(malformed)('rejects %s', (_case, identity) => {
@@ -27,17 +27,20 @@ describe('a caller identity', () => {
   });
 });
 
-describe('the caller a brain acts as itself', () => {
-  it('may read and write that brain alone, and names the brain in a way no key id can', () => {
-    const brain = brainCallerOf({ org: 'acme', brain: 'alpha' });
+describe('the caller a playbook acts as itself', () => {
+  it('may read and write that playbook alone, and names the playbook in a way no key id can', () => {
+    const playbook = playbookCallerOf({ org: 'acme', playbook: 'alpha' });
 
-    expect(isCallerIdentity(brain)).toBe(true);
-    expect(brain).toEqual({
-      id: 'brain:alpha',
+    expect(isCallerIdentity(playbook)).toBe(true);
+    expect(playbook).toEqual({
+      id: 'playbook:alpha',
       org: 'acme',
-      permissions: ['brain:read', 'brain:write'],
-      brains: ['alpha'],
+      permissions: ['playbook:read', 'playbook:write'],
+      playbooks: ['alpha'],
     });
-    expect([canAccessBrain(brain.brains, 'alpha'), canAccessBrain(brain.brains, 'beta')]).toEqual([true, false]);
+    expect([canAccessPlaybook(playbook.playbooks, 'alpha'), canAccessPlaybook(playbook.playbooks, 'beta')]).toEqual([
+      true,
+      false,
+    ]);
   });
 });

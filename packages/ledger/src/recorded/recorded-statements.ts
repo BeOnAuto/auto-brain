@@ -61,7 +61,7 @@ export interface ExaminedItem extends Examined {
 }
 
 export interface ExaminationScope {
-  readonly brainKey: string;
+  readonly playbookKey: string;
   readonly order: RecordedOrder;
   readonly examineAtMost: number;
   readonly answerAtMost: number;
@@ -73,7 +73,7 @@ export interface ExaminationScope {
 }
 
 export interface RecordedStatements {
-  readonly firstPointSince: (brainKey: string, since: string) => Promise<RecordedPoint | undefined>;
+  readonly firstPointSince: (playbookKey: string, since: string) => Promise<RecordedPoint | undefined>;
   readonly examineRecords: (records: RecordsSelected, scope: ExaminationScope) => Promise<readonly ExaminedItem[]>;
   readonly examineRuns: (scope: ExaminationScope, runs: RunsSelected) => Promise<readonly ExaminedItem[]>;
   readonly dataAt: (points: readonly RecordedPoint[]) => Promise<ReadonlyMap<string, unknown>>;
@@ -82,7 +82,7 @@ export interface RecordedStatements {
 export type RunsSelected = Extract<RecordedSelection, { readonly kind: 'runs' }>;
 
 export type RecordsSelected =
-  | { readonly kind: 'brain' }
+  | { readonly kind: 'playbook' }
   | { readonly kind: 'streams'; readonly streams: readonly string[] }
   | { readonly kind: 'correlated'; readonly correlation: string };
 
@@ -95,13 +95,13 @@ function asksForOneDefinition(selection: RecordedSelection): boolean {
 }
 
 function scopeOf(
-  brainKey: string,
+  playbookKey: string,
   selection: RecordedSelection,
   { order, limit, types, dataOf, after, at }: StoredPageRequest,
 ): ExaminationScope {
   const filtering = types !== undefined || asksForOneDefinition(selection);
   return {
-    brainKey,
+    playbookKey,
     order,
     examineAtMost: filtering ? mostExaminedInAPage : limit,
     answerAtMost: filtering ? limit + 2 : limit + 1,
@@ -113,16 +113,16 @@ function scopeOf(
 }
 
 function selectedOf(
-  brainKey: string,
+  playbookKey: string,
   selection: Exclude<RecordedSelection, { readonly kind: 'runs' }>,
 ): RecordsSelected {
   if (selection.kind === 'run') {
     return {
       kind: 'streams',
-      streams: [`${brainKey}runs/${selection.run}`, `${brainKey}run-logs/${selection.run}`],
+      streams: [`${playbookKey}runs/${selection.run}`, `${playbookKey}run-logs/${selection.run}`],
     };
   }
-  return selection.kind === 'correlated' ? selection : { kind: 'brain' };
+  return selection.kind === 'correlated' ? selection : { kind: 'playbook' };
 }
 
 function examine(
@@ -133,7 +133,7 @@ function examine(
   if (selection.kind === 'runs') {
     return statements.examineRuns(scope, selection);
   }
-  return statements.examineRecords(selectedOf(scope.brainKey, selection), scope);
+  return statements.examineRecords(selectedOf(scope.playbookKey, selection), scope);
 }
 
 type Loads = (head: RecordHead) => boolean;
@@ -179,12 +179,12 @@ async function pageWithin(
 }
 
 export function recordedReadingOver(statements: RecordedStatements): RecordedStore['readRecorded'] {
-  return async (brainKey, selection, page) => {
-    const scope = scopeOf(brainKey, selection, page);
+  return async (playbookKey, selection, page) => {
+    const scope = scopeOf(playbookKey, selection, page);
     if (page.since === undefined) {
       return pageWithin(statements, selection, page, scope);
     }
-    const from = await statements.firstPointSince(brainKey, page.since);
+    const from = await statements.firstPointSince(playbookKey, page.since);
     return from === undefined ? { records: [] } : pageWithin(statements, selection, page, { ...scope, from });
   };
 }

@@ -20,12 +20,12 @@ export function workflow(source: string): JsonObject {
 }
 
 export function runAt(runId: string): RunAddress {
-  return { org: 'acme', brain: 'alpha', runId };
+  return { org: 'acme', playbook: 'alpha', runId };
 }
 
 const testAttributes: JsonObject = {
   org: 'acme',
-  brain: 'alpha',
+  playbook: 'alpha',
   definition: { name: 'test', version: 1 },
   caller: { id: 'acme-admin' },
 };

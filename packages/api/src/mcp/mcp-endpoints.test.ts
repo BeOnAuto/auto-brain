@@ -23,12 +23,17 @@ function sdkError(message: string): Readonly<Record<string, unknown>> {
 
 const otherCallers: ReadonlyArray<readonly [string, string, string, string]> = [
   ['another org', '/orgs/globex/mcp', acmeAdmin.key, 'The caller does not belong to this org'],
-  ['a brain of another org', '/orgs/acme/brains/alpha/mcp', globexAdmin.key, 'The caller does not belong to this org'],
   [
-    'a brain outside the key',
-    '/orgs/acme/brains/beta/mcp',
+    'a playbook of another org',
+    '/orgs/acme/playbooks/alpha/mcp',
+    globexAdmin.key,
+    'The caller does not belong to this org',
+  ],
+  [
+    'a playbook outside the key',
+    '/orgs/acme/playbooks/beta/mcp',
     acmeAlphaWriter.key,
-    'The caller may not access this brain',
+    'The caller may not access this playbook',
   ],
 ];
 
@@ -59,7 +64,7 @@ describe('the callers an MCP endpoint rejects before the MCP SDK runs', () => {
 });
 
 describe('credentials of a scheme the API does not know, at an MCP endpoint', () => {
-  it.each(['/mcp', '/orgs/acme/mcp', '/orgs/acme/brains/alpha/mcp'])(
+  it.each(['/mcp', '/orgs/acme/mcp', '/orgs/acme/playbooks/alpha/mcp'])(
     'refuses a Request header on %s as a malformed Authorization header, as over HTTP',
     async (path) => {
       const { handler } = await operationServer();
@@ -104,7 +109,7 @@ describe('the methods of an MCP endpoint', () => {
   it('answers HEAD with 405 and Allow: POST', async () => {
     const { handler } = await operationServer();
 
-    const answer = await call(handler, '/orgs/acme/brains/alpha/mcp', { method: 'HEAD', headers: asAdmin });
+    const answer = await call(handler, '/orgs/acme/playbooks/alpha/mcp', { method: 'HEAD', headers: asAdmin });
 
     expect({ status: answer.status, allow: answer.headers.get('allow') }).toEqual({ status: 405, allow: 'POST' });
   });

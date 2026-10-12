@@ -27,7 +27,7 @@ describe('the records a projector reports', { timeout: viewTestTimeoutMs }, () =
     const views = await viewHarness(await onSQLite());
     await views.saved('first', counting);
     await views.ran('reasoning/runs', 1);
-    await views.append('brain/acme/alpha/runs/broken', [{ type: 'run_succeeded', data: { type: 'run_succeeded' } }]);
+    await views.append('playbook/acme/alpha/runs/broken', [{ type: 'run_succeeded', data: { type: 'run_succeeded' } }]);
     views.start();
     await views.until('first', liveWith(1));
 
@@ -35,7 +35,7 @@ describe('the records a projector reports', { timeout: viewTestTimeoutMs }, () =
     await views.until('second', liveWith(1));
 
     expect(views.reports.notes()).toEqual([
-      { kind: 'record_passed_over', brain: 'brain/acme/alpha/', record: anyText, reason: 'unreadable' },
+      { kind: 'record_passed_over', playbook: 'playbook/acme/alpha/', record: anyText, reason: 'unreadable' },
     ]);
   });
 });
@@ -56,7 +56,7 @@ describe('a projector that fails', { timeout: viewTestTimeoutMs }, () => {
     expect(kept).toMatchObject({ phase: 'live', view: 1 });
   });
 
-  it('reports a pass of a brain that failed, and passes again', async () => {
+  it('reports a pass of a playbook that failed, and passes again', async () => {
     const views = await viewHarness(await onSQLite());
     await views.saved('runs', counting);
     await views.ran('reasoning/runs', 1);
@@ -64,7 +64,7 @@ describe('a projector that fails', { timeout: viewTestTimeoutMs }, () => {
 
     const kept = await views.until('runs', foldedAll(1));
 
-    expect(views.reports.troubles()).toEqual(['A pass of the views of a brain failed; the next sweep tries again']);
+    expect(views.reports.troubles()).toEqual(['A pass of the views of a playbook failed; the next sweep tries again']);
     expect(kept).toMatchObject({ phase: 'live', view: 1 });
   });
 });

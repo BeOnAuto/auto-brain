@@ -9,9 +9,9 @@ import { insertedListener } from '../listeners/listener-rows.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
 import { runGateOf } from './run-gate.ts';
 
-const brainKey = 'brain/acme/alpha/';
+const playbookKey = 'playbook/acme/alpha/';
 
-const stream = `${brainKey}run-logs/r-1`;
+const stream = `${playbookKey}run-logs/r-1`;
 
 const PassedRow = Schema.Struct({ listener: Schema.String, passed: WholeNumber });
 
@@ -79,7 +79,7 @@ function armedAt(database: HostDatabase, listener: string, armedBy: number) {
     insertedListener(database, {
       runKey: 'acme/alpha/r-1',
       listener,
-      brainKey,
+      playbookKey,
       streamId: stream,
       armedBy,
       filters: '[]',
@@ -93,7 +93,7 @@ function armedAt(database: HostDatabase, listener: string, armedBy: number) {
 describe('the gate the records of a run pass through to the follower', () => {
   it('holds a record until its outputs are dispatched, and passes the listeners it armed when it passes it', async () => {
     const database = await openedOn(await onSQLite());
-    const gate = runGateOf(database, brainKey);
+    const gate = runGateOf(database, playbookKey);
     await dispatchedThrough(database, 0);
     const held = await Effect.runPromise(gate.verdictOn(runRecord(1), false));
     await dispatchedThrough(database, 2);
@@ -116,7 +116,7 @@ describe('the gate the records of a run pass through to the follower', () => {
 
   it('passes a record held too long, and the listeners it armed, even those kept after it passed', async () => {
     const database = await openedOn(await onSQLite());
-    const gate = runGateOf(database, brainKey);
+    const gate = runGateOf(database, playbookKey);
     await dispatchedThrough(database, 0);
     await armedAt(database, 'before', 2);
 
@@ -139,7 +139,7 @@ describe('the gate the records of a run pass through to the follower', () => {
 describe('the gate passing a record of a run held too long', () => {
   it('passes a listener the dispatch keeps after the gate read the listeners and before it marked the run passed', async () => {
     const database = await openedOn(await onSQLite());
-    const gate = runGateOf(armingWhilePassing(database), brainKey);
+    const gate = runGateOf(armingWhilePassing(database), playbookKey);
     await dispatchedThrough(database, 0);
 
     const verdict = await Effect.runPromise(gate.verdictOn(runRecord(2), true));
@@ -150,7 +150,7 @@ describe('the gate passing a record of a run held too long', () => {
 
   it('forgets how far it passed a run once the dispatch of the run reaches that far', async () => {
     const database = await openedOn(await onSQLite());
-    const gate = runGateOf(database, brainKey);
+    const gate = runGateOf(database, playbookKey);
     const watermark = sqlWatermark(database);
     await dispatchedThrough(database, 0);
     await Effect.runPromise(gate.verdictOn(runRecord(2), true));
@@ -181,8 +181,8 @@ describe('the gate noting how far it passed a run', () => {
 
     const verdicts = await Effect.runPromise(
       Effect.all([
-        runGateOf(beforePassing(reached, caughtUp), brainKey).verdictOn(runRecord(2), true),
-        runGateOf(beforePassing(ended, Effect.orDie(finished)), brainKey).verdictOn(runRecord(2), true),
+        runGateOf(beforePassing(reached, caughtUp), playbookKey).verdictOn(runRecord(2), true),
+        runGateOf(beforePassing(ended, Effect.orDie(finished)), playbookKey).verdictOn(runRecord(2), true),
       ]),
     );
 

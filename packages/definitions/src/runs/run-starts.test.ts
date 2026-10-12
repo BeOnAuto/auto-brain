@@ -4,7 +4,7 @@ import { runStartedOf } from './run-starts.ts';
 
 const context = {
   at: '2026-10-01T09:00:00.000Z',
-  by: 'brain:alpha',
+  by: 'playbook:alpha',
   runId: 'run-1',
   definitionType: 'workflow',
   definitionName: 'close',

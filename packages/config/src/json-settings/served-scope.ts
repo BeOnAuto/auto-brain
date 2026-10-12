@@ -1,33 +1,33 @@
-import { BrainIdSchema, OrgIdSchema } from '@beonauto/operations';
+import { PlaybookIdSchema, OrgIdSchema } from '@beonauto/operations';
 import { JsonPointer, Result, Schema } from 'effect';
 
 import { problem, type SettingProblem } from './json-setting.ts';
 
 const isOrgId = Schema.is(OrgIdSchema);
 
-const isBrainId = Schema.is(BrainIdSchema);
+const isPlaybookId = Schema.is(PlaybookIdSchema);
 
 export interface ServedScope {
   readonly org: string;
-  readonly brains: readonly string[] | null;
+  readonly playbooks: readonly string[] | null;
 }
 
 export interface ServedAddress {
   readonly org: string;
-  readonly brain: string;
+  readonly playbook: string;
 }
 
 export interface WrittenScope {
   readonly org?: string | undefined;
-  readonly brains?: readonly string[] | undefined;
+  readonly playbooks?: readonly string[] | undefined;
 }
 
 function entryPointer(entry: string, ...path: readonly string[]): string {
   return [entry, ...path].map((segment) => `/${JsonPointer.escapeToken(segment)}`).join('');
 }
 
-export function servesBrain({ org, brains }: ServedScope, address: ServedAddress): boolean {
-  return org === address.org && (brains === null || brains.includes(address.brain));
+export function servesPlaybook({ org, playbooks }: ServedScope, address: ServedAddress): boolean {
+  return org === address.org && (playbooks === null || playbooks.includes(address.playbook));
 }
 
 function orgProblems(
@@ -42,20 +42,22 @@ function orgProblems(
   return isOrgId(org) ? [] : [problem(setting, entryPointer(entry, 'org'), 'Expected an org id')];
 }
 
-function brainProblems(setting: string, entry: string, brains: readonly string[]): readonly SettingProblem[] {
-  return brains.flatMap((brain, index) =>
-    isBrainId(brain) ? [] : [problem(setting, entryPointer(entry, 'brains', String(index)), 'Expected a brain id')],
+function playbookProblems(setting: string, entry: string, playbooks: readonly string[]): readonly SettingProblem[] {
+  return playbooks.flatMap((playbook, index) =>
+    isPlaybookId(playbook)
+      ? []
+      : [problem(setting, entryPointer(entry, 'playbooks', String(index)), 'Expected a playbook id')],
   );
 }
 
 export function servedScopeOf(
   setting: string,
   entry: string,
-  { org, brains }: WrittenScope,
+  { org, playbooks }: WrittenScope,
   served: string,
 ): Result.Result<ServedScope, readonly SettingProblem[]> {
-  const problems = [...orgProblems(setting, entry, org, served), ...brainProblems(setting, entry, brains ?? [])];
+  const problems = [...orgProblems(setting, entry, org, served), ...playbookProblems(setting, entry, playbooks ?? [])];
   return org === undefined || problems.length > 0
     ? Result.fail(problems)
-    : Result.succeed({ org, brains: brains ?? null });
+    : Result.succeed({ org, playbooks: playbooks ?? null });
 }

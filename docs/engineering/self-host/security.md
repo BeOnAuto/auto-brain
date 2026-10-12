@@ -2,15 +2,15 @@
 
 ## API keys
 
-Every path needs an API key, sent as `Authorization: Bearer <key>`, except `/health` and [the page the server shows a browser at `/`](#the-page-at-the-root). Each key belongs to one org and carries its permissions and the brains it may access. The key command creates one:
+Every path needs an API key, sent as `Authorization: Bearer <key>`, except `/health` and [the page the server shows a browser at `/`](#the-page-at-the-root). Each key belongs to one org and carries its permissions and the playbooks it may access. The key command creates one:
 
 ```bash
 docker run --rm --log-driver none beonauto/auto-brain:latest node packages/identity/src/key-command.ts --org <org>
 ```
 
-Options are `--id`, `--permissions` (comma-separated, from `org:read`, `org:write`, `brain:read`, `brain:write`; all four by default) and `--brains` (comma-separated brain ids, or `*` for every brain, the default). The command prints the key once and the entry to add to `API_KEYS`, or to `api_keys` in the [configuration file](../self-host/configuration.md), where the entry as printed is one item of the list; only the key's SHA-256 is stored, so keep the key itself somewhere safe. Write the variable unquoted, for example `API_KEYS=[{"id":"…",…}]` in an env file. `--log-driver none` keeps the key out of Docker's log driver, which could otherwise store or ship it; the command still prints it to your terminal.
+Options are `--id`, `--permissions` (comma-separated, from `org:read`, `org:write`, `playbook:read`, `playbook:write`; all four by default) and `--playbooks` (comma-separated playbook ids, or `*` for every playbook, the default). The command prints the key once and the entry to add to `API_KEYS`, or to `api_keys` in the [configuration file](../self-host/configuration.md), where the entry as printed is one item of the list; only the key's SHA-256 is stored, so keep the key itself somewhere safe. Write the variable unquoted, for example `API_KEYS=[{"id":"…",…}]` in an env file. `--log-driver none` keeps the key out of Docker's log driver, which could otherwise store or ship it; the command still prints it to your terminal.
 
-Following [RFC 6750](https://www.rfc-editor.org/rfc/rfc6750), a request without an `Authorization` header gets `401` with `WWW-Authenticate: Bearer`, a key that is not valid gets `401` with `error="invalid_token"`, an `Authorization` header that is not exactly one `Bearer <key>` gets `400` with `error="invalid_request"`, and a key that lacks the permission, brain or org a call needs gets `403` with `error="insufficient_scope"`.
+Following [RFC 6750](https://www.rfc-editor.org/rfc/rfc6750), a request without an `Authorization` header gets `401` with `WWW-Authenticate: Bearer`, a key that is not valid gets `401` with `error="invalid_token"`, an `Authorization` header that is not exactly one `Bearer <key>` gets `400` with `error="invalid_request"`, and a key that lacks the permission, playbook or org a call needs gets `403` with `error="insufficient_scope"`.
 
 Without `API_KEYS`, or with `API_KEYS=[]`, and without local mode, the server rejects every path except those two with `401`, on any address, and warns at start-up that no request can authenticate.
 

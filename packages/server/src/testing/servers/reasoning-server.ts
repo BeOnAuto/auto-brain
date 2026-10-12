@@ -24,7 +24,7 @@ export interface ServedParts {
   readonly toolTiming?: Timing;
 }
 
-export const alpha = '/v1/orgs/acme/brains/alpha';
+export const alpha = '/v1/orgs/acme/playbooks/alpha';
 
 const localMode: Readonly<Record<string, string>> = { LOCAL_MODE: 'true' };
 

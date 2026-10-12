@@ -10,21 +10,21 @@ const approvalRequest = [
   'Approve the quarter?',
 ].join('\n');
 
-type InBrain = (input: Readonly<Record<string, unknown>>) => Readonly<Record<string, unknown>>;
+type InPlaybook = (input: Readonly<Record<string, unknown>>) => Readonly<Record<string, unknown>>;
 
 export async function interactionsCalled(
   session: McpSession,
-  inBrain: InBrain,
+  inPlaybook: InPlaybook,
 ): Promise<readonly (readonly [string, ToolResult])[]> {
   const asking = { type: 'interaction', name: 'approval' };
-  await session.callTool('create_definition', inBrain({ ...asking, source: approvalRequest }));
-  const asked = await session.callTool('run_definition', inBrain({ ...asking, input: { owner: 'ada' } }));
+  await session.callTool('create_definition', inPlaybook({ ...asking, source: approvalRequest }));
+  const asked = await session.callTool('run_definition', inPlaybook({ ...asking, input: { owner: 'ada' } }));
   const runId = String(asked.structuredContent?.['run_id']);
   return [
-    ['list_interactions', await session.callTool('list_interactions', inBrain({}))],
+    ['list_interactions', await session.callTool('list_interactions', inPlaybook({}))],
     [
       'answer_interaction',
-      await session.callTool('answer_interaction', inBrain({ run_id: runId, answer: { choice: 'yes' } })),
+      await session.callTool('answer_interaction', inPlaybook({ run_id: runId, answer: { choice: 'yes' } })),
     ],
   ];
 }

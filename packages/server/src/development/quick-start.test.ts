@@ -15,7 +15,7 @@ import {
   untilListening,
 } from '../testing/processes/development-process.ts';
 
-const brain = 'support';
+const playbook = 'support';
 
 const charged = 'I was charged twice for March and nobody has answered for three days.';
 
@@ -124,7 +124,7 @@ function structured(result: ToolResult): Readonly<Record<string, unknown>> {
 }
 
 async function settled(session: McpSession, runId: unknown): Promise<Readonly<Record<string, unknown>>> {
-  const reading = structured(await session.callTool('get_run', { brain, run_id: runId }));
+  const reading = structured(await session.callTool('get_run', { playbook, run_id: runId }));
   if (reading['status'] !== 'started') {
     return reading;
   }
@@ -133,11 +133,11 @@ async function settled(session: McpSession, runId: unknown): Promise<Readonly<Re
 }
 
 async function stored(session: McpSession, type: string, name: string, source: string): Promise<unknown> {
-  return structured(await session.callTool('create_definition', { brain, type, name, source }));
+  return structured(await session.callTool('create_definition', { playbook, type, name, source }));
 }
 
 async function ran(session: McpSession, name: string, input: object, type = 'reasoning'): Promise<unknown> {
-  const started = structured(await session.callTool('run_definition', { brain, type, name, input }));
+  const started = structured(await session.callTool('run_definition', { playbook, type, name, input }));
   return settled(session, started['run_id']);
 }
 
@@ -147,14 +147,14 @@ describe(
     timeout: developmentTestTimeoutMs,
   },
   () => {
-    it('creates a brain, stores a reasoning function that classifies tickets, runs it, reads its record and runs a new version', async () => {
+    it('creates a playbook, stores a reasoning function that classifies tickets, runs it, reads its record and runs a new version', async () => {
       const steps = await onPnpmDev(async (session) => ({
-        brain: structured(await session.callTool('create_brain', { brain, name: 'Support' })),
+        playbook: structured(await session.callTool('create_playbook', { playbook, name: 'Support' })),
         stored: await stored(session, 'reasoning', 'classify-ticket', classifyingPrompt('Answer as JSON.')),
         first: await ran(session, 'classify-ticket', { ticket: charged }),
         updated: structured(
           await session.callTool('update_definition', {
-            brain,
+            playbook,
             type: 'reasoning',
             name: 'classify-ticket',
             source: classifyingPrompt('Anything about money is billing and at least normal urgency.'),
@@ -164,7 +164,7 @@ describe(
       }));
 
       expect(steps).toMatchObject({
-        brain: { isError: false, id: brain, status: 'active' },
+        playbook: { isError: false, id: playbook, status: 'active' },
         stored: { isError: false, name: 'classify-ticket', version: 1 },
         first: {
           status: 'succeeded',
@@ -181,7 +181,7 @@ describe(
 describe('the workflow requests of the quick start, over /mcp', { timeout: developmentTestTimeoutMs }, () => {
   it('builds a workflow that drafts an escalation note only for an urgent ticket, and runs it on two', async () => {
     const outputs = await onPnpmDev(async (session) => {
-      await session.callTool('create_brain', { brain, name: 'Support' });
+      await session.callTool('create_playbook', { playbook, name: 'Support' });
       await stored(session, 'reasoning', 'classify-ticket', classifyingPrompt('Answer as JSON.'));
       await stored(session, 'reasoning', 'escalation-note', escalationNote);
       await stored(session, 'workflow', 'triage-ticket', triage);
@@ -199,11 +199,11 @@ describe('the workflow requests of the quick start, over /mcp', { timeout: devel
 
   it('starts a workflow that waits for an approval, sends the approval, and sees it finish', async () => {
     const ending = await onPnpmDev(async (session) => {
-      await session.callTool('create_brain', { brain, name: 'Support' });
+      await session.callTool('create_playbook', { playbook, name: 'Support' });
       await stored(session, 'workflow', 'refund-approval', approval);
       const started = structured(
         await session.callTool('run_definition', {
-          brain,
+          playbook,
           type: 'workflow',
           name: 'refund-approval',
           input: { refund: 'ticket-4711' },
@@ -211,7 +211,7 @@ describe('the workflow requests of the quick start, over /mcp', { timeout: devel
       );
       const sent = structured(
         await session.callTool('send_run_event', {
-          brain,
+          playbook,
           run_id: started['run_id'],
           event: { type: 'com.acme.refund.approved', data: { by: 'dana' } },
         }),
@@ -227,7 +227,7 @@ describe('the workflow requests of the quick start, over /mcp', { timeout: devel
   });
 });
 
-const FirstBrainSchema = Schema.Struct({
+const FirstPlaybookSchema = Schema.Struct({
   messages: Schema.Tuple([
     Schema.Struct({ content: Schema.Struct({ text: Schema.String }) }),
     Schema.Struct({ content: Schema.Struct({ resource: Schema.Struct({ uri: Schema.String, text: Schema.String }) }) }),
@@ -239,33 +239,37 @@ function inTheirOrder(steps: string, names: readonly string[]): boolean {
   return places.every((place, index) => place >= 0 && (index === 0 || place > Number(places[index - 1])));
 }
 
-describe('the first-brain prompt of the quick start, over /mcp', { timeout: developmentTestTimeoutMs }, () => {
-  it('is served by the brain, and an agent that follows its steps creates a brain, saves a reasoning function and runs it', async () => {
+describe('the first-playbook prompt of the quick start, over /mcp', { timeout: developmentTestTimeoutMs }, () => {
+  it('is served by the playbook, and an agent that follows its steps creates a playbook, saves a reasoning function and runs it', async () => {
     const outcome = await onPnpmDev(async (session) => {
       const {
         messages: [asked, embedded],
-      } = Schema.decodeUnknownSync(FirstBrainSchema)(await session.getPrompt('first-brain'));
+      } = Schema.decodeUnknownSync(FirstPlaybookSchema)(await session.getPrompt('first-playbook'));
       return {
         recipe: asked.content.text,
         guide: embedded.content.resource,
-        brains: structured(await session.callTool('list_brains', {})),
-        brain: structured(
-          await session.callTool('create_brain', { brain, name: 'Support', description: 'Classifies support tickets' }),
+        playbooks: structured(await session.callTool('list_playbooks', {})),
+        playbook: structured(
+          await session.callTool('create_playbook', {
+            playbook,
+            name: 'Support',
+            description: 'Classifies support tickets',
+          }),
         ),
         stored: await stored(session, 'reasoning', 'classify-ticket', classifyingPrompt('Answer as JSON.')),
         run: await ran(session, 'classify-ticket', { ticket: charged }),
       };
     });
 
-    expect(outcome.recipe).toMatch(/^Create my first brain\.\n\n# Create your first brain\n/u);
-    expect(inTheirOrder(outcome.recipe, ['list_brains', 'create_brain', 'create_definition', 'run_definition'])).toBe(
-      true,
-    );
+    expect(outcome.recipe).toMatch(/^Create my first playbook\.\n\n# Create your first playbook\n/u);
+    expect(
+      inTheirOrder(outcome.recipe, ['list_playbooks', 'create_playbook', 'create_definition', 'run_definition']),
+    ).toBe(true);
     expect(outcome.guide.uri).toBe('guide://reasoning-function');
     expect(outcome.guide.text).toContain('# Reasoning function format');
     expect(outcome).toMatchObject({
-      brains: { isError: false, brains: [] },
-      brain: { isError: false, id: brain, status: 'active' },
+      playbooks: { isError: false, playbooks: [] },
+      playbook: { isError: false, id: playbook, status: 'active' },
       stored: { isError: false, name: 'classify-ticket', version: 1 },
       run: { status: 'succeeded', output: { category: 'billing', urgency: 'high' } },
     });

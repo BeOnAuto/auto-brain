@@ -59,7 +59,7 @@ const emittedBy: Context = {
   depth: 2,
 };
 
-describe('an event published to a brain, as the follower reads it', () => {
+describe('an event published to a playbook, as the follower reads it', () => {
   it('is the event at depth 1 when sent from outside, owned by no workflow', () => {
     expect(published()).toEqual({ event: told, depth: 1, emitter: undefined, ownedBy: [], topRun: undefined });
   });
@@ -86,7 +86,7 @@ describe('an event published to a brain, as the follower reads it', () => {
   });
 });
 
-describe('a fact of a brain, as the follower reads it', () => {
+describe('a fact of a playbook, as the follower reads it', () => {
   it('about a run, is owned by the workflow it ran and names the run that began the chain, one deeper', () => {
     expect([runFact('r-1', ['workflow', 'close'], 'r-top'), runFact('r-2', ['reasoning', 'sum'], 'r-2')]).toMatchObject(
       [
@@ -117,7 +117,7 @@ describe('a fact of a brain, as the follower reads it', () => {
   });
 });
 
-describe('a fact of a brain that is none, or cannot be read, as the follower reads it', () => {
+describe('a fact of a playbook that is none, or cannot be read, as the follower reads it', () => {
   it('is unreadable when its record cannot be read, and no fact at all for a record that is none', () => {
     expect([
       followedEventOf(

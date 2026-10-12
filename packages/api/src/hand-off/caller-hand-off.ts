@@ -1,4 +1,4 @@
-import { BrainIdSchema, CallerIdentitySchema, type CallerIdentity } from '@beonauto/operations';
+import { PlaybookIdSchema, CallerIdentitySchema, type CallerIdentity } from '@beonauto/operations';
 import type { AuthInfo } from '@modelcontextprotocol/server';
 import { Schema } from 'effect';
 
@@ -11,8 +11,8 @@ export interface OrgCall {
   readonly dropped: readonly DroppedArgument[];
 }
 
-export interface BrainCall extends OrgCall {
-  readonly brain: string;
+export interface PlaybookCall extends OrgCall {
+  readonly playbook: string;
 }
 
 export interface HandedOff {
@@ -28,13 +28,13 @@ const OrgCallSchema = Schema.Struct({
   dropped: Schema.Array(DroppedArgumentSchema),
 });
 
-const BrainCallSchema = Schema.Struct({ ...OrgCallSchema.fields, brain: BrainIdSchema });
+const PlaybookCallSchema = Schema.Struct({ ...OrgCallSchema.fields, playbook: PlaybookIdSchema });
 
 const decodeOrgCall = Schema.decodeUnknownSync(OrgCallSchema);
 
-const decodeBrainCall = Schema.decodeUnknownSync(BrainCallSchema);
+const decodePlaybookCall = Schema.decodeUnknownSync(PlaybookCallSchema);
 
-export function authInfoFor(call: OrgCall | BrainCall): AuthInfo {
+export function authInfoFor(call: OrgCall | PlaybookCall): AuthInfo {
   return {
     token: placeholderToken,
     clientId: call.caller.id,
@@ -47,6 +47,6 @@ export function orgCallOf({ authInfo }: HandedOff): OrgCall {
   return decodeOrgCall(authInfo?.extra);
 }
 
-export function brainCallOf({ authInfo }: HandedOff): BrainCall {
-  return decodeBrainCall(authInfo?.extra);
+export function playbookCallOf({ authInfo }: HandedOff): PlaybookCall {
+  return decodePlaybookCall(authInfo?.extra);
 }

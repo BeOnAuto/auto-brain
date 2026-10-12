@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import {
-  brainWithReviews,
+  playbookWithReviews,
   inState,
   liveAt,
   liveWith,
@@ -54,7 +54,7 @@ async function stalledServer(): Promise<ReasoningServer> {
     verdicts({ campaign: 'spring', verdict: 'approve' }, 'the secret plan of the spring campaign'),
   );
   closing.push(server.stop);
-  await brainWithReviews(server);
+  await playbookWithReviews(server);
   await server.call('POST', `${alpha}/definitions/recall`, {
     body: { name: 'objects', source: recallDocument(takingObjectsOnly, reviewRuns) },
   });
@@ -63,7 +63,7 @@ async function stalledServer(): Promise<ReasoningServer> {
 }
 
 describe('a recall function whose view stalled', { timeout: recallTestTimeoutMs }, () => {
-  it('stands stalled with the event, the kind and the raw error, and holds back no other view of the brain', async () => {
+  it('stands stalled with the event, the kind and the raw error, and holds back no other view of the playbook', async () => {
     const server = await stalledServer();
 
     const standing = decodeStalled(await standingUntil(server, 'objects', inState('stalled'))).standing;
@@ -89,7 +89,7 @@ describe('a recall function whose view stalled', { timeout: recallTestTimeoutMs 
       body: {
         reason: 'conflict',
         kind: 'stalled',
-        detail: `The view of the recall function “objects” stopped at the run_succeeded event of ${stalled.event.time}: its fold raised an error on line 12. Save a corrected version to build the view again from the brain's history`,
+        detail: `The view of the recall function “objects” stopped at the run_succeeded event of ${stalled.event.time}: its fold raised an error on line 12. Save a corrected version to build the view again from the playbook's history`,
       },
     });
     expect(ran.text).not.toContain('secret');
@@ -116,7 +116,7 @@ describe('a recall function whose view stalled, afterwards', { timeout: recallTe
 
     const ran = await withMcpSession(
       'current revision',
-      { url: `${server.origin}/orgs/acme/brains/alpha/mcp`, headers: {} },
+      { url: `${server.origin}/orgs/acme/playbooks/alpha/mcp`, headers: {} },
       (session) => session.callTool('run_definition', { type: 'recall', name: 'objects', input: {} }),
     );
 

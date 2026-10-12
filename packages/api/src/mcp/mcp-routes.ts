@@ -1,14 +1,14 @@
-import { canAccessBrain, type CallerIdentity, type OperationScope } from '@beonauto/operations';
+import { canAccessPlaybook, type CallerIdentity, type OperationScope } from '@beonauto/operations';
 import { createMcpHandler, type McpHttpHandler } from '@modelcontextprotocol/server';
 
-import { authInfoFor, type BrainCall, type OrgCall } from '../hand-off/caller-hand-off.ts';
+import { authInfoFor, type PlaybookCall, type OrgCall } from '../hand-off/caller-hand-off.ts';
 import { droppedArgumentsOf } from '../hand-off/dropped-arguments.ts';
 import { requestBodyLimit } from '../operations/request-body.ts';
 import { problemOf, problemResponse, type Problem } from '../problem/problem.ts';
 import type { RegisterRoutes, RouteHandler } from '../routes.ts';
 import type { McpServing } from './mcp-connection.ts';
 import {
-  brainServerFactory,
+  playbookServerFactory,
   catalogServerFactory,
   orgServerFactory,
   type McpServerFactory,
@@ -24,19 +24,19 @@ const insufficientScope = { 'www-authenticate': 'Bearer error="insufficient_scop
 
 const anotherOrg = problemOf('forbidden', 'The caller does not belong to this org');
 
-const anotherBrain = problemOf('forbidden', 'The caller may not access this brain');
+const anotherPlaybook = problemOf('forbidden', 'The caller may not access this playbook');
 
-function rejectionOf(caller: CallerIdentity, org: string, brain: string | undefined): Problem | undefined {
+function rejectionOf(caller: CallerIdentity, org: string, playbook: string | undefined): Problem | undefined {
   if (caller.org !== org) {
     return anotherOrg;
   }
-  return brain === undefined || canAccessBrain(caller.brains, brain) ? undefined : anotherBrain;
+  return playbook === undefined || canAccessPlaybook(caller.playbooks, playbook) ? undefined : anotherPlaybook;
 }
 
 async function handedOff(
   fetchMcp: FetchMcp,
   request: Request,
-  call: Omit<OrgCall, 'dropped'> | Omit<BrainCall, 'dropped'>,
+  call: Omit<OrgCall, 'dropped'> | Omit<PlaybookCall, 'dropped'>,
 ): Promise<Response> {
   const dropped = await droppedArgumentsOf(request);
   return fetchMcp(request, { authInfo: authInfoFor({ ...call, dropped }) });
@@ -45,14 +45,14 @@ async function handedOff(
 function endpoint(fetchMcp: FetchMcp, scope: OperationScope): RouteHandler {
   return (c) => {
     const org = String(c.req.param('org'));
-    const brain = scope === 'brain' ? String(c.req.param('brain')) : undefined;
+    const playbook = scope === 'playbook' ? String(c.req.param('playbook')) : undefined;
     const caller = c.get('principal').callerIn(org);
-    const rejection = rejectionOf(caller, org, brain);
+    const rejection = rejectionOf(caller, org, playbook);
     if (rejection !== undefined) {
       return problemResponse(rejection, insufficientScope);
     }
     const requestId = c.get('requestId');
-    const call = brain === undefined ? { caller, org, requestId } : { caller, org, brain, requestId };
+    const call = playbook === undefined ? { caller, org, requestId } : { caller, org, playbook, requestId };
     return handedOff(fetchMcp, c.req.raw, call);
   };
 }
@@ -73,12 +73,12 @@ export function mcpRoutes(options: McpRoutesOptions): RegisterRoutes {
     const serving = { ...options, reportThrown: routes.reportThrown };
     const catalog = handlerFor(catalogServerFactory(serving), options);
     const org = handlerFor(orgServerFactory(serving), options);
-    const brain = handlerFor(brainServerFactory(serving), options);
+    const playbook = handlerFor(playbookServerFactory(serving), options);
     routes.add('POST', '/mcp', ownOrgEndpoint(catalog.fetch));
     routes.add('POST', '/orgs/:org/mcp', endpoint(org.fetch, 'org'));
-    routes.add('POST', '/orgs/:org/brains/:brain/mcp', endpoint(brain.fetch, 'brain'));
+    routes.add('POST', '/orgs/:org/playbooks/:playbook/mcp', endpoint(playbook.fetch, 'playbook'));
     routes.onClose(async () => {
-      await Promise.all([catalog.close(), org.close(), brain.close()]);
+      await Promise.all([catalog.close(), org.close(), playbook.close()]);
     });
   };
 }

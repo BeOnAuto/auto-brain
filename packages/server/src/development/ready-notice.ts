@@ -17,7 +17,7 @@ function modelsIn(settings: Environment): string {
 
 export function readyNotice(port: number, settings: Environment): string {
   return [
-    'auto-brain is ready',
+    'Auto Runtime is ready',
     `  server     http://localhost:${port}`,
     `  models     ${modelsIn(settings)}`,
     `  MCP        http://localhost:${port}/mcp`,

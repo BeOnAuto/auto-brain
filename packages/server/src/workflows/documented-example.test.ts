@@ -25,7 +25,7 @@ afterEach(async () => {
 describe('the example of the workflow format, through the server', { timeout: workflowTestTimeoutMs }, () => {
   it('reviews the brief, waits for the decision, and ends approved with the review', async () => {
     server = await servingWorkflows([answers(textResult('Approve: the brief names its audience.'))]);
-    await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+    await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
     await server.call('POST', `${alpha}/definitions/reasoning`, {
       body: { name: 'review-campaign-brief', source: reviewCampaignBrief },
     });

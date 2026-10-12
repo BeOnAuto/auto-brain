@@ -5,10 +5,10 @@ import type { RunCommand } from '../runs/run-commands.ts';
 import { runDecider, runStreamNameOf } from '../runs/run-decider.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
-import { harness, toBrain } from '../testing/harness.ts';
+import { harness, toPlaybook } from '../testing/harness.ts';
 import { startOfCall, toolUser } from '../testing/tool-user.ts';
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
@@ -18,7 +18,7 @@ const typesOf = Schema.decodeUnknownSync(
   Schema.Struct({ output: Schema.Struct({ events: Schema.Array(Schema.Struct({ type: Schema.String })) }) }),
 );
 
-async function brainWithToolUser() {
+async function playbookWithToolUser() {
   const user = toolUser();
   const operations = definitionOperationsFor([user.capability]);
   const definitions = harness();
@@ -39,7 +39,7 @@ async function brainWithToolUser() {
     definitions.run(
       Effect.forEach(commands, (command) =>
         Effect.orDie(
-          definitions.ledger.service.execute(`brain/acme/alpha/${runStreamNameOf(runId)}`, runDecider, command),
+          definitions.ledger.service.execute(`playbook/acme/alpha/${runStreamNameOf(runId)}`, runDecider, command),
         ),
       ),
     );
@@ -50,7 +50,7 @@ const calls = (count: number, type: string): readonly string[] => Array.from({ l
 
 describe('the journal of a run', () => {
   it('records ten calls made at once, one append at a time, each start before its answer', async () => {
-    const { running, history, user } = await brainWithToolUser();
+    const { running, history, user } = await playbookWithToolUser();
 
     expect(await running({ calls: 10 })).toMatchObject({
       status: 'succeeded',
@@ -66,7 +66,7 @@ describe('the journal of a run', () => {
   });
 
   it('numbers the calls made at once in the order their starts land, each from the run, never twice', async () => {
-    const { call, running, getRunHistory } = await brainWithToolUser();
+    const { call, running, getRunHistory } = await playbookWithToolUser();
     await running({ calls: 10 });
 
     const read = await call(getRunHistory, toAlpha(acmeAdmin, { run_id: runId, limit: 100 }));
@@ -88,7 +88,7 @@ describe('the journal of a run', () => {
 
 describe('the journal of a run whose calls failed', () => {
   it('records how each call failed after its start', async () => {
-    const { running, history } = await brainWithToolUser();
+    const { running, history } = await playbookWithToolUser();
     await running({ calls: 1, failing: true });
 
     expect(await history()).toEqual(['run_started', 'tool_call_started', 'tool_call_failed', 'run_succeeded']);
@@ -97,7 +97,7 @@ describe('the journal of a run whose calls failed', () => {
 
 describe('the journal of a run that has finished', () => {
   it('records nothing more', async () => {
-    const { running, history, user } = await brainWithToolUser();
+    const { running, history, user } = await playbookWithToolUser();
     await running({ calls: 1 });
 
     expect(await user.recordedLate()).toEqual([false]);
@@ -106,7 +106,7 @@ describe('the journal of a run that has finished', () => {
   });
 
   it('leaves a call in flight when the run is cancelled with a start and no answer', async () => {
-    const { callCancelledWhen, runDefinition, history, user } = await brainWithToolUser();
+    const { callCancelledWhen, runDefinition, history, user } = await playbookWithToolUser();
     const request = toAlpha(acmeAdmin, {
       type: 'tool-user',
       name: 'caller',
@@ -124,7 +124,7 @@ describe('a run that called tools', () => {
   it.each(['unavailable', 'conflict'])(
     'is not run again under its id after it ended %s, and says to start a new run',
     async (ending) => {
-      const { running, user } = await brainWithToolUser();
+      const { running, user } = await playbookWithToolUser();
       await running({ calls: 1, ending });
 
       expect(await running({ calls: 1, ending })).toMatchObject({
@@ -137,7 +137,7 @@ describe('a run that called tools', () => {
   );
 
   it('is answered again when it succeeded', async () => {
-    const { running, user } = await brainWithToolUser();
+    const { running, user } = await playbookWithToolUser();
     const first = await running({ calls: 2 });
 
     expect(await running({ calls: 2 })).toEqual(first);
@@ -145,7 +145,7 @@ describe('a run that called tools', () => {
   });
 
   it('left started by a server that died stays started, is listed as running, and is not run again', async () => {
-    const { call, running, getRun, listRuns, recordedDirectly } = await brainWithToolUser();
+    const { call, running, getRun, listRuns, recordedDirectly } = await playbookWithToolUser();
     await recordedDirectly(
       {
         type: 'start',
@@ -171,7 +171,7 @@ describe('a run that called tools', () => {
 
 describe('a run of a definition that calls tools, still in progress', () => {
   it('is not run again under its id while an earlier call still runs it, before any tool was called', async () => {
-    const { callCancelledWhen, runDefinition, running, history, user } = await brainWithToolUser();
+    const { callCancelledWhen, runDefinition, running, history, user } = await playbookWithToolUser();
     const first = toAlpha(acmeAdmin, {
       type: 'tool-user',
       name: 'caller',

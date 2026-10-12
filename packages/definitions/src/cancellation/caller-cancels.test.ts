@@ -3,14 +3,14 @@ import { describe, expect, it } from 'vitest';
 
 import { runCanceller, type CancelRequest } from '../index.ts';
 import { acmeAdmin } from '../testing/callers.ts';
-import { toBrain } from '../testing/harness.ts';
+import { toPlaybook } from '../testing/harness.ts';
 import { withHandOn } from '../testing/relaying.ts';
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 const childId = '0199a3c4-7d2e-7c1a-9b3f-0000000000c1';
 
-const child = { org: 'acme', brain: 'alpha', id: childId };
+const child = { org: 'acme', playbook: 'alpha', id: childId };
 
 const lineage = { causationId: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a', correlationId: childId };
 

@@ -1,17 +1,17 @@
 import { Effect, Function } from 'effect';
 
 import { openHostDatabase, type DatabaseSettings } from '../src/database/host-databases.ts';
-import { passOf } from '../src/follower/brain-pass.ts';
-import { brainRecordsOf } from '../src/follower/brain-records.ts';
-import { followedBrainsOn } from '../src/follower/followed-brains.ts';
-import { byAdmin, definitionRecorded, eventTrigger, published } from '../src/reaction-testing/brain-writes.ts';
+import { followedPlaybooksOn } from '../src/follower/followed-playbooks.ts';
+import { passOf } from '../src/follower/playbook-pass.ts';
+import { playbookRecordsOf } from '../src/follower/playbook-records.ts';
 import { definitionRecordsKeepingTheirOwnStops } from '../src/reaction-testing/own-stops.ts';
-import { brainSweepsOn, type BrainSweeps } from '../src/sweeps/brain-sweeps.ts';
+import { byAdmin, definitionRecorded, eventTrigger, published } from '../src/reaction-testing/playbook-writes.ts';
+import { playbookSweepsOn, type PlaybookSweeps } from '../src/sweeps/playbook-sweeps.ts';
 import { resultOfEnding } from '../src/waiting-testing/recorded-waiting.ts';
 import { servedWaitingOf } from '../src/waiting/waiting-parts.ts';
 
 export interface SweepCost {
-  readonly brains: number;
+  readonly playbooks: number;
   readonly reacting: number;
   readonly roundMs: number;
   readonly idleMs: number;
@@ -22,8 +22,8 @@ type Pass = ReturnType<typeof passOf>;
 
 const idleSweeps = 20;
 
-function brainKeyOf(index: number): string {
-  return `brain/acme/b${index}/`;
+function playbookKeyOf(index: number): string {
+  return `playbook/acme/b${index}/`;
 }
 
 function inTurn(count: number, step: (index: number) => Promise<unknown>): Promise<void> {
@@ -33,14 +33,16 @@ function inTurn(count: number, step: (index: number) => Promise<unknown>): Promi
   );
 }
 
-function sweptUntilEmpty(sweeps: BrainSweeps, pass: Pass): Effect.Effect<void> {
+function sweptUntilEmpty(sweeps: PlaybookSweeps, pass: Pass): Effect.Effect<void> {
   return Effect.gen(function* () {
     for (;;) {
       const sweep = yield* sweeps.next();
-      if (sweep.brains.length === 0) {
+      if (sweep.playbooks.length === 0) {
         return;
       }
-      yield* Effect.forEach(sweep.brains, ({ brainKey, known }) => pass(brainKey, 'sweep', known), { discard: true });
+      yield* Effect.forEach(sweep.playbooks, ({ playbookKey, known }) => pass(playbookKey, 'sweep', known), {
+        discard: true,
+      });
     }
   });
 }
@@ -55,24 +57,24 @@ function medianOf(times: readonly number[]): number {
   return times.toSorted((left, right) => left - right)[Math.floor(times.length / 2)] ?? 0;
 }
 
-export async function sweepCostOn(database: DatabaseSettings, brains: number, reacting: number): Promise<SweepCost> {
+export async function sweepCostOn(database: DatabaseSettings, playbooks: number, reacting: number): Promise<SweepCost> {
   const opened = await openHostDatabase(database, Function.constVoid);
-  const followed = followedBrainsOn(opened);
-  await inTurn(brains, async (index) => {
-    await published(opened.store, { id: `e${index}`, type: 'com.measure.other' }, byAdmin, brainKeyOf(index));
-    await Effect.runPromise(followed.follow(brainKeyOf(index), null));
+  const followed = followedPlaybooksOn(opened);
+  await inTurn(playbooks, async (index) => {
+    await published(opened.store, { id: `e${index}`, type: 'com.measure.other' }, byAdmin, playbookKeyOf(index));
+    await Effect.runPromise(followed.follow(playbookKeyOf(index), null));
   });
   await inTurn(reacting, (index) =>
     definitionRecorded(
       opened.store,
       { name: 'react', version: 1, triggers: [eventTrigger({ type: 'com.measure.wanted' })] },
-      brainKeyOf(index),
+      playbookKeyOf(index),
     ),
   );
   const pass = passOf({
     database: opened,
-    records: brainRecordsOf(opened.store),
-    brains: followed,
+    records: playbookRecordsOf(opened.store),
+    playbooks: followed,
     consumers: [],
     calls: servedWaitingOf({
       database: opened,
@@ -89,17 +91,17 @@ export async function sweepCostOn(database: DatabaseSettings, brains: number, re
     passedEarly: () => Effect.void,
     registered: [],
   });
-  const sweeps = brainSweepsOn(opened.store, followed);
+  const sweeps = playbookSweepsOn(opened.store, followed);
   await Effect.runPromise(sweeps.started());
   const roundMs = await timed(sweptUntilEmpty(sweeps, pass));
   const idle: number[] = [];
   await inTurn(idleSweeps, async () => {
     idle.push(await timed(sweptUntilEmpty(sweeps, pass)));
   });
-  await inTurn(brains, (index) =>
-    published(opened.store, { id: `n${index}`, type: 'com.measure.other' }, byAdmin, brainKeyOf(index)),
+  await inTurn(playbooks, (index) =>
+    published(opened.store, { id: `n${index}`, type: 'com.measure.other' }, byAdmin, playbookKeyOf(index)),
   );
   const changedMs = await timed(sweptUntilEmpty(sweeps, pass));
   await opened.close();
-  return { brains, reacting, roundMs, idleMs: medianOf(idle), changedMs };
+  return { playbooks, reacting, roundMs, idleMs: medianOf(idle), changedMs };
 }

@@ -5,9 +5,9 @@ import { describe, expect, it } from 'vitest';
 import { defineCapability } from '../capability/capability.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
-import { harness, toBrain } from '../testing/harness.ts';
+import { harness, toPlaybook } from '../testing/harness.ts';
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 function checkedCapability() {
   const checked: string[] = [];

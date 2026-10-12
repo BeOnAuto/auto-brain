@@ -7,13 +7,13 @@ describe('the reaction a run makes, read from its attributes', () => {
     expect([
       reactionOfRun({
         definition: { name: 'close', version: 2 },
-        caller: { id: 'brain:alpha' },
+        caller: { id: 'playbook:alpha' },
         depth: 3,
         lineage: { correlation: 'r-top' },
       }),
       reactionOfRun({ definition: { name: 'close', version: 2 }, caller: { id: 'acme-admin' } }),
     ]).toEqual([
-      { workflow: 'close', version: 2, caller: 'brain:alpha', depth: 3, correlation: 'r-top' },
+      { workflow: 'close', version: 2, caller: 'playbook:alpha', depth: 3, correlation: 'r-top' },
       { workflow: 'close', version: 2, caller: 'acme-admin', depth: 0, correlation: undefined },
     ]);
   });

@@ -78,8 +78,8 @@ export function definitionsListed(noun: Noun, definitions: readonly ListedDefini
   const retired = definitions.filter(({ status }) => status === 'retired');
   const inUse =
     active.length === 0
-      ? `This brain has no ${noun.other} in use yet.`
-      : `This brain has ${counted(active.length, noun)}: ${namesOf(active)}.`;
+      ? `This playbook has no ${noun.other} in use yet.`
+      : `This playbook has ${counted(active.length, noun)}: ${namesOf(active)}.`;
   const retiredNoun = { one: `retired ${noun.one}`, other: `retired ${noun.other}` };
   return retired.length === 0
     ? inUse

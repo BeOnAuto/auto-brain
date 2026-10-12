@@ -16,7 +16,7 @@ import {
 const serverThatStopsOnlyWhenKilled = [
   "process.on('SIGTERM', () => {});",
   'setInterval(() => {}, 60_000);',
-  "process.stdout.write('auto-brain listening on port 0\\n');",
+  "process.stdout.write('Auto Runtime listening on port 0\\n');",
 ].join('\n');
 
 describe('stopping pnpm dev', { timeout: developmentTestTimeoutMs }, () => {

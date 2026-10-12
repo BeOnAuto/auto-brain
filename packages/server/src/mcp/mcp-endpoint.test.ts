@@ -6,7 +6,7 @@ import {
   guideToolName,
   listedTools,
   problemIn,
-  takingBrain,
+  takingPlaybook,
   withMcpSession,
   type ListedTool,
   type McpSession,
@@ -17,7 +17,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
-const brainTools = ['create_brain', 'list_brains', 'get_brain', 'update_brain', 'retire_brain'];
+const playbookTools = ['create_playbook', 'list_playbooks', 'get_playbook', 'update_playbook', 'retire_playbook'];
 
 const definitionTools = [
   'create_definition',
@@ -30,8 +30,8 @@ const definitionTools = [
   'cancel_run',
   'list_runs',
   'get_run_history',
-  'get_brain_analytics',
-  'list_brain_events',
+  'get_playbook_analytics',
+  'list_playbook_events',
   'get_event',
   'publish_event',
   'list_tool_servers',
@@ -41,9 +41,9 @@ const definitionTools = [
   'send_run_event',
 ];
 
-const orgTools = [...brainTools, 'list_models', 'list_tool_servers'];
+const orgTools = [...playbookTools, 'list_models', 'list_tool_servers'];
 
-const insideABrainAlone = definitionTools.filter((name) => !orgTools.includes(name));
+const insideAPlaybookAlone = definitionTools.filter((name) => !orgTools.includes(name));
 
 const summary = [
   '---',
@@ -72,45 +72,45 @@ function listingOn(path: string): Promise<readonly ListedTool[]> {
   return onMcp(path, async (session) => listedTools(await session.listTools()));
 }
 
-const brainArgumentIn = Schema.decodeUnknownSync(
+const playbookArgumentIn = Schema.decodeUnknownSync(
   Schema.Struct({
     required: Schema.Array(Schema.String),
-    properties: Schema.Struct({ brain: Schema.Struct({ type: Schema.String, pattern: Schema.String }) }),
+    properties: Schema.Struct({ playbook: Schema.Struct({ type: Schema.String, pattern: Schema.String }) }),
   }),
 );
 
-describe('the brain argument of the definition tools on /mcp', () => {
-  it('is required in every one of them that only a brain answers, as a string with the brain id pattern', async () => {
+describe('the playbook argument of the definition tools on /mcp', () => {
+  it('is required in every one of them that only a playbook answers, as a string with the playbook id pattern', async () => {
     server = await servingReasoning([]);
 
-    const definition = (await listingOn('/mcp')).filter(({ name }) => insideABrainAlone.includes(name));
-    const brainArguments = definition.map(({ inputSchema }) => {
-      const { required, properties } = brainArgumentIn(inputSchema);
-      const { type, pattern } = properties.brain;
-      return { required: required.includes('brain'), type, pattern };
+    const definition = (await listingOn('/mcp')).filter(({ name }) => insideAPlaybookAlone.includes(name));
+    const playbookArguments = definition.map(({ inputSchema }) => {
+      const { required, properties } = playbookArgumentIn(inputSchema);
+      const { type, pattern } = properties.playbook;
+      return { required: required.includes('playbook'), type, pattern };
     });
 
-    expect(brainArguments).toEqual(
-      insideABrainAlone.map(() => ({ required: true, type: 'string', pattern: '^[a-z][a-z0-9-]{2,47}$' })),
+    expect(playbookArguments).toEqual(
+      insideAPlaybookAlone.map(() => ({ required: true, type: 'string', pattern: '^[a-z][a-z0-9-]{2,47}$' })),
     );
   });
 });
 
 describe('the tools of /mcp', () => {
-  it('are the brain tools, list_models, list_tool_servers and the definition tools, the definition tools taking a brain, with self-contained input schemas', async () => {
+  it('are the playbook tools, list_models, list_tool_servers and the definition tools, the definition tools taking a playbook, with self-contained input schemas', async () => {
     server = await servingReasoning([]);
-    await server.call('POST', '/v1/orgs/local/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+    await server.call('POST', '/v1/orgs/local/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
 
-    const [own, org, brain] = [
+    const [own, org, playbook] = [
       await listingOn('/mcp'),
       await listingOn('/orgs/local/mcp'),
-      await listingOn('/orgs/local/brains/alpha/mcp'),
+      await listingOn('/orgs/local/playbooks/alpha/mcp'),
     ];
     const schemas = own.map(({ inputSchema }) => inputSchema);
-    const onlyInBrain = operations(brain).filter(({ name }) => insideABrainAlone.includes(name));
+    const onlyInPlaybook = operations(playbook).filter(({ name }) => insideAPlaybookAlone.includes(name));
 
-    expect(own.map(({ name }) => name)).toEqual([...orgTools, ...insideABrainAlone, guideToolName]);
-    expect(operations(own)).toEqual([...operations(org), ...onlyInBrain.map((tool) => takingBrain(tool))]);
+    expect(own.map(({ name }) => name)).toEqual([...orgTools, ...insideAPlaybookAlone, guideToolName]);
+    expect(operations(own)).toEqual([...operations(org), ...onlyInPlaybook.map((tool) => takingPlaybook(tool))]);
     expect(schemas.map((schema) => schema['type'])).toEqual(schemas.map(() => 'object'));
     expect(schemas.flatMap((schema) => danglingReferencesIn(schema))).toEqual([]);
   });
@@ -125,7 +125,7 @@ const definitionTypes = [
 ];
 
 const recipes = [
-  { name: 'first-brain', calls: ['create_brain', 'create_definition', 'run_definition'] },
+  { name: 'first-playbook', calls: ['create_playbook', 'create_definition', 'run_definition'] },
   { name: 'remember', calls: ['create_definition', 'run_definition'] },
   { name: 'give-tools', calls: ['list_tool_servers', 'create_definition'] },
   { name: 'schedule', calls: ['create_definition', 'list_runs'] },
@@ -142,7 +142,7 @@ const resourcesOnTheTerminologyPage: ReadonlySet<string> = new Set(
 interface Connection {
   readonly path: string;
   readonly endpoint: McpEndpoint;
-  readonly served: { readonly orgTools: readonly string[]; readonly brainTools: readonly string[] };
+  readonly served: { readonly orgTools: readonly string[]; readonly playbookTools: readonly string[] };
   readonly sentence: string;
   readonly unnamed: readonly string[];
 }
@@ -151,15 +151,15 @@ const connections: readonly Connection[] = [
   {
     path: '/mcp',
     endpoint: 'own org',
-    served: { orgTools, brainTools: insideABrainAlone },
-    sentence: "This connection acts in the caller's own org: list_brains shows its brains",
+    served: { orgTools, playbookTools: insideAPlaybookAlone },
+    sentence: "This connection acts in the caller's own org: list_playbooks shows its playbooks",
     unnamed: [],
   },
   {
     path: '/orgs/acme/mcp',
     endpoint: 'org',
-    served: { orgTools, brainTools: [] },
-    sentence: 'This connection manages the brains of one org: list_brains shows them',
+    served: { orgTools, playbookTools: [] },
+    sentence: 'This connection manages the playbooks of one org: list_playbooks shows them',
     unnamed: [
       'create_definition',
       'run_definition',
@@ -170,20 +170,20 @@ const connections: readonly Connection[] = [
     ],
   },
   {
-    path: '/orgs/acme/brains/alpha/mcp',
-    endpoint: 'brain',
-    served: { orgTools: [], brainTools: definitionTools },
-    sentence: 'This connection acts inside one brain.',
-    unnamed: ['create_brain', 'list_brains', 'list_models'],
+    path: '/orgs/acme/playbooks/alpha/mcp',
+    endpoint: 'playbook',
+    served: { orgTools: [], playbookTools: definitionTools },
+    sentence: 'This connection acts inside one playbook.',
+    unnamed: ['create_playbook', 'list_playbooks', 'list_models'],
   },
 ];
 
 describe('the instructions an agent receives when it connects', () => {
   it.each(connections)(
-    'on $path say what a brain, a definition and a run are, and name only the tools the endpoint serves',
+    'on $path say what a playbook, a definition and a run are, and name only the tools the endpoint serves',
     async ({ path, endpoint, served, sentence, unnamed }) => {
       server = await servingReasoning([]);
-      await onMcp('/mcp', (session) => session.callTool('create_brain', { brain: 'alpha', name: 'Alpha' }));
+      await onMcp('/mcp', (session) => session.callTool('create_playbook', { playbook: 'alpha', name: 'Alpha' }));
 
       const instructions = await onMcp(path, (session) => Promise.resolve(session.instructions));
 
@@ -230,31 +230,31 @@ describe('the open-world hint of the tools of /mcp', () => {
 });
 
 describe('one connection to /mcp', () => {
-  it('creates a brain, then creates, executes and reads back a reasoning function definition in it', async () => {
+  it('creates a playbook, then creates, executes and reads back a reasoning function definition in it', async () => {
     server = await servingReasoning([answers(textResult('Profits rose.'))]);
 
     const outcome = await onMcp('/mcp', async (session) => {
-      const brain = await session.callTool('create_brain', { brain: 'alpha', name: 'Alpha' });
+      const playbook = await session.callTool('create_playbook', { playbook: 'alpha', name: 'Alpha' });
       const definition = await session.callTool('create_definition', {
-        brain: 'alpha',
+        playbook: 'alpha',
         type: 'reasoning',
         name: 'summary',
         source: summary,
       });
       const ran = await session.callTool('run_definition', {
-        brain: 'alpha',
+        playbook: 'alpha',
         type: 'reasoning',
         name: 'summary',
         input: { text: 'the quarter' },
       });
       const run = await session.callTool('get_run', {
-        brain: 'alpha',
+        playbook: 'alpha',
         run_id: String(ran.structuredContent?.['run_id']),
       });
-      return { brain, definition, ran, run };
+      return { playbook, definition, ran, run };
     });
 
-    expect(outcome.brain.structuredContent).toMatchObject({ id: 'alpha', status: 'active' });
+    expect(outcome.playbook.structuredContent).toMatchObject({ id: 'alpha', status: 'active' });
     expect(outcome.definition.structuredContent).toMatchObject({ type: 'reasoning', name: 'summary', version: 1 });
     expect(outcome.ran.structuredContent).toMatchObject({ status: 'succeeded', output: 'Profits rose.' });
     expect(outcome.run.structuredContent).toMatchObject({
@@ -268,32 +268,32 @@ describe('one connection to /mcp', () => {
 });
 
 describe('a definition tool on /mcp', () => {
-  it('answers a call without a brain, and with an unknown brain, as isError', async () => {
+  it('answers a call without a playbook, and with an unknown playbook, as isError', async () => {
     server = await servingReasoning([]);
 
     const outcome = await onMcp('/mcp', async (session) => ({
       without: await session.callTool('list_definitions', { type: 'reasoning' }),
-      unknown: await session.callTool('list_definitions', { brain: 'nowhere', type: 'reasoning' }),
+      unknown: await session.callTool('list_definitions', { playbook: 'nowhere', type: 'reasoning' }),
     }));
 
     expect(problemIn(outcome.without)).toMatchObject({
       reason: 'invalid_input',
-      errors: [{ detail: 'Missing key', pointer: '/brain' }],
+      errors: [{ detail: 'Missing key', pointer: '/playbook' }],
     });
     expect(problemIn(outcome.unknown)).toMatchObject({
       reason: 'not_found',
-      detail: 'There is no brain nowhere in this org',
+      detail: 'There is no playbook nowhere in this org',
     });
   });
 });
 
 describe('/mcp in local mode', () => {
-  it('acts in the org local, whose brains the HTTP API lists', async () => {
+  it('acts in the org local, whose playbooks the HTTP API lists', async () => {
     server = await servingReasoning([]);
 
-    await onMcp('/mcp', (session) => session.callTool('create_brain', { brain: 'alpha', name: 'Alpha' }));
-    const listed = await server.call('GET', '/v1/orgs/local/brains');
+    await onMcp('/mcp', (session) => session.callTool('create_playbook', { playbook: 'alpha', name: 'Alpha' }));
+    const listed = await server.call('GET', '/v1/orgs/local/playbooks');
 
-    expect(listed.body).toMatchObject({ brains: [{ id: 'alpha', created_by: 'local' }] });
+    expect(listed.body).toMatchObject({ playbooks: [{ id: 'alpha', created_by: 'local' }] });
   });
 });

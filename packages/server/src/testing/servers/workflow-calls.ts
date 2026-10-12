@@ -57,7 +57,7 @@ export async function servingCalls(
   environment: Readonly<Record<string, string>> = {},
 ): Promise<ReasoningServer> {
   const server = await servingWorkflows(replies, { LOCAL_MODE: 'true', ...environment });
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   await server.call('POST', `${alpha}/definitions/reasoning`, { body: { name: 'summary', source: summary } });
   await definedInTurn(server, Object.entries(workflows));
   return server;

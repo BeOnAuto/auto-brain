@@ -148,7 +148,7 @@ async function serving(programPoolOf: ProgramPoolOf, ...replies: readonly Script
     programPoolOf,
   );
   closing.push(server.stop);
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   const definitions = [
     ['reasoning', 'read-rows', readRows],
     ['reasoning', 'summary', summary],
@@ -274,7 +274,7 @@ describe('the same workflow over MCP', { timeout: workflowTestTimeoutMs }, () =>
 
     const settled = await withMcpSession(
       'current revision',
-      { url: `${server.origin}/orgs/acme/brains/alpha/mcp`, headers: {} },
+      { url: `${server.origin}/orgs/acme/playbooks/alpha/mcp`, headers: {} },
       async (session) => {
         const started = await session.callTool('run_definition', {
           type: 'workflow',

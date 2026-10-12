@@ -9,14 +9,14 @@ import { defineRetireDefinition } from './retire-definition.ts';
 import { defineRunDefinition } from './run-definition.ts';
 import { defineUpdateDefinition } from './update-definition.ts';
 
-export interface BrainOperation {
-  readonly registration: Registration<'brain'>;
+export interface PlaybookOperation {
+  readonly registration: Registration<'playbook'>;
 }
 
 export function makeDefinitionOperations(
   capabilities: readonly Capability[],
   presenters?: readonly Presenter[],
-): readonly BrainOperation[] {
+): readonly PlaybookOperation[] {
   return [
     defineCreateDefinition(capabilities),
     defineListDefinitions(capabilities),

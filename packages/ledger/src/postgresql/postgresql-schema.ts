@@ -4,7 +4,7 @@ import { pgFormatter } from '@event-driven-io/dumbo/pg';
 
 import { contentTableNames, createdContentTables, recordedContentOn } from '../content/content-tables.ts';
 import type { StatementExecutor } from '../event-store.ts';
-import { createPostgreSQLBrainIndexes } from '../postgresql-reads/brain-indexes.ts';
+import { createPostgreSQLPlaybookIndexes } from '../postgresql-reads/playbook-indexes.ts';
 import type { Query } from '../postgresql-reads/recorded-parts.ts';
 
 const existingContentTables = SQL`SELECT relname AS name FROM pg_class
@@ -14,7 +14,7 @@ const existingContentTables = SQL`SELECT relname AS name FROM pg_class
   )}) AND pg_table_is_visible(oid)`;
 
 export async function postgresqlSchemaCreated(execute: StatementExecutor): Promise<void> {
-  await createPostgreSQLBrainIndexes({ execute });
+  await createPostgreSQLPlaybookIndexes({ execute });
   await createdContentTables(execute, existingContentTables);
 }
 

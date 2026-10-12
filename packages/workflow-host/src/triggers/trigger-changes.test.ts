@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { cronTrigger, eventTrigger, everyTrigger } from '../reaction-testing/brain-writes.ts';
+import { cronTrigger, eventTrigger, everyTrigger } from '../reaction-testing/playbook-writes.ts';
 import { triggerChangesOf } from './trigger-changes.ts';
 
 describe('the changes a version makes to the triggers of the version before', () => {

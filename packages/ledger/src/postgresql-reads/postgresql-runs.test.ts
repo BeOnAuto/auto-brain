@@ -18,7 +18,7 @@ function answeringNothing(): { readonly query: Query; readonly asked: Asked[] } 
   };
 }
 
-const alpha = 'brain/acme/alpha/';
+const alpha = 'playbook/acme/alpha/';
 
 describe('a read of the runs of one definition on PostgreSQL', () => {
   it('reads the definition type and name from the metadata of the first message as plain jsonb, among a thousand runs', async () => {

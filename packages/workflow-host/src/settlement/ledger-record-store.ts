@@ -84,8 +84,8 @@ function succeeded({ database, parts, runKey, settlement }: Settling, attemptsBe
 }
 
 function settledFor(settling: Settling, attemptsBefore: number): Receipt {
-  const { org, brain, runId } = addressOfRun(settling.runKey);
-  const run = { org, brain, id: runId };
+  const { org, playbook, runId } = addressOfRun(settling.runKey);
+  const run = { org, playbook, id: runId };
   return settling.parts.settle(run, settling.settlement, settling.lineage).pipe(
     Effect.matchCauseEffect({
       onSuccess: () => succeeded(settling, attemptsBefore),

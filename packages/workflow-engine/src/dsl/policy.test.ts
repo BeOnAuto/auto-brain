@@ -50,7 +50,7 @@ describe('the policy of a document', () => {
     expect(rejectionsOf(workflow('evaluate: { language: python, mode: loose }\ndo: []'))).toEqual([
       {
         pointer: '/evaluate/language',
-        detail: "The brain's one language is TypeScript; write the program as a TypeScript function",
+        detail: "The playbook's one language is TypeScript; write the program as a TypeScript function",
         forbidden: true,
       },
       {

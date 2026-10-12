@@ -18,7 +18,7 @@ import {
 
 const portOf = Schema.decodeUnknownSync(Schema.Struct({ port: Schema.Number }));
 
-const alpha = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
 const couldNotBeUsed = 'The MCP server graph could not be used: ';
 
@@ -63,7 +63,7 @@ describe('a server that cannot take one call now', () => {
   });
 });
 
-describe('one call through a tool this brain is not offered', () => {
+describe('one call through a tool this playbook is not offered', () => {
   it('is refused before anything is sent or recorded, for a server it does not have, of another org, or a tool not allowed', async () => {
     const fake = await oneCallServer();
     const access = oneCallAccess(fake.url);
@@ -76,12 +76,12 @@ describe('one call through a tool this brain is not offered', () => {
       unopenedWith(
         'tool_not_offered',
         'mcp_server_not_configured',
-        'No MCP server named wiki is configured for this brain',
+        'No MCP server named wiki is configured for this playbook',
       ),
       unopenedWith(
         'tool_not_offered',
         'mcp_server_not_configured',
-        'No MCP server named graph is configured for this brain',
+        'No MCP server named graph is configured for this playbook',
       ),
       unopenedWith(
         'tool_not_offered',

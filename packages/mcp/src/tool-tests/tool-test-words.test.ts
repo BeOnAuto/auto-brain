@@ -81,11 +81,11 @@ const notOffered = (because: RejectionBecause) =>
 const remedies: ReadonlyArray<readonly [RejectionBecause, string]> = [
   [
     'mcp_server_not_configured',
-    'This can be put right on your side: list_tool_servers shows the tool servers this brain may use, so a test that names one of those can be tried.',
+    'This can be put right on your side: list_tool_servers shows the tool servers this playbook may use, so a test that names one of those can be tried.',
   ],
   [
     'tool_not_allowed',
-    'This can be put right on your side: list_tool_servers shows the tools this brain may use, which whoever runs the server allows, so a test that names one of those can be tried.',
+    'This can be put right on your side: list_tool_servers shows the tools this playbook may use, which whoever runs the server allows, so a test that names one of those can be tried.',
   ],
   [
     'tool_not_listed',
@@ -109,7 +109,7 @@ describe('the plain words of a test refused a tool it is not offered', () => {
     },
   );
 
-  it('say why and what to do in one message for a tool server not set up for the brain', () => {
+  it('say why and what to do in one message for a tool server not set up for the playbook', () => {
     expect(
       unsuccessfulWords(
         'test the search tool of wiki',
@@ -118,7 +118,7 @@ describe('the plain words of a test refused a tool it is not offered', () => {
         words?.remedies,
       ),
     ).toBe(
-      'Could not test the search tool of wiki: this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this brain. Nothing was changed. This can be put right on your side: list_tool_servers shows the tool servers this brain may use, so a test that names one of those can be tried.',
+      'Could not test the search tool of wiki: this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this playbook. Nothing was changed. This can be put right on your side: list_tool_servers shows the tool servers this playbook may use, so a test that names one of those can be tried.',
     );
   });
 });

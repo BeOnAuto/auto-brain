@@ -8,7 +8,7 @@ import type { StartRejected } from './start-rejected.ts';
 
 export interface ReactionStart {
   readonly org: string;
-  readonly brain: string;
+  readonly playbook: string;
   readonly workflow: string;
   readonly version: number;
   readonly runId: string;

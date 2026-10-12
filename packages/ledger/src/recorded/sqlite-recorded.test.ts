@@ -9,15 +9,15 @@ import { sqliteEventStore } from '../sqlite-event-store.ts';
 import { openLedger } from '../testing/open-ledger.ts';
 import { temporaryDatabase } from '../testing/temporary-database.ts';
 import type { IndexExecutor } from './missing-indexes.ts';
-import { createSQLiteBrainIndexes } from './sqlite-indexes.ts';
+import { createSQLitePlaybookIndexes } from './sqlite-indexes.ts';
 
-const brainIndexes = [
+const playbookIndexes = [
   'ledger_definition_streams',
   'ledger_first_messages_by_kind',
-  'ledger_messages_by_brain',
-  'ledger_messages_by_brain_and_correlation',
-  'ledger_messages_by_brain_and_time',
   'ledger_messages_by_id',
+  'ledger_messages_by_playbook',
+  'ledger_messages_by_playbook_and_correlation',
+  'ledger_messages_by_playbook_and_time',
   'ledger_messages_by_stream',
 ];
 
@@ -54,7 +54,7 @@ function executorFinding(names: readonly string[]): { readonly execute: IndexExe
   };
 }
 
-describe("the brain's indexes on SQLite", () => {
+describe("the playbook's indexes on SQLite", () => {
   it('are created when the ledger opens, once however often it opens', async () => {
     const fileName = aDatabaseFile();
     const first = await openLedger(fileName);
@@ -62,15 +62,15 @@ describe("the brain's indexes on SQLite", () => {
     const second = await openLedger(fileName);
     await second.dispose();
 
-    expect(indexesOf(fileName)).toEqual(brainIndexes);
+    expect(indexesOf(fileName)).toEqual(playbookIndexes);
   });
 
   it('are created only when missing, so a start that finds them issues no CREATE', async () => {
-    const present = executorFinding(brainIndexes);
-    const oneMissing = executorFinding(brainIndexes.filter((name) => name !== 'ledger_messages_by_stream'));
+    const present = executorFinding(playbookIndexes);
+    const oneMissing = executorFinding(playbookIndexes.filter((name) => name !== 'ledger_messages_by_stream'));
 
-    await createSQLiteBrainIndexes(present.execute);
-    await createSQLiteBrainIndexes(oneMissing.execute);
+    await createSQLitePlaybookIndexes(present.execute);
+    await createSQLitePlaybookIndexes(oneMissing.execute);
 
     expect([present.commands, oneMissing.commands]).toEqual([
       [],
@@ -96,7 +96,7 @@ describe('an event store on SQLite given hooks of its own', () => {
 
     await store.migrate();
 
-    expect([hooked, indexesOf(fileName)]).toEqual([['after the schema'], brainIndexes]);
+    expect([hooked, indexesOf(fileName)]).toEqual([['after the schema'], playbookIndexes]);
   });
 });
 

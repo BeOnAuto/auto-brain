@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { workerPool } from '../composition/served-computation.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
 import {
-  brainWithReviews,
+  playbookWithReviews,
   inState,
   recallTestTimeoutMs,
   recalled,
@@ -65,7 +65,7 @@ describe(
         recordingModules(workerPool(settings), modules),
       );
       closing.push(server.stop);
-      await brainWithReviews(server, 1);
+      await playbookWithReviews(server, 1);
       await server.call('POST', `${alpha}/definitions/computation`, { body: { name: 'strings', source: strings } });
       await server.call('POST', `${alpha}/definitions/recall`, { body: { name: 'wrong', source: answeredWrong } });
       await server.call('POST', `${alpha}/definitions/recall`, { body: { name: 'outgrowing', source: outgrowing } });

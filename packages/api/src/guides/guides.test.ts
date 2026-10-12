@@ -27,7 +27,7 @@ afterAll(async () => {
   await server.runtime.dispose();
 });
 
-const endpoints = ['/mcp', '/orgs/acme/mcp', '/orgs/acme/brains/alpha/mcp'];
+const endpoints = ['/mcp', '/orgs/acme/mcp', '/orgs/acme/playbooks/alpha/mcp'];
 
 const everyGuide = [...testGuides, ...testRecipes];
 
@@ -118,7 +118,10 @@ describe.each(mcpClientKinds)('the guides as resources, for the %s client', (kin
   it('are listed as the same guides, in Markdown, for the assistant, and read as the same text', async () => {
     const outcome = await withMcpSession(
       kind,
-      { url: `${listening.origin}/orgs/acme/brains/alpha/mcp`, headers: { authorization: `Bearer ${acmeAdmin.key}` } },
+      {
+        url: `${listening.origin}/orgs/acme/playbooks/alpha/mcp`,
+        headers: { authorization: `Bearer ${acmeAdmin.key}` },
+      },
       async (session) => ({
         listed: Schema.decodeUnknownSync(ResourcesSchema)(await session.listResources()),
         read: await Promise.all(

@@ -55,7 +55,7 @@ describe('the host given an event', () => {
 });
 
 describe('the host reporting to its operator', () => {
-  it('reports a run whose run the brain does not know, once it ends', async () => {
+  it('reports a run whose run the playbook does not know, once it ends', async () => {
     const hosted = await hostedOn({ store: 'sqlite', file: aSQLiteFile() });
 
     await Effect.runPromise(hosted.host.start(run, startOf(listening)));

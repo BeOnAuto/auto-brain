@@ -2,7 +2,7 @@ import { Schema } from 'effect';
 
 import type { OperationKind, OperationScope } from './operation-scope.ts';
 
-export const PermissionSchema = Schema.Literals(['org:read', 'org:write', 'brain:read', 'brain:write']);
+export const PermissionSchema = Schema.Literals(['org:read', 'org:write', 'playbook:read', 'playbook:write']);
 
 export type Permission = typeof PermissionSchema.Type;
 

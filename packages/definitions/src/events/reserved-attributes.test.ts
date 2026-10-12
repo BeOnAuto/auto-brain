@@ -4,12 +4,12 @@ import { describe, expect, it } from 'vitest';
 
 import { makeDefinitionPresenters } from '../index.ts';
 import { echo } from '../testing/echo.ts';
-import { isReservedSource, refusingTheBrainsOwnAttributes, reservedEventTypes } from './reserved-attributes.ts';
+import { isReservedSource, refusingThePlaybooksOwnAttributes, reservedEventTypes } from './reserved-attributes.ts';
 
 const EventSchema = Schema.StructWithRest(
   Schema.Struct({ type: Schema.String, source: Schema.optionalKey(Schema.String) }),
   [Schema.Record(Schema.String, Schema.Union([Schema.String, Schema.Int]))],
-).check(refusingTheBrainsOwnAttributes);
+).check(refusingThePlaybooksOwnAttributes);
 
 const decode = Schema.decodeUnknownResult(EventSchema, { errors: 'all' });
 
@@ -22,7 +22,7 @@ function refusals(event: unknown): readonly string[] {
       );
 }
 
-const typesOfTheBrain = [
+const typesOfThePlaybook = [
   'run_started',
   'run_deferred',
   'run_succeeded',
@@ -60,9 +60,9 @@ const typesOfTheBrain = [
   'reaction_refused',
 ];
 
-describe('the types and sources of what the brain records itself', () => {
-  it('are reserved for the brain: every type its runs and definitions record, and every type its feed shows', () => {
-    expect([...reservedEventTypes]).toEqual(typesOfTheBrain);
+describe('the types and sources of what the playbook records itself', () => {
+  it('are reserved for the playbook: every type its runs and definitions record, and every type its feed shows', () => {
+    expect([...reservedEventTypes]).toEqual(typesOfThePlaybook);
     const shown = [...makeDefinitionPresenters([echo]), toolTestPresenter, conversationCallPresenter].flatMap(
       ({ publicNames }) => Object.values(publicNames).flat(),
     );
@@ -76,8 +76,8 @@ describe('the types and sources of what the brain records itself', () => {
 
   it('are refused in an event from outside, each where it is given', () => {
     expect(refusals({ type: 'run_succeeded', source: '/runs/0199a3c4' })).toEqual([
-      `/type: Expected a type of your own, not one the brain records itself: ${typesOfTheBrain.join(', ')}`,
-      '/source: Expected a source of your own, not one under /runs/, /definitions/ or /callers/, which the brain records itself',
+      `/type: Expected a type of your own, not one the playbook records itself: ${typesOfThePlaybook.join(', ')}`,
+      '/source: Expected a source of your own, not one under /runs/, /definitions/ or /callers/, which the playbook records itself',
     ]);
     expect(
       [
@@ -101,9 +101,9 @@ describe('the types and sources of what the brain records itself', () => {
 });
 
 const reservedInWords =
-  'causationid, correlationid, caller, definitionversion, depth, calldepth, calledby, triggerkind and triggerreference are the lineage and context the brain gives its own records, which no event may claim';
+  'causationid, correlationid, caller, definitionversion, depth, calldepth, calledby, triggerkind and triggerreference are the lineage and context the playbook gives its own records, which no event may claim';
 
-describe('the lineage and the context the brain gives its own records', () => {
+describe('the lineage and the context the playbook gives its own records', () => {
   it('are refused in an event from outside, which may not claim them', () => {
     expect(refusals({ type: 'com.acme.approved', causationid: 'm-1', correlationid: 'r-1' })).toEqual([
       `/causationid: Expected no causationid: ${reservedInWords}`,

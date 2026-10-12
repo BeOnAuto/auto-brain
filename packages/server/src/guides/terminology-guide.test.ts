@@ -22,7 +22,7 @@ describe('the terminology guide', () => {
         '',
         'Definitions and runs:',
         '',
-        '- Brain: The complete system for a business responsibility, including methods, functions, workflows, relevant information and operating boundaries.',
+        '- Playbook: The complete system for a business responsibility, including methods, functions, workflows, relevant information and operating boundaries.',
       ].join('\n'),
     );
     expect(text).toContain('- Language model: A model used by a reasoning function.');
@@ -52,7 +52,7 @@ describe('the terminology guide', () => {
   });
 
   it('cannot be made from a page without the tables it reads', () => {
-    expect(() => terminologyGuideOf('# Brain terminology\n\nNo tables yet.\n', [])).toThrow(
+    expect(() => terminologyGuideOf('# Playbook terminology\n\nNo tables yet.\n', [])).toThrow(
       'The terminology page has no table of capabilities',
     );
   });

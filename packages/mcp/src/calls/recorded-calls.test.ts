@@ -40,7 +40,7 @@ const aRequestNumber: unknown = expect.stringMatching(/^request-\d+$/u);
 
 const numericSecret = 31_415_926_535;
 
-const alpha = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
 function referenceOf(written: string) {
   const [server = '', tool = ''] = written.split('/');

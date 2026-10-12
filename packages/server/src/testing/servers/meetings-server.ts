@@ -16,7 +16,7 @@ export interface Surfaces {
 export interface MeetingsServer {
   readonly surfaces: Surfaces;
   readonly onMcp: <T>(use: (session: McpSession) => Promise<T>) => Promise<T>;
-  readonly onBrain: <T>(brain: string, use: (session: McpSession) => Promise<T>) => Promise<T>;
+  readonly onPlaybook: <T>(playbook: string, use: (session: McpSession) => Promise<T>) => Promise<T>;
   readonly chat: FakeMcpServer | undefined;
   readonly stop: () => Promise<void>;
 }
@@ -46,7 +46,7 @@ async function chatServing(options: MeetingsOptions) {
     url: chat.url,
     headers: { Authorization: 'Bearer ${CHAT_KEY}' },
     org: 'local',
-    brains: ['meetings'],
+    playbooks: ['meetings'],
     testable: ['post_message'],
   };
   return { chat, servers: { chat: entry } };
@@ -64,8 +64,18 @@ export async function servingMeetings(
     CHAT_KEY: chatKey,
     NOTES_KEY: 'a-key-the-server-refuses',
     MCP_SERVERS: JSON.stringify({
-      slack: { url: slack.url, headers: { Authorization: 'Bearer ${SLACK_KEY}' }, org: 'local', brains: ['meetings'] },
-      notes: { url: slack.url, headers: { Authorization: 'Bearer ${NOTES_KEY}' }, org: 'local', brains: ['meetings'] },
+      slack: {
+        url: slack.url,
+        headers: { Authorization: 'Bearer ${SLACK_KEY}' },
+        org: 'local',
+        playbooks: ['meetings'],
+      },
+      notes: {
+        url: slack.url,
+        headers: { Authorization: 'Bearer ${NOTES_KEY}' },
+        org: 'local',
+        playbooks: ['meetings'],
+      },
       ...servers,
     }),
   });
@@ -79,8 +89,12 @@ export async function servingMeetings(
     surfaces,
     chat,
     onMcp,
-    onBrain: (brain, use) =>
-      withMcpSession('current revision', { url: `${server.origin}/orgs/local/brains/${brain}/mcp`, headers: {} }, use),
+    onPlaybook: (playbook, use) =>
+      withMcpSession(
+        'current revision',
+        { url: `${server.origin}/orgs/local/playbooks/${playbook}/mcp`, headers: {} },
+        use,
+      ),
     stop: async () => {
       await server.stop();
       await slack.close();

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { defineCancelRun } from '../index.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { echo } from '../testing/echo.ts';
-import { firstMoment, toBrain } from '../testing/harness.ts';
+import { firstMoment, toPlaybook } from '../testing/harness.ts';
 import { cancelledAt, relayedId, withHandOn } from '../testing/relaying.ts';
 
 const asStarted = {
@@ -34,7 +34,7 @@ describe('cancel_run', () => {
           { type: 'run_started' },
           {
             type: 'run_cancel_requested',
-            summary: 'Someone allowed to change the brain asked for the run to be cancelled.',
+            summary: 'Someone allowed to change the playbook asked for the run to be cancelled.',
             data: { kind: 'requested', reason: 'Not needed any more' },
             metadata: { at: cancelledAt, run_id: relayedId, by: 'acme-admin' },
           },
@@ -53,7 +53,7 @@ describe('cancel_run asked again, or without a reason', () => {
 
     const { records } = await run(
       Effect.orDie(
-        ledger.service.readRecorded({ org: 'acme', brain: 'alpha' }, everything, { order: 'asc', limit: 20 }),
+        ledger.service.readRecorded({ org: 'acme', playbook: 'alpha' }, everything, { order: 'asc', limit: 20 }),
       ),
     );
 
@@ -83,7 +83,7 @@ describe('a cancel request on a run', () => {
 
     const { records } = await run(
       Effect.orDie(
-        ledger.service.readRecorded({ org: 'acme', brain: 'alpha' }, everything, { order: 'asc', limit: 20 }),
+        ledger.service.readRecorded({ org: 'acme', playbook: 'alpha' }, everything, { order: 'asc', limit: 20 }),
       ),
     );
 
@@ -100,7 +100,7 @@ describe('a cancel request on a run', () => {
     await settling({ status: 'succeeded', output: 'handed on', record: {} });
     const plain = '0199a3c4-7d2e-7c1a-9b3f-000000000001';
     prober.sufferOnNextRun('stall');
-    void call(runDefinition, toBrain('acme', 'alpha')(acmeAdmin, { type: 'probe', name: 'plain', run_id: plain }));
+    void call(runDefinition, toPlaybook('acme', 'alpha')(acmeAdmin, { type: 'probe', name: 'plain', run_id: plain }));
     await prober.stalled;
 
     expect([await cancelling(), await cancelling({}, plain)]).toEqual([
@@ -119,14 +119,14 @@ describe('a cancel request on a run', () => {
   });
 });
 
-describe('cancel_run of a run the brain does not have, or with a reason it cannot keep', () => {
+describe('cancel_run of a run the playbook does not have, or with a reason it cannot keep', () => {
   it('is not found', async () => {
     const { cancelling } = await withHandOn();
 
     expect(await cancelling({}, '0199a3c4-7d2e-7c1a-9b3f-00000000ffff')).toEqual({
       status: 'rejected',
       reason: 'not_found',
-      detail: 'There is no such run in this brain',
+      detail: 'There is no such run in this playbook',
     });
   });
 
@@ -151,9 +151,9 @@ describe('cancel_run of a run the brain does not have, or with a reason it canno
 describe('the operation of cancelling a run', () => {
   const { registration } = defineCancelRun([echo]);
 
-  it('is a brain command at POST /runs/{run_id}/cancel that may be rejected as not found or a conflict', () => {
+  it('is a playbook command at POST /runs/{run_id}/cancel that may be rejected as not found or a conflict', () => {
     expect(registration).toMatchObject({
-      scope: 'brain',
+      scope: 'playbook',
       kind: 'command',
       name: 'cancel_run',
       title: 'Cancel run',

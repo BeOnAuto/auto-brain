@@ -4,20 +4,20 @@ import { streamSignalOf, type AppendedStreams } from '@beonauto/ledger';
 import { Effect } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
-import type { FollowedBrains } from '../follower/followed-brains.ts';
+import type { FollowedPlaybooks } from '../follower/followed-playbooks.ts';
 import { startFollower } from '../follower/follower-loop.ts';
 import type { PassEnd } from '../follower/record-steps.ts';
 import { systemClock } from '../loop/host-clock.ts';
 import { until } from '../reaction-testing/until.ts';
-import { brainSweepsOn } from './brain-sweeps.ts';
+import { playbookSweepsOn } from './playbook-sweeps.ts';
 
-const alpha = 'brain/acme/alpha/';
+const alpha = 'playbook/acme/alpha/';
 
-const beta = 'brain/acme/beta/';
+const beta = 'playbook/acme/beta/';
 
-const noBrains: FollowedBrains = {
+const noPlaybooks: FollowedPlaybooks = {
   follow: () => Effect.void,
-  load: () => Effect.die(new Error('The sweeps hand every brain known')),
+  load: () => Effect.die(new Error('The sweeps hand every playbook known')),
   save: () => Effect.void,
   waitingForASweep: () => Effect.succeed([]),
   following: () => Effect.succeed([]),
@@ -26,10 +26,10 @@ const noBrains: FollowedBrains = {
 interface Following {
   readonly streams: readonly string[];
   readonly sweepEveryMs: number;
-  readonly pass: (brainKey: string) => Effect.Effect<PassEnd>;
+  readonly pass: (playbookKey: string) => Effect.Effect<PassEnd>;
   readonly upkeepFailing?: (sweep: number) => boolean;
   readonly registries?: (registries: readonly string[]) => Effect.Effect<void>;
-  readonly brainSeen?: (brainKey: string) => Effect.Effect<void>;
+  readonly playbookSeen?: (playbookKey: string) => Effect.Effect<void>;
 }
 
 interface Followed {
@@ -46,7 +46,7 @@ function followed(following: Following): Followed {
     pass,
     upkeepFailing = () => false,
     registries = () => Effect.void,
-    brainSeen = () => Effect.void,
+    playbookSeen = () => Effect.void,
   } = following;
   const counts = { reads: 0, upkeeps: 0 };
   const troubles: string[] = [];
@@ -64,8 +64,8 @@ function followed(following: Following): Followed {
     });
   const follower = startFollower({
     pass,
-    discovery: { atStart: () => Effect.void, registriesAppended: registries, brainSeen },
-    sweeps: brainSweepsOn(store, noBrains),
+    discovery: { atStart: () => Effect.void, registriesAppended: registries, playbookSeen },
+    sweeps: playbookSweepsOn(store, noPlaybooks),
     upkeep: { sweep: upkeep, fireSchedules: () => Effect.void, nextScheduleAt: () => Effect.succeed(null) },
     appended: streamSignalOf(),
     clock: systemClock,
@@ -85,65 +85,65 @@ function followed(following: Following): Followed {
   };
 }
 
-function failingOnceFor<A>(failing: string, otherwise: (brainKey: string) => Effect.Effect<A>) {
+function failingOnceFor<A>(failing: string, otherwise: (playbookKey: string) => Effect.Effect<A>) {
   const failures = { left: 1 };
-  return (brainKey: string) =>
+  return (playbookKey: string) =>
     Effect.suspend(() => {
-      if (brainKey === failing && failures.left > 0) {
+      if (playbookKey === failing && failures.left > 0) {
         failures.left -= 1;
         return Effect.die(new Error('The ledger could not be read'));
       }
-      return otherwise(brainKey);
+      return otherwise(playbookKey);
     });
 }
 
-function passesRecorded(passed: (brainKey: string) => void) {
-  return (brainKey: string) =>
+function passesRecorded(passed: (playbookKey: string) => void) {
+  return (playbookKey: string) =>
     Effect.sync((): PassEnd => {
-      passed(brainKey);
+      passed(playbookKey);
       return 'caught_up';
     });
 }
 
-function passesFailingFirstFor(failing: string, passed: (brainKey: string) => void) {
+function passesFailingFirstFor(failing: string, passed: (playbookKey: string) => void) {
   return failingOnceFor(failing, passesRecorded(passed));
 }
 
 function passedReaching(passes: readonly string[], count: number) {
   return until(
     () => Promise.resolve<readonly string[]>([...passes]),
-    (brains) => brains.length >= count,
+    (playbooks) => playbooks.length >= count,
   );
 }
 
-describe('a sweep in which the pass over a brain fails', () => {
+describe('a sweep in which the pass over a playbook fails', () => {
   it(
-    'passes the brains after it in the same sweep, and the brain again at the next sweep',
+    'passes the playbooks after it in the same sweep, and the playbook again at the next sweep',
     { timeout: 30_000 },
     async () => {
       const passes: string[] = [];
       const watched = followed({
         streams: [`${alpha}events/`, `${beta}events/`],
         sweepEveryMs: 20,
-        pass: passesFailingFirstFor(alpha, (brainKey) => {
-          passes.push(brainKey);
+        pass: passesFailingFirstFor(alpha, (playbookKey) => {
+          passes.push(playbookKey);
         }),
       });
 
       const passed = await passedReaching(passes, 2);
 
       expect(passed).toEqual([beta, alpha]);
-      expect(watched.troubles()).toEqual(['A pass over a brain failed; the next sweep passes the brain again']);
+      expect(watched.troubles()).toEqual(['A pass over a playbook failed; the next sweep passes the playbook again']);
     },
   );
 
-  it('passes the brain again when the next sweep fails before its passes', { timeout: 30_000 }, async () => {
+  it('passes the playbook again when the next sweep fails before its passes', { timeout: 30_000 }, async () => {
     const passes: string[] = [];
     const watched = followed({
       streams: [`${alpha}events/`],
       sweepEveryMs: 20,
-      pass: passesFailingFirstFor(alpha, (brainKey) => {
-        passes.push(brainKey);
+      pass: passesFailingFirstFor(alpha, (playbookKey) => {
+        passes.push(playbookKey);
       }),
       upkeepFailing: (sweep) => sweep === 2,
     });
@@ -152,38 +152,38 @@ describe('a sweep in which the pass over a brain fails', () => {
 
     expect(passed).toEqual([alpha]);
     expect(watched.troubles()).toEqual([
-      'A pass over a brain failed; the next sweep passes the brain again',
-      'The follower of the brains failed; it tries again',
+      'A pass over a playbook failed; the next sweep passes the playbook again',
+      'The follower of the playbooks failed; it tries again',
     ]);
   });
 });
 
-describe('a sweep in which following a brain it finds fails', () => {
+describe('a sweep in which following a playbook it finds fails', () => {
   it(
-    'passes the brains after it in the same sweep, and the brain again at the next sweep',
+    'passes the playbooks after it in the same sweep, and the playbook again at the next sweep',
     { timeout: 30_000 },
     async () => {
       const passes: string[] = [];
       const watched = followed({
         streams: [`${alpha}events/`, `${beta}events/`],
         sweepEveryMs: 20,
-        pass: passesRecorded((brainKey) => {
-          passes.push(brainKey);
+        pass: passesRecorded((playbookKey) => {
+          passes.push(playbookKey);
         }),
-        brainSeen: failingOnceFor(alpha, () => Effect.void),
+        playbookSeen: failingOnceFor(alpha, () => Effect.void),
       });
 
       const passed = await passedReaching(passes, 2);
 
       expect(passed).toEqual([beta, alpha]);
-      expect(watched.troubles()).toEqual(['A pass over a brain failed; the next sweep passes the brain again']);
+      expect(watched.troubles()).toEqual(['A pass over a playbook failed; the next sweep passes the playbook again']);
     },
   );
 });
 
-describe('a sweep in which more brains fail than it has room for', () => {
+describe('a sweep in which more playbooks fail than it has room for', () => {
   it('waits for the next interval rather than sweeping again at once', { timeout: 30_000 }, async () => {
-    const streams = Array.from({ length: 130 }, (_, index) => `brain/acme/b${index}/events/`);
+    const streams = Array.from({ length: 130 }, (_, index) => `playbook/acme/b${index}/events/`);
     const watched = followed({
       streams,
       sweepEveryMs: 1000,
@@ -209,11 +209,11 @@ function registryReadFailingOnce(read: (registries: readonly string[]) => void) 
     });
 }
 
-describe('a sweep whose read of a registry of brains fails', () => {
+describe('a sweep whose read of a registry of playbooks fails', () => {
   it('reads the registry again at the next sweep after its read failed', { timeout: 30_000 }, async () => {
     const followedFrom: string[] = [];
     const watched = followed({
-      streams: ['org/acme/brains'],
+      streams: ['org/acme/playbooks'],
       sweepEveryMs: 20,
       pass: () => Effect.succeed<PassEnd>('caught_up'),
       registries: registryReadFailingOnce((registries) => {
@@ -226,20 +226,20 @@ describe('a sweep whose read of a registry of brains fails', () => {
       (registries) => registries.length > 0,
     );
 
-    expect(read).toEqual(['org/acme/brains']);
-    expect(watched.troubles()).toEqual(['A registry of brains could not be read; the next sweep reads it again']);
+    expect(read).toEqual(['org/acme/playbooks']);
+    expect(watched.troubles()).toEqual(['A registry of playbooks could not be read; the next sweep reads it again']);
   });
 });
 
-describe('a sweep whose read of a registry of brains keeps failing', () => {
-  it('still passes the brains appended to, and still runs its upkeep', { timeout: 30_000 }, async () => {
+describe('a sweep whose read of a registry of playbooks keeps failing', () => {
+  it('still passes the playbooks appended to, and still runs its upkeep', { timeout: 30_000 }, async () => {
     const passes: string[] = [];
     const watched = followed({
-      streams: ['org/acme/brains', 'brain/acme/alpha/events/'],
+      streams: ['org/acme/playbooks', 'playbook/acme/alpha/events/'],
       sweepEveryMs: 50,
-      pass: (brainKey) =>
+      pass: (playbookKey) =>
         Effect.sync(() => {
-          passes.push(brainKey);
+          passes.push(playbookKey);
           return 'caught_up' satisfies PassEnd;
         }),
       registries: () => Effect.die(new Error('The registry could not be read')),
@@ -252,12 +252,12 @@ describe('a sweep whose read of a registry of brains keeps failing', () => {
     );
     await watched.stop();
 
-    expect(passed).toEqual(['brain/acme/alpha/']);
+    expect(passed).toEqual(['playbook/acme/alpha/']);
     expect(watched.upkeeps()).toBe(watched.sweeps());
     expect(watched.troubles()).toEqual(
       Array.from(
         { length: watched.sweeps() },
-        () => 'A registry of brains could not be read; the next sweep reads it again',
+        () => 'A registry of playbooks could not be read; the next sweep reads it again',
       ),
     );
   });

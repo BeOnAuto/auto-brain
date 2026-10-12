@@ -31,7 +31,10 @@ function notAllowed(tool: string): Refusal {
 }
 
 function notConfigured(server: string): Refusal {
-  return { because: 'mcp_server_not_configured', detail: `No MCP server named ${server} is configured for this brain` };
+  return {
+    because: 'mcp_server_not_configured',
+    detail: `No MCP server named ${server} is configured for this playbook`,
+  };
 }
 
 interface Offering {

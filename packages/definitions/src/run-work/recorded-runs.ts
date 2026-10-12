@@ -1,8 +1,8 @@
 import {
-  BrainIdSchema,
+  PlaybookIdSchema,
   OrgIdSchema,
   recordedDecoder,
-  streamPrefixOfBrain,
+  streamPrefixOfPlaybook,
   type StreamReader,
 } from '@beonauto/operations';
 import { Effect, Option, Schema } from 'effect';
@@ -22,7 +22,7 @@ export interface RecordedRun {
 }
 
 const isWellFormed = Schema.is(
-  Schema.Struct({ org: OrgIdSchema, brain: BrainIdSchema, id: Schema.String.check(Schema.isUUID()) }),
+  Schema.Struct({ org: OrgIdSchema, playbook: PlaybookIdSchema, id: Schema.String.check(Schema.isUUID()) }),
 );
 
 const decodeRunEvent = recordedDecoder(RunEventSchema);
@@ -49,11 +49,11 @@ export function recordedRunIn(reader: StreamReader, address: RunStreamAddress): 
   }
   const id = address.id.toLowerCase();
   return reader
-    .load(`${streamPrefixOfBrain(address)}${runStreamNameOf(id)}`, runDecider)
+    .load(`${streamPrefixOfPlaybook(address)}${runStreamNameOf(id)}`, runDecider)
     .pipe(Effect.flatMap(({ state }) => recordedOf(id, state)));
 }
 
-export function recordedRunInBrain(reader: StreamReader, id: string): Effect.Effect<RecordedRun | undefined> {
+export function recordedRunInPlaybook(reader: StreamReader, id: string): Effect.Effect<RecordedRun | undefined> {
   const run = id.toLowerCase();
   return reader.load(runStreamNameOf(run), runDecider).pipe(Effect.flatMap(({ state }) => recordedOf(run, state)));
 }

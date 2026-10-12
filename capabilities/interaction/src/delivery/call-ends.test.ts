@@ -27,7 +27,7 @@ function resultOf(answer: CallAnswer) {
   return endOfCall({ ...answering, outcome: 'result', answer, answered, detail: '', retryAfterMs: null });
 }
 
-describe('the end of one call of a tool the brain makes', () => {
+describe('the end of one call of a tool the playbook makes', () => {
   it('is what the tool answered, its structured content where it gave one, with what the call recorded', () => {
     expect([
       resultOf({ content: [{ type: 'text', text: '{"ts":"1.1"}' }] }),
@@ -39,8 +39,8 @@ describe('the end of one call of a tool the brain makes', () => {
   });
 });
 
-describe('the end of one call of a tool the brain makes that failed', () => {
-  it('is a failure in the words every call of the brain shares, an answer past the transport too large and an interrupted call lost', () => {
+describe('the end of one call of a tool the playbook makes that failed', () => {
+  it('is a failure in the words every call of the playbook shares, an answer past the transport too large and an interrupted call lost', () => {
     expect([
       endedBecause('server_failure', 'Busy', 60_000),
       endedBecause('cancelled', ''),

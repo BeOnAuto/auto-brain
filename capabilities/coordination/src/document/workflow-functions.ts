@@ -50,7 +50,7 @@ function emitRejections(attributes: JsonObject, pointer: string): readonly Rejec
       ? [
           rejection(
             `${pointer}/type`,
-            `The type ${type} is one the brain records itself; give the event a type of your own`,
+            `The type ${type} is one the playbook records itself; give the event a type of your own`,
           ),
         ]
       : [];
@@ -59,7 +59,7 @@ function emitRejections(attributes: JsonObject, pointer: string): readonly Rejec
       ? [
           rejection(
             `${pointer}/source`,
-            `The source ${source} is one the brain records itself; give the event a source of your own`,
+            `The source ${source} is one the playbook records itself; give the event a source of your own`,
           ),
         ]
       : [];
@@ -68,7 +68,7 @@ function emitRejections(attributes: JsonObject, pointer: string): readonly Rejec
 
 function emitRefusal(event: JsonObject): string | undefined {
   const refusal = emittedEventRefusal(event);
-  return refusal === undefined ? undefined : `The event to emit is not one the brain takes: ${refusal}`;
+  return refusal === undefined ? undefined : `The event to emit is not one the playbook takes: ${refusal}`;
 }
 
 export const workflowFunctions: CallFunctions = {
@@ -77,7 +77,7 @@ export const workflowFunctions: CallFunctions = {
   emitRejections,
   emitRefusal,
   scheduleRejections,
-  howAWorkflowReachesTheWorld: 'a workflow reaches the world only through its brain functions',
+  howAWorkflowReachesTheWorld: 'a workflow reaches the world only through its playbook functions',
   howAWorkflowStarts: 'run the workflow with run_definition',
 };
 

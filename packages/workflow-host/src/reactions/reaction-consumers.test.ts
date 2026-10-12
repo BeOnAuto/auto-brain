@@ -18,7 +18,7 @@ interface Declining {
   readonly notes: readonly unknown[];
 }
 
-const brainKey = 'brain/acme/alpha/';
+const playbookKey = 'playbook/acme/alpha/';
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
@@ -29,8 +29,8 @@ function listening(database: HostDatabase): Promise<void> {
     insertedListener(database, {
       runKey,
       listener: callKeyText({ runId: runKey, reference: '/do/0/wait', run: 1 }),
-      brainKey,
-      streamId: `${brainKey}run-logs/${runId}`,
+      playbookKey,
+      streamId: `${playbookKey}run-logs/${runId}`,
       armedBy: 1,
       filters: JSON.stringify([{ type: 'go', data: '${ $data.ready === true }' }]),
       workflow: 'waiting',
@@ -97,7 +97,7 @@ describe('the consumers of the reactions of a host', () => {
     expect(notes).toEqual([
       {
         kind: 'offer_declined',
-        run: { org: 'acme', brain: 'alpha', runId },
+        run: { org: 'acme', playbook: 'alpha', runId },
         detail: 'The run took no event of this kind',
       },
     ]);

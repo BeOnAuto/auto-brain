@@ -24,7 +24,9 @@ describe('a loopback server whose handler fails', () => {
   });
 
   it('records a failure of the fake MCP server beside what it saw', async () => {
-    const fake = await serveFakeMcp({ client: { clientId: 'brain', clientSecret: 'secret', expiresInSeconds: null } });
+    const fake = await serveFakeMcp({
+      client: { clientId: 'playbook', clientSecret: 'secret', expiresInSeconds: null },
+    });
     closing.push(fake.close);
 
     const answer = await fetch(`${fake.origin}/token`, {

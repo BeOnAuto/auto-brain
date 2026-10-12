@@ -47,7 +47,7 @@ describe('a run that asks a system whose session or process is gone', { timeout:
         }),
         ...measured,
       });
-      await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+      await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
       const define = (name: string, tool: string, written: readonly string[] = []) =>
         server.call('POST', `${alpha}/definitions/interaction`, {
           body: { name, source: callDocument({ server: 'notes', ...calling(tool, written) }) },
@@ -121,7 +121,7 @@ describe('a run that asks a system while its call is in flight, over MCP', { tim
       name: 'run_definition',
       arguments: { type: 'interaction', name: 'sleeping', input: {}, run_id: systemRunId },
     };
-    await leftOnceCalled(server, `${server.origin}/orgs/acme/brains/alpha/mcp`, {
+    await leftOnceCalled(server, `${server.origin}/orgs/acme/playbooks/alpha/mcp`, {
       headers: {
         'content-type': 'application/json',
         accept: 'application/json, text/event-stream',

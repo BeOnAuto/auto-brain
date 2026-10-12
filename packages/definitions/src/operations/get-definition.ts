@@ -1,4 +1,4 @@
-import { BrainContext, defineQuery } from '@beonauto/operations';
+import { PlaybookContext, defineQuery } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
 import type { Capability } from '../capability/capability.ts';
@@ -14,12 +14,12 @@ export function defineGetDefinition(capabilities: readonly Capability[]) {
   const known = knownCapabilities(capabilities);
   const words = definitionWordsFor(capabilities);
   return known.publish(
-    defineQuery('brain', {
+    defineQuery('playbook', {
       name: 'get_definition',
       title: 'Get definition',
       description: [
         'Reads one function or workflow definition with its document and returns it, active or retired, with its version and the input and output its document declares.',
-        'For a recall function it also returns the standing of its view: live, rebuilding, waiting or stalled, the events it has folded and how far it lags the brain.',
+        'For a recall function it also returns the standing of its view: live, rebuilding, waiting or stalled, the events it has folded and how far it lags the playbook.',
         'For a workflow it also returns its triggers, the event trigger and the schedules that start it on its own.',
         'Use it to show the person a definition or to learn the input a run takes; list_definitions lists the definitions of a type.',
         "`type` is the definition's type and `name` its name.",
@@ -36,10 +36,10 @@ export function defineGetDefinition(capabilities: readonly Capability[]) {
           (stored.triggers ?? []).length > 0 && stored.status === 'active'
             ? { ...definitionOf(capability, stored), triggers_since: yield* triggersSince(capability.type, stored) }
             : definitionOf(capability, stored);
-        const { org, brain } = yield* BrainContext;
+        const { org, playbook } = yield* PlaybookContext;
         const standing = yield* capability.standing({
           org,
-          brain,
+          playbook,
           name,
           version: definition.version,
           status: definition.status,

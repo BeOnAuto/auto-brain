@@ -4,12 +4,12 @@ import { describe, expect, it } from 'vitest';
 import { acmeAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
 import { echo } from '../testing/echo.ts';
-import { firstMoment, harness, toBrain } from '../testing/harness.ts';
+import { firstMoment, harness, toPlaybook } from '../testing/harness.ts';
 import { probe } from '../testing/probe.ts';
 
 const { createDefinition, runDefinition, retireDefinition } = definitionOperationsFor([echo, probe().capability]);
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 const later = '2026-10-02T14:15:00.000Z';
 
@@ -37,9 +37,9 @@ async function withPlain() {
 }
 
 describe('retire_definition', () => {
-  it('is a brain command at POST /definitions/{type}/{name}/retire', () => {
+  it('is a playbook command at POST /definitions/{type}/{name}/retire', () => {
     expect(retireDefinition.registration).toMatchObject({
-      scope: 'brain',
+      scope: 'playbook',
       kind: 'command',
       title: 'Retire definition',
       route: { method: 'POST', path: '/definitions/{type}/{name}/retire' },
@@ -82,13 +82,13 @@ describe('retire_definition', () => {
 });
 
 describe('retire_definition rejecting', () => {
-  it('a definition the brain does not have, and a type the server does not run', async () => {
+  it('a definition the playbook does not have, and a type the server does not run', async () => {
     const { call } = await withPlain();
 
     expect(await call(retireDefinition, toAlpha(acmeAdmin, { type: 'echo', name: 'plain' }))).toEqual({
       status: 'rejected',
       reason: 'not_found',
-      detail: 'There is no echo definition plain in this brain',
+      detail: 'There is no echo definition plain in this playbook',
     });
     expect(await call(retireDefinition, toAlpha(acmeAdmin, { type: 'reason', name: 'plain' }))).toEqual({
       status: 'rejected',

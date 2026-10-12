@@ -10,9 +10,14 @@ import { alpha, servingReasoning, type ReasoningServer } from '../testing/server
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
-const builder = createApiKey({ id: 'acme-builder', org: 'acme', permissions: allPermissions, brains: '*' });
+const builder = createApiKey({ id: 'acme-builder', org: 'acme', permissions: allPermissions, playbooks: '*' });
 
-const reader = createApiKey({ id: 'acme-reader', org: 'acme', permissions: ['org:read', 'brain:read'], brains: '*' });
+const reader = createApiKey({
+  id: 'acme-reader',
+  org: 'acme',
+  permissions: ['org:read', 'playbook:read'],
+  playbooks: '*',
+});
 
 const closing: (() => Promise<void>)[] = [];
 
@@ -36,7 +41,10 @@ async function serving(entry: Readonly<Record<string, unknown>> = {}): Promise<S
     }),
   });
   closing.push(server.stop);
-  await server.call('POST', '/v1/orgs/acme/brains', { key: builder.key, body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', {
+    key: builder.key,
+    body: { playbook: 'alpha', name: 'Alpha' },
+  });
   return { server, graph };
 }
 
@@ -59,18 +67,18 @@ const searched = { server: 'graph', tool: 'search', arguments: { query: 'acme' }
 const answered = { server: 'graph', tool: 'search', outcome: 'result', text: 'Found 2 rows for acme.' };
 
 describe('test_tool_call over MCP', () => {
-  it('is served on /mcp with the brain as an argument and on the brain endpoint, never on the org endpoint', async () => {
+  it('is served on /mcp with the playbook as an argument and on the playbook endpoint, never on the org endpoint', async () => {
     const { server } = await serving();
 
     const tested = await on(server, '/mcp', builder.key, (session) =>
-      session.callTool('test_tool_call', { brain: 'alpha', ...searched }),
+      session.callTool('test_tool_call', { playbook: 'alpha', ...searched }),
     );
-    const onTheBrain = await on(server, '/orgs/acme/brains/alpha/mcp', builder.key, (session) =>
+    const onThePlaybook = await on(server, '/orgs/acme/playbooks/alpha/mcp', builder.key, (session) =>
       session.callTool('test_tool_call', searched),
     );
     const onTheOrg = await on(server, '/orgs/acme/mcp', builder.key, (session) => session.listTools());
 
-    expect([tested.structuredContent, onTheBrain.structuredContent]).toMatchObject([answered, answered]);
+    expect([tested.structuredContent, onThePlaybook.structuredContent]).toMatchObject([answered, answered]);
     expect(plainTextIn(tested)).toMatch(
       /^The search tool of graph answered in [\d,]+ ms with \d+ bytes; what a reasoning function's model would see is in the details\.$/u,
     );
@@ -93,7 +101,7 @@ describe('test_tool_call refused over MCP', () => {
   it('says in plain words why a tool cannot be tested and what whoever runs the server can do', async () => {
     const { server, graph } = await serving();
 
-    const refused = await on(server, '/orgs/acme/brains/alpha/mcp', builder.key, (session) =>
+    const refused = await on(server, '/orgs/acme/playbooks/alpha/mcp', builder.key, (session) =>
       session.callTool('test_tool_call', { server: 'graph', tool: 'echo' }),
     );
 
@@ -109,16 +117,16 @@ describe('test_tool_call refused over MCP', () => {
     expect(graph.received()).toEqual([]);
   });
 
-  it('says to name a tool server that list_tool_servers shows when none of the name serves the brain', async () => {
+  it('says to name a tool server that list_tool_servers shows when none of the name serves the playbook', async () => {
     const { server, graph } = await serving();
 
-    const refused = await on(server, '/orgs/acme/brains/alpha/mcp', builder.key, (session) =>
+    const refused = await on(server, '/orgs/acme/playbooks/alpha/mcp', builder.key, (session) =>
       session.callTool('test_tool_call', { server: 'wiki', tool: 'search' }),
     );
 
     expect(problemIn(refused)).toMatchObject({ kind: 'tool_not_offered', because: 'mcp_server_not_configured' });
     expect(plainTextIn(refused)).toBe(
-      'Could not test the search tool of wiki: this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this brain. Nothing was changed. This can be put right on your side: list_tool_servers shows the tool servers this brain may use, so a test that names one of those can be tried.',
+      'Could not test the search tool of wiki: this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this playbook. Nothing was changed. This can be put right on your side: list_tool_servers shows the tool servers this playbook may use, so a test that names one of those can be tried.',
     );
     expect(graph.seen()).toEqual([]);
   });
@@ -129,7 +137,7 @@ describe('test_tool_call for a key that may only read', () => {
     const { server } = await serving();
 
     const seen = await Promise.all(
-      ['/mcp', '/orgs/acme/brains/alpha/mcp'].map((path) =>
+      ['/mcp', '/orgs/acme/playbooks/alpha/mcp'].map((path) =>
         on(server, path, reader.key, async (session) => {
           const tools = listedTools(await session.listTools()).map(({ name }) => name);
           return `${tools.join(' ')}\n${String(session.instructions)}`;
@@ -156,7 +164,7 @@ describe('a test whose caller goes away over MCP while the tool is called', () =
     const leaving = new AbortController();
     const call = { name: 'test_tool_call', arguments: { server: 'graph', tool: 'sleep', arguments: { ms: 5000 } } };
 
-    const gone: Promise<unknown> = fetch(`${server.origin}/orgs/acme/brains/alpha/mcp`, {
+    const gone: Promise<unknown> = fetch(`${server.origin}/orgs/acme/playbooks/alpha/mcp`, {
       method: 'POST',
       headers: {
         authorization: `Bearer ${builder.key}`,

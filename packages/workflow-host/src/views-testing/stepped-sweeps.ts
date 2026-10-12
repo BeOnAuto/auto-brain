@@ -3,7 +3,7 @@ import { expect, vi } from 'vitest';
 
 import type { HostClock } from '../loop/host-clock.ts';
 import type { FoldingSettings } from '../projector/projector-settings.ts';
-import { rowsOfBrain } from '../projector/view-reconciling.ts';
+import { rowsOfPlaybook } from '../projector/view-reconciling.ts';
 import { foldingWorker } from './test-fold-workers.ts';
 import { alphaKey, foldOf, foldingOf } from './view-documents.ts';
 import type { ViewHarness } from './view-harness.ts';
@@ -84,7 +84,7 @@ export function steppedClock(start: number): SteppedClock {
 }
 
 export async function overtimesOf(views: ViewHarness, name: string): Promise<number | undefined> {
-  const rows = await Effect.runPromise(rowsOfBrain(views.store.database, alphaKey));
+  const rows = await Effect.runPromise(rowsOfPlaybook(views.store.database, alphaKey));
   return rows.find((row) => row.name === name)?.overtimes;
 }
 
