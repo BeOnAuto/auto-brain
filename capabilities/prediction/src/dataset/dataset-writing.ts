@@ -76,7 +76,7 @@ function passedOverNoted({ note, playbook }: Writing, { row, passedOver }: Datas
 }
 
 function stallNoted({ note, playbook }: Writing, { row, next }: DatasetChange): Effect.Effect<void> {
-  return next.stall === null || row.phase === 'stalled'
+  return next.stall === null
     ? Effect.void
     : note({ kind: 'dataset_stalled', playbook, dataSha256: row.dataSha256, ...next.stall });
 }

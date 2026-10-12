@@ -19,7 +19,7 @@ type EventMatch =
 
 export interface DatasetMatching {
   readonly matchOf: (placed: PageEvent) => Effect.Effect<EventMatch>;
-  readonly close: () => void;
+  readonly close: () => Promise<void>;
 }
 
 type Filter = DatasetData['events'][number];

@@ -82,6 +82,7 @@ function stoppedTest(settingsOf: SettingsOf): void {
       await watch.until(dataSha256, triedOnce);
       await watch.until(dataSha256, triedTwice);
       const row = await datasets.until(dataSha256, isStalled);
+      await watch.untilSwept(watch.sweeps() + 2);
 
       expect(row).toMatchObject({
         eventsFolded: 1,
@@ -89,7 +90,7 @@ function stoppedTest(settingsOf: SettingsOf): void {
         tries: 3,
         stall: { record: anyText, detail: stalledWords },
       });
-      expect(await datasets.noted(1)).toEqual([
+      expect(datasets.notes()).toEqual([
         { kind: 'dataset_stalled', playbook: alphaKey, dataSha256, record: row.stall?.record, detail: stalledWords },
       ]);
       expect(await refusalWhenFolded(datasets, document)).toMatchObject({

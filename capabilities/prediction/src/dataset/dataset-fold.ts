@@ -75,7 +75,7 @@ function readFrom(row: DatasetRow, events: readonly PageEvent[], sandbox: Filter
   return Effect.acquireUseRelease(
     Effect.sync(() => datasetMatchingOf(row.data, sandbox)),
     (matching) => readWith(matching, row, events),
-    (matching) => Effect.sync(matching.close),
+    (matching) => Effect.promise(() => matching.close()),
   );
 }
 

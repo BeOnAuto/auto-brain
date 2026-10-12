@@ -20,7 +20,7 @@ function questionSchema({ target, horizons, unit }: Predicts, { given }: Pick<Da
   return {
     type: 'object',
     title: 'question',
-    description: `A question: the series whose ${target}, in ${unit}, to predict, and the horizon`,
+    description: `A question: the series and the horizon to predict its ${target} at, in ${unit}`,
     required: given.length === 0 ? ['series', 'horizon'] : ['series', 'horizon', 'given'],
     additionalProperties: false,
     properties: {
