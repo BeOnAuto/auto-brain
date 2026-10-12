@@ -16,7 +16,7 @@
     },
     "test": {
       "dependsOn": ["transit"],
-      "env": ["LEDGER_TEST_POSTGRESQL_URL"],
+      "env": ["LEDGER_TEST_POSTGRESQL_URL", "CONTENT_TEST_OBJECT_STORE_URL"],
       "outputs": ["coverage/**"]
     },
     "//#format:check": {

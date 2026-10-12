@@ -31,6 +31,18 @@ jobs:
           --health-interval 2s
           --health-timeout 5s
           --health-retries 15
+      object-store:
+        image: rustfs/rustfs:1.0.1@sha256:1803faef57627e2d9c2e7d89d655d712ddded5389040054987163043fecb6a3c
+        env:
+          RUSTFS_ACCESS_KEY: content-ci
+          RUSTFS_SECRET_KEY: content-ci-secret
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "curl --fail --silent http://127.0.0.1:9000/health"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
     steps:
       - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
@@ -50,6 +62,7 @@ jobs:
           TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
           TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
           LEDGER_TEST_POSTGRESQL_URL: postgresql://postgres:ledger-ci@127.0.0.1:5432/postgres
+          CONTENT_TEST_OBJECT_STORE_URL: http://content-ci:content-ci-secret@127.0.0.1:9000/content-ci
 
   container:
     name: Container (linux/${{ matrix.architecture }})
