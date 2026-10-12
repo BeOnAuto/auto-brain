@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Client } from 'pg';
 import { describe, onTestFinished } from 'vitest';
 
-import { onSQLite, type SettingsOf } from '../testing/host-files.ts';
+import { onPostgreSQLAt, onSQLite, type SettingsOf } from '../testing/host-files.ts';
 import { lostCancelSuite } from '../waiting-testing/lost-cancel-suite.ts';
 import { endedRunSuite } from '../waiting-testing/resumed-cancels.ts';
 
@@ -30,7 +30,7 @@ const onPostgreSQL: SettingsOf = async () => {
   });
   const database = new URL(server);
   database.pathname = `/${name}`;
-  return { store: 'postgresql', connectionString: database.href };
+  return onPostgreSQLAt(database.href);
 };
 
 describe('the cancels a follower passed over, on SQLite', () => {

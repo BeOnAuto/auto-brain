@@ -10,8 +10,18 @@ import { dataAsJsonText } from './json-text.ts';
 import { postgresqlProjectionsOf } from './postgresql-projections.ts';
 import { migrationLockTakenWithin, postgresqlRunOutcomesOf } from './postgresql-run-outcomes.ts';
 
+export interface PoolBounds {
+  readonly max: number;
+}
+
+export type PostgreSQLPools = (bounds: PoolBounds) => Pool;
+
+export function plainPoolsOn(connectionString: string): PostgreSQLPools {
+  return ({ max }) => new Pool({ connectionString, max });
+}
+
 export interface PostgreSQLOptions {
-  readonly connectionString: string;
+  readonly pools: PostgreSQLPools;
   readonly runOutcomes?: RunOutcomeMapping;
   readonly projections?: readonly KeyedProjection[];
 }
@@ -22,19 +32,20 @@ export interface PostgreSQLStoreOptions extends PostgreSQLOptions {
 
 const eventsInOneBoundedAppend = 64;
 
+const connectionsOfOneLedger = 10;
+
 export function postgresqlEventStore({
-  connectionString,
+  pools,
   reportLostConnection,
   runOutcomes,
   projections,
 }: PostgreSQLStoreOptions): LedgerStore {
-  const pool = new Pool({ connectionString });
+  const pool = pools({ max: connectionsOfOneLedger });
   pool.on('error', reportLostConnection);
   const kept = postgresqlProjectionsOf({ runOutcomes, projections });
   const store = emmettEventStore(
     getPostgreSQLEventStore({
       driver: pgEventStoreDriver,
-      connectionString,
       connectionOptions: { pool },
       schema: { autoMigration: 'None' },
       projections: [...kept.registrations],

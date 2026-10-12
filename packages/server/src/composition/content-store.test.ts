@@ -6,6 +6,7 @@ import { memoryRecordedContent } from '@on.auto/operations/testing';
 import { Effect, ManagedRuntime, Schema } from 'effect';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
+import { ledgerDatabaseOf } from '../database/ledger-database.ts';
 import { readSettings } from '../settings/settings.ts';
 import { contentStoreOf } from './content-store.ts';
 import { ledgerLayerFor, ledgerLayerOf } from './ledger-store.ts';
@@ -44,7 +45,7 @@ function ledgerOn(host: string): Promise<Ledger['Service']> {
     AWS_ENDPOINT_URL: `http://${host}`,
     AWS_REGION: 'us-east-1',
   });
-  const runtime = ManagedRuntime.make(ledgerLayerFor(settings));
+  const runtime = ManagedRuntime.make(ledgerLayerFor(settings, ledgerDatabaseOf(settings)));
   onTestFinished(() => runtime.dispose());
   return runtime.runPromise(Ledger);
 }

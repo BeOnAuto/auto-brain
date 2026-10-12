@@ -5,7 +5,7 @@ import { messageIdOf } from '@on.auto/operations';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
-import type { SettingsOf } from '../testing/host-files.ts';
+import { onPostgreSQLAt, type SettingsOf } from '../testing/host-files.ts';
 import { collecting, foldedAll, isLive, viewTestTimeoutMs } from '../views-testing/view-documents.ts';
 import { viewHarness } from '../views-testing/view-harness.ts';
 import { viewsSuites } from '../views-testing/views-suites.ts';
@@ -38,7 +38,7 @@ async function aDatabase(): Promise<string> {
   return database.href;
 }
 
-const onPostgreSQL: SettingsOf = async () => ({ store: 'postgresql', connectionString: await aDatabase() });
+const onPostgreSQL: SettingsOf = async () => onPostgreSQLAt(await aDatabase());
 
 async function aRunLeftOpen(connectionString: string, output: string): Promise<Client> {
   const client = new Client({ connectionString });
@@ -71,7 +71,7 @@ describe.skipIf(skipped)(`the views of recall functions on PostgreSQL${notice}`,
   describe('an event committed late', { timeout: viewTestTimeoutMs }, () => {
     it('is folded once it is committed, in the order the ledger recorded it, never passed over', async () => {
       const connectionString = await aDatabase();
-      const views = await viewHarness({ store: 'postgresql', connectionString });
+      const views = await viewHarness(onPostgreSQLAt(connectionString));
       await views.saved('outputs', collecting);
       views.start();
       await views.until('outputs', isLive);

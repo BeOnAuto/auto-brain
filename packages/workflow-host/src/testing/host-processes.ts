@@ -7,10 +7,17 @@ import { fileURLToPath } from 'node:url';
 import { expect, onTestFinished } from 'vitest';
 
 import type { DatabaseSettings } from '../database/host-databases.ts';
+import { onPostgreSQLAt } from './host-files.ts';
 
 const hostProcess = fileURLToPath(new URL('../../host-process.ts', import.meta.url));
 
 export type Mode = 'hang-on-call' | 'hang-on-settle' | 'finish';
+
+export type ProcessDatabase =
+  | { readonly store: 'sqlite'; readonly file: string }
+  | { readonly store: 'postgresql'; readonly connectionString: string };
+
+export type ProcessDatabasesOf = () => Promise<ProcessDatabase>;
 
 export interface HostProcess {
   readonly said: (line: string) => Promise<void>;
@@ -19,10 +26,14 @@ export interface HostProcess {
   readonly exited: Promise<unknown>;
 }
 
-export function hostIn(settings: DatabaseSettings, mode: Mode, settlements: string, sweepEveryMs = 20): HostProcess {
+export function databaseSettingsOf(database: ProcessDatabase): DatabaseSettings {
+  return database.store === 'sqlite' ? database : onPostgreSQLAt(database.connectionString);
+}
+
+export function hostIn(database: ProcessDatabase, mode: Mode, settlements: string, sweepEveryMs = 20): HostProcess {
   const child = spawn(
     process.execPath,
-    [hostProcess, JSON.stringify(settings), mode, settlements, String(sweepEveryMs)],
+    [hostProcess, JSON.stringify(database), mode, settlements, String(sweepEveryMs)],
     { stdio: ['ignore', 'pipe', 'inherit'] },
   );
   const output = { said: '' };

@@ -5,7 +5,7 @@ import { Client } from 'pg';
 
 import type { StoredPageRequest } from './src/event-store.ts';
 import { postgresqlRecordedStore, type Query } from './src/postgresql-reads/postgresql-recorded.ts';
-import { postgresqlEventStore } from './src/postgresql/postgresql-event-store.ts';
+import { plainPoolsOn, postgresqlEventStore } from './src/postgresql/postgresql-event-store.ts';
 
 type Querying = Readonly<Pick<Client, 'query'>>;
 
@@ -56,7 +56,7 @@ function times(count: number): readonly number[] {
 }
 
 async function filled(client: Querying, url: string): Promise<void> {
-  const store = postgresqlEventStore({ connectionString: url, reportLostConnection: Function.constVoid });
+  const store = postgresqlEventStore({ pools: plainPoolsOn(url), reportLostConnection: Function.constVoid });
   await store.migrate();
   await inTurn(times(records), (index) => {
     const text = randomBytes(recordBytes).toString('base64').slice(0, recordBytes);

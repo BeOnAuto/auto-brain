@@ -3,14 +3,14 @@ import { Cause, Effect } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { unreachableDatabase } from '../testing/index.ts';
-import { postgresqlEventStore, postgresqlLedgerLayer } from './postgresql-ledger.ts';
+import { plainPoolsOn, postgresqlEventStore, postgresqlLedgerLayer } from './postgresql-ledger.ts';
 
 describe('a ledger on PostgreSQL that cannot be reached', () => {
   it('fails to build, with a defect naming the address it tried and no credential', async () => {
     const { url, port, password } = await unreachableDatabase();
 
     const cause = await Effect.runPromise(
-      Effect.provide(Ledger, postgresqlLedgerLayer({ connectionString: url })).pipe(Effect.sandbox, Effect.flip),
+      Effect.provide(Ledger, postgresqlLedgerLayer({ pools: plainPoolsOn(url) })).pipe(Effect.sandbox, Effect.flip),
     );
 
     expect({ dies: Cause.hasDies(cause), fails: Cause.hasFails(cause) }).toEqual({ dies: true, fails: false });
@@ -22,7 +22,7 @@ describe('a ledger on PostgreSQL that cannot be reached', () => {
     const { url, port } = await unreachableDatabase();
     const lost: Readonly<Error>[] = [];
     const store = postgresqlEventStore({
-      connectionString: url,
+      pools: plainPoolsOn(url),
       reportLostConnection: (error) => {
         lost.push(error);
       },

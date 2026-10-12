@@ -14,6 +14,8 @@ import {
 } from './served-prediction-functions.ts';
 import { toolUsersServedBy } from './served-tools.ts';
 
+type LedgerDatabase = Parameters<FunctionWiring['projections']['served']>[1]['database'];
+
 export interface ServedFunctions {
   readonly parts: Omit<WorkflowParts, 'ledger' | 'workflows'>;
   readonly closing: ServedPredictionFunctions['withProcessesClosed'];
@@ -22,6 +24,7 @@ export interface ServedFunctions {
 export async function functionsServedBy(
   runtime: AppRuntime<DispatcherServices>,
   settings: Settings,
+  database: LedgerDatabase,
   { modelAccessOf, programPoolOf, projections: wiring, toolTiming }: FunctionWiring,
 ): Promise<ServedFunctions> {
   const { reasoning, interaction, withToolsClosed } = await toolUsersServedBy(
@@ -31,7 +34,9 @@ export async function functionsServedBy(
     toolTiming,
   );
   const computation = await computationServedBy(settings.computation, programPoolOf);
-  const projections = await wiring.served(runtime, settings, computation.pool, [datasetsFolderOf(computation.pool)]);
+  const projections = await wiring.served(runtime, { recall: settings.recall, database }, computation.pool, [
+    datasetsFolderOf(computation.pool),
+  ]);
   const prediction = await predictionFunctionsServedBy(
     runtime,
     settings.prediction,

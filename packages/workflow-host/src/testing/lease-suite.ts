@@ -7,8 +7,8 @@ import { expect, it } from 'vitest';
 import { HostElsewhere } from '../host/run-requests.ts';
 import { eventually } from './eventually.ts';
 import { runAt, startOf, workflow } from './host-documents.ts';
-import { aSQLiteFile, type SettingsOf } from './host-files.ts';
-import { hostIn } from './host-processes.ts';
+import { aSQLiteFile } from './host-files.ts';
+import { databaseSettingsOf, hostIn, type ProcessDatabasesOf } from './host-processes.ts';
 import { hostedOn } from './host-runs.ts';
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
@@ -28,12 +28,12 @@ const notesOfAHostAnHourAhead: Readonly<Record<ClaimClock, readonly Readonly<Rec
   host: [],
 };
 
-export function leaseSuite(settings: SettingsOf): void {
+export function leaseSuite(databases: ProcessDatabasesOf): void {
   it('lets one host serve the workflows of a database, and a second take them over only once the first is gone', async () => {
-    const database = await settings();
+    const database = await databases();
     const first = hostIn(database, 'hang-on-call', join(aSQLiteFile(), '..', 'settlements.jsonl'), sweepEveryMs);
     await first.said('calling');
-    const second = await hostedOn(database, { sweepEveryMs });
+    const second = await hostedOn(databaseSettingsOf(database), { sweepEveryMs });
     second.know(runId);
 
     const refused = await Effect.runPromise(Effect.flip(second.host.start(runAt(runId), startOf(listening))));
@@ -50,9 +50,9 @@ export function leaseSuite(settings: SettingsOf): void {
   }, 60_000);
 
   it('hands the workflows over at the next sweep when the host serving them stops', async () => {
-    const database = await settings();
-    const first = await hostedOn(database, { sweepEveryMs, holder: 'first' });
-    const second = await hostedOn(database, { sweepEveryMs, holder: 'second' });
+    const database = await databases();
+    const first = await hostedOn(databaseSettingsOf(database), { sweepEveryMs, holder: 'first' });
+    const second = await hostedOn(databaseSettingsOf(database), { sweepEveryMs, holder: 'second' });
 
     await first.host.stop();
     const notes = await eventually(second.notes, (noted) => noted.length > 1, 2000);
@@ -64,12 +64,12 @@ export function leaseSuite(settings: SettingsOf): void {
   }, 60_000);
 }
 
-export function claimSuite(settings: SettingsOf, claimClock: ClaimClock): void {
+export function claimSuite(databases: ProcessDatabasesOf, claimClock: ClaimClock): void {
   it('keeps the claim of a host paused for a second at the shortest sweep, so no other host takes over', async () => {
-    const database = await settings();
+    const database = await databases();
     const first = hostIn(database, 'hang-on-call', join(aSQLiteFile(), '..', 'settlements.jsonl'), shortestSweepMs);
     await first.said('calling');
-    const second = await hostedOn(database, { sweepEveryMs: shortestSweepMs });
+    const second = await hostedOn(databaseSettingsOf(database), { sweepEveryMs: shortestSweepMs });
 
     await first.paused(1000);
     await setTimeout(10 * shortestSweepMs);
@@ -81,9 +81,9 @@ export function claimSuite(settings: SettingsOf, claimClock: ClaimClock): void {
   }, 60_000);
 
   it(`judges the claim by the clock of the ${claimClock}, as a host whose clock runs an hour ahead finds`, async () => {
-    const database = await settings();
-    await hostedOn(database, { holder: 'first' });
-    const ahead = await hostedOn(database, {
+    const database = await databases();
+    await hostedOn(databaseSettingsOf(database), { holder: 'first' });
+    const ahead = await hostedOn(databaseSettingsOf(database), {
       holder: 'ahead',
       clock: { now: () => Date.now() + anHourMs, sleep: Effect.sleep },
     });

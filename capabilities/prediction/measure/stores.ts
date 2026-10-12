@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
+import { plainPoolsOn, postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
 import { ledgerLayer } from '@on.auto/ledger/sqlite3';
 import type { Ledger } from '@on.auto/operations';
 import type { DatabaseSettings } from '@on.auto/workflow-host';
@@ -60,9 +60,10 @@ function onPostgreSQL(server: string): MeasuredStore {
       names.push(name);
       const database = new URL(server);
       database.pathname = `/${name}`;
+      const pools = plainPoolsOn(database.href);
       return {
-        settings: { store: 'postgresql', connectionString: database.href },
-        ledger: postgresqlLedgerLayer({ connectionString: database.href }),
+        settings: { store: 'postgresql', pools },
+        ledger: postgresqlLedgerLayer({ pools }),
       };
     },
     removeAll: async () => {

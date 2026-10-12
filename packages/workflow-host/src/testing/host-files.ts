@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { plainPoolsOn } from '@on.auto/ledger/postgresql';
 import { Function } from 'effect';
 import { onTestFinished } from 'vitest';
 
@@ -19,7 +20,13 @@ export function aSQLiteFile(): string {
   return join(directory, 'ledger.db');
 }
 
-export const onSQLite: SettingsOf = () => Promise.resolve({ store: 'sqlite', file: aSQLiteFile() });
+export function onSQLite(): Promise<Extract<DatabaseSettings, { readonly store: 'sqlite' }>> {
+  return Promise.resolve({ store: 'sqlite', file: aSQLiteFile() });
+}
+
+export function onPostgreSQLAt(url: string): DatabaseSettings {
+  return { store: 'postgresql', pools: plainPoolsOn(url) };
+}
 
 export async function openedOn(settings: DatabaseSettings, tables: readonly Statement[] = []): Promise<HostDatabase> {
   const database = await openHostDatabase(settings, Function.constVoid, tables);

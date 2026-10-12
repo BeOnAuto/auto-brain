@@ -2,8 +2,8 @@ import { join } from 'node:path';
 
 import { expect, it } from 'vitest';
 
-import { aSQLiteFile, type SettingsOf } from './host-files.ts';
-import { hostIn, linesOf, type Mode } from './host-processes.ts';
+import { aSQLiteFile } from './host-files.ts';
+import { hostIn, linesOf, type Mode, type ProcessDatabasesOf } from './host-processes.ts';
 
 const settledOnce = [
   { id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', settlement: { status: 'succeeded', output: 'sent' } },
@@ -18,11 +18,11 @@ const hangs: readonly { readonly mode: Mode; readonly line: string; readonly tit
   },
 ];
 
-export function failureSuite(settings: SettingsOf): void {
+export function failureSuite(databases: ProcessDatabasesOf): void {
   it.each(hangs)(
     '$title',
     async ({ mode, line }) => {
-      const database = await settings();
+      const database = await databases();
       const settlements = join(aSQLiteFile(), '..', 'settlements.jsonl');
       const killedHost = hostIn(database, mode, settlements);
       await killedHost.said(line);

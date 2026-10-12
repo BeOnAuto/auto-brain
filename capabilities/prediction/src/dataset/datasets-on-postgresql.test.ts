@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Client } from 'pg';
+import { Client, Pool } from 'pg';
 import { describe, onTestFinished } from 'vitest';
 
 import { datasetEdgesSuite } from '../dataset-testing/dataset-edges-suite.ts';
@@ -35,7 +35,7 @@ const onPostgreSQL: SettingsOf = async () => {
   });
   const database = new URL(server);
   database.pathname = `/${name}`;
-  return { store: 'postgresql', connectionString: database.href };
+  return { store: 'postgresql', pools: ({ max }) => new Pool({ connectionString: database.href, max }) };
 };
 
 describe.skipIf(skipped)(`the datasets of prediction functions on PostgreSQL${notice}`, () => {

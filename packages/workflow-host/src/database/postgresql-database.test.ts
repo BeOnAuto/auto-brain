@@ -1,10 +1,9 @@
-import { once } from 'node:events';
-import { createServer } from 'node:net';
-
 import type { EventStore, StoredRecord } from '@on.auto/ledger';
-import { Effect, Function, Schema } from 'effect';
+import { unreachableDatabase } from '@on.auto/ledger/testing';
+import { Effect, Function } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { databaseSettingsOf } from '../testing/host-processes.ts';
 import type { DatabaseFailed, HostDatabase, StatementAnswer } from './host-database.ts';
 import { openHostDatabase } from './host-databases.ts';
 import { addedColumns, hostTables, indexesOfAddedColumns } from './host-tables.ts';
@@ -73,17 +72,6 @@ function clockOf(database: HostDatabase): Effect.Effect<number, DatabaseFailed> 
   return database.sharedClock ?? Effect.die(new Error('The database has no clock of its own'));
 }
 
-const decodePort = Schema.decodeUnknownSync(Schema.Struct({ port: Schema.Number }));
-
-async function aPortNobodyListensOn(): Promise<number> {
-  const server = createServer().listen(0, '127.0.0.1');
-  await once(server, 'listening');
-  const { port } = decodePort(server.address());
-  server.close();
-  await once(server, 'close');
-  return port;
-}
-
 const tableOfAFolder = statement`CREATE TABLE IF NOT EXISTS folder_rows (playbook_key TEXT NOT NULL PRIMARY KEY)`;
 
 const migrationAsked: readonly Asked[] = [
@@ -120,12 +108,10 @@ describe('the host database on PostgreSQL, opening', () => {
   });
 
   it('does not open on a server that cannot be reached', async () => {
-    const port = await aPortNobodyListensOn();
-    const connectionString = `postgresql://playbooks:a-secret@127.0.0.1:${port}/playbooks`;
+    const { url, port } = await unreachableDatabase();
+    const settings = databaseSettingsOf({ store: 'postgresql', connectionString: url });
 
-    await expect(openHostDatabase({ store: 'postgresql', connectionString }, Function.constVoid)).rejects.toThrow(
-      `ECONNREFUSED 127.0.0.1:${port}`,
-    );
+    await expect(openHostDatabase(settings, Function.constVoid)).rejects.toThrow(`ECONNREFUSED 127.0.0.1:${port}`);
   });
 });
 
