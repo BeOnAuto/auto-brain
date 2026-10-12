@@ -15,6 +15,7 @@ import {
   objectField,
   textField,
   valueAtPointer,
+  withinBytes,
   type Json,
 } from './json.ts';
 
@@ -68,6 +69,15 @@ describe('comparing JSON', () => {
 
   it('counts the bytes of JSON in UTF-8', () => {
     expect(jsonBytesOf({ name: 'é' })).toBe(13);
+  });
+
+  it('takes the longest start of a text whose UTF-8 is within a number of bytes, never cutting a character', () => {
+    expect([withinBytes('abc', 2), withinBytes('aé', 2), withinBytes('aé', 3), withinBytes('a😀b', 4)]).toEqual([
+      'ab',
+      'a',
+      'aé',
+      'a',
+    ]);
   });
 });
 

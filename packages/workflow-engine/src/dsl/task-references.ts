@@ -5,17 +5,11 @@ import {
   mostReferenceBytes,
 } from '@beonauto/operations';
 
+import { withinBytes } from './json.ts';
 import { rejection, type Rejection } from './policy-checks.ts';
 import { kindOf, type TaskEntry } from './tasks.ts';
 
 const mostShownReferenceBytes = 120;
-
-const utf8 = new TextEncoder();
-
-function withinBytes(text: string, mostBytes: number): string {
-  const { read } = utf8.encodeInto(text, new Uint8Array(mostBytes));
-  return text.slice(0, read);
-}
 
 function cutReference(reference: string): string {
   return `${withinBytes(reference, mostShownReferenceBytes)}…`;
