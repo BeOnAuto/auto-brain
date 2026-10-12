@@ -1,5 +1,5 @@
-import type { PlaybookDefinitions } from './brain-definitions.ts';
-import type { Resting } from './brain-pass.ts';
+import type { PlaybookDefinitions } from './playbook-definitions.ts';
+import type { Resting } from './playbook-pass.ts';
 
 export interface Schedule {
   readonly definitions: Map<string, PlaybookDefinitions>;

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { workflowsOfRuns } from './run-workflows.ts';
 
-const playbookKey = 'brain/acme/alpha/';
+const playbookKey = 'playbook/acme/alpha/';
 
 function startedRecord(type: string, name: string) {
   return {

@@ -60,7 +60,7 @@ export function insertedListener(database: HostDatabase, row: ListenerRow) {
   return Effect.gen(function* () {
     const { runKey, listener, playbookKey, streamId, armedBy, filters, workflow, version, passed } = row;
     yield* database.write(
-      statement`INSERT INTO workflow_listeners (run_key, listener, brain_key, stream_id, armed_by, filters, workflow, version, passed)
+      statement`INSERT INTO workflow_listeners (run_key, listener, playbook_key, stream_id, armed_by, filters, workflow, version, passed)
         VALUES (${runKey}, ${listener}, ${playbookKey}, ${streamId}, ${armedBy}, ${filters}, ${workflow}, ${version}, ${passed ? 1 : 0})
         ON CONFLICT (run_key, listener) DO NOTHING`,
     );
@@ -76,7 +76,7 @@ export function insertedListener(database: HostDatabase, row: ListenerRow) {
       typesOf(filters),
       (type) =>
         database.write(
-          statement`INSERT INTO workflow_listener_types (brain_key, type, run_key, listener)
+          statement`INSERT INTO workflow_listener_types (playbook_key, type, run_key, listener)
             VALUES (${playbookKey}, ${type}, ${runKey}, ${listener}) ON CONFLICT DO NOTHING`,
         ),
       { discard: true },
@@ -111,7 +111,7 @@ export function isListeningAt(database: HostDatabase, { playbookKey, workflow, v
       ListenerKeyRow,
       database.read(
         statement`SELECT listener FROM workflow_listeners
-          WHERE brain_key = ${playbookKey} AND workflow = ${workflow} AND version = ${version}`,
+          WHERE playbook_key = ${playbookKey} AND workflow = ${workflow} AND version = ${version}`,
       ),
     ),
     (rows) => rows.some(({ listener }) => listenerKeyOf(listener).reference === reference),
@@ -122,7 +122,9 @@ export function listenersInPlaybook(database: HostDatabase, playbookKey: string)
   return Effect.map(
     rowsOf(
       CountRow,
-      database.read(statement`SELECT count(*) AS listeners FROM workflow_listeners WHERE brain_key = ${playbookKey}`),
+      database.read(
+        statement`SELECT count(*) AS listeners FROM workflow_listeners WHERE playbook_key = ${playbookKey}`,
+      ),
     ),
     (rows) => rows.reduce((sum, { listeners }) => sum + listeners, 0),
   );
@@ -214,7 +216,7 @@ export function listenersOfType(
         statement`SELECT l.run_key, l.listener, l.filters, l.workflow, l.version
           FROM workflow_listener_types AS t
           JOIN workflow_listeners AS l ON l.run_key = t.run_key AND l.listener = t.listener
-          WHERE t.brain_key = ${playbookKey} AND t.type = ${type} AND l.passed = 1
+          WHERE t.playbook_key = ${playbookKey} AND t.type = ${type} AND l.passed = 1
             AND (t.run_key > ${after.runKey} OR (t.run_key = ${after.runKey} AND t.listener > ${after.listener}))
           ORDER BY t.run_key, t.listener
           LIMIT ${limit}`,

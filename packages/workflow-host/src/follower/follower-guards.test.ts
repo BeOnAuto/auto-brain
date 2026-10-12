@@ -11,7 +11,7 @@ import {
   published,
   recorded,
   runRecorded,
-} from '../reaction-testing/brain-writes.ts';
+} from '../reaction-testing/playbook-writes.ts';
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
 import { until } from '../reaction-testing/until.ts';
 

@@ -3,14 +3,14 @@ import { describe, expect, it } from 'vitest';
 
 import type { HostDatabase } from '../database/host-database.ts';
 import { stopsInARowBeforeTheVersion } from '../filtering/filter-matching.ts';
-import { eventTrigger, type TriggerFilter } from '../reaction-testing/brain-writes.ts';
 import { followedRecordOf } from '../reaction-testing/followed-records.ts';
+import { eventTrigger, type TriggerFilter } from '../reaction-testing/playbook-writes.ts';
 import { starting, stopsByItsMemory, stopsByItsWork } from '../reaction-testing/trigger-starting.ts';
 import { triggersActivated } from '../triggers/trigger-rows.ts';
 import { reactionRunIdOf } from './reaction-ids.ts';
 import { mostReactionDepth } from './subscription-starts.ts';
 
-const playbookKey = 'brain/acme/alpha/';
+const playbookKey = 'playbook/acme/alpha/';
 
 const at = '2026-10-01T09:00:00.000Z';
 
@@ -135,7 +135,7 @@ describe('a filter that names a count of the context', () => {
       subject: 'workflow/close',
       time: at,
       depth: 1,
-      caller: 'brain:alpha',
+      caller: 'playbook:alpha',
       definitionversion: 1,
     };
 

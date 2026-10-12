@@ -3,9 +3,9 @@ import { Effect } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
 import { wantedTypesIn } from '../triggers/trigger-rows.ts';
-import { noRecordTypes, recordTypesOf, type PlaybookRecords } from './brain-records.ts';
 import type { Mode } from './delivery-loop.ts';
-import type { FollowedPlaybook, FollowedPlaybooks, Progress } from './followed-brains.ts';
+import type { FollowedPlaybook, FollowedPlaybooks, Progress } from './followed-playbooks.ts';
+import { noRecordTypes, recordTypesOf, type PlaybookRecords } from './playbook-records.ts';
 import { playbookOfKey, stepOf, type PassEnd, type StepParts, type Stepping } from './record-steps.ts';
 import { runGateOf } from './run-gate.ts';
 

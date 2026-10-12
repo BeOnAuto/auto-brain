@@ -18,7 +18,7 @@ export interface Rebuild {
   readonly viewBytes: number;
 }
 
-const playbook = 'brain/acme/alpha/';
+const playbook = 'playbook/acme/alpha/';
 
 const runsInAStream = 100;
 

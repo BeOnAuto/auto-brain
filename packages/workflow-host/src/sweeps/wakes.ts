@@ -1,6 +1,8 @@
 import { playbookKeyOfStream } from '@beonauto/ledger';
+import { streamPrefixOfPlaybook } from '@beonauto/operations';
 
-import { isOrgRegistry } from '../follower/brain-discovery.ts';
+import { isOrgRegistry } from '../follower/playbook-discovery.ts';
+import { playbookOfKey } from '../follower/record-steps.ts';
 
 export interface Wakes {
   readonly woken: (stream: string) => void;
@@ -14,9 +16,13 @@ export interface Wakes {
   readonly nextSweepAt: () => number;
 }
 
+function isPlaybookKey(playbookKey: string): boolean {
+  return streamPrefixOfPlaybook(playbookOfKey(playbookKey)) === playbookKey;
+}
+
 export function followedPlaybookOf(stream: string): string | undefined {
   const playbookKey = playbookKeyOfStream(stream);
-  return playbookKey === undefined || !playbookKey.startsWith('brain/') || stream.startsWith(`${playbookKey}run-logs/`)
+  return playbookKey === undefined || !isPlaybookKey(playbookKey) || stream.startsWith(`${playbookKey}run-logs/`)
     ? undefined
     : playbookKey;
 }

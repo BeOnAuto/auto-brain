@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { followedRecordOf } from '../reaction-testing/followed-records.ts';
 import { DeliveryFailed, boundTo, type RecordConsumer, type Delivery } from './consumers.ts';
 import { deliveredAll } from './delivery-loop.ts';
-import type { Progress } from './followed-brains.ts';
+import type { Progress } from './followed-playbooks.ts';
 
 const followed = followedRecordOf(null);
 

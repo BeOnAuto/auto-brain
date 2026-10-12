@@ -3,14 +3,14 @@ import { describe, expect, it } from 'vitest';
 
 import { rowsOf } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
+import { movedClock, type MovedClock } from '../reaction-testing/moved-clock.ts';
 import {
   at,
   cronTrigger,
   everyTrigger,
   definitionRecordAt,
   definitionRecorded,
-} from '../reaction-testing/brain-writes.ts';
-import { movedClock, type MovedClock } from '../reaction-testing/moved-clock.ts';
+} from '../reaction-testing/playbook-writes.ts';
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
 import { refusedWhile, type FailingStart } from '../reaction-testing/recorded-reactions.ts';
 import { until } from '../reaction-testing/until.ts';

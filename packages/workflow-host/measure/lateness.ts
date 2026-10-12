@@ -2,7 +2,7 @@ import { Effect, Function } from 'effect';
 
 import type { DatabaseSettings } from '../src/database/host-databases.ts';
 import { openHostDatabase } from '../src/database/host-databases.ts';
-import { playbookCreated, definitionRecorded } from '../src/reaction-testing/brain-writes.ts';
+import { playbookCreated, definitionRecorded } from '../src/reaction-testing/playbook-writes.ts';
 import { ledgerRunLogStore } from '../src/runs/ledger-run-store.ts';
 import { runKeyOf } from '../src/runs/run-address.ts';
 import { header, measuredHost, runAt, startOf } from './measured-host.ts';

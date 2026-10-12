@@ -27,7 +27,7 @@ describe('the records a projector reports', { timeout: viewTestTimeoutMs }, () =
     const views = await viewHarness(await onSQLite());
     await views.saved('first', counting);
     await views.ran('reasoning/runs', 1);
-    await views.append('brain/acme/alpha/runs/broken', [{ type: 'run_succeeded', data: { type: 'run_succeeded' } }]);
+    await views.append('playbook/acme/alpha/runs/broken', [{ type: 'run_succeeded', data: { type: 'run_succeeded' } }]);
     views.start();
     await views.until('first', liveWith(1));
 
@@ -35,7 +35,7 @@ describe('the records a projector reports', { timeout: viewTestTimeoutMs }, () =
     await views.until('second', liveWith(1));
 
     expect(views.reports.notes()).toEqual([
-      { kind: 'record_passed_over', playbook: 'brain/acme/alpha/', record: anyText, reason: 'unreadable' },
+      { kind: 'record_passed_over', playbook: 'playbook/acme/alpha/', record: anyText, reason: 'unreadable' },
     ]);
   });
 });

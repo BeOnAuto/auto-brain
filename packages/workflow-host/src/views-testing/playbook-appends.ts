@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
 import type { AppendSignal, EncodedEvent, EventStore } from '@beonauto/ledger';
-import type { Context } from '@beonauto/operations';
+import { streamPrefixOfPlaybook, type Context } from '@beonauto/operations';
 import type { Schema } from 'effect';
 
 import type { ViewDetails } from '../views/view-details.ts';
-import { alpha, playbookKeyOf, type Playbook } from './view-documents.ts';
+import { alpha, type Playbook } from './view-documents.ts';
 
 interface RunOf {
   readonly at?: string;
@@ -51,7 +51,7 @@ function ranBy(append: Append): Ran {
   return async (subject, output, { at = ranAt, playbook = alpha } = {}) => {
     const id = randomUUID();
     await append(
-      `${playbookKeyOf(playbook)}runs/${id}`,
+      `${streamPrefixOfPlaybook(playbook)}runs/${id}`,
       [
         { type: 'run_started', data: { input: {} } },
         { type: 'run_succeeded', data: { output, record: {} } },
@@ -64,12 +64,12 @@ function ranBy(append: Append): Ran {
 
 function savedBy(append: Append, definitions: Map<string, number>): PlaybookAppends['saved'] {
   return async (name, details, playbook = alpha) => {
-    const key = `${playbookKeyOf(playbook)}${name}`;
+    const key = `${streamPrefixOfPlaybook(playbook)}${name}`;
     const version = (definitions.get(key) ?? 0) + 1;
     definitions.set(key, version);
     const type = version === 1 ? 'definition_created' : 'definition_updated';
     const content = { source: `the ${name} document, version ${version}`, details };
-    await append(`${playbookKeyOf(playbook)}definitions/recall`, [{ type, data: { content } }], {
+    await append(`${streamPrefixOfPlaybook(playbook)}definitions/recall`, [{ type, data: { content } }], {
       by: 'acme-admin',
       at: savedAt,
       definitionType: 'recall',
@@ -87,19 +87,19 @@ export function playbookAppends(store: EventStore, appends: AppendSignal): Playb
     append,
     saved: savedBy(append, definitions),
     retired: async (name) => {
-      await append(`${playbookKeyOf(alpha)}definitions/recall`, [{ type: 'definition_retired', data: {} }], {
+      await append(`${streamPrefixOfPlaybook(alpha)}definitions/recall`, [{ type: 'definition_retired', data: {} }], {
         by: 'acme-admin',
         at: savedAt,
         definitionType: 'recall',
         definitionName: name,
-        definitionVersion: Number(definitions.get(`${playbookKeyOf(alpha)}${name}`)),
+        definitionVersion: Number(definitions.get(`${streamPrefixOfPlaybook(alpha)}${name}`)),
       });
     },
     ran,
     ranInOneStream: async (subject, outputs) => {
       const id = randomUUID();
       await append(
-        `${playbookKeyOf(alpha)}runs/${id}`,
+        `${streamPrefixOfPlaybook(alpha)}runs/${id}`,
         outputs.map((output) => ({ type: 'run_succeeded', data: { output, record: {} } })),
         { ...ranContext(subject, ranAt), runId: id },
       );
@@ -107,7 +107,7 @@ export function playbookAppends(store: EventStore, appends: AppendSignal): Playb
     ranEach: (subject, outputs) =>
       outputs.reduce<Promise<unknown>>((before, output) => before.then(() => ran(subject, output)), Promise.resolve()),
     published: async (event, playbook = alpha) => {
-      await append(`${playbookKeyOf(playbook)}events/${randomUUID()}`, [
+      await append(`${streamPrefixOfPlaybook(playbook)}events/${randomUUID()}`, [
         { type: 'event_published', data: { event, filled: [] } },
       ]);
     },

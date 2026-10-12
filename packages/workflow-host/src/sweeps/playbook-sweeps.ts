@@ -1,8 +1,8 @@
 import type { AppendedStreams, EventStore } from '@beonauto/ledger';
 import { Effect } from 'effect';
 
-import { isOrgRegistry } from '../follower/brain-discovery.ts';
-import type { FollowedPlaybook, FollowedPlaybooks } from '../follower/followed-brains.ts';
+import type { FollowedPlaybook, FollowedPlaybooks } from '../follower/followed-playbooks.ts';
+import { isOrgRegistry } from '../follower/playbook-discovery.ts';
 import { followedPlaybookOf } from './wakes.ts';
 
 interface SweptPlaybook {

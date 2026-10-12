@@ -19,7 +19,7 @@ import {
   noDefinitions,
   type PlaybookDefinitions,
   type KeptFunction,
-} from './brain-definitions.ts';
+} from './playbook-definitions.ts';
 
 export interface Reconciling {
   readonly database: HostDatabase;

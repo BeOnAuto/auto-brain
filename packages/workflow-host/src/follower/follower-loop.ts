@@ -3,11 +3,11 @@ import { Effect, Fiber } from 'effect';
 
 import type { Trouble } from '../calls/host-executor.ts';
 import type { HostClock } from '../loop/host-clock.ts';
-import type { PlaybookSweeps } from '../sweeps/brain-sweeps.ts';
+import type { PlaybookSweeps } from '../sweeps/playbook-sweeps.ts';
 import { wakesOf, type Wakes } from '../sweeps/wakes.ts';
-import type { Discovery } from './brain-discovery.ts';
 import type { Mode } from './delivery-loop.ts';
-import type { FollowedPlaybook } from './followed-brains.ts';
+import type { FollowedPlaybook } from './followed-playbooks.ts';
+import type { Discovery } from './playbook-discovery.ts';
 import type { PassEnd } from './record-steps.ts';
 
 export interface Upkeep {

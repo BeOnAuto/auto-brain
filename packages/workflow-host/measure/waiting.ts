@@ -1,7 +1,7 @@
 import { Effect, Function, type Schema } from 'effect';
 
 import { openHostDatabase, type DatabaseSettings } from '../src/database/host-databases.ts';
-import { alpha, at, playbookCreated, recorded } from '../src/reaction-testing/brain-writes.ts';
+import { alpha, at, playbookCreated, recorded } from '../src/reaction-testing/playbook-writes.ts';
 import { header, runAt, startOf } from './measured-host.ts';
 import { childOf, waitingHost, type WaitingHost } from './waiting-host.ts';
 
@@ -76,7 +76,7 @@ export function childEndingLatencyOn(database: DatabaseSettings, measured: Waiti
       store,
       `${alpha}runs/${childOf(runId)}`,
       { type: 'run_succeeded', data: { output: 'done', record: {} } },
-      { ...ofTheRun, by: 'brain:alpha', calledBy: { runId, reference: '/do/0/ask', run: 1 } },
+      { ...ofTheRun, by: 'playbook:alpha', calledBy: { runId, reference: '/do/0/ask', run: 1 } },
     ),
   );
 }

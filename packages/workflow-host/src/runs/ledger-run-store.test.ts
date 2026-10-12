@@ -54,7 +54,7 @@ describe('the run store of the host, keeping a run', () => {
     );
 
     expect(history.records.map(({ stream, type }) => [stream, type])).toEqual([
-      [`brain/acme/alpha/run-logs/${runId}`, 'input_applied'],
+      [`playbook/acme/alpha/run-logs/${runId}`, 'input_applied'],
     ]);
   });
 

@@ -5,7 +5,7 @@ import { Effect, Function, Schema } from 'effect';
 
 import { openHostDatabase, type DatabaseSettings } from '../src/database/host-databases.ts';
 import { statement } from '../src/database/statement.ts';
-import { alpha, at, playbookCreated, recorded } from '../src/reaction-testing/brain-writes.ts';
+import { alpha, at, playbookCreated, recorded } from '../src/reaction-testing/playbook-writes.ts';
 import { measuredHost, runAt } from './measured-host.ts';
 
 export interface FinishCatchUp {
@@ -25,7 +25,7 @@ const ofTheRun = { by: 'acme-admin', at, definitionType: 'workflow', definitionN
 
 async function placesOf(opened: Opened): Promise<readonly (string | null)[]> {
   const rows = await Effect.runPromise(
-    opened.read(statement`SELECT cursor FROM workflow_followed_brains WHERE brain_key = ${alpha}`),
+    opened.read(statement`SELECT cursor FROM workflow_followed_playbooks WHERE playbook_key = ${alpha}`),
   );
   return Schema.decodeUnknownSync(Places)(rows).map(({ cursor }) => cursor);
 }

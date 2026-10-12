@@ -4,8 +4,8 @@ import { rowsOf, type HostDatabase } from '../database/host-database.ts';
 import type { HostReports } from '../host/host-reports.ts';
 import type { HostClock } from '../loop/host-clock.ts';
 import { playbooksWithViews } from '../views/view-statements.ts';
-import { playbookKeyOfDefinitions } from './brain-definitions.ts';
-import { playbookPass, type PassParts } from './brain-pass.ts';
+import { playbookKeyOfDefinitions } from './playbook-definitions.ts';
+import { playbookPass, type PassParts } from './playbook-pass.ts';
 import { scheduleOf, type Schedule } from './projector-schedule.ts';
 import { shareOfThePool, type ProjectorSettings } from './projector-settings.ts';
 

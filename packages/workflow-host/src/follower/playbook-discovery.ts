@@ -1,4 +1,5 @@
-import { playbookCreatedOf } from '@beonauto/brains';
+import { streamPrefixOfPlaybook } from '@beonauto/operations';
+import { playbookCreatedOf } from '@beonauto/playbooks';
 import { Effect, Schema } from 'effect';
 
 import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';
@@ -8,9 +9,9 @@ import {
   type ApplyDefinitionRecord,
   type DefinitionRecord,
 } from '../triggers/definition-records.ts';
-import type { PlaybookRecords } from './brain-records.ts';
-import type { FollowedPlaybooks } from './followed-brains.ts';
+import type { FollowedPlaybooks } from './followed-playbooks.ts';
 import { scannedListeners } from './listener-scan.ts';
+import type { PlaybookRecords } from './playbook-records.ts';
 
 export interface Discovery {
   readonly atStart: () => Effect.Effect<void>;
@@ -33,7 +34,7 @@ const SeenRow = Schema.Struct({ stream_id: Schema.String, position: WholeNumber 
 
 const PositionRow = Schema.Struct({ position: WholeNumber });
 
-const orgRegistry = /^org\/([^/]+)\/brains$/u;
+const orgRegistry = /^org\/([^/]+)\/playbooks$/u;
 
 export function isOrgRegistry(stream: string): boolean {
   return orgRegistry.test(stream);
@@ -46,7 +47,7 @@ function orgsOf(database: HostDatabase) {
         OrgStreamRow,
         database.read(
           statement`SELECT stream_id, stream_position FROM emt_streams
-            WHERE stream_id LIKE 'org/%/brains' AND is_archived = FALSE`,
+            WHERE stream_id LIKE 'org/%/playbooks' AND is_archived = FALSE`,
         ),
       ),
       rowsOf(SeenRow, database.read(statement`SELECT stream_id, position FROM workflow_followed_orgs`)),
@@ -64,7 +65,7 @@ function seenOf(database: HostDatabase, stream: string): Effect.Effect<number | 
 }
 
 function playbookKeyOf(stream: string, playbook: string): string {
-  return stream.replace(orgRegistry, (_, org: string) => `brain/${org}/${playbook}/`);
+  return stream.replace(orgRegistry, (_, org: string) => streamPrefixOfPlaybook({ org, playbook }));
 }
 
 function followedAtTailOn({

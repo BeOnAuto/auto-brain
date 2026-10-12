@@ -16,7 +16,7 @@ const time = '2026-10-01T09:00:00.000Z';
 export function followedRecordOf(data: Json, about: Partial<FollowedEvent> = {}): FollowedRecord {
   return {
     playbook: { org: 'acme', playbook: 'alpha' },
-    playbookKey: 'brain/acme/alpha/',
+    playbookKey: 'playbook/acme/alpha/',
     record: {
       id: 'record-1',
       cursor: 'c1',

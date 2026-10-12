@@ -2,7 +2,7 @@ import { messageIdOf } from '@beonauto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { alpha, eventTrigger, published, recorded, definitionRecorded } from '../reaction-testing/brain-writes.ts';
+import { alpha, eventTrigger, published, recorded, definitionRecorded } from '../reaction-testing/playbook-writes.ts';
 import { reactingHost } from '../reaction-testing/reacting-host.ts';
 import { until } from '../reaction-testing/until.ts';
 import type { Consumer } from './consumers.ts';

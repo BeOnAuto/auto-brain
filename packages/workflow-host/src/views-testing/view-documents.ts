@@ -1,4 +1,5 @@
 import type { AppendSignal } from '@beonauto/ledger';
+import { streamPrefixOfPlaybook } from '@beonauto/operations';
 import { unitMemoryBytes, workerStackBytes, type ProgramPool } from '@beonauto/workflow-engine/dsl';
 
 import type { FoldingSettings, ProjectorSettings } from '../projector/projector-settings.ts';
@@ -13,13 +14,9 @@ export interface Playbook {
 
 export const alpha: Playbook = { org: 'acme', playbook: 'alpha' };
 
-export const alphaKey = 'brain/acme/alpha/';
+export const alphaKey = streamPrefixOfPlaybook(alpha);
 
 export const viewTestTimeoutMs = 60_000;
-
-export function playbookKeyOf({ org, playbook }: Playbook): string {
-  return `brain/${org}/${playbook}/`;
-}
 
 export const succeeded = [{ type: 'run_succeeded' }];
 

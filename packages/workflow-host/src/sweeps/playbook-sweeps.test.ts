@@ -2,8 +2,8 @@ import type { AppendedStreams } from '@beonauto/ledger';
 import { Effect, Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import type { FollowedPlaybook, FollowedPlaybooks } from '../follower/followed-brains.ts';
-import { playbookSweepsOn, playbooksInASweep, waitingInASweep, type Sweep } from './brain-sweeps.ts';
+import type { FollowedPlaybook, FollowedPlaybooks } from '../follower/followed-playbooks.ts';
+import { playbookSweepsOn, playbooksInASweep, waitingInASweep, type Sweep } from './playbook-sweeps.ts';
 
 interface Swept {
   readonly sweeps: readonly Sweep[];
@@ -17,7 +17,7 @@ interface Ledger {
 }
 
 function playbookNamed(index: number): string {
-  return `brain/acme/b${String(index).padStart(4, '0')}/`;
+  return `playbook/acme/b${String(index).padStart(4, '0')}/`;
 }
 
 function followedPlaybook(playbookKey: string, waiting: boolean): FollowedPlaybook {
@@ -74,10 +74,10 @@ describe('the sweeps of the follower', () => {
   it('hand out each playbook appended to since the last read once, but not one only a run appended to, and name the registries', async () => {
     const appended: AppendedStreams = {
       streams: [
-        'brain/acme/alpha/events/',
-        'brain/acme/alpha/definitions/',
-        'brain/acme/beta/run-logs/',
-        'org/acme/brains',
+        'playbook/acme/alpha/events/',
+        'playbook/acme/alpha/definitions/',
+        'playbook/acme/beta/run-logs/',
+        'org/acme/playbooks',
         'org/acme/keys/k1',
         'workflow/elsewhere',
       ],
@@ -89,8 +89,8 @@ describe('the sweeps of the follower', () => {
 
     expect(sweeps).toEqual([
       {
-        registries: ['org/acme/brains'],
-        playbooks: [{ playbookKey: 'brain/acme/alpha/', known: undefined }],
+        registries: ['org/acme/playbooks'],
+        playbooks: [{ playbookKey: 'playbook/acme/alpha/', known: undefined }],
         again: false,
       },
       { registries: [], playbooks: [], again: false },
@@ -99,7 +99,10 @@ describe('the sweeps of the follower', () => {
   });
 
   it('keep half of a sweep for playbooks that wait, and the rest for playbooks appended to, the others at the next sweep', async () => {
-    const changed = Array.from({ length: 100 }, (_, index) => `brain/acme/c${String(index).padStart(4, '0')}/events/`);
+    const changed = Array.from(
+      { length: 100 },
+      (_, index) => `playbook/acme/c${String(index).padStart(4, '0')}/events/`,
+    );
     const appended: AppendedStreams = { streams: changed, through: ['20'], more: false };
 
     const { sweeps } = await sweptOver({ appended: [now, appended], waiting: playbooksNumbered(200, true) }, 2);
@@ -109,7 +112,7 @@ describe('the sweeps of the follower', () => {
       [waitingInASweep + 36, false],
     ]);
     expect(sweeps[0]?.playbooks.filter(({ known }) => known?.waiting === true)).toHaveLength(waitingInASweep);
-    expect(keysOf(sweeps[1]).at(-1)).toBe('brain/acme/c0099/');
+    expect(keysOf(sweeps[1]).at(-1)).toBe('playbook/acme/c0099/');
   });
 });
 
@@ -122,7 +125,7 @@ describe('the sweeps of the follower after its start', () => {
   });
 
   it('sweep again at once while the read of what was appended stopped at its most', async () => {
-    const appended: AppendedStreams = { streams: ['brain/acme/alpha/events/'], through: ['15'], more: true };
+    const appended: AppendedStreams = { streams: ['playbook/acme/alpha/events/'], through: ['15'], more: true };
 
     const { sweeps } = await sweptOver({ appended: [now, appended] }, 1);
 
@@ -157,7 +160,7 @@ const quiet: AppendedStreams = { streams: [], through: ['30'], more: false };
 
 function loadOf(sweep: number): AppendedStreams {
   return {
-    streams: Array.from({ length: 200 }, (_, index) => `brain/acme/s${sweep}b${index}/events/`),
+    streams: Array.from({ length: 200 }, (_, index) => `playbook/acme/s${sweep}b${index}/events/`),
     through: [String(sweep)],
     more: false,
   };
@@ -165,7 +168,7 @@ function loadOf(sweep: number): AppendedStreams {
 
 describe('the sweeps of the follower when a read fails', () => {
   it('keep the playbooks they chose when the read of the round fails, and hand them out at the next sweep', async () => {
-    const appended: AppendedStreams = { streams: ['brain/acme/alpha/events/'], through: ['20'], more: false };
+    const appended: AppendedStreams = { streams: ['playbook/acme/alpha/events/'], through: ['20'], more: false };
     const playbookSweeps = playbookSweepsOn(answering([now, appended, quiet]), followingFailingOnce());
     await Effect.runPromise(playbookSweeps.started());
 
@@ -173,11 +176,11 @@ describe('the sweeps of the follower when a read fails', () => {
     const next = await Effect.runPromise(playbookSweeps.next());
 
     expect(Exit.isFailure(failed)).toBe(true);
-    expect(keysOf(next)).toEqual(['brain/acme/alpha/']);
+    expect(keysOf(next)).toEqual(['playbook/acme/alpha/']);
   });
 
   it('name a registry again at every sweep until it was read', async () => {
-    const appended: AppendedStreams = { streams: ['org/acme/brains'], through: ['20'], more: false };
+    const appended: AppendedStreams = { streams: ['org/acme/playbooks'], through: ['20'], more: false };
     const playbookSweeps = playbookSweepsOn(answering([now, appended, quiet]), followedOf({ appended: [] }));
     await Effect.runPromise(playbookSweeps.started());
 
@@ -187,8 +190,8 @@ describe('the sweeps of the follower when a read fails', () => {
     const read = await Effect.runPromise(playbookSweeps.next());
 
     expect([first.registries, unread.registries, read.registries]).toEqual([
-      ['org/acme/brains'],
-      ['org/acme/brains'],
+      ['org/acme/playbooks'],
+      ['org/acme/playbooks'],
       [],
     ]);
   });
@@ -200,10 +203,10 @@ describe('the sweeps of the follower under a steady load', () => {
     const playbookSweeps = playbookSweepsOn(answering(loads), followedOf({ appended: [] }));
     await Effect.runPromise(playbookSweeps.started());
     await Effect.runPromise(playbookSweeps.next());
-    playbookSweeps.passAgain('brain/acme/failed/');
+    playbookSweeps.passAgain('playbook/acme/failed/');
 
     const sweeps = await Effect.runPromise(Effect.forEach(Array.from({ length: 5 }), () => playbookSweeps.next()));
-    const passedAt = sweeps.findIndex((sweep) => keysOf(sweep).includes('brain/acme/failed/'));
+    const passedAt = sweeps.findIndex((sweep) => keysOf(sweep).includes('playbook/acme/failed/'));
 
     expect(passedAt).toBeGreaterThanOrEqual(0);
     expect(passedAt).toBeLessThan(3);

@@ -1,11 +1,11 @@
-import { playbooksStreamOfOrg } from '@beonauto/brains';
 import type { Trigger } from '@beonauto/definitions';
 import { eventAppenderOf, type EventStore } from '@beonauto/ledger';
 import { ContextSchema, messageIdOf, noLineage, type Context, type Decided, type Lineage } from '@beonauto/operations';
+import { playbooksStreamOfOrg } from '@beonauto/playbooks';
 import type { Json } from '@beonauto/workflow-engine';
 import { Effect, Schema } from 'effect';
 
-export const alpha = 'brain/acme/alpha/';
+export const alpha = 'playbook/acme/alpha/';
 
 export const at = '2026-10-01T09:00:00.000Z';
 
@@ -119,15 +119,15 @@ export function definitionRetired(store: EventStore, name: string, version: numb
 
 export function playbookCreated(store: EventStore, playbook: string) {
   return recorded(store, playbooksStreamOfOrg('acme'), {
-    type: 'brain_created',
-    data: { brain: playbook, name: playbook, description: '' },
+    type: 'playbook_created',
+    data: { playbook, name: playbook, description: '' },
   });
 }
 
 export function playbookRenamed(store: EventStore, playbook: string) {
   return recorded(store, playbooksStreamOfOrg('acme'), {
-    type: 'brain_updated',
-    data: { brain: playbook, name: 'Renamed' },
+    type: 'playbook_updated',
+    data: { playbook, name: 'Renamed' },
   });
 }
 

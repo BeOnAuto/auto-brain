@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { detailsOf } from '../views-testing/view-documents.ts';
-import { definitionsAfter, noDefinitions } from './brain-definitions.ts';
+import { definitionsAfter, noDefinitions } from './playbook-definitions.ts';
 
 const fold = 'export function fold(view: number): number { return view + 1; }';
 

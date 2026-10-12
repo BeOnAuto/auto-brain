@@ -56,8 +56,8 @@ describe('the lineage of a record a waiting step resumed', () => {
       insertedListener(database, {
         runKey: runKeyOf(run),
         listener: waitKey,
-        playbookKey: 'brain/acme/alpha/',
-        streamId: 'brain/acme/alpha/events',
+        playbookKey: 'playbook/acme/alpha/',
+        streamId: 'playbook/acme/alpha/events',
         armedBy: 3,
         filters: '[]',
         workflow: 'close',

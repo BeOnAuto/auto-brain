@@ -10,7 +10,7 @@ import { refusalsOn } from './refusals.ts';
 import { mostDeferredStarts, mostStartsAMinute, startingOn } from './start-rates.ts';
 import { StartRejected } from './start-rejected.ts';
 
-const playbookKey = 'brain/acme/alpha/';
+const playbookKey = 'playbook/acme/alpha/';
 
 const minute = Date.parse('2026-10-01T09:00:00.000Z');
 
@@ -113,7 +113,7 @@ describe('the starts that wait for a later minute', () => {
         statement`WITH RECURSIVE waiting (at) AS (
             SELECT 1 UNION ALL SELECT at + 1 FROM waiting WHERE at < ${mostDeferredStarts - 1}
           )
-          INSERT INTO workflow_reaction_backlog (brain_key, workflow, run_id, start, due)
+          INSERT INTO workflow_reaction_backlog (playbook_key, workflow, run_id, start, due)
           SELECT ${playbookKey}, 'close', 'waiting-' || at, '{}', ${minute + aMinute} FROM waiting`,
       ),
     );

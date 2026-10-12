@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { stepOf, type StepParts } from './record-steps.ts';
 import type { GateVerdict } from './run-gate.ts';
 
-const playbookKey = 'brain/acme/alpha/';
+const playbookKey = 'playbook/acme/alpha/';
 
 const parts: StepParts = {
   consumers: [],

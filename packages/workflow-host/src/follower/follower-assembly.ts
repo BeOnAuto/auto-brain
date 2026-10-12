@@ -1,12 +1,12 @@
 import { reactingOn } from '../reactions/reacting.ts';
 import type { ReactionUse } from '../reactions/reaction-consumers.ts';
-import { playbookSweepsOn } from '../sweeps/brain-sweeps.ts';
-import { playbookDiscoveryOn } from './brain-discovery.ts';
-import { passOf, type PassParts } from './brain-pass.ts';
-import type { PlaybookRecords } from './brain-records.ts';
-import { followedPlaybooksOn } from './followed-brains.ts';
+import { playbookSweepsOn } from '../sweeps/playbook-sweeps.ts';
+import { followedPlaybooksOn } from './followed-playbooks.ts';
 import type { FollowerHost } from './follower-host.ts';
 import { startFollower, type Follower, type FollowerParts } from './follower-loop.ts';
+import { playbookDiscoveryOn } from './playbook-discovery.ts';
+import { passOf, type PassParts } from './playbook-pass.ts';
+import type { PlaybookRecords } from './playbook-records.ts';
 import { playbookOfKey, type StepParts } from './record-steps.ts';
 
 export interface FollowerAssembly extends ReactionUse {

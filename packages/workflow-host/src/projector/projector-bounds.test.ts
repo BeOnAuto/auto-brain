@@ -16,7 +16,7 @@ import {
 } from '../views-testing/stepped-sweeps.ts';
 import * as documents from '../views-testing/view-documents.ts';
 import { viewHarness, type ViewHarness } from '../views-testing/view-harness.ts';
-import { playbookPass, type PassParts } from './brain-pass.ts';
+import { playbookPass, type PassParts } from './playbook-pass.ts';
 
 const { alpha, alphaKey, counting, detailsOf, foldedAll, foldingOf, isLive, liveWith, succeeded, viewTestTimeoutMs } =
   documents;

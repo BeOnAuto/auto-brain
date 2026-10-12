@@ -13,7 +13,7 @@ import { insertedListener } from './listener-rows.ts';
 
 const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
 
-const playbookKey = 'brain/acme/alpha/';
+const playbookKey = 'playbook/acme/alpha/';
 
 const runKey = 'acme/alpha/r-1';
 

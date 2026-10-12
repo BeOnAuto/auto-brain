@@ -4,11 +4,11 @@ import { describe, expect, it } from 'vitest';
 
 import { insertedListener } from '../listeners/listener-rows.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
-import { passOf, type PassParts } from './brain-pass.ts';
 import type { RecordConsumer } from './consumers.ts';
-import { followedPlaybooksOn } from './followed-brains.ts';
+import { followedPlaybooksOn } from './followed-playbooks.ts';
+import { passOf, type PassParts } from './playbook-pass.ts';
 
-const playbookKey = 'brain/acme/alpha/';
+const playbookKey = 'playbook/acme/alpha/';
 
 interface CountedRecords {
   readonly records: PassParts['records'];

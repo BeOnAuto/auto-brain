@@ -23,7 +23,7 @@ export interface FollowedPlaybooks {
 }
 
 const PlaybookRow = Schema.Struct({
-  brain_key: Schema.String,
+  playbook_key: Schema.String,
   cursor: Schema.NullOr(Schema.String),
   delivered: Schema.NullOr(Schema.String),
   attempts: WholeNumber,
@@ -32,7 +32,7 @@ const PlaybookRow = Schema.Struct({
 
 function followedOf(row: typeof PlaybookRow.Type): FollowedPlaybook {
   return {
-    playbookKey: row.brain_key,
+    playbookKey: row.playbook_key,
     cursor: row.cursor,
     delivered: row.delivered,
     attempts: row.attempts,
@@ -45,8 +45,8 @@ function loaded(database: HostDatabase, playbookKey: string): Effect.Effect<Foll
     rowsOf(
       PlaybookRow,
       database.read(
-        statement`SELECT brain_key, cursor, delivered, attempts, waiting FROM workflow_followed_brains
-          WHERE brain_key = ${playbookKey}`,
+        statement`SELECT playbook_key, cursor, delivered, attempts, waiting FROM workflow_followed_playbooks
+          WHERE playbook_key = ${playbookKey}`,
       ),
     ),
   ).pipe(Effect.map(([row]) => (row === undefined ? undefined : followedOf(row))));
@@ -56,7 +56,7 @@ function waitingTakenFor(database: HostDatabase, limit: number): Effect.Effect<r
   return Effect.gen(function* () {
     const waiting = yield* Effect.orDie(
       database.read(
-        statement`SELECT brain_key FROM workflow_followed_brains WHERE waiting = 1 ORDER BY checked, brain_key LIMIT ${limit}`,
+        statement`SELECT playbook_key FROM workflow_followed_playbooks WHERE waiting = 1 ORDER BY checked, playbook_key LIMIT ${limit}`,
       ),
     );
     if (waiting.length === 0) {
@@ -66,12 +66,12 @@ function waitingTakenFor(database: HostDatabase, limit: number): Effect.Effect<r
       rowsOf(
         PlaybookRow,
         database.write(
-          statement`UPDATE workflow_followed_brains
-            SET checked = (SELECT COALESCE(MAX(checked), 0) + 1 FROM workflow_followed_brains WHERE waiting = 1)
-            WHERE brain_key IN (
-              SELECT brain_key FROM workflow_followed_brains WHERE waiting = 1 ORDER BY checked, brain_key LIMIT ${limit}
+          statement`UPDATE workflow_followed_playbooks
+            SET checked = (SELECT COALESCE(MAX(checked), 0) + 1 FROM workflow_followed_playbooks WHERE waiting = 1)
+            WHERE playbook_key IN (
+              SELECT playbook_key FROM workflow_followed_playbooks WHERE waiting = 1 ORDER BY checked, playbook_key LIMIT ${limit}
             )
-            RETURNING brain_key, cursor, delivered, attempts, waiting`,
+            RETURNING playbook_key, cursor, delivered, attempts, waiting`,
         ),
       ),
     );
@@ -85,8 +85,8 @@ export function followedPlaybooksOn(database: HostDatabase): FollowedPlaybooks {
       Effect.asVoid(
         Effect.orDie(
           database.write(
-            statement`INSERT INTO workflow_followed_brains (brain_key, cursor) VALUES (${playbookKey}, ${cursor})
-              ON CONFLICT (brain_key) DO NOTHING`,
+            statement`INSERT INTO workflow_followed_playbooks (playbook_key, cursor) VALUES (${playbookKey}, ${cursor})
+              ON CONFLICT (playbook_key) DO NOTHING`,
           ),
         ),
       ),
@@ -95,9 +95,9 @@ export function followedPlaybooksOn(database: HostDatabase): FollowedPlaybooks {
       Effect.asVoid(
         Effect.orDie(
           database.write(
-            statement`UPDATE workflow_followed_brains
+            statement`UPDATE workflow_followed_playbooks
               SET cursor = ${cursor}, delivered = ${delivered}, attempts = ${attempts}, waiting = ${waiting ? 1 : 0}
-              WHERE brain_key = ${playbookKey}`,
+              WHERE playbook_key = ${playbookKey}`,
           ),
         ),
       ),
@@ -107,8 +107,8 @@ export function followedPlaybooksOn(database: HostDatabase): FollowedPlaybooks {
         rowsOf(
           PlaybookRow,
           database.read(
-            statement`SELECT brain_key, cursor, delivered, attempts, waiting FROM workflow_followed_brains
-              WHERE brain_key > ${after} ORDER BY brain_key LIMIT ${limit}`,
+            statement`SELECT playbook_key, cursor, delivered, attempts, waiting FROM workflow_followed_playbooks
+              WHERE playbook_key > ${after} ORDER BY playbook_key LIMIT ${limit}`,
           ),
         ),
       ).pipe(Effect.map((rows) => rows.map((row) => followedOf(row)))),

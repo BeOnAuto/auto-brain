@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
 import { reactionsStreamOf, refusalsOn } from './refusals.ts';
 
-const playbookKey = 'brain/acme/alpha/';
+const playbookKey = 'playbook/acme/alpha/';
 
 const minute = Date.parse('2026-10-01T09:00:00.000Z');
 
@@ -29,7 +29,7 @@ describe('the refusals of the reactions of a workflow', () => {
     time.now = minute + 3 * aMinute;
     await refuse('fourth');
     const { messages } = await database.store.read(reactionsStreamOf(playbookKey, 'close'));
-    const ofClose = { by: 'brain:alpha', definitionType: 'workflow', definitionName: 'close', definitionVersion: 3 };
+    const ofClose = { by: 'playbook:alpha', definitionType: 'workflow', definitionName: 'close', definitionVersion: 3 };
 
     expect([flushedEarly, flushed, flushedAgain]).toEqual([0, 1, 0]);
     expect(messages.map(({ type, data, context }) => ({ type, data, context }))).toEqual([
