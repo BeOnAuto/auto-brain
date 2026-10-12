@@ -1,8 +1,8 @@
 import { playbookKeyOfStream } from '@beonauto/ledger';
-import { streamPrefixOfPlaybook } from '@beonauto/operations';
+import { playbookOfStreamPrefix } from '@beonauto/operations';
+import { Option } from 'effect';
 
 import { isOrgRegistry } from '../follower/playbook-discovery.ts';
-import { playbookOfKey } from '../follower/record-steps.ts';
 
 export interface Wakes {
   readonly woken: (stream: string) => void;
@@ -17,7 +17,7 @@ export interface Wakes {
 }
 
 function isPlaybookKey(playbookKey: string): boolean {
-  return streamPrefixOfPlaybook(playbookOfKey(playbookKey)) === playbookKey;
+  return Option.isSome(playbookOfStreamPrefix(playbookKey));
 }
 
 export function followedPlaybookOf(stream: string): string | undefined {

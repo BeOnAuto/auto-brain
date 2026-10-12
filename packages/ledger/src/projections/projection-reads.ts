@@ -1,4 +1,5 @@
 import {
+  playbookOfStreamPrefix,
   requireAdvancedColumns,
   rowKeyColumn,
   streamPrefixOfPlaybook,
@@ -12,7 +13,7 @@ import {
   type ProjectionReader,
 } from '@beonauto/operations';
 import { SQL } from '@event-driven-io/dumbo';
-import { Effect, Schema } from 'effect';
+import { Effect, Option, Schema } from 'effect';
 
 import { boundOf, type ProjectionDialect } from './projection-dialect.ts';
 import {
@@ -33,8 +34,6 @@ export interface ProjectionStatements {
   readonly query: ReadQuery;
   readonly command: WriteCommand;
 }
-
-const playbookKey = /^playbook\/(?<org>[^/]+)\/(?<playbook>[^/]+)\/$/u;
 
 const KeyFields = Schema.Struct({ playbook_key: Schema.String, row_key: Schema.String });
 
@@ -71,15 +70,16 @@ function orderOf(projection: KeyedProjection, { orderBy, order }: ProjectedRowsQ
   return SQL`${SQL.plain(ordered)}`;
 }
 
-function keyedRowOf(projection: KeyedProjection, stored: Readonly<Record<string, unknown>>): ProjectedKeyedRow {
+function keyedRowOf(
+  projection: KeyedProjection,
+  stored: Readonly<Record<string, unknown>>,
+): Option.Option<ProjectedKeyedRow> {
   const { playbook_key: prefix, row_key: key } = decodeKey(stored);
-  const groups = playbookKey.exec(prefix)?.groups;
-  return {
-    org: String(groups?.['org']),
-    playbook: String(groups?.['playbook']),
+  return Option.map(playbookOfStreamPrefix(prefix), (playbook) => ({
+    ...playbook,
     key,
     row: rowFrom(projection, stored),
-  };
+  }));
 }
 
 function projectionNamed(projections: readonly KeyedProjection[], name: string): KeyedProjection | undefined {
@@ -95,7 +95,7 @@ async function rowsRead(
   const rows = await query(
     SQL`SELECT playbook_key, row_key, ${selectedColumns(dialect, projection)} FROM ${tableOf(projection)} WHERE ${filter} ORDER BY ${ordered}`,
   );
-  return rowsFrom(rows).map((stored) => keyedRowOf(projection, stored));
+  return rowsFrom(rows).flatMap((stored) => Option.toArray(keyedRowOf(projection, stored)));
 }
 
 function playbookRows(reading: Reading, projection: KeyedProjection, playbook: string, query: ProjectedRowsQuery) {

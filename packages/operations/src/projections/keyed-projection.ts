@@ -1,6 +1,7 @@
-import type { Effect } from 'effect';
+import { Option, type Effect } from 'effect';
 
 import type { PlaybookAddress } from '../caller/playbook-context.ts';
+import { playbookOfStreamPrefix } from '../ledger/bound-ports.ts';
 import type { Context } from '../ledger/context.ts';
 
 export type ProjectedValue = string | number | boolean | null;
@@ -126,17 +127,18 @@ const streamKind = /^[a-z][a-z0-9-]{0,39}$/u;
 
 const keyColumns: ReadonlySet<string> = new Set(['playbook_key', rowKeyColumn]);
 
-const playbookStream = /^(?<playbookKey>[^/]+\/[^/]+\/[^/]+\/)(?<kind>[^/]+)\/(?<id>[^/]+)$/u;
+const aKeyKindAndId = /^([^/]+\/[^/]+\/[^/]+\/)([^/]+)\/([^/]+)$/u;
 
 export interface PlaybookStream extends ProjectedStream {
   readonly playbookKey: string;
+  readonly playbook: PlaybookAddress;
 }
 
 export function playbookStreamOf(stream: string): PlaybookStream | undefined {
-  const groups = playbookStream.exec(stream)?.groups;
-  return groups === undefined
-    ? undefined
-    : { playbookKey: String(groups['playbookKey']), kind: String(groups['kind']), id: String(groups['id']) };
+  const [, playbookKey = '', kind = '', id = ''] = aKeyKindAndId.exec(stream) ?? [];
+  return Option.getOrUndefined(
+    Option.map(playbookOfStreamPrefix(playbookKey), (playbook) => ({ playbookKey, playbook, kind, id })),
+  );
 }
 
 export function rowKeyOf(

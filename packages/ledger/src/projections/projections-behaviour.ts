@@ -133,11 +133,12 @@ function rowsOfAPlaybook(open: ProjectingLedger): void {
 
 function dueRows(open: ProjectingLedger): void {
   describe('a read of the rows due by a time', () => {
-    it('reads the rows of every playbook whose time is set and has come, the soonest first, and the next time', async () => {
+    it('reads the rows of every playbook whose time is set and has come, none outside them, the soonest first, and the next time', async () => {
       const ledger = await open([runTallyRows]);
       await noting(ledger, 'playbook/acme/alpha/runs/r1', began('triage', 2));
       await noting(ledger, 'playbook/globex/gamma/runs/r2', began('triage', 0));
       await noting(ledger, 'playbook/acme/beta/runs/r3', began('triage', 1), ended);
+      await noting(ledger, 'org/acme/alpha/runs/r4', began('triage', 0));
       const due = async (through: number, limit = 10) =>
         (await Effect.runPromise(ledger.readDueRows('run_tallies', { column: 'due_at', through, limit }))).map(
           ({ org, playbook, key }) => `${org}/${playbook}/${key}`,

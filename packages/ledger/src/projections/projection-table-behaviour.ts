@@ -77,6 +77,21 @@ function aTableNotThereYet(entry: LedgerEntry): void {
 
       expect(await Effect.runPromise(reopened.readProjectedRows('run_tallies', alpha, everyRow))).toEqual([]);
     });
+
+    it('reads no row it finds under a key that is no playbook’s', async () => {
+      const database = await entry.aDatabase();
+      const ledger = await aLedger(entry, database, undefined, [runTallyRows]);
+      await noting(ledger, 'playbook/acme/alpha/runs/r1', began);
+      await entry.queried(
+        database,
+        "INSERT INTO run_tallies_2 (playbook_key, row_key, due_at) VALUES ('org/acme/alpha/', 'r9', 0)",
+      );
+      const due = await Effect.runPromise(
+        ledger.readDueRows('run_tallies', { column: 'due_at', through: Number.MAX_SAFE_INTEGER, limit: 10 }),
+      );
+
+      expect(due.map(({ org, playbook, key }) => `${org}/${playbook}/${key}`)).toEqual(['acme/alpha/r1']);
+    });
   });
 }
 
