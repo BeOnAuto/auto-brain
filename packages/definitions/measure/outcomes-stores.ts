@@ -3,11 +3,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-import { postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
+import { plainPoolsOn, postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
 import { ledgerLayer } from '@on.auto/ledger/sqlite3';
 import { Ledger, type RunOutcomeMapping } from '@on.auto/operations';
 import { Effect, ManagedRuntime, type Layer } from 'effect';
-import { Client, Pool } from 'pg';
+import { Client } from 'pg';
 
 import { firstDay, lastDay, type OutcomeRow } from './outcomes-dataset.ts';
 
@@ -213,7 +213,7 @@ export function onPostgreSQL(server: string): Bench {
     },
     ledgerOn: ({ location }, runOutcomes) =>
       postgresqlLedgerLayer({
-        pools: ({ max }) => new Pool({ connectionString: location, max }),
+        pools: plainPoolsOn(location),
         ...(runOutcomes === undefined ? {} : { runOutcomes }),
       }),
     write: ({ location }, count, rowsOf) =>
