@@ -23,7 +23,7 @@ export interface HostParts {
   readonly workflows: WorkflowSettings;
   readonly capabilities: readonly Capability[];
   readonly store: WorkflowStore;
-  readonly views: ProjectorSettings;
+  readonly projector: ProjectorSettings;
   readonly dueWork: NonNullable<HostOptions['dueWork']>;
   readonly evaluations: WorkParts['evaluations'];
   readonly clock?: HostClock;
@@ -38,12 +38,12 @@ export function hostDatabaseOf(ledger: LedgerSettings): DatabaseSettings {
 export async function openedHost(
   runtime: AppRuntime<DispatcherServices>,
   dispatcher: Dispatcher,
-  { workflows, capabilities, store, views, dueWork, evaluations, clock }: HostParts,
+  { workflows, capabilities, store, projector, dueWork, evaluations, clock }: HostParts,
   startVersion: BrainOperation,
 ): Promise<WorkflowHost> {
   const host = await openWorkflowHost({
     database: store,
-    views,
+    projector,
     dueWork,
     ...hostWorkOf(runtime, dispatcher, { capabilities, startVersion, evaluations }),
     reports: hostReports(runtime),

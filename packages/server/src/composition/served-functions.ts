@@ -5,7 +5,7 @@ import type { DispatcherServices } from '@beonauto/operations';
 import type { Settings } from '../settings/settings.ts';
 import type { WorkflowParts } from '../workflows/workflows.ts';
 import { computationServedBy, workerPool, type ProgramPoolOf } from './served-computation.ts';
-import { predictionServedBy, type ServedClosing } from './served-prediction.ts';
+import { predictionServedBy, type ServedPrediction } from './served-prediction.ts';
 import type { ModelAccessOf } from './served-reasoning.ts';
 import { recallWiring, type RecallWiring } from './served-recall.ts';
 import { toolUsersServedBy, type TimedTools } from './served-tools.ts';
@@ -18,7 +18,7 @@ export interface FunctionWiring extends TimedTools {
 
 export interface ServedFunctions {
   readonly parts: Omit<WorkflowParts, 'ledger' | 'workflows'>;
-  readonly closing: ServedClosing;
+  readonly closing: ServedPrediction['withProcessesClosed'];
 }
 
 export function functionWiringOf(
@@ -50,7 +50,7 @@ export async function functionsServedBy(
       brainOperations: [reasoning.listToolServers, reasoning.testToolCall, ...interaction.operations],
       dueWork: interaction.dueWork,
       store: recall.store,
-      views: recall.views,
+      projector: recall.projector,
       evaluations: computation.pool.evaluations,
       check: computation.check,
     },

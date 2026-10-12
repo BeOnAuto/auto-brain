@@ -19,7 +19,7 @@ import { hostReports } from '../workflows/host-reports.ts';
 interface ServedRecall {
   readonly capability: Capability;
   readonly store: WorkflowStore;
-  readonly views: ProjectorSettings;
+  readonly projector: ProjectorSettings;
 }
 
 export interface RecallWiring {
@@ -36,26 +36,19 @@ export function recallWiring(): RecallWiring {
   return {
     appends,
     served: async (runtime, { ledger, recall }, pool) => {
-      const store = await openWorkflowStore(hostDatabaseOf(ledger), hostReports(runtime).lostConnection);
+      const views = viewsFolder({
+        definitionType: recallDefinitionType,
+        pool,
+        folding: recallFolding,
+        overtimesBeforeStall: recallBounds.overtimesBeforeStall,
+        rebuildsAtOnce: recall.rebuildsAtOnce,
+      });
+      const folders = [someFolder(views)];
+      const store = await openWorkflowStore(hostDatabaseOf(ledger), hostReports(runtime).lostConnection, folders);
       return {
         capability: makeRecallFunctionAdapter({ pool, views: store.views, mostFunctions: recall.mostFunctions }),
         store,
-        views: {
-          folders: [
-            someFolder(
-              viewsFolder({
-                definitionType: recallDefinitionType,
-                pool,
-                folding: recallFolding,
-                overtimesBeforeStall: recallBounds.overtimesBeforeStall,
-              }),
-            ),
-          ],
-          brainsAtOnce: recall.brainsAtOnce,
-          rebuildsAtOnce: recall.rebuildsAtOnce,
-          pagesPerWake: recallBounds.pagesPerWake,
-          appends,
-        },
+        projector: { folders, brainsAtOnce: recall.brainsAtOnce, pagesPerWake: recallBounds.pagesPerWake, appends },
       };
     },
   };

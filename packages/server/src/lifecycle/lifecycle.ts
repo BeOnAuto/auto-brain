@@ -21,6 +21,8 @@ export interface Served {
   readonly stopWork: () => Promise<void>;
 }
 
+export type ServedClosing = (served: Served) => Served;
+
 export interface ServerOptions<R> {
   readonly runtimeLayer: (settings: Settings) => Layer.Layer<R>;
   readonly serve: (runtime: AppRuntime<R>, settings: Settings) => Served | Promise<Served>;

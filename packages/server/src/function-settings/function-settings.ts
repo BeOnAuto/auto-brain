@@ -22,7 +22,7 @@ export function readFunctionSettings(environment: Environment, file: FileUse | u
     reasoning,
     computation: Effect.runSync(readComputationSettings(environment)),
     recall: Effect.runSync(readRecallSettings(environment)),
-    interaction: readInteractionSettings(environment),
+    interaction: Effect.runSync(readInteractionSettings(environment)),
     prediction: Effect.runSync(readPredictionSettings(environment)),
   };
 }
