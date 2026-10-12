@@ -267,7 +267,7 @@ describe('a configuration file that is not one the server reads', () => {
 
   it('is refused for a key it does not hold and a value its setting does not accept, never quoting the value', () => {
     const message = problemsIn(
-      'example_origins: [http://plain.example]\nexample_gateways: [{ name: 7, colour: blue }]\nport: 8080\n',
+      'example_origins: [http://plain.example]\nexample_gateways: [{ name: 7, colour: blue }]\nport: 5555\n',
     );
 
     expect(message).toBe(
@@ -283,7 +283,7 @@ describe('a configuration file that is not one the server reads', () => {
 describe('a key the file refuses with a sentence of its own', () => {
   it('is refused with that sentence at its line, beside a key it does not hold, never quoting the value', () => {
     const message = problemsIn(
-      'example_origins: [https://a.example]\nexample_headers: { x-tenant: acme }\nport: 8080\n',
+      'example_origins: [https://a.example]\nexample_headers: { x-tenant: acme }\nport: 5555\n',
     );
 
     expect(message).toBe(

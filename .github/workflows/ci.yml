@@ -91,32 +91,32 @@ jobs:
           file: packages/server/Dockerfile
           platforms: linux/${{ matrix.architecture }}
           load: true
-          tags: beonauto/runtime:ci
+          tags: onauto/runtime:ci
       - name: Smoke test the image
         run: |
-          docker run --detach --name smoke --publish 8080:8080 beonauto/runtime:ci
+          docker run --detach --name smoke --publish 5555:5555 onauto/runtime:ci
           for attempt in $(seq 1 30); do
-            curl --silent --fail http://127.0.0.1:8080/health && break
+            curl --silent --fail http://127.0.0.1:5555/health && break
             sleep 1
           done
-          test "$(curl --silent --fail http://127.0.0.1:8080/health)" = '{"status":"ok"}'
+          test "$(curl --silent --fail http://127.0.0.1:5555/health)" = '{"status":"ok"}'
           test "$(docker exec smoke id -un)" = node
-          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 401
-          test "$(curl --silent --include http://127.0.0.1:8080/v1/orgs/demo/playbooks | grep --ignore-case --count '^www-authenticate: Bearer')" = 1
-          test "$(docker run --rm beonauto/runtime:ci node packages/identity/src/key-command.ts --org demo | grep --count --extended-regexp '^API key, shown only this once: abk_[0-9a-f]{8}_[A-Za-z0-9_-]{43}$')" = 1
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:5555/v1/orgs/demo/playbooks)" = 401
+          test "$(curl --silent --include http://127.0.0.1:5555/v1/orgs/demo/playbooks | grep --ignore-case --count '^www-authenticate: Bearer')" = 1
+          test "$(docker run --rm onauto/runtime:ci node packages/identity/src/key-command.ts --org demo | grep --count --extended-regexp '^API key, shown only this once: abk_[0-9a-f]{8}_[A-Za-z0-9_-]{43}$')" = 1
           docker stop smoke
           test "$(docker inspect smoke --format '{{.State.ExitCode}}')" = 0
       - name: Keep a playbook on a volume across a restart
         run: |
           wait_for_health() {
             for attempt in $(seq 1 30); do
-              curl --silent --fail http://127.0.0.1:8080/health > /dev/null && return 0
+              curl --silent --fail http://127.0.0.1:5555/health > /dev/null && return 0
               sleep 1
             done
             return 1
           }
           start_server() {
-            docker run --detach --name "$1" --publish 8080:8080 --env API_KEYS --volume playbooks:/data beonauto/runtime:ci
+            docker run --detach --name "$1" --publish 5555:5555 --env API_KEYS --volume playbooks:/data onauto/runtime:ci
             wait_for_health
           }
           stop_server() {
@@ -124,9 +124,9 @@ jobs:
             test "$(docker inspect "$1" --format '{{.State.ExitCode}}')" = 0
           }
           read_playbook() {
-            curl --silent --fail --header "authorization: Bearer $key" http://127.0.0.1:8080/v1/orgs/demo/playbooks/smoke
+            curl --silent --fail --header "authorization: Bearer $key" http://127.0.0.1:5555/v1/orgs/demo/playbooks/smoke
           }
-          issued="$(docker run --rm beonauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
+          issued="$(docker run --rm onauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
           API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
@@ -135,7 +135,7 @@ jobs:
           start_server first
           test "$(curl --silent --output created.json --write-out '%{http_code}' \
             --header "authorization: Bearer $key" --header 'content-type: application/json' \
-            --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 201
+            --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:5555/v1/orgs/demo/playbooks)" = 201
           read_playbook > before-restart.json
           grep --quiet '"id":"smoke"' before-restart.json
           cmp created.json before-restart.json
@@ -147,7 +147,7 @@ jobs:
       - name: Keep a playbook in PostgreSQL across a restart
         timeout-minutes: 2
         run: |
-          issued="$(docker run --rm beonauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
+          issued="$(docker run --rm onauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
           API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
@@ -164,21 +164,21 @@ jobs:
           done
           wait_for_health() {
             for attempt in $(seq 1 30); do
-              curl --silent --fail --max-time 5 http://127.0.0.1:8080/health > /dev/null && return 0
+              curl --silent --fail --max-time 5 http://127.0.0.1:5555/health > /dev/null && return 0
               sleep 1
             done
             return 1
           }
           read_playbook() {
             curl --silent --fail --max-time 10 --header "authorization: Bearer $key" \
-              http://127.0.0.1:8080/v1/orgs/demo/playbooks/smoke
+              http://127.0.0.1:5555/v1/orgs/demo/playbooks/smoke
           }
-          docker run --detach --name ledger --network ledger --publish 8080:8080 --env API_KEYS --env DATABASE_URL \
-            beonauto/runtime:ci
+          docker run --detach --name ledger --network ledger --publish 5555:5555 --env API_KEYS --env DATABASE_URL \
+            onauto/runtime:ci
           wait_for_health
           test "$(curl --silent --max-time 10 --output created.json --write-out '%{http_code}' \
             --header "authorization: Bearer $key" --header 'content-type: application/json' \
-            --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 201
+            --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:5555/v1/orgs/demo/playbooks)" = 201
           read_playbook > before-restart.json
           cmp created.json before-restart.json
           docker stop ledger
@@ -194,23 +194,23 @@ jobs:
           docker stop postgresql
       - name: Serve the tools over MCP
         run: |
-          issued="$(docker run --rm beonauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
+          issued="$(docker run --rm onauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
-          reading="$(docker run --rm beonauto/runtime:ci node packages/identity/src/key-command.ts --org demo --permissions org:read,playbook:read)"
+          reading="$(docker run --rm onauto/runtime:ci node packages/identity/src/key-command.ts --org demo --permissions org:read,playbook:read)"
           read_key="$(printf '%s\n' "$reading" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$read_key"
           API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p'),$(printf '%s\n' "$reading" | sed --quiet 's/^API_KEYS entry: //p')]"
           export API_KEYS
-          docker run --detach --name mcp --publish 8080:8080 --env API_KEYS beonauto/runtime:ci
+          docker run --detach --name mcp --publish 5555:5555 --env API_KEYS onauto/runtime:ci
           for attempt in $(seq 1 30); do
-            curl --silent --fail http://127.0.0.1:8080/health > /dev/null && break
+            curl --silent --fail http://127.0.0.1:5555/health > /dev/null && break
             sleep 1
           done
           call_mcp_as() {
             curl --silent --fail --header "authorization: Bearer $1" \
               --header 'content-type: application/json' --header 'accept: application/json, text/event-stream' \
-              --header 'mcp-protocol-version: 2025-11-25' --data "$3" "http://127.0.0.1:8080$2"
+              --header 'mcp-protocol-version: 2025-11-25' --data "$3" "http://127.0.0.1:5555$2"
           }
           call_mcp() {
             call_mcp_as "$key" "$1" "$2"
@@ -236,7 +236,7 @@ jobs:
           grep --quiet '"structuredContent":{"tool_servers":\[\]}' tool-servers.txt
           call_mcp /mcp '{"jsonrpc":"2.0","id":15,"method":"tools/call","params":{"name":"list_tool_servers","arguments":{}}}' > org-tool-servers.txt
           grep --quiet '"structuredContent":{"tool_servers":\[\]}' org-tool-servers.txt
-          test "$(curl --silent --fail --header "authorization: Bearer $read_key" http://127.0.0.1:8080/v1/orgs/demo/tool-servers)" = '{"tool_servers":[]}'
+          test "$(curl --silent --fail --header "authorization: Bearer $read_key" http://127.0.0.1:5555/v1/orgs/demo/tool-servers)" = '{"tool_servers":[]}'
           call_mcp /mcp '{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"test_tool_call","arguments":{"playbook":"smoke","server":"graph","tool":"search"}}}' > tested.txt
           grep --quiet '"isError":true' tested.txt
           grep --quiet 'mcp_server_not_configured' tested.txt
@@ -245,7 +245,7 @@ jobs:
           test "$(grep --count '"name":"test_tool_call"' read-tools.txt)" = 0
           test "$(curl --silent --output refused.json --write-out '%{http_code}' \
             --header "authorization: Bearer $read_key" --header 'content-type: application/json' --data '{"arguments":{}}' \
-            http://127.0.0.1:8080/v1/orgs/demo/playbooks/smoke/tool-servers/graph/tools/search/test)" = 403
+            http://127.0.0.1:5555/v1/orgs/demo/playbooks/smoke/tool-servers/graph/tools/search/test)" = 403
           grep --quiet '"reason":"forbidden"' refused.json
           call_mcp /mcp '{"jsonrpc":"2.0","id":8,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"ci","version":"1"}}}' > initialized.txt
           grep --quiet 'Before writing a definition, read its format with get_guide' initialized.txt
@@ -264,24 +264,24 @@ jobs:
           test "$(docker inspect mcp --format '{{.State.ExitCode}}')" = 0
       - name: Run a reasoning function without model settings
         run: |
-          issued="$(docker run --rm beonauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
+          issued="$(docker run --rm onauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
           API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
           export API_KEYS
-          docker run --detach --name reasoning --publish 8080:8080 --env API_KEYS beonauto/runtime:ci
+          docker run --detach --name reasoning --publish 5555:5555 --env API_KEYS onauto/runtime:ci
           for attempt in $(seq 1 30); do
-            curl --silent --fail http://127.0.0.1:8080/health > /dev/null && break
+            curl --silent --fail http://127.0.0.1:5555/health > /dev/null && break
             sleep 1
           done
           call() {
             curl --silent --output "$1" --write-out '%{http_code}' \
               --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
           }
-          playbook=http://127.0.0.1:8080/v1/orgs/demo/playbooks/smoke
+          playbook=http://127.0.0.1:5555/v1/orgs/demo/playbooks/smoke
           source="$(printf '%s\n' '---' 'model: anthropic/claude-sonnet-4-5' '---' 'Say hello to {{ input.name }}.')"
           definition="$(jq --null-input --arg source "$source" '{name: "hello", source: $source}')"
-          test "$(call playbook.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 201
+          test "$(call playbook.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:5555/v1/orgs/demo/playbooks)" = 201
           test "$(call created.json --data "$definition" "$playbook/definitions/reasoning")" = 201
           test "$(call read.json "$playbook/definitions/reasoning/hello")" = 200
           test "$(jq --raw-output .source read.json)" = "$source"
@@ -293,28 +293,28 @@ jobs:
           test "$(docker inspect reasoning --format '{{.State.ExitCode}}')" = 0
       - name: Run a computation function
         run: |
-          issued="$(docker run --rm beonauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
+          issued="$(docker run --rm onauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
           API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
           export API_KEYS
-          docker run --detach --name computation --publish 8080:8080 --env API_KEYS beonauto/runtime:ci
+          docker run --detach --name computation --publish 5555:5555 --env API_KEYS onauto/runtime:ci
           for attempt in $(seq 1 30); do
-            curl --silent --fail http://127.0.0.1:8080/health > /dev/null && break
+            curl --silent --fail http://127.0.0.1:5555/health > /dev/null && break
             sleep 1
           done
           call() {
             curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' \
               --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
           }
-          playbook=http://127.0.0.1:8080/v1/orgs/demo/playbooks/smoke
+          playbook=http://127.0.0.1:5555/v1/orgs/demo/playbooks/smoke
           total="$(printf '%s\n' '---' 'language: typescript' 'input:' '  schema: {type: object, required: [rows]}' '---' \
             'export default function (input: any): Output {' \
             '  const total_cents = input.rows.reduce((sum: number, row: any) => sum + row.cost_cents, 0);' \
             '  return { total_cents, rows: input.rows.length };' '}')"
           raising="$(printf '%s\n' '---' 'language: typescript' '---' 'export default function (input: Input): Output {' \
             "  throw new Error('no rows');" '}')"
-          test "$(call playbook.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 201
+          test "$(call playbook.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:5555/v1/orgs/demo/playbooks)" = 201
           for name in total raising; do
             definition="$(jq --null-input --arg name "$name" --arg source "${!name}" '{name: $name, source: $source}')"
             test "$(call created.json --data "$definition" "$playbook/definitions/computation")" = 201
@@ -330,26 +330,26 @@ jobs:
       - name: Ask through the inbox and answer over HTTP
         timeout-minutes: 2
         run: |
-          issued="$(docker run --rm beonauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
+          issued="$(docker run --rm onauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
           API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
           export API_KEYS
-          docker run --detach --name interaction --publish 8080:8080 --env API_KEYS beonauto/runtime:ci
+          docker run --detach --name interaction --publish 5555:5555 --env API_KEYS onauto/runtime:ci
           for attempt in $(seq 1 30); do
-            curl --silent --fail --max-time 5 http://127.0.0.1:8080/health > /dev/null && break
+            curl --silent --fail --max-time 5 http://127.0.0.1:5555/health > /dev/null && break
             sleep 1
           done
           call() {
             curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' \
               --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
           }
-          playbook=http://127.0.0.1:8080/v1/orgs/demo/playbooks/smoke
+          playbook=http://127.0.0.1:5555/v1/orgs/demo/playbooks/smoke
           source="$(printf '%s\n' '---' "to: '{{ input.owner }}'" 'expires: P1D' 'output:' \
             '  schema: {type: object, required: [choice], properties: {choice: {type: string, enum: [approve, reject]}}}' \
             '---' 'Approve the brief for {{ input.campaign }}?')"
           definition="$(jq --null-input --arg source "$source" '{name: "approve-brief", source: $source}')"
-          test "$(call playbook.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 201
+          test "$(call playbook.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:5555/v1/orgs/demo/playbooks)" = 201
           test "$(call created.json --data "$definition" "$playbook/definitions/interaction")" = 201
           test "$(call asked.json --data '{"input":{"owner":"ada","campaign":"Spring"}}' \
             "$playbook/definitions/interaction/approve-brief/run")" = 200
@@ -371,20 +371,20 @@ jobs:
       - name: Run workflows across a restart, and read the steps of a run and their causes
         timeout-minutes: 5
         run: |
-          issued="$(docker run --rm beonauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
+          issued="$(docker run --rm onauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
           API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
           export API_KEYS
           wait_for_health() {
             for attempt in $(seq 1 30); do
-              curl --silent --fail --max-time 5 http://127.0.0.1:8080/health > /dev/null && return 0
+              curl --silent --fail --max-time 5 http://127.0.0.1:5555/health > /dev/null && return 0
               sleep 1
             done
             return 1
           }
           start_server() {
-            docker run --detach --name "$1" --publish 8080:8080 --env API_KEYS --volume workflows:/data beonauto/runtime:ci
+            docker run --detach --name "$1" --publish 5555:5555 --env API_KEYS --volume workflows:/data onauto/runtime:ci
             wait_for_health
           }
           stop_server() {
@@ -395,7 +395,7 @@ jobs:
             curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' \
               --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
           }
-          playbook=http://127.0.0.1:8080/v1/orgs/demo/playbooks/smoke
+          playbook=http://127.0.0.1:5555/v1/orgs/demo/playbooks/smoke
           settled() {
             for attempt in $(seq 1 30); do
               test "$(call "$1" "$playbook/runs/$2")" = 200
@@ -411,7 +411,7 @@ jobs:
           docker volume create workflows
           start_server workflows-first
           test "$(docker logs workflows-first 2>&1 | grep --count '"message":"Workflows run in this server: ')" = 1
-          test "$(call playbook.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 201
+          test "$(call playbook.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:5555/v1/orgs/demo/playbooks)" = 201
           for name in greet approval; do
             definition="$(jq --null-input --arg name "$name" --arg source "${!name}" '{name: $name, source: $source}')"
             test "$(call created.json --data "$definition" "$playbook/definitions/workflow")" = 201
@@ -439,21 +439,21 @@ jobs:
       - name: Read the analytics of a playbook
         timeout-minutes: 2
         run: |
-          issued="$(docker run --rm beonauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
+          issued="$(docker run --rm onauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
           API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
           export API_KEYS
-          docker run --detach --name analytics --publish 8080:8080 --env API_KEYS --volume workflows:/data beonauto/runtime:ci
+          docker run --detach --name analytics --publish 5555:5555 --env API_KEYS --volume workflows:/data onauto/runtime:ci
           for attempt in $(seq 1 30); do
-            curl --silent --fail --max-time 5 http://127.0.0.1:8080/health > /dev/null && break
+            curl --silent --fail --max-time 5 http://127.0.0.1:5555/health > /dev/null && break
             sleep 1
           done
           call() {
             curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' \
               --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
           }
-          playbook=http://127.0.0.1:8080/v1/orgs/demo/playbooks/smoke
+          playbook=http://127.0.0.1:5555/v1/orgs/demo/playbooks/smoke
           source="$(printf '%s\n' '---' 'model: anthropic/claude-sonnet-4-5' '---' 'Say hello to {{ input.name }}.')"
           definition="$(jq --null-input --arg source "$source" '{name: "hello", source: $source}')"
           test "$(call created.json --data "$definition" "$playbook/definitions/reasoning")" = 201
@@ -468,21 +468,21 @@ jobs:
       - name: Recall what the smoke workflows answered
         timeout-minutes: 2
         run: |
-          issued="$(docker run --rm beonauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
+          issued="$(docker run --rm onauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
           API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
           export API_KEYS
-          docker run --detach --name recall --publish 8080:8080 --env API_KEYS --volume workflows:/data beonauto/runtime:ci
+          docker run --detach --name recall --publish 5555:5555 --env API_KEYS --volume workflows:/data onauto/runtime:ci
           for attempt in $(seq 1 30); do
-            curl --silent --fail --max-time 5 http://127.0.0.1:8080/health > /dev/null && break
+            curl --silent --fail --max-time 5 http://127.0.0.1:5555/health > /dev/null && break
             sleep 1
           done
           call() {
             curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' \
               --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
           }
-          playbook=http://127.0.0.1:8080/v1/orgs/demo/playbooks/smoke
+          playbook=http://127.0.0.1:5555/v1/orgs/demo/playbooks/smoke
           source="$(printf '%s\n' '---' 'language: typescript' 'source:' '  events:' '    - type: run_succeeded' \
             '      subject: workflow/greet' 'view:' '  initial: []' '---' 'export function fold(view: any, event: any): any {' \
             '  return [...view, event.data.output?.greeting ?? "none"];' '}')"
@@ -504,21 +504,21 @@ jobs:
       - name: Start a workflow by its event trigger and by its schedule
         timeout-minutes: 5
         run: |
-          issued="$(docker run --rm beonauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
+          issued="$(docker run --rm onauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
           API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
           export API_KEYS
-          docker run --detach --name reactions --publish 8080:8080 --env API_KEYS beonauto/runtime:ci
+          docker run --detach --name reactions --publish 5555:5555 --env API_KEYS onauto/runtime:ci
           for attempt in $(seq 1 30); do
-            curl --silent --fail --max-time 5 http://127.0.0.1:8080/health > /dev/null && break
+            curl --silent --fail --max-time 5 http://127.0.0.1:5555/health > /dev/null && break
             sleep 1
           done
           call() {
             curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' \
               --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
           }
-          playbook=http://127.0.0.1:8080/v1/orgs/demo/playbooks/smoke
+          playbook=http://127.0.0.1:5555/v1/orgs/demo/playbooks/smoke
           ended_runs() {
             for attempt in $(seq 1 "$3"); do
               test "$(call runs.json "$playbook/runs?type=workflow&name=$1")" = 200
@@ -531,7 +531,7 @@ jobs:
           closing="$(printf '%s\n' "document: { dsl: '1.0.3', namespace: smoke, name: closing, version: '1.0.0' }" \
             'schedule: { on: { one: { with: { type: com.example.ledger.closed } } }, every: PT1M }' 'do:' \
             "  - total: { set: { input: '\${ \$data }' } }")"
-          test "$(call playbook.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 201
+          test "$(call playbook.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:5555/v1/orgs/demo/playbooks)" = 201
           definition="$(jq --null-input --arg source "$closing" '{name: "closing", source: $source}')"
           test "$(call created.json --data "$definition" "$playbook/definitions/workflow")" = 201
           test "$(jq --compact-output '[.triggers[] | [.kind, .reference]]' created.json)" = \
@@ -555,6 +555,74 @@ jobs:
             '[["event","A run of the workflow “closing” was started by its event trigger."],["every","A run of the workflow “closing” was started by its every schedule."]]'
           docker stop reactions
           test "$(docker inspect reactions --format '{{.State.ExitCode}}')" = 0
+
+  package:
+    name: npm package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @on.auto/server npm:pack
+      - name: Run the packed runtime with npx, outside the repository
+        timeout-minutes: 5
+        working-directory: ${{ runner.temp }}
+        run: |
+          tarball="$(ls "$GITHUB_WORKSPACE"/dist/on.auto-runtime-*.tgz)"
+          export XDG_CACHE_HOME="$RUNNER_TEMP/cache" LEDGER_FILE="$RUNNER_TEMP/ledger.db"
+          runtime() {
+            npx --yes --package="$tarball" auto-runtime "$@"
+          }
+          test "$(runtime --version)" = "$(jq --raw-output .version "$GITHUB_WORKSPACE/package.json")"
+          test "$(runtime key --org demo | grep --count --extended-regexp '^API key, shown only this once: abk_[0-9a-f]{8}_[A-Za-z0-9_-]{43}$')" = 1
+          runtime > runtime.log 2>&1 &
+          started=$!
+          for attempt in $(seq 1 60); do
+            curl --silent --fail http://127.0.0.1:5555/health > /dev/null && break
+            sleep 1
+          done
+          test "$(curl --silent --fail http://127.0.0.1:5555/health)" = '{"status":"ok"}'
+          test "$(grep --count 'Local mode is on' runtime.log)" = 1
+          call() {
+            curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' --header 'content-type: application/json' "${@:2}"
+          }
+          playbook=http://127.0.0.1:5555/v1/orgs/local/playbooks/smoke
+          test "$(call playbook.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:5555/v1/orgs/local/playbooks)" = 201
+          total="$(printf '%s\n' '---' 'language: typescript' 'input:' '  schema: {type: object, required: [rows]}' '---' \
+            'export default function (input: any): Output {' \
+            '  const total_cents = input.rows.reduce((sum: number, row: any) => sum + row.cost_cents, 0);' \
+            '  return { total_cents, rows: input.rows.length };' '}')"
+          test "$(call created.json --data "$(jq --null-input --arg source "$total" '{name: "total", source: $source}')" \
+            "$playbook/definitions/computation")" = 201
+          test "$(call totalled.json --data '{"input":{"rows":[{"cost_cents":1050},{"cost_cents":2075}]}}' \
+            "$playbook/definitions/computation/total/run")" = 200
+          test "$(jq --compact-output '[.status, .output]' totalled.json)" = '["succeeded",{"total_cents":3125,"rows":2}]'
+          greet="$(printf '%s\n' "document: { dsl: '1.0.3', namespace: smoke, name: greet, version: '1.0.0' }" 'do:' \
+            "  - greet: { set: { greeting: '\${ \"Hello, \" + \$data.name }' } }")"
+          test "$(call created.json --data "$(jq --null-input --arg source "$greet" '{name: "greet", source: $source}')" \
+            "$playbook/definitions/workflow")" = 201
+          test "$(call greeting.json --data '{"input":{"name":"npx"}}' "$playbook/definitions/workflow/greet/run")" = 200
+          run_id="$(jq --raw-output .run_id greeting.json)"
+          for attempt in $(seq 1 30); do
+            test "$(call greeted.json "$playbook/runs/$run_id")" = 200
+            test "$(jq --raw-output .status greeted.json)" != started && break
+            sleep 1
+          done
+          test "$(jq --compact-output '[.status, .output]' greeted.json)" = '["succeeded",{"greeting":"Hello, npx"}]'
+          pkill -TERM -f "$XDG_CACHE_HOME/auto-runtime/.*/packages/server/auto-runtime.ts"
+          wait "$started"
+          cat runtime.log
 
   pull-request-title:
     name: Pull request title
@@ -599,7 +667,7 @@ jobs:
   ci-ok:
     name: ci-ok
     if: always()
-    needs: [verify, container, pull-request-title, workflows]
+    needs: [verify, container, package, pull-request-title, workflows]
     runs-on: ubuntu-latest
     permissions: {}
     steps:

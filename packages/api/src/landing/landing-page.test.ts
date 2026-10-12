@@ -8,7 +8,7 @@ import { operationServer } from '../testing/operation-server.ts';
 
 const fromABrowser = { accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' };
 
-function open(handler: ApiHandler, address = 'http://localhost:8080/'): Promise<Response> {
+function open(handler: ApiHandler, address = 'http://localhost:5555/'): Promise<Response> {
   return handler.fetch(new Request(address, { headers: fromABrowser }));
 }
 
@@ -36,7 +36,7 @@ describe('the root of the server, opened in a browser', () => {
   it('opens the studio on this server', async () => {
     const page = await (await open(createTestHandler().handler)).text();
 
-    expect(page).toContain('href="https://studio.on.auto/?server=http%3A%2F%2Flocalhost%3A8080"');
+    expect(page).toContain('href="https://studio.on.auto/?server=http%3A%2F%2Flocalhost%3A5555"');
   });
 
   it('is served without a key', async () => {
@@ -101,7 +101,7 @@ describe('what the page at the root of the server loads', () => {
     const page = await (await open(createTestHandler().handler)).text();
 
     expect(page.match(/https?:\/\/[^"')\s]+/gu)).toEqual([
-      'https://studio.on.auto/?server=http%3A%2F%2Flocalhost%3A8080',
+      'https://studio.on.auto/?server=http%3A%2F%2Flocalhost%3A5555',
     ]);
   });
 });

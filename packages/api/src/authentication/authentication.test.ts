@@ -167,7 +167,7 @@ describe('authentication without API keys', () => {
       routes: [whoIsCalling],
     });
 
-    expect(await call(handler, '/v1/orgs/globex/whoami', { headers: { host: 'localhost:8080' } })).toMatchObject({
+    expect(await call(handler, '/v1/orgs/globex/whoami', { headers: { host: 'localhost:5555' } })).toMatchObject({
       status: 200,
       body: { id: 'local', org: 'globex', playbooks: '*' },
     });

@@ -21,7 +21,7 @@ body:
     attributes:
       label: Version
       description: The release, image tag or digest, or commit you ran.
-      placeholder: beonauto/runtime:0.1.0
+      placeholder: onauto/runtime:0.6.0
     validations:
       required: true
   - type: dropdown

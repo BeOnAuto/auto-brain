@@ -5,11 +5,11 @@ Start the runtime using the [local quick start](../get-started/self-hosted.md). 
 Everything an assistant does over MCP is also an operation over HTTP. In local mode every org is open; the playbooks an assistant makes on `/mcp` belong to the org `local`, so these commands use it. Create a playbook, list the org's playbooks, and read one back:
 
 ```bash
-curl --request POST http://localhost:8080/v1/orgs/local/playbooks \
+curl --request POST http://localhost:5555/v1/orgs/local/playbooks \
   --header 'content-type: application/json' \
   --data '{"playbook":"sales","name":"Sales","description":"Answers questions about the pipeline"}'
-curl http://localhost:8080/v1/orgs/local/playbooks
-curl http://localhost:8080/v1/orgs/local/playbooks/sales
+curl http://localhost:5555/v1/orgs/local/playbooks
+curl http://localhost:5555/v1/orgs/local/playbooks/sales
 ```
 
 `PUT /v1/orgs/local/playbooks/sales` replaces the name and the description, and `POST /v1/orgs/local/playbooks/sales/retire` retires the playbook for good.
@@ -32,12 +32,12 @@ Create the reasoning function in the playbook, run it, and read the run back wit
 
 ```bash
 jq --null-input --rawfile source greeting.md '{name: "greeting", source: $source}' |
-  curl --request POST http://localhost:8080/v1/orgs/local/playbooks/sales/definitions/reasoning \
+  curl --request POST http://localhost:5555/v1/orgs/local/playbooks/sales/definitions/reasoning \
     --header 'content-type: application/json' --data @-
-curl --request POST http://localhost:8080/v1/orgs/local/playbooks/sales/definitions/reasoning/greeting/run \
+curl --request POST http://localhost:5555/v1/orgs/local/playbooks/sales/definitions/reasoning/greeting/run \
   --header 'content-type: application/json' \
   --data '{"input":{"name":"Ada"},"run_id":"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a"}'
-curl http://localhost:8080/v1/orgs/local/playbooks/sales/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a
+curl http://localhost:5555/v1/orgs/local/playbooks/sales/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a
 ```
 
 A document with a problem is rejected with every problem and its line. An input that does not match the schema is rejected before any model is called. A provider that is not configured answers `503`; its missing settings are reported to the operator, not exposed to the caller. [Reasoning function format](reasoning-format.md) describes the document and recorded result. [HTTP API](http.md) describes the operations. An assistant does the same over [MCP](mcp.md), where tool descriptions explain the supported definition formats.
@@ -74,15 +74,15 @@ Create it, execute it, and send it the event it waits for:
 
 ```bash
 jq --null-input --rawfile source welcome.yaml '{name: "welcome", source: $source}' |
-  curl --request POST http://localhost:8080/v1/orgs/local/playbooks/sales/definitions/workflow \
+  curl --request POST http://localhost:5555/v1/orgs/local/playbooks/sales/definitions/workflow \
     --header 'content-type: application/json' --data @-
-curl --request POST http://localhost:8080/v1/orgs/local/playbooks/sales/definitions/workflow/welcome/run \
+curl --request POST http://localhost:5555/v1/orgs/local/playbooks/sales/definitions/workflow/welcome/run \
   --header 'content-type: application/json' \
   --data '{"input":{"name":"Ada"},"run_id":"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b"}'
-curl --request POST http://localhost:8080/v1/orgs/local/playbooks/sales/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b/events \
+curl --request POST http://localhost:5555/v1/orgs/local/playbooks/sales/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b/events \
   --header 'content-type: application/json' \
   --data '{"event":{"type":"com.acme.customer.replied","data":"Thank you!"}}'
-curl http://localhost:8080/v1/orgs/local/playbooks/sales/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b
+curl http://localhost:5555/v1/orgs/local/playbooks/sales/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b
 ```
 
 Starting the workflow answers `started` at once; the run reads `started` until the workflow ends, and then `succeeded` with `{"greeting": ..., "reply": "Thank you!"}`. The greeting has its own recorded run under an id derived from the workflow's run, made by the caller who started the workflow. The public [workflow format](../../reference/workflow-format.md) describes the supported steps, and the repository-only [workflow run notes](workflow-format.md) how they run.
