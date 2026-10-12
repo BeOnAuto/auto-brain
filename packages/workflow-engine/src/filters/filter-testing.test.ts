@@ -59,8 +59,8 @@ describe('the filters tested over a page of events', () => {
       await testing.verdictsOf(closedIn('apac'), now),
     ];
     const sessionsOfThePage = counting.opened();
-    testing.close();
-    testing.close();
+    await testing.close();
+    await testing.close();
 
     expect(verdicts).toEqual([
       [true, false],
@@ -78,7 +78,7 @@ describe('the filters tested over a page of events', () => {
     const stopped = await testing.verdictsOf(closedIn('eu'), now);
     const sessionsOfTheStop = counting.opened();
     const after = await testing.verdictsOf(closedIn('eu'), now);
-    testing.close();
+    await testing.close();
 
     expect(stopped).toMatchObject([{ error: { instance: '/filling' }, stopped: true }, true]);
     expect(after).toMatchObject([{ error: { instance: '/filling' }, stopped: true }, true]);
@@ -86,22 +86,67 @@ describe('the filters tested over a page of events', () => {
   });
 });
 
+describe('the filters tested over a page of events while a session opens', () => {
+  it('close a session still being prepared once it opens, and answer that event and any after the close in sessions of their own', async () => {
+    const counting = counted(filterSandboxOf(() => 0));
+    const testing = filterTestingOf([european], counting.sandbox);
+
+    const opening = testing.verdictsOf(closedIn('eu'), now);
+    await testing.close();
+    const afterTheClose = await testing.verdictsOf(closedIn('us'), now);
+
+    expect([await opening, afterTheClose]).toEqual([[true], [false]]);
+    expect([counting.opened(), counting.closed()]).toEqual([3, 3]);
+  });
+
+  it('share one session between two events asked about at once, and close it once', async () => {
+    const counting = counted(filterSandboxOf(() => 0));
+    const testing = filterTestingOf([european, american], counting.sandbox);
+
+    const verdicts = await Promise.all([
+      testing.verdictsOf(closedIn('eu'), now),
+      testing.verdictsOf(closedIn('us'), now),
+    ]);
+    await testing.close();
+
+    expect(verdicts).toEqual([
+      [true, false],
+      [false, true],
+    ]);
+    expect([counting.opened(), counting.closed()]).toEqual([1, 1]);
+  });
+});
+
+const placedOrder = { type: 'com.acme.placed', data: { total: 3 } };
+
+const refundTest = '${ $data.refunded.toFixed(0) !== "0" }';
+
 describe('the filters of several types tested over a page of events', () => {
   it('match a filter in the order of its attributes, so a filter that names its type first never tests an event of another type', async () => {
     const placed = { reference: '/placed', attributes: { type: 'com.acme.placed', data: '${ $data.total > 0 }' } };
-    const refunded = {
-      reference: '/refunded',
-      attributes: { type: 'com.acme.refunded', data: '${ $data.refunded.toFixed(0) !== "0" }' },
-    };
+    const refunded = { reference: '/refunded', attributes: { type: 'com.acme.refunded', data: refundTest } };
     const testing = filterTestingOf(
       [placed, refunded],
       filterSandboxOf(() => 0),
     );
 
-    const verdicts = await testing.verdictsOf({ type: 'com.acme.placed', data: { total: 3 } }, now);
-    testing.close();
+    const verdicts = await testing.verdictsOf(placedOrder, now);
+    await testing.close();
 
     expect(verdicts).toEqual([true, false]);
+  });
+
+  it('test an event of another type against a filter that names its data before its type', async () => {
+    const refunded = { reference: '/refunded', attributes: { data: refundTest, type: 'com.acme.refunded' } };
+    const testing = filterTestingOf(
+      [refunded],
+      filterSandboxOf(() => 0),
+    );
+
+    const verdicts = await testing.verdictsOf(placedOrder, now);
+    await testing.close();
+
+    expect(verdicts).toMatchObject([{ error: { instance: '/refunded' }, stopped: false }]);
   });
 });
 
@@ -119,6 +164,8 @@ describe('the filters tested over a page of events in a sandbox that breaks', ()
     const testing = filterTestingOf([european], breaking);
 
     await expect(testing.verdictsOf(closedIn('eu'), now)).rejects.toBe(failure);
+    await testing.close();
+
     expect([counting.opened(), counting.closed()]).toEqual([1, 1]);
   });
 });
