@@ -101,7 +101,12 @@ const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
   },
   no_active_version: {
     why: 'the function has no model that answers yet',
-    remedy: 'A build gives it one: run it with the input { build: {} }, and ask again once a version is active.',
+    remedy: 'It answers once a build has given it an active version, where the runtime offers builds.',
+  },
+  build_not_offered: {
+    why: 'this runtime does not offer a build of the function yet',
+    remedy:
+      'Asking again will not change that; what the function keeps meanwhile, such as its dataset, is kept as before.',
   },
   requested: {
     why: 'it was cancelled at the request of someone allowed to change the playbook',

@@ -45,7 +45,7 @@ const byConflict: ReadonlyArray<readonly [ConflictKind, string, string]> = [
   [
     'no_active_version',
     'the function has no model that answers yet',
-    'A build gives it one: run it with the input { build: {} }, and ask again once a version is active.',
+    'It answers once a build has given it an active version, where the runtime offers builds.',
   ],
 ];
 
