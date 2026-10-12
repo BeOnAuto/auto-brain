@@ -136,7 +136,7 @@ Ask for the result and the recorded run, including its run id. The review should
 
 A client that shows MCP prompts also offers the playbook's own recipes: `first-playbook` makes a first playbook this way, and `remember`, `give-tools` and `schedule` make a playbook remember what its functions answered, give a function tools and run a workflow on a schedule. The agent reads the same recipes, and the format of each kind of definition, with `get_guide`.
 
-For a second run and a comparison of the results, continue with [Build your first brain](../tutorials/first-playbook.md).
+For a second run and a comparison of the results, continue with [Build your first playbook](../tutorials/first-playbook.md).
 
 ## 6. Give your playbook tools
 

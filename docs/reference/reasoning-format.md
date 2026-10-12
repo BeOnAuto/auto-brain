@@ -2,7 +2,7 @@
 
 # Reasoning function format
 
-The API stores a reasoning function as a definition of the type `reasoning`. Its source document defines the model, input and output contracts, settings and prompt template. This reference describes that format; [Build your first brain](../tutorials/first-playbook.md) provides a guided example using an agent.
+The API stores a reasoning function as a definition of the type `reasoning`. Its source document defines the model, input and output contracts, settings and prompt template. This reference describes that format; [Build your first playbook](../tutorials/first-playbook.md) provides a guided example using an agent.
 
 ## A function document
 

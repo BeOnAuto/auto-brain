@@ -6,7 +6,7 @@ The API stores a workflow as a definition of the type `workflow`. Its source doc
 
 ## A workflow document
 
-This workflow reviews a campaign brief with the `review-campaign-brief` reasoning function from [Build your first brain](../tutorials/first-playbook.md). It retries the review when the model is unavailable, then waits up to a week for an approval decision:
+This workflow reviews a campaign brief with the `review-campaign-brief` reasoning function from [Build your first playbook](../tutorials/first-playbook.md). It retries the review when the model is unavailable, then waits up to a week for an approval decision:
 
 ```yaml
 document:
@@ -149,7 +149,7 @@ input:
 
 A trigger applies from the moment it is saved as it is: nothing recorded before is matched. The saving itself is the first thing it can match, so a trigger that names `definition_created` also starts on the fact of its own workflow's definition being saved, which a filter that names the definition it waits for by its `source`, such as `source: /definitions/reasoning/summarize`, leaves out. A new version's triggers are compared with those of the version before, by kind and place: a trigger it leaves unchanged goes on as it was, with its times and its running run, and starts the new version from then on; a trigger it changes or adds applies from the new version's saving, and a changed schedule counts its times from then; a trigger it removes stops. Saving a version without a schedule, or retiring the workflow, stops every trigger. A run a trigger starts uses the version current when the event was recorded or the time came, and its `run_id` is derived from the workflow, that version, the trigger and the event or the due time, so an event or a time starts it once.
 
-A run a trigger starts acts as the playbook itself: its `started_by` is `brain:` and the playbook's name, and each step acts with read and write access to that playbook and nothing else. It never acts for a person, so no key's permissions or revocation affect it.
+A run a trigger starts acts as the playbook itself: its `started_by` is `playbook:` and the playbook's name, and each step acts with read and write access to that playbook and nothing else. It never acts for a person, so no key's permissions or revocation affect it.
 
 These keep triggers from running away:
 

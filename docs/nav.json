@@ -89,10 +89,6 @@
       {
         "text": "HTTP API",
         "link": "/reference/http"
-      },
-      {
-        "text": "Upgrade to playbooks",
-        "link": "/reference/upgrading"
       }
     ]
   },
