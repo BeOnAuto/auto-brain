@@ -2,6 +2,7 @@ import { deferredCanceller } from '@on.auto/definitions';
 import { Effect, Result, Schema, SchemaTransformation } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { answeringAnyRun } from '../testing/harness-parts.ts';
 import {
   acmeAdmin,
   approvalDocument,
@@ -13,14 +14,13 @@ import {
   takenReply,
 } from '../testing/index.ts';
 import { checkedAnswer } from './answer-check.ts';
-import { answerInteraction } from './answer-interaction.ts';
 import { listInteractions } from './list-interactions.ts';
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 const otherRunId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b';
 
-const answer = answerInteraction;
+const answer = answeringAnyRun;
 
 const someText: unknown = expect.any(String);
 

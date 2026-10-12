@@ -2,8 +2,8 @@ import { defineUpdateDefinition } from '@on.auto/definitions';
 import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { answeringAnyRun } from '../testing/harness-parts.ts';
 import { approvalDocument, askedThroughChat, interactionHarness, nudging } from '../testing/index.ts';
-import { answerInteraction } from './answer-interaction.ts';
 import { listInteractions } from './list-interactions.ts';
 
 const runIds = [
@@ -120,7 +120,7 @@ async function shapesIn(playbook: ReturnType<typeof interactionHarness>) {
   return decodeShapes(await playbook.call(listInteractions, {})).output.interactions;
 }
 
-const answer = answerInteraction;
+const answer = answeringAnyRun;
 
 describe('the answer shape of an open request', () => {
   it('is the answer schema its request recorded for a question, and null for a notification', async () => {

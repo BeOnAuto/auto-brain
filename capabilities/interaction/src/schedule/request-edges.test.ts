@@ -3,7 +3,7 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { DeliveryEvent } from '../facts/run-facts.ts';
-import { answerInteraction } from '../requests/answer-interaction.ts';
+import { answeringAnyRun } from '../testing/harness-parts.ts';
 import {
   approvalDocument,
   askedRunId,
@@ -90,7 +90,7 @@ describe('a due request performed out of turn', () => {
     const { playbook, tools, askedAt } = await askedThroughChat({ expires: 'PT1H' });
     const attempt = await playbook.dueItems(askedAt);
     const expiry = await playbook.dueItems(askedAt + 2 * 60 * minute);
-    await playbook.call(answerInteraction, { run_id: askedRunId, answer: { choice: 'approve' } });
+    await playbook.call(answeringAnyRun, { run_id: askedRunId, answer: { choice: 'approve' } });
 
     await playbook.performAll(attempt, askedAt - minute);
     await playbook.performAll(expiry, askedAt + 2 * 60 * minute);
@@ -108,7 +108,7 @@ describe('a due request performed out of turn', () => {
     const meanwhile = { answer: (): Promise<unknown> => Promise.resolve() };
     const tools = fakeTools(() => Effect.promise(() => meanwhile.answer()));
     const playbook = interactionHarness({ tools });
-    meanwhile.answer = () => playbook.call(answerInteraction, { run_id: askedRunId, answer: { choice: 'reject' } });
+    meanwhile.answer = () => playbook.call(answeringAnyRun, { run_id: askedRunId, answer: { choice: 'reject' } });
     await playbook.define('approve-brief', approvalDocument(chatDelivery));
     await playbook.ask('approve-brief', { campaign: 'Spring', owner: 'ada' }, askedRunId);
 
