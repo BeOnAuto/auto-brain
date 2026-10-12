@@ -172,7 +172,7 @@ jobs:
           if npm view "@on.auto/runtime@$VERSION" version > /dev/null 2>&1; then
             echo "@on.auto/runtime@$VERSION is on npm already"
           else
-            npm publish "dist/on.auto-runtime-$VERSION.tgz" --access public
+            npm publish "./dist/on.auto-runtime-$VERSION.tgz" --access public
           fi
         env:
           VERSION: ${{ needs.release-please.outputs.version }}
