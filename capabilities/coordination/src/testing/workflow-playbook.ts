@@ -7,8 +7,8 @@ import type { WorkflowHost } from '@beonauto/workflow-host';
 import { Schema } from 'effect';
 
 import { makeWorkflowAdapter } from '../capability/workflow.ts';
-import { playbookOn, type Playbook } from './brain.ts';
 import { testExpressionCheck } from './expression-checks.ts';
+import { playbookOn, type Playbook } from './playbook.ts';
 import { testHost } from './test-host.ts';
 
 export interface WorkflowPlaybook extends Playbook {

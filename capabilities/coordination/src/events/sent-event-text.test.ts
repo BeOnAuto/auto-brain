@@ -3,7 +3,7 @@ import { memoryLedger } from '@beonauto/operations/testing';
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { playbookOn } from '../testing/brain.ts';
+import { playbookOn } from '../testing/playbook.ts';
 import { defineSendRunEvent } from './send-run-event.ts';
 
 const playbook = playbookOn(memoryLedger(), [echo]);

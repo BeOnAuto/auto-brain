@@ -5,7 +5,7 @@ import { Effect, Function } from 'effect';
 
 import { callResultOfEnding, definitionCalls } from '../calls/function-calls.ts';
 import { workflowMachineOptionsOf } from '../runs/workflow-machine-options.ts';
-import type { Playbook } from './brain.ts';
+import type { Playbook } from './playbook.ts';
 
 export function testHost(nested: Playbook): Promise<WorkflowHost> {
   return openWorkflowHost({

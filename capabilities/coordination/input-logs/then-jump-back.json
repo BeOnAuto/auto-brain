@@ -38,7 +38,7 @@
       },
       "attributes": {
         "org": "acme",
-        "brain": "alpha",
+        "playbook": "alpha",
         "run_id": "0199a3c4-7d2e-7c1a-9b3f-000000000310",
         "definition": {
           "name": "then-jump-back",
@@ -148,7 +148,7 @@
         },
         {
           "op": "add",
-          "path": "/attributes/brain",
+          "path": "/attributes/playbook",
           "value": "alpha"
         },
         {
@@ -307,7 +307,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3059
+          "value": 3062
         }
       ],
       "outputs": [
@@ -476,7 +476,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 5049
+          "value": 5052
         }
       ],
       "outputs": [
@@ -615,7 +615,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 6664
+          "value": 6667
         }
       ],
       "outputs": [

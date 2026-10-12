@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { workflowPlaybook, type WorkflowPlaybook } from '../testing/workflow-brain.ts';
+import { workflowPlaybook, type WorkflowPlaybook } from '../testing/workflow-playbook.ts';
 
 let playbook: WorkflowPlaybook;
 

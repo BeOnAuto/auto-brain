@@ -19,7 +19,7 @@ import {
 import { summaryOf } from '../document/workflow-summary.ts';
 import { longestCallsOf } from '../runs/call-limits.ts';
 import { unavailableUnless } from '../runs/host-refusals.ts';
-import { storedAttributesOfRun, type RunAttributes } from '../runs/run-attributes.ts';
+import type { RunAttributes } from '../runs/run-attributes.ts';
 
 export interface WorkflowAdapterDependencies {
   readonly runs: Pick<WorkflowHost, 'start'>;
@@ -64,10 +64,7 @@ function started(
     const longestCallMsByTask = yield* longestCallsOf(document, longestRunOf);
     const limits = { mostDurationMs, longestCallMs, longestCallMsByTask };
     const answer = yield* runs
-      .start(
-        { org, playbook, runId: id },
-        { document, input, limits, attributes: storedAttributesOfRun(attributes), seed },
-      )
+      .start({ org, playbook, runId: id }, { document, input, limits, attributes, seed })
       .pipe(Effect.mapError(unavailableUnless(notNow)));
     return yield* finishedLaterOr(answer);
   });

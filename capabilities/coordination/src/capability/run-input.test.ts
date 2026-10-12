@@ -4,8 +4,8 @@ import { HostElsewhere } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { playbookOn } from '../testing/brain.ts';
 import { testExpressionCheck } from '../testing/expression-checks.ts';
+import { playbookOn } from '../testing/playbook.ts';
 import { makeWorkflowAdapter, type WorkflowAdapterDependencies } from './workflow.ts';
 
 const neverStarted: WorkflowAdapterDependencies = {

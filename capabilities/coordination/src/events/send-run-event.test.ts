@@ -4,7 +4,7 @@ import { HostElsewhere, HostStopped } from '@beonauto/workflow-host';
 import { Effect, type Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { workflowPlaybook, type WorkflowPlaybook } from '../testing/workflow-brain.ts';
+import { workflowPlaybook, type WorkflowPlaybook } from '../testing/workflow-playbook.ts';
 import { acmeCaller } from '../testing/workflows.ts';
 import { defineSendRunEvent } from './send-run-event.ts';
 
