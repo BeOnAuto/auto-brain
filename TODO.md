@@ -7,7 +7,7 @@ Setup work that couldn't be finished yet, and why.
 - [ ] **Build the license-key check into the server before any release with real functionality.**
   - Without a key, the server serves operations up to the free threshold. A signed key, verified offline, carries the limit a customer has paid for (Apollo's router works the same way).
   - Decide what happens at the limit (for example `503`) and when a key expires.
-  - The check must ship before auto-brain does anything worth using. Every release is ELv2 forever, so a capable release without the check would stay free at any volume.
+  - The check must ship before Auto Runtime does anything worth using. Every release is ELv2 forever, so a capable release without the check would stay free at any volume.
 - [ ] **Decide the threshold and what counts as an operation.** Publish both in [LICENSING.md](LICENSING.md), which currently says they're coming.
 - [ ] **Write the commercial terms.** They grant use above the threshold, keep the ELv2 restrictions, and fall back to ELv2 when a subscription ends. Also give [LICENSING.md](LICENSING.md) a licensing contact address; it currently points at on.auto.
 - [ ] **Have a lawyer review:**
@@ -19,7 +19,7 @@ Setup work that couldn't be finished yet, and why.
 ## Community
 
 - [ ] **Create `conduct@on.auto`.** [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) sends reports there.
-- [ ] **Decide who else is on the CLA allowlist.** Today it's `SamHatoum` and bots. Employees covered by an employment agreement could be added, or sign like everyone else.
+- [ ] **Decide who else is on the CLA allowlist.** Today it's the maintainers that `.github/workflows/cla.yml` lists, and bots. Employees covered by an employment agreement could be added, or sign like everyone else.
 - [ ] **Offer a corporate CLA.** [CLA.md](CLA.md) tells employees to ask for one, but none exists yet.
 
 ## Hardening
@@ -32,7 +32,7 @@ Setup work that couldn't be finished yet, and why.
 
 ## Releases
 
-- [ ] **Make the GHCR package public.** v1.0.0 published `ghcr.io/beonauto/auto-brain`, but new packages start private, so anonymous pulls fail. Change it in the package settings on GitHub.
+- [ ] **Make the GHCR package public.** Releases publish `ghcr.io/beonauto/auto-runtime`, but a new package starts private, so anonymous pulls fail. Change it in the package settings on GitHub.
 
 ## Local databases
 

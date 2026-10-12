@@ -360,7 +360,7 @@ An expression is one TypeScript expression, which may span lines, not a list of 
 | `$context`        | What earlier tasks exported; `{}` until a task exports                              |
 | `$task`           | `name`, `reference`, `definition`, `input`, `startedAt`, and `output` after it ran  |
 | `$workflow`       | `id` (the run's `run_id`), `definition`, `input` (before `input.from`), `startedAt` |
-| `$runtime`        | `name: auto-brain`, `version` and `metadata.type: workflow`                         |
+| `$runtime`        | `name: auto-runtime`, `version` and `metadata.type: workflow`                       |
 | `$item`, `$index` | The current item and position in a `for` loop, unless renamed                       |
 | `$error`          | The caught error in `catch`, unless renamed with `catch.as`                         |
 

@@ -19,7 +19,7 @@ await test('the install step defaults to Agent on the left with Manual on the ri
   );
   assert.equal(
     options[1]?.[3],
-    'git clone https://github.com/BeOnAuto/auto-brain.git\ncd auto-brain\npnpm install\ncp .env.example .env\n',
+    'git clone https://github.com/BeOnAuto/auto-runtime.git\ncd auto-runtime\npnpm install\ncp .env.example .env\n',
   );
   const prompt = options[0]?.[3];
   assert.ok(prompt !== undefined);

@@ -3,8 +3,8 @@ import { defineConfig } from 'vitepress';
 import navigation from '../nav.json' with { type: 'json' };
 
 export default defineConfig({
-  title: 'Auto runtime',
-  description: 'Contributor-owned documentation for the Auto runtime.',
+  title: 'Auto Runtime',
+  description: 'Contributor-owned documentation for Auto Runtime.',
   base: '/docs/',
   cleanUrls: true,
   srcExclude: ['decisions/**', 'engineering/**'],
@@ -19,10 +19,10 @@ export default defineConfig({
     sidebar: [{ text: 'Introduction', link: '/' }, ...navigation],
     search: { provider: 'local' },
     editLink: {
-      pattern: 'https://github.com/BeOnAuto/auto-brain/edit/main/docs/:path',
-      text: 'Edit this page in auto-brain',
+      pattern: 'https://github.com/BeOnAuto/auto-runtime/edit/main/docs/:path',
+      text: 'Edit this page in auto-runtime',
     },
-    socialLinks: [{ icon: 'github', link: 'https://github.com/BeOnAuto/auto-brain' }],
+    socialLinks: [{ icon: 'github', link: 'https://github.com/BeOnAuto/auto-runtime' }],
     footer: { message: 'Runtime documentation preview. Published with Auto at on.auto/docs.' },
   },
 });

@@ -3,8 +3,8 @@
 Clone the public repository, then follow the [first-playbook guide](../get-started/self-hosted.md) to install dependencies, configure a model and connect your agent.
 
 ```sh
-git clone https://github.com/BeOnAuto/auto-brain.git
-cd auto-brain
+git clone https://github.com/BeOnAuto/auto-runtime.git
+cd auto-runtime
 pnpm install
 cp .env.example .env
 ```

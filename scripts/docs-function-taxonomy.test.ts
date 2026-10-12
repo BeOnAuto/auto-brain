@@ -20,7 +20,7 @@ import {
 } from './docs-function-taxonomy.ts';
 
 function withTemporaryAsset(verify: (path: string) => void): void {
-  const directory = mkdtempSync(join(tmpdir(), 'auto-brain-taxonomy-'));
+  const directory = mkdtempSync(join(tmpdir(), 'auto-runtime-taxonomy-'));
   try {
     verify(join(directory, 'assets', 'brain-functions.json'));
   } finally {

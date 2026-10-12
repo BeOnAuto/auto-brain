@@ -34,6 +34,7 @@ const oldWords: readonly string[] = [
   '_by_brain',
   'RECALL_BRAINS_AT_ONCE',
   String.raw`(?:[{,]\s*|\n\s*|["'])brains?["']?\s*:`,
+  '[aA]uto[-_ ]?[bB]rain|AUTO[-_ ]?BRAIN',
 ];
 
 const keptFolders: readonly string[] = ['docs/decisions/'];
@@ -49,7 +50,12 @@ const frozenFormats: readonly string[] = [
   ),
 ];
 
-const keptFiles: readonly string[] = ['pnpm-lock.yaml', 'scripts/docs-vocabulary.test.ts', ...frozenFormats];
+const keptFiles: readonly string[] = [
+  'CHANGELOG.md',
+  'pnpm-lock.yaml',
+  'scripts/docs-vocabulary.test.ts',
+  ...frozenFormats,
+];
 
 interface Allowance {
   readonly text: string;
@@ -210,7 +216,7 @@ const oldLanguageOnPages = tracked
     foundIn(textOf(path) ?? '', String.raw`\bjq\b`).map(({ index }) => `${path}:${lineAt(textOf(path) ?? '', index)}`),
   );
 
-await test('no tracked file says an old word, outside the records, the lockfile and the frozen formats, but the texts it allows', () => {
+await test('no tracked file says an old word, outside the records, the changelog, the lockfile and the frozen formats, but the texts it allows', () => {
   assert.deepEqual(findings, []);
 });
 
