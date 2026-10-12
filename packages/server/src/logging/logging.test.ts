@@ -288,6 +288,9 @@ describe('the server with LOG_FORMAT=pretty', { timeout: spawnedServerTestTimeou
       'INFO  The ledger is kept in the file :memory: ledger_file=:memory:',
       expect.stringMatching(/^WARN {2}No model provider is configured, .* providers=\[\{"provider":"anthropic",/u),
       "INFO  Reasoning functions run in this server: the model calls of a run add up to at most 2,000,000 input tokens, and each answer of a tool is read whole where it fits the model's context window most_input_tokens=2000000",
+      expect.stringMatching(
+        /^INFO {2}Model processes run in this server: at most 4 at once, at most 2 of them for builds, .* model_processes=4 model_process_memory_mib=512 model_process_builds=2 model_process_limiter=/u,
+      ),
       'INFO  Workflows run in this server: a run lasts at most 30 days, at most 32 of their calls run at once, and the runs are swept every 1000 ms most_duration_ms=2592000000 most_calls_at_once=32 sweep_every_ms=1000',
       '',
     ]);

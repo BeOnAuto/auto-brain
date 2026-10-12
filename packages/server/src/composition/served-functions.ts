@@ -2,10 +2,10 @@ import type { AppRuntime } from '@beonauto/api';
 import { brainOperations } from '@beonauto/brains';
 import type { DispatcherServices } from '@beonauto/operations';
 
-import type { Served } from '../lifecycle/lifecycle.ts';
 import type { Settings } from '../settings/settings.ts';
 import type { WorkflowParts } from '../workflows/workflows.ts';
 import { computationServedBy, workerPool, type ProgramPoolOf } from './served-computation.ts';
+import { predictionServedBy, type ServedClosing } from './served-prediction.ts';
 import type { ModelAccessOf } from './served-reasoning.ts';
 import { recallWiring, type RecallWiring } from './served-recall.ts';
 import { toolUsersServedBy, type TimedTools } from './served-tools.ts';
@@ -18,7 +18,7 @@ export interface FunctionWiring extends TimedTools {
 
 export interface ServedFunctions {
   readonly parts: Omit<WorkflowParts, 'ledger' | 'workflows'>;
-  readonly closing: (served: Served) => Served;
+  readonly closing: ServedClosing;
 }
 
 export function functionWiringOf(
@@ -42,6 +42,7 @@ export async function functionsServedBy(
   );
   const computation = await computationServedBy(settings.computation, programPoolOf);
   const recall = await wiring.served(runtime, settings, computation.pool);
+  const prediction = await predictionServedBy(runtime, settings.prediction);
   return {
     parts: {
       capabilities: [reasoning.capability, interaction.capability, computation.capability, recall.capability],
@@ -53,6 +54,6 @@ export async function functionsServedBy(
       evaluations: computation.pool.evaluations,
       check: computation.check,
     },
-    closing: (served) => computation.withPoolClosed(withToolsClosed(served)),
+    closing: (served) => prediction.withProcessesClosed(computation.withPoolClosed(withToolsClosed(served))),
   };
 }

@@ -52,6 +52,9 @@ describe('main with workflows', { timeout: workflowTestTimeoutMs }, () => {
     expect(startUpLines.slice(1)).toEqual([
       `INFO The ledger is kept in the file ${ledger.fileName}`,
       "INFO Reasoning functions run in this server: the model calls of a run add up to at most 2,000,000 input tokens, and each answer of a tool is read whole where it fits the model's context window",
+      expect.stringMatching(
+        /^INFO Model processes run in this server: at most 4 at once, at most 2 of them for builds, /u,
+      ),
       'INFO Workflows run in this server: a run lasts at most 30 days, at most 32 of their calls run at once, and the runs are swept every 1000 ms',
     ]);
     expect(startUpLines[0]).toMatch(/^WARN Local mode is on: /u);

@@ -61,8 +61,9 @@ function logLines(stderr: string): readonly { readonly message: string; readonly
 const noModelProvider =
   'No model provider is configured, so reasoning functions cannot run; set ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY or MODEL_GATEWAYS';
 
-const functionsRun: readonly string[] = [
+const functionsRun: readonly unknown[] = [
   "Reasoning functions run in this server: the model calls of a run add up to at most 2,000,000 input tokens, and each answer of a tool is read whole where it fits the model's context window",
+  expect.stringMatching(/^Model processes run in this server: at most 4 at once, /u),
   'Workflows run in this server: a run lasts at most 30 days, at most 32 of their calls run at once, and the runs are swept every 1000 ms',
 ];
 
