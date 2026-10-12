@@ -4,7 +4,7 @@
 
 The API stores a prediction function as a definition of the type `prediction`. A prediction function answers a question with numbers learned from the playbook's own history: a quantity over a grain of time, one or more periods ahead, for one series at a time, as a likely value with a low and a high. Its source document says what it predicts, the data it learns from, how a candidate model is judged, where a request to train one goes and the rules a trainer follows, and holds the **brief**, the text a trainer reads first.
 
-Keep three things apart: the function, which is the definition and does not change when a model does; the **dataset**, the rows the playbook keeps for it, folded from its history or uploaded; and the model, a file in the ONNX format that a trainer builds outside the playbook from those rows. The playbook keeps the dataset from the moment the function is saved. It scores the models trainers send, keeps the winner as a version of the function and answers questions from the active version; see [Availability](#availability) for what this runtime offers today.
+Keep three things apart: the function, which is the definition and does not change when a model does; the **dataset**, the rows the playbook keeps for it, folded from its history or uploaded; and the model, a file in the ONNX format that a trainer builds outside the playbook from those rows. The playbook keeps the dataset from the moment the function is saved. It scores the models trainers send, keeps the winner as a version of the function and answers questions from the active version, as [A build](#a-build) and [A question](#a-question) say.
 
 ## A function document
 
@@ -162,6 +162,82 @@ The body of the document is the brief, a Liquid template a build renders for the
 
 Lists have `first`, `last` and `size`. The brief is compiled when the function is saved, and rendered over the largest dataset the bounds admit, with 200,000 rows over 1,000 series; a brief that does not compile, reads a name not in `dataset` or `function`, writes a list or a mapping where text goes, renders past 64 KiB or takes longer than the 200 ms a template renders in is refused at its line. Write what the trainer needs to know that the rows do not say: what the target means, why a feature matters, what a good model must not do.
 
+## A build
+
+A build asks a trainer for candidate models, scores each against the rows the trainer never saw, and keeps the best as the next version of the function. Ask for one by running the function with the input `{ build: {} }` through `run_definition`, as any run is asked, so a person, a schedule and a workflow step ask the same way. The run answers `started` and waits for its trainer; `get_run` shows it until it ends.
+
+A build is refused as it starts, its run recording that it started and was rejected and nothing else, when:
+
+| Refusal                            | When                                                                                                                                                        |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `conflict`, `build_in_flight`      | Another build of the function is in flight; the words name its run                                                                                          |
+| `unavailable`, `builds_full`       | The function has had its builds of the day, 4 unless the server's `PREDICTION_BUILDS_PER_DAY` says otherwise, or the server scores as many builds as it may |
+| `unavailable`, `requests_full`     | The build would ask through the inbox and the playbook already holds as many open requests as it may                                                        |
+| `unavailable`, `dataset_not_ready` | The dataset is waiting, rebuilding or stalled                                                                                                               |
+| `conflict`, `dataset_too_large`    | The dataset is past the bounds a build reads, with the figures it counted                                                                                   |
+| `conflict`, `unworkable`           | The brief renders past 64 KiB over this dataset                                                                                                             |
+
+Otherwise the build writes the two files of [The rows a build reads](#the-rows-a-build-reads), renders the brief over them and asks its trainer. With `source.to`, the default, the build is a request in the playbook's inbox: `list_interactions` lists it for its party, with a message that names the build's run id, its three routes and the opening of the brief, within 8 KiB, and its answer is `{ candidates, recipe?, limitations? }`. With `source.through`, the build starts that interaction function with the input `{ build: { run_id, function, brief_sha256, routes, expires_at } }`, and that function's request is the one the inbox lists; its answer is the build's.
+
+### The trainer's path
+
+A trainer, a person or an agent with the skills and the tools to train, reads the brief, reads the training rows, trains a model outside the playbook, exports it to ONNX in the signature below, uploads it, and answers the request with the SHA-256 the upload answered:
+
+| Route                                  | Answers                                    | Needs            |
+| -------------------------------------- | ------------------------------------------ | ---------------- |
+| `GET /runs/{run_id}/build/brief`       | The brief, as `text/markdown`, whole       | `playbook:read`  |
+| `GET /runs/{run_id}/build/rows`        | The training rows, as `text/csv`, streamed | `playbook:read`  |
+| `POST /runs/{run_id}/build/candidates` | `{ candidate, bytes, opset }` for a model  | `playbook:write` |
+
+The routes are relative to `/v1/orgs/{org}/playbooks/{playbook}`, served over HTTP alone, under the caller's own key, and answer only a build that waits for its answer: another run answers `conflict` with the kind `not_a_build`, and a build that took its answer or ended `conflict` with the kind `build_ended`. A candidate is the ONNX file as `application/octet-stream` with its `Content-Length`: a body without one answers 411 and one past 64 MiB 413, before the body is read. The playbook checks the file in a model process within 30 seconds and refuses it `invalid_input` when the runtime does not load it, when its signature is not the one the function feeds or its opset is older than 13, and once the build has its 8 candidates; it answers `unavailable` with the kind `model_process_busy` while every model process is taken. The same bytes again answer the same, and nothing is recorded for them twice.
+
+The answer names the candidates by their SHA-256, at most 8, each one uploaded to this build; `recipe` and `limitations` are how the candidates were trained and what they do not do well, in words, at most 8 KiB each, kept with the version. A candidate the answer names that was not uploaded is refused `invalid_input` at its pointer.
+
+### The signature of a candidate
+
+A candidate takes the target, and the features the function names, over the periods up to an origin, and answers the 10th, 50th and 90th percentiles of each step ahead:
+
+| Tensor  | Shape       | Type    | What it is                                                                                                          |
+| ------- | ----------- | ------- | ------------------------------------------------------------------------------------------------------------------- |
+| `y`     | `[1, L]`    | float32 | The target over `L` periods up to the origin; `NaN` where a period was not observed                                 |
+| `x`     | `[1, L, F]` | float32 | The features over the same periods in the document's order, present when the function names features                |
+| `given` | `[1, H, G]` | float32 | The `given` features for the `H` periods ahead, in the document's order, present when the function names `given`    |
+| `h`     | `[1]`       | int64   | With `accumulates`, how many periods the total sums                                                                 |
+| `q`     | `[1, H, 3]` | float32 | The answer: for each step ahead, the 10th, 50th and 90th percentile; with `accumulates`, `[1, 1, 3]`, the one total |
+
+`L` may be dynamic, and the playbook feeds the whole window, or fixed, and it feeds the last `L` periods, `NaN` before the first. `H` is the longest horizon, fixed or dynamic; with `accumulates`, the periods to the end of the enclosing period, so dynamic. The model takes no other input and answers no other output, in opset 13 or later.
+
+### How a candidate is scored
+
+The playbook walks each candidate, one at a time, in a model process over the scoring rows: at each of the held-back periods, the origin, it feeds the series up to that origin and reads the steps ahead that the holdout holds. It scores each horizon over every series:
+
+- `mase`, the mean absolute error scaled by the error of the naive forecast over the training periods, one period to the next, or one season when a season is named;
+- `winkler`, the width of the interval from the 10th to the 90th percentile plus ten times how far a truth falls outside it;
+- `quantile`, the pinball loss of the three percentiles;
+- the coverage, the share of truths the interval holds.
+
+It walks the baselines over the same origins: `persistence` carries the last observed value forward and `seasonal-naive` takes the value one season earlier, each with an interval from its own errors over the training periods; a baseline no series can be walked by is not walked. For each baseline it estimates, by a moving-block bootstrap of the differences at each origin, 1,000 resamples drawn from a seed of the build's run id, how sure it is that the candidate is better, `p_better`.
+
+A candidate is disqualified when its model process takes longer than 10 minutes, runs out of memory or ends, when it answers a tensor of another shape or a number that is not finite, when its interval holds fewer truths than `coverage_floor`, or when it does not beat every walked baseline with the `confidence` asked. Of the others, the one with the lowest mean of `metric` over the horizons wins.
+
+With `accumulates`, the quantity is the total to the end of the enclosing period: `persistence` is the run-rate, the mean of the periods of the enclosing period so far times the periods left, and `seasonal-naive` the same periods' sum one season earlier, and `mase` is scaled by the error of the run-rate over the training periods.
+
+### How a build ends
+
+A build whose winner beats the baselines keeps it as the next version: the version's card holds the build, who trained it, the dataset's digests and figures, the file's digest, size and opset, the features, the scores, the coverage, `p_better` against each baseline, the baselines' scores and the rule it activates under, within 4 KiB, and its `recipe` and `limitations`. The run succeeds with `{ version, winner, candidates }`, each candidate with its `verdict`: `won`, `scored`, or why it was disqualified; `version` and `winner` are null when no candidate won. A build nobody answered before `source.expires` ends `rejected` with the reason `unanswered` and the kind `expired`, and a build through a function that is refused, or whose request ends unanswered, ends `rejected` with the reason `unanswered` and the kind its request ended with, `undelivered` when it has none; a build cancelled through `cancel_run` ends `rejected` with the reason `cancelled`, starting, waiting or scoring alike.
+
+The first version a function builds activates under its rule on its holdout alone. A later one runs beside the active version for `shadow_periods` closes of the grain, of the enclosing period with `accumulates`, when the function's dataset is a projection: at each close both versions predict every series, and once the predicted periods close the predictions are graded against what happened, a series without a truth counted apart. The new version passes its shadow when its `metric` is no worse than the active version's, and fails it otherwise; a function over an uploaded dataset, which gains no rows, and `shadow_periods: 0` pass at once. A version that passes activates when `activate` is `automatic`; with `{ approved: <interaction function> }`, that function is asked with `{ function, version, card }`, and the version activates when it answers `approve`, naming who approved, and is not activated when it answers `reject` or nobody answers.
+
+`get_definition` adds, beside the dataset, `models`, the `active` version and its data digest, the `latest`, how many `versions` the function built and the `challenger` in its shadow, with its predictions, grades and result, and `build`, the build in flight, its `standing`, `requested_at`, `expires_at` and its candidates uploaded and scored.
+
+### Activating a version
+
+`POST /v1/orgs/{org}/playbooks/{playbook}/definitions/prediction/{name}/activate`, under `playbook:write` and over HTTP alone, with `{ version }`, makes a version the function built its active one, whatever its shadow or its approver decided, so an earlier version activated again is a rollback. It answers `{ function, version, rule, activated_at }`, `not_found` for a version the function did not build and `conflict` with the kind `already_active` for the active one.
+
+## A question
+
+A question, `{ series, horizon, given? }`, is answered by the active version from the series' last window: the dataset's rows up to the last closed period at its checkpoint, or the last period of an uploaded dataset. The model process that holds the version's file answers it within 10 seconds. The output is the prediction of [The input and the output](#the-input-and-the-output), and the run's record holds the `version`, the `origin`, the `dataset_checkpoint` and the `duration_ms`. A question is refused `conflict` with the kind `no_active_version` before a version is active, and with the kind `data_changed` once the data part changed since the active version was built; `invalid_input` for a series the dataset does not hold; `unavailable` with the kind `dataset_not_ready` while the dataset is not live, `model_process_busy` while every model process is taken, and `model_process_failed` when the model process ends before it answers or answers a number that is not finite.
+
 ## Bounds
 
 | Bound                    | Value                                                                                     | When it is reached                       |
@@ -179,9 +255,15 @@ Lists have `first`, `last` and `size`. The brief is compiled when the function i
 | Functions a playbook     | 32 active, unless the server's `PREDICTION_MAX_FUNCTIONS` says otherwise, from 1 to 1,000 | The save is refused                      |
 | A question's run         | 10 seconds within its call                                                                | The run ends                             |
 | A build's run            | Its wait, the scoring of eight candidates at ten minutes each, and a minute to start      | The run ends                             |
+| Builds a function a day  | 4, unless the server's `PREDICTION_BUILDS_PER_DAY` says otherwise, from 1 to 100          | The build is refused                     |
+| Candidates of a build    | 8, each a file of at most 64 MiB with its `Content-Length`                                | The upload is refused                    |
+| A candidate's check      | 30 seconds to load in a model process                                                     | The upload is refused                    |
+| A candidate's scoring    | 10 minutes in a model process                                                             | The candidate is disqualified            |
+| A recipe, a limitation   | 8 KiB of text each                                                                        | The answer is refused                    |
+| A version's card         | 4 KiB as JSON                                                                             | Its features are kept apart              |
 
 ## Availability
 
-This runtime keeps the dataset of a saved prediction function and takes uploaded datasets, but does not offer a build or a prediction yet: a question is refused `conflict` with the kind `no_active_version`, since no version can be built, and a build is refused `unavailable` with the kind `build_not_offered`, which asking again does not change. See [Functions and availability](../concepts/functions.md#availability).
+This runtime keeps the dataset of a saved prediction function, takes uploaded datasets, builds versions from what trainers send and answers questions from the active version, each in a model process of the server. See [Functions and availability](../concepts/functions.md#availability).
 
 </div>
