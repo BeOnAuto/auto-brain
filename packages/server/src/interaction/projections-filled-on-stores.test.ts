@@ -1,12 +1,13 @@
 import { DatabaseSync } from 'node:sqlite';
 
-import { conversations, openRequests, openRequestsName } from '@beonauto/interaction';
+import { answerInteraction, conversations, openRequests, openRequestsName } from '@beonauto/interaction';
 import {
   alpha,
   answererId,
   chatHarness,
   conversationRows,
   farAhead,
+  nudging,
   type HarnessLedger,
 } from '@beonauto/interaction/testing';
 import { postgresqlLedgerLayer } from '@beonauto/ledger/postgresql';
@@ -28,6 +29,10 @@ const projections = [openRequests, conversations];
 const tables = projections.map((projection) => projectedTableOf(projection));
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+
+const answeredId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b';
+
+const nudgedId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7c';
 
 async function opened(layer: Layer.Layer<Ledger>): Promise<HarnessLedger> {
   const runtime = ManagedRuntime.make(layer);
@@ -117,12 +122,16 @@ describe.each(stores)('the projections of the requests and the conversations on 
     'are filled from the history of the brain when their tables are new, each row as the appends folded it, the cadence its reader advances aside',
     async () => {
       const place = await aPlace();
-      const brain = await chatHarness({ ledger: await place.open() });
+      const brain = await chatHarness({ ledger: await place.open(), others: [nudging] });
       await brain.askInThread(runId);
+      await brain.askInThread(answeredId);
       await brain.performDue(Date.now());
       const [thread = ''] = brain.chat.posted().map(({ ts }) => ts);
       brain.chat.reply({ channel: '#approvals-sales', thread, user: answererId, text: 'maybe later' });
       await brain.performReads(Date.now() + farAhead);
+      await brain.call(answerInteraction, { run_id: answeredId, answer: { choice: 'approve' } });
+      await brain.defineAs('nudging', 'forecast', 'Go?');
+      await brain.askAs('nudging', 'forecast', {}, nudgedId);
       const kept = await rowsOf(brain.ledger);
 
       await place.dropTables();
@@ -130,8 +139,10 @@ describe.each(stores)('the projections of the requests and the conversations on 
 
       expect(kept.requests).toMatchObject([
         { function: 'approve-brief', version: 1, standing: 'delivered', reply_refusals: 1, refusals_told: 1 },
+        { type: 'interaction', standing: 'answered', open: false, ended: null },
+        { type: 'nudging', function: 'forecast', standing: 'to_deliver', open: true, message: 'Go?' },
       ]);
-      expect(kept.conversations).toHaveLength(1);
+      expect(kept.conversations).toHaveLength(2);
       expect(filled).toEqual(kept);
     },
   );

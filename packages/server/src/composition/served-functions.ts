@@ -5,28 +5,14 @@ import type { DispatcherServices } from '@beonauto/operations';
 import type { Served } from '../lifecycle/lifecycle.ts';
 import type { Settings } from '../settings/settings.ts';
 import type { WorkflowParts } from '../workflows/workflows.ts';
-import { computationServedBy, workerPool, type ProgramPoolOf } from './served-computation.ts';
-import type { ModelAccessOf } from './served-reasoning.ts';
-import { recallWiring, type RecallWiring } from './served-recall.ts';
-import { toolUsersServedBy, type TimedTools } from './served-tools.ts';
-
-export interface FunctionWiring extends TimedTools {
-  readonly modelAccessOf: ModelAccessOf;
-  readonly programPoolOf: ProgramPoolOf;
-  readonly recall: RecallWiring;
-}
+import { factsComposedOf } from './composed-facts.ts';
+import type { FunctionWiring } from './function-wiring.ts';
+import { computationServedBy } from './served-computation.ts';
+import { toolUsersServedBy } from './served-tools.ts';
 
 export interface ServedFunctions {
   readonly parts: Omit<WorkflowParts, 'ledger' | 'workflows'>;
   readonly closing: (served: Served) => Served;
-}
-
-export function functionWiringOf(
-  modelAccessOf: ModelAccessOf,
-  programPoolOf: ProgramPoolOf = workerPool,
-  toolTiming?: FunctionWiring['toolTiming'],
-): FunctionWiring {
-  return { modelAccessOf, programPoolOf, recall: recallWiring(), ...(toolTiming === undefined ? {} : { toolTiming }) };
 }
 
 export async function functionsServedBy(
@@ -42,12 +28,15 @@ export async function functionsServedBy(
   );
   const computation = await computationServedBy(settings.computation, programPoolOf);
   const recall = await wiring.served(runtime, settings, computation.pool);
+  const capabilities = [reasoning.capability, interaction.capability, computation.capability, recall.capability];
+  const { names, record } = factsComposedOf(runtime, capabilities);
   return {
     parts: {
-      capabilities: [reasoning.capability, interaction.capability, computation.capability, recall.capability],
+      capabilities,
+      names,
       orgOperations: [...brainOperations, reasoning.listModels, reasoning.listToolServersInOrg],
       brainOperations: [reasoning.listToolServers, reasoning.testToolCall, ...interaction.operations],
-      dueWork: interaction.dueWork,
+      dueWork: interaction.dueWorkOf(record),
       store: recall.store,
       views: recall.views,
       evaluations: computation.pool.evaluations,

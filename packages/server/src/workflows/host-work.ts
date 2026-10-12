@@ -7,12 +7,12 @@ import {
   type RunDefinition,
 } from '@beonauto/coordination';
 import {
-  brainOwnNamesOf,
   defineRunDefinition,
   deferredCanceller,
   runCanceller,
   runSettler,
   type BrainOperation,
+  type BrainOwnNames,
   type Capability,
   type SettleRun,
 } from '@beonauto/definitions';
@@ -30,6 +30,7 @@ export interface WorkParts {
   readonly capabilities: readonly Capability[];
   readonly startVersion: BrainOperation;
   readonly evaluations: Evaluations;
+  readonly names: BrainOwnNames;
 }
 
 function nestedRuns(
@@ -83,9 +84,8 @@ function waitingOf(runtime: AppRuntime<DispatcherServices>, capabilities: readon
 export function hostWorkOf(
   runtime: AppRuntime<DispatcherServices>,
   dispatcher: Dispatcher,
-  { capabilities, startVersion, evaluations }: WorkParts,
+  { capabilities, startVersion, evaluations, names }: WorkParts,
 ): HostWork {
-  const names = brainOwnNamesOf(capabilities);
   return {
     machine: workflowMachineOptionsOf(evaluations.machine, names),
     perform: definitionCalls(nestedRuns(runtime, dispatcher, defineRunDefinition(capabilities))),

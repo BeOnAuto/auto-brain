@@ -1,12 +1,6 @@
 import type { AppRuntime } from '@beonauto/api';
-import {
-  callMarginMs,
-  defineSendRunEvent,
-  makeWorkflowAdapter,
-  runPresenter,
-  type ExpressionCheck,
-} from '@beonauto/coordination';
-import { brainOwnNamesOf, defineStartVersion, type BrainOperation, type Capability } from '@beonauto/definitions';
+import { callMarginMs, defineSendRunEvent, makeWorkflowAdapter, type ExpressionCheck } from '@beonauto/coordination';
+import { defineStartVersion, type BrainOperation, type BrainOwnNames, type Capability } from '@beonauto/definitions';
 import { makeCatalog, makeDispatcher, type DispatcherServices, type Registration } from '@beonauto/operations';
 import type { WorkflowHost } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
@@ -24,6 +18,7 @@ export interface WorkflowParts extends HostParts {
   readonly orgOperations: readonly OrgOperation[];
   readonly brainOperations: readonly BrainOperation[];
   readonly check: ExpressionCheck;
+  readonly names: BrainOwnNames;
 }
 
 export function longestCallOf(capabilities: readonly Pick<Capability, 'longestAnyRunMs'>[]): number {
@@ -43,7 +38,7 @@ function onceOpened(opening: Promise<WorkflowHost>): Pick<WorkflowHost, 'start'>
 export async function serveWorkflows(runtime: AppRuntime<DispatcherServices>, parts: WorkflowParts): Promise<Served> {
   const dispatcher = makeDispatcher([]);
   const opening = Promise.withResolvers<WorkflowHost>();
-  const names = brainOwnNamesOf(parts.capabilities);
+  const { names } = parts;
   const workflow = makeWorkflowAdapter({
     runs: onceOpened(opening.promise),
     check: parts.check,
@@ -52,11 +47,16 @@ export async function serveWorkflows(runtime: AppRuntime<DispatcherServices>, pa
     names,
   });
   const capabilities = [...parts.capabilities, workflow];
-  const host = await openedHost(runtime, dispatcher, { ...parts, capabilities }, defineStartVersion(capabilities));
+  const host = await openedHost(
+    runtime,
+    dispatcher,
+    { ...parts, capabilities },
+    { startVersion: defineStartVersion(capabilities), names },
+  );
   opening.resolve(host);
   const catalog = makeCatalog([
     ...parts.orgOperations,
-    ...brainOperationsServing(capabilities, [runPresenter]),
+    ...brainOperationsServing(capabilities, names),
     ...parts.brainOperations,
     defineSendRunEvent(host, names),
   ]);

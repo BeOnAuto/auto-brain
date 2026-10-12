@@ -1,5 +1,5 @@
 import { makeAppRuntime } from '@beonauto/api';
-import { defineStartVersion } from '@beonauto/definitions';
+import { brainOwnNamesOf, defineStartVersion } from '@beonauto/definitions';
 import { echo } from '@beonauto/definitions/testing';
 import { ledgerLayer } from '@beonauto/ledger/sqlite3';
 import { makeDispatcher } from '@beonauto/operations';
@@ -21,6 +21,7 @@ describe('the machine the workflow host decides runs with', () => {
     const { machine } = hostWorkOf(runtime, makeDispatcher([]), {
       capabilities: [echo],
       startVersion: defineStartVersion([echo]),
+      names: brainOwnNamesOf([echo]),
       evaluations: pool.evaluations,
     });
     await Promise.all([pool.close(), runtime.dispose()]);
@@ -37,6 +38,7 @@ describe('the cancels the workflow host hands to the runtime of the server', () 
     const { waiting } = hostWorkOf(runtime, makeDispatcher([]), {
       capabilities: [echo],
       startVersion: defineStartVersion([echo]),
+      names: brainOwnNamesOf([echo]),
       evaluations: { machine: machineSandboxOf(), filters: filterSandboxOf() },
     });
 

@@ -123,6 +123,7 @@ describe.each(stores)('a conversation read on $store', ({ skipped, aLedger }) =>
     await brain.performReads(Date.now() + farAhead);
     brain.chat.reply({ channel, user: answererId, text: 'reject' });
     await brain.performReads(Date.now() + 2 * farAhead);
+    await brain.performDue(Date.now());
 
     expect([await brain.runOf(first), await brain.runOf(second)]).toMatchObject([
       { output: { status: 'succeeded', output: { choice: 'approve' } } },

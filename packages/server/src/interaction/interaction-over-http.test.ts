@@ -1,8 +1,11 @@
+import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { asking, brief, servingInteractions } from '../testing/servers/interaction-server.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
 import { runIdIn, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+
+const answerIdOf = Schema.decodeUnknownSync(Schema.Struct({ answer_id: Schema.String }));
 
 describe('an interaction function through the inbox, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
   it('leaves its request in the inbox and takes a checked answer as the output, once, which its history shows', async () => {
@@ -18,6 +21,7 @@ describe('an interaction function through the inbox, over HTTP', { timeout: work
     const again = await server.answer(runId, { answer: { choice: 'approve' } });
     const another = await server.answer(runId, { answer: { choice: 'reject' } });
     const settled = await server.settled(runId);
+    const answerEvent = await server.call('GET', `${alpha}/events/${answerIdOf(answered.body).answer_id}`);
     const history = await server.call('GET', `${alpha}/runs/${runId}/history`);
     const analytics = await server.call('GET', `${alpha}/analytics?type=interaction`);
 
@@ -29,6 +33,14 @@ describe('an interaction function through the inbox, over HTTP', { timeout: work
       { claimed_for: 'the campaign team' },
     ]);
     expect(invalid.body).toMatchObject({ errors: [{ pointer: '/answer/choice' }] });
+    expect(answerEvent).toMatchObject({
+      status: 200,
+      body: {
+        type: 'request_answered',
+        summary: 'The request was answered, and the run takes the answer.',
+        data: { answer: { choice: 'approve' }, claimed_for: 'the campaign team' },
+      },
+    });
     expect(settled).toMatchObject({ status: 'succeeded', output: { choice: 'approve' } });
     expect(history.body).toMatchObject({
       events: [
