@@ -76,7 +76,7 @@ const approved = {
   output: {
     status: 'succeeded',
     output: { choice: 'approve' },
-    record: { answered_by: 'brain:alpha', reply: takenReply },
+    record: { answered_by: 'playbook:alpha', reply: takenReply },
   },
 };
 

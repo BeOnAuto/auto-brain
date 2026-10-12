@@ -1,5 +1,5 @@
-import { ledgerPlaybookRegistry } from '@beonauto/brains';
 import { IncidentReporter, type DispatcherServices, type Ledger } from '@beonauto/operations';
+import { ledgerPlaybookRegistry } from '@beonauto/playbooks';
 import type { HostClock } from '@beonauto/workflow-host';
 import { Layer } from 'effect';
 

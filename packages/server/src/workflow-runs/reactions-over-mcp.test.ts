@@ -63,7 +63,7 @@ describe('a workflow whose trigger is an event, over MCP', { timeout: workflowTe
       return { runs, feed: eventsIn(feed.structuredContent).events.map(({ type }) => type) };
     });
 
-    expect(seen.runs.runs).toEqual([{ status: 'succeeded', started_by: 'brain:alpha' }]);
+    expect(seen.runs.runs).toEqual([{ status: 'succeeded', started_by: 'playbook:alpha' }]);
     expect(seen.feed).toEqual(expect.arrayContaining(['event_published', 'run_started', 'run_succeeded']));
   });
 });

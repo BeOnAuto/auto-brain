@@ -1,4 +1,3 @@
-import { defineGetEvent, defineListPlaybookEvents } from '@beonauto/brains';
 import {
   makeDefinitionOperations,
   makeDefinitionPresenters,
@@ -8,6 +7,7 @@ import {
 } from '@beonauto/definitions';
 import { conversationCallPresenter, toolTestPresenter } from '@beonauto/mcp';
 import type { Presenter } from '@beonauto/operations';
+import { defineGetEvent, defineListPlaybookEvents } from '@beonauto/playbooks';
 
 export function playbookOperationsServing(
   capabilities: readonly Capability[],

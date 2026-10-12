@@ -1,15 +1,9 @@
 import { ledgerLayer } from '@beonauto/ledger/sqlite3';
-import {
-  ActedContextSchema,
-  Ledger,
-  factOf,
-  streamPrefixOfOrg,
-  type Decided,
-  type Decider,
-} from '@beonauto/operations';
+import { ActedContextSchema, Ledger, factOf, type Decided, type Decider } from '@beonauto/operations';
+import { playbooksStreamOfOrg } from '@beonauto/playbooks';
 import { Effect, ManagedRuntime, Result, Schema } from 'effect';
 
-const MalformedPlaybook = factOf('brain_created', Schema.Struct({ brain: Schema.Number }), ActedContextSchema);
+const MalformedPlaybook = factOf('playbook_created', Schema.Struct({ playbook: Schema.Number }), ActedContextSchema);
 
 type Malformed = typeof MalformedPlaybook.Type;
 
@@ -26,9 +20,9 @@ export async function appendMalformedPlaybookEvent(fileName: string, org: string
   await runtime.runPromise(
     Effect.gen(function* () {
       const ledger = yield* Ledger;
-      yield* ledger.execute(`${streamPrefixOfOrg({ org })}brains`, malformedRegistry, {
-        type: 'brain_created',
-        data: { brain: 42 },
+      yield* ledger.execute(playbooksStreamOfOrg(org), malformedRegistry, {
+        type: 'playbook_created',
+        data: { playbook: 42 },
       });
     }),
   );

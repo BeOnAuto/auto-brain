@@ -49,10 +49,15 @@ describe('the notes of the views the workflow host keeps', () => {
   it('warn of a recorded event no recall function can fold, and of a view that stopped, naming the playbook', async () => {
     const lines = [
       ...(await linesLoggedBy(
-        logHostNote({ kind: 'record_passed_over', playbook: 'brain/acme/alpha/', record: 'r-1', reason: 'unreadable' }),
+        logHostNote({
+          kind: 'record_passed_over',
+          playbook: 'playbook/acme/alpha/',
+          record: 'r-1',
+          reason: 'unreadable',
+        }),
       )),
       ...(await linesLoggedBy(
-        logHostNote({ kind: 'view_stalled', playbook: 'brain/acme/alpha/', name: 'reviews', version: 2 }),
+        logHostNote({ kind: 'view_stalled', playbook: 'playbook/acme/alpha/', name: 'reviews', version: 2 }),
       )),
     ];
 
@@ -65,7 +70,7 @@ describe('the notes of the views the workflow host keeps', () => {
       ),
     ]);
     expect(lines[1]).toContain(
-      '"annotations":{"playbook":"brain/acme/alpha/","recall_function":"reviews","version":2}',
+      '"annotations":{"playbook":"playbook/acme/alpha/","recall_function":"reviews","version":2}',
     );
   });
 });

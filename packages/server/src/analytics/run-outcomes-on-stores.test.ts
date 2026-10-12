@@ -146,7 +146,7 @@ function written(ledger: Ledger['Service']): Promise<void> {
     Effect.forEach(
       runs,
       ([run, given]) =>
-        Effect.forEach(given, (each) => ledger.execute(`brain/acme/alpha/runs/${run}`, facts, each), {
+        Effect.forEach(given, (each) => ledger.execute(`playbook/acme/alpha/runs/${run}`, facts, each), {
           discard: true,
         }),
       { discard: true },

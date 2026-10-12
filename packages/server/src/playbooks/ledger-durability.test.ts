@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { compositionRoot } from '../composition/composition-root.ts';
 import { startServer } from '../lifecycle/lifecycle.ts';
 import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
-import { appendMalformedPlaybookEvent } from '../testing/records/malformed-brain-event.ts';
+import { appendMalformedPlaybookEvent } from '../testing/records/malformed-playbook-event.ts';
 import { temporaryLedger, type TemporaryLedger } from '../testing/records/temporary-ledger.ts';
 import { request } from '../testing/servers/http-client.ts';
 

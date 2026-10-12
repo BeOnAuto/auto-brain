@@ -1,6 +1,6 @@
-import { createPlaybook } from '@beonauto/brains';
 import { ledgerLayer } from '@beonauto/ledger/sqlite3';
 import { PlaybookRegistry, allPermissions, makeDispatcher, type CallerIdentity } from '@beonauto/operations';
+import { createPlaybook } from '@beonauto/playbooks';
 import { Effect, Layer, ManagedRuntime } from 'effect';
 import { describe, expect, it } from 'vitest';
 

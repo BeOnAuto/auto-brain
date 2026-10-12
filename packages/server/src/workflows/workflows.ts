@@ -11,7 +11,7 @@ import { makeCatalog, makeDispatcher, type DispatcherServices, type Registration
 import type { WorkflowHost } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
 
-import { playbookOperationsServing } from '../composition/brain-operations.ts';
+import { playbookOperationsServing } from '../composition/playbook-operations.ts';
 import { routesFor } from '../composition/served-routes.ts';
 import type { Served } from '../lifecycle/lifecycle.ts';
 import { openedHost, type HostParts } from './host-dependencies.ts';

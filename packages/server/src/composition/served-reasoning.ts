@@ -1,7 +1,7 @@
 import type { AppRuntime } from '@beonauto/api';
-import { foundPlaybook } from '@beonauto/brains';
 import { defineListToolServers, defineListToolServersInOrg, defineTestToolCall, type ToolAccess } from '@beonauto/mcp';
 import type { DispatcherServices } from '@beonauto/operations';
+import { foundPlaybook } from '@beonauto/playbooks';
 import {
   defineListModels,
   makeReasoningFunctionAdapter,

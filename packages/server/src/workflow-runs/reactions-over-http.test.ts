@@ -86,7 +86,7 @@ describe('a workflow whose trigger is an event', { timeout: workflowTestTimeoutM
     });
     const { run, settled } = await triggeredRunOf('close-the-month');
 
-    expect(run).toMatchObject({ status: 'succeeded', started_by: 'brain:alpha' });
+    expect(run).toMatchObject({ status: 'succeeded', started_by: 'playbook:alpha' });
     expect(settled.body).toMatchObject({ status: 'succeeded', output: { month: 'september' } });
   });
 
