@@ -1,13 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { setTimeout } from 'node:timers/promises';
 
-import { Effect, Layer, Logger } from 'effect';
+import { Effect, Function, Layer, Logger } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
+import { sweepsWatched } from '../content/content-samples.ts';
 import { openLedgerWith } from '../testing/open-ledger.ts';
 import { tally } from '../testing/tally.ts';
-import { postgresqlLedgerLayer } from './postgresql-ledger.ts';
+import { postgresqlEventStore, postgresqlLedgerLayer } from './postgresql-ledger.ts';
 import { emmettsMigrationLock } from './postgresql-run-outcomes.ts';
 
 const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
@@ -73,6 +74,13 @@ async function untilNoneOpen(database: string): Promise<void> {
   }
 }
 
+function sweptOn(database: string, held?: Promise<void>) {
+  return sweepsWatched(
+    () => postgresqlEventStore({ connectionString: database, reportLostConnection: Function.constVoid }),
+    held,
+  );
+}
+
 describe.skipIf(skipped)(`A ledger on a PostgreSQL database of its own${notice}`, () => {
   it('builds on a database that another server is migrating at the same moment', async () => {
     const database = await aDatabase();
@@ -88,15 +96,38 @@ describe.skipIf(skipped)(`A ledger on a PostgreSQL database of its own${notice}`
     expect(loaded).toEqual({ state: 1, version: 1 });
   });
 
-  it('closes every connection to the database when the runtime is disposed', { timeout: 30_000 }, async () => {
+  it(
+    'holds one connection once its first sweep is done, and closes every connection when the runtime is disposed',
+    { timeout: 30_000 },
+    async () => {
+      const database = await aDatabase();
+      const watched = sweptOn(database);
+      const { ledger, dispose } = await openLedgerWith(watched.layer);
+      await watched.finished;
+      await Effect.runPromise(ledger.load('org/acme/tallies', tally));
+      const whileOpen = await queried(database, connectionsTo(database));
+
+      await dispose();
+
+      expect(whileOpen).toEqual([{ open: 1 }]);
+      await untilNoneOpen(database);
+    },
+  );
+});
+
+describe.skipIf(skipped)(`A ledger on PostgreSQL whose runtime is disposed while it sweeps${notice}`, () => {
+  it('finishes the sweep under way and then closes every connection', { timeout: 30_000 }, async () => {
     const database = await aDatabase();
-    const { ledger, dispose } = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
-    await Effect.runPromise(ledger.load('org/acme/tallies', tally));
-    const whileOpen = await queried(database, connectionsTo(database));
+    const held = Promise.withResolvers<void>();
+    const watched = sweptOn(database, held.promise);
+    const { dispose } = await openLedgerWith(watched.layer);
+    await watched.started;
 
-    await dispose();
+    const disposing = dispose();
+    held.resolve();
+    await disposing;
 
-    expect(whileOpen).toEqual([{ open: 1 }]);
+    expect(await watched.finished).toBe('swept');
     await untilNoneOpen(database);
   });
 });

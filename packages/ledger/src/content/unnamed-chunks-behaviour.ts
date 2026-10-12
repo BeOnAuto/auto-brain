@@ -1,9 +1,10 @@
 import { randomUUIDv7, textToKeep } from '@beonauto/operations';
 import { Schema } from 'effect';
-import { describe, expect, it, onTestFinished, vi } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 
-import { aLedger, type LedgerEntry } from '../testing/ledger-entry.ts';
-import { alpha, generated, run } from './content-samples.ts';
+import type { LedgerEntry } from '../testing/ledger-entry.ts';
+import { openLedgerWith } from '../testing/open-ledger.ts';
+import { alpha, generated, run, sweepsWatched } from './content-samples.ts';
 import { unnamedChunksLastMs } from './content-sweep.ts';
 
 const UploadRows = Schema.Array(Schema.Struct({ upload_id: Schema.String }));
@@ -39,7 +40,10 @@ async function orphanedLike(entry: LedgerEntry, database: string, named: Named, 
 }
 
 async function keptAndOrphaned(entry: LedgerEntry, database: string): Promise<Orphans> {
-  const ledger = await aLedger(entry, database);
+  const watched = sweepsWatched(() => entry.storeOn(database));
+  const { ledger, dispose } = await openLedgerWith(watched.layer);
+  onTestFinished(dispose);
+  await watched.finished;
   await run(ledger.content.put(alpha, textToKeep('{"kept":true}', 'application/json')));
   await run(ledger.content.stage(alpha, 'run-1', (await generated(1000)).content()));
   const named = {
@@ -59,16 +63,35 @@ async function uploadsLeft(entry: LedgerEntry, database: string): Promise<readon
   ].toSorted();
 }
 
-function sweptWhenOpened(entry: LedgerEntry): void {
-  it('sweeps the chunks no head names once their upload is an hour old, when the ledger opens, and keeps every chunk a head names', async () => {
+function sweptOnItsSchedule(entry: LedgerEntry): void {
+  it('sweeps the chunks no head names on its schedule from the open, once their upload is an hour old, and keeps every chunk a head names', async () => {
     const database = await entry.aDatabase();
     const { fresh, named } = await keptAndOrphaned(entry, database);
+    const watched = sweepsWatched(() => entry.storeOn(database));
 
-    await aLedger(entry, database);
+    const { dispose } = await openLedgerWith(watched.layer);
+    onTestFinished(dispose);
 
-    await vi.waitFor(async () => {
-      expect(await uploadsLeft(entry, database)).toEqual([...named, fresh, fresh].toSorted());
-    });
+    expect(await watched.finished).toBe('swept');
+    expect(await uploadsLeft(entry, database)).toEqual([...named, fresh, fresh].toSorted());
+  });
+}
+
+function sweepFinishedBeforeClosing(entry: LedgerEntry): void {
+  it('finishes a sweep under way before it closes its store, when its runtime is disposed', async () => {
+    const database = await entry.aDatabase();
+    const { fresh, named } = await keptAndOrphaned(entry, database);
+    const held = Promise.withResolvers<void>();
+    const watched = sweepsWatched(() => entry.storeOn(database), held.promise);
+    const { dispose } = await openLedgerWith(watched.layer);
+    await watched.started;
+
+    const disposing = dispose();
+    held.resolve();
+    await disposing;
+
+    expect(await watched.finished).toBe('swept');
+    expect(await uploadsLeft(entry, database)).toEqual([...named, fresh, fresh].toSorted());
   });
 }
 
@@ -87,7 +110,8 @@ function sweptBefore(entry: LedgerEntry): void {
 
 export function unnamedChunksSwept(entry: LedgerEntry): void {
   describe('the chunks no head names', () => {
-    sweptWhenOpened(entry);
+    sweptOnItsSchedule(entry);
+    sweepFinishedBeforeClosing(entry);
     sweptBefore(entry);
   });
 }

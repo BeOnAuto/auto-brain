@@ -38,8 +38,8 @@ export function contentSweepOn(execute: StatementExecutor): ContentSweeping['swe
 }
 
 function sweptNow({ sweepContent }: ContentSweeping): Effect.Effect<void> {
-  return Effect.flatMap(Clock.currentTimeMillis, (now) =>
-    Effect.promise(() => sweepContent(now - unnamedChunksLastMs)),
+  return Effect.uninterruptible(
+    Effect.flatMap(Clock.currentTimeMillis, (now) => Effect.promise(() => sweepContent(now - unnamedChunksLastMs))),
   );
 }
 
