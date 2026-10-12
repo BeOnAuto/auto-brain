@@ -57,7 +57,7 @@ const fakeLimiterSource = [
 ].join('\n');
 
 export function fakeProcesses(): FakeProcesses {
-  const directory = mkdtempSync(join(tmpdir(), 'auto-brain-processes-'));
+  const directory = mkdtempSync(join(tmpdir(), 'auto-runtime-processes-'));
   const limiting = join(directory, 'limiting');
   const bare = join(directory, 'bare');
   const module = join(directory, 'fake-process.mjs');

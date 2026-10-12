@@ -15,7 +15,7 @@ afterEach(() => {
 });
 
 function aDirectory(): string {
-  const directory = mkdtempSync(join(tmpdir(), 'auto-brain-limiter-'));
+  const directory = mkdtempSync(join(tmpdir(), 'auto-runtime-limiter-'));
   directories.push(directory);
   return directory;
 }
