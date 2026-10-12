@@ -8,17 +8,16 @@ import type { Projector } from '../projector/projector.ts';
 import { alphaKey } from '../views-testing/view-documents.ts';
 import { viewHarness, type ViewHarness } from '../views-testing/view-harness.ts';
 import { viewWaiting } from '../views-testing/view-reading.ts';
-import {
-  talliesOf,
-  talliesTable,
-  tallyFolder,
-  tallyOf,
-  tallyType,
-  type TallyDetails,
-  type TallyRow,
-} from './tally-folder.ts';
+import { talliesOf, tallyFolderOf, tallyOf, tallyType, type TallyDetails, type TallyRow } from './tally-folder.ts';
 
-type StartOf = Parameters<ViewHarness['start']>[0];
+type StartOf = NonNullable<Parameters<ViewHarness['start']>[0]>;
+
+type Through = NonNullable<StartOf['through']>;
+
+interface TallyWatch {
+  readonly through: Through;
+  readonly phasesOf: (details: TallyDetails) => readonly string[];
+}
 
 export interface TallyHarness extends ViewHarness {
   readonly savedTally: (name: string, details: Schema.Json) => Promise<void>;
@@ -26,20 +25,39 @@ export interface TallyHarness extends ViewHarness {
   readonly tallies: () => Promise<readonly TallyRow[]>;
   readonly untilTally: (details: TallyDetails, holds: (row: TallyRow) => boolean) => Promise<TallyRow>;
   readonly goneTally: (details: TallyDetails) => Promise<void>;
-  readonly startWithTallies: (more?: StartOf) => Projector;
+  readonly startWithTallies: (more?: StartOf, rebuildsAtOnce?: number) => Projector;
+  readonly watchingTallies: () => TallyWatch;
 }
 
 const savedAt = '2026-10-06T09:00:00.000Z';
 
 const tallyStream = definitionStreamOf(alphaKey, tallyType);
 
+const rebuildsByDefault = 4;
+
 function contextOf(name: string, version: number) {
   return { by: 'acme-admin', at: savedAt, definitionType: tallyType, definitionName: name, definitionVersion: version };
 }
 
+function watchingTallies(): TallyWatch {
+  const seen: (readonly TallyRow[])[] = [];
+  return {
+    through: (database) => ({
+      ...database,
+      write: (statement) =>
+        Effect.tap(database.write(statement), () =>
+          Effect.map(talliesOf(database, alphaKey), (rows) => {
+            seen.push(rows);
+          }),
+        ),
+    }),
+    phasesOf: (details) =>
+      seen.flatMap((rows) => rows.filter(({ tally }) => tally === tallyOf(details)).map(({ phase }) => phase)),
+  };
+}
+
 export async function tallyHarness(settings: DatabaseSettings): Promise<TallyHarness> {
-  const views = await viewHarness(settings);
-  await Effect.runPromise(views.store.database.write(talliesTable));
+  const views = await viewHarness(settings, {}, [someFolder(tallyFolderOf(rebuildsByDefault))]);
   const versions = new Map<string, number>();
   const tallies = () => Effect.runPromise(talliesOf(views.store.database, alphaKey));
   const named = async (details: TallyDetails) => (await tallies()).find(({ tally }) => tally === tallyOf(details));
@@ -74,6 +92,8 @@ export async function tallyHarness(settings: DatabaseSettings): Promise<TallyHar
           throw new Error(`The tally of ${tallyOf(details)} is still kept`);
         }
       }, viewWaiting),
-    startWithTallies: (more = {}) => views.start({ ...more, besides: [someFolder(tallyFolder)] }),
+    startWithTallies: (more = {}, rebuildsAtOnce = rebuildsByDefault) =>
+      views.start({ ...more, besides: [someFolder(tallyFolderOf(rebuildsAtOnce))] }),
+    watchingTallies,
   };
 }

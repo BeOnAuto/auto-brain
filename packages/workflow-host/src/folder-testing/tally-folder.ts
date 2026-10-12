@@ -2,14 +2,14 @@ import { Effect, Option, Schema } from 'effect';
 
 import { rowsOf, WholeNumber, type DatabaseFailed, type HostDatabase } from '../database/host-database.ts';
 import { statement, type Statement } from '../database/statement.ts';
+import { comparePoints, isAfter, pointIn, pointText, type Point } from '../pages/history-points.ts';
 import type { PageEvent, ReadPage } from '../pages/page-events.ts';
 import type { BrainDefinitions } from '../projector/brain-definitions.ts';
-import type { FoldedChanges, Folder, Reconciling, RowPhase, Writing } from '../projector/folder.ts';
-import { comparePoints, isAfter, pointIn, pointText, type Point } from '../views/view-points.ts';
+import type { FoldedChanges, Folder, Reconciled, Reconciling, RowPhase, Writing } from '../projector/folder.ts';
 
 export const tallyType = 'tally';
 
-export const talliesTable = statement`CREATE TABLE IF NOT EXISTS folder_tallies (
+const talliesTable = statement`CREATE TABLE IF NOT EXISTS folder_tallies (
     brain TEXT NOT NULL,
     tally TEXT NOT NULL,
     saved BIGINT NOT NULL,
@@ -106,57 +106,33 @@ function wantedOf({ functions }: BrainDefinitions): ReadonlyMap<string, number> 
   return wanted;
 }
 
-function freshOf(brain: string, tally: string, saved: number): TallyRow {
-  const { counts, stallsOn } = decodeKey(tally);
-  const start: TallyNext = { phase: 'waiting', checkpoint: undefined, checkpointAt: null, counted: 0 };
-  return { ...start, brain, tally, counts, stallsOn, saved, checkpointText: '' };
-}
-
-function isBuilding({ phase }: TallyRow): boolean {
-  return phase === 'waiting' || phase === 'rebuilding';
-}
-
-function phasedBySlot(rows: readonly TallyRow[], rebuildsAtOnce: number): readonly TallyRow[] {
-  const building = rows.filter((row) => isBuilding(row)).toSorted((one, other) => one.saved - other.saved);
-  const slots = new Set(building.slice(0, rebuildsAtOnce).map(({ tally }) => tally));
-  return rows.map((row) => {
-    if (!isBuilding(row)) {
-      return row;
-    }
-    return { ...row, phase: slots.has(row.tally) ? 'rebuilding' : 'waiting' };
-  });
-}
-
-function added({ brain, tally, saved, phase }: TallyRow): Statement {
+function added(brain: string, tally: string, saved: number, phase: RowPhase): Statement {
   return statement`INSERT INTO folder_tallies (brain, tally, saved, phase, checkpoint, counted)
     VALUES (${brain}, ${tally}, ${saved}, ${phase}, '', 0) ON CONFLICT (brain, tally) DO NOTHING`;
 }
 
-function phased({ brain, tally, phase }: TallyRow): Statement {
-  return statement`UPDATE folder_tallies SET phase = ${phase} WHERE brain = ${brain} AND tally = ${tally}`;
+function phased({ brain, tally }: TallyRow, phase: RowPhase): Statement {
+  return statement`UPDATE folder_tallies SET phase = ${phase}
+    WHERE brain = ${brain} AND tally = ${tally} AND phase IN ('waiting', 'rebuilding')`;
 }
 
-function dropped({ brain, tally }: TallyRow): Statement {
-  return statement`DELETE FROM folder_tallies WHERE brain = ${brain} AND tally = ${tally}`;
+function dropped({ brain, tally }: TallyRow): readonly Statement[] {
+  return [statement`DELETE FROM folder_tallies WHERE brain = ${brain} AND tally = ${tally}`];
 }
 
-function reconciledTallies(
-  { database, brain, definitions, rebuildsAtOnce }: Reconciling,
-  rows: readonly TallyRow[],
-): Effect.Effect<readonly TallyRow[], DatabaseFailed> {
+function plannedTallies({ brain, definitions }: Reconciling, rows: readonly TallyRow[]): Reconciled<TallyRow> {
   const wanted = wantedOf(definitions);
-  const kept = rows.filter(({ tally }) => wanted.has(tally));
-  const known = new Set(kept.map(({ tally }) => tally));
-  const fresh = [...wanted]
-    .filter(([tally]: readonly [string, number]) => !known.has(tally))
-    .map(([tally, saved]: readonly [string, number]) => freshOf(brain, tally, saved));
-  const after = phasedBySlot([...kept, ...fresh], rebuildsAtOnce);
-  const statements = [
-    ...rows.filter(({ tally }) => !wanted.has(tally)).map((row) => dropped(row)),
-    ...after.filter(({ tally }) => !known.has(tally)).map((row) => added(row)),
-    ...after.filter((row, index) => known.has(row.tally) && row.phase !== kept[index]?.phase).map((row) => phased(row)),
-  ];
-  return Effect.as(Effect.forEach(statements, database.write, { discard: true }), after);
+  const known = new Set(rows.map(({ tally }) => tally));
+  return {
+    fresh: [...wanted]
+      .filter(([tally]: readonly [string, number]) => !known.has(tally))
+      .map(([tally, saved]: readonly [string, number]) => ({
+        key: tally,
+        saved,
+        added: (phase: RowPhase) => added(brain, tally, saved, phase),
+      })),
+    dropped: rows.filter(({ tally }) => !wanted.has(tally)),
+  };
 }
 
 function outputOf({ event }: PageEvent): unknown {
@@ -212,24 +188,30 @@ function writtenTally(
   );
 }
 
-export const tallyFolder: Folder<TallyRow, TallyChange> = {
-  definitionType: tallyType,
-  keptOf: (details) => details,
-  keyOf: ({ tally }) => tally,
-  typesOf: ({ counts }) => [counts],
-  brainsWithRows: (database) =>
-    Effect.map(
-      rowsOf(BrainSchema, database.read(statement`SELECT DISTINCT brain FROM folder_tallies ORDER BY brain`)),
-      (rows) => rows.map(({ brain }) => brain),
-    ),
-  rowsOf: talliesOf,
-  reconcile: reconciledTallies,
-  fold: (rows, page) => Effect.succeed(foldedTallies(rows, page)),
-  write: writtenTally,
-  unchanged: (row) => ({
-    row,
-    next: { phase: row.phase, checkpoint: row.checkpoint, checkpointAt: row.checkpointAt, counted: row.counted },
-  }),
-  joinedLive: ({ row, next }) => ({ row, next: { ...next, phase: 'live' } }),
-  hasChanged: hasTallyChanged,
-};
+export function tallyFolderOf(rebuildsAtOnce: number): Folder<TallyRow, TallyChange> {
+  return {
+    definitionType: tallyType,
+    tables: [talliesTable],
+    rebuildsAtOnce,
+    keptOf: (details) => details,
+    keyOf: ({ tally }) => tally,
+    typesOf: ({ counts }) => [counts],
+    brainsWithRows: (database) =>
+      Effect.map(
+        rowsOf(BrainSchema, database.read(statement`SELECT DISTINCT brain FROM folder_tallies ORDER BY brain`)),
+        (rows) => rows.map(({ brain }) => brain),
+      ),
+    rowsOf: talliesOf,
+    reconcile: plannedTallies,
+    dropped,
+    phased,
+    fold: (rows, page) => Effect.succeed(foldedTallies(rows, page)),
+    write: writtenTally,
+    unchanged: (row) => ({
+      row,
+      next: { phase: row.phase, checkpoint: row.checkpoint, checkpointAt: row.checkpointAt, counted: row.counted },
+    }),
+    joinedLive: ({ row, next }) => ({ row, next: { ...next, phase: 'live' } }),
+    hasChanged: hasTallyChanged,
+  };
+}

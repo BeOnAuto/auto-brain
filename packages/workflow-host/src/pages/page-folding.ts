@@ -2,10 +2,10 @@ import type { FoldedView, FoldingView, FoldOutcome, FoldRequest } from '@beonaut
 import { Array, Effect, type Schema, type Semaphore } from 'effect';
 
 import { rowsOf, type DatabaseFailed, type HostDatabase } from '../database/host-database.ts';
-import { isAfter } from '../views/view-points.ts';
 import { FoldedViewSchema, type StallCause, type ViewRow } from '../views/view-rows.ts';
 import { viewToFold } from '../views/view-statements.ts';
 import { pageDeadlineMs, waitForAWorkerMs, type ViewsFolding } from '../views/views-folding.ts';
+import { isAfter } from './history-points.ts';
 import type { PageEvent, ReadPage } from './page-events.ts';
 import {
   hasChanged,

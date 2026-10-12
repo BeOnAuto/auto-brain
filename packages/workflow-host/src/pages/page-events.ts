@@ -1,7 +1,7 @@
 import { brainEventOf, definitionTypeStreamOf, type CloudEvent } from '@beonauto/definitions';
 import type { EventStore, StoredPage, StoredPlace } from '@beonauto/ledger';
 
-import type { Point } from '../views/view-points.ts';
+import type { Point } from './history-points.ts';
 
 export interface PageEvent {
   readonly point: Point;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { comparePoints, earliestOf, isAfter, pointIn, pointText } from './view-points.ts';
+import { comparePoints, earliestOf, isAfter, pointIn, pointText } from './history-points.ts';
 
 const nothingRead = pointIn('');
 

@@ -6,9 +6,18 @@ import type { SettingsOf } from '../testing/host-files.ts';
 import { viewRowOf, ViewRowSchema, type ViewRow } from '../views/view-rows.ts';
 import { foldedWritten, viewDropped, viewNamed, type FoldedRow } from '../views/view-statements.ts';
 import { racingOnce } from './pool-faults.ts';
-import { alphaKey, counting, detailsOf, foldOf, liveAt, succeeded, viewTestTimeoutMs } from './view-documents.ts';
+import {
+  alphaKey,
+  counting,
+  detailsOf,
+  foldOf,
+  liveAt,
+  succeeded,
+  viewsFolderOver,
+  viewTestTimeoutMs,
+} from './view-documents.ts';
 import { viewHarness, type ViewHarness } from './view-harness.ts';
-import { viewRowsOf, viewsReconciled } from './view-reading.ts';
+import { viewsReconciled } from './view-reading.ts';
 
 const NameRow = Schema.Struct({ name: Schema.String });
 
@@ -49,7 +58,7 @@ function rowNamed(views: ViewHarness, name: string): Promise<ViewRow> {
 function rowsAfterEachWrite(views: ViewHarness) {
   const { database } = views.store;
   const seen: PhasedRows[] = [];
-  const rowsRead = Effect.map(viewRowsOf(database), (rows) => {
+  const rowsRead = Effect.map(viewsFolderOver(views.pool).rowsOf(database, alphaKey), (rows) => {
     seen.push(rows.map(({ name, phase }) => ({ name, phase })));
   });
   const watched: HostDatabase = {
@@ -60,7 +69,7 @@ function rowsAfterEachWrite(views: ViewHarness) {
 }
 
 function rowsOfAlpha(views: ViewHarness): Promise<readonly ViewRow[]> {
-  return Effect.runPromise(viewRowsOf(views.store.database));
+  return Effect.runPromise(viewsFolderOver(views.pool).rowsOf(views.store.database, alphaKey));
 }
 
 function slotTests(settingsOf: SettingsOf): void {

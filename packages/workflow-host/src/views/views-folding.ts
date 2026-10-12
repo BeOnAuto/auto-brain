@@ -15,6 +15,7 @@ export interface ViewsFolding {
   readonly pool: ProgramPool;
   readonly folding: FoldingSettings;
   readonly overtimesBeforeStall: number;
+  readonly rebuildsAtOnce: number;
 }
 
 export const waitForAWorkerMs = 10_000;

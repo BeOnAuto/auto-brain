@@ -8,7 +8,7 @@ import { Effect, Function, Schema } from 'effect';
 
 import { failedWith, type DatabaseFailed, type HostDatabase } from './host-database.ts';
 import { addedColumns, columnsOnSQLite, hostTables, indexesOfAddedColumns, type AddedColumn } from './host-tables.ts';
-import { onSQLite } from './statement.ts';
+import { onSQLite, type Statement } from './statement.ts';
 
 const pageCacheOfEightMebibytes = -8192;
 
@@ -43,7 +43,7 @@ function columnsAddedTo(database: HostDatabase): Effect.Effect<void, DatabaseFai
   );
 }
 
-export async function openSQLiteDatabase(fileName: string): Promise<HostDatabase> {
+export async function openSQLiteDatabase(fileName: string, tables: readonly Statement[]): Promise<HostDatabase> {
   prepareDirectoryOf(fileName);
   const options = { driver: sqlite3EventStoreDriver, fileName, connectionOptions: modestConnections };
   const pool = dumbo(sqlite3EventStoreDriver.mapToDumboOptions(options));
@@ -65,7 +65,7 @@ export async function openSQLiteDatabase(fileName: string): Promise<HostDatabase
   };
   try {
     await store.migrate();
-    await Effect.runPromise(Effect.forEach(hostTables, database.write, { discard: true }));
+    await Effect.runPromise(Effect.forEach([...hostTables, ...tables], database.write, { discard: true }));
     await Effect.runPromise(columnsAddedTo(database));
     return database;
   } catch (failure) {

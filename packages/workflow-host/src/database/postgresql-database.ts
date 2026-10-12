@@ -10,6 +10,7 @@ import { statement, textOnPostgreSQL, type Statement, type StatementValue } from
 export interface PostgreSQLDatabaseOptions {
   readonly connectionString: string;
   readonly reportLostConnection: (error: Readonly<Error>) => void;
+  readonly tables: readonly Statement[];
 }
 
 interface Answer {
@@ -41,13 +42,14 @@ async function createdEach(connection: Connection, tables: readonly Statement[])
   }
 }
 
-async function migratedOn(connections: Connections): Promise<void> {
+async function migratedOn(connections: Connections, tables: readonly Statement[]): Promise<void> {
   const connection = await connections.connect();
   try {
     await connection.query('BEGIN');
     await connection.query('SELECT pg_advisory_xact_lock($1)', [migrationLock]);
     await createdEach(connection, [
       ...hostTables,
+      ...tables,
       ...addedColumns.map(({ addedWhenMissing }) => addedWhenMissing),
       ...indexesOfAddedColumns,
     ]);
@@ -60,7 +62,11 @@ async function migratedOn(connections: Connections): Promise<void> {
   }
 }
 
-export async function postgresqlDatabaseOn(store: EventStore, connections: Connections): Promise<HostDatabase> {
+export async function postgresqlDatabaseOn(
+  store: EventStore,
+  connections: Connections,
+  tables: readonly Statement[],
+): Promise<HostDatabase> {
   const query = (asked: Statement) =>
     Effect.tryPromise({
       try: () => connections.query(textOnPostgreSQL(asked), asked.values),
@@ -75,7 +81,7 @@ export async function postgresqlDatabaseOn(store: EventStore, connections: Conne
   };
   try {
     await store.migrate();
-    await migratedOn(connections);
+    await migratedOn(connections, tables);
     return { store, read: query, write: query, sharedClock, close };
   } catch (failure) {
     await close().catch(Function.constVoid);
@@ -86,8 +92,9 @@ export async function postgresqlDatabaseOn(store: EventStore, connections: Conne
 export function openPostgreSQLDatabase({
   connectionString,
   reportLostConnection,
+  tables,
 }: PostgreSQLDatabaseOptions): Promise<HostDatabase> {
   const pool = new Pool({ connectionString, max: connectionsForTheHostTables });
   pool.on('error', reportLostConnection);
-  return postgresqlDatabaseOn(postgresqlEventStore({ connectionString, reportLostConnection }), pool);
+  return postgresqlDatabaseOn(postgresqlEventStore({ connectionString, reportLostConnection }), pool, tables);
 }

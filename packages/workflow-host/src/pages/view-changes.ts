@@ -3,9 +3,9 @@ import type { FoldedView, FoldStall } from '@beonauto/workflow-engine/dsl';
 import { Struct, type Schema } from 'effect';
 
 import { lineInDocument } from '../views/view-details.ts';
-import { comparePoints, pointText, type Point } from '../views/view-points.ts';
 import type { FoldedEvent, StallCause, ViewRow, ViewStall } from '../views/view-rows.ts';
 import type { FoldedRow } from '../views/view-statements.ts';
+import { comparePoints, pointText, type Point } from './history-points.ts';
 import type { PageEvent, ReadPage } from './page-events.ts';
 
 export interface ViewChange {

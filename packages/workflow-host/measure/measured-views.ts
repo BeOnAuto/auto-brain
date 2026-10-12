@@ -14,9 +14,10 @@ export function measuredViews(pool: ProgramPool): ProjectorSettings {
     mostViewBytes: 524_288,
   };
   return {
-    folders: [someFolder(viewsFolder({ definitionType: 'recall', pool, folding, overtimesBeforeStall: 20 }))],
+    folders: [
+      someFolder(viewsFolder({ definitionType: 'recall', pool, folding, overtimesBeforeStall: 20, rebuildsAtOnce: 4 })),
+    ],
     brainsAtOnce: 4,
-    rebuildsAtOnce: 4,
     pagesPerWake: 10,
   };
 }

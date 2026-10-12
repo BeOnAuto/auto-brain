@@ -102,14 +102,15 @@ function counted(database: HostDatabase): Counted {
 }
 
 export async function rebuildOn(settings: DatabaseSettings, events: number): Promise<Rebuild> {
-  const store = await openWorkflowStore(settings, Function.constVoid);
-  await recorded(store.database, events);
   const pool = programPool({ workers: 4, heapMegabytes: 256 });
+  const measured = measuredViews(pool);
+  const store = await openWorkflowStore(settings, Function.constVoid, measured.folders);
+  await recorded(store.database, events);
   const counting = counted(store.database);
   const started = performance.now();
   const projector = startProjector({
     database: counting.database,
-    settings: measuredViews(pool),
+    settings: measured,
     reports: {
       unsettled: () => Effect.void,
       trouble: () => Effect.void,

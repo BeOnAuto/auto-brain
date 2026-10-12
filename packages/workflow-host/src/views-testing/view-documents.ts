@@ -65,8 +65,14 @@ export interface ViewsProjecting extends Omit<ProjectorSettings, 'folders'>, Vie
 
 export type ViewSettingsOf = (more?: Partial<ViewsProjecting>) => ProjectorSettings;
 
-export function viewsFolderOver(pool: ProgramPool): Folder<ViewRow, ViewChange> {
-  return viewsFolder({ definitionType: 'recall', pool, folding: foldingOf(), overtimesBeforeStall: 20 });
+export function viewsFolderOver(pool: ProgramPool, rebuildsAtOnce = 4): Folder<ViewRow, ViewChange> {
+  return viewsFolder({
+    definitionType: 'recall',
+    pool,
+    folding: foldingOf(),
+    overtimesBeforeStall: 20,
+    rebuildsAtOnce,
+  });
 }
 
 export function settingsOver(pool: ProgramPool, appends: AppendSignal): ViewSettingsOf {
@@ -83,11 +89,17 @@ export function settingsOver(pool: ProgramPool, appends: AppendSignal): ViewSett
       besides: [],
       ...more,
     };
-    const { definitionType, folding, overtimesBeforeStall, pool: folded, besides, ...projecting } = settings;
-    return {
-      ...projecting,
-      folders: [someFolder(viewsFolder({ definitionType, pool: folded, folding, overtimesBeforeStall })), ...besides],
-    };
+    const {
+      definitionType,
+      folding,
+      overtimesBeforeStall,
+      rebuildsAtOnce,
+      pool: folded,
+      besides,
+      ...projecting
+    } = settings;
+    const views = viewsFolder({ definitionType, pool: folded, folding, overtimesBeforeStall, rebuildsAtOnce });
+    return { ...projecting, folders: [someFolder(views), ...besides] };
   };
 }
 

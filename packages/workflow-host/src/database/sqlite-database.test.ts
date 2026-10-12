@@ -45,6 +45,17 @@ describe('the host database on SQLite', () => {
     );
     expect(ledger).toEqual([{ streams: 1 }]);
   });
+
+  it('makes the tables of its folders beside its own when it opens', async () => {
+    const tableOfAFolder = statement`CREATE TABLE IF NOT EXISTS folder_rows (brain TEXT NOT NULL PRIMARY KEY)`;
+    const database = await openedOn({ store: 'sqlite', file: aSQLiteFile() }, [tableOfAFolder]);
+
+    const tables = await Effect.runPromise(
+      database.read(statement`SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'folder_rows'`),
+    );
+
+    expect(tables).toEqual([{ name: 'folder_rows' }]);
+  });
 });
 
 describe('the host database on SQLite, made before a column was added', () => {
@@ -99,6 +110,6 @@ describe('the host database on SQLite, in memory or refusing', () => {
     const file = aSQLiteFile();
     mkdirSync(file);
 
-    await expect(openSQLiteDatabase(file)).rejects.toThrow('SQLITE_CANTOPEN');
+    await expect(openSQLiteDatabase(file, [])).rejects.toThrow('SQLITE_CANTOPEN');
   });
 });

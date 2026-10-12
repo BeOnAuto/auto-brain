@@ -64,12 +64,13 @@ async function allLive(store: WorkflowStore, views: number): Promise<void> {
 }
 
 export async function idleViewsOn(settings: DatabaseSettings, views: number, seconds: number): Promise<IdleViews> {
-  const store = await openWorkflowStore(settings, Function.constVoid);
-  await savedInTurn(store, views);
   const pool = programPool({ workers: 4, heapMegabytes: 256 });
+  const measured = measuredViews(pool);
+  const store = await openWorkflowStore(settings, Function.constVoid, measured.folders);
+  await savedInTurn(store, views);
   const projector = startProjector({
     database: store.database,
-    settings: measuredViews(pool),
+    settings: measured,
     reports: {
       unsettled: () => Effect.void,
       trouble: () => Effect.void,

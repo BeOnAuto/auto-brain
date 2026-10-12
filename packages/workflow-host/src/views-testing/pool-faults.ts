@@ -7,6 +7,11 @@ export interface FaultyPool {
   readonly folds: () => number;
 }
 
+export interface Overrunning {
+  readonly pool: ProgramPool;
+  readonly overrunNext: () => void;
+}
+
 export interface Held<Gated> {
   readonly gated: Gated;
   readonly waiting: () => number;
@@ -48,6 +53,33 @@ export function racingOnce(pool: ProgramPool, race: () => Promise<unknown>): Pro
         await race();
       }
       return outcome;
+    },
+  };
+}
+
+export function overrunningWhenTold(pool: ProgramPool): Overrunning {
+  const told = { overrun: false };
+  return {
+    pool: {
+      ...pool,
+      fold: (request, signal) => {
+        if (!told.overrun) {
+          return pool.fold(request, signal);
+        }
+        told.overrun = false;
+        const views = request.views.map(({ events: [first = 0] }) => ({
+          view: null,
+          folded: 0,
+          lastFolded: -1,
+          through: -1,
+          work: 0,
+          overtime: first,
+        }));
+        return Promise.resolve({ ran: 'folded', early: false, views, milliseconds: 0 });
+      },
+    },
+    overrunNext: () => {
+      told.overrun = true;
     },
   };
 }

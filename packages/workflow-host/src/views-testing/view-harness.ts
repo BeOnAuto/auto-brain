@@ -7,7 +7,7 @@ import { openWorkflowStore, type WorkflowStore } from '../host/workflow-store.ts
 import { recordingReports, type RecordingReports } from '../testing/recording-reports.ts';
 import { brainAppends, type BrainAppends } from './brain-appends.ts';
 import { harnessProjectors, type HarnessProjectors } from './harness-projectors.ts';
-import { measuredEnvironment, settingsOver, type ViewSettingsOf } from './view-documents.ts';
+import { measuredEnvironment, settingsOver, type ViewSettingsOf, type ViewsProjecting } from './view-documents.ts';
 import { viewReadingOf, type ViewReading } from './view-reading.ts';
 
 export interface ViewHarness extends BrainAppends, ViewReading, HarnessProjectors {
@@ -21,12 +21,13 @@ export interface ViewHarness extends BrainAppends, ViewReading, HarnessProjector
 export async function viewHarness(
   settings: DatabaseSettings,
   poolSettings: Partial<PoolSettings> = {},
+  besides: ViewsProjecting['besides'] = [],
 ): Promise<ViewHarness> {
   const reports = recordingReports();
-  const store = await openWorkflowStore(settings, reports.reports.lostConnection);
   const pool = programPool({ workers: 4, heapMegabytes: 64, environment: measuredEnvironment, ...poolSettings });
   const appends = appendSignal();
   const settingsOf = settingsOver(pool, appends);
+  const store = await openWorkflowStore(settings, reports.reports.lostConnection, settingsOf({ besides }).folders);
   const projectors = harnessProjectors({ database: store.database, reports: reports.reports, settingsOf });
   onTestFinished(async () => {
     await projectors.stopProjectors();

@@ -1,23 +1,15 @@
 import { Effect } from 'effect';
 
-import type { DatabaseFailed, HostDatabase } from '../database/host-database.ts';
+import type { DatabaseFailed } from '../database/host-database.ts';
 import type { HostNote } from '../host/host-reports.ts';
+import { comparePoints, earliestOf, type Point } from '../pages/history-points.ts';
 import { readPage, typesToRead, type ReadPage } from '../pages/page-events.ts';
-import { comparePoints, earliestOf, type Point } from '../views/view-points.ts';
-import { definitionsAfter, definitionStreamOf, noDefinitions, type BrainDefinitions } from './brain-definitions.ts';
 import type { FoldedChanges, Folder, PassedChange, PassedRow } from './folder.ts';
+import { hasFreeSlot, reconciledRows, type DefinitionsKept } from './reconciled-rows.ts';
 
 export interface Resting {
   readonly isResting: (brain: string, row: string) => boolean;
   readonly rest: (brain: string, row: string) => void;
-}
-
-export type KeptDefinitions = (definitionType: string) => Map<string, BrainDefinitions>;
-
-export interface DefinitionsKept {
-  readonly database: HostDatabase;
-  readonly rebuildsAtOnce: number;
-  readonly definitions: KeptDefinitions;
 }
 
 export interface FolderParts extends DefinitionsKept {
@@ -71,39 +63,6 @@ export function readFor(parts: FolderParts, brain: string, { after, types }: Liv
   return Effect.promise(() => readPage(parts.database.store, read)).pipe(
     Effect.tap((page) => noted(parts, brain, page)),
   );
-}
-
-function definitionsOf<Row extends PassedRow, Change extends PassedChange<Row>>(
-  folder: Folder<Row, Change>,
-  { database, definitions }: DefinitionsKept,
-  brain: string,
-): Effect.Effect<BrainDefinitions> {
-  const kept = definitions(folder.definitionType);
-  const known = kept.get(brain) ?? noDefinitions;
-  return Effect.promise(() =>
-    database.store.read(definitionStreamOf(brain, folder.definitionType), known.version),
-  ).pipe(
-    Effect.map(({ messages }) => {
-      const next = definitionsAfter(known, messages, folder.keptOf);
-      kept.set(brain, next);
-      return next;
-    }),
-  );
-}
-
-export function reconciledRows<Row extends PassedRow, Change extends PassedChange<Row>>(
-  folder: Folder<Row, Change>,
-  kept: DefinitionsKept,
-  brain: string,
-): Effect.Effect<readonly Row[], DatabaseFailed> {
-  return Effect.gen(function* () {
-    const definitions = yield* definitionsOf(folder, kept, brain);
-    const rows = yield* folder.rowsOf(kept.database, brain);
-    return yield* folder.reconcile(
-      { database: kept.database, brain, definitions, rebuildsAtOnce: kept.rebuildsAtOnce },
-      rows,
-    );
-  });
 }
 
 function restingKeyOf<Row extends PassedRow, Change extends PassedChange<Row>>(
@@ -247,9 +206,10 @@ function canBuildFrom<Row extends PassedRow, Change extends PassedChange<Row>>(
   passing: Passing<Row, Change>,
   rows: readonly Row[],
 ): boolean {
-  const rebuilding = rows.filter(({ phase }) => phase === 'rebuilding');
-  const slotFree = rebuilding.length < passing.parts.rebuildsAtOnce && rows.some(({ phase }) => phase === 'waiting');
-  return slotFree || rebuilding.some((row) => isAwake(passing, row));
+  return (
+    hasFreeSlot(rows, passing.folder.rebuildsAtOnce) ||
+    rows.some((row) => row.phase === 'rebuilding' && isAwake(passing, row))
+  );
 }
 
 export function folderPassOf<Row extends PassedRow, Change extends PassedChange<Row>>(

@@ -17,10 +17,13 @@ export {
   someFolder,
   type FoldedChanges,
   type Folder,
+  type FreshRow,
   type PassedChange,
   type PassedRow,
+  type Reconciled,
   type Reconciling,
   type RowPhase,
+  type RowStanding,
   type SomeFolder,
   type Writing,
 } from './projector/folder.ts';
@@ -32,7 +35,7 @@ export {
   type ViewDetails,
   type ViewFilter,
 } from './views/view-details.ts';
-export type { Point } from './views/view-points.ts';
+export type { Point } from './pages/history-points.ts';
 export type { FoldedEvent, KeptView, StallCause, StalledEvent, ViewStall } from './views/view-rows.ts';
 export { viewsFolder } from './views/views-folder.ts';
 export type { FoldingSettings, ViewsFolding } from './views/views-folding.ts';

@@ -3,9 +3,9 @@ import type { StallKind } from '@beonauto/workflow-engine/dsl';
 import { Schema } from 'effect';
 
 import { WholeNumber } from '../database/host-database.ts';
+import { pointIn, type Point } from '../pages/history-points.ts';
 import type { RowPhase } from '../projector/folder.ts';
 import { ViewDetailsSchema, type ViewDetails } from './view-details.ts';
-import { pointIn, type Point } from './view-points.ts';
 
 export type StallCause = StallKind | 'time' | 'memory' | 'crash';
 

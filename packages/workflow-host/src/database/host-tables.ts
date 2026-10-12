@@ -1,4 +1,3 @@
-import { viewsTable } from '../views/view-statements.ts';
 import { statement, type Statement } from './statement.ts';
 
 export interface AddedColumn {
@@ -199,5 +198,4 @@ export const hostTables: readonly Statement[] = [
     expires_at BIGINT NOT NULL
   )`,
   ...followerTables,
-  viewsTable,
 ];

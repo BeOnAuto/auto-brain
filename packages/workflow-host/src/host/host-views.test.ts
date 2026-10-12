@@ -1,23 +1,26 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { Function } from 'effect';
+import { Effect, Function } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { onSQLite } from '../testing/host-files.ts';
+import { tallyFolderOf } from '../folder-testing/tally-folder.ts';
+import { someFolder } from '../projector/folder.ts';
+import { onSQLite, openedOn } from '../testing/host-files.ts';
 import { hostedOn } from '../testing/host-runs.ts';
 import { counting, viewTestTimeoutMs } from '../views-testing/view-documents.ts';
 import { viewHarness } from '../views-testing/view-harness.ts';
 import { openWorkflowStore } from './workflow-store.ts';
 
-describe('a host given a store and the settings of views', { timeout: viewTestTimeoutMs }, () => {
+describe('a host given a store and the settings of its projector', { timeout: viewTestTimeoutMs }, () => {
   it('keeps the views of recall functions on that store while it serves, and stops keeping them when it stops', async () => {
     const settings = await onSQLite();
     const views = await viewHarness(settings);
     await views.saved('runs', counting);
     await views.ran('reasoning/runs', 1);
-    const store = await openWorkflowStore(settings, Function.constVoid);
+    const projector = views.settingsOf();
+    const store = await openWorkflowStore(settings, Function.constVoid, projector.folders);
 
-    const hosted = await hostedOn(store, { views: views.settingsOf() });
+    const hosted = await hostedOn(store, { projector });
     const kept = await views.until('runs', ({ folded }) => folded === 1);
     await hosted.host.stop();
     await views.ran('reasoning/runs', 2);
@@ -26,5 +29,20 @@ describe('a host given a store and the settings of views', { timeout: viewTestTi
 
     expect([kept.phase, kept.view, afterStopping?.folded]).toEqual(['live', 1, 1]);
     expect(hosted.troubles()).toEqual([]);
+  });
+});
+
+describe('a host given the settings of a database and of its projector', { timeout: viewTestTimeoutMs }, () => {
+  it('makes the tables of the folders of its projector when it opens its store', async () => {
+    const settings = await onSQLite();
+    const folder = tallyFolderOf(1);
+
+    const hosted = await hostedOn(settings, {
+      projector: { folders: [someFolder(folder)], brainsAtOnce: 1, pagesPerWake: 1 },
+    });
+    await hosted.host.stop();
+    const brains = await Effect.runPromise(folder.brainsWithRows(await openedOn(settings)));
+
+    expect(brains).toEqual([]);
   });
 });

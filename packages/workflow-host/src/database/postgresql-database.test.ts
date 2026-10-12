@@ -80,10 +80,13 @@ async function aPortNobodyListensOn(): Promise<number> {
   return port;
 }
 
+const tableOfAFolder = statement`CREATE TABLE IF NOT EXISTS folder_rows (brain TEXT NOT NULL PRIMARY KEY)`;
+
 const migrationAsked: readonly Asked[] = [
   { text: 'BEGIN', values: [] },
   { text: 'SELECT pg_advisory_xact_lock($1)', values: [7_461_239_041] },
   ...hostTables.map((table) => ({ text: textOnPostgreSQL(table), values: [] })),
+  { text: textOnPostgreSQL(tableOfAFolder), values: [] },
   ...addedColumns.map(({ addedWhenMissing }) => ({ text: textOnPostgreSQL(addedWhenMissing), values: [] })),
   ...indexesOfAddedColumns.map((index) => ({ text: textOnPostgreSQL(index), values: [] })),
   { text: 'COMMIT', values: [] },
@@ -92,10 +95,10 @@ const migrationAsked: readonly Asked[] = [
 const thirdTable = textOnPostgreSQL(hostTables[2] ?? statement``);
 
 describe('the host database on PostgreSQL, opening', () => {
-  it('migrates the event store, then its own tables in one transaction under a lock of the host', async () => {
+  it('migrates the event store, then its own tables and those of its folders in one transaction under a lock of the host', async () => {
     const { store, connections, asked, said } = telling();
 
-    await postgresqlDatabaseOn(store, connections);
+    await postgresqlDatabaseOn(store, connections, [tableOfAFolder]);
 
     expect(asked()).toEqual(migrationAsked);
     expect(said()).toEqual(['store migrated', 'connection released']);
@@ -104,7 +107,7 @@ describe('the host database on PostgreSQL, opening', () => {
   it('rolls its migration back, and closes, when a table cannot be made', async () => {
     const { store, connections, asked, said } = telling(thirdTable);
 
-    await expect(postgresqlDatabaseOn(store, connections)).rejects.toThrow(`${thirdTable} failed`);
+    await expect(postgresqlDatabaseOn(store, connections, [])).rejects.toThrow(`${thirdTable} failed`);
     expect(asked().slice(-2)).toEqual([
       { text: thirdTable, values: [] },
       { text: 'ROLLBACK', values: [] },
@@ -125,7 +128,7 @@ describe('the host database on PostgreSQL, opening', () => {
 describe('the host database on PostgreSQL, open', () => {
   it('reads and writes with its values numbered, and closes the store and its connections', async () => {
     const { store, connections, asked, said } = telling();
-    const database = await postgresqlDatabaseOn(store, connections);
+    const database = await postgresqlDatabaseOn(store, connections, []);
     const migration = asked().length;
 
     const read = await Effect.runPromise(database.read(statement`SELECT ${1} AS one`));
@@ -147,7 +150,7 @@ describe('the host database on PostgreSQL, open', () => {
 describe('the host database on PostgreSQL, telling the time', () => {
   it('reads the clock of the database, which every server on it shares, in milliseconds', async () => {
     const { store, connections, asked } = telling('', () => [{ now: '1790845200000' }]);
-    const database = await postgresqlDatabaseOn(store, connections);
+    const database = await postgresqlDatabaseOn(store, connections, []);
     const migration = asked().length;
 
     const now = await Effect.runPromise(clockOf(database));

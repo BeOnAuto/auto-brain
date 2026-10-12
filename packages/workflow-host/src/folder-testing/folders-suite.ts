@@ -3,11 +3,11 @@ import { setTimeout } from 'node:timers/promises';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { reconciledRows } from '../projector/folder-pass.ts';
 import { definitionsByType } from '../projector/projector-schedule.ts';
+import { reconciledRows, type DefinitionsKept } from '../projector/reconciled-rows.ts';
 import type { SettingsOf } from '../testing/host-files.ts';
 import { alphaKey, counting, foldedAll, liveWith, viewTestTimeoutMs } from '../views-testing/view-documents.ts';
-import { tallyFolder, type TallyDetails, type TallyRow } from './tally-folder.ts';
+import { tallyFolderOf, type TallyDetails, type TallyRow } from './tally-folder.ts';
 import { tallyHarness, type TallyHarness } from './tally-harness.ts';
 
 const succeeded: TallyDetails = { counts: 'run_succeeded' };
@@ -22,6 +22,14 @@ function liveCounting(counted: number): (row: TallyRow) => boolean {
 
 function phasesOf(rows: readonly TallyRow[]): Readonly<Record<string, string>> {
   return Object.fromEntries(rows.map(({ counts, phase }) => [counts, phase]));
+}
+
+function keptBy(tallies: TallyHarness): DefinitionsKept {
+  return { database: tallies.store.database, definitions: definitionsByType().of };
+}
+
+function namedBy(rows: readonly TallyRow[], { counts }: TallyDetails): TallyRow | undefined {
+  return rows.find((row) => row.counts === counts && row.stallsOn === null);
 }
 
 async function readsWhile(tallies: TallyHarness, work: () => Promise<unknown>): Promise<number> {
@@ -58,10 +66,9 @@ function phaseTests(settingsOf: SettingsOf): void {
     await tallies.savedTally('succeeded', succeeded);
     await tallies.savedTally('started', started);
     await tallies.savedTally('unreadable', { nothing: 'to count' });
-    const kept = { database: tallies.store.database, rebuildsAtOnce: 1, definitions: definitionsByType().of };
-    const slotted = await Effect.runPromise(reconciledRows(tallyFolder, kept, alphaKey));
+    const slotted = await Effect.runPromise(reconciledRows(tallyFolderOf(1), keptBy(tallies), alphaKey));
     await tallies.ran('reasoning/runs', 'fine');
-    tallies.startWithTallies({ rebuildsAtOnce: 1 });
+    tallies.startWithTallies({}, 1);
     await tallies.untilTally(succeeded, liveCounting(1));
     await tallies.untilTally(started, liveCounting(1));
 
@@ -77,42 +84,53 @@ function phaseTests(settingsOf: SettingsOf): void {
 }
 
 function restartTests(settingsOf: SettingsOf): void {
-  it('keeps its checkpoint over a restart, so a new projector folds only what came after it, each event once', async () => {
+  it('keeps its checkpoint over a restart, so its row never leaves live and a new projector folds only what came after it, each event once', async () => {
     const tallies = await tallyHarness(await settingsOf());
     await tallies.savedTally('succeeded', succeeded);
     await tallies.ranEach('reasoning/runs', [1, 2]);
     const first = tallies.startWithTallies();
     const before = await tallies.untilTally(succeeded, liveCounting(2));
     await first.stop();
+    const watch = tallies.watchingTallies();
 
     await tallies.ranEach('reasoning/runs', [3, 4, 5]);
-    tallies.startWithTallies();
+    tallies.startWithTallies({ through: watch.through });
     await tallies.untilTally(succeeded, liveCounting(5));
     await setTimeout(300);
     const [after] = await tallies.tallies();
 
     expect(before.checkpoint).toBeDefined();
+    expect([...new Set(watch.phasesOf(succeeded))]).toEqual(['live']);
     expect([after?.phase, after?.counted]).toEqual(['live', 5]);
   });
 }
 
 function definitionTests(settingsOf: SettingsOf): void {
-  it('rebuilds from the start when its definition changes, keeps one row for the definitions that name it, and drops it when none does', async () => {
+  it('rebuilds from the start when the part of its definition it is keyed by changes, rebuilds no row an edit leaves that part of or another definition still names, and drops a row once none names it', async () => {
     const tallies = await tallyHarness(await settingsOf());
     await tallies.savedTally('one', succeeded);
     await tallies.savedTally('another', succeeded);
     await tallies.ranEach('reasoning/runs', [1, 2]);
-    tallies.startWithTallies();
+    const watch = tallies.watchingTallies();
+    tallies.startWithTallies({ through: watch.through });
     await tallies.untilTally(succeeded, liveCounting(2));
     const shared = await tallies.tallies();
+    const builtUntil = watch.phasesOf(succeeded).length;
 
     await tallies.savedTally('one', poisoned);
     const rebuilt = await tallies.untilTally(poisoned, liveCounting(2));
+    await tallies.savedTally('another', succeeded);
+    await tallies.ran('reasoning/runs', 3);
+    await tallies.untilTally(succeeded, liveCounting(3));
+    await tallies.untilTally(poisoned, liveCounting(3));
     const both = await tallies.tallies();
+    const sinceBuilt = watch.phasesOf(succeeded).slice(builtUntil);
     await tallies.retiredTally('another');
     await tallies.goneTally(succeeded);
 
     expect([shared.length, both.length, rebuilt.counted]).toEqual([1, 2, 2]);
+    expect([...new Set(sinceBuilt)]).toEqual(['live']);
+    expect(namedBy(both, succeeded)?.saved).toBe(namedBy(shared, succeeded)?.saved);
   });
 }
 
@@ -120,14 +138,14 @@ function rowTests(settingsOf: SettingsOf): void {
   it('takes no write from a pass that read its row before another wrote it', async () => {
     const tallies = await tallyHarness(await settingsOf());
     await tallies.savedTally('succeeded', succeeded);
-    const kept = { database: tallies.store.database, rebuildsAtOnce: 1, definitions: definitionsByType().of };
-    const rows = await Effect.runPromise(reconciledRows(tallyFolder, kept, alphaKey));
+    const folder = tallyFolderOf(1);
+    const rows = await Effect.runPromise(reconciledRows(folder, keptBy(tallies), alphaKey));
     const writing = { database: tallies.store.database, brain: alphaKey, note: tallies.reports.reports.note };
 
-    const stale = rows.map((row) => tallyFolder.unchanged({ ...row, checkpointText: 'not its checkpoint' }));
-    const written = await Promise.all(stale.map((change) => Effect.runPromise(tallyFolder.write(writing, change))));
+    const stale = rows.map((row) => folder.unchanged({ ...row, checkpointText: 'not its checkpoint' }));
+    const written = await Promise.all(stale.map((change) => Effect.runPromise(folder.write(writing, change))));
 
-    expect([written, stale.map((change) => tallyFolder.hasChanged(change))]).toEqual([[undefined], [false]]);
+    expect([written, stale.map((change) => folder.hasChanged(change))]).toEqual([[undefined], [false]]);
   });
 }
 

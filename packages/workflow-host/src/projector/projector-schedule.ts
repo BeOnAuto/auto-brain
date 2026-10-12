@@ -1,5 +1,6 @@
 import type { BrainDefinitions } from './brain-definitions.ts';
-import type { KeptDefinitions, Resting } from './folder-pass.ts';
+import type { Resting } from './folder-pass.ts';
+import type { KeptDefinitions } from './reconciled-rows.ts';
 
 export interface DefinitionsByType {
   readonly of: KeptDefinitions;

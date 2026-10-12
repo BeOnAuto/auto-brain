@@ -2,17 +2,17 @@ import { Effect } from 'effect';
 
 import type { DatabaseFailed, HostDatabase } from '../database/host-database.ts';
 import type { HostNote } from '../host/host-reports.ts';
-import { comparePoints, earliestOf, type Point } from '../views/view-points.ts';
+import { comparePoints, earliestOf, type Point } from '../pages/history-points.ts';
 import {
   folderPassOf,
   readFor,
   type FolderParts,
   type FolderPass,
-  type KeptDefinitions,
   type LiveRead,
   type Resting,
 } from './folder-pass.ts';
 import type { ProjectorSettings } from './projector-settings.ts';
+import type { KeptDefinitions } from './reconciled-rows.ts';
 
 export interface PassParts {
   readonly database: HostDatabase;
@@ -70,7 +70,6 @@ function sharedSteps(
 function folderPartsOf({ database, settings, definitions, note, resting, firstSeen, trouble }: PassParts): FolderParts {
   return {
     database,
-    rebuildsAtOnce: settings.rebuildsAtOnce,
     definitions,
     note,
     resting,
