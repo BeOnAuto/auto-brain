@@ -29,12 +29,14 @@ const oldWords: readonly string[] = [
   String.raw`(?<![\w-])brain:(?=\S)`,
   'brain_(?:created|updated|retired)',
   String.raw`/brains(?![\w-])`,
-  '@beonauto/brains',
+  '@beonauto/',
   'workflow_followed_brains',
   '_by_brain',
   'RECALL_BRAINS_AT_ONCE',
   String.raw`(?:[{,]\s*|\n\s*|["'])brains?["']?\s*:`,
   '(?i:auto[-_ ]?brain)',
+  '(?i:beonauto/auto-runtime)',
+  String.raw`com\.beonauto/`,
 ];
 
 const keptFolders: readonly string[] = ['docs/decisions/'];

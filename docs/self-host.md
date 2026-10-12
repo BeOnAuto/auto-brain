@@ -4,7 +4,7 @@ To try Auto on your own computer, follow the [local quick start](get-started/loc
 
 Auto Cloud is coming soon. [Request an invitation](https://on.auto/request-invite) if you would prefer a hosted playbook.
 
-Self-hosting gives your team control over where the runtime and its recorded data run. Auto Runtime is source-available; review the repository's [licensing terms](https://github.com/BeOnAuto/auto-runtime/blob/main/LICENSING.md) when planning a deployment.
+Self-hosting gives your team control over where the runtime and its recorded data run. Auto Runtime is source-available; review the repository's [licensing terms](https://github.com/BeOnAuto/runtime/blob/main/LICENSING.md) when planning a deployment.
 
 ## Plan your deployment with Xolvio
 
@@ -14,4 +14,4 @@ Your team will need to own infrastructure and updates, credentials and access co
 
 Review [Function availability](concepts/functions.md#availability) and agree the support requirements of the version you plan to deploy before committing to a production workload.
 
-For contributor setup and implementation details, see the repository's [engineering guides](https://github.com/BeOnAuto/auto-runtime/tree/main/docs/engineering). Those notes follow the development checkout and are maintained with the code.
+For contributor setup and implementation details, see the repository's [engineering guides](https://github.com/BeOnAuto/runtime/tree/main/docs/engineering). Those notes follow the development checkout and are maintained with the code.

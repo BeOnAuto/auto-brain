@@ -19,10 +19,10 @@ export default defineConfig({
     sidebar: [{ text: 'Introduction', link: '/' }, ...navigation],
     search: { provider: 'local' },
     editLink: {
-      pattern: 'https://github.com/BeOnAuto/auto-runtime/edit/main/docs/:path',
-      text: 'Edit this page in auto-runtime',
+      pattern: 'https://github.com/BeOnAuto/runtime/edit/main/docs/:path',
+      text: 'Edit this page in BeOnAuto/runtime',
     },
-    socialLinks: [{ icon: 'github', link: 'https://github.com/BeOnAuto/auto-runtime' }],
+    socialLinks: [{ icon: 'github', link: 'https://github.com/BeOnAuto/runtime' }],
     footer: { message: 'Runtime documentation preview. Published with Auto at on.auto/docs.' },
   },
 });

@@ -2,18 +2,18 @@
 
 ## What this is
 
-`auto-runtime` is the runtime for business playbooks, a pnpm monorepo. It is source-available under the Elastic License 2.0 (see `LICENSING.md`); never call it open source. Its container image runs self-hosted and in Auto's cloud hosting. Auto Studio (the management plane, with governance and observability) and the hosting side live in the private `on.auto` repo, not here.
+`@on.auto/runtime` is the runtime for business playbooks, a pnpm monorepo. It is source-available under the Elastic License 2.0 (see `LICENSING.md`); never call it open source. Its container image runs self-hosted and in Auto's cloud hosting. Auto Studio (the management plane, with governance and observability) and the hosting side live in the private `on.auto` repo, not here.
 
-- `packages/server`: the Node.js server (`@beonauto/server`), plus everything that packages it into a container (`Dockerfile`, `Dockerfile.dockerignore`)
-- `packages/api`: the API (`@beonauto/api`), a Hono app that answers every request, with problem documents, the `Origin` and `Host` checks, authentication and the operation routes
-- `packages/identity`: API keys, the local-mode rule and the key command (`@beonauto/identity`)
-- `packages/*`: the server's libraries (`@beonauto/*`), including the ledger
+- `packages/server`: the Node.js server (`@on.auto/server`), plus everything that packages it into a container (`Dockerfile`, `Dockerfile.dockerignore`)
+- `packages/api`: the API (`@on.auto/api`), a Hono app that answers every request, with problem documents, the `Origin` and `Host` checks, authentication and the operation routes
+- `packages/identity`: API keys, the local-mode rule and the key command (`@on.auto/identity`)
+- `packages/*`: the server's libraries (`@on.auto/*`), including the ledger
 - `capabilities/*`: the runtime adapters of the playbook's capabilities. `reasoning` implements reasoning functions, `interaction` interaction functions, `computation` computation functions, `recall` recall functions and `coordination` workflows; `prediction` has a design note only.
 - `TODO.md`: setup work that is still outstanding
 
 Use the vocabulary in [Playbook terminology](docs/concepts/terminology.md) in product text and domain code. A playbook reasons, interacts, predicts, recalls and computes. Workflows coordinate those functions. The five function categories are Reasoning, Interaction, Prediction, Recall and Computation, in that order; coordination is a capability, not a sixth function type. A reasoning function has a prompt. A workflow or function definition is reusable; a run executes it against particular inputs.
 
-Playbooks own reusable functions, workflows and runs. Each playbook includes one brain: its function collection, with no independent lifecycle. Auto Runtime executes; Auto Studio manages and presents; the user's agent is a separate client. The product is not live and has no stored data, so nothing keeps an old name beside a new one: no alias, no mapping, no anchor for an old heading, no upgrade note and no test that an old name or an old record still works, and a local database made before a rename is deleted. The product's words are the one vocabulary, on the wire, in the ledger, in the configuration, in the package names and in the code; the repository, the root package, the image and the configuration file are named `auto-runtime`, and the packages are scoped `@beonauto`. A definition has a `type`, `reasoning`, `interaction`, `computation`, `recall` or `workflow`, and a run has a `run_id`; a record whose own `type` names it, such as a ledger event, carries `definition_type`. The workflow engine's run-log formats are internal replay formats and follow their own rule, which its README sets out under [State formats](packages/workflow-engine/README.md#state-formats). `Capability` is the contract a capability package implements for the runtime, and is named for what it is.
+Playbooks own reusable functions, workflows and runs. Each playbook includes one brain: its function collection, with no independent lifecycle. Auto Runtime executes; Auto Studio manages and presents; the user's agent is a separate client. The product is not live and has no stored data, so nothing keeps an old name beside a new one: no alias, no mapping, no anchor for an old heading, no upgrade note and no test that an old name or an old record still works, and a local database made before a rename is deleted. The product's words are the one vocabulary, on the wire, in the ledger, in the configuration, in the package names and in the code; a name inside a namespace drops the brand and a name outside keeps it, so the repository is `BeOnAuto/runtime`, the root package `@on.auto/runtime`, the image `beonauto/runtime`, the packages are scoped `@on.auto`, and the configuration file is `auto-runtime.yaml`. A definition has a `type`, `reasoning`, `interaction`, `computation`, `recall` or `workflow`, and a run has a `run_id`; a record whose own `type` names it, such as a ledger event, carries `definition_type`. The workflow engine's run-log formats are internal replay formats and follow their own rule, which its README sets out under [State formats](packages/workflow-engine/README.md#state-formats). `Capability` is the contract a capability package implements for the runtime, and is named for what it is.
 
 Domain code names a definition for its resource: `WorkflowDefinition`, and `ReasoningFunctionDefinition`, `InteractionFunctionDefinition`, `PredictionFunctionDefinition`, `RecallFunctionDefinition` or `ComputationFunctionDefinition` once that function type is implemented. A definition's `type` is its one discriminator: `reasoning`, `interaction`, `prediction`, `recall` and `computation` for the five function types, and `workflow`, which is not a function type. A parsed source document is a `...DefinitionDocument`, and a factory of a runtime adapter is `make...Adapter`. **inference** names a model call and its provider's terms, **agent** an actual actor, such as an external coding agent, and **memory** the retention of information.
 
@@ -21,7 +21,7 @@ Domain code names a definition for its resource: `WorkflowDefinition`, and `Reas
 
 ```bash
 pnpm dev               # the server, which runs workflows itself, restarted on every save
-pnpm --filter @beonauto/server container:build   # build the image locally
+pnpm --filter @on.auto/server container:build   # build the image locally
 pnpm test:watch        # every package's tests in one Vitest watch process
 pnpm typecheck:watch   # TypeScript 7 over the whole repo
 pnpm check             # the full gate: format, lint, typecheck, test (100% coverage), knip, sherif
@@ -30,7 +30,7 @@ pnpm lint:fix          # oxlint --fix
 pnpm commit            # guided conventional commit (czg)
 ```
 
-Run one package's gate with `pnpm turbo run lint typecheck test --filter @beonauto/server`.
+Run one package's gate with `pnpm turbo run lint typecheck test --filter @on.auto/server`.
 
 ## How the code runs
 

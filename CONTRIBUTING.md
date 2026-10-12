@@ -5,7 +5,7 @@ Thanks for helping build the runtime for business playbooks. Bug reports, ideas 
 ## Before you start
 
 - **Found a vulnerability?** Don't open an issue. Follow [SECURITY.md](SECURITY.md).
-- **Bugs and ideas** go in [issues](https://github.com/BeOnAuto/auto-runtime/issues/new/choose). For anything bigger than a small fix, open an issue first so we can agree on the approach before you write code.
+- **Bugs and ideas** go in [issues](https://github.com/BeOnAuto/runtime/issues/new/choose). For anything bigger than a small fix, open an issue first so we can agree on the approach before you write code.
 - **The CLA.** Auto Runtime is [source-available under ELv2](LICENSING.md), and Auto also sells commercial licenses. So every contributor signs the [Contributor License Agreement](CLA.md) once. The CLA bot asks on your first pull request; reply with the sentence it gives you.
 - Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
@@ -55,7 +55,7 @@ The preview opens under `/docs/`. Read [Documentation contributions](docs/contri
 
 Function and workflow implementations live in `capabilities/<name>`. The shared `Capability` interface is their low-level runtime adapter contract, including custom extension adapters. It is not a product category. Each implemented adapter is a workspace package:
 
-- `package.json` named `@beonauto/<name>`, with `"exports": { ".": "./src/index.ts" }` and `lint`, `typecheck` and `test` scripts. Copy them from `packages/config`.
+- `package.json` named `@on.auto/<name>`, with `"exports": { ".": "./src/index.ts" }` and `lint`, `typecheck` and `test` scripts. Copy them from `packages/config`.
 - `README.md` saying what the adapter runs and how it reads and writes the ledger.
 - `src/index.ts` as its public interface, with tests beside the code.
 

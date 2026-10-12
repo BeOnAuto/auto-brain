@@ -3,12 +3,12 @@
 Settings come from environment variables and, for those that are lists or maps, from an optional YAML file:
 
 - **Environment variables** can hold every setting, and are the only place for keys and other secrets. In development, `pnpm dev` reads `.env` at the root of the repository after `packages/server/dev.env`, and a variable set in the shell wins over both; the server itself never reads `.env`. A container takes environment variables, or a file of them with `docker run --env-file`.
-- **The configuration file**, named by `CONFIG_FILE`, holds `model_gateways`, `model_aliases`, `declared_models`, `allowed_models`, `mcp_servers`, `api_keys` and `allowed_origins`. `pnpm dev` passes `auto-runtime.yaml` at the root of the repository when it is there; copy [`auto-runtime.example.yaml`](https://github.com/BeOnAuto/auto-runtime/blob/main/auto-runtime.example.yaml) to start one. Git ignores it. In development, the environment variables that a `${NAME}` reference in it needs go in `.env` at the root of the repository, which `pnpm dev` loads and Git also ignores.
+- **The configuration file**, named by `CONFIG_FILE`, holds `model_gateways`, `model_aliases`, `declared_models`, `allowed_models`, `mcp_servers`, `api_keys` and `allowed_origins`. `pnpm dev` passes `auto-runtime.yaml` at the root of the repository when it is there; copy [`auto-runtime.example.yaml`](https://github.com/BeOnAuto/runtime/blob/main/auto-runtime.example.yaml) to start one. Git ignores it. In development, the environment variables that a `${NAME}` reference in it needs go in `.env` at the root of the repository, which `pnpm dev` loads and Git also ignores.
 
 Each key of the file stands for the environment variable of the same name in upper case, and a variable that is set wins over the key, whole: `MODEL_GATEWAYS` replaces the file's `model_gateways`, it is not merged with it. The server logs at start which settings it read from the file, and which of them the environment set too. A secret is never written in the file: the file refers to the variable that holds it as `${NAME}`, or `${NAME:-default}`, and `$$` stands for a literal `$`. A value that looks like a credential and is not such a reference stops the server at start, as does a URL with a password, or whose user or query value looks like one, or an argument whose part after its `=` does; a value is judged by what it holds, never by the name a URL or an argument gives it.
 
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/BeOnAuto/auto-runtime/main/auto-runtime.schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/BeOnAuto/runtime/main/auto-runtime.schema.json
 model_gateways:
   - name: gateway
     base_url: https://gateway.example.com/v1
@@ -17,7 +17,7 @@ model_aliases:
   anthropic/*: gateway/anthropic/*
 ```
 
-[`auto-runtime.schema.json`](https://github.com/BeOnAuto/auto-runtime/blob/main/auto-runtime.schema.json) is the file's JSON Schema, so an editor with the YAML language server completes and checks it. A file the server cannot use, a key it does not hold, a value its setting refuses or a reference to a variable that is not set stops it at start with one line that names the file, the line, the column and the key, never a value.
+[`auto-runtime.schema.json`](https://github.com/BeOnAuto/runtime/blob/main/auto-runtime.schema.json) is the file's JSON Schema, so an editor with the YAML language server completes and checks it. A file the server cannot use, a key it does not hold, a value its setting refuses or a reference to a variable that is not set stops it at start with one line that names the file, the line, the column and the key, never a value.
 
 | To use                                               | Set                                                                                     | Example                                                                                 |
 | ---------------------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
