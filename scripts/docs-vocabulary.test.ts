@@ -34,7 +34,7 @@ const oldWords: readonly string[] = [
   '_by_brain',
   'RECALL_BRAINS_AT_ONCE',
   String.raw`(?:[{,]\s*|\n\s*|["'])brains?["']?\s*:`,
-  '[aA]uto[-_ ]?[bB]rain|AUTO[-_ ]?BRAIN',
+  '(?i:auto[-_ ]?brain)',
 ];
 
 const keptFolders: readonly string[] = ['docs/decisions/'];
