@@ -9,8 +9,8 @@ export type { HostNote, HostReports, UnsettledRun } from './host/host-reports.ts
 export { HostElsewhere, type DeliveryAnswer, type RunStart, type StartAnswer } from './host/run-requests.ts';
 export { openWorkflowHost, type HostOptions, type WorkflowHost } from './host/workflow-host.ts';
 export { openWorkflowStore, type WorkflowStore } from './host/workflow-store.ts';
-export type { DatabaseFailed, HostDatabase } from './database/host-database.ts';
-export type { Statement } from './database/statement.ts';
+export { DatabaseFailed, rowsOf, WholeNumber, type HostDatabase } from './database/host-database.ts';
+export { statement, type Statement, type StatementValue } from './database/statement.ts';
 export type { PageEvent, ReadPage } from './pages/page-events.ts';
 export type { PlaybookDefinitions, KeptFunction, KeptOf } from './projector/playbook-definitions.ts';
 export {
@@ -35,7 +35,7 @@ export {
   type ViewDetails,
   type ViewFilter,
 } from './views/view-details.ts';
-export type { Point } from './pages/history-points.ts';
+export { comparePoints, isAfter, pointIn, pointText, type Point } from './pages/history-points.ts';
 export type { FoldedEvent, KeptView, StallCause, StalledEvent, ViewStall } from './views/view-rows.ts';
 export { viewsFolder } from './views/views-folder.ts';
 export type { FoldingSettings, ViewsFolding } from './views/views-folding.ts';
