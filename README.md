@@ -10,7 +10,7 @@ Your agent builds and directs the work. **Auto Runtime** stores and executes it;
 
 ## Get started
 
-Follow the [local setup guide](docs/get-started/local.md) or browse the [Auto documentation](https://on.auto/docs/). See [function availability](docs/concepts/functions.md#availability) for implemented capabilities. The repository, the configuration file and the container image are named `auto-runtime`.
+Follow the [local setup guide](docs/get-started/local.md) or browse the [Auto documentation](https://on.auto/docs/). See [function availability](docs/concepts/functions.md#availability) for implemented capabilities.
 
 ![Auto Studio showing the Accounts Payable playbook, its Brain, workflows, pending decisions and sample runs](docs/assets/studio-dashboard.png)
 

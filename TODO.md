@@ -32,6 +32,7 @@ Setup work that couldn't be finished yet, and why.
 
 ## Releases
 
+- [ ] **Set up the image's registries before the next release.** Create the Docker Hub repository `beonauto/auto-runtime` and set the repository variable `DOCKERHUB_REPOSITORY` to it, since the release workflow (`.github/workflows/release.yml`) publishes to Docker Hub under the name that variable holds. Once that release has pushed `ghcr.io/beonauto/auto-runtime` for the first time, make the new package public, as the next item says.
 - [ ] **Make the GHCR package public.** Releases publish `ghcr.io/beonauto/auto-runtime`, but a new package starts private, so anonymous pulls fail. Change it in the package settings on GitHub.
 
 ## Local databases
