@@ -69,7 +69,7 @@ See [Workflows and runs](workflows.md) for the implemented version, retry, waiti
 | Answer       | What the party or the tool gives back; it must match the request's answer schema, is recorded on the run once, and becomes the run's output.   |
 | Notification | A request that takes no answer; its run succeeds once it is delivered.                                                                         |
 
-An interaction function asks a system and answers at once, or asks a person and takes the answer later. A run that asks a person makes one request; the answer is recorded on that run, which takes it within a second, and a request nobody answers before it expires ends it as unanswered. Answering a request is not sending an event: an event goes to a waiting workflow run, and an answer goes to the run of the function that asked.
+An interaction function asks a system and answers at once, or asks a person and takes the answer later. A run that asks a person makes one request; the answer is recorded on that run, which takes it within the host's sweep, a second by default, and a request nobody answers before it expires ends it as unanswered. Answering a request is not sending an event: an event goes to a waiting workflow run, and an answer goes to the run of the function that asked.
 
 ## Supporting assets
 

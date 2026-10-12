@@ -148,7 +148,7 @@ The request has a `run_id` of its own: it is the run of the interaction function
 
 > Answer that request with the verdict `approve` and the note `Approved for the autumn launch.` Show me the answer the run took.
 
-The agent should report the answer recorded on the run of `approve-campaign-brief`, with `answered_by`, the caller that answered, and `answered_at`; the run takes it within a second, and succeeds with it as its output. The tool's summary reads: The request is answered: the run that asked it takes the answer within a second, and get_run shows how it ended.
+The agent should report the answer recorded on the run of `approve-campaign-brief`, with `answered_by`, the caller that answered, and `answered_at`; the run takes it within the host's sweep, a second by default, and succeeds with it as its output. The tool's summary reads: The request is answered: the run that asked it takes the answer within the host's sweep, a second by default, and get_run shows how it ended.
 
 An answer that does not match the function's `output.schema`, such as the verdict `maybe`, is refused with `invalid_input` and a pointer under `/answer`, and the request stays open.
 

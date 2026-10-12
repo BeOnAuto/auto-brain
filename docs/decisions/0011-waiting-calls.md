@@ -1,6 +1,6 @@
 # 0011 — Waiting calls: a workflow waits for a run that finishes later, and a run can be cancelled
 
-**Status:** accepted (2026-10-07); amended (2026-10-11) by [decision 0012](0012-prediction-functions.md): a call's limit is resolved from the call's literal input where the task has one, since a capability's `finishesLater` and `longestRunOf` take the input beside the parsed definition, and from the definition's longest otherwise
+**Status:** accepted (2026-10-07); amended (2026-10-11) by [decision 0012](0012-prediction-functions.md): a call's limit is resolved from the call's literal input where the task has one, through a capability's `longestRunFor(parsed, input)`, which with `finishesLaterFor` takes the input beside the parsed definition, and from its `longestRunOf(parsed)`, the longest for any input, otherwise
 
 ## Context
 
