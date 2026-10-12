@@ -99,6 +99,10 @@ const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
     remedy:
       'This can be put right on your side: once its result keeps only what is needed, such as fewer or smaller values, it can be run again.',
   },
+  no_active_version: {
+    why: 'the function has no model that answers yet',
+    remedy: 'A build gives it one: run it with the input { build: {} }, and ask again once a version is active.',
+  },
   requested: {
     why: 'it was cancelled at the request of someone allowed to change the playbook',
     remedy: ranUntilCancelled,

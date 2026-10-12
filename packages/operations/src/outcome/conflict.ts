@@ -11,6 +11,7 @@ export const ConflictKindSchema = Schema.Literals([
   'tools_called',
   'effect_unknown',
   'oversized',
+  'no_active_version',
 ]);
 
 export type ConflictKind = typeof ConflictKindSchema.Type;

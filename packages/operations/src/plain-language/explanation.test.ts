@@ -42,6 +42,11 @@ const byConflict: ReadonlyArray<readonly [ConflictKind, string, string]> = [
     'its result is larger than a run may record',
     'This can be put right on your side: once its result keeps only what is needed, such as fewer or smaller values, it can be run again.',
   ],
+  [
+    'no_active_version',
+    'the function has no model that answers yet',
+    'A build gives it one: run it with the input { build: {} }, and ask again once a version is active.',
+  ],
 ];
 
 const ranUntilCancelled =
