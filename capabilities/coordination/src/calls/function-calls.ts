@@ -1,7 +1,7 @@
-import type { RunEnding } from '@beonauto/definitions';
-import { invalidArguments, type CallResult } from '@beonauto/operations';
-import { jsonBytesOf } from '@beonauto/workflow-engine';
-import { recordIdOf, type CallAnswer, type Perform } from '@beonauto/workflow-host';
+import type { RunEnding } from '@on.auto/definitions';
+import { invalidArguments, type CallResult } from '@on.auto/operations';
+import { jsonBytesOf } from '@on.auto/workflow-engine';
+import { recordIdOf, type CallAnswer, type Perform } from '@on.auto/workflow-host';
 import { Effect, Option } from 'effect';
 
 import { isArgumentsProblem, definitionArgumentsOf } from '../document/definition-arguments.ts';

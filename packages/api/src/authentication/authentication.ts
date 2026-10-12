@@ -1,4 +1,4 @@
-import type { Authenticator } from '@beonauto/identity';
+import type { Authenticator } from '@on.auto/identity';
 import type { MiddlewareHandler } from 'hono';
 
 import type { ApiEnv } from '../api-env.ts';

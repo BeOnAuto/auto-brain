@@ -18,4 +18,4 @@ export class IncidentReporter extends Context.Service<
   {
     readonly report: (incident: Incident) => Effect.Effect<void>;
   }
->()('@beonauto/operations/IncidentReporter') {}
+>()('@on.auto/operations/IncidentReporter') {}

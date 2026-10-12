@@ -9,4 +9,4 @@ export class PlaybookRegistry extends Context.Service<
   {
     readonly status: (address: PlaybookAddress) => Effect.Effect<PlaybookStatus>;
   }
->()('@beonauto/operations/PlaybookRegistry') {}
+>()('@on.auto/operations/PlaybookRegistry') {}

@@ -1,4 +1,4 @@
-import type { ActedContext } from '@beonauto/operations';
+import type { ActedContext } from '@on.auto/operations';
 
 import type { PlaybookCreated, PlaybookUpdated, RecordedPlaybookEvent } from './playbook-events.ts';
 import type { Playbook } from './playbook.ts';

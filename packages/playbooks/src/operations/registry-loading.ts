@@ -1,4 +1,4 @@
-import { OrgReader, type NotFound } from '@beonauto/operations';
+import { OrgReader, type NotFound } from '@on.auto/operations';
 import { Effect } from 'effect';
 
 import type { Playbook } from '../registry/playbook.ts';

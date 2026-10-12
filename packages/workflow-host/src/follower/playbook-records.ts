@@ -1,5 +1,5 @@
-import { recordedReaderOf, type EventStore } from '@beonauto/ledger';
-import type { PlaybookAddress, RecordedEvent, RecordedPage } from '@beonauto/operations';
+import { recordedReaderOf, type EventStore } from '@on.auto/ledger';
+import type { PlaybookAddress, RecordedEvent, RecordedPage } from '@on.auto/operations';
 import { Effect } from 'effect';
 
 const recordsInAPage = 100;

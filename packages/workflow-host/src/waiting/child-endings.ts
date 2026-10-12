@@ -1,12 +1,12 @@
-import { lastEndingOf, runEndingOf, type RunEnding } from '@beonauto/definitions';
+import { lastEndingOf, runEndingOf, type RunEnding } from '@on.auto/definitions';
 import {
   streamPrefixOfPlaybook,
   type PlaybookAddress,
   type CalledBy,
   type CallResult,
   type Conflict,
-} from '@beonauto/operations';
-import { callKeyText, type RunInput, type Submission } from '@beonauto/workflow-engine';
+} from '@on.auto/operations';
+import { callKeyText, type RunInput, type Submission } from '@on.auto/workflow-engine';
 import { Effect } from 'effect';
 
 import { answeredRow, callRowOf, deliveredRow, waitingCallsOf } from '../calls/call-rows.ts';

@@ -1,4 +1,4 @@
-import type { Context, ProjectedRow, RunContext } from '@beonauto/operations';
+import type { Context, ProjectedRow, RunContext } from '@on.auto/operations';
 import { Struct } from 'effect';
 import { describe, expect, it } from 'vitest';
 

@@ -1,6 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { recordedReaderOf } from '@beonauto/ledger';
+import { recordedReaderOf } from '@on.auto/ledger';
 import { Effect, Function, Schema } from 'effect';
 
 import { openHostDatabase, type DatabaseSettings } from '../src/database/host-databases.ts';

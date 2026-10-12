@@ -1,4 +1,4 @@
-import { Conflict, InvalidInput, NotFound, RunCancelled, RunUnanswered, Unavailable } from '@beonauto/operations';
+import { Conflict, InvalidInput, NotFound, RunCancelled, RunUnanswered, Unavailable } from '@on.auto/operations';
 import { Effect } from 'effect';
 
 import { startedRunOf, type RunStreamState, type RecordedRunState } from './run-state.ts';

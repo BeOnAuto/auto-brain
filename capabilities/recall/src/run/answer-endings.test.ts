@@ -1,6 +1,6 @@
-import { Conflict, Unavailable } from '@beonauto/operations';
-import type { PoolOutcome, ProgramPool, ProgramRequest } from '@beonauto/workflow-engine/dsl';
-import { scriptedPool } from '@beonauto/workflow-engine/testing';
+import { Conflict, Unavailable } from '@on.auto/operations';
+import type { PoolOutcome, ProgramPool, ProgramRequest } from '@on.auto/workflow-engine/dsl';
+import { scriptedPool } from '@on.auto/workflow-engine/testing';
 import { Exit, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

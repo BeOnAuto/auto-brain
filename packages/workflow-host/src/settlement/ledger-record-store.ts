@@ -1,6 +1,6 @@
-import type { SettleRun } from '@beonauto/definitions';
-import { NotFound, SettlementSchema, type Lineage, type Settlement } from '@beonauto/operations';
-import { DispatchFailed, type RecordStore, type SettleReceipt } from '@beonauto/workflow-engine';
+import type { SettleRun } from '@on.auto/definitions';
+import { NotFound, SettlementSchema, type Lineage, type Settlement } from '@on.auto/operations';
+import { DispatchFailed, type RecordStore, type SettleReceipt } from '@on.auto/workflow-engine';
 import { Cause, Effect, Equal, Option, Predicate, Schema } from 'effect';
 
 import { rowsOf, WholeNumber, type DatabaseFailed, type HostDatabase } from '../database/host-database.ts';

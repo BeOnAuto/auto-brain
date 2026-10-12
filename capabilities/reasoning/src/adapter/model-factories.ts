@@ -1,4 +1,4 @@
-import { awsCredentialChain } from '@beonauto/outbound/aws';
+import { awsCredentialChain } from '@on.auto/outbound/aws';
 
 import type { ModelSettings } from '../settings/model-settings.ts';
 import type { AzureSettings } from '../settings/provider-settings.ts';

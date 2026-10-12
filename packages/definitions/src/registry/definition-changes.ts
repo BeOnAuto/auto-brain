@@ -1,4 +1,4 @@
-import { recordedDecoder } from '@beonauto/operations';
+import { recordedDecoder } from '@on.auto/operations';
 import { Option } from 'effect';
 
 import { noStrippedForms, runnableAttributes, type StrippedForms } from '../capability/stripped-forms.ts';

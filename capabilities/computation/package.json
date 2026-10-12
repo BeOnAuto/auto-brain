@@ -1,5 +1,5 @@
 {
-  "name": "@beonauto/computation",
+  "name": "@on.auto/computation",
   "version": "0.0.0",
   "private": true,
   "license": "Elastic-2.0",
@@ -15,9 +15,9 @@
     "measure": "node measure.ts"
   },
   "dependencies": {
-    "@beonauto/definitions": "workspace:*",
-    "@beonauto/operations": "workspace:*",
-    "@beonauto/workflow-engine": "workspace:*",
+    "@on.auto/definitions": "workspace:*",
+    "@on.auto/operations": "workspace:*",
+    "@on.auto/workflow-engine": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

@@ -7,7 +7,7 @@ import { configFileSchemaPath, configFileSchemaText } from './config-file-schema
 const example = new URL('../../../../auto-runtime.example.yaml', import.meta.url);
 
 describe('the JSON Schema of the configuration file', () => {
-  it('is committed as the settings generate it; pnpm --filter @beonauto/server config-schema writes it again', () => {
+  it('is committed as the settings generate it; pnpm --filter @on.auto/server config-schema writes it again', () => {
     expect(JSON.parse(readFileSync(configFileSchemaPath, 'utf8'))).toEqual(JSON.parse(configFileSchemaText()));
   });
 

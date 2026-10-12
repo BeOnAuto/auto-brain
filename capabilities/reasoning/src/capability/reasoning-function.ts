@@ -4,8 +4,8 @@ import {
   functionResourceLabels,
   outputInWords,
   type Capability,
-} from '@beonauto/definitions';
-import { toolTestPresenter } from '@beonauto/mcp';
+} from '@on.auto/definitions';
+import { toolTestPresenter } from '@on.auto/mcp';
 
 import { parse, summarize } from '../definition/definition-reading.ts';
 import type { OfferedModels } from '../model/offered-models.ts';

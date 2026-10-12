@@ -1,6 +1,6 @@
-import { computationBounds } from '@beonauto/computation';
-import { campaignPace, campaignRows } from '@beonauto/computation/testing';
-import { programPool } from '@beonauto/workflow-engine/dsl';
+import { computationBounds } from '@on.auto/computation';
+import { campaignPace, campaignRows } from '@on.auto/computation/testing';
+import { programPool } from '@on.auto/workflow-engine/dsl';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 

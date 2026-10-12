@@ -1,4 +1,4 @@
-import type { Environment } from '@beonauto/config';
+import type { Environment } from '@on.auto/config';
 import { Effect, type Layer } from 'effect';
 
 import { logsToStderr } from '../logging/logging.ts';

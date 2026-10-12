@@ -6,7 +6,7 @@ import {
   type CallAnswered,
   type CalledOnce,
   type ReadingFailedBecause,
-} from '@beonauto/mcp';
+} from '@on.auto/mcp';
 
 import { isBoundedPart } from '../delivery/sent-messages.ts';
 import type { Reply } from '../replies/reply-taking.ts';

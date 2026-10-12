@@ -1,5 +1,5 @@
-import { makeDefinitionPresenters } from '@beonauto/definitions';
-import { presentationOf, type Context, type KeptContent, type RecordedEvent } from '@beonauto/operations';
+import { makeDefinitionPresenters } from '@on.auto/definitions';
+import { presentationOf, type Context, type KeptContent, type RecordedEvent } from '@on.auto/operations';
 import { describe, expect, it } from 'vitest';
 
 import { askedRunId, interactionHarness } from '../testing/index.ts';

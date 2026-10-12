@@ -3,8 +3,8 @@ import {
   definitionTypeStreamOf,
   type RecordedDefinitionEvent,
   type StrippedForms,
-} from '@beonauto/definitions';
-import { recordedDecoder } from '@beonauto/operations';
+} from '@on.auto/definitions';
+import { recordedDecoder } from '@on.auto/operations';
 import { Option } from 'effect';
 
 export interface KeptFunction {

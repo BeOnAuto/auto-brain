@@ -1,4 +1,4 @@
-import { Unavailable, defineCommand, randomUUIDv7 } from '@beonauto/operations';
+import { Unavailable, defineCommand, randomUUIDv7 } from '@on.auto/operations';
 import { Effect } from 'effect';
 
 import type { ToolsNotOpened } from '../access/caller-context.ts';

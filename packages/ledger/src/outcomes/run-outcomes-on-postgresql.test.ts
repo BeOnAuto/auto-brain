@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
-import type { RunOutcomeMapping } from '@beonauto/operations';
-import { runTallies } from '@beonauto/operations/testing';
+import type { RunOutcomeMapping } from '@on.auto/operations';
+import { runTallies } from '@on.auto/operations/testing';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 

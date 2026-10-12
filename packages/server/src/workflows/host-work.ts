@@ -1,11 +1,11 @@
-import type { AppRuntime } from '@beonauto/api';
+import type { AppRuntime } from '@on.auto/api';
 import {
   callResultOfEnding,
   definitionCalls,
   definitionRunResultOf,
   workflowMachineOptionsOf,
   type RunDefinition,
-} from '@beonauto/coordination';
+} from '@on.auto/coordination';
 import {
   defineRunDefinition,
   deferredCanceller,
@@ -15,10 +15,10 @@ import {
   type PlaybookOwnNames,
   type Capability,
   type SettleRun,
-} from '@beonauto/definitions';
-import { Ledger, type Dispatcher, type DispatcherServices } from '@beonauto/operations';
-import type { Evaluations } from '@beonauto/workflow-engine';
-import type { HostOptions, WaitingOptions } from '@beonauto/workflow-host';
+} from '@on.auto/definitions';
+import { Ledger, type Dispatcher, type DispatcherServices } from '@on.auto/operations';
+import type { Evaluations } from '@on.auto/workflow-engine';
+import type { HostOptions, WaitingOptions } from '@on.auto/workflow-host';
 import { Effect } from 'effect';
 
 import { inRuntime } from './in-runtime.ts';

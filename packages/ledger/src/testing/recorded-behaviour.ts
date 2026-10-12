@@ -1,4 +1,4 @@
-import { InvalidCursor, type RecordedEvent, type RecordedOrder, type RecordedSelection } from '@beonauto/operations';
+import { InvalidCursor, type RecordedEvent, type RecordedOrder, type RecordedSelection } from '@on.auto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

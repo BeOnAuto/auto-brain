@@ -1,4 +1,4 @@
-import { unsuccessfulWords } from '@beonauto/operations';
+import { unsuccessfulWords } from '@on.auto/operations';
 import { describe, expect, it } from 'vitest';
 
 import { asking, sentencesOf } from '../testing/asking-operation.ts';

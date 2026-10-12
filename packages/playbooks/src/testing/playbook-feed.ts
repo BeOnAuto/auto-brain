@@ -7,8 +7,8 @@ import {
   type Outcome,
   type PresentedFact,
   type Presenter,
-} from '@beonauto/operations';
-import { memoryPlaybookRegistry } from '@beonauto/operations/testing';
+} from '@on.auto/operations';
+import { memoryPlaybookRegistry } from '@on.auto/operations/testing';
 import { Effect, Result, Schema } from 'effect';
 
 import { defineListPlaybookEvents } from '../feed/list-playbook-events.ts';

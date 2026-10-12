@@ -1,4 +1,4 @@
-import { approvalDocument, chatDelivery } from '@beonauto/interaction/testing';
+import { approvalDocument, chatDelivery } from '@on.auto/interaction/testing';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import { chatEnvironment, chatKey, chatServer, deliveryHistoryOf } from '../testing/servers/chat-deliveries.ts';

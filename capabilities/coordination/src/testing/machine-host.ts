@@ -1,4 +1,4 @@
-import type { JsonObject } from '@beonauto/workflow-engine';
+import type { JsonObject } from '@on.auto/workflow-engine';
 
 import type { SettleRequest, DefinitionCall } from './run-terms.ts';
 

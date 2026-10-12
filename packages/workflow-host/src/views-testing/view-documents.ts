@@ -1,6 +1,6 @@
-import type { AppendSignal } from '@beonauto/ledger';
-import { streamPrefixOfPlaybook } from '@beonauto/operations';
-import { unitMemoryBytes, workerStackBytes, type ProgramPool } from '@beonauto/workflow-engine/dsl';
+import type { AppendSignal } from '@on.auto/ledger';
+import { streamPrefixOfPlaybook } from '@on.auto/operations';
+import { unitMemoryBytes, workerStackBytes, type ProgramPool } from '@on.auto/workflow-engine/dsl';
 
 import { someFolder, type SomeFolder } from '../projector/folder.ts';
 import type { ProjectorSettings } from '../projector/projector-settings.ts';

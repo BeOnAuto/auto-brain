@@ -1,6 +1,6 @@
-import { configurationOf, readServerConfig, type Environment, type FileUse } from '@beonauto/config';
-import { readApiKeys, type ApiKey } from '@beonauto/identity';
-import { proxySettingsOf, type ProxySettings } from '@beonauto/outbound';
+import { configurationOf, readServerConfig, type Environment, type FileUse } from '@on.auto/config';
+import { readApiKeys, type ApiKey } from '@on.auto/identity';
+import { proxySettingsOf, type ProxySettings } from '@on.auto/outbound';
 import { Effect, Result } from 'effect';
 
 import { fileSettings, refusedKeys } from '../config-file/file-settings.ts';

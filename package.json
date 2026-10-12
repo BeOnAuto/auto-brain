@@ -1,12 +1,12 @@
 {
-  "name": "auto-runtime",
+  "name": "@on.auto/runtime",
   "version": "1.0.1",
   "private": true,
   "license": "Elastic-2.0",
   "type": "module",
   "scripts": {
-    "dev": "pnpm --filter @beonauto/server dev",
-    "key": "pnpm --filter @beonauto/identity key",
+    "dev": "pnpm --filter @on.auto/server dev",
+    "key": "pnpm --filter @on.auto/identity key",
     "docs:dev": "cd docs && vitepress dev",
     "docs:build": "cd docs && vitepress build",
     "docs:preview": "cd docs && vitepress preview",
@@ -30,10 +30,10 @@
     "prepare": "lefthook install"
   },
   "devDependencies": {
-    "@beonauto/definitions": "workspace:*",
     "@commitlint/cli": "21.2.3",
     "@commitlint/config-conventional": "21.2.3",
     "@commitlint/types": "21.2.3",
+    "@on.auto/definitions": "workspace:*",
     "@types/node": "26.6.3",
     "@vitest/coverage-v8": "catalog:",
     "czg": "1.14.0",

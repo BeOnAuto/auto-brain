@@ -1,5 +1,5 @@
 {
-  "name": "@beonauto/api",
+  "name": "@on.auto/api",
   "version": "0.0.0",
   "private": true,
   "license": "Elastic-2.0",
@@ -14,17 +14,17 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
-    "@beonauto/identity": "workspace:*",
-    "@beonauto/operations": "workspace:*",
     "@hono/node-server": "2.1.3",
     "@modelcontextprotocol/server": "2.2.0",
+    "@on.auto/identity": "workspace:*",
+    "@on.auto/operations": "workspace:*",
     "effect": "catalog:",
     "hono": "catalog:"
   },
   "devDependencies": {
-    "@beonauto/definitions": "workspace:*",
     "@modelcontextprotocol/client": "2.2.0",
     "@modelcontextprotocol/sdk": "1.31.0",
+    "@on.auto/definitions": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
     "vitest": "catalog:"
   }

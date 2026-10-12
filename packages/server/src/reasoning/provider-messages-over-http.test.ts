@@ -1,5 +1,5 @@
-import { makeModelAccess } from '@beonauto/reasoning';
-import { gatewayError, gatewayErrorText, gatewayInternals, recordingReporter } from '@beonauto/reasoning/testing';
+import { makeModelAccess } from '@on.auto/reasoning';
+import { gatewayError, gatewayErrorText, gatewayInternals, recordingReporter } from '@on.auto/reasoning/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { compositionRootWith } from '../composition/composition-root.ts';

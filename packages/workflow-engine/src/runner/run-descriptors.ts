@@ -1,4 +1,4 @@
-import type { Context } from '@beonauto/operations';
+import type { Context } from '@on.auto/operations';
 
 import type { CallFunctions } from '../dsl/call-functions.ts';
 import { objectField, type Json, type JsonObject } from '../dsl/json.ts';

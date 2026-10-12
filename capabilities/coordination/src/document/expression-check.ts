@@ -1,8 +1,8 @@
-import { noStrippedForms, type StrippedForms } from '@beonauto/definitions';
-import type { CheckedDocument } from '@beonauto/definitions/check';
-import type { InvalidInput, Unavailable } from '@beonauto/operations';
-import { workflowExpressionsOf, type PlacedExpression } from '@beonauto/workflow-engine';
-import type { CheckIssue, CheckJob } from '@beonauto/workflow-engine/dsl';
+import { noStrippedForms, type StrippedForms } from '@on.auto/definitions';
+import type { CheckedDocument } from '@on.auto/definitions/check';
+import type { InvalidInput, Unavailable } from '@on.auto/operations';
+import { workflowExpressionsOf, type PlacedExpression } from '@on.auto/workflow-engine';
+import type { CheckIssue, CheckJob } from '@on.auto/workflow-engine/dsl';
 import { Effect } from 'effect';
 
 import { invalidDocument, notRunnable, placeOf, type LocatedIssue, type ReadWorkflow } from './workflow-document.ts';

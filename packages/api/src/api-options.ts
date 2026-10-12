@@ -1,4 +1,4 @@
-import type { Authenticator } from '@beonauto/identity';
+import type { Authenticator } from '@on.auto/identity';
 
 import type { ReportIncident } from './problem/error-boundary.ts';
 import type { RegisterRoutes } from './routes.ts';

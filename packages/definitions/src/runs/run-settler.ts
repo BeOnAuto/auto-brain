@@ -11,7 +11,7 @@ import {
   type Settlement,
   type StreamState,
   type StreamWriter,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { DateTime, Effect, Schema } from 'effect';
 
 import { withinResultLimit } from './recorded-size.ts';
@@ -21,7 +21,7 @@ import { runOf } from './run-lookup.ts';
 import type { RunStreamState } from './run-state.ts';
 import type { RunRejection, Run } from './run.ts';
 
-export type { Settlement } from '@beonauto/operations';
+export type { Settlement } from '@on.auto/operations';
 
 export interface RunStreamAddress {
   readonly org: string;

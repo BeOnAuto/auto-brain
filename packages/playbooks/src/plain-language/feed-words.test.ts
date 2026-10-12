@@ -1,4 +1,4 @@
-import type { Presenter } from '@beonauto/operations';
+import type { Presenter } from '@on.auto/operations';
 import { describe, expect, it } from 'vitest';
 
 import { defineListPlaybookEvents } from '../index.ts';

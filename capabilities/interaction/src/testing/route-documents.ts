@@ -1,4 +1,4 @@
-import { issueText } from '@beonauto/definitions/document';
+import { issueText } from '@on.auto/definitions/document';
 import { Option, Result } from 'effect';
 
 import { parseInteractionDocument } from '../document/document-parsing.ts';

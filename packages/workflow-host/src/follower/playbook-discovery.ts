@@ -1,5 +1,5 @@
-import { streamPrefixOfPlaybook, type PlaybookAddress } from '@beonauto/operations';
-import { playbookCreatedOf, playbooksStreamOfOrg } from '@beonauto/playbooks';
+import { streamPrefixOfPlaybook, type PlaybookAddress } from '@on.auto/operations';
+import { playbookCreatedOf, playbooksStreamOfOrg } from '@on.auto/playbooks';
 import { Effect, Schema } from 'effect';
 
 import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';

@@ -1,4 +1,4 @@
-import { PlaybookReader, defineQuery } from '@beonauto/operations';
+import { PlaybookReader, defineQuery } from '@on.auto/operations';
 import { Clock, Effect, Schema } from 'effect';
 
 import type { Capability } from '../capability/capability.ts';

@@ -1,4 +1,4 @@
-import { createApiKey } from '@beonauto/identity';
+import { createApiKey } from '@on.auto/identity';
 import { describe, expect, it } from 'vitest';
 
 import { configuredServer, rejectedRun, settingLines, stoppedOutput } from '../testing/processes/configured-server.ts';

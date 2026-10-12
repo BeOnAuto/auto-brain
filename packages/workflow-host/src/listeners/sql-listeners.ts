@@ -1,5 +1,5 @@
-import { streamPrefixOfPlaybook } from '@beonauto/operations';
-import { callKeyText, DispatchFailed, type ListenerArmReceipt, type Listeners } from '@beonauto/workflow-engine';
+import { streamPrefixOfPlaybook } from '@on.auto/operations';
+import { callKeyText, DispatchFailed, type ListenerArmReceipt, type Listeners } from '@on.auto/workflow-engine';
 import { Effect } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';

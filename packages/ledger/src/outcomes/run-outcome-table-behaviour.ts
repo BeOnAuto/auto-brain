@@ -1,5 +1,5 @@
-import type { RunOutcomeMapping } from '@beonauto/operations';
-import { runFacts, runTallies, type RunFact } from '@beonauto/operations/testing';
+import type { RunOutcomeMapping } from '@on.auto/operations';
+import { runFacts, runTallies, type RunFact } from '@on.auto/operations/testing';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

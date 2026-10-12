@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { recallDocument } from '@beonauto/recall/testing';
+import { recallDocument } from '@on.auto/recall/testing';
 import { Schema } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';

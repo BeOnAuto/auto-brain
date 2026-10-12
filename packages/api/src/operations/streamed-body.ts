@@ -1,4 +1,4 @@
-import { mediaTypeOfBody, type StreamedBody, type StreamedContent } from '@beonauto/operations';
+import { mediaTypeOfBody, type StreamedBody, type StreamedContent } from '@on.auto/operations';
 import { Result } from 'effect';
 
 import { problemOf, type Problem } from '../problem/problem.ts';

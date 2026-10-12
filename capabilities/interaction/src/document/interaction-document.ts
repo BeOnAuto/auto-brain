@@ -1,5 +1,5 @@
-import type { CompiledSchema } from '@beonauto/definitions/document';
-import type { ParsedTemplate } from '@beonauto/definitions/template';
+import type { CompiledSchema } from '@on.auto/definitions/document';
+import type { ParsedTemplate } from '@on.auto/definitions/template';
 
 import type { ReplyRule } from '../replies/reply-rule.ts';
 import type { WrittenRoute } from '../tool-blocks/compiled-tool-block.ts';

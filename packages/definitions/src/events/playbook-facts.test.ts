@@ -1,4 +1,4 @@
-import type { Context, RecordedFact } from '@beonauto/operations';
+import type { Context, RecordedFact } from '@on.auto/operations';
 import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

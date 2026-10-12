@@ -1,4 +1,4 @@
-import { pointerOf, problem, type SettingProblem } from '@beonauto/config';
+import { pointerOf, problem, type SettingProblem } from '@on.auto/config';
 import { Result } from 'effect';
 
 import { isToolName, toolNameShape } from '../names/tool-reference.ts';

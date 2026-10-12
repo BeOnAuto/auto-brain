@@ -1,5 +1,5 @@
-import type { RunContext, Finished } from '@beonauto/definitions';
-import type { ToolAccess } from '@beonauto/mcp';
+import type { RunContext, Finished } from '@on.auto/definitions';
+import type { ToolAccess } from '@on.auto/mcp';
 import { Clock, Effect, type Schema } from 'effect';
 
 import type { ReasoningFunctionDefinitionDocument } from '../definition/reasoning-function-definition.ts';

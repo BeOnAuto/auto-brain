@@ -1,4 +1,4 @@
-import type { AppendedStreams, EventStore } from '@beonauto/ledger';
+import type { AppendedStreams, EventStore } from '@on.auto/ledger';
 import { Effect } from 'effect';
 
 import type { FollowedPlaybook, FollowedPlaybooks } from '../follower/followed-playbooks.ts';

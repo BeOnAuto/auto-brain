@@ -1,8 +1,8 @@
-import { playbookOwnNamesOf, eventEmitter, publishedEventOf } from '@beonauto/definitions';
-import { Conflict, messageIdOf } from '@beonauto/operations';
-import { memoryLedger } from '@beonauto/operations/testing';
-import type { EmitEvent } from '@beonauto/workflow-engine';
-import { emitterProbes } from '@beonauto/workflow-engine/testing';
+import { playbookOwnNamesOf, eventEmitter, publishedEventOf } from '@on.auto/definitions';
+import { Conflict, messageIdOf } from '@on.auto/operations';
+import { memoryLedger } from '@on.auto/operations/testing';
+import type { EmitEvent } from '@on.auto/workflow-engine';
+import { emitterProbes } from '@on.auto/workflow-engine/testing';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

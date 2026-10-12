@@ -1,6 +1,6 @@
-import type { EmitEvent } from '@beonauto/definitions';
-import { messageIdOf } from '@beonauto/operations';
-import { DispatchFailed, type Emitter } from '@beonauto/workflow-engine';
+import type { EmitEvent } from '@on.auto/definitions';
+import { messageIdOf } from '@on.auto/operations';
+import { DispatchFailed, type Emitter } from '@on.auto/workflow-engine';
 import { Effect } from 'effect';
 
 import { reactionOfRun } from '../reactions/run-attributes.ts';

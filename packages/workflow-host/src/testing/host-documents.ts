@@ -1,6 +1,6 @@
-import type { MachineOptions } from '@beonauto/workflow-engine';
-import { machineSandboxOf } from '@beonauto/workflow-engine/dsl';
-import { defaultLimits, defaultSeed, testMachineOf } from '@beonauto/workflow-engine/testing';
+import type { MachineOptions } from '@on.auto/workflow-engine';
+import { machineSandboxOf } from '@on.auto/workflow-engine/dsl';
+import { defaultLimits, defaultSeed, testMachineOf } from '@on.auto/workflow-engine/testing';
 import { Schema } from 'effect';
 import { parse } from 'yaml';
 

@@ -1,8 +1,8 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { echo } from '@beonauto/definitions/testing';
-import type { Outcome } from '@beonauto/operations';
-import { memoryLedger } from '@beonauto/operations/testing';
+import { echo } from '@on.auto/definitions/testing';
+import type { Outcome } from '@on.auto/operations';
+import { memoryLedger } from '@on.auto/operations/testing';
 import { Schema } from 'effect';
 
 import { makeWorkflowAdapter } from '../capability/workflow.ts';

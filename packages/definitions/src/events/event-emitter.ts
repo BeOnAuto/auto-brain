@@ -1,10 +1,4 @@
-import {
-  Conflict,
-  streamPrefixOfPlaybook,
-  type PlaybookAddress,
-  type Ledger,
-  type Lineage,
-} from '@beonauto/operations';
+import { Conflict, streamPrefixOfPlaybook, type PlaybookAddress, type Ledger, type Lineage } from '@on.auto/operations';
 import { Effect, Option, Result, Schema, SchemaIssue } from 'effect';
 
 import { jsonBytesOf } from '../runs/recorded-size.ts';

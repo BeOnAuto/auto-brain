@@ -1,4 +1,4 @@
-import type { Environment } from '@beonauto/config';
+import type { Environment } from '@on.auto/config';
 import { Config, ConfigProvider, Effect } from 'effect';
 
 import type { LogFormat } from '../logging/logging.ts';

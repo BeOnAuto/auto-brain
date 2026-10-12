@@ -1,3 +1,4 @@
+import { SQL } from '@event-driven-io/dumbo';
 import {
   playbookOfStreamPrefix,
   requireAdvancedColumns,
@@ -11,8 +12,7 @@ import {
   type ProjectedValue,
   type ProjectionAdvancer,
   type ProjectionReader,
-} from '@beonauto/operations';
-import { SQL } from '@event-driven-io/dumbo';
+} from '@on.auto/operations';
 import { Effect, Option, Schema } from 'effect';
 
 import { boundOf, type ProjectionDialect } from './projection-dialect.ts';

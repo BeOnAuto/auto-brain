@@ -1,4 +1,4 @@
-import { Conflict, type Rejection } from '@beonauto/operations';
+import { Conflict, type Rejection } from '@on.auto/operations';
 import { Result } from 'effect';
 
 import { takesAnAnswer } from '../requests/request-record.ts';

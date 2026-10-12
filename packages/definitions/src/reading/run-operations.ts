@@ -1,4 +1,4 @@
-import type { Presenter } from '@beonauto/operations';
+import type { Presenter } from '@on.auto/operations';
 
 import { defineGetPlaybookAnalytics } from '../analytics/get-playbook-analytics.ts';
 import { defineCancelRun } from '../cancellation/cancel-run.ts';

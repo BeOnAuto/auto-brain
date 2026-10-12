@@ -1,4 +1,4 @@
-import { defineUpdateDefinition } from '@beonauto/definitions';
+import { defineUpdateDefinition } from '@on.auto/definitions';
 import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

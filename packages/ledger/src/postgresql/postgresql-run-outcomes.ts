@@ -1,5 +1,5 @@
-import type { RunOutcomeMapping, RunOutcomeSelection } from '@beonauto/operations';
 import { SQL } from '@event-driven-io/dumbo';
+import type { RunOutcomeMapping, RunOutcomeSelection } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 import type { RunOutcomesStore, StatementExecutor } from '../event-store.ts';

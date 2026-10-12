@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { withMcpSession } from '@beonauto/api/testing';
+import { withMcpSession } from '@on.auto/api/testing';
 import { Effect, Schema } from 'effect';
 import { Client } from 'pg';
 import { afterEach, describe, expect, it, onTestFinished } from 'vitest';

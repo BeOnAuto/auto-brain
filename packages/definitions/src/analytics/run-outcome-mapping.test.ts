@@ -1,4 +1,4 @@
-import type { Context, ProjectedMessage, RunOutcome } from '@beonauto/operations';
+import type { Context, ProjectedMessage, RunOutcome } from '@on.auto/operations';
 import { describe, expect, it } from 'vitest';
 
 import { runOutcomeMapping } from './run-outcome-mapping.ts';

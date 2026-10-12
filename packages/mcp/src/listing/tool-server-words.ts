@@ -1,4 +1,4 @@
-import { counted, listed, plainNumber, quoted, type Noun } from '@beonauto/operations';
+import { counted, listed, plainNumber, quoted, type Noun } from '@on.auto/operations';
 
 import { inWords } from '../names/tool-words.ts';
 import { everyPlaybook } from '../settings/mcp-settings.ts';

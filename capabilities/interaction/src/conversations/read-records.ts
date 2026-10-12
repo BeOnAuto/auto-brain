@@ -7,9 +7,9 @@ import {
   type ConversationCall,
   type Recorded,
   type StartedFields,
-} from '@beonauto/mcp';
-import type { ToolReference } from '@beonauto/mcp/policy';
-import { playbookCallerOf, streamPrefixOfPlaybook, type StreamWriter } from '@beonauto/operations';
+} from '@on.auto/mcp';
+import type { ToolReference } from '@on.auto/mcp/policy';
+import { playbookCallerOf, streamPrefixOfPlaybook, type StreamWriter } from '@on.auto/operations';
 import { DateTime, Effect } from 'effect';
 
 import type { ReadingState } from '../replies/reply-recording.ts';

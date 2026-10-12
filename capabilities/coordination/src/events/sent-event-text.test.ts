@@ -1,5 +1,5 @@
-import { echo } from '@beonauto/definitions/testing';
-import { memoryLedger } from '@beonauto/operations/testing';
+import { echo } from '@on.auto/definitions/testing';
+import { memoryLedger } from '@on.auto/operations/testing';
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

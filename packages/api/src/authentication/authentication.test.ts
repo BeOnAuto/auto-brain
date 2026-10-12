@@ -1,4 +1,4 @@
-import { authenticatorFor, createApiKey } from '@beonauto/identity';
+import { authenticatorFor, createApiKey } from '@on.auto/identity';
 import { describe, expect, it } from 'vitest';
 
 import type { RegisterRoutes } from '../index.ts';

@@ -1,4 +1,4 @@
-import type { PlaybookRequest, Lineage } from '@beonauto/operations';
+import type { PlaybookRequest, Lineage } from '@on.auto/operations';
 import { Effect } from 'effect';
 
 import { runSettler, type RunStreamAddress, type Settlement } from '../index.ts';

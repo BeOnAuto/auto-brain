@@ -1,4 +1,4 @@
-import { InvalidInput, isCalendarDay } from '@beonauto/operations';
+import { InvalidInput, isCalendarDay } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 
 export const longestWindowInDays = 366;

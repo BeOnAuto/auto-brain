@@ -1,5 +1,5 @@
-import { makeDispatcher, type CallerIdentity, type Outcome } from '@beonauto/operations';
-import { memoryPlaybookRegistry, memoryLedger, recordingReporter } from '@beonauto/operations/testing';
+import { makeDispatcher, type CallerIdentity, type Outcome } from '@on.auto/operations';
+import { memoryPlaybookRegistry, memoryLedger, recordingReporter } from '@on.auto/operations/testing';
 import { Effect, Layer } from 'effect';
 import { describe, expect, it } from 'vitest';
 

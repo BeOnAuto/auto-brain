@@ -5,7 +5,7 @@ import {
   messageIdOf,
   NotFound,
   streamPrefixOfPlaybook,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Effect } from 'effect';
 
 import { definitionResourceLabel } from '../capability/function-terminology.ts';

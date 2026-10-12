@@ -1,4 +1,4 @@
-import { authenticatorFor } from '@beonauto/identity';
+import { authenticatorFor } from '@on.auto/identity';
 import { describe, expect, it } from 'vitest';
 
 import { call } from '../testing/api-calls.ts';
@@ -162,6 +162,6 @@ describe('an MCP endpoint once the MCP SDK runs', () => {
     const answer = await postMcp(handler, '/orgs/acme/mcp', { host: 'localhost:8080' });
 
     expect(answer.status).toBe(200);
-    expect(answer.text).toContain('"serverInfo":{"name":"auto-runtime"');
+    expect(answer.text).toContain('"serverInfo":{"name":"@on.auto/runtime"');
   });
 });

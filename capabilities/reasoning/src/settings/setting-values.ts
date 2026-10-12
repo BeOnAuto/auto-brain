@@ -1,7 +1,7 @@
-import type { SettingProblem } from '@beonauto/config';
+import type { SettingProblem } from '@on.auto/config';
 import { Config, ConfigProvider, Option, type Redacted } from 'effect';
 
-export type { SettingProblem } from '@beonauto/config';
+export type { SettingProblem } from '@on.auto/config';
 
 export type Environment = Readonly<Record<string, string | undefined>>;
 

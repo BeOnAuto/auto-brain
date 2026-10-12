@@ -1,4 +1,4 @@
-import { memoryLedger } from '@beonauto/operations/testing';
+import { memoryLedger } from '@on.auto/operations/testing';
 import { Effect } from 'effect';
 
 import { conversations, conversationsName } from '../conversations/conversation-rows.ts';

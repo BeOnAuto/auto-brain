@@ -1,6 +1,6 @@
-import type { RunEnding } from '@beonauto/definitions';
-import type { Outcome } from '@beonauto/operations';
-import { field, textField } from '@beonauto/workflow-engine';
+import type { RunEnding } from '@on.auto/definitions';
+import type { Outcome } from '@on.auto/operations';
+import { field, textField } from '@on.auto/workflow-engine';
 
 import type { DefinitionRunResult, EndedRunResult } from './function-run.ts';
 

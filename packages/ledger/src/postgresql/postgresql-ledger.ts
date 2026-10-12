@@ -1,4 +1,4 @@
-import type { ContentStore, Ledger } from '@beonauto/operations';
+import type { ContentStore, Ledger } from '@on.auto/operations';
 import { Effect, Layer } from 'effect';
 
 import type { AppendSignal } from '../appends/append-signal.ts';

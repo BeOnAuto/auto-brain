@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Report vulnerabilities privately through GitHub: on the repository's **Security** tab choose **Report a vulnerability**, or go straight to [the private report form](https://github.com/BeOnAuto/auto-runtime/security/advisories/new).
+Report vulnerabilities privately through GitHub: on the repository's **Security** tab choose **Report a vulnerability**, or go straight to [the private report form](https://github.com/BeOnAuto/runtime/security/advisories/new).
 
 Please don't open a public issue, pull request or discussion for a suspected vulnerability.
 
@@ -10,4 +10,4 @@ A useful report says what you found, how to reproduce it, which version or image
 
 ## Supported versions
 
-Fixes land on `main` and ship in the next release. Only the latest release of the container image (`beonauto/auto-runtime` on Docker Hub, `ghcr.io/beonauto/auto-runtime` on GitHub) receives security fixes, so upgrade to it before reporting if you can.
+Fixes land on `main` and ship in the next release. Only the latest release of the container image (`beonauto/runtime` on Docker Hub, `ghcr.io/beonauto/runtime` on GitHub) receives security fixes, so upgrade to it before reporting if you can.

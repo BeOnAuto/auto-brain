@@ -4,8 +4,8 @@ import {
   outputInWords,
   type Capability,
   type RequestRecord,
-} from '@beonauto/definitions';
-import { RunContextSchema, factOf } from '@beonauto/operations';
+} from '@on.auto/definitions';
+import { RunContextSchema, factOf } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 
 export const nudgedRequest: RequestRecord = {

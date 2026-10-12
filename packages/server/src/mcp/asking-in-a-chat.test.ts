@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
 
-import { mostGuideBytes } from '@beonauto/api';
-import { plainTextIn, textOf, type McpSession } from '@beonauto/api/testing';
+import { mostGuideBytes } from '@on.auto/api';
+import { plainTextIn, textOf, type McpSession } from '@on.auto/api/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { sentenceNaming, servingMeetings, type MeetingsServer } from '../testing/servers/meetings-server.ts';

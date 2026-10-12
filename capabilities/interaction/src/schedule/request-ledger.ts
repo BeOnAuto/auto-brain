@@ -5,7 +5,7 @@ import {
   type Settlement,
   type Work,
   type WorkRule,
-} from '@beonauto/definitions';
+} from '@on.auto/definitions';
 import type {
   Lineage,
   ProjectionReader,
@@ -13,7 +13,7 @@ import type {
   RecordedReader,
   StreamReader,
   StreamWriter,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 
 import type { RequestAddress } from '../delivery/attempt-end.ts';

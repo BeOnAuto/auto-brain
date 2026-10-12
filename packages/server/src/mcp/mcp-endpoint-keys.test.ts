@@ -5,9 +5,9 @@ import {
   withMcpSession,
   type McpClientKind,
   type McpSession,
-} from '@beonauto/api/testing';
-import { createApiKey } from '@beonauto/identity';
-import { allPermissions } from '@beonauto/operations';
+} from '@on.auto/api/testing';
+import { createApiKey } from '@on.auto/identity';
+import { allPermissions } from '@on.auto/operations';
 import { Schema } from 'effect';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 

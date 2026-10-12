@@ -17,6 +17,7 @@ import type { CallerContext, ServerMessage, ToolsNotOpened } from './caller-cont
 import { keepingIn, namingOf, startsOf, type ContentStore, type NamingCheck, type StartOf } from './entry-reads.ts';
 
 export interface ToolAccessOptions {
+  readonly client: LinkOptions['client'];
   readonly content: ContentStore;
   readonly reportServerMessage: (report: ServerMessage) => void;
   readonly reportUntestable: (server: string) => void;

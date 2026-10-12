@@ -1,4 +1,4 @@
-import { InvalidInput, type Issue } from '@beonauto/operations';
+import { InvalidInput, type Issue } from '@on.auto/operations';
 
 export interface Rejection {
   readonly detail: string;

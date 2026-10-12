@@ -1,4 +1,4 @@
-import { describeError, type Json, type RunOutcome } from '@beonauto/workflow-engine';
+import { describeError, type Json, type RunOutcome } from '@on.auto/workflow-engine';
 
 export type WorkflowEnding =
   | { readonly kind: 'completed'; readonly output: Json }

@@ -1,5 +1,5 @@
-import type { AppRuntime } from '@beonauto/api';
-import type { PlaybookOperation, Capability, RecordWork } from '@beonauto/definitions';
+import type { AppRuntime } from '@on.auto/api';
+import type { PlaybookOperation, Capability, RecordWork } from '@on.auto/definitions';
 import {
   answerInteraction,
   conversationsDue,
@@ -8,9 +8,9 @@ import {
   openRequestsName,
   requestsDue,
   type RequestsDue,
-} from '@beonauto/interaction';
-import type { ToolAccess } from '@beonauto/mcp';
-import type { DispatcherServices } from '@beonauto/operations';
+} from '@on.auto/interaction';
+import type { ToolAccess } from '@on.auto/mcp';
+import type { DispatcherServices } from '@on.auto/operations';
 
 import type { Settings } from '../settings/settings.ts';
 import { runtimeLedger } from './runtime-ledger.ts';

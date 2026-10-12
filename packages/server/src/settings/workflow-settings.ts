@@ -1,6 +1,6 @@
-import type { Environment } from '@beonauto/config';
-import { readDuration } from '@beonauto/workflow-engine';
-import { mostOpenCallsOfATree } from '@beonauto/workflow-host';
+import type { Environment } from '@on.auto/config';
+import { readDuration } from '@on.auto/workflow-engine';
+import { mostOpenCallsOfATree } from '@on.auto/workflow-host';
 import { Config, ConfigProvider, Effect } from 'effect';
 
 import { countOf } from '../function-settings/counted-settings.ts';

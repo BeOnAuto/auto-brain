@@ -1,4 +1,4 @@
-import type { Recorded } from '@beonauto/operations';
+import type { Recorded } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 
 import type { EncodedEvent, RecordedMessage } from './event-store.ts';

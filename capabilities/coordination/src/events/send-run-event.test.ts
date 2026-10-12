@@ -1,6 +1,6 @@
-import { mostEventDataDepth, mostInputDepth } from '@beonauto/definitions';
-import { mostValueDepth } from '@beonauto/workflow-engine';
-import { HostElsewhere, HostStopped } from '@beonauto/workflow-host';
+import { mostEventDataDepth, mostInputDepth } from '@on.auto/definitions';
+import { mostValueDepth } from '@on.auto/workflow-engine';
+import { HostElsewhere, HostStopped } from '@on.auto/workflow-host';
 import { Effect, type Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 

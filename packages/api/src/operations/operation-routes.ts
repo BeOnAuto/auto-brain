@@ -9,7 +9,7 @@ import {
   type RouteRegistration,
   type Settled,
   type Succeeded,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Effect, Result } from 'effect';
 import type { Context } from 'hono';
 

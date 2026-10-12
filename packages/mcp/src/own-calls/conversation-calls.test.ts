@@ -1,4 +1,4 @@
-import { recordingOf } from '@beonauto/operations';
+import { recordingOf } from '@on.auto/operations';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 

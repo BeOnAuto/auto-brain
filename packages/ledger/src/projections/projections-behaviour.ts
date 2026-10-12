@@ -1,4 +1,4 @@
-import { messageIdOf, type KeyedProjection, type Ledger, type ProjectedRowsQuery } from '@beonauto/operations';
+import { messageIdOf, type KeyedProjection, type Ledger, type ProjectedRowsQuery } from '@on.auto/operations';
 import {
   runFacts,
   runTallyRows,
@@ -8,7 +8,7 @@ import {
   topicWaitMs,
   type RunFact,
   type TopicFact,
-} from '@beonauto/operations/testing';
+} from '@on.auto/operations/testing';
 import { Effect, Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 

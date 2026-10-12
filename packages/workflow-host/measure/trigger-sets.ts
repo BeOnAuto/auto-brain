@@ -1,4 +1,4 @@
-import type { Trigger } from '@beonauto/definitions';
+import type { Trigger } from '@on.auto/definitions';
 
 import { cronTrigger, eventTrigger, everyTrigger } from '../src/reaction-testing/playbook-writes.ts';
 

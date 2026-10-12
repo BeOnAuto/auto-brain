@@ -1,5 +1,5 @@
-import type { Conflict } from '@beonauto/operations';
-import type { RunInput, Submission } from '@beonauto/workflow-engine';
+import type { Conflict } from '@on.auto/operations';
+import type { RunInput, Submission } from '@on.auto/workflow-engine';
 import type { Effect } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';

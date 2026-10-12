@@ -1,4 +1,4 @@
-import type { DefinitionContext } from '@beonauto/operations';
+import type { DefinitionContext } from '@on.auto/operations';
 import { describe, expect, it } from 'vitest';
 
 import type { RecordedDefinitionEvent } from './definition-events.ts';

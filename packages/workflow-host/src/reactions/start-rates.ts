@@ -1,5 +1,5 @@
-import { triggerNamed } from '@beonauto/definitions';
-import { StartingTriggerSchema } from '@beonauto/operations';
+import { triggerNamed } from '@on.auto/definitions';
+import { StartingTriggerSchema } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 
 import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';

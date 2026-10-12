@@ -1,4 +1,4 @@
-import { Unavailable } from '@beonauto/operations';
+import { Unavailable } from '@on.auto/operations';
 import { Effect, Exit } from 'effect';
 import { TestClock } from 'effect/testing';
 import { describe, expect, it } from 'vitest';

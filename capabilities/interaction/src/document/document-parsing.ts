@@ -5,7 +5,7 @@ import {
   type DocumentIssue,
   type DocumentParts,
   type ReadFrontMatter,
-} from '@beonauto/definitions/document';
+} from '@on.auto/definitions/document';
 import { Result } from 'effect';
 
 import { asksASystem, callFrom, seemsToAskASystem } from './call-parts.ts';

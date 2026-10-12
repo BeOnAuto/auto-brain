@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 
-import type { DefinitionType, Guide, Recipe } from '@beonauto/api';
-import type { Capability } from '@beonauto/definitions';
-import { capitalized } from '@beonauto/operations';
+import type { DefinitionType, Guide, Recipe } from '@on.auto/api';
+import type { Capability } from '@on.auto/definitions';
+import { capitalized } from '@on.auto/operations';
 
 import { withLinksResolved } from './page-links.ts';
 import { recipesFor } from './recipes.ts';

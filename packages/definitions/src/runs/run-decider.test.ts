@@ -1,4 +1,4 @@
-import { Conflict, type Context } from '@beonauto/operations';
+import { Conflict, type Context } from '@on.auto/operations';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 

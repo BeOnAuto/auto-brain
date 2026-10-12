@@ -5,9 +5,9 @@ import {
   outputInWords,
   type DefinitionSummary,
   type Capability,
-} from '@beonauto/definitions';
-import type { InvalidInput } from '@beonauto/operations';
-import type { ProgramPool } from '@beonauto/workflow-engine/dsl';
+} from '@on.auto/definitions';
+import type { InvalidInput } from '@on.auto/operations';
+import type { ProgramPool } from '@on.auto/workflow-engine/dsl';
 import { Effect, Result } from 'effect';
 
 import type { ComputationFunctionDefinitionDocument } from '../document/computation-document.ts';

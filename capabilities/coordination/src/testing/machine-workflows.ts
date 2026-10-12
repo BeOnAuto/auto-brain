@@ -7,8 +7,8 @@ import {
   type RunInput,
   type RunOutput,
   type RunState,
-} from '@beonauto/workflow-engine';
-import { memoryDriver, type MemoryDriver } from '@beonauto/workflow-engine/testing';
+} from '@on.auto/workflow-engine';
+import { memoryDriver, type MemoryDriver } from '@on.auto/workflow-engine/testing';
 import { Option, Result, Schema } from 'effect';
 
 import { endingOf, type WorkflowEnding } from './endings.ts';

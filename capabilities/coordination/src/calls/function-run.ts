@@ -6,7 +6,7 @@ import type {
   RejectionKind,
   RejectionReason,
   RejectionBecause,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import type { Effect, Schema } from 'effect';
 
 export interface DefinitionRunRequest {

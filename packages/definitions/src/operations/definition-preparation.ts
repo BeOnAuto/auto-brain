@@ -1,4 +1,4 @@
-import { Conflict } from '@beonauto/operations';
+import { Conflict } from '@on.auto/operations';
 import { Effect } from 'effect';
 
 import type { Capability } from '../capability/capability.ts';

@@ -1,4 +1,4 @@
-import { NotFound } from '@beonauto/operations';
+import { NotFound } from '@on.auto/operations';
 import { Effect } from 'effect';
 
 import type { Playbook } from './playbook.ts';

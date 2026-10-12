@@ -11,7 +11,7 @@ import {
   S3ServiceException,
   type S3Client,
 } from '@aws-sdk/client-s3';
-import { verifiedStream, type StreamedContent } from '@beonauto/operations';
+import { verifiedStream, type StreamedContent } from '@on.auto/operations';
 
 export interface Bucket {
   readonly client: () => S3Client;

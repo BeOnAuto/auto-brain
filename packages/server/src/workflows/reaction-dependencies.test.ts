@@ -1,9 +1,9 @@
-import { makeAppRuntime } from '@beonauto/api';
-import { playbookOwnNamesOf, defineStartVersion } from '@beonauto/definitions';
-import { echo } from '@beonauto/definitions/testing';
-import { ledgerLayer } from '@beonauto/ledger/sqlite3';
-import type { PlaybookRequest, Dispatcher, Outcome } from '@beonauto/operations';
-import { StartRefused, StartRejected } from '@beonauto/workflow-host';
+import { makeAppRuntime } from '@on.auto/api';
+import { playbookOwnNamesOf, defineStartVersion } from '@on.auto/definitions';
+import { echo } from '@on.auto/definitions/testing';
+import { ledgerLayer } from '@on.auto/ledger/sqlite3';
+import type { PlaybookRequest, Dispatcher, Outcome } from '@on.auto/operations';
+import { StartRefused, StartRejected } from '@on.auto/workflow-host';
 import { Effect } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 

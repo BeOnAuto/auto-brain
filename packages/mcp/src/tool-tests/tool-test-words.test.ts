@@ -1,4 +1,4 @@
-import { unsuccessfulWords, type RejectionBecause } from '@beonauto/operations';
+import { unsuccessfulWords, type RejectionBecause } from '@on.auto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

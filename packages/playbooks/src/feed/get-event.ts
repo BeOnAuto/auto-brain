@@ -12,7 +12,7 @@ import {
   streamPrefixOfPlaybook,
   type Presentation,
   type Presenter,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Effect, Schema, SchemaTransformation } from 'effect';
 
 import { eventFound } from '../plain-language/feed-words.ts';

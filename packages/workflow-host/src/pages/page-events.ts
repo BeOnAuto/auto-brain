@@ -1,5 +1,5 @@
-import { playbookEventOf, definitionTypeStreamOf, type CloudEvent } from '@beonauto/definitions';
-import type { EventStore, StoredPage, StoredPlace } from '@beonauto/ledger';
+import { playbookEventOf, definitionTypeStreamOf, type CloudEvent } from '@on.auto/definitions';
+import type { EventStore, StoredPage, StoredPlace } from '@on.auto/ledger';
 
 import type { Point } from './history-points.ts';
 

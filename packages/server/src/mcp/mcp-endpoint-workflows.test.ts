@@ -1,7 +1,7 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { toolNamesIn, withMcpSession, type McpSession, type ToolResult } from '@beonauto/api/testing';
-import { answers, textResult } from '@beonauto/reasoning/testing';
+import { toolNamesIn, withMcpSession, type McpSession, type ToolResult } from '@on.auto/api/testing';
+import { answers, textResult } from '@on.auto/reasoning/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { ReasoningServer } from '../testing/servers/reasoning-server.ts';

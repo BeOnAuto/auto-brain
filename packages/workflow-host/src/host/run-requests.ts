@@ -1,5 +1,5 @@
-import type { Conflict } from '@beonauto/operations';
-import { loadedRunOf, type ReceivedEvent, type RunState, type Started } from '@beonauto/workflow-engine';
+import type { Conflict } from '@on.auto/operations';
+import { loadedRunOf, type ReceivedEvent, type RunState, type Started } from '@on.auto/workflow-engine';
 import { Data, Effect, Schema } from 'effect';
 
 import { rowsOf, type HostDatabase } from '../database/host-database.ts';

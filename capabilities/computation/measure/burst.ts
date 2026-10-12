@@ -1,5 +1,5 @@
-import { checkedWorker } from '@beonauto/definitions/json-schema';
-import { programPool, type ProgramRequest } from '@beonauto/workflow-engine/dsl';
+import { checkedWorker } from '@on.auto/definitions/json-schema';
+import { programPool, type ProgramRequest } from '@on.auto/workflow-engine/dsl';
 
 import { computationBounds } from '../src/run/run-bounds.ts';
 import { formatted, functionOf, inTurn, median, request } from './common.ts';

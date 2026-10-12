@@ -1,4 +1,4 @@
-import type { Principal } from '@beonauto/identity';
+import type { Principal } from '@on.auto/identity';
 
 export interface ApiBindings {
   readonly abortConnection: () => void;

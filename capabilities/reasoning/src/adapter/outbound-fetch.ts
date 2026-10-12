@@ -1,4 +1,4 @@
-import { isUntrustedCertificate } from '@beonauto/outbound';
+import { isUntrustedCertificate } from '@on.auto/outbound';
 
 import { OutboundFailure } from './outbound-failure.ts';
 

@@ -7,7 +7,7 @@ import {
   type Settlement,
   type StreamReader,
   type StreamWriter,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Effect, Equal } from 'effect';
 
 import { cancelledAsAsked, type CancelledRun, type Capability } from '../capability/capability.ts';

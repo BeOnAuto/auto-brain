@@ -1,4 +1,4 @@
-import type { DispatchWatermark } from '@beonauto/workflow-engine';
+import type { DispatchWatermark } from '@on.auto/workflow-engine';
 import { Effect, Schema } from 'effect';
 
 import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';

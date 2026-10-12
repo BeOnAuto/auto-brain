@@ -1,4 +1,4 @@
-import { sha256Of, textOfContent, textToKeep } from '@beonauto/operations';
+import { sha256Of, textOfContent, textToKeep } from '@on.auto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

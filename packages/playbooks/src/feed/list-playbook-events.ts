@@ -14,7 +14,7 @@ import {
   type Presentation,
   type Presenter,
   type RecordedSelection,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Effect, Schema, SchemaTransformation } from 'effect';
 
 import { eventsFound } from '../plain-language/feed-words.ts';

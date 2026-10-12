@@ -1,5 +1,5 @@
-import { presentationOf } from '@beonauto/operations';
-import { memoryLedger, nothingKept } from '@beonauto/operations/testing';
+import { presentationOf } from '@on.auto/operations';
+import { memoryLedger, nothingKept } from '@on.auto/operations/testing';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

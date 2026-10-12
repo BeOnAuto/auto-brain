@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
-import type { AppendSignal, EncodedEvent, EventStore } from '@beonauto/ledger';
-import { streamPrefixOfPlaybook, type Context } from '@beonauto/operations';
+import type { AppendSignal, EncodedEvent, EventStore } from '@on.auto/ledger';
+import { streamPrefixOfPlaybook, type Context } from '@on.auto/operations';
 import type { Schema } from 'effect';
 
 import type { ViewDetails } from '../views/view-details.ts';

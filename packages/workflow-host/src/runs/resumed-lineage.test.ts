@@ -1,5 +1,5 @@
-import { messageIdOf } from '@beonauto/operations';
-import { callKeyText } from '@beonauto/workflow-engine';
+import { messageIdOf } from '@on.auto/operations';
+import { callKeyText } from '@on.auto/workflow-engine';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

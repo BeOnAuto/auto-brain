@@ -1,6 +1,6 @@
-import { readYaml, type LocatedProblem, type Position, type YamlKind } from '@beonauto/config';
-import { runnableExpression, type PlaybookOwnNames, type StrippedForms } from '@beonauto/definitions';
-import { InvalidInput, type Issue } from '@beonauto/operations';
+import { readYaml, type LocatedProblem, type Position, type YamlKind } from '@on.auto/config';
+import { runnableExpression, type PlaybookOwnNames, type StrippedForms } from '@on.auto/definitions';
+import { InvalidInput, type Issue } from '@on.auto/operations';
 import {
   durationLimitRejections,
   entriesOf,
@@ -14,7 +14,7 @@ import {
   type JsonEntry,
   type JsonObject,
   type Rejection,
-} from '@beonauto/workflow-engine';
+} from '@on.auto/workflow-engine';
 import { Effect } from 'effect';
 
 import { dslProblems, type Problem } from './dsl-validation.ts';

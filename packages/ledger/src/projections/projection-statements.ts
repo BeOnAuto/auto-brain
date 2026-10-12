@@ -1,3 +1,4 @@
+import { SQL } from '@event-driven-io/dumbo';
 import {
   advancedColumnsOf,
   projectedTableOf,
@@ -8,8 +9,7 @@ import {
   type ProjectedRow,
   type ProjectedValue,
   type RowAdvance,
-} from '@beonauto/operations';
-import { SQL } from '@event-driven-io/dumbo';
+} from '@on.auto/operations';
 import { Schema } from 'effect';
 
 import type { StatementExecutor } from '../event-store.ts';

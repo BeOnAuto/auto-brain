@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { campaignPace, campaignRows } from '@beonauto/computation/testing';
+import { campaignPace, campaignRows } from '@on.auto/computation/testing';
 import { Schema } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';

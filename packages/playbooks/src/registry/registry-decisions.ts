@@ -1,4 +1,4 @@
-import { Conflict, type Context, type Rejection } from '@beonauto/operations';
+import { Conflict, type Context, type Rejection } from '@on.auto/operations';
 import { Result } from 'effect';
 
 import type {

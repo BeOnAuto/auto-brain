@@ -1,4 +1,4 @@
-import type { Decider } from '@beonauto/operations';
+import type { Decider } from '@on.auto/operations';
 
 import type { PlaybookCommand } from './playbook-commands.ts';
 import { PlaybookEventSchema, type RecordedPlaybookEvent } from './playbook-events.ts';

@@ -1,8 +1,8 @@
-import type { Trigger } from '@beonauto/definitions';
-import { eventAppenderOf, type EventStore } from '@beonauto/ledger';
-import { ContextSchema, messageIdOf, noLineage, type Context, type Decided, type Lineage } from '@beonauto/operations';
-import { playbooksStreamOfOrg } from '@beonauto/playbooks';
-import type { Json } from '@beonauto/workflow-engine';
+import type { Trigger } from '@on.auto/definitions';
+import { eventAppenderOf, type EventStore } from '@on.auto/ledger';
+import { ContextSchema, messageIdOf, noLineage, type Context, type Decided, type Lineage } from '@on.auto/operations';
+import { playbooksStreamOfOrg } from '@on.auto/playbooks';
+import type { Json } from '@on.auto/workflow-engine';
 import { Effect, Schema } from 'effect';
 
 export const alpha = 'playbook/acme/alpha/';

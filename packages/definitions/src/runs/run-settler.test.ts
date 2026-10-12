@@ -1,4 +1,4 @@
-import { Conflict, NotFound, type RecordedEvent } from '@beonauto/operations';
+import { Conflict, NotFound, type RecordedEvent } from '@on.auto/operations';
 import { Effect, Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

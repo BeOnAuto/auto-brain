@@ -1,4 +1,4 @@
-import type { CheckIssue } from '@beonauto/workflow-engine/worker';
+import type { CheckIssue } from '@on.auto/workflow-engine/worker';
 import ts from 'typescript6';
 
 import { assignmentIssues } from './assignment-bound.ts';

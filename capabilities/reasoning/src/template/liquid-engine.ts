@@ -1,4 +1,4 @@
-import { templateEngine, type TagDefinition } from '@beonauto/definitions/template';
+import { templateEngine, type TagDefinition } from '@on.auto/definitions/template';
 
 import { clip, money, words } from './prompt-filters.ts';
 

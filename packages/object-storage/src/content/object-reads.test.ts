@@ -1,6 +1,6 @@
 import { CreateMultipartUploadCommand, ListBucketsCommand, PutObjectCommand } from '@aws-sdk/client-s3';
-import { sha256Of, textOfContent, textToKeep } from '@beonauto/operations';
-import { alpha, generated, octets, present, refusalOf, resultOf } from '@beonauto/operations/testing';
+import { sha256Of, textOfContent, textToKeep } from '@on.auto/operations';
+import { alpha, generated, octets, present, refusalOf, resultOf } from '@on.auto/operations/testing';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

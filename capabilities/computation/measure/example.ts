@@ -1,5 +1,5 @@
-import { mostInputBytes } from '@beonauto/definitions';
-import { jsonBytesOf, type ProgramPool } from '@beonauto/workflow-engine/dsl';
+import { mostInputBytes } from '@on.auto/definitions';
+import { jsonBytesOf, type ProgramPool } from '@on.auto/workflow-engine/dsl';
 import { Effect, Result } from 'effect';
 
 import { documentCheck } from '../src/document/document-check.ts';

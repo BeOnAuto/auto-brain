@@ -1,5 +1,5 @@
-import { rejected, type Issue } from '@beonauto/operations';
 import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
+import { rejected, type Issue } from '@on.auto/operations';
 import { Result, Schema, SchemaIssue, type SchemaAST } from 'effect';
 
 import type { ToolDefinition } from '../tools/tool-definition.ts';

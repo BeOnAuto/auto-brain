@@ -1,5 +1,5 @@
-import { toolInWords } from '@beonauto/mcp';
-import { plainNumber } from '@beonauto/operations';
+import { toolInWords } from '@on.auto/mcp';
+import { plainNumber } from '@on.auto/operations';
 
 import type {
   DeliveryEnded,

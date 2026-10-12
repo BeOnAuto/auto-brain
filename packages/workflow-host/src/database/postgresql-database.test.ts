@@ -1,7 +1,7 @@
 import { once } from 'node:events';
 import { createServer } from 'node:net';
 
-import type { EventStore, StoredRecord } from '@beonauto/ledger';
+import type { EventStore, StoredRecord } from '@on.auto/ledger';
 import { Effect, Function, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

@@ -1,4 +1,4 @@
-import type { Environment } from '@beonauto/config';
+import type { Environment } from '@on.auto/config';
 
 import type { ChildCommand, RunningChild, StartChild } from './children.ts';
 import type { RunnerLog } from './runner-log.ts';

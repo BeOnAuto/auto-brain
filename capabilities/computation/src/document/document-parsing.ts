@@ -8,9 +8,9 @@ import {
   type DocumentParts,
   type ReadFrontMatter,
   type SourceLines,
-} from '@beonauto/definitions/document';
-import { oneLanguage } from '@beonauto/workflow-engine';
-import { mostValueDepth } from '@beonauto/workflow-engine/dsl';
+} from '@on.auto/definitions/document';
+import { oneLanguage } from '@on.auto/workflow-engine';
+import { mostValueDepth } from '@on.auto/workflow-engine/dsl';
 import { Result, type Schema } from 'effect';
 
 import type { ComputationFunctionDefinitionDocument, ValueContract } from './computation-document.ts';

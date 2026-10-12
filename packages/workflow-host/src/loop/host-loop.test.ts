@@ -1,6 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
-import type { ArmTimer, WorkflowEngine } from '@beonauto/workflow-engine';
+import type { ArmTimer, WorkflowEngine } from '@on.auto/workflow-engine';
 import { Deferred, Effect, Exit, Function } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 

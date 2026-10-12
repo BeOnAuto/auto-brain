@@ -1,5 +1,5 @@
-import type { SettleRun } from '@beonauto/definitions';
-import type { Emitter, EnginePorts, Executor, Listeners, Timers } from '@beonauto/workflow-engine';
+import type { SettleRun } from '@on.auto/definitions';
+import type { Emitter, EnginePorts, Executor, Listeners, Timers } from '@on.auto/workflow-engine';
 
 import type { HostDatabase } from '../database/host-database.ts';
 import { runSerialiser } from '../dispatch/run-serialiser.ts';

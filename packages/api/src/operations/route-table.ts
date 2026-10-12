@@ -1,4 +1,4 @@
-import type { Catalog, OperationScope, RouteRegistration } from '@beonauto/operations';
+import type { Catalog, OperationScope, RouteRegistration } from '@on.auto/operations';
 
 export interface RouteEntry {
   readonly registration: RouteRegistration;

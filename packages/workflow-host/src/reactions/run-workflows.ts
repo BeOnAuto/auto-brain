@@ -1,4 +1,4 @@
-import { runStartedOf } from '@beonauto/definitions';
+import { runStartedOf } from '@on.auto/definitions';
 import { Effect } from 'effect';
 
 export type WorkflowOfRun = (playbookKey: string, runId: string) => Effect.Effect<string | undefined>;

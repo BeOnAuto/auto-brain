@@ -1,4 +1,4 @@
-import type { Conflict } from '@beonauto/operations';
+import type { Conflict } from '@on.auto/operations';
 import {
   describeError,
   listenerFilterOf,
@@ -6,7 +6,7 @@ import {
   type DslError,
   type MatchedFilter,
   type Submission,
-} from '@beonauto/workflow-engine';
+} from '@on.auto/workflow-engine';
 import { Array, Effect, Schema } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';

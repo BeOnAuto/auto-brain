@@ -1,4 +1,4 @@
-import { servesPlaybook } from '@beonauto/config';
+import { servesPlaybook } from '@on.auto/config';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

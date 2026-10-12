@@ -1,5 +1,5 @@
-import type { ProjectedColumn, ProjectedColumnKind, ProjectedValue } from '@beonauto/operations';
 import type { SQL } from '@event-driven-io/dumbo';
+import type { ProjectedColumn, ProjectedColumnKind, ProjectedValue } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 export interface ProjectionDialect {

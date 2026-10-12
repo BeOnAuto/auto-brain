@@ -1,5 +1,5 @@
-import { counted, quoted } from '@beonauto/operations';
-import type { KeptView, StallCause, ViewStall } from '@beonauto/workflow-host';
+import { counted, quoted } from '@on.auto/operations';
+import type { KeptView, StallCause, ViewStall } from '@on.auto/workflow-host';
 
 import { recallBounds } from './recall-bounds.ts';
 

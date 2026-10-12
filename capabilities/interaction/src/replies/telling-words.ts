@@ -1,4 +1,4 @@
-import type { Issue } from '@beonauto/operations';
+import type { Issue } from '@on.auto/operations';
 
 import type { ReplyRefusal } from '../facts/run-facts.ts';
 import { interactionBounds } from '../run/run-bounds.ts';

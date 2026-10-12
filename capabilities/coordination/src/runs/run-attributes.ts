@@ -1,4 +1,4 @@
-import { CallerIdentitySchema } from '@beonauto/operations';
+import { CallerIdentitySchema } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 const RunAttributesSchema = Schema.Struct({

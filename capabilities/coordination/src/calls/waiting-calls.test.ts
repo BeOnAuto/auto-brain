@@ -1,4 +1,4 @@
-import type { StartCall } from '@beonauto/workflow-engine';
+import type { StartCall } from '@on.auto/workflow-engine';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

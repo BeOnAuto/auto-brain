@@ -1,4 +1,4 @@
-import { streamPrefixOfPlaybook, type RunOutcomeMapping, type RunOutcomesReader } from '@beonauto/operations';
+import { streamPrefixOfPlaybook, type RunOutcomeMapping, type RunOutcomesReader } from '@on.auto/operations';
 import { Effect } from 'effect';
 
 import type { RunOutcomesStore } from '../event-store.ts';

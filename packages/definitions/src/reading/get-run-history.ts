@@ -15,7 +15,7 @@ import {
   type Presenter,
   type RecordedEvent,
   type RecordedPageRequest,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 
 import { RunIdInputField } from '../operations/definition-fields.ts';

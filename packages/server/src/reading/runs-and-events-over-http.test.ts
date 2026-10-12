@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { setTimeout } from 'node:timers/promises';
 
-import { internalTermsIn } from '@beonauto/api/testing';
-import { answers, textResult } from '@beonauto/reasoning/testing';
+import { internalTermsIn } from '@on.auto/api/testing';
+import { answers, textResult } from '@on.auto/reasoning/testing';
 import { Schema } from 'effect';
 import { Client } from 'pg';
 import { afterEach, describe, expect, it, onTestFinished } from 'vitest';

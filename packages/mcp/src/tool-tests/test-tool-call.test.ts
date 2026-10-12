@@ -118,7 +118,7 @@ describe('a test of a tool its server marks read-only', () => {
     const tested = await test({ server: 'graph', tool: 'search', arguments: { query: 'acme' } });
 
     expect(fake.received()).toEqual([
-      { tool: 'search', arguments: { query: 'acme' }, meta: { 'com.beonauto/tool_test_id': testIdOf(tested) } },
+      { tool: 'search', arguments: { query: 'acme' }, meta: { 'auto.on/tool_test_id': testIdOf(tested) } },
     ]);
   });
 });

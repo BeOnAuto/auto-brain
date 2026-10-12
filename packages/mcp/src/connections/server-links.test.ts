@@ -9,6 +9,7 @@ import {
   fetchWithDeletion,
   recordingTimer,
   serveFakeMcp,
+  testClientInfo,
   type FakeMcpOptions,
   type FakeMcpServer,
 } from '../testing/index.ts';
@@ -63,6 +64,7 @@ function linked(settings: HttpServerSettings, options: Partial<LinkOptions> = {}
   const secrets = secretsOf([]);
   const reported: string[] = [];
   const link = serverLink(settings, {
+    client: testClientInfo,
     fetch: globalThis.fetch,
     secrets,
     now: Date.now,

@@ -5,7 +5,7 @@ import {
   type RejectionKind,
   type RejectionBecause,
   type UnavailableKind,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 
 export type ProblemReason =
   | 'invalid_input'

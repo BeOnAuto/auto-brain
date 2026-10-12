@@ -1,4 +1,4 @@
-import { counted, listed, type Noun } from '@beonauto/operations';
+import { counted, listed, type Noun } from '@on.auto/operations';
 
 import { withoutTrailingSlashes } from '../listing/listing-request.ts';
 import { aliasPatternOf } from '../model/model-alias.ts';

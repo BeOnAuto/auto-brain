@@ -1,5 +1,5 @@
-import type { Registration } from '@beonauto/operations';
 import type { StandardSchemaWithJSON, ToolAnnotations } from '@modelcontextprotocol/server';
+import type { Registration } from '@on.auto/operations';
 
 import {
   mostArgumentDescriptionCharacters,

@@ -1,10 +1,10 @@
 import { Buffer } from 'node:buffer';
 
-import { mostResultBytes } from '@beonauto/definitions';
-import { issuesDetail } from '@beonauto/definitions/json-schema';
-import { answerDocument, isReadOnly, toolInWords, type AnsweredOnce, type CalledOnce } from '@beonauto/mcp';
-import { capitalized, Conflict, Unavailable } from '@beonauto/operations';
-import { measureOf, mostValueDepth } from '@beonauto/workflow-engine/dsl';
+import { mostResultBytes } from '@on.auto/definitions';
+import { issuesDetail } from '@on.auto/definitions/json-schema';
+import { answerDocument, isReadOnly, toolInWords, type AnsweredOnce, type CalledOnce } from '@on.auto/mcp';
+import { capitalized, Conflict, Unavailable } from '@on.auto/operations';
+import { measureOf, mostValueDepth } from '@on.auto/workflow-engine/dsl';
 import { Effect, Result, Schema } from 'effect';
 
 import type { CallDocument } from '../document/interaction-document.ts';

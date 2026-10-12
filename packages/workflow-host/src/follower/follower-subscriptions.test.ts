@@ -1,4 +1,4 @@
-import { messageIdOf } from '@beonauto/operations';
+import { messageIdOf } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

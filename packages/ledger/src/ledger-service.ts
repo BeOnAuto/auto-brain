@@ -10,7 +10,7 @@ import {
   type Recorded,
   type Rejection,
   type StreamState,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Effect, Result } from 'effect';
 
 import { eventAppenderOf } from './event-appender.ts';

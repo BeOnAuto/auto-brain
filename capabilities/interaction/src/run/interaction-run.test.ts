@@ -1,6 +1,6 @@
-import type { RunContext } from '@beonauto/definitions';
-import { noLongestRuns, recordingJournal } from '@beonauto/definitions/testing';
-import { allPermissions } from '@beonauto/operations';
+import type { RunContext } from '@on.auto/definitions';
+import { noLongestRuns, recordingJournal } from '@on.auto/definitions/testing';
+import { allPermissions } from '@on.auto/operations';
 import { Effect, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

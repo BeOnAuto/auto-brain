@@ -1,4 +1,4 @@
-import type { CallResult } from '@beonauto/operations';
+import type { CallResult } from '@on.auto/operations';
 import { Effect } from 'effect';
 
 import type { OutputOrigin, RunContext } from '../dispatch/dispatch-watermark.ts';

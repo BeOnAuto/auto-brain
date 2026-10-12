@@ -5,8 +5,8 @@ This guide uses a local checkout. You need a terminal to start the runtime, but 
 You need [pnpm](https://pnpm.io/installation), for example from `curl -fsSL https://get.pnpm.io/install.sh | sh -`. In this repository pnpm switches itself to the version the repository pins, 12.8.1, and runs every script on the Node.js it pins, 26.10.0, which it downloads on the first `pnpm install`; the Node.js on your machine does not matter.
 
 ```bash
-git clone https://github.com/BeOnAuto/auto-runtime.git
-cd auto-runtime
+git clone https://github.com/BeOnAuto/runtime.git
+cd runtime
 pnpm install
 cp .env.example .env
 ```

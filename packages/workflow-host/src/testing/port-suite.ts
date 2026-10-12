@@ -6,7 +6,7 @@ import {
   timerProbes,
   watermarkProbes,
   type Probe,
-} from '@beonauto/workflow-engine/testing';
+} from '@on.auto/workflow-engine/testing';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

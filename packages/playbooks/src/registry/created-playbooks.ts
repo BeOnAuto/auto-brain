@@ -1,4 +1,4 @@
-import { recordedDecoder } from '@beonauto/operations';
+import { recordedDecoder } from '@on.auto/operations';
 import { Option } from 'effect';
 
 import { PlaybookEventSchema } from './playbook-events.ts';

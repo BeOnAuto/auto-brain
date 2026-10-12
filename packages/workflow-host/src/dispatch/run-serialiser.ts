@@ -1,4 +1,4 @@
-import type { RunSerialiser } from '@beonauto/workflow-engine';
+import type { RunSerialiser } from '@on.auto/workflow-engine';
 import { Effect, Semaphore } from 'effect';
 
 interface RunLock {

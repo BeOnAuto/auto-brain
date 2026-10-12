@@ -1,4 +1,4 @@
-import type { ProjectedMessage, RunOutcome, RunOutcomeMapping, RunOutcomeStatus } from '@beonauto/operations';
+import type { ProjectedMessage, RunOutcome, RunOutcomeMapping, RunOutcomeStatus } from '@on.auto/operations';
 import { Option, Predicate, Schema } from 'effect';
 
 const Time = Schema.String.check(

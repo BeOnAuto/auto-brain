@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 const header = [
-  "import * as Operations from '@beonauto/operations';",
+  "import * as Operations from '@on.auto/operations';",
   'export const { Caller, Conflict, InvalidInput, NotFound, Unavailable } = Operations;',
   "import { Effect } from 'effect';",
   "import { defineCapability } from '../../../src/index.ts';",

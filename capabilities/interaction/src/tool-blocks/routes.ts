@@ -1,5 +1,5 @@
-import { toolInWords } from '@beonauto/mcp';
-import type { ToolReference } from '@beonauto/mcp/policy';
+import { toolInWords } from '@on.auto/mcp';
+import type { ToolReference } from '@on.auto/mcp/policy';
 
 import type { Replies } from './tool-block-schemas.ts';
 

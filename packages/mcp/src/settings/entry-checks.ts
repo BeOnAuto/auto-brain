@@ -1,4 +1,4 @@
-import { problem, servedScopeOf, type SettingProblem } from '@beonauto/config';
+import { problem, servedScopeOf, type SettingProblem } from '@on.auto/config';
 import { JsonPointer, Redacted, Result } from 'effect';
 
 import { isServerName } from '../names/tool-reference.ts';

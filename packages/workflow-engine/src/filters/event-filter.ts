@@ -1,4 +1,4 @@
-import { leastCount } from '@beonauto/operations';
+import { leastCount } from '@on.auto/operations';
 import { Function } from 'effect';
 
 import { enclosedBody } from '../dsl/expressions.ts';

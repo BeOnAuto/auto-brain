@@ -1,5 +1,5 @@
-import { InvalidInput } from '@beonauto/operations';
-import { measureOf, mostValueDepth } from '@beonauto/workflow-engine/dsl';
+import { InvalidInput } from '@on.auto/operations';
+import { measureOf, mostValueDepth } from '@on.auto/workflow-engine/dsl';
 import { Effect, Result, type Schema } from 'effect';
 
 import type { ValueContract } from '../document/recall-document.ts';

@@ -1,4 +1,4 @@
-import type { VariableSegment } from '@beonauto/definitions/template';
+import type { VariableSegment } from '@on.auto/definitions/template';
 
 import type { TemplateVariables } from './rendered-arguments.ts';
 

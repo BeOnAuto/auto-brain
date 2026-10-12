@@ -1,7 +1,7 @@
-import type { CapabilityAnswer, CapabilityRejection, StrippedForms } from '@beonauto/definitions';
-import { checkedWorker } from '@beonauto/definitions/json-schema';
-import { Conflict, type InvalidInput } from '@beonauto/operations';
-import { jsonBytesOf, type ProgramPool, type ProgramRequest } from '@beonauto/workflow-engine/dsl';
+import type { CapabilityAnswer, CapabilityRejection, StrippedForms } from '@on.auto/definitions';
+import { checkedWorker } from '@on.auto/definitions/json-schema';
+import { Conflict, type InvalidInput } from '@on.auto/operations';
+import { jsonBytesOf, type ProgramPool, type ProgramRequest } from '@on.auto/workflow-engine/dsl';
 import { Clock, Effect, type Schema } from 'effect';
 
 import type { ComputationFunctionDefinitionDocument } from '../document/computation-document.ts';

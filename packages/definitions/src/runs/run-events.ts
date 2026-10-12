@@ -1,5 +1,5 @@
-import { CallAnsweredSchema, CallFailedSchema, CallStartedSchema } from '@beonauto/mcp';
-import { ActedOnRunContextSchema, RunContextSchema, factOf, type Decided } from '@beonauto/operations';
+import { CallAnsweredSchema, CallFailedSchema, CallStartedSchema } from '@on.auto/mcp';
+import { ActedOnRunContextSchema, RunContextSchema, factOf, type Decided } from '@on.auto/operations';
 import { Schema, SchemaTransformation } from 'effect';
 
 import { RunRejectionSchema } from './run.ts';

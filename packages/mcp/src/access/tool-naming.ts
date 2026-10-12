@@ -1,5 +1,5 @@
-import { servesPlaybook } from '@beonauto/config';
-import { capitalized, type PlaybookAddress } from '@beonauto/operations';
+import { servesPlaybook } from '@on.auto/config';
+import { capitalized, type PlaybookAddress } from '@on.auto/operations';
 import { Result } from 'effect';
 
 import type { ListedTool } from '../bounds/tool-results.ts';

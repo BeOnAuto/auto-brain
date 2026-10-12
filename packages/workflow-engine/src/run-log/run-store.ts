@@ -1,4 +1,4 @@
-import type { DecidedPlace, VersionConflict } from '@beonauto/ledger';
+import type { DecidedPlace, VersionConflict } from '@on.auto/ledger';
 import type { Effect, Schema } from 'effect';
 
 import type { StepKey } from '../steps/step-entry.ts';

@@ -3,7 +3,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { text } from 'node:stream/consumers';
 import { setTimeout } from 'node:timers/promises';
 
-import { withMcpSession, type McpSession, type ToolResult } from '@beonauto/api/testing';
+import { withMcpSession, type McpSession, type ToolResult } from '@on.auto/api/testing';
 import { Schema } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 

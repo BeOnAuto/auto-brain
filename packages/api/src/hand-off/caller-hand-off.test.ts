@@ -1,4 +1,4 @@
-import { allPermissions, type CallerIdentity } from '@beonauto/operations';
+import { allPermissions, type CallerIdentity } from '@on.auto/operations';
 import { describe, expect, it } from 'vitest';
 
 import { authInfoFor, playbookCallOf, orgCallOf } from './caller-hand-off.ts';

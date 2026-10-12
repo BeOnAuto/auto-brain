@@ -1,4 +1,4 @@
-import type { StallCause } from '@beonauto/workflow-host';
+import type { StallCause } from '@on.auto/workflow-host';
 import { describe, expect, it } from 'vitest';
 
 import { liveView } from '../testing/recall-runs.ts';

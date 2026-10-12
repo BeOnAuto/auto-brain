@@ -1,4 +1,4 @@
-import { articled } from '@beonauto/operations';
+import { articled } from '@on.auto/operations';
 
 export type McpEndpoint = 'org' | 'playbook' | 'own org';
 

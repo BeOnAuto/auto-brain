@@ -1,4 +1,4 @@
-import { streamSignalOf } from '@beonauto/ledger';
+import { streamSignalOf } from '@on.auto/ledger';
 import { describe, expect, it } from 'vitest';
 
 import {

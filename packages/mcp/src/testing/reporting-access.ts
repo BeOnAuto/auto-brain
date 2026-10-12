@@ -1,5 +1,5 @@
-import type { RecordedContent } from '@beonauto/operations';
-import { memoryRecordedContent } from '@beonauto/operations/testing';
+import type { RecordedContent } from '@on.auto/operations';
+import { memoryRecordedContent } from '@on.auto/operations/testing';
 import { Effect } from 'effect';
 
 import type { ServerMessage } from '../access/caller-context.ts';
@@ -7,6 +7,8 @@ import { makeToolAccess, type ToolAccess, type ToolAccessOptions } from '../acce
 import type { Timing } from '../bounds/call-bounds.ts';
 import { ignored } from '../connections/ignored.ts';
 import { readMcpSettings, type Environment } from '../settings/settings-reading.ts';
+
+export const testClientInfo: ToolAccessOptions['client'] = { name: '@on.auto/runtime', version: '0.0.0-test' };
 
 export interface AccessOptions {
   readonly environment?: Environment;
@@ -32,6 +34,7 @@ export function reportingAccess(
     readMcpSettings({ ...environment, MCP_SERVERS: JSON.stringify(servers) }, { modelProviders: [] }),
   );
   const access = makeToolAccess(settings, {
+    client: testClientInfo,
     content,
     reportServerMessage: (message) => {
       messages.push(message);
@@ -47,5 +50,5 @@ export function reportingAccess(
 
 export const noToolServers: ToolAccess = makeToolAccess(
   { servers: [] },
-  { content: memoryRecordedContent(), reportServerMessage: ignored, reportUntestable: ignored },
+  { client: testClientInfo, content: memoryRecordedContent(), reportServerMessage: ignored, reportUntestable: ignored },
 );

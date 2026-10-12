@@ -1,7 +1,7 @@
-import type { CapabilityAnswer, CapabilityRejection, RunContext } from '@beonauto/definitions';
-import { toolBounds, type ToolAccess } from '@beonauto/mcp';
-import { runIdKey } from '@beonauto/mcp/policy';
-import type { Conflict, InvalidInput } from '@beonauto/operations';
+import type { CapabilityAnswer, CapabilityRejection, RunContext } from '@on.auto/definitions';
+import { toolBounds, type ToolAccess } from '@on.auto/mcp';
+import { runIdKey } from '@on.auto/mcp/policy';
+import type { Conflict, InvalidInput } from '@on.auto/operations';
 import { Clock, Effect, Result, type Schema } from 'effect';
 
 import type { CallDocument } from '../document/interaction-document.ts';

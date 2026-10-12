@@ -4,9 +4,9 @@ import {
   type DocumentIssue,
   type DocumentParts,
   type SourceLines,
-} from '@beonauto/definitions/document';
-import type { ParsedTemplate } from '@beonauto/definitions/template';
-import { mostValueDepth } from '@beonauto/workflow-engine/dsl';
+} from '@on.auto/definitions/document';
+import type { ParsedTemplate } from '@on.auto/definitions/template';
+import { mostValueDepth } from '@on.auto/workflow-engine/dsl';
 import { Result, type Schema } from 'effect';
 
 import { expiryOf } from './expiry.ts';

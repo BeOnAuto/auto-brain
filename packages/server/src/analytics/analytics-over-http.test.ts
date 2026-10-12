@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
-import { withMcpSession } from '@beonauto/api/testing';
-import { OutputInvalid } from '@beonauto/reasoning';
-import { answers, textResult } from '@beonauto/reasoning/testing';
+import { withMcpSession } from '@on.auto/api/testing';
+import { OutputInvalid } from '@on.auto/reasoning';
+import { answers, textResult } from '@on.auto/reasoning/testing';
 import { Effect, Schema } from 'effect';
 import { Client } from 'pg';
 import { afterEach, describe, expect, it, onTestFinished } from 'vitest';

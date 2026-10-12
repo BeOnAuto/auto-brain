@@ -4,7 +4,7 @@ import {
   type DefinitionContext,
   type RecordedFact,
   type RunContext,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Option, type Schema } from 'effect';
 
 import { DefinitionEventSchema, type RecordedDefinitionEvent } from '../registry/definition-events.ts';

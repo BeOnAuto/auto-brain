@@ -1,4 +1,4 @@
-import { decodedJsonSettingWith, strictly } from '@beonauto/config';
+import { decodedJsonSettingWith, strictly } from '@on.auto/config';
 import { Effect, Redacted, Result, Schema } from 'effect';
 
 import { allowedOptionProblems } from './allowed-provider-options.ts';

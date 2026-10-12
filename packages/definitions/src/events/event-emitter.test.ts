@@ -1,5 +1,5 @@
-import { Conflict, Ledger } from '@beonauto/operations';
-import { memoryLedger, nothingKept } from '@beonauto/operations/testing';
+import { Conflict, Ledger } from '@on.auto/operations';
+import { memoryLedger, nothingKept } from '@on.auto/operations/testing';
 import { Effect, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

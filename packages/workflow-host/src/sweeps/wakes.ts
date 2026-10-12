@@ -1,5 +1,5 @@
-import { playbookKeyOfStream } from '@beonauto/ledger';
-import { playbookOfStreamPrefix } from '@beonauto/operations';
+import { playbookKeyOfStream } from '@on.auto/ledger';
+import { playbookOfStreamPrefix } from '@on.auto/operations';
 import { Option } from 'effect';
 
 import { isOrgRegistry } from '../follower/playbook-discovery.ts';

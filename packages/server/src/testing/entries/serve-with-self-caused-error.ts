@@ -1,4 +1,4 @@
-import type { RegisterRoutes } from '@beonauto/api';
+import type { RegisterRoutes } from '@on.auto/api';
 
 import { defaultServerOptions, servedBy } from '../../lifecycle/lifecycle.ts';
 import { exitOnStartupFailure, runServer } from '../../lifecycle/run-server.ts';

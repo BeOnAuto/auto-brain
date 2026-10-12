@@ -1,4 +1,4 @@
-import { uuidV5 } from '@beonauto/operations';
+import { uuidV5 } from '@on.auto/operations';
 
 import { evaluateTemplate } from '../dsl/evaluation.ts';
 import { field, isObject, jsonBytesOf, objectField, textField, type JsonObject } from '../dsl/json.ts';

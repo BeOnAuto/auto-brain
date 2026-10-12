@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { answerInteraction, openRequests } from '@beonauto/interaction';
+import { answerInteraction, openRequests } from '@on.auto/interaction';
 import {
   askedRunId,
   askedThroughChat,
@@ -9,10 +9,10 @@ import {
   recordedReply,
   type HarnessLedger,
   type InteractionHarness,
-} from '@beonauto/interaction/testing';
-import { postgresqlLedgerLayer } from '@beonauto/ledger/postgresql';
-import { ledgerLayer } from '@beonauto/ledger/sqlite3';
-import { Ledger } from '@beonauto/operations';
+} from '@on.auto/interaction/testing';
+import { postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
+import { ledgerLayer } from '@on.auto/ledger/sqlite3';
+import { Ledger } from '@on.auto/operations';
 import { Layer, ManagedRuntime } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';

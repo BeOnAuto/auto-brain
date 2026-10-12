@@ -1,4 +1,4 @@
-import type { Presenter, Registration } from '@beonauto/operations';
+import type { Presenter, Registration } from '@on.auto/operations';
 
 import type { Capability } from '../capability/capability.ts';
 import { runOperations } from '../reading/run-operations.ts';

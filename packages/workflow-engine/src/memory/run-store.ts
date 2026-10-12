@@ -1,5 +1,5 @@
-import { VersionConflict, type DecidedPlace } from '@beonauto/ledger';
-import type { Context } from '@beonauto/operations';
+import { VersionConflict, type DecidedPlace } from '@on.auto/ledger';
+import type { Context } from '@on.auto/operations';
 import { Effect, Result, Schema } from 'effect';
 
 import { RunLogEventSchema, type PositionedEvent, type RunLogEvent } from '../run-log/run-event.ts';

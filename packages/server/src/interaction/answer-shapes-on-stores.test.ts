@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 
-import { postgresqlLedgerLayer } from '@beonauto/ledger/postgresql';
-import { ledgerLayer } from '@beonauto/ledger/sqlite3';
+import { postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
+import { ledgerLayer } from '@on.auto/ledger/sqlite3';
 import { Schema } from 'effect';
 import { Client } from 'pg';
 import { onTestFinished } from 'vitest';

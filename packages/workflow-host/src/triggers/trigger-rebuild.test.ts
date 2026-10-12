@@ -1,4 +1,4 @@
-import type { EventStore } from '@beonauto/ledger';
+import type { EventStore } from '@on.auto/ledger';
 import { describe, expect, it } from 'vitest';
 
 import { triggerRowsOf, untilTriggersAt } from '../reaction-testing/kept-triggers.ts';

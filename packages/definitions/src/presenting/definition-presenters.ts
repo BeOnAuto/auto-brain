@@ -1,4 +1,4 @@
-import type { Presenter } from '@beonauto/operations';
+import type { Presenter } from '@on.auto/operations';
 
 import type { Capability } from '../capability/capability.ts';
 import { definitionWordsFor } from '../plain-language/definition-words.ts';

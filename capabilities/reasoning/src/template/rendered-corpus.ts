@@ -1,4 +1,4 @@
-import { sha256Of } from '@beonauto/operations';
+import { sha256Of } from '@on.auto/operations';
 import { Result } from 'effect';
 
 import type { CorpusCase } from './rendering-corpus.ts';

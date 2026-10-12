@@ -1,7 +1,7 @@
 import { once } from 'node:events';
 import { createServer, type Server } from 'node:http';
 
-import type { ApiHandler } from '@beonauto/api';
+import type { ApiHandler } from '@on.auto/api';
 
 export function createHttpServer(listener: ApiHandler['listener']): Server {
   const server = createServer((request, response) => {

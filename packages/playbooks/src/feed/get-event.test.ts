@@ -1,4 +1,4 @@
-import { ServedAsTool, makeDispatcher, messageIdOf, type Presenter } from '@beonauto/operations';
+import { ServedAsTool, makeDispatcher, messageIdOf, type Presenter } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

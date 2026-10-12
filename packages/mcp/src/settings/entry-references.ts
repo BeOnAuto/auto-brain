@@ -4,7 +4,7 @@ import {
   type Reference,
   type ReferencePlacement,
   type SettingProblem,
-} from '@beonauto/config';
+} from '@on.auto/config';
 import type { Redacted } from 'effect';
 
 import { mcpServersSetting } from './server-entries.ts';

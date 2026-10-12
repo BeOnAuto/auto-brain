@@ -1,6 +1,6 @@
 import { addAbortListener } from 'node:events';
 
-import type { Failed, StreamedContent } from '@beonauto/operations';
+import type { Failed, StreamedContent } from '@on.auto/operations';
 import { Function, Result } from 'effect';
 
 import { clientClosed } from '../problem/outcome-problem.ts';

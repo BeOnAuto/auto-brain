@@ -1,4 +1,4 @@
-import { Ledger } from '@beonauto/operations';
+import { Ledger } from '@on.auto/operations';
 import { Cause, Effect } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 

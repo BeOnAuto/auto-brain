@@ -5,7 +5,7 @@ import {
   type Examined,
   type RecordedOrder,
   type RecordedSelection,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Schema } from 'effect';
 
 import type {

@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
 
-import type { AnsweredOnce, CalledOnce, NotOfferedBecause, OneCall, StartedFields, ToolAccess } from '@beonauto/mcp';
-import { ToolNotOffered } from '@beonauto/mcp';
+import type { AnsweredOnce, CalledOnce, NotOfferedBecause, OneCall, StartedFields, ToolAccess } from '@on.auto/mcp';
+import { ToolNotOffered } from '@on.auto/mcp';
 import { Effect, Result } from 'effect';
 
 import { chatBoard, type BoardAnswer, type ChatBoard } from './chat-board.ts';

@@ -1,4 +1,4 @@
-import type { CheckJob } from '@beonauto/workflow-engine/worker';
+import type { CheckJob } from '@on.auto/workflow-engine/worker';
 import type { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

@@ -1,7 +1,7 @@
-import { checkedWorker } from '@beonauto/definitions/json-schema';
-import { Conflict, type Unavailable } from '@beonauto/operations';
-import type { ProgramPool, ProgramRequest } from '@beonauto/workflow-engine/dsl';
-import type { ViewsPort } from '@beonauto/workflow-host';
+import { checkedWorker } from '@on.auto/definitions/json-schema';
+import { Conflict, type Unavailable } from '@on.auto/operations';
+import type { ProgramPool, ProgramRequest } from '@on.auto/workflow-engine/dsl';
+import type { ViewsPort } from '@on.auto/workflow-host';
 import { Clock, Effect, type Schema } from 'effect';
 
 import type { RecallFunctionDefinitionDocument } from '../document/recall-document.ts';

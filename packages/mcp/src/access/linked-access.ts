@@ -15,6 +15,7 @@ export function linkedAccess(settings: McpSettings, options: LinkedOptions): Lin
   const timing = options.timing ?? defaultTiming;
   const secrets = secretsOfServers(settings.servers);
   const linkOptions: LinkOptions = {
+    client: options.client,
     fetch: options.fetch ?? globalThis.fetch,
     secrets,
     now: options.now ?? Date.now,

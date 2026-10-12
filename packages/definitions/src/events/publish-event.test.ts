@@ -1,4 +1,4 @@
-import { defineListPlaybookEvents } from '@beonauto/playbooks';
+import { defineListPlaybookEvents } from '@on.auto/playbooks';
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

@@ -1,6 +1,6 @@
-import type { RecordWork } from '@beonauto/definitions';
-import type { ToolAccess } from '@beonauto/mcp';
-import type { Lineage } from '@beonauto/operations';
+import type { RecordWork } from '@on.auto/definitions';
+import type { ToolAccess } from '@on.auto/mcp';
+import type { Lineage } from '@on.auto/operations';
 
 import type { RequestAddress } from '../delivery/attempt-end.ts';
 import type { OpenRequestRow } from '../requests/request-rows.ts';

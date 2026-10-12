@@ -1,8 +1,8 @@
 import { Buffer } from 'node:buffer';
 
-import { refusingForbiddenCharacters } from '@beonauto/definitions';
-import { parsedTemplate } from '@beonauto/definitions/template';
-import { answerDocument, type CallAnswer } from '@beonauto/mcp';
+import { refusingForbiddenCharacters } from '@on.auto/definitions';
+import { parsedTemplate } from '@on.auto/definitions/template';
+import { answerDocument, type CallAnswer } from '@on.auto/mcp';
 import { Result, Schema } from 'effect';
 
 import { interactionEngine } from '../document/request-templates.ts';

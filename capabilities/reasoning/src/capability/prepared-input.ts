@@ -1,4 +1,4 @@
-import { InvalidInput } from '@beonauto/operations';
+import { InvalidInput } from '@on.auto/operations';
 import { Effect, Predicate, Result, type Schema } from 'effect';
 
 import type { InputContract } from '../definition/reasoning-function-definition.ts';

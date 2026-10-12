@@ -1,4 +1,4 @@
-import { defineQuery } from '@beonauto/operations';
+import { defineQuery } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 import type { ModelCatalog } from './catalog-listing.ts';

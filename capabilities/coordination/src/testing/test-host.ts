@@ -1,6 +1,6 @@
-import { machineSandboxOf } from '@beonauto/workflow-engine/dsl';
-import { openWorkflowHost, type WorkflowHost } from '@beonauto/workflow-host';
-import { recordedReactions, recordedWaiting } from '@beonauto/workflow-host/testing';
+import { machineSandboxOf } from '@on.auto/workflow-engine/dsl';
+import { openWorkflowHost, type WorkflowHost } from '@on.auto/workflow-host';
+import { recordedReactions, recordedWaiting } from '@on.auto/workflow-host/testing';
 import { Effect, Function } from 'effect';
 
 import { callResultOfEnding, definitionCalls } from '../calls/function-calls.ts';

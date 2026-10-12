@@ -1,5 +1,5 @@
-import type { CallResult } from '@beonauto/operations';
-import type { StartCall } from '@beonauto/workflow-engine';
+import type { CallResult } from '@on.auto/operations';
+import type { StartCall } from '@on.auto/workflow-engine';
 import { Deferred, Effect, Exit, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

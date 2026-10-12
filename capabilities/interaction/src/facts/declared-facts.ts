@@ -1,5 +1,5 @@
-import { declaredFact, type CapabilityFacts } from '@beonauto/definitions';
-import { conversationCallPresenter } from '@beonauto/mcp';
+import { declaredFact, type CapabilityFacts } from '@on.auto/definitions';
+import { conversationCallPresenter } from '@on.auto/mcp';
 
 import {
   failedAccount,

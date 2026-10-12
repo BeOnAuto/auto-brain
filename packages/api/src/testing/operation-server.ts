@@ -1,11 +1,11 @@
-import { authenticatorFor, createApiKey, type Authenticator } from '@beonauto/identity';
-import { allPermissions, makeCatalog, makeDispatcher, type DispatcherServices } from '@beonauto/operations';
+import { authenticatorFor, createApiKey, type Authenticator } from '@on.auto/identity';
+import { allPermissions, makeCatalog, makeDispatcher, type DispatcherServices } from '@on.auto/operations';
 import {
   memoryPlaybookRegistry,
   memoryLedger,
   recordingReporter,
   type ReportedIncident,
-} from '@beonauto/operations/testing';
+} from '@on.auto/operations/testing';
 import { Layer } from 'effect';
 
 import { makeAppRuntime, mcpRoutes, operationRoutes, type ApiHandler, type AppRuntime } from '../index.ts';
@@ -21,7 +21,7 @@ export interface OperationServer {
   readonly mcpErrors: () => readonly string[];
 }
 
-export const testServerInfo = { name: 'auto-runtime', version: '0.0.0-test' };
+export const testServerInfo = { name: '@on.auto/runtime', version: '0.0.0-test' };
 
 const knownPlaybooks = [
   { org: 'acme', playbook: 'alpha' },

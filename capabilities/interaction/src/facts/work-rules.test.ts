@@ -1,5 +1,5 @@
-import { cancelledUnanswered, type Work, type WorkRule } from '@beonauto/definitions';
-import { Conflict } from '@beonauto/operations';
+import { cancelledUnanswered, type Work, type WorkRule } from '@on.auto/definitions';
+import { Conflict } from '@on.auto/operations';
 import { Effect, Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 

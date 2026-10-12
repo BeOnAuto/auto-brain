@@ -28,4 +28,4 @@ export function playbookCallerOf({
   return { id: `playbook:${playbook}`, org, permissions: ['playbook:read', 'playbook:write'], playbooks: [playbook] };
 }
 
-export class Caller extends Context.Service<Caller, CallerIdentity>()('@beonauto/operations/Caller') {}
+export class Caller extends Context.Service<Caller, CallerIdentity>()('@on.auto/operations/Caller') {}

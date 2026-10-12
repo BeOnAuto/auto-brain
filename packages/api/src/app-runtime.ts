@@ -1,4 +1,4 @@
-import type { Cancelled } from '@beonauto/operations';
+import type { Cancelled } from '@on.auto/operations';
 import { Cause, Exit, ManagedRuntime, type Effect, type Layer } from 'effect';
 
 export interface AppRuntime<R> {

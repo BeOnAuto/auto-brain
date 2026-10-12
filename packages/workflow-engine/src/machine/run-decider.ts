@@ -1,4 +1,4 @@
-import { RunContextSchema, factOf, type Context, type Decided, type Decider } from '@beonauto/operations';
+import { RunContextSchema, factOf, type Context, type Decided, type Decider } from '@on.auto/operations';
 import { Result } from 'effect';
 
 import { RunLogEventSchema, type RunLogEvent } from '../run-log/run-event.ts';

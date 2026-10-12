@@ -1,4 +1,4 @@
-import { decodedJsonSettingWith, strictly, type SettingDecoder } from '@beonauto/config';
+import { decodedJsonSettingWith, strictly, type SettingDecoder } from '@on.auto/config';
 import { JsonPointer, Option, Result, Schema } from 'effect';
 
 import { aliasPatternOf, namesModels, patternsOverlap, wildcardsAreTrailing } from '../model/model-alias.ts';

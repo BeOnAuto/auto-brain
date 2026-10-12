@@ -1,4 +1,4 @@
-import type { RecordedEvent, RecordedSelection } from '@beonauto/operations';
+import type { RecordedEvent, RecordedSelection } from '@on.auto/operations';
 import { describe, expect, it } from 'vitest';
 
 import { happen, inAlpha, noted, reading, type LedgerMaker } from '../testing/happenings.ts';

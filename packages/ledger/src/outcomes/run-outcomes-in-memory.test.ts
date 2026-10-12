@@ -1,4 +1,4 @@
-import { memoryLedger } from '@beonauto/operations/testing';
+import { memoryLedger } from '@on.auto/operations/testing';
 import { describe } from 'vitest';
 
 import { runOutcomesBehaviour } from './run-outcomes-behaviour.ts';

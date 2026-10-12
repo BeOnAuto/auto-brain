@@ -6,8 +6,8 @@ import {
   textOf,
   withMcpSession,
   type McpSession,
-} from '@beonauto/api/testing';
-import { answers, textResult, type ScriptedReply } from '@beonauto/reasoning/testing';
+} from '@on.auto/api/testing';
+import { answers, textResult, type ScriptedReply } from '@on.auto/reasoning/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';

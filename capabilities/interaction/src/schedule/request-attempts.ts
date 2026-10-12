@@ -1,4 +1,4 @@
-import { recordedRunIn, type Settlement } from '@beonauto/definitions';
+import { recordedRunIn, type Settlement } from '@on.auto/definitions';
 import { Clock, Effect } from 'effect';
 
 import { deliveredOnce } from '../delivery/attempt-delivery.ts';

@@ -1,5 +1,5 @@
-import { CallAnsweredSchema, CallSentSchema } from '@beonauto/mcp';
-import { IssueSchema, RunContextSchema, recordedDecoder, type Decided } from '@beonauto/operations';
+import { CallAnsweredSchema, CallSentSchema } from '@on.auto/mcp';
+import { IssueSchema, RunContextSchema, recordedDecoder, type Decided } from '@on.auto/operations';
 import { Option, Schema, Struct, Tuple } from 'effect';
 
 import { DeliveredAsSchema, RepliesInSchema } from '../tool-blocks/tool-block-schemas.ts';

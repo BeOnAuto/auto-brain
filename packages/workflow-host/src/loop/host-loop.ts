@@ -1,4 +1,4 @@
-import type { WorkflowEngine } from '@beonauto/workflow-engine';
+import type { WorkflowEngine } from '@on.auto/workflow-engine';
 import { Effect, Fiber } from 'effect';
 
 import type { Trouble } from '../calls/host-executor.ts';

@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "source": "@beonauto/definitions",
+  "source": "@on.auto/definitions",
   "functions": [
     {
       "type": "reasoning",

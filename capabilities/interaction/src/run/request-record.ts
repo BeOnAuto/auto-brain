@@ -1,4 +1,4 @@
-import { RequestRecordSchema } from '@beonauto/definitions';
+import { RequestRecordSchema } from '@on.auto/definitions';
 import { Option, Schema } from 'effect';
 
 import { ReplyRuleSchema } from '../replies/reply-rule.ts';

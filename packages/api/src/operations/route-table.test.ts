@@ -1,4 +1,4 @@
-import type { makeCatalog } from '@beonauto/operations';
+import type { makeCatalog } from '@on.auto/operations';
 import { describe, expect, it } from 'vitest';
 
 import { call } from '../testing/api-calls.ts';

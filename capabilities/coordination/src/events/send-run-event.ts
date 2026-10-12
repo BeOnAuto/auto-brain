@@ -8,10 +8,10 @@ import {
   refusingBlankText,
   refusingForbiddenCharacters,
   type PlaybookOwnNames,
-} from '@beonauto/definitions';
-import { PlaybookContext, Caller, defineCommand, NotFound, quoted } from '@beonauto/operations';
-import { jsonBytesOf, measureOf, mostValueDepth } from '@beonauto/workflow-engine';
-import type { WorkflowHost } from '@beonauto/workflow-host';
+} from '@on.auto/definitions';
+import { PlaybookContext, Caller, defineCommand, NotFound, quoted } from '@on.auto/operations';
+import { jsonBytesOf, measureOf, mostValueDepth } from '@on.auto/workflow-engine';
+import type { WorkflowHost } from '@on.auto/workflow-host';
 import { DateTime, Effect, Schema, SchemaTransformation } from 'effect';
 
 import { unavailableUnless } from '../runs/host-refusals.ts';

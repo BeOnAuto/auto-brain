@@ -1,4 +1,4 @@
-import { contentTableHead, measuredContent } from '@beonauto/ledger/content-measurement';
+import { contentTableHead, measuredContent } from '@on.auto/ledger/content-measurement';
 
 import { objectContentOn } from '../src/content/object-content.ts';
 import { bucketReady, emptied, testObjectStoreOf } from '../src/testing/test-object-store.ts';

@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 
-import type { Environment } from '@beonauto/config';
+import type { Environment } from '@on.auto/config';
 
 import type { ChildCommand, RunningChild, Written } from './children.ts';
 import type { DevelopmentRun, DevelopmentSetup } from './development-run.ts';

@@ -1,7 +1,7 @@
 import { get } from 'node:http';
 import { setTimeout } from 'node:timers/promises';
 
-import { createApiKey } from '@beonauto/identity';
+import { createApiKey } from '@on.auto/identity';
 import { Effect, Layer } from 'effect';
 import { describe, expect, it } from 'vitest';
 

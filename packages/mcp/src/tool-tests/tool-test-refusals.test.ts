@@ -1,4 +1,4 @@
-import type { CallerIdentity } from '@beonauto/operations';
+import type { CallerIdentity } from '@on.auto/operations';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { toolBounds } from '../bounds/call-bounds.ts';

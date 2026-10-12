@@ -3,9 +3,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-import { postgresqlLedgerLayer } from '@beonauto/ledger/postgresql';
-import { ledgerLayer } from '@beonauto/ledger/sqlite3';
-import { Ledger, type RunOutcomeMapping } from '@beonauto/operations';
+import { postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
+import { ledgerLayer } from '@on.auto/ledger/sqlite3';
+import { Ledger, type RunOutcomeMapping } from '@on.auto/operations';
 import { Effect, ManagedRuntime, type Layer } from 'effect';
 import { Client } from 'pg';
 

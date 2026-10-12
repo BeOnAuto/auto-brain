@@ -1,6 +1,6 @@
 import { inspect } from 'node:util';
 
-import type { Environment } from '@beonauto/config';
+import type { Environment } from '@on.auto/config';
 import { Redacted } from 'effect';
 import { describe, expect, it } from 'vitest';
 

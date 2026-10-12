@@ -6,7 +6,7 @@ import {
   type Context,
   type Decided,
   type RecordedEvent,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Result, Schema, SchemaAST } from 'effect';
 import { describe, expect, it } from 'vitest';
 

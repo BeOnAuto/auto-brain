@@ -1,4 +1,4 @@
-import { Conflict, type Decider } from '@beonauto/operations';
+import { Conflict, type Decider } from '@on.auto/operations';
 import { Result } from 'effect';
 
 import type { AdmitsFact } from '../run-work/work-decisions.ts';

@@ -1,4 +1,4 @@
-import type { FakeMcpServer } from '@beonauto/mcp/testing';
+import type { FakeMcpServer } from '@on.auto/mcp/testing';
 import { Schema } from 'effect';
 
 import type { InteractionServer } from './interaction-server.ts';

@@ -1,5 +1,5 @@
-import type { Environment } from '@beonauto/config';
-import { contentLocationOf, type ContentLocation } from '@beonauto/object-storage';
+import type { Environment } from '@on.auto/config';
+import { contentLocationOf, type ContentLocation } from '@on.auto/object-storage';
 import { Config, ConfigProvider, Effect, Option } from 'effect';
 
 import { InvalidSettingsError } from './invalid-settings-error.ts';

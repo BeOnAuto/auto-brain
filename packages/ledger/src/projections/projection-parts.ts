@@ -1,4 +1,4 @@
-import type { KeyedProjection, ProjectionAdvancer, ProjectionReader, RunOutcomeMapping } from '@beonauto/operations';
+import type { KeyedProjection, ProjectionAdvancer, ProjectionReader, RunOutcomeMapping } from '@on.auto/operations';
 
 import type { InTransaction, StatementExecutor } from '../event-store.ts';
 import { keptProjections } from '../outcomes/run-outcome-projection.ts';

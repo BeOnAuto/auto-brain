@@ -1,4 +1,4 @@
-import type { Conflict } from '@beonauto/operations';
+import type { Conflict } from '@on.auto/operations';
 import type { Effect } from 'effect';
 
 import type { SubmissionOutcome } from '../machine/admission.ts';

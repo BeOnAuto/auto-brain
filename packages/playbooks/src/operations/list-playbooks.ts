@@ -1,4 +1,4 @@
-import { Caller, defineQuery, canAccessPlaybook } from '@beonauto/operations';
+import { Caller, defineQuery, canAccessPlaybook } from '@on.auto/operations';
 import { Effect, Order, Schema } from 'effect';
 
 import { playbooksListed } from '../plain-language/playbook-words.ts';

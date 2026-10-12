@@ -19,9 +19,14 @@ export interface FakeMcpOptions {
   readonly echoes?: string;
 }
 
+const SeenClientSchema = Schema.Struct({ name: Schema.String, version: Schema.String });
+
+type SeenClient = typeof SeenClientSchema.Type;
+
 export interface SeenRequest {
   readonly method: string;
   readonly rpc: string | undefined;
+  readonly client: SeenClient | undefined;
   readonly session: string | null;
   readonly authorization: string | null;
 }
@@ -110,6 +115,10 @@ const decodeRpc = Schema.decodeUnknownOption(
   Schema.fromJsonString(Schema.Struct({ method: Schema.optionalKey(Schema.String) })),
 );
 
+const decodeClient = Schema.decodeUnknownOption(
+  Schema.fromJsonString(Schema.Struct({ params: Schema.Struct({ clientInfo: SeenClientSchema }) })),
+);
+
 const farFuture = 4_102_444_800;
 
 function forgotten(): Response {
@@ -119,8 +128,17 @@ function forgotten(): Response {
   });
 }
 
-async function rpcOf(request: Readonly<Request>): Promise<string | undefined> {
-  return Option.getOrUndefined(decodeRpc(await request.clone().text()))?.method;
+interface Rpc {
+  readonly rpc: string | undefined;
+  readonly client: SeenClient | undefined;
+}
+
+async function rpcOf(request: Readonly<Request>): Promise<Rpc> {
+  const text = await request.clone().text();
+  return {
+    rpc: Option.getOrUndefined(decodeRpc(text))?.method,
+    client: Option.getOrUndefined(decodeClient(text))?.params.clientInfo,
+  };
 }
 
 function withRequestId(response: Readonly<Response>, name: string | undefined, value: string): Response {
@@ -150,10 +168,11 @@ async function afterNoise(response: Readonly<Response>, messages: number): Promi
 function mcpEndpoint({ sessions, see, next, requestIdHeader }: Endpoint): FetchHandler {
   let answered = 0;
   return async (request) => {
-    const rpc = await rpcOf(request);
+    const { rpc, client } = await rpcOf(request);
     see({
       method: request.method,
       rpc,
+      client,
       session: request.headers.get('mcp-session-id'),
       authorization: request.headers.get('authorization'),
     });

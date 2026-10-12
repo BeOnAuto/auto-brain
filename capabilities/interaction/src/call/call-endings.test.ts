@@ -1,5 +1,5 @@
-import { recordingJournal } from '@beonauto/definitions/testing';
-import { deniedText, patientTiming } from '@beonauto/mcp/testing';
+import { recordingJournal } from '@on.auto/definitions/testing';
+import { deniedText, patientTiming } from '@on.auto/mcp/testing';
 import { Cause, Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 

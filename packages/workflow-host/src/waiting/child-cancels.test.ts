@@ -1,4 +1,4 @@
-import { defaultLimits } from '@beonauto/workflow-engine/testing';
+import { defaultLimits } from '@on.auto/workflow-engine/testing';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

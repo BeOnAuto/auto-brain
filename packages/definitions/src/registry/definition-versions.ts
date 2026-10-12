@@ -1,4 +1,4 @@
-import type { Fold } from '@beonauto/operations';
+import type { Fold } from '@on.auto/operations';
 
 import type { StrippedForms } from '../capability/stripped-forms.ts';
 import { DefinitionEventSchema, type RecordedDefinitionEvent } from './definition-events.ts';

@@ -1,4 +1,4 @@
-import { sha256Of } from '@beonauto/operations';
+import { sha256Of } from '@on.auto/operations';
 import type { Schema } from 'effect';
 
 import type { RunResult } from './run-commands.ts';

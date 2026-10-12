@@ -1,7 +1,7 @@
-import type { Finished } from '@beonauto/definitions';
-import { issuesDetail } from '@beonauto/definitions/json-schema';
-import { Conflict, Unavailable } from '@beonauto/operations';
-import type { PoolOutcome, ProgramIssue, Stopped } from '@beonauto/workflow-engine/dsl';
+import type { Finished } from '@on.auto/definitions';
+import { issuesDetail } from '@on.auto/definitions/json-schema';
+import { Conflict, Unavailable } from '@on.auto/operations';
+import type { PoolOutcome, ProgramIssue, Stopped } from '@on.auto/workflow-engine/dsl';
 import { Effect, type Schema } from 'effect';
 
 import type { ComputationFunctionDefinitionDocument } from '../document/computation-document.ts';

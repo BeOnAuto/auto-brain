@@ -1,5 +1,5 @@
 import { Upload } from '@aws-sdk/lib-storage';
-import type { TakeChunk } from '@beonauto/operations';
+import type { TakeChunk } from '@on.auto/operations';
 import { Effect, Function } from 'effect';
 
 import { removed, type Bucket } from './bucket-requests.ts';

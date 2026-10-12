@@ -1,4 +1,4 @@
-import { mostExaminedInAPage, type Outcome } from '@beonauto/operations';
+import { mostExaminedInAPage, type Outcome } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

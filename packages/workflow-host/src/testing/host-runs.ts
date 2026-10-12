@@ -1,5 +1,5 @@
-import type { Lineage, Settlement } from '@beonauto/operations';
-import type { StartCall } from '@beonauto/workflow-engine';
+import type { Lineage, Settlement } from '@on.auto/operations';
+import type { StartCall } from '@on.auto/workflow-engine';
 import { Effect } from 'effect';
 import { onTestFinished } from 'vitest';
 

@@ -1,5 +1,5 @@
-import { textToKeep } from '@beonauto/operations';
 import { sqlite3EventStoreDriver } from '@event-driven-io/emmett-sqlite/sqlite3';
+import { textToKeep } from '@on.auto/operations';
 import { Effect, Layer, Logger } from 'effect';
 import { TestClock } from 'effect/testing';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';

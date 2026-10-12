@@ -1,4 +1,4 @@
-import type { Json, JsonObject } from '@beonauto/workflow-engine';
+import type { Json, JsonObject } from '@on.auto/workflow-engine';
 import { describe, expect, it } from 'vitest';
 
 import { header, workflow } from '../testing/workflows.ts';

@@ -1,5 +1,5 @@
-import { randomUUIDv7, textToKeep } from '@beonauto/operations';
-import { alpha, generated, resultOf } from '@beonauto/operations/testing';
+import { randomUUIDv7, textToKeep } from '@on.auto/operations';
+import { alpha, generated, resultOf } from '@on.auto/operations/testing';
 import { Schema } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 

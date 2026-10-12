@@ -1,4 +1,4 @@
-import type { RecordedPage } from '@beonauto/operations';
+import type { RecordedPage } from '@on.auto/operations';
 import { Effect } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';

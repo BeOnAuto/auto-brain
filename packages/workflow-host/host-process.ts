@@ -1,8 +1,8 @@
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { setTimeout } from 'node:timers/promises';
 
-import type { SettleRun } from '@beonauto/definitions';
-import type { CallResult } from '@beonauto/operations';
+import type { SettleRun } from '@on.auto/definitions';
+import type { CallResult } from '@on.auto/operations';
 import { Effect, Function, Schema } from 'effect';
 
 import type { DatabaseSettings } from './src/database/host-databases.ts';

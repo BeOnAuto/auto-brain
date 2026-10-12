@@ -1,5 +1,5 @@
-import { reactionRefusalDecider, ReactionRefusedSchema, reactionsStreamKind } from '@beonauto/definitions';
-import { decisionLoop, eventAppenderOf } from '@beonauto/ledger';
+import { reactionRefusalDecider, ReactionRefusedSchema, reactionsStreamKind } from '@on.auto/definitions';
+import { decisionLoop, eventAppenderOf } from '@on.auto/ledger';
 import { Effect, Schema } from 'effect';
 
 import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';

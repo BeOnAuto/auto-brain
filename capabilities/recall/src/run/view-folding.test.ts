@@ -1,5 +1,5 @@
-import type { FoldRequest, ProgramPool } from '@beonauto/workflow-engine/dsl';
-import type { ViewDetails } from '@beonauto/workflow-host';
+import type { FoldRequest, ProgramPool } from '@on.auto/workflow-engine/dsl';
+import type { ViewDetails } from '@on.auto/workflow-host';
 import type { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

@@ -3,7 +3,7 @@ import {
   emittedEventsOf,
   isReservedSource,
   type PlaybookOwnNames,
-} from '@beonauto/definitions';
+} from '@on.auto/definitions';
 import {
   type CallFunctions,
   field,
@@ -15,7 +15,7 @@ import {
   type Rejection,
   rejection,
   textField,
-} from '@beonauto/workflow-engine';
+} from '@on.auto/workflow-engine';
 
 import { scheduleRejections } from './workflow-schedule.ts';
 

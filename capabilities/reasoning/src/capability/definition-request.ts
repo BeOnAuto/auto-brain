@@ -1,6 +1,6 @@
-import type { RunContext } from '@beonauto/definitions';
-import type { RunTools } from '@beonauto/mcp';
-import { runBoundMs } from '@beonauto/mcp/policy';
+import type { RunContext } from '@on.auto/definitions';
+import type { RunTools } from '@on.auto/mcp';
+import { runBoundMs } from '@on.auto/mcp/policy';
 import { Effect } from 'effect';
 
 import { mostOutputTokens } from '../definition/definition-settings.ts';

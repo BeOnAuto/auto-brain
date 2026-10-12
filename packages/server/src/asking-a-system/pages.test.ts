@@ -1,4 +1,4 @@
-import { threadReplies } from '@beonauto/mcp/testing';
+import { threadReplies } from '@on.auto/mcp/testing';
 import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

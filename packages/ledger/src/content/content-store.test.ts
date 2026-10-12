@@ -1,6 +1,6 @@
-import { mostContentChunkBytes, sha256Of, textToKeep } from '@beonauto/operations';
 import { SQL } from '@event-driven-io/dumbo';
 import { sqliteFormatter } from '@event-driven-io/dumbo/sqlite';
+import { mostContentChunkBytes, sha256Of, textToKeep } from '@on.auto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

@@ -1,4 +1,4 @@
-import { streamPrefixOfPlaybook, type PlaybookAddress } from '@beonauto/operations';
+import { streamPrefixOfPlaybook, type PlaybookAddress } from '@on.auto/operations';
 
 import type { ContentLocation } from './content-location.ts';
 

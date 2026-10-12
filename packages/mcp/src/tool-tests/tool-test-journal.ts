@@ -1,4 +1,4 @@
-import { PlaybookContext, PlaybookWriter, Caller, noLineage, streamPrefixOfPlaybook } from '@beonauto/operations';
+import { PlaybookContext, PlaybookWriter, Caller, noLineage, streamPrefixOfPlaybook } from '@on.auto/operations';
 import { Effect } from 'effect';
 
 import { toolTestIdKey } from '../calls/call-meta.ts';

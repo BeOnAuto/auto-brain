@@ -1,6 +1,6 @@
-import { runTallies } from '@beonauto/operations/testing';
 import { SQL } from '@event-driven-io/dumbo';
 import { sqliteFormatter } from '@event-driven-io/dumbo/sqlite';
+import { runTallies } from '@on.auto/operations/testing';
 import { describe, expect, it } from 'vitest';
 
 import { sqliteProjectionsOf } from '../projections/sqlite-projections.ts';

@@ -1,5 +1,5 @@
-import type { Context, KeptContent } from '@beonauto/operations';
-import { nothingKept } from '@beonauto/operations/testing';
+import type { Context, KeptContent } from '@on.auto/operations';
+import { nothingKept } from '@on.auto/operations/testing';
 import { describe, expect, it } from 'vitest';
 
 import type { ConversationCallEvent } from './conversation-call-events.ts';

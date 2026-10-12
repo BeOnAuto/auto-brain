@@ -17,7 +17,7 @@ import {
   type Decider,
   type Issue,
   type PlainLanguage,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Effect, Result, Schema } from 'effect';
 
 const NoteName = Schema.String.check(Schema.isPattern(/^[a-z][a-z0-9-]{0,31}$/u));
