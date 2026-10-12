@@ -35,7 +35,7 @@ function chunkSizesOf(bytes: number): readonly number[] {
 
 function chunksOfTheDigest(sha256: string): string {
   return `SELECT c.chunk, octet_length(c.data) AS bytes FROM recorded_content_chunks c
-    JOIN recorded_content_heads h ON h.brain_key = c.brain_key AND h.upload_id = c.upload_id
+    JOIN recorded_content_heads h ON h.playbook_key = c.playbook_key AND h.upload_id = c.upload_id
     WHERE h.sha256 = '${sha256}' ORDER BY c.chunk`;
 }
 
@@ -44,9 +44,9 @@ const theHeads =
 
 const unnamedChunks = [
   `SELECT CAST(count(*) AS INTEGER) AS count FROM recorded_content_chunks c WHERE NOT EXISTS (
-    SELECT 1 FROM recorded_content_heads h WHERE h.brain_key = c.brain_key AND h.upload_id = c.upload_id)`,
+    SELECT 1 FROM recorded_content_heads h WHERE h.playbook_key = c.playbook_key AND h.upload_id = c.upload_id)`,
   `SELECT CAST(count(*) AS INTEGER) AS count FROM staged_content_chunks c WHERE NOT EXISTS (
-    SELECT 1 FROM staged_content h WHERE h.brain_key = c.brain_key AND h.run_id = c.run_id AND h.upload_id = c.upload_id)`,
+    SELECT 1 FROM staged_content h WHERE h.playbook_key = c.playbook_key AND h.run_id = c.run_id AND h.upload_id = c.upload_id)`,
 ];
 
 const notItsBytes = (sha256: string) =>
@@ -113,8 +113,8 @@ function keptInChunks(entry: LedgerEntry): void {
 async function copiedUnder(entry: LedgerEntry, database: string, from: string, to: string): Promise<void> {
   await entry.queried(
     database,
-    `INSERT INTO recorded_content_heads (brain_key, sha256, upload_id, bytes, chunks, media_type)
-      SELECT brain_key, '${to}', upload_id, bytes, chunks, media_type FROM recorded_content_heads WHERE sha256 = '${from}'`,
+    `INSERT INTO recorded_content_heads (playbook_key, sha256, upload_id, bytes, chunks, media_type)
+      SELECT playbook_key, '${to}', upload_id, bytes, chunks, media_type FROM recorded_content_heads WHERE sha256 = '${from}'`,
   );
 }
 
@@ -175,10 +175,10 @@ function readWhileUnstaged(entry: LedgerEntry): void {
 
 export function contentBehaviour(entry: LedgerEntry): void {
   recordedContentBehaviour(contentEntryOf(entry));
-  describe('the content a brain recorded, in chunks', () => {
+  describe('the content a playbook recorded, in chunks', () => {
     keptInChunks(entry);
   });
-  describe('the content a brain recorded, read back', () => {
+  describe('the content a playbook recorded, read back', () => {
     readFailing(entry);
     readWhileUnstaged(entry);
   });

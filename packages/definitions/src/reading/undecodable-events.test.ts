@@ -5,9 +5,9 @@ import { describe, expect, it } from 'vitest';
 import { acmeAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
 import { echo } from '../testing/echo.ts';
-import { harness, toBrain } from '../testing/harness.ts';
+import { harness, toPlaybook } from '../testing/harness.ts';
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
@@ -27,7 +27,7 @@ describe('a stored event of a run that no longer decodes', () => {
     const { call, ledger, run } = harness();
     await run(
       Effect.orDie(
-        ledger.service.execute(`brain/acme/alpha/runs/${runId}`, broken, {
+        ledger.service.execute(`playbook/acme/alpha/runs/${runId}`, broken, {
           type: 'run_started',
           data: { at: '2026-10-01T09:00:00.000Z' },
         }),

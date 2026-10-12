@@ -23,7 +23,7 @@ function storedIn(endpoint: string): Readonly<Record<string, string>> {
     HOST: '127.0.0.1',
     PORT: '0',
     LEDGER_FILE: ':memory:',
-    CONTENT_STORE_URL: 's3://brain-content/production',
+    CONTENT_STORE_URL: 's3://playbook-content/production',
     AWS_ENDPOINT_URL: endpoint,
   };
 }
@@ -49,7 +49,7 @@ describe('a content store whose bucket cannot be reached', { timeout: spawnedSer
     const failure = await failureToStart({ ...storedIn(endpoint), AWS_REGION: 'us-east-1' });
 
     expect(failure).toMatchObject({ name: 'StartupError' });
-    expect(String(failure)).toContain(`CONTENT_STORE_URL names the bucket brain-content on ${host}`);
+    expect(String(failure)).toContain(`CONTENT_STORE_URL names the bucket playbook-content on ${host}`);
     expect(String(failure)).toContain(`ECONNREFUSED ${host}`);
     expect(String(failure)).not.toContain(secret);
   });
@@ -64,7 +64,7 @@ describe('a content store whose bucket cannot be reached', { timeout: spawnedSer
     expect(child.output().stderr.split('\n')).toEqual([
       expect.stringMatching(
         new RegExp(
-          `^auto-brain could not start: StartupError: The server's services could not start: .*CONTENT_STORE_URL names the bucket brain-content on ${host.replaceAll('.', '\\.')}, which could not be reached: .*ECONNREFUSED`,
+          `^Auto Runtime could not start: StartupError: The server's services could not start: .*CONTENT_STORE_URL names the bucket playbook-content on ${host.replaceAll('.', '\\.')}, which could not be reached: .*ECONNREFUSED`,
           'u',
         ),
       ),

@@ -33,7 +33,7 @@ function unstagingWhileRead(unstage: () => Promise<void>, bytes: number): Readab
 }
 
 function stagedAndUnstaged(entry: ContentEntry): void {
-  it('reads back through another client under its brain and run alone, until the run is unstaged', async () => {
+  it('reads back through another client under its playbook and run alone, until the run is unstaged', async () => {
     const { content, elsewhere, unnamedLeft } = await entry.aStore();
     const { sha256, content: generatedContent } = await generated(2_500_000);
 

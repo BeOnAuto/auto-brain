@@ -1,6 +1,6 @@
 import type { AppRuntime } from '@beonauto/api';
-import { brainOperations } from '@beonauto/brains';
 import type { DispatcherServices } from '@beonauto/operations';
+import { playbookOperations } from '@beonauto/playbooks';
 
 import type { Served } from '../lifecycle/lifecycle.ts';
 import type { Settings } from '../settings/settings.ts';
@@ -45,8 +45,8 @@ export async function functionsServedBy(
   return {
     parts: {
       capabilities: [reasoning.capability, interaction.capability, computation.capability, recall.capability],
-      orgOperations: [...brainOperations, reasoning.listModels, reasoning.listToolServersInOrg],
-      brainOperations: [reasoning.listToolServers, reasoning.testToolCall, ...interaction.operations],
+      orgOperations: [...playbookOperations, reasoning.listModels, reasoning.listToolServersInOrg],
+      playbookOperations: [reasoning.listToolServers, reasoning.testToolCall, ...interaction.operations],
       dueWork: interaction.dueWork,
       store: recall.store,
       views: recall.views,

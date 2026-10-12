@@ -7,7 +7,7 @@ import { startServer, type RunningServer } from '../lifecycle/lifecycle.ts';
 import { temporaryLedger, type TemporaryLedger } from '../testing/records/temporary-ledger.ts';
 import { request, type TestResponse } from '../testing/servers/http-client.ts';
 
-const alpha = '/v1/orgs/acme/brains/alpha';
+const alpha = '/v1/orgs/acme/playbooks/alpha';
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
@@ -47,7 +47,7 @@ function internalsIn({ text }: TestResponse): readonly string[] {
 
 describe('a run whose gateway rejects the model', () => {
   it('answers and records what the status says and the code the gateway gave, and gives the gateway text to the operator', async () => {
-    await request(server.port, 'POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+    await request(server.port, 'POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
     await request(server.port, 'POST', `${alpha}/definitions/reasoning`, { body: { name: 'hello', source } });
     const ran = await request(server.port, 'POST', `${alpha}/definitions/reasoning/hello/run`, {
       body: { input: {}, run_id: runId },

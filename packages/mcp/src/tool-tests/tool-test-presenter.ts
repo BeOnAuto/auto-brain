@@ -17,7 +17,7 @@ function factOf(event: RecordedToolTest, content: KeptContent): PresentedFact {
     const tool = cutAsStored(data.tool, mostNameBytes);
     return {
       type: event.type,
-      summary: `Someone allowed to change the brain tested the ${inWords(tool)} tool of ${inWords(server)}.`,
+      summary: `Someone allowed to change the playbook tested the ${inWords(tool)} tool of ${inWords(server)}.`,
       data: { ...callFieldsShown(data), ...keptArgumentsOf(data, content) },
     };
   }

@@ -17,7 +17,7 @@ let server: ReasoningServer;
 
 beforeAll(async () => {
   server = await servingReasoning([]);
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
 });
 
 afterAll(async () => {
@@ -40,7 +40,7 @@ describe('a type the server does not run', () => {
   it('is refused the same way over MCP, as a result the agent can correct', async () => {
     const listed = await withMcpSession(
       'current revision',
-      { url: `${server.origin}/orgs/acme/brains/alpha/mcp`, headers: {} },
+      { url: `${server.origin}/orgs/acme/playbooks/alpha/mcp`, headers: {} },
       (session) => session.callTool('list_runs', { type: 'prediction' }),
     );
 

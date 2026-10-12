@@ -24,7 +24,7 @@ const { present, storedTypesOf } = presentationOf(makeDefinitionPresenters([echo
 
 const ofAsking: Context = {
   runId: testRunId,
-  by: 'brain:alpha',
+  by: 'playbook:alpha',
   at: '2026-10-01T09:00:01.000Z',
   definitionType: 'asking',
   definitionName: 'approve',
@@ -52,7 +52,7 @@ function presented(event: RunEvent, context: Context = ofAsking) {
     context,
     recordedAt: '2026-10-01T09:00:02.000Z',
   };
-  const showing = { streamPrefix: 'brain/acme/alpha/', content: keptContent, view: 'whole' } as const;
+  const showing = { streamPrefix: 'playbook/acme/alpha/', content: keptContent, view: 'whole' } as const;
   return present(record, showing).map(({ type, summary, data }) => ({ type, summary, data }));
 }
 

@@ -22,7 +22,7 @@ async function listed(lists: ToolLists) {
   const graph = { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme', ...lists };
   const { access } = reportingAccess({ graph }, { environment: { GRAPH_API_KEY: apiKey } });
   closing.push(access.close);
-  return Effect.runPromise(access.listServers({ org: 'acme', brain: 'alpha' }));
+  return Effect.runPromise(access.listServers({ org: 'acme', playbook: 'alpha' }));
 }
 
 const nothingTaken = { type: 'object', properties: {}, required: [] };
@@ -104,11 +104,11 @@ async function notedAfterListing(listings: number, served: FakeMcpOptions, lists
   const fake = await serveFakeMcp({ bearer: apiKey, ...served });
   closing.push(fake.close);
   const graph = { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme', ...lists };
-  const wiki = { ...graph, brains: ['beta'] };
+  const wiki = { ...graph, playbooks: ['beta'] };
   const reporting = reportingAccess({ graph, wiki }, { environment: { GRAPH_API_KEY: apiKey } });
   closing.push(reporting.access.close);
   const before = reporting.untestable();
-  const listing = reporting.access.listServers({ org: 'acme', brain: 'alpha' });
+  const listing = reporting.access.listServers({ org: 'acme', playbook: 'alpha' });
   await Effect.runPromise(Effect.all(Array.from({ length: listings }, () => listing)));
   return { before, after: reporting.untestable() };
 }

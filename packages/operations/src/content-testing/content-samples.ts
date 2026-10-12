@@ -1,13 +1,13 @@
 import { Effect, Function } from 'effect';
 
-import type { BrainAddress } from '../caller/brain-context.ts';
+import type { PlaybookAddress } from '../caller/playbook-context.ts';
 import { sha256Digest } from '../content/content-digest.ts';
 import type { Digested } from '../content/recorded-content.ts';
 import type { ContentToKeep, StreamedContent } from '../content/streamed-content.ts';
 
-export const alpha: BrainAddress = { org: 'acme', brain: 'alpha' };
+export const alpha: PlaybookAddress = { org: 'acme', playbook: 'alpha' };
 
-export const beta: BrainAddress = { org: 'acme', brain: 'beta' };
+export const beta: PlaybookAddress = { org: 'acme', playbook: 'beta' };
 
 export const octets = 'application/octet-stream';
 

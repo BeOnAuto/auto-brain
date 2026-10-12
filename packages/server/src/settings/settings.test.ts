@@ -13,7 +13,7 @@ function errorFrom(environment: Environment): unknown {
   return undefined;
 }
 
-const { entry } = createApiKey({ id: 'ci-1', org: 'acme', permissions: ['org:read'], brains: '*' });
+const { entry } = createApiKey({ id: 'ci-1', org: 'acme', permissions: ['org:read'], playbooks: '*' });
 
 describe('readSettings', () => {
   it('listens on every interface at port 8080, allows no origin, has no API keys and keeps the ledger in data/ by default', () => {
@@ -35,7 +35,7 @@ describe('readSettings', () => {
       reasoning: { mostInputTokens: 2_000_000 },
       workflows: { mostDurationMs: 2_592_000_000, mostCallsAtOnce: 32, mostOpenCalls: 1000, sweepEveryMs: 1000 },
       computation: { workers: 4 },
-      recall: { mostFunctions: 32, rebuildsAtOnce: 4, brainsAtOnce: 4 },
+      recall: { mostFunctions: 32, rebuildsAtOnce: 4, playbooksAtOnce: 4 },
       configFile: undefined,
     });
   });
@@ -49,7 +49,7 @@ describe('readSettings given every setting', () => {
       ALLOWED_ORIGINS: 'https://app.example.com,http://localhost:5173,http://[::1]:3000',
       API_KEYS: JSON.stringify([entry]),
       LEDGER_FILE: '/data/ledger.db',
-      CONTENT_STORE_URL: 's3://brain-content/production',
+      CONTENT_STORE_URL: 's3://playbook-content/production',
       NODE_USE_ENV_PROXY: '1',
       HTTPS_PROXY: 'http://proxy.internal:3128',
       LOCAL_MODE: 'true',
@@ -70,7 +70,7 @@ describe('readSettings given every setting', () => {
       ledger: { store: 'sqlite', file: '/data/ledger.db' },
       content: {
         store: 'object-storage',
-        location: { bucket: 'brain-content', prefix: 'production' },
+        location: { bucket: 'playbook-content', prefix: 'production' },
         endpoint: undefined,
         region: undefined,
       },
@@ -80,7 +80,7 @@ describe('readSettings given every setting', () => {
       reasoning: { mostInputTokens: 500_000 },
       workflows: { mostDurationMs: 2_592_000_000, mostCallsAtOnce: 32, mostOpenCalls: 1000, sweepEveryMs: 1000 },
       computation: { workers: 4 },
-      recall: { mostFunctions: 32, rebuildsAtOnce: 4, brainsAtOnce: 4 },
+      recall: { mostFunctions: 32, rebuildsAtOnce: 4, playbooksAtOnce: 4 },
       configFile: undefined,
     });
   });

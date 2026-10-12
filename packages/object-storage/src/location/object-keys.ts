@@ -1,28 +1,28 @@
-import { streamPrefixOfBrain, type BrainAddress } from '@beonauto/operations';
+import { streamPrefixOfPlaybook, type PlaybookAddress } from '@beonauto/operations';
 
 import type { ContentLocation } from './content-location.ts';
 
 export interface ObjectKeys {
-  readonly kept: (brain: BrainAddress, sha256: string) => string;
+  readonly kept: (playbook: PlaybookAddress, sha256: string) => string;
   readonly uploads: string;
   readonly upload: (uploadId: string) => string;
-  readonly run: (brain: BrainAddress, run: string) => string;
-  readonly staged: (brain: BrainAddress, run: string, sha256: string) => string;
-  readonly ended: (brain: BrainAddress, run: string) => string;
+  readonly run: (playbook: PlaybookAddress, run: string) => string;
+  readonly staged: (playbook: PlaybookAddress, run: string, sha256: string) => string;
+  readonly ended: (playbook: PlaybookAddress, run: string) => string;
 }
 
 const endedMarker = '.ended';
 
 export function objectKeysOf({ prefix }: ContentLocation): ObjectKeys {
   const under = (key: string) => (prefix === '' ? key : `${prefix}/${key}`);
-  const run = (brain: BrainAddress, id: string) =>
-    under(`staging/${streamPrefixOfBrain(brain)}${encodeURIComponent(id)}/`);
+  const run = (playbook: PlaybookAddress, id: string) =>
+    under(`staging/${streamPrefixOfPlaybook(playbook)}${encodeURIComponent(id)}/`);
   return {
-    kept: (brain, sha256) => under(`${streamPrefixOfBrain(brain)}${sha256}`),
+    kept: (playbook, sha256) => under(`${streamPrefixOfPlaybook(playbook)}${sha256}`),
     uploads: under('uploads/'),
     upload: (uploadId) => under(`uploads/${uploadId}`),
     run,
-    staged: (brain, id, sha256) => `${run(brain, id)}${sha256}`,
-    ended: (brain, id) => `${run(brain, id)}${endedMarker}`,
+    staged: (playbook, id, sha256) => `${run(playbook, id)}${sha256}`,
+    ended: (playbook, id) => `${run(playbook, id)}${endedMarker}`,
   };
 }

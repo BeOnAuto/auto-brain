@@ -18,7 +18,7 @@ function answering(...answers: readonly (readonly unknown[])[]): { readonly quer
   };
 }
 
-const alpha = 'brain/acme/alpha/';
+const alpha = 'playbook/acme/alpha/';
 
 const at = '2026-10-05T09:00:00.000Z';
 
@@ -39,7 +39,7 @@ const storedRow = {
 };
 
 describe('one record read by its message id on PostgreSQL', () => {
-  it('reads the record through the index on the message id, within the brain, with its data and its context', async () => {
+  it('reads the record through the index on the message id, within the playbook, with its data and its context', async () => {
     const { query, asked } = answering([storedRow]);
 
     const record = await postgresqlRecordedStore(query).readRecordedEvent(alpha, 'message-21');
@@ -56,7 +56,7 @@ describe('one record read by its message id on PostgreSQL', () => {
     expect(asked[0]?.values).toEqual(['message-21', 'emt:default', alpha]);
   });
 
-  it('reads nothing for an id the brain does not hold', async () => {
+  it('reads nothing for an id the playbook does not hold', async () => {
     const { query } = answering([]);
 
     await expect(postgresqlRecordedStore(query).readRecordedEvent(alpha, 'message-99')).resolves.toBeUndefined();

@@ -20,7 +20,7 @@ import { keysIn, openUploadsIn } from './test-object-store.ts';
 const longAgo = '00000000-0000-7000-8000-000000000001';
 
 function keptOnObjects(entry: ObjectStoreEntry): void {
-  it('keeps a content as one object under its brain and digest, with its media type and size, and stages it under its run until the run is unstaged', async () => {
+  it('keeps a content as one object under its playbook and digest, with its media type and size, and stages it under its run until the run is unstaged', async () => {
     const store = await entry.aStore();
     const { content } = objectContentOn(store.bucket.client, store.location);
     const keys = objectKeysOf(store.location);
@@ -34,8 +34,8 @@ function keptOnObjects(entry: ObjectStoreEntry): void {
 
     expect(kept).toEqual(
       [
-        `${store.location.prefix}/brain/acme/alpha/${sha256}`,
-        `${store.location.prefix}/staging/brain/acme/alpha/run%2F1/${sha256}`,
+        `${store.location.prefix}/playbook/acme/alpha/${sha256}`,
+        `${store.location.prefix}/staging/playbook/acme/alpha/run%2F1/${sha256}`,
       ].toSorted(),
     );
     expect(held).toEqual({ bytes: 2_500_000, mediaType: json });

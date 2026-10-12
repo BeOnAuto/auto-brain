@@ -1,9 +1,9 @@
-import type { BrainDefinitions } from './brain-definitions.ts';
-import type { Resting } from './brain-pass.ts';
+import type { PlaybookDefinitions } from './playbook-definitions.ts';
+import type { Resting } from './playbook-pass.ts';
 
 export interface Schedule {
-  readonly definitions: Map<string, BrainDefinitions>;
-  readonly want: (brain: string) => void;
+  readonly definitions: Map<string, PlaybookDefinitions>;
+  readonly want: (playbook: string) => void;
   readonly wanted: () => readonly string[];
   readonly discover: () => void;
   readonly discoveryDue: () => boolean;
@@ -16,16 +16,16 @@ export interface Schedule {
   readonly resting: Resting;
 }
 
-function keyOf(brain: string, name: string): string {
-  return JSON.stringify([brain, name]);
+function keyOf(playbook: string, name: string): string {
+  return JSON.stringify([playbook, name]);
 }
 
 function restingUntilSwept(): Resting & { readonly wakeAll: () => void } {
   const resting = new Set<string>();
   return {
-    isResting: (brain, name) => resting.has(keyOf(brain, name)),
-    rest: (brain, name) => {
-      resting.add(keyOf(brain, name));
+    isResting: (playbook, name) => resting.has(keyOf(playbook, name)),
+    rest: (playbook, name) => {
+      resting.add(keyOf(playbook, name));
     },
     wakeAll: () => {
       resting.clear();
@@ -39,13 +39,13 @@ export function scheduleOf(sweepEveryMs: number): Schedule {
   const state = { discoveryDue: true, lastSweptAt: Number.NEGATIVE_INFINITY, wake: Promise.withResolvers<void>() };
   return {
     definitions: new Map(),
-    want: (brain) => {
-      wanted.add(brain);
+    want: (playbook) => {
+      wanted.add(playbook);
     },
     wanted: () => {
-      const brains = [...wanted];
+      const playbooks = [...wanted];
       wanted.clear();
-      return brains;
+      return playbooks;
     },
     discover: () => {
       state.discoveryDue = true;

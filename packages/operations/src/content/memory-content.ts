@@ -1,7 +1,7 @@
 import { Effect } from 'effect';
 
-import type { BrainAddress } from '../caller/brain-context.ts';
-import { streamPrefixOfBrain } from '../ledger/bound-ports.ts';
+import type { PlaybookAddress } from '../caller/playbook-context.ts';
+import { streamPrefixOfPlaybook } from '../ledger/bound-ports.ts';
 import { mostContentChunkBytes } from './content-chunks.ts';
 import { leftUnread, requireExpected, takenInChunks } from './content-intake.ts';
 import type { ContentRefused } from './content-refusals.ts';
@@ -47,8 +47,8 @@ function readFrom(shelf: Shelf | undefined, sha256: string): StreamedContent | u
     : { stream: kept.chunks.stream(), bytes: kept.chunks.size, mediaType: kept.mediaType };
 }
 
-function runKeyOf(brain: BrainAddress, run: string): string {
-  return `${streamPrefixOfBrain(brain)}${run}`;
+function runKeyOf(playbook: PlaybookAddress, run: string): string {
+  return `${streamPrefixOfPlaybook(playbook)}${run}`;
 }
 
 export function memoryRecordedContent(): RecordedContent {
@@ -63,11 +63,11 @@ export function memoryRecordedContent(): RecordedContent {
   const ended = (run: string, key: string): Effect.Effect<void, StagingEnded> =>
     Effect.suspend(() => (unstaged.has(key) ? Effect.fail(stagingEnded(run)) : Effect.void));
   return {
-    put: (brain, content) =>
-      Effect.map(received(content), (taken) => keptOn(shelfOf(kept, streamPrefixOfBrain(brain)), taken)),
-    get: (brain, sha256) => Effect.sync(() => readFrom(kept.get(streamPrefixOfBrain(brain)), sha256)),
-    stage: (brain, run, content) => {
-      const key = runKeyOf(brain, run);
+    put: (playbook, content) =>
+      Effect.map(received(content), (taken) => keptOn(shelfOf(kept, streamPrefixOfPlaybook(playbook)), taken)),
+    get: (playbook, sha256) => Effect.sync(() => readFrom(kept.get(streamPrefixOfPlaybook(playbook)), sha256)),
+    stage: (playbook, run, content) => {
+      const key = runKeyOf(playbook, run);
       return ended(run, key).pipe(
         Effect.tapError(() => leftUnread(content.stream)),
         Effect.andThen(received(content)),
@@ -75,10 +75,10 @@ export function memoryRecordedContent(): RecordedContent {
         Effect.map((taken) => keptOn(shelfOf(staging, key), taken)),
       );
     },
-    staged: (brain, run, sha256) => Effect.sync(() => readFrom(staging.get(runKeyOf(brain, run)), sha256)),
-    unstage: (brain, run) =>
+    staged: (playbook, run, sha256) => Effect.sync(() => readFrom(staging.get(runKeyOf(playbook, run)), sha256)),
+    unstage: (playbook, run) =>
       Effect.sync(() => {
-        const key = runKeyOf(brain, run);
+        const key = runKeyOf(playbook, run);
         unstaged.add(key);
         staging.delete(key);
       }),

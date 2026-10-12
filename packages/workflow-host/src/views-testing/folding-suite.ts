@@ -32,7 +32,7 @@ function month(id: string, data: Schema.Json, source = '/ledger/eu'): Schema.Jso
 }
 
 function reviewsTests(settingsOf: SettingsOf): void {
-  it('folds the runs of a reasoning function in the order the brain recorded them, guarded against what an output may be, one over the event bound seen as its size', async () => {
+  it('folds the runs of a reasoning function in the order the playbook recorded them, guarded against what an output may be, one over the event bound seen as its size', async () => {
     const views = await viewHarness(await settingsOf());
     await views.saved('reviews', campaignReviews);
     const spring = await views.ran(
@@ -123,7 +123,7 @@ function sourceTests(settingsOf: SettingsOf): void {
     expect([kept.view, kept.folded]).toEqual([1, 1]);
   });
 
-  it('folds the events published to the brain as their publishers gave them, matched by type, source and data', async () => {
+  it('folds the events published to the playbook as their publishers gave them, matched by type, source and data', async () => {
     const views = await viewHarness(await settingsOf());
     const filters = [{ type: 'com.acme.ledger.month-closed', source: '/ledger/eu', data: '${ $data.revenue > 100 }' }];
     const fold = foldOf('return [...view, { id: event.id, subject: event.subject, time: event.time }];');
@@ -171,7 +171,7 @@ function passedOverTests(settingsOf: SettingsOf): void {
       }),
     );
     await views.ran('reasoning/count', 'one');
-    await views.append('brain/acme/alpha/runs/broken', [{ type: 'run_succeeded', data: { type: 'run_succeeded' } }]);
+    await views.append('playbook/acme/alpha/runs/broken', [{ type: 'run_succeeded', data: { type: 'run_succeeded' } }]);
     const deep = Array.from({ length: 600 }).reduce<Schema.Json>((inner) => [inner], null);
     await views.published({
       specversion: '1.0',
@@ -197,9 +197,9 @@ function passedOverTests(settingsOf: SettingsOf): void {
 
     expect(kept.view).toBe(2);
     expect(views.reports.notes()).toEqual([
-      { kind: 'record_passed_over', brain: 'brain/acme/alpha/', record: anyText, reason: 'unreadable' },
-      { kind: 'record_passed_over', brain: 'brain/acme/alpha/', record: anyText, reason: 'unreadable' },
-      { kind: 'record_passed_over', brain: 'brain/acme/alpha/', record: anyText, reason: 'unreadable' },
+      { kind: 'record_passed_over', playbook: 'playbook/acme/alpha/', record: anyText, reason: 'unreadable' },
+      { kind: 'record_passed_over', playbook: 'playbook/acme/alpha/', record: anyText, reason: 'unreadable' },
+      { kind: 'record_passed_over', playbook: 'playbook/acme/alpha/', record: anyText, reason: 'unreadable' },
     ]);
   });
 }

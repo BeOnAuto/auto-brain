@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { fakeContentStore } from '../testing/fake-bucket.ts';
 import { uploadPartBytes } from './upload-writing.ts';
 
-const location = { bucket: 'content', prefix: 'brains' };
+const location = { bucket: 'content', prefix: 'playbooks' };
 
 const forbidden = new S3ServiceException({
   name: 'AccessDenied',

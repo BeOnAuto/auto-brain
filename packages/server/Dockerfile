@@ -8,7 +8,7 @@ RUN npm install --global --no-fund --no-audit pnpm@12.8.1
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/server/package.json packages/server/
 COPY packages/api/package.json packages/api/
-COPY packages/brains/package.json packages/brains/
+COPY packages/playbooks/package.json packages/playbooks/
 COPY packages/config/package.json packages/config/
 COPY packages/definitions/package.json packages/definitions/
 COPY packages/identity/package.json packages/identity/
@@ -45,7 +45,7 @@ COPY LICENSE ./
 COPY docs/concepts/terminology.md docs/concepts/
 COPY docs/reference/*-format.md docs/reference/
 COPY packages/api/src packages/api/src
-COPY packages/brains/src packages/brains/src
+COPY packages/playbooks/src packages/playbooks/src
 COPY packages/config/src packages/config/src
 COPY packages/definitions/src packages/definitions/src
 COPY packages/definitions/lib packages/definitions/lib

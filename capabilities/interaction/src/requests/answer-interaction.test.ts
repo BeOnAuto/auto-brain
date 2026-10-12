@@ -57,18 +57,18 @@ const interaction = {
 const refused = { ...interaction, conversation: 'C0123/1699.1', answerer: 'U024BE7LH', reply_refusals: 2 };
 
 async function askedApproval() {
-  const brain = interactionHarness();
-  await brain.define('approve-brief', approvalDocument());
-  const asked = await brain.ask('approve-brief', { campaign: 'Spring', owner: 'ada' }, runId);
-  return { brain, asked };
+  const playbook = interactionHarness();
+  await playbook.define('approve-brief', approvalDocument());
+  const asked = await playbook.ask('approve-brief', { campaign: 'Spring', owner: 'ada' }, runId);
+  return { playbook, asked };
 }
 
 describe('a request asked through the inbox', () => {
-  it('waits as a started run, listed among the open requests of the brain', async () => {
-    const { brain, asked } = await askedApproval();
+  it('waits as a started run, listed among the open requests of the playbook', async () => {
+    const { playbook, asked } = await askedApproval();
 
     expect(asked).toMatchObject({ status: 'succeeded', output: { run_id: runId, status: 'started' } });
-    expect(await brain.call(listInteractions, {})).toMatchObject({
+    expect(await playbook.call(listInteractions, {})).toMatchObject({
       status: 'succeeded',
       output: {
         interactions: [
@@ -93,9 +93,9 @@ describe('a request asked through the inbox', () => {
 
 describe('an answer to a request', () => {
   it('settles its run with the answer as its output, recorded with who answered and the claim', async () => {
-    const { brain } = await askedApproval();
+    const { playbook } = await askedApproval();
 
-    const answered = await brain.call(answer, {
+    const answered = await playbook.call(answer, {
       run_id: runId,
       answer: { choice: 'approve' },
       claimed_for: 'ada',
@@ -105,22 +105,22 @@ describe('an answer to a request', () => {
       status: 'succeeded',
       output: { run_id: runId, status: 'succeeded', output: { choice: 'approve' } },
     });
-    expect(await brain.runOf(runId)).toMatchObject({
+    expect(await playbook.runOf(runId)).toMatchObject({
       output: {
         status: 'succeeded',
         record: { answered_by: acmeAdmin.id, claimed_for: 'ada', answered_at: someText },
       },
     });
-    expect(await brain.call(listInteractions, {})).toMatchObject({ output: { interactions: [] } });
+    expect(await playbook.call(listInteractions, {})).toMatchObject({ output: { interactions: [] } });
   });
 
   it('answers what landed for the same answer again, and is a conflict for another one', async () => {
-    const { brain } = await askedApproval();
-    await brain.call(answer, { run_id: runId, answer: { choice: 'approve' } });
+    const { playbook } = await askedApproval();
+    await playbook.call(answer, { run_id: runId, answer: { choice: 'approve' } });
 
     expect([
-      await brain.call(answer, { run_id: runId, answer: { choice: 'approve' } }),
-      await brain.call(answer, { run_id: runId, answer: { choice: 'reject' } }),
+      await playbook.call(answer, { run_id: runId, answer: { choice: 'approve' } }),
+      await playbook.call(answer, { run_id: runId, answer: { choice: 'reject' } }),
     ]).toMatchObject([
       { status: 'succeeded', output: { status: 'succeeded' } },
       { status: 'rejected', reason: 'conflict', detail: 'The run already ended with another result' },
@@ -130,26 +130,26 @@ describe('an answer to a request', () => {
 
 describe('an answer the request does not take', () => {
   it('is invalid input when it does not match the answer schema, with pointers, and leaves the request open', async () => {
-    const { brain } = await askedApproval();
+    const { playbook } = await askedApproval();
 
-    expect(await brain.call(answer, { run_id: runId, answer: { choice: 'maybe' } })).toMatchObject({
+    expect(await playbook.call(answer, { run_id: runId, answer: { choice: 'maybe' } })).toMatchObject({
       status: 'rejected',
       reason: 'invalid_input',
       issues: [{ pointer: '/answer/choice' }],
     });
-    expect(await brain.call(listInteractions, {})).toMatchObject({
+    expect(await playbook.call(listInteractions, {})).toMatchObject({
       output: { interactions: [{ run_id: runId }] },
     });
   });
 
   it('is refused for a run there is not, a run that asks nothing, and a notification', async () => {
-    const brain = interactionHarness();
-    await brain.define('tell', notificationDocument());
-    await brain.ask('tell', { campaign: 'Spring', owner: 'ada' }, otherRunId);
+    const playbook = interactionHarness();
+    await playbook.define('tell', notificationDocument());
+    await playbook.ask('tell', { campaign: 'Spring', owner: 'ada' }, otherRunId);
 
     expect([
-      await brain.call(answer, { run_id: runId, answer: {} }),
-      await brain.call(answer, { run_id: otherRunId, answer: {} }),
+      await playbook.call(answer, { run_id: runId, answer: {} }),
+      await playbook.call(answer, { run_id: otherRunId, answer: {} }),
     ]).toMatchObject([
       { status: 'rejected', reason: 'not_found' },
       {
@@ -163,9 +163,9 @@ describe('an answer the request does not take', () => {
 
 describe('an answer that is refused before it is checked', () => {
   it('is a conflict for a notification that waits for its delivery', async () => {
-    const { brain } = await askedThroughChat({ notification: true });
+    const { playbook } = await askedThroughChat({ notification: true });
 
-    expect(await brain.call(answer, { run_id: askedRunId, answer: {} })).toMatchObject({
+    expect(await playbook.call(answer, { run_id: askedRunId, answer: {} })).toMatchObject({
       status: 'rejected',
       reason: 'conflict',
       detail: 'The request is a notification, which takes no answer',
@@ -173,10 +173,10 @@ describe('an answer that is refused before it is checked', () => {
   });
 
   it('is invalid input past 64 KiB, and the answer schema of a request that cannot be read is no answer', async () => {
-    const { brain } = await askedApproval();
+    const { playbook } = await askedApproval();
 
     expect([
-      await brain.call(answer, { run_id: runId, answer: { choice: 'approve', note: 'x'.repeat(70_000) } }),
+      await playbook.call(answer, { run_id: runId, answer: { choice: 'approve', note: 'x'.repeat(70_000) } }),
       checkedAnswer({}, { type: 'thing' }),
     ]).toMatchObject([
       {
@@ -191,9 +191,9 @@ describe('an answer that is refused before it is checked', () => {
 
 describe('the words of answers and requests', () => {
   it('is told in plain words, as the requests are', async () => {
-    const { brain } = await askedApproval();
-    const answered = outputOf(await brain.call(answer, { run_id: runId, answer: { choice: 'approve' } }));
-    const listing = outputOf(await brain.call(listInteractions, {}));
+    const { playbook } = await askedApproval();
+    const answered = outputOf(await playbook.call(answer, { run_id: runId, answer: { choice: 'approve' } }));
+    const listing = outputOf(await playbook.call(listInteractions, {}));
     const input = { run_id: runId, answer: { choice: 'approve' } };
 
     expect([
@@ -227,25 +227,25 @@ describe('the words of answers and requests', () => {
 
 describe('a request whose run is cancelled', () => {
   it('ends rejected as cancelled with the kind asked, closes, and takes no answer after', async () => {
-    const { brain } = await askedApproval();
+    const { playbook } = await askedApproval();
 
-    expect(await brain.cancel(runId)).toMatchObject({ status: 'succeeded', output: { status: 'started' } });
+    expect(await playbook.cancel(runId)).toMatchObject({ status: 'succeeded', output: { status: 'started' } });
     await Effect.runPromise(
-      deferredCanceller([brain.capability], brain.ledger.service)(
-        { org: 'acme', brain: 'alpha', id: runId },
+      deferredCanceller([playbook.capability], playbook.ledger.service)(
+        { org: 'acme', playbook: 'alpha', id: runId },
         { kind: 'requested', reason: 'Not needed any more', by: 'acme-admin' },
         { causationId: null, correlationId: runId },
       ),
     );
 
-    expect(await brain.runOf(runId)).toMatchObject({
+    expect(await playbook.runOf(runId)).toMatchObject({
       output: {
         status: 'rejected',
         rejection: { reason: 'cancelled', kind: 'requested', detail: 'Not needed any more' },
       },
     });
-    expect(await brain.call(listInteractions, {})).toMatchObject({ output: { interactions: [] } });
-    expect(await brain.call(answer, { run_id: runId, answer: { choice: 'approve' } })).toMatchObject({
+    expect(await playbook.call(listInteractions, {})).toMatchObject({ output: { interactions: [] } });
+    expect(await playbook.call(answer, { run_id: runId, answer: { choice: 'approve' } })).toMatchObject({
       reason: 'conflict',
     });
   });

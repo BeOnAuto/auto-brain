@@ -56,7 +56,7 @@ describe.skipIf(skipped)(`the host on PostgreSQL${notice}`, () => {
     failureSuite(onPostgreSQL);
   });
 
-  describe('the reactions of its brains', () => {
+  describe('the reactions of its playbooks', () => {
     reactionSuite(onPostgreSQL);
   });
 

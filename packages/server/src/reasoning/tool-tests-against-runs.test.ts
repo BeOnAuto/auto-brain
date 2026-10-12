@@ -35,7 +35,7 @@ describe('what a test of a tool answers', () => {
       }),
     });
     closing.push(server.stop);
-    await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+    await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
     await server.call('POST', `${alpha}/definitions/reasoning`, { body: { name: 'profile', source: profiling } });
 
     const ran = await server.call('POST', `${alpha}/definitions/reasoning/profile/run`, { body: { input: {} } });

@@ -6,7 +6,7 @@ import { fakeBucket } from '../testing/fake-bucket.ts';
 import { bucketReady, testObjectStoreOf } from '../testing/test-object-store.ts';
 import { objectStoreReached, ObjectStoreUnreachable } from './object-content.ts';
 
-const location = { bucket: 'content', prefix: 'brains' };
+const location = { bucket: 'content', prefix: 'playbooks' };
 
 function refusedWith(name: string, httpStatusCode: number): S3ServiceException {
   return new S3ServiceException({ name, $fault: 'client', $metadata: { httpStatusCode }, message: 'UnknownError' });

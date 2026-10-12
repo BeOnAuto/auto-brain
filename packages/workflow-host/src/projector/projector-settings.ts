@@ -15,7 +15,7 @@ export interface ProjectorSettings {
   readonly definitionType: string;
   readonly pool: ProgramPool;
   readonly folding: FoldingSettings;
-  readonly brainsAtOnce: number;
+  readonly playbooksAtOnce: number;
   readonly rebuildsAtOnce: number;
   readonly pagesPerWake: number;
   readonly overtimesBeforeStall: number;

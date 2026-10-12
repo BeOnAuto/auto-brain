@@ -1,6 +1,6 @@
 import {
   InvalidCursor,
-  streamPrefixOfBrain,
+  streamPrefixOfPlaybook,
   type RecordedEvent,
   type RecordedFact,
   type RecordedPage,
@@ -14,13 +14,13 @@ import { cursorOf, pointOf, type CursorPoint } from './cursor.ts';
 
 function storedRequestOf(
   { cursor, ...page }: RecordedPageRequest,
-  brainKey: string,
+  playbookKey: string,
   pointLength: number,
 ): Effect.Effect<StoredPageRequest, InvalidCursor> {
   if (cursor === undefined) {
     return Effect.succeed(page);
   }
-  return Result.match(pointOf(cursor, brainKey, pointLength), {
+  return Result.match(pointOf(cursor, playbookKey, pointLength), {
     onFailure: (kind) => Effect.fail(new InvalidCursor({ kind })),
     onSuccess: ({ point, within }: CursorPoint) =>
       Effect.succeed(within ? { ...page, at: point } : { ...page, after: point }),
@@ -55,37 +55,37 @@ function recordedFactOf({
   };
 }
 
-function recordedEventOf(brainKey: string): (stored: StoredRecord) => RecordedEvent {
-  return (stored) => ({ ...recordedFactOf(stored), cursor: cursorOf(brainKey, stored.point) });
+function recordedEventOf(playbookKey: string): (stored: StoredRecord) => RecordedEvent {
+  return (stored) => ({ ...recordedFactOf(stored), cursor: cursorOf(playbookKey, stored.point) });
 }
 
-function recordedPageOf(brainKey: string): (stored: StoredPage) => RecordedPage {
-  const recorded = recordedEventOf(brainKey);
+function recordedPageOf(playbookKey: string): (stored: StoredPage) => RecordedPage {
+  const recorded = recordedEventOf(playbookKey);
   return ({ records, resumeAfter, lastExamined }) => ({
     records: records.map((record) => recorded(record)),
     hasMore: resumeAfter !== undefined,
-    nextCursor: resumeAfter === undefined ? null : cursorOf(brainKey, resumeAfter),
+    nextCursor: resumeAfter === undefined ? null : cursorOf(playbookKey, resumeAfter),
     lastExamined:
       lastExamined === undefined
         ? null
-        : { cursor: cursorOf(brainKey, lastExamined.point), recordedAt: lastExamined.recordedAt },
+        : { cursor: cursorOf(playbookKey, lastExamined.point), recordedAt: lastExamined.recordedAt },
   });
 }
 
 export function recordedReaderOf(store: RecordedStore): RecordedReader['readRecorded'] {
-  return (brain, selection, page) => {
-    const brainKey = streamPrefixOfBrain(brain);
-    return storedRequestOf(page, brainKey, store.pointLength).pipe(
-      Effect.flatMap((request) => Effect.promise(() => store.readRecorded(brainKey, selection, request))),
-      Effect.map(recordedPageOf(brainKey)),
+  return (playbook, selection, page) => {
+    const playbookKey = streamPrefixOfPlaybook(playbook);
+    return storedRequestOf(page, playbookKey, store.pointLength).pipe(
+      Effect.flatMap((request) => Effect.promise(() => store.readRecorded(playbookKey, selection, request))),
+      Effect.map(recordedPageOf(playbookKey)),
     );
   };
 }
 
 export function recordedEventReaderOf(store: RecordedStore): RecordedReader['readRecordedEvent'] {
-  return (brain, id) => {
-    const brainKey = streamPrefixOfBrain(brain);
-    return Effect.promise(() => store.readRecordedEvent(brainKey, id)).pipe(
+  return (playbook, id) => {
+    const playbookKey = streamPrefixOfPlaybook(playbook);
+    return Effect.promise(() => store.readRecordedEvent(playbookKey, id)).pipe(
       Effect.map((stored) => (stored === undefined ? undefined : recordedFactOf(stored))),
     );
   };

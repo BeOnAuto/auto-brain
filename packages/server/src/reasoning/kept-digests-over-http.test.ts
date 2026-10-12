@@ -45,7 +45,7 @@ async function servingTheEcho(recordContent: boolean): Promise<ReasoningServer> 
     }),
   });
   onTestFinished(server.stop);
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   const source = ['---', 'model: anthropic/claude-sonnet-4-5', 'tools: [graph/echo]', '---', 'Echo it.'].join('\n');
   await server.call('POST', `${alpha}/definitions/reasoning`, { body: { name: 'echo', source } });
   await server.call('POST', `${alpha}/definitions/reasoning/echo/run`, { body: { input: {}, run_id: runId } });
@@ -62,7 +62,7 @@ async function callEventsOf(server: ReasoningServer) {
 }
 
 describe('the digests of what a call sent and received, over HTTP', () => {
-  it('name the scrubbed text the brain kept, and the key and the pin appear on no page, no event read whole and no line of the log', async () => {
+  it('name the scrubbed text the playbook kept, and the key and the pin appear on no page, no event read whole and no line of the log', async () => {
     const logged = vi.spyOn(console, 'error');
     onTestFinished(() => {
       logged.mockRestore();

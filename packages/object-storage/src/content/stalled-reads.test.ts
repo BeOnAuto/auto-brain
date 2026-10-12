@@ -10,7 +10,7 @@ import { objectKeysOf } from '../location/object-keys.ts';
 import { fakeBucket } from '../testing/fake-bucket.ts';
 import { objectContentOn } from './object-content.ts';
 
-const location = { bucket: 'content', prefix: 'brains' };
+const location = { bucket: 'content', prefix: 'playbooks' };
 
 describe('a read on object storage whose store stops sending', () => {
   it('fails once the store has sent no piece for the wait of a request, and lets go of the body', async () => {

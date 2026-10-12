@@ -13,8 +13,8 @@ export interface OrgRequest {
   readonly body?: StreamedContent;
 }
 
-export interface BrainRequest extends OrgRequest {
-  readonly brain: string;
+export interface PlaybookRequest extends OrgRequest {
+  readonly playbook: string;
   readonly lineage?: Lineage;
   readonly depth?: number;
   readonly callDepth?: number;
@@ -22,6 +22,8 @@ export interface BrainRequest extends OrgRequest {
   readonly trigger?: TriggerLink;
 }
 
-export function callSummaryOf(operation: string, { org, caller }: OrgRequest, brain?: string): CallSummary {
-  return brain === undefined ? { operation, org, caller: caller.id } : { operation, org, brain, caller: caller.id };
+export function callSummaryOf(operation: string, { org, caller }: OrgRequest, playbook?: string): CallSummary {
+  return playbook === undefined
+    ? { operation, org, caller: caller.id }
+    : { operation, org, playbook, caller: caller.id };
 }

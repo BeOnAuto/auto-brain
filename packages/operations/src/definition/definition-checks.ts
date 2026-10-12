@@ -22,7 +22,7 @@ interface CheckableDefinition {
 
 interface CheckedDefinition {
   readonly pathParameters: readonly string[];
-  readonly targetsBrain: boolean;
+  readonly targetsPlaybook: boolean;
   readonly permissions: readonly Permission[];
 }
 
@@ -30,7 +30,7 @@ const operationName = /^[a-z][a-z0-9_]{0,63}$/u;
 
 const reservedFieldsByScope: Readonly<Record<OperationScope, readonly string[]>> = {
   org: ['org'],
-  brain: ['org', 'brain'],
+  playbook: ['org', 'playbook'],
 };
 
 function closedObjectMembers(
@@ -71,7 +71,7 @@ function requireRouteParametersAsFields(
   }
 }
 
-function requireBrainFromBrainField(
+function requirePlaybookFromPlaybookField(
   name: string,
   inputSchema: Schema.Constraint,
   members: readonly SchemaAST.Objects[],
@@ -79,11 +79,11 @@ function requireBrainFromBrainField(
   const renamed = Arr.zip(handlerMembersOf(inputSchema), members).some(
     ([handlerMember, encodedMember]: readonly [SchemaAST.AST, SchemaAST.Objects]) =>
       SchemaAST.isObjects(handlerMember) &&
-      fieldOf(handlerMember, 'brain') !== undefined &&
-      fieldOf(encodedMember, 'brain') === undefined,
+      fieldOf(handlerMember, 'playbook') !== undefined &&
+      fieldOf(encodedMember, 'playbook') === undefined,
   );
   if (renamed) {
-    throw new Error(`The input of ${name} must take its brain field from a field named brain`);
+    throw new Error(`The input of ${name} must take its playbook field from a field named playbook`);
   }
 }
 
@@ -109,10 +109,10 @@ export function checkedDefinition(
   }
   requireNoReservedField(name, scope, inputMembers);
   requireRouteParametersAsFields(name, pathParameters, inputMembers);
-  requireBrainFromBrainField(name, inputSchema, inputMembers);
+  requirePlaybookFromPlaybookField(name, inputSchema, inputMembers);
   return {
     pathParameters,
-    targetsBrain: inputMembers.some((member) => fieldOf(member, 'brain') !== undefined),
+    targetsPlaybook: inputMembers.some((member) => fieldOf(member, 'playbook') !== undefined),
     permissions: permissionsOf(name, permittedBy),
   };
 }

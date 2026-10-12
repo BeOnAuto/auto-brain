@@ -43,18 +43,18 @@ describe('the run store of the host, ending a run', () => {
 });
 
 describe('the run store of the host, keeping a run', () => {
-  it('keeps the log of a run on the ledger, under the brain, where the history of the run reads it', async () => {
+  it('keeps the log of a run on the ledger, under the playbook, where the history of the run reads it', async () => {
     const file = aSQLiteFile();
     const hosted = await hostedOn({ store: 'sqlite', file });
     await Effect.runPromise(hosted.host.start(run, startOf(waiting)));
     const ledger = await ledgerOn(file);
 
     const history = await Effect.runPromise(
-      ledger.readRecorded({ org: 'acme', brain: 'alpha' }, { kind: 'run', run: runId }, { order: 'asc', limit: 10 }),
+      ledger.readRecorded({ org: 'acme', playbook: 'alpha' }, { kind: 'run', run: runId }, { order: 'asc', limit: 10 }),
     );
 
     expect(history.records.map(({ stream, type }) => [stream, type])).toEqual([
-      [`brain/acme/alpha/run-logs/${runId}`, 'input_applied'],
+      [`playbook/acme/alpha/run-logs/${runId}`, 'input_applied'],
     ]);
   });
 

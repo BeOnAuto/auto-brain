@@ -44,7 +44,7 @@ const theContentIndexes = [
 ];
 
 describe("the ledger's own schema on PostgreSQL", () => {
-  it("creates the brain's indexes, then the tables of the content it keeps and their indexes, each only when missing", async () => {
+  it("creates the playbook's indexes, then the tables of the content it keeps and their indexes, each only when missing", async () => {
     const empty = executorFinding([]);
     const found = executorFinding([
       ...contentTables.map(({ name }) => name),
@@ -54,11 +54,11 @@ describe("the ledger's own schema on PostgreSQL", () => {
 
     await postgresqlSchemaCreated(empty.execute);
     await postgresqlSchemaCreated(found.execute);
-    const brainIndexes = empty.commands.slice(0, empty.commands.indexOf(firstContentTable));
+    const indexes = empty.commands.slice(0, empty.commands.indexOf(firstContentTable));
 
-    expect(brainIndexes.filter((command) => command.startsWith('CREATE INDEX IF NOT EXISTS ledger_'))).toHaveLength(7);
-    expect(brainIndexes.filter((command) => command.includes('content'))).toEqual([]);
-    expect(empty.commands.slice(brainIndexes.length)).toEqual([...theContentTables, ...theContentIndexes]);
+    expect(indexes.filter((command) => command.startsWith('CREATE INDEX IF NOT EXISTS ledger_'))).toHaveLength(7);
+    expect(indexes.filter((command) => command.includes('content'))).toEqual([]);
+    expect(empty.commands.slice(indexes.length)).toEqual([...theContentTables, ...theContentIndexes]);
     expect(found.commands.filter((command) => command.includes('content'))).toEqual([]);
   });
 });

@@ -43,11 +43,11 @@ export function objectContentOn(
     Effect.promise(() => readAt(bucket, key, { sha256, waitMs: requestMs }));
   return {
     content: {
-      put: (brain, content) => placedOn(placing, (sha256) => keys.kept(brain, sha256), content),
-      get: (brain, sha256) => readOf(keys.kept(brain, sha256), sha256),
-      stage: (brain, run, content) => stagedOn(placing, { brain, run }, content),
-      staged: (brain, run, sha256) => readOf(keys.staged(brain, run, sha256), sha256),
-      unstage: (brain, run) => Effect.promise(() => unstagedOn(placing, { brain, run })),
+      put: (playbook, content) => placedOn(placing, (sha256) => keys.kept(playbook, sha256), content),
+      get: (playbook, sha256) => readOf(keys.kept(playbook, sha256), sha256),
+      stage: (playbook, run, content) => stagedOn(placing, { playbook, run }, content),
+      staged: (playbook, run, sha256) => readOf(keys.staged(playbook, run, sha256), sha256),
+      unstage: (playbook, run) => Effect.promise(() => unstagedOn(placing, { playbook, run })),
     },
     sweepContent: (before) => sweptUploads(bucket, keys.uploads, before),
   };

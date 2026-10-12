@@ -23,7 +23,7 @@ function recordOf(stream: string, type: string, data: unknown, context: Context)
   };
 }
 
-const showing = { streamPrefix: 'brain/acme/alpha/', content: nothingKept, view: 'page' } as const;
+const showing = { streamPrefix: 'playbook/acme/alpha/', content: nothingKept, view: 'page' } as const;
 
 const reason =
   'An event matched the event trigger of the workflow at reaction depth 9, past the 8 a chain of reactions may reach';
@@ -32,7 +32,7 @@ describe('the presenter of the refused reactions of a workflow', () => {
   it('says in words that the workflow of its context was not started every time its triggers called for it, and gives the count and the last reason', () => {
     const context = {
       at: '2026-10-01T09:01:00.000Z',
-      by: 'brain:alpha',
+      by: 'playbook:alpha',
       definitionType: 'workflow',
       definitionName: 'close-the-month',
       definitionVersion: 2,

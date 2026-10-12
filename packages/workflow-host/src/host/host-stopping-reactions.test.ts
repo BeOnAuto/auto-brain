@@ -4,8 +4,8 @@ import { Effect, Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { DatabaseSettings } from '../database/host-databases.ts';
-import { eventTrigger, published, definitionRecorded } from '../reaction-testing/brain-writes.ts';
 import { heldStart, type HeldStart } from '../reaction-testing/held-start.ts';
+import { eventTrigger, published, definitionRecorded } from '../reaction-testing/playbook-writes.ts';
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
 import { until } from '../reaction-testing/until.ts';
 import { aSQLiteFile } from '../testing/host-files.ts';

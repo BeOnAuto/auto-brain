@@ -1,6 +1,6 @@
 export {
   appendSignal,
-  brainKeyOfStream,
+  playbookKeyOfStream,
   signalledOn,
   type AppendListener,
   type AppendSignal,

@@ -17,7 +17,7 @@ const encodeEvent = Schema.encodeSync(Schema.toCodecJson(RunLogEventSchema));
 
 const presentation = presentationOf([runPresenter]);
 
-const showing = { streamPrefix: 'brain/acme/alpha/', content: nothingKept, view: 'page' } as const;
+const showing = { streamPrefix: 'playbook/acme/alpha/', content: nothingKept, view: 'page' } as const;
 
 function presented(receipt: InputReceipt) {
   const event: RunLogEvent = { type: 'input_applied', format: 6, receipt, steps: [], patch: [], outputs: [] };
@@ -56,7 +56,7 @@ describe('a cancel a workflow took, in the history of its run', () => {
     });
 
     expect(cancelled?.summary).toBe(
-      'acme-admin cancelled the workflow. It was cancelled at the request of someone allowed to change the brain.',
+      'acme-admin cancelled the workflow. It was cancelled at the request of someone allowed to change the playbook.',
     );
     expect(cancelled?.data).toMatchObject({
       input: { kind: 'cancel_requested', key: runId, cancel: { by: 'acme-admin', kind: 'requested' } },

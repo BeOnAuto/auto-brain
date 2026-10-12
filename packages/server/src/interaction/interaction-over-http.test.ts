@@ -65,7 +65,7 @@ describe(
 );
 
 describe('an Authorization header that holds no Bearer key, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
-  it('is refused as malformed, in the one sentence that names Bearer, before any brain is read', async () => {
+  it('is refused as malformed, in the one sentence that names Bearer, before any playbook is read', async () => {
     const server = await servingInteractions();
     const answered = await server.call('POST', `${alpha}/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/answer`, {
       body: { answer: { choice: 'approve' } },

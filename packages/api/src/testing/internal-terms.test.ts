@@ -4,8 +4,8 @@ import { internalTermsIn } from './internal-terms.ts';
 
 const leaks: ReadonlyArray<readonly [string, string]> = [
   ['Created the inference spec.', 'spec'],
-  ['The specs of the brain.', 'specs'],
-  ['A primitive of the brain.', 'primitive'],
+  ['The specs of the playbook.', 'specs'],
+  ['A primitive of the playbook.', 'primitive'],
   ['The execution started.', 'execution'],
   ['It ran an inference.', 'inference'],
   ['An orchestration started.', 'orchestration'],

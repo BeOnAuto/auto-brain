@@ -8,7 +8,7 @@ import { objectKeysOf } from '../location/object-keys.ts';
 import { fakeContentStore, type FakeContentStore } from '../testing/fake-bucket.ts';
 import { uploadPartBytes } from './upload-writing.ts';
 
-const location = { bucket: 'content', prefix: 'brains' };
+const location = { bucket: 'content', prefix: 'playbooks' };
 
 const keys = objectKeysOf(location);
 
@@ -26,7 +26,7 @@ function writtenBefore(store: FakeContentStore, command: string, key: string, me
 }
 
 describe('a put on object storage', () => {
-  it('writes a content of one chunk straight under its digest, and nothing when the brain holds it', async () => {
+  it('writes a content of one chunk straight under its digest, and nothing when the playbook holds it', async () => {
     const store = fakeContentStore(location);
 
     const kept = await resultOf(store.content.put(alpha, textToKeep('{"a":1}', 'application/json')));

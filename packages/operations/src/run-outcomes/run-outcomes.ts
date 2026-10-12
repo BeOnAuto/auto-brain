@@ -47,13 +47,15 @@ export interface RunOutcomeGroup {
 }
 
 export interface RunStream {
-  readonly brainKey: string;
+  readonly playbookKey: string;
   readonly runId: string;
 }
 
-const runStream = /^(?<brainKey>[^/]+\/[^/]+\/[^/]+\/)runs\/(?<runId>[^/]+)$/u;
+const runStream = /^(?<playbookKey>[^/]+\/[^/]+\/[^/]+\/)runs\/(?<runId>[^/]+)$/u;
 
 export function runStreamOf(stream: string): RunStream | undefined {
   const groups = runStream.exec(stream)?.groups;
-  return groups === undefined ? undefined : { brainKey: String(groups['brainKey']), runId: String(groups['runId']) };
+  return groups === undefined
+    ? undefined
+    : { playbookKey: String(groups['playbookKey']), runId: String(groups['runId']) };
 }

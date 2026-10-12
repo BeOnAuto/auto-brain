@@ -209,14 +209,14 @@ function filtersOf(task: unknown): readonly unknown[] {
   return Array.isArray(listed) ? listed : [];
 }
 
-function isBrainWide(filter: unknown): boolean {
+function isPlaybookWide(filter: unknown): boolean {
   const type = fieldOf(fieldOf(filter, 'with'), 'type');
   return typeof type === 'string' && type !== '' && !type.trimStart().startsWith('${');
 }
 
 function listenersOf({ executionId, workflow, machine }: FormatFour): Fields {
   const listening = listenFramesIn(machine.root).filter(({ reference }) =>
-    filtersOf(taskAt(workflow?.document, reference)).some((filter) => isBrainWide(filter)),
+    filtersOf(taskAt(workflow?.document, reference)).some((filter) => isPlaybookWide(filter)),
   );
   return Object.fromEntries(
     listening.map(({ reference, run }) => {

@@ -71,7 +71,7 @@ describe('a cancel of a workflow run, over HTTP', { timeout: workflowTestTimeout
 });
 
 describe('a cancel of a run that cannot be cancelled, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
-  it('is a conflict for a run that ran within its call, and not found for a run the brain does not have', async () => {
+  it('is a conflict for a run that ran within its call, and not found for a run the playbook does not have', async () => {
     server = await servingCalls([answers(textResult('Short.'))]);
     const ran = await server.call('POST', `${alpha}/definitions/reasoning/summary/run`, {
       body: { input: { text: 'long' } },
@@ -91,7 +91,7 @@ describe('a cancel of a workflow run, over MCP', { timeout: workflowTestTimeoutM
 
     const { cancelled, settled } = await withMcpSession(
       'current revision',
-      { url: `${server.origin}/orgs/acme/brains/alpha/mcp`, headers: {} },
+      { url: `${server.origin}/orgs/acme/playbooks/alpha/mcp`, headers: {} },
       async (session) => ({
         cancelled: await session.callTool('cancel_run', { run_id: runId, reason: 'Done' }),
         settled: await settledOverMcp(session, runId),

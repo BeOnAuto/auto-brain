@@ -1,25 +1,31 @@
 import { Context, Schema } from 'effect';
 
-import { BrainAccessSchema, type BrainAccess } from './brain-access.ts';
 import { OrgIdSchema } from './identifiers.ts';
 import { PermissionSchema, type Permission } from './permission.ts';
+import { PlaybookAccessSchema, type PlaybookAccess } from './playbook-access.ts';
 
 export interface CallerIdentity {
   readonly id: string;
   readonly org: string;
   readonly permissions: readonly Permission[];
-  readonly brains: BrainAccess;
+  readonly playbooks: PlaybookAccess;
 }
 
 export const CallerIdentitySchema = Schema.Struct({
   id: Schema.NonEmptyString,
   org: OrgIdSchema,
   permissions: Schema.Array(PermissionSchema),
-  brains: BrainAccessSchema,
+  playbooks: PlaybookAccessSchema,
 });
 
-export function brainCallerOf({ org, brain }: { readonly org: string; readonly brain: string }): CallerIdentity {
-  return { id: `brain:${brain}`, org, permissions: ['brain:read', 'brain:write'], brains: [brain] };
+export function playbookCallerOf({
+  org,
+  playbook,
+}: {
+  readonly org: string;
+  readonly playbook: string;
+}): CallerIdentity {
+  return { id: `playbook:${playbook}`, org, permissions: ['playbook:read', 'playbook:write'], playbooks: [playbook] };
 }
 
 export class Caller extends Context.Service<Caller, CallerIdentity>()('@beonauto/operations/Caller') {}

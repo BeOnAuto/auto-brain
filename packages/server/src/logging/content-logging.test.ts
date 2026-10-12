@@ -16,7 +16,7 @@ describe('logContentStore', () => {
     const lines = await linesLoggedBy(
       logContentStore({
         store: 'object-storage',
-        location: { bucket: 'brain-content', prefix: 'production' },
+        location: { bucket: 'playbook-content', prefix: 'production' },
         endpoint: 'https://access:secret@storage.example.com:9000/base',
         region: 'eu-west-1',
       }),
@@ -24,11 +24,11 @@ describe('logContentStore', () => {
 
     expect(lines).toEqual([
       expect.stringContaining(
-        '{"message":"Content is kept on object storage, in the bucket brain-content under production/, on storage.example.com:9000","level":"INFO"',
+        '{"message":"Content is kept on object storage, in the bucket playbook-content under production/, on storage.example.com:9000","level":"INFO"',
       ),
     ]);
     expect(lines[0]).toContain(
-      '"annotations":{"content_store":"object-storage","content_bucket":"brain-content","content_prefix":"production","content_endpoint":"storage.example.com:9000"}',
+      '"annotations":{"content_store":"object-storage","content_bucket":"playbook-content","content_prefix":"production","content_endpoint":"storage.example.com:9000"}',
     );
     expect(lines.join('\n')).not.toMatch(/secret|access/u);
   });
@@ -37,7 +37,7 @@ describe('logContentStore', () => {
     const lines = await linesLoggedBy(
       logContentStore({
         store: 'object-storage',
-        location: { bucket: 'brain-content', prefix: '' },
+        location: { bucket: 'playbook-content', prefix: '' },
         endpoint: undefined,
         region: undefined,
       }),
@@ -45,7 +45,7 @@ describe('logContentStore', () => {
 
     expect(lines).toEqual([
       expect.stringContaining(
-        '{"message":"Content is kept on object storage, in the bucket brain-content, on the S3 endpoint of its region"',
+        '{"message":"Content is kept on object storage, in the bucket playbook-content, on the S3 endpoint of its region"',
       ),
     ]);
   });

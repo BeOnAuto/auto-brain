@@ -4,8 +4,8 @@ import { HostElsewhere } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { brainOn } from '../testing/brain.ts';
 import { testExpressionCheck } from '../testing/expression-checks.ts';
+import { playbookOn } from '../testing/playbook.ts';
 import { makeWorkflowAdapter, type WorkflowAdapterDependencies } from './workflow.ts';
 
 const neverStarted: WorkflowAdapterDependencies = {
@@ -22,9 +22,9 @@ function nested(depth: number): Json {
 }
 
 async function running(input: Json) {
-  const brain = brainOn(memoryLedger(), [makeWorkflowAdapter(neverStarted)]);
-  await brain.call(brain.createDefinition, { type: 'workflow', name: 'flow', source: flow });
-  return brain.call(brain.runDefinition, { type: 'workflow', name: 'flow', input });
+  const playbook = playbookOn(memoryLedger(), [makeWorkflowAdapter(neverStarted)]);
+  await playbook.call(playbook.createDefinition, { type: 'workflow', name: 'flow', source: flow });
+  return playbook.call(playbook.runDefinition, { type: 'workflow', name: 'flow', input });
 }
 
 describe('running a workflow definition with an input a workflow may not hold', () => {
@@ -37,10 +37,10 @@ describe('running a workflow definition with an input a workflow may not hold', 
   });
 
   it('checks its document against the most a workflow may run that it was set with', async () => {
-    const brain = brainOn(memoryLedger(), [makeWorkflowAdapter({ ...neverStarted, mostDurationMs: 10_800_000 })]);
+    const playbook = playbookOn(memoryLedger(), [makeWorkflowAdapter({ ...neverStarted, mostDurationMs: 10_800_000 })]);
     const source = `document: { dsl: '1.0.3', namespace: acme, name: flow, version: '1.0.0' }\ndo: [{ pause: { wait: PT4H } }]\n`;
 
-    expect(await brain.call(brain.createDefinition, { type: 'workflow', name: 'flow', source })).toMatchObject({
+    expect(await playbook.call(playbook.createDefinition, { type: 'workflow', name: 'flow', source })).toMatchObject({
       status: 'rejected',
       issues: [
         {
@@ -63,10 +63,10 @@ describe('running a workflow definition while another server runs the workflows 
       ...neverStarted,
       runs: { start: () => Effect.fail(new HostElsewhere({ detail })) },
     });
-    const brain = brainOn(memoryLedger(), [elsewhere]);
-    await brain.call(brain.createDefinition, { type: 'workflow', name: 'flow', source: flow });
+    const playbook = playbookOn(memoryLedger(), [elsewhere]);
+    await playbook.call(playbook.createDefinition, { type: 'workflow', name: 'flow', source: flow });
 
-    expect(await brain.call(brain.runDefinition, { type: 'workflow', name: 'flow' })).toMatchObject({
+    expect(await playbook.call(playbook.runDefinition, { type: 'workflow', name: 'flow' })).toMatchObject({
       status: 'rejected',
       reason: 'unavailable',
       detail,

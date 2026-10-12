@@ -2,7 +2,7 @@ import {
   sha256Of,
   textOfContent,
   textToKeep,
-  type BrainAddress,
+  type PlaybookAddress,
   type ContentToKeep,
   type RecordedContent,
 } from '@beonauto/operations';
@@ -19,7 +19,7 @@ const sizes: readonly (readonly [string, number])[] = [
   ['20 MB', 20_000_000],
 ];
 
-const brain = { org: 'acme', brain: 'alpha' };
+const playbook = { org: 'acme', playbook: 'alpha' };
 
 const mebibyte = 1_048_576;
 
@@ -81,7 +81,7 @@ function streamOf(pieces: readonly Readonly<Uint8Array>[]): ContentToKeep {
   return { stream, mediaType: octets };
 }
 
-function put(content: RecordedContent, into: BrainAddress, kept: ContentToKeep): Promise<unknown> {
+function put(content: RecordedContent, into: PlaybookAddress, kept: ContentToKeep): Promise<unknown> {
   return Effect.runPromise(content.put(into, kept));
 }
 
@@ -94,12 +94,12 @@ async function measuredText(content: RecordedContent, name: string): Promise<voi
       textToKeep(text, 'application/json'),
       { ...textToKeep(text, 'application/json'), expected: { sha256 } },
     ];
-    const kept = await timed(() => put(content, brain, first));
-    const again = await timed(() => put(content, brain, second));
-    const givenItsDigest = await timed(() => put(content, brain, expected));
+    const kept = await timed(() => put(content, playbook, first));
+    const again = await timed(() => put(content, playbook, second));
+    const givenItsDigest = await timed(() => put(content, playbook, expected));
     let read = '';
     const got = await timed(async () => {
-      const streamed = await Effect.runPromise(content.get(brain, sha256));
+      const streamed = await Effect.runPromise(content.get(playbook, sha256));
       read = streamed === undefined ? '' : await Effect.runPromise(textOfContent(streamed));
       JSON.parse(read);
     });
@@ -109,7 +109,7 @@ async function measuredText(content: RecordedContent, name: string): Promise<voi
   });
 }
 
-async function readBack(content: RecordedContent, from: BrainAddress, sha256: string) {
+async function readBack(content: RecordedContent, from: PlaybookAddress, sha256: string) {
   const streamed = await Effect.runPromise(content.get(from, sha256));
   return streamed === undefined ? undefined : readThrough(streamed.stream);
 }
@@ -119,7 +119,7 @@ function mebibytes(bytes: number): string {
 }
 
 async function heldWhileStreamed(content: RecordedContent, name: string, sha256: string): Promise<string> {
-  const elsewhere = { org: 'acme', brain: 'beta' };
+  const elsewhere = { org: 'acme', playbook: 'beta' };
   const putting = await mostHeldDuring(() =>
     put(content, elsewhere, { stream: generatedStream(streamedBytes, sampleSeed), mediaType: octets }),
   );
@@ -130,12 +130,12 @@ async function heldWhileStreamed(content: RecordedContent, name: string, sha256:
 async function measuredStream(content: RecordedContent, name: string): Promise<string> {
   const pieces = await piecesOf(generatedStream(streamedBytes, sampleSeed));
   const { sha256 } = await readThrough(streamOf(pieces).stream);
-  const kept = await timed(() => put(content, brain, streamOf(pieces)));
-  const again = await timed(() => put(content, brain, streamOf(pieces)));
-  const givenItsDigest = await timed(() => put(content, brain, { ...streamOf(pieces), expected: { sha256 } }));
-  let read = await readBack(content, brain, sha256);
+  const kept = await timed(() => put(content, playbook, streamOf(pieces)));
+  const again = await timed(() => put(content, playbook, streamOf(pieces)));
+  const givenItsDigest = await timed(() => put(content, playbook, { ...streamOf(pieces), expected: { sha256 } }));
+  let read = await readBack(content, playbook, sha256);
   const got = await timed(async () => {
-    read = await readBack(content, brain, sha256);
+    read = await readBack(content, playbook, sha256);
   });
   write(
     `| ${name} | 64 MiB, streamed | ${milliseconds(kept)} | ${milliseconds(again)} | ${milliseconds(givenItsDigest)} | ${milliseconds(got)} | ${String(read?.sha256 === sha256 && read.bytes === streamedBytes)} |`,

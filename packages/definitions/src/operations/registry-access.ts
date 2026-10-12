@@ -1,10 +1,10 @@
 import {
-  BrainContext,
-  BrainReader,
-  BrainWriter,
+  PlaybookContext,
+  PlaybookReader,
+  PlaybookWriter,
   messageIdOf,
   NotFound,
-  streamPrefixOfBrain,
+  streamPrefixOfPlaybook,
 } from '@beonauto/operations';
 import { Effect } from 'effect';
 
@@ -17,8 +17,8 @@ import { definitionsDecider, definitionTypeStreamOf } from '../registry/definiti
 import { findDefinition } from '../registry/registry-lookup.ts';
 import { commandMetadata } from './command-metadata.ts';
 
-export function loadRegistry(type: string): Effect.Effect<DefinitionRegistry, never, BrainReader> {
-  return BrainReader.use((reader) => reader.load(definitionTypeStreamOf(type), definitionsDecider(type))).pipe(
+export function loadRegistry(type: string): Effect.Effect<DefinitionRegistry, never, PlaybookReader> {
+  return PlaybookReader.use((reader) => reader.load(definitionTypeStreamOf(type), definitionsDecider(type))).pipe(
     Effect.map(({ state }) => state),
   );
 }
@@ -27,15 +27,15 @@ function recordedVersionOf(
   type: string,
   name: string,
   version: number,
-): Effect.Effect<RecordedVersion, NotFound, BrainReader> {
-  return BrainReader.use((reader) =>
+): Effect.Effect<RecordedVersion, NotFound, PlaybookReader> {
+  return PlaybookReader.use((reader) =>
     reader.load(definitionTypeStreamOf(type), definitionVersionFold(name, version)),
   ).pipe(
     Effect.flatMap(({ state: { found } }) =>
       found === undefined
         ? Effect.fail(
             new NotFound({
-              detail: `There is no version ${version} of the ${definitionResourceLabel(type)} ${name} in this brain`,
+              detail: `There is no version ${version} of the ${definitionResourceLabel(type)} ${name} in this playbook`,
             }),
           )
         : Effect.succeed(found),
@@ -45,7 +45,7 @@ function recordedVersionOf(
 
 export const triggersSince = Effect.fnUntraced(function* (type: string, { name, version }: StoredDefinition) {
   const { position } = yield* Effect.orDie(recordedVersionOf(type, name, version));
-  return messageIdOf(`${streamPrefixOfBrain(yield* BrainContext)}${definitionTypeStreamOf(type)}`, position);
+  return messageIdOf(`${streamPrefixOfPlaybook(yield* PlaybookContext)}${definitionTypeStreamOf(type)}`, position);
 });
 
 export function versionOf(type: string, name: string, version: number) {
@@ -62,7 +62,7 @@ export const recordInRegistry = Effect.fnUntraced(function* (
   data: DefinitionCommandData,
 ) {
   const metadata = yield* commandMetadata;
-  const { state } = yield* (yield* BrainWriter).execute(
+  const { state } = yield* (yield* PlaybookWriter).execute(
     definitionTypeStreamOf(type),
     definitionsDecider(type, mostActive),
     {

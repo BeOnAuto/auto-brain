@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, onTestFinished } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import {
-  brainWithReviews,
+  playbookWithReviews,
   liveWith,
   recallTestTimeoutMs,
   recalled,
@@ -32,7 +32,7 @@ afterEach(async () => {
 async function serving(environment: Readonly<Record<string, string>> = {}): Promise<ReasoningServer> {
   const server = await servingRecall(verdicts({ campaign: 'spring', verdict: 'approve' }), environment);
   closing.push(server.stop);
-  await brainWithReviews(server);
+  await playbookWithReviews(server);
   return server;
 }
 
@@ -44,7 +44,7 @@ function createdInTurn(server: ReasoningServer, names: readonly string[]): Promi
   return names.reduce<Promise<unknown>>((before, name) => before.then(() => created(server, name)), Promise.resolve());
 }
 
-describe('the recall functions a brain keeps', { timeout: recallTestTimeoutMs }, () => {
+describe('the recall functions a playbook keeps', { timeout: recallTestTimeoutMs }, () => {
   it('are at most thirty-two, the thirty-third refused as a conflict, and another saved once one is retired', async () => {
     const server = await serving();
     await createdInTurn(
@@ -64,14 +64,14 @@ describe('the recall functions a brain keeps', { timeout: recallTestTimeoutMs },
       body: {
         reason: 'conflict',
         detail:
-          'The brain keeps 32 active recall functions, and a brain may keep at most 32; retire one before creating another',
+          'The playbook keeps 32 active recall functions, and a playbook may keep at most 32; retire one before creating another',
       },
     });
     expect([anotherVersion.status, afterRetiring.status]).toEqual([200, 201]);
   });
 });
 
-describe('the bound on the recall functions a brain keeps', { timeout: recallTestTimeoutMs }, () => {
+describe('the bound on the recall functions a playbook keeps', { timeout: recallTestTimeoutMs }, () => {
   it('are bounded by a setting, and lowering it below the count refuses even a new version and changes nothing else', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'auto-brain-recall-'));
     onTestFinished(() => {
@@ -96,7 +96,7 @@ describe('the bound on the recall functions a brain keeps', { timeout: recallTes
       status: 409,
       body: {
         detail:
-          'The brain keeps 2 active recall functions, and a brain may keep at most 1; retire one before saving another version',
+          'The playbook keeps 2 active recall functions, and a playbook may keep at most 1; retire one before saving another version',
       },
     });
     expect(ran).toMatchObject({ status: 200, body: { output: 0 } });

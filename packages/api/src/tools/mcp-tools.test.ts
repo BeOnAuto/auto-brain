@@ -29,7 +29,7 @@ function endpoint(path: string): McpConnection {
 }
 
 function onAlpha<T>(use: (session: McpSession) => Promise<T>): Promise<T> {
-  return withMcpSession('current revision', endpoint('/orgs/acme/brains/alpha/mcp'), use);
+  return withMcpSession('current revision', endpoint('/orgs/acme/playbooks/alpha/mcp'), use);
 }
 
 const definitionTools = [
@@ -43,19 +43,19 @@ const definitionTools = [
   'cancel_run',
   'list_runs',
   'get_run_history',
-  'get_brain_analytics',
+  'get_playbook_analytics',
 ];
 
 describe('the tools of each endpoint', () => {
-  it('lists the org operations on the org endpoint and no brain operation', async () => {
+  it('lists the org operations on the org endpoint and no playbook operation', async () => {
     const listing = await withMcpSession('current revision', endpoint('/orgs/acme/mcp'), (session) =>
       session.listTools(),
     );
 
-    expect(listedTools(listing).map(({ name }) => name)).toEqual(['label_brain', 'list_labels', guideToolName]);
+    expect(listedTools(listing).map(({ name }) => name)).toEqual(['label_playbook', 'list_labels', guideToolName]);
   });
 
-  it('lists the eleven definition operations on a brain endpoint and no org operation', async () => {
+  it('lists the eleven definition operations on a playbook endpoint and no org operation', async () => {
     expect(listedTools(await onAlpha((session) => session.listTools())).map(({ name }) => name)).toEqual([
       ...definitionTools,
       guideToolName,
@@ -77,7 +77,7 @@ describe('the tools of each endpoint', () => {
 
 const echoRecord = { record: { greeting: 'Hello' } };
 
-describe('the definition tools on a brain endpoint', () => {
+describe('the definition tools on a playbook endpoint', () => {
   it('create a definition, execute it and read the run back', async () => {
     const outcome = await onAlpha(async (session) => {
       const created = await session.callTool('create_definition', {

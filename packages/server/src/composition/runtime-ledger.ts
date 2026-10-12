@@ -16,17 +16,17 @@ export function runtimeLedger(runtime: AppRuntime<DispatcherServices>): RuntimeL
     load: (stream, decider) => viaLedger((ledger) => ledger.load(stream, decider)),
     execute: (stream, decider, command, lineage) =>
       viaLedger((ledger) => ledger.execute(stream, decider, command, lineage)),
-    readRecorded: (brain, selection, page) => viaLedger((ledger) => ledger.readRecorded(brain, selection, page)),
-    readProjectedRows: (projection, brain, query) =>
-      viaLedger((ledger) => ledger.readProjectedRows(projection, brain, query)),
-    advanceRow: (projection, brain, key, advance) =>
-      viaLedger((ledger) => ledger.advanceRow(projection, brain, key, advance)),
-    countProjectedRows: (projection, brain, where) =>
-      viaLedger((ledger) => ledger.countProjectedRows(projection, brain, where)),
+    readRecorded: (playbook, selection, page) => viaLedger((ledger) => ledger.readRecorded(playbook, selection, page)),
+    readProjectedRows: (projection, playbook, query) =>
+      viaLedger((ledger) => ledger.readProjectedRows(projection, playbook, query)),
+    advanceRow: (projection, playbook, key, advance) =>
+      viaLedger((ledger) => ledger.advanceRow(projection, playbook, key, advance)),
+    countProjectedRows: (projection, playbook, where) =>
+      viaLedger((ledger) => ledger.countProjectedRows(projection, playbook, where)),
     readDueRows: (projection, query) => viaLedger((ledger) => ledger.readDueRows(projection, query)),
     nextDueOf: (projection, column, after) => viaLedger((ledger) => ledger.nextDueOf(projection, column, after)),
     content: {
-      put: (brain, content) => viaLedger((ledger) => ledger.content.put(brain, content)),
+      put: (playbook, content) => viaLedger((ledger) => ledger.content.put(playbook, content)),
     },
   };
 }

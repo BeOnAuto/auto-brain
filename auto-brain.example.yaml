@@ -38,7 +38,7 @@ model_aliases:
 
 # The MCP servers whose tools a function may name, a reasoning function in its
 # tools key and an interaction function in deliver, each bound to an org and,
-# optionally, to some of its brains. A remote server has a url; a process has a
+# optionally, to some of its playbooks. A remote server has a url; a process has a
 # command, installed and pinned, which inherits nothing from the server's
 # environment but its env.
 #
@@ -55,7 +55,7 @@ model_aliases:
 #     headers:
 #       Authorization: Bearer ${GRAPH_API_KEY}
 #     org: acme
-#     brains: [sales]
+#     playbooks: [sales]
 #     allowed: [search, introspect, validate, dry_run, execute, post_message]
 #     testable: [search, introspect, validate, dry_run]
 #   notes:
@@ -74,6 +74,6 @@ allowed_origins:
 # api_keys:
 #   - id: ci
 #     org: acme
-#     permissions: [org:read, org:write, brain:read, brain:write]
-#     brains: '*'
+#     permissions: [org:read, org:write, playbook:read, playbook:write]
+#     playbooks: '*'
 #     sha256: <the digest pnpm key prints>

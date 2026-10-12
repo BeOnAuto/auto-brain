@@ -1,23 +1,23 @@
 import { Effect } from 'effect';
 
 import {
-  authorizeBrainCall,
+  authorizePlaybookCall,
   authorizeOrgCall,
-  confirmBrainTakesCall,
+  confirmPlaybookTakesCall,
   confirmOrgExists,
 } from '../authorization/authorization.ts';
 import type { Registration, Runnable } from '../definition/registration.ts';
 import { Ledger } from '../ledger/ledger.ts';
 import type { Outcome, Rejected, Succeeded } from '../outcome/outcome.ts';
-import { runInBrain } from './brain-binding.ts';
 import { withoutDispatcherServices, type DispatcherServices } from './dispatcher-services.ts';
 import { withErrorBoundary } from './error-boundary.ts';
 import { runInOrg } from './org-binding.ts';
-import { callSummaryOf, type BrainRequest, type OrgRequest } from './request.ts';
+import { runInPlaybook } from './playbook-binding.ts';
+import { callSummaryOf, type PlaybookRequest, type OrgRequest } from './request.ts';
 
 export type PipelineStep = (
   registration: Runnable,
-  request: OrgRequest | BrainRequest,
+  request: OrgRequest | PlaybookRequest,
 ) => Effect.Effect<void, Rejected>;
 
 export interface Dispatcher {
@@ -29,18 +29,18 @@ export interface Dispatcher {
     registration: Runnable<'org'>,
     request: OrgRequest,
   ): Effect.Effect<Outcome<Succeeded>, never, DispatcherServices>;
-  dispatchToBrain(
-    registration: Registration<'brain'>,
-    request: BrainRequest,
+  dispatchToPlaybook(
+    registration: Registration<'playbook'>,
+    request: PlaybookRequest,
   ): Effect.Effect<Outcome, never, DispatcherServices>;
-  dispatchToBrain(
-    registration: Runnable<'brain'>,
-    request: BrainRequest,
+  dispatchToPlaybook(
+    registration: Runnable<'playbook'>,
+    request: PlaybookRequest,
   ): Effect.Effect<Outcome<Succeeded>, never, DispatcherServices>;
 }
 
 export function makeDispatcher(steps: readonly PipelineStep[]): Dispatcher {
-  const passSteps = (registration: Runnable, request: OrgRequest | BrainRequest) =>
+  const passSteps = (registration: Runnable, request: OrgRequest | PlaybookRequest) =>
     Effect.forEach(steps, (step) => step(registration, request), { discard: true });
   return {
     dispatchToOrg: <A extends Succeeded>(registration: Runnable<'org', A>, request: OrgRequest) =>
@@ -54,16 +54,16 @@ export function makeDispatcher(steps: readonly PipelineStep[]): Dispatcher {
         }),
         callSummaryOf(registration.name, request),
       ),
-    dispatchToBrain: <A extends Succeeded>(registration: Runnable<'brain', A>, request: BrainRequest) =>
+    dispatchToPlaybook: <A extends Succeeded>(registration: Runnable<'playbook', A>, request: PlaybookRequest) =>
       withErrorBoundary(
         Effect.gen(function* () {
-          yield* authorizeBrainCall(registration, request);
-          yield* confirmBrainTakesCall(registration, request);
+          yield* authorizePlaybookCall(registration, request);
+          yield* confirmPlaybookTakesCall(registration, request);
           yield* passSteps(registration, request);
           const ledger = yield* Ledger;
-          return yield* runInBrain(registration, request, ledger).pipe(withoutDispatcherServices);
+          return yield* runInPlaybook(registration, request, ledger).pipe(withoutDispatcherServices);
         }),
-        callSummaryOf(registration.name, request, request.brain),
+        callSummaryOf(registration.name, request, request.playbook),
       ),
   };
 }

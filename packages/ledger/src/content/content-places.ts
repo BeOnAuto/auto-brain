@@ -1,7 +1,7 @@
 import {
-  streamPrefixOfBrain,
+  streamPrefixOfPlaybook,
   verifiedStream,
-  type BrainAddress,
+  type PlaybookAddress,
   type ContentKept,
   type StreamedContent,
 } from '@beonauto/operations';
@@ -142,10 +142,10 @@ export function readOn(shelved: Shelved, place: Key, sha256: string): Effect.Eff
   );
 }
 
-export function brainPlaceOf(brain: BrainAddress): Key {
-  return [['brain_key', streamPrefixOfBrain(brain)]];
+export function playbookPlaceOf(playbook: PlaybookAddress): Key {
+  return [['playbook_key', streamPrefixOfPlaybook(playbook)]];
 }
 
-export function runPlaceOf(brain: BrainAddress, run: string): Key {
-  return [...brainPlaceOf(brain), ['run_id', run]];
+export function runPlaceOf(playbook: PlaybookAddress, run: string): Key {
+  return [...playbookPlaceOf(playbook), ['run_id', run]];
 }

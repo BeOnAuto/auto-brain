@@ -3,9 +3,9 @@ import { Cause, Effect, Fiber, Schema, Semaphore } from 'effect';
 import { rowsOf, type HostDatabase } from '../database/host-database.ts';
 import type { HostReports } from '../host/host-reports.ts';
 import type { HostClock } from '../loop/host-clock.ts';
-import { brainsWithViews } from '../views/view-statements.ts';
-import { brainKeyOfDefinitions } from './brain-definitions.ts';
-import { brainPass, type PassParts } from './brain-pass.ts';
+import { playbooksWithViews } from '../views/view-statements.ts';
+import { playbookKeyOfDefinitions } from './playbook-definitions.ts';
+import { playbookPass, type PassParts } from './playbook-pass.ts';
 import { scheduleOf, type Schedule } from './projector-schedule.ts';
 import { shareOfThePool, type ProjectorSettings } from './projector-settings.ts';
 
@@ -21,7 +21,7 @@ export interface ProjectorParts {
   readonly sweepEveryMs: number;
 }
 
-const BrainRow = Schema.Struct({ brain: Schema.String });
+const PlaybookRow = Schema.Struct({ playbook_key: Schema.String });
 
 const mostRemembered = 1024;
 
@@ -43,9 +43,9 @@ function discovered({ database, settings }: ProjectorParts, schedule: Schedule):
   return Effect.gen(function* () {
     const streams = yield* Effect.promise(() => database.store.definitionStreams(settings.definitionType));
     for (const { stream, version } of streams) {
-      const brain = brainKeyOfDefinitions(stream, settings.definitionType);
-      if (schedule.definitions.get(brain)?.version !== version) {
-        schedule.want(brain);
+      const playbook = playbookKeyOfDefinitions(stream, settings.definitionType);
+      if (schedule.definitions.get(playbook)?.version !== version) {
+        schedule.want(playbook);
       }
     }
   });
@@ -62,9 +62,9 @@ function swept(parts: ProjectorParts, schedule: Schedule): Effect.Effect<void> {
     yield* discovered(parts, schedule);
     if (sweepDue) {
       schedule.swept(now);
-      const brains = yield* Effect.orDie(rowsOf(BrainRow, parts.database.read(brainsWithViews)));
-      for (const { brain } of brains) {
-        schedule.want(brain);
+      const playbooks = yield* Effect.orDie(rowsOf(PlaybookRow, parts.database.read(playbooksWithViews)));
+      for (const { playbook_key: playbookKey } of playbooks) {
+        schedule.want(playbookKey);
       }
     }
   });
@@ -73,20 +73,20 @@ function swept(parts: ProjectorParts, schedule: Schedule): Effect.Effect<void> {
 function round(parts: ProjectorParts, schedule: Schedule, passParts: PassParts): Effect.Effect<void> {
   return Effect.forEach(
     schedule.wanted(),
-    (brain) =>
-      brainPass(passParts, brain).pipe(
+    (playbook) =>
+      playbookPass(passParts, playbook).pipe(
         Effect.tap((more) =>
           Effect.sync(() => {
             if (more) {
-              schedule.want(brain);
+              schedule.want(playbook);
             }
           }),
         ),
         Effect.catchCause((cause: Cause.Cause<unknown>) =>
-          parts.reports.trouble('A pass of the views of a brain failed; the next sweep tries again', cause),
+          parts.reports.trouble('A pass of the views of a playbook failed; the next sweep tries again', cause),
         ),
       ),
-    { concurrency: parts.settings.brainsAtOnce, discard: true },
+    { concurrency: parts.settings.playbooksAtOnce, discard: true },
   );
 }
 
@@ -122,9 +122,9 @@ function passPartsOf({ database, settings, reports }: ProjectorParts, schedule: 
 export function startProjector(parts: ProjectorParts): Projector {
   const schedule = scheduleOf(parts.sweepEveryMs);
   const passParts = passPartsOf(parts, schedule);
-  const stopListening = parts.settings.appends?.listen((brain) => {
-    if (schedule.definitions.has(brain)) {
-      schedule.want(brain);
+  const stopListening = parts.settings.appends?.listen((playbook) => {
+    if (schedule.definitions.has(playbook)) {
+      schedule.want(playbook);
     } else {
       schedule.discover();
     }

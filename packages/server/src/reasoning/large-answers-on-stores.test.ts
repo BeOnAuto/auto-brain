@@ -100,7 +100,7 @@ async function servingLargeAnswers(environment: Readonly<Record<string, string>>
     ...environment,
   });
   onTestFinished(server.stop);
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   await server.call('POST', `${alpha}/definitions/reasoning`, { body: { name: 'reading', source: reading } });
   return server;
 }
@@ -147,7 +147,7 @@ describe.each(stores)('a reasoning run whose every call answers 1 MB, on $store'
 
 describe(`a reasoning run whose every call answers 1 MB, its content on object storage${objectStoreNotice}`, () => {
   it.skipIf(objectStore === '')(
-    'keeps the arguments and the answer of each call as objects of the bucket under its brain, and reads every answer back within the deadline of the run',
+    'keeps the arguments and the answer of each call as objects of the bucket under its playbook, and reads every answer back within the deadline of the run',
     { timeout: toolBounds.runMs },
     async () => {
       const prefix = `large-answers/${randomUUID()}`;
@@ -166,7 +166,7 @@ describe(`a reasoning run whose every call answers 1 MB, its content on object s
         Array.from({ length: calls }, (_, call) => ({ kibibytes: kibibytesOf(call), whole: true })),
       );
       expect(kept).toHaveLength(2 * calls);
-      expect(kept.every((key) => /^brain\/acme\/alpha\/[0-9a-f]{64}$/u.test(key))).toBe(true);
+      expect(kept.every((key) => /^playbook\/acme\/alpha\/[0-9a-f]{64}$/u.test(key))).toBe(true);
       expect(took).toBeLessThan(toolBounds.runMs);
     },
   );

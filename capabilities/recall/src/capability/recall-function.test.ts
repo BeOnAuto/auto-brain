@@ -12,7 +12,7 @@ const stall: ViewStall = {
   line: 31,
 };
 
-const alpha = { org: 'acme', brain: 'alpha', name: 'reviews', version: 1 };
+const alpha = { org: 'acme', playbook: 'alpha', name: 'reviews', version: 1 };
 
 describe('a recall function', () => {
   it('describes its result in words', () => {
@@ -24,7 +24,7 @@ describe('a recall function', () => {
     );
   });
 
-  it('is a function of the brain that reaches nothing outside, of which a brain keeps at most thirty-two', () => {
+  it('is a function of the playbook that reaches nothing outside, of which a playbook keeps at most thirty-two', () => {
     const { capability, prepared } = recallWith(poolOf({ workers: 1 }));
 
     expect(capability).toMatchObject({
@@ -83,7 +83,7 @@ describe('a recall function definition with problems', () => {
         {
           pointer: '',
           detail:
-            "Line 2, /language: The brain's one language is TypeScript; write the program as a TypeScript function",
+            "Line 2, /language: The playbook's one language is TypeScript; write the program as a TypeScript function",
         },
         {
           pointer: '',
@@ -102,7 +102,7 @@ describe('a recall function definition with problems', () => {
 });
 
 describe('the standing of a recall function', () => {
-  it('is its view’s state, version, checkpoint, count folded and lag behind the brain’s newest record', async () => {
+  it('is its view’s state, version, checkpoint, count folded and lag behind the playbook’s newest record', async () => {
     const run = recallWith(poolOf({ workers: 1 }));
     run.keep(liveView({}));
     run.newest('2026-10-06T10:00:07.000Z');

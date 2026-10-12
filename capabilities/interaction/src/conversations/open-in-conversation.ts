@@ -48,10 +48,10 @@ export interface OpenInConversation {
 
 export function openInConversation(
   parts: ConversationParts,
-  { brain, key }: ConversationPlace,
+  { playbook, key }: ConversationPlace,
 ): Effect.Effect<OpenInConversation> {
   return Effect.map(
-    parts.ledger.readProjectedRows(openRequestsName, brain, {
+    parts.ledger.readProjectedRows(openRequestsName, playbook, {
       where: [
         { column: 'open', equals: true },
         { column: 'conversation', equals: key },

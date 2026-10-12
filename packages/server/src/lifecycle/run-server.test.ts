@@ -87,7 +87,7 @@ describe('runServer', () => {
     const { serverProcess, written, stopRequested } = fakeProcess();
     const server = await runServer(serverProcess, defaultServerOptions, stopRequested);
 
-    expect(written).toEqual([`auto-brain listening on port ${server.port}\n`]);
+    expect(written).toEqual([`Auto Runtime listening on port ${server.port}\n`]);
     await server.stop();
   });
 
@@ -177,7 +177,7 @@ describe('a server that cannot start', () => {
       await runServer(serverProcess, defaultServerOptions, stopRequested).catch(exitOnStartupFailure(serverProcess));
 
       expect(await exited).toBe(1);
-      expect({ written, errors }).toEqual({ written: [], errors: [`auto-brain could not start: ${error}\n`] });
+      expect({ written, errors }).toEqual({ written: [], errors: [`Auto Runtime could not start: ${error}\n`] });
     },
   );
 });
@@ -197,7 +197,7 @@ describe('runServer told to stop twice', () => {
     send('SIGINT');
 
     expect(await exited).toBe(1);
-    expect(errors).toEqual(['auto-brain was told to stop again, so it exits now without finishing its shutdown\n']);
+    expect(errors).toEqual(['Auto Runtime was told to stop again, so it exits now without finishing its shutdown\n']);
   });
 });
 
@@ -209,6 +209,6 @@ describe('runServer after it stopped', () => {
     send('SIGTERM');
 
     expect(await exited).toBe(0);
-    expect(errors).toEqual(['auto-brain was still running 10 ms after it stopped, so it exits now\n']);
+    expect(errors).toEqual(['Auto Runtime was still running 10 ms after it stopped, so it exits now\n']);
   });
 });

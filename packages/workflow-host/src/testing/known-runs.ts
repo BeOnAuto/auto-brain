@@ -20,7 +20,7 @@ export function knownRuns(): { readonly settle: SettleRun; readonly know: (id: s
     settle: ({ id }) =>
       known.has(id)
         ? Effect.succeed(settledRun)
-        : Effect.fail(new NotFound({ detail: 'There is no such run in this brain' })),
+        : Effect.fail(new NotFound({ detail: 'There is no such run in this playbook' })),
     know: (id) => {
       known.add(id);
     },

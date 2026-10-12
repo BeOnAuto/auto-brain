@@ -19,7 +19,7 @@ export const recallBounds = {
   pagesPerWake: 10,
   mostFunctions: 32,
   rebuildsAtOnce: 4,
-  brainsAtOnce: 4,
+  playbooksAtOnce: 4,
 } as const;
 
 const recordRoomBytes = 2048;

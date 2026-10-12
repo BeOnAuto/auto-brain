@@ -14,7 +14,7 @@ const mostDefinitionOutputBytes = 1_048_576;
 
 const noCaller: CallAnswer = {
   status: 'failed',
-  detail: 'The run names no brain and no caller to run a definition for',
+  detail: 'The run names no playbook and no caller to run a definition for',
 };
 
 function rejectionDetail(
@@ -61,7 +61,7 @@ export function definitionCalls(runDefinition: RunDefinition): Perform {
   return (call, run, origin) =>
     Option.match(attributesOfRun(run.attributes), {
       onNone: () => Effect.succeed(noCaller),
-      onSome: ({ org, brain, run_id: workflowRun, caller, lineage, depth = 0, call_depth = 0 }) => {
+      onSome: ({ org, playbook, run_id: workflowRun, caller, lineage, depth = 0, call_depth = 0 }) => {
         const definition = definitionArgumentsOf(call.arguments);
         if (isArgumentsProblem(definition)) {
           return Effect.succeed<CallAnswer>({ status: 'rejected', reason: invalidArguments, detail: definition.title });
@@ -72,7 +72,7 @@ export function definitionCalls(runDefinition: RunDefinition): Perform {
         const correlationId = lineage?.correlation ?? workflowRun;
         return runDefinition({
           org,
-          brain,
+          playbook,
           caller,
           ...definition,
           runId,

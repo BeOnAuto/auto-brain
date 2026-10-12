@@ -5,7 +5,7 @@ import { acmeAdmin, operationServer } from '../testing/operation-server.ts';
 
 const asAdmin = { authorization: `Bearer ${acmeAdmin.key}` };
 
-const alpha = '/orgs/acme/brains/alpha/mcp';
+const alpha = '/orgs/acme/playbooks/alpha/mcp';
 
 const olderRevisions = ['2025-06-18', '2025-03-26', '2024-11-05', '2024-10-07'];
 

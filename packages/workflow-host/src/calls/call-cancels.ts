@@ -26,8 +26,8 @@ export type CancelChild = (cancel: ChildCancel) => Effect.Effect<ChildReceipt, R
 
 export class ChildNotCancelled extends Data.TaggedError('child_not_cancelled')<{ readonly detail: string }> {}
 
-const childNotInItsBrain = new ChildNotCancelled({
-  detail: 'The run this call waits for has an address its brain cannot hold, so it could not be cancelled',
+const childNotInItsPlaybook = new ChildNotCancelled({
+  detail: 'The run this call waits for has an address its playbook cannot hold, so it could not be cancelled',
 });
 
 export interface CancelParts {
@@ -50,14 +50,14 @@ function childCancelled(
   if (child === null) {
     return Effect.void;
   }
-  const { org, brain } = addressOfRun(run.runId);
+  const { org, playbook } = addressOfRun(run.runId);
   return cancelChild({
-    child: { org, brain, runId: child },
+    child: { org, playbook, runId: child },
     reason: call.reason ?? 'parent_ended',
     lineage: lineageOfSettlement(run, origin),
   }).pipe(
     Effect.mapError(({ detail }) => new ChildNotCancelled({ detail })),
-    Effect.flatMap((receipt) => (receipt === 'unknown_run' ? Effect.fail(childNotInItsBrain) : Effect.void)),
+    Effect.flatMap((receipt) => (receipt === 'unknown_run' ? Effect.fail(childNotInItsPlaybook) : Effect.void)),
   );
 }
 

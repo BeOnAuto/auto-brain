@@ -57,7 +57,7 @@ export function registeredFieldsOf<S extends OperationScope, K extends Operation
   kind: K,
   definition: RegisteredDefinition<K>,
 ): RegisteredFields<S, K> {
-  const { pathParameters, targetsBrain, permissions } = checkedDefinition(scope, kind, definition);
+  const { pathParameters, targetsPlaybook, permissions } = checkedDefinition(scope, kind, definition);
   return {
     scope,
     kind,
@@ -66,7 +66,7 @@ export function registeredFieldsOf<S extends OperationScope, K extends Operation
     description: definition.description,
     route: definition.route,
     pathParameters,
-    targetsBrain,
+    targetsPlaybook,
     successStatus: definition.successStatus ?? 200,
     reachesOutside: definition.reachesOutside ?? false,
     mayChangeOutside: definition.mayChangeOutside ?? false,

@@ -86,7 +86,7 @@ describe('what a run that asks a system answers with', () => {
   });
 });
 
-describe('an interaction function that asks a system, as the brain runs it', () => {
+describe('an interaction function that asks a system, as the playbook runs it', () => {
   it('calls tools, finishes within its call, and runs at most 70 seconds', () => {
     const prepared = Effect.runSync(asSystem.prepare(callDocument()));
 

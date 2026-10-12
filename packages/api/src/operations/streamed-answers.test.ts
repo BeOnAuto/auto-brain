@@ -18,9 +18,9 @@ import { acmeAdmin, operationServer, type OperationServerOptions } from '../test
 
 const asAdmin = { authorization: `Bearer ${acmeAdmin.key}` };
 
-const failingBlobs = '/v1/orgs/acme/brains/alpha/failing-blobs';
+const failingBlobs = '/v1/orgs/acme/playbooks/alpha/failing-blobs';
 
-const blobRead = (operation: string) => ({ operation, org: 'acme', brain: 'alpha', caller: 'acme-admin' });
+const blobRead = (operation: string) => ({ operation, org: 'acme', playbook: 'alpha', caller: 'acme-admin' });
 
 async function listening(operations: NonNullable<OperationServerOptions['operations']>) {
   const server = await operationServer({ operations });
@@ -154,7 +154,7 @@ describe('a streamed answer the client leaves before its end', () => {
     const { origin } = await listening([...notebookOperations, watched.operation]);
 
     const firstChunk = await new Promise<string>((resolve) => {
-      const sent = request(`${origin}/v1/orgs/acme/brains/alpha/endless-blob`, { headers: asAdmin }, (response) => {
+      const sent = request(`${origin}/v1/orgs/acme/playbooks/alpha/endless-blob`, { headers: asAdmin }, (response) => {
         response.setEncoding('utf8');
         response.once('data', (piece: string) => {
           sent.destroy();

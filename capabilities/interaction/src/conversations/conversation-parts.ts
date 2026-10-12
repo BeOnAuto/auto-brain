@@ -1,5 +1,5 @@
 import type { ToolAccess } from '@beonauto/mcp';
-import type { BrainAddress, ProjectionAdvancer, ProjectionReader } from '@beonauto/operations';
+import type { PlaybookAddress, ProjectionAdvancer, ProjectionReader } from '@beonauto/operations';
 import type { Effect } from 'effect';
 
 import type { RequestLedger } from '../schedule/request-ledger.ts';
@@ -15,7 +15,7 @@ export interface ConversationParts {
 }
 
 export interface ConversationPlace {
-  readonly brain: BrainAddress;
+  readonly playbook: PlaybookAddress;
   readonly key: string;
   readonly row: ConversationRow;
 }
@@ -28,10 +28,10 @@ export interface ReadingRoute {
 
 export function advanced(
   parts: ConversationParts,
-  { brain, key, row }: ConversationPlace,
+  { playbook, key, row }: ConversationPlace,
   cadence: Cadence,
 ): Effect.Effect<void> {
-  return parts.ledger.advanceRow(conversationsName, brain, key, {
+  return parts.ledger.advanceRow(conversationsName, playbook, key, {
     set: advancedOf(cadence),
     when: [{ column: 'joined_by', equals: row.joined_by }],
   });

@@ -13,7 +13,7 @@ interface ObjectValue {
 
 interface ReservedFieldsByScope {
   readonly org: { readonly org?: never };
-  readonly brain: { readonly org?: never; readonly brain?: never };
+  readonly playbook: { readonly org?: never; readonly playbook?: never };
 }
 
 export type RelativePath = `/${string}`;

@@ -31,8 +31,8 @@ function contextOf(journal: RecordingJournal): RunContext {
   return {
     id: callRunId,
     org: 'acme',
-    brain: 'alpha',
-    caller: { id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: '*' },
+    playbook: 'alpha',
+    caller: { id: 'acme-admin', org: 'acme', permissions: allPermissions, playbooks: '*' },
     definition: { name: 'thread-replies', version: 1 },
     journal,
     lineage: { startId: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a', correlationId: callRunId },

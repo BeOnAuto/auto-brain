@@ -1,4 +1,4 @@
-import { streamPrefixOfBrain, type BrainAddress } from '@beonauto/operations';
+import { streamPrefixOfPlaybook, type PlaybookAddress } from '@beonauto/operations';
 import { Effect } from 'effect';
 
 import { rowsOf, type HostDatabase } from '../database/host-database.ts';
@@ -6,19 +6,23 @@ import { keptViewOf, KeptRowSchema, viewRowOf, type KeptView } from './view-rows
 import { viewNamed } from './view-statements.ts';
 
 export interface ViewsPort {
-  readonly viewOf: (brain: BrainAddress, name: string) => Effect.Effect<KeptView | undefined>;
-  readonly newestRecordAt: (brain: BrainAddress) => Effect.Effect<string | undefined>;
+  readonly viewOf: (playbook: PlaybookAddress, name: string) => Effect.Effect<KeptView | undefined>;
+  readonly newestRecordAt: (playbook: PlaybookAddress) => Effect.Effect<string | undefined>;
 }
 
 export function viewsPortOn(database: HostDatabase): ViewsPort {
   return {
-    viewOf: (brain, name) =>
-      Effect.orDie(rowsOf(KeptRowSchema, database.read(viewNamed(streamPrefixOfBrain(brain), name)))).pipe(
+    viewOf: (playbook, name) =>
+      Effect.orDie(rowsOf(KeptRowSchema, database.read(viewNamed(streamPrefixOfPlaybook(playbook), name)))).pipe(
         Effect.map(([row]) => (row === undefined ? undefined : keptViewOf(viewRowOf(row), row.view))),
       ),
-    newestRecordAt: (brain) =>
+    newestRecordAt: (playbook) =>
       Effect.promise(() =>
-        database.store.readRecorded(streamPrefixOfBrain(brain), { kind: 'everything' }, { order: 'desc', limit: 1 }),
+        database.store.readRecorded(
+          streamPrefixOfPlaybook(playbook),
+          { kind: 'everything' },
+          { order: 'desc', limit: 1 },
+        ),
       ).pipe(Effect.map(({ records: [newest] }) => newest?.recordedAt)),
   };
 }

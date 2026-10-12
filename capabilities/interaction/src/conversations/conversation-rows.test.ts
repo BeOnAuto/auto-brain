@@ -7,7 +7,7 @@ const stream = { kind: 'runs', id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' };
 
 function ofTheRun(at: string): RunContext {
   return {
-    by: 'brain:alpha',
+    by: 'playbook:alpha',
     at,
     runId: stream.id,
     definitionType: 'interaction',
@@ -47,7 +47,7 @@ function read(since: string | null, type = 'replies_read', id = 'fact-1'): Proje
     taken: 0,
     refused: 0,
   };
-  return messageOf(type, data, { by: 'brain:alpha', at: '2026-10-01T09:00:10.000Z' }, id);
+  return messageOf(type, data, { by: 'playbook:alpha', at: '2026-10-01T09:00:10.000Z' }, id);
 }
 
 function readingFailed(since: string | null, id = 'fact-1'): ProjectedMessage {
@@ -60,7 +60,7 @@ function readingFailed(since: string | null, id = 'fact-1'): ProjectedMessage {
     because: 'server_failure',
     server_request_id: null,
   };
-  return messageOf('reading_failed', data, { by: 'brain:alpha', at: '2026-10-01T09:00:10.000Z' }, id);
+  return messageOf('reading_failed', data, { by: 'playbook:alpha', at: '2026-10-01T09:00:10.000Z' }, id);
 }
 
 const joinedAt = Date.parse('2026-10-01T09:00:00.000Z');

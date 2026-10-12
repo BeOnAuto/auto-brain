@@ -5,13 +5,13 @@ import { aLedger, type LedgerEntry } from '../testing/ledger-entry.ts';
 const olderShapes: ReadonlyArray<readonly [string, string, string]> = [
   [
     'a chunk that keeps text',
-    'CREATE TABLE recorded_content_chunks (brain_key TEXT NOT NULL, sha256 TEXT NOT NULL, chunk INTEGER NOT NULL, text TEXT NOT NULL, PRIMARY KEY (brain_key, sha256, chunk))',
-    'recorded_content_chunks has the columns brain_key, chunk, sha256, text, where this server keeps brain_key, chunk, data, upload_id',
+    'CREATE TABLE recorded_content_chunks (playbook_key TEXT NOT NULL, sha256 TEXT NOT NULL, chunk INTEGER NOT NULL, text TEXT NOT NULL, PRIMARY KEY (playbook_key, sha256, chunk))',
+    'recorded_content_chunks has the columns chunk, playbook_key, sha256, text, where this server keeps chunk, data, playbook_key, upload_id',
   ],
   [
     'a head without a media type',
-    'CREATE TABLE recorded_content_heads (brain_key TEXT NOT NULL, sha256 TEXT NOT NULL, bytes BIGINT NOT NULL, chunks INTEGER NOT NULL, PRIMARY KEY (brain_key, sha256))',
-    'recorded_content_heads has the columns brain_key, bytes, chunks, sha256, where this server keeps brain_key, bytes, chunks, media_type, sha256, upload_id',
+    'CREATE TABLE recorded_content_heads (playbook_key TEXT NOT NULL, sha256 TEXT NOT NULL, bytes BIGINT NOT NULL, chunks INTEGER NOT NULL, PRIMARY KEY (playbook_key, sha256))',
+    'recorded_content_heads has the columns bytes, chunks, playbook_key, sha256, where this server keeps bytes, chunks, media_type, playbook_key, sha256, upload_id',
   ],
 ];
 

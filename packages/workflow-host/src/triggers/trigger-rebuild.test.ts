@@ -1,19 +1,19 @@
 import type { EventStore } from '@beonauto/ledger';
 import { describe, expect, it } from 'vitest';
 
+import { triggerRowsOf, untilTriggersAt } from '../reaction-testing/kept-triggers.ts';
+import { movedClock } from '../reaction-testing/moved-clock.ts';
 import {
   alpha,
   at,
-  brainCreated,
+  playbookCreated,
   cronTrigger,
   eventTrigger,
   everyTrigger,
   recorded,
   definitionRecordAt,
   definitionRecorded,
-} from '../reaction-testing/brain-writes.ts';
-import { triggerRowsOf, untilTriggersAt } from '../reaction-testing/kept-triggers.ts';
-import { movedClock } from '../reaction-testing/moved-clock.ts';
+} from '../reaction-testing/playbook-writes.ts';
 import { reactingHost } from '../reaction-testing/reacting-host.ts';
 import { until } from '../reaction-testing/until.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
@@ -26,9 +26,9 @@ function isoAt(minutes: number): string {
   return new Date(activatedAt + minutes * aMinute).toISOString();
 }
 
-async function definitionsOfTheBrain(store: EventStore): Promise<void> {
+async function definitionsOfThePlaybook(store: EventStore): Promise<void> {
   const closed = eventTrigger({ type: 'com.acme.closed' });
-  await brainCreated(store, 'alpha');
+  await playbookCreated(store, 'alpha');
   await definitionRecorded(store, { name: 'close', version: 1, triggers: [closed, everyTrigger(15 * aMinute)] });
   await definitionRecorded(store, {
     name: 'close',
@@ -46,13 +46,13 @@ async function definitionsOfTheBrain(store: EventStore): Promise<void> {
   await definitionRecorded(store, { name: 'tick', version: 2, triggers: [everyTrigger(2 * aMinute)], when: isoAt(3) });
 }
 
-describe('the triggers of a brain made again from the records of its definitions', () => {
+describe('the triggers of a playbook made again from the records of its definitions', () => {
   it('are the rows the follower kept as it passed the same records one by one', async () => {
     const live = await reactingHost({ clock: movedClock(activatedAt + 1000) });
-    await definitionsOfTheBrain(live.database.store);
+    await definitionsOfThePlaybook(live.database.store);
     await untilTriggersAt(live.database, 'tick', 2);
     const settings = await onSQLite();
-    await definitionsOfTheBrain((await openedOn(settings)).store);
+    await definitionsOfThePlaybook((await openedOn(settings)).store);
 
     const rebuilt = await reactingHost({ settings, clock: movedClock(activatedAt + 1000) });
     await untilTriggersAt(rebuilt.database, 'tick', 2);
@@ -69,11 +69,11 @@ describe('the triggers of a brain made again from the records of its definitions
   });
 });
 
-describe('the triggers of a brain made again, past the records of its definitions that cannot be read', () => {
+describe('the triggers of a playbook made again, past the records of its definitions that cannot be read', () => {
   it('pass over a record that cannot be read, which is said', async () => {
     const settings = await onSQLite();
     const { store } = await openedOn(settings);
-    await brainCreated(store, 'alpha');
+    await playbookCreated(store, 'alpha');
     await recorded(store, `${alpha}definitions/workflow`, { type: 'definition_created', data: { content: 7 } });
     await recorded(store, `${alpha}definitions/workflow`, { type: 'definition_created', data: { content: {} } });
     await definitionRecorded(store, { name: 'tick', version: 1, triggers: [everyTrigger(aMinute)] });
@@ -89,14 +89,14 @@ describe('the triggers of a brain made again, past the records of its definition
       {
         kind: 'record_unreadable',
         org: 'acme',
-        brain: 'alpha',
+        playbook: 'alpha',
         recordId: definitionRecordAt(1),
         type: 'definition_created',
       },
       {
         kind: 'record_unreadable',
         org: 'acme',
-        brain: 'alpha',
+        playbook: 'alpha',
         recordId: definitionRecordAt(2),
         type: 'definition_created',
       },

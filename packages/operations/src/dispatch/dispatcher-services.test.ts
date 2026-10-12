@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import { acmeAdmin } from '../testing/callers.ts';
-import { harness, toBrain, toOrg } from '../testing/harness.ts';
-import { peekBrainCommand, peekBrainQuery, peekOrgCommand, peekOrgQuery } from '../testing/probes.ts';
+import { harness, toPlaybook, toOrg } from '../testing/harness.ts';
+import { peekPlaybookCommand, peekPlaybookQuery, peekOrgCommand, peekOrgQuery } from '../testing/probes.ts';
 
 describe('a handler at run time', () => {
   it('sees the caller, the address and the ports of its call, with the writer for commands only', async () => {
     const { dispatcher, run } = harness();
     const toAcme = toOrg('acme');
-    const toAlpha = toBrain('acme', 'alpha');
+    const toAlpha = toPlaybook('acme', 'alpha');
     const view = { caller: 'acme-admin', org: 'acme' };
 
     expect(await run(dispatcher.dispatchToOrg(peekOrgQuery.registration, toAcme(acmeAdmin)))).toEqual({
@@ -19,13 +19,17 @@ describe('a handler at run time', () => {
       status: 'succeeded',
       output: { ...view, visible: ['Caller', 'OrgContext', 'OrgReader', 'OrgWriter'] },
     });
-    expect(await run(dispatcher.dispatchToBrain(peekBrainQuery.registration, toAlpha(acmeAdmin)))).toEqual({
+    expect(await run(dispatcher.dispatchToPlaybook(peekPlaybookQuery.registration, toAlpha(acmeAdmin)))).toEqual({
       status: 'succeeded',
-      output: { ...view, brain: 'alpha', visible: ['Caller', 'BrainContext', 'BrainReader'] },
+      output: { ...view, playbook: 'alpha', visible: ['Caller', 'PlaybookContext', 'PlaybookReader'] },
     });
-    expect(await run(dispatcher.dispatchToBrain(peekBrainCommand.registration, toAlpha(acmeAdmin)))).toEqual({
+    expect(await run(dispatcher.dispatchToPlaybook(peekPlaybookCommand.registration, toAlpha(acmeAdmin)))).toEqual({
       status: 'succeeded',
-      output: { ...view, brain: 'alpha', visible: ['Caller', 'BrainContext', 'BrainReader', 'BrainWriter'] },
+      output: {
+        ...view,
+        playbook: 'alpha',
+        visible: ['Caller', 'PlaybookContext', 'PlaybookReader', 'PlaybookWriter'],
+      },
     });
   });
 });

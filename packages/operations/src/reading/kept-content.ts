@@ -2,7 +2,7 @@ import { Effect, Predicate } from 'effect';
 
 import { leftUnread } from '../content/content-intake.ts';
 import { textOfContent, type StreamedContent } from '../content/streamed-content.ts';
-import { BrainReader } from '../ledger/brain-reader.ts';
+import { PlaybookReader } from '../ledger/playbook-reader.ts';
 import type { KeptContent } from './presenter.ts';
 import type { RecordedFact } from './recorded-read.ts';
 
@@ -32,10 +32,10 @@ export const nothingKept: KeptContent = (sha256) => new Map<string, string>().ge
 export function keptContentOf(
   records: readonly RecordedFact[],
   mostBytes: number,
-): Effect.Effect<KeptContent, never, BrainReader> {
+): Effect.Effect<KeptContent, never, PlaybookReader> {
   const digests = [...new Set(records.flatMap(({ data }) => digestsKeptIn(data, mostBytes)))];
   return Effect.gen(function* () {
-    const reader = yield* BrainReader;
+    const reader = yield* PlaybookReader;
     const kept = new Map<string, string>();
     for (const digest of digests) {
       const content = yield* reader.readContent(digest);

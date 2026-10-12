@@ -22,7 +22,7 @@ const settings: DatabaseSettings = Schema.decodeUnknownSync(
   ),
 )(settingsText);
 
-const run = { org: 'acme', brain: 'alpha', runId: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' };
+const run = { org: 'acme', playbook: 'alpha', runId: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' };
 
 const notifying = {
   document: { dsl: '1.0.3', namespace: 'acme', name: 'notifying', version: '1.0.0' },

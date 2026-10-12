@@ -116,7 +116,7 @@ export const conversations: KeyedProjection = {
     { name: 'next_read_at', kind: 'integer' },
     { name: 'due_at', kind: 'integer' },
   ],
-  indexes: [{ name: 'due', columns: ['due_at'], acrossBrains: true, whereSet: 'due_at' }],
+  indexes: [{ name: 'due', columns: ['due_at'], acrossPlaybooks: true, whereSet: 'due_at' }],
   keyOf: (message) => {
     const fact = factOf(message);
     return fact === undefined ? undefined : conversationKeyOf(fact.place);

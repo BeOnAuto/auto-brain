@@ -23,7 +23,7 @@ afterEach(async () => {
 
 const givenUpAfterMs = 300;
 
-const alpha = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
 const digestFields = ['arguments_sha256', 'result_sha256'];
 
@@ -65,20 +65,20 @@ function shown(records: readonly RecordedEvent[], content: KeptContent = nothing
   return records.flatMap((record) => toolTestPresenter.present(record, content));
 }
 
-describe('the events of a test, as the brain shows them', () => {
+describe('the events of a test, as the playbook shows them', () => {
   it('say which tool of which server was tested and how it answered, in the words of a run’s calls', async () => {
     const answered = await recordedTests({}, patientTiming.callMs, ...answering);
     const givenUp = await recordedTests({}, givenUpAfterMs, sleeping);
     const records = [...answered.records, ...givenUp.records];
 
     expect(shown(records).map(({ type, summary }) => `${type}: ${summary}`)).toEqual([
-      'tool_test_started: Someone allowed to change the brain tested the search tool of graph.',
+      'tool_test_started: Someone allowed to change the playbook tested the search tool of graph.',
       'tool_test_answered: The tested tool answered.',
-      'tool_test_started: Someone allowed to change the brain tested the denied tool of graph.',
+      'tool_test_started: Someone allowed to change the playbook tested the denied tool of graph.',
       'tool_test_answered: The tested tool answered with an error of its own.',
-      'tool_test_started: Someone allowed to change the brain tested the broken tool of graph.',
+      'tool_test_started: Someone allowed to change the playbook tested the broken tool of graph.',
       'tool_test_failed: The tested tool failed at its server.',
-      'tool_test_started: Someone allowed to change the brain tested the sleep tool of graph.',
+      'tool_test_started: Someone allowed to change the playbook tested the sleep tool of graph.',
       'tool_test_failed: The tested tool took too long, so it was given up.',
     ]);
     expect(records.map(({ context }) => context.by)).toEqual(Array.from({ length: 8 }, () => 'acme-builder'));
@@ -108,7 +108,7 @@ describe('the events of a test, as the brain shows them', () => {
 });
 
 describe('an answer that carries no id of the server', () => {
-  it('shows an id the brain gave as text, cut to its bound, and no content it did not keep', () => {
+  it('shows an id the playbook gave as text, cut to its bound, and no content it did not keep', () => {
     const [failed] = toolTestPresenter.present(
       {
         id: '1f0e8d7c-6b5a-5d4c-8b3a-291817161514',

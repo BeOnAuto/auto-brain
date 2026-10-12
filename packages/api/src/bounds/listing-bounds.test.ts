@@ -79,7 +79,7 @@ function orgToolsFilled(count: number, extra: number) {
   );
 }
 
-function brainToolsFilled(count: number, extra: number, argument = 'What to ask') {
+function playbookToolsFilled(count: number, extra: number, argument = 'What to ask') {
   return Array.from({ length: count }, (_, index) =>
     asking({ name: toolNameOf('ask', index), description: describedWithin(extra, index), argument }),
   );
@@ -100,7 +100,7 @@ const listings: readonly Listing[] = [
     servingWith: (extra) => ({
       operations: [
         ...orgToolsFilled(6, descriptionRoom * 6),
-        ...brainToolsFilled(25, extra, 'q'.repeat(mostArgumentDescriptionCharacters)),
+        ...playbookToolsFilled(25, extra, 'q'.repeat(mostArgumentDescriptionCharacters)),
       ],
     }),
   },
@@ -111,10 +111,10 @@ const listings: readonly Listing[] = [
     servingWith: (extra) => ({ operations: orgToolsFilled(8, extra) }),
   },
   {
-    endpoint: 'brain',
-    path: '/orgs/acme/brains/alpha/mcp',
+    endpoint: 'playbook',
+    path: '/orgs/acme/playbooks/alpha/mcp',
     most: 32_000,
-    servingWith: (extra) => ({ operations: brainToolsFilled(31, extra) }),
+    servingWith: (extra) => ({ operations: playbookToolsFilled(31, extra) }),
   },
 ];
 

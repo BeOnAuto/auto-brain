@@ -32,7 +32,7 @@ const afterRefused =
 const allRefused =
   'A trigger starts a run for every event that matches it, so it takes one or any; all, which waits for several events, is for a listen task';
 
-const untilRefused = 'A trigger matches every event of its brain while its version is active, so it takes no until';
+const untilRefused = 'A trigger matches every event of its playbook while its version is active, so it takes no until';
 
 const onTakes = 'on takes one, a filter of the events that start the workflow, or any, a list of at least one';
 

@@ -17,7 +17,6 @@
   },
   "dependencies": {
     "@beonauto/api": "workspace:*",
-    "@beonauto/brains": "workspace:*",
     "@beonauto/computation": "workspace:*",
     "@beonauto/config": "workspace:*",
     "@beonauto/coordination": "workspace:*",
@@ -29,6 +28,7 @@
     "@beonauto/object-storage": "workspace:*",
     "@beonauto/operations": "workspace:*",
     "@beonauto/outbound": "workspace:*",
+    "@beonauto/playbooks": "workspace:*",
     "@beonauto/reasoning": "workspace:*",
     "@beonauto/recall": "workspace:*",
     "@beonauto/workflow-engine": "workspace:*",

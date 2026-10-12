@@ -20,7 +20,7 @@ export const functionDescriptions = {
   reasoning: 'Use a prompt, skills, and tools to interpret information or produce a response.',
   interaction: 'Exchange information with people or systems.',
   prediction: 'Create and use an ML model to make predictions.',
-  recall: 'Answer from what the brain keeps of its own history.',
+  recall: 'Answer from what the playbook keeps of its own history.',
   computation: 'Run defined code or expressions to calculate or transform data.',
 } satisfies Record<FunctionType, string>;
 

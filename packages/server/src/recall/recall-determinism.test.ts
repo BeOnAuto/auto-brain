@@ -7,7 +7,7 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import {
-  brainWithReviews,
+  playbookWithReviews,
   inState,
   liveWith,
   recallTestTimeoutMs,
@@ -120,7 +120,7 @@ async function answeredBy(server: ReasoningServer, name: string) {
 }
 
 async function viewsOn(server: ReasoningServer) {
-  await brainWithReviews(server, outputs.length);
+  await playbookWithReviews(server, outputs.length);
   await server.call('POST', `${alpha}/definitions/recall`, { body: { name: 'campaigns', source: byCampaign } });
   await server.call('POST', `${alpha}/definitions/recall`, { body: { name: 'depths', source: depths } });
   await server.call('POST', `${alpha}/definitions/recall`, { body: { name: 'counted', source: counted } });

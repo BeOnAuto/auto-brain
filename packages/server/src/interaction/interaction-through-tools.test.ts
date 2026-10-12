@@ -66,7 +66,7 @@ describe('an interaction function that delivers through a tool, over HTTP', { ti
   });
 });
 
-describe('the delivery of a request, in the feed of its brain', { timeout: workflowTestTimeoutMs }, () => {
+describe('the delivery of a request, in the feed of its playbook', { timeout: workflowTestTimeoutMs }, () => {
   it('shows when the feed is filtered by the type of the fact', async () => {
     const chat = await chatServer();
     const server = await servingInteractions(chatDelivery, chatEnvironment(chat.url));

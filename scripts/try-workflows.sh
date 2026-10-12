@@ -5,7 +5,7 @@ usage='Usage: scripts/try-workflows.sh <base-url> <provider/model>'
 base_url="${1:?$usage}"
 model="${2:?$usage}"
 org="${AUTO_BRAIN_ORG:-local}"
-brain="try-$(date +%s)-$RANDOM$RANDOM"
+playbook="try-$(date +%s)-$RANDOM$RANDOM"
 headers=(--header 'content-type: application/json')
 if [ -n "${AUTO_BRAIN_KEY:-}" ]; then
   headers+=(--header "authorization: Bearer $AUTO_BRAIN_KEY")
@@ -23,7 +23,7 @@ call() {
 settled() {
   local run
   for _ in $(seq 1 60); do
-    run="$(call "$brains/$brain/runs/$1")"
+    run="$(call "$playbooks/$playbook/runs/$1")"
     if [ "$(jq --raw-output .status <<< "$run")" != started ]; then
       printf '%s\n' "$run"
       return 0
@@ -34,12 +34,12 @@ settled() {
   return 1
 }
 
-brains="$base_url/v1/orgs/$org/brains"
-call --data "{\"brain\": \"$brain\", \"name\": \"Trying workflows\"}" "$brains" > /dev/null
+playbooks="$base_url/v1/orgs/$org/playbooks"
+call --data "{\"playbook\": \"$playbook\", \"name\": \"Trying workflows\"}" "$playbooks" > /dev/null
 greeting="$(printf '%s\n' '---' "model: $model" 'config: {max_output_tokens: 200}' '---' \
   '{% system %}Answer in one sentence.{% endsystem %}Greet {{ input.name }} and name today, {{ today }}.')"
 call --data "$(jq --null-input --arg source "$greeting" '{name: "greeting", source: $source}')" \
-  "$brains/$brain/definitions/reasoning" > /dev/null
+  "$playbooks/$playbook/definitions/reasoning" > /dev/null
 welcome="$(cat << 'YAML'
 document:
   dsl: '1.0.3'
@@ -67,11 +67,11 @@ do:
 YAML
 )"
 call --data "$(jq --null-input --arg source "$welcome" '{name: "welcome", source: $source}')" \
-  "$brains/$brain/definitions/workflow" > /dev/null
-started="$(call --data '{"input": {"name": "Ada"}}' "$brains/$brain/definitions/workflow/welcome/run")"
+  "$playbooks/$playbook/definitions/workflow" > /dev/null
+started="$(call --data '{"input": {"name": "Ada"}}' "$playbooks/$playbook/definitions/workflow/welcome/run")"
 run_id="$(jq --raw-output .run_id <<< "$started")"
 if ! call --data '{"event": {"type": "com.example.customer.replied", "data": "Thank you!"}}' \
-  "$brains/$brain/runs/$run_id/events" > /dev/null; then
+  "$playbooks/$playbook/runs/$run_id/events" > /dev/null; then
   printf 'The workflow ended before it could take the reply; it ended so:\n' >&2
 fi
 run="$(settled "$run_id")"

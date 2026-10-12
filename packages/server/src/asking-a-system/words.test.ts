@@ -14,7 +14,11 @@ import { workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 const longestName = `thread-${'x'.repeat(41)}`;
 
 function onAlpha<T>(server: SystemServer, use: (session: McpSession) => Promise<T>): Promise<T> {
-  return withMcpSession('current revision', { url: `${server.origin}/orgs/acme/brains/alpha/mcp`, headers: {} }, use);
+  return withMcpSession(
+    'current revision',
+    { url: `${server.origin}/orgs/acme/playbooks/alpha/mcp`, headers: {} },
+    use,
+  );
 }
 
 function saidOf(server: SystemServer, name: string, input: unknown = {}) {

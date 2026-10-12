@@ -23,5 +23,5 @@ async function aPortNobodyListensOn(): Promise<number> {
 export async function unreachableDatabase(): Promise<UnreachableDatabase> {
   const port = await aPortNobodyListensOn();
   const password = 'a-secret-password';
-  return { url: `postgresql://brains:${password}@127.0.0.1:${port}/brains`, port, password };
+  return { url: `postgresql://playbooks:${password}@127.0.0.1:${port}/playbooks`, port, password };
 }

@@ -59,7 +59,7 @@ export function fencedBlocksOf(page: string): ReadonlyMap<string, string> {
 const tutorial = fencedBlocksOf('tutorials/first-workflow.md');
 
 function inTutorial(input: Readonly<Record<string, unknown>>): Readonly<Record<string, unknown>> {
-  return { brain: 'campaign-review-tutorial', ...input };
+  return { playbook: 'campaign-review-tutorial', ...input };
 }
 
 function called(session: McpSession, tool: string, input: Readonly<Record<string, unknown>>): Promise<ToolResult> {
@@ -74,7 +74,7 @@ function settledOn(session: McpSession, id: string): Promise<ToolResult> {
 }
 
 async function saved(session: McpSession): Promise<readonly string[]> {
-  await session.callTool('create_brain', { brain: 'campaign-review-tutorial', name: 'Campaign review tutorial' });
+  await session.callTool('create_playbook', { playbook: 'campaign-review-tutorial', name: 'Campaign review tutorial' });
   await called(session, 'create_definition', { type: 'reasoning', name: 'review-campaign-brief', source: review });
   return [
     plainTextIn(

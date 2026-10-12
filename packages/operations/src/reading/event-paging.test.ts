@@ -11,7 +11,7 @@ import type { RecordedEvent, RecordedFact, RecordedPage } from './recorded-read.
 function recordOf(position: number, steps: number): RecordedEvent {
   return {
     id: `record-${position}`,
-    cursor: cursorOfParts(['brain/acme/alpha/', String(position)]),
+    cursor: cursorOfParts(['playbook/acme/alpha/', String(position)]),
     causationId: null,
     correlationId: null,
     stream: 'run-logs/r1',
@@ -37,7 +37,7 @@ function eventsOf({ data }: RecordedFact): readonly PresentedFact[] {
 }
 
 const showing: Showing = {
-  streamPrefix: 'brain/acme/alpha/',
+  streamPrefix: 'playbook/acme/alpha/',
   content: nothingKept,
   view: 'page',
 };
@@ -72,7 +72,7 @@ describe('a page of events', () => {
       'later',
     ]);
     expect(page.events.map(({ metadata }) => metadata.stream)).toEqual(
-      Array.from({ length: 5 }, () => 'brain/acme/alpha/run-logs/r1'),
+      Array.from({ length: 5 }, () => 'playbook/acme/alpha/run-logs/r1'),
     );
   });
 

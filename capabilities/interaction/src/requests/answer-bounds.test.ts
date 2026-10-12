@@ -17,17 +17,17 @@ function nestedLevels(levels: number): Nested {
 }
 
 async function asked() {
-  const brain = interactionHarness();
-  await brain.define('anything', anyAnswer);
-  await brain.ask('anything', {}, runId);
-  return brain;
+  const playbook = interactionHarness();
+  await playbook.define('anything', anyAnswer);
+  await playbook.ask('anything', {}, runId);
+  return playbook;
 }
 
 describe('the claim an answer makes', () => {
   it('takes 256 bytes and refuses one more, and refuses a blank claim or one with a control character', async () => {
-    const brain = await asked();
+    const playbook = await asked();
     const answering = (claimedFor: string) =>
-      brain.call(answer, { run_id: runId, answer: 'yes', claimed_for: claimedFor });
+      playbook.call(answer, { run_id: runId, answer: 'yes', claimed_for: claimedFor });
 
     const refusals = [
       await answering(`${'é'.repeat(128)}a`),
@@ -47,13 +47,13 @@ describe('the claim an answer makes', () => {
 
 describe('the depth of an answer', () => {
   it(`takes an answer ${interactionBounds.answerDepth} levels deep and refuses one level more`, async () => {
-    const brain = await asked();
+    const playbook = await asked();
 
-    const deeper = await brain.call(answer, {
+    const deeper = await playbook.call(answer, {
       run_id: runId,
       answer: nestedLevels(interactionBounds.answerDepth + 1),
     });
-    const deepest = await brain.call(answer, {
+    const deepest = await playbook.call(answer, {
       run_id: runId,
       answer: nestedLevels(interactionBounds.answerDepth),
     });

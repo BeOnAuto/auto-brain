@@ -2,10 +2,10 @@ import type { RecordedEvent } from '@beonauto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { stepOf, type StepParts } from './record-steps.ts';
+import { playbookOfKey, stepOf, type StepParts } from './record-steps.ts';
 import type { GateVerdict } from './run-gate.ts';
 
-const brainKey = 'brain/acme/alpha/';
+const playbookKey = 'playbook/acme/alpha/';
 
 const parts: StepParts = {
   consumers: [],
@@ -22,7 +22,7 @@ const record: RecordedEvent = {
   cursor: 'cursor-1',
   causationId: null,
   correlationId: null,
-  stream: `${brainKey}run-logs/r-1`,
+  stream: `${playbookKey}run-logs/r-1`,
   version: 1,
   globalPosition: 1,
   type: 'input_applied',
@@ -36,7 +36,7 @@ const fresh = { cursor: null, delivered: null, attempts: 0, waiting: false };
 function steppedPast(verdict: GateVerdict, wantsMore: boolean) {
   const gate = { verdictOn: () => Effect.succeed(verdict) };
   const stepping = {
-    brainKey,
+    playbookKey,
     gate,
     mode: 'signal' as const,
     delivers: new Set<string>(),
@@ -53,5 +53,14 @@ describe('the step over the record of a run that passed listeners', () => {
       { progress: passed, end: 'more' },
       { progress: passed },
     ]);
+  });
+});
+
+describe('the key of a playbook the host follows', () => {
+  it('names its org and its playbook, and is a defect of the host when it names no playbook', () => {
+    expect(playbookOfKey(playbookKey)).toEqual({ org: 'acme', playbook: 'alpha' });
+    expect(() => playbookOfKey('org/acme/alpha/')).toThrow(
+      'The host follows org/acme/alpha/, which is not the key of a playbook',
+    );
   });
 });

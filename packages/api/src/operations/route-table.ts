@@ -12,7 +12,7 @@ interface Templated {
 
 const prefixes: Readonly<Record<OperationScope, string>> = {
   org: '/v1/orgs/{org}',
-  brain: '/v1/orgs/{org}/brains/{brain}',
+  playbook: '/v1/orgs/{org}/playbooks/{playbook}',
 };
 
 const parameter = /\{(\w+)\}/gu;

@@ -19,7 +19,7 @@ import { Effect, Schema } from 'effect';
 import { inTransactionOf, type InTransaction, type StatementExecutor, type TransactionalPool } from '../event-store.ts';
 import { sqliteContent, type ContentDialect } from './content-dialects.ts';
 import {
-  brainPlaceOf,
+  playbookPlaceOf,
   columnsOf,
   commanded,
   headOf,
@@ -199,11 +199,11 @@ export function recordedContentOn(
   const keeping: Shelved = { execute, dialect, shelf: keptShelf };
   const staging: Shelved = { execute, dialect, shelf: stagingShelf };
   return {
-    put: (brain, content) => Effect.flatMap(placedOn(keeping, brainPlaceOf(brain), content), keptOf),
-    get: (brain, sha256) => readOn(keeping, brainPlaceOf(brain), sha256),
-    stage: (brain, run, content) => stagedOn(staging, { place: runPlaceOf(brain, run), run }, content),
-    staged: (brain, run, sha256) => readOn(staging, runPlaceOf(brain, run), sha256),
-    unstage: (brain, run) => unstagedOn(staging, runPlaceOf(brain, run), inTransaction),
+    put: (playbook, content) => Effect.flatMap(placedOn(keeping, playbookPlaceOf(playbook), content), keptOf),
+    get: (playbook, sha256) => readOn(keeping, playbookPlaceOf(playbook), sha256),
+    stage: (playbook, run, content) => stagedOn(staging, { place: runPlaceOf(playbook, run), run }, content),
+    staged: (playbook, run, sha256) => readOn(staging, runPlaceOf(playbook, run), sha256),
+    unstage: (playbook, run) => unstagedOn(staging, runPlaceOf(playbook, run), inTransaction),
   };
 }
 

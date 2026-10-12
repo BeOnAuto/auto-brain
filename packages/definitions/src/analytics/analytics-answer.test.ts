@@ -1,7 +1,7 @@
 import type { RunOutcomeGroup } from '@beonauto/operations';
 import { describe, expect, it } from 'vitest';
 
-import { analyticsOf, durationOf, type BrainAnalytics } from './analytics-answer.ts';
+import { analyticsOf, durationOf, type PlaybookAnalytics } from './analytics-answer.ts';
 
 function group(overrides: Partial<RunOutcomeGroup>): RunOutcomeGroup {
   return {
@@ -20,7 +20,7 @@ function group(overrides: Partial<RunOutcomeGroup>): RunOutcomeGroup {
 
 const window = { from: '2026-09-30', to: '2026-10-02', days: 3 };
 
-function functionsOf({ by_function: functions }: BrainAnalytics): readonly string[] {
+function functionsOf({ by_function: functions }: PlaybookAnalytics): readonly string[] {
   return functions.map(({ type, name }) => `${type} ${name}`);
 }
 
@@ -50,7 +50,7 @@ describe('a percentile of the durations of runs', () => {
   });
 });
 
-describe('the analytics of a brain', () => {
+describe('the analytics of a playbook', () => {
   it('count the runs that ended and the tokens they used, by day and by function, leaving out runs still going', () => {
     const groups = [
       group({ runs: 2, inputTokens: 100, outputTokens: 40, cachedTokens: 60, durations: [300, 100] }),
@@ -89,7 +89,7 @@ describe('the analytics of a brain', () => {
   });
 });
 
-describe('the functions in the analytics of a brain', () => {
+describe('the functions in the analytics of a playbook', () => {
   it('are ordered by their runs, the most first, then by type and name in the order of their characters', () => {
     const groups = [
       group({ definitionType: 'workflow', name: 'b' }),
@@ -107,7 +107,7 @@ describe('the functions in the analytics of a brain', () => {
   });
 });
 
-describe('the analytics of a brain whose runs are all still going', () => {
+describe('the analytics of a playbook whose runs are all still going', () => {
   it('answer every day with nothing, and no duration', () => {
     expect(analyticsOf(window, [group({ status: 'started' })])).toMatchObject({
       runs: noRuns,

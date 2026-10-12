@@ -1,27 +1,31 @@
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { messageIdOf, streamPrefixOfBrain, textToKeep } from '../index.ts';
+import { messageIdOf, streamPrefixOfPlaybook, textToKeep } from '../index.ts';
 import { acmeAdmin, globexAdmin } from '../testing/callers.ts';
-import { harness, toBrain } from '../testing/harness.ts';
+import { harness, toPlaybook } from '../testing/harness.ts';
 import { addNote, readNoteContent, readNoteEvent } from '../testing/notes.ts';
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
-const toGamma = toBrain('globex', 'gamma');
+const toGamma = toPlaybook('globex', 'gamma');
 
 describe('the read of one event, bound to a call', () => {
-  it('reads an event of the brain of the call by its id, its stream relative to the brain, and none of another', async () => {
+  it('reads an event of the playbook of the call by its id, its stream relative to the playbook, and none of another', async () => {
     const { dispatcher, run } = harness();
-    await run(dispatcher.dispatchToBrain(addNote.registration, toAlpha(acmeAdmin, { name: 'anvil', text: 'heavy' })));
-    await run(dispatcher.dispatchToBrain(addNote.registration, toGamma(globexAdmin, { name: 'gear', text: 'round' })));
-    const ofAlpha = messageIdOf(`${streamPrefixOfBrain({ org: 'acme', brain: 'alpha' })}notes`, 1);
-    const ofGamma = messageIdOf(`${streamPrefixOfBrain({ org: 'globex', brain: 'gamma' })}notes`, 1);
+    await run(
+      dispatcher.dispatchToPlaybook(addNote.registration, toAlpha(acmeAdmin, { name: 'anvil', text: 'heavy' })),
+    );
+    await run(
+      dispatcher.dispatchToPlaybook(addNote.registration, toGamma(globexAdmin, { name: 'gear', text: 'round' })),
+    );
+    const ofAlpha = messageIdOf(`${streamPrefixOfPlaybook({ org: 'acme', playbook: 'alpha' })}notes`, 1);
+    const ofGamma = messageIdOf(`${streamPrefixOfPlaybook({ org: 'globex', playbook: 'gamma' })}notes`, 1);
 
     expect(
       await Promise.all(
         [ofAlpha, ofGamma].map((id) =>
-          run(dispatcher.dispatchToBrain(readNoteEvent.registration, toAlpha(acmeAdmin, { id }))),
+          run(dispatcher.dispatchToPlaybook(readNoteEvent.registration, toAlpha(acmeAdmin, { id }))),
         ),
       ),
     ).toEqual([
@@ -32,18 +36,18 @@ describe('the read of one event, bound to a call', () => {
 });
 
 describe('the read of a recorded content, bound to a call', () => {
-  it('reads a content of the brain of the call by its digest, and none of another brain', async () => {
+  it('reads a content of the playbook of the call by its digest, and none of another playbook', async () => {
     const { dispatcher, ledger, run } = harness();
     const [digest, other] = await Promise.all([
       Effect.runPromise(
         Effect.map(
-          ledger.service.content.put({ org: 'acme', brain: 'alpha' }, textToKeep('{"rows":[]}', 'application/json')),
+          ledger.service.content.put({ org: 'acme', playbook: 'alpha' }, textToKeep('{"rows":[]}', 'application/json')),
           ({ sha256 }) => sha256,
         ),
       ),
       Effect.runPromise(
         Effect.map(
-          ledger.service.content.put({ org: 'globex', brain: 'gamma' }, textToKeep('{}', 'application/json')),
+          ledger.service.content.put({ org: 'globex', playbook: 'gamma' }, textToKeep('{}', 'application/json')),
           ({ sha256 }) => sha256,
         ),
       ),
@@ -52,7 +56,7 @@ describe('the read of a recorded content, bound to a call', () => {
     expect(
       await Promise.all(
         [digest, other].map((sha256) =>
-          run(dispatcher.dispatchToBrain(readNoteContent.registration, toAlpha(acmeAdmin, { sha256 }))),
+          run(dispatcher.dispatchToPlaybook(readNoteContent.registration, toAlpha(acmeAdmin, { sha256 }))),
         ),
       ),
     ).toEqual([

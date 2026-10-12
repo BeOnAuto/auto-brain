@@ -53,7 +53,7 @@ describe('an event to publish', () => {
   });
 });
 
-describe('an event the brain does not take', () => {
+describe('an event the playbook does not take', () => {
   it('is refused for a missing or empty source and type, and a source that is no URI reference', () => {
     expect(refusals({})).toEqual(['/source', '/type']);
     expect(refusals({ source: '', type: '' })).toEqual(['/source', '/type']);

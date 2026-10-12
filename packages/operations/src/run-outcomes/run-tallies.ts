@@ -2,7 +2,7 @@ import { Effect, Option, Result, Schema } from 'effect';
 
 import {
   ActedContextSchema,
-  BrainReader,
+  PlaybookReader,
   defineQuery,
   factOf,
   type Context,
@@ -109,17 +109,17 @@ function talliedGroupOf(group: RunOutcomeGroup): typeof GroupSchema.Type {
   };
 }
 
-export const readRunTallies = defineQuery('brain', {
+export const readRunTallies = defineQuery('playbook', {
   name: 'read_run_tallies',
   title: 'Read run tallies',
-  description: 'Reads the outcomes of the runs of the brain between two days, taking any days it is given.',
+  description: 'Reads the outcomes of the runs of the playbook between two days, taking any days it is given.',
   route: { method: 'GET', path: '/run-tallies' },
   inputSchema: Schema.Struct({ from: Schema.String, to: Schema.String, name: Schema.optionalKey(Schema.String) }),
   outputSchema: Schema.Struct({ groups: Schema.Array(GroupSchema) }),
   reasons: [],
   handle: Effect.fnUntraced(function* ({ from, to, name }) {
     const selection = name === undefined ? {} : { name };
-    const groups = yield* (yield* BrainReader).readRunOutcomes({ from, to }, selection);
+    const groups = yield* (yield* PlaybookReader).readRunOutcomes({ from, to }, selection);
     return { groups: groups.map((group) => talliedGroupOf(group)) };
   }),
 });

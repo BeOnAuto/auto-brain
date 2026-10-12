@@ -85,17 +85,17 @@ describe('a tool that cannot be tested', () => {
   });
 });
 
-describe('a tool this brain is not offered', () => {
-  it('is refused before any connection when its entry does not allow it or no server of the name serves the brain', async () => {
+describe('a tool this playbook is not offered', () => {
+  it('is refused before any connection when its entry does not allow it or no server of the name serves the playbook', async () => {
     const fake = await fakeServer();
     const narrowed = testsOn(fake, { allowed: ['echo'] });
     const elsewhere = testsOn(fake, { org: 'globex' });
-    const otherBrains = testsOn(fake, { brains: ['sales'] });
+    const otherPlaybooks = testsOn(fake, { playbooks: ['sales'] });
 
     expect([
       await narrowed.test({ server: 'graph', tool: 'search', arguments: { query: 'acme' } }),
       await elsewhere.test({ server: 'graph', tool: 'search' }),
-      await otherBrains.test({ server: 'graph', tool: 'search' }),
+      await otherPlaybooks.test({ server: 'graph', tool: 'search' }),
       await narrowed.test({ server: 'mail', tool: 'search' }),
     ]).toMatchObject([
       {
@@ -106,7 +106,7 @@ describe('a tool this brain is not offered', () => {
       },
       { kind: 'tool_not_offered', because: 'mcp_server_not_configured' },
       { kind: 'tool_not_offered', because: 'mcp_server_not_configured' },
-      { because: 'mcp_server_not_configured', detail: 'No MCP server named mail is configured for this brain' },
+      { because: 'mcp_server_not_configured', detail: 'No MCP server named mail is configured for this playbook' },
     ]);
     expect(fake.seen()).toEqual([]);
   });
@@ -170,15 +170,15 @@ describe('the words of a tool server that cannot be used for a test', () => {
   });
 });
 
-describe('who may test a tool, and in which brain', () => {
-  it('refuses a caller that may only read, and a brain that is retired, as every command', async () => {
+describe('who may test a tool, and in which playbook', () => {
+  it('refuses a caller that may only read, and a playbook that is retired, as every command', async () => {
     const fake = await fakeServer();
     const { test } = testsOn(fake);
-    const reader: CallerIdentity = { ...toolTester, permissions: ['brain:read'] };
+    const reader: CallerIdentity = { ...toolTester, permissions: ['playbook:read'] };
 
     expect([
       await test({ server: 'graph', tool: 'search' }, { caller: reader }),
-      await test({ server: 'graph', tool: 'search' }, { brain: 'old' }),
+      await test({ server: 'graph', tool: 'search' }, { playbook: 'old' }),
     ]).toMatchObject([{ reason: 'forbidden' }, { reason: 'conflict', kind: 'retired' }]);
     expect(fake.seen()).toEqual([]);
   });

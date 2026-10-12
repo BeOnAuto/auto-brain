@@ -66,7 +66,7 @@ function slotTests(settingsOf: SettingsOf): void {
 }
 
 export function sharingSuite(settingsOf: SettingsOf): void {
-  describe('the views of one brain', { timeout: viewTestTimeoutMs }, () => {
+  describe('the views of one playbook', { timeout: viewTestTimeoutMs }, () => {
     joiningTests(settingsOf);
     slotTests(settingsOf);
   });

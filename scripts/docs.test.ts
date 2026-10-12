@@ -121,7 +121,7 @@ await test('public docs offer a local learning path and one self-hosting service
   const selfHost = readFileSync(join(docs, 'self-host.md'), 'utf8');
   assert.ok(selfHost.includes('[Xolvio Professional Services](https://www.xolv.io/contact-us)'));
   assert.ok(markdownDestinations(selfHost).includes('get-started/local.md'));
-  assert.ok(selfHost.includes('Auto Cloud is currently invite-only'));
+  assert.ok(selfHost.includes('Auto Cloud is coming soon'));
   const index = readFileSync(join(docs, 'index.md'), 'utf8');
   const destinations = markdownDestinations(index);
   assert.ok(destinations.includes('get-started/local.md'));
@@ -156,17 +156,17 @@ await test('navigation separates concepts, learning, guides and reference', () =
     'Reference',
     'Contributing',
   ]);
-  assert.ok(routes.includes('/tutorials/first-brain'));
-  assert.ok(routes.indexOf('/get-started/local') < routes.indexOf('/tutorials/first-brain'));
+  assert.ok(routes.includes('/tutorials/first-playbook'));
+  assert.ok(routes.indexOf('/get-started/local') < routes.indexOf('/tutorials/first-playbook'));
   assert.ok(navigation.includes('Deployment and support'));
   const mcp = readFileSync(join(docs, 'reference/mcp.md'), 'utf8');
   assert.match(mcp, /^# MCP reference/mu);
-  assert.ok(mcp.includes('../tutorials/first-brain.md'));
+  assert.ok(mcp.includes('../tutorials/first-playbook.md'));
   assert.doesNotMatch(mcp, /Given what you know about my work|## Start with work/u);
 });
 
-await test('the first-brain tutorial supplies inputs and observable checks for two runs', () => {
-  const tutorial = readFileSync(join(docs, 'tutorials/first-brain.md'), 'utf8');
+await test('the first-playbook tutorial supplies inputs and observable checks for two runs', () => {
+  const tutorial = readFileSync(join(docs, 'tutorials/first-playbook.md'), 'utf8');
   const inputs = [...tutorial.matchAll(/```text\n([\s\S]*?)```/gu)].map((match: readonly string[]) => match[1]);
   assert.equal(inputs.length, 2);
   assert.equal(inputs[0]?.includes('Total budget: USD 8,000'), true);
@@ -205,14 +205,14 @@ await test('the local quick start gives runnable setup and distinguishes local c
   assert.ok(guide.includes('third-party'));
   assert.ok(guide.includes("remote connector runs from Anthropic's servers"));
   assert.ok(guide.includes('Do not expose it through a tunnel or public proxy'));
-  assert.match(guide, /::: info Auto Cloud\n.*invite-only.*request-invite.*\n:::\n\nThis setup/u);
-  assert.doesNotMatch(guide, /Auto Cloud is coming soon|You do not need an Auto Cloud account/u);
-  assert.ok(guide.includes('## Hosted brains'));
-  assert.doesNotMatch(guide, /Prefer a hosted brain/u);
-  assert.ok(guide.includes('You can also host your own brain'));
+  assert.match(guide, /::: info Auto Cloud\n.*coming soon.*request-invite.*\n:::\n\nThis setup/u);
+  assert.doesNotMatch(guide, /Auto Cloud is currently invite-only|You do not need an Auto Cloud account/u);
+  assert.ok(guide.includes('## Hosted playbooks'));
+  assert.doesNotMatch(guide, /Prefer a hosted brain\b/u);
+  assert.ok(guide.includes('You can also host your own playbook'));
   assert.ok(markdownDestinations(guide).includes('../self-host.md'));
   assert.ok(markdownDestinations(guide).some((href) => href === 'https://on.auto/request-invite'));
-  assert.ok(markdownDestinations(guide).includes('../tutorials/first-brain.md'));
+  assert.ok(markdownDestinations(guide).includes('../tutorials/first-playbook.md'));
   const configBlock = [...guide.matchAll(/```json\n([\s\S]*?)```/gu)].at(0)?.[1];
   assert.notEqual(configBlock, '');
   assert.ok(configBlock !== undefined);
@@ -230,10 +230,10 @@ await test('the local quick start gives runnable setup and distinguishes local c
 await test('model discovery is documented without treating wildcard entries as runnable models', () => {
   const mcp = readFileSync(join(docs, 'reference/mcp.md'), 'utf8');
   const http = readFileSync(join(docs, 'reference/http.md'), 'utf8');
-  const tutorial = readFileSync(join(docs, 'tutorials/first-brain.md'), 'utf8');
+  const tutorial = readFileSync(join(docs, 'tutorials/first-playbook.md'), 'utf8');
   assert.ok(mcp.includes('`list_models`'));
   assert.ok(mcp.includes('requires `org:read`'));
-  assert.ok(mcp.includes('not available on a brain-scoped endpoint'));
+  assert.ok(mcp.includes('not available on a playbook-scoped endpoint'));
   assert.ok(mcp.includes('`catalog_status: "partial"`'));
   assert.ok(mcp.includes('not a model to run'));
   assert.ok(http.includes('GET /v1/orgs/{org}/models'));

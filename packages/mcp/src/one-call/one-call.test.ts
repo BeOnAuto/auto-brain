@@ -32,7 +32,7 @@ const scrubbed = JSON.stringify({ token: '[redacted]' });
 
 const digest = (text: string) => createHash('sha256').update(text).digest('hex');
 
-const alpha = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
 describe('one call of a tool', () => {
   it('lists the tools of its server, calls the tool with the metadata its caller gives, and answers the call whole', async () => {

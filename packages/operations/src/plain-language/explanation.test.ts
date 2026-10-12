@@ -34,7 +34,7 @@ const byConflict: ReadonlyArray<readonly [ConflictKind, string, string]> = [
   ['unworkable', 'it cannot work as it is written', correctable],
   [
     'stalled',
-    'what it keeps of the brain’s history stopped at a recorded event it could not take in',
+    'what it keeps of the playbook’s history stopped at a recorded event it could not take in',
     'It answers again once a corrected version is saved, which builds it anew from the history; the details below say which event stopped it and why.',
   ],
   [
@@ -48,7 +48,7 @@ const ranUntilCancelled =
   'Nothing more of it runs, but what it did before may have changed something; start a new run if it is still needed.';
 
 const byCancellation: ReadonlyArray<readonly [CancelledKind, string, string]> = [
-  ['requested', 'it was cancelled at the request of someone allowed to change the brain', ranUntilCancelled],
+  ['requested', 'it was cancelled at the request of someone allowed to change the playbook', ranUntilCancelled],
   [
     'deadline',
     'the step that waited for it ran out of time, so it was cancelled',
@@ -72,7 +72,7 @@ const calledToolsWords =
 describe('the explanation of a view still being built', () => {
   it('says that trying again later should work, and that nothing needs to change', () => {
     expect(explanationOf({ reason: 'unavailable', kind: 'rebuilding' })).toEqual({
-      why: 'what it keeps of the brain’s history is still being built from that history',
+      why: 'what it keeps of the playbook’s history is still being built from that history',
       remedy: 'Nothing needs to change: trying again in a little while should work.',
     });
   });
@@ -167,9 +167,9 @@ describe('unsuccessfulWords of a run whose tools only read', () => {
 describe('unsuccessfulWords', () => {
   it('says what could not be done, why, that nothing changed, and what to do, for a command', () => {
     expect(
-      unsuccessfulWords('create the brain “Sales”', 'command', rejected('conflict', 'x', undefined, 'taken')),
+      unsuccessfulWords('create the playbook “Sales”', 'command', rejected('conflict', 'x', undefined, 'taken')),
     ).toBe(
-      'Could not create the brain “Sales”: that name is already taken. Nothing was changed. A different name will work.',
+      'Could not create the playbook “Sales”: that name is already taken. Nothing was changed. A different name will work.',
     );
   });
 
@@ -193,8 +193,8 @@ describe('unsuccessfulWords', () => {
   });
 
   it('does not say that nothing changed for a query, which changes nothing', () => {
-    expect(unsuccessfulWords('look up the brain “sales”', 'query', rejected('not_found', 'x'))).toBe(
-      'Could not look up the brain “sales”: it, or something it refers to, could not be found. Check the names used; the details below say what is missing.',
+    expect(unsuccessfulWords('look up the playbook “sales”', 'query', rejected('not_found', 'x'))).toBe(
+      'Could not look up the playbook “sales”: it, or something it refers to, could not be found. Check the names used; the details below say what is missing.',
     );
   });
 

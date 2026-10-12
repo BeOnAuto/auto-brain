@@ -13,11 +13,11 @@ export function defineRetireDefinition(capabilities: readonly Capability[]) {
   const known = knownCapabilities(capabilities);
   const words = definitionWordsFor(capabilities);
   return known.publish(
-    defineCommand('brain', {
+    defineCommand('playbook', {
       name: 'retire_definition',
       title: 'Retire definition',
       description: [
-        'Retires a function or workflow definition for good and returns it: it can still be read and listed, but it can no longer run or change, its name is not used again in the brain, and there is no way to restore it.',
+        'Retires a function or workflow definition for good and returns it: it can still be read and listed, but it can no longer run or change, its name is not used again in the playbook, and there is no way to restore it.',
         'Use it only when the person asks to retire that definition; update_definition changes it instead.',
         '`type` and `name` say which definition, and retiring one already retired changes nothing.',
       ].join(' '),
@@ -35,7 +35,7 @@ export function defineRetireDefinition(capabilities: readonly Capability[]) {
         task: `retire a ${words.kinds}`,
         attempt: ({ type, name }) => `retire ${words.named(type, name)}`,
         outcome: ({ type, name }) =>
-          `Retired ${words.named(type, name)}. It can no longer be run or changed, and its name cannot be used again in this brain.`,
+          `Retired ${words.named(type, name)}. It can no longer be run or changed, and its name cannot be used again in this playbook.`,
       },
     }),
   );

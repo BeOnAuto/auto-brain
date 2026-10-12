@@ -114,16 +114,16 @@ async function rowsOf(ledger: HarnessLedger) {
 
 describe.each(stores)('the projections of the requests and the conversations on $store', ({ skipped, aPlace }) => {
   it.skipIf(skipped)(
-    'are filled from the history of the brain when their tables are new, each row as the appends folded it, the cadence its reader advances aside',
+    'are filled from the history of the playbook when their tables are new, each row as the appends folded it, the cadence its reader advances aside',
     async () => {
       const place = await aPlace();
-      const brain = await chatHarness({ ledger: await place.open() });
-      await brain.askInThread(runId);
-      await brain.performDue(Date.now());
-      const [thread = ''] = brain.chat.posted().map(({ ts }) => ts);
-      brain.chat.reply({ channel: '#approvals-sales', thread, user: answererId, text: 'maybe later' });
-      await brain.performReads(Date.now() + farAhead);
-      const kept = await rowsOf(brain.ledger);
+      const playbook = await chatHarness({ ledger: await place.open() });
+      await playbook.askInThread(runId);
+      await playbook.performDue(Date.now());
+      const [thread = ''] = playbook.chat.posted().map(({ ts }) => ts);
+      playbook.chat.reply({ channel: '#approvals-sales', thread, user: answererId, text: 'maybe later' });
+      await playbook.performReads(Date.now() + farAhead);
+      const kept = await rowsOf(playbook.ledger);
 
       await place.dropTables();
       const filled = await rowsOf(await place.open());

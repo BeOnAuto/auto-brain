@@ -10,7 +10,7 @@ interface Asked {
   readonly values: readonly unknown[];
 }
 
-const brain = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
 function connectionsAnswering(
   answerOf: (text: string) => readonly unknown[],
@@ -55,12 +55,12 @@ function answeringOneChunk(text: string): readonly unknown[] {
   return text.startsWith('SELECT upload_id') ? [headOf('u1')] : [{ data: Buffer.from('{"a":1}') }];
 }
 
-describe('the content a brain keeps on PostgreSQL', () => {
+describe('the content a playbook keeps on PostgreSQL', () => {
   it('binds each chunk as the hex of its bytes', async () => {
     const { connections, asked } = connectionsAnswering(answeringHeadsAfterTheFirst());
 
     const kept = await Effect.runPromise(
-      postgresqlContentOn(connections).content.put(brain, textToKeep('{"b":2}', 'application/json')),
+      postgresqlContentOn(connections).content.put(alpha, textToKeep('{"b":2}', 'application/json')),
     );
 
     expect(kept).toEqual({ sha256: sha256Of('{"b":2}'), bytes: 7, mediaType: 'application/json' });
@@ -73,7 +73,7 @@ describe('the content a brain keeps on PostgreSQL', () => {
 
     const read = await Effect.runPromise(
       Effect.flatMap(
-        Effect.flatMap(postgresqlContentOn(connections).content.get(brain, sha256Of('{"a":1}')), Effect.fromNullishOr),
+        Effect.flatMap(postgresqlContentOn(connections).content.get(alpha, sha256Of('{"a":1}')), Effect.fromNullishOr),
         textOfContent,
       ),
     );
@@ -86,7 +86,7 @@ describe('the content a run staged on PostgreSQL', () => {
   it('is removed in one transaction on one connection, which it releases', async () => {
     const { connections, asked } = connectionsAnswering(nothing);
 
-    await Effect.runPromise(postgresqlContentOn(connections).content.unstage(brain, 'run-1'));
+    await Effect.runPromise(postgresqlContentOn(connections).content.unstage(alpha, 'run-1'));
 
     expect(asked.map(({ on, text }) => `${on}: ${text.split(' ').slice(0, 3).join(' ')}`)).toEqual([
       'pool: INSERT INTO unstaged_runs',
@@ -101,7 +101,7 @@ describe('the content a run staged on PostgreSQL', () => {
   it('rolls the transaction back when a delete fails, releases its connection, and fails as a defect', async () => {
     const { connections, asked } = connectionsAnswering(nothing, 'DELETE FROM staged_content_chunks');
 
-    const unstaged = Effect.runPromise(postgresqlContentOn(connections).content.unstage(brain, 'run-1'));
+    const unstaged = Effect.runPromise(postgresqlContentOn(connections).content.unstage(alpha, 'run-1'));
 
     await expect(unstaged).rejects.toThrow('The connection dropped');
     expect(asked.slice(-3).map(({ text }) => text.split(' ').slice(0, 3).join(' '))).toEqual([

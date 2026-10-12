@@ -23,7 +23,7 @@ const mayHaveReachedSomeone: ReadonlyArray<readonly [ExplainedRejection, string,
 const refusedBeforeAsking: ReadonlyArray<readonly [ExplainedRejection, string, string]> = [
   [
     { reason: 'unavailable', kind: 'requests_full' },
-    'the brain already holds as many open requests as it may',
+    'the playbook already holds as many open requests as it may',
     'Once some of them are answered, expire or are cancelled, it can be tried again.',
   ],
 ];

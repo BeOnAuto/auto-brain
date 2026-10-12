@@ -1,4 +1,4 @@
-import type { BrainAddress } from '@beonauto/operations';
+import type { PlaybookAddress } from '@beonauto/operations';
 import type { Effect } from 'effect';
 
 import { cutToFailureBound } from '../bounds/call-bounds.ts';
@@ -18,7 +18,7 @@ export interface CallJournal {
 
 export type KeepContent = (text: string) => Promise<string>;
 
-export type KeepIn = (brain: BrainAddress) => KeepContent;
+export type KeepIn = (playbook: PlaybookAddress) => KeepContent;
 
 export interface Recording {
   readonly content: boolean;

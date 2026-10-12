@@ -26,7 +26,7 @@ function sourceOf(name: string): string {
 }
 
 async function definedOn(port: number): Promise<void> {
-  await requestTo(port, 'POST', '', { brain: 'beta', name: 'Beta' });
+  await requestTo(port, 'POST', '', { playbook: 'beta', name: 'Beta' });
   await requestTo(port, 'POST', '/beta/definitions/workflow', { name: 'pending', source: sourceOf('pending') });
   await requestTo(port, 'POST', '/beta/definitions/workflow', { name: 'waiting', source: sourceOf('waiting') });
 }

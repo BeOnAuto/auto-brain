@@ -9,7 +9,7 @@ import { fakeContentStore, type FakeContentStore } from '../testing/fake-bucket.
 import { openUploadsIn } from '../testing/test-object-store.ts';
 import { uploadPartBytes } from './upload-writing.ts';
 
-const location = { bucket: 'content', prefix: 'brains' };
+const location = { bucket: 'content', prefix: 'playbooks' };
 
 const keys = objectKeysOf(location);
 
@@ -32,7 +32,7 @@ function objectWritten(store: FakeContentStore, key: string, body?: string): Pro
 }
 
 describe('a read on object storage', () => {
-  it('answers nothing for a digest the brain does not hold, and the default media type for an object kept without one', async () => {
+  it('answers nothing for a digest the playbook does not hold, and the default media type for an object kept without one', async () => {
     const store = fakeContentStore(location);
     await objectWritten(store, keys.kept(alpha, sha256Of('bare')), 'bare');
 

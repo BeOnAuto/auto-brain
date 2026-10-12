@@ -2,7 +2,7 @@ import { messageIdOf } from '@beonauto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { alpha, eventTrigger, published, recorded, definitionRecorded } from '../reaction-testing/brain-writes.ts';
+import { alpha, eventTrigger, published, recorded, definitionRecorded } from '../reaction-testing/playbook-writes.ts';
 import { reactingHost } from '../reaction-testing/reacting-host.ts';
 import { until } from '../reaction-testing/until.ts';
 import type { Consumer } from './consumers.ts';
@@ -33,8 +33,8 @@ function recordingIds(name: string, types: readonly string[], received: (id: str
   };
 }
 
-describe('a record of a brain the follower cannot read', () => {
-  it('is said and passed over, as an event, a fact of a run or a definition, while a workflow of the brain reacts to its type', async () => {
+describe('a record of a playbook the follower cannot read', () => {
+  it('is said and passed over, as an event, a fact of a run or a definition, while a workflow of the playbook reacts to its type', async () => {
     const reacting = await reactingHost();
     const { store } = reacting.database;
     const trigger = eventTrigger(
@@ -54,15 +54,15 @@ describe('a record of a brain the follower cannot read', () => {
     );
 
     expect(reacting.notes()).toMatchObject([
-      { kind: 'record_unreadable', org: 'acme', brain: 'alpha', type: 'event_published' },
-      { kind: 'record_unreadable', org: 'acme', brain: 'alpha', type: 'run_started' },
-      { kind: 'record_unreadable', org: 'acme', brain: 'alpha', type: 'definition_created' },
+      { kind: 'record_unreadable', org: 'acme', playbook: 'alpha', type: 'event_published' },
+      { kind: 'record_unreadable', org: 'acme', playbook: 'alpha', type: 'run_started' },
+      { kind: 'record_unreadable', org: 'acme', playbook: 'alpha', type: 'definition_created' },
     ]);
   });
 });
 
 describe('a consumer the host is given', () => {
-  it('is offered the events of the types it names, though nothing in the brain reacts, and one naming none is offered nothing', async () => {
+  it('is offered the events of the types it names, though nothing in the playbook reacts, and one naming none is offered nothing', async () => {
     const received: string[] = [];
     const record = (id: string) => {
       received.push(id);

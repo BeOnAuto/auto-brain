@@ -1,5 +1,5 @@
 import { makeDispatcher, type CallerIdentity, type Outcome } from '@beonauto/operations';
-import { memoryBrainRegistry, memoryLedger, recordingReporter } from '@beonauto/operations/testing';
+import { memoryPlaybookRegistry, memoryLedger, recordingReporter } from '@beonauto/operations/testing';
 import { Effect, Layer } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -8,9 +8,9 @@ import { anthropicModels, vercelGatewayModels } from '../testing/model-lists.ts'
 import { jsonResponse } from '../testing/recording-fetch.ts';
 import { defineListModels } from './list-models.ts';
 
-const reader: CallerIdentity = { id: 'acme-reader', org: 'acme', permissions: ['org:read'], brains: '*' };
+const reader: CallerIdentity = { id: 'acme-reader', org: 'acme', permissions: ['org:read'], playbooks: '*' };
 
-const writerOnly: CallerIdentity = { id: 'acme-writer', org: 'acme', permissions: ['brain:write'], brains: '*' };
+const writerOnly: CallerIdentity = { id: 'acme-writer', org: 'acme', permissions: ['playbook:write'], playbooks: '*' };
 
 const environment = {
   ANTHROPIC_API_KEY: 'sk-ant-key',
@@ -18,7 +18,7 @@ const environment = {
   MODEL_ALIASES: JSON.stringify({ 'house/fast': 'gateway/anthropic/claude-haiku-4-5' }),
 };
 
-const services = Layer.mergeAll(memoryLedger().layer, memoryBrainRegistry([]), recordingReporter().layer);
+const services = Layer.mergeAll(memoryLedger().layer, memoryPlaybookRegistry([]), recordingReporter().layer);
 
 function outputOf(outcome: Outcome): unknown {
   return outcome.status === 'succeeded' ? outcome.output : undefined;

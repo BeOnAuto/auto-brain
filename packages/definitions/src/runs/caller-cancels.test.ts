@@ -45,7 +45,7 @@ const starting: RunCommand = { type: 'start', ...greeting, definition_version: 1
 
 const cancelledFirst = new RunCancelled({ detail: reason, kind: 'parent_ended' });
 
-const noSuchRun = new NotFound({ detail: 'There is no such run in this brain' });
+const noSuchRun = new NotFound({ detail: 'There is no such run in this playbook' });
 
 describe('a cancel from the caller of a run that has not started', () => {
   it('is recorded as the first event of its stream, with no definition in its context, where a cancel from anyone else finds no run', () => {
@@ -65,7 +65,7 @@ describe('a cancel from the caller of a run that has not started', () => {
     expect(decided(cancelling(true), cancelFirst)).toStrictEqual(Result.succeed([]));
     expect(decided({ type: 'finish', result: failure, ...start }, cancelFirst)).toStrictEqual(Result.succeed([]));
     expect(
-      decided({ type: 'settle', result: failure, runId: testRunId, by: 'brain:alpha', at: later }, cancelFirst),
+      decided({ type: 'settle', result: failure, runId: testRunId, by: 'playbook:alpha', at: later }, cancelFirst),
     ).toStrictEqual(Result.fail(noSuchRun));
     expect(stateAfter(cancelFirst, cancelFirst)).toStrictEqual({
       cancelledBeforeStart: { kind: 'parent_ended', reason, by: 'acme-admin' },

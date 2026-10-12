@@ -54,7 +54,7 @@ describe(
     it('checks one expression when the server starts, then a hundred as one job, saves the workflow, and runs it', async () => {
       const { checked, poolOf } = recordingChecks();
       server = await servingWorkflows([], { LOCAL_MODE: 'true' }, poolOf);
-      await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+      await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
 
       const saved = await saving('hundred', hundred);
       const started = await server.call('POST', `${alpha}/definitions/workflow/hundred/run`, { body: { input: {} } });
@@ -71,7 +71,7 @@ describe(
 
     it('refuses an expression that is not one, and one that names what its place lacks, at their lines', async () => {
       server = await servingWorkflows([]);
-      await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+      await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
 
       expect(await saving('refused', refused)).toMatchObject({
         status: 422,

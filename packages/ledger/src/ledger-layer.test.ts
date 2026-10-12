@@ -136,7 +136,7 @@ describe('a ledger given a content store of its own', () => {
       }),
     );
     onTestFinished(dispose);
-    const alpha = { org: 'acme', brain: 'alpha' };
+    const alpha = { org: 'acme', playbook: 'alpha' };
 
     const kept = await Effect.runPromise(ledger.content.put(alpha, textToKeep('{}', 'application/json')));
     const held = await Effect.runPromise(content.get(alpha, kept.sha256));

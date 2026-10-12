@@ -45,7 +45,7 @@ function keptWhole(entry: ContentEntry): void {
 }
 
 function keptOnce(entry: ContentEntry): void {
-  it('keeps a text as its UTF-8 under the digest its fact carries, once, with the media type it was first put with, in its brain alone', async () => {
+  it('keeps a text as its UTF-8 under the digest its fact carries, once, with the media type it was first put with, in its playbook alone', async () => {
     const store = await entry.aStore();
     const text = answerOfAbout(1_500_000);
     const sha256 = sha256Of(text);
@@ -125,7 +125,7 @@ function putRefused(entry: ContentEntry): void {
 }
 
 function heldDigestDefended(entry: ContentEntry): void {
-  it('refuses wrong bytes put with the digest of a content the brain holds, writing nothing and leaving the content whole', async () => {
+  it('refuses wrong bytes put with the digest of a content the playbook holds, writing nothing and leaving the content whole', async () => {
     const store = await entry.aStore();
     const right = await generated(2_500_000);
     const wrong = await generated(2_500_000, 11);
@@ -171,11 +171,11 @@ function putRaced(entry: ContentEntry): void {
 }
 
 export function recordedContentBehaviour(entry: ContentEntry): void {
-  describe('the content a brain recorded', () => {
+  describe('the content a playbook recorded', () => {
     keptWhole(entry);
     keptOnce(entry);
   });
-  describe('the content a brain was given to keep, refused', () => {
+  describe('the content a playbook was given to keep, refused', () => {
     putRefused(entry);
     heldDigestDefended(entry);
     putRaced(entry);
