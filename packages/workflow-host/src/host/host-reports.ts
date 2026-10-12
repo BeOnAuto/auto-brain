@@ -37,7 +37,14 @@ export type HostNote =
       readonly by: string;
       readonly detail: string;
     }
-  | { readonly kind: 'view_stalled'; readonly playbook: string; readonly name: string; readonly version: number };
+  | { readonly kind: 'view_stalled'; readonly playbook: string; readonly name: string; readonly version: number }
+  | {
+      readonly kind: 'dataset_stalled';
+      readonly playbook: string;
+      readonly dataSha256: string;
+      readonly record: string;
+      readonly detail: string;
+    };
 
 export interface UnsettledRun extends RunAddress {
   readonly receipt: TroublingReceipt;
