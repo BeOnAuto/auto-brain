@@ -14,7 +14,7 @@ import { postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
 import { ledgerLayer } from '@on.auto/ledger/sqlite3';
 import { Ledger } from '@on.auto/operations';
 import { Effect, Layer, ManagedRuntime } from 'effect';
-import { Client } from 'pg';
+import { Client, Pool } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
@@ -55,7 +55,9 @@ async function onPostgreSQL(): Promise<HarnessLedger> {
   onTestFinished(() => administer(`DROP DATABASE ${name} WITH (FORCE)`));
   const url = new URL(postgresql);
   url.pathname = `/${name}`;
-  return opened(postgresqlLedgerLayer({ connectionString: url.href, projections }));
+  return opened(
+    postgresqlLedgerLayer({ pools: ({ max }) => new Pool({ connectionString: url.href, max }), projections }),
+  );
 }
 
 interface Store {

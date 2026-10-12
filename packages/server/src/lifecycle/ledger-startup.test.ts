@@ -59,3 +59,25 @@ describe('a server given both DATABASE_URL and LEDGER_FILE', { timeout: spawnedS
     });
   });
 });
+
+describe(
+  'a server given DATABASE_CREDENTIALS=aws-iam and a password in DATABASE_URL',
+  { timeout: spawnedServerTestTimeoutMs },
+  () => {
+    it('does not start, naming the setting and not the password', async () => {
+      const child = spawnServer(mainModule, {
+        HOST: '127.0.0.1',
+        PORT: '0',
+        DATABASE_CREDENTIALS: 'aws-iam',
+        DATABASE_URL: 'postgresql://playbooks:a-secret-password@ledger.c9akciq32.eu-west-1.rds.amazonaws.com/playbooks',
+      });
+
+      expect(await child.exited).toBe(1);
+      expect(child.output()).toEqual({
+        stdout: '',
+        stderr:
+          'Auto Runtime could not start: InvalidSettingsError: The ledger settings are invalid. DATABASE_URL: With DATABASE_CREDENTIALS=aws-iam the password is a token signed for each connection, so the URL holds none\n',
+      });
+    });
+  },
+);

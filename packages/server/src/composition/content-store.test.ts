@@ -85,7 +85,7 @@ describe('the store the content of a playbook is kept in', () => {
   it('keeps what the ledger is given to keep, and reads it back, in the store it is composed with', async () => {
     const content = memoryRecordedContent();
     const runtime = ManagedRuntime.make(
-      ledgerLayerOf({ store: 'sqlite', file: ':memory:' }, undefined, {
+      ledgerLayerOf({ ledger: { store: 'sqlite', file: ':memory:' }, proxy: readSettings({}).proxy }, undefined, {
         content,
         sweepContent: () => Promise.resolve(),
       }),

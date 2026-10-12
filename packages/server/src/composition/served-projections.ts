@@ -38,7 +38,7 @@ export function projectionWiring(): ProjectionWiring {
   const appends = appendSignal();
   return {
     appends,
-    served: async (runtime, { ledger, recall }, pool, besides) => {
+    served: async (runtime, { ledger, proxy, recall }, pool, besides) => {
       const views = viewsFolder({
         definitionType: recallDefinitionType,
         pool,
@@ -47,7 +47,11 @@ export function projectionWiring(): ProjectionWiring {
         rebuildsAtOnce: recall.rebuildsAtOnce,
       });
       const folders = [someFolder(views), ...besides];
-      const store = await openWorkflowStore(hostDatabaseOf(ledger), hostReports(runtime).lostConnection, folders);
+      const store = await openWorkflowStore(
+        hostDatabaseOf({ ledger, proxy }),
+        hostReports(runtime).lostConnection,
+        folders,
+      );
       return {
         recall: makeRecallFunctionAdapter({
           pool,

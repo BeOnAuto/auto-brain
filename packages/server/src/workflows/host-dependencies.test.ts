@@ -1,9 +1,10 @@
 import { makeAppRuntime } from '@on.auto/api';
 import { ledgerLayer } from '@on.auto/ledger/sqlite3';
-import { Cause, Effect, Exit, Layer, Logger, Redacted } from 'effect';
+import { Cause, Effect, Exit, Layer, Logger } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { applicationLayer } from '../composition/composition-root.ts';
+import { readSettings } from '../settings/settings.ts';
 import { hostDatabaseOf } from './host-dependencies.ts';
 import { hostReports } from './host-reports.ts';
 import { inRuntime } from './in-runtime.ts';
@@ -87,25 +88,19 @@ describe('the reports of the workflow host', () => {
 
 describe('the database of the workflow host', () => {
   it('is the file of the ledger when the ledger is kept in SQLite', () => {
-    expect(hostDatabaseOf({ store: 'sqlite', file: '/data/ledger.db' })).toEqual({
+    expect(hostDatabaseOf(readSettings({ LEDGER_FILE: '/data/ledger.db' }))).toEqual({
       store: 'sqlite',
       file: '/data/ledger.db',
     });
   });
 
-  it('is the database of the ledger when the ledger is kept in PostgreSQL', () => {
+  it('is the database of the ledger when the ledger is kept in PostgreSQL, reached through the pools the server composes', () => {
     const url = 'postgresql://playbooks:secret@db.example.com:5432/playbooks';
 
-    expect(
-      hostDatabaseOf({
-        store: 'postgresql',
-        url: Redacted.make(url),
-        host: 'db.example.com:5432',
-        database: 'playbooks',
-      }),
-    ).toEqual({
-      store: 'postgresql',
-      connectionString: url,
-    });
+    const database = hostDatabaseOf(readSettings({ DATABASE_URL: url }));
+
+    const somePools: unknown = expect.any(Function);
+
+    expect(database).toEqual({ store: 'postgresql', pools: somePools });
   });
 });

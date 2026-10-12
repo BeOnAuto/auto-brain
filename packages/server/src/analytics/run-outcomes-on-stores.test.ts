@@ -11,7 +11,7 @@ import {
   type RunOutcomeGroup,
 } from '@on.auto/operations';
 import { Effect, ManagedRuntime, Redacted, Result, Schema, type Layer } from 'effect';
-import { Client } from 'pg';
+import { Client, Pool } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { ledgerLayerOf } from '../composition/ledger-store.ts';
@@ -56,13 +56,25 @@ async function aPostgreSQLLedger(): Promise<LedgerSettings> {
   onTestFinished(() => administer(`DROP DATABASE ${name} WITH (FORCE)`));
   const url = new URL(postgresql);
   url.pathname = `/${name}`;
-  return { store: 'postgresql', url: Redacted.make(url.href), host: url.host, database: name };
+  return {
+    store: 'postgresql',
+    url: Redacted.make(url.href),
+    host: url.host,
+    database: name,
+    credentials: { kind: 'url' },
+  };
 }
 
 function anSQLiteLedger(): Promise<LedgerSettings> {
   const ledger = temporaryLedger();
   onTestFinished(ledger.remove);
   return Promise.resolve({ store: 'sqlite', file: ledger.fileName });
+}
+
+const noProxy = { enabled: false, environment: {} };
+
+function composed(ledger: LedgerSettings): Layer.Layer<Ledger> {
+  return ledgerLayerOf({ ledger, proxy: noProxy });
 }
 
 function opened(layer: Layer.Layer<Ledger>): Promise<Ledger['Service']> {
@@ -157,7 +169,7 @@ function written(ledger: Ledger['Service']): Promise<void> {
 function withoutTheProjection(settings: LedgerSettings): Layer.Layer<Ledger> {
   return settings.store === 'sqlite'
     ? ledgerLayer({ fileName: settings.file })
-    : postgresqlLedgerLayer({ connectionString: Redacted.value(settings.url) });
+    : postgresqlLedgerLayer({ pools: ({ max }) => new Pool({ connectionString: Redacted.value(settings.url), max }) });
 }
 
 function lineOf(group: RunOutcomeGroup): string {
@@ -199,11 +211,11 @@ describe.each(stores)('the outcomes of runs the composed ledger keeps, on $store
     async () => {
       const appended = await aLedger();
       const replayed = await aLedger();
-      await written(await opened(ledgerLayerOf(appended)));
+      await written(await opened(composed(appended)));
       await written(await opened(withoutTheProjection(replayed)));
 
-      const inline = await outcomesIn(await opened(ledgerLayerOf(appended)));
-      const filled = await outcomesIn(await opened(ledgerLayerOf(replayed)));
+      const inline = await outcomesIn(await opened(composed(appended)));
+      const filled = await outcomesIn(await opened(composed(replayed)));
 
       expect([inline, filled]).toEqual([kept, kept]);
     },
