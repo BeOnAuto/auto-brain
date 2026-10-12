@@ -36,7 +36,7 @@ describe('a configuration file the server cannot read as settings', { timeout: s
     ],
     [
       'holds a value its setting does not accept',
-      'model_gateways:\n  - name: gateway\n    base_url: 8080\n    colour: blue\n',
+      'model_gateways:\n  - name: gateway\n    base_url: 5555\n    colour: blue\n',
       `${invalid} auto-runtime.yaml:3:15 model_gateways[0].base_url: Expected string; auto-runtime.yaml:4:13 model_gateways[0].colour: Expected no excess property\n`,
     ],
     [

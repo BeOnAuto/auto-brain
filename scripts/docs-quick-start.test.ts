@@ -13,11 +13,11 @@ await test('the local quick start connects an agent and runs a first function wi
   assert.ok(guide.includes('Start Auto Runtime on your computer and connect Claude Code, Claude Desktop or Codex.'));
   const walkthrough = [
     'pnpm dev\n',
-    'curl http://localhost:8080/health',
-    'http://localhost:8080/mcp',
+    'curl http://localhost:5555/health',
+    'http://localhost:5555/mcp',
     'Do not expose it through a tunnel or public proxy',
-    'claude mcp add --transport http auto-runtime http://localhost:8080/mcp',
-    'codex mcp add auto-runtime --url http://localhost:8080/mcp',
+    'claude mcp add --transport http auto-runtime http://localhost:5555/mcp',
+    'codex mcp add auto-runtime --url http://localhost:5555/mcp',
     'Create a playbook named Quickstart with id quickstart',
     'reasoning function called check-brief',
     'ask it to run the saved function on:',

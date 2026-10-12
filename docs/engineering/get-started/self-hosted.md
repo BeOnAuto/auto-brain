@@ -32,20 +32,20 @@ Then put your gateway's `base_url` in `auto-runtime.yaml`. Start the configured 
 pnpm dev
 ```
 
-`pnpm dev` starts the server, which runs workflows itself, in [local mode](../self-host/security.md#local-mode), on `http://localhost:8080`. Once it is up, it says so:
+`pnpm dev` starts the server, which runs workflows itself, in [local mode](../self-host/security.md#local-mode), on `http://localhost:5555`. Once it is up, it says so:
 
 ```text
 10:42:44.130 INFO  [dev] Auto Runtime is ready
-  server     http://localhost:8080
+  server     http://localhost:5555
   models     anthropic
-  MCP        http://localhost:8080/mcp
+  MCP        http://localhost:5555/mcp
 ```
 
-Next, connect your AI assistant to `http://localhost:8080/mcp`. Local mode needs no key:
+Next, connect your AI assistant to `http://localhost:5555/mcp`. Local mode needs no key:
 
-- **Claude Code**: `claude mcp add --transport http auto-runtime http://localhost:8080/mcp`
-- **Cursor**, in `.cursor/mcp.json` or `~/.cursor/mcp.json`: `{"mcpServers": {"auto-runtime": {"url": "http://localhost:8080/mcp"}}}`
-- **VS Code**, in `.vscode/mcp.json`: `{"servers": {"auto-runtime": {"type": "http", "url": "http://localhost:8080/mcp"}}}`
+- **Claude Code**: `claude mcp add --transport http auto-runtime http://localhost:5555/mcp`
+- **Cursor**, in `.cursor/mcp.json` or `~/.cursor/mcp.json`: `{"mcpServers": {"auto-runtime": {"url": "http://localhost:5555/mcp"}}}`
+- **VS Code**, in `.vscode/mcp.json`: `{"servers": {"auto-runtime": {"type": "http", "url": "http://localhost:5555/mcp"}}}`
 - **Other assistants** take the entry under [Connecting an agent over MCP](../reference/mcp.md), without its header.
 
 You can begin by asking: "Given what you know about my work, suggest a small reusable function we could build in Auto. Tell me what information it needs before creating anything." For a concrete first run, follow the example below.
@@ -63,4 +63,4 @@ Each tool's description explains the supported definition format. This example d
 
 To reuse your first function, ask another question in a new conversation connected to the same runtime. For a shared deployment, use a persistent container and scoped API keys. Local mode is only for your own machine; do not expose it to colleagues through a proxy. See [Run in a container](../self-host/container.md) and [Authentication and security](../self-host/security.md).
 
-To try it without an assistant, `scripts/try-reasoning.sh http://localhost:8080 <provider/model>` and `scripts/try-workflows.sh http://localhost:8080 <provider/model>` run a reasoning function and a workflow over HTTP and print what happened. [How it works](../reference/http-tutorial.md) walks through the same steps.
+To try it without an assistant, `scripts/try-reasoning.sh http://localhost:5555 <provider/model>` and `scripts/try-workflows.sh http://localhost:5555 <provider/model>` run a reasoning function and a workflow over HTTP and print what happened. [How it works](../reference/http-tutorial.md) walks through the same steps.

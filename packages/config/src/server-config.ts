@@ -6,7 +6,7 @@ export interface ServerConfig {
 }
 
 const defaultHost = '0.0.0.0';
-const defaultPort = 8080;
+const defaultPort = 5555;
 const highestPort = 65_535;
 const digitsOnly = /^\d+$/u;
 

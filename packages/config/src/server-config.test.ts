@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { InvalidPortError, readServerConfig } from './index.ts';
 
 describe('readServerConfig', () => {
-  it('listens on every interface at port 8080 when nothing is configured', () => {
-    expect(readServerConfig({})).toEqual({ host: '0.0.0.0', port: 8080 });
+  it('listens on every interface at port 5555 when nothing is configured', () => {
+    expect(readServerConfig({})).toEqual({ host: '0.0.0.0', port: 5555 });
   });
 
   it('uses the configured host and port', () => {

@@ -159,7 +159,7 @@ describe('an MCP endpoint once the MCP SDK runs', () => {
       authenticator: authenticatorFor({ host: '127.0.0.1', apiKeys: undefined, localMode: true }),
     });
 
-    const answer = await postMcp(handler, '/orgs/acme/mcp', { host: 'localhost:8080' });
+    const answer = await postMcp(handler, '/orgs/acme/mcp', { host: 'localhost:5555' });
 
     expect(answer.status).toBe(200);
     expect(answer.text).toContain('"serverInfo":{"name":"@on.auto/runtime"');

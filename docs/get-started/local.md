@@ -59,10 +59,10 @@ pnpm dev
 Keep this terminal open. In a second terminal, check that the server is ready:
 
 ```bash
-curl http://localhost:8080/health
+curl http://localhost:5555/health
 ```
 
-You should see `{"status":"ok"}`. The MCP endpoint is `http://localhost:8080/mcp`.
+You should see `{"status":"ok"}`. The MCP endpoint is `http://localhost:5555/mcp`.
 
 This local mode needs no authentication header and trusts callers on your computer. Do not expose it through a tunnel or public proxy. The server runs reasoning functions, such as the example below, computation functions and workflows.
 
@@ -75,7 +75,7 @@ Choose your client below. The agent must reach the server on your computer; a we
 In a terminal, add the HTTP connection:
 
 ```bash
-claude mcp add --transport http auto-runtime http://localhost:8080/mcp
+claude mcp add --transport http auto-runtime http://localhost:5555/mcp
 ```
 
 Start Claude Code in that directory, then use `/mcp` to check that `auto-runtime` is connected. See [Claude Code's MCP documentation](https://code.claude.com/docs/en/mcp) for connection scopes and tool permissions.
@@ -85,14 +85,14 @@ Start Claude Code in that directory, then use `/mcp` to check that `auto-runtime
 Add the HTTP connection:
 
 ```bash
-codex mcp add auto-runtime --url http://localhost:8080/mcp
+codex mcp add auto-runtime --url http://localhost:5555/mcp
 ```
 
 Start a new Codex session. Use `/mcp` in the CLI to check the connection, or `codex mcp list` to inspect the saved configuration. See [Codex MCP documentation](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
 
 ### Claude Desktop
 
-Claude Desktop needs a local MCP connection for this setup. Its remote connector runs from Anthropic's servers, so entering `http://localhost:8080/mcp` there will not reach Auto on your computer.
+Claude Desktop needs a local MCP connection for this setup. Its remote connector runs from Anthropic's servers, so entering `http://localhost:5555/mcp` there will not reach Auto on your computer.
 
 Install a current [Node.js LTS release](https://nodejs.org/en/download) with npm, so Desktop can run `npx`. This is separate from the Node version pnpm manages inside the Auto repository.
 
@@ -103,7 +103,7 @@ In Claude Desktop, open **Settings → Developer → Edit Config**. Add the `aut
   "mcpServers": {
     "auto-runtime": {
       "command": "npx",
-      "args": ["-y", "mcp-remote@0.14.3", "http://localhost:8080/mcp", "--allow-http", "--transport", "http-only"]
+      "args": ["-y", "mcp-remote@0.14.3", "http://localhost:5555/mcp", "--allow-http", "--transport", "http-only"]
     }
   }
 }
@@ -173,7 +173,7 @@ Your agent can try a tool before a function uses it, to see what it answers. A s
 
 ## If something does not connect
 
-If the health check fails, check the server terminal for startup errors and confirm that port 8080 is free. If your agent cannot connect but the health check works, check its MCP endpoint, restart the agent session, and confirm it is running on the same computer as Auto.
+If the health check fails, check the server terminal for startup errors and confirm that port 5555 is free. If your agent cannot connect but the health check works, check its MCP endpoint, restart the agent session, and confirm it is running on the same computer as Auto.
 
 If a reasoning function reports `provider_not_configured`, check the uncommented setting in `.env` and restart Auto. If model discovery is incomplete, use a concrete model reference supported by your configured provider. Do not paste keys into a prompt to fix a connection.
 
