@@ -2,10 +2,10 @@ import { fileURLToPath } from 'node:url';
 
 import { withMcpSession } from '@beonauto/api/testing';
 import { createApiKey } from '@beonauto/identity';
-import { Schema } from 'effect';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { spawnServer, spawnedServerTestTimeoutMs } from './testing/processes/spawned-server.ts';
+import { messagesOf, modelLinesOf } from './testing/processes/stderr-lines.ts';
 import { temporaryLedger } from './testing/records/temporary-ledger.ts';
 
 const mainModule = fileURLToPath(new URL('main.ts', import.meta.url));
@@ -47,17 +47,6 @@ const invalidSettings: ReadonlyArray<readonly [Readonly<Record<string, string>>,
 
 const protectedPath = '/v1/orgs/demo/playbooks';
 
-const decodeLogLine = Schema.decodeUnknownSync(
-  Schema.fromJsonString(Schema.Struct({ message: Schema.String, level: Schema.String })),
-);
-
-function logLines(stderr: string): readonly { readonly message: string; readonly level: string }[] {
-  return stderr
-    .split('\n')
-    .filter((line) => line !== '')
-    .map((line) => decodeLogLine(line));
-}
-
 const noModelProvider =
   'No model provider is configured, so reasoning functions cannot run; set ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY or MODEL_GATEWAYS';
 
@@ -69,30 +58,6 @@ const functionsRun: readonly unknown[] = [
 
 const ledgerKept = `The ledger is kept in the file ${ledger.fileName}`;
 const keptIn: readonly string[] = [ledgerKept, "Content is kept in the ledger's database"];
-
-const ModelLineSchema = Schema.Struct({
-  message: Schema.String,
-  level: Schema.String,
-  annotations: Schema.Record(Schema.String, Schema.Unknown),
-});
-
-type ModelLine = typeof ModelLineSchema.Type;
-
-const decodeModelLine = Schema.decodeUnknownSync(Schema.fromJsonString(ModelLineSchema));
-
-function modelLinesOf(stderr: string): readonly ModelLine[] {
-  return stderr
-    .split('\n')
-    .filter((line) => /"message":"(?:Model provider|No model provider)/u.test(line))
-    .map((line) => {
-      const { message, level, annotations } = decodeModelLine(line);
-      return { message, level, annotations };
-    });
-}
-
-function messagesOf(stderr: string): readonly string[] {
-  return logLines(stderr).map(({ message }) => message);
-}
 
 function startInLocalMode(...after: readonly string[]): readonly unknown[] {
   return [expect.stringMatching(/^Local mode is on: /u), ...keptIn, noModelProvider, ...functionsRun, ...after];
