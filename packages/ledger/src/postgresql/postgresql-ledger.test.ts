@@ -2,8 +2,8 @@ import { Ledger } from '@on.auto/operations';
 import { Cause, Effect } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
-import { plainPoolsOn, unreachableDatabase } from '../testing/index.ts';
-import { postgresqlEventStore, postgresqlLedgerLayer } from './postgresql-ledger.ts';
+import { unreachableDatabase } from '../testing/index.ts';
+import { plainPoolsOn, postgresqlEventStore, postgresqlLedgerLayer } from './postgresql-ledger.ts';
 
 describe('a ledger on PostgreSQL that cannot be reached', () => {
   it('fails to build, with a defect naming the address it tried and no credential', async () => {

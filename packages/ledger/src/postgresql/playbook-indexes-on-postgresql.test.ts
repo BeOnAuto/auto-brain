@@ -4,8 +4,8 @@ import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { thePlaybookIndexes } from '../postgresql-reads/index-checks.ts';
-import { openLedgerWith, plainPoolsOn } from '../testing/open-ledger.ts';
-import { postgresqlLedgerLayer } from './postgresql-ledger.ts';
+import { openLedgerWith } from '../testing/open-ledger.ts';
+import { plainPoolsOn, postgresqlLedgerLayer } from './postgresql-ledger.ts';
 
 const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
 

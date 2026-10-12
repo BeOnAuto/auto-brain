@@ -1,7 +1,7 @@
 import { getPostgreSQLEventStore } from '@event-driven-io/emmett-postgresql';
 import { pgEventStoreDriver } from '@event-driven-io/emmett-postgresql/pg';
 import type { RunOutcomeMapping, KeyedProjection } from '@on.auto/operations';
-import type { Pool } from 'pg';
+import { Pool } from 'pg';
 
 import { emmettEventStore } from '../emmett/emmett-event-store.ts';
 import type { LedgerStore } from '../event-store.ts';
@@ -15,6 +15,10 @@ export interface PoolBounds {
 }
 
 export type PostgreSQLPools = (bounds: PoolBounds) => Pool;
+
+export function plainPoolsOn(connectionString: string): PostgreSQLPools {
+  return ({ max }) => new Pool({ connectionString, max });
+}
 
 export interface PostgreSQLOptions {
   readonly pools: PostgreSQLPools;

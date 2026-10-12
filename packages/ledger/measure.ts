@@ -14,10 +14,10 @@ import {
   tick,
   timeOf,
 } from './measure/dataset.ts';
-import { postgresqlLedgerLayer } from './src/postgresql/postgresql-ledger.ts';
+import { plainPoolsOn, postgresqlLedgerLayer } from './src/postgresql/postgresql-ledger.ts';
 import { cursorOf } from './src/recorded/cursor.ts';
 import { ledgerLayer } from './src/sqlite3.ts';
-import { openLedgerWith, plainPoolsOn, type OpenLedger } from './src/testing/open-ledger.ts';
+import { openLedgerWith, type OpenLedger } from './src/testing/open-ledger.ts';
 import { temporaryDatabase } from './src/testing/temporary-database.ts';
 
 type AnyLedger = OpenLedger['ledger'];

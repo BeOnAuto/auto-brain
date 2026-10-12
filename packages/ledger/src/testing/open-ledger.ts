@@ -1,8 +1,6 @@
 import { Ledger } from '@on.auto/operations';
 import { Effect, ManagedRuntime, type Layer, type Result } from 'effect';
-import { Pool } from 'pg';
 
-import type { PostgreSQLPools } from '../postgresql/postgresql-event-store.ts';
 import { ledgerLayer } from '../sqlite3.ts';
 
 export interface OpenLedger {
@@ -18,10 +16,6 @@ export async function openLedgerWith(layer: Layer.Layer<Ledger>): Promise<OpenLe
 
 export function openLedger(fileName = ':memory:'): Promise<OpenLedger> {
   return openLedgerWith(ledgerLayer({ fileName }));
-}
-
-export function plainPoolsOn(connectionString: string): PostgreSQLPools {
-  return ({ max }) => new Pool({ connectionString, max });
 }
 
 export function outcomeOf<A, E>(effect: Effect.Effect<A, E>): Promise<Result.Result<A, E>> {

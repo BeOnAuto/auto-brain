@@ -7,6 +7,7 @@ import { lostConnectionsLoggedWith } from './lost-connections.ts';
 import { postgresqlEventStore, type PostgreSQLOptions } from './postgresql-event-store.ts';
 
 export {
+  plainPoolsOn,
   postgresqlEventStore,
   type PoolBounds,
   type PostgreSQLOptions,

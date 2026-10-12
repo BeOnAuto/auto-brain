@@ -5,8 +5,8 @@ import { runTallies } from '@on.auto/operations/testing';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
-import { postgresqlLedgerLayer } from '../postgresql/postgresql-ledger.ts';
-import { openLedgerWith, plainPoolsOn } from '../testing/open-ledger.ts';
+import { plainPoolsOn, postgresqlLedgerLayer } from '../postgresql/postgresql-ledger.ts';
+import { openLedgerWith } from '../testing/open-ledger.ts';
 import { fourRuns, fourRunsKept, reading } from './run-outcomes-behaviour.ts';
 
 const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';

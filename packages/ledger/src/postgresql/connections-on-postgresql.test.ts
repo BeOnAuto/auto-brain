@@ -5,10 +5,10 @@ import { Client } from 'pg';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import { sweepsWatched } from '../content/watched-sweeps.ts';
-import { openLedgerWith, plainPoolsOn } from '../testing/open-ledger.ts';
+import { openLedgerWith } from '../testing/open-ledger.ts';
 import { tally } from '../testing/tally.ts';
 import { lostConnectionsLoggedWith } from './lost-connections.ts';
-import { postgresqlEventStore, postgresqlLedgerLayer } from './postgresql-ledger.ts';
+import { plainPoolsOn, postgresqlEventStore, postgresqlLedgerLayer } from './postgresql-ledger.ts';
 import { emmettsMigrationLock } from './postgresql-run-outcomes.ts';
 
 const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';

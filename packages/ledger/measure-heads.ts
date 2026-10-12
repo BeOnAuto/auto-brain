@@ -5,8 +5,7 @@ import { Client } from 'pg';
 
 import type { StoredPageRequest } from './src/event-store.ts';
 import { postgresqlRecordedStore, type Query } from './src/postgresql-reads/postgresql-recorded.ts';
-import { postgresqlEventStore } from './src/postgresql/postgresql-event-store.ts';
-import { plainPoolsOn } from './src/testing/open-ledger.ts';
+import { plainPoolsOn, postgresqlEventStore } from './src/postgresql/postgresql-event-store.ts';
 
 type Querying = Readonly<Pick<Client, 'query'>>;
 
