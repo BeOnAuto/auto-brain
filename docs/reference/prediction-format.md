@@ -85,19 +85,19 @@ The names of the target and of the features are 1 to 64 lowercase letters, digit
 
 The holdout holds back at least twice the longest horizon and at least 8 periods, and at most half the window. The window holds at least the holdout plus two seasons, or, when no season is named, the holdout plus twice the longest horizon.
 
-An approver named under `evaluation.activate` is an active interaction function whose input schema takes `{ function, version, card }` and whose output schema is an object whose one required property `decision` is `approve` or `reject`. A function named under `source.through` is an active interaction function whose input schema takes `{ build: {} }` and whose answer is an object that takes `candidates`, a list of text. Both are checked when the prediction function is saved, so save them first.
+An approver named under `evaluation.activate` is an active interaction function whose input schema takes `{ function, version, card }` and whose output schema is an object whose one required property `decision` is `approve` or `reject`. A function named under `source.through` is an active interaction function whose input schema takes `{ build: {} }` and whose answer is an object whose one required property `candidates` is a list of text. Both are checked when the prediction function is saved, so save them first.
 
 Every problem a save finds is refused with its line, and nothing is saved.
 
 ### The input and the output
 
-The input of a run is one of two shapes. A **question** is `{ series, horizon, given? }`: the series as text, one of the function's horizons, and, when the function names `given`, the value of each given feature for the period asked about, by its name, and no other. A **build** is `{ build: {} }`, which asks for a new version.
+The input of a run is one of two shapes. A **question** is `{ series, horizon, given? }`: the series as text of 1 to 256 bytes, one of the function's horizons, and, when the function names `given`, the value of each given feature for the period asked about, by its name, and no other. A **build** is `{ build: {} }`, which asks for a new version.
 
 A question's output is the **prediction**, `{ series, origin, period, horizon, value, low, high, coverage, version }`: `origin` is the last observed period and `period` the predicted one, each in the ISO 8601 form of the grain, `YYYY-MM-DD`, `YYYY-Www`, `YYYY-MM`, `YYYY-Qn` or `YYYY`; `value` is the 50th percentile, `low` the 10th and `high` the 90th, so `coverage` is 0.8; `version` is the version of the model that answered. A build's output is `{ version, winner, candidates }`, `version` and `winner` null when no candidate beat the baselines.
 
 ## The dataset
 
-A forecast is at a grain and the playbook records events one by one, so the playbook keeps a **dataset** for each data part: rows keyed by series and period, folded from the events the filters name. Two functions with the same data part and grain share one dataset, and an edit that leaves the data part alone changes nothing; an edit that changes it starts a new dataset from the first event of the history, and the old one is dropped once no active function names it.
+A forecast is at a grain and the playbook records events one by one, so the playbook keeps a **dataset** for each data part: rows keyed by series and period, folded from the events the filters name. Two functions whose data parts fold the same rows at the same grain share one dataset, and an edit that leaves the rows alone changes nothing, a wider `window` or other `given` features among them, since a build and a question read those from the same rows; an edit that changes the rows, a filter, a pointer, an aggregation, a feature or the grain, starts a new dataset from the first event of the history, and the old one is dropped once no active function names it.
 
 | Field           | Meaning                                                                                                                                                                         |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -113,13 +113,13 @@ A `time` or a `series` that points where none of the named event types holds a v
 
 For each event a filter takes, in the order the playbook recorded them, the dataset reads the time, in UTC, and finds its period: a week runs from Monday and is numbered as ISO 8601 numbers weeks, so `2026-W01` starts on 2025-12-29, and a quarter is three calendar months. It reads the series, then the target and each feature, and adds the event to the row of that series and period: `count` adds one, `sum` adds the value, `last` takes the value of the latest event by its time, whatever order the events were recorded in, and `mean` keeps the sum and the count. A value that is missing or null adds nothing.
 
-The dataset passes over an event whose time is not an ISO 8601 time with its offset on a day of the calendar, or names a leap second; whose series is not text of 1 to 256 bytes; whose target or feature is a value that is not a finite number; or whose data test fails. It counts each and notes it in the server's log, and the event adds to no row. A data test that runs out of time or memory stops the dataset before that event, and it tries again on a later pass; once the test has stopped at the same event three times in a row, the event is passed over and noted as the others are.
+The dataset passes over an event whose time is not an ISO 8601 time with its offset on a day of the calendar, a date alone among them, or names a leap second; whose series is not text of 1 to 256 bytes; whose target or feature is a value that is not a finite number; or whose data test fails. It counts each and notes it in the server's log, and the event adds to no row. A data test that runs out of time or memory meets a limit no event causes, so its event is never passed over: the dataset stops before that event and tries it again at the server's next sweep, a second later by default, and after twenty tries without a page folded whole it stalls, its phase `stalled`, and folds nothing more. A data part that changes starts a dataset of its own.
 
-`get_definition` of a prediction function adds its `standing`: the dataset's `kind`, `projection` or `uploaded`, its `data_sha256`, its `phase`, `waiting` for a slot to be built, `rebuilding` from the history or `live`, its `checkpoint` and `checkpoint_at`, the `rows` and `series` it holds, its `first_period` and `last_period`, the `events_folded` and the events `passed_over`. A function that names an uploaded dataset has no projection, and its standing says so.
+`get_definition` of a prediction function adds its `standing`: the dataset's `kind`, `projection` or `uploaded`, its `data_sha256`, its `phase`, `waiting` for a slot to be built, `rebuilding` from the history, `live` or `stalled`, its `checkpoint` and `checkpoint_at`, the `rows` and `series` it holds, its `first_period` and `last_period`, the `events_folded`, the events `passed_over`, and its `stall`, null unless it stalled and then `{ record, detail }`, the event it stopped at and why. A function that names an uploaded dataset has no projection, and its standing says so.
 
 ### The rows a build reads
 
-A build reads the dataset as two files in CSV, each kept under its SHA-256: the **training rows**, which a trainer reads, and the **scoring rows**, which only the playbook reads. Both cover the window: a dense grid of the `window` periods that ends at the last period closed when the build starts. The training rows leave out the last `holdout` periods; the scoring rows hold them too.
+A build reads the dataset as two files in CSV, each kept under its SHA-256 and both read at one checkpoint of the dataset, however far it folds on while they are written: the **training rows**, which a trainer reads, and the **scoring rows**, which only the playbook reads. Both cover the window: a dense grid of the `window` periods that ends at the last period closed when the build starts. The training rows leave out the last `holdout` periods; the scoring rows hold them too.
 
 The header is `series,period,` followed by the target and the features in the document's order, such as `series,period,orders,basket,promotion`. Each row is one series and one period, sorted by series, as their UTF-8 bytes sort, and then by period; a period is written in the ISO 8601 form of the grain and each value as a JSON number. A period with no event is 0 for `count` and `sum`, a real observation of nothing, and an empty cell for `last` and `mean`, as is a feature no event of the period carried. A series observed in fewer than the holdout plus one periods of the window is left out. The files are UTF-8 as RFC 4180 writes CSV, each record ended by CRLF:
 
@@ -135,7 +135,7 @@ north,2026-W41,0,,
 
 A playbook that has no history yet can be given its rows. Upload them with `PUT /v1/orgs/{org}/playbooks/{playbook}/datasets/{sha256}`, under `playbook:write`, with the body as `text/csv` and its `Content-Length`, at most 64 MiB, and `sha256` the SHA-256 of the body. The body follows the grammar above with any target and feature names: the header `series,period` and then the columns, rows sorted by series and then period, one row a series and period, every period in one ISO 8601 form, each value a JSON number or empty, at most 200,000 rows over at most 1,000 series. The upload is HTTP alone, not a tool.
 
-The answer is `{ dataset, bytes, rows, series, columns, period, first_period, last_period }`. A body that breaks the grammar is refused `invalid_input` with the line of its first fault, and one whose digest is not the path's with both digests; nothing is kept then. A function names the dataset as `data.dataset`:
+The answer is `{ dataset, bytes, rows, series, columns, period, first_period, last_period }`. A body that breaks the grammar is refused `invalid_input` with the line of its first fault, and one whose digest is not the path's with both digests; nothing is kept then. A function names the dataset as `data.dataset`, and its save checks that this playbook keeps it, that its rows are of the grain `predicts.period` names, and that its header names `predicts.target` and then the features of `data.features` in their order, refusing each fault at its line:
 
 <!-- prettier-ignore -->
 ```yaml
@@ -160,7 +160,7 @@ The body of the document is the brief, a Liquid template a build renders for the
 | `function.name`, `function.target`, `function.unit` | The function's name, its target and its unit                                   |
 | `function.rules`                                    | The rules, as a list of text                                                   |
 
-Lists have `first`, `last` and `size`. The brief is compiled when the function is saved, and rendered over the largest dataset the bounds admit, with 200,000 rows over 1,000 series; a brief that does not compile, reads a name not in `dataset` or `function`, writes a list or a mapping where text goes, or renders past 64 KiB is refused at its line. Write what the trainer needs to know that the rows do not say: what the target means, why a feature matters, what a good model must not do.
+Lists have `first`, `last` and `size`. The brief is compiled when the function is saved, and rendered over the largest dataset the bounds admit, with 200,000 rows over 1,000 series; a brief that does not compile, reads a name not in `dataset` or `function`, writes a list or a mapping where text goes, renders past 64 KiB or takes longer than the 200 ms a template renders in is refused at its line. Write what the trainer needs to know that the rows do not say: what the target means, why a feature matters, what a good model must not do.
 
 ## Bounds
 
@@ -173,7 +173,7 @@ Lists have `first`, `last` and `size`. The brief is compiled when the function i
 | Shadow periods           | 0 to 52                                                                                   | The save is refused                      |
 | Filters, features, rules | 8 filters; 40 features; 32 rules of 256 bytes each                                        | The save is refused                      |
 | A build's wait           | One minute to 30 days                                                                     | The save is refused                      |
-| The brief                | 64 KiB rendered over the largest dataset                                                  | The save is refused                      |
+| The brief                | 64 KiB rendered over the largest dataset, within the 200 ms a template renders in         | The save is refused                      |
 | A series                 | 1 to 256 bytes of text                                                                    | The event is passed over                 |
 | A dataset                | 200,000 rows over 1,000 series, 64 MiB as CSV                                             | A build is refused; an upload is refused |
 | Functions a playbook     | 32 active, unless the server's `PREDICTION_MAX_FUNCTIONS` says otherwise, from 1 to 1,000 | The save is refused                      |
@@ -182,6 +182,6 @@ Lists have `first`, `last` and `size`. The brief is compiled when the function i
 
 ## Availability
 
-This runtime keeps the dataset of a saved prediction function and takes uploaded datasets, but does not offer a build or a prediction yet: a question is refused `conflict` with the kind `no_active_version`, since no version can be built, and a build is refused `unavailable`. See [Functions and availability](../concepts/functions.md#availability).
+This runtime keeps the dataset of a saved prediction function and takes uploaded datasets, but does not offer a build or a prediction yet: a question is refused `conflict` with the kind `no_active_version`, since no version can be built, and a build is refused `unavailable` with the kind `build_not_offered`, which asking again does not change. See [Functions and availability](../concepts/functions.md#availability).
 
 </div>
