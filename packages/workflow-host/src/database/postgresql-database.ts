@@ -3,26 +3,31 @@ import { postgresqlEventStore } from '@beonauto/ledger/postgresql';
 import { Effect, Function, Schema } from 'effect';
 import { Pool } from 'pg';
 
-import { failedWith, oneRowOf, WholeNumber, type HostDatabase } from './host-database.ts';
+import {
+  failedWith,
+  lastAnswerOf,
+  oneRowOf,
+  WholeNumber,
+  wroteARow,
+  type HostDatabase,
+  type StatementAnswer,
+} from './host-database.ts';
 import { addedColumns, hostTables, indexesOfAddedColumns } from './host-tables.ts';
 import { statement, textOnPostgreSQL, type Statement, type StatementValue } from './statement.ts';
 
 export interface PostgreSQLDatabaseOptions {
   readonly connectionString: string;
   readonly reportLostConnection: (error: Readonly<Error>) => void;
-}
-
-interface Answer {
-  readonly rows: readonly unknown[];
+  readonly tables: readonly Statement[];
 }
 
 export interface Connection {
-  query(text: string, values?: readonly StatementValue[]): Promise<Answer>;
+  query(text: string, values?: readonly StatementValue[]): Promise<StatementAnswer>;
   release(): void;
 }
 
 export interface Connections {
-  query(text: string, values: readonly StatementValue[]): Promise<Answer>;
+  query(text: string, values: readonly StatementValue[]): Promise<StatementAnswer>;
   connect(): Promise<Connection>;
   end(): Promise<void>;
 }
@@ -33,25 +38,21 @@ const migrationLock = 7_461_239_041;
 
 const NowRow = Schema.Struct({ now: WholeNumber });
 
-async function createdEach(connection: Connection, tables: readonly Statement[]): Promise<void> {
-  const [first, ...rest] = tables;
-  if (first !== undefined) {
-    await connection.query(textOnPostgreSQL(first));
-    await createdEach(connection, rest);
-  }
+function alwaysKept(): boolean {
+  return true;
 }
 
-async function migratedOn(connections: Connections): Promise<void> {
+async function inTransaction(
+  connections: Connections,
+  statements: readonly Statement[],
+  isKept: (last: StatementAnswer) => boolean,
+): Promise<StatementAnswer> {
   const connection = await connections.connect();
   try {
     await connection.query('BEGIN');
-    await connection.query('SELECT pg_advisory_xact_lock($1)', [migrationLock]);
-    await createdEach(connection, [
-      ...hostTables,
-      ...addedColumns.map(({ addedWhenMissing }) => addedWhenMissing),
-      ...indexesOfAddedColumns,
-    ]);
-    await connection.query('COMMIT');
+    const last = await lastAnswerOf(statements, (asked) => connection.query(textOnPostgreSQL(asked), asked.values));
+    await connection.query(isKept(last) ? 'COMMIT' : 'ROLLBACK');
+    return last;
   } catch (failure) {
     await connection.query('ROLLBACK');
     throw failure;
@@ -60,10 +61,33 @@ async function migratedOn(connections: Connections): Promise<void> {
   }
 }
 
-export async function postgresqlDatabaseOn(store: EventStore, connections: Connections): Promise<HostDatabase> {
+async function migratedOn(connections: Connections, tables: readonly Statement[]): Promise<void> {
+  await inTransaction(
+    connections,
+    [
+      statement`SELECT pg_advisory_xact_lock(${migrationLock})`,
+      ...hostTables,
+      ...tables,
+      ...addedColumns.map(({ addedWhenMissing }) => addedWhenMissing),
+      ...indexesOfAddedColumns,
+    ],
+    alwaysKept,
+  );
+}
+
+export async function postgresqlDatabaseOn(
+  store: EventStore,
+  connections: Connections,
+  tables: readonly Statement[],
+): Promise<HostDatabase> {
   const query = (asked: Statement) =>
     Effect.tryPromise({
       try: () => connections.query(textOnPostgreSQL(asked), asked.values),
+      catch: failedWith,
+    }).pipe(Effect.map(({ rows }) => rows));
+  const transaction = (statements: readonly Statement[]) =>
+    Effect.tryPromise({
+      try: () => inTransaction(connections, statements, wroteARow),
       catch: failedWith,
     }).pipe(Effect.map(({ rows }) => rows));
   const sharedClock = oneRowOf(NowRow, query(statement`SELECT (EXTRACT(EPOCH FROM now()) * 1000)::bigint AS now`)).pipe(
@@ -75,8 +99,8 @@ export async function postgresqlDatabaseOn(store: EventStore, connections: Conne
   };
   try {
     await store.migrate();
-    await migratedOn(connections);
-    return { store, read: query, write: query, sharedClock, close };
+    await migratedOn(connections, tables);
+    return { store, read: query, write: query, transaction, sharedClock, close };
   } catch (failure) {
     await close().catch(Function.constVoid);
     throw failure;
@@ -86,8 +110,9 @@ export async function postgresqlDatabaseOn(store: EventStore, connections: Conne
 export function openPostgreSQLDatabase({
   connectionString,
   reportLostConnection,
+  tables,
 }: PostgreSQLDatabaseOptions): Promise<HostDatabase> {
   const pool = new Pool({ connectionString, max: connectionsForTheHostTables });
   pool.on('error', reportLostConnection);
-  return postgresqlDatabaseOn(postgresqlEventStore({ connectionString, reportLostConnection }), pool);
+  return postgresqlDatabaseOn(postgresqlEventStore({ connectionString, reportLostConnection }), pool, tables);
 }

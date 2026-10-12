@@ -1,9 +1,13 @@
+import type { ProgramPool } from '@beonauto/workflow-engine/dsl';
 import { Effect } from 'effect';
 import { expect, vi } from 'vitest';
 
-import type { KeptView } from '../views/view-rows.ts';
-import type { ViewsPort } from '../views/views-port.ts';
-import { alpha, viewTestTimeoutMs, type Playbook } from './view-documents.ts';
+import type { HostDatabase } from '../database/host-database.ts';
+import { definitionsByType } from '../projector/projector-schedule.ts';
+import { reconciledRows } from '../projector/reconciled-rows.ts';
+import type { KeptView, ViewRow } from '../views/view-rows.ts';
+import { viewsPortOn } from '../views/views-port.ts';
+import { alpha, alphaKey, viewsFolderOver, viewTestTimeoutMs, type Playbook } from './view-documents.ts';
 
 export interface ViewReading {
   readonly viewOf: (name: string, playbook?: Playbook) => Promise<KeptView | undefined>;
@@ -13,7 +17,8 @@ export interface ViewReading {
 
 export const viewWaiting = { timeout: viewTestTimeoutMs - 5000, interval: 20 };
 
-export function viewReadingOf(views: ViewsPort): ViewReading {
+export function viewReadingOf(database: HostDatabase): ViewReading {
+  const views = viewsPortOn(database);
   const viewOf: ViewReading['viewOf'] = (name, playbook = alpha) => Effect.runPromise(views.viewOf(playbook, name));
   return {
     viewOf,
@@ -31,4 +36,14 @@ export function viewReadingOf(views: ViewsPort): ViewReading {
         return true;
       }, viewWaiting),
   };
+}
+
+export function viewsReconciled(
+  pool: ProgramPool,
+  database: HostDatabase,
+  rebuildsAtOnce: number,
+): () => Promise<readonly ViewRow[]> {
+  const kept = { database, definitions: definitionsByType().of };
+  const folder = viewsFolderOver(pool, rebuildsAtOnce);
+  return () => Effect.runPromise(reconciledRows(folder, kept, alphaKey));
 }

@@ -145,6 +145,7 @@ describe('pnpm dev with LOG_FORMAT=pretty in dev.env', { timeout: developmentTes
       "INFO  Content is kept in the ledger's database content_store=ledger",
       expect.stringMatching(/^WARN {2}No model provider is configured, /u),
       expect.stringMatching(/^INFO {2}Reasoning functions run in this server: the model calls of a run add up to /u),
+      expect.stringMatching(/^INFO {2}Model processes may run at most 4 at once, at most 2 of them for builds, /u),
       expect.stringMatching(/^INFO {2}Workflows run in this server: a run lasts at most 30 days, /u),
       'INFO  [dev] Auto Runtime is ready',
       `  server     http://localhost:${port}`,

@@ -2,13 +2,20 @@ import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 import { sqliteEventStore } from '@beonauto/ledger';
-import { dumbo } from '@event-driven-io/dumbo';
+import { dumbo, type SQL } from '@event-driven-io/dumbo';
 import { sqlite3EventStoreDriver } from '@event-driven-io/emmett-sqlite/sqlite3';
 import { Effect, Function, Schema } from 'effect';
 
-import { failedWith, type DatabaseFailed, type HostDatabase } from './host-database.ts';
+import {
+  failedWith,
+  lastAnswerOf,
+  wroteARow,
+  type DatabaseFailed,
+  type HostDatabase,
+  type StatementAnswer,
+} from './host-database.ts';
 import { addedColumns, columnsOnSQLite, hostTables, indexesOfAddedColumns, type AddedColumn } from './host-tables.ts';
-import { onSQLite } from './statement.ts';
+import { onSQLite, type Statement } from './statement.ts';
 
 const pageCacheOfEightMebibytes = -8192;
 
@@ -23,6 +30,10 @@ function prepareDirectoryOf(fileName: string): void {
 }
 
 const ColumnRows = Schema.Array(Schema.Struct({ name: Schema.String }));
+
+interface WriterTransaction {
+  readonly execute: { readonly command: (sql: SQL) => Promise<StatementAnswer> };
+}
 
 function columnAddedTo(
   database: HostDatabase,
@@ -43,7 +54,7 @@ function columnsAddedTo(database: HostDatabase): Effect.Effect<void, DatabaseFai
   );
 }
 
-export async function openSQLiteDatabase(fileName: string): Promise<HostDatabase> {
+export async function openSQLiteDatabase(fileName: string, tables: readonly Statement[]): Promise<HostDatabase> {
   prepareDirectoryOf(fileName);
   const options = { driver: sqlite3EventStoreDriver, fileName, connectionOptions: modestConnections };
   const pool = dumbo(sqlite3EventStoreDriver.mapToDumboOptions(options));
@@ -60,12 +71,21 @@ export async function openSQLiteDatabase(fileName: string): Promise<HostDatabase
         try: async (): Promise<readonly unknown[]> => (await pool.execute.command(onSQLite(statement))).rows,
         catch: failedWith,
       }),
+    transaction: (statements) =>
+      Effect.tryPromise({
+        try: () =>
+          pool.withTransaction(async ({ execute }: WriterTransaction) => {
+            const last = await lastAnswerOf(statements, (statement) => execute.command(onSQLite(statement)));
+            return { success: wroteARow(last), result: last.rows };
+          }),
+        catch: failedWith,
+      }),
     sharedClock: null,
     close: () => store.close(),
   };
   try {
     await store.migrate();
-    await Effect.runPromise(Effect.forEach(hostTables, database.write, { discard: true }));
+    await Effect.runPromise(Effect.forEach([...hostTables, ...tables], database.write, { discard: true }));
     await Effect.runPromise(columnsAddedTo(database));
     return database;
   } catch (failure) {

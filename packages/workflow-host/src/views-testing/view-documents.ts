@@ -2,9 +2,12 @@ import type { AppendSignal } from '@beonauto/ledger';
 import { streamPrefixOfPlaybook } from '@beonauto/operations';
 import { unitMemoryBytes, workerStackBytes, type ProgramPool } from '@beonauto/workflow-engine/dsl';
 
-import type { FoldingSettings, ProjectorSettings } from '../projector/projector-settings.ts';
+import { someFolder, type SomeFolder } from '../projector/folder.ts';
+import type { ProjectorSettings } from '../projector/projector-settings.ts';
 import type { ViewDetails } from '../views/view-details.ts';
 import type { KeptView } from '../views/view-rows.ts';
+import { viewsFolder } from '../views/views-folder.ts';
+import type { FoldingSettings, ViewsFolding } from '../views/views-folding.ts';
 import { testFoldWorker } from './test-fold-workers.ts';
 
 export interface Playbook {
@@ -52,20 +55,48 @@ export function foldingOf(): FoldingSettings {
   };
 }
 
-export type ViewSettingsOf = (more?: Partial<ProjectorSettings>) => ProjectorSettings;
+export interface ViewsProjecting extends Omit<ProjectorSettings, 'folders'>, ViewsFolding {
+  readonly besides: readonly SomeFolder[];
+}
 
-export function settingsOver(pool: ProgramPool, appends: AppendSignal): ViewSettingsOf {
-  return (more = {}) => ({
+export type ViewSettingsOf = (more?: Partial<ViewsProjecting>) => ProjectorSettings;
+
+export function viewsFolderOver(pool: ProgramPool, rebuildsAtOnce = 4) {
+  return viewsFolder({
     definitionType: 'recall',
     pool,
     folding: foldingOf(),
-    playbooksAtOnce: 4,
-    rebuildsAtOnce: 4,
-    pagesPerWake: 10,
     overtimesBeforeStall: 20,
-    appends,
-    ...more,
+    rebuildsAtOnce,
   });
+}
+
+export function settingsOver(pool: ProgramPool, appends: AppendSignal): ViewSettingsOf {
+  return (more = {}) => {
+    const settings: ViewsProjecting = {
+      definitionType: 'recall',
+      pool,
+      folding: foldingOf(),
+      playbooksAtOnce: 4,
+      rebuildsAtOnce: 4,
+      pagesPerWake: 10,
+      overtimesBeforeStall: 20,
+      appends,
+      besides: [],
+      ...more,
+    };
+    const {
+      definitionType,
+      folding,
+      overtimesBeforeStall,
+      rebuildsAtOnce,
+      pool: folded,
+      besides,
+      ...projecting
+    } = settings;
+    const views = viewsFolder({ definitionType, pool: folded, folding, overtimesBeforeStall, rebuildsAtOnce });
+    return { ...projecting, folders: [someFolder(views), ...besides] };
+  };
 }
 
 export function isLive({ phase }: KeptView): boolean {

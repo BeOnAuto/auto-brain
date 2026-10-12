@@ -33,7 +33,11 @@ export interface WorkflowHost {
 
 export async function openWorkflowHost(options: HostOptions): Promise<WorkflowHost> {
   const clock = options.clock ?? systemClock;
-  const { database } = await storeOf(options.database, options.reports.lostConnection);
+  const { database } = await storeOf(
+    options.database,
+    options.reports.lostConnection,
+    options.projector?.folders ?? [],
+  );
   const standing = await standingOn(database, { ...options, clock }, options.holder);
   const { guarded, closed } = gate();
   const runs = runRequests({ database, clock, serving: standing.serving });

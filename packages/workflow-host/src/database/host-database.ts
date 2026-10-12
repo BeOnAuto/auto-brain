@@ -9,11 +9,33 @@ export interface HostDatabase {
   readonly store: EventStore;
   readonly read: (statement: Statement) => Effect.Effect<readonly unknown[], DatabaseFailed>;
   readonly write: (statement: Statement) => Effect.Effect<readonly unknown[], DatabaseFailed>;
+  readonly transaction: (statements: readonly Statement[]) => Effect.Effect<readonly unknown[], DatabaseFailed>;
   readonly sharedClock: Effect.Effect<number, DatabaseFailed> | null;
   readonly close: () => Promise<void>;
 }
 
+export interface StatementAnswer {
+  readonly rows: readonly unknown[];
+  readonly rowCount: number | null;
+}
+
+const nothingAnswered: StatementAnswer = { rows: [], rowCount: 0 };
+
 export const WholeNumber = Schema.Union([Schema.Finite, Schema.FiniteFromString]);
+
+export function lastAnswerOf(
+  statements: readonly Statement[],
+  answered: (statement: Statement) => Promise<StatementAnswer>,
+): Promise<StatementAnswer> {
+  return statements.reduce(async (before: Promise<StatementAnswer>, next: Statement) => {
+    await before;
+    return answered(next);
+  }, Promise.resolve(nothingAnswered));
+}
+
+export function wroteARow({ rowCount }: StatementAnswer): boolean {
+  return Number(rowCount) > 0;
+}
 
 export function failedWith(error: unknown): DatabaseFailed {
   return new DatabaseFailed({ detail: String(error) });

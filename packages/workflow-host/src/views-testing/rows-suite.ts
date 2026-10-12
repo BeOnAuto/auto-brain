@@ -2,13 +2,22 @@ import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { oneRowOf, rowsOf, type HostDatabase } from '../database/host-database.ts';
-import { reconciled, rowsOfPlaybook, type Reconciling } from '../projector/view-reconciling.ts';
 import type { SettingsOf } from '../testing/host-files.ts';
 import { viewRowOf, ViewRowSchema, type ViewRow } from '../views/view-rows.ts';
 import { foldedWritten, viewDropped, viewNamed, type FoldedRow } from '../views/view-statements.ts';
 import { racingOnce } from './pool-faults.ts';
-import { alphaKey, counting, detailsOf, foldOf, liveAt, succeeded, viewTestTimeoutMs } from './view-documents.ts';
+import {
+  alphaKey,
+  counting,
+  detailsOf,
+  foldOf,
+  liveAt,
+  succeeded,
+  viewsFolderOver,
+  viewTestTimeoutMs,
+} from './view-documents.ts';
 import { viewHarness, type ViewHarness } from './view-harness.ts';
+import { viewsReconciled } from './view-reading.ts';
 
 const NameRow = Schema.Struct({ name: Schema.String });
 
@@ -23,13 +32,7 @@ function reconciling(
   rebuildsAtOnce: number,
   database = views.store.database,
 ): () => Promise<readonly ViewRow[]> {
-  const parts: Reconciling = {
-    database,
-    definitionType: 'recall',
-    rebuildsAtOnce,
-    definitions: new Map(),
-  };
-  return () => Effect.runPromise(reconciled(parts, alphaKey));
+  return viewsReconciled(views.pool, database, rebuildsAtOnce);
 }
 
 function written(views: ViewHarness, read: ViewRow, folded: Partial<FoldedRow>): Promise<number> {
@@ -55,18 +58,19 @@ function rowNamed(views: ViewHarness, name: string): Promise<ViewRow> {
 function rowsAfterEachWrite(views: ViewHarness) {
   const { database } = views.store;
   const seen: PhasedRows[] = [];
-  const rowsRead = Effect.map(rowsOfPlaybook(database, alphaKey), (rows) => {
+  const rowsRead = Effect.map(viewsFolderOver(views.pool).rowsOf(database, alphaKey), (rows) => {
     seen.push(rows.map(({ name, phase }) => ({ name, phase })));
   });
   const watched: HostDatabase = {
     ...database,
     write: (statement) => Effect.tap(database.write(statement), () => rowsRead),
+    transaction: (statements) => Effect.tap(database.transaction(statements), () => rowsRead),
   };
   return { database: watched, seen: () => seen };
 }
 
 function rowsOfAlpha(views: ViewHarness): Promise<readonly ViewRow[]> {
-  return Effect.runPromise(rowsOfPlaybook(views.store.database, alphaKey));
+  return Effect.runPromise(viewsFolderOver(views.pool).rowsOf(views.store.database, alphaKey));
 }
 
 function slotTests(settingsOf: SettingsOf): void {

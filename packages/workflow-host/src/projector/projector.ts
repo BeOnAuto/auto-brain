@@ -1,13 +1,13 @@
-import { Cause, Effect, Fiber, Schema, Semaphore } from 'effect';
+import { Cause, Effect, Fiber } from 'effect';
 
-import { rowsOf, type HostDatabase } from '../database/host-database.ts';
+import type { HostDatabase } from '../database/host-database.ts';
 import type { HostReports } from '../host/host-reports.ts';
 import type { HostClock } from '../loop/host-clock.ts';
-import { playbooksWithViews } from '../views/view-statements.ts';
+import type { SomeFolder } from './folder.ts';
 import { playbookKeyOfDefinitions } from './playbook-definitions.ts';
 import { playbookPass, type PassParts } from './playbook-pass.ts';
 import { scheduleOf, type Schedule } from './projector-schedule.ts';
-import { shareOfThePool, type ProjectorSettings } from './projector-settings.ts';
+import type { ProjectorSettings } from './projector-settings.ts';
 
 export interface Projector {
   readonly stop: () => Promise<void>;
@@ -20,8 +20,6 @@ export interface ProjectorParts {
   readonly clock: HostClock;
   readonly sweepEveryMs: number;
 }
-
-const PlaybookRow = Schema.Struct({ playbook_key: Schema.String });
 
 const mostRemembered = 1024;
 
@@ -39,16 +37,36 @@ export function firstSeenOf(most: number): (record: string) => boolean {
   };
 }
 
-function discovered({ database, settings }: ProjectorParts, schedule: Schedule): Effect.Effect<void> {
+function discoveredFor(database: HostDatabase, schedule: Schedule, definitionType: string): Effect.Effect<void> {
   return Effect.gen(function* () {
-    const streams = yield* Effect.promise(() => database.store.definitionStreams(settings.definitionType));
+    const streams = yield* Effect.promise(() => database.store.definitionStreams(definitionType));
+    const known = schedule.definitions.of(definitionType);
     for (const { stream, version } of streams) {
-      const playbook = playbookKeyOfDefinitions(stream, settings.definitionType);
-      if (schedule.definitions.get(playbook)?.version !== version) {
+      const playbook = playbookKeyOfDefinitions(stream, definitionType);
+      if (known.get(playbook)?.version !== version) {
         schedule.want(playbook);
       }
     }
   });
+}
+
+function discovered({ database, settings }: ProjectorParts, schedule: Schedule): Effect.Effect<void> {
+  return Effect.forEach(
+    settings.folders,
+    (some) =>
+      discoveredFor(
+        database,
+        schedule,
+        some((folder) => folder.definitionType),
+      ),
+    { discard: true },
+  );
+}
+
+function playbooksWithRows(database: HostDatabase, folders: readonly SomeFolder[]) {
+  return Effect.forEach(folders, (some) => some((folder) => folder.playbooksWithRows(database))).pipe(
+    Effect.map((playbooks: readonly (readonly string[])[]) => new Set(playbooks.flat())),
+  );
 }
 
 function swept(parts: ProjectorParts, schedule: Schedule): Effect.Effect<void> {
@@ -62,9 +80,9 @@ function swept(parts: ProjectorParts, schedule: Schedule): Effect.Effect<void> {
     yield* discovered(parts, schedule);
     if (sweepDue) {
       schedule.swept(now);
-      const playbooks = yield* Effect.orDie(rowsOf(PlaybookRow, parts.database.read(playbooksWithViews)));
-      for (const { playbook_key: playbookKey } of playbooks) {
-        schedule.want(playbookKey);
+      const playbooks = yield* Effect.orDie(playbooksWithRows(parts.database, parts.settings.folders));
+      for (const playbook of playbooks) {
+        schedule.want(playbook);
       }
     }
   });
@@ -105,13 +123,7 @@ function passPartsOf({ database, settings, reports }: ProjectorParts, schedule: 
   return {
     database,
     settings,
-    share: Semaphore.makeUnsafe(shareOfThePool(settings.pool)),
-    reconciling: {
-      database,
-      definitionType: settings.definitionType,
-      rebuildsAtOnce: settings.rebuildsAtOnce,
-      definitions: schedule.definitions,
-    },
+    definitions: schedule.definitions.of,
     note: reports.note,
     resting: schedule.resting,
     firstSeen: firstSeenOf(mostRemembered),
@@ -123,7 +135,7 @@ export function startProjector(parts: ProjectorParts): Projector {
   const schedule = scheduleOf(parts.sweepEveryMs);
   const passParts = passPartsOf(parts, schedule);
   const stopListening = parts.settings.appends?.listen((playbook) => {
-    if (schedule.definitions.has(playbook)) {
+    if (schedule.definitions.knows(playbook)) {
       schedule.want(playbook);
     } else {
       schedule.discover();

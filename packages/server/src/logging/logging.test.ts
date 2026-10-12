@@ -289,6 +289,7 @@ describe('the server with LOG_FORMAT=pretty', { timeout: spawnedServerTestTimeou
       "INFO  Content is kept in the ledger's database content_store=ledger",
       expect.stringMatching(/^WARN {2}No model provider is configured, .* providers=\[\{"provider":"anthropic",/u),
       "INFO  Reasoning functions run in this server: the model calls of a run add up to at most 2,000,000 input tokens, and each answer of a tool is read whole where it fits the model's context window most_input_tokens=2000000",
+      'INFO  Model processes may run at most 4 at once, at most 2 of them for builds, with 1,280 MiB of data each, which nothing bounds, since prlimit is not on the path model_processes=4 model_process_memory_mib=1280 model_process_builds=2 model_process_limiter=null',
       'INFO  Workflows run in this server: a run lasts at most 30 days, at most 32 of their calls run at once, and the runs are swept every 1000 ms most_duration_ms=2592000000 most_calls_at_once=32 sweep_every_ms=1000',
       '',
     ]);

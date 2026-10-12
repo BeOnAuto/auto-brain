@@ -3,10 +3,9 @@ import type { StallKind } from '@beonauto/workflow-engine/dsl';
 import { Schema } from 'effect';
 
 import { WholeNumber } from '../database/host-database.ts';
+import { pointIn, type Point } from '../pages/history-points.ts';
+import type { RowPhase } from '../projector/folder.ts';
 import { ViewDetailsSchema, type ViewDetails } from './view-details.ts';
-import { pointIn, type Point } from './view-points.ts';
-
-export type ViewPhase = 'waiting' | 'rebuilding' | 'live' | 'stalled';
 
 export type StallCause = StallKind | 'time' | 'memory' | 'crash';
 
@@ -31,7 +30,7 @@ export interface FoldedEvent {
 export interface KeptView {
   readonly name: string;
   readonly version: number;
-  readonly phase: ViewPhase;
+  readonly phase: RowPhase;
   readonly view: Schema.Json;
   readonly checkpoint: string | null;
   readonly checkpointAt: string | null;
@@ -46,7 +45,7 @@ export interface ViewRow {
   readonly version: number;
   readonly saved: number;
   readonly details: ViewDetails;
-  readonly phase: ViewPhase;
+  readonly phase: RowPhase;
   readonly checkpointText: string;
   readonly checkpoint: Point | undefined;
   readonly checkpointAt: string | null;
