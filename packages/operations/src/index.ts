@@ -1,4 +1,4 @@
-export { streamPrefixOfPlaybook, streamPrefixOfOrg } from './ledger/bound-ports.ts';
+export { playbookOfStreamPrefix, streamPrefixOfPlaybook, streamPrefixOfOrg } from './ledger/bound-ports.ts';
 export { PlaybookAccessSchema, canAccessPlaybook, type PlaybookAccess } from './caller/playbook-access.ts';
 export { PlaybookRegistry, type PlaybookStatus } from './ledger/playbook-registry.ts';
 export {

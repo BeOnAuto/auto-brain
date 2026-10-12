@@ -126,7 +126,7 @@ Each event and each fact of a run or a definition goes to two consumers, at most
 
 Each trigger is a row of the host's subscriptions table, keyed by the playbook, the workflow and the trigger's reference, kept with its activation across versions while it is unchanged; a schedule's row holds its next due time and its running run: `cron` through `croner` in UTC, `every` from the trigger's activation. A time is skipped while the run of the time before still runs, and after downtime only the latest time runs. An `emit` output is recorded through `eventEmitter` of `@beonauto/definitions` over the server's ledger, with the run and workflow that emitted it, one reaction depth deeper than the run. Every refusal, a depth past 8, a start past 60 a minute with 1,000 waiting, a listener past 4,096 in a playbook, a filter that failed, a skipped time, is counted in the host's tables and recorded once its minute ends as `reaction_refused` on `reactions/<workflow>` under the playbook, which `list_playbook_events` presents. The [host's README](../../../packages/workflow-host/README.md#reactions) has the tables and the bounds.
 
-An event sent to a run without a source now carries `/callers/<caller id>`, so a `listen` filter of `source: null` no longer matches it; the public format reference says so in its upgrade note.
+An event sent to a run without a source carries the source `/callers/<caller id>`, so a `listen` filter of `source: null` matches no event sent to a run; the public format reference says so where it describes `listen`.
 
 ## Not in this version
 

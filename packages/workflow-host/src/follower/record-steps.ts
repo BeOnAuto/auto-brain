@@ -1,5 +1,5 @@
-import { streamKindOf, type RecordedEvent } from '@beonauto/operations';
-import { Effect } from 'effect';
+import { playbookOfStreamPrefix, streamKindOf, type PlaybookAddress, type RecordedEvent } from '@beonauto/operations';
+import { Effect, Option } from 'effect';
 
 import type { ApplyDefinitionRecord } from '../triggers/definition-records.ts';
 import {
@@ -42,9 +42,11 @@ export interface Stepping {
   readonly wantsMore: () => Effect.Effect<boolean>;
 }
 
-export function playbookOfKey(playbookKey: string): { readonly org: string; readonly playbook: string } {
-  const [, org = '', playbook = ''] = playbookKey.split('/');
-  return { org, playbook };
+export function playbookOfKey(playbookKey: string): PlaybookAddress {
+  return Option.getOrThrowWith(
+    playbookOfStreamPrefix(playbookKey),
+    () => new Error(`The host follows ${playbookKey}, which is not the key of a playbook`),
+  );
 }
 
 function passedOver(record: RecordedEvent): Progress {

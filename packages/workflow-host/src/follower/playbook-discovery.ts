@@ -1,5 +1,5 @@
-import { streamPrefixOfPlaybook } from '@beonauto/operations';
-import { playbookCreatedOf } from '@beonauto/playbooks';
+import { streamPrefixOfPlaybook, type PlaybookAddress } from '@beonauto/operations';
+import { playbookCreatedOf, playbooksStreamOfOrg } from '@beonauto/playbooks';
 import { Effect, Schema } from 'effect';
 
 import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';
@@ -34,10 +34,24 @@ const SeenRow = Schema.Struct({ stream_id: Schema.String, position: WholeNumber 
 
 const PositionRow = Schema.Struct({ position: WholeNumber });
 
-const orgRegistry = /^org\/([^/]+)\/playbooks$/u;
+const orgRegistry = new RegExp(`^${playbooksStreamOfOrg('([^/]+)')}$`, 'u');
+
+const theRegistryOfEveryOrg = playbooksStreamOfOrg('%');
 
 export function isOrgRegistry(stream: string): boolean {
   return orgRegistry.test(stream);
+}
+
+interface Registry {
+  readonly stream: string;
+  readonly org: string;
+}
+
+function registriesOf(streams: readonly string[]): readonly Registry[] {
+  return streams.flatMap((stream) => {
+    const [, org] = orgRegistry.exec(stream) ?? [];
+    return org === undefined ? [] : [{ stream, org }];
+  });
 }
 
 function orgsOf(database: HostDatabase) {
@@ -47,7 +61,7 @@ function orgsOf(database: HostDatabase) {
         OrgStreamRow,
         database.read(
           statement`SELECT stream_id, stream_position FROM emt_streams
-            WHERE stream_id LIKE 'org/%/playbooks' AND is_archived = FALSE`,
+            WHERE stream_id LIKE ${theRegistryOfEveryOrg} AND is_archived = FALSE`,
         ),
       ),
       rowsOf(SeenRow, database.read(statement`SELECT stream_id, position FROM workflow_followed_orgs`)),
@@ -64,10 +78,6 @@ function seenOf(database: HostDatabase, stream: string): Effect.Effect<number | 
   ).pipe(Effect.map((rows) => rows.at(0)?.position));
 }
 
-function playbookKeyOf(stream: string, playbook: string): string {
-  return stream.replace(orgRegistry, (_, org: string) => streamPrefixOfPlaybook({ org, playbook }));
-}
-
 function followedAtTailOn({
   database,
   playbooks,
@@ -80,10 +90,10 @@ function followedAtTailOn({
     Effect.flatMap(applyDefinitionRecord(playbookKey, record), (outcome) =>
       outcome === 'unreadable' ? unreadable(playbookKey, record) : Effect.void,
     );
-  return (playbookKey: string) =>
+  return (playbook: PlaybookAddress) =>
     Effect.gen(function* () {
-      const [, org = '', playbook = ''] = playbookKey.split('/');
-      yield* playbooks.follow(playbookKey, yield* records.tail({ org, playbook }));
+      const playbookKey = streamPrefixOfPlaybook(playbook);
+      yield* playbooks.follow(playbookKey, yield* records.tail(playbook));
       const recorded = yield* Effect.promise(() =>
         database.store.read(`${playbookKey}definitions/${definitionType}`, 0),
       );
@@ -91,23 +101,23 @@ function followedAtTailOn({
     });
 }
 
-export function playbookDiscoveryOn(parts: DiscoveryParts): Discovery {
-  const { database, playbooks } = parts;
-  const followedAtTail = followedAtTailOn(parts);
-  const registryRead = (stream: string, after: number | undefined, atStart: boolean) =>
+function registryReadOn({ database, playbooks }: DiscoveryParts, followedAtTail: ReturnType<typeof followedAtTailOn>) {
+  return ({ stream, org }: Registry, after: number | undefined, atStart: boolean) =>
     Effect.gen(function* () {
       const { messages, version } = yield* Effect.promise(() => database.store.read(stream, after ?? 0));
       if (version === after) {
         return;
       }
-      const created = messages.flatMap((message) => {
+      const created: readonly PlaybookAddress[] = messages.flatMap((message) => {
         const playbook = playbookCreatedOf(message);
-        return playbook === undefined ? [] : [playbookKeyOf(stream, playbook)];
+        return playbook === undefined ? [] : [{ org, playbook }];
       });
       yield* Effect.forEach(
         created,
-        (playbookKey) =>
-          atStart && after === undefined ? followedAtTail(playbookKey) : playbooks.follow(playbookKey, null),
+        (playbook) =>
+          atStart && after === undefined
+            ? followedAtTail(playbook)
+            : playbooks.follow(streamPrefixOfPlaybook(playbook), null),
         { discard: true },
       );
       yield* Effect.orDie(
@@ -117,12 +127,20 @@ export function playbookDiscoveryOn(parts: DiscoveryParts): Discovery {
         ),
       );
     });
+}
+
+export function playbookDiscoveryOn(parts: DiscoveryParts): Discovery {
+  const { database, playbooks } = parts;
+  const registryRead = registryReadOn(parts, followedAtTailOn(parts));
   const everyRegistry = Effect.gen(function* () {
     const [streams, seen] = yield* orgsOf(database);
     const seenAt = new Map(seen.map(({ stream_id: stream, position }) => [stream, position]));
+    const changed = streams.filter(
+      ({ stream_id: stream, stream_position: position }) => seenAt.get(stream) !== position,
+    );
     yield* Effect.forEach(
-      streams.filter(({ stream_id: stream, stream_position: position }) => seenAt.get(stream) !== position),
-      ({ stream_id: stream }) => registryRead(stream, seenAt.get(stream), true),
+      registriesOf(changed.map(({ stream_id: stream }) => stream)),
+      (registry) => registryRead(registry, seenAt.get(registry.stream), true),
       { discard: true },
     );
   });
@@ -130,8 +148,9 @@ export function playbookDiscoveryOn(parts: DiscoveryParts): Discovery {
     atStart: () => Effect.andThen(everyRegistry, scannedListeners(database)),
     registriesAppended: (registries) =>
       Effect.forEach(
-        registries,
-        (stream) => Effect.flatMap(seenOf(database, stream), (after) => registryRead(stream, after, false)),
+        registriesOf(registries),
+        (registry) =>
+          Effect.flatMap(seenOf(database, registry.stream), (after) => registryRead(registry, after, false)),
         { discard: true },
       ),
     playbookSeen: (playbookKey) => playbooks.follow(playbookKey, null),
