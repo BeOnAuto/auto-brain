@@ -1,9 +1,9 @@
 import { SQL } from '@event-driven-io/dumbo';
 import { Schema } from 'effect';
 
-import { createMissingIndexes, type BrainIndex, type IndexExecutor } from '../recorded/missing-indexes.ts';
+import { createMissingIndexes, type PlaybookIndex, type IndexExecutor } from '../recorded/missing-indexes.ts';
 
-export const brainKeyOfStream = "substring(stream_id FROM '^(?:[^/]*/){3}')";
+export const playbookKeyOfStream = "substring(stream_id FROM '^(?:[^/]*/){3}')";
 
 export const kindKeyOfStream = "substring(stream_id FROM '^(?:[^/]*/){4}')";
 
@@ -13,18 +13,18 @@ export const definitionTypeOfStream = "substring(stream_id FROM '^(?:[^/]*/){3}d
 
 const NameRows = Schema.Array(Schema.Struct({ name: Schema.String }));
 
-const brainKey = SQL.plain(brainKeyOfStream);
+const playbookKey = SQL.plain(playbookKeyOfStream);
 
-const brainIndexes: readonly BrainIndex[] = [
+const playbookIndexes: readonly PlaybookIndex[] = [
   {
     name: 'ledger_messages_by_brain',
     create: () => SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_brain
-      ON emt_messages ((${brainKey}), transaction_id, global_position)`,
+      ON emt_messages ((${playbookKey}), transaction_id, global_position)`,
   },
   {
     name: 'ledger_messages_by_brain_and_time',
     create: () => SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_brain_and_time
-      ON emt_messages ((${brainKey}), created, transaction_id, global_position)`,
+      ON emt_messages ((${playbookKey}), created, transaction_id, global_position)`,
   },
   {
     name: 'ledger_messages_by_stream',
@@ -39,7 +39,7 @@ const brainIndexes: readonly BrainIndex[] = [
   {
     name: 'ledger_messages_by_brain_and_correlation',
     create: () => SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_brain_and_correlation
-      ON emt_messages ((${brainKey}), ${SQL.plain(correlationOfMessage)}, transaction_id, global_position)`,
+      ON emt_messages ((${playbookKey}), ${SQL.plain(correlationOfMessage)}, transaction_id, global_position)`,
   },
   {
     name: 'ledger_definition_streams',
@@ -52,9 +52,9 @@ const brainIndexes: readonly BrainIndex[] = [
   },
 ];
 
-export async function createPostgreSQLBrainIndexes({ execute }: { readonly execute: IndexExecutor }): Promise<void> {
+export async function createPostgreSQLPlaybookIndexes({ execute }: { readonly execute: IndexExecutor }): Promise<void> {
   const names = SQL.merge(
-    brainIndexes.map(({ name }) => SQL`${name}`),
+    playbookIndexes.map(({ name }) => SQL`${name}`),
     ', ',
   );
   const { rows } = await execute.query(
@@ -62,7 +62,7 @@ export async function createPostgreSQLBrainIndexes({ execute }: { readonly execu
       WHERE relkind IN ('i', 'I') AND relname IN (${names}) AND pg_table_is_visible(oid)`,
   );
   const existing = new Set(Schema.decodeUnknownSync(NameRows)(rows).map(({ name }) => name));
-  const created = await createMissingIndexes(execute, brainIndexes, existing);
+  const created = await createMissingIndexes(execute, playbookIndexes, existing);
   if (created > 0) {
     await execute.command(SQL`ANALYZE emt_messages, emt_streams`);
   }

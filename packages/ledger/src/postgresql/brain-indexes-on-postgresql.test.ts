@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
-import { theBrainIndexes } from '../postgresql-reads/index-checks.ts';
+import { thePlaybookIndexes } from '../postgresql-reads/index-checks.ts';
 import { openLedgerWith } from '../testing/open-ledger.ts';
 import { postgresqlLedgerLayer } from './postgresql-ledger.ts';
 
@@ -49,7 +49,7 @@ async function anAppendLeftOpen(database: string): Promise<Client> {
   await client.query('BEGIN');
   await client.query(
     `SELECT success FROM emt_append_to_stream(
-      ARRAY['late-1'], ARRAY[$1::jsonb], ARRAY[$3::jsonb], ARRAY['1'], ARRAY['noted'], ARRAY['E'], $2, 'brain', 0, 'emt:default')`,
+      ARRAY['late-1'], ARRAY[$1::jsonb], ARRAY[$3::jsonb], ARRAY['1'], ARRAY['noted'], ARRAY['E'], $2, 'playbook', 0, 'emt:default')`,
     [
       { json: JSON.stringify({ detail: 'late' }) },
       'brain/acme/alpha/late',
@@ -59,7 +59,7 @@ async function anAppendLeftOpen(database: string): Promise<Client> {
   return client;
 }
 
-describe.skipIf(skipped)(`The brain's indexes on PostgreSQL${notice}`, { timeout: 30_000 }, () => {
+describe.skipIf(skipped)(`The playbook's indexes on PostgreSQL${notice}`, { timeout: 30_000 }, () => {
   it('are created when the ledger opens, once however often it opens', async () => {
     const database = await aDatabase();
     const first = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
@@ -72,7 +72,7 @@ describe.skipIf(skipped)(`The brain's indexes on PostgreSQL${notice}`, { timeout
         database,
         "SELECT indexname, indexdef FROM pg_indexes WHERE tablename IN ('emt_messages', 'emt_streams') AND indexname LIKE 'ledger%' ORDER BY indexname",
       ),
-    ).toEqual(theBrainIndexes);
+    ).toEqual(thePlaybookIndexes);
   });
 
   it('are found, not created again, by a start that an append left open does not hold up', async () => {

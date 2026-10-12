@@ -86,8 +86,8 @@ async function threeRuns(ledger: AnyLedger): Promise<void> {
   await happen(ledger, 'brain/acme/alpha2/runs/r4', noted('run_started', 'r4'));
 }
 
-function theRunsOfABrain(aLedger: LedgerMaker): void {
-  describe('the read of the runs of a brain', () => {
+function theRunsOfAPlaybook(aLedger: LedgerMaker): void {
+  describe('the read of the runs of a playbook', () => {
     it('gives the first and the latest message of every run, by the position of its first, either way', async () => {
       const ledger = await aLedger();
       await threeRuns(ledger);
@@ -193,7 +193,7 @@ function aRunHoldingU0000(aLedger: LedgerMaker): void {
 export function runsBehaviour(aLedger: LedgerMaker): void {
   theRunsAPageExamines(aLedger);
   theStreamsOfOneRun(aLedger);
-  theRunsOfABrain(aLedger);
+  theRunsOfAPlaybook(aLedger);
   theRunsLeavingOutSomeStreams(aLedger);
   aRunHoldingU0000(aLedger);
 }

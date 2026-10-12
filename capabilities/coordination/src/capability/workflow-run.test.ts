@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { workflowBrain, type WorkflowBrain } from '../testing/workflow-brain.ts';
+import { workflowPlaybook, type WorkflowPlaybook } from '../testing/workflow-brain.ts';
 
-let brain: WorkflowBrain;
+let playbook: WorkflowPlaybook;
 
 const flow = `document:
   dsl: '1.0.3'
@@ -28,20 +28,20 @@ do:
 `;
 
 beforeAll(async () => {
-  brain = await workflowBrain();
-  await brain.call(brain.createDefinition, { type: 'echo', name: 'greet', source: '{"greeting": "Hello"}' });
-  await brain.call(brain.createDefinition, { type: 'workflow', name: 'slow-greeting', source: flow });
-  await brain.call(brain.createDefinition, { type: 'workflow', name: 'failing', source: failing });
+  playbook = await workflowPlaybook();
+  await playbook.call(playbook.createDefinition, { type: 'echo', name: 'greet', source: '{"greeting": "Hello"}' });
+  await playbook.call(playbook.createDefinition, { type: 'workflow', name: 'slow-greeting', source: flow });
+  await playbook.call(playbook.createDefinition, { type: 'workflow', name: 'failing', source: failing });
 });
 
 afterAll(async () => {
-  await brain.close();
+  await playbook.close();
 });
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-3333333333a1';
 
 function running(name = 'slow-greeting', id = runId) {
-  return brain.call(brain.runDefinition, {
+  return playbook.call(playbook.runDefinition, {
     type: 'workflow',
     name,
     input: { name: 'Grace' },
@@ -55,7 +55,7 @@ describe('running a workflow definition', () => {
       status: 'succeeded',
       output: { run_id: runId, status: 'started' },
     });
-    expect(await brain.call(brain.getRun, { run_id: runId })).toMatchObject({
+    expect(await playbook.call(playbook.getRun, { run_id: runId })).toMatchObject({
       output: { status: 'started', record: {} },
     });
   });
@@ -70,7 +70,7 @@ describe('running a workflow definition', () => {
       output: { status: 'succeeded', output: { greeting: 'Hello', input: { name: 'Grace' } } },
     };
 
-    expect(await brain.settled(runId)).toMatchObject(settled);
+    expect(await playbook.settled(runId)).toMatchObject(settled);
     expect(await running()).toMatchObject(settled);
   });
 });
@@ -79,7 +79,7 @@ describe('running again a workflow whose run ended without a final result', () =
   it('is rejected as a conflict, since a workflow runs once for a run ID, and the rejection is recorded', async () => {
     const failed = '0199a3c4-7d2e-7c1a-9b3f-3333333333a2';
     await running('failing', failed);
-    const ended = await brain.settled(failed);
+    const ended = await playbook.settled(failed);
 
     expect(ended).toMatchObject({ output: { status: 'rejected', rejection: { reason: 'unavailable' } } });
     expect(await running('failing', failed)).toMatchObject({
@@ -93,7 +93,7 @@ describe('running again a workflow whose run ended without a final result', () =
 
 describe('running a workflow definition while the server stops', () => {
   it('is rejected as unavailable, and the rejection is recorded', async () => {
-    const stopping = await workflowBrain();
+    const stopping = await workflowPlaybook();
     await stopping.call(stopping.createDefinition, { type: 'workflow', name: 'failing', source: failing });
     await stopping.close();
     const id = '0199a3c4-7d2e-7c1a-9b3f-3333333333a3';

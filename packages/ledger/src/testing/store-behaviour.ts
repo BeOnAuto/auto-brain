@@ -78,7 +78,7 @@ async function aStoreAndItsDatabase(entry: LedgerEntry) {
 
 function readingWhatWasAppended(entry: LedgerEntry): void {
   describe('reading which streams were appended to after a point', () => {
-    it('names each kind of stream of a brain once, and each stream outside a brain, appended to after the point', async () => {
+    it('names each kind of stream of a playbook once, and each stream outside a playbook, appended to after the point', async () => {
       const { store, readable } = await aStoreAndItsDatabase(entry);
       await store.append('org/acme/brains', numbered(1, 1), { expectedVersion: 0, context: stamped });
       await readable();

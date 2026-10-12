@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { workflowsOfRuns } from './run-workflows.ts';
 
-const brainKey = 'brain/acme/alpha/';
+const playbookKey = 'brain/acme/alpha/';
 
 function startedRecord(type: string, name: string) {
   return {
@@ -21,14 +21,14 @@ function startedRecord(type: string, name: string) {
 }
 
 const streams: ReadonlyMap<string, readonly unknown[]> = new Map([
-  [`${brainKey}runs/r-close`, [startedRecord('workflow', 'close')]],
-  [`${brainKey}runs/r-sum`, [startedRecord('reasoning', 'sum')]],
+  [`${playbookKey}runs/r-close`, [startedRecord('workflow', 'close')]],
+  [`${playbookKey}runs/r-sum`, [startedRecord('reasoning', 'sum')]],
 ]);
 
 function counting() {
   const reads: string[] = [];
   const read = (stream: string) => {
-    reads.push(stream.slice(brainKey.length));
+    reads.push(stream.slice(playbookKey.length));
     return Promise.resolve({ messages: streams.get(stream) ?? [] });
   };
   return { read, reads: () => reads };
@@ -41,7 +41,7 @@ describe('the workflow of a run', () => {
 
     const workflows = await Effect.runPromise(
       Effect.forEach(['r-close', 'r-sum', 'r-unknown', 'r-close', 'r-other', 'r-close'], (runId) =>
-        workflowOf(brainKey, runId),
+        workflowOf(playbookKey, runId),
       ),
     );
 

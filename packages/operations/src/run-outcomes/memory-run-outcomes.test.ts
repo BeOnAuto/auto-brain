@@ -11,7 +11,7 @@ import {
 import { memoryLedger, type MemoryLedger } from '../testing/memory-ledger.ts';
 import { runFacts, runTallies, type RunFact } from './run-tallies.ts';
 
-const alpha = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
 const october: RunOutcomeWindow = { from: '2026-10-01', to: '2026-10-31' };
 
@@ -51,7 +51,7 @@ const failingOnAFailure: RunOutcomeMapping = {
 };
 
 describe('a run stream', () => {
-  it('is a stream named runs/<id> in a brain, and nothing nested under it', () => {
+  it('is a stream named runs/<id> in a playbook, and nothing nested under it', () => {
     expect(
       [
         'brain/acme/alpha/runs/r1',
@@ -60,7 +60,7 @@ describe('a run stream', () => {
         'brain/acme/runs/r1',
         'brain/acme/alpha/runs/',
       ].map((stream) => runStreamOf(stream)),
-    ).toEqual([{ brainKey: 'brain/acme/alpha/', runId: 'r1' }, undefined, undefined, undefined, undefined]);
+    ).toEqual([{ playbookKey: 'brain/acme/alpha/', runId: 'r1' }, undefined, undefined, undefined, undefined]);
   });
 });
 
@@ -84,7 +84,7 @@ describe('the outcomes of runs in the in-memory ledger', () => {
     expect(groups[1]).toMatchObject({ inputTokens: 0, outputTokens: 0, cachedTokens: 0, durations: [] });
   });
 
-  it('keep to the days of the window, the selection and the brain asked for', async () => {
+  it('keep to the days of the window, the selection and the playbook asked for', async () => {
     const ledger = memoryLedger(runTallies);
     await noting(ledger, 'brain/acme/alpha/runs/r1', began('triage', '2026-09-30T23:59:59.999Z'));
     await noting(ledger, 'brain/acme/alpha/runs/r2', began('triage', '2026-10-01T00:00:00.000Z'));

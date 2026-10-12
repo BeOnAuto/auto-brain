@@ -92,17 +92,17 @@ function onceDuringARead(join: () => Promise<void>): (call: ToolCall) => Effect.
 }
 
 function secondDeliveredDuringARead() {
-  const held: { brain: ChatHarness | undefined } = { brain: undefined };
+  const held: { playbook: ChatHarness | undefined } = { playbook: undefined };
   const join = async () => {
-    if (held.brain !== undefined) {
-      await held.brain.askInThread(second);
-      await held.brain.performDue(Date.now());
+    if (held.playbook !== undefined) {
+      await held.playbook.askInThread(second);
+      await held.playbook.performDue(Date.now());
     }
   };
   return {
     duringCall: onceDuringARead(join),
-    hold: (brain: ChatHarness) => {
-      held.brain = brain;
+    hold: (playbook: ChatHarness) => {
+      held.playbook = playbook;
     },
   };
 }
@@ -110,21 +110,21 @@ function secondDeliveredDuringARead() {
 describe.each(stores)('a conversation read on $store', ({ skipped, aLedger }) => {
   it.skipIf(skipped)('a delivery joining while a read is in flight is read', async () => {
     const meanwhile = secondDeliveredDuringARead();
-    const brain = await chatHarness({
+    const playbook = await chatHarness({
       ledger: await aLedger(),
       document: threadDocument({ replies: flatReplies }),
       duringCall: meanwhile.duringCall,
     });
-    meanwhile.hold(brain);
-    await brain.askInThread(first);
-    await brain.performDue(Date.now());
-    brain.chat.reply({ channel, user: answererId, text: 'approve' });
+    meanwhile.hold(playbook);
+    await playbook.askInThread(first);
+    await playbook.performDue(Date.now());
+    playbook.chat.reply({ channel, user: answererId, text: 'approve' });
 
-    await brain.performReads(Date.now() + farAhead);
-    brain.chat.reply({ channel, user: answererId, text: 'reject' });
-    await brain.performReads(Date.now() + 2 * farAhead);
+    await playbook.performReads(Date.now() + farAhead);
+    playbook.chat.reply({ channel, user: answererId, text: 'reject' });
+    await playbook.performReads(Date.now() + 2 * farAhead);
 
-    expect([await brain.runOf(first), await brain.runOf(second)]).toMatchObject([
+    expect([await playbook.runOf(first), await playbook.runOf(second)]).toMatchObject([
       { output: { status: 'succeeded', output: { choice: 'approve' } } },
       { output: { status: 'succeeded', output: { choice: 'reject' } } },
     ]);

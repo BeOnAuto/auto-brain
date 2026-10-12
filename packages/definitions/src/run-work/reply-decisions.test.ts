@@ -2,7 +2,7 @@ import { Conflict } from '@beonauto/operations';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { brainFactOf } from '../events/brain-facts.ts';
+import { playbookFactOf } from '../events/brain-facts.ts';
 import type { RunCommand, ReplyFact } from '../runs/run-commands.ts';
 import { runDecider } from '../runs/run-decider.ts';
 import type { RecordedRunEvent } from '../runs/run-events.ts';
@@ -142,8 +142,11 @@ function recordOf(fact: ReplyFact) {
   };
 }
 
-describe('the replies of a run as facts of the brain', () => {
+describe('the replies of a run as facts of the playbook', () => {
   it('are none, so no recall function folds them and no trigger fires on them', () => {
-    expect([brainFactOf(recordOf(taken)), brainFactOf(recordOf(refusal('1699.3')))]).toEqual([undefined, undefined]);
+    expect([playbookFactOf(recordOf(taken)), playbookFactOf(recordOf(refusal('1699.3')))]).toEqual([
+      undefined,
+      undefined,
+    ]);
   });
 });

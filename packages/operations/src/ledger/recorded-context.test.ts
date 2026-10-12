@@ -20,13 +20,13 @@ const notes: Decider<readonly string[], string, Noted> = {
   eventSchema: NotedSchema,
 };
 
-const alpha = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
 function noting(ledger: MemoryLedger, stream: string, note: string) {
   return Effect.runPromise(ledger.service.execute(stream, notes, note));
 }
 
-describe('the in-memory context of what a brain recorded', () => {
+describe('the in-memory context of what a playbook recorded', () => {
   it('reads each record with the context it was written with and its place across the ledger', async () => {
     const ledger = memoryLedger();
     await noting(ledger, 'brain/acme/alpha/notes/n1', 'signed');
@@ -43,7 +43,7 @@ describe('the in-memory context of what a brain recorded', () => {
     ]);
   });
 
-  it('reads one record by its id within its brain, and nothing for an id of another brain or none', async () => {
+  it('reads one record by its id within its playbook, and nothing for an id of another playbook or none', async () => {
     const ledger = memoryLedger();
     await noting(ledger, 'brain/acme/alpha/notes/n1', 'signed');
     await noting(ledger, 'brain/acme/beta/notes/n1', 'signed');

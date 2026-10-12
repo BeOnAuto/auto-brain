@@ -1,15 +1,15 @@
 import type { Lineage } from '@beonauto/operations';
 import { describe, expect, it } from 'vitest';
 
-import { brainFeed, everyText, textsIn, withCursor } from '../testing/brain-feed.ts';
+import { playbookFeed, everyText, textsIn, withCursor } from '../testing/brain-feed.ts';
 
 const root = '0199A3C4-7D2E-7C1A-9B3F-2F1E0D9C8B7A';
 
 const ofRoot: Lineage = { causationId: null, correlationId: root.toLowerCase() };
 
 describe('the events of one run and the runs it started', () => {
-  it('are those whose correlation is that run, in the order of the brain, and none for a run another started', async () => {
-    const feed = brainFeed();
+  it('are those whose correlation is that run, in the order of the playbook, and none for a run another started', async () => {
+    const feed = playbookFeed();
     await feed.recordingWith('notes', { type: 'added', data: { text: 'a' } }, ofRoot);
     await feed.recording('notes', 'added', 'b');
     await feed.recordingWith('shelves/red', { type: 'added', data: { text: 'c' } }, ofRoot);
@@ -22,7 +22,7 @@ describe('the events of one run and the runs it started', () => {
   });
 
   it('are refused for an id that is not a UUID', async () => {
-    const { reading } = brainFeed();
+    const { reading } = playbookFeed();
 
     expect(await reading({ run_id: 'not-a-run' })).toMatchObject({
       status: 'rejected',
@@ -32,9 +32,9 @@ describe('the events of one run and the runs it started', () => {
   });
 });
 
-describe('a page of the events of a brain', () => {
+describe('a page of the events of a playbook', () => {
   it('counts the events it answers, ends inside a record, and reads on from there in either order', async () => {
-    const feed = brainFeed();
+    const feed = playbookFeed();
     await feed.recording('run-logs/r1', 'moved', 'x');
     await feed.recording('run-logs/r1', 'moved', 'y');
     const read = (order: 'asc' | 'desc') => (cursor: string | undefined) =>
@@ -50,7 +50,7 @@ describe('a page of the events of a brain', () => {
   });
 
   it('of one type keeps only the events of that type a record shows', async () => {
-    const feed = brainFeed();
+    const feed = playbookFeed();
     await feed.recording('run-logs/r1', 'moved', 'x');
 
     expect(textsIn(await feed.reading({ type: 'run_stepped', order: 'asc' }))).toEqual(['x1', 'x2']);

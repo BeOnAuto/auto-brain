@@ -8,7 +8,7 @@ const listedDefinitionFields = {
     description: 'The type of the definition: reasoning, interaction, computation, recall or workflow',
   }),
   name: Schema.String.annotate({
-    description: 'The definition name, unique among definitions of its type in the brain and never reused',
+    description: 'The definition name, unique among definitions of its type in the playbook and never reused',
   }),
   version: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)).annotate({
     description: 'The definition version: 1 when created, and one more for every update that changes its document',
@@ -48,7 +48,7 @@ const listedDefinitionFields = {
 
 const StandingField = Schema.JsonObject.annotate({
   description:
-    'How the definition stands where its runtime adapter keeps something for it, read when the definition is: for a recall function, the view it keeps, with its state (live, rebuilding, waiting or stalled), its version, its checkpoint, the events folded and how far it lags the brain',
+    'How the definition stands where its runtime adapter keeps something for it, read when the definition is: for a recall function, the view it keeps, with its state (live, rebuilding, waiting or stalled), its version, its checkpoint, the events folded and how far it lags the playbook',
 });
 
 export const ListedDefinitionSchema = Schema.Struct(listedDefinitionFields).annotate({
@@ -78,18 +78,18 @@ export type ComputationFunctionDefinition = Definition & { readonly type: 'compu
 
 export type RecallFunctionDefinition = Definition & { readonly type: 'recall' };
 
-export type BrainFunctionDefinition =
+export type PlaybookFunctionDefinition =
   | ReasoningFunctionDefinition
   | InteractionFunctionDefinition
   | ComputationFunctionDefinition
   | RecallFunctionDefinition;
 
-const brainFunctionTypes: ReadonlySet<string> = new Set(['reasoning', 'interaction', 'computation', 'recall']);
+const playbookFunctionTypes: ReadonlySet<string> = new Set(['reasoning', 'interaction', 'computation', 'recall']);
 
 export type WorkflowDefinition = Definition & { readonly type: 'workflow' };
 
-export function isBrainFunctionDefinition(definition: Definition): definition is BrainFunctionDefinition {
-  return brainFunctionTypes.has(definition.type);
+export function isPlaybookFunctionDefinition(definition: Definition): definition is PlaybookFunctionDefinition {
+  return playbookFunctionTypes.has(definition.type);
 }
 
 export function isWorkflowDefinition(definition: Definition): definition is WorkflowDefinition {

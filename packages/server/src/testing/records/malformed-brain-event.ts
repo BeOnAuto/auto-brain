@@ -9,19 +9,19 @@ import {
 } from '@beonauto/operations';
 import { Effect, ManagedRuntime, Result, Schema } from 'effect';
 
-const MalformedBrain = factOf('brain_created', Schema.Struct({ brain: Schema.Number }), ActedContextSchema);
+const MalformedPlaybook = factOf('brain_created', Schema.Struct({ brain: Schema.Number }), ActedContextSchema);
 
-type Malformed = typeof MalformedBrain.Type;
+type Malformed = typeof MalformedPlaybook.Type;
 
 const malformedRegistry: Decider<readonly Malformed[], Decided<Malformed>, Malformed> = {
   initialState: [],
   evolve: (written, event) => [...written, event],
   decide: (event) => Result.succeed([event]),
   context: () => ({ by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' }),
-  eventSchema: MalformedBrain,
+  eventSchema: MalformedPlaybook,
 };
 
-export async function appendMalformedBrainEvent(fileName: string, org: string): Promise<void> {
+export async function appendMalformedPlaybookEvent(fileName: string, org: string): Promise<void> {
   const runtime = ManagedRuntime.make(ledgerLayer({ fileName }));
   await runtime.runPromise(
     Effect.gen(function* () {

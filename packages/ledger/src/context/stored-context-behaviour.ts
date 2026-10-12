@@ -12,7 +12,7 @@ import { tally } from '../testing/tally.ts';
 
 const ofACall: Context = {
   at: '2026-10-09T12:43:51.435Z',
-  by: 'brain:finance',
+  by: 'playbook:finance',
   runId: 'r-1',
   definitionType: 'interaction',
   definitionName: 'approve-report',
@@ -39,7 +39,7 @@ function theContextOfEachMessage(entry: LedgerEntry): void {
       const appended = eventAppenderOf(store, tally.eventSchema);
 
       await expect(
-        outcomeOf(appended(run, three, { expectedVersion: 0, context: { ...ofACall, by: 'brain:\u0000finance' } })),
+        outcomeOf(appended(run, three, { expectedVersion: 0, context: { ...ofACall, by: 'playbook:\u0000finance' } })),
       ).rejects.toThrow('text without control characters');
       await expect(
         outcomeOf(
@@ -56,7 +56,7 @@ const PlaceRows = Schema.Array(
 );
 
 function thePlaceOfEachRecord(entry: LedgerEntry): void {
-  describe('the place of each record a brain read', () => {
+  describe('the place of each record a playbook read', () => {
     it('names the stream, the position and the global position the table holds for its message', async () => {
       const database = await entry.aDatabase();
       const ledger = await aLedger(entry, database);
@@ -66,7 +66,7 @@ function thePlaceOfEachRecord(entry: LedgerEntry): void {
       await entry.untilReadable(database);
 
       const { records } = await Effect.runPromise(
-        ledger.readRecorded({ org: 'acme', brain: 'alpha' }, { kind: 'everything' }, { order: 'asc', limit: 10 }),
+        ledger.readRecorded({ org: 'acme', playbook: 'alpha' }, { kind: 'everything' }, { order: 'asc', limit: 10 }),
       );
       const columns = Schema.decodeUnknownSync(PlaceRows)(
         await entry.queried(
@@ -91,11 +91,11 @@ function thePlansOfTheReads(entry: LedgerEntry): void {
     it('walk the index of first messages by kind for the runs of one definition, and the index on the message id for one event', async () => {
       const database = await entry.aDatabase();
       await aLedger(entry, database);
-      const brainKey = 'brain/acme/alpha/';
+      const playbookKey = 'brain/acme/alpha/';
 
       const ofOneDefinition = await entry.planOf(database, (store) =>
         store.readRecorded(
-          brainKey,
+          playbookKey,
           { kind: 'runs', definitionType: 'workflow', name: 'summary' },
           {
             order: 'desc',
@@ -103,7 +103,7 @@ function thePlansOfTheReads(entry: LedgerEntry): void {
           },
         ),
       );
-      const ofOneEvent = await entry.planOf(database, (store) => store.readRecordedEvent(brainKey, 'message-1'));
+      const ofOneEvent = await entry.planOf(database, (store) => store.readRecordedEvent(playbookKey, 'message-1'));
 
       expect(ofOneDefinition).toContain(entry.throughTheKindIndex);
       expect(ofOneEvent).toContain(entry.throughTheIdIndex);

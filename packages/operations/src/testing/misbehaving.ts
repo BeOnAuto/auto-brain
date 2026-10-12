@@ -6,7 +6,7 @@ const Empty = Schema.Record(Schema.String, Schema.Never);
 
 const noReasonsDeclared: readonly DeclarableReason[] = [];
 
-export const explode = defineQuery('brain', {
+export const explode = defineQuery('playbook', {
   name: 'explode',
   title: 'Explode',
   description: 'Fails with a defect that carries a secret.',
@@ -17,7 +17,7 @@ export const explode = defineQuery('brain', {
   handle: () => Effect.die(new Error('the store password is hunter2')),
 });
 
-export const breakAndGiveUp = defineQuery('brain', {
+export const breakAndGiveUp = defineQuery('playbook', {
   name: 'break_and_give_up',
   title: 'Break and give up',
   description: 'Interrupts itself, and a finalizer fails with a defect.',
@@ -29,7 +29,7 @@ export const breakAndGiveUp = defineQuery('brain', {
     Effect.interrupt.pipe(Effect.ensuring(Effect.die(new Error('broken beside an interruption'))), Effect.as({})),
 });
 
-export const breakOnceLeft = defineQuery('brain', {
+export const breakOnceLeft = defineQuery('playbook', {
   name: 'break_once_left',
   title: 'Break once left',
   description: 'Waits forever, and fails with a defect once its caller has gone.',
@@ -44,7 +44,7 @@ export const breakOnceLeft = defineQuery('brain', {
     ),
 });
 
-export const giveUp = defineQuery('brain', {
+export const giveUp = defineQuery('playbook', {
   name: 'give_up',
   title: 'Give up',
   description: 'Interrupts its own call.',
@@ -66,7 +66,7 @@ export const misreport = defineQuery('org', {
   handle: () => Effect.succeed({ code: 'x' }),
 });
 
-export const overshare = defineQuery('brain', {
+export const overshare = defineQuery('playbook', {
   name: 'overshare',
   title: 'Overshare',
   description: 'Returns a field its output schema does not declare.',
@@ -80,7 +80,7 @@ export const overshare = defineQuery('brain', {
   },
 });
 
-export const rejectUndeclared = defineCommand('brain', {
+export const rejectUndeclared = defineCommand('playbook', {
   name: 'reject_undeclared',
   title: 'Reject undeclared',
   description: 'Rejects with a reason it does not declare.',
@@ -99,7 +99,7 @@ const TreeSchema: Schema.Codec<Tree> = Schema.Struct({
   children: Schema.Array(Schema.suspend((): Schema.Codec<Tree> => TreeSchema)),
 });
 
-export const holdTree = defineQuery('brain', {
+export const holdTree = defineQuery('playbook', {
   name: 'hold_tree',
   title: 'Hold tree',
   description: 'Takes a tree of any depth.',
@@ -110,7 +110,7 @@ export const holdTree = defineQuery('brain', {
   handle: () => Effect.succeed({ held: true }),
 });
 
-export const linger = defineQuery('brain', {
+export const linger = defineQuery('playbook', {
   name: 'linger',
   title: 'Linger',
   description: 'Answers after the given number of milliseconds.',

@@ -16,11 +16,11 @@ const ListedRuns = Schema.Struct({
   runs: Schema.Array(Schema.Struct({ status: Schema.String, started_by: Schema.String })),
 });
 
-const BrainEvents = Schema.Struct({ events: Schema.Array(Schema.Struct({ type: Schema.String })) });
+const PlaybookEvents = Schema.Struct({ events: Schema.Array(Schema.Struct({ type: Schema.String })) });
 
 const runsIn = Schema.decodeUnknownSync(ListedRuns);
 
-const eventsIn = Schema.decodeUnknownSync(BrainEvents);
+const eventsIn = Schema.decodeUnknownSync(PlaybookEvents);
 
 let server: ReasoningServer;
 
@@ -31,9 +31,13 @@ afterEach(async () => {
 async function onAlpha<T>(use: (session: McpSession) => Promise<T>): Promise<T> {
   server = await servingWorkflows([]);
   await withMcpSession('current revision', { url: `${server.origin}/orgs/acme/mcp`, headers: {} }, (session) =>
-    session.callTool('create_brain', { brain: 'alpha', name: 'Alpha' }),
+    session.callTool('create_playbook', { playbook: 'alpha', name: 'Alpha' }),
   );
-  return withMcpSession('current revision', { url: `${server.origin}/orgs/acme/brains/alpha/mcp`, headers: {} }, use);
+  return withMcpSession(
+    'current revision',
+    { url: `${server.origin}/orgs/acme/playbooks/alpha/mcp`, headers: {} },
+    use,
+  );
 }
 
 async function endedRuns(session: McpSession, attempts = 300): Promise<typeof ListedRuns.Type> {
@@ -48,14 +52,14 @@ async function endedRuns(session: McpSession, attempts = 300): Promise<typeof Li
 }
 
 describe('a workflow whose trigger is an event, over MCP', { timeout: workflowTestTimeoutMs }, () => {
-  it('runs as the brain for an event published to the brain, and the feed shows the event and the run', async () => {
+  it('runs as the playbook for an event published to the playbook, and the feed shows the event and the run', async () => {
     const seen = await onAlpha(async (session) => {
       await session.callTool('create_definition', { type: 'workflow', name: 'close-the-month', source: closing });
       await session.callTool('publish_event', {
         event: { source: '/ledger', type: 'com.acme.ledger.closed', data: { month: 'september' } },
       });
       const runs = await endedRuns(session);
-      const feed = await session.callTool('list_brain_events', { order: 'asc' });
+      const feed = await session.callTool('list_playbook_events', { order: 'asc' });
       return { runs, feed: eventsIn(feed.structuredContent).events.map(({ type }) => type) };
     });
 

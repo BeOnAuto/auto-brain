@@ -50,14 +50,14 @@ describe('work the workflow host hands to the runtime of the server', () => {
 describe('the reports of the workflow host', () => {
   it('log a run left started with the reason the host gave, in words', async () => {
     const lines = await reportedLines(async (reports) => {
-      const run = { org: 'acme', brain: 'alpha', runId: 'e-1' };
+      const run = { org: 'acme', playbook: 'alpha', runId: 'e-1' };
       await Effect.runPromise(reports.unsettled({ ...run, receipt: 'unknown_run' }));
       await Effect.runPromise(reports.unsettled({ ...run, receipt: 'settled_otherwise' }));
     });
 
     expect(lines).toEqual([
       expect.stringContaining(
-        '"annotations":{"org":"acme","brain":"alpha","run_id":"e-1","reason":"The ledger has no such run"}',
+        '"annotations":{"org":"acme","playbook":"alpha","run_id":"e-1","reason":"The ledger has no such run"}',
       ),
       expect.stringContaining('"reason":"The run was settled otherwise before"'),
     ]);
@@ -71,7 +71,7 @@ describe('the reports of the workflow host', () => {
       await Effect.runPromise(
         reports.note({
           kind: 'settled_after_back_off',
-          run: { org: 'acme', brain: 'alpha', runId: 'e-1' },
+          run: { org: 'acme', playbook: 'alpha', runId: 'e-1' },
           attempts: 21,
         }),
       );
@@ -94,10 +94,15 @@ describe('the database of the workflow host', () => {
   });
 
   it('is the database of the ledger when the ledger is kept in PostgreSQL', () => {
-    const url = 'postgresql://brains:secret@db.example.com:5432/brains';
+    const url = 'postgresql://playbooks:secret@db.example.com:5432/playbooks';
 
     expect(
-      hostDatabaseOf({ store: 'postgresql', url: Redacted.make(url), host: 'db.example.com:5432', database: 'brains' }),
+      hostDatabaseOf({
+        store: 'postgresql',
+        url: Redacted.make(url),
+        host: 'db.example.com:5432',
+        database: 'playbooks',
+      }),
     ).toEqual({
       store: 'postgresql',
       connectionString: url,

@@ -1,27 +1,27 @@
 import { defineQuery, quoted } from '@beonauto/operations';
 import { Schema } from 'effect';
 
-import { brainStanding, purposeOf } from '../plain-language/brain-words.ts';
-import { BrainSchema } from '../registry/brain.ts';
-import { BrainIdField } from './brain-fields.ts';
-import { foundBrain } from './registry-loading.ts';
+import { playbookStanding, purposeOf } from '../plain-language/brain-words.ts';
+import { PlaybookSchema } from '../registry/brain.ts';
+import { PlaybookIdField } from './brain-fields.ts';
+import { foundPlaybook } from './registry-loading.ts';
 
-export const getBrain = defineQuery('org', {
-  name: 'get_brain',
-  title: 'Get brain',
+export const getPlaybook = defineQuery('org', {
+  name: 'get_playbook',
+  title: 'Get playbook',
   description: [
-    'Reads one brain of the org by its id and returns it, active or retired, with its name, what it is for and when it was made and changed.',
-    'Use it when the person names a brain whose id is known; list_brains finds the brains when it is not.',
-    '`brain` is the id of the brain.',
+    'Reads one playbook of the org by its id and returns it, active or retired, with its name, what it is for and when it was made and changed.',
+    'Use it when the person names a playbook whose id is known; list_playbooks finds the playbooks when it is not.',
+    '`playbook` is the id of the playbook.',
   ].join(' '),
-  route: { method: 'GET', path: '/brains/{brain}' },
-  inputSchema: Schema.Struct({ brain: BrainIdField }),
-  outputSchema: BrainSchema,
+  route: { method: 'GET', path: '/playbooks/{playbook}' },
+  inputSchema: Schema.Struct({ playbook: PlaybookIdField }),
+  outputSchema: PlaybookSchema,
   reasons: ['not_found'],
-  handle: ({ brain }) => foundBrain(brain),
+  handle: ({ playbook }) => foundPlaybook(playbook),
   plainLanguage: {
-    task: 'look up a brain',
-    attempt: ({ brain }) => `look up the brain ${quoted(brain)}`,
-    outcome: (brain) => `${brainStanding(brain)}${purposeOf(brain)}`,
+    task: 'look up a playbook',
+    attempt: ({ playbook }) => `look up the playbook ${quoted(playbook)}`,
+    outcome: (playbook) => `${playbookStanding(playbook)}${purposeOf(playbook)}`,
   },
 });

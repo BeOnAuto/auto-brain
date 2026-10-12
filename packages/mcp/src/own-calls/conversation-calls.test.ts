@@ -96,7 +96,7 @@ function decided(call: ConversationCall, ...history: readonly ConversationCall[]
   return conversationCallDecider.decide(call, state);
 }
 
-describe('a telling the brain makes in a conversation', () => {
+describe('a telling the playbook makes in a conversation', () => {
   it('records its start with the call it sends, in the run it serves and with the definition of its request', () => {
     expect(tellingStartedOf(telling, started, recorded)).toEqual({
       event: { type: 'telling_started', data: { call_id: 'call-2', ...started } },
@@ -155,7 +155,7 @@ describe('a telling whose tool answered past the cap of its transport', () => {
   });
 });
 
-describe('a read the brain makes in a conversation', () => {
+describe('a read the playbook makes in a conversation', () => {
   it('is one fact, with the call and what the read found, in no run', () => {
     expect(repliesReadOf({ ...place, answered: answeredFact, replies: 2, taken: 1, refused: 1 }, recorded)).toEqual({
       event: {
@@ -200,7 +200,7 @@ describe('a read of a server that keeps no content', () => {
   });
 });
 
-describe('a read the brain could not make in a conversation', () => {
+describe('a read the playbook could not make in a conversation', () => {
   it('fails with what its server said when the call failed, and with nothing more when the tool is not offered', () => {
     expect([
       readingFailedOf(

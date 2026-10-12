@@ -27,14 +27,14 @@ function storeHolding(record: StoredRecord): RecordedStore {
     pointLength: 1,
     readRecorded: () => Promise.resolve({ records: [] }),
     readAppended: () => Promise.resolve({ streams: [], through: ['21'], more: false }),
-    readRecordedEvent: (_brainKey, id) => Promise.resolve(id === record.id ? record : undefined),
+    readRecordedEvent: (_playbookKey, id) => Promise.resolve(id === record.id ? record : undefined),
   };
 }
 
 describe('one record read by its id', () => {
   it('carries no page cursor, no trace and no span when its store kept none, and is nothing for an id the store does not hold', async () => {
     const read = recordedEventReaderOf(storeHolding(untraced));
-    const alpha = { org: 'acme', brain: 'alpha' };
+    const alpha = { org: 'acme', playbook: 'alpha' };
 
     const [found, missing] = await Effect.runPromise(
       Effect.all([read(alpha, 'message-21'), read(alpha, 'message-99')]),

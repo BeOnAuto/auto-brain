@@ -1,8 +1,10 @@
 import { Context } from 'effect';
 
-export interface BrainAddress {
+export interface PlaybookAddress {
   readonly org: string;
-  readonly brain: string;
+  readonly playbook: string;
 }
 
-export class BrainContext extends Context.Service<BrainContext, BrainAddress>()('@beonauto/operations/BrainContext') {}
+export class PlaybookContext extends Context.Service<PlaybookContext, PlaybookAddress>()(
+  '@beonauto/operations/PlaybookContext',
+) {}

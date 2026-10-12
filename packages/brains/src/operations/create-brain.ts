@@ -1,34 +1,35 @@
 import { defineCommand, quoted } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
-import { brainNamed, purposeOf } from '../plain-language/brain-words.ts';
-import { BrainSchema } from '../registry/brain.ts';
-import { BrainDescriptionField, BrainIdField, BrainNameField } from './brain-fields.ts';
+import { playbookNamed, purposeOf } from '../plain-language/brain-words.ts';
+import { PlaybookSchema } from '../registry/brain.ts';
+import { PlaybookDescriptionField, PlaybookIdField, PlaybookNameField } from './brain-fields.ts';
 import { recordInRegistry } from './registry-recording.ts';
 
-export const createBrain = defineCommand('org', {
-  name: 'create_brain',
-  title: 'Create brain',
+export const createPlaybook = defineCommand('org', {
+  name: 'create_playbook',
+  title: 'Create playbook',
   description: [
-    "Creates a brain in the org for one business responsibility, such as reviewing campaign briefs or keeping a team's meeting notes,",
+    "Creates a playbook in the org for one business responsibility, such as reviewing campaign briefs or keeping a team's meeting notes,",
     'and returns it, active and empty: its functions and workflows come next.',
-    'Use it when the person wants a new brain; list_brains shows the brains that exist, and an id that is taken or retired is refused.',
-    "`brain` is the id every tool inside the brain takes, `name` is what people call it, and `description` says what the brain is for, in the person's words.",
+    'Use it when the person wants a new playbook; list_playbooks shows the playbooks that exist, and an id that is taken or retired is refused.',
+    "`playbook` is the id every tool inside the playbook takes, `name` is what people call it, and `description` says what the playbook is for, in the person's words.",
   ].join(' '),
-  route: { method: 'POST', path: '/brains' },
+  route: { method: 'POST', path: '/playbooks' },
   successStatus: 201,
   inputSchema: Schema.Struct({
-    brain: BrainIdField,
-    name: BrainNameField,
-    description: Schema.optionalKey(BrainDescriptionField),
+    playbook: PlaybookIdField,
+    name: PlaybookNameField,
+    description: Schema.optionalKey(PlaybookDescriptionField),
   }),
-  outputSchema: BrainSchema,
+  outputSchema: PlaybookSchema,
   reasons: ['conflict'],
-  handle: ({ brain, name, description = '' }) =>
-    recordInRegistry({ type: 'create', brain, name, description }).pipe(Effect.catchTag('not_found', Effect.die)),
+  handle: ({ playbook, name, description = '' }) =>
+    recordInRegistry({ type: 'create', playbook, name, description }).pipe(Effect.catchTag('not_found', Effect.die)),
   plainLanguage: {
-    task: 'create a brain',
-    attempt: ({ brain }) => `create the brain ${quoted(brain)}`,
-    outcome: (brain) => `Created ${brainNamed(brain)}.${purposeOf(brain)} Its functions and workflows come next.`,
+    task: 'create a playbook',
+    attempt: ({ playbook }) => `create the playbook ${quoted(playbook)}`,
+    outcome: (playbook) =>
+      `Created ${playbookNamed(playbook)}.${purposeOf(playbook)} Its functions and workflows come next.`,
   },
 });

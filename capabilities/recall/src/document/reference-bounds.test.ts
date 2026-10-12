@@ -28,11 +28,11 @@ describe('the bounds on the public reference page of recall functions', () => {
       valueOf('Depth of a value'),
       valueOf('Work of one answer'),
       valueOf('Duration and memory of a run'),
-      valueOf('Recall functions a brain keeps'),
+      valueOf('Recall functions a playbook keeps'),
       valueOf('Views built at once'),
       valueOf('Folding time of a page'),
       valueOf('Pages a pass'),
-      valueOf('Brains followed at once'),
+      valueOf('Playbooks followed at once'),
     ]).toEqual([
       expect.stringContaining(String(recallBounds.mostFilters)),
       expect.stringContaining(`${counted.format(recallBounds.budget)} checkpoints`),
@@ -45,10 +45,10 @@ describe('the bounds on the public reference page of recall functions', () => {
         `${recallBounds.deadlineMs / 1000} seconds and ${recallBounds.answerMemoryBytes / mebibytes} MiB`,
       ),
       expect.stringContaining(String(recallBounds.mostFunctions)),
-      expect.stringContaining(`${recallBounds.rebuildsAtOnce} a brain`),
+      expect.stringContaining(`${recallBounds.rebuildsAtOnce} a playbook`),
       expect.stringContaining(`${recallBounds.pageBudgetMs / 1000} seconds`),
-      expect.stringContaining(`${recallBounds.pagesPerWake} a brain`),
-      expect.stringContaining(String(recallBounds.brainsAtOnce)),
+      expect.stringContaining(`${recallBounds.pagesPerWake} a playbook`),
+      expect.stringContaining(String(recallBounds.playbooksAtOnce)),
     ]);
   });
 

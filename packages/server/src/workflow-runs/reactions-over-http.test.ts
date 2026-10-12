@@ -54,7 +54,7 @@ async function created([name, source]: readonly [string, string]): Promise<void>
 
 async function servingWith(...definitions: readonly (readonly [string, string])[]): Promise<void> {
   server = await servingWorkflows([]);
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   await definitions.reduce<Promise<void>>(
     (before, definition) => before.then(() => created(definition)),
     Promise.resolve(),
@@ -78,7 +78,7 @@ async function triggeredRunOf(name: string) {
 }
 
 describe('a workflow whose trigger is an event', { timeout: workflowTestTimeoutMs }, () => {
-  it('is run by the brain itself for an event published to the brain, with the event as its input', async () => {
+  it('is run by the playbook itself for an event published to the playbook, with the event as its input', async () => {
     await servingWith(['close-the-month', closing]);
 
     await server.call('POST', `${alpha}/events`, {
@@ -104,7 +104,7 @@ describe('a workflow whose trigger is an event', { timeout: workflowTestTimeoutM
 });
 
 describe('a run waiting for an event whose type its filter names', { timeout: workflowTestTimeoutMs }, () => {
-  it('takes one published to its brain', async () => {
+  it('takes one published to its playbook', async () => {
     await servingWith(['approval', approving]);
     const started = await server.call('POST', `${alpha}/definitions/workflow/approval/run`, { body: { input: {} } });
     const path = `${alpha}/runs/${runIdIn(started.body)}`;

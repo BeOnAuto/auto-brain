@@ -20,7 +20,7 @@ const aNumber: unknown = expect.any(Number);
 
 const aDigest: unknown = expect.stringMatching(/^[0-9a-f]{64}$/u);
 
-const alpha = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
 async function testsOn(entry: Readonly<Record<string, unknown>> = {}) {
   const fake = await serveFakeMcp({ bearer: fakeApiKey });

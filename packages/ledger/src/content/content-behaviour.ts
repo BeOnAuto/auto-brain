@@ -1,14 +1,14 @@
 import { createHash } from 'node:crypto';
 
-import { bytesOfText, mostContentChunkBytes, type BrainAddress, type Ledger } from '@beonauto/operations';
+import { bytesOfText, mostContentChunkBytes, type PlaybookAddress, type Ledger } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { aLedger, type LedgerEntry } from '../testing/ledger-entry.ts';
 
-const alpha: BrainAddress = { org: 'acme', brain: 'alpha' };
+const alpha: PlaybookAddress = { org: 'acme', playbook: 'alpha' };
 
-const beta = { org: 'acme', brain: 'beta' };
+const beta = { org: 'acme', playbook: 'beta' };
 
 function answerOfAbout(bytes: number): string {
   const rows: { readonly id: number; readonly note: string }[] = [];
@@ -37,13 +37,13 @@ function chunksOfTheDigest(sha256: string): string {
 
 const keysOfTheHeads = 'SELECT sha256 FROM recorded_content_heads';
 
-function kept(ledger: Ledger['Service'], text: string, brain: BrainAddress = alpha): Promise<string> {
+function kept(ledger: Ledger['Service'], text: string, playbook: PlaybookAddress = alpha): Promise<string> {
   const sha256 = digestOf(text);
-  return Effect.runPromise(ledger.content.put(brain, sha256, text)).then(() => sha256);
+  return Effect.runPromise(ledger.content.put(playbook, sha256, text)).then(() => sha256);
 }
 
 function contentKeptWhole(entry: LedgerEntry): void {
-  describe('the content a brain recorded', () => {
+  describe('the content a playbook recorded', () => {
     it.each([
       ['100 bytes', 100],
       ['64 KiB', 65_536],
@@ -69,7 +69,7 @@ function contentKeptWhole(entry: LedgerEntry): void {
       },
     );
 
-    it('keeps an answer received twice once, and reads it in its own brain alone', async () => {
+    it('keeps an answer received twice once, and reads it in its own playbook alone', async () => {
       const database = await entry.aDatabase();
       const ledger = await aLedger(entry, database);
       const text = answerOfAbout(1_500_000);
@@ -88,7 +88,7 @@ function contentKeptWhole(entry: LedgerEntry): void {
 }
 
 function contentReadBack(entry: LedgerEntry): void {
-  describe('the content a brain recorded, read back', () => {
+  describe('the content a playbook recorded, read back', () => {
     it('fails as a defect on a read whose chunks no longer join to the text its key names', async () => {
       const database = await entry.aDatabase();
       const ledger = await aLedger(entry, database);

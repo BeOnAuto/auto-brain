@@ -1,7 +1,7 @@
 import { streamPrefixOfOrg } from '@beonauto/operations';
 
-export const brainsStream = 'brains';
+export const playbooksStream = 'brains';
 
-export function brainsStreamOfOrg(org: string): string {
-  return `${streamPrefixOfOrg({ org })}${brainsStream}`;
+export function playbooksStreamOfOrg(org: string): string {
+  return `${streamPrefixOfOrg({ org })}${playbooksStream}`;
 }

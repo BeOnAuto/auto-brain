@@ -1,41 +1,41 @@
 import type { ActedContext } from '@beonauto/operations';
 
-import type { BrainCreated, BrainUpdated, RecordedBrainEvent } from './brain-events.ts';
-import type { Brain } from './brain.ts';
+import type { PlaybookCreated, PlaybookUpdated, RecordedPlaybookEvent } from './brain-events.ts';
+import type { Playbook } from './brain.ts';
 
-export type Registry = ReadonlyMap<string, Brain>;
+export type Registry = ReadonlyMap<string, Playbook>;
 
 export const initialRegistry: Registry = new Map();
 
-function createdBrain({ data, context }: BrainCreated): Brain {
-  const { brain, name, description } = data;
+function createdPlaybook({ data, context }: PlaybookCreated): Playbook {
+  const { brain: playbook, name, description } = data;
   const { at, by } = context;
-  return { id: brain, name, description, status: 'active', created_at: at, created_by: by, updated_at: at };
+  return { id: playbook, name, description, status: 'active', created_at: at, created_by: by, updated_at: at };
 }
 
-function updatedBrain(brain: Brain, { data, context }: BrainUpdated): Brain {
-  const { name = brain.name, description = brain.description } = data;
-  return { ...brain, name, description, updated_at: context.at };
+function updatedPlaybook(playbook: Playbook, { data, context }: PlaybookUpdated): Playbook {
+  const { name = playbook.name, description = playbook.description } = data;
+  return { ...playbook, name, description, updated_at: context.at };
 }
 
-function retiredBrain(brain: Brain, { at }: ActedContext): Brain {
-  return { ...brain, status: 'retired', updated_at: at, retired_at: at };
+function retiredPlaybook(playbook: Playbook, { at }: ActedContext): Playbook {
+  return { ...playbook, status: 'retired', updated_at: at, retired_at: at };
 }
 
-function withBrain(registry: Registry, brain: Brain): Registry {
-  return new Map(registry).set(brain.id, brain);
+function withPlaybook(registry: Registry, playbook: Playbook): Registry {
+  return new Map(registry).set(playbook.id, playbook);
 }
 
-export function evolveRegistry(registry: Registry, event: RecordedBrainEvent): Registry {
+export function evolveRegistry(registry: Registry, event: RecordedPlaybookEvent): Registry {
   if (event.type === 'brain_created') {
-    return withBrain(registry, createdBrain(event));
+    return withPlaybook(registry, createdPlaybook(event));
   }
-  const brain = registry.get(event.data.brain);
-  if (brain === undefined) {
+  const playbook = registry.get(event.data.brain);
+  if (playbook === undefined) {
     return registry;
   }
-  return withBrain(
+  return withPlaybook(
     registry,
-    event.type === 'brain_updated' ? updatedBrain(brain, event) : retiredBrain(brain, event.context),
+    event.type === 'brain_updated' ? updatedPlaybook(playbook, event) : retiredPlaybook(playbook, event.context),
   );
 }

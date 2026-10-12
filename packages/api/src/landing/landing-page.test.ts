@@ -24,7 +24,7 @@ describe('the root of the server, opened in a browser', () => {
       status: 200,
       type: 'text/html; charset=UTF-8',
     });
-    expect(await response.text()).toContain('<h1>Auto Brain is running</h1>');
+    expect(await response.text()).toContain('<h1>Auto Runtime is running</h1>');
   });
 
   it('shows the address the server answers at', async () => {

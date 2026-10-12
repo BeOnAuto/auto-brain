@@ -13,7 +13,7 @@ describe('release', () => {
   it('names the product and carries the release version of the repository manifest', () => {
     const manifest = manifestOf(readFileSync(new URL('../../../../package.json', import.meta.url), 'utf8'));
 
-    expect(release).toEqual({ name: 'auto-brain', version: manifest.version });
+    expect(release).toEqual({ name: 'auto-runtime', version: manifest.version });
     expect(manifest.name).toBe('auto-brain');
   });
 });

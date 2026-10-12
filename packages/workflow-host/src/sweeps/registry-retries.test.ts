@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { DatabaseFailed, type HostDatabase } from '../database/host-database.ts';
 import {
-  brainCreated,
+  playbookCreated,
   byAdmin,
   definitionRecorded,
   eventTrigger,
@@ -20,7 +20,7 @@ interface HeldBack {
   readonly release: () => void;
 }
 
-function sweptAtOnceAndRegistryFailing(database: HostDatabase, brainKey: string): HeldBack {
+function sweptAtOnceAndRegistryFailing(database: HostDatabase, playbookKey: string): HeldBack {
   const state = { released: false, swept: false };
   const store: HostDatabase['store'] = {
     ...database.store,
@@ -36,7 +36,7 @@ function sweptAtOnceAndRegistryFailing(database: HostDatabase, brainKey: string)
       read: (statement) =>
         Effect.suspend(() => {
           const text = statement.strings.join('');
-          state.swept ||= text.includes('FROM workflow_followed_brains') && statement.values.includes(brainKey);
+          state.swept ||= text.includes('FROM workflow_followed_brains') && statement.values.includes(playbookKey);
           const registry = text.includes('FROM workflow_followed_orgs WHERE stream_id');
           return registry && !state.swept
             ? Effect.fail(new DatabaseFailed({ detail: 'The registry could not be read' }))
@@ -49,7 +49,7 @@ function sweptAtOnceAndRegistryFailing(database: HostDatabase, brainKey: string)
   };
 }
 
-describe('a brain another process creates, swept before its registry could be read', () => {
+describe('a playbook another process creates, swept before its registry could be read', () => {
   it(
     'is passed from its first record, so its first event starts a workflow without another append',
     { timeout: 30_000 },
@@ -59,7 +59,7 @@ describe('a brain another process creates, swept before its registry could be re
       const reactions = followerOver(held.database, 20);
       const trigger = eventTrigger({ type: 'com.acme.closed' });
 
-      await brainCreated(database.store, 'beta');
+      await playbookCreated(database.store, 'beta');
       await definitionRecorded(database.store, { name: 'close', version: 1, triggers: [trigger] }, beta);
       await published(database.store, { id: 'first', type: 'com.acme.closed' }, byAdmin, beta);
       held.release();
@@ -69,7 +69,7 @@ describe('a brain another process creates, swept before its registry could be re
         1000,
       );
 
-      expect(starts.map(({ brain, workflow }) => [brain, workflow])).toEqual([['beta', 'close']]);
+      expect(starts.map(({ playbook, workflow }) => [playbook, workflow])).toEqual([['beta', 'close']]);
     },
   );
 });

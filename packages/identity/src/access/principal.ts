@@ -10,10 +10,10 @@ export interface Principal {
 
 export const localDeveloper: Principal = {
   org: localOrg,
-  callerIn: (org) => ({ id: 'local', org, permissions: allPermissions, brains: '*' }),
+  callerIn: (org) => ({ id: 'local', org, permissions: allPermissions, playbooks: '*' }),
 };
 
-export function principalOf({ id, org, permissions, brains }: ApiKey): Principal {
-  const caller: CallerIdentity = { id, org, permissions, brains };
+export function principalOf({ id, org, permissions, playbooks }: ApiKey): Principal {
+  const caller: CallerIdentity = { id, org, permissions, playbooks };
   return { org, callerIn: () => caller };
 }

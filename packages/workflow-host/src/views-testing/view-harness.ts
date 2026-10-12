@@ -5,12 +5,12 @@ import { onTestFinished } from 'vitest';
 import type { DatabaseSettings } from '../database/host-databases.ts';
 import { openWorkflowStore, type WorkflowStore } from '../host/workflow-store.ts';
 import { recordingReports, type RecordingReports } from '../testing/recording-reports.ts';
-import { brainAppends, type BrainAppends } from './brain-appends.ts';
+import { playbookAppends, type PlaybookAppends } from './brain-appends.ts';
 import { harnessProjectors, type HarnessProjectors } from './harness-projectors.ts';
 import { measuredEnvironment, settingsOver, type ViewSettingsOf } from './view-documents.ts';
 import { viewReadingOf, type ViewReading } from './view-reading.ts';
 
-export interface ViewHarness extends BrainAppends, ViewReading, HarnessProjectors {
+export interface ViewHarness extends PlaybookAppends, ViewReading, HarnessProjectors {
   readonly store: WorkflowStore;
   readonly reports: RecordingReports;
   readonly pool: ProgramPool;
@@ -34,7 +34,7 @@ export async function viewHarness(
     await store.database.close();
   });
   return {
-    ...brainAppends(store.database.store, appends),
+    ...playbookAppends(store.database.store, appends),
     ...viewReadingOf(store.views),
     ...projectors,
     store,

@@ -24,8 +24,8 @@ const ofTheChild = {
 const succeeded = { type: 'run_succeeded', data: { output: 'checked', record: {} } };
 
 const endingRecord = {
-  brain: { org: 'acme', brain: 'alpha' },
-  brainKey: alpha,
+  playbook: { org: 'acme', playbook: 'alpha' },
+  playbookKey: alpha,
   record: {
     id: 'record-1',
     cursor: 'record-1',

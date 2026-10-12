@@ -10,20 +10,20 @@ export interface KeptFunction {
   readonly details: unknown;
 }
 
-export interface BrainDefinitions {
+export interface PlaybookDefinitions {
   readonly version: number;
   readonly functions: ReadonlyMap<string, KeptFunction>;
 }
 
-export const noDefinitions: BrainDefinitions = { version: 0, functions: new Map() };
+export const noDefinitions: PlaybookDefinitions = { version: 0, functions: new Map() };
 
 const decodeDefinitionEvent = recordedDecoder(DefinitionEventSchema);
 
-export function definitionStreamOf(brainKey: string, definitionType: string): string {
-  return `${brainKey}${definitionTypeStreamOf(definitionType)}`;
+export function definitionStreamOf(playbookKey: string, definitionType: string): string {
+  return `${playbookKey}${definitionTypeStreamOf(definitionType)}`;
 }
 
-export function brainKeyOfDefinitions(stream: string, definitionType: string): string {
+export function playbookKeyOfDefinitions(stream: string, definitionType: string): string {
   return stream.slice(0, stream.length - definitionTypeStreamOf(definitionType).length);
 }
 
@@ -43,7 +43,7 @@ function evolved(functions: ReadonlyMap<string, KeptFunction>, event: RecordedDe
   return kept;
 }
 
-export function definitionsAfter(previous: BrainDefinitions, events: readonly unknown[]): BrainDefinitions {
+export function definitionsAfter(previous: PlaybookDefinitions, events: readonly unknown[]): PlaybookDefinitions {
   const functions = events.reduce<ReadonlyMap<string, KeptFunction>>(
     (kept, stored, index) =>
       Option.match(decodeDefinitionEvent(stored), {

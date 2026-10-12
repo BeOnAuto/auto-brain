@@ -3,7 +3,7 @@ import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import { chatEnvironment, chatKey, chatServer, deliveryHistoryOf } from '../testing/servers/chat-deliveries.ts';
 import {
-  brainEventsOf,
+  playbookEventsOf,
   flatReading,
   interactionsOf,
   readingIn,
@@ -34,7 +34,7 @@ describe(
       chat.chat.reply({ channel: '#approvals-ada', thread: question?.ts, user: 'ada', text: 'Approve, ready to ship' });
 
       const settled = await server.settled(runId);
-      const events = await until(() => brainEventsOf(server), readRecorded);
+      const events = await until(() => playbookEventsOf(server), readRecorded);
 
       expect(listed).toMatchObject({ conversation: '#approvals-ada/1699.000001', answerer: 'ada', reply_refusals: 0 });
       expect(settled).toMatchObject({
@@ -51,7 +51,7 @@ describe(
         },
       ]);
       expect(events).toContain(
-        'The brain looked for new replies in the conversation “#approvals-ada/1699.000001” through the thread replies tool of chat and found 2, took 1 as an answer and refused 0.',
+        'The playbook looked for new replies in the conversation “#approvals-ada/1699.000001” through the thread replies tool of chat and found 2, took 1 as an answer and refused 0.',
       );
     });
 
@@ -118,7 +118,7 @@ describe(
       await until(() => interactionsOf(server), readingIn(1));
       chat.chat.reply({ channel: '#approvals-ada', thread: chat.chat.posted()[0]?.ts, user: 'ada', text: 'maybe' });
 
-      const events = await until(() => brainEventsOf(server), readAndTold);
+      const events = await until(() => playbookEventsOf(server), readAndTold);
       const listing = JSON.stringify((await server.call('GET', `${alpha}/interactions`)).body);
       const history = JSON.stringify((await server.call('GET', `${alpha}/runs/${runId}/history`)).body);
 

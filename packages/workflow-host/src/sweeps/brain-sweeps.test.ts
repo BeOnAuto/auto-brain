@@ -2,8 +2,8 @@ import type { AppendedStreams } from '@beonauto/ledger';
 import { Effect, Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import type { FollowedBrain, FollowedBrains } from '../follower/followed-brains.ts';
-import { brainSweepsOn, brainsInASweep, waitingInASweep, type Sweep } from './brain-sweeps.ts';
+import type { FollowedPlaybook, FollowedPlaybooks } from '../follower/followed-brains.ts';
+import { playbookSweepsOn, playbooksInASweep, waitingInASweep, type Sweep } from './brain-sweeps.ts';
 
 interface Swept {
   readonly sweeps: readonly Sweep[];
@@ -12,29 +12,30 @@ interface Swept {
 
 interface Ledger {
   readonly appended: readonly AppendedStreams[];
-  readonly waiting?: readonly FollowedBrain[];
-  readonly followed?: readonly FollowedBrain[];
+  readonly waiting?: readonly FollowedPlaybook[];
+  readonly followed?: readonly FollowedPlaybook[];
 }
 
-function brainNamed(index: number): string {
+function playbookNamed(index: number): string {
   return `brain/acme/b${String(index).padStart(4, '0')}/`;
 }
 
-function followedBrain(brainKey: string, waiting: boolean): FollowedBrain {
-  return { brainKey, cursor: null, delivered: null, attempts: waiting ? 1 : 0, waiting };
+function followedPlaybook(playbookKey: string, waiting: boolean): FollowedPlaybook {
+  return { playbookKey, cursor: null, delivered: null, attempts: waiting ? 1 : 0, waiting };
 }
 
-function brainsNumbered(count: number, waiting: boolean): readonly FollowedBrain[] {
-  return Array.from({ length: count }, (_, index) => followedBrain(brainNamed(index), waiting));
+function playbooksNumbered(count: number, waiting: boolean): readonly FollowedPlaybook[] {
+  return Array.from({ length: count }, (_, index) => followedPlaybook(playbookNamed(index), waiting));
 }
 
-function followedOf({ waiting = [], followed = [] }: Ledger): FollowedBrains {
+function followedOf({ waiting = [], followed = [] }: Ledger): FollowedPlaybooks {
   return {
     follow: () => Effect.void,
-    load: () => Effect.die(new Error('The sweeps load no brain')),
+    load: () => Effect.die(new Error('The sweeps load no playbook')),
     save: () => Effect.void,
     waitingForASweep: (limit) => Effect.succeed(waiting.slice(0, limit)),
-    following: (after, limit) => Effect.succeed(followed.filter(({ brainKey }) => brainKey > after).slice(0, limit)),
+    following: (after, limit) =>
+      Effect.succeed(followed.filter(({ playbookKey }) => playbookKey > after).slice(0, limit)),
   };
 }
 
@@ -49,13 +50,13 @@ async function sweptOver(ledger: Ledger, sweeps: number): Promise<Swept> {
       return Promise.resolve(answer);
     },
   };
-  const brainSweeps = brainSweepsOn(store, followedOf(ledger));
-  await Effect.runPromise(brainSweeps.started());
+  const playbookSweeps = playbookSweepsOn(store, followedOf(ledger));
+  await Effect.runPromise(playbookSweeps.started());
   const swept = await Effect.runPromise(
     Effect.forEach(Array.from({ length: sweeps }), () =>
-      Effect.tap(brainSweeps.next(), (sweep) =>
+      Effect.tap(playbookSweeps.next(), (sweep) =>
         Effect.sync(() => {
-          brainSweeps.registriesRead(sweep.registries);
+          playbookSweeps.registriesRead(sweep.registries);
         }),
       ),
     ),
@@ -64,13 +65,13 @@ async function sweptOver(ledger: Ledger, sweeps: number): Promise<Swept> {
 }
 
 function keysOf(sweep: Sweep | undefined): readonly string[] {
-  return (sweep?.brains ?? []).map(({ brainKey }) => brainKey);
+  return (sweep?.playbooks ?? []).map(({ playbookKey }) => playbookKey);
 }
 
 const now: AppendedStreams = { streams: [], through: ['10'], more: false };
 
 describe('the sweeps of the follower', () => {
-  it('hand out each brain appended to since the last read once, but not one only a run appended to, and name the registries', async () => {
+  it('hand out each playbook appended to since the last read once, but not one only a run appended to, and name the registries', async () => {
     const appended: AppendedStreams = {
       streams: [
         'brain/acme/alpha/events/',
@@ -87,33 +88,37 @@ describe('the sweeps of the follower', () => {
     const { sweeps, readsAfter } = await sweptOver({ appended: [now, appended] }, 2);
 
     expect(sweeps).toEqual([
-      { registries: ['org/acme/brains'], brains: [{ brainKey: 'brain/acme/alpha/', known: undefined }], again: false },
-      { registries: [], brains: [], again: false },
+      {
+        registries: ['org/acme/brains'],
+        playbooks: [{ playbookKey: 'brain/acme/alpha/', known: undefined }],
+        again: false,
+      },
+      { registries: [], playbooks: [], again: false },
     ]);
     expect(readsAfter).toEqual([undefined, ['10'], ['20']]);
   });
 
-  it('keep half of a sweep for brains that wait, and the rest for brains appended to, the others at the next sweep', async () => {
+  it('keep half of a sweep for playbooks that wait, and the rest for playbooks appended to, the others at the next sweep', async () => {
     const changed = Array.from({ length: 100 }, (_, index) => `brain/acme/c${String(index).padStart(4, '0')}/events/`);
     const appended: AppendedStreams = { streams: changed, through: ['20'], more: false };
 
-    const { sweeps } = await sweptOver({ appended: [now, appended], waiting: brainsNumbered(200, true) }, 2);
+    const { sweeps } = await sweptOver({ appended: [now, appended], waiting: playbooksNumbered(200, true) }, 2);
 
-    expect(sweeps.map((sweep) => [sweep.brains.length, sweep.again])).toEqual([
-      [brainsInASweep, true],
+    expect(sweeps.map((sweep) => [sweep.playbooks.length, sweep.again])).toEqual([
+      [playbooksInASweep, true],
       [waitingInASweep + 36, false],
     ]);
-    expect(sweeps[0]?.brains.filter(({ known }) => known?.waiting === true)).toHaveLength(waitingInASweep);
+    expect(sweeps[0]?.playbooks.filter(({ known }) => known?.waiting === true)).toHaveLength(waitingInASweep);
     expect(keysOf(sweeps[1]).at(-1)).toBe('brain/acme/c0099/');
   });
 });
 
 describe('the sweeps of the follower after its start', () => {
-  it('go once over every brain followed at their start, as many at a sweep as there is room for', async () => {
-    const { sweeps } = await sweptOver({ appended: [now], followed: brainsNumbered(200, false) }, 3);
+  it('go once over every playbook followed at their start, as many at a sweep as there is room for', async () => {
+    const { sweeps } = await sweptOver({ appended: [now], followed: playbooksNumbered(200, false) }, 3);
 
-    expect(sweeps.map((sweep) => sweep.brains.length)).toEqual([brainsInASweep, 200 - brainsInASweep, 0]);
-    expect(keysOf(sweeps[1])[0]).toBe(brainNamed(brainsInASweep));
+    expect(sweeps.map((sweep) => sweep.playbooks.length)).toEqual([playbooksInASweep, 200 - playbooksInASweep, 0]);
+    expect(keysOf(sweeps[1])[0]).toBe(playbookNamed(playbooksInASweep));
   });
 
   it('sweep again at once while the read of what was appended stopped at its most', async () => {
@@ -136,14 +141,14 @@ function answering(answers: readonly AppendedStreams[]) {
   };
 }
 
-function followingFailingOnce(): FollowedBrains {
+function followingFailingOnce(): FollowedPlaybooks {
   const failures = { left: 1 };
   return {
     ...followedOf({ appended: [] }),
     following: () =>
       Effect.suspend(() => {
         failures.left -= 1;
-        return failures.left < 0 ? Effect.succeed([]) : Effect.die(new Error('The brains could not be read'));
+        return failures.left < 0 ? Effect.succeed([]) : Effect.die(new Error('The playbooks could not be read'));
       }),
   };
 }
@@ -159,13 +164,13 @@ function loadOf(sweep: number): AppendedStreams {
 }
 
 describe('the sweeps of the follower when a read fails', () => {
-  it('keep the brains they chose when the read of the round fails, and hand them out at the next sweep', async () => {
+  it('keep the playbooks they chose when the read of the round fails, and hand them out at the next sweep', async () => {
     const appended: AppendedStreams = { streams: ['brain/acme/alpha/events/'], through: ['20'], more: false };
-    const brainSweeps = brainSweepsOn(answering([now, appended, quiet]), followingFailingOnce());
-    await Effect.runPromise(brainSweeps.started());
+    const playbookSweeps = playbookSweepsOn(answering([now, appended, quiet]), followingFailingOnce());
+    await Effect.runPromise(playbookSweeps.started());
 
-    const failed = await Effect.runPromiseExit(brainSweeps.next());
-    const next = await Effect.runPromise(brainSweeps.next());
+    const failed = await Effect.runPromiseExit(playbookSweeps.next());
+    const next = await Effect.runPromise(playbookSweeps.next());
 
     expect(Exit.isFailure(failed)).toBe(true);
     expect(keysOf(next)).toEqual(['brain/acme/alpha/']);
@@ -173,13 +178,13 @@ describe('the sweeps of the follower when a read fails', () => {
 
   it('name a registry again at every sweep until it was read', async () => {
     const appended: AppendedStreams = { streams: ['org/acme/brains'], through: ['20'], more: false };
-    const brainSweeps = brainSweepsOn(answering([now, appended, quiet]), followedOf({ appended: [] }));
-    await Effect.runPromise(brainSweeps.started());
+    const playbookSweeps = playbookSweepsOn(answering([now, appended, quiet]), followedOf({ appended: [] }));
+    await Effect.runPromise(playbookSweeps.started());
 
-    const first = await Effect.runPromise(brainSweeps.next());
-    const unread = await Effect.runPromise(brainSweeps.next());
-    brainSweeps.registriesRead(unread.registries);
-    const read = await Effect.runPromise(brainSweeps.next());
+    const first = await Effect.runPromise(playbookSweeps.next());
+    const unread = await Effect.runPromise(playbookSweeps.next());
+    playbookSweeps.registriesRead(unread.registries);
+    const read = await Effect.runPromise(playbookSweeps.next());
 
     expect([first.registries, unread.registries, read.registries]).toEqual([
       ['org/acme/brains'],
@@ -190,14 +195,14 @@ describe('the sweeps of the follower when a read fails', () => {
 });
 
 describe('the sweeps of the follower under a steady load', () => {
-  it('pass a failed brain within a few sweeps though 200 brains are appended to before each', async () => {
+  it('pass a failed playbook within a few sweeps though 200 playbooks are appended to before each', async () => {
     const loads = Array.from({ length: 8 }, (_, sweep) => loadOf(sweep));
-    const brainSweeps = brainSweepsOn(answering(loads), followedOf({ appended: [] }));
-    await Effect.runPromise(brainSweeps.started());
-    await Effect.runPromise(brainSweeps.next());
-    brainSweeps.passAgain('brain/acme/failed/');
+    const playbookSweeps = playbookSweepsOn(answering(loads), followedOf({ appended: [] }));
+    await Effect.runPromise(playbookSweeps.started());
+    await Effect.runPromise(playbookSweeps.next());
+    playbookSweeps.passAgain('brain/acme/failed/');
 
-    const sweeps = await Effect.runPromise(Effect.forEach(Array.from({ length: 5 }), () => brainSweeps.next()));
+    const sweeps = await Effect.runPromise(Effect.forEach(Array.from({ length: 5 }), () => playbookSweeps.next()));
     const passedAt = sweeps.findIndex((sweep) => keysOf(sweep).includes('brain/acme/failed/'));
 
     expect(passedAt).toBeGreaterThanOrEqual(0);

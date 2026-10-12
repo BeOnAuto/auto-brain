@@ -33,8 +33,8 @@ export function startOf(document: Schema.JsonObject, input: Schema.Json = {}): R
   return { ...testStartOf(document), input, attributes: {} };
 }
 
-export function runAt(index: number): { readonly org: string; readonly brain: string; readonly runId: string } {
-  return { org: 'acme', brain: 'alpha', runId: `0199a3c4-7d2e-7c1a-9b3f-${String(index).padStart(12, '0')}` };
+export function runAt(index: number): { readonly org: string; readonly playbook: string; readonly runId: string } {
+  return { org: 'acme', playbook: 'alpha', runId: `0199a3c4-7d2e-7c1a-9b3f-${String(index).padStart(12, '0')}` };
 }
 
 export async function measuredHost(database: DatabaseSettings, clock?: HostClock): Promise<MeasuredHost> {

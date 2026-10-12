@@ -72,7 +72,7 @@ describe('a workflow whose every schedule is due every minute', () => {
     expect(first).toEqual([
       {
         org: 'acme',
-        brain: 'alpha',
+        playbook: 'alpha',
         workflow: 'tick',
         version: 1,
         runId: reactionRunIdOf('tick', 1, '/schedule/every', isoAt(1)),
@@ -117,7 +117,7 @@ describe('the due times of a schedule', () => {
 });
 
 describe('a due time of a schedule', () => {
-  it('whose run the brain refuses is said, and the schedule goes on', async () => {
+  it('whose run the playbook refuses is said, and the schedule goes on', async () => {
     const refusing = { now: true };
     const { reacting, clock } = await ticking(refusedWhile(refusing));
     clock.moveTo(activatedAt + aMinute);
@@ -130,7 +130,7 @@ describe('a due time of a schedule', () => {
     expect([refusals, starts.map(({ input }) => input)]).toEqual([
       [
         {
-          reason: `The run its every schedule had due at ${isoAt(1)} could not be started: The brain refused the start`,
+          reason: `The run its every schedule had due at ${isoAt(1)} could not be started: The playbook refused the start`,
         },
       ],
       [{ schedule: { due: isoAt(2) } }],

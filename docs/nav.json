@@ -3,8 +3,8 @@
     "text": "Concepts",
     "items": [
       {
-        "text": "Brains and methods",
-        "link": "/concepts/brains"
+        "text": "Playbooks and methods",
+        "link": "/concepts/playbooks"
       },
       {
         "text": "Functions",
@@ -32,8 +32,8 @@
         "link": "/get-started/local"
       },
       {
-        "text": "Build your first brain",
-        "link": "/tutorials/first-brain"
+        "text": "Build your first playbook",
+        "link": "/tutorials/first-playbook"
       },
       {
         "text": "Build your first workflow",
@@ -89,6 +89,10 @@
       {
         "text": "HTTP API",
         "link": "/reference/http"
+      },
+      {
+        "text": "Upgrade to playbooks",
+        "link": "/reference/upgrading"
       }
     ]
   },

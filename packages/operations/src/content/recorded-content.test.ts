@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest';
 
 import { memoryRecordedContent } from './memory-content.ts';
 
-const alpha = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
-const beta = { org: 'acme', brain: 'beta' };
+const beta = { org: 'acme', playbook: 'beta' };
 
-describe('the content a brain recorded', () => {
-  it('keeps a digest once, as it was first put, and reads it back in its brain alone', async () => {
+describe('the content a playbook recorded', () => {
+  it('keeps a digest once, as it was first put, and reads it back in its playbook alone', async () => {
     const content = memoryRecordedContent();
 
     const read = await Effect.runPromise(

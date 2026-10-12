@@ -14,45 +14,45 @@ import {
   type Registration,
   type Settled,
 } from '@beonauto/operations';
-import { memoryBrainRegistry, recordingReporter, type MemoryLedger } from '@beonauto/operations/testing';
+import { memoryPlaybookRegistry, recordingReporter, type MemoryLedger } from '@beonauto/operations/testing';
 import { Effect, Layer } from 'effect';
 
 import { definitionRunResultOf } from '../calls/function-results.ts';
 import type { RunDefinition } from '../calls/function-run.ts';
 import { acmeCaller } from './workflows.ts';
 
-interface BrainOperation {
-  readonly registration: Registration<'brain'>;
+interface PlaybookOperation {
+  readonly registration: Registration<'playbook'>;
 }
 
-export interface Brain {
-  readonly createDefinition: BrainOperation;
-  readonly runDefinition: BrainOperation;
-  readonly getRun: BrainOperation;
-  readonly call: (operation: BrainOperation, input: object, caller?: CallerIdentity) => Promise<Outcome>;
+export interface Playbook {
+  readonly createDefinition: PlaybookOperation;
+  readonly runDefinition: PlaybookOperation;
+  readonly getRun: PlaybookOperation;
+  readonly call: (operation: PlaybookOperation, input: object, caller?: CallerIdentity) => Promise<Outcome>;
   readonly callCancelledWhen: (
     cancelled: Promise<unknown>,
-    operation: BrainOperation,
+    operation: PlaybookOperation,
     input: object,
   ) => Promise<Settled>;
   readonly executeNested: RunDefinition;
   readonly settle: SettleRun;
 }
 
-export function brainOn(ledger: MemoryLedger, capabilities: readonly Capability[]): Brain {
+export function playbookOn(ledger: MemoryLedger, capabilities: readonly Capability[]): Playbook {
   const services = Layer.mergeAll(
     ledger.layer,
-    memoryBrainRegistry([{ org: 'acme', brain: 'alpha' }]),
+    memoryPlaybookRegistry([{ org: 'acme', playbook: 'alpha' }]),
     recordingReporter().layer,
   );
   const dispatcher = makeDispatcher([]);
   const createDefinition = defineCreateDefinition(capabilities);
   const runDefinition = defineRunDefinition(capabilities);
-  const dispatch = (operation: BrainOperation, input: object, caller: CallerIdentity): Effect.Effect<Outcome> =>
+  const dispatch = (operation: PlaybookOperation, input: object, caller: CallerIdentity): Effect.Effect<Outcome> =>
     dispatcher
-      .dispatchToBrain(operation.registration, { caller, org: 'acme', brain: 'alpha', input, encoding: 'json' })
+      .dispatchToPlaybook(operation.registration, { caller, org: 'acme', playbook: 'alpha', input, encoding: 'json' })
       .pipe(Effect.provide(services));
-  const call: Brain['call'] = (operation, input, caller = acmeCaller) =>
+  const call: Playbook['call'] = (operation, input, caller = acmeCaller) =>
     Effect.runPromise(dispatch(operation, input, caller));
   return {
     createDefinition,

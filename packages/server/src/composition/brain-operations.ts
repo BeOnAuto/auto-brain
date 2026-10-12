@@ -1,18 +1,18 @@
-import { defineGetEvent, defineListBrainEvents } from '@beonauto/brains';
+import { defineGetEvent, defineListPlaybookEvents } from '@beonauto/brains';
 import {
   makeDefinitionOperations,
   makeDefinitionPresenters,
   publishEvent,
-  type BrainOperation,
+  type PlaybookOperation,
   type Capability,
 } from '@beonauto/definitions';
 import { conversationCallPresenter, toolTestPresenter } from '@beonauto/mcp';
 import type { Presenter } from '@beonauto/operations';
 
-export function brainOperationsServing(
+export function playbookOperationsServing(
   capabilities: readonly Capability[],
   logPresenters: readonly Presenter[],
-): readonly BrainOperation[] {
+): readonly PlaybookOperation[] {
   const presenters = [
     ...makeDefinitionPresenters(capabilities),
     toolTestPresenter,
@@ -21,7 +21,7 @@ export function brainOperationsServing(
   ];
   return [
     ...makeDefinitionOperations(capabilities, presenters),
-    defineListBrainEvents(presenters),
+    defineListPlaybookEvents(presenters),
     defineGetEvent(presenters),
     publishEvent,
   ];

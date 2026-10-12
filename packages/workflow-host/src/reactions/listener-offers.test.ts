@@ -10,7 +10,7 @@ import { countingMatches, stopsByItsMemory } from '../reaction-testing/trigger-s
 import { onSQLite, openedOn } from '../testing/host-files.ts';
 import { listenerOffers } from './listener-offers.ts';
 
-const brainKey = 'brain/acme/alpha/';
+const playbookKey = 'brain/acme/alpha/';
 
 const applied: Submission = { outcome: 'applied', version: 2 };
 
@@ -29,8 +29,8 @@ function listening(database: HostDatabase, run: string, filters: readonly Json[]
     insertedListener(database, {
       runKey,
       listener: callKeyText({ runId: runKey, reference: '/do/0/wait', run: 1 }),
-      brainKey,
-      streamId: `${brainKey}run-logs/${run}`,
+      playbookKey,
+      streamId: `${playbookKey}run-logs/${run}`,
       armedBy: 1,
       filters: JSON.stringify(filters),
       workflow,
@@ -147,7 +147,7 @@ describe('the filter of the runs listening at one task of a version that goes pa
     expect(offers()).toHaveLength(3);
     expect(said()).toEqual([
       expect.stringContaining(
-        "wf: The filter of a listen task of the workflow was stopped by its deadline or its memory 3 times in a row, so the brain's events are not offered through it again for this version of the workflow; events sent to its runs still reach them: ",
+        "wf: The filter of a listen task of the workflow was stopped by its deadline or its memory 3 times in a row, so the playbook's events are not offered through it again for this version of the workflow; events sent to its runs still reach them: ",
       ),
     ]);
   });

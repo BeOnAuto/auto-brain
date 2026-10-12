@@ -4,11 +4,11 @@ import { HostElsewhere, HostStopped } from '@beonauto/workflow-host';
 import { Effect, type Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { workflowBrain, type WorkflowBrain } from '../testing/workflow-brain.ts';
+import { workflowPlaybook, type WorkflowPlaybook } from '../testing/workflow-brain.ts';
 import { acmeCaller } from '../testing/workflows.ts';
 import { defineSendRunEvent } from './send-run-event.ts';
 
-let brain: WorkflowBrain;
+let playbook: WorkflowPlaybook;
 
 let sendEvent: ReturnType<typeof defineSendRunEvent>;
 
@@ -32,15 +32,15 @@ function nested(levels: number): Schema.Json {
 }
 
 beforeAll(async () => {
-  brain = await workflowBrain();
-  sendEvent = defineSendRunEvent(brain.host);
-  await brain.call(brain.createDefinition, { type: 'workflow', name: 'approval', source: approval });
-  await brain.call(brain.createDefinition, { type: 'workflow', name: 'envelope', source: envelope });
-  await brain.call(brain.createDefinition, { type: 'echo', name: 'greet', source: '{"greeting": "Hello"}' });
+  playbook = await workflowPlaybook();
+  sendEvent = defineSendRunEvent(playbook.host);
+  await playbook.call(playbook.createDefinition, { type: 'workflow', name: 'approval', source: approval });
+  await playbook.call(playbook.createDefinition, { type: 'workflow', name: 'envelope', source: envelope });
+  await playbook.call(playbook.createDefinition, { type: 'echo', name: 'greet', source: '{"greeting": "Hello"}' });
 });
 
 afterAll(async () => {
-  await brain.close();
+  await playbook.close();
 });
 
 const tooLong: readonly (readonly [string, Readonly<Record<string, string>>, string])[] = [
@@ -55,13 +55,13 @@ function idOf(number: number): string {
 }
 
 async function startedApproval(runId: string): Promise<void> {
-  await brain.call(brain.runDefinition, { type: 'workflow', name: 'approval', run_id: runId });
+  await playbook.call(playbook.runDefinition, { type: 'workflow', name: 'approval', run_id: runId });
 }
 
 describe('send_run_event', () => {
-  it('is a brain command at POST /runs/{run_id}/events', () => {
+  it('is a playbook command at POST /runs/{run_id}/events', () => {
     expect(sendEvent.registration).toMatchObject({
-      scope: 'brain',
+      scope: 'playbook',
       kind: 'command',
       route: { method: 'POST', path: '/runs/{run_id}/events' },
       reasons: ['not_found', 'unavailable'],
@@ -72,7 +72,7 @@ describe('send_run_event', () => {
     const runId = idOf(1);
     await startedApproval(runId);
 
-    const sent = await brain.call(sendEvent, {
+    const sent = await playbook.call(sendEvent, {
       run_id: runId.toUpperCase(),
       event: { id: 'decision-1', type: 'com.acme.approval.decided', data: { approved: true } },
     });
@@ -81,7 +81,7 @@ describe('send_run_event', () => {
       status: 'succeeded',
       output: { run_id: runId, event: { id: 'decision-1', type: 'com.acme.approval.decided' } },
     });
-    expect(await brain.settled(runId)).toMatchObject({
+    expect(await playbook.settled(runId)).toMatchObject({
       output: { status: 'succeeded', output: [{ approved: true }] },
     });
   });
@@ -90,7 +90,7 @@ describe('send_run_event', () => {
     const runId = idOf(2);
     await startedApproval(runId);
 
-    const sent = await brain.call(sendEvent, { run_id: runId, event: { type: 'com.acme.other' } });
+    const sent = await playbook.call(sendEvent, { run_id: runId, event: { type: 'com.acme.other' } });
 
     expect(sent).toMatchObject({
       status: 'succeeded',
@@ -103,13 +103,13 @@ describe('send_run_event', () => {
 describe('send_run_event to no running workflow', () => {
   it('is rejected as not found for an unknown run or one of another type', async () => {
     const greeted = idOf(3);
-    await brain.call(brain.runDefinition, { type: 'echo', name: 'greet', run_id: greeted });
+    await playbook.call(playbook.runDefinition, { type: 'echo', name: 'greet', run_id: greeted });
     const notFound = { status: 'rejected', reason: 'not_found' };
 
-    expect(await brain.call(sendEvent, { run_id: idOf(4), event: { type: 'x' } })).toMatchObject(notFound);
-    expect(await brain.call(sendEvent, { run_id: greeted, event: { type: 'x' } })).toMatchObject({
+    expect(await playbook.call(sendEvent, { run_id: idOf(4), event: { type: 'x' } })).toMatchObject(notFound);
+    expect(await playbook.call(sendEvent, { run_id: greeted, event: { type: 'x' } })).toMatchObject({
       ...notFound,
-      detail: 'The brain has no active workflow run with that id',
+      detail: 'The playbook has no active workflow run with that id',
     });
   });
 
@@ -120,10 +120,10 @@ describe('send_run_event to no running workflow', () => {
       const answering = defineSendRunEvent({ deliver: () => Effect.succeed(answer) });
       await startedApproval(runId);
 
-      expect(await brain.call(answering, { run_id: runId, event: { type: 'x' } })).toEqual({
+      expect(await playbook.call(answering, { run_id: runId, event: { type: 'x' } })).toEqual({
         status: 'rejected',
         reason: 'not_found',
-        detail: 'The brain has no active workflow run with that id',
+        detail: 'The playbook has no active workflow run with that id',
       });
     },
   );
@@ -137,7 +137,7 @@ describe('send_run_event that cannot be delivered', () => {
       deliver: () => Effect.fail(new HostStopped({ detail: 'The server is stopping' })),
     });
 
-    expect(await brain.call(stopping, { run_id: runId, event: { type: 'x' } })).toEqual({
+    expect(await playbook.call(stopping, { run_id: runId, event: { type: 'x' } })).toEqual({
       status: 'rejected',
       reason: 'unavailable',
       detail: 'The workflow cannot take the event now; try again shortly',
@@ -150,7 +150,7 @@ describe('send_run_event that cannot be delivered', () => {
     const detail = 'The workflows of this database run in another server';
     const elsewhere = defineSendRunEvent({ deliver: () => Effect.fail(new HostElsewhere({ detail })) });
 
-    expect(await brain.call(elsewhere, { run_id: runId, event: { type: 'x' } })).toEqual({
+    expect(await playbook.call(elsewhere, { run_id: runId, event: { type: 'x' } })).toEqual({
       status: 'rejected',
       reason: 'unavailable',
       detail,
@@ -159,7 +159,7 @@ describe('send_run_event that cannot be delivered', () => {
 
   it('is rejected as invalid input when its data is larger than an event carries', async () => {
     expect(
-      await brain.call(sendEvent, { run_id: idOf(7), event: { type: 'x', data: 'x'.repeat(262_200) } }),
+      await playbook.call(sendEvent, { run_id: idOf(7), event: { type: 'x', data: 'x'.repeat(262_200) } }),
     ).toMatchObject({ status: 'rejected', reason: 'invalid_input' });
   });
 });
@@ -168,7 +168,7 @@ describe('an event that does not fit', () => {
   it.each(tooLong)(
     'is rejected as invalid input when %s is longer than an event carries',
     async (_, event, pointer) => {
-      expect(await brain.call(sendEvent, { run_id: idOf(8), event })).toMatchObject({
+      expect(await playbook.call(sendEvent, { run_id: idOf(8), event })).toMatchObject({
         status: 'rejected',
         reason: 'invalid_input',
         issues: [expect.objectContaining({ pointer })],
@@ -184,7 +184,7 @@ describe('an event that does not fit', () => {
       data: 'd'.repeat(260_000),
     };
 
-    expect(await brain.call(sendEvent, { run_id: idOf(9), event })).toMatchObject({
+    expect(await playbook.call(sendEvent, { run_id: idOf(9), event })).toMatchObject({
       status: 'rejected',
       reason: 'invalid_input',
       issues: [expect.objectContaining({ pointer: '/event' })],
@@ -192,12 +192,12 @@ describe('an event that does not fit', () => {
   });
 });
 
-describe('an event that poses as what the brain records itself', () => {
-  it('is rejected as invalid input, as one published to the brain, and leaves the run waiting', async () => {
+describe('an event that poses as what the playbook records itself', () => {
+  it('is rejected as invalid input, as one published to the playbook, and leaves the run waiting', async () => {
     const runId = idOf(22);
     await startedApproval(runId);
 
-    const forged = await brain.call(sendEvent, {
+    const forged = await playbook.call(sendEvent, {
       run_id: runId,
       event: { type: 'run_succeeded', source: `/runs/${runId}`, data: { approved: true } },
     });
@@ -207,16 +207,16 @@ describe('an event that poses as what the brain records itself', () => {
       reason: 'invalid_input',
       issues: [{ pointer: '/event/type' }, { pointer: '/event/source' }],
     });
-    expect(await brain.call(brain.getRun, { run_id: runId })).toMatchObject({
+    expect(await playbook.call(playbook.getRun, { run_id: runId })).toMatchObject({
       output: { status: 'started' },
     });
   });
 
-  it('is rejected when it claims the lineage the brain gives its own records', async () => {
+  it('is rejected when it claims the lineage the playbook gives its own records', async () => {
     const runId = idOf(23);
     await startedApproval(runId);
 
-    const forged = await brain.call(sendEvent, {
+    const forged = await playbook.call(sendEvent, {
       run_id: runId,
       event: { type: 'com.acme.approved', causationid: 'request-1', correlationid: runId },
     });
@@ -232,28 +232,31 @@ describe('an event that poses as what the brain records itself', () => {
 describe('the data of an event', () => {
   it('may nest as deep as a workflow holds the whole event in a list, which it takes', async () => {
     const runId = idOf(20);
-    await brain.call(brain.runDefinition, { type: 'workflow', name: 'envelope', run_id: runId });
+    await playbook.call(playbook.runDefinition, { type: 'workflow', name: 'envelope', run_id: runId });
 
-    const sent = await brain.call(sendEvent, {
+    const sent = await playbook.call(sendEvent, {
       run_id: runId,
       event: { type: 'com.acme.approval.decided', data: nested(510) },
     });
 
     expect(sent).toMatchObject({ status: 'succeeded' });
-    expect(await brain.settled(runId)).toMatchObject({ output: { status: 'succeeded' } });
+    expect(await playbook.settled(runId)).toMatchObject({ output: { status: 'succeeded' } });
   });
 
-  it('is rejected as invalid input deeper than that, as the data of an event published to the brain', async () => {
-    expect(await brain.call(sendEvent, { run_id: idOf(21), event: { type: 'x', data: nested(511) } })).toMatchObject({
-      status: 'rejected',
-      reason: 'invalid_input',
-      issues: [
-        {
-          detail: 'Expected data that nests at most 510 levels deep, so that the workflow can hold the event in a list',
-          pointer: '/event/data',
-        },
-      ],
-    });
+  it('is rejected as invalid input deeper than that, as the data of an event published to the playbook', async () => {
+    expect(await playbook.call(sendEvent, { run_id: idOf(21), event: { type: 'x', data: nested(511) } })).toMatchObject(
+      {
+        status: 'rejected',
+        reason: 'invalid_input',
+        issues: [
+          {
+            detail:
+              'Expected data that nests at most 510 levels deep, so that the workflow can hold the event in a list',
+            pointer: '/event/data',
+          },
+        ],
+      },
+    );
     expect([mostInputDepth, mostEventDataDepth]).toEqual([mostValueDepth, mostValueDepth - 2]);
   });
 });

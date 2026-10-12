@@ -1,22 +1,22 @@
-# Build your first brain
+# Build your first playbook
 
-Create a brain that reviews campaign briefs against a small set of rules. You will save the review as a reasoning function, run it on an incomplete brief, then change the brief and compare the recorded results.
+Create a playbook that reviews campaign briefs against a small set of rules. You will save the review as a reasoning function, run it on an incomplete brief, then change the brief and compare the recorded results.
 
 The campaign and figures below are sample data. This exercise makes no changes to advertising accounts or campaign budgets.
 
 ## Before you start
 
-Start Auto Brain locally and connect Claude Code, Claude Desktop or Codex through MCP. Follow the [local quick start](../get-started/local.md) first, and leave the server running throughout this tutorial. You do not need an Auto Cloud account.
+Start Auto Runtime locally and connect Claude Code, Claude Desktop or Codex through MCP. Follow the [local quick start](../get-started/local.md) first, and leave the server running throughout this tutorial. You do not need an Auto Cloud account.
 
-The local server allows you to create a brain, create a function and run it. You also need a model reference that your configured provider can use. Ask your agent to call `list_models` and show you the available models, then choose a concrete model or alias id from the result. The server needs its own model provider credentials; your agent's subscription does not supply them.
+The local server allows you to create a playbook, create a function and run it. You also need a model reference that your configured provider can use. Ask your agent to call `list_models` and show you the available models, then choose a concrete model or alias id from the result. The server needs its own model provider credentials; your agent's subscription does not supply them.
 
-If the result contains only wildcard patterns, or the listing is incomplete, use a concrete reference supported by your provider. Do not use a wildcard such as `provider/*` as the model. On an authenticated deployment, model discovery requires `org:read` and is available through the `/mcp` or organization endpoint; a connection limited to one brain needs a supplied model reference. See [Model information](../reference/mcp.md#model-information).
+If the result contains only wildcard patterns, or the listing is incomplete, use a concrete reference supported by your provider. Do not use a wildcard such as `provider/*` as the model. On an authenticated deployment, model discovery requires `org:read` and is available through the `/mcp` or organization endpoint; a connection limited to one playbook needs a supplied model reference. See [Model information](../reference/mcp.md#model-information).
 
-## 1. Create a practice brain
+## 1. Create a practice playbook
 
 Ask your connected agent:
 
-> Create a brain named Campaign review tutorial with the id `campaign-review-tutorial`. If that id already exists, show it to me and use it for this exercise. Do not change or retire any existing brains. Confirm the brain id before continuing.
+> Create a playbook named Campaign review tutorial with the id `campaign-review-tutorial`. If that id already exists, show it to me and use it for this exercise. Do not change or retire any existing playbooks. Confirm the playbook id before continuing.
 
 The agent should confirm `campaign-review-tutorial`. If it reports a permissions error, check that it is using your local Auto connection. For an authenticated deployment, ask the operator to check your key's access.
 
@@ -97,6 +97,6 @@ Ready means the brief meets this exercise's four criteria. It is not approval to
 
 ## Review the saved function
 
-The brain now contains a reusable review function and two recorded runs. The review criteria live in the saved definition; each brief is an input to a separate run. You can return to the same function from another conversation using an agent with access to the brain.
+The playbook now contains a reusable review function and two recorded runs. The review criteria live in the saved definition; each brief is an input to a separate run. You can return to the same function from another conversation using an agent with access to the playbook.
 
-For work involving your own business data, [Use Auto with Apollo](../integrations/apollo.md) shows how an agent can supply evidence from an authorized graph connection. [Brains and methods](../concepts/brains.md) explains how this small example fits into a broader business brain.
+For work involving your own business data, [Use Auto with Apollo](../integrations/apollo.md) shows how an agent can supply evidence from an authorized graph connection. [Playbooks and methods](../concepts/playbooks.md) explains how this small example fits into a broader business playbook.

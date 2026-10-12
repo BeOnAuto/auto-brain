@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Settlement } from '../index.ts';
 import { acmeAdmin } from '../testing/callers.ts';
-import { firstMoment, toBrain } from '../testing/harness.ts';
+import { firstMoment, toPlaybook } from '../testing/harness.ts';
 import { relayedId, settledAt, withHandOn } from '../testing/relaying.ts';
 
 const settled = {
@@ -19,7 +19,7 @@ const settled = {
 
 const success: Settlement = { status: 'succeeded', output: 'handed on', record: { steps: 3 } };
 
-const noSuchRun = Result.fail(new NotFound({ detail: 'There is no such run in this brain' }));
+const noSuchRun = Result.fail(new NotFound({ detail: 'There is no such run in this playbook' }));
 
 describe('settling a deferred run', () => {
   it('records its success, which a read and a call with its id then answer, without running it again', async () => {
@@ -100,16 +100,16 @@ describe('settling a deferred run as rejected or failed', () => {
 });
 
 describe('settling a run', () => {
-  it('reaches only the run of its own org, brain and id', async () => {
+  it('reaches only the run of its own org, playbook and id', async () => {
     const { running, settling } = await withHandOn();
     await running();
 
-    expect(await settling(success, { org: 'acme', brain: 'beta', id: relayedId })).toEqual(noSuchRun);
-    expect(await settling(success, { org: 'globex', brain: 'alpha', id: relayedId })).toEqual(noSuchRun);
+    expect(await settling(success, { org: 'acme', playbook: 'beta', id: relayedId })).toEqual(noSuchRun);
+    expect(await settling(success, { org: 'globex', playbook: 'alpha', id: relayedId })).toEqual(noSuchRun);
     expect(
-      await settling(success, { org: 'acme', brain: 'alpha', id: '0199a3c4-7d2e-7c1a-9b3f-000000000000' }),
+      await settling(success, { org: 'acme', playbook: 'alpha', id: '0199a3c4-7d2e-7c1a-9b3f-000000000000' }),
     ).toEqual(noSuchRun);
-    expect(await settling(success, { org: 'acme', brain: 'alpha', id: relayedId.toUpperCase() })).toMatchObject(
+    expect(await settling(success, { org: 'acme', playbook: 'alpha', id: relayedId.toUpperCase() })).toMatchObject(
       Result.succeed({ run_id: relayedId, status: 'succeeded' }),
     );
   });
@@ -117,14 +117,17 @@ describe('settling a run', () => {
   it('is not found for an address that is not well formed', async () => {
     const { settling } = await withHandOn();
 
-    expect(await settling(success, { org: 'ac/me', brain: 'alpha', id: relayedId })).toEqual(noSuchRun);
-    expect(await settling(success, { org: 'acme', brain: 'alpha/../beta', id: relayedId })).toEqual(noSuchRun);
-    expect(await settling(success, { org: 'acme', brain: 'alpha', id: 'latest' })).toEqual(noSuchRun);
+    expect(await settling(success, { org: 'ac/me', playbook: 'alpha', id: relayedId })).toEqual(noSuchRun);
+    expect(await settling(success, { org: 'acme', playbook: 'alpha/../beta', id: relayedId })).toEqual(noSuchRun);
+    expect(await settling(success, { org: 'acme', playbook: 'alpha', id: 'latest' })).toEqual(noSuchRun);
   });
 
   it('is a conflict for a run that ran within its call', async () => {
     const { call, runDefinition, settling } = await withHandOn();
-    await call(runDefinition, toBrain('acme', 'alpha')(acmeAdmin, { type: 'probe', name: 'plain', run_id: relayedId }));
+    await call(
+      runDefinition,
+      toPlaybook('acme', 'alpha')(acmeAdmin, { type: 'probe', name: 'plain', run_id: relayedId }),
+    );
 
     expect(await settling(success)).toEqual(
       Result.fail(new Conflict({ detail: 'The run already ended with another result' })),
@@ -266,19 +269,19 @@ describe('what a settlement records', () => {
     await settling({ status: 'failed', incident: 'incident-1' });
     const page = await run(
       Effect.orDie(
-        ledger.service.readRecorded({ org: 'acme', brain: 'alpha' }, everything, { order: 'asc', limit: 20 }),
+        ledger.service.readRecorded({ org: 'acme', playbook: 'alpha' }, everything, { order: 'asc', limit: 20 }),
       ),
     );
 
     expect(finishIn(page)).toMatchObject({ type: 'run_failed', data: { incident: 'incident-1' } });
   });
 
-  it('records the actor who settled it, the brain itself when none is named', async () => {
+  it('records the actor who settled it, the playbook itself when none is named', async () => {
     const { running, ledger, run, settling } = await withHandOn();
     const read = () =>
       run(
         Effect.orDie(
-          ledger.service.readRecorded({ org: 'acme', brain: 'alpha' }, everything, { order: 'asc', limit: 20 }),
+          ledger.service.readRecorded({ org: 'acme', playbook: 'alpha' }, everything, { order: 'asc', limit: 20 }),
         ),
       );
     await running();

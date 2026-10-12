@@ -7,7 +7,7 @@ import { definitionTypeStreamOf } from '../registry/definitions-decider.ts';
 import { runStreamNameOf } from '../runs/run-decider.ts';
 import type { RunEvent } from '../runs/run-events.ts';
 import { testRunId as runId } from '../testing/run-facts.ts';
-import { brainEventOf, brainFactOf } from './brain-facts.ts';
+import { playbookEventOf, playbookFactOf } from './brain-facts.ts';
 import { CloudEventSchema } from './cloud-event.ts';
 
 const recordId = '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3';
@@ -59,7 +59,7 @@ describe('the facts of a run as events', () => {
       ofRun({ type: 'run_rejected', data: { rejection: { reason: 'unavailable', detail: 'Busy' } } }),
       ofRun({ type: 'run_rejected', data: { rejection: { reason: 'cancelled', kind: 'requested', detail: 'No' } } }),
       ofRun({ type: 'run_failed', data: {} }),
-    ].map((recorded) => brainFactOf(recorded));
+    ].map((recorded) => playbookFactOf(recorded));
 
     expect(facts).toEqual([
       { ...aboutTheRun, type: 'run_started' },
@@ -80,7 +80,7 @@ describe('the facts of a run as events', () => {
       trigger: { kind: 'event', reference: '/schedule/on' },
     };
 
-    expect(brainFactOf(ofRun({ type: 'run_failed', data: {} }, chained))).toEqual({
+    expect(playbookFactOf(ofRun({ type: 'run_failed', data: {} }, chained))).toEqual({
       ...aboutTheRun,
       type: 'run_failed',
       caller: 'brain:alpha',
@@ -99,8 +99,8 @@ describe('the facts of a run as events, by what the run recorded', () => {
     const { at: time, by } = ofSummary;
 
     expect([
-      brainFactOf(ofRun({ type: 'run_succeeded', data: { output, record: { model: 'm' } } })),
-      brainFactOf(ofRun({ type: 'run_failed', data: {} }, { at: time, by, runId })),
+      playbookFactOf(ofRun({ type: 'run_succeeded', data: { output, record: { model: 'm' } } })),
+      playbookFactOf(ofRun({ type: 'run_failed', data: {} }, { at: time, by, runId })),
     ]).toEqual([{ ...aboutTheRun, type: 'run_succeeded', data: { output } }, undefined]);
   });
 });
@@ -116,7 +116,7 @@ describe('the records of a run that are no facts', () => {
         ofRun({ type: 'tool_call_failed', data: { number: 1, because: 'timed_out', duration_ms: 1, jsonrpc_id: 1 } }),
         ofRun({ type: 'reply_taken', data: { ...reply, answer: { choice: 'approve' } } }),
         ofRun({ type: 'reply_refused', data: { ...reply, because: 'not_an_answer', told: false } }),
-      ].map((record) => brainFactOf(record)),
+      ].map((record) => playbookFactOf(record)),
     ).toEqual([undefined, undefined, undefined, undefined, undefined]);
   });
 });
@@ -131,7 +131,7 @@ describe('the facts of a definition as events', () => {
       ofDefinitions({ type: 'definition_updated', data: { content } }, { ...named, definitionVersion: 2 }),
       ofDefinitions({ type: 'definition_retired', data: {} }, { ...named, definitionVersion: 2 }),
       ofDefinitions({ type: 'definition_retired', data: {} }, named),
-    ].map((recorded) => brainFactOf(recorded));
+    ].map((recorded) => playbookFactOf(recorded));
     const aboutTheDefinition = {
       specversion: '1.0',
       id: recordId,
@@ -150,7 +150,7 @@ describe('the facts of a definition as events', () => {
   });
 });
 
-describe('the records that are no facts of the brain', () => {
+describe('the records that are no facts of the playbook', () => {
   it('are the records it cannot read as what their stream holds, which it answers with none, never a failure', () => {
     const unreadable: readonly RecordedFact[] = [
       { ...ofRun({ type: 'run_failed', data: {} }), data: { incident: 7 } },
@@ -158,7 +158,7 @@ describe('the records that are no facts of the brain', () => {
       { ...ofRun({ type: 'run_started', data: { input: {} } }), data: null },
     ];
 
-    expect(unreadable.map((record) => brainFactOf(record))).toEqual([undefined, undefined, undefined]);
+    expect(unreadable.map((record) => playbookFactOf(record))).toEqual([undefined, undefined, undefined]);
   });
 
   it('are the run logs and every other stream kind, tool tests and conversation reads among them', () => {
@@ -169,7 +169,7 @@ describe('the records that are no facts of the brain', () => {
       { ...about, stream: 'conversation-calls/0199b7e3', type: 'replies_read', data: {}, context: ofSummary },
     ];
 
-    expect(others.filter((record) => brainFactOf(record) !== undefined)).toEqual([]);
+    expect(others.filter((record) => playbookFactOf(record) !== undefined)).toEqual([]);
   });
 });
 
@@ -178,8 +178,8 @@ describe('the cause and the run of a fact', () => {
     const failed = ofRun({ type: 'run_failed', data: {} });
 
     expect([
-      brainFactOf({ ...failed, causationId: 'c-1', correlationId: 'r-1' }),
-      brainFactOf({ ...failed, correlationId: 'r-1' }),
+      playbookFactOf({ ...failed, causationId: 'c-1', correlationId: 'r-1' }),
+      playbookFactOf({ ...failed, correlationId: 'r-1' }),
     ]).toEqual([
       { ...aboutTheRun, type: 'run_failed', causationid: 'c-1', correlationid: 'r-1' },
       { ...aboutTheRun, type: 'run_failed', correlationid: 'r-1' },
@@ -207,16 +207,16 @@ function ofPublished(data: unknown, type = 'event_published'): RecordedFact {
   };
 }
 
-describe('the events of a brain', () => {
-  it('are the facts of the brain and the events published to it, as their publishers gave them', () => {
+describe('the events of a playbook', () => {
+  it('are the facts of the playbook and the events published to it, as their publishers gave them', () => {
     expect([
-      brainEventOf(ofPublished({ event: published, filled: [] })),
-      brainEventOf(ofRun({ type: 'run_failed', data: {} })),
+      playbookEventOf(ofPublished({ event: published, filled: [] })),
+      playbookEventOf(ofRun({ type: 'run_failed', data: {} })),
     ]).toEqual([published, { ...aboutTheRun, type: 'run_failed' }]);
   });
 
   it('leave out a published record that is not one, and a record of that stream of another type', () => {
-    expect([brainEventOf(ofPublished({ filled: [] })), brainEventOf(ofPublished({}, 'noted'))]).toEqual([
+    expect([playbookEventOf(ofPublished({ filled: [] })), playbookEventOf(ofPublished({}, 'noted'))]).toEqual([
       undefined,
       undefined,
     ]);

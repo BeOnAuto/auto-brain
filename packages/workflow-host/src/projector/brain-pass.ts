@@ -11,8 +11,8 @@ import type { ProjectorSettings } from './projector-settings.ts';
 import { reconciled, type Reconciling } from './view-reconciling.ts';
 
 export interface Resting {
-  readonly isResting: (brain: string, name: string) => boolean;
-  readonly rest: (brain: string, name: string) => void;
+  readonly isResting: (playbook: string, name: string) => boolean;
+  readonly rest: (playbook: string, name: string) => void;
 }
 
 export interface PassParts extends ChangeWriting {
@@ -34,44 +34,49 @@ function typesOf(rows: readonly ViewRow[]): readonly string[] {
   return typesToRead(rows.flatMap(({ details }) => details.filters.map(({ type }) => type)));
 }
 
-function noted(parts: PassParts, brain: string, page: ReadPage): Effect.Effect<void> {
+function noted(parts: PassParts, playbook: string, page: ReadPage): Effect.Effect<void> {
   return Effect.forEach(
     page.passedOver.filter(({ record }) => parts.firstSeen(record)),
-    ({ record, reason }) => parts.note({ kind: 'record_passed_over', brain, record, reason }),
+    ({ record, reason }) => parts.note({ kind: 'record_passed_over', playbook, record, reason }),
     { discard: true },
   );
 }
 
-function readFor(parts: PassParts, brain: string, rows: readonly ViewRow[]): Effect.Effect<ReadPage> {
+function readFor(parts: PassParts, playbook: string, rows: readonly ViewRow[]): Effect.Effect<ReadPage> {
   const { settings, database } = parts;
   const after = earliestOf(rows.map(({ checkpoint }) => checkpoint));
   return Effect.promise(() =>
-    readPage(database.store, { brainKey: brain, after, types: typesOf(rows), definitionType: settings.definitionType }),
-  ).pipe(Effect.tap((page) => noted(parts, brain, page)));
+    readPage(database.store, {
+      playbookKey: playbook,
+      after,
+      types: typesOf(rows),
+      definitionType: settings.definitionType,
+    }),
+  ).pipe(Effect.tap((page) => noted(parts, playbook, page)));
 }
 
-function troubled(parts: PassParts, brain: string, result: FoldedPageResult): Effect.Effect<void> {
+function troubled(parts: PassParts, playbook: string, result: FoldedPageResult): Effect.Effect<void> {
   for (const change of result.changes.filter((each) => hasTriedAgain(each))) {
-    parts.resting.rest(brain, change.row.name);
+    parts.resting.rest(playbook, change.row.name);
   }
   return result.trouble === undefined ? Effect.void : parts.trouble(result.trouble);
 }
 
-function isAwake(parts: PassParts, brain: string, { name }: ViewRow): boolean {
-  return !parts.resting.isResting(brain, name);
+function isAwake(parts: PassParts, playbook: string, { name }: ViewRow): boolean {
+  return !parts.resting.isResting(playbook, name);
 }
 
-function sharedStep(parts: PassParts, brain: string, pass: Pass): Effect.Effect<Step, DatabaseFailed> {
+function sharedStep(parts: PassParts, playbook: string, pass: Pass): Effect.Effect<Step, DatabaseFailed> {
   return Effect.gen(function* () {
-    const live = pass.rows.filter((row) => isLive(row) && isAwake(parts, brain, row));
+    const live = pass.rows.filter((row) => isLive(row) && isAwake(parts, playbook, row));
     if (live.length === 0 || pass.pages === 0) {
       return { pass, done: true, again: false };
     }
-    const page = yield* readFor(parts, brain, live);
+    const page = yield* readFor(parts, playbook, live);
     const result = yield* foldedPage(live, page, parts);
-    yield* troubled(parts, brain, result);
-    const after = yield* applied(parts, brain, { rows: pass.rows, pages: pass.pages - 1 }, result.changes);
-    const rows = page.definitionsSeen ? yield* reconciled(parts.reconciling, brain) : after.rows;
+    yield* troubled(parts, playbook, result);
+    const after = yield* applied(parts, playbook, { rows: pass.rows, pages: pass.pages - 1 }, result.changes);
+    const rows = page.definitionsSeen ? yield* reconciled(parts.reconciling, playbook) : after.rows;
     return {
       pass: { rows, pages: after.pages },
       done: result.again || (result.complete && page.atTheEnd),
@@ -99,17 +104,22 @@ function unchanged(row: ViewRow): ViewChange {
   return { row, next: { checkpoint, checkpointAt, lastEvent, folded, overtimes, phase } };
 }
 
-function rebuildStep(parts: PassParts, brain: string, pass: Pass, row: ViewRow): Effect.Effect<Step, DatabaseFailed> {
+function rebuildStep(
+  parts: PassParts,
+  playbook: string,
+  pass: Pass,
+  row: ViewRow,
+): Effect.Effect<Step, DatabaseFailed> {
   return Effect.gen(function* () {
-    const page = yield* readFor(parts, brain, [row]);
+    const page = yield* readFor(parts, playbook, [row]);
     const result = yield* foldedPage([row], page, parts);
-    yield* troubled(parts, brain, result);
+    yield* troubled(parts, playbook, result);
     const change = result.changes[0] ?? unchanged(row);
     const settled = result.again ? change : joining(change, pass.rows, result.complete && page.atTheEnd);
     const moved = hasChanged(settled) ? [settled] : [];
-    const after = yield* applied(parts, brain, { rows: pass.rows, pages: pass.pages - 1 }, moved);
+    const after = yield* applied(parts, playbook, { rows: pass.rows, pages: pass.pages - 1 }, moved);
     const now = after.rows.find(({ name }) => name === row.name);
-    const goingOn = now?.phase === 'rebuilding' && isAwake(parts, brain, now);
+    const goingOn = now?.phase === 'rebuilding' && isAwake(parts, playbook, now);
     return { pass: after, done: result.again || !goingOn, again: result.again };
   });
 }
@@ -123,8 +133,8 @@ function stepped(
   return going({ pass: start, done: false, again: false });
 }
 
-function rebuilt(parts: PassParts, brain: string, start: Step): Effect.Effect<Step, DatabaseFailed> {
-  const rebuilding = start.pass.rows.filter((row) => row.phase === 'rebuilding' && isAwake(parts, brain, row));
+function rebuilt(parts: PassParts, playbook: string, start: Step): Effect.Effect<Step, DatabaseFailed> {
+  const rebuilding = start.pass.rows.filter((row) => row.phase === 'rebuilding' && isAwake(parts, playbook, row));
   return Effect.reduce(
     rebuilding,
     () => start,
@@ -135,24 +145,24 @@ function rebuilt(parts: PassParts, brain: string, start: Step): Effect.Effect<St
             const current = pass.rows.find(({ name }) => name === row.name);
             return current === undefined || pass.pages === 0
               ? Effect.succeed({ pass, done: true, again: false })
-              : rebuildStep(parts, brain, pass, current);
+              : rebuildStep(parts, playbook, pass, current);
           }).pipe(Effect.map((step) => ({ ...step, again: reached.again || step.again }))),
   );
 }
 
-function canBuild(parts: PassParts, brain: string, rows: readonly ViewRow[]): boolean {
+function canBuild(parts: PassParts, playbook: string, rows: readonly ViewRow[]): boolean {
   const rebuilding = rows.filter(({ phase }) => phase === 'rebuilding');
   const slotFree = rebuilding.length < parts.settings.rebuildsAtOnce && rows.some(({ phase }) => phase === 'waiting');
-  return slotFree || rebuilding.some((row) => isAwake(parts, brain, row));
+  return slotFree || rebuilding.some((row) => isAwake(parts, playbook, row));
 }
 
-export function brainPass(parts: PassParts, brain: string): Effect.Effect<boolean, DatabaseFailed> {
+export function playbookPass(parts: PassParts, playbook: string): Effect.Effect<boolean, DatabaseFailed> {
   return Effect.gen(function* () {
-    const rows = yield* reconciled(parts.reconciling, brain);
+    const rows = yield* reconciled(parts.reconciling, playbook);
     const shared = yield* stepped({ rows, pages: parts.settings.pagesPerWake }, (pass) =>
-      sharedStep(parts, brain, pass),
+      sharedStep(parts, playbook, pass),
     );
-    const done = yield* rebuilt(parts, brain, shared);
-    return !done.again && (done.pass.pages === 0 || canBuild(parts, brain, done.pass.rows));
+    const done = yield* rebuilt(parts, playbook, shared);
+    return !done.again && (done.pass.pages === 0 || canBuild(parts, playbook, done.pass.rows));
   });
 }

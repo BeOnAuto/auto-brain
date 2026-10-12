@@ -56,7 +56,7 @@ describe('the presenter of a run that answers a call of another run', () => {
 
 describe('the presenter of a cancel request', () => {
   it.each([
-    ['requested', 'Someone allowed to change the brain asked for the run to be cancelled.'],
+    ['requested', 'Someone allowed to change the playbook asked for the run to be cancelled.'],
     ['deadline', 'The step that waited for the run ran out of time, so the run is being cancelled.'],
     ['parent_ended', 'The run that waited for this run ended first, so this run is being cancelled.'],
   ] as const)('says who asked for a cancel of the kind %s, with the reason cut at 1 KiB', (kind, summary) => {
@@ -74,7 +74,7 @@ describe('the presenter of a cancel request', () => {
         data: { rejection: { reason: 'cancelled', detail: 'Not needed', kind: 'requested' } },
       }),
     ).toMatchObject({
-      summary: 'A run did not go through: it was cancelled at the request of someone allowed to change the brain.',
+      summary: 'A run did not go through: it was cancelled at the request of someone allowed to change the playbook.',
       data: { reason: 'cancelled', detail: 'Not needed', kind: 'requested' },
     });
   });

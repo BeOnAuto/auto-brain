@@ -6,9 +6,9 @@ import type { HostDatabase } from '../database/host-database.ts';
 import { insertedListener } from '../listeners/listener-rows.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
 import { passOf, type PassParts } from './brain-pass.ts';
-import { followedBrainsOn } from './followed-brains.ts';
+import { followedPlaybooksOn } from './followed-brains.ts';
 
-const brainKey = 'brain/acme/alpha/';
+const playbookKey = 'brain/acme/alpha/';
 
 interface CountedRecords {
   readonly records: PassParts['records'];
@@ -21,7 +21,7 @@ function recordAt(stream: string, position: number): RecordedEvent {
     cursor: `cursor-${position}`,
     causationId: null,
     correlationId: null,
-    stream: `${brainKey}${stream}`,
+    stream: `${playbookKey}${stream}`,
     version: 1,
     globalPosition: position,
     type: 'note_written',
@@ -35,7 +35,7 @@ function countedRecords(pageAt: (read: number) => Effect.Effect<readonly Recorde
   const reads: boolean[] = [];
   return {
     records: {
-      after: (_brain, _cursor, delivers) =>
+      after: (_playbook, _cursor, delivers) =>
         Effect.suspend(() => {
           reads.push(delivers.size > 0);
           return Effect.map(pageAt(reads.length), (records) => ({
@@ -58,8 +58,8 @@ function listening(database: HostDatabase, armedBy: number) {
   return insertedListener(database, {
     runKey: 'acme/alpha/r-1',
     listener: 'listener',
-    brainKey,
-    streamId: `${brainKey}run-logs/r-1`,
+    playbookKey,
+    streamId: `${playbookKey}run-logs/r-1`,
     armedBy,
     filters: '[{"type":"com.acme.noted"}]',
     workflow: 'wait',
@@ -70,11 +70,11 @@ function listening(database: HostDatabase, armedBy: number) {
 
 async function passing(counted: CountedRecords) {
   const opened = await openedOn(await onSQLite());
-  const brains = followedBrainsOn(opened);
+  const playbooks = followedPlaybooksOn(opened);
   const pass = passOf({
     database: opened,
     records: counted.records,
-    brains,
+    playbooks,
     consumers: [],
     calls: [],
     definitionType: 'workflow',
@@ -83,17 +83,17 @@ async function passing(counted: CountedRecords) {
     passedEarly: () => Effect.void,
     registered: [],
   });
-  return { database: opened, brains, pass };
+  return { database: opened, playbooks, pass };
 }
 
 describe('the data of the records a pass reads', () => {
-  it('is read again with it, after a glance without it, while a run of the brain listens for a type of event', async () => {
+  it('is read again with it, after a glance without it, while a run of the playbook listens for a type of event', async () => {
     const counted = endlessNotes();
-    const { database, brains, pass } = await passing(counted);
-    await Effect.runPromise(brains.follow(brainKey, null));
+    const { database, playbooks, pass } = await passing(counted);
+    await Effect.runPromise(playbooks.follow(playbookKey, null));
     await Effect.runPromise(Effect.orDie(listening(database, 7)));
 
-    await Effect.runPromise(pass(brainKey, 'signal'));
+    await Effect.runPromise(pass(playbookKey, 'signal'));
 
     expect(counted.reads().slice(0, 2)).toEqual([false, true]);
   });

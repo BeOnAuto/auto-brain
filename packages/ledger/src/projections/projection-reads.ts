@@ -1,7 +1,7 @@
 import {
   requireAdvancedColumns,
   rowKeyColumn,
-  streamPrefixOfBrain,
+  streamPrefixOfPlaybook,
   type DueRowsQuery,
   type KeyedProjection,
   type ProjectedCondition,
@@ -34,7 +34,7 @@ export interface ProjectionStatements {
   readonly command: WriteCommand;
 }
 
-const brainKey = /^brain\/(?<org>[^/]+)\/(?<brain>[^/]+)\/$/u;
+const playbookKey = /^brain\/(?<org>[^/]+)\/(?<playbook>[^/]+)\/$/u;
 
 const KeyFields = Schema.Struct({ brain_key: Schema.String, row_key: Schema.String });
 
@@ -73,8 +73,13 @@ function orderOf(projection: KeyedProjection, { orderBy, order }: ProjectedRowsQ
 
 function keyedRowOf(projection: KeyedProjection, stored: Readonly<Record<string, unknown>>): ProjectedKeyedRow {
   const { brain_key: prefix, row_key: key } = decodeKey(stored);
-  const groups = brainKey.exec(prefix)?.groups;
-  return { org: String(groups?.['org']), brain: String(groups?.['brain']), key, row: rowFrom(projection, stored) };
+  const groups = playbookKey.exec(prefix)?.groups;
+  return {
+    org: String(groups?.['org']),
+    playbook: String(groups?.['playbook']),
+    key,
+    row: rowFrom(projection, stored),
+  };
 }
 
 function projectionNamed(projections: readonly KeyedProjection[], name: string): KeyedProjection | undefined {
@@ -93,9 +98,9 @@ async function rowsRead(
   return rowsFrom(rows).map((stored) => keyedRowOf(projection, stored));
 }
 
-function brainRows(reading: Reading, projection: KeyedProjection, brain: string, query: ProjectedRowsQuery) {
+function playbookRows(reading: Reading, projection: KeyedProjection, playbook: string, query: ProjectedRowsQuery) {
   const { dialect } = reading;
-  const filter = SQL`brain_key = ${brain}${conditionsOf(dialect, projection, query.where)}${afterOf(dialect, projection, query)}`;
+  const filter = SQL`brain_key = ${playbook}${conditionsOf(dialect, projection, query.where)}${afterOf(dialect, projection, query)}`;
   return rowsRead(reading, projection, filter, SQL`${orderOf(projection, query)} LIMIT ${query.limit}`);
 }
 
@@ -112,11 +117,11 @@ function dueRows(reading: Reading, projection: KeyedProjection, { column, throug
 async function counted(
   reading: Reading,
   projection: KeyedProjection,
-  brain: string,
+  playbook: string,
   where: readonly ProjectedCondition[],
 ) {
   const rows = await reading.query(
-    SQL`SELECT CAST(count(*) AS INTEGER) AS count FROM ${tableOf(projection)} WHERE brain_key = ${brain}${conditionsOf(reading.dialect, projection, where)}`,
+    SQL`SELECT CAST(count(*) AS INTEGER) AS count FROM ${tableOf(projection)} WHERE brain_key = ${playbook}${conditionsOf(reading.dialect, projection, where)}`,
   );
   return Schema.decodeUnknownSync(CountRows)(rows).reduce((total, { count }) => total + count, 0);
 }
@@ -147,19 +152,23 @@ export function projectionReader(
       return projection === undefined ? Promise.resolve(none) : read(projection);
     });
   return {
-    readProjectedRows: (name, brain, rowsQuery) =>
-      withProjection(name, [], (projection) => brainRows(reading, projection, streamPrefixOfBrain(brain), rowsQuery)),
-    countProjectedRows: (name, brain, where) =>
-      withProjection(name, 0, (projection) => counted(reading, projection, streamPrefixOfBrain(brain), where)),
+    readProjectedRows: (name, playbook, rowsQuery) =>
+      withProjection(name, [], (projection) =>
+        playbookRows(reading, projection, streamPrefixOfPlaybook(playbook), rowsQuery),
+      ),
+    countProjectedRows: (name, playbook, where) =>
+      withProjection(name, 0, (projection) => counted(reading, projection, streamPrefixOfPlaybook(playbook), where)),
     readDueRows: (name, dueQuery) => withProjection(name, [], (projection) => dueRows(reading, projection, dueQuery)),
     nextDueOf: (name, column, after) =>
       withProjection(name, null, (projection) => soonest(reading, projection, column, after)),
-    advanceRow: (name, brain, key, advance) =>
+    advanceRow: (name, playbook, key, advance) =>
       Effect.promise(async () => {
         const projection = projectionNamed(projections, name);
         if (projection !== undefined) {
           requireAdvancedColumns(projection, advance.set);
-          await command(rowAdvance(dialect, projection, { brainKey: streamPrefixOfBrain(brain), key }, advance));
+          await command(
+            rowAdvance(dialect, projection, { playbookKey: streamPrefixOfPlaybook(playbook), key }, advance),
+          );
         }
       }),
   };

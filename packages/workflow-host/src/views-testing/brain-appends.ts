@@ -5,25 +5,25 @@ import type { Context } from '@beonauto/operations';
 import type { Schema } from 'effect';
 
 import type { ViewDetails } from '../views/view-details.ts';
-import { alpha, brainKeyOf, type Brain } from './view-documents.ts';
+import { alpha, playbookKeyOf, type Playbook } from './view-documents.ts';
 
 interface RunOf {
   readonly at?: string;
-  readonly brain?: Brain;
+  readonly playbook?: Playbook;
 }
 
 type Append = (stream: string, events: readonly EncodedEvent[], context?: Context) => Promise<void>;
 
 type Ran = (subject: string, output: Schema.Json, more?: RunOf) => Promise<string>;
 
-export interface BrainAppends {
+export interface PlaybookAppends {
   readonly append: Append;
-  readonly saved: (name: string, details: ViewDetails, brain?: Brain) => Promise<void>;
+  readonly saved: (name: string, details: ViewDetails, playbook?: Playbook) => Promise<void>;
   readonly retired: (name: string) => Promise<void>;
   readonly ran: Ran;
   readonly ranEach: (subject: string, outputs: readonly Schema.Json[]) => Promise<unknown>;
   readonly ranInOneStream: (subject: string, outputs: readonly Schema.Json[]) => Promise<void>;
-  readonly published: (event: Schema.JsonObject, brain?: Brain) => Promise<void>;
+  readonly published: (event: Schema.JsonObject, playbook?: Playbook) => Promise<void>;
 }
 
 const savedAt = '2026-10-06T09:00:00.000Z';
@@ -48,10 +48,10 @@ function appendOn(store: EventStore, appends: AppendSignal): Append {
 }
 
 function ranBy(append: Append): Ran {
-  return async (subject, output, { at = ranAt, brain = alpha } = {}) => {
+  return async (subject, output, { at = ranAt, playbook = alpha } = {}) => {
     const id = randomUUID();
     await append(
-      `${brainKeyOf(brain)}runs/${id}`,
+      `${playbookKeyOf(playbook)}runs/${id}`,
       [
         { type: 'run_started', data: { input: {} } },
         { type: 'run_succeeded', data: { output, record: {} } },
@@ -62,14 +62,14 @@ function ranBy(append: Append): Ran {
   };
 }
 
-function savedBy(append: Append, definitions: Map<string, number>): BrainAppends['saved'] {
-  return async (name, details, brain = alpha) => {
-    const key = `${brainKeyOf(brain)}${name}`;
+function savedBy(append: Append, definitions: Map<string, number>): PlaybookAppends['saved'] {
+  return async (name, details, playbook = alpha) => {
+    const key = `${playbookKeyOf(playbook)}${name}`;
     const version = (definitions.get(key) ?? 0) + 1;
     definitions.set(key, version);
     const type = version === 1 ? 'definition_created' : 'definition_updated';
     const content = { source: `the ${name} document, version ${version}`, details };
-    await append(`${brainKeyOf(brain)}definitions/recall`, [{ type, data: { content } }], {
+    await append(`${playbookKeyOf(playbook)}definitions/recall`, [{ type, data: { content } }], {
       by: 'acme-admin',
       at: savedAt,
       definitionType: 'recall',
@@ -79,7 +79,7 @@ function savedBy(append: Append, definitions: Map<string, number>): BrainAppends
   };
 }
 
-export function brainAppends(store: EventStore, appends: AppendSignal): BrainAppends {
+export function playbookAppends(store: EventStore, appends: AppendSignal): PlaybookAppends {
   const append = appendOn(store, appends);
   const ran = ranBy(append);
   const definitions = new Map<string, number>();
@@ -87,27 +87,27 @@ export function brainAppends(store: EventStore, appends: AppendSignal): BrainApp
     append,
     saved: savedBy(append, definitions),
     retired: async (name) => {
-      await append(`${brainKeyOf(alpha)}definitions/recall`, [{ type: 'definition_retired', data: {} }], {
+      await append(`${playbookKeyOf(alpha)}definitions/recall`, [{ type: 'definition_retired', data: {} }], {
         by: 'acme-admin',
         at: savedAt,
         definitionType: 'recall',
         definitionName: name,
-        definitionVersion: Number(definitions.get(`${brainKeyOf(alpha)}${name}`)),
+        definitionVersion: Number(definitions.get(`${playbookKeyOf(alpha)}${name}`)),
       });
     },
     ran,
     ranInOneStream: async (subject, outputs) => {
       const id = randomUUID();
       await append(
-        `${brainKeyOf(alpha)}runs/${id}`,
+        `${playbookKeyOf(alpha)}runs/${id}`,
         outputs.map((output) => ({ type: 'run_succeeded', data: { output, record: {} } })),
         { ...ranContext(subject, ranAt), runId: id },
       );
     },
     ranEach: (subject, outputs) =>
       outputs.reduce<Promise<unknown>>((before, output) => before.then(() => ran(subject, output)), Promise.resolve()),
-    published: async (event, brain = alpha) => {
-      await append(`${brainKeyOf(brain)}events/${randomUUID()}`, [
+    published: async (event, playbook = alpha) => {
+      await append(`${playbookKeyOf(playbook)}events/${randomUUID()}`, [
         { type: 'event_published', data: { event, filled: [] } },
       ]);
     },

@@ -7,7 +7,7 @@ import { countOf } from '../settings/workflow-settings.ts';
 export interface RecallSettings {
   readonly mostFunctions: number;
   readonly rebuildsAtOnce: number;
-  readonly brainsAtOnce: number;
+  readonly playbooksAtOnce: number;
 }
 
 interface Bounds {
@@ -21,7 +21,7 @@ const mostFunctions: Bounds = { setting: 'RECALL_MAX_FUNCTIONS', least: 1, most:
 
 const rebuildsAtOnce: Bounds = { setting: 'RECALL_MAX_REBUILDS', least: 1, most: 64, example: 4 };
 
-const brainsAtOnce: Bounds = { setting: 'RECALL_BRAINS_AT_ONCE', least: 1, most: 64, example: 4 };
+const playbooksAtOnce: Bounds = { setting: 'RECALL_PLAYBOOKS_AT_ONCE', least: 1, most: 64, example: 4 };
 
 function sourceOf({ setting, example }: Bounds): Config.Config<string> {
   return Config.String(setting).pipe(Config.withDefault(String(example)));
@@ -30,7 +30,7 @@ function sourceOf({ setting, example }: Bounds): Config.Config<string> {
 const sources = Config.all({
   mostFunctions: sourceOf(mostFunctions),
   rebuildsAtOnce: sourceOf(rebuildsAtOnce),
-  brainsAtOnce: sourceOf(brainsAtOnce),
+  playbooksAtOnce: sourceOf(playbooksAtOnce),
 });
 
 function problemOf(value: number, { setting, least, most, example }: Bounds): readonly string[] {
@@ -45,12 +45,12 @@ export function readRecallSettings(environment: Environment): Effect.Effect<Reca
     const settings = {
       mostFunctions: countOf(source.mostFunctions),
       rebuildsAtOnce: countOf(source.rebuildsAtOnce),
-      brainsAtOnce: countOf(source.brainsAtOnce),
+      playbooksAtOnce: countOf(source.playbooksAtOnce),
     };
     const problems = [
       ...problemOf(settings.mostFunctions, mostFunctions),
       ...problemOf(settings.rebuildsAtOnce, rebuildsAtOnce),
-      ...problemOf(settings.brainsAtOnce, brainsAtOnce),
+      ...problemOf(settings.playbooksAtOnce, playbooksAtOnce),
     ];
     return problems.length === 0
       ? settings

@@ -5,7 +5,7 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { makeWorkflowAdapter } from '../capability/workflow.ts';
-import { brainOn } from '../testing/brain.ts';
+import { playbookOn } from '../testing/brain.ts';
 import { testExpressionCheck } from '../testing/expression-checks.ts';
 import type { ExpressionCheck } from './expression-check.ts';
 
@@ -18,8 +18,8 @@ function saving(check: ExpressionCheck) {
     mostDurationMs: 2_592_000_000,
     longestCallMs: 1000,
   });
-  const brain = brainOn(memoryLedger(), [workflow]);
-  return (source: string) => brain.call(brain.createDefinition, { type: 'workflow', name: 'flow', source });
+  const playbook = playbookOn(memoryLedger(), [workflow]);
+  return (source: string) => playbook.call(playbook.createDefinition, { type: 'workflow', name: 'flow', source });
 }
 
 const busy: ExpressionCheck = () => Effect.fail(new Unavailable({ detail: 'No checker was free' }));

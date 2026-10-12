@@ -1,16 +1,16 @@
 import { Effect } from 'effect';
 
-import type { BrainAddress } from '../caller/brain-context.ts';
-import { streamPrefixOfBrain } from '../ledger/bound-ports.ts';
+import type { PlaybookAddress } from '../caller/brain-context.ts';
+import { streamPrefixOfPlaybook } from '../ledger/bound-ports.ts';
 import type { Context } from '../ledger/context.ts';
 import { messageIdOf } from '../ledger/message-lineage.ts';
 import {
-  brainStreamOf,
+  playbookStreamOf,
   checkedProjection,
   requireAdvancedColumns,
   rowKeyColumn,
   rowKeyOf,
-  type BrainStream,
+  type PlaybookStream,
   type DueRowsQuery,
   type KeyedProjection,
   type ProjectedCondition,
@@ -39,13 +39,13 @@ interface Table {
   readonly rows: Map<string, ProjectedKeyedRow>;
 }
 
-const brainKey = /^brain\/(?<org>[^/]+)\/(?<brain>[^/]+)\/$/u;
+const playbookKey = /^brain\/(?<org>[^/]+)\/(?<playbook>[^/]+)\/$/u;
 
 const nothingKept: ReadonlyMap<string, ProjectedKeyedRow> = new Map();
 
 function keyedRowOf(prefix: string, key: string, row: ProjectedRow): ProjectedKeyedRow {
-  const groups = brainKey.exec(prefix)?.groups;
-  return { org: String(groups?.['org']), brain: String(groups?.['brain']), key, row };
+  const groups = playbookKey.exec(prefix)?.groups;
+  return { org: String(groups?.['org']), playbook: String(groups?.['playbook']), key, row };
 }
 
 type Ordered = ProjectedValue | undefined;
@@ -77,11 +77,11 @@ function matches({ row, key }: ProjectedKeyedRow, where: readonly ProjectedCondi
   return where.every(({ column, equals }) => (column === rowKeyColumn ? key : row[column]) === equals);
 }
 
-function brainOf(
+function playbookOf(
   rows: ReadonlyMap<string, ProjectedKeyedRow>,
-  brain: { readonly org: string; readonly brain: string },
+  playbook: { readonly org: string; readonly playbook: string },
 ): readonly ProjectedKeyedRow[] {
-  return [...rows.values()].filter((kept) => kept.org === brain.org && kept.brain === brain.brain);
+  return [...rows.values()].filter((kept) => kept.org === playbook.org && kept.playbook === playbook.playbook);
 }
 
 interface Staged {
@@ -90,7 +90,7 @@ interface Staged {
   readonly kept: ProjectedKeyedRow;
 }
 
-function keyedMessages(projection: KeyedProjection, named: BrainStream, messages: readonly ProjectedMessage[]) {
+function keyedMessages(projection: KeyedProjection, named: PlaybookStream, messages: readonly ProjectedMessage[]) {
   return messages
     .filter(({ type }) => projection.types.includes(type))
     .flatMap((message) => {
@@ -99,14 +99,14 @@ function keyedMessages(projection: KeyedProjection, named: BrainStream, messages
     });
 }
 
-function staged({ projection, rows }: Table, named: BrainStream, messages: readonly ProjectedMessage[]) {
+function staged({ projection, rows }: Table, named: PlaybookStream, messages: readonly ProjectedMessage[]) {
   const changed = new Map<string, ProjectedKeyedRow>();
   for (const { message, key } of keyedMessages(projection, named, messages)) {
-    const stored = `${named.brainKey}${key}`;
+    const stored = `${named.playbookKey}${key}`;
     const row = (changed.get(stored) ?? rows.get(stored))?.row;
     const next = projection.rowAfter(row, message);
     if (next !== undefined) {
-      changed.set(stored, keyedRowOf(named.brainKey, key, next));
+      changed.set(stored, keyedRowOf(named.playbookKey, key, next));
     }
   }
   return [...changed].map(([stored, kept]: readonly [string, ProjectedKeyedRow]): Staged => ({ rows, stored, kept }));
@@ -134,7 +134,7 @@ export function projectedMessagesOf(
 
 function projectedOn(tables: readonly Table[]): MemoryProjections['project'] {
   return (stream, facts, firstPosition) => {
-    const named = brainStreamOf(stream);
+    const named = playbookStreamOf(stream);
     if (named === undefined) {
       return;
     }
@@ -147,18 +147,18 @@ function projectedOn(tables: readonly Table[]): MemoryProjections['project'] {
 }
 
 interface Advance {
-  readonly brain: BrainAddress;
+  readonly playbook: PlaybookAddress;
   readonly key: string;
   readonly advance: RowAdvance;
 }
 
-function advancedIn(table: Table | undefined, { brain, key, advance }: Advance): Effect.Effect<void> {
+function advancedIn(table: Table | undefined, { playbook, key, advance }: Advance): Effect.Effect<void> {
   return Effect.sync(() => {
     if (table === undefined) {
       return;
     }
     requireAdvancedColumns(table.projection, advance.set);
-    const stored = `${streamPrefixOfBrain(brain)}${key}`;
+    const stored = `${streamPrefixOfPlaybook(playbook)}${key}`;
     const kept = table.rows.get(stored);
     if (kept !== undefined && matches(kept, advance.when)) {
       table.rows.set(stored, { ...kept, row: { ...kept.row, ...advance.set } });
@@ -171,7 +171,10 @@ function dueRowsIn(rows: ReadonlyMap<string, ProjectedKeyedRow>, { column, throu
     .flatMap((kept) => dueOf(kept, column).map((due): readonly [number, ProjectedKeyedRow] => [due, kept]))
     .filter(([due]) => due <= through)
     .toSorted(([leftDue, left], [rightDue, right]) =>
-      tupleCompared([leftDue, streamPrefixOfBrain(left), left.key], [rightDue, streamPrefixOfBrain(right), right.key]),
+      tupleCompared(
+        [leftDue, streamPrefixOfPlaybook(left), left.key],
+        [rightDue, streamPrefixOfPlaybook(right), right.key],
+      ),
     )
     .slice(0, limit)
     .map(([, kept]) => kept);
@@ -198,11 +201,11 @@ export function memoryProjections(projections: readonly KeyedProjection[]): Memo
   const rowsOf = (name: string): ReadonlyMap<string, ProjectedKeyedRow> => tableNamed(name)?.rows ?? nothingKept;
   return {
     project: projectedOn(tables),
-    advanceRow: (projection, brain, key, advance) => advancedIn(tableNamed(projection), { brain, key, advance }),
-    readProjectedRows: (projection, brain, query) =>
-      Effect.sync(() => pageIn(brainOf(rowsOf(projection), brain), query)),
-    countProjectedRows: (projection, brain, where) =>
-      Effect.sync(() => brainOf(rowsOf(projection), brain).filter((kept) => matches(kept, where)).length),
+    advanceRow: (projection, playbook, key, advance) => advancedIn(tableNamed(projection), { playbook, key, advance }),
+    readProjectedRows: (projection, playbook, query) =>
+      Effect.sync(() => pageIn(playbookOf(rowsOf(projection), playbook), query)),
+    countProjectedRows: (projection, playbook, where) =>
+      Effect.sync(() => playbookOf(rowsOf(projection), playbook).filter((kept) => matches(kept, where)).length),
     readDueRows: (projection, query) => Effect.sync(() => dueRowsIn(rowsOf(projection), query)),
     nextDueOf: (projection, column, after) =>
       Effect.sync(() => {

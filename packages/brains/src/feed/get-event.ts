@@ -1,6 +1,6 @@
 import {
-  BrainContext,
-  BrainReader,
+  PlaybookContext,
+  PlaybookReader,
   NotFound,
   ServedAsTool,
   WholeEventSchema,
@@ -9,7 +9,7 @@ import {
   mostToolFieldBytes,
   presentationOf,
   stepIdSeparator,
-  streamPrefixOfBrain,
+  streamPrefixOfPlaybook,
   type Presentation,
   type Presenter,
 } from '@beonauto/operations';
@@ -18,7 +18,7 @@ import { Effect, Schema, SchemaTransformation } from 'effect';
 import { eventFound } from '../plain-language/feed-words.ts';
 
 const description = [
-  'Reads one event of the brain whole by its id, as list_brain_events and get_run_history show it: its fact as data and its metadata, every field whole,',
+  'Reads one event of the playbook whole by its id, as list_playbook_events and get_run_history show it: its fact as data and its metadata, every field whole,',
   "with a tool call's arguments, the tool's result as it answered and the answer document read from it.",
   `Over MCP an input, output, record, answer, arguments, result or event data past ${mostToolFieldBytes} bytes appears as its size; over HTTP every field is whole.`,
   'Use it to open what a tool answered, or a large input or output, that a page of events shows as its size.',
@@ -40,7 +40,7 @@ const EventIdField = Schema.String.annotate({
 const GetEventInput = Schema.Struct({ event_id: EventIdField });
 
 function noEventCalled(id: string): NotFound {
-  return new NotFound({ detail: `The brain holds no event ${id}` });
+  return new NotFound({ detail: `The playbook holds no event ${id}` });
 }
 
 function recordIdOf(id: string): string {
@@ -50,20 +50,20 @@ function recordIdOf(id: string): string {
 
 function eventReader(presentation: Presentation) {
   return Effect.fnUntraced(function* ({ event_id: id }: typeof GetEventInput.Type) {
-    const record = yield* (yield* BrainReader).readRecordedEvent(recordIdOf(id));
+    const record = yield* (yield* PlaybookReader).readRecordedEvent(recordIdOf(id));
     if (record === undefined) {
       return yield* Effect.fail(noEventCalled(id));
     }
     const content = yield* keptContentOf([record], Number.POSITIVE_INFINITY);
     const view = (yield* ServedAsTool) ? 'tool' : 'whole';
-    const streamPrefix = streamPrefixOfBrain(yield* BrainContext);
+    const streamPrefix = streamPrefixOfPlaybook(yield* PlaybookContext);
     const event = presentation.present(record, { streamPrefix, content, view }).find((shown) => shown.id === id);
     return event ?? (yield* Effect.fail(noEventCalled(id)));
   });
 }
 
 export function defineGetEvent(presenters: readonly Presenter[]) {
-  return defineQuery('brain', {
+  return defineQuery('playbook', {
     name: 'get_event',
     title: 'Get event',
     description,
@@ -73,7 +73,7 @@ export function defineGetEvent(presenters: readonly Presenter[]) {
     reasons: ['not_found', 'invalid_input'],
     handle: eventReader(presentationOf(presenters)),
     plainLanguage: {
-      task: 'read one event of the brain',
+      task: 'read one event of the playbook',
       attempt: ({ event_id: id }) => `read the event ${id}`,
       outcome: eventFound,
     },

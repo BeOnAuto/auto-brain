@@ -1,14 +1,14 @@
 import { NotFound } from '@beonauto/operations';
 import { Effect } from 'effect';
 
-import type { Brain } from './brain.ts';
+import type { Playbook } from './brain.ts';
 import type { Registry } from './registry.ts';
 
-export function brainNotFound(id: string): NotFound {
-  return new NotFound({ detail: `There is no brain ${id} in this org` });
+export function playbookNotFound(id: string): NotFound {
+  return new NotFound({ detail: `There is no playbook ${id} in this org` });
 }
 
-export function findBrain(registry: Registry, id: string): Effect.Effect<Brain, NotFound> {
-  const brain = registry.get(id);
-  return brain === undefined ? Effect.fail(brainNotFound(id)) : Effect.succeed(brain);
+export function findPlaybook(registry: Registry, id: string): Effect.Effect<Playbook, NotFound> {
+  const playbook = registry.get(id);
+  return playbook === undefined ? Effect.fail(playbookNotFound(id)) : Effect.succeed(playbook);
 }

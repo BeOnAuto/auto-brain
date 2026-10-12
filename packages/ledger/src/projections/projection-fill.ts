@@ -1,4 +1,4 @@
-import { brainStreamOf, projectedTableOf, rowKeyOf, type ProjectedRow } from '@beonauto/operations';
+import { playbookStreamOf, projectedTableOf, rowKeyOf, type ProjectedRow } from '@beonauto/operations';
 
 import type { StatementExecutor } from '../event-store.ts';
 import { inTurn } from './inline-projection.ts';
@@ -51,9 +51,9 @@ function replayedRows(
 ): readonly KeptRow[] {
   const byStream = Map.groupBy(messages, ({ stream }) => stream);
   return streams.flatMap((stream) => {
-    const named = brainStreamOf(stream);
+    const named = playbookStreamOf(stream);
     const row = named === undefined ? undefined : replayedRow(keeping, byStream.get(stream) ?? []);
-    return named === undefined || row === undefined ? [] : [{ brainKey: named.brainKey, key: named.id, row }];
+    return named === undefined || row === undefined ? [] : [{ playbookKey: named.playbookKey, key: named.id, row }];
   });
 }
 
@@ -118,12 +118,12 @@ interface PlacedMessage {
 
 function placedMessages(keeping: ProjectionKeeping, messages: readonly Ordered[]) {
   return messages.flatMap((message): readonly PlacedMessage[] => {
-    const named = brainStreamOf(message.stream);
+    const named = playbookStreamOf(message.stream);
     const key =
       named === undefined ? undefined : rowKeyOf(keeping.projection, filledMessageOf(keeping, message), named);
     return named === undefined || key === undefined
       ? []
-      : [{ message, place: { brainKey: named.brainKey, key }, stored: `${named.brainKey}${key}` }];
+      : [{ message, place: { playbookKey: named.playbookKey, key }, stored: `${named.playbookKey}${key}` }];
   });
 }
 

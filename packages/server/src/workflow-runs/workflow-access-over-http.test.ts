@@ -13,18 +13,18 @@ import {
   workflowTestTimeoutMs,
 } from '../testing/servers/workflow-server.ts';
 
-const admin = createApiKey({ id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: '*' });
+const admin = createApiKey({ id: 'acme-admin', org: 'acme', permissions: allPermissions, playbooks: '*' });
 
 const runner = createApiKey({
   id: 'acme-runner',
   org: 'acme',
-  permissions: ['brain:read', 'brain:write'],
-  brains: ['alpha'],
+  permissions: ['playbook:read', 'playbook:write'],
+  playbooks: ['alpha'],
 });
 
-const reader = createApiKey({ id: 'acme-reader', org: 'acme', permissions: ['brain:read'], brains: ['alpha'] });
+const reader = createApiKey({ id: 'acme-reader', org: 'acme', permissions: ['playbook:read'], playbooks: ['alpha'] });
 
-const outsider = createApiKey({ id: 'acme-outsider', org: 'acme', permissions: allPermissions, brains: ['beta'] });
+const outsider = createApiKey({ id: 'acme-outsider', org: 'acme', permissions: allPermissions, playbooks: ['beta'] });
 
 const verdict = [
   '---',
@@ -61,7 +61,7 @@ beforeEach(async () => {
     API_KEYS: JSON.stringify([admin.entry, runner.entry, reader.entry, outsider.entry]),
   });
   const asAdmin = { key: admin.key };
-  await server.call('POST', '/v1/orgs/acme/brains', { ...asAdmin, body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', { ...asAdmin, body: { playbook: 'alpha', name: 'Alpha' } });
   await server.call('POST', `${alpha}/definitions/reasoning`, {
     ...asAdmin,
     body: { name: 'verdict', source: verdict },
@@ -107,7 +107,7 @@ describe('a workflow that listens for an event, over HTTP', { timeout: workflowT
   });
 });
 
-describe('a key without access to the brain of a workflow', { timeout: workflowTestTimeoutMs }, () => {
+describe('a key without access to the playbook of a workflow', { timeout: workflowTestTimeoutMs }, () => {
   it('cannot execute it, read its run, or send it an event', async () => {
     const runId = await startedBy(admin.key);
     const asOutsider = { key: outsider.key };

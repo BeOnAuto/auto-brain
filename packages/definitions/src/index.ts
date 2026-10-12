@@ -68,7 +68,7 @@ export {
   type ReplyIdentity,
   type ReplyRefusal,
 } from './runs/run-events.ts';
-export { runEventOf, recordedRunIn, recordedRunInBrain, type RecordedRun } from './run-work/recorded-runs.ts';
+export { runEventOf, recordedRunIn, recordedRunInPlaybook, type RecordedRun } from './run-work/recorded-runs.ts';
 export {
   outboundCallRecorder,
   replyRecorder,
@@ -99,7 +99,7 @@ export {
   type RunDetail,
 } from './runs/run.ts';
 export {
-  brainBoundSettler,
+  playbookBoundSettler,
   runSettler,
   type RunStreamAddress,
   type SettleRun,
@@ -112,7 +112,7 @@ export { defineListRuns } from './reading/list-runs.ts';
 export { ListedRunSchema, type ListedRun } from './reading/listed-run.ts';
 export { RunIdInputField } from './operations/definition-fields.ts';
 export { makeDefinitionPresenters } from './presenting/definition-presenters.ts';
-export { brainEventOf, brainFactOf } from './events/brain-facts.ts';
+export { playbookEventOf, playbookFactOf } from './events/brain-facts.ts';
 export {
   DefinitionEventSchema,
   type DefinitionEvent,
@@ -122,7 +122,7 @@ export { definitionTypeStreamOf } from './registry/definitions-decider.ts';
 export {
   callerSourcePrefix,
   isReservedSource,
-  refusingTheBrainsOwnAttributes,
+  refusingThePlaybooksOwnAttributes,
   contextAttributeNames,
   reservedEventTypes,
   reservedSourcesInWords,
@@ -172,9 +172,9 @@ export { mostInputBytes, mostInputDepth, mostResultBytes } from './runs/recorded
 export {
   ListedDefinitionSchema,
   DefinitionSchema,
-  isBrainFunctionDefinition,
+  isPlaybookFunctionDefinition,
   isWorkflowDefinition,
-  type BrainFunctionDefinition,
+  type PlaybookFunctionDefinition,
   type ComputationFunctionDefinition,
   type InteractionFunctionDefinition,
   type RecallFunctionDefinition,
@@ -183,8 +183,8 @@ export {
   type ListedDefinition,
   type Definition,
 } from './registry/definition.ts';
-export { makeDefinitionOperations, type BrainOperation } from './operations/definition-operations.ts';
-export { defineGetBrainAnalytics } from './analytics/get-brain-analytics.ts';
+export { makeDefinitionOperations, type PlaybookOperation } from './operations/definition-operations.ts';
+export { defineGetPlaybookAnalytics } from './analytics/get-brain-analytics.ts';
 export { runOutcomeMapping } from './analytics/run-outcome-mapping.ts';
 export {
   definitionResourceLabel,

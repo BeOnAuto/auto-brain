@@ -75,7 +75,7 @@ const notice = skipped ? ', skipped: set LEDGER_TEST_POSTGRESQL_URL to the URL o
 
 type RecordedSelection = Parameters<OpenLedger['ledger']['readRecorded']>[1];
 
-const alpha = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
 const noMetadata: Readonly<Record<string, string>> = {};
 
@@ -88,7 +88,7 @@ async function anAppendLeftOpen(database: string, stream: string, type: string, 
   await client.query('BEGIN');
   await client.query(
     `SELECT success FROM emt_append_to_stream(
-      ARRAY['late-1'], ARRAY[$1::jsonb], ARRAY[$4::jsonb], ARRAY['1'], ARRAY[$2], ARRAY['E'], $3, 'brain', 0, 'emt:default')`,
+      ARRAY['late-1'], ARRAY[$1::jsonb], ARRAY[$4::jsonb], ARRAY['1'], ARRAY[$2], ARRAY['E'], $3, 'playbook', 0, 'emt:default')`,
     [{ json: JSON.stringify({ detail: 'late' }) }, type, stream, { ...stampedAsStored, ...meta }],
   );
   return client;

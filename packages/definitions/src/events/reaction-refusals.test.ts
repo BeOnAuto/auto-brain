@@ -7,12 +7,12 @@ import { makeDefinitionPresenters } from '../index.ts';
 import { echo } from '../testing/echo.ts';
 import { reactionRefusalDecider } from './reaction-refusals.ts';
 
-const alpha = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
 const prefix = 'brain/acme/alpha/';
 
 const refusal = {
-  brain: alpha,
+  playbook: alpha,
   workflow: 'close-the-month',
   version: 3,
   refused: { count: 2, reason: 'Past the bound of a chain', minute: '2026-10-01T09:00:00.000Z' },
@@ -20,7 +20,7 @@ const refusal = {
 };
 
 describe('a refused reaction of a workflow', () => {
-  it('is recorded through its decider with the brain as its actor and the workflow and its version as its context', async () => {
+  it('is recorded through its decider with the playbook as its actor and the workflow and its version as its context', async () => {
     const ledger = memoryLedger();
     const stream = 'brain/acme/alpha/reactions/close-the-month';
 

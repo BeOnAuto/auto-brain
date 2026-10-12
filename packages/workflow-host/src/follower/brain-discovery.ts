@@ -1,4 +1,4 @@
-import { brainCreatedOf } from '@beonauto/brains';
+import { playbookCreatedOf } from '@beonauto/brains';
 import { Effect, Schema } from 'effect';
 
 import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';
@@ -8,22 +8,22 @@ import {
   type ApplyDefinitionRecord,
   type DefinitionRecord,
 } from '../triggers/definition-records.ts';
-import type { BrainRecords } from './brain-records.ts';
-import type { FollowedBrains } from './followed-brains.ts';
+import type { PlaybookRecords } from './brain-records.ts';
+import type { FollowedPlaybooks } from './followed-brains.ts';
 import { scannedListeners } from './listener-scan.ts';
 
 export interface Discovery {
   readonly atStart: () => Effect.Effect<void>;
   readonly registriesAppended: (registries: readonly string[]) => Effect.Effect<void>;
-  readonly brainSeen: (brainKey: string) => Effect.Effect<void>;
+  readonly playbookSeen: (playbookKey: string) => Effect.Effect<void>;
 }
 
 export interface DiscoveryParts {
   readonly database: HostDatabase;
-  readonly brains: FollowedBrains;
-  readonly records: BrainRecords;
+  readonly playbooks: FollowedPlaybooks;
+  readonly records: PlaybookRecords;
   readonly applyDefinitionRecord: ApplyDefinitionRecord;
-  readonly unreadable: (brainKey: string, record: DefinitionRecord) => Effect.Effect<void>;
+  readonly unreadable: (playbookKey: string, record: DefinitionRecord) => Effect.Effect<void>;
   readonly definitionType: string;
 }
 
@@ -63,33 +63,35 @@ function seenOf(database: HostDatabase, stream: string): Effect.Effect<number | 
   ).pipe(Effect.map((rows) => rows.at(0)?.position));
 }
 
-function brainKeyOf(stream: string, brain: string): string {
-  return stream.replace(orgRegistry, (_, org: string) => `brain/${org}/${brain}/`);
+function playbookKeyOf(stream: string, playbook: string): string {
+  return stream.replace(orgRegistry, (_, org: string) => `brain/${org}/${playbook}/`);
 }
 
 function followedAtTailOn({
   database,
-  brains,
+  playbooks,
   records,
   applyDefinitionRecord,
   unreadable,
   definitionType,
 }: DiscoveryParts) {
-  const applied = (brainKey: string, record: DefinitionRecord) =>
-    Effect.flatMap(applyDefinitionRecord(brainKey, record), (outcome) =>
-      outcome === 'unreadable' ? unreadable(brainKey, record) : Effect.void,
+  const applied = (playbookKey: string, record: DefinitionRecord) =>
+    Effect.flatMap(applyDefinitionRecord(playbookKey, record), (outcome) =>
+      outcome === 'unreadable' ? unreadable(playbookKey, record) : Effect.void,
     );
-  return (brainKey: string) =>
+  return (playbookKey: string) =>
     Effect.gen(function* () {
-      const [, org = '', brain = ''] = brainKey.split('/');
-      yield* brains.follow(brainKey, yield* records.tail({ org, brain }));
-      const recorded = yield* Effect.promise(() => database.store.read(`${brainKey}definitions/${definitionType}`, 0));
-      yield* Effect.forEach(definitionRecordsIn(recorded), (record) => applied(brainKey, record), { discard: true });
+      const [, org = '', playbook = ''] = playbookKey.split('/');
+      yield* playbooks.follow(playbookKey, yield* records.tail({ org, playbook }));
+      const recorded = yield* Effect.promise(() =>
+        database.store.read(`${playbookKey}definitions/${definitionType}`, 0),
+      );
+      yield* Effect.forEach(definitionRecordsIn(recorded), (record) => applied(playbookKey, record), { discard: true });
     });
 }
 
-export function brainDiscoveryOn(parts: DiscoveryParts): Discovery {
-  const { database, brains } = parts;
+export function playbookDiscoveryOn(parts: DiscoveryParts): Discovery {
+  const { database, playbooks } = parts;
   const followedAtTail = followedAtTailOn(parts);
   const registryRead = (stream: string, after: number | undefined, atStart: boolean) =>
     Effect.gen(function* () {
@@ -98,12 +100,13 @@ export function brainDiscoveryOn(parts: DiscoveryParts): Discovery {
         return;
       }
       const created = messages.flatMap((message) => {
-        const brain = brainCreatedOf(message);
-        return brain === undefined ? [] : [brainKeyOf(stream, brain)];
+        const playbook = playbookCreatedOf(message);
+        return playbook === undefined ? [] : [playbookKeyOf(stream, playbook)];
       });
       yield* Effect.forEach(
         created,
-        (brainKey) => (atStart && after === undefined ? followedAtTail(brainKey) : brains.follow(brainKey, null)),
+        (playbookKey) =>
+          atStart && after === undefined ? followedAtTail(playbookKey) : playbooks.follow(playbookKey, null),
         { discard: true },
       );
       yield* Effect.orDie(
@@ -130,6 +133,6 @@ export function brainDiscoveryOn(parts: DiscoveryParts): Discovery {
         (stream) => Effect.flatMap(seenOf(database, stream), (after) => registryRead(stream, after, false)),
         { discard: true },
       ),
-    brainSeen: (brainKey) => brains.follow(brainKey, null),
+    playbookSeen: (playbookKey) => playbooks.follow(playbookKey, null),
   };
 }

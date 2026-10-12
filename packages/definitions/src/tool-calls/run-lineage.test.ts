@@ -1,16 +1,23 @@
-import { BrainContext, BrainWriter, Caller, messageIdOf, type Lineage, type RecordedEvent } from '@beonauto/operations';
+import {
+  PlaybookContext,
+  PlaybookWriter,
+  Caller,
+  messageIdOf,
+  type Lineage,
+  type RecordedEvent,
+} from '@beonauto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { runDecider, runStreamNameOf } from '../runs/run-decider.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
-import { harness, toBrain, type Harness } from '../testing/harness.ts';
+import { harness, toPlaybook, type Harness } from '../testing/harness.ts';
 import { relayedId, withHandOn } from '../testing/relaying.ts';
 import { answerOfCall, toolUser } from '../testing/tool-user.ts';
 import { toolCallJournal } from './tool-call-journal.ts';
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
@@ -33,7 +40,7 @@ async function linksIn({ ledger, run }: Harness): Promise<readonly Linked[]> {
   const { records } = await run(
     Effect.orDie(
       ledger.service.readRecorded(
-        { org: 'acme', brain: 'alpha' },
+        { org: 'acme', playbook: 'alpha' },
         { kind: 'run', run: runId },
         { order: 'asc', limit: 100 },
       ),
@@ -126,12 +133,12 @@ describe('the journal of a run, given an answer to a call it has no start of', (
       const journal = yield* toolCallJournal(runId, { startId: idAt(1), correlationId: runId });
       return yield* journal.ended(9, answerOfCall(9));
     }).pipe(
-      Effect.provideService(BrainWriter, {
+      Effect.provideService(PlaybookWriter, {
         execute: (relative, decider, command, lineage) =>
           definitions.ledger.service.execute(`brain/acme/alpha/${relative}`, decider, command, lineage),
       }),
       Effect.provideService(Caller, acmeAdmin),
-      Effect.provideService(BrainContext, { org: 'acme', brain: 'alpha' }),
+      Effect.provideService(PlaybookContext, { org: 'acme', playbook: 'alpha' }),
     );
 
     expect(await definitions.run(Effect.orDie(recording))).toBe(true);

@@ -27,7 +27,7 @@ const root = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 const child = '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a';
 
 function idsOfARead(aLedger: LedgerMaker): void {
-  describe('the lineage of what a brain recorded', () => {
+  describe('the lineage of what a playbook recorded', () => {
     it('names each message by its stream and position, with the cause and correlation it was written with', async () => {
       const ledger = await aLedger();
       await happenWith(ledger, inAlpha(`runs/${root}`), { causationId: null, correlationId: root }, 'start');
@@ -50,13 +50,13 @@ function idsOfARead(aLedger: LedgerMaker): void {
 
 function aReadByCorrelation(aLedger: LedgerMaker): void {
   describe('a read by correlation', () => {
-    it('answers what a run and the runs it caused recorded, in the order of the brain, and nothing for a child', async () => {
+    it('answers what a run and the runs it caused recorded, in the order of the playbook, and nothing for a child', async () => {
       const ledger = await aLedger();
       const ofRoot = { causationId: null, correlationId: root };
       await happenWith(ledger, inAlpha(`runs/${root}`), ofRoot, 'root started');
       await happenWith(ledger, inAlpha('notes'), { causationId: null, correlationId: null }, 'elsewhere');
       await happenWith(ledger, inAlpha(`runs/${child}`), ofRoot, 'child started');
-      await happenWith(ledger, 'brain/acme/beta/notes', ofRoot, 'another brain');
+      await happenWith(ledger, 'brain/acme/beta/notes', ofRoot, 'another playbook');
       await happenWith(ledger, inAlpha(`runs/${root}`), ofRoot, 'root finished');
 
       const pages = await Promise.all([
@@ -105,7 +105,7 @@ function aReadFromInsideARecord(aLedger: LedgerMaker): void {
 
 function oneEventByItsId(aLedger: LedgerMaker): void {
   describe('the read of one event by its id', () => {
-    it('answers the event of the brain with its data, context and place, and nothing of another brain or none', async () => {
+    it('answers the event of the playbook with its data, context and place, and nothing of another playbook or none', async () => {
       const ledger = await aLedger();
       await happenWith(ledger, inAlpha(`runs/${root}`), { causationId: null, correlationId: root }, 'start');
       await happenWith(ledger, inAlpha(`runs/${root}`), { causationId: null, correlationId: root }, 'finish');

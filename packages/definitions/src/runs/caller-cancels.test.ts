@@ -45,7 +45,7 @@ const starting: RunCommand = { type: 'start', ...greeting, definition_version: 1
 
 const cancelledFirst = new RunCancelled({ detail: reason, kind: 'parent_ended' });
 
-const noSuchRun = new NotFound({ detail: 'There is no such run in this brain' });
+const noSuchRun = new NotFound({ detail: 'There is no such run in this playbook' });
 
 describe('a cancel from the caller of a run that has not started', () => {
   it('is recorded as the first event of its stream, with no definition in its context, where a cancel from anyone else finds no run', () => {

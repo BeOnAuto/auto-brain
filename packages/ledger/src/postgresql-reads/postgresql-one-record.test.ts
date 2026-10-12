@@ -41,7 +41,7 @@ const storedRow = {
 };
 
 describe('one record read by its message id on PostgreSQL', () => {
-  it('reads the record through the index on the message id, within the brain, with its data and its context', async () => {
+  it('reads the record through the index on the message id, within the playbook, with its data and its context', async () => {
     const { query, asked } = answering([storedRow]);
 
     const record = await postgresqlRecordedStore(query).readRecordedEvent(alpha, 'message-21');
@@ -58,24 +58,24 @@ describe('one record read by its message id on PostgreSQL', () => {
     expect(asked[0]?.values).toEqual(['message-21', 'emt:default', alpha]);
   });
 
-  it('reads nothing for an id the brain does not hold', async () => {
+  it('reads nothing for an id the playbook does not hold', async () => {
     const { query } = answering([]);
 
     await expect(postgresqlRecordedStore(query).readRecordedEvent(alpha, 'message-99')).resolves.toBeUndefined();
   });
 });
 
-describe('the content a brain keeps on PostgreSQL', () => {
-  it('joins the chunks of a digest the brain holds, in their order, and writes them, then the head, once', async () => {
+describe('the content a playbook keeps on PostgreSQL', () => {
+  it('joins the chunks of a digest the playbook holds, in their order, and writes them, then the head, once', async () => {
     const reading = answering([{ chunks: 2 }], [{ text: '{"a":' }, { text: '1}' }]);
     const writing = answering([], [], []);
-    const brain = { org: 'acme', brain: 'alpha' };
+    const playbook = { org: 'acme', playbook: 'alpha' };
 
     const text = await Effect.runPromise(
-      postgresqlRecordedStore(reading.query).content.get(brain, await sha256Of('{"a":1}')),
+      postgresqlRecordedStore(reading.query).content.get(playbook, await sha256Of('{"a":1}')),
     );
     await Effect.runPromise(
-      postgresqlRecordedStore(writing.query).content.put(brain, await sha256Of('{"b":2}'), '{"b":2}'),
+      postgresqlRecordedStore(writing.query).content.put(playbook, await sha256Of('{"b":2}'), '{"b":2}'),
     );
 
     expect(text).toBe('{"a":1}');

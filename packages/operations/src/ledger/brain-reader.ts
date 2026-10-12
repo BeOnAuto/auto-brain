@@ -1,10 +1,10 @@
 import { Context } from 'effect';
 
-import type { BrainContentReader } from '../content/recorded-content.ts';
-import type { BrainProjectionReader } from '../projections/keyed-projection.ts';
-import type { BrainRecordedReader, BrainRunOutcomesReader, StreamReader } from './stream-ports.ts';
+import type { PlaybookContentReader } from '../content/recorded-content.ts';
+import type { PlaybookProjectionReader } from '../projections/keyed-projection.ts';
+import type { PlaybookRecordedReader, PlaybookRunOutcomesReader, StreamReader } from './stream-ports.ts';
 
-export class BrainReader extends Context.Service<
-  BrainReader,
-  StreamReader & BrainRecordedReader & BrainRunOutcomesReader & BrainProjectionReader & BrainContentReader
->()('@beonauto/operations/BrainReader') {}
+export class PlaybookReader extends Context.Service<
+  PlaybookReader,
+  StreamReader & PlaybookRecordedReader & PlaybookRunOutcomesReader & PlaybookProjectionReader & PlaybookContentReader
+>()('@beonauto/operations/PlaybookReader') {}

@@ -1,12 +1,12 @@
 import type { Effect } from 'effect';
 
-import type { BrainAddress } from '../caller/brain-context.ts';
+import type { PlaybookAddress } from '../caller/brain-context.ts';
 
 export interface RecordedContent {
-  readonly put: (brain: BrainAddress, sha256: string, text: string) => Effect.Effect<void>;
-  readonly get: (brain: BrainAddress, sha256: string) => Effect.Effect<string | undefined>;
+  readonly put: (playbook: PlaybookAddress, sha256: string, text: string) => Effect.Effect<void>;
+  readonly get: (playbook: PlaybookAddress, sha256: string) => Effect.Effect<string | undefined>;
 }
 
-export interface BrainContentReader {
+export interface PlaybookContentReader {
   readonly readContent: (sha256: string) => Effect.Effect<string | undefined>;
 }

@@ -13,7 +13,7 @@ const sizes: readonly (readonly [string, number])[] = [
   ['20 MB', 20_000_000],
 ];
 
-const brain = { org: 'acme', brain: 'alpha' };
+const playbook = { org: 'acme', playbook: 'alpha' };
 
 function answerOfAbout(bytes: number): string {
   const rows: { readonly id: number; readonly note: string }[] = [];
@@ -39,11 +39,11 @@ async function measured({ name, opened }: MeasuredStore): Promise<void> {
   await inTurn(sizes, async ([label, bytes]) => {
     const text = answerOfAbout(bytes);
     const sha256 = digestOf(text);
-    const put = await timed(() => Effect.runPromise(store.content.put(brain, sha256, text)));
-    const again = await timed(() => Effect.runPromise(store.content.put(brain, sha256, text)));
+    const put = await timed(() => Effect.runPromise(store.content.put(playbook, sha256, text)));
+    const again = await timed(() => Effect.runPromise(store.content.put(playbook, sha256, text)));
     let read = '';
     const get = await timed(async () => {
-      read = (await Effect.runPromise(store.content.get(brain, sha256))) ?? '';
+      read = (await Effect.runPromise(store.content.get(playbook, sha256))) ?? '';
       JSON.parse(read);
     });
     write(

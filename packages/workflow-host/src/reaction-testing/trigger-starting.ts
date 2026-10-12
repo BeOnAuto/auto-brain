@@ -88,14 +88,14 @@ export async function starting() {
   const consumer = subscriptionStarts({
     database,
     starting: {
-      start: (_brainKey, start) =>
+      start: (_playbookKey, start) =>
         Effect.sync(() => {
           starts.push(start);
         }),
       startDeferred: Function.constant(Effect.succeed(0)),
     },
     refusals,
-    workflowOfRun: (_brainKey, runId) => Effect.succeed(topRuns.get(runId)),
+    workflowOfRun: (_playbookKey, runId) => Effect.succeed(topRuns.get(runId)),
     match,
     stops,
     now: () => 0,

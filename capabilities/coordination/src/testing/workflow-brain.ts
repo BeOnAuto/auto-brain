@@ -7,11 +7,11 @@ import type { WorkflowHost } from '@beonauto/workflow-host';
 import { Schema } from 'effect';
 
 import { makeWorkflowAdapter } from '../capability/workflow.ts';
-import { brainOn, type Brain } from './brain.ts';
+import { playbookOn, type Playbook } from './brain.ts';
 import { testExpressionCheck } from './expression-checks.ts';
 import { testHost } from './test-host.ts';
 
-export interface WorkflowBrain extends Brain {
+export interface WorkflowPlaybook extends Playbook {
   readonly host: WorkflowHost;
   readonly settled: (runId: string) => Promise<Outcome>;
   readonly close: () => Promise<void>;
@@ -23,21 +23,21 @@ const StartedSchema = Schema.Struct({ output: Schema.Struct({ status: Schema.Lit
 
 const isStarted = Schema.is(StartedSchema);
 
-export async function workflowBrain(): Promise<WorkflowBrain> {
+export async function workflowPlaybook(): Promise<WorkflowPlaybook> {
   const ledger = memoryLedger();
-  const nested = brainOn(ledger, [echo]);
+  const nested = playbookOn(ledger, [echo]);
   const host = await testHost(nested);
-  const brain = brainOn(ledger, [
+  const playbook = playbookOn(ledger, [
     makeWorkflowAdapter({ runs: host, check: testExpressionCheck, mostDurationMs, longestCallMs: 660_000 }),
     echo,
   ]);
   const settled = async (runId: string): Promise<Outcome> => {
-    const outcome = await brain.call(brain.getRun, { run_id: runId });
+    const outcome = await playbook.call(playbook.getRun, { run_id: runId });
     if (!isStarted(outcome)) {
       return outcome;
     }
     await setTimeout(10);
     return settled(runId);
   };
-  return { ...brain, host, settled, close: () => host.stop() };
+  return { ...playbook, host, settled, close: () => host.stop() };
 }

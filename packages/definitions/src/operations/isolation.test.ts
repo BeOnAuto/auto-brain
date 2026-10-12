@@ -3,16 +3,16 @@ import { describe, expect, it } from 'vitest';
 import { acmeAdmin, acmeAlphaKeeper, acmeReader, globexAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
 import { echo } from '../testing/echo.ts';
-import { harness, toBrain } from '../testing/harness.ts';
+import { harness, toPlaybook } from '../testing/harness.ts';
 
 const { createDefinition, runDefinition, getRun, getDefinition, listDefinitions, retireDefinition, updateDefinition } =
   definitionOperationsFor([echo]);
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
-const toBeta = toBrain('acme', 'beta');
+const toBeta = toPlaybook('acme', 'beta');
 
-const toGamma = toBrain('globex', 'gamma');
+const toGamma = toPlaybook('globex', 'gamma');
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
@@ -20,8 +20,8 @@ const greet = { type: 'echo', name: 'greet' };
 
 const hello = { ...greet, source: '{"greeting": "Hello"}' };
 
-describe('the definitions and runs of a brain', () => {
-  it('are invisible from another brain of the org and from a brain of another org', async () => {
+describe('the definitions and runs of a playbook', () => {
+  it('are invisible from another playbook of the org and from a playbook of another org', async () => {
     const { call, ledger } = harness();
     await call(createDefinition, toAlpha(acmeAdmin, hello));
     await call(runDefinition, toAlpha(acmeAdmin, { ...greet, run_id: runId }));
@@ -40,7 +40,7 @@ describe('the definitions and runs of a brain', () => {
     expect(ledger.streamNames()).toEqual(['brain/acme/alpha/definitions/echo', `brain/acme/alpha/runs/${runId}`]);
   });
 
-  it('are apart from those of another brain that uses the same names and run ids', async () => {
+  it('are apart from those of another playbook that uses the same names and run ids', async () => {
     const { call } = harness();
     await call(createDefinition, toAlpha(acmeAdmin, hello));
     await call(createDefinition, toGamma(globexAdmin, { ...greet, source: '{"greeting": "Hola"}' }));
@@ -67,7 +67,11 @@ describe('a caller that may only read', () => {
     const { call } = harness();
     await call(createDefinition, toAlpha(acmeAdmin, hello));
     await call(runDefinition, toAlpha(acmeAdmin, { ...greet, run_id: runId }));
-    const readOnly = { status: 'rejected', reason: 'forbidden', detail: 'The caller lacks the brain:write permission' };
+    const readOnly = {
+      status: 'rejected',
+      reason: 'forbidden',
+      detail: 'The caller lacks the playbook:write permission',
+    };
 
     expect(await call(createDefinition, toAlpha(acmeReader, { ...hello, name: 'wave' }))).toEqual(readOnly);
     expect(await call(updateDefinition, toAlpha(acmeReader, hello))).toEqual(readOnly);
@@ -81,10 +85,10 @@ describe('a caller that may only read', () => {
   });
 });
 
-describe('a caller limited to some brains', () => {
-  it('works with the definitions of its brains and is denied every other brain', async () => {
+describe('a caller limited to some playbooks', () => {
+  it('works with the definitions of its playbooks and is denied every other playbook', async () => {
     const { call } = harness();
-    const denied = { status: 'rejected', reason: 'forbidden', detail: 'The caller may not access this brain' };
+    const denied = { status: 'rejected', reason: 'forbidden', detail: 'The caller may not access this playbook' };
 
     expect(await call(createDefinition, toAlpha(acmeAlphaKeeper, hello))).toMatchObject({
       output: { created_by: 'acme-alpha-keeper' },

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { linesLoggedBy } from '../testing/records/logged-lines.ts';
 import { logHostNote } from './host-notes.ts';
 
-const run = { org: 'acme', brain: 'alpha', runId: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' };
+const run = { org: 'acme', playbook: 'alpha', runId: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' };
 
 describe('the notes of the workflow host', () => {
   it('warn that another server runs the workflows of the database, and until when it holds them', async () => {
@@ -40,31 +40,33 @@ describe('the notes of the workflow host', () => {
       expect.stringContaining('"message":"A run that could not be settled was settled at attempt 22","level":"WARN"'),
     ]);
     expect(lines[0]).toContain(
-      '"annotations":{"org":"acme","brain":"alpha","run_id":"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a","error":"The ledger cannot be reached"}',
+      '"annotations":{"org":"acme","playbook":"alpha","run_id":"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a","error":"The ledger cannot be reached"}',
     );
   });
 });
 
 describe('the notes of the views the workflow host keeps', () => {
-  it('warn of a recorded event no recall function can fold, and of a view that stopped, naming the brain', async () => {
+  it('warn of a recorded event no recall function can fold, and of a view that stopped, naming the playbook', async () => {
     const lines = [
       ...(await linesLoggedBy(
-        logHostNote({ kind: 'record_passed_over', brain: 'brain/acme/alpha/', record: 'r-1', reason: 'unreadable' }),
+        logHostNote({ kind: 'record_passed_over', playbook: 'brain/acme/alpha/', record: 'r-1', reason: 'unreadable' }),
       )),
       ...(await linesLoggedBy(
-        logHostNote({ kind: 'view_stalled', brain: 'brain/acme/alpha/', name: 'reviews', version: 2 }),
+        logHostNote({ kind: 'view_stalled', playbook: 'brain/acme/alpha/', name: 'reviews', version: 2 }),
       )),
     ];
 
     expect(lines).toEqual([
       expect.stringContaining(
-        '"message":"A recorded event of a brain could not be read as an event, so no recall function folds it","level":"WARN"',
+        '"message":"A recorded event of a playbook could not be read as an event, so no recall function folds it","level":"WARN"',
       ),
       expect.stringContaining(
         '"message":"The view of a recall function stopped at an event its fold could not take; saving a corrected version rebuilds it","level":"WARN"',
       ),
     ]);
-    expect(lines[1]).toContain('"annotations":{"brain":"brain/acme/alpha/","recall_function":"reviews","version":2}');
+    expect(lines[1]).toContain(
+      '"annotations":{"playbook":"brain/acme/alpha/","recall_function":"reviews","version":2}',
+    );
   });
 });
 
@@ -76,7 +78,7 @@ describe('the note of a record of a run passed before its outputs were dispatche
       '"message":"A record of a run\'s log was passed before the run\'s outputs were dispatched, after 20 sweeps held it; a listener it armed takes events once it is kept, and none recorded before","level":"WARN"',
     );
     expect(line).toContain(
-      '"annotations":{"org":"acme","brain":"alpha","run_id":"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a","version":4}',
+      '"annotations":{"org":"acme","playbook":"alpha","run_id":"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a","version":4}',
     );
   });
 });
@@ -89,7 +91,7 @@ describe('the notes of the reactions of the workflow host', () => {
         logHostNote({
           kind: 'record_unreadable',
           org: 'acme',
-          brain: 'alpha',
+          playbook: 'alpha',
           recordId: 'r-1',
           type: 'event_published',
         }),
@@ -98,14 +100,14 @@ describe('the notes of the reactions of the workflow host', () => {
 
     expect(lines).toEqual([
       expect.stringContaining(
-        '"message":"A run waiting for an event of its brain did not take one, since its filter failed on the event","level":"WARN"',
+        '"message":"A run waiting for an event of its playbook did not take one, since its filter failed on the event","level":"WARN"',
       ),
       expect.stringContaining(
-        '"message":"A record of the brain could not be read to match triggers and waiting runs against; it was passed over","level":"WARN"',
+        '"message":"A record of the playbook could not be read to match triggers and waiting runs against; it was passed over","level":"WARN"',
       ),
     ]);
     expect(lines[1]).toContain(
-      '"annotations":{"org":"acme","brain":"alpha","record_id":"r-1","type":"event_published"}',
+      '"annotations":{"org":"acme","playbook":"alpha","record_id":"r-1","type":"event_published"}',
     );
   });
 });

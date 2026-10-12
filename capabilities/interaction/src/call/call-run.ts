@@ -55,7 +55,7 @@ export function callRun(ports: CallPorts) {
       const called = yield* ports.tools.callOnce(
         {
           org: context.org,
-          brain: context.brain,
+          playbook: context.playbook,
           reference: { server, tool },
           input: rendered,
           meta: { [runIdKey]: context.id },

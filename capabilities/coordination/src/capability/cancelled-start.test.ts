@@ -5,7 +5,7 @@ import type { WorkflowHost } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { brainOn } from '../testing/brain.ts';
+import { playbookOn } from '../testing/brain.ts';
 import { testExpressionCheck } from '../testing/expression-checks.ts';
 import { makeWorkflowAdapter } from './workflow.ts';
 
@@ -31,17 +31,17 @@ describe('a run whose call is cancelled while its workflow starts', () => {
       mostDurationMs: 2_592_000_000,
       longestCallMs: 1000,
     });
-    const brain = brainOn(memoryLedger(), [workflow]);
-    await brain.call(brain.createDefinition, { type: 'workflow', name: 'flow', source: flow });
+    const playbook = playbookOn(memoryLedger(), [workflow]);
+    await playbook.call(playbook.createDefinition, { type: 'workflow', name: 'flow', source: flow });
 
-    const answered = await brain.callCancelledWhen(startBegan.promise, brain.runDefinition, {
+    const answered = await playbook.callCancelledWhen(startBegan.promise, playbook.runDefinition, {
       type: 'workflow',
       name: 'flow',
       run_id: runId,
     });
 
     expect(answered).toStrictEqual({ status: 'cancelled' });
-    expect(await brain.call(brain.getRun, { run_id: runId })).toMatchObject({
+    expect(await playbook.call(playbook.getRun, { run_id: runId })).toMatchObject({
       output: { status: 'started', record: {} },
     });
   });

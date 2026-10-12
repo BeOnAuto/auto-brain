@@ -1,6 +1,6 @@
 import {
-  BrainContext,
-  BrainReader,
+  PlaybookContext,
+  PlaybookReader,
   EventPagingInputFields,
   EventPagingOutputFields,
   PublicEventSchema,
@@ -10,7 +10,7 @@ import {
   keptContentOf,
   mostPublicEventDataBytes,
   presentationOf,
-  streamPrefixOfBrain,
+  streamPrefixOfPlaybook,
   type Presentation,
   type Presenter,
   type RecordedSelection,
@@ -20,13 +20,13 @@ import { Effect, Schema, SchemaTransformation } from 'effect';
 import { eventsFound } from '../plain-language/feed-words.ts';
 
 const description = [
-  'Lists what happened in the brain a page at a time, newest first: definitions saved and retired, runs started and how they ended,',
+  'Lists what happened in the playbook a page at a time, newest first: definitions saved and retired, runs started and how they ended,',
   'the steps of workflow runs, tool calls, and the events published to it, each with a summary in plain words,',
   'its fact as data with a large field as its size, and its metadata; get_event reads one event whole.',
-  "Use it to follow the brain's activity or to find the events a recall function or a workflow's schedule can take; get_run_history reads one run alone.",
+  "Use it to follow the playbook's activity or to find the events a recall function or a workflow's schedule can take; get_run_history reads one run alone.",
   '`type` keeps one type of event, `run_id` one run and every run it started, `since` what was recorded from that time on,',
   'and `cursor` is the next_cursor of the page before.',
-  "The brain's own creation, update and retirement are not among the events; get_brain shows them.",
+  "The playbook's own creation, update and retirement are not among the events; get_playbook shows them.",
 ].join(' ');
 
 const RunIdField = Schema.String.annotate({
@@ -54,7 +54,7 @@ const EventsPage = Schema.Struct({ events: Schema.Array(PublicEventSchema), ...E
 
 function requireSomePublicType(publicTypes: readonly string[]): void {
   if (publicTypes.length === 0) {
-    throw new Error('The events of a brain need a presenter that shows at least one type of event');
+    throw new Error('The events of a playbook need a presenter that shows at least one type of event');
   }
 }
 
@@ -66,13 +66,13 @@ function feedReader(presentation: Presentation) {
   return Effect.fnUntraced(function* (input: FeedInput) {
     const { cursor, since, type, run_id: run, order = 'desc', limit = defaultPageLimit } = input;
     const paging = { order, limit, ...(cursor === undefined ? {} : { cursor }) };
-    const page = yield* (yield* BrainReader).readRecorded(selectionOf(run), {
+    const page = yield* (yield* PlaybookReader).readRecorded(selectionOf(run), {
       ...paging,
       ...(since === undefined ? {} : { since }),
       ...(type === undefined ? {} : { types: presentation.storedTypesOf(type) }),
     });
     const content = yield* keptContentOf(page.records, mostPublicEventDataBytes);
-    const showing = { streamPrefix: streamPrefixOfBrain(yield* BrainContext), content, view: 'page' } as const;
+    const showing = { streamPrefix: streamPrefixOfPlaybook(yield* PlaybookContext), content, view: 'page' } as const;
     const { events, hasMore, nextCursor } = eventsPageOf(presentation, page, {
       ...paging,
       showing,
@@ -82,12 +82,12 @@ function feedReader(presentation: Presentation) {
   });
 }
 
-export function defineListBrainEvents(presenters: readonly Presenter[]) {
+export function defineListPlaybookEvents(presenters: readonly Presenter[]) {
   const presentation = presentationOf(presenters);
   requireSomePublicType(presentation.publicTypes);
-  return defineQuery('brain', {
-    name: 'list_brain_events',
-    title: 'List brain events',
+  return defineQuery('playbook', {
+    name: 'list_playbook_events',
+    title: 'List playbook events',
     description,
     route: { method: 'GET', path: '/events' },
     inputSchema: feedInput(presentation.publicTypes),
@@ -95,8 +95,8 @@ export function defineListBrainEvents(presenters: readonly Presenter[]) {
     reasons: ['invalid_input'],
     handle: feedReader(presentation),
     plainLanguage: {
-      task: 'read what happened in the brain',
-      attempt: () => 'read what happened in the brain',
+      task: 'read what happened in the playbook',
+      attempt: () => 'read what happened in the playbook',
       outcome: eventsFound,
     },
   });

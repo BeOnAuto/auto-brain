@@ -1,13 +1,13 @@
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { BrainReader, BrainWriter, InvalidInput, NotFound, defineCommand, defineQuery } from '../index.ts';
+import { PlaybookReader, PlaybookWriter, InvalidInput, NotFound, defineCommand, defineQuery } from '../index.ts';
 import {
-  brainBoundProjectionReader,
-  brainBoundRecordedReader,
-  brainBoundRunOutcomesReader,
+  playbookBoundProjectionReader,
+  playbookBoundRecordedReader,
+  playbookBoundRunOutcomesReader,
 } from '../ledger/bound-ports.ts';
-import { labelBrain } from '../testing/brain-labels.ts';
+import { labelPlaybook } from '../testing/brain-labels.ts';
 import { publishDraft } from '../testing/drafts.ts';
 import { memoryLedger, type MemoryLedger } from '../testing/memory-ledger.ts';
 import { misreport, overshare } from '../testing/misbehaving.ts';
@@ -24,7 +24,7 @@ const about = {
   handle: () => Effect.succeed({}),
 };
 
-const measure = defineQuery('brain', {
+const measure = defineQuery('playbook', {
   name: 'measure',
   title: 'Measure',
   description: 'Computes the area of a circle or a square.',
@@ -55,11 +55,11 @@ const noteJsonSchema = {
 describe('a registration', () => {
   it('describes a command with its route, success status, reasons and schemas', () => {
     expect(addNote.registration).toMatchObject({
-      scope: 'brain',
+      scope: 'playbook',
       kind: 'command',
       name: 'add_note',
       title: 'Add note',
-      description: 'Adds a note to the brain.',
+      description: 'Adds a note to the playbook.',
       route: { method: 'POST', path: '/notes' },
       pathParameters: [],
       successStatus: 201,
@@ -70,7 +70,11 @@ describe('a registration', () => {
 
   it('answers with 200 unless the definition says otherwise, and names its path parameters', () => {
     expect(getNote.registration).toMatchObject({ successStatus: 200, pathParameters: ['name'] });
-    expect(labelBrain.registration).toMatchObject({ scope: 'org', successStatus: 200, pathParameters: ['brain'] });
+    expect(labelPlaybook.registration).toMatchObject({
+      scope: 'org',
+      successStatus: 200,
+      pathParameters: ['playbook'],
+    });
   });
 
   it('exports a union input as one object schema with a branch per member', () => {
@@ -166,21 +170,24 @@ describe('a definition', () => {
   });
 });
 
-function readerOf({ service }: MemoryLedger): BrainReader['Service'] {
-  const alpha = { org: 'acme', brain: 'alpha' };
+function readerOf({ service }: MemoryLedger): PlaybookReader['Service'] {
+  const alpha = { org: 'acme', playbook: 'alpha' };
   return {
     ...service,
-    ...brainBoundRecordedReader(service, alpha),
-    ...brainBoundRunOutcomesReader(service, alpha),
-    ...brainBoundProjectionReader(service, alpha),
+    ...playbookBoundRecordedReader(service, alpha),
+    ...playbookBoundRunOutcomesReader(service, alpha),
+    ...playbookBoundProjectionReader(service, alpha),
     readContent: (sha256) => service.content.get(alpha, sha256),
   };
 }
 
 describe('the typed call', () => {
   const ledger = memoryLedger();
-  const withNotes = <A, E>(call: Effect.Effect<A, E, BrainReader | BrainWriter>) =>
-    call.pipe(Effect.provideService(BrainReader, readerOf(ledger)), Effect.provideService(BrainWriter, ledger.service));
+  const withNotes = <A, E>(call: Effect.Effect<A, E, PlaybookReader | PlaybookWriter>) =>
+    call.pipe(
+      Effect.provideService(PlaybookReader, readerOf(ledger)),
+      Effect.provideService(PlaybookWriter, ledger.service),
+    );
 
   it('runs the handler with typed input and output in the services it is given', async () => {
     const read = await Effect.runPromise(

@@ -65,7 +65,7 @@ function shown(event: ConversationCallEvent, content: KeptContent = keptContent,
   return fact;
 }
 
-describe('a read the brain made in a conversation, as the brain events show it', () => {
+describe('a read the playbook made in a conversation, as the playbook events show it', () => {
   it('says what it found through which tool, with the arguments and the answer it kept', () => {
     expect(
       shown({
@@ -75,7 +75,7 @@ describe('a read the brain made in a conversation, as the brain events show it',
     ).toEqual({
       type: 'replies_read',
       summary:
-        'The brain looked for new replies in the conversation “C0123/1699.1” through the thread replies tool of chat and found 2, took 1 as an answer and refused 1.',
+        'The playbook looked for new replies in the conversation “C0123/1699.1” through the thread replies tool of chat and found 2, took 1 as an answer and refused 1.',
       data: {
         ...thePlace,
         ...answered,
@@ -106,7 +106,7 @@ describe('a read the brain made in a conversation, as the brain events show it',
   });
 });
 
-describe('a read the brain could not make in a conversation, as the brain events show it', () => {
+describe('a read the playbook could not make in a conversation, as the playbook events show it', () => {
   it('says why, with no answer where no call was answered and the wait a server asked for', () => {
     const notOffered = shown(
       { type: 'reading_failed', data: { ...thePlace, because: 'tool_not_offered' } },
@@ -124,14 +124,14 @@ describe('a read the brain could not make in a conversation, as the brain events
     const refused = shown({ type: 'reading_failed', data: { ...thePlace, because: 'arguments_refused' } });
 
     expect([notOffered?.summary, timedOut?.summary, refused?.summary]).toEqual([
-      'The brain could not read the replies of the conversation “C0123/1699.1” through the thread replies tool of chat: the tool server no longer offers the tool to this brain.',
-      'The brain could not read the replies of the conversation “C0123/1699.1” through the thread replies tool of chat: the tool server did not answer within 30 seconds.',
-      'The brain could not read the replies of the conversation “C0123/1699.1” through the thread replies tool of chat: the tool server refused the arguments of the read.',
+      'The playbook could not read the replies of the conversation “C0123/1699.1” through the thread replies tool of chat: the tool server no longer offers the tool to this playbook.',
+      'The playbook could not read the replies of the conversation “C0123/1699.1” through the thread replies tool of chat: the tool server did not answer within 30 seconds.',
+      'The playbook could not read the replies of the conversation “C0123/1699.1” through the thread replies tool of chat: the tool server refused the arguments of the read.',
     ]);
     expect(notOffered?.data).toEqual({ ...thePlace, because: 'tool_not_offered' });
     expect(notSent).toMatchObject({
       summary:
-        'The brain could not read the replies of the conversation “C0123/1699.1” through the thread replies tool of chat: its arguments could not be rendered, so nothing was sent.',
+        'The playbook could not read the replies of the conversation “C0123/1699.1” through the thread replies tool of chat: its arguments could not be rendered, so nothing was sent.',
       data: { detail: 'The argument ts of the read cannot be rendered' },
     });
     expect(notSent?.data).not.toHaveProperty('arguments_bytes');
@@ -139,7 +139,7 @@ describe('a read the brain could not make in a conversation, as the brain events
   });
 });
 
-describe('a read whose answer was too large, as the brain events show it', () => {
+describe('a read whose answer was too large, as the playbook events show it', () => {
   it('names the bytes a read may take when the tool answered past them, and the cap of the transport when that cap stopped the answer', () => {
     const pastTheRead = shown({ type: 'reading_failed', data: { ...thePlace, ...answered, because: 'too_large' } });
     const pastTheCap = shown({
@@ -154,8 +154,8 @@ describe('a read whose answer was too large, as the brain events show it', () =>
     });
 
     expect([pastTheRead?.summary, pastTheCap?.summary]).toEqual([
-      'The brain could not read the replies of the conversation “C0123/1699.1” through the thread replies tool of chat: the tool answered more than the 65,536 bytes a read may take.',
-      'The brain could not read the replies of the conversation “C0123/1699.1” through the thread replies tool of chat: the tool server answered more than its transport lets one call take, 16,777,216 bytes over HTTP and 4,194,304 from a stdio server, so its answer was not read.',
+      'The playbook could not read the replies of the conversation “C0123/1699.1” through the thread replies tool of chat: the tool answered more than the 65,536 bytes a read may take.',
+      'The playbook could not read the replies of the conversation “C0123/1699.1” through the thread replies tool of chat: the tool server answered more than its transport lets one call take, 16,777,216 bytes over HTTP and 4,194,304 from a stdio server, so its answer was not read.',
     ]);
     expect(pastTheCap?.data).toMatchObject({
       detail: 'The MCP server answered more than the 16,777,216 bytes one call over HTTP may take',
@@ -163,7 +163,7 @@ describe('a read whose answer was too large, as the brain events show it', () =>
   });
 });
 
-describe('a telling the brain made in a conversation, as the brain events show it', () => {
+describe('a telling the playbook made in a conversation, as the playbook events show it', () => {
   it('says through which tool it told the party how to answer, and what the tool did', () => {
     const started = shown({
       type: 'telling_started',
@@ -183,7 +183,7 @@ describe('a telling the brain made in a conversation, as the brain events show i
     const notOffered = shown({ type: 'telling_failed', data: { call_id: 'call-4', because: 'tool_not_offered' } });
 
     expect([started?.summary, succeeded?.summary, failed?.summary, notOffered?.summary]).toEqual([
-      'The brain told the party how to answer through the post message tool of chat.',
+      'The playbook told the party how to answer through the post message tool of chat.',
       'The tool that told the party answered.',
       'The tool that told the party answered with an error of its own.',
       'The tool that told the party was no longer offered by its server.',

@@ -7,7 +7,7 @@ const created = [{ type: 'definition_created', data: { name: 'reviews' } }];
 
 export function definitionStreamsBehaviour(entry: LedgerEntry): void {
   describe('the definition streams of a type', () => {
-    it('are the streams of that type of definition in every brain, each with its version, read through an index of their own', async () => {
+    it('are the streams of that type of definition in every playbook, each with its version, read through an index of their own', async () => {
       const database = await entry.aDatabase();
       const store = entry.storeOn(database);
       onTestFinished(() => store.close());

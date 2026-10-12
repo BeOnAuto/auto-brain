@@ -6,7 +6,7 @@ import { reportingAccess, serveFakeMcp, type AccessOptions, type FakeMcpServer }
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
-const alpha = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
 const closing: (() => Promise<void>)[] = [];
 

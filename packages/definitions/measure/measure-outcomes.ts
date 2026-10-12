@@ -23,7 +23,7 @@ const largeRuns = 300;
 
 const largeRecordBytes = 1_048_576;
 
-const big = { org: 'o1', brain: 'big' };
+const big = { org: 'o1', playbook: 'big' };
 
 const RunEventSchema = Schema.Struct({
   type: Schema.String,
@@ -218,7 +218,7 @@ if (parts.has('append')) {
   await inTurn(theAppend);
 }
 if (parts.has('fill')) {
-  write('\n| Store | Ticks of the dataset | Runs of its big brain kept | Open | Open and fill |');
+  write('\n| Store | Ticks of the dataset | Runs of its big playbook kept | Open | Open and fill |');
   write('| --- | --- | --- | --- | --- |');
   await inTurn(theFill);
 }

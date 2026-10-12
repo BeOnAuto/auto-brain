@@ -36,7 +36,7 @@ const stored = {
   last_message: 'm1',
 };
 
-const alpha = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
 function readerOf(query: Query) {
   return postgresqlProjectionsOf({ projections: [runTallyRows, topicRows] }).readerOn({
@@ -63,7 +63,7 @@ describe('the reads of a projection on PostgreSQL', () => {
     expect(rows).toEqual([
       {
         org: 'acme',
-        brain: 'alpha',
+        playbook: 'alpha',
         key: 'r1',
         row: {
           fn: 'triage',
@@ -86,7 +86,7 @@ describe('the reads of a projection on PostgreSQL', () => {
 });
 
 describe('the counts and due times of a projection on PostgreSQL', () => {
-  it('count, read what is due across brains, and the soonest due time', async () => {
+  it('count, read what is due across playbooks, and the soonest due time', async () => {
     const counts = answering([{ count: 3 }]);
     const due = answering([stored]);
     const soonest = answering([{ due: 61_000 }]);

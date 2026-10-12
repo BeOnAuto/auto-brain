@@ -1,18 +1,18 @@
-import { BrainRegistry, Ledger } from '@beonauto/operations';
+import { PlaybookRegistry, Ledger } from '@beonauto/operations';
 import { Effect, Layer } from 'effect';
 
-import { brainsStreamOfOrg } from './brains-stream.ts';
+import { playbooksStreamOfOrg } from './brains-stream.ts';
 import { registryDecider } from './registry-decider.ts';
 
-export const ledgerBrainRegistry: Layer.Layer<BrainRegistry, never, Ledger> = Layer.effect(
-  BrainRegistry,
+export const ledgerPlaybookRegistry: Layer.Layer<PlaybookRegistry, never, Ledger> = Layer.effect(
+  PlaybookRegistry,
   Effect.gen(function* () {
     const ledger = yield* Ledger;
-    return BrainRegistry.of({
-      status: ({ org, brain }) =>
+    return PlaybookRegistry.of({
+      status: ({ org, playbook }) =>
         ledger
-          .load(brainsStreamOfOrg(org), registryDecider)
-          .pipe(Effect.map(({ state }) => state.get(brain)?.status ?? 'unknown')),
+          .load(playbooksStreamOfOrg(org), registryDecider)
+          .pipe(Effect.map(({ state }) => state.get(playbook)?.status ?? 'unknown')),
     });
   }),
 );

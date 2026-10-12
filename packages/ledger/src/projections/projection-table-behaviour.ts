@@ -14,7 +14,7 @@ import { describe, expect, it } from 'vitest';
 import { aLedger, type LedgerEntry } from '../testing/ledger-entry.ts';
 import { projectionsBehaviour, topicsOf } from './projections-behaviour.ts';
 
-const alpha = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
 const began: RunFact = { type: 'run_began', data: { at: '2026-10-01T09:00:00.000Z', fn: 'triage' } };
 
@@ -63,7 +63,7 @@ function aTableNotThereYet(entry: LedgerEntry): void {
       ]);
       expect(await entry.queried(database, entry.projectionTables)).toEqual([{ name: 'run_tallies_3' }]);
       expect(await entry.queried(database, entry.projectionIndexes)).toEqual([
-        { name: 'run_tallies_3_by_brain_and_status' },
+        { name: 'run_tallies_3_by_playbook_and_status' },
         { name: 'run_tallies_3_due' },
       ]);
     });

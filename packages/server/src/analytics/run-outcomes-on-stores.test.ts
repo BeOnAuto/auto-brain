@@ -169,7 +169,7 @@ function lineOf(group: RunOutcomeGroup): string {
 
 async function outcomesIn(ledger: Ledger['Service']): Promise<readonly string[]> {
   const groups = await Effect.runPromise(
-    ledger.readRunOutcomes({ org: 'acme', brain: 'alpha' }, { from: '2026-10-01', to: '2026-10-02' }, {}),
+    ledger.readRunOutcomes({ org: 'acme', playbook: 'alpha' }, { from: '2026-10-01', to: '2026-10-02' }, {}),
   );
   return groups.map((group) => lineOf(group)).toSorted();
 }

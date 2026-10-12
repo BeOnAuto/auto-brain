@@ -7,9 +7,14 @@ import { describe, expect, it } from 'vitest';
 
 import { InvalidApiKeysError, createApiKey, readApiKeys, type ApiKey } from '../index.ts';
 
-const { entry } = createApiKey({ id: 'ci-1', org: 'acme_Corp-1', permissions: ['brain:read'], brains: ['alpha'] });
+const { entry } = createApiKey({
+  id: 'ci-1',
+  org: 'acme_Corp-1',
+  permissions: ['playbook:read'],
+  playbooks: ['alpha'],
+});
 
-const everything: ApiKey = { ...entry, id: 'ci-2', org: 'acme', permissions: [], brains: '*' };
+const everything: ApiKey = { ...entry, id: 'ci-2', org: 'acme', permissions: [], playbooks: '*' };
 
 function errorFrom(value: string): unknown {
   try {
@@ -42,7 +47,9 @@ describe('readApiKeys', () => {
     ['an id that breaks the grammar', JSON.stringify([{ ...entry, id: 'CI_1' }]), 'API_KEYS[0].id'],
     ['an org that breaks the grammar', JSON.stringify([{ ...entry, org: 'a b' }]), 'API_KEYS[0].org'],
     ['an unknown permission', JSON.stringify([{ ...entry, permissions: ['admin'] }]), 'API_KEYS[0].permissions[0]'],
-    ['a brain that breaks the grammar', JSON.stringify([{ ...entry, brains: ['B'] }]), 'API_KEYS[0].brains'],
+    ['an obsolete scope', JSON.stringify([{ ...entry, permissions: ['brain:read'] }]), 'API_KEYS[0].permissions[0]'],
+    ['an obsolete restriction', JSON.stringify([{ ...entry, brains: ['alpha'] }]), 'API_KEYS[0].brains'],
+    ['a playbook that breaks the grammar', JSON.stringify([{ ...entry, playbooks: ['B'] }]), 'API_KEYS[0].playbooks'],
     ['a missing field', JSON.stringify([{ id: 'ci-1' }]), 'API_KEYS[0].org: Missing key'],
   ])('rejects %s with a named error that points at it', (_case, value, mention) => {
     const error = errorFrom(value);

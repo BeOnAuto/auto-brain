@@ -83,7 +83,7 @@ describe('the kind of a stream', () => {
   });
 });
 
-describe('the presentation of what a brain recorded', () => {
+describe('the presentation of what a playbook recorded', () => {
   it('presents a record by the presenter of its stream kind, with its id and its metadata', () => {
     expect(presentation.present(recorded('notes', 'note_added'), showing)).toEqual([
       {

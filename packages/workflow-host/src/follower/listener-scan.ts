@@ -1,4 +1,4 @@
-import { streamPrefixOfBrain } from '@beonauto/operations';
+import { streamPrefixOfPlaybook } from '@beonauto/operations';
 import { listenFiltersOf, loadedRunOf, valueAtPointer, type CallKey } from '@beonauto/workflow-engine';
 import { Effect, Schema } from 'effect';
 
@@ -28,7 +28,7 @@ function listenersOfRun(database: HostDatabase, runKey: string) {
         insertedListener(database, {
           runKey,
           listener,
-          brainKey: streamPrefixOfBrain(addressOfRun(runKey)),
+          playbookKey: streamPrefixOfPlaybook(addressOfRun(runKey)),
           streamId: runLogStreamOf(runKey),
           armedBy: version,
           filters: JSON.stringify(listenFiltersOf(valueAtPointer(document, key.reference))),

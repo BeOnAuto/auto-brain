@@ -1,27 +1,27 @@
-export interface BrainCreation {
+export interface PlaybookCreation {
   readonly type: 'create';
-  readonly brain: string;
+  readonly playbook: string;
   readonly name: string;
   readonly description: string;
 }
 
-export interface BrainUpdate {
+export interface PlaybookUpdate {
   readonly type: 'update';
-  readonly brain: string;
+  readonly playbook: string;
   readonly name: string;
   readonly description: string;
 }
 
-export interface BrainRetirement {
+export interface PlaybookRetirement {
   readonly type: 'retire';
-  readonly brain: string;
+  readonly playbook: string;
 }
 
-export type BrainCommandData = BrainCreation | BrainUpdate | BrainRetirement;
+export type PlaybookCommandData = PlaybookCreation | PlaybookUpdate | PlaybookRetirement;
 
 export interface CommandMetadata {
   readonly by: string;
   readonly at: string;
 }
 
-export type BrainCommand = BrainCommandData & CommandMetadata;
+export type PlaybookCommand = PlaybookCommandData & CommandMetadata;

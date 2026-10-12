@@ -14,7 +14,7 @@ import {
   workflowTestTimeoutMs,
 } from '../testing/servers/workflow-server.ts';
 
-const brainKey = 'brain/acme/alpha/';
+const playbookKey = 'brain/acme/alpha/';
 
 const summary = ['---', 'model: anthropic/claude-sonnet-4-5', '---', 'Summarize: {{ input.text }}'].join('\n');
 
@@ -54,7 +54,7 @@ afterEach(async () => {
   ledger.remove();
 });
 
-function firstMessagesOfTheBrain(): readonly FirstMessage[] {
+function firstMessagesOfThePlaybook(): readonly FirstMessage[] {
   const database = new DatabaseSync(ledger.fileName, { readOnly: true });
   try {
     return decodeFirstMessages(
@@ -62,7 +62,7 @@ function firstMessagesOfTheBrain(): readonly FirstMessage[] {
         .prepare(
           'SELECT stream_id AS stream, message_type AS type FROM emt_messages WHERE stream_position = 1 AND substr(stream_id, 1, ?) = ?',
         )
-        .all(brainKey.length, brainKey),
+        .all(playbookKey.length, playbookKey),
     );
   } finally {
     database.close();
@@ -74,13 +74,13 @@ function kindKeyOf(stream: string): string {
 }
 
 function streamsOfKind(messages: readonly FirstMessage[], kind: string): readonly FirstMessage[] {
-  return messages.filter(({ stream }) => kindKeyOf(stream) === `${brainKey}${kind}/`);
+  return messages.filter(({ stream }) => kindKeyOf(stream) === `${playbookKey}${kind}/`);
 }
 
 function holdsTheLogOfEvery(runIds: readonly string[]) {
   return (messages: readonly FirstMessage[]): boolean => {
     const logged = new Set(streamsOfKind(messages, 'run-logs').map(({ stream }) => stream));
-    return runIds.every((runId) => logged.has(`${brainKey}run-logs/${runId}`));
+    return runIds.every((runId) => logged.has(`${playbookKey}run-logs/${runId}`));
   };
 }
 
@@ -109,16 +109,16 @@ describe('the run log of a workflow', { timeout: workflowTestTimeoutMs }, () => 
       LOCAL_MODE: 'true',
       LEDGER_FILE: ledger.fileName,
     });
-    await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+    await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
     await server.call('POST', `${alpha}/definitions/reasoning`, { body: { name: 'summary', source: summary } });
     await definedInTurn(Object.entries(workflows));
     const runIds = await startedInTurn(Object.keys(workflows));
 
-    const messages = await until(() => Promise.resolve(firstMessagesOfTheBrain()), holdsTheLogOfEvery(runIds));
+    const messages = await until(() => Promise.resolve(firstMessagesOfThePlaybook()), holdsTheLogOfEvery(runIds));
 
     expect(streamsOfKind(messages, 'runs').filter(({ type }) => type === 'input_applied')).toEqual([]);
     expect(streamsOfKind(messages, 'runs').map(({ stream }) => stream)).toEqual(
-      expect.arrayContaining(runIds.map((runId) => `${brainKey}runs/${runId}`)),
+      expect.arrayContaining(runIds.map((runId) => `${playbookKey}runs/${runId}`)),
     );
     expect(new Set(streamsOfKind(messages, 'run-logs').map(({ type }) => type))).toEqual(new Set(['input_applied']));
   });

@@ -10,19 +10,19 @@ export interface Progress {
   readonly waiting: boolean;
 }
 
-export interface FollowedBrain extends Progress {
-  readonly brainKey: string;
+export interface FollowedPlaybook extends Progress {
+  readonly playbookKey: string;
 }
 
-export interface FollowedBrains {
-  readonly follow: (brainKey: string, cursor: string | null) => Effect.Effect<void>;
-  readonly load: (brainKey: string) => Effect.Effect<FollowedBrain | undefined>;
-  readonly save: (brainKey: string, progress: Progress) => Effect.Effect<void>;
-  readonly waitingForASweep: (limit: number) => Effect.Effect<readonly FollowedBrain[]>;
-  readonly following: (after: string, limit: number) => Effect.Effect<readonly FollowedBrain[]>;
+export interface FollowedPlaybooks {
+  readonly follow: (playbookKey: string, cursor: string | null) => Effect.Effect<void>;
+  readonly load: (playbookKey: string) => Effect.Effect<FollowedPlaybook | undefined>;
+  readonly save: (playbookKey: string, progress: Progress) => Effect.Effect<void>;
+  readonly waitingForASweep: (limit: number) => Effect.Effect<readonly FollowedPlaybook[]>;
+  readonly following: (after: string, limit: number) => Effect.Effect<readonly FollowedPlaybook[]>;
 }
 
-const BrainRow = Schema.Struct({
+const PlaybookRow = Schema.Struct({
   brain_key: Schema.String,
   cursor: Schema.NullOr(Schema.String),
   delivered: Schema.NullOr(Schema.String),
@@ -30,9 +30,9 @@ const BrainRow = Schema.Struct({
   waiting: WholeNumber,
 });
 
-function followedOf(row: typeof BrainRow.Type): FollowedBrain {
+function followedOf(row: typeof PlaybookRow.Type): FollowedPlaybook {
   return {
-    brainKey: row.brain_key,
+    playbookKey: row.brain_key,
     cursor: row.cursor,
     delivered: row.delivered,
     attempts: row.attempts,
@@ -40,19 +40,19 @@ function followedOf(row: typeof BrainRow.Type): FollowedBrain {
   };
 }
 
-function loaded(database: HostDatabase, brainKey: string): Effect.Effect<FollowedBrain | undefined> {
+function loaded(database: HostDatabase, playbookKey: string): Effect.Effect<FollowedPlaybook | undefined> {
   return Effect.orDie(
     rowsOf(
-      BrainRow,
+      PlaybookRow,
       database.read(
         statement`SELECT brain_key, cursor, delivered, attempts, waiting FROM workflow_followed_brains
-          WHERE brain_key = ${brainKey}`,
+          WHERE brain_key = ${playbookKey}`,
       ),
     ),
   ).pipe(Effect.map(([row]) => (row === undefined ? undefined : followedOf(row))));
 }
 
-function waitingTakenFor(database: HostDatabase, limit: number): Effect.Effect<readonly FollowedBrain[]> {
+function waitingTakenFor(database: HostDatabase, limit: number): Effect.Effect<readonly FollowedPlaybook[]> {
   return Effect.gen(function* () {
     const waiting = yield* Effect.orDie(
       database.read(
@@ -64,7 +64,7 @@ function waitingTakenFor(database: HostDatabase, limit: number): Effect.Effect<r
     }
     const taken = yield* Effect.orDie(
       rowsOf(
-        BrainRow,
+        PlaybookRow,
         database.write(
           statement`UPDATE workflow_followed_brains
             SET checked = (SELECT COALESCE(MAX(checked), 0) + 1 FROM workflow_followed_brains WHERE waiting = 1)
@@ -79,25 +79,25 @@ function waitingTakenFor(database: HostDatabase, limit: number): Effect.Effect<r
   });
 }
 
-export function followedBrainsOn(database: HostDatabase): FollowedBrains {
+export function followedPlaybooksOn(database: HostDatabase): FollowedPlaybooks {
   return {
-    follow: (brainKey, cursor) =>
+    follow: (playbookKey, cursor) =>
       Effect.asVoid(
         Effect.orDie(
           database.write(
-            statement`INSERT INTO workflow_followed_brains (brain_key, cursor) VALUES (${brainKey}, ${cursor})
+            statement`INSERT INTO workflow_followed_brains (brain_key, cursor) VALUES (${playbookKey}, ${cursor})
               ON CONFLICT (brain_key) DO NOTHING`,
           ),
         ),
       ),
-    load: (brainKey) => loaded(database, brainKey),
-    save: (brainKey, { cursor, delivered, attempts, waiting }) =>
+    load: (playbookKey) => loaded(database, playbookKey),
+    save: (playbookKey, { cursor, delivered, attempts, waiting }) =>
       Effect.asVoid(
         Effect.orDie(
           database.write(
             statement`UPDATE workflow_followed_brains
               SET cursor = ${cursor}, delivered = ${delivered}, attempts = ${attempts}, waiting = ${waiting ? 1 : 0}
-              WHERE brain_key = ${brainKey}`,
+              WHERE brain_key = ${playbookKey}`,
           ),
         ),
       ),
@@ -105,7 +105,7 @@ export function followedBrainsOn(database: HostDatabase): FollowedBrains {
     following: (after, limit) =>
       Effect.orDie(
         rowsOf(
-          BrainRow,
+          PlaybookRow,
           database.read(
             statement`SELECT brain_key, cursor, delivered, attempts, waiting FROM workflow_followed_brains
               WHERE brain_key > ${after} ORDER BY brain_key LIMIT ${limit}`,

@@ -14,7 +14,7 @@ const recorded: RecordedEvent = {
   globalPosition: 1042,
   type: 'run_succeeded',
   data: {},
-  context: { at, by: 'brain:sales' },
+  context: { at, by: 'playbook:sales' },
   recordedAt: at,
 };
 
@@ -27,7 +27,7 @@ describe('the metadata of an event', () => {
       correlation_id: 'r-top',
       causation_id: 'm-3',
       at,
-      by: 'brain:sales',
+      by: 'playbook:sales',
     });
   });
 });

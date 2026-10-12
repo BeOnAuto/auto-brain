@@ -111,14 +111,14 @@ function lineageOf({ causationId, correlationId }: RecordedFact): Readonly<Recor
   };
 }
 
-export function brainFactOf(record: RecordedFact): CloudEvent | undefined {
+export function playbookFactOf(record: RecordedFact): CloudEvent | undefined {
   const fact = factOf(record);
   return fact === undefined ? undefined : { ...fact, ...lineageOf(record) };
 }
 
-export function brainEventOf(record: RecordedFact): CloudEvent | undefined {
+export function playbookEventOf(record: RecordedFact): CloudEvent | undefined {
   if (streamKindOf(record.stream) !== publishedEventsKind || record.type !== 'event_published') {
-    return brainFactOf(record);
+    return playbookFactOf(record);
   }
   return Option.getOrUndefined(Option.map(decodePublished(record), ({ data }) => data.event));
 }

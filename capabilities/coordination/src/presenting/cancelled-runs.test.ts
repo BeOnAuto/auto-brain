@@ -56,7 +56,7 @@ describe('a cancel a workflow took, in the history of its run', () => {
     });
 
     expect(cancelled?.summary).toBe(
-      'acme-admin cancelled the workflow. It was cancelled at the request of someone allowed to change the brain.',
+      'acme-admin cancelled the workflow. It was cancelled at the request of someone allowed to change the playbook.',
     );
     expect(cancelled?.data).toMatchObject({
       input: { kind: 'cancel_requested', key: runId, cancel: { by: 'acme-admin', kind: 'requested' } },

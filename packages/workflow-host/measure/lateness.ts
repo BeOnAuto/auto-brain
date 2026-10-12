@@ -2,7 +2,7 @@ import { Effect, Function } from 'effect';
 
 import type { DatabaseSettings } from '../src/database/host-databases.ts';
 import { openHostDatabase } from '../src/database/host-databases.ts';
-import { brainCreated, definitionRecorded } from '../src/reaction-testing/brain-writes.ts';
+import { playbookCreated, definitionRecorded } from '../src/reaction-testing/brain-writes.ts';
 import { ledgerRunLogStore } from '../src/runs/ledger-run-store.ts';
 import { runKeyOf } from '../src/runs/run-address.ts';
 import { header, measuredHost, runAt, startOf } from './measured-host.ts';
@@ -43,7 +43,7 @@ async function latenessOf(database: DatabaseSettings, runs: number): Promise<rea
 
 async function reactingWorkflows(database: DatabaseSettings, count: number, triggersOf: TriggersOf): Promise<void> {
   const opened = await openHostDatabase(database, Function.constVoid);
-  await brainCreated(opened.store, 'alpha');
+  await playbookCreated(opened.store, 'alpha');
   await Array.from({ length: count }, (_, index) => index).reduce<Promise<void>>(
     (before, index) =>
       before.then(() =>

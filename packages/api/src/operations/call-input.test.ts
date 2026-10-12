@@ -7,9 +7,9 @@ const asAdmin = { authorization: `Bearer ${acmeAdmin.key}` };
 
 const jsonAsAdmin = { ...asAdmin, 'content-type': 'application/json' };
 
-const notes = '/v1/orgs/acme/brains/alpha/notes';
+const notes = '/v1/orgs/acme/playbooks/alpha/notes';
 
-const betaLabel = '/v1/orgs/acme/brains/beta/label';
+const betaLabel = '/v1/orgs/acme/playbooks/beta/label';
 
 describe('the input of a GET operation', () => {
   it('comes from the query string, decoded from strings', async () => {
@@ -52,17 +52,17 @@ describe('the input of a POST or PUT operation', () => {
       await call(handler, betaLabel, { method: 'PUT', headers: jsonAsAdmin, body: '{"label":"b"}' }),
     ).toMatchObject({
       status: 200,
-      body: { brain: 'beta', label: 'b' },
+      body: { playbook: 'beta', label: 'b' },
     });
   });
 
   it('rejects a field given in the path and in the body as a bad request', async () => {
     const { handler } = await operationServer();
-    const body = '{"brain":"alpha","label":"b"}';
+    const body = '{"playbook":"alpha","label":"b"}';
 
     expect(await call(handler, betaLabel, { method: 'PUT', headers: jsonAsAdmin, body })).toMatchObject({
       status: 400,
-      body: { reason: 'bad_request', detail: 'The field brain is given in more than one place' },
+      body: { reason: 'bad_request', detail: 'The field playbook is given in more than one place' },
     });
   });
 

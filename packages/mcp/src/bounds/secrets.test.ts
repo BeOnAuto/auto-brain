@@ -18,14 +18,14 @@ const environment = {
     secret: {
       url: 'https://secret.example.com/mcp',
       org: 'acme',
-      auth: { issuer: 'https://auth.example.com', client_id: 'brain', client_secret: '${GRAPH_CLIENT_SECRET}' },
+      auth: { issuer: 'https://auth.example.com', client_id: 'playbook', client_secret: '${GRAPH_CLIENT_SECRET}' },
     },
     keyed: {
       url: 'https://keyed.example.com/mcp',
       org: 'acme',
       auth: {
         issuer: 'https://auth.example.com',
-        client_id: 'brain',
+        client_id: 'playbook',
         private_key: '${GRAPH_PRIVATE_KEY}',
         algorithm: 'RS256',
       },
@@ -33,7 +33,7 @@ const environment = {
     limitless: {
       command: 'limitless-mcp-server',
       org: 'acme',
-      env: { LIMITLESS_API_KEY: '${LIMITLESS_API_KEY}', MODE: 'production', HOME_DIR: '/home/brain-user' },
+      env: { LIMITLESS_API_KEY: '${LIMITLESS_API_KEY}', MODE: 'production', HOME_DIR: '/home/playbook-user' },
     },
   }),
 };
@@ -53,8 +53,8 @@ describe('the secrets of the servers', () => {
   });
 
   it('are never a value written out in a header or an environment', () => {
-    expect(scrubbed('Deployed to production-eu with MODE=production in /home/brain-user')).toBe(
-      'Deployed to production-eu with MODE=production in /home/brain-user',
+    expect(scrubbed('Deployed to production-eu with MODE=production in /home/playbook-user')).toBe(
+      'Deployed to production-eu with MODE=production in /home/playbook-user',
     );
   });
 

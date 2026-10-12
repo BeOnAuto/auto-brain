@@ -7,7 +7,7 @@ const docs = resolve(import.meta.dirname, '../docs');
 const functions = readFileSync(join(docs, 'concepts/functions.md'), 'utf8');
 const terminology = readFileSync(join(docs, 'concepts/terminology.md'), 'utf8');
 
-await test('brain terminology distinguishes five function types from workflows', () => {
+await test('playbook terminology distinguishes five function types from workflows', () => {
   const categories = [...functions.matchAll(/^## (Reasoning|Interaction|Prediction|Recall|Computation)$/gmu)].map(
     (match: readonly string[]) => match[1],
   );
@@ -24,6 +24,6 @@ await test('terminology distinguishes available and absent capabilities', () => 
       'Auto Cloud tool access, skill references and a separately managed tool library are still planned',
     ),
   );
-  assert.ok(terminology.includes('A workflow can call the functions of its brain and other workflows'));
+  assert.ok(terminology.includes('A workflow can call the functions of its playbook and other workflows'));
   assert.ok(terminology.includes('a workflow called this way is a subworkflow'));
 });

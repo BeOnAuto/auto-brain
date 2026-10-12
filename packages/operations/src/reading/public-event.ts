@@ -33,7 +33,7 @@ export const EventMetadataSchema = Schema.Struct({
   stream: Schema.String.annotate({ description: 'The stream the event is recorded in' }),
   position: Schema.Int.annotate({ description: "The event's number in its stream, from 1" }),
   global_position: Schema.Int.annotate({
-    description: "The store's sequence across every brain, with gaps, which is not the order events are read in",
+    description: "The store's sequence across every playbook, with gaps, which is not the order events are read in",
   }),
   correlation_id: Schema.NullOr(Schema.String).annotate({
     description: 'The id of the run at the top of the chain the event belongs to, or null',
@@ -42,7 +42,9 @@ export const EventMetadataSchema = Schema.Struct({
     description: 'The id of the event that directly led to this one, or null when nothing recorded did',
   }),
   at: Schema.String.annotate({ description: 'When it happened, by its own clock, in ISO 8601 UTC' }),
-  by: Schema.String.annotate({ description: "Who acted: a caller's id, or brain:<brain> for the brain's own work" }),
+  by: Schema.String.annotate({
+    description: "Who acted: a caller's id, or playbook:<playbook> for the playbook's own work",
+  }),
   run_id: Schema.optionalKey(Schema.String.annotate({ description: 'The run the event belongs to' })),
   definition: Schema.optionalKey(EventDefinitionSchema),
   called_by: Schema.optionalKey(EventCalledBySchema),
@@ -74,7 +76,10 @@ export const PublicEventSchema = Schema.Struct({
     }),
   ),
   metadata: EventMetadataSchema,
-}).annotate({ identifier: 'PublicEvent', description: 'Something that happened in the brain, as a caller reads it' });
+}).annotate({
+  identifier: 'PublicEvent',
+  description: 'Something that happened in the playbook, as a caller reads it',
+});
 
 export const WholeEventSchema = Schema.Struct({
   ...eventFields,
@@ -82,6 +87,6 @@ export const WholeEventSchema = Schema.Struct({
     description: `The fact with its fields whole; over MCP, an input, output, record, answer, arguments, result or data past ${mostToolFieldBytes} bytes appears as its size`,
   }),
   metadata: EventMetadataSchema,
-}).annotate({ identifier: 'WholeEvent', description: 'One event of the brain, read whole' });
+}).annotate({ identifier: 'WholeEvent', description: 'One event of the playbook, read whole' });
 
 export type PublicEvent = typeof PublicEventSchema.Type;

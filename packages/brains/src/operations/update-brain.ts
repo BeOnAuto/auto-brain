@@ -1,29 +1,33 @@
 import { defineCommand, quoted } from '@beonauto/operations';
 import { Schema } from 'effect';
 
-import { brainNamed, purposeOf } from '../plain-language/brain-words.ts';
-import { BrainSchema } from '../registry/brain.ts';
-import { BrainDescriptionField, BrainIdField, BrainNameField } from './brain-fields.ts';
+import { playbookNamed, purposeOf } from '../plain-language/brain-words.ts';
+import { PlaybookSchema } from '../registry/brain.ts';
+import { PlaybookDescriptionField, PlaybookIdField, PlaybookNameField } from './brain-fields.ts';
 import { recordInRegistry } from './registry-recording.ts';
 
-export const updateBrain = defineCommand('org', {
-  name: 'update_brain',
-  title: 'Update brain',
+export const updatePlaybook = defineCommand('org', {
+  name: 'update_playbook',
+  title: 'Update playbook',
   description: [
-    'Replaces the name and the description of an active brain and returns the brain.',
-    'Use it when the person renames a brain or changes what it is for; a retired brain cannot change.',
-    '`brain` is the id of the brain, `name` its name and `description` what it is for, both given in full even when one of them stays the same,',
+    'Replaces the name and the description of an active playbook and returns the playbook.',
+    'Use it when the person renames a playbook or changes what it is for; a retired playbook cannot change.',
+    '`playbook` is the id of the playbook, `name` its name and `description` what it is for, both given in full even when one of them stays the same,',
     'and a call that changes nothing records nothing.',
   ].join(' '),
   repeatable: true,
-  route: { method: 'PUT', path: '/brains/{brain}' },
-  inputSchema: Schema.Struct({ brain: BrainIdField, name: BrainNameField, description: BrainDescriptionField }),
-  outputSchema: BrainSchema,
+  route: { method: 'PUT', path: '/playbooks/{playbook}' },
+  inputSchema: Schema.Struct({
+    playbook: PlaybookIdField,
+    name: PlaybookNameField,
+    description: PlaybookDescriptionField,
+  }),
+  outputSchema: PlaybookSchema,
   reasons: ['not_found', 'conflict'],
-  handle: ({ brain, name, description }) => recordInRegistry({ type: 'update', brain, name, description }),
+  handle: ({ playbook, name, description }) => recordInRegistry({ type: 'update', playbook, name, description }),
   plainLanguage: {
-    task: 'update a brain',
-    attempt: ({ brain }) => `update the brain ${quoted(brain)}`,
-    outcome: (brain) => `Updated ${brainNamed(brain)}.${purposeOf(brain, ' It has no description now.')}`,
+    task: 'update a playbook',
+    attempt: ({ playbook }) => `update the playbook ${quoted(playbook)}`,
+    outcome: (playbook) => `Updated ${playbookNamed(playbook)}.${purposeOf(playbook, ' It has no description now.')}`,
   },
 });

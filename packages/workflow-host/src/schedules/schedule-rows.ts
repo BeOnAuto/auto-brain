@@ -5,7 +5,7 @@ import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-databas
 import { statement } from '../database/statement.ts';
 
 export interface Schedule {
-  readonly brainKey: string;
+  readonly playbookKey: string;
   readonly workflow: string;
   readonly version: number;
   readonly trigger: ScheduleTrigger;
@@ -28,7 +28,7 @@ const ScheduleRow = Schema.Struct({
 
 function scheduleOf(row: typeof ScheduleRow.Type): Schedule {
   return {
-    brainKey: row.brain_key,
+    playbookKey: row.brain_key,
     workflow: row.workflow,
     version: row.version,
     trigger: row.rule,
@@ -68,7 +68,7 @@ export function nextScheduleDue(database: HostDatabase): Effect.Effect<number | 
 
 export function scheduleMovedOn(
   database: HostDatabase,
-  { brainKey, workflow, trigger }: Pick<Schedule, 'brainKey' | 'workflow' | 'trigger'>,
+  { playbookKey, workflow, trigger }: Pick<Schedule, 'playbookKey' | 'workflow' | 'trigger'>,
   nextDue: number | null,
   running: string | null,
 ): Effect.Effect<void> {
@@ -76,7 +76,7 @@ export function scheduleMovedOn(
     Effect.orDie(
       database.write(
         statement`UPDATE workflow_subscriptions SET next_due = ${nextDue}, running = ${running}
-          WHERE brain_key = ${brainKey} AND workflow = ${workflow} AND reference = ${trigger.reference}`,
+          WHERE brain_key = ${playbookKey} AND workflow = ${workflow} AND reference = ${trigger.reference}`,
       ),
     ),
   );

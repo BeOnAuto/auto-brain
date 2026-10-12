@@ -162,7 +162,7 @@ describe('the words of a rejection of a function a workflow called', () => {
   it.each([
     [
       rejectedWith('tool_not_offered', 'mcp_server_not_configured'),
-      'A function the workflow called did not succeed. This server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this brain.',
+      'A function the workflow called did not succeed. This server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this playbook.',
     ],
     [
       rejectedWith('mcp_server_failed', 'rate_limited'),

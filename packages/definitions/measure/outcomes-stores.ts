@@ -79,7 +79,7 @@ function sqliteWrite(fileName: string, count: number, rowsOf: RowsOf): void {
     message_data, message_metadata, message_schema_version, message_type, message_id, is_archived, created)
     VALUES (?, ?, 'emt:default', 'E', ?, ?, '1', ?, ?, 0, ?)`);
   const stream = database.prepare(`INSERT INTO emt_streams (stream_id, stream_position, partition, stream_type,
-    stream_metadata, is_archived) VALUES (?, ?, 'emt:default', 'brain', '[]', 0)
+    stream_metadata, is_archived) VALUES (?, ?, 'emt:default', 'playbook', '[]', 0)
     ON CONFLICT DO UPDATE SET stream_position = excluded.stream_position`);
   for (const first of batchesOf(count)) {
     database.exec('BEGIN');
@@ -156,7 +156,7 @@ const postgresqlRows = `INSERT INTO emt_messages (stream_id, stream_position, pa
   ORDER BY r.n`;
 
 const postgresqlStreams = `INSERT INTO emt_streams (stream_id, stream_position, partition, stream_type, stream_metadata, is_archived)
-  SELECT stream, max(position), 'emt:default', 'brain', '{}', false
+  SELECT stream, max(position), 'emt:default', 'playbook', '{}', false
   FROM jsonb_to_recordset($1::jsonb) AS r(stream text, position int) GROUP BY stream
   ON CONFLICT (stream_id, partition, is_archived) DO UPDATE SET stream_position = excluded.stream_position`;
 

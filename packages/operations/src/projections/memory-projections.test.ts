@@ -7,7 +7,7 @@ import { memoryLedger, type MemoryLedger } from '../testing/memory-ledger.ts';
 import { runTallyRows, tallyDueAfterMs, tallyRowsOf } from './tally-rows.ts';
 import { topicFacts, topicRows, topicWaitMs, type TopicFact } from './topic-rows.ts';
 
-const alpha = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
 const nine = Date.parse('2026-10-01T09:00:00.000Z');
 
@@ -37,7 +37,7 @@ describe('a projection of runs in the in-memory ledger', () => {
     expect(await read(ledger)).toEqual([
       {
         org: 'acme',
-        brain: 'alpha',
+        playbook: 'alpha',
         key: 'r1',
         row: {
           fn: 'triage',
@@ -54,7 +54,7 @@ describe('a projection of runs in the in-memory ledger', () => {
 });
 
 describe('a read of the rows of a projection in the in-memory ledger', () => {
-  it('reads the rows of one brain by their columns, in order, from where a page ended', async () => {
+  it('reads the rows of one playbook by their columns, in order, from where a page ended', async () => {
     const ledger = memoryLedger(undefined, [runTallyRows]);
     await noting(ledger, 'brain/acme/alpha/runs/r1', began('triage', 0));
     await noting(ledger, 'brain/acme/alpha/runs/r2', began('triage', 1), ended);
@@ -75,7 +75,7 @@ describe('a read of the rows of a projection in the in-memory ledger', () => {
     expect(await Effect.runPromise(ledger.service.countProjectedRows('nothing', alpha, []))).toBe(0);
   });
 
-  it('reads the rows due by a time across brains, the soonest first, and the next due time', async () => {
+  it('reads the rows due by a time across playbooks, the soonest first, and the next due time', async () => {
     const ledger = memoryLedger(undefined, [runTallyRows]);
     await noting(ledger, 'brain/acme/alpha/runs/r1', began('triage', 2));
     await noting(ledger, 'brain/globex/gamma/runs/r2', began('triage', 0));
@@ -83,7 +83,7 @@ describe('a read of the rows of a projection in the in-memory ledger', () => {
     const due = (through: number, limit = 10) =>
       Effect.runPromise(ledger.service.readDueRows('run_tallies', { column: 'due_at', through, limit }));
 
-    expect((await due(nine + 3 * 60_000)).map(({ org, brain, key }) => `${org}/${brain}/${key}`)).toEqual([
+    expect((await due(nine + 3 * 60_000)).map(({ org, playbook, key }) => `${org}/${playbook}/${key}`)).toEqual([
       'globex/gamma/r2',
       'acme/alpha/r1',
     ]);
@@ -209,7 +209,7 @@ describe('a projection keyed by what its mapping says, over the stream kinds it 
     expect(await topicsOf(ledger)).toEqual([
       {
         org: 'acme',
-        brain: 'alpha',
+        playbook: 'alpha',
         key: 'spring',
         row: {
           topic: 'spring',

@@ -6,12 +6,12 @@ import {
   runPresenter,
   type ExpressionCheck,
 } from '@beonauto/coordination';
-import { defineStartVersion, type BrainOperation, type Capability } from '@beonauto/definitions';
+import { defineStartVersion, type PlaybookOperation, type Capability } from '@beonauto/definitions';
 import { makeCatalog, makeDispatcher, type DispatcherServices, type Registration } from '@beonauto/operations';
 import type { WorkflowHost } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
 
-import { brainOperationsServing } from '../composition/brain-operations.ts';
+import { playbookOperationsServing } from '../composition/brain-operations.ts';
 import { routesFor } from '../composition/served-routes.ts';
 import type { Served } from '../lifecycle/lifecycle.ts';
 import { openedHost, type HostParts } from './host-dependencies.ts';
@@ -22,7 +22,7 @@ interface OrgOperation {
 
 export interface WorkflowParts extends HostParts {
   readonly orgOperations: readonly OrgOperation[];
-  readonly brainOperations: readonly BrainOperation[];
+  readonly playbookOperations: readonly PlaybookOperation[];
   readonly check: ExpressionCheck;
 }
 
@@ -54,8 +54,8 @@ export async function serveWorkflows(runtime: AppRuntime<DispatcherServices>, pa
   opening.resolve(host);
   const catalog = makeCatalog([
     ...parts.orgOperations,
-    ...brainOperationsServing(capabilities, [runPresenter]),
-    ...parts.brainOperations,
+    ...playbookOperationsServing(capabilities, [runPresenter]),
+    ...parts.playbookOperations,
     defineSendRunEvent(host),
   ]);
   return { routes: routesFor(runtime, catalog, dispatcher, capabilities), stopWork: host.stop };

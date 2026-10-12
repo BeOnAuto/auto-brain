@@ -1,5 +1,5 @@
 import { NotFound, makeDispatcher, type CallerIdentity, type Outcome } from '@beonauto/operations';
-import { memoryBrainRegistry, memoryLedger, recordingReporter } from '@beonauto/operations/testing';
+import { memoryPlaybookRegistry, memoryLedger, recordingReporter } from '@beonauto/operations/testing';
 import { Effect, Layer } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -8,24 +8,29 @@ import { reportingAccess, serveFakeMcp, type FakeMcpServer } from '../testing/in
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
-const orgReader: CallerIdentity = { id: 'acme-reader', org: 'acme', permissions: ['org:read'], brains: '*' };
+const orgReader: CallerIdentity = { id: 'acme-reader', org: 'acme', permissions: ['org:read'], playbooks: '*' };
 
-const brainReader: CallerIdentity = { id: 'acme-brains', org: 'acme', permissions: ['brain:read'], brains: '*' };
+const playbookReader: CallerIdentity = {
+  id: 'acme-playbooks',
+  org: 'acme',
+  permissions: ['playbook:read'],
+  playbooks: '*',
+};
 
 const alphaReader: CallerIdentity = {
   id: 'acme-alpha',
   org: 'acme',
-  permissions: ['org:read', 'brain:read'],
-  brains: ['alpha'],
+  permissions: ['org:read', 'playbook:read'],
+  playbooks: ['alpha'],
 };
 
-const writerOnly: CallerIdentity = { id: 'acme-writer', org: 'acme', permissions: ['brain:write'], brains: '*' };
+const writerOnly: CallerIdentity = { id: 'acme-writer', org: 'acme', permissions: ['playbook:write'], playbooks: '*' };
 
-const brainsOfTheOrg: readonly string[] = ['alpha', 'beta'];
+const playbooksOfTheOrg: readonly string[] = ['alpha', 'beta'];
 
 const services = Layer.mergeAll(
   memoryLedger().layer,
-  memoryBrainRegistry(brainsOfTheOrg.map((brain) => ({ org: 'acme', brain }))),
+  memoryPlaybookRegistry(playbooksOfTheOrg.map((playbook) => ({ org: 'acme', playbook }))),
   recordingReporter().layer,
 );
 
@@ -40,10 +45,10 @@ interface Asking {
   readonly caller?: CallerIdentity;
 }
 
-function lookUpBrain(brain: string): Effect.Effect<void, NotFound> {
-  return brainsOfTheOrg.includes(brain)
+function lookUpPlaybook(playbook: string): Effect.Effect<void, NotFound> {
+  return playbooksOfTheOrg.includes(playbook)
     ? Effect.void
-    : Effect.fail(new NotFound({ detail: `There is no brain ${brain} in this org` }));
+    : Effect.fail(new NotFound({ detail: `There is no playbook ${playbook} in this org` }));
 }
 
 function remote(fake: FakeMcpServer, scope: Readonly<Record<string, unknown>>) {
@@ -54,14 +59,14 @@ function listingOn(fake: FakeMcpServer) {
   const { access } = reportingAccess(
     {
       graph: remote(fake, { org: 'acme', allowed: ['echo'] }),
-      notes: remote(fake, { org: 'acme', brains: ['beta', 'alpha'], allowed: ['search'] }),
-      sales: remote(fake, { org: 'acme', brains: ['beta'], allowed: ['echo'] }),
+      notes: remote(fake, { org: 'acme', playbooks: ['beta', 'alpha'], allowed: ['search'] }),
+      sales: remote(fake, { org: 'acme', playbooks: ['beta'], allowed: ['echo'] }),
       crm: remote(fake, { org: 'globex', allowed: ['echo'] }),
     },
     { environment: { GRAPH_API_KEY: apiKey } },
   );
   closing.push(access.close);
-  const { registration } = defineListToolServersInOrg(access, lookUpBrain);
+  const { registration } = defineListToolServersInOrg(access, lookUpPlaybook);
   return {
     registration,
     listed: ({ input = {}, caller = orgReader }: Asking = {}): Promise<Outcome> =>
@@ -79,20 +84,20 @@ async function fakeServer(): Promise<FakeMcpServer> {
   return fake;
 }
 
-const echoing = { name: 'graph', type: 'http', record_content: true, brains: ['*'], tools: [{ name: 'echo' }] };
+const echoing = { name: 'graph', type: 'http', record_content: true, playbooks: ['*'], tools: [{ name: 'echo' }] };
 
 const searching = {
   name: 'notes',
   type: 'http',
   record_content: true,
-  brains: ['beta', 'alpha'],
+  playbooks: ['beta', 'alpha'],
   tools: [{ name: 'search' }],
 };
 
-const selling = { name: 'sales', type: 'http', record_content: true, brains: ['beta'], tools: [{ name: 'echo' }] };
+const selling = { name: 'sales', type: 'http', record_content: true, playbooks: ['beta'], tools: [{ name: 'echo' }] };
 
 describe('list_tool_servers of the org', () => {
-  it('is a query of the org at GET /tool-servers, permitted to a key that may read the org or a brain', async () => {
+  it('is a query of the org at GET /tool-servers, permitted to a key that may read the org or a playbook', async () => {
     const { registration } = listingOn(await fakeServer());
 
     expect(registration).toMatchObject({
@@ -100,93 +105,93 @@ describe('list_tool_servers of the org', () => {
       kind: 'query',
       name: 'list_tool_servers',
       route: { method: 'GET', path: '/tool-servers' },
-      permissions: ['org:read', 'brain:read'],
-      targetsBrain: true,
+      permissions: ['org:read', 'playbook:read'],
+      targetsPlaybook: true,
       reachesOutside: true,
       mayChangeOutside: false,
     });
     expect(registration.description).toMatch(
-      /^Lists the tool servers this brain's functions may use, .* Without `brain` it answers for the whole org, naming the brains each server serves\.$/u,
+      /^Lists the tool servers this playbook's functions may use, .* Without `playbook` it answers for the whole org, naming the playbooks each server serves\.$/u,
     );
   });
 
-  it('answers without a brain every tool server of the org, each with the brains it serves', async () => {
+  it('answers without a playbook every tool server of the org, each with the playbooks it serves', async () => {
     const { listed } = listingOn(await fakeServer());
 
     expect(await listed()).toMatchObject({
       status: 'succeeded',
       output: { tool_servers: [echoing, searching, selling] },
     });
-    expect(await listed({ caller: brainReader })).toMatchObject({
+    expect(await listed({ caller: playbookReader })).toMatchObject({
       status: 'succeeded',
       output: { tool_servers: [echoing, searching, selling] },
     });
   });
 
-  it('answers with a brain the tool servers that serve it, as the brain itself lists them', async () => {
+  it('answers with a playbook the tool servers that serve it, as the playbook itself lists them', async () => {
     const { listed } = listingOn(await fakeServer());
 
-    expect(await listed({ input: { brain: 'alpha' } })).toMatchObject({
+    expect(await listed({ input: { playbook: 'alpha' } })).toMatchObject({
       status: 'succeeded',
       output: { tool_servers: [echoing, searching] },
     });
-    expect(await listed({ input: { brain: 'beta', server: 'sales' } })).toMatchObject({
+    expect(await listed({ input: { playbook: 'beta', server: 'sales' } })).toMatchObject({
       status: 'succeeded',
       output: { tool_servers: [selling] },
     });
   });
 });
 
-describe('list_tool_servers of the org, to a key limited to some brains', () => {
-  it('names only the brains it may access', async () => {
+describe('list_tool_servers of the org, to a key limited to some playbooks', () => {
+  it('names only the playbooks it may access', async () => {
     const { listed } = listingOn(await fakeServer());
 
-    expect(await listed({ input: { brain: 'alpha' }, caller: alphaReader })).toMatchObject({
+    expect(await listed({ input: { playbook: 'alpha' }, caller: alphaReader })).toMatchObject({
       status: 'succeeded',
-      output: { tool_servers: [echoing, { ...searching, brains: ['alpha'] }] },
+      output: { tool_servers: [echoing, { ...searching, playbooks: ['alpha'] }] },
     });
   });
 });
 
 describe('list_tool_servers of the org, refusing', () => {
-  it('refuses the whole org to a key limited to some brains, another brain to it, and a key that may read neither', async () => {
+  it('refuses the whole org to a key limited to some playbooks, another playbook to it, and a key that may read neither', async () => {
     const fake = await fakeServer();
     const { listed } = listingOn(fake);
 
     expect(await listed({ caller: alphaReader })).toMatchObject({
       status: 'rejected',
       reason: 'forbidden',
-      detail: 'The caller may access only some brains of this org; name one of them in brain',
+      detail: 'The caller may access only some playbooks of this org; name one of them in playbook',
     });
-    expect(await listed({ input: { brain: 'beta' }, caller: alphaReader })).toMatchObject({
+    expect(await listed({ input: { playbook: 'beta' }, caller: alphaReader })).toMatchObject({
       status: 'rejected',
       reason: 'forbidden',
     });
     expect(await listed({ caller: writerOnly })).toMatchObject({
       status: 'rejected',
       reason: 'forbidden',
-      detail: 'The caller lacks the org:read or brain:read permission',
+      detail: 'The caller lacks the org:read or playbook:read permission',
     });
     expect(fake.seen()).toEqual([]);
   });
 });
 
-describe('list_tool_servers of the org, asked for a brain the org does not have', () => {
-  it('rejects it as the brain itself would be, and asks no server', async () => {
+describe('list_tool_servers of the org, asked for a playbook the org does not have', () => {
+  it('rejects it as the playbook itself would be, and asks no server', async () => {
     const fake = await fakeServer();
     const { listed } = listingOn(fake);
 
-    expect(await listed({ input: { brain: 'nowhere' } })).toEqual({
+    expect(await listed({ input: { playbook: 'nowhere' } })).toEqual({
       status: 'rejected',
       reason: 'not_found',
-      detail: 'There is no brain nowhere in this org',
+      detail: 'There is no playbook nowhere in this org',
     });
     expect(fake.seen()).toEqual([]);
   });
 });
 
 describe('list_tool_servers of the org, asked for a server it does not have', () => {
-  it('rejects a name no tool server of the org, or of the brain asked for, has, saying which', async () => {
+  it('rejects a name no tool server of the org, or of the playbook asked for, has, saying which', async () => {
     const fake = await fakeServer();
     const { listed } = listingOn(fake);
 
@@ -196,16 +201,16 @@ describe('list_tool_servers of the org, asked for a server it does not have', ()
       detail: 'This org has no tool server named mail; call list_tool_servers without server to list the ones it has',
       issues: [{ pointer: '/server' }],
     });
-    expect(await listed({ input: { brain: 'alpha', server: 'sales' } })).toMatchObject({
+    expect(await listed({ input: { playbook: 'alpha', server: 'sales' } })).toMatchObject({
       status: 'rejected',
       reason: 'invalid_input',
       detail:
-        'This brain has no tool server named sales; call list_tool_servers without server to list the ones it has',
+        'This playbook has no tool server named sales; call list_tool_servers without server to list the ones it has',
     });
-    expect(await listed({ input: { brain: 'Not A Brain' } })).toMatchObject({
+    expect(await listed({ input: { playbook: 'Not A Playbook' } })).toMatchObject({
       status: 'rejected',
       reason: 'invalid_input',
-      issues: [{ pointer: '/brain' }],
+      issues: [{ pointer: '/playbook' }],
     });
     expect(fake.seen()).toEqual([]);
   });

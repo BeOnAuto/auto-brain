@@ -1,4 +1,4 @@
-import { BrainReader, BrainWriter, capitalized, defineCommand } from '@beonauto/operations';
+import { PlaybookReader, PlaybookWriter, capitalized, defineCommand } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
 import type { Capability } from '../capability/capability.ts';
@@ -25,7 +25,7 @@ const description = [
 ].join(' ');
 
 const correlationOf = Effect.fnUntraced(function* (id: string) {
-  const { records } = yield* (yield* BrainReader).readRecorded(
+  const { records } = yield* (yield* PlaybookReader).readRecorded(
     { kind: 'run', run: id },
     { order: 'asc', limit: 1, dataOf: [] },
   );
@@ -35,7 +35,7 @@ const correlationOf = Effect.fnUntraced(function* (id: string) {
 const cancelled = Effect.fnUntraced(function* (id: string, reason: string | undefined) {
   const { by, at } = yield* commandMetadata;
   const correlationId = yield* Effect.orDie(correlationOf(id));
-  const { state } = yield* (yield* BrainWriter)
+  const { state } = yield* (yield* PlaybookWriter)
     .execute(
       runStreamNameOf(id),
       runDecider,
@@ -50,7 +50,7 @@ export function defineCancelRun(capabilities: readonly Capability[]) {
   const words = definitionWordsFor(capabilities);
   const cancelling = ({ type, name }: Pick<Run, 'type' | 'name'>) =>
     `${capitalized(words.named(type, name))} is being cancelled: it ends as cancelled within a moment, unless it finishes first, and how it ended can be looked up then.`;
-  return defineCommand('brain', {
+  return defineCommand('playbook', {
     name: 'cancel_run',
     title: 'Cancel run',
     description,

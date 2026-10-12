@@ -47,7 +47,7 @@ describe('a cancel request on a workflow run', () => {
     const settlement = await settled(runId);
     const { records } = await Effect.runPromise(
       recordedReaderOf(database.store)(
-        { org: 'acme', brain: 'alpha' },
+        { org: 'acme', playbook: 'alpha' },
         { kind: 'run', run: runId },
         { order: 'desc', limit: 1, dataOf: [] },
       ),
@@ -71,7 +71,7 @@ describe('a cancel request on a run of another capability', () => {
 
     expect(handed).toEqual([
       {
-        run: { org: 'acme', brain: 'alpha', id: runId },
+        run: { org: 'acme', playbook: 'alpha', id: runId },
         request: { kind: 'requested', reason: 'Not needed any more', by: 'acme-admin' },
         lineage: { causationId: requestId, correlationId: 'root-1' },
       },
@@ -106,8 +106,8 @@ interface Fact {
 
 function asked({ type, data }: Fact, context: Context = runOf('workflow')) {
   return {
-    brain: { org: 'acme', brain: 'alpha' },
-    brainKey: alpha,
+    playbook: { org: 'acme', playbook: 'alpha' },
+    playbookKey: alpha,
     record: {
       id: requestId,
       cursor: 'c',

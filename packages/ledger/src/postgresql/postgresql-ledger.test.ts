@@ -18,7 +18,7 @@ describe('a ledger on PostgreSQL that cannot be reached', () => {
     expect(Cause.pretty(cause)).not.toContain(password);
   });
 
-  it('fails a read of what a brain recorded with the error of the driver', async () => {
+  it('fails a read of what a playbook recorded with the error of the driver', async () => {
     const { url, port } = await unreachableDatabase();
     const lost: Readonly<Error>[] = [];
     const store = postgresqlEventStore({

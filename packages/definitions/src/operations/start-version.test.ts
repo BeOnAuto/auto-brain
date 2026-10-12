@@ -1,4 +1,4 @@
-import { brainCallerOf, messageIdOf } from '@beonauto/operations';
+import { playbookCallerOf, messageIdOf } from '@beonauto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -6,16 +6,16 @@ import { defineStartVersion } from '../index.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
 import { echo } from '../testing/echo.ts';
-import { firstMoment, harness, toBrain } from '../testing/harness.ts';
+import { firstMoment, harness, toPlaybook } from '../testing/harness.ts';
 import { probe } from '../testing/probe.ts';
 
 const { createDefinition, updateDefinition, retireDefinition, getRun } = definitionOperationsFor([echo]);
 
 const startVersion = defineStartVersion([echo]);
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
-const theBrain = brainCallerOf({ org: 'acme', brain: 'alpha' });
+const thePlaybook = playbookCallerOf({ org: 'acme', playbook: 'alpha' });
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
@@ -33,11 +33,11 @@ async function greetAtTwoVersions() {
 }
 
 function starting(version: number, input: object = {}, id = runId) {
-  return toAlpha(theBrain, { type: 'echo', name: 'greet', version, input, run_id: id });
+  return toAlpha(thePlaybook, { type: 'echo', name: 'greet', version, input, run_id: id });
 }
 
 describe('a start of one version of a definition, once', () => {
-  it('runs the version it names, as the brain, with the depth and lineage of its request', async () => {
+  it('runs the version it names, as the playbook, with the depth and lineage of its request', async () => {
     const definitions = await greetAtTwoVersions();
     const lineage = { causationId: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a', correlationId: runId };
 
@@ -65,7 +65,7 @@ describe('a start of one version of a definition, once', () => {
 });
 
 describe('a start of a version that a trigger asked for', () => {
-  it('records the trigger on the start and the ending, while the brain stays who started it', async () => {
+  it('records the trigger on the start and the ending, while the playbook stays who started it', async () => {
     const definitions = await greetAtTwoVersions();
     const trigger = { kind: 'every' as const, reference: '/schedule/every' };
 
@@ -73,7 +73,7 @@ describe('a start of a version that a trigger asked for', () => {
     const { records } = await definitions.run(
       Effect.orDie(
         definitions.ledger.service.readRecorded(
-          { org: 'acme', brain: 'alpha' },
+          { org: 'acme', playbook: 'alpha' },
           { kind: 'run', run: runId },
           { order: 'asc', limit: 10 },
         ),
@@ -114,7 +114,7 @@ describe('a start of a version once, under the id of a run', () => {
       {
         status: 'rejected',
         reason: 'not_found',
-        detail: 'There is no version 3 of the echo definition greet in this brain',
+        detail: 'There is no version 3 of the echo definition greet in this playbook',
       },
     ]);
   });
@@ -129,13 +129,13 @@ async function probedOnce() {
   const startOnce = () =>
     definitions.call(
       startingProbe,
-      toAlpha(theBrain, { type: 'probe', name: 'react', version: 1, input: {}, run_id: runId }),
+      toAlpha(thePlaybook, { type: 'probe', name: 'react', version: 1, input: {}, run_id: runId }),
     );
   return { prober, startOnce };
 }
 
 describe('a start of a version once whose run ended without a result', () => {
-  it('runs again under the same id, so a start the brain could not take at first goes through later', async () => {
+  it('runs again under the same id, so a start the playbook could not take at first goes through later', async () => {
     const { prober, startOnce } = await probedOnce();
     prober.sufferOnNextRun('unavailable');
 
@@ -182,7 +182,7 @@ const triggers = [
   { kind: 'every', reference: '/schedule/every', milliseconds: 60_000 },
 ];
 
-describe('the definitions of a brain that start on their own', () => {
+describe('the definitions of a playbook that start on their own', () => {
   it('show their triggers, and a read of one names the record its current version was made by', async () => {
     const definitions = harness();
     const { getDefinition, listDefinitions } = definitionOperationsFor([echo]);

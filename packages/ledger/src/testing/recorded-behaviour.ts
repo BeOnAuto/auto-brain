@@ -23,15 +23,16 @@ const everything: RecordedSelection = { kind: 'everything' };
 
 const mebibyte = 1024 * 1024;
 
-function theBrainOfARead(aLedger: LedgerMaker): void {
-  describe('the brain a read of what was recorded names', () => {
-    it('is matched exactly, whatever its case, an underscore in it, or a brain whose id it begins', async () => {
+function thePlaybookOfARead(aLedger: LedgerMaker): void {
+  describe('the playbook a read of what was recorded names', () => {
+    it('is matched exactly, whatever its case, an underscore in it, or a playbook whose id it begins', async () => {
       const ledger = await aLedger();
       const streams = ['brain/o/b/s', 'brain/o/B/s', 'brain/o/b2/s', 'brain/o/a_c/s', 'brain/o/abc/s', 'brain/o/b'];
       await Promise.all(streams.map((stream) => happen(ledger, stream, noted('noted', stream))));
 
-      const read = (brain: string) => reading(ledger, everything, { order: 'asc', limit: 10 }, { org: 'o', brain });
-      const pages = await Promise.all(['b', 'B', 'b2', 'a_c', 'abc', 'missing'].map((brain) => read(brain)));
+      const read = (playbook: string) =>
+        reading(ledger, everything, { order: 'asc', limit: 10 }, { org: 'o', playbook });
+      const pages = await Promise.all(['b', 'B', 'b2', 'a_c', 'abc', 'missing'].map((playbook) => read(playbook)));
 
       expect(pages.map((page) => details(page))).toEqual([
         ['brain/o/b/s'],
@@ -218,10 +219,10 @@ function cursorsOfARead(aLedger: LedgerMaker): void {
       expect(after.map((page) => details(page))).toEqual([[2, 3], [3], []]);
     });
 
-    it('is refused when it cannot be read, or another brain gave it', async () => {
+    it('is refused when it cannot be read, or another playbook gave it', async () => {
       const ledger = await aLedger();
       await happen(ledger, 'brain/acme/beta/notes', noted('noted', 1));
-      const beta = await reading(ledger, everything, { order: 'asc', limit: 1 }, { org: 'acme', brain: 'beta' });
+      const beta = await reading(ledger, everything, { order: 'asc', limit: 1 }, { org: 'acme', playbook: 'beta' });
       const cursors = [...beta.records.map(({ cursor }) => cursor), 'not a cursor', 'WyJicmFpbi9hY21lL2FscGhhLyJd'];
 
       const refusals = await Promise.all(
@@ -231,7 +232,7 @@ function cursorsOfARead(aLedger: LedgerMaker): void {
       );
 
       expect(refusals).toEqual([
-        new InvalidCursor({ kind: 'of_another_brain' }),
+        new InvalidCursor({ kind: 'of_another_playbook' }),
         new InvalidCursor({ kind: 'malformed' }),
         new InvalidCursor({ kind: 'malformed' }),
       ]);
@@ -277,7 +278,7 @@ function theTimeAPageStartsFrom(aLedger: LedgerMaker): void {
 }
 
 export function recordedBehaviour(aLedger: LedgerMaker): void {
-  theBrainOfARead(aLedger);
+  thePlaybookOfARead(aLedger);
   pagesWhileAppending(aLedger);
   theBoundsOfAPage(aLedger);
   aFilterOfTypes(aLedger);

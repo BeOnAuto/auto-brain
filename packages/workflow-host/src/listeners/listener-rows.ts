@@ -7,7 +7,7 @@ import { statement } from '../database/statement.ts';
 export interface ListenerRow {
   readonly runKey: string;
   readonly listener: string;
-  readonly brainKey: string;
+  readonly playbookKey: string;
   readonly streamId: string;
   readonly armedBy: number;
   readonly filters: string;
@@ -17,7 +17,7 @@ export interface ListenerRow {
 }
 
 export interface ListeningPlace {
-  readonly brainKey: string;
+  readonly playbookKey: string;
   readonly workflow: string;
   readonly version: number;
   readonly reference: string;
@@ -58,10 +58,10 @@ function typesOf(filters: string): readonly string[] {
 
 export function insertedListener(database: HostDatabase, row: ListenerRow) {
   return Effect.gen(function* () {
-    const { runKey, listener, brainKey, streamId, armedBy, filters, workflow, version, passed } = row;
+    const { runKey, listener, playbookKey, streamId, armedBy, filters, workflow, version, passed } = row;
     yield* database.write(
       statement`INSERT INTO workflow_listeners (run_key, listener, brain_key, stream_id, armed_by, filters, workflow, version, passed)
-        VALUES (${runKey}, ${listener}, ${brainKey}, ${streamId}, ${armedBy}, ${filters}, ${workflow}, ${version}, ${passed ? 1 : 0})
+        VALUES (${runKey}, ${listener}, ${playbookKey}, ${streamId}, ${armedBy}, ${filters}, ${workflow}, ${version}, ${passed ? 1 : 0})
         ON CONFLICT (run_key, listener) DO NOTHING`,
     );
     yield* database.write(
@@ -77,7 +77,7 @@ export function insertedListener(database: HostDatabase, row: ListenerRow) {
       (type) =>
         database.write(
           statement`INSERT INTO workflow_listener_types (brain_key, type, run_key, listener)
-            VALUES (${brainKey}, ${type}, ${runKey}, ${listener}) ON CONFLICT DO NOTHING`,
+            VALUES (${playbookKey}, ${type}, ${runKey}, ${listener}) ON CONFLICT DO NOTHING`,
         ),
       { discard: true },
     );
@@ -105,24 +105,24 @@ export function isListening(database: HostDatabase, { runKey, listener }: Listen
   );
 }
 
-export function isListeningAt(database: HostDatabase, { brainKey, workflow, version, reference }: ListeningPlace) {
+export function isListeningAt(database: HostDatabase, { playbookKey, workflow, version, reference }: ListeningPlace) {
   return Effect.map(
     rowsOf(
       ListenerKeyRow,
       database.read(
         statement`SELECT listener FROM workflow_listeners
-          WHERE brain_key = ${brainKey} AND workflow = ${workflow} AND version = ${version}`,
+          WHERE brain_key = ${playbookKey} AND workflow = ${workflow} AND version = ${version}`,
       ),
     ),
     (rows) => rows.some(({ listener }) => listenerKeyOf(listener).reference === reference),
   );
 }
 
-export function listenersInBrain(database: HostDatabase, brainKey: string) {
+export function listenersInPlaybook(database: HostDatabase, playbookKey: string) {
   return Effect.map(
     rowsOf(
       CountRow,
-      database.read(statement`SELECT count(*) AS listeners FROM workflow_listeners WHERE brain_key = ${brainKey}`),
+      database.read(statement`SELECT count(*) AS listeners FROM workflow_listeners WHERE brain_key = ${playbookKey}`),
     ),
     (rows) => rows.reduce((sum, { listeners }) => sum + listeners, 0),
   );
@@ -197,7 +197,7 @@ export function passedListeners(database: HostDatabase, streamId: string, versio
 }
 
 export interface ListenersAsked {
-  readonly brainKey: string;
+  readonly playbookKey: string;
   readonly type: string;
   readonly after: ListenerPlace;
   readonly limit: number;
@@ -205,7 +205,7 @@ export interface ListenersAsked {
 
 export function listenersOfType(
   database: HostDatabase,
-  { brainKey, type, after, limit }: ListenersAsked,
+  { playbookKey, type, after, limit }: ListenersAsked,
 ): Effect.Effect<readonly MatchedListener[]> {
   return Effect.orDie(
     rowsOf(
@@ -214,7 +214,7 @@ export function listenersOfType(
         statement`SELECT l.run_key, l.listener, l.filters, l.workflow, l.version
           FROM workflow_listener_types AS t
           JOIN workflow_listeners AS l ON l.run_key = t.run_key AND l.listener = t.listener
-          WHERE t.brain_key = ${brainKey} AND t.type = ${type} AND l.passed = 1
+          WHERE t.brain_key = ${playbookKey} AND t.type = ${type} AND l.passed = 1
             AND (t.run_key > ${after.runKey} OR (t.run_key = ${after.runKey} AND t.listener > ${after.listener}))
           ORDER BY t.run_key, t.listener
           LIMIT ${limit}`,

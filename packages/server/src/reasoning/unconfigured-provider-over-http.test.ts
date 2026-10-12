@@ -37,7 +37,7 @@ async function executedVerdict(models: Readonly<Record<string, string>>): Promis
     { HOST: '127.0.0.1', PORT: '0', LEDGER_FILE: ledger.fileName, LOCAL_MODE: 'true', ...models },
     compositionRoot,
   );
-  await calling('POST', '/v1/orgs/acme/brains', { brain: 'alpha', name: 'Alpha' });
+  await calling('POST', '/v1/orgs/acme/playbooks', { playbook: 'alpha', name: 'Alpha' });
   await calling('POST', `${alpha}/definitions/reasoning`, { name: 'verdict', source: verdict });
   return calling('POST', `${alpha}/definitions/reasoning/verdict/run`, { input: { expense: 'a dinner' } });
 }

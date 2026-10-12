@@ -8,12 +8,12 @@ import {
   type PresentedFact,
   type Presenter,
 } from '@beonauto/operations';
-import { memoryBrainRegistry } from '@beonauto/operations/testing';
+import { memoryPlaybookRegistry } from '@beonauto/operations/testing';
 import { Effect, Result, Schema } from 'effect';
 
-import { defineListBrainEvents } from '../feed/list-brain-events.ts';
+import { defineListPlaybookEvents } from '../feed/list-brain-events.ts';
 import { acmeAdmin } from './callers.ts';
-import { harness, toBrain } from './harness.ts';
+import { harness, toPlaybook } from './harness.ts';
 
 const TextSchema = Schema.Struct({ text: Schema.String });
 
@@ -72,17 +72,17 @@ const steps: Presenter = {
   },
 };
 
-export const listBrainEvents = defineListBrainEvents([notes, shelves, steps]);
+export const listPlaybookEvents = defineListPlaybookEvents([notes, shelves, steps]);
 
-const brains = memoryBrainRegistry(
+const playbooks = memoryPlaybookRegistry(
   [
-    { org: 'acme', brain: 'alpha' },
-    { org: 'globex', brain: 'gamma' },
+    { org: 'acme', playbook: 'alpha' },
+    { org: 'globex', playbook: 'gamma' },
   ],
-  [{ org: 'acme', brain: 'old' }],
+  [{ org: 'acme', playbook: 'old' }],
 );
 
-export const toAlpha = toBrain('acme', 'alpha');
+export const toAlpha = toPlaybook('acme', 'alpha');
 
 const TextsSchema = Schema.Struct({
   output: Schema.Struct({
@@ -102,25 +102,25 @@ export function withCursor(cursor: string | undefined): object {
   return cursor === undefined ? {} : { cursor };
 }
 
-export function brainFeed() {
-  const feed = harness(brains);
+export function playbookFeed() {
+  const feed = harness(playbooks);
   let minute = 0;
-  const recordingWith = (stream: string, fact: Fact, lineage?: Lineage, brain = 'brain/acme/alpha') => {
+  const recordingWith = (stream: string, fact: Fact, lineage?: Lineage, playbook = 'brain/acme/alpha') => {
     minute += 1;
     const at = `2026-10-01T09:${String(minute).padStart(2, '0')}:00.000Z`;
     return feed.run(
-      Effect.orDie(feed.ledger.service.execute(`${brain}/${stream}`, recorder, { fact, at }, lineage)),
+      Effect.orDie(feed.ledger.service.execute(`${playbook}/${stream}`, recorder, { fact, at }, lineage)),
       at,
     );
   };
-  const recording = (stream: string, type: Fact['type'], text: string, brain = 'brain/acme/alpha') =>
-    recordingWith(stream, { type, data: { text } }, undefined, brain);
-  const reading = (input: object = {}) => feed.callInBrain(listBrainEvents, toAlpha(acmeAdmin, input));
+  const recording = (stream: string, type: Fact['type'], text: string, playbook = 'brain/acme/alpha') =>
+    recordingWith(stream, { type, data: { text } }, undefined, playbook);
+  const reading = (input: object = {}) => feed.callInPlaybook(listPlaybookEvents, toAlpha(acmeAdmin, input));
   return { ...feed, recording, recordingWith, reading };
 }
 
-export async function brainWithEvents() {
-  const feed = brainFeed();
+export async function playbookWithEvents() {
+  const feed = playbookFeed();
   await feed.recording('notes', 'added', 'a');
   await feed.recording('shelves/red', 'added', 'b');
   await feed.recording('notes', 'hidden', 'c');

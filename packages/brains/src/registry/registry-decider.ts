@@ -1,14 +1,14 @@
 import type { Decider } from '@beonauto/operations';
 
-import type { BrainCommand } from './brain-commands.ts';
-import { BrainEventSchema, type RecordedBrainEvent } from './brain-events.ts';
+import type { PlaybookCommand } from './brain-commands.ts';
+import { PlaybookEventSchema, type RecordedPlaybookEvent } from './brain-events.ts';
 import { decideOnRegistry, registryContextOf } from './registry-decisions.ts';
 import { initialRegistry, evolveRegistry, type Registry } from './registry.ts';
 
-export const registryDecider: Decider<Registry, BrainCommand, RecordedBrainEvent, 'not_found' | 'conflict'> = {
+export const registryDecider: Decider<Registry, PlaybookCommand, RecordedPlaybookEvent, 'not_found' | 'conflict'> = {
   initialState: initialRegistry,
   evolve: evolveRegistry,
   decide: decideOnRegistry,
   context: registryContextOf,
-  eventSchema: BrainEventSchema,
+  eventSchema: PlaybookEventSchema,
 };

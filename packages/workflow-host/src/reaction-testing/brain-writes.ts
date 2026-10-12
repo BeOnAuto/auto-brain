@@ -1,4 +1,4 @@
-import { brainsStreamOfOrg } from '@beonauto/brains';
+import { playbooksStreamOfOrg } from '@beonauto/brains';
 import type { Trigger } from '@beonauto/definitions';
 import { eventAppenderOf, type EventStore } from '@beonauto/ledger';
 import { ContextSchema, messageIdOf, noLineage, type Context, type Decided, type Lineage } from '@beonauto/operations';
@@ -48,10 +48,10 @@ export function emittedContext(runId: string, workflow: string, depth: number): 
   return { ...byAdmin, runId, definitionType: 'workflow', definitionName: workflow, definitionVersion: 1, depth };
 }
 
-export function published(store: EventStore, event: PublishedEvent, context: Context = byAdmin, brainKey = alpha) {
+export function published(store: EventStore, event: PublishedEvent, context: Context = byAdmin, playbookKey = alpha) {
   return recorded(
     store,
-    `${brainKey}events/${event.id}`,
+    `${playbookKey}events/${event.id}`,
     {
       type: 'event_published',
       data: { event: { specversion: '1.0', source: '/acme', time: at, ...event }, filled: [] },
@@ -89,23 +89,23 @@ export function everyTrigger(milliseconds: number): Trigger {
 export function definitionRecorded(
   store: EventStore,
   { name, version, triggers, when = at }: DefinitionVersion,
-  brainKey = alpha,
+  playbookKey = alpha,
 ) {
   const content = triggers.length === 0 ? { source: 'do: []' } : { source: 'schedule: {}', triggers };
   return recorded(
     store,
-    `${brainKey}definitions/workflow`,
+    `${playbookKey}definitions/workflow`,
     { type: version === 1 ? 'definition_created' : 'definition_updated', data: { content } },
     { ...byAdmin, at: when, definitionType: 'workflow', definitionName: name, definitionVersion: version },
   );
 }
 
-export function definitionRecordAt(position: number, brainKey = alpha): string {
-  return messageIdOf(`${brainKey}definitions/workflow`, position);
+export function definitionRecordAt(position: number, playbookKey = alpha): string {
+  return messageIdOf(`${playbookKey}definitions/workflow`, position);
 }
 
-export function eventRecordOf(id: string, brainKey = alpha): string {
-  return messageIdOf(`${brainKey}events/${id}`, 1);
+export function eventRecordOf(id: string, playbookKey = alpha): string {
+  return messageIdOf(`${playbookKey}events/${id}`, 1);
 }
 
 export function definitionRetired(store: EventStore, name: string, version: number) {
@@ -117,15 +117,18 @@ export function definitionRetired(store: EventStore, name: string, version: numb
   );
 }
 
-export function brainCreated(store: EventStore, brain: string) {
-  return recorded(store, brainsStreamOfOrg('acme'), {
+export function playbookCreated(store: EventStore, playbook: string) {
+  return recorded(store, playbooksStreamOfOrg('acme'), {
     type: 'brain_created',
-    data: { brain, name: brain, description: '' },
+    data: { brain: playbook, name: playbook, description: '' },
   });
 }
 
-export function brainRenamed(store: EventStore, brain: string) {
-  return recorded(store, brainsStreamOfOrg('acme'), { type: 'brain_updated', data: { brain, name: 'Renamed' } });
+export function playbookRenamed(store: EventStore, playbook: string) {
+  return recorded(store, playbooksStreamOfOrg('acme'), {
+    type: 'brain_updated',
+    data: { brain: playbook, name: 'Renamed' },
+  });
 }
 
 export interface RunOf {

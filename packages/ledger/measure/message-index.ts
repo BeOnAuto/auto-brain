@@ -33,8 +33,8 @@ async function measured(measuring: MeasuredStore): Promise<void> {
   );
   const times: number[] = [];
   await inTurn(picked, async (id) => {
-    const brainKey = `brain/acme/b${Number(id.slice('message-'.length)) % 100}/`;
-    times.push(await timed(() => reopened.readRecordedEvent(brainKey, id)));
+    const playbookKey = `brain/acme/b${Number(id.slice('message-'.length)) % 100}/`;
+    times.push(await timed(() => reopened.readRecordedEvent(playbookKey, id)));
   });
   await reopened.close();
   write(

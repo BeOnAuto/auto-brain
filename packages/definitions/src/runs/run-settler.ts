@@ -1,9 +1,9 @@
 import {
-  BrainIdSchema,
+  PlaybookIdSchema,
   NotFound,
   OrgIdSchema,
-  brainCallerOf,
-  streamPrefixOfBrain,
+  playbookCallerOf,
+  streamPrefixOfPlaybook,
   type Conflict,
   type Lineage,
   type Rejection,
@@ -25,7 +25,7 @@ export type { Settlement } from '@beonauto/operations';
 
 export interface RunStreamAddress {
   readonly org: string;
-  readonly brain: string;
+  readonly playbook: string;
   readonly id: string;
 }
 
@@ -49,7 +49,7 @@ type SettledOn = (
 ) => Effect.Effect<StreamState<RunStreamState>, Rejection<'not_found' | 'conflict' | 'cancelled'>>;
 
 const isWellFormed = Schema.is(
-  Schema.Struct({ org: OrgIdSchema, brain: BrainIdSchema, id: Schema.String.check(Schema.isUUID()) }),
+  Schema.Struct({ org: OrgIdSchema, playbook: PlaybookIdSchema, id: Schema.String.check(Schema.isUUID()) }),
 );
 
 const decodeSuccess = Schema.decodeUnknownEffect(Schema.Struct({ output: Schema.Json, record: Schema.JsonObject }));
@@ -84,7 +84,7 @@ function rejectedWith(settlement: SettledRejection): Effect.Effect<RunResult> {
     : Effect.as(withinResultLimit(record), { type: 'run_rejected', data: { rejection, record } });
 }
 
-const noSuchRun = new NotFound({ detail: 'There is no such run in this brain' });
+const noSuchRun = new NotFound({ detail: 'There is no such run in this playbook' });
 
 interface SettledRun {
   readonly stream: string;
@@ -93,11 +93,11 @@ interface SettledRun {
 
 function streamOf(address: RunStreamAddress): Effect.Effect<string, NotFound> {
   return isWellFormed(address)
-    ? Effect.succeed(`${streamPrefixOfBrain(address)}${runStreamNameOf(address.id.toLowerCase())}`)
+    ? Effect.succeed(`${streamPrefixOfPlaybook(address)}${runStreamNameOf(address.id.toLowerCase())}`)
     : Effect.fail(noSuchRun);
 }
 
-function brainStreamOf(address: RunStreamAddress): Effect.Effect<string, NotFound> {
+function playbookStreamOf(address: RunStreamAddress): Effect.Effect<string, NotFound> {
   return isWellFormed(address) ? Effect.succeed(runStreamNameOf(address.id.toLowerCase())) : Effect.fail(noSuchRun);
 }
 
@@ -141,7 +141,7 @@ function settlerOver(
   return (run, settlement, lineage) =>
     Effect.gen(function* () {
       const target = { stream: yield* streamNamed(run), runId: run.id.toLowerCase() };
-      const by = settlement.by ?? brainCallerOf(run).id;
+      const by = settlement.by ?? playbookCallerOf(run).id;
       const result = yield* resultOf(settlement).pipe(
         Effect.tapDefect(() => Effect.ignore(settle(target, failure, by, lineage))),
       );
@@ -159,6 +159,6 @@ export function runSettlerAsRead(ledger: StreamWriter): SettleAsRead {
     settlerOver(settledOnRead(ledger, readAt), streamOf)(run, settlement, lineage);
 }
 
-export function brainBoundSettler(writer: StreamWriter): SettleRun {
-  return settlerOver(settledOnLatest(writer), brainStreamOf);
+export function playbookBoundSettler(writer: StreamWriter): SettleRun {
+  return settlerOver(settledOnLatest(writer), playbookStreamOf);
 }

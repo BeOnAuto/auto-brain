@@ -6,9 +6,9 @@ import { insertedListener } from '../listeners/listener-rows.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
 import { passOf, type PassParts } from './brain-pass.ts';
 import type { RecordConsumer } from './consumers.ts';
-import { followedBrainsOn } from './followed-brains.ts';
+import { followedPlaybooksOn } from './followed-brains.ts';
 
-const brainKey = 'brain/acme/alpha/';
+const playbookKey = 'brain/acme/alpha/';
 
 interface CountedRecords {
   readonly records: PassParts['records'];
@@ -21,7 +21,7 @@ function recordAt(stream: string, position: number): RecordedEvent {
     cursor: `cursor-${position}`,
     causationId: null,
     correlationId: null,
-    stream: `${brainKey}${stream}`,
+    stream: `${playbookKey}${stream}`,
     version: 1,
     globalPosition: position,
     type: 'note_written',
@@ -35,7 +35,7 @@ function countedRecords(pageAt: (read: number) => Effect.Effect<readonly Recorde
   const reads: boolean[] = [];
   return {
     records: {
-      after: (_brain, _cursor, delivers) =>
+      after: (_playbook, _cursor, delivers) =>
         Effect.suspend(() => {
           reads.push(delivers.size > 0);
           return Effect.map(pageAt(reads.length), (records) => ({
@@ -100,8 +100,8 @@ function listenerFor(type: string) {
   return {
     runKey: 'acme/alpha/r-1',
     listener: 'wait',
-    brainKey,
-    streamId: `${brainKey}run-logs/r-1`,
+    playbookKey,
+    streamId: `${playbookKey}run-logs/r-1`,
     armedBy: 1,
     filters: JSON.stringify([{ type }]),
     workflow: 'wait',
@@ -124,11 +124,11 @@ async function passing(
   passedEarly: PassParts['passedEarly'] = () => Effect.void,
 ) {
   const opened = await openedOn(await onSQLite());
-  const brains = followedBrainsOn(opened);
+  const playbooks = followedPlaybooksOn(opened);
   const pass = passOf({
     database: opened,
     records: counted.records,
-    brains,
+    playbooks,
     consumers,
     calls: [],
     definitionType: 'workflow',
@@ -137,42 +137,42 @@ async function passing(
     passedEarly,
     registered: [],
   });
-  return { database: opened, brains, pass };
+  return { database: opened, playbooks, pass };
 }
 
-describe('a pass over the records of a brain', () => {
-  it('reads nothing of a brain the follower does not follow', async () => {
+describe('a pass over the records of a playbook', () => {
+  it('reads nothing of a playbook the follower does not follow', async () => {
     const counted = endlessNotes();
     const { pass } = await passing(counted);
 
-    const end = await Effect.runPromise(pass(brainKey, 'sweep'));
+    const end = await Effect.runPromise(pass(playbookKey, 'sweep'));
 
     expect([end, counted.reads()]).toEqual(['caught_up', []]);
   });
 
   it('reads nothing when woken by a signal while a delivery waits for the next sweep', async () => {
     const counted = endlessNotes();
-    const { brains, pass } = await passing(counted);
-    await Effect.runPromise(brains.follow(brainKey, null));
-    await Effect.runPromise(brains.save(brainKey, { cursor: null, delivered: null, attempts: 2, waiting: true }));
+    const { playbooks, pass } = await passing(counted);
+    await Effect.runPromise(playbooks.follow(playbookKey, null));
+    await Effect.runPromise(playbooks.save(playbookKey, { cursor: null, delivered: null, attempts: 2, waiting: true }));
 
-    const end = await Effect.runPromise(pass(brainKey, 'signal'));
+    const end = await Effect.runPromise(pass(playbookKey, 'signal'));
 
     expect([end, counted.reads()]).toEqual(['waiting', []]);
   });
 
-  it('reads 10 pages at most, without their data while nothing in the brain reacts, keeps its place, and says there is more', async () => {
+  it('reads 10 pages at most, without their data while nothing in the playbook reacts, keeps its place, and says there is more', async () => {
     const counted = endlessNotes();
-    const { brains, pass } = await passing(counted);
-    await Effect.runPromise(brains.follow(brainKey, null));
+    const { playbooks, pass } = await passing(counted);
+    await Effect.runPromise(playbooks.follow(playbookKey, null));
 
-    const end = await Effect.runPromise(pass(brainKey, 'signal'));
-    const followed = await Effect.runPromise(brains.load(brainKey));
+    const end = await Effect.runPromise(pass(playbookKey, 'signal'));
+    const followed = await Effect.runPromise(playbooks.load(playbookKey));
 
     expect([end, counted.reads(), followed]).toEqual([
       'more',
       Array.from({ length: 10 }, () => false),
-      { brainKey, cursor: 'cursor-10', delivered: null, attempts: 0, waiting: true },
+      { playbookKey, cursor: 'cursor-10', delivered: null, attempts: 0, waiting: true },
     ]);
   });
 });
@@ -183,12 +183,12 @@ describe('a pass that delivers records and then fails', () => {
     const consumer = deliveringEach((id) => {
       delivered.push(id);
     });
-    const { database, brains, pass } = await passing(publishedThenGone(), [consumer]);
-    await Effect.runPromise(brains.follow(brainKey, null));
+    const { database, playbooks, pass } = await passing(publishedThenGone(), [consumer]);
+    await Effect.runPromise(playbooks.follow(playbookKey, null));
     await Effect.runPromise(insertedListener(database, listenerFor('com.acme.noted')));
 
-    const exit = await Effect.runPromiseExit(pass(brainKey, 'signal'));
-    const followed = await Effect.runPromise(brains.load(brainKey));
+    const exit = await Effect.runPromiseExit(pass(playbookKey, 'signal'));
+    const followed = await Effect.runPromise(playbooks.load(playbookKey));
 
     expect([Exit.isFailure(exit), delivered, followed?.cursor]).toEqual([true, ['record-1', 'record-2'], 'cursor-2']);
   });
@@ -197,19 +197,19 @@ describe('a pass that delivers records and then fails', () => {
 describe('a pass that reads the data of a type in a stream that holds no events', () => {
   it('hands the record to no consumer and passes it over', async () => {
     const delivered: string[] = [];
-    const misplaced = { ...publishedAt(1), stream: `${brainKey}notes/n1` };
+    const misplaced = { ...publishedAt(1), stream: `${playbookKey}notes/n1` };
     const consumer = deliveringEach((id) => {
       delivered.push(id);
     });
-    const { database, brains, pass } = await passing(
+    const { database, playbooks, pass } = await passing(
       countedRecords(() => Effect.succeed([misplaced])),
       [consumer],
     );
-    await Effect.runPromise(brains.follow(brainKey, null));
+    await Effect.runPromise(playbooks.follow(playbookKey, null));
     await Effect.runPromise(insertedListener(database, listenerFor('com.acme.noted')));
 
-    await Effect.runPromise(pass(brainKey, 'signal'));
-    const followed = await Effect.runPromise(brains.load(brainKey));
+    await Effect.runPromise(pass(playbookKey, 'signal'));
+    const followed = await Effect.runPromise(playbooks.load(playbookKey));
 
     expect([delivered, followed?.cursor]).toEqual([[], 'cursor-1']);
   });
@@ -218,34 +218,34 @@ describe('a pass that reads the data of a type in a stream that holds no events'
 describe('a pass that meets a record of a run held at every sweep', () => {
   it('passes it at the twentieth sweep, and says so', async () => {
     const early: string[] = [];
-    const { brains, pass } = await passing(undispatchedRun(), [], (key, record, sweeps) =>
+    const { playbooks, pass } = await passing(undispatchedRun(), [], (key, record, sweeps) =>
       Effect.sync(() => {
         early.push(`${key} ${record.id} ${sweeps}`);
       }),
     );
-    await Effect.runPromise(brains.follow(brainKey, null));
+    await Effect.runPromise(playbooks.follow(playbookKey, null));
 
-    const ends = await Effect.runPromise(Effect.forEach(Array.from({ length: 20 }), () => pass(brainKey, 'sweep')));
-    const followed = await Effect.runPromise(brains.load(brainKey));
+    const ends = await Effect.runPromise(Effect.forEach(Array.from({ length: 20 }), () => pass(playbookKey, 'sweep')));
+    const followed = await Effect.runPromise(playbooks.load(playbookKey));
 
     expect(ends).toEqual(Array.from({ length: 20 }, () => 'waiting'));
-    expect(early).toEqual([`${brainKey} record-1 20`]);
-    expect(followed).toEqual({ brainKey, cursor: 'cursor-2', delivered: null, attempts: 1, waiting: true });
+    expect(early).toEqual([`${playbookKey} record-1 20`]);
+    expect(followed).toEqual({ playbookKey, cursor: 'cursor-2', delivered: null, attempts: 1, waiting: true });
   });
 });
 
 describe('a pass that meets a record of a run', () => {
   it('stops before it while the outputs of the record are not dispatched, and waits', async () => {
     const counted = undispatchedRun();
-    const { brains, pass } = await passing(counted);
-    await Effect.runPromise(brains.follow(brainKey, null));
+    const { playbooks, pass } = await passing(counted);
+    await Effect.runPromise(playbooks.follow(playbookKey, null));
 
-    const end = await Effect.runPromise(pass(brainKey, 'signal'));
-    const followed = await Effect.runPromise(brains.load(brainKey));
+    const end = await Effect.runPromise(pass(playbookKey, 'signal'));
+    const followed = await Effect.runPromise(playbooks.load(playbookKey));
 
     expect([end, followed]).toEqual([
       'waiting',
-      { brainKey, cursor: null, delivered: null, attempts: 0, waiting: true },
+      { playbookKey, cursor: null, delivered: null, attempts: 0, waiting: true },
     ]);
   });
 });

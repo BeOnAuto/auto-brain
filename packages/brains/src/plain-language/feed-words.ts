@@ -28,20 +28,20 @@ function sinceTheTime({ since }: FeedRequest): string {
 
 function nothingFound(request: FeedRequest): string {
   if (request.cursor !== undefined) {
-    return `There is nothing more${ofTheKind(request)} to read in this brain${sinceTheTime(request)}.`;
+    return `There is nothing more${ofTheKind(request)} to read in this playbook${sinceTheTime(request)}.`;
   }
   const filtered = request.type !== undefined || request.since !== undefined || request.run_id !== undefined;
-  return `Nothing${ofTheKind(request)} has happened in this brain${sinceTheTime(request)}${filtered ? '' : ' yet'}.`;
+  return `Nothing${ofTheKind(request)} has happened in this playbook${sinceTheTime(request)}${filtered ? '' : ' yet'}.`;
 }
 
 export function eventsFound({ events, has_more: hasMore }: Feed, request: FeedRequest): string {
   if (events.length > 0) {
-    const found = `Found ${counted(events.length, eventNoun)}${ofTheKind(request)} in this brain${sinceTheTime(request)}`;
+    const found = `Found ${counted(events.length, eventNoun)}${ofTheKind(request)} in this playbook${sinceTheTime(request)}`;
     const order = orderInWords[request.order ?? 'desc'];
     return `${found}, ${order}, each with its fact and its metadata.${hasMore ? ' More remain after these.' : ''}`;
   }
   return hasMore
-    ? `This page shows nothing${ofTheKind(request)}, but there is more of this brain to read.`
+    ? `This page shows nothing${ofTheKind(request)}, but there is more of this playbook to read.`
     : nothingFound(request);
 }
 

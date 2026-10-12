@@ -1,7 +1,7 @@
 import { authenticatorFor, createApiKey, type Authenticator } from '@beonauto/identity';
 import { allPermissions, makeCatalog, makeDispatcher, type DispatcherServices } from '@beonauto/operations';
 import {
-  memoryBrainRegistry,
+  memoryPlaybookRegistry,
   memoryLedger,
   recordingReporter,
   type ReportedIncident,
@@ -22,33 +22,33 @@ export interface OperationServer {
 
 export const testServerInfo = { name: 'auto-brain', version: '0.0.0-test' };
 
-const knownBrains = [
-  { org: 'acme', brain: 'alpha' },
-  { org: 'acme', brain: 'beta' },
-  { org: 'globex', brain: 'gamma' },
+const knownPlaybooks = [
+  { org: 'acme', playbook: 'alpha' },
+  { org: 'acme', playbook: 'beta' },
+  { org: 'globex', playbook: 'gamma' },
 ];
 
-export const acmeAdmin = createApiKey({ id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: '*' });
+export const acmeAdmin = createApiKey({ id: 'acme-admin', org: 'acme', permissions: allPermissions, playbooks: '*' });
 
 export const acmeReader = createApiKey({
   id: 'acme-reader',
   org: 'acme',
-  permissions: ['org:read', 'brain:read'],
-  brains: '*',
+  permissions: ['org:read', 'playbook:read'],
+  playbooks: '*',
 });
 
 export const acmeAlphaWriter = createApiKey({
   id: 'acme-alpha-writer',
   org: 'acme',
   permissions: allPermissions,
-  brains: ['alpha'],
+  playbooks: ['alpha'],
 });
 
 export const globexAdmin = createApiKey({
   id: 'globex-admin',
   org: 'globex',
   permissions: allPermissions,
-  brains: '*',
+  playbooks: '*',
 });
 
 const keyHolders = authenticatorFor({
@@ -70,7 +70,9 @@ export async function operationServer({
 }: OperationServerOptions = {}): Promise<OperationServer> {
   const ledger = memoryLedger();
   const recording = recordingReporter();
-  const runtime = await makeAppRuntime(Layer.mergeAll(ledger.layer, memoryBrainRegistry(knownBrains), recording.layer));
+  const runtime = await makeAppRuntime(
+    Layer.mergeAll(ledger.layer, memoryPlaybookRegistry(knownPlaybooks), recording.layer),
+  );
   const catalog = makeCatalog(operations);
   const dispatcher = makeDispatcher([]);
   const mcpErrors: string[] = [];

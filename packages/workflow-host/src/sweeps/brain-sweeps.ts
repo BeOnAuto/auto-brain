@@ -2,28 +2,28 @@ import type { AppendedStreams, EventStore } from '@beonauto/ledger';
 import { Effect } from 'effect';
 
 import { isOrgRegistry } from '../follower/brain-discovery.ts';
-import type { FollowedBrain, FollowedBrains } from '../follower/followed-brains.ts';
-import { followedBrainOf } from './wakes.ts';
+import type { FollowedPlaybook, FollowedPlaybooks } from '../follower/followed-brains.ts';
+import { followedPlaybookOf } from './wakes.ts';
 
-interface SweptBrain {
-  readonly brainKey: string;
-  readonly known: FollowedBrain | undefined;
+interface SweptPlaybook {
+  readonly playbookKey: string;
+  readonly known: FollowedPlaybook | undefined;
 }
 
 export interface Sweep {
   readonly registries: readonly string[];
-  readonly brains: readonly SweptBrain[];
+  readonly playbooks: readonly SweptPlaybook[];
   readonly again: boolean;
 }
 
-export interface BrainSweeps {
+export interface PlaybookSweeps {
   readonly started: () => Effect.Effect<void>;
   readonly next: () => Effect.Effect<Sweep>;
-  readonly passAgain: (brainKey: string) => void;
+  readonly passAgain: (playbookKey: string) => void;
   readonly registriesRead: (registries: readonly string[]) => void;
 }
 
-export const brainsInASweep = 128;
+export const playbooksInASweep = 128;
 
 export const waitingInASweep = 64;
 
@@ -31,62 +31,64 @@ const messagesReadInASweep = 10_000;
 
 interface Round {
   readonly after: string | null;
-  readonly brains: readonly SweptBrain[];
+  readonly playbooks: readonly SweptPlaybook[];
 }
 
-function sweptOf(known: FollowedBrain): SweptBrain {
-  return { brainKey: known.brainKey, known };
+function sweptOf(known: FollowedPlaybook): SweptPlaybook {
+  return { playbookKey: known.playbookKey, known };
 }
 
 function addedTo(
-  chosen: ReadonlyMap<string, SweptBrain>,
-  brains: readonly SweptBrain[],
-): ReadonlyMap<string, SweptBrain> {
-  const added = brains.filter(({ brainKey }) => !chosen.has(brainKey));
-  return new Map([...chosen, ...added.map((brain): [string, SweptBrain] => [brain.brainKey, brain])]);
+  chosen: ReadonlyMap<string, SweptPlaybook>,
+  playbooks: readonly SweptPlaybook[],
+): ReadonlyMap<string, SweptPlaybook> {
+  const added = playbooks.filter(({ playbookKey }) => !chosen.has(playbookKey));
+  return new Map([...chosen, ...added.map((playbook): [string, SweptPlaybook] => [playbook.playbookKey, playbook])]);
 }
 
-function roundGoneOn(brains: FollowedBrains, after: string | null, room: number): Effect.Effect<Round> {
+function roundGoneOn(playbooks: FollowedPlaybooks, after: string | null, room: number): Effect.Effect<Round> {
   if (after === null || room <= 0) {
-    return Effect.succeed({ after, brains: [] });
+    return Effect.succeed({ after, playbooks: [] });
   }
-  return Effect.map(brains.following(after, room), (followed) => {
+  return Effect.map(playbooks.following(after, room), (followed) => {
     const last = followed.at(-1);
     return {
-      after: last === undefined || followed.length < room ? null : last.brainKey,
-      brains: followed.map((known) => sweptOf(known)),
+      after: last === undefined || followed.length < room ? null : last.playbookKey,
+      playbooks: followed.map((known) => sweptOf(known)),
     };
   });
 }
 
-function pendingBrains() {
+function pendingPlaybooks() {
   const appendedSince = new Map<string, boolean>();
   return {
-    appended: (brainKeys: readonly string[]) => {
-      for (const brainKey of brainKeys) {
-        appendedSince.set(brainKey, true);
+    appended: (playbookKeys: readonly string[]) => {
+      for (const playbookKey of playbookKeys) {
+        appendedSince.set(playbookKey, true);
       }
     },
-    failed: (brainKey: string) => {
-      appendedSince.set(brainKey, appendedSince.get(brainKey) === true);
+    failed: (playbookKey: string) => {
+      appendedSince.set(playbookKey, appendedSince.get(playbookKey) === true);
     },
-    chosen: (room: number): readonly SweptBrain[] =>
-      [...appendedSince.keys()].slice(0, room).map((brainKey) => ({ brainKey, known: undefined })),
-    taken: (chosen: readonly SweptBrain[]) => {
-      for (const { brainKey } of chosen) {
-        appendedSince.delete(brainKey);
+    chosen: (room: number): readonly SweptPlaybook[] =>
+      [...appendedSince.keys()].slice(0, room).map((playbookKey) => ({ playbookKey, known: undefined })),
+    taken: (chosen: readonly SweptPlaybook[]) => {
+      for (const { playbookKey } of chosen) {
+        appendedSince.delete(playbookKey);
       }
     },
     left: () => [...appendedSince.values()].includes(true),
   };
 }
 
-export function brainSweepsOn(store: Pick<EventStore, 'readAppended'>, brains: FollowedBrains): BrainSweeps {
+type AppendedStore = Pick<EventStore, 'readAppended'>;
+
+export function playbookSweepsOn(store: AppendedStore, playbooks: FollowedPlaybooks): PlaybookSweeps {
   const state: { through: AppendedStreams['through'] | undefined; round: string | null } = {
     through: undefined,
     round: null,
   };
-  const pending = pendingBrains();
+  const pending = pendingPlaybooks();
   const registries = new Set<string>();
   const appendedSince = (most: number) =>
     Effect.tap(
@@ -94,7 +96,7 @@ export function brainSweepsOn(store: Pick<EventStore, 'readAppended'>, brains: F
       (appended) =>
         Effect.sync(() => {
           state.through = appended.through;
-          pending.appended(appended.streams.flatMap((stream) => followedBrainOf(stream) ?? []));
+          pending.appended(appended.streams.flatMap((stream) => followedPlaybookOf(stream) ?? []));
           for (const registry of appended.streams.filter((stream) => isOrgRegistry(stream))) {
             registries.add(registry);
           }
@@ -116,15 +118,15 @@ export function brainSweepsOn(store: Pick<EventStore, 'readAppended'>, brains: F
     next: () =>
       Effect.gen(function* () {
         const appended = yield* appendedSince(messagesReadInASweep);
-        const waiting = (yield* brains.waitingForASweep(waitingInASweep)).map((known) => sweptOf(known));
-        const chosen = pending.chosen(brainsInASweep - waiting.length);
+        const waiting = (yield* playbooks.waitingForASweep(waitingInASweep)).map((known) => sweptOf(known));
+        const chosen = pending.chosen(playbooksInASweep - waiting.length);
         const changed = addedTo(new Map(), [...waiting, ...chosen]);
-        const round = yield* roundGoneOn(brains, state.round, brainsInASweep - changed.size);
+        const round = yield* roundGoneOn(playbooks, state.round, playbooksInASweep - changed.size);
         pending.taken(chosen);
         state.round = round.after;
         return {
           registries: [...registries],
-          brains: [...addedTo(changed, round.brains).values()],
+          playbooks: [...addedTo(changed, round.playbooks).values()],
           again: appended.more || pending.left(),
         };
       }),

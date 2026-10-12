@@ -15,7 +15,7 @@ const stoppedByItsWork: FilterVerdict = { error, stopped: false };
 
 const trigger: FilterPlace = {
   kind: 'trigger',
-  brainKey: 'brain/acme/alpha/',
+  playbookKey: 'brain/acme/alpha/',
   workflow: 'close',
   version: 1,
   reference: '/schedule/on',
@@ -60,7 +60,7 @@ describe('the stops of a filter', () => {
     const stops = filterStops();
 
     const firsts = [stops.failedFirst(trigger), stops.failedFirst(trigger), stops.failedFirst(listener)];
-    stops.activated(trigger.brainKey, trigger.workflow, 2);
+    stops.activated(trigger.playbookKey, trigger.workflow, 2);
     const again = stops.failedFirst({ ...trigger, version: 2 });
 
     expect([...firsts, again]).toEqual([true, false, true, true]);
@@ -75,9 +75,9 @@ describe('the stops kept for a workflow', () => {
       judgedEach(stops, place, [stoppedByItsDeadline, stoppedByItsDeadline, stoppedByItsDeadline]);
     }
 
-    stops.activated(trigger.brainKey, trigger.workflow, 2);
+    stops.activated(trigger.playbookKey, trigger.workflow, 2);
     const afterTheVersion = [trigger, second, listener].map((place) => stops.isStopped(place, 0));
-    stops.retired(trigger.brainKey, trigger.workflow);
+    stops.retired(trigger.playbookKey, trigger.workflow);
     const afterTheRetirement = [second, listener].map((place) => stops.holds(place));
 
     expect([afterTheVersion, afterTheRetirement]).toEqual([

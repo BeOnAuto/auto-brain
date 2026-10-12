@@ -3,7 +3,7 @@ import { pgFormatter } from '@event-driven-io/dumbo/pg';
 import { describe, expect, it } from 'vitest';
 
 import type { IndexExecutor } from '../recorded/missing-indexes.ts';
-import { createPostgreSQLBrainIndexes } from './brain-indexes.ts';
+import { createPostgreSQLPlaybookIndexes } from './brain-indexes.ts';
 import { postgresqlRecordedStore, type Query } from './postgresql-recorded.ts';
 
 interface Asked {
@@ -68,14 +68,14 @@ function run(transaction: string, position: string, latest: readonly [string, st
 
 const theHorizon = 'pg_snapshot_xip(pg_current_snapshot())';
 
-const brainKey = "substring(stream_id FROM '^(?:[^/]*/){3}')";
+const playbookKey = "substring(stream_id FROM '^(?:[^/]*/){3}')";
 
 const kindKey = "substring(stream_id FROM '^(?:[^/]*/){4}')";
 
 const correlation = "(message_metadata ->> 'correlationId')";
 
-describe('the read of what a brain recorded on PostgreSQL, oldest first', () => {
-  it('walks the brain index in transaction id then position, behind the oldest write open in its database', async () => {
+describe('the read of what a playbook recorded on PostgreSQL, oldest first', () => {
+  it('walks the playbook index in transaction id then position, behind the oldest write open in its database', async () => {
     const { query, asked } = answering(
       [
         examined('11', '21', false, 1),
@@ -100,8 +100,8 @@ describe('the read of what a brain recorded on PostgreSQL, oldest first', () => 
     expect(asked[0]?.text).toContain(theHorizon);
     expect(asked[0]?.text).toContain('datname IS DISTINCT FROM current_database()');
     expect(asked[0]?.text).toContain('AND (transaction_id, global_position) > ($3::xid8, $4::bigint)');
-    expect(asked[0]?.text).toContain(`WHERE ${brainKey} = ANY($6::text[])`);
-    expect(asked[0]?.text).toContain(`ORDER BY ${brainKey} ASC, transaction_id ASC, global_position ASC`);
+    expect(asked[0]?.text).toContain(`WHERE ${playbookKey} = ANY($6::text[])`);
+    expect(asked[0]?.text).toContain(`ORDER BY ${playbookKey} ASC, transaction_id ASC, global_position ASC`);
     expect(asked[0]?.text).toContain('ORDER BY transaction_id ASC, global_position ASC');
     expect(asked[0]?.values).toEqual([['noted'], 'emt:default', '10', '20', 1001, [alpha], 1000, 4]);
     expect(asked[1]?.values).toEqual([['11', '12'], ['22', '23'], 'emt:default']);
@@ -173,7 +173,7 @@ describe('a read of one run on PostgreSQL, newest first', () => {
 });
 
 describe('a read on PostgreSQL by correlation, from inside a record', () => {
-  it('walks the brain and the correlation through their index, from that record on, in either order', async () => {
+  it('walks the playbook and the correlation through their index, from that record on, in either order', async () => {
     const { query, asked } = answering([examined('9', '10', true, 1)], [stored('9', '10', 'only')], [], []);
     const store = postgresqlRecordedStore(query);
 
@@ -190,9 +190,9 @@ describe('a read on PostgreSQL by correlation, from inside a record', () => {
 
     expect(page.records.map(({ id, correlationId }) => [id, correlationId])).toEqual([['message-10', 'r1']]);
     expect(asked[0]?.text).toContain('AND (transaction_id, global_position) >= ($2::xid8, $3::bigint)');
-    expect(asked[0]?.text).toContain(`WHERE ${brainKey} = ANY($5::text[]) AND ${correlation} = ANY($6::text[])`);
+    expect(asked[0]?.text).toContain(`WHERE ${playbookKey} = ANY($5::text[]) AND ${correlation} = ANY($6::text[])`);
     expect(asked[0]?.text).toContain(
-      `ORDER BY ${brainKey} ASC, ${correlation} ASC, transaction_id ASC, global_position ASC`,
+      `ORDER BY ${playbookKey} ASC, ${correlation} ASC, transaction_id ASC, global_position ASC`,
     );
     expect(asked[2]?.text).toContain('AND (transaction_id, global_position) <= ($2::xid8, $3::bigint)');
   });
@@ -253,11 +253,11 @@ function executorFinding(names: readonly string[]): { readonly execute: IndexExe
   };
 }
 
-describe("the brain's indexes on PostgreSQL", () => {
-  it('index the brain in order, by time and by correlation, each stream in order, its messages by brain and kind and by id and its definition streams by type, then analyse', async () => {
+describe("the playbook's indexes on PostgreSQL", () => {
+  it('index the playbook in order, by time and by correlation, each stream in order, its messages by playbook and kind and by id and its definition streams by type, then analyse', async () => {
     const { execute, commands } = executorFinding([]);
 
-    await createPostgreSQLBrainIndexes({ execute });
+    await createPostgreSQLPlaybookIndexes({ execute });
 
     expect(commands).toEqual([
       "CREATE INDEX IF NOT EXISTS ledger_messages_by_brain ON emt_messages ((substring(stream_id FROM '^(?:[^/]*/){3}')), transaction_id, global_position)",
@@ -284,8 +284,8 @@ describe("the brain's indexes on PostgreSQL", () => {
     const present = executorFinding(all);
     const oneMissing = executorFinding(all.filter((name) => name !== 'ledger_messages_by_stream'));
 
-    await createPostgreSQLBrainIndexes({ execute: present.execute });
-    await createPostgreSQLBrainIndexes({ execute: oneMissing.execute });
+    await createPostgreSQLPlaybookIndexes({ execute: present.execute });
+    await createPostgreSQLPlaybookIndexes({ execute: oneMissing.execute });
 
     expect([present.commands, oneMissing.commands]).toEqual([
       [],

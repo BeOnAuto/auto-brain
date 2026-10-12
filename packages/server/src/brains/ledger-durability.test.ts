@@ -7,13 +7,13 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { compositionRoot } from '../composition/composition-root.ts';
 import { startServer } from '../lifecycle/lifecycle.ts';
 import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
-import { appendMalformedBrainEvent } from '../testing/records/malformed-brain-event.ts';
+import { appendMalformedPlaybookEvent } from '../testing/records/malformed-brain-event.ts';
 import { temporaryLedger, type TemporaryLedger } from '../testing/records/temporary-ledger.ts';
 import { request } from '../testing/servers/http-client.ts';
 
 const mainModule = fileURLToPath(new URL('../main.ts', import.meta.url));
 
-const alpha = '/v1/orgs/acme/brains/alpha';
+const alpha = '/v1/orgs/acme/playbooks/alpha';
 
 let ledger: TemporaryLedger;
 
@@ -35,10 +35,10 @@ function aPathUnderAFile(): string {
   return join(aFile, 'ledger.db');
 }
 
-describe('brains in the ledger file', () => {
+describe('playbooks in the ledger file', () => {
   it('are still there when the server starts again on the same file', async () => {
     const first = await startServer(onLoopback(ledger.fileName), compositionRoot);
-    await request(first.port, 'POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+    await request(first.port, 'POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
     await first.stop();
 
     const second = await startServer(onLoopback(ledger.fileName), compositionRoot);
@@ -53,8 +53,8 @@ describe('brains in the ledger file', () => {
     { timeout: spawnedServerTestTimeoutMs },
     async () => {
       const first = spawnServer(mainModule, onLoopback(ledger.fileName));
-      const created = await request(await first.port, 'POST', '/v1/orgs/acme/brains', {
-        body: { brain: 'alpha', name: 'Alpha' },
+      const created = await request(await first.port, 'POST', '/v1/orgs/acme/playbooks', {
+        body: { playbook: 'alpha', name: 'Alpha' },
       });
       first.signal('SIGTERM');
       const firstExit = await first.exited;
@@ -91,7 +91,7 @@ describe('a ledger that cannot be opened', () => {
       expect(child.output().stdout).toBe('');
       expect(child.output().stderr.split('\n')).toEqual([
         expect.stringContaining(
-          "auto-brain could not start: StartupError: The server's services could not start: Error: EEXIST: file already exists, mkdir",
+          "Auto Runtime could not start: StartupError: The server's services could not start: Error: EEXIST: file already exists, mkdir",
         ),
         '',
       ]);
@@ -103,10 +103,10 @@ describe('an error in the ledger', { timeout: spawnedServerTestTimeoutMs }, () =
   it('answers 500 identified by the urn:uuid of an incident, logged with the operation, the org and the caller but not the input', async () => {
     const child = spawnServer(mainModule, onLoopback(ledger.fileName));
     const port = await child.port;
-    await appendMalformedBrainEvent(ledger.fileName, 'acme');
+    await appendMalformedPlaybookEvent(ledger.fileName, 'acme');
 
-    const response = await request(port, 'POST', '/v1/orgs/acme/brains', {
-      body: { brain: 'alpha', name: 'a name only the caller knows' },
+    const response = await request(port, 'POST', '/v1/orgs/acme/playbooks', {
+      body: { playbook: 'alpha', name: 'a name only the caller knows' },
     });
     child.signal('SIGTERM');
     await child.exited;
@@ -123,7 +123,7 @@ describe('an error in the ledger', { timeout: spawnedServerTestTimeoutMs }, () =
       instance: `urn:uuid:${String(incident)}`,
     });
     expect(child.output().stderr).toContain(
-      `"annotations":{"requestId":"${String(response.headers.get('x-request-id'))}","incident":"${String(incident)}","operation":"create_brain","org":"acme","caller":"local"}`,
+      `"annotations":{"requestId":"${String(response.headers.get('x-request-id'))}","incident":"${String(incident)}","operation":"create_playbook","org":"acme","caller":"local"}`,
     );
     expect(child.output().stderr).not.toContain('a name only the caller knows');
   });

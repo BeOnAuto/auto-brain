@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { askedRunId, askedThroughChat, chatDelivery, type InteractionHarness } from '../testing/index.ts';
 
-const address = { org: 'acme', brain: 'alpha', id: askedRunId };
+const address = { org: 'acme', playbook: 'alpha', id: askedRunId };
 
 const aDigest = 'd'.repeat(64);
 
@@ -11,9 +11,9 @@ const anyText: unknown = expect.any(String);
 
 const aMoment: unknown = expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/u);
 
-async function deliveryFacts(brain: InteractionHarness): Promise<readonly unknown[]> {
+async function deliveryFacts(playbook: InteractionHarness): Promise<readonly unknown[]> {
   const { records } = await Effect.runPromise(
-    brain.ledger.service.readRecorded(
+    playbook.ledger.service.readRecorded(
       address,
       { kind: 'run', run: askedRunId },
       {
@@ -38,20 +38,20 @@ const delivering = replacingText(
 
 describe('a request delivered through a tool', () => {
   it('is one recorded call, its start before it is sent and its end with what the tool answered', async () => {
-    const { brain, tools, askedAt } = await askedThroughChat();
+    const { playbook, tools, askedAt } = await askedThroughChat();
 
-    await brain.performDue(askedAt);
+    await playbook.performDue(askedAt);
 
     expect(tools.calls()).toMatchObject([
       {
         org: 'acme',
-        brain: 'alpha',
+        playbook: 'alpha',
         reference: { server: 'chat', tool: 'post_message' },
         input: { channel: '#approvals-ada', text: 'Please review the brief for Spring.' },
         meta: { 'com.beonauto/run_id': askedRunId, 'com.beonauto/delivery_id': anyText },
       },
     ]);
-    expect(await deliveryFacts(brain)).toMatchObject([
+    expect(await deliveryFacts(playbook)).toMatchObject([
       {
         type: 'delivery_started',
         data: {
@@ -65,7 +65,7 @@ describe('a request delivered through a tool', () => {
       },
       { type: 'delivery_succeeded', data: { number: 1, result_sha256: aDigest, jsonrpc_id: 1 } },
     ]);
-    expect(await brain.firstOpen()).toMatchObject({ attempts: 1, standing: 'delivered' });
+    expect(await playbook.firstOpen()).toMatchObject({ attempts: 1, standing: 'delivered' });
     expect(tools.posted()).toMatchObject([{ channel: '#approvals-ada', text: 'Please review the brief for Spring.' }]);
   });
 });
@@ -77,23 +77,23 @@ describe('the arguments of a delivery', () => {
       "    text: '{{ message }}'",
       "    text: '{{ message }}'\n    thread_ts: '{{ input.campaign }}'",
     );
-    const { brain, tools, askedAt } = await askedThroughChat({ delivery: threaded });
+    const { playbook, tools, askedAt } = await askedThroughChat({ delivery: threaded });
 
-    await brain.performDue(askedAt);
+    await playbook.performDue(askedAt);
 
     expect(tools.posted()).toMatchObject([{ channel: '#approvals-ada', thread_ts: 'Spring' }]);
   });
 
   it('are the same on every attempt, its moments being those of the request', async () => {
-    const { brain, tools, askedAt } = await askedThroughChat({ delivery: delivering });
+    const { playbook, tools, askedAt } = await askedThroughChat({ delivery: delivering });
     tools.answerNext({
       outcome: 'timed_out',
       detail: 'The MCP server did not answer within 30000 ms',
       retryAfterMs: null,
     });
 
-    await brain.performDue(askedAt);
-    await brain.performDue(Date.now() + 61_000);
+    await playbook.performDue(askedAt);
+    await playbook.performDue(Date.now() + 61_000);
     const [first, second] = tools.calls();
 
     expect(second?.input).toEqual(first?.input);
@@ -103,12 +103,12 @@ describe('the arguments of a delivery', () => {
 
 describe('an attempt that fails', () => {
   it('records the failure in words, the wait a server asked for, and the call it made', async () => {
-    const { brain, tools, askedAt } = await askedThroughChat();
+    const { playbook, tools, askedAt } = await askedThroughChat();
     tools.answerNext({ outcome: 'server_failure', detail: 'The MCP server answered HTTP 429', retryAfterMs: 120_000 });
 
-    await brain.performDue(askedAt);
+    await playbook.performDue(askedAt);
 
-    expect(await deliveryFacts(brain)).toMatchObject([
+    expect(await deliveryFacts(playbook)).toMatchObject([
       { type: 'delivery_started' },
       {
         type: 'delivery_failed',
@@ -125,14 +125,14 @@ describe('an attempt that fails', () => {
 
 describe('an attempt whose call did not answer as asked', () => {
   it('records an interrupted call as lost, and a tool the server no longer lists as a tool error', async () => {
-    const { brain, tools, askedAt } = await askedThroughChat();
+    const { playbook, tools, askedAt } = await askedThroughChat();
     tools.answerNext(
       { outcome: 'cancelled', detail: '', retryAfterMs: null },
       { outcome: 'tool_error', detail: 'Tool post_message not found', retryAfterMs: null },
     );
 
-    await brain.performEach([askedAt, askedAt + 61_000]);
-    const [, lost, , missing] = await deliveryFacts(brain);
+    await playbook.performEach([askedAt, askedAt + 61_000]);
+    const [, lost, , missing] = await deliveryFacts(playbook);
 
     expect([lost, missing]).toMatchObject([
       { type: 'delivery_failed', data: { because: 'lost' } },
@@ -145,11 +145,11 @@ describe('an attempt whose call did not answer as asked', () => {
   });
 
   it('ends with no field of an answer when no call was sent, for a tool no longer offered or a server not reached', async () => {
-    const { brain, tools, askedAt } = await askedThroughChat();
+    const { playbook, tools, askedAt } = await askedThroughChat();
     tools.answerNext({ kind: 'not_offered' }, { kind: 'unopened', detail: 'The MCP server could not be reached' });
 
-    await brain.performEach([askedAt, askedAt + 61_000]);
-    const [started, notOffered, , unopened] = await deliveryFacts(brain);
+    await playbook.performEach([askedAt, askedAt + 61_000]);
+    const [started, notOffered, , unopened] = await deliveryFacts(playbook);
 
     expect([started, notOffered, unopened]).toMatchObject([
       {

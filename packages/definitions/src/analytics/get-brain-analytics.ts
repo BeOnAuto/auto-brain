@@ -1,19 +1,19 @@
-import { BrainReader, defineQuery } from '@beonauto/operations';
+import { PlaybookReader, defineQuery } from '@beonauto/operations';
 import { Clock, Effect, Schema } from 'effect';
 
 import type { Capability } from '../capability/capability.ts';
 import { knownCapabilities, type KnownCapabilities } from '../capability/known-capabilities.ts';
 import { RunsOfNameField } from '../operations/definition-fields.ts';
 import { definitionWordsFor } from '../plain-language/definition-words.ts';
-import { analyticsOf, BrainAnalyticsSchema } from './analytics-answer.ts';
+import { analyticsOf, PlaybookAnalyticsSchema } from './analytics-answer.ts';
 import { DaysField, dayFieldOf, dayOf, longestWindowInDays, windowOf } from './analytics-window.ts';
 import { analyticsWords } from './analytics-words.ts';
 
 const description = [
-  'Counts what the runs of the brain did over a window of days in UTC: how many succeeded, failed or were rejected,',
+  'Counts what the runs of the playbook did over a window of days in UTC: how many succeeded, failed or were rejected,',
   'the tokens their models used, and how long they took at the median and the 95th percentile,',
   'for the window, for each day of it and for each definition.',
-  'Use it when the person asks how the brain is doing; list_runs lists the runs themselves.',
+  'Use it when the person asks how the playbook is doing; list_runs lists the runs themselves.',
   '`days` reads the last 7, 14 or 30 days, or `from` and `to` the days between them, and `type` and `name` keep the runs of one definition.',
 ].join(' ');
 
@@ -39,19 +39,22 @@ function selectionOf({ type, name }: AnalyticsInput) {
 
 const readAnalytics = Effect.fnUntraced(function* (input: AnalyticsInput) {
   const window = yield* windowOf(input, dayOf(yield* Clock.currentTimeMillis));
-  const groups = yield* (yield* BrainReader).readRunOutcomes({ from: window.from, to: window.to }, selectionOf(input));
+  const groups = yield* (yield* PlaybookReader).readRunOutcomes(
+    { from: window.from, to: window.to },
+    selectionOf(input),
+  );
   return analyticsOf(window, groups);
 });
 
-export function defineGetBrainAnalytics(capabilities: readonly Capability[]) {
+export function defineGetPlaybookAnalytics(capabilities: readonly Capability[]) {
   const known = knownCapabilities(capabilities);
-  const operation = defineQuery('brain', {
-    name: 'get_brain_analytics',
-    title: 'Get brain analytics',
+  const operation = defineQuery('playbook', {
+    name: 'get_playbook_analytics',
+    title: 'Get playbook analytics',
     description,
     route: { method: 'GET', path: '/analytics' },
     inputSchema: analyticsInputOf(known.field),
-    outputSchema: BrainAnalyticsSchema,
+    outputSchema: PlaybookAnalyticsSchema,
     reasons: ['invalid_input'],
     handle: readAnalytics,
     plainLanguage: analyticsWords(definitionWordsFor(capabilities)),

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import {
-  brainWithReviews,
+  playbookWithReviews,
   inState,
   liveWith,
   recallTestTimeoutMs,
@@ -24,7 +24,7 @@ const advise = [
   '  format: json',
   '  schema: {type: object, properties: {approve: {type: boolean}}, required: [approve], additionalProperties: false}',
   '---',
-  'Given the verdicts this brain reached on the campaign before, {{ input.reviews }}, should it approve the campaign?',
+  'Given the verdicts this playbook reached on the campaign before, {{ input.reviews }}, should it approve the campaign?',
 ].join('\n');
 
 const tally = [
@@ -82,7 +82,7 @@ async function serving(...more: readonly ScriptedReply[]): Promise<ReasoningServ
     ...more,
   ]);
   closing.push(server.stop);
-  await brainWithReviews(server, 2);
+  await playbookWithReviews(server, 2);
   const definitions = [
     ['reasoning', 'advise', advise],
     ['computation', 'tally', tally],
@@ -107,7 +107,7 @@ async function settledWorkflowRun(server: ReasoningServer, workflow: string) {
 }
 
 describe('a workflow that recalls, reasons and computes', { timeout: recallTestTimeoutMs }, () => {
-  it('gives the reasoning function the verdicts the brain reached before, and tallies them with its advice', async () => {
+  it('gives the reasoning function the verdicts the playbook reached before, and tallies them with its advice', async () => {
     const server = await serving(answers(jsonResult({ approve: false })));
 
     const settled = await settledWorkflowRun(server, 'decide');
@@ -137,7 +137,7 @@ describe('a workflow that recalls, reasons and computes', { timeout: recallTestT
 
     const settled = await withMcpSession(
       'current revision',
-      { url: `${server.origin}/orgs/acme/brains/alpha/mcp`, headers: {} },
+      { url: `${server.origin}/orgs/acme/playbooks/alpha/mcp`, headers: {} },
       async (session) => {
         const started = await session.callTool('run_definition', {
           type: 'workflow',

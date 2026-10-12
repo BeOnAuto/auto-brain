@@ -4,7 +4,7 @@ import { Effect, Schema } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
-import { alpha, brainCreated } from '../reaction-testing/brain-writes.ts';
+import { alpha, playbookCreated } from '../reaction-testing/brain-writes.ts';
 import { until } from '../reaction-testing/until.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { hostedOn, type HostedOptions, type HostedRuns } from '../testing/host-runs.ts';
@@ -35,7 +35,7 @@ export async function untilFollowed(database: HostDatabase, attempts?: number): 
 export async function followedHost(options: HostedOptions = {}): Promise<FollowedHost> {
   const settings = { store: 'sqlite', file: aSQLiteFile() } as const;
   const database = await openedOn(settings);
-  await brainCreated(database.store, 'alpha');
+  await playbookCreated(database.store, 'alpha');
   const hosted = await hostedOn(settings, options);
   await untilFollowed(database);
   return {
@@ -50,7 +50,7 @@ const Places = Schema.Array(Schema.Struct({ cursor: Schema.NullOr(Schema.String)
 export async function followedThroughTheLatest(database: HostDatabase, attempts?: number): Promise<void> {
   const { records } = await Effect.runPromise(
     recordedReaderOf(database.store)(
-      { org: 'acme', brain: 'alpha' },
+      { org: 'acme', playbook: 'alpha' },
       { kind: 'everything' },
       { order: 'desc', limit: 1 },
     ),

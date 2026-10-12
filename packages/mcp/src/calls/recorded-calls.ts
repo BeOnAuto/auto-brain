@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import type { BrainAddress } from '@beonauto/operations';
+import type { PlaybookAddress } from '@beonauto/operations';
 import type { Effect } from 'effect';
 
 import { cutToFailureBound } from '../bounds/call-bounds.ts';
@@ -20,7 +20,7 @@ export interface CallJournal {
 
 export type KeepContent = (sha256: string, text: string) => Promise<void>;
 
-export type KeepIn = (brain: BrainAddress) => KeepContent;
+export type KeepIn = (playbook: PlaybookAddress) => KeepContent;
 
 export interface Recording {
   readonly content: boolean;

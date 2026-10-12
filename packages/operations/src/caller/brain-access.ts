@@ -1,11 +1,11 @@
 import { Predicate, Schema } from 'effect';
 
-import { BrainIdSchema } from './identifiers.ts';
+import { PlaybookIdSchema } from './identifiers.ts';
 
-export const BrainAccessSchema = Schema.Union([Schema.Literal('*'), Schema.Array(BrainIdSchema)]);
+export const PlaybookAccessSchema = Schema.Union([Schema.Literal('*'), Schema.Array(PlaybookIdSchema)]);
 
-export type BrainAccess = typeof BrainAccessSchema.Type;
+export type PlaybookAccess = typeof PlaybookAccessSchema.Type;
 
-export function canAccessBrain(access: BrainAccess, brain: unknown): boolean {
-  return access === '*' || (Array.isArray(access) && Predicate.isString(brain) && access.includes(brain));
+export function canAccessPlaybook(access: PlaybookAccess, playbook: unknown): boolean {
+  return access === '*' || (Array.isArray(access) && Predicate.isString(playbook) && access.includes(playbook));
 }

@@ -1,20 +1,23 @@
 import { Effect, Layer } from 'effect';
 
-import { BrainRegistry, type BrainAddress, type BrainStatus } from '../index.ts';
+import { PlaybookRegistry, type PlaybookAddress, type PlaybookStatus } from '../index.ts';
 
-function holds(brains: readonly BrainAddress[], { org, brain }: BrainAddress): boolean {
-  return brains.some((known) => known.org === org && known.brain === brain);
+function holds(playbooks: readonly PlaybookAddress[], { org, playbook }: PlaybookAddress): boolean {
+  return playbooks.some((known) => known.org === org && known.playbook === playbook);
 }
 
-export function memoryBrainRegistry(
-  active: readonly BrainAddress[],
-  retired: readonly BrainAddress[] = [],
-): Layer.Layer<BrainRegistry> {
-  const statusOf = (address: BrainAddress): BrainStatus => {
+export function memoryPlaybookRegistry(
+  active: readonly PlaybookAddress[],
+  retired: readonly PlaybookAddress[] = [],
+): Layer.Layer<PlaybookRegistry> {
+  const statusOf = (address: PlaybookAddress): PlaybookStatus => {
     if (holds(active, address)) {
       return 'active';
     }
     return holds(retired, address) ? 'retired' : 'unknown';
   };
-  return Layer.succeed(BrainRegistry, BrainRegistry.of({ status: (address) => Effect.succeed(statusOf(address)) }));
+  return Layer.succeed(
+    PlaybookRegistry,
+    PlaybookRegistry.of({ status: (address) => Effect.succeed(statusOf(address)) }),
+  );
 }

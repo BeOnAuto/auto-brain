@@ -109,7 +109,7 @@ describe('a workflow with an event trigger, a cron schedule and an every schedul
 });
 
 describe('a due time of a schedule asked for again', () => {
-  it('is asked for under the same id, so the brain starts nothing again', async () => {
+  it('is asked for under the same id, so the playbook starts nothing again', async () => {
     const { reacting, clock } = await closingAt(activatedAt + 1000);
     clock.moveTo(activatedAt + 15 * aMinute);
     await startsReaching(reacting.reactions.starts, 1);

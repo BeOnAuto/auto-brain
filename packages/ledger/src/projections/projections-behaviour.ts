@@ -16,7 +16,7 @@ type AnyLedger = Ledger['Service'];
 
 export type ProjectingLedger = (projections: readonly KeyedProjection[]) => Promise<AnyLedger>;
 
-const alpha = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
 const nine = Date.parse('2026-10-01T09:00:00.000Z');
 
@@ -41,7 +41,7 @@ async function runsOf(ledger: AnyLedger, query: ProjectedRowsQuery = newestFirst
 const twoRowsKept = [
   {
     org: 'acme',
-    brain: 'alpha',
+    playbook: 'alpha',
     key: 'r2',
     row: {
       fn: 'review',
@@ -55,7 +55,7 @@ const twoRowsKept = [
   },
   {
     org: 'acme',
-    brain: 'alpha',
+    playbook: 'alpha',
     key: 'r1',
     row: {
       fn: 'triage',
@@ -96,8 +96,8 @@ function rowsKept(open: ProjectingLedger): void {
   });
 }
 
-function rowsOfABrain(open: ProjectingLedger): void {
-  describe('a read of the rows of a brain', () => {
+function rowsOfAPlaybook(open: ProjectingLedger): void {
+  describe('a read of the rows of a playbook', () => {
     it('reads by columns, in order either way, from where a page ended, and counts them', async () => {
       const ledger = await open([runTallyRows]);
       await noting(ledger, 'brain/acme/alpha/runs/r1', began('triage', 0));
@@ -133,14 +133,14 @@ function rowsOfABrain(open: ProjectingLedger): void {
 
 function dueRows(open: ProjectingLedger): void {
   describe('a read of the rows due by a time', () => {
-    it('reads the rows of every brain whose time is set and has come, the soonest first, and the next time', async () => {
+    it('reads the rows of every playbook whose time is set and has come, the soonest first, and the next time', async () => {
       const ledger = await open([runTallyRows]);
       await noting(ledger, 'brain/acme/alpha/runs/r1', began('triage', 2));
       await noting(ledger, 'brain/globex/gamma/runs/r2', began('triage', 0));
       await noting(ledger, 'brain/acme/beta/runs/r3', began('triage', 1), ended);
       const due = async (through: number, limit = 10) =>
         (await Effect.runPromise(ledger.readDueRows('run_tallies', { column: 'due_at', through, limit }))).map(
-          ({ org, brain, key }) => `${org}/${brain}/${key}`,
+          ({ org, playbook, key }) => `${org}/${playbook}/${key}`,
         );
 
       expect(await due(nine + 3 * minute)).toEqual(['globex/gamma/r2', 'acme/alpha/r1']);
@@ -177,7 +177,7 @@ function rowsKeyedByTheirMapping(open: ProjectingLedger): void {
       expect(await topicsOf(ledger)).toEqual([
         {
           org: 'acme',
-          brain: 'alpha',
+          playbook: 'alpha',
           key: 'spring',
           row: {
             topic: 'spring',
@@ -275,7 +275,7 @@ function rowsAdvancedWhileUnchanged(open: ProjectingLedger): void {
 
 export function projectionsBehaviour(open: ProjectingLedger): void {
   rowsKept(open);
-  rowsOfABrain(open);
+  rowsOfAPlaybook(open);
   dueRows(open);
   rowsKeyedByTheirMapping(open);
   rowsAdvanced(open);

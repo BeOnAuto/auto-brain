@@ -50,10 +50,10 @@ const largeWords: unknown = expect.stringMatching(
   /^The arguments of the call that delivers the request take \d+ bytes, more than the 16384 a call may send$/u,
 );
 
-async function endedOf(brain: InteractionHarness): Promise<readonly unknown[]> {
+async function endedOf(playbook: InteractionHarness): Promise<readonly unknown[]> {
   const { records } = await Effect.runPromise(
-    brain.ledger.service.readRecorded(
-      { org: 'acme', brain: 'alpha' },
+    playbook.ledger.service.readRecorded(
+      { org: 'acme', playbook: 'alpha' },
       { kind: 'run', run: askedRunId },
       {
         order: 'asc',
@@ -68,106 +68,106 @@ async function endedOf(brain: InteractionHarness): Promise<readonly unknown[]> {
 
 describe('a delivery that fails for a while', () => {
   it('is tried again on the schedule, a minute after a failure', async () => {
-    const { brain, tools, askedAt } = await askedThroughChat();
+    const { playbook, tools, askedAt } = await askedThroughChat();
     tools.answerNext(failing);
 
-    await brain.performDue(askedAt);
-    const tooSoon = await brain.performDue(Date.now() + minute - 5000);
-    await brain.performDue(Date.now() + minute + 5000);
+    await playbook.performDue(askedAt);
+    const tooSoon = await playbook.performDue(Date.now() + minute - 5000);
+    await playbook.performDue(Date.now() + minute + 5000);
 
     expect([tooSoon, tools.calls().length]).toEqual([0, 2]);
-    expect(await brain.firstOpen()).toMatchObject({ attempts: 2, standing: 'delivered' });
+    expect(await playbook.firstOpen()).toMatchObject({ attempts: 2, standing: 'delivered' });
   });
 
   it('honours the wait a 429 asks for within the schedule', async () => {
-    const { brain, tools, askedAt } = await askedThroughChat();
+    const { playbook, tools, askedAt } = await askedThroughChat();
     tools.answerNext({ ...failing, detail: 'The MCP server answered HTTP 429', retryAfterMs: 120_000 });
 
-    await brain.performDue(askedAt);
-    const afterTheSchedule = await brain.performDue(Date.now() + minute + 5000);
-    const afterTheWait = await brain.performDue(Date.now() + 2 * minute + 5000);
+    await playbook.performDue(askedAt);
+    const afterTheSchedule = await playbook.performDue(Date.now() + minute + 5000);
+    const afterTheWait = await playbook.performDue(Date.now() + 2 * minute + 5000);
 
     expect([afterTheSchedule, afterTheWait, tools.calls().length]).toEqual([0, 1, 2]);
   });
 
   it('stays open after five failed attempts, delivered no more, until it expires', async () => {
-    const { brain, tools, askedAt } = await askedThroughChat();
+    const { playbook, tools, askedAt } = await askedThroughChat();
     tools.answerNext(failing, failing, failing, failing, failing);
 
-    await brain.performEach([0, 1, 2, 3, 4, 5].map((step) => askedAt + step * 20 * minute));
+    await playbook.performEach([0, 1, 2, 3, 4, 5].map((step) => askedAt + step * 20 * minute));
 
     expect(tools.calls()).toHaveLength(5);
-    expect(await brain.firstOpen()).toMatchObject({ attempts: 5, standing: 'undelivered' });
-    expect(await brain.runOf(askedRunId)).toMatchObject({ output: { status: 'started' } });
+    expect(await playbook.firstOpen()).toMatchObject({ attempts: 5, standing: 'undelivered' });
+    expect(await playbook.runOf(askedRunId)).toMatchObject({ output: { status: 'started' } });
   });
 });
 
 describe('a delivery whose arguments grew past what a call may send', () => {
   it('is refused once without a call, even by two hosts, not tried again, and a notification ends undelivered', async () => {
     const ledger = recordedWith(memoryLedger(undefined, [openRequests]), grownArguments);
-    const { brain, tools, askedAt } = await askedThroughChat({ notification: true, ledger });
-    const items = await brain.dueItems(askedAt);
+    const { playbook, tools, askedAt } = await askedThroughChat({ notification: true, ledger });
+    const items = await playbook.dueItems(askedAt);
 
-    await brain.performAll([...items, ...items], askedAt);
-    await brain.performDue(askedAt + 30 * minute);
+    await playbook.performAll([...items, ...items], askedAt);
+    await playbook.performDue(askedAt + 30 * minute);
 
     expect(tools.calls()).toEqual([]);
-    expect(await brain.firstOpen()).toBeUndefined();
-    expect(await brain.runOf(askedRunId)).toMatchObject({
+    expect(await playbook.firstOpen()).toBeUndefined();
+    expect(await playbook.runOf(askedRunId)).toMatchObject({
       output: { status: 'rejected', rejection: { reason: 'unanswered', kind: 'undelivered' } },
     });
-    expect(await endedOf(brain)).toMatchObject([
+    expect(await endedOf(playbook)).toMatchObject([
       { type: 'delivery_refused', data: { because: 'too_large', detail: largeWords } },
     ]);
   });
 
   it('is refused as unworkable, with what went wrong, when its recorded arguments cannot be rendered', async () => {
     const ledger = recordedWith(memoryLedger(undefined, [openRequests]), { text: '{{ nothing }}' });
-    const { brain, tools, askedAt } = await askedThroughChat({ notification: true, ledger });
+    const { playbook, tools, askedAt } = await askedThroughChat({ notification: true, ledger });
 
-    await brain.performDue(askedAt);
+    await playbook.performDue(askedAt);
 
     expect(tools.calls()).toEqual([]);
-    expect(await endedOf(brain)).toEqual([{ type: 'delivery_refused', data: unrenderable }]);
+    expect(await endedOf(playbook)).toEqual([{ type: 'delivery_refused', data: unrenderable }]);
   });
 });
 
 describe('a request nobody answered in time', () => {
   it('ends its run unanswered as expired, a final result for its id', async () => {
-    const { brain, askedAt } = await askedThroughChat({ expires: 'PT1H' });
+    const { playbook, askedAt } = await askedThroughChat({ expires: 'PT1H' });
 
-    await brain.performDue(askedAt + 61 * minute);
+    await playbook.performDue(askedAt + 61 * minute);
 
-    expect(await brain.runOf(askedRunId)).toMatchObject({
+    expect(await playbook.runOf(askedRunId)).toMatchObject({
       output: { status: 'rejected', rejection: { reason: 'unanswered', kind: 'expired' } },
     });
-    expect(await brain.ask('approve-brief', { campaign: 'Spring', owner: 'ada' }, askedRunId)).toMatchObject({
+    expect(await playbook.ask('approve-brief', { campaign: 'Spring', owner: 'ada' }, askedRunId)).toMatchObject({
       status: 'rejected',
       reason: 'unanswered',
       kind: 'expired',
     });
-    expect(await brain.firstOpen()).toBeUndefined();
+    expect(await playbook.firstOpen()).toBeUndefined();
   });
 });
 
 describe('a notification delivered through a tool', () => {
   it('succeeds once a delivery lands, with an empty output', async () => {
-    const { brain, askedAt } = await askedThroughChat({ notification: true });
+    const { playbook, askedAt } = await askedThroughChat({ notification: true });
 
-    await brain.performDue(askedAt);
+    await playbook.performDue(askedAt);
 
-    expect(await brain.runOf(askedRunId)).toMatchObject({
+    expect(await playbook.runOf(askedRunId)).toMatchObject({
       output: { status: 'succeeded', output: {}, record: { delivered_at: someText } },
     });
   });
 
   it('waits for its next attempt after one that failed', async () => {
-    const { brain, tools, askedAt } = await askedThroughChat({ notification: true });
+    const { playbook, tools, askedAt } = await askedThroughChat({ notification: true });
     tools.answerNext(failing);
 
-    await brain.performDue(askedAt);
+    await playbook.performDue(askedAt);
 
-    expect(await brain.runOf(askedRunId)).toMatchObject({ output: { status: 'started' } });
+    expect(await playbook.runOf(askedRunId)).toMatchObject({ output: { status: 'started' } });
     expect(tools.calls()).toHaveLength(1);
   });
 });

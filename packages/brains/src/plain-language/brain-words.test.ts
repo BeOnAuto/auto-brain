@@ -1,7 +1,7 @@
 import type { Registration } from '@beonauto/operations';
 import { describe, expect, it } from 'vitest';
 
-import { createBrain, getBrain, listBrains, retireBrain, updateBrain } from '../index.ts';
+import { createPlaybook, getPlaybook, listPlaybooks, retirePlaybook, updatePlaybook } from '../index.ts';
 
 const sales = {
   id: 'sales',
@@ -25,101 +25,105 @@ function attemptOf({ plainLanguage }: Registration, input: unknown): string | un
   return plainLanguage?.attempt(input);
 }
 
-describe('the plain language of create_brain', () => {
-  it('names the brain it created, says what it is for, and what comes next', () => {
-    expect(outcomeOf(createBrain.registration, sales, { brain: 'sales', name: 'Sales' })).toBe(
-      'Created the brain “Sales”. What it is for: Answers questions about the pipeline. Its functions and workflows come next.',
+describe('the plain language of create_playbook', () => {
+  it('names the playbook it created, says what it is for, and what comes next', () => {
+    expect(outcomeOf(createPlaybook.registration, sales, { playbook: 'sales', name: 'Sales' })).toBe(
+      'Created the playbook “Sales”. What it is for: Answers questions about the pipeline. Its functions and workflows come next.',
     );
   });
 
   it('leaves out what it is for when it has no description', () => {
-    expect(outcomeOf(createBrain.registration, undescribed, { brain: 'sales', name: 'Sales' })).toBe(
-      'Created the brain “Sales”. Its functions and workflows come next.',
+    expect(outcomeOf(createPlaybook.registration, undescribed, { playbook: 'sales', name: 'Sales' })).toBe(
+      'Created the playbook “Sales”. Its functions and workflows come next.',
     );
   });
 
-  it('names the brain it tried to create, or says what it tried when the input does not hold', () => {
+  it('names the playbook it tried to create, or says what it tried when the input does not hold', () => {
     expect([
-      attemptOf(createBrain.registration, { brain: 'sales', name: 'Sales' }),
-      attemptOf(createBrain.registration, { brain: 'Sales' }),
-    ]).toEqual(['create the brain “sales”', 'create a brain']);
+      attemptOf(createPlaybook.registration, { playbook: 'sales', name: 'Sales' }),
+      attemptOf(createPlaybook.registration, { playbook: 'Sales' }),
+    ]).toEqual(['create the playbook “sales”', 'create a playbook']);
   });
 });
 
 const listings: ReadonlyArray<readonly [readonly unknown[], string]> = [
-  [[], 'There is no brain in use that this connection may see.'],
-  [[sales], 'There is 1 brain: “Sales”.'],
-  [[sales, { ...sales, id: 'support', name: 'Support' }], 'There are 2 brains: “Sales” and “Support”.'],
-  [[sales, retired], 'There is 1 brain: “Sales”. Also listed, 1 retired brain: “Old”.'],
+  [[], 'There is no playbook in use that this connection may see.'],
+  [[sales], 'There is 1 playbook: “Sales”.'],
+  [[sales, { ...sales, id: 'support', name: 'Support' }], 'There are 2 playbooks: “Sales” and “Support”.'],
+  [[sales, retired], 'There is 1 playbook: “Sales”. Also listed, 1 retired playbook: “Old”.'],
 ];
 
-describe('the plain language of list_brains', () => {
-  it.each(listings)('describes %j', (brains, words) => {
-    expect(outcomeOf(listBrains.registration, { brains }, {})).toBe(words);
+describe('the plain language of list_playbooks', () => {
+  it.each(listings)('describes %j', (playbooks, words) => {
+    expect(outcomeOf(listPlaybooks.registration, { playbooks }, {})).toBe(words);
   });
 
-  it('names at most twenty brains and counts the rest', () => {
-    const brains = Array.from({ length: 23 }, (_, index) => ({ ...sales, id: `brain-${index}`, name: `B${index}` }));
+  it('names at most twenty playbooks and counts the rest', () => {
+    const playbooks = Array.from({ length: 23 }, (_, index) => ({
+      ...sales,
+      id: `playbook-${index}`,
+      name: `B${index}`,
+    }));
 
-    expect(outcomeOf(listBrains.registration, { brains }, {})).toMatch(
-      /^There are 23 brains: “B0”, .*“B19”, and 3 more\.$/u,
+    expect(outcomeOf(listPlaybooks.registration, { playbooks }, {})).toMatch(
+      /^There are 23 playbooks: “B0”, .*“B19”, and 3 more\.$/u,
     );
   });
 
   it('says what it tried', () => {
-    expect(attemptOf(listBrains.registration, {})).toBe('list the brains');
+    expect(attemptOf(listPlaybooks.registration, {})).toBe('list the playbooks');
   });
 });
 
-describe('the plain language of get_brain', () => {
-  it('says whether the brain is in use and what it is for', () => {
-    expect(outcomeOf(getBrain.registration, sales, { brain: 'sales' })).toBe(
-      'The brain “Sales” is in use. What it is for: Answers questions about the pipeline.',
+describe('the plain language of get_playbook', () => {
+  it('says whether the playbook is in use and what it is for', () => {
+    expect(outcomeOf(getPlaybook.registration, sales, { playbook: 'sales' })).toBe(
+      'The playbook “Sales” is in use. What it is for: Answers questions about the pipeline.',
     );
   });
 
-  it('says a retired brain can no longer change', () => {
-    expect(outcomeOf(getBrain.registration, { ...retired, description: '' }, { brain: 'old' })).toBe(
-      'The brain “Old” has been retired; it can no longer change.',
+  it('says a retired playbook can no longer change', () => {
+    expect(outcomeOf(getPlaybook.registration, { ...retired, description: '' }, { playbook: 'old' })).toBe(
+      'The playbook “Old” has been retired; it can no longer change.',
     );
   });
 
-  it('names the brain it looked for', () => {
-    expect([attemptOf(getBrain.registration, { brain: 'sales' }), attemptOf(getBrain.registration, {})]).toEqual([
-      'look up the brain “sales”',
-      'look up a brain',
-    ]);
+  it('names the playbook it looked for', () => {
+    expect([
+      attemptOf(getPlaybook.registration, { playbook: 'sales' }),
+      attemptOf(getPlaybook.registration, {}),
+    ]).toEqual(['look up the playbook “sales”', 'look up a playbook']);
   });
 });
 
-describe('the plain language of update_brain', () => {
-  it('names the brain and says what it is for now', () => {
-    expect(outcomeOf(updateBrain.registration, sales, { ...sales, brain: 'sales' })).toBe(
-      'Updated the brain “Sales”. What it is for: Answers questions about the pipeline.',
+describe('the plain language of update_playbook', () => {
+  it('names the playbook and says what it is for now', () => {
+    expect(outcomeOf(updatePlaybook.registration, sales, { ...sales, playbook: 'sales' })).toBe(
+      'Updated the playbook “Sales”. What it is for: Answers questions about the pipeline.',
     );
   });
 
-  it('says when the brain has no description any more', () => {
-    expect(outcomeOf(updateBrain.registration, undescribed, { brain: 'sales', name: 'Sales', description: '' })).toBe(
-      'Updated the brain “Sales”. It has no description now.',
-    );
+  it('says when the playbook has no description any more', () => {
+    expect(
+      outcomeOf(updatePlaybook.registration, undescribed, { playbook: 'sales', name: 'Sales', description: '' }),
+    ).toBe('Updated the playbook “Sales”. It has no description now.');
   });
 
-  it('names the brain it tried to update', () => {
-    expect(attemptOf(updateBrain.registration, { brain: 'sales', name: 'Sales', description: '' })).toBe(
-      'update the brain “sales”',
+  it('names the playbook it tried to update', () => {
+    expect(attemptOf(updatePlaybook.registration, { playbook: 'sales', name: 'Sales', description: '' })).toBe(
+      'update the playbook “sales”',
     );
   });
 });
 
-describe('the plain language of retire_brain', () => {
-  it('says the brain can no longer change and cannot be restored', () => {
-    expect(outcomeOf(retireBrain.registration, retired, { brain: 'old' })).toBe(
-      'Retired the brain “Old”. It can no longer change, and there is no way to restore it.',
+describe('the plain language of retire_playbook', () => {
+  it('says the playbook can no longer change and cannot be restored', () => {
+    expect(outcomeOf(retirePlaybook.registration, retired, { playbook: 'old' })).toBe(
+      'Retired the playbook “Old”. It can no longer change, and there is no way to restore it.',
     );
   });
 
-  it('names the brain it tried to retire', () => {
-    expect(attemptOf(retireBrain.registration, { brain: 'old' })).toBe('retire the brain “old”');
+  it('names the playbook it tried to retire', () => {
+    expect(attemptOf(retirePlaybook.registration, { playbook: 'old' })).toBe('retire the playbook “old”');
   });
 });

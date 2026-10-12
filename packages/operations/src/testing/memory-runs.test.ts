@@ -42,7 +42,7 @@ function runsWithOneLeftOutEvery(every: number, count: number): readonly string[
 }
 
 function read(ledger: MemoryLedger, selection: RecordedSelection) {
-  return ledger.service.readRecorded({ org: 'acme', brain: 'alpha' }, selection, newestHundred);
+  return ledger.service.readRecorded({ org: 'acme', playbook: 'alpha' }, selection, newestHundred);
 }
 
 describe('the in-memory read of runs that leaves out the streams beginning with some types', () => {
@@ -112,7 +112,7 @@ function everyPageOf(
 ): Effect.Effect<readonly PageFigures[], InvalidCursor> {
   return Effect.gen(function* () {
     const { records, hasMore, nextCursor } = yield* ledger.service.readRecorded(
-      { org: 'acme', brain: 'alpha' },
+      { org: 'acme', playbook: 'alpha' },
       selection,
       page,
     );
@@ -177,7 +177,7 @@ describe('the in-memory read of the runs of one definition, over a first record 
     ]);
     const reading = (selection: RecordedSelection) =>
       readOneRecord
-        .readRecorded({ org: 'acme', brain: 'alpha' }, selection, newestHundred)
+        .readRecorded({ org: 'acme', playbook: 'alpha' }, selection, newestHundred)
         .pipe(Effect.map(({ records }) => records.map(({ data }) => data)));
 
     const pages = await Effect.runPromise(

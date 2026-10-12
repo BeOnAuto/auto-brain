@@ -27,7 +27,7 @@ const admitEveryone: Authenticator = {
   mode: 'keys',
   authenticate: () => ({
     org: 'acme',
-    callerIn: (org) => ({ id: 'anyone', org, permissions: allPermissions, brains: '*' }),
+    callerIn: (org) => ({ id: 'anyone', org, permissions: allPermissions, playbooks: '*' }),
   }),
 };
 

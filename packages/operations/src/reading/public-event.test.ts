@@ -21,7 +21,7 @@ function eventWithData(bytes: number) {
       correlation_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
       causation_id: null,
       at: '2026-10-05T09:00:00.000Z',
-      by: 'brain:sales',
+      by: 'playbook:sales',
       run_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
       definition: { type: 'reasoning', name: 'summary', version: 2 },
     },

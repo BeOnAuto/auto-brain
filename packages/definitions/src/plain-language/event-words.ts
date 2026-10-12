@@ -11,7 +11,7 @@ export const runFinished = 'A run finished.';
 export const runBrokeDown = 'A run broke down because of a problem inside the server.';
 
 const cancelsAsked: Readonly<Record<CancelRequestKind, string>> = {
-  requested: 'Someone allowed to change the brain asked for the run to be cancelled.',
+  requested: 'Someone allowed to change the playbook asked for the run to be cancelled.',
   deadline: 'The step that waited for the run ran out of time, so the run is being cancelled.',
   parent_ended: 'The run that waited for this run ended first, so this run is being cancelled.',
 };
@@ -65,7 +65,7 @@ export function toolFailed(number: number, because: CallFailedBecause): string {
 }
 
 export function eventPublished(type: string): string {
-  return `The event ${quoted(type)} was published to the brain.`;
+  return `The event ${quoted(type)} was published to the playbook.`;
 }
 
 export function eventEmitted(type: string, workflow: string): string {

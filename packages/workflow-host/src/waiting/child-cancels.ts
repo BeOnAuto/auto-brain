@@ -9,6 +9,6 @@ const reasons: Readonly<Record<CancelReason, string>> = {
 };
 
 export function childCancelsOn(cancel: CancelRun): CancelChild {
-  return ({ child: { org, brain, runId }, reason, lineage }) =>
-    cancel({ org, brain, id: runId }, { kind: reason, reason: reasons[reason] }, lineage);
+  return ({ child: { org, playbook, runId }, reason, lineage }) =>
+    cancel({ org, playbook, id: runId }, { kind: reason, reason: reasons[reason] }, lineage);
 }

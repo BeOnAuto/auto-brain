@@ -16,7 +16,7 @@ import type { StatementExecutor } from '../event-store.ts';
 import { boundOf, selectedColumn, valueOf, type ProjectionDialect } from './projection-dialect.ts';
 
 export interface RowPlace {
-  readonly brainKey: string;
+  readonly playbookKey: string;
   readonly key: string;
 }
 
@@ -50,7 +50,7 @@ export function tableOf(projection: KeyedProjection): SQL {
 
 function indexStatement(projection: KeyedProjection, index: ProjectedIndex): SQL {
   const table = projectedTableOf(projection);
-  const columns = [...(index.acrossBrains === true ? [] : ['brain_key']), ...index.columns].join(', ');
+  const columns = [...(index.acrossPlaybooks === true ? [] : ['brain_key']), ...index.columns].join(', ');
   const where = index.whereSet === undefined ? '' : ` WHERE ${index.whereSet} IS NOT NULL`;
   return SQL`CREATE INDEX IF NOT EXISTS ${SQL.plain(`${table}_${index.name}`)} ON ${tableOf(projection)} (${SQL.plain(columns)})${SQL.plain(where)}`;
 }
@@ -85,18 +85,18 @@ export async function rowIn(
   execute: StatementExecutor,
   dialect: ProjectionDialect,
   projection: KeyedProjection,
-  { brainKey, key }: RowPlace,
+  { playbookKey, key }: RowPlace,
 ): Promise<ProjectedRow | undefined> {
   const { rows } = await execute.query(
-    SQL`SELECT ${selectedColumns(dialect, projection)} FROM ${tableOf(projection)} WHERE brain_key = ${brainKey} AND row_key = ${key}`,
+    SQL`SELECT ${selectedColumns(dialect, projection)} FROM ${tableOf(projection)} WHERE brain_key = ${playbookKey} AND row_key = ${key}`,
   );
   const [stored] = rowsFrom(rows);
   return stored === undefined ? undefined : rowFrom(projection, stored);
 }
 
-function valuesOf(dialect: ProjectionDialect, projection: KeyedProjection, { brainKey, key, row }: KeptRow): SQL {
+function valuesOf(dialect: ProjectionDialect, projection: KeyedProjection, { playbookKey, key, row }: KeptRow): SQL {
   const values = projection.columns.map(({ name }) => SQL`${boundOf(dialect, row[name] ?? null)}`);
-  return SQL`(${SQL.merge([SQL`${brainKey}`, SQL`${key}`, ...values], ', ')})`;
+  return SQL`(${SQL.merge([SQL`${playbookKey}`, SQL`${key}`, ...values], ', ')})`;
 }
 
 export type AdvancedColumnsWritten = 'with_advanced' | 'without_advanced';
@@ -151,7 +151,7 @@ export function conditionsOf(
 export function rowAdvance(
   dialect: ProjectionDialect,
   projection: KeyedProjection,
-  { brainKey, key }: RowPlace,
+  { playbookKey, key }: RowPlace,
   { set, when }: RowAdvance,
 ): SQL {
   const assignments = SQL.merge(
@@ -160,7 +160,7 @@ export function rowAdvance(
     ),
     ', ',
   );
-  return SQL`UPDATE ${tableOf(projection)} SET ${assignments} WHERE brain_key = ${brainKey} AND row_key = ${key}${conditionsOf(dialect, projection, when)}`;
+  return SQL`UPDATE ${tableOf(projection)} SET ${assignments} WHERE brain_key = ${playbookKey} AND row_key = ${key}${conditionsOf(dialect, projection, when)}`;
 }
 
 export function tableDrop(name: string): SQL {

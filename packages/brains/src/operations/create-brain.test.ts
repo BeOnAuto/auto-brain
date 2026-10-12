@@ -1,34 +1,34 @@
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { createBrain, retireBrain } from '../index.ts';
+import { createPlaybook, retirePlaybook } from '../index.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { firstMoment, harness, toOrg } from '../testing/harness.ts';
 
 const toAcme = toOrg('acme');
 
 function creating(input: object) {
-  return harness().call(createBrain, toAcme(acmeAdmin, { brain: 'alpha', ...input }));
+  return harness().call(createPlaybook, toAcme(acmeAdmin, { playbook: 'alpha', ...input }));
 }
 
-describe('create_brain', () => {
-  it('is an org command at POST /brains that answers 201 and may meet conflict', () => {
-    expect(createBrain.registration).toMatchObject({
+describe('create_playbook', () => {
+  it('is an org command at POST /playbooks that answers 201 and may meet conflict', () => {
+    expect(createPlaybook.registration).toMatchObject({
       scope: 'org',
       kind: 'command',
-      title: 'Create brain',
-      route: { method: 'POST', path: '/brains' },
+      title: 'Create playbook',
+      route: { method: 'POST', path: '/playbooks' },
       pathParameters: [],
       successStatus: 201,
       reasons: ['conflict'],
     });
   });
 
-  it('creates an active brain with who created it and when', async () => {
+  it('creates an active playbook with who created it and when', async () => {
     const { call } = harness();
 
     expect(
-      await call(createBrain, toAcme(acmeAdmin, { brain: 'alpha', name: 'Alpha', description: 'Answers sales' })),
+      await call(createPlaybook, toAcme(acmeAdmin, { playbook: 'alpha', name: 'Alpha', description: 'Answers sales' })),
     ).toStrictEqual({
       status: 'succeeded',
       output: {
@@ -43,17 +43,17 @@ describe('create_brain', () => {
     });
   });
 
-  it('records the facts of the org in its brains stream', async () => {
+  it('records the facts of the org in its playbooks stream', async () => {
     const { call, ledger } = harness();
 
-    await call(createBrain, toAcme(acmeAdmin, { brain: 'alpha', name: 'Alpha' }));
+    await call(createPlaybook, toAcme(acmeAdmin, { playbook: 'alpha', name: 'Alpha' }));
 
     expect(ledger.streamNames()).toEqual(['org/acme/brains']);
   });
 });
 
-describe('the input of create_brain', () => {
-  it('gives a brain an empty description when none is given', async () => {
+describe('the input of create_playbook', () => {
+  it('gives a playbook an empty description when none is given', async () => {
     expect(await creating({ name: 'Alpha' })).toMatchObject({ output: { description: '' } });
   });
 
@@ -87,53 +87,54 @@ describe('the input of create_brain', () => {
   });
 });
 
-describe('create_brain rejecting input', () => {
+describe('create_playbook rejecting input', () => {
   it('with a malformed id or a field the operation does not know', async () => {
-    expect(await creating({ brain: 'Alpha', name: 'Alpha', colour: 'red' })).toMatchObject({
+    expect(await creating({ playbook: 'Alpha', name: 'Alpha', colour: 'red' })).toMatchObject({
       reason: 'invalid_input',
-      issues: [{ pointer: '/colour' }, { pointer: '/brain' }],
+      issues: [{ pointer: '/colour' }, { pointer: '/playbook' }],
     });
   });
 });
 
-describe('the JSON Schema of the input of create_brain', () => {
+describe('the JSON Schema of the input of create_playbook', () => {
   it('tells an agent the limits of the name and the description', () => {
-    expect(createBrain.registration.input.schema).toMatchObject({
+    expect(createPlaybook.registration.input.schema).toMatchObject({
       properties: {
         name: { type: 'string', minLength: 1, maxLength: 100 },
         description: { type: 'string', maxLength: 2000 },
       },
-      required: ['brain', 'name'],
+      required: ['playbook', 'name'],
       additionalProperties: false,
     });
   });
 });
 
-describe('create_brain rejecting with conflict', () => {
-  it('meets an id held by an active or a retired brain', async () => {
+describe('create_playbook rejecting with conflict', () => {
+  it('meets an id held by an active or a retired playbook', async () => {
     const { call } = harness();
-    const creatingAlpha = () => call(createBrain, toAcme(acmeAdmin, { brain: 'alpha', name: 'Alpha' }));
+    const creatingAlpha = () => call(createPlaybook, toAcme(acmeAdmin, { playbook: 'alpha', name: 'Alpha' }));
     await creatingAlpha();
 
     expect(await creatingAlpha()).toEqual({
       status: 'rejected',
       reason: 'conflict',
-      detail: 'There is already a brain alpha in this org',
+      detail: 'There is already a playbook alpha in this org',
       kind: 'taken',
     });
-    await call(retireBrain, toAcme(acmeAdmin, { brain: 'alpha' }));
+    await call(retirePlaybook, toAcme(acmeAdmin, { playbook: 'alpha' }));
     expect(await creatingAlpha()).toEqual({
       status: 'rejected',
       reason: 'conflict',
-      detail: 'The brain alpha was retired, and a brain id is never reused',
+      detail: 'The playbook alpha was retired, and a playbook id is never reused',
       kind: 'taken',
     });
   });
 
-  it("meets the org's brains changed while it decided", async () => {
+  it("meets the org's playbooks changed while it decided", async () => {
     const { dispatch, run } = harness();
-    const creatingBrain = (brain: string) => dispatch(createBrain, toAcme(acmeAdmin, { brain, name: brain }));
-    const bothAtOnce = Effect.all([creatingBrain('alpha'), creatingBrain('beta')], { concurrency: 'unbounded' });
+    const creatingPlaybook = (playbook: string) =>
+      dispatch(createPlaybook, toAcme(acmeAdmin, { playbook, name: playbook }));
+    const bothAtOnce = Effect.all([creatingPlaybook('alpha'), creatingPlaybook('beta')], { concurrency: 'unbounded' });
 
     expect(await run(bothAtOnce)).toMatchObject([
       { status: 'succeeded', output: { id: 'alpha' } },

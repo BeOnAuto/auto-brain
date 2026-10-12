@@ -41,7 +41,7 @@ const Triggers = Schema.Struct({ triggers: Schema.Array(TriggerSchema) });
 
 const SavedDefinition = Schema.Struct({ ...Triggers.fields, triggers_since: Schema.String });
 
-const BrainEvents = Schema.Struct({ events: Schema.NonEmptyArray(Schema.Struct({ id: Schema.String })) });
+const PlaybookEvents = Schema.Struct({ events: Schema.NonEmptyArray(Schema.Struct({ id: Schema.String })) });
 
 const runsIn = Schema.decodeUnknownSync(ListedRuns);
 
@@ -55,7 +55,7 @@ const ListedDefinitions = Schema.Struct({ definitions: Schema.Array(Triggers) })
 
 const listedIn = Schema.decodeUnknownSync(ListedDefinitions);
 
-const eventsIn = Schema.decodeUnknownSync(BrainEvents);
+const eventsIn = Schema.decodeUnknownSync(PlaybookEvents);
 
 type Start = typeof StartSchema.Type;
 
@@ -92,8 +92,8 @@ function startByKind(kind: string): Start | undefined {
 async function triggeredThreeTimes(): Promise<Seen> {
   const clock = movedClock(Date.now());
   server = await servingWorkflows([], { LOCAL_MODE: 'true' }, undefined, clock);
-  const mcp = { url: `${server.origin}/orgs/acme/brains/alpha/mcp`, headers: {} };
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  const mcp = { url: `${server.origin}/orgs/acme/playbooks/alpha/mcp`, headers: {} };
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   await withMcpSession('current revision', mcp, (session) =>
     session.callTool('create_definition', { type: 'workflow', name: 'close-the-month', source: closing }),
   );
@@ -138,7 +138,7 @@ describe('a workflow with an event trigger, a cron schedule and an every schedul
     expect(seen.listedOverMcp.definitions).toEqual([{ triggers: seen.definition.triggers }]);
   });
 
-  it('runs as the brain once for an event and once at a due time of each schedule', () => {
+  it('runs as the playbook once for an event and once at a due time of each schedule', () => {
     expect(seen.runs.runs.map(({ status, started_by: by }) => [status, by])).toEqual([
       ['succeeded', 'brain:alpha'],
       ['succeeded', 'brain:alpha'],

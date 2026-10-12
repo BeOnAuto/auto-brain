@@ -2,7 +2,7 @@ import { Effect, Result, Schema } from 'effect';
 
 import {
   ActedContextSchema,
-  BrainIdSchema,
+  PlaybookIdSchema,
   NotFound,
   OrgReader,
   OrgWriter,
@@ -13,78 +13,81 @@ import {
 } from '../index.ts';
 import { testedContext } from './callers.ts';
 
-const BrainLabelSchema = Schema.Struct({ brain: BrainIdSchema, label: Schema.String });
+const PlaybookLabelSchema = Schema.Struct({ playbook: PlaybookIdSchema, label: Schema.String });
 
-type BrainLabel = typeof BrainLabelSchema.Type;
+type PlaybookLabel = typeof PlaybookLabelSchema.Type;
 
-const BrainLabelledSchema = factOf('brain_labelled', BrainLabelSchema, ActedContextSchema);
+const PlaybookLabelledSchema = factOf('playbook_labelled', PlaybookLabelSchema, ActedContextSchema);
 
-type BrainLabelled = typeof BrainLabelledSchema.Type;
+type PlaybookLabelled = typeof PlaybookLabelledSchema.Type;
 
-const labelBook: Decider<readonly BrainLabel[], BrainLabel, BrainLabelled> = {
+const labelBook: Decider<readonly PlaybookLabel[], PlaybookLabel, PlaybookLabelled> = {
   initialState: [],
-  evolve: (labels, { data: labelled }) => [...labels.filter(({ brain }) => brain !== labelled.brain), labelled],
-  decide: (labelled) => Result.succeed([{ type: 'brain_labelled', data: labelled }]),
+  evolve: (labels, { data: labelled }) => [
+    ...labels.filter(({ playbook }) => playbook !== labelled.playbook),
+    labelled,
+  ],
+  decide: (labelled) => Result.succeed([{ type: 'playbook_labelled', data: labelled }]),
   context: () => testedContext,
-  eventSchema: BrainLabelledSchema,
+  eventSchema: PlaybookLabelledSchema,
 };
 
-export const labelBrain = defineCommand('org', {
-  name: 'label_brain',
-  title: 'Label brain',
-  description: 'Gives a brain of the org a label.',
-  route: { method: 'PUT', path: '/brains/{brain}/label' },
-  inputSchema: BrainLabelSchema,
-  outputSchema: BrainLabelSchema,
+export const labelPlaybook = defineCommand('org', {
+  name: 'label_playbook',
+  title: 'Label playbook',
+  description: 'Gives a playbook of the org a label.',
+  route: { method: 'PUT', path: '/playbooks/{playbook}/label' },
+  inputSchema: PlaybookLabelSchema,
+  outputSchema: PlaybookLabelSchema,
   reasons: ['conflict'],
   handle: Effect.fnUntraced(function* (labelled) {
-    yield* (yield* OrgWriter).execute('brain-labels', labelBook, labelled);
+    yield* (yield* OrgWriter).execute('playbook-labels', labelBook, labelled);
     return labelled;
   }),
 });
 
-export const relabelBrain = defineCommand('org', {
-  name: 'relabel_brain',
-  title: 'Relabel brain',
-  description: 'Gives a brain of the org a label named in the body.',
-  route: { method: 'POST', path: '/brain-labels' },
-  inputSchema: BrainLabelSchema,
-  outputSchema: BrainLabelSchema,
+export const relabelPlaybook = defineCommand('org', {
+  name: 'relabel_playbook',
+  title: 'Relabel playbook',
+  description: 'Gives a playbook of the org a label named in the body.',
+  route: { method: 'POST', path: '/playbook-labels' },
+  inputSchema: PlaybookLabelSchema,
+  outputSchema: PlaybookLabelSchema,
   reasons: ['conflict'],
   handle: Effect.fnUntraced(function* (labelled) {
-    yield* (yield* OrgWriter).execute('brain-labels', labelBook, labelled);
+    yield* (yield* OrgWriter).execute('playbook-labels', labelBook, labelled);
     return labelled;
   }),
 });
 
-export const getBrainLabel = defineQuery('org', {
-  name: 'get_brain_label',
-  title: 'Get brain label',
-  description: 'Reads the label of a brain of the org.',
-  route: { method: 'GET', path: '/brains/{brain}/label' },
-  inputSchema: Schema.Struct({ brain: BrainIdSchema }),
-  outputSchema: BrainLabelSchema,
+export const getPlaybookLabel = defineQuery('org', {
+  name: 'get_playbook_label',
+  title: 'Get playbook label',
+  description: 'Reads the label of a playbook of the org.',
+  route: { method: 'GET', path: '/playbooks/{playbook}/label' },
+  inputSchema: Schema.Struct({ playbook: PlaybookIdSchema }),
+  outputSchema: PlaybookLabelSchema,
   reasons: ['not_found'],
-  handle: Effect.fnUntraced(function* ({ brain }) {
-    const { state } = yield* (yield* OrgReader).load('brain-labels', labelBook);
-    const found = state.find((labelled) => labelled.brain === brain);
+  handle: Effect.fnUntraced(function* ({ playbook }) {
+    const { state } = yield* (yield* OrgReader).load('playbook-labels', labelBook);
+    const found = state.find((labelled) => labelled.playbook === playbook);
     if (found === undefined) {
-      return yield* new NotFound({ detail: `The brain ${brain} has no label` });
+      return yield* new NotFound({ detail: `The playbook ${playbook} has no label` });
     }
     return found;
   }),
 });
 
-export const listBrainLabels = defineQuery('org', {
-  name: 'list_brain_labels',
-  title: 'List brain labels',
-  description: 'Lists the labels of the brains of the org.',
-  route: { method: 'GET', path: '/brain-labels' },
+export const listPlaybookLabels = defineQuery('org', {
+  name: 'list_playbook_labels',
+  title: 'List playbook labels',
+  description: 'Lists the labels of the playbooks of the org.',
+  route: { method: 'GET', path: '/playbook-labels' },
   inputSchema: Schema.Record(Schema.String, Schema.Never),
-  outputSchema: Schema.Struct({ labels: Schema.Array(BrainLabelSchema) }),
+  outputSchema: Schema.Struct({ labels: Schema.Array(PlaybookLabelSchema) }),
   reasons: [],
   handle: Effect.fnUntraced(function* () {
-    const { state } = yield* (yield* OrgReader).load('brain-labels', labelBook);
+    const { state } = yield* (yield* OrgReader).load('playbook-labels', labelBook);
     return { labels: state };
   }),
 });

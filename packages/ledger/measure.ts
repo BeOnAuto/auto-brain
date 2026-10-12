@@ -34,13 +34,13 @@ const runs = Number(process.env['LEDGER_MEASURE_RUNS'] ?? 100_000);
 
 const postgresqlServer = process.env['LEDGER_MEASURE_POSTGRESQL_URL'] ?? '';
 
-const brain = { org: 'o1', brain: 'big' };
+const playbook = { org: 'o1', playbook: 'big' };
 
-const brainKey = 'brain/o1/big/';
+const playbookKey = 'brain/o1/big/';
 
 const needed = [
-  [`${brainKey}runs/00050000`, 1],
-  [`${brainKey}runs/00050015`, 1],
+  [`${playbookKey}runs/00050000`, 1],
+  [`${playbookKey}runs/00050015`, 1],
   [longRun, 50_000],
 ] as const;
 
@@ -84,23 +84,23 @@ function treeCases(middleOfTheLongRun: string): readonly Case[] {
 }
 
 function cases(pointOf: (stream: string, at: number) => Point): readonly Case[] {
-  const cursor = cursorOf(brainKey, pointOf(datasetRunStream(50_000), 1));
-  const middleOfTheLongRun = cursorOf(brainKey, pointOf(longRun, 50_000));
+  const cursor = cursorOf(playbookKey, pointOf(datasetRunStream(50_000), 1));
+  const middleOfTheLongRun = cursorOf(playbookKey, pointOf(longRun, 50_000));
   const since = timeOf(50_000);
   return [
     ...casesOf({ kind: 'everything' }, [
-      ['The brain, first page, newest first', aPage('desc', 20)],
-      ['The brain, first page, oldest first', aPage('asc', 20)],
-      ['The brain, deep page, newest first', aPage('desc', 20, { cursor })],
-      ['The brain, deep page, oldest first', aPage('asc', 20, { cursor })],
-      ['The brain, deep page of 100, newest first', aPage('desc', 100, { cursor })],
+      ['The playbook, first page, newest first', aPage('desc', 20)],
+      ['The playbook, first page, oldest first', aPage('asc', 20)],
+      ['The playbook, deep page, newest first', aPage('desc', 20, { cursor })],
+      ['The playbook, deep page, oldest first', aPage('asc', 20, { cursor })],
+      ['The playbook, deep page of 100, newest first', aPage('desc', 100, { cursor })],
       [
-        'The brain, a page holding a run of 1.25 MiB',
-        aPage('desc', 20, { cursor: cursorOf(brainKey, pointOf(datasetRunStream(50_015), 1)) }),
+        'The playbook, a page holding a run of 1.25 MiB',
+        aPage('desc', 20, { cursor: cursorOf(playbookKey, pointOf(datasetRunStream(50_015), 1)) }),
       ],
-      ['The brain, of one rare type, newest first', aPage('desc', 20, { types: ['run_failed'] })],
-      ['The brain since a time, oldest first', aPage('asc', 20, { since })],
-      ['The brain since a time, newest first', aPage('desc', 20, { since })],
+      ['The playbook, of one rare type, newest first', aPage('desc', 20, { types: ['run_failed'] })],
+      ['The playbook since a time, oldest first', aPage('asc', 20, { since })],
+      ['The playbook since a time, newest first', aPage('desc', 20, { since })],
     ]),
     ...casesOf({ kind: 'run', run: '00050000' }, [
       ['One run of 21 messages, oldest first', aPage('asc', 20)],
@@ -128,10 +128,10 @@ function cases(pointOf: (stream: string, at: number) => Point): readonly Case[] 
   ];
 }
 
-const behindOthers = 'behind a million newer messages of other brains';
+const behindOthers = 'behind a million newer messages of other playbooks';
 
 const quietCases: readonly Case[] = [
-  [`The brain, newest first, ${behindOthers}`, { kind: 'everything' }, aPage('desc', 20)],
+  [`The playbook, newest first, ${behindOthers}`, { kind: 'everything' }, aPage('desc', 20)],
   [`Runs, newest first, ${behindOthers}`, { kind: 'runs' }, aPage('desc', 20)],
   [`A run of 100,001 messages, newest first, ${behindOthers}`, { kind: 'run', run: 'long-running' }, aPage('desc', 20)],
   [
@@ -153,7 +153,7 @@ async function timed<A>(attempt: () => Promise<A>): Promise<{ readonly took: num
 }
 
 async function measured(ledger: AnyLedger, [label, selection, page]: Case): Promise<string> {
-  const read = () => Effect.runPromise(ledger.readRecorded(brain, selection, page));
+  const read = () => Effect.runPromise(ledger.readRecorded(playbook, selection, page));
   await Effect.runPromise(Effect.forEach([1, 2, 3], () => Effect.promise(read), { discard: true }));
   const reads = await Effect.runPromise(
     Effect.forEach(Array.from({ length: 20 }), () => Effect.promise(() => timed(read))),

@@ -1,30 +1,30 @@
-import { ActedContextSchema, BrainIdSchema, factOf, type Decided } from '@beonauto/operations';
+import { ActedContextSchema, PlaybookIdSchema, factOf, type Decided } from '@beonauto/operations';
 import { Schema } from 'effect';
 
-const ofTheBrain = { brain: BrainIdSchema };
+const ofThePlaybook = { brain: PlaybookIdSchema };
 
-export const BrainEventSchema = Schema.Union([
+export const PlaybookEventSchema = Schema.Union([
   factOf(
     'brain_created',
-    Schema.Struct({ ...ofTheBrain, name: Schema.String, description: Schema.String }),
+    Schema.Struct({ ...ofThePlaybook, name: Schema.String, description: Schema.String }),
     ActedContextSchema,
   ),
   factOf(
     'brain_updated',
     Schema.Struct({
-      ...ofTheBrain,
+      ...ofThePlaybook,
       name: Schema.optionalKey(Schema.String),
       description: Schema.optionalKey(Schema.String),
     }),
     ActedContextSchema,
   ),
-  factOf('brain_retired', Schema.Struct(ofTheBrain), ActedContextSchema),
+  factOf('brain_retired', Schema.Struct(ofThePlaybook), ActedContextSchema),
 ]);
 
-export type RecordedBrainEvent = typeof BrainEventSchema.Type;
+export type RecordedPlaybookEvent = typeof PlaybookEventSchema.Type;
 
-export type BrainEvent = Decided<RecordedBrainEvent>;
+export type PlaybookEvent = Decided<RecordedPlaybookEvent>;
 
-export type BrainCreated = Extract<RecordedBrainEvent, { readonly type: 'brain_created' }>;
+export type PlaybookCreated = Extract<RecordedPlaybookEvent, { readonly type: 'brain_created' }>;
 
-export type BrainUpdated = Extract<RecordedBrainEvent, { readonly type: 'brain_updated' }>;
+export type PlaybookUpdated = Extract<RecordedPlaybookEvent, { readonly type: 'brain_updated' }>;

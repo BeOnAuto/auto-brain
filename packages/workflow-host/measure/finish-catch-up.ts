@@ -5,7 +5,7 @@ import { Effect, Function, Schema } from 'effect';
 
 import { openHostDatabase, type DatabaseSettings } from '../src/database/host-databases.ts';
 import { statement } from '../src/database/statement.ts';
-import { alpha, at, brainCreated, recorded } from '../src/reaction-testing/brain-writes.ts';
+import { alpha, at, playbookCreated, recorded } from '../src/reaction-testing/brain-writes.ts';
 import { measuredHost, runAt } from './measured-host.ts';
 
 export interface FinishCatchUp {
@@ -33,7 +33,7 @@ async function placesOf(opened: Opened): Promise<readonly (string | null)[]> {
 async function latestOf(opened: Opened): Promise<string | null> {
   const { records } = await Effect.runPromise(
     recordedReaderOf(opened.store)(
-      { org: 'acme', brain: 'alpha' },
+      { org: 'acme', playbook: 'alpha' },
       { kind: 'everything' },
       {
         order: 'desc',
@@ -62,7 +62,7 @@ async function finishedInTurn(opened: Opened, count: number, index = 0): Promise
 
 export async function finishCatchUpOn(database: DatabaseSettings, finishes: number): Promise<FinishCatchUp> {
   const opened = await openHostDatabase(database, Function.constVoid);
-  await brainCreated(opened.store, 'alpha');
+  await playbookCreated(opened.store, 'alpha');
   const following = await measuredHost(database);
   await untilAt(opened, await latestOf(opened));
   await following.host.stop();

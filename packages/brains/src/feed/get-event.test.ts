@@ -3,9 +3,9 @@ import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { defineGetEvent } from '../index.ts';
-import { brainFeed, presenterOf, toAlpha } from '../testing/brain-feed.ts';
+import { playbookFeed, presenterOf, toAlpha } from '../testing/brain-feed.ts';
 import { acmeAdmin, globexAdmin } from '../testing/callers.ts';
-import { toBrain } from '../testing/harness.ts';
+import { toPlaybook } from '../testing/harness.ts';
 
 const decodeText = Schema.decodeUnknownSync(Schema.Struct({ text: Schema.String }));
 
@@ -38,7 +38,7 @@ const noteId = messageIdOf('brain/acme/alpha/notes', 1);
 const notAnEventId: unknown = expect.stringContaining('an underscore and a number from 1');
 
 async function feedWithEvents() {
-  const feed = brainFeed();
+  const feed = playbookFeed();
   await feed.recording('notes', 'added', 'a');
   await feed.recording('run-logs/r1', 'moved', 'x');
   await feed.recording('calls/c1', 'added', 'y');
@@ -49,7 +49,7 @@ describe('one event read whole', () => {
   it('is the event as a page shows it, by its id', async () => {
     const feed = await feedWithEvents();
 
-    expect(await feed.callInBrain(getEvent, toAlpha(acmeAdmin, { event_id: noteId.toUpperCase() }))).toMatchObject({
+    expect(await feed.callInPlaybook(getEvent, toAlpha(acmeAdmin, { event_id: noteId.toUpperCase() }))).toMatchObject({
       status: 'succeeded',
       output: {
         id: noteId,
@@ -64,7 +64,7 @@ describe('one event read whole', () => {
     const feed = await feedWithEvents();
     const recordId = messageIdOf('brain/acme/alpha/run-logs/r1', 1);
 
-    expect(await feed.callInBrain(getEvent, toAlpha(acmeAdmin, { event_id: `${recordId}_1` }))).toMatchObject({
+    expect(await feed.callInPlaybook(getEvent, toAlpha(acmeAdmin, { event_id: `${recordId}_1` }))).toMatchObject({
       status: 'succeeded',
       output: { id: `${recordId}_1`, type: 'run_stepped', metadata: { causation_id: recordId } },
     });
@@ -75,11 +75,11 @@ describe('one event read whole', () => {
     const request = toAlpha(acmeAdmin, { event_id: messageIdOf('brain/acme/alpha/calls/c1', 1) });
     const asTool = await feed.run(
       makeDispatcher([])
-        .dispatchToBrain(getEvent.registration, request)
+        .dispatchToPlaybook(getEvent.registration, request)
         .pipe(Effect.provideService(ServedAsTool, true)),
     );
 
-    expect(await feed.callInBrain(getEvent, request)).toMatchObject({
+    expect(await feed.callInPlaybook(getEvent, request)).toMatchObject({
       output: { data: { text: 'y', result: 'y'.repeat(70_000), output: 'y'.repeat(1_048_576) } },
     });
     expect(asTool).toMatchObject({ output: { data: { text: 'y', result_bytes: 70_002, output_bytes: 1_048_578 } } });
@@ -87,17 +87,17 @@ describe('one event read whole', () => {
 });
 
 describe('an event that cannot be read', () => {
-  it('is not found when no event of the brain has the id, or the record has no such step', async () => {
+  it('is not found when no event of the playbook has the id, or the record has no such step', async () => {
     const feed = await feedWithEvents();
     const unknown = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
-    const ofAnotherBrain = toBrain('globex', 'gamma')(globexAdmin, { event_id: noteId });
+    const ofAnotherPlaybook = toPlaybook('globex', 'gamma')(globexAdmin, { event_id: noteId });
 
     expect([
-      await feed.callInBrain(getEvent, toAlpha(acmeAdmin, { event_id: unknown })),
-      await feed.callInBrain(getEvent, toAlpha(acmeAdmin, { event_id: `${noteId}_1` })),
-      await feed.callInBrain(getEvent, ofAnotherBrain),
+      await feed.callInPlaybook(getEvent, toAlpha(acmeAdmin, { event_id: unknown })),
+      await feed.callInPlaybook(getEvent, toAlpha(acmeAdmin, { event_id: `${noteId}_1` })),
+      await feed.callInPlaybook(getEvent, ofAnotherPlaybook),
     ]).toMatchObject([
-      { status: 'rejected', reason: 'not_found', detail: `The brain holds no event ${unknown}` },
+      { status: 'rejected', reason: 'not_found', detail: `The playbook holds no event ${unknown}` },
       { status: 'rejected', reason: 'not_found' },
       { status: 'rejected', reason: 'not_found' },
     ]);
@@ -108,7 +108,7 @@ describe('an event that cannot be read', () => {
     const refused = ['note-1', `${noteId}_0`, `${noteId}_02`, `${noteId}/1`, `${noteId}_1234567`];
 
     expect(
-      await Promise.all(refused.map((id) => feed.callInBrain(getEvent, toAlpha(acmeAdmin, { event_id: id })))),
+      await Promise.all(refused.map((id) => feed.callInPlaybook(getEvent, toAlpha(acmeAdmin, { event_id: id })))),
     ).toMatchObject(
       refused.map(() => ({
         status: 'rejected',

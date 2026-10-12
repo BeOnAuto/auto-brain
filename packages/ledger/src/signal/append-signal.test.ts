@@ -29,8 +29,8 @@ describe('the signal an append raises', () => {
   it('names every stream appended to, after the append', async () => {
     const signal = streamSignalOf();
     const heard: string[] = [];
-    signal.listen((brainKey) => {
-      heard.push(brainKey);
+    signal.listen((playbookKey) => {
+      heard.push(playbookKey);
     });
     const store = await aStoreSignalling(signal);
 
@@ -44,8 +44,8 @@ describe('the signal an append raises', () => {
   it('is not raised by an append that met a version conflict, nor heard once a listener has stopped', async () => {
     const signal = streamSignalOf();
     const heard: string[] = [];
-    const stop = signal.listen((brainKey) => {
-      heard.push(brainKey);
+    const stop = signal.listen((playbookKey) => {
+      heard.push(playbookKey);
     });
     const store = await aStoreSignalling(signal);
     await store.append('brain/acme/alpha/notes', one, { expectedVersion: 0, context: stamped });
@@ -66,8 +66,8 @@ describe('the signal an append raises', () => {
 describe('the signal of the process', () => {
   it('is the signal when none is given, so every ledger of the process raises it', async () => {
     const heard: string[] = [];
-    const stop = streamAppends.listen((brainKey) => {
-      heard.push(brainKey);
+    const stop = streamAppends.listen((playbookKey) => {
+      heard.push(playbookKey);
     });
     onTestFinished(stop);
     const { ledger, dispose } = await openLedgerWith(ledgerLayer({ fileName: ':memory:' }));

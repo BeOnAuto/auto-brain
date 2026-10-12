@@ -86,7 +86,7 @@ describe('the session a test opens', () => {
 
     await Promise.all([
       toolTests(access).test(searching),
-      Effect.runPromise(access.listServers({ org: 'acme', brain: 'alpha' })),
+      Effect.runPromise(access.listServers({ org: 'acme', playbook: 'alpha' })),
     ]);
 
     expect(requestsOf(fake).filter((request) => request === 'POST initialize')).toHaveLength(1);
@@ -175,7 +175,7 @@ describe('a test the ledger cannot record once its caller has gone', () => {
     expect(incidents()).toHaveLength(1);
     expect(incidents()[0]).toMatchObject({
       original: { message: 'The ledger refused the write' },
-      call: { operation: 'test_tool_call', org: 'acme', brain: 'alpha', caller: 'acme-builder' },
+      call: { operation: 'test_tool_call', org: 'acme', playbook: 'alpha', caller: 'acme-builder' },
     });
     expect(fake.received()).toEqual([]);
     expect(await until(() => fake.endedSessions() === 1)).toBe(true);

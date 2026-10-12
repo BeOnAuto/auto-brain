@@ -1,12 +1,12 @@
 import { Context, type Effect } from 'effect';
 
-import type { BrainAddress } from '../caller/brain-context.ts';
+import type { PlaybookAddress } from '../caller/brain-context.ts';
 
-export type BrainStatus = 'active' | 'retired' | 'unknown';
+export type PlaybookStatus = 'active' | 'retired' | 'unknown';
 
-export class BrainRegistry extends Context.Service<
-  BrainRegistry,
+export class PlaybookRegistry extends Context.Service<
+  PlaybookRegistry,
   {
-    readonly status: (address: BrainAddress) => Effect.Effect<BrainStatus>;
+    readonly status: (address: PlaybookAddress) => Effect.Effect<PlaybookStatus>;
   }
->()('@beonauto/operations/BrainRegistry') {}
+>()('@beonauto/operations/PlaybookRegistry') {}

@@ -11,7 +11,7 @@ type Querying = Readonly<Pick<Client, 'query'>>;
 
 const postgresqlServer = process.env['LEDGER_MEASURE_POSTGRESQL_URL'] ?? '';
 
-const brainKey = 'brain/o1/big/';
+const playbookKey = 'brain/o1/big/';
 
 const records = 20;
 
@@ -60,7 +60,7 @@ async function filled(client: Querying, url: string): Promise<void> {
   await store.migrate();
   await inTurn(times(records), (index) => {
     const text = randomBytes(recordBytes).toString('base64').slice(0, recordBytes);
-    return store.append(`${brainKey}events/e${index}`, [{ type: 'event_published', data: { text } }], {
+    return store.append(`${playbookKey}events/e${index}`, [{ type: 'event_published', data: { text } }], {
       expectedVersion: 0,
       context: { at: new Date(0).toISOString(), by: 'measurer' },
     });
@@ -94,7 +94,7 @@ async function measured(client: Querying, [label, page]: readonly [string, Store
       examinations.push(examination);
     }),
   );
-  await inTurn(times(warmReads + measuredReads), () => store.readRecorded(brainKey, { kind: 'everything' }, page));
+  await inTurn(times(warmReads + measuredReads), () => store.readRecorded(playbookKey, { kind: 'everything' }, page));
   const kept = examinations.slice(warmReads);
   const milliseconds = median(kept.map((examination) => examination.milliseconds)).toFixed(2);
   write(`${label}: ${milliseconds} ms at the median, ${median(kept.map(({ buffers }) => buffers))} buffers`);
@@ -112,7 +112,7 @@ if (postgresqlServer === '') {
   const client = new Client({ connectionString: url.href });
   await client.connect();
   await filled(client, url.href);
-  write(`PostgreSQL, ${records} records of ${recordBytes} bytes in one brain, the statement that examines a page:`);
+  write(`PostgreSQL, ${records} records of ${recordBytes} bytes in one playbook, the statement that examines a page:`);
   await inTurn(cases, (each) => measured(client, each));
   await client.end();
   await administration.query(`DROP DATABASE ${name} WITH (FORCE)`);

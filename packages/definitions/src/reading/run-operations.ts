@@ -1,6 +1,6 @@
 import type { Presenter } from '@beonauto/operations';
 
-import { defineGetBrainAnalytics } from '../analytics/get-brain-analytics.ts';
+import { defineGetPlaybookAnalytics } from '../analytics/get-brain-analytics.ts';
 import { defineCancelRun } from '../cancellation/cancel-run.ts';
 import type { Capability } from '../capability/capability.ts';
 import { defineGetRun } from '../operations/get-run.ts';
@@ -17,6 +17,6 @@ export function runOperations(
     defineCancelRun(capabilities),
     defineListRuns(capabilities),
     defineGetRunHistory(presenters),
-    defineGetBrainAnalytics(capabilities),
+    defineGetPlaybookAnalytics(capabilities),
   ];
 }

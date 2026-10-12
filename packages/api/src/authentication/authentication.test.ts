@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { RegisterRoutes } from '../index.ts';
 import { call, createTestHandler } from '../testing/api-calls.ts';
 
-const acme = createApiKey({ id: 'acme-reader', org: 'acme', permissions: ['org:read'], brains: '*' });
+const acme = createApiKey({ id: 'acme-reader', org: 'acme', permissions: ['org:read'], playbooks: '*' });
 
 const keyHolders = authenticatorFor({ host: '0.0.0.0', apiKeys: [acme.entry], localMode: false });
 
@@ -53,7 +53,7 @@ describe('authentication with API keys', () => {
 
     expect(await call(handler, protectedPath, { headers: { authorization: `Bearer ${acme.key}` } })).toMatchObject({
       status: 200,
-      body: { id: 'acme-reader', org: 'acme', permissions: ['org:read'], brains: '*' },
+      body: { id: 'acme-reader', org: 'acme', permissions: ['org:read'], playbooks: '*' },
     });
   });
 
@@ -169,7 +169,7 @@ describe('authentication without API keys', () => {
 
     expect(await call(handler, '/v1/orgs/globex/whoami', { headers: { host: 'localhost:8080' } })).toMatchObject({
       status: 200,
-      body: { id: 'local', org: 'globex', brains: '*' },
+      body: { id: 'local', org: 'globex', playbooks: '*' },
     });
   });
 });

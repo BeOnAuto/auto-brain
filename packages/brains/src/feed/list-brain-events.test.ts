@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { defineListBrainEvents } from '../index.ts';
+import { defineListPlaybookEvents } from '../index.ts';
 import {
-  brainFeed,
-  brainWithEvents,
+  playbookFeed,
+  playbookWithEvents,
   everyText,
-  listBrainEvents,
+  listPlaybookEvents,
   presenterOf,
   textsIn,
   textsOf,
@@ -13,14 +13,14 @@ import {
   withCursor,
 } from '../testing/brain-feed.ts';
 import { acmeAdmin, globexAdmin } from '../testing/callers.ts';
-import { asQueryString, toBrain } from '../testing/harness.ts';
+import { asQueryString, toPlaybook } from '../testing/harness.ts';
 
-describe('list_brain_events', () => {
-  it('is a brain query at GET /events whose type names the public types of its presenters', () => {
-    expect(listBrainEvents.registration).toMatchObject({
-      scope: 'brain',
+describe('list_playbook_events', () => {
+  it('is a playbook query at GET /events whose type names the public types of its presenters', () => {
+    expect(listPlaybookEvents.registration).toMatchObject({
+      scope: 'playbook',
       kind: 'query',
-      title: 'List brain events',
+      title: 'List playbook events',
       route: { method: 'GET', path: '/events' },
       reasons: ['invalid_input'],
       input: {
@@ -29,21 +29,21 @@ describe('list_brain_events', () => {
         },
       },
     });
-    expect(listBrainEvents.registration.description).toContain(
-      "The brain's own creation, update and retirement are not among the events",
+    expect(listPlaybookEvents.registration.description).toContain(
+      "The playbook's own creation, update and retirement are not among the events",
     );
   });
 
   it('needs a presenter that shows at least one type of event', () => {
-    expect(() => defineListBrainEvents([presenterOf('notes', { added: null })])).toThrow(
-      'The events of a brain need a presenter that shows at least one type of event',
+    expect(() => defineListPlaybookEvents([presenterOf('notes', { added: null })])).toThrow(
+      'The events of a playbook need a presenter that shows at least one type of event',
     );
   });
 });
 
-describe('the events list_brain_events reads', () => {
-  it('reads what the brain recorded newest first, hiding what no presenter shows', async () => {
-    const { reading } = await brainWithEvents();
+describe('the events list_playbook_events reads', () => {
+  it('reads what the playbook recorded newest first, hiding what no presenter shows', async () => {
+    const { reading } = await playbookWithEvents();
 
     expect(textsIn(await reading())).toEqual(['e', 'b', 'a']);
     expect(await reading({ limit: 1 })).toMatchObject({
@@ -68,17 +68,19 @@ describe('the events list_brain_events reads', () => {
   });
 
   it('reads oldest first, and from a query string', async () => {
-    const { callInBrain } = await brainWithEvents();
+    const { callInPlaybook } = await playbookWithEvents();
 
     expect(
-      textsIn(await callInBrain(listBrainEvents, asQueryString(toAlpha(acmeAdmin, { order: 'asc', limit: '5' })))),
+      textsIn(
+        await callInPlaybook(listPlaybookEvents, asQueryString(toAlpha(acmeAdmin, { order: 'asc', limit: '5' }))),
+      ),
     ).toEqual(['a', 'b', 'e']);
   });
 });
 
-describe('the events of a brain of one type', () => {
+describe('the events of a playbook of one type', () => {
   it('are those its presenter shows under that name, though another kind stores the same type', async () => {
-    const { reading } = await brainWithEvents();
+    const { reading } = await playbookWithEvents();
 
     expect([
       textsIn(await reading({ type: 'note_added' })),
@@ -88,7 +90,7 @@ describe('the events of a brain of one type', () => {
   });
 
   it('are looked for beyond the limit of a page, up to a thousand records', async () => {
-    const { reading } = await brainWithEvents();
+    const { reading } = await playbookWithEvents();
 
     expect(textsOf(await reading({ type: 'note_kept', order: 'asc', limit: 1 })).output).toEqual({
       events: [{ data: { text: 'e' } }],
@@ -98,7 +100,7 @@ describe('the events of a brain of one type', () => {
   });
 
   it('leave a page they empty with a cursor', async () => {
-    const { reading } = await brainWithEvents();
+    const { reading } = await playbookWithEvents();
 
     expect(textsOf(await reading({ type: 'note_added', limit: 2 })).output).toMatchObject({
       events: [],
@@ -107,7 +109,7 @@ describe('the events of a brain of one type', () => {
   });
 
   it('are refused for a type no presenter shows', async () => {
-    const { reading } = await brainWithEvents();
+    const { reading } = await playbookWithEvents();
 
     expect(await reading({ type: 'added' })).toMatchObject({
       status: 'rejected',
@@ -117,9 +119,9 @@ describe('the events of a brain of one type', () => {
   });
 });
 
-describe('the events of a brain since a time', () => {
+describe('the events of a playbook since a time', () => {
   it('are those it recorded from then on, in either order', async () => {
-    const { reading } = await brainWithEvents();
+    const { reading } = await playbookWithEvents();
 
     expect([
       textsIn(await reading({ since: '2026-10-01T09:03:00Z' })),
@@ -128,10 +130,10 @@ describe('the events of a brain since a time', () => {
   });
 });
 
-describe('paging through the events of a brain', () => {
-  it('delivers every event once in either order while the brain records more', async () => {
-    const newest = await brainWithEvents();
-    const oldest = await brainWithEvents();
+describe('paging through the events of a playbook', () => {
+  it('delivers every event once in either order while the playbook records more', async () => {
+    const newest = await playbookWithEvents();
+    const oldest = await playbookWithEvents();
 
     const newestFirst = await everyText(
       (cursor) => newest.reading({ limit: 1, ...withCursor(cursor) }),
@@ -146,11 +148,13 @@ describe('paging through the events of a brain', () => {
     expect(oldestFirst).toEqual(['a', 'b', 'e', 'more', 'more', 'more']);
   });
 
-  it('refuses a cursor that does not decode or that another brain gave', async () => {
-    const { callInBrain, reading, recording } = await brainWithEvents();
+  it('refuses a cursor that does not decode or that another playbook gave', async () => {
+    const { callInPlaybook, reading, recording } = await playbookWithEvents();
     await recording('notes', 'added', 'x', 'brain/globex/gamma');
     await recording('notes', 'added', 'y', 'brain/globex/gamma');
-    const ofGamma = textsOf(await callInBrain(listBrainEvents, toBrain('globex', 'gamma')(globexAdmin, { limit: 1 })));
+    const ofGamma = textsOf(
+      await callInPlaybook(listPlaybookEvents, toPlaybook('globex', 'gamma')(globexAdmin, { limit: 1 })),
+    );
 
     expect([
       await reading({ cursor: 'not-a-cursor' }),
@@ -162,11 +166,13 @@ describe('paging through the events of a brain', () => {
   });
 });
 
-describe('the events of a retired brain', () => {
+describe('the events of a retired playbook', () => {
   it('stay readable', async () => {
-    const { callInBrain, recording } = brainFeed();
+    const { callInPlaybook, recording } = playbookFeed();
     await recording('notes', 'added', 'kept for good', 'brain/acme/old');
 
-    expect(textsIn(await callInBrain(listBrainEvents, toBrain('acme', 'old')(acmeAdmin)))).toEqual(['kept for good']);
+    expect(textsIn(await callInPlaybook(listPlaybookEvents, toPlaybook('acme', 'old')(acmeAdmin)))).toEqual([
+      'kept for good',
+    ]);
   });
 });

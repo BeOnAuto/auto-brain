@@ -22,7 +22,7 @@ function revealed(ledger: LedgerSettings): unknown {
 
 const password = 'a-secret-password';
 
-const databaseUrl = `postgresql://brains:${password}@db.example.com:5432/brains`;
+const databaseUrl = `postgresql://playbooks:${password}@db.example.com:5432/playbooks`;
 
 describe('the ledger settings', () => {
   it('keep the ledger in PostgreSQL when DATABASE_URL is set, naming its host and database', () => {
@@ -30,12 +30,12 @@ describe('the ledger settings', () => {
       store: 'postgresql',
       url: databaseUrl,
       host: 'db.example.com:5432',
-      database: 'brains',
+      database: 'playbooks',
     });
   });
 
   it('accept a URL that starts postgres: as well as postgresql:', () => {
-    expect(readSettings({ DATABASE_URL: 'postgres://brains@10.0.0.7/ledger' }).ledger).toMatchObject({
+    expect(readSettings({ DATABASE_URL: 'postgres://playbooks@10.0.0.7/ledger' }).ledger).toMatchObject({
       store: 'postgresql',
       host: '10.0.0.7',
       database: 'ledger',
@@ -46,15 +46,15 @@ describe('the ledger settings', () => {
     const settings = readSettings({ DATABASE_URL: databaseUrl });
 
     expect(JSON.stringify(settings.ledger)).toBe(
-      '{"store":"postgresql","url":"<redacted>","host":"db.example.com:5432","database":"brains"}',
+      '{"store":"postgresql","url":"<redacted>","host":"db.example.com:5432","database":"playbooks"}',
     );
     expect(inspect(settings, { depth: Number.POSITIVE_INFINITY })).not.toContain(password);
   });
 
   it('keep the ledger in the SQLite file of LEDGER_FILE when DATABASE_URL is empty', () => {
-    expect(readSettings({ DATABASE_URL: '', LEDGER_FILE: '/data/brains.db' }).ledger).toEqual({
+    expect(readSettings({ DATABASE_URL: '', LEDGER_FILE: '/data/playbooks.db' }).ledger).toEqual({
       store: 'sqlite',
-      file: '/data/brains.db',
+      file: '/data/playbooks.db',
     });
   });
 });
@@ -65,7 +65,7 @@ describe('DATABASE_URL as it is written', () => {
   });
 
   it('names its database decoded, as the driver reads it', () => {
-    expect(readSettings({ DATABASE_URL: 'postgresql://brains@db.example.com/post%67res' }).ledger).toMatchObject({
+    expect(readSettings({ DATABASE_URL: 'postgresql://playbooks@db.example.com/post%67res' }).ledger).toMatchObject({
       database: 'postgres',
     });
   });
@@ -81,13 +81,13 @@ describe('ledger settings the server cannot use', () => {
   });
 
   it.each([
-    `brains:${password}@db.example.com/brains`,
-    `mysql://brains:${password}@db.example.com/brains`,
-    `postgresql://brains:${password}@/brains`,
-    'postgresql:///brains',
-    `postgresql://brains:${password}@db.example.com`,
-    `postgresql://brains:${password}@db.example.com/`,
-    `postgresql://brains:${password}@db.example.com/%E0%A4%A`,
+    `playbooks:${password}@db.example.com/playbooks`,
+    `mysql://playbooks:${password}@db.example.com/playbooks`,
+    `postgresql://playbooks:${password}@/playbooks`,
+    'postgresql:///playbooks',
+    `postgresql://playbooks:${password}@db.example.com`,
+    `postgresql://playbooks:${password}@db.example.com/`,
+    `postgresql://playbooks:${password}@db.example.com/%E0%A4%A`,
   ])('stop the server from starting when DATABASE_URL is %s, which names no PostgreSQL database', (url) => {
     const error = String(errorFrom({ DATABASE_URL: url }));
 

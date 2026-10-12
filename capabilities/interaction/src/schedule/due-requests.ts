@@ -52,7 +52,7 @@ function performedNow(parts: DeliveryParts, request: DueRequest, now: number): E
 }
 
 function performedRow(parts: DeliveryParts, kept: ProjectedKeyedRow, row: OpenRequestRow, now: number) {
-  const address = { org: kept.org, brain: kept.brain, id: kept.key };
+  const address = { org: kept.org, playbook: kept.playbook, id: kept.key };
   return Effect.flatMap(correlationOf(parts.ledger, address), (correlationId) =>
     performedNow(parts, { address, row, lineage: { causationId: row.request_id, correlationId } }, now),
   );
@@ -61,7 +61,7 @@ function performedRow(parts: DeliveryParts, kept: ProjectedKeyedRow, row: OpenRe
 function itemOf(parts: DeliveryParts, kept: ProjectedKeyedRow, dueAt: number): DueRequestItem {
   const row = requestRowFrom(kept.row);
   return {
-    key: `${kept.org}/${kept.brain}/${kept.key}`,
+    key: `${kept.org}/${kept.playbook}/${kept.key}`,
     callsOut: dueActionOf(row, dueAt) === 'attempt',
     perform: (now) => Effect.suspend(() => performedRow(parts, kept, row, now)),
   };

@@ -7,7 +7,7 @@ import { servingWorkflows } from './workflow-server.ts';
 
 const toolServerKey = 'graph-api-key-4f1d9a7c2b';
 
-type InBrain = (input: Readonly<Record<string, unknown>>) => Readonly<Record<string, unknown>>;
+type InPlaybook = (input: Readonly<Record<string, unknown>>) => Readonly<Record<string, unknown>>;
 
 export async function servingWithAToolServer(replies: readonly ScriptedReply[]): Promise<ReasoningServer> {
   const graph = await serveFakeMcp({ bearer: toolServerKey });
@@ -29,11 +29,11 @@ export async function servingWithAToolServer(replies: readonly ScriptedReply[]):
 
 export async function toolTestsCalled(
   session: McpSession,
-  inBrain: InBrain,
+  inPlaybook: InPlaybook,
 ): Promise<readonly (readonly [string, ToolResult])[]> {
   const tested = await session.callTool(
     'test_tool_call',
-    inBrain({ server: 'graph', tool: 'search', arguments: { query: 'acme' } }),
+    inPlaybook({ server: 'graph', tool: 'search', arguments: { query: 'acme' } }),
   );
   return [['test_tool_call', tested]];
 }

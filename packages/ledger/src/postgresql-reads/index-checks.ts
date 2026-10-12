@@ -6,7 +6,7 @@ export const definitionStreamsPlan = {
   throughTheIndex: `Index Cond: ("substring"(stream_id, '^(?:[^/]*/){3}definitions/([^/]+)$'::text) = `,
 };
 
-export const theBrainIndexes = [
+export const thePlaybookIndexes = [
   {
     indexname: 'ledger_definition_streams',
     indexdef: `CREATE INDEX ledger_definition_streams ON ONLY public.emt_streams USING btree ("substring"(stream_id, '^(?:[^/]*/){3}definitions/([^/]+)$'::text)) WHERE ("substring"(stream_id, '^(?:[^/]*/){3}definitions/([^/]+)$'::text) IS NOT NULL)`,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createBrain, getBrain, retireBrain } from '../index.ts';
+import { createPlaybook, getPlaybook, retirePlaybook } from '../index.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { firstMoment, harness, toOrg } from '../testing/harness.ts';
 
@@ -8,25 +8,25 @@ const toAcme = toOrg('acme');
 
 const later = '2026-10-02T14:15:00.000Z';
 
-describe('get_brain', () => {
-  it('is an org query at GET /brains/{brain} that may meet not_found', () => {
-    expect(getBrain.registration).toMatchObject({
+describe('get_playbook', () => {
+  it('is an org query at GET /playbooks/{playbook} that may meet not_found', () => {
+    expect(getPlaybook.registration).toMatchObject({
       scope: 'org',
       kind: 'query',
-      title: 'Get brain',
-      route: { method: 'GET', path: '/brains/{brain}' },
-      pathParameters: ['brain'],
+      title: 'Get playbook',
+      route: { method: 'GET', path: '/playbooks/{playbook}' },
+      pathParameters: ['playbook'],
       successStatus: 200,
       reasons: ['not_found'],
     });
   });
 
-  it('reads a brain, active or retired', async () => {
+  it('reads a playbook, active or retired', async () => {
     const { call } = harness();
-    const reading = (brain: string) => call(getBrain, toAcme(acmeAdmin, { brain }));
-    await call(createBrain, toAcme(acmeAdmin, { brain: 'alpha', name: 'Alpha', description: 'Answers sales' }));
-    await call(createBrain, toAcme(acmeAdmin, { brain: 'beta', name: 'Beta' }));
-    await call(retireBrain, toAcme(acmeAdmin, { brain: 'beta' }), later);
+    const reading = (playbook: string) => call(getPlaybook, toAcme(acmeAdmin, { playbook }));
+    await call(createPlaybook, toAcme(acmeAdmin, { playbook: 'alpha', name: 'Alpha', description: 'Answers sales' }));
+    await call(createPlaybook, toAcme(acmeAdmin, { playbook: 'beta', name: 'Beta' }));
+    await call(retirePlaybook, toAcme(acmeAdmin, { playbook: 'beta' }), later);
 
     expect(await reading('alpha')).toStrictEqual({
       status: 'succeeded',
@@ -47,23 +47,23 @@ describe('get_brain', () => {
   });
 });
 
-describe('get_brain rejecting', () => {
-  it('a brain the org does not have', async () => {
+describe('get_playbook rejecting', () => {
+  it('a playbook the org does not have', async () => {
     const { call } = harness();
 
-    expect(await call(getBrain, toAcme(acmeAdmin, { brain: 'nowhere' }))).toEqual({
+    expect(await call(getPlaybook, toAcme(acmeAdmin, { playbook: 'nowhere' }))).toEqual({
       status: 'rejected',
       reason: 'not_found',
-      detail: 'There is no brain nowhere in this org',
+      detail: 'There is no playbook nowhere in this org',
     });
   });
 
   it('a malformed id and a field the operation does not know', async () => {
     const { call } = harness();
 
-    expect(await call(getBrain, toAcme(acmeAdmin, { brain: 'no_where', verbose: true }))).toMatchObject({
+    expect(await call(getPlaybook, toAcme(acmeAdmin, { playbook: 'no_where', verbose: true }))).toMatchObject({
       reason: 'invalid_input',
-      issues: [{ pointer: '/verbose' }, { pointer: '/brain' }],
+      issues: [{ pointer: '/verbose' }, { pointer: '/playbook' }],
     });
   });
 });

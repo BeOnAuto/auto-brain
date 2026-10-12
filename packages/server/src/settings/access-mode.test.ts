@@ -11,7 +11,7 @@ import { temporaryLedger, type TemporaryLedger } from '../testing/records/tempor
 
 const mainModule = fileURLToPath(new URL('../main.ts', import.meta.url));
 
-const { key, entry } = createApiKey({ id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: '*' });
+const { key, entry } = createApiKey({ id: 'acme-admin', org: 'acme', permissions: allPermissions, playbooks: '*' });
 
 let ledger: TemporaryLedger;
 
@@ -28,7 +28,7 @@ async function servedBy(
   headers: Readonly<Record<string, string>> = {},
 ): Promise<{ readonly status: number; readonly stderr: string }> {
   const child = spawnServer(mainModule, { HOST: '127.0.0.1', PORT: '0', LEDGER_FILE: ledger.fileName, ...env });
-  const response = await fetch(`http://127.0.0.1:${await child.port}/v1/orgs/acme/brains`, { headers });
+  const response = await fetch(`http://127.0.0.1:${await child.port}/v1/orgs/acme/playbooks`, { headers });
   child.signal('SIGTERM');
   await child.exited;
   return { status: response.status, stderr: child.output().stderr };

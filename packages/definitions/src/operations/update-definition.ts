@@ -13,7 +13,7 @@ export function defineUpdateDefinition(capabilities: readonly Capability[]) {
   const known = knownCapabilities(capabilities);
   const words = definitionWordsFor(capabilities);
   return known.publish(
-    defineCommand('brain', {
+    defineCommand('playbook', {
       name: 'update_definition',
       title: 'Update definition',
       description: [
@@ -21,7 +21,7 @@ export function defineUpdateDefinition(capabilities: readonly Capability[]) {
         'Use it when the person changes a saved definition; create_definition saves a new one, and a retired definition cannot change.',
         "`type` and `name` say which definition, and `source` is the whole new document in its type's format, which get_guide gives.",
         'A document that does not fit its format is refused with the line and what is wrong, and one the same as the saved document records nothing.',
-        "A new version of a recall function builds its view again from the brain's history.",
+        "A new version of a recall function builds its view again from the playbook's history.",
       ].join(' '),
       repeatable: true,
       route: { method: 'PUT', path: '/definitions/{type}/{name}' },

@@ -1,17 +1,17 @@
 import { OrgReader, type NotFound } from '@beonauto/operations';
 import { Effect } from 'effect';
 
-import type { Brain } from '../registry/brain.ts';
-import { brainsStream } from '../registry/brains-stream.ts';
+import type { Playbook } from '../registry/brain.ts';
+import { playbooksStream } from '../registry/brains-stream.ts';
 import { registryDecider } from '../registry/registry-decider.ts';
-import { findBrain } from '../registry/registry-lookup.ts';
+import { findPlaybook } from '../registry/registry-lookup.ts';
 import type { Registry } from '../registry/registry.ts';
 
 export const loadRegistry: Effect.Effect<Registry, never, OrgReader> = Effect.gen(function* () {
-  const { state } = yield* (yield* OrgReader).load(brainsStream, registryDecider);
+  const { state } = yield* (yield* OrgReader).load(playbooksStream, registryDecider);
   return state;
 });
 
-export function foundBrain(brain: string): Effect.Effect<Brain, NotFound, OrgReader> {
-  return loadRegistry.pipe(Effect.flatMap((registry) => findBrain(registry, brain)));
+export function foundPlaybook(playbook: string): Effect.Effect<Playbook, NotFound, OrgReader> {
+  return loadRegistry.pipe(Effect.flatMap((registry) => findPlaybook(registry, playbook)));
 }

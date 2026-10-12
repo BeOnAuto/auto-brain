@@ -27,7 +27,7 @@ const firstContentTable = 'CREATE TABLE IF NOT EXISTS recorded_content_chunks';
 const theContentTables = [firstContentTable, 'CREATE TABLE IF NOT EXISTS recorded_content_heads'];
 
 describe("the ledger's own schema on PostgreSQL", () => {
-  it("creates the brain's indexes and then the tables of the content it keeps, each only when missing", async () => {
+  it("creates the playbook's indexes and then the tables of the content it keeps, each only when missing", async () => {
     const empty = executorFinding([]);
     const found = executorFinding(['recorded_content_chunks', 'recorded_content_heads']);
 

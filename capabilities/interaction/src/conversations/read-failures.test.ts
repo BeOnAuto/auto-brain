@@ -20,20 +20,20 @@ function textOf(text: string): FakeAnswer {
 }
 
 async function deliveredInThread(document?: string) {
-  const brain = await chatHarness(document === undefined ? {} : { document });
-  await brain.askInThread(runId);
-  await brain.performDue(Date.now());
-  return brain;
+  const playbook = await chatHarness(document === undefined ? {} : { document });
+  await playbook.askInThread(runId);
+  await playbook.performDue(Date.now());
+  return playbook;
 }
 
 async function readAfter(answer: FakeAnswer) {
-  const brain = await deliveredInThread();
-  brain.chat.answerNext(answer);
+  const playbook = await deliveredInThread();
+  playbook.chat.answerNext(answer);
   const before = Date.now();
-  await brain.performReads(before + farAhead);
-  const [read] = await recordsOf(brain.ledger, 'reading_failed');
-  const [row] = await conversationRows(brain.ledger);
-  return { brain, read, row: row?.row, before };
+  await playbook.performReads(before + farAhead);
+  const [read] = await recordsOf(playbook.ledger, 'reading_failed');
+  const [row] = await conversationRows(playbook.ledger);
+  return { playbook, read, row: row?.row, before };
 }
 
 async function failedRead(answer: FakeAnswer): Promise<readonly unknown[]> {
@@ -82,27 +82,29 @@ describe('a read that fails', () => {
 
 describe('a conversation whose reading tool its operator disallowed', () => {
   it('records a failed read, tool_not_offered, and the cadence goes on with the request open', async () => {
-    const brain = await deliveredInThread();
-    brain.chat.disallow('thread_replies');
+    const playbook = await deliveredInThread();
+    playbook.chat.disallow('thread_replies');
 
-    await brain.performReads(Date.now() + farAhead);
-    const [row] = await conversationRows(brain.ledger);
+    await playbook.performReads(Date.now() + farAhead);
+    const [row] = await conversationRows(playbook.ledger);
 
-    expect(await recordsOf(brain.ledger, 'reading_failed')).toMatchObject([{ data: { because: 'tool_not_offered' } }]);
+    expect(await recordsOf(playbook.ledger, 'reading_failed')).toMatchObject([
+      { data: { because: 'tool_not_offered' } },
+    ]);
     expect(row?.row).toMatchObject({ open: true, reads: 1 });
-    expect(await brain.firstOpen()).toMatchObject({ standing: 'delivered' });
+    expect(await playbook.firstOpen()).toMatchObject({ standing: 'delivered' });
   });
 });
 
 describe('a conversation with nothing open in it', () => {
   it('rests, with no call, once its one request was answered through answer_interaction', async () => {
-    const brain = await deliveredInThread();
-    await brain.call(answerInteraction, { run_id: runId, answer: { choice: 'approve' } });
+    const playbook = await deliveredInThread();
+    await playbook.call(answerInteraction, { run_id: runId, answer: { choice: 'approve' } });
 
-    await brain.performReads(Date.now() + farAhead);
-    const [row] = await conversationRows(brain.ledger);
+    await playbook.performReads(Date.now() + farAhead);
+    const [row] = await conversationRows(playbook.ledger);
 
-    expect([row?.row['open'], row?.row['due_at'], brain.chat.calls()]).toMatchObject([false, null, [{}]]);
+    expect([row?.row['open'], row?.row['due_at'], playbook.chat.calls()]).toMatchObject([false, null, [{}]]);
   });
 });
 
@@ -114,12 +116,12 @@ describe('a listed reply without an identity or a sender that fits', () => {
       { ts: 'x'.repeat(300), user: answererId, text: 'approve' },
       { ts: '9.2', user: 'U'.repeat(300), text: 'approve' },
     ];
-    const brain = await deliveredInThread();
-    brain.chat.answerNext(answered({ messages: listed }));
-    await brain.performReads(Date.now() + farAhead);
-    const [read] = await recordsOf(brain.ledger, 'replies_read');
+    const playbook = await deliveredInThread();
+    playbook.chat.answerNext(answered({ messages: listed }));
+    await playbook.performReads(Date.now() + farAhead);
+    const [read] = await recordsOf(playbook.ledger, 'replies_read');
 
     expect(read?.data).toMatchObject({ replies: 4, taken: 0, refused: 0, since: '9.2' });
-    expect(await brain.firstOpen()).toMatchObject({ standing: 'delivered' });
+    expect(await playbook.firstOpen()).toMatchObject({ standing: 'delivered' });
   });
 });

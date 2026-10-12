@@ -2,14 +2,14 @@ import type { Context, Decider } from '@beonauto/operations';
 import { Effect, Result, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { defineGetBrainAnalytics } from '../index.ts';
+import { defineGetPlaybookAnalytics } from '../index.ts';
 import { RunEventSchema, type RecordedRunEvent, type RunEvent } from '../runs/run-events.ts';
 import type { RunRejection } from '../runs/run.ts';
 import { acmeReader } from '../testing/callers.ts';
 import { echo } from '../testing/echo.ts';
-import { asQueryString, harness, toBrain, type Harness } from '../testing/harness.ts';
+import { asQueryString, harness, toPlaybook, type Harness } from '../testing/harness.ts';
 
-const getBrainAnalytics = defineGetBrainAnalytics([
+const getPlaybookAnalytics = defineGetPlaybookAnalytics([
   echo,
   { ...echo, type: 'reasoning' },
   { ...echo, type: 'workflow' },
@@ -57,7 +57,7 @@ function running(definitions: Harness, stream: string, ...events: readonly Writi
   );
 }
 
-async function aBrainWithRuns(): Promise<Harness> {
+async function aPlaybookWithRuns(): Promise<Harness> {
   const definitions = harness();
   const rejection: RunRejection = { reason: 'unavailable', detail: 'The answer is not JSON' };
   await running(
@@ -90,7 +90,7 @@ async function aBrainWithRuns(): Promise<Harness> {
   return definitions;
 }
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 function quietDay(day: string) {
   const runs = { total: 0, succeeded: 0, failed: 0, rejected: 0 };
@@ -107,11 +107,11 @@ const schemaRefusals: readonly (readonly [Readonly<Record<string, unknown>>, str
   [{ type: 'prediction' }, '/type'],
 ];
 
-describe('get_brain_analytics', () => {
+describe('get_playbook_analytics', () => {
   it('answers the last seven days by default, with every day, the runs that ended and what they used', async () => {
-    const definitions = await aBrainWithRuns();
+    const definitions = await aPlaybookWithRuns();
 
-    const read = await definitions.call(getBrainAnalytics, toAlpha(acmeReader), now);
+    const read = await definitions.call(getPlaybookAnalytics, toAlpha(acmeReader), now);
 
     expect(read).toEqual({
       status: 'succeeded',
@@ -144,17 +144,17 @@ describe('get_brain_analytics', () => {
   });
 });
 
-describe('get_brain_analytics, asked for some days or some runs', () => {
+describe('get_playbook_analytics, asked for some days or some runs', () => {
   it('reads the last 30 days, or the days between two, and keeps the runs of one type or name', async () => {
-    const definitions = await aBrainWithRuns();
-    const reading = (input: object) => definitions.call(getBrainAnalytics, toAlpha(acmeReader, input), now);
+    const definitions = await aPlaybookWithRuns();
+    const reading = (input: object) => definitions.call(getPlaybookAnalytics, toAlpha(acmeReader, input), now);
 
     const answers = await Promise.all([
       reading({ days: 30 }),
       reading({ from: '2026-10-06', to: '2026-10-06' }),
       reading({ type: 'workflow' }),
       reading({ type: 'reasoning', name: 'triage', days: 30 }),
-      definitions.call(getBrainAnalytics, asQueryString(toAlpha(acmeReader, { days: '14', name: 'approval' })), now),
+      definitions.call(getPlaybookAnalytics, asQueryString(toAlpha(acmeReader, { days: '14', name: 'approval' })), now),
     ]);
 
     expect(answers).toMatchObject([
@@ -167,40 +167,40 @@ describe('get_brain_analytics, asked for some days or some runs', () => {
   });
 });
 
-describe('get_brain_analytics, given what it cannot answer', () => {
+describe('get_playbook_analytics, given what it cannot answer', () => {
   it.each(schemaRefusals)('refuses %j as input that does not match its schema', async (input, pointer) => {
     const definitions = harness();
 
-    expect(await definitions.call(getBrainAnalytics, toAlpha(acmeReader, input), now)).toMatchObject({
+    expect(await definitions.call(getPlaybookAnalytics, toAlpha(acmeReader, input), now)).toMatchObject({
       status: 'rejected',
       reason: 'invalid_input',
       issues: [{ pointer }],
     });
   });
 
-  it('refuses days with from, a day after today, and a brain it does not have', async () => {
+  it('refuses days with from, a day after today, and a playbook it does not have', async () => {
     const definitions = harness();
 
     const answers = await Promise.all([
-      definitions.call(getBrainAnalytics, toAlpha(acmeReader, { days: 7, from: '2026-10-01' }), now),
-      definitions.call(getBrainAnalytics, toAlpha(acmeReader, { from: '2026-10-01', to: '2026-10-07' }), now),
-      definitions.call(getBrainAnalytics, toBrain('acme', 'zeta')(acmeReader), now),
+      definitions.call(getPlaybookAnalytics, toAlpha(acmeReader, { days: 7, from: '2026-10-01' }), now),
+      definitions.call(getPlaybookAnalytics, toAlpha(acmeReader, { from: '2026-10-01', to: '2026-10-07' }), now),
+      definitions.call(getPlaybookAnalytics, toPlaybook('acme', 'zeta')(acmeReader), now),
     ]);
 
     expect(answers).toEqual([
       {
         status: 'rejected',
         reason: 'invalid_input',
-        detail: 'The days asked for are not a window this brain can answer',
+        detail: 'The days asked for are not a window this playbook can answer',
         issues: [{ pointer: '/days', detail: 'Expected days, or from and to, not both' }],
       },
       {
         status: 'rejected',
         reason: 'invalid_input',
-        detail: 'The days asked for are not a window this brain can answer',
+        detail: 'The days asked for are not a window this playbook can answer',
         issues: [{ pointer: '/to', detail: 'Expected a day no later than today, 2026-10-06, in UTC' }],
       },
-      { status: 'rejected', reason: 'not_found', detail: 'There is no brain zeta in this org' },
+      { status: 'rejected', reason: 'not_found', detail: 'There is no playbook zeta in this org' },
     ]);
   });
 });

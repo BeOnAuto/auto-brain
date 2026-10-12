@@ -20,11 +20,11 @@ afterAll(async () => {
 });
 
 const ArgumentsSchema = Schema.Struct({
-  properties: Schema.Struct({ brain: Schema.Struct({ description: Schema.String }) }),
+  properties: Schema.Struct({ playbook: Schema.Struct({ description: Schema.String }) }),
   required: Schema.optionalKey(Schema.Array(Schema.String)),
 });
 
-function brainArgumentOf(tool: string) {
+function playbookArgumentOf(tool: string) {
   return Schema.decodeUnknownSync(ArgumentsSchema)(
     meetings.surfaces.tools.find(({ name }) => name === tool)?.inputSchema,
   );
@@ -40,66 +40,66 @@ function fieldsOfEachServer(listed: unknown): readonly (readonly string[])[] {
 
 const searchTestable: unknown = expect.arrayContaining([expect.objectContaining({ name: 'search', testable: true })]);
 
-async function askedBeforeAndAfterTheBrainIsMade() {
+async function askedBeforeAndAfterThePlaybookIsMade() {
   const inOrg = await meetings.onMcp((session) => session.callTool('list_tool_servers', {}));
-  await meetings.onMcp((session) => session.callTool('create_brain', { brain: 'meetings', name: 'Meetings' }));
-  const inBrain = await meetings.onBrain('meetings', (session) => session.callTool('list_tool_servers', {}));
-  return { inOrg, inBrain };
+  await meetings.onMcp((session) => session.callTool('create_playbook', { playbook: 'meetings', name: 'Meetings' }));
+  const inPlaybook = await meetings.onPlaybook('meetings', (session) => session.callTool('list_tool_servers', {}));
+  return { inOrg, inPlaybook };
 }
 
-describe('episode 9: asked for the tool servers on the connection of the whole org, without naming a brain', () => {
-  it('finds the brain optional, and what the tool answers without it, in the served surfaces', () => {
-    const { required = [], properties } = brainArgumentOf('list_tool_servers');
+describe('episode 9: asked for the tool servers on the connection of the whole org, without naming a playbook', () => {
+  it('finds the playbook optional, and what the tool answers without it, in the served surfaces', () => {
+    const { required = [], properties } = playbookArgumentOf('list_tool_servers');
 
-    expect(required).not.toContain('brain');
-    expect(properties.brain.description).toContain('without it, every tool server of the org is listed');
-    expect(sentenceNaming(descriptionIn(meetings.surfaces, 'list_tool_servers'), 'Without `brain`')).toBe(
-      'Without `brain` it answers for the whole org, naming the brains each server serves.',
+    expect(required).not.toContain('playbook');
+    expect(properties.playbook.description).toContain('without it, every tool server of the org is listed');
+    expect(sentenceNaming(descriptionIn(meetings.surfaces, 'list_tool_servers'), 'Without `playbook`')).toBe(
+      'Without `playbook` it answers for the whole org, naming the playbooks each server serves.',
     );
   });
 
-  it('is answered, before the brain is made, with the tool servers of the org and the brains each serves, and on the brain endpoint with those of the brain', async () => {
-    const { inOrg, inBrain } = await askedBeforeAndAfterTheBrainIsMade();
+  it('is answered, before the playbook is made, with the tool servers of the org and the playbooks each serves, and on the playbook endpoint with those of the playbook', async () => {
+    const { inOrg, inPlaybook } = await askedBeforeAndAfterThePlaybookIsMade();
 
     expect(inOrg.isError).not.toBe(true);
     expect(inOrg.structuredContent).toMatchObject({
       tool_servers: [
-        { name: 'notes', brains: ['meetings'], because: 'key_refused' },
-        { name: 'slack', brains: ['meetings'], tools: searchTestable },
+        { name: 'notes', playbooks: ['meetings'], because: 'key_refused' },
+        { name: 'slack', playbooks: ['meetings'], tools: searchTestable },
       ],
     });
     expect(plainTextIn(inOrg)).toMatch(
-      /^The brains of this org may use 2 tool servers\. “notes”, for the brain “meetings”, did not accept the key/u,
+      /^The playbooks of this org may use 2 tool servers\. “notes”, for the playbook “meetings”, did not accept the key/u,
     );
-    expect(inBrain.structuredContent).toMatchObject({
+    expect(inPlaybook.structuredContent).toMatchObject({
       tool_servers: [
         { name: 'notes', because: 'key_refused' },
         { name: 'slack', tools: searchTestable },
       ],
     });
-    expect(fieldsOfEachServer(inBrain.structuredContent).map((fields) => fields.includes('brains'))).toEqual([
+    expect(fieldsOfEachServer(inPlaybook.structuredContent).map((fields) => fields.includes('playbooks'))).toEqual([
       false,
       false,
     ]);
-    expect(plainTextIn(inBrain)).toMatch(/^This brain's functions may use 2 tool servers\. /u);
+    expect(plainTextIn(inPlaybook)).toMatch(/^This playbook's functions may use 2 tool servers\. /u);
   });
 });
 
-async function askedForAMissingBrain() {
+async function askedForAMissingPlaybook() {
   return {
-    onMcp: await meetings.onMcp((session) => session.callTool('list_tool_servers', { brain: 'nowhere' })),
-    onItsEndpoint: await meetings.onBrain('nowhere', (session) => session.callTool('list_tool_servers', {})),
+    onMcp: await meetings.onMcp((session) => session.callTool('list_tool_servers', { playbook: 'nowhere' })),
+    onItsEndpoint: await meetings.onPlaybook('nowhere', (session) => session.callTool('list_tool_servers', {})),
   };
 }
 
-describe('the tool servers of a brain the org does not have', () => {
-  it('are refused on /mcp as on the brain endpoint, not_found in the same words', async () => {
-    const { onMcp, onItsEndpoint } = await askedForAMissingBrain();
+describe('the tool servers of a playbook the org does not have', () => {
+  it('are refused on /mcp as on the playbook endpoint, not_found in the same words', async () => {
+    const { onMcp, onItsEndpoint } = await askedForAMissingPlaybook();
 
     expect(problemIn(onMcp)).toMatchObject({
       status: 404,
       reason: 'not_found',
-      detail: 'There is no brain nowhere in this org',
+      detail: 'There is no playbook nowhere in this org',
     });
     expect(problemIn(onMcp)).toEqual(problemIn(onItsEndpoint));
     expect(plainTextIn(onMcp)).toBe(plainTextIn(onItsEndpoint));

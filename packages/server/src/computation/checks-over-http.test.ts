@@ -50,7 +50,7 @@ function countingChecks(): { readonly checks: Checks; readonly poolOf: ProgramPo
 
 async function serving(programPoolOf: ProgramPoolOf = workerPool): Promise<ReasoningServer> {
   server = await servingReasoning([], { LOCAL_MODE: 'true' }, undefined, { programPoolOf });
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   return server;
 }
 
@@ -86,7 +86,7 @@ describe(
             {
               pointer: '/source',
               detail:
-                "Line 2, /language: The brain's one language is TypeScript; write the program as a TypeScript function",
+                "Line 2, /language: The playbook's one language is TypeScript; write the program as a TypeScript function",
             },
           ],
         },

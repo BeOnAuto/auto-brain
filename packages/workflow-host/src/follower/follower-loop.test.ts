@@ -10,7 +10,7 @@ import type { PassEnd } from './record-steps.ts';
 
 const anHour = 3_600_000;
 
-const nothingToSweep: Sweep = { registries: [], brains: [], again: false };
+const nothingToSweep: Sweep = { registries: [], playbooks: [], again: false };
 
 interface Watched {
   readonly raise: (stream: string) => void;
@@ -36,9 +36,9 @@ function failingFirst<A>(times: number, read: Effect.Effect<A>): () => Effect.Ef
     });
 }
 
-function followsFailingOnceFor(failing: string | undefined): (brainKey: string) => Effect.Effect<void> {
+function followsFailingOnceFor(failing: string | undefined): (playbookKey: string) => Effect.Effect<void> {
   const follow = failingFirst(1, Effect.void);
-  return (brainKey) => (brainKey === failing ? follow() : Effect.void);
+  return (playbookKey) => (playbookKey === failing ? follow() : Effect.void);
 }
 
 function inTurn<A>(items: readonly A[], after: A): () => A {
@@ -60,23 +60,23 @@ function followerWith(following: Following = {}): Watched {
   const passEnd = inTurn<PassEnd | 'fails'>(following.passEnds ?? [], 'caught_up');
   const sweep = inTurn(following.sweeps ?? [], nothingToSweep);
   const follower = startFollower({
-    pass: (brainKey, mode) =>
+    pass: (playbookKey, mode) =>
       Effect.suspend(() => {
         const end = passEnd();
         return end === 'fails'
           ? Effect.die(new Error('The pass broke'))
-          : Effect.as(logged(`pass ${brainKey} ${mode}`), end);
+          : Effect.as(logged(`pass ${playbookKey} ${mode}`), end);
       }),
     discovery: {
       atStart: failingFirst(following.startsFailing ?? 0, logged('start')),
       registriesAppended: (registries) => logged(`registries ${registries.join(' ')}`),
-      brainSeen: followsFailingOnceFor(following.followFailingOnce),
+      playbookSeen: followsFailingOnceFor(following.followFailingOnce),
     },
     sweeps: {
       started: () => logged('anchored'),
       next: failingFirst(following.sweepsFailing ?? 0, Effect.sync(sweep)),
-      passAgain: (brainKey) => {
-        log.push(`handed back ${brainKey}`);
+      passAgain: (playbookKey) => {
+        log.push(`handed back ${playbookKey}`);
       },
       registriesRead: Function.constVoid,
     },
@@ -102,8 +102,8 @@ function logReaching(watched: Watched, length: number) {
   );
 }
 
-describe('the follower of the brains', () => {
-  it('takes its place in the ledger and finds the brains at its start, sweeps, and reads a registry appended to', async () => {
+describe('the follower of the playbooks', () => {
+  it('takes its place in the ledger and finds the playbooks at its start, sweeps, and reads a registry appended to', async () => {
     const watched = followerWith();
     await logReaching(watched, 3);
 
@@ -113,7 +113,7 @@ describe('the follower of the brains', () => {
     expect(log).toEqual(['anchored', 'start', 'sweep', 'registries org/acme/brains']);
   });
 
-  it('passes a brain an event was appended to, not one a run appended to, and again while the pass says there is more', async () => {
+  it('passes a playbook an event was appended to, not one a run appended to, and again while the pass says there is more', async () => {
     const watched = followerWith({ passEnds: ['more', 'more', 'caught_up'] });
     await logReaching(watched, 3);
 
@@ -129,10 +129,10 @@ describe('the follower of the brains', () => {
     ]);
   });
 
-  it('reads the registries a sweep names, passes the brains it hands out, and sweeps again at once when it says so', async () => {
+  it('reads the registries a sweep names, passes the playbooks it hands out, and sweeps again at once when it says so', async () => {
     const handedOut: Sweep = {
       registries: ['org/acme/brains'],
-      brains: [{ brainKey: 'brain/acme/alpha/', known: undefined }],
+      playbooks: [{ playbookKey: 'brain/acme/alpha/', known: undefined }],
       again: true,
     };
     const watched = followerWith({ sweeps: [handedOut] });
@@ -150,7 +150,7 @@ describe('the follower of the brains', () => {
   });
 });
 
-describe('the follower of the brains, when a read fails', () => {
+describe('the follower of the playbooks, when a read fails', () => {
   it('says a read that failed at its start or while it waits is trouble, and reads again at the next sweep', async () => {
     const watched = followerWith({ sweepEveryMs: 20, startsFailing: 1, schedulesFailing: 1 });
 
@@ -158,7 +158,7 @@ describe('the follower of the brains, when a read fails', () => {
 
     expect(log.slice(0, 7)).toEqual([
       'anchored',
-      'The follower of the brains could not find the brains at its start; it tries again at the next sweep',
+      'The follower of the playbooks could not find the playbooks at its start; it tries again at the next sweep',
       'anchored',
       'start',
       'sweep',
@@ -175,13 +175,13 @@ describe('the follower of the brains, when a read fails', () => {
     expect(log.slice(0, 4)).toEqual([
       'anchored',
       'start',
-      'The follower of the brains failed; it tries again',
+      'The follower of the playbooks failed; it tries again',
       'sweep',
     ]);
   });
 });
 
-describe('the follower of the brains, when a pass over a brain fails', () => {
+describe('the follower of the playbooks, when a pass over a playbook fails', () => {
   it('says a pass that fails is trouble, and passes again at the next signal', async () => {
     const watched = followerWith({ passEnds: ['fails'] });
     await logReaching(watched, 3);
@@ -192,13 +192,13 @@ describe('the follower of the brains, when a pass over a brain fails', () => {
     const log = await logReaching(watched, 6);
 
     expect(log.slice(3)).toEqual([
-      'A pass over a brain failed; the next sweep passes the brain again',
+      'A pass over a playbook failed; the next sweep passes the playbook again',
       'handed back brain/acme/alpha/',
       'pass brain/acme/alpha/ signal',
     ]);
   });
 
-  it('says a follow of a signalled brain that fails is trouble for that brain alone, passes the others, and hands the brain back', async () => {
+  it('says a follow of a signalled playbook that fails is trouble for that playbook alone, passes the others, and hands the playbook back', async () => {
     const watched = followerWith({ followFailingOnce: 'brain/acme/alpha/' });
     await logReaching(watched, 3);
 
@@ -207,7 +207,7 @@ describe('the follower of the brains, when a pass over a brain fails', () => {
     const log = await logReaching(watched, 6);
 
     expect(log.slice(3)).toEqual([
-      'A pass over a brain failed; the next sweep passes the brain again',
+      'A pass over a playbook failed; the next sweep passes the playbook again',
       'handed back brain/acme/alpha/',
       'pass brain/acme/beta/ signal',
     ]);

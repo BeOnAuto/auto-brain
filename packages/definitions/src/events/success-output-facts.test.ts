@@ -6,7 +6,7 @@ import { jsonBytesOf } from '../runs/recorded-size.ts';
 import { runStreamNameOf } from '../runs/run-decider.ts';
 import type { RunEvent } from '../runs/run-events.ts';
 import { testRunId as runId } from '../testing/run-facts.ts';
-import { brainFactOf } from './brain-facts.ts';
+import { playbookFactOf } from './brain-facts.ts';
 import { mostPublishedEventBytes } from './cloud-event.ts';
 
 const at = '2026-10-01T09:00:05.000Z';
@@ -51,7 +51,7 @@ function deep(levels: number): Schema.Json {
 }
 
 function succeededWith(output: Schema.Json) {
-  return brainFactOf(ofRun({ type: 'run_succeeded', data: { output, record: {} } }));
+  return playbookFactOf(ofRun({ type: 'run_succeeded', data: { output, record: {} } }));
 }
 
 describe('the output a success carries as an event', () => {

@@ -27,10 +27,10 @@ function standingOf(version: number, kept: KeptView | undefined, newestAt: strin
 }
 
 export function recallStanding(views: ViewsPort): Standing {
-  return ({ org, brain, name, version, status }) =>
+  return ({ org, playbook, name, version, status }) =>
     status === 'retired'
       ? Effect.undefined
-      : Effect.all([views.viewOf({ org, brain }, name), views.newestRecordAt({ org, brain })]).pipe(
+      : Effect.all([views.viewOf({ org, playbook }, name), views.newestRecordAt({ org, playbook })]).pipe(
           Effect.map(([kept, newestAt]: readonly [KeptView | undefined, string | undefined]) =>
             standingOf(version, kept, newestAt),
           ),

@@ -19,7 +19,7 @@ function savedAs(name: string, content: object) {
   };
 }
 
-describe('the recall functions a brain keeps', () => {
+describe('the recall functions a playbook keeps', () => {
   it('counts an event it cannot read as a version of the stream, and keeps the functions as they were', () => {
     const definitions = definitionsAfter(noDefinitions, [
       savedAs('runs', { source: 'the runs document', details: { fold } }),
@@ -50,7 +50,7 @@ describe('the recall functions a brain keeps', () => {
   });
 });
 
-describe('the fold a brain keeps for a recall function', () => {
+describe('the fold a playbook keeps for a recall function', () => {
   it('is the module and the filters its save stripped, and the details as written when it stripped none', () => {
     const typed = detailsOf(fold, [{ type: 'noted', data: '${ $data.n as number > 1 }' }]);
     const stripped = {

@@ -15,8 +15,8 @@ const time = '2026-10-01T09:00:00.000Z';
 
 export function followedRecordOf(data: Json, about: Partial<FollowedEvent> = {}): FollowedRecord {
   return {
-    brain: { org: 'acme', brain: 'alpha' },
-    brainKey: 'brain/acme/alpha/',
+    playbook: { org: 'acme', playbook: 'alpha' },
+    playbookKey: 'brain/acme/alpha/',
     record: {
       id: 'record-1',
       cursor: 'c1',
@@ -48,7 +48,7 @@ export function saidRefusals(): SaidRefusals {
       said.push(line);
     });
   return {
-    refusals: { refuse: (_brainKey, { workflow }, reason) => say(`${workflow}: ${reason}`) },
+    refusals: { refuse: (_playbookKey, { workflow }, reason) => say(`${workflow}: ${reason}`) },
     said: () => said,
     say,
   };

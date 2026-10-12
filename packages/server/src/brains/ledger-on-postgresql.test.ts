@@ -40,7 +40,7 @@ async function onADatabaseOfItsOwn(): Promise<Readonly<Record<string, string>>> 
   return { LOCAL_MODE: 'true', LEDGER_FILE: '', DATABASE_URL: database.href };
 }
 
-const brain = '/v1/orgs/acme/brains/alpha';
+const playbook = '/v1/orgs/acme/playbooks/alpha';
 
 const computedRun = Schema.decodeUnknownSync(
   Schema.Struct({ status: Schema.String, output: Schema.Json, record: Schema.Struct({ work: Schema.Number }) }),
@@ -48,13 +48,13 @@ const computedRun = Schema.decodeUnknownSync(
 
 async function computedOn(environment: Readonly<Record<string, string>>) {
   const computing = await servingReasoning([], environment);
-  await computing.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
-  await computing.call('POST', `${brain}/definitions/computation`, { body: { name: 'pace', source: campaignPace } });
+  await computing.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
+  await computing.call('POST', `${playbook}/definitions/computation`, { body: { name: 'pace', source: campaignPace } });
   const runs = await runIds.reduce<Promise<readonly ReturnType<typeof computedRun>[]>>(async (before, runId) => {
-    await computing.call('POST', `${brain}/definitions/computation/pace/run`, {
+    await computing.call('POST', `${playbook}/definitions/computation/pace/run`, {
       body: { input: campaignRows(500), run_id: runId },
     });
-    const run = computedRun((await computing.call('GET', `${brain}/runs/${runId}`)).body);
+    const run = computedRun((await computing.call('GET', `${playbook}/runs/${runId}`)).body);
     return [...(await before), run];
   }, Promise.resolve([]));
   await computing.stop();
@@ -83,29 +83,31 @@ describe.skipIf(skipped)(
   `A server that keeps its ledger in PostgreSQL${notice}`,
   { timeout: spawnedServerTestTimeoutMs },
   () => {
-    it('executes a reasoning function definition of a brain it created, and reads the run again after a restart', async () => {
+    it('executes a reasoning function definition of a playbook it created, and reads the run again after a restart', async () => {
       const environment = await onADatabaseOfItsOwn();
       const first = await servingReasoning([answers(textResult('Profits rose.'))], environment);
-      const created = await first.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
-      const definition = await first.call('POST', `${brain}/definitions/reasoning`, {
+      const created = await first.call('POST', '/v1/orgs/acme/playbooks', {
+        body: { playbook: 'alpha', name: 'Alpha' },
+      });
+      const definition = await first.call('POST', `${playbook}/definitions/reasoning`, {
         body: { name: 'summary', source: summary },
       });
-      const ran = await first.call('POST', `${brain}/definitions/reasoning/summary/run`, {
+      const ran = await first.call('POST', `${playbook}/definitions/reasoning/summary/run`, {
         body: { input: { text: 'the quarter' }, run_id: runId },
       });
-      const run = `${brain}/runs/${runId}`;
+      const run = `${playbook}/runs/${runId}`;
       const before = await first.call('GET', run);
       await first.stop();
 
       const second = await servingReasoning([], environment);
       const after = await second.call('GET', run);
-      const brainAfter = await second.call('GET', brain);
+      const playbookAfter = await second.call('GET', playbook);
       await second.stop();
 
       expect([created.status, definition.status, ran.status, before.status]).toEqual([201, 201, 200, 200]);
       expect(before.body).toMatchObject({ status: 'succeeded', output: 'Profits rose.', name: 'summary' });
       expect(after).toMatchObject({ status: 200, body: before.body });
-      expect(brainAfter).toMatchObject({ status: 200, body: { id: 'alpha', name: 'Alpha', status: 'active' } });
+      expect(playbookAfter).toMatchObject({ status: 200, body: { id: 'alpha', name: 'Alpha', status: 'active' } });
     });
 
     it('says at start-up that the ledger is in PostgreSQL, with its database and host and never its URL', async () => {
@@ -149,15 +151,15 @@ describe.skipIf(skipped)(
     it('runs a workflow in the same database, and goes on with it after a restart', async () => {
       const environment = await onADatabaseOfItsOwn();
       const first = await servingReasoning([], environment);
-      await first.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
-      await first.call('POST', `${brain}/definitions/workflow`, { body: { name: 'approval', source: approval } });
-      const started = await first.call('POST', `${brain}/definitions/workflow/approval/run`, {
+      await first.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
+      await first.call('POST', `${playbook}/definitions/workflow`, { body: { name: 'approval', source: approval } });
+      const started = await first.call('POST', `${playbook}/definitions/workflow/approval/run`, {
         body: { input: {} },
       });
       await first.stop();
 
       const second = await servingReasoning([], environment);
-      const run = `${brain}/runs/${runIdIn(started.body)}`;
+      const run = `${playbook}/runs/${runIdIn(started.body)}`;
       const sent = await second.call('POST', `${run}/events`, {
         body: { event: { type: 'com.acme.approved', data: { by: 'Ada' } } },
       });

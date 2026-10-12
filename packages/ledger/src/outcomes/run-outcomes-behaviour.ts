@@ -1,5 +1,5 @@
 import type {
-  BrainAddress,
+  PlaybookAddress,
   Ledger,
   RunOutcomeGroup,
   RunOutcomeMapping,
@@ -14,7 +14,7 @@ type AnyLedger = Ledger['Service'];
 
 export type LedgerKeeping = (runOutcomes?: RunOutcomeMapping) => Promise<AnyLedger>;
 
-const alpha: BrainAddress = { org: 'acme', brain: 'alpha' };
+const alpha: PlaybookAddress = { org: 'acme', playbook: 'alpha' };
 
 const october: RunOutcomeWindow = { from: '2026-10-01', to: '2026-10-31' };
 
@@ -46,9 +46,9 @@ export async function reading(
   ledger: AnyLedger,
   window: RunOutcomeWindow = october,
   selection: RunOutcomeSelection = {},
-  brain: BrainAddress = alpha,
+  playbook: PlaybookAddress = alpha,
 ): Promise<readonly RunOutcomeGroup[]> {
-  return inOrder(await Effect.runPromise(ledger.readRunOutcomes(brain, window, selection)));
+  return inOrder(await Effect.runPromise(ledger.readRunOutcomes(playbook, window, selection)));
 }
 
 export function runsOf(groups: readonly RunOutcomeGroup[]): readonly string[] {
@@ -108,7 +108,7 @@ function theRowOfEachRun(aLedger: LedgerKeeping): void {
       expect(await reading(ledger)).toEqual(fourRunsKept);
     });
 
-    it('keep to the days of the window, the selection, and the brain matched exactly', async () => {
+    it('keep to the days of the window, the selection, and the playbook matched exactly', async () => {
       const ledger = await aLedger(runTallies);
       await noting(ledger, 'brain/acme/alpha/runs/r1', began('triage', '2026-09-30T23:59:59.999Z'));
       await noting(ledger, 'brain/acme/alpha/runs/r2', began('triage', '2026-10-01T00:00:00.000Z'));
@@ -125,7 +125,7 @@ function theRowOfEachRun(aLedger: LedgerKeeping): void {
         reading(ledger, october, { name: 'draft' }),
         reading(ledger, october, { definitionType: 'other' }),
         reading(ledger, october, { definitionType: 'tally', name: 'triage' }),
-        reading(ledger, october, {}, { org: 'acme', brain: 'alph_' }),
+        reading(ledger, october, {}, { org: 'acme', playbook: 'alph_' }),
       ]);
 
       expect(pages.map((groups) => runsOf(groups))).toEqual([

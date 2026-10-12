@@ -2,88 +2,88 @@ import { Conflict, NotFound, recordingOf, type Context } from '@beonauto/operati
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import type { BrainCommand } from './brain-commands.ts';
-import type { BrainEvent, RecordedBrainEvent } from './brain-events.ts';
+import type { PlaybookCommand } from './brain-commands.ts';
+import type { PlaybookEvent, RecordedPlaybookEvent } from './brain-events.ts';
 import { registryDecider } from './registry-decider.ts';
 
-const recordedBrainEvent = recordingOf(registryDecider.eventSchema);
+const recordedPlaybookEvent = recordingOf(registryDecider.eventSchema);
 
 const creation = { by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
 
 const change = { by: 'acme-editor', at: '2026-10-02T10:30:00.000Z' };
 
-const alphaCreated: BrainEvent = {
+const alphaCreated: PlaybookEvent = {
   type: 'brain_created',
   data: { brain: 'alpha', name: 'Alpha', description: 'Answers sales questions' },
 };
 
-const alphaRetired: BrainEvent = { type: 'brain_retired', data: { brain: 'alpha' } };
+const alphaRetired: PlaybookEvent = { type: 'brain_retired', data: { brain: 'alpha' } };
 
-const recordedWhen = new Map<BrainEvent, Context>([
+const recordedWhen = new Map<PlaybookEvent, Context>([
   [alphaCreated, creation],
   [alphaRetired, change],
 ]);
 
-function recorded(event: BrainEvent, context: Context = recordedWhen.get(event) ?? change): RecordedBrainEvent {
-  return recordedBrainEvent(event, context);
+function recorded(event: PlaybookEvent, context: Context = recordedWhen.get(event) ?? change): RecordedPlaybookEvent {
+  return recordedPlaybookEvent(event, context);
 }
 
-function registryAfter(...events: readonly (BrainEvent | RecordedBrainEvent)[]) {
+function registryAfter(...events: readonly (PlaybookEvent | RecordedPlaybookEvent)[]) {
   return events.reduce(
     (registry, event) => registryDecider.evolve(registry, 'context' in event ? event : recorded(event)),
     registryDecider.initialState,
   );
 }
 
-function decided(command: BrainCommand, ...history: readonly BrainEvent[]) {
+function decided(command: PlaybookCommand, ...history: readonly PlaybookEvent[]) {
   return registryDecider.decide(command, registryAfter(...history));
 }
 
-function updating(name: string, description: string): BrainCommand {
-  return { type: 'update', brain: 'alpha', name, description, ...change };
+function updating(name: string, description: string): PlaybookCommand {
+  return { type: 'update', playbook: 'alpha', name, description, ...change };
 }
 
-const retiring: BrainCommand = { type: 'retire', brain: 'alpha', ...change };
+const retiring: PlaybookCommand = { type: 'retire', playbook: 'alpha', ...change };
 
-describe('creating a brain', () => {
-  const creating: BrainCommand = {
+describe('creating a playbook', () => {
+  const creating: PlaybookCommand = {
     type: 'create',
-    brain: 'alpha',
+    playbook: 'alpha',
     name: 'Alpha',
     description: 'Answers sales questions',
     ...creation,
   };
 
-  it('records the brain, with who created it and when as its context', () => {
+  it('records the playbook, with who created it and when as its context', () => {
     expect(decided(creating)).toStrictEqual(Result.succeed([alphaCreated]));
     expect(registryDecider.context(creating, registryAfter())).toStrictEqual(creation);
   });
 
-  it('is rejected while an active brain holds the id', () => {
+  it('is rejected while an active playbook holds the id', () => {
     expect(decided(creating, alphaCreated)).toEqual(
-      Result.fail(new Conflict({ detail: 'There is already a brain alpha in this org', kind: 'taken' })),
+      Result.fail(new Conflict({ detail: 'There is already a playbook alpha in this org', kind: 'taken' })),
     );
   });
 
-  it('is rejected for the id of a retired brain, because an id is never reused', () => {
+  it('is rejected for the id of a retired playbook, because an id is never reused', () => {
     expect(decided(creating, alphaCreated, alphaRetired)).toEqual(
       Result.fail(
-        new Conflict({ detail: 'The brain alpha was retired, and a brain id is never reused', kind: 'taken' }),
+        new Conflict({ detail: 'The playbook alpha was retired, and a playbook id is never reused', kind: 'taken' }),
       ),
     );
   });
 });
 
-describe('updating a brain', () => {
-  it('is rejected for a brain the org does not have', () => {
+describe('updating a playbook', () => {
+  it('is rejected for a playbook the org does not have', () => {
     expect(decided(updating('Alpha', ''))).toEqual(
-      Result.fail(new NotFound({ detail: 'There is no brain alpha in this org' })),
+      Result.fail(new NotFound({ detail: 'There is no playbook alpha in this org' })),
     );
   });
 
-  it('is rejected for a retired brain', () => {
+  it('is rejected for a retired playbook', () => {
     expect(decided(updating('Alpha Sales', ''), alphaCreated, alphaRetired)).toEqual(
-      Result.fail(new Conflict({ detail: 'The brain alpha is retired and can no longer change', kind: 'retired' })),
+      Result.fail(new Conflict({ detail: 'The playbook alpha is retired and can no longer change', kind: 'retired' })),
     );
   });
 
@@ -104,26 +104,26 @@ describe('updating a brain', () => {
   });
 });
 
-describe('retiring a brain', () => {
-  it('is rejected for a brain the org does not have', () => {
-    expect(decided(retiring)).toEqual(Result.fail(new NotFound({ detail: 'There is no brain alpha in this org' })));
+describe('retiring a playbook', () => {
+  it('is rejected for a playbook the org does not have', () => {
+    expect(decided(retiring)).toEqual(Result.fail(new NotFound({ detail: 'There is no playbook alpha in this org' })));
   });
 
-  it('records the retirement of an active brain', () => {
+  it('records the retirement of an active playbook', () => {
     expect(decided(retiring, alphaCreated)).toStrictEqual(Result.succeed([alphaRetired]));
   });
 
-  it('records nothing for a brain that is already retired', () => {
+  it('records nothing for a playbook that is already retired', () => {
     expect(decided(retiring, alphaCreated, alphaRetired)).toStrictEqual(Result.succeed([]));
   });
 });
 
-describe("an org's brain registry", () => {
+describe("an org's playbook registry", () => {
   it('starts empty', () => {
     expect(registryDecider.initialState.size).toBe(0);
   });
 
-  it('holds each brain as its facts left it', () => {
+  it('holds each playbook as its facts left it', () => {
     const registry = registryAfter(
       alphaCreated,
       recorded({ type: 'brain_created', data: { brain: 'beta', name: 'Beta', description: '' } }, creation),
@@ -157,7 +157,7 @@ describe("an org's brain registry", () => {
 });
 
 describe('a fact', () => {
-  it('about a brain the registry never saw created leaves the registry as it was', () => {
+  it('about a playbook the registry never saw created leaves the registry as it was', () => {
     expect(registryAfter(alphaRetired, { type: 'brain_updated', data: { brain: 'alpha', name: 'Ghost' } }).size).toBe(
       0,
     );

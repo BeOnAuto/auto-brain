@@ -13,7 +13,7 @@ import {
   type RecordedStatements,
   type RecordsSelected,
 } from '../recorded/recorded-statements.ts';
-import { brainKeyOfStream, correlationOfMessage } from './brain-indexes.ts';
+import { playbookKeyOfStream, correlationOfMessage } from './brain-indexes.ts';
 import { postgresqlDefinitionStreams } from './postgresql-definition-streams.ts';
 import { examineRuns } from './postgresql-runs.ts';
 import {
@@ -77,12 +77,12 @@ function recordsWhere(keys: readonly Keyed[], records: RecordsScope): string {
 }
 
 function recordsIn(selected: RecordsSelected, records: RecordsScope): string {
-  const brain = { key: brainKeyOfStream, value: records.scope.brainKey };
-  if (selected.kind === 'brain') {
-    return recordsWhere([brain], records);
+  const playbook = { key: playbookKeyOfStream, value: records.scope.playbookKey };
+  if (selected.kind === 'playbook') {
+    return recordsWhere([playbook], records);
   }
   if (selected.kind === 'correlated') {
-    return recordsWhere([brain, { key: correlationOfMessage, value: selected.correlation }], records);
+    return recordsWhere([playbook, { key: correlationOfMessage, value: selected.correlation }], records);
   }
   const ofEachStream = selected.streams.map(
     (stream) => `(${recordsWhere([{ key: 'stream_id', value: stream }], records)})`,
@@ -123,11 +123,11 @@ function examineRecords(query: Query): RecordedStatements['examineRecords'] {
 }
 
 function firstPointSince(query: Query): RecordedStatements['firstPointSince'] {
-  return async (brainKey, since) => {
+  return async (playbookKey, since) => {
     const { values, bind } = binding();
     const rows = await query(
       `SELECT transaction_id::text AS transaction, global_position::text AS position FROM emt_messages
-        WHERE ${brainKeyOfStream} = ${bind(brainKey)} AND partition = ${bind(defaultPartition)}
+        WHERE ${playbookKeyOfStream} = ${bind(playbookKey)} AND partition = ${bind(defaultPartition)}
           AND is_archived = FALSE AND created >= ${bind(since)}::timestamptz
         ORDER BY created, transaction_id, global_position
         LIMIT 1`,
@@ -161,7 +161,7 @@ function dataAt(query: Query): RecordedStatements['dataAt'] {
 }
 
 function recordWithId(query: Query): RecordedStore['readRecordedEvent'] {
-  return async (brainKey, id) => {
+  return async (playbookKey, id) => {
     const { values, bind } = binding();
     const rows = await query(
       `WITH found AS MATERIALIZED (
@@ -172,7 +172,7 @@ function recordWithId(query: Query): RecordedStore['readRecordedEvent'] {
           stream_position::int AS version, message_type AS type, ${timeOf('created')} AS recorded, ${lineageColumns},
           0 AS size, message_data AS data
         FROM found
-        WHERE ${brainKeyOfStream} = ${bind(brainKey)}
+        WHERE ${playbookKeyOfStream} = ${bind(playbookKey)}
         LIMIT 1`,
       values,
     );

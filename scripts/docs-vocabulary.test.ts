@@ -101,8 +101,8 @@ const allowances: readonly Allowance[] = [
   })),
   ...[
     "['Created the inference spec.', 'spec']",
-    "['The specs of the brain.', 'specs']",
-    "['A primitive of the brain.', 'primitive']",
+    "['The specs of the playbook.', 'specs']",
+    "['A primitive of the playbook.', 'primitive']",
     "['The execution started.', 'execution']",
     "['It ran an inference.', 'inference']",
     "['An orchestration started.', 'orchestration']",
@@ -203,7 +203,7 @@ await test('no tracked file says an old word, outside the records, the lockfile 
   assert.deepEqual(findings, []);
 });
 
-await test('no page of the reference, the concepts or the tutorials, the pages the brain serves as its guides, names the language it no longer runs', () => {
+await test('no page of the reference, the concepts or the tutorials, the pages the playbook serves as its guides, names the language it no longer runs', () => {
   assert.deepEqual(oldLanguageOnPages, []);
 });
 

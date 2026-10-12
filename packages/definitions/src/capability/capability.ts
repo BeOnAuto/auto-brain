@@ -28,7 +28,7 @@ export interface DefinitionSummary {
 
 export interface StandingRequest {
   readonly org: string;
-  readonly brain: string;
+  readonly playbook: string;
   readonly name: string;
   readonly version: number;
   readonly status: 'active' | 'retired';
@@ -49,7 +49,7 @@ export interface RunLineage {
 export interface RunContext {
   readonly id: string;
   readonly org: string;
-  readonly brain: string;
+  readonly playbook: string;
   readonly caller: CallerIdentity;
   readonly definition: { readonly name: string; readonly version: number };
   readonly journal: ToolCallJournal;
@@ -76,7 +76,7 @@ export type CapabilityAnswer = Finished | FinishesLater;
 export type CapabilityRejection = InvalidInput | Unavailable | Conflict;
 
 export interface CancelledRun {
-  readonly run: { readonly org: string; readonly brain: string; readonly id: string };
+  readonly run: { readonly org: string; readonly playbook: string; readonly id: string };
   readonly record: Schema.JsonObject;
   readonly kind: CancelRequestKind;
   readonly reason: string;

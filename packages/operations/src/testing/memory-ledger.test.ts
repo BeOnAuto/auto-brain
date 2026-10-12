@@ -34,7 +34,7 @@ const happenings: Decider<null, readonly Happened[], typeof HappenedSchema.Type>
   eventSchema: HappenedSchema,
 };
 
-const alpha = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
 function recording(ledger: MemoryLedger, at: number, stream: string, ...types: readonly string[]) {
   return TestClock.setTime(at).pipe(
@@ -58,7 +58,7 @@ function typesOf({ records }: RecordedPage): readonly string[] {
 
 const everything: RecordedSelection = { kind: 'everything' };
 
-function aBrainWith(ledger: MemoryLedger) {
+function aPlaybookWith(ledger: MemoryLedger) {
   return Effect.all([
     recording(ledger, 1000, 'brain/acme/alpha/runs/r1', 'run_started'),
     recording(ledger, 1000, 'brain/acme/alpha/run-logs/r1', 'input_applied'),
@@ -73,13 +73,13 @@ function run<A, E>(effect: Effect.Effect<A, E>): Promise<A> {
   return Effect.runPromise(effect.pipe(Effect.provide(TestClock.layer())));
 }
 
-describe('the in-memory read of what a brain recorded', () => {
-  it('reads the brain alone, in either order, resuming from the cursor of the page before', async () => {
+describe('the in-memory read of what a playbook recorded', () => {
+  it('reads the playbook alone, in either order, resuming from the cursor of the page before', async () => {
     const ledger = memoryLedger();
 
     const pages = await run(
       Effect.gen(function* () {
-        yield* aBrainWith(ledger);
+        yield* aPlaybookWith(ledger);
         const first = yield* reading(ledger, everything, { order: 'asc', limit: 3 });
         const second = yield* reading(ledger, everything, { order: 'asc', limit: 3, cursor: String(first.nextCursor) });
         const newest = yield* reading(ledger, everything, { order: 'desc', limit: 3 });
@@ -107,7 +107,7 @@ describe('the in-memory read of runs', () => {
 
     const [ofRun, runs, succeeded] = await run(
       Effect.gen(function* () {
-        yield* aBrainWith(ledger);
+        yield* aPlaybookWith(ledger);
         return yield* Effect.all([
           reading(ledger, { kind: 'run', run: 'r1' }, { order: 'asc', limit: 10 }),
           reading(ledger, { kind: 'runs' }, { order: 'desc', limit: 10 }),
@@ -140,7 +140,7 @@ describe('the in-memory read from a time or of some types', () => {
 
     const pages = await run(
       Effect.gen(function* () {
-        yield* aBrainWith(ledger);
+        yield* aPlaybookWith(ledger);
         return yield* Effect.all([
           reading(ledger, everything, { order: 'asc', limit: 10, since: new Date(1000).toISOString() }),
           reading(ledger, everything, { order: 'desc', limit: 10, since: new Date(2500).toISOString() }),
@@ -166,7 +166,7 @@ describe('the in-memory read that loads the data of some types alone', () => {
 
     const pages = await run(
       Effect.gen(function* () {
-        yield* aBrainWith(ledger);
+        yield* aPlaybookWith(ledger);
         return yield* Effect.all([
           reading(ledger, everything, { order: 'asc', limit: 10, dataOf: ['run_succeeded'] }),
           reading(ledger, { kind: 'runs' }, { order: 'asc', limit: 10, dataOf: [] }),
@@ -193,12 +193,12 @@ describe('the in-memory read that loads the data of some types alone', () => {
 });
 
 describe('the in-memory read from a cursor', () => {
-  it('refuses a cursor of another brain, or one it cannot read', async () => {
+  it('refuses a cursor of another playbook, or one it cannot read', async () => {
     const ledger = memoryLedger();
     const { records } = await run(
       recording(ledger, 0, 'brain/acme/beta/notes', 'noted').pipe(
         Effect.andThen(
-          ledger.service.readRecorded({ org: 'acme', brain: 'beta' }, everything, { order: 'asc', limit: 1 }),
+          ledger.service.readRecorded({ org: 'acme', playbook: 'beta' }, everything, { order: 'asc', limit: 1 }),
         ),
       ),
     );
@@ -217,7 +217,7 @@ describe('the in-memory read from a cursor', () => {
     );
 
     expect(refusals).toEqual([
-      new InvalidCursor({ kind: 'of_another_brain' }),
+      new InvalidCursor({ kind: 'of_another_playbook' }),
       new InvalidCursor({ kind: 'malformed' }),
       new InvalidCursor({ kind: 'malformed' }),
       new InvalidCursor({ kind: 'malformed' }),
@@ -231,7 +231,7 @@ describe('the in-memory read from inside a record', () => {
     const ledger = memoryLedger();
     const pages = await run(
       Effect.gen(function* () {
-        yield* aBrainWith(ledger);
+        yield* aPlaybookWith(ledger);
         const inside = cursorOfParts(['brain/acme/alpha/', '2', 1]);
         return yield* Effect.all([
           reading(ledger, everything, { order: 'asc', limit: 2, cursor: inside }),
@@ -247,13 +247,13 @@ describe('the in-memory read from inside a record', () => {
   });
 });
 
-describe('the in-memory lineage of what a brain recorded', () => {
+describe('the in-memory lineage of what a playbook recorded', () => {
   it('names each message by its stream and position, with the cause and correlation it was written with', async () => {
     const ledger = memoryLedger();
     const lineage = { causationId: 'cause', correlationId: 'r1' };
     const [correlated, page] = await run(
       Effect.gen(function* () {
-        yield* aBrainWith(ledger);
+        yield* aPlaybookWith(ledger);
         yield* ledger.service.execute(
           'brain/acme/alpha/run-logs/r1',
           happenings,

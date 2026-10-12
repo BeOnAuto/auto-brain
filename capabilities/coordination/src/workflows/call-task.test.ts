@@ -30,7 +30,7 @@ describe('a call of run_definition', () => {
       kind: 'call',
       call: {
         org: 'acme',
-        brain: 'alpha',
+        playbook: 'alpha',
         caller: acmeCaller,
         reference: '/do/0/summarize',
         run: 1,

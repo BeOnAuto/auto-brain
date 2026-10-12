@@ -1,16 +1,16 @@
-import { BrainIdSchema, rejected, type Rejected } from '@beonauto/operations';
+import { PlaybookIdSchema, rejected, type Rejected } from '@beonauto/operations';
 import { Option, Result, Schema, SchemaIssue } from 'effect';
 
 import { inlinedRootOf, withoutUnreferencedDefinitions, type JsonSchema } from './tool-schema.ts';
 
-export interface BrainArgument {
-  readonly brain: string;
+export interface PlaybookArgument {
+  readonly playbook: string;
   readonly input: Readonly<Record<string, unknown>>;
 }
 
-const brainProperty: JsonSchema = {
-  ...Schema.toJsonSchemaDocument(BrainIdSchema).schema,
-  description: 'The id of the brain to act in',
+const playbookProperty: JsonSchema = {
+  ...Schema.toJsonSchemaDocument(PlaybookIdSchema).schema,
+  description: 'The id of the playbook to act in',
 };
 
 const ObjectFieldsSchema = Schema.Struct({
@@ -27,38 +27,43 @@ const objectFieldsOf = Schema.decodeUnknownSync(ObjectFieldsSchema);
 
 const unionOf = Schema.decodeUnknownOption(UnionSchema);
 
-const decodeBrainArgument = Schema.decodeUnknownResult(Schema.Struct({ brain: BrainIdSchema }));
+const decodePlaybookArgument = Schema.decodeUnknownResult(Schema.Struct({ playbook: PlaybookIdSchema }));
 
 const failureOf = SchemaIssue.makeFormatterStandardSchemaV1();
 
-function withBrainProperty(object: Readonly<JsonSchema>): JsonSchema {
+function withPlaybookProperty(object: Readonly<JsonSchema>): JsonSchema {
   const { properties = {}, required = [] } = objectFieldsOf(object);
-  return { ...object, properties: { brain: brainProperty, ...properties }, required: ['brain', ...required] };
+  return { ...object, properties: { playbook: playbookProperty, ...properties }, required: ['playbook', ...required] };
 }
 
-function withBrainOnEveryMember(schema: Readonly<JsonSchema>): JsonSchema {
+function withPlaybookOnEveryMember(schema: Readonly<JsonSchema>): JsonSchema {
   return Option.match(unionOf(schema), {
-    onNone: () => withBrainProperty(schema),
+    onNone: () => withPlaybookProperty(schema),
     onSome: ({ anyOf, $defs = {} }) => ({
       ...schema,
-      anyOf: anyOf.map((member) => withBrainProperty(inlinedRootOf({ schema: member, definitions: $defs }))),
+      anyOf: anyOf.map((member) => withPlaybookProperty(inlinedRootOf({ schema: member, definitions: $defs }))),
     }),
   });
 }
 
-export function withBrainArgument(schema: Readonly<JsonSchema>): JsonSchema {
-  return withoutUnreferencedDefinitions(withBrainOnEveryMember(schema));
+export function withPlaybookArgument(schema: Readonly<JsonSchema>): JsonSchema {
+  return withoutUnreferencedDefinitions(withPlaybookOnEveryMember(schema));
 }
 
-export function withoutBrain(input: Readonly<Record<string, unknown>>): Readonly<Record<string, unknown>> {
-  return Object.fromEntries(Object.entries(input).filter(([key]: readonly [string, unknown]) => key !== 'brain'));
+export function withoutPlaybook(input: Readonly<Record<string, unknown>>): Readonly<Record<string, unknown>> {
+  return Object.fromEntries(Object.entries(input).filter(([key]: readonly [string, unknown]) => key !== 'playbook'));
 }
 
-export function brainArgumentOf(input: Readonly<Record<string, unknown>>): Result.Result<BrainArgument, Rejected> {
-  const decoded = decodeBrainArgument(input);
+export function playbookArgumentOf(
+  input: Readonly<Record<string, unknown>>,
+): Result.Result<PlaybookArgument, Rejected> {
+  const decoded = decodePlaybookArgument(input);
   if (Result.isSuccess(decoded)) {
-    return Result.succeed({ brain: decoded.success.brain, input: withoutBrain(input) });
+    return Result.succeed({ playbook: decoded.success.playbook, input: withoutPlaybook(input) });
   }
-  const issues = failureOf(decoded.failure.issue).issues.map(({ message }) => ({ detail: message, pointer: '/brain' }));
+  const issues = failureOf(decoded.failure.issue).issues.map(({ message }) => ({
+    detail: message,
+    pointer: '/playbook',
+  }));
   return Result.fail(rejected('invalid_input', 'The input does not match the input schema', issues));
 }
