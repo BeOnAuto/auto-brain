@@ -7,7 +7,7 @@ const Named = Schema.Struct({ name: Schema.String });
 
 export const sourceFailure = 'The store failed at /var/lib/ledger/blobs, which no client may read';
 
-const keepBlob = defineHttpOperation('brain', 'command', {
+const keepBlob = defineHttpOperation('playbook', 'command', {
   name: 'keep_blob',
   title: 'Keep blob',
   description: 'Keeps a blob and answers it.',
@@ -19,7 +19,7 @@ const keepBlob = defineHttpOperation('brain', 'command', {
   handle: (_input, body) => Effect.succeed(body),
 });
 
-const keepRows = defineHttpOperation('brain', 'command', {
+const keepRows = defineHttpOperation('playbook', 'command', {
   name: 'keep_rows',
   title: 'Keep rows',
   description: 'Keeps rows and answers them.',
@@ -31,7 +31,7 @@ const keepRows = defineHttpOperation('brain', 'command', {
   handle: (_input, body) => Effect.succeed(body),
 });
 
-const readBlob = defineHttpOperation('brain', 'query', {
+const readBlob = defineHttpOperation('playbook', 'query', {
   name: 'read_blob',
   title: 'Read blob',
   description: 'Reads a blob.',
@@ -61,7 +61,7 @@ function failing(when: (typeof FailingAt)['Type']['when']): StreamedBytes {
   return { stream, bytes: when === 'past-its-length' ? 3 : 100 };
 }
 
-const readFailingBlob = defineHttpOperation('brain', 'query', {
+const readFailingBlob = defineHttpOperation('playbook', 'query', {
   name: 'read_failing_blob',
   title: 'Read failing blob',
   description: 'Reads a blob whose store fails.',
@@ -74,7 +74,7 @@ const readFailingBlob = defineHttpOperation('brain', 'query', {
 });
 
 function blobReadOnce(name: string, path: `/${string}`, content: StreamedBytes) {
-  return defineHttpOperation('brain', 'query', {
+  return defineHttpOperation('playbook', 'query', {
     name,
     title: 'Read blob once',
     description: 'Reads a blob a test holds.',
@@ -87,7 +87,7 @@ function blobReadOnce(name: string, path: `/${string}`, content: StreamedBytes) 
   });
 }
 
-export const gatedBlobPath = '/v1/orgs/acme/brains/alpha/gated-blob';
+export const gatedBlobPath = '/v1/orgs/acme/playbooks/alpha/gated-blob';
 
 export function gatedBlob(bytes: number, past: (controller: ReadableStreamDefaultController<Uint8Array>) => void) {
   const { promise: opened, resolve: open } = Promise.withResolvers<void>();
@@ -103,7 +103,7 @@ export function gatedBlob(bytes: number, past: (controller: ReadableStreamDefaul
   return { operation: blobReadOnce('read_gated_blob', '/gated-blob', { stream, bytes }), open };
 }
 
-export const silentBlobPath = '/v1/orgs/acme/brains/alpha/silent-blob';
+export const silentBlobPath = '/v1/orgs/acme/playbooks/alpha/silent-blob';
 
 export function silentBlob() {
   const { promise: pulled, resolve: pull } = Promise.withResolvers<void>();
@@ -137,7 +137,7 @@ export function endlessBlob() {
   return { operation: blobReadOnce('read_endless_blob', '/endless-blob', { stream, bytes: 1_000_000 }), cancelled };
 }
 
-const renameBlob = defineHttpOperation('brain', 'command', {
+const renameBlob = defineHttpOperation('playbook', 'command', {
   name: 'rename_blob',
   title: 'Rename blob',
   description: 'Renames a blob.',
@@ -149,7 +149,7 @@ const renameBlob = defineHttpOperation('brain', 'command', {
   handle: ({ to }) => Effect.succeed({ renamed: to }),
 });
 
-const clearBlobs = defineHttpOperation('brain', 'command', {
+const clearBlobs = defineHttpOperation('playbook', 'command', {
   name: 'clear_blobs',
   title: 'Clear blobs',
   description: 'Clears the blobs.',

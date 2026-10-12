@@ -47,7 +47,7 @@ describe('a run of a computation function that does not end by itself, over HTTP
       programPoolOf: ({ workers }) =>
         programPool({ workers, heapMegabytes: computationBounds.heapMegabytes, worker: blockingOnTwoRows }),
     });
-    await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+    await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
     await server.call('POST', `${alpha}/definitions/computation`, { body: { name: 'pace', source: campaignPace } });
     const warm = await ranOn(3);
     const started = performance.now();

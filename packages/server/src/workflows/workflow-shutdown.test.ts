@@ -22,7 +22,7 @@ describe('a server that ran workflows, told to stop', { timeout: workflowTestTim
   it('exits 0 at once, holding nothing open', async () => {
     const child = workflowProcess(ledger.fileName);
     const port = await child.port;
-    await requestTo(port, 'POST', '', { brain: 'alpha', name: 'Alpha' });
+    await requestTo(port, 'POST', '', { playbook: 'alpha', name: 'Alpha' });
     await requestTo(port, 'POST', '/alpha/definitions/workflow', { name: 'greeting', source: greeting });
     const started = await requestTo(port, 'POST', '/alpha/definitions/workflow/greeting/run', {
       input: { name: 'Ada' },
@@ -44,10 +44,10 @@ describe('a server that ran workflows, told to stop', { timeout: workflowTestTim
     ['SIGKILL', null, 'gamma'],
   ] as const)(
     'stopped with %s while a function a workflow called still runs, exits with %s, and calls it again once started again',
-    async (signal, exitedWith, brain) => {
+    async (signal, exitedWith, playbook) => {
       const gateway = await gatewayThatHangsFirst();
       const first = workflowProcess(ledger.fileName, { MODEL_GATEWAYS: gateway.gateways });
-      const runId = await welcomingStarted(await first.port, brain);
+      const runId = await welcomingStarted(await first.port, playbook);
       await gateway.firstHeard;
 
       const stopping = performance.now();
@@ -55,7 +55,7 @@ describe('a server that ran workflows, told to stop', { timeout: workflowTestTim
       const exitCode = await first.exited;
       const stoppedWithinMs = performance.now() - stopping;
       const second = workflowProcess(ledger.fileName, { MODEL_GATEWAYS: gateway.gateways });
-      const settled = await settledOver(await second.port, `/${brain}/runs/${runId}`);
+      const settled = await settledOver(await second.port, `/${playbook}/runs/${runId}`);
       second.signal('SIGTERM');
 
       expect(exitCode).toBe(exitedWith);

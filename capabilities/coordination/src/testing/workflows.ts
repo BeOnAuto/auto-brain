@@ -25,8 +25,8 @@ export interface InterpretOptions {
 export const acmeCaller: CallerIdentity = {
   id: 'acme-admin',
   org: 'acme',
-  permissions: ['brain:read', 'brain:write'],
-  brains: '*',
+  permissions: ['playbook:read', 'playbook:write'],
+  playbooks: '*',
 };
 
 export const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
@@ -47,7 +47,7 @@ function runOf(document: JsonObject, input: Json = {}): WorkflowRun {
   return {
     document,
     input,
-    run: { id: runId, org: 'acme', brain: 'alpha', definition: { name: 'test-flow', version: 1 } },
+    run: { id: runId, org: 'acme', playbook: 'alpha', definition: { name: 'test-flow', version: 1 } },
     caller: acmeCaller,
     mostDuration: defaultMostDuration,
     longestNestedRunMs: defaultLongestNestedRunMs,

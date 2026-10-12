@@ -1,6 +1,6 @@
 # Install and run from source
 
-Clone the public repository, then follow the [first-brain guide](../get-started/self-hosted.md) to install dependencies, configure a model and connect your agent.
+Clone the public repository, then follow the [first-playbook guide](../get-started/self-hosted.md) to install dependencies, configure a model and connect your agent.
 
 ```sh
 git clone https://github.com/BeOnAuto/auto-brain.git
@@ -13,7 +13,7 @@ The repository pins pnpm and Node in `package.json`; pnpm downloads the required
 
 ## Development server
 
-`pnpm dev` starts the server, which runs workflows itself, and nothing else. The ledger, and with it the workflows, lives in `packages/server/.data/ledger.db`, so brains, definitions and waiting workflows are still there after a restart; delete that directory to start over.
+`pnpm dev` starts the server, which runs workflows itself, and nothing else. The ledger, and with it the workflows, lives in `packages/server/.data/ledger.db`, so playbooks, definitions and waiting workflows are still there after a restart; delete that directory to start over.
 
 Saving a `.ts` file other than a test under the `src` of any package of the repository, or `packages/server/dev.env`, `.env` or the configuration file, restarts the server through its clean shutdown; a workflow waiting for an event or a timer goes on after the restart, and a call cut off by it runs again. A server that does not start says why and starts again on the next save. Ctrl-C stops it.
 

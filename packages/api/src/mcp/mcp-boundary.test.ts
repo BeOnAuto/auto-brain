@@ -31,7 +31,7 @@ describe('a tool call that throws', () => {
 
     const result = await withMcpSession(
       'current revision',
-      { url: `${listening.origin}/orgs/acme/brains/alpha/mcp`, headers: {} },
+      { url: `${listening.origin}/orgs/acme/playbooks/alpha/mcp`, headers: {} },
       (session) => session.callTool('list_notes'),
     );
     await listening.close();
@@ -58,14 +58,14 @@ describe('a tool call that throws', () => {
 });
 
 describe('a tool call on /mcp that throws', () => {
-  it('names in its words what was asked of an operation whose input has no field, given only its brain', async () => {
+  it('names in its words what was asked of an operation whose input has no field, given only its playbook', async () => {
     const { handler, reported } = createTestHandler({ routes: [brokenRuntime] });
     const listening = await listenOnLoopback(handler);
 
     const result = await withMcpSession(
       'current revision',
       { url: `${listening.origin}/mcp`, headers: {} },
-      (session) => session.callTool('latest_note', { brain: 'alpha' }),
+      (session) => session.callTool('latest_note', { playbook: 'alpha' }),
     );
     await listening.close();
 
@@ -78,7 +78,7 @@ describe('a tool call on /mcp that throws', () => {
 
 describe('an operation without plain language', () => {
   it('cannot be served as an MCP tool, so no result falls back to bare JSON', () => {
-    const bare = defineQuery('brain', {
+    const bare = defineQuery('playbook', {
       name: 'bare_query',
       title: 'Bare query',
       description: 'Answers without plain language. Use it in tests. It answers nothing.',

@@ -1,4 +1,4 @@
-export { memoryBrainRegistry } from './memory-brain-registry.ts';
+export { memoryPlaybookRegistry } from './memory-playbook-registry.ts';
 export { memoryLedger, type MemoryLedger } from './memory-ledger.ts';
 export { memoryRecordedContent } from '../content/memory-content.ts';
 export { keptTextOf } from './kept-text.ts';

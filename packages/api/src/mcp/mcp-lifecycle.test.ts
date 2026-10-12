@@ -28,7 +28,7 @@ describe('closing the API', () => {
     const server = await operationServer();
     const listening = await listenOnLoopback(server.handler);
     const session = await connectMcp('current revision', {
-      url: `${listening.origin}/orgs/acme/brains/alpha/mcp`,
+      url: `${listening.origin}/orgs/acme/playbooks/alpha/mcp`,
       headers: { authorization: `Bearer ${acmeAdmin.key}` },
     });
     const waiting = session.callTool('wait_forever', {});

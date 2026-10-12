@@ -53,12 +53,12 @@ async function testerOf(entry: Readonly<Record<string, unknown>> = {}) {
 }
 
 describe('test_tool_call', () => {
-  it('is a command of the brain at POST /tool-servers/{server}/tools/{tool}/test that reaches outside', async () => {
+  it('is a command of the playbook at POST /tool-servers/{server}/tools/{tool}/test that reaches outside', async () => {
     const { registration } = await testerOf();
     const listing = await testerOf({ testable: ['echo'] });
 
     expect(registration).toMatchObject({
-      scope: 'brain',
+      scope: 'playbook',
       kind: 'command',
       name: 'test_tool_call',
       title: 'Test a tool call',
@@ -68,7 +68,7 @@ describe('test_tool_call', () => {
       mayChangeOutside: false,
       irreversible: false,
       repeatable: false,
-      permissions: ['brain:write'],
+      permissions: ['playbook:write'],
       reasons: ['invalid_input', 'unavailable'],
     });
     expect(listing.registration.mayChangeOutside).toBe(true);

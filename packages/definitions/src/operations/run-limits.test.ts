@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import { acmeAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
-import { harness, toBrain } from '../testing/harness.ts';
+import { harness, toPlaybook } from '../testing/harness.ts';
 import { probe } from '../testing/probe.ts';
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
@@ -43,7 +43,7 @@ describe('the input of a run', () => {
 
     expect(await running('a'.repeat(262_143))).toEqual(inputTooLarge);
     expect(await running({ text: 'é'.repeat(131_070) })).toEqual(inputTooLarge);
-    expect(ledger.streamNames()).toEqual(['brain/acme/alpha/definitions/probe']);
+    expect(ledger.streamNames()).toEqual(['playbook/acme/alpha/definitions/probe']);
   });
 });
 
@@ -69,7 +69,7 @@ describe('the nesting of the input of a run', () => {
 
     expect(await running(nested(513))).toEqual(tooDeep);
     expect(await running(nested(3000))).toEqual(tooDeep);
-    expect(ledger.streamNames()).toEqual(['brain/acme/alpha/definitions/probe']);
+    expect(ledger.streamNames()).toEqual(['playbook/acme/alpha/definitions/probe']);
   });
 });
 

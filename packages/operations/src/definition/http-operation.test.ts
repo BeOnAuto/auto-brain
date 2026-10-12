@@ -11,16 +11,16 @@ import {
   type Succeeded,
 } from '../index.ts';
 import { acmeAdmin } from '../testing/callers.ts';
-import { harness, toBrain } from '../testing/harness.ts';
+import { harness, toPlaybook } from '../testing/harness.ts';
 import { addNote } from '../testing/notes.ts';
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 const Nothing = Schema.Record(Schema.String, Schema.Never);
 
 const octets = 'application/octet-stream';
 
-const keepModel = defineHttpOperation('brain', 'command', {
+const keepModel = defineHttpOperation('playbook', 'command', {
   name: 'keep_model',
   title: 'Keep model',
   description: 'Keeps the bytes of a model.',
@@ -38,7 +38,7 @@ const keepModel = defineHttpOperation('brain', 'command', {
       : Effect.succeed({ id, bytes: body.bytes, media_type: body.mediaType }),
 });
 
-const readModel = defineHttpOperation('brain', 'query', {
+const readModel = defineHttpOperation('playbook', 'query', {
   name: 'read_model',
   title: 'Read model',
   description: 'Reads the bytes of a model.',
@@ -50,7 +50,7 @@ const readModel = defineHttpOperation('brain', 'query', {
   handle: ({ id }) => Effect.succeed(contentOfText(`model ${id}`, 'application/octet-stream')),
 });
 
-const nameModel = defineHttpOperation('brain', 'command', {
+const nameModel = defineHttpOperation('playbook', 'command', {
   name: 'name_model',
   title: 'Name model',
   description: 'Names a model.',
@@ -64,7 +64,7 @@ const nameModel = defineHttpOperation('brain', 'command', {
 
 function withMostBytes(mostBytes: number) {
   return () =>
-    defineHttpOperation('brain', 'command', {
+    defineHttpOperation('playbook', 'command', {
       name: 'keep_any',
       title: 'Keep any',
       description: 'Keeps anything.',
@@ -94,7 +94,7 @@ describe('an operation served over HTTP alone', () => {
     ]).toEqual([{ kind: 'octet-stream', mostBytes: 1024 }, { kind: 'none' }, { kind: 'json' }, undefined]);
     expect(keepModel.registration).toMatchObject({
       kind: 'command',
-      permissions: ['brain:write'],
+      permissions: ['playbook:write'],
       reachesOutside: false,
     });
   });
@@ -107,7 +107,7 @@ describe('an operation served over HTTP alone', () => {
 
   it('is refused at its definition when its JSON answer is not an object that declares its fields', () => {
     expect(() =>
-      defineHttpOperation('brain', 'query', {
+      defineHttpOperation('playbook', 'query', {
         name: 'read_any',
         title: 'Read any',
         description: 'Reads anything.',
@@ -128,18 +128,18 @@ describe('the call of an operation served over HTTP alone', () => {
 
     const outcomes = await Promise.all([
       run(
-        dispatcher.dispatchToBrain(keepModel.registration, {
+        dispatcher.dispatchToPlaybook(keepModel.registration, {
           ...toAlpha(acmeAdmin, { id: 'm1' }),
           body: contentOfText('weights', octets),
         }),
       ),
       run(
-        dispatcher.dispatchToBrain(keepModel.registration, {
+        dispatcher.dispatchToPlaybook(keepModel.registration, {
           ...toAlpha(acmeAdmin, { id: 'm2' }),
           body: contentOfText('', octets),
         }),
       ),
-      run(dispatcher.dispatchToBrain(nameModel.registration, toAlpha(acmeAdmin, { id: 'm1', name: 'first' }))),
+      run(dispatcher.dispatchToPlaybook(nameModel.registration, toAlpha(acmeAdmin, { id: 'm1', name: 'first' }))),
     ]);
 
     expect(outcomes).toEqual([
@@ -152,7 +152,7 @@ describe('the call of an operation served over HTTP alone', () => {
   it('answers the stream its handler gives with the media type its answer declares, and no output', async () => {
     const { dispatcher, run } = harness();
 
-    const outcome = await run(dispatcher.dispatchToBrain(readModel.registration, toAlpha(acmeAdmin, { id: 'm1' })));
+    const outcome = await run(dispatcher.dispatchToPlaybook(readModel.registration, toAlpha(acmeAdmin, { id: 'm1' })));
 
     expect(outcome).toMatchObject({ status: 'succeeded', streamed: { bytes: 8, mediaType: 'text/plain' } });
     expect(Object.keys(outcome)).toEqual(['status', 'streamed']);
@@ -162,7 +162,7 @@ describe('the call of an operation served over HTTP alone', () => {
   it('fails when an operation that takes its body as a stream is given none', async () => {
     const { dispatcher, run, reported } = harness();
 
-    const outcome = await run(dispatcher.dispatchToBrain(keepModel.registration, toAlpha(acmeAdmin, { id: 'm1' })));
+    const outcome = await run(dispatcher.dispatchToPlaybook(keepModel.registration, toAlpha(acmeAdmin, { id: 'm1' })));
 
     expect(outcome.status).toBe('failed');
     expect(reported().map(({ original }) => String(original))).toEqual([

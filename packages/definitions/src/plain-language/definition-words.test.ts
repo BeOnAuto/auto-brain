@@ -111,12 +111,12 @@ function greeting(name: string, status = 'active'): Readonly<Record<string, unkn
 }
 
 const definitionListings: ReadonlyArray<readonly [readonly unknown[], string]> = [
-  [[], 'This brain has no greetings in use yet.'],
-  [[greeting('greet')], 'This brain has 1 greeting: “greet”.'],
-  [[greeting('greet'), greeting('wave')], 'This brain has 2 greetings: “greet” and “wave”.'],
+  [[], 'This playbook has no greetings in use yet.'],
+  [[greeting('greet')], 'This playbook has 1 greeting: “greet”.'],
+  [[greeting('greet'), greeting('wave')], 'This playbook has 2 greetings: “greet” and “wave”.'],
   [
     [greeting('greet'), greeting('old', 'retired')],
-    'This brain has 1 greeting: “greet”. Also listed, 1 retired greeting: “old”.',
+    'This playbook has 1 greeting: “greet”. Also listed, 1 retired greeting: “old”.',
   ],
 ];
 
@@ -142,7 +142,7 @@ describe('the plain language of list_definitions', () => {
 describe('the plain language of retire_definition', () => {
   it('says the definition can no longer be run or changed, nor its name used again', () => {
     expect(outcomeOf('retire_definition', { ...greet, status: 'retired' }, { type: 'echo', name: 'greet' })).toBe(
-      'Retired the greeting “greet”. It can no longer be run or changed, and its name cannot be used again in this brain.',
+      'Retired the greeting “greet”. It can no longer be run or changed, and its name cannot be used again in this playbook.',
     );
   });
 

@@ -89,9 +89,9 @@ export function heldReads(database: HostDatabase): Held<HostDatabase> {
     ...database,
     store: {
       ...database.store,
-      readRecorded: async (brainKey, selection, page) => {
+      readRecorded: async (playbookKey, selection, page) => {
         await wait();
-        return database.store.readRecorded(brainKey, selection, page);
+        return database.store.readRecorded(playbookKey, selection, page);
       },
     },
   }));

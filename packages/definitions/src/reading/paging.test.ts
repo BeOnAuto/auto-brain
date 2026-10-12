@@ -7,10 +7,10 @@ import { runDecider } from '../runs/run-decider.ts';
 import { acmeAdmin, globexAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
 import { echo } from '../testing/echo.ts';
-import { harness, toBrain } from '../testing/harness.ts';
+import { harness, toPlaybook } from '../testing/harness.ts';
 import { relay } from '../testing/relay.ts';
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 const PageSchema = Schema.Struct({
   output: Schema.Struct({
@@ -27,7 +27,7 @@ function idOf(index: number): string {
   return `0199a3c4-7d2e-7c1a-9b3f-${String(index).padStart(12, '0')}`;
 }
 
-async function brainWithEchoes(count: number, input: object = {}) {
+async function playbookWithEchoes(count: number, input: object = {}) {
   const operations = definitionOperationsFor([echo, relay().capability]);
   const definitions = harness();
   await definitions.call(
@@ -72,9 +72,9 @@ function withCursor(cursor: string | undefined): object {
   return cursor === undefined ? {} : { cursor };
 }
 
-describe('paging through the runs of a brain', () => {
+describe('paging through the runs of a playbook', () => {
   it('delivers every run once, newest first, while more runs start', async () => {
-    const { running, listing } = await brainWithEchoes(7);
+    const { running, listing } = await playbookWithEchoes(7);
     let next = 8;
 
     const pages = await everyPage(
@@ -97,7 +97,7 @@ describe('paging through the runs of a brain', () => {
 
 describe('the bounds of a page of runs', { timeout: 30_000 }, () => {
   it('end a page at 4 MiB of stored data, with fewer runs than its limit and a cursor', async () => {
-    const { listing } = await brainWithEchoes(9, { text: 'x'.repeat(mostInputBytes - 16) });
+    const { listing } = await playbookWithEchoes(9, { text: 'x'.repeat(mostInputBytes - 16) });
 
     const pages = await everyPage((cursor) => listing(withCursor(cursor)));
 
@@ -111,9 +111,9 @@ describe('the bounds of a page of runs', { timeout: 30_000 }, () => {
   it.each([[{ status: 'failed' }], [{ type: 'relay' }], [{ name: 'wave' }]] as const)(
     'end a page filtered by %j after looking at a thousand runs, though none matched',
     async (filter) => {
-      const { ledger, listing, run } = await brainWithEchoes(0);
+      const { ledger, listing, run } = await playbookWithEchoes(0);
       const starting = Array.from({ length: mostExaminedInAPage + 1 }, (_, index) =>
-        ledger.service.execute(`brain/acme/alpha/runs/${idOf(index)}`, runDecider, {
+        ledger.service.execute(`playbook/acme/alpha/runs/${idOf(index)}`, runDecider, {
           type: 'start',
           definition_type: 'echo',
           name: 'greet',
@@ -139,7 +139,7 @@ describe('the bounds of a page of runs', { timeout: 30_000 }, () => {
 
 describe('paging through the runs of one definition', () => {
   it('fills a page of one name from the runs behind newer runs of another, and has no more after the last', async () => {
-    const { call, createDefinition, runDefinition, listing } = await brainWithEchoes(3);
+    const { call, createDefinition, runDefinition, listing } = await playbookWithEchoes(3);
     await call(createDefinition, toAlpha(acmeAdmin, { type: 'echo', name: 'wave', source: '{"greeting":"Hey"}' }));
     await call(runDefinition, toAlpha(acmeAdmin, { type: 'echo', name: 'wave', run_id: idOf(4) }));
     await call(runDefinition, toAlpha(acmeAdmin, { type: 'echo', name: 'greet', run_id: idOf(5) }));
@@ -160,7 +160,7 @@ describe('paging through the runs of one definition', () => {
 
 describe('paging through the history of a run', () => {
   it('delivers every event once in either order', async () => {
-    const { reading } = await brainWithEchoes(1);
+    const { reading } = await playbookWithEchoes(1);
     const historyOf = (order: string) =>
       everyPage((cursor) => reading({ run_id: idOf(1), order, limit: 1, ...withCursor(cursor) }));
 
@@ -178,9 +178,9 @@ describe('paging through the history of a run', () => {
 });
 
 describe('a cursor', () => {
-  it('that does not decode, or that another brain gave, is refused at /cursor', async () => {
-    const { call, createDefinition, runDefinition, listRuns, listing } = await brainWithEchoes(2);
-    const toGamma = toBrain('globex', 'gamma');
+  it('that does not decode, or that another playbook gave, is refused at /cursor', async () => {
+    const { call, createDefinition, runDefinition, listRuns, listing } = await playbookWithEchoes(2);
+    const toGamma = toPlaybook('globex', 'gamma');
     await call(createDefinition, toGamma(globexAdmin, { type: 'echo', name: 'greet', source: '{"greeting":"Hi"}' }));
     await call(runDefinition, toGamma(globexAdmin, { type: 'echo', name: 'greet' }));
     await call(runDefinition, toGamma(globexAdmin, { type: 'echo', name: 'greet' }));
@@ -199,10 +199,10 @@ describe('a cursor', () => {
       {
         status: 'rejected',
         reason: 'invalid_input',
-        detail: 'The cursor was not given by a read of this brain',
+        detail: 'The cursor was not given by a read of this playbook',
         issues: [
           {
-            detail: 'Expected a next_cursor or the cursor of an event that a read of this brain gave',
+            detail: 'Expected a next_cursor or the cursor of an event that a read of this playbook gave',
             pointer: '/cursor',
           },
         ],

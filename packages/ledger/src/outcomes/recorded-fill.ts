@@ -17,7 +17,7 @@ export const mebibyte = 1024 * 1024;
 
 const listing = /s\.stream_id > "([^"]*)" .* LIMIT (\d+)$/u;
 
-const keptRun = /"brain\/acme\/alpha\/", "(r\d+)"/gu;
+const keptRun = /"playbook\/acme\/alpha\/", "(r\d+)"/gu;
 
 const began = JSON.stringify({ at: '2026-10-01T09:00:00.000Z', fn: 'triage' });
 
@@ -29,7 +29,7 @@ export function runIdsOf(count: number): readonly string[] {
 
 function storedOf(sizes: readonly number[]): readonly StoredRunStream[] {
   const runs = runIdsOf(sizes.length);
-  return sizes.map((size, index) => ({ stream: `brain/acme/alpha/runs/${String(runs[index])}`, size }));
+  return sizes.map((size, index) => ({ stream: `playbook/acme/alpha/runs/${String(runs[index])}`, size }));
 }
 
 export function aRecordedFillOf(

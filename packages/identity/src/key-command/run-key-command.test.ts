@@ -48,20 +48,20 @@ const badArguments: ReadonlyArray<readonly [readonly string[], string]> = [
   [['--org', 'local'], '--org: This org id is reserved for local mode'],
   [['--org', 'acme', '--id', 'CI_1'], '--id: Expected a string matching'],
   [['--org', 'acme', '--permissions', 'org:read,admin'], '--permissions: Expected "org:read"'],
-  [['--org', 'acme', '--brains', 'Alpha'], '--brains: Expected a string matching'],
+  [['--org', 'acme', '--playbooks', 'Alpha'], '--playbooks: Expected a string matching'],
   [['--org', 'acme', '--colour', 'red'], "Unknown option '--colour'"],
   [['--org', 'acme', 'extra'], "Unexpected argument 'extra'"],
 ];
 
 describe('the key command', () => {
-  it('prints a key once and the API_KEYS entry that admits it, with a random id, every permission and every brain', () => {
+  it('prints a key once and the API_KEYS entry that admits it, with a random id, every permission and every playbook', () => {
     const session = run('--org', 'demo');
     const { key, entry } = issued(session);
     const apiKeys = readApiKeys({ API_KEYS: `[${entry}]` });
 
     expect(session).toMatchObject({ exitCode: 0, errors: [] });
     expect(apiKeys).toMatchObject([
-      { org: 'demo', permissions: ['org:read', 'org:write', 'brain:read', 'brain:write'], brains: '*' },
+      { org: 'demo', permissions: ['org:read', 'org:write', 'playbook:read', 'playbook:write'], playbooks: '*' },
     ]);
     expect(apiKeys?.[0]?.id).toMatch(/^[0-9a-f]{8}$/u);
     expect(
@@ -69,7 +69,7 @@ describe('the key command', () => {
     ).toBe('demo');
   });
 
-  it('takes the id, the permissions and the brains it is given, after an optional --', () => {
+  it('takes the id, the permissions and the playbooks it is given, after an optional --', () => {
     const session = run(
       '--',
       '--org',
@@ -77,21 +77,21 @@ describe('the key command', () => {
       '--id',
       'ci-1',
       '--permissions',
-      'brain:read,org:read',
-      '--brains',
+      'playbook:read,org:read',
+      '--playbooks',
       'alpha,beta',
     );
 
     expect(JSON.parse(issued(session).entry)).toMatchObject({
       id: 'ci-1',
       org: 'acme',
-      permissions: ['brain:read', 'org:read'],
-      brains: ['alpha', 'beta'],
+      permissions: ['playbook:read', 'org:read'],
+      playbooks: ['alpha', 'beta'],
     });
   });
 
-  it('accepts * for every brain', () => {
-    expect(JSON.parse(issued(run('--org', 'acme', '--brains', '*')).entry)).toMatchObject({ brains: '*' });
+  it('accepts * for every playbook', () => {
+    expect(JSON.parse(issued(run('--org', 'acme', '--playbooks', '*')).entry)).toMatchObject({ playbooks: '*' });
   });
 });
 

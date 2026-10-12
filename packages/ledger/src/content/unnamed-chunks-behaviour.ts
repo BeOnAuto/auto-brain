@@ -29,13 +29,13 @@ async function uploadsIn(entry: LedgerEntry, database: string, table: string): P
 async function orphanedLike(entry: LedgerEntry, database: string, named: Named, upload: string): Promise<void> {
   await entry.queried(
     database,
-    `INSERT INTO recorded_content_chunks (brain_key, upload_id, chunk, data)
-      SELECT brain_key, '${upload}', chunk, data FROM recorded_content_chunks WHERE upload_id = '${named.kept.join()}'`,
+    `INSERT INTO recorded_content_chunks (playbook_key, upload_id, chunk, data)
+      SELECT playbook_key, '${upload}', chunk, data FROM recorded_content_chunks WHERE upload_id = '${named.kept.join()}'`,
   );
   await entry.queried(
     database,
-    `INSERT INTO staged_content_chunks (brain_key, run_id, upload_id, chunk, data)
-      SELECT brain_key, run_id, '${upload}', chunk, data FROM staged_content_chunks WHERE upload_id = '${named.staged.join()}'`,
+    `INSERT INTO staged_content_chunks (playbook_key, run_id, upload_id, chunk, data)
+      SELECT playbook_key, run_id, '${upload}', chunk, data FROM staged_content_chunks WHERE upload_id = '${named.staged.join()}'`,
   );
 }
 

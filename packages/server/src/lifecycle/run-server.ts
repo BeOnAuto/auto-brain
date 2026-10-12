@@ -24,12 +24,16 @@ async function stopThenExit(
 ): Promise<void> {
   await server.stop();
   await setTimeout(exitDeadlineMs, undefined, { ref: false });
-  sayThenExit(serverProcess, `auto-brain was still running ${exitDeadlineMs} ms after it stopped, so it exits now`, 0);
+  sayThenExit(
+    serverProcess,
+    `Auto Runtime was still running ${exitDeadlineMs} ms after it stopped, so it exits now`,
+    0,
+  );
 }
 
 async function exitWhenInsisted(stopInsisted: Promise<void>, serverProcess: ServerProcess): Promise<void> {
   await stopInsisted;
-  sayThenExit(serverProcess, 'auto-brain was told to stop again, so it exits now without finishing its shutdown', 1);
+  sayThenExit(serverProcess, 'Auto Runtime was told to stop again, so it exits now without finishing its shutdown', 1);
 }
 
 export async function runServer<R>(
@@ -41,12 +45,12 @@ export async function runServer<R>(
   void exitWhenInsisted(stopInsisted, serverProcess);
   const server = await startServer(serverProcess.env, options);
   void stopRequested.then(() => stopThenExit(server, serverProcess, options));
-  serverProcess.stdout.write(`auto-brain listening on port ${server.port}\n`);
+  serverProcess.stdout.write(`Auto Runtime listening on port ${server.port}\n`);
   return server;
 }
 
 export function exitOnStartupFailure(serverProcess: ServerProcess): (failure: unknown) => void {
   return (failure) => {
-    sayThenExit(serverProcess, `auto-brain could not start: ${String(failure).replaceAll(/\s*\n\s*/gu, ' ')}`, 1);
+    sayThenExit(serverProcess, `Auto Runtime could not start: ${String(failure).replaceAll(/\s*\n\s*/gu, ' ')}`, 1);
   };
 }

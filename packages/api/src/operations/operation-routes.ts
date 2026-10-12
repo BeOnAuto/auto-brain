@@ -50,10 +50,10 @@ function dispatched(
       summary: callSummaryOf(registration.name, request),
     };
   }
-  const brain = String(c.req.param('brain'));
+  const playbook = String(c.req.param('playbook'));
   return {
-    call: dispatcher.dispatchToBrain(registration, { ...request, brain }),
-    summary: callSummaryOf(registration.name, request, brain),
+    call: dispatcher.dispatchToPlaybook(registration, { ...request, playbook }),
+    summary: callSummaryOf(registration.name, request, playbook),
   };
 }
 

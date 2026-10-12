@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { acmeAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
 import { echo } from '../testing/echo.ts';
-import { asQueryString, firstMoment, harness, toBrain } from '../testing/harness.ts';
+import { asQueryString, firstMoment, harness, toPlaybook } from '../testing/harness.ts';
 import { probe } from '../testing/probe.ts';
 
 const { createDefinition, listDefinitions, retireDefinition } = definitionOperationsFor([echo, probe().capability]);
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 const later = '2026-10-02T14:15:00.000Z';
 
@@ -50,9 +50,9 @@ async function withGammaAlphaAndRetiredBeta() {
 }
 
 describe('list_definitions', () => {
-  it('is a brain query at GET /definitions/{type} that may meet not_found', () => {
+  it('is a playbook query at GET /definitions/{type} that may meet not_found', () => {
     expect(listDefinitions.registration).toMatchObject({
-      scope: 'brain',
+      scope: 'playbook',
       kind: 'query',
       title: 'List definitions',
       route: { method: 'GET', path: '/definitions/{type}' },

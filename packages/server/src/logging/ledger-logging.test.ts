@@ -28,18 +28,18 @@ describe('logLedger', () => {
     const lines = await linesLoggedBy(
       logLedger({
         store: 'postgresql',
-        url: Redacted.make('postgresql://brains:a-secret-password@db.example.com:5432/brains?sslmode=require'),
+        url: Redacted.make('postgresql://playbooks:a-secret-password@db.example.com:5432/playbooks?sslmode=require'),
         host: 'db.example.com:5432',
-        database: 'brains',
+        database: 'playbooks',
       }),
     );
 
     expect(lines).toEqual([
       expect.stringContaining(
-        '{"message":"The ledger is kept in PostgreSQL, in the database brains on db.example.com:5432","level":"INFO"',
+        '{"message":"The ledger is kept in PostgreSQL, in the database playbooks on db.example.com:5432","level":"INFO"',
       ),
     ]);
-    expect(lines[0]).toContain('"annotations":{"database":"brains","database_host":"db.example.com:5432"}');
+    expect(lines[0]).toContain('"annotations":{"database":"playbooks","database_host":"db.example.com:5432"}');
     expect(lines.join('\n')).not.toMatch(/a-secret-password|sslmode|postgresql:/u);
   });
 });

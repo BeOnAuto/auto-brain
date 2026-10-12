@@ -20,13 +20,13 @@ function isIndex(part: CursorPart | undefined): boolean {
   return part === undefined || (typeof part === 'number' && part >= 0);
 }
 
-export function cursorOf(brainKey: string, point: RecordedPoint): string {
-  return cursorOfParts([brainKey, ...point]);
+export function cursorOf(playbookKey: string, point: RecordedPoint): string {
+  return cursorOfParts([playbookKey, ...point]);
 }
 
 function pointOfParts(
   [key, ...rest]: readonly CursorPart[],
-  brainKey: string,
+  playbookKey: string,
   pointLength: number,
 ): Result.Result<CursorPoint, InvalidCursorKind> {
   const parts = rest.slice(0, pointLength);
@@ -36,16 +36,18 @@ function pointOfParts(
   if (!wellFormed) {
     return Result.fail('malformed');
   }
-  return key === brainKey ? Result.succeed({ point, within: index !== undefined }) : Result.fail('of_another_brain');
+  return key === playbookKey
+    ? Result.succeed({ point, within: index !== undefined })
+    : Result.fail('of_another_playbook');
 }
 
 export function pointOf(
   cursor: string,
-  brainKey: string,
+  playbookKey: string,
   pointLength: number,
 ): Result.Result<CursorPoint, InvalidCursorKind> {
   return Option.match(partsOfCursor(cursor), {
     onNone: () => Result.fail('malformed'),
-    onSome: (parts) => pointOfParts(parts, brainKey, pointLength),
+    onSome: (parts) => pointOfParts(parts, playbookKey, pointLength),
   });
 }

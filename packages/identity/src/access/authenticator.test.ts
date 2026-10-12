@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import { authenticatorFor, createApiKey, type ApiKey } from '../index.ts';
 
-const reader = createApiKey({ id: 'acme-reader', org: 'acme', permissions: ['brain:read'], brains: ['alpha'] });
+const reader = createApiKey({ id: 'acme-reader', org: 'acme', permissions: ['playbook:read'], playbooks: ['alpha'] });
 
-const admin = createApiKey({ id: 'acme-admin', org: 'acme', permissions: ['org:read', 'org:write'], brains: '*' });
+const admin = createApiKey({ id: 'acme-admin', org: 'acme', permissions: ['org:read', 'org:write'], playbooks: '*' });
 
 const keys: readonly ApiKey[] = [reader.entry, admin.entry];
 
@@ -34,8 +34,8 @@ describe('authenticatorFor with local mode on and no API keys', () => {
     expect(developer?.callerIn('globex')).toEqual({
       id: 'local',
       org: 'globex',
-      permissions: ['org:read', 'org:write', 'brain:read', 'brain:write'],
-      brains: '*',
+      permissions: ['org:read', 'org:write', 'playbook:read', 'playbook:write'],
+      playbooks: '*',
     });
   });
 
@@ -84,8 +84,8 @@ describe('authenticatorFor with API keys', () => {
     expect(holder?.callerIn('globex')).toEqual({
       id: 'acme-reader',
       org: 'acme',
-      permissions: ['brain:read'],
-      brains: ['alpha'],
+      permissions: ['playbook:read'],
+      playbooks: ['alpha'],
     });
     expect(holder?.org).toBe('acme');
   });

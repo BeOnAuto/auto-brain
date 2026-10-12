@@ -91,9 +91,9 @@ function answerTo(input: Schema.Json, run: RunContext, runs: number): Effect.Eff
   if (Predicate.hasProperty(input, 'bulk') && Predicate.isNumber(input.bulk)) {
     return Effect.succeed({ output: 'x'.repeat(input.bulk), record: {} });
   }
-  const { id, org, brain, caller, definition } = run;
+  const { id, org, playbook, caller, definition } = run;
   return Effect.succeed({
-    output: { input, run: { id, org, brain, caller: { ...caller }, definition: { ...definition } } },
+    output: { input, run: { id, org, playbook, caller: { ...caller }, definition: { ...definition } } },
     record: { runs },
   });
 }

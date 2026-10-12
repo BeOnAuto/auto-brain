@@ -1,13 +1,13 @@
 import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { BrainAccessSchema, BrainIdSchema, OrgIdSchema } from '../index.ts';
+import { PlaybookAccessSchema, PlaybookIdSchema, OrgIdSchema } from '../index.ts';
 
 const isOrgId = Schema.is(OrgIdSchema);
 
-const isBrainId = Schema.is(BrainIdSchema);
+const isPlaybookId = Schema.is(PlaybookIdSchema);
 
-const isBrainAccess = Schema.is(BrainAccessSchema);
+const isPlaybookAccess = Schema.is(PlaybookAccessSchema);
 
 describe('an org id', () => {
   it.each(['acme', 'Acme_Corp-1', 'a'.repeat(64)])('may be %s', (id) => {
@@ -19,19 +19,23 @@ describe('an org id', () => {
   });
 });
 
-describe('a brain id', () => {
+describe('a playbook id', () => {
   it.each(['abc', 'alpha-2', `a${'b'.repeat(47)}`])('may be %s', (id) => {
-    expect(isBrainId(id)).toBe(true);
+    expect(isPlaybookId(id)).toBe(true);
   });
 
   it.each(['ab', 'Alpha', '1alpha', 'al_pha', `a${'b'.repeat(48)}`, 'alpha/beta'])('may not be %j', (id) => {
-    expect(isBrainId(id)).toBe(false);
+    expect(isPlaybookId(id)).toBe(false);
   });
 });
 
-describe('the brains a caller may access', () => {
-  it('are every brain or a list of brain ids', () => {
-    expect([isBrainAccess('*'), isBrainAccess([]), isBrainAccess(['alpha', 'beta'])]).toEqual([true, true, true]);
-    expect([isBrainAccess('alpha'), isBrainAccess(['Alpha'])]).toEqual([false, false]);
+describe('the playbooks a caller may access', () => {
+  it('are every playbook or a list of playbook ids', () => {
+    expect([isPlaybookAccess('*'), isPlaybookAccess([]), isPlaybookAccess(['alpha', 'beta'])]).toEqual([
+      true,
+      true,
+      true,
+    ]);
+    expect([isPlaybookAccess('alpha'), isPlaybookAccess(['Alpha'])]).toEqual([false, false]);
   });
 });

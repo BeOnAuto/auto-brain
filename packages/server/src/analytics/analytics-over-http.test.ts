@@ -78,12 +78,12 @@ afterEach(async () => {
   await server.stop();
 });
 
-async function brainWithThreeRuns(environment: Readonly<Record<string, string>>): Promise<void> {
+async function playbookWithThreeRuns(environment: Readonly<Record<string, string>>): Promise<void> {
   server = await servingReasoning(
     [answers(textResult('Profits rose.', { usage: usageOf(1200, 1000, 80) })), () => Effect.fail(unusable)],
     environment,
   );
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   await server.call('POST', `${alpha}/definitions/reasoning`, { body: { name: 'summary', source: summary } });
   const running = (input: Readonly<Record<string, unknown>>) =>
     server.call('POST', `${alpha}/definitions/reasoning/summary/run`, { body: { input } });
@@ -102,17 +102,17 @@ function durationOf(body: unknown): { readonly p50: number; readonly p95: number
   return decodeDuration(body).duration_ms;
 }
 
-describe.each(stores)('the analytics of a brain over HTTP and MCP, on $store', ({ skipped, environment }) => {
+describe.each(stores)('the analytics of a playbook over HTTP and MCP, on $store', ({ skipped, environment }) => {
   it.skipIf(skipped)(
     'count the runs that ended today, by how they ended, and the tokens their models used',
     async () => {
-      await brainWithThreeRuns(await environment());
+      await playbookWithThreeRuns(await environment());
 
       const read = await server.call('GET', `${alpha}/analytics`);
       const filtered = await server.call('GET', `${alpha}/analytics?days=14&type=reasoning&name=summary`);
-      const onAlpha = { url: `${server.origin}/orgs/acme/brains/alpha/mcp`, headers: {} };
+      const onAlpha = { url: `${server.origin}/orgs/acme/playbooks/alpha/mcp`, headers: {} };
       const overMcp = await withMcpSession('current revision', onAlpha, (session) =>
-        session.callTool('get_brain_analytics', {}),
+        session.callTool('get_playbook_analytics', {}),
       );
 
       expect(read).toMatchObject({
@@ -131,22 +131,22 @@ describe.each(stores)('the analytics of a brain over HTTP and MCP, on $store', (
     },
   );
 
-  it.skipIf(skipped)('answer a retired brain, and refuse a brain that is not there', async () => {
-    await brainWithThreeRuns(await environment());
-    await server.call('POST', '/v1/orgs/acme/brains/alpha/retire');
+  it.skipIf(skipped)('answer a retired playbook, and refuse a playbook that is not there', async () => {
+    await playbookWithThreeRuns(await environment());
+    await server.call('POST', '/v1/orgs/acme/playbooks/alpha/retire');
 
     const retired = await server.call('GET', `${alpha}/analytics?days=30`);
-    const missing = await server.call('GET', '/v1/orgs/acme/brains/zeta/analytics');
+    const missing = await server.call('GET', '/v1/orgs/acme/playbooks/zeta/analytics');
 
     expect(retired).toMatchObject({ status: 200, body: { days: 30, runs: { total: 3 } } });
     expect(missing).toMatchObject({ status: 404, body: { reason: 'not_found' } });
   });
 });
 
-describe('the analytics of a brain over HTTP, asked for what they cannot answer', () => {
+describe('the analytics of a playbook over HTTP, asked for what they cannot answer', () => {
   it('are refused as invalid input, pointing at what is wrong', async () => {
     server = await servingReasoning([]);
-    await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+    await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
 
     const refusals = await Promise.all(
       [

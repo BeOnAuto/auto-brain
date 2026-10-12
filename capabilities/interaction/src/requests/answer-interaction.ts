@@ -4,16 +4,16 @@ import {
   RunIdInputField,
   RunSchema,
   answeredByAReply,
-  brainBoundSettler,
-  recordedRunInBrain,
+  playbookBoundSettler,
+  recordedRunInPlaybook,
   type RecordedRun,
   refusingBlankText,
   refusingForbiddenCharacters,
 } from '@beonauto/definitions';
 import {
-  BrainContext,
-  BrainReader,
-  BrainWriter,
+  PlaybookContext,
+  PlaybookReader,
+  PlaybookWriter,
   Caller,
   Conflict,
   NotFound,
@@ -68,12 +68,12 @@ function checkedFor(run: RecordedRun, answer: Schema.Json): Effect.Effect<Schema
 }
 
 const answered = Effect.fnUntraced(function* ({ id, answer, claimedFor }: Answering) {
-  const brain = yield* BrainContext;
+  const playbook = yield* PlaybookContext;
   const { id: answeredBy } = yield* Caller;
   const row = yield* openRequestRowIn(id);
-  const run = yield* recordedRunInBrain(yield* BrainReader, id);
+  const run = yield* recordedRunInPlaybook(yield* PlaybookReader, id);
   if (run === undefined) {
-    return yield* new NotFound({ detail: 'There is no such run in this brain' });
+    return yield* new NotFound({ detail: 'There is no such run in this playbook' });
   }
   if (row === undefined) {
     return yield* notARequest;
@@ -91,14 +91,14 @@ const answered = Effect.fnUntraced(function* ({ id, answer, claimedFor }: Answer
     ...(claimedFor === undefined ? {} : { claimed_for: claimedFor }),
     answered_at: at,
   };
-  return yield* brainBoundSettler(yield* BrainWriter)(
-    { ...brain, id },
+  return yield* playbookBoundSettler(yield* PlaybookWriter)(
+    { ...playbook, id },
     { status: 'succeeded', output, record, by: answeredBy },
     { causationId: row.request_id, correlationId: yield* correlationOfRun(id) },
   ).pipe(Effect.catchTag('not_found', Effect.die));
 });
 
-export const answerInteraction = defineCommand('brain', {
+export const answerInteraction = defineCommand('playbook', {
   name: 'answer_interaction',
   title: 'Answer a request',
   description,

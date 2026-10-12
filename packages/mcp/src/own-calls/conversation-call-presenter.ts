@@ -27,7 +27,7 @@ const failedReadWords: Readonly<Record<ReadingFailedBecause, string>> = {
   cancelled: 'the read was cancelled',
   unreadable: 'what the tool answered could not be read as a list of replies',
   too_large: `the tool answered more than the ${counted.format(toolBounds.readAnswerBytes)} bytes a read may take`,
-  tool_not_offered: 'the tool server no longer offers the tool to this brain',
+  tool_not_offered: 'the tool server no longer offers the tool to this playbook',
   not_sent: 'its arguments could not be rendered, so nothing was sent',
 };
 
@@ -76,14 +76,14 @@ function readingFact(event: Reading, content: KeptContent): PresentedFact {
     const { data } = event;
     return {
       type: event.type,
-      summary: `The brain looked for new replies in ${whereOf(data)} and found ${data.replies}, took ${data.taken} as an answer and refused ${data.refused}.`,
+      summary: `The playbook looked for new replies in ${whereOf(data)} and found ${data.replies}, took ${data.taken} as an answer and refused ${data.refused}.`,
       data: { ...callFieldsShown(data), ...shown },
     };
   }
   const { data } = event;
   return {
     type: event.type,
-    summary: `The brain could not read the replies of ${whereOf(data)}: ${failedReadingInWords(data)}.`,
+    summary: `The playbook could not read the replies of ${whereOf(data)}: ${failedReadingInWords(data)}.`,
     data: { ...callFieldsShown(data), ...shown },
   };
 }
@@ -96,7 +96,7 @@ function factOf(event: RecordedConversationCall, content: KeptContent): Presente
     const { data } = event;
     return {
       type: event.type,
-      summary: `The brain told the party how to answer ${throughTheTool(data)}.`,
+      summary: `The playbook told the party how to answer ${throughTheTool(data)}.`,
       data: { ...callFieldsShown(data), ...keptArgumentsOf(data, content) },
     };
   }

@@ -42,7 +42,7 @@ function eventTaking(
   idDescription: string,
   inputSchema = Schema.Struct({ id: Schema.String.annotate({ description: idDescription }) }),
 ) {
-  return defineQuery('brain', {
+  return defineQuery('playbook', {
     name: 'nest_definition',
     title: 'Nest',
     description: 'Nests. Use it to nest. It answers.',

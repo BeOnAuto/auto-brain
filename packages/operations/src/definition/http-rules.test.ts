@@ -6,7 +6,7 @@ function definedOverHttp(kind: 'query' | 'command', lines: readonly string[], be
   return [
     ...probeHeader,
     ...before,
-    `export const probe = Operations.defineHttpOperation('brain', '${kind}', {`,
+    `export const probe = Operations.defineHttpOperation('playbook', '${kind}', {`,
     "  ...about, name: 'probe',",
     ...lines,
     '});',

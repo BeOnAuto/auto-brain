@@ -14,10 +14,10 @@ const run = {
   runId: `acme/alpha/${workflowRun}`,
   attributes: {
     org: 'acme',
-    brain: 'alpha',
+    playbook: 'alpha',
     run_id: workflowRun,
     definition: { name: 'triage', version: 2 },
-    caller: { id: 'acme-admin', org: 'acme', permissions: ['brain:read', 'brain:write'], brains: '*' },
+    caller: { id: 'acme-admin', org: 'acme', permissions: ['playbook:read', 'playbook:write'], playbooks: '*' },
   },
 };
 
@@ -35,7 +35,7 @@ const classify = callWith({ type: 'reasoning', name: 'classify', input: { ticket
 
 const origin = { version: 3 };
 
-const waitingOfTheCall = messageIdOf(`brain/acme/alpha/run-logs/${workflowRun}`, origin.version);
+const waitingOfTheCall = messageIdOf(`playbook/acme/alpha/run-logs/${workflowRun}`, origin.version);
 
 function answering(result: DefinitionRunResult) {
   const asked: DefinitionRunRequest[] = [];
@@ -62,7 +62,7 @@ describe('a workflow call to a saved definition', () => {
       expect(asked).toEqual([
         {
           org: 'acme',
-          brain: 'alpha',
+          playbook: 'alpha',
           caller: acmeCaller,
           type,
           name: 'classify',
@@ -112,12 +112,12 @@ describe('a workflow call with invalid arguments', () => {
 });
 
 describe('a call of a workflow whose run names no caller', () => {
-  it('fails for a run that names no brain or caller', async () => {
+  it('fails for a run that names no playbook or caller', async () => {
     const { perform } = answering({ status: 'succeeded', output: null });
 
     expect(await Effect.runPromise(perform(classify, { ...run, attributes: {} }, origin))).toEqual({
       status: 'failed',
-      detail: 'The run names no brain and no caller to run a definition for',
+      detail: 'The run names no playbook and no caller to run a definition for',
     });
   });
 });

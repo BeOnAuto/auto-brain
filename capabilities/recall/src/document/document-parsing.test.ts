@@ -96,7 +96,7 @@ describe('the front matter of a recall function definition', () => {
       'language: python\nsource:\n  events:\n    - type: x\ninput:\n  schema: {type: object, properties: {a: {pattern: "x"}}}\noutput:\n  schema: {type: wrong}\nview:\n  schema: {minimum: 1}';
 
     expect(issuesIn(recallDocument(adding, front))).toEqual([
-      "Line 2, /language: The brain's one language is TypeScript; write the program as a TypeScript function",
+      "Line 2, /language: The playbook's one language is TypeScript; write the program as a TypeScript function",
       'Line 7, /input/schema/properties/a/pattern: Regular expressions are not accepted, because a hostile pattern can stall validation',
       'Line 9, /output/schema/type: Expected one of null, boolean, object, array, number, string, integer, or a non-empty list of them',
     ]);

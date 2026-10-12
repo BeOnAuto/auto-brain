@@ -16,9 +16,9 @@ interface Known {
   readonly pending: readonly number[];
 }
 
-export function runGateOf(database: HostDatabase, brainKey: string): RunGate {
+export function runGateOf(database: HostDatabase, playbookKey: string): RunGate {
   const watermark = sqlWatermark(database);
-  const [, org = '', brain = ''] = brainKey.split('/');
+  const [, org = '', playbook = ''] = playbookKey.split('/');
   const known = new Map<string, Known>();
   const knownOf = (runKey: string, record: RecordedEvent): Effect.Effect<Known> => {
     const cached = known.get(runKey);
@@ -35,7 +35,7 @@ export function runGateOf(database: HostDatabase, brainKey: string): RunGate {
   return {
     verdictOn: (record, overdue) =>
       Effect.gen(function* () {
-        const runKey = `${org}/${brain}/${record.stream.slice(record.stream.lastIndexOf('/') + 1)}`;
+        const runKey = `${org}/${playbook}/${record.stream.slice(record.stream.lastIndexOf('/') + 1)}`;
         const { through, pending } = yield* knownOf(runKey, record);
         const behind = through < record.version;
         if (behind && !overdue) {

@@ -13,8 +13,8 @@ const unsettledBecause = {
 
 export function hostReports(runtime: AppRuntime<DispatcherServices>): HostReports {
   return {
-    unsettled: ({ org, brain, runId, receipt }) =>
-      inRuntime(runtime, logUnsettled({ org, brain, runId, reason: unsettledBecause[receipt] })),
+    unsettled: ({ org, playbook, runId, receipt }) =>
+      inRuntime(runtime, logUnsettled({ org, playbook, runId, reason: unsettledBecause[receipt] })),
     trouble: (what, cause) => inRuntime(runtime, logWorkflowTrouble(what, cause)),
     lostConnection: (error) => {
       void runtime.run(logLostWorkflowConnection(error));

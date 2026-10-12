@@ -1,4 +1,4 @@
-import { servesBrain } from '@beonauto/config';
+import { servesPlaybook } from '@beonauto/config';
 import type { Redacted } from 'effect';
 
 export type AuthCredential =
@@ -20,7 +20,7 @@ export interface ToolLists {
 interface ServedBy extends ToolLists {
   readonly name: string;
   readonly org: string;
-  readonly brains: readonly string[] | null;
+  readonly playbooks: readonly string[] | null;
   readonly record_content: boolean;
   readonly request_id: string | null;
   readonly secrets: readonly Redacted.Redacted[];
@@ -50,19 +50,19 @@ export interface McpSettings {
 
 export interface ServersScope {
   readonly org: string;
-  readonly brain: string | undefined;
+  readonly playbook: string | undefined;
 }
 
-export const everyBrain = '*';
+export const everyPlaybook = '*';
 
-function servesScope(server: ServedBy, { org, brain }: ServersScope): boolean {
-  return brain === undefined ? server.org === org : servesBrain(server, { org, brain });
+function servesScope(server: ServedBy, { org, playbook }: ServersScope): boolean {
+  return playbook === undefined ? server.org === org : servesPlaybook(server, { org, playbook });
 }
 
 export function isListedFor(server: ServedBy, scope: ServersScope, named: string | undefined): boolean {
   return servesScope(server, scope) && (named === undefined || server.name === named);
 }
 
-export function brainsServedBy(servers: readonly McpServerSettings[], name: string): readonly string[] {
-  return servers.filter((server) => server.name === name).flatMap(({ brains }) => brains ?? [everyBrain]);
+export function playbooksServedBy(servers: readonly McpServerSettings[], name: string): readonly string[] {
+  return servers.filter((server) => server.name === name).flatMap(({ playbooks }) => playbooks ?? [everyPlaybook]);
 }

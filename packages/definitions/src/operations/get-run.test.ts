@@ -4,11 +4,11 @@ import { getRun } from '../index.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
 import { echo } from '../testing/echo.ts';
-import { asQueryString, harness, toBrain } from '../testing/harness.ts';
+import { asQueryString, harness, toPlaybook } from '../testing/harness.ts';
 
 const { createDefinition, runDefinition } = definitionOperationsFor([echo]);
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
@@ -23,9 +23,9 @@ async function withRun() {
 }
 
 describe('get_run', () => {
-  it('is a brain query at GET /runs/{run_id} that may meet not_found', () => {
+  it('is a playbook query at GET /runs/{run_id} that may meet not_found', () => {
     expect(getRun.registration).toMatchObject({
-      scope: 'brain',
+      scope: 'playbook',
       kind: 'query',
       title: 'Get run',
       route: { method: 'GET', path: '/runs/{run_id}' },
@@ -45,14 +45,14 @@ describe('get_run', () => {
 });
 
 describe('get_run rejecting', () => {
-  it('an id the brain has no run for', async () => {
+  it('an id the playbook has no run for', async () => {
     const { call } = await withRun();
     const unknownId = '0199a3c4-7d2e-7c1a-9b3f-000000000000';
 
     expect(await call(getRun, toAlpha(acmeAdmin, { run_id: unknownId }))).toEqual({
       status: 'rejected',
       reason: 'not_found',
-      detail: `There is no run ${unknownId} in this brain`,
+      detail: `There is no run ${unknownId} in this playbook`,
     });
   });
 

@@ -2,7 +2,7 @@ import {
   Ledger,
   makeDispatcher,
   settle,
-  type BrainRequest,
+  type PlaybookRequest,
   type CallerIdentity,
   type DispatcherServices,
   type Outcome,
@@ -11,7 +11,7 @@ import {
   type Settled,
 } from '@beonauto/operations';
 import {
-  memoryBrainRegistry,
+  memoryPlaybookRegistry,
   memoryLedger,
   recordingReporter,
   type MemoryLedger,
@@ -20,7 +20,7 @@ import {
 import { DateTime, Effect, Layer } from 'effect';
 import { TestClock } from 'effect/testing';
 
-import { runOutcomeMapping, type BrainOperation } from '../index.ts';
+import { runOutcomeMapping, type PlaybookOperation } from '../index.ts';
 
 export const firstMoment = '2026-10-01T09:00:00.000Z';
 
@@ -33,22 +33,22 @@ export interface Harness {
   readonly ledgerReads: () => readonly LedgerRead[];
   readonly reported: () => readonly ReportedIncident[];
   readonly dispatch: (
-    operation: BrainOperation,
-    request: BrainRequest,
+    operation: PlaybookOperation,
+    request: PlaybookRequest,
   ) => Effect.Effect<Outcome, never, DispatcherServices>;
   readonly run: <A>(calls: Effect.Effect<A, never, DispatcherServices>, at?: string) => Promise<A>;
-  readonly call: (operation: BrainOperation, request: BrainRequest, at?: string) => Promise<Outcome>;
+  readonly call: (operation: PlaybookOperation, request: PlaybookRequest, at?: string) => Promise<Outcome>;
   readonly callCancelledWhen: (
     cancelled: Promise<unknown>,
-    operation: BrainOperation,
-    request: BrainRequest,
+    operation: PlaybookOperation,
+    request: PlaybookRequest,
   ) => Promise<Settled>;
 }
 
-const knownBrains = [
-  { org: 'acme', brain: 'alpha' },
-  { org: 'acme', brain: 'beta' },
-  { org: 'globex', brain: 'gamma' },
+const knownPlaybooks = [
+  { org: 'acme', playbook: 'alpha' },
+  { org: 'acme', playbook: 'beta' },
+  { org: 'globex', playbook: 'gamma' },
 ];
 
 function readsRecordedIn(ledger: Ledger['Service'], recorded: (read: LedgerRead) => void): Ledger['Service'] {
@@ -59,10 +59,10 @@ function readsRecordedIn(ledger: Ledger['Service'], recorded: (read: LedgerRead)
         recorded({ loaded: stream });
         return ledger.load(stream, decider);
       }),
-    readRecorded: (brain, selection, page) =>
+    readRecorded: (playbook, selection, page) =>
       Effect.suspend(() => {
         recorded({ selection, page });
-        return ledger.readRecorded(brain, selection, page);
+        return ledger.readRecorded(playbook, selection, page);
       }),
   });
 }
@@ -78,13 +78,13 @@ export function harness(): Harness {
         reads.push(read);
       }),
     ),
-    memoryBrainRegistry(knownBrains),
+    memoryPlaybookRegistry(knownPlaybooks),
     recording.layer,
     TestClock.layer(),
   );
   const dispatcher = makeDispatcher([]);
   const dispatch: Harness['dispatch'] = (operation, request) =>
-    dispatcher.dispatchToBrain(operation.registration, request);
+    dispatcher.dispatchToPlaybook(operation.registration, request);
   const run: Harness['run'] = (calls, at = firstMoment) =>
     Effect.runPromise(
       TestClock.setTime(DateTime.toEpochMillis(DateTime.makeUnsafe(at))).pipe(
@@ -110,10 +110,13 @@ export function harness(): Harness {
   };
 }
 
-export function toBrain(org: string, brain: string): (caller: CallerIdentity, input?: unknown) => BrainRequest {
-  return (caller, input = {}) => ({ caller, org, brain, input, encoding: 'json' });
+export function toPlaybook(
+  org: string,
+  playbook: string,
+): (caller: CallerIdentity, input?: unknown) => PlaybookRequest {
+  return (caller, input = {}) => ({ caller, org, playbook, input, encoding: 'json' });
 }
 
-export function asQueryString(request: BrainRequest): BrainRequest {
+export function asQueryString(request: PlaybookRequest): PlaybookRequest {
   return { ...request, encoding: 'strings' };
 }

@@ -59,12 +59,12 @@ const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
   concurrent_change: { why: 'something else changed it at the same moment', remedy: 'Trying again should work.' },
   unworkable: { why: 'it cannot work as it is written', remedy: correctable },
   stalled: {
-    why: 'what it keeps of the brain’s history stopped at a recorded event it could not take in',
+    why: 'what it keeps of the playbook’s history stopped at a recorded event it could not take in',
     remedy:
       'It answers again once a corrected version is saved, which builds it anew from the history; the details below say which event stopped it and why.',
   },
   rebuilding: {
-    why: 'what it keeps of the brain’s history is still being built from that history',
+    why: 'what it keeps of the playbook’s history is still being built from that history',
     remedy: 'Nothing needs to change: trying again in a little while should work.',
   },
   tools_called: {
@@ -87,7 +87,7 @@ const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
   tool_not_offered: {
     why: 'this server does not offer a tool it names',
     remedy:
-      'This can be put right on your side: whoever runs the server decides which tool servers and tools this brain may use, which list_tool_servers shows, so once it names only those, it can be tried again.',
+      'This can be put right on your side: whoever runs the server decides which tool servers and tools this playbook may use, which list_tool_servers shows, so once it names only those, it can be tried again.',
   },
   mcp_server_failed: {
     why: 'a tool server it needs could not be used',
@@ -100,7 +100,7 @@ const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
       'This can be put right on your side: once its result keeps only what is needed, such as fewer or smaller values, it can be run again.',
   },
   requested: {
-    why: 'it was cancelled at the request of someone allowed to change the brain',
+    why: 'it was cancelled at the request of someone allowed to change the playbook',
     remedy: ranUntilCancelled,
     mayHaveChanged: true,
   },
@@ -134,7 +134,7 @@ const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
     mayHaveChanged: true,
   },
   requests_full: {
-    why: 'the brain already holds as many open requests as it may',
+    why: 'the playbook already holds as many open requests as it may',
     remedy: 'Once some of them are answered, expire or are cancelled, it can be tried again.',
   },
   tools_unfinished: {
@@ -147,7 +147,8 @@ const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
 const explanationByBecause: Readonly<Record<RejectionBecause, string>> = {
   provider_not_configured: 'because its provider is not set up on this server, though others are',
   model_not_allowed: 'because it is not among the models whoever runs the server allows',
-  mcp_server_not_configured: 'because whoever runs the server has not set up a tool server of that name for this brain',
+  mcp_server_not_configured:
+    'because whoever runs the server has not set up a tool server of that name for this playbook',
   tool_not_allowed: 'because it is not among the tools whoever runs the server allows',
   tool_not_listed: 'because the tool server it names does not have that tool',
   not_testable:

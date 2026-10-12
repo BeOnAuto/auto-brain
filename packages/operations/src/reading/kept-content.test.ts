@@ -1,17 +1,17 @@
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { BrainReader, keptContentOf, sha256Of, textToKeep, type RecordedEvent } from '../index.ts';
+import { PlaybookReader, keptContentOf, sha256Of, textToKeep, type RecordedEvent } from '../index.ts';
 import {
-  brainBoundProjectionReader,
-  brainBoundRecordedReader,
-  brainBoundRunOutcomesReader,
+  playbookBoundProjectionReader,
+  playbookBoundRecordedReader,
+  playbookBoundRunOutcomesReader,
   prefixedReader,
 } from '../ledger/bound-ports.ts';
 import { nothingKept } from '../testing/index.ts';
 import { memoryLedger } from '../testing/memory-ledger.ts';
 
-const brain = { org: 'acme', brain: 'alpha' };
+const playbook = { org: 'acme', playbook: 'alpha' };
 
 const at = '2026-10-05T09:00:00.000Z';
 
@@ -35,7 +35,7 @@ function recordOf(data: unknown): RecordedEvent {
     globalPosition: 1,
     type: 'tool_call_answered',
     data,
-    context: { at, by: 'brain:alpha' },
+    context: { at, by: 'playbook:alpha' },
     recordedAt: at,
   };
 }
@@ -44,21 +44,21 @@ function keptOf(records: readonly RecordedEvent[], mostBytes: number, digests: r
   const { service } = memoryLedger();
   return Effect.runPromise(
     Effect.gen(function* () {
-      yield* service.content.put(brain, textToKeep(texts.a1, 'application/json'));
-      yield* service.content.put(brain, textToKeep(texts.r1, 'application/problem+json'));
-      yield* service.content.put(brain, textToKeep(texts.r2, 'text/plain; charset=utf-8'));
-      yield* service.content.put(brain, textToKeep(texts.m1, 'application/octet-stream'));
+      yield* service.content.put(playbook, textToKeep(texts.a1, 'application/json'));
+      yield* service.content.put(playbook, textToKeep(texts.r1, 'application/problem+json'));
+      yield* service.content.put(playbook, textToKeep(texts.r2, 'text/plain; charset=utf-8'));
+      yield* service.content.put(playbook, textToKeep(texts.m1, 'application/octet-stream'));
       const content = yield* keptContentOf(records, mostBytes);
       return digests.map((digest) => content(digest));
     }).pipe(
       Effect.provideService(
-        BrainReader,
-        BrainReader.of({
-          ...prefixedReader(service, 'brain/acme/alpha/'),
-          ...brainBoundRecordedReader(service, brain),
-          ...brainBoundRunOutcomesReader(service, brain),
-          ...brainBoundProjectionReader(service, brain),
-          readContent: (sha256) => service.content.get(brain, sha256),
+        PlaybookReader,
+        PlaybookReader.of({
+          ...prefixedReader(service, 'playbook/acme/alpha/'),
+          ...playbookBoundRecordedReader(service, playbook),
+          ...playbookBoundRunOutcomesReader(service, playbook),
+          ...playbookBoundProjectionReader(service, playbook),
+          readContent: (sha256) => service.content.get(playbook, sha256),
         }),
       ),
     ),

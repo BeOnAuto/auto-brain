@@ -20,18 +20,18 @@ const notes: Decider<readonly string[], string, Noted> = {
   eventSchema: NotedSchema,
 };
 
-const alpha = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
 function noting(ledger: MemoryLedger, stream: string, note: string) {
   return Effect.runPromise(ledger.service.execute(stream, notes, note));
 }
 
-describe('the in-memory context of what a brain recorded', () => {
+describe('the in-memory context of what a playbook recorded', () => {
   it('reads each record with the context it was written with and its place across the ledger', async () => {
     const ledger = memoryLedger();
-    await noting(ledger, 'brain/acme/alpha/notes/n1', 'signed');
-    await noting(ledger, 'brain/acme/beta/notes/n1', 'signed');
-    await noting(ledger, 'brain/acme/alpha/notes/n1', 'signed');
+    await noting(ledger, 'playbook/acme/alpha/notes/n1', 'signed');
+    await noting(ledger, 'playbook/acme/beta/notes/n1', 'signed');
+    await noting(ledger, 'playbook/acme/alpha/notes/n1', 'signed');
 
     const page = await Effect.runPromise(
       ledger.service.readRecorded(alpha, { kind: 'everything' }, { order: 'asc', limit: 10 }),
@@ -43,15 +43,15 @@ describe('the in-memory context of what a brain recorded', () => {
     ]);
   });
 
-  it('reads one record by its id within its brain, and nothing for an id of another brain or none', async () => {
+  it('reads one record by its id within its playbook, and nothing for an id of another playbook or none', async () => {
     const ledger = memoryLedger();
-    await noting(ledger, 'brain/acme/alpha/notes/n1', 'signed');
-    await noting(ledger, 'brain/acme/beta/notes/n1', 'signed');
+    await noting(ledger, 'playbook/acme/alpha/notes/n1', 'signed');
+    await noting(ledger, 'playbook/acme/beta/notes/n1', 'signed');
 
     const found = await Effect.runPromise(
       Effect.all([
-        ledger.service.readRecordedEvent(alpha, messageIdOf('brain/acme/alpha/notes/n1', 1)),
-        ledger.service.readRecordedEvent(alpha, messageIdOf('brain/acme/beta/notes/n1', 1)),
+        ledger.service.readRecordedEvent(alpha, messageIdOf('playbook/acme/alpha/notes/n1', 1)),
+        ledger.service.readRecordedEvent(alpha, messageIdOf('playbook/acme/beta/notes/n1', 1)),
         ledger.service.readRecordedEvent(alpha, 'no such message'),
       ]),
     );
@@ -69,7 +69,7 @@ describe('the in-memory context of a decision', () => {
       context: () => ({ at: '2026-10-05T09:00:00.000Z', by: 'tester\u0000' }),
     };
 
-    const exit = await Effect.runPromiseExit(ledger.service.execute('brain/acme/alpha/notes/n1', forbidden, 'x'));
+    const exit = await Effect.runPromiseExit(ledger.service.execute('playbook/acme/alpha/notes/n1', forbidden, 'x'));
 
     expect(Exit.isFailure(exit)).toBe(true);
     expect(ledger.streamNames()).toEqual([]);
@@ -85,7 +85,7 @@ describe('the in-memory context of a decision', () => {
       },
     };
 
-    expect(await Effect.runPromise(ledger.service.execute('brain/acme/alpha/notes/n1', silent, 'x'))).toEqual({
+    expect(await Effect.runPromise(ledger.service.execute('playbook/acme/alpha/notes/n1', silent, 'x'))).toEqual({
       state: [],
       version: 0,
     });
@@ -96,9 +96,9 @@ describe('the in-memory context of a decision', () => {
 
     const states = await Effect.runPromise(
       Effect.all([
-        ledger.service.execute('brain/acme/alpha/notes/n1', notes, 'first'),
-        ledger.service.execute('brain/acme/alpha/notes/n1', notes, 'second'),
-        ledger.service.load('brain/acme/alpha/notes/n1', notes),
+        ledger.service.execute('playbook/acme/alpha/notes/n1', notes, 'first'),
+        ledger.service.execute('playbook/acme/alpha/notes/n1', notes, 'second'),
+        ledger.service.load('playbook/acme/alpha/notes/n1', notes),
       ]),
     );
 
@@ -121,13 +121,13 @@ describe('the in-memory context a fact carries', () => {
     };
 
     const signedExit = await Effect.runPromiseExit(
-      ledger.service.execute('brain/acme/alpha/notes/signed', unaddressed, 'signed'),
+      ledger.service.execute('playbook/acme/alpha/notes/signed', unaddressed, 'signed'),
     );
     const unsignedExit = await Effect.runPromiseExit(
-      ledger.service.execute('brain/acme/alpha/notes/unsigned', unaddressed, 'unsigned'),
+      ledger.service.execute('playbook/acme/alpha/notes/unsigned', unaddressed, 'unsigned'),
     );
 
     expect([Exit.isSuccess(signedExit), Exit.isFailure(unsignedExit)]).toEqual([true, true]);
-    expect(ledger.streamNames()).toEqual(['brain/acme/alpha/notes/signed']);
+    expect(ledger.streamNames()).toEqual(['playbook/acme/alpha/notes/signed']);
   });
 });

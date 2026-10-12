@@ -20,7 +20,7 @@ export const conversationCallDecider = ownCallDecider<RecordedConversationCall>(
   after: { telling_started: ['telling_succeeded', 'telling_failed'] },
   eventSchema: ConversationCallEventSchema,
   outOfTurn:
-    'A call of the brain in a conversation records the start of a telling once and then how it ended once, or a read once, so this is not recorded',
+    'A call of the playbook in a conversation records the start of a telling once and then how it ended once, or a read once, so this is not recorded',
 });
 
 export type Recorded = Pick<Context, 'by' | 'at'>;

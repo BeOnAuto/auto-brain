@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { acmeAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
 import { echo } from '../testing/echo.ts';
-import { firstMoment, harness, toBrain } from '../testing/harness.ts';
+import { firstMoment, harness, toPlaybook } from '../testing/harness.ts';
 import { probe } from '../testing/probe.ts';
 
 const { createDefinition, runDefinition, getRun, updateDefinition } = definitionOperationsFor([
@@ -11,7 +11,7 @@ const { createDefinition, runDefinition, getRun, updateDefinition } = definition
   probe().capability,
 ]);
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 const later = '2026-10-02T14:15:00.000Z';
 
@@ -47,9 +47,9 @@ function running(name: string, input?: object) {
 }
 
 describe('run_definition', () => {
-  it('is a brain command at POST /definitions/{type}/{name}/run', () => {
+  it('is a playbook command at POST /definitions/{type}/{name}/run', () => {
     expect(runDefinition.registration).toMatchObject({
-      scope: 'brain',
+      scope: 'playbook',
       kind: 'command',
       title: 'Run definition',
       route: { method: 'POST', path: '/definitions/{type}/{name}/run' },
@@ -64,7 +64,7 @@ describe('run_definition', () => {
 
     const outcome = await call(runDefinition, running('greet', { input: { who: 'Ada' } }), later);
     const [, , runStream] = ledger.streamNames();
-    const id = String(runStream).replace('brain/acme/alpha/runs/', '');
+    const id = String(runStream).replace('playbook/acme/alpha/runs/', '');
 
     expect(id).toMatch(uuidV7);
     expect(outcome).toStrictEqual({
@@ -102,7 +102,7 @@ describe('the run that run_definition runs', () => {
     });
   });
 
-  it('tells the capability the run id, the org, the brain, the caller and the definition it runs', async () => {
+  it('tells the capability the run id, the org, the playbook, the caller and the definition it runs', async () => {
     const { call } = await withGreetAndPlain();
 
     expect(await call(runDefinition, running('plain', { input: 7, run_id: runId }))).toMatchObject({
@@ -112,7 +112,7 @@ describe('the run that run_definition runs', () => {
           run: {
             id: runId,
             org: 'acme',
-            brain: 'alpha',
+            playbook: 'alpha',
             caller: acmeAdmin,
             definition: { name: 'plain', version: 1 },
           },

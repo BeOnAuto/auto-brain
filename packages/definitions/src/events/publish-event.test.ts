@@ -1,18 +1,18 @@
-import { defineListBrainEvents } from '@beonauto/brains';
+import { defineListPlaybookEvents } from '@beonauto/playbooks';
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { makeDefinitionPresenters } from '../index.ts';
 import { acmeAdmin, acmeReader } from '../testing/callers.ts';
 import { echo } from '../testing/echo.ts';
-import { firstMoment, harness, toBrain } from '../testing/harness.ts';
+import { firstMoment, harness, toPlaybook } from '../testing/harness.ts';
 import { mostPublishedEventBytes } from './cloud-event.ts';
 import { publishEvent } from './publish-event.ts';
 import { publishedEventDecider, publishedEventStreamOf } from './published-events.ts';
 
-const listBrainEvents = defineListBrainEvents(makeDefinitionPresenters([echo]));
+const listPlaybookEvents = defineListPlaybookEvents(makeDefinitionPresenters([echo]));
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 const later = '2026-10-01T09:05:00.000Z';
 
@@ -47,14 +47,14 @@ function publishing(event: object) {
 
 function storedOn(definitions: ReturnType<typeof harness>, source: string, id: string) {
   return Effect.runPromise(
-    definitions.ledger.service.load(`brain/acme/alpha/${publishedEventStreamOf(source, id)}`, publishedEventDecider),
+    definitions.ledger.service.load(`playbook/acme/alpha/${publishedEventStreamOf(source, id)}`, publishedEventDecider),
   );
 }
 
 describe('publish_event', () => {
-  it('is a brain command at POST /events', () => {
+  it('is a playbook command at POST /events', () => {
     expect(publishEvent.registration).toMatchObject({
-      scope: 'brain',
+      scope: 'playbook',
       kind: 'command',
       title: 'Publish event',
       route: { method: 'POST', path: '/events' },
@@ -134,8 +134,8 @@ describe('publishing an event again', () => {
   });
 });
 
-describe('an event the brain does not take', () => {
-  it('is rejected under a type or a source that are the brain’s own', async () => {
+describe('an event the playbook does not take', () => {
+  it('is rejected under a type or a source that are the playbook’s own', async () => {
     const definitions = harness();
 
     expect(
@@ -148,7 +148,7 @@ describe('an event the brain does not take', () => {
     expect(definitions.ledger.streamNames()).toEqual([]);
   });
 
-  it('is rejected when it claims the cause or the correlation the brain gives its own facts', async () => {
+  it('is rejected when it claims the cause or the correlation the playbook gives its own facts', async () => {
     const definitions = harness();
 
     expect(
@@ -216,7 +216,7 @@ describe('an event whose data nests too deep', () => {
     });
   });
 
-  it('is rejected for a caller that may only read the brain', async () => {
+  it('is rejected for a caller that may only read the playbook', async () => {
     expect(await harness().call(publishEvent, toAlpha(acmeReader, { event: monthClosed }))).toMatchObject({
       status: 'rejected',
       reason: 'forbidden',
@@ -224,18 +224,18 @@ describe('an event whose data nests too deep', () => {
   });
 });
 
-describe('the events published to a brain', () => {
+describe('the events published to a playbook', () => {
   it('appear among its events, by type and in plain words', async () => {
     const definitions = harness();
     await definitions.call(publishEvent, publishing(monthClosed));
 
-    expect(await definitions.call(listBrainEvents, toAlpha(acmeReader, { type: 'event_published' }))).toMatchObject({
+    expect(await definitions.call(listPlaybookEvents, toAlpha(acmeReader, { type: 'event_published' }))).toMatchObject({
       status: 'succeeded',
       output: {
         events: [
           {
             type: 'event_published',
-            summary: 'The event “com.acme.ledger.month-closed” was published to the brain.',
+            summary: 'The event “com.acme.ledger.month-closed” was published to the playbook.',
             data: {
               event_id: 'm-2026-09',
               event_type: 'com.acme.ledger.month-closed',
@@ -261,8 +261,8 @@ describe('the plain words of publish_event', () => {
     const input = { event: monthClosed };
 
     expect([plainLanguage?.attempt(input), plainLanguage?.outcome(recordedFirst.output, input)]).toEqual([
-      'publish the event “com.acme.ledger.month-closed” to the brain',
-      'The event “com.acme.ledger.month-closed” is published to the brain. Publishing it again with the same source and id records nothing more.',
+      'publish the event “com.acme.ledger.month-closed” to the playbook',
+      'The event “com.acme.ledger.month-closed” is published to the playbook. Publishing it again with the same source and id records nothing more.',
     ]);
   });
 });

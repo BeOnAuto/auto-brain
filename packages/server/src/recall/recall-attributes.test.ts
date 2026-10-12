@@ -25,7 +25,7 @@ const triggeredRuns = recallDocument(
     '  events:',
     '    - type: run_succeeded',
     '      subject: workflow/tally',
-    '      caller: brain:alpha',
+    '      caller: playbook:alpha',
     '      triggerkind: event',
     'view:',
     '  initial: []',
@@ -45,7 +45,7 @@ afterEach(async () => {
 async function servingTheTally(): Promise<ReasoningServer> {
   const server = await servingRecall([]);
   closing.push(server.stop);
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   await server.call('POST', `${alpha}/definitions/workflow`, { body: { name: 'tally', source: tallying } });
   await server.call('POST', `${alpha}/definitions/recall`, { body: { name: 'triggered', source: triggeredRuns } });
   return server;
@@ -65,7 +65,7 @@ describe(
   'a recall function whose source names the subject, the caller and the trigger kind',
   { timeout: recallTestTimeoutMs },
   () => {
-    it('folds the runs the brain started for an event, and not the run a caller started', async () => {
+    it('folds the runs the playbook started for an event, and not the run a caller started', async () => {
       const server = await servingTheTally();
       const started = await server.call('POST', `${alpha}/definitions/workflow/tally/run`, { body: { input: {} } });
       await settledRun(server, `${alpha}/runs/${runIdIn(started.body)}`);
@@ -77,7 +77,7 @@ describe(
       await standingUntil(server, 'triggered', liveWith(1));
       const answer = await recalled(server, 'triggered', {});
 
-      expect(answer.body).toMatchObject({ status: 'succeeded', output: ['workflow/tally brain:alpha event'] });
+      expect(answer.body).toMatchObject({ status: 'succeeded', output: ['workflow/tally playbook:alpha event'] });
     });
   },
 );

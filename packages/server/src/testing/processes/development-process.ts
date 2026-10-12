@@ -157,7 +157,7 @@ function linesFrom({ stderr }: Development, source: string): readonly string[] {
     .map(({ level, message }) => `${level} ${message}`);
 }
 
-const readyNotice = /^INFO auto-brain is ready\n/u;
+const readyNotice = /^INFO Auto Runtime is ready\n/u;
 
 export function runnerLines(development: Development): readonly string[] {
   return linesFrom(development, 'dev')
@@ -172,7 +172,7 @@ export function readyNoticesOf(development: Development): readonly string[] {
 }
 
 function listeningPorts({ stdout }: Development): readonly number[] {
-  return [...stdout().matchAll(/auto-brain listening on port (\d+)\n/gu)].map(([, port]: readonly string[]) =>
+  return [...stdout().matchAll(/Auto Runtime listening on port (\d+)\n/gu)].map(([, port]: readonly string[]) =>
     Number(port),
   );
 }

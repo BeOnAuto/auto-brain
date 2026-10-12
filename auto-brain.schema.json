@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "auto-brain configuration file",
-  "description": "The settings of an auto-brain server that are lists or maps, read from the file that CONFIG_FILE names. Each key stands for the environment variable of the same name in upper case, which wins over it. Secrets are written as references such as ${GATEWAY_API_KEY}.",
+  "title": "Auto Runtime configuration file",
+  "description": "The settings of Auto Runtime that are lists or maps, read from the file that CONFIG_FILE names. Each key stands for the environment variable of the same name in upper case, which wins over it. Secrets are written as references such as ${GATEWAY_API_KEY}.",
   "type": "object",
   "properties": {
     "allowed_origins": {
@@ -28,10 +28,10 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["org:read", "org:write", "brain:read", "brain:write"]
+              "enum": ["org:read", "org:write", "playbook:read", "playbook:write"]
             }
           },
-          "brains": {
+          "playbooks": {
             "anyOf": [
               {
                 "type": "string",
@@ -51,7 +51,7 @@
             "pattern": "^[0-9a-f]{64}$"
           }
         },
-        "required": ["id", "org", "permissions", "brains", "sha256"],
+        "required": ["id", "org", "permissions", "playbooks", "sha256"],
         "additionalProperties": false
       }
     },
@@ -212,12 +212,12 @@
             "type": "string",
             "description": "The org this server serves, required"
           },
-          "brains": {
+          "playbooks": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "The brains of the org this server serves; every brain of the org when left out"
+            "description": "The playbooks of the org this server serves; every playbook of the org when left out"
           },
           "allowed": {
             "type": "array",
@@ -235,7 +235,7 @@
           },
           "record_content": {
             "type": "boolean",
-            "description": "Whether the arguments and the answers of this server's calls are kept whole, scrubbed of secrets, in the brain's ledger, where anyone who may read the brain reads them; false keeps their sizes and digests alone. Default true"
+            "description": "Whether the arguments and the answers of this server's calls are kept whole, scrubbed of secrets, in the playbook's ledger, where anyone who may read the playbook reads them; false keeps their sizes and digests alone. Default true"
           },
           "request_id": {
             "type": "string",
@@ -244,7 +244,7 @@
         },
         "additionalProperties": false
       },
-      "description": "The MCP servers whose tools a function may name, each bound to an org and optionally its brains: url for a remote server, command for a process. Secrets are references such as ${GRAPH_API_KEY}. MCP_SERVERS wins over it"
+      "description": "The MCP servers whose tools a function may name, each bound to an org and optionally its playbooks: url for a remote server, command for a process. Secrets are references such as ${GRAPH_API_KEY}. MCP_SERVERS wins over it"
     }
   },
   "additionalProperties": false,

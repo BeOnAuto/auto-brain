@@ -21,28 +21,28 @@ function stoppingBeforeSettling(ledger: ConversationLedger): ConversationLedger 
   };
 }
 
-function answeredMeanwhile(brain: ChatHarness): ConversationLedger {
-  const ledger = brain.ledger.service;
+function answeredMeanwhile(playbook: ChatHarness): ConversationLedger {
+  const ledger = playbook.ledger.service;
   return {
     ...ledger,
     readProjectedRows: (name, place, query) =>
       Effect.tap(ledger.readProjectedRows(name, place, query), () =>
-        Effect.promise(() => brain.call(answerInteraction, { run_id: runId, answer: { choice: 'reject' } })),
+        Effect.promise(() => playbook.call(answerInteraction, { run_id: runId, answer: { choice: 'reject' } })),
       ),
   };
 }
 
 async function repliedInThread(): Promise<ChatHarness> {
-  const brain = await chatHarness();
-  await brain.askInThread(runId);
-  await brain.performDue(Date.now());
-  const [thread] = brain.chat.posted().map(({ ts }) => ts);
-  brain.chat.reply({ channel: '#approvals-sales', thread, user: answererId, text: 'approve' });
-  return brain;
+  const playbook = await chatHarness();
+  await playbook.askInThread(runId);
+  await playbook.performDue(Date.now());
+  const [thread] = playbook.chat.posted().map(({ ts }) => ts);
+  playbook.chat.reply({ channel: '#approvals-sales', thread, user: answererId, text: 'approve' });
+  return playbook;
 }
 
-function readOver(brain: ChatHarness, ledger: ConversationLedger) {
-  const reads = conversationsDue({ ledger, tools: brain.chat });
+function readOver(playbook: ChatHarness, ledger: ConversationLedger) {
+  const reads = conversationsDue({ ledger, tools: playbook.chat });
   const now = Date.now() + farAhead;
   return Effect.runPromise(
     Effect.exit(
@@ -56,18 +56,18 @@ function readOver(brain: ChatHarness, ledger: ConversationLedger) {
 
 describe('a reply taken, whose settlement the server stopped before', () => {
   it('is settled from the reply after a restart, with the reply as evidence', async () => {
-    const brain = await repliedInThread();
+    const playbook = await repliedInThread();
 
-    const exit = await readOver(brain, stoppingBeforeSettling(brain.ledger.service));
-    const afterStop = await brain.firstOpen();
-    await brain.performDue(Date.now());
+    const exit = await readOver(playbook, stoppingBeforeSettling(playbook.ledger.service));
+    const afterStop = await playbook.firstOpen();
+    await playbook.performDue(Date.now());
 
     expect([Exit.isFailure(exit), afterStop]).toMatchObject([true, { standing: 'answered' }]);
-    expect(await brain.runOf(runId)).toMatchObject({
+    expect(await playbook.runOf(runId)).toMatchObject({
       output: {
         status: 'succeeded',
         output: { choice: 'approve' },
-        record: { answered_by: 'brain:alpha', reply: { sender: answererId } },
+        record: { answered_by: 'playbook:alpha', reply: { sender: answererId } },
       },
     });
   });
@@ -75,11 +75,11 @@ describe('a reply taken, whose settlement the server stopped before', () => {
 
 describe('a reply to a request answered while the conversation was read', () => {
   it('takes nothing, and the answer given first stands', async () => {
-    const brain = await repliedInThread();
+    const playbook = await repliedInThread();
 
-    await readOver(brain, answeredMeanwhile(brain));
+    await readOver(playbook, answeredMeanwhile(playbook));
 
-    expect(await recordsOf(brain.ledger, 'reply_taken', 'reply_refused')).toEqual([]);
-    expect(await brain.runOf(runId)).toMatchObject({ output: { output: { choice: 'reject' } } });
+    expect(await recordsOf(playbook.ledger, 'reply_taken', 'reply_refused')).toEqual([]);
+    expect(await playbook.runOf(runId)).toMatchObject({ output: { output: { choice: 'reject' } } });
   });
 });

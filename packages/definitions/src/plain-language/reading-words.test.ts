@@ -32,7 +32,7 @@ const event = {
   summary: 'A run started.',
   data: {},
   metadata: {
-    stream: 'brain/acme/alpha/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
+    stream: 'playbook/acme/alpha/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
     position: 1,
     global_position: 1,
     correlation_id: null,
@@ -75,8 +75,8 @@ describe('the plain language of list_runs', () => {
       listed([], { cursor: 'WyJicmFpbiJd', status: 'started' }),
       listed([], { type: 'echo', name: 'greet', status: 'succeeded' }, true),
     ]).toEqual([
-      'This brain has no runs yet.',
-      'This brain has no runs of greetings.',
+      'This playbook has no runs yet.',
+      'This playbook has no runs of greetings.',
       'There are no more runs that are still running.',
       'This page holds no runs of the greeting “greet” that finished, but there are more runs to look through.',
     ]);

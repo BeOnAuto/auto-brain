@@ -1,4 +1,4 @@
-import { sha256Of, textOfContent, textToKeep, type BrainAddress, type ContentToKeep } from '@beonauto/operations';
+import { sha256Of, textOfContent, textToKeep, type PlaybookAddress, type ContentToKeep } from '@beonauto/operations';
 import { Effect } from 'effect';
 
 import { answerOfAbout, generatedStream, octets, readThrough } from '../src/content/content-samples.ts';
@@ -14,7 +14,7 @@ const sizes: readonly (readonly [string, number])[] = [
   ['20 MB', 20_000_000],
 ];
 
-const brain = { org: 'acme', brain: 'alpha' };
+const playbook = { org: 'acme', playbook: 'alpha' };
 
 const mebibyte = 1_048_576;
 
@@ -76,7 +76,7 @@ function streamOf(pieces: readonly Readonly<Uint8Array>[]): ContentToKeep {
   return { stream, mediaType: octets };
 }
 
-function put(store: LedgerStore, into: BrainAddress, content: ContentToKeep): Promise<unknown> {
+function put(store: LedgerStore, into: PlaybookAddress, content: ContentToKeep): Promise<unknown> {
   return Effect.runPromise(store.content.put(into, content));
 }
 
@@ -89,12 +89,12 @@ async function measuredText(store: LedgerStore, name: string): Promise<void> {
       textToKeep(text, 'application/json'),
       { ...textToKeep(text, 'application/json'), expected: { sha256 } },
     ];
-    const kept = await timed(() => put(store, brain, first));
-    const again = await timed(() => put(store, brain, second));
-    const givenItsDigest = await timed(() => put(store, brain, expected));
+    const kept = await timed(() => put(store, playbook, first));
+    const again = await timed(() => put(store, playbook, second));
+    const givenItsDigest = await timed(() => put(store, playbook, expected));
     let read = '';
     const got = await timed(async () => {
-      const content = await Effect.runPromise(store.content.get(brain, sha256));
+      const content = await Effect.runPromise(store.content.get(playbook, sha256));
       read = content === undefined ? '' : await Effect.runPromise(textOfContent(content));
       JSON.parse(read);
     });
@@ -104,7 +104,7 @@ async function measuredText(store: LedgerStore, name: string): Promise<void> {
   });
 }
 
-async function readBack(store: LedgerStore, from: BrainAddress, sha256: string) {
+async function readBack(store: LedgerStore, from: PlaybookAddress, sha256: string) {
   const content = await Effect.runPromise(store.content.get(from, sha256));
   return content === undefined ? undefined : readThrough(content.stream);
 }
@@ -114,7 +114,7 @@ function mebibytes(bytes: number): string {
 }
 
 async function heldWhileStreamed(store: LedgerStore, name: string, sha256: string): Promise<string> {
-  const elsewhere = { org: 'acme', brain: 'beta' };
+  const elsewhere = { org: 'acme', playbook: 'beta' };
   const putting = await mostHeldDuring(() =>
     put(store, elsewhere, { stream: generatedStream(streamedBytes, sampleSeed), mediaType: octets }),
   );
@@ -125,12 +125,12 @@ async function heldWhileStreamed(store: LedgerStore, name: string, sha256: strin
 async function measuredStream(store: LedgerStore, name: string): Promise<string> {
   const pieces = await piecesOf(generatedStream(streamedBytes, sampleSeed));
   const { sha256 } = await readThrough(streamOf(pieces).stream);
-  const kept = await timed(() => put(store, brain, streamOf(pieces)));
-  const again = await timed(() => put(store, brain, streamOf(pieces)));
-  const givenItsDigest = await timed(() => put(store, brain, { ...streamOf(pieces), expected: { sha256 } }));
-  let read = await readBack(store, brain, sha256);
+  const kept = await timed(() => put(store, playbook, streamOf(pieces)));
+  const again = await timed(() => put(store, playbook, streamOf(pieces)));
+  const givenItsDigest = await timed(() => put(store, playbook, { ...streamOf(pieces), expected: { sha256 } }));
+  let read = await readBack(store, playbook, sha256);
   const got = await timed(async () => {
-    read = await readBack(store, brain, sha256);
+    read = await readBack(store, playbook, sha256);
   });
   write(
     `| ${name} | 64 MiB, streamed | ${milliseconds(kept)} | ${milliseconds(again)} | ${milliseconds(givenItsDigest)} | ${milliseconds(got)} | ${String(read?.sha256 === sha256 && read.bytes === streamedBytes)} |`,

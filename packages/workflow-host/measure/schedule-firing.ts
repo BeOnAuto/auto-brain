@@ -4,7 +4,7 @@ import { Effect, Function } from 'effect';
 
 import { openHostDatabase, type DatabaseSettings } from '../src/database/host-databases.ts';
 import { openWorkflowHost } from '../src/host/workflow-host.ts';
-import { brainCreated, everyTrigger, definitionRecorded } from '../src/reaction-testing/brain-writes.ts';
+import { playbookCreated, everyTrigger, definitionRecorded } from '../src/reaction-testing/playbook-writes.ts';
 import { recordedReactions } from '../src/reaction-testing/recorded-reactions.ts';
 import { testMachine } from '../src/testing/host-documents.ts';
 import { recordedWaiting } from '../src/waiting-testing/recorded-waiting.ts';
@@ -40,7 +40,7 @@ async function untilFired(fired: () => number, most: number): Promise<void> {
 export async function everyFiringOn(database: DatabaseSettings, schedules: number): Promise<EveryFiring> {
   const firedAt: number[] = [];
   const opened = await openHostDatabase(database, Function.constVoid);
-  await brainCreated(opened.store, 'alpha');
+  await playbookCreated(opened.store, 'alpha');
   const host = await openWorkflowHost({
     database,
     machine: testMachine,

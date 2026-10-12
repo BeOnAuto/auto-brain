@@ -56,12 +56,12 @@ afterAll(async () => {
 
 function alphaEndpoint(): McpConnection {
   return {
-    url: `${listening.origin}/orgs/acme/brains/alpha/mcp`,
+    url: `${listening.origin}/orgs/acme/playbooks/alpha/mcp`,
     headers: { authorization: `Bearer ${acmeAdmin.key}` },
   };
 }
 
-const brainTools = [
+const playbookTools = [
   'add_note',
   'check_lines',
   'list_notes',
@@ -80,7 +80,7 @@ const internalProblem = {
   reason: 'internal',
 };
 
-describe.each(mcpClientKinds)('the %s client connecting to a brain endpoint', (kind) => {
+describe.each(mcpClientKinds)('the %s client connecting to a playbook endpoint', (kind) => {
   it('negotiates the expected revision and learns the server identity and the instructions', async () => {
     const connected = await withMcpSession(kind, alphaEndpoint(), (session) =>
       Promise.resolve({
@@ -93,13 +93,13 @@ describe.each(mcpClientKinds)('the %s client connecting to a brain endpoint', (k
     expect(connected).toEqual({
       protocolVersion: expectedProtocolVersion[kind],
       serverVersion: testServerInfo,
-      instructions: instructionsFor('brain', { orgTools: [], brainTools }, testDefinitionTypes, testRecipes),
+      instructions: instructionsFor('playbook', { orgTools: [], playbookTools }, testDefinitionTypes, testRecipes),
     });
   });
 
-  it('lists one tool per brain operation', async () => {
+  it('lists one tool per playbook operation', async () => {
     expect(toolNamesIn(await withMcpSession(kind, alphaEndpoint(), (session) => session.listTools()))).toEqual([
-      ...brainTools,
+      ...playbookTools,
       'get_guide',
     ]);
   });

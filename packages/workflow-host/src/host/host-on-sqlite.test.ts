@@ -25,7 +25,7 @@ describe('the host on SQLite', () => {
     failureSuite(onSQLite);
   });
 
-  describe('the reactions of its brains', () => {
+  describe('the reactions of its playbooks', () => {
     reactionSuite(onSQLite);
   });
 

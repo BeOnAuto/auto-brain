@@ -68,7 +68,7 @@ describe('the sweep of the chunks no head names', () => {
     onTestFinished(dispose);
 
     const kept = await Effect.runPromise(
-      ledger.content.put({ org: 'acme', brain: 'alpha' }, textToKeep('{}', 'application/json')),
+      ledger.content.put({ org: 'acme', playbook: 'alpha' }, textToKeep('{}', 'application/json')),
     );
 
     expect(kept).toMatchObject({ bytes: 2, mediaType: 'application/json' });

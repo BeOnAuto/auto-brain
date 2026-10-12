@@ -45,13 +45,13 @@ function started(
   { runs, mostDurationMs, longestCallMs }: WorkflowAdapterDependencies,
   document: WorkflowDefinitionDocument,
   input: Schema.Json,
-  { id, org, brain, caller, definition, lineage, depth, callDepth, calledBy, trigger, longestRunOf }: RunContext,
+  { id, org, playbook, caller, definition, lineage, depth, callDepth, calledBy, trigger, longestRunOf }: RunContext,
 ): Effect.Effect<FinishesLater, Conflict | Unavailable> {
   return Effect.gen(function* () {
     const seed = yield* Random.nextIntBetween(0, mostSeed);
     const attributes: RunAttributes = {
       org,
-      brain,
+      playbook,
       run_id: id,
       definition,
       caller,
@@ -64,7 +64,7 @@ function started(
     const longestCallMsByTask = yield* longestCallsOf(document, longestRunOf);
     const limits = { mostDurationMs, longestCallMs, longestCallMsByTask };
     const answer = yield* runs
-      .start({ org, brain, runId: id }, { document, input, limits, attributes, seed })
+      .start({ org, playbook, runId: id }, { document, input, limits, attributes, seed })
       .pipe(Effect.mapError(unavailableUnless(notNow)));
     return yield* finishedLaterOr(answer);
   });

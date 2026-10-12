@@ -13,7 +13,7 @@ function errorFrom(environment: Environment): unknown {
   return undefined;
 }
 
-const { entry } = createApiKey({ id: 'ci-1', org: 'acme', permissions: ['org:read'], brains: '*' });
+const { entry } = createApiKey({ id: 'ci-1', org: 'acme', permissions: ['org:read'], playbooks: '*' });
 
 describe('readSettings', () => {
   it('listens on every interface at port 8080, allows no origin, has no API keys and keeps the ledger in data/ by default', () => {
@@ -33,7 +33,7 @@ describe('readSettings', () => {
       reasoning: { mostInputTokens: 2_000_000 },
       workflows: { mostDurationMs: 2_592_000_000, mostCallsAtOnce: 32, mostOpenCalls: 1000, sweepEveryMs: 1000 },
       computation: { workers: 4 },
-      recall: { mostFunctions: 32, rebuildsAtOnce: 4, brainsAtOnce: 4 },
+      recall: { mostFunctions: 32, rebuildsAtOnce: 4, playbooksAtOnce: 4 },
       configFile: undefined,
     });
   });
@@ -68,7 +68,7 @@ describe('readSettings given every setting', () => {
       reasoning: { mostInputTokens: 500_000 },
       workflows: { mostDurationMs: 2_592_000_000, mostCallsAtOnce: 32, mostOpenCalls: 1000, sweepEveryMs: 1000 },
       computation: { workers: 4 },
-      recall: { mostFunctions: 32, rebuildsAtOnce: 4, brainsAtOnce: 4 },
+      recall: { mostFunctions: 32, rebuildsAtOnce: 4, playbooksAtOnce: 4 },
       configFile: undefined,
     });
   });

@@ -42,14 +42,14 @@ const servers = {
 
 describe('the plain words of list_tool_servers', () => {
   it('say what it tried to do', () => {
-    expect(words?.attempt({})).toBe("list the tool servers this brain's functions may use");
+    expect(words?.attempt({})).toBe("list the tool servers this playbook's functions may use");
     expect(words?.attempt({ server: 'graph' })).toBe('list the tools of the tool server “graph”');
-    expect(words?.attempt({ server: 'Not A Server' })).toBe("list the tool servers this brain's functions may use");
+    expect(words?.attempt({ server: 'Not A Server' })).toBe("list the tool servers this playbook's functions may use");
   });
 
-  it('say that no tool server is set up for the brain, who can set one up and where it says what they need', () => {
+  it('say that no tool server is set up for the playbook, who can set one up and where it says what they need', () => {
     expect(words?.outcome({ tool_servers: [] }, {})).toBe(
-      'Whoever runs this server has set up no tool server for this brain, so its functions can call no tools until they set one up; the give-tools guide says what they need.',
+      'Whoever runs this server has set up no tool server for this playbook, so its functions can call no tools until they set one up; the give-tools guide says what they need.',
     );
   });
 
@@ -58,11 +58,11 @@ describe('the plain words of list_tool_servers', () => {
 
     expect(words?.outcome(servers, {})).toBe(
       [
-        "This brain's functions may use 6 tool servers.",
+        "This playbook's functions may use 6 tool servers.",
         '“graph” offers 2 tools: search and graph query v2; search can be tested.',
         '“limitless” offers 1 tool: get lifelogs; none can be tested.',
         `“notes” offers 23 tools: ${named}, and 3 more; none can be tested.`,
-        '“quiet” offers no tool this brain may use.',
+        '“quiet” offers no tool this playbook may use.',
         '“vault” did not accept the key this server gives it, so whoever runs this server can check that key.',
         '“wiki” could not be asked for its tools just now.',
       ].join(' '),
@@ -73,62 +73,62 @@ describe('the plain words of list_tool_servers', () => {
     expect(
       words?.outcome({ tool_servers: [{ name: 'graph', type: 'http', record_content: true, tools: gateway }] }, {}),
     ).toBe(
-      "This brain's functions may use 1 tool server. “graph” offers 5 tools: search, introspect, execute, validate, and dry run; search and introspect can be tested.",
+      "This playbook's functions may use 1 tool server. “graph” offers 5 tools: search, introspect, execute, validate, and dry run; search and introspect can be tested.",
     );
   });
 });
 
 const inOrg = defineListToolServersInOrg(
-  { listServers: () => Effect.succeed([]), brainsServedBy: () => [] },
+  { listServers: () => Effect.succeed([]), playbooksServedBy: () => [] },
   () => Effect.void,
 ).registration.plainLanguage;
 
 describe('the plain words of list_tool_servers for the org', () => {
-  it('say what it tried to do, for the org or for the brain asked for', () => {
-    expect(inOrg?.attempt({})).toBe('list the tool servers the brains of this org may use');
-    expect(inOrg?.attempt({ brain: 'alpha' })).toBe("list the tool servers this brain's functions may use");
+  it('say what it tried to do, for the org or for the playbook asked for', () => {
+    expect(inOrg?.attempt({})).toBe('list the tool servers the playbooks of this org may use');
+    expect(inOrg?.attempt({ playbook: 'alpha' })).toBe("list the tool servers this playbook's functions may use");
     expect(inOrg?.attempt({ server: 'graph' })).toBe('list the tools of the tool server “graph”');
   });
 
   it('say that no tool server is set up for the org, who can set one up and where it says what they need', () => {
     expect(inOrg?.outcome({ tool_servers: [] }, {})).toBe(
-      'Whoever runs this server has set up no tool server for this org, so the functions of its brains can call no tools until they set one up; the give-tools guide says what they need.',
+      'Whoever runs this server has set up no tool server for this org, so the functions of its playbooks can call no tools until they set one up; the give-tools guide says what they need.',
     );
   });
 
-  it('name each server with the brains it serves, its tools, and say which could not be asked', () => {
+  it('name each server with the playbooks it serves, its tools, and say which could not be asked', () => {
     const inTheOrg = [
-      { name: 'graph', type: 'http', record_content: true, brains: ['*'], tools: [tool('search', true)] },
-      { name: 'notes', type: 'http', record_content: true, brains: ['alpha'], tools: [] },
+      { name: 'graph', type: 'http', record_content: true, playbooks: ['*'], tools: [tool('search', true)] },
+      { name: 'notes', type: 'http', record_content: true, playbooks: ['alpha'], tools: [] },
       {
         name: 'vault',
         type: 'http',
         record_content: true,
-        brains: ['alpha', 'beta'],
+        playbooks: ['alpha', 'beta'],
         unavailable: 'Refused',
         because: 'key_refused',
       },
-      { name: 'wiki', type: 'stdio', record_content: true, brains: [], unavailable: 'Gone', because: 'unreachable' },
+      { name: 'wiki', type: 'stdio', record_content: true, playbooks: [], unavailable: 'Gone', because: 'unreachable' },
     ];
 
     expect(inOrg?.outcome({ tool_servers: inTheOrg }, {})).toBe(
       [
-        'The brains of this org may use 4 tool servers.',
-        '“graph”, for every brain, offers 1 tool: search; search can be tested.',
-        '“notes”, for the brain “alpha”, offers no tool a function may use.',
-        '“vault”, for the brains “alpha” and “beta”, did not accept the key this server gives it, so whoever runs this server can check that key.',
-        '“wiki”, for no brain, could not be asked for its tools just now.',
+        'The playbooks of this org may use 4 tool servers.',
+        '“graph”, for every playbook, offers 1 tool: search; search can be tested.',
+        '“notes”, for the playbook “alpha”, offers no tool a function may use.',
+        '“vault”, for the playbooks “alpha” and “beta”, did not accept the key this server gives it, so whoever runs this server can check that key.',
+        '“wiki”, for no playbook, could not be asked for its tools just now.',
       ].join(' '),
     );
   });
 
-  it('speak of the brain asked for as the brain itself does', () => {
-    const forTheBrain = [
-      { name: 'graph', type: 'http', record_content: true, brains: ['*'], tools: [tool('search', true)] },
+  it('speak of the playbook asked for as the playbook itself does', () => {
+    const forThePlaybook = [
+      { name: 'graph', type: 'http', record_content: true, playbooks: ['*'], tools: [tool('search', true)] },
     ];
 
-    expect(inOrg?.outcome({ tool_servers: forTheBrain }, { brain: 'alpha' })).toBe(
-      "This brain's functions may use 1 tool server. “graph” offers 1 tool: search; search can be tested.",
+    expect(inOrg?.outcome({ tool_servers: forThePlaybook }, { playbook: 'alpha' })).toBe(
+      "This playbook's functions may use 1 tool server. “graph” offers 1 tool: search; search can be tested.",
     );
   });
 });

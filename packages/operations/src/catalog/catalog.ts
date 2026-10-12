@@ -12,7 +12,7 @@ export interface Catalog {
 
 const prefixByScope: Readonly<Record<OperationScope, string>> = {
   org: '/orgs/{org}',
-  brain: '/orgs/{org}/brains/{brain}',
+  playbook: '/orgs/{org}/playbooks/{playbook}',
 };
 
 function routeOf({ scope, route }: RouteRegistration): string {
@@ -40,20 +40,20 @@ function requireUniqueNames(registrations: readonly RouteRegistration[]): void {
   }
 }
 
-function twinProblem(org: RouteRegistration, brain: RouteRegistration): string | undefined {
-  if (!org.targetsBrain) {
-    return 'so the org operation must take the brain it answers for';
+function twinProblem(org: RouteRegistration, playbook: RouteRegistration): string | undefined {
+  if (!org.targetsPlaybook) {
+    return 'so the org operation must take the playbook it answers for';
   }
-  return org.kind === brain.kind ? undefined : `so both must be of one kind, and the org one is a ${org.kind}`;
+  return org.kind === playbook.kind ? undefined : `so both must be of one kind, and the org one is a ${org.kind}`;
 }
 
 function requireTwinsAlike(registrations: readonly RouteRegistration[]): void {
-  const brainOperations = new Map(
-    registrations.filter(({ scope }) => scope === 'brain').map((registration) => [registration.name, registration]),
+  const playbookOperations = new Map(
+    registrations.filter(({ scope }) => scope === 'playbook').map((registration) => [registration.name, registration]),
   );
   for (const org of registrations.filter(({ scope }) => scope === 'org')) {
-    const brain = brainOperations.get(org.name);
-    const problem = brain === undefined ? undefined : twinProblem(org, brain);
+    const playbook = playbookOperations.get(org.name);
+    const problem = playbook === undefined ? undefined : twinProblem(org, playbook);
     if (problem !== undefined) {
       throw new Error(`The operation name ${org.name} is used at both scopes, ${problem}`);
     }
@@ -79,7 +79,7 @@ export function makeCatalog(operations: readonly Registered[]): Catalog {
   requireUniqueRoutes(registrations);
   const byScope: { readonly [S in OperationScope]: readonly RouteRegistration<S>[] } = {
     org: registrations.filter((registration) => registration.scope === 'org'),
-    brain: registrations.filter((registration) => registration.scope === 'brain'),
+    playbook: registrations.filter((registration) => registration.scope === 'playbook'),
   };
   return { operations: registrations, operationsIn: (scope) => byScope[scope] };
 }

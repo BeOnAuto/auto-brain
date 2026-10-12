@@ -1,6 +1,6 @@
-export { streamPrefixOfBrain, streamPrefixOfOrg } from './ledger/bound-ports.ts';
-export { BrainAccessSchema, canAccessBrain, type BrainAccess } from './caller/brain-access.ts';
-export { BrainRegistry, type BrainStatus } from './ledger/brain-registry.ts';
+export { streamPrefixOfPlaybook, streamPrefixOfOrg } from './ledger/bound-ports.ts';
+export { PlaybookAccessSchema, canAccessPlaybook, type PlaybookAccess } from './caller/playbook-access.ts';
+export { PlaybookRegistry, type PlaybookStatus } from './ledger/playbook-registry.ts';
 export {
   boundedPage,
   mostBytesLoadedInAPage,
@@ -9,9 +9,9 @@ export {
   type BoundedPage,
   type Examined,
 } from './reading/page-bounds.ts';
-export { BrainReader } from './ledger/brain-reader.ts';
+export { PlaybookReader } from './ledger/playbook-reader.ts';
 export { isCalendarDay } from './reading/calendar-days.ts';
-export { BrainContext, type BrainAddress } from './caller/brain-context.ts';
+export { PlaybookContext, type PlaybookAddress } from './caller/playbook-context.ts';
 export {
   CallLineage,
   type CallLink,
@@ -19,8 +19,8 @@ export {
   type TriggerKind,
   type TriggerLink,
 } from './caller/call-lineage.ts';
-export { BrainWriter } from './ledger/brain-writer.ts';
-export { Caller, CallerIdentitySchema, brainCallerOf, type CallerIdentity } from './caller/caller.ts';
+export { PlaybookWriter } from './ledger/playbook-writer.ts';
+export { Caller, CallerIdentitySchema, playbookCallerOf, type CallerIdentity } from './caller/caller.ts';
 export { CallResultSchema, invalidArguments, type CallResult, type CallStatus } from './outcome/call-result.ts';
 export { makeCatalog, type Catalog } from './catalog/catalog.ts';
 export { CancelledKindSchema, RunCancelled, type CancelledKind } from './outcome/cancelled-run.ts';
@@ -29,7 +29,7 @@ export { Forbidden } from './outcome/forbidden.ts';
 export { RunUnanswered, UnansweredKindSchema, type UnansweredKind } from './outcome/unanswered-run.ts';
 export {
   advancedColumnsOf,
-  brainStreamOf,
+  playbookStreamOf,
   checkedProjection,
   projectedTableOf,
   requireAdvancedColumns,
@@ -37,8 +37,8 @@ export {
   rowKeyOf,
   setsAdvancedColumns,
   type AdvancedColumns,
-  type BrainProjectionReader,
-  type BrainStream,
+  type PlaybookProjectionReader,
+  type PlaybookStream,
   type DueRowsQuery,
   type KeyedProjection,
   type ProjectedColumn,
@@ -103,7 +103,7 @@ export {
   type RunContext,
   type StartingTrigger,
 } from './ledger/context.ts';
-export type { BrainContentReader, ContentKept, Digested, RecordedContent } from './content/recorded-content.ts';
+export type { PlaybookContentReader, ContentKept, Digested, RecordedContent } from './content/recorded-content.ts';
 export { mostContentChunkBytes } from './content/content-chunks.ts';
 export { leftUnread, requireExpected, takenInChunks, type Taken, type TakeChunk } from './content/content-intake.ts';
 export { ContentRefused, notTheBytesOfItsDigest, type ContentRefusedBecause } from './content/content-refusals.ts';
@@ -128,7 +128,7 @@ export { keptContentOf } from './reading/kept-content.ts';
 export { shownData, type EventView } from './reading/shown-data.ts';
 export { ServedAsTool } from './dispatch/served-as-tool.ts';
 export type { HandlerServices } from './definition/handler-services.ts';
-export { BrainIdSchema, OrgIdSchema } from './caller/identifiers.ts';
+export { PlaybookIdSchema, OrgIdSchema } from './caller/identifiers.ts';
 export { IncidentReporter, type CallSummary, type Incident } from './dispatch/incident-reporter.ts';
 export { InvalidInput } from './outcome/invalid-input.ts';
 export {
@@ -231,14 +231,14 @@ export type {
   RouteRegistration,
   Runnable,
 } from './definition/registration.ts';
-export { callSummaryOf, type BrainRequest, type OrgRequest } from './dispatch/request.ts';
+export { callSummaryOf, type PlaybookRequest, type OrgRequest } from './dispatch/request.ts';
 export type { Method, Route } from './definition/route.ts';
 export type { OperationKind, OperationScope } from './caller/operation-scope.ts';
 export { settle } from './dispatch/settle.ts';
 export { SettlementSchema, type SettledRejection, type Settlement } from './outcome/settlement.ts';
 export type {
-  BrainRecordedReader,
-  BrainRunOutcomesReader,
+  PlaybookRecordedReader,
+  PlaybookRunOutcomesReader,
   RecordedReader,
   RunOutcomesReader,
   StreamReader,

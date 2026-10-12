@@ -9,7 +9,7 @@ const messageId = '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a';
 const at = '2026-10-07T09:00:00.000Z';
 
 const ofTheRun: RunContext = {
-  by: 'brain:alpha',
+  by: 'playbook:alpha',
   at,
   runId: 'r-approve',
   definitionType: 'interaction',

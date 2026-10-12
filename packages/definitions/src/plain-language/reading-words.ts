@@ -74,7 +74,7 @@ function noRuns(described: string, { has_more }: Page, { cursor }: RunFilters): 
   if (cursor !== undefined) {
     return `There are no more runs${described}.`;
   }
-  return described === '' ? 'This brain has no runs yet.' : `This brain has no runs${described}.`;
+  return described === '' ? 'This playbook has no runs yet.' : `This playbook has no runs${described}.`;
 }
 
 export function runsListed(words: DefinitionWords, page: ListedRuns, filters: RunFilters): string {

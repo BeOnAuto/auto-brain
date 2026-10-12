@@ -1,4 +1,4 @@
-import type { BrainOperation } from '@beonauto/definitions';
+import type { PlaybookOperation } from '@beonauto/definitions';
 import type { Outcome } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
@@ -13,7 +13,7 @@ const ListedSchema = Schema.Struct({
 const decodeListed = Schema.decodeUnknownSync(ListedSchema);
 
 export async function firstOpenOf(
-  call: (operation: BrainOperation, input: unknown) => Promise<Outcome>,
+  call: (operation: PlaybookOperation, input: unknown) => Promise<Outcome>,
 ): Promise<unknown> {
   return decodeListed(await call(listInteractions, {})).output.interactions[0];
 }

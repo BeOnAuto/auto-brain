@@ -4,12 +4,12 @@ import { describe, expect, it } from 'vitest';
 import { acmeAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
 import { echo } from '../testing/echo.ts';
-import { firstMoment, harness, toBrain } from '../testing/harness.ts';
+import { firstMoment, harness, toPlaybook } from '../testing/harness.ts';
 import { probe } from '../testing/probe.ts';
 
 const { createDefinition, retireDefinition } = definitionOperationsFor([echo, probe().capability]);
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 const hello = '{"greeting": "Hello", "description": "Greets the caller"}';
 
@@ -22,9 +22,9 @@ function creatingFrom(source: string) {
 }
 
 describe('create_definition', () => {
-  it('is a brain command at POST /definitions/{type} that answers 201', () => {
+  it('is a playbook command at POST /definitions/{type} that answers 201', () => {
     expect(createDefinition.registration).toMatchObject({
-      scope: 'brain',
+      scope: 'playbook',
       kind: 'command',
       title: 'Create definition',
       route: { method: 'POST', path: '/definitions/{type}' },
@@ -94,13 +94,16 @@ describe('the definition create_definition records', () => {
     });
   });
 
-  it('records the definitions of each capability in a stream of the brain named after the capability', async () => {
+  it('records the definitions of each capability in a stream of the playbook named after the capability', async () => {
     const { call, ledger } = harness();
 
     await call(createDefinition, toAlpha(acmeAdmin, { type: 'echo', name: 'greet', source: hello }));
     await call(createDefinition, toAlpha(acmeAdmin, { type: 'probe', name: 'plain', source: 'text' }));
 
-    expect(ledger.streamNames()).toEqual(['brain/acme/alpha/definitions/echo', 'brain/acme/alpha/definitions/probe']);
+    expect(ledger.streamNames()).toEqual([
+      'playbook/acme/alpha/definitions/echo',
+      'playbook/acme/alpha/definitions/probe',
+    ]);
   });
 });
 
@@ -177,7 +180,7 @@ describe('create_definition rejecting with conflict', () => {
     expect(await creatingGreet()).toEqual({
       status: 'rejected',
       reason: 'conflict',
-      detail: 'The brain already has the echo definition greet',
+      detail: 'The playbook already has the echo definition greet',
       kind: 'taken',
     });
     await call(retireDefinition, toAlpha(acmeAdmin, { type: 'echo', name: 'greet' }));

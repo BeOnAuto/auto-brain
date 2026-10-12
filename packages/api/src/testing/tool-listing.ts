@@ -1,6 +1,6 @@
 import { Schema } from 'effect';
 
-import { withBrainArgument } from '../tools/brain-argument.ts';
+import { withPlaybookArgument } from '../tools/playbook-argument.ts';
 
 const ListedToolSchema = Schema.Struct({
   name: Schema.String,
@@ -28,6 +28,6 @@ export function operationToolsIn(listing: unknown): readonly ListedTool[] {
   return listedTools(listing).filter(({ name }) => name !== guideToolName);
 }
 
-export function takingBrain({ inputSchema, ...tool }: ListedTool): ListedTool {
-  return { ...tool, inputSchema: withBrainArgument(inputSchema) };
+export function takingPlaybook({ inputSchema, ...tool }: ListedTool): ListedTool {
+  return { ...tool, inputSchema: withPlaybookArgument(inputSchema) };
 }

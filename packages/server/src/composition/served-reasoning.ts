@@ -1,7 +1,7 @@
 import type { AppRuntime } from '@beonauto/api';
-import { foundBrain } from '@beonauto/brains';
 import { defineListToolServers, defineListToolServersInOrg, defineTestToolCall, type ToolAccess } from '@beonauto/mcp';
 import type { DispatcherServices } from '@beonauto/operations';
+import { foundPlaybook } from '@beonauto/playbooks';
 import {
   defineListModels,
   makeReasoningFunctionAdapter,
@@ -42,7 +42,7 @@ export async function reasoningServedBy(
     capability: makeReasoningFunctionAdapter({ languageModel, offered, tools, reading }),
     listModels: defineListModels(catalog),
     listToolServers: defineListToolServers(tools),
-    listToolServersInOrg: defineListToolServersInOrg(tools, foundBrain),
+    listToolServersInOrg: defineListToolServersInOrg(tools, foundPlaybook),
     testToolCall: defineTestToolCall(tools),
   };
 }

@@ -38,7 +38,7 @@ function chunkSizesOf(bytes: number): readonly number[] {
 
 function chunksOfTheDigest(sha256: string): string {
   return `SELECT c.chunk, octet_length(c.data) AS bytes FROM recorded_content_chunks c
-    JOIN recorded_content_heads h ON h.brain_key = c.brain_key AND h.upload_id = c.upload_id
+    JOIN recorded_content_heads h ON h.playbook_key = c.playbook_key AND h.upload_id = c.upload_id
     WHERE h.sha256 = '${sha256}' ORDER BY c.chunk`;
 }
 
@@ -104,7 +104,7 @@ function keptInChunks(entry: LedgerEntry): void {
 }
 
 function keptOnce(entry: LedgerEntry): void {
-  it('keeps a text as its UTF-8 under the digest its fact carries, once, with the media type it was first put with, in its brain alone', async () => {
+  it('keeps a text as its UTF-8 under the digest its fact carries, once, with the media type it was first put with, in its playbook alone', async () => {
     const { database, ledger } = await opened(entry);
     const text = answerOfAbout(1_500_000);
     const sha256 = sha256Of(text);
@@ -150,8 +150,8 @@ function keptOnce(entry: LedgerEntry): void {
 async function copiedUnder(entry: LedgerEntry, database: string, from: string, to: string): Promise<void> {
   await entry.queried(
     database,
-    `INSERT INTO recorded_content_heads (brain_key, sha256, upload_id, bytes, chunks, media_type)
-      SELECT brain_key, '${to}', upload_id, bytes, chunks, media_type FROM recorded_content_heads WHERE sha256 = '${from}'`,
+    `INSERT INTO recorded_content_heads (playbook_key, sha256, upload_id, bytes, chunks, media_type)
+      SELECT playbook_key, '${to}', upload_id, bytes, chunks, media_type FROM recorded_content_heads WHERE sha256 = '${from}'`,
   );
 }
 
@@ -250,7 +250,7 @@ function putRaced(entry: LedgerEntry): void {
 }
 
 function heldDigestDefended(entry: LedgerEntry): void {
-  it('refuses wrong bytes put with the digest of a content the brain holds, writing nothing and leaving the content whole', async () => {
+  it('refuses wrong bytes put with the digest of a content the playbook holds, writing nothing and leaving the content whole', async () => {
     const { database, ledger } = await opened(entry);
     const right = await generated(2_500_000);
     const wrong = await generated(2_500_000, 11);
@@ -270,14 +270,14 @@ function heldDigestDefended(entry: LedgerEntry): void {
 }
 
 export function contentBehaviour(entry: LedgerEntry): void {
-  describe('the content a brain recorded', () => {
+  describe('the content a playbook recorded', () => {
     keptInChunks(entry);
     keptOnce(entry);
   });
-  describe('the content a brain recorded, read back', () => {
+  describe('the content a playbook recorded, read back', () => {
     readFailing(entry);
   });
-  describe('the content a brain was given to keep, refused', () => {
+  describe('the content a playbook was given to keep, refused', () => {
     putRefused(entry);
     heldDigestDefended(entry);
     putRaced(entry);

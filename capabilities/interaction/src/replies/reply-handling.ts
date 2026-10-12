@@ -18,7 +18,7 @@ export interface Reading {
 }
 
 function recorded({ parts, place }: Reading, request: KeptRequest, fact: ReplyFact) {
-  const address = { ...place.brain, id: request.runId };
+  const address = { ...place.playbook, id: request.runId };
   return Effect.flatMap(correlationOf(parts.ledger, address), (correlationId) =>
     replyRecorder(parts.ledger)(address, fact, { causationId: place.row.last_fact, correlationId }).pipe(
       Effect.map((made) => ({ ...made, address, correlationId })),
@@ -42,7 +42,7 @@ function taken(reading: Reading, state: ReadingState, request: KeptRequest, fact
       return state;
     }
     const brought = { answer: fact.data.answer, at: made.at, reply: fact.data.reply };
-    yield* settled(reading.parts.ledger, made.address, answeredSettlement(reading.place.brain, brought), {
+    yield* settled(reading.parts.ledger, made.address, answeredSettlement(reading.place.playbook, brought), {
       causationId: made.id,
       correlationId: made.correlationId,
     });
@@ -84,7 +84,7 @@ function refusedReply(reading: Reading, state: ReadingState, { request, reply, b
     }
     if (input !== undefined) {
       yield* told(reading.parts, {
-        brain: reading.place.brain,
+        playbook: reading.place.playbook,
         server: reading.route.server,
         tool: reading.route.replies.tell?.tool ?? reading.route.delivering,
         runId: request.runId,

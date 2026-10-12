@@ -15,7 +15,7 @@ const listingTheMessages: unknown = expect.stringContaining('"messages":[');
 
 const someMessages: unknown = expect.any(Array);
 
-const inMeetings = { brain: 'meetings' };
+const inMeetings = { playbook: 'meetings' };
 
 const approvingInTheChat = [
   '---',
@@ -64,7 +64,7 @@ const approvingInTheChat = [
 
 beforeAll(async () => {
   meetings = await servingMeetings([], { chat: true });
-  await meetings.onMcp((session) => session.callTool('create_brain', { ...inMeetings, name: 'Meetings' }));
+  await meetings.onMcp((session) => session.callTool('create_playbook', { ...inMeetings, name: 'Meetings' }));
 });
 
 afterAll(async () => {
@@ -96,8 +96,8 @@ async function askedToSendADraft(session: McpSession) {
 }
 
 async function askedWhereNoToolServerIs(session: McpSession) {
-  const briefs = { brain: 'briefs' };
-  await session.callTool('create_brain', { ...briefs, name: 'Briefs' });
+  const briefs = { playbook: 'briefs' };
+  await session.callTool('create_playbook', { ...briefs, name: 'Briefs' });
   await session.callTool('create_definition', {
     ...briefs,
     type: 'interaction',
@@ -132,11 +132,11 @@ describe(
       expect(seen.reasoning.structuredContent).toEqual({ definitions: [] });
     });
 
-    it('is told, on a brain no tool server serves, what whoever runs the server sets up', async () => {
+    it('is told, on a playbook no tool server serves, what whoever runs the server sets up', async () => {
       const refused = await meetings.onMcp(askedWhereNoToolServerIs);
 
       expect(plainTextIn(refused)).toBe(
-        'Could not run the interaction function “approve-draft”: this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this brain. Nothing was changed. This can be put right on your side: whoever runs the server decides which tool servers and tools this brain may use, which list_tool_servers shows, so once it names only those, it can be tried again.',
+        'Could not run the interaction function “approve-draft”: this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this playbook. Nothing was changed. This can be put right on your side: whoever runs the server decides which tool servers and tools this playbook may use, which list_tool_servers shows, so once it names only those, it can be tried again.',
       );
     });
   },
@@ -191,7 +191,7 @@ describe(
         'An interaction function asks a system and answers at once, or asks a person and answers started.',
       );
       expect(seen.recipe).toContain(
-        'When the brain only needs what a tool answers, with nothing to reason about, write an interaction function that calls the tool instead',
+        'When the playbook only needs what a tool answers, with nothing to reason about, write an interaction function that calls the tool instead',
       );
       expect(seen.tested.structuredContent).toMatchObject({
         outcome: 'result',

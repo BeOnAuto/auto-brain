@@ -2,7 +2,7 @@ import { capitalized, counted, listed, plainNumber, type Noun, type PlainLanguag
 
 import type { DefinitionWords } from '../plain-language/definition-words.ts';
 import { endingsInWords, runsOfWhat } from '../plain-language/reading-words.ts';
-import type { BrainAnalytics } from './analytics-answer.ts';
+import type { PlaybookAnalytics } from './analytics-answer.ts';
 import { defaultDays, type WindowRequest } from './analytics-window.ts';
 
 export interface AnalyticsRequest extends WindowRequest {
@@ -23,36 +23,36 @@ function windowInWords({ days, from, to }: WindowRequest): string {
     : 'over the days asked for';
 }
 
-function howTheyEnded(runs: BrainAnalytics['runs']): string {
+function howTheyEnded(runs: PlaybookAnalytics['runs']): string {
   return listed(
     endings.flatMap((ending) => (runs[ending] === 0 ? [] : [`${plainNumber(runs[ending])} ${endingsInWords[ending]}`])),
   );
 }
 
-function tokensInWords({ input, output }: BrainAnalytics['tokens']): string {
+function tokensInWords({ input, output }: PlaybookAnalytics['tokens']): string {
   return input + output === 0 ? '' : ` They used ${plainNumber(input)} input and ${plainNumber(output)} output tokens.`;
 }
 
-function durationInWords(duration: BrainAnalytics['duration_ms']): string {
+function durationInWords(duration: PlaybookAnalytics['duration_ms']): string {
   return duration === null
     ? ''
     : ` Half of those that ran to an end took at most ${plainNumber(duration.p50)} ms, and nineteen in twenty at most ${plainNumber(duration.p95)} ms.`;
 }
 
-function activityFound(words: DefinitionWords, analytics: BrainAnalytics, request: AnalyticsRequest): string {
+function activityFound(words: DefinitionWords, analytics: PlaybookAnalytics, request: AnalyticsRequest): string {
   const when = capitalized(windowInWords(request));
   const which = runsOfWhat(words, request);
   const { runs } = analytics;
   if (runs.total === 0) {
-    return `${when}, no runs${which} ended in this brain.`;
+    return `${when}, no runs${which} ended in this playbook.`;
   }
-  const ended = `${when}, ${counted(runs.total, runNoun)}${which} ended in this brain: ${howTheyEnded(runs)}.`;
+  const ended = `${when}, ${counted(runs.total, runNoun)}${which} ended in this playbook: ${howTheyEnded(runs)}.`;
   return `${ended}${tokensInWords(analytics.tokens)}${durationInWords(analytics.duration_ms)}`;
 }
 
-export function analyticsWords(words: DefinitionWords): PlainLanguage<AnalyticsRequest, BrainAnalytics> {
+export function analyticsWords(words: DefinitionWords): PlainLanguage<AnalyticsRequest, PlaybookAnalytics> {
   return {
-    task: 'read how the runs of the brain went',
+    task: 'read how the runs of the playbook went',
     attempt: (request) => `read how the runs${runsOfWhat(words, request)} went ${windowInWords(request)}`,
     outcome: (analytics, request) => activityFound(words, analytics, request),
   };

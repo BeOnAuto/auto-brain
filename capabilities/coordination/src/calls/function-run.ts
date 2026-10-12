@@ -11,7 +11,7 @@ import type { Effect, Schema } from 'effect';
 
 export interface DefinitionRunRequest {
   readonly org: string;
-  readonly brain: string;
+  readonly playbook: string;
   readonly caller: CallerIdentity;
   readonly type: string;
   readonly name: string;

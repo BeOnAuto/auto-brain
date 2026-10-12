@@ -3,7 +3,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 
 import { Schema } from 'effect';
 
-import { brain, percentile, type MeasuredServer } from './measured-server.ts';
+import { playbook, percentile, type MeasuredServer } from './measured-server.ts';
 
 export interface TimerPlan {
   readonly firstDueAt: number;
@@ -61,7 +61,7 @@ async function timersStarted(server: MeasuredServer, plan: TimerPlan, index = 0)
     return [];
   }
   await sleep(Math.max(0, plan.firstDueAt - plan.seconds * 1000 + index * plan.spacingMs - Date.now()));
-  const started = await server.call('POST', `${brain}/definitions/workflow/pause/run`, { input: {} });
+  const started = await server.call('POST', `${playbook}/definitions/workflow/pause/run`, { input: {} });
   return [runIdOf(started), ...(await timersStarted(server, plan, index + 1))];
 }
 
@@ -71,7 +71,7 @@ async function latenessOf(
   { seconds }: TimerPlan,
 ): Promise<readonly number[]> {
   const ended = await Promise.all(
-    runs.map(async (run) => decodeEnded(await server.call('GET', `${brain}/runs/${run}`))),
+    runs.map(async (run) => decodeEnded(await server.call('GET', `${playbook}/runs/${run}`))),
   );
   return ended.map(
     ({ started_at: startedAt, finished_at: finishedAt }) =>

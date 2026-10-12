@@ -1,3 +1,3 @@
-export type OperationScope = 'org' | 'brain';
+export type OperationScope = 'org' | 'playbook';
 
 export type OperationKind = 'query' | 'command';

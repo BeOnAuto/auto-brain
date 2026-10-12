@@ -3,7 +3,7 @@ import { Schema } from 'effect';
 
 import type { StatementExecutor } from '../event-store.ts';
 import { inTurn } from '../projections/inline-projection.ts';
-import { createMissingIndexes, type BrainIndex } from '../recorded/missing-indexes.ts';
+import { createMissingIndexes, type PlaybookIndex } from '../recorded/missing-indexes.ts';
 import type { ContentDialect } from './content-dialects.ts';
 
 export interface Shelf {
@@ -16,14 +16,14 @@ export interface Shelf {
 export const keptShelf: Shelf = {
   chunks: 'recorded_content_chunks',
   heads: 'recorded_content_heads',
-  placeColumns: ['brain_key'],
+  placeColumns: ['playbook_key'],
   chunkMissing: (sha256, index) => new Error(`The content kept under ${sha256} is missing its chunk ${index}`),
 };
 
 export const stagingShelf: Shelf = {
   chunks: 'staged_content_chunks',
   heads: 'staged_content',
-  placeColumns: ['brain_key', 'run_id'],
+  placeColumns: ['playbook_key', 'run_id'],
   chunkMissing: (sha256, index) =>
     new Error(`The content staged under ${sha256} has no chunk ${index}, as when its run is unstaged while it is read`),
 };
@@ -97,7 +97,7 @@ export const contentTables: readonly ContentTable[] = [
 
 const contentTableNames: readonly string[] = contentTables.map(({ name }) => name);
 
-function uploadIndexOf({ heads, placeColumns }: Shelf): BrainIndex {
+function uploadIndexOf({ heads, placeColumns }: Shelf): PlaybookIndex {
   const name = `${heads}_by_upload`;
   return {
     name,
@@ -106,7 +106,7 @@ function uploadIndexOf({ heads, placeColumns }: Shelf): BrainIndex {
   };
 }
 
-const contentIndexes: readonly BrainIndex[] = shelves.map((shelf) => uploadIndexOf(shelf));
+const contentIndexes: readonly PlaybookIndex[] = shelves.map((shelf) => uploadIndexOf(shelf));
 
 const NameRows = Schema.Array(Schema.Struct({ name: Schema.String }));
 

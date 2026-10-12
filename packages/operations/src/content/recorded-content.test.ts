@@ -9,9 +9,9 @@ import { memoryRecordedContent } from './memory-content.ts';
 import type { RecordedContent } from './recorded-content.ts';
 import { textOfContent, textToKeep, type ContentToKeep, type StreamedContent } from './streamed-content.ts';
 
-const alpha = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
-const beta = { org: 'acme', brain: 'beta' };
+const beta = { org: 'acme', playbook: 'beta' };
 
 const json = 'application/json';
 
@@ -71,8 +71,8 @@ function failingAfter(text: string, failure: Readonly<Error>): ContentToKeep {
   return { stream, mediaType: octets };
 }
 
-describe('the content a brain recorded', () => {
-  it('answers the digest, the size and the media type of what it keeps, and reads it back in its brain alone', async () => {
+describe('the content a playbook recorded', () => {
+  it('answers the digest, the size and the media type of what it keeps, and reads it back in its playbook alone', async () => {
     const content = memoryRecordedContent();
 
     const kept = await run(content.put(alpha, textToKeep('{"rows":[1]}', json)));
@@ -109,7 +109,7 @@ describe('the content a brain recorded', () => {
   });
 });
 
-describe('the content a brain recorded, of any size', () => {
+describe('the content a playbook recorded, of any size', () => {
   it('keeps bytes of several chunks whole, and no bytes as an empty content', async () => {
     const content = memoryRecordedContent();
     const text = 'é'.repeat(mostContentChunkBytes + 7);
@@ -127,7 +127,7 @@ describe('the content a brain recorded, of any size', () => {
   });
 });
 
-describe('the content a brain recorded, refused', () => {
+describe('the content a playbook recorded, refused', () => {
   it('names a content a read found to be other bytes than its digest names', () => {
     expect(notTheBytesOfItsDigest('9f3e').message).toBe(
       'The content kept under 9f3e is not the bytes that digest names',
@@ -177,8 +177,8 @@ describe('the content a brain recorded, refused', () => {
   });
 });
 
-describe('the text a brain recorded', () => {
-  it('reads back as the text it was put as, and as nothing for a digest the brain does not hold', async () => {
+describe('the text a playbook recorded', () => {
+  it('reads back as the text it was put as, and as nothing for a digest the playbook does not hold', async () => {
     const content = memoryRecordedContent();
     const { sha256 } = await run(content.put(alpha, textToKeep('{"rows":[]}', json)));
 
@@ -196,7 +196,7 @@ function stagedTwice(content: RecordedContent) {
 }
 
 describe('the content staged under a run', () => {
-  it('reads back under its brain and run alone until the run is unstaged, which leaves the other runs', async () => {
+  it('reads back under its playbook and run alone until the run is unstaged, which leaves the other runs', async () => {
     const content = memoryRecordedContent();
 
     const read = await run(

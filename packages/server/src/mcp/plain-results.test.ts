@@ -77,7 +77,7 @@ const switchable =
 function executedOnce(): Promise<ToolResult> {
   const reasonFunction = { type: 'reasoning', name: 'summary' };
   return onMcp(async (session) => {
-    await session.callTool('create_brain', { brain: 'sales', name: 'Sales' });
+    await session.callTool('create_playbook', { playbook: 'sales', name: 'Sales' });
     await session.callTool('create_definition', inSales({ ...reasonFunction, source: summary }));
     return session.callTool('run_definition', inSales({ ...reasonFunction, input: { text: 'the quarter' } }));
   });
@@ -103,18 +103,18 @@ function onMcp<T>(
   return withMcpSession('current revision', { url: `${server.origin}/mcp`, headers }, use);
 }
 
-const inSales = (input: Readonly<Record<string, unknown>>) => ({ brain: 'sales', ...input });
+const inSales = (input: Readonly<Record<string, unknown>>) => ({ playbook: 'sales', ...input });
 
-async function brainsCalled(session: McpSession): Promise<Called> {
-  const describing = { brain: 'sales', name: 'Sales', description: 'Answers questions about the pipeline' };
-  const created = await session.callTool('create_brain', describing);
-  await session.callTool('create_brain', { brain: 'old-sales', name: 'Old sales' });
+async function playbooksCalled(session: McpSession): Promise<Called> {
+  const describing = { playbook: 'sales', name: 'Sales', description: 'Answers questions about the pipeline' };
+  const created = await session.callTool('create_playbook', describing);
+  await session.callTool('create_playbook', { playbook: 'old-sales', name: 'Old sales' });
   return [
-    ['create_brain', created],
-    ['retire_brain', await session.callTool('retire_brain', { brain: 'old-sales' })],
-    ['list_brains', await session.callTool('list_brains', { include_retired: true })],
-    ['get_brain', await session.callTool('get_brain', { brain: 'sales' })],
-    ['update_brain', await session.callTool('update_brain', { ...describing, description: 'Answers questions' })],
+    ['create_playbook', created],
+    ['retire_playbook', await session.callTool('retire_playbook', { playbook: 'old-sales' })],
+    ['list_playbooks', await session.callTool('list_playbooks', { include_retired: true })],
+    ['get_playbook', await session.callTool('get_playbook', { playbook: 'sales' })],
+    ['update_playbook', await session.callTool('update_playbook', { ...describing, description: 'Answers questions' })],
     ['list_models', await session.callTool('list_models', {})],
   ];
 }
@@ -131,7 +131,7 @@ async function reasonFunctionsCalled(session: McpSession): Promise<Called> {
   const ran = await session.callTool('run_definition', inSales({ ...reasonFunction, input: { text: 'the quarter' } }));
   const runId = String(ran.structuredContent?.['run_id']);
   const revised = summary.replace('Summarize: ', 'Sum up: ');
-  const listed = await session.callTool('list_brain_events', inSales({ limit: 3 }));
+  const listed = await session.callTool('list_playbook_events', inSales({ limit: 3 }));
   return [
     ['create_definition', created],
     ['list_definitions', await session.callTool('list_definitions', inSales({ type: 'reasoning' }))],
@@ -145,10 +145,10 @@ async function reasonFunctionsCalled(session: McpSession): Promise<Called> {
       'publish_event',
       await session.callTool('publish_event', inSales({ event: { source: '/crm', type: 'com.acme.deal.won' } })),
     ],
-    ['list_brain_events', listed],
+    ['list_playbook_events', listed],
     ['get_event', await session.callTool('get_event', inSales({ event_id: firstEventIn(listed) }))],
-    ['list_brain_events', await session.callTool('list_brain_events', { brain: 'old-sales' })],
-    ['get_brain_analytics', await session.callTool('get_brain_analytics', inSales({ days: 30 }))],
+    ['list_playbook_events', await session.callTool('list_playbook_events', { playbook: 'old-sales' })],
+    ['get_playbook_analytics', await session.callTool('get_playbook_analytics', inSales({ days: 30 }))],
     ['list_tool_servers', await session.callTool('list_tool_servers', inSales({}))],
   ];
 }
@@ -183,18 +183,18 @@ async function errorsCalled(session: McpSession): Promise<Called> {
     ['an unexpected failure', await run({ input: { text: 'the decade' } })],
     ['input that does not fit', await run({ input: { text: 7 } })],
     ['a document that does not parse', await session.callTool('create_definition', inSales(broken))],
-    ['a name already taken', await session.callTool('create_brain', { brain: 'sales', name: 'Sales again' })],
+    ['a name already taken', await session.callTool('create_playbook', { playbook: 'sales', name: 'Sales again' })],
     ['a retired thing', await session.callTool('update_definition', inSales(retired))],
     [
-      'a retired brain',
+      'a retired playbook',
       await session.callTool('create_definition', {
-        brain: 'old-sales',
+        playbook: 'old-sales',
         type: 'reasoning',
         name: 'summary',
         source: summary,
       }),
     ],
-    ['something missing', await session.callTool('get_brain', { brain: 'nowhere' })],
+    ['something missing', await session.callTool('get_playbook', { playbook: 'nowhere' })],
     ['a run that did not go through', await session.callTool('get_run', inSales({ run_id: unconnectedRun }))],
   ];
 }
@@ -226,7 +226,7 @@ const audienceWords: Readonly<Record<string, string>> = {
   'a document that does not parse': 'This can be corrected and tried again',
   'a name already taken': 'that name is already taken',
   'a retired thing': 'it has been retired',
-  'a retired brain': 'it has been retired',
+  'a retired playbook': 'it has been retired',
   'something missing': 'it, or something it refers to, could not be found',
   'a run that did not go through': 'did not go through: something the server relies on is not available',
 };
@@ -238,7 +238,7 @@ describe('the plain words that lead each result over MCP', { timeout: workflowTe
     const { tools, successes, errors } = await onMcp(async (session) => ({
       tools: toolNamesIn(await session.listTools()).filter((name) => name !== 'get_guide'),
       successes: [
-        ...(await brainsCalled(session)),
+        ...(await playbooksCalled(session)),
         ...(await reasonFunctionsCalled(session)),
         ...(await workflowsCalled(session)),
         ...(await interactionsCalled(session, inSales)),
@@ -256,11 +256,11 @@ describe('the plain words that lead each result over MCP', { timeout: workflowTe
   });
 
   it('say plainly that a connection is not allowed to do what it asked', async () => {
-    const limited = createApiKey({ id: 'acme-alpha', org: 'acme', permissions: allPermissions, brains: ['alpha'] });
+    const limited = createApiKey({ id: 'acme-alpha', org: 'acme', permissions: allPermissions, playbooks: ['alpha'] });
     server = await servingWorkflows([], { API_KEYS: JSON.stringify([limited.entry]) });
 
     const refused = await onMcp(
-      (session) => session.callTool('list_definitions', { brain: 'beta', type: 'reasoning' }),
+      (session) => session.callTool('list_definitions', { playbook: 'beta', type: 'reasoning' }),
       { authorization: `Bearer ${limited.key}` },
     );
 

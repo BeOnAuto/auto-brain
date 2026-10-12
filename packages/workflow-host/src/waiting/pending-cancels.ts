@@ -1,6 +1,6 @@
 import { cancelRequestOf } from '@beonauto/definitions';
 import { recordedReaderOf } from '@beonauto/ledger';
-import { messageIdOf, streamPrefixOfBrain, type Conflict } from '@beonauto/operations';
+import { messageIdOf, streamPrefixOfPlaybook, type Conflict } from '@beonauto/operations';
 import type { CancelOrder, RunInput, Submission } from '@beonauto/workflow-engine';
 import { Effect, type Cause } from 'effect';
 
@@ -18,7 +18,7 @@ function isCancelRequest(message: unknown): boolean {
 }
 
 function pendingCancelOf(database: HostDatabase, run: RunAddress): Effect.Effect<PendingCancel | undefined> {
-  const stream = `${streamPrefixOfBrain(run)}runs/${run.runId}`;
+  const stream = `${streamPrefixOfPlaybook(run)}runs/${run.runId}`;
   return Effect.map(
     Effect.promise(() => database.store.read(stream, 0)),
     ({ messages }): PendingCancel | undefined => {
@@ -58,9 +58,9 @@ const cancelsGivenAtOnce = 4;
 const finishTypes: ReadonlySet<string> = new Set(['run_succeeded', 'run_rejected', 'run_failed']);
 
 function hasEnded(database: HostDatabase, runKey: string): Effect.Effect<boolean> {
-  const { org, brain, runId } = addressOfRun(runKey);
+  const { org, playbook, runId } = addressOfRun(runKey);
   return recordedReaderOf(database.store)(
-    { org, brain },
+    { org, playbook },
     { kind: 'run', run: runId },
     { order: 'desc', limit: 1, dataOf: [] },
   ).pipe(

@@ -29,7 +29,7 @@ describe('a read on PostgreSQL of the streams appended to after a point', () => 
   it('walks the table in transaction id then position behind the horizon, and goes on from the horizon after it read all', async () => {
     const { query, asked } = answering(
       [{ horizon: '50', name: null }],
-      [group('brain/acme/alpha/events/', 2, '60', '7'), group('org/acme/brains', 1, '61', '3')],
+      [group('playbook/acme/alpha/events/', 2, '60', '7'), group('org/acme/playbooks', 1, '61', '3')],
     );
     const readAppended = postgresqlAppended(query);
 
@@ -38,7 +38,7 @@ describe('a read on PostgreSQL of the streams appended to after a point', () => 
 
     expect(now).toEqual({ streams: [], through: ['50', '0'], more: false });
     expect(appended).toEqual({
-      streams: ['brain/acme/alpha/events/', 'org/acme/brains'],
+      streams: ['playbook/acme/alpha/events/', 'org/acme/playbooks'],
       through: ['90', '0'],
       more: false,
     });
@@ -52,8 +52,8 @@ describe('a read on PostgreSQL of the streams appended to after a point', () => 
 
   it('goes on after the last message it read when it read as many as it was asked', async () => {
     const { query } = answering(
-      [group('brain/acme/alpha/events/', 1, '60', '7'), group('brain/acme/beta/events/', 2, '61', '3')],
-      [group('brain/acme/alpha/events/', 2, '61', '9'), group('brain/acme/beta/events/', 1, '61', '4')],
+      [group('playbook/acme/alpha/events/', 1, '60', '7'), group('playbook/acme/beta/events/', 2, '61', '3')],
+      [group('playbook/acme/alpha/events/', 2, '61', '9'), group('playbook/acme/beta/events/', 1, '61', '4')],
     );
     const readAppended = postgresqlAppended(query);
 

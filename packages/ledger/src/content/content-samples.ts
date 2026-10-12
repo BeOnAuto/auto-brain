@@ -1,7 +1,7 @@
 import {
   sha256Digest,
   textOfContent,
-  type BrainAddress,
+  type PlaybookAddress,
   type ContentToKeep,
   type Digested,
   type Ledger,
@@ -12,9 +12,9 @@ import { Effect, Function, type Layer } from 'effect';
 import type { LedgerStore } from '../event-store.ts';
 import { ledgerLayerOver } from '../ledger-layer.ts';
 
-export const alpha: BrainAddress = { org: 'acme', brain: 'alpha' };
+export const alpha: PlaybookAddress = { org: 'acme', playbook: 'alpha' };
 
-export const beta: BrainAddress = { org: 'acme', brain: 'beta' };
+export const beta: PlaybookAddress = { org: 'acme', playbook: 'beta' };
 
 export const octets = 'application/octet-stream';
 

@@ -45,7 +45,7 @@ describe('the example of the recall function format, through the server', { time
       ),
       answers(jsonResult({ approve: true })),
     ]);
-    await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+    await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
     await saved('reasoning', 'review-brief', reviewBrief);
     await reviewed(server, 2);
     const created = [

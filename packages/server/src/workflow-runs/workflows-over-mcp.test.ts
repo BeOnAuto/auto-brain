@@ -36,7 +36,7 @@ const approval = workflowSource(
 `,
 );
 
-const brainTools = [
+const playbookTools = [
   'create_definition',
   'list_definitions',
   'get_definition',
@@ -47,8 +47,8 @@ const brainTools = [
   'cancel_run',
   'list_runs',
   'get_run_history',
-  'get_brain_analytics',
-  'list_brain_events',
+  'get_playbook_analytics',
+  'list_playbook_events',
   'get_event',
   'publish_event',
   'list_tool_servers',
@@ -65,13 +65,17 @@ afterEach(async () => {
 });
 
 function onAlphaOf<T>(served: ReasoningServer, use: (session: McpSession) => Promise<T>): Promise<T> {
-  return withMcpSession('current revision', { url: `${served.origin}/orgs/acme/brains/alpha/mcp`, headers: {} }, use);
+  return withMcpSession(
+    'current revision',
+    { url: `${served.origin}/orgs/acme/playbooks/alpha/mcp`, headers: {} },
+    use,
+  );
 }
 
 async function onAlpha<T>(replies: readonly ScriptedReply[], use: (session: McpSession) => Promise<T>): Promise<T> {
   server = await servingWorkflows(replies);
   await withMcpSession('current revision', { url: `${server.origin}/orgs/acme/mcp`, headers: {} }, (session) =>
-    session.callTool('create_brain', { brain: 'alpha', name: 'Alpha' }),
+    session.callTool('create_playbook', { playbook: 'alpha', name: 'Alpha' }),
   );
   return onAlphaOf(server, use);
 }
@@ -95,10 +99,10 @@ function typesOfCreateDefinition(listing: unknown): readonly string[] {
 }
 
 describe('workflows over MCP', { timeout: workflowTestTimeoutMs }, () => {
-  it('lists eighteen tools on the endpoint of a brain, and every capability in the definition tools', async () => {
+  it('lists eighteen tools on the endpoint of a playbook, and every capability in the definition tools', async () => {
     const listing = await onAlpha([], (session) => session.listTools());
 
-    expect(toolNamesIn(listing)).toEqual([...brainTools, 'get_guide']);
+    expect(toolNamesIn(listing)).toEqual([...playbookTools, 'get_guide']);
     expect(typesOfCreateDefinition(listing)).toEqual(['reasoning', 'interaction', 'computation', 'recall', 'workflow']);
   });
 
@@ -157,7 +161,7 @@ function causesNamedNowhereIn(events: readonly Event[]): readonly string[] {
 }
 
 describe('the graph of a workflow run over MCP', { timeout: workflowTestTimeoutMs }, () => {
-  it('reads the steps of a run with their causes, and the whole tree of the run in the feed of its brain, its child caused by the input that started the call', async () => {
+  it('reads the steps of a run with their causes, and the whole tree of the run in the feed of its playbook, its child caused by the input that started the call', async () => {
     const { history, tree } = await onAlpha([answers(jsonResult({ approve: true }))], async (session) => {
       await session.callTool('create_definition', { type: 'reasoning', name: 'verdict', source: verdict });
       await session.callTool('create_definition', { type: 'workflow', name: 'approval', source: approval });
@@ -174,7 +178,7 @@ describe('the graph of a workflow run over MCP', { timeout: workflowTestTimeoutM
       await settled(session, runId);
       return {
         history: await session.callTool('get_run_history', { run_id: runId, limit: 100 }),
-        tree: await session.callTool('list_brain_events', { run_id: runId, order: 'asc', limit: 100 }),
+        tree: await session.callTool('list_playbook_events', { run_id: runId, order: 'asc', limit: 100 }),
       };
     });
     const { events } = eventsOf(history.structuredContent);

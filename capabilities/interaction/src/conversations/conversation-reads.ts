@@ -27,7 +27,7 @@ export function readReplies(reading: Reading, oldest: KeptRequest): Effect.Effec
     return Effect.as(recordedRead(parts.ledger, place, record), unsent);
   }
   const call = {
-    ...place.brain,
+    ...place.playbook,
     reference,
     input: input.success.input,
     meta: { [conversationCallIdKey]: callId },

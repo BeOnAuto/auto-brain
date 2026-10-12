@@ -38,7 +38,7 @@ const PromptSchema = Schema.Struct({
   messages: Schema.Array(Schema.Struct({ content: Schema.Struct({ text: Schema.optionalKey(Schema.String) }) })),
 });
 
-const meetingsBrain = { brain: 'meetings', name: 'Meetings', description: "Keeps the team's meeting notes" };
+const meetingsPlaybook = { playbook: 'meetings', name: 'Meetings', description: "Keeps the team's meeting notes" };
 
 const posting = [
   '---',
@@ -49,41 +49,41 @@ const posting = [
   'Post the notes of {{ input.meeting }}.',
 ].join('\n');
 
-describe('episode 1: asked "what is brains?"', () => {
+describe('episode 1: asked "what is a playbook?"', () => {
   it('is answered by the first three sentences of the instructions, without any tool or rule', () => {
     const answer = sentencesOf(surfaces.instructions).slice(0, 3).join(' ');
 
     expect(answer).toBe(
-      'A brain is the complete system for a business responsibility. It holds the functions that do its work and the workflows that coordinate them, and it keeps every run with its result as its history. A reasoning function has a prompt and calls a language model.',
+      'Auto Runtime executes playbooks; Studio manages them; your agent is a separate client. A playbook contains one brain (its reusable functions) and workflows. The brain shares its lifecycle.',
     );
     expect(internalTermsIn(answer)).toEqual([]);
     expect(answer).not.toMatch(/[a-z]+_[a-z_]+|\bid\b/u);
   });
 });
 
-describe('episode 2: asked to create a brain for meetings', () => {
-  it('finds no rule of an id beyond the argument, and words that say what the brain is for and what comes next', async () => {
-    const created = await onMcp((session) => session.callTool('create_brain', meetingsBrain));
+describe('episode 2: asked to create a playbook for meetings', () => {
+  it('finds no rule of an id beyond the argument, and words that say what the playbook is for and what comes next', async () => {
+    const created = await onMcp((session) => session.callTool('create_playbook', meetingsPlaybook));
 
-    expect(sentencesOf(descriptionOf('create_brain')).filter((sentence) => /\bid\b/u.test(sentence))).toEqual([
-      'Use it when the person wants a new brain; list_brains shows the brains that exist, and an id that is taken or retired is refused.',
-      "`brain` is the id every tool inside the brain takes, `name` is what people call it, and `description` says what the brain is for, in the person's words.",
+    expect(sentencesOf(descriptionOf('create_playbook')).filter((sentence) => /\bid\b/u.test(sentence))).toEqual([
+      'Use it when the person wants a new playbook; list_playbooks shows the playbooks that exist, and an id that is taken or retired is refused.',
+      "`playbook` is the id every tool inside the playbook takes, `name` is what people call it, and `description` says what the playbook is for, in the person's words.",
     ]);
-    expect(descriptionOf('create_brain')).not.toMatch(/lowercase|never changes|immutable|reused/u);
+    expect(descriptionOf('create_playbook')).not.toMatch(/lowercase|never changes|immutable|reused/u);
     expect(plainTextIn(created)).toBe(
-      "Created the brain “Meetings”. What it is for: Keeps the team's meeting notes. Its functions and workflows come next.",
+      "Created the playbook “Meetings”. What it is for: Keeps the team's meeting notes. Its functions and workflows come next.",
     );
   });
 });
 
 describe('episode 3: asked to use Slack', () => {
   it('finds list_tool_servers in the instructions, and its answer names each tool server', async () => {
-    const listed = await onMcp((session) => session.callTool('list_tool_servers', { brain: 'meetings' }));
+    const listed = await onMcp((session) => session.callTool('list_tool_servers', { playbook: 'meetings' }));
 
     expect(sentenceNaming(surfaces.instructions, 'list_tool_servers')).toBe(
       'A reasoning function names a model that list_models lists and may name tools that list_tool_servers lists; test_tool_call shows what a tool answers.',
     );
-    expect(plainTextIn(listed)).toMatch(/^This brain's functions may use 2 tool servers\. /u);
+    expect(plainTextIn(listed)).toMatch(/^This playbook's functions may use 2 tool servers\. /u);
     expect(plainTextIn(listed)).toContain('“slack” offers');
     expect(plainTextIn(listed)).toContain(
       '“notes” did not accept the key this server gives it, so whoever runs this server can check that key.',
@@ -120,7 +120,7 @@ const rememberingWhatWasPosted = [
   '}',
 ].join('\n');
 
-const inPosts = { brain: 'posts' };
+const inPosts = { playbook: 'posts' };
 
 function standingOf(session: McpSession): Promise<unknown> {
   return vi.waitFor(
@@ -134,7 +134,7 @@ function standingOf(session: McpSession): Promise<unknown> {
 }
 
 async function rememberedOverMcp(session: McpSession) {
-  await session.callTool('create_brain', { ...inPosts, name: 'Posts' });
+  await session.callTool('create_playbook', { ...inPosts, name: 'Posts' });
   await session.callTool('create_definition', {
     ...inPosts,
     type: 'reasoning',
@@ -157,43 +157,47 @@ async function rememberedOverMcp(session: McpSession) {
   return session.callTool('run_definition', { ...inPosts, type: 'recall', name: 'posted' });
 }
 
-describe('episode 4: asked to make the brain remember what it posted today', { timeout: recallTestTimeoutMs }, () => {
-  it('finds what a recall function folds and never folds, and a recipe that says the function must answer what it posted', async () => {
-    const prompt = Schema.decodeUnknownSync(PromptSchema)(
-      await onMcp((session) => session.getPrompt('remember', { what: 'what it posted today' })),
-    );
+describe(
+  'episode 4: asked to make the playbook remember what it posted today',
+  { timeout: recallTestTimeoutMs },
+  () => {
+    it('finds what a recall function folds and never folds, and a recipe that says the function must answer what it posted', async () => {
+      const prompt = Schema.decodeUnknownSync(PromptSchema)(
+        await onMcp((session) => session.getPrompt('remember', { what: 'what it posted today' })),
+      );
 
-    expect(sentenceNaming(surfaces.instructions, 'A recall function')).toContain(
-      "never a run's input or its tool calls, so nothing has to write into it.",
-    );
-    expect(String(prompt.messages[0]?.content.text)).toContain(
-      'a function whose job is to post must answer what it posted.',
-    );
-  });
-
-  it('saves the recall function the recipe describes over the runs of the function that posts, which answers what was posted', async () => {
-    const recalled = await onMcp(rememberedOverMcp);
-
-    expect(recalled.structuredContent).toMatchObject({
-      status: 'succeeded',
-      output: ['The notes of the standup, to the team channel'],
+      expect(sentenceNaming(surfaces.instructions, 'Recall retrieves')).toContain(
+        'excluding run inputs and tool calls.',
+      );
+      expect(String(prompt.messages[0]?.content.text)).toContain(
+        'a function whose job is to post must answer what it posted.',
+      );
     });
-  });
-});
+
+    it('saves the recall function the recipe describes over the runs of the function that posts, which answers what was posted', async () => {
+      const recalled = await onMcp(rememberedOverMcp);
+
+      expect(recalled.structuredContent).toMatchObject({
+        status: 'succeeded',
+        output: ['The notes of the standup, to the team channel'],
+      });
+    });
+  },
+);
 
 describe('episode 5: quoting the tools to a person who does not code', () => {
   it('finds only the words of the terminology in the instructions and in the words of the results', async () => {
     const words = await onMcp(async (session) => {
-      await session.callTool('create_brain', { brain: 'standups', name: 'Standups' });
+      await session.callTool('create_playbook', { playbook: 'standups', name: 'Standups' });
       const results = [
         await session.callTool('create_definition', {
-          brain: 'standups',
+          playbook: 'standups',
           type: 'reasoning',
           name: 'post-notes',
           source: posting,
         }),
-        await session.callTool('list_definitions', { brain: 'standups', type: 'reasoning' }),
-        await session.callTool('list_runs', { brain: 'standups' }),
+        await session.callTool('list_definitions', { playbook: 'standups', type: 'reasoning' }),
+        await session.callTool('list_runs', { playbook: 'standups' }),
       ];
       return results.map((result) => plainTextIn(result));
     });
@@ -203,23 +207,23 @@ describe('episode 5: quoting the tools to a person who does not code', () => {
   });
 });
 
-describe('episode 6: a tool server that refuses its key, and a brain with no tool server', () => {
+describe('episode 6: a tool server that refuses its key, and a playbook with no tool server', () => {
   it('says the key was not accepted and that trying again will not help until it is checked, and what to do in the words of an empty listing', async () => {
     const outcome = await onMcp(async (session) => {
       await session.callTool('create_definition', {
-        brain: 'meetings',
+        playbook: 'meetings',
         type: 'reasoning',
         name: 'post-notes',
         source: posting,
       });
       return {
         refused: await session.callTool('run_definition', {
-          brain: 'meetings',
+          playbook: 'meetings',
           type: 'reasoning',
           name: 'post-notes',
           input: { meeting: 'the standup' },
         }),
-        empty: await session.callTool('list_tool_servers', { brain: 'standups' }),
+        empty: await session.callTool('list_tool_servers', { playbook: 'standups' }),
       };
     });
 
@@ -227,7 +231,7 @@ describe('episode 6: a tool server that refuses its key, and a brain with no too
       'Could not run the reasoning function “post-notes”: a tool server it needs could not be used, because the tool server did not accept the key this server gives it. Nothing was changed. Trying again will not help until whoever runs the server checks the key it gives that tool server.',
     );
     expect(plainTextIn(outcome.empty)).toBe(
-      'Whoever runs this server has set up no tool server for this brain, so its functions can call no tools until they set one up; the give-tools guide says what they need.',
+      'Whoever runs this server has set up no tool server for this playbook, so its functions can call no tools until they set one up; the give-tools guide says what they need.',
     );
   });
 });
@@ -245,15 +249,15 @@ function channelsIn(tested: unknown) {
 const searchTestable: unknown = expect.arrayContaining([expect.objectContaining({ name: 'search', testable: true })]);
 
 async function lookedAtOverMcp(session: McpSession) {
-  const before = await session.callTool('list_definitions', { brain: 'meetings', type: 'reasoning' });
-  const listed = await session.callTool('list_tool_servers', { brain: 'meetings', server: 'slack' });
+  const before = await session.callTool('list_definitions', { playbook: 'meetings', type: 'reasoning' });
+  const listed = await session.callTool('list_tool_servers', { playbook: 'meetings', server: 'slack' });
   const tested = await session.callTool('test_tool_call', {
-    brain: 'meetings',
+    playbook: 'meetings',
     server: 'slack',
     tool: 'search',
     arguments: { query: 'standups' },
   });
-  const after = await session.callTool('list_definitions', { brain: 'meetings', type: 'reasoning' });
+  const after = await session.callTool('list_definitions', { playbook: 'meetings', type: 'reasoning' });
   return { before, listed, tested, after };
 }
 
@@ -274,7 +278,11 @@ describe('episode 8: asked what a gateway-style tool server offers, and then to 
   it('tests the tool that lists the channels and takes the id of #random from its answer, as the give-tools recipe says', async () => {
     const { prompt, tested } = await onMcp(async (session) => ({
       prompt: Schema.decodeUnknownSync(PromptSchema)(await session.getPrompt('give-tools', { server: 'slack' })),
-      tested: await session.callTool('test_tool_call', { brain: 'meetings', server: 'slack', tool: 'list_channels' }),
+      tested: await session.callTool('test_tool_call', {
+        playbook: 'meetings',
+        server: 'slack',
+        tool: 'list_channels',
+      }),
     }));
 
     expect(String(prompt.messages[0]?.content.text)).toContain(

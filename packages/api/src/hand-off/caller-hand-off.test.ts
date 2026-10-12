@@ -1,9 +1,9 @@
 import { allPermissions, type CallerIdentity } from '@beonauto/operations';
 import { describe, expect, it } from 'vitest';
 
-import { authInfoFor, brainCallOf, orgCallOf } from './caller-hand-off.ts';
+import { authInfoFor, playbookCallOf, orgCallOf } from './caller-hand-off.ts';
 
-const caller: CallerIdentity = { id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: ['alpha'] };
+const caller: CallerIdentity = { id: 'acme-admin', org: 'acme', permissions: allPermissions, playbooks: ['alpha'] };
 
 const orgCall = { caller, org: 'acme', requestId: 'request-1', dropped: [{ id: 7, value: { admin: true } }] };
 
@@ -17,13 +17,13 @@ describe('the hand-off of a caller to the MCP SDK', () => {
     });
   });
 
-  it('reads back the call of an org endpoint and of a brain endpoint, with the arguments the SDK drops', () => {
-    const brainCall = { ...orgCall, brain: 'alpha' };
+  it('reads back the call of an org endpoint and of a playbook endpoint, with the arguments the SDK drops', () => {
+    const playbookCall = { ...orgCall, playbook: 'alpha' };
 
     expect({
       org: orgCallOf({ authInfo: authInfoFor(orgCall) }),
-      brain: brainCallOf({ authInfo: authInfoFor(brainCall) }),
-    }).toEqual({ org: orgCall, brain: brainCall });
+      playbook: playbookCallOf({ authInfo: authInfoFor(playbookCall) }),
+    }).toEqual({ org: orgCall, playbook: playbookCall });
   });
 
   it('refuses to serve a request without authentication information', () => {
@@ -36,7 +36,7 @@ describe('the hand-off of a caller to the MCP SDK', () => {
     );
   });
 
-  it('refuses to serve a brain endpoint without a brain', () => {
-    expect(() => brainCallOf({ authInfo: authInfoFor(orgCall) })).toThrow('brain');
+  it('refuses to serve a playbook endpoint without a playbook', () => {
+    expect(() => playbookCallOf({ authInfo: authInfoFor(orgCall) })).toThrow('playbook');
   });
 });

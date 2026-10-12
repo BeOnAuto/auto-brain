@@ -52,7 +52,7 @@ function unstagingWhileRead(unstage: () => Promise<void>, bytes: number): Readab
 }
 
 function stagedAndUnstaged(entry: LedgerEntry): void {
-  it('reads back on another connection under its brain and run alone, until the run is unstaged', async () => {
+  it('reads back on another connection under its playbook and run alone, until the run is unstaged', async () => {
     const database = await entry.aDatabase();
     const writing = await aLedger(entry, database);
     const reading = await aLedger(entry, database);

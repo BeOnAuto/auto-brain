@@ -57,7 +57,7 @@ export function oneCallAccess(
 
 export const echoCall: OneCall = {
   org: 'acme',
-  brain: 'alpha',
+  playbook: 'alpha',
   reference: { server: 'graph', tool: 'echo' },
   input: { channel: '#approvals', text: 'Please approve' },
   meta: { 'com.beonauto/run_id': callingRunId, 'com.beonauto/delivery_id': deliveryId },

@@ -1,8 +1,8 @@
 import {
   ActedContextSchema,
-  BrainIdSchema,
-  BrainReader,
-  BrainWriter,
+  PlaybookIdSchema,
+  PlaybookReader,
+  PlaybookWriter,
   Conflict,
   InvalidInput,
   NotFound,
@@ -49,17 +49,17 @@ function plainly(task: string): PlainLanguage<unknown, unknown> {
   return { task, attempt: () => task, outcome: () => `Done: ${task}.` };
 }
 
-export const addNote = defineCommand('brain', {
+export const addNote = defineCommand('playbook', {
   name: 'add_note',
   title: 'Add note',
-  description: 'Adds a note to the brain. Use it when the person dictates one. `name` names it and `text` says it.',
+  description: 'Adds a note to the playbook. Use it when the person dictates one. `name` names it and `text` says it.',
   route: { method: 'POST', path: '/notes' },
   successStatus: 201,
   inputSchema: NoteSchema,
   outputSchema: NoteSchema,
   reasons: ['conflict'],
   handle: Effect.fnUntraced(function* (note) {
-    yield* (yield* BrainWriter).execute('notes', notebook, note);
+    yield* (yield* PlaybookWriter).execute('notes', notebook, note);
     return note;
   }),
   plainLanguage: {
@@ -69,10 +69,10 @@ export const addNote = defineCommand('brain', {
   },
 });
 
-const listNotes = defineQuery('brain', {
+const listNotes = defineQuery('playbook', {
   name: 'list_notes',
   title: 'List notes',
-  description: 'Lists the notes of the brain. Use it to find a note. get_note reads one.',
+  description: 'Lists the notes of the playbook. Use it to find a note. get_note reads one.',
   route: { method: 'GET', path: '/notes' },
   inputSchema: Schema.Struct({
     limit: Schema.optionalKey(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 }))),
@@ -80,22 +80,22 @@ const listNotes = defineQuery('brain', {
   outputSchema: Schema.Struct({ notes: Schema.Array(NoteSchema) }),
   reasons: [],
   handle: Effect.fnUntraced(function* ({ limit }) {
-    const { state } = yield* (yield* BrainReader).load('notes', notebook);
+    const { state } = yield* (yield* PlaybookReader).load('notes', notebook);
     return { notes: state.slice(0, limit) };
   }),
   plainLanguage: plainly('list the notes'),
 });
 
-export const getNote = defineQuery('brain', {
+export const getNote = defineQuery('playbook', {
   name: 'get_note',
   title: 'Get note',
-  description: 'Reads one note of the brain. Use it when the note is named. `name` names it.',
+  description: 'Reads one note of the playbook. Use it when the note is named. `name` names it.',
   route: { method: 'GET', path: '/notes/{name}' },
   inputSchema: Schema.Struct({ name: NoteName }),
   outputSchema: NoteSchema,
   reasons: ['not_found'],
   handle: Effect.fnUntraced(function* ({ name }) {
-    const { state } = yield* (yield* BrainReader).load('notes', notebook);
+    const { state } = yield* (yield* PlaybookReader).load('notes', notebook);
     const found = state.find((note) => note.name === name);
     if (found === undefined) {
       return yield* new NotFound({ detail: `There is no note ${name}` });
@@ -109,7 +109,7 @@ export const getNote = defineQuery('brain', {
   },
 });
 
-export const latestNote = defineQuery('brain', {
+export const latestNote = defineQuery('playbook', {
   name: 'latest_note',
   title: 'Latest note',
   description: 'Reads the note added last. Use it when no note is named. list_notes lists them all.',
@@ -118,10 +118,10 @@ export const latestNote = defineQuery('brain', {
   outputSchema: NoteSchema,
   reasons: ['not_found'],
   handle: Effect.fnUntraced(function* () {
-    const { state } = yield* (yield* BrainReader).load('notes', notebook);
+    const { state } = yield* (yield* PlaybookReader).load('notes', notebook);
     const latest = state.at(-1);
     if (latest === undefined) {
-      return yield* new NotFound({ detail: 'The brain has no notes' });
+      return yield* new NotFound({ detail: 'The playbook has no notes' });
     }
     return latest;
   }),
@@ -132,7 +132,7 @@ export const latestNote = defineQuery('brain', {
   },
 });
 
-const breakDown = defineQuery('brain', {
+const breakDown = defineQuery('playbook', {
   name: 'break_down',
   title: 'Break down',
   description: 'Fails with a defect. It answers nothing. It is for tests.',
@@ -144,7 +144,7 @@ const breakDown = defineQuery('brain', {
   plainLanguage: plainly('break down'),
 });
 
-export const waitForever = defineQuery('brain', {
+export const waitForever = defineQuery('playbook', {
   name: 'wait_forever',
   title: 'Wait forever',
   description: 'Never finishes on its own. It waits until it is stopped. It is for tests.',
@@ -156,47 +156,55 @@ export const waitForever = defineQuery('brain', {
   plainLanguage: plainly('wait forever'),
 });
 
-const BrainLabelSchema = Schema.Struct({ brain: BrainIdSchema, label: Schema.String });
+const PlaybookLabelSchema = Schema.Struct({ playbook: PlaybookIdSchema, label: Schema.String });
 
-type BrainLabel = typeof BrainLabelSchema.Type;
+type PlaybookLabel = typeof PlaybookLabelSchema.Type;
 
-const BrainLabelledSchema = factOf('brain_labelled', Schema.Struct({ labelled: BrainLabelSchema }), ActedContextSchema);
+const PlaybookLabelledSchema = factOf(
+  'playbook_labelled',
+  Schema.Struct({ labelled: PlaybookLabelSchema }),
+  ActedContextSchema,
+);
 
-type BrainLabelled = typeof BrainLabelledSchema.Type;
+type PlaybookLabelled = typeof PlaybookLabelledSchema.Type;
 
-const labelBook: Decider<readonly BrainLabel[], BrainLabel, BrainLabelled> = {
+const labelBook: Decider<readonly PlaybookLabel[], PlaybookLabel, PlaybookLabelled> = {
   initialState: [],
-  evolve: (labels, { data: { labelled } }) => [...labels.filter(({ brain }) => brain !== labelled.brain), labelled],
-  decide: (labelled) => Result.succeed([{ type: 'brain_labelled', data: { labelled } }]),
+  evolve: (labels, { data: { labelled } }) => [
+    ...labels.filter(({ playbook }) => playbook !== labelled.playbook),
+    labelled,
+  ],
+  decide: (labelled) => Result.succeed([{ type: 'playbook_labelled', data: { labelled } }]),
   context: () => writtenNow,
-  eventSchema: BrainLabelledSchema,
+  eventSchema: PlaybookLabelledSchema,
 };
 
-const labelBrain = defineCommand('org', {
-  name: 'label_brain',
-  title: 'Label brain',
-  description: 'Gives a brain of the org a label. Use it to tell brains apart. `brain` names the brain.',
-  route: { method: 'PUT', path: '/brains/{brain}/label' },
-  inputSchema: BrainLabelSchema,
-  outputSchema: BrainLabelSchema,
+const labelPlaybook = defineCommand('org', {
+  name: 'label_playbook',
+  title: 'Label playbook',
+  description: 'Gives a playbook of the org a label. Use it to tell playbooks apart. `playbook` names the playbook.',
+  route: { method: 'PUT', path: '/playbooks/{playbook}/label' },
+  inputSchema: PlaybookLabelSchema,
+  outputSchema: PlaybookLabelSchema,
   reasons: ['conflict'],
   handle: Effect.fnUntraced(function* (labelled) {
-    yield* (yield* OrgWriter).execute('brain-labels', labelBook, labelled);
+    yield* (yield* OrgWriter).execute('playbook-labels', labelBook, labelled);
     return labelled;
   }),
-  plainLanguage: plainly('label a brain'),
+  plainLanguage: plainly('label a playbook'),
 });
 
 const listLabels = defineQuery('org', {
   name: 'list_labels',
   title: 'List labels',
-  description: 'Lists the labels of the brains of the org. Use it to find a brain by its label. label_brain gives one.',
-  route: { method: 'GET', path: '/brain-labels' },
+  description:
+    'Lists the labels of the playbooks of the org. Use it to find a playbook by its label. label_playbook gives one.',
+  route: { method: 'GET', path: '/playbook-labels' },
   inputSchema: Nothing,
-  outputSchema: Schema.Struct({ labels: Schema.Array(BrainLabelSchema) }),
+  outputSchema: Schema.Struct({ labels: Schema.Array(PlaybookLabelSchema) }),
   reasons: [],
   handle: Effect.fnUntraced(function* () {
-    const { state } = yield* (yield* OrgReader).load('brain-labels', labelBook);
+    const { state } = yield* (yield* OrgReader).load('playbook-labels', labelBook);
     return { labels: state };
   }),
   plainLanguage: plainly('list the labels'),
@@ -204,7 +212,7 @@ const listLabels = defineQuery('org', {
 
 const Line = Schema.String.annotate({ identifier: 'Line' });
 
-const checkLines = defineCommand('brain', {
+const checkLines = defineCommand('playbook', {
   name: 'check_lines',
   title: 'Check lines',
   description:
@@ -235,7 +243,7 @@ const becauseOfKind = {
   requests_full: {},
 } as const;
 
-const sendNotes = defineCommand('brain', {
+const sendNotes = defineCommand('playbook', {
   name: 'send_notes',
   title: 'Send notes',
   description:
@@ -257,7 +265,7 @@ export const notebookOperations = [
   latestNote,
   breakDown,
   waitForever,
-  labelBrain,
+  labelPlaybook,
   listLabels,
   sendNotes,
 ];

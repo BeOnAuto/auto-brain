@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest';
 
 import { runCanceller } from '../index.ts';
 import { acmeAdmin } from '../testing/callers.ts';
-import { toBrain, type LedgerRead } from '../testing/harness.ts';
+import { toPlaybook, type LedgerRead } from '../testing/harness.ts';
 import { relayedId, withHandOn } from '../testing/relaying.ts';
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 const childId = '0199a3c4-7d2e-7c1a-9b3f-0000000000c1';
 
@@ -52,7 +52,7 @@ describe('a page of the history of a run', () => {
     const handed = await withHandOn();
     await Effect.runPromise(
       runCanceller(handed.ledger.service)(
-        { org: 'acme', brain: 'alpha', id: childId },
+        { org: 'acme', playbook: 'alpha', id: childId },
         { kind: 'parent_ended', reason: 'The run that waited for it ended first' },
         lineage,
       ),

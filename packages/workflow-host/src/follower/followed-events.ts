@@ -1,4 +1,4 @@
-import { brainFactOf, publishedEventOf, type CloudEvent, type RecordedEventPublished } from '@beonauto/definitions';
+import { playbookFactOf, publishedEventOf, type CloudEvent, type RecordedEventPublished } from '@beonauto/definitions';
 import { streamKindOf, type RecordedEvent } from '@beonauto/operations';
 
 interface Emitter {
@@ -58,7 +58,7 @@ function workflowsOfSubject(subject: string | undefined, type: string): readonly
 }
 
 function fact(record: RecordedEvent, type: string): EventOfRecord {
-  const event = brainFactOf(record);
+  const event = playbookFactOf(record);
   if (event === undefined) {
     return 'unreadable';
   }

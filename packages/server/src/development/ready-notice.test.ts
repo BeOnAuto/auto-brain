@@ -7,7 +7,7 @@ describe('the notice that pnpm dev is ready', () => {
     const notice = readyNotice(8080, { OPENAI_API_KEY: 'sk-test', ANTHROPIC_API_KEY: 'sk-ant-test' });
 
     expect(notice.split('\n')).toEqual([
-      'auto-brain is ready',
+      'Auto Runtime is ready',
       '  server     http://localhost:8080',
       '  models     anthropic, openai',
       '  MCP        http://localhost:8080/mcp',

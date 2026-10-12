@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import type { StatementExecutor } from '../event-store.ts';
 import { sqliteContentOn } from './content-store.ts';
 
-const alpha = { org: 'acme', brain: 'alpha' };
+const alpha = { org: 'acme', playbook: 'alpha' };
 
 function described(sql: SQL): string {
   return SQL.describe(sql, sqliteFormatter).replaceAll(/\s+/gu, ' ').trim();
@@ -77,7 +77,7 @@ describe('the writes of a recorded content', () => {
     ]);
   });
 
-  it('write nothing for a content of one chunk the brain holds, nor for one it was told to expect, and answer the head held', async () => {
+  it('write nothing for a content of one chunk the playbook holds, nor for one it was told to expect, and answer the head held', async () => {
     const small = recordingFinding([headOf('another')]);
     const expected = recordingFinding([headOf('another')]);
 
@@ -117,13 +117,13 @@ describe('the writes of a recorded content that another put of its digest raced'
       'DELETE FROM recorded_content_chunks',
     ]);
     expect(recording.statements.at(-1)).toMatch(
-      /^DELETE FROM recorded_content_chunks WHERE brain_key = "brain\/acme\/alpha\/" AND upload_id = "[0-9a-f-]{36}" AND NOT EXISTS \(SELECT 1 FROM recorded_content_heads WHERE brain_key = "brain\/acme\/alpha\/" AND upload_id = "[0-9a-f-]{36}" AND sha256 = "[0-9a-f]{64}"\)$/u,
+      /^DELETE FROM recorded_content_chunks WHERE playbook_key = "playbook\/acme\/alpha\/" AND upload_id = "[0-9a-f-]{36}" AND NOT EXISTS \(SELECT 1 FROM recorded_content_heads WHERE playbook_key = "playbook\/acme\/alpha\/" AND upload_id = "[0-9a-f-]{36}" AND sha256 = "[0-9a-f]{64}"\)$/u,
     );
   });
 });
 
 describe('the reads and the removals of a recorded content', () => {
-  it('read no chunk of a digest the brain does not hold', async () => {
+  it('read no chunk of a digest the playbook does not hold', async () => {
     const recording = recordingFinding([]);
 
     const read = await Effect.runPromise(sqliteContentOn(recording.pool).content.get(alpha, 'digest'));
@@ -137,10 +137,10 @@ describe('the reads and the removals of a recorded content', () => {
     await Effect.runPromise(sqliteContentOn(recording.pool).content.unstage(alpha, 'run-1'));
 
     expect(recording.statements).toEqual([
-      'INSERT INTO unstaged_runs (brain_key, run_id) VALUES ("brain/acme/alpha/", "run-1") ON CONFLICT DO NOTHING',
+      'INSERT INTO unstaged_runs (playbook_key, run_id) VALUES ("playbook/acme/alpha/", "run-1") ON CONFLICT DO NOTHING',
       'BEGIN',
-      'DELETE FROM staged_content WHERE brain_key = "brain/acme/alpha/" AND run_id = "run-1"',
-      'DELETE FROM staged_content_chunks WHERE brain_key = "brain/acme/alpha/" AND run_id = "run-1"',
+      'DELETE FROM staged_content WHERE playbook_key = "playbook/acme/alpha/" AND run_id = "run-1"',
+      'DELETE FROM staged_content_chunks WHERE playbook_key = "playbook/acme/alpha/" AND run_id = "run-1"',
       'COMMIT',
     ]);
   });

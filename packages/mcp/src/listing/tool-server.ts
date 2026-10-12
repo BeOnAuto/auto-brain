@@ -11,7 +11,7 @@ const serverFields = {
   }),
   record_content: Schema.Boolean.annotate({
     description:
-      "Whether the arguments and the answers of the server's calls are kept whole in the brain's ledger, where anyone who may read the brain reads them; false only when whoever runs this server set record_content: false on its entry",
+      "Whether the arguments and the answers of the server's calls are kept whole in the playbook's ledger, where anyone who may read the playbook reads them; false only when whoever runs this server set record_content: false on its entry",
   }),
 };
 
@@ -51,9 +51,9 @@ const unavailableFields = {
   }),
 };
 
-const servedBrainsFields = {
-  brains: Schema.Array(Schema.String).annotate({
-    description: "The brains of the org whose functions may use the server, or ['*'] for every brain of the org",
+const servedPlaybooksFields = {
+  playbooks: Schema.Array(Schema.String).annotate({
+    description: "The playbooks of the org whose functions may use the server, or ['*'] for every playbook of the org",
   }),
 };
 
@@ -62,15 +62,15 @@ export const ToolServerSchema = Schema.Union([
   Schema.Struct({ ...serverFields, ...unavailableFields }),
 ]).annotate({
   identifier: 'ToolServer',
-  description: 'A tool server this brain may use, with its tools, or why they could not be listed',
+  description: 'A tool server this playbook may use, with its tools, or why they could not be listed',
 });
 
 export const OrgToolServerSchema = Schema.Union([
-  Schema.Struct({ ...serverFields, ...servedBrainsFields, ...availableFields }),
-  Schema.Struct({ ...serverFields, ...servedBrainsFields, ...unavailableFields }),
+  Schema.Struct({ ...serverFields, ...servedPlaybooksFields, ...availableFields }),
+  Schema.Struct({ ...serverFields, ...servedPlaybooksFields, ...unavailableFields }),
 ]).annotate({
   identifier: 'OrgToolServer',
-  description: 'A tool server of the org, with the brains it serves and its tools, or why they could not be listed',
+  description: 'A tool server of the org, with the playbooks it serves and its tools, or why they could not be listed',
 });
 
 export type ToolServer = typeof ToolServerSchema.Type;

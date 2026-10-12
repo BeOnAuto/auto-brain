@@ -26,7 +26,7 @@ const invalidSettings: ReadonlyArray<readonly [Readonly<Record<string, string>>,
   [
     {
       API_KEYS: JSON.stringify([
-        createApiKey({ id: 'ci-1', org: 'local', permissions: ['org:read'], brains: '*' }).entry,
+        createApiKey({ id: 'ci-1', org: 'local', permissions: ['org:read'], playbooks: '*' }).entry,
       ]),
     },
     'InvalidApiKeysError: API_KEYS[0].org: This org id is reserved for local mode',
@@ -45,7 +45,7 @@ const invalidSettings: ReadonlyArray<readonly [Readonly<Record<string, string>>,
   ],
 ];
 
-const protectedPath = '/v1/orgs/demo/brains';
+const protectedPath = '/v1/orgs/demo/playbooks';
 
 const decodeLogLine = Schema.decodeUnknownSync(
   Schema.fromJsonString(Schema.Struct({ message: Schema.String, level: Schema.String })),
@@ -116,7 +116,7 @@ describe('main', { timeout: spawnedServerTestTimeoutMs }, () => {
     child.signal('SIGTERM');
     await child.exited;
 
-    expect(child.output().stdout).toBe(`auto-brain listening on port ${port}\n`);
+    expect(child.output().stdout).toBe(`Auto Runtime listening on port ${port}\n`);
     expect(child.output().stderr).toMatch(/^\{"message":"Local mode is on: .*"level":"WARN".*\}\n/u);
     expect(messagesOf(child.output().stderr)).toEqual(startInLocalMode());
   });
@@ -190,7 +190,7 @@ describe('main when it is told to stop', { timeout: spawnedServerTestTimeoutMs }
 
 describe('main with settings', { timeout: spawnedServerTestTimeoutMs }, () => {
   it('requires an API key on protected paths once keys are configured, and says nothing about access', async () => {
-    const { key, entry } = createApiKey({ id: 'ci-1', org: 'demo', permissions: ['org:read'], brains: '*' });
+    const { key, entry } = createApiKey({ id: 'ci-1', org: 'demo', permissions: ['org:read'], playbooks: '*' });
     const child = spawnServer(mainModule, { ...loopback, API_KEYS: JSON.stringify([entry]) });
     const port = await child.port;
 
@@ -203,7 +203,7 @@ describe('main with settings', { timeout: spawnedServerTestTimeoutMs }, () => {
 
     expect({ withoutKey: withoutKey.status, withKey: withKey.status }).toEqual({ withoutKey: 401, withKey: 200 });
     expect(withoutKey.headers.get('www-authenticate')).toBe('Bearer');
-    expect(child.output().stdout).toBe(`auto-brain listening on port ${port}\n`);
+    expect(child.output().stdout).toBe(`Auto Runtime listening on port ${port}\n`);
     expect(messagesOf(child.output().stderr)).toEqual([ledgerKept, noModelProvider, ...functionsRun]);
   });
 
@@ -215,7 +215,7 @@ describe('main with settings', { timeout: spawnedServerTestTimeoutMs }, () => {
       expect(await child.exited).toBe(1);
       expect(child.output().stdout).toBe('');
       expect(child.output().stderr.split('\n')).toEqual([
-        expect.stringContaining(`auto-brain could not start: ${error}`),
+        expect.stringContaining(`Auto Runtime could not start: ${error}`),
         '',
       ]);
     },
@@ -236,43 +236,43 @@ describe('main with secrets in settings it cannot read', { timeout: spawnedServe
     expect(child.output()).toEqual({
       stdout: '',
       stderr:
-        'auto-brain could not start: model_settings_invalid: The model settings are invalid. MODEL_GATEWAYS: /0/base_url: Expected an http or https URL\n',
+        'Auto Runtime could not start: model_settings_invalid: The model settings are invalid. MODEL_GATEWAYS: /0/base_url: Expected an http or https URL\n',
     });
     expect(child.output().stderr).not.toContain(secret);
   });
 
   it('does not echo API_KEYS', async () => {
-    const { key } = createApiKey({ id: 'ci-1', org: 'demo', permissions: ['org:read'], brains: '*' });
+    const { key } = createApiKey({ id: 'ci-1', org: 'demo', permissions: ['org:read'], playbooks: '*' });
     const child = spawnServer(mainModule, { ...loopback, API_KEYS: key });
 
     expect(await child.exited).toBe(1);
     expect(child.output()).toEqual({
       stdout: '',
-      stderr: 'auto-brain could not start: InvalidApiKeysError: API_KEYS: Expected a valid JSON string\n',
+      stderr: 'Auto Runtime could not start: InvalidApiKeysError: API_KEYS: Expected a valid JSON string\n',
     });
   });
 });
 
 describe('main over MCP', { timeout: spawnedServerTestTimeoutMs }, () => {
-  it('serves the brain tools without a key in local mode, writing only the listening line to stdout', async () => {
+  it('serves the playbook tools without a key in local mode, writing only the listening line to stdout', async () => {
     const child = spawnServer(mainModule, { ...loopback, LOCAL_MODE: 'true' });
     const port = await child.port;
 
-    const brain = await withMcpSession(
+    const playbook = await withMcpSession(
       'current revision',
       { url: `http://127.0.0.1:${port}/orgs/demo/mcp`, headers: {} },
       async (session) => {
-        await session.callTool('create_brain', { brain: 'support', name: 'Support' });
-        return session.callTool('get_brain', { brain: 'support' });
+        await session.callTool('create_playbook', { playbook: 'support', name: 'Support' });
+        return session.callTool('get_playbook', { playbook: 'support' });
       },
     );
     child.signal('SIGTERM');
 
-    expect({ brain: brain.structuredContent, exitCode: await child.exited }).toMatchObject({
-      brain: { id: 'support', name: 'Support', created_by: 'local' },
+    expect({ playbook: playbook.structuredContent, exitCode: await child.exited }).toMatchObject({
+      playbook: { id: 'support', name: 'Support', created_by: 'local' },
       exitCode: 0,
     });
-    expect(child.output().stdout).toBe(`auto-brain listening on port ${port}\n`);
+    expect(child.output().stdout).toBe(`Auto Runtime listening on port ${port}\n`);
     expect(messagesOf(child.output().stderr)).toEqual(startInLocalMode());
   });
 
@@ -290,7 +290,7 @@ describe('main over MCP', { timeout: spawnedServerTestTimeoutMs }, () => {
     await child.exited;
 
     expect({ status: answer.status, body }).toMatchObject({ status: 415, body: { error: { code: -32_000 } } });
-    expect(child.output().stdout).toBe(`auto-brain listening on port ${port}\n`);
+    expect(child.output().stdout).toBe(`Auto Runtime listening on port ${port}\n`);
     expect(child.output().stderr).toMatch(
       /\n\{"message":"The MCP layer reported an error","level":"WARN".*"annotations":\{"error":"Unsupported Media Type: Content-Type must be application\/json"\}.*\}\n$/u,
     );

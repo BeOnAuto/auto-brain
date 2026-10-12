@@ -8,7 +8,7 @@ import {
 } from '@beonauto/operations';
 import { Schema } from 'effect';
 
-import type { BrainFunctionDefinition, WorkflowDefinition } from '../registry/definition.ts';
+import type { PlaybookFunctionDefinition, WorkflowDefinition } from '../registry/definition.ts';
 import { mostResultBytes } from './recorded-size.ts';
 
 export const RunRejectionSchema = Schema.Union([
@@ -49,7 +49,7 @@ export const RunRejectionSchema = Schema.Union([
     detail: Schema.String,
     kind: CancelledKindSchema.annotate({
       description:
-        'Why the run was cancelled: requested when someone allowed to change the brain asked for it with cancel_run; deadline when the step that waited for it ran out of time; overrun when a workflow ran as long as a workflow may run; parent_ended when the run that waited for it ended first, or its branch of a race lost',
+        'Why the run was cancelled: requested when someone allowed to change the playbook asked for it with cancel_run; deadline when the step that waited for it ran out of time; overrun when a workflow ran as long as a workflow may run; parent_ended when the run that waited for it ended first, or its branch of a race lost',
     }),
   }),
   Schema.Struct({
@@ -88,7 +88,7 @@ export const RunSchema = Schema.Struct({
 
 export type Run = typeof RunSchema.Type;
 
-export type FunctionRun = Run & Pick<BrainFunctionDefinition, 'type'>;
+export type FunctionRun = Run & Pick<PlaybookFunctionDefinition, 'type'>;
 
 export type WorkflowRun = Run & Pick<WorkflowDefinition, 'type'>;
 

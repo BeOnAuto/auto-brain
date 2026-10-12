@@ -8,7 +8,7 @@ import {
   functionResourceLabels,
 } from '../index.ts';
 
-describe('brain function terminology', () => {
+describe('playbook function terminology', () => {
   it('keeps the five function types in product order, without coordination or Dream', () => {
     expect(functionTypeOrder).toEqual(['reasoning', 'interaction', 'prediction', 'recall', 'computation']);
     expect(functionTypeOrder.map((type) => functionCategoryLabels[type])).toEqual([
@@ -35,7 +35,7 @@ describe('brain function terminology', () => {
       'Use a prompt, skills, and tools to interpret information or produce a response.',
       'Exchange information with people or systems.',
       'Create and use an ML model to make predictions.',
-      'Answer from what the brain keeps of its own history.',
+      'Answer from what the playbook keeps of its own history.',
       'Run defined code or expressions to calculate or transform data.',
     ]);
   });

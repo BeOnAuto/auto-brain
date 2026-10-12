@@ -76,7 +76,7 @@ async function servingLargeAnswers(environment: Readonly<Record<string, string>>
     ...environment,
   });
   onTestFinished(server.stop);
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   await server.call('POST', `${alpha}/definitions/reasoning`, { body: { name: 'reading', source: reading } });
   return server;
 }

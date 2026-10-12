@@ -14,7 +14,7 @@ import {
   type RecordedStatements,
   type RecordsSelected,
 } from './recorded-statements.ts';
-import { brainKeyOfStream, correlationOfMessage } from './sqlite-indexes.ts';
+import { playbookKeyOfStream, correlationOfMessage } from './sqlite-indexes.ts';
 import {
   bounds,
   DataRows,
@@ -43,12 +43,12 @@ function recordsWhere(where: SQL, scope: ExaminationScope): SQL {
 }
 
 function recordsIn(selected: RecordsSelected, scope: ExaminationScope): SQL {
-  if (selected.kind === 'brain') {
-    return recordsWhere(SQL`${brainKeyOfStream} = ${scope.brainKey}`, scope);
+  if (selected.kind === 'playbook') {
+    return recordsWhere(SQL`${playbookKeyOfStream} = ${scope.playbookKey}`, scope);
   }
   if (selected.kind === 'correlated') {
     return recordsWhere(
-      SQL`${brainKeyOfStream} = ${scope.brainKey} AND ${correlationOfMessage} = ${selected.correlation}`,
+      SQL`${playbookKeyOfStream} = ${scope.playbookKey} AND ${correlationOfMessage} = ${selected.correlation}`,
       scope,
     );
   }
@@ -82,10 +82,10 @@ function examineRecords(execute: SQLExecutor): RecordedStatements['examineRecord
 }
 
 function firstPointSince(execute: SQLExecutor): RecordedStatements['firstPointSince'] {
-  return async (brainKey, since) => {
+  return async (playbookKey, since) => {
     const { rows } = await execute.query(
       SQL`SELECT global_position AS position FROM emt_messages
-        WHERE ${brainKeyOfStream} = ${brainKey} AND partition = ${defaultPartition} AND is_archived = FALSE
+        WHERE ${playbookKeyOfStream} = ${playbookKey} AND partition = ${defaultPartition} AND is_archived = FALSE
           AND created >= ${secondOf(since)}
         ORDER BY created, global_position
         LIMIT 1`,
@@ -110,7 +110,7 @@ function dataAt(execute: SQLExecutor): RecordedStatements['dataAt'] {
 }
 
 function recordWithId(execute: SQLExecutor): RecordedStore['readRecordedEvent'] {
-  return async (brainKey, id) => {
+  return async (playbookKey, id) => {
     const { rows } = await execute.query(
       SQL`WITH found AS MATERIALIZED (
           SELECT * FROM emt_messages
@@ -120,7 +120,7 @@ function recordWithId(execute: SQLExecutor): RecordedStore['readRecordedEvent'] 
           message_type AS type, created AS recorded, message_id AS id, message_metadata AS metadata,
           ${correlationOfMessage} AS correlation, 0 AS size, message_data AS data
         FROM found
-        WHERE ${brainKeyOfStream} = ${brainKey}
+        WHERE ${playbookKeyOfStream} = ${playbookKey}
         LIMIT 1`,
     );
     return Schema.decodeUnknownSync(RecordRows)(rows)

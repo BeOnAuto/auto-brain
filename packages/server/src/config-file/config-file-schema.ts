@@ -11,9 +11,9 @@ function configFileJsonSchema(): Readonly<Record<string, unknown>> {
   const { schema, definitions } = Schema.toJsonSchemaDocument(Schema.Struct(fields), { onExcessProperty: 'error' });
   return {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
-    title: 'auto-brain configuration file',
+    title: 'Auto Runtime configuration file',
     description:
-      'The settings of an auto-brain server that are lists or maps, read from the file that CONFIG_FILE names. Each key stands for the environment variable of the same name in upper case, which wins over it. Secrets are written as references such as ${GATEWAY_API_KEY}.',
+      'The settings of Auto Runtime that are lists or maps, read from the file that CONFIG_FILE names. Each key stands for the environment variable of the same name in upper case, which wins over it. Secrets are written as references such as ${GATEWAY_API_KEY}.',
     ...schema,
     $defs: definitions,
   };

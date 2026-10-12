@@ -17,21 +17,21 @@ const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 const takesNoReply = ', so the request takes no reply and waits for answer_interaction';
 
-async function deliveryEndOf(brain: ChatHarness) {
+async function deliveryEndOf(playbook: ChatHarness) {
   const { records } = await Effect.runPromise(
-    brain.ledger.service.readRecorded(alpha, { kind: 'run', run: runId }, { order: 'asc', limit: 20 }),
+    playbook.ledger.service.readRecorded(alpha, { kind: 'run', run: runId }, { order: 'asc', limit: 20 }),
   );
   return records.map((record) => runEventOf(record)).find((event) => event?.type === 'delivery_succeeded');
 }
 
 async function deliveredWith(answer?: FakeAnswer, document?: string) {
-  const brain = await chatHarness(document === undefined ? {} : { document });
+  const playbook = await chatHarness(document === undefined ? {} : { document });
   if (answer !== undefined) {
-    brain.chat.answerNext(answer);
+    playbook.chat.answerNext(answer);
   }
-  await brain.askInThread(runId);
-  await brain.performDue(Date.now());
-  return { brain, ended: await deliveryEndOf(brain) };
+  await playbook.askInThread(runId);
+  await playbook.performDue(Date.now());
+  return { playbook, ended: await deliveryEndOf(playbook) };
 }
 
 function keptOf(ended: Awaited<ReturnType<typeof deliveryEndOf>>) {
@@ -46,7 +46,7 @@ function textAnswer(text: string): FakeAnswer {
 
 describe('a delivery whose function reads replies', () => {
   it('keeps the conversation and the message its tool sent, from the text of its answer, and where replies are read', async () => {
-    const { brain, ended } = await deliveredWith();
+    const { playbook, ended } = await deliveredWith();
 
     expect(ended).toMatchObject({
       type: 'delivery_succeeded',
@@ -55,7 +55,7 @@ describe('a delivery whose function reads replies', () => {
         replies_in: { server: 'chat', tool: 'thread_replies', key: '#approvals-sales/1699.000001' },
       },
     });
-    expect(await brain.firstOpen()).toMatchObject({
+    expect(await playbook.firstOpen()).toMatchObject({
       standing: 'delivered',
       conversation: '#approvals-sales/1699.000001',
       answerer: 'U024BE7LH',
@@ -80,7 +80,7 @@ describe('a delivery whose function reads replies', () => {
   });
 });
 
-describe('a delivery whose answer names no message the brain can keep', () => {
+describe('a delivery whose answer names no message the playbook can keep', () => {
   it('is delivered with the reason in its detail and no conversation, so the request waits for answer_interaction', async () => {
     const answers: readonly FakeAnswer[] = [
       { outcome: 'result', answer: { content: [{ type: 'image' }] }, detail: '', retryAfterMs: null },

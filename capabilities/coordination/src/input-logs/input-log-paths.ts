@@ -24,7 +24,13 @@ export interface InputLogPath {
 }
 
 function attributesOf(name: string, runId: string): JsonObject {
-  return { org: 'acme', brain: 'alpha', run_id: runId, definition: { name, version: 1 }, caller: { id: 'acme-admin' } };
+  return {
+    org: 'acme',
+    playbook: 'alpha',
+    run_id: runId,
+    definition: { name, version: 1 },
+    caller: { id: 'acme-admin' },
+  };
 }
 
 function summarizing({ name, input }: DefinitionArguments): CallResult {

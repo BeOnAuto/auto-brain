@@ -16,7 +16,7 @@ const asJson: Headers = { ...asAdmin, 'content-type': 'application/json' };
 
 const asOctets: Headers = { ...asAdmin, 'content-type': 'application/octet-stream' };
 
-const blobs = '/v1/orgs/acme/brains/alpha/blobs';
+const blobs = '/v1/orgs/acme/playbooks/alpha/blobs';
 
 const servedOverHttpAlone = blobOperations;
 
@@ -50,7 +50,7 @@ const streamedBodies: readonly Streamed[] = [
   {
     body: 'CSV in UTF-8',
     method: 'PUT',
-    path: '/v1/orgs/acme/brains/alpha/rows/r1',
+    path: '/v1/orgs/acme/playbooks/alpha/rows/r1',
     contentType: 'text/csv; charset=utf-8',
     mediaType: 'text/csv',
   },
@@ -183,7 +183,7 @@ describe('an operation served over HTTP alone, refusing what it was sent', () =>
   });
 });
 
-const endpoints = ['/mcp', '/orgs/acme/mcp', '/orgs/acme/brains/alpha/mcp'];
+const endpoints = ['/mcp', '/orgs/acme/mcp', '/orgs/acme/playbooks/alpha/mcp'];
 
 async function listingOn(handler: ApiHandler, path: string): Promise<string> {
   return (await postMcp(handler, path, asAdmin, requestOf(1, 'tools/list'))).text;
@@ -209,7 +209,7 @@ describe('an operation served over HTTP alone, over MCP', () => {
     const { handler } = await withBlobs();
 
     const answers = await Promise.all(
-      ['/orgs/acme/brains/alpha/mcp', '/mcp'].map((path) =>
+      ['/orgs/acme/playbooks/alpha/mcp', '/mcp'].map((path) =>
         postMcp(handler, path, asAdmin, requestOf(2, 'tools/call', { name: 'read_blob', arguments: { name: 'b1' } })),
       ),
     );

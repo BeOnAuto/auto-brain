@@ -105,7 +105,7 @@ export function literalFilterOf(filter: Json | undefined, pointer: string): Lite
   return { filter: { reference: pointer, type, attributes } };
 }
 
-export function brainWideFilterOf(filter: Json | undefined): JsonObject | undefined {
+export function playbookWideFilterOf(filter: Json | undefined): JsonObject | undefined {
   const attributes = isObject(filter) ? objectField(filter, 'with') : undefined;
   const type = attributes === undefined ? undefined : field(attributes, 'type');
   return typeof type === 'string' && type !== '' && enclosedBody(type) === undefined ? attributes : undefined;
@@ -114,14 +114,14 @@ export function brainWideFilterOf(filter: Json | undefined): JsonObject | undefi
 export function listenFiltersOf(task: Json | undefined): readonly JsonObject[] {
   const to = objectField(objectField(isObject(task) ? task : {}, 'listen') ?? {}, 'to') ?? {};
   return eventFiltersOf(to, '').flatMap(([filter]: LocatedFilter) => {
-    const attributes = brainWideFilterOf(filter);
+    const attributes = playbookWideFilterOf(filter);
     return attributes === undefined ? [] : [attributes];
   });
 }
 
 export function listenerFilterOf(attributes: JsonObject, reference: string): LiteralFilter | undefined {
   const type = field(attributes, 'type');
-  if (typeof type !== 'string' || brainWideFilterOf({ with: attributes }) === undefined) {
+  if (typeof type !== 'string' || playbookWideFilterOf({ with: attributes }) === undefined) {
     return undefined;
   }
   return { reference, type, attributes };

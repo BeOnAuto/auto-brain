@@ -15,8 +15,8 @@ export type RecallRun = (
   run: RunContext,
 ) => Effect.Effect<CapabilityAnswer, CapabilityRejection>;
 
-function rebuilding(views: ViewsPort, { org, brain, definition }: RunContext, kept: KeptView | undefined) {
-  return views.newestRecordAt({ org, brain }).pipe(
+function rebuilding(views: ViewsPort, { org, playbook, definition }: RunContext, kept: KeptView | undefined) {
+  return views.newestRecordAt({ org, playbook }).pipe(
     Effect.flatMap((newestAt) =>
       Effect.fail(
         new Unavailable({
@@ -73,7 +73,7 @@ export function recallRun(options: RecallRunOptions): RecallRun {
     preparedInput(input, runnable.document.input).pipe(
       Effect.flatMap((admitted): Effect.Effect<CapabilityAnswer, CapabilityRejection | InvalidInput> =>
         options.views
-          .viewOf({ org: run.org, brain: run.brain }, run.definition.name)
+          .viewOf({ org: run.org, playbook: run.playbook }, run.definition.name)
           .pipe(Effect.flatMap(ranOn(options, runnable, run, admitted))),
       ),
     );

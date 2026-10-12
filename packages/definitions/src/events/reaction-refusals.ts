@@ -1,8 +1,8 @@
 import {
-  brainCallerOf,
+  playbookCallerOf,
   DefinitionContextSchema,
   factOf,
-  type BrainAddress,
+  type PlaybookAddress,
   type Decided,
   type Decider,
 } from '@beonauto/operations';
@@ -21,7 +21,7 @@ export type RecordedReactionRefused = typeof ReactionRefusedSchema.Type;
 export type ReactionRefused = Decided<RecordedReactionRefused>;
 
 export interface ReactionRefusal {
-  readonly brain: BrainAddress;
+  readonly playbook: PlaybookAddress;
   readonly workflow: string;
   readonly version: number;
   readonly refused: ReactionRefused['data'];
@@ -32,9 +32,9 @@ export const reactionRefusalDecider: Decider<null, ReactionRefusal, RecordedReac
   initialState: null,
   evolve: () => null,
   decide: ({ refused }) => Result.succeed([{ type: 'reaction_refused', data: refused }]),
-  context: ({ brain, workflow, version, at }) => ({
+  context: ({ playbook, workflow, version, at }) => ({
     at,
-    by: brainCallerOf(brain).id,
+    by: playbookCallerOf(playbook).id,
     definitionType: 'workflow',
     definitionName: workflow,
     definitionVersion: version,

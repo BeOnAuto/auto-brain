@@ -28,7 +28,7 @@ let server: ReasoningServer;
 
 async function serving(...replies: readonly ScriptedReply[]): Promise<ReasoningServer> {
   server = await servingReasoning(replies);
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   await server.call('POST', `${alpha}/definitions/reasoning`, { body: { name: 'summary', source: summary } });
   await server.call('POST', `${alpha}/definitions/reasoning`, { body: { name: 'verdict', source: verdict } });
   return server;

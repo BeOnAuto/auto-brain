@@ -1,6 +1,6 @@
 import { articled } from '@beonauto/operations';
 
-export type McpEndpoint = 'org' | 'brain' | 'own org';
+export type McpEndpoint = 'org' | 'playbook' | 'own org';
 
 export interface DefinitionType {
   readonly type: string;
@@ -10,7 +10,7 @@ export interface DefinitionType {
 
 export interface ServedTools {
   readonly orgTools: readonly string[];
-  readonly brainTools: readonly string[];
+  readonly playbookTools: readonly string[];
 }
 
 export interface RecipeCalls {
@@ -34,21 +34,20 @@ const purposeByType: Readonly<Record<string, string>> = {
   reasoning: 'A reasoning function has a prompt and calls a language model.',
   interaction: 'An interaction function asks a system and answers at once, or asks a person and answers started.',
   computation: 'A computation function runs a program on its input and gives the same output every time.',
-  recall:
-    "A recall function answers from what it keeps of the brain's own history: every run's start and end, with its result when it succeeded, the definitions saved and the events published to the brain, never a run's input or its tool calls, so nothing has to write into it.",
+  recall: 'Recall retrieves retained run results, definitions and events, excluding run inputs and tool calls.',
   workflow: 'A workflow runs functions in steps, waits for input and can start on a schedule or on an event.',
 };
 
-const whatABrainIs = [
-  'A brain is the complete system for a business responsibility.',
-  'It holds the functions that do its work and the workflows that coordinate them, and it keeps every run with its result as its history.',
+const whatAPlaybookIs = [
+  'Auto Runtime executes playbooks; Studio manages them; your agent is a separate client.',
+  'A playbook contains one brain (its reusable functions) and workflows. The brain shares its lifecycle. Functions run directly or through workflows; runs belong to the playbook.',
 ];
 
-const pagedReads = ['list_runs', 'get_run_history', 'list_brain_events', 'list_interactions'];
+const pagedReads = ['list_runs', 'get_run_history', 'list_playbook_events', 'list_interactions'];
 
 const howToAnswer = [
   'When you tell the person what happened, say what was done and what they can do next,',
-  "in the words of brains, functions, workflows and runs, not in the tools' names, fields or rules;",
+  "in the words of playbooks, functions, workflows and runs, not in the tools' names, fields or rules;",
   'give an id or a status only when the person needs it to act.',
 ].join(' ');
 
@@ -58,26 +57,26 @@ function inTurn(items: readonly string[]): string {
   return items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${String(items.at(-1))}`;
 }
 
-function brainsClause({ listed }: Serving, shows: string): readonly string[] {
-  const shown = listed('list_brains') ? [`list_brains shows ${shows}`] : [];
-  const made = listed('create_brain') ? [`create_brain makes ${shown.length === 0 ? 'a brain' : 'one'}`] : [];
+function playbooksClause({ listed }: Serving, shows: string): readonly string[] {
+  const shown = listed('list_playbooks') ? [`list_playbooks shows ${shows}`] : [];
+  const made = listed('create_playbook') ? [`create_playbook makes ${shown.length === 0 ? 'a playbook' : 'one'}`] : [];
   return [...shown, ...made];
 }
 
-function joinedClauses(opening: string, brains: readonly string[], rest: readonly string[]): string {
-  const brainWords = brains.length === 0 ? '' : `: ${brains.join(' and ')}`;
+function joinedClauses(opening: string, playbooks: readonly string[], rest: readonly string[]): string {
+  const playbookWords = playbooks.length === 0 ? '' : `: ${playbooks.join(' and ')}`;
   const restWords = rest.map((clause) => `, and ${clause}`).join('');
-  return `${opening}${brainWords}${restWords}.`;
+  return `${opening}${playbookWords}${restWords}.`;
 }
 
 const whatTheConnectionDoes: Readonly<Record<McpEndpoint, (serving: Serving) => string>> = {
   'own org': (serving) =>
-    joinedClauses("This connection acts in the caller's own org", brainsClause(serving, 'its brains'), []),
+    joinedClauses("This connection acts in the caller's own org", playbooksClause(serving, 'its playbooks'), []),
   org: (serving) =>
-    joinedClauses('This connection manages the brains of one org', brainsClause(serving, 'them'), [
-      "a brain's functions and workflows are made on the brain's own connection, /orgs/{org}/brains/{brain}/mcp",
+    joinedClauses('This connection manages the playbooks of one org', playbooksClause(serving, 'them'), [
+      "a playbook's functions and workflows are made on the playbook's own connection, /orgs/{org}/playbooks/{playbook}/mcp",
     ]),
-  brain: () => 'This connection acts inside one brain.',
+  playbook: () => 'This connection acts inside one playbook.',
 };
 
 const purposes: Sentences = ({ definitionTypes }) =>
@@ -155,7 +154,7 @@ const orientation: readonly Sentences[] = [
 ];
 
 function namesOf(tools: ServedTools): readonly string[] {
-  return [...tools.orgTools, ...tools.brainTools];
+  return [...tools.orgTools, ...tools.playbookTools];
 }
 
 export function recipesFollowedWith<Calls extends RecipeCalls>(
@@ -180,5 +179,5 @@ export function instructionsFor(
     reasoning: definitionTypes.find(({ type }) => type === reasoningFunctionType),
     recipes: recipesFollowedWith(tools, recipes),
   };
-  return [...whatABrainIs, ...orientation.flatMap((sentences) => sentences(serving))].join(' ');
+  return [...whatAPlaybookIs, ...orientation.flatMap((sentences) => sentences(serving))].join(' ');
 }

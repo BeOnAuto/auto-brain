@@ -13,7 +13,7 @@ import { runIdIn, workflowSource, workflowTestTimeoutMs } from '../testing/serve
 
 let meetings: MeetingsServer;
 
-const inMeetings = { brain: 'meetings' };
+const inMeetings = { playbook: 'meetings' };
 
 const approvingTheDraft = [
   '---',
@@ -59,7 +59,7 @@ const draftingEachMonth = workflowSource(
 beforeAll(async () => {
   meetings = await servingMeetings([], { chat: true });
   await meetings.onMcp(async (session) => {
-    await session.callTool('create_brain', { ...inMeetings, name: 'Meetings' });
+    await session.callTool('create_playbook', { ...inMeetings, name: 'Meetings' });
     await session.callTool('create_definition', {
       ...inMeetings,
       type: 'interaction',
@@ -209,6 +209,6 @@ describe('the shape of the answer an open request takes, as the agent reads it',
     expect(descriptionIn(meetings.surfaces, 'answer_interaction')).toContain(
       "`answer` takes the shape of the request's answer_schema, which list_interactions shows,",
     );
-    expect([description.length, sentencesOf(description).length]).toEqual([724, 5]);
+    expect([description.length, sentencesOf(description).length]).toEqual([733, 5]);
   });
 });
