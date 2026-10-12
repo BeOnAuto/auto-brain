@@ -4,7 +4,7 @@ import { Effect, Schema } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
-import { aSQLiteFile, openedOn, type SettingsOf } from '../testing/host-files.ts';
+import { aSQLiteFile, onPostgreSQLAt, openedOn, type SettingsOf } from '../testing/host-files.ts';
 import { rowsOf, WholeNumber, type HostDatabase, type ReadStatement } from './host-database.ts';
 import { statement } from './statement.ts';
 
@@ -46,7 +46,7 @@ const onPostgreSQL: SettingsOf = async () => {
   });
   const database = new URL(server);
   database.pathname = `/${name}`;
-  return { store: 'postgresql', connectionString: database.href };
+  return onPostgreSQLAt(database.href);
 };
 
 const inAFile: SettingsOf = () => Promise.resolve({ store: 'sqlite', file: aSQLiteFile() });

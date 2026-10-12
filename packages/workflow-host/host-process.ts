@@ -5,15 +5,15 @@ import type { SettleRun } from '@on.auto/definitions';
 import type { CallResult } from '@on.auto/operations';
 import { Effect, Function, Schema } from 'effect';
 
-import type { DatabaseSettings } from './src/database/host-databases.ts';
 import { openWorkflowHost, type WorkflowHost } from './src/host/workflow-host.ts';
 import { recordedReactions } from './src/reaction-testing/recorded-reactions.ts';
 import { startOf, testMachine } from './src/testing/host-documents.ts';
+import { databaseSettingsOf, type ProcessDatabase } from './src/testing/host-processes.ts';
 import { recordedWaiting } from './src/waiting-testing/recorded-waiting.ts';
 
 const [settingsText = '', mode = '', settlementsFile = '', sweepEveryMs = '20'] = process.argv.slice(2);
 
-const settings: DatabaseSettings = Schema.decodeUnknownSync(
+const database: ProcessDatabase = Schema.decodeUnknownSync(
   Schema.fromJsonString(
     Schema.Union([
       Schema.Struct({ store: Schema.Literal('sqlite'), file: Schema.String }),
@@ -65,7 +65,7 @@ async function settledIn(host: WorkflowHost): Promise<void> {
 }
 
 const host = await openWorkflowHost({
-  database: settings,
+  database: databaseSettingsOf(database),
   machine: testMachine,
   perform: () => (mode === 'hang-on-call' ? Effect.andThen(said('calling'), hangs) : answered),
   settle,

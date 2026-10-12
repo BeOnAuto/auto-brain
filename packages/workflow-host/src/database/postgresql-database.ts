@@ -1,7 +1,6 @@
 import type { EventStore } from '@on.auto/ledger';
-import { postgresqlEventStore } from '@on.auto/ledger/postgresql';
+import { postgresqlEventStore, type PostgreSQLPools } from '@on.auto/ledger/postgresql';
 import { Effect, Function, Schema } from 'effect';
-import { Pool } from 'pg';
 
 import {
   failedWith,
@@ -17,7 +16,7 @@ import { addedColumns, hostTables, indexesOfAddedColumns } from './host-tables.t
 import { statement, textOnPostgreSQL, type Statement, type StatementValue } from './statement.ts';
 
 export interface PostgreSQLDatabaseOptions {
-  readonly connectionString: string;
+  readonly pools: PostgreSQLPools;
   readonly reportLostConnection: (error: Readonly<Error>) => void;
   readonly tables: readonly Statement[];
 }
@@ -142,11 +141,11 @@ export async function postgresqlDatabaseOn(
 }
 
 export function openPostgreSQLDatabase({
-  connectionString,
+  pools,
   reportLostConnection,
   tables,
 }: PostgreSQLDatabaseOptions): Promise<HostDatabase> {
-  const pool = new Pool({ connectionString, max: connectionsForTheHostTables });
+  const pool = pools({ max: connectionsForTheHostTables });
   pool.on('error', reportLostConnection);
-  return postgresqlDatabaseOn(postgresqlEventStore({ connectionString, reportLostConnection }), pool, tables);
+  return postgresqlDatabaseOn(postgresqlEventStore({ pools, reportLostConnection }), pool, tables);
 }

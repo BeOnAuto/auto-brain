@@ -8,7 +8,7 @@ import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-databas
 import { statement, textOnPostgreSQL } from '../database/statement.ts';
 import { sqlWatermark } from '../dispatch/sql-watermark.ts';
 import { runGateOf } from '../follower/run-gate.ts';
-import { openedOn } from '../testing/host-files.ts';
+import { onPostgreSQLAt, openedOn } from '../testing/host-files.ts';
 import { insertedListener } from './listener-rows.ts';
 
 const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
@@ -87,7 +87,7 @@ describe.skipIf(server === '')('a listener kept while the gate passes its run ea
     { timeout: 30_000 },
     async () => {
       const connectionString = await aDatabase();
-      const database = await openedOn({ store: 'postgresql', connectionString });
+      const database = await openedOn(onPostgreSQLAt(connectionString));
       const held = await connected(connectionString);
       await Effect.runPromise(
         database.write(
@@ -124,7 +124,7 @@ describe.skipIf(server === '')('the note of a run passed early while its dispatc
     { timeout: 30_000 },
     async () => {
       const connectionString = await aDatabase();
-      const database = await openedOn({ store: 'postgresql', connectionString });
+      const database = await openedOn(onPostgreSQLAt(connectionString));
       const held = await connected(connectionString);
       await Effect.runPromise(
         database.write(
