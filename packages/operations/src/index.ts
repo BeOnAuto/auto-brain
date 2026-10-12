@@ -108,6 +108,7 @@ export { mostContentChunkBytes } from './content/content-chunks.ts';
 export { leftUnread, requireExpected, takenInChunks, type Taken, type TakeChunk } from './content/content-intake.ts';
 export { ContentRefused, notTheBytesOfItsDigest, type ContentRefusedBecause } from './content/content-refusals.ts';
 export { StagingEnded, stagingEnded } from './content/staging-ended.ts';
+export { verifiedStream } from './content/content-verification.ts';
 export {
   contentOfBytes,
   contentOfText,

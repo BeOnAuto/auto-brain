@@ -7,3 +7,27 @@ export { recordingReporter, type RecordingReporter, type ReportedIncident } from
 export { runFacts, runTallies, talliedContext, type RunFact } from '../run-outcomes/run-tallies.ts';
 export { runTallyRows, tallyDueAfterMs, tallyRowsOf } from '../projections/tally-rows.ts';
 export { topicFacts, topicRows, topicWaitMs, type TopicFact } from '../projections/topic-rows.ts';
+export type { ContentEntry, ContentStoreUnderTest } from '../content-testing/content-entry.ts';
+export { recordedContentBehaviour } from '../content-testing/recorded-content-behaviour.ts';
+export {
+  alpha,
+  answerOfAbout,
+  beta,
+  brokenAfter,
+  deliveredBeforeFailing,
+  generated,
+  generatedStream,
+  json,
+  octets,
+  present,
+  readBack,
+  readThrough,
+  refusalOf,
+  resultOf,
+  unread,
+  type Delivered,
+  type Generated,
+  type ReadBack,
+  type ReadThrough,
+  type Unread,
+} from '../content-testing/content-samples.ts';
