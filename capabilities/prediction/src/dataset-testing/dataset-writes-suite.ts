@@ -29,7 +29,7 @@ function staleWriteTest(settingsOf: SettingsOf): void {
       const row = await datasets.until(dataSha256, liveFolded(1));
       const untouched = await datasets.until(idle.dataSha256, isLive);
       await datasets.stop();
-      const folder = datasetFolder({ filters: filterSandboxOf() });
+      const folder = datasetFolder({ filters: filterSandboxOf(), triesBeforeStall: Number.POSITIVE_INFINITY });
       const unchanged = folder.unchanged(row);
       const stale = {
         row: Object.assign({}, row, { checkpointText: '["0"]' }),

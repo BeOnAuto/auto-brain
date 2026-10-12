@@ -41,6 +41,21 @@ interface PreparedFilter {
   readonly attributes: readonly FilterAttribute<AskedTest>[];
 }
 
+interface Tested {
+  readonly verdicts: readonly FilterVerdict[];
+  readonly limited: boolean;
+}
+
+interface PreparedSession {
+  readonly session: FilterSession;
+  readonly prepared: readonly PreparedFilter[];
+}
+
+export interface FilterTesting {
+  readonly verdictsOf: (event: JsonObject, now: number) => Promise<readonly FilterVerdict[]>;
+  readonly close: () => Promise<void>;
+}
+
 interface Testing {
   readonly meter: Meter;
   readonly reference: string;
@@ -81,15 +96,15 @@ async function attributesHold(
   return (await attributeHoldsLater(attribute, event, verdictIn(testing))) && attributesHold(rest, event, testing);
 }
 
-async function verdictsUntilRefused(
+async function verdictsUntilLimited(
   filters: readonly PreparedFilter[],
   event: JsonObject,
   sandbox: FilterSandbox,
   now: number,
-): Promise<readonly FilterVerdict[]> {
+): Promise<Tested> {
   const [filter, ...rest] = filters;
   if (filter === undefined) {
-    return [];
+    return { verdicts: [], limited: false };
   }
   const state: { limit: Limit | undefined } = { limit: undefined };
   const testing: Testing = {
@@ -105,7 +120,15 @@ async function verdictsUntilRefused(
     () => attributesHold(filter.attributes, event, testing),
     (error) => ({ error, stopped: state.limit !== undefined && limitsNoEventCauses.has(state.limit) }),
   );
-  return state.limit === undefined ? [verdict, ...(await verdictsUntilRefused(rest, event, sandbox, now))] : [verdict];
+  if (state.limit !== undefined) {
+    return { verdicts: [verdict], limited: true };
+  }
+  const after = await verdictsUntilLimited(rest, event, sandbox, now);
+  return { verdicts: [verdict, ...after.verdicts], limited: after.limited };
+}
+
+function openingAt(sandbox: FilterSandbox, now: number): () => Evaluation {
+  return () => ({ budget: Number.POSITIVE_INFINITY, deadlineAt: sandbox.clock() + mostInputMs, moment: now });
 }
 
 async function verdictsInSession(
@@ -117,7 +140,7 @@ async function verdictsInSession(
   try {
     const prepared = filters.map((filter) => preparedOf(filter, session.define));
     await session.freeze();
-    return await verdictsUntilRefused(prepared, event, sandbox, now);
+    return (await verdictsUntilLimited(prepared, event, sandbox, now)).verdicts;
   } finally {
     session.close();
   }
@@ -132,11 +155,65 @@ export async function filterVerdictsOf(
   if (filters.length === 0) {
     return [];
   }
-  const session = await sandbox.session(() => ({
-    budget: Number.POSITIVE_INFINITY,
-    deadlineAt: sandbox.clock() + mostInputMs,
-    moment: now,
-  }));
+  const session = await sandbox.session(openingAt(sandbox, now));
   const verdicts = await verdictsInSession(session, filters, event, { sandbox, now });
   return [...verdicts, ...(await filterVerdictsOf(filters.slice(verdicts.length), event, sandbox, now))];
+}
+
+async function sessionPrepared(
+  filters: readonly MatchedFilter[],
+  sandbox: FilterSandbox,
+  now: number,
+): Promise<PreparedSession> {
+  const session = await sandbox.session(openingAt(sandbox, now));
+  try {
+    const prepared = filters.map((filter) => preparedOf(filter, session.define));
+    await session.freeze();
+    return { session, prepared };
+  } catch (error) {
+    session.close();
+    throw error;
+  }
+}
+
+export function filterTestingOf(filters: readonly MatchedFilter[], sandbox: FilterSandbox): FilterTesting {
+  const held: { opening: Promise<PreparedSession> | undefined; closed: boolean } = {
+    opening: undefined,
+    closed: false,
+  };
+  const opened = (now: number): Promise<PreparedSession> => {
+    held.opening ??= sessionPrepared(filters, sandbox, now);
+    return held.opening;
+  };
+  const letGo = async (): Promise<void> => {
+    const { opening } = held;
+    held.opening = undefined;
+    if (opening === undefined) {
+      return;
+    }
+    for (const outcome of await Promise.allSettled([opening])) {
+      if (outcome.status === 'fulfilled') {
+        outcome.value.session.close();
+      }
+    }
+  };
+  return {
+    verdictsOf: async (event, now) => {
+      const session = held.closed ? undefined : await opened(now);
+      if (session === undefined || held.closed) {
+        return filterVerdictsOf(filters, event, sandbox, now);
+      }
+      const tested = await verdictsUntilLimited(session.prepared, event, sandbox, now);
+      if (!tested.limited) {
+        return tested.verdicts;
+      }
+      await letGo();
+      const rest = filters.slice(tested.verdicts.length);
+      return [...tested.verdicts, ...(await filterVerdictsOf(rest, event, sandbox, now))];
+    },
+    close: async () => {
+      held.closed = true;
+      await letGo();
+    },
+  };
 }

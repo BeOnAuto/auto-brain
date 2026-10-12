@@ -1,7 +1,8 @@
 import type { SavedDefinition, SavedDefinitions } from '@on.auto/definitions';
 import { compileJsonSchema, issueAt, type DocumentIssue } from '@on.auto/definitions/document';
-import { Effect, Predicate, Result, type Schema } from 'effect';
+import { Effect, Result, type Schema } from 'effect';
 
+import { isMapping } from '../document/checked-parts.ts';
 import type { PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';
 
 interface Called {
@@ -15,10 +16,6 @@ interface Called {
 }
 
 const interactionType = 'interaction';
-
-function isMapping(value: Schema.Json | undefined): value is Schema.JsonObject {
-  return Predicate.isObject(value) && !Array.isArray(value);
-}
 
 function propertyOf(schema: Schema.JsonObject, name: string): Schema.JsonObject | undefined {
   const properties = schema['properties'];

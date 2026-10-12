@@ -102,10 +102,38 @@ function dataTestTest(settingsOf: SettingsOf): void {
   );
 }
 
+const testedByType = weeklyOrdersWith([
+  '    - type: order.placed',
+  [
+    `    - type: order.placed\n      data: '\${ $data.total.toFixed(0) !== "0" }'`,
+    `    - type: order.refunded\n      data: '\${ $data.refunded.toFixed(0) !== "0" }'`,
+  ].join('\n'),
+]);
+
+function typedTestTest(settingsOf: SettingsOf): void {
+  it(
+    'tests an event against the data tests of the filters of its own type alone',
+    async () => {
+      const datasets = await projectedDatasets(await settingsOf());
+      const { dataSha256 } = await datasets.saved('orders', testedByType);
+      await datasets.published([
+        orderPlaced({ region: 'north', at: '2026-10-06T10:00:00Z', total: 0 }),
+        orderPlaced({ region: 'north', at: '2026-10-06T10:00:00Z', total: 3 }),
+      ]);
+      datasets.start();
+      const row = await datasets.until(dataSha256, liveFolded(1));
+
+      expect([row.eventsFolded, row.passedOver, datasets.notes()]).toEqual([1, 0, []]);
+    },
+    testTimeoutMs,
+  );
+}
+
 export function datasetLifecycleSuite(settingsOf: SettingsOf): void {
   describe('the datasets of prediction functions as their definitions change', () => {
     sharingTest(settingsOf);
     slotsTest(settingsOf);
     dataTestTest(settingsOf);
+    typedTestTest(settingsOf);
   });
 }

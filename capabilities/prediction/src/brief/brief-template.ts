@@ -16,7 +16,7 @@ import { toValue } from 'liquidjs';
 import { figure } from '../capability/figures.ts';
 import { predictionBounds } from '../capability/prediction-bounds.ts';
 import type { Checked } from '../document/checked-parts.ts';
-import { briefVariableIssues } from './brief-variables.ts';
+import { briefVariableIssues, renderedNameOf } from './brief-variables.ts';
 
 const briefEngine = templateEngine();
 
@@ -78,7 +78,7 @@ const failureWords: {
   readonly [Reason in BriefFailure['reason']]: (failure: Extract<BriefFailure, { readonly reason: Reason }>) => string;
 } = {
   missing_variable: ({ variable }) =>
-    `The brief reads ${variable}, which the largest dataset the bounds admit does not have`,
+    `The brief reads ${renderedNameOf(variable)}, which the largest dataset the bounds admit does not have`,
   limit_exceeded: ({ limit }) =>
     `The brief takes more ${limit} to render than a template may, over the largest dataset the bounds admit`,
   failed: ({ detail }) => `The brief does not render: ${detail}`,

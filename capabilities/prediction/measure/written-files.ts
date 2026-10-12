@@ -7,7 +7,7 @@ import { Effect, type Layer, ManagedRuntime } from 'effect';
 
 import { writtenDatasetFiles } from '../src/files/dataset-files.ts';
 import type { DatasetFiles } from '../src/files/files-refusals.ts';
-import { alpha, buildStartAfter, dailyDocument } from './order-history.ts';
+import { alpha, buildStartAfter, dailyOrders } from './order-history.ts';
 
 export interface FileRead {
   readonly bytes: number;
@@ -42,7 +42,7 @@ export async function writtenOn(
   const runtime = ManagedRuntime.make(ledger);
   try {
     const { content } = await runtime.runPromise(Ledger);
-    const request = { database, content, playbook: alpha, document: dailyDocument, now: buildStartAfter(days) };
+    const request = { database, content, playbook: alpha, document: dailyOrders.document, now: buildStartAfter(days) };
     const started = performance.now();
     const files = await Effect.runPromise(writtenDatasetFiles(request));
     const writtenMs = performance.now() - started;

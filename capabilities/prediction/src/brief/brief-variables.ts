@@ -56,6 +56,8 @@ function unknownAt(shape: Shape, path: readonly VariableSegment[]): number | und
   return reached.at;
 }
 
+const listIndex = /^\d+$/u;
+
 function nameOf(path: readonly VariableSegment[]): string {
   return path
     .map((segment, index) => {
@@ -65,6 +67,10 @@ function nameOf(path: readonly VariableSegment[]): string {
       return index === 0 ? segment : `.${segment}`;
     })
     .join('');
+}
+
+export function renderedNameOf(dotted: string): string {
+  return nameOf(dotted.split('.').map((segment) => (listIndex.test(segment) ? Number(segment) : segment)));
 }
 
 function referenceIssue({ path, line }: VariableReference): DocumentIssue | undefined {

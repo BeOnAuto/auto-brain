@@ -1,11 +1,17 @@
-import type { DefinitionSummary } from '@on.auto/definitions';
+import type { DefinitionSummary, SavedDefinitions, StrippedForms } from '@on.auto/definitions';
 import { issueText, type DocumentIssue } from '@on.auto/definitions/document';
-import { InvalidInput } from '@on.auto/operations';
+import { InvalidInput, type Unavailable } from '@on.auto/operations';
 import { Effect, Result, type Schema } from 'effect';
 
 import { dataJsonOf } from '../data/data-digest.ts';
 import { parsePredictionDocument } from '../document/document-parsing.ts';
 import type { PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';
+
+export type PredictionCheck = (
+  document: PredictionFunctionDefinitionDocument,
+  source: string,
+  saved: SavedDefinitions,
+) => Effect.Effect<StrippedForms, InvalidInput | Unavailable>;
 
 export function invalidDefinition(issues: readonly DocumentIssue[]): InvalidInput {
   return new InvalidInput({

@@ -29,8 +29,8 @@ import { datasetWritten } from './dataset-writing.ts';
 
 export interface DatasetFolding {
   readonly filters: FilterSandbox;
+  readonly triesBeforeStall: number;
   readonly rebuildsAtOnce?: number;
-  readonly triesBeforeStall?: number;
 }
 
 interface Wanted {
@@ -79,8 +79,8 @@ export function datasetsOf(
 
 export function datasetFolder({
   filters,
+  triesBeforeStall,
   rebuildsAtOnce = predictionBounds.datasetRebuildsAtOnce,
-  triesBeforeStall = predictionBounds.triesBeforeStall,
 }: DatasetFolding): Folder<DatasetRow, DatasetChange> {
   return {
     definitionType: predictionDefinitionType,
