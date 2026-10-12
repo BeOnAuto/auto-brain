@@ -16,7 +16,7 @@ import { definitionWordsFor } from '../plain-language/definition-words.ts';
 import { runsListed, runsToList } from '../plain-language/reading-words.ts';
 import { RunSchema } from '../runs/run.ts';
 import { ListedRunSchema, listedRunsOf } from './listed-run.ts';
-import { storedTypesByStatus } from './run-status.ts';
+import type { StoredTypesByStatus } from './run-status.ts';
 
 const description = [
   'Lists the runs of the brain a page at a time, newest first, each with its definition, its status, who started it and when it ended, without its output.',
@@ -56,7 +56,7 @@ function streamsOfRuns(type: string | undefined, name: string | undefined): Reco
   };
 }
 
-function runsListedBy(byStatus: ReturnType<typeof storedTypesByStatus>) {
+function runsListedBy(byStatus: StoredTypesByStatus) {
   return Effect.fnUntraced(function* ({ type, name, status, limit = defaultPageLimit, cursor }: ListRunsInput) {
     const page = yield* (yield* BrainReader).readRecorded(streamsOfRuns(type, name), {
       order: 'desc',
@@ -72,10 +72,10 @@ function runsListedBy(byStatus: ReturnType<typeof storedTypesByStatus>) {
   });
 }
 
-export function defineListRuns(capabilities: readonly Capability[]) {
+export function defineListRuns(capabilities: readonly Capability[], byStatus: StoredTypesByStatus) {
   const known = knownCapabilities(capabilities);
   const words = definitionWordsFor(capabilities);
-  const listRuns = runsListedBy(storedTypesByStatus(capabilities));
+  const listRuns = runsListedBy(byStatus);
   const operation = defineQuery('brain', {
     name: 'list_runs',
     title: 'List runs',

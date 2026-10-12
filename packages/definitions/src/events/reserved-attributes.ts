@@ -3,7 +3,7 @@ import { Schema } from 'effect';
 
 import type { Capability } from '../capability/capability.ts';
 import type { DefinitionEvent } from '../registry/definition-events.ts';
-import { declaredFactsOf, ownedStreamsOf } from '../run-work/declared-facts.ts';
+import { composedFactsOf, type CapabilityFacts } from '../run-work/declared-facts.ts';
 import { coreRunFactTypes } from '../runs/run-events.ts';
 import type { EventPublished } from './published-events.ts';
 import type { ReactionRefused } from './reaction-refusals.ts';
@@ -24,22 +24,22 @@ const brainFeedTypes: Readonly<Record<BrainFeedType, true>> = {
   reaction_refused: true,
 };
 
-type NamingCapability = Pick<Capability, 'facts'> & Partial<Pick<Capability, 'runWords'>>;
+type NamingCapability = Pick<Capability, 'type' | 'facts'> & Partial<Pick<Capability, 'runWords'>>;
 
 function deferralTypesOf(capabilities: readonly NamingCapability[]): readonly string[] {
   return capabilities.flatMap(({ runWords }) => (runWords === undefined ? [] : [runWords.deferralType]));
 }
 
-function streamTypesOf(capabilities: readonly NamingCapability[]): readonly string[] {
-  return ownedStreamsOf(capabilities).flatMap(({ publicNames }) => Object.values(publicNames).flat());
+function streamTypesOf({ streams }: CapabilityFacts): readonly string[] {
+  return streams.flatMap(({ publicNames }) => Object.values(publicNames).flat());
 }
 
-function brainTypesOf(capabilities: readonly NamingCapability[]): ReadonlySet<string> {
+function brainTypesOf(capabilities: readonly NamingCapability[], facts: CapabilityFacts): ReadonlySet<string> {
   return new Set([
     ...coreRunFactTypes,
-    ...declaredFactsOf(capabilities).map(({ type }) => type),
+    ...facts.onRuns.map(({ type }) => type),
     ...deferralTypesOf(capabilities),
-    ...streamTypesOf(capabilities),
+    ...streamTypesOf(facts),
     ...Object.keys(brainFeedTypes),
   ]);
 }
@@ -113,7 +113,10 @@ export interface BrainOwnNames {
   readonly refusingTheBrainsOwnAttributes: ReturnType<typeof refusingOf>;
 }
 
-export function brainOwnNamesOf(capabilities: readonly NamingCapability[]): BrainOwnNames {
-  const types = brainTypesOf(capabilities);
+export function brainOwnNamesOf(
+  capabilities: readonly NamingCapability[],
+  facts: CapabilityFacts = composedFactsOf(capabilities),
+): BrainOwnNames {
+  const types = brainTypesOf(capabilities, facts);
   return { types, refusingTheBrainsOwnAttributes: refusingOf(types) };
 }

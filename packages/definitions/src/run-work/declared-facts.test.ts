@@ -1,11 +1,12 @@
 import { Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { declaredFactsOf } from '../index.ts';
+import { composedFactsOf, declaredFactsOf, makeDefinitionPresenters } from '../index.ts';
 import { RunEventSchema } from '../runs/run-events.ts';
 import { askedRunId, askingFacts } from '../testing/asked-runs.ts';
-import { asking } from '../testing/asking.ts';
+import { asking, nudgesPresenter } from '../testing/asking.ts';
 import { echo } from '../testing/echo.ts';
+import { brainStreamKinds } from './declared-facts.ts';
 
 const context = {
   at: '2026-10-01T09:00:00.000Z',
@@ -40,16 +41,45 @@ describe('the facts a ledger reads on a run', () => {
   });
 
   it('are declared once each across the capabilities composed, and never under a name the brain records itself', () => {
+    const prodding = { ...asking, type: 'prodding' };
     const claimingAFailure = {
+      type: 'claiming',
       facts: { ...asking.facts, onRuns: asking.facts.onRuns.map((fact) => ({ ...fact, type: 'run_failed' })) },
     };
 
-    expect(() => declaredFactsOf([asking, echo, asking])).toThrow(
-      'The fact nudge_sent is declared more than once or is one the brain records itself',
+    expect(() => declaredFactsOf([asking, echo, prodding])).toThrow(
+      'The fact nudge_sent is declared by the capabilities asking and prodding, and one capability alone may declare it',
     );
-    expect(() => declaredFactsOf([claimingAFailure])).toThrow(
-      'The fact run_failed is declared more than once or is one the brain records itself',
+    expect(() => declaredFactsOf([echo, claimingAFailure])).toThrow(
+      'The fact run_failed that the capability claiming declares is one the brain records itself',
     );
     expect(declaredFactsOf([echo, asking]).map(({ type }) => type)).toEqual(['nudge_sent']);
+  });
+});
+
+describe('the stream kinds the capabilities composed own', () => {
+  it('are declared by one capability each, and composed beside the facts on runs', () => {
+    const presenting = { type: 'presenting', facts: { onRuns: [], streams: [nudgesPresenter] } };
+
+    expect(() => composedFactsOf([asking, echo, presenting])).toThrow(
+      'The stream kind nudges is declared by the capabilities asking and presenting, and one capability alone may declare it',
+    );
+    expect(composedFactsOf([echo, asking])).toEqual({ onRuns: asking.facts.onRuns, streams: [nudgesPresenter] });
+  });
+});
+
+function claiming(streamKind: string) {
+  return { type: 'claiming', facts: { onRuns: [], streams: [{ ...nudgesPresenter, streamKind }] } };
+}
+
+describe('the stream kinds the brain records on itself', () => {
+  it('are the kinds of its own presenters', () => {
+    expect(makeDefinitionPresenters([echo]).map(({ streamKind }) => streamKind)).toEqual(brainStreamKinds);
+  });
+
+  it.each(brainStreamKinds)('refuse a capability that declares %s, naming the kind and the capability', (kind) => {
+    expect(() => composedFactsOf([echo, claiming(kind)])).toThrow(
+      `The stream kind ${kind} that the capability claiming declares is one the brain records on itself`,
+    );
   });
 });

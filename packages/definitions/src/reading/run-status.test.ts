@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { declaredFactsOf } from '../run-work/declared-facts.ts';
 import type { RunEvent } from '../runs/run-events.ts';
 import { evolveRun, startedRunOf } from '../runs/run-state.ts';
 import { asking } from '../testing/asking.ts';
@@ -55,7 +56,7 @@ const latestOfEveryType: Readonly<Record<string, RunEvent>> = {
   nudge_sent: { type: 'work', data: { fact: { type: 'nudge_sent', data: { number: 1 } } } },
 };
 
-const byStatus = storedTypesByStatus([asking]);
+const byStatus = storedTypesByStatus(declaredFactsOf([asking]));
 
 const statusByStoredType = Object.entries(byStatus).flatMap(([status, types]: readonly [string, readonly string[]]) =>
   types.map((type) => [type, status] as const),

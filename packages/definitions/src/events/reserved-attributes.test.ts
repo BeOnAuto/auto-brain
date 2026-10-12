@@ -65,7 +65,7 @@ describe('the types and sources of what the brain records itself', () => {
   });
 
   it('are those of facts declared before their capability is made, which say no words of a deferral', () => {
-    const declared = brainOwnNamesOf([echo, { facts: { onRuns: [], streams: [nudgesPresenter] } }]);
+    const declared = brainOwnNamesOf([echo, { type: 'nudging', facts: { onRuns: [], streams: [nudgesPresenter] } }]);
 
     expect([...declared.types].filter((type) => !brainOwnNamesOf([echo]).types.has(type))).toEqual(['nudge_read']);
   });

@@ -54,12 +54,14 @@ export { recordedAnswerOf, type RecordedAnswer, type RecordedAnswerFact, type Re
 export { RequestRecordSchema, isRequestRecord, takesAnAnswer, type RequestRecord } from './requests/request-record.ts';
 export { runEventOf, recordedRunIn, recordedRunInBrain, type RecordedRun } from './run-work/recorded-runs.ts';
 export {
+  composedFactsOf,
   declaredFact,
   declaredFactsOf,
   noFacts,
   runFactsOf,
   type CapabilityFacts,
   type DeclaredFact,
+  type DeclaringCapability,
   type RunFacts,
 } from './run-work/declared-facts.ts';
 export {

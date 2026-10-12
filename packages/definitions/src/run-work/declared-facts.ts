@@ -8,6 +8,7 @@ import {
 } from '@beonauto/operations';
 import { Schema } from 'effect';
 
+import { reactionsStreamKind } from '../events/reaction-refusals.ts';
 import { runDecidersOf, type RunDeciders } from '../runs/run-decider.ts';
 import { isCoreRunFactType } from '../runs/run-events.ts';
 
@@ -20,6 +21,11 @@ export interface DeclaredFact {
 export interface CapabilityFacts {
   readonly onRuns: readonly DeclaredFact[];
   readonly streams: readonly Presenter[];
+}
+
+export interface DeclaringCapability {
+  readonly type: string;
+  readonly facts: CapabilityFacts;
 }
 
 export const noFacts: CapabilityFacts = { onRuns: [], streams: [] };
@@ -37,11 +43,46 @@ export interface RunFacts extends RunDeciders {
   readonly declared: readonly DeclaredFact[];
 }
 
-function requireOwnTypes(declared: readonly DeclaredFact[]): void {
-  const types = declared.map(({ type }) => type);
-  const taken = types.find((type, index) => isCoreRunFactType(type) || types.indexOf(type) !== index);
-  if (taken !== undefined) {
-    throw new Error(`The fact ${taken} is declared more than once or is one the brain records itself`);
+interface Declaration {
+  readonly name: string;
+  readonly by: string;
+}
+
+function firstDeclaredAgain(declarations: readonly Declaration[]): readonly [Declaration, Declaration] | undefined {
+  for (const [index, again] of declarations.entries()) {
+    const first = declarations.slice(0, index).find(({ name }) => name === again.name);
+    if (first !== undefined) {
+      return [first, again];
+    }
+  }
+  return undefined;
+}
+
+function requireDeclaredOnce(what: string, declarations: readonly Declaration[]): void {
+  const twice = firstDeclaredAgain(declarations);
+  if (twice !== undefined) {
+    const [first, again] = twice;
+    throw new Error(
+      `The ${what} ${again.name} is declared by the capabilities ${first.by} and ${again.by}, and one capability alone may declare it`,
+    );
+  }
+}
+
+function requireNoCoreName(declarations: readonly Declaration[]): void {
+  const core = declarations.find(({ name }) => isCoreRunFactType(name));
+  if (core !== undefined) {
+    throw new Error(`The fact ${core.name} that the capability ${core.by} declares is one the brain records itself`);
+  }
+}
+
+export const brainStreamKinds: readonly string[] = ['runs', 'definitions', 'events', reactionsStreamKind];
+
+function requireNoBrainStreamKind(declarations: readonly Declaration[]): void {
+  const brains = declarations.find(({ name }) => brainStreamKinds.includes(name));
+  if (brains !== undefined) {
+    throw new Error(
+      `The stream kind ${brains.name} that the capability ${brains.by} declares is one the brain records on itself`,
+    );
   }
 }
 
@@ -51,12 +92,24 @@ export function runFactsOf(declared: readonly DeclaredFact[]): RunFacts {
   return { declared, ...runDecidersOf(isDeclared, ({ type }) => types.has(type)) };
 }
 
-export function declaredFactsOf(capabilities: readonly { readonly facts: CapabilityFacts }[]): readonly DeclaredFact[] {
-  const declared = capabilities.flatMap(({ facts }) => facts.onRuns);
-  requireOwnTypes(declared);
-  return declared;
+export function declaredFactsOf(capabilities: readonly DeclaringCapability[]): readonly DeclaredFact[] {
+  const declarations = capabilities.flatMap(({ type: by, facts }) =>
+    facts.onRuns.map(({ type }) => ({ name: type, by })),
+  );
+  requireNoCoreName(declarations);
+  requireDeclaredOnce('fact', declarations);
+  return capabilities.flatMap(({ facts }) => facts.onRuns);
 }
 
-export function ownedStreamsOf(capabilities: readonly { readonly facts: CapabilityFacts }[]): readonly Presenter[] {
+function ownedStreamsOf(capabilities: readonly DeclaringCapability[]): readonly Presenter[] {
+  const declarations = capabilities.flatMap(({ type: by, facts }) =>
+    facts.streams.map(({ streamKind }) => ({ name: streamKind, by })),
+  );
+  requireNoBrainStreamKind(declarations);
+  requireDeclaredOnce('stream kind', declarations);
   return capabilities.flatMap(({ facts }) => facts.streams);
+}
+
+export function composedFactsOf(capabilities: readonly DeclaringCapability[]): CapabilityFacts {
+  return { onRuns: declaredFactsOf(capabilities), streams: ownedStreamsOf(capabilities) };
 }
