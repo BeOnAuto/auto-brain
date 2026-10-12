@@ -163,11 +163,14 @@ describe('the route a dataset is uploaded through', () => {
     ]);
   });
 
-  it('is listed on no MCP endpoint, and a function that names what it kept stands on its upload', async () => {
+  it('is listed on no MCP endpoint, and a function that names what it kept stands on its upload, where one that names what it never kept is refused', async () => {
     const server = await serving(await onSQLite());
     const { body } = await uploaded(server.origin, weeks);
     await server.call('POST', `${alpha}/definitions/prediction`, {
       body: { name: 'weekly-orders', source: uploadedWeeklyOrders(sha256Of(weeks)) },
+    });
+    const neverKept = await server.call('POST', `${alpha}/definitions/prediction`, {
+      body: { name: 'other-orders', source: uploadedWeeklyOrders(another) },
     });
 
     const tools = await withMcpSession(
@@ -180,5 +183,16 @@ describe('the route a dataset is uploaded through', () => {
     expect(body).toMatchObject({ dataset: sha256Of(weeks), rows: 2, series: 1, period: 'week' });
     expect(tools.map(({ name }) => name)).not.toContain('upload_dataset');
     expect(read.body).toMatchObject({ standing: { dataset: { kind: 'uploaded', sha256: sha256Of(weeks) } } });
+    expect([neverKept.status, neverKept.body]).toEqual([
+      422,
+      expect.objectContaining({
+        errors: [
+          {
+            pointer: '/source',
+            detail: `Line 10, /data/dataset: This playbook keeps no dataset under ${another.slice(0, 12)}…; upload it first, then name it`,
+          },
+        ],
+      }),
+    ]);
   });
 });

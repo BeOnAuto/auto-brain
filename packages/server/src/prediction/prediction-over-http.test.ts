@@ -82,7 +82,7 @@ describe('a prediction function saved over HTTP', { timeout: testTimeoutMs }, ()
 });
 
 describe('a run of a prediction function over HTTP before a version is built', () => {
-  it('refuses a question, since no version is active, and a build, which this runtime does not offer yet, each after its start, and only a build finishes later', async () => {
+  it('refuses a question, since no version is active, and a build, which this runtime does not offer yet and no retry gets, each after its start, and only a build finishes later', async () => {
     const server = await serving();
     await saved(server, 'weekly-orders');
     const run = `${alpha}/definitions/prediction/weekly-orders/run`;
@@ -97,7 +97,11 @@ describe('a run of a prediction function over HTTP before a version is built', (
       409,
       expect.objectContaining({ reason: 'conflict', kind: 'no_active_version' }),
     ]);
-    expect([built.status, built.body]).toEqual([503, expect.objectContaining({ reason: 'unavailable' })]);
+    expect([built.status, built.body, built.headers.get('retry-after')]).toEqual([
+      503,
+      expect.objectContaining({ reason: 'unavailable', kind: 'build_not_offered' }),
+      null,
+    ]);
     expect(histories.map(({ body }) => body)).toMatchObject([
       { events: [{ type: 'run_started', data: { input: { series: 'north' } } }, { type: 'run_rejected' }] },
       { events: [{ type: 'run_started', data: { finishes_later: true } }, { type: 'run_rejected' }] },
