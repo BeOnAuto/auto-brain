@@ -4,13 +4,13 @@ import { canAccessBrain } from '../caller/brain-access.ts';
 import type { CallerIdentity } from '../caller/caller.ts';
 import { isBrainId, isOrgId } from '../caller/identifiers.ts';
 import type { OperationKind } from '../caller/operation-scope.ts';
-import type { Registration } from '../definition/registration.ts';
+import type { Runnable } from '../definition/registration.ts';
 import type { BrainRequest, OrgRequest } from '../dispatch/request.ts';
 import { BrainRegistry, type BrainStatus } from '../ledger/brain-registry.ts';
 import { rejected, type Rejected } from '../outcome/outcome.ts';
 import { alternatives } from '../plain-language/phrasing.ts';
 
-function rejectionOfCaller(registration: Registration, { caller, org }: OrgRequest): Rejected | undefined {
+function rejectionOfCaller(registration: Runnable, { caller, org }: OrgRequest): Rejected | undefined {
   if (caller.org !== org) {
     return rejected('forbidden', 'The caller does not belong to this org');
   }
@@ -45,10 +45,7 @@ function failWith(rejection: Rejected | undefined): Effect.Effect<void, Rejected
   return rejection === undefined ? Effect.void : Effect.fail(rejection);
 }
 
-export function authorizeOrgCall(
-  registration: Registration<'org'>,
-  request: OrgRequest,
-): Effect.Effect<void, Rejected> {
+export function authorizeOrgCall(registration: Runnable<'org'>, request: OrgRequest): Effect.Effect<void, Rejected> {
   return failWith(
     rejectionOfCaller(registration, request) ??
       (registration.targetsBrain ? rejectionOfBrainAccess(request.caller, brainFieldOf(request.input)) : undefined),
@@ -56,7 +53,7 @@ export function authorizeOrgCall(
 }
 
 export function authorizeBrainCall(
-  registration: Registration<'brain'>,
+  registration: Runnable<'brain'>,
   request: BrainRequest,
 ): Effect.Effect<void, Rejected> {
   return failWith(rejectionOfCaller(registration, request) ?? rejectionOfBrainAccess(request.caller, request.brain));
@@ -76,7 +73,7 @@ function rejectionOfBrainStatus(status: BrainStatus, kind: OperationKind, brain:
 }
 
 export const confirmBrainTakesCall = Effect.fnUntraced(function* (
-  { kind }: Registration<'brain'>,
+  { kind }: Runnable<'brain'>,
   { org, brain }: BrainRequest,
 ) {
   yield* failWith(rejectionOfOrgId(org) ?? rejectionOfBrainId(brain));

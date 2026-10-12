@@ -1,8 +1,19 @@
-import { Effect, type Schema } from 'effect';
+import { Effect } from 'effect';
 
-import { isStreamedContent, type StreamedContent } from '../content/streamed-content.ts';
-import { streamedSucceeded, succeeded, type Succeeded } from '../outcome/outcome.ts';
-import type { BodyArguments, HttpBody, StreamedBody, StreamedBodyKind } from './definition.ts';
+import type { StreamedContent } from '../content/streamed-content.ts';
+import { streamed, succeeded, type Succeeded } from '../outcome/outcome.ts';
+import { outputEncoder } from './codecs.ts';
+import { requireClosedOutput } from './definition-checks.ts';
+import type {
+  AnswerDeclarations,
+  AnswerKind,
+  AnswerValues,
+  BodyArguments,
+  HttpBody,
+  ObjectSchema,
+  StreamedBody,
+  StreamedBodyKind,
+} from './definition.ts';
 
 type BodyArgumentsOf = {
   readonly [Kind in keyof BodyArguments]: (
@@ -43,9 +54,22 @@ export const bodyArgumentsOf: BodyArgumentsOf = {
   csv: streamedBody,
 };
 
-export function answeredWith<Output>(
-  encodeOutput: (output: Output) => Effect.Effect<Schema.JsonObject>,
-): (answer: Output | StreamedContent) => Effect.Effect<Succeeded> {
-  return (answer) =>
-    isStreamedContent(answer) ? Effect.succeed(streamedSucceeded(answer)) : Effect.map(encodeOutput(answer), succeeded);
+type Answering<Out extends ObjectSchema> = {
+  readonly [Kind in AnswerKind]: (
+    declared: AnswerDeclarations<Out>[Kind],
+  ) => (value: AnswerValues<Out>[Kind]) => Effect.Effect<Succeeded>;
+};
+
+export function answeringOf<Out extends ObjectSchema>(name: string): Answering<Out> {
+  return {
+    json: ({ outputSchema }) => {
+      requireClosedOutput(name, outputSchema);
+      const encode = outputEncoder(outputSchema);
+      return (output) => Effect.map(encode(output), succeeded);
+    },
+    stream:
+      ({ mediaType }) =>
+      ({ stream, bytes }) =>
+        Effect.succeed(streamed({ stream, bytes, mediaType })),
+  };
 }

@@ -7,11 +7,17 @@ import type { DeclarableReason, RejectionKind } from './rejection.ts';
 
 export type RejectionReason = 'forbidden' | DeclarableReason;
 
-export interface Succeeded {
+export interface Answered {
   readonly status: 'succeeded';
   readonly output: Schema.JsonObject;
-  readonly streamed?: StreamedContent;
 }
+
+export interface Streamed {
+  readonly status: 'succeeded';
+  readonly streamed: StreamedContent;
+}
+
+export type Succeeded = Answered | Streamed;
 
 export interface Rejected {
   readonly status: 'rejected';
@@ -31,16 +37,16 @@ export interface Cancelled {
   readonly status: 'cancelled';
 }
 
-export type Outcome = Succeeded | Rejected | Failed;
+export type Outcome<S extends Succeeded = Answered> = S | Rejected | Failed;
 
-export type Settled = Outcome | Cancelled;
+export type Settled<S extends Succeeded = Answered> = Outcome<S> | Cancelled;
 
-export function succeeded(output: Schema.JsonObject): Succeeded {
+export function succeeded(output: Schema.JsonObject): Answered {
   return { status: 'succeeded', output };
 }
 
-export function streamedSucceeded(streamed: StreamedContent): Succeeded {
-  return { status: 'succeeded', output: {}, streamed };
+export function streamed(content: StreamedContent): Streamed {
+  return { status: 'succeeded', streamed: content };
 }
 
 export function rejected(

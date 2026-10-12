@@ -1,7 +1,7 @@
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { BrainReader, contentOfText, keptContentOf, sha256Of, type RecordedEvent } from '../index.ts';
+import { BrainReader, keptContentOf, sha256Of, textToKeep, type RecordedEvent } from '../index.ts';
 import {
   brainBoundProjectionReader,
   brainBoundRecordedReader,
@@ -19,9 +19,10 @@ const texts = {
   a1: '{"query":"x"}',
   r1: '{"content":[]}',
   r2: '{"content":[{"type":"text","text":"large"}]}',
+  m1: 'model weights',
 };
 
-const [a1, r1, r2] = await Promise.all([sha256Of(texts.a1), sha256Of(texts.r1), sha256Of(texts.r2)]);
+const [a1, r1, r2, m1] = [sha256Of(texts.a1), sha256Of(texts.r1), sha256Of(texts.r2), sha256Of(texts.m1)];
 
 function recordOf(data: unknown): RecordedEvent {
   return {
@@ -43,9 +44,10 @@ function keptOf(records: readonly RecordedEvent[], mostBytes: number, digests: r
   const { service } = memoryLedger();
   return Effect.runPromise(
     Effect.gen(function* () {
-      yield* service.content.put(brain, a1, contentOfText(texts.a1, 'application/json'));
-      yield* service.content.put(brain, r1, contentOfText(texts.r1, 'application/json'));
-      yield* service.content.put(brain, r2, contentOfText(texts.r2, 'application/json'));
+      yield* service.content.put(brain, textToKeep(texts.a1, 'application/json'));
+      yield* service.content.put(brain, textToKeep(texts.r1, 'application/problem+json'));
+      yield* service.content.put(brain, textToKeep(texts.r2, 'text/plain; charset=utf-8'));
+      yield* service.content.put(brain, textToKeep(texts.m1, 'application/octet-stream'));
       const content = yield* keptContentOf(records, mostBytes);
       return digests.map((digest) => content(digest));
     }).pipe(
@@ -73,6 +75,15 @@ describe('the content kept for the events of a read', () => {
 
     await expect(keptOf(records, 4096, [a1, r1, r2])).resolves.toEqual([texts.a1, texts.r1, undefined]);
     await expect(keptOf(records, Infinity, [r2])).resolves.toEqual([texts.r2]);
+  });
+
+  it('joins no content that is not text or JSON, leaving its digest and size to show', async () => {
+    const records = [
+      recordOf({ result_bytes: 13, result_sha256: m1 }),
+      recordOf({ arguments_bytes: 13, arguments_sha256: a1 }),
+    ];
+
+    await expect(keptOf(records, Infinity, [m1, a1])).resolves.toEqual([undefined, texts.a1]);
   });
 
   it('reads nothing for a fact that carries sizes and no digest, or for data that is not a fact of a call', async () => {

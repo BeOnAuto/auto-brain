@@ -6,13 +6,13 @@ import type { DeclarableReason, Rejection } from '../outcome/rejection.ts';
 import { checkedDefinition } from './definition-checks.ts';
 import type { Definition, ObjectSchema } from './definition.ts';
 import { jsonSchemaDocumentOf } from './json-schema.ts';
-import type { RegistrationOf } from './registration.ts';
+import type { RegisteredFieldsOf } from './registration.ts';
 
-export function settledOf<Answer, R extends DeclarableReason, Services>(
+export function settledOf<Answer, S extends Succeeded, R extends DeclarableReason, Services>(
   handled: Effect.Effect<Answer, Rejection<R>, Services>,
-  succeededWith: (answer: Answer) => Effect.Effect<Succeeded>,
+  succeededWith: (answer: Answer) => Effect.Effect<S>,
   reasons: readonly DeclarableReason[],
-): Effect.Effect<Succeeded, Rejected, Services> {
+): Effect.Effect<S, Rejected, Services> {
   return Effect.gen(function* () {
     const result = yield* Effect.result(handled);
     if (Result.isSuccess(result)) {
@@ -43,13 +43,13 @@ type RegisteredDefinition<K extends OperationKind> = Pick<
   | 'repeatable'
   | 'permittedBy'
   | 'inputSchema'
-  | 'outputSchema'
   | 'reasons'
->;
+> &
+  Partial<Pick<Definition<K, string, ObjectSchema, ObjectSchema, DeclarableReason, unknown>, 'outputSchema'>>;
 
 type RegisteredFields<S extends OperationScope, K extends OperationKind> = Omit<
-  RegistrationOf<S, K>,
-  'run' | 'plainLanguage' | 'servedOverHttpAlone'
+  RegisteredFieldsOf<S, K>,
+  'plainLanguage'
 >;
 
 export function registeredFieldsOf<S extends OperationScope, K extends OperationKind>(

@@ -2,33 +2,73 @@ import { Effect } from 'effect';
 
 import type { OperationKind, OperationScope } from '../caller/operation-scope.ts';
 import type { DeclarableReason } from '../outcome/rejection.ts';
-import { inputDecoder, outputEncoder } from './codecs.ts';
-import type { HttpBodyOf, HttpDefinition, InputSchemaFor, ObjectSchema, RelativePath } from './definition.ts';
+import { inputDecoder } from './codecs.ts';
+import type {
+  AnswerDeclarations,
+  AnswerKind,
+  AnswerValues,
+  HttpBodyOf,
+  HttpDefinition,
+  HttpFields,
+  HttpHandlerOf,
+  InputSchemaFor,
+  ObjectSchema,
+  RelativePath,
+} from './definition.ts';
 import type { HandlerServices } from './handler-services.ts';
-import { answeredWith, bodyArgumentsOf, requireMostBytes } from './http-body.ts';
+import { answeringOf, bodyArgumentsOf, requireMostBytes } from './http-body.ts';
 import { registeredFieldsOf, settledOf } from './registration-parts.ts';
-import type { RegistrationOf } from './registration.ts';
+import type { HttpRegistrationOf } from './registration.ts';
 
 export interface HttpOperation<S extends OperationScope, K extends OperationKind> {
-  readonly registration: RegistrationOf<S, K>;
+  readonly registration: HttpRegistrationOf<S, K>;
 }
+
+type AnsweringDefinition<
+  K extends OperationKind,
+  P extends string,
+  B extends HttpBodyOf<K>,
+  A extends AnswerKind,
+  In extends ObjectSchema,
+  Out extends ObjectSchema,
+  R extends DeclarableReason,
+  Services,
+> = {
+  readonly [Kind in A]: HttpFields<K, P, B, In, R> &
+    HttpHandlerOf<In, B, AnswerValues<Out>[Kind], R, Services> & {
+      readonly answer: AnswerDeclarations<Out>[Kind] & { readonly kind: Kind };
+    };
+}[A];
 
 export function defineHttpOperation<
   const S extends OperationScope,
   const K extends OperationKind,
   const P extends RelativePath,
   const B extends HttpBodyOf<K>,
+  const A extends AnswerKind,
   In extends InputSchemaFor<S, P>,
   Out extends ObjectSchema,
   const R extends DeclarableReason = never,
   Services extends HandlerServices<S, K> = never,
->(scope: S, kind: K, definition: HttpDefinition<K, P, B, In, Out, R, Services>): HttpOperation<S, K> {
-  const { name, body, inputSchema, outputSchema, handle } = definition;
+>(scope: S, kind: K, definition: HttpDefinition<K, P, B, A, In, Out, R, Services>): HttpOperation<S, K>;
+export function defineHttpOperation<
+  S extends OperationScope,
+  K extends OperationKind,
+  P extends RelativePath,
+  B extends HttpBodyOf<K>,
+  A extends AnswerKind,
+  In extends InputSchemaFor<S, P>,
+  Out extends ObjectSchema,
+  R extends DeclarableReason,
+  Services extends HandlerServices<S, K>,
+>(scope: S, kind: K, definition: AnsweringDefinition<K, P, B, A, In, Out, R, Services>): HttpOperation<S, K> {
+  const { name, body, inputSchema, handle } = definition;
   const fields = registeredFieldsOf(scope, kind, definition);
   requireMostBytes(name, body);
   const decodeInput = inputDecoder(inputSchema);
-  const answered = answeredWith(outputEncoder(outputSchema));
-  const run: RegistrationOf<S, K>['run'] = (input, encoding, given) =>
+  const answer: A = definition.answer.kind;
+  const answered = answeringOf<Out>(name)[answer](definition.answer);
+  const run: HttpRegistrationOf<S, K>['run'] = (input, encoding, given) =>
     Effect.flatMap(decodeInput(input, encoding), (decoded) =>
       Effect.flatMap(bodyArgumentsOf[body.kind](name, given), (bodyArguments) =>
         settledOf(handle(decoded, ...bodyArguments), answered, fields.reasons),

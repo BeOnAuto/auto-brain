@@ -1,13 +1,23 @@
-import { Effect, Predicate } from 'effect';
+import { Effect } from 'effect';
 
-export interface StreamedContent {
+export interface StreamedBytes {
   readonly stream: ReadableStream<Uint8Array>;
   readonly bytes: number;
+}
+
+export interface StreamedContent extends StreamedBytes {
   readonly mediaType: string;
 }
 
-export function isStreamedContent(value: unknown): value is StreamedContent {
-  return Predicate.hasProperty(value, 'stream') && value.stream instanceof ReadableStream;
+export interface ExpectedContent {
+  readonly sha256?: string;
+  readonly bytes?: number;
+}
+
+export interface ContentToKeep {
+  readonly stream: ReadableStream<Uint8Array>;
+  readonly mediaType: string;
+  readonly expected?: ExpectedContent;
 }
 
 export function contentOfText(text: string, mediaType: string): StreamedContent {
@@ -20,6 +30,10 @@ export function contentOfBytes(bytes: Readonly<Uint8Array>, mediaType: string): 
   return { stream: blob.stream(), bytes: blob.size, mediaType };
 }
 
+export function textToKeep(text: string, mediaType: string): ContentToKeep {
+  return { stream: new Blob([text]).stream(), mediaType };
+}
+
 async function decoded(stream: ReadableStream<Uint8Array>): Promise<string> {
   const utf8 = new TextDecoder('utf-8', { fatal: true });
   let text = '';
@@ -29,6 +43,6 @@ async function decoded(stream: ReadableStream<Uint8Array>): Promise<string> {
   return `${text}${utf8.decode()}`;
 }
 
-export function textOfContent({ stream }: StreamedContent): Effect.Effect<string> {
+export function textOfContent({ stream }: StreamedBytes): Effect.Effect<string> {
   return Effect.promise(() => decoded(stream));
 }

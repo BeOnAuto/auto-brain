@@ -1,14 +1,29 @@
 import type { Effect } from 'effect';
 
 import type { BrainAddress } from '../caller/brain-context.ts';
-import type { StreamedContent } from './streamed-content.ts';
+import type { ContentRefused } from './content-refusals.ts';
+import type { StagingEnded } from './staging-ended.ts';
+import type { ContentToKeep, StreamedContent } from './streamed-content.ts';
+
+export interface Digested {
+  readonly sha256: string;
+  readonly bytes: number;
+}
+
+export interface ContentKept extends Digested {
+  readonly mediaType: string;
+}
 
 export interface RecordedContent {
-  readonly put: (brain: BrainAddress, sha256: string, content: StreamedContent) => Effect.Effect<void>;
+  readonly put: (brain: BrainAddress, content: ContentToKeep) => Effect.Effect<ContentKept, ContentRefused>;
   readonly get: (brain: BrainAddress, sha256: string) => Effect.Effect<StreamedContent | undefined>;
-  readonly stage: (brain: BrainAddress, build: string, sha256: string, content: StreamedContent) => Effect.Effect<void>;
-  readonly staged: (brain: BrainAddress, build: string, sha256: string) => Effect.Effect<StreamedContent | undefined>;
-  readonly unstage: (brain: BrainAddress, build: string) => Effect.Effect<void>;
+  readonly stage: (
+    brain: BrainAddress,
+    run: string,
+    content: ContentToKeep,
+  ) => Effect.Effect<ContentKept, ContentRefused | StagingEnded>;
+  readonly staged: (brain: BrainAddress, run: string, sha256: string) => Effect.Effect<StreamedContent | undefined>;
+  readonly unstage: (brain: BrainAddress, run: string) => Effect.Effect<void>;
 }
 
 export interface BrainContentReader {

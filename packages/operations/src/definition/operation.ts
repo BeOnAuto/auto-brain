@@ -1,7 +1,7 @@
 import { Effect, type Schema } from 'effect';
 
 import type { OperationKind, OperationScope } from '../caller/operation-scope.ts';
-import { succeeded, type Rejected, type Succeeded } from '../outcome/outcome.ts';
+import { succeeded, type Answered, type Rejected } from '../outcome/outcome.ts';
 import type { DeclarableReason, Rejection } from '../outcome/rejection.ts';
 import { inputDecoder, outputEncoder, plainLanguageFields, typeValidator } from './codecs.ts';
 import type { Definition, InputSchemaFor, ObjectSchema, RelativePath } from './definition.ts';
@@ -55,7 +55,7 @@ function runnerOf<Input, Output, R extends DeclarableReason, Services>(
   handle: (input: Input) => Effect.Effect<Output, Rejection<R>, Services>,
   encodeOutput: (output: Output) => Effect.Effect<Schema.JsonObject>,
   reasons: readonly DeclarableReason[],
-): (input: unknown, encoding: InputEncoding) => Effect.Effect<Succeeded, Rejected, Services> {
+): (input: unknown, encoding: InputEncoding) => Effect.Effect<Answered, Rejected, Services> {
   return (input, encoding) =>
     Effect.flatMap(decodeInput(input, encoding), (decoded) =>
       settledOf(handle(decoded), (output) => Effect.map(encodeOutput(output), succeeded), reasons),

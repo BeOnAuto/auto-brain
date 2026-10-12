@@ -8,6 +8,7 @@ import {
   textOfContent,
   type Outcome,
   type StreamedContent,
+  type Succeeded,
 } from '../index.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { harness, toBrain } from '../testing/harness.ts';
@@ -26,7 +27,10 @@ const keepModel = defineHttpOperation('brain', 'command', {
   route: { method: 'POST', path: '/models/{id}' },
   body: { kind: 'octet-stream', mostBytes: 1024 },
   inputSchema: Schema.Struct({ id: Schema.String }),
-  outputSchema: Schema.Struct({ id: Schema.String, bytes: Schema.Number, media_type: Schema.String }),
+  answer: {
+    kind: 'json',
+    outputSchema: Schema.Struct({ id: Schema.String, bytes: Schema.Number, media_type: Schema.String }),
+  },
   reasons: ['invalid_input'],
   handle: ({ id }, body) =>
     body.bytes === 0
@@ -41,9 +45,9 @@ const readModel = defineHttpOperation('brain', 'query', {
   route: { method: 'GET', path: '/models/{id}' },
   body: { kind: 'none' },
   inputSchema: Schema.Struct({ id: Schema.String }),
-  outputSchema: Nothing,
+  answer: { kind: 'stream', mediaType: 'text/plain' },
   reasons: [],
-  handle: ({ id }) => Effect.succeed(contentOfText(`model ${id}`, 'text/plain')),
+  handle: ({ id }) => Effect.succeed(contentOfText(`model ${id}`, 'application/octet-stream')),
 });
 
 const nameModel = defineHttpOperation('brain', 'command', {
@@ -53,7 +57,7 @@ const nameModel = defineHttpOperation('brain', 'command', {
   route: { method: 'PUT', path: '/models/{id}/name' },
   body: { kind: 'json' },
   inputSchema: Schema.Struct({ id: Schema.String, name: Schema.String }),
-  outputSchema: Schema.Struct({ named: Schema.String }),
+  answer: { kind: 'json', outputSchema: Schema.Struct({ named: Schema.String }) },
   reasons: [],
   handle: ({ name }) => Effect.succeed({ named: name }),
 });
@@ -67,14 +71,14 @@ function withMostBytes(mostBytes: number) {
       route: { method: 'POST', path: '/any' },
       body: { kind: 'csv', mostBytes },
       inputSchema: Nothing,
-      outputSchema: Nothing,
+      answer: { kind: 'json', outputSchema: Nothing },
       reasons: [],
       handle: () => Effect.succeed({}),
     });
 }
 
-function streamedOf(outcome: Outcome): StreamedContent {
-  if (outcome.status !== 'succeeded' || outcome.streamed === undefined) {
+function streamedOf(outcome: Outcome<Succeeded>): StreamedContent {
+  if (outcome.status !== 'succeeded' || !('streamed' in outcome)) {
     throw new Error('The call answered no stream');
   }
   return outcome.streamed;
@@ -99,6 +103,22 @@ describe('an operation served over HTTP alone', () => {
     expect(withMostBytes(0)).toThrow('The most bytes of the body of keep_any must be a whole number above 0');
     expect(withMostBytes(1.5)).toThrow('The most bytes of the body of keep_any must be a whole number above 0');
     expect(withMostBytes(1)).not.toThrow();
+  });
+
+  it('is refused at its definition when its JSON answer is not an object that declares its fields', () => {
+    expect(() =>
+      defineHttpOperation('brain', 'query', {
+        name: 'read_any',
+        title: 'Read any',
+        description: 'Reads anything.',
+        route: { method: 'GET', path: '/any' },
+        body: { kind: 'none' },
+        inputSchema: Nothing,
+        answer: { kind: 'json', outputSchema: Schema.Struct({}) },
+        reasons: [],
+        handle: () => Effect.succeed({}),
+      }),
+    ).toThrow('The output of read_any must be an object that declares its fields');
   });
 });
 
@@ -129,12 +149,13 @@ describe('the call of an operation served over HTTP alone', () => {
     ]);
   });
 
-  it('answers a stream its handler gives as that stream', async () => {
+  it('answers the stream its handler gives with the media type its answer declares, and no output', async () => {
     const { dispatcher, run } = harness();
 
     const outcome = await run(dispatcher.dispatchToBrain(readModel.registration, toAlpha(acmeAdmin, { id: 'm1' })));
 
-    expect(outcome).toMatchObject({ status: 'succeeded', output: {}, streamed: { bytes: 8, mediaType: 'text/plain' } });
+    expect(outcome).toMatchObject({ status: 'succeeded', streamed: { bytes: 8, mediaType: 'text/plain' } });
+    expect(Object.keys(outcome)).toEqual(['status', 'streamed']);
     expect(await Effect.runPromise(textOfContent(streamedOf(outcome)))).toBe('model m1');
   });
 

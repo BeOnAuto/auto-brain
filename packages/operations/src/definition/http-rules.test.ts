@@ -16,21 +16,29 @@ const get = "  route: { method: 'GET', path: '/probe' },";
 
 const post = "  route: { method: 'POST', path: '/probe' },";
 
-const emptyInputAndOutput = ['  inputSchema: Empty,', '  outputSchema: Empty,', '  reasons: [],'];
+const answeringJson = ['  inputSchema: Empty,', "  answer: { kind: 'json', outputSchema: Empty },", '  reasons: [],'];
+
+const answeringAStream = [
+  '  inputSchema: Empty,',
+  "  answer: { kind: 'stream', mediaType: 'application/octet-stream' },",
+  '  reasons: [],',
+];
 
 const answering = '  handle: () => Effect.succeed({}),';
+
+const answeringTheBody = '  handle: (_input, body) => Effect.succeed(body),';
 
 const accepted: Readonly<Record<string, readonly string[]>> = {
   'http-command-answers-the-stream-it-takes.ts': definedOverHttp('command', [
     post,
     "  body: { kind: 'octet-stream', mostBytes: 64 },",
-    ...emptyInputAndOutput,
-    '  handle: (_input, body) => Effect.succeed(body),',
+    ...answeringAStream,
+    answeringTheBody,
   ]),
   'http-query-takes-no-body.ts': definedOverHttp('query', [
     get,
     "  body: { kind: 'none' },",
-    ...emptyInputAndOutput,
+    ...answeringJson,
     answering,
   ]),
 };
@@ -38,24 +46,27 @@ const accepted: Readonly<Record<string, readonly string[]>> = {
 const rejected: Readonly<Record<string, RejectedProbe>> = {
   'http-query-takes-a-body.ts': {
     because: 'Type \'"csv"\' is not assignable to type \'"none"\'',
-    source: definedOverHttp('query', [
-      get,
-      "  body: { kind: 'csv', mostBytes: 64 },",
-      ...emptyInputAndOutput,
-      answering,
-    ]),
+    source: definedOverHttp('query', [get, "  body: { kind: 'csv', mostBytes: 64 },", ...answeringJson, answering]),
   },
   'http-streamed-body-without-most-bytes.ts': {
     because: "Property 'mostBytes' is missing",
-    source: definedOverHttp('command', [post, "  body: { kind: 'csv' },", ...emptyInputAndOutput, answering]),
+    source: definedOverHttp('command', [post, "  body: { kind: 'csv' },", ...answeringJson, answering]),
   },
   'http-json-body-read-as-a-stream.ts': {
-    because: "Type 'undefined' is not assignable to type 'StreamedContent'",
+    because: "Type 'undefined' is not assignable to type 'StreamedBytes'",
+    source: definedOverHttp('command', [post, "  body: { kind: 'json' },", ...answeringAStream, answeringTheBody]),
+  },
+  'http-stream-answer-answers-json.ts': {
+    because: "is missing the following properties from type 'StreamedBytes': stream, bytes",
+    source: definedOverHttp('query', [get, "  body: { kind: 'none' },", ...answeringAStream, answering]),
+  },
+  'http-json-answer-answers-a-stream.ts': {
+    because: "Type 'StreamedContent' is not assignable to type '{ readonly [x: string]: never; }'",
     source: definedOverHttp('command', [
       post,
-      "  body: { kind: 'json' },",
-      ...emptyInputAndOutput,
-      '  handle: (_input, body) => Effect.succeed(body),',
+      "  body: { kind: 'octet-stream', mostBytes: 64 },",
+      ...answeringJson,
+      answeringTheBody,
     ]),
   },
 };

@@ -2,7 +2,7 @@ import type { Effect, Schema } from 'effect';
 
 import type { OperationKind, OperationScope } from '../caller/operation-scope.ts';
 import type { Permission } from '../caller/permission.ts';
-import type { StreamedContent } from '../content/streamed-content.ts';
+import type { StreamedBytes, StreamedContent } from '../content/streamed-content.ts';
 import type { DeclarableReason, Rejection } from '../outcome/rejection.ts';
 import type { PlainLanguage } from '../plain-language/plain-language.ts';
 import type { PathParameters, Route } from './route.ts';
@@ -83,14 +83,34 @@ export interface BodyArguments {
   readonly csv: readonly [body: StreamedContent];
 }
 
-export interface HttpDefinition<
+export interface JsonAnswer<Out extends ObjectSchema> {
+  readonly kind: 'json';
+  readonly outputSchema: Out;
+}
+
+export interface StreamAnswer {
+  readonly kind: 'stream';
+  readonly mediaType: string;
+}
+
+export interface AnswerDeclarations<Out extends ObjectSchema> {
+  readonly json: JsonAnswer<Out>;
+  readonly stream: StreamAnswer;
+}
+
+export interface AnswerValues<Out extends ObjectSchema> {
+  readonly json: Out['Type'];
+  readonly stream: StreamedBytes;
+}
+
+export type AnswerKind = keyof AnswerDeclarations<ObjectSchema>;
+
+export interface HttpFields<
   K extends OperationKind,
   P extends string,
   B extends HttpBodyOf<K>,
   In extends ObjectSchema,
-  Out extends ObjectSchema,
   R extends DeclarableReason,
-  Services,
 > {
   readonly name: string;
   readonly title: string;
@@ -100,10 +120,34 @@ export interface HttpDefinition<
   readonly successStatus?: SuccessStatusByKind[K];
   readonly permittedBy?: readonly Permission[];
   readonly inputSchema: In;
-  readonly outputSchema: Out;
   readonly reasons: readonly R[];
+}
+
+export interface HttpHandlerOf<
+  In extends ObjectSchema,
+  B extends HttpBody,
+  Answer,
+  R extends DeclarableReason,
+  Services,
+> {
   readonly handle: (
     input: In['Type'],
     ...body: BodyArguments[B['kind']]
-  ) => Effect.Effect<Out['Type'] | StreamedContent, NoInfer<Rejection<R>>, Services>;
+  ) => Effect.Effect<Answer, NoInfer<Rejection<R>>, Services>;
+}
+
+export interface HttpDefinition<
+  K extends OperationKind,
+  P extends string,
+  B extends HttpBodyOf<K>,
+  A extends AnswerKind,
+  In extends ObjectSchema,
+  Out extends ObjectSchema,
+  R extends DeclarableReason,
+  Services,
+>
+  extends
+    HttpFields<K, P, B, In, R>,
+    HttpHandlerOf<In, B, A extends 'json' ? Out['Type'] : StreamedBytes, R, Services> {
+  readonly answer: (A extends 'json' ? JsonAnswer<Out> : StreamAnswer) & { readonly kind: A };
 }
