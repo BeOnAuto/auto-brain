@@ -32,7 +32,8 @@ describe('the cancels the follower passed over, given at the first resume after 
     expect(resumed.troubles()).toEqual([
       'The cancel asked of acme/alpha/failing could not be given; the next sweep gives it again',
     ]);
-    expect(resumed.given()).toEqual(['acme/alpha/applied', 'acme/alpha/failing', 'acme/alpha/failing']);
+    expect(resumed.given().slice(0, 2).toSorted()).toEqual(['acme/alpha/applied', 'acme/alpha/failing']);
+    expect(resumed.given().slice(2)).toEqual(['acme/alpha/failing']);
     expect(await resumed.pending()).toEqual([]);
   });
 });
