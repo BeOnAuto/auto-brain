@@ -13,6 +13,7 @@ import {
 import { Predicate, Result, type Schema } from 'effect';
 import { toValue } from 'liquidjs';
 
+import { figure } from '../capability/figures.ts';
 import { predictionBounds } from '../capability/prediction-bounds.ts';
 import type { Checked } from '../document/checked-parts.ts';
 import { briefVariableIssues } from './brief-variables.ts';
@@ -83,7 +84,7 @@ const failureWords: {
   failed: ({ detail }) => `The brief does not render: ${detail}`,
   not_text: () => 'The brief writes a list or a mapping where text goes; write its items, or use the json filter',
   too_long: () =>
-    `The brief renders to more than ${predictionBounds.mostBriefBytes} bytes over the largest dataset the bounds admit; shorten it or loop over less`,
+    `The brief renders to more than ${figure(predictionBounds.mostBriefBytes)} bytes over the largest dataset the bounds admit; shorten it or loop over less`,
 };
 
 function wordsOf<Reason extends BriefFailure['reason']>(

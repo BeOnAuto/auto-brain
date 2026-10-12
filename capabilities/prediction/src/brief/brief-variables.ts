@@ -57,7 +57,14 @@ function unknownAt(shape: Shape, path: readonly VariableSegment[]): number | und
 }
 
 function nameOf(path: readonly VariableSegment[]): string {
-  return path.map((segment) => (typeof segment === 'string' ? segment : `[${String(segment)}]`)).join('.');
+  return path
+    .map((segment, index) => {
+      if (typeof segment !== 'string') {
+        return `[${String(segment)}]`;
+      }
+      return index === 0 ? segment : `.${segment}`;
+    })
+    .join('');
 }
 
 function referenceIssue({ path, line }: VariableReference): DocumentIssue | undefined {

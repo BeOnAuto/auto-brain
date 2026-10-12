@@ -58,17 +58,28 @@ describe('a prediction function document', () => {
       activate: 'automatic',
     });
   });
+});
 
-  it('keeps one digest for one data part however it is written, and another for another data part', () => {
+describe('the digest of the data part of a prediction function document', () => {
+  it('is one for the rows a data part folds, however it is written and whatever its window and its given features', () => {
     const reordered = weeklyOrdersWith(['  target: { as: count }', '  target:\n    as: count']);
     const rephrased = weeklyOrdersWith([
       'description: Predicts the orders of each region one and four weeks ahead',
       'description: Orders',
     ]);
     const windowed = weeklyOrdersWith(['  window: 156', '  window: 160']);
+    const givenNothing = weeklyOrdersWith(['  given: [promotion]', '']);
 
-    expect([digestOf(reordered), digestOf(rephrased)]).toEqual([digestOf(weeklyOrders), digestOf(weeklyOrders)]);
-    expect(digestOf(windowed)).not.toBe(digestOf(weeklyOrders));
+    expect([reordered, rephrased, windowed, givenNothing].map((source) => digestOf(source))).toEqual(
+      Array.from({ length: 4 }, () => digestOf(weeklyOrders)),
+    );
+  });
+
+  it('is another for rows folded otherwise or at another grain', () => {
+    const summed = weeklyOrdersWith(['  target: { as: count }', '  target: { of: /total, as: sum }']);
+    const daily = weeklyOrdersWith(['  period: week', '  period: day']);
+
+    expect(new Set([summed, daily, weeklyOrders].map((source) => digestOf(source))).size).toBe(3);
   });
 });
 

@@ -3,7 +3,7 @@ import { Array, Effect, Schema } from 'effect';
 
 import type { DatasetData, DatasetMeasure } from './dataset-data.ts';
 import type { DatasetRow } from './dataset-rows.ts';
-import { composed, each } from './dataset-statements.ts';
+import { composed, each, tuples } from './dataset-statements.ts';
 import type { Contribution } from './event-values.ts';
 import { emptyMeasure, MeasureStateSchema, measureTaken, stateOf, type MeasureState } from './row-measures.ts';
 
@@ -66,19 +66,22 @@ function taken(data: DatasetData, row: MergedRow, contribution: Contribution): M
 
 function existingRows(database: HostDatabase, row: DatasetRow, contributions: readonly Contribution[]) {
   const series = [...new Set(contributions.map(({ series: named }) => named))];
-  const periods = contributions.map(({ period }) => period);
+  const touched = new Map(contributions.map(({ series: named, period }) => [keyOf(named, period), [named, period]]));
   const where = [' WHERE playbook_key = ', each([row.playbookKey]), ' AND data_sha256 = ', each([row.dataSha256])];
-  const named = [' AND series IN (', each(series), ')'];
   const kept = composed(
     'SELECT series, period_index, target, target_count, target_at, events, features FROM prediction_rows',
     ...where,
-    ...named,
-    ' AND period_index >= ',
-    each([Math.min(...periods)]),
-    ' AND period_index <= ',
-    each([Math.max(...periods)]),
+    ' AND (series, period_index) IN (',
+    ...tuples([...touched.values()]),
+    ')',
   );
-  const known = composed('SELECT DISTINCT series FROM prediction_rows', ...where, ...named);
+  const known = composed(
+    'SELECT DISTINCT series FROM prediction_rows',
+    ...where,
+    ' AND series IN (',
+    each(series),
+    ')',
+  );
   return Effect.all([rowsOf(StoredRowSchema, database.read(kept)), rowsOf(SeriesSchema, database.read(known))]);
 }
 
@@ -90,23 +93,20 @@ export function mergedRows(
   if (contributions.length === 0) {
     return Effect.succeed({ rows: [], newRows: 0, newSeries: 0 });
   }
-  const touched = new Set(contributions.map(({ series, period }) => keyOf(series, period)));
   return Effect.map(
     existingRows(database, row, contributions),
     ([stored, known]: readonly [readonly StoredRow[], readonly { readonly series: string }[]]) => {
       const merged = new Map(
-        stored
-          .filter(({ series, period_index: period }) => touched.has(keyOf(series, period)))
-          .map((kept): readonly [string, MergedRow] => [
-            keyOf(kept.series, kept.period_index),
-            {
-              series: kept.series,
-              period: kept.period_index,
-              target: { value: kept.target, count: kept.target_count, at: kept.target_at },
-              events: kept.events,
-              features: kept.features.map((feature) => stateOf(feature)),
-            },
-          ]),
+        stored.map((kept): readonly [string, MergedRow] => [
+          keyOf(kept.series, kept.period_index),
+          {
+            series: kept.series,
+            period: kept.period_index,
+            target: { value: kept.target, count: kept.target_count, at: kept.target_at },
+            events: kept.events,
+            features: kept.features.map((feature) => stateOf(feature)),
+          },
+        ]),
       );
       const before = merged.size;
       for (const contribution of contributions) {

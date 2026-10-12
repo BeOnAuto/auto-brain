@@ -2,6 +2,7 @@ import { Conflict, InvalidInput, Unavailable } from '@on.auto/operations';
 import { Effect, Exit, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { cancelsInACall } from '../testing/cancels-in-a-call.ts';
 import { predictionRuns } from '../testing/prediction-runs.ts';
 import { weeklyOrders, weeklyOrdersWith } from '../testing/weekly-orders.ts';
 
@@ -13,7 +14,10 @@ const deep = Array.from({ length: 600 }).reduce<Schema.Json>((inner) => [inner],
 
 const longestBuildMs = 604_800_000 + 8 * 600_000 + 60_000;
 
+const pastItsBytes = { series: 'é'.repeat(200), horizon: 1, given: { promotion: 1 } };
+
 const questionsRefused: readonly (readonly [string, Schema.JsonObject, string])[] = [
+  ['a series of 200 characters past its 256 bytes', pastItsBytes, '/series'],
   ['a horizon it does not predict', { series: 'north', horizon: 2, given: { promotion: 1 } }, '/horizon'],
   ['a given name it does not list', { series: 'north', horizon: 1, given: { promotion: 1, price: 2 } }, '/given/price'],
   ['no series', { horizon: 1, given: { promotion: 1 } }, '/series'],
@@ -77,7 +81,7 @@ describe('the summary of a prediction function', () => {
         ],
       },
       outputSchema: { oneOf: [{ title: 'prediction' }, { title: 'build' }] },
-      details: { data_sha256: aDigest, data: { period: 'week', events: [{ type: 'order.placed' }], window: 156 } },
+      details: { data_sha256: aDigest, data: { period: 'week', events: [{ type: 'order.placed' }] } },
     });
   });
 
@@ -89,23 +93,24 @@ describe('the summary of a prediction function', () => {
 });
 
 describe('a run of a prediction function before a version is built', () => {
-  it('refuses a question, since no version is active yet, and says how to build one', async () => {
+  it('refuses a question, since no version is active yet and this runtime builds none', async () => {
     expect(await predictionRuns().running(weeklyOrders, question)).toEqual(
       Exit.fail(
         new Conflict({
-          detail: 'The function has no active version yet; ask for a build with the input { build: {} }',
+          detail: 'The function has no active version yet, and this runtime does not offer a build yet',
           kind: 'no_active_version',
         }),
       ),
     );
   });
 
-  it('refuses a build as unavailable, since this runtime does not offer builds yet', async () => {
+  it('refuses a build as unavailable, of a kind no retry resolves, since this runtime does not offer builds yet', async () => {
     expect(await predictionRuns().running(weeklyOrders, { build: {} })).toEqual(
       Exit.fail(
         new Unavailable({
           detail:
             'This runtime does not offer builds of a prediction function yet, so no version can be built; its dataset is kept meanwhile, as get_definition shows',
+          kind: 'build_not_offered',
         }),
       ),
     );
@@ -142,9 +147,38 @@ describe('how long a run of a prediction function lasts', () => {
       prepared.longestRunMsFor({ build: {} }),
     ]).toEqual([longestBuildMs, 10_000, longestBuildMs]);
     expect([prepared.finishesLaterFor(question), prepared.finishesLaterFor({ build: {} })]).toEqual([false, true]);
-    expect([prepared.longestRunMsFor('anything'), prepared.finishesLaterFor({ series: 1 })]).toEqual([
-      longestBuildMs,
-      true,
+    expect([
+      prepared.longestRunMsFor('anything'),
+      prepared.finishesLaterFor({ series: 1 }),
+      prepared.longestRunMsFor(pastItsBytes),
+    ]).toEqual([longestBuildMs, true, longestBuildMs]);
+  });
+});
+
+const questionRun = '0199a3c4-7d2e-7c1a-9b3f-777777777771';
+
+const buildRun = '0199a3c4-7d2e-7c1a-9b3f-777777777772';
+
+describe('a run of a prediction function cancelled from outside while its call is in flight', () => {
+  it('is refused for a question, which takes place within its call, and taken for a build, which finishes later', async () => {
+    const playbook = cancelsInACall(predictionRuns().capability);
+    await playbook.create('weekly-orders', weeklyOrders);
+
+    const asked = await playbook.run('weekly-orders', question, questionRun);
+    const built = await playbook.run('weekly-orders', { build: {} }, buildRun);
+
+    expect(playbook.cancelled()).toEqual([
+      {
+        status: 'rejected',
+        reason: 'conflict',
+        detail:
+          'The run takes place within the call that started it, which no server can interrupt from outside, so it cannot be cancelled; it ends when that call does',
+      },
+      expect.objectContaining({ status: 'succeeded' }),
+    ]);
+    expect([asked, built]).toMatchObject([
+      { status: 'rejected', reason: 'conflict', kind: 'no_active_version' },
+      { status: 'rejected' },
     ]);
   });
 });

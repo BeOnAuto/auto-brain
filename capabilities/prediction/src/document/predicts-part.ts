@@ -1,5 +1,6 @@
 import type { DocumentIssue, SourceLines } from '@on.auto/definitions/document';
 
+import { figure } from '../capability/figures.ts';
 import { predictionBounds } from '../capability/prediction-bounds.ts';
 import { checkedFrom, isWhole, nameIssues, refusedAt, type Checked } from './checked-parts.ts';
 import type { WrittenPredicts } from './front-matter.ts';
@@ -13,7 +14,7 @@ function seasonIssues(season: number | undefined, lines: SourceLines): readonly 
     : refusedAt(
         lines,
         '/predicts/season',
-        `A season is a whole number of periods from ${leastSeason} to ${mostSeason}, not ${season}; leave it out when the series has none`,
+        `A season is a whole number of periods from ${leastSeason} to ${mostSeason}, not ${figure(season)}; leave it out when the series has none`,
       );
 }
 
@@ -22,7 +23,7 @@ function horizonIssues(horizons: readonly number[], lines: SourceLines): readonl
     return refusedAt(
       lines,
       '/predicts/horizons',
-      `A prediction function names 1 to ${mostHorizons} horizons; it names ${horizons.length}`,
+      `A prediction function names 1 to ${mostHorizons} horizons; it names ${figure(horizons.length)}`,
     );
   }
   return horizons.flatMap((horizon, index) => {
@@ -31,7 +32,7 @@ function horizonIssues(horizons: readonly number[], lines: SourceLines): readonl
       return refusedAt(
         lines,
         pointer,
-        `A horizon is a whole number of periods from 1 to ${mostHorizon}, not ${horizon}`,
+        `A horizon is a whole number of periods from 1 to ${mostHorizon}, not ${figure(horizon)}`,
       );
     }
     return horizons.indexOf(horizon) < index

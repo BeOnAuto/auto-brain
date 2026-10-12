@@ -49,7 +49,8 @@ function moved({ row, next }: DatasetChange): Statement {
   return statement`UPDATE prediction_datasets SET phase = ${next.phase}, checkpoint = ${pointText(next.checkpoint)},
       checkpoint_at = ${next.checkpointAt}, rows = ${next.rows}, series = ${next.series},
       first_period = ${next.firstPeriod}, last_period = ${next.lastPeriod}, events_folded = ${next.eventsFolded},
-      passed_over = ${next.passedOver}
+      passed_over = ${next.passedOver}, tries = ${next.tries}, stalled_record = ${next.stall?.record ?? null},
+      stalled_detail = ${next.stall?.detail ?? null}
     WHERE playbook_key = ${row.playbookKey} AND data_sha256 = ${row.dataSha256} AND checkpoint = ${row.checkpointText}
     RETURNING data_sha256`;
 }

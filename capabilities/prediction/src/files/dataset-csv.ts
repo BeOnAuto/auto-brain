@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 
-import type { HostDatabase } from '@on.auto/workflow-host';
+import type { ReadStatement } from '@on.auto/workflow-host';
 import { Array, Effect } from 'effect';
 
 import type { DatasetData } from '../dataset/dataset-data.ts';
@@ -11,7 +11,7 @@ import { cellText, fieldOf, recordOf } from './csv-text.ts';
 import { periodsOfSeries, type KeptPeriod, type WindowSpan } from './window-reads.ts';
 
 export interface CsvPlan {
-  readonly database: HostDatabase;
+  readonly read: ReadStatement;
   readonly row: DatasetRow;
   readonly header: readonly string[];
   readonly series: readonly string[];
@@ -74,7 +74,7 @@ export function csvStream(plan: CsvPlan): ReadableStream<Uint8Array> {
         return;
       }
       state.next += 1;
-      const kept = await Effect.runPromise(periodsOfSeries(plan.database, plan.row, series, plan.span));
+      const kept = await Effect.runPromise(periodsOfSeries(plan.read, plan.row, series, plan.span));
       sent(controller, seriesText(plan, series, kept));
     },
   });

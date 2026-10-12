@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
+import { templateLimits } from '@on.auto/definitions/template';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -79,6 +80,7 @@ describe('the bounds on the reference page of the document of a prediction funct
       valueOf('Shadow periods'),
       valueOf('Filters, features, rules'),
       valueOf('The brief'),
+      valueOf('The brief'),
     ]).toEqual([
       expect.stringContaining(`1 to ${bounds.mostHorizons}, each 1 to ${bounds.mostHorizon} periods`),
       expect.stringContaining(`at least ${bounds.leastHoldout}`),
@@ -89,6 +91,7 @@ describe('the bounds on the reference page of the document of a prediction funct
         `${bounds.mostFilters} filters; ${bounds.mostFeatures} features; ${bounds.mostRules} rules of ${bounds.mostRuleBytes} bytes each`,
       ),
       expect.stringContaining(`${bounds.mostBriefBytes / 1024} KiB`),
+      expect.stringContaining(`within the ${templateLimits.renderMilliseconds} ms a template renders in`),
     ]);
   });
 });

@@ -10,14 +10,11 @@ import {
 } from '@on.auto/workflow-host';
 import { Effect } from 'effect';
 
-import { predictionBounds } from '../capability/prediction-bounds.ts';
 import { periodForm, periodOfForm } from '../periods/grains.ts';
 import { eventMatchOf } from './dataset-matching.ts';
 import { mergedRows, type MergedRow } from './dataset-merging.ts';
 import { standingOf, type DatasetRow, type DatasetStanding } from './dataset-rows.ts';
 import { eventReadingOf, type Contribution } from './event-values.ts';
-
-export type DatasetStrikes = Map<string, { readonly record: string; readonly inARow: number }>;
 
 interface PassedOverEvent {
   readonly record: string;
@@ -31,50 +28,33 @@ export interface DatasetChange {
   readonly passedOver: readonly PassedOverEvent[];
 }
 
-interface Read {
-  readonly contributions: readonly Contribution[];
-  readonly passedOver: readonly PassedOverEvent[];
-  readonly cutAt: PageEvent | undefined;
-  readonly lastRead: PageEvent | undefined;
-}
-
-const nothingRead: Read = { contributions: [], passedOver: [], cutAt: undefined, lastRead: undefined };
-
-function passedOver(read: Read, placed: PageEvent, detail: string): Read {
-  return { ...read, passedOver: [...read.passedOver, { record: placed.record, detail }], lastRead: placed };
-}
-
 interface Stop {
   readonly placed: PageEvent;
   readonly detail: string;
 }
 
-function struckAt(strikes: DatasetStrikes, row: DatasetRow, read: Read, { placed, detail }: Stop): Read {
-  const key = `${row.playbookKey}${row.dataSha256}`;
-  const struck = strikes.get(key);
-  const inARow = struck?.record === placed.record ? struck.inARow + 1 : 1;
-  if (inARow < predictionBounds.stopsBeforePassingOver) {
-    strikes.set(key, { record: placed.record, inARow });
-    return { ...read, cutAt: placed };
-  }
-  strikes.delete(key);
-  return passedOver(read, placed, detail);
+interface Read {
+  readonly contributions: readonly Contribution[];
+  readonly passedOver: readonly PassedOverEvent[];
+  readonly stop: Stop | undefined;
+  readonly lastRead: PageEvent | undefined;
 }
 
-function readFrom(
-  row: DatasetRow,
-  events: readonly PageEvent[],
-  sandbox: FilterSandbox,
-  strikes: DatasetStrikes,
-): Effect.Effect<Read> {
+const nothingRead: Read = { contributions: [], passedOver: [], stop: undefined, lastRead: undefined };
+
+function passedOver(read: Read, placed: PageEvent, detail: string): Read {
+  return { ...read, passedOver: [...read.passedOver, { record: placed.record, detail }], lastRead: placed };
+}
+
+function readFrom(row: DatasetRow, events: readonly PageEvent[], sandbox: FilterSandbox): Effect.Effect<Read> {
   return Effect.reduce(
     events,
     () => nothingRead,
     (read: Read, placed: PageEvent) =>
-      read.cutAt === undefined
+      read.stop === undefined
         ? Effect.map(eventMatchOf(row.data, placed, sandbox), (match): Read => {
             if (match.kind === 'stopped') {
-              return struckAt(strikes, row, read, { placed, detail: match.detail });
+              return { ...read, stop: { placed, detail: match.detail } };
             }
             if (match.kind === 'refused') {
               return passedOver(read, placed, match.detail);
@@ -91,8 +71,8 @@ function readFrom(
   );
 }
 
-function reachedOf(page: ReadPage, { cutAt, lastRead }: Read): ReadPage['lastExamined'] {
-  if (cutAt === undefined) {
+function reachedOf(page: ReadPage, { stop, lastRead }: Read): ReadPage['lastExamined'] {
+  if (stop === undefined) {
     return page.lastExamined;
   }
   return lastRead === undefined ? undefined : { point: lastRead.point, recordedAt: lastRead.recordedAt };
@@ -123,23 +103,45 @@ function periodsOf(
     : { firstPeriod: periodForm(grain, Math.min(...periods)), lastPeriod: periodForm(grain, Math.max(...periods)) };
 }
 
+interface Folding {
+  readonly sandbox: FilterSandbox;
+  readonly triesBeforeStall: number;
+}
+
+function triedOf(
+  row: DatasetRow,
+  { stop }: Read,
+  { triesBeforeStall }: Folding,
+): Pick<DatasetStanding, 'phase' | 'tries' | 'stall'> {
+  if (stop === undefined) {
+    return { phase: row.phase, tries: 0, stall: null };
+  }
+  const tries = row.tries + 1;
+  if (tries < triesBeforeStall) {
+    return { phase: row.phase, tries, stall: null };
+  }
+  const detail = `Its data test was stopped ${tries} times at this event by a limit of time or memory, which no event causes: ${stop.detail}`;
+  return { phase: 'stalled', tries, stall: { record: stop.placed.record, detail } };
+}
+
 function changeOf(row: DatasetRow, page: ReadPage, database: HostDatabase, folding: Folding) {
   const considered = new Set(row.data.events.map(({ type }) => type));
   const events = page.events.filter(({ point, event }) => isAfter(point, row.checkpoint) && considered.has(event.type));
   return Effect.gen(function* () {
-    const read = yield* readFrom(row, events, folding.sandbox, folding.strikes);
+    const read = yield* readFrom(row, events, folding.sandbox);
     const merged = yield* mergedRows(database, row, read.contributions);
     const next: DatasetStanding = {
       ...standingOf(row),
       ...checkpointOf(row, page, read),
       ...periodsOf(row, merged.rows),
+      ...triedOf(row, read, folding),
       rows: row.rows + merged.newRows,
       series: row.series + merged.newSeries,
       eventsFolded: row.eventsFolded + read.contributions.length,
       passedOver: row.passedOver + read.passedOver.length,
     };
     const change: DatasetChange = { row, next, upserts: merged.rows, passedOver: read.passedOver };
-    return { change, cut: read.cutAt !== undefined };
+    return { change, cut: read.stop !== undefined };
   });
 }
 
@@ -148,13 +150,9 @@ export function hasDatasetChanged({ row, next }: DatasetChange): boolean {
     next.phase !== row.phase ||
     next.eventsFolded !== row.eventsFolded ||
     next.passedOver !== row.passedOver ||
+    next.tries !== row.tries ||
     comparePoints(next.checkpoint, row.checkpoint) !== 0
   );
-}
-
-interface Folding {
-  readonly sandbox: FilterSandbox;
-  readonly strikes: DatasetStrikes;
 }
 
 export function foldedDatasets(

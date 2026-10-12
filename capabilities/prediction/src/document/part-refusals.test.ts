@@ -107,7 +107,7 @@ const evaluation: readonly Refusal[] = [
   [
     'a window over 1,000',
     [['  window: 156', '  window: 1001']],
-    ['Line 19, /data/window: The window is a whole number of periods from 1 to 1000, not 1001'],
+    ['Line 19, /data/window: The window is a whole number of periods from 1 to 1,000, not 1,001'],
   ],
   [
     'seasonal-naive named without a season',

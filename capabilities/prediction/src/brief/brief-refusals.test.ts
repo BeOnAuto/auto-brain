@@ -51,9 +51,9 @@ const refused: ReadonlyArray<readonly [string, string, readonly string[]]> = [
   ],
   [
     'a brief past 64 KiB over the largest dataset',
-    '{% for row in (1..dataset.rows) %}0123456789{% endfor %}',
+    `{% for row in (1..dataset.rows) %}${'0123456789abcdef'.repeat(64)}{% endfor %}`,
     [
-      'Line 28: The brief renders to more than 65536 bytes over the largest dataset the bounds admit; shorten it or loop over less',
+      'Line 28: The brief renders to more than 65,536 bytes over the largest dataset the bounds admit; shorten it or loop over less',
     ],
   ],
   [

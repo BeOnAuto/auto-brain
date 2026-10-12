@@ -1,7 +1,6 @@
 export type { PredictionFunctionDefinitionDocument } from './document/prediction-document.ts';
 export {
   makePredictionFunctionAdapter,
-  predictionFacts,
   type PredictionFunctionAdapterOptions,
 } from './capability/prediction-function.ts';
 export { predictionBounds, predictionDefinitionType } from './capability/prediction-bounds.ts';

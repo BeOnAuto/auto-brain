@@ -3,6 +3,7 @@ import { Buffer } from 'node:buffer';
 import type { DocumentIssue, SourceLines } from '@on.auto/definitions/document';
 import { readDuration } from '@on.auto/workflow-engine/dsl';
 
+import { figure } from '../capability/figures.ts';
 import { predictionBounds } from '../capability/prediction-bounds.ts';
 import { checkedFrom, refusedAt, type Checked } from './checked-parts.ts';
 import type { WrittenSource } from './front-matter.ts';
@@ -64,7 +65,7 @@ export function rulesOf(written: readonly string[], lines: SourceLines): Checked
       ? refusedAt(
           lines,
           '/rules',
-          `A prediction function states at most ${mostRules} rules; it states ${written.length}`,
+          `A prediction function states at most ${mostRules} rules; it states ${figure(written.length)}`,
         )
       : [];
   const each = written.flatMap((rule, index) => {
@@ -74,7 +75,11 @@ export function rulesOf(written: readonly string[], lines: SourceLines): Checked
     }
     const bytes = Buffer.byteLength(rule, 'utf8');
     return bytes > mostRuleBytes || rule.includes('\n')
-      ? refusedAt(lines, at, `A rule is one line of at most ${mostRuleBytes} bytes; this one takes ${bytes} bytes`)
+      ? refusedAt(
+          lines,
+          at,
+          `A rule is one line of at most ${mostRuleBytes} bytes; this one takes ${figure(bytes)} bytes`,
+        )
       : [];
   });
   return checkedFrom([...counted, ...each], () => written.map((rule) => rule.trim()));

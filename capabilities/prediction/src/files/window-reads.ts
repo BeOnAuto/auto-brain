@@ -1,4 +1,4 @@
-import { rowsOf, WholeNumber, type DatabaseFailed, type HostDatabase } from '@on.auto/workflow-host';
+import { rowsOf, WholeNumber, type DatabaseFailed, type ReadStatement } from '@on.auto/workflow-host';
 import { Effect, Schema } from 'effect';
 
 import type { DatasetRow } from '../dataset/dataset-rows.ts';
@@ -11,7 +11,7 @@ export interface WindowSpan {
 }
 
 export interface WindowCount {
-  readonly included: readonly string[];
+  readonly observed: number;
   readonly seriesInWindow: number;
 }
 
@@ -21,7 +21,7 @@ export interface KeptPeriod {
   readonly features: readonly MeasureState[];
 }
 
-const IncludedSchema = Schema.Struct({ series: Schema.String });
+const SeriesSchema = Schema.Struct({ series: Schema.String });
 
 const CountSchema = Schema.Struct({ counted: WholeNumber });
 
@@ -46,50 +46,63 @@ function inWindow(row: DatasetRow, { first, last }: WindowSpan): readonly Piece[
   ];
 }
 
-function observed(row: DatasetRow): string {
+function observedIn(row: DatasetRow, span: WindowSpan, leastObserved: number): readonly Piece[] {
   const { as } = row.data.target;
-  return as === 'count' || as === 'sum' ? '' : ' AND target_count > 0';
+  return [
+    'SELECT series',
+    ...inWindow(row, span),
+    as === 'count' || as === 'sum' ? '' : ' AND target_count > 0',
+    ' GROUP BY series HAVING COUNT(*) >= ',
+    each([leastObserved]),
+  ];
+}
+
+function countedBy(read: ReadStatement, ...pieces: readonly Piece[]): Effect.Effect<number, DatabaseFailed> {
+  return Effect.map(rowsOf(CountSchema, read(composed(...pieces))), (counts) =>
+    counts.reduce((total, { counted }) => total + counted, 0),
+  );
 }
 
 export function windowCountOf(
-  database: HostDatabase,
+  read: ReadStatement,
   row: DatasetRow,
   span: WindowSpan,
-  { leastObserved, mostSeries }: { readonly leastObserved: number; readonly mostSeries: number },
+  leastObserved: number,
 ): Effect.Effect<WindowCount, DatabaseFailed> {
-  const included = composed(
-    'SELECT series',
-    ...inWindow(row, span),
-    observed(row),
-    ' GROUP BY series HAVING COUNT(*) >= ',
-    each([leastObserved]),
-    ' LIMIT ',
-    each([mostSeries + 1]),
-  );
-  const counted = composed('SELECT COUNT(DISTINCT series) AS counted', ...inWindow(row, span));
   return Effect.map(
-    Effect.all([rowsOf(IncludedSchema, database.read(included)), rowsOf(CountSchema, database.read(counted))]),
-    ([series, counts]: readonly [readonly { readonly series: string }[], readonly { readonly counted: number }[]]) => ({
-      included: series.map(({ series: named }) => named),
-      seriesInWindow: counts.reduce((total, count) => total + count.counted, 0),
-    }),
+    Effect.all([
+      countedBy(read, 'SELECT COUNT(*) AS counted FROM (', ...observedIn(row, span, leastObserved), ') AS observed'),
+      countedBy(read, 'SELECT COUNT(DISTINCT series) AS counted', ...inWindow(row, span)),
+    ]),
+    ([observed, seriesInWindow]: readonly [number, number]) => ({ observed, seriesInWindow }),
+  );
+}
+
+export function observedSeriesOf(
+  read: ReadStatement,
+  row: DatasetRow,
+  span: WindowSpan,
+  leastObserved: number,
+): Effect.Effect<readonly string[], DatabaseFailed> {
+  return Effect.map(rowsOf(SeriesSchema, read(composed(...observedIn(row, span, leastObserved)))), (found) =>
+    found.map(({ series }) => series),
   );
 }
 
 export function periodsOfSeries(
-  database: HostDatabase,
+  read: ReadStatement,
   row: DatasetRow,
   series: string,
   span: WindowSpan,
 ): Effect.Effect<readonly KeptPeriod[], DatabaseFailed> {
-  const read = composed(
+  const periods = composed(
     'SELECT period_index, target, target_count, target_at, features',
     ...inWindow(row, span),
     ' AND series = ',
     each([series]),
     ' ORDER BY period_index',
   );
-  return Effect.map(rowsOf(KeptSchema, database.read(read)), (kept) =>
+  return Effect.map(rowsOf(KeptSchema, read(periods)), (kept) =>
     kept.map((period) => ({
       period: period.period_index,
       target: { value: period.target, count: period.target_count, at: period.target_at },

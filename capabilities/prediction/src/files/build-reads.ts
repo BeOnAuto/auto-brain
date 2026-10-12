@@ -4,7 +4,7 @@ import {
   type PlaybookAddress,
   type RecordedContent,
 } from '@on.auto/operations';
-import { rowsOf, type HostDatabase } from '@on.auto/workflow-host';
+import { rowsOf, type DatabaseFailed, type HostDatabase, type ReadStatement } from '@on.auto/workflow-host';
 import { Effect, Result } from 'effect';
 
 import { datasetRowOf, StoredDatasetSchema, type DatasetRow } from '../dataset/dataset-rows.ts';
@@ -23,14 +23,12 @@ export interface FilesRequest {
   readonly mostBytes?: number;
 }
 
-export function datasetRead({
-  database,
-  playbook,
-  document,
-}: FilesRequest): Effect.Effect<DatasetRow, DatasetFilesRefused> {
-  const read = datasetNamed(streamPrefixOfPlaybook(playbook), document.dataSha256);
-  return rowsOf(StoredDatasetSchema, database.read(read)).pipe(
-    Effect.orDie,
+export function datasetRead(
+  read: ReadStatement,
+  { playbook, document }: FilesRequest,
+): Effect.Effect<DatasetRow, DatasetFilesRefused | DatabaseFailed> {
+  const named = datasetNamed(streamPrefixOfPlaybook(playbook), document.dataSha256);
+  return rowsOf(StoredDatasetSchema, read(named)).pipe(
     Effect.flatMap(([stored]) => {
       const row = stored === undefined ? undefined : datasetRowOf(stored);
       return row?.phase === 'live'

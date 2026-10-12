@@ -7,7 +7,7 @@ import { Effect, Option, Result, type Schema } from 'effect';
 import { expect, onTestFinished, vi } from 'vitest';
 
 import { datasetDetailsOf } from '../capability/prediction-definitions.ts';
-import { datasetFolder, datasetsOf } from '../dataset/dataset-folder.ts';
+import { datasetFolder, datasetsOf, type DatasetFolding } from '../dataset/dataset-folder.ts';
 import type { DatasetRow } from '../dataset/dataset-rows.ts';
 import { parsePredictionDocument } from '../document/document-parsing.ts';
 
@@ -16,6 +16,8 @@ export const alphaKey = 'playbook/acme/alpha/';
 const savedAt = '2026-10-06T09:00:00.000Z';
 
 const waiting = { timeout: 25_000, interval: 20 };
+
+const eventsInAnAppend = 1000;
 
 type Document = ReturnType<typeof documentOf>;
 
@@ -83,12 +85,9 @@ function readingOf(folders: ProjectedFolders): Pick<ProjectedDatasets, 'datasets
 
 export async function projectedDatasets(
   settings: DatabaseSettings,
-  rebuildsAtOnce?: number,
+  folding: Omit<DatasetFolding, 'filters'> = {},
 ): Promise<ProjectedDatasets> {
-  const folder = datasetFolder({
-    filters: filterSandboxOf(),
-    ...(rebuildsAtOnce === undefined ? {} : { rebuildsAtOnce }),
-  });
+  const folder = datasetFolder({ filters: filterSandboxOf(), ...folding });
   const folders = await projectedFolders(settings, [someFolder(folder)]);
   onTestFinished(folders.close);
   return {
@@ -102,7 +101,20 @@ export async function projectedDatasets(
       }, waiting),
     published: async (events) => {
       const published = events.map((event) => ({ type: 'event_published', data: { event, filled: [] } }));
-      await folders.append(`${alphaKey}events/${randomUUID()}`, published, { by: 'acme-admin', at: savedAt });
+      const firsts = Array.from(
+        { length: Math.ceil(published.length / eventsInAnAppend) },
+        (_, index) => index * eventsInAnAppend,
+      );
+      await firsts.reduce<Promise<unknown>>(
+        (before, first) =>
+          before.then(() =>
+            folders.append(`${alphaKey}events/${randomUUID()}`, published.slice(first, first + eventsInAnAppend), {
+              by: 'acme-admin',
+              at: savedAt,
+            }),
+          ),
+        Promise.resolve(),
+      );
     },
   };
 }

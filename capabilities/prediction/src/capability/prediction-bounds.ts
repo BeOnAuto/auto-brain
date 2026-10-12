@@ -36,7 +36,7 @@ export const predictionBounds = {
   mostFunctions: 32,
   datasetRebuildsAtOnce: 2,
   mostNotesAPage: 10,
-  stopsBeforePassingOver: 3,
+  triesBeforeStall: 20,
   rowsInAPage: 1000,
 } as const;
 

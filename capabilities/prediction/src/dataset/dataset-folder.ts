@@ -14,7 +14,7 @@ import { Effect, Schema } from 'effect';
 import { predictionBounds, predictionDefinitionType } from '../capability/prediction-bounds.ts';
 import { canonicalJson } from '../data/data-digest.ts';
 import { datasetOfKept, keptDatasetOf } from './dataset-data.ts';
-import { foldedDatasets, hasDatasetChanged, type DatasetChange, type DatasetStrikes } from './dataset-fold.ts';
+import { foldedDatasets, hasDatasetChanged, type DatasetChange } from './dataset-fold.ts';
 import { datasetRowOf, standingOf, StoredDatasetSchema, type DatasetRow } from './dataset-rows.ts';
 import {
   datasetAdded,
@@ -30,6 +30,7 @@ import { datasetWritten } from './dataset-writing.ts';
 export interface DatasetFolding {
   readonly filters: FilterSandbox;
   readonly rebuildsAtOnce?: number;
+  readonly triesBeforeStall?: number;
 }
 
 interface Wanted {
@@ -79,8 +80,8 @@ export function datasetsOf(
 export function datasetFolder({
   filters,
   rebuildsAtOnce = predictionBounds.datasetRebuildsAtOnce,
+  triesBeforeStall = predictionBounds.triesBeforeStall,
 }: DatasetFolding): Folder<DatasetRow, DatasetChange> {
-  const strikes: DatasetStrikes = new Map();
   return {
     definitionType: predictionDefinitionType,
     tables: [datasetsTable, rowsTable],
@@ -96,7 +97,7 @@ export function datasetFolder({
     reconcile: plannedDatasets,
     dropped: ({ playbookKey, dataSha256 }) => datasetDropped(playbookKey, dataSha256),
     phased: ({ playbookKey, dataSha256 }, phase: RowPhase) => datasetPhased(playbookKey, dataSha256, phase),
-    fold: (rows, page, database) => foldedDatasets(rows, page, database, { sandbox: filters, strikes }),
+    fold: (rows, page, database) => foldedDatasets(rows, page, database, { sandbox: filters, triesBeforeStall }),
     write: datasetWritten,
     unchanged: (row) => ({ row, next: standingOf(row), upserts: [], passedOver: [] }),
     joinedLive: (change) => ({ ...change, next: { ...change.next, phase: 'live' } }),

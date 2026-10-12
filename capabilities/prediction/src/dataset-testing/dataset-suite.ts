@@ -64,6 +64,7 @@ const faultyOrders = [
   orderPlaced({ region: 7, at: '2026-10-06T10:00:00Z' }),
   orderPlaced({ region: '', at: '2026-10-06T10:00:00Z' }),
   orderPlaced({ region: 'north', at: 'yesterday' }),
+  orderPlaced({ region: 'north', at: '2026-10-06' }),
   orderPlaced({ region: 'north', at: '2016-12-31T23:59:60Z' }),
   orderPlaced({ region: 'north', at: '2026-10-06T10:00:00Z', total: 'ten' }),
   orderPlaced({ region: 'north', at: '2026-10-06T10:00:00Z', total: 4, promotion: [1] }),
@@ -101,7 +102,7 @@ function foldingTest(settingsOf: SettingsOf): void {
 
 function passingOverTest(settingsOf: SettingsOf): void {
   it(
-    'passes over an event whose series is not text, whose time is not one or names a leap second, or whose value is not a finite number, counting and noting each',
+    'passes over an event whose series is not text, whose time is not one, is a day without its time or names a leap second, or whose value is not a finite number, counting and noting each',
     async () => {
       const datasets = await projectedDatasets(await settingsOf());
       const { dataSha256 } = await datasets.saved('orders', weeklyOrders);
@@ -109,10 +110,11 @@ function passingOverTest(settingsOf: SettingsOf): void {
       datasets.start();
       const row = await datasets.until(dataSha256, folded(1));
 
-      expect([row.passedOver, row.rows]).toEqual([6, 1]);
-      expect(await datasets.noted(6)).toEqual([
+      expect([row.passedOver, row.rows]).toEqual([7, 1]);
+      expect(await datasets.noted(7)).toEqual([
         noted(dataSha256, seriesRefused),
         noted(dataSha256, seriesRefused),
+        noted(dataSha256, timeRefused),
         noted(dataSha256, timeRefused),
         noted(dataSha256, timeRefused),
         noted(dataSha256, 'Its feature basket at /total is not a finite number'),

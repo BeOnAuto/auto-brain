@@ -17,8 +17,6 @@ const DatasetDataSchema = Schema.Struct({
   series: Schema.String,
   target: Schema.Struct(MeasureFields),
   features: Schema.Array(Schema.Struct({ name: Schema.String, ...MeasureFields })),
-  given: Schema.Array(Schema.String),
-  window: Schema.Number,
 });
 
 export type DatasetData = typeof DatasetDataSchema.Type;

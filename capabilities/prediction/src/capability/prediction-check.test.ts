@@ -3,7 +3,7 @@ import { nothingSaved } from '@on.auto/definitions/testing';
 import { Cause, Effect, Exit, Struct, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { poolOf, predictionRuns, savedInteractions, workerTestTimeoutMs } from '../testing/prediction-runs.ts';
+import { poolOf, predictionRuns, savedInPlaybook, workerTestTimeoutMs } from '../testing/prediction-runs.ts';
 import { weeklyOrders, weeklyOrdersWith } from '../testing/weekly-orders.ts';
 
 const approving = weeklyOrdersWith(['  activate: automatic', '  activate: { approved: approve-version }']);
@@ -16,7 +16,7 @@ const notTheDecision =
   'Line 22, /evaluation/activate/approved: The output schema of approve-version, the function that approves a version, is not an object whose one required property decision is approve or reject';
 
 const notTheCandidates =
-  'Line 25, /source/through: The output schema of send-build, the function that sends a build to its trainer, is not an object that takes candidates, a list of the SHA-256 of each candidate as text';
+  'Line 25, /source/through: The output schema of send-build, the function that sends a build to its trainer, is not an object whose one required property candidates is a list of the SHA-256 of each candidate as text';
 
 const decision: Schema.JsonObject = {
   type: 'object',
@@ -37,6 +37,10 @@ function listed(candidatesSchema: Schema.Json): Schema.JsonObject {
 const notCandidates: readonly (readonly [string, Schema.JsonObject])[] = [
   ['a list', { type: 'array', required: ['candidates'], properties: candidates['properties'] ?? {} }],
   ['candidates not required', { type: 'object', required: [], properties: candidates['properties'] ?? {} }],
+  [
+    'candidates beside another required property',
+    { type: 'object', required: ['candidates', 'notes'], properties: candidates['properties'] ?? {} },
+  ],
   ['candidates as text', listed({ type: 'string', items: { type: 'string' } })],
   ['items of any kind', listed({ type: 'array', items: true })],
   ['items that are numbers', listed({ type: 'array', items: { type: 'integer' } })],
@@ -66,7 +70,7 @@ function sender(more: Partial<SavedDefinition> = {}): SavedDefinition {
 }
 
 async function checked(source: string, saved: readonly SavedDefinition[] = []): Promise<unknown> {
-  const exit = await Effect.runPromiseExit(predictionRuns().prepared(source).check(savedInteractions(saved)));
+  const exit = await Effect.runPromiseExit(predictionRuns().prepared(source).check(savedInPlaybook(saved)));
   return Exit.isFailure(exit) ? Cause.squash(exit.cause) : exit.value;
 }
 

@@ -26,6 +26,7 @@ function datasetStanding(dataSha256: string, row: DatasetRow | undefined): Schem
       last_period: null,
       events_folded: 0,
       passed_over: 0,
+      stall: null,
     };
   }
   return {
@@ -40,6 +41,7 @@ function datasetStanding(dataSha256: string, row: DatasetRow | undefined): Schem
     last_period: row.lastPeriod,
     events_folded: row.eventsFolded,
     passed_over: row.passedOver,
+    stall: row.stall === null ? null : { record: row.stall.record, detail: row.stall.detail },
   };
 }
 

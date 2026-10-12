@@ -7,7 +7,7 @@ import { writtenDatasetFiles } from '../files/dataset-files.ts';
 import { uploadedWeeklyOrders, weeklyOrdersWith } from '../testing/weekly-orders.ts';
 import type { SettingsOf } from './dataset-stores.ts';
 import { orderPlaced } from './orders.ts';
-import { foldedFor, moving, refusalOf } from './written-files.ts';
+import { foldedFor, refusalOf } from './written-files.ts';
 
 const testTimeoutMs = 60_000;
 
@@ -22,6 +22,14 @@ const thousandDays = weeklyOrdersWith(
 
 const sixteenWeeks = weeklyOrdersWith(
   ['  season: 52', ''],
+  ['  window: 156', '  window: 16'],
+  ['  holdout: 12', '  holdout: 8'],
+);
+
+const sixteenDays = weeklyOrdersWith(
+  ['  period: week', '  period: day'],
+  ['  season: 52', ''],
+  ['  horizons: [1, 4]', '  horizons: [1]'],
   ['  window: 156', '  window: 16'],
   ['  holdout: 12', '  holdout: 8'],
 );
@@ -41,17 +49,26 @@ const manySeries = [
   orderPlaced({ region: 'rare', at: '2026-10-05T12:00:00Z', total: 1 }),
 ];
 
+const moreSeriesThanABuildTakes = Array.from(
+  { length: 1002 },
+  (_, region) => `s${String(region).padStart(4, '0')}`,
+).flatMap((region) => daysOf(region));
+
 const nineWeeks = Array.from({ length: 9 }, (_, week) =>
   orderPlaced({ region: 'north', at: new Date(Date.UTC(2026, 6, 6 + week * 7, 10)).toISOString(), total: 1 }),
 );
 
-function failing(database: HostDatabase): HostDatabase {
+function failingAt(database: HostDatabase, start: string): HostDatabase {
   return {
     ...database,
-    read: (statement) =>
-      String(statement.strings[0]).startsWith('SELECT period_index')
-        ? Effect.fail(new DatabaseFailed({ detail: 'The store was told to fail' }))
-        : database.read(statement),
+    readConsistently: (reads) =>
+      database.readConsistently((read) =>
+        reads((statement) =>
+          String(statement.strings[0]).startsWith(start)
+            ? Effect.fail(new DatabaseFailed({ detail: 'The store was told to fail' }))
+            : read(statement),
+        ),
+      ),
   };
 }
 
@@ -64,7 +81,7 @@ function boundsTest(settingsOf: SettingsOf): void {
       expect(await refusalOf(request)).toMatchObject({
         refusal: { kind: 'too_large', rows: 201_000, series: 201 },
         detail:
-          'The dataset holds 201000 rows over 201 series and a build takes 200000 rows over at most 1000 series; narrow the window or the series',
+          'The dataset holds 201,000 rows over 201 series and a build takes 200,000 rows over at most 1,000 series; narrow the window or the series',
       });
       expect(await refusalOf({ ...request, document: uploaded })).toMatchObject({ refusal: { kind: 'uploaded' } });
     },
@@ -72,19 +89,33 @@ function boundsTest(settingsOf: SettingsOf): void {
   );
 }
 
-function rereadTest(settingsOf: SettingsOf): void {
+function seriesTest(settingsOf: SettingsOf): void {
   it(
-    'reads the rows again when they folded on while read, and fails when the store fails while the rows are read',
+    'refuses more series than a build takes, with the figure it counted',
+    async () => {
+      const { request } = await foldedFor(await settingsOf(), sixteenDays, moreSeriesThanABuildTakes);
+
+      expect(await refusalOf(request)).toMatchObject({
+        refusal: { kind: 'too_large', rows: 16_032, series: 1002 },
+        detail:
+          'The dataset holds 16,032 rows over 1,002 series and a build takes 200,000 rows over at most 1,000 series; narrow the window or the series',
+      });
+    },
+    testTimeoutMs,
+  );
+}
+
+function failedTest(settingsOf: SettingsOf): void {
+  it(
+    'fails when the store fails while the rows are counted, and while they are written',
     async () => {
       const { datasets, request } = await foldedFor(await settingsOf(), sixteenWeeks, nineWeeks);
-      const once = moving(datasets.database, (read) => read === 2);
-      const written = await Effect.runPromise(writtenDatasetFiles({ ...request, database: once }));
-      const failed = await Effect.runPromiseExit(
-        writtenDatasetFiles({ ...request, database: failing(datasets.database) }),
-      );
+      const failedAt = (start: string) =>
+        Effect.runPromiseExit(writtenDatasetFiles({ ...request, database: failingAt(datasets.database, start) }));
+      const counting = await failedAt('SELECT COUNT');
+      const writing = await failedAt('SELECT period_index');
 
-      expect(written).toMatchObject({ rows: 16, series: 1 });
-      expect(Exit.isFailure(failed)).toBe(true);
+      expect([Exit.hasDies(counting), Exit.hasDies(writing)]).toEqual([true, true]);
     },
     testTimeoutMs,
   );
@@ -93,6 +124,7 @@ function rereadTest(settingsOf: SettingsOf): void {
 export function datasetFilesBoundsSuite(settingsOf: SettingsOf): void {
   describe('the bounds of the files a build reads', () => {
     boundsTest(settingsOf);
-    rereadTest(settingsOf);
+    seriesTest(settingsOf);
+    failedTest(settingsOf);
   });
 }

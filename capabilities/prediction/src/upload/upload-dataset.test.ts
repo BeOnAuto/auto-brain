@@ -191,7 +191,7 @@ describe('an upload of a dataset past what a dataset is', () => {
     expect(await refusedWith(broken)).toEqual(atLine(2, 'The body is not text in UTF-8'));
     expect(await refusedWith(cut)).toEqual(atLine(2, 'The body is not text in UTF-8'));
     expect(await upload(many, sha256Of(many))).toEqual(
-      atLine(1002, 'A dataset holds at most 200000 rows over at most 1000 series'),
+      atLine(1002, 'A dataset holds at most 200,000 rows over at most 1,000 series'),
     );
   });
 });

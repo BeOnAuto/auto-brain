@@ -13,6 +13,9 @@ export const datasetsTable = statement`CREATE TABLE IF NOT EXISTS prediction_dat
     last_period TEXT,
     events_folded BIGINT NOT NULL,
     passed_over BIGINT NOT NULL,
+    tries BIGINT NOT NULL,
+    stalled_record TEXT,
+    stalled_detail TEXT,
     data TEXT NOT NULL,
     PRIMARY KEY (playbook_key, data_sha256)
   )`;
@@ -73,8 +76,8 @@ export function datasetAdded(
   data: string,
 ): (phase: RowPhase) => Statement {
   return (phase) => statement`INSERT INTO prediction_datasets (
-      playbook_key, data_sha256, saved, phase, checkpoint, rows, series, events_folded, passed_over, data
-    ) VALUES (${playbookKey}, ${dataSha256}, ${saved}, ${phase}, '', 0, 0, 0, 0, ${data})
+      playbook_key, data_sha256, saved, phase, checkpoint, rows, series, events_folded, passed_over, tries, data
+    ) VALUES (${playbookKey}, ${dataSha256}, ${saved}, ${phase}, '', 0, 0, 0, 0, 0, ${data})
     ON CONFLICT (playbook_key, data_sha256) DO NOTHING`;
 }
 
@@ -92,13 +95,13 @@ export function datasetDropped(playbookKey: string, dataSha256: string): readonl
 
 export function datasetsOfPlaybook(playbookKey: string): Statement {
   return statement`SELECT playbook_key, data_sha256, saved, phase, checkpoint, checkpoint_at, rows, series, first_period,
-      last_period, events_folded, passed_over, data
+      last_period, events_folded, passed_over, tries, stalled_record, stalled_detail, data
     FROM prediction_datasets WHERE playbook_key = ${playbookKey} ORDER BY saved, data_sha256`;
 }
 
 export function datasetNamed(playbookKey: string, dataSha256: string): Statement {
   return statement`SELECT playbook_key, data_sha256, saved, phase, checkpoint, checkpoint_at, rows, series, first_period,
-      last_period, events_folded, passed_over, data
+      last_period, events_folded, passed_over, tries, stalled_record, stalled_detail, data
     FROM prediction_datasets WHERE playbook_key = ${playbookKey} AND data_sha256 = ${dataSha256}`;
 }
 

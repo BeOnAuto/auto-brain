@@ -1,11 +1,10 @@
+import { definitionNamePattern } from '@on.auto/definitions';
 import type { DocumentIssue, SourceLines } from '@on.auto/definitions/document';
 
 import { refusedAt } from './checked-parts.ts';
 
-const definitionName = /^[a-z][a-z0-9-]{2,47}$/u;
-
 export function functionNameIssues(name: string, at: string, lines: SourceLines): readonly DocumentIssue[] {
-  return definitionName.test(name)
+  return definitionNamePattern.test(name)
     ? []
     : refusedAt(
         lines,

@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { writtenDatasetFiles } from '../files/dataset-files.ts';
 import { weeklyOrdersWith } from '../testing/weekly-orders.ts';
 import type { SettingsOf } from './dataset-stores.ts';
-import { foldedFor, moving, readBack, refusalOf, sixteenWeeksOfOrders } from './written-files.ts';
+import { foldedFor, foldingWhileWritten, keeping, readBack, refusalOf, sixteenWeeksOfOrders } from './written-files.ts';
 
 const testTimeoutMs = 30_000;
 
@@ -62,19 +62,40 @@ function writtenTest(settingsOf: SettingsOf): void {
 
 function refusedTest(settingsOf: SettingsOf): void {
   it(
-    'refuses a dataset still being built and one past the bytes a build takes, and gives up on one that folds on while it is read',
+    'refuses a dataset still being built and one past the bytes a build takes, keeping nothing of it',
     async () => {
-      const { datasets, document, request } = await foldedFor(await settingsOf(), sixteenWeeks, sixteenWeeksOfOrders);
+      const { document, content, request } = await foldedFor(await settingsOf(), sixteenWeeks, sixteenWeeksOfOrders);
       const unsaved = { ...request, document: { ...document, dataSha256: 'f'.repeat(64) } };
-      const always = moving(datasets.database, () => true);
+      const kept = keeping(content);
 
       expect(await refusalOf(unsaved)).toMatchObject({ refusal: { kind: 'not_ready', phase: 'missing' } });
-      expect(await refusalOf({ ...request, mostBytes: 100 })).toMatchObject({
+      expect(await refusalOf({ ...request, content: kept.content, mostBytes: 100 })).toMatchObject({
         refusal: { kind: 'too_large', bytes: anyNumber },
         detail:
-          'The rows take more than the 67108864 bytes a build takes as CSV; narrow the window, the series or the features',
+          'The rows take more than the 67,108,864 bytes a build takes as CSV; narrow the window, the series or the features',
       });
-      expect(await refusalOf({ ...request, database: always })).toMatchObject({ refusal: { kind: 'changing' } });
+      expect(kept.kept()).toEqual([]);
+    },
+    testTimeoutMs,
+  );
+}
+
+function oneCheckpointTest(settingsOf: SettingsOf): void {
+  it(
+    'writes both files from the one checkpoint it read, however far the fold moves the checkpoint while they are written',
+    async () => {
+      const folded = await foldedFor(await settingsOf(), sixteenWeeks, sixteenWeeksOfOrders);
+      const before = await Effect.runPromise(writtenDatasetFiles(folded.request));
+      const foldingOn = foldingWhileWritten(folded);
+      const during = await Effect.runPromise(writtenDatasetFiles({ ...folded.request, content: foldingOn.content }));
+      const after = await Effect.runPromise(writtenDatasetFiles(folded.request));
+
+      expect(during).toEqual(before);
+      expect(foldingOn.kept()).toEqual([before.scoring.sha256, before.training.sha256]);
+      expect([after.checkpoint === before.checkpoint, after.scoring.sha256 === before.scoring.sha256]).toEqual([
+        false,
+        false,
+      ]);
     },
     testTimeoutMs,
   );
@@ -84,5 +105,6 @@ export function datasetFilesSuite(settingsOf: SettingsOf): void {
   describe('the two files a build reads', () => {
     writtenTest(settingsOf);
     refusedTest(settingsOf);
+    oneCheckpointTest(settingsOf);
   });
 }

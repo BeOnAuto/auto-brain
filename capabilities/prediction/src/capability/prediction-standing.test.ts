@@ -31,6 +31,8 @@ const live: DatasetRow = {
   lastPeriod: '2026-W42',
   eventsFolded: 4,
   passedOver: 1,
+  tries: 0,
+  stall: null,
   data: {
     period: 'week',
     events: [],
@@ -38,12 +40,14 @@ const live: DatasetRow = {
     series: '',
     target: { as: 'count' },
     features: [],
-    given: [],
-    window: 156,
   },
 };
 
 const rebuilding: DatasetRow = { ...live, phase: 'rebuilding', checkpoint: undefined, checkpointText: '' };
+
+const stall = { record: 'a1b2c3d4-0000-7000-8000-000000000001', detail: 'Its data test was stopped 20 times' };
+
+const stalled: DatasetRow = { ...live, phase: 'stalled', tries: 20, stall };
 
 const waitingStanding = {
   dataset: {
@@ -58,6 +62,7 @@ const waitingStanding = {
     last_period: null,
     events_folded: 0,
     passed_over: 0,
+    stall: null,
   },
 };
 
@@ -74,11 +79,12 @@ const liveStanding = {
     last_period: '2026-W42',
     events_folded: 4,
     passed_over: 1,
+    stall: null,
   },
 };
 
 describe('the standing of a prediction function whose data is a projection', () => {
-  it('shows its dataset waiting until the projector makes it, then its phase, checkpoint and figures', async () => {
+  it('shows its dataset waiting until the projector makes it, then its phase, checkpoint and figures, and the event it stalled at', async () => {
     const { capability, datasets } = predictionRuns();
     const standing = () => Effect.runPromise(capability.standing({ ...asked, status: 'active', details }));
     const waiting = await standing();
@@ -88,6 +94,8 @@ describe('the standing of a prediction function whose data is a projection', () 
 
     expect([waiting, shown]).toEqual([waitingStanding, liveStanding]);
     expect(await standing()).toMatchObject({ dataset: { phase: 'rebuilding', checkpoint: null } });
+    datasets.keep(dataSha256, stalled);
+    expect(await standing()).toMatchObject({ dataset: { phase: 'stalled', stall } });
   });
 });
 

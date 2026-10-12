@@ -1,5 +1,6 @@
 import { Buffer } from 'node:buffer';
 
+import { figure } from '../capability/figures.ts';
 import { predictionBounds } from '../capability/prediction-bounds.ts';
 import { byUtf8 } from '../files/csv-text.ts';
 import { grainOfForm, periodForm, periodOfForm, type Grain } from '../periods/grains.ts';
@@ -116,7 +117,7 @@ function rowTaken(rows: Rows, record: CsvRecord, columns: readonly string[]): Ro
   if (record.fields.length !== columns.length) {
     throw new CsvFault(
       record.line,
-      `The row has ${record.fields.length} fields where the header names ${columns.length}`,
+      `The row has ${figure(record.fields.length)} fields where the header names ${columns.length}`,
     );
   }
   const form = fieldAt(record, 1);
@@ -135,7 +136,7 @@ function rowTaken(rows: Rows, record: CsvRecord, columns: readonly string[]): Ro
   if (taken.rows > mostDatasetRows || taken.series > mostDatasetSeries) {
     throw new CsvFault(
       record.line,
-      `A dataset holds at most ${mostDatasetRows} rows over at most ${mostDatasetSeries} series`,
+      `A dataset holds at most ${figure(mostDatasetRows)} rows over at most ${figure(mostDatasetSeries)} series`,
     );
   }
   return taken;

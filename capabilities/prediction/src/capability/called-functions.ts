@@ -42,11 +42,9 @@ function takesADecision(schema: Schema.JsonObject): boolean {
 function takesCandidates(schema: Schema.JsonObject): boolean {
   const candidates = propertyOf(schema, 'candidates');
   const items = candidates?.['items'];
-  const required = schema['required'];
   return (
     schema['type'] === 'object' &&
-    Array.isArray(required) &&
-    required.includes('candidates') &&
+    sameMembers(schema['required'], ['candidates']) &&
     candidates?.['type'] === 'array' &&
     isMapping(items) &&
     items['type'] === 'string'
@@ -93,7 +91,8 @@ function sendingOf({ source }: PredictionFunctionDefinitionDocument): readonly C
           input: { build: {} },
           inputWords: '{ build: {} }, which a build is sent with',
           outputFits: takesCandidates,
-          outputWords: 'an object that takes candidates, a list of the SHA-256 of each candidate as text',
+          outputWords:
+            'an object whose one required property candidates is a list of the SHA-256 of each candidate as text',
         },
       ];
 }

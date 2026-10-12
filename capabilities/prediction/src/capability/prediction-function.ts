@@ -3,7 +3,6 @@ import {
   functionCategoryLabels,
   functionResourceLabels,
   type Capability,
-  type CapabilityFacts,
 } from '@on.auto/definitions';
 import type { ProgramPool } from '@on.auto/workflow-engine/dsl';
 
@@ -21,8 +20,6 @@ export interface PredictionFunctionAdapterOptions {
   readonly datasets: DatasetsPort;
   readonly mostFunctions?: number;
 }
-
-export const predictionFacts: CapabilityFacts = { onRuns: [], streams: [] };
 
 export function makePredictionFunctionAdapter({
   pool,
@@ -46,6 +43,5 @@ export function makePredictionFunctionAdapter({
     longestRunFor,
     mostActive: mostFunctions,
     standing: predictionStanding(datasets),
-    facts: predictionFacts,
   });
 }

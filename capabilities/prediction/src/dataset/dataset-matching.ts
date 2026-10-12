@@ -44,7 +44,7 @@ function matchOfVerdicts(verdicts: readonly FilterVerdict[]): EventMatch {
   const stop = failures.find((failure) => failure.stopped);
   return stop === undefined
     ? { kind: 'refused', detail: `Its data test failed: ${wordsOf(failed)}` }
-    : { kind: 'stopped', detail: `Its data test stopped three times in a row: ${wordsOf(stop)}` };
+    : { kind: 'stopped', detail: wordsOf(stop) };
 }
 
 export function eventMatchOf(

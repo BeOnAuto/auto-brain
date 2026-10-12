@@ -24,7 +24,12 @@ function questionSchema({ horizons, unit }: Predicts, { given }: Pick<DataPart, 
     required: given.length === 0 ? ['series', 'horizon'] : ['series', 'horizon', 'given'],
     additionalProperties: false,
     properties: {
-      series: { type: 'string', minLength: 1, maxLength: predictionBounds.mostSeriesBytes, description: 'The series' },
+      series: {
+        type: 'string',
+        minLength: 1,
+        maxLength: predictionBounds.mostSeriesBytes,
+        description: `The series, text of 1 to ${predictionBounds.mostSeriesBytes} bytes in UTF-8`,
+      },
       horizon: { type: 'integer', enum: [...horizons], description: 'How many periods ahead of the last observed' },
       ...(given.length === 0 ? {} : { given: givenSchema(given) }),
     },

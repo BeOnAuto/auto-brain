@@ -19,9 +19,8 @@ export function canonicalJson(value: Schema.Json): string {
 }
 
 export function dataJsonOf(data: DataPart, period: Grain): Schema.JsonObject {
-  const { given, window } = data;
   if (!isProjected(data)) {
-    return { dataset: data.dataset, features: [...data.features], given: [...given], window, period };
+    return { dataset: data.dataset, features: [...data.features], period };
   }
   return {
     period,
@@ -30,8 +29,6 @@ export function dataJsonOf(data: DataPart, period: Grain): Schema.JsonObject {
     series: data.series,
     target: { ...data.target },
     features: data.features.map((feature) => ({ ...feature })),
-    given: [...given],
-    window,
   };
 }
 

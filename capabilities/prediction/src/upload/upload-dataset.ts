@@ -2,7 +2,7 @@ import {
   defineHttpOperation,
   InvalidInput,
   PlaybookContext,
-  type ContentRefusedBecause,
+  type ContentRefused,
   type RecordedContent,
   type StreamedContent,
 } from '@on.auto/operations';
@@ -10,7 +10,7 @@ import { Effect, Result, Schema } from 'effect';
 
 import { predictionBounds } from '../capability/prediction-bounds.ts';
 import { grains } from '../periods/grains.ts';
-import { checkedUpload, type ReadUpload } from './checked-upload.ts';
+import { checkedUpload } from './checked-upload.ts';
 import { CsvFault } from './csv-fault.ts';
 
 const DigestField = Schema.String.annotate({
@@ -29,9 +29,7 @@ const UploadedSchema = Schema.Struct({
 });
 
 function refusedBody(
-  because: ContentRefusedBecause,
-  cause: unknown,
-  read: () => Promise<ReadUpload>,
+  { because, cause, found }: Pick<ContentRefused, 'because' | 'cause' | 'found'>,
   sha256: string,
 ): Effect.Effect<never, InvalidInput> {
   if (because === 'stream_failed' && cause instanceof CsvFault) {
@@ -40,13 +38,11 @@ function refusedBody(
       new InvalidInput({ detail: `The dataset is refused at line ${cause.line}`, issues: [{ pointer: '', detail }] }),
     );
   }
-  if (because !== 'not_its_digest') {
+  if (because !== 'not_its_digest' || found === undefined) {
     return Effect.die(cause);
   }
-  return Effect.flatMap(Effect.promise(read), ({ sha256: found }) => {
-    const detail = `The body's digest is ${found} and the path says ${sha256}`;
-    return Effect.fail(new InvalidInput({ detail, issues: [{ pointer: '/sha256', detail }] }));
-  });
+  const detail = `The body's digest is ${found.sha256} and the path says ${sha256}`;
+  return Effect.fail(new InvalidInput({ detail, issues: [{ pointer: '/sha256', detail }] }));
 }
 
 export function uploadDataset(content: Pick<RecordedContent, 'put'>) {
@@ -71,7 +67,7 @@ export function uploadDataset(content: Pick<RecordedContent, 'put'>) {
           content.put(playbook, { stream: checked.stream, mediaType: 'text/csv', expected: { sha256 } }),
         );
         if (Result.isFailure(put)) {
-          return yield* refusedBody(put.failure.because, put.failure.cause, () => checked.read, sha256);
+          return yield* refusedBody(put.failure, sha256);
         }
         const kept = put.success;
         const figures = yield* Effect.promise(() => checked.read);

@@ -3,6 +3,11 @@ import { Schema } from 'effect';
 
 import { decodeStoredData, type DatasetData } from './dataset-data.ts';
 
+interface DatasetStall {
+  readonly record: string;
+  readonly detail: string;
+}
+
 export interface DatasetStanding {
   readonly phase: RowPhase;
   readonly checkpoint: Point | undefined;
@@ -13,6 +18,8 @@ export interface DatasetStanding {
   readonly lastPeriod: string | null;
   readonly eventsFolded: number;
   readonly passedOver: number;
+  readonly tries: number;
+  readonly stall: DatasetStall | null;
 }
 
 export interface DatasetRow extends DatasetStanding {
@@ -38,10 +45,19 @@ export const StoredDatasetSchema = Schema.Struct({
   last_period: Text,
   events_folded: WholeNumber,
   passed_over: WholeNumber,
+  tries: WholeNumber,
+  stalled_record: Text,
+  stalled_detail: Text,
   data: Schema.String,
 });
 
-export function datasetRowOf(stored: typeof StoredDatasetSchema.Type): DatasetRow {
+type StoredDataset = typeof StoredDatasetSchema.Type;
+
+function stallOf({ stalled_record: record, stalled_detail: detail }: StoredDataset): DatasetStall | null {
+  return record === null || detail === null ? null : { record, detail };
+}
+
+export function datasetRowOf(stored: StoredDataset): DatasetRow {
   return {
     playbookKey: stored.playbook_key,
     dataSha256: stored.data_sha256,
@@ -56,11 +72,26 @@ export function datasetRowOf(stored: typeof StoredDatasetSchema.Type): DatasetRo
     lastPeriod: stored.last_period,
     eventsFolded: stored.events_folded,
     passedOver: stored.passed_over,
+    tries: stored.tries,
+    stall: stallOf(stored),
     data: decodeStoredData(stored.data),
   };
 }
 
 export function standingOf(row: DatasetRow): DatasetStanding {
   const { phase, checkpoint, checkpointAt, rows, series, firstPeriod, lastPeriod, eventsFolded, passedOver } = row;
-  return { phase, checkpoint, checkpointAt, rows, series, firstPeriod, lastPeriod, eventsFolded, passedOver };
+  const { tries, stall } = row;
+  return {
+    phase,
+    checkpoint,
+    checkpointAt,
+    rows,
+    series,
+    firstPeriod,
+    lastPeriod,
+    eventsFolded,
+    passedOver,
+    tries,
+    stall,
+  };
 }

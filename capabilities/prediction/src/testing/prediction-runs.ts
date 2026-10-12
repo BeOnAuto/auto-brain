@@ -8,7 +8,7 @@ import type {
   SavedDefinitions,
 } from '@on.auto/definitions';
 import { noLongestRuns, recordingJournal } from '@on.auto/definitions/testing';
-import { allPermissions } from '@on.auto/operations';
+import { allPermissions, contentOfText } from '@on.auto/operations';
 import { programPool, type ProgramPool } from '@on.auto/workflow-engine/dsl';
 import { Effect, type Exit, type Schema } from 'effect';
 import { afterEach } from 'vitest';
@@ -64,9 +64,22 @@ function keptDatasets(): KeptDatasets {
   };
 }
 
-export function savedInteractions(saved: readonly SavedDefinition[]): SavedDefinitions {
+export interface KeptText {
+  readonly text: string;
+  readonly mediaType: string;
+}
+
+export function savedInPlaybook(
+  saved: readonly SavedDefinition[],
+  kept: ReadonlyMap<string, KeptText> = new Map(),
+): SavedDefinitions {
   return {
     active: (_type, name) => Effect.sync(() => saved.find((definition) => definition.name === name)),
+    content: (sha256) =>
+      Effect.sync(() => {
+        const found = kept.get(sha256);
+        return found === undefined ? undefined : contentOfText(found.text, found.mediaType);
+      }),
   };
 }
 

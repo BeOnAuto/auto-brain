@@ -8,6 +8,7 @@ import { Effect } from 'effect';
 import type { PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';
 import { calledFunctionIssues } from './called-functions.ts';
 import { invalidDefinition } from './prediction-definitions.ts';
+import { uploadedDatasetIssues } from './uploaded-datasets.ts';
 
 export type PredictionCheck = (
   document: PredictionFunctionDefinitionDocument,
@@ -43,13 +44,16 @@ function placedIssues(
 export function predictionCheck(pool: ProgramPool): PredictionCheck {
   return (document, _source, saved) =>
     Effect.gen(function* () {
-      const called = yield* calledFunctionIssues(document, saved);
+      const found = [
+        ...(yield* calledFunctionIssues(document, saved)),
+        ...(yield* uploadedDatasetIssues(document, saved)),
+      ];
       const checked = yield* expressionsChecked(pool, document);
       if ('issues' in checked) {
         return yield* Effect.fail(
-          invalidDefinition(reportedIssues([...called, ...placedIssues(document, checked.issues)])),
+          invalidDefinition(reportedIssues([...found, ...placedIssues(document, checked.issues)])),
         );
       }
-      return called.length > 0 ? yield* Effect.fail(invalidDefinition(reportedIssues(called))) : checked.stripped;
+      return found.length > 0 ? yield* Effect.fail(invalidDefinition(reportedIssues(found))) : checked.stripped;
     });
 }

@@ -1,6 +1,7 @@
 import type { DocumentIssue, SourceLines } from '@on.auto/definitions/document';
 import type { Schema } from 'effect';
 
+import { figure } from '../capability/figures.ts';
 import { predictionBounds } from '../capability/prediction-bounds.ts';
 import { isMapping, nameIssues, refusedAt } from '../document/checked-parts.ts';
 import { aggregations } from '../document/front-matter.ts';
@@ -93,7 +94,7 @@ export function featureNameIssues(
       ? refusedAt(
           lines,
           '/data/features',
-          `A prediction function takes at most ${mostFeatures} features; it names ${names.length}`,
+          `A prediction function takes at most ${mostFeatures} features; it names ${figure(names.length)}`,
         )
       : [];
   return [

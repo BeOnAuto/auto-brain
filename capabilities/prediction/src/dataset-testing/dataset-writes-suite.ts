@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { datasetFolder } from '../dataset/dataset-folder.ts';
 import { datasetsPortOn } from '../dataset/datasets-port.ts';
-import { uploadedWeeklyOrders, weeklyOrdersWith } from '../testing/weekly-orders.ts';
+import { uploadedWeeklyOrders, weeklyOrders, weeklyOrdersWith } from '../testing/weekly-orders.ts';
 import { isLive, liveFolded } from './dataset-predicates.ts';
 import type { SettingsOf } from './dataset-stores.ts';
 import { north } from './orders.ts';
@@ -21,7 +21,7 @@ function staleWriteTest(settingsOf: SettingsOf): void {
     'writes nothing once another projector moved its checkpoint first, and keeps no dataset for a function that names an uploaded one',
     async () => {
       const datasets = await projectedDatasets(await settingsOf());
-      const { dataSha256 } = await datasets.saved('orders', weeklyOrdersWith(['  window: 156', '  window: 157']));
+      const { dataSha256 } = await datasets.saved('orders', weeklyOrders);
       const idle = await datasets.saved('refunds', refunds);
       await datasets.saved('uploaded', uploadedWeeklyOrders('c'.repeat(64)));
       await datasets.published([north('2026-10-06T10:00:00Z')]);
@@ -52,7 +52,7 @@ function portTest(settingsOf: SettingsOf): void {
     'reads a dataset by its digest for the standing of a function',
     async () => {
       const datasets = await projectedDatasets(await settingsOf());
-      const { dataSha256 } = await datasets.saved('orders', weeklyOrdersWith(['  window: 156', '  window: 157']));
+      const { dataSha256 } = await datasets.saved('orders', weeklyOrders);
       await datasets.published([north('2026-10-06T10:00:00Z')]);
       datasets.start();
       await datasets.until(dataSha256, liveFolded(1));

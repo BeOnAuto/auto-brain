@@ -45,7 +45,7 @@ describe('the brief rendered for a trainer', () => {
       problemsOf(weeklyOrdersWith([firstLine, '{{ dataset.features.title }} {{ dataset.features[0].title }}'])),
     ).toEqual([
       'Line 28: dataset.features.title is not a part of dataset; the brief reads dataset (rows, series, periods, window, holdout, features, horizons) and function (name, target, unit, rules)',
-      'Line 28: dataset.features.[0].title is not a part of dataset; the brief reads dataset (rows, series, periods, window, holdout, features, horizons) and function (name, target, unit, rules)',
+      'Line 28: dataset.features[0].title is not a part of dataset; the brief reads dataset (rows, series, periods, window, holdout, features, horizons) and function (name, target, unit, rules)',
     ]);
     expect(problemsOf(weeklyOrdersWith([firstLine, '{{ dataset.nothing.more }}']))).toEqual([
       'Line 28: dataset.nothing is not a part of dataset; the brief reads dataset (rows, series, periods, window, holdout, features, horizons) and function (name, target, unit, rules)',
