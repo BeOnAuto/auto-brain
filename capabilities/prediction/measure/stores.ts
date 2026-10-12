@@ -3,12 +3,12 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
+import { postgresqlLedgerLayer, type PostgreSQLPools } from '@on.auto/ledger/postgresql';
 import { ledgerLayer } from '@on.auto/ledger/sqlite3';
 import type { Ledger } from '@on.auto/operations';
 import type { DatabaseSettings } from '@on.auto/workflow-host';
 import type { Layer } from 'effect';
-import { Client } from 'pg';
+import { Client, Pool } from 'pg';
 
 interface MeasuredDatabase {
   readonly settings: DatabaseSettings;
@@ -60,9 +60,10 @@ function onPostgreSQL(server: string): MeasuredStore {
       names.push(name);
       const database = new URL(server);
       database.pathname = `/${name}`;
+      const pools: PostgreSQLPools = ({ max }) => new Pool({ connectionString: database.href, max });
       return {
-        settings: { store: 'postgresql', connectionString: database.href },
-        ledger: postgresqlLedgerLayer({ connectionString: database.href }),
+        settings: { store: 'postgresql', pools },
+        ledger: postgresqlLedgerLayer({ pools }),
       };
     },
     removeAll: async () => {
