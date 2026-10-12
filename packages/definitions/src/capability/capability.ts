@@ -4,6 +4,7 @@ import type {
   CallLink,
   Conflict,
   InvalidInput,
+  Issue,
   Noun,
   Settlement,
   TriggerLink,
@@ -106,6 +107,12 @@ export interface RunWords {
 
 type WhenCancelled = 'stop' | 'finish';
 
+export interface AnsweringRun {
+  readonly work: readonly RecordedWork[];
+}
+
+export type AnswerIssues = (answer: Schema.Json, run: AnsweringRun) => readonly Issue[];
+
 const defaultLongestAnyRunMs = 600_000;
 
 export interface CapabilityDeclaration<Parsed> {
@@ -138,6 +145,7 @@ export interface CapabilityDeclaration<Parsed> {
   readonly longestRunOf?: (parsed: NoInfer<Parsed>) => number;
   readonly longestRunFor?: (parsed: NoInfer<Parsed>, input: Schema.Json) => number;
   readonly cancel?: CancelDecision;
+  readonly answerIssues?: AnswerIssues;
   readonly runWords?: Partial<RunWords>;
   readonly facts?: CapabilityFacts;
   readonly mostActive?: number;
@@ -172,6 +180,10 @@ export function cancelledAsAsked({ kind, reason }: CancelledRun): Settlement {
   return { status: 'rejected', reason: 'cancelled', kind, detail: reason };
 }
 
+function takesAnyAnswer(): readonly Issue[] {
+  return [];
+}
+
 function standsAsSaved(): Effect.Effect<Schema.JsonObject | undefined> {
   return Effect.undefined;
 }
@@ -193,6 +205,7 @@ export interface Capability {
   readonly mostActive: number;
   readonly standing: Standing;
   readonly cancel: CancelDecision;
+  readonly answerIssues: AnswerIssues;
   readonly runWords: RunWords;
   readonly facts: CapabilityFacts;
   readonly prepare: (source: string, stripped?: StrippedForms) => Effect.Effect<PreparedDefinition, InvalidInput>;
@@ -212,6 +225,7 @@ function declaredBounds<Parsed>(definition: CapabilityDeclaration<Parsed>) {
     mostActive: definition.mostActive ?? Number.POSITIVE_INFINITY,
     standing: definition.standing ?? standsAsSaved,
     cancel: definition.cancel ?? cancelledAsAsked,
+    answerIssues: definition.answerIssues ?? takesAnyAnswer,
     runWords: { ...defaultRunWords, ...definition.runWords },
     facts: definition.facts ?? noFacts,
   };

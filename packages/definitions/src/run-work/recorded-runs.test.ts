@@ -15,6 +15,10 @@ describe('a run as it was recorded', () => {
       run: { run_id: askedRunId, status: 'started', record: { ...askedRequest, message: question } },
       input: { campaign: 'Spring' },
       awaitsSettlement: true,
+      work: [],
+      answer: null,
+      depth: 0,
+      callDepth: 0,
     });
     expect(
       await Effect.runPromise(
