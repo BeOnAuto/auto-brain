@@ -10,10 +10,10 @@ const manifestOf = Schema.decodeUnknownSync(
 );
 
 describe('release', () => {
-  it('names the product and carries the release version of the repository manifest', () => {
+  it('carries the name and the release version of the repository manifest, which names the product', () => {
     const manifest = manifestOf(readFileSync(new URL('../../../../package.json', import.meta.url), 'utf8'));
 
-    expect(release).toEqual({ name: 'auto-runtime', version: manifest.version });
-    expect(manifest.name).toBe('auto-runtime');
+    expect(release).toEqual({ name: manifest.name, version: manifest.version });
+    expect(release.name).toBe('auto-runtime');
   });
 });
