@@ -2,6 +2,12 @@ import type { RejectionBecause } from '../outcome/rejection-because.ts';
 
 export type Remedies = Readonly<Partial<Record<RejectionBecause, string>>>;
 
+export interface Explanation {
+  readonly why: string;
+  readonly remedy: string;
+  readonly mayHaveChanged?: true;
+}
+
 export interface PlainLanguage<Input, Output> {
   readonly task: string;
   readonly attempt: (input: Input) => string;

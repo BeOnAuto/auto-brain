@@ -2,13 +2,8 @@ import type { OperationKind } from '../caller/operation-scope.ts';
 import type { Cancelled, Failed, Rejected, RejectionReason } from '../outcome/outcome.ts';
 import type { RejectionBecause } from '../outcome/rejection-because.ts';
 import type { RejectionKind } from '../outcome/rejection.ts';
-import type { Remedies } from './plain-language.ts';
-
-export interface Explanation {
-  readonly why: string;
-  readonly remedy: string;
-  readonly mayHaveChanged?: true;
-}
+import type { Explanation, Remedies } from './plain-language.ts';
+import { predictionExplanations } from './prediction-explanations.ts';
 
 export type ExplainedRejection = Pick<Rejected, 'reason' | 'kind' | 'because'>;
 
@@ -99,15 +94,7 @@ const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
     remedy:
       'This can be put right on your side: once its result keeps only what is needed, such as fewer or smaller values, it can be run again.',
   },
-  no_active_version: {
-    why: 'the function has no model that answers yet',
-    remedy: 'It answers once a build has given it an active version, where the runtime offers builds.',
-  },
-  build_not_offered: {
-    why: 'this runtime does not offer a build of the function yet',
-    remedy:
-      'Asking again will not change that; what the function keeps meanwhile, such as its dataset, is kept as before.',
-  },
+  ...predictionExplanations,
   requested: {
     why: 'it was cancelled at the request of someone allowed to change the playbook',
     remedy: ranUntilCancelled,

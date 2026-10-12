@@ -1,0 +1,64 @@
+import type { ConflictKind } from '../outcome/conflict.ts';
+import type { UnavailableKind } from '../outcome/unavailable.ts';
+import type { Explanation } from './plain-language.ts';
+
+type PredictionKind =
+  | Extract<
+      ConflictKind,
+      | 'no_active_version'
+      | 'data_changed'
+      | 'build_in_flight'
+      | 'dataset_too_large'
+      | 'not_a_build'
+      | 'build_ended'
+      | 'already_active'
+    >
+  | Extract<UnavailableKind, 'builds_full' | 'dataset_not_ready' | 'model_process_busy' | 'model_process_failed'>;
+
+export const predictionExplanations: Readonly<Record<PredictionKind, Explanation>> = {
+  no_active_version: {
+    why: 'the function has no model that answers yet',
+    remedy: 'It answers once a build has given it an active version: ask for one with the input { build: {} }.',
+  },
+  data_changed: {
+    why: 'the data part of the function changed since its active version was built, so that model no longer fits its rows',
+    remedy: 'It answers again once a build over the data part as it now stands has given it an active version.',
+  },
+  build_in_flight: {
+    why: 'a build of the function is already in flight',
+    remedy: 'It can be asked again once that build has ended, or after cancelling it; get_definition shows it.',
+  },
+  dataset_too_large: {
+    why: 'its dataset holds more rows or series than a build takes',
+    remedy:
+      'This can be put right on your side: a narrower window or fewer series make it fit; the details below give the figures.',
+  },
+  not_a_build: {
+    why: 'the run named is not a build of a prediction function',
+    remedy: 'Name the run of a build, as the request of that build shows.',
+  },
+  build_ended: {
+    why: 'the build has ended or has taken its answer, so it takes nothing more from its trainer',
+    remedy: 'A new build can be asked for with the input { build: {} }.',
+  },
+  already_active: {
+    why: 'that version is already the active one',
+    remedy: 'Nothing needs to change; get_definition shows the active version.',
+  },
+  builds_full: {
+    why: 'as many builds as may run are already in flight or were asked today',
+    remedy: 'It can be asked again later; the details below say when.',
+  },
+  dataset_not_ready: {
+    why: 'its dataset is still being built from the playbook’s history',
+    remedy: 'Nothing needs to change: trying again once get_definition shows the dataset live should work.',
+  },
+  model_process_busy: {
+    why: 'every model process of this server is busy',
+    remedy: 'Nothing needs to change: trying again shortly should work.',
+  },
+  model_process_failed: {
+    why: 'the process that runs the model ended, or answered something other than finite numbers, before it answered',
+    remedy: 'Trying again starts a new process; if it keeps happening, a new build gives the function another model.',
+  },
+};

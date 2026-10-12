@@ -12,6 +12,12 @@ export const ConflictKindSchema = Schema.Literals([
   'effect_unknown',
   'oversized',
   'no_active_version',
+  'data_changed',
+  'build_in_flight',
+  'dataset_too_large',
+  'not_a_build',
+  'build_ended',
+  'already_active',
 ]);
 
 export type ConflictKind = typeof ConflictKindSchema.Type;

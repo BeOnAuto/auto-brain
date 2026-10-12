@@ -26,11 +26,6 @@ const refusedBeforeAsking: ReadonlyArray<readonly [ExplainedRejection, string, s
     'the playbook already holds as many open requests as it may',
     'Once some of them are answered, expire or are cancelled, it can be tried again.',
   ],
-  [
-    { reason: 'unavailable', kind: 'build_not_offered' },
-    'this runtime does not offer a build of the function yet',
-    'Asking again will not change that; what the function keeps meanwhile, such as its dataset, is kept as before.',
-  ],
 ];
 
 describe('the explanation of a request that went unanswered', () => {
