@@ -7,7 +7,7 @@ import { postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
 import { ledgerLayer } from '@on.auto/ledger/sqlite3';
 import { Ledger, type RunOutcomeMapping } from '@on.auto/operations';
 import { Effect, ManagedRuntime, type Layer } from 'effect';
-import { Client } from 'pg';
+import { Client, Pool } from 'pg';
 
 import { firstDay, lastDay, type OutcomeRow } from './outcomes-dataset.ts';
 
@@ -212,7 +212,10 @@ export function onPostgreSQL(server: string): Bench {
       return { location: url.href, drop };
     },
     ledgerOn: ({ location }, runOutcomes) =>
-      postgresqlLedgerLayer({ connectionString: location, ...(runOutcomes === undefined ? {} : { runOutcomes }) }),
+      postgresqlLedgerLayer({
+        pools: ({ max }) => new Pool({ connectionString: location, max }),
+        ...(runOutcomes === undefined ? {} : { runOutcomes }),
+      }),
     write: ({ location }, count, rowsOf) =>
       connected(location, async (client) => {
         await client.query('SET synchronous_commit = off');
