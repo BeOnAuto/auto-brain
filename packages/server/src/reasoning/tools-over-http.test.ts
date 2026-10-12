@@ -4,6 +4,7 @@ import { answers, callingTools, textResult, type ScriptedReply } from '@on.auto/
 import { Effect, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { release } from '../composition/release.ts';
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
@@ -98,7 +99,7 @@ const calledTools: unknown = expect.stringMatching(
 const toolRun = ['run_started', 'tool_call_started', 'tool_call_answered', 'run_succeeded'];
 
 describe('a reasoning function that calls tools, over HTTP', () => {
-  it('runs with a tool of a remote server, and its history shows the call', async () => {
+  it('runs with a tool of a remote server it connects to as its release, and its history shows the call', async () => {
     const fake = await fakeGraph();
     const server = await serving(fake, searched('graph'));
 
@@ -111,6 +112,12 @@ describe('a reasoning function that calls tools, over HTTP', () => {
       { tool: 'search', arguments: { query: 'acme' }, meta: { 'auto.on/run_id': runId } },
     ]);
     expect(fake.endedSessions()).toBe(1);
+    expect(
+      fake
+        .seen()
+        .filter(({ rpc }) => rpc === 'initialize')
+        .map(({ client }) => client),
+    ).toEqual([release]);
   });
 
   it('runs with a tool of a process the server starts', { timeout: stdioTestTimeoutMs }, async () => {

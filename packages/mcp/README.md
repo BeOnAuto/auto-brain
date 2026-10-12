@@ -39,7 +39,7 @@ Nothing is learned from a server when the settings are read: the server starts w
 
 ## A run's tools
 
-`makeToolAccess(settings, { reportServerMessage, reportUntestable, fetch?, now?, timing? })` holds one link per configured server and answers:
+`makeToolAccess(settings, { client, content, reportServerMessage, reportUntestable, fetch?, now?, timing? })` holds one link per configured server, each connection naming itself to its server as `client`, the name and version the server passes in from its release, and answers:
 
 - `configured`: whether any server is configured, which makes `run_definition` destructive.
 - `testing`: each server's name with its `allowed` and `testable`, which `test_tool_call` checks a tool against on the entry of the server it names.

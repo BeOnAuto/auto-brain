@@ -74,7 +74,7 @@ function postInitialize(path: string, headers: Readonly<Record<string, string>>)
 }
 
 describe('the org endpoint of the server', () => {
-  it('names the release and lists the five playbook tools, list_models and list_tool_servers', async () => {
+  it('names the release under the title Auto Runtime and lists the five playbook tools, list_models and list_tool_servers', async () => {
     const connected = await withMcpSession(
       'current revision',
       endpoint('/orgs/acme/mcp', acmeAdmin.key),
@@ -85,7 +85,7 @@ describe('the org endpoint of the server', () => {
     );
 
     expect(connected).toEqual({
-      serverVersion: release,
+      serverVersion: { ...release, title: 'Auto Runtime' },
       tools: [...playbookTools, 'list_models', 'list_tool_servers', 'get_guide'],
     });
   });

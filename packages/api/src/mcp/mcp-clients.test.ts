@@ -92,7 +92,7 @@ describe.each(mcpClientKinds)('the %s client connecting to a playbook endpoint',
 
     expect(connected).toEqual({
       protocolVersion: expectedProtocolVersion[kind],
-      serverVersion: testServerInfo,
+      serverVersion: { ...testServerInfo, title: 'Auto Runtime' },
       instructions: instructionsFor('playbook', { orgTools: [], playbookTools }, testDefinitionTypes, testRecipes),
     });
   });

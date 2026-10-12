@@ -11,7 +11,13 @@ import { Redacted } from 'effect';
 
 import type { HttpServerSettings } from '../settings/mcp-settings.ts';
 import { ignored } from './ignored.ts';
-import { connectionOver, observingFetch, openingClient, type McpConnection } from './mcp-connection.ts';
+import {
+  connectionOver,
+  observingFetch,
+  openingClient,
+  type ClientInfo,
+  type McpConnection,
+} from './mcp-connection.ts';
 import type { Observations } from './observed-requests.ts';
 import { failureOf } from './server-failures.ts';
 
@@ -29,6 +35,7 @@ export const systemTimer: Timer = {
 };
 
 export interface HttpOpening {
+  readonly client: ClientInfo;
   readonly fetch: FetchLike;
   readonly authProvider: AuthProvider | undefined;
   readonly timeoutMs: number;
@@ -77,7 +84,7 @@ class ObservedHttpTransport extends StreamableHTTPClientTransport {
 }
 
 async function connectedOnce(settings: HttpServerSettings, opening: HttpOpening): Promise<McpConnection | Limited> {
-  const opened = openingClient(settings.request_id, opening.reportError);
+  const opened = openingClient(opening.client, settings.request_id, opening.reportError);
   const transport = new ObservedHttpTransport(settings, opening, opened.observations);
   try {
     await opened.client.connect(transport, { timeout: opening.timeoutMs });

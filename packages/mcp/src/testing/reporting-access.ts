@@ -8,6 +8,8 @@ import type { Timing } from '../bounds/call-bounds.ts';
 import { ignored } from '../connections/ignored.ts';
 import { readMcpSettings, type Environment } from '../settings/settings-reading.ts';
 
+export const testClientInfo: ToolAccessOptions['client'] = { name: '@on.auto/runtime', version: '0.0.0-test' };
+
 export interface AccessOptions {
   readonly environment?: Environment;
   readonly timing?: Timing;
@@ -32,6 +34,7 @@ export function reportingAccess(
     readMcpSettings({ ...environment, MCP_SERVERS: JSON.stringify(servers) }, { modelProviders: [] }),
   );
   const access = makeToolAccess(settings, {
+    client: testClientInfo,
     content,
     reportServerMessage: (message) => {
       messages.push(message);
@@ -47,5 +50,5 @@ export function reportingAccess(
 
 export const noToolServers: ToolAccess = makeToolAccess(
   { servers: [] },
-  { content: memoryRecordedContent(), reportServerMessage: ignored, reportUntestable: ignored },
+  { client: testClientInfo, content: memoryRecordedContent(), reportServerMessage: ignored, reportUntestable: ignored },
 );

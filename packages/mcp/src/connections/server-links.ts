@@ -5,7 +5,13 @@ import type { Secrets } from '../bounds/secrets.ts';
 import type { McpServerSettings } from '../settings/mcp-settings.ts';
 import { openHttp, systemTimer, type Timer } from './http-connection.ts';
 import { ignored } from './ignored.ts';
-import { boundedReport, errorsNoLongerReported, type McpConnection, type OutputReport } from './mcp-connection.ts';
+import {
+  boundedReport,
+  errorsNoLongerReported,
+  type ClientInfo,
+  type McpConnection,
+  type OutputReport,
+} from './mcp-connection.ts';
 import { openStdio } from './stdio-connection.ts';
 import { tokenSource } from './token-source.ts';
 
@@ -18,6 +24,7 @@ export interface ServerLink {
 }
 
 export interface LinkOptions {
+  readonly client: ClientInfo;
   readonly fetch: FetchLike;
   readonly secrets: Secrets;
   readonly now: () => number;
@@ -34,7 +41,7 @@ function opener(settings: McpServerSettings, options: LinkOptions): () => Promis
     },
   };
   if (settings.type === 'stdio') {
-    return () => openStdio(settings, { timeoutMs: options.timing.openMs, output });
+    return () => openStdio(settings, { client: options.client, timeoutMs: options.timing.openMs, output });
   }
   const authProvider =
     settings.auth === null
@@ -48,6 +55,7 @@ function opener(settings: McpServerSettings, options: LinkOptions): () => Promis
   const { openMs, longestRetryWaitMs } = options.timing;
   return () =>
     openHttp(settings, {
+      client: options.client,
       fetch: options.fetch,
       authProvider,
       timeoutMs: openMs,

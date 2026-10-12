@@ -61,10 +61,17 @@ export function boundedReport({ scrub, report }: OutputReport, noLongerReported:
 
 const metaField = '_meta';
 
-const clientInfo = { name: '@on.auto/runtime', version: '1.0.0' };
+export interface ClientInfo {
+  readonly name: string;
+  readonly version: string;
+}
 
-export function openingClient(requestIdHeader: string | null, reportError: (message: string) => void): OpenedClient {
-  const client = new Client(clientInfo, { capabilities: {} });
+export function openingClient(
+  { name, version }: ClientInfo,
+  requestIdHeader: string | null,
+  reportError: (message: string) => void,
+): OpenedClient {
+  const client = new Client({ name, version }, { capabilities: {} });
   const { promise: closed, resolve } = Promise.withResolvers<void>();
   Object.assign(client, {
     onclose: resolve,

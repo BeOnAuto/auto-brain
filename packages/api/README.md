@@ -114,7 +114,7 @@ Each operation supplies `plainLanguage`: a `task` and an `attempt` describing th
 
 So invalid arguments are a tool result with `isError` and an `invalid_input` problem pointing at each field, as the protocol asks, and an agent can correct them. The SDK's parsing of the arguments drops one named `__proto__`; each endpoint reads the request body before the SDK, within the same 1 MiB, and puts such an argument back before the call is dispatched, so it is rejected as an excess field, `invalid_input` at `/__proto__`, as over HTTP. A tool the endpoint does not list is a JSON-RPC error, `-32602`, from the SDK. A call still running when the server stops gets a `503` `unavailable` problem. A tool that throws instead of settling is reported as an incident, as an HTTP request would be, and answered with the `500` `internal` problem, so the SDK never puts an error message of its own in the result.
 
-**Server identity.** `serverInfo` carries the name and version the server passes in, which are the product name and the release version.
+**Server identity.** `serverInfo` carries the name and version the server passes in, the root package `@on.auto/runtime` and its release version from the manifest, and the title `Auto Runtime`, which a client shows in place of the name.
 
 **Instructions.** Every endpoint answers `initialize` with instructions built by `instructionsFor` in `src/mcp/instructions.ts`. They establish that Auto Runtime executes playbooks, Studio manages them, and the agent is a separate client. Each playbook contains one brain of reusable functions and its workflows; functions run directly or through workflows, and runs belong to the playbook.
 
