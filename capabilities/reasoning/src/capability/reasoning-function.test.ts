@@ -50,13 +50,11 @@ describe('the reasoning function implementation', () => {
 describe('the longest run of a reasoning function', () => {
   it('is the deadline of its model call for its output tokens, or its tool loop’s bound when it names tools', () => {
     expect([
-      prepared(documentOf('model: openai/gpt-5\nconfig:\n  max_output_tokens: 1000')).longestRunMs(),
-      prepared(
-        documentOf('model: openai/gpt-5\nconfig:\n  max_output_tokens: 1000\ntools:\n  - graph/search'),
-      ).longestRunMs(),
-      prepared(
-        documentOf('model: openai/gpt-5\nconfig:\n  max_output_tokens: 64000\ntools:\n  - graph/search'),
-      ).longestRunMs(),
+      prepared(documentOf('model: openai/gpt-5\nconfig:\n  max_output_tokens: 1000')).longestRunMs,
+      prepared(documentOf('model: openai/gpt-5\nconfig:\n  max_output_tokens: 1000\ntools:\n  - graph/search'))
+        .longestRunMs,
+      prepared(documentOf('model: openai/gpt-5\nconfig:\n  max_output_tokens: 64000\ntools:\n  - graph/search'))
+        .longestRunMs,
     ]).toEqual([85_000, 600_000, 1_660_000]);
   });
 });

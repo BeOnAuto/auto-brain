@@ -1,0 +1,34 @@
+import type { DefinitionSummary } from '@beonauto/definitions';
+import { issueText } from '@beonauto/definitions/document';
+import { InvalidInput } from '@beonauto/operations';
+import { Effect, Result } from 'effect';
+
+import { parseDefinitionDocument } from '../definition/definition-parsing.ts';
+import type { ReasoningFunctionDefinitionDocument } from '../definition/reasoning-function-definition.ts';
+
+export function parse(source: string): Effect.Effect<ReasoningFunctionDefinitionDocument, InvalidInput> {
+  return Result.match(parseDefinitionDocument(source), {
+    onSuccess: (definition) => Effect.succeed(definition),
+    onFailure: (issues) =>
+      Effect.fail(
+        new InvalidInput({
+          detail: `The reasoning function definition has ${issues.length === 1 ? 'a problem' : `${issues.length} problems`}`,
+          issues: issues.map((issue) => ({ pointer: '', detail: issueText(issue) })),
+        }),
+      ),
+  });
+}
+
+export function summarize({
+  description,
+  input,
+  output,
+  warnings,
+}: ReasoningFunctionDefinitionDocument): DefinitionSummary {
+  return {
+    ...(description === undefined ? {} : { description }),
+    ...(input.schema === undefined ? {} : { inputSchema: input.schema.document }),
+    ...(output.type === 'json' ? { outputSchema: output.schema.document } : {}),
+    warnings,
+  };
+}
