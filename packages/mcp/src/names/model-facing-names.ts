@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { sha256Of } from '@beonauto/operations';
 
 import { writtenOf, type ToolReference } from './tool-reference.ts';
 
@@ -13,7 +13,7 @@ const hashCharacters = 8;
 const unsafeCharacters = /[^A-Za-z0-9_]/gu;
 
 function hashOf(tool: ToolReference): string {
-  return createHash('sha256').update(writtenOf(tool)).digest('hex').slice(0, hashCharacters);
+  return sha256Of(writtenOf(tool)).slice(0, hashCharacters);
 }
 
 function plainNameOf({ server, tool }: ToolReference): string {

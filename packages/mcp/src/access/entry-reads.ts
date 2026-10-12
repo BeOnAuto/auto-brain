@@ -1,4 +1,4 @@
-import { contentOfText, type BrainAddress, type RecordedContent } from '@beonauto/operations';
+import { textToKeep, type BrainAddress, type RecordedContent } from '@beonauto/operations';
 import { Effect, Function, Result } from 'effect';
 
 import { secretsOfServers } from '../bounds/secrets.ts';
@@ -25,8 +25,13 @@ export type ContentStore = Pick<RecordedContent, 'put'>;
 
 export function keepingIn(content: ContentStore): KeepIn {
   return ({ org, brain }) =>
-    (sha256, text) =>
-      Effect.runPromise(content.put({ org, brain }, sha256, contentOfText(text, 'application/json')));
+    (text) =>
+      Effect.runPromise(
+        content.put({ org, brain }, textToKeep(text, 'application/json')).pipe(
+          Effect.map(({ sha256 }) => sha256),
+          Effect.orDie,
+        ),
+      );
 }
 
 const nothingKept: Pick<McpServerSettings, 'record_content' | 'request_id'> = {

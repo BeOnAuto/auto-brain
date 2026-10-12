@@ -1,3 +1,4 @@
+import { sha256Of } from '@beonauto/operations';
 import { describe, expect, it } from 'vitest';
 
 import { secretsOf } from '../bounds/secrets.ts';
@@ -12,9 +13,9 @@ describe('the content of one answer received before and after a secret is minted
     const minted = 'minted-token-0123456789';
     const secrets = secretsOf([]);
     const keptTexts = new Map<string, string>();
-    const recording = recordingOf({ record_content: true, request_id: null }, secrets, (sha256, text) => {
-      keptTexts.set(sha256, text);
-      return Promise.resolve();
+    const recording = recordingOf({ record_content: true, request_id: null }, secrets, (text) => {
+      keptTexts.set(sha256Of(text), text);
+      return Promise.resolve(sha256Of(text));
     });
     const received = textAnswer(`the session is ${minted}`);
     const answeredOnce = () =>

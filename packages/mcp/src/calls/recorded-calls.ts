@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 import type { BrainAddress } from '@beonauto/operations';
 import type { Effect } from 'effect';
 
@@ -18,7 +16,7 @@ export interface CallJournal {
   readonly ended: (number: number, fact: CallEnded) => Effect.Effect<boolean>;
 }
 
-export type KeepContent = (sha256: string, text: string) => Promise<void>;
+export type KeepContent = (text: string) => Promise<string>;
 
 export type KeepIn = (brain: BrainAddress) => KeepContent;
 
@@ -49,10 +47,6 @@ export function recordingOf(
   return { content: settings.record_content, requestId: settings.request_id !== null, secrets, keep };
 }
 
-function digestOf(text: string): string {
-  return createHash('sha256').update(text, 'utf8').digest('hex');
-}
-
 export function scrubbedJsonOf(json: string, { secrets }: Pick<Recording, 'secrets'>): string {
   const parsed: unknown = JSON.parse(json);
   return JSON.stringify(secrets.scrubValue(parsed));
@@ -62,8 +56,7 @@ async function keptDigestOf(kept: string, recording: Recording): Promise<string 
   if (!recording.content) {
     return undefined;
   }
-  const sha256 = digestOf(kept);
-  await recording.keep(sha256, kept);
+  const sha256 = await recording.keep(kept);
   return sha256;
 }
 

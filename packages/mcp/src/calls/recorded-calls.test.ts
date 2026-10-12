@@ -282,7 +282,9 @@ describe('the id a server gives a request', () => {
 
 describe('the failure of a call', () => {
   it('carries no detail when the failure said nothing', () => {
-    const recording = recordingOf({ record_content: true, request_id: null }, secretsOf([]), () => Promise.resolve());
+    const recording = recordingOf({ record_content: true, request_id: null }, secretsOf([]), () =>
+      Promise.resolve('a'.repeat(64)),
+    );
 
     expect(
       failedData({ because: 'cancelled', message: '  ', jsonrpcId: null, serverRequestId: null }, 0, recording),
