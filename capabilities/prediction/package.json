@@ -1,0 +1,32 @@
+{
+  "name": "@beonauto/prediction",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Elastic-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing/index.ts"
+  },
+  "scripts": {
+    "lint": "oxlint -c ../../.oxlintrc.json",
+    "typecheck": "tsc",
+    "test": "vitest run --coverage",
+    "measure": "node measure.ts"
+  },
+  "dependencies": {
+    "@beonauto/definitions": "workspace:*",
+    "@beonauto/operations": "workspace:*",
+    "@beonauto/workflow-engine": "workspace:*",
+    "@beonauto/workflow-host": "workspace:*",
+    "effect": "catalog:",
+    "liquidjs": "10.29.0"
+  },
+  "devDependencies": {
+    "@beonauto/ledger": "workspace:*",
+    "@types/pg": "8.23.1",
+    "@vitest/coverage-v8": "catalog:",
+    "pg": "8.23.1",
+    "vitest": "catalog:"
+  }
+}
