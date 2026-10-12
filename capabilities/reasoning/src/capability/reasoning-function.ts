@@ -7,8 +7,8 @@ import {
 } from '@beonauto/definitions';
 import { toolTestPresenter } from '@beonauto/mcp';
 
+import { parse, summarize } from '../definition/definition-reading.ts';
 import type { OfferedModels } from '../model/offered-models.ts';
-import { parse, summarize } from './definition-reading.ts';
 import { longestRequestMs, longestRunMsOf } from './definition-request.ts';
 import { definitionRun, type RunServices } from './definition-run.ts';
 import { onThisServer } from './on-this-server.ts';

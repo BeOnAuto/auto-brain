@@ -3,8 +3,8 @@ import { issueText } from '@beonauto/definitions/document';
 import { InvalidInput } from '@beonauto/operations';
 import { Effect, Result } from 'effect';
 
-import { parseDefinitionDocument } from '../definition/definition-parsing.ts';
-import type { ReasoningFunctionDefinitionDocument } from '../definition/reasoning-function-definition.ts';
+import { parseDefinitionDocument } from './definition-parsing.ts';
+import type { ReasoningFunctionDefinitionDocument } from './reasoning-function-definition.ts';
 
 export function parse(source: string): Effect.Effect<ReasoningFunctionDefinitionDocument, InvalidInput> {
   return Result.match(parseDefinitionDocument(source), {
