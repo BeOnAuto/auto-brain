@@ -24,6 +24,7 @@
   },
   "devDependencies": {
     "@on.auto/api": "workspace:*",
+    "@on.auto/prediction": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
     "vitest": "catalog:"
   }

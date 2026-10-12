@@ -53,8 +53,13 @@ function errorFrom(environment: Environment): unknown {
 }
 
 describe('the prediction function settings', () => {
-  it('keep 4 model processes of 1,280 MiB each, 2 of them for builds, when nothing is set', () => {
-    expect(readSettings({}).prediction).toEqual({ processes: 4, processMemoryMebibytes: 1280, buildsAtOnce: 2 });
+  it('keep 4 model processes of 1,280 MiB each, 2 of them for builds, and 32 active functions a playbook, when nothing is set', () => {
+    expect(readSettings({}).prediction).toEqual({
+      processes: 4,
+      processMemoryMebibytes: 1280,
+      buildsAtOnce: 2,
+      mostFunctions: 32,
+    });
   });
 
   it('look for prlimit in the PATH the server was started with, and nowhere without one', () => {
@@ -64,14 +69,15 @@ describe('the prediction function settings', () => {
     ]).toEqual(['/usr/local/bin:/usr/bin', undefined]);
   });
 
-  it('read each of the three', () => {
+  it('read each of the four', () => {
     expect(
       readSettings({
         PREDICTION_PROCESSES: ' 8 ',
         PREDICTION_PROCESS_MEMORY: '1024',
         PREDICTION_BUILDS_AT_ONCE: '3',
+        PREDICTION_MAX_FUNCTIONS: '1000',
       }).prediction,
-    ).toEqual({ processes: 8, processMemoryMebibytes: 1024, buildsAtOnce: 3 });
+    ).toEqual({ processes: 8, processMemoryMebibytes: 1024, buildsAtOnce: 3, mostFunctions: 1000 });
   });
 
   it('stop the server from starting when one is out of its range or not a whole number, naming each', () => {
@@ -81,13 +87,16 @@ describe('the prediction function settings', () => {
           PREDICTION_PROCESSES: '1',
           PREDICTION_PROCESS_MEMORY: '16385',
           PREDICTION_BUILDS_AT_ONCE: 'many',
+          PREDICTION_MAX_FUNCTIONS: '0',
         }),
       ),
     ).toBe(
-      'InvalidSettingsError: The prediction function settings are invalid. PREDICTION_PROCESSES: Expected a whole number from 2 to 64, such as 4; PREDICTION_PROCESS_MEMORY: Expected a whole number from 768 to 16384, such as 1280; PREDICTION_BUILDS_AT_ONCE: Expected a whole number from 1 to 63, such as 2',
+      'InvalidSettingsError: The prediction function settings are invalid. PREDICTION_PROCESSES: Expected a whole number from 2 to 64, such as 4; PREDICTION_PROCESS_MEMORY: Expected a whole number from 768 to 16384, such as 1280; PREDICTION_BUILDS_AT_ONCE: Expected a whole number from 1 to 63, such as 2; PREDICTION_MAX_FUNCTIONS: Expected a whole number from 1 to 1000, such as 32',
     );
   });
+});
 
+describe('the prediction function settings of builds at once', () => {
   it.each([
     ['as many builds at once as there are processes', '4'],
     ['more builds at once than there are processes', '5'],

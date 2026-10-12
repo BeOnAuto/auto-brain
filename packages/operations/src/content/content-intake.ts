@@ -50,13 +50,13 @@ export function takenInChunks(
 
 export function requireExpected(
   expected: ExpectedContent | undefined,
-  { sha256, bytes }: Digested,
+  found: Digested,
 ): Effect.Effect<void, ContentRefused> {
-  if (expected?.bytes !== undefined && expected.bytes !== bytes) {
-    return Effect.fail(notItsSize(bytes, expected.bytes));
+  if (expected?.bytes !== undefined && expected.bytes !== found.bytes) {
+    return Effect.fail(notItsSize({ sha256: found.sha256, bytes: found.bytes }, expected.bytes));
   }
-  if (expected?.sha256 !== undefined && expected.sha256 !== sha256) {
-    return Effect.fail(notItsDigest(sha256, expected.sha256));
+  if (expected?.sha256 !== undefined && expected.sha256 !== found.sha256) {
+    return Effect.fail(notItsDigest({ sha256: found.sha256, bytes: found.bytes }, expected.sha256));
   }
   return Effect.void;
 }

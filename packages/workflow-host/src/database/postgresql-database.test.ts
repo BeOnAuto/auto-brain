@@ -221,3 +221,59 @@ describe('the host database on PostgreSQL, telling the time', () => {
     ]);
   });
 });
+
+const snapshotBegun = 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY';
+
+const firstRead = statement`SELECT checkpoint FROM folder_rows WHERE playbook_key = ${'a'}`;
+
+const secondRead = statement`SELECT COUNT(*) AS rows FROM folder_rows`;
+
+function bothRead(database: HostDatabase) {
+  return database.readConsistently((read) => Effect.all([read(firstRead), read(secondRead)]));
+}
+
+describe('the host database on PostgreSQL, reading in one snapshot', () => {
+  it('reads on one connection in a transaction that only reads and sees one snapshot, and ends it keeping nothing', async () => {
+    const { store, connections, asked, said } = telling();
+    const database = await postgresqlDatabaseOn(store, connections, []);
+    const migration = asked().length;
+
+    const read = await Effect.runPromise(bothRead(database));
+
+    expect(asked().slice(migration)).toEqual([
+      { text: snapshotBegun, values: [] },
+      { text: textOnPostgreSQL(firstRead), values: ['a'] },
+      { text: textOnPostgreSQL(secondRead), values: [] },
+      { text: 'ROLLBACK', values: [] },
+    ]);
+    expect([read, said().at(-1)]).toEqual([
+      [[{ answered: textOnPostgreSQL(firstRead) }], [{ answered: textOnPostgreSQL(secondRead) }]],
+      'connection released',
+    ]);
+  });
+
+  it('fails with the error of the driver when a read fails, and still ends the snapshot', async () => {
+    const { store, connections, asked, said } = telling(textOnPostgreSQL(secondRead));
+    const database = await postgresqlDatabaseOn(store, connections, []);
+
+    const failure = await Effect.runPromise(Effect.flip(bothRead(database)));
+
+    expect([failure.detail, asked().at(-1), said().at(-1)]).toEqual([
+      `Error: ${textOnPostgreSQL(secondRead)} failed`,
+      { text: 'ROLLBACK', values: [] },
+      'connection released',
+    ]);
+  });
+
+  it.each([
+    ['cannot begin', snapshotBegun],
+    ['cannot be ended', 'ROLLBACK'],
+  ])('fails, and gives its connection back, when its snapshot %s', async (_when, failingOn) => {
+    const { store, connections, said } = telling(failingOn);
+    const database = await postgresqlDatabaseOn(store, connections, []);
+
+    const failure = await Effect.runPromise(Effect.flip(bothRead(database)));
+
+    expect([failure.detail, said().at(-1)]).toEqual([`Error: ${failingOn} failed`, 'connection released']);
+  });
+});

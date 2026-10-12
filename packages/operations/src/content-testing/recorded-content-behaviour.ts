@@ -105,11 +105,13 @@ function putRefused(entry: ContentEntry): void {
         _tag: 'content_refused',
         because: 'not_its_digest',
         detail: `The content's SHA-256 is ${wrong.sha256}, where ${right.sha256} was expected`,
+        found: { sha256: wrong.sha256, bytes: 2_500_000 },
       }),
       expect.objectContaining({
         _tag: 'content_refused',
         because: 'not_its_size',
         detail: 'The content holds 2500000 bytes, where 2500001 were expected',
+        found: { sha256: right.sha256, bytes: 2_500_000 },
       }),
       expect.objectContaining({
         _tag: 'content_refused',

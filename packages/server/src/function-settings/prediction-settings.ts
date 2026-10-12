@@ -11,6 +11,7 @@ interface ModelProcesses {
 }
 
 export interface PredictionSettings extends ModelProcesses {
+  readonly mostFunctions: number;
   readonly path: string | undefined;
 }
 
@@ -25,6 +26,8 @@ const processMemoryMebibytes: CountBounds = {
 
 const buildsAtOnce: CountBounds = { setting: 'PREDICTION_BUILDS_AT_ONCE', least: 1, most: 63, example: 2 };
 
+const mostFunctions: CountBounds = { setting: 'PREDICTION_MAX_FUNCTIONS', least: 1, most: 1000, example: 32 };
+
 function belowTheProcesses(settings: ModelProcesses): readonly string[] {
   return settings.buildsAtOnce < settings.processes
     ? []
@@ -38,8 +41,8 @@ export function readPredictionSettings(
 ): Effect.Effect<PredictionSettings, InvalidSettingsError> {
   const counted = countsIn(environment, {
     settings: 'prediction function settings',
-    bounds: { processes, processMemoryMebibytes, buildsAtOnce },
-    beyondTheRanges: belowTheProcesses,
+    bounds: { processes, processMemoryMebibytes, buildsAtOnce, mostFunctions },
+    beyondTheRanges: (counts) => belowTheProcesses(counts),
   });
   return Effect.map(counted, (counts) => ({ ...counts, path: environment['PATH'] }));
 }

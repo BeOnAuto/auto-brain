@@ -1,5 +1,5 @@
 import type { CapabilityAnswer, PreparedDefinition, Capability, RunContext } from '@on.auto/definitions';
-import { noLongestRuns, recordingJournal } from '@on.auto/definitions/testing';
+import { noLongestRuns, nothingSaved, recordingJournal } from '@on.auto/definitions/testing';
 import { allPermissions, type Conflict, type InvalidInput, type Unavailable } from '@on.auto/operations';
 import { programPool, type PoolSettings, type ProgramPool } from '@on.auto/workflow-engine/dsl';
 import { Effect, type Exit, type Schema } from 'effect';
@@ -66,7 +66,7 @@ export function computationWith(pool: ProgramPool = poolOf(), bounds: RunBounds 
   const capability = makeComputationFunctionAdapter({ pool, ...bounds });
   const prepared = (source: string): PreparedDefinition => Effect.runSync(capability.prepare(source));
   const saved = (source: string) =>
-    Effect.flatMap(prepared(source).check, (stripped) => capability.prepare(source, stripped));
+    Effect.flatMap(prepared(source).check(nothingSaved), (stripped) => capability.prepare(source, stripped));
   return {
     capability,
     prepared,

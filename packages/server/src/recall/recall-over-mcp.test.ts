@@ -89,13 +89,16 @@ describe('a recall function over MCP, on the endpoint of its playbook', { timeou
   });
 });
 
+const listingTheRecallGuide: unknown = expect.arrayContaining(['recall-function']);
+
 describe('the definition tools an agent sees', { timeout: recallTestTimeoutMs }, () => {
-  it('name the guide to a recall function, which get_guide serves whole', async () => {
+  it('name a recall function in create_definition and its guide in get_guide, which serves it whole', async () => {
     const server = await servingRecall([]);
     closing.push(server.stop);
 
     const tools = listedTools(await onAlpha(server, (session) => session.listTools()));
     const createDefinition = tools.find(({ name }) => name === 'create_definition');
+    const getGuide = tools.find(({ name }) => name === 'get_guide');
     const everyTool = await withMcpSession(
       'current revision',
       { url: `${server.origin}/mcp`, headers: {} },
@@ -105,7 +108,10 @@ describe('the definition tools an agent sees', { timeout: recallTestTimeoutMs },
     const guide = await onAlpha(server, (session) => session.callTool('get_guide', { guide: 'recall-function' }));
 
     expect(listedTools(everyTool)).toHaveLength(26);
-    expect(createDefinition?.description).toContain('recall, a recall function, guide recall-function');
+    expect(createDefinition?.description).toContain('recall, a recall function;');
+    expect(getGuide?.inputSchema).toMatchObject({
+      properties: { guide: { enum: listingTheRecallGuide } },
+    });
     expect(textOf(guide)).toContain('# Recall function format');
   });
 });

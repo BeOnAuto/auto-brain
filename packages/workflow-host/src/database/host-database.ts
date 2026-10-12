@@ -5,11 +5,16 @@ import type { Statement } from './statement.ts';
 
 export class DatabaseFailed extends Data.TaggedError('database_failed')<{ readonly detail: string }> {}
 
+export type ReadStatement = (statement: Statement) => Effect.Effect<readonly unknown[], DatabaseFailed>;
+
 export interface HostDatabase {
   readonly store: EventStore;
-  readonly read: (statement: Statement) => Effect.Effect<readonly unknown[], DatabaseFailed>;
+  readonly read: ReadStatement;
   readonly write: (statement: Statement) => Effect.Effect<readonly unknown[], DatabaseFailed>;
   readonly transaction: (statements: readonly Statement[]) => Effect.Effect<readonly unknown[], DatabaseFailed>;
+  readonly readConsistently: <A, E>(
+    reads: (read: ReadStatement) => Effect.Effect<A, E>,
+  ) => Effect.Effect<A, E | DatabaseFailed>;
   readonly sharedClock: Effect.Effect<number, DatabaseFailed> | null;
   readonly close: () => Promise<void>;
 }

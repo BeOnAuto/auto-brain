@@ -99,6 +99,15 @@ const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
     remedy:
       'This can be put right on your side: once its result keeps only what is needed, such as fewer or smaller values, it can be run again.',
   },
+  no_active_version: {
+    why: 'the function has no model that answers yet',
+    remedy: 'It answers once a build has given it an active version, where the runtime offers builds.',
+  },
+  build_not_offered: {
+    why: 'this runtime does not offer a build of the function yet',
+    remedy:
+      'Asking again will not change that; what the function keeps meanwhile, such as its dataset, is kept as before.',
+  },
   requested: {
     why: 'it was cancelled at the request of someone allowed to change the playbook',
     remedy: ranUntilCancelled,

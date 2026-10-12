@@ -12,6 +12,7 @@ packages/*/src/testing
 packages/*/src/*-testing
 packages/server/src/development
 capabilities/*/src/testing
+capabilities/*/src/*-testing
 .git
 .github
 .vscode

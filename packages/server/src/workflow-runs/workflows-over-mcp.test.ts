@@ -103,7 +103,14 @@ describe('workflows over MCP', { timeout: workflowTestTimeoutMs }, () => {
     const listing = await onAlpha([], (session) => session.listTools());
 
     expect(toolNamesIn(listing)).toEqual([...playbookTools, 'get_guide']);
-    expect(typesOfCreateDefinition(listing)).toEqual(['reasoning', 'interaction', 'computation', 'recall', 'workflow']);
+    expect(typesOfCreateDefinition(listing)).toEqual([
+      'reasoning',
+      'interaction',
+      'computation',
+      'recall',
+      'prediction',
+      'workflow',
+    ]);
   });
 
   it('executes a workflow that calls a reasoning function definition and waits for an event the tools send', async () => {

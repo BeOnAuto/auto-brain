@@ -316,6 +316,9 @@ importers:
       '@on.auto/api':
         specifier: workspace:*
         version: link:../../packages/api
+      '@on.auto/prediction':
+        specifier: workspace:*
+        version: link:../prediction
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.2(vitest@5.0.2)
@@ -347,6 +350,43 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.2(vitest@5.0.2)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.2(@opentelemetry/api@1.9.1)(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
+
+  capabilities/prediction:
+    dependencies:
+      '@on.auto/definitions':
+        specifier: workspace:*
+        version: link:../../packages/definitions
+      '@on.auto/operations':
+        specifier: workspace:*
+        version: link:../../packages/operations
+      '@on.auto/workflow-engine':
+        specifier: workspace:*
+        version: link:../../packages/workflow-engine
+      '@on.auto/workflow-host':
+        specifier: workspace:*
+        version: link:../../packages/workflow-host
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0
+      liquidjs:
+        specifier: 10.29.0
+        version: 10.29.0
+    devDependencies:
+      '@on.auto/ledger':
+        specifier: workspace:*
+        version: link:../../packages/ledger
+      '@types/pg':
+        specifier: 8.23.1
+        version: 8.23.1
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 5.0.2(vitest@5.0.2)
+      pg:
+        specifier: 8.23.1
+        version: 8.23.1
       vitest:
         specifier: 'catalog:'
         version: 5.0.2(@opentelemetry/api@1.9.1)(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
@@ -744,6 +784,9 @@ importers:
       '@on.auto/playbooks':
         specifier: workspace:*
         version: link:../playbooks
+      '@on.auto/prediction':
+        specifier: workspace:*
+        version: link:../../capabilities/prediction
       '@on.auto/reasoning':
         specifier: workspace:*
         version: link:../../capabilities/reasoning

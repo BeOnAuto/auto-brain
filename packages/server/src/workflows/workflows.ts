@@ -7,7 +7,13 @@ import {
   type Capability,
   type CapabilityFacts,
 } from '@on.auto/definitions';
-import { makeCatalog, makeDispatcher, type DispatcherServices, type Registration } from '@on.auto/operations';
+import {
+  makeCatalog,
+  makeDispatcher,
+  type DispatcherServices,
+  type HttpRegistration,
+  type Registration,
+} from '@on.auto/operations';
 import type { WorkflowHost } from '@on.auto/workflow-host';
 import { Effect } from 'effect';
 
@@ -20,9 +26,14 @@ interface OrgOperation {
   readonly registration: Registration<'org'>;
 }
 
+interface PlaybookRoute {
+  readonly registration: HttpRegistration<'playbook'>;
+}
+
 export interface WorkflowParts extends HostParts {
   readonly orgOperations: readonly OrgOperation[];
   readonly playbookOperations: readonly PlaybookOperation[];
+  readonly playbookRoutes: readonly PlaybookRoute[];
   readonly check: ExpressionCheck;
   readonly facts: CapabilityFacts;
   readonly names: PlaybookOwnNames;
@@ -65,6 +76,7 @@ export async function serveWorkflows(runtime: AppRuntime<DispatcherServices>, pa
     ...parts.orgOperations,
     ...playbookOperationsServing(capabilities, parts),
     ...parts.playbookOperations,
+    ...parts.playbookRoutes,
     defineSendRunEvent(host, names),
   ]);
   return { routes: routesFor(runtime, catalog, dispatcher, capabilities), stopWork: host.stop };
