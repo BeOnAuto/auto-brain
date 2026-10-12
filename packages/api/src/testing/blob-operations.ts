@@ -1,5 +1,3 @@
-import { setTimeout as delay } from 'node:timers/promises';
-
 import { contentOfText, defineHttpOperation, type StreamedBytes } from '@beonauto/operations';
 import { Effect, Function, Schema } from 'effect';
 
@@ -45,23 +43,22 @@ const readBlob = defineHttpOperation('brain', 'query', {
   handle: ({ name }) => Effect.succeed(contentOfText(`blob ${name}`, 'application/octet-stream')),
 });
 
-const FailingAt = Schema.Struct({ when: Schema.Literals(['at-once', 'part-way', 'later']) });
+const FailingAt = Schema.Struct({ when: Schema.Literals(['at-once', 'part-way', 'past-its-length']) });
+
+const firstChunk = new TextEncoder().encode('first,');
 
 function failing(when: (typeof FailingAt)['Type']['when']): StreamedBytes {
   const stream = new ReadableStream<Uint8Array>({
     start: (controller) => {
       if (when !== 'at-once') {
-        controller.enqueue(new TextEncoder().encode('first,'));
+        controller.enqueue(firstChunk);
       }
     },
-    pull: async (controller) => {
-      if (when === 'later') {
-        await delay(20);
-      }
+    pull: (controller) => {
       controller.error(new Error(sourceFailure));
     },
   });
-  return { stream, bytes: 100 };
+  return { stream, bytes: when === 'past-its-length' ? 3 : 100 };
 }
 
 const readFailingBlob = defineHttpOperation('brain', 'query', {
@@ -76,29 +73,68 @@ const readFailingBlob = defineHttpOperation('brain', 'query', {
   handle: ({ when }) => Effect.sync(() => failing(when)),
 });
 
+function blobReadOnce(name: string, path: `/${string}`, content: StreamedBytes) {
+  return defineHttpOperation('brain', 'query', {
+    name,
+    title: 'Read blob once',
+    description: 'Reads a blob a test holds.',
+    route: { method: 'GET', path },
+    body: { kind: 'none' },
+    inputSchema: Nothing,
+    answer: { kind: 'stream', mediaType: 'text/plain' },
+    reasons: [],
+    handle: () => Effect.succeed(content),
+  });
+}
+
+export const gatedBlobPath = '/v1/orgs/acme/brains/alpha/gated-blob';
+
+export function gatedBlob(bytes: number, past: (controller: ReadableStreamDefaultController<Uint8Array>) => void) {
+  const { promise: opened, resolve: open } = Promise.withResolvers<void>();
+  const stream = new ReadableStream<Uint8Array>({
+    start: (controller) => {
+      controller.enqueue(firstChunk);
+    },
+    pull: async (controller) => {
+      await opened;
+      past(controller);
+    },
+  });
+  return { operation: blobReadOnce('read_gated_blob', '/gated-blob', { stream, bytes }), open };
+}
+
+export const silentBlobPath = '/v1/orgs/acme/brains/alpha/silent-blob';
+
+export function silentBlob() {
+  const { promise: pulled, resolve: pull } = Promise.withResolvers<void>();
+  const { promise: cancelled, resolve: cancel } = Promise.withResolvers<boolean>();
+  const stream = new ReadableStream<Uint8Array>(
+    {
+      pull: async () => {
+        pull();
+        await cancelled;
+      },
+      cancel: () => {
+        cancel(true);
+      },
+    },
+    { highWaterMark: 0 },
+  );
+  return { operation: blobReadOnce('read_silent_blob', '/silent-blob', { stream, bytes: 100 }), pulled, cancelled };
+}
+
 export function endlessBlob() {
   const { promise: cancelled, resolve } = Promise.withResolvers<boolean>();
   const stream = new ReadableStream<Uint8Array>({
     start: (controller) => {
-      controller.enqueue(new TextEncoder().encode('first,'));
+      controller.enqueue(firstChunk);
     },
     pull: () => cancelled.then(Function.constVoid),
     cancel: () => {
       resolve(true);
     },
   });
-  const operation = defineHttpOperation('brain', 'query', {
-    name: 'read_endless_blob',
-    title: 'Read endless blob',
-    description: 'Reads a blob that never ends.',
-    route: { method: 'GET', path: '/endless-blob' },
-    body: { kind: 'none' },
-    inputSchema: Nothing,
-    answer: { kind: 'stream', mediaType: 'text/plain' },
-    reasons: [],
-    handle: () => Effect.succeed({ stream, bytes: 1_000_000 }),
-  });
-  return { operation, cancelled };
+  return { operation: blobReadOnce('read_endless_blob', '/endless-blob', { stream, bytes: 1_000_000 }), cancelled };
 }
 
 const renameBlob = defineHttpOperation('brain', 'command', {

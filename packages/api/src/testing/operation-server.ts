@@ -9,7 +9,7 @@ import {
 import { Layer } from 'effect';
 
 import { makeAppRuntime, mcpRoutes, operationRoutes, type ApiHandler, type AppRuntime } from '../index.ts';
-import { createTestHandler, type ReportedIncident as ReportedThrown } from './api-calls.ts';
+import { createTestHandler, type ReportedThrown } from './api-calls.ts';
 import { testDefinitionTypes, testGuides, testRecipes } from './guides.ts';
 import { notebookOperations } from './notebook.ts';
 

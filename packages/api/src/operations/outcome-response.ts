@@ -6,13 +6,9 @@ import { streamedResponse, type StreamServing } from './streamed-response.ts';
 
 const insufficientScope = { 'www-authenticate': 'Bearer error="insufficient_scope"' };
 
-export interface Answering extends StreamServing {
-  readonly clientClosedRequest: boolean;
-}
-
-export function toHttpResponse(settled: Settled<Succeeded>, answering: Answering): Response | Promise<Response> {
+export function toHttpResponse(settled: Settled<Succeeded>, answering: StreamServing): Response | Promise<Response> {
   if (settled.status !== 'succeeded') {
-    const problem = problemOfOutcome(settled, answering.clientClosedRequest);
+    const problem = problemOfOutcome(settled, answering.signal.aborted);
     return problemResponse(problem, problem.reason === 'forbidden' ? insufficientScope : {});
   }
   return 'streamed' in settled

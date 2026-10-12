@@ -36,6 +36,7 @@ export interface Sent {
   readonly headers: Readonly<Record<string, string>>;
   readonly body?: string;
   readonly bodyLeftOpen?: boolean;
+  readonly firstPieceReceived?: () => void;
 }
 
 export interface Received {
@@ -50,12 +51,13 @@ export const unanswered: Received = { status: 0, headers: {}, body: '', whole: f
 export function exchanged(
   origin: string,
   path: string,
-  { method = 'GET', headers, body, bodyLeftOpen = false }: Sent,
+  { method = 'GET', headers, body, bodyLeftOpen = false, firstPieceReceived = Function.constVoid }: Sent,
 ): Promise<Received> {
   return new Promise((resolve) => {
     const sent = request(`${origin}${path}`, { method, headers }, (response) => {
       let text = '';
       response.setEncoding('utf8');
+      response.once('data', firstPieceReceived);
       response.on('data', (piece: string) => {
         text += piece;
       });

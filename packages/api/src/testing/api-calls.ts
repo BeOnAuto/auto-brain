@@ -1,5 +1,5 @@
 import type { Authenticator } from '@beonauto/identity';
-import { allPermissions } from '@beonauto/operations';
+import { allPermissions, type CallSummary } from '@beonauto/operations';
 
 import { createApiHandler, type ApiHandler, type ApiOptions, type RegisterRoutes } from '../index.ts';
 
@@ -16,11 +16,12 @@ export interface Answer {
   readonly body: unknown;
 }
 
-export interface ReportedIncident {
+export interface ReportedThrown {
   readonly incident: string;
   readonly requestId: string;
   readonly message: string;
   readonly cause: unknown;
+  readonly call: CallSummary | undefined;
 }
 
 const admitEveryone: Authenticator = {
@@ -33,15 +34,15 @@ const admitEveryone: Authenticator = {
 
 export function createTestHandler(options: Partial<ApiOptions> = {}): {
   handler: ApiHandler;
-  reported: ReportedIncident[];
+  reported: ReportedThrown[];
 } {
-  const reported: ReportedIncident[] = [];
+  const reported: ReportedThrown[] = [];
   const handler = createApiHandler({
     allowedOrigins: [],
     authenticator: admitEveryone,
     routes: [],
-    reportIncident: (incident, error, requestId) => {
-      reported.push({ incident, requestId, message: error.message, cause: error.cause });
+    reportIncident: (incident, error, requestId, summary) => {
+      reported.push({ incident, requestId, message: error.message, cause: error.cause, call: summary });
     },
     ...options,
   });

@@ -1,5 +1,7 @@
 import {
+  callSummaryOf,
   settle,
+  type CallSummary,
   type Catalog,
   type Dispatcher,
   type DispatcherServices,
@@ -29,17 +31,30 @@ export interface OperationRoutesOptions {
   readonly runCall: RunCall;
 }
 
+interface Dispatched {
+  readonly call: Effect.Effect<Outcome<Succeeded>, never, DispatcherServices>;
+  readonly summary: CallSummary;
+}
+
 function dispatched(
   dispatcher: Dispatcher,
   registration: RouteRegistration,
   c: Context<ApiEnv>,
   given: CallInput,
-): Effect.Effect<Outcome<Succeeded>, never, DispatcherServices> {
+): Dispatched {
   const org = String(c.req.param('org'));
-  const caller = c.get('principal').callerIn(org);
-  return registration.scope === 'org'
-    ? dispatcher.dispatchToOrg(registration, { caller, org, ...given })
-    : dispatcher.dispatchToBrain(registration, { caller, org, brain: String(c.req.param('brain')), ...given });
+  const request = { caller: c.get('principal').callerIn(org), org, ...given };
+  if (registration.scope === 'org') {
+    return {
+      call: dispatcher.dispatchToOrg(registration, request),
+      summary: callSummaryOf(registration.name, request),
+    };
+  }
+  const brain = String(c.req.param('brain'));
+  return {
+    call: dispatcher.dispatchToBrain(registration, { ...request, brain }),
+    summary: callSummaryOf(registration.name, request, brain),
+  };
 }
 
 function handlerFor(
@@ -53,12 +68,12 @@ function handlerFor(
       return problemResponse(given.failure);
     }
     const requestId = c.get('requestId');
-    const call = settle(dispatched(dispatcher, registration, c, given.success), c.req.raw.signal);
-    const settled = await runCall(call.pipe(Effect.annotateLogs({ requestId })));
+    const { call, summary } = dispatched(dispatcher, registration, c, given.success);
+    const settled = await runCall(settle(call, c.req.raw.signal).pipe(Effect.annotateLogs({ requestId })));
     return toHttpResponse(settled, {
       status: registration.successStatus,
-      clientClosedRequest: c.req.raw.signal.aborted,
-      failed: (thrown) => reportThrown(thrown, requestId),
+      signal: c.req.raw.signal,
+      failed: (thrown) => reportThrown(thrown, requestId, summary),
       abortConnection: c.env.abortConnection,
     });
   };
