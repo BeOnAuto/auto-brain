@@ -26,6 +26,11 @@ export interface RecordedContent {
   readonly unstage: (brain: BrainAddress, run: string) => Effect.Effect<void>;
 }
 
+export interface ContentStore {
+  readonly content: RecordedContent;
+  readonly sweepContent: (before: number) => Promise<void>;
+}
+
 export interface BrainContentReader {
   readonly readContent: (sha256: string) => Effect.Effect<StreamedContent | undefined>;
 }

@@ -106,10 +106,15 @@ function putRefused(entry: ContentEntry): void {
         because: 'not_its_digest',
         detail: `The content's SHA-256 is ${wrong.sha256}, where ${right.sha256} was expected`,
       }),
-      expect.objectContaining({ _tag: 'content_refused', because: 'not_its_size' }),
+      expect.objectContaining({
+        _tag: 'content_refused',
+        because: 'not_its_size',
+        detail: 'The content holds 2500000 bytes, where 2500001 were expected',
+      }),
       expect.objectContaining({
         _tag: 'content_refused',
         because: 'stream_failed',
+        detail: "The content's stream failed before its end",
         cause: new Error('The connection dropped'),
       }),
     ]);
