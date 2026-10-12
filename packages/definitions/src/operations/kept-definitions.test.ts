@@ -47,7 +47,7 @@ describe('what a definition keeps for its runtime adapter', () => {
     const listed = await definitions.call(listDefinitions, toAlpha(acmeAdmin, { type: 'keeper' }));
     const { state } = await Effect.runPromise(
       definitions.ledger.service.load(
-        `brain/acme/alpha/${definitionTypeStreamOf('keeper')}`,
+        `playbook/acme/alpha/${definitionTypeStreamOf('keeper')}`,
         definitionsDecider('keeper'),
       ),
     );

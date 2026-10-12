@@ -24,7 +24,7 @@ function recordOf(stream: string, type: string, data: unknown, context: Context)
   };
 }
 
-const showing = { streamPrefix: 'brain/acme/alpha/', content: nothingKept, view: 'page' } as const;
+const showing = { streamPrefix: 'playbook/acme/alpha/', content: nothingKept, view: 'page' } as const;
 
 function presented(event: DefinitionEvent, version?: number, type = 'echo') {
   const context = {

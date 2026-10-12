@@ -62,11 +62,11 @@ async function aPlaybookWithRuns(): Promise<Harness> {
   const rejection: RunRejection = { reason: 'unavailable', detail: 'The answer is not JSON' };
   await running(
     definitions,
-    'brain/acme/alpha/runs/r1',
+    'playbook/acme/alpha/runs/r1',
     started('triage', '2026-10-05T09:00:00.000Z'),
     succeeded('2026-10-05T09:00:01.000Z', { usage }),
   );
-  await running(definitions, 'brain/acme/alpha/runs/r2', started('triage', '2026-10-05T10:00:00.000Z'), {
+  await running(definitions, 'playbook/acme/alpha/runs/r2', started('triage', '2026-10-05T10:00:00.000Z'), {
     event: {
       type: 'run_rejected',
       data: { rejection, record: { usage: { input: { total: 10, cache_read: 0 }, output: { total: 2 } } } },
@@ -75,18 +75,18 @@ async function aPlaybookWithRuns(): Promise<Harness> {
   });
   await running(
     definitions,
-    'brain/acme/alpha/runs/r3',
+    'playbook/acme/alpha/runs/r3',
     started('approval', '2026-10-06T08:00:00.000Z', 'workflow'),
     succeeded('2026-10-06T08:00:02.000Z', {}, 'approval', 'workflow'),
   );
-  await running(definitions, 'brain/acme/alpha/runs/r4', started('draft', '2026-10-06T09:00:00.000Z'));
+  await running(definitions, 'playbook/acme/alpha/runs/r4', started('draft', '2026-10-06T09:00:00.000Z'));
   await running(
     definitions,
-    'brain/acme/alpha/runs/r5',
+    'playbook/acme/alpha/runs/r5',
     started('triage', '2026-09-20T09:00:00.000Z'),
     succeeded('2026-09-20T09:00:00.400Z'),
   );
-  await running(definitions, 'brain/acme/beta/runs/r6', started('triage', '2026-10-06T09:00:00.000Z'));
+  await running(definitions, 'playbook/acme/beta/runs/r6', started('triage', '2026-10-06T09:00:00.000Z'));
   return definitions;
 }
 

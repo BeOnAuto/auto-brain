@@ -112,7 +112,7 @@ export { defineListRuns } from './reading/list-runs.ts';
 export { ListedRunSchema, type ListedRun } from './reading/listed-run.ts';
 export { RunIdInputField } from './operations/definition-fields.ts';
 export { makeDefinitionPresenters } from './presenting/definition-presenters.ts';
-export { playbookEventOf, playbookFactOf } from './events/brain-facts.ts';
+export { playbookEventOf, playbookFactOf } from './events/playbook-facts.ts';
 export {
   DefinitionEventSchema,
   type DefinitionEvent,
@@ -184,7 +184,7 @@ export {
   type Definition,
 } from './registry/definition.ts';
 export { makeDefinitionOperations, type PlaybookOperation } from './operations/definition-operations.ts';
-export { defineGetPlaybookAnalytics } from './analytics/get-brain-analytics.ts';
+export { defineGetPlaybookAnalytics } from './analytics/get-playbook-analytics.ts';
 export { runOutcomeMapping } from './analytics/run-outcome-mapping.ts';
 export {
   definitionResourceLabel,

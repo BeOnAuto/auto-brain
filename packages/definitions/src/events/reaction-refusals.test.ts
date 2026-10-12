@@ -9,7 +9,7 @@ import { reactionRefusalDecider } from './reaction-refusals.ts';
 
 const alpha = { org: 'acme', playbook: 'alpha' };
 
-const prefix = 'brain/acme/alpha/';
+const prefix = 'playbook/acme/alpha/';
 
 const refusal = {
   playbook: alpha,
@@ -22,7 +22,7 @@ const refusal = {
 describe('a refused reaction of a workflow', () => {
   it('is recorded through its decider with the playbook as its actor and the workflow and its version as its context', async () => {
     const ledger = memoryLedger();
-    const stream = 'brain/acme/alpha/reactions/close-the-month';
+    const stream = 'playbook/acme/alpha/reactions/close-the-month';
 
     await Effect.runPromise(ledger.service.execute(stream, reactionRefusalDecider, refusal));
     const page = await Effect.runPromise(
@@ -45,7 +45,7 @@ describe('a refused reaction of a workflow', () => {
         data: refusal.refused,
         context: {
           at: refusal.at,
-          by: 'brain:alpha',
+          by: 'playbook:alpha',
           definitionType: 'workflow',
           definitionName: 'close-the-month',
           definitionVersion: 3,

@@ -42,7 +42,7 @@ function recorded(event: RunEvent, context: Context = ofGreet): RecordedEvent {
 
 function presented(event: RunEvent, context: Context = ofGreet) {
   return present(recorded(event, context), {
-    streamPrefix: 'brain/acme/alpha/',
+    streamPrefix: 'playbook/acme/alpha/',
     content: keptContent,
     view: 'page',
   }).at(0);
@@ -56,7 +56,7 @@ describe('the presenter of the events of a run', () => {
       summary: 'A run of the greeting “greet” started.',
       data: { input: { who: 'Ada' } },
       metadata: {
-        stream: `brain/acme/alpha/runs/${testRunId}`,
+        stream: `playbook/acme/alpha/runs/${testRunId}`,
         position: 1,
         global_position: 11,
         correlation_id: testRunId,

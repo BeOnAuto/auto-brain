@@ -37,7 +37,7 @@ describe('the definitions and runs of a playbook', () => {
     expect(await call(getRun, toGamma(globexAdmin, { run_id: runId }))).toMatchObject({
       reason: 'not_found',
     });
-    expect(ledger.streamNames()).toEqual(['brain/acme/alpha/definitions/echo', `brain/acme/alpha/runs/${runId}`]);
+    expect(ledger.streamNames()).toEqual(['playbook/acme/alpha/definitions/echo', `playbook/acme/alpha/runs/${runId}`]);
   });
 
   it('are apart from those of another playbook that uses the same names and run ids', async () => {

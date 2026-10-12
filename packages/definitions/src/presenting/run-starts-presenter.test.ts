@@ -35,7 +35,7 @@ function recorded(event: RunEvent, context: Context): RecordedEvent {
 }
 
 function presented(event: RunEvent, context: Context = ofGreet) {
-  const showing = { streamPrefix: 'brain/acme/alpha/', content: nothingKept, view: 'page' } as const;
+  const showing = { streamPrefix: 'playbook/acme/alpha/', content: nothingKept, view: 'page' } as const;
   return present(recorded(event, context), showing).at(0);
 }
 

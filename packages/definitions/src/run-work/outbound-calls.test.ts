@@ -11,7 +11,7 @@ import { runEventOf, recordedRunIn, recordedRunInPlaybook } from './recorded-run
 
 const run = { org: 'acme', playbook: 'alpha', id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' };
 
-const stream = `brain/acme/alpha/runs/${run.id}`;
+const stream = `playbook/acme/alpha/runs/${run.id}`;
 
 const fact = { runId: run.id, by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
 
@@ -56,7 +56,7 @@ async function aDeferredRun() {
 function playbookWriterOf(ledger: StreamWriter): StreamWriter {
   return {
     execute: (relative, decider, command, given) =>
-      ledger.execute(`brain/acme/alpha/${relative}`, decider, command, given),
+      ledger.execute(`playbook/acme/alpha/${relative}`, decider, command, given),
   };
 }
 
@@ -90,8 +90,8 @@ describe('the outbound calls of a run', () => {
 
     expect([startedId, endedId]).toEqual([messageIdOf(stream, 3), messageIdOf(stream, 4)]);
     expect(records.slice(2).map((each) => [each.type, each.causationId, runEventOf(each)?.context.by])).toEqual([
-      ['delivery_started', 'request-1', 'brain:alpha'],
-      ['delivery_succeeded', startedId, 'brain:alpha'],
+      ['delivery_started', 'request-1', 'playbook:alpha'],
+      ['delivery_succeeded', startedId, 'playbook:alpha'],
     ]);
     expect(records.slice(2).map(({ context }) => context.at)).toEqual([started.at, ended.at]);
   });
@@ -139,7 +139,7 @@ describe('a run as it was recorded', () => {
 });
 
 function playbookReaderOf(ledger: Parameters<typeof recordedRunIn>[0]): Parameters<typeof recordedRunInPlaybook>[0] {
-  return { load: (relative, decider) => ledger.load(`brain/acme/alpha/${relative}`, decider) };
+  return { load: (relative, decider) => ledger.load(`playbook/acme/alpha/${relative}`, decider) };
 }
 
 describe('a settlement made through the writer of a playbook', () => {

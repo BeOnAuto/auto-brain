@@ -7,8 +7,8 @@ import { definitionTypeStreamOf } from '../registry/definitions-decider.ts';
 import { runStreamNameOf } from '../runs/run-decider.ts';
 import type { RunEvent } from '../runs/run-events.ts';
 import { testRunId as runId } from '../testing/run-facts.ts';
-import { playbookEventOf, playbookFactOf } from './brain-facts.ts';
 import { CloudEventSchema } from './cloud-event.ts';
+import { playbookEventOf, playbookFactOf } from './playbook-facts.ts';
 
 const recordId = '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3';
 
@@ -73,7 +73,7 @@ describe('the facts of a run as events', () => {
   it('carry every field of the chain of a run as an extension attribute', () => {
     const chained: Context = {
       ...ofSummary,
-      by: 'brain:alpha',
+      by: 'playbook:alpha',
       depth: 2,
       callDepth: 1,
       calledBy: { runId: '0199a3c4-7d2e-7c1a-9b3f-000000000001', reference: '/do/0/ask', run: 1 },
@@ -83,7 +83,7 @@ describe('the facts of a run as events', () => {
     expect(playbookFactOf(ofRun({ type: 'run_failed', data: {} }, chained))).toEqual({
       ...aboutTheRun,
       type: 'run_failed',
-      caller: 'brain:alpha',
+      caller: 'playbook:alpha',
       depth: 2,
       calldepth: 1,
       calledby: '0199a3c4-7d2e-7c1a-9b3f-000000000001',
