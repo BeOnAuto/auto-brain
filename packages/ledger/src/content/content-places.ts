@@ -1,7 +1,6 @@
 import {
-  notTheBytesOfItsDigest,
-  sha256Digest,
   streamPrefixOfPlaybook,
+  verifiedStream,
   type PlaybookAddress,
   type ContentKept,
   type StreamedContent,
@@ -24,55 +23,6 @@ export interface Shelved {
   readonly execute: StatementExecutor;
   readonly dialect: ContentDialect;
   readonly shelf: Shelf;
-}
-
-interface Head {
-  readonly bytes: number;
-  readonly chunks: number;
-}
-
-type ChunkRead = (index: number) => Promise<Uint8Array | undefined>;
-
-interface ChunkReading {
-  readonly read: ChunkRead;
-  readonly missing: (index: number) => Error;
-}
-
-function verifiedStream(sha256: string, head: Head, { read, missing }: ChunkReading): ReadableStream<Uint8Array> {
-  const digest = sha256Digest();
-  let bytes = 0;
-  let index = 0;
-  const ended = (controller: ReadableStreamDefaultController<Uint8Array>, last?: Readonly<Uint8Array>) => {
-    if (bytes !== head.bytes || digest.hex() !== sha256) {
-      controller.error(notTheBytesOfItsDigest(sha256));
-      return;
-    }
-    if (last !== undefined) {
-      controller.enqueue(last);
-    }
-    controller.close();
-  };
-  return new ReadableStream<Uint8Array>({
-    pull: async (controller) => {
-      if (index === head.chunks) {
-        ended(controller);
-        return;
-      }
-      const chunk = await read(index);
-      if (chunk === undefined) {
-        controller.error(missing(index));
-        return;
-      }
-      digest.update(chunk);
-      bytes += chunk.byteLength;
-      index += 1;
-      if (index < head.chunks) {
-        controller.enqueue(chunk);
-      } else {
-        ended(controller, chunk);
-      }
-    },
-  });
 }
 
 const HeadRows = Schema.Array(
@@ -158,15 +108,34 @@ export function uploadRemoved(shelved: Shelved, place: Key, { uploadId, sha256 }
   );
 }
 
+function chunksOf(shelved: Shelved, place: Key, head: KeptHead): ReadableStream<Uint8Array> {
+  let index = 0;
+  return new ReadableStream<Uint8Array>(
+    {
+      pull: async (controller) => {
+        if (index === head.chunks) {
+          controller.close();
+          return;
+        }
+        const chunk = await chunkOf(shelved, uploadOf(place, head.uploadId), index);
+        if (chunk === undefined) {
+          controller.error(shelved.shelf.chunkMissing(head.sha256, index));
+          return;
+        }
+        index += 1;
+        controller.enqueue(chunk);
+      },
+    },
+    { highWaterMark: 0 },
+  );
+}
+
 export function readOn(shelved: Shelved, place: Key, sha256: string): Effect.Effect<StreamedContent | undefined> {
   return Effect.map(headOf(shelved, place, sha256), (head) =>
     head === undefined
       ? head
       : {
-          stream: verifiedStream(sha256, head, {
-            read: (index) => chunkOf(shelved, uploadOf(place, head.uploadId), index),
-            missing: (index) => shelved.shelf.chunkMissing(sha256, index),
-          }),
+          stream: verifiedStream(sha256, head.bytes, chunksOf(shelved, place, head)),
           bytes: head.bytes,
           mediaType: head.mediaType,
         },

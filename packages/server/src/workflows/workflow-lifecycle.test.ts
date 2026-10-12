@@ -51,6 +51,7 @@ describe('main with workflows', { timeout: workflowTestTimeoutMs }, () => {
     expect(child.output().stdout).toBe(`Auto Runtime listening on port ${port}\n`);
     expect(startUpLines.slice(1)).toEqual([
       `INFO The ledger is kept in the file ${ledger.fileName}`,
+      "INFO Content is kept in the ledger's database",
       "INFO Reasoning functions run in this server: the model calls of a run add up to at most 2,000,000 input tokens, and each answer of a tool is read whole where it fits the model's context window",
       'INFO Model processes may run at most 4 at once, at most 2 of them for builds, with 1,280 MiB of data each, which nothing bounds, since prlimit is not on the path',
       'INFO Workflows run in this server: a run lasts at most 30 days, at most 32 of their calls run at once, and the runs are swept every 1000 ms',

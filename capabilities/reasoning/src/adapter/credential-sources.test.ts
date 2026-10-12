@@ -1,13 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { awsCredentialChain, googleAccessTokens, googleCredentialChain, guarded } from './credential-sources.ts';
+import { googleAccessTokens, googleCredentialChain, guarded } from './credential-sources.ts';
 import { OutboundFailure } from './outbound-failure.ts';
-
-const disabledProxy = { enabled: false, environment: {} };
-const enabledProxy = {
-  enabled: true,
-  environment: { HTTPS_PROXY: 'http://proxy.internal:3128', NO_PROXY: '169.254.169.254' },
-};
 
 describe('guarded', () => {
   it('passes a credential through', async () => {
@@ -37,8 +31,6 @@ describe('googleAccessTokens', () => {
 
 describe('the default credential chains', () => {
   it('are built without looking anything up', () => {
-    expect(typeof awsCredentialChain(disabledProxy)).toBe('function');
-    expect(typeof awsCredentialChain(enabledProxy)).toBe('function');
     expect(typeof googleCredentialChain('acme-ai')).toBe('function');
   });
 });

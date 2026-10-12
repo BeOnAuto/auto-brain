@@ -26,7 +26,8 @@ export const makeModelAccess = Effect.fnUntraced(function* (settings: ModelSetti
   );
   const status = providerStatus(settings, { entraId: azureTokens !== undefined });
   const fetch = options.fetch ?? globalThis.fetch;
-  const models = modelFactories(settings, { fetch, credentials, azureTokens });
+  const proxy = options.proxy ?? { enabled: false, environment: {} };
+  const models = modelFactories(settings, { fetch, credentials, azureTokens, proxy });
   const access: ModelAccess = {
     languageModel: resolvedLanguageModel(models, settings, status, options),
     status,

@@ -103,11 +103,18 @@ export {
   type RunContext,
   type StartingTrigger,
 } from './ledger/context.ts';
-export type { PlaybookContentReader, ContentKept, Digested, RecordedContent } from './content/recorded-content.ts';
+export type {
+  PlaybookContentReader,
+  ContentKept,
+  ContentStore,
+  Digested,
+  RecordedContent,
+} from './content/recorded-content.ts';
 export { mostContentChunkBytes } from './content/content-chunks.ts';
 export { leftUnread, requireExpected, takenInChunks, type Taken, type TakeChunk } from './content/content-intake.ts';
 export { ContentRefused, notTheBytesOfItsDigest, type ContentRefusedBecause } from './content/content-refusals.ts';
 export { StagingEnded, stagingEnded } from './content/staging-ended.ts';
+export { verifiedStream } from './content/content-verification.ts';
 export {
   contentOfBytes,
   contentOfText,
@@ -258,4 +265,4 @@ export {
 export { RejectionBecauseSchema, type RejectionBecause } from './outcome/rejection-because.ts';
 export { Unavailable, UnavailableKindSchema, type UnavailableKind } from './outcome/unavailable.ts';
 export { uuidV5 } from './uuid/uuid-v5.ts';
-export { randomUUIDv7 } from './uuid/uuid-v7.ts';
+export { randomUUIDv7, uuidV7Before, uuidV7TimeOf } from './uuid/uuid-v7.ts';

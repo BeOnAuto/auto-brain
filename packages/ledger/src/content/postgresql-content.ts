@@ -1,4 +1,6 @@
-import type { ContentStore, StatementExecutor } from '../event-store.ts';
+import type { ContentStore } from '@beonauto/operations';
+
+import type { StatementExecutor } from '../event-store.ts';
 import { formattedFor } from '../postgresql-reads/recorded-parts.ts';
 import { postgresqlContent } from './content-dialects.ts';
 import { recordedContentOn } from './content-store.ts';

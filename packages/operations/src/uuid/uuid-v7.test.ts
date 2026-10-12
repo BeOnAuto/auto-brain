@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { randomUUIDv7 } from './uuid-v7.ts';
+import { randomUUIDv7, uuidV7Before, uuidV7TimeOf } from './uuid-v7.ts';
 
 const uuidV7 = /^[\da-f]{8}-[\da-f]{4}-7[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/u;
 
@@ -30,6 +30,19 @@ describe('a UUID version 7', () => {
     const later = randomUUIDv7();
 
     expect([later, earlier].toSorted()).toEqual([earlier, later]);
+  });
+
+  it('tells the time it carries, as the 12 hex digits it starts with, and whether it was made before a time', () => {
+    const at = 1_791_778_446_256;
+    const id = randomUUIDv7();
+
+    expect(uuidV7TimeOf(at)).toBe('01a12e515bb0');
+    expect(uuidV7TimeOf(1)).toBe('000000000001');
+    expect([uuidV7Before(id, Date.now() + 1), uuidV7Before(id, millisecondsOf(id))]).toEqual([true, false]);
+    expect([
+      uuidV7Before('01a12e51-5bb0-7000-8000-000000000001', at),
+      uuidV7Before('01a12e51-5baf-7000-8000-000000000001', at),
+    ]).toEqual([false, true]);
   });
 
   it('differs between ids made in the same millisecond', () => {

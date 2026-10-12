@@ -1,16 +1,9 @@
-import {
-  sha256Digest,
-  textOfContent,
-  type PlaybookAddress,
-  type ContentToKeep,
-  type Digested,
-  type Ledger,
-  type StreamedContent,
-} from '@beonauto/operations';
-import { Effect, Function, type Layer } from 'effect';
+import { Effect, Function } from 'effect';
 
-import type { LedgerStore } from '../event-store.ts';
-import { ledgerLayerOver } from '../ledger-layer.ts';
+import type { PlaybookAddress } from '../caller/playbook-context.ts';
+import { sha256Digest } from '../content/content-digest.ts';
+import type { Digested } from '../content/recorded-content.ts';
+import type { ContentToKeep, StreamedContent } from '../content/streamed-content.ts';
 
 export const alpha: PlaybookAddress = { org: 'acme', playbook: 'alpha' };
 
@@ -40,6 +33,11 @@ export interface Generated {
 export interface Unread {
   readonly content: ContentToKeep;
   readonly cancelled: () => boolean;
+}
+
+export interface Delivered {
+  readonly bytes: number;
+  readonly failure: unknown;
 }
 
 export function generatedStream(bytes: number, seed: number): ReadableStream<Uint8Array> {
@@ -88,10 +86,7 @@ export async function readBack(content: StreamedContent | undefined): Promise<Re
     : { ...(await readThrough(content.stream)), mediaType: content.mediaType, declared: content.bytes };
 }
 
-export async function deliveredBeforeFailing({ stream }: StreamedContent): Promise<{
-  readonly bytes: number;
-  readonly failure: unknown;
-}> {
+export async function deliveredBeforeFailing(stream: ReadableStream<Uint8Array>): Promise<Delivered> {
   let bytes = 0;
   const read = async () => {
     for await (const piece of stream) {
@@ -102,11 +97,7 @@ export async function deliveredBeforeFailing({ stream }: StreamedContent): Promi
   return { bytes, failure };
 }
 
-export function readText(content: StreamedContent | undefined): Effect.Effect<string | undefined> {
-  return content === undefined ? Effect.succeed(content) : textOfContent(content);
-}
-
-export function run<A, E>(effect: Effect.Effect<A, E>): Promise<A> {
+export function resultOf<A, E>(effect: Effect.Effect<A, E>): Promise<A> {
   return Effect.runPromise(effect);
 }
 
@@ -155,27 +146,4 @@ export function answerOfAbout(bytes: number): string {
     size += Buffer.byteLength(JSON.stringify(row)) + 1;
   }
   return JSON.stringify({ rows });
-}
-
-export interface WatchedSweeps {
-  readonly layer: Layer.Layer<Ledger>;
-  readonly started: Promise<void>;
-  readonly finished: Promise<string>;
-}
-
-export function sweepsWatched(storeOf: () => LedgerStore, held: Promise<void> = Promise.resolve()): WatchedSweeps {
-  const started = Promise.withResolvers<void>();
-  const finished = Promise.withResolvers<string>();
-  const open = (): LedgerStore => {
-    const store = storeOf();
-    return {
-      ...store,
-      sweepContent: async (before) => {
-        started.resolve();
-        await held;
-        finished.resolve(await store.sweepContent(before).then(() => 'swept', String));
-      },
-    };
-  };
-  return { layer: ledgerLayerOver(open), started: started.promise, finished: finished.promise };
 }

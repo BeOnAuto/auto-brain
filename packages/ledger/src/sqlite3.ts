@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-import type { Ledger, RunOutcomeMapping, KeyedProjection } from '@beonauto/operations';
+import type { ContentStore, Ledger, RunOutcomeMapping, KeyedProjection } from '@beonauto/operations';
 import { sqlite3EventStoreDriver } from '@event-driven-io/emmett-sqlite/sqlite3';
 import type { Layer } from 'effect';
 
@@ -13,6 +13,7 @@ export interface LedgerOptions {
   readonly runOutcomes?: RunOutcomeMapping;
   readonly projections?: readonly KeyedProjection[];
   readonly appends?: AppendSignal;
+  readonly content?: ContentStore;
 }
 
 const pageCacheOfEightMebibytes = -8192;
@@ -31,12 +32,18 @@ function prepareDirectoryOf(fileName: string): void {
   }
 }
 
-export function ledgerLayer({ fileName, runOutcomes, projections, appends }: LedgerOptions): Layer.Layer<Ledger> {
+export function ledgerLayer({
+  fileName,
+  runOutcomes,
+  projections,
+  appends,
+  content,
+}: LedgerOptions): Layer.Layer<Ledger> {
   return sqliteLedgerLayer(
     () => {
       prepareDirectoryOf(fileName);
       return { driver: sqlite3EventStoreDriver, fileName, connectionOptions: modestConnections };
     },
-    { runOutcomes, projections, appends },
+    { runOutcomes, projections, appends, content },
   );
 }

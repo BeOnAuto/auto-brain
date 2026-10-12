@@ -1,4 +1,4 @@
-import type { Ledger } from '@beonauto/operations';
+import type { ContentStore, Ledger } from '@beonauto/operations';
 import { Effect, Layer } from 'effect';
 
 import type { AppendSignal } from '../appends/append-signal.ts';
@@ -10,14 +10,15 @@ export { postgresqlEventStore, type PostgreSQLOptions, type PostgreSQLStoreOptio
 
 export interface PostgreSQLLedgerOptions extends PostgreSQLOptions {
   readonly appends?: AppendSignal;
+  readonly content?: ContentStore;
 }
 
-export function postgresqlLedgerLayer({ appends, ...options }: PostgreSQLLedgerOptions): Layer.Layer<Ledger> {
+export function postgresqlLedgerLayer({ appends, content, ...options }: PostgreSQLLedgerOptions): Layer.Layer<Ledger> {
   return Layer.unwrap(
     Effect.map(Effect.context(), (context) =>
       ledgerLayerOver(
         () => postgresqlEventStore({ ...options, reportLostConnection: lostConnectionsLoggedWith(context) }),
-        appends,
+        { appends, content },
       ),
     ),
   );

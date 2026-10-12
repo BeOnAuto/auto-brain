@@ -6,6 +6,7 @@ import {
   stagingEnded,
   takenInChunks,
   type ContentKept,
+  type ContentStore,
   type ContentRefused,
   type ContentToKeep,
   type RecordedContent,
@@ -15,13 +16,7 @@ import {
 import { SQL } from '@event-driven-io/dumbo';
 import { Effect, Schema } from 'effect';
 
-import {
-  inTransactionOf,
-  type ContentStore,
-  type InTransaction,
-  type StatementExecutor,
-  type TransactionalPool,
-} from '../event-store.ts';
+import { inTransactionOf, type InTransaction, type StatementExecutor, type TransactionalPool } from '../event-store.ts';
 import { sqliteContent, type ContentDialect } from './content-dialects.ts';
 import {
   playbookPlaceOf,

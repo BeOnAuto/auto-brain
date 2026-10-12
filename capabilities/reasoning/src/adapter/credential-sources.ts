@@ -1,7 +1,5 @@
-import { fromNodeProviderChain } from '@aws-sdk/credential-providers';
 import { GoogleAuth, OAuth2Client } from 'google-auth-library';
 
-import type { ProxySettings } from '../settings/model-settings.ts';
 import { OutboundFailure } from './outbound-failure.ts';
 
 export interface AwsCredentials {
@@ -34,11 +32,6 @@ export function guarded<Credential>(source: () => Promise<Credential>): () => Pr
       throw new OutboundFailure('credential_lookup_failed');
     }
   };
-}
-
-export function awsCredentialChain(proxy: ProxySettings): AwsCredentialSource {
-  const proxyAware = { clientConfig: { requestHandler: { httpsAgent: { proxyEnv: { ...proxy.environment } } } } };
-  return fromNodeProviderChain(proxy.enabled ? proxyAware : {});
 }
 
 export function googleAccessTokens(client: GoogleTokenClient): AccessTokenSource {

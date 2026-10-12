@@ -1,6 +1,7 @@
 import type { AppRuntime } from '@beonauto/api';
 import { defineListToolServers, defineListToolServersInOrg, defineTestToolCall, type ToolAccess } from '@beonauto/mcp';
 import type { DispatcherServices } from '@beonauto/operations';
+import type { ProxySettings } from '@beonauto/outbound';
 import { foundPlaybook } from '@beonauto/playbooks';
 import {
   defineListModels,
@@ -14,7 +15,7 @@ import { Effect } from 'effect';
 import { logModelProviders, logOperatorHint, logProviderMessage, logReasoning } from '../logging/logging.ts';
 import type { Settings } from '../settings/settings.ts';
 
-export type ModelAccessOf = (settings: ModelSettings) => Effect.Effect<ModelAccess>;
+export type ModelAccessOf = (settings: ModelSettings, proxy: ProxySettings) => Effect.Effect<ModelAccess>;
 
 export interface ServedReasoning {
   readonly capability: ReturnType<typeof makeReasoningFunctionAdapter>;
@@ -24,16 +25,18 @@ export interface ServedReasoning {
   readonly testToolCall: ReturnType<typeof defineTestToolCall>;
 }
 
-export const loggedModelAccess: ModelAccessOf = (settings) =>
-  makeModelAccess(settings, { reportProviderMessage: logProviderMessage, reportOperatorHint: logOperatorHint });
+export const loggedModelAccess: ModelAccessOf = (settings, proxy) =>
+  makeModelAccess(settings, { proxy, reportProviderMessage: logProviderMessage, reportOperatorHint: logOperatorHint });
 
 export async function reasoningServedBy(
   runtime: AppRuntime<DispatcherServices>,
-  settings: Pick<Settings, 'models' | 'reasoning'>,
+  settings: Pick<Settings, 'models' | 'proxy' | 'reasoning'>,
   modelAccessOf: ModelAccessOf,
   tools: ToolAccess,
 ): Promise<ServedReasoning> {
-  const { languageModel, status, offered, catalog } = await Effect.runPromise(modelAccessOf(settings.models));
+  const { languageModel, status, offered, catalog } = await Effect.runPromise(
+    modelAccessOf(settings.models, settings.proxy),
+  );
   await runtime.run(logModelProviders(status));
   const { mostInputTokens } = settings.reasoning;
   await runtime.run(logReasoning(mostInputTokens));

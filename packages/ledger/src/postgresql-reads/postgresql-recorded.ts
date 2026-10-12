@@ -2,7 +2,7 @@ import { Schema } from 'effect';
 
 import { postgresqlAppended } from '../appended/postgresql-appended.ts';
 import { postgresqlContentOn, type ContentConnections } from '../content/postgresql-content.ts';
-import type { ContentStore, DefinitionStreamsStore, RecordedStore } from '../event-store.ts';
+import type { DefinitionStreamsStore, LedgerStore, RecordedStore } from '../event-store.ts';
 import { dataAsJsonText } from '../postgresql/json-text.ts';
 import {
   pointKey,
@@ -200,6 +200,6 @@ export function postgresqlRecordedStore(query: Query): RecordedStore & Definitio
 export function postgresqlRecordedStoreOn(
   query: Query,
   connections: ContentConnections,
-): RecordedStore & DefinitionStreamsStore & ContentStore {
+): RecordedStore & DefinitionStreamsStore & Pick<LedgerStore, 'content' | 'sweepContent'> {
   return { ...postgresqlRecordedStore(query), ...postgresqlContentOn(connections) };
 }

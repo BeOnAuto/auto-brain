@@ -1,3 +1,4 @@
+import type { ProxySettings } from '@beonauto/outbound';
 import type { Effect } from 'effect';
 
 import type { CredentialSources } from './credential-sources.ts';
@@ -26,6 +27,7 @@ export type ReportOperatorHint = (report: OperatorHintReport) => Effect.Effect<v
 export interface ModelAccessOptions {
   readonly fetch?: Fetch;
   readonly credentials?: CredentialSources;
+  readonly proxy?: ProxySettings;
   readonly loadEntraIdentity?: EntraIdentityLoader;
   readonly reportProviderMessage?: ReportProviderMessage;
   readonly reportOperatorHint?: ReportOperatorHint;

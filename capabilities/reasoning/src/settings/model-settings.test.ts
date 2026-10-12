@@ -30,7 +30,6 @@ describe('readModelSettings with nothing set', () => {
       aliases: new Map(),
       declared: new Map(),
       allowed: null,
-      proxy: { enabled: false, environment: {} },
     });
   });
 
@@ -110,7 +109,7 @@ describe('readModelSettings for bedrock', () => {
   });
 });
 
-describe('readModelSettings for azure, vertex and the proxy', () => {
+describe('readModelSettings for azure and vertex', () => {
   it('reads azure with a resource name and a key, or a base URL for Entra ID', async () => {
     const keyed = await settingsOf({
       AZURE_RESOURCE_NAME: 'acme',
@@ -137,20 +136,10 @@ describe('readModelSettings for azure, vertex and the proxy', () => {
     });
   });
 
-  it('reads vertex and the proxy switch', async () => {
-    const settings = await settingsOf({
-      GOOGLE_VERTEX_PROJECT: 'acme-ai',
-      GOOGLE_VERTEX_LOCATION: 'global',
-      NODE_USE_ENV_PROXY: '1',
-      HTTPS_PROXY: 'http://proxy.internal:3128',
-      NO_PROXY: '169.254.169.254,metadata.google.internal',
-    });
+  it('reads vertex', async () => {
+    const settings = await settingsOf({ GOOGLE_VERTEX_PROJECT: 'acme-ai', GOOGLE_VERTEX_LOCATION: 'global' });
 
     expect(settings.vertex).toEqual({ configured: true, settings: { project: 'acme-ai', location: 'global' } });
-    expect(settings.proxy).toEqual({
-      enabled: true,
-      environment: { HTTPS_PROXY: 'http://proxy.internal:3128', NO_PROXY: '169.254.169.254,metadata.google.internal' },
-    });
   });
 });
 

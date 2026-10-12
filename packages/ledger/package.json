@@ -6,6 +6,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./content-measurement": "./measure/content-measurement.ts",
     "./dataset": "./measure/dataset.ts",
     "./postgresql": "./src/postgresql/postgresql-ledger.ts",
     "./sqlite3": "./src/sqlite3.ts",

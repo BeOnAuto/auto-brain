@@ -32,11 +32,6 @@ import {
   type SettingProblem,
 } from './setting-values.ts';
 
-export interface ProxySettings {
-  readonly enabled: boolean;
-  readonly environment: Environment;
-}
-
 export interface ModelSettings {
   readonly anthropic: Availability<AnthropicSettings>;
   readonly openai: Availability<OpenAiSettings>;
@@ -48,15 +43,12 @@ export interface ModelSettings {
   readonly aliases: ReadonlyMap<string, string>;
   readonly declared: ReadonlyMap<string, readonly string[]>;
   readonly allowed: readonly string[] | null;
-  readonly proxy: ProxySettings;
 }
 
 export class ModelSettingsInvalid extends Data.TaggedError('model_settings_invalid')<{
   readonly message: string;
   readonly problems: readonly SettingProblem[];
 }> {}
-
-const proxyVariables = ['HTTPS_PROXY', 'https_proxy', 'HTTP_PROXY', 'http_proxy', 'NO_PROXY', 'no_proxy'];
 
 const sources = Config.all({
   anthropic: anthropicSource,
@@ -69,13 +61,7 @@ const sources = Config.all({
   aliases: optionalText('MODEL_ALIASES'),
   declared: optionalText('DECLARED_MODELS'),
   allowed: optionalText('ALLOWED_MODELS'),
-  useEnvironmentProxy: optionalText('NODE_USE_ENV_PROXY'),
-  proxyVariables: Config.all(proxyVariables.map((name) => optionalText(name))),
 });
-
-function proxyEnvironment(values: readonly (string | undefined)[]): Environment {
-  return Object.fromEntries(proxyVariables.map((name, index) => [name, values[index]]));
-}
 
 function invalid(problems: readonly SettingProblem[]): ModelSettingsInvalid {
   const listed = problems.map(({ setting, detail }) => `${setting}: ${detail}`).join('; ');
@@ -131,7 +117,6 @@ export const readModelSettings = Effect.fnUntraced(function* (environment: Envir
     aliases: aliases.aliases,
     declared: catalog.declared,
     allowed: catalog.allowed,
-    proxy: { enabled: source.useEnvironmentProxy === '1', environment: proxyEnvironment(source.proxyVariables) },
   };
   return settings;
 });

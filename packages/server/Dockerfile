@@ -14,6 +14,7 @@ COPY packages/definitions/package.json packages/definitions/
 COPY packages/identity/package.json packages/identity/
 COPY packages/ledger/package.json packages/ledger/
 COPY packages/mcp/package.json packages/mcp/
+COPY packages/object-storage/package.json packages/object-storage/
 COPY packages/operations/package.json packages/operations/
 COPY packages/outbound/package.json packages/outbound/
 COPY packages/workflow-engine/package.json packages/workflow-engine/
@@ -51,6 +52,7 @@ COPY packages/definitions/lib packages/definitions/lib
 COPY packages/identity/src packages/identity/src
 COPY packages/ledger/src packages/ledger/src
 COPY packages/mcp/src packages/mcp/src
+COPY packages/object-storage/src packages/object-storage/src
 COPY packages/operations/src packages/operations/src
 COPY packages/outbound/src packages/outbound/src
 COPY packages/server/src packages/server/src
