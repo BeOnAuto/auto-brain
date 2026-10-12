@@ -39,6 +39,10 @@ function templateAt(template: Json | undefined, pointer: string, names: Scope): 
     : [];
 }
 
+export function holdsAnExpression(template: Json): boolean {
+  return templateAt(template, '', []).length > 0;
+}
+
 function transformAt(transform: Json | undefined, pointer: string, names: Scope): readonly PlacedExpression[] {
   return typeof transform === 'string' ? conditionAt(transform, pointer, names) : templateAt(transform, pointer, names);
 }

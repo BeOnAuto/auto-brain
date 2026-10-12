@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { JsonObject } from './json.ts';
-import { workflowExpressionsOf } from './workflow-expressions.ts';
+import type { Json, JsonObject } from './json.ts';
+import { holdsAnExpression, workflowExpressionsOf } from './workflow-expressions.ts';
 
 const header = { dsl: '1.0.0', namespace: 'brain', name: 'publish-brief', version: '1.0.0' };
 
@@ -194,5 +194,20 @@ describe('the expressions of filters', () => {
       '/do/1/loose/do/0/seen/set/at': [' $index ', `$item $index ${task} $input`],
       '/do/2/bare/try/0/attempt/set/tried': [' $input ', `${task} $input`],
     });
+  });
+});
+
+const written: readonly Json[] = [
+  'Spring',
+  '${ $data.name }',
+  [1, 'two', { three: 3 }],
+  [1, { more: ['${ $data.next }'] }],
+  { items: [{ name: '${ $data }' }] },
+  null,
+];
+
+describe('a value written into a workflow', () => {
+  it('holds an expression when any string within it, at any depth, is one', () => {
+    expect(written.map((value) => holdsAnExpression(value))).toEqual([false, true, false, true, true, false]);
   });
 });
