@@ -79,6 +79,12 @@ The [recall function adapter](../../reference/recall-format.md) shares those wor
 
 A value outside its range stops the server at start, naming the setting.
 
+The [prediction function adapter](../../reference/prediction-format.md) keeps the dataset of each saved prediction function in two tables beside the views, folded by the same server from the same pages of history, at most two datasets of a playbook built at once, with the `data` tests of its filters run in those workers; a dataset uploaded over HTTP is kept in the ledger's content. This setting bounds it:
+
+| Variable                   | Default | Purpose                                                                                                                                              |
+| -------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PREDICTION_MAX_FUNCTIONS` | `32`    | How many active prediction functions a playbook may keep, from 1 to 1000; lowering it below what a playbook keeps refuses its saves and nothing else |
+
 The [interaction function adapter](../../reference/interaction-format.md) keeps the open requests in a table of the ledger's database, written in the same transaction as each run's facts, and the server that runs the workflows performs their expiries and delivery attempts with its timers, so a request needs no other storage or schedule. A function sends its request through a tool of a server in `mcp_servers`, which it names itself, and this setting goes with it:
 
 | Variable                    | Default | Purpose                                                                                                                               |
