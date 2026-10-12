@@ -174,7 +174,7 @@ Before a call starts, the host counts the calls open, `running` or `waiting`, un
 
 ## The views of recall functions
 
-A recall function of [`@beonauto/recall`](../../capabilities/recall) keeps a view of its playbook's history, and the host keeps it, in `recall_views` beside its other tables, one row a function of a playbook, keyed by the playbook and the name:
+A recall function of [`@beonauto/recall`](../../capabilities/recall) keeps a view of its playbook's history, and the host keeps it, in `recall_views` beside its other tables, one row a function of a playbook, keyed by `playbook_key`, the playbook's key, and `name`:
 
 | Column                                     | What it holds                                                                                                        |
 | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
