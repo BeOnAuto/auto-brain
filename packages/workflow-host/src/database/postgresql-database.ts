@@ -10,6 +10,7 @@ import {
   WholeNumber,
   wroteARow,
   type HostDatabase,
+  type ReadStatement,
   type StatementAnswer,
 } from './host-database.ts';
 import { addedColumns, hostTables, indexesOfAddedColumns } from './host-tables.ts';
@@ -61,6 +62,33 @@ async function inTransaction(
   }
 }
 
+async function snapshotOn(connections: Connections): Promise<Connection> {
+  const connection = await connections.connect();
+  try {
+    await connection.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+    return connection;
+  } catch (failure) {
+    connection.release();
+    throw failure;
+  }
+}
+
+async function snapshotEnded(connection: Connection): Promise<void> {
+  try {
+    await connection.query('ROLLBACK');
+  } finally {
+    connection.release();
+  }
+}
+
+function readsOn(connection: Connection): ReadStatement {
+  return (asked) =>
+    Effect.tryPromise({
+      try: () => connection.query(textOnPostgreSQL(asked), asked.values),
+      catch: failedWith,
+    }).pipe(Effect.map(({ rows }) => rows));
+}
+
 async function migratedOn(connections: Connections, tables: readonly Statement[]): Promise<void> {
   await inTransaction(
     connections,
@@ -90,6 +118,12 @@ export async function postgresqlDatabaseOn(
       try: () => inTransaction(connections, statements, wroteARow),
       catch: failedWith,
     }).pipe(Effect.map(({ rows }) => rows));
+  const readConsistently: HostDatabase['readConsistently'] = (reads) =>
+    Effect.acquireUseRelease(
+      Effect.tryPromise({ try: () => snapshotOn(connections), catch: failedWith }),
+      (connection) => reads(readsOn(connection)),
+      (connection) => Effect.tryPromise({ try: () => snapshotEnded(connection), catch: failedWith }),
+    );
   const sharedClock = oneRowOf(NowRow, query(statement`SELECT (EXTRACT(EPOCH FROM now()) * 1000)::bigint AS now`)).pipe(
     Effect.map(({ now }) => now),
   );
@@ -100,7 +134,7 @@ export async function postgresqlDatabaseOn(
   try {
     await store.migrate();
     await migratedOn(connections, tables);
-    return { store, read: query, write: query, transaction, sharedClock, close };
+    return { store, read: query, write: query, transaction, readConsistently, sharedClock, close };
   } catch (failure) {
     await close().catch(Function.constVoid);
     throw failure;

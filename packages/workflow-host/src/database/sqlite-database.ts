@@ -12,6 +12,7 @@ import {
   wroteARow,
   type DatabaseFailed,
   type HostDatabase,
+  type ReadStatement,
   type StatementAnswer,
 } from './host-database.ts';
 import { addedColumns, columnsOnSQLite, hostTables, indexesOfAddedColumns, type AddedColumn } from './host-tables.ts';
@@ -33,6 +34,42 @@ const ColumnRows = Schema.Array(Schema.Struct({ name: Schema.String }));
 
 interface WriterTransaction {
   readonly execute: { readonly command: (sql: SQL) => Promise<StatementAnswer> };
+}
+
+interface ReaderTransaction {
+  readonly execute: { readonly query: (sql: SQL) => Promise<StatementAnswer> };
+}
+
+type ReadingTransaction<A> = (transaction: ReaderTransaction) => Promise<{ success: boolean; result: A }>;
+
+type InASnapshot = <A>(handle: ReadingTransaction<A>) => Promise<A>;
+
+interface SnapshotReader {
+  readonly withTransaction: <A>(handle: ReadingTransaction<A>, options: typeof deferred) => Promise<A>;
+}
+
+const deferred = { mode: 'DEFERRED' } as const;
+
+function readsOn({ execute }: ReaderTransaction): ReadStatement {
+  return (statement) =>
+    Effect.tryPromise({
+      try: async (): Promise<readonly unknown[]> => (await execute.query(onSQLite(statement))).rows,
+      catch: failedWith,
+    });
+}
+
+function consistentReadsIn(inASnapshot: InASnapshot): HostDatabase['readConsistently'] {
+  return (reads) =>
+    Effect.flatten(
+      Effect.tryPromise({
+        try: (signal) =>
+          inASnapshot(async (transaction) => ({
+            success: true,
+            result: await Effect.runPromiseExit(reads(readsOn(transaction)), { signal }),
+          })),
+        catch: failedWith,
+      }),
+    );
 }
 
 function columnAddedTo(
@@ -59,6 +96,11 @@ export async function openSQLiteDatabase(fileName: string, tables: readonly Stat
   const options = { driver: sqlite3EventStoreDriver, fileName, connectionOptions: modestConnections };
   const pool = dumbo(sqlite3EventStoreDriver.mapToDumboOptions(options));
   const store = sqliteEventStore(() => ({ ...options, pool }));
+  const inASnapshot: InASnapshot =
+    fileName === privateMemory
+      ? (handle) => pool.withTransaction(handle, deferred)
+      : (handle) =>
+          pool.withConnection((reader: SnapshotReader) => reader.withTransaction(handle, deferred), { readonly: true });
   const database: HostDatabase = {
     store,
     read: (statement) =>
@@ -80,6 +122,7 @@ export async function openSQLiteDatabase(fileName: string, tables: readonly Stat
           }),
         catch: failedWith,
       }),
+    readConsistently: consistentReadsIn(inASnapshot),
     sharedClock: null,
     close: () => store.close(),
   };

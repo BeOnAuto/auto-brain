@@ -9,7 +9,13 @@ export type { HostNote, HostReports, UnsettledRun } from './host/host-reports.ts
 export { HostElsewhere, type DeliveryAnswer, type RunStart, type StartAnswer } from './host/run-requests.ts';
 export { openWorkflowHost, type HostOptions, type WorkflowHost } from './host/workflow-host.ts';
 export { openWorkflowStore, type WorkflowStore } from './host/workflow-store.ts';
-export { DatabaseFailed, rowsOf, WholeNumber, type HostDatabase } from './database/host-database.ts';
+export {
+  DatabaseFailed,
+  rowsOf,
+  WholeNumber,
+  type HostDatabase,
+  type ReadStatement,
+} from './database/host-database.ts';
 export { statement, type Statement, type StatementValue } from './database/statement.ts';
 export type { PageEvent, ReadPage } from './pages/page-events.ts';
 export type { PlaybookDefinitions, KeptFunction, KeptOf } from './projector/playbook-definitions.ts';
