@@ -76,7 +76,7 @@ const description = [
   'Each carries its `answer_schema`, the shape answer_interaction checks an answer against, as recorded when it was asked,',
   'which get_definition may no longer show; null for a notification.',
   'Use it when the person asks what the brain is waiting on, or to find the request they answer.',
-  '`to` keeps the requests to one party and `function` those of one function, and `cursor` is the next_cursor of the page before.',
+  '`to`, `type` and `function` keep the requests to one party, of one type of function and of functions of one name, which names one function with its `type`; `cursor` is the next_cursor of the page before.',
   'Every reader of the brain sees each party and message, as a run’s input is seen.',
 ].join(' ');
 
@@ -130,20 +130,28 @@ function shownOf({ key, row }: ProjectedKeyedRow) {
 
 interface Listing {
   readonly to?: string | undefined;
+  readonly type?: string | undefined;
   readonly function?: string | undefined;
   readonly limit?: number | undefined;
   readonly cursor?: string | undefined;
 }
 
-const listed = Effect.fnUntraced(function* ({ to, function: name, limit = defaultPageLimit, cursor }: Listing) {
+function conditionsOf({ to, type, function: name }: Listing): readonly ProjectedCondition[] {
+  const asked: readonly (readonly [string, string | undefined])[] = [
+    ['party', to],
+    ['type', type],
+    ['function', name],
+  ];
+  return [
+    { column: 'open', equals: true },
+    ...asked.flatMap(([column, equals]) => (equals === undefined ? [] : [{ column, equals }])),
+  ];
+}
+
+const listed = Effect.fnUntraced(function* (listing: Listing) {
+  const { limit = defaultPageLimit, cursor } = listing;
   const after = yield* afterOf(cursor);
-  const where: ProjectedCondition[] = [{ column: 'open', equals: true }];
-  if (to !== undefined) {
-    where.push({ column: 'party', equals: to });
-  }
-  if (name !== undefined) {
-    where.push({ column: 'function', equals: name });
-  }
+  const where = conditionsOf(listing);
   const rows = yield* (yield* BrainReader).readProjectedRows(openRequestsName, {
     where,
     orderBy: ['requested_at'],
@@ -168,7 +176,10 @@ export const listInteractions = defineQuery('brain', {
   route: { method: 'GET', path: '/interactions' },
   inputSchema: Schema.Struct({
     to: Schema.optionalKey(FilterText.annotate({ description: 'Only the requests to this party' })),
-    function: Schema.optionalKey(FilterText.annotate({ description: 'Only the requests of this function' })),
+    type: Schema.optionalKey(FilterText.annotate({ description: 'Only the requests of functions of this type' })),
+    function: Schema.optionalKey(
+      FilterText.annotate({ description: 'Only the requests of functions of this name, of the type given if any' }),
+    ),
     limit: PagingInputFields.limit,
     cursor: PagingInputFields.cursor,
   }),

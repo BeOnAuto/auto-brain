@@ -24,7 +24,9 @@ describe('the interaction capability', () => {
       {},
       { summary: { details: { expires: 'PT1H', deliver: { server: 'chat', tool: 'post_message' } } } },
     ]);
-    expect(prepared.map(({ finishesLater, longestRunMs }) => [finishesLater(input), longestRunMs(input)])).toEqual([
+    expect(
+      prepared.map(({ finishesLaterFor, longestRunMsFor }) => [finishesLaterFor(input), longestRunMsFor(input)]),
+    ).toEqual([
       [true, 172_800_000],
       [false, 3_600_000],
       [true, 3_600_000],
@@ -132,7 +134,7 @@ describe('the words of a request answered by reply', () => {
 });
 
 describe('the words of an answer', () => {
-  it('say that a notification was delivered, read from the record of its request or of its delivery', () => {
+  it('say that a notification was delivered, read from the record of its request or of its delivery, and give the answer of a run settled from its answer, whose record is empty', () => {
     const notified = {
       to: 'ada',
       message: 'Shipped',
@@ -144,7 +146,7 @@ describe('the words of an answer', () => {
       describeAnswer({}, notified),
       describeAnswer({}, { delivered_at: '2026-10-07T09:00:01.000Z' }),
       describeAnswer({}, { ...notified, answer_schema: {} }),
-      describeAnswer({}, { answered_by: 'acme-admin', answered_at: '2026-10-07T09:00:01.000Z' }),
+      describeAnswer({}, {}),
     ]).toEqual([
       'It delivered its notification.',
       'It delivered its notification.',

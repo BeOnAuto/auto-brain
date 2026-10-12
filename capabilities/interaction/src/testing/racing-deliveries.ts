@@ -1,8 +1,15 @@
-import { deferredCanceller, workRecorder, type Capability, type RecordedWorkAt } from '@beonauto/definitions';
+import {
+  declaredFactsOf,
+  deferredCanceller,
+  runFactsOf,
+  workRecorder,
+  type Capability,
+  type RecordedWorkAt,
+} from '@beonauto/definitions';
 import { Ledger } from '@beonauto/operations';
 import { Effect, Layer, Schema } from 'effect';
 
-import { interactionRunFacts } from '../facts/declared-facts.ts';
+import { interactionFacts } from '../facts/declared-facts.ts';
 import { askedRunId } from './asked-requests.ts';
 import type { HarnessLedger } from './interaction-harness.ts';
 
@@ -14,6 +21,8 @@ const address = { org: 'acme', brain: 'alpha', id: askedRunId };
 
 const lineage = { causationId: null, correlationId: askedRunId };
 
+const factsOfTheInteraction = runFactsOf(declaredFactsOf([{ facts: interactionFacts }]));
+
 export const takenReply = { id: '1699.2', sender: 'ada' };
 
 export interface RacingDelivery {
@@ -23,7 +32,7 @@ export interface RacingDelivery {
 }
 
 function answeredByAReplyIn(ledger: HarnessLedger, answer: Schema.Json): Effect.Effect<RecordedWorkAt, unknown> {
-  return workRecorder(ledger.service, interactionRunFacts)(
+  return workRecorder(ledger.service, factsOfTheInteraction)(
     address,
     { type: 'answer', answer: { answer, reply: takenReply } },
     lineage,
@@ -36,7 +45,7 @@ export function recordedReply(ledger: HarnessLedger, answer: Schema.Json): Promi
 
 function broughtOf(ledger: HarnessLedger, answer: Schema.Json | undefined): Effect.Effect<RecordedWorkAt, unknown> {
   return answer === undefined
-    ? workRecorder(ledger.service, interactionRunFacts)(
+    ? workRecorder(ledger.service, factsOfTheInteraction)(
         address,
         {
           type: 'work',
@@ -77,7 +86,7 @@ export function broughtBeforeDeciding(ledger: HarnessLedger, answer?: Schema.Jso
     started: () =>
       Effect.runPromise(
         Effect.asVoid(
-          workRecorder(ledger.service, interactionRunFacts)(
+          workRecorder(ledger.service, factsOfTheInteraction)(
             address,
             {
               type: 'work',

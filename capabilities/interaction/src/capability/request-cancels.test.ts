@@ -1,9 +1,8 @@
-import { deferredCanceller, workRecorder } from '@beonauto/definitions';
+import { cancelledUnanswered, deferredCanceller } from '@beonauto/definitions';
 import { memoryLedger } from '@beonauto/operations/testing';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { interactionRunFacts } from '../facts/declared-facts.ts';
 import { replyRule } from '../facts/work-rules.ts';
 import { openRequests, openRequestsName } from '../requests/open-requests.ts';
 import {
@@ -105,7 +104,7 @@ describe('a cancel asked before a reply is read', () => {
     await brain.cancel(askedRunId);
     const refused = await Effect.runPromise(
       Effect.flip(
-        workRecorder(brain.ledger.service, interactionRunFacts)(
+        brain.record(
           address,
           { type: 'answer', answer: { answer: { choice: 'approve' }, reply: takenReply } },
           lineage,
@@ -117,7 +116,7 @@ describe('a cancel asked before a reply is read', () => {
       deferredCanceller([brain.capability], brain.ledger.service)(address, { ...asked, by: 'acme-admin' }, lineage),
     );
 
-    expect(refused).toMatchObject({ detail: 'The run is being cancelled, so it takes no reply' });
+    expect(refused).toEqual(cancelledUnanswered);
     expect(await brain.runOf(askedRunId)).toMatchObject({
       output: { status: 'rejected', rejection: { reason: 'cancelled', kind: 'requested' } },
     });

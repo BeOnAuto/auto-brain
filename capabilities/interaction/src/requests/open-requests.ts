@@ -1,15 +1,22 @@
-import { runEventOf, type RecordedRunEvent, type RecordedRunFact, type RunEvent } from '@beonauto/definitions';
+import {
+  isRequestRecord,
+  runEventOf,
+  type RecordedRunEvent,
+  type RecordedRunFact,
+  type RunEvent,
+} from '@beonauto/definitions';
 import type { ProjectedMessage, ProjectedRow, KeyedProjection, RunContext } from '@beonauto/operations';
+import type { Schema } from 'effect';
 
 import { conversationKeyOf } from '../conversations/conversation-keys.ts';
 import { interactionFactOf, type RecordedFactNamed } from '../facts/run-facts.ts';
-import { requestRecordOf, takesAnswer } from '../run/request-record.ts';
 import { attemptSchedule, nextAttemptAt } from '../schedule/attempt-schedule.ts';
 import {
   attemptDueAtOf,
+  deliveryOf,
   endingDueAtOf,
   requestRowOf,
-  settlesFromAnswer,
+  settlementDueOf,
   type OpenRequestRow,
   type UndueRequestRow,
 } from './request-rows.ts';
@@ -30,22 +37,26 @@ function functionOf({ definitionType, definitionName, definitionVersion }: RunCo
   return { type: definitionType, function: definitionName, version: definitionVersion };
 }
 
+function jsonOf(block: Schema.JsonObject | undefined): string | null {
+  return block === undefined ? null : JSON.stringify(block);
+}
+
 function requested({ data, context }: Fact<'run_deferred'>, message: ProjectedMessage): ProjectedRow | undefined {
-  const request = requestRecordOf(data.record);
-  if (request === undefined) {
+  const request = data.record;
+  if (!isRequestRecord(request)) {
     return undefined;
   }
   const at = Date.parse(context.at);
-  const { deliver, replies } = request;
-  const inInbox = deliver === undefined;
+  const delivery = deliveryOf(request.deliver);
+  const inInbox = delivery === null;
   return rowOf({
     request_id: message.id,
     ...functionOf(context),
     party: request.to,
-    delivery: inInbox ? null : JSON.stringify({ server: deliver.server, tool: deliver.tool }),
-    replies: replies === undefined ? null : JSON.stringify(replies),
+    delivery,
+    replies: jsonOf(request.replies),
     message: request.message,
-    answers: takesAnswer(request),
+    answers: request.answer_schema !== undefined,
     answer_schema: request.answer_schema === undefined ? null : JSON.stringify(request.answer_schema),
     requested_at: at,
     expires_at: Date.parse(request.expires_at),
@@ -58,7 +69,7 @@ function requested({ data, context }: Fact<'run_deferred'>, message: ProjectedMe
     sent_conversation: null,
     sent_id: null,
     answerer: request.answerer ?? null,
-    reply: request.reply === undefined ? null : JSON.stringify(request.reply),
+    reply: jsonOf(request.reply),
     reply_refusals: 0,
     refusals_told: 0,
   });
@@ -155,7 +166,7 @@ function answered(row: OpenRequestRow): ProjectedRow {
 
 function changed(row: OpenRequestRow, fact: RecordedRunEvent, message: ProjectedMessage): ProjectedRow | undefined {
   if (fact.type === 'run_cancel_requested') {
-    return row.open && !settlesFromAnswer(row) ? rowOf({ ...row, standing: 'cancelling' }) : undefined;
+    return row.open && settlementDueOf(row) === undefined ? rowOf({ ...row, standing: 'cancelling' }) : undefined;
   }
   if (fact.type === 'request_answered') {
     return answered(row);
@@ -226,6 +237,7 @@ export const openRequests: KeyedProjection = {
     { name: 'by_open', columns: ['open', 'requested_at'] },
     { name: 'by_party', columns: ['party', 'requested_at'] },
     { name: 'by_function', columns: ['function', 'requested_at'] },
+    { name: 'by_type', columns: ['type', 'function', 'requested_at'] },
     { name: 'by_conversation', columns: ['open', 'conversation', 'requested_at'] },
     { name: 'attempts_due', columns: ['attempt_due_at'], acrossBrains: true, whereSet: 'attempt_due_at' },
     { name: 'endings_due', columns: ['ending_due_at'], acrossBrains: true, whereSet: 'ending_due_at' },

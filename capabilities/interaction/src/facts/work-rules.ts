@@ -73,18 +73,13 @@ const replySeen = new Conflict({ detail: 'The run has taken or refused this repl
 
 const answeredAlready = new Conflict({ detail: 'The run took an answer already, so it takes no further reply' });
 
-const replyWhileCancelling = new Conflict({ detail: 'The run is being cancelled, so it takes no reply' });
-
 const refusedEnough = new Conflict({
   detail: `The run has refused ${replyBounds.refusals} replies, the most it records, so it records no more`,
 });
 
 export function replyRule(replyId: string, refusing: boolean): WorkRule {
-  return ({ cancel, answer, work }) => {
+  return ({ answer, work }) => {
     const { refusedReplies } = interactionWorkOf(work);
-    if (cancel !== undefined) {
-      return replyWhileCancelling;
-    }
     if (refusedReplies.includes(replyId) || answer?.reply?.id === replyId) {
       return replySeen;
     }

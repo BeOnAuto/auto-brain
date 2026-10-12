@@ -1,4 +1,4 @@
-import { Effect, Exit, Schema } from 'effect';
+import { Effect, Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { ConversationLedger } from '../conversations/conversation-parts.ts';
@@ -8,18 +8,6 @@ import { dueInBothLanes } from '../testing/harness-parts.ts';
 import { answererId, chatHarness, farAhead, recordsOf, type ChatHarness } from '../testing/index.ts';
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
-
-const isSettlement = Schema.is(Schema.Struct({ type: Schema.Literal('settle') }));
-
-function stoppingBeforeSettling(ledger: ConversationLedger): ConversationLedger {
-  return {
-    ...ledger,
-    execute: (stream, decider, command, lineage) =>
-      isSettlement(command)
-        ? Effect.die(new Error('The server stopped before it settled the run'))
-        : ledger.execute(stream, decider, command, lineage),
-  };
-}
 
 function answeredMeanwhile(brain: ChatHarness): ConversationLedger {
   const ledger = brain.ledger.service;
@@ -42,7 +30,7 @@ async function repliedInThread(): Promise<ChatHarness> {
 }
 
 function readOver(brain: ChatHarness, ledger: ConversationLedger) {
-  const reads = conversationsDue({ ledger, tools: brain.chat });
+  const reads = conversationsDue({ ledger, tools: brain.chat, record: brain.record });
   const now = Date.now() + farAhead;
   return Effect.runPromise(
     Effect.exit(
@@ -54,15 +42,15 @@ function readOver(brain: ChatHarness, ledger: ConversationLedger) {
   );
 }
 
-describe('a reply taken, whose settlement the server stopped before', () => {
-  it('is settled from the answer the reply brought after a restart, which left the list of open requests at once', async () => {
+describe('a reply taken', () => {
+  it('leaves the list of open requests at once, and the due work settles the run from the answer it brought', async () => {
     const brain = await repliedInThread();
 
-    const exit = await readOver(brain, stoppingBeforeSettling(brain.ledger.service));
-    const afterStop = await brain.firstOpen();
+    const exit = await readOver(brain, brain.ledger.service);
+    const afterReading = [await brain.firstOpen(), await brain.runOf(runId)];
     await brain.performDue(Date.now());
 
-    expect([Exit.isFailure(exit), afterStop]).toEqual([true, undefined]);
+    expect([Exit.isSuccess(exit), ...afterReading]).toMatchObject([true, undefined, { output: { status: 'started' } }]);
     expect(await brain.runOf(runId)).toMatchObject({
       output: { status: 'succeeded', output: { choice: 'approve' }, record: {} },
     });

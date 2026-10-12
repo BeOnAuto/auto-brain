@@ -1,4 +1,4 @@
-import { declaredFact, runFactsOf, type CapabilityFacts } from '@beonauto/definitions';
+import { declaredFact, type CapabilityFacts } from '@beonauto/definitions';
 import { conversationCallPresenter } from '@beonauto/mcp';
 
 import {
@@ -26,5 +26,3 @@ export const interactionFacts: CapabilityFacts = {
   ],
   streams: [conversationCallPresenter],
 };
-
-export const interactionRunFacts = runFactsOf(interactionFacts.onRuns);

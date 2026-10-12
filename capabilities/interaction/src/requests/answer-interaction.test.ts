@@ -244,7 +244,7 @@ describe('the words of answers and requests', () => {
       ),
     ]).toEqual([
       'answer the request',
-      'The request is answered: the run that asked it takes the answer within a second, and get_run shows how it ended.',
+      "The request is answered: the run that asked it takes the answer within the host's sweep, a second by default, and get_run shows how it ended.",
       'list the open requests',
       'No request is waiting.',
       'Found 1 request waiting on this page.',

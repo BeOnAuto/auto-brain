@@ -21,7 +21,7 @@ import { Effect, Schema } from 'effect';
 
 import { interactionBounds } from '../run/run-bounds.ts';
 import { answerFor } from './answering.ts';
-import { correlationOfRun, openRequestRowIn, recordedAnswerOf, type RecordedAnswerFact } from './request-reads.ts';
+import { answerTakenBy, correlationOfRun, openRequestRowIn, type AnswerTaken } from './request-reads.ts';
 
 const ClaimedForField = Schema.String.annotate({
   description: `Whom the caller says it answers for, kept with the answer as a claim and never checked, at most ${interactionBounds.claimBytes} bytes`,
@@ -34,8 +34,8 @@ const ClaimedForField = Schema.String.annotate({
 );
 
 const description = [
-  "Answers a request a function's run waits on; the run takes the answer within a second,",
-  "and an interaction function's run succeeds with it as its output, reaching the workflow step that waits for it.",
+  "Answers a request a function's run waits on; the run takes it within the host's sweep, a second by default,",
+  "and an interaction function's run succeeds with it, reaching a workflow that waits for it.",
   'Use it when the person approves, rejects, revises or otherwise answers a request list_interactions shows, wherever it reached them;',
   'a new run asks again and answers nothing, and send_run_event gives an event to a waiting workflow instead.',
   '`run_id` is the run of the request, and `answer` takes the shape of the request\'s answer_schema, which list_interactions shows, such as {"decision": "approve"}.',
@@ -76,7 +76,7 @@ function checkedFor(run: RecordedRun, answer: Schema.Json): Effect.Effect<Schema
   return answerFor(answer, answerSchemaOf(run.run.record).answer_schema);
 }
 
-function shownOf(id: string, { id: answerId, answer, claimedFor, reply, by, at }: RecordedAnswerFact) {
+function shownOf(id: string, { id: answerId, answer, claimedFor, reply, by, at }: AnswerTaken) {
   return {
     run_id: id,
     answer_id: answerId,
@@ -108,7 +108,7 @@ const answered = Effect.fnUntraced(function* ({ id, answer, claimedFor }: Answer
     answeredBy,
     { causationId: row.request_id, correlationId: yield* correlationOfRun(id) },
   );
-  return shownOf(id, yield* recordedAnswerOf(id));
+  return shownOf(id, yield* answerTakenBy(id));
 });
 
 export const answerInteraction = defineCommand('brain', {
@@ -130,6 +130,6 @@ export const answerInteraction = defineCommand('brain', {
     task: 'answer a request',
     attempt: () => 'answer the request',
     outcome: () =>
-      'The request is answered: the run that asked it takes the answer within a second, and get_run shows how it ended.',
+      "The request is answered: the run that asked it takes the answer within the host's sweep, a second by default, and get_run shows how it ended.",
   },
 });

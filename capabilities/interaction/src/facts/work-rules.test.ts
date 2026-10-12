@@ -1,11 +1,10 @@
-import { workRecorder, type Work, type WorkRule } from '@beonauto/definitions';
+import { cancelledUnanswered, type Work, type WorkRule } from '@beonauto/definitions';
 import { Conflict } from '@beonauto/operations';
 import { Effect, Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { answerInteraction } from '../requests/answer-interaction.ts';
 import { askedRunId, askedThroughChat, type InteractionHarness } from '../testing/index.ts';
-import { interactionRunFacts } from './declared-facts.ts';
 import type { DeliveryEvent } from './run-facts.ts';
 import { deliveryRule, interactionWorkOf, replyBounds, replyRule } from './work-rules.ts';
 
@@ -14,9 +13,8 @@ const address = { org: 'acme', brain: 'alpha', id: askedRunId };
 const lineage = { causationId: null, correlationId: askedRunId };
 
 function recording(brain: InteractionHarness) {
-  const record = workRecorder(brain.ledger.service, interactionRunFacts);
   return (work: Work, rule: WorkRule) =>
-    Effect.runPromise(Effect.result(Effect.asVoid(record(address, work, lineage, rule))));
+    Effect.runPromise(Effect.result(Effect.asVoid(brain.record(address, work, lineage, rule))));
 }
 
 function delivering(brain: InteractionHarness) {
@@ -132,13 +130,11 @@ describe('the replies a request takes or refuses', () => {
     ]);
   });
 
-  it('are neither taken nor refused once a cancel is asked', async () => {
+  it('take no answer once a cancel is asked, by the rule every answer meets', async () => {
     const { brain } = await askedThroughChat();
     await brain.cancel(askedRunId);
 
-    expect(await recording(brain)(refusal('r-1'), replyRule('r-1', true))).toEqual(
-      Result.fail(new Conflict({ detail: 'The run is being cancelled, so it takes no reply' })),
-    );
+    expect(await recording(brain)(taking('r-1'), replyRule('r-1', false))).toEqual(Result.fail(cancelledUnanswered));
   });
 });
 

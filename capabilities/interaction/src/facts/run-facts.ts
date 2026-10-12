@@ -1,6 +1,6 @@
 import { CallAnsweredSchema, CallSentSchema } from '@beonauto/mcp';
-import { IssueSchema, RunContextSchema, factOf, recordedDecoder, type Decided } from '@beonauto/operations';
-import { Option, Schema, Struct } from 'effect';
+import { IssueSchema, RunContextSchema, recordedDecoder, type Decided } from '@beonauto/operations';
+import { Option, Schema, Struct, Tuple } from 'effect';
 
 import { DeliveredAsSchema, RepliesInSchema } from '../tool-blocks/tool-block-schemas.ts';
 
@@ -69,23 +69,25 @@ const ReplyRefusedSchema = Schema.Struct({
   told: Schema.Boolean,
 });
 
-export const DeliveryStartedFactSchema = factOf('delivery_started', DeliveryStartedSchema, RunContextSchema);
+const InteractionWorkSchema = Schema.Union([
+  Schema.Struct({ type: Schema.Literal('delivery_started'), data: DeliveryStartedSchema }),
+  Schema.Struct({ type: Schema.Literal('delivery_succeeded'), data: DeliverySucceededSchema }),
+  Schema.Struct({ type: Schema.Literal('delivery_failed'), data: DeliveryFailedSchema }),
+  Schema.Struct({ type: Schema.Literal('delivery_refused'), data: DeliveryRefusedSchema }),
+  Schema.Struct({ type: Schema.Literal('reply_refused'), data: ReplyRefusedSchema }),
+]);
 
-export const DeliverySucceededFactSchema = factOf('delivery_succeeded', DeliverySucceededSchema, RunContextSchema);
+const InteractionRunFactSchema = InteractionWorkSchema.mapMembers(
+  Tuple.map(Schema.fieldsAssign({ context: RunContextSchema })),
+);
 
-export const DeliveryFailedFactSchema = factOf('delivery_failed', DeliveryFailedSchema, RunContextSchema);
-
-export const DeliveryRefusedFactSchema = factOf('delivery_refused', DeliveryRefusedSchema, RunContextSchema);
-
-export const ReplyRefusedFactSchema = factOf('reply_refused', ReplyRefusedSchema, RunContextSchema);
-
-const InteractionRunFactSchema = Schema.Union([
+export const [
   DeliveryStartedFactSchema,
   DeliverySucceededFactSchema,
   DeliveryFailedFactSchema,
   DeliveryRefusedFactSchema,
   ReplyRefusedFactSchema,
-]);
+] = InteractionRunFactSchema.members;
 
 export type RecordedInteractionFact = typeof InteractionRunFactSchema.Type;
 
@@ -120,19 +122,11 @@ export function interactionFactOf(recorded: unknown): RecordedInteractionFact | 
   return Option.getOrUndefined(decodeFact(recorded));
 }
 
-const decodeData = Schema.decodeUnknownOption(
-  Schema.Union([
-    Schema.Struct({ type: Schema.Literal('delivery_started'), data: DeliveryStartedSchema }),
-    Schema.Struct({ type: Schema.Literal('delivery_succeeded'), data: DeliverySucceededSchema }),
-    Schema.Struct({ type: Schema.Literal('delivery_failed'), data: DeliveryFailedSchema }),
-    Schema.Struct({ type: Schema.Literal('delivery_refused'), data: DeliveryRefusedSchema }),
-    Schema.Struct({ type: Schema.Literal('reply_refused'), data: ReplyRefusedSchema }),
-  ]),
-);
+const decodeWork = Schema.decodeUnknownOption(InteractionWorkSchema);
 
 export function workFactOf(work: {
   readonly type: string;
   readonly data: Schema.JsonObject;
 }): InteractionFact | undefined {
-  return Option.getOrUndefined(decodeData(work));
+  return Option.getOrUndefined(decodeWork(work));
 }

@@ -2,7 +2,7 @@ import { defineUpdateDefinition } from '@beonauto/definitions';
 import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { approvalDocument, askedThroughChat, interactionHarness } from '../testing/index.ts';
+import { approvalDocument, askedThroughChat, interactionHarness, nudging } from '../testing/index.ts';
 import { answerInteraction } from './answer-interaction.ts';
 import { listInteractions } from './list-interactions.ts';
 
@@ -67,6 +67,22 @@ describe('the open requests of a brain', () => {
   });
 });
 
+describe('the open requests of functions of one name', () => {
+  it('are of one function when kept to its name and its type, since a name is unique only within its type', async () => {
+    const brain = interactionHarness({ others: [nudging] });
+    await brain.define('approve', approvalDocument());
+    await brain.ask('approve', { campaign: 'Spring', owner: 'ada' }, String(runIds[0]));
+    await brain.defineAs('nudging', 'approve', 'Approve?');
+    await brain.askAs('nudging', 'approve', {}, String(runIds[1]));
+
+    expect([
+      (await listed(brain, { function: 'approve' })).ids,
+      (await listed(brain, { function: 'approve', type: 'interaction' })).ids,
+      (await listed(brain, { type: 'nudging' })).ids,
+    ]).toEqual([[runIds[1], runIds[0]], [runIds[0]], [runIds[1]]]);
+  });
+});
+
 const approvalSchema = {
   type: 'object',
   required: ['choice'],
@@ -108,12 +124,12 @@ const answer = answerInteraction;
 
 describe('the answer shape of an open request', () => {
   it('is the answer schema its request recorded for a question, and null for a notification', async () => {
-    const asking = interactionHarness();
-    await asking.define('approve-brief', approvalDocument());
-    await asking.ask('approve-brief', { campaign: 'Spring', owner: 'ada' }, String(runIds[0]));
+    const questioning = interactionHarness();
+    await questioning.define('approve-brief', approvalDocument());
+    await questioning.ask('approve-brief', { campaign: 'Spring', owner: 'ada' }, String(runIds[0]));
     const telling = await askedThroughChat({ notification: true });
 
-    expect([await shapesIn(asking), await shapesIn(telling.brain)]).toEqual([
+    expect([await shapesIn(questioning), await shapesIn(telling.brain)]).toEqual([
       [{ version: 1, takes_answer: true, answer_schema: approvalSchema }],
       [{ version: 1, takes_answer: false, answer_schema: null }],
     ]);

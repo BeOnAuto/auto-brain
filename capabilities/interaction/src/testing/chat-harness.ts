@@ -8,7 +8,13 @@ import type { RequestsDue } from '../schedule/due-requests.ts';
 import { threadDocument } from './documents.ts';
 import { fakeTools, type FakeTools } from './fake-tools.ts';
 import { dueInBothLanes, performedAll } from './harness-parts.ts';
-import { alpha, interactionHarness, type HarnessLedger, type InteractionHarness } from './interaction-harness.ts';
+import {
+  alpha,
+  interactionHarness,
+  type HarnessLedger,
+  type HarnessOptions,
+  type InteractionHarness,
+} from './interaction-harness.ts';
 
 export interface ChatHarness extends InteractionHarness {
   readonly chat: FakeTools;
@@ -21,6 +27,7 @@ export interface ChatHarnessOptions {
   readonly ledger?: HarnessLedger;
   readonly document?: string;
   readonly duringCall?: Parameters<typeof fakeTools>[0];
+  readonly others?: HarnessOptions['others'];
 }
 
 export const answererId = 'U024BE7LH';
@@ -30,8 +37,8 @@ export const farAhead = 3_600_000;
 export async function chatHarness(options: ChatHarnessOptions = {}): Promise<ChatHarness> {
   const chat = fakeTools(options.duringCall);
   const ledger = options.ledger ?? memoryLedger(undefined, [openRequests, conversations]);
-  const brain = interactionHarness({ ledger, tools: chat });
-  const reads = conversationsDue({ ledger: ledger.service, tools: chat });
+  const brain = interactionHarness({ ledger, tools: chat, others: options.others ?? [] });
+  const reads = conversationsDue({ ledger: ledger.service, tools: chat, record: brain.record });
   await brain.define('approve-brief', options.document ?? threadDocument());
   return {
     ...brain,

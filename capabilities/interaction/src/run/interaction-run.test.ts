@@ -27,7 +27,7 @@ const aRun: RunContext = {
   lineage: { startId: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a', correlationId: runId },
   depth: 0,
   callDepth: 0,
-  longestRunOf: noLongestRuns,
+  ...noLongestRuns,
 };
 
 function openDocument(to: string, message: string): string {

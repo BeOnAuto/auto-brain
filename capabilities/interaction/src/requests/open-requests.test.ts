@@ -103,6 +103,30 @@ describe('the open request of a run', () => {
   });
 });
 
+describe('the open request of a run whose request carries blocks the interaction does not read', () => {
+  it('is kept in the brain’s shape, its blocks as written, waiting in the inbox until it expires', () => {
+    const elsewhere = {
+      ...Struct.omit(request, ['deliver']),
+      deliver: { through: 'carrier-pigeon' },
+      replies: { by: 'post' },
+      reply: { kind: 'yes_or_no' },
+    };
+
+    expect(
+      after(undefined, deferralOf(elsewhere), { ...ofTheRun, definitionType: 'prediction', definitionName: 'demand' }),
+    ).toMatchObject({
+      type: 'prediction',
+      delivery: null,
+      replies: JSON.stringify({ by: 'post' }),
+      reply: JSON.stringify({ kind: 'yes_or_no' }),
+      standing: 'in_inbox',
+      open: true,
+      attempt_due_at: null,
+      ending_due_at: Date.parse(request.expires_at),
+    });
+  });
+});
+
 describe('the open request of a run, as its request recorded it', () => {
   it('keeps the tool it delivers through and how it reads replies as JSON text, and neither in the inbox', () => {
     const inbox = Struct.omit(request, ['deliver']);
@@ -221,6 +245,22 @@ describe('the open request of a run that took an answer', () => {
     ]).toMatchObject([
       { standing: 'answered', open: false, ended: 'answered', ending_due_at: null },
       { standing: 'answered', open: false, ended: null, ending_due_at: null, attempt_due_at: null },
+    ]);
+  });
+
+  it('of a notification of another function, delivered or not, waits for its run to settle it until it expires', () => {
+    const ofABuild = { ...ofTheRun, definitionType: 'prediction' };
+    const notification = after(undefined, deferralOf(Struct.omit(request, ['answer_schema'])), ofABuild);
+    const deliveredOne = after(after(notification, attempt, ofABuild), delivered, ofABuild);
+    const undelivered = after(
+      after(notification, attempt, ofABuild),
+      { type: 'delivery_refused', data: { number: 1, because: 'unworkable', duration_ms: 3 } },
+      ofABuild,
+    );
+
+    expect([deliveredOne, undelivered]).toMatchObject([
+      { standing: 'delivered', open: true, ending_due_at: Date.parse(request.expires_at) },
+      { standing: 'undelivered', open: true, ending_due_at: Date.parse(request.expires_at) },
     ]);
   });
 

@@ -51,8 +51,7 @@ describe('a notification whose attempts fail', () => {
 
   it('ends undelivered at the next perform when the server stopped before ending it', async () => {
     const { brain, tools, askedAt } = await askedThroughChat({ notification: true });
-    const record = (fact: DeliveryEvent) =>
-      Effect.runPromise(recordedCall(brain.ledger.service, address, fact, lineage));
+    const record = (fact: DeliveryEvent) => Effect.runPromise(recordedCall(brain.record, address, fact, lineage));
     await record({
       type: 'delivery_started',
       data: { number: 1, target: 'ada', server: 'chat', tool: 'post_message' },

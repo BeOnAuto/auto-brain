@@ -1,5 +1,5 @@
-import { RequestAnsweredSchema } from '@beonauto/definitions';
-import { BrainReader } from '@beonauto/operations';
+import { RequestAnsweredSchema, recordedAnswerOf, type RecordedAnswer } from '@beonauto/definitions';
+import { BrainReader, type RecordedPageRequest } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
 import { openRequestsName } from './open-requests.ts';
@@ -27,16 +27,18 @@ export function correlationOfRun(id: string): Effect.Effect<string, never, Brain
   );
 }
 
-export interface RecordedAnswerFact {
+export interface AnswerTaken extends RecordedAnswer {
   readonly id: string;
-  readonly answer: Schema.Json;
-  readonly claimedFor?: string;
-  readonly reply?: { readonly id: string; readonly sender: string };
-  readonly by: string;
-  readonly at: string;
 }
 
-const decodeAnswered = Schema.decodeUnknownEffect(
+export const lastAnswerPage: RecordedPageRequest = {
+  order: 'desc',
+  limit: 1,
+  types: ['request_answered'],
+  dataOf: ['request_answered'],
+};
+
+const decodeAnswered = Schema.decodeUnknownSync(
   Schema.NonEmptyArray(
     Schema.Struct({
       id: Schema.String,
@@ -46,25 +48,14 @@ const decodeAnswered = Schema.decodeUnknownEffect(
   ),
 );
 
-export function recordedAnswerOf(id: string): Effect.Effect<RecordedAnswerFact, never, BrainReader> {
-  return BrainReader.use((reader) =>
-    reader.readRecorded(
-      { kind: 'run', run: id },
-      { order: 'desc', limit: 1, types: ['request_answered'], dataOf: ['request_answered'] },
-    ),
-  ).pipe(
-    Effect.flatMap(({ records }) => decodeAnswered(records)),
-    Effect.map(([{ id: answerId, data, context }]): RecordedAnswerFact => {
-      const { answer, claimed_for: claimedFor, reply } = data;
-      return {
-        id: answerId,
-        answer,
-        ...(claimedFor === undefined ? {} : { claimedFor }),
-        ...(reply === undefined ? {} : { reply }),
-        by: context.by,
-        at: context.at,
-      };
-    }),
+export function answerTakenIn(records: unknown): AnswerTaken {
+  const [{ id, ...fact }] = decodeAnswered(records);
+  return { id, ...recordedAnswerOf(fact) };
+}
+
+export function answerTakenBy(id: string): Effect.Effect<AnswerTaken, never, BrainReader> {
+  return BrainReader.use((reader) => reader.readRecorded({ kind: 'run', run: id }, lastAnswerPage)).pipe(
+    Effect.map(({ records }) => answerTakenIn(records)),
     Effect.orDie,
   );
 }

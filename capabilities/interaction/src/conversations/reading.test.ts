@@ -29,7 +29,7 @@ function readsOf(brain: ChatHarness): number {
 }
 
 describe('the replies of a conversation, read once for every open request in it', () => {
-  it('takes a reply from the answerer as the answer the run records with the reply as evidence, and settles it as the brain', async () => {
+  it('takes a reply from the answerer as the answer the run records with the reply as evidence, which the due work settles it from as the brain', async () => {
     const brain = await chatHarness();
     const [thread] = await deliveredInThread(brain, first);
     brain.chat.reply({
@@ -40,7 +40,10 @@ describe('the replies of a conversation, read once for every open request in it'
     });
 
     await brain.performReads(Date.now() + farAhead);
+    const read = await brain.runOf(first);
+    await brain.performDue(Date.now());
 
+    expect(read).toMatchObject({ output: { status: 'started' } });
     expect(await brain.runOf(first)).toMatchObject({
       output: { status: 'succeeded', output: { choice: 'reject', note: 'the second point is wrong' }, record: {} },
     });
@@ -53,8 +56,8 @@ describe('the replies of a conversation, read once for every open request in it'
         },
         context: { by: 'brain:alpha' },
       },
-      { type: 'run_succeeded', context: { by: 'brain:alpha' } },
       { type: 'replies_read', data: { conversation: '#approvals-sales/1699.000001', taken: 1, since: '1699.000002' } },
+      { type: 'run_succeeded', context: { by: 'brain:alpha' } },
     ]);
   });
 

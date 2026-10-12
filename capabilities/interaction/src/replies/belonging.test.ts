@@ -32,6 +32,7 @@ describe('a reply in a conversation with several open requests', () => {
     brain.chat.reply({ channel, thread: secondThread, user: answererId, text: 'approve' });
 
     await brain.performReads(Date.now() + farAhead);
+    await brain.performDue(Date.now());
 
     expect([await brain.runOf(first), await brain.runOf(second)]).toMatchObject([
       { output: { status: 'started' } },
@@ -60,6 +61,7 @@ describe('a reply in a conversation with several open requests', () => {
     brain.chat.reply({ channel, user: answererId, text: 'yes' });
 
     await brain.performReads(Date.now() + farAhead);
+    await brain.performDue(Date.now());
 
     expect(await brain.runOf(first)).toMatchObject({ output: { status: 'succeeded', output: { choice: 'approve' } } });
   });
@@ -77,6 +79,7 @@ describe('a reply the brain has already met', () => {
     brain.chat.reply({ channel, thread, user: answererId, text: 'reject' });
 
     await brain.performReads(Date.now() + farAhead);
+    await brain.performDue(Date.now());
 
     expect((await recordsOf(brain.ledger, 'request_answered', 'reply_refused')).map(({ type }) => type)).toEqual([
       'request_answered',

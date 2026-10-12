@@ -15,7 +15,7 @@ describe('an attempt the server stopped in', () => {
     const { brain, tools, askedAt } = await askedThroughChat();
     await Effect.runPromise(
       recordedCall(
-        brain.ledger.service,
+        brain.record,
         address,
         { type: 'delivery_started', data: { number: 1, target: 'ada', server: 'chat', tool: 'post_message' } },
         { causationId: null, correlationId: askedRunId },
@@ -75,7 +75,7 @@ describe('a due request whose run has ended, or whose tool is no longer allowed'
 describe('a request whose tool server is gone since it asked', () => {
   it('fails its attempt as a tool no longer offered, and two hosts that try record the failure once', async () => {
     const { brain, askedAt } = await askedThroughChat();
-    const withoutServers = requestsDue({ ledger: brain.ledger.service, tools: noTools });
+    const withoutServers = requestsDue({ ledger: brain.ledger.service, tools: noTools, record: brain.record });
     const items = await brain.dueItems(askedAt, withoutServers);
 
     await brain.performAll([...items, ...items], askedAt);

@@ -90,7 +90,7 @@ describe('an interaction function that asks a system, as the brain runs it', () 
   it('calls tools, finishes within its call, and runs at most 70 seconds', () => {
     const prepared = Effect.runSync(asSystem.prepare(callDocument()));
 
-    expect([prepared.callsTools, prepared.finishesLater({}), prepared.longestRunMs({})]).toEqual([true, false, 70_000]);
+    expect([prepared.callsTools, prepared.finishesLaterFor({}), prepared.longestRunMs]).toEqual([true, false, 70_000]);
   });
 
   it('says what the tool answered, the records of a list in parentheses, or how many items there are', () => {

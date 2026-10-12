@@ -3,7 +3,7 @@ import { Effect, type Schema } from 'effect';
 
 import type { ConversationParts, ConversationPlace, ReadingRoute } from '../conversations/conversation-parts.ts';
 import type { ReplyRefusal, ReplyRefused } from '../facts/run-facts.ts';
-import { recordedReplyWork, settledFromTheReply } from './reply-recorder.ts';
+import { recordedReplyWork } from './reply-recorder.ts';
 import { mayTell, replyBoundsOfAReading, tellingInput, type ReadingState } from './reply-recording.ts';
 import { decisionOf, type KeptRequest, type Reply } from './reply-taking.ts';
 import { tellingWords } from './telling-words.ts';
@@ -39,7 +39,6 @@ function taken(reading: Reading, state: ReadingState, { request, reply, answer }
     if (made === undefined) {
       return state;
     }
-    yield* settledFromTheReply(reading, made, answer);
     return {
       ...state,
       taken: state.taken + 1,
