@@ -26,7 +26,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
-          path-to-document: https://github.com/BeOnAuto/auto-runtime/blob/main/CLA.md
+          path-to-document: https://github.com/BeOnAuto/runtime/blob/main/CLA.md
           path-to-signatures: signatures/cla.json
           branch: cla-signatures
           allowlist: SamHatoum,rami-hatoum,*[bot]

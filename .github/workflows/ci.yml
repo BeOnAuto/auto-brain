@@ -91,10 +91,10 @@ jobs:
           file: packages/server/Dockerfile
           platforms: linux/${{ matrix.architecture }}
           load: true
-          tags: auto-runtime:ci
+          tags: runtime:ci
       - name: Smoke test the image
         run: |
-          docker run --detach --name smoke --publish 8080:8080 auto-runtime:ci
+          docker run --detach --name smoke --publish 8080:8080 runtime:ci
           for attempt in $(seq 1 30); do
             curl --silent --fail http://127.0.0.1:8080/health && break
             sleep 1
@@ -103,7 +103,7 @@ jobs:
           test "$(docker exec smoke id -un)" = node
           test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 401
           test "$(curl --silent --include http://127.0.0.1:8080/v1/orgs/demo/playbooks | grep --ignore-case --count '^www-authenticate: Bearer')" = 1
-          test "$(docker run --rm auto-runtime:ci node packages/identity/src/key-command.ts --org demo | grep --count --extended-regexp '^API key, shown only this once: abk_[0-9a-f]{8}_[A-Za-z0-9_-]{43}$')" = 1
+          test "$(docker run --rm runtime:ci node packages/identity/src/key-command.ts --org demo | grep --count --extended-regexp '^API key, shown only this once: abk_[0-9a-f]{8}_[A-Za-z0-9_-]{43}$')" = 1
           docker stop smoke
           test "$(docker inspect smoke --format '{{.State.ExitCode}}')" = 0
       - name: Keep a playbook on a volume across a restart
@@ -116,7 +116,7 @@ jobs:
             return 1
           }
           start_server() {
-            docker run --detach --name "$1" --publish 8080:8080 --env API_KEYS --volume playbooks:/data auto-runtime:ci
+            docker run --detach --name "$1" --publish 8080:8080 --env API_KEYS --volume playbooks:/data runtime:ci
             wait_for_health
           }
           stop_server() {
@@ -126,7 +126,7 @@ jobs:
           read_playbook() {
             curl --silent --fail --header "authorization: Bearer $key" http://127.0.0.1:8080/v1/orgs/demo/playbooks/smoke
           }
-          issued="$(docker run --rm auto-runtime:ci node packages/identity/src/key-command.ts --org demo)"
+          issued="$(docker run --rm runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
           API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
@@ -147,7 +147,7 @@ jobs:
       - name: Keep a playbook in PostgreSQL across a restart
         timeout-minutes: 2
         run: |
-          issued="$(docker run --rm auto-runtime:ci node packages/identity/src/key-command.ts --org demo)"
+          issued="$(docker run --rm runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
           API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
@@ -174,7 +174,7 @@ jobs:
               http://127.0.0.1:8080/v1/orgs/demo/playbooks/smoke
           }
           docker run --detach --name ledger --network ledger --publish 8080:8080 --env API_KEYS --env DATABASE_URL \
-            auto-runtime:ci
+            runtime:ci
           wait_for_health
           test "$(curl --silent --max-time 10 --output created.json --write-out '%{http_code}' \
             --header "authorization: Bearer $key" --header 'content-type: application/json' \
@@ -194,15 +194,15 @@ jobs:
           docker stop postgresql
       - name: Serve the tools over MCP
         run: |
-          issued="$(docker run --rm auto-runtime:ci node packages/identity/src/key-command.ts --org demo)"
+          issued="$(docker run --rm runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
-          reading="$(docker run --rm auto-runtime:ci node packages/identity/src/key-command.ts --org demo --permissions org:read,playbook:read)"
+          reading="$(docker run --rm runtime:ci node packages/identity/src/key-command.ts --org demo --permissions org:read,playbook:read)"
           read_key="$(printf '%s\n' "$reading" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$read_key"
           API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p'),$(printf '%s\n' "$reading" | sed --quiet 's/^API_KEYS entry: //p')]"
           export API_KEYS
-          docker run --detach --name mcp --publish 8080:8080 --env API_KEYS auto-runtime:ci
+          docker run --detach --name mcp --publish 8080:8080 --env API_KEYS runtime:ci
           for attempt in $(seq 1 30); do
             curl --silent --fail http://127.0.0.1:8080/health > /dev/null && break
             sleep 1
@@ -264,12 +264,12 @@ jobs:
           test "$(docker inspect mcp --format '{{.State.ExitCode}}')" = 0
       - name: Run a reasoning function without model settings
         run: |
-          issued="$(docker run --rm auto-runtime:ci node packages/identity/src/key-command.ts --org demo)"
+          issued="$(docker run --rm runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
           API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
           export API_KEYS
-          docker run --detach --name reasoning --publish 8080:8080 --env API_KEYS auto-runtime:ci
+          docker run --detach --name reasoning --publish 8080:8080 --env API_KEYS runtime:ci
           for attempt in $(seq 1 30); do
             curl --silent --fail http://127.0.0.1:8080/health > /dev/null && break
             sleep 1
@@ -293,12 +293,12 @@ jobs:
           test "$(docker inspect reasoning --format '{{.State.ExitCode}}')" = 0
       - name: Run a computation function
         run: |
-          issued="$(docker run --rm auto-runtime:ci node packages/identity/src/key-command.ts --org demo)"
+          issued="$(docker run --rm runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
           API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
           export API_KEYS
-          docker run --detach --name computation --publish 8080:8080 --env API_KEYS auto-runtime:ci
+          docker run --detach --name computation --publish 8080:8080 --env API_KEYS runtime:ci
           for attempt in $(seq 1 30); do
             curl --silent --fail http://127.0.0.1:8080/health > /dev/null && break
             sleep 1
@@ -330,12 +330,12 @@ jobs:
       - name: Ask through the inbox and answer over HTTP
         timeout-minutes: 2
         run: |
-          issued="$(docker run --rm auto-runtime:ci node packages/identity/src/key-command.ts --org demo)"
+          issued="$(docker run --rm runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
           API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
           export API_KEYS
-          docker run --detach --name interaction --publish 8080:8080 --env API_KEYS auto-runtime:ci
+          docker run --detach --name interaction --publish 8080:8080 --env API_KEYS runtime:ci
           for attempt in $(seq 1 30); do
             curl --silent --fail --max-time 5 http://127.0.0.1:8080/health > /dev/null && break
             sleep 1
@@ -371,7 +371,7 @@ jobs:
       - name: Run workflows across a restart, and read the steps of a run and their causes
         timeout-minutes: 5
         run: |
-          issued="$(docker run --rm auto-runtime:ci node packages/identity/src/key-command.ts --org demo)"
+          issued="$(docker run --rm runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
           API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
@@ -384,7 +384,7 @@ jobs:
             return 1
           }
           start_server() {
-            docker run --detach --name "$1" --publish 8080:8080 --env API_KEYS --volume workflows:/data auto-runtime:ci
+            docker run --detach --name "$1" --publish 8080:8080 --env API_KEYS --volume workflows:/data runtime:ci
             wait_for_health
           }
           stop_server() {
@@ -439,12 +439,12 @@ jobs:
       - name: Read the analytics of a playbook
         timeout-minutes: 2
         run: |
-          issued="$(docker run --rm auto-runtime:ci node packages/identity/src/key-command.ts --org demo)"
+          issued="$(docker run --rm runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
           API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
           export API_KEYS
-          docker run --detach --name analytics --publish 8080:8080 --env API_KEYS --volume workflows:/data auto-runtime:ci
+          docker run --detach --name analytics --publish 8080:8080 --env API_KEYS --volume workflows:/data runtime:ci
           for attempt in $(seq 1 30); do
             curl --silent --fail --max-time 5 http://127.0.0.1:8080/health > /dev/null && break
             sleep 1
@@ -468,12 +468,12 @@ jobs:
       - name: Recall what the smoke workflows answered
         timeout-minutes: 2
         run: |
-          issued="$(docker run --rm auto-runtime:ci node packages/identity/src/key-command.ts --org demo)"
+          issued="$(docker run --rm runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
           API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
           export API_KEYS
-          docker run --detach --name recall --publish 8080:8080 --env API_KEYS --volume workflows:/data auto-runtime:ci
+          docker run --detach --name recall --publish 8080:8080 --env API_KEYS --volume workflows:/data runtime:ci
           for attempt in $(seq 1 30); do
             curl --silent --fail --max-time 5 http://127.0.0.1:8080/health > /dev/null && break
             sleep 1
@@ -504,12 +504,12 @@ jobs:
       - name: Start a workflow by its event trigger and by its schedule
         timeout-minutes: 5
         run: |
-          issued="$(docker run --rm auto-runtime:ci node packages/identity/src/key-command.ts --org demo)"
+          issued="$(docker run --rm runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
           API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
           export API_KEYS
-          docker run --detach --name reactions --publish 8080:8080 --env API_KEYS auto-runtime:ci
+          docker run --detach --name reactions --publish 8080:8080 --env API_KEYS runtime:ci
           for attempt in $(seq 1 30); do
             curl --silent --fail --max-time 5 http://127.0.0.1:8080/health > /dev/null && break
             sleep 1

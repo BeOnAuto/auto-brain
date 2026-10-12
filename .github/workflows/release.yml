@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  GHCR_IMAGE: ghcr.io/beonauto/auto-runtime
+  GHCR_IMAGE: ghcr.io/beonauto/runtime
   DOCKERHUB_IMAGE: ${{ vars.DOCKERHUB_REPOSITORY != '' && format('docker.io/{0}', vars.DOCKERHUB_REPOSITORY) || '' }}
 
 jobs:
