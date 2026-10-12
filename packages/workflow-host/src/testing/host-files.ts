@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { plainPoolsOn } from '@on.auto/ledger/testing';
+import { plainPoolsOn } from '@on.auto/ledger/postgresql';
 import { Function } from 'effect';
 import { onTestFinished } from 'vitest';
 
