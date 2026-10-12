@@ -1,5 +1,5 @@
 name: Bug report
-description: Something in auto-brain doesn't work the way it should.
+description: Something in Auto Runtime doesn't work the way it should.
 labels: [bug]
 body:
   - type: textarea
@@ -21,7 +21,7 @@ body:
     attributes:
       label: Version
       description: The release, image tag or digest, or commit you ran.
-      placeholder: beonauto/auto-brain:0.1.0
+      placeholder: beonauto/auto-runtime:0.1.0
     validations:
       required: true
   - type: dropdown
@@ -31,7 +31,7 @@ body:
       options:
         - Docker image, self-hosted
         - From source (pnpm dev)
-        - AUTO Studio (on.auto)
+        - Auto Studio (on.auto)
         - Other
     validations:
       required: true
