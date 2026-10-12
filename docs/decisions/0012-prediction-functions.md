@@ -226,7 +226,7 @@ The words of each refusal are a sentence that says what to do, as the interactio
 | `PREDICTION_MAX_FUNCTIONS`  | 1 to 1,000 a brain, default 32                                                                                                        | the save is refused, as recall's is                                               |
 | `CONTENT_STORE_URL`         | an `s3://` URL, or none                                                                                                               | the database backing when none                                                    |
 
-Each setting is read with its `least`, `most` and default as recall's are, logged at start, and a value outside its range stops the server at start, naming the setting. An operator plans memory as the processes times their limit, 2 GiB for the defaults, on top of the 1.25 GiB the worker pool plans.
+Each setting is read with its `least`, `most` and default as recall's are, logged at start, and a value outside its range stops the server at start, naming the setting. The processes times their limit, 5 GiB at the defaults, is the most they may reserve; their resident memory stays far below it, so an operator sizes the container from the processes' observed resident memory, with the setting as each process's hard ceiling, on top of the 1.25 GiB the worker pool plans.
 
 ### 14. Guards
 
