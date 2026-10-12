@@ -9,22 +9,22 @@ import type { ContentDialect } from './content-dialects.ts';
 export interface Shelf {
   readonly chunks: string;
   readonly heads: string;
-  readonly keyColumns: readonly string[];
+  readonly placeColumns: readonly string[];
 }
 
 export const keptShelf: Shelf = {
   chunks: 'recorded_content_chunks',
   heads: 'recorded_content_heads',
-  keyColumns: ['brain_key', 'sha256'],
+  placeColumns: ['brain_key'],
 };
 
 export const stagingShelf: Shelf = {
   chunks: 'staged_content_chunks',
   heads: 'staged_content',
-  keyColumns: ['brain_key', 'run_id', 'sha256'],
+  placeColumns: ['brain_key', 'run_id'],
 };
 
-const shelves = [keptShelf, stagingShelf];
+export const unstagedRuns = 'unstaged_runs';
 
 export interface ContentTable {
   readonly name: string;
@@ -32,9 +32,9 @@ export interface ContentTable {
   readonly create: (dialect: ContentDialect) => SQL;
 }
 
-function keyColumnsOf({ keyColumns }: Shelf): SQL {
+function textColumns(columns: readonly string[]): SQL {
   return SQL.merge(
-    keyColumns.map((column) => SQL`${SQL.identifier(column)} TEXT NOT NULL`),
+    columns.map((column) => SQL`${SQL.identifier(column)} TEXT NOT NULL`),
     ', ',
   );
 }
@@ -46,13 +46,13 @@ function namesOf(columns: readonly string[]): SQL {
   );
 }
 
-function chunkTableOf(shelf: Shelf): ContentTable {
-  const key = [...shelf.keyColumns, 'chunk'];
+function chunkTableOf({ chunks, placeColumns }: Shelf): ContentTable {
+  const key = [...placeColumns, 'upload_id', 'chunk'];
   return {
-    name: shelf.chunks,
+    name: chunks,
     columns: [...key, 'data'],
-    create: ({ bytesType }) => SQL`CREATE TABLE IF NOT EXISTS ${SQL.identifier(shelf.chunks)} (
-      ${keyColumnsOf(shelf)},
+    create: ({ bytesType }) => SQL`CREATE TABLE IF NOT EXISTS ${SQL.identifier(chunks)} (
+      ${textColumns([...placeColumns, 'upload_id'])},
       chunk INTEGER NOT NULL,
       data ${SQL.plain(bytesType)} NOT NULL,
       PRIMARY KEY (${namesOf(key)})
@@ -60,24 +60,34 @@ function chunkTableOf(shelf: Shelf): ContentTable {
   };
 }
 
-function headTableOf(shelf: Shelf): ContentTable {
+function headTableOf({ heads, placeColumns }: Shelf): ContentTable {
+  const key = [...placeColumns, 'sha256'];
   return {
-    name: shelf.heads,
-    columns: [...shelf.keyColumns, 'bytes', 'chunks', 'media_type'],
-    create: () => SQL`CREATE TABLE IF NOT EXISTS ${SQL.identifier(shelf.heads)} (
-      ${keyColumnsOf(shelf)},
+    name: heads,
+    columns: [...key, 'upload_id', 'bytes', 'chunks', 'media_type'],
+    create: () => SQL`CREATE TABLE IF NOT EXISTS ${SQL.identifier(heads)} (
+      ${textColumns([...key, 'upload_id'])},
       bytes BIGINT NOT NULL,
       chunks INTEGER NOT NULL,
       media_type TEXT NOT NULL,
-      PRIMARY KEY (${namesOf(shelf.keyColumns)})
+      PRIMARY KEY (${namesOf(key)})
     )`,
   };
 }
 
-export const contentTables: readonly ContentTable[] = shelves.flatMap((shelf) => [
-  chunkTableOf(shelf),
-  headTableOf(shelf),
-]);
+const unstagedRunsTable: ContentTable = {
+  name: unstagedRuns,
+  columns: stagingShelf.placeColumns,
+  create: () => SQL`CREATE TABLE IF NOT EXISTS ${SQL.identifier(unstagedRuns)} (
+    ${textColumns(stagingShelf.placeColumns)},
+    PRIMARY KEY (${namesOf(stagingShelf.placeColumns)})
+  )`,
+};
+
+export const contentTables: readonly ContentTable[] = [
+  ...[keptShelf, stagingShelf].flatMap((shelf) => [chunkTableOf(shelf), headTableOf(shelf)]),
+  unstagedRunsTable,
+];
 
 const contentTableNames: readonly string[] = contentTables.map(({ name }) => name);
 

@@ -1,16 +1,9 @@
-import { createHash, randomBytes } from 'node:crypto';
-
-import {
-  bytesOfText,
-  contentOfText,
-  textOfContent,
-  type BrainAddress,
-  type StreamedContent,
-} from '@beonauto/operations';
+import { sha256Of, textOfContent, textToKeep, type BrainAddress, type ContentToKeep } from '@beonauto/operations';
 import { Effect } from 'effect';
 
-import { readThrough } from '../src/content/content-samples.ts';
+import { answerOfAbout, generatedStream, octets, readThrough } from '../src/content/content-samples.ts';
 import type { LedgerStore } from '../src/event-store.ts';
+import { modestConnections } from '../src/sqlite3.ts';
 import { inTurn, measuredOnEachStore, timed, write, type MeasuredStore } from './stores.ts';
 
 const sizes: readonly (readonly [string, number])[] = [
@@ -25,105 +18,122 @@ const brain = { org: 'acme', brain: 'alpha' };
 
 const mebibyte = 1_048_576;
 
-const blocksStreamed = 64;
+const streamedBytes = 64 * mebibyte;
 
-const block = randomBytes(mebibyte);
+const sampleSeed = 7;
 
-function answerOfAbout(bytes: number): string {
-  const rows: { readonly id: number; readonly note: string }[] = [];
-  let size = 10;
-  while (size < bytes) {
-    const row = { id: rows.length, note: `${String(rows.length).repeat(6)} é ✓ 𝄞 ${'x'.repeat(48)}` };
-    rows.push(row);
-    size += bytesOfText(JSON.stringify(row)) + 1;
-  }
-  return JSON.stringify({ rows });
-}
-
-function digestOf(text: string): string {
-  return createHash('sha256').update(text, 'utf8').digest('hex');
+interface Held {
+  readonly heap: number;
+  readonly resident: number;
 }
 
 function milliseconds(value: number): string {
   return `${value.toFixed(value < 1 ? 2 : 1)} ms`;
 }
 
-function heldNow(): number {
+function heldNow(): Held {
   globalThis.gc?.();
-  const { heapUsed, arrayBuffers } = process.memoryUsage();
-  return heapUsed + arrayBuffers;
+  const { heapUsed, arrayBuffers, rss } = process.memoryUsage();
+  return { heap: heapUsed + arrayBuffers, resident: rss };
 }
 
-async function mostHeldDuring(work: () => Promise<unknown>): Promise<number> {
+async function mostHeldDuring(work: () => Promise<unknown>): Promise<Held> {
   const before = heldNow();
   let most = before;
   const sampling = setInterval(() => {
-    most = Math.max(most, heldNow());
+    const now = heldNow();
+    most = { heap: Math.max(most.heap, now.heap), resident: Math.max(most.resident, now.resident) };
   }, 5);
   try {
     await work();
   } finally {
     clearInterval(sampling);
   }
-  return most - before;
+  return { heap: most.heap - before.heap, resident: most.resident - before.resident };
 }
 
-function streamedBlocks(): StreamedContent {
-  let sent = 0;
+async function piecesOf(stream: ReadableStream<Uint8Array>): Promise<readonly Readonly<Uint8Array>[]> {
+  const pieces: Readonly<Uint8Array>[] = [];
+  for await (const piece of stream) {
+    pieces.push(piece);
+  }
+  return pieces;
+}
+
+function streamOf(pieces: readonly Readonly<Uint8Array>[]): ContentToKeep {
+  let next = 0;
   const stream = new ReadableStream<Uint8Array>({
     pull: (controller) => {
-      if (sent === blocksStreamed) {
+      const piece = pieces[next];
+      next += 1;
+      if (piece === undefined) {
         controller.close();
         return;
       }
-      sent += 1;
-      controller.enqueue(block);
+      controller.enqueue(piece);
     },
   });
-  return { stream, bytes: blocksStreamed * mebibyte, mediaType: 'application/octet-stream' };
+  return { stream, mediaType: octets };
+}
+
+function put(store: LedgerStore, into: BrainAddress, content: ContentToKeep): Promise<unknown> {
+  return Effect.runPromise(store.content.put(into, content));
 }
 
 async function measuredText(store: LedgerStore, name: string): Promise<void> {
   await inTurn(sizes, async ([label, bytes]) => {
     const text = answerOfAbout(bytes);
-    const sha256 = digestOf(text);
-    const [first, second] = [contentOfText(text, 'application/json'), contentOfText(text, 'application/json')];
-    const put = await timed(() => Effect.runPromise(store.content.put(brain, sha256, first)));
-    const again = await timed(() => Effect.runPromise(store.content.put(brain, sha256, second)));
+    const sha256 = sha256Of(text);
+    const [first, second, expected] = [
+      textToKeep(text, 'application/json'),
+      textToKeep(text, 'application/json'),
+      { ...textToKeep(text, 'application/json'), expected: { sha256 } },
+    ];
+    const kept = await timed(() => put(store, brain, first));
+    const again = await timed(() => put(store, brain, second));
+    const givenItsDigest = await timed(() => put(store, brain, expected));
     let read = '';
-    const get = await timed(async () => {
-      const kept = await Effect.runPromise(store.content.get(brain, sha256));
-      read = kept === undefined ? '' : await Effect.runPromise(textOfContent(kept));
+    const got = await timed(async () => {
+      const content = await Effect.runPromise(store.content.get(brain, sha256));
+      read = content === undefined ? '' : await Effect.runPromise(textOfContent(content));
       JSON.parse(read);
     });
     write(
-      `| ${name} | ${label} | ${milliseconds(put)} | ${milliseconds(again)} | ${milliseconds(get)} | ${String(read === text)} |`,
+      `| ${name} | ${label} | ${milliseconds(kept)} | ${milliseconds(again)} | ${milliseconds(givenItsDigest)} | ${milliseconds(got)} | ${String(read === text)} |`,
     );
   });
 }
 
-async function readBack(store: LedgerStore, into: BrainAddress, sha256: string) {
-  const kept = await Effect.runPromise(store.content.get(into, sha256));
-  return kept === undefined ? undefined : readThrough(kept.stream);
+async function readBack(store: LedgerStore, from: BrainAddress, sha256: string) {
+  const content = await Effect.runPromise(store.content.get(from, sha256));
+  return content === undefined ? undefined : readThrough(content.stream);
+}
+
+function mebibytes(bytes: number): string {
+  return `${(bytes / mebibyte).toFixed(1)} MiB`;
 }
 
 async function heldWhileStreamed(store: LedgerStore, name: string, sha256: string): Promise<string> {
   const elsewhere = { org: 'acme', brain: 'beta' };
-  const put = await mostHeldDuring(() => Effect.runPromise(store.content.put(elsewhere, sha256, streamedBlocks())));
-  const got = await mostHeldDuring(() => readBack(store, elsewhere, sha256));
-  return `${name}: at most ${(put / mebibyte).toFixed(1)} MiB more held while putting 64 MiB, ${(got / mebibyte).toFixed(1)} MiB while getting it`;
+  const putting = await mostHeldDuring(() =>
+    put(store, elsewhere, { stream: generatedStream(streamedBytes, sampleSeed), mediaType: octets }),
+  );
+  const getting = await mostHeldDuring(() => readBack(store, elsewhere, sha256));
+  return `${name}: while putting 64 MiB, at most ${mebibytes(putting.heap)} more heap and array buffers after a full collection and ${mebibytes(putting.resident)} more resident set; while getting it, ${mebibytes(getting.heap)} and ${mebibytes(getting.resident)}`;
 }
 
 async function measuredStream(store: LedgerStore, name: string): Promise<string> {
-  const { sha256 } = await readThrough(streamedBlocks().stream);
-  const put = await timed(() => Effect.runPromise(store.content.put(brain, sha256, streamedBlocks())));
-  const again = await timed(() => Effect.runPromise(store.content.put(brain, sha256, streamedBlocks())));
+  const pieces = await piecesOf(generatedStream(streamedBytes, sampleSeed));
+  const { sha256 } = await readThrough(streamOf(pieces).stream);
+  const kept = await timed(() => put(store, brain, streamOf(pieces)));
+  const again = await timed(() => put(store, brain, streamOf(pieces)));
+  const givenItsDigest = await timed(() => put(store, brain, { ...streamOf(pieces), expected: { sha256 } }));
   let read = await readBack(store, brain, sha256);
-  const get = await timed(async () => {
+  const got = await timed(async () => {
     read = await readBack(store, brain, sha256);
   });
   write(
-    `| ${name} | 64 MiB, streamed | ${milliseconds(put)} | ${milliseconds(again)} | ${milliseconds(get)} | ${String(read?.sha256 === sha256 && read.bytes === blocksStreamed * mebibyte)} |`,
+    `| ${name} | 64 MiB, streamed | ${milliseconds(kept)} | ${milliseconds(again)} | ${milliseconds(givenItsDigest)} | ${milliseconds(got)} | ${String(read?.sha256 === sha256 && read.bytes === streamedBytes)} |`,
   );
   return heldWhileStreamed(store, name, sha256);
 }
@@ -137,9 +147,11 @@ async function measured({ name, opened }: MeasuredStore): Promise<void> {
   await store.close();
 }
 
-write('| Store | Answer | Kept | Kept again | Read back and parsed | Joined back exactly |');
-write('| --- | --- | --- | --- | --- | --- |');
-await measuredOnEachStore(measured);
+write(
+  '| Store | Content | Kept | Kept again | Kept again, its digest given | Read back and parsed | Joined back exactly |',
+);
+write('| --- | --- | --- | --- | --- | --- | --- |');
+await measuredOnEachStore(measured, { sqliteConnections: modestConnections });
 write('');
 held.forEach((line) => {
   write(line);

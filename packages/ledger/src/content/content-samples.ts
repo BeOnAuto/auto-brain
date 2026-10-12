@@ -1,13 +1,12 @@
-import { createHash } from 'node:crypto';
-
 import {
-  bytesOfText,
+  sha256Digest,
   textOfContent,
   type BrainAddress,
+  type ContentToKeep,
   type Digested,
   type StreamedContent,
 } from '@beonauto/operations';
-import { Effect } from 'effect';
+import { Effect, Function } from 'effect';
 
 export const alpha: BrainAddress = { org: 'acme', brain: 'alpha' };
 
@@ -30,15 +29,16 @@ export interface ReadBack extends ReadThrough {
 
 export interface Generated {
   readonly sha256: string;
-  readonly content: () => StreamedContent;
+  readonly bytes: number;
+  readonly content: () => ContentToKeep;
 }
 
 export interface Unread {
-  readonly content: StreamedContent;
+  readonly content: ContentToKeep;
   readonly cancelled: () => boolean;
 }
 
-function generatedStream(bytes: number, seed: number): ReadableStream<Uint8Array> {
+export function generatedStream(bytes: number, seed: number): ReadableStream<Uint8Array> {
   let state = seed;
   let produced = 0;
   return new ReadableStream<Uint8Array>({
@@ -62,7 +62,7 @@ function generatedStream(bytes: number, seed: number): ReadableStream<Uint8Array
 }
 
 export async function readThrough(stream: ReadableStream<Uint8Array>): Promise<ReadThrough> {
-  const digest = createHash('sha256');
+  const digest = sha256Digest();
   let bytes = 0;
   let largestPiece = 0;
   for await (const piece of stream) {
@@ -70,12 +70,12 @@ export async function readThrough(stream: ReadableStream<Uint8Array>): Promise<R
     bytes += piece.byteLength;
     largestPiece = Math.max(largestPiece, piece.byteLength);
   }
-  return { bytes, sha256: digest.digest('hex'), largestPiece };
+  return { bytes, sha256: digest.hex(), largestPiece };
 }
 
 export async function generated(bytes: number, seed = 7): Promise<Generated> {
   const { sha256 } = await readThrough(generatedStream(bytes, seed));
-  return { sha256, content: () => ({ stream: generatedStream(bytes, seed), bytes, mediaType: octets }) };
+  return { sha256, bytes, content: () => ({ stream: generatedStream(bytes, seed), mediaType: octets }) };
 }
 
 export async function readBack(content: StreamedContent | undefined): Promise<ReadBack | undefined> {
@@ -84,15 +84,37 @@ export async function readBack(content: StreamedContent | undefined): Promise<Re
     : { ...(await readThrough(content.stream)), mediaType: content.mediaType, declared: content.bytes };
 }
 
+export async function deliveredBeforeFailing({ stream }: StreamedContent): Promise<{
+  readonly bytes: number;
+  readonly failure: unknown;
+}> {
+  let bytes = 0;
+  const read = async () => {
+    for await (const piece of stream) {
+      bytes += piece.byteLength;
+    }
+  };
+  const failure: unknown = await read().then(Function.constUndefined, Function.identity);
+  return { bytes, failure };
+}
+
 export function readText(content: StreamedContent | undefined): Effect.Effect<string | undefined> {
   return content === undefined ? Effect.succeed(content) : textOfContent(content);
 }
 
-export function run<A>(effect: Effect.Effect<A>): Promise<A> {
+export function run<A, E>(effect: Effect.Effect<A, E>): Promise<A> {
   return Effect.runPromise(effect);
 }
 
-export function unread(bytes: number): Unread {
+export function refusalOf<A, E>(effect: Effect.Effect<A, E>): Promise<E> {
+  return Effect.runPromise(Effect.flip(effect));
+}
+
+export function present<A, E>(effect: Effect.Effect<A | undefined, E>): Promise<A> {
+  return Effect.runPromise(Effect.flatMap(effect, Effect.fromNullishOr));
+}
+
+export function unread(): Unread {
   let cancelled = false;
   const stream = new ReadableStream<Uint8Array>(
     {
@@ -102,10 +124,10 @@ export function unread(bytes: number): Unread {
     },
     { highWaterMark: 0 },
   );
-  return { content: { stream, bytes, mediaType: octets }, cancelled: () => cancelled };
+  return { content: { stream, mediaType: octets }, cancelled: () => cancelled };
 }
 
-export function brokenAfter(bytes: number, declared: number): StreamedContent {
+export function brokenAfter(bytes: number): ContentToKeep {
   let delivered = false;
   const stream = new ReadableStream<Uint8Array>({
     pull: (controller) => {
@@ -117,7 +139,7 @@ export function brokenAfter(bytes: number, declared: number): StreamedContent {
       controller.enqueue(new Uint8Array(bytes));
     },
   });
-  return { stream, bytes: declared, mediaType: octets };
+  return { stream, mediaType: octets };
 }
 
 export function answerOfAbout(bytes: number): string {
@@ -126,11 +148,7 @@ export function answerOfAbout(bytes: number): string {
   while (size < bytes) {
     const row = { id: rows.length, note: `${String(rows.length).repeat(8)} é ✓ 𝄞 \u0000 "quoted" ${'x'.repeat(40)}` };
     rows.push(row);
-    size += bytesOfText(JSON.stringify(row)) + 1;
+    size += Buffer.byteLength(JSON.stringify(row)) + 1;
   }
   return JSON.stringify({ rows });
-}
-
-export function digestOf(text: string): string {
-  return createHash('sha256').update(text, 'utf8').digest('hex');
 }

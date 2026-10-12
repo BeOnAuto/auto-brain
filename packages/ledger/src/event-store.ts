@@ -134,3 +134,12 @@ export interface StatementExecutor {
   readonly query: (sql: SQL) => Promise<{ readonly rows: readonly unknown[] }>;
   readonly command: (sql: SQL) => Promise<unknown>;
 }
+
+interface Transaction {
+  readonly execute: StatementExecutor;
+}
+
+export interface TransactionalPool<Executor extends StatementExecutor = StatementExecutor> {
+  readonly execute: Executor;
+  readonly withTransaction: (handle: (transaction: Transaction) => Promise<void>) => Promise<void>;
+}

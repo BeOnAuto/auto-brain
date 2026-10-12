@@ -1,9 +1,9 @@
 import { Schema } from 'effect';
 
 import { postgresqlAppended } from '../appended/postgresql-appended.ts';
+import { postgresqlContentOn, type ContentConnections } from '../content/postgresql-content.ts';
 import type { ContentStore, DefinitionStreamsStore, RecordedStore } from '../event-store.ts';
 import { dataAsJsonText } from '../postgresql/json-text.ts';
-import { postgresqlContentOn } from '../postgresql/postgresql-schema.ts';
 import {
   pointKey,
   recordOf,
@@ -182,10 +182,9 @@ function recordWithId(query: Query): RecordedStore['readRecordedEvent'] {
   };
 }
 
-export function postgresqlRecordedStore(query: Query): RecordedStore & DefinitionStreamsStore & ContentStore {
+export function postgresqlRecordedStore(query: Query): RecordedStore & DefinitionStreamsStore {
   return {
     ...postgresqlDefinitionStreams(query),
-    content: postgresqlContentOn(query),
     pointLength: 2,
     readAppended: postgresqlAppended(query),
     readRecordedEvent: recordWithId(query),
@@ -196,4 +195,11 @@ export function postgresqlRecordedStore(query: Query): RecordedStore & Definitio
       dataAt: dataAt(query),
     }),
   };
+}
+
+export function postgresqlRecordedStoreOn(
+  query: Query,
+  connections: ContentConnections,
+): RecordedStore & DefinitionStreamsStore & ContentStore {
+  return { ...postgresqlRecordedStore(query), content: postgresqlContentOn(connections) };
 }

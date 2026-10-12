@@ -1,5 +1,3 @@
-import { contentOfText, sha256Of, textOfContent } from '@beonauto/operations';
-import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { postgresqlRecordedStore, type Query } from './postgresql-recorded.ts';
@@ -62,37 +60,5 @@ describe('one record read by its message id on PostgreSQL', () => {
     const { query } = answering([]);
 
     await expect(postgresqlRecordedStore(query).readRecordedEvent(alpha, 'message-99')).resolves.toBeUndefined();
-  });
-});
-
-describe('the content a brain keeps on PostgreSQL', () => {
-  it('streams the chunks of a digest the brain holds, in their order, and writes them, then the head, once', async () => {
-    const reading = answering(
-      [{ bytes: 7, chunks: 2, media_type: 'application/json' }],
-      [{ data: Buffer.from('{"a":') }],
-      [{ data: Buffer.from('1}') }],
-    );
-    const writing = answering([], [], []);
-    const brain = { org: 'acme', brain: 'alpha' };
-
-    const kept = await Effect.runPromise(
-      postgresqlRecordedStore(reading.query).content.get(brain, await sha256Of('{"a":1}')),
-    );
-    await Effect.runPromise(
-      postgresqlRecordedStore(writing.query).content.put(
-        brain,
-        await sha256Of('{"b":2}'),
-        contentOfText('{"b":2}', 'application/json'),
-      ),
-    );
-
-    expect(await Effect.runPromise(Effect.flatMap(Effect.fromNullishOr(kept), textOfContent))).toBe('{"a":1}');
-    expect(writing.asked.map(({ text: statement }) => statement.split(' ').slice(0, 3).join(' '))).toEqual([
-      'SELECT CAST(bytes AS',
-      'INSERT INTO recorded_content_chunks',
-      'INSERT INTO recorded_content_heads',
-    ]);
-    expect(writing.asked[1]?.text).toContain("decode($4, 'hex')");
-    expect(writing.asked[1]?.values[3]).toBe(Buffer.from('{"b":2}').toString('hex'));
   });
 });

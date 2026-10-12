@@ -17,7 +17,11 @@ export interface LedgerOptions {
 
 const pageCacheOfEightMebibytes = -8192;
 
-const modestConnections = { pragmaOptions: { cache_size: pageCacheOfEightMebibytes, mmap_size: 0 } };
+export const modestConnections: {
+  readonly pragmaOptions: { readonly cache_size: number; readonly mmap_size: number };
+} = {
+  pragmaOptions: { cache_size: pageCacheOfEightMebibytes, mmap_size: 0 },
+};
 
 const privateMemory = ':memory:';
 

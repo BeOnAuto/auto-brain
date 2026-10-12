@@ -35,6 +35,7 @@ const theContentTables = [
   'CREATE TABLE IF NOT EXISTS recorded_content_heads',
   'CREATE TABLE IF NOT EXISTS staged_content_chunks',
   'CREATE TABLE IF NOT EXISTS staged_content',
+  'CREATE TABLE IF NOT EXISTS unstaged_runs',
 ];
 
 describe("the ledger's own schema on PostgreSQL", () => {

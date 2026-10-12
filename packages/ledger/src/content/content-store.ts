@@ -1,151 +1,213 @@
 import {
+  leftUnread,
   mostContentChunkBytes,
-  requireAsDeclared,
-  streamPrefixOfBrain,
-  type BrainAddress,
+  randomUUIDv7,
+  requireExpected,
+  stagingEnded,
+  takenInChunks,
+  type ContentKept,
+  type ContentRefused,
+  type ContentToKeep,
   type RecordedContent,
-  type StreamedContent,
+  type StagingEnded,
+  type Taken,
 } from '@beonauto/operations';
 import { SQL } from '@event-driven-io/dumbo';
 import { Effect, Schema } from 'effect';
 
-import type { StatementExecutor } from '../event-store.ts';
+import type { StatementExecutor, TransactionalPool } from '../event-store.ts';
+import type { InTransaction } from '../projections/projection-fill.ts';
 import { sqliteContent, type ContentDialect } from './content-dialects.ts';
-import { verifiedStream, writtenInChunks, type Head, type Written } from './content-streams.ts';
-import { keptShelf, stagingShelf, type Shelf } from './content-tables.ts';
+import {
+  brainPlaceOf,
+  columnsOf,
+  commanded,
+  headOf,
+  hexOf,
+  matching,
+  queried,
+  readOn,
+  runPlaceOf,
+  uploadOf,
+  uploadRemoved,
+  valuesOf,
+  type Key,
+  type KeptHead,
+  type Shelved,
+} from './content-places.ts';
+import { keptShelf, stagingShelf, unstagedRuns } from './content-tables.ts';
 
-type Key = readonly (readonly [column: string, value: string])[];
-
-interface Place {
-  readonly key: Key;
-  readonly sha256: string;
+interface Placed {
+  readonly uploadId: string;
+  readonly head: KeptHead | undefined;
 }
 
-interface KeptHead extends Head {
-  readonly mediaType: string;
+interface ChunkWriting {
+  readonly take: (chunk: Readonly<Uint8Array>) => Effect.Effect<void>;
+  readonly written: () => number;
+  readonly flushed: () => Effect.Effect<void>;
 }
 
-interface Shelved {
-  readonly execute: StatementExecutor;
-  readonly dialect: ContentDialect;
-  readonly shelf: Shelf;
+const UnstagedRows = Schema.Array(Schema.Struct({ run_id: Schema.String }));
+
+function chunkWritingOf(shelved: Shelved, upload: Key): ChunkWriting {
+  let pending: Readonly<Uint8Array> | undefined;
+  let written = 0;
+  const write = (chunk: Readonly<Uint8Array>) =>
+    Effect.suspend(() => {
+      const index = written;
+      written += 1;
+      return commanded(
+        shelved,
+        SQL`INSERT INTO ${SQL.identifier(shelved.shelf.chunks)} (${columnsOf(upload, 'chunk', 'data')})
+          VALUES (${valuesOf(upload)}, ${index}, ${shelved.dialect.bytesOfHex(hexOf(chunk))})`,
+      );
+    });
+  return {
+    take: (chunk) =>
+      Effect.suspend(() => {
+        const previous = pending;
+        pending = chunk;
+        return previous === undefined ? Effect.void : write(previous);
+      }),
+    written: () => written,
+    flushed: () => Effect.suspend(() => (pending === undefined ? Effect.void : write(pending))),
+  };
 }
 
-const HeadRows = Schema.Array(
-  Schema.Struct({ bytes: Schema.Number, chunks: Schema.Number, media_type: Schema.String }),
-);
-
-const ChunkRows = Schema.Array(Schema.Struct({ data: Schema.Uint8Array }));
-
-function wholeKeyOf({ key, sha256 }: Place): Key {
-  return [...key, ['sha256', sha256]];
+function readAlone(): Effect.Effect<void> {
+  return Effect.void;
 }
 
-function matching(key: Key): SQL {
-  return SQL.merge(
-    key.map(([column, value]) => SQL`${SQL.identifier(column)} = ${value}`),
-    ' AND ',
-  );
-}
-
-function columnsOf(key: Key, ...more: readonly string[]): SQL {
-  return SQL.merge(
-    [...key.map(([column]) => column), ...more].map((column) => SQL`${SQL.identifier(column)}`),
-    ', ',
-  );
-}
-
-function valuesOf(key: Key): SQL {
-  return SQL.merge(
-    key.map(([, value]) => SQL`${value}`),
-    ', ',
-  );
-}
-
-function hexOf(chunk: Readonly<Uint8Array>): string {
-  return Buffer.from(chunk.buffer, chunk.byteOffset, chunk.byteLength).toString('hex');
-}
-
-async function headOf({ execute, shelf }: Shelved, key: Key): Promise<KeptHead | undefined> {
-  const { rows } = await execute.query(
-    SQL`SELECT CAST(bytes AS DOUBLE PRECISION) AS bytes, chunks, media_type
-      FROM ${SQL.identifier(shelf.heads)} WHERE ${matching(key)}`,
-  );
-  const head = Schema.decodeUnknownSync(HeadRows)(rows).at(0);
-  return head === undefined ? undefined : { bytes: head.bytes, chunks: head.chunks, mediaType: head.media_type };
-}
-
-async function chunkOf({ execute, shelf }: Shelved, key: Key, index: number): Promise<Uint8Array | undefined> {
-  const { rows } = await execute.query(
-    SQL`SELECT data FROM ${SQL.identifier(shelf.chunks)} WHERE ${matching(key)} AND chunk = ${index}`,
-  );
-  return Schema.decodeUnknownSync(ChunkRows)(rows).at(0)?.data;
-}
-
-function chunksWritten({ execute, dialect, shelf }: Shelved, key: Key, { stream }: StreamedContent): Promise<Written> {
-  return writtenInChunks(stream, mostContentChunkBytes, (chunk, index) =>
-    execute.command(
-      SQL`INSERT INTO ${SQL.identifier(shelf.chunks)} (${columnsOf(key, 'chunk', 'data')})
-        VALUES (${valuesOf(key)}, ${index}, ${dialect.bytesOfHex(hexOf(chunk))})
-        ON CONFLICT (${columnsOf(key, 'chunk')}) DO UPDATE SET data = excluded.data
-        WHERE NOT EXISTS (SELECT 1 FROM ${SQL.identifier(shelf.heads)} WHERE ${matching(key)})`,
-    ),
-  );
-}
-
-async function kept(shelved: Shelved, place: Place, content: StreamedContent): Promise<void> {
-  const key = wholeKeyOf(place);
-  if ((await headOf(shelved, key)) !== undefined) {
-    await content.stream.cancel();
-    return;
-  }
-  const written = await chunksWritten(shelved, key, content);
-  requireAsDeclared(place.sha256, content.bytes, written);
-  await shelved.execute.command(
-    SQL`INSERT INTO ${SQL.identifier(shelved.shelf.heads)} (${columnsOf(key, 'bytes', 'chunks', 'media_type')})
-      VALUES (${valuesOf(key)}, ${written.bytes}, ${written.chunks}, ${content.mediaType})
+function headWritten(
+  shelved: Shelved,
+  place: Key,
+  uploadId: string,
+  { taken, mediaType }: { readonly taken: Taken; readonly mediaType: string },
+): Effect.Effect<void> {
+  return commanded(
+    shelved,
+    SQL`INSERT INTO ${SQL.identifier(shelved.shelf.heads)} (${columnsOf(place, 'sha256', 'upload_id', 'bytes', 'chunks', 'media_type')})
+      VALUES (${valuesOf(place)}, ${taken.sha256}, ${uploadId}, ${taken.bytes}, ${taken.chunks}, ${mediaType})
       ON CONFLICT DO NOTHING`,
   );
 }
 
-async function read(shelved: Shelved, place: Place): Promise<StreamedContent | undefined> {
-  const key = wholeKeyOf(place);
-  const head = await headOf(shelved, key);
+function placedAfter(
+  shelved: Shelved,
+  place: Key,
+  uploadId: string,
+  { taken, mediaType, writing }: { readonly taken: Taken; readonly mediaType: string; readonly writing: ChunkWriting },
+): Effect.Effect<KeptHead | undefined> {
+  return Effect.gen(function* () {
+    const held = writing.written() === 0 ? yield* headOf(shelved, place, taken.sha256) : undefined;
+    if (held !== undefined) {
+      return held;
+    }
+    yield* writing.flushed();
+    yield* headWritten(shelved, place, uploadId, { taken, mediaType });
+    const head = yield* headOf(shelved, place, taken.sha256);
+    if (head?.uploadId !== uploadId) {
+      yield* uploadRemoved(shelved, place, { uploadId, sha256: taken.sha256 });
+    }
+    return head;
+  });
+}
+
+function placedOn(
+  shelved: Shelved,
+  place: Key,
+  { stream, mediaType, expected }: ContentToKeep,
+): Effect.Effect<Placed, ContentRefused> {
+  return Effect.suspend(() => {
+    const uploadId = randomUUIDv7();
+    let digested: string | undefined;
+    return Effect.gen(function* () {
+      const held = expected?.sha256 === undefined ? undefined : yield* headOf(shelved, place, expected.sha256);
+      const writing = chunkWritingOf(shelved, uploadOf(place, uploadId));
+      const taken = yield* takenInChunks(stream, mostContentChunkBytes, held === undefined ? writing.take : readAlone);
+      digested = taken.sha256;
+      yield* requireExpected(expected, taken);
+      const head = held ?? (yield* placedAfter(shelved, place, uploadId, { taken, mediaType, writing }));
+      return { uploadId, head };
+    }).pipe(Effect.onError(() => uploadRemoved(shelved, place, { uploadId, sha256: digested })));
+  });
+}
+
+function keptOf({ head }: Placed): Effect.Effect<ContentKept> {
   return head === undefined
-    ? head
-    : {
-        stream: verifiedStream(place.sha256, head, (index) => chunkOf(shelved, key, index)),
-        bytes: head.bytes,
-        mediaType: head.mediaType,
-      };
+    ? Effect.die(new Error('No head names the content just put, though nothing deletes what is kept'))
+    : Effect.succeed({ sha256: head.sha256, bytes: head.bytes, mediaType: head.mediaType });
 }
 
-async function removed({ execute, shelf }: Shelved, key: Key): Promise<void> {
-  await execute.command(SQL`DELETE FROM ${SQL.identifier(shelf.heads)} WHERE ${matching(key)}`);
-  await execute.command(SQL`DELETE FROM ${SQL.identifier(shelf.chunks)} WHERE ${matching(key)}`);
+function unstagedOf(shelved: Shelved, place: Key): Effect.Effect<boolean> {
+  return Effect.map(
+    queried(shelved, SQL`SELECT run_id FROM ${SQL.identifier(unstagedRuns)} WHERE ${matching(place)}`),
+    (rows) => Schema.decodeUnknownSync(UnstagedRows)(rows).length > 0,
+  );
 }
 
-function brainKeyOf(brain: BrainAddress): Key {
-  return [['brain_key', streamPrefixOfBrain(brain)]];
+function stagingOpen(shelved: Shelved, place: Key, run: string): Effect.Effect<void, StagingEnded> {
+  return Effect.flatMap(unstagedOf(shelved, place), (unstaged) =>
+    unstaged ? Effect.fail(stagingEnded(run)) : Effect.void,
+  );
 }
 
-function buildKeyOf(brain: BrainAddress, build: string): Key {
-  return [...brainKeyOf(brain), ['run_id', build]];
+function stagedOn(
+  shelved: Shelved,
+  { place, run }: { readonly place: Key; readonly run: string },
+  content: ContentToKeep,
+): Effect.Effect<ContentKept, ContentRefused | StagingEnded> {
+  return Effect.gen(function* () {
+    yield* stagingOpen(shelved, place, run).pipe(Effect.tapError(() => leftUnread(content.stream)));
+    const placed = yield* placedOn(shelved, place, content);
+    if (yield* unstagedOf(shelved, place)) {
+      yield* commanded(
+        shelved,
+        SQL`DELETE FROM ${SQL.identifier(shelved.shelf.heads)} WHERE ${matching(uploadOf(place, placed.uploadId))}`,
+      );
+      yield* uploadRemoved(shelved, place, { uploadId: placed.uploadId, sha256: undefined });
+      return yield* Effect.fail(stagingEnded(run));
+    }
+    return yield* keptOf(placed);
+  });
 }
 
-export function recordedContentOn(execute: StatementExecutor, dialect: ContentDialect): RecordedContent {
+function unstagedOn(shelved: Shelved, place: Key, inTransaction: InTransaction): Effect.Effect<void> {
+  const { heads, chunks } = shelved.shelf;
+  return Effect.andThen(
+    commanded(
+      shelved,
+      SQL`INSERT INTO ${SQL.identifier(unstagedRuns)} (${columnsOf(place)}) VALUES (${valuesOf(place)})
+        ON CONFLICT DO NOTHING`,
+    ),
+    Effect.promise(() =>
+      inTransaction(async (execute) => {
+        await execute.command(SQL`DELETE FROM ${SQL.identifier(heads)} WHERE ${matching(place)}`);
+        await execute.command(SQL`DELETE FROM ${SQL.identifier(chunks)} WHERE ${matching(place)}`);
+      }),
+    ),
+  );
+}
+
+export function recordedContentOn(
+  execute: StatementExecutor,
+  dialect: ContentDialect,
+  inTransaction: InTransaction,
+): RecordedContent {
   const keeping: Shelved = { execute, dialect, shelf: keptShelf };
   const staging: Shelved = { execute, dialect, shelf: stagingShelf };
   return {
-    put: (brain, sha256, content) => Effect.promise(() => kept(keeping, { key: brainKeyOf(brain), sha256 }, content)),
-    get: (brain, sha256) => Effect.promise(() => read(keeping, { key: brainKeyOf(brain), sha256 })),
-    stage: (brain, build, sha256, content) =>
-      Effect.promise(() => kept(staging, { key: buildKeyOf(brain, build), sha256 }, content)),
-    staged: (brain, build, sha256) => Effect.promise(() => read(staging, { key: buildKeyOf(brain, build), sha256 })),
-    unstage: (brain, build) => Effect.promise(() => removed(staging, buildKeyOf(brain, build))),
+    put: (brain, content) => Effect.flatMap(placedOn(keeping, brainPlaceOf(brain), content), keptOf),
+    get: (brain, sha256) => readOn(keeping, brainPlaceOf(brain), sha256),
+    stage: (brain, run, content) => stagedOn(staging, { place: runPlaceOf(brain, run), run }, content),
+    staged: (brain, run, sha256) => readOn(staging, runPlaceOf(brain, run), sha256),
+    unstage: (brain, run) => unstagedOn(staging, runPlaceOf(brain, run), inTransaction),
   };
 }
 
-export function sqliteContentOn(execute: StatementExecutor): RecordedContent {
-  return recordedContentOn(execute, sqliteContent);
+export function sqliteContentOn({ execute, withTransaction }: TransactionalPool): RecordedContent {
+  return recordedContentOn(execute, sqliteContent, (work) =>
+    withTransaction((transaction) => work(transaction.execute)),
+  );
 }
