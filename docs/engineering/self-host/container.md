@@ -79,7 +79,7 @@ The [recall function adapter](../../reference/recall-format.md) shares those wor
 
 A value outside its range stops the server at start, naming the setting.
 
-The [prediction function adapter](../../reference/prediction-format.md) keeps the dataset of each saved prediction function in two tables beside the views, folded by the same server from the same pages of history, at most two datasets of a playbook built at once, with the `data` tests of its filters run in those workers; a dataset uploaded over HTTP is kept in the ledger's content. This setting bounds it:
+The [prediction function adapter](../../reference/prediction-format.md) keeps the dataset of each saved prediction function in two tables beside the views, folded by the same server from the same pages of history, at most two datasets of a playbook built at once. The `data` tests of its filters run on the pool's one filter thread beside those workers, which the trigger and listener filters of workflows share: a dataset's tests are prepared once a page and each event is tested in that session, so a page of 1,000 events a data test reads cost about 63 ms more than one without, 107 ms against 44 ms measured on SQLite, its tests taking their turns on that thread one at a time with the workflows' filters. A dataset uploaded over HTTP is kept in the ledger's content. This setting bounds it:
 
 | Variable                   | Default | Purpose                                                                                                                                              |
 | -------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
