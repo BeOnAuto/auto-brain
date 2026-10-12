@@ -1,0 +1,65 @@
+import { readFile } from 'node:fs/promises';
+
+import { Effect, Option } from 'effect';
+
+import type { BuildState } from '../builds/build-state.ts';
+import type { PredictionPorts } from '../capability/prediction-ports.ts';
+import { isProjected, type PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';
+import type { Assembled } from '../facts/build-facts.ts';
+import { seriesRowsOf } from '../files/series-rows.ts';
+import { seedOf } from './bootstrap.ts';
+import type { Scoring } from './candidate-scoring.ts';
+import { scoringGridOf } from './scoring-grid.ts';
+
+export interface ScoredBuild {
+  readonly document: PredictionFunctionDefinitionDocument;
+  readonly assembled: Assembled;
+}
+
+export interface ScoringRows {
+  readonly path: string;
+  readonly scoring: Scoring;
+}
+
+export function featureNamesOf({ data }: PredictionFunctionDefinitionDocument): readonly string[] {
+  return isProjected(data) ? data.features.map(({ name }) => name) : data.features;
+}
+
+export function givenIndexesOf(document: PredictionFunctionDefinitionDocument): readonly number[] {
+  const names = featureNamesOf(document);
+  return document.data.given.map((name) => names.indexOf(name));
+}
+
+function rowsFileOf(ports: PredictionPorts, build: BuildState, sha256: string): Effect.Effect<string> {
+  const { org, playbook } = build.address;
+  return Effect.map(
+    ports.caches.rows.pathOf(sha256, () => ports.ledger.content.get({ org, playbook }, sha256)),
+    (path) => Option.getOrThrow(Option.fromNullishOr(path)),
+  );
+}
+
+export function scoringOf(
+  ports: PredictionPorts,
+  build: BuildState,
+  document: PredictionFunctionDefinitionDocument,
+  assembled: Assembled,
+): Effect.Effect<ScoringRows> {
+  return Effect.gen(function* () {
+    const path = yield* rowsFileOf(ports, build, assembled.scoring_sha256);
+    const text = yield* Effect.promise(() => readFile(path, 'utf8'));
+    const grid = scoringGridOf(document.predicts, {
+      window: assembled.window,
+      holdout: assembled.holdout,
+      firstPeriod: assembled.first_period,
+    });
+    return {
+      path,
+      scoring: {
+        grid,
+        rows: seriesRowsOf(text, featureNamesOf(document).length),
+        evaluation: document.evaluation,
+        seed: seedOf(build.address.id),
+      },
+    };
+  });
+}
