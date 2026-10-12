@@ -51,7 +51,7 @@ describe('what a test records', () => {
 
     expect([started, answered]).toEqual([
       expect.objectContaining({
-        stream: `brain/acme/alpha/tool-tests/${testId}`,
+        stream: `playbook/acme/alpha/tool-tests/${testId}`,
         type: 'tool_test_started',
         causationId: null,
         correlationId: null,
@@ -66,7 +66,7 @@ describe('what a test records', () => {
         context: { by: 'acme-builder', at: aTime },
       }),
       expect.objectContaining({
-        stream: `brain/acme/alpha/tool-tests/${testId}`,
+        stream: `playbook/acme/alpha/tool-tests/${testId}`,
         type: 'tool_test_answered',
         causationId: started?.id,
         data: answeredData,

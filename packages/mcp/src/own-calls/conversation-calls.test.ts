@@ -14,7 +14,7 @@ import {
   type ConversationCall,
 } from './conversation-calls.ts';
 
-const recorded = { by: 'brain:alpha', at: '2026-10-08T09:00:05.000Z' };
+const recorded = { by: 'playbook:alpha', at: '2026-10-08T09:00:05.000Z' };
 
 const reference = { server: 'chat', tool: 'thread_replies' };
 
