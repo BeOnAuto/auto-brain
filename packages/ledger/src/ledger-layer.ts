@@ -3,16 +3,20 @@ import { Effect, Layer } from 'effect';
 
 import { signalledOn, type AppendSignal } from './appends/append-signal.ts';
 import { sweptHourly } from './content/content-sweep.ts';
-import type { LedgerStore } from './event-store.ts';
+import type { ContentStore, LedgerStore } from './event-store.ts';
 import { makeLedger } from './ledger-service.ts';
 
-export interface StoreLayerOptions {
-  readonly runOutcomes?: RunOutcomeMapping | undefined;
-  readonly projections?: readonly KeyedProjection[] | undefined;
+export interface OpenedWith {
   readonly appends?: AppendSignal | undefined;
+  readonly content?: ContentStore | undefined;
 }
 
-export function ledgerLayerOver(open: () => LedgerStore, appends?: AppendSignal): Layer.Layer<Ledger> {
+export interface StoreLayerOptions extends OpenedWith {
+  readonly runOutcomes?: RunOutcomeMapping | undefined;
+  readonly projections?: readonly KeyedProjection[] | undefined;
+}
+
+export function ledgerLayerOver(open: () => LedgerStore, { appends, content }: OpenedWith = {}): Layer.Layer<Ledger> {
   return Layer.effect(
     Ledger,
     Effect.gen(function* () {
@@ -21,8 +25,9 @@ export function ledgerLayerOver(open: () => LedgerStore, appends?: AppendSignal)
         (opened) => Effect.promise(() => opened.close()),
       );
       yield* Effect.promise(() => store.migrate());
-      yield* sweptHourly(store);
-      return makeLedger(store);
+      const kept = content ?? store;
+      yield* sweptHourly(kept);
+      return makeLedger({ ...store, content: kept.content, sweepContent: kept.sweepContent });
     }),
   );
 }

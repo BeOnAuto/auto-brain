@@ -4,7 +4,7 @@ import { Effect, Function, Layer, Logger } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
-import { sweepsWatched } from '../content/content-samples.ts';
+import { sweepsWatched } from '../content/watched-sweeps.ts';
 import { openLedgerWith } from '../testing/open-ledger.ts';
 import { tally } from '../testing/tally.ts';
 import { lostConnectionsLoggedWith } from './lost-connections.ts';

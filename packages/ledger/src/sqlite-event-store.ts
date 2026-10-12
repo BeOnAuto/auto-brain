@@ -52,7 +52,7 @@ export function sqliteEventStore<Driver extends AnyDriver>(
 
 export function sqliteLedgerLayer<Driver extends AnyDriver>(
   optionsOf: () => SQLiteStoreOptions<Driver>,
-  { runOutcomes, projections, appends }: StoreLayerOptions = {},
+  { runOutcomes, projections, appends, content }: StoreLayerOptions = {},
 ) {
-  return ledgerLayerOver(() => sqliteEventStore(optionsOf, { runOutcomes, projections }), appends);
+  return ledgerLayerOver(() => sqliteEventStore(optionsOf, { runOutcomes, projections }), { appends, content });
 }

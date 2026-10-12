@@ -1,11 +1,12 @@
 import { randomUUIDv7, textToKeep } from '@beonauto/operations';
+import { alpha, generated, resultOf } from '@beonauto/operations/testing';
 import { Schema } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import type { LedgerEntry } from '../testing/ledger-entry.ts';
 import { openLedgerWith } from '../testing/open-ledger.ts';
-import { alpha, generated, run, sweepsWatched } from './content-samples.ts';
 import { unnamedChunksLastMs } from './content-sweep.ts';
+import { sweepsWatched } from './watched-sweeps.ts';
 
 const UploadRows = Schema.Array(Schema.Struct({ upload_id: Schema.String }));
 
@@ -44,8 +45,8 @@ async function keptAndOrphaned(entry: LedgerEntry, database: string): Promise<Or
   const { ledger, dispose } = await openLedgerWith(watched.layer);
   onTestFinished(dispose);
   await watched.finished;
-  await run(ledger.content.put(alpha, textToKeep('{"kept":true}', 'application/json')));
-  await run(ledger.content.stage(alpha, 'run-1', (await generated(1000)).content()));
+  await resultOf(ledger.content.put(alpha, textToKeep('{"kept":true}', 'application/json')));
+  await resultOf(ledger.content.stage(alpha, 'run-1', (await generated(1000)).content()));
   const named = {
     kept: await uploadsIn(entry, database, 'recorded_content_chunks'),
     staged: await uploadsIn(entry, database, 'staged_content_chunks'),

@@ -34,7 +34,8 @@ function capturing() {
 
 const anHour = unnamedChunksLastMs;
 
-const couldNotSweep = 'The ledger could not sweep the chunks no head names; it sweeps them again in an hour';
+const couldNotSweep =
+  'The ledger could not sweep what puts that never finished left of their content; it sweeps again in an hour';
 
 describe('the sweep of the chunks no head names', () => {
   it('runs at once and then every hour, sweeping what an hour has left, and logs a first sweep that fails and goes on', async () => {

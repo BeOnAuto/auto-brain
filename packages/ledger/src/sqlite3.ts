@@ -6,6 +6,7 @@ import { sqlite3EventStoreDriver } from '@event-driven-io/emmett-sqlite/sqlite3'
 import type { Layer } from 'effect';
 
 import type { AppendSignal } from './appends/append-signal.ts';
+import type { ContentStore } from './event-store.ts';
 import { sqliteLedgerLayer } from './sqlite-event-store.ts';
 
 export interface LedgerOptions {
@@ -13,6 +14,7 @@ export interface LedgerOptions {
   readonly runOutcomes?: RunOutcomeMapping;
   readonly projections?: readonly KeyedProjection[];
   readonly appends?: AppendSignal;
+  readonly content?: ContentStore;
 }
 
 const pageCacheOfEightMebibytes = -8192;
@@ -31,12 +33,18 @@ function prepareDirectoryOf(fileName: string): void {
   }
 }
 
-export function ledgerLayer({ fileName, runOutcomes, projections, appends }: LedgerOptions): Layer.Layer<Ledger> {
+export function ledgerLayer({
+  fileName,
+  runOutcomes,
+  projections,
+  appends,
+  content,
+}: LedgerOptions): Layer.Layer<Ledger> {
   return sqliteLedgerLayer(
     () => {
       prepareDirectoryOf(fileName);
       return { driver: sqlite3EventStoreDriver, fileName, connectionOptions: modestConnections };
     },
-    { runOutcomes, projections, appends },
+    { runOutcomes, projections, appends, content },
   );
 }

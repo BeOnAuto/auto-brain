@@ -9,6 +9,7 @@ export { eventAppenderOf, type EventAppender } from './event-appender.ts';
 export { eventCodecOf, type EventCodec } from './event-codec.ts';
 export type {
   AppendedStreams,
+  ContentStore,
   DefinitionStream,
   EncodedEvent,
   EventStore,

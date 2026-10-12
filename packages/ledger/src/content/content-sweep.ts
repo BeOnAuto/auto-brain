@@ -45,7 +45,10 @@ function sweptNow({ sweepContent }: ContentSweeping): Effect.Effect<void> {
 
 export function sweptHourly(store: ContentSweeping): Effect.Effect<void, never, Scope.Scope> {
   const sweep = Effect.catchCause(sweptNow(store), (cause) =>
-    Effect.logError('The ledger could not sweep the chunks no head names; it sweeps them again in an hour', cause),
+    Effect.logError(
+      'The ledger could not sweep what puts that never finished left of their content; it sweeps again in an hour',
+      cause,
+    ),
   );
   return Effect.asVoid(Effect.forkScoped(Effect.forever(Effect.andThen(sweep, Effect.sleep('1 hour')))));
 }
