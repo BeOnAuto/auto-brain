@@ -1,6 +1,7 @@
 export { memoryPlaybookRegistry } from './memory-playbook-registry.ts';
 export { memoryLedger, type MemoryLedger } from './memory-ledger.ts';
 export { memoryRecordedContent } from '../content/memory-content.ts';
+export { keptTextOf } from './kept-text.ts';
 export { nothingKept } from '../reading/kept-content.ts';
 export { recordingReporter, type RecordingReporter, type ReportedIncident } from './recording-reporter.ts';
 export { runFacts, runTallies, talliedContext, type RunFact } from '../run-outcomes/run-tallies.ts';

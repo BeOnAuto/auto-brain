@@ -22,10 +22,10 @@ export const failureOf = Effect.fnUntraced(function* (cause: Cause.Cause<unknown
   return failure;
 });
 
-export function withErrorBoundary<R>(
-  pipeline: Effect.Effect<Succeeded, Rejected, R>,
+export function withErrorBoundary<A extends Succeeded, R>(
+  pipeline: Effect.Effect<A, Rejected, R>,
   summary: CallSummary,
-): Effect.Effect<Outcome, never, R | IncidentReporter> {
+): Effect.Effect<Outcome<A>, never, R | IncidentReporter> {
   return Effect.uninterruptibleMask((restore) =>
     restore(pipeline).pipe(
       Effect.catch((rejection) => Effect.succeed(rejection)),

@@ -4,13 +4,13 @@ import type { CallerIdentity } from '../caller/caller.ts';
 import { isPlaybookId, isOrgId } from '../caller/identifiers.ts';
 import type { OperationKind } from '../caller/operation-scope.ts';
 import { canAccessPlaybook } from '../caller/playbook-access.ts';
-import type { Registration } from '../definition/registration.ts';
+import type { Runnable } from '../definition/registration.ts';
 import type { PlaybookRequest, OrgRequest } from '../dispatch/request.ts';
 import { PlaybookRegistry, type PlaybookStatus } from '../ledger/playbook-registry.ts';
 import { rejected, type Rejected } from '../outcome/outcome.ts';
 import { alternatives } from '../plain-language/phrasing.ts';
 
-function rejectionOfCaller(registration: Registration, { caller, org }: OrgRequest): Rejected | undefined {
+function rejectionOfCaller(registration: Runnable, { caller, org }: OrgRequest): Rejected | undefined {
   if (caller.org !== org) {
     return rejected('forbidden', 'The caller does not belong to this org');
   }
@@ -45,10 +45,7 @@ function failWith(rejection: Rejected | undefined): Effect.Effect<void, Rejected
   return rejection === undefined ? Effect.void : Effect.fail(rejection);
 }
 
-export function authorizeOrgCall(
-  registration: Registration<'org'>,
-  request: OrgRequest,
-): Effect.Effect<void, Rejected> {
+export function authorizeOrgCall(registration: Runnable<'org'>, request: OrgRequest): Effect.Effect<void, Rejected> {
   return failWith(
     rejectionOfCaller(registration, request) ??
       (registration.targetsPlaybook
@@ -58,7 +55,7 @@ export function authorizeOrgCall(
 }
 
 export function authorizePlaybookCall(
-  registration: Registration<'playbook'>,
+  registration: Runnable<'playbook'>,
   request: PlaybookRequest,
 ): Effect.Effect<void, Rejected> {
   return failWith(
@@ -84,7 +81,7 @@ function rejectionOfPlaybookStatus(
 }
 
 export const confirmPlaybookTakesCall = Effect.fnUntraced(function* (
-  { kind }: Registration<'playbook'>,
+  { kind }: Runnable<'playbook'>,
   { org, playbook }: PlaybookRequest,
 ) {
   yield* failWith(rejectionOfOrgId(org) ?? rejectionOfPlaybookId(playbook));

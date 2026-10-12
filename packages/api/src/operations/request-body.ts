@@ -1,6 +1,7 @@
 import { Predicate, Result } from 'effect';
 
 import { problemOf, type Problem } from '../problem/problem.ts';
+import { bodyEncoded, bodyNotUtf8, bodySentAsAnother, bodyTooLarge } from './body-problems.ts';
 
 export type JsonObject = Readonly<Record<string, unknown>>;
 
@@ -11,21 +12,15 @@ interface MediaType {
 
 export const requestBodyLimit = 1024 * 1024;
 
-const tooLarge = Result.fail(problemOf('content_too_large', 'The body is larger than 1 MiB'));
+const tooLarge = bodyTooLarge(requestBodyLimit);
 
-const notJson = Result.fail(problemOf('unsupported_media_type', 'A body must be sent as application/json'));
-
-const encoded = Result.fail(
-  problemOf('unsupported_media_type', 'A body must be sent without a Content-Encoding other than identity'),
-);
-
-const notUtf8 = Result.fail(problemOf('unsupported_media_type', 'A JSON body must be encoded as UTF-8'));
+const notJson = bodySentAsAnother('application/json');
 
 const notAnObject = Result.fail(problemOf('bad_request', 'The body must be a JSON object'));
 
 const unreadable = Result.fail(problemOf('bad_request', 'The body could not be read as UTF-8 text'));
 
-function mediaTypeOf(contentType: string | null): MediaType {
+export function mediaTypeOf(contentType: string | null): MediaType {
   const [type = '', ...parameters] = (contentType ?? '').split(';');
   const charset = parameters
     .map((parameter) => parameter.trim().toLowerCase())
@@ -34,7 +29,7 @@ function mediaTypeOf(contentType: string | null): MediaType {
   return { type: type.trim().toLowerCase(), charset: charset?.replace(/^"(.*)"$/u, '$1') };
 }
 
-function isIdentity(contentEncoding: string | null): boolean {
+export function isIdentity(contentEncoding: string | null): boolean {
   return contentEncoding === null || ['', 'identity'].includes(contentEncoding.trim().toLowerCase());
 }
 
@@ -47,10 +42,10 @@ export async function bodyTextOf(request: Request): Promise<Result.Result<string
     return Result.succeed('');
   }
   if (!isIdentity(request.headers.get('content-encoding'))) {
-    return encoded;
+    return bodyEncoded;
   }
   if (declaresAnotherCharset(mediaTypeOf(request.headers.get('content-type')))) {
-    return notUtf8;
+    return bodyNotUtf8;
   }
   if (Number(request.headers.get('content-length')) > requestBodyLimit) {
     return tooLarge;

@@ -1,7 +1,8 @@
 import { SQL } from '@event-driven-io/dumbo';
 import { Schema } from 'effect';
 
-import { contentTableNames, createdContentTables } from '../content/content-tables.ts';
+import { sqliteContent } from '../content/content-dialects.ts';
+import { createdContentTables } from '../content/content-tables.ts';
 import { createMissingIndexes, type PlaybookIndex, type IndexExecutor } from './missing-indexes.ts';
 
 function prefixThroughSlashes(count: number): string {
@@ -76,8 +77,5 @@ export async function createSQLitePlaybookIndexes(execute: IndexExecutor): Promi
 
 export async function sqliteSchemaCreated(execute: IndexExecutor): Promise<void> {
   await createSQLitePlaybookIndexes(execute);
-  await createdContentTables(
-    execute,
-    SQL`SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (SELECT value FROM json_each(${JSON.stringify(contentTableNames)}))`,
-  );
+  await createdContentTables(execute, sqliteContent);
 }

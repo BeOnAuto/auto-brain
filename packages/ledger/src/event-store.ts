@@ -126,6 +126,7 @@ export interface RunOutcomesStore {
 
 export interface ContentStore {
   readonly content: RecordedContent;
+  readonly sweepContent: (before: number) => Promise<void>;
 }
 
 export interface LedgerStore extends EventStore, RunOutcomesStore, ProjectionReader, ProjectionAdvancer, ContentStore {}
@@ -133,4 +134,19 @@ export interface LedgerStore extends EventStore, RunOutcomesStore, ProjectionRea
 export interface StatementExecutor {
   readonly query: (sql: SQL) => Promise<{ readonly rows: readonly unknown[] }>;
   readonly command: (sql: SQL) => Promise<unknown>;
+}
+
+interface Transaction {
+  readonly execute: StatementExecutor;
+}
+
+export interface TransactionalPool<Executor extends StatementExecutor = StatementExecutor> {
+  readonly execute: Executor;
+  readonly withTransaction: (handle: (transaction: Transaction) => Promise<void>) => Promise<void>;
+}
+
+export type InTransaction = (work: (execute: StatementExecutor) => Promise<void>) => Promise<void>;
+
+export function inTransactionOf({ withTransaction }: TransactionalPool): InTransaction {
+  return (work) => withTransaction((transaction) => work(transaction.execute));
 }

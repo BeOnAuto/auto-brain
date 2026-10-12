@@ -9,6 +9,7 @@ import {
   defineQuery,
   ActedContextSchema,
   factOf,
+  textOfContent,
   type Decider,
   type RecordedSelection,
 } from '../index.ts';
@@ -162,6 +163,7 @@ export const readNoteContent = defineQuery('playbook', {
   outputSchema: Schema.Struct({ text: Schema.NullOr(Schema.String) }),
   reasons: [],
   handle: Effect.fnUntraced(function* ({ sha256 }) {
-    return { text: (yield* (yield* PlaybookReader).readContent(sha256)) ?? null };
+    const content = yield* (yield* PlaybookReader).readContent(sha256);
+    return { text: content === undefined ? null : yield* textOfContent(content) };
   }),
 });

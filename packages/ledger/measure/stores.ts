@@ -7,6 +7,7 @@ import { Client } from 'pg';
 import type { LedgerStore } from '../src/event-store.ts';
 import { postgresqlEventStore } from '../src/postgresql/postgresql-event-store.ts';
 import { sqliteEventStore } from '../src/sqlite-event-store.ts';
+import type { modestConnections } from '../src/sqlite3.ts';
 import { temporaryDatabase } from '../src/testing/temporary-database.ts';
 
 const postgresqlServer = process.env['LEDGER_MEASURE_POSTGRESQL_URL'] ?? '';
@@ -45,9 +46,18 @@ export function inTurn<A>(items: readonly A[], each: (item: A) => Promise<unknow
   }, Promise.resolve());
 }
 
-async function sqliteStore(): Promise<MeasuredStore> {
+export interface MeasuredOn {
+  readonly sqliteConnections?: typeof modestConnections;
+}
+
+async function sqliteStore({ sqliteConnections }: MeasuredOn): Promise<MeasuredStore> {
   const { fileName, remove } = temporaryDatabase();
-  const open = (): LedgerStore => sqliteEventStore(() => ({ driver: sqlite3EventStoreDriver, fileName }));
+  const open = (): LedgerStore =>
+    sqliteEventStore(() => ({
+      driver: sqlite3EventStoreDriver,
+      fileName,
+      ...(sqliteConnections === undefined ? {} : { connectionOptions: sqliteConnections }),
+    }));
   await (await openedOf(open)).close();
   return {
     name: 'SQLite',
@@ -91,8 +101,11 @@ async function postgresqlStore(): Promise<MeasuredStore> {
   };
 }
 
-export async function measuredOnEachStore(measure: (store: MeasuredStore) => Promise<void>): Promise<void> {
-  const sqlite = await sqliteStore();
+export async function measuredOnEachStore(
+  measure: (store: MeasuredStore) => Promise<void>,
+  on: MeasuredOn = {},
+): Promise<void> {
+  const sqlite = await sqliteStore(on);
   await measure(sqlite);
   await sqlite.dropped();
   if (postgresqlServer !== '') {
