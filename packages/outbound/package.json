@@ -5,7 +5,8 @@
   "license": "Elastic-2.0",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./aws": "./src/aws/aws-clients.ts"
   },
   "scripts": {
     "lint": "oxlint -c ../../.oxlintrc.json",
@@ -13,6 +14,7 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
+    "@aws-sdk/credential-providers": "3.1144.0",
     "effect": "catalog:"
   },
   "devDependencies": {

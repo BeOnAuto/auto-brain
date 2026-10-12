@@ -1,3 +1,4 @@
+import type { ProxySettings } from '@beonauto/outbound/aws';
 import { Config, Data, Effect } from 'effect';
 
 import { aliasReading } from './alias-settings.ts';
@@ -31,11 +32,6 @@ import {
   type Reading,
   type SettingProblem,
 } from './setting-values.ts';
-
-export interface ProxySettings {
-  readonly enabled: boolean;
-  readonly environment: Environment;
-}
 
 export interface ModelSettings {
   readonly anthropic: Availability<AnthropicSettings>;

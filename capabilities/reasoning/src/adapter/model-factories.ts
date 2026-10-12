@@ -1,3 +1,5 @@
+import { awsCredentialChain } from '@beonauto/outbound/aws';
+
 import type { ModelSettings } from '../settings/model-settings.ts';
 import type { AzureSettings } from '../settings/provider-settings.ts';
 import type { Availability } from '../settings/setting-values.ts';
@@ -10,10 +12,10 @@ import {
   type AzureCredential,
 } from './cloud-providers.ts';
 import {
-  awsCredentialChain,
   googleCredentialChain,
   guarded,
   type AccessTokenSource,
+  type AwsCredentials,
   type CredentialSources,
 } from './credential-sources.ts';
 import { anthropicModels, gatewayModels, googleModels, openAiModels } from './direct-providers.ts';
@@ -46,7 +48,7 @@ function azureCredentialOf(
 function cloudEntries(settings: ModelSettings, { fetch, credentials, azureTokens }: FactorySources): readonly Entry[] {
   return [
     ...entriesFor(settings.bedrock, (bedrock) => {
-      const aws = guarded(credentials.aws ?? awsCredentialChain(settings.proxy));
+      const aws = guarded<AwsCredentials>(credentials.aws ?? awsCredentialChain(settings.proxy));
       return [
         ['bedrock', bedrockModels(bedrock, aws, fetch)],
         ['bedrock-anthropic', bedrockAnthropicModels(bedrock, aws, fetch)],
