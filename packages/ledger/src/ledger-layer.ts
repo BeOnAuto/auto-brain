@@ -2,6 +2,7 @@ import { Ledger, type RunOutcomeMapping, type KeyedProjection } from '@beonauto/
 import { Effect, Layer } from 'effect';
 
 import { signalledOn, type AppendSignal } from './appends/append-signal.ts';
+import { sweptHourly } from './content/content-sweep.ts';
 import type { LedgerStore } from './event-store.ts';
 import { makeLedger } from './ledger-service.ts';
 
@@ -20,6 +21,7 @@ export function ledgerLayerOver(open: () => LedgerStore, appends?: AppendSignal)
         (opened) => Effect.promise(() => opened.close()),
       );
       yield* Effect.promise(() => store.migrate());
+      yield* sweptHourly(store);
       return makeLedger(store);
     }),
   );

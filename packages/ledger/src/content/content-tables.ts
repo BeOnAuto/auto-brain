@@ -3,25 +3,29 @@ import { Schema } from 'effect';
 
 import type { StatementExecutor } from '../event-store.ts';
 import { inTurn } from '../projections/inline-projection.ts';
-import { createMissingIndexes } from '../recorded/missing-indexes.ts';
+import { createMissingIndexes, type BrainIndex } from '../recorded/missing-indexes.ts';
 import type { ContentDialect } from './content-dialects.ts';
 
 export interface Shelf {
   readonly chunks: string;
   readonly heads: string;
   readonly placeColumns: readonly string[];
+  readonly chunkMissing: (sha256: string, index: number) => Error;
 }
 
 export const keptShelf: Shelf = {
   chunks: 'recorded_content_chunks',
   heads: 'recorded_content_heads',
   placeColumns: ['brain_key'],
+  chunkMissing: (sha256, index) => new Error(`The content kept under ${sha256} is missing its chunk ${index}`),
 };
 
 export const stagingShelf: Shelf = {
   chunks: 'staged_content_chunks',
   heads: 'staged_content',
   placeColumns: ['brain_key', 'run_id'],
+  chunkMissing: (sha256, index) =>
+    new Error(`The content staged under ${sha256} has no chunk ${index}, as when its run is unstaged while it is read`),
 };
 
 export const unstagedRuns = 'unstaged_runs';
@@ -84,12 +88,25 @@ const unstagedRunsTable: ContentTable = {
   )`,
 };
 
+export const shelves: readonly Shelf[] = [keptShelf, stagingShelf];
+
 export const contentTables: readonly ContentTable[] = [
-  ...[keptShelf, stagingShelf].flatMap((shelf) => [chunkTableOf(shelf), headTableOf(shelf)]),
+  ...shelves.flatMap((shelf) => [chunkTableOf(shelf), headTableOf(shelf)]),
   unstagedRunsTable,
 ];
 
 const contentTableNames: readonly string[] = contentTables.map(({ name }) => name);
+
+function uploadIndexOf({ heads, placeColumns }: Shelf): BrainIndex {
+  const name = `${heads}_by_upload`;
+  return {
+    name,
+    create: () =>
+      SQL`CREATE INDEX IF NOT EXISTS ${SQL.identifier(name)} ON ${SQL.identifier(heads)} (${namesOf([...placeColumns, 'upload_id'])})`,
+  };
+}
+
+const contentIndexes: readonly BrainIndex[] = shelves.map((shelf) => uploadIndexOf(shelf));
 
 const NameRows = Schema.Array(Schema.Struct({ name: Schema.String }));
 
@@ -116,7 +133,7 @@ async function requireTheShapeKept(
 }
 
 export async function createdContentTables(execute: StatementExecutor, dialect: ContentDialect): Promise<void> {
-  const existing = new Set(await namesFound(execute, dialect.tablesAmong(contentTableNames)));
+  const existing = new Set(await namesFound(execute, dialect.relationsAmong('table', contentTableNames)));
   await inTurn(
     contentTables.filter(({ name }) => existing.has(name)),
     (table) => requireTheShapeKept(execute, dialect, table),
@@ -126,4 +143,14 @@ export async function createdContentTables(execute: StatementExecutor, dialect: 
     contentTables.map((table) => ({ name: table.name, create: () => table.create(dialect) })),
     existing,
   );
+  const indexed = new Set(
+    await namesFound(
+      execute,
+      dialect.relationsAmong(
+        'index',
+        contentIndexes.map(({ name }) => name),
+      ),
+    ),
+  );
+  await createMissingIndexes(execute, contentIndexes, indexed);
 }

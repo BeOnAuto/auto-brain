@@ -147,5 +147,5 @@ export function sqliteRecordedStore(execute: SQLExecutor): RecordedStore & Defin
 export function sqliteRecordedStoreOn(
   pool: TransactionalPool<SQLExecutor>,
 ): RecordedStore & DefinitionStreamsStore & ContentStore {
-  return { ...sqliteRecordedStore(pool.execute), content: sqliteContentOn(pool) };
+  return { ...sqliteRecordedStore(pool.execute), ...sqliteContentOn(pool) };
 }

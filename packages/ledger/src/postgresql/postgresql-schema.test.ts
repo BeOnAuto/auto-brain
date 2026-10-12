@@ -38,18 +38,27 @@ const theContentTables = [
   'CREATE TABLE IF NOT EXISTS unstaged_runs',
 ];
 
+const theContentIndexes = [
+  'CREATE INDEX IF NOT EXISTS recorded_content_heads_by_upload ON recorded_content_heads',
+  'CREATE INDEX IF NOT EXISTS staged_content_by_upload ON staged_content',
+];
+
 describe("the ledger's own schema on PostgreSQL", () => {
-  it("creates the brain's indexes and then the tables of the content it keeps, each only when missing", async () => {
+  it("creates the brain's indexes, then the tables of the content it keeps and their indexes, each only when missing", async () => {
     const empty = executorFinding([]);
-    const found = executorFinding(contentTables.map(({ name }) => name));
+    const found = executorFinding([
+      ...contentTables.map(({ name }) => name),
+      'recorded_content_heads_by_upload',
+      'staged_content_by_upload',
+    ]);
 
     await postgresqlSchemaCreated(empty.execute);
     await postgresqlSchemaCreated(found.execute);
+    const brainIndexes = empty.commands.slice(0, empty.commands.indexOf(firstContentTable));
 
-    expect(empty.commands.filter((command) => command.startsWith('CREATE TABLE'))).toEqual(theContentTables);
-    expect(empty.commands.indexOf(firstContentTable)).toBeGreaterThan(
-      empty.commands.findLastIndex((command) => command.startsWith('CREATE INDEX')),
-    );
-    expect(found.commands.filter((command) => command.startsWith('CREATE TABLE'))).toEqual([]);
+    expect(brainIndexes.filter((command) => command.startsWith('CREATE INDEX IF NOT EXISTS ledger_'))).toHaveLength(7);
+    expect(brainIndexes.filter((command) => command.includes('content'))).toEqual([]);
+    expect(empty.commands.slice(brainIndexes.length)).toEqual([...theContentTables, ...theContentIndexes]);
+    expect(found.commands.filter((command) => command.includes('content'))).toEqual([]);
   });
 });

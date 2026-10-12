@@ -15,8 +15,13 @@ import {
 import { SQL } from '@event-driven-io/dumbo';
 import { Effect, Schema } from 'effect';
 
-import type { StatementExecutor, TransactionalPool } from '../event-store.ts';
-import type { InTransaction } from '../projections/projection-fill.ts';
+import {
+  inTransactionOf,
+  type ContentStore,
+  type InTransaction,
+  type StatementExecutor,
+  type TransactionalPool,
+} from '../event-store.ts';
 import { sqliteContent, type ContentDialect } from './content-dialects.ts';
 import {
   brainPlaceOf,
@@ -35,6 +40,7 @@ import {
   type KeptHead,
   type Shelved,
 } from './content-places.ts';
+import { contentSweepOn } from './content-sweep.ts';
 import { keptShelf, stagingShelf, unstagedRuns } from './content-tables.ts';
 
 interface Placed {
@@ -206,8 +212,9 @@ export function recordedContentOn(
   };
 }
 
-export function sqliteContentOn({ execute, withTransaction }: TransactionalPool): RecordedContent {
-  return recordedContentOn(execute, sqliteContent, (work) =>
-    withTransaction((transaction) => work(transaction.execute)),
-  );
+export function sqliteContentOn(pool: TransactionalPool): ContentStore {
+  return {
+    content: recordedContentOn(pool.execute, sqliteContent, inTransactionOf(pool)),
+    sweepContent: contentSweepOn(pool.execute),
+  };
 }

@@ -20,6 +20,7 @@ import {
 } from './content-samples.ts';
 import { contentOfAnOlderShape } from './older-content-shapes-behaviour.ts';
 import { contentStaged } from './staged-content-behaviour.ts';
+import { unnamedChunksSwept } from './unnamed-chunks-behaviour.ts';
 
 const ChunkRows = Schema.Array(Schema.Struct({ chunk: Schema.Number, bytes: Schema.Number }));
 
@@ -162,8 +163,11 @@ function readFailing(entry: LedgerEntry): void {
     await entry.queried(database, 'DELETE FROM recorded_content_chunks WHERE chunk = 1');
     const delivered = await deliveredBeforeFailing(await present(ledger.content.get(alpha, sha256)));
 
-    expect(delivered).toEqual({ bytes: mostContentChunkBytes, failure: notItsBytes(sha256) });
-    await expect(readAsText(ledger, sha256)).rejects.toThrow(notItsBytes(sha256).message);
+    expect(delivered).toEqual({
+      bytes: mostContentChunkBytes,
+      failure: new Error(`The content kept under ${sha256} is missing its chunk 1`),
+    });
+    await expect(readAsText(ledger, sha256)).rejects.toThrow(`The content kept under ${sha256} is missing its chunk 1`);
   });
 
   it('hands over no chunk of a read whose bytes are not those its digest names, before checking them', async () => {
@@ -245,6 +249,26 @@ function putRaced(entry: LedgerEntry): void {
   });
 }
 
+function heldDigestDefended(entry: LedgerEntry): void {
+  it('refuses wrong bytes put with the digest of a content the brain holds, writing nothing and leaving the content whole', async () => {
+    const { database, ledger } = await opened(entry);
+    const right = await generated(2_500_000);
+    const wrong = await generated(2_500_000, 11);
+    await run(ledger.content.put(alpha, right.content()));
+
+    const refused = await refusalOf(
+      ledger.content.put(alpha, { ...wrong.content(), expected: { sha256: right.sha256 } }),
+    );
+
+    expect(refused).toMatchObject({ _tag: 'content_refused', because: 'not_its_digest' });
+    expect(await readBack(await run(ledger.content.get(alpha, right.sha256)))).toMatchObject({
+      sha256: right.sha256,
+      bytes: 2_500_000,
+    });
+    expect(await chunksIn(entry, database)).toEqual([{ count: 3 }]);
+  });
+}
+
 export function contentBehaviour(entry: LedgerEntry): void {
   describe('the content a brain recorded', () => {
     keptInChunks(entry);
@@ -255,8 +279,10 @@ export function contentBehaviour(entry: LedgerEntry): void {
   });
   describe('the content a brain was given to keep, refused', () => {
     putRefused(entry);
+    heldDigestDefended(entry);
     putRaced(entry);
   });
   contentStaged(entry);
+  unnamedChunksSwept(entry);
   contentOfAnOlderShape(entry);
 }

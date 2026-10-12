@@ -1,10 +1,8 @@
-import type { RecordedContent } from '@beonauto/operations';
-import { SQL } from '@event-driven-io/dumbo';
-import { pgFormatter } from '@event-driven-io/dumbo/pg';
-
-import type { StatementExecutor } from '../event-store.ts';
+import type { ContentStore, StatementExecutor } from '../event-store.ts';
+import { formattedFor } from '../postgresql-reads/recorded-parts.ts';
 import { postgresqlContent } from './content-dialects.ts';
 import { recordedContentOn } from './content-store.ts';
+import { contentSweepOn } from './content-sweep.ts';
 
 interface Answer {
   readonly rows: readonly unknown[];
@@ -23,10 +21,7 @@ export interface ContentConnections extends Querying {
 }
 
 function executorOn(querying: Querying): StatementExecutor {
-  const formatted = async (sql: SQL): Promise<readonly unknown[]> => {
-    const { query: text, params } = SQL.format(sql, pgFormatter);
-    return (await querying.query(text, params)).rows;
-  };
+  const formatted = formattedFor(async (text, values) => (await querying.query(text, values)).rows);
   return { query: async (sql) => ({ rows: await formatted(sql) }), command: formatted };
 }
 
@@ -47,6 +42,10 @@ async function inTransactionOn(
   }
 }
 
-export function postgresqlContentOn(connections: ContentConnections): RecordedContent {
-  return recordedContentOn(executorOn(connections), postgresqlContent, (work) => inTransactionOn(connections, work));
+export function postgresqlContentOn(connections: ContentConnections): ContentStore {
+  const execute = executorOn(connections);
+  return {
+    content: recordedContentOn(execute, postgresqlContent, (work) => inTransactionOn(connections, work)),
+    sweepContent: contentSweepOn(execute),
+  };
 }

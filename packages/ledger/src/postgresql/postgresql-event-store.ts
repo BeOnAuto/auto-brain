@@ -5,9 +5,9 @@ import { Pool } from 'pg';
 
 import { emmettEventStore } from '../emmett/emmett-event-store.ts';
 import type { LedgerStore } from '../event-store.ts';
-import { postgresqlRecordedStoreOn, type Query } from '../postgresql-reads/postgresql-recorded.ts';
+import { formattedFor, postgresqlRecordedStoreOn, type Query } from '../postgresql-reads/postgresql-recorded.ts';
 import { dataAsJsonText } from './json-text.ts';
-import { formattedFor, postgresqlProjectionsOf } from './postgresql-projections.ts';
+import { postgresqlProjectionsOf } from './postgresql-projections.ts';
 import { migrationLockTakenWithin, postgresqlRunOutcomesOf } from './postgresql-run-outcomes.ts';
 
 export interface PostgreSQLOptions {

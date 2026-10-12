@@ -63,7 +63,7 @@ describe('the writes of a recorded content', () => {
     const recording = recordingFinding([]);
 
     const put = Effect.runPromise(
-      sqliteContentOn(recording.pool).put(alpha, textToKeep(largerThanTwoChunks, 'text/plain')),
+      sqliteContentOn(recording.pool).content.put(alpha, textToKeep(largerThanTwoChunks, 'text/plain')),
     );
 
     await expect(put).rejects.toThrow('No head names the content just put, though nothing deletes what is kept');
@@ -83,8 +83,8 @@ describe('the writes of a recorded content', () => {
 
     const kept = await Effect.runPromise(
       Effect.all([
-        sqliteContentOn(small.pool).put(alpha, textToKeep('kept', 'application/json')),
-        sqliteContentOn(expected.pool).put(alpha, {
+        sqliteContentOn(small.pool).content.put(alpha, textToKeep('kept', 'application/json')),
+        sqliteContentOn(expected.pool).content.put(alpha, {
           ...textToKeep(largerThanTwoChunks, 'text/plain'),
           expected: { sha256: sha256Of(largerThanTwoChunks) },
         }),
@@ -107,7 +107,7 @@ describe('the writes of a recorded content that another put of its digest raced'
     const recording = recordingFinding([headOf('another')]);
 
     const kept = await Effect.runPromise(
-      sqliteContentOn(recording.pool).put(alpha, textToKeep(largerThanTwoChunks, 'text/plain')),
+      sqliteContentOn(recording.pool).content.put(alpha, textToKeep(largerThanTwoChunks, 'text/plain')),
     );
 
     expect(kept).toEqual({ sha256: sha256Of(largerThanTwoChunks), bytes: 4, mediaType: 'text/plain' });
@@ -126,7 +126,7 @@ describe('the reads and the removals of a recorded content', () => {
   it('read no chunk of a digest the brain does not hold', async () => {
     const recording = recordingFinding([]);
 
-    const read = await Effect.runPromise(sqliteContentOn(recording.pool).get(alpha, 'digest'));
+    const read = await Effect.runPromise(sqliteContentOn(recording.pool).content.get(alpha, 'digest'));
 
     expect([read, kindsOf(recording)]).toEqual([undefined, ['SELECT upload_id, CAST(bytes']]);
   });
@@ -134,7 +134,7 @@ describe('the reads and the removals of a recorded content', () => {
   it('mark a run unstaged, then remove the heads and the chunks it staged in one transaction, the heads first', async () => {
     const recording = recordingFinding([]);
 
-    await Effect.runPromise(sqliteContentOn(recording.pool).unstage(alpha, 'run-1'));
+    await Effect.runPromise(sqliteContentOn(recording.pool).content.unstage(alpha, 'run-1'));
 
     expect(recording.statements).toEqual([
       'INSERT INTO unstaged_runs (brain_key, run_id) VALUES ("brain/acme/alpha/", "run-1") ON CONFLICT DO NOTHING',

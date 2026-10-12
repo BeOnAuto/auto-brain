@@ -1,10 +1,16 @@
-import { streamPrefixOfBrain, type BrainAddress, type ContentKept, type StreamedContent } from '@beonauto/operations';
+import {
+  notTheBytesOfItsDigest,
+  sha256Digest,
+  streamPrefixOfBrain,
+  type BrainAddress,
+  type ContentKept,
+  type StreamedContent,
+} from '@beonauto/operations';
 import { SQL } from '@event-driven-io/dumbo';
 import { Effect, Schema } from 'effect';
 
 import type { StatementExecutor } from '../event-store.ts';
 import type { ContentDialect } from './content-dialects.ts';
-import { verifiedStream } from './content-streams.ts';
 import type { Shelf } from './content-tables.ts';
 
 export type Key = readonly (readonly [column: string, value: string])[];
@@ -18,6 +24,55 @@ export interface Shelved {
   readonly execute: StatementExecutor;
   readonly dialect: ContentDialect;
   readonly shelf: Shelf;
+}
+
+interface Head {
+  readonly bytes: number;
+  readonly chunks: number;
+}
+
+type ChunkRead = (index: number) => Promise<Uint8Array | undefined>;
+
+interface ChunkReading {
+  readonly read: ChunkRead;
+  readonly missing: (index: number) => Error;
+}
+
+function verifiedStream(sha256: string, head: Head, { read, missing }: ChunkReading): ReadableStream<Uint8Array> {
+  const digest = sha256Digest();
+  let bytes = 0;
+  let index = 0;
+  const ended = (controller: ReadableStreamDefaultController<Uint8Array>, last?: Readonly<Uint8Array>) => {
+    if (bytes !== head.bytes || digest.hex() !== sha256) {
+      controller.error(notTheBytesOfItsDigest(sha256));
+      return;
+    }
+    if (last !== undefined) {
+      controller.enqueue(last);
+    }
+    controller.close();
+  };
+  return new ReadableStream<Uint8Array>({
+    pull: async (controller) => {
+      if (index === head.chunks) {
+        ended(controller);
+        return;
+      }
+      const chunk = await read(index);
+      if (chunk === undefined) {
+        controller.error(missing(index));
+        return;
+      }
+      digest.update(chunk);
+      bytes += chunk.byteLength;
+      index += 1;
+      if (index < head.chunks) {
+        controller.enqueue(chunk);
+      } else {
+        ended(controller, chunk);
+      }
+    },
+  });
 }
 
 const HeadRows = Schema.Array(
@@ -108,7 +163,10 @@ export function readOn(shelved: Shelved, place: Key, sha256: string): Effect.Eff
     head === undefined
       ? head
       : {
-          stream: verifiedStream(sha256, head, (index) => chunkOf(shelved, uploadOf(place, head.uploadId), index)),
+          stream: verifiedStream(sha256, head, {
+            read: (index) => chunkOf(shelved, uploadOf(place, head.uploadId), index),
+            missing: (index) => shelved.shelf.chunkMissing(sha256, index),
+          }),
           bytes: head.bytes,
           mediaType: head.mediaType,
         },

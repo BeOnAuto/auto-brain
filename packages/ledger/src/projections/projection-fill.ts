@@ -1,6 +1,6 @@
 import { brainStreamOf, projectedTableOf, rowKeyOf, type ProjectedRow } from '@beonauto/operations';
 
-import type { StatementExecutor } from '../event-store.ts';
+import type { InTransaction, StatementExecutor } from '../event-store.ts';
 import { inTurn } from './inline-projection.ts';
 import { filledMessageOf, replayedRow, type ProjectionKeeping, type ReplayedMessage } from './projection-keeping.ts';
 import {
@@ -17,8 +17,6 @@ import {
   type RowPlace,
   type SizedStream,
 } from './projection-statements.ts';
-
-export type InTransaction = (work: (execute: StatementExecutor) => Promise<void>) => Promise<void>;
 
 const streamsInABatch = 100;
 

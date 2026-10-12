@@ -1,7 +1,7 @@
 import { SQL } from '@event-driven-io/dumbo';
 import { Schema } from 'effect';
 
-import type { TransactionalPool } from '../event-store.ts';
+import { inTransactionOf, type TransactionalPool } from '../event-store.ts';
 import type { ProjectionDialect } from './projection-dialect.ts';
 import { projectionPartsOf, type KeptTables, type ProjectionParts } from './projection-parts.ts';
 
@@ -57,5 +57,5 @@ export function sqliteProjectionsOf(kept: KeptTables): ProjectionParts {
 }
 
 export function preparedOn(prepare: ProjectionParts['prepare'], pool: TransactionalPool): Promise<void> {
-  return prepare(pool.execute, (work) => pool.withTransaction(({ execute }) => work(execute)));
+  return prepare(pool.execute, inTransactionOf(pool));
 }

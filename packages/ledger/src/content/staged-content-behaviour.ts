@@ -6,9 +6,11 @@ import { aLedger, type LedgerEntry } from '../testing/ledger-entry.ts';
 import {
   alpha,
   beta,
+  deliveredBeforeFailing,
   generated,
   generatedStream,
   octets,
+  present,
   readBack,
   refusalOf,
   run,
@@ -120,9 +122,29 @@ function stagedAfterUnstaging(entry: LedgerEntry): void {
   });
 }
 
+function readWhileUnstaged(entry: LedgerEntry): void {
+  it('fails a read of a staged content whose run is unstaged while it is read, in words that say so', async () => {
+    const ledger = await aLedger(entry);
+    const { sha256, content } = await generated(2_500_000);
+    await run(ledger.content.stage(alpha, 'run-1', content()));
+
+    const staged = await present(ledger.content.staged(alpha, 'run-1', sha256));
+    await run(ledger.content.unstage(alpha, 'run-1'));
+    const { bytes, failure } = await deliveredBeforeFailing(staged);
+
+    expect([0, mostContentChunkBytes]).toContain(bytes);
+    expect(failure).toEqual(
+      new Error(
+        `The content staged under ${sha256} has no chunk ${bytes / mostContentChunkBytes}, as when its run is unstaged while it is read`,
+      ),
+    );
+  });
+}
+
 export function contentStaged(entry: LedgerEntry): void {
   describe('the content staged under a run', () => {
     stagedAndUnstaged(entry);
     stagedAfterUnstaging(entry);
+    readWhileUnstaged(entry);
   });
 }

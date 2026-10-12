@@ -1,12 +1,9 @@
 import { SQL } from '@event-driven-io/dumbo';
-import { pgFormatter } from '@event-driven-io/dumbo/pg';
 import { Schema } from 'effect';
 
 import type { StatementExecutor } from '../event-store.ts';
-import type { Query } from '../postgresql-reads/recorded-parts.ts';
 import type { ProjectionDialect } from '../projections/projection-dialect.ts';
 import { projectionPartsOf, type KeptTables } from '../projections/projection-parts.ts';
-import type { ReadQuery } from '../projections/projection-reads.ts';
 import { dataAsJsonText } from './json-text.ts';
 import { postgresqlSchemaCreated } from './postgresql-schema.ts';
 
@@ -67,13 +64,6 @@ export const postgresqlProjectionDialect: ProjectionDialect = {
   appendedData: storedData,
   booleanOf: (value) => value,
 };
-
-export function formattedFor(query: Query): ReadQuery {
-  return (sql) => {
-    const { query: text, params } = SQL.format(sql, pgFormatter);
-    return query(text, params);
-  };
-}
 
 export function postgresqlProjectionsOf(kept: KeptTables) {
   const parts = projectionPartsOf(postgresqlProjectionDialect, kept);

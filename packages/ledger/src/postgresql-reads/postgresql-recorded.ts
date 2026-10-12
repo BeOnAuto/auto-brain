@@ -35,7 +35,7 @@ import {
   type Query,
 } from './recorded-parts.ts';
 
-export type { Query } from './recorded-parts.ts';
+export { formattedFor, type Query } from './recorded-parts.ts';
 
 const ExaminedRecordRows = Schema.Array(Schema.Struct({ ...HeadFields, wanted: Schema.Boolean, examined: Schema.Int }));
 
@@ -201,5 +201,5 @@ export function postgresqlRecordedStoreOn(
   query: Query,
   connections: ContentConnections,
 ): RecordedStore & DefinitionStreamsStore & ContentStore {
-  return { ...postgresqlRecordedStore(query), content: postgresqlContentOn(connections) };
+  return { ...postgresqlRecordedStore(query), ...postgresqlContentOn(connections) };
 }

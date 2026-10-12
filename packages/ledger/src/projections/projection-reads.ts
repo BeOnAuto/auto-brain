@@ -25,7 +25,7 @@ import {
   tableOf,
 } from './projection-statements.ts';
 
-export type ReadQuery = (sql: SQL) => Promise<readonly unknown[]>;
+type ReadQuery = (sql: SQL) => Promise<readonly unknown[]>;
 
 type WriteCommand = (sql: SQL) => Promise<unknown>;
 
