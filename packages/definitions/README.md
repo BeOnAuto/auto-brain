@@ -1,6 +1,6 @@
 # @beonauto/definitions
 
-The definition and run operations of auto-brain: create, list, read, update, retire and run a playbook's function and workflow definitions, then inspect their runs and history, and publish events to a playbook. They are defined on the application layer, [`@beonauto/operations`](../operations).
+The definition and run operations of Auto Runtime: create, list, read, update, retire and run a playbook's function and workflow definitions, then inspect their runs and history, and publish events to a playbook. They are defined on the application layer, [`@beonauto/operations`](../operations).
 
 ## Definitions, runs and runtime adapters
 

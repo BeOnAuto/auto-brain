@@ -1,7 +1,7 @@
 **/node_modules
 **/coverage
 **/.env
-auto-brain.yaml
+auto-runtime.yaml
 data
 packages/server/.data
 packages/server/data

@@ -1,6 +1,6 @@
 # @beonauto/api
 
-The API of auto-brain: the handler the server answers every request with. It serves each operation of a catalog twice, once as an HTTP route and once as an MCP tool, but for an operation served over HTTP alone, which is a route and no tool, and both run the operation through the same dispatcher, so a call means the same thing whichever way it arrives. The operations themselves are defined on the application layer, [`@beonauto/operations`](../operations).
+The API of Auto Runtime: the handler the server answers every request with. It serves each operation of a catalog twice, once as an HTTP route and once as an MCP tool, but for an operation served over HTTP alone, which is a route and no tool, and both run the operation through the same dispatcher, so a call means the same thing whichever way it arrives. The operations themselves are defined on the application layer, [`@beonauto/operations`](../operations).
 
 ## Every request
 

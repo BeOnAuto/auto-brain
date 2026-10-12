@@ -17,6 +17,6 @@ coverage
 /data/
 /packages/server/.data/
 /packages/server/data/
-/auto-brain.yaml
+/auto-runtime.yaml
 /docs/.vitepress/cache/
 .vitest/

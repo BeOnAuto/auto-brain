@@ -118,7 +118,7 @@ Dynamic axes are allowed where the table has `L`, `H` or `1`; the opset is 13 to
 
 **Staging and the winner.** A candidate is staged under its build for the build's life (section 9) and never written to the kept content until it wins; the winner is written through the content port under its digest, which is what the version holds, and the losers are dropped with the build, their digests, sizes and scores on the build's facts. A kept file is never deleted, as nothing kept is.
 
-**The cache.** A model process loads a file from the server's cache, `/var/tmp/auto-brain/models/<sha256>.onnx`, written by rename after the whole file is read from the content port and verified against its digest, at most 1 GiB a server, least recently used out, rebuilt from the port whenever a file is missing. A file that fails the digest is a defect, as content that does not match its digest is today.
+**The cache.** A model process loads a file from the server's cache, `/var/tmp/auto-runtime/models/<sha256>.onnx`, written by rename after the whole file is read from the content port and verified against its digest, at most 1 GiB a server, least recently used out, rebuilt from the port whenever a file is missing. A file that fails the digest is a defect, as content that does not match its digest is today.
 
 ### 5. Scoring
 
@@ -218,7 +218,7 @@ The words of each refusal are a sentence that says what to do, as the interactio
 | Scoring one candidate       | 10 minutes of a model process, the process's memory, 200,000 rows                                                                     | `candidate_disqualified`                                                          |
 | A prediction                | 10 s in all, the process's memory                                                                                                     | `unavailable` `model_process_busy` or `model_process_failed`                      |
 | A check at upload           | 30 s                                                                                                                                  | `candidate_refused` `failed_to_load`                                              |
-| Model file cache            | 1 GiB a server under `/var/tmp/auto-brain/models`                                                                                     | least recently used out, rebuilt from the port                                    |
+| Model file cache            | 1 GiB a server under `/var/tmp/auto-runtime/models`                                                                                   | least recently used out, rebuilt from the port                                    |
 | `PREDICTION_PROCESSES`      | 2 to 64, default 4                                                                                                                    | a prediction waits for a free process within its 10 s                             |
 | `PREDICTION_PROCESS_MEMORY` | 768 to 16,384 MiB, default 1,280                                                                                                      | the process dies at the limit; the job ends `out_of_memory`                       |
 | `PREDICTION_BUILDS_AT_ONCE` | 1 to 63, default 2, below `PREDICTION_PROCESSES`, refused at start otherwise                                                          | `unavailable` `builds_full`                                                       |

@@ -6,7 +6,7 @@ import { childRunOf } from '../calls/child-run.ts';
 import { workflowFunctionsOf } from '../document/workflow-functions.ts';
 
 const runtimeDescriptor: JsonObject = {
-  name: 'auto-brain',
+  name: 'auto-runtime',
   version: '1',
   metadata: { type: 'workflow' },
 };

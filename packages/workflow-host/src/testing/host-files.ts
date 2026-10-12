@@ -12,7 +12,7 @@ import type { Statement } from '../database/statement.ts';
 export type SettingsOf = () => Promise<DatabaseSettings>;
 
 export function aSQLiteFile(): string {
-  const directory = mkdtempSync(join(tmpdir(), 'auto-brain-workflow-host-'));
+  const directory = mkdtempSync(join(tmpdir(), 'auto-runtime-workflow-host-'));
   onTestFinished(() => {
     rmSync(directory, { recursive: true, force: true });
   });

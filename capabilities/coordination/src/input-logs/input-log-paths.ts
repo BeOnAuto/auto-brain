@@ -90,7 +90,7 @@ do:
       set: { summary: '\${ $data.summary }', runtime: '\${ $runtime.name }' }
 `,
     input: { text: 'hello' },
-    ends: { kind: 'completed', output: { summary: 'summarize of {"text":"hello"}', runtime: 'auto-brain' } },
+    ends: { kind: 'completed', output: { summary: 'summarize of {"text":"hello"}', runtime: 'auto-runtime' } },
     answer: summarizing,
   },
   {

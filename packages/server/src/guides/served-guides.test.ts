@@ -186,7 +186,7 @@ describe('the recipes that give a playbook tools', () => {
     expect([
       Buffer.byteLength(String(texts['give-tools'])),
       Buffer.byteLength(String(texts['first-playbook'])),
-    ]).toEqual([2058, 1794]);
+    ]).toEqual([2060, 1794]);
   });
 });
 
@@ -204,8 +204,8 @@ describe('the recipes of a server that serves interaction functions', () => {
       bytesOf(texts, 'first-playbook', 'remember', 'give-tools', 'schedule'),
       bytesOf(recipeTextsOf(everyType), 'first-playbook', 'remember', 'give-tools', 'schedule'),
     ]).toEqual([
-      [1884, 1783, 2613, 1294],
-      [1794, 1783, 2058, 1294],
+      [1884, 1783, 2615, 1294],
+      [1794, 1783, 2060, 1294],
     ]);
   });
 

@@ -73,7 +73,7 @@ describe('the recall functions a playbook keeps', { timeout: recallTestTimeoutMs
 
 describe('the bound on the recall functions a playbook keeps', { timeout: recallTestTimeoutMs }, () => {
   it('are bounded by a setting, and lowering it below the count refuses even a new version and changes nothing else', async () => {
-    const directory = mkdtempSync(join(tmpdir(), 'auto-brain-recall-'));
+    const directory = mkdtempSync(join(tmpdir(), 'auto-runtime-recall-'));
     onTestFinished(() => {
       rmSync(directory, { recursive: true, force: true });
     });

@@ -73,7 +73,7 @@ await test('the public preview builds all pages with public edit links and a doc
   for (const { page, filename, html } of renderedPages) {
     assert.ok(html.includes('/docs/assets/'), `${filename} assets need the documentation base`);
     assert.ok(
-      html.includes(`https://github.com/BeOnAuto/auto-brain/edit/main/docs/${relative(docs, page)}`),
+      html.includes(`https://github.com/BeOnAuto/auto-runtime/edit/main/docs/${relative(docs, page)}`),
       `${filename} needs a public source edit link`,
     );
   }
@@ -186,13 +186,13 @@ await test('the first-playbook tutorial supplies inputs and observable checks fo
 await test('the local quick start gives runnable setup and distinguishes local clients from Cloud', () => {
   const guide = readFileSync(join(docs, 'get-started/local.md'), 'utf8');
   for (const command of [
-    'git clone https://github.com/BeOnAuto/auto-brain.git',
+    'git clone https://github.com/BeOnAuto/auto-runtime.git',
     'pnpm install',
     'cp .env.example .env',
     'pnpm dev',
     'curl http://localhost:8080/health',
-    'claude mcp add --transport http auto-brain http://localhost:8080/mcp',
-    'codex mcp add auto-brain --url http://localhost:8080/mcp',
+    'claude mcp add --transport http auto-runtime http://localhost:8080/mcp',
+    'codex mcp add auto-runtime --url http://localhost:8080/mcp',
   ])
     assert.ok(guide.includes(command), `Missing quick-start command: ${command}`);
   assert.ok(guide.includes('ANTHROPIC_API_KEY'));
@@ -219,7 +219,7 @@ await test('the local quick start gives runnable setup and distinguishes local c
   const config: unknown = JSON.parse(configBlock);
   assert.deepEqual(config, {
     mcpServers: {
-      'auto-brain': {
+      'auto-runtime': {
         command: 'npx',
         args: ['-y', 'mcp-remote@0.14.3', 'http://localhost:8080/mcp', '--allow-http', '--transport', 'http-only'],
       },

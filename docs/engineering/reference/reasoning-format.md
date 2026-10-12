@@ -253,7 +253,7 @@ An agent calls the same operations as MCP tools on `POST /mcp`, where the tools 
 scripts/try-reasoning.sh http://localhost:8080 anthropic/claude-sonnet-4-5
 ```
 
-It works in org `local`, or `AUTO_PLAYBOOK_ORG`, creates a playbook named `try-<seconds>`, and sends `AUTO_PLAYBOOK_KEY` as the API key when it is set. CI never runs it.
+It works in org `local`, or `AUTO_RUNTIME_ORG`, creates a playbook named `try-<seconds>`, and sends `AUTO_RUNTIME_KEY` as the API key when it is set. CI never runs it.
 
 ## An example with a JSON answer
 

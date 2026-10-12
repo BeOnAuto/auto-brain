@@ -1,6 +1,6 @@
 # @beonauto/playbooks
 
-The playbook operations of auto-brain: create, list, read, update and retire the playbooks of an org, and follow what happened in one playbook. They are defined on the application layer, [`@beonauto/operations`](../operations).
+The playbook operations of Auto Runtime: create, list, read, update and retire the playbooks of an org, and follow what happened in one playbook. They are defined on the application layer, [`@beonauto/operations`](../operations).
 
 ## A playbook
 

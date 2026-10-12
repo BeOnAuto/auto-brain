@@ -46,7 +46,7 @@ function onSQLite(): MeasuredLedger {
   return {
     store: 'SQLite',
     aLedger: () => {
-      const directory = mkdtempSync(join(tmpdir(), 'auto-brain-server-measure-'));
+      const directory = mkdtempSync(join(tmpdir(), 'auto-runtime-server-measure-'));
       directories.push(directory);
       const file = join(directory, 'ledger.db');
       return Promise.resolve({

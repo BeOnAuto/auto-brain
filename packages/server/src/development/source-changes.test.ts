@@ -8,7 +8,7 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 import { isServerSource, sourcesOf, watchSources, type SourceChanges } from './source-changes.ts';
 
 function emptyDirectory(): string {
-  const directory = mkdtempSync(join(tmpdir(), 'auto-brain-sources-'));
+  const directory = mkdtempSync(join(tmpdir(), 'auto-runtime-sources-'));
   onTestFinished(() => {
     rmSync(directory, { recursive: true, force: true });
   });

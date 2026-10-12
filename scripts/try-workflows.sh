@@ -4,11 +4,11 @@ set -euo pipefail
 usage='Usage: scripts/try-workflows.sh <base-url> <provider/model>'
 base_url="${1:?$usage}"
 model="${2:?$usage}"
-org="${AUTO_BRAIN_ORG:-local}"
+org="${AUTO_RUNTIME_ORG:-local}"
 playbook="try-$(date +%s)-$RANDOM$RANDOM"
 headers=(--header 'content-type: application/json')
-if [ -n "${AUTO_BRAIN_KEY:-}" ]; then
-  headers+=(--header "authorization: Bearer $AUTO_BRAIN_KEY")
+if [ -n "${AUTO_RUNTIME_KEY:-}" ]; then
+  headers+=(--header "authorization: Bearer $AUTO_RUNTIME_KEY")
 fi
 
 call() {

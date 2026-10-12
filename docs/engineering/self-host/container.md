@@ -2,13 +2,13 @@
 
 The runtime is in early development and is not ready for production use. Review [authentication and security](security.md) before exposing a deployment.
 
-Every release publishes the image to Docker Hub (`beonauto/auto-brain`) and GitHub Container Registry (`ghcr.io/beonauto/auto-brain`). A container needs two things: an [API key](security.md#api-keys), because it listens on every interface, and a place for the ledger: a volume on `/data`, where it keeps the ledger in a SQLite file, or a [PostgreSQL database](#the-ledger-in-postgresql).
+Every release publishes the image to Docker Hub (`beonauto/auto-runtime`) and GitHub Container Registry (`ghcr.io/beonauto/auto-runtime`). A container needs two things: an [API key](security.md#api-keys), because it listens on every interface, and a place for the ledger: a volume on `/data`, where it keeps the ledger in a SQLite file, or a [PostgreSQL database](#the-ledger-in-postgresql).
 
 ```bash
-docker run --rm --log-driver none beonauto/auto-brain:latest node packages/identity/src/key-command.ts --org acme
-echo 'API_KEYS=[<the API_KEYS entry it printed>]' > auto-brain.env
-docker volume create auto-brain-data
-docker run --rm --publish 8080:8080 --env-file auto-brain.env --volume auto-brain-data:/data beonauto/auto-brain:latest
+docker run --rm --log-driver none beonauto/auto-runtime:latest node packages/identity/src/key-command.ts --org acme
+echo 'API_KEYS=[<the API_KEYS entry it printed>]' > auto-runtime.env
+docker volume create auto-runtime-data
+docker run --rm --publish 8080:8080 --env-file auto-runtime.env --volume auto-runtime-data:/data beonauto/auto-runtime:latest
 curl --header 'authorization: Bearer <the key it printed>' http://localhost:8080/v1/orgs/acme/playbooks
 ```
 
@@ -17,12 +17,12 @@ Without a named volume, Docker gives each container a fresh anonymous volume, so
 The image reads a configuration file only when `CONFIG_FILE` names one. Mount the file read-only and name it:
 
 ```bash
-docker run --rm --publish 8080:8080 --env-file auto-brain.env --volume auto-brain-data:/data \
-  --volume "$PWD/auto-brain.yaml:/etc/auto-brain/auto-brain.yaml:ro" --env CONFIG_FILE=/etc/auto-brain/auto-brain.yaml \
-  beonauto/auto-brain:latest
+docker run --rm --publish 8080:8080 --env-file auto-runtime.env --volume auto-runtime-data:/data \
+  --volume "$PWD/auto-runtime.yaml:/etc/auto-runtime/auto-runtime.yaml:ro" --env CONFIG_FILE=/etc/auto-runtime/auto-runtime.yaml \
+  beonauto/auto-runtime:latest
 ```
 
-The secrets the file refers to, such as `GATEWAY_API_KEY`, go in `auto-brain.env` with the other variables.
+The secrets the file refers to, such as `GATEWAY_API_KEY`, go in `auto-runtime.env` with the other variables.
 
 | Variable            | Default                                                                | Purpose                                                                                                                                                                                                                                                                                                                                                      |
 | ------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -101,11 +101,11 @@ The image is multi-arch (amd64 and arm64), runs as a non-root user that can read
 
 ## The ledger in PostgreSQL
 
-Set `DATABASE_URL` to a PostgreSQL database, and the server keeps the ledger there instead of in a file; the container then needs no volume. The URL holds the database's password, so it goes in `auto-brain.env` with the other secrets, never in the configuration file, which refuses a `database_url` key:
+Set `DATABASE_URL` to a PostgreSQL database, and the server keeps the ledger there instead of in a file; the container then needs no volume. The URL holds the database's password, so it goes in `auto-runtime.env` with the other secrets, never in the configuration file, which refuses a `database_url` key:
 
 ```bash
-echo 'DATABASE_URL=postgresql://auto-brain:<password>@db.example.com:5432/auto_playbook' >> auto-brain.env
-docker run --rm --publish 8080:8080 --env-file auto-brain.env beonauto/auto-brain:latest
+echo 'DATABASE_URL=postgresql://auto_runtime:<password>@db.example.com:5432/auto_runtime' >> auto-runtime.env
+docker run --rm --publish 8080:8080 --env-file auto-runtime.env beonauto/auto-runtime:latest
 ```
 
 The server creates or migrates the ledger's tables in the database's `public` schema at every start, so its user needs `CREATE` on that schema at every start, not only the first; a user that may only read and write the tables fails to start with `permission denied for schema public`. It logs at start that the ledger is kept in PostgreSQL, naming the database and its host and never the URL. A database it cannot reach stops it at start, naming the host and port. The image needs nothing more for it: the PostgreSQL driver, `pg`, is pure JavaScript. Several servers may share the database: one runs the workflows and the others stand by to take them over; see [Workflow operations](workflows.md). Servers of different versions do not share a database at the same time: stop the servers of the old version before starting those of the new one. A version that keeps a new table in the ledger, such as the outcomes of runs that a playbook's analytics read, fills it from the ledger's history at its first start, before it answers, under the database's migration lock; another server starting meanwhile waits for that lock up to 60 seconds, longer than the longest fill the ledger README records, and stops only if it is still held then; start it again once the first is ready. The [ledger README](../../../packages/ledger/README.md#keyed-projections) records how long the fill takes. The [ledger README](../../../packages/ledger/README.md#postgresql) has the details and what was verified.
@@ -122,4 +122,4 @@ Set `CONTENT_STORE_URL` to an `s3://bucket/prefix` URL, and the server keeps the
 | `AWS_ENDPOINT_URL_S3` or `AWS_ENDPOINT_URL` | The endpoint of an S3-compatible server, such as `http://storage.internal:9000`, addressed by path; the first is read before the second, which is the Bedrock provider's endpoint too unless `AWS_ENDPOINT_URL_BEDROCK_RUNTIME` is set, so with Bedrock configured name the server in the first |
 | `AWS_REGION`                                | The region the requests are signed for, which the SDK otherwise reads from a profile; without either the server stops at start; S3-compatible servers commonly take `us-east-1`                                                                                                                 |
 
-The credentials come from the AWS default credential chain, as the Bedrock provider's do: `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` in `auto-brain.env`, a profile, a web identity, or the role of the container or the instance. The bucket must exist; the server creates none, and checks it at start: a bucket it cannot reach, for a refusal, a missing bucket, a missing region or an endpoint that does not answer, stops it at start, naming `CONTENT_STORE_URL`, the bucket, the endpoint's host and the store's answer, and never a credential. Its credentials need to read, write, copy and delete objects under the prefix, list the bucket, and list and abort multipart uploads. Versioning is not required; on a bucket with versioning on, every delete keeps a noncurrent version, so give such a bucket a lifecycle rule that expires them. A lifecycle rule is otherwise optional: every hour the server deletes what puts that never finished left under `<prefix>/uploads/`. The server logs at start that content is kept on object storage, naming the bucket, the prefix and the endpoint's host. The [object storage README](../../../packages/object-storage/README.md) has the layout of the keys, how a put and a read go, and what was measured.
+The credentials come from the AWS default credential chain, as the Bedrock provider's do: `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` in `auto-runtime.env`, a profile, a web identity, or the role of the container or the instance. The bucket must exist; the server creates none, and checks it at start: a bucket it cannot reach, for a refusal, a missing bucket, a missing region or an endpoint that does not answer, stops it at start, naming `CONTENT_STORE_URL`, the bucket, the endpoint's host and the store's answer, and never a credential. Its credentials need to read, write, copy and delete objects under the prefix, list the bucket, and list and abort multipart uploads. Versioning is not required; on a bucket with versioning on, every delete keeps a noncurrent version, so give such a bucket a lifecycle rule that expires them. A lifecycle rule is otherwise optional: every hour the server deletes what puts that never finished left under `<prefix>/uploads/`. The server logs at start that content is kept on object storage, naming the bucket, the prefix and the endpoint's host. The [object storage README](../../../packages/object-storage/README.md) has the layout of the keys, how a put and a read go, and what was measured.

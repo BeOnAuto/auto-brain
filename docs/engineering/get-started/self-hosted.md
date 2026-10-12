@@ -5,8 +5,8 @@ This guide uses a local checkout. You need a terminal to start the runtime, but 
 You need [pnpm](https://pnpm.io/installation), for example from `curl -fsSL https://get.pnpm.io/install.sh | sh -`. In this repository pnpm switches itself to the version the repository pins, 12.8.1, and runs every script on the Node.js it pins, 26.10.0, which it downloads on the first `pnpm install`; the Node.js on your machine does not matter.
 
 ```bash
-git clone https://github.com/BeOnAuto/auto-brain.git
-cd auto-brain
+git clone https://github.com/BeOnAuto/auto-runtime.git
+cd auto-runtime
 pnpm install
 cp .env.example .env
 ```
@@ -23,10 +23,10 @@ Before `pnpm dev`, uncomment one line of `.env` and put your key in it:
 A gateway also needs its address, which goes in the [configuration file](../self-host/configuration.md):
 
 ```bash
-cp auto-brain.example.yaml auto-brain.yaml
+cp auto-runtime.example.yaml auto-runtime.yaml
 ```
 
-Then put your gateway's `base_url` in `auto-brain.yaml`. Start the configured runtime:
+Then put your gateway's `base_url` in `auto-runtime.yaml`. Start the configured runtime:
 
 ```sh
 pnpm dev
@@ -43,9 +43,9 @@ pnpm dev
 
 Next, connect your AI assistant to `http://localhost:8080/mcp`. Local mode needs no key:
 
-- **Claude Code**: `claude mcp add --transport http auto-brain http://localhost:8080/mcp`
-- **Cursor**, in `.cursor/mcp.json` or `~/.cursor/mcp.json`: `{"mcpServers": {"auto-brain": {"url": "http://localhost:8080/mcp"}}}`
-- **VS Code**, in `.vscode/mcp.json`: `{"servers": {"auto-brain": {"type": "http", "url": "http://localhost:8080/mcp"}}}`
+- **Claude Code**: `claude mcp add --transport http auto-runtime http://localhost:8080/mcp`
+- **Cursor**, in `.cursor/mcp.json` or `~/.cursor/mcp.json`: `{"mcpServers": {"auto-runtime": {"url": "http://localhost:8080/mcp"}}}`
+- **VS Code**, in `.vscode/mcp.json`: `{"servers": {"auto-runtime": {"type": "http", "url": "http://localhost:8080/mcp"}}}`
 - **Other assistants** take the entry under [Connecting an agent over MCP](../reference/mcp.md), without its header.
 
 You can begin by asking: "Given what you know about my work, suggest a small reusable function we could build in Auto. Tell me what information it needs before creating anything." For a concrete first run, follow the example below.

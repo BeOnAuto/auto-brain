@@ -10,7 +10,7 @@ const orgCall = { caller, org: 'acme', requestId: 'request-1', dropped: [{ id: 7
 describe('the hand-off of a caller to the MCP SDK', () => {
   it('carries the caller id and permissions, and a placeholder instead of any credential', () => {
     expect(authInfoFor(orgCall)).toEqual({
-      token: 'verified-by-auto-brain',
+      token: 'verified-by-auto-runtime',
       clientId: 'acme-admin',
       scopes: [...allPermissions],
       extra: orgCall,

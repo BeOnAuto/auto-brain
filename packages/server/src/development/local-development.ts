@@ -18,7 +18,7 @@ export function localDevelopment(): DevelopmentSetup {
     envFiles: [join(repository, 'packages', 'server', 'dev.env'), join(repository, '.env')],
     sourceDirectories: workspaceSources(repository),
     serverEntry: join(repository, 'packages', 'server', 'src', 'main.ts'),
-    configFile: join(repository, 'auto-brain.yaml'),
+    configFile: join(repository, 'auto-runtime.yaml'),
     startChild,
   };
 }

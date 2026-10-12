@@ -1,12 +1,12 @@
-# Contributing to auto-brain
+# Contributing to Auto Runtime
 
 Thanks for helping build the runtime for business playbooks. Bug reports, ideas and pull requests are all welcome.
 
 ## Before you start
 
 - **Found a vulnerability?** Don't open an issue. Follow [SECURITY.md](SECURITY.md).
-- **Bugs and ideas** go in [issues](https://github.com/BeOnAuto/auto-brain/issues/new/choose). For anything bigger than a small fix, open an issue first so we can agree on the approach before you write code.
-- **The CLA.** auto-brain is [source-available under ELv2](LICENSING.md), and Auto also sells commercial licenses. So every contributor signs the [Contributor License Agreement](CLA.md) once. The CLA bot asks on your first pull request; reply with the sentence it gives you.
+- **Bugs and ideas** go in [issues](https://github.com/BeOnAuto/auto-runtime/issues/new/choose). For anything bigger than a small fix, open an issue first so we can agree on the approach before you write code.
+- **The CLA.** Auto Runtime is [source-available under ELv2](LICENSING.md), and Auto also sells commercial licenses. So every contributor signs the [Contributor License Agreement](CLA.md) once. The CLA bot asks on your first pull request; reply with the sentence it gives you.
 - Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Set up

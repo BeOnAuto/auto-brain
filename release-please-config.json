@@ -7,7 +7,7 @@
   "pull-request-title-pattern": "chore(release): release ${version}",
   "packages": {
     ".": {
-      "package-name": "auto-brain",
+      "package-name": "auto-runtime",
       "changelog-path": "CHANGELOG.md",
       "initial-version": "0.1.0"
     }

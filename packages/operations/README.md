@@ -1,6 +1,6 @@
 # @beonauto/operations
 
-The application layer of auto-brain: where operations are defined and run.
+The application layer of Auto Runtime: where operations are defined and run.
 
 An **operation** is a **query**, which reads, or a **command**, which changes something. Its **scope** is `org` or `playbook`. Transports such as HTTP and MCP serve the operations of a catalog; this package knows nothing about them.
 

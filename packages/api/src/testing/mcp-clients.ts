@@ -127,7 +127,7 @@ class PreviousMajorHttpTransport implements Transport {
 async function connectPreviousMajor(connection: McpConnection): Promise<McpSession> {
   const { validator, compiled } = recordingValidator();
   const client = new PreviousMajorClient(
-    { name: 'auto-brain-tests', version: '1.0.0' },
+    { name: 'auto-runtime-tests', version: '1.0.0' },
     { jsonSchemaValidator: validator },
   );
   const transport = new PreviousMajorHttpTransport(connection);
@@ -151,7 +151,7 @@ async function connectCurrentMajor(kind: McpClientKind, { url, headers }: McpCon
   const versionNegotiation = kind === 'current revision' ? { mode: { pin: '2026-07-28' } } : {};
   const { validator, compiled } = recordingValidator();
   const client = new Client(
-    { name: 'auto-brain-tests', version: '2.0.0' },
+    { name: 'auto-runtime-tests', version: '2.0.0' },
     { versionNegotiation, jsonSchemaValidator: validator },
   );
   await client.connect(new StreamableHTTPClientTransport(new URL(url), { requestInit: { headers: { ...headers } } }));

@@ -472,14 +472,14 @@
             "kind": "completed",
             "output": {
               "summary": "summarize of {\"text\":\"hello\"}",
-              "runtime": "auto-brain"
+              "runtime": "auto-runtime"
             }
           }
         },
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 5517
+          "value": 5521
         }
       ],
       "outputs": [
@@ -500,7 +500,7 @@
             "status": "succeeded",
             "output": {
               "summary": "summarize of {\"text\":\"hello\"}",
-              "runtime": "auto-brain"
+              "runtime": "auto-runtime"
             }
           }
         }

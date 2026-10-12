@@ -1,6 +1,6 @@
 # Contributor License Agreement
 
-Thank you for your interest in contributing to auto-brain. To clarify the intellectual property license granted with Contributions from any person or entity, BeOnAuto ("Auto") must have a signed Contributor License Agreement ("Agreement") from each Contributor. The Agreement protects you as a Contributor as well as Auto and the users of the Work. It does not change your rights to use your own Contributions for any other purpose.
+Thank you for your interest in contributing to Auto Runtime. To clarify the intellectual property license granted with Contributions from any person or entity, BeOnAuto ("Auto") must have a signed Contributor License Agreement ("Agreement") from each Contributor. The Agreement protects you as a Contributor as well as Auto and the users of the Work. It does not change your rights to use your own Contributions for any other purpose.
 
 You sign this Agreement by commenting on your pull request, when the CLA bot asks, with:
 

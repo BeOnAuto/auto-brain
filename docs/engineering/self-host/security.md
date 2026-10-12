@@ -5,7 +5,7 @@
 Every path needs an API key, sent as `Authorization: Bearer <key>`, except `/health` and [the page the server shows a browser at `/`](#the-page-at-the-root). Each key belongs to one org and carries its permissions and the playbooks it may access. The key command creates one:
 
 ```bash
-docker run --rm --log-driver none beonauto/auto-brain:latest node packages/identity/src/key-command.ts --org <org>
+docker run --rm --log-driver none beonauto/auto-runtime:latest node packages/identity/src/key-command.ts --org <org>
 ```
 
 Options are `--id`, `--permissions` (comma-separated, from `org:read`, `org:write`, `playbook:read`, `playbook:write`; all four by default) and `--playbooks` (comma-separated playbook ids, or `*` for every playbook, the default). The command prints the key once and the entry to add to `API_KEYS`, or to `api_keys` in the [configuration file](../self-host/configuration.md), where the entry as printed is one item of the list; only the key's SHA-256 is stored, so keep the key itself somewhere safe. Write the variable unquoted, for example `API_KEYS=[{"id":"…",…}]` in an env file. `--log-driver none` keeps the key out of Docker's log driver, which could otherwise store or ship it; the command still prints it to your terminal.
@@ -30,6 +30,6 @@ A page may call the API only from the studio, `https://studio.on.auto`, or from 
 
 A browser that opens the server's address gets a page saying the server is running, with a button that opens the studio on it. The server answers with the page only to a `GET /` that accepts `text/html`, and it needs no key, in local mode or not. Any other request to `/` is treated like a request to any other path.
 
-The page tells a visitor only that an auto-brain server answers at that address; it shows nothing the server holds. It runs no script and asks no other server for anything: its styles, its icon and its typefaces are inside it, and its `Content-Security-Policy` allows nothing else. It may not be shown in a frame, and it is never cached.
+The page tells a visitor only that an Auto Runtime server answers at that address; it shows nothing the server holds. It runs no script and asks no other server for anything: its styles, its icon and its typefaces are inside it, and its `Content-Security-Policy` allows nothing else. It may not be shown in a frame, and it is never cached.
 
 The button goes to `https://studio.on.auto/?server=<this server's origin>`, and the studio then calls this server from the browser, which is why its origin is always allowed. The studio takes a server from such a link only when the address is on the visitor's own machine: `localhost`, `127.0.0.1` or `::1`.

@@ -34,7 +34,7 @@ export function configuredServer(
   onTestFinished(() => {
     ledger.remove();
   });
-  const configFile = join(ledger.directory, 'auto-brain.yaml');
+  const configFile = join(ledger.directory, 'auto-runtime.yaml');
   if (configText !== undefined) {
     writeFileSync(configFile, configText);
   }

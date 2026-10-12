@@ -13,7 +13,7 @@ export function initializeAt(protocolVersion: string): string {
     jsonrpc: '2.0',
     id: 1,
     method: 'initialize',
-    params: { protocolVersion, capabilities: {}, clientInfo: { name: 'auto-brain-tests', version: '1' } },
+    params: { protocolVersion, capabilities: {}, clientInfo: { name: 'auto-runtime-tests', version: '1' } },
   });
 }
 

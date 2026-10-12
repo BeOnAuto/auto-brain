@@ -94,7 +94,7 @@ describe('advertisedSchema', () => {
       output: standard.jsonSchema.output({ target: 'draft-07' }),
       validated: standard.validate({ anything: 1 }),
     }).toEqual({
-      vendor: 'auto-brain',
+      vendor: 'auto-runtime',
       input: { $schema: dialect, type: 'object' },
       output: { $schema: dialect, type: 'object' },
       validated: { value: { anything: 1 } },

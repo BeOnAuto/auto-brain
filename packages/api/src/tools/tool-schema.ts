@@ -75,7 +75,7 @@ export function advertisedSchema(jsonSchema: Readonly<JsonSchema>): StandardSche
   return {
     '~standard': {
       version: 1,
-      vendor: 'auto-brain',
+      vendor: 'auto-runtime',
       validate: (value) => ({ value }),
       jsonSchema: { input: () => jsonSchema, output: () => jsonSchema },
     },

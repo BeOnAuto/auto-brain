@@ -4,7 +4,7 @@ import { Schema } from 'effect';
 
 import { fileSettings } from './file-settings.ts';
 
-export const configFileSchemaPath = fileURLToPath(new URL('../../../../auto-brain.schema.json', import.meta.url));
+export const configFileSchemaPath = fileURLToPath(new URL('../../../../auto-runtime.schema.json', import.meta.url));
 
 function configFileJsonSchema(): Readonly<Record<string, unknown>> {
   const fields = Object.fromEntries(fileSettings.map(({ key, schema }) => [key, Schema.optionalKey(schema)]));

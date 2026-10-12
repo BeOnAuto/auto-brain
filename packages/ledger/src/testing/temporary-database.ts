@@ -8,7 +8,7 @@ export interface TemporaryDatabase {
 }
 
 export function temporaryDatabase(): TemporaryDatabase {
-  const directory = mkdtempSync(join(tmpdir(), 'auto-brain-ledger-'));
+  const directory = mkdtempSync(join(tmpdir(), 'auto-runtime-ledger-'));
   return {
     fileName: join(directory, 'ledger.db'),
     remove: () => {

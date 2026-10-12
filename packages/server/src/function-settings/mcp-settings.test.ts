@@ -25,11 +25,11 @@ function errorFrom(environment: Readonly<Record<string, string>>): string {
 }
 
 function configFile(text: string): string {
-  const directory = mkdtempSync(join(tmpdir(), 'auto-brain-mcp-'));
+  const directory = mkdtempSync(join(tmpdir(), 'auto-runtime-mcp-'));
   onTestFinished(() => {
     rmSync(directory, { recursive: true });
   });
-  const path = join(directory, 'auto-brain.yaml');
+  const path = join(directory, 'auto-runtime.yaml');
   writeFileSync(path, text);
   return path;
 }
