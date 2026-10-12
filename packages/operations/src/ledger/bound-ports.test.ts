@@ -1,7 +1,7 @@
-import { Effect } from 'effect';
+import { Effect, Option } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { streamPrefixOfPlaybook, streamPrefixOfOrg, type RunOutcomeWindow } from '../index.ts';
+import { playbookOfStreamPrefix, streamPrefixOfPlaybook, streamPrefixOfOrg, type RunOutcomeWindow } from '../index.ts';
 import { readTallyRows, runTallyRows } from '../projections/tally-rows.ts';
 import { readRunTallies, runFacts, runTallies, type RunFact } from '../run-outcomes/run-tallies.ts';
 import { acmeAdmin, acmeAlphaReader, globexAdmin } from '../testing/callers.ts';
@@ -67,6 +67,21 @@ describe('the prefix of a playbook', () => {
     );
 
     expect(ledger.streamNames()).toEqual([`${streamPrefixOfPlaybook({ org: 'acme', playbook: 'alpha' })}notes`]);
+  });
+
+  it('names its playbook again, and a prefix that is not a playbook names none', () => {
+    const alpha = { org: 'acme', playbook: 'alpha' };
+
+    expect(
+      [
+        streamPrefixOfPlaybook(alpha),
+        streamPrefixOfOrg(alpha),
+        'org/acme/alpha/',
+        'playbook/acme/alpha',
+        'playbook/acme/alpha/runs/',
+        'playbook//alpha/',
+      ].map((prefix) => playbookOfStreamPrefix(prefix)),
+    ).toEqual([Option.some(alpha), Option.none(), Option.none(), Option.none(), Option.none(), Option.none()]);
   });
 });
 

@@ -11,6 +11,7 @@ import {
   definitionRecorded,
   eventTrigger,
   published,
+  recorded,
 } from '../reaction-testing/playbook-writes.ts';
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
 import { until } from '../reaction-testing/until.ts';
@@ -42,6 +43,29 @@ describe('a playbook its org created before the host started', () => {
     const starts = await startsReaching(reacting, 1);
 
     expect(starts.map(({ cause }) => cause)).toEqual([messageIdOf(`${alpha}events/after`, 1)]);
+  });
+});
+
+describe('a stream of an org whose name only ends as its registry’s does', () => {
+  it('is not read as a registry of playbooks', async () => {
+    const settings = await onSQLite();
+    const { store } = await openedOn(settings);
+    await recorded(store, 'org/acme/elsewhere/playbooks', {
+      type: 'playbook_created',
+      data: { playbook: 'gamma', name: 'gamma', description: '' },
+    });
+    await playbookCreated(store, 'alpha');
+    await definitionRecorded(store, { name: 'close', version: 1, triggers: [closed] });
+
+    const reacting = await reactingHost({ settings });
+    await published(store, { id: 'after', type: 'com.acme.closed' });
+    await startsReaching(reacting, 1);
+    const read = (text: ReturnType<typeof statement>) => Effect.runPromise(reacting.database.read(text));
+
+    expect([
+      await read(statement`SELECT playbook_key FROM workflow_followed_playbooks`),
+      await read(statement`SELECT stream_id FROM workflow_followed_orgs`),
+    ]).toEqual([[{ playbook_key: alpha }], [{ stream_id: 'org/acme/playbooks' }]]);
   });
 });
 

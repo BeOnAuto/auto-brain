@@ -33,6 +33,7 @@ const oldWords: readonly string[] = [
   'workflow_followed_brains',
   '_by_brain',
   'RECALL_BRAINS_AT_ONCE',
+  String.raw`(?:[{,]\s*|\n\s*|["'])brains?["']?\s*:`,
 ];
 
 const keptFolders: readonly string[] = ['docs/decisions/'];
@@ -123,7 +124,6 @@ const allowances: readonly Allowance[] = [
     text: 'toPrimitive',
     in: ['packages/definitions/lib/sandbox.d.ts.txt', 'packages/workflow-engine/src/programs/sandbox-prelude.ts'],
   },
-  { text: '/Prefer a hosted brain/u', in: ['scripts/docs.test.ts'] },
 ];
 
 const textOnly = new TextDecoder('utf-8', { fatal: true });

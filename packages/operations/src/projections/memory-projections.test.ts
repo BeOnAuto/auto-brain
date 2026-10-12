@@ -75,11 +75,12 @@ describe('a read of the rows of a projection in the in-memory ledger', () => {
     expect(await Effect.runPromise(ledger.service.countProjectedRows('nothing', alpha, []))).toBe(0);
   });
 
-  it('reads the rows due by a time across playbooks, the soonest first, and the next due time', async () => {
+  it('reads the rows due by a time across playbooks, none outside them, the soonest first, and the next due time', async () => {
     const ledger = memoryLedger(undefined, [runTallyRows]);
     await noting(ledger, 'playbook/acme/alpha/runs/r1', began('triage', 2));
     await noting(ledger, 'playbook/globex/gamma/runs/r2', began('triage', 0));
     await noting(ledger, 'playbook/acme/beta/runs/r3', began('triage', 1), ended);
+    await noting(ledger, 'org/acme/alpha/runs/r4', began('triage', 0));
     const due = (through: number, limit = 10) =>
       Effect.runPromise(ledger.service.readDueRows('run_tallies', { column: 'due_at', through, limit }));
 

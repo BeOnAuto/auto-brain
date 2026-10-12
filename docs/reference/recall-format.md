@@ -174,15 +174,15 @@ A recall function folds the events of its own playbook, in the order the playboo
 
 Each event is a CloudEvent with its `id`, `type`, `source`, `time`, the time it happened as the playbook recorded it, and its `data`; an event the playbook recorded as the effect of another names that one in `causationid`, and the run at the top of its chain in `correlationid`. The playbook's own events carry, as extension attributes, what the playbook knows of how they came about, each where it has it:
 
-| Attribute           | Holds                                                                                                              |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `caller`            | Who acted: a caller's id, or `playbook:` and the playbook's name for a run a trigger started and the runs it calls |
-| `definitionversion` | The version of the definition the run executes or the event is about, a whole number from 1                        |
-| `depth`             | How many reactions are above the run, a whole number from 1, on a run a reaction started                           |
-| `calldepth`         | How many calls are above a run a workflow's call started, a whole number from 1                                    |
-| `calledby`          | The id of the run whose call started the run                                                                       |
-| `triggerkind`       | The kind of the trigger that started the run: `event`, `cron` or `every`                                           |
-| `triggerreference`  | Where in its workflow's document that trigger is                                                                   |
+| Attribute           | Holds                                                                                                            |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `caller`            | Who acted: a caller's id, or `playbook:` and the playbook's id for a run a trigger started and the runs it calls |
+| `definitionversion` | The version of the definition the run executes or the event is about, a whole number from 1                      |
+| `depth`             | How many reactions are above the run, a whole number from 1, on a run a reaction started                         |
+| `calldepth`         | How many calls are above a run a workflow's call started, a whole number from 1                                  |
+| `calledby`          | The id of the run whose call started the run                                                                     |
+| `triggerkind`       | The kind of the trigger that started the run: `event`, `cron` or `every`                                         |
+| `triggerreference`  | Where in its workflow's document that trigger is                                                                 |
 
 No published event carries one of them, nor `causationid` or `correlationid`, since `publish_event` refuses them. A recall function never folds the events of its own runs. An event the runtime cannot read, such as one whose data nests deeper than 512 levels, is passed over and reported to the operator once.
 
