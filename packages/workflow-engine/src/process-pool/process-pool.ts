@@ -1,9 +1,9 @@
 import { Option } from 'effect';
 
-import type { Ending, Stopped } from '../jobs/job-endings.ts';
-import type { Job } from '../jobs/pool-job.ts';
-import { admitted, poolSlots } from '../program-pool/pool-slots.ts';
-import { poolWorkers, type RosterSettings } from '../program-pool/pool-workers.ts';
+import { crashed, type Ending, type Stopped } from '../jobs/job-endings.ts';
+import type { Job, Running } from '../jobs/pool-job.ts';
+import { admitted, poolSlots, type PoolSlots } from '../program-pool/pool-slots.ts';
+import { poolWorkers, type PoolWorkers, type RosterSettings } from '../program-pool/pool-workers.ts';
 import { commandOf, limiterOn } from './memory-limit.ts';
 import type { ProcessMessage } from './process-messages.ts';
 import { processThreadOf } from './process-thread.ts';
@@ -13,7 +13,7 @@ export interface ProcessPoolSettings {
   readonly processes: number;
   readonly longJobs: number;
   readonly memoryBytes: number;
-  readonly path?: string;
+  readonly path: string | undefined;
   readonly idleMs?: number;
   readonly jobsPerProcess?: number;
 }
@@ -50,6 +50,12 @@ interface Answered {
   readonly answer: ProcessValue;
 }
 
+interface Admission {
+  readonly slots: PoolSlots;
+  readonly longSlots: PoolSlots;
+  readonly processes: PoolWorkers<ProcessMessage>;
+}
+
 const stoppedAs: Readonly<Record<Stopped, StoppedEnding>> = {
   deadline: 'timed_out',
   memory: 'out_of_memory',
@@ -58,19 +64,32 @@ const stoppedAs: Readonly<Record<Stopped, StoppedEnding>> = {
   closing: 'closing',
 };
 
+const unsendablePayload = 'The payload holds what the pipe to a process cannot carry';
+
 function answeredOf(answer: unknown): Option.Option<Answered> {
-  const value = valueOf(answer);
-  return value === undefined ? Option.none() : Option.some({ ran: 'answered', answer: value });
+  return Option.map(valueOf(answer), (value): Answered => ({ ran: 'answered', answer: value }));
 }
 
-function jobOf(request: ProcessRequest): Job<Answered, ProcessMessage> {
-  const payload = wireOf(request.payload);
+function jobOf(request: ProcessRequest, payload: unknown): Job<Answered, ProcessMessage> {
   return {
     key: JSON.stringify([request.module.href, request.key]),
     module: request.module,
     envelope: (job) => ({ job, kind: request.kind, payload }),
     decode: answeredOf,
   };
+}
+
+function servedIn(
+  { slots, longSlots, processes }: Admission,
+  request: ProcessRequest,
+  payload: unknown,
+  running: Running,
+): Promise<Ending<Answered>> {
+  const { until, signal } = running;
+  const job = jobOf(request, payload);
+  const served = (): Promise<Ending<Answered>> =>
+    admitted(slots, until, signal, () => processes.evaluate(job, running));
+  return request.long === true ? admitted(longSlots, until, signal, served) : served();
 }
 
 function endingOf(ending: Ending<Answered>): ProcessEnding {
@@ -89,13 +108,15 @@ function rosterOf({ processes, idleMs, jobsPerProcess }: ProcessPoolSettings): R
 }
 
 export function processPool(settings: ProcessPoolSettings): ProcessPool {
-  const limiter = limiterOn(settings.path ?? process.env['PATH']);
+  const limiter = limiterOn(settings.path);
   const command = commandOf(limiter, settings.memoryBytes);
-  const slots = poolSlots(settings.processes);
-  const longSlots = poolSlots(settings.longJobs);
-  const processes = poolWorkers<ProcessMessage>(rosterOf(settings), (start, hooks) =>
-    processThreadOf(start, command, hooks),
-  );
+  const admission: Admission = {
+    slots: poolSlots(settings.processes),
+    longSlots: poolSlots(settings.longJobs),
+    processes: poolWorkers<ProcessMessage>(rosterOf(settings), (start, hooks) =>
+      processThreadOf(start, command, hooks),
+    ),
+  };
   return {
     processes: settings.processes,
     longJobs: settings.longJobs,
@@ -103,17 +124,17 @@ export function processPool(settings: ProcessPoolSettings): ProcessPool {
     limiter,
     run: async (request, signal) => {
       const started = performance.now();
-      const until = started + request.deadlineMs;
-      const job = jobOf(request);
-      const served = (): Promise<Ending<Answered>> =>
-        admitted(slots, until, signal, () => processes.evaluate(job, { until, signal }));
-      const ending = await (request.long === true ? admitted(longSlots, until, signal, served) : served());
+      const running: Running = { until: started + request.deadlineMs, signal };
+      const ending = await Option.match(wireOf(request.payload), {
+        onNone: () => Promise.resolve(crashed(unsendablePayload)),
+        onSome: (payload) => servedIn(admission, request, payload, running),
+      });
       return { ...endingOf(ending), milliseconds: performance.now() - started };
     },
     close: async () => {
-      slots.close();
-      longSlots.close();
-      await processes.close();
+      admission.slots.close();
+      admission.longSlots.close();
+      await admission.processes.close();
     },
   };
 }

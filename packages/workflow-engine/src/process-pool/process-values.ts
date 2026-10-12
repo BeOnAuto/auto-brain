@@ -1,5 +1,7 @@
 import { Buffer } from 'node:buffer';
 
+import { Effect, Schema, SchemaGetter, SchemaIssue, type Option } from 'effect';
+
 export type TypedArray = Readonly<
   | Int8Array
   | Uint8Array
@@ -45,91 +47,62 @@ const typedKinds: ReadonlyMap<string, TypedKind> = new Map<string, TypedKind>([
   ['BigUint64Array', { bytesEach: BigUint64Array.BYTES_PER_ELEMENT, of: (bytes) => new BigUint64Array(bytes) }],
 ]);
 
-const typedKey = '$typed';
+const TypedWireSchema = Schema.Struct({ $typed: Schema.String, base64: Schema.String });
 
-const base64Key = 'base64';
+type TypedWire = typeof TypedWireSchema.Type;
 
-function isTypedArray(value: ProcessValue): value is TypedArray {
-  return ArrayBuffer.isView(value);
+const typedWireNames: ReadonlySet<string> = new Set(Object.keys(TypedWireSchema.fields));
+
+function isTypedArray(value: unknown): value is TypedArray {
+  const kind: unknown = ArrayBuffer.isView(value) ? Reflect.get(value, Symbol.toStringTag) : undefined;
+  return typeof kind === 'string' && typedKinds.has(kind);
 }
 
-function isList(value: ProcessValue): value is readonly ProcessValue[] {
-  return Array.isArray(value);
-}
-
-function base64Of(typed: TypedArray): string {
-  return Buffer.from(typed.buffer, typed.byteOffset, typed.byteLength).toString('base64');
-}
-
-export function wireOf(value: ProcessValue): unknown {
-  if (value === null || typeof value !== 'object') {
-    return value;
-  }
-  if (isTypedArray(value)) {
-    return { [typedKey]: value[Symbol.toStringTag], [base64Key]: base64Of(value) };
-  }
-  if (isList(value)) {
-    return value.map((each) => wireOf(each));
-  }
-  return Object.fromEntries(
-    Object.entries(value).map(([name, each]: readonly [string, ProcessValue]) => [name, wireOf(each)]),
-  );
-}
-
-function typedOf(kind: TypedKind | undefined, text: unknown): TypedArray | undefined {
-  if (kind === undefined || typeof text !== 'string') {
-    return undefined;
-  }
-  const decoded = Buffer.from(text, 'base64');
-  if (decoded.byteLength % kind.bytesEach !== 0) {
-    return undefined;
+function typedOf(wire: TypedWire): Effect.Effect<TypedArray, SchemaIssue.Issue> {
+  const kind = typedKinds.get(wire.$typed);
+  const decoded = Buffer.from(wire.base64, 'base64');
+  if (kind === undefined || decoded.byteLength % kind.bytesEach !== 0) {
+    return Effect.fail(new SchemaIssue.InvalidValue({ message: 'Expected the bytes of a typed array' }, wire));
   }
   const bytes = new Uint8Array(decoded.byteLength);
   bytes.set(decoded);
-  return kind.of(bytes.buffer);
+  return Effect.succeed(kind.of(bytes.buffer));
 }
 
-function isTypedWire(entries: readonly (readonly [string, unknown])[]): boolean {
-  return (
-    entries.length === 2 && entries.some(([name]) => name === typedKey) && entries.some(([name]) => name === base64Key)
-  );
+function typedWireOf(typed: TypedArray): TypedWire {
+  return {
+    $typed: typed[Symbol.toStringTag],
+    base64: Buffer.from(typed.buffer, typed.byteOffset, typed.byteLength).toString('base64'),
+  };
 }
 
-type Entry = readonly [string, ProcessValue];
-
-function isKnown(value: ProcessValue | undefined): value is ProcessValue {
-  return value !== undefined;
+function isTypedWireShape(record: object): boolean {
+  const names = Object.keys(record);
+  return names.length === typedWireNames.size && names.every((name) => typedWireNames.has(name));
 }
 
-function valuesOf(wire: readonly unknown[]): readonly ProcessValue[] | undefined {
-  const values = wire.map((each) => valueOf(each)).filter((each) => isKnown(each));
-  return values.length === wire.length ? values : undefined;
-}
+const TypedArraySchema = TypedWireSchema.pipe(
+  Schema.decodeTo(Schema.declare(isTypedArray), {
+    decode: SchemaGetter.transformEffect(typedOf),
+    encode: SchemaGetter.transform(typedWireOf),
+  }),
+);
 
-function entryOf([name, each]: readonly [string, unknown]): readonly Entry[] {
-  const value = valueOf(each);
-  return value === undefined ? [] : [[name, value]];
-}
+const ProcessValueSchema: Schema.Codec<ProcessValue, unknown> = Schema.Union([
+  Schema.Null,
+  Schema.Boolean,
+  Schema.Number,
+  Schema.String,
+  TypedArraySchema,
+  Schema.Array(Schema.suspend((): Schema.Codec<ProcessValue, unknown> => ProcessValueSchema)),
+  Schema.Record(
+    Schema.String,
+    Schema.suspend((): Schema.Codec<ProcessValue, unknown> => ProcessValueSchema),
+  ).check(Schema.makeFilter((record) => !isTypedWireShape(record))),
+]);
 
-function objectOf(entries: readonly (readonly [string, unknown])[]): ProcessValue | undefined {
-  const values = entries.flatMap((entry) => entryOf(entry));
-  return values.length === entries.length ? Object.fromEntries(values) : undefined;
-}
+export const valueOf: (wire: unknown) => Option.Option<ProcessValue> = Schema.decodeUnknownOption(ProcessValueSchema, {
+  onExcessProperty: 'error',
+});
 
-export function valueOf(wire: unknown): ProcessValue | undefined {
-  if (wire === null || typeof wire === 'boolean' || typeof wire === 'number' || typeof wire === 'string') {
-    return wire;
-  }
-  if (Array.isArray(wire)) {
-    return valuesOf(wire);
-  }
-  if (typeof wire !== 'object') {
-    return undefined;
-  }
-  const entries: readonly (readonly [string, unknown])[] = Object.entries(wire);
-  if (!isTypedWire(entries)) {
-    return objectOf(entries);
-  }
-  const kind: unknown = Reflect.get(wire, typedKey);
-  return typedOf(typeof kind === 'string' ? typedKinds.get(kind) : undefined, Reflect.get(wire, base64Key));
-}
+export const wireOf: (value: ProcessValue) => Option.Option<unknown> = Schema.encodeOption(ProcessValueSchema);

@@ -169,14 +169,14 @@ describe('the testing entry', () => {
 });
 
 describe('the entries of the engine', () => {
-  it('reach the worker pool, the process pool and the instances of the sandbox only through the dsl, job-loop and process-loop subpaths, so the main, testing and worker entries stay portable', () => {
+  it('reach the worker pool, the process pool and the instances of the sandbox only through the dsl and job-loop subpaths, and the process-loop subpath none of the modules of the worker pool, only those of the process pool and the ready signal, so the main, testing and worker entries stay portable', () => {
     expect(reachableFrom('dsl.ts')).toEqual(
       expect.arrayContaining(['program-pool/program-pool.ts', 'instances/fresh-instances.ts']),
     );
     expect(reachableFrom('job-loop.ts')).toEqual(
       expect.arrayContaining(['program-pool/job-loop.ts', 'instances/instance-stock.ts']),
     );
-    expect(reachableFrom('process-loop.ts').filter((file) => /^(?:program-pool|instances)\//u.test(file))).toEqual([]);
+    expect(reachableFrom('process-loop.ts').filter((file) => !/^process-|\/ready-signal/u.test(file))).toEqual([]);
     expect(reachableFrom('worker.ts')).toEqual(
       expect.arrayContaining(['jobs/program-answer.ts', 'programs/sandbox-session.ts']),
     );

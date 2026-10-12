@@ -4,10 +4,10 @@ import { fileURLToPath } from 'node:url';
 import { Function, Option, Schema } from 'effect';
 
 import { crashed, stopped, type Interrupted } from '../jobs/job-endings.ts';
-import { ReadySchema } from '../jobs/job-envelopes.ts';
 import type { Job, Running } from '../jobs/pool-job.ts';
+import { ReadySchema } from '../jobs/ready-signal.ts';
 import { restingFor, type Served, type Thread, type ThreadHooks } from '../program-pool/pool-threads.ts';
-import { outOfMemoryExitCode, ProcessAnswerSchema, type ProcessMessage } from './process-messages.ts';
+import { ProcessAnswerSchema, type ProcessMessage } from './process-messages.ts';
 
 export interface ProcessCommand {
   readonly command: string;
@@ -63,7 +63,7 @@ const outOfMemorySignals: ReadonlySet<string> = new Set(['SIGABRT', 'SIGTRAP']);
 const notAnAnswer = 'The process answered with something that is not an answer';
 
 function diedOf(code: number | null, signal: Signal | null): Interrupted {
-  if ((signal !== null && outOfMemorySignals.has(signal)) || code === outOfMemoryExitCode) {
+  if (signal !== null && outOfMemorySignals.has(signal)) {
     return stopped('memory');
   }
   return crashed(
@@ -88,6 +88,9 @@ function answerIn<Answer>(message: unknown, job: number, { decode }: Job<Answer,
   }
   if ('failed' in answer) {
     return { ending: crashed(answer.failed), keep: false };
+  }
+  if ('exhausted' in answer) {
+    return { ending: stopped(answer.exhausted), keep: false };
   }
   const { keep } = answer;
   return Option.match(decode(answer.answer), {

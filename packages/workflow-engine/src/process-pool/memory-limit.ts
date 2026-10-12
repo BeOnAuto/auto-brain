@@ -15,7 +15,7 @@ function isExecutable(file: string): boolean {
 }
 
 export function limiterOn(path?: string): string | undefined {
-  return String(path)
+  return (path ?? '')
     .split(delimiter)
     .filter((directory) => isAbsolute(directory))
     .map((directory) => join(directory, memoryLimiter))
@@ -25,5 +25,5 @@ export function limiterOn(path?: string): string | undefined {
 export function commandOf(limiter: string | undefined, memoryBytes: number): ProcessCommand {
   return limiter === undefined
     ? { command: process.execPath, arguments: [] }
-    : { command: limiter, arguments: [`--data=${memoryBytes}`, process.execPath] };
+    : { command: limiter, arguments: ['--core=0', `--data=${memoryBytes}`, process.execPath] };
 }

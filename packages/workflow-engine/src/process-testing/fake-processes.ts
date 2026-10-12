@@ -24,7 +24,6 @@ const fakeProcessSource = [
   `import { serveProcessJobs } from '${processLoop}';`,
   'let jobs = 0;',
   'let lastJob = -1;',
-  'const kept = [];',
   'const counted = (payload) => { jobs += 1; return { jobs, pid: process.pid, payload }; };',
   'const later = (then) => { setTimeout(then, 50); };',
   "process.on('message', (message) => { lastJob = message?.job ?? -1; });",
@@ -32,14 +31,14 @@ const fakeProcessSource = [
   '  echo: (payload) => counted(payload),',
   '  sleep: (ms) => new Promise((resolve) => { setTimeout(() => resolve(counted(ms)), ms); }),',
   '  block: () => { for (;;) {} },',
-  '  allocate: () => { for (;;) kept.push(new Array(100000).fill(kept.length)); },',
+  '  allocate: (mebibytes) => { const chunks = []; while (chunks.length * 32 < mebibytes) chunks.push(new Uint8Array(33554432).fill(1)); return chunks.length; },',
   '  exit: (code) => process.exit(code),',
   '  abort: () => process.abort(),',
   `  terminate: () => { process.kill(process.pid, 'SIGTERM'); return ${pending}; },`,
   "  'fail to allocate': () => { throw new RangeError('Array buffer allocation failed'); },",
   '  throw: (message) => { throw new Error(message); },',
   '  environment: () => Object.keys(process.env),',
-  "  limits: () => readFileSync('/proc/self/limits', 'utf8').split('\\n').find((line) => line.startsWith('Max data size')) ?? null,",
+  "  limits: () => ({ pid: process.pid, limits: readFileSync('/proc/self/limits', 'utf8').split('\\n').filter((line) => /^Max (?:data|core file) size/u.test(line)) }),",
   '  typed: (payload) => ({ given: payload, doubled: Float64Array.from(payload.values, (each) => each * 2), bytes: new Uint8Array([1, 2, 255]) }),',
   "  stray: (payload) => { later(() => process.send('stray')); return counted(payload); },",
   "  'then exit': (payload) => { later(() => process.exit(0)); return counted(payload); },",
@@ -50,7 +49,12 @@ const fakeProcessSource = [
   '}, process);',
 ].join('\n');
 
-const fakeLimiterSource = ['#!/bin/sh', 'printf \'%s\\n\' "$1" > "${0%/*}/limited"', 'shift', 'exec "$@"'].join('\n');
+const fakeLimiterSource = [
+  '#!/bin/sh',
+  'printf \'%s %s\\n\' "$1" "$2" > "${0%/*}/limited"',
+  'shift 2',
+  'exec "$@"',
+].join('\n');
 
 export function fakeProcesses(): FakeProcesses {
   const directory = mkdtempSync(join(tmpdir(), 'auto-brain-processes-'));

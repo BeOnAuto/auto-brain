@@ -22,6 +22,8 @@ const poolTestTimeoutMs = 30_000;
 
 const mebibyte = 1_048_576;
 
+const ordinaryDeadlineMs = 10_000;
+
 const fake = fakeProcesses();
 
 const pools: ProcessPool[] = [];
@@ -53,7 +55,7 @@ function run(
   payload: ProcessValue = null,
   more: Partial<ProcessRequest> = {},
 ): Promise<ProcessOutcome> {
-  return pool.run({ module: fake.module, key: 'a model', kind, payload, deadlineMs: 10_000, ...more });
+  return pool.run({ module: fake.module, key: 'a model', kind, payload, deadlineMs: ordinaryDeadlineMs, ...more });
 }
 
 function ranOf(outcome: ProcessOutcome): Ran {
@@ -77,42 +79,49 @@ const failedToSend: unknown = expect.stringContaining('The process failed');
 
 const failedToStart: unknown = expect.stringMatching(/^The process failed: spawn .*ENOENT/u);
 
-const endings: readonly (readonly [string, string, ProcessValue, Readonly<Record<string, unknown>>])[] = [
-  ['ran past its deadline', 'block', null, { ended: 'timed_out' }],
-  ['aborted, as at its memory bound', 'abort', null, { ended: 'out_of_memory' }],
-  ['could not allocate', 'fail to allocate', null, { ended: 'out_of_memory' }],
-  ['exited', 'exit', 3, { ended: 'crashed', detail: 'The process ended with code 3 before it answered' }],
-  [
-    'was ended by a signal',
-    'terminate',
-    null,
-    { ended: 'crashed', detail: 'The process ended by SIGTERM before it answered' },
-  ],
-  ['raised', 'throw', 'broken on purpose', { ended: 'crashed', detail: 'Error: broken on purpose' }],
-  [
-    'was not one it serves',
-    'nothing',
-    null,
-    { ended: 'crashed', detail: 'This process serves no job of the kind nothing' },
-  ],
-  [
-    'answered for another job',
-    'wrong job',
-    null,
-    { ended: 'crashed', detail: expect.stringMatching(/^The process answered job \d+ while it ran job \d+$/u) },
-  ],
-  [
-    'answered with something that is not an answer',
-    'garbage',
-    null,
-    { ended: 'crashed', detail: 'The process answered with something that is not an answer' },
-  ],
-  [
-    'answered with something it could not read',
-    'undecodable',
-    null,
-    { ended: 'crashed', detail: 'The process answered with something that is not an answer' },
-  ],
+interface Ending {
+  readonly why: string;
+  readonly kind: string;
+  readonly payload: ProcessValue;
+  readonly deadlineMs: number;
+  readonly ended: Readonly<Record<string, unknown>>;
+}
+
+function endingOf(
+  why: string,
+  kind: string,
+  ended: Readonly<Record<string, unknown>>,
+  payload: ProcessValue = null,
+): Ending {
+  return { why, kind, payload, deadlineMs: ordinaryDeadlineMs, ended };
+}
+
+const endings: readonly Ending[] = [
+  { ...endingOf('ran past its deadline', 'block', { ended: 'timed_out' }), deadlineMs: 1000 },
+  endingOf('aborted, as at its memory bound', 'abort', { ended: 'out_of_memory' }),
+  endingOf('could not allocate', 'fail to allocate', { ended: 'out_of_memory' }),
+  endingOf('exited', 'exit', { ended: 'crashed', detail: 'The process ended with code 3 before it answered' }, 3),
+  endingOf('was ended by a signal', 'terminate', {
+    ended: 'crashed',
+    detail: 'The process ended by SIGTERM before it answered',
+  }),
+  endingOf('raised', 'throw', { ended: 'crashed', detail: 'Error: broken on purpose' }, 'broken on purpose'),
+  endingOf('was not one it serves', 'nothing', {
+    ended: 'crashed',
+    detail: 'This process serves no job of the kind nothing',
+  }),
+  endingOf('answered for another job', 'wrong job', {
+    ended: 'crashed',
+    detail: expect.stringMatching(/^The process answered job \d+ while it ran job \d+$/u),
+  }),
+  endingOf('answered with something that is not an answer', 'garbage', {
+    ended: 'crashed',
+    detail: 'The process answered with something that is not an answer',
+  }),
+  endingOf('answered with something it could not read', 'undecodable', {
+    ended: 'crashed',
+    detail: 'The process answered with something that is not an answer',
+  }),
 ];
 
 describe('a job of a process of the pool', { timeout: poolTestTimeoutMs }, () => {
@@ -133,12 +142,27 @@ describe('a job of a process of the pool', { timeout: poolTestTimeoutMs }, () =>
 
   it('runs in a process started with an empty environment, whatever the server was started with, but for what the operating system and the coverage of these tests add', async () => {
     vi.stubEnv('API_KEYS', 'a key the server holds');
-    const pool = kept(processPool({ processes: 2, longJobs: 1, memoryBytes: 1024 * mebibyte }));
+    const pool = kept(
+      processPool({ processes: 2, longJobs: 1, memoryBytes: 1024 * mebibyte, path: process.env['PATH'] }),
+    );
 
     const outcome = await run(pool, 'environment');
     vi.unstubAllEnvs();
 
     expect(namesIn(outcome).filter((name) => isOwn(name))).toEqual([]);
+  });
+
+  it('ends crashed, before it takes a permit, when its payload holds an object of the two names alone that a typed array crosses the pipe as', async () => {
+    const pool = poolOf({ processes: 1 });
+    const holding = run(pool, 'sleep', 300);
+
+    const outcome = await run(pool, 'echo', { $typed: 'Uint8Array', base64: 'AQID' });
+
+    expect(outcome).toMatchObject({
+      ended: 'crashed',
+      detail: 'The payload holds what the pipe to a process cannot carry',
+    });
+    expect([outcome.milliseconds < 300, (await holding).ended]).toEqual([true, 'answered']);
   });
 });
 
@@ -177,12 +201,12 @@ describe('a process of the pool kept between jobs', { timeout: poolTestTimeoutMs
 
 describe('a process of the pool after a job that ended it', { timeout: poolTestTimeoutMs }, () => {
   it.each(endings)(
-    'is let go of after a job it %s, so the next job of its key starts in a fresh process',
-    async (_why, kind, payload, ended) => {
+    'is let go of after a job it $why, so the next job of its key starts in a fresh process',
+    async ({ kind, payload, deadlineMs, ended }) => {
       const pool = poolOf();
       const warm = await echoed(pool);
 
-      const outcome = await run(pool, kind, payload, { deadlineMs: 1000 });
+      const outcome = await run(pool, kind, payload, { deadlineMs });
       const next = await echoed(pool);
 
       expect(outcome).toMatchObject(ended);
@@ -239,7 +263,7 @@ describe('a job of the pool that never reaches its process', { timeout: poolTest
     const cancelling = new AbortController();
 
     const running = pool.run(
-      { module: fake.module, key: 'a model', kind: 'sleep', payload: 5000, deadlineMs: 10_000 },
+      { module: fake.module, key: 'a model', kind: 'sleep', payload: 5000, deadlineMs: ordinaryDeadlineMs },
       cancelling.signal,
     );
     await setTimeout(100);

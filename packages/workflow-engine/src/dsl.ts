@@ -29,8 +29,6 @@ export type { CheckAnswer, CheckIssue, CheckJob, StrippedSources } from './jobs/
 export { checkPermits, programPool } from './program-pool/program-pool.ts';
 export { idleWorkerMs, jobsBeforeRecycling } from './program-pool/pool-workers.ts';
 export { workerStackMegabytes } from './program-pool/pool-threads.ts';
-export { memoryLimiter } from './process-pool/memory-limit.ts';
-export { outOfMemoryExitCode } from './process-pool/process-messages.ts';
 export {
   processPool,
   type ProcessEnding,

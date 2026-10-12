@@ -1,10 +1,10 @@
+import { Option } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { valueOf, wireOf, type ProcessValue } from './process-values.ts';
 
-function acrossThePipe(value: ProcessValue): ProcessValue | undefined {
-  const text: unknown = JSON.parse(JSON.stringify(wireOf(value)));
-  return valueOf(text);
+function acrossThePipe(value: ProcessValue): Option.Option<ProcessValue> {
+  return Option.flatMap(wireOf(value), (wire) => valueOf(JSON.parse(JSON.stringify(wire))));
 }
 
 describe('a value crossing the pipe to a process', () => {
@@ -26,22 +26,29 @@ describe('a value crossing the pipe to a process', () => {
       ],
     };
 
-    expect(acrossThePipe(value)).toEqual(value);
+    expect(acrossThePipe(value)).toEqual(Option.some(value));
   });
 
   it('sends the bytes a typed array views, not the whole buffer beneath it', () => {
     const buffer = new Float32Array([1, 2, 3, 4]);
 
-    expect(acrossThePipe(buffer.subarray(1, 3))).toEqual(new Float32Array([2, 3]));
-    expect(wireOf(new Uint8Array([1, 2, 3]))).toEqual({ $typed: 'Uint8Array', base64: 'AQID' });
+    expect(acrossThePipe(buffer.subarray(1, 3))).toEqual(Option.some(new Float32Array([2, 3])));
+    expect(wireOf(new Uint8Array([1, 2, 3]))).toEqual(Option.some({ $typed: 'Uint8Array', base64: 'AQID' }));
   });
 
-  it('reads an object of those two names that is not a typed array as an object, and one of more names as one too', () => {
-    expect(valueOf({ $typed: 'Float32Array', base64: 'AQID', more: 1 })).toEqual({
-      $typed: 'Float32Array',
-      base64: 'AQID',
-      more: 1,
-    });
+  it('reads an object of those two names and more as an object', () => {
+    expect(valueOf({ $typed: 'Float32Array', base64: 'AQID', more: 1 })).toEqual(
+      Option.some({ $typed: 'Float32Array', base64: 'AQID', more: 1 }),
+    );
+  });
+});
+
+describe('a value the pipe to a process does not carry', () => {
+  it('is an object of the two names of a typed array alone, which the other side would read as a typed array', () => {
+    expect([wireOf({ $typed: 'Uint8Array', base64: 'AQID' }), wireOf([{ $typed: 'Nope', base64: '' }])]).toEqual([
+      Option.none(),
+      Option.none(),
+    ]);
   });
 
   it.each<readonly [string, unknown]>([
@@ -52,7 +59,7 @@ describe('a value crossing the pipe to a process', () => {
     ['a list holding something it cannot read', [1, { $typed: 'Nope', base64: '' }]],
     ['an object holding something it cannot read', { fine: 1, bad: { $typed: 'Nope', base64: '' } }],
     ['something that is not JSON', () => 1],
-  ])('reads nothing from %s', (_what, wire) => {
-    expect(valueOf(wire)).toBeUndefined();
+  ])('is read as nothing from %s', (_what, wire) => {
+    expect(valueOf(wire)).toEqual(Option.none());
   });
 });

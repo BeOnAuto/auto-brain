@@ -3,9 +3,10 @@ import { Worker, type WorkerOptions } from 'node:worker_threads';
 import { Option, Schema } from 'effect';
 
 import { crashed, stopped, type Ending, type Interrupted } from '../jobs/job-endings.ts';
-import { JobAnswerSchema, ReadySchema, type JobSchema } from '../jobs/job-envelopes.ts';
+import { JobAnswerSchema, type JobSchema } from '../jobs/job-envelopes.ts';
 import type { PoolSettings } from '../jobs/pool-contract.ts';
 import type { Job, Running } from '../jobs/pool-job.ts';
+import { ReadySchema } from '../jobs/ready-signal.ts';
 
 export const workerStackMegabytes = 64;
 

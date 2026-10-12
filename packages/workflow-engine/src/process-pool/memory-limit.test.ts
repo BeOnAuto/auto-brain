@@ -49,10 +49,10 @@ describe('the command that bounds the memory of a process', () => {
     expect(limiterOn()).toBeUndefined();
   });
 
-  it('starts the process under it with the bound of its data, or starts it plainly where there is none', () => {
+  it('starts the process under it with no core dump and the bound of its data, or starts it plainly where there is none', () => {
     expect(commandOf('/usr/bin/prlimit', 536_870_912)).toEqual({
       command: '/usr/bin/prlimit',
-      arguments: ['--data=536870912', process.execPath],
+      arguments: ['--core=0', '--data=536870912', process.execPath],
     });
     expect(commandOf(undefined, 536_870_912)).toEqual({ command: process.execPath, arguments: [] });
   });
