@@ -66,7 +66,13 @@ export {
   type LiteralFilter,
   type LiteralFilterReading,
 } from './filters/event-filter.ts';
-export { filterVerdictsOf, type FilterSandbox, type MatchedFilter } from './filters/filter-verdicts.ts';
+export {
+  filterTestingOf,
+  filterVerdictsOf,
+  type FilterSandbox,
+  type FilterTesting,
+  type MatchedFilter,
+} from './filters/filter-verdicts.ts';
 export type { CallCancelReceipt, Executor, StartReceipt } from './executor/executor.ts';
 export { ReceivedEventSchema, type ReceivedEvent } from './inbox/received-event.ts';
 export {
