@@ -10,10 +10,10 @@ function fitsInSourceLimit(source: string): boolean {
   return Buffer.byteLength(source, 'utf8') <= mostSourceBytes;
 }
 
-const definitionName = /^[a-z][a-z0-9-]{2,47}$/u;
+export const definitionNamePattern = /^[a-z][a-z0-9-]{2,47}$/u;
 
 function definitionNameFieldOf(description: string) {
-  return Schema.String.annotate({ description }).check(Schema.isPattern(definitionName));
+  return Schema.String.annotate({ description }).check(Schema.isPattern(definitionNamePattern));
 }
 
 export const DefinitionNameField = definitionNameFieldOf(

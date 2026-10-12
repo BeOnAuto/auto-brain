@@ -25,5 +25,6 @@ export const savedDefinitions: Effect.Effect<SavedDefinitions, never, PlaybookRe
   Effect.service(PlaybookReader),
   (reader) => ({
     active: (type, name) => activeIn(type, name).pipe(Effect.provideService(PlaybookReader, reader)),
+    content: (sha256) => reader.readContent(sha256),
   }),
 );

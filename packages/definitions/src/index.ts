@@ -107,7 +107,7 @@ export { defineGetRun, getRun } from './operations/get-run.ts';
 export { defineGetRunHistory } from './reading/get-run-history.ts';
 export { defineListRuns } from './reading/list-runs.ts';
 export { ListedRunSchema, type ListedRun } from './reading/listed-run.ts';
-export { RunIdInputField } from './operations/definition-fields.ts';
+export { RunIdInputField, definitionNamePattern } from './operations/definition-fields.ts';
 export { makeDefinitionPresenters } from './presenting/definition-presenters.ts';
 export { cutAtCodePoint, issuesShown, mostNameBytes } from './presenting/event-data.ts';
 export { playbookEventOf, playbookFactOf } from './events/playbook-facts.ts';

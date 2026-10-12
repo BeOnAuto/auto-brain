@@ -1,3 +1,4 @@
+import type { StreamedContent } from '@on.auto/operations';
 import type { Effect, Schema } from 'effect';
 
 export interface SavedDefinition {
@@ -9,4 +10,5 @@ export interface SavedDefinition {
 
 export interface SavedDefinitions {
   readonly active: (type: string, name: string) => Effect.Effect<SavedDefinition | undefined>;
+  readonly content: (sha256: string) => Effect.Effect<StreamedContent | undefined>;
 }
