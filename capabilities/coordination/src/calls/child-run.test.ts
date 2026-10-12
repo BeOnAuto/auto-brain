@@ -1,7 +1,7 @@
+import { nestedRunId } from '@on.auto/definitions';
 import { describe, expect, it } from 'vitest';
 
 import { childRunOf } from './child-run.ts';
-import { nestedRunId } from './nested-run-id.ts';
 
 const workflowRun = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 

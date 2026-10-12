@@ -1,3 +1,4 @@
+import { nestedRunId } from '@on.auto/definitions';
 import { messageIdOf } from '@on.auto/operations';
 import type { StartCall } from '@on.auto/workflow-engine';
 import { Effect } from 'effect';
@@ -6,7 +7,6 @@ import { describe, expect, it } from 'vitest';
 import { acmeCaller } from '../testing/workflows.ts';
 import { definitionCalls } from './function-calls.ts';
 import type { DefinitionRunRequest, DefinitionRunResult } from './function-run.ts';
-import { nestedRunId } from './nested-run-id.ts';
 
 const workflowRun = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
