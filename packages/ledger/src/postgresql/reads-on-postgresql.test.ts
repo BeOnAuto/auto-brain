@@ -182,8 +182,19 @@ describe.skipIf(skipped)(
 
       expect([details(whileOpen), details(rest)]).toEqual([['before'], ['late', 'after']]);
     });
+  },
+);
 
-    it('lets a write open in another database of the server hide nothing', async () => {
+const readsOldestFirst: readonly (readonly [string, RecordedSelection])[] = [
+  ['a page of the playbook', everything],
+  ['a list of runs', runs],
+];
+
+describe.skipIf(skipped)(
+  `A read on PostgreSQL oldest first while a write of another database of the server is open${notice}`,
+  { timeout: 30_000 },
+  () => {
+    it('lets that write hide nothing while it stays open', async () => {
       const { ledger } = await aLedgerOnItsOwnDatabase();
       await noting(ledger, 'notes', 'noted', 'before');
       const elsewhere = await aWriteLeftOpenElsewhere();
@@ -195,17 +206,20 @@ describe.skipIf(skipped)(
       expect(details(whileOpen)).toEqual(['before', 'after']);
     });
 
-    it('lets a write of another database that ends after the read took its snapshot hide nothing either', async () => {
-      const { database, ledger } = await aLedgerOnItsOwnDatabase();
-      await noting(ledger, 'notes', 'noted', 'before');
-      const elsewhere = await aWriteLeftOpenElsewhere();
-      await noting(ledger, 'notes', 'noted', 'after');
-      const reader = await aReaderEndingTheWriteMidway(database, () => elsewhere.client.query('COMMIT'));
-      const store = postgresqlRecordedStore(reader);
+    it.each(readsOldestFirst)(
+      'lets that write hide nothing of %s when it ends after the read took its snapshot',
+      async (_read, selection) => {
+        const { database, ledger } = await aLedgerOnItsOwnDatabase();
+        await noting(ledger, 'runs/r-before', 'run_started', 'before');
+        const elsewhere = await aWriteLeftOpenElsewhere();
+        await noting(ledger, 'runs/r-after', 'run_started', 'after');
+        const reader = await aReaderEndingTheWriteMidway(database, () => elsewhere.client.query('COMMIT'));
+        const store = postgresqlRecordedStore(reader);
 
-      const page = await store.readRecorded('playbook/acme/alpha/', everything, { order: 'asc', limit: 10 });
+        const page = await store.readRecorded('playbook/acme/alpha/', selection, { order: 'asc', limit: 10 });
 
-      expect(page.records.map(({ data }) => data)).toEqual([{ detail: 'before' }, { detail: 'after' }]);
-    });
+        expect(page.records.map(({ data }) => data)).toEqual([{ detail: 'before' }, { detail: 'after' }]);
+      },
+    );
   },
 );

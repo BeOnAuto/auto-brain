@@ -96,9 +96,9 @@ export function bounds(bind: Bind, scope: ExaminationScope): string {
   return from === undefined ? after : `${after} AND (transaction_id, global_position) >= ${pointAt(bind, from)}`;
 }
 
-export type Horizon = (bind: Bind) => string;
+type BelowTheHorizon = (bind: Bind) => string;
 
-export async function horizonOf(query: Query, { order }: ExaminationScope): Promise<Horizon> {
+export async function horizonOf(query: Query, { order }: ExaminationScope): Promise<BelowTheHorizon> {
   if (order !== 'asc') {
     return () => '';
   }
