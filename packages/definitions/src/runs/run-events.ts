@@ -66,6 +66,16 @@ export function isCoreRunFactType(type: string): boolean {
   return Object.hasOwn(coreTypes, type);
 }
 
+const endingTypes: Readonly<Record<RunFinished['type'], true>> = {
+  run_succeeded: true,
+  run_rejected: true,
+  run_failed: true,
+};
+
+export function isRunEndingType(type: string): boolean {
+  return Object.hasOwn(endingTypes, type);
+}
+
 const StoredFactSchema = Schema.Struct({ type: Schema.String, data: Schema.JsonObject, context: RunContextSchema });
 
 type StoredFact = typeof StoredFactSchema.Type;

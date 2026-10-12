@@ -5,13 +5,7 @@ import type { AdmitsFact } from '../run-work/work-decisions.ts';
 import type { RunCommand } from './run-commands.ts';
 import { runContextOf } from './run-context.ts';
 import { decideOnRun } from './run-decisions.ts';
-import {
-  RunEventSchema,
-  isCoreRunFactType,
-  runEventSchemaOf,
-  type IsDeclared,
-  type RecordedRunEvent,
-} from './run-events.ts';
+import { RunEventSchema, runEventSchemaOf, type IsDeclared, type RecordedRunEvent } from './run-events.ts';
 import { evolveRun, type RunStreamState } from './run-state.ts';
 
 type RunReason = 'not_found' | 'conflict' | 'cancelled';
@@ -59,11 +53,15 @@ export function runDecidersOf(isDeclared: IsDeclared, admits: AdmitsFact): RunDe
   return decidersOver(runEventSchemaOf(isDeclared), admits);
 }
 
-const anyCapabilityFacts = decidersOver(RunEventSchema, ({ type }) => !isCoreRunFactType(type));
+function knowsNoWork(): boolean {
+  return false;
+}
 
-export const runDecider: RunDecider = anyCapabilityFacts.decider;
+const readingAnyWork = decidersOver(RunEventSchema, knowsNoWork);
 
-export const runDeciderAsRead: RunDeciderAsRead = anyCapabilityFacts.asRead;
+export const runDecider: RunDecider = readingAnyWork.decider;
+
+export const runDeciderAsRead: RunDeciderAsRead = readingAnyWork.asRead;
 
 export function runStreamNameOf(id: string): string {
   return `runs/${id}`;

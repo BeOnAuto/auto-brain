@@ -136,7 +136,12 @@ function finishedRun(state: RecordedRunState, event: RecordedFinish): RecordedRu
   return record === undefined ? finished : { ...finished, record };
 }
 
-function answerOf({ data, context }: RecordedRunFact<'request_answered'>): RecordedAnswer {
+export interface RecordedAnswerFact {
+  readonly data: RecordedRunFact<'request_answered'>['data'];
+  readonly context: Pick<RunContext, 'by' | 'at'>;
+}
+
+export function recordedAnswerOf({ data, context }: RecordedAnswerFact): RecordedAnswer {
   const { answer, claimed_for: claimedFor, reply } = data;
   return {
     answer,
@@ -155,7 +160,7 @@ type RecordedAfterTheStart = Exclude<RecordedRunEvent, RecordedRunFact<'run_star
 
 function evolveWork(state: RecordedRunState, event: RecordedAfterTheStart): RecordedRunState {
   if (event.type === 'request_answered') {
-    return { ...state, answer: answerOf(event) };
+    return { ...state, answer: recordedAnswerOf(event) };
   }
   if (event.type === 'work') {
     return { ...state, work: [...state.work, workOf(event)] };

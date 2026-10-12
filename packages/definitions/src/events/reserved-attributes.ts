@@ -1,4 +1,3 @@
-import type { ToolTestEvent } from '@beonauto/mcp';
 import { lineageAttributeNames } from '@beonauto/operations';
 import { Schema } from 'effect';
 
@@ -7,6 +6,7 @@ import type { DefinitionEvent } from '../registry/definition-events.ts';
 import { declaredFactsOf, ownedStreamsOf } from '../run-work/declared-facts.ts';
 import { coreRunFactTypes } from '../runs/run-events.ts';
 import type { EventPublished } from './published-events.ts';
+import type { ReactionRefused } from './reaction-refusals.ts';
 
 export const runSourcePrefix = '/runs/';
 
@@ -14,52 +14,33 @@ export const definitionSourcePrefix = '/definitions/';
 
 export const callerSourcePrefix = '/callers/';
 
-type WorkflowEventType =
-  | 'workflow_input_applied'
-  | 'step_started'
-  | 'step_waiting'
-  | 'step_finished'
-  | 'step_failed'
-  | 'step_skipped'
-  | 'reaction_refused';
+type BrainFeedType = DefinitionEvent['type'] | EventPublished['type'] | ReactionRefused['type'];
 
-type FeedType = ToolTestEvent['type'] | DefinitionEvent['type'] | EventPublished['type'] | WorkflowEventType;
-
-const feedTypes: Readonly<Record<FeedType, true>> = {
-  tool_test_started: true,
-  tool_test_answered: true,
-  tool_test_failed: true,
+const brainFeedTypes: Readonly<Record<BrainFeedType, true>> = {
   definition_created: true,
   definition_updated: true,
   definition_retired: true,
   event_published: true,
-  workflow_input_applied: true,
-  step_started: true,
-  step_waiting: true,
-  step_finished: true,
-  step_failed: true,
-  step_skipped: true,
   reaction_refused: true,
 };
 
-type NamingCapability = Pick<Capability, 'facts' | 'runWords'>;
+type NamingCapability = Pick<Capability, 'facts'> & Partial<Pick<Capability, 'runWords'>>;
 
 function deferralTypesOf(capabilities: readonly NamingCapability[]): readonly string[] {
-  return capabilities.map(({ runWords }) => runWords.deferralType).filter((type) => type !== 'run_deferred');
+  return capabilities.flatMap(({ runWords }) => (runWords === undefined ? [] : [runWords.deferralType]));
 }
 
 function streamTypesOf(capabilities: readonly NamingCapability[]): readonly string[] {
-  const names = ownedStreamsOf(capabilities).map(({ publicNames }) => publicNames);
-  return [...names.flatMap((named) => Object.keys(named)), ...names.flatMap((named) => Object.values(named).flat())];
+  return ownedStreamsOf(capabilities).flatMap(({ publicNames }) => Object.values(publicNames).flat());
 }
 
 function brainTypesOf(capabilities: readonly NamingCapability[]): ReadonlySet<string> {
   return new Set([
     ...coreRunFactTypes,
     ...declaredFactsOf(capabilities).map(({ type }) => type),
-    ...streamTypesOf(capabilities),
     ...deferralTypesOf(capabilities),
-    ...Object.keys(feedTypes),
+    ...streamTypesOf(capabilities),
+    ...Object.keys(brainFeedTypes),
   ]);
 }
 

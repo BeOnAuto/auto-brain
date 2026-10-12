@@ -58,7 +58,8 @@ export interface RunContext {
   readonly callDepth: number;
   readonly calledBy?: CallLink;
   readonly trigger?: TriggerLink;
-  readonly longestRunOf: (type: string, name: string, input?: Schema.Json) => Effect.Effect<number | undefined>;
+  readonly longestRunOf: (type: string, name: string) => Effect.Effect<number | undefined>;
+  readonly longestRunFor: (type: string, name: string, input: Schema.Json) => Effect.Effect<number | undefined>;
 }
 
 export interface Finished {
@@ -129,8 +130,10 @@ export interface CapabilityDeclaration<Parsed> {
   readonly reachesOutside?: boolean;
   readonly mayChangeOutside?: boolean;
   readonly callsTools?: (parsed: NoInfer<Parsed>) => boolean;
-  readonly finishesLater?: boolean | ((parsed: NoInfer<Parsed>, input: Schema.Json) => boolean);
-  readonly longestRunOf?: (parsed: NoInfer<Parsed>, input?: Schema.Json) => number;
+  readonly finishesLater?: boolean | ((parsed: NoInfer<Parsed>) => boolean);
+  readonly finishesLaterFor?: (parsed: NoInfer<Parsed>, input: Schema.Json) => boolean;
+  readonly longestRunOf?: (parsed: NoInfer<Parsed>) => number;
+  readonly longestRunFor?: (parsed: NoInfer<Parsed>, input: Schema.Json) => number;
   readonly cancel?: CancelDecision;
   readonly runWords?: Partial<RunWords>;
   readonly facts?: CapabilityFacts;
@@ -144,8 +147,9 @@ export interface PreparedDefinition {
   readonly run: (input: Schema.Json, context: RunContext) => Effect.Effect<CapabilityAnswer, CapabilityRejection>;
   readonly whenCancelled: WhenCancelled;
   readonly callsTools: boolean;
-  readonly finishesLater: (input: Schema.Json) => boolean;
-  readonly longestRunMs: (input?: Schema.Json) => number;
+  readonly finishesLaterFor: (input: Schema.Json) => boolean;
+  readonly longestRunMs: number;
+  readonly longestRunMsFor: (input: Schema.Json) => number;
 }
 
 function callsNoTools(): boolean {
@@ -210,10 +214,18 @@ function declaredBounds<Parsed>(definition: CapabilityDeclaration<Parsed>) {
   };
 }
 
-function finishingOf<Parsed>(
-  declared: CapabilityDeclaration<Parsed>['finishesLater'],
-): (parsed: Parsed, input: Schema.Json) => boolean {
+function finishingOf<Parsed>(declared: CapabilityDeclaration<Parsed>['finishesLater']): (parsed: Parsed) => boolean {
   return typeof declared === 'function' ? declared : () => declared ?? false;
+}
+
+function declaredLengths<Parsed>(definition: CapabilityDeclaration<Parsed>, longestAnyRunMs: number) {
+  const finishesLater = finishingOf<Parsed>(definition.finishesLater);
+  const longestRunOf = definition.longestRunOf ?? (() => longestAnyRunMs);
+  return {
+    finishesLaterFor: definition.finishesLaterFor ?? finishesLater,
+    longestRunOf,
+    longestRunFor: definition.longestRunFor ?? longestRunOf,
+  };
 }
 
 function declaredRuns<Parsed>(definition: CapabilityDeclaration<Parsed>, longestAnyRunMs: number) {
@@ -221,15 +233,14 @@ function declaredRuns<Parsed>(definition: CapabilityDeclaration<Parsed>, longest
     check: definition.check ?? needsNoCheck,
     whenCancelled: definition.whenCancelled ?? 'stop',
     callsTools: definition.callsTools ?? callsNoTools,
-    finishesLater: finishingOf<Parsed>(definition.finishesLater),
-    longestRunOf: definition.longestRunOf ?? (() => longestAnyRunMs),
+    ...declaredLengths(definition, longestAnyRunMs),
   };
 }
 
 export function defineCapability<Parsed>(definition: CapabilityDeclaration<Parsed>): Capability {
   const { type, title, guide, noun, describeOutput, mediaType, parse, summarize, run } = definition;
   const bounds = declaredBounds(definition);
-  const { check, whenCancelled, callsTools, finishesLater, longestRunOf } = declaredRuns(
+  const { check, whenCancelled, callsTools, finishesLaterFor, longestRunOf, longestRunFor } = declaredRuns(
     definition,
     bounds.longestAnyRunMs,
   );
@@ -252,8 +263,9 @@ export function defineCapability<Parsed>(definition: CapabilityDeclaration<Parse
           run: (input, context) => run(parsed, input, context, stripped),
           whenCancelled,
           callsTools: callsTools(parsed),
-          finishesLater: (input) => finishesLater(parsed, input),
-          longestRunMs: (input) => longestRunOf(parsed, input),
+          finishesLaterFor: (input) => finishesLaterFor(parsed, input),
+          longestRunMs: longestRunOf(parsed),
+          longestRunMsFor: (input) => longestRunFor(parsed, input),
         })),
       ),
   };

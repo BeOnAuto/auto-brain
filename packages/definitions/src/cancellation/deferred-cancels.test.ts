@@ -2,7 +2,14 @@ import { Conflict, type StreamReader, type StreamWriter } from '@beonauto/operat
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { deferredCanceller, defineCapability, runFactsOf, workRecorder, type Capability } from '../index.ts';
+import {
+  declaredFactsOf,
+  deferredCanceller,
+  defineCapability,
+  runFactsOf,
+  workRecorder,
+  type Capability,
+} from '../index.ts';
 import { asking } from '../testing/asking.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
@@ -184,7 +191,7 @@ describe('a cancel whose run changes between its read and its settlement', () =>
   it('reads the run again and lets its capability decide from what the run holds now', async () => {
     const { running, ledger, reading } = await withHandOn();
     await running();
-    const record = workRecorder(ledger.service, runFactsOf(asking.facts.onRuns));
+    const record = workRecorder(ledger.service, runFactsOf(declaredFactsOf([asking])));
     const nudged = Effect.all([
       record(relayed, { type: 'work', fact: { type: 'nudge_sent', data: { number: 1 } } }, lineage),
       record(relayed, { type: 'work', fact: { type: 'nudge_sent', data: { number: 2 } } }, lineage),

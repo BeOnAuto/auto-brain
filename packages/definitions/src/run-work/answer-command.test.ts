@@ -6,9 +6,12 @@ import {
   answeredAlready,
   answeredFirst,
   brainBoundAnswerer,
+  cancelledUnanswered,
   endedUnanswered,
+  runCanceller,
   runSettler,
   workRecorder,
+  type CancelRequest,
 } from '../index.ts';
 import {
   answering,
@@ -85,6 +88,32 @@ describe('the answer to a run that takes none', () => {
       Result.fail(endedUnanswered),
       Result.fail(new Conflict({ detail: 'The run waits on no request that takes an answer' })),
     ]);
+  });
+});
+
+const notNeeded: CancelRequest = { kind: 'requested', reason: 'Not needed any more', by: 'acme-admin' };
+
+describe('the answer to a run whose cancel was asked', () => {
+  it('is refused, though the answer the run took before the cancel answers as it did', async () => {
+    const answeredBefore = await asked();
+    const cancelledBefore = await asked();
+    await Effect.runPromise(answeredBefore.record(run, answering({ choice: 'approve' }), lineage));
+    await Effect.runPromise(runCanceller(answeredBefore.ledger.service)(run, notNeeded, lineage));
+    await Effect.runPromise(runCanceller(cancelledBefore.ledger.service)(run, notNeeded, lineage));
+
+    const again = await attempted(answeredBefore.record(run, answering({ choice: 'approve' }), lineage));
+    const refused = await attempted(cancelledBefore.record(run, answering({ choice: 'approve' }), lineage));
+
+    expect([Result.isSuccess(again), refused]).toEqual([true, Result.fail(cancelledUnanswered)]);
+    expect(
+      [await answeredBefore.recorded(), await cancelledBefore.recorded()].map((records) =>
+        records.map(({ type }) => type),
+      ),
+    ).toEqual([
+      ['run_started', 'run_deferred', 'request_answered', 'run_cancel_requested'],
+      ['run_started', 'run_deferred', 'run_cancel_requested'],
+    ]);
+    expect(cancelledUnanswered.detail).toBe('A cancel of the run was asked before it took an answer, so it takes none');
   });
 });
 

@@ -32,9 +32,11 @@ const measuring = defineCapability({
         yield* run.longestRunOf('probe', 'missing'),
         yield* run.longestRunOf('probe', 'retired'),
         yield* run.longestRunOf('nothing', 'at-all'),
-        yield* run.longestRunOf('asking', 'approve', { now: true }),
-        yield* run.longestRunOf('asking', 'approve', { campaign: 'Spring' }),
+        yield* run.longestRunFor('asking', 'approve', { now: true }),
+        yield* run.longestRunFor('asking', 'approve', { campaign: 'Spring' }),
         yield* run.longestRunOf('asking', 'approve'),
+        yield* run.longestRunFor('probe', 'plain', {}),
+        yield* run.longestRunFor('nothing', 'at-all', {}),
       ];
       return { output: { longest: longest.map((ms) => ms ?? null), callDepth: run.callDepth }, record: {} };
     }),
@@ -99,13 +101,24 @@ describe('a run that answers a call of another run', () => {
 });
 
 describe('the longest run of a definition, as a run resolves it', () => {
-  it('is what the capability declares for the active latest version and the input given, its longest for none, and nothing for one it cannot run', async () => {
+  it('is what the capability declares for the active latest version, for the input given or for any input, and nothing for one it cannot run', async () => {
     const { measured } = await brainMeasuring();
 
     expect(await measured()).toMatchObject({
       output: {
         output: {
-          longest: [600_000, 42_000, null, null, null, answeringNowMs, answeringLaterMs, answeringLaterMs],
+          longest: [
+            600_000,
+            42_000,
+            null,
+            null,
+            null,
+            answeringNowMs,
+            answeringLaterMs,
+            answeringLaterMs,
+            600_000,
+            null,
+          ],
           callDepth: 0,
         },
       },

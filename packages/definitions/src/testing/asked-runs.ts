@@ -1,6 +1,6 @@
 import { Effect, type Result, type Schema } from 'effect';
 
-import { runFactsOf, workRecorder, type Work } from '../index.ts';
+import { declaredFactsOf, runFactsOf, workRecorder, type Work } from '../index.ts';
 import { startedRunOf } from '../runs/run-state.ts';
 import { asking } from './asking.ts';
 import { acmeAdmin } from './callers.ts';
@@ -15,7 +15,7 @@ export const askedStream = `brain/acme/alpha/runs/${askedRunId}`;
 
 export const askedLineage = { causationId: 'request-1', correlationId: askedRunId };
 
-export const askingFacts = runFactsOf(asking.facts.onRuns);
+export const askingFacts = runFactsOf(declaredFactsOf([asking]));
 
 export const question = 'Approve the brief?';
 

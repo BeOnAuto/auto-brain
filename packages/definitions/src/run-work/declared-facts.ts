@@ -46,14 +46,15 @@ function requireOwnTypes(declared: readonly DeclaredFact[]): void {
 }
 
 export function runFactsOf(declared: readonly DeclaredFact[]): RunFacts {
-  requireOwnTypes(declared);
   const types = new Set(declared.map(({ type }) => type));
   const isDeclared = Schema.is(Schema.Union(declared.map(({ schema }) => schema)));
   return { declared, ...runDecidersOf(isDeclared, ({ type }) => types.has(type)) };
 }
 
 export function declaredFactsOf(capabilities: readonly { readonly facts: CapabilityFacts }[]): readonly DeclaredFact[] {
-  return capabilities.flatMap(({ facts }) => facts.onRuns);
+  const declared = capabilities.flatMap(({ facts }) => facts.onRuns);
+  requireOwnTypes(declared);
+  return declared;
 }
 
 export function ownedStreamsOf(capabilities: readonly { readonly facts: CapabilityFacts }[]): readonly Presenter[] {

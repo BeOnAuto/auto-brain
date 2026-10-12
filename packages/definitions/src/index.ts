@@ -50,11 +50,12 @@ export {
   type RunFinished,
   type ReplyIdentity,
 } from './runs/run-events.ts';
-export type { RecordedAnswer, RecordedWork } from './runs/run-state.ts';
+export { recordedAnswerOf, type RecordedAnswer, type RecordedAnswerFact, type RecordedWork } from './runs/run-state.ts';
 export { RequestRecordSchema, isRequestRecord, takesAnAnswer, type RequestRecord } from './requests/request-record.ts';
 export { runEventOf, recordedRunIn, recordedRunInBrain, type RecordedRun } from './run-work/recorded-runs.ts';
 export {
   declaredFact,
+  declaredFactsOf,
   noFacts,
   runFactsOf,
   type CapabilityFacts,
@@ -70,7 +71,7 @@ export {
   type Work,
   type WorkRule,
 } from './run-work/work-recorder.ts';
-export { answeredAlready, endedUnanswered, runEnded } from './run-work/work-decisions.ts';
+export { answeredAlready, cancelledUnanswered, endedUnanswered, runEnded } from './run-work/work-decisions.ts';
 export { mostCallDepth } from './operations/run-requests.ts';
 export {
   cancelRequestOf,

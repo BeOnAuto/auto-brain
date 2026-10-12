@@ -1,17 +1,10 @@
 import { declaredFactsOf, type CapabilityFacts } from '../run-work/declared-facts.ts';
+import { coreRunFactTypes, isRunEndingType } from '../runs/run-events.ts';
 import type { Run } from '../runs/run.ts';
 
 export type RunStatus = Run['status'];
 
-const startedTypes: readonly string[] = [
-  'run_started',
-  'run_deferred',
-  'run_cancel_requested',
-  'tool_call_started',
-  'tool_call_answered',
-  'tool_call_failed',
-  'request_answered',
-];
+const startedTypes: readonly string[] = coreRunFactTypes.filter((type) => !isRunEndingType(type));
 
 export function storedTypesByStatus(
   capabilities: readonly { readonly facts: CapabilityFacts }[],

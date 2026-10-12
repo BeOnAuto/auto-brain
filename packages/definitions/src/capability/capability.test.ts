@@ -37,7 +37,7 @@ const run: RunContext = {
   lineage: { startId: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a', correlationId: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' },
   depth: 0,
   callDepth: 0,
-  longestRunOf: noLongestRuns,
+  ...noLongestRuns,
 };
 
 describe('a capability', () => {
@@ -140,9 +140,15 @@ describe('what a capability declares of its runs', () => {
       }).prepare('one two'),
     );
 
-    expect([plain, later].map(({ finishesLater, longestRunMs }) => [finishesLater({}), longestRunMs()])).toEqual([
-      [false, 600_000],
-      [true, 2000],
+    expect(
+      [plain, later].map(({ finishesLaterFor, longestRunMs, longestRunMsFor }) => [
+        finishesLaterFor({}),
+        longestRunMs,
+        longestRunMsFor({}),
+      ]),
+    ).toEqual([
+      [false, 600_000, 600_000],
+      [true, 2000, 2000],
     ]);
   });
 });
@@ -152,18 +158,18 @@ describe('what a capability decides of each document and each input, and says of
     const deciding = defineCapability({ ...words, finishesLater: ({ words: given }) => given.includes('later') });
 
     expect([
-      (await Effect.runPromise(deciding.prepare('now'))).finishesLater({}),
-      (await Effect.runPromise(deciding.prepare('answer later'))).finishesLater({}),
+      (await Effect.runPromise(deciding.prepare('now'))).finishesLaterFor({}),
+      (await Effect.runPromise(deciding.prepare('answer later'))).finishesLaterFor({}),
     ]).toEqual([false, true]);
   });
 
-  it('finishes later and runs as long as it says for each input, and longest for an input it is not given', async () => {
+  it('finishes later and runs as long as it says for each input, and as long as any input may for one it is not given', async () => {
     const prepared = await Effect.runPromise(asking.prepare('Approve the brief?'));
 
     expect([
-      [prepared.finishesLater({ now: true }), prepared.longestRunMs({ now: true })],
-      [prepared.finishesLater({ campaign: 'Spring' }), prepared.longestRunMs({ campaign: 'Spring' })],
-      prepared.longestRunMs(),
+      [prepared.finishesLaterFor({ now: true }), prepared.longestRunMsFor({ now: true })],
+      [prepared.finishesLaterFor({ campaign: 'Spring' }), prepared.longestRunMsFor({ campaign: 'Spring' })],
+      prepared.longestRunMs,
     ]).toEqual([[false, answeringNowMs], [true, answeringLaterMs], answeringLaterMs]);
   });
 

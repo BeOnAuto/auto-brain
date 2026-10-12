@@ -65,6 +65,10 @@ export const endedUnanswered = new Conflict({
   detail: 'The run is not waiting for an answer: it has ended, or has not asked yet, so it takes none',
 });
 
+export const cancelledUnanswered = new Conflict({
+  detail: 'A cancel of the run was asked before it took an answer, so it takes none',
+});
+
 export function decideAnswer({ answer }: RunAnswer, state: RunState): Decision {
   const taken = state?.answer ?? null;
   if (taken !== null) {
@@ -72,6 +76,9 @@ export function decideAnswer({ answer }: RunAnswer, state: RunState): Decision {
   }
   if (state === undefined || !awaitsSettlement(state)) {
     return Result.fail(endedUnanswered);
+  }
+  if (state.cancel !== undefined) {
+    return Result.fail(cancelledUnanswered);
   }
   return takesAnAnswer(state.record)
     ? Result.succeed([{ type: 'request_answered', data: answer }])

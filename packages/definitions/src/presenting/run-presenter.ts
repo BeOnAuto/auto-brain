@@ -24,6 +24,7 @@ import { deferralAccount } from '../run-work/run-work-accounts.ts';
 import {
   RunEventSchema,
   coreRunFactTypes,
+  isRunEndingType,
   type RecordedRunEvent,
   type RecordedRunFact,
   type RunEvent,
@@ -116,14 +117,12 @@ function endingFact(event: Shown<'run_succeeded' | 'run_rejected' | 'run_failed'
 
 const toolCallTypes: ReadonlySet<string> = new Set(['tool_call_started', 'tool_call_answered', 'tool_call_failed']);
 
-const endingTypes: ReadonlySet<string> = new Set(['run_succeeded', 'run_rejected', 'run_failed']);
-
 function isToolCall(event: RecordedRunEvent): event is ToolCallShown {
   return toolCallTypes.has(event.type);
 }
 
 function isEnding(event: RecordedRunEvent): event is Shown<'run_succeeded' | 'run_rejected' | 'run_failed'> {
-  return endingTypes.has(event.type);
+  return isRunEndingType(event.type);
 }
 
 type CoreShown = Exclude<RecordedRunEvent, Shown<'work'>>;
@@ -149,12 +148,10 @@ const decodeRunEvent = strictRecordedDecoder(RunEventSchema);
 function presentedBy(words: DefinitionWords, declared: readonly DeclaredFact[]) {
   const byType = new Map(declared.map((fact) => [fact.type, fact]));
   return (recorded: RecordedFact, content: KeptContent): PresentedFact | undefined => {
-    const fact = byType.get(recorded.type);
-    if (fact !== undefined) {
-      return fact.present(recorded, content);
-    }
     const event = decodeRunEvent(recorded);
-    return event.type === 'work' ? undefined : coreFactOf(words, event, content);
+    return event.type === 'work'
+      ? byType.get(recorded.type)?.present(recorded, content)
+      : coreFactOf(words, event, content);
   };
 }
 

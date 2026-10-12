@@ -1,9 +1,8 @@
-import { toolTestPresenter } from '@beonauto/mcp';
 import { Result, Schema, SchemaIssue } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { makeDefinitionPresenters } from '../index.ts';
-import { asking } from '../testing/asking.ts';
+import { asking, nudgesPresenter } from '../testing/asking.ts';
 import { echo } from '../testing/echo.ts';
 import { brainOwnNamesOf, isReservedSource } from './reserved-attributes.ts';
 
@@ -37,28 +36,19 @@ const typesOfTheBrain = [
   'tool_call_failed',
   'request_answered',
   'nudge_sent',
-  'nudge_read',
   'asking_requested',
-  'tool_test_started',
-  'tool_test_answered',
-  'tool_test_failed',
+  'nudge_read',
   'definition_created',
   'definition_updated',
   'definition_retired',
   'event_published',
-  'workflow_input_applied',
-  'step_started',
-  'step_waiting',
-  'step_finished',
-  'step_failed',
-  'step_skipped',
   'reaction_refused',
 ];
 
 describe('the types and sources of what the brain records itself', () => {
   it('are reserved for the brain: every type its runs and definitions record, those its capabilities declare, and every type its feed shows', () => {
     expect([...types]).toEqual(typesOfTheBrain);
-    const shown = [...makeDefinitionPresenters([echo, asking]), toolTestPresenter].flatMap(({ publicNames }) =>
+    const shown = makeDefinitionPresenters([echo, asking]).flatMap(({ publicNames }) =>
       Object.values(publicNames).flat(),
     );
     expect(shown.filter((name) => !types.has(name))).toEqual([]);
@@ -74,6 +64,12 @@ describe('the types and sources of what the brain records itself', () => {
     expect([...brainOwnNamesOf([echo]).types]).not.toContain('nudge_sent');
   });
 
+  it('are those of facts declared before their capability is made, which say no words of a deferral', () => {
+    const declared = brainOwnNamesOf([echo, { facts: { onRuns: [], streams: [nudgesPresenter] } }]);
+
+    expect([...declared.types].filter((type) => !brainOwnNamesOf([echo]).types.has(type))).toEqual(['nudge_read']);
+  });
+
   it('are refused in an event from outside, each where it is given', () => {
     expect(refusals({ type: 'run_succeeded', source: '/runs/0199a3c4' })).toEqual([
       `/type: Expected a type of your own, not one the brain records itself: ${typesOfTheBrain.join(', ')}`,
@@ -83,17 +79,14 @@ describe('the types and sources of what the brain records itself', () => {
       [
         'run_deferred',
         'tool_call_started',
-        'tool_test_started',
-        'tool_test_answered',
         'request_answered',
         'nudge_sent',
         'nudge_read',
         'asking_requested',
         'event_published',
-        'workflow_input_applied',
-        'step_waiting',
+        'reaction_refused',
       ].map((type) => refusals({ type }).length),
-    ).toEqual([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
+    ).toEqual([1, 1, 1, 1, 1, 1, 1, 1]);
     expect(refusals({ type: 'com.acme.ledger.month-closed', source: '/ledger/eu' })).toEqual([]);
   });
 });

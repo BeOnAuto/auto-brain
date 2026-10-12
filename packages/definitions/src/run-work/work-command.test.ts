@@ -109,24 +109,17 @@ describe('the work a capability records on a run that changes under it, or on a 
     expect((await recorded()).slice(2).map(({ data }) => data)).toEqual([{ number: 1 }, { number: 2 }]);
   });
 
-  it('is any fact that is not the brain’s own, though the brain’s own are still refused', async () => {
+  it('is refused by the run decider every read uses, which knows no capability', async () => {
     const { ledger, recorded } = await asked();
     const record = workRecorder(ledger.service, { decider: runDecider, asRead: runDeciderAsRead });
 
-    await Effect.runPromise(
-      record(run, { type: 'work', fact: { type: 'delivery_started', data: { number: 1 } } }, lineage),
-    );
-
-    expect([
-      (await recorded()).at(-1)?.type,
-      await attempted(record(run, { type: 'work', fact: { type: 'run_failed', data: {} } }, lineage)),
-    ]).toEqual([
-      'delivery_started',
+    expect(await attempted(record(run, nudge(1), lineage))).toEqual(
       Result.fail(
         new Conflict({
-          detail: 'No capability of this brain declares the fact run_failed, so the run does not record it',
+          detail: 'No capability of this brain declares the fact nudge_sent, so the run does not record it',
         }),
       ),
-    ]);
+    );
+    expect((await recorded()).map(({ type }) => type)).toEqual(['run_started', 'run_deferred']);
   });
 });

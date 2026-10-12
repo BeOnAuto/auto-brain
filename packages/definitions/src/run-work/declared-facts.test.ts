@@ -1,10 +1,11 @@
 import { Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { runFactsOf } from '../index.ts';
+import { declaredFactsOf } from '../index.ts';
 import { RunEventSchema } from '../runs/run-events.ts';
 import { askedRunId, askingFacts } from '../testing/asked-runs.ts';
 import { asking } from '../testing/asking.ts';
+import { echo } from '../testing/echo.ts';
 
 const context = {
   at: '2026-10-01T09:00:00.000Z',
@@ -38,12 +39,17 @@ describe('the facts a ledger reads on a run', () => {
     ]);
   });
 
-  it('are declared once each, and never under a name the brain records itself', () => {
-    expect(() => runFactsOf([...asking.facts.onRuns, ...asking.facts.onRuns])).toThrow(
+  it('are declared once each across the capabilities composed, and never under a name the brain records itself', () => {
+    const claimingAFailure = {
+      facts: { ...asking.facts, onRuns: asking.facts.onRuns.map((fact) => ({ ...fact, type: 'run_failed' })) },
+    };
+
+    expect(() => declaredFactsOf([asking, echo, asking])).toThrow(
       'The fact nudge_sent is declared more than once or is one the brain records itself',
     );
-    expect(() =>
-      runFactsOf(asking.facts.onRuns.map(({ schema, present }) => ({ type: 'run_failed', schema, present }))),
-    ).toThrow('The fact run_failed is declared more than once or is one the brain records itself');
+    expect(() => declaredFactsOf([claimingAFailure])).toThrow(
+      'The fact run_failed is declared more than once or is one the brain records itself',
+    );
+    expect(declaredFactsOf([echo, asking]).map(({ type }) => type)).toEqual(['nudge_sent']);
   });
 });

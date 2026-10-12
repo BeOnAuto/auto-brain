@@ -41,8 +41,10 @@ export const asking = defineCapability({
         ? { output: { answered: question }, record: {} }
         : { finishesLater: true, record: { ...askedRequest, message: question } },
     ),
-  finishesLater: (_parsed, input) => !isAskedNow(input),
-  longestRunOf: (_parsed, input) => (isAskedNow(input) ? answeringNowMs : answeringLaterMs),
+  finishesLater: true,
+  finishesLaterFor: (_parsed, input) => !isAskedNow(input),
+  longestRunOf: () => answeringLaterMs,
+  longestRunFor: (_parsed, input) => (isAskedNow(input) ? answeringNowMs : answeringLaterMs),
   runWords: {
     deferralType: 'asking_requested',
     deferral: () => ({ summary: 'A question waits for its answer.', data: {} }),
