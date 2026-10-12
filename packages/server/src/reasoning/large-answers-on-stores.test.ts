@@ -1,9 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
-import { CreateBucketCommand, DeleteObjectsCommand, HeadBucketCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { toolBounds } from '@beonauto/mcp';
 import { serveFakeMcp } from '@beonauto/mcp/testing';
-import { storageClientOf } from '@beonauto/object-storage';
+import { bucketReady, emptied, keysIn, testObjectStoreOf } from '@beonauto/object-storage/testing';
 import { answers, callingTools, textResult } from '@beonauto/reasoning/testing';
 import { Schema } from 'effect';
 import { Client } from 'pg';
@@ -52,40 +51,21 @@ async function onADatabaseOfItsOwn(): Promise<Readonly<Record<string, string>>> 
   return { LEDGER_FILE: '', DATABASE_URL: database.href };
 }
 
-function objectStoreClient() {
-  const url = new URL(objectStore);
-  return {
-    url,
-    bucket: url.pathname.slice(1),
-    client: storageClientOf(
-      { endpoint: url.origin, region: 'us-east-1', proxy: { enabled: false, environment: {} } },
-      { accessKeyId: decodeURIComponent(url.username), secretAccessKey: decodeURIComponent(url.password) },
-    ),
-  };
-}
-
 async function onAnObjectStorePrefixOfItsOwn(prefix: string): Promise<Readonly<Record<string, string>>> {
-  const { url, bucket, client } = objectStoreClient();
-  const held = () => client.send(new HeadBucketCommand({ Bucket: bucket }));
-  await held().catch(() => client.send(new CreateBucketCommand({ Bucket: bucket })).catch(held));
-  onTestFinished(async () => {
-    const objects = (await objectsUnder(`${prefix}/`)).map((key) => ({ Key: `${prefix}/${key}` }));
-    await client.send(new DeleteObjectsCommand({ Bucket: bucket, Delete: { Objects: objects } }));
-  });
-  vi.stubEnv('AWS_ACCESS_KEY_ID', decodeURIComponent(url.username));
-  vi.stubEnv('AWS_SECRET_ACCESS_KEY', decodeURIComponent(url.password));
+  const { bucket, endpoint, accessKeyId, secretAccessKey } = testObjectStoreOf(objectStore);
+  await bucketReady(bucket);
+  onTestFinished(() => emptied(bucket, prefix));
+  vi.stubEnv('AWS_ACCESS_KEY_ID', accessKeyId);
+  vi.stubEnv('AWS_SECRET_ACCESS_KEY', secretAccessKey);
   onTestFinished(() => {
     vi.unstubAllEnvs();
   });
-  return { CONTENT_STORE_URL: `s3://${bucket}/${prefix}`, AWS_ENDPOINT_URL: url.origin, AWS_REGION: 'us-east-1' };
+  return { CONTENT_STORE_URL: `s3://${bucket.name}/${prefix}`, AWS_ENDPOINT_URL: endpoint, AWS_REGION: 'us-east-1' };
 }
 
 async function objectsUnder(prefix: string): Promise<readonly string[]> {
-  const { bucket, client } = objectStoreClient();
-  const listed = await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix }));
-  return (listed.Contents ?? []).map(({ Key }: { readonly Key?: string | undefined }) =>
-    String(Key).slice(prefix.length),
-  );
+  const kept = await keysIn(testObjectStoreOf(objectStore).bucket, prefix);
+  return kept.map((key) => key.slice(prefix.length));
 }
 
 interface Store {

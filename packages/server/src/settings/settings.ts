@@ -1,5 +1,6 @@
 import { configurationOf, readServerConfig, type Environment, type FileUse } from '@beonauto/config';
 import { readApiKeys, type ApiKey } from '@beonauto/identity';
+import { proxySettingsOf, type ProxySettings } from '@beonauto/outbound';
 import { Effect, Result } from 'effect';
 
 import { fileSettings, refusedKeys } from '../config-file/file-settings.ts';
@@ -21,6 +22,7 @@ export interface Settings extends FunctionSettings, AccessSettings {
   readonly apiKeys: readonly ApiKey[] | undefined;
   readonly ledger: LedgerSettings;
   readonly content: ContentSettings;
+  readonly proxy: ProxySettings;
   readonly workflows: WorkflowSettings;
   readonly configFile: ConfigFileSources | undefined;
 }
@@ -44,6 +46,7 @@ export function readSettings(given: Environment): Settings {
     apiKeys: readApiKeys(environment),
     ledger,
     content,
+    proxy: proxySettingsOf(environment),
     localMode,
     logFormat,
     ...functions,

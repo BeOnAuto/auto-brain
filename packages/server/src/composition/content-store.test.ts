@@ -1,25 +1,75 @@
+import { once } from 'node:events';
+import { createServer } from 'node:http';
+
 import { Ledger, textToKeep } from '@beonauto/operations';
 import { memoryRecordedContent } from '@beonauto/operations/testing';
-import { Effect, ManagedRuntime } from 'effect';
-import { describe, expect, it, onTestFinished } from 'vitest';
+import { Effect, ManagedRuntime, Schema } from 'effect';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import { readSettings } from '../settings/settings.ts';
 import { contentStoreOf } from './content-store.ts';
-import { ledgerLayerOf } from './ledger-store.ts';
+import { ledgerLayerFor, ledgerLayerOf } from './ledger-store.ts';
 
 const alpha = { org: 'acme', brain: 'alpha' };
+
+const secret = 'a-secret-access-key';
+
+const decodeAddress = Schema.decodeUnknownSync(Schema.Struct({ port: Schema.Number }));
+
+async function aStoreAnswering(status: number): Promise<string> {
+  const server = createServer((_request, response) => {
+    response.writeHead(status).end();
+  }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  onTestFinished(async () => {
+    server.close();
+    await once(server, 'close');
+  });
+  return `127.0.0.1:${String(decodeAddress(server.address()).port)}`;
+}
+
+function ledgerOn(host: string): Promise<Ledger['Service']> {
+  vi.stubEnv('AWS_ACCESS_KEY_ID', 'an-access-key');
+  vi.stubEnv('AWS_SECRET_ACCESS_KEY', secret);
+  onTestFinished(() => {
+    vi.unstubAllEnvs();
+  });
+  const settings = readSettings({
+    LEDGER_FILE: ':memory:',
+    CONTENT_STORE_URL: 's3://brain-content/production',
+    AWS_ENDPOINT_URL: `http://${host}`,
+    AWS_REGION: 'us-east-1',
+  });
+  const runtime = ManagedRuntime.make(ledgerLayerFor(settings));
+  onTestFinished(() => runtime.dispose());
+  return runtime.runPromise(Ledger);
+}
 
 describe('the store the content of a brain is kept in', () => {
   it("is the ledger's own when no object store is set", () => {
     expect(contentStoreOf(readSettings({}))).toBeUndefined();
   });
 
-  it('is an object store when CONTENT_STORE_URL is set, built without reaching it', () => {
-    const store = contentStoreOf(
-      readSettings({ CONTENT_STORE_URL: 's3://brain-content/production', AWS_ENDPOINT_URL: 'http://127.0.0.1:9' }),
-    );
+  it('is an object store when CONTENT_STORE_URL is set, whose bucket is checked before the ledger opens', async () => {
+    const reachable = await aStoreAnswering(200);
 
-    expect(Object.keys({ ...store })).toEqual(['content', 'sweepContent']);
+    const ledger = await ledgerOn(reachable);
+
+    expect(Object.keys(ledger.content)).toEqual(['put', 'get', 'stage', 'staged', 'unstage']);
+  });
+
+  it('stops the ledger from opening when its bucket answers with a refusal, naming the setting, the bucket and the host', async () => {
+    const refusing = await aStoreAnswering(403);
+
+    const opening = ledgerOn(refusing);
+
+    await expect(opening).rejects.toThrow(
+      new RegExp(
+        `^CONTENT_STORE_URL names the bucket brain-content on ${refusing}, which could not be reached: \\w+ \\(403\\)$`,
+        'u',
+      ),
+    );
+    await expect(opening).rejects.not.toThrow(secret);
   });
 
   it('keeps what the ledger is given to keep, and reads it back, in the store it is composed with', async () => {
