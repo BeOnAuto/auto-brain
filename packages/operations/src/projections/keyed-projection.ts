@@ -172,6 +172,11 @@ function requireKnownColumns(projection: KeyedProjection, columns: readonly stri
   }
 }
 
+function requireIndexedColumns(projection: KeyedProjection, { columns, whereSet }: ProjectedIndex): void {
+  const ordered = columns.filter((column) => column !== rowKeyColumn);
+  requireKnownColumns(projection, [...ordered, ...(whereSet === undefined ? [] : [whereSet])]);
+}
+
 function requireAdvancedSetByItsTypes(projection: KeyedProjection, { setBy }: AdvancedColumns): void {
   const unknown = setBy.find((type) => !projection.types.includes(type));
   if (unknown !== undefined) {
@@ -200,7 +205,7 @@ export function checkedProjection(projection: KeyedProjection): KeyedProjection 
   }
   for (const index of projection.indexes) {
     requireNamed('index', index.name, columnName);
-    requireKnownColumns(projection, [...index.columns, ...(index.whereSet === undefined ? [] : [index.whereSet])]);
+    requireIndexedColumns(projection, index);
   }
   if (projection.advanced !== undefined) {
     requireKnownColumns(projection, projection.advanced.columns);

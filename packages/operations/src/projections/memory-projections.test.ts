@@ -181,6 +181,15 @@ describe('a projection declared with names a table cannot hold', () => {
   it.each(malformed)('is refused: %s', (message, projection) => {
     expect(() => memoryLedger(undefined, [projection])).toThrow(message);
   });
+
+  it('is kept with an index that ends with the row key, which every ordered read ends with, though no partial index is on it', () => {
+    const endingWithTheKey = { name: 'by_status', columns: ['status', 'began_at', 'row_key'] };
+
+    expect(() => memoryLedger(undefined, [{ ...runTallyRows, indexes: [endingWithTheKey] }])).not.toThrow();
+    expect(() =>
+      memoryLedger(undefined, [{ ...runTallyRows, indexes: [{ ...endingWithTheKey, whereSet: 'row_key' }] }]),
+    ).toThrow('The projection run_tallies has no column row_key');
+  });
 });
 
 function topics(ledger: MemoryLedger, stream: string, ...facts: readonly TopicFact[]): Promise<unknown> {
