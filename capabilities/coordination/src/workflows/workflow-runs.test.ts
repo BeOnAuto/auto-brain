@@ -64,7 +64,7 @@ do: []
 
     expect((await interpret(document, { input: 7 })).ending).toEqual({
       kind: 'completed',
-      output: { id: runId, at: new Date(workflowStartedAt).toISOString(), runtime: 'auto-brain' },
+      output: { id: runId, at: new Date(workflowStartedAt).toISOString(), runtime: 'auto-runtime' },
     });
   });
 });
