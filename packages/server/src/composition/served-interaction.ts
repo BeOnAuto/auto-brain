@@ -1,8 +1,8 @@
 import type { AppRuntime } from '@on.auto/api';
 import type { PlaybookOperation, Capability, RecordWork } from '@on.auto/definitions';
 import {
-  answerInteraction,
   conversationsDue,
+  defineAnswerInteraction,
   listInteractions,
   makeInteractionFunctionAdapter,
   openRequestsName,
@@ -17,7 +17,7 @@ import { runtimeLedger } from './runtime-ledger.ts';
 
 export interface ServedInteraction {
   readonly capability: Capability;
-  readonly operations: readonly PlaybookOperation[];
+  readonly operationsFor: (capabilities: readonly Capability[]) => readonly PlaybookOperation[];
   readonly dueWorkOf: (record: RecordWork) => readonly RequestsDue[];
 }
 
@@ -34,7 +34,7 @@ export function interactionServedBy(
         ledger.countProjectedRows(openRequestsName, playbook, [{ column: 'open', equals: true }]),
       mostOpenRequests: interaction.mostOpenRequests,
     }),
-    operations: [answerInteraction, listInteractions],
+    operationsFor: (capabilities) => [defineAnswerInteraction(capabilities), listInteractions],
     dueWorkOf: (record) => [requestsDue({ ledger, tools, record }), conversationsDue({ ledger, tools, record })],
   };
 }

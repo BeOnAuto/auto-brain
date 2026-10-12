@@ -2,6 +2,7 @@ import { weeklyOrders } from '@on.auto/prediction/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
+import { standingWhen } from './build-calls.ts';
 
 const closing: (() => Promise<void>)[] = [];
 
@@ -82,9 +83,10 @@ describe('a prediction function saved over HTTP', { timeout: testTimeoutMs }, ()
 });
 
 describe('a run of a prediction function over HTTP before a version is built', () => {
-  it('refuses a question, since no version is active, and a build, which this runtime does not offer yet and no retry gets, each after its start, and only a build finishes later', async () => {
+  it('refuses a question after its start, since no version is active, and takes a build, which finishes later as it waits for its trainer', async () => {
     const server = await serving();
     await saved(server, 'weekly-orders');
+    await standingWhen(server, 'weekly-orders', { dataset: { phase: 'live' } });
     const run = `${alpha}/definitions/prediction/weekly-orders/run`;
 
     const asked = await server.call('POST', run, {
@@ -97,14 +99,12 @@ describe('a run of a prediction function over HTTP before a version is built', (
       409,
       expect.objectContaining({ reason: 'conflict', kind: 'no_active_version' }),
     ]);
-    expect([built.status, built.body, built.headers.get('retry-after')]).toEqual([
-      503,
-      expect.objectContaining({ reason: 'unavailable', kind: 'build_not_offered' }),
-      null,
-    ]);
+    expect([built.status, built.body]).toEqual([200, expect.objectContaining({ status: 'started', run_id: build })]);
     expect(histories.map(({ body }) => body)).toMatchObject([
       { events: [{ type: 'run_started', data: { input: { series: 'north' } } }, { type: 'run_rejected' }] },
-      { events: [{ type: 'run_started', data: { finishes_later: true } }, { type: 'run_rejected' }] },
+      {
+        events: [{ type: 'run_started', data: { finishes_later: true } }, { type: 'dataset_assembled' }],
+      },
     ]);
     expect(histories[0]?.body).not.toHaveProperty('events.0.data.finishes_later');
   });

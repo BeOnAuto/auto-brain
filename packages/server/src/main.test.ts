@@ -52,7 +52,7 @@ const noModelProvider =
 
 const functionsRun: readonly unknown[] = [
   "Reasoning functions run in this server: the model calls of a run add up to at most 2,000,000 input tokens, and each answer of a tool is read whole where it fits the model's context window",
-  'Prediction functions run in this server: a playbook keeps at most 32 active, and model processes may run at most 4 at once, at most 2 of them for builds, with 1,280 MiB of data each, which nothing bounds, since prlimit is not on the path',
+  'Prediction functions run in this server: a playbook keeps at most 32 active, each builds at most 4 times a day, and model processes may run at most 4 at once, at most 2 of them for builds, with 1,280 MiB of data each, which nothing bounds, since prlimit is not on the path',
   'Workflows run in this server: a run lasts at most 30 days, at most 32 of their calls run at once, and the runs are swept every 1000 ms',
 ];
 

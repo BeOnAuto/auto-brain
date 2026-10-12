@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
-import { answerInteraction, openRequests } from '@on.auto/interaction';
+import { openRequests } from '@on.auto/interaction';
 import {
+  answeringAnyRun,
   askedRunId,
   askedThroughChat,
   attemptedThenStopped,
@@ -119,7 +120,7 @@ describe.each(stores)('a reply taken while another settlement is under way, on $
     const asked = await askedThroughChat({ ledger: racing.ledger });
     await racing.started();
 
-    const meanwhile = await asked.playbook.call(answerInteraction, {
+    const meanwhile = await asked.playbook.call(answeringAnyRun, {
       run_id: askedRunId,
       answer: { choice: 'reject' },
     });

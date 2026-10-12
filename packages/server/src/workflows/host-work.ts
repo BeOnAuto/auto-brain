@@ -33,7 +33,7 @@ export interface WorkParts {
   readonly names: PlaybookOwnNames;
 }
 
-function nestedRuns(
+export function nestedRuns(
   runtime: AppRuntime<DispatcherServices>,
   dispatcher: Dispatcher,
   runDefinition: PlaybookOperation,
