@@ -39,7 +39,7 @@ export const exampleRefusedKeys: RefusedKeys = new Map([
 ]);
 
 export function temporaryDirectory(): string {
-  const directory = mkdtempSync(join(tmpdir(), 'auto-brain-config-'));
+  const directory = mkdtempSync(join(tmpdir(), 'auto-runtime-config-'));
   onTestFinished(() => {
     rmSync(directory, { recursive: true, force: true });
   });
@@ -47,7 +47,7 @@ export function temporaryDirectory(): string {
 }
 
 export function configFileWith(text: string): string {
-  const path = join(temporaryDirectory(), 'auto-brain.yaml');
+  const path = join(temporaryDirectory(), 'auto-runtime.yaml');
   writeFileSync(path, text);
   return path;
 }
@@ -66,5 +66,5 @@ export function messageOf(path: string, environment: Environment = {}): string {
 
 export function problemsIn(text: string, environment: Environment = {}): string {
   const path = configFileWith(text);
-  return messageOf(path, environment).replaceAll(path, 'auto-brain.yaml');
+  return messageOf(path, environment).replaceAll(path, 'auto-runtime.yaml');
 }

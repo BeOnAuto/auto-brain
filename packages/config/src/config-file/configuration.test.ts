@@ -108,13 +108,13 @@ describe('a reference to an environment variable', () => {
 
   it('stops the reading when its variable is not set, naming the variable and never a value', () => {
     expect(problemsIn(gateways, { GATEWAY_KEY: '' })).toBe(
-      'The configuration file auto-brain.yaml is invalid: auto-brain.yaml:3:14 example_gateways[0].api_key: Refers to the environment variable GATEWAY_KEY, which is not set',
+      'The configuration file auto-runtime.yaml is invalid: auto-runtime.yaml:3:14 example_gateways[0].api_key: Refers to the environment variable GATEWAY_KEY, which is not set',
     );
   });
 
   it('stops the reading when it is not a reference to a variable', () => {
     expect(problemsIn('example_origins: ["https://${1HOST}"]\n')).toBe(
-      'The configuration file auto-brain.yaml is invalid: auto-brain.yaml:1:19 example_origins[0]: Holds a ${…} that is not a reference to an environment variable; write ${NAME}, or $$ for a literal $',
+      'The configuration file auto-runtime.yaml is invalid: auto-runtime.yaml:1:19 example_origins[0]: Holds a ${…} that is not a reference to an environment variable; write ${NAME}, or $$ for a literal $',
     );
   });
 });
@@ -132,7 +132,7 @@ describe('a setting that keeps its references', () => {
 
   it('stops the reading when a variable it names is not set, as any setting does', () => {
     expect(problemsIn(servers)).toBe(
-      'The configuration file auto-brain.yaml is invalid: auto-brain.yaml:3:31 example_servers.graph.headers.authorization: Refers to the environment variable GRAPH_KEY, which is not set',
+      'The configuration file auto-runtime.yaml is invalid: auto-runtime.yaml:3:31 example_servers.graph.headers.authorization: Refers to the environment variable GRAPH_KEY, which is not set',
     );
   });
 });
@@ -164,7 +164,7 @@ describe('a credential written in the file', () => {
     const message = problemsIn(text);
 
     expect(message).toBe(
-      `The configuration file auto-brain.yaml is invalid: auto-brain.yaml:${place}: Looks like a credential, which this file never holds; write a reference to the environment variable that holds it instead, such as \${GATEWAY_API_KEY}`,
+      `The configuration file auto-runtime.yaml is invalid: auto-runtime.yaml:${place}: Looks like a credential, which this file never holds; write a reference to the environment variable that holds it instead, such as \${GATEWAY_API_KEY}`,
     );
     expect(message).not.toContain('plain-text');
     expect(message).not.toContain(secret);
@@ -207,7 +207,9 @@ describe('a credential written in a URL or an argument', () => {
   ])('is refused %s, without the value', (_, text, place) => {
     const message = problemsIn(text);
 
-    expect(message).toBe(`The configuration file auto-brain.yaml is invalid: auto-brain.yaml:${place}: ${writtenOut}`);
+    expect(message).toBe(
+      `The configuration file auto-runtime.yaml is invalid: auto-runtime.yaml:${place}: ${writtenOut}`,
+    );
     expect(message).not.toContain('plain-text');
     expect(message).not.toContain(secret);
     expect(message).not.toContain('sk-live-x');
@@ -253,13 +255,13 @@ describe('a configuration file that is not one the server reads', () => {
 
   it('is refused at the place of each problem when it is not YAML this server reads', () => {
     expect(problemsIn('example_origins: [https://a.example\nexample_origins: 2\n')).toBe(
-      'The configuration file auto-brain.yaml is invalid: auto-brain.yaml:2:1: Flow sequence in block collection must be sufficiently indented and end with a ]; auto-brain.yaml:2:1: Map keys must be unique',
+      'The configuration file auto-runtime.yaml is invalid: auto-runtime.yaml:2:1: Flow sequence in block collection must be sufficiently indented and end with a ]; auto-runtime.yaml:2:1: Map keys must be unique',
     );
     expect(problemsIn('shared: &shared []\nexample_origins: *shared\n')).toBe(
-      'The configuration file auto-brain.yaml is invalid: auto-brain.yaml:1:17: Anchors are not allowed in the configuration file; auto-brain.yaml:2:18: Aliases are not allowed in the configuration file',
+      'The configuration file auto-runtime.yaml is invalid: auto-runtime.yaml:1:17: Anchors are not allowed in the configuration file; auto-runtime.yaml:2:18: Aliases are not allowed in the configuration file',
     );
     expect(problemsIn('- a list\n')).toBe(
-      'The configuration file auto-brain.yaml is invalid: auto-brain.yaml:1:1: The configuration file is a YAML mapping from setting names to values',
+      'The configuration file auto-runtime.yaml is invalid: auto-runtime.yaml:1:1: The configuration file is a YAML mapping from setting names to values',
     );
   });
 
@@ -269,11 +271,11 @@ describe('a configuration file that is not one the server reads', () => {
     );
 
     expect(message).toBe(
-      'The configuration file auto-brain.yaml is invalid: ' +
-        'auto-brain.yaml:1:19 example_origins[0]: Expected a string matching the RegExp ^https:\\/\\/; ' +
-        'auto-brain.yaml:2:28 example_gateways[0].name: Expected string; ' +
-        'auto-brain.yaml:2:39 example_gateways[0].colour: Expected no excess property; ' +
-        'auto-brain.yaml:3:7 port: Not a setting this file holds; it holds example_gateways, example_origins, example_servers',
+      'The configuration file auto-runtime.yaml is invalid: ' +
+        'auto-runtime.yaml:1:19 example_origins[0]: Expected a string matching the RegExp ^https:\\/\\/; ' +
+        'auto-runtime.yaml:2:28 example_gateways[0].name: Expected string; ' +
+        'auto-runtime.yaml:2:39 example_gateways[0].colour: Expected no excess property; ' +
+        'auto-runtime.yaml:3:7 port: Not a setting this file holds; it holds example_gateways, example_origins, example_servers',
     );
   });
 });
@@ -285,9 +287,9 @@ describe('a key the file refuses with a sentence of its own', () => {
     );
 
     expect(message).toBe(
-      'The configuration file auto-brain.yaml is invalid: ' +
-        'auto-brain.yaml:2:18 example_headers: Not a setting this file holds; a header is sent on the entry of its server in example_servers, under headers; ' +
-        'auto-brain.yaml:3:7 port: Not a setting this file holds; it holds example_gateways, example_origins, example_servers',
+      'The configuration file auto-runtime.yaml is invalid: ' +
+        'auto-runtime.yaml:2:18 example_headers: Not a setting this file holds; a header is sent on the entry of its server in example_servers, under headers; ' +
+        'auto-runtime.yaml:3:7 port: Not a setting this file holds; it holds example_gateways, example_origins, example_servers',
     );
     expect(message).not.toContain('acme');
   });
