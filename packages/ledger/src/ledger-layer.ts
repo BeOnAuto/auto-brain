@@ -1,9 +1,9 @@
-import { Ledger, type RunOutcomeMapping, type KeyedProjection } from '@beonauto/operations';
+import { Ledger, type ContentStore, type RunOutcomeMapping, type KeyedProjection } from '@beonauto/operations';
 import { Effect, Layer } from 'effect';
 
 import { signalledOn, type AppendSignal } from './appends/append-signal.ts';
 import { sweptHourly } from './content/content-sweep.ts';
-import type { ContentStore, LedgerStore } from './event-store.ts';
+import type { LedgerStore } from './event-store.ts';
 import { makeLedger } from './ledger-service.ts';
 
 export interface OpenedWith {

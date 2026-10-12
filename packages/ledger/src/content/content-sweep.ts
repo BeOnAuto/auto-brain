@@ -1,3 +1,4 @@
+import { uuidV7TimeOf } from '@beonauto/operations';
 import { SQL } from '@event-driven-io/dumbo';
 import { Clock, Effect, type Scope } from 'effect';
 
@@ -9,10 +10,6 @@ export const unnamedChunksLastMs = 3_600_000;
 
 export interface ContentSweeping {
   readonly sweepContent: (before: number) => Promise<void>;
-}
-
-function uploadTimeOf(at: number): string {
-  return at.toString(16).padStart(12, '0');
 }
 
 function sweptShelf(
@@ -34,7 +31,7 @@ function sweptShelf(
 }
 
 export function contentSweepOn(execute: StatementExecutor): ContentSweeping['sweepContent'] {
-  return (before) => inTurn(shelves, (shelf) => sweptShelf(execute, shelf, uploadTimeOf(before)));
+  return (before) => inTurn(shelves, (shelf) => sweptShelf(execute, shelf, uuidV7TimeOf(before)));
 }
 
 function sweptNow({ sweepContent }: ContentSweeping): Effect.Effect<void> {

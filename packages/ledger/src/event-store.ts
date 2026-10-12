@@ -1,9 +1,9 @@
 import type {
+  ContentStore,
   Context,
   ProjectionAdvancer,
   ProjectionReader,
   Lineage,
-  RecordedContent,
   RecordedOrder,
   RecordedSelection,
   RunOutcomeGroup,
@@ -122,11 +122,6 @@ export interface RunOutcomesStore {
     window: RunOutcomeWindow,
     selection: RunOutcomeSelection,
   ) => Promise<readonly RunOutcomeGroup[]>;
-}
-
-export interface ContentStore {
-  readonly content: RecordedContent;
-  readonly sweepContent: (before: number) => Promise<void>;
 }
 
 export interface LedgerStore extends EventStore, RunOutcomesStore, ProjectionReader, ProjectionAdvancer, ContentStore {}

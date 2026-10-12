@@ -4,7 +4,7 @@ import { Schema } from 'effect';
 import { sqliteAppended } from '../appended/sqlite-appended.ts';
 import { sqliteContentOn } from '../content/content-store.ts';
 import { sqliteDefinitionStreams } from '../definitions/sqlite-definition-streams.ts';
-import type { ContentStore, DefinitionStreamsStore, RecordedStore, TransactionalPool } from '../event-store.ts';
+import type { DefinitionStreamsStore, LedgerStore, RecordedStore, TransactionalPool } from '../event-store.ts';
 import {
   pointKey,
   recordOf,
@@ -146,6 +146,6 @@ export function sqliteRecordedStore(execute: SQLExecutor): RecordedStore & Defin
 
 export function sqliteRecordedStoreOn(
   pool: TransactionalPool<SQLExecutor>,
-): RecordedStore & DefinitionStreamsStore & ContentStore {
+): RecordedStore & DefinitionStreamsStore & Pick<LedgerStore, 'content' | 'sweepContent'> {
   return { ...sqliteRecordedStore(pool.execute), ...sqliteContentOn(pool) };
 }

@@ -1,8 +1,7 @@
-import type { Ledger } from '@beonauto/operations';
+import type { ContentStore, Ledger } from '@beonauto/operations';
 import { Effect, Layer } from 'effect';
 
 import type { AppendSignal } from '../appends/append-signal.ts';
-import type { ContentStore } from '../event-store.ts';
 import { ledgerLayerOver } from '../ledger-layer.ts';
 import { lostConnectionsLoggedWith } from './lost-connections.ts';
 import { postgresqlEventStore, type PostgreSQLOptions } from './postgresql-event-store.ts';
