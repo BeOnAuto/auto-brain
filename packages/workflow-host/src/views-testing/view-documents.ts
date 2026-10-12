@@ -1,29 +1,25 @@
 import type { AppendSignal } from '@beonauto/ledger';
+import { streamPrefixOfPlaybook } from '@beonauto/operations';
 import { unitMemoryBytes, workerStackBytes, type ProgramPool } from '@beonauto/workflow-engine/dsl';
 
-import type { ViewChange } from '../pages/view-changes.ts';
-import { someFolder, type Folder, type SomeFolder } from '../projector/folder.ts';
+import { someFolder, type SomeFolder } from '../projector/folder.ts';
 import type { ProjectorSettings } from '../projector/projector-settings.ts';
 import type { ViewDetails } from '../views/view-details.ts';
-import type { KeptView, ViewRow } from '../views/view-rows.ts';
+import type { KeptView } from '../views/view-rows.ts';
 import { viewsFolder } from '../views/views-folder.ts';
 import type { FoldingSettings, ViewsFolding } from '../views/views-folding.ts';
 import { testFoldWorker } from './test-fold-workers.ts';
 
-export interface Brain {
+export interface Playbook {
   readonly org: string;
-  readonly brain: string;
+  readonly playbook: string;
 }
 
-export const alpha: Brain = { org: 'acme', brain: 'alpha' };
+export const alpha: Playbook = { org: 'acme', playbook: 'alpha' };
 
-export const alphaKey = 'brain/acme/alpha/';
+export const alphaKey = streamPrefixOfPlaybook(alpha);
 
 export const viewTestTimeoutMs = 60_000;
-
-export function brainKeyOf({ org, brain }: Brain): string {
-  return `brain/${org}/${brain}/`;
-}
 
 export const succeeded = [{ type: 'run_succeeded' }];
 
@@ -65,7 +61,7 @@ export interface ViewsProjecting extends Omit<ProjectorSettings, 'folders'>, Vie
 
 export type ViewSettingsOf = (more?: Partial<ViewsProjecting>) => ProjectorSettings;
 
-export function viewsFolderOver(pool: ProgramPool, rebuildsAtOnce = 4): Folder<ViewRow, ViewChange> {
+export function viewsFolderOver(pool: ProgramPool, rebuildsAtOnce = 4) {
   return viewsFolder({
     definitionType: 'recall',
     pool,
@@ -81,7 +77,7 @@ export function settingsOver(pool: ProgramPool, appends: AppendSignal): ViewSett
       definitionType: 'recall',
       pool,
       folding: foldingOf(),
-      brainsAtOnce: 4,
+      playbooksAtOnce: 4,
       rebuildsAtOnce: 4,
       pagesPerWake: 10,
       overtimesBeforeStall: 20,

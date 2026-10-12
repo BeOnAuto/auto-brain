@@ -1,10 +1,10 @@
 import { Effect, Option, Schema } from 'effect';
 
 import {
-  BrainRegistry,
-  BrainReader,
-  BrainContext,
-  BrainWriter,
+  PlaybookRegistry,
+  PlaybookReader,
+  PlaybookContext,
+  PlaybookWriter,
   Caller,
   IncidentReporter,
   Ledger,
@@ -25,22 +25,22 @@ interface Sighting {
 const visibleServices = Effect.gen(function* () {
   const services: readonly Sighting[] = [
     { name: 'Ledger', found: Option.isSome(yield* Effect.serviceOption(Ledger)) },
-    { name: 'BrainRegistry', found: Option.isSome(yield* Effect.serviceOption(BrainRegistry)) },
+    { name: 'PlaybookRegistry', found: Option.isSome(yield* Effect.serviceOption(PlaybookRegistry)) },
     { name: 'IncidentReporter', found: Option.isSome(yield* Effect.serviceOption(IncidentReporter)) },
     { name: 'Caller', found: Option.isSome(yield* Effect.serviceOption(Caller)) },
     { name: 'OrgContext', found: Option.isSome(yield* Effect.serviceOption(OrgContext)) },
     { name: 'OrgReader', found: Option.isSome(yield* Effect.serviceOption(OrgReader)) },
     { name: 'OrgWriter', found: Option.isSome(yield* Effect.serviceOption(OrgWriter)) },
-    { name: 'BrainContext', found: Option.isSome(yield* Effect.serviceOption(BrainContext)) },
-    { name: 'BrainReader', found: Option.isSome(yield* Effect.serviceOption(BrainReader)) },
-    { name: 'BrainWriter', found: Option.isSome(yield* Effect.serviceOption(BrainWriter)) },
+    { name: 'PlaybookContext', found: Option.isSome(yield* Effect.serviceOption(PlaybookContext)) },
+    { name: 'PlaybookReader', found: Option.isSome(yield* Effect.serviceOption(PlaybookReader)) },
+    { name: 'PlaybookWriter', found: Option.isSome(yield* Effect.serviceOption(PlaybookWriter)) },
   ];
   return services.filter(({ found }) => found).map(({ name }) => name);
 });
 
 const OrgView = Schema.Struct({ caller: Schema.String, org: Schema.String, visible: Schema.Array(Schema.String) });
 
-const BrainView = Schema.Struct({ ...OrgView.fields, brain: Schema.String });
+const PlaybookView = Schema.Struct({ ...OrgView.fields, playbook: Schema.String });
 
 const viewFromOrg = Effect.fnUntraced(function* () {
   const { id } = yield* Caller;
@@ -48,10 +48,10 @@ const viewFromOrg = Effect.fnUntraced(function* () {
   return { caller: id, org, visible: yield* visibleServices };
 });
 
-const viewFromBrain = Effect.fnUntraced(function* () {
+const viewFromPlaybook = Effect.fnUntraced(function* () {
   const { id } = yield* Caller;
-  const { org, brain } = yield* BrainContext;
-  return { caller: id, org, brain, visible: yield* visibleServices };
+  const { org, playbook } = yield* PlaybookContext;
+  return { caller: id, org, playbook, visible: yield* visibleServices };
 });
 
 const peek = { title: 'Peek', description: 'Shows what the handler of a call can see.', reasons: [] };
@@ -74,20 +74,20 @@ export const peekOrgCommand = defineCommand('org', {
   handle: viewFromOrg,
 });
 
-export const peekBrainQuery = defineQuery('brain', {
+export const peekPlaybookQuery = defineQuery('playbook', {
   ...peek,
-  name: 'peek_brain_query',
+  name: 'peek_playbook_query',
   route: { method: 'GET', path: '/peek' },
   inputSchema: Empty,
-  outputSchema: BrainView,
-  handle: viewFromBrain,
+  outputSchema: PlaybookView,
+  handle: viewFromPlaybook,
 });
 
-export const peekBrainCommand = defineCommand('brain', {
+export const peekPlaybookCommand = defineCommand('playbook', {
   ...peek,
-  name: 'peek_brain_command',
+  name: 'peek_playbook_command',
   route: { method: 'POST', path: '/peek' },
   inputSchema: Empty,
-  outputSchema: BrainView,
-  handle: viewFromBrain,
+  outputSchema: PlaybookView,
+  handle: viewFromPlaybook,
 });

@@ -182,7 +182,7 @@ function handOverTests(settingsOf: SettingsOf): void {
 }
 
 function fewerSlotsTests(settingsOf: SettingsOf): void {
-  it('move back to waiting the views past the slots when the brain may build fewer at once', async () => {
+  it('move back to waiting the views past the slots when the playbook may build fewer at once', async () => {
     const views = await viewHarness(await settingsOf());
     await views.saved('first', counting);
     await views.saved('second', counting);

@@ -10,11 +10,11 @@ import { loadRun } from './run-access.ts';
 
 export function defineGetRun(capabilities: readonly Capability[]) {
   const runWords = runWordsFor(capabilities);
-  return defineQuery('brain', {
+  return defineQuery('playbook', {
     name: 'get_run',
     title: 'Get run',
     description: [
-      'Reads one run of the brain by its id: the definition and version that ran, who started it and when, its status,',
+      'Reads one run of the playbook by its id: the definition and version that ran, who started it and when, its status,',
       'and its output or why it did not succeed, with the record its type keeps, such as the prompt and tokens of a reasoning function.',
       'A run is started until it ends as succeeded, rejected or failed.',
       'Use it to tell the person how a run ended; get_run_history shows each step and tool call of the run.',

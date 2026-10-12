@@ -84,7 +84,7 @@ async function aPortNobodyListensOn(): Promise<number> {
   return port;
 }
 
-const tableOfAFolder = statement`CREATE TABLE IF NOT EXISTS folder_rows (brain TEXT NOT NULL PRIMARY KEY)`;
+const tableOfAFolder = statement`CREATE TABLE IF NOT EXISTS folder_rows (playbook_key TEXT NOT NULL PRIMARY KEY)`;
 
 const migrationAsked: readonly Asked[] = [
   { text: 'BEGIN', values: [] },
@@ -121,7 +121,7 @@ describe('the host database on PostgreSQL, opening', () => {
 
   it('does not open on a server that cannot be reached', async () => {
     const port = await aPortNobodyListensOn();
-    const connectionString = `postgresql://brains:a-secret@127.0.0.1:${port}/brains`;
+    const connectionString = `postgresql://playbooks:a-secret@127.0.0.1:${port}/playbooks`;
 
     await expect(openHostDatabase({ store: 'postgresql', connectionString }, Function.constVoid)).rejects.toThrow(
       `ECONNREFUSED 127.0.0.1:${port}`,
@@ -153,8 +153,8 @@ describe('the host database on PostgreSQL, open', () => {
 
 const runsMoved = statement`UPDATE workflow_runs SET status = ${'ended'} WHERE run_key = ${'a'}`;
 
-const checkpointMoved = statement`UPDATE folder_rows SET checkpoint = ${'2'} WHERE brain = ${'a'} AND checkpoint = ${'1'}
-  RETURNING brain`;
+const checkpointMoved = statement`UPDATE folder_rows SET checkpoint = ${'2'} WHERE playbook_key = ${'a'} AND checkpoint = ${'1'}
+  RETURNING playbook_key`;
 
 const transactionAsked: readonly Asked[] = [
   { text: 'BEGIN', values: [] },

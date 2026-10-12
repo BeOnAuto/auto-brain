@@ -1,27 +1,27 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  brainEndpoint,
+  playbookEndpoint,
   definitionTypes,
   everyEndpoint,
   ownOrg,
-  queriesInsideABrain,
+  queriesInsideAPlaybook,
   recipes,
 } from '../testing/served-instructions.ts';
 import { instructionsFor } from './instructions.ts';
 
 describe('the length of the instructions with every tool', () => {
-  it('take 1,882 characters on /mcp, 1,514 on the org endpoint and 1,842 on the brain endpoint', () => {
+  it('take 1,795 characters on /mcp, 1,436 on the org endpoint and 1,746 on the playbook endpoint', () => {
     expect(
       everyEndpoint.map(([endpoint, served]) => instructionsFor(endpoint, served, definitionTypes, recipes).length),
-    ).toEqual([1514, 1842, 1882]);
+    ).toEqual([1436, 1746, 1795]);
   });
 });
 
 describe('what the instructions say of testing a tool', () => {
   const reading = {
-    orgTools: ['list_brains', 'get_brain', 'list_models', 'list_tool_servers', 'get_guide'],
-    brainTools: queriesInsideABrain,
+    orgTools: ['list_playbooks', 'get_playbook', 'list_models', 'list_tool_servers', 'get_guide'],
+    playbookTools: queriesInsideAPlaybook,
   };
 
   it('say what test_tool_call shows in the sentence on tools, where it is listed, and keep the closing sentence', () => {
@@ -30,7 +30,7 @@ describe('what the instructions say of testing a tool', () => {
     expect(instructionsFor('own org', ownOrg, definitionTypes, recipes)).toContain(
       `A reasoning function names a model that list_models lists and ${sentence}`,
     );
-    expect(instructionsFor('brain', brainEndpoint, definitionTypes, recipes)).toContain(
+    expect(instructionsFor('playbook', playbookEndpoint, definitionTypes, recipes)).toContain(
       `A reasoning function names a model this server can call, as the reasoning-function guide says, and ${sentence}`,
     );
     expect(
@@ -48,15 +48,15 @@ describe('what the instructions say of testing a tool', () => {
       instructionsFor('own org', reading, definitionTypes, recipes),
       instructionsFor(
         'own org',
-        { ...reading, orgTools: ['list_brains', 'get_brain', 'list_tool_servers', 'get_guide'] },
+        { ...reading, orgTools: ['list_playbooks', 'get_playbook', 'list_tool_servers', 'get_guide'] },
         definitionTypes,
         recipes,
       ),
-      instructionsFor('org', { orgTools: reading.orgTools, brainTools: [] }, definitionTypes, recipes),
-      instructionsFor('brain', { orgTools: [], brainTools: queriesInsideABrain }, definitionTypes, recipes),
+      instructionsFor('org', { orgTools: reading.orgTools, playbookTools: [] }, definitionTypes, recipes),
+      instructionsFor('playbook', { orgTools: [], playbookTools: queriesInsideAPlaybook }, definitionTypes, recipes),
     ];
 
     expect(lengths.filter((instructions) => instructions.includes('test_tool_call'))).toEqual([]);
-    expect(lengths.map(({ length }) => length)).toEqual([1565, 1602, 1487, 1565]);
+    expect(lengths.map(({ length }) => length)).toEqual([1472, 1509, 1406, 1469]);
   });
 });

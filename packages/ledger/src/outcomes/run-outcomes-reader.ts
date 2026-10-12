@@ -1,4 +1,4 @@
-import { streamPrefixOfBrain, type RunOutcomeMapping, type RunOutcomesReader } from '@beonauto/operations';
+import { streamPrefixOfPlaybook, type RunOutcomeMapping, type RunOutcomesReader } from '@beonauto/operations';
 import { Effect } from 'effect';
 
 import type { RunOutcomesStore } from '../event-store.ts';
@@ -11,6 +11,6 @@ export function keptOutcomesOnly(
 }
 
 export function runOutcomesReaderOf(store: RunOutcomesStore): RunOutcomesReader['readRunOutcomes'] {
-  return (brain, window, selection) =>
-    Effect.promise(() => store.readRunOutcomes(streamPrefixOfBrain(brain), window, selection));
+  return (playbook, window, selection) =>
+    Effect.promise(() => store.readRunOutcomes(streamPrefixOfPlaybook(playbook), window, selection));
 }

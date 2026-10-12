@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import {
-  brainWithReviews,
+  playbookWithReviews,
   foldsHeld,
   foldsHeldUntilOpened,
   inState,
@@ -45,7 +45,7 @@ async function servingWith(environment: Readonly<Record<string, string>>, gate?:
 
 async function serving(): Promise<ReasoningServer> {
   const server = await servingWith({});
-  await brainWithReviews(server);
+  await playbookWithReviews(server);
   return server;
 }
 
@@ -65,7 +65,7 @@ describe('a recall function whose view is being built', { timeout: recallTestTim
   it('answers before its view is built, unavailable, rebuilding, with Retry-After, until its view has caught up', async () => {
     const gate = foldsHeldUntilOpened();
     const server = await servingWith({}, gate);
-    await brainWithReviews(server, 1);
+    await playbookWithReviews(server, 1);
     await foldsHeld(gate, 1);
 
     const meanwhile = await recalled(server, 'reviews', { campaign: 'spring' });
@@ -80,7 +80,7 @@ describe('a recall function whose view is being built', { timeout: recallTestTim
         reason: 'unavailable',
         kind: 'rebuilding',
         detail:
-          "The recall function “reviews” is building its view of version 1 from the brain's history: it has folded 0 events so far, and is less than a second behind the brain's newest record; try again in a little while",
+          "The recall function “reviews” is building its view of version 1 from the playbook's history: it has folded 0 events so far, and is less than a second behind the playbook's newest record; try again in a little while",
       },
     });
     expect(meanwhile.headers.get('retry-after')).toBe('5');
@@ -108,12 +108,12 @@ describe('a recall function whose view is being built', { timeout: recallTestTim
 });
 
 describe('a recall function waiting for its view to be built', { timeout: recallTestTimeoutMs }, () => {
-  it('waits behind the views being built when its brain builds as many as it may at once', async () => {
+  it('waits behind the views being built when its playbook builds as many as it may at once', async () => {
     const gate = foldsHeldUntilOpened();
-    const server = await servingWith({ RECALL_MAX_REBUILDS: '1', RECALL_BRAINS_AT_ONCE: '1' }, gate);
-    await brainWithReviews(server, 1, 'beta');
+    const server = await servingWith({ RECALL_MAX_REBUILDS: '1', RECALL_PLAYBOOKS_AT_ONCE: '1' }, gate);
+    await playbookWithReviews(server, 1, 'beta');
     await foldsHeld(gate, 1);
-    await brainWithReviews(server, 1);
+    await playbookWithReviews(server, 1);
     await saved(server, 'count', 'return view + 1;');
     gate.letThrough(1);
 

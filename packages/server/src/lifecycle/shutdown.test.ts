@@ -93,7 +93,7 @@ describe(
 
       expect(await child.exited).toBe(0);
       expect(child.output().stderr).toContain(
-        `auto-brain was still running ${defaultServerOptions.exitDeadlineMs} ms after it stopped, so it exits now\n`,
+        `Auto Runtime was still running ${defaultServerOptions.exitDeadlineMs} ms after it stopped, so it exits now\n`,
       );
     });
   },

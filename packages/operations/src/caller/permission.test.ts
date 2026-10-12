@@ -13,13 +13,13 @@ import {
 const derived: ReadonlyArray<readonly [OperationKind, OperationScope, Permission]> = [
   ['query', 'org', 'org:read'],
   ['command', 'org', 'org:write'],
-  ['query', 'brain', 'brain:read'],
-  ['command', 'brain', 'brain:write'],
+  ['query', 'playbook', 'playbook:read'],
+  ['command', 'playbook', 'playbook:write'],
 ];
 
 describe('permissions', () => {
   it('are four, one per scope and access', () => {
-    expect(allPermissions).toEqual(['org:read', 'org:write', 'brain:read', 'brain:write']);
+    expect(allPermissions).toEqual(['org:read', 'org:write', 'playbook:read', 'playbook:write']);
   });
 
   it.each(derived)('make a %s at %s scope need %s', (kind, scope, permission) => {

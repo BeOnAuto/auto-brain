@@ -13,8 +13,8 @@ function definitionCallOf(run: WorkflowRun, arguments_: Json, key: CallKey): Def
   if (isArgumentsProblem(definition)) {
     return { status: 'rejected', reason: 'invalid_arguments', detail: definition.title };
   }
-  const { org, brain } = run.run;
-  return { org, brain, caller: run.caller, reference: key.reference, run: key.run, ...definition };
+  const { org, playbook } = run.run;
+  return { org, playbook, caller: run.caller, reference: key.reference, run: key.run, ...definition };
 }
 
 function isDefinitionCall(value: DefinitionCall | CallResult): value is DefinitionCall {
@@ -76,9 +76,12 @@ function commandOf(run: WorkflowRun, labels: Map<string, string>, { at, output }
   if (output.kind !== 'settle') {
     return [];
   }
-  const { org, brain, id, definition } = run.run;
+  const { org, playbook, id, definition } = run.run;
   return [
-    { kind: 'settle', request: { org, brain, definition: definition.name, runId: id, settlement: output.settlement } },
+    {
+      kind: 'settle',
+      request: { org, playbook, definition: definition.name, runId: id, settlement: output.settlement },
+    },
   ];
 }
 

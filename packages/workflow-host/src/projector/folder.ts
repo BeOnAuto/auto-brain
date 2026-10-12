@@ -5,7 +5,7 @@ import type { Statement } from '../database/statement.ts';
 import type { HostNote } from '../host/host-reports.ts';
 import type { Point } from '../pages/history-points.ts';
 import type { ReadPage } from '../pages/page-events.ts';
-import type { BrainDefinitions, KeptOf } from './brain-definitions.ts';
+import type { PlaybookDefinitions, KeptOf } from './playbook-definitions.ts';
 
 export type RowPhase = 'waiting' | 'rebuilding' | 'live' | 'stalled';
 
@@ -32,8 +32,8 @@ export interface FoldedChanges<Change> {
 }
 
 export interface Reconciling {
-  readonly brain: string;
-  readonly definitions: BrainDefinitions;
+  readonly playbook: string;
+  readonly definitions: PlaybookDefinitions;
 }
 
 export interface FreshRow {
@@ -49,7 +49,7 @@ export interface Reconciled<Row> {
 
 export interface Writing {
   readonly database: Pick<HostDatabase, 'write' | 'transaction'>;
-  readonly brain: string;
+  readonly playbook: string;
   readonly note: (note: HostNote) => Effect.Effect<void>;
 }
 
@@ -60,8 +60,8 @@ export interface Folder<Row extends PassedRow, Change extends PassedChange<Row>>
   readonly keptOf: KeptOf;
   readonly keyOf: (row: Row) => string;
   readonly typesOf: (row: Row) => readonly string[];
-  readonly brainsWithRows: (database: HostDatabase) => Effect.Effect<readonly string[], DatabaseFailed>;
-  readonly rowsOf: (database: HostDatabase, brain: string) => Effect.Effect<readonly Row[], DatabaseFailed>;
+  readonly playbooksWithRows: (database: HostDatabase) => Effect.Effect<readonly string[], DatabaseFailed>;
+  readonly rowsOf: (database: HostDatabase, playbook: string) => Effect.Effect<readonly Row[], DatabaseFailed>;
   readonly reconcile: (reconciling: Reconciling, rows: readonly Row[]) => Reconciled<Row>;
   readonly dropped: (row: Row) => readonly Statement[];
   readonly phased: (row: Row, phase: RowPhase) => Statement;

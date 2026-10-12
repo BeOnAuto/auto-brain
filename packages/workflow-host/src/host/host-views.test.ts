@@ -38,11 +38,11 @@ describe('a host given the settings of a database and of its projector', { timeo
     const folder = tallyFolderOf(1);
 
     const hosted = await hostedOn(settings, {
-      projector: { folders: [someFolder(folder)], brainsAtOnce: 1, pagesPerWake: 1 },
+      projector: { folders: [someFolder(folder)], playbooksAtOnce: 1, pagesPerWake: 1 },
     });
     await hosted.host.stop();
-    const brains = await Effect.runPromise(folder.brainsWithRows(await openedOn(settings)));
+    const playbooks = await Effect.runPromise(folder.playbooksWithRows(await openedOn(settings)));
 
-    expect(brains).toEqual([]);
+    expect(playbooks).toEqual([]);
   });
 });

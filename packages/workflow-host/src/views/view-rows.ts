@@ -40,7 +40,7 @@ export interface KeptView {
 }
 
 export interface ViewRow {
-  readonly brain: string;
+  readonly playbookKey: string;
   readonly name: string;
   readonly version: number;
   readonly saved: number;
@@ -72,7 +72,7 @@ const StallCauseSchema = Schema.Literals([
 const Text = Schema.NullOr(Schema.String);
 
 const rowFields = {
-  brain: Schema.String,
+  playbook_key: Schema.String,
   name: Schema.String,
   version: WholeNumber,
   saved: WholeNumber,
@@ -116,7 +116,7 @@ function stallOf(row: StoredRow): ViewStall | undefined {
 export function viewRowOf(row: StoredRow): ViewRow {
   const stall = stallOf(row);
   return {
-    brain: row.brain,
+    playbookKey: row.playbook_key,
     name: row.name,
     version: row.version,
     saved: row.saved,
@@ -132,13 +132,13 @@ export function viewRowOf(row: StoredRow): ViewRow {
   };
 }
 
-export function keptViewOf({ brain, checkpoint, ...row }: ViewRow, view: Schema.Json): KeptView {
+export function keptViewOf({ playbookKey, checkpoint, ...row }: ViewRow, view: Schema.Json): KeptView {
   return {
     name: row.name,
     version: row.version,
     phase: row.phase,
     view,
-    checkpoint: checkpoint === undefined ? null : recordedCursorOf(brain, checkpoint),
+    checkpoint: checkpoint === undefined ? null : recordedCursorOf(playbookKey, checkpoint),
     checkpointAt: row.checkpointAt,
     lastEvent: row.lastEvent,
     folded: row.folded,

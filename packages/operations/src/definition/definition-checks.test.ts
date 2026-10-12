@@ -29,14 +29,14 @@ describe('the root of an input or output', () => {
   it('must be an object that declares its fields', () => {
     const undeclared = 'The input of probe must be an object that declares its fields';
 
-    expect(() => defineQuery('brain', { ...probe, route: get, inputSchema: Schema.Any, outputSchema: Empty })).toThrow(
-      undeclared,
-    );
     expect(() =>
-      defineQuery('brain', { ...probe, route: get, inputSchema: Schema.Struct({}), outputSchema: Empty }),
+      defineQuery('playbook', { ...probe, route: get, inputSchema: Schema.Any, outputSchema: Empty }),
     ).toThrow(undeclared);
     expect(() =>
-      defineQuery('brain', {
+      defineQuery('playbook', { ...probe, route: get, inputSchema: Schema.Struct({}), outputSchema: Empty }),
+    ).toThrow(undeclared);
+    expect(() =>
+      defineQuery('playbook', {
         ...probe,
         route: get,
         inputSchema: Schema.Record(Schema.String, Schema.String),
@@ -44,7 +44,7 @@ describe('the root of an input or output', () => {
       }),
     ).toThrow(undeclared);
     expect(() =>
-      defineQuery('brain', {
+      defineQuery('playbook', {
         ...probe,
         route: get,
         inputSchema: Schema.Union([named, Schema.Record(Schema.String, Schema.Json)]),
@@ -52,7 +52,7 @@ describe('the root of an input or output', () => {
       }),
     ).toThrow(undeclared);
     expect(() =>
-      defineQuery('brain', { ...probe, route: get, inputSchema: Empty, outputSchema: Schema.Struct({}) }),
+      defineQuery('playbook', { ...probe, route: get, inputSchema: Empty, outputSchema: Schema.Struct({}) }),
     ).toThrow('The output of probe must be an object that declares its fields');
   });
 });
@@ -61,11 +61,11 @@ describe('an input or output below its root', () => {
   it('may not hold an empty struct at any depth', () => {
     const meta = Schema.Struct({ meta: Schema.Struct({}) });
 
-    expect(() => defineQuery('brain', { ...probe, route: get, inputSchema: meta, outputSchema: Empty })).toThrow(
+    expect(() => defineQuery('playbook', { ...probe, route: get, inputSchema: meta, outputSchema: Empty })).toThrow(
       'The input of probe holds an empty struct, which accepts any value',
     );
     expect(() =>
-      defineQuery('brain', {
+      defineQuery('playbook', {
         ...probe,
         route: get,
         inputSchema: Empty,
@@ -79,7 +79,7 @@ describe('an input or output below its root', () => {
     const shapes = Schema.Union([named, Schema.Struct({ name: Schema.Literal('square'), side: Schema.Finite })]);
 
     expect(
-      defineQuery('brain', {
+      defineQuery('playbook', {
         ...probe,
         route: get,
         inputSchema: Schema.Struct({ tree: TreeSchema }),
@@ -87,7 +87,7 @@ describe('an input or output below its root', () => {
       }).registration.name,
     ).toBe('probe');
     expect(
-      defineQuery('brain', {
+      defineQuery('playbook', {
         ...probe,
         route: { method: 'GET', path: '/probe/{name}' },
         inputSchema: shapes,
@@ -98,7 +98,7 @@ describe('an input or output below its root', () => {
 });
 
 describe('the encoded fields of an input', () => {
-  it('may not be named org, nor brain at brain scope, whatever the handler calls them', () => {
+  it('may not be named org, nor playbook at playbook scope, whatever the handler calls them', () => {
     const renaming = Schema.Struct({ organisation: Schema.String, target: Schema.String });
 
     expect(() =>
@@ -110,24 +110,24 @@ describe('the encoded fields of an input', () => {
       }),
     ).toThrow('The input of probe may not have a field named org');
     expect(() =>
-      defineQuery('brain', {
+      defineQuery('playbook', {
         ...probe,
         route: get,
-        inputSchema: renaming.pipe(Schema.encodeKeys({ target: 'brain' })),
+        inputSchema: renaming.pipe(Schema.encodeKeys({ target: 'playbook' })),
         outputSchema: Empty,
       }),
-    ).toThrow('The input of probe may not have a field named brain');
+    ).toThrow('The input of probe may not have a field named playbook');
   });
 
-  it('must carry the brain an org operation targets under the name brain', () => {
+  it('must carry the playbook an org operation targets under the name playbook', () => {
     expect(() =>
       defineCommand('org', {
         ...probe,
         route: { method: 'POST', path: '/probe' },
-        inputSchema: Schema.Struct({ brain: Schema.String }).pipe(Schema.encodeKeys({ brain: 'target' })),
+        inputSchema: Schema.Struct({ playbook: Schema.String }).pipe(Schema.encodeKeys({ playbook: 'target' })),
         outputSchema: Empty,
       }),
-    ).toThrow('The input of probe must take its brain field from a field named brain');
+    ).toThrow('The input of probe must take its playbook field from a field named playbook');
   });
 });
 
@@ -137,7 +137,7 @@ describe('a route parameter', () => {
 
   it('must be a field of every member of the input, even where the compiler cannot see the path', () => {
     expect(() =>
-      defineQuery('brain', {
+      defineQuery('playbook', {
         ...probe,
         route: { method: 'GET', path: withName },
         inputSchema: Empty,
@@ -145,7 +145,7 @@ describe('a route parameter', () => {
       }),
     ).toThrow(missing);
     expect(() =>
-      defineQuery('brain', {
+      defineQuery('playbook', {
         ...probe,
         route: { method: 'GET', path: withName },
         inputSchema: Schema.Union([named, Schema.Struct({ other: Schema.String })]),
@@ -158,7 +158,7 @@ describe('a route parameter', () => {
     const route: { readonly method: 'GET'; readonly path: '/probe/{name}' } = { method: 'GET', path: '/probe/{name}' };
 
     expect(() =>
-      defineQuery('brain', {
+      defineQuery('playbook', {
         ...probe,
         route: { method: 'GET', path: withName },
         inputSchema: Schema.Struct({ name: Schema.optionalKey(Schema.String) }),
@@ -166,7 +166,7 @@ describe('a route parameter', () => {
       }),
     ).toThrow(missing);
     expect(() =>
-      defineQuery('brain', {
+      defineQuery('playbook', {
         ...probe,
         route,
         inputSchema: Schema.Struct({ name: Schema.NumberFromString.pipe(Schema.flip) }),
@@ -178,26 +178,26 @@ describe('a route parameter', () => {
 
 describe('a route parameter that is a string once encoded', () => {
   it('may be any kind of string', () => {
-    const route: { readonly method: 'GET'; readonly path: '/brains/{brain}' } = {
+    const route: { readonly method: 'GET'; readonly path: '/playbooks/{playbook}' } = {
       method: 'GET',
-      path: '/brains/{brain}',
+      path: '/playbooks/{playbook}',
     };
 
     expect(
       defineQuery('org', {
         ...probe,
         route,
-        inputSchema: Schema.Struct({ brain: Schema.Literals(['alpha', 'beta']) }),
+        inputSchema: Schema.Struct({ playbook: Schema.Literals(['alpha', 'beta']) }),
         outputSchema: Empty,
       }).registration,
-    ).toMatchObject({ pathParameters: ['brain'], targetsBrain: true });
+    ).toMatchObject({ pathParameters: ['playbook'], targetsPlaybook: true });
     expect(
       defineQuery('org', {
         ...probe,
         route,
-        inputSchema: Schema.Struct({ brain: Schema.TemplateLiteral(['b-', Schema.String]) }),
+        inputSchema: Schema.Struct({ playbook: Schema.TemplateLiteral(['b-', Schema.String]) }),
         outputSchema: Empty,
-      }).registration.targetsBrain,
+      }).registration.targetsPlaybook,
     ).toBe(true);
   });
 });
@@ -205,7 +205,7 @@ describe('a route parameter that is a string once encoded', () => {
 describe('the declared reasons', () => {
   it('are kept once each', () => {
     expect(
-      defineQuery('brain', {
+      defineQuery('playbook', {
         ...probe,
         route: get,
         inputSchema: Empty,
@@ -219,17 +219,17 @@ describe('the declared reasons', () => {
 describe('the permissions that let a caller call an operation', () => {
   it('are the one of its kind and scope, or the ones it is permitted by', () => {
     const reading = defineQuery('org', { ...probe, route: get, inputSchema: Empty, outputSchema: Empty });
-    const readingInsideABrain = defineQuery('org', {
+    const readingInsideAPlaybook = defineQuery('org', {
       ...probe,
       route: get,
       inputSchema: Empty,
       outputSchema: Empty,
-      permittedBy: ['org:read', 'brain:read'],
+      permittedBy: ['org:read', 'playbook:read'],
     });
 
-    expect([reading.registration.permissions, readingInsideABrain.registration.permissions]).toEqual([
+    expect([reading.registration.permissions, readingInsideAPlaybook.registration.permissions]).toEqual([
       ['org:read'],
-      ['org:read', 'brain:read'],
+      ['org:read', 'playbook:read'],
     ]);
   });
 

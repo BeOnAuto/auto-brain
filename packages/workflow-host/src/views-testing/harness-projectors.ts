@@ -18,9 +18,9 @@ function countingDatabase(database: HostDatabase): CountingDatabase {
       ...database,
       store: {
         ...store,
-        readRecorded: (brainKey, selection, page) => {
+        readRecorded: (playbookKey, selection, page) => {
           counted.reads += 1;
-          return store.readRecorded(brainKey, selection, page);
+          return store.readRecorded(playbookKey, selection, page);
         },
         definitionStreams: (definitionType) =>
           counted.failingDiscovery

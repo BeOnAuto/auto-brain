@@ -19,7 +19,7 @@ A guide can offer choices needed for its task, such as which Apollo connection p
 
 Use ordinary language and examples grounded in the product. Keep API names exact, avoid claims without evidence and centralize capability status on [Functions](../concepts/functions.md#availability). Repeat a status only where its absence would make the page misleading, such as an upcoming internal tool-access capability.
 
-Use [Brain terminology](../concepts/terminology.md) for resources, capabilities and domain names. A reasoning function has a prompt; workflows coordinate functions; runs execute definitions.
+Use [Playbook terminology](../concepts/terminology.md) for resources, capabilities and domain names. A reasoning function has a prompt; workflows coordinate functions; runs execute definitions.
 
 ## What belongs here
 
@@ -63,7 +63,7 @@ Open the printed `/docs/` URL. Serve the preview through VitePress rather than o
 
 ## Add or change a page
 
-Create Markdown under the relevant directory and add its route to `docs/nav.json`. Links in that file are relative to the documentation base, such as `/concepts/brains`; do not prefix them with `/docs`.
+Create Markdown under the relevant directory and add its route to `docs/nav.json`. Links in that file are relative to the documentation base, such as `/concepts/playbooks`; do not prefix them with `/docs`.
 
 Use relative Markdown links inside pages, such as `../concepts/functions.md`. They work in the repository, the standalone preview and the composed website. Keep assets in `docs/assets/` and refer to them relatively. Do not place secrets or Cloud account information in public examples.
 

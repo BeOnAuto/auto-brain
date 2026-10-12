@@ -43,13 +43,13 @@ async function measuredOn({ store, aDatabase, removeAll }: MeasuredStore): Promi
     write(`${store}: runs side by side, ${rateOf(await throughputOn(await aDatabase(), 100, 100))}`);
     const reacting = await timerLatenessOn(await aDatabase(), 1000, 1000);
     write(
-      `${store}: with 1000 workflows with event triggers in the brain, ${reacting.timers} timers fired late by ${reacting.p50} ms at the median, ${reacting.p99} ms at p99, ${reacting.most} ms at most`,
+      `${store}: with 1000 workflows with event triggers in the playbook, ${reacting.timers} timers fired late by ${reacting.p50} ms at the median, ${reacting.p99} ms at p99, ${reacting.most} ms at most`,
     );
     write(latencyLine(store, 'with', await reactionLatencyOn(await aDatabase(), { ...reacted, signalled: true })));
     write(latencyLine(store, 'without', await reactionLatencyOn(await aDatabase(), { ...reacted, signalled: false })));
     const sweep = await sweepCostOn(await aDatabase(), 1000, 10);
     write(
-      `${store}: ${sweep.brains} followed brains, ${sweep.reacting} with an event trigger: the sweeps after the start went over them in ${sweep.roundMs.toFixed(0)} ms, a sweep with nothing new took ${sweep.idleMs.toFixed(2)} ms at the median, and the sweeps after one new record in each took ${sweep.changedMs.toFixed(0)} ms`,
+      `${store}: ${sweep.playbooks} followed playbooks, ${sweep.reacting} with an event trigger: the sweeps after the start went over them in ${sweep.roundMs.toFixed(0)} ms, a sweep with nothing new took ${sweep.idleMs.toFixed(2)} ms at the median, and the sweeps after one new record in each took ${sweep.changedMs.toFixed(0)} ms`,
     );
     const recovery = await recoveryOn(await aDatabase());
     write(

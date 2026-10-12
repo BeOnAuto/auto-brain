@@ -9,7 +9,7 @@ import { viewsFolder } from '../src/views/views-folder.ts';
 import { viewsPortOn } from '../src/views/views-port.ts';
 
 export function measuredViewOf(database: HostDatabase, name: string): Promise<KeptView | undefined> {
-  return Effect.runPromise(viewsPortOn(database).viewOf({ org: 'acme', brain: 'alpha' }, name));
+  return Effect.runPromise(viewsPortOn(database).viewOf({ org: 'acme', playbook: 'alpha' }, name));
 }
 
 export function measuredViews(pool: ProgramPool): ProjectorSettings {
@@ -25,7 +25,7 @@ export function measuredViews(pool: ProgramPool): ProjectorSettings {
     folders: [
       someFolder(viewsFolder({ definitionType: 'recall', pool, folding, overtimesBeforeStall: 20, rebuildsAtOnce: 4 })),
     ],
-    brainsAtOnce: 4,
+    playbooksAtOnce: 4,
     pagesPerWake: 10,
   };
 }

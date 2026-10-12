@@ -15,19 +15,19 @@ import {
 } from '../views-testing/stepped-sweeps.ts';
 import * as documents from '../views-testing/view-documents.ts';
 import { viewHarness, type ViewHarness } from '../views-testing/view-harness.ts';
-import { brainPass, type PassParts } from './brain-pass.ts';
+import { playbookPass, type PassParts } from './playbook-pass.ts';
 import { definitionsByType } from './projector-schedule.ts';
 
 const { alpha, alphaKey, counting, detailsOf, foldedAll, foldingOf, isLive, liveWith, succeeded, viewTestTimeoutMs } =
   documents;
 
-const brains = [alpha, { org: 'acme', brain: 'beta' }, { org: 'acme', brain: 'gamma' }];
+const playbooks = [alpha, { org: 'acme', playbook: 'beta' }, { org: 'acme', playbook: 'gamma' }];
 
-async function viewsInEveryBrain(views: ViewHarness): Promise<void> {
+async function viewsInEveryPlaybook(views: ViewHarness): Promise<void> {
   await Promise.all(
-    brains.map(async (brain) => {
-      await views.saved('runs', counting, brain);
-      await views.ran('reasoning/runs', 1, { brain });
+    playbooks.map(async (playbook) => {
+      await views.saved('runs', counting, playbook);
+      await views.ran('reasoning/runs', 1, { playbook });
     }),
   );
 }
@@ -53,13 +53,13 @@ describe('the pages of a pass', { timeout: viewTestTimeoutMs }, () => {
     const views = await viewHarness(await onSQLite());
     await views.saved('runs', counting);
     await views.ran('reasoning/runs', 1);
-    await Effect.runPromise(brainPass(partsOf(views, views.store.database, 10), alphaKey));
+    await Effect.runPromise(playbookPass(partsOf(views, views.store.database, 10), alphaKey));
     const caughtUp = await views.viewOf('runs');
     await views.ranInOneStream('reasoning/runs', runsOf(2500));
     const reads = heldReads(views.store.database);
     reads.open();
 
-    const more = await Effect.runPromise(brainPass(partsOf(views, reads.gated, 2), alphaKey));
+    const more = await Effect.runPromise(playbookPass(partsOf(views, reads.gated, 2), alphaKey));
     const kept = await views.viewOf('runs');
 
     expect([caughtUp?.phase, caughtUp?.folded]).toEqual(['live', 1]);
@@ -73,7 +73,7 @@ describe('the pages of a pass', { timeout: viewTestTimeoutMs }, () => {
     const reads = heldReads(views.store.database);
     reads.open();
 
-    const more = await Effect.runPromise(brainPass(partsOf(views, reads.gated, 2), alphaKey));
+    const more = await Effect.runPromise(playbookPass(partsOf(views, reads.gated, 2), alphaKey));
     const kept = await views.viewOf('runs');
 
     expect([more, reads.total(), kept?.folded]).toEqual([true, 2, 1999]);
@@ -81,11 +81,11 @@ describe('the pages of a pass', { timeout: viewTestTimeoutMs }, () => {
 });
 
 describe('the share of a projector', { timeout: viewTestTimeoutMs }, () => {
-  it('passes at most as many brains at once as it may', async () => {
+  it('passes at most as many playbooks at once as it may', async () => {
     const views = await viewHarness(await onSQLite());
-    await viewsInEveryBrain(views);
+    await viewsInEveryPlaybook(views);
     const reads = heldReads(views.store.database);
-    views.start({ through: () => reads.gated, brainsAtOnce: 2 });
+    views.start({ through: () => reads.gated, playbooksAtOnce: 2 });
 
     await vi.waitFor(
       () => {
@@ -96,14 +96,14 @@ describe('the share of a projector', { timeout: viewTestTimeoutMs }, () => {
     await setTimeout(300);
     const most = reads.most();
     reads.open();
-    await Promise.all(brains.map((brain) => views.until('runs', liveWith(1), brain)));
+    await Promise.all(playbooks.map((playbook) => views.until('runs', liveWith(1), playbook)));
 
     expect(most).toBe(2);
   });
 
   it('folds in at most half the workers of the pool at once', async () => {
     const views = await viewHarness(await onSQLite());
-    await viewsInEveryBrain(views);
+    await viewsInEveryPlaybook(views);
     const folds = heldFolds(views.pool);
     views.start({ pool: folds.gated });
 
@@ -116,14 +116,14 @@ describe('the share of a projector', { timeout: viewTestTimeoutMs }, () => {
     await setTimeout(300);
     const most = folds.most();
     folds.open();
-    await Promise.all(brains.map((brain) => views.until('runs', liveWith(1), brain)));
+    await Promise.all(playbooks.map((playbook) => views.until('runs', liveWith(1), playbook)));
 
     expect([views.pool.workers, most]).toEqual([4, 2]);
   });
 });
 
 describe('a fold that ran past its deadline', { timeout: viewTestTimeoutMs }, () => {
-  it('is tried again at the next sweep, not the next page, while the other views of its brain go on', async () => {
+  it('is tried again at the next sweep, not the next page, while the other views of its playbook go on', async () => {
     const views = await viewHarness(await onSQLite());
     const clock = steppedClock(Date.parse('2026-10-06T09:00:00.000Z'));
     await views.saved('slow', detailsOf(overrunningFold, succeeded, { initial: 0 }));

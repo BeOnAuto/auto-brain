@@ -1,6 +1,6 @@
 import type { Effect } from 'effect';
 
-import type { BrainAddress } from '../caller/brain-context.ts';
+import type { PlaybookAddress } from '../caller/playbook-context.ts';
 import type { Conflict } from '../outcome/conflict.ts';
 import type { InvalidInput } from '../outcome/invalid-input.ts';
 import type { DeclarableReason, Rejection } from '../outcome/rejection.ts';
@@ -33,14 +33,14 @@ export interface StreamWriter {
 
 export interface RecordedReader {
   readonly readRecorded: (
-    brain: BrainAddress,
+    playbook: PlaybookAddress,
     selection: RecordedSelection,
     page: RecordedPageRequest,
   ) => Effect.Effect<RecordedPage, InvalidCursor>;
-  readonly readRecordedEvent: (brain: BrainAddress, id: string) => Effect.Effect<RecordedFact | undefined>;
+  readonly readRecordedEvent: (playbook: PlaybookAddress, id: string) => Effect.Effect<RecordedFact | undefined>;
 }
 
-export interface BrainRecordedReader {
+export interface PlaybookRecordedReader {
   readonly readRecorded: (
     selection: RecordedSelection,
     page: RecordedPageRequest,
@@ -50,13 +50,13 @@ export interface BrainRecordedReader {
 
 export interface RunOutcomesReader {
   readonly readRunOutcomes: (
-    brain: BrainAddress,
+    playbook: PlaybookAddress,
     window: RunOutcomeWindow,
     selection: RunOutcomeSelection,
   ) => Effect.Effect<readonly RunOutcomeGroup[]>;
 }
 
-export interface BrainRunOutcomesReader {
+export interface PlaybookRunOutcomesReader {
   readonly readRunOutcomes: (
     window: RunOutcomeWindow,
     selection: RunOutcomeSelection,

@@ -17,7 +17,7 @@ const decodePublicEvent = Schema.decodeUnknownResult(PublicEventSchema);
 
 const presentation = presentationOf([runPresenter]);
 
-const showing = { streamPrefix: 'brain/acme/alpha/', content: nothingKept, view: 'page' } as const;
+const showing = { streamPrefix: 'playbook/acme/alpha/', content: nothingKept, view: 'page' } as const;
 
 function present(record: RecordedEvent) {
   return presentation.present(record, showing);

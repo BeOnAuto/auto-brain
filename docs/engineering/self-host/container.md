@@ -9,10 +9,10 @@ docker run --rm --log-driver none beonauto/auto-brain:latest node packages/ident
 echo 'API_KEYS=[<the API_KEYS entry it printed>]' > auto-brain.env
 docker volume create auto-brain-data
 docker run --rm --publish 8080:8080 --env-file auto-brain.env --volume auto-brain-data:/data beonauto/auto-brain:latest
-curl --header 'authorization: Bearer <the key it printed>' http://localhost:8080/v1/orgs/acme/brains
+curl --header 'authorization: Bearer <the key it printed>' http://localhost:8080/v1/orgs/acme/playbooks
 ```
 
-Without a named volume, Docker gives each container a fresh anonymous volume, so its brains last only as long as that container.
+Without a named volume, Docker gives each container a fresh anonymous volume, so its playbooks last only as long as that container.
 
 The image reads a configuration file only when `CONFIG_FILE` names one. Mount the file read-only and name it:
 
@@ -68,21 +68,21 @@ The [computation function adapter](../../reference/computation-format.md) runs e
 
 The server never keeps more worker threads alive, idle or busy, than this setting. It ends a worker after a run that ran past its time, used too much memory, was cancelled or broke, after its thousandth run, and after a minute without one, and starts another when a run needs it. A worker is stopped when its heap grows past 256 MiB, and it has a stack of 64 MiB, so plan for about 320 MiB for each worker on top of the server's own memory, about 1.25 GiB for the default four. A value outside the range stops the server at start, naming the setting.
 
-The [recall function adapter](../../reference/recall-format.md) shares those workers: a run of a recall function answers in one, and the server that runs the workflows keeps the views of recall functions, folding each page of a brain's history in one, using at most half of them at once and at least one. It keeps each view in a table beside the workflows' tables, in the ledger's database, so a view needs no other storage. These settings bound it:
+The [recall function adapter](../../reference/recall-format.md) shares those workers: a run of a recall function answers in one, and the server that runs the workflows keeps the views of recall functions, folding each page of a playbook's history in one, using at most half of them at once and at least one. It keeps each view in a table beside the workflows' tables, in the ledger's database, so a view needs no other storage. These settings bound it:
 
-| Variable                | Default | Purpose                                                                                                                                    |
-| ----------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `RECALL_MAX_FUNCTIONS`  | `32`    | How many active recall functions a brain may keep, from 1 to 1000; lowering it below what a brain keeps refuses its saves and nothing else |
-| `RECALL_MAX_REBUILDS`   | `4`     | How many views of one brain are built at once, from 1 to 64; the others wait in the order they were saved                                  |
-| `RECALL_BRAINS_AT_ONCE` | `4`     | How many brains the server folds at once, from 1 to 64                                                                                     |
+| Variable                   | Default | Purpose                                                                                                                                          |
+| -------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `RECALL_MAX_FUNCTIONS`     | `32`    | How many active recall functions a playbook may keep, from 1 to 1000; lowering it below what a playbook keeps refuses its saves and nothing else |
+| `RECALL_MAX_REBUILDS`      | `4`     | How many views of one playbook are built at once, from 1 to 64; the others wait in the order they were saved                                     |
+| `RECALL_PLAYBOOKS_AT_ONCE` | `4`     | How many playbooks the server folds at once, from 1 to 64                                                                                        |
 
 A value outside its range stops the server at start, naming the setting.
 
 The [interaction function adapter](../../reference/interaction-format.md) keeps the open requests in a table of the ledger's database, written in the same transaction as each run's facts, and the server that runs the workflows performs their expiries and delivery attempts with its timers, so a request needs no other storage or schedule. A function sends its request through a tool of a server in `mcp_servers`, which it names itself, and this setting goes with it:
 
-| Variable                    | Default | Purpose                                                                                                                            |
-| --------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `INTERACTION_OPEN_REQUESTS` | `10000` | How many requests a brain may have open at once, from 1 to 1,000,000; a run past it is `unavailable` with the kind `requests_full` |
+| Variable                    | Default | Purpose                                                                                                                               |
+| --------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `INTERACTION_OPEN_REQUESTS` | `10000` | How many requests a playbook may have open at once, from 1 to 1,000,000; a run past it is `unavailable` with the kind `requests_full` |
 
 The server keeps a pool of model processes for prediction functions, which no function uses yet: each a child process of its own, started only when a job asks for one, with an empty environment and no handle to the ledger, so a model that misbehaves ends its own process and never the server. In the image each runs under `prlimit` from the base image's `util-linux`, which bounds its data, the native allocations of a model's runtime as well as Node's heap, and sets its core file size to 0, so the kernel writes no core file when it crashes. A host whose core pattern pipes dumps to a helper still hands the dump to that helper, and the job's ordinary deadline remains the guard while the helper reads it (2.2 s measured on CI). These settings bound the pool:
 
@@ -103,10 +103,10 @@ The image is multi-arch (amd64 and arm64), runs as a non-root user that can read
 Set `DATABASE_URL` to a PostgreSQL database, and the server keeps the ledger there instead of in a file; the container then needs no volume. The URL holds the database's password, so it goes in `auto-brain.env` with the other secrets, never in the configuration file, which refuses a `database_url` key:
 
 ```bash
-echo 'DATABASE_URL=postgresql://auto-brain:<password>@db.example.com:5432/auto_brain' >> auto-brain.env
+echo 'DATABASE_URL=postgresql://auto-brain:<password>@db.example.com:5432/auto_playbook' >> auto-brain.env
 docker run --rm --publish 8080:8080 --env-file auto-brain.env beonauto/auto-brain:latest
 ```
 
-The server creates or migrates the ledger's tables in the database's `public` schema at every start, so its user needs `CREATE` on that schema at every start, not only the first; a user that may only read and write the tables fails to start with `permission denied for schema public`. It logs at start that the ledger is kept in PostgreSQL, naming the database and its host and never the URL. A database it cannot reach stops it at start, naming the host and port. The image needs nothing more for it: the PostgreSQL driver, `pg`, is pure JavaScript. Several servers may share the database: one runs the workflows and the others stand by to take them over; see [Workflow operations](workflows.md). Servers of different versions do not share a database at the same time: stop the servers of the old version before starting those of the new one. A version that keeps a new table in the ledger, such as the outcomes of runs that a brain's analytics read, fills it from the ledger's history at its first start, before it answers, under the database's migration lock; another server starting meanwhile waits for that lock up to 60 seconds, longer than the longest fill the ledger README records, and stops only if it is still held then; start it again once the first is ready. The [ledger README](../../../packages/ledger/README.md#keyed-projections) records how long the fill takes. The [ledger README](../../../packages/ledger/README.md#postgresql) has the details and what was verified.
+The server creates or migrates the ledger's tables in the database's `public` schema at every start, so its user needs `CREATE` on that schema at every start, not only the first; a user that may only read and write the tables fails to start with `permission denied for schema public`. It logs at start that the ledger is kept in PostgreSQL, naming the database and its host and never the URL. A database it cannot reach stops it at start, naming the host and port. The image needs nothing more for it: the PostgreSQL driver, `pg`, is pure JavaScript. Several servers may share the database: one runs the workflows and the others stand by to take them over; see [Workflow operations](workflows.md). Servers of different versions do not share a database at the same time: stop the servers of the old version before starting those of the new one. A version that keeps a new table in the ledger, such as the outcomes of runs that a playbook's analytics read, fills it from the ledger's history at its first start, before it answers, under the database's migration lock; another server starting meanwhile waits for that lock up to 60 seconds, longer than the longest fill the ledger README records, and stops only if it is still held then; start it again once the first is ready. The [ledger README](../../../packages/ledger/README.md#keyed-projections) records how long the fill takes. The [ledger README](../../../packages/ledger/README.md#postgresql) has the details and what was verified.
 
 For TLS to a managed database, end the URL with `?sslmode=verify-full`: the connection is encrypted, and the database's certificate and host name are checked against the certificate authorities Node trusts. A private authority, such as your provider's root certificate mounted in the container, is added with `NODE_EXTRA_CA_CERTS`. `pg` 8 treats `sslmode=require`, `prefer` and `verify-ca` as `verify-full` too, but prints a multi-line security warning to stderr the first time it connects, so write `verify-full`. `sslmode=no-verify` encrypts without checking the certificate, which lets a machine in between read the connection; use it for nothing but a test.

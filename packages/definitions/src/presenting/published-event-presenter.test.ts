@@ -24,7 +24,7 @@ function recordOf(stream: string, type: string, data: unknown, context: Context)
   };
 }
 
-const showing = { streamPrefix: 'brain/acme/alpha/', content: nothingKept, view: 'page' } as const;
+const showing = { streamPrefix: 'playbook/acme/alpha/', content: nothingKept, view: 'page' } as const;
 
 const event = {
   specversion: '1.0' as const,
@@ -46,7 +46,7 @@ describe('the presenter of a published event', () => {
     expect(presented({ type: 'event_published', data: { event, filled: ['id', 'time'] } }, publishedBy)).toMatchObject([
       {
         type: 'event_published',
-        summary: 'The event “com.acme.ledger.opened” was published to the brain.',
+        summary: 'The event “com.acme.ledger.opened” was published to the playbook.',
         data: {
           event_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
           event_type: 'com.acme.ledger.opened',

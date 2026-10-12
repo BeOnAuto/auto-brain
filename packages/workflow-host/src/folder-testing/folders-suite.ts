@@ -45,7 +45,7 @@ function outputsCounted(details: TallyDetails, outputs: readonly string[]) {
 }
 
 function writingBy(tallies: TallyHarness): Writing {
-  return { database: tallies.store.database, brain: alphaKey, note: tallies.reports.reports.note };
+  return { database: tallies.store.database, playbook: alphaKey, note: tallies.reports.reports.note };
 }
 
 function withOutputs(change: TallyChange, next: Partial<TallyChange['next']> = {}): TallyChange {

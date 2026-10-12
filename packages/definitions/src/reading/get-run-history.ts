@@ -1,6 +1,6 @@
 import {
-  BrainContext,
-  BrainReader,
+  PlaybookContext,
+  PlaybookReader,
   EventPagingInputFields,
   EventPagingOutputFields,
   PublicEventSchema,
@@ -10,7 +10,7 @@ import {
   keptContentOf,
   mostPublicEventDataBytes,
   presentationOf,
-  streamPrefixOfBrain,
+  streamPrefixOfPlaybook,
   type Presentation,
   type Presenter,
   type RecordedEvent,
@@ -59,7 +59,7 @@ function holdsNoRun(heads: readonly RecordedEvent[]): boolean {
 
 function newestHeadOf(id: string) {
   return Effect.gen(function* () {
-    const { records } = yield* (yield* BrainReader).readRecorded({ kind: 'run', run: id }, newestHeadAlone);
+    const { records } = yield* (yield* PlaybookReader).readRecorded({ kind: 'run', run: id }, newestHeadAlone);
     return records;
   });
 }
@@ -72,19 +72,19 @@ function historyReader(presentation: Presentation) {
     cursor,
   }: typeof RunHistoryInput.Type) {
     const paging = { order, limit, ...(cursor === undefined ? {} : { cursor }) };
-    const page = yield* (yield* BrainReader).readRecorded({ kind: 'run', run: id }, paging);
+    const page = yield* (yield* PlaybookReader).readRecorded({ kind: 'run', run: id }, paging);
     if (page.records.every((record) => isACancel(record)) && holdsNoRun(yield* newestHeadOf(id))) {
       return yield* Effect.fail(noRunCalled(id));
     }
     const content = yield* keptContentOf(page.records, mostPublicEventDataBytes);
-    const showing = { streamPrefix: streamPrefixOfBrain(yield* BrainContext), content, view: 'page' } as const;
+    const showing = { streamPrefix: streamPrefixOfPlaybook(yield* PlaybookContext), content, view: 'page' } as const;
     const { events, hasMore, nextCursor } = eventsPageOf(presentation, page, { ...paging, showing });
     return { events, has_more: hasMore, next_cursor: nextCursor };
   });
 }
 
 export function defineGetRunHistory(presenters: readonly Presenter[]) {
-  return defineQuery('brain', {
+  return defineQuery('playbook', {
     name: 'get_run_history',
     title: 'Get run history',
     description,

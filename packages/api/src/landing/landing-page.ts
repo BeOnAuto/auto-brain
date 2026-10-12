@@ -136,7 +136,7 @@ function pageOf(server: Readonly<URL>): ReturnType<typeof html> {
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Auto Brain</title>
+        <title>Auto Runtime</title>
         <link rel="icon" href="${iconOnLight}" media="(prefers-color-scheme: light)" />
         <link rel="icon" href="${iconOnDark}" media="(prefers-color-scheme: dark)" />
         ${raw(ownStyles)}
@@ -144,8 +144,8 @@ function pageOf(server: Readonly<URL>): ReturnType<typeof html> {
       <body>
         <main>
           ${raw(mark)}
-          <h1>Auto Brain is running</h1>
-          <p>Create and manage your brains in the studio.</p>
+          <h1>Auto Runtime is running</h1>
+          <p>Create and manage your playbooks in the studio.</p>
           <span class="address">${server.host}</span>
           <a class="open" href="${studioOn(server)}">Open studio ${raw(arrow)}</a>
         </main>

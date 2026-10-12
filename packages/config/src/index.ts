@@ -25,7 +25,7 @@ export {
 } from './json-settings/json-setting.ts';
 export {
   servedScopeOf,
-  servesBrain,
+  servesPlaybook,
   type ServedAddress,
   type ServedScope,
   type WrittenScope,

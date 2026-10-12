@@ -16,7 +16,7 @@ let server: ReasoningServer;
 
 beforeEach(async () => {
   server = await servingReasoning([]);
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
 });
 
 afterEach(async () => {
@@ -27,7 +27,7 @@ function creating(name: string, source: string) {
   return server.call('POST', `${alpha}/definitions/reasoning`, { body: { name, source } });
 }
 
-describe('the reasoning function definitions of a brain over HTTP', () => {
+describe('the reasoning function definitions of a playbook over HTTP', () => {
   it('creates a definition with 201, with what the capability says about it', async () => {
     expect(await creating('summary', summary)).toMatchObject({
       status: 201,

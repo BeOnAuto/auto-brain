@@ -76,12 +76,12 @@ const approved = {
   output: {
     status: 'succeeded',
     output: { choice: 'approve' },
-    record: { answered_by: 'brain:alpha', reply: takenReply },
+    record: { answered_by: 'playbook:alpha', reply: takenReply },
   },
 };
 
-function replyTaken(brain: InteractionHarness): Promise<unknown> {
-  return recordedReply(brain.ledger, { choice: 'approve' });
+function replyTaken(playbook: InteractionHarness): Promise<unknown> {
+  return recordedReply(playbook.ledger, { choice: 'approve' });
 }
 
 describe.each(stores)(
@@ -89,14 +89,14 @@ describe.each(stores)(
   ({ skipped, aLedger }) => {
     it.skipIf(skipped)('settles an answer a reply brought from the reply, after the expiry too', async () => {
       const asked = await askedThroughChat({ ledger: await aLedger() });
-      await asked.brain.performDue(asked.askedAt);
-      await replyTaken(asked.brain);
+      await asked.playbook.performDue(asked.askedAt);
+      await replyTaken(asked.playbook);
 
-      const afterStop = await asked.brain.firstOpen();
-      await asked.brain.performDue(asked.askedAt + 3 * days);
+      const afterStop = await asked.playbook.firstOpen();
+      await asked.playbook.performDue(asked.askedAt + 3 * days);
 
       expect(afterStop).toMatchObject({ standing: 'answered' });
-      expect(await asked.brain.runOf(askedRunId)).toMatchObject(approved);
+      expect(await asked.playbook.runOf(askedRunId)).toMatchObject(approved);
       expect(asked.tools.calls()).toHaveLength(1);
     });
 
@@ -104,9 +104,9 @@ describe.each(stores)(
       const asked = await askedThroughChat({ notification: true, ledger: await aLedger() });
 
       await attemptedThenStopped(asked);
-      await asked.brain.performDue(Date.now());
+      await asked.playbook.performDue(Date.now());
 
-      expect(await asked.brain.runOf(askedRunId)).toMatchObject({
+      expect(await asked.playbook.runOf(askedRunId)).toMatchObject({
         output: { status: 'succeeded', output: {}, record: { delivered_at: anyTime } },
       });
       expect(asked.tools.calls()).toHaveLength(1);
@@ -120,24 +120,24 @@ describe.each(stores)('a reply taken while another settlement is under way, on $
     const asked = await askedThroughChat({ ledger: racing.ledger });
     await racing.started();
 
-    const meanwhile = await asked.brain.call(answerInteraction, {
+    const meanwhile = await asked.playbook.call(answerInteraction, {
       run_id: askedRunId,
       answer: { choice: 'reject' },
     });
-    await asked.brain.performDue(Date.now());
+    await asked.playbook.performDue(Date.now());
 
     expect(meanwhile).toMatchObject({ status: 'rejected', reason: 'conflict' });
-    expect(await asked.brain.runOf(askedRunId)).toMatchObject(approved);
+    expect(await asked.playbook.runOf(askedRunId)).toMatchObject(approved);
   });
 
   it.skipIf(skipped)('settles a cancel asked after the reply with the reply’s answer', async () => {
     const asked = await askedThroughChat({ ledger: await aLedger() });
-    await replyTaken(asked.brain);
+    await replyTaken(asked.playbook);
 
-    await asked.brain.cancel(askedRunId);
-    await asked.brain.performDue(Date.now());
+    await asked.playbook.cancel(askedRunId);
+    await asked.playbook.performDue(Date.now());
 
-    expect(await asked.brain.runOf(askedRunId)).toMatchObject(approved);
+    expect(await asked.playbook.runOf(askedRunId)).toMatchObject(approved);
   });
 });
 
@@ -149,10 +149,10 @@ describe.each(stores)(
       const asked = await askedThroughChat({ notification: true, ledger: racing.ledger });
       await racing.started();
 
-      await asked.brain.cancel(askedRunId);
-      await racing.cancelSettled(asked.brain.capability);
+      await asked.playbook.cancel(askedRunId);
+      await racing.cancelSettled(asked.playbook.capability);
 
-      expect(await asked.brain.runOf(askedRunId)).toMatchObject({
+      expect(await asked.playbook.runOf(askedRunId)).toMatchObject({
         output: { status: 'succeeded', output: {}, record: { delivered_at: anyTime } },
       });
     });

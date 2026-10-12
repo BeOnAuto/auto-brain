@@ -4,26 +4,28 @@ import { describe, expect, it } from 'vitest';
 
 import { IncidentReporter, makeDispatcher, type Outcome } from '../index.ts';
 import { acmeAdmin } from '../testing/callers.ts';
-import { harness, toBrain, toOrg } from '../testing/harness.ts';
-import { memoryBrainRegistry, memoryLedger } from '../testing/index.ts';
+import { harness, toPlaybook, toOrg } from '../testing/harness.ts';
+import { memoryPlaybookRegistry, memoryLedger } from '../testing/index.ts';
 import { breakAndGiveUp, explode, misreport, overshare, rejectUndeclared } from '../testing/misbehaving.ts';
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 const incidentId = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 
-const callOnAlpha = { operation: 'explode', org: 'acme', brain: 'alpha', caller: 'acme-admin' };
+const callOnAlpha = { operation: 'explode', org: 'acme', playbook: 'alpha', caller: 'acme-admin' };
 
 function explodingWith(report: IncidentReporter['Service']['report']) {
   const services = Layer.mergeAll(
     memoryLedger().layer,
-    memoryBrainRegistry([{ org: 'acme', brain: 'alpha' }]),
+    memoryPlaybookRegistry([{ org: 'acme', playbook: 'alpha' }]),
     Layer.succeed(IncidentReporter, IncidentReporter.of({ report })),
     TestClock.layer(),
     TestConsole.layer,
   );
   const watched = Effect.gen(function* () {
-    const call = yield* Effect.forkChild(makeDispatcher([]).dispatchToBrain(explode.registration, toAlpha(acmeAdmin)));
+    const call = yield* Effect.forkChild(
+      makeDispatcher([]).dispatchToPlaybook(explode.registration, toAlpha(acmeAdmin)),
+    );
     yield* TestClock.adjust('2 seconds');
     const outcome: Outcome = yield* Fiber.join(call);
     return { incident: incidentOf(outcome), logged: (yield* TestConsole.logLines).join(' ') };
@@ -39,7 +41,7 @@ describe('a defect in a call', () => {
   it('becomes an incident whose original and call go to the reporter only', async () => {
     const { dispatcher, reported, run } = harness();
 
-    const outcome = await run(dispatcher.dispatchToBrain(explode.registration, toAlpha(acmeAdmin)));
+    const outcome = await run(dispatcher.dispatchToPlaybook(explode.registration, toAlpha(acmeAdmin)));
 
     expect(outcome).toEqual({ status: 'failed', incident: reported()[0]?.id });
     expect(reported()[0]?.id).toMatch(incidentId);
@@ -52,7 +54,7 @@ describe('a defect in a call', () => {
     const { dispatcher, reported, run } = harness();
 
     const misreported = await run(dispatcher.dispatchToOrg(misreport.registration, toOrg('acme')(acmeAdmin)));
-    const overshared = await run(dispatcher.dispatchToBrain(overshare.registration, toAlpha(acmeAdmin)));
+    const overshared = await run(dispatcher.dispatchToPlaybook(overshare.registration, toAlpha(acmeAdmin)));
 
     expect([misreported, overshared]).toEqual(reported().map(({ id }) => ({ status: 'failed', incident: id })));
     expect(reported()[0]?.call).toEqual({ operation: 'misreport', org: 'acme', caller: 'acme-admin' });
@@ -61,7 +63,7 @@ describe('a defect in a call', () => {
   it('includes a rejection the handler did not declare', async () => {
     const { dispatcher, reported, run } = harness();
 
-    expect(await run(dispatcher.dispatchToBrain(rejectUndeclared.registration, toAlpha(acmeAdmin)))).toMatchObject({
+    expect(await run(dispatcher.dispatchToPlaybook(rejectUndeclared.registration, toAlpha(acmeAdmin)))).toMatchObject({
       status: 'failed',
     });
     expect(reported().map(({ original }) => original)).toMatchObject([{ detail: 'taken' }]);
@@ -70,7 +72,7 @@ describe('a defect in a call', () => {
   it('includes a defect beside an interruption', async () => {
     const { dispatcher, reported, run } = harness();
 
-    expect(await run(dispatcher.dispatchToBrain(breakAndGiveUp.registration, toAlpha(acmeAdmin)))).toEqual({
+    expect(await run(dispatcher.dispatchToPlaybook(breakAndGiveUp.registration, toAlpha(acmeAdmin)))).toEqual({
       status: 'failed',
       incident: reported()[0]?.id,
     });

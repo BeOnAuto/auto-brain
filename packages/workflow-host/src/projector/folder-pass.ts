@@ -8,8 +8,8 @@ import type { FoldedChanges, Folder, PassedChange, PassedRow } from './folder.ts
 import { hasFreeSlot, reconciledRows, type DefinitionsKept } from './reconciled-rows.ts';
 
 export interface Resting {
-  readonly isResting: (brain: string, row: string) => boolean;
-  readonly rest: (brain: string, row: string) => void;
+  readonly isResting: (playbook: string, row: string) => boolean;
+  readonly rest: (playbook: string, row: string) => void;
 }
 
 export interface FolderParts extends DefinitionsKept {
@@ -47,21 +47,21 @@ interface Step<Row> {
 interface Passing<Row extends PassedRow, Change extends PassedChange<Row>> {
   readonly folder: Folder<Row, Change>;
   readonly parts: FolderParts;
-  readonly brain: string;
+  readonly playbook: string;
 }
 
-function noted(parts: FolderParts, brain: string, page: ReadPage): Effect.Effect<void> {
+function noted(parts: FolderParts, playbook: string, page: ReadPage): Effect.Effect<void> {
   return Effect.forEach(
     page.passedOver.filter(({ record }) => parts.firstSeen(record)),
-    ({ record, reason }) => parts.note({ kind: 'record_passed_over', brain, record, reason }),
+    ({ record, reason }) => parts.note({ kind: 'record_passed_over', playbook, record, reason }),
     { discard: true },
   );
 }
 
-export function readFor(parts: FolderParts, brain: string, { after, types }: LiveRead): Effect.Effect<ReadPage> {
-  const read = { brainKey: brain, after, types: typesToRead(types), definitionTypes: parts.definitionTypes };
+export function readFor(parts: FolderParts, playbook: string, { after, types }: LiveRead): Effect.Effect<ReadPage> {
+  const read = { playbookKey: playbook, after, types: typesToRead(types), definitionTypes: parts.definitionTypes };
   return Effect.promise(() => readPage(parts.database.store, read)).pipe(
-    Effect.tap((page) => noted(parts, brain, page)),
+    Effect.tap((page) => noted(parts, playbook, page)),
   );
 }
 
@@ -76,7 +76,7 @@ function isAwake<Row extends PassedRow, Change extends PassedChange<Row>>(
   passing: Passing<Row, Change>,
   row: Row,
 ): boolean {
-  return !passing.parts.resting.isResting(passing.brain, restingKeyOf(passing, passing.folder.keyOf(row)));
+  return !passing.parts.resting.isResting(passing.playbook, restingKeyOf(passing, passing.folder.keyOf(row)));
 }
 
 function isLive({ phase }: PassedRow): boolean {
@@ -101,17 +101,17 @@ function troubled<Row extends PassedRow, Change extends PassedChange<Row>>(
   result: FoldedChanges<Change>,
 ): Effect.Effect<void> {
   for (const key of result.resting) {
-    passing.parts.resting.rest(passing.brain, restingKeyOf(passing, key));
+    passing.parts.resting.rest(passing.playbook, restingKeyOf(passing, key));
   }
   return result.trouble === undefined ? Effect.void : passing.parts.trouble(result.trouble);
 }
 
 function applied<Row extends PassedRow, Change extends PassedChange<Row>>(
-  { folder, parts, brain }: Passing<Row, Change>,
+  { folder, parts, playbook }: Passing<Row, Change>,
   pass: Pass<Row>,
   changes: readonly Change[],
 ): Effect.Effect<Pass<Row>, DatabaseFailed> {
-  const writing = { database: parts.database, brain, note: parts.note };
+  const writing = { database: parts.database, playbook, note: parts.note };
   return Effect.forEach(changes, (change) =>
     Effect.map(folder.write(writing, change), (after) => ({ key: folder.keyOf(change.row), after })),
   ).pipe(
@@ -156,9 +156,9 @@ function rebuildStep<Row extends PassedRow, Change extends PassedChange<Row>>(
   pass: Pass<Row>,
   row: Row,
 ): Effect.Effect<Step<Row>, DatabaseFailed> {
-  const { folder, parts, brain } = passing;
+  const { folder, parts, playbook } = passing;
   return Effect.gen(function* () {
-    const page = yield* readFor(parts, brain, { after: row.checkpoint, types: folder.typesOf(row) });
+    const page = yield* readFor(parts, playbook, { after: row.checkpoint, types: folder.typesOf(row) });
     const result = yield* folder.fold([row], page, parts.database);
     yield* troubled(passing, result);
     const change = result.changes[0] ?? folder.unchanged(row);
@@ -215,10 +215,10 @@ function canBuildFrom<Row extends PassedRow, Change extends PassedChange<Row>>(
 export function folderPassOf<Row extends PassedRow, Change extends PassedChange<Row>>(
   folder: Folder<Row, Change>,
   parts: FolderParts,
-  brain: string,
+  playbook: string,
 ): Effect.Effect<FolderPass, DatabaseFailed> {
-  const passing: Passing<Row, Change> = { folder, parts, brain };
-  return Effect.map(reconciledRows(folder, parts, brain), (reconciled) => {
+  const passing: Passing<Row, Change> = { folder, parts, playbook };
+  return Effect.map(reconciledRows(folder, parts, playbook), (reconciled) => {
     const state = { rows: reconciled, sharing: true, again: false };
     return {
       live: () => (state.sharing ? liveOf(passing, state.rows) : undefined),
@@ -232,7 +232,7 @@ export function folderPassOf<Row extends PassedRow, Change extends PassedChange<
           yield* troubled(passing, result);
           const after = yield* applied(passing, { rows: state.rows, pages: 0 }, result.changes);
           state.rows = page.definitionsSeen.has(folder.definitionType)
-            ? yield* reconciledRows(folder, parts, brain)
+            ? yield* reconciledRows(folder, parts, playbook)
             : after.rows;
           state.sharing = !(result.again || (result.complete && page.atTheEnd));
           state.again = result.again;

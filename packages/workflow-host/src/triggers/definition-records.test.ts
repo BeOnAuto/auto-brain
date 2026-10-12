@@ -4,12 +4,12 @@ import { describe, expect, it } from 'vitest';
 
 import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
-import { cronTrigger, eventTrigger, everyTrigger } from '../reaction-testing/brain-writes.ts';
 import { definitionRecordsKeepingTheirOwnStops } from '../reaction-testing/own-stops.ts';
+import { cronTrigger, eventTrigger, everyTrigger } from '../reaction-testing/playbook-writes.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
 import { definitionRecordsIn, type DefinitionRecord } from './definition-records.ts';
 
-const brainKey = 'brain/acme/alpha/';
+const playbookKey = 'playbook/acme/alpha/';
 
 const aMinute = 60_000;
 
@@ -62,7 +62,7 @@ async function applying() {
   return {
     database,
     applied: (...records: readonly DefinitionRecord[]) =>
-      Effect.runPromise(Effect.forEach(records, (record) => apply(brainKey, record))),
+      Effect.runPromise(Effect.forEach(records, (record) => apply(playbookKey, record))),
   };
 }
 
@@ -93,7 +93,7 @@ function runningSet(database: HostDatabase, reference: string, running: string) 
   );
 }
 
-describe('the records of the definitions of a brain, applied to its triggers', () => {
+describe('the records of the definitions of a playbook, applied to its triggers', () => {
   it('give a version with triggers a row for each, and take them away at a version without, at its retirement', async () => {
     const { database, applied } = await applying();
 

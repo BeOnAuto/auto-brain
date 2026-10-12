@@ -74,7 +74,7 @@ describe('the guides of a server that runs every type of definition', () => {
       'computation-function',
       'recall-function',
       'workflow',
-      'first-brain',
+      'first-playbook',
       'remember',
       'give-tools',
       'schedule',
@@ -144,7 +144,7 @@ describe('the size and the words of the guides of a server', () => {
 describe('the recipes of a server', () => {
   it('leave out a recipe whose format guide the server does not carry', () => {
     expect(servedGuidesOf([reasoning, workflow]).recipes.map(({ name }) => name)).toEqual([
-      'first-brain',
+      'first-playbook',
       'give-tools',
       'schedule',
     ]);
@@ -155,22 +155,22 @@ describe('the recipes of a server', () => {
     const asked = Object.fromEntries(servedGuidesOf(everyType).recipes.map(({ name, request }) => [name, request]));
 
     expect([
-      asked['first-brain']?.({}),
+      asked['first-playbook']?.({}),
       asked['remember']?.({ what: 'what it posted today' }),
       asked['give-tools']?.({}),
       asked['give-tools']?.({ server: 'slack' }),
       asked['schedule']?.({ workflow: 'daily-digest', when: 'every weekday at 9:00' }),
     ]).toEqual([
-      'Create my first brain.',
-      'Make the brain remember what it posted today.',
-      'Give the brain tools.',
-      'Give the brain the tools of the tool server slack.',
+      'Create my first playbook.',
+      'Make the playbook remember what it posted today.',
+      'Give the playbook tools.',
+      'Give the playbook the tools of the tool server slack.',
       'Run the workflow daily-digest every weekday at 9:00.',
     ]);
   });
 });
 
-describe('the recipes that give a brain tools', () => {
+describe('the recipes that give a playbook tools', () => {
   it('test a tool to learn what it answers, and never make a function to look, within the bound of a recipe', () => {
     const texts = Object.fromEntries(servedGuidesOf(everyType).recipes.map(({ name, text }) => [name, text]));
 
@@ -180,12 +180,13 @@ describe('the recipes that give a brain tools', () => {
     expect(String(texts['give-tools'])).toContain(
       'the org it serves, with `allowed` naming the tools a function may call. The server reads them when it starts again.',
     );
-    expect(String(texts['first-brain'])).toContain(
+    expect(String(texts['first-playbook'])).toContain(
       "When it should use a tool server's tools, follow the give-tools recipe: to learn what a tool answers, test it with test_tool_call, and never make a function to look.",
     );
-    expect([Buffer.byteLength(String(texts['give-tools'])), Buffer.byteLength(String(texts['first-brain']))]).toEqual([
-      2049, 1764,
-    ]);
+    expect([
+      Buffer.byteLength(String(texts['give-tools'])),
+      Buffer.byteLength(String(texts['first-playbook'])),
+    ]).toEqual([2058, 1794]);
   });
 });
 
@@ -194,17 +195,17 @@ describe('the recipes of a server that serves interaction functions', () => {
     const texts = recipeTextsOf([...everyType, interaction]);
 
     expect(texts['give-tools']).toContain(
-      "5. Ask the person what the function should do with the tools, and which of them it needs. When the brain only needs what a tool answers, with nothing to reason about, write an interaction function that calls the tool instead: it answers at once with what the tool answered and spends no model call, and the interaction-function guide says how to write it from the test's answer. When the brain should send a person a message through a tool and take their answer, write an interaction function instead: the interaction-function guide says how it names the tool it sends through and the tool it reads replies with, each tested the same way.\n",
+      "5. Ask the person what the function should do with the tools, and which of them it needs. When the playbook only needs what a tool answers, with nothing to reason about, write an interaction function that calls the tool instead: it answers at once with what the tool answered and spends no model call, and the interaction-function guide says how to write it from the test's answer. When the playbook should send a person a message through a tool and take their answer, write an interaction function instead: the interaction-function guide says how it names the tool it sends through and the tool it reads replies with, each tested the same way.\n",
     );
-    expect(texts['first-brain']).toContain(
-      'give it tools with the give-tools recipe, send someone a message through a tool and take their answer with an interaction function, make the brain remember its answers',
+    expect(texts['first-playbook']).toContain(
+      'give it tools with the give-tools recipe, send someone a message through a tool and take their answer with an interaction function, make the playbook remember its answers',
     );
     expect([
-      bytesOf(texts, 'first-brain', 'remember', 'give-tools', 'schedule'),
-      bytesOf(recipeTextsOf(everyType), 'first-brain', 'remember', 'give-tools', 'schedule'),
+      bytesOf(texts, 'first-playbook', 'remember', 'give-tools', 'schedule'),
+      bytesOf(recipeTextsOf(everyType), 'first-playbook', 'remember', 'give-tools', 'schedule'),
     ]).toEqual([
-      [1854, 1762, 2598, 1285],
-      [1764, 1762, 2049, 1285],
+      [1884, 1783, 2613, 1294],
+      [1794, 1783, 2058, 1294],
     ]);
   });
 

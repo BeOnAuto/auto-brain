@@ -4,7 +4,7 @@ import { foldedPage } from '../pages/page-folding.ts';
 import { hasChanged, hasTriedAgain, liveFrom, unchangedOf, type ViewChange } from '../pages/view-changes.ts';
 import type { Folder } from '../projector/folder.ts';
 import { runnableDetailsOf } from './view-details.ts';
-import { brainsWithViewsIn, plannedViews, rowsOfBrain } from './view-reconciling.ts';
+import { playbooksWithViewsIn, plannedViews, rowsOfPlaybook } from './view-reconciling.ts';
 import type { ViewRow } from './view-rows.ts';
 import { phaseSet, viewDropped, viewsTable } from './view-statements.ts';
 import { viewWritten } from './view-writing.ts';
@@ -19,10 +19,10 @@ export function viewsFolder(folding: ViewsFolding): Folder<ViewRow, ViewChange> 
     keptOf: runnableDetailsOf,
     keyOf: ({ name }) => name,
     typesOf: ({ details }) => details.filters.map(({ type }) => type),
-    brainsWithRows: brainsWithViewsIn,
-    rowsOf: rowsOfBrain,
+    playbooksWithRows: playbooksWithViewsIn,
+    rowsOf: rowsOfPlaybook,
     reconcile: plannedViews,
-    dropped: ({ brain, name }) => [viewDropped(brain, name)],
+    dropped: ({ playbookKey, name }) => [viewDropped(playbookKey, name)],
     phased: phaseSet,
     fold: (rows, page, database) =>
       Effect.map(foldedPage(rows, page, { settings: folding, share, database }), (result) => ({

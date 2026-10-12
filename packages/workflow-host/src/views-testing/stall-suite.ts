@@ -100,7 +100,7 @@ function stoppingTests(settingsOf: SettingsOf): void {
 }
 
 function afterTheStallTests(settingsOf: SettingsOf): void {
-  it('holds back no other view of the brain, nor what the brain records afterwards', async () => {
+  it('holds back no other view of the playbook, nor what the playbook records afterwards', async () => {
     const views = await viewHarness(await settingsOf());
     await views.saved('stalling', detailsOf(raisingWithTheEvent, succeeded, { initial: 0 }));
     await views.saved('counting', counting);

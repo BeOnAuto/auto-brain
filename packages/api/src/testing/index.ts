@@ -18,7 +18,7 @@ export {
   guideToolName,
   listedTools,
   operationToolsIn,
-  takingBrain,
+  takingPlaybook,
   toolNamesIn,
   type ListedTool,
 } from './tool-listing.ts';

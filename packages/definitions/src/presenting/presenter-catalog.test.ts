@@ -179,7 +179,7 @@ const decodePublicEvent = Schema.decodeUnknownResult(PublicEventSchema);
 
 const utf8 = new TextEncoder();
 
-const showing = { streamPrefix: 'brain/acme/alpha/', content: () => awkward, view: 'page' } as const;
+const showing = { streamPrefix: 'playbook/acme/alpha/', content: () => awkward, view: 'page' } as const;
 
 function recordOf(stream: string, type: string, data: unknown, recorded: Context = context): RecordedEvent {
   return {
@@ -202,7 +202,7 @@ function presentedSizeOf(record: RecordedEvent): readonly [bytes: number, confor
   return [utf8.encode(JSON.stringify(presented?.data)).byteLength, Result.isSuccess(decodePublicEvent(presented))];
 }
 
-describe('the presenters of the stream kinds of a brain', () => {
+describe('the presenters of the stream kinds of a playbook', () => {
   it.each(catalog)('decide on every stored type of the events of $stream', ({ stream, storedTypes }) => {
     expect(decisionsByKind.get(streamKindOf(stream))).toEqual(storedTypes.toSorted());
   });
@@ -233,7 +233,7 @@ describe('the largest record of every stored type', () => {
     },
   );
 
-  it('of an event published to the brain presents within the bound of public data', () => {
+  it('of an event published to the playbook presents within the bound of public data', () => {
     const [bytes, conforms] = presentedSizeOf(
       recordOf(eventStream, largestEventPublished.type, largestEventPublished.data, emittedContext),
     );

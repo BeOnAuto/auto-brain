@@ -1,4 +1,4 @@
-import { servesBrain } from '@beonauto/config';
+import { servesPlaybook } from '@beonauto/config';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -24,13 +24,13 @@ function problemsOf(servers: unknown): readonly string[] {
   );
 }
 
-function served(server: McpServerSettings | undefined, org: string, brain: string): boolean {
-  return server !== undefined && servesBrain(server, { org, brain });
+function served(server: McpServerSettings | undefined, org: string, playbook: string): boolean {
+  return server !== undefined && servesPlaybook(server, { org, playbook });
 }
 
 describe('an auth block', () => {
   it('reads a client secret, or a private key with its algorithm, its issuer pinned', () => {
-    const auth = { client_id: 'brain', scope: 'graph.read' };
+    const auth = { client_id: 'playbook', scope: 'graph.read' };
     const { servers } = settingsOf({
       graph: {
         ...graph,
@@ -40,7 +40,7 @@ describe('an auth block', () => {
         url: 'http://127.0.0.1:19700/mcp',
         org: 'acme',
         auth: {
-          client_id: 'brain',
+          client_id: 'playbook',
           issuer: 'http://localhost:19701',
           private_key: '${GRAPH_CLIENT_SECRET}',
           algorithm: 'RS256',
@@ -61,7 +61,7 @@ describe('an auth block', () => {
   });
 
   it('refuses an issuer that cannot be pinned, and an auth block beside an Authorization header', () => {
-    const auth = { client_id: 'brain', client_secret: '${GRAPH_CLIENT_SECRET}' };
+    const auth = { client_id: 'playbook', client_secret: '${GRAPH_CLIENT_SECRET}' };
     const headers = { authorization: 'Bearer ${GRAPH_CLIENT_SECRET}' };
 
     expect(
@@ -79,7 +79,7 @@ describe('an auth block', () => {
 
 describe('the credential of an auth block', () => {
   it('refuses a credential that is not one of the two', () => {
-    const issued = { client_id: 'brain', issuer: 'https://auth.example.com' };
+    const issued = { client_id: 'playbook', issuer: 'https://auth.example.com' };
     const key = { private_key: '${GRAPH_CLIENT_SECRET}' };
     const neither = 'Expected client_secret, or private_key with its algorithm, one of the two';
 
@@ -97,13 +97,13 @@ describe('the credential of an auth block', () => {
   });
 });
 
-describe('the brains a server serves', () => {
-  it('serves every brain of its org, or the brains it names', () => {
-    const [everyBrain, someBrains] = settingsOf({ graph, crm: { ...graph, brains: ['sales'] } }).servers;
+describe('the playbooks a server serves', () => {
+  it('serves every playbook of its org, or the playbooks it names', () => {
+    const [everyPlaybook, somePlaybooks] = settingsOf({ graph, crm: { ...graph, playbooks: ['sales'] } }).servers;
 
-    expect(served(everyBrain, 'acme', 'alpha')).toBe(true);
-    expect(served(everyBrain, 'globex', 'alpha')).toBe(false);
-    expect(served(someBrains, 'acme', 'sales')).toBe(true);
-    expect(served(someBrains, 'acme', 'alpha')).toBe(false);
+    expect(served(everyPlaybook, 'acme', 'alpha')).toBe(true);
+    expect(served(everyPlaybook, 'globex', 'alpha')).toBe(false);
+    expect(served(somePlaybooks, 'acme', 'sales')).toBe(true);
+    expect(served(somePlaybooks, 'acme', 'alpha')).toBe(false);
   });
 });

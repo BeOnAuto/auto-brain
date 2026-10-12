@@ -13,13 +13,13 @@ function windowFor(request: WindowRequest) {
 function refusal(pointer: string, detail: string): Result.Result<never, InvalidInput> {
   return Result.fail(
     new InvalidInput({
-      detail: 'The days asked for are not a window this brain can answer',
+      detail: 'The days asked for are not a window this playbook can answer',
       issues: [{ pointer, detail }],
     }),
   );
 }
 
-describe('the window of days of the analytics of a brain', () => {
+describe('the window of days of the analytics of a playbook', () => {
   it('is the last 7, 14 or 30 days ending today, 7 when nothing is asked for', () => {
     expect([windowFor({}), windowFor({ days: 7 }), windowFor({ days: 14 }), windowFor({ days: 30 })]).toEqual([
       Result.succeed({ from: '2026-09-30', to: today, days: 7 }),

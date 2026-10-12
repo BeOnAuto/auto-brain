@@ -3,10 +3,10 @@ import { memoryLedger } from '@beonauto/operations/testing';
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { brainOn } from '../testing/brain.ts';
+import { playbookOn } from '../testing/playbook.ts';
 import { defineSendRunEvent } from './send-run-event.ts';
 
-const brain = brainOn(memoryLedger(), [echo]);
+const playbook = playbookOn(memoryLedger(), [echo]);
 
 const sendEvent = defineSendRunEvent({ deliver: () => Effect.die('An event was delivered') });
 
@@ -21,11 +21,11 @@ function pointersOf(outcome: unknown): readonly string[] {
 }
 
 function sending(event: object) {
-  return brain.call(sendEvent, { run_id: runId, event });
+  return playbook.call(sendEvent, { run_id: runId, event });
 }
 
 describe('the text of an event sent to a run', () => {
-  it('holds no control character, unpaired surrogate or noncharacter, as an event published to the brain', async () => {
+  it('holds no control character, unpaired surrogate or noncharacter, as an event published to the playbook', async () => {
     const sent = await Promise.all(
       unspeakable.map((character) =>
         sending({ type: `t${character}`, id: `i${character}`, source: `s${character}`, subject: `s${character}` }),
@@ -45,7 +45,7 @@ describe('the text of an event sent to a run', () => {
     ]);
   });
 
-  it('comes from a source that is a URI reference, as an event published to the brain', async () => {
+  it('comes from a source that is a URI reference, as an event published to the playbook', async () => {
     const refused = await Promise.all(
       ['', 'the ledger', 'ledger%2'].map(async (source) => pointersOf(await sending({ type: 'com.acme.x', source }))),
     );

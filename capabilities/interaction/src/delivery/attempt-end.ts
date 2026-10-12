@@ -18,7 +18,7 @@ export type AttemptEnd =
 
 export interface RequestAddress {
   readonly org: string;
-  readonly brain: string;
+  readonly playbook: string;
   readonly id: string;
 }
 

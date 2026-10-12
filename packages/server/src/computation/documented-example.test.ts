@@ -23,7 +23,7 @@ function saved(type: string, name: string, source: string | undefined) {
 describe('the example of the computation function format, through the server', { timeout: 30_000 }, () => {
   it('saves the function and answers the output the page shows for its input, after the work it says', async () => {
     server = await servingReasoning([]);
-    await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+    await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
 
     const created = await saved('computation', 'campaign-pace', pace);
     const ran = await server.call('POST', `${alpha}/definitions/computation/campaign-pace/run`, {
@@ -38,7 +38,7 @@ describe('the example of the computation function format, through the server', {
 
   it('saves the workflow of the page and the functions it calls, every expression checked', async () => {
     server = await servingReasoning([]);
-    await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+    await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
 
     const created = [
       await saved('computation', 'campaign-pace', pace),

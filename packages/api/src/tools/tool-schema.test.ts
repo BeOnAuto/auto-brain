@@ -4,7 +4,7 @@ import { advertisedSchema, selfContainedSchemaOf, withoutUnreferencedDefinitions
 
 const dialect = 'https://json-schema.org/draft/2020-12/schema';
 
-const Brain = { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] };
+const Playbook = { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] };
 
 describe('selfContainedSchemaOf', () => {
   it('declares the dialect and leaves out $defs when there are no definitions', () => {
@@ -17,29 +17,32 @@ describe('selfContainedSchemaOf', () => {
 
   it('inlines a root that refers to a definition, so the root carries its properties, and keeps the definitions', () => {
     expect(
-      selfContainedSchemaOf({ schema: { type: 'object', $ref: '#/$defs/Brain' }, definitions: { Brain } }),
-    ).toEqual({ $schema: dialect, ...Brain, $defs: { Brain } });
+      selfContainedSchemaOf({ schema: { type: 'object', $ref: '#/$defs/Playbook' }, definitions: { Playbook } }),
+    ).toEqual({ $schema: dialect, ...Playbook, $defs: { Playbook } });
   });
 
   it('hoists definitions that nested schemas refer to', () => {
-    const schema = { type: 'object', properties: { brains: { type: 'array', items: { $ref: '#/$defs/Brain' } } } };
+    const schema = {
+      type: 'object',
+      properties: { playbooks: { type: 'array', items: { $ref: '#/$defs/Playbook' } } },
+    };
 
-    expect(selfContainedSchemaOf({ schema, definitions: { Brain } })).toEqual({
+    expect(selfContainedSchemaOf({ schema, definitions: { Playbook } })).toEqual({
       $schema: dialect,
       ...schema,
-      $defs: { Brain },
+      $defs: { Playbook },
     });
   });
 
   it.each([
-    ['refers outside the document', 'https://example.com/brain.json'],
+    ['refers outside the document', 'https://example.com/playbook.json'],
     ['refers to a definition the document lacks', '#/$defs/Missing'],
   ])('leaves a root that %s as it is', (_case, reference) => {
-    expect(selfContainedSchemaOf({ schema: { type: 'object', $ref: reference }, definitions: { Brain } })).toEqual({
+    expect(selfContainedSchemaOf({ schema: { type: 'object', $ref: reference }, definitions: { Playbook } })).toEqual({
       $schema: dialect,
       type: 'object',
       $ref: reference,
-      $defs: { Brain },
+      $defs: { Playbook },
     });
   });
 });

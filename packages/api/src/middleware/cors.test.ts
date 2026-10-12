@@ -5,7 +5,7 @@ import { acmeAdmin, operationServer } from '../testing/operation-server.ts';
 
 const allowed = 'https://app.example';
 
-const notes = '/v1/orgs/acme/brains/alpha/notes';
+const notes = '/v1/orgs/acme/playbooks/alpha/notes';
 
 const asAdmin = { authorization: `Bearer ${acmeAdmin.key}` };
 

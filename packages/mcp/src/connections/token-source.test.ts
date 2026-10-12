@@ -32,7 +32,7 @@ function rsaKeys() {
 function secretAuth(fake: FakeMcpServer, changes: Partial<AuthSettings> = {}): AuthSettings {
   return {
     issuer: fake.origin,
-    client_id: 'brain',
+    client_id: 'playbook',
     scope: null,
     credential: { kind: 'client_secret', client_secret: Redacted.make(clientSecret) },
     ...changes,
@@ -55,7 +55,7 @@ function sourceOf(fake: FakeMcpServer, settings: AuthSettings) {
 
 describe('the tokens of an auth block', () => {
   it('mints one token for every concurrent caller', async () => {
-    const fake = await authorizationServer({ clientId: 'brain', clientSecret, expiresInSeconds: 120 });
+    const fake = await authorizationServer({ clientId: 'playbook', clientSecret, expiresInSeconds: 120 });
     const { source, minted } = sourceOf(fake, secretAuth(fake, { scope: 'graph.read' }));
 
     const tokens = await Promise.all([source.token(), source.token(), source.token()]);
@@ -66,7 +66,7 @@ describe('the tokens of an auth block', () => {
   });
 
   it('renews a token a minute before it expires, or halfway through a shorter life', async () => {
-    const fake = await authorizationServer({ clientId: 'brain', clientSecret, expiresInSeconds: 120 });
+    const fake = await authorizationServer({ clientId: 'playbook', clientSecret, expiresInSeconds: 120 });
     const { source, clock } = sourceOf(fake, secretAuth(fake));
 
     const first = await source.token();
@@ -81,7 +81,7 @@ describe('the tokens of an auth block', () => {
   });
 
   it('keeps a token whose lifetime is unsaid for an hour less a minute', async () => {
-    const fake = await authorizationServer({ clientId: 'brain', clientSecret, expiresInSeconds: null });
+    const fake = await authorizationServer({ clientId: 'playbook', clientSecret, expiresInSeconds: null });
     const { source, clock } = sourceOf(fake, secretAuth(fake));
 
     const first = await source.token();
@@ -97,7 +97,7 @@ describe('the tokens of an auth block', () => {
 
 describe('minting a token again, and with a private key', () => {
   it('mints a new token when the server refuses the one it holds', async () => {
-    const fake = await authorizationServer({ clientId: 'brain', clientSecret, expiresInSeconds: 3600 });
+    const fake = await authorizationServer({ clientId: 'playbook', clientSecret, expiresInSeconds: 3600 });
     const { source } = sourceOf(fake, secretAuth(fake));
 
     const first = await source.token();
@@ -109,7 +109,7 @@ describe('minting a token again, and with a private key', () => {
 
   it('signs a client assertion with a private key', async () => {
     const { publicKey, privateKey } = rsaKeys();
-    const fake = await authorizationServer({ clientId: 'brain', publicKey, expiresInSeconds: 3600 });
+    const fake = await authorizationServer({ clientId: 'playbook', publicKey, expiresInSeconds: 3600 });
     const { source } = sourceOf(
       fake,
       secretAuth(fake, {
@@ -122,7 +122,7 @@ describe('minting a token again, and with a private key', () => {
 
   it('fails when its private key is not the one the authorization server knows', async () => {
     const fake = await authorizationServer({
-      clientId: 'brain',
+      clientId: 'playbook',
       publicKey: rsaKeys().publicKey,
       expiresInSeconds: 3600,
     });
@@ -140,7 +140,7 @@ describe('minting a token again, and with a private key', () => {
 describe('an authorization server that refuses', () => {
   it('sends its credentials to no issuer but the one pinned', async () => {
     const fake = await authorizationServer({
-      clientId: 'brain',
+      clientId: 'playbook',
       clientSecret,
       expiresInSeconds: 3600,
       issuer: 'https://elsewhere.example.com',
@@ -152,9 +152,9 @@ describe('an authorization server that refuses', () => {
   });
 
   it('sends its credentials to no other authorization server, even one consistent with itself', async () => {
-    const elsewhere = await authorizationServer({ clientId: 'brain', clientSecret, expiresInSeconds: 3600 });
+    const elsewhere = await authorizationServer({ clientId: 'playbook', clientSecret, expiresInSeconds: 3600 });
     const fake = await authorizationServer({
-      clientId: 'brain',
+      clientId: 'playbook',
       clientSecret,
       expiresInSeconds: 3600,
       authorizationServer: elsewhere.origin,
@@ -167,7 +167,7 @@ describe('an authorization server that refuses', () => {
 
   it('fails when the authorization server refuses the credentials', async () => {
     const fake = await authorizationServer({
-      clientId: 'brain',
+      clientId: 'playbook',
       clientSecret: 'another-secret',
       expiresInSeconds: 3600,
     });

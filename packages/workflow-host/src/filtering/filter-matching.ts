@@ -19,7 +19,7 @@ export type MatchFilters = (
 
 export interface FilterPlace {
   readonly kind: 'trigger' | 'listener';
-  readonly brainKey: string;
+  readonly playbookKey: string;
   readonly workflow: string;
   readonly version: number;
   readonly reference: string;
@@ -35,8 +35,8 @@ export interface FilterStops {
   readonly judged: (place: FilterPlace, index: number, verdict: FilterVerdict) => Judgement;
   readonly failedFirst: (place: FilterPlace) => boolean;
   readonly holds: (place: FilterPlace) => boolean;
-  readonly activated: (brainKey: string, workflow: string, version: number) => void;
-  readonly retired: (brainKey: string, workflow: string) => void;
+  readonly activated: (playbookKey: string, workflow: string, version: number) => void;
+  readonly retired: (playbookKey: string, workflow: string) => void;
   readonly listenerEnded: (place: FilterPlace) => void;
 }
 
@@ -71,16 +71,16 @@ const answered: Judgement = { kind: 'answered' };
 
 const struck: Judgement = { kind: 'struck' };
 
-function placeKeyOf({ kind, brainKey, workflow, version, reference }: FilterPlace): string {
-  return JSON.stringify([brainKey, workflow, kind, version, reference]);
+function placeKeyOf({ kind, playbookKey, workflow, version, reference }: FilterPlace): string {
+  return JSON.stringify([playbookKey, workflow, kind, version, reference]);
 }
 
 function filterKeyOf(place: FilterPlace, index: number): string {
   return JSON.stringify([placeKeyOf(place), index]);
 }
 
-function ofWorkflow(brainKey: string, workflow: string): (place: FilterPlace) => boolean {
-  return (place) => place.brainKey === brainKey && place.workflow === workflow;
+function ofWorkflow(playbookKey: string, workflow: string): (place: FilterPlace) => boolean {
+  return (place) => place.playbookKey === playbookKey && place.workflow === workflow;
 }
 
 export function filterStops(): FilterStops {
@@ -116,12 +116,12 @@ export function filterStops(): FilterStops {
       return first;
     },
     holds: (place) => [...strikes.values()].some((held) => placeKeyOf(held.place) === placeKeyOf(place)),
-    activated: (brainKey, workflow, version) => {
-      const ofIt = ofWorkflow(brainKey, workflow);
+    activated: (playbookKey, workflow, version) => {
+      const ofIt = ofWorkflow(playbookKey, workflow);
       forgotten((place) => ofIt(place) && place.kind === 'trigger' && place.version !== version);
     },
-    retired: (brainKey, workflow) => {
-      const ofIt = ofWorkflow(brainKey, workflow);
+    retired: (playbookKey, workflow) => {
+      const ofIt = ofWorkflow(playbookKey, workflow);
       forgotten((place) => ofIt(place) && place.kind === 'trigger');
     },
     listenerEnded: (ended) => {

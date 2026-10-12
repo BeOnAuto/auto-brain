@@ -5,10 +5,10 @@ import { defineCapability, type Capability, type StandingRequest } from '../inde
 import { definitionsDecider, definitionTypeStreamOf } from '../registry/definitions-decider.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
-import { harness, toBrain } from '../testing/harness.ts';
+import { harness, toPlaybook } from '../testing/harness.ts';
 import { probe } from '../testing/probe.ts';
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 function keeper(mostActive: number): Capability {
   return defineCapability({
@@ -22,8 +22,10 @@ function keeper(mostActive: number): Capability {
     summarize: ({ kept }) => ({ description: 'Keeps a text', details: { kept, line: 4 } }),
     run: () => Effect.succeed({ output: null, record: {} }),
     mostActive,
-    standing: ({ org, brain, name, version, status }: StandingRequest) =>
-      Effect.succeed(name === 'unkept' ? undefined : { state: 'live', of: `${org}/${brain}/${name}`, version, status }),
+    standing: ({ org, playbook, name, version, status }: StandingRequest) =>
+      Effect.succeed(
+        name === 'unkept' ? undefined : { state: 'live', of: `${org}/${playbook}/${name}`, version, status },
+      ),
   });
 }
 
@@ -45,7 +47,7 @@ describe('what a definition keeps for its runtime adapter', () => {
     const listed = await definitions.call(listDefinitions, toAlpha(acmeAdmin, { type: 'keeper' }));
     const { state } = await Effect.runPromise(
       definitions.ledger.service.load(
-        `brain/acme/alpha/${definitionTypeStreamOf('keeper')}`,
+        `playbook/acme/alpha/${definitionTypeStreamOf('keeper')}`,
         definitionsDecider('keeper'),
       ),
     );
@@ -60,7 +62,7 @@ describe('what a definition keeps for its runtime adapter', () => {
 });
 
 describe('the standing of a definition', () => {
-  it('is answered by get_definition from its runtime adapter, given the brain, the name, the version and the status', async () => {
+  it('is answered by get_definition from its runtime adapter, given the playbook, the name, the version and the status', async () => {
     const { definitions, create, getDefinition } = keepersOf(keeper(32));
     await create('reviews');
     await create('unkept');
@@ -75,7 +77,7 @@ describe('the standing of a definition', () => {
   });
 });
 
-describe('the active definitions of a type a brain may keep', () => {
+describe('the active definitions of a type a playbook may keep', () => {
   it('refuse a definition past their bound as a conflict, and take one again once another is retired', async () => {
     const { definitions, create, retireDefinition } = keepersOf(keeper(2));
     await create('first');
@@ -89,7 +91,7 @@ describe('the active definitions of a type a brain may keep', () => {
       status: 'rejected',
       reason: 'conflict',
       detail:
-        'The brain keeps 2 active keeper definitions, and a brain may keep at most 2; retire one before creating another',
+        'The playbook keeps 2 active keeper definitions, and a playbook may keep at most 2; retire one before creating another',
     });
     expect(again).toMatchObject({ status: 'succeeded' });
   });
@@ -117,7 +119,7 @@ describe('the active definitions of a type a brain may keep', () => {
     expect(refused).toMatchObject({
       reason: 'conflict',
       detail:
-        'The brain keeps 2 active keeper definitions, and a brain may keep at most 1; retire one before saving another version',
+        'The playbook keeps 2 active keeper definitions, and a playbook may keep at most 1; retire one before saving another version',
     });
     expect(retired).toMatchObject({ status: 'succeeded', output: { status: 'retired' } });
   });

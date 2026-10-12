@@ -86,7 +86,7 @@ function defineOperation<
   definition: Definition<K, string, In, Out, R, Services>,
 ): Operation<S, K, In['Type'], Out['Type'], R, Services> {
   const { name, route, inputSchema, outputSchema, handle } = definition;
-  const { pathParameters, targetsBrain, permissions } = checkedDefinition(scope, kind, definition);
+  const { pathParameters, targetsPlaybook, permissions } = checkedDefinition(scope, kind, definition);
   const reasons: readonly DeclarableReason[] = [...new Set(definition.reasons)];
   const decodeInput = inputDecoder(inputSchema);
   const encodeOutput = outputEncoder(outputSchema);
@@ -101,7 +101,7 @@ function defineOperation<
       description: definition.description,
       route,
       pathParameters,
-      targetsBrain,
+      targetsPlaybook,
       successStatus: definition.successStatus ?? 200,
       reachesOutside: definition.reachesOutside ?? false,
       mayChangeOutside: definition.mayChangeOutside ?? false,

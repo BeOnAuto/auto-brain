@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { acmeAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
 import { echo } from '../testing/echo.ts';
-import { asQueryString, firstMoment, harness, toBrain } from '../testing/harness.ts';
+import { asQueryString, firstMoment, harness, toPlaybook } from '../testing/harness.ts';
 import { probe } from '../testing/probe.ts';
 
 const { createDefinition, getDefinition, retireDefinition } = definitionOperationsFor([echo, probe().capability]);
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 const later = '2026-10-02T14:15:00.000Z';
 
@@ -21,9 +21,9 @@ async function withActiveAndRetiredDefinitions() {
 }
 
 describe('get_definition', () => {
-  it('is a brain query at GET /definitions/{type}/{name} that may meet not_found', () => {
+  it('is a playbook query at GET /definitions/{type}/{name} that may meet not_found', () => {
     expect(getDefinition.registration).toMatchObject({
-      scope: 'brain',
+      scope: 'playbook',
       kind: 'query',
       title: 'Get definition',
       route: { method: 'GET', path: '/definitions/{type}/{name}' },
@@ -57,13 +57,13 @@ describe('get_definition', () => {
 });
 
 describe('get_definition rejecting', () => {
-  it('a definition the capability does not have in the brain, and a type the server does not run', async () => {
+  it('a definition the capability does not have in the playbook, and a type the server does not run', async () => {
     const { call } = await withActiveAndRetiredDefinitions();
 
     expect(await call(getDefinition, toAlpha(acmeAdmin, { type: 'echo', name: 'plain' }))).toEqual({
       status: 'rejected',
       reason: 'not_found',
-      detail: 'There is no echo definition plain in this brain',
+      detail: 'There is no echo definition plain in this playbook',
     });
     expect(await call(getDefinition, toAlpha(acmeAdmin, { type: 'reason', name: 'plain' }))).toEqual({
       status: 'rejected',

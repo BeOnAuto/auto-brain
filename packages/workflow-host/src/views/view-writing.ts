@@ -13,7 +13,7 @@ function isNewlyStalled({ row, next }: ViewChange): boolean {
 }
 
 export function viewWritten(
-  { database, brain, note }: Writing,
+  { database, playbook, note }: Writing,
   change: ViewChange,
 ): Effect.Effect<ViewRow | undefined, DatabaseFailed> {
   const { row } = change;
@@ -21,7 +21,7 @@ export function viewWritten(
     Effect.map((rows) => rows.length > 0),
     Effect.tap((took) =>
       took && isNewlyStalled(change)
-        ? note({ kind: 'view_stalled', brain, name: row.name, version: row.version })
+        ? note({ kind: 'view_stalled', playbook, name: row.name, version: row.version })
         : Effect.void,
     ),
     Effect.map((took) => (took ? rowAfter(change) : undefined)),

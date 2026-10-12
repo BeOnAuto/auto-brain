@@ -7,7 +7,7 @@ import { viewHarness } from '../views-testing/view-harness.ts';
 import { viewsPortOn } from './views-port.ts';
 
 describe('the port to the views a host keeps', () => {
-  it('tells, on the database of the store, when the brain last recorded anything, and of no view a brain does not keep', async () => {
+  it('tells, on the database of the store, when the playbook last recorded anything, and of no view a playbook does not keep', async () => {
     const views = await viewHarness(await onSQLite());
     const port = viewsPortOn(views.store.database);
     const newestAt = () => Effect.runPromise(port.newestRecordAt(alpha));

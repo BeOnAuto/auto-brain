@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest';
 
 import { acmeAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
-import { firstMoment, harness, toBrain } from '../testing/harness.ts';
+import { firstMoment, harness, toPlaybook } from '../testing/harness.ts';
 import { probe, spentUsage } from '../testing/probe.ts';
 
-const toAlpha = toBrain('acme', 'alpha');
+const toAlpha = toPlaybook('acme', 'alpha');
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
@@ -195,13 +195,13 @@ describe('a run the capability rejects after it spent something', () => {
 });
 
 describe('run_definition rejecting', () => {
-  it('a definition the brain does not have, and a type the server does not run', async () => {
+  it('a definition the playbook does not have, and a type the server does not run', async () => {
     const { call, runDefinition } = await withPlain();
 
     expect(await call(runDefinition, toAlpha(acmeAdmin, { type: 'probe', name: 'ghost' }))).toEqual({
       status: 'rejected',
       reason: 'not_found',
-      detail: 'There is no probe definition ghost in this brain',
+      detail: 'There is no probe definition ghost in this playbook',
     });
     expect(await call(runDefinition, toAlpha(acmeAdmin, { type: 'echo', name: 'plain' }))).toEqual({
       status: 'rejected',
@@ -222,7 +222,7 @@ describe('run_definition rejecting', () => {
         'The probe definition plain at version 1 no longer parses (The probe document has lines it does not accept); update it',
       kind: 'unworkable',
     });
-    expect(ledger.streamNames()).toEqual(['brain/acme/alpha/definitions/probe']);
+    expect(ledger.streamNames()).toEqual(['playbook/acme/alpha/definitions/probe']);
   });
 
   it('a run id that is not a UUID', async () => {

@@ -30,7 +30,7 @@ afterEach(async () => {
 
 async function servingTheNested(): Promise<void> {
   server = await servingWorkflows([]);
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   await server.call('POST', `${alpha}/definitions/workflow`, { body: { name: 'setting', source: setting } });
 }
 

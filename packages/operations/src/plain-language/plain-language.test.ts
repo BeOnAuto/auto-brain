@@ -57,7 +57,7 @@ describe('the plain language of a registration', () => {
   });
 
   it('names what was attempted from input that also has fields the operation does not know', () => {
-    expect(registration.plainLanguage?.attempt({ title: 'Poetry', brain: 'alpha' })).toBe('make the shelf “Poetry”');
+    expect(registration.plainLanguage?.attempt({ title: 'Poetry', playbook: 'alpha' })).toBe('make the shelf “Poetry”');
   });
 
   it.each(offeredInputs)('falls back to the task for %s', (_case, input) => {

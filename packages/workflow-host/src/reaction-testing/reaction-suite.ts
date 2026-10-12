@@ -3,8 +3,8 @@ import { expect, it } from 'vitest';
 
 import { runAt, startOf, workflow } from '../testing/host-documents.ts';
 import type { SettingsOf } from '../testing/host-files.ts';
-import { at, cronTrigger, eventTrigger, everyTrigger, published, definitionRecorded } from './brain-writes.ts';
 import { movedClock } from './moved-clock.ts';
+import { at, cronTrigger, eventTrigger, everyTrigger, published, definitionRecorded } from './playbook-writes.ts';
 import { reactingHost } from './reacting-host.ts';
 import { until } from './until.ts';
 
@@ -32,7 +32,7 @@ export function reactionSuite(settings: SettingsOf): void {
     expect(starts.map(({ workflow: name, depth }) => [name, depth])).toEqual([['close', 1]]);
   });
 
-  it('offers an event published to the brain to a run that listens for it', { timeout: aWhile }, async () => {
+  it('offers an event published to the playbook to a run that listens for it', { timeout: aWhile }, async () => {
     const reacting = await reactingHost({ settings: await settings() });
     await Effect.runPromise(reacting.host.start(runAt(waiting), startOf(listening)));
 

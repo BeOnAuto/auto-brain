@@ -12,7 +12,7 @@ export { openWorkflowStore, type WorkflowStore } from './host/workflow-store.ts'
 export type { DatabaseFailed, HostDatabase } from './database/host-database.ts';
 export type { Statement } from './database/statement.ts';
 export type { PageEvent, ReadPage } from './pages/page-events.ts';
-export type { BrainDefinitions, KeptFunction, KeptOf } from './projector/brain-definitions.ts';
+export type { PlaybookDefinitions, KeptFunction, KeptOf } from './projector/playbook-definitions.ts';
 export {
   someFolder,
   type FoldedChanges,
@@ -52,7 +52,7 @@ export {
 } from './reactions/reaction-options.ts';
 export { StartRejected } from './reactions/start-rejected.ts';
 export { cronRejectionOf } from './schedules/schedule-times.ts';
-export { mostListenersInABrain } from './listeners/sql-listeners.ts';
+export { mostListenersInAPlaybook } from './listeners/sql-listeners.ts';
 export { mostReactionDepth } from './reactions/subscription-starts.ts';
 export { mostDeferredStarts, mostStartsAMinute } from './reactions/start-rates.ts';
 export { mostOpenCallsOfATree, type WaitingOptions } from './waiting/waiting-options.ts';

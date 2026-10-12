@@ -191,7 +191,7 @@ export const EventToPublishSchema = Schema.StructWithRest(
     ...contextFields,
     time: Schema.optionalKey(
       timeFieldOf(
-        'When it happened, in RFC 3339, such as 2026-10-05T09:00:00Z; when the brain records it, if left out',
+        'When it happened, in RFC 3339, such as 2026-10-05T09:00:00Z; when the playbook records it, if left out',
       ),
     ),
   }),

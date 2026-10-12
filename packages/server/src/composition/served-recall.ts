@@ -53,7 +53,12 @@ export function recallWiring(): RecallWiring {
           mostFunctions: recall.mostFunctions,
         }),
         store,
-        projector: { folders, brainsAtOnce: recall.brainsAtOnce, pagesPerWake: recallBounds.pagesPerWake, appends },
+        projector: {
+          folders,
+          playbooksAtOnce: recall.playbooksAtOnce,
+          pagesPerWake: recallBounds.pagesPerWake,
+          appends,
+        },
       };
     },
   };

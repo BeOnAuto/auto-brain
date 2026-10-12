@@ -34,7 +34,7 @@ function beyondTheReactingBound(
 ): Conflict | undefined {
   return hasTriggers(content) && reactingOtherThan(registry, name) >= mostReactingDefinitions
     ? new Conflict({
-        detail: `The brain already has ${mostReactingDefinitions} ${definitionResourceLabel(type)}s that start on their own, the most a brain holds; retire one, or save this one without its schedule`,
+        detail: `The playbook already has ${mostReactingDefinitions} ${definitionResourceLabel(type)}s that start on their own, the most a playbook holds; retire one, or save this one without its schedule`,
       })
     : undefined;
 }
@@ -47,7 +47,7 @@ function takenBy(type: string, { name, status }: StoredDefinition): Conflict {
   return new Conflict({
     detail:
       status === 'active'
-        ? `The brain already has the ${definitionResourceLabel(type)} ${name}`
+        ? `The playbook already has the ${definitionResourceLabel(type)} ${name}`
         : `The ${definitionResourceLabel(type)} ${name} was retired, and a definition name is never reused`,
     kind: 'taken',
   });
@@ -65,7 +65,7 @@ function activeIn(registry: DefinitionRegistry): number {
 function tooMany({ type, mostActive }: RegistryRules, active: number, saving: string): Conflict {
   const label = definitionResourceLabel(type);
   return new Conflict({
-    detail: `The brain keeps ${plainNumber(active)} active ${label}s, and a brain may keep at most ${plainNumber(mostActive)}; retire one before ${saving}`,
+    detail: `The playbook keeps ${plainNumber(active)} active ${label}s, and a playbook may keep at most ${plainNumber(mostActive)}; retire one before ${saving}`,
   });
 }
 

@@ -3,7 +3,7 @@ import { Schema } from 'effect';
 
 const RunAttributesSchema = Schema.Struct({
   org: Schema.String,
-  brain: Schema.String,
+  playbook: Schema.String,
   run_id: Schema.String,
   definition: Schema.Struct({ name: Schema.String, version: Schema.Int }),
   caller: CallerIdentitySchema,

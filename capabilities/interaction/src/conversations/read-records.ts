@@ -9,7 +9,7 @@ import {
   type StartedFields,
 } from '@beonauto/mcp';
 import type { ToolReference } from '@beonauto/mcp/policy';
-import { brainCallerOf, streamPrefixOfBrain, type StreamWriter } from '@beonauto/operations';
+import { playbookCallerOf, streamPrefixOfPlaybook, type StreamWriter } from '@beonauto/operations';
 import { DateTime, Effect } from 'effect';
 
 import type { ReadingState } from '../replies/reply-recording.ts';
@@ -50,13 +50,13 @@ function readFactOf(
 
 export function recordedRead(
   ledger: StreamWriter,
-  { brain, row }: ConversationPlace,
+  { playbook, row }: ConversationPlace,
   record: ReadRecord,
 ): Effect.Effect<void> {
-  const stream = `${streamPrefixOfBrain(brain)}${conversationCallStreamOf(record.callId)}`;
+  const stream = `${streamPrefixOfPlaybook(playbook)}${conversationCallStreamOf(record.callId)}`;
   return Effect.gen(function* () {
     const at = DateTime.formatIso(yield* DateTime.now);
-    const fact = readFactOf(record, row.conversation, { by: brainCallerOf(brain).id, at });
+    const fact = readFactOf(record, row.conversation, { by: playbookCallerOf(playbook).id, at });
     yield* ledger
       .execute(stream, conversationCallDecider, fact, { causationId: row.last_fact, correlationId: null })
       .pipe(Effect.orDie);

@@ -19,7 +19,7 @@ function unstarted({ trigger }: ReactionStart, detail: string): string {
 }
 
 export interface Starting {
-  readonly start: (brainKey: string, start: ReactionStart) => Effect.Effect<void, DeliveryFailed>;
+  readonly start: (playbookKey: string, start: ReactionStart) => Effect.Effect<void, DeliveryFailed>;
   readonly startDeferred: () => Effect.Effect<number>;
 }
 
@@ -31,7 +31,7 @@ interface StartingParts {
 
 const ReactionStartSchema = Schema.Struct({
   org: Schema.String,
-  brain: Schema.String,
+  playbook: Schema.String,
   workflow: Schema.String,
   version: Schema.Int,
   runId: Schema.String,
@@ -42,7 +42,7 @@ const ReactionStartSchema = Schema.Struct({
 });
 
 const DeferredRow = Schema.Struct({
-  brain_key: Schema.String,
+  playbook_key: Schema.String,
   start: Schema.fromJsonString(ReactionStartSchema),
   attempts: WholeNumber,
 });
@@ -55,12 +55,12 @@ function minuteOf(at: number): number {
   return Math.floor(at / aMinute) * aMinute;
 }
 
-function admitted(database: HostDatabase, brainKey: string, workflow: string, minute: number) {
+function admitted(database: HostDatabase, playbookKey: string, workflow: string, minute: number) {
   return Effect.orDie(
     database.write(
-      statement`INSERT INTO workflow_reaction_rates (brain_key, workflow, minute, starts)
-        VALUES (${brainKey}, ${workflow}, ${minute}, 1)
-        ON CONFLICT (brain_key, workflow) DO UPDATE SET
+      statement`INSERT INTO workflow_reaction_rates (playbook_key, workflow, minute, starts)
+        VALUES (${playbookKey}, ${workflow}, ${minute}, 1)
+        ON CONFLICT (playbook_key, workflow) DO UPDATE SET
           starts = CASE WHEN workflow_reaction_rates.minute = excluded.minute
             THEN workflow_reaction_rates.starts + 1 ELSE 1 END,
           minute = excluded.minute
@@ -70,13 +70,13 @@ function admitted(database: HostDatabase, brainKey: string, workflow: string, mi
   ).pipe(Effect.map((rows) => rows.length > 0));
 }
 
-function deferredOf(database: HostDatabase, brainKey: string, workflow: string) {
+function deferredOf(database: HostDatabase, playbookKey: string, workflow: string) {
   return Effect.orDie(
     rowsOf(
       CountRow,
       database.read(
         statement`SELECT count(*) AS deferred FROM workflow_reaction_backlog
-          WHERE brain_key = ${brainKey} AND workflow = ${workflow}`,
+          WHERE playbook_key = ${playbookKey} AND workflow = ${workflow}`,
       ),
     ),
   ).pipe(Effect.map((rows) => rows.reduce((sum, { deferred }) => sum + deferred, 0)));
@@ -84,43 +84,48 @@ function deferredOf(database: HostDatabase, brainKey: string, workflow: string) 
 
 function started(
   { startReaction, refusals }: StartingParts,
-  brainKey: string,
+  playbookKey: string,
   start: ReactionStart,
 ): Effect.Effect<void, DeliveryFailed> {
   return startReaction(start).pipe(
     Effect.catchTag('start_rejected', ({ detail }: Readonly<{ detail: string }>) =>
-      refusals.refuse(brainKey, start, unstarted(start, detail)),
+      refusals.refuse(playbookKey, start, unstarted(start, detail)),
     ),
     Effect.mapError(({ detail }: Readonly<{ detail: string }>) => new DeliveryFailed({ detail })),
   );
 }
 
-function deferredStart({ database, refusals }: StartingParts, brainKey: string, start: ReactionStart, minute: number) {
-  return Effect.flatMap(deferredOf(database, brainKey, start.workflow), (deferred) =>
+function deferredStart(
+  { database, refusals }: StartingParts,
+  playbookKey: string,
+  start: ReactionStart,
+  minute: number,
+) {
+  return Effect.flatMap(deferredOf(database, playbookKey, start.workflow), (deferred) =>
     deferred >= mostDeferredStarts
       ? refusals.refuse(
-          brainKey,
+          playbookKey,
           start,
           `The workflow was started by its ${triggerNamed(start.trigger.kind)} ${mostStartsAMinute} times a minute and ${mostDeferredStarts} starts already waited for a later minute, the most it keeps; this start was refused`,
         )
       : Effect.asVoid(
           Effect.orDie(
             database.write(
-              statement`INSERT INTO workflow_reaction_backlog (brain_key, workflow, run_id, start, due)
-                VALUES (${brainKey}, ${start.workflow}, ${start.runId}, ${JSON.stringify(start)}, ${minute + aMinute})
-                ON CONFLICT (brain_key, run_id) DO NOTHING`,
+              statement`INSERT INTO workflow_reaction_backlog (playbook_key, workflow, run_id, start, due)
+                VALUES (${playbookKey}, ${start.workflow}, ${start.runId}, ${JSON.stringify(start)}, ${minute + aMinute})
+                ON CONFLICT (playbook_key, run_id) DO NOTHING`,
             ),
           ),
         ),
   );
 }
 
-function withoutDeferred(database: HostDatabase, { brain_key: brainKey, start }: Deferred) {
+function withoutDeferred(database: HostDatabase, { playbook_key: playbookKey, start }: Deferred) {
   return Effect.asVoid(
     Effect.orDie(
       database.write(
         statement`DELETE FROM workflow_reaction_backlog
-          WHERE brain_key = ${brainKey} AND run_id = ${start.runId}`,
+          WHERE playbook_key = ${playbookKey} AND run_id = ${start.runId}`,
       ),
     ),
   );
@@ -131,7 +136,7 @@ function deferredAgain({ database }: StartingParts, deferred: Deferred, minute: 
     Effect.orDie(
       database.write(
         statement`UPDATE workflow_reaction_backlog SET due = ${minute + aMinute}, attempts = ${attempts}
-          WHERE brain_key = ${deferred.brain_key} AND run_id = ${deferred.start.runId}`,
+          WHERE playbook_key = ${deferred.playbook_key} AND run_id = ${deferred.start.runId}`,
       ),
     ),
   );
@@ -142,16 +147,16 @@ function failedWhenDue(parts: StartingParts, deferred: Deferred, minute: number,
   return attempts < deliverySweeps
     ? deferredAgain(parts, deferred, minute, attempts)
     : Effect.andThen(
-        parts.refusals.refuse(deferred.brain_key, deferred.start, unstarted(deferred.start, detail)),
+        parts.refusals.refuse(deferred.playbook_key, deferred.start, unstarted(deferred.start, detail)),
         withoutDeferred(parts.database, deferred),
       );
 }
 
 function startedWhenDue(parts: StartingParts, deferred: Deferred, minute: number) {
-  const { brain_key: brainKey, start } = deferred;
-  return Effect.flatMap(admitted(parts.database, brainKey, start.workflow, minute), (admits) =>
+  const { playbook_key: playbookKey, start } = deferred;
+  return Effect.flatMap(admitted(parts.database, playbookKey, start.workflow, minute), (admits) =>
     admits
-      ? started(parts, brainKey, start).pipe(
+      ? started(parts, playbookKey, start).pipe(
           Effect.andThen(withoutDeferred(parts.database, deferred)),
           Effect.catch(({ detail }: Readonly<{ detail: string }>) => failedWhenDue(parts, deferred, minute, detail)),
         )
@@ -167,10 +172,10 @@ export function startingOn(
 ): Starting {
   const parts: StartingParts = { database, startReaction, refusals };
   return {
-    start: (brainKey, start) => {
+    start: (playbookKey, start) => {
       const minute = minuteOf(now());
-      return Effect.flatMap(admitted(database, brainKey, start.workflow, minute), (admits) =>
-        admits ? started(parts, brainKey, start) : deferredStart(parts, brainKey, start, minute),
+      return Effect.flatMap(admitted(database, playbookKey, start.workflow, minute), (admits) =>
+        admits ? started(parts, playbookKey, start) : deferredStart(parts, playbookKey, start, minute),
       );
     },
     startDeferred: () =>
@@ -180,7 +185,7 @@ export function startingOn(
           rowsOf(
             DeferredRow,
             database.read(
-              statement`SELECT brain_key, start, attempts FROM workflow_reaction_backlog WHERE due <= ${now()}
+              statement`SELECT playbook_key, start, attempts FROM workflow_reaction_backlog WHERE due <= ${now()}
                 ORDER BY due, run_id LIMIT ${mostStartsAMinute}`,
             ),
           ),

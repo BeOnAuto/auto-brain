@@ -10,7 +10,7 @@ function issuesOf(lines: readonly string[]): readonly Issue[] {
   );
 }
 
-export const publishDraft = defineCommand('brain', {
+export const publishDraft = defineCommand('playbook', {
   name: 'publish_draft',
   title: 'Publish draft',
   description: 'Publishes a draft whose lines all start with a capital letter, and rejects every other line.',

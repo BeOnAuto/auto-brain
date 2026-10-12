@@ -180,7 +180,7 @@ function bearerChecked(
     verifier: {
       verifyAccessToken: (token) =>
         token === bearer || authorization?.accepts(token) === true
-          ? Promise.resolve({ token, clientId: 'brain', scopes: [], expiresAt: farFuture })
+          ? Promise.resolve({ token, clientId: 'playbook', scopes: [], expiresAt: farFuture })
           : Promise.reject(new OAuthError(OAuthErrorCode.InvalidToken, 'The token is not valid')),
     },
     resourceMetadataUrl: `${origin}/.well-known/oauth-protected-resource/mcp`,

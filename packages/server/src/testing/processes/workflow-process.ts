@@ -54,7 +54,7 @@ export function logLinesOf(child: SpawnedServer): readonly LogLine[] {
 }
 
 export async function requestTo(port: number, method: string, path: string, body?: unknown): Promise<Answer> {
-  const response = await fetch(`http://127.0.0.1:${port}/v1/orgs/acme/brains${path}`, {
+  const response = await fetch(`http://127.0.0.1:${port}/v1/orgs/acme/playbooks${path}`, {
     method,
     headers: { 'content-type': 'application/json' },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -130,11 +130,11 @@ export async function gatewayThatHangsFirst(): Promise<StubGateway> {
   };
 }
 
-export async function welcomingStarted(port: number, brain: string): Promise<string> {
-  await requestTo(port, 'POST', '', { brain, name: 'Welcoming' });
-  await requestTo(port, 'POST', `/${brain}/definitions/reasoning`, { name: 'welcome', source: welcome });
-  await requestTo(port, 'POST', `/${brain}/definitions/workflow`, { name: 'welcoming', source: welcoming });
-  const started = await requestTo(port, 'POST', `/${brain}/definitions/workflow/welcoming/run`, {
+export async function welcomingStarted(port: number, playbook: string): Promise<string> {
+  await requestTo(port, 'POST', '', { playbook, name: 'Welcoming' });
+  await requestTo(port, 'POST', `/${playbook}/definitions/reasoning`, { name: 'welcome', source: welcome });
+  await requestTo(port, 'POST', `/${playbook}/definitions/workflow`, { name: 'welcoming', source: welcoming });
+  const started = await requestTo(port, 'POST', `/${playbook}/definitions/workflow/welcoming/run`, {
     input: { name: 'Ada' },
   });
   return runIdIn(started.body);

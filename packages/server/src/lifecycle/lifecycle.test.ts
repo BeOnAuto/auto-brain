@@ -168,11 +168,11 @@ describe('startServer validates requests from browsers', () => {
   });
 
   it('is not in local mode once API keys are configured, so it checks the key and not the Host header', async () => {
-    const { key, entry } = createApiKey({ id: 'ci-1', org: 'acme', permissions: ['org:read'], brains: '*' });
+    const { key, entry } = createApiKey({ id: 'ci-1', org: 'acme', permissions: ['org:read'], playbooks: '*' });
     const server = await startServer({ ...loopback, API_KEYS: JSON.stringify([entry]) }, defaultServerOptions);
 
-    const withoutKey = await statusOf(server.port, '/v1/orgs/acme/brains', { host: 'evil.example' });
-    const withKey = await statusOf(server.port, '/v1/orgs/acme/brains', {
+    const withoutKey = await statusOf(server.port, '/v1/orgs/acme/playbooks', { host: 'evil.example' });
+    const withKey = await statusOf(server.port, '/v1/orgs/acme/playbooks', {
       host: 'evil.example',
       authorization: `Bearer ${key}`,
     });

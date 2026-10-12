@@ -6,7 +6,7 @@ import type { DefinitionRegistry } from './definition-registry.ts';
 import type { StoredDefinition } from './definition.ts';
 
 export function definitionNotFound(type: string, name: string): NotFound {
-  return new NotFound({ detail: `There is no ${definitionResourceLabel(type)} ${name} in this brain` });
+  return new NotFound({ detail: `There is no ${definitionResourceLabel(type)} ${name} in this playbook` });
 }
 
 export function findDefinition(

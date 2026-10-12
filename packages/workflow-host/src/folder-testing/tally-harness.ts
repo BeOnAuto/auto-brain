@@ -2,8 +2,8 @@ import { Effect, type Schema } from 'effect';
 import { vi } from 'vitest';
 
 import type { DatabaseSettings } from '../database/host-databases.ts';
-import { definitionStreamOf } from '../projector/brain-definitions.ts';
 import { someFolder } from '../projector/folder.ts';
+import { definitionStreamOf } from '../projector/playbook-definitions.ts';
 import type { Projector } from '../projector/projector.ts';
 import { alphaKey } from '../views-testing/view-documents.ts';
 import { viewHarness, type ViewHarness } from '../views-testing/view-harness.ts';

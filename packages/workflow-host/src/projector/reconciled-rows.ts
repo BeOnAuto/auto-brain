@@ -1,10 +1,15 @@
 import { Effect } from 'effect';
 
 import type { DatabaseFailed, HostDatabase } from '../database/host-database.ts';
-import { definitionsAfter, definitionStreamOf, noDefinitions, type BrainDefinitions } from './brain-definitions.ts';
 import type { Folder, PassedChange, PassedRow, Reconciling, RowPhase } from './folder.ts';
+import {
+  definitionsAfter,
+  definitionStreamOf,
+  noDefinitions,
+  type PlaybookDefinitions,
+} from './playbook-definitions.ts';
 
-export type KeptDefinitions = (definitionType: string) => Map<string, BrainDefinitions>;
+export type KeptDefinitions = (definitionType: string) => Map<string, PlaybookDefinitions>;
 
 export interface DefinitionsKept {
   readonly database: HostDatabase;
@@ -71,16 +76,16 @@ function phasedBySlots<Row extends PassedRow, Change extends PassedChange<Row>>(
 function definitionsOf<Row extends PassedRow, Change extends PassedChange<Row>>(
   folder: Folder<Row, Change>,
   { database, definitions }: DefinitionsKept,
-  brain: string,
-): Effect.Effect<BrainDefinitions> {
+  playbook: string,
+): Effect.Effect<PlaybookDefinitions> {
   const kept = definitions(folder.definitionType);
-  const known = kept.get(brain) ?? noDefinitions;
+  const known = kept.get(playbook) ?? noDefinitions;
   return Effect.promise(() =>
-    database.store.read(definitionStreamOf(brain, folder.definitionType), known.version),
+    database.store.read(definitionStreamOf(playbook, folder.definitionType), known.version),
   ).pipe(
     Effect.map(({ messages }) => {
       const next = definitionsAfter(known, messages, folder.keptOf);
-      kept.set(brain, next);
+      kept.set(playbook, next);
       return next;
     }),
   );
@@ -89,15 +94,15 @@ function definitionsOf<Row extends PassedRow, Change extends PassedChange<Row>>(
 export function reconciledRows<Row extends PassedRow, Change extends PassedChange<Row>>(
   folder: Folder<Row, Change>,
   kept: DefinitionsKept,
-  brain: string,
+  playbook: string,
 ): Effect.Effect<readonly Row[], DatabaseFailed> {
   const { database } = kept;
   return Effect.gen(function* () {
-    const definitions = yield* definitionsOf(folder, kept, brain);
-    const before = yield* folder.rowsOf(database, brain);
-    const changes = changesOf(folder, kept, { brain, definitions }, before);
+    const definitions = yield* definitionsOf(folder, kept, playbook);
+    const before = yield* folder.rowsOf(database, playbook);
+    const changes = changesOf(folder, kept, { playbook, definitions }, before);
     yield* Effect.all(changes, { discard: true });
-    const rows = changes.length === 0 ? before : yield* folder.rowsOf(database, brain);
+    const rows = changes.length === 0 ? before : yield* folder.rowsOf(database, playbook);
     const phased = phasedBySlots(folder, rows);
     const moved = phased.filter((row, index) => row.phase !== rows[index]?.phase);
     yield* Effect.forEach(moved, (row) => database.write(folder.phased(row, row.phase)), { discard: true });

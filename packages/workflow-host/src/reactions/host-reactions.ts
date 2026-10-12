@@ -1,9 +1,9 @@
 import { streamAppends } from '@beonauto/ledger';
 
-import { brainRecordsOf } from '../follower/brain-records.ts';
 import { followerOn, type FollowerAssembly } from '../follower/follower-assembly.ts';
 import type { FollowerHost } from '../follower/follower-host.ts';
 import type { Follower } from '../follower/follower-loop.ts';
+import { playbookRecordsOf } from '../follower/playbook-records.ts';
 import { systemClock } from '../loop/host-clock.ts';
 import type { ReactionOptions } from './reaction-options.ts';
 import type { ReactionPorts } from './reaction-ports.ts';
@@ -25,7 +25,7 @@ export function startReacting(
     stops,
     consumers,
     calls,
-    records: brainRecordsOf(host.database.store),
+    records: playbookRecordsOf(host.database.store),
     appended: options.appended ?? streamAppends,
     pace: systemClock,
   });

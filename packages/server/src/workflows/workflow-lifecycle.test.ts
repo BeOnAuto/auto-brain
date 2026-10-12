@@ -48,7 +48,7 @@ describe('main with workflows', { timeout: workflowTestTimeoutMs }, () => {
 
     expect(exitCode).toBe(0);
     expect(performance.now() - stopping).toBeLessThan(3000);
-    expect(child.output().stdout).toBe(`auto-brain listening on port ${port}\n`);
+    expect(child.output().stdout).toBe(`Auto Runtime listening on port ${port}\n`);
     expect(startUpLines.slice(1)).toEqual([
       `INFO The ledger is kept in the file ${ledger.fileName}`,
       "INFO Reasoning functions run in this server: the model calls of a run add up to at most 2,000,000 input tokens, and each answer of a tool is read whole where it fits the model's context window",
@@ -63,7 +63,7 @@ describe('a server started again on the ledger of its workflows', { timeout: wor
   it('goes on with a run that waits for an event, and with ones whose timers went off while it was stopped, the fire of each caused by the record that armed it', async () => {
     const first = workflowProcess(ledger.fileName);
     const firstPort = await first.port;
-    await requestTo(firstPort, 'POST', '', { brain: 'gamma', name: 'Gamma' });
+    await requestTo(firstPort, 'POST', '', { playbook: 'gamma', name: 'Gamma' });
     await requestTo(firstPort, 'POST', '/gamma/definitions/workflow', { name: 'approval', source: approval });
     await requestTo(firstPort, 'POST', '/gamma/definitions/workflow', { name: 'pausing', source: pausing });
     await requestTo(firstPort, 'POST', '/gamma/definitions/workflow', { name: 'timing', source: timing });

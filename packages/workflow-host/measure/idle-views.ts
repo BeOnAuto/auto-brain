@@ -17,7 +17,7 @@ export interface IdleViews {
   readonly busyMsASecond: number;
 }
 
-const brain = 'brain/acme/alpha/';
+const playbook = 'playbook/acme/alpha/';
 
 const details = {
   language: 'typescript',
@@ -37,7 +37,7 @@ async function saved(store: WorkflowStore, index: number): Promise<void> {
     definitionVersion: 1,
   };
   await store.database.store.append(
-    `${brain}definitions/recall`,
+    `${playbook}definitions/recall`,
     [{ type: 'definition_created', data: { content: { source: name, details } } }],
     { expectedVersion: index, context },
   );

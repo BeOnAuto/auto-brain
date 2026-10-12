@@ -13,21 +13,21 @@ function headsOf(records: readonly RecordedEvent[]): readonly (readonly unknown[
 
 function theVersionOfARecord(aLedger: LedgerMaker): void {
   describe('the version of a record within its stream', () => {
-    it('is given with every record, of the whole brain and of its runs', async () => {
+    it('is given with every record, of the whole playbook and of its runs', async () => {
       const ledger = await aLedger();
       await happen(ledger, inAlpha('notes'), noted('noted', 1), noted('noted', 2));
       await happen(ledger, inAlpha('runs/r1'), noted('run_started'));
       await happen(ledger, inAlpha('notes'), noted('noted', 3));
       await happen(ledger, inAlpha('runs/r1'), noted('run_succeeded'));
 
-      const brain = await reading(ledger, everything, { order: 'asc', limit: 10 });
+      const playbook = await reading(ledger, everything, { order: 'asc', limit: 10 });
       const runs = await reading(ledger, { kind: 'runs' }, { order: 'asc', limit: 10 });
 
       expect([
-        brain.records.map(({ stream, version }) => `${stream} ${version}`),
+        playbook.records.map(({ stream, version }) => `${stream} ${version}`),
         runs.records.map(({ type, version }) => `${type} ${version}`),
       ]).toEqual([
-        ['notes 1', 'notes 2', 'runs/r1 1', 'notes 3', 'runs/r1 2'].map((head) => `brain/acme/alpha/${head}`),
+        ['notes 1', 'notes 2', 'runs/r1 1', 'notes 3', 'runs/r1 2'].map((head) => `playbook/acme/alpha/${head}`),
         ['run_started 1', 'run_succeeded 2'],
       ]);
     });

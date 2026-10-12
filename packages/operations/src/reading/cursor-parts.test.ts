@@ -5,19 +5,19 @@ import { describe, expect, it } from 'vitest';
 
 import { cursorOfParts, cursorWithin, insideOf, partsOfCursor } from './cursor-parts.ts';
 
-const record = cursorOfParts(['brain/acme/alpha/', '42']);
+const record = cursorOfParts(['playbook/acme/alpha/', '42']);
 
 describe('a cursor', () => {
   it('is the base64url encoding of a JSON array of its parts', () => {
-    expect(record).toBe(Buffer.from(JSON.stringify(['brain/acme/alpha/', '42'])).toString('base64url'));
-    expect(partsOfCursor(record)).toEqual(Option.some(['brain/acme/alpha/', '42']));
+    expect(record).toBe(Buffer.from(JSON.stringify(['playbook/acme/alpha/', '42'])).toString('base64url'));
+    expect(partsOfCursor(record)).toEqual(Option.some(['playbook/acme/alpha/', '42']));
     expect(partsOfCursor('not a cursor')).toEqual(Option.none());
   });
 
   it('points inside a record with one more part, the index of the last event of the record answered', () => {
     const inside = cursorWithin(record, 3);
 
-    expect(partsOfCursor(inside)).toEqual(Option.some(['brain/acme/alpha/', '42', 3]));
+    expect(partsOfCursor(inside)).toEqual(Option.some(['playbook/acme/alpha/', '42', 3]));
     expect(insideOf(inside)).toEqual({ record, index: 3 });
   });
 

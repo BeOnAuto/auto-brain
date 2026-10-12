@@ -24,8 +24,8 @@ describe('the host database on SQLite', () => {
       [
         'workflow_calls',
         'workflow_due',
-        'workflow_followed_brains',
         'workflow_followed_orgs',
+        'workflow_followed_playbooks',
         'workflow_followed_scans',
         'workflow_leases',
         'workflow_listener_types',
@@ -47,7 +47,7 @@ describe('the host database on SQLite', () => {
   });
 
   it('makes the tables of its folders beside its own when it opens', async () => {
-    const tableOfAFolder = statement`CREATE TABLE IF NOT EXISTS folder_rows (brain TEXT NOT NULL PRIMARY KEY)`;
+    const tableOfAFolder = statement`CREATE TABLE IF NOT EXISTS folder_rows (playbook_key TEXT NOT NULL PRIMARY KEY)`;
     const database = await openedOn({ store: 'sqlite', file: aSQLiteFile() }, [tableOfAFolder]);
 
     const tables = await Effect.runPromise(

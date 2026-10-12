@@ -66,7 +66,7 @@ const sqliteAggregate = `SELECT coalesce(sum(runs), 0) AS runs FROM (
       - julianday(json_extract(s.message_metadata, '$.at'))) * 86400000 AS INTEGER)) AS durations
   FROM (
     SELECT stream_id, message_metadata FROM emt_messages
-    WHERE substr(stream_id, 1, ${kindKeyOfStream()}) = 'brain/o1/big/runs/' AND stream_position = 1
+    WHERE substr(stream_id, 1, ${kindKeyOfStream()}) = 'playbook/o1/big/runs/' AND stream_position = 1
   ) AS s
   JOIN emt_messages AS f ON f.stream_id = s.stream_id AND f.stream_position = (
     SELECT max(m.stream_position) FROM emt_messages AS m WHERE m.stream_id = s.stream_id)
@@ -79,7 +79,7 @@ function sqliteWrite(fileName: string, count: number, rowsOf: RowsOf): void {
     message_data, message_metadata, message_schema_version, message_type, message_id, is_archived, created)
     VALUES (?, ?, 'emt:default', 'E', ?, ?, '1', ?, ?, 0, ?)`);
   const stream = database.prepare(`INSERT INTO emt_streams (stream_id, stream_position, partition, stream_type,
-    stream_metadata, is_archived) VALUES (?, ?, 'emt:default', 'brain', '[]', 0)
+    stream_metadata, is_archived) VALUES (?, ?, 'emt:default', 'playbook', '[]', 0)
     ON CONFLICT DO UPDATE SET stream_position = excluded.stream_position`);
   for (const first of batchesOf(count)) {
     database.exec('BEGIN');
@@ -156,7 +156,7 @@ const postgresqlRows = `INSERT INTO emt_messages (stream_id, stream_position, pa
   ORDER BY r.n`;
 
 const postgresqlStreams = `INSERT INTO emt_streams (stream_id, stream_position, partition, stream_type, stream_metadata, is_archived)
-  SELECT stream, max(position), 'emt:default', 'brain', '{}', false
+  SELECT stream, max(position), 'emt:default', 'playbook', '{}', false
   FROM jsonb_to_recordset($1::jsonb) AS r(stream text, position int) GROUP BY stream
   ON CONFLICT (stream_id, partition, is_archived) DO UPDATE SET stream_position = excluded.stream_position`;
 
@@ -235,7 +235,7 @@ export function onPostgreSQL(server: string): Bench {
     aggregate: ({ location }) =>
       connected(location, async (client) => {
         const { rows } = await client.query<{ readonly runs: number }>(postgresqlAggregate, [
-          ['brain/o1/big/runs/'],
+          ['playbook/o1/big/runs/'],
           firstDay,
           lastDay,
         ]);

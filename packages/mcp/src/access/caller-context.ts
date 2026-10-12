@@ -5,7 +5,7 @@ import type { ToolNotOffered } from './tool-not-offered.ts';
 export interface CallerContext {
   readonly id: string;
   readonly org: string;
-  readonly brain: string;
+  readonly playbook: string;
   readonly journal: CallJournal;
   readonly meta: Readonly<Record<string, string>>;
 }

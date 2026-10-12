@@ -6,33 +6,33 @@ type RecipeOutline = Omit<Recipe, 'text'>;
 
 const outlines: readonly RecipeOutline[] = [
   {
-    name: 'first-brain',
-    title: 'Create your first brain',
-    description: 'Creates a brain with a first reasoning function, and runs it once the person has agreed to it.',
+    name: 'first-playbook',
+    title: 'Create your first playbook',
+    description: 'Creates a playbook with a first reasoning function, and runs it once the person has agreed to it.',
     arguments: [],
     formatGuide: 'reasoning-function',
-    calls: ['list_brains', 'create_brain', 'create_definition', 'test_tool_call', 'run_definition'],
-    request: () => 'Create my first brain.',
+    calls: ['list_playbooks', 'create_playbook', 'create_definition', 'test_tool_call', 'run_definition'],
+    request: () => 'Create my first playbook.',
   },
   {
     name: 'remember',
-    title: 'Make the brain remember something',
-    description: "Keeps what a function's runs answered in a recall function, so that the brain can tell it later.",
+    title: 'Make the playbook remember something',
+    description: "Keeps what a function's runs answered in a recall function, so that the playbook can tell it later.",
     arguments: [
       {
         name: 'what',
-        description: "What the brain should remember, in the person's words, such as what it posted today",
+        description: "What the playbook should remember, in the person's words, such as what it posted today",
         required: true,
       },
     ],
     formatGuide: 'recall-function',
     calls: ['list_definitions', 'create_definition', 'update_definition', 'run_definition'],
-    request: ({ what }) => `Make the brain remember ${String(what)}.`,
+    request: ({ what }) => `Make the playbook remember ${String(what)}.`,
   },
   {
     name: 'give-tools',
-    title: 'Give the brain tools',
-    description: 'Gives a reasoning function the tools of a tool server the brain may use.',
+    title: 'Give the playbook tools',
+    description: 'Gives a reasoning function the tools of a tool server the playbook may use.',
     arguments: [
       {
         name: 'server',
@@ -43,7 +43,7 @@ const outlines: readonly RecipeOutline[] = [
     formatGuide: 'reasoning-function',
     calls: ['list_tool_servers', 'test_tool_call', 'create_definition', 'run_definition', 'get_run_history'],
     request: ({ server }) =>
-      server === undefined ? 'Give the brain tools.' : `Give the brain the tools of the tool server ${server}.`,
+      server === undefined ? 'Give the playbook tools.' : `Give the playbook the tools of the tool server ${server}.`,
   },
   {
     name: 'schedule',
@@ -74,11 +74,11 @@ const whereInteractionIsServed: Readonly<Record<string, Insertion>> = {
   'give-tools': {
     after: 'and which of them it needs.',
     words: [
-      " When the brain only needs what a tool answers, with nothing to reason about, write an interaction function that calls the tool instead: it answers at once with what the tool answered and spends no model call, and the interaction-function guide says how to write it from the test's answer.",
-      ' When the brain should send a person a message through a tool and take their answer, write an interaction function instead: the interaction-function guide says how it names the tool it sends through and the tool it reads replies with, each tested the same way.',
+      " When the playbook only needs what a tool answers, with nothing to reason about, write an interaction function that calls the tool instead: it answers at once with what the tool answered and spends no model call, and the interaction-function guide says how to write it from the test's answer.",
+      ' When the playbook should send a person a message through a tool and take their answer, write an interaction function instead: the interaction-function guide says how it names the tool it sends through and the tool it reads replies with, each tested the same way.',
     ].join(''),
   },
-  'first-brain': {
+  'first-playbook': {
     after: 'give it tools with the give-tools recipe',
     words: ', send someone a message through a tool and take their answer with an interaction function',
   },

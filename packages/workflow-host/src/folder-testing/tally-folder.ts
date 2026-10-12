@@ -4,28 +4,28 @@ import { rowsOf, WholeNumber, type DatabaseFailed, type HostDatabase } from '../
 import { statement, type Statement } from '../database/statement.ts';
 import { comparePoints, isAfter, pointIn, pointText, type Point } from '../pages/history-points.ts';
 import type { PageEvent, ReadPage } from '../pages/page-events.ts';
-import type { BrainDefinitions } from '../projector/brain-definitions.ts';
 import type { FoldedChanges, Folder, Reconciled, Reconciling, RowPhase, Writing } from '../projector/folder.ts';
+import type { PlaybookDefinitions } from '../projector/playbook-definitions.ts';
 
 export const tallyType = 'tally';
 
 const talliesTable = statement`CREATE TABLE IF NOT EXISTS folder_tallies (
-    brain TEXT NOT NULL,
+    playbook_key TEXT NOT NULL,
     tally TEXT NOT NULL,
     saved BIGINT NOT NULL,
     phase TEXT NOT NULL,
     checkpoint TEXT NOT NULL,
     checkpoint_at TEXT,
     counted BIGINT NOT NULL CHECK (counted >= 0),
-    PRIMARY KEY (brain, tally)
+    PRIMARY KEY (playbook_key, tally)
   )`;
 
 const outputsTable = statement`CREATE TABLE IF NOT EXISTS folder_tally_outputs (
-    brain TEXT NOT NULL,
+    playbook_key TEXT NOT NULL,
     tally TEXT NOT NULL,
     output TEXT NOT NULL,
     counted BIGINT NOT NULL,
-    PRIMARY KEY (brain, tally, output)
+    PRIMARY KEY (playbook_key, tally, output)
   )`;
 
 const TallyDetailsSchema = Schema.Struct({
@@ -40,7 +40,7 @@ const TallyKeySchema = Schema.fromJsonString(
 );
 
 const StoredTallySchema = Schema.Struct({
-  brain: Schema.String,
+  playbook_key: Schema.String,
   tally: Schema.String,
   saved: WholeNumber,
   phase: Schema.Literals(['waiting', 'rebuilding', 'live', 'stalled']),
@@ -55,7 +55,7 @@ const TalliedOutputSchema = Schema.Struct({ tally: Schema.String, output: Schema
 
 export type TalliedOutput = typeof TalliedOutputSchema.Type;
 
-const BrainSchema = Schema.Struct({ brain: Schema.String });
+const PlaybookKeySchema = Schema.Struct({ playbook_key: Schema.String });
 
 const decodeDetails = Schema.decodeUnknownOption(TallyDetailsSchema);
 
@@ -69,7 +69,7 @@ interface TallyNext {
 }
 
 export interface TallyRow extends TallyNext {
-  readonly brain: string;
+  readonly playbookKey: string;
   readonly tally: string;
   readonly counts: string;
   readonly stallsOn: string | null;
@@ -92,7 +92,7 @@ export function tallyOf({ counts, stallsOn }: TallyDetails): string {
 function tallyRowOf(stored: typeof StoredTallySchema.Type): TallyRow {
   const { counts, stallsOn } = decodeKey(stored.tally);
   return {
-    brain: stored.brain,
+    playbookKey: stored.playbook_key,
     tally: stored.tally,
     counts,
     stallsOn,
@@ -105,22 +105,25 @@ function tallyRowOf(stored: typeof StoredTallySchema.Type): TallyRow {
   };
 }
 
-export function talliesOf(database: HostDatabase, brain: string): Effect.Effect<readonly TallyRow[], DatabaseFailed> {
-  const read = statement`SELECT brain, tally, saved, phase, checkpoint, checkpoint_at, counted FROM folder_tallies
-    WHERE brain = ${brain} ORDER BY saved, tally`;
+export function talliesOf(
+  database: HostDatabase,
+  playbook: string,
+): Effect.Effect<readonly TallyRow[], DatabaseFailed> {
+  const read = statement`SELECT playbook_key, tally, saved, phase, checkpoint, checkpoint_at, counted FROM folder_tallies
+    WHERE playbook_key = ${playbook} ORDER BY saved, tally`;
   return Effect.map(rowsOf(StoredTallySchema, database.read(read)), (rows) => rows.map((row) => tallyRowOf(row)));
 }
 
 export function talliedOutputsOf(
   database: HostDatabase,
-  brain: string,
+  playbook: string,
 ): Effect.Effect<readonly TalliedOutput[], DatabaseFailed> {
-  const read = statement`SELECT tally, output, counted FROM folder_tally_outputs WHERE brain = ${brain}
+  const read = statement`SELECT tally, output, counted FROM folder_tally_outputs WHERE playbook_key = ${playbook}
     ORDER BY tally, output`;
   return rowsOf(TalliedOutputSchema, database.read(read));
 }
 
-function wantedOf({ functions }: BrainDefinitions): ReadonlyMap<string, number> {
+function wantedOf({ functions }: PlaybookDefinitions): ReadonlyMap<string, number> {
   const wanted = new Map<string, number>();
   for (const { details, saved } of functions.values()) {
     for (const tally of Option.toArray(decodeDetails(details)).map((each) => tallyOf(each))) {
@@ -130,24 +133,24 @@ function wantedOf({ functions }: BrainDefinitions): ReadonlyMap<string, number> 
   return wanted;
 }
 
-function added(brain: string, tally: string, saved: number, phase: RowPhase): Statement {
-  return statement`INSERT INTO folder_tallies (brain, tally, saved, phase, checkpoint, counted)
-    VALUES (${brain}, ${tally}, ${saved}, ${phase}, '', 0) ON CONFLICT (brain, tally) DO NOTHING`;
+function added(playbook: string, tally: string, saved: number, phase: RowPhase): Statement {
+  return statement`INSERT INTO folder_tallies (playbook_key, tally, saved, phase, checkpoint, counted)
+    VALUES (${playbook}, ${tally}, ${saved}, ${phase}, '', 0) ON CONFLICT (playbook_key, tally) DO NOTHING`;
 }
 
-function phased({ brain, tally }: TallyRow, phase: RowPhase): Statement {
+function phased({ playbookKey, tally }: TallyRow, phase: RowPhase): Statement {
   return statement`UPDATE folder_tallies SET phase = ${phase}
-    WHERE brain = ${brain} AND tally = ${tally} AND phase IN ('waiting', 'rebuilding')`;
+    WHERE playbook_key = ${playbookKey} AND tally = ${tally} AND phase IN ('waiting', 'rebuilding')`;
 }
 
-function dropped({ brain, tally }: TallyRow): readonly Statement[] {
+function dropped({ playbookKey, tally }: TallyRow): readonly Statement[] {
   return [
-    statement`DELETE FROM folder_tally_outputs WHERE brain = ${brain} AND tally = ${tally}`,
-    statement`DELETE FROM folder_tallies WHERE brain = ${brain} AND tally = ${tally}`,
+    statement`DELETE FROM folder_tally_outputs WHERE playbook_key = ${playbookKey} AND tally = ${tally}`,
+    statement`DELETE FROM folder_tallies WHERE playbook_key = ${playbookKey} AND tally = ${tally}`,
   ];
 }
 
-function plannedTallies({ brain, definitions }: Reconciling, rows: readonly TallyRow[]): Reconciled<TallyRow> {
+function plannedTallies({ playbook, definitions }: Reconciling, rows: readonly TallyRow[]): Reconciled<TallyRow> {
   const wanted = wantedOf(definitions);
   const known = new Set(rows.map(({ tally }) => tally));
   return {
@@ -156,7 +159,7 @@ function plannedTallies({ brain, definitions }: Reconciling, rows: readonly Tall
       .map(([tally, saved]: readonly [string, number]) => ({
         key: tally,
         saved,
-        added: (phase: RowPhase) => added(brain, tally, saved, phase),
+        added: (phase: RowPhase) => added(playbook, tally, saved, phase),
       })),
     dropped: rows.filter(({ tally }) => !wanted.has(tally)),
   };
@@ -211,10 +214,10 @@ function foldedTallies(rows: readonly TallyRow[], page: ReadPage): FoldedChanges
   return { changes, resting: [], complete: true, again: false };
 }
 
-function outputAdded({ brain, tally }: TallyRow, [output, counted]: OutputCount): Statement {
-  return statement`INSERT INTO folder_tally_outputs (brain, tally, output, counted)
-    VALUES (${brain}, ${tally}, ${output}, ${counted})
-    ON CONFLICT (brain, tally, output) DO UPDATE SET counted = folder_tally_outputs.counted + excluded.counted`;
+function outputAdded({ playbookKey, tally }: TallyRow, [output, counted]: OutputCount): Statement {
+  return statement`INSERT INTO folder_tally_outputs (playbook_key, tally, output, counted)
+    VALUES (${playbookKey}, ${tally}, ${output}, ${counted})
+    ON CONFLICT (playbook_key, tally, output) DO UPDATE SET counted = folder_tally_outputs.counted + excluded.counted`;
 }
 
 function writtenTally(
@@ -223,7 +226,7 @@ function writtenTally(
 ): Effect.Effect<TallyRow | undefined, DatabaseFailed> {
   const moved = statement`UPDATE folder_tallies SET phase = ${next.phase}, checkpoint = ${pointText(next.checkpoint)},
       checkpoint_at = ${next.checkpointAt}, counted = ${next.counted}
-    WHERE brain = ${row.brain} AND tally = ${row.tally} AND checkpoint = ${row.checkpointText}
+    WHERE playbook_key = ${row.playbookKey} AND tally = ${row.tally} AND checkpoint = ${row.checkpointText}
     RETURNING tally`;
   const written = database.transaction([...outputs.map((counted) => outputAdded(row, counted)), moved]);
   return Effect.map(rowsOf(TallyNameSchema, written), (took) =>
@@ -239,10 +242,13 @@ export function tallyFolderOf(rebuildsAtOnce: number): Folder<TallyRow, TallyCha
     keptOf: (details) => details,
     keyOf: ({ tally }) => tally,
     typesOf: ({ counts }) => [counts],
-    brainsWithRows: (database) =>
+    playbooksWithRows: (database) =>
       Effect.map(
-        rowsOf(BrainSchema, database.read(statement`SELECT DISTINCT brain FROM folder_tallies ORDER BY brain`)),
-        (rows) => rows.map(({ brain }) => brain),
+        rowsOf(
+          PlaybookKeySchema,
+          database.read(statement`SELECT DISTINCT playbook_key FROM folder_tallies ORDER BY playbook_key`),
+        ),
+        (rows) => rows.map(({ playbook_key: playbookKey }) => playbookKey),
       ),
     rowsOf: talliesOf,
     reconcile: plannedTallies,

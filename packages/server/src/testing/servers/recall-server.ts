@@ -81,19 +81,19 @@ export function foldsHeld(gate: Gate, folds: number): Promise<void> {
   }, untilNearTheTestTimeout);
 }
 
-export async function brainWithReviews(server: ReasoningServer, briefsFirst = 0, brain = 'alpha'): Promise<void> {
-  const path = `/v1/orgs/acme/brains/${brain}`;
-  await server.call('POST', '/v1/orgs/acme/brains', { body: { brain, name: brain } });
+export async function playbookWithReviews(server: ReasoningServer, briefsFirst = 0, playbook = 'alpha'): Promise<void> {
+  const path = `/v1/orgs/acme/playbooks/${playbook}`;
+  await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook, name: playbook } });
   await server.call('POST', `${path}/definitions/reasoning`, { body: { name: 'review-brief', source: anyReview } });
-  await reviewed(server, briefsFirst, brain);
+  await reviewed(server, briefsFirst, playbook);
   await server.call('POST', `${path}/definitions/recall`, { body: { name: 'reviews', source: campaignReviews } });
 }
 
-export function reviewed(server: ReasoningServer, briefs: number, brain = 'alpha'): Promise<unknown> {
+export function reviewed(server: ReasoningServer, briefs: number, playbook = 'alpha'): Promise<unknown> {
   return Array.from({ length: briefs }, (_, index) => index).reduce<Promise<unknown>>(
     (before, index) =>
       before.then(() =>
-        server.call('POST', `/v1/orgs/acme/brains/${brain}/definitions/reasoning/review-brief/run`, {
+        server.call('POST', `/v1/orgs/acme/playbooks/${playbook}/definitions/reasoning/review-brief/run`, {
           body: { input: { brief: `brief ${index}` } },
         }),
       ),

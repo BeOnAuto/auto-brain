@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { workerPool } from '../composition/served-computation.ts';
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import {
-  brainWithReviews,
+  playbookWithReviews,
   liveWith,
   recallTestTimeoutMs,
   recalled,
@@ -34,7 +34,7 @@ afterEach(async () => {
 async function reviewing(...outputs: readonly Schema.Json[]): Promise<ReasoningServer> {
   const server = await servingRecall(verdicts(...outputs));
   closing.push(server.stop);
-  await brainWithReviews(server);
+  await playbookWithReviews(server);
   await reviewed(server, outputs.length);
   return server;
 }
@@ -108,7 +108,7 @@ describe('a run of a recall function the server cannot finish, over HTTP', { tim
       ),
     );
     closing.push(server.stop);
-    await brainWithReviews(server, 1);
+    await playbookWithReviews(server, 1);
     await standingUntil(server, 'reviews', liveWith(1));
 
     const busy = await recalled(server, 'reviews', { campaign: 'spring' });

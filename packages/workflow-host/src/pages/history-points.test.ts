@@ -4,7 +4,7 @@ import { comparePoints, earliestOf, isAfter, pointIn, pointText } from './histor
 
 const nothingRead = pointIn('');
 
-describe('a point in the history of a brain', () => {
+describe('a point in the history of a playbook', () => {
   it('is kept as text, and read back as it was written, or as before anything when it cannot be read', () => {
     expect([pointText(['12', '3']), pointText(nothingRead)]).toEqual(['["12","3"]', '']);
     expect([pointIn('["12","3"]'), pointIn(''), pointIn('[3]'), pointIn('not json')]).toEqual([

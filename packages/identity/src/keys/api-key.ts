@@ -36,7 +36,7 @@ export function keyIdOf(key: string): string | undefined {
   return presentedKey.exec(key)?.[1];
 }
 
-export function createApiKey({ id, org, permissions, brains }: KeyGrant): CreatedKey {
+export function createApiKey({ id, org, permissions, playbooks }: KeyGrant): CreatedKey {
   const key = `abk_${id}_${randomBytes(32).toString('base64url')}`;
-  return { key, entry: { id, sha256: digestOf(key), org, permissions, brains } };
+  return { key, entry: { id, sha256: digestOf(key), org, permissions, playbooks } };
 }

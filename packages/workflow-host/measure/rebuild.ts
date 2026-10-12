@@ -19,7 +19,7 @@ export interface Rebuild {
   readonly viewBytes: number;
 }
 
-const brain = 'brain/acme/alpha/';
+const playbook = 'playbook/acme/alpha/';
 
 const runsInAStream = 100;
 
@@ -52,7 +52,7 @@ async function recorded(database: HostDatabase, events: number): Promise<void> {
     (before, stream) =>
       before.then(() =>
         database.store.append(
-          `${brain}runs/0199a3c4-7d2e-7c1a-9b3f-${String(stream).padStart(12, '0')}`,
+          `${playbook}runs/0199a3c4-7d2e-7c1a-9b3f-${String(stream).padStart(12, '0')}`,
           Array.from({ length: runsInAStream }, (_, run) => succeeded(stream * runsInAStream + run)),
           { expectedVersion: 0, context: ranAt(stream) },
         ),
@@ -67,7 +67,7 @@ async function recorded(database: HostDatabase, events: number): Promise<void> {
     definitionVersion: 1,
   };
   await database.store.append(
-    `${brain}definitions/recall`,
+    `${playbook}definitions/recall`,
     [{ type: 'definition_created', data: { content: { source: 'reviews', details } } }],
     { expectedVersion: 0, context },
   );
@@ -90,9 +90,9 @@ function counted(database: HostDatabase): Counted {
       },
       store: {
         ...database.store,
-        readRecorded: (brainKey, selection, page) => {
+        readRecorded: (playbookKey, selection, page) => {
           counts.pages += 1;
-          return database.store.readRecorded(brainKey, selection, page);
+          return database.store.readRecorded(playbookKey, selection, page);
         },
       },
     },

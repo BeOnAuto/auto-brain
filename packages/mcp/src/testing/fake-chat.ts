@@ -21,7 +21,7 @@ export interface FakeChat {
   readonly posted: () => readonly ChatMessage[];
 }
 
-export const chatBot = 'brain';
+export const chatBot = 'playbook';
 
 function argument(input: unknown, name: string): string {
   const value: unknown = Reflect.get(new Object(input), name);

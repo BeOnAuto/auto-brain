@@ -40,7 +40,7 @@ async function answeredInFull(): Promise<{ readonly server: SystemServer; readon
 function readOverMcp(server: SystemServer, eventId: string): Promise<ToolResult> {
   return withMcpSession(
     'current revision',
-    { url: `${server.origin}/orgs/acme/brains/alpha/mcp`, headers: {} },
+    { url: `${server.origin}/orgs/acme/playbooks/alpha/mcp`, headers: {} },
     (session) => session.callTool('get_event', { event_id: eventId }),
   );
 }
@@ -64,17 +64,17 @@ describe('one event read whole by its id', { timeout: workflowTestTimeoutMs }, (
     expect(Object.keys(decodeShown(overMcp.structuredContent).data).filter((key) => wholeFields.has(key))).toEqual([]);
   });
 
-  it('answers not_found for an id the brain does not hold, a step its record does not have, and an event of another brain', async () => {
+  it('answers not_found for an id the playbook does not hold, a step its record does not have, and an event of another playbook', async () => {
     const server = await askingASystem();
     await server.define('thread-replies');
     await server.runCall('thread-replies');
     const [started] = await server.history(systemRunId);
-    await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'beta', name: 'Beta' } });
+    await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'beta', name: 'Beta' } });
 
     const refused = [
       await server.call('GET', `${alpha}/events/${unknownEvent}`),
       await server.call('GET', `${alpha}/events/${String(started?.id)}_1`),
-      await server.call('GET', `/v1/orgs/acme/brains/beta/events/${String(started?.id)}`),
+      await server.call('GET', `/v1/orgs/acme/playbooks/beta/events/${String(started?.id)}`),
     ];
     const malformed = await server.call('GET', `${alpha}/events/not-an-event`);
 

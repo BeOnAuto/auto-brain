@@ -16,7 +16,7 @@ import { recordedWith, runStateAfter, testRunId } from '../testing/run-facts.ts'
 
 const start = { runId: testRunId, by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
 
-const during = { runId: testRunId, by: 'brain:alpha', at: '2026-10-01T09:00:02.000Z' };
+const during = { runId: testRunId, by: 'playbook:alpha', at: '2026-10-01T09:00:02.000Z' };
 
 const request = { definition_type: 'interaction', name: 'approve-brief', input: { owner: 'ada' } };
 

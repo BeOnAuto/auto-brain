@@ -15,7 +15,7 @@ function emissionsIn(run: ReturnType<typeof drivenRun>): readonly EmitEvent[] {
 }
 
 function refusingReserved(event: JsonObject): string | undefined {
-  return event['type'] === 'reserved' ? 'The type reserved is the brain’s own' : undefined;
+  return event['type'] === 'reserved' ? 'The type reserved is the playbook’s own' : undefined;
 }
 
 describe('an emit task', () => {
@@ -94,7 +94,7 @@ describe('an emit task that cannot emit', () => {
 
     expect(driver.runUntilEnded(drivenRunId).outcome).toMatchObject({
       kind: 'raised',
-      error: { status: 400, title: 'The type reserved is the brain’s own' },
+      error: { status: 400, title: 'The type reserved is the playbook’s own' },
     });
   });
 });
