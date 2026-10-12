@@ -1,3 +1,5 @@
+import { workflowFacts } from '@beonauto/coordination';
+import { nudging } from '@beonauto/interaction/testing';
 import { ledgerLayer } from '@beonauto/ledger/sqlite3';
 import { PlaybookRegistry, allPermissions, makeDispatcher, type CallerIdentity } from '@beonauto/operations';
 import { createPlaybook } from '@beonauto/playbooks';
@@ -5,6 +7,7 @@ import { Effect, Layer, ManagedRuntime } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { logsToStderr } from '../logging/logging.ts';
+import { factsComposedOf } from './composed-facts.ts';
 import { applicationLayer } from './composition-root.ts';
 
 const acmeAdmin: CallerIdentity = { id: 'acme-admin', org: 'acme', permissions: allPermissions, playbooks: '*' };
@@ -44,5 +47,36 @@ describe('the services the playbook operations run on', () => {
     await runtime.dispose();
 
     expect({ outcome: outcome.status, status }).toEqual({ outcome: 'succeeded', status: 'active' });
+  });
+});
+
+const runsNothing = {
+  run: () => Promise.reject(new Error('The facts are composed before anything runs')),
+  dispose: () => Promise.resolve(),
+};
+
+describe('the facts the server composes from its capabilities and the workflow’s, as it starts', () => {
+  it('are refused, and the server does not start, when a fact or a stream kind is declared twice or a fact the playbook records itself, naming it and the capability', () => {
+    const prodding = { ...nudging, type: 'prodding' };
+    const claiming = {
+      ...nudging,
+      type: 'claiming',
+      facts: { ...nudging.facts, onRuns: nudging.facts.onRuns.map((fact) => ({ ...fact, type: 'run_failed' })) },
+    };
+    const logging = { ...nudging, type: 'logging', facts: { onRuns: [], streams: workflowFacts.facts.streams } };
+
+    expect(() => factsComposedOf(runsNothing, [nudging, prodding])).toThrow(
+      'The fact nudge_sent is declared by the capabilities nudging and prodding, and one capability alone may declare it',
+    );
+    expect(() => factsComposedOf(runsNothing, [claiming])).toThrow(
+      'The fact run_failed that the capability claiming declares is one the playbook records itself',
+    );
+    expect(() => factsComposedOf(runsNothing, [logging])).toThrow(
+      'The stream kind run-logs is declared by the capabilities logging and workflow, and one capability alone may declare it',
+    );
+    expect(factsComposedOf(runsNothing, [nudging]).facts).toEqual({
+      onRuns: nudging.facts.onRuns,
+      streams: workflowFacts.facts.streams,
+    });
   });
 });

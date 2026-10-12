@@ -4,11 +4,12 @@ import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { playbookOn } from '../testing/playbook.ts';
+import { testPlaybookNames } from '../testing/test-sandbox.ts';
 import { defineSendRunEvent } from './send-run-event.ts';
 
 const playbook = playbookOn(memoryLedger(), [echo]);
 
-const sendEvent = defineSendRunEvent({ deliver: () => Effect.die('An event was delivered') });
+const sendEvent = defineSendRunEvent({ deliver: () => Effect.die('An event was delivered') }, testPlaybookNames);
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 

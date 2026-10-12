@@ -18,7 +18,6 @@ export interface RecordedRun {
   readonly run: RunDetail;
   readonly input: Schema.Json;
   readonly awaitsSettlement: boolean;
-  readonly lastCall: number;
 }
 
 const isWellFormed = Schema.is(
@@ -39,7 +38,6 @@ function recordedOf(id: string, state: RunStreamState): Effect.Effect<RecordedRu
         run: detail,
         input: run.input,
         awaitsSettlement: takesSettlement(run),
-        lastCall: run.lastCall,
       }));
 }
 

@@ -1,15 +1,20 @@
-import { randomUUIDv7, type Failed } from '@beonauto/operations';
+import { randomUUIDv7, type CallSummary, type Failed } from '@beonauto/operations';
 
 import { internalErrorProblem, problemResponse } from './problem.ts';
 
-export type ReportIncident = (incident: string, error: Readonly<Error>, requestId: string) => void;
+export type ReportIncident = (
+  incident: string,
+  error: Readonly<Error>,
+  requestId: string,
+  call: CallSummary | undefined,
+) => void;
 
-export type ReportThrown = (thrown: unknown, requestId: string) => Failed;
+export type ReportThrown = (thrown: unknown, requestId: string, call?: CallSummary) => Failed;
 
 export function failureOfThrown(reportIncident: ReportIncident): ReportThrown {
-  return (thrown, requestId) => {
+  return (thrown, requestId, call) => {
     const incident = randomUUIDv7();
-    reportIncident(incident, asError(thrown), requestId);
+    reportIncident(incident, asError(thrown), requestId, call);
     return { status: 'failed', incident };
   };
 }

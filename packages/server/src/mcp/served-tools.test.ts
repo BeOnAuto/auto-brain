@@ -106,12 +106,12 @@ describe('the descriptions of the tools of /mcp', () => {
     ).toEqual([]);
   });
 
-  it('say that a function that calls a tool may change something, in run_definition at 768 characters, and that a run that ends within its call cannot be cancelled, in cancel_run at 671', () => {
+  it('say that a function that calls a tool may change something, in run_definition at 777 characters, and that a run that ends within its call cannot be cancelled, in cancel_run at 671', () => {
     const [running, cancelling] = [descriptionOf('run_definition'), descriptionOf('cancel_run')];
 
     expect(running).toContain('A function that calls a tool may change something outside the playbook');
     expect(cancelling).toContain('or an interaction function that calls a tool, cannot be cancelled.');
-    expect([running.length, cancelling.length]).toEqual([768, 671]);
+    expect([running.length, cancelling.length]).toEqual([777, 671]);
   });
 });
 

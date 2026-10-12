@@ -20,6 +20,12 @@ export function cancelAsked(kind: CancelRequestKind): string {
   return cancelsAsked[kind];
 }
 
+export function requestAnswered(byAReply: boolean): string {
+  return byAReply
+    ? 'A reply from the party answered the request, and the run takes the answer.'
+    : 'The request was answered, and the run takes the answer.';
+}
+
 const triggerNames: Readonly<Record<StartingTrigger['kind'], string>> = {
   event: 'event trigger',
   cron: 'cron schedule',

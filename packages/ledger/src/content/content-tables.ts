@@ -1,95 +1,156 @@
-import { bytesOfText, chunksOf, sha256Of, streamPrefixOfPlaybook, type RecordedContent } from '@beonauto/operations';
 import { SQL } from '@event-driven-io/dumbo';
-import { Effect, Schema } from 'effect';
+import { Schema } from 'effect';
 
 import type { StatementExecutor } from '../event-store.ts';
 import { inTurn } from '../projections/inline-projection.ts';
 import { createMissingIndexes, type PlaybookIndex } from '../recorded/missing-indexes.ts';
+import type { ContentDialect } from './content-dialects.ts';
 
-const contentTables: readonly PlaybookIndex[] = [
-  {
-    name: 'recorded_content_chunks',
-    create: () => SQL`CREATE TABLE IF NOT EXISTS recorded_content_chunks (
-      playbook_key TEXT NOT NULL,
-      sha256 TEXT NOT NULL,
-      chunk INTEGER NOT NULL,
-      text TEXT NOT NULL,
-      PRIMARY KEY (playbook_key, sha256, chunk)
-    )`,
-  },
-  {
-    name: 'recorded_content_heads',
-    create: () => SQL`CREATE TABLE IF NOT EXISTS recorded_content_heads (
-      playbook_key TEXT NOT NULL,
-      sha256 TEXT NOT NULL,
-      bytes BIGINT NOT NULL,
-      chunks INTEGER NOT NULL,
-      PRIMARY KEY (playbook_key, sha256)
-    )`,
-  },
-];
-
-export const contentTableNames: readonly string[] = contentTables.map(({ name }) => name);
-
-const NameRows = Schema.Array(Schema.Struct({ name: Schema.String }));
-
-const HeadRows = Schema.Array(Schema.Struct({ chunks: Schema.Number }));
-
-const ChunkRows = Schema.Array(Schema.Struct({ text: Schema.String }));
-
-async function headOf(execute: StatementExecutor, playbookKey: string, sha256: string) {
-  const { rows } = await execute.query(
-    SQL`SELECT chunks FROM recorded_content_heads WHERE playbook_key = ${playbookKey} AND sha256 = ${sha256}`,
-  );
-  return Schema.decodeUnknownSync(HeadRows)(rows).at(0);
+export interface Shelf {
+  readonly chunks: string;
+  readonly heads: string;
+  readonly placeColumns: readonly string[];
+  readonly chunkMissing: (sha256: string, index: number) => Error;
 }
 
-async function kept(execute: StatementExecutor, playbookKey: string, sha256: string, text: string): Promise<void> {
-  if ((await headOf(execute, playbookKey, sha256)) !== undefined) {
-    return;
-  }
-  const chunks = chunksOf(text);
-  await inTurn([...chunks.entries()], ([chunk, part]: readonly [number, string]) =>
-    execute.command(
-      SQL`INSERT INTO recorded_content_chunks (playbook_key, sha256, chunk, text)
-        VALUES (${playbookKey}, ${sha256}, ${chunk}, ${part})
-        ON CONFLICT DO NOTHING`,
-    ),
-  );
-  await execute.command(
-    SQL`INSERT INTO recorded_content_heads (playbook_key, sha256, bytes, chunks)
-      VALUES (${playbookKey}, ${sha256}, ${bytesOfText(text)}, ${chunks.length})
-      ON CONFLICT DO NOTHING`,
+export const keptShelf: Shelf = {
+  chunks: 'recorded_content_chunks',
+  heads: 'recorded_content_heads',
+  placeColumns: ['playbook_key'],
+  chunkMissing: (sha256, index) => new Error(`The content kept under ${sha256} is missing its chunk ${index}`),
+};
+
+export const stagingShelf: Shelf = {
+  chunks: 'staged_content_chunks',
+  heads: 'staged_content',
+  placeColumns: ['playbook_key', 'run_id'],
+  chunkMissing: (sha256, index) =>
+    new Error(`The content staged under ${sha256} has no chunk ${index}, as when its run is unstaged while it is read`),
+};
+
+export const unstagedRuns = 'unstaged_runs';
+
+export interface ContentTable {
+  readonly name: string;
+  readonly columns: readonly string[];
+  readonly create: (dialect: ContentDialect) => SQL;
+}
+
+function textColumns(columns: readonly string[]): SQL {
+  return SQL.merge(
+    columns.map((column) => SQL`${SQL.identifier(column)} TEXT NOT NULL`),
+    ', ',
   );
 }
 
-async function read(execute: StatementExecutor, playbookKey: string, sha256: string): Promise<string | undefined> {
-  const head = await headOf(execute, playbookKey, sha256);
-  if (head === undefined) {
-    return undefined;
-  }
-  const { rows } = await execute.query(
-    SQL`SELECT text FROM recorded_content_chunks WHERE playbook_key = ${playbookKey} AND sha256 = ${sha256} ORDER BY chunk`,
+function namesOf(columns: readonly string[]): SQL {
+  return SQL.merge(
+    columns.map((column) => SQL`${SQL.identifier(column)}`),
+    ', ',
   );
-  const text = Schema.decodeUnknownSync(ChunkRows)(rows)
-    .map(({ text: chunk }) => chunk)
-    .join('');
-  if ((await sha256Of(text)) !== sha256) {
-    throw new Error(`The content kept under ${sha256} is not the text that digest names`);
-  }
-  return text;
 }
 
-export function recordedContentOn(execute: StatementExecutor): RecordedContent {
+function chunkTableOf({ chunks, placeColumns }: Shelf): ContentTable {
+  const key = [...placeColumns, 'upload_id', 'chunk'];
   return {
-    put: (playbook, sha256, text) =>
-      Effect.promise(() => kept(execute, streamPrefixOfPlaybook(playbook), sha256, text)),
-    get: (playbook, sha256) => Effect.promise(() => read(execute, streamPrefixOfPlaybook(playbook), sha256)),
+    name: chunks,
+    columns: [...key, 'data'],
+    create: ({ bytesType }) => SQL`CREATE TABLE IF NOT EXISTS ${SQL.identifier(chunks)} (
+      ${textColumns([...placeColumns, 'upload_id'])},
+      chunk INTEGER NOT NULL,
+      data ${SQL.plain(bytesType)} NOT NULL,
+      PRIMARY KEY (${namesOf(key)})
+    )`,
   };
 }
 
-export async function createdContentTables(execute: StatementExecutor, existingTables: SQL): Promise<void> {
-  const { rows } = await execute.query(existingTables);
-  const existing = new Set(Schema.decodeUnknownSync(NameRows)(rows).map(({ name }) => name));
-  await createMissingIndexes(execute, contentTables, existing);
+function headTableOf({ heads, placeColumns }: Shelf): ContentTable {
+  const key = [...placeColumns, 'sha256'];
+  return {
+    name: heads,
+    columns: [...key, 'upload_id', 'bytes', 'chunks', 'media_type'],
+    create: () => SQL`CREATE TABLE IF NOT EXISTS ${SQL.identifier(heads)} (
+      ${textColumns([...key, 'upload_id'])},
+      bytes BIGINT NOT NULL,
+      chunks INTEGER NOT NULL,
+      media_type TEXT NOT NULL,
+      PRIMARY KEY (${namesOf(key)})
+    )`,
+  };
+}
+
+const unstagedRunsTable: ContentTable = {
+  name: unstagedRuns,
+  columns: stagingShelf.placeColumns,
+  create: () => SQL`CREATE TABLE IF NOT EXISTS ${SQL.identifier(unstagedRuns)} (
+    ${textColumns(stagingShelf.placeColumns)},
+    PRIMARY KEY (${namesOf(stagingShelf.placeColumns)})
+  )`,
+};
+
+export const shelves: readonly Shelf[] = [keptShelf, stagingShelf];
+
+export const contentTables: readonly ContentTable[] = [
+  ...shelves.flatMap((shelf) => [chunkTableOf(shelf), headTableOf(shelf)]),
+  unstagedRunsTable,
+];
+
+const contentTableNames: readonly string[] = contentTables.map(({ name }) => name);
+
+function uploadIndexOf({ heads, placeColumns }: Shelf): PlaybookIndex {
+  const name = `${heads}_by_upload`;
+  return {
+    name,
+    create: () =>
+      SQL`CREATE INDEX IF NOT EXISTS ${SQL.identifier(name)} ON ${SQL.identifier(heads)} (${namesOf([...placeColumns, 'upload_id'])})`,
+  };
+}
+
+const contentIndexes: readonly PlaybookIndex[] = shelves.map((shelf) => uploadIndexOf(shelf));
+
+const NameRows = Schema.Array(Schema.Struct({ name: Schema.String }));
+
+async function namesFound(execute: StatementExecutor, sql: SQL): Promise<readonly string[]> {
+  const { rows } = await execute.query(sql);
+  return Schema.decodeUnknownSync(NameRows)(rows).map(({ name }) => name);
+}
+
+function listed(columns: readonly string[]): string {
+  return columns.toSorted().join(', ');
+}
+
+async function requireTheShapeKept(
+  execute: StatementExecutor,
+  dialect: ContentDialect,
+  { name, columns }: ContentTable,
+): Promise<void> {
+  const found = await namesFound(execute, dialect.columnsOf(name));
+  if (listed(found) !== listed(columns)) {
+    throw new Error(
+      `The ledger's database keeps recorded content in a shape this server no longer reads: ${name} has the columns ${listed(found)}, where this server keeps ${listed(columns)}. Nothing stored before launch is carried over, so delete the local database and start the server again`,
+    );
+  }
+}
+
+export async function createdContentTables(execute: StatementExecutor, dialect: ContentDialect): Promise<void> {
+  const existing = new Set(await namesFound(execute, dialect.relationsAmong('table', contentTableNames)));
+  await inTurn(
+    contentTables.filter(({ name }) => existing.has(name)),
+    (table) => requireTheShapeKept(execute, dialect, table),
+  );
+  await createMissingIndexes(
+    execute,
+    contentTables.map((table) => ({ name: table.name, create: () => table.create(dialect) })),
+    existing,
+  );
+  const indexed = new Set(
+    await namesFound(
+      execute,
+      dialect.relationsAmong(
+        'index',
+        contentIndexes.map(({ name }) => name),
+      ),
+    ),
+  );
+  await createMissingIndexes(execute, contentIndexes, indexed);
 }

@@ -1,7 +1,7 @@
-import type { DeliveryEnded } from '@beonauto/definitions';
 import type { AnsweredOnce, CallAnswered, CallFailed, CalledOnce } from '@beonauto/mcp';
 import { Struct } from 'effect';
 
+import type { DeliveryEnded } from '../facts/run-facts.ts';
 import type { DeliveringRecord } from '../run/request-record.ts';
 import { endOfCall } from './call-ends.ts';
 import { keptOf } from './sent-messages.ts';

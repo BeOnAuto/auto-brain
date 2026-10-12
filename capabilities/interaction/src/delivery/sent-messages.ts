@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 
-import { refusingForbiddenCharacters, type DeliveredAs, type RepliesIn } from '@beonauto/definitions';
+import { refusingForbiddenCharacters } from '@beonauto/definitions';
 import { parsedTemplate } from '@beonauto/definitions/template';
 import { answerDocument, type CallAnswer } from '@beonauto/mcp';
 import { Result, Schema } from 'effect';
@@ -9,7 +9,7 @@ import { interactionEngine } from '../document/request-templates.ts';
 import type { DeliveringRecord } from '../run/request-record.ts';
 import { renderedText } from '../run/text-rendering.ts';
 import { textAt } from '../tool-blocks/json-pointers.ts';
-import type { Replies } from '../tool-blocks/tool-block-schemas.ts';
+import type { DeliveredAs, Replies, RepliesIn } from '../tool-blocks/tool-block-schemas.ts';
 
 const sentBounds = { partBytes: 256 } as const;
 

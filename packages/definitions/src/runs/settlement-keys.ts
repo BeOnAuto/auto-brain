@@ -1,5 +1,4 @@
-import { createHash } from 'node:crypto';
-
+import { sha256Of } from '@beonauto/operations';
 import type { Schema } from 'effect';
 
 import type { RunResult } from './run-commands.ts';
@@ -20,14 +19,8 @@ function canonical(value: Schema.Json): Schema.Json {
   );
 }
 
-function digestOf(value: Schema.Json): string {
-  return createHash('sha256')
-    .update(JSON.stringify(canonical(value)), 'utf8')
-    .digest('hex');
-}
-
-export function succeedsWith(result: RunResult, output: Schema.Json): boolean {
-  return result.type === 'run_succeeded' && digestOf(result.data.output) === digestOf(output);
+export function digestOf(value: Schema.Json): string {
+  return sha256Of(JSON.stringify(canonical(value)));
 }
 
 export function settlementKeyOf(result: RunResult): string {

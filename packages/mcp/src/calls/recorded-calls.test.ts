@@ -1,6 +1,7 @@
 import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
 
+import { keptTextOf } from '@beonauto/operations/testing';
 import { Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -98,7 +99,7 @@ async function recordedCalls(
         ),
       ),
   );
-  const kept = (sha256: string) => Effect.runPromise(content.get(alpha, sha256));
+  const kept = (sha256: string) => keptTextOf(content, alpha, sha256);
   return { facts: journal.facts(), kept };
 }
 
@@ -281,7 +282,9 @@ describe('the id a server gives a request', () => {
 
 describe('the failure of a call', () => {
   it('carries no detail when the failure said nothing', () => {
-    const recording = recordingOf({ record_content: true, request_id: null }, secretsOf([]), () => Promise.resolve());
+    const recording = recordingOf({ record_content: true, request_id: null }, secretsOf([]), () =>
+      Promise.resolve('a'.repeat(64)),
+    );
 
     expect(
       failedData({ because: 'cancelled', message: '  ', jsonrpcId: null, serverRequestId: null }, 0, recording),

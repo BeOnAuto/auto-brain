@@ -1,12 +1,12 @@
 import type { AppRuntime } from '@beonauto/api';
+import { callMarginMs, defineSendRunEvent, makeWorkflowAdapter, type ExpressionCheck } from '@beonauto/coordination';
 import {
-  callMarginMs,
-  defineSendRunEvent,
-  makeWorkflowAdapter,
-  runPresenter,
-  type ExpressionCheck,
-} from '@beonauto/coordination';
-import { defineStartVersion, type PlaybookOperation, type Capability } from '@beonauto/definitions';
+  defineStartVersion,
+  type PlaybookOperation,
+  type PlaybookOwnNames,
+  type Capability,
+  type CapabilityFacts,
+} from '@beonauto/definitions';
 import { makeCatalog, makeDispatcher, type DispatcherServices, type Registration } from '@beonauto/operations';
 import type { WorkflowHost } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
@@ -24,6 +24,8 @@ export interface WorkflowParts extends HostParts {
   readonly orgOperations: readonly OrgOperation[];
   readonly playbookOperations: readonly PlaybookOperation[];
   readonly check: ExpressionCheck;
+  readonly facts: CapabilityFacts;
+  readonly names: PlaybookOwnNames;
 }
 
 export function longestCallOf(capabilities: readonly Pick<Capability, 'longestAnyRunMs'>[]): number {
@@ -43,20 +45,27 @@ function onceOpened(opening: Promise<WorkflowHost>): Pick<WorkflowHost, 'start'>
 export async function serveWorkflows(runtime: AppRuntime<DispatcherServices>, parts: WorkflowParts): Promise<Served> {
   const dispatcher = makeDispatcher([]);
   const opening = Promise.withResolvers<WorkflowHost>();
+  const { names } = parts;
   const workflow = makeWorkflowAdapter({
     runs: onceOpened(opening.promise),
     check: parts.check,
     mostDurationMs: parts.workflows.mostDurationMs,
     longestCallMs: longestCallOf(parts.capabilities),
+    names,
   });
   const capabilities = [...parts.capabilities, workflow];
-  const host = await openedHost(runtime, dispatcher, { ...parts, capabilities }, defineStartVersion(capabilities));
+  const host = await openedHost(
+    runtime,
+    dispatcher,
+    { ...parts, capabilities },
+    { startVersion: defineStartVersion(capabilities), names },
+  );
   opening.resolve(host);
   const catalog = makeCatalog([
     ...parts.orgOperations,
-    ...playbookOperationsServing(capabilities, [runPresenter]),
+    ...playbookOperationsServing(capabilities, parts),
     ...parts.playbookOperations,
-    defineSendRunEvent(host),
+    defineSendRunEvent(host, names),
   ]);
   return { routes: routesFor(runtime, catalog, dispatcher, capabilities), stopWork: host.stop };
 }

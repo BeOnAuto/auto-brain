@@ -1,10 +1,10 @@
-import { outboundCallRecorder } from '@beonauto/definitions';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { answerInteraction } from '../requests/answer-interaction.ts';
 import { askedRunId, askedThroughChat, noTools } from '../testing/index.ts';
 import { requestsDue } from './due-requests.ts';
+import { recordedCall } from './request-ledger.ts';
 
 const minute = 60_000;
 
@@ -14,7 +14,8 @@ describe('an attempt the server stopped in', () => {
   it('ends as lost once its bound passed, and the next attempt follows on the schedule', async () => {
     const { playbook, tools, askedAt } = await askedThroughChat();
     await Effect.runPromise(
-      outboundCallRecorder(playbook.ledger.service)(
+      recordedCall(
+        playbook.record,
         address,
         { type: 'delivery_started', data: { number: 1, target: 'ada', server: 'chat', tool: 'post_message' } },
         { causationId: null, correlationId: askedRunId },
@@ -67,14 +68,14 @@ describe('a due request whose run has ended, or whose tool is no longer allowed'
     expect(tools.calls()).toEqual([]);
     expect(open).toMatchObject({ attempts: 1, standing: 'retrying' });
     expect(nextDue).toBeGreaterThan(askedAt + minute - 1000);
-    expect(answered).toMatchObject({ status: 'succeeded', output: { output: { choice: 'approve' } } });
+    expect(answered).toMatchObject({ status: 'succeeded', output: { answer: { choice: 'approve' } } });
   });
 });
 
 describe('a request whose tool server is gone since it asked', () => {
   it('fails its attempt as a tool no longer offered, and two hosts that try record the failure once', async () => {
     const { playbook, askedAt } = await askedThroughChat();
-    const withoutServers = requestsDue({ ledger: playbook.ledger.service, tools: noTools });
+    const withoutServers = requestsDue({ ledger: playbook.ledger.service, tools: noTools, record: playbook.record });
     const items = await playbook.dueItems(askedAt, withoutServers);
 
     await playbook.performAll([...items, ...items], askedAt);

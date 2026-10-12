@@ -3,7 +3,7 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { defineRunDefinition, defineCapability, type RunContext, type CapabilityDeclaration } from '../index.ts';
-import type { DeliveryEvent } from '../runs/run-events.ts';
+import { answeringLaterMs, answeringNowMs, asking, nudgesPresenter } from '../testing/asking.ts';
 import { noLongestRuns } from '../testing/longest-runs.ts';
 import { recordingJournal } from '../testing/recording-journal.ts';
 import { answerOfCall, startOfCall } from '../testing/tool-user.ts';
@@ -27,11 +27,6 @@ const words: CapabilityDeclaration<{ readonly words: readonly string[] }> = {
   run: (parsed, input, run) => Effect.succeed({ output: { words: parsed.words, input }, record: { run: run.id } }),
 };
 
-const deliveryOfWords: DeliveryEvent = {
-  type: 'delivery_started',
-  data: { number: 1, target: 'ada', server: 'chat', tool: 'post_message' },
-};
-
 const run: RunContext = {
   id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
   org: 'acme',
@@ -42,7 +37,7 @@ const run: RunContext = {
   lineage: { startId: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a', correlationId: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' },
   depth: 0,
   callDepth: 0,
-  longestRunOf: noLongestRuns,
+  ...noLongestRuns,
 };
 
 describe('a capability', () => {
@@ -145,24 +140,40 @@ describe('what a capability declares of its runs', () => {
       }).prepare('one two'),
     );
 
-    expect([plain, later]).toMatchObject([
-      { finishesLater: false, longestRunMs: 600_000 },
-      { finishesLater: true, longestRunMs: 2000 },
+    expect(
+      [plain, later].map(({ finishesLaterFor, longestRunMs, longestRunMsFor }) => [
+        finishesLaterFor({}),
+        longestRunMs,
+        longestRunMsFor({}),
+      ]),
+    ).toEqual([
+      [false, 600_000, 600_000],
+      [true, 2000, 2000],
     ]);
   });
 });
 
-describe('what a capability decides of each document and says of its runs', () => {
+describe('what a capability decides of each document and each input, and says of its runs', () => {
   it('finishes later for the documents it says do, when it decides by what it parsed', async () => {
     const deciding = defineCapability({ ...words, finishesLater: ({ words: given }) => given.includes('later') });
 
     expect([
-      (await Effect.runPromise(deciding.prepare('now'))).finishesLater,
-      (await Effect.runPromise(deciding.prepare('answer later'))).finishesLater,
+      (await Effect.runPromise(deciding.prepare('now'))).finishesLaterFor({}),
+      (await Effect.runPromise(deciding.prepare('answer later'))).finishesLaterFor({}),
     ]).toEqual([false, true]);
   });
 
-  it('gives no words of a deferral and the words of every capability for a delivery, unless it gives its own', () => {
+  it('finishes later and runs as long as it says for each input, and as long as any input may for one it is not given', async () => {
+    const prepared = await Effect.runPromise(asking.prepare('Approve the brief?'));
+
+    expect([
+      [prepared.finishesLaterFor({ now: true }), prepared.longestRunMsFor({ now: true })],
+      [prepared.finishesLaterFor({ campaign: 'Spring' }), prepared.longestRunMsFor({ campaign: 'Spring' })],
+      prepared.longestRunMs,
+    ]).toEqual([[false, answeringNowMs], [true, answeringLaterMs], answeringLaterMs]);
+  });
+
+  it('gives no words of a deferral unless it gives its own', () => {
     const own = defineCapability({
       ...words,
       runWords: { deferral: (record) => ({ summary: 'Waiting.', data: record }) },
@@ -172,9 +183,14 @@ describe('what a capability decides of each document and says of its runs', () =
       undefined,
       { summary: 'Waiting.', data: { to: 'ada' } },
     ]);
-    expect(own.runWords.delivery(deliveryOfWords)).toBe(
-      'Delivery attempt 1 of the request started, through the post message tool of chat.',
-    );
+  });
+
+  it('declares no facts of its own unless it declares them, on its runs and in the stream kinds it owns', () => {
+    expect([defineCapability(words).facts, asking.facts]).toMatchObject([
+      { onRuns: [], streams: [] },
+      { onRuns: [{ type: 'nudge_sent' }], streams: [nudgesPresenter] },
+    ]);
+    expect(asking.describeOutput({ answered: 'yes' })).toBe('It was answered.');
   });
 });
 
@@ -185,8 +201,8 @@ describe('the cancelling of a run', () => {
       record: { step: 1 },
       kind: 'deadline',
       reason: 'The step ran out of time',
-      broughtAnswer: null,
-      deliveredAt: null,
+      answer: null,
+      work: [],
     } as const;
     const deciding = defineCapability({
       ...words,

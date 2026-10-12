@@ -1,5 +1,3 @@
-import { DatabaseSync } from 'node:sqlite';
-
 import { SQL, dumbo } from '@event-driven-io/dumbo';
 import { sqlite3EventStoreDriver } from '@event-driven-io/emmett-sqlite/sqlite3';
 
@@ -7,12 +5,13 @@ import { definitionStreamsQuery } from '../definitions/sqlite-definition-streams
 import type { RecordedStore } from '../event-store.ts';
 import { sqliteRecordedStore } from './sqlite-recorded.ts';
 
-export function queried(fileName: string, statement: string): Promise<readonly unknown[]> {
-  const database = new DatabaseSync(fileName);
+export async function queried(fileName: string, statement: string): Promise<readonly unknown[]> {
+  const pool = dumbo(sqlite3EventStoreDriver.mapToDumboOptions({ fileName }));
   try {
-    return Promise.resolve(database.prepare(statement).all());
+    const { rows } = await pool.execute.query(SQL`${SQL.plain(statement)}`);
+    return rows;
   } finally {
-    database.close();
+    await pool.close();
   }
 }
 

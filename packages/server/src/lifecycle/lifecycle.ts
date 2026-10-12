@@ -69,8 +69,8 @@ export async function startServer<R>(environment: Environment, options: ServerOp
     allowedOrigins: settings.allowedOrigins,
     authenticator,
     routes: served.routes,
-    reportIncident: (id, error, requestId) => {
-      void runtime.run(logIncident({ id, original: error }).pipe(Effect.annotateLogs({ requestId })));
+    reportIncident: (id, error, requestId, call) => {
+      void runtime.run(logIncident({ id, original: error, call }).pipe(Effect.annotateLogs({ requestId })));
     },
   });
   const server = createHttpServer(api.listener);

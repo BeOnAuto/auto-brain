@@ -4,29 +4,15 @@ import { playbookOperations } from '@beonauto/playbooks';
 
 import type { Settings } from '../settings/settings.ts';
 import type { WorkflowParts } from '../workflows/workflows.ts';
-import { computationServedBy, workerPool, type ProgramPoolOf } from './served-computation.ts';
+import { factsComposedOf } from './composed-facts.ts';
+import type { FunctionWiring } from './function-wiring.ts';
+import { computationServedBy } from './served-computation.ts';
 import { predictionServedBy, type ServedPrediction } from './served-prediction.ts';
-import type { ModelAccessOf } from './served-reasoning.ts';
-import { recallWiring, type RecallWiring } from './served-recall.ts';
-import { toolUsersServedBy, type TimedTools } from './served-tools.ts';
-
-export interface FunctionWiring extends TimedTools {
-  readonly modelAccessOf: ModelAccessOf;
-  readonly programPoolOf: ProgramPoolOf;
-  readonly recall: RecallWiring;
-}
+import { toolUsersServedBy } from './served-tools.ts';
 
 export interface ServedFunctions {
   readonly parts: Omit<WorkflowParts, 'ledger' | 'workflows'>;
   readonly closing: ServedPrediction['withProcessesClosed'];
-}
-
-export function functionWiringOf(
-  modelAccessOf: ModelAccessOf,
-  programPoolOf: ProgramPoolOf = workerPool,
-  toolTiming?: FunctionWiring['toolTiming'],
-): FunctionWiring {
-  return { modelAccessOf, programPoolOf, recall: recallWiring(), ...(toolTiming === undefined ? {} : { toolTiming }) };
 }
 
 export async function functionsServedBy(
@@ -43,12 +29,16 @@ export async function functionsServedBy(
   const computation = await computationServedBy(settings.computation, programPoolOf);
   const recall = await wiring.served(runtime, settings, computation.pool);
   const prediction = await predictionServedBy(runtime, settings.prediction);
+  const capabilities = [reasoning.capability, interaction.capability, computation.capability, recall.capability];
+  const { facts, names, record } = factsComposedOf(runtime, capabilities);
   return {
     parts: {
-      capabilities: [reasoning.capability, interaction.capability, computation.capability, recall.capability],
+      capabilities,
+      facts,
+      names,
       orgOperations: [...playbookOperations, reasoning.listModels, reasoning.listToolServersInOrg],
       playbookOperations: [reasoning.listToolServers, reasoning.testToolCall, ...interaction.operations],
-      dueWork: interaction.dueWork,
+      dueWork: interaction.dueWorkOf(record),
       store: recall.store,
       projector: recall.projector,
       evaluations: computation.pool.evaluations,

@@ -1,5 +1,6 @@
 import { Schema } from 'effect';
 
+import { withinBytes } from '../dsl/json.ts';
 import { RunStateSchema, type RunState } from '../machine/run-state.ts';
 import {
   FormatsOneToSixSchema,
@@ -47,8 +48,6 @@ const decodeSnapshot = Schema.decodeUnknownResult(SnapshotTextSchema);
 
 const encodeState = Schema.encodeSync(Schema.toCodecJson(RunStateSchema));
 
-const utf8 = new TextEncoder();
-
 export function snapshotOf(state: RunState, version: number): Snapshot {
   return {
     format: stateFormat,
@@ -69,13 +68,12 @@ export function isSnapshotDue({ bytes, snapshotBytes }: SinceSnapshot): boolean 
 
 export function snapshotChunks(snapshot: Snapshot): readonly string[] {
   const text = encodeSnapshot(snapshot);
-  const buffer = new Uint8Array(mostSnapshotChunkBytes);
   const chunksFrom = (start: number): readonly string[] => {
     if (start >= text.length) {
       return [];
     }
-    const { read } = utf8.encodeInto(text.slice(start), buffer);
-    return [text.slice(start, start + read), ...chunksFrom(start + read)];
+    const chunk = withinBytes(text.slice(start), mostSnapshotChunkBytes);
+    return [chunk, ...chunksFrom(start + chunk.length)];
   };
   return chunksFrom(0);
 }

@@ -1,7 +1,7 @@
 import { SQL } from '@event-driven-io/dumbo';
 import { Schema } from 'effect';
 
-import type { StatementExecutor } from '../event-store.ts';
+import { inTransactionOf, type TransactionalPool } from '../event-store.ts';
 import type { ProjectionDialect } from './projection-dialect.ts';
 import { projectionPartsOf, type KeptTables, type ProjectionParts } from './projection-parts.ts';
 
@@ -14,6 +14,7 @@ const decodeText = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown
 const sqliteProjectionDialect: ProjectionDialect = {
   tableVersions: (name) => SQL`SELECT name FROM sqlite_master WHERE type = 'table' AND name GLOB ${`${name}_*`}`,
   columnTypes: { text: 'TEXT', integer: 'INTEGER', boolean: 'INTEGER' },
+  playbookIndexNulls: '',
   asNumber: (expression) => expression,
   streamsAfter: (after, count, kinds, types) =>
     SQL`SELECT s.stream_id AS stream, (
@@ -56,14 +57,6 @@ export function sqliteProjectionsOf(kept: KeptTables): ProjectionParts {
   return projectionPartsOf(sqliteProjectionDialect, kept);
 }
 
-interface Transaction {
-  readonly execute: StatementExecutor;
-}
-
-export interface TransactionalPool extends Transaction {
-  readonly withTransaction: (handle: (transaction: Transaction) => Promise<void>) => Promise<void>;
-}
-
 export function preparedOn(prepare: ProjectionParts['prepare'], pool: TransactionalPool): Promise<void> {
-  return prepare(pool.execute, (work) => pool.withTransaction(({ execute }) => work(execute)));
+  return prepare(pool.execute, inTransactionOf(pool));
 }

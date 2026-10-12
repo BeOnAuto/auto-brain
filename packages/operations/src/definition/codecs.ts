@@ -4,7 +4,7 @@ import { rejected, type Rejected } from '../outcome/outcome.ts';
 import { pointerOf } from '../outcome/pointer.ts';
 import type { PlainLanguage, RegisteredPlainLanguage } from '../plain-language/plain-language.ts';
 import type { ObjectSchema } from './definition.ts';
-import type { InputEncoding } from './registration.ts';
+import type { InputEncoding } from './registered-run.ts';
 
 type IssueSegment = PropertyKey | StandardSchema.StandardSchemaV1.PathSegment;
 

@@ -1,10 +1,14 @@
 import {
+  declaredFactsOf,
   defineCancelRun,
   defineCreateDefinition,
   defineRunDefinition,
   defineGetRun,
+  runFactsOf,
+  workRecorder,
   type PlaybookOperation,
   type Capability,
+  type RecordWork,
 } from '@beonauto/definitions';
 import {
   allPermissions,
@@ -40,15 +44,20 @@ export interface HarnessOptions {
   readonly ledger?: HarnessLedger | undefined;
   readonly tools?: HarnessTools;
   readonly mostOpenRequests?: number;
+  readonly others?: readonly Capability[];
 }
 
 export interface InteractionHarness {
   readonly ledger: HarnessLedger;
   readonly capability: Capability;
+  readonly capabilities: readonly Capability[];
+  readonly record: RecordWork;
   readonly due: RequestsDue;
   readonly call: (operation: PlaybookOperation, input: unknown, caller?: CallerIdentity) => Promise<Outcome>;
   readonly define: (name: string, source: string) => Promise<Outcome>;
   readonly ask: (name: string, input: unknown, runId: string) => Promise<Outcome>;
+  readonly defineAs: (type: string, name: string, source: string) => Promise<Outcome>;
+  readonly askAs: (type: string, name: string, input: unknown, runId: string) => Promise<Outcome>;
   readonly cancel: (runId: string) => Promise<Outcome>;
   readonly runOf: (runId: string) => Promise<Outcome>;
   readonly performDue: (now: number) => Promise<number>;
@@ -74,9 +83,15 @@ export function interactionHarness(options: HarnessOptions = {}): InteractionHar
     Effect.runPromise(calls.pipe(Effect.provide(services)));
   const call: InteractionHarness['call'] = (operation, input, caller = acmeAdmin) =>
     run(dispatcher.dispatchToPlaybook(operation.registration, { caller, ...alpha, input, encoding: 'json' }));
-  const dueOver = (over: RequestLedger): RequestsDue => requestsDue({ ledger: over, tools });
+  const capabilities = [capability, ...(options.others ?? [])];
+  const facts = runFactsOf(declaredFactsOf(capabilities));
+  const dueOver = (over: RequestLedger): RequestsDue =>
+    requestsDue({ ledger: over, tools, record: workRecorder(over, facts) });
   const due = dueOver(ledger.service);
-  const capabilities = [capability];
+  const defineAs: InteractionHarness['defineAs'] = (type, name, source) =>
+    call(defineCreateDefinition(capabilities), { type, name, source });
+  const askAs: InteractionHarness['askAs'] = (type, name, input, runId) =>
+    call(defineRunDefinition(capabilities), { type, name, input, run_id: runId });
   const performDue = async (now: number): Promise<number> => {
     const items = await dueInBothLanes(due, now);
     await performedAll(items, now);
@@ -85,11 +100,14 @@ export function interactionHarness(options: HarnessOptions = {}): InteractionHar
   return {
     ledger,
     capability,
+    capabilities,
+    record: workRecorder(ledger.service, facts),
     due,
     call,
-    define: (name, source) => call(defineCreateDefinition(capabilities), { type: 'interaction', name, source }),
-    ask: (name, input, runId) =>
-      call(defineRunDefinition(capabilities), { type: 'interaction', name, input, run_id: runId }),
+    define: (name, source) => defineAs('interaction', name, source),
+    ask: (name, input, runId) => askAs('interaction', name, input, runId),
+    defineAs,
+    askAs,
     cancel: (runId) => call(defineCancelRun(capabilities), { run_id: runId }),
     runOf: (runId) => call(defineGetRun(capabilities), { run_id: runId }),
     performDue,

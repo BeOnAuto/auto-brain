@@ -1,5 +1,5 @@
 import { makeAppRuntime } from '@beonauto/api';
-import { defineStartVersion } from '@beonauto/definitions';
+import { playbookOwnNamesOf, defineStartVersion } from '@beonauto/definitions';
 import { echo } from '@beonauto/definitions/testing';
 import { ledgerLayer } from '@beonauto/ledger/sqlite3';
 import type { PlaybookRequest, Dispatcher, Outcome } from '@beonauto/operations';
@@ -34,7 +34,8 @@ async function reactingWith(answers: readonly Outcome[]) {
         return answers[requests.length - 1] ?? { status: 'succeeded', output: {} };
       }),
   };
-  return { reactions: reactionsOf(runtime, dispatcher, defineStartVersion([echo])), requests };
+  const reacting = { startVersion: defineStartVersion([echo]), names: playbookOwnNamesOf([echo]) };
+  return { reactions: reactionsOf(runtime, dispatcher, reacting), requests };
 }
 
 describe('a start of a workflow its trigger matched', () => {

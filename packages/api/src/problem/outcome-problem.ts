@@ -6,7 +6,7 @@ export type Unsuccessful = Rejected | Failed | Cancelled;
 
 const serverStopping = problemOf('unavailable', 'The server is stopping');
 
-const clientClosed = problemOf('client_closed_request', 'The client closed the request before it was answered');
+export const clientClosed = problemOf('client_closed_request', 'The client closed the request before it was answered');
 
 function optionalMembersOf({ issues, kind, because }: Rejected): OptionalProblemMembers {
   return {

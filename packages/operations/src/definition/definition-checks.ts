@@ -16,7 +16,7 @@ interface CheckableDefinition {
   readonly name: string;
   readonly route: { readonly path: string };
   readonly inputSchema: Schema.Constraint;
-  readonly outputSchema: Schema.Constraint;
+  readonly outputSchema?: Schema.Constraint;
   readonly permittedBy?: readonly Permission[];
 }
 
@@ -104,7 +104,9 @@ export function checkedDefinition(
   }
   const pathParameters = pathParametersOf(route.path);
   const inputMembers = closedObjectMembers(name, 'input', inputSchema);
-  closedObjectMembers(name, 'output', outputSchema);
+  if (outputSchema !== undefined) {
+    requireClosedOutput(name, outputSchema);
+  }
   requireNoReservedField(name, scope, inputMembers);
   requireRouteParametersAsFields(name, pathParameters, inputMembers);
   requirePlaybookFromPlaybookField(name, inputSchema, inputMembers);
@@ -113,4 +115,8 @@ export function checkedDefinition(
     targetsPlaybook: inputMembers.some((member) => fieldOf(member, 'playbook') !== undefined),
     permissions: permissionsOf(name, permittedBy),
   };
+}
+
+export function requireClosedOutput(name: string, outputSchema: Schema.Constraint): void {
+  closedObjectMembers(name, 'output', outputSchema);
 }

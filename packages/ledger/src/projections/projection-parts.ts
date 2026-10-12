@@ -1,10 +1,10 @@
 import type { KeyedProjection, ProjectionAdvancer, ProjectionReader, RunOutcomeMapping } from '@beonauto/operations';
 
-import type { StatementExecutor } from '../event-store.ts';
+import type { InTransaction, StatementExecutor } from '../event-store.ts';
 import { keptProjections } from '../outcomes/run-outcome-projection.ts';
 import type { InlineRegistration } from './inline-projection.ts';
 import type { ProjectionDialect } from './projection-dialect.ts';
-import { preparedProjections, type InTransaction } from './projection-fill.ts';
+import { preparedProjections } from './projection-fill.ts';
 import { projectionRegistrations } from './projection-keeping.ts';
 import { projectionReader, type ProjectionStatements } from './projection-reads.ts';
 

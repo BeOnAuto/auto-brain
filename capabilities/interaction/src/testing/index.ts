@@ -18,8 +18,9 @@ export {
 } from './documents.ts';
 export { callDocument, repliesOutput, type CallOptions } from './call-documents.ts';
 export { askedRunId, askedThroughChat, type AskedRequest, type AskingOptions } from './asked-requests.ts';
+export { nudgedRequest, nudging } from './nudging.ts';
 export { attemptedThenStopped } from './stopped-requests.ts';
-export { broughtBeforeSettling, recordedReply, takenReply, type RacingDelivery } from './racing-deliveries.ts';
+export { broughtBeforeDeciding, recordedReply, takenReply, type RacingDelivery } from './racing-deliveries.ts';
 export { fakeTools, noTools, type FakeAnswer, type FakeTools } from './fake-tools.ts';
 export { answered, playbookUser, type ChatMessage, type Replying } from './chat-board.ts';
 export {

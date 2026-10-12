@@ -47,7 +47,7 @@ export { enclosedBody } from './dsl/expressions.ts';
 export { oneLanguage, policyOf } from './dsl/policy.ts';
 export { forbidden, rejection, type Rejection } from './dsl/policy-checks.ts';
 export { runtimeNames } from './dsl/task-policy.ts';
-export { workflowExpressionsOf, type PlacedExpression } from './dsl/workflow-expressions.ts';
+export { holdsAnExpression, workflowExpressionsOf, type PlacedExpression } from './dsl/workflow-expressions.ts';
 export { describeError, type ErrorKind } from './dsl/raised-error.ts';
 export { allTaskEntries, pointerTo, taskKinds } from './dsl/tasks.ts';
 export { runCacheBounds, runCacheOf, type RunCache, type RunCacheBounds } from './cache/run-cache.ts';

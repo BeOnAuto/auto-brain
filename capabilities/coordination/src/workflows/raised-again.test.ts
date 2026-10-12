@@ -2,6 +2,7 @@ import { Effect, Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { parseWorkflowDocument } from '../document/workflow-document.ts';
+import { testWorkflowPolicy } from '../testing/test-sandbox.ts';
 import { interpret, workflow } from '../testing/workflows.ts';
 
 const header = `document:
@@ -35,7 +36,9 @@ do:
 
 describe('an error raised again from the one a workflow caught', () => {
   it('may name its kind and because, in a raise or under use.errors, which the DSL takes', async () => {
-    const parsed = await Effect.runPromise(Effect.result(parseWorkflowDocument(`${header}${raisingAgain}`)));
+    const parsed = await Effect.runPromise(
+      Effect.result(parseWorkflowDocument(`${header}${raisingAgain}`, testWorkflowPolicy)),
+    );
 
     expect(Result.isSuccess(parsed)).toBe(true);
   });
@@ -43,7 +46,10 @@ describe('an error raised again from the one a workflow caught', () => {
   it('is still refused when it is not an error at all', async () => {
     const parsed = await Effect.runPromise(
       Effect.result(
-        parseWorkflowDocument(`${header}use:\n  errors:\n    busy: oops\ndo:\n  - fail: { raise: { error: busy } }\n`),
+        parseWorkflowDocument(
+          `${header}use:\n  errors:\n    busy: oops\ndo:\n  - fail: { raise: { error: busy } }\n`,
+          testWorkflowPolicy,
+        ),
       ),
     );
 

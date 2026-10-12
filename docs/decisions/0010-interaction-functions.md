@@ -1,6 +1,6 @@
 # 0010 — Interaction functions: a brain asks a person or a system and waits for the answer
 
-**Status:** accepted (2026-10-07), with the amendments from the build at the end; amended (2026-10-10) by [decision 0023](0023-facts-in-the-ledger.md): a delivery ends as one fact for each outcome, `delivery_succeeded`, `delivery_failed` or `delivery_refused`, the open requests read the time and the run from the message's context as `open_requests_6`, and a brain event carries its caller as the attribute `caller`
+**Status:** accepted (2026-10-07), with the amendments from the build at the end; amended (2026-10-10) by [decision 0023](0023-facts-in-the-ledger.md): a delivery ends as one fact for each outcome, `delivery_succeeded`, `delivery_failed` or `delivery_refused`, the open requests read the time and the run from the message's context as `open_requests_6`, and a brain event carries its caller as the attribute `caller`; amended (2026-10-11) by [decision 0012](0012-prediction-functions.md): an answer is one fact on the run, `request_answered`, which `answer_interaction` and a reading record and the interaction capability settles the run from within the host's tick, in place of the settlement `answer_interaction` made and of `reply_taken`; the deferral's record is the request in the one shape `@beonauto/definitions` gives every request; and a cancel and a competing answer settle against the recorded answer as they did against a reply's
 
 ## Context
 

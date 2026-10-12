@@ -10,7 +10,7 @@ import {
   recordedPublication,
   type FilledAttribute,
 } from './published-events.ts';
-import { refusingThePlaybooksOwnAttributes } from './reserved-attributes.ts';
+import type { PlaybookOwnNames } from './reserved-attributes.ts';
 
 interface Publication {
   readonly event: CloudEvent;
@@ -46,39 +46,45 @@ const PublishedSchema = Schema.Struct({
   recorded_at: Schema.String.annotate({ description: 'When the playbook recorded the event, in ISO 8601 UTC' }),
 });
 
-export const publishEvent = defineCommand('playbook', {
-  name: 'publish_event',
-  title: 'Publish event',
-  description: [
-    'Publishes an event to the playbook, where a workflow whose schedule names its type starts a run and a recall function that filters on it folds it,',
-    'and returns its id and time.',
-    'Use it when something outside the playbook happened that the playbook should react to or remember; send_run_event gives an event to one waiting run instead.',
-    '`event` is a CloudEvents event with a `source` and a `type`, and publishing the same source and id again records nothing, so a call can be retried with its id.',
-    "The playbook's own types and sources, such as those of its runs and definitions, and the lineage attributes it gives its own records, are refused.",
-  ].join(' '),
-  route: { method: 'POST', path: '/events' },
-  inputSchema: Schema.Struct({ event: EventToPublishSchema.check(refusingThePlaybooksOwnAttributes) }),
-  outputSchema: PublishedSchema,
-  reasons: ['invalid_input', 'conflict'],
-  handle: Effect.fnUntraced(function* ({ event }) {
-    const { by, at } = yield* commandMetadata;
-    const publication = publicationOf(event, at);
-    const issues = refusalsOf(publication.event);
-    if (issues.length > 0) {
-      return yield* new InvalidInput({ detail: 'The event cannot be published as it is', issues });
-    }
-    const { state } = yield* (yield* PlaybookWriter).execute(
-      publishedEventStreamOf(publication.event.source, publication.event.id),
-      publishedEventDecider,
-      { ...publication, by, at },
-    );
-    const { data, context } = yield* recordedPublication(state);
-    return { id: data.event.id, time: data.event.time, recorded_at: context.at };
-  }),
-  plainLanguage: {
-    task: 'publish an event to the playbook',
-    attempt: ({ event }) => `publish the event ${quoted(event.type)} to the playbook`,
-    outcome: (_published, { event }) =>
-      `The event ${quoted(event.type)} is published to the playbook. Publishing it again with the same source and id records nothing more.`,
-  },
+const description = [
+  'Publishes an event to the playbook, where a workflow whose schedule names its type starts a run and a recall function that filters on it folds it,',
+  'and returns its id and time.',
+  'Use it when something outside the playbook happened that the playbook should react to or remember; send_run_event gives an event to one waiting run instead.',
+  '`event` is a CloudEvents event with a `source` and a `type`, and publishing the same source and id again records nothing, so a call can be retried with its id.',
+  "The playbook's own types and sources, such as those of its runs and definitions, and the lineage attributes it gives its own records, are refused.",
+].join(' ');
+
+const published = Effect.fnUntraced(function* ({ event }: { readonly event: EventToPublish }) {
+  const { by, at } = yield* commandMetadata;
+  const publication = publicationOf(event, at);
+  const issues = refusalsOf(publication.event);
+  if (issues.length > 0) {
+    return yield* new InvalidInput({ detail: 'The event cannot be published as it is', issues });
+  }
+  const { state } = yield* (yield* PlaybookWriter).execute(
+    publishedEventStreamOf(publication.event.source, publication.event.id),
+    publishedEventDecider,
+    { ...publication, by, at },
+  );
+  const { data, context } = yield* recordedPublication(state);
+  return { id: data.event.id, time: data.event.time, recorded_at: context.at };
 });
+
+export function definePublishEvent({ refusingThePlaybooksOwnAttributes }: PlaybookOwnNames) {
+  return defineCommand('playbook', {
+    name: 'publish_event',
+    title: 'Publish event',
+    description,
+    route: { method: 'POST', path: '/events' },
+    inputSchema: Schema.Struct({ event: EventToPublishSchema.check(refusingThePlaybooksOwnAttributes) }),
+    outputSchema: PublishedSchema,
+    reasons: ['invalid_input', 'conflict'],
+    handle: published,
+    plainLanguage: {
+      task: 'publish an event to the playbook',
+      attempt: ({ event }) => `publish the event ${quoted(event.type)} to the playbook`,
+      outcome: (_published, { event }) =>
+        `The event ${quoted(event.type)} is published to the playbook. Publishing it again with the same source and id records nothing more.`,
+    },
+  });
+}

@@ -3,12 +3,9 @@ import type { Schema } from 'effect';
 
 import type {
   CancelRequestKind,
-  DeliveryEnded,
-  DeliveryStarted,
+  RequestAnswered,
   RunDeferred,
   RunFinished,
-  ReplyRefused,
-  ReplyTaken,
   ToolCallEnded,
   ToolCallStarted,
 } from './run-events.ts';
@@ -41,13 +38,12 @@ export type CallStartedFact = Omit<ToolCallStarted, 'data'> & {
 
 export type ToolCallFact = CallStartedFact | ToolCallEnded;
 
-export type DeliveryStartedFact = DeliveryStarted;
+export interface CapabilityFact {
+  readonly type: string;
+  readonly data: Schema.JsonObject;
+}
 
-export type DeliveryEndedFact = DeliveryEnded;
-
-export type OutboundCallFact = DeliveryStartedFact | DeliveryEndedFact;
-
-export type ReplyFact = ReplyTaken | ReplyRefused;
+export type AnswerFact = RequestAnswered['data'];
 
 export interface InterruptedAttempt {
   readonly type: 'run_interrupted';
@@ -63,17 +59,17 @@ export interface RunToolCall {
   readonly fact: ToolCallFact;
 }
 
-export interface RunOutboundCall {
-  readonly type: 'outbound_call';
-  readonly fact: OutboundCallFact;
+export interface RunWork {
+  readonly type: 'work';
+  readonly fact: CapabilityFact;
 }
 
-export interface RunReply {
-  readonly type: 'reply';
-  readonly fact: ReplyFact;
+export interface RunAnswer {
+  readonly type: 'answer';
+  readonly answer: AnswerFact;
 }
 
-export interface CommandMetadata {
+interface CommandMetadata {
   readonly runId: string;
   readonly by: string;
   readonly at: string;
@@ -92,6 +88,6 @@ export interface RunCancel extends CommandMetadata {
 }
 
 export type RunCommand =
-  | ((RunStart | RunFinish | RunToolCall | RunOutboundCall | RunReply) & CommandMetadata)
+  | ((RunStart | RunFinish | RunToolCall | RunWork | RunAnswer) & CommandMetadata)
   | RunSettlement
   | RunCancel;

@@ -12,9 +12,9 @@ import type {
 import { Effect, type Schema } from 'effect';
 
 import type { Trigger } from '../registry/definition-triggers.ts';
-import { deliveryEnded, deliveryStarted } from '../run-work/delivery-words.ts';
-import type { CancelRequestKind, DeliveryEvent } from '../runs/run-events.ts';
-import type { BroughtAnswer } from '../runs/run-state.ts';
+import { noFacts, type CapabilityFacts } from '../run-work/declared-facts.ts';
+import type { CancelRequestKind } from '../runs/run-events.ts';
+import type { RecordedAnswer, RecordedWork } from '../runs/run-state.ts';
 import { noStrippedForms, type StrippedForms } from './stripped-forms.ts';
 
 export interface DefinitionSummary {
@@ -59,6 +59,7 @@ export interface RunContext {
   readonly calledBy?: CallLink;
   readonly trigger?: TriggerLink;
   readonly longestRunOf: (type: string, name: string) => Effect.Effect<number | undefined>;
+  readonly longestRunFor: (type: string, name: string, input: Schema.Json) => Effect.Effect<number | undefined>;
 }
 
 export interface Finished {
@@ -80,8 +81,8 @@ export interface CancelledRun {
   readonly record: Schema.JsonObject;
   readonly kind: CancelRequestKind;
   readonly reason: string;
-  readonly broughtAnswer: BroughtAnswer | null;
-  readonly deliveredAt: string | null;
+  readonly answer: RecordedAnswer | null;
+  readonly work: readonly RecordedWork[];
 }
 
 export type CancelDecision = (run: CancelledRun) => Settlement;
@@ -99,7 +100,6 @@ export interface RunAccount {
 export interface RunWords {
   readonly deferralType: string;
   readonly deferral: (record: Schema.JsonObject) => RunAccount | undefined;
-  readonly delivery: (fact: DeliveryEvent) => string;
 }
 
 type WhenCancelled = 'stop' | 'finish';
@@ -131,9 +131,12 @@ export interface CapabilityDeclaration<Parsed> {
   readonly mayChangeOutside?: boolean;
   readonly callsTools?: (parsed: NoInfer<Parsed>) => boolean;
   readonly finishesLater?: boolean | ((parsed: NoInfer<Parsed>) => boolean);
+  readonly finishesLaterFor?: (parsed: NoInfer<Parsed>, input: Schema.Json) => boolean;
   readonly longestRunOf?: (parsed: NoInfer<Parsed>) => number;
+  readonly longestRunFor?: (parsed: NoInfer<Parsed>, input: Schema.Json) => number;
   readonly cancel?: CancelDecision;
   readonly runWords?: Partial<RunWords>;
+  readonly facts?: CapabilityFacts;
   readonly mostActive?: number;
   readonly standing?: Standing;
 }
@@ -144,8 +147,9 @@ export interface PreparedDefinition {
   readonly run: (input: Schema.Json, context: RunContext) => Effect.Effect<CapabilityAnswer, CapabilityRejection>;
   readonly whenCancelled: WhenCancelled;
   readonly callsTools: boolean;
-  readonly finishesLater: boolean;
+  readonly finishesLaterFor: (input: Schema.Json) => boolean;
   readonly longestRunMs: number;
+  readonly longestRunMsFor: (input: Schema.Json) => number;
 }
 
 function callsNoTools(): boolean {
@@ -156,14 +160,9 @@ function noDeferralShown(): undefined {
   return undefined;
 }
 
-function deliveryInWords(fact: DeliveryEvent): string {
-  return fact.type === 'delivery_started' ? deliveryStarted(fact) : deliveryEnded(fact);
-}
-
 export const defaultRunWords: RunWords = {
   deferralType: 'run_deferred',
   deferral: noDeferralShown,
-  delivery: deliveryInWords,
 };
 
 export function cancelledAsAsked({ kind, reason }: CancelledRun): Settlement {
@@ -192,6 +191,7 @@ export interface Capability {
   readonly standing: Standing;
   readonly cancel: CancelDecision;
   readonly runWords: RunWords;
+  readonly facts: CapabilityFacts;
   readonly prepare: (source: string, stripped?: StrippedForms) => Effect.Effect<PreparedDefinition, InvalidInput>;
 }
 
@@ -210,6 +210,7 @@ function declaredBounds<Parsed>(definition: CapabilityDeclaration<Parsed>) {
     standing: definition.standing ?? standsAsSaved,
     cancel: definition.cancel ?? cancelledAsAsked,
     runWords: { ...defaultRunWords, ...definition.runWords },
+    facts: definition.facts ?? noFacts,
   };
 }
 
@@ -217,20 +218,29 @@ function finishingOf<Parsed>(declared: CapabilityDeclaration<Parsed>['finishesLa
   return typeof declared === 'function' ? declared : () => declared ?? false;
 }
 
+function declaredLengths<Parsed>(definition: CapabilityDeclaration<Parsed>, longestAnyRunMs: number) {
+  const finishesLater = finishingOf<Parsed>(definition.finishesLater);
+  const longestRunOf = definition.longestRunOf ?? (() => longestAnyRunMs);
+  return {
+    finishesLaterFor: definition.finishesLaterFor ?? finishesLater,
+    longestRunOf,
+    longestRunFor: definition.longestRunFor ?? longestRunOf,
+  };
+}
+
 function declaredRuns<Parsed>(definition: CapabilityDeclaration<Parsed>, longestAnyRunMs: number) {
   return {
     check: definition.check ?? needsNoCheck,
     whenCancelled: definition.whenCancelled ?? 'stop',
     callsTools: definition.callsTools ?? callsNoTools,
-    finishesLater: finishingOf<Parsed>(definition.finishesLater),
-    longestRunOf: definition.longestRunOf ?? (() => longestAnyRunMs),
+    ...declaredLengths(definition, longestAnyRunMs),
   };
 }
 
 export function defineCapability<Parsed>(definition: CapabilityDeclaration<Parsed>): Capability {
   const { type, title, guide, noun, describeOutput, mediaType, parse, summarize, run } = definition;
   const bounds = declaredBounds(definition);
-  const { check, whenCancelled, callsTools, finishesLater, longestRunOf } = declaredRuns(
+  const { check, whenCancelled, callsTools, finishesLaterFor, longestRunOf, longestRunFor } = declaredRuns(
     definition,
     bounds.longestAnyRunMs,
   );
@@ -253,8 +263,9 @@ export function defineCapability<Parsed>(definition: CapabilityDeclaration<Parse
           run: (input, context) => run(parsed, input, context, stripped),
           whenCancelled,
           callsTools: callsTools(parsed),
-          finishesLater: finishesLater(parsed),
+          finishesLaterFor: (input) => finishesLaterFor(parsed, input),
           longestRunMs: longestRunOf(parsed),
+          longestRunMsFor: (input) => longestRunFor(parsed, input),
         })),
       ),
   };

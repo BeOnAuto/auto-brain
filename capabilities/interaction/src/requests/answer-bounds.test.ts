@@ -41,7 +41,7 @@ describe('the claim an answer makes', () => {
       { status: 'rejected', reason: 'invalid_input' },
       { status: 'rejected', reason: 'invalid_input' },
     ]);
-    expect(taken).toMatchObject({ status: 'succeeded', output: { status: 'succeeded', output: 'yes' } });
+    expect(taken).toMatchObject({ status: 'succeeded', output: { answer: 'yes' } });
   });
 });
 
@@ -63,6 +63,6 @@ describe('the depth of an answer', () => {
       reason: 'invalid_input',
       issues: [{ pointer: '/answer', detail: `The answer nests more than ${interactionBounds.answerDepth} levels` }],
     });
-    expect(deepest).toMatchObject({ status: 'succeeded', output: { status: 'succeeded' } });
+    expect(deepest).toMatchObject({ status: 'succeeded', output: { run_id: runId } });
   });
 });

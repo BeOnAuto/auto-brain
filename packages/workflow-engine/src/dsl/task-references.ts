@@ -1,18 +1,18 @@
 import {
   bytesOfReference,
-  chunksOf,
   forbiddenCharactersInWords,
   holdsNoForbiddenCharacter,
   mostReferenceBytes,
 } from '@beonauto/operations';
 
+import { withinBytes } from './json.ts';
 import { rejection, type Rejection } from './policy-checks.ts';
 import { kindOf, type TaskEntry } from './tasks.ts';
 
 const mostShownReferenceBytes = 120;
 
 function cutReference(reference: string): string {
-  return `${chunksOf(reference, mostShownReferenceBytes).slice(0, 1).join('')}…`;
+  return `${withinBytes(reference, mostShownReferenceBytes)}…`;
 }
 
 function pointerOfTheNameHolding(reference: string): string {

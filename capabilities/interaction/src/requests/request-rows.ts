@@ -1,8 +1,8 @@
 import type { ProjectedRow } from '@beonauto/operations';
 import { Option, Schema } from 'effect';
 
+import { interactionType } from '../capability/interaction-type.ts';
 import { routeOf, type Route } from '../tool-blocks/routes.ts';
-import { RepliesSchema } from '../tool-blocks/tool-block-schemas.ts';
 
 export const StandingSchema = Schema.Literals([
   'in_inbox',
@@ -17,6 +17,7 @@ export const StandingSchema = Schema.Literals([
 
 const OpenRequestRowSchema = Schema.Struct({
   request_id: Schema.String,
+  type: Schema.String,
   function: Schema.String,
   version: Schema.Int,
   party: Schema.String,
@@ -53,42 +54,65 @@ export function requestRowOf(row: ProjectedRow | undefined): OpenRequestRow | un
   return row === undefined ? undefined : Option.getOrUndefined(decodeRow(row));
 }
 
-export function settlesFromBroughtAnswer({ answers, standing }: Pick<OpenRequestRow, 'answers' | 'standing'>): boolean {
-  return standing === 'answered' || (!answers && standing === 'delivered');
+type Settling = Pick<OpenRequestRow, 'type' | 'answers' | 'standing'>;
+
+export function isInteractionNotification({ type, answers }: Pick<OpenRequestRow, 'type' | 'answers'>): boolean {
+  return type === interactionType && !answers;
+}
+
+export function settlementDueOf(row: Settling): 'settle_answered' | 'settle_delivered' | undefined {
+  if (row.type === interactionType && row.standing === 'answered') {
+    return 'settle_answered';
+  }
+  return isInteractionNotification(row) && row.standing === 'delivered' ? 'settle_delivered' : undefined;
+}
+
+export function endsUndelivered(row: Settling): boolean {
+  return isInteractionNotification(row) && row.standing === 'undelivered';
 }
 
 export type UndueRequestRow = Omit<OpenRequestRow, 'attempt_due_at' | 'ending_due_at'>;
 
 function settlesNow(row: UndueRequestRow): boolean {
-  return settlesFromBroughtAnswer(row) || (!row.answers && row.standing === 'undelivered');
+  return settlementDueOf(row) !== undefined || endsUndelivered(row);
 }
 
-function stillDue(row: UndueRequestRow): boolean {
-  return row.open && row.standing !== 'cancelling';
+function awaitsThePlaybook(row: UndueRequestRow): boolean {
+  return row.ended === null && row.standing !== 'cancelling';
 }
 
 export function attemptDueAtOf(row: UndueRequestRow): number | null {
   const awaitsAttempt = row.standing === 'to_deliver' || row.standing === 'retrying';
-  return stillDue(row) && awaitsAttempt ? row.next_attempt_at : null;
+  return row.open && awaitsThePlaybook(row) && awaitsAttempt ? row.next_attempt_at : null;
 }
 
 export function endingDueAtOf(row: UndueRequestRow): number | null {
-  if (!stillDue(row)) {
+  if (!awaitsThePlaybook(row)) {
     return null;
   }
   if (settlesNow(row)) {
     return row.requested_at;
   }
+  if (!row.open) {
+    return null;
+  }
   const lostAt = row.standing === 'delivering' ? row.next_attempt_at : null;
   return Math.min(row.expires_at, lostAt ?? Number.POSITIVE_INFINITY);
 }
 
-const decodeDelivery = Schema.decodeUnknownSync(
-  Schema.NullOr(Schema.fromJsonString(Schema.Struct({ server: Schema.String, tool: Schema.String }))),
-);
+const DeliverySchema = Schema.Struct({ server: Schema.String, tool: Schema.String });
 
-const decodeReplies = Schema.decodeUnknownSync(Schema.NullOr(Schema.fromJsonString(RepliesSchema)));
+const readDelivery = Schema.decodeUnknownOption(DeliverySchema);
 
-export function routeOfRow({ delivery, replies }: Pick<OpenRequestRow, 'delivery' | 'replies'>): Route {
-  return routeOf({ deliver: decodeDelivery(delivery) ?? undefined, replies: decodeReplies(replies) ?? undefined });
+export function deliveryOf(deliver: Schema.JsonObject | undefined): string | null {
+  return Option.match(readDelivery(deliver), {
+    onNone: () => null,
+    onSome: ({ server, tool }) => JSON.stringify({ server, tool }),
+  });
+}
+
+const decodeDelivery = Schema.decodeUnknownSync(Schema.NullOr(Schema.fromJsonString(DeliverySchema)));
+
+export function routeOfRow({ delivery }: Pick<OpenRequestRow, 'delivery'>): Route {
+  return routeOf({ deliver: decodeDelivery(delivery) ?? undefined });
 }

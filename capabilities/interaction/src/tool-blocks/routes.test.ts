@@ -1,7 +1,7 @@
-import { deliveryStarted, throughTheTool } from '@beonauto/definitions';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { deliveryStarted } from '../facts/fact-words.ts';
 import { deliveryVariablesOf, renderedArguments } from './rendered-arguments.ts';
 import { routeOf, throughWords, toolsOf } from './routes.ts';
 
@@ -41,7 +41,6 @@ describe('the route of a request', () => {
     const through = throughWords(routeOf({ deliver: chat }));
 
     expect([through, throughWords(routeOf({}))]).toEqual(['through the post message tool of chat', 'in the inbox']);
-    expect(throughTheTool(chat)).toBe(through);
     expect(deliveryStarted({ type: 'delivery_started', data: { number: 1, target: 'ada', ...chat } })).toBe(
       `Delivery attempt 1 of the request started, ${through}.`,
     );

@@ -1,5 +1,4 @@
 import { internalTermsIn } from '@beonauto/api/testing';
-import { reservedEventTypes } from '@beonauto/definitions';
 import { PublicEventSchema, mostPublicEventDataBytes, presentationOf, type RecordedEvent } from '@beonauto/operations';
 import { nothingKept } from '@beonauto/operations/testing';
 import {
@@ -13,6 +12,7 @@ import {
 import { Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { testPlaybookNames } from '../testing/test-sandbox.ts';
 import { cutAtCodePoint } from './cut-text.ts';
 import { runPresenter } from './run-presenter.ts';
 
@@ -258,7 +258,7 @@ describe('the presenter of the runs of workflows', () => {
     expect(
       Object.values(runPresenter.publicNames)
         .flat()
-        .filter((name) => !reservedEventTypes.has(name)),
+        .filter((name) => !testPlaybookNames.types.has(name)),
     ).toEqual([]);
   });
 

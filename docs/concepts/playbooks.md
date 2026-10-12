@@ -51,7 +51,7 @@ Auto Studio provides visibility into running work, history and operating control
 
 ## Authority and judgment
 
-Define which actions the playbook may take and where a person must decide. A review function can recommend a budget change without being authorized to make one. Where a person must decide, an interaction function asks them and the workflow waits for the answer: a caller who may write to the playbook answers it, or the person replies where the request reached them, when the function reads replies.
+Define which actions the playbook may take and where a person must decide. A review function can recommend a budget change without being authorized to make one. Where a person must decide, an interaction function asks them and the workflow waits for the answer: a caller who may write to the playbook answers it, or the person replies where the request reached them, when the function reads replies, and the run that asked takes the answer within the host's sweep, a second by default.
 
 Those limits must apply to operations called directly as well as through a workflow. An approval step cannot protect an action that another caller is independently allowed to invoke. The runtime provides organization and playbook permissions through API keys; [HTTP permissions](../reference/http.md#requests-and-access) describes their scope.
 

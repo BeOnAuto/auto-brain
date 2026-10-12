@@ -1,5 +1,4 @@
-import { createHash } from 'node:crypto';
-
+import { sha256Of } from '@beonauto/operations';
 import { Result } from 'effect';
 
 import type { CorpusCase } from './rendering-corpus.ts';
@@ -11,9 +10,7 @@ const mostCharactersKept = 2000;
 
 function kept(value: unknown): unknown {
   const text = JSON.stringify(value);
-  return text.length <= mostCharactersKept
-    ? value
-    : { sha256: createHash('sha256').update(text).digest('hex'), length: text.length };
+  return text.length <= mostCharactersKept ? value : { sha256: sha256Of(text), length: text.length };
 }
 
 export function renderedCorpusOf(corpus: readonly CorpusCase[]): readonly unknown[] {
