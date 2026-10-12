@@ -1,6 +1,6 @@
-import { hash, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 
-import { CallerIdentitySchema } from '@beonauto/operations';
+import { CallerIdentitySchema, sha256Of } from '@beonauto/operations';
 import { Schema } from 'effect';
 
 import { localOrg } from '../access/local-org.ts';
@@ -29,7 +29,7 @@ export interface CreatedKey {
 const presentedKey = /^abk_([a-z0-9-]{1,32})_[A-Za-z0-9_-]{43}$/u;
 
 export function digestOf(key: string): string {
-  return hash('sha256', key);
+  return sha256Of(key);
 }
 
 export function keyIdOf(key: string): string | undefined {

@@ -1,6 +1,5 @@
 import {
   bytesOfReference,
-  chunksOf,
   forbiddenCharactersInWords,
   holdsNoForbiddenCharacter,
   mostReferenceBytes,
@@ -11,8 +10,15 @@ import { kindOf, type TaskEntry } from './tasks.ts';
 
 const mostShownReferenceBytes = 120;
 
+const utf8 = new TextEncoder();
+
+function withinBytes(text: string, mostBytes: number): string {
+  const { read } = utf8.encodeInto(text, new Uint8Array(mostBytes));
+  return text.slice(0, read);
+}
+
 function cutReference(reference: string): string {
-  return `${chunksOf(reference, mostShownReferenceBytes).slice(0, 1).join('')}…`;
+  return `${withinBytes(reference, mostShownReferenceBytes)}…`;
 }
 
 function pointerOfTheNameHolding(reference: string): string {
