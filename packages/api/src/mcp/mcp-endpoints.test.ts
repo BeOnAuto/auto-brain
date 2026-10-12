@@ -162,6 +162,6 @@ describe('an MCP endpoint once the MCP SDK runs', () => {
     const answer = await postMcp(handler, '/orgs/acme/mcp', { host: 'localhost:8080' });
 
     expect(answer.status).toBe(200);
-    expect(answer.text).toContain('"serverInfo":{"name":"auto-brain"');
+    expect(answer.text).toContain('"serverInfo":{"name":"auto-runtime"');
   });
 });

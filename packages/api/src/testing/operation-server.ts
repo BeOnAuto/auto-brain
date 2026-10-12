@@ -21,7 +21,7 @@ export interface OperationServer {
   readonly mcpErrors: () => readonly string[];
 }
 
-export const testServerInfo = { name: 'auto-brain', version: '0.0.0-test' };
+export const testServerInfo = { name: 'auto-runtime', version: '0.0.0-test' };
 
 const knownPlaybooks = [
   { org: 'acme', playbook: 'alpha' },

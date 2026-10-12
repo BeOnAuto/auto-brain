@@ -19,7 +19,7 @@ export interface HandedOff {
   readonly authInfo?: { readonly extra?: Readonly<Record<string, unknown>> | undefined } | undefined;
 }
 
-const placeholderToken = 'verified-by-auto-brain';
+const placeholderToken = 'verified-by-auto-runtime';
 
 const OrgCallSchema = Schema.Struct({
   caller: CallerIdentitySchema,
