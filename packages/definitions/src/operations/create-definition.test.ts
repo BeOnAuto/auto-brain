@@ -100,7 +100,10 @@ describe('the definition create_definition records', () => {
     await call(createDefinition, toAlpha(acmeAdmin, { type: 'echo', name: 'greet', source: hello }));
     await call(createDefinition, toAlpha(acmeAdmin, { type: 'probe', name: 'plain', source: 'text' }));
 
-    expect(ledger.streamNames()).toEqual(['brain/acme/alpha/definitions/echo', 'brain/acme/alpha/definitions/probe']);
+    expect(ledger.streamNames()).toEqual([
+      'playbook/acme/alpha/definitions/echo',
+      'playbook/acme/alpha/definitions/probe',
+    ]);
   });
 });
 

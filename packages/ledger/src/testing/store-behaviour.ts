@@ -80,22 +80,22 @@ function readingWhatWasAppended(entry: LedgerEntry): void {
   describe('reading which streams were appended to after a point', () => {
     it('names each kind of stream of a playbook once, and each stream outside a playbook, appended to after the point', async () => {
       const { store, readable } = await aStoreAndItsDatabase(entry);
-      await store.append('org/acme/brains', numbered(1, 1), { expectedVersion: 0, context: stamped });
+      await store.append('org/acme/playbooks', numbered(1, 1), { expectedVersion: 0, context: stamped });
       await readable();
       const before = await store.readAppended(undefined, 100);
-      await store.append('brain/acme/alpha/events/e1', numbered(1, 1), { expectedVersion: 0, context: stamped });
-      await store.append('brain/acme/alpha/events/e2', numbered(1, 2), { expectedVersion: 0, context: stamped });
-      await store.append('brain/acme/alpha/run-logs/r1', numbered(1, 1), { expectedVersion: 0, context: stamped });
-      await store.append('org/acme/brains', numbered(2, 1), { expectedVersion: 1, context: stamped });
+      await store.append('playbook/acme/alpha/events/e1', numbered(1, 1), { expectedVersion: 0, context: stamped });
+      await store.append('playbook/acme/alpha/events/e2', numbered(1, 2), { expectedVersion: 0, context: stamped });
+      await store.append('playbook/acme/alpha/run-logs/r1', numbered(1, 1), { expectedVersion: 0, context: stamped });
+      await store.append('org/acme/playbooks', numbered(2, 1), { expectedVersion: 1, context: stamped });
       await readable();
 
       const appended = await store.readAppended(before.through, 100);
       const nothingSince = await store.readAppended(appended.through, 100);
 
       expect(appended.streams.toSorted()).toEqual([
-        'brain/acme/alpha/events/',
-        'brain/acme/alpha/run-logs/',
-        'org/acme/brains',
+        'org/acme/playbooks',
+        'playbook/acme/alpha/events/',
+        'playbook/acme/alpha/run-logs/',
       ]);
       expect(appended.more).toBe(false);
       expect([nothingSince.streams, nothingSince.more]).toEqual([[], false]);
@@ -107,19 +107,19 @@ function readingWhatWasAppended(entry: LedgerEntry): void {
       const { store, readable } = await aStoreAndItsDatabase(entry);
       await readable();
       const before = await store.readAppended(undefined, 100);
-      await store.append('brain/acme/alpha/events/e1', numbered(1, 1), { expectedVersion: 0, context: stamped });
-      await store.append('brain/acme/beta/events/e1', numbered(1, 1), { expectedVersion: 0, context: stamped });
-      await store.append('brain/acme/gamma/events/e1', numbered(1, 1), { expectedVersion: 0, context: stamped });
+      await store.append('playbook/acme/alpha/events/e1', numbered(1, 1), { expectedVersion: 0, context: stamped });
+      await store.append('playbook/acme/beta/events/e1', numbered(1, 1), { expectedVersion: 0, context: stamped });
+      await store.append('playbook/acme/gamma/events/e1', numbered(1, 1), { expectedVersion: 0, context: stamped });
       await readable();
 
       const first = await store.readAppended(before.through, 2);
       const next = await store.readAppended(first.through, 2);
 
       expect([first.streams.toSorted(), first.more]).toEqual([
-        ['brain/acme/alpha/events/', 'brain/acme/beta/events/'],
+        ['playbook/acme/alpha/events/', 'playbook/acme/beta/events/'],
         true,
       ]);
-      expect([next.streams, next.more]).toEqual([['brain/acme/gamma/events/'], false]);
+      expect([next.streams, next.more]).toEqual([['playbook/acme/gamma/events/'], false]);
     });
   });
 }
@@ -169,7 +169,7 @@ function closedAndOpenedAgain(entry: LedgerEntry): void {
       const first = await openLedgerWith(entry.ledgerOn(database));
       await Effect.runPromise(first.ledger.execute(tallies, tally, [2, 3]));
       await Effect.runPromise(
-        first.ledger.execute('brain/acme/sales/journal', journal, [
+        first.ledger.execute('playbook/acme/sales/journal', journal, [
           { type: 'entry_struck', data: { reason: 'Duplicate' } },
         ]),
       );
@@ -177,7 +177,7 @@ function closedAndOpenedAgain(entry: LedgerEntry): void {
 
       const second = await aLedger(entry, database);
       const reloaded = await Effect.runPromise(
-        Effect.all([second.load(tallies, tally), second.load('brain/acme/sales/journal', journal)]),
+        Effect.all([second.load(tallies, tally), second.load('playbook/acme/sales/journal', journal)]),
       );
       const continued = await Effect.runPromise(second.execute(tallies, tally, [4]));
 

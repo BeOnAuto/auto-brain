@@ -46,7 +46,7 @@ describe('a start of a workflow its trigger matched', () => {
     expect(requests).toEqual([
       {
         caller: {
-          id: 'brain:alpha',
+          id: 'playbook:alpha',
           org: 'acme',
           permissions: ['playbook:read', 'playbook:write'],
           playbooks: ['alpha'],
@@ -98,7 +98,7 @@ describe('an event a workflow emits', () => {
       },
       emitter: { run_id: start.runId, workflow: 'announce', version: 1 },
       depth: 1,
-      by: 'brain:alpha',
+      by: 'playbook:alpha',
       at: '2026-10-01T09:00:00.000Z',
     };
 

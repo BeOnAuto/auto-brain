@@ -113,7 +113,7 @@ describe('the bounds of a page of runs', { timeout: 30_000 }, () => {
     async (filter) => {
       const { ledger, listing, run } = await playbookWithEchoes(0);
       const starting = Array.from({ length: mostExaminedInAPage + 1 }, (_, index) =>
-        ledger.service.execute(`brain/acme/alpha/runs/${idOf(index)}`, runDecider, {
+        ledger.service.execute(`playbook/acme/alpha/runs/${idOf(index)}`, runDecider, {
           type: 'start',
           definition_type: 'echo',
           name: 'greet',

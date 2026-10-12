@@ -34,11 +34,11 @@ describe('the signal an append raises', () => {
     });
     const store = await aStoreSignalling(signal);
 
-    await store.append('brain/acme/alpha/events/e1', one, { expectedVersion: 0, context: stamped });
-    await store.append('org/acme/brains', one, { expectedVersion: 0, context: stamped });
-    await store.append('brain/acme/Beta_2/run-logs/r1', one, { expectedVersion: 0, context: stamped });
+    await store.append('playbook/acme/alpha/events/e1', one, { expectedVersion: 0, context: stamped });
+    await store.append('org/acme/playbooks', one, { expectedVersion: 0, context: stamped });
+    await store.append('playbook/acme/Beta_2/run-logs/r1', one, { expectedVersion: 0, context: stamped });
 
-    expect(heard).toEqual(['brain/acme/alpha/events/e1', 'org/acme/brains', 'brain/acme/Beta_2/run-logs/r1']);
+    expect(heard).toEqual(['playbook/acme/alpha/events/e1', 'org/acme/playbooks', 'playbook/acme/Beta_2/run-logs/r1']);
   });
 
   it('is not raised by an append that met a version conflict, nor heard once a listener has stopped', async () => {
@@ -48,18 +48,18 @@ describe('the signal an append raises', () => {
       heard.push(playbookKey);
     });
     const store = await aStoreSignalling(signal);
-    await store.append('brain/acme/alpha/notes', one, { expectedVersion: 0, context: stamped });
+    await store.append('playbook/acme/alpha/notes', one, { expectedVersion: 0, context: stamped });
 
     const conflicted = await outcomeOf(
-      eventAppenderOf(store, tally.eventSchema)('brain/acme/alpha/notes', [{ type: 'counted', data: { by: 1 } }], {
+      eventAppenderOf(store, tally.eventSchema)('playbook/acme/alpha/notes', [{ type: 'counted', data: { by: 1 } }], {
         expectedVersion: 0,
         context: stamped,
       }),
     );
     stop();
-    await store.append('brain/acme/alpha/notes', one, { expectedVersion: 1, context: stamped });
+    await store.append('playbook/acme/alpha/notes', one, { expectedVersion: 1, context: stamped });
 
-    expect([conflicted, heard]).toEqual([Result.fail(new VersionConflict()), ['brain/acme/alpha/notes']]);
+    expect([conflicted, heard]).toEqual([Result.fail(new VersionConflict()), ['playbook/acme/alpha/notes']]);
   });
 });
 
@@ -73,8 +73,8 @@ describe('the signal of the process', () => {
     const { ledger, dispose } = await openLedgerWith(ledgerLayer({ fileName: ':memory:' }));
     onTestFinished(dispose);
 
-    await Effect.runPromise(ledger.execute('brain/acme/gamma/notes', happenings, [noted('noted')]));
+    await Effect.runPromise(ledger.execute('playbook/acme/gamma/notes', happenings, [noted('noted')]));
 
-    expect(heard).toContain('brain/acme/gamma/notes');
+    expect(heard).toContain('playbook/acme/gamma/notes');
   });
 });

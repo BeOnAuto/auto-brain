@@ -36,7 +36,7 @@ const postgresqlServer = process.env['LEDGER_MEASURE_POSTGRESQL_URL'] ?? '';
 
 const playbook = { org: 'o1', playbook: 'big' };
 
-const playbookKey = 'brain/o1/big/';
+const playbookKey = 'playbook/o1/big/';
 
 const needed = [
   [`${playbookKey}runs/00050000`, 1],
@@ -45,11 +45,11 @@ const needed = [
 ] as const;
 
 const indexes = [
-  'ledger_messages_by_brain',
-  'ledger_messages_by_brain_and_time',
+  'ledger_messages_by_playbook',
+  'ledger_messages_by_playbook_and_time',
   'ledger_messages_by_stream',
   'ledger_first_messages_by_kind',
-  'ledger_messages_by_brain_and_correlation',
+  'ledger_messages_by_playbook_and_correlation',
 ];
 
 function write(line: string): void {

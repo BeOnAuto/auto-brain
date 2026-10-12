@@ -35,8 +35,8 @@ describe('the listeners of a playbook', () => {
         statement`WITH RECURSIVE listening (at) AS (
             SELECT 1 UNION ALL SELECT at + 1 FROM listening WHERE at < ${mostListenersInAPlaybook - 1}
           )
-          INSERT INTO workflow_listeners (run_key, listener, brain_key, stream_id, armed_by, filters, workflow, version, passed)
-          SELECT 'acme/alpha/r' || at, 'listener', 'brain/acme/alpha/', 'brain/acme/alpha/run-logs/r' || at, 1, '[]',
+          INSERT INTO workflow_listeners (run_key, listener, playbook_key, stream_id, armed_by, filters, workflow, version, passed)
+          SELECT 'acme/alpha/r' || at, 'listener', 'playbook/acme/alpha/', 'playbook/acme/alpha/run-logs/r' || at, 1, '[]',
             'other', 1, 1
           FROM listening`,
       ),
@@ -68,7 +68,7 @@ describe('the stops of the filter of a listen task', () => {
     const other = { ...run, runId: 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b' };
     const place: FilterPlace = {
       kind: 'listener',
-      playbookKey: 'brain/acme/alpha/',
+      playbookKey: 'playbook/acme/alpha/',
       workflow: 'await-approval',
       version: 1,
       reference: '/do/0/await',

@@ -3,7 +3,7 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { waitingRow } from '../calls/call-rows.ts';
-import { alpha, at, playbookCreated, recorded } from '../reaction-testing/brain-writes.ts';
+import { alpha, at, playbookCreated, recorded } from '../reaction-testing/playbook-writes.ts';
 import { runAt, startOf, workflow } from '../testing/host-documents.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { hostedOn } from '../testing/host-runs.ts';
@@ -19,7 +19,7 @@ const key = callKeyText({ runId: parentRun, reference: '/do/0/ask', run: 1 });
 const ending = { type: 'run_succeeded', data: { output: 'checked', record: {} } };
 
 const ofTheChild = {
-  by: 'brain:alpha',
+  by: 'playbook:alpha',
   at,
   runId: child,
   definitionType: 'workflow',

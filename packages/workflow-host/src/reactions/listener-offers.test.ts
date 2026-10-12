@@ -10,7 +10,7 @@ import { countingMatches, stopsByItsMemory } from '../reaction-testing/trigger-s
 import { onSQLite, openedOn } from '../testing/host-files.ts';
 import { listenerOffers } from './listener-offers.ts';
 
-const playbookKey = 'brain/acme/alpha/';
+const playbookKey = 'playbook/acme/alpha/';
 
 const applied: Submission = { outcome: 'applied', version: 2 };
 

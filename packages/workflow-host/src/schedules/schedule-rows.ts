@@ -16,7 +16,7 @@ export interface Schedule {
 }
 
 const ScheduleRow = Schema.Struct({
-  brain_key: Schema.String,
+  playbook_key: Schema.String,
   workflow: Schema.String,
   version: WholeNumber,
   rule: Schema.fromJsonString(ScheduleTriggerSchema),
@@ -28,7 +28,7 @@ const ScheduleRow = Schema.Struct({
 
 function scheduleOf(row: typeof ScheduleRow.Type): Schedule {
   return {
-    playbookKey: row.brain_key,
+    playbookKey: row.playbook_key,
     workflow: row.workflow,
     version: row.version,
     trigger: row.rule,
@@ -45,10 +45,10 @@ export function dueSchedules(database: HostDatabase, now: number, limit: number)
       ScheduleRow,
       Effect.orDie(
         database.read(
-          statement`SELECT brain_key, workflow, version, rule, activated_by, activated_at, next_due, running
+          statement`SELECT playbook_key, workflow, version, rule, activated_by, activated_at, next_due, running
             FROM workflow_subscriptions
             WHERE kind <> 'event' AND next_due IS NOT NULL AND next_due <= ${now}
-            ORDER BY next_due, brain_key, workflow, reference LIMIT ${limit}`,
+            ORDER BY next_due, playbook_key, workflow, reference LIMIT ${limit}`,
         ),
       ),
     ),
@@ -76,7 +76,7 @@ export function scheduleMovedOn(
     Effect.orDie(
       database.write(
         statement`UPDATE workflow_subscriptions SET next_due = ${nextDue}, running = ${running}
-          WHERE brain_key = ${playbookKey} AND workflow = ${workflow} AND reference = ${trigger.reference}`,
+          WHERE playbook_key = ${playbookKey} AND workflow = ${workflow} AND reference = ${trigger.reference}`,
       ),
     ),
   );

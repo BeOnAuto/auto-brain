@@ -18,7 +18,7 @@ interface Declining {
   readonly notes: readonly unknown[];
 }
 
-const playbookKey = 'brain/acme/alpha/';
+const playbookKey = 'playbook/acme/alpha/';
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 

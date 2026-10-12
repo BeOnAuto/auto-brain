@@ -15,7 +15,7 @@ function eventWithData(bytes: number) {
     summary: 'A run of the summary reasoning started',
     data: { text: `${'é'.repeat(Math.floor(free / 2))}${'a'.repeat(free % 2)}` },
     metadata: {
-      stream: 'brain/acme/sales/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
+      stream: 'playbook/acme/sales/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
       position: 1,
       global_position: 42,
       correlation_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',

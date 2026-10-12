@@ -53,13 +53,13 @@ describe('a start of one version of a definition, once', () => {
         status: 'succeeded',
         output: { greeting: 'Hello', input: { name: 'Ada' } },
         started_at: firstMoment,
-        started_by: 'brain:alpha',
+        started_by: 'playbook:alpha',
         finished_at: firstMoment,
         record: { greeting: 'Hello' },
       },
     });
     expect(definitions.ledger.streamNames().filter((stream) => stream.endsWith(runId))).toEqual([
-      `brain/acme/alpha/runs/${runId}`,
+      `playbook/acme/alpha/runs/${runId}`,
     ]);
   });
 });
@@ -80,7 +80,7 @@ describe('a start of a version that a trigger asked for', () => {
       ),
     );
 
-    expect(started).toMatchObject({ status: 'succeeded', output: { started_by: 'brain:alpha' } });
+    expect(started).toMatchObject({ status: 'succeeded', output: { started_by: 'playbook:alpha' } });
     expect(records).toMatchObject([
       { type: 'run_started', context: { trigger } },
       { type: 'run_succeeded', context: { trigger } },
@@ -199,7 +199,7 @@ describe('the definitions of a playbook that start on their own', () => {
 
     expect(read).toMatchObject({
       status: 'succeeded',
-      output: { triggers, triggers_since: messageIdOf('brain/acme/alpha/definitions/echo', 1) },
+      output: { triggers, triggers_since: messageIdOf('playbook/acme/alpha/definitions/echo', 1) },
     });
     expect(plain).not.toMatchObject({ output: { triggers } });
     expect(listed).toMatchObject({

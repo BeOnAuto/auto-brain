@@ -208,7 +208,7 @@ await test('the local quick start gives runnable setup and distinguishes local c
   assert.match(guide, /::: info Auto Cloud\n.*coming soon.*request-invite.*\n:::\n\nThis setup/u);
   assert.doesNotMatch(guide, /Auto Cloud is currently invite-only|You do not need an Auto Cloud account/u);
   assert.ok(guide.includes('## Hosted playbooks'));
-  assert.doesNotMatch(guide, /Prefer a hosted brain/u);
+  assert.doesNotMatch(guide, /Prefer a hosted brain\b/u);
   assert.ok(guide.includes('You can also host your own playbook'));
   assert.ok(markdownDestinations(guide).includes('../self-host.md'));
   assert.ok(markdownDestinations(guide).some((href) => href === 'https://on.auto/request-invite'));

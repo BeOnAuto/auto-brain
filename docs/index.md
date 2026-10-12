@@ -14,7 +14,7 @@ Start with [Playbooks and methods](concepts/playbooks.md) to see how a business 
 
 ## Build something
 
-[Start Auto locally and connect your agent](get-started/local.md), then follow [Build your first brain](tutorials/first-playbook.md). You do not need an Auto Cloud account. The tutorial creates a campaign-brief review function and compares two recorded runs.
+[Start Auto locally and connect your agent](get-started/local.md), then follow [Build your first playbook](tutorials/first-playbook.md). You do not need an Auto Cloud account. The tutorial creates a campaign-brief review function and compares two recorded runs.
 
 Auto Cloud is coming soon. [Request an invitation](https://on.auto/request-invite) if you would prefer a hosted playbook.
 

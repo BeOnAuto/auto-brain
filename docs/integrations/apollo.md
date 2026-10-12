@@ -4,7 +4,7 @@ Use this guide to pass graph data into an existing Auto reasoning function. Your
 
 ## Before you start
 
-You need an agent connected to Auto, a saved reasoning function, and permission to read the relevant data through your graph. If you have not created a function yet, follow [Build your first brain](../tutorials/first-playbook.md).
+You need an agent connected to Auto, a saved reasoning function, and permission to read the relevant data through your graph. If you have not created a function yet, follow [Build your first playbook](../tutorials/first-playbook.md).
 
 Decide which data the review needs and confirm that it may be sent to Auto and the function's model provider. Function inputs and results become part of the recorded run.
 

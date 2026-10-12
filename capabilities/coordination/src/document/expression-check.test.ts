@@ -5,8 +5,8 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { makeWorkflowAdapter } from '../capability/workflow.ts';
-import { playbookOn } from '../testing/brain.ts';
 import { testExpressionCheck } from '../testing/expression-checks.ts';
+import { playbookOn } from '../testing/playbook.ts';
 import type { ExpressionCheck } from './expression-check.ts';
 
 const header = "document: { dsl: '1.0.3', namespace: acme, name: flow, version: '1.0.0' }\n";

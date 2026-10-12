@@ -8,7 +8,7 @@ import {
   requireTextWithin,
 } from '../bounds/served-bounds.ts';
 import { argumentDescriptionsIn } from './argument-descriptions.ts';
-import { withPlaybookArgument } from './brain-argument.ts';
+import { withPlaybookArgument } from './playbook-argument.ts';
 import { advertisedSchema, selfContainedSchemaOf, type JsonSchema } from './tool-schema.ts';
 
 export interface ToolDefinition {

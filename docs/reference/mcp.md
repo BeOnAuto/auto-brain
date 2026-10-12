@@ -1,6 +1,6 @@
 # MCP reference
 
-The Auto runtime exposes playbook, reasoning-function and workflow operations through Model Context Protocol (MCP). This reference describes endpoint scope, tool names and result formats. For Claude Code, Claude Desktop and Codex connection setup, see the [local quick start](../get-started/local.md); for a worked example, follow [Build your first brain](../tutorials/first-playbook.md).
+The Auto runtime exposes playbook, reasoning-function and workflow operations through Model Context Protocol (MCP). This reference describes endpoint scope, tool names and result formats. For Claude Code, Claude Desktop and Codex connection setup, see the [local quick start](../get-started/local.md); for a worked example, follow [Build your first playbook](../tutorials/first-playbook.md).
 
 ## Connection direction
 

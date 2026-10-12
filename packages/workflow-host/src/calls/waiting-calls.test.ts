@@ -178,7 +178,7 @@ describe('a cancel of a waiting call', () => {
         child: { org: 'acme', playbook: 'alpha', runId: child },
         reason: 'deadline',
         lineage: {
-          causationId: messageIdOf(`brain/acme/alpha/run-logs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a`, origin.version),
+          causationId: messageIdOf(`playbook/acme/alpha/run-logs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a`, origin.version),
           correlationId: root,
         },
       },

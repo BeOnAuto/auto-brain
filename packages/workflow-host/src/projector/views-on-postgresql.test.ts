@@ -45,7 +45,7 @@ async function aRunLeftOpen(connectionString: string, output: string): Promise<C
   await client.connect();
   onTestFinished(() => client.end());
   const runId = randomUUID();
-  const stream = `brain/acme/alpha/runs/${runId}`;
+  const stream = `playbook/acme/alpha/runs/${runId}`;
   const context = {
     at: '2026-10-06T10:00:00.000Z',
     by: 'acme-admin',

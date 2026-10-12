@@ -6,7 +6,7 @@ const calledBy = { runId: '0199a3c4-7d2e-7c1a-9b3f-000000000001', reference: '/d
 
 const context = {
   at: '2026-10-01T09:00:00.000Z',
-  by: 'brain:alpha',
+  by: 'playbook:alpha',
   runId: '0199a3c4-7d2e-7c1a-9b3f-000000000002',
   definitionType: 'workflow',
   definitionName: 'check',

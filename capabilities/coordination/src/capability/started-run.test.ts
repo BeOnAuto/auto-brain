@@ -4,8 +4,8 @@ import type { RunStart, WorkflowHost } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { playbookOn } from '../testing/brain.ts';
 import { testExpressionCheck } from '../testing/expression-checks.ts';
+import { playbookOn } from '../testing/playbook.ts';
 import { acmeCaller } from '../testing/workflows.ts';
 import { makeWorkflowAdapter } from './workflow.ts';
 
@@ -52,10 +52,10 @@ describe('the run a run of a workflow starts', () => {
     expect(starts.map(({ attributes }) => attributes)).toMatchObject([
       {
         org: 'acme',
-        brain: 'alpha',
+        playbook: 'alpha',
         run_id: runId,
         definition: { name: 'flow', version: 1 },
-        caller: { id: 'acme-admin', org: 'acme', brains: '*', permissions: ['brain:read', 'brain:write'] },
+        caller: { id: 'acme-admin', org: 'acme', playbooks: '*', permissions: ['playbook:read', 'playbook:write'] },
         depth: 0,
         call_depth: 0,
         lineage: { correlation: runId },

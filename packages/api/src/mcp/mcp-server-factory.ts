@@ -15,7 +15,7 @@ import {
   type OrgCall,
 } from '../hand-off/caller-hand-off.ts';
 import type { ReportThrown } from '../problem/error-boundary.ts';
-import { playbookArgumentOf, withoutPlaybook } from '../tools/brain-argument.ts';
+import { playbookArgumentOf, withoutPlaybook } from '../tools/playbook-argument.ts';
 import { callbackFor, type Arguments, type CalledTool, type Dispatch } from '../tools/tool-callback.ts';
 import { toolDefinitionOf, toolDefinitionTakingPlaybookOf, type ToolDefinition } from '../tools/tool-definition.ts';
 import type { ServedTools } from './instructions.ts';

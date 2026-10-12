@@ -32,7 +32,7 @@ const kept: Readonly<Record<string, string>> = {
 
 const keptContent: KeptContent = (sha256) => kept[sha256];
 
-const acted = { at, by: 'brain:alpha' };
+const acted = { at, by: 'playbook:alpha' };
 
 const inTheRun = {
   ...acted,

@@ -4,16 +4,16 @@ import { streamSignalOf, type AppendedStreams } from '@beonauto/ledger';
 import { Effect } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
-import type { FollowedPlaybooks } from '../follower/followed-brains.ts';
+import type { FollowedPlaybooks } from '../follower/followed-playbooks.ts';
 import { startFollower } from '../follower/follower-loop.ts';
 import type { PassEnd } from '../follower/record-steps.ts';
 import { systemClock } from '../loop/host-clock.ts';
 import { until } from '../reaction-testing/until.ts';
-import { playbookSweepsOn } from './brain-sweeps.ts';
+import { playbookSweepsOn } from './playbook-sweeps.ts';
 
-const alpha = 'brain/acme/alpha/';
+const alpha = 'playbook/acme/alpha/';
 
-const beta = 'brain/acme/beta/';
+const beta = 'playbook/acme/beta/';
 
 const noPlaybooks: FollowedPlaybooks = {
   follow: () => Effect.void,
@@ -183,7 +183,7 @@ describe('a sweep in which following a playbook it finds fails', () => {
 
 describe('a sweep in which more playbooks fail than it has room for', () => {
   it('waits for the next interval rather than sweeping again at once', { timeout: 30_000 }, async () => {
-    const streams = Array.from({ length: 130 }, (_, index) => `brain/acme/b${index}/events/`);
+    const streams = Array.from({ length: 130 }, (_, index) => `playbook/acme/b${index}/events/`);
     const watched = followed({
       streams,
       sweepEveryMs: 1000,
@@ -213,7 +213,7 @@ describe('a sweep whose read of a registry of playbooks fails', () => {
   it('reads the registry again at the next sweep after its read failed', { timeout: 30_000 }, async () => {
     const followedFrom: string[] = [];
     const watched = followed({
-      streams: ['org/acme/brains'],
+      streams: ['org/acme/playbooks'],
       sweepEveryMs: 20,
       pass: () => Effect.succeed<PassEnd>('caught_up'),
       registries: registryReadFailingOnce((registries) => {
@@ -226,7 +226,7 @@ describe('a sweep whose read of a registry of playbooks fails', () => {
       (registries) => registries.length > 0,
     );
 
-    expect(read).toEqual(['org/acme/brains']);
+    expect(read).toEqual(['org/acme/playbooks']);
     expect(watched.troubles()).toEqual(['A registry of playbooks could not be read; the next sweep reads it again']);
   });
 });
@@ -235,7 +235,7 @@ describe('a sweep whose read of a registry of playbooks keeps failing', () => {
   it('still passes the playbooks appended to, and still runs its upkeep', { timeout: 30_000 }, async () => {
     const passes: string[] = [];
     const watched = followed({
-      streams: ['org/acme/brains', 'brain/acme/alpha/events/'],
+      streams: ['org/acme/playbooks', 'playbook/acme/alpha/events/'],
       sweepEveryMs: 50,
       pass: (playbookKey) =>
         Effect.sync(() => {
@@ -252,7 +252,7 @@ describe('a sweep whose read of a registry of playbooks keeps failing', () => {
     );
     await watched.stop();
 
-    expect(passed).toEqual(['brain/acme/alpha/']);
+    expect(passed).toEqual(['playbook/acme/alpha/']);
     expect(watched.upkeeps()).toBe(watched.sweeps());
     expect(watched.troubles()).toEqual(
       Array.from(

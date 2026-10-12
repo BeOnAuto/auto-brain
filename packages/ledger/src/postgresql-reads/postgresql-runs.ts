@@ -6,7 +6,7 @@ import type {
   RecordedStatements,
   RunsSelected,
 } from '../recorded/recorded-statements.ts';
-import { kindKeyOfStream } from './brain-indexes.ts';
+import { kindKeyOfStream } from './playbook-indexes.ts';
 import {
   binding,
   bounds,

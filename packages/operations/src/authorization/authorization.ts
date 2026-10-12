@@ -1,12 +1,12 @@
 import { Effect, Predicate } from 'effect';
 
-import { canAccessPlaybook } from '../caller/brain-access.ts';
 import type { CallerIdentity } from '../caller/caller.ts';
 import { isPlaybookId, isOrgId } from '../caller/identifiers.ts';
 import type { OperationKind } from '../caller/operation-scope.ts';
+import { canAccessPlaybook } from '../caller/playbook-access.ts';
 import type { Registration } from '../definition/registration.ts';
 import type { PlaybookRequest, OrgRequest } from '../dispatch/request.ts';
-import { PlaybookRegistry, type PlaybookStatus } from '../ledger/brain-registry.ts';
+import { PlaybookRegistry, type PlaybookStatus } from '../ledger/playbook-registry.ts';
 import { rejected, type Rejected } from '../outcome/outcome.ts';
 import { alternatives } from '../plain-language/phrasing.ts';
 

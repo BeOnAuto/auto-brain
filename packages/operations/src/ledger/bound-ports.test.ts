@@ -1,13 +1,13 @@
-import { Effect } from 'effect';
+import { Effect, Option } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { streamPrefixOfPlaybook, streamPrefixOfOrg, type RunOutcomeWindow } from '../index.ts';
+import { playbookOfStreamPrefix, streamPrefixOfPlaybook, streamPrefixOfOrg, type RunOutcomeWindow } from '../index.ts';
 import { readTallyRows, runTallyRows } from '../projections/tally-rows.ts';
 import { readRunTallies, runFacts, runTallies, type RunFact } from '../run-outcomes/run-tallies.ts';
-import { getPlaybookLabel, labelPlaybook, listPlaybookLabels } from '../testing/brain-labels.ts';
 import { acmeAdmin, acmeAlphaReader, globexAdmin } from '../testing/callers.ts';
 import { harness, toPlaybook, toOrg } from '../testing/harness.ts';
 import { addNote, listNotes, readNoteHistory } from '../testing/notes.ts';
+import { getPlaybookLabel, labelPlaybook, listPlaybookLabels } from '../testing/playbook-labels.ts';
 import { putOnShelf, readShelf } from '../testing/shelves.ts';
 
 describe('the ports bound to a call', () => {
@@ -23,8 +23,8 @@ describe('the ports bound to a call', () => {
     await run(d.dispatchToOrg(labelPlaybook.registration, toAcme(acmeAdmin, { playbook: 'beta', label: 'Support' })));
 
     expect(ledger.streamNames()).toEqual([
-      'brain/acme/alpha/notes',
-      'brain/globex/gamma/notes',
+      'playbook/acme/alpha/notes',
+      'playbook/globex/gamma/notes',
       'org/acme/playbook-labels',
     ]);
     expect(await run(d.dispatchToPlaybook(listNotes.registration, toAlpha(acmeAlphaReader)))).toEqual({
@@ -68,6 +68,21 @@ describe('the prefix of a playbook', () => {
 
     expect(ledger.streamNames()).toEqual([`${streamPrefixOfPlaybook({ org: 'acme', playbook: 'alpha' })}notes`]);
   });
+
+  it('names its playbook again, and a prefix that is not a playbook names none', () => {
+    const alpha = { org: 'acme', playbook: 'alpha' };
+
+    expect(
+      [
+        streamPrefixOfPlaybook(alpha),
+        streamPrefixOfOrg(alpha),
+        'org/acme/alpha/',
+        'playbook/acme/alpha',
+        'playbook/acme/alpha/runs/',
+        'playbook//alpha/',
+      ].map((prefix) => playbookOfStreamPrefix(prefix)),
+    ).toEqual([Option.some(alpha), Option.none(), Option.none(), Option.none(), Option.none(), Option.none()]);
+  });
 });
 
 const malformedStreams = [
@@ -90,7 +105,10 @@ describe('a stream name a handler gives a bound port', () => {
       d.dispatchToPlaybook(putOnShelf.registration, toAlpha(acmeAdmin, { shelf: 'Red_1-x/top', item: 'bolt' })),
     );
 
-    expect(ledger.streamNames()).toEqual(['brain/acme/alpha/shelves/red', 'brain/acme/alpha/shelves/Red_1-x/top']);
+    expect(ledger.streamNames()).toEqual([
+      'playbook/acme/alpha/shelves/red',
+      'playbook/acme/alpha/shelves/Red_1-x/top',
+    ]);
     expect(await run(d.dispatchToPlaybook(readShelf.registration, toAlpha(acmeAdmin, { shelf: 'RED' })))).toEqual({
       status: 'succeeded',
       output: { items: [] },
@@ -224,8 +242,8 @@ describe('the read of the outcomes of runs, bound to a call', () => {
   it('reads only the playbook of the call', async () => {
     const { dispatcher: d, ledger, run } = harness({ runOutcomes: runTallies });
     const began: RunFact = { type: 'run_began', data: { at: '2026-10-01T09:00:00.000Z', fn: 'triage' } };
-    await Effect.runPromise(ledger.service.execute('brain/acme/alpha/runs/r1', runFacts, [began]));
-    await Effect.runPromise(ledger.service.execute('brain/globex/gamma/runs/r2', runFacts, [began]));
+    await Effect.runPromise(ledger.service.execute('playbook/acme/alpha/runs/r1', runFacts, [began]));
+    await Effect.runPromise(ledger.service.execute('playbook/globex/gamma/runs/r2', runFacts, [began]));
     const window = { from: '2026-10-01', to: '2026-10-01' };
 
     const read = await run(d.dispatchToPlaybook(readRunTallies.registration, toAlpha(acmeAdmin, window)));
@@ -254,8 +272,8 @@ describe('the read of projected rows, bound to a call', () => {
   it('reads only the playbook of the call, and counts its rows', async () => {
     const { dispatcher: d, ledger, run } = harness({ projections: [runTallyRows] });
     const began: RunFact = { type: 'run_began', data: { at: '2026-10-01T09:00:00.000Z', fn: 'triage' } };
-    await Effect.runPromise(ledger.service.execute('brain/acme/alpha/runs/r1', runFacts, [began]));
-    await Effect.runPromise(ledger.service.execute('brain/acme/beta/runs/r2', runFacts, [began]));
+    await Effect.runPromise(ledger.service.execute('playbook/acme/alpha/runs/r1', runFacts, [began]));
+    await Effect.runPromise(ledger.service.execute('playbook/acme/beta/runs/r2', runFacts, [began]));
 
     expect(await run(d.dispatchToPlaybook(readTallyRows.registration, toAlpha(acmeAdmin, { limit: 5 })))).toEqual({
       status: 'succeeded',

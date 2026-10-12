@@ -14,10 +14,10 @@ import { createSQLitePlaybookIndexes } from './sqlite-indexes.ts';
 const playbookIndexes = [
   'ledger_definition_streams',
   'ledger_first_messages_by_kind',
-  'ledger_messages_by_brain',
-  'ledger_messages_by_brain_and_correlation',
-  'ledger_messages_by_brain_and_time',
   'ledger_messages_by_id',
+  'ledger_messages_by_playbook',
+  'ledger_messages_by_playbook_and_correlation',
+  'ledger_messages_by_playbook_and_time',
   'ledger_messages_by_stream',
 ];
 

@@ -3,7 +3,7 @@ import { Conflict, messageIdOf, type Context } from '@beonauto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { alpha, at, recorded, recordedWith } from '../reaction-testing/brain-writes.ts';
+import { alpha, at, recorded, recordedWith } from '../reaction-testing/playbook-writes.ts';
 import { eventually } from '../testing/eventually.ts';
 import { runAt, startOf, workflow } from '../testing/host-documents.ts';
 import { followedHost } from '../waiting-testing/followed-host.ts';
@@ -152,7 +152,7 @@ describe('the consumer of cancel requests', () => {
     const consumer = await failingConsumer();
     const beforeTheStart = asked(
       { type: 'run_cancel_requested', data: { kind: 'requested', reason: 'Gone' } },
-      { by: 'brain:alpha', at },
+      { by: 'playbook:alpha', at },
     );
     const batches = await Effect.runPromise(
       Effect.all([
@@ -161,7 +161,7 @@ describe('the consumer of cancel requests', () => {
       ]),
     );
     const ending = await Effect.runPromise(
-      consumer.batchOf(asked(endingOfAnotherCapability, runOf('interaction', 'brain:alpha')), undefined, 100),
+      consumer.batchOf(asked(endingOfAnotherCapability, runOf('interaction', 'playbook:alpha')), undefined, 100),
     );
     const resumed = await Effect.runPromise(consumer.batchOf(asked(askedToCancel), 'cancel', 100));
 

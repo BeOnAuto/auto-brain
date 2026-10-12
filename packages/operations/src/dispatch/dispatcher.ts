@@ -9,10 +9,10 @@ import {
 import type { Registration } from '../definition/registration.ts';
 import { Ledger } from '../ledger/ledger.ts';
 import type { Outcome, Rejected } from '../outcome/outcome.ts';
-import { runInPlaybook } from './brain-binding.ts';
 import { withoutDispatcherServices, type DispatcherServices } from './dispatcher-services.ts';
 import { withErrorBoundary } from './error-boundary.ts';
 import { runInOrg } from './org-binding.ts';
+import { runInPlaybook } from './playbook-binding.ts';
 import type { PlaybookRequest, OrgRequest } from './request.ts';
 
 export type PipelineStep = (

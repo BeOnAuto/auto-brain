@@ -60,12 +60,12 @@ const everything: RecordedSelection = { kind: 'everything' };
 
 function aPlaybookWith(ledger: MemoryLedger) {
   return Effect.all([
-    recording(ledger, 1000, 'brain/acme/alpha/runs/r1', 'run_started'),
-    recording(ledger, 1000, 'brain/acme/alpha/run-logs/r1', 'input_applied'),
-    recording(ledger, 2000, 'brain/acme/alpha2/notes', 'noted'),
-    recording(ledger, 2000, 'org/acme/brains', 'brain_created'),
-    recording(ledger, 3000, 'brain/acme/alpha/runs/r1', 'run_succeeded'),
-    recording(ledger, 4000, 'brain/acme/alpha/runs/r2', 'run_started'),
+    recording(ledger, 1000, 'playbook/acme/alpha/runs/r1', 'run_started'),
+    recording(ledger, 1000, 'playbook/acme/alpha/run-logs/r1', 'input_applied'),
+    recording(ledger, 2000, 'playbook/acme/alpha2/notes', 'noted'),
+    recording(ledger, 2000, 'org/acme/playbooks', 'playbook_created'),
+    recording(ledger, 3000, 'playbook/acme/alpha/runs/r1', 'run_succeeded'),
+    recording(ledger, 4000, 'playbook/acme/alpha/runs/r2', 'run_started'),
   ]);
 }
 
@@ -117,19 +117,19 @@ describe('the in-memory read of runs', () => {
     );
 
     expect(ofRun.records.map(({ stream, type }) => `${stream} ${type}`)).toEqual([
-      'brain/acme/alpha/runs/r1 run_started',
-      'brain/acme/alpha/run-logs/r1 input_applied',
-      'brain/acme/alpha/runs/r1 run_succeeded',
+      'playbook/acme/alpha/runs/r1 run_started',
+      'playbook/acme/alpha/run-logs/r1 input_applied',
+      'playbook/acme/alpha/runs/r1 run_succeeded',
     ]);
     expect(typesOf(runs)).toEqual(['run_started', 'run_started', 'run_succeeded']);
     expect(runs.records.map(({ stream }) => stream)).toEqual([
-      'brain/acme/alpha/runs/r2',
-      'brain/acme/alpha/runs/r1',
-      'brain/acme/alpha/runs/r1',
+      'playbook/acme/alpha/runs/r2',
+      'playbook/acme/alpha/runs/r1',
+      'playbook/acme/alpha/runs/r1',
     ]);
     expect(succeeded.records.map(({ stream }) => stream)).toEqual([
-      'brain/acme/alpha/runs/r1',
-      'brain/acme/alpha/runs/r1',
+      'playbook/acme/alpha/runs/r1',
+      'playbook/acme/alpha/runs/r1',
     ]);
   });
 });
@@ -196,7 +196,7 @@ describe('the in-memory read from a cursor', () => {
   it('refuses a cursor of another playbook, or one it cannot read', async () => {
     const ledger = memoryLedger();
     const { records } = await run(
-      recording(ledger, 0, 'brain/acme/beta/notes', 'noted').pipe(
+      recording(ledger, 0, 'playbook/acme/beta/notes', 'noted').pipe(
         Effect.andThen(
           ledger.service.readRecorded({ org: 'acme', playbook: 'beta' }, everything, { order: 'asc', limit: 1 }),
         ),
@@ -209,8 +209,8 @@ describe('the in-memory read from a cursor', () => {
           ...records.map(({ cursor }) => cursor),
           'WyJicmFpbiJd',
           'not a cursor',
-          cursorOfParts(['brain/acme/alpha/', '1', '2']),
-          cursorOfParts(['brain/acme/alpha/', '1', 2, 3]),
+          cursorOfParts(['playbook/acme/alpha/', '1', '2']),
+          cursorOfParts(['playbook/acme/alpha/', '1', 2, 3]),
         ],
         (cursor) => Effect.flip(reading(ledger, everything, { order: 'asc', limit: 1, cursor })),
       ),
@@ -232,7 +232,7 @@ describe('the in-memory read from inside a record', () => {
     const pages = await run(
       Effect.gen(function* () {
         yield* aPlaybookWith(ledger);
-        const inside = cursorOfParts(['brain/acme/alpha/', '2', 1]);
+        const inside = cursorOfParts(['playbook/acme/alpha/', '2', 1]);
         return yield* Effect.all([
           reading(ledger, everything, { order: 'asc', limit: 2, cursor: inside }),
           reading(ledger, everything, { order: 'desc', limit: 2, cursor: inside }),
@@ -255,7 +255,7 @@ describe('the in-memory lineage of what a playbook recorded', () => {
       Effect.gen(function* () {
         yield* aPlaybookWith(ledger);
         yield* ledger.service.execute(
-          'brain/acme/alpha/run-logs/r1',
+          'playbook/acme/alpha/run-logs/r1',
           happenings,
           [{ type: 'noted', data: { note: '' } }],
           lineage,
@@ -269,13 +269,13 @@ describe('the in-memory lineage of what a playbook recorded', () => {
 
     expect(correlated.records.map(({ id, stream, causationId }) => ({ id, stream, causationId }))).toEqual([
       {
-        id: messageIdOf('brain/acme/alpha/run-logs/r1', 2),
-        stream: 'brain/acme/alpha/run-logs/r1',
+        id: messageIdOf('playbook/acme/alpha/run-logs/r1', 2),
+        stream: 'playbook/acme/alpha/run-logs/r1',
         causationId: 'cause',
       },
     ]);
     expect(page.records.map(({ id, causationId, correlationId }) => ({ id, causationId, correlationId }))).toEqual([
-      { id: messageIdOf('brain/acme/alpha/runs/r1', 1), causationId: null, correlationId: null },
+      { id: messageIdOf('playbook/acme/alpha/runs/r1', 1), causationId: null, correlationId: null },
     ]);
   });
 });

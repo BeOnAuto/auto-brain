@@ -15,7 +15,7 @@ const stoppedByItsWork: FilterVerdict = { error, stopped: false };
 
 const trigger: FilterPlace = {
   kind: 'trigger',
-  playbookKey: 'brain/acme/alpha/',
+  playbookKey: 'playbook/acme/alpha/',
   workflow: 'close',
   version: 1,
   reference: '/schedule/on',
@@ -95,7 +95,7 @@ describe('the stops kept for a workflow', () => {
     stops.listenerEnded(listener);
     const held = [stops.holds(listener), stops.holds(other)];
     stops.listenerEnded(other);
-    stops.retired('brain/acme/beta/', 'other');
+    stops.retired('playbook/acme/beta/', 'other');
 
     expect([held, stops.holds(other)]).toEqual([[false, true], false]);
   });

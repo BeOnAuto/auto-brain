@@ -13,7 +13,7 @@ import {
   type RecordedStatements,
   type RecordsSelected,
 } from '../recorded/recorded-statements.ts';
-import { playbookKeyOfStream, correlationOfMessage } from './brain-indexes.ts';
+import { playbookKeyOfStream, correlationOfMessage } from './playbook-indexes.ts';
 import { postgresqlDefinitionStreams } from './postgresql-definition-streams.ts';
 import { examineRuns } from './postgresql-runs.ts';
 import {

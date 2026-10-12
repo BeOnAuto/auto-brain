@@ -45,7 +45,7 @@ describe('the replies of a conversation, read once for every open request in it'
       output: {
         status: 'succeeded',
         output: { choice: 'reject', note: 'the second point is wrong' },
-        record: { answered_by: 'brain:alpha', reply: { id: '1699.000002', sender: answererId } },
+        record: { answered_by: 'playbook:alpha', reply: { id: '1699.000002', sender: answererId } },
       },
     });
     expect(JSON.stringify(await playbook.runOf(first))).not.toContain('claimed_for');

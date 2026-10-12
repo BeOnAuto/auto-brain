@@ -1,6 +1,6 @@
 import { Schema } from 'effect';
 
-import { withPlaybookArgument } from '../tools/brain-argument.ts';
+import { withPlaybookArgument } from '../tools/playbook-argument.ts';
 
 const ListedToolSchema = Schema.Struct({
   name: Schema.String,

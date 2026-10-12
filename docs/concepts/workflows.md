@@ -47,7 +47,7 @@ A workflow can start on its own. Its document's `schedule` names up to three tri
 
 So a workflow can start on an event and at its times without switching between them. Each trigger is identified by its kind, `event`, `cron` or `every`, and its place in the document, such as `/schedule/cron`; a saved workflow shows its triggers that way, and a run says which trigger started it.
 
-A run a trigger starts acts as the playbook itself, shown as `brain:` and the playbook's id in `started_by` (a stable actor identifier retained for recorded history), rather than for a person. A trigger applies from when it is saved as it is, never to what the playbook recorded before: a new version that leaves a trigger unchanged keeps it going as it was, with its times, while a trigger the version changes or adds applies from that version on. Each event or due time starts its run once, even across a restart of the runtime.
+A run a trigger starts acts as the playbook itself, shown as `playbook:` and the playbook's id in `started_by`, rather than for a person. A trigger applies from when it is saved as it is, never to what the playbook recorded before: a new version that leaves a trigger unchanged keeps it going as it was, with its times, while a trigger the version changes or adds applies from that version on. Each event or due time starts its run once, even across a restart of the runtime.
 
 A workflow does not start for its own runs or for the events they emit, a chain of runs started by events stops at a depth of 8, and its event trigger starts at most 60 runs of it a minute. What a trigger did not start appears among the playbook's events as `reaction_refused`. The [workflow format](../reference/workflow-format.md#triggers) gives the exact rules.
 

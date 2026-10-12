@@ -179,7 +179,7 @@ const decodePublicEvent = Schema.decodeUnknownResult(PublicEventSchema);
 
 const utf8 = new TextEncoder();
 
-const showing = { streamPrefix: 'brain/acme/alpha/', content: () => awkward, view: 'page' } as const;
+const showing = { streamPrefix: 'playbook/acme/alpha/', content: () => awkward, view: 'page' } as const;
 
 function recordOf(stream: string, type: string, data: unknown, recorded: Context = context): RecordedEvent {
   return {

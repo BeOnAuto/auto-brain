@@ -12,26 +12,29 @@ export function definitionStreamsBehaviour(entry: LedgerEntry): void {
       const store = entry.storeOn(database);
       onTestFinished(() => store.close());
       await store.migrate();
-      await store.append('brain/acme/alpha/definitions/recall', [...created, ...created], {
+      await store.append('playbook/acme/alpha/definitions/recall', [...created, ...created], {
         expectedVersion: 0,
         context: stamped,
       });
-      await store.append('brain/acme/beta/definitions/recall', created, { expectedVersion: 0, context: stamped });
-      await store.append('brain/acme/alpha/definitions/reasoning', created, { expectedVersion: 0, context: stamped });
-      await store.append('brain/acme/alpha/runs/run-1', created, { expectedVersion: 0, context: stamped });
-      await store.append('brain/acme/gamma/notes/definitions/recall', created, {
+      await store.append('playbook/acme/beta/definitions/recall', created, { expectedVersion: 0, context: stamped });
+      await store.append('playbook/acme/alpha/definitions/reasoning', created, {
         expectedVersion: 0,
         context: stamped,
       });
-      await store.append('brain/acme/gamma/definitions/recall/nested', created, {
+      await store.append('playbook/acme/alpha/runs/run-1', created, { expectedVersion: 0, context: stamped });
+      await store.append('playbook/acme/gamma/notes/definitions/recall', created, {
+        expectedVersion: 0,
+        context: stamped,
+      });
+      await store.append('playbook/acme/gamma/definitions/recall/nested', created, {
         expectedVersion: 0,
         context: stamped,
       });
       await store.append('org/acme/definitions', created, { expectedVersion: 0, context: stamped });
 
       expect(await store.definitionStreams('recall')).toEqual([
-        { stream: 'brain/acme/alpha/definitions/recall', version: 2 },
-        { stream: 'brain/acme/beta/definitions/recall', version: 1 },
+        { stream: 'playbook/acme/alpha/definitions/recall', version: 2 },
+        { stream: 'playbook/acme/beta/definitions/recall', version: 1 },
       ]);
       expect(await store.definitionStreams('computation')).toEqual([]);
       expect(await entry.definitionStreamsIndexed(database)).toBe(true);

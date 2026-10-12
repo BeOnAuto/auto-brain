@@ -2,10 +2,10 @@ import type { RecordedEvent } from '@beonauto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { stepOf, type StepParts } from './record-steps.ts';
+import { playbookOfKey, stepOf, type StepParts } from './record-steps.ts';
 import type { GateVerdict } from './run-gate.ts';
 
-const playbookKey = 'brain/acme/alpha/';
+const playbookKey = 'playbook/acme/alpha/';
 
 const parts: StepParts = {
   consumers: [],
@@ -53,5 +53,14 @@ describe('the step over the record of a run that passed listeners', () => {
       { progress: passed, end: 'more' },
       { progress: passed },
     ]);
+  });
+});
+
+describe('the key of a playbook the host follows', () => {
+  it('names its org and its playbook, and is a defect of the host when it names no playbook', () => {
+    expect(playbookOfKey(playbookKey)).toEqual({ org: 'acme', playbook: 'alpha' });
+    expect(() => playbookOfKey('org/acme/alpha/')).toThrow(
+      'The host follows org/acme/alpha/, which is not the key of a playbook',
+    );
   });
 });

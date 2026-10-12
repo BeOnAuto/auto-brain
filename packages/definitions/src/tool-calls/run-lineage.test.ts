@@ -21,7 +21,7 @@ const toAlpha = toPlaybook('acme', 'alpha');
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
-const stream = `brain/acme/alpha/${runStreamNameOf(runId)}`;
+const stream = `playbook/acme/alpha/${runStreamNameOf(runId)}`;
 
 const idAt = (position: number): string => messageIdOf(stream, position);
 
@@ -135,7 +135,7 @@ describe('the journal of a run, given an answer to a call it has no start of', (
     }).pipe(
       Effect.provideService(PlaybookWriter, {
         execute: (relative, decider, command, lineage) =>
-          definitions.ledger.service.execute(`brain/acme/alpha/${relative}`, decider, command, lineage),
+          definitions.ledger.service.execute(`playbook/acme/alpha/${relative}`, decider, command, lineage),
       }),
       Effect.provideService(Caller, acmeAdmin),
       Effect.provideService(PlaybookContext, { org: 'acme', playbook: 'alpha' }),

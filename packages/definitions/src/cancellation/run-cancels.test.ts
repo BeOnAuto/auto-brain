@@ -33,7 +33,7 @@ describe('a cancel request the workflow host records on a run', () => {
       type: 'run_cancel_requested',
       ...lineage,
       data: { kind: 'deadline', reason: deadline.reason },
-      context: { by: 'brain:alpha' },
+      context: { by: 'playbook:alpha' },
     });
   });
 

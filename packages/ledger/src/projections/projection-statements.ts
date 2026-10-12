@@ -24,7 +24,7 @@ export interface KeptRow extends RowPlace {
   readonly row: ProjectedRow;
 }
 
-const keyColumns = ['brain_key', 'row_key'] as const;
+const keyColumns = ['playbook_key', 'row_key'] as const;
 
 const NameRows = Schema.Array(Schema.Struct({ name: Schema.String }));
 
@@ -50,7 +50,7 @@ export function tableOf(projection: KeyedProjection): SQL {
 
 function indexStatement(projection: KeyedProjection, index: ProjectedIndex): SQL {
   const table = projectedTableOf(projection);
-  const columns = [...(index.acrossPlaybooks === true ? [] : ['brain_key']), ...index.columns].join(', ');
+  const columns = [...(index.acrossPlaybooks === true ? [] : ['playbook_key']), ...index.columns].join(', ');
   const where = index.whereSet === undefined ? '' : ` WHERE ${index.whereSet} IS NOT NULL`;
   return SQL`CREATE INDEX IF NOT EXISTS ${SQL.plain(`${table}_${index.name}`)} ON ${tableOf(projection)} (${SQL.plain(columns)})${SQL.plain(where)}`;
 }
@@ -60,10 +60,10 @@ export function createdTable(dialect: ProjectionDialect, projection: KeyedProjec
   const key = `${dialect.columnTypes.text} NOT NULL`;
   return [
     SQL`CREATE TABLE IF NOT EXISTS ${tableOf(projection)} (
-      brain_key ${SQL.plain(key)},
+      playbook_key ${SQL.plain(key)},
       row_key ${SQL.plain(key)},
       ${SQL.plain(columns)},
-      PRIMARY KEY (brain_key, row_key)
+      PRIMARY KEY (playbook_key, row_key)
     )`,
     ...projection.indexes.map((index) => indexStatement(projection, index)),
   ];
@@ -88,7 +88,7 @@ export async function rowIn(
   { playbookKey, key }: RowPlace,
 ): Promise<ProjectedRow | undefined> {
   const { rows } = await execute.query(
-    SQL`SELECT ${selectedColumns(dialect, projection)} FROM ${tableOf(projection)} WHERE brain_key = ${playbookKey} AND row_key = ${key}`,
+    SQL`SELECT ${selectedColumns(dialect, projection)} FROM ${tableOf(projection)} WHERE playbook_key = ${playbookKey} AND row_key = ${key}`,
   );
   const [stored] = rowsFrom(rows);
   return stored === undefined ? undefined : rowFrom(projection, stored);
@@ -125,7 +125,7 @@ export function rowsWrite(
   );
   return SQL`INSERT INTO ${tableOf(projection)} (${columns})
     VALUES ${values}
-    ON CONFLICT (brain_key, row_key) DO UPDATE SET ${updates}`;
+    ON CONFLICT (playbook_key, row_key) DO UPDATE SET ${updates}`;
 }
 
 export function columnOf(projection: KeyedProjection, name: string): string {
@@ -160,7 +160,7 @@ export function rowAdvance(
     ),
     ', ',
   );
-  return SQL`UPDATE ${tableOf(projection)} SET ${assignments} WHERE brain_key = ${playbookKey} AND row_key = ${key}${conditionsOf(dialect, projection, when)}`;
+  return SQL`UPDATE ${tableOf(projection)} SET ${assignments} WHERE playbook_key = ${playbookKey} AND row_key = ${key}${conditionsOf(dialect, projection, when)}`;
 }
 
 export function tableDrop(name: string): SQL {

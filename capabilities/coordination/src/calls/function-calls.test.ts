@@ -35,7 +35,7 @@ const classify = callWith({ type: 'reasoning', name: 'classify', input: { ticket
 
 const origin = { version: 3 };
 
-const waitingOfTheCall = messageIdOf(`brain/acme/alpha/run-logs/${workflowRun}`, origin.version);
+const waitingOfTheCall = messageIdOf(`playbook/acme/alpha/run-logs/${workflowRun}`, origin.version);
 
 function answering(result: DefinitionRunResult) {
   const asked: DefinitionRunRequest[] = [];

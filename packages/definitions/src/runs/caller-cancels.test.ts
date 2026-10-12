@@ -65,7 +65,7 @@ describe('a cancel from the caller of a run that has not started', () => {
     expect(decided(cancelling(true), cancelFirst)).toStrictEqual(Result.succeed([]));
     expect(decided({ type: 'finish', result: failure, ...start }, cancelFirst)).toStrictEqual(Result.succeed([]));
     expect(
-      decided({ type: 'settle', result: failure, runId: testRunId, by: 'brain:alpha', at: later }, cancelFirst),
+      decided({ type: 'settle', result: failure, runId: testRunId, by: 'playbook:alpha', at: later }, cancelFirst),
     ).toStrictEqual(Result.fail(noSuchRun));
     expect(stateAfter(cancelFirst, cancelFirst)).toStrictEqual({
       cancelledBeforeStart: { kind: 'parent_ended', reason, by: 'acme-admin' },

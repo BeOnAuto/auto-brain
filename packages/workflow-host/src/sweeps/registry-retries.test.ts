@@ -2,18 +2,18 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { DatabaseFailed, type HostDatabase } from '../database/host-database.ts';
+import { followerOver } from '../reaction-testing/follower-over.ts';
 import {
   playbookCreated,
   byAdmin,
   definitionRecorded,
   eventTrigger,
   published,
-} from '../reaction-testing/brain-writes.ts';
-import { followerOver } from '../reaction-testing/follower-over.ts';
+} from '../reaction-testing/playbook-writes.ts';
 import { until } from '../reaction-testing/until.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
 
-const beta = 'brain/acme/beta/';
+const beta = 'playbook/acme/beta/';
 
 interface HeldBack {
   readonly database: HostDatabase;
@@ -36,7 +36,7 @@ function sweptAtOnceAndRegistryFailing(database: HostDatabase, playbookKey: stri
       read: (statement) =>
         Effect.suspend(() => {
           const text = statement.strings.join('');
-          state.swept ||= text.includes('FROM workflow_followed_brains') && statement.values.includes(playbookKey);
+          state.swept ||= text.includes('FROM workflow_followed_playbooks') && statement.values.includes(playbookKey);
           const registry = text.includes('FROM workflow_followed_orgs WHERE stream_id');
           return registry && !state.swept
             ? Effect.fail(new DatabaseFailed({ detail: 'The registry could not be read' }))

@@ -2,7 +2,7 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { statement } from '../database/statement.ts';
-import { emittedContext, published, publishedInTurn } from '../reaction-testing/brain-writes.ts';
+import { emittedContext, published, publishedInTurn } from '../reaction-testing/playbook-writes.ts';
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
 import { until } from '../reaction-testing/until.ts';
 import { runAt, startOf, workflow } from '../testing/host-documents.ts';

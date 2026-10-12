@@ -268,7 +268,7 @@ jobs:
           playbook=http://127.0.0.1:8080/v1/orgs/demo/playbooks/smoke
           source="$(printf '%s\n' '---' 'model: anthropic/claude-sonnet-4-5' '---' 'Say hello to {{ input.name }}.')"
           definition="$(jq --null-input --arg source "$source" '{name: "hello", source: $source}')"
-          test "$(call brain.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 201
+          test "$(call playbook.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 201
           test "$(call created.json --data "$definition" "$playbook/definitions/reasoning")" = 201
           test "$(call read.json "$playbook/definitions/reasoning/hello")" = 200
           test "$(jq --raw-output .source read.json)" = "$source"
@@ -301,7 +301,7 @@ jobs:
             '  return { total_cents, rows: input.rows.length };' '}')"
           raising="$(printf '%s\n' '---' 'language: typescript' '---' 'export default function (input: Input): Output {' \
             "  throw new Error('no rows');" '}')"
-          test "$(call brain.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 201
+          test "$(call playbook.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 201
           for name in total raising; do
             definition="$(jq --null-input --arg name "$name" --arg source "${!name}" '{name: $name, source: $source}')"
             test "$(call created.json --data "$definition" "$playbook/definitions/computation")" = 201
@@ -336,7 +336,7 @@ jobs:
             '  schema: {type: object, required: [choice], properties: {choice: {type: string, enum: [approve, reject]}}}' \
             '---' 'Approve the brief for {{ input.campaign }}?')"
           definition="$(jq --null-input --arg source "$source" '{name: "approve-brief", source: $source}')"
-          test "$(call brain.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 201
+          test "$(call playbook.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 201
           test "$(call created.json --data "$definition" "$playbook/definitions/interaction")" = 201
           test "$(call asked.json --data '{"input":{"owner":"ada","campaign":"Spring"}}' \
             "$playbook/definitions/interaction/approve-brief/run")" = 200
@@ -394,7 +394,7 @@ jobs:
           docker volume create workflows
           start_server workflows-first
           test "$(docker logs workflows-first 2>&1 | grep --count '"message":"Workflows run in this server: ')" = 1
-          test "$(call brain.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 201
+          test "$(call playbook.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 201
           for name in greet approval; do
             definition="$(jq --null-input --arg name "$name" --arg source "${!name}" '{name: $name, source: $source}')"
             test "$(call created.json --data "$definition" "$playbook/definitions/workflow")" = 201
@@ -514,7 +514,7 @@ jobs:
           closing="$(printf '%s\n' "document: { dsl: '1.0.3', namespace: smoke, name: closing, version: '1.0.0' }" \
             'schedule: { on: { one: { with: { type: com.example.ledger.closed } } }, every: PT1M }' 'do:' \
             "  - total: { set: { input: '\${ \$data }' } }")"
-          test "$(call brain.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 201
+          test "$(call playbook.json --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/playbooks)" = 201
           definition="$(jq --null-input --arg source "$closing" '{name: "closing", source: $source}')"
           test "$(call created.json --data "$definition" "$playbook/definitions/workflow")" = 201
           test "$(jq --compact-output '[.triggers[] | [.kind, .reference]]' created.json)" = \
@@ -524,7 +524,7 @@ jobs:
             "$playbook/events")" = 200
           ended_runs closing 2 150
           test "$(jq --compact-output '[.runs[] | [.status, .started_by]]' runs.json)" = \
-            '[["succeeded","brain:smoke"],["succeeded","brain:smoke"]]'
+            '[["succeeded","playbook:smoke"],["succeeded","playbook:smoke"]]'
           for run in $(jq --raw-output '.runs[].run_id' runs.json); do
             test "$(call "history-$run.json" "$playbook/runs/$run/history")" = 200
             test "$(call "run-$run.json" "$playbook/runs/$run")" = 200

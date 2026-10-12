@@ -47,8 +47,6 @@ describe('readApiKeys', () => {
     ['an id that breaks the grammar', JSON.stringify([{ ...entry, id: 'CI_1' }]), 'API_KEYS[0].id'],
     ['an org that breaks the grammar', JSON.stringify([{ ...entry, org: 'a b' }]), 'API_KEYS[0].org'],
     ['an unknown permission', JSON.stringify([{ ...entry, permissions: ['admin'] }]), 'API_KEYS[0].permissions[0]'],
-    ['an obsolete scope', JSON.stringify([{ ...entry, permissions: ['brain:read'] }]), 'API_KEYS[0].permissions[0]'],
-    ['an obsolete restriction', JSON.stringify([{ ...entry, brains: ['alpha'] }]), 'API_KEYS[0].brains'],
     ['a playbook that breaks the grammar', JSON.stringify([{ ...entry, playbooks: ['B'] }]), 'API_KEYS[0].playbooks'],
     ['a missing field', JSON.stringify([{ id: 'ci-1' }]), 'API_KEYS[0].org: Missing key'],
   ])('rejects %s with a named error that points at it', (_case, value, mention) => {

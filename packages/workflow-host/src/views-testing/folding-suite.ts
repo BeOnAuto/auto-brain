@@ -171,7 +171,7 @@ function passedOverTests(settingsOf: SettingsOf): void {
       }),
     );
     await views.ran('reasoning/count', 'one');
-    await views.append('brain/acme/alpha/runs/broken', [{ type: 'run_succeeded', data: { type: 'run_succeeded' } }]);
+    await views.append('playbook/acme/alpha/runs/broken', [{ type: 'run_succeeded', data: { type: 'run_succeeded' } }]);
     const deep = Array.from({ length: 600 }).reduce<Schema.Json>((inner) => [inner], null);
     await views.published({
       specversion: '1.0',
@@ -197,9 +197,9 @@ function passedOverTests(settingsOf: SettingsOf): void {
 
     expect(kept.view).toBe(2);
     expect(views.reports.notes()).toEqual([
-      { kind: 'record_passed_over', playbook: 'brain/acme/alpha/', record: anyText, reason: 'unreadable' },
-      { kind: 'record_passed_over', playbook: 'brain/acme/alpha/', record: anyText, reason: 'unreadable' },
-      { kind: 'record_passed_over', playbook: 'brain/acme/alpha/', record: anyText, reason: 'unreadable' },
+      { kind: 'record_passed_over', playbook: 'playbook/acme/alpha/', record: anyText, reason: 'unreadable' },
+      { kind: 'record_passed_over', playbook: 'playbook/acme/alpha/', record: anyText, reason: 'unreadable' },
+      { kind: 'record_passed_over', playbook: 'playbook/acme/alpha/', record: anyText, reason: 'unreadable' },
     ]);
   });
 }

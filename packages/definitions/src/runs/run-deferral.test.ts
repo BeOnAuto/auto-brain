@@ -46,7 +46,7 @@ function finishing(result: RunOutcome): RunCommand {
   return { type: 'finish', result, ...start };
 }
 
-function settling(result: RunResult, by = 'brain:alpha'): RunCommand {
+function settling(result: RunResult, by = 'playbook:alpha'): RunCommand {
   return { type: 'settle', result, runId: testRunId, by, at: later };
 }
 
@@ -81,7 +81,7 @@ describe('settling a run', () => {
     expect(runDecider.context(settling(success), state)).toStrictEqual({
       ...start,
       ...ofHandOn,
-      by: 'brain:alpha',
+      by: 'playbook:alpha',
       at: later,
     });
     expect(runDecider.context(settling(success, 'acme-admin'), state)).toMatchObject({ by: 'acme-admin' });
@@ -199,7 +199,7 @@ describe('a run that answers a call of another run', () => {
       ...start,
       ...ofHandOn,
       ...chain,
-      by: 'brain:alpha',
+      by: 'playbook:alpha',
       at: later,
     });
     expect(stateAfter(calledStart)).toMatchObject(chain);

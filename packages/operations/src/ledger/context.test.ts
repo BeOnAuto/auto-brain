@@ -37,7 +37,7 @@ describe('the context of a recorded message', () => {
       contextOf({
         ...ofACall,
         messageId: '419f8fb7',
-        streamName: 'brain/acme/finance/runs/ccd1dbdd',
+        streamName: 'playbook/acme/finance/runs/ccd1dbdd',
         streamPosition: '1',
         correlationId: 'run-0',
         causationId: null,

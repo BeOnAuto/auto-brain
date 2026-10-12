@@ -40,7 +40,7 @@ describe(
       expect(settled).toMatchObject({
         status: 'succeeded',
         output: { choice: 'approve' },
-        record: { answered_by: 'brain:alpha', reply: { id: '1699.000002', sender: 'ada' } },
+        record: { answered_by: 'playbook:alpha', reply: { id: '1699.000002', sender: 'ada' } },
       });
       expect(await deliveryHistoryOf(server, runId)).toMatchObject([
         { type: 'delivery_started' },

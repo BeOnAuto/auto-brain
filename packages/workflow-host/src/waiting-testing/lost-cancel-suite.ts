@@ -1,7 +1,7 @@
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { alpha, at, playbookCreated, recorded } from '../reaction-testing/brain-writes.ts';
+import { alpha, at, playbookCreated, recorded } from '../reaction-testing/playbook-writes.ts';
 import { until } from '../reaction-testing/until.ts';
 import { openedOn, type SettingsOf } from '../testing/host-files.ts';
 import { hostedOn } from '../testing/host-runs.ts';
@@ -23,7 +23,7 @@ const aWhile = 30_000;
 const attempts = 2000;
 
 const ofTheRun = {
-  by: 'brain:alpha',
+  by: 'playbook:alpha',
   at,
   definitionType: 'workflow',
   definitionName: 'pause',

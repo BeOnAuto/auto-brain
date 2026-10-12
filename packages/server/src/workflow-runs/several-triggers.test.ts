@@ -140,9 +140,9 @@ describe('a workflow with an event trigger, a cron schedule and an every schedul
 
   it('runs as the playbook once for an event and once at a due time of each schedule', () => {
     expect(seen.runs.runs.map(({ status, started_by: by }) => [status, by])).toEqual([
-      ['succeeded', 'brain:alpha'],
-      ['succeeded', 'brain:alpha'],
-      ['succeeded', 'brain:alpha'],
+      ['succeeded', 'playbook:alpha'],
+      ['succeeded', 'playbook:alpha'],
+      ['succeeded', 'playbook:alpha'],
     ]);
     expect(
       seen.starts.map(({ metadata }) => metadata.trigger.kind).toSorted((first, second) => first.localeCompare(second)),

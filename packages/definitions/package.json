@@ -31,8 +31,8 @@
     "yaml": "2.9.1"
   },
   "devDependencies": {
-    "@beonauto/brains": "workspace:*",
     "@beonauto/ledger": "workspace:*",
+    "@beonauto/playbooks": "workspace:*",
     "@types/pg": "8.23.1",
     "@vitest/coverage-v8": "catalog:",
     "pg": "8.23.1",

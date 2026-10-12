@@ -9,7 +9,7 @@ import { insertedListener } from '../listeners/listener-rows.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
 import { runGateOf } from './run-gate.ts';
 
-const playbookKey = 'brain/acme/alpha/';
+const playbookKey = 'playbook/acme/alpha/';
 
 const stream = `${playbookKey}run-logs/r-1`;
 

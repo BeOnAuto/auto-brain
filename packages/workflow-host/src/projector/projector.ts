@@ -4,8 +4,8 @@ import { rowsOf, type HostDatabase } from '../database/host-database.ts';
 import type { HostReports } from '../host/host-reports.ts';
 import type { HostClock } from '../loop/host-clock.ts';
 import { playbooksWithViews } from '../views/view-statements.ts';
-import { playbookKeyOfDefinitions } from './brain-definitions.ts';
-import { playbookPass, type PassParts } from './brain-pass.ts';
+import { playbookKeyOfDefinitions } from './playbook-definitions.ts';
+import { playbookPass, type PassParts } from './playbook-pass.ts';
 import { scheduleOf, type Schedule } from './projector-schedule.ts';
 import { shareOfThePool, type ProjectorSettings } from './projector-settings.ts';
 
@@ -21,7 +21,7 @@ export interface ProjectorParts {
   readonly sweepEveryMs: number;
 }
 
-const PlaybookRow = Schema.Struct({ playbook: Schema.String });
+const PlaybookRow = Schema.Struct({ playbook_key: Schema.String });
 
 const mostRemembered = 1024;
 
@@ -63,8 +63,8 @@ function swept(parts: ProjectorParts, schedule: Schedule): Effect.Effect<void> {
     if (sweepDue) {
       schedule.swept(now);
       const playbooks = yield* Effect.orDie(rowsOf(PlaybookRow, parts.database.read(playbooksWithViews)));
-      for (const { playbook } of playbooks) {
-        schedule.want(playbook);
+      for (const { playbook_key: playbookKey } of playbooks) {
+        schedule.want(playbookKey);
       }
     }
   });

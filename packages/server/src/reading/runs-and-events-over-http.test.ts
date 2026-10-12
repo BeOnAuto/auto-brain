@@ -265,7 +265,7 @@ async function anAppendLeftOpen(database: string): Promise<Client> {
   await client.query(
     `SELECT success FROM emt_append_to_stream(
       ARRAY['late-1'], ARRAY[$1::jsonb], ARRAY[$2::jsonb], ARRAY['1'], ARRAY['note_added'], ARRAY['E'],
-      'brain/acme/alpha/notes', 'playbook', 0, 'emt:default')`,
+      'playbook/acme/alpha/notes', 'playbook', 0, 'emt:default')`,
     [{ json: JSON.stringify({ text: 'late' }) }, { at: '2026-10-05T09:00:00.000Z', by: 'tester' }],
   );
   return client;

@@ -29,7 +29,7 @@ const review: StartCall = {
 };
 
 const ofTheChild = {
-  by: 'brain:alpha',
+  by: 'playbook:alpha',
   at: 'now',
   runId: 'r-review',
   definitionType: 'workflow',

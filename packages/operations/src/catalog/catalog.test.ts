@@ -2,8 +2,8 @@ import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { defineCommand, defineQuery, makeCatalog } from '../index.ts';
-import { getPlaybookLabel, labelPlaybook } from '../testing/brain-labels.ts';
 import { addNote, getNote } from '../testing/notes.ts';
+import { getPlaybookLabel, labelPlaybook } from '../testing/playbook-labels.ts';
 
 const Empty = Schema.Record(Schema.String, Schema.Never);
 

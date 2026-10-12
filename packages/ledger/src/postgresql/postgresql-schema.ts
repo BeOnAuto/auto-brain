@@ -4,7 +4,7 @@ import { pgFormatter } from '@event-driven-io/dumbo/pg';
 
 import { contentTableNames, createdContentTables, recordedContentOn } from '../content/content-tables.ts';
 import type { StatementExecutor } from '../event-store.ts';
-import { createPostgreSQLPlaybookIndexes } from '../postgresql-reads/brain-indexes.ts';
+import { createPostgreSQLPlaybookIndexes } from '../postgresql-reads/playbook-indexes.ts';
 import type { Query } from '../postgresql-reads/recorded-parts.ts';
 
 const existingContentTables = SQL`SELECT relname AS name FROM pg_class

@@ -6,8 +6,8 @@ import { jsonBytesOf } from '../runs/recorded-size.ts';
 import { runStreamNameOf } from '../runs/run-decider.ts';
 import type { RunEvent } from '../runs/run-events.ts';
 import { testRunId as runId } from '../testing/run-facts.ts';
-import { playbookFactOf } from './brain-facts.ts';
 import { mostPublishedEventBytes } from './cloud-event.ts';
+import { playbookFactOf } from './playbook-facts.ts';
 
 const at = '2026-10-01T09:00:05.000Z';
 

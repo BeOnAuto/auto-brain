@@ -4,7 +4,7 @@ import { Effect, Schema } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
-import { alpha, playbookCreated } from '../reaction-testing/brain-writes.ts';
+import { alpha, playbookCreated } from '../reaction-testing/playbook-writes.ts';
 import { until } from '../reaction-testing/until.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { hostedOn, type HostedOptions, type HostedRuns } from '../testing/host-runs.ts';
@@ -26,7 +26,7 @@ export function settledIn(hosted: HostedRuns, attempts?: number): (runId: string
 
 export async function untilFollowed(database: HostDatabase, attempts?: number): Promise<void> {
   await until(
-    () => Effect.runPromise(database.read(statement`SELECT brain_key FROM workflow_followed_brains`)),
+    () => Effect.runPromise(database.read(statement`SELECT playbook_key FROM workflow_followed_playbooks`)),
     (rows) => rows.length > 0,
     attempts,
   );
@@ -59,7 +59,7 @@ export async function followedThroughTheLatest(database: HostDatabase, attempts?
     async () =>
       Schema.decodeUnknownSync(Places)(
         await Effect.runPromise(
-          database.read(statement`SELECT cursor FROM workflow_followed_brains WHERE brain_key = ${alpha}`),
+          database.read(statement`SELECT cursor FROM workflow_followed_playbooks WHERE playbook_key = ${alpha}`),
         ),
       ),
     (places) => places[0]?.cursor === records[0]?.cursor,

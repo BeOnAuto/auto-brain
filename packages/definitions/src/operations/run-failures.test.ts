@@ -222,7 +222,7 @@ describe('run_definition rejecting', () => {
         'The probe definition plain at version 1 no longer parses (The probe document has lines it does not accept); update it',
       kind: 'unworkable',
     });
-    expect(ledger.streamNames()).toEqual(['brain/acme/alpha/definitions/probe']);
+    expect(ledger.streamNames()).toEqual(['playbook/acme/alpha/definitions/probe']);
   });
 
   it('a run id that is not a UUID', async () => {

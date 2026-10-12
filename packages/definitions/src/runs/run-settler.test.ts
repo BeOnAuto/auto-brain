@@ -290,6 +290,6 @@ describe('what a settlement records', () => {
     await running();
     await settling({ ...success, by: 'acme-admin' });
 
-    expect([bySelf, finishIn(await read())]).toMatchObject([{ by: 'brain:alpha' }, { by: 'acme-admin' }]);
+    expect([bySelf, finishIn(await read())]).toMatchObject([{ by: 'playbook:alpha' }, { by: 'acme-admin' }]);
   });
 });

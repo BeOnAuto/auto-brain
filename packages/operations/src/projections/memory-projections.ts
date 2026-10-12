@@ -1,6 +1,6 @@
 import { Effect } from 'effect';
 
-import type { PlaybookAddress } from '../caller/brain-context.ts';
+import type { PlaybookAddress } from '../caller/playbook-context.ts';
 import { streamPrefixOfPlaybook } from '../ledger/bound-ports.ts';
 import type { Context } from '../ledger/context.ts';
 import { messageIdOf } from '../ledger/message-lineage.ts';
@@ -39,13 +39,10 @@ interface Table {
   readonly rows: Map<string, ProjectedKeyedRow>;
 }
 
-const playbookKey = /^brain\/(?<org>[^/]+)\/(?<playbook>[^/]+)\/$/u;
-
 const nothingKept: ReadonlyMap<string, ProjectedKeyedRow> = new Map();
 
-function keyedRowOf(prefix: string, key: string, row: ProjectedRow): ProjectedKeyedRow {
-  const groups = playbookKey.exec(prefix)?.groups;
-  return { org: String(groups?.['org']), playbook: String(groups?.['playbook']), key, row };
+function keyedRowOf({ playbook }: PlaybookStream, key: string, row: ProjectedRow): ProjectedKeyedRow {
+  return { ...playbook, key, row };
 }
 
 type Ordered = ProjectedValue | undefined;
@@ -106,7 +103,7 @@ function staged({ projection, rows }: Table, named: PlaybookStream, messages: re
     const row = (changed.get(stored) ?? rows.get(stored))?.row;
     const next = projection.rowAfter(row, message);
     if (next !== undefined) {
-      changed.set(stored, keyedRowOf(named.playbookKey, key, next));
+      changed.set(stored, keyedRowOf(named, key, next));
     }
   }
   return [...changed].map(([stored, kept]: readonly [string, ProjectedKeyedRow]): Staged => ({ rows, stored, kept }));

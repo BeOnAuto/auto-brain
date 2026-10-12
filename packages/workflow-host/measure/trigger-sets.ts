@@ -1,6 +1,6 @@
 import type { Trigger } from '@beonauto/definitions';
 
-import { cronTrigger, eventTrigger, everyTrigger } from '../src/reaction-testing/brain-writes.ts';
+import { cronTrigger, eventTrigger, everyTrigger } from '../src/reaction-testing/playbook-writes.ts';
 
 export type TriggersOf = (type: string) => readonly Trigger[];
 

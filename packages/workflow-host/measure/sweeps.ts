@@ -1,12 +1,12 @@
 import { Effect, Function } from 'effect';
 
 import { openHostDatabase, type DatabaseSettings } from '../src/database/host-databases.ts';
-import { passOf } from '../src/follower/brain-pass.ts';
-import { playbookRecordsOf } from '../src/follower/brain-records.ts';
-import { followedPlaybooksOn } from '../src/follower/followed-brains.ts';
-import { byAdmin, definitionRecorded, eventTrigger, published } from '../src/reaction-testing/brain-writes.ts';
+import { followedPlaybooksOn } from '../src/follower/followed-playbooks.ts';
+import { passOf } from '../src/follower/playbook-pass.ts';
+import { playbookRecordsOf } from '../src/follower/playbook-records.ts';
 import { definitionRecordsKeepingTheirOwnStops } from '../src/reaction-testing/own-stops.ts';
-import { playbookSweepsOn, type PlaybookSweeps } from '../src/sweeps/brain-sweeps.ts';
+import { byAdmin, definitionRecorded, eventTrigger, published } from '../src/reaction-testing/playbook-writes.ts';
+import { playbookSweepsOn, type PlaybookSweeps } from '../src/sweeps/playbook-sweeps.ts';
 import { resultOfEnding } from '../src/waiting-testing/recorded-waiting.ts';
 import { servedWaitingOf } from '../src/waiting/waiting-parts.ts';
 
@@ -23,7 +23,7 @@ type Pass = ReturnType<typeof passOf>;
 const idleSweeps = 20;
 
 function playbookKeyOf(index: number): string {
-  return `brain/acme/b${index}/`;
+  return `playbook/acme/b${index}/`;
 }
 
 function inTurn(count: number, step: (index: number) => Promise<unknown>): Promise<void> {

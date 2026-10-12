@@ -2,13 +2,13 @@
 
 # Build your first workflow
 
-Turn the campaign review from [Build your first brain](first-playbook.md) into a workflow. It reviews a brief, then asks the campaign's owner to approve it, and waits for the answer. You will save an interaction function that asks for the approval, save the workflow, start a run, find its request in the playbook's inbox, answer it, and read the finished run.
+Turn the campaign review from [Build your first playbook](first-playbook.md) into a workflow. It reviews a brief, then asks the campaign's owner to approve it, and waits for the answer. You will save an interaction function that asks for the approval, save the workflow, start a run, find its request in the playbook's inbox, answer it, and read the finished run.
 
 The campaign and figures below are sample data. This exercise makes no changes to advertising accounts or campaign budgets.
 
 ## Before you start
 
-Complete [Build your first brain](first-playbook.md) first. This exercise uses its practice playbook, `campaign-review-tutorial`, and its reasoning function, `review-campaign-brief`, which takes one required input, `brief`.
+Complete [Build your first playbook](first-playbook.md) first. This exercise uses its practice playbook, `campaign-review-tutorial`, and its reasoning function, `review-campaign-brief`, which takes one required input, `brief`.
 
 Your agent needs a connection with permission to create and run definitions in that playbook. Every runtime offers workflows. The approval is an interaction function, which a self-hosted runtime offers, such as the one [Connect your agent](../get-started/local.md) starts; the first check below shows whether your connection offers it.
 

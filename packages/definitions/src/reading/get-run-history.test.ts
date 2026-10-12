@@ -33,7 +33,7 @@ const runLog: Decider<null, Logging, typeof StandInLogEventSchema.Type> = {
   initialState: null,
   evolve: (state) => state,
   decide: ({ event }) => Result.succeed([event]),
-  context: ({ at }) => ({ at, by: 'brain:alpha', runId }),
+  context: ({ at }) => ({ at, by: 'playbook:alpha', runId }),
   eventSchema: StandInLogEventSchema,
 };
 
@@ -58,7 +58,7 @@ async function playbookWithRun(presenters: readonly Presenter[] = makeDefinition
     definitions.call(operations.getRunHistory, toAlpha(acmeAdmin, { run_id: runId, ...input }));
   const logging = (event: StandInLogEvent, at: string, recordedAt: string) =>
     definitions.run(
-      Effect.orDie(definitions.ledger.service.execute(`brain/acme/alpha/run-logs/${runId}`, runLog, { event, at })),
+      Effect.orDie(definitions.ledger.service.execute(`playbook/acme/alpha/run-logs/${runId}`, runLog, { event, at })),
       recordedAt,
     );
   return { ...definitions, ...operations, running, reading, logging };
@@ -98,7 +98,7 @@ describe('the history of a run', () => {
     const { running, reading } = await playbookWithRun();
     await running(runId, '2026-10-01T09:00:10.000Z');
     const metadata = {
-      stream: `brain/acme/alpha/runs/${runId}`,
+      stream: `playbook/acme/alpha/runs/${runId}`,
       at: '2026-10-01T09:00:10.000Z',
       by: 'acme-admin',
       run_id: runId,

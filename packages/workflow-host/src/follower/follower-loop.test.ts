@@ -4,7 +4,7 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { systemClock } from '../loop/host-clock.ts';
 import { until } from '../reaction-testing/until.ts';
-import type { Sweep } from '../sweeps/brain-sweeps.ts';
+import type { Sweep } from '../sweeps/playbook-sweeps.ts';
 import { startFollower } from './follower-loop.ts';
 import type { PassEnd } from './record-steps.ts';
 
@@ -107,32 +107,32 @@ describe('the follower of the playbooks', () => {
     const watched = followerWith();
     await logReaching(watched, 3);
 
-    watched.raise('org/acme/brains');
+    watched.raise('org/acme/playbooks');
     const log = await logReaching(watched, 4);
 
-    expect(log).toEqual(['anchored', 'start', 'sweep', 'registries org/acme/brains']);
+    expect(log).toEqual(['anchored', 'start', 'sweep', 'registries org/acme/playbooks']);
   });
 
   it('passes a playbook an event was appended to, not one a run appended to, and again while the pass says there is more', async () => {
     const watched = followerWith({ passEnds: ['more', 'more', 'caught_up'] });
     await logReaching(watched, 3);
 
-    watched.raise('brain/acme/beta/run-logs/r-1');
-    watched.raise('brain/acme/alpha/events/e1');
+    watched.raise('playbook/acme/beta/run-logs/r-1');
+    watched.raise('playbook/acme/alpha/events/e1');
     watched.raise('workflow/elsewhere');
     const log = await logReaching(watched, 6);
 
     expect(log.slice(3)).toEqual([
-      'pass brain/acme/alpha/ signal',
-      'pass brain/acme/alpha/ signal',
-      'pass brain/acme/alpha/ signal',
+      'pass playbook/acme/alpha/ signal',
+      'pass playbook/acme/alpha/ signal',
+      'pass playbook/acme/alpha/ signal',
     ]);
   });
 
   it('reads the registries a sweep names, passes the playbooks it hands out, and sweeps again at once when it says so', async () => {
     const handedOut: Sweep = {
-      registries: ['org/acme/brains'],
-      playbooks: [{ playbookKey: 'brain/acme/alpha/', known: undefined }],
+      registries: ['org/acme/playbooks'],
+      playbooks: [{ playbookKey: 'playbook/acme/alpha/', known: undefined }],
       again: true,
     };
     const watched = followerWith({ sweeps: [handedOut] });
@@ -142,9 +142,9 @@ describe('the follower of the playbooks', () => {
     expect(log).toEqual([
       'anchored',
       'start',
-      'registries org/acme/brains',
+      'registries org/acme/playbooks',
       'sweep',
-      'pass brain/acme/alpha/ sweep',
+      'pass playbook/acme/alpha/ sweep',
       'sweep',
     ]);
   });
@@ -186,30 +186,30 @@ describe('the follower of the playbooks, when a pass over a playbook fails', () 
     const watched = followerWith({ passEnds: ['fails'] });
     await logReaching(watched, 3);
 
-    watched.raise('brain/acme/alpha/events/e1');
+    watched.raise('playbook/acme/alpha/events/e1');
     await logReaching(watched, 5);
-    watched.raise('brain/acme/alpha/events/e2');
+    watched.raise('playbook/acme/alpha/events/e2');
     const log = await logReaching(watched, 6);
 
     expect(log.slice(3)).toEqual([
       'A pass over a playbook failed; the next sweep passes the playbook again',
-      'handed back brain/acme/alpha/',
-      'pass brain/acme/alpha/ signal',
+      'handed back playbook/acme/alpha/',
+      'pass playbook/acme/alpha/ signal',
     ]);
   });
 
   it('says a follow of a signalled playbook that fails is trouble for that playbook alone, passes the others, and hands the playbook back', async () => {
-    const watched = followerWith({ followFailingOnce: 'brain/acme/alpha/' });
+    const watched = followerWith({ followFailingOnce: 'playbook/acme/alpha/' });
     await logReaching(watched, 3);
 
-    watched.raise('brain/acme/alpha/events/e1');
-    watched.raise('brain/acme/beta/events/e1');
+    watched.raise('playbook/acme/alpha/events/e1');
+    watched.raise('playbook/acme/beta/events/e1');
     const log = await logReaching(watched, 6);
 
     expect(log.slice(3)).toEqual([
       'A pass over a playbook failed; the next sweep passes the playbook again',
-      'handed back brain/acme/alpha/',
-      'pass brain/acme/beta/ signal',
+      'handed back playbook/acme/alpha/',
+      'pass playbook/acme/beta/ signal',
     ]);
   });
 });

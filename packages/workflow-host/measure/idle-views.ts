@@ -16,7 +16,7 @@ export interface IdleViews {
   readonly busyMsASecond: number;
 }
 
-const playbook = 'brain/acme/alpha/';
+const playbook = 'playbook/acme/alpha/';
 
 const details = {
   language: 'typescript',

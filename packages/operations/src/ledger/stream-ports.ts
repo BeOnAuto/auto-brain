@@ -1,6 +1,6 @@
 import type { Effect } from 'effect';
 
-import type { PlaybookAddress } from '../caller/brain-context.ts';
+import type { PlaybookAddress } from '../caller/playbook-context.ts';
 import type { Conflict } from '../outcome/conflict.ts';
 import type { InvalidInput } from '../outcome/invalid-input.ts';
 import type { DeclarableReason, Rejection } from '../outcome/rejection.ts';

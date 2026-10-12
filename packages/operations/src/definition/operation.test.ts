@@ -7,11 +7,11 @@ import {
   playbookBoundRecordedReader,
   playbookBoundRunOutcomesReader,
 } from '../ledger/bound-ports.ts';
-import { labelPlaybook } from '../testing/brain-labels.ts';
 import { publishDraft } from '../testing/drafts.ts';
 import { memoryLedger, type MemoryLedger } from '../testing/memory-ledger.ts';
 import { misreport, overshare } from '../testing/misbehaving.ts';
 import { addNote, getNote } from '../testing/notes.ts';
+import { labelPlaybook } from '../testing/playbook-labels.ts';
 
 const Empty = Schema.Record(Schema.String, Schema.Never);
 

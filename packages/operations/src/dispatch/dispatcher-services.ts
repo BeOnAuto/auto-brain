@@ -1,7 +1,7 @@
 import { Context, Effect } from 'effect';
 
-import { PlaybookRegistry } from '../ledger/brain-registry.ts';
 import { Ledger } from '../ledger/ledger.ts';
+import { PlaybookRegistry } from '../ledger/playbook-registry.ts';
 import { IncidentReporter } from './incident-reporter.ts';
 
 export type DispatcherServices = Ledger | PlaybookRegistry | IncidentReporter;

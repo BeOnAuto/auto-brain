@@ -2,11 +2,11 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { rejected, type PipelineStep } from '../index.ts';
-import { labelPlaybook } from '../testing/brain-labels.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { publishDraft } from '../testing/drafts.ts';
 import { harness, toPlaybook, toOrg } from '../testing/harness.ts';
 import { addNote, copyNote, getNote, listNotes } from '../testing/notes.ts';
+import { labelPlaybook } from '../testing/playbook-labels.ts';
 
 const toAlpha = toPlaybook('acme', 'alpha');
 

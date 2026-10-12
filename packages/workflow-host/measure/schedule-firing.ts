@@ -4,7 +4,7 @@ import { Effect, Function } from 'effect';
 
 import { openHostDatabase, type DatabaseSettings } from '../src/database/host-databases.ts';
 import { openWorkflowHost } from '../src/host/workflow-host.ts';
-import { playbookCreated, everyTrigger, definitionRecorded } from '../src/reaction-testing/brain-writes.ts';
+import { playbookCreated, everyTrigger, definitionRecorded } from '../src/reaction-testing/playbook-writes.ts';
 import { recordedReactions } from '../src/reaction-testing/recorded-reactions.ts';
 import { testMachine } from '../src/testing/host-documents.ts';
 import { recordedWaiting } from '../src/waiting-testing/recorded-waiting.ts';

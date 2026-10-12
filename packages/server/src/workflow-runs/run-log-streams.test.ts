@@ -14,7 +14,7 @@ import {
   workflowTestTimeoutMs,
 } from '../testing/servers/workflow-server.ts';
 
-const playbookKey = 'brain/acme/alpha/';
+const playbookKey = 'playbook/acme/alpha/';
 
 const summary = ['---', 'model: anthropic/claude-sonnet-4-5', '---', 'Summarize: {{ input.text }}'].join('\n');
 

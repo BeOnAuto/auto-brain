@@ -1,6 +1,8 @@
 import type { EventStore } from '@beonauto/ledger';
 import { describe, expect, it } from 'vitest';
 
+import { triggerRowsOf, untilTriggersAt } from '../reaction-testing/kept-triggers.ts';
+import { movedClock } from '../reaction-testing/moved-clock.ts';
 import {
   alpha,
   at,
@@ -11,9 +13,7 @@ import {
   recorded,
   definitionRecordAt,
   definitionRecorded,
-} from '../reaction-testing/brain-writes.ts';
-import { triggerRowsOf, untilTriggersAt } from '../reaction-testing/kept-triggers.ts';
-import { movedClock } from '../reaction-testing/moved-clock.ts';
+} from '../reaction-testing/playbook-writes.ts';
 import { reactingHost } from '../reaction-testing/reacting-host.ts';
 import { until } from '../reaction-testing/until.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';

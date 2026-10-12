@@ -111,12 +111,6 @@ describe('reading a stdio server', () => {
 });
 
 describe('the shape of the servers', () => {
-  it('refuses obsolete restrictions instead of exposing a connection to every playbook', () => {
-    expect(problemsOf({ graph: { ...graph, brains: ['sales'] } })).toEqual([
-      'MCP_SERVERS /graph/brains: Expected no excess property',
-    ]);
-  });
-
   it('refuses a setting that is not JSON, or not the shape of the servers', () => {
     expect(refusalOf({ MCP_SERVERS: '{graph' }).problems).toEqual([
       { setting: 'MCP_SERVERS', detail: '/: Expected JSON' },

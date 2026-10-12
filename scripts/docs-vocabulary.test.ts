@@ -23,6 +23,17 @@ const oldWords: readonly string[] = [
   'telling_ended',
   'arguments_json',
   'result_json',
+  String.raw`(?<![\w-])brain\\?/`,
+  'brain_key',
+  'brain:read|brain:write',
+  String.raw`(?<![\w-])brain:(?=\S)`,
+  'brain_(?:created|updated|retired)',
+  String.raw`/brains(?![\w-])`,
+  '@beonauto/brains',
+  'workflow_followed_brains',
+  '_by_brain',
+  'RECALL_BRAINS_AT_ONCE',
+  String.raw`(?:[{,]\s*|\n\s*|["'])brains?["']?\s*:`,
 ];
 
 const keptFolders: readonly string[] = ['docs/decisions/'];

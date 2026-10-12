@@ -2,7 +2,7 @@ import { Conflict } from '@beonauto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { alpha, at, recorded } from '../reaction-testing/brain-writes.ts';
+import { alpha, at, recorded } from '../reaction-testing/playbook-writes.ts';
 import { eventually } from '../testing/eventually.ts';
 import { faultyDatabase } from '../testing/faulty-database.ts';
 import { recordedWaiting, resultOfEnding } from '../waiting-testing/recorded-waiting.ts';
@@ -12,7 +12,7 @@ import { childEndings, endedChildrenOn } from './child-endings.ts';
 const child = '0199a3c4-7d2e-7c1a-9b3f-0000000000c1';
 
 const ofTheChild = {
-  by: 'brain:alpha',
+  by: 'playbook:alpha',
   at,
   runId: child,
   definitionType: 'workflow',

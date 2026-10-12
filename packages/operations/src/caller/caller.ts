@@ -1,8 +1,8 @@
 import { Context, Schema } from 'effect';
 
-import { PlaybookAccessSchema, type PlaybookAccess } from './brain-access.ts';
 import { OrgIdSchema } from './identifiers.ts';
 import { PermissionSchema, type Permission } from './permission.ts';
+import { PlaybookAccessSchema, type PlaybookAccess } from './playbook-access.ts';
 
 export interface CallerIdentity {
   readonly id: string;
@@ -25,7 +25,7 @@ export function playbookCallerOf({
   readonly org: string;
   readonly playbook: string;
 }): CallerIdentity {
-  return { id: `brain:${playbook}`, org, permissions: ['playbook:read', 'playbook:write'], playbooks: [playbook] };
+  return { id: `playbook:${playbook}`, org, permissions: ['playbook:read', 'playbook:write'], playbooks: [playbook] };
 }
 
 export class Caller extends Context.Service<Caller, CallerIdentity>()('@beonauto/operations/Caller') {}

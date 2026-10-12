@@ -26,7 +26,7 @@ function recordOf(data: unknown): RecordedEvent {
     globalPosition: 1,
     type: 'tool_call_answered',
     data,
-    context: { at, by: 'brain:alpha' },
+    context: { at, by: 'playbook:alpha' },
     recordedAt: at,
   };
 }
@@ -44,7 +44,7 @@ function keptOf(records: readonly RecordedEvent[], mostBytes: number, digests: r
       Effect.provideService(
         PlaybookReader,
         PlaybookReader.of({
-          ...prefixedReader(service, 'brain/acme/alpha/'),
+          ...prefixedReader(service, 'playbook/acme/alpha/'),
           ...playbookBoundRecordedReader(service, playbook),
           ...playbookBoundRunOutcomesReader(service, playbook),
           ...playbookBoundProjectionReader(service, playbook),

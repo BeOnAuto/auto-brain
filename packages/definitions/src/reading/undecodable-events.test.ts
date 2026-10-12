@@ -27,7 +27,7 @@ describe('a stored event of a run that no longer decodes', () => {
     const { call, ledger, run } = harness();
     await run(
       Effect.orDie(
-        ledger.service.execute(`brain/acme/alpha/runs/${runId}`, broken, {
+        ledger.service.execute(`playbook/acme/alpha/runs/${runId}`, broken, {
           type: 'run_started',
           data: { at: '2026-10-01T09:00:00.000Z' },
         }),

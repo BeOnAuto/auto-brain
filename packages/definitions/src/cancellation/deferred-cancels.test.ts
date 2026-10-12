@@ -91,7 +91,7 @@ describe('a cancel of a run of another capability, as asked', () => {
       ),
     );
 
-    expect(records.at(-1)).toMatchObject({ type: 'run_rejected', context: { by: 'brain:alpha' } });
+    expect(records.at(-1)).toMatchObject({ type: 'run_rejected', context: { by: 'playbook:alpha' } });
   });
 });
 

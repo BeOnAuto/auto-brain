@@ -1,6 +1,6 @@
-export { streamPrefixOfPlaybook, streamPrefixOfOrg } from './ledger/bound-ports.ts';
-export { PlaybookAccessSchema, canAccessPlaybook, type PlaybookAccess } from './caller/brain-access.ts';
-export { PlaybookRegistry, type PlaybookStatus } from './ledger/brain-registry.ts';
+export { playbookOfStreamPrefix, streamPrefixOfPlaybook, streamPrefixOfOrg } from './ledger/bound-ports.ts';
+export { PlaybookAccessSchema, canAccessPlaybook, type PlaybookAccess } from './caller/playbook-access.ts';
+export { PlaybookRegistry, type PlaybookStatus } from './ledger/playbook-registry.ts';
 export {
   boundedPage,
   mostBytesLoadedInAPage,
@@ -9,9 +9,9 @@ export {
   type BoundedPage,
   type Examined,
 } from './reading/page-bounds.ts';
-export { PlaybookReader } from './ledger/brain-reader.ts';
+export { PlaybookReader } from './ledger/playbook-reader.ts';
 export { isCalendarDay } from './reading/calendar-days.ts';
-export { PlaybookContext, type PlaybookAddress } from './caller/brain-context.ts';
+export { PlaybookContext, type PlaybookAddress } from './caller/playbook-context.ts';
 export {
   CallLineage,
   type CallLink,
@@ -19,7 +19,7 @@ export {
   type TriggerKind,
   type TriggerLink,
 } from './caller/call-lineage.ts';
-export { PlaybookWriter } from './ledger/brain-writer.ts';
+export { PlaybookWriter } from './ledger/playbook-writer.ts';
 export { Caller, CallerIdentitySchema, playbookCallerOf, type CallerIdentity } from './caller/caller.ts';
 export { CallResultSchema, invalidArguments, type CallResult, type CallStatus } from './outcome/call-result.ts';
 export { makeCatalog, type Catalog } from './catalog/catalog.ts';

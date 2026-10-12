@@ -2,10 +2,10 @@ import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { defineQuery, type CallerIdentity } from '../index.ts';
-import { labelPlaybook, listPlaybookLabels } from '../testing/brain-labels.ts';
 import { acmeAdmin, acmeAlphaReader } from '../testing/callers.ts';
 import { harness, toPlaybook, toOrg } from '../testing/harness.ts';
 import { addNote, getNote } from '../testing/notes.ts';
+import { labelPlaybook, listPlaybookLabels } from '../testing/playbook-labels.ts';
 
 const toAcme = toOrg('acme');
 

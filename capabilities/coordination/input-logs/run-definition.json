@@ -44,7 +44,7 @@
       },
       "attributes": {
         "org": "acme",
-        "brain": "alpha",
+        "playbook": "alpha",
         "run_id": "0199a3c4-7d2e-7c1a-9b3f-000000000302",
         "definition": {
           "name": "run-definition",
@@ -150,7 +150,7 @@
         },
         {
           "op": "add",
-          "path": "/attributes/brain",
+          "path": "/attributes/playbook",
           "value": "alpha"
         },
         {
@@ -327,7 +327,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3701
+          "value": 3704
         }
       ],
       "outputs": [
@@ -479,7 +479,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 5514
+          "value": 5517
         }
       ],
       "outputs": [

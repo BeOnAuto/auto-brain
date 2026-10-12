@@ -64,7 +64,7 @@ describe('run_definition', () => {
 
     const outcome = await call(runDefinition, running('greet', { input: { who: 'Ada' } }), later);
     const [, , runStream] = ledger.streamNames();
-    const id = String(runStream).replace('brain/acme/alpha/runs/', '');
+    const id = String(runStream).replace('playbook/acme/alpha/runs/', '');
 
     expect(id).toMatch(uuidV7);
     expect(outcome).toStrictEqual({

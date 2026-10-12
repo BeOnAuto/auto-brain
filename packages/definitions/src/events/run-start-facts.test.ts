@@ -4,10 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { runStreamNameOf } from '../runs/run-decider.ts';
 import type { RunEvent } from '../runs/run-events.ts';
 import { testRunId as runId } from '../testing/run-facts.ts';
-import { playbookFactOf } from './brain-facts.ts';
+import { playbookFactOf } from './playbook-facts.ts';
 
 const ofCheck: Context = {
-  by: 'brain:alpha',
+  by: 'playbook:alpha',
   at: '2026-10-01T09:00:05.000Z',
   runId,
   definitionType: 'workflow',

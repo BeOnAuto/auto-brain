@@ -4,12 +4,12 @@ import { describe, expect, it } from 'vitest';
 
 import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
-import { cronTrigger, eventTrigger, everyTrigger } from '../reaction-testing/brain-writes.ts';
 import { definitionRecordsKeepingTheirOwnStops } from '../reaction-testing/own-stops.ts';
+import { cronTrigger, eventTrigger, everyTrigger } from '../reaction-testing/playbook-writes.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
 import { definitionRecordsIn, type DefinitionRecord } from './definition-records.ts';
 
-const playbookKey = 'brain/acme/alpha/';
+const playbookKey = 'playbook/acme/alpha/';
 
 const aMinute = 60_000;
 

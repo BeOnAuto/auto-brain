@@ -55,7 +55,7 @@ function timeOf(second: number): string {
 }
 
 function streamOf(playbook: string, run: number): string {
-  return `brain/o1/${playbook}/runs/${String(run).padStart(8, '0')}`;
+  return `playbook/o1/${playbook}/runs/${String(run).padStart(8, '0')}`;
 }
 
 interface Ending {
@@ -186,7 +186,9 @@ async function measured(ledger: AnyLedger, [label, playbook, selection, page]: C
 async function pagesOf(layer: Layer.Layer<Ledger>, deepPoint: Point): Promise<void> {
   const { ledger, dispose } = await openLedgerWith(layer);
   const lines = await Effect.runPromise(
-    Effect.forEach(cases(cursorOf('brain/o1/big/', deepPoint)), (each) => Effect.promise(() => measured(ledger, each))),
+    Effect.forEach(cases(cursorOf('playbook/o1/big/', deepPoint)), (each) =>
+      Effect.promise(() => measured(ledger, each)),
+    ),
   );
   write(['| Page | median ms | slowest ms | runs | data |', '| --- | --- | --- | --- | --- |', ...lines].join('\n'));
   await dispose();

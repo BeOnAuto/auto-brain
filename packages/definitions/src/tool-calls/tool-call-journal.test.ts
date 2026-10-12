@@ -39,7 +39,7 @@ async function playbookWithToolUser() {
     definitions.run(
       Effect.forEach(commands, (command) =>
         Effect.orDie(
-          definitions.ledger.service.execute(`brain/acme/alpha/${runStreamNameOf(runId)}`, runDecider, command),
+          definitions.ledger.service.execute(`playbook/acme/alpha/${runStreamNameOf(runId)}`, runDecider, command),
         ),
       ),
     );

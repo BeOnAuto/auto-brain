@@ -32,7 +32,7 @@ const event = {
   summary: 'A run started.',
   data: {},
   metadata: {
-    stream: 'brain/acme/alpha/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
+    stream: 'playbook/acme/alpha/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
     position: 1,
     global_position: 1,
     correlation_id: null,

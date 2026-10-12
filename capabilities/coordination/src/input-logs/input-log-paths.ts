@@ -26,7 +26,7 @@ export interface InputLogPath {
 function attributesOf(name: string, runId: string): JsonObject {
   return {
     org: 'acme',
-    brain: 'alpha',
+    playbook: 'alpha',
     run_id: runId,
     definition: { name, version: 1 },
     caller: { id: 'acme-admin' },

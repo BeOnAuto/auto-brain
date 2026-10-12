@@ -109,7 +109,7 @@ function contentReadBack(entry: LedgerEntry): void {
 
       await entry.queried(
         database,
-        `INSERT INTO recorded_content_chunks (brain_key, sha256, chunk, text) VALUES ('brain/acme/alpha/', '${sha256}', 0, '${text}')`,
+        `INSERT INTO recorded_content_chunks (playbook_key, sha256, chunk, text) VALUES ('playbook/acme/alpha/', '${sha256}', 0, '${text}')`,
       );
       const beforeTheHead = await Effect.runPromise(ledger.content.get(alpha, sha256));
       await kept(ledger, text);

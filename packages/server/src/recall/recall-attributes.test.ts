@@ -25,7 +25,7 @@ const triggeredRuns = recallDocument(
     '  events:',
     '    - type: run_succeeded',
     '      subject: workflow/tally',
-    '      caller: brain:alpha',
+    '      caller: playbook:alpha',
     '      triggerkind: event',
     'view:',
     '  initial: []',
@@ -77,7 +77,7 @@ describe(
       await standingUntil(server, 'triggered', liveWith(1));
       const answer = await recalled(server, 'triggered', {});
 
-      expect(answer.body).toMatchObject({ status: 'succeeded', output: ['workflow/tally brain:alpha event'] });
+      expect(answer.body).toMatchObject({ status: 'succeeded', output: ['workflow/tally playbook:alpha event'] });
     });
   },
 );

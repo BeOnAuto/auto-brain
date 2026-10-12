@@ -17,7 +17,7 @@ const encodeEvent = Schema.encodeSync(Schema.toCodecJson(RunLogEventSchema));
 
 const presentation = presentationOf([runPresenter]);
 
-const showing = { streamPrefix: 'brain/acme/alpha/', content: nothingKept, view: 'page' } as const;
+const showing = { streamPrefix: 'playbook/acme/alpha/', content: nothingKept, view: 'page' } as const;
 
 function presented(receipt: InputReceipt) {
   const event: RunLogEvent = { type: 'input_applied', format: 6, receipt, steps: [], patch: [], outputs: [] };

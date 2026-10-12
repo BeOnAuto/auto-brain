@@ -1,6 +1,6 @@
 import type { AppRuntime } from '@beonauto/api';
-import { playbookOperations } from '@beonauto/brains';
 import type { DispatcherServices } from '@beonauto/operations';
+import { playbookOperations } from '@beonauto/playbooks';
 
 import type { Served } from '../lifecycle/lifecycle.ts';
 import type { Settings } from '../settings/settings.ts';

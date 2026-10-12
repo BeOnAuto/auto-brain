@@ -1,4 +1,4 @@
-import { defineListPlaybookEvents } from '@beonauto/brains';
+import { defineListPlaybookEvents } from '@beonauto/playbooks';
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -47,7 +47,7 @@ function publishing(event: object) {
 
 function storedOn(definitions: ReturnType<typeof harness>, source: string, id: string) {
   return Effect.runPromise(
-    definitions.ledger.service.load(`brain/acme/alpha/${publishedEventStreamOf(source, id)}`, publishedEventDecider),
+    definitions.ledger.service.load(`playbook/acme/alpha/${publishedEventStreamOf(source, id)}`, publishedEventDecider),
   );
 }
 
