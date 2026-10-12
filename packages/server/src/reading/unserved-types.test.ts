@@ -8,7 +8,7 @@ const refusal = {
   errors: [
     {
       pointer: '/type',
-      detail: 'Expected a type this server runs: reasoning, interaction, computation, recall, or workflow',
+      detail: 'Expected a type this server runs: reasoning, interaction, computation, recall, prediction, or workflow',
     },
   ],
 };
@@ -27,10 +27,10 @@ afterAll(async () => {
 describe('a type the server does not run', () => {
   it('is refused at /type, naming the types it runs, by every operation that takes one over HTTP', async () => {
     const answers = await Promise.all([
-      server.call('GET', `${alpha}/runs?type=prediction`),
-      server.call('GET', `${alpha}/analytics?type=prediction`),
-      server.call('GET', `${alpha}/definitions/prediction`),
-      server.call('POST', `${alpha}/definitions/prediction/brief/run`, { body: { input: {} } }),
+      server.call('GET', `${alpha}/runs?type=forecast`),
+      server.call('GET', `${alpha}/analytics?type=forecast`),
+      server.call('GET', `${alpha}/definitions/forecast`),
+      server.call('POST', `${alpha}/definitions/forecast/brief/run`, { body: { input: {} } }),
     ]);
 
     expect(answers.map(({ status }) => status)).toEqual([422, 422, 422, 422]);
@@ -41,12 +41,12 @@ describe('a type the server does not run', () => {
     const listed = await withMcpSession(
       'current revision',
       { url: `${server.origin}/orgs/acme/playbooks/alpha/mcp`, headers: {} },
-      (session) => session.callTool('list_runs', { type: 'prediction' }),
+      (session) => session.callTool('list_runs', { type: 'forecast' }),
     );
 
     expect(listed.isError).toBe(true);
     expect(JSON.stringify(listed.content)).toContain(
-      'Expected a type this server runs: reasoning, interaction, computation, recall, or workflow',
+      'Expected a type this server runs: reasoning, interaction, computation, recall, prediction, or workflow',
     );
   });
 });

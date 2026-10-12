@@ -63,7 +63,7 @@ describe('the notes of the views the workflow host keeps', () => {
 
     expect(lines).toEqual([
       expect.stringContaining(
-        '"message":"A recorded event of a playbook could not be read as an event, so no recall function folds it","level":"WARN"',
+        '"message":"A recorded event of a playbook could not be read as an event, so neither a recall function nor a dataset folds it","level":"WARN"',
       ),
       expect.stringContaining(
         '"message":"The view of a recall function stopped at an event its fold could not take; saving a corrected version rebuilds it","level":"WARN"',
@@ -71,6 +71,28 @@ describe('the notes of the views the workflow host keeps', () => {
     ]);
     expect(lines[1]).toContain(
       '"annotations":{"playbook":"playbook/acme/alpha/","recall_function":"reviews","version":2}',
+    );
+  });
+});
+
+describe('the note of an event a projection passed over', () => {
+  it('warns that the event matched its filters but held what it cannot take, naming the projection and why', async () => {
+    const [line] = await linesLoggedBy(
+      logHostNote({
+        kind: 'record_passed_over',
+        playbook: 'playbook/acme/alpha/',
+        record: 'r-2',
+        reason: 'refused',
+        by: 'the dataset 3f2a',
+        detail: 'Its series at /region is not text of at most 256 bytes',
+      }),
+    );
+
+    expect(line).toContain(
+      '"message":"A recorded event of a playbook was passed over by a projection whose filters it matched, since it holds what that projection cannot take","level":"WARN"',
+    );
+    expect(line).toContain(
+      '"annotations":{"playbook":"playbook/acme/alpha/","record":"r-2","passed_over_by":"the dataset 3f2a","detail":"Its series at /region is not text of at most 256 bytes"}',
     );
   });
 });

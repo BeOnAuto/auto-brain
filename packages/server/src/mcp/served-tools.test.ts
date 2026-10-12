@@ -31,6 +31,17 @@ const addressedToTheAgent = [
   /\b(?:call|use|run|read)\s+\S+\s+first\b/iu,
 ];
 
+const formatGuides = [
+  'reasoning-function',
+  'interaction-function',
+  'computation-function',
+  'recall-function',
+  'prediction-function',
+  'workflow',
+];
+
+const listingEveryFormat: unknown = expect.arrayContaining(formatGuides);
+
 const anyJsonValue: ReadonlySet<string> = new Set(['input', 'answer']);
 
 const PropertiesSchema = Schema.Struct({
@@ -94,16 +105,17 @@ describe('the descriptions of the tools of /mcp', () => {
     expect(tools.filter((tool) => isAddressedToTheAgent(tool)).map(({ name }) => name)).toEqual([]);
   });
 
-  it('name each type of definition with the kind it is and its guide, in create_definition, the longest description, at 794 characters in five sentences', () => {
+  it('name each type of definition with the kind it is in create_definition, at 708 characters in five sentences, and leave its guide to get_guide, which lists every guide', () => {
     const description = descriptionOf('create_definition');
 
     expect(description).toContain(
-      'reasoning, a reasoning function, guide reasoning-function; interaction, an interaction function, guide interaction-function; computation, a computation function, guide computation-function; recall, a recall function, guide recall-function; workflow, a workflow, guide workflow.',
+      'reasoning, a reasoning function; interaction, an interaction function; computation, a computation function; recall, a recall function; prediction, a prediction function; workflow, a workflow.',
     );
-    expect([description.length, sentencesOf(description)]).toEqual([794, 5]);
-    expect(
-      tools.filter((tool) => descriptionOf(tool.name).length > description.length).map(({ name }) => name),
-    ).toEqual([]);
+    expect(description).toContain("`source` is the whole document in that type's format, which get_guide gives.");
+    expect([description.length, sentencesOf(description)]).toEqual([708, 5]);
+    expect(tools.find(({ name }) => name === 'get_guide')?.inputSchema).toMatchObject({
+      properties: { guide: { enum: listingEveryFormat } },
+    });
   });
 
   it('say that a function that calls a tool may change something, in run_definition at 777 characters, and that a run that ends within its call cannot be cancelled, in cancel_run at 671', () => {

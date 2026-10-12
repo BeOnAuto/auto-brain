@@ -25,7 +25,7 @@ export function compositionRootWith(
   const wiring = functionWiringOf(modelAccessOf, programPoolOf, toolTiming);
   return {
     ...defaultServerOptions,
-    runtimeLayer: (settings) => applicationLayer(ledgerLayerFor(settings, wiring.recall.appends)),
+    runtimeLayer: (settings) => applicationLayer(ledgerLayerFor(settings, wiring.projections.appends)),
     serve: async (runtime, settings) => {
       const { ledger, workflows } = settings;
       await runtime.run(logLedger(ledger));

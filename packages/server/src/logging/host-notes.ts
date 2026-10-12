@@ -27,10 +27,15 @@ function settledAfterBackingOff({ run, attempts }: NoteOf<'settled_after_back_of
   );
 }
 
-function passedOver({ playbook, record }: NoteOf<'record_passed_over'>): Effect.Effect<void> {
-  return Effect.logWarning(
-    'A recorded event of a playbook could not be read as an event, so no recall function folds it',
-  ).pipe(Effect.annotateLogs({ playbook, record }));
+function passedOver(note: NoteOf<'record_passed_over'>): Effect.Effect<void> {
+  const { playbook, record } = note;
+  return note.reason === 'unreadable'
+    ? Effect.logWarning(
+        'A recorded event of a playbook could not be read as an event, so neither a recall function nor a dataset folds it',
+      ).pipe(Effect.annotateLogs({ playbook, record }))
+    : Effect.logWarning(
+        'A recorded event of a playbook was passed over by a projection whose filters it matched, since it holds what that projection cannot take',
+      ).pipe(Effect.annotateLogs({ playbook, record, passed_over_by: note.by, detail: note.detail }));
 }
 
 function viewStalled({ playbook, name, version }: NoteOf<'view_stalled'>): Effect.Effect<void> {

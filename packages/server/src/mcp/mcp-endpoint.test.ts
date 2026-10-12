@@ -121,6 +121,7 @@ const definitionTypes = [
   { type: 'interaction', noun: 'interaction function', guide: 'interaction-function' },
   { type: 'computation', noun: 'computation function', guide: 'computation-function' },
   { type: 'recall', noun: 'recall function', guide: 'recall-function' },
+  { type: 'prediction', noun: 'prediction function', guide: 'prediction-function' },
   { type: 'workflow', noun: 'workflow', guide: 'workflow' },
 ];
 
@@ -203,11 +204,10 @@ describe('the instructions an agent receives when it connects', () => {
       definitionTypes.filter(({ noun }: Readonly<{ noun: string }>) => !resourcesOnTheTerminologyPage.has(noun)),
     ).toEqual([]);
     expect(createDefinition?.inputSchema).toMatchObject({
-      properties: {
-        type: {
-          description: "The definition's type: reasoning, interaction, computation, recall, or workflow",
-        },
-      },
+      properties: { type: { enum: definitionTypes.map(({ type }: Readonly<{ type: string }>) => type) } },
+    });
+    expect(createDefinition?.inputSchema).toMatchObject({
+      properties: { type: { description: "The definition's type" } },
     });
   });
 });

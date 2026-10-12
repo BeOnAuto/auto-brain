@@ -32,9 +32,11 @@ const computation = capabilityOf('computation', 'computation function', { name: 
 
 const recall = capabilityOf('recall', 'recall function', { name: 'recall-function' });
 
+const prediction = capabilityOf('prediction', 'prediction function', { name: 'prediction-function' });
+
 const workflow = capabilityOf('workflow', 'workflow', { name: 'workflow' });
 
-const everyType = [reasoning, computation, recall, workflow];
+const everyType = [reasoning, computation, recall, prediction, workflow];
 
 const interaction = capabilityOf('interaction', 'interaction function', { name: 'interaction-function' });
 
@@ -61,18 +63,20 @@ const pages: Readonly<Record<string, string>> = {
   'reasoning-function': 'reference/reasoning-format.md',
   'computation-function': 'reference/computation-format.md',
   'recall-function': 'reference/recall-format.md',
+  'prediction-function': 'reference/prediction-format.md',
   workflow: 'reference/workflow-format.md',
 };
 
 describe('the guides of a server that runs every type of definition', () => {
   const { definitionTypes, guides, recipes } = servedGuidesOf(everyType);
 
-  it('are the terminology, a guide per type and the four recipes, nine in all', () => {
+  it('are the terminology, a guide per type and the four recipes, ten in all', () => {
     expect([...guides, ...recipes].map(({ name }) => name)).toEqual([
       'terminology',
       'reasoning-function',
       'computation-function',
       'recall-function',
+      'prediction-function',
       'workflow',
       'first-playbook',
       'remember',
@@ -83,6 +87,7 @@ describe('the guides of a server that runs every type of definition', () => {
       { type: 'reasoning', noun: 'reasoning function', guide: 'reasoning-function' },
       { type: 'computation', noun: 'computation function', guide: 'computation-function' },
       { type: 'recall', noun: 'recall function', guide: 'recall-function' },
+      { type: 'prediction', noun: 'prediction function', guide: 'prediction-function' },
       { type: 'workflow', noun: 'workflow', guide: 'workflow' },
     ]);
   });
@@ -98,12 +103,17 @@ describe('the guides of a server that runs every type of definition', () => {
       otherPages.map((path) => withLinksResolved(withoutSiteMarkup(page(path)), path)),
     );
   });
+});
+
+describe('the titles and links of the guides of a server that runs every type of definition', () => {
+  const { guides } = servedGuidesOf(everyType);
 
   it('title each type guide as its page is titled', () => {
     expect(guides.slice(1).map(({ title }) => title)).toEqual([
       'Reasoning function format',
       'Computation function format',
       'Recall function format',
+      'Prediction function format',
       'Workflow format',
     ]);
   });
@@ -136,6 +146,7 @@ describe('the size and the words of the guides of a server', () => {
       'How reasoning functions are written: their document, fields, examples and bounds.',
       'How computation functions are written: their document, fields, examples and bounds.',
       'How recall functions are written: their document, fields, examples and bounds.',
+      'How prediction functions are written: their document, fields, examples and bounds.',
       'How workflows are written: their document, fields, examples and bounds.',
     ]);
   });
