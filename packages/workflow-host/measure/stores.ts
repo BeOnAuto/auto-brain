@@ -28,7 +28,7 @@ function onSQLite(): MeasuredStore {
   return {
     store: 'SQLite',
     aDatabase: () => {
-      const directory = mkdtempSync(join(tmpdir(), 'auto-brain-workflow-host-measure-'));
+      const directory = mkdtempSync(join(tmpdir(), 'auto-runtime-workflow-host-measure-'));
       directories.push(directory);
       return Promise.resolve({ store: 'sqlite', file: join(directory, 'ledger.db') });
     },
