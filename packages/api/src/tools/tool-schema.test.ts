@@ -35,7 +35,7 @@ describe('selfContainedSchemaOf', () => {
   });
 
   it.each([
-    ['refers outside the document', 'https://example.com/brain.json'],
+    ['refers outside the document', 'https://example.com/playbook.json'],
     ['refers to a definition the document lacks', '#/$defs/Missing'],
   ])('leaves a root that %s as it is', (_case, reference) => {
     expect(selfContainedSchemaOf({ schema: { type: 'object', $ref: reference }, definitions: { Playbook } })).toEqual({

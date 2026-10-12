@@ -1,7 +1,7 @@
 import { Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { playbookArgumentOf, withPlaybookArgument } from './brain-argument.ts';
+import { playbookArgumentOf, withPlaybookArgument } from './playbook-argument.ts';
 
 const playbookProperty = {
   type: 'string',
