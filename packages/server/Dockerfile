@@ -67,8 +67,7 @@ RUN apt-get update \
   && install --directory --owner=node --group=node /data \
   && ln --symbolic /data /app/data
 USER node
-RUN for limit in 320 384 448 512 576 640 704 768 832 896 960 1024 1152 1280 1536 2048; do if prlimit --core=0 --data=$((limit * 1024 * 1024)) node --input-type=module --eval "await import('/app/packages/workflow-engine/src/process-loop.ts')" > /dev/null 2>&1; then echo "least data limit that starts the model process: ${limit} MiB"; break; fi; done
-RUN prlimit --core=0 --data=402653184 node --input-type=module --eval "await import('/app/packages/workflow-engine/src/process-loop.ts')"
+RUN prlimit --core=0 --data=805306368 node --input-type=module --eval "await import('/app/packages/workflow-engine/src/process-loop.ts')"
 VOLUME /data
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

@@ -8,9 +8,40 @@ import { readSettings } from '../settings/settings.ts';
 const mebibyte = 1_048_576;
 
 const provenInTheImage =
-  /^RUN prlimit --core=0 --data=(?<bytes>\d+) node --input-type=module --eval "await import\('\/app\/(?<entry>[^']+)'\)"$/mu;
+  /^RUN prlimit --core=0 --data=(?<bytes>\d+) node --input-type=module --eval "await import\('\/app\/(?<entry>[^']+)'\)"$/u;
+
+const settingTheUser = /^(?:FROM|USER) /u;
+
+const copiedAsItIs = /^COPY (?<from>\S+) (?<to>\S+)$/u;
 
 const dockerfile = readFileSync(new URL('../../Dockerfile', import.meta.url), 'utf8');
+
+interface Proof {
+  readonly floor: number;
+  readonly entry: string;
+  readonly user: string | undefined;
+  readonly copied: boolean;
+}
+
+function copiesAsItIs(line: string, entry: string): boolean {
+  const copy = copiedAsItIs.exec(line)?.groups;
+  return copy !== undefined && copy['from'] === copy['to'] && entry.startsWith(`${String(copy['to'])}/`);
+}
+
+function proofIn(file: string): Proof {
+  const lines = file.split('\n');
+  const at = lines.findIndex((line) => provenInTheImage.test(line));
+  const proof = provenInTheImage.exec(lines[at] ?? '')?.groups;
+  const entry = String(proof?.['entry']);
+  const before = lines.slice(0, at);
+  const image = before.slice(before.findLastIndex((line) => line.startsWith('FROM ')));
+  return {
+    floor: Number(proof?.['bytes']) / mebibyte,
+    entry,
+    user: before.findLast((line) => settingTheUser.test(line)),
+    copied: image.some((line) => copiesAsItIs(line, entry)),
+  };
+}
 
 function errorFrom(environment: Environment): unknown {
   try {
@@ -22,8 +53,8 @@ function errorFrom(environment: Environment): unknown {
 }
 
 describe('the prediction function settings', () => {
-  it('keep 4 model processes of 512 MiB each, 2 of them for builds, when nothing is set', () => {
-    expect(readSettings({}).prediction).toEqual({ processes: 4, processMemoryMebibytes: 512, buildsAtOnce: 2 });
+  it('keep 4 model processes of 1,280 MiB each, 2 of them for builds, when nothing is set', () => {
+    expect(readSettings({}).prediction).toEqual({ processes: 4, processMemoryMebibytes: 1280, buildsAtOnce: 2 });
   });
 
   it('look for prlimit in the PATH the server was started with, and nowhere without one', () => {
@@ -53,7 +84,7 @@ describe('the prediction function settings', () => {
         }),
       ),
     ).toBe(
-      'InvalidSettingsError: The prediction function settings are invalid. PREDICTION_PROCESSES: Expected a whole number from 2 to 64, such as 4; PREDICTION_PROCESS_MEMORY: Expected a whole number from 384 to 16384, such as 512; PREDICTION_BUILDS_AT_ONCE: Expected a whole number from 1 to 63, such as 2',
+      'InvalidSettingsError: The prediction function settings are invalid. PREDICTION_PROCESSES: Expected a whole number from 2 to 64, such as 4; PREDICTION_PROCESS_MEMORY: Expected a whole number from 768 to 16384, such as 1280; PREDICTION_BUILDS_AT_ONCE: Expected a whole number from 1 to 63, such as 2',
     );
   });
 
@@ -71,18 +102,18 @@ describe('the prediction function settings', () => {
 });
 
 describe('the least memory of a model process', () => {
-  it('is the data under which the image proves, as its user, with every build, that a model process loads its own entry', () => {
-    const proof = provenInTheImage.exec(dockerfile)?.groups;
-    const floor = Number(proof?.['bytes']) / mebibyte;
-    const entry = String(proof?.['entry']);
+  it('is the data under which the image proves, as its user, with every build, that a model process loads its own entry, which the image copies in', () => {
+    const { floor, entry, user, copied } = proofIn(dockerfile);
 
-    expect([entry, existsSync(new URL(`../../../../${entry}`, import.meta.url))]).toEqual([
+    expect([entry, user, copied, existsSync(new URL(`../../../../${entry}`, import.meta.url))]).toEqual([
       'packages/workflow-engine/src/process-loop.ts',
+      'USER node',
+      true,
       true,
     ]);
     expect(readSettings({ PREDICTION_PROCESS_MEMORY: String(floor) }).prediction.processMemoryMebibytes).toBe(floor);
     expect(String(errorFrom({ PREDICTION_PROCESS_MEMORY: String(floor - 1) }))).toBe(
-      `InvalidSettingsError: The prediction function settings are invalid. PREDICTION_PROCESS_MEMORY: Expected a whole number from ${floor} to 16384, such as 512`,
+      `InvalidSettingsError: The prediction function settings are invalid. PREDICTION_PROCESS_MEMORY: Expected a whole number from ${floor} to 16384, such as 1280`,
     );
   });
 });

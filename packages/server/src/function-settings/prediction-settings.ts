@@ -18,9 +18,9 @@ const processes: CountBounds = { setting: 'PREDICTION_PROCESSES', least: 2, most
 
 const processMemoryMebibytes: CountBounds = {
   setting: 'PREDICTION_PROCESS_MEMORY',
-  least: 384,
+  least: 768,
   most: 16_384,
-  example: 512,
+  example: 1280,
 };
 
 const buildsAtOnce: CountBounds = { setting: 'PREDICTION_BUILDS_AT_ONCE', least: 1, most: 63, example: 2 };

@@ -8,6 +8,7 @@ import {
   openWorkflowStore,
   someFolder,
   viewsFolder,
+  viewsPortOn,
   type ProjectorSettings,
   type WorkflowStore,
 } from '@beonauto/workflow-host';
@@ -46,7 +47,11 @@ export function recallWiring(): RecallWiring {
       const folders = [someFolder(views)];
       const store = await openWorkflowStore(hostDatabaseOf(ledger), hostReports(runtime).lostConnection, folders);
       return {
-        capability: makeRecallFunctionAdapter({ pool, views: store.views, mostFunctions: recall.mostFunctions }),
+        capability: makeRecallFunctionAdapter({
+          pool,
+          views: viewsPortOn(store.database),
+          mostFunctions: recall.mostFunctions,
+        }),
         store,
         projector: { folders, brainsAtOnce: recall.brainsAtOnce, pagesPerWake: recallBounds.pagesPerWake, appends },
       };

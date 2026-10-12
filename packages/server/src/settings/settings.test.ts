@@ -34,7 +34,7 @@ describe('readSettings', () => {
       workflows: { mostDurationMs: 2_592_000_000, mostCallsAtOnce: 32, mostOpenCalls: 1000, sweepEveryMs: 1000 },
       computation: { workers: 4 },
       recall: { mostFunctions: 32, rebuildsAtOnce: 4, brainsAtOnce: 4 },
-      prediction: { processes: 4, processMemoryMebibytes: 512, buildsAtOnce: 2 },
+      prediction: { processes: 4, processMemoryMebibytes: 1280, buildsAtOnce: 2 },
       configFile: undefined,
     });
   });
@@ -70,7 +70,7 @@ describe('readSettings given every setting', () => {
       workflows: { mostDurationMs: 2_592_000_000, mostCallsAtOnce: 32, mostOpenCalls: 1000, sweepEveryMs: 1000 },
       computation: { workers: 4 },
       recall: { mostFunctions: 32, rebuildsAtOnce: 4, brainsAtOnce: 4 },
-      prediction: { processes: 4, processMemoryMebibytes: 512, buildsAtOnce: 2 },
+      prediction: { processes: 4, processMemoryMebibytes: 1280, buildsAtOnce: 2 },
       configFile: undefined,
     });
   });
