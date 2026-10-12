@@ -50,6 +50,7 @@ interface RecordsScope {
   readonly scope: ExaminationScope;
   readonly wanted: string;
   readonly partition: string;
+  readonly horizon: string;
   readonly bounded: string;
   readonly limit: string;
 }
@@ -71,7 +72,7 @@ function recordsWhere(keys: readonly Keyed[], records: RecordsScope): string {
       ${lineageColumns}, ${records.wanted} AS wanted, message_data
     FROM emt_messages
     WHERE ${matched} AND partition = ${records.partition}
-      AND is_archived = FALSE${horizonOf(records.scope)}${records.bounded}
+      AND is_archived = FALSE${records.horizon}${records.bounded}
     ORDER BY ${ordered}, ${inOrder(records)}
     LIMIT ${records.limit}`;
 }
@@ -92,12 +93,14 @@ function recordsIn(selected: RecordsSelected, records: RecordsScope): string {
 
 function examineRecords(query: Query): RecordedStatements['examineRecords'] {
   return async (selected, scope) => {
+    const horizon = await horizonOf(query, scope);
     const { values, bind } = binding();
     const records: RecordsScope = {
       bind,
       scope,
       wanted: ofTypes(bind, 'message_type', scope.types),
       partition: bind(defaultPartition),
+      horizon: horizon(bind),
       bounded: bounds(bind, scope),
       limit: bind(scope.examineAtMost + 1),
     };

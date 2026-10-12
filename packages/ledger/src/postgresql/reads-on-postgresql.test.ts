@@ -4,6 +4,7 @@ import { Effect } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
+import { postgresqlRecordedStore, type Query } from '../postgresql-reads/postgresql-recorded.ts';
 import { details, happenings } from '../testing/happenings.ts';
 import { openLedgerWith, type OpenLedger } from '../testing/open-ledger.ts';
 import { plainPoolsOn, postgresqlLedgerLayer } from './postgresql-ledger.ts';
@@ -30,43 +31,6 @@ async function aDatabase(): Promise<string> {
   const database = new URL(server);
   database.pathname = `/${name}`;
   return database.href;
-}
-
-function pause(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, milliseconds);
-  });
-}
-
-const longestWaitBehindTheHorizon = 10_000;
-
-function olderThanEveryWriteOpenOnTheServer(besides: string): string {
-  return `transaction_id < (
-    SELECT coalesce(min(running.xid), pg_snapshot_xmax(pg_current_snapshot()))
-    FROM pg_snapshot_xip(pg_current_snapshot()) AS running(xid)
-    WHERE running.xid::text <> '${besides}'
-  )`;
-}
-
-async function untilReadable(
-  database: string,
-  besides = '',
-  deadline = Date.now() + longestWaitBehindTheHorizon,
-): Promise<void> {
-  const hidden = await queried(
-    database,
-    `SELECT 1 FROM emt_messages WHERE NOT (${olderThanEveryWriteOpenOnTheServer(besides)}) LIMIT 1`,
-  );
-  if (hidden.length === 0) {
-    return;
-  }
-  if (Date.now() > deadline) {
-    throw new Error(
-      `A committed message stayed behind the oldest open transaction of the server for ${longestWaitBehindTheHorizon} ms`,
-    );
-  }
-  await pause(20);
-  await untilReadable(database, besides, deadline);
 }
 
 const skipped = server === '';
@@ -105,6 +69,27 @@ async function aWriteLeftOpenElsewhere(): Promise<OpenWrite> {
   return { client, id: rows[0]?.id ?? '' };
 }
 
+async function aReaderEndingTheWriteMidway(database: string, endTheWrite: () => Promise<unknown>): Promise<Query> {
+  const client = new Client({ connectionString: database });
+  await client.connect();
+  onTestFinished(() => client.end());
+  const answered = async (text: string, values: readonly unknown[]) =>
+    (await client.query<Readonly<Record<string, unknown>>>(text, [...values])).rows;
+  const write = { open: true };
+  return async (text, values) => {
+    if (!write.open || !text.includes('FROM emt_messages')) {
+      return answered(text, values);
+    }
+    write.open = false;
+    await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ');
+    await client.query('SELECT 1');
+    await endTheWrite();
+    const rows = await answered(text, values);
+    await client.query('COMMIT');
+    return rows;
+  };
+}
+
 function reading(ledger: OpenLedger['ledger'], selection: RecordedSelection, order: 'asc' | 'desc', cursor?: string) {
   return Effect.runPromise(
     ledger.readRecorded(alpha, selection, { order, limit: 10, ...(cursor === undefined ? {} : { cursor }) }),
@@ -139,13 +124,11 @@ describe.skipIf(skipped)(`A read on PostgreSQL while an append is still open${no
   it('oldest first, stays behind it, and delivers every message once after it commits', async () => {
     const { database, ledger } = await aLedgerOnItsOwnDatabase();
     await noting(ledger, 'notes', 'noted', 'before');
-    await untilReadable(database);
     const open = await anAppendLeftOpen(database, 'playbook/acme/alpha/late', 'noted');
     await noting(ledger, 'notes', 'noted', 'after');
 
     const whileOpen = await reading(ledger, everything, 'asc');
     await open.query('COMMIT');
-    await untilReadable(database);
     const rest = await reading(ledger, everything, 'asc', String(whileOpen.records.at(-1)?.cursor));
 
     expect([details(whileOpen), details(rest)]).toEqual([['before'], ['late', 'after']]);
@@ -171,14 +154,12 @@ describe.skipIf(skipped)(`A read on PostgreSQL while an append is still open${no
     const { database, ledger } = await aLedgerOnItsOwnDatabase();
     const correlated: RecordedSelection = { kind: 'correlated', correlation: 'root' };
     await notingOfRoot(ledger, 'run_started', 'before');
-    await untilReadable(database);
     const child = 'playbook/acme/alpha/runs/child';
     const open = await anAppendLeftOpen(database, child, 'run_started', { correlationId: 'root' });
     await notingOfRoot(ledger, 'run_succeeded', 'after');
 
     const whileOpen = await reading(ledger, correlated, 'asc');
     await open.query('COMMIT');
-    await untilReadable(database);
     const rest = await reading(ledger, correlated, 'asc', String(whileOpen.records.at(-1)?.cursor));
 
     expect([details(whileOpen), details(rest)]).toEqual([['before'], ['late', 'after']]);
@@ -192,29 +173,39 @@ describe.skipIf(skipped)(
     it('lists runs oldest first behind it, and every run once after it commits', async () => {
       const { database, ledger } = await aLedgerOnItsOwnDatabase();
       await noting(ledger, 'runs/r-before', 'run_started', 'before');
-      await untilReadable(database);
       const open = await anAppendLeftOpen(database, 'playbook/acme/alpha/runs/r-late', 'run_started');
       await noting(ledger, 'runs/r-after', 'run_started', 'after');
 
       const whileOpen = await reading(ledger, runs, 'asc');
       await open.query('COMMIT');
-      await untilReadable(database);
       const rest = await reading(ledger, runs, 'asc', String(whileOpen.records.at(-1)?.cursor));
 
       expect([details(whileOpen), details(rest)]).toEqual([['before'], ['late', 'after']]);
     });
 
     it('lets a write open in another database of the server hide nothing', async () => {
-      const { database, ledger } = await aLedgerOnItsOwnDatabase();
+      const { ledger } = await aLedgerOnItsOwnDatabase();
       await noting(ledger, 'notes', 'noted', 'before');
       const elsewhere = await aWriteLeftOpenElsewhere();
       await noting(ledger, 'notes', 'noted', 'after');
-      await untilReadable(database, elsewhere.id);
 
       const whileOpen = await reading(ledger, everything, 'asc');
       await elsewhere.client.query('COMMIT');
 
       expect(details(whileOpen)).toEqual(['before', 'after']);
+    });
+
+    it('lets a write of another database that ends after the read took its snapshot hide nothing either', async () => {
+      const { database, ledger } = await aLedgerOnItsOwnDatabase();
+      await noting(ledger, 'notes', 'noted', 'before');
+      const elsewhere = await aWriteLeftOpenElsewhere();
+      await noting(ledger, 'notes', 'noted', 'after');
+      const reader = await aReaderEndingTheWriteMidway(database, () => elsewhere.client.query('COMMIT'));
+      const store = postgresqlRecordedStore(reader);
+
+      const page = await store.readRecorded('playbook/acme/alpha/', everything, { order: 'asc', limit: 10 });
+
+      expect(page.records.map(({ data }) => data)).toEqual([{ detail: 'before' }, { detail: 'after' }]);
     });
   },
 );

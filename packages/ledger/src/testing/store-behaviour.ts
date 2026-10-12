@@ -1,6 +1,6 @@
 import { messageIdOf } from '@on.auto/operations';
 import { Effect, Result } from 'effect';
-import { describe, expect, it, onTestFinished } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import type { RecordedPoint, RecordedStream } from '../event-store.ts';
 import { eventAppenderOf, VersionConflict } from '../index.ts';
@@ -68,26 +68,16 @@ function orderOf(point: RecordedPoint): bigint {
   return point.reduce((order, part) => (order << 64n) + BigInt(part), 0n);
 }
 
-async function aStoreAndItsDatabase(entry: LedgerEntry) {
-  const database = await entry.aDatabase();
-  const store = entry.storeOn(database);
-  onTestFinished(() => store.close());
-  await store.migrate();
-  return { store, readable: () => entry.untilReadable(database) };
-}
-
 function readingWhatWasAppended(entry: LedgerEntry): void {
   describe('reading which streams were appended to after a point', () => {
     it('names each kind of stream of a playbook once, and each stream outside a playbook, appended to after the point', async () => {
-      const { store, readable } = await aStoreAndItsDatabase(entry);
+      const store = await aStore(entry);
       await store.append('org/acme/playbooks', numbered(1, 1), { expectedVersion: 0, context: stamped });
-      await readable();
       const before = await store.readAppended(undefined, 100);
       await store.append('playbook/acme/alpha/events/e1', numbered(1, 1), { expectedVersion: 0, context: stamped });
       await store.append('playbook/acme/alpha/events/e2', numbered(1, 2), { expectedVersion: 0, context: stamped });
       await store.append('playbook/acme/alpha/run-logs/r1', numbered(1, 1), { expectedVersion: 0, context: stamped });
       await store.append('org/acme/playbooks', numbered(2, 1), { expectedVersion: 1, context: stamped });
-      await readable();
 
       const appended = await store.readAppended(before.through, 100);
       const nothingSince = await store.readAppended(appended.through, 100);
@@ -104,13 +94,11 @@ function readingWhatWasAppended(entry: LedgerEntry): void {
     });
 
     it('reads at most as many messages as it is asked, and the next read goes on after the last it read', async () => {
-      const { store, readable } = await aStoreAndItsDatabase(entry);
-      await readable();
+      const store = await aStore(entry);
       const before = await store.readAppended(undefined, 100);
       await store.append('playbook/acme/alpha/events/e1', numbered(1, 1), { expectedVersion: 0, context: stamped });
       await store.append('playbook/acme/beta/events/e1', numbered(1, 1), { expectedVersion: 0, context: stamped });
       await store.append('playbook/acme/gamma/events/e1', numbered(1, 1), { expectedVersion: 0, context: stamped });
-      await readable();
 
       const first = await store.readAppended(before.through, 2);
       const next = await store.readAppended(first.through, 2);

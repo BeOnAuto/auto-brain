@@ -53,7 +53,17 @@ function ofTheDefinitionAsked(bind: Bind, { definitionType, name }: RunsSelected
   return asked.length === 0 ? 'TRUE' : asked.join(' AND ');
 }
 
-function firstMessagesOfRuns(bind: Bind, partition: string, scope: ExaminationScope, runs: RunsSelected): string {
+interface RunsScan {
+  readonly bind: Bind;
+  readonly partition: string;
+  readonly horizon: string;
+}
+
+function firstMessagesOfRuns(
+  { bind, partition, horizon }: RunsScan,
+  scope: ExaminationScope,
+  runs: RunsSelected,
+): string {
   return `SELECT scanned.*, row_number() OVER (
       ORDER BY scanned.transaction_id ${direction(scope)}, scanned.global_position ${direction(scope)}
     ) AS examined, count(*) OVER () AS scanned_count
@@ -65,7 +75,7 @@ function firstMessagesOfRuns(bind: Bind, partition: string, scope: ExaminationSc
       FROM emt_messages
       WHERE ${matchedThroughItsIndex(bind, kindKeyOfStream, `${scope.playbookKey}runs/`)} AND stream_position = 1
         AND partition = ${partition} AND is_archived = FALSE${notOfTypes(bind, runs.notBeginningWith ?? [])}
-        ${horizonOf(scope)}${bounds(bind, scope)}
+        ${horizon}${bounds(bind, scope)}
       ORDER BY ${orderedThroughItsIndex(kindKeyOfStream, scope)}
       LIMIT ${bind(scope.examineAtMost + 1)}
     ) AS scanned`;
@@ -97,6 +107,7 @@ function examinedRunOf(row: typeof ExaminedRunRow.Type): ExaminedItem {
 
 export function examineRuns(query: Query): RecordedStatements['examineRuns'] {
   return async (scope, runs) => {
+    const horizon = await horizonOf(query, scope);
     const { values, bind } = binding();
     const wanted = `${ofTypes(bind, 'latest.message_type', scope.types)} AND f.of_the_definition`;
     const sized = { wanted, types: sizedTypesOf(bind, scope) };
@@ -112,7 +123,7 @@ export function examineRuns(query: Query): RecordedStatements['examineRuns'] {
           ${sizeOf(sized, scope, 'f', 'f.type')} AS size,
           CASE WHEN latest.stream_position <> 1 THEN ${sizeOf(sized, scope, 'latest', 'latest.message_type')}
           ELSE 0 END AS latest_size
-        FROM (${firstMessagesOfRuns(bind, partition, scope, runs)}) AS f
+        FROM (${firstMessagesOfRuns({ bind, partition, horizon: horizon(bind) }, scope, runs)}) AS f
         CROSS JOIN LATERAL (
           SELECT transaction_id, global_position, stream_position, message_type, created, message_data,
             message_id, message_metadata
