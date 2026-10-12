@@ -13,10 +13,10 @@ import { topicRows } from './topic-rows.ts';
 describe('the stream of a playbook a fact was appended to', () => {
   it('is read as the playbook key, the kind and the id, and nothing that names no kind and id', () => {
     expect([
-      playbookStreamOf('brain/acme/alpha/runs/r1'),
-      playbookStreamOf('brain/acme/alpha/runs'),
-      playbookStreamOf('brain/acme/alpha/runs/r1/nested'),
-    ]).toEqual([{ playbookKey: 'brain/acme/alpha/', kind: 'runs', id: 'r1' }, undefined, undefined]);
+      playbookStreamOf('playbook/acme/alpha/runs/r1'),
+      playbookStreamOf('playbook/acme/alpha/runs'),
+      playbookStreamOf('playbook/acme/alpha/runs/r1/nested'),
+    ]).toEqual([{ playbookKey: 'playbook/acme/alpha/', kind: 'runs', id: 'r1' }, undefined, undefined]);
   });
 });
 
@@ -30,7 +30,7 @@ describe('the key of the row a fact changes', () => {
   };
 
   it('is the stream’s id by default, what the mapping says otherwise, and none for a kind it does not fold', () => {
-    const run = { playbookKey: 'brain/acme/alpha/', kind: 'runs', id: 'r1' };
+    const run = { playbookKey: 'playbook/acme/alpha/', kind: 'runs', id: 'r1' };
 
     expect([
       rowKeyOf(runTallyRows, opened, run),

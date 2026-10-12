@@ -33,7 +33,7 @@ describe('the caller a playbook acts as itself', () => {
 
     expect(isCallerIdentity(playbook)).toBe(true);
     expect(playbook).toEqual({
-      id: 'brain:alpha',
+      id: 'playbook:alpha',
       org: 'acme',
       permissions: ['playbook:read', 'playbook:write'],
       playbooks: ['alpha'],

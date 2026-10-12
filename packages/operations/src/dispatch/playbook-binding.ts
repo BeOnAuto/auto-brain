@@ -1,8 +1,8 @@
 import { Context, Effect } from 'effect';
 
-import { PlaybookContext } from '../caller/brain-context.ts';
 import { CallLineage } from '../caller/call-lineage.ts';
 import { Caller } from '../caller/caller.ts';
+import { PlaybookContext } from '../caller/playbook-context.ts';
 import type { Registration } from '../definition/registration.ts';
 import {
   playbookBoundProjectionReader,
@@ -12,9 +12,9 @@ import {
   prefixedWriter,
   streamPrefixOfPlaybook,
 } from '../ledger/bound-ports.ts';
-import { PlaybookReader } from '../ledger/brain-reader.ts';
-import { PlaybookWriter } from '../ledger/brain-writer.ts';
 import type { LedgerPorts } from '../ledger/ledger.ts';
+import { PlaybookReader } from '../ledger/playbook-reader.ts';
+import { PlaybookWriter } from '../ledger/playbook-writer.ts';
 import type { PlaybookRequest } from './request.ts';
 
 export function runInPlaybook(

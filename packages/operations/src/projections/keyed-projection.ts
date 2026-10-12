@@ -1,6 +1,6 @@
 import type { Effect } from 'effect';
 
-import type { PlaybookAddress } from '../caller/brain-context.ts';
+import type { PlaybookAddress } from '../caller/playbook-context.ts';
 import type { Context } from '../ledger/context.ts';
 
 export type ProjectedValue = string | number | boolean | null;
@@ -124,7 +124,7 @@ const columnName = /^[a-z][a-z0-9_]{0,62}$/u;
 
 const streamKind = /^[a-z][a-z0-9-]{0,39}$/u;
 
-const keyColumns: ReadonlySet<string> = new Set(['brain_key', rowKeyColumn]);
+const keyColumns: ReadonlySet<string> = new Set(['playbook_key', rowKeyColumn]);
 
 const playbookStream = /^(?<playbookKey>[^/]+\/[^/]+\/[^/]+\/)(?<kind>[^/]+)\/(?<id>[^/]+)$/u;
 

@@ -1,12 +1,12 @@
-import type { PlaybookContext } from '../caller/brain-context.ts';
 import type { CallLineage } from '../caller/call-lineage.ts';
 import type { Caller } from '../caller/caller.ts';
 import type { OperationKind, OperationScope } from '../caller/operation-scope.ts';
 import type { OrgContext } from '../caller/org-context.ts';
-import type { PlaybookReader } from '../ledger/brain-reader.ts';
-import type { PlaybookWriter } from '../ledger/brain-writer.ts';
+import type { PlaybookContext } from '../caller/playbook-context.ts';
 import type { OrgReader } from '../ledger/org-reader.ts';
 import type { OrgWriter } from '../ledger/org-writer.ts';
+import type { PlaybookReader } from '../ledger/playbook-reader.ts';
+import type { PlaybookWriter } from '../ledger/playbook-writer.ts';
 
 interface ServicesByScopeAndKind {
   readonly org: {

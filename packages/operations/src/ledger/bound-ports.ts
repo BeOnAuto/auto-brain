@@ -1,7 +1,7 @@
 import { Effect } from 'effect';
 
-import type { PlaybookAddress } from '../caller/brain-context.ts';
 import type { OrgAddress } from '../caller/org-context.ts';
+import type { PlaybookAddress } from '../caller/playbook-context.ts';
 import { InvalidInput } from '../outcome/invalid-input.ts';
 import type { PlaybookProjectionReader, ProjectionReader } from '../projections/keyed-projection.ts';
 import { isCalendarDay } from '../reading/calendar-days.ts';
@@ -38,7 +38,7 @@ export function streamPrefixOfOrg({ org }: OrgAddress): string {
 }
 
 export function streamPrefixOfPlaybook({ org, playbook }: PlaybookAddress): string {
-  return `brain/${org}/${playbook}/`;
+  return `playbook/${org}/${playbook}/`;
 }
 
 export function prefixedReader(ledger: StreamReader, prefix: string): StreamReader {

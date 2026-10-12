@@ -1,6 +1,6 @@
 import { Effect, Predicate } from 'effect';
 
-import { PlaybookReader } from '../ledger/brain-reader.ts';
+import { PlaybookReader } from '../ledger/playbook-reader.ts';
 import type { KeptContent } from './presenter.ts';
 import type { RecordedFact } from './recorded-read.ts';
 

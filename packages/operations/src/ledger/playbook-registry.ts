@@ -1,6 +1,6 @@
 import { Context, type Effect } from 'effect';
 
-import type { PlaybookAddress } from '../caller/brain-context.ts';
+import type { PlaybookAddress } from '../caller/playbook-context.ts';
 
 export type PlaybookStatus = 'active' | 'retired' | 'unknown';
 

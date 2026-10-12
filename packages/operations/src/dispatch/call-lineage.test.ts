@@ -64,8 +64,8 @@ describe('the lineage of a call', () => {
     );
 
     expect(records.map(({ id, causationId, correlationId }) => ({ id, causationId, correlationId }))).toEqual([
-      { id: messageIdOf('brain/acme/alpha/notes', 1), ...lineage },
-      { id: messageIdOf('brain/acme/alpha/notes', 2), causationId: null, correlationId: null },
+      { id: messageIdOf('playbook/acme/alpha/notes', 1), ...lineage },
+      { id: messageIdOf('playbook/acme/alpha/notes', 2), causationId: null, correlationId: null },
     ]);
   });
 

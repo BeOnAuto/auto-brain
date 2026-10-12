@@ -20,8 +20,8 @@ const recorded: RecordedEvent = {
 
 describe('the metadata of an event', () => {
   it('holds the place of the event in its stream and in the store, its chain, and who acted when', () => {
-    expect(eventMetadataOf(recorded, 'brain/acme/sales/')).toEqual({
-      stream: 'brain/acme/sales/runs/r-1',
+    expect(eventMetadataOf(recorded, 'playbook/acme/sales/')).toEqual({
+      stream: 'playbook/acme/sales/runs/r-1',
       position: 4,
       global_position: 1042,
       correlation_id: 'r-top',
@@ -52,7 +52,7 @@ const ofARun: RecordedEvent = {
 
 describe('the metadata of an event of a run', () => {
   it('holds every field of the context under its wire name, in the order a reader reads them', () => {
-    const metadata = eventMetadataOf(ofARun, 'brain/acme/sales/');
+    const metadata = eventMetadataOf(ofARun, 'playbook/acme/sales/');
 
     expect(Object.keys(metadata)).toEqual([
       'stream',

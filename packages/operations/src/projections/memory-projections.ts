@@ -1,6 +1,6 @@
 import { Effect } from 'effect';
 
-import type { PlaybookAddress } from '../caller/brain-context.ts';
+import type { PlaybookAddress } from '../caller/playbook-context.ts';
 import { streamPrefixOfPlaybook } from '../ledger/bound-ports.ts';
 import type { Context } from '../ledger/context.ts';
 import { messageIdOf } from '../ledger/message-lineage.ts';
@@ -39,7 +39,7 @@ interface Table {
   readonly rows: Map<string, ProjectedKeyedRow>;
 }
 
-const playbookKey = /^brain\/(?<org>[^/]+)\/(?<playbook>[^/]+)\/$/u;
+const playbookKey = /^playbook\/(?<org>[^/]+)\/(?<playbook>[^/]+)\/$/u;
 
 const nothingKept: ReadonlyMap<string, ProjectedKeyedRow> = new Map();
 

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { canAccessPlaybook, type CallerIdentity } from '../index.ts';
-import { getPlaybookLabel, labelPlaybook, listPlaybookLabels, relabelPlaybook } from '../testing/brain-labels.ts';
 import { acmeAdmin, acmeAlphaReader } from '../testing/callers.ts';
 import { harness, toPlaybook, toOrg } from '../testing/harness.ts';
 import { getNote } from '../testing/notes.ts';
+import { getPlaybookLabel, labelPlaybook, listPlaybookLabels, relabelPlaybook } from '../testing/playbook-labels.ts';
 
 const toAcme = toOrg('acme');
 

@@ -16,8 +16,8 @@ import {
   type KeyedProjection,
   type Settled,
 } from '../index.ts';
-import { memoryPlaybookRegistry } from './memory-brain-registry.ts';
 import { memoryLedger, type MemoryLedger } from './memory-ledger.ts';
+import { memoryPlaybookRegistry } from './memory-playbook-registry.ts';
 import { recordingReporter, type ReportedIncident } from './recording-reporter.ts';
 
 export interface HarnessOptions {

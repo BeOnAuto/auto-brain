@@ -1,6 +1,6 @@
 import { Effect } from 'effect';
 
-import type { PlaybookAddress } from '../caller/brain-context.ts';
+import type { PlaybookAddress } from '../caller/playbook-context.ts';
 import { streamPrefixOfPlaybook } from '../ledger/bound-ports.ts';
 import type { RecordedContent } from './recorded-content.ts';
 

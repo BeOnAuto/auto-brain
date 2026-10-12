@@ -58,13 +58,13 @@ const steps: Presenter = {
 const presentation = presentationOf([notes, shelves, steps]);
 
 const showing: Showing = {
-  streamPrefix: 'brain/acme/alpha/',
+  streamPrefix: 'playbook/acme/alpha/',
   content: nothingKept,
   view: 'page',
 };
 
 const metadata = {
-  stream: 'brain/acme/alpha/notes',
+  stream: 'playbook/acme/alpha/notes',
   position: 3,
   global_position: 42,
   correlation_id: 'top',
@@ -100,7 +100,7 @@ describe('the presentation of what a playbook recorded', () => {
         type: 'shown_shelf_filled',
         summary: 'Something happened.',
         data: { text: 'small' },
-        metadata: { ...metadata, stream: 'brain/acme/alpha/shelves/red' },
+        metadata: { ...metadata, stream: 'playbook/acme/alpha/shelves/red' },
       },
     ]);
   });

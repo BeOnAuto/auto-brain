@@ -1,9 +1,9 @@
 import { Effect, Option, Schema } from 'effect';
 
 import { defineQuery } from '../definition/operation.ts';
-import { PlaybookReader } from '../ledger/brain-reader.ts';
 import { ActedContextSchema } from '../ledger/context.ts';
 import { factOf } from '../ledger/decider.ts';
+import { PlaybookReader } from '../ledger/playbook-reader.ts';
 import type { KeyedProjection, ProjectedMessage, ProjectedRow } from './keyed-projection.ts';
 
 const BeganSchema = factOf('run_began', Schema.Struct({ at: Schema.String, fn: Schema.String }), ActedContextSchema);
