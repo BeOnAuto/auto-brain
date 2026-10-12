@@ -80,7 +80,7 @@ function freshOf(name: string, kept: KeptFunction, row: ViewRow | undefined): re
 
 function newViewOf(playbook: string, { name, saved, version, details }: FreshFunction, phase: ViewPhase): NewView {
   return {
-    playbook,
+    playbookKey: playbook,
     name,
     version,
     saved,

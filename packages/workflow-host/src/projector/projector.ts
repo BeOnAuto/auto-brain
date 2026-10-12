@@ -21,7 +21,7 @@ export interface ProjectorParts {
   readonly sweepEveryMs: number;
 }
 
-const PlaybookRow = Schema.Struct({ playbook: Schema.String });
+const PlaybookRow = Schema.Struct({ playbook_key: Schema.String });
 
 const mostRemembered = 1024;
 
@@ -63,8 +63,8 @@ function swept(parts: ProjectorParts, schedule: Schedule): Effect.Effect<void> {
     if (sweepDue) {
       schedule.swept(now);
       const playbooks = yield* Effect.orDie(rowsOf(PlaybookRow, parts.database.read(playbooksWithViews)));
-      for (const { playbook } of playbooks) {
-        schedule.want(playbook);
+      for (const { playbook_key: playbookKey } of playbooks) {
+        schedule.want(playbookKey);
       }
     }
   });
