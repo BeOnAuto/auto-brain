@@ -1,4 +1,4 @@
-import type { Registration } from '@beonauto/operations';
+import type { Registration } from '@on.auto/operations';
 
 import { createPlaybook } from './create-playbook.ts';
 import { getPlaybook } from './get-playbook.ts';

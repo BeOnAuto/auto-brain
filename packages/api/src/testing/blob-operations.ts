@@ -1,4 +1,4 @@
-import { contentOfText, defineHttpOperation, type StreamedBytes } from '@beonauto/operations';
+import { contentOfText, defineHttpOperation, type StreamedBytes } from '@on.auto/operations';
 import { Effect, Function, Schema } from 'effect';
 
 const Nothing = Schema.Record(Schema.String, Schema.Never);

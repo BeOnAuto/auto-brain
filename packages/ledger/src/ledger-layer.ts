@@ -1,4 +1,4 @@
-import { Ledger, type ContentStore, type RunOutcomeMapping, type KeyedProjection } from '@beonauto/operations';
+import { Ledger, type ContentStore, type RunOutcomeMapping, type KeyedProjection } from '@on.auto/operations';
 import { Effect, Layer } from 'effect';
 
 import { signalledOn, type AppendSignal } from './appends/append-signal.ts';

@@ -1,4 +1,4 @@
-import { servesPlaybook } from '@beonauto/config';
+import { servesPlaybook } from '@on.auto/config';
 import type { Redacted } from 'effect';
 
 export type AuthCredential =

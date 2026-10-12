@@ -1,6 +1,6 @@
-import type { DefinitionSummary } from '@beonauto/definitions';
-import type { InvalidInput } from '@beonauto/operations';
-import { ViewDetailsSchema } from '@beonauto/workflow-host';
+import type { DefinitionSummary } from '@on.auto/definitions';
+import type { InvalidInput } from '@on.auto/operations';
+import { ViewDetailsSchema } from '@on.auto/workflow-host';
 import { Effect, Result, Schema } from 'effect';
 
 import { invalidDefinition } from '../document/document-check.ts';

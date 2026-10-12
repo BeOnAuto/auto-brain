@@ -7,7 +7,7 @@ import {
   type ConflictKind,
   type KindWithType,
   type Settlement,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Schema } from 'effect';
 
 import type { DslError } from '../machine/dsl-error.ts';

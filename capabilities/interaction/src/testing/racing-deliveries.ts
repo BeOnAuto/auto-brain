@@ -5,8 +5,8 @@ import {
   workRecorder,
   type Capability,
   type RecordedWorkAt,
-} from '@beonauto/definitions';
-import { Ledger } from '@beonauto/operations';
+} from '@on.auto/definitions';
+import { Ledger } from '@on.auto/operations';
 import { Effect, Layer, Schema } from 'effect';
 
 import { interactionType } from '../capability/interaction-type.ts';

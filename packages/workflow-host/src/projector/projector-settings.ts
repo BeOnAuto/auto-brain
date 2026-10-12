@@ -1,4 +1,4 @@
-import type { AppendSignal } from '@beonauto/ledger';
+import type { AppendSignal } from '@on.auto/ledger';
 
 import type { SomeFolder } from './folder.ts';
 

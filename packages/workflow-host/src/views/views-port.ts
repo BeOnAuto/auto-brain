@@ -1,4 +1,4 @@
-import { streamPrefixOfPlaybook, type PlaybookAddress } from '@beonauto/operations';
+import { streamPrefixOfPlaybook, type PlaybookAddress } from '@on.auto/operations';
 import { Effect } from 'effect';
 
 import { rowsOf, type HostDatabase } from '../database/host-database.ts';

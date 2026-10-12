@@ -1,4 +1,4 @@
-import type { DslError, FilterVerdict } from '@beonauto/workflow-engine';
+import type { DslError, FilterVerdict } from '@on.auto/workflow-engine';
 import { describe, expect, it } from 'vitest';
 
 import { filterStops, stopsInARowBeforeTheVersion, type FilterPlace, type FilterStops } from './filter-matching.ts';

@@ -1,4 +1,4 @@
-import { issueAt, type DocumentIssue, type SourceLines } from '@beonauto/definitions/document';
+import { issueAt, type DocumentIssue, type SourceLines } from '@on.auto/definitions/document';
 import { Result, type Schema } from 'effect';
 
 import { compiledToolBlock, type WrittenRoute } from '../tool-blocks/compiled-tool-block.ts';

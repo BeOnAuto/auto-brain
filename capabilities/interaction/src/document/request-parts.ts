@@ -1,5 +1,5 @@
-import { issueAt, type DocumentParts, type ReadFrontMatter, type SourceLines } from '@beonauto/definitions/document';
-import type { ParsedTemplate } from '@beonauto/definitions/template';
+import { issueAt, type DocumentParts, type ReadFrontMatter, type SourceLines } from '@on.auto/definitions/document';
+import type { ParsedTemplate } from '@on.auto/definitions/template';
 import { Result } from 'effect';
 
 import type { ReplyRule } from '../replies/reply-rule.ts';

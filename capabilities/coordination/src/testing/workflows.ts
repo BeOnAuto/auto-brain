@@ -1,5 +1,5 @@
-import type { CallerIdentity } from '@beonauto/operations';
-import type { Json, JsonObject } from '@beonauto/workflow-engine';
+import type { CallerIdentity } from '@on.auto/operations';
+import type { Json, JsonObject } from '@on.auto/workflow-engine';
 import { Schema } from 'effect';
 import { parse } from 'yaml';
 

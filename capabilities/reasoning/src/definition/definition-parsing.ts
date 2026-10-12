@@ -4,8 +4,8 @@ import {
   type DocumentIssue,
   type DocumentParts,
   type ReadFrontMatter,
-} from '@beonauto/definitions/document';
-import { inputVariableIssues } from '@beonauto/definitions/template';
+} from '@on.auto/definitions/document';
+import { inputVariableIssues } from '@on.auto/definitions/template';
 import { Option, Result, type Schema } from 'effect';
 
 import type { CompiledTemplate } from '../template/compiled-template.ts';

@@ -5,7 +5,7 @@ import {
   getRun,
   type Capability,
   type SettleRun,
-} from '@beonauto/definitions';
+} from '@on.auto/definitions';
 import {
   makeDispatcher,
   settle as settleCall,
@@ -13,8 +13,8 @@ import {
   type Outcome,
   type Registration,
   type Settled,
-} from '@beonauto/operations';
-import { memoryPlaybookRegistry, recordingReporter, type MemoryLedger } from '@beonauto/operations/testing';
+} from '@on.auto/operations';
+import { memoryPlaybookRegistry, recordingReporter, type MemoryLedger } from '@on.auto/operations/testing';
 import { Effect, Layer } from 'effect';
 
 import { definitionRunResultOf } from '../calls/function-results.ts';

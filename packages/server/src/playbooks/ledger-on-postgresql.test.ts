@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
-import { campaignPace, campaignRows } from '@beonauto/computation/testing';
-import { answers, textResult } from '@beonauto/reasoning/testing';
+import { campaignPace, campaignRows } from '@on.auto/computation/testing';
+import { answers, textResult } from '@on.auto/reasoning/testing';
 import { Schema } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';

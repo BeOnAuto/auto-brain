@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
 
-import { keptTextOf } from '@beonauto/operations/testing';
+import { keptTextOf } from '@on.auto/operations/testing';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -64,7 +64,7 @@ describe('one call of a tool', () => {
       {
         tool: 'echo',
         arguments: echoCall.input,
-        meta: { 'com.beonauto/run_id': callingRunId, 'com.beonauto/delivery_id': deliveryId },
+        meta: { 'auto.on/run_id': callingRunId, 'auto.on/delivery_id': deliveryId },
       },
     ]);
   });

@@ -1,4 +1,4 @@
-import type { AnsweredOnce, CallAnswer, CallAnswered, CallFailed, CallFailedBecause } from '@beonauto/mcp';
+import type { AnsweredOnce, CallAnswer, CallAnswered, CallFailed, CallFailedBecause } from '@on.auto/mcp';
 
 import type { DeliveryFailedBecause } from '../facts/run-facts.ts';
 

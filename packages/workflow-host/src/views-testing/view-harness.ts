@@ -1,5 +1,5 @@
-import { appendSignal, type AppendSignal } from '@beonauto/ledger';
-import { programPool, type PoolSettings, type ProgramPool } from '@beonauto/workflow-engine/dsl';
+import { appendSignal, type AppendSignal } from '@on.auto/ledger';
+import { programPool, type PoolSettings, type ProgramPool } from '@on.auto/workflow-engine/dsl';
 import { onTestFinished } from 'vitest';
 
 import type { DatabaseSettings } from '../database/host-databases.ts';

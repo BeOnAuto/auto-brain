@@ -1,7 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 
-import { openRequests } from '@beonauto/interaction';
-import { projectedTableOf } from '@beonauto/operations';
+import { openRequests } from '@on.auto/interaction';
+import { projectedTableOf } from '@on.auto/operations';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';

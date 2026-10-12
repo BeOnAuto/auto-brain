@@ -5,8 +5,8 @@ import {
   textOf,
   withMcpSession,
   type McpSession,
-} from '@beonauto/api/testing';
-import { campaignReviews, foldOf, recallDocument } from '@beonauto/recall/testing';
+} from '@on.auto/api/testing';
+import { campaignReviews, foldOf, recallDocument } from '@on.auto/recall/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { ReasoningServer } from '../testing/servers/reasoning-server.ts';

@@ -1,5 +1,5 @@
-import { makeCatalog } from '@beonauto/operations';
-import { playbookOperations } from '@beonauto/playbooks';
+import { makeCatalog } from '@on.auto/operations';
+import { playbookOperations } from '@on.auto/playbooks';
 import { describe, expect, it } from 'vitest';
 
 import { makeDefinitionOperations } from '../index.ts';

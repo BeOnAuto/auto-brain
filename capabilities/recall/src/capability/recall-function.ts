@@ -4,9 +4,9 @@ import {
   functionResourceLabels,
   outputInWords,
   type Capability,
-} from '@beonauto/definitions';
-import type { ProgramPool } from '@beonauto/workflow-engine/dsl';
-import type { ViewsPort } from '@beonauto/workflow-host';
+} from '@on.auto/definitions';
+import type { ProgramPool } from '@on.auto/workflow-engine/dsl';
+import type { ViewsPort } from '@on.auto/workflow-host';
 
 import { documentCheck } from '../document/document-check.ts';
 import { recallBounds, recallDefinitionType } from '../run/recall-bounds.ts';

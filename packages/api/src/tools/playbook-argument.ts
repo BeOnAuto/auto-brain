@@ -1,4 +1,4 @@
-import { PlaybookIdSchema, rejected, type Rejected } from '@beonauto/operations';
+import { PlaybookIdSchema, rejected, type Rejected } from '@on.auto/operations';
 import { Option, Result, Schema, SchemaIssue } from 'effect';
 
 import { inlinedRootOf, withoutUnreferencedDefinitions, type JsonSchema } from './tool-schema.ts';

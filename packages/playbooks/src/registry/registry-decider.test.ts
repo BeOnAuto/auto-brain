@@ -1,4 +1,4 @@
-import { Conflict, NotFound, recordingOf, type Context } from '@beonauto/operations';
+import { Conflict, NotFound, recordingOf, type Context } from '@on.auto/operations';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 

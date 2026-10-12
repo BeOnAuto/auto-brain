@@ -1,4 +1,4 @@
-import { PlaybookReader, PlaybookWriter, capitalized, defineCommand } from '@beonauto/operations';
+import { PlaybookReader, PlaybookWriter, capitalized, defineCommand } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 
 import type { Capability } from '../capability/capability.ts';

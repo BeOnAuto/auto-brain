@@ -1,4 +1,4 @@
-import { serveFakeMcp, type FakeMcpServer } from '@beonauto/mcp/testing';
+import { serveFakeMcp, type FakeMcpServer } from '@on.auto/mcp/testing';
 import { Schema } from 'effect';
 import { onTestFinished } from 'vitest';
 

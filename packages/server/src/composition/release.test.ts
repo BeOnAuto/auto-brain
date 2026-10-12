@@ -14,6 +14,6 @@ describe('release', () => {
     const manifest = manifestOf(readFileSync(new URL('../../../../package.json', import.meta.url), 'utf8'));
 
     expect(release).toEqual({ name: manifest.name, version: manifest.version });
-    expect(release.name).toBe('auto-runtime');
+    expect(release.name).toBe('@on.auto/runtime');
   });
 });

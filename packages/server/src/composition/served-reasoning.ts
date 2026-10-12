@@ -1,15 +1,15 @@
-import type { AppRuntime } from '@beonauto/api';
-import { defineListToolServers, defineListToolServersInOrg, defineTestToolCall, type ToolAccess } from '@beonauto/mcp';
-import type { DispatcherServices } from '@beonauto/operations';
-import type { ProxySettings } from '@beonauto/outbound';
-import { foundPlaybook } from '@beonauto/playbooks';
+import type { AppRuntime } from '@on.auto/api';
+import { defineListToolServers, defineListToolServersInOrg, defineTestToolCall, type ToolAccess } from '@on.auto/mcp';
+import type { DispatcherServices } from '@on.auto/operations';
+import type { ProxySettings } from '@on.auto/outbound';
+import { foundPlaybook } from '@on.auto/playbooks';
 import {
   defineListModels,
   makeReasoningFunctionAdapter,
   makeModelAccess,
   type ModelAccess,
   type ModelSettings,
-} from '@beonauto/reasoning';
+} from '@on.auto/reasoning';
 import { Effect } from 'effect';
 
 import { logModelProviders, logOperatorHint, logProviderMessage, logReasoning } from '../logging/logging.ts';

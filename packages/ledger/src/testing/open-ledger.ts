@@ -1,4 +1,4 @@
-import { Ledger } from '@beonauto/operations';
+import { Ledger } from '@on.auto/operations';
 import { Effect, ManagedRuntime, type Layer, type Result } from 'effect';
 
 import { ledgerLayer } from '../sqlite3.ts';

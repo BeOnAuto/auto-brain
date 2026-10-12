@@ -1,4 +1,4 @@
-import type { RecordedWorkAt, Work } from '@beonauto/definitions';
+import type { RecordedWorkAt, Work } from '@on.auto/definitions';
 import { Effect } from 'effect';
 
 import type { ConversationParts, ConversationPlace } from '../conversations/conversation-parts.ts';

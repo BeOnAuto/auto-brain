@@ -1,4 +1,4 @@
-import { withMcpSession, type ToolResult } from '@beonauto/api/testing';
+import { withMcpSession, type ToolResult } from '@on.auto/api/testing';
 import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

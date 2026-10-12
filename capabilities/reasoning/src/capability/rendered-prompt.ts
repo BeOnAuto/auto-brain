@@ -1,4 +1,4 @@
-import { InvalidInput } from '@beonauto/operations';
+import { InvalidInput } from '@on.auto/operations';
 import { Effect, JsonPointer, Result } from 'effect';
 
 import type { CompiledTemplate, RenderedPrompt, RenderFailure, TemplateScope } from '../template/compiled-template.ts';

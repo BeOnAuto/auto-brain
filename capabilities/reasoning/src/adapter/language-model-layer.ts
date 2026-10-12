@@ -1,4 +1,4 @@
-import { proxySettingsOf } from '@beonauto/outbound';
+import { proxySettingsOf } from '@on.auto/outbound';
 import { Effect, Layer } from 'effect';
 
 import { LanguageModel } from '../model/language-model.ts';

@@ -1,4 +1,4 @@
-import type { CallEnded, CallStarted } from '@beonauto/mcp';
+import type { CallEnded, CallStarted } from '@on.auto/mcp';
 import type {
   CallerIdentity,
   CallLink,
@@ -8,7 +8,7 @@ import type {
   Settlement,
   TriggerLink,
   Unavailable,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Effect, type Schema } from 'effect';
 
 import type { Trigger } from '../registry/definition-triggers.ts';

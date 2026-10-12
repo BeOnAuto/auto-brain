@@ -1,4 +1,4 @@
-import type { Context } from '@beonauto/operations';
+import type { Context } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 const RunLogAttributesSchema = Schema.Struct({

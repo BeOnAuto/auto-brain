@@ -1,6 +1,6 @@
-import { issueAt, type DocumentIssue, type SourceLines } from '@beonauto/definitions/document';
-import { literalFilterOf, type LiteralFilterReading } from '@beonauto/workflow-engine/dsl';
-import type { ViewFilter } from '@beonauto/workflow-host';
+import { issueAt, type DocumentIssue, type SourceLines } from '@on.auto/definitions/document';
+import { literalFilterOf, type LiteralFilterReading } from '@on.auto/workflow-engine/dsl';
+import type { ViewFilter } from '@on.auto/workflow-host';
 import { Predicate, Result, type Schema } from 'effect';
 
 import { recallBounds } from '../run/recall-bounds.ts';

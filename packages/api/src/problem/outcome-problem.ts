@@ -1,4 +1,4 @@
-import type { Cancelled, Failed, Rejected } from '@beonauto/operations';
+import type { Cancelled, Failed, Rejected } from '@on.auto/operations';
 
 import { internalErrorProblem, problemOf, type OptionalProblemMembers, type Problem } from './problem.ts';
 

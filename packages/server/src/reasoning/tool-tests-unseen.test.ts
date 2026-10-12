@@ -1,4 +1,4 @@
-import { serveFakeMcp } from '@beonauto/mcp/testing';
+import { serveFakeMcp } from '@on.auto/mcp/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 

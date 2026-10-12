@@ -1,4 +1,4 @@
-import type { RunOutcomeGroup } from '@beonauto/operations';
+import type { RunOutcomeGroup } from '@on.auto/operations';
 import { describe, expect, it } from 'vitest';
 
 import { analyticsOf, durationOf, type PlaybookAnalytics } from './analytics-answer.ts';

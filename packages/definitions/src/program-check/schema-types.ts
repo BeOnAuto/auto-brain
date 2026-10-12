@@ -1,4 +1,4 @@
-import type { CheckJob } from '@beonauto/workflow-engine/dsl';
+import type { CheckJob } from '@on.auto/workflow-engine/dsl';
 import { Predicate, type Schema } from 'effect';
 
 import type { Place } from './module-rules.ts';

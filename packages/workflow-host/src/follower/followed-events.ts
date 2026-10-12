@@ -1,5 +1,5 @@
-import { playbookFactOf, publishedEventOf, type CloudEvent, type RecordedEventPublished } from '@beonauto/definitions';
-import { streamKindOf, type RecordedEvent } from '@beonauto/operations';
+import { playbookFactOf, publishedEventOf, type CloudEvent, type RecordedEventPublished } from '@on.auto/definitions';
+import { streamKindOf, type RecordedEvent } from '@on.auto/operations';
 
 interface Emitter {
   readonly runId: string;

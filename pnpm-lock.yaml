@@ -206,9 +206,6 @@ importers:
 
   .:
     devDependencies:
-      '@beonauto/definitions':
-        specifier: workspace:*
-        version: link:packages/definitions
       '@commitlint/cli':
         specifier: 21.2.3
         version: 21.2.3(@types/node@26.6.3)(conventional-commits-parser@7.1.2)(typescript@7.0.2)
@@ -218,6 +215,9 @@ importers:
       '@commitlint/types':
         specifier: 21.2.3
         version: 21.2.3
+      '@on.auto/definitions':
+        specifier: workspace:*
+        version: link:packages/definitions
       '@types/node':
         specifier: 26.6.3
         version: 26.6.3
@@ -266,13 +266,13 @@ importers:
 
   capabilities/computation:
     dependencies:
-      '@beonauto/definitions':
+      '@on.auto/definitions':
         specifier: workspace:*
         version: link:../../packages/definitions
-      '@beonauto/operations':
+      '@on.auto/operations':
         specifier: workspace:*
         version: link:../../packages/operations
-      '@beonauto/workflow-engine':
+      '@on.auto/workflow-engine':
         specifier: workspace:*
         version: link:../../packages/workflow-engine
       effect:
@@ -288,19 +288,19 @@ importers:
 
   capabilities/coordination:
     dependencies:
-      '@beonauto/config':
+      '@on.auto/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@beonauto/definitions':
+      '@on.auto/definitions':
         specifier: workspace:*
         version: link:../../packages/definitions
-      '@beonauto/operations':
+      '@on.auto/operations':
         specifier: workspace:*
         version: link:../../packages/operations
-      '@beonauto/workflow-engine':
+      '@on.auto/workflow-engine':
         specifier: workspace:*
         version: link:../../packages/workflow-engine
-      '@beonauto/workflow-host':
+      '@on.auto/workflow-host':
         specifier: workspace:*
         version: link:../../packages/workflow-host
       '@openworkflowspec/sdk':
@@ -313,7 +313,7 @@ importers:
         specifier: 2.9.1
         version: 2.9.1
     devDependencies:
-      '@beonauto/api':
+      '@on.auto/api':
         specifier: workspace:*
         version: link:../../packages/api
       '@vitest/coverage-v8':
@@ -325,16 +325,16 @@ importers:
 
   capabilities/interaction:
     dependencies:
-      '@beonauto/definitions':
+      '@on.auto/definitions':
         specifier: workspace:*
         version: link:../../packages/definitions
-      '@beonauto/mcp':
+      '@on.auto/mcp':
         specifier: workspace:*
         version: link:../../packages/mcp
-      '@beonauto/operations':
+      '@on.auto/operations':
         specifier: workspace:*
         version: link:../../packages/operations
-      '@beonauto/workflow-engine':
+      '@on.auto/workflow-engine':
         specifier: workspace:*
         version: link:../../packages/workflow-engine
       effect:
@@ -374,19 +374,19 @@ importers:
       '@ai-sdk/openai-compatible':
         specifier: 3.0.61
         version: 3.0.61(zod@4.6.5)
-      '@beonauto/config':
+      '@on.auto/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@beonauto/definitions':
+      '@on.auto/definitions':
         specifier: workspace:*
         version: link:../../packages/definitions
-      '@beonauto/mcp':
+      '@on.auto/mcp':
         specifier: workspace:*
         version: link:../../packages/mcp
-      '@beonauto/operations':
+      '@on.auto/operations':
         specifier: workspace:*
         version: link:../../packages/operations
-      '@beonauto/outbound':
+      '@on.auto/outbound':
         specifier: workspace:*
         version: link:../../packages/outbound
       ai:
@@ -421,16 +421,16 @@ importers:
 
   capabilities/recall:
     dependencies:
-      '@beonauto/definitions':
+      '@on.auto/definitions':
         specifier: workspace:*
         version: link:../../packages/definitions
-      '@beonauto/operations':
+      '@on.auto/operations':
         specifier: workspace:*
         version: link:../../packages/operations
-      '@beonauto/workflow-engine':
+      '@on.auto/workflow-engine':
         specifier: workspace:*
         version: link:../../packages/workflow-engine
-      '@beonauto/workflow-host':
+      '@on.auto/workflow-host':
         specifier: workspace:*
         version: link:../../packages/workflow-host
       effect:
@@ -446,18 +446,18 @@ importers:
 
   packages/api:
     dependencies:
-      '@beonauto/identity':
-        specifier: workspace:*
-        version: link:../identity
-      '@beonauto/operations':
-        specifier: workspace:*
-        version: link:../operations
       '@hono/node-server':
         specifier: 2.1.3
         version: 2.1.3(hono@4.13.12)
       '@modelcontextprotocol/server':
         specifier: 2.2.0
         version: 2.2.0
+      '@on.auto/identity':
+        specifier: workspace:*
+        version: link:../identity
+      '@on.auto/operations':
+        specifier: workspace:*
+        version: link:../operations
       effect:
         specifier: 'catalog:'
         version: 4.0.0
@@ -465,15 +465,15 @@ importers:
         specifier: 'catalog:'
         version: 4.13.12
     devDependencies:
-      '@beonauto/definitions':
-        specifier: workspace:*
-        version: link:../definitions
       '@modelcontextprotocol/client':
         specifier: 2.2.0
         version: 2.2.0
       '@modelcontextprotocol/sdk':
         specifier: 1.31.0
         version: 1.31.0(supports-color@8.1.1)(zod@4.6.5)
+      '@on.auto/definitions':
+        specifier: workspace:*
+        version: link:../definitions
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.2(vitest@5.0.2)
@@ -483,7 +483,7 @@ importers:
 
   packages/config:
     dependencies:
-      '@beonauto/operations':
+      '@on.auto/operations':
         specifier: workspace:*
         version: link:../operations
       effect:
@@ -502,13 +502,13 @@ importers:
 
   packages/definitions:
     dependencies:
-      '@beonauto/mcp':
+      '@on.auto/mcp':
         specifier: workspace:*
         version: link:../mcp
-      '@beonauto/operations':
+      '@on.auto/operations':
         specifier: workspace:*
         version: link:../operations
-      '@beonauto/workflow-engine':
+      '@on.auto/workflow-engine':
         specifier: workspace:*
         version: link:../workflow-engine
       effect:
@@ -527,10 +527,10 @@ importers:
         specifier: 2.9.1
         version: 2.9.1
     devDependencies:
-      '@beonauto/ledger':
+      '@on.auto/ledger':
         specifier: workspace:*
         version: link:../ledger
-      '@beonauto/playbooks':
+      '@on.auto/playbooks':
         specifier: workspace:*
         version: link:../playbooks
       '@types/pg':
@@ -548,7 +548,7 @@ importers:
 
   packages/identity:
     dependencies:
-      '@beonauto/operations':
+      '@on.auto/operations':
         specifier: workspace:*
         version: link:../operations
       effect:
@@ -564,9 +564,6 @@ importers:
 
   packages/ledger:
     dependencies:
-      '@beonauto/operations':
-        specifier: workspace:*
-        version: link:../operations
       '@event-driven-io/dumbo':
         specifier: 0.13.0-beta.56
         version: 0.13.0-beta.56(@types/pg@8.23.1)(pg@8.23.1)(sqlite3@6.0.1)
@@ -579,6 +576,9 @@ importers:
       '@event-driven-io/emmett-sqlite':
         specifier: 0.43.0-beta.50
         version: 0.43.0-beta.50(@aws-sdk/credential-providers@3.1144.0)(@types/pg@8.23.1)(commander@14.0.3)(pg@8.23.1)(sqlite3@6.0.1)(supports-color@8.1.1)(uuid@14.0.2)
+      '@on.auto/operations':
+        specifier: workspace:*
+        version: link:../operations
       effect:
         specifier: 'catalog:'
         version: 4.0.0
@@ -601,18 +601,18 @@ importers:
 
   packages/mcp:
     dependencies:
-      '@beonauto/config':
-        specifier: workspace:*
-        version: link:../config
-      '@beonauto/operations':
-        specifier: workspace:*
-        version: link:../operations
-      '@beonauto/outbound':
-        specifier: workspace:*
-        version: link:../outbound
       '@modelcontextprotocol/client':
         specifier: 2.2.0
         version: 2.2.0
+      '@on.auto/config':
+        specifier: workspace:*
+        version: link:../config
+      '@on.auto/operations':
+        specifier: workspace:*
+        version: link:../operations
+      '@on.auto/outbound':
+        specifier: workspace:*
+        version: link:../outbound
       effect:
         specifier: 'catalog:'
         version: 4.0.0
@@ -635,17 +635,17 @@ importers:
       '@aws-sdk/lib-storage':
         specifier: 3.1144.0
         version: 3.1144.0(@aws-sdk/client-s3@3.1144.0)
-      '@beonauto/operations':
+      '@on.auto/operations':
         specifier: workspace:*
         version: link:../operations
-      '@beonauto/outbound':
+      '@on.auto/outbound':
         specifier: workspace:*
         version: link:../outbound
       effect:
         specifier: 'catalog:'
         version: 4.0.0
     devDependencies:
-      '@beonauto/ledger':
+      '@on.auto/ledger':
         specifier: workspace:*
         version: link:../ledger
       '@smithy/core':
@@ -689,7 +689,7 @@ importers:
 
   packages/playbooks:
     dependencies:
-      '@beonauto/operations':
+      '@on.auto/operations':
         specifier: workspace:*
         version: link:../operations
       effect:
@@ -705,55 +705,55 @@ importers:
 
   packages/server:
     dependencies:
-      '@beonauto/api':
+      '@on.auto/api':
         specifier: workspace:*
         version: link:../api
-      '@beonauto/computation':
+      '@on.auto/computation':
         specifier: workspace:*
         version: link:../../capabilities/computation
-      '@beonauto/config':
+      '@on.auto/config':
         specifier: workspace:*
         version: link:../config
-      '@beonauto/coordination':
+      '@on.auto/coordination':
         specifier: workspace:*
         version: link:../../capabilities/coordination
-      '@beonauto/definitions':
+      '@on.auto/definitions':
         specifier: workspace:*
         version: link:../definitions
-      '@beonauto/identity':
+      '@on.auto/identity':
         specifier: workspace:*
         version: link:../identity
-      '@beonauto/interaction':
+      '@on.auto/interaction':
         specifier: workspace:*
         version: link:../../capabilities/interaction
-      '@beonauto/ledger':
+      '@on.auto/ledger':
         specifier: workspace:*
         version: link:../ledger
-      '@beonauto/mcp':
+      '@on.auto/mcp':
         specifier: workspace:*
         version: link:../mcp
-      '@beonauto/object-storage':
+      '@on.auto/object-storage':
         specifier: workspace:*
         version: link:../object-storage
-      '@beonauto/operations':
+      '@on.auto/operations':
         specifier: workspace:*
         version: link:../operations
-      '@beonauto/outbound':
+      '@on.auto/outbound':
         specifier: workspace:*
         version: link:../outbound
-      '@beonauto/playbooks':
+      '@on.auto/playbooks':
         specifier: workspace:*
         version: link:../playbooks
-      '@beonauto/reasoning':
+      '@on.auto/reasoning':
         specifier: workspace:*
         version: link:../../capabilities/reasoning
-      '@beonauto/recall':
+      '@on.auto/recall':
         specifier: workspace:*
         version: link:../../capabilities/recall
-      '@beonauto/workflow-engine':
+      '@on.auto/workflow-engine':
         specifier: workspace:*
         version: link:../workflow-engine
-      '@beonauto/workflow-host':
+      '@on.auto/workflow-host':
         specifier: workspace:*
         version: link:../workflow-host
       effect:
@@ -775,15 +775,15 @@ importers:
 
   packages/workflow-engine:
     dependencies:
-      '@beonauto/ledger':
-        specifier: workspace:*
-        version: link:../ledger
-      '@beonauto/operations':
-        specifier: workspace:*
-        version: link:../operations
       '@jitl/quickjs-wasmfile-release-sync':
         specifier: 0.32.0
         version: 0.32.0
+      '@on.auto/ledger':
+        specifier: workspace:*
+        version: link:../ledger
+      '@on.auto/operations':
+        specifier: workspace:*
+        version: link:../operations
       effect:
         specifier: 'catalog:'
         version: 4.0.0
@@ -803,27 +803,27 @@ importers:
 
   packages/workflow-host:
     dependencies:
-      '@beonauto/definitions':
-        specifier: workspace:*
-        version: link:../definitions
-      '@beonauto/ledger':
-        specifier: workspace:*
-        version: link:../ledger
-      '@beonauto/operations':
-        specifier: workspace:*
-        version: link:../operations
-      '@beonauto/playbooks':
-        specifier: workspace:*
-        version: link:../playbooks
-      '@beonauto/workflow-engine':
-        specifier: workspace:*
-        version: link:../workflow-engine
       '@event-driven-io/dumbo':
         specifier: 0.13.0-beta.56
         version: 0.13.0-beta.56(@types/pg@8.23.1)(pg@8.23.1)(sqlite3@6.0.1)
       '@event-driven-io/emmett-sqlite':
         specifier: 0.43.0-beta.50
         version: 0.43.0-beta.50(@aws-sdk/credential-providers@3.1144.0)(@types/pg@8.23.1)(commander@14.0.3)(pg@8.23.1)(sqlite3@6.0.1)(supports-color@8.1.1)(uuid@14.0.2)
+      '@on.auto/definitions':
+        specifier: workspace:*
+        version: link:../definitions
+      '@on.auto/ledger':
+        specifier: workspace:*
+        version: link:../ledger
+      '@on.auto/operations':
+        specifier: workspace:*
+        version: link:../operations
+      '@on.auto/playbooks':
+        specifier: workspace:*
+        version: link:../playbooks
+      '@on.auto/workflow-engine':
+        specifier: workspace:*
+        version: link:../workflow-engine
       croner:
         specifier: 10.0.1
         version: 10.0.1

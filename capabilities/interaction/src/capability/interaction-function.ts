@@ -3,7 +3,7 @@ import {
   functionCategoryLabels,
   functionResourceLabels,
   type Capability,
-} from '@beonauto/definitions';
+} from '@on.auto/definitions';
 
 import { callRun, longestCallRunMs } from '../call/call-run.ts';
 import type { InteractionFunctionDefinitionDocument } from '../document/interaction-document.ts';

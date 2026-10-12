@@ -1,5 +1,5 @@
-import type { CompiledSchema } from '@beonauto/definitions/document';
-import type { ViewDetails } from '@beonauto/workflow-host';
+import type { CompiledSchema } from '@on.auto/definitions/document';
+import type { ViewDetails } from '@on.auto/workflow-host';
 
 export interface ValueContract {
   readonly schema?: CompiledSchema;

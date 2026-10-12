@@ -1,7 +1,7 @@
-import type { RunContext } from '@beonauto/definitions';
-import type { NotOfferedBecause, RunTools, ServerFailedBecause, ToolAccess } from '@beonauto/mcp';
-import { runIdKey, type ToolReference } from '@beonauto/mcp/policy';
-import { Unavailable } from '@beonauto/operations';
+import type { RunContext } from '@on.auto/definitions';
+import type { NotOfferedBecause, RunTools, ServerFailedBecause, ToolAccess } from '@on.auto/mcp';
+import { runIdKey, type ToolReference } from '@on.auto/mcp/policy';
+import { Unavailable } from '@on.auto/operations';
 import { Effect } from 'effect';
 
 interface Refused<Because> {

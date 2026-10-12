@@ -1,7 +1,7 @@
-import { computationBounds, makeComputationFunctionAdapter } from '@beonauto/computation';
-import type { Capability } from '@beonauto/definitions';
-import { checkedAtSave, warmedChecks } from '@beonauto/definitions/check';
-import { programPool, type CheckJob, type ProgramPool } from '@beonauto/workflow-engine/dsl';
+import { computationBounds, makeComputationFunctionAdapter } from '@on.auto/computation';
+import type { Capability } from '@on.auto/definitions';
+import { checkedAtSave, warmedChecks } from '@on.auto/definitions/check';
+import { programPool, type CheckJob, type ProgramPool } from '@on.auto/workflow-engine/dsl';
 
 import type { ComputationSettings } from '../function-settings/computation-settings.ts';
 import type { Served } from '../lifecycle/lifecycle.ts';

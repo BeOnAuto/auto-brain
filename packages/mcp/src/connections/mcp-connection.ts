@@ -61,7 +61,7 @@ export function boundedReport({ scrub, report }: OutputReport, noLongerReported:
 
 const metaField = '_meta';
 
-const clientInfo = { name: 'auto-runtime', version: '1.0.0' };
+const clientInfo = { name: '@on.auto/runtime', version: '1.0.0' };
 
 export function openingClient(requestIdHeader: string | null, reportError: (message: string) => void): OpenedClient {
   const client = new Client(clientInfo, { capabilities: {} });

@@ -1,6 +1,6 @@
-import { cancelRequestOf, type CancelRequested } from '@beonauto/definitions';
-import type { PlaybookAddress, Conflict, Lineage, RecordedEvent } from '@beonauto/operations';
-import type { RunInput, Submission } from '@beonauto/workflow-engine';
+import { cancelRequestOf, type CancelRequested } from '@on.auto/definitions';
+import type { PlaybookAddress, Conflict, Lineage, RecordedEvent } from '@on.auto/operations';
+import type { RunInput, Submission } from '@on.auto/workflow-engine';
 import { Effect } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';

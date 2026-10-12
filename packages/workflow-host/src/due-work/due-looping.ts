@@ -1,4 +1,4 @@
-import type { ArmTimer, WorkflowEngine } from '@beonauto/workflow-engine';
+import type { ArmTimer, WorkflowEngine } from '@on.auto/workflow-engine';
 import { Effect, Function } from 'effect';
 import { onTestFinished } from 'vitest';
 

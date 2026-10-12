@@ -1,4 +1,4 @@
-import { InvalidInput } from '@beonauto/operations';
+import { InvalidInput } from '@on.auto/operations';
 import { Effect, Result, type Schema } from 'effect';
 
 import { checkedAnswer } from './answer-check.ts';

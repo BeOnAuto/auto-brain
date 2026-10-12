@@ -1,4 +1,4 @@
-import type { SchemaIssue } from '@beonauto/definitions/document';
+import type { SchemaIssue } from '@on.auto/definitions/document';
 
 export class AnswerMismatch extends Error {
   readonly issues: readonly SchemaIssue[];

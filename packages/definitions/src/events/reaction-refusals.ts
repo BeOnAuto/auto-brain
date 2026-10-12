@@ -5,7 +5,7 @@ import {
   type PlaybookAddress,
   type Decided,
   type Decider,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Result, Schema } from 'effect';
 
 export const reactionsStreamKind = 'reactions';

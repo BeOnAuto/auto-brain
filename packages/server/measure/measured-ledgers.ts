@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-import { conversations, openRequests } from '@beonauto/interaction';
-import { projectedTableOf } from '@beonauto/operations';
+import { conversations, openRequests } from '@on.auto/interaction';
+import { projectedTableOf } from '@on.auto/operations';
 import { Client } from 'pg';
 
 interface LedgerUse {

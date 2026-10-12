@@ -1,8 +1,8 @@
 import { existsSync, fstatSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-import { Ledger, textToKeep } from '@beonauto/operations';
-import { memoryRecordedContent } from '@beonauto/operations/testing';
+import { Ledger, textToKeep } from '@on.auto/operations';
+import { memoryRecordedContent } from '@on.auto/operations/testing';
 import { Cause, Effect } from 'effect';
 import { afterEach, describe, expect, it, onTestFinished } from 'vitest';
 

@@ -1,4 +1,4 @@
-import { programPool, type FoldRequest, type Json, type JsonObject } from '@beonauto/workflow-engine/dsl';
+import { programPool, type FoldRequest, type Json, type JsonObject } from '@on.auto/workflow-engine/dsl';
 import { Effect, Result } from 'effect';
 
 import { documentCheck } from '../src/document/document-check.ts';

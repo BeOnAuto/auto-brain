@@ -1,6 +1,6 @@
-import { tick, timeOf } from '@beonauto/ledger/dataset';
-import { ContextSchema, type Context, type Decided, type Decider } from '@beonauto/operations';
-import { runFacts, type RunFact } from '@beonauto/operations/testing';
+import { tick, timeOf } from '@on.auto/ledger/dataset';
+import { ContextSchema, type Context, type Decided, type Decider } from '@on.auto/operations';
+import { runFacts, type RunFact } from '@on.auto/operations/testing';
 import { Effect, Result, Schema } from 'effect';
 
 import { runOutcomeMapping } from '../src/analytics/run-outcome-mapping.ts';

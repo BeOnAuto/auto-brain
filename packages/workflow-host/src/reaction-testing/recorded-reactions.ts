@@ -1,4 +1,4 @@
-import type { Emission } from '@beonauto/definitions';
+import type { Emission } from '@on.auto/definitions';
 import { Effect } from 'effect';
 
 import { StartRefused, type ReactionOptions, type ReactionStart } from '../reactions/reaction-options.ts';

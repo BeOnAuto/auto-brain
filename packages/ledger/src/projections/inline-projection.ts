@@ -1,4 +1,4 @@
-import { contextOf, type Context } from '@beonauto/operations';
+import { contextOf, type Context } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 import type { StatementExecutor } from '../event-store.ts';

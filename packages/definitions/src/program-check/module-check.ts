@@ -1,4 +1,4 @@
-import type { CheckIssue, CheckJob } from '@beonauto/workflow-engine/dsl';
+import type { CheckIssue, CheckJob } from '@on.auto/workflow-engine/dsl';
 import ts from 'typescript6';
 
 import { assignmentIssues } from './assignment-bound.ts';

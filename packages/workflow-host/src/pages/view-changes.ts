@@ -1,5 +1,5 @@
-import type { StoredPlace } from '@beonauto/ledger';
-import type { FoldedView, FoldStall } from '@beonauto/workflow-engine/dsl';
+import type { StoredPlace } from '@on.auto/ledger';
+import type { FoldedView, FoldStall } from '@on.auto/workflow-engine/dsl';
 import { Struct, type Schema } from 'effect';
 
 import { lineInDocument } from '../views/view-details.ts';

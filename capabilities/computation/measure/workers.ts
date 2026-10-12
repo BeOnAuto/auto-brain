@@ -1,4 +1,4 @@
-import { programPool, workerStackMegabytes, type ProgramPool } from '@beonauto/workflow-engine/dsl';
+import { programPool, workerStackMegabytes, type ProgramPool } from '@on.auto/workflow-engine/dsl';
 
 import { computationBounds, mebibytes } from '../src/run/run-bounds.ts';
 import { formatted, functionOf, inTurn, poolOfOne, request } from './common.ts';

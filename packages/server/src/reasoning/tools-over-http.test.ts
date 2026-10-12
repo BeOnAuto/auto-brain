@@ -1,6 +1,6 @@
-import { fakeStdioServerPath, serveFakeMcp, stdioTestTimeoutMs, type FakeMcpServer } from '@beonauto/mcp/testing';
-import { TimedOut } from '@beonauto/reasoning';
-import { answers, callingTools, textResult, type ScriptedReply } from '@beonauto/reasoning/testing';
+import { fakeStdioServerPath, serveFakeMcp, stdioTestTimeoutMs, type FakeMcpServer } from '@on.auto/mcp/testing';
+import { TimedOut } from '@on.auto/reasoning';
+import { answers, callingTools, textResult, type ScriptedReply } from '@on.auto/reasoning/testing';
 import { Effect, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -108,7 +108,7 @@ describe('a reasoning function that calls tools, over HTTP', () => {
     });
     expect(await historyOf(server)).toEqual(toolRun);
     expect(fake.received()).toEqual([
-      { tool: 'search', arguments: { query: 'acme' }, meta: { 'com.beonauto/run_id': runId } },
+      { tool: 'search', arguments: { query: 'acme' }, meta: { 'auto.on/run_id': runId } },
     ]);
     expect(fake.endedSessions()).toBe(1);
   });

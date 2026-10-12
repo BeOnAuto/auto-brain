@@ -1,5 +1,5 @@
-import type { RecordedWork, WorkRule } from '@beonauto/definitions';
-import { Conflict } from '@beonauto/operations';
+import type { RecordedWork, WorkRule } from '@on.auto/definitions';
+import { Conflict } from '@on.auto/operations';
 
 import { workFactOf, type DeliveryEvent } from './run-facts.ts';
 

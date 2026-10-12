@@ -1,4 +1,4 @@
-import { sandboxAnswers } from '@beonauto/workflow-engine/dsl';
+import { sandboxAnswers } from '@on.auto/workflow-engine/dsl';
 import { describe, expect, it } from 'vitest';
 
 import { keptLibFiles, keptSandboxLib } from './kept-lib.ts';

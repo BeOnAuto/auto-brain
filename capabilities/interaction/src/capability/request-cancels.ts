@@ -1,4 +1,4 @@
-import { cancelledAsAsked, type CancelledRun, type Settlement } from '@beonauto/definitions';
+import { cancelledAsAsked, type CancelledRun, type Settlement } from '@on.auto/definitions';
 
 import { interactionWorkOf } from '../facts/work-rules.ts';
 import { requestRecordOf, takesAnswer } from '../run/request-record.ts';

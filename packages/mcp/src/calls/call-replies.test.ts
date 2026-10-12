@@ -54,7 +54,7 @@ async function opened(meta: Readonly<Record<string, string>>, ...tools: readonly
 
 describe('what a call answers beside what the model sees', () => {
   it('is the outcome, the size of the whole result, how long it took and the id the server gave it, as recorded', async () => {
-    const { call, journal } = await opened({ 'com.beonauto/run_id': testId }, 'search', 'denied');
+    const { call, journal } = await opened({ 'auto.on/run_id': testId }, 'search', 'denied');
 
     const replies = [await call(0, { query: 'acme' }), await call(1, {})];
 
@@ -76,7 +76,7 @@ describe('what a call answers beside what the model sees', () => {
   });
 
   it('is a server failure with no result when the server fails the call', async () => {
-    const { call } = await opened({ 'com.beonauto/run_id': testId }, 'broken');
+    const { call } = await opened({ 'auto.on/run_id': testId }, 'broken');
 
     expect(await call(0, {})).toMatchObject({
       isError: true,
@@ -89,8 +89,8 @@ describe('what a call answers beside what the model sees', () => {
 
 describe('a failed call reported to the operator', () => {
   it('names the run whose call it was, or the test, by the id its opener gave', async () => {
-    const ofARun = await opened({ 'com.beonauto/run_id': testId }, 'broken');
-    const ofATest = await opened({ 'com.beonauto/tool_test_id': testId }, 'broken');
+    const ofARun = await opened({ 'auto.on/run_id': testId }, 'broken');
+    const ofATest = await opened({ 'auto.on/tool_test_id': testId }, 'broken');
 
     await ofARun.call(0, {});
     await ofATest.call(0, {});

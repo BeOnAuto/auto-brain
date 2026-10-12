@@ -1,5 +1,5 @@
-import { foldOf, recallDocument } from '@beonauto/recall/testing';
-import type { ProgramPool } from '@beonauto/workflow-engine/dsl';
+import { foldOf, recallDocument } from '@on.auto/recall/testing';
+import type { ProgramPool } from '@on.auto/workflow-engine/dsl';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 

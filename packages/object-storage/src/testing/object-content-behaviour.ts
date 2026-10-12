@@ -1,5 +1,5 @@
 import { CreateMultipartUploadCommand, PutObjectCommand } from '@aws-sdk/client-s3';
-import { notTheBytesOfItsDigest, randomUUIDv7, sha256Of } from '@beonauto/operations';
+import { notTheBytesOfItsDigest, randomUUIDv7, sha256Of } from '@on.auto/operations';
 import {
   alpha,
   deliveredBeforeFailing,
@@ -8,7 +8,7 @@ import {
   present,
   refusalOf,
   resultOf,
-} from '@beonauto/operations/testing';
+} from '@on.auto/operations/testing';
 import { describe, expect, it } from 'vitest';
 
 import { copiedFirst, heldAt } from '../content/bucket-requests.ts';

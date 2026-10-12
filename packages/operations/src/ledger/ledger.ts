@@ -16,4 +16,4 @@ export type LedgerPorts = StreamReader &
   ProjectionAdvancer &
   ContentKeeper;
 
-export class Ledger extends Context.Service<Ledger, LedgerPorts>()('@beonauto/operations/Ledger') {}
+export class Ledger extends Context.Service<Ledger, LedgerPorts>()('@on.auto/operations/Ledger') {}

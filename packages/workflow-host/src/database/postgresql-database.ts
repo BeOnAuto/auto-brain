@@ -1,5 +1,5 @@
-import type { EventStore } from '@beonauto/ledger';
-import { postgresqlEventStore } from '@beonauto/ledger/postgresql';
+import type { EventStore } from '@on.auto/ledger';
+import { postgresqlEventStore } from '@on.auto/ledger/postgresql';
 import { Effect, Function, Schema } from 'effect';
 import { Pool } from 'pg';
 

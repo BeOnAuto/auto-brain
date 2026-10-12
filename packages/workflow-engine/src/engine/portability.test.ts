@@ -13,7 +13,7 @@ interface Forbidden {
 
 const source = fileURLToPath(new URL('..', import.meta.url));
 
-const importedEverywhere: ReadonlySet<string> = new Set(['effect', '@beonauto/operations', '@beonauto/ledger']);
+const importedEverywhere: ReadonlySet<string> = new Set(['effect', '@on.auto/operations', '@on.auto/ledger']);
 
 const importedInAFolder: ReadonlyMap<string, readonly string[]> = new Map([
   ['programs/', ['quickjs-emscripten-core']],

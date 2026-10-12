@@ -1,4 +1,4 @@
-import { CallResultSchema } from '@beonauto/operations';
+import { CallResultSchema } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 import { CallKeySchema } from '../executor/call-key.ts';

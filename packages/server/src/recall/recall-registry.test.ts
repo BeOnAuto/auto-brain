@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { foldOf, recallDocument } from '@beonauto/recall/testing';
+import { foldOf, recallDocument } from '@on.auto/recall/testing';
 import { afterEach, describe, expect, it, onTestFinished } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';

@@ -1,4 +1,4 @@
-import type { Json } from '@beonauto/workflow-engine/dsl';
+import type { Json } from '@on.auto/workflow-engine/dsl';
 
 import { computationBounds } from '../src/run/run-bounds.ts';
 import { formatted, functionOf, inTurn, poolOfOne, request } from './common.ts';

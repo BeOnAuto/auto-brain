@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 
-import { listedTools, withMcpSession, type ListedTool, type McpSession } from '@beonauto/api/testing';
+import { listedTools, withMcpSession, type ListedTool, type McpSession } from '@on.auto/api/testing';
 import { Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 

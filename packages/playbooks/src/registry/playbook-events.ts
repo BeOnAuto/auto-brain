@@ -1,4 +1,4 @@
-import { ActedContextSchema, PlaybookIdSchema, factOf, type Decided } from '@beonauto/operations';
+import { ActedContextSchema, PlaybookIdSchema, factOf, type Decided } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 const ofThePlaybook = { playbook: PlaybookIdSchema };

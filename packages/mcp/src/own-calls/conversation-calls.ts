@@ -1,4 +1,4 @@
-import type { Context, RunContext } from '@beonauto/operations';
+import type { Context, RunContext } from '@on.auto/operations';
 import { Struct } from 'effect';
 
 import type { CallAnswered } from '../calls/call-facts.ts';

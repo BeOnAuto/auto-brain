@@ -1,5 +1,5 @@
-import { waitForever } from '@beonauto/api/testing';
-import { playbookOperations } from '@beonauto/playbooks';
+import { waitForever } from '@on.auto/api/testing';
+import { playbookOperations } from '@on.auto/playbooks';
 
 import { compositionRoot } from '../../composition/composition-root.ts';
 import { routesServing } from '../../composition/served-routes.ts';

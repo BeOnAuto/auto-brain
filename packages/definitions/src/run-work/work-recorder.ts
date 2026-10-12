@@ -8,7 +8,7 @@ import {
   type Lineage,
   type StreamReader,
   type StreamWriter,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { DateTime, Effect, Equal, Schema } from 'effect';
 
 import type { AnswerFact, CapabilityFact } from '../runs/run-commands.ts';

@@ -1,5 +1,5 @@
-import { Conflict } from '@beonauto/operations';
-import { callKeyText, type Json, type Submission } from '@beonauto/workflow-engine';
+import { Conflict } from '@on.auto/operations';
+import { callKeyText, type Json, type Submission } from '@on.auto/workflow-engine';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

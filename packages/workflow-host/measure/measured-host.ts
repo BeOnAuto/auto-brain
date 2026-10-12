@@ -1,6 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
-import type { Run, SettleRun } from '@beonauto/definitions';
+import type { Run, SettleRun } from '@on.auto/definitions';
 import { Effect, Function, type Schema } from 'effect';
 
 import type { DatabaseSettings } from '../src/database/host-databases.ts';

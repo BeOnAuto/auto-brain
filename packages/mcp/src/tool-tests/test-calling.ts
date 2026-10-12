@@ -1,4 +1,4 @@
-import { Unavailable } from '@beonauto/operations';
+import { Unavailable } from '@on.auto/operations';
 import { DateTime, Effect, Schema } from 'effect';
 
 import { toolBounds } from '../bounds/call-bounds.ts';

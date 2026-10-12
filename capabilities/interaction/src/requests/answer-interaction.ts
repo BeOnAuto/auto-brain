@@ -7,7 +7,7 @@ import {
   type RecordedRun,
   refusingBlankText,
   refusingForbiddenCharacters,
-} from '@beonauto/definitions';
+} from '@on.auto/definitions';
 import {
   PlaybookReader,
   PlaybookWriter,
@@ -16,7 +16,7 @@ import {
   NotFound,
   type InvalidInput,
   defineCommand,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 
 import { interactionBounds } from '../run/run-bounds.ts';

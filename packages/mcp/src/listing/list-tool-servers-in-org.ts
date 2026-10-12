@@ -7,7 +7,7 @@ import {
   type PlaybookAccess,
   type NotFound,
   type OrgReader,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 
 import type { ToolAccess } from '../access/tool-access.ts';

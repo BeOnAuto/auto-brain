@@ -1,8 +1,8 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { createApiKey } from '@beonauto/identity';
-import { serveFakeMcp, type FakeMcpServer } from '@beonauto/mcp/testing';
-import { allPermissions } from '@beonauto/operations';
+import { createApiKey } from '@on.auto/identity';
+import { serveFakeMcp, type FakeMcpServer } from '@on.auto/mcp/testing';
+import { allPermissions } from '@on.auto/operations';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 

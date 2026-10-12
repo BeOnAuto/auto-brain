@@ -1,4 +1,4 @@
-import { strictRecordedDecoder, type Presenter, type Recorded } from '@beonauto/operations';
+import { strictRecordedDecoder, type Presenter, type Recorded } from '@on.auto/operations';
 import type { Schema } from 'effect';
 
 export interface Account {

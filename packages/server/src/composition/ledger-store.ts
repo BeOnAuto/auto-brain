@@ -1,9 +1,9 @@
-import { runOutcomeMapping } from '@beonauto/definitions';
-import { conversations, openRequests } from '@beonauto/interaction';
-import type { AppendSignal } from '@beonauto/ledger';
-import { postgresqlLedgerLayer } from '@beonauto/ledger/postgresql';
-import { ledgerLayer } from '@beonauto/ledger/sqlite3';
-import type { ContentStore, Ledger } from '@beonauto/operations';
+import { runOutcomeMapping } from '@on.auto/definitions';
+import { conversations, openRequests } from '@on.auto/interaction';
+import type { AppendSignal } from '@on.auto/ledger';
+import { postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
+import { ledgerLayer } from '@on.auto/ledger/sqlite3';
+import type { ContentStore, Ledger } from '@on.auto/operations';
 import { Effect, Layer, Redacted } from 'effect';
 
 import type { LedgerSettings } from '../settings/ledger-settings.ts';

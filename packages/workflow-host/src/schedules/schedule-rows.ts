@@ -1,4 +1,4 @@
-import { ScheduleTriggerSchema, type ScheduleTrigger } from '@beonauto/definitions';
+import { ScheduleTriggerSchema, type ScheduleTrigger } from '@on.auto/definitions';
 import { Effect, Schema } from 'effect';
 
 import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';

@@ -1,4 +1,4 @@
-import type { CallLink, StartingTrigger } from '@beonauto/operations';
+import type { CallLink, StartingTrigger } from '@on.auto/operations';
 import type { Schema } from 'effect';
 
 import type {

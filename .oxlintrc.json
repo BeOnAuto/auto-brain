@@ -75,7 +75,7 @@
         "paths": [
           {
             "name": "node:worker_threads",
-            "message": "Worker threads belong to the program pool of @beonauto/workflow-engine; a worker module serves its jobs with @beonauto/workflow-engine/job-loop."
+            "message": "Worker threads belong to the program pool of @on.auto/workflow-engine; a worker module serves its jobs with @on.auto/workflow-engine/job-loop."
           }
         ]
       }

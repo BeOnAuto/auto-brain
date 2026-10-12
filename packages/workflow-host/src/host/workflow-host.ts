@@ -1,5 +1,5 @@
-import type { Conflict } from '@beonauto/operations';
-import type { ReceivedEvent, RunState } from '@beonauto/workflow-engine';
+import type { Conflict } from '@on.auto/operations';
+import type { ReceivedEvent, RunState } from '@on.auto/workflow-engine';
 import type { Effect } from 'effect';
 
 import { systemClock, type HostClock } from '../loop/host-clock.ts';

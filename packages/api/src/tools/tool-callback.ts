@@ -1,5 +1,5 @@
-import { ServedAsTool, settle, type DispatcherServices, type Outcome } from '@beonauto/operations';
 import type { CallToolResult } from '@modelcontextprotocol/server';
+import { ServedAsTool, settle, type DispatcherServices, type Outcome } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 
 import type { OrgCall } from '../hand-off/caller-hand-off.ts';

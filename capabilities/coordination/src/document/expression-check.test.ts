@@ -1,6 +1,6 @@
-import { Unavailable } from '@beonauto/operations';
-import { memoryLedger } from '@beonauto/operations/testing';
-import type { CheckJob } from '@beonauto/workflow-engine/dsl';
+import { Unavailable } from '@on.auto/operations';
+import { memoryLedger } from '@on.auto/operations/testing';
+import type { CheckJob } from '@on.auto/workflow-engine/dsl';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
-import { CallerIdentitySchema, sha256Of } from '@beonauto/operations';
+import { CallerIdentitySchema, sha256Of } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 import { localOrg } from '../access/local-org.ts';

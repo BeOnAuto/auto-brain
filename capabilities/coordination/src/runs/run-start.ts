@@ -1,6 +1,6 @@
-import type { FinishesLater, RunContext } from '@beonauto/definitions';
-import { Conflict, type Unavailable } from '@beonauto/operations';
-import type { StartAnswer, WorkflowHost } from '@beonauto/workflow-host';
+import type { FinishesLater, RunContext } from '@on.auto/definitions';
+import { Conflict, type Unavailable } from '@on.auto/operations';
+import type { StartAnswer, WorkflowHost } from '@on.auto/workflow-host';
 import { Effect, Random, type Schema } from 'effect';
 
 import type { WorkflowDefinitionDocument } from '../document/workflow-document.ts';

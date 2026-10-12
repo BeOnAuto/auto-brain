@@ -1,6 +1,6 @@
-import { serveFakeMcp, type FakeMcpServer } from '@beonauto/mcp/testing';
-import { TimedOut } from '@beonauto/reasoning';
-import { callingTools, type ScriptedReply } from '@beonauto/reasoning/testing';
+import { serveFakeMcp, type FakeMcpServer } from '@on.auto/mcp/testing';
+import { TimedOut } from '@on.auto/reasoning';
+import { callingTools, type ScriptedReply } from '@on.auto/reasoning/testing';
 import { Effect, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 

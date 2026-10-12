@@ -1,4 +1,4 @@
-import { streamPrefixOfOrg } from '@beonauto/operations';
+import { streamPrefixOfOrg } from '@on.auto/operations';
 
 export const playbooksStream = 'playbooks';
 

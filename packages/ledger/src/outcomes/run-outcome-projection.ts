@@ -4,7 +4,7 @@ import {
   type RunOutcome,
   type RunOutcomeMapping,
   type KeyedProjection,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Schema } from 'effect';
 
 const runOutcomesVersion = 4;

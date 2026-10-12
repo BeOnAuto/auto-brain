@@ -1,5 +1,5 @@
-import type { RecordedContent } from '@beonauto/operations';
-import { memoryRecordedContent } from '@beonauto/operations/testing';
+import type { RecordedContent } from '@on.auto/operations';
+import { memoryRecordedContent } from '@on.auto/operations/testing';
 import { Effect } from 'effect';
 
 import type { ServerMessage } from '../access/caller-context.ts';

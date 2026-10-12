@@ -1,5 +1,5 @@
-import { makeDefinitionOperations } from '@beonauto/definitions';
-import { echo } from '@beonauto/definitions/testing';
+import { makeDefinitionOperations } from '@on.auto/definitions';
+import { echo } from '@on.auto/definitions/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { listenOnLoopback, type Listening } from '../testing/listening.ts';

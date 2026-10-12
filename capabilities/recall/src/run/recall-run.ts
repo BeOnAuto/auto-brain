@@ -1,7 +1,7 @@
-import type { CapabilityAnswer, CapabilityRejection, RunContext } from '@beonauto/definitions';
-import { Conflict, Unavailable, type InvalidInput } from '@beonauto/operations';
-import { jsonBytesOf } from '@beonauto/workflow-engine/dsl';
-import type { KeptView, ViewsPort } from '@beonauto/workflow-host';
+import type { CapabilityAnswer, CapabilityRejection, RunContext } from '@on.auto/definitions';
+import { Conflict, Unavailable, type InvalidInput } from '@on.auto/operations';
+import { jsonBytesOf } from '@on.auto/workflow-engine/dsl';
+import type { KeptView, ViewsPort } from '@on.auto/workflow-host';
 import { Effect, type Schema } from 'effect';
 
 import type { Answered } from './answer-endings.ts';

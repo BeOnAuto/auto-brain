@@ -1,5 +1,5 @@
-import { mostResultBytes } from '@beonauto/definitions';
-import { mostValueDepth, runMemoryBytes, workerStackBytes } from '@beonauto/workflow-engine/dsl';
+import { mostResultBytes } from '@on.auto/definitions';
+import { mostValueDepth, runMemoryBytes, workerStackBytes } from '@on.auto/workflow-engine/dsl';
 
 export const computationBounds = {
   budget: 20_000,

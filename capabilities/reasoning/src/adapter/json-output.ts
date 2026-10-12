@@ -1,4 +1,4 @@
-import { shapeIssues } from '@beonauto/definitions/document';
+import { shapeIssues } from '@on.auto/definitions/document';
 import { jsonSchema, Output } from 'ai';
 import { Result, type Schema } from 'effect';
 import type { JSONSchema7 } from 'json-schema';

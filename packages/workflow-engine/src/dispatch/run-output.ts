@@ -1,4 +1,4 @@
-import { SettlementSchema } from '@beonauto/operations';
+import { SettlementSchema } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 import { CallKeySchema } from '../executor/call-key.ts';

@@ -1,4 +1,4 @@
-import { allPermissions, type CallerIdentity } from '@beonauto/operations';
+import { allPermissions, type CallerIdentity } from '@on.auto/operations';
 
 import type { ApiKey } from '../keys/api-key.ts';
 import { localOrg } from './local-org.ts';

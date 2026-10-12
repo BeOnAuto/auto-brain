@@ -1,4 +1,4 @@
-import { asSentence, counted, listed, quoted, type Noun } from '@beonauto/operations';
+import { asSentence, counted, listed, quoted, type Noun } from '@on.auto/operations';
 
 import type { Playbook } from '../registry/playbook.ts';
 

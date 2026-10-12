@@ -1,8 +1,8 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { serveFakeMcp, type FakeHints } from '@beonauto/mcp/testing';
-import { TimedOut, ToolsStopped, type ToolsStoppedBecause } from '@beonauto/reasoning';
-import { answers, callingTools, textResult, type ScriptedCall, type ScriptedReply } from '@beonauto/reasoning/testing';
+import { serveFakeMcp, type FakeHints } from '@on.auto/mcp/testing';
+import { TimedOut, ToolsStopped, type ToolsStoppedBecause } from '@on.auto/reasoning';
+import { answers, callingTools, textResult, type ScriptedCall, type ScriptedReply } from '@on.auto/reasoning/testing';
 import { Effect } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 

@@ -1,4 +1,4 @@
-import type { RecordedEvent } from '@beonauto/operations';
+import type { RecordedEvent } from '@on.auto/operations';
 import { Effect } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';

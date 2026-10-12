@@ -1,6 +1,6 @@
-import { answers, jsonResult, type ScriptedReply } from '@beonauto/reasoning/testing';
-import { campaignReviews } from '@beonauto/recall/testing';
-import type { ProgramPool } from '@beonauto/workflow-engine/dsl';
+import { answers, jsonResult, type ScriptedReply } from '@on.auto/reasoning/testing';
+import { campaignReviews } from '@on.auto/recall/testing';
+import type { ProgramPool } from '@on.auto/workflow-engine/dsl';
 import { Option, Schema } from 'effect';
 import { expect, vi } from 'vitest';
 

@@ -1,4 +1,4 @@
-import { playbookStreamOf, projectedTableOf, rowKeyOf, type ProjectedRow } from '@beonauto/operations';
+import { playbookStreamOf, projectedTableOf, rowKeyOf, type ProjectedRow } from '@on.auto/operations';
 
 import type { InTransaction, StatementExecutor } from '../event-store.ts';
 import { inTurn } from './inline-projection.ts';

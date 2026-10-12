@@ -1,8 +1,8 @@
 import { DatabaseSync } from 'node:sqlite';
 
-import { openRequests } from '@beonauto/interaction';
-import { chatDelivery } from '@beonauto/interaction/testing';
-import { projectedTableOf } from '@beonauto/operations';
+import { openRequests } from '@on.auto/interaction';
+import { chatDelivery } from '@on.auto/interaction/testing';
+import { projectedTableOf } from '@on.auto/operations';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';

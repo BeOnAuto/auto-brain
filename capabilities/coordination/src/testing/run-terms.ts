@@ -1,5 +1,5 @@
-import type { CallerIdentity, Settlement } from '@beonauto/operations';
-import type { Json, JsonObject } from '@beonauto/workflow-engine';
+import type { CallerIdentity, Settlement } from '@on.auto/operations';
+import type { Json, JsonObject } from '@on.auto/workflow-engine';
 
 export interface DefinitionCall {
   readonly org: string;

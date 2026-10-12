@@ -1,6 +1,6 @@
-import type { AppRuntime } from '@beonauto/api';
-import { makeToolAccess, type Timing, type ToolAccess } from '@beonauto/mcp';
-import type { DispatcherServices } from '@beonauto/operations';
+import type { AppRuntime } from '@on.auto/api';
+import { makeToolAccess, type Timing, type ToolAccess } from '@on.auto/mcp';
+import type { DispatcherServices } from '@on.auto/operations';
 
 import type { Served } from '../lifecycle/lifecycle.ts';
 import { logServerMessage, logUntestableServer } from '../logging/logging.ts';

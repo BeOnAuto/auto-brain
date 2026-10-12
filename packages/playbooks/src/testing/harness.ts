@@ -8,13 +8,13 @@ import {
   type OrgRequest,
   type Outcome,
   type Registration,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import {
   memoryPlaybookRegistry,
   memoryLedger,
   recordingReporter,
   type MemoryLedger,
-} from '@beonauto/operations/testing';
+} from '@on.auto/operations/testing';
 import { DateTime, Effect, Layer } from 'effect';
 import { TestClock } from 'effect/testing';
 

@@ -1,6 +1,6 @@
-import { objectContentOn, objectStoreReached, storageClientOf } from '@beonauto/object-storage';
-import type { ContentStore } from '@beonauto/operations';
-import { awsCredentialChain } from '@beonauto/outbound/aws';
+import { objectContentOn, objectStoreReached, storageClientOf } from '@on.auto/object-storage';
+import type { ContentStore } from '@on.auto/operations';
+import { awsCredentialChain } from '@on.auto/outbound/aws';
 import { Effect } from 'effect';
 
 import type { Settings } from '../settings/settings.ts';

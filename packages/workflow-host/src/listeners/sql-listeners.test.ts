@@ -1,4 +1,4 @@
-import type { ArmListener } from '@beonauto/workflow-engine';
+import type { ArmListener } from '@on.auto/workflow-engine';
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

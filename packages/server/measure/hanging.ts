@@ -1,5 +1,5 @@
-import { deliveryIdKey } from '@beonauto/mcp/policy';
-import { serveFakeMcp, type FakeMcpServer } from '@beonauto/mcp/testing';
+import { deliveryIdKey } from '@on.auto/mcp/policy';
+import { serveFakeMcp, type FakeMcpServer } from '@on.auto/mcp/testing';
 import { Schema } from 'effect';
 
 import type { MeasuredLedger } from './measured-ledgers.ts';

@@ -9,7 +9,7 @@ import {
   type PlaybookOperation,
   type Capability,
   type RecordWork,
-} from '@beonauto/definitions';
+} from '@on.auto/definitions';
 import {
   allPermissions,
   makeDispatcher,
@@ -17,8 +17,8 @@ import {
   type DispatcherServices,
   type Ledger,
   type Outcome,
-} from '@beonauto/operations';
-import { memoryPlaybookRegistry, memoryLedger, recordingReporter } from '@beonauto/operations/testing';
+} from '@on.auto/operations';
+import { memoryPlaybookRegistry, memoryLedger, recordingReporter } from '@on.auto/operations/testing';
 import { Effect, Layer } from 'effect';
 
 import { makeInteractionFunctionAdapter } from '../capability/interaction-function.ts';

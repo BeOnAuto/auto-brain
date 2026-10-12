@@ -1,4 +1,4 @@
-import type { Ledger } from '@beonauto/operations';
+import type { Ledger } from '@on.auto/operations';
 import type { Layer } from 'effect';
 
 import type { LedgerStore } from '../event-store.ts';

@@ -1,4 +1,4 @@
-import type { Registration } from '@beonauto/operations';
+import type { Registration } from '@on.auto/operations';
 import { describe, expect, it } from 'vitest';
 
 import { makeDefinitionOperations } from '../index.ts';

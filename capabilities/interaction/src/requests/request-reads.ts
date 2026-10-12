@@ -1,5 +1,5 @@
-import { RequestAnsweredSchema, recordedAnswerOf, type RecordedAnswer } from '@beonauto/definitions';
-import { PlaybookReader, type RecordedPageRequest } from '@beonauto/operations';
+import { RequestAnsweredSchema, recordedAnswerOf, type RecordedAnswer } from '@on.auto/definitions';
+import { PlaybookReader, type RecordedPageRequest } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 
 import { openRequestsName } from './open-requests.ts';

@@ -1,4 +1,4 @@
-import type { Lineage } from '@beonauto/operations';
+import type { Lineage } from '@on.auto/operations';
 import { describe, expect, it } from 'vitest';
 
 import { playbookFeed, everyText, textsIn, withCursor } from '../testing/playbook-feed.ts';

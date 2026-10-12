@@ -1,4 +1,4 @@
-import { startedAt as workflowStartedAt } from '@beonauto/workflow-engine/testing';
+import { startedAt as workflowStartedAt } from '@on.auto/workflow-engine/testing';
 import { describe, expect, it } from 'vitest';
 
 import { runId, interpret, workflow } from '../testing/workflows.ts';

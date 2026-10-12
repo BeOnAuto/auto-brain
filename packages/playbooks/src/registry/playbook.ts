@@ -1,4 +1,4 @@
-import { PlaybookIdSchema } from '@beonauto/operations';
+import { PlaybookIdSchema } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 export const PlaybookSchema = Schema.Struct({

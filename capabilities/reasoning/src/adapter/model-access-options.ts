@@ -1,4 +1,4 @@
-import type { ProxySettings } from '@beonauto/outbound';
+import type { ProxySettings } from '@on.auto/outbound';
 import type { Effect } from 'effect';
 
 import type { CredentialSources } from './credential-sources.ts';

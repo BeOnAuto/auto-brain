@@ -1,4 +1,4 @@
-import { readDuration } from '@beonauto/workflow-engine/dsl';
+import { readDuration } from '@on.auto/workflow-engine/dsl';
 import { Result } from 'effect';
 
 import { interactionBounds } from '../run/run-bounds.ts';

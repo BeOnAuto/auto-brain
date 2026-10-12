@@ -1,4 +1,4 @@
-import type { StreamReader } from '@beonauto/operations';
+import type { StreamReader } from '@on.auto/operations';
 import { Effect } from 'effect';
 
 import { eventCodecOf } from './event-codec.ts';

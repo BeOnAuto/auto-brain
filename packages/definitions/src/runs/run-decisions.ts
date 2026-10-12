@@ -1,4 +1,4 @@
-import { Conflict, NotFound, RunCancelled, type Rejection } from '@beonauto/operations';
+import { Conflict, NotFound, RunCancelled, type Rejection } from '@on.auto/operations';
 import { Equal, Result } from 'effect';
 
 import { decideAnswer, decideToolCall, decideWork, type AdmitsFact } from '../run-work/work-decisions.ts';

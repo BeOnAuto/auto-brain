@@ -1,4 +1,4 @@
-import type { Environment } from '@beonauto/config';
+import type { Environment } from '@on.auto/config';
 import type { Effect } from 'effect';
 
 import type { InvalidSettingsError } from '../settings/invalid-settings-error.ts';

@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
 
-import { parsedTemplate } from '@beonauto/definitions/template';
-import { toolBounds } from '@beonauto/mcp';
+import { parsedTemplate } from '@on.auto/definitions/template';
+import { toolBounds } from '@on.auto/mcp';
 import { Result, type Schema } from 'effect';
 
 import { interactionEngine } from '../document/request-templates.ts';

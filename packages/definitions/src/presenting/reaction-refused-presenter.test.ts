@@ -1,5 +1,5 @@
-import { presentationOf, type RecordedEvent, type Context } from '@beonauto/operations';
-import { nothingKept } from '@beonauto/operations/testing';
+import { presentationOf, type RecordedEvent, type Context } from '@on.auto/operations';
+import { nothingKept } from '@on.auto/operations/testing';
 import { describe, expect, it } from 'vitest';
 
 import { makeDefinitionPresenters } from '../index.ts';

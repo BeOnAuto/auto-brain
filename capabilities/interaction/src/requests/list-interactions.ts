@@ -12,7 +12,7 @@ import {
   type ProjectedCondition,
   type ProjectedKeyedRow,
   type ProjectedValue,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Effect, Option, Schema } from 'effect';
 
 import { readingKeyOf } from '../conversations/conversation-keys.ts';

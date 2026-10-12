@@ -1,4 +1,4 @@
-import type { Context, ProjectedMessage, RunContext } from '@beonauto/operations';
+import type { Context, ProjectedMessage, RunContext } from '@on.auto/operations';
 import { describe, expect, it } from 'vitest';
 
 import { conversations } from './conversation-rows.ts';

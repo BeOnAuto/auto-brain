@@ -1,5 +1,5 @@
-import type { CancelRun, RunEnding, SettleCancelled } from '@beonauto/definitions';
-import type { CallResult } from '@beonauto/operations';
+import type { CancelRun, RunEnding, SettleCancelled } from '@on.auto/definitions';
+import type { CallResult } from '@on.auto/operations';
 
 export interface WaitingOptions {
   readonly resultOf: (ending: RunEnding) => CallResult;

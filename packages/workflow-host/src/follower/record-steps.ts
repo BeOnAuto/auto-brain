@@ -1,4 +1,4 @@
-import { playbookOfStreamPrefix, streamKindOf, type PlaybookAddress, type RecordedEvent } from '@beonauto/operations';
+import { playbookOfStreamPrefix, streamKindOf, type PlaybookAddress, type RecordedEvent } from '@on.auto/operations';
 import { Effect, Option } from 'effect';
 
 import type { ApplyDefinitionRecord } from '../triggers/definition-records.ts';

@@ -1,4 +1,4 @@
-import type { Issue } from '@beonauto/operations';
+import type { Issue } from '@on.auto/operations';
 import { Effect, type Schema } from 'effect';
 
 import type { ConversationParts, ConversationPlace, ReadingRoute } from '../conversations/conversation-parts.ts';

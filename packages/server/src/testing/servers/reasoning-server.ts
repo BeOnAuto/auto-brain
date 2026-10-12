@@ -1,7 +1,7 @@
-import type { Timing } from '@beonauto/mcp';
-import { makeModelAccess } from '@beonauto/reasoning';
-import { scriptedLanguageModel, type ScriptedReply } from '@beonauto/reasoning/testing';
-import type { HostClock } from '@beonauto/workflow-host';
+import type { Timing } from '@on.auto/mcp';
+import { makeModelAccess } from '@on.auto/reasoning';
+import { scriptedLanguageModel, type ScriptedReply } from '@on.auto/reasoning/testing';
+import type { HostClock } from '@on.auto/workflow-host';
 import { Effect } from 'effect';
 
 import { compositionRootWith } from '../../composition/composition-root.ts';

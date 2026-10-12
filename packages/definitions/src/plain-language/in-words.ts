@@ -1,4 +1,4 @@
-import { asSentence, listed, quoted } from '@beonauto/operations';
+import { asSentence, listed, quoted } from '@on.auto/operations';
 import { Predicate, type Schema } from 'effect';
 
 const mostCharacters = 300;

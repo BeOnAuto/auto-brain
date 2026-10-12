@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 
-import type { Guide, Recipe } from '@beonauto/api';
+import type { Guide, Recipe } from '@on.auto/api';
 
 type RecipeOutline = Omit<Recipe, 'text'>;
 

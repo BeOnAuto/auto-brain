@@ -1,4 +1,4 @@
-import { evolveRun, loadedRunOf, newRun, snapshotEveryBytes } from '@beonauto/workflow-engine';
+import { evolveRun, loadedRunOf, newRun, snapshotEveryBytes } from '@on.auto/workflow-engine';
 import { Effect } from 'effect';
 import { expect, it } from 'vitest';
 

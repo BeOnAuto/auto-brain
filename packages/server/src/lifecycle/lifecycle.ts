@@ -1,8 +1,8 @@
 import type { AddressInfo } from 'node:net';
 
-import { createApiHandler, makeAppRuntime, type RegisterRoutes, type AppRuntime } from '@beonauto/api';
-import type { Environment } from '@beonauto/config';
-import { authenticatorFor } from '@beonauto/identity';
+import { createApiHandler, makeAppRuntime, type RegisterRoutes, type AppRuntime } from '@on.auto/api';
+import type { Environment } from '@on.auto/config';
+import { authenticatorFor } from '@on.auto/identity';
 import { Effect, Layer } from 'effect';
 
 import { logAccessMode, logConfigFile, logIncident, logsToStderr, type LogFormat } from '../logging/logging.ts';

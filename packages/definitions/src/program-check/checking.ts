@@ -1,4 +1,4 @@
-import type { CheckAnswer, CheckJob, StrippedSources } from '@beonauto/workflow-engine/dsl';
+import type { CheckAnswer, CheckJob, StrippedSources } from '@on.auto/workflow-engine/dsl';
 import { Function } from 'effect';
 import ts from 'typescript6';
 

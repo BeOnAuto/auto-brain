@@ -3,7 +3,7 @@ import {
   forbiddenCharactersInWords,
   holdsNoForbiddenCharacter,
   mostReferenceBytes,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 
 import { withinBytes } from './json.ts';
 import { rejection, type Rejection } from './policy-checks.ts';

@@ -1,5 +1,5 @@
-import { ledgerLayer } from '@beonauto/ledger/sqlite3';
-import { Ledger } from '@beonauto/operations';
+import { ledgerLayer } from '@on.auto/ledger/sqlite3';
+import { Ledger } from '@on.auto/operations';
 import { Effect, ManagedRuntime } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 

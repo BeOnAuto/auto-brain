@@ -1,7 +1,7 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { serveFakeMcp, type FakeMcpServer } from '@beonauto/mcp/testing';
-import { answers, callingTools, textResult } from '@beonauto/reasoning/testing';
+import { serveFakeMcp, type FakeMcpServer } from '@on.auto/mcp/testing';
+import { answers, callingTools, textResult } from '@on.auto/reasoning/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 

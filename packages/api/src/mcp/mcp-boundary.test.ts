@@ -1,4 +1,4 @@
-import { defineQuery, makeCatalog, makeDispatcher } from '@beonauto/operations';
+import { defineQuery, makeCatalog, makeDispatcher } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

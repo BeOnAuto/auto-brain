@@ -1,4 +1,4 @@
-import { capitalized, quoted, type Remedies } from '@beonauto/operations';
+import { capitalized, quoted, type Remedies } from '@on.auto/operations';
 
 import { toolBounds } from '../bounds/call-bounds.ts';
 import { serverFailedText } from '../calls/call-replies.ts';

@@ -1,4 +1,4 @@
-import type { ProgramPool } from '@beonauto/workflow-engine/dsl';
+import type { ProgramPool } from '@on.auto/workflow-engine/dsl';
 
 export interface FoldingSettings {
   readonly budget: number;

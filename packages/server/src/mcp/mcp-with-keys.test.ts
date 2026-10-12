@@ -1,6 +1,6 @@
-import { problemIn, toolNamesIn, withMcpSession, type McpConnection } from '@beonauto/api/testing';
-import { createApiKey } from '@beonauto/identity';
-import { allPermissions } from '@beonauto/operations';
+import { problemIn, toolNamesIn, withMcpSession, type McpConnection } from '@on.auto/api/testing';
+import { createApiKey } from '@on.auto/identity';
+import { allPermissions } from '@on.auto/operations';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { compositionRoot } from '../composition/composition-root.ts';

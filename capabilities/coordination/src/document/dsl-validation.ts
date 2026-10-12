@@ -1,4 +1,4 @@
-import { type JsonObject, taskKinds } from '@beonauto/workflow-engine';
+import { type JsonObject, taskKinds } from '@on.auto/workflow-engine';
 import { buildGraph, Classes, SchemaValidationError, WorkflowValidationError } from '@openworkflowspec/sdk';
 import { Predicate } from 'effect';
 

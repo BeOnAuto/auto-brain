@@ -1,6 +1,6 @@
-import { runTallies, type RunFact } from '@beonauto/operations/testing';
 import { SQL } from '@event-driven-io/dumbo';
 import { pgFormatter } from '@event-driven-io/dumbo/pg';
+import { runTallies, type RunFact } from '@on.auto/operations/testing';
 import { describe, expect, it } from 'vitest';
 
 import { contentTables } from '../content/content-tables.ts';

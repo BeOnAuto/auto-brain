@@ -1,4 +1,4 @@
-import type { FoldOutcome, ProgramPool } from '@beonauto/workflow-engine/dsl';
+import type { FoldOutcome, ProgramPool } from '@on.auto/workflow-engine/dsl';
 
 import type { HostDatabase } from '../database/host-database.ts';
 

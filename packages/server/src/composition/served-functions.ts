@@ -1,6 +1,6 @@
-import type { AppRuntime } from '@beonauto/api';
-import type { DispatcherServices } from '@beonauto/operations';
-import { playbookOperations } from '@beonauto/playbooks';
+import type { AppRuntime } from '@on.auto/api';
+import type { DispatcherServices } from '@on.auto/operations';
+import { playbookOperations } from '@on.auto/playbooks';
 
 import type { Settings } from '../settings/settings.ts';
 import type { WorkflowParts } from '../workflows/workflows.ts';

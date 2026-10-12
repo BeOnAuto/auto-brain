@@ -1,5 +1,5 @@
-import { recordedReaderOf } from '@beonauto/ledger';
-import { Conflict, messageIdOf, type Context } from '@beonauto/operations';
+import { recordedReaderOf } from '@on.auto/ledger';
+import { Conflict, messageIdOf, type Context } from '@on.auto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

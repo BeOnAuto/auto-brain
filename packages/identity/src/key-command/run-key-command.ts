@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { parseArgs } from 'node:util';
 
-import { allPermissions } from '@beonauto/operations';
+import { allPermissions } from '@on.auto/operations';
 import { Result, Schema } from 'effect';
 
 import { KeyGrantSchema, createApiKey, type KeyGrant } from '../keys/api-key.ts';

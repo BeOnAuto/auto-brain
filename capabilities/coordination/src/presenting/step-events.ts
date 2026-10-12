@@ -1,5 +1,5 @@
-import type { PresentedFact } from '@beonauto/operations';
-import { isRecordedStep, keyOf, type RunLogEvent, type Step, type StepKey } from '@beonauto/workflow-engine';
+import type { PresentedFact } from '@on.auto/operations';
+import { isRecordedStep, keyOf, type RunLogEvent, type Step, type StepKey } from '@on.auto/workflow-engine';
 import type { Schema } from 'effect';
 
 import { cutAtCodePoint } from './cut-text.ts';

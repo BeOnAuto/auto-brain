@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
-import { toolBounds } from '@beonauto/mcp';
-import { serveFakeMcp } from '@beonauto/mcp/testing';
-import { bucketReady, emptied, keysIn, testObjectStoreOf } from '@beonauto/object-storage/testing';
-import { answers, callingTools, textResult } from '@beonauto/reasoning/testing';
+import { toolBounds } from '@on.auto/mcp';
+import { serveFakeMcp } from '@on.auto/mcp/testing';
+import { bucketReady, emptied, keysIn, testObjectStoreOf } from '@on.auto/object-storage/testing';
+import { answers, callingTools, textResult } from '@on.auto/reasoning/testing';
 import { Schema } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';

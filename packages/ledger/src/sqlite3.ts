@@ -1,8 +1,8 @@
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-import type { ContentStore, Ledger, RunOutcomeMapping, KeyedProjection } from '@beonauto/operations';
 import { sqlite3EventStoreDriver } from '@event-driven-io/emmett-sqlite/sqlite3';
+import type { ContentStore, Ledger, RunOutcomeMapping, KeyedProjection } from '@on.auto/operations';
 import type { Layer } from 'effect';
 
 import type { AppendSignal } from './appends/append-signal.ts';

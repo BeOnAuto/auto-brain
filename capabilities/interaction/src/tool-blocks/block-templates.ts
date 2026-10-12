@@ -1,5 +1,5 @@
-import { issueAt, type DocumentIssue, type SourceLines } from '@beonauto/definitions/document';
-import { inputVariableIssues, parsedTemplate, type ParsedTemplate } from '@beonauto/definitions/template';
+import { issueAt, type DocumentIssue, type SourceLines } from '@on.auto/definitions/document';
+import { inputVariableIssues, parsedTemplate, type ParsedTemplate } from '@on.auto/definitions/template';
 import { Result, type Schema } from 'effect';
 
 import { interactionEngine } from '../document/request-templates.ts';

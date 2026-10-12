@@ -1,6 +1,6 @@
-import type { CallResult } from '@beonauto/operations';
-import type { JsonObject, RunOutcome } from '@beonauto/workflow-engine';
-import { memoryDriver, type MemoryDriver, type Responder } from '@beonauto/workflow-engine/testing';
+import type { CallResult } from '@on.auto/operations';
+import type { JsonObject, RunOutcome } from '@on.auto/workflow-engine';
+import { memoryDriver, type MemoryDriver, type Responder } from '@on.auto/workflow-engine/testing';
 
 import {
   isArgumentsProblem,

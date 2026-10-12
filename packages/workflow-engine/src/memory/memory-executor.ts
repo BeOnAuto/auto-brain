@@ -1,4 +1,4 @@
-import type { CallResult } from '@beonauto/operations';
+import type { CallResult } from '@on.auto/operations';
 
 import type { CancelCall, StartCall } from '../dispatch/run-output.ts';
 import { callKeyText, type CallKey } from '../executor/call-key.ts';

@@ -9,8 +9,8 @@ import {
   counted,
   explanationOf,
   quoted,
-} from '@beonauto/operations';
-import type { InputReceipt, RunLogEvent, Step } from '@beonauto/workflow-engine';
+} from '@on.auto/operations';
+import type { InputReceipt, RunLogEvent, Step } from '@on.auto/workflow-engine';
 import { Option, Schema } from 'effect';
 
 const step = { one: 'step', other: 'steps' };

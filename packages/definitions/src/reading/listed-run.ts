@@ -5,7 +5,7 @@ import {
   RejectionBecauseSchema,
   UnavailableKindSchema,
   type RecordedEvent,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Effect, Schema, Struct } from 'effect';
 
 import { runDecider, runStreamNameOf } from '../runs/run-decider.ts';

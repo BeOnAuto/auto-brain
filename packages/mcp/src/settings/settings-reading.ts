@@ -5,7 +5,7 @@ import {
   problem,
   substituted,
   type SettingProblem,
-} from '@beonauto/config';
+} from '@on.auto/config';
 import { Data, Effect, Option, Result, Schema } from 'effect';
 
 import { checkedEntry } from './entry-checks.ts';

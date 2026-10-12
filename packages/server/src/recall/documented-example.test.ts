@@ -1,5 +1,5 @@
-import { jsonResult, answers } from '@beonauto/reasoning/testing';
-import { reviewBrief } from '@beonauto/recall/testing';
+import { jsonResult, answers } from '@on.auto/reasoning/testing';
+import { reviewBrief } from '@on.auto/recall/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 

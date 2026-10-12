@@ -33,7 +33,7 @@ function opening(reportError: (message: string) => void): HttpOpening {
 }
 
 describe('a connection to an MCP server', () => {
-  it('tells the server it is the client auto-runtime', async () => {
+  it('tells the server it is the client @on.auto/runtime', async () => {
     const fake = await serveFakeMcp();
     onTestFinished(fake.close);
     const reported: string[] = [];
@@ -47,7 +47,7 @@ describe('a connection to an MCP server', () => {
     await connection.end();
     const initializing = fake.seen().filter(({ rpc }) => rpc === 'initialize');
 
-    expect(initializing.map(({ clientName }) => clientName)).toEqual(['auto-runtime']);
+    expect(initializing.map(({ clientName }) => clientName)).toEqual(['@on.auto/runtime']);
     expect(reported).toEqual([]);
   });
 });

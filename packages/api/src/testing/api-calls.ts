@@ -1,5 +1,5 @@
-import type { Authenticator } from '@beonauto/identity';
-import { allPermissions, type CallSummary } from '@beonauto/operations';
+import type { Authenticator } from '@on.auto/identity';
+import { allPermissions, type CallSummary } from '@on.auto/operations';
 
 import { createApiHandler, type ApiHandler, type ApiOptions, type RegisterRoutes } from '../index.ts';
 

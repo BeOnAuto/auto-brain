@@ -1,4 +1,4 @@
-import type { McpSession, ToolResult } from '@beonauto/api/testing';
+import type { McpSession, ToolResult } from '@on.auto/api/testing';
 
 const approvalRequest = [
   '---',

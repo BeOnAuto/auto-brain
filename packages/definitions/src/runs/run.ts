@@ -5,7 +5,7 @@ import {
   UnansweredKindSchema,
   RejectionBecauseSchema,
   UnavailableKindSchema,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Schema } from 'effect';
 
 import type { PlaybookFunctionDefinition, WorkflowDefinition } from '../registry/definition.ts';

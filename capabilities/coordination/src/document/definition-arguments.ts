@@ -1,4 +1,4 @@
-import { type ErrorKind, field, isObject, type Json, jsonBytesOf, textField } from '@beonauto/workflow-engine';
+import { type ErrorKind, field, isObject, type Json, jsonBytesOf, textField } from '@on.auto/workflow-engine';
 
 import { runDefinitionFunction } from './workflow-functions.ts';
 

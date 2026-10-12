@@ -1,6 +1,6 @@
-import { inWords } from '@beonauto/definitions';
-import { toolInWords } from '@beonauto/mcp';
-import { asSentence, counted } from '@beonauto/operations';
+import { inWords } from '@on.auto/definitions';
+import { toolInWords } from '@on.auto/mcp';
+import { asSentence, counted } from '@on.auto/operations';
 import { Option, Schema } from 'effect';
 
 const CallRecordSchema = Schema.Struct({

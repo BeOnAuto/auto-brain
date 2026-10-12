@@ -1,4 +1,4 @@
-import { authenticatorFor } from '@beonauto/identity';
+import { authenticatorFor } from '@on.auto/identity';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { call } from '../testing/api-calls.ts';

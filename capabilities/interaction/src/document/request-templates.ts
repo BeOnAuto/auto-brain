@@ -1,10 +1,10 @@
-import type { DocumentIssue } from '@beonauto/definitions/document';
+import type { DocumentIssue } from '@on.auto/definitions/document';
 import {
   inputVariableIssues,
   parsedTemplate,
   templateEngine,
   type ParsedTemplate,
-} from '@beonauto/definitions/template';
+} from '@on.auto/definitions/template';
 import { Result, type Schema } from 'effect';
 
 export const interactionEngine = templateEngine();

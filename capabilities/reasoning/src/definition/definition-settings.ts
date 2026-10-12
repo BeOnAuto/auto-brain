@@ -1,5 +1,5 @@
-import { issueAt, type DocumentIssue, type SourceLines } from '@beonauto/definitions/document';
-import { toolReferenceOf, toolReferenceShape, type ToolReference } from '@beonauto/mcp/policy';
+import { issueAt, type DocumentIssue, type SourceLines } from '@on.auto/definitions/document';
+import { toolReferenceOf, toolReferenceShape, type ToolReference } from '@on.auto/mcp/policy';
 import { JsonPointer, Option, Result, type Schema } from 'effect';
 
 import { parseModelReference } from '../model/model-reference.ts';

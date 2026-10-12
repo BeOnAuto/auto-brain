@@ -1,4 +1,4 @@
-import type { CallResult } from '@beonauto/operations';
+import type { CallResult } from '@on.auto/operations';
 import { describe, expect, it } from 'vitest';
 
 import type { StartCall } from '../dispatch/run-output.ts';

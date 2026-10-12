@@ -1,7 +1,7 @@
 import { setTimeout } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
-import { connectMcp, problemIn, withMcpSession, type McpClientKind, type McpSession } from '@beonauto/api/testing';
+import { connectMcp, problemIn, withMcpSession, type McpClientKind, type McpSession } from '@on.auto/api/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { shortShutdownTimeoutMs } from '../testing/processes/short-shutdown-timeout.ts';

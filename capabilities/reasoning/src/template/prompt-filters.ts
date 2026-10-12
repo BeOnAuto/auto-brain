@@ -1,4 +1,4 @@
-import { outputText } from '@beonauto/definitions/template';
+import { outputText } from '@on.auto/definitions/template';
 
 const defaultClipLength = 400;
 

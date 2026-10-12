@@ -1,8 +1,8 @@
-import { withMcpSession } from '@beonauto/api/testing';
-import { campaignPace, campaignRows } from '@beonauto/computation/testing';
-import { serveFakeMcp, type FakeMcpServer } from '@beonauto/mcp/testing';
-import { jsonResult, textResult, type ScriptedReply } from '@beonauto/reasoning/testing';
-import { scriptedPool, type PoolOutcome } from '@beonauto/workflow-engine/testing';
+import { withMcpSession } from '@on.auto/api/testing';
+import { campaignPace, campaignRows } from '@on.auto/computation/testing';
+import { serveFakeMcp, type FakeMcpServer } from '@on.auto/mcp/testing';
+import { jsonResult, textResult, type ScriptedReply } from '@on.auto/reasoning/testing';
+import { scriptedPool, type PoolOutcome } from '@on.auto/workflow-engine/testing';
 import { Effect, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 

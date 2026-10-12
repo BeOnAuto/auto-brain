@@ -1,6 +1,6 @@
-import { withMcpSession } from '@beonauto/api/testing';
-import { answers, jsonResult, type ScriptedReply } from '@beonauto/reasoning/testing';
-import { foldOf, recallDocument } from '@beonauto/recall/testing';
+import { withMcpSession } from '@on.auto/api/testing';
+import { answers, jsonResult, type ScriptedReply } from '@on.auto/reasoning/testing';
+import { foldOf, recallDocument } from '@on.auto/recall/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';

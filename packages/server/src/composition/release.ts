@@ -1,4 +1,4 @@
-import type { ServerInfo } from '@beonauto/api';
+import type { ServerInfo } from '@on.auto/api';
 
 import manifest from '../../../../package.json' with { type: 'json' };
 

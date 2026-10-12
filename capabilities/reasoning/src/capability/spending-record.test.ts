@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
 
-import type { CapabilityAnswer } from '@beonauto/definitions';
-import { Conflict } from '@beonauto/operations';
+import type { CapabilityAnswer } from '@on.auto/definitions';
+import { Conflict } from '@on.auto/operations';
 import { Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 

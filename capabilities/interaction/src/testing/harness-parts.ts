@@ -1,5 +1,5 @@
-import type { PlaybookOperation } from '@beonauto/definitions';
-import type { Outcome } from '@beonauto/operations';
+import type { PlaybookOperation } from '@on.auto/definitions';
+import type { Outcome } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 
 import { listInteractions } from '../requests/list-interactions.ts';

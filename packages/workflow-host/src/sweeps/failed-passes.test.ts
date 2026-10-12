@@ -1,6 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { streamSignalOf, type AppendedStreams } from '@beonauto/ledger';
+import { streamSignalOf, type AppendedStreams } from '@on.auto/ledger';
 import { Effect } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 

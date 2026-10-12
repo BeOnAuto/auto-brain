@@ -1,4 +1,4 @@
-import { Conflict, NotFound, type Context, type DefinitionContext } from '@beonauto/operations';
+import { Conflict, NotFound, type Context, type DefinitionContext } from '@on.auto/operations';
 import { Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

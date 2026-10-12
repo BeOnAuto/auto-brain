@@ -1,9 +1,9 @@
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-import { sqliteEventStore } from '@beonauto/ledger';
 import { dumbo, type SQL } from '@event-driven-io/dumbo';
 import { sqlite3EventStoreDriver } from '@event-driven-io/emmett-sqlite/sqlite3';
+import { sqliteEventStore } from '@on.auto/ledger';
 import { Effect, Function, Schema } from 'effect';
 
 import {

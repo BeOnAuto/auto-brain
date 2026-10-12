@@ -1,4 +1,4 @@
-import { Caller } from '@beonauto/operations';
+import { Caller } from '@on.auto/operations';
 import { DateTime, Effect } from 'effect';
 
 export const commandMetadata = Effect.gen(function* () {

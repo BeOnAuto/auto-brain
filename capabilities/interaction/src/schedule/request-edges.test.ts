@@ -1,4 +1,4 @@
-import { runSettler } from '@beonauto/definitions';
+import { runSettler } from '@on.auto/definitions';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

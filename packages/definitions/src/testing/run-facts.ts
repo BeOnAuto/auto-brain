@@ -1,4 +1,4 @@
-import { recordingOf, type Context } from '@beonauto/operations';
+import { recordingOf, type Context } from '@on.auto/operations';
 
 import { runDecider } from '../runs/run-decider.ts';
 import type { RecordedRunEvent, RunEvent } from '../runs/run-events.ts';

@@ -1,5 +1,5 @@
-import { withMcpSession } from '@beonauto/api/testing';
-import { answers, textResult } from '@beonauto/reasoning/testing';
+import { withMcpSession } from '@on.auto/api/testing';
+import { answers, textResult } from '@on.auto/reasoning/testing';
 import { Schema } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 

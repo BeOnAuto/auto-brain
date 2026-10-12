@@ -1,4 +1,4 @@
-import { DefinitionContextSchema, factOf, type Decided } from '@beonauto/operations';
+import { DefinitionContextSchema, factOf, type Decided } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 import { StrippedFormsSchema } from '../capability/stripped-forms.ts';

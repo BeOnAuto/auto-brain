@@ -1,4 +1,4 @@
-import { invalidArguments, type CallResult } from '@beonauto/operations';
+import { invalidArguments, type CallResult } from '@on.auto/operations';
 
 import type { CancelReason } from '../dispatch/run-output.ts';
 import { evaluateTemplate } from '../dsl/evaluation.ts';

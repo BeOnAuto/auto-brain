@@ -1,5 +1,5 @@
-import { cancelledUnanswered, deferredCanceller } from '@beonauto/definitions';
-import { memoryLedger } from '@beonauto/operations/testing';
+import { cancelledUnanswered, deferredCanceller } from '@on.auto/definitions';
+import { memoryLedger } from '@on.auto/operations/testing';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

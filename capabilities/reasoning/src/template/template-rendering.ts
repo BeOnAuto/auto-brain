@@ -1,4 +1,4 @@
-import { outputText, renderedTemplate, templateLimits, type ParsedTemplate } from '@beonauto/definitions/template';
+import { outputText, renderedTemplate, templateLimits, type ParsedTemplate } from '@on.auto/definitions/template';
 import { Result } from 'effect';
 import { toValue, type Emitter } from 'liquidjs';
 

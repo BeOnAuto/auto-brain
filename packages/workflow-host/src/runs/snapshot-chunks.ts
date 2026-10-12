@@ -4,7 +4,7 @@ import {
   snapshotFromChunks,
   type Snapshot,
   type StoredSnapshot,
-} from '@beonauto/workflow-engine';
+} from '@on.auto/workflow-engine';
 import { Effect, Result, Schema } from 'effect';
 
 import { rowsOf, WholeNumber, type DatabaseFailed, type HostDatabase } from '../database/host-database.ts';

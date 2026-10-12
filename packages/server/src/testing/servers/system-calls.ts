@@ -1,6 +1,6 @@
-import { callDocument, type CallOptions } from '@beonauto/interaction/testing';
-import type { Timing } from '@beonauto/mcp';
-import { serveFakeMcp, type FakeHints, type FakeMcpServer } from '@beonauto/mcp/testing';
+import { callDocument, type CallOptions } from '@on.auto/interaction/testing';
+import type { Timing } from '@on.auto/mcp';
+import { serveFakeMcp, type FakeHints, type FakeMcpServer } from '@on.auto/mcp/testing';
 import { Schema } from 'effect';
 import { expect, onTestFinished } from 'vitest';
 

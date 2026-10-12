@@ -7,7 +7,7 @@ import {
   type RunState,
   type Step,
   type StepCause,
-} from '@beonauto/workflow-engine';
+} from '@on.auto/workflow-engine';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 

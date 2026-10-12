@@ -1,4 +1,4 @@
-import type { ViewDetails } from '@beonauto/workflow-host';
+import type { ViewDetails } from '@on.auto/workflow-host';
 import { Effect, Result } from 'effect';
 
 import { parseRecallDocument } from '../document/document-parsing.ts';

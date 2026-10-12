@@ -1,4 +1,4 @@
-import type { ProjectedRow } from '@beonauto/operations';
+import type { ProjectedRow } from '@on.auto/operations';
 import { Option, Schema } from 'effect';
 
 import { interactionType } from '../capability/interaction-type.ts';

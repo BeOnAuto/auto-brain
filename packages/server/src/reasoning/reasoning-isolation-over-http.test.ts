@@ -1,6 +1,6 @@
-import { createApiKey } from '@beonauto/identity';
-import { allPermissions } from '@beonauto/operations';
-import { answers, textResult } from '@beonauto/reasoning/testing';
+import { createApiKey } from '@on.auto/identity';
+import { allPermissions } from '@on.auto/operations';
+import { answers, textResult } from '@on.auto/reasoning/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';

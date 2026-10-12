@@ -5,7 +5,7 @@ import {
   type Presenter,
   type Recorded,
   type RecordedFact,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Schema } from 'effect';
 
 import { reactionsStreamKind } from '../events/reaction-refusals.ts';

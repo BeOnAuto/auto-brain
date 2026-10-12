@@ -1,4 +1,4 @@
-import type { CheckRequest, ProgramPool } from '@beonauto/workflow-engine/dsl';
+import type { CheckRequest, ProgramPool } from '@on.auto/workflow-engine/dsl';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { workerPool, type ProgramPoolOf } from '../composition/served-computation.ts';

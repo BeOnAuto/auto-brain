@@ -1,6 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
-import type { RegisterRoutes } from '@beonauto/api';
+import type { RegisterRoutes } from '@on.auto/api';
 
 function bodyAfter(ms: number): ReadableStream<Uint8Array> {
   return new ReadableStream({

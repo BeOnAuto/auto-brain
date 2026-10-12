@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 
-import type { Presenter } from '@beonauto/operations';
+import type { Presenter } from '@on.auto/operations';
 
 import type { DefinitionWords } from '../plain-language/definition-words.ts';
 import { definitionCreated, definitionRetired, definitionUpdated } from '../plain-language/event-words.ts';

@@ -1,5 +1,5 @@
-import { Ledger } from '@beonauto/operations';
-import { memoryLedger } from '@beonauto/operations/testing';
+import { Ledger } from '@on.auto/operations';
+import { memoryLedger } from '@on.auto/operations/testing';
 import { Effect, Layer, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

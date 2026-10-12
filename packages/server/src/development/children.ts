@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 
-import type { Environment } from '@beonauto/config';
+import type { Environment } from '@on.auto/config';
 
 export type Written = (text: string) => void;
 

@@ -1,7 +1,7 @@
-import { internalTermsIn } from '@beonauto/api/testing';
-import { presentationOf, type RecordedEvent } from '@beonauto/operations';
-import { nothingKept } from '@beonauto/operations/testing';
-import { RunLogEventSchema, callKeyText, type InputReceipt, type RunLogEvent } from '@beonauto/workflow-engine';
+import { internalTermsIn } from '@on.auto/api/testing';
+import { presentationOf, type RecordedEvent } from '@on.auto/operations';
+import { nothingKept } from '@on.auto/operations/testing';
+import { RunLogEventSchema, callKeyText, type InputReceipt, type RunLogEvent } from '@on.auto/workflow-engine';
 import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

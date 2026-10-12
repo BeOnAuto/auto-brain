@@ -5,8 +5,8 @@ import {
   type FilterVerdict,
   type JsonObject,
   type MatchedFilter,
-} from '@beonauto/workflow-engine';
-import { filterSandboxOf } from '@beonauto/workflow-engine/dsl';
+} from '@on.auto/workflow-engine';
+import { filterSandboxOf } from '@on.auto/workflow-engine/dsl';
 import { Array, Effect } from 'effect';
 
 export const stopsInARowBeforeTheVersion = 3;

@@ -1,4 +1,4 @@
-import type { SchemaIssue } from '@beonauto/definitions/document';
+import type { SchemaIssue } from '@on.auto/definitions/document';
 import { TypeValidationError, type FinishReason as SdkFinishReason } from 'ai';
 
 import { ContentRefused } from '../failure/content-refused.ts';

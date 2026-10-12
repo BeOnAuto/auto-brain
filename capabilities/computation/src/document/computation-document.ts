@@ -1,4 +1,4 @@
-import type { CompiledSchema } from '@beonauto/definitions/document';
+import type { CompiledSchema } from '@on.auto/definitions/document';
 
 export interface ValueContract {
   readonly schema?: CompiledSchema;

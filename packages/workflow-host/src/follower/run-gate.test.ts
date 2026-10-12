@@ -1,4 +1,4 @@
-import type { RecordedEvent } from '@beonauto/operations';
+import type { RecordedEvent } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

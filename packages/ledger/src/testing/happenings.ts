@@ -9,7 +9,7 @@ import {
   type RecordedPage,
   type RecordedPageRequest,
   type RecordedSelection,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Effect, Result, Schema } from 'effect';
 
 const HappenedSchema = Schema.Struct({

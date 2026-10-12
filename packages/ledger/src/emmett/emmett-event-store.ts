@@ -1,5 +1,5 @@
-import { contextOf, messageIdOf, noLineage, type Context, type Lineage } from '@beonauto/operations';
 import type { Event, EventStore as EmmettEventStore } from '@event-driven-io/emmett';
+import { contextOf, messageIdOf, noLineage, type Context, type Lineage } from '@on.auto/operations';
 import type { Schema } from 'effect';
 
 import type { MessageLineage, RecordedMessage, StreamStore } from '../event-store.ts';

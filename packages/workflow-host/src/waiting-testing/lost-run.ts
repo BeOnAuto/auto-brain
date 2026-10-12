@@ -1,4 +1,4 @@
-import { messageIdOf } from '@beonauto/operations';
+import { messageIdOf } from '@on.auto/operations';
 
 import type { HostDatabase } from '../database/host-database.ts';
 import { alpha, at, recorded } from '../reaction-testing/playbook-writes.ts';

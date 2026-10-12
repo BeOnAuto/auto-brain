@@ -1,4 +1,4 @@
-import { describeError, type DslError, type FilterVerdict } from '@beonauto/workflow-engine';
+import { describeError, type DslError, type FilterVerdict } from '@on.auto/workflow-engine';
 import { Array, Effect } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';

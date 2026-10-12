@@ -1,4 +1,4 @@
-import { readDuration } from '@beonauto/workflow-engine/dsl';
+import { readDuration } from '@on.auto/workflow-engine/dsl';
 
 import type { Replies } from '../tool-blocks/tool-block-schemas.ts';
 

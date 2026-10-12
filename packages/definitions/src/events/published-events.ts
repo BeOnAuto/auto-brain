@@ -10,7 +10,7 @@ import {
   type Context,
   type Decided,
   type Decider,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Effect, Equal, Option, Result, Schema } from 'effect';
 
 import { CloudEventSchema, type CloudEvent } from './cloud-event.ts';

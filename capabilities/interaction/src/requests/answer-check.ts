@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
 
-import { compileJsonSchema } from '@beonauto/definitions/document';
-import type { Issue } from '@beonauto/operations';
+import { compileJsonSchema } from '@on.auto/definitions/document';
+import type { Issue } from '@on.auto/operations';
 import { Result, type Schema } from 'effect';
 
 import { interactionBounds } from '../run/run-bounds.ts';

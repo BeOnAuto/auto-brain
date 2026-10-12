@@ -7,7 +7,7 @@ import {
   type ContentRefused,
   type ContentToKeep,
   type Taken,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Effect } from 'effect';
 
 import type { ObjectKeys } from '../location/object-keys.ts';

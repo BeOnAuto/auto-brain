@@ -1,5 +1,5 @@
-import { internalTermsIn, plainTextIn, problemIn, withMcpSession, type McpSession } from '@beonauto/api/testing';
-import { campaignPace } from '@beonauto/computation/testing';
+import { internalTermsIn, plainTextIn, problemIn, withMcpSession, type McpSession } from '@on.auto/api/testing';
+import { campaignPace } from '@on.auto/computation/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { workerPool, type ProgramPoolOf } from '../composition/served-computation.ts';

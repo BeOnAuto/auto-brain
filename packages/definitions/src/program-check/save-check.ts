@@ -1,4 +1,4 @@
-import { InvalidInput, Unavailable } from '@beonauto/operations';
+import { InvalidInput, Unavailable } from '@on.auto/operations';
 import type {
   CheckIssue,
   CheckJob,
@@ -6,7 +6,7 @@ import type {
   ProgramPool,
   Stopped,
   StrippedSources,
-} from '@beonauto/workflow-engine/dsl';
+} from '@on.auto/workflow-engine/dsl';
 import { Effect } from 'effect';
 
 import { changedExpressions, type StrippedForms } from '../capability/stripped-forms.ts';

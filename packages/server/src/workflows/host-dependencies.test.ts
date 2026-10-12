@@ -1,5 +1,5 @@
-import { makeAppRuntime } from '@beonauto/api';
-import { ledgerLayer } from '@beonauto/ledger/sqlite3';
+import { makeAppRuntime } from '@on.auto/api';
+import { ledgerLayer } from '@on.auto/ledger/sqlite3';
 import { Cause, Effect, Exit, Layer, Logger, Redacted } from 'effect';
 import { describe, expect, it } from 'vitest';
 

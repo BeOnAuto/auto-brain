@@ -4,7 +4,7 @@ import {
   type InputEncoding,
   type RouteRegistration,
   type StreamedContent,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Result } from 'effect';
 import type { Context } from 'hono';
 

@@ -1,5 +1,5 @@
-import type { Catalog, Dispatcher } from '@beonauto/operations';
 import { McpServer } from '@modelcontextprotocol/server';
+import type { Catalog, Dispatcher } from '@on.auto/operations';
 
 import {
   mostInstructionCharacters,

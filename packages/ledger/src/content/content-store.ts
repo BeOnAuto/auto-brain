@@ -1,3 +1,4 @@
+import { SQL } from '@event-driven-io/dumbo';
 import {
   leftUnread,
   mostContentChunkBytes,
@@ -12,8 +13,7 @@ import {
   type RecordedContent,
   type StagingEnded,
   type Taken,
-} from '@beonauto/operations';
-import { SQL } from '@event-driven-io/dumbo';
+} from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 
 import { inTransactionOf, type InTransaction, type StatementExecutor, type TransactionalPool } from '../event-store.ts';

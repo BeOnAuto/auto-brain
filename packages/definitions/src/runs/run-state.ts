@@ -1,4 +1,4 @@
-import type { CalledBy, RunContext, StartingTrigger } from '@beonauto/operations';
+import type { CalledBy, RunContext, StartingTrigger } from '@on.auto/operations';
 import type { Schema } from 'effect';
 
 import type { RunResult } from './run-commands.ts';

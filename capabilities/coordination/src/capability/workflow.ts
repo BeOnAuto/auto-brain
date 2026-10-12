@@ -4,8 +4,8 @@ import {
   type PlaybookOwnNames,
   type Capability,
   type DeclaringCapability,
-} from '@beonauto/definitions';
-import type { InvalidInput } from '@beonauto/operations';
+} from '@on.auto/definitions';
+import type { InvalidInput } from '@on.auto/operations';
 import type { Effect } from 'effect';
 
 import { checkedExpressions, type ExpressionCheck } from '../document/expression-check.ts';

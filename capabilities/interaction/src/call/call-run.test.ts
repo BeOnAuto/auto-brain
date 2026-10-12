@@ -1,4 +1,4 @@
-import { threadReplies } from '@beonauto/mcp/testing';
+import { threadReplies } from '@on.auto/mcp/testing';
 import { Effect, Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -29,7 +29,7 @@ describe('a run of an interaction function that asks a system', () => {
       {
         tool: 'thread',
         arguments: { channel: 'C0123', ts: '1728379900.000050', limit: 100, inclusive: false },
-        meta: { 'com.beonauto/run_id': callRunId },
+        meta: { 'auto.on/run_id': callRunId },
       },
     ]);
     expect(journal.recorded()).toEqual([

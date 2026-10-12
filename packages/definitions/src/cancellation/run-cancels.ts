@@ -6,7 +6,7 @@ import {
   type Conflict,
   type Lineage,
   type StreamWriter,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { DateTime, Effect, Equal, Schema } from 'effect';
 
 import { runDecider, runStreamNameOf } from '../runs/run-decider.ts';

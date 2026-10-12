@@ -1,4 +1,4 @@
-import type { DocumentIssue, DocumentParts } from '@beonauto/definitions/document';
+import type { DocumentIssue, DocumentParts } from '@on.auto/definitions/document';
 import { Result } from 'effect';
 
 import type { CompiledTemplate } from '../template/compiled-template.ts';

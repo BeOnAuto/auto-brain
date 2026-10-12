@@ -1,6 +1,6 @@
-import type { AppRuntime } from '@beonauto/api';
-import type { DispatcherServices } from '@beonauto/operations';
-import { processPool, type ProcessPool } from '@beonauto/workflow-engine/dsl';
+import type { AppRuntime } from '@on.auto/api';
+import type { DispatcherServices } from '@on.auto/operations';
+import { processPool, type ProcessPool } from '@on.auto/workflow-engine/dsl';
 
 import type { PredictionSettings } from '../function-settings/prediction-settings.ts';
 import type { ServedClosing } from '../lifecycle/lifecycle.ts';

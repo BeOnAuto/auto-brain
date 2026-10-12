@@ -1,4 +1,4 @@
-import { Conflict, recordingOf, type Context } from '@beonauto/operations';
+import { Conflict, recordingOf, type Context } from '@on.auto/operations';
 import { Effect, Exit, Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 

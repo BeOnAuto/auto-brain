@@ -4,8 +4,8 @@ import {
   makeDefinitionPresenters,
   type PlaybookOperation,
   type Capability,
-} from '@beonauto/definitions';
-import { defineGetEvent, defineListPlaybookEvents } from '@beonauto/playbooks';
+} from '@on.auto/definitions';
+import { defineGetEvent, defineListPlaybookEvents } from '@on.auto/playbooks';
 
 import type { ComposedFacts } from './composed-facts.ts';
 

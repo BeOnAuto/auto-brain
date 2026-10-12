@@ -1,3 +1,4 @@
+import type { CallToolResult } from '@modelcontextprotocol/server';
 import {
   mostOutcomeCharacters,
   mostRefusalCharacters,
@@ -10,8 +11,7 @@ import {
   type Rejected,
   type Remedies,
   type Settled,
-} from '@beonauto/operations';
-import type { CallToolResult } from '@modelcontextprotocol/server';
+} from '@on.auto/operations';
 
 import { problemOfOutcome } from '../problem/outcome-problem.ts';
 

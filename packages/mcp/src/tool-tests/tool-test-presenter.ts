@@ -1,4 +1,4 @@
-import type { KeptContent, PresentedFact, Presenter } from '@beonauto/operations';
+import type { KeptContent, PresentedFact, Presenter } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 import { cutAsStored } from '../bounds/text-bytes.ts';

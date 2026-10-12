@@ -1,4 +1,4 @@
-import type { Trigger, TriggerFilter } from '@beonauto/definitions';
+import type { Trigger, TriggerFilter } from '@on.auto/definitions';
 import {
   field,
   forbidden,
@@ -10,8 +10,8 @@ import {
   readDuration,
   type Rejection,
   rejection,
-} from '@beonauto/workflow-engine';
-import { cronRejectionOf } from '@beonauto/workflow-host';
+} from '@on.auto/workflow-engine';
+import { cronRejectionOf } from '@on.auto/workflow-host';
 import { Schema } from 'effect';
 
 type Kind = 'on' | 'cron' | 'every';

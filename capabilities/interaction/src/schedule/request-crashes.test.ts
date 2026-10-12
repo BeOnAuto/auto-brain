@@ -1,4 +1,4 @@
-import { memoryLedger } from '@beonauto/operations/testing';
+import { memoryLedger } from '@on.auto/operations/testing';
 import { describe, expect, it } from 'vitest';
 
 import { answerInteraction } from '../requests/answer-interaction.ts';

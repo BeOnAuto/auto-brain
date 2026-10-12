@@ -1,5 +1,5 @@
-import { canAccessPlaybook, type CallerIdentity, type OperationScope } from '@beonauto/operations';
 import { createMcpHandler, type McpHttpHandler } from '@modelcontextprotocol/server';
+import { canAccessPlaybook, type CallerIdentity, type OperationScope } from '@on.auto/operations';
 
 import { authInfoFor, type PlaybookCall, type OrgCall } from '../hand-off/caller-hand-off.ts';
 import { droppedArgumentsOf } from '../hand-off/dropped-arguments.ts';

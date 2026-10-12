@@ -1,4 +1,4 @@
-import type { MachineOptions } from '@beonauto/workflow-engine';
+import type { MachineOptions } from '@on.auto/workflow-engine';
 import type { Cause, Effect } from 'effect';
 
 import type { ExecutorParts } from '../calls/host-executor.ts';

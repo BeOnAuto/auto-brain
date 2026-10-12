@@ -1,4 +1,4 @@
-import { Ledger } from '@beonauto/operations';
+import { Ledger } from '@on.auto/operations';
 import { Effect, ManagedRuntime } from 'effect';
 import { describe, expect, it } from 'vitest';
 

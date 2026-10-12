@@ -1,4 +1,4 @@
-import { sha256Of, textToKeep, type PlaybookAddress, type RecordedContent } from '@beonauto/operations';
+import { sha256Of, textToKeep, type PlaybookAddress, type RecordedContent } from '@on.auto/operations';
 import { Effect, Function, Result } from 'effect';
 
 import { secretsOfServers } from '../bounds/secrets.ts';

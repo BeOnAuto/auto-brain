@@ -1,4 +1,4 @@
-import type { RecordedAnswer, Settlement } from '@beonauto/definitions';
+import type { RecordedAnswer, Settlement } from '@on.auto/definitions';
 
 import type { DeliveredRecord } from '../run/request-record.ts';
 import { throughWords, type Route } from '../tool-blocks/routes.ts';

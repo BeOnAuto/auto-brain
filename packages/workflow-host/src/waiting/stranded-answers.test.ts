@@ -1,4 +1,4 @@
-import { callKeyText } from '@beonauto/workflow-engine';
+import { callKeyText } from '@on.auto/workflow-engine';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

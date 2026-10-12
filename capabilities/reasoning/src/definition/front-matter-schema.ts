@@ -3,7 +3,7 @@ import {
   type DocumentIssue,
   type FrontMatterSection,
   type ReadFrontMatter,
-} from '@beonauto/definitions/document';
+} from '@on.auto/definitions/document';
 import { Schema, type Result } from 'effect';
 
 import type { ReasoningEffort } from '../model/model-request.ts';

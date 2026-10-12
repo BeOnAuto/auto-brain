@@ -1,6 +1,6 @@
-import { openRequests } from '@beonauto/interaction';
-import { serveFakeMcp } from '@beonauto/mcp/testing';
-import { Ledger, projectedTableOf, type KeyedProjection } from '@beonauto/operations';
+import { openRequests } from '@on.auto/interaction';
+import { serveFakeMcp } from '@on.auto/mcp/testing';
+import { Ledger, projectedTableOf, type KeyedProjection } from '@on.auto/operations';
 import { ManagedRuntime, Schema, type Layer } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 

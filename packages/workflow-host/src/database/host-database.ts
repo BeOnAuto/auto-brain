@@ -1,4 +1,4 @@
-import type { EventStore } from '@beonauto/ledger';
+import type { EventStore } from '@on.auto/ledger';
 import { Data, Effect, Schema } from 'effect';
 
 import type { Statement } from './statement.ts';

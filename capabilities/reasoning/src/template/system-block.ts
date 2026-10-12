@@ -1,4 +1,4 @@
-import type { LineOfOffset } from '@beonauto/definitions/template';
+import type { LineOfOffset } from '@on.auto/definitions/template';
 import { toValueSync, TypeGuards, type Template } from 'liquidjs';
 
 import type { TemplateIssue } from './compiled-template.ts';

@@ -1,5 +1,5 @@
-import type { AppRuntime } from '@beonauto/api';
-import { workflowFacts } from '@beonauto/coordination';
+import type { AppRuntime } from '@on.auto/api';
+import { workflowFacts } from '@on.auto/coordination';
 import {
   playbookOwnNamesOf,
   composedFactsOf,
@@ -9,8 +9,8 @@ import {
   type Capability,
   type CapabilityFacts,
   type RecordWork,
-} from '@beonauto/definitions';
-import type { DispatcherServices } from '@beonauto/operations';
+} from '@on.auto/definitions';
+import type { DispatcherServices } from '@on.auto/operations';
 
 import { runtimeLedger } from './runtime-ledger.ts';
 

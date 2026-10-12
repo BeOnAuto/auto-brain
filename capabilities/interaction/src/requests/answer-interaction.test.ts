@@ -1,4 +1,4 @@
-import { deferredCanceller } from '@beonauto/definitions';
+import { deferredCanceller } from '@on.auto/definitions';
 import { Effect, Result, Schema, SchemaTransformation } from 'effect';
 import { describe, expect, it } from 'vitest';
 

@@ -1,4 +1,4 @@
-import { playbookCallerOf, messageIdOf } from '@beonauto/operations';
+import { playbookCallerOf, messageIdOf } from '@on.auto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
 
-import type { KeptContent, RecordedEvent } from '@beonauto/operations';
-import { keptTextOf, nothingKept } from '@beonauto/operations/testing';
+import type { KeptContent, RecordedEvent } from '@on.auto/operations';
+import { keptTextOf, nothingKept } from '@on.auto/operations/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {

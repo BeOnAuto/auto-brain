@@ -1,4 +1,4 @@
-import { recordedContentBehaviour } from '@beonauto/operations/testing';
+import { recordedContentBehaviour } from '@on.auto/operations/testing';
 import { describe, expect, it, vi } from 'vitest';
 
 import { objectContentBehaviour } from '../testing/object-content-behaviour.ts';

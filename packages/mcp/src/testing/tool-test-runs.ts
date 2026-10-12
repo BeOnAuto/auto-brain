@@ -5,13 +5,13 @@ import {
   type CallerIdentity,
   type RecordedEvent,
   type Settled,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import {
   memoryPlaybookRegistry,
   memoryLedger,
   recordingReporter,
   type ReportedIncident,
-} from '@beonauto/operations/testing';
+} from '@on.auto/operations/testing';
 import { Effect, Layer } from 'effect';
 
 import type { ToolAccess } from '../access/tool-access.ts';

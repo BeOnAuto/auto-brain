@@ -1,4 +1,4 @@
-import { ActedOnRunContextSchema, factOf, type Decided, type Decider, type Presenter } from '@beonauto/operations';
+import { ActedOnRunContextSchema, factOf, type Decided, type Decider, type Presenter } from '@on.auto/operations';
 import { Effect, Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

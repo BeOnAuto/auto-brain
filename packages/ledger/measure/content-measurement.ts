@@ -5,8 +5,8 @@ import {
   type PlaybookAddress,
   type ContentToKeep,
   type RecordedContent,
-} from '@beonauto/operations';
-import { answerOfAbout, generatedStream, octets, readThrough } from '@beonauto/operations/testing';
+} from '@on.auto/operations';
+import { answerOfAbout, generatedStream, octets, readThrough } from '@on.auto/operations/testing';
 import { Effect } from 'effect';
 
 import { inTurn, timed, write } from './stores.ts';

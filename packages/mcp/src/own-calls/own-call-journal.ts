@@ -5,7 +5,7 @@ import {
   type Lineage,
   type Recorded,
   type StreamWriter,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { DateTime, Effect, Exit, Ref } from 'effect';
 
 import type { CallEnded, CallStarted } from '../calls/call-facts.ts';

@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 
-import { createApiKey } from '@beonauto/identity';
-import { allPermissions } from '@beonauto/operations';
+import { createApiKey } from '@on.auto/identity';
+import { allPermissions } from '@on.auto/operations';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { compositionRoot } from '../composition/composition-root.ts';

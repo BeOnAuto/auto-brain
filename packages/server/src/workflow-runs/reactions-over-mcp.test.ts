@@ -1,6 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { withMcpSession, type McpSession } from '@beonauto/api/testing';
+import { withMcpSession, type McpSession } from '@on.auto/api/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 

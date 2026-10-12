@@ -1,4 +1,4 @@
-import type { Context, Decider } from '@beonauto/operations';
+import type { Context, Decider } from '@on.auto/operations';
 import { Effect, Result, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

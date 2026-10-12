@@ -1,4 +1,4 @@
-import { NotFound } from '@beonauto/operations';
+import { NotFound } from '@on.auto/operations';
 import { Effect, Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

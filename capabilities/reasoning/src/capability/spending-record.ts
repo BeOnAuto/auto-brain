@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
 
-import { mostResultBytes, type Finished } from '@beonauto/definitions';
-import { Conflict } from '@beonauto/operations';
+import { mostResultBytes, type Finished } from '@on.auto/definitions';
+import { Conflict } from '@on.auto/operations';
 import { Effect, type Schema } from 'effect';
 
 import type { GenerationSettings, OutputRequest } from '../model/model-request.ts';

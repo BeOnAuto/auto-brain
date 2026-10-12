@@ -1,5 +1,5 @@
-import type { CancelReceipt, CancelRequest, RunStreamAddress, RunEnding } from '@beonauto/definitions';
-import type { CallResult, Lineage } from '@beonauto/operations';
+import type { CancelReceipt, CancelRequest, RunStreamAddress, RunEnding } from '@on.auto/definitions';
+import type { CallResult, Lineage } from '@on.auto/operations';
 import { Effect } from 'effect';
 
 import type { WaitingOptions } from '../waiting/waiting-options.ts';

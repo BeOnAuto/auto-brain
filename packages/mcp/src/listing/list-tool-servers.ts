@@ -1,4 +1,4 @@
-import { PlaybookContext, InvalidInput, defineQuery } from '@beonauto/operations';
+import { PlaybookContext, InvalidInput, defineQuery } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 
 import type { ToolAccess } from '../access/tool-access.ts';

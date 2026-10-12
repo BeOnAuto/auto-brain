@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 
-import { defaultRunWords, outputInWords, type RunAccount, type RunWords } from '@beonauto/definitions';
+import { defaultRunWords, outputInWords, type RunAccount, type RunWords } from '@on.auto/definitions';
 import type { Schema } from 'effect';
 
 import { callOutputInWords } from '../call/call-words.ts';

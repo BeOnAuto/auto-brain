@@ -1,5 +1,5 @@
 {
-  "name": "@beonauto/workflow-host",
+  "name": "@on.auto/workflow-host",
   "version": "0.0.0",
   "private": true,
   "license": "Elastic-2.0",
@@ -15,13 +15,13 @@
     "measure": "node measure.ts"
   },
   "dependencies": {
-    "@beonauto/definitions": "workspace:*",
-    "@beonauto/ledger": "workspace:*",
-    "@beonauto/operations": "workspace:*",
-    "@beonauto/playbooks": "workspace:*",
-    "@beonauto/workflow-engine": "workspace:*",
     "@event-driven-io/dumbo": "0.13.0-beta.56",
     "@event-driven-io/emmett-sqlite": "0.43.0-beta.50",
+    "@on.auto/definitions": "workspace:*",
+    "@on.auto/ledger": "workspace:*",
+    "@on.auto/operations": "workspace:*",
+    "@on.auto/playbooks": "workspace:*",
+    "@on.auto/workflow-engine": "workspace:*",
     "croner": "10.0.1",
     "effect": "catalog:",
     "pg": "8.23.1",

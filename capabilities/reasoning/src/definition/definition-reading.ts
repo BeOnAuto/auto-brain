@@ -1,6 +1,6 @@
-import type { DefinitionSummary } from '@beonauto/definitions';
-import { issueText } from '@beonauto/definitions/document';
-import { InvalidInput } from '@beonauto/operations';
+import type { DefinitionSummary } from '@on.auto/definitions';
+import { issueText } from '@on.auto/definitions/document';
+import { InvalidInput } from '@on.auto/operations';
 import { Effect, Result } from 'effect';
 
 import { parseDefinitionDocument } from './definition-parsing.ts';

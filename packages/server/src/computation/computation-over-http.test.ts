@@ -1,6 +1,6 @@
-import { campaignPace, campaignRows } from '@beonauto/computation/testing';
-import type { PoolOutcome } from '@beonauto/workflow-engine/dsl';
-import { scriptedPool } from '@beonauto/workflow-engine/testing';
+import { campaignPace, campaignRows } from '@on.auto/computation/testing';
+import type { PoolOutcome } from '@on.auto/workflow-engine/dsl';
+import { scriptedPool } from '@on.auto/workflow-engine/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 

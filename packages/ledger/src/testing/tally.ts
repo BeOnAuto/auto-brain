@@ -1,4 +1,4 @@
-import { ActedContextSchema, Conflict, factOf, type Decided, type Decider } from '@beonauto/operations';
+import { ActedContextSchema, Conflict, factOf, type Decided, type Decider } from '@on.auto/operations';
 import { Effect, Result, Schema, SchemaGetter } from 'effect';
 
 import { stamped } from './happenings.ts';

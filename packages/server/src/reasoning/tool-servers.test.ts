@@ -5,8 +5,8 @@ import {
   problemIn,
   withMcpSession,
   type McpSession,
-} from '@beonauto/api/testing';
-import { serveFakeMcp, type FakeMcpServer } from '@beonauto/mcp/testing';
+} from '@on.auto/api/testing';
+import { serveFakeMcp, type FakeMcpServer } from '@on.auto/mcp/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';

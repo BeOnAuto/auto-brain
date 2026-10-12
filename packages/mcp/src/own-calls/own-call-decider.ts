@@ -1,4 +1,4 @@
-import { Conflict, type Context, type Decided, type Decider, type Recorded } from '@beonauto/operations';
+import { Conflict, type Context, type Decided, type Decider, type Recorded } from '@on.auto/operations';
 import { Result, type Schema } from 'effect';
 
 export type OwnCallTurn<Event extends Recorded> = 'none' | Event['type'];

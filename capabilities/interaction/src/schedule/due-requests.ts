@@ -1,4 +1,4 @@
-import type { ProjectedKeyedRow } from '@beonauto/operations';
+import type { ProjectedKeyedRow } from '@on.auto/operations';
 import { Effect } from 'effect';
 
 import { openRequestsName } from '../requests/open-requests.ts';
