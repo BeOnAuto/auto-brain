@@ -6,7 +6,13 @@ import { ledgerLayerOver } from '../ledger-layer.ts';
 import { lostConnectionsLoggedWith } from './lost-connections.ts';
 import { postgresqlEventStore, type PostgreSQLOptions } from './postgresql-event-store.ts';
 
-export { postgresqlEventStore, type PostgreSQLOptions, type PostgreSQLStoreOptions } from './postgresql-event-store.ts';
+export {
+  postgresqlEventStore,
+  type PoolBounds,
+  type PostgreSQLOptions,
+  type PostgreSQLPools,
+  type PostgreSQLStoreOptions,
+} from './postgresql-event-store.ts';
 
 export interface PostgreSQLLedgerOptions extends PostgreSQLOptions {
   readonly appends?: AppendSignal;

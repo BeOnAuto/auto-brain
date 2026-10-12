@@ -8,6 +8,7 @@ import { definitionStreamsPlan } from '../postgresql-reads/index-checks.ts';
 import { postgresqlRecordedStore } from '../postgresql-reads/postgresql-recorded.ts';
 import { ledgerBehaviour } from '../testing/ledger-behaviour.ts';
 import type { LedgerEntry } from '../testing/ledger-entry.ts';
+import { plainPoolsOn } from '../testing/open-ledger.ts';
 import { postgresqlEventStore, postgresqlLedgerLayer } from './postgresql-ledger.ts';
 
 const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
@@ -117,11 +118,15 @@ const onPostgreSQL: LedgerEntry = {
   closedWhileWriting: 'Cannot use a pool after calling end on the pool',
   aDatabase,
   untilReadable,
-  ledgerOn: (connectionString, runOutcomes, projections = []) =>
-    postgresqlLedgerLayer({ connectionString, projections, ...(runOutcomes === undefined ? {} : { runOutcomes }) }),
-  storeOn: (connectionString) =>
+  ledgerOn: (database, runOutcomes, projections = []) =>
+    postgresqlLedgerLayer({
+      pools: plainPoolsOn(database),
+      projections,
+      ...(runOutcomes === undefined ? {} : { runOutcomes }),
+    }),
+  storeOn: (database) =>
     postgresqlEventStore({
-      connectionString,
+      pools: plainPoolsOn(database),
       reportLostConnection: (error) => {
         lostConnections.push(error);
       },

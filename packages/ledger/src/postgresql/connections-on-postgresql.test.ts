@@ -5,7 +5,7 @@ import { Client } from 'pg';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import { sweepsWatched } from '../content/watched-sweeps.ts';
-import { openLedgerWith } from '../testing/open-ledger.ts';
+import { openLedgerWith, plainPoolsOn } from '../testing/open-ledger.ts';
 import { tally } from '../testing/tally.ts';
 import { lostConnectionsLoggedWith } from './lost-connections.ts';
 import { postgresqlEventStore, postgresqlLedgerLayer } from './postgresql-ledger.ts';
@@ -76,7 +76,7 @@ async function untilNoneOpen(database: string): Promise<void> {
 
 function sweptOn(database: string, held?: Promise<void>) {
   return sweepsWatched(
-    () => postgresqlEventStore({ connectionString: database, reportLostConnection: Function.constVoid }),
+    () => postgresqlEventStore({ pools: plainPoolsOn(database), reportLostConnection: Function.constVoid }),
     held,
   );
 }
@@ -86,8 +86,8 @@ describe.skipIf(skipped)(`A ledger on a PostgreSQL database of its own${notice}`
     const database = await aDatabase();
 
     const [first, second] = await Promise.all([
-      openLedgerWith(postgresqlLedgerLayer({ connectionString: database })),
-      openLedgerWith(postgresqlLedgerLayer({ connectionString: database })),
+      openLedgerWith(postgresqlLedgerLayer({ pools: plainPoolsOn(database) })),
+      openLedgerWith(postgresqlLedgerLayer({ pools: plainPoolsOn(database) })),
     ]);
     await Effect.runPromise(first.ledger.execute('org/acme/tallies', tally, [1]));
     const loaded = await Effect.runPromise(second.ledger.load('org/acme/tallies', tally));
@@ -144,7 +144,7 @@ describe.skipIf(skipped)(
       await filling.query('SELECT pg_advisory_lock($1)', [emmettsMigrationLock]);
       const fill = { done: false };
 
-      const opening = openLedgerWith(postgresqlLedgerLayer({ connectionString: database })).then((opened) => ({
+      const opening = openLedgerWith(postgresqlLedgerLayer({ pools: plainPoolsOn(database) })).then((opened) => ({
         opened,
         afterTheFill: fill.done,
       }));
@@ -172,7 +172,7 @@ async function aLedgerLogging(database: string) {
   ]);
   const context = await Effect.runPromise(Effect.context().pipe(Effect.provide(logging)));
   const watched = sweepsWatched(() =>
-    postgresqlEventStore({ connectionString: database, reportLostConnection: lostConnectionsLoggedWith(context) }),
+    postgresqlEventStore({ pools: plainPoolsOn(database), reportLostConnection: lostConnectionsLoggedWith(context) }),
   );
   const { ledger, dispose } = await openLedgerWith(watched.layer.pipe(Layer.provide(logging)));
   onTestFinished(dispose);
@@ -199,7 +199,7 @@ describe.skipIf(skipped)(`A ledger whose PostgreSQL database ends its connection
 
   it("keeps each event's data as its JSON text and its context as plain jsonb in Emmett's messages table", async () => {
     const database = await aDatabase();
-    const { ledger, dispose } = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
+    const { ledger, dispose } = await openLedgerWith(postgresqlLedgerLayer({ pools: plainPoolsOn(database) }));
     await Effect.runPromise(ledger.execute('org/acme/tallies', tally, [2]));
     await dispose();
 

@@ -4,7 +4,7 @@ import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { thePlaybookIndexes } from '../postgresql-reads/index-checks.ts';
-import { openLedgerWith } from '../testing/open-ledger.ts';
+import { openLedgerWith, plainPoolsOn } from '../testing/open-ledger.ts';
 import { postgresqlLedgerLayer } from './postgresql-ledger.ts';
 
 const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
@@ -37,7 +37,7 @@ async function aDatabase(): Promise<string> {
 
 async function aLedgerOnItsOwnDatabase(): Promise<string> {
   const database = await aDatabase();
-  const { dispose } = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
+  const { dispose } = await openLedgerWith(postgresqlLedgerLayer({ pools: plainPoolsOn(database) }));
   onTestFinished(dispose);
   return database;
 }
@@ -62,9 +62,9 @@ async function anAppendLeftOpen(database: string): Promise<Client> {
 describe.skipIf(skipped)(`The playbook's indexes on PostgreSQL${notice}`, { timeout: 30_000 }, () => {
   it('are created when the ledger opens, once however often it opens', async () => {
     const database = await aDatabase();
-    const first = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
+    const first = await openLedgerWith(postgresqlLedgerLayer({ pools: plainPoolsOn(database) }));
     await first.dispose();
-    const second = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
+    const second = await openLedgerWith(postgresqlLedgerLayer({ pools: plainPoolsOn(database) }));
     await second.dispose();
 
     expect(
@@ -79,7 +79,7 @@ describe.skipIf(skipped)(`The playbook's indexes on PostgreSQL${notice}`, { time
     const database = await aLedgerOnItsOwnDatabase();
     const open = await anAppendLeftOpen(database);
 
-    const started = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
+    const started = await openLedgerWith(postgresqlLedgerLayer({ pools: plainPoolsOn(database) }));
     await started.dispose();
     await open.query('COMMIT');
 

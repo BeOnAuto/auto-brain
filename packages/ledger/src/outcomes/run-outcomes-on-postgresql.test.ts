@@ -6,7 +6,7 @@ import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { postgresqlLedgerLayer } from '../postgresql/postgresql-ledger.ts';
-import { openLedgerWith } from '../testing/open-ledger.ts';
+import { openLedgerWith, plainPoolsOn } from '../testing/open-ledger.ts';
 import { fourRuns, fourRunsKept, reading } from './run-outcomes-behaviour.ts';
 
 const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
@@ -56,13 +56,15 @@ function counting(): Counting {
 describe.skipIf(skipped)(`The outcomes of runs on PostgreSQL${notice}`, { timeout: 30_000 }, () => {
   it('are filled once by ledgers that start together, under the lock of the migration', async () => {
     const database = await aDatabase();
-    const writing = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
+    const writing = await openLedgerWith(postgresqlLedgerLayer({ pools: plainPoolsOn(database) }));
     await fourRuns(writing.ledger);
     await writing.dispose();
     const { mapping, count } = counting();
 
     const opened = await Promise.all(
-      [1, 2, 3].map(() => openLedgerWith(postgresqlLedgerLayer({ connectionString: database, runOutcomes: mapping }))),
+      [1, 2, 3].map(() =>
+        openLedgerWith(postgresqlLedgerLayer({ pools: plainPoolsOn(database), runOutcomes: mapping })),
+      ),
     );
     onTestFinished(async () => {
       await Promise.all(opened.map(({ dispose }) => dispose()));

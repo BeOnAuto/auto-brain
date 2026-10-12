@@ -5,7 +5,7 @@ import { Effect } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
-import { openLedgerWith } from '../testing/open-ledger.ts';
+import { openLedgerWith, plainPoolsOn } from '../testing/open-ledger.ts';
 import { postgresqlLedgerLayer } from './postgresql-ledger.ts';
 
 const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
@@ -70,7 +70,7 @@ describe.skipIf(skipped)(`A fold beside an advance of the same row on PostgreSQL
   it('leaves the columns the advance wrote, though the fold read the row before the advance committed', async () => {
     const database = await aDatabase();
     const { ledger, dispose } = await openLedgerWith(
-      postgresqlLedgerLayer({ connectionString: database, projections: [topicRows] }),
+      postgresqlLedgerLayer({ pools: plainPoolsOn(database), projections: [topicRows] }),
     );
     onTestFinished(dispose);
     await Effect.runPromise(

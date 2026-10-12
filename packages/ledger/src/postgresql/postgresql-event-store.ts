@@ -1,7 +1,7 @@
 import { getPostgreSQLEventStore } from '@event-driven-io/emmett-postgresql';
 import { pgEventStoreDriver } from '@event-driven-io/emmett-postgresql/pg';
 import type { RunOutcomeMapping, KeyedProjection } from '@on.auto/operations';
-import { Pool } from 'pg';
+import type { Pool } from 'pg';
 
 import { emmettEventStore } from '../emmett/emmett-event-store.ts';
 import type { LedgerStore } from '../event-store.ts';
@@ -10,8 +10,14 @@ import { dataAsJsonText } from './json-text.ts';
 import { postgresqlProjectionsOf } from './postgresql-projections.ts';
 import { migrationLockTakenWithin, postgresqlRunOutcomesOf } from './postgresql-run-outcomes.ts';
 
+export interface PoolBounds {
+  readonly max: number;
+}
+
+export type PostgreSQLPools = (bounds: PoolBounds) => Pool;
+
 export interface PostgreSQLOptions {
-  readonly connectionString: string;
+  readonly pools: PostgreSQLPools;
   readonly runOutcomes?: RunOutcomeMapping;
   readonly projections?: readonly KeyedProjection[];
 }
@@ -22,19 +28,20 @@ export interface PostgreSQLStoreOptions extends PostgreSQLOptions {
 
 const eventsInOneBoundedAppend = 64;
 
+const connectionsOfOneLedger = 10;
+
 export function postgresqlEventStore({
-  connectionString,
+  pools,
   reportLostConnection,
   runOutcomes,
   projections,
 }: PostgreSQLStoreOptions): LedgerStore {
-  const pool = new Pool({ connectionString });
+  const pool = pools({ max: connectionsOfOneLedger });
   pool.on('error', reportLostConnection);
   const kept = postgresqlProjectionsOf({ runOutcomes, projections });
   const store = emmettEventStore(
     getPostgreSQLEventStore({
       driver: pgEventStoreDriver,
-      connectionString,
       connectionOptions: { pool },
       schema: { autoMigration: 'None' },
       projections: [...kept.registrations],

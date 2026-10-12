@@ -5,7 +5,7 @@ import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { details, happenings } from '../testing/happenings.ts';
-import { openLedgerWith, type OpenLedger } from '../testing/open-ledger.ts';
+import { openLedgerWith, plainPoolsOn, type OpenLedger } from '../testing/open-ledger.ts';
 import { postgresqlLedgerLayer } from './postgresql-ledger.ts';
 
 const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
@@ -126,7 +126,7 @@ type OwnLedger = { readonly database: string; readonly ledger: OpenLedger['ledge
 
 async function aLedgerOnItsOwnDatabase(): Promise<OwnLedger> {
   const database = await aDatabase();
-  const { ledger, dispose } = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
+  const { ledger, dispose } = await openLedgerWith(postgresqlLedgerLayer({ pools: plainPoolsOn(database) }));
   onTestFinished(dispose);
   return { database, ledger };
 }

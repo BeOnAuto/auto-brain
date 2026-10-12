@@ -8,7 +8,7 @@ import { Client } from 'pg';
 import { postgresqlLedgerLayer } from './src/postgresql/postgresql-ledger.ts';
 import { cursorOf } from './src/recorded/cursor.ts';
 import { ledgerLayer } from './src/sqlite3.ts';
-import { openLedgerWith, type OpenLedger } from './src/testing/open-ledger.ts';
+import { openLedgerWith, plainPoolsOn, type OpenLedger } from './src/testing/open-ledger.ts';
 import { temporaryDatabase } from './src/testing/temporary-database.ts';
 
 type AnyLedger = OpenLedger['ledger'];
@@ -267,7 +267,7 @@ async function measurePostgreSQL(): Promise<void> {
   await administration.query(`CREATE DATABASE ${name}`);
   const url = new URL(postgresqlServer);
   url.pathname = `/${name}`;
-  const creating = await openLedgerWith(postgresqlLedgerLayer({ connectionString: url.href }));
+  const creating = await openLedgerWith(postgresqlLedgerLayer({ pools: plainPoolsOn(url.href) }));
   await creating.dispose();
   const client = new Client({ connectionString: url.href });
   await client.connect();
@@ -278,7 +278,7 @@ async function measurePostgreSQL(): Promise<void> {
   );
   write(`PostgreSQL, ${runs} runs and ${largeRuns} runs of 256 KiB in another playbook:`);
   await pagesOf(
-    postgresqlLedgerLayer({ connectionString: url.href }),
+    postgresqlLedgerLayer({ pools: plainPoolsOn(url.href) }),
     rows.flatMap(({ t, p }) => [t, p]),
   );
   await client.end();

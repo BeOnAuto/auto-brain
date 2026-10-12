@@ -8,6 +8,7 @@ import type { LedgerStore } from '../src/event-store.ts';
 import { postgresqlEventStore } from '../src/postgresql/postgresql-event-store.ts';
 import { sqliteEventStore } from '../src/sqlite-event-store.ts';
 import type { modestConnections } from '../src/sqlite3.ts';
+import { plainPoolsOn } from '../src/testing/open-ledger.ts';
 import { temporaryDatabase } from '../src/testing/temporary-database.ts';
 
 const postgresqlServer = process.env['LEDGER_MEASURE_POSTGRESQL_URL'] ?? '';
@@ -85,7 +86,7 @@ async function postgresqlStore(): Promise<MeasuredStore> {
   const url = new URL(postgresqlServer);
   url.pathname = `/${name}`;
   const open = (): LedgerStore =>
-    postgresqlEventStore({ connectionString: url.href, reportLostConnection: Function.constVoid });
+    postgresqlEventStore({ pools: plainPoolsOn(url.href), reportLostConnection: Function.constVoid });
   await (await openedOf(open)).close();
   const client = new Client({ connectionString: url.href });
   await client.connect();
