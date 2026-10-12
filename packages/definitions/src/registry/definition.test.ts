@@ -22,6 +22,8 @@ const reasoningFunction: Definition = {
 
 const interactionFunction: Definition = { ...reasoningFunction, type: 'interaction', source: 'Approve?' };
 
+const predictionFunction: Definition = { ...reasoningFunction, type: 'prediction', source: 'Fit the weekly orders.' };
+
 const computationFunction: Definition = { ...reasoningFunction, type: 'computation', source: '.a + 1' };
 
 const recallFunction: Definition = { ...reasoningFunction, type: 'recall', source: '. + 1' };
@@ -29,8 +31,15 @@ const recallFunction: Definition = { ...reasoningFunction, type: 'recall', sourc
 const workflow: Definition = { ...reasoningFunction, type: 'workflow', media_type: 'application/yaml' };
 
 describe('a saved definition', () => {
-  it('is a playbook function when it is a reasoning, an interaction, a computation or a recall function, and a workflow when it is a workflow', () => {
-    const definitions = [reasoningFunction, interactionFunction, computationFunction, recallFunction, workflow];
+  it('is a playbook function when it is a reasoning, an interaction, a prediction, a recall or a computation function, and a workflow when it is a workflow', () => {
+    const definitions = [
+      reasoningFunction,
+      interactionFunction,
+      predictionFunction,
+      recallFunction,
+      computationFunction,
+      workflow,
+    ];
 
     const functions = definitions.filter((definition) => isPlaybookFunctionDefinition(definition));
     const workflows = definitions.filter((definition) => isWorkflowDefinition(definition));
@@ -38,13 +47,13 @@ describe('a saved definition', () => {
     expectTypeOf(functions).toEqualTypeOf<PlaybookFunctionDefinition[]>();
     expectTypeOf(workflows).toEqualTypeOf<WorkflowDefinition[]>();
     expect([functions, workflows]).toEqual([
-      [reasoningFunction, interactionFunction, computationFunction, recallFunction],
+      [reasoningFunction, interactionFunction, predictionFunction, recallFunction, computationFunction],
       [workflow],
     ]);
   });
 
-  it.each(['echo', 'reason', 'interact', 'prediction', 'compute'])(
-    'is neither of a custom adapter or a planned function type: %s',
+  it.each(['echo', 'reason', 'interact', 'predict', 'compute'])(
+    'is neither of a custom adapter or a name that is not a function type: %s',
     (type) => {
       const definition = { ...reasoningFunction, type };
 

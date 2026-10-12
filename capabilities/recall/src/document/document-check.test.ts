@@ -1,3 +1,4 @@
+import { nothingSaved } from '@beonauto/definitions/testing';
 import { InvalidInput, Unavailable } from '@beonauto/operations';
 import { Effect, Exit, Result } from 'effect';
 import { describe, expect, it } from 'vitest';
@@ -17,7 +18,7 @@ const filtered = [
 ].join('\n');
 
 function checking(source: string) {
-  return Effect.runPromiseExit(recallWith().prepared(source).check);
+  return Effect.runPromiseExit(recallWith().prepared(source).check(nothingSaved));
 }
 
 describe('the filter expressions of a recall function', () => {
@@ -78,7 +79,7 @@ describe('the check of a recall function when it is saved', { timeout: workerTes
       check: () => Promise.resolve({ ran: 'stopped', because: 'closing', milliseconds: 1 } as const),
     };
 
-    expect(await Effect.runPromiseExit(recallWith(closing).prepared(campaignReviews).check)).toEqual(
+    expect(await Effect.runPromiseExit(recallWith(closing).prepared(campaignReviews).check(nothingSaved))).toEqual(
       Exit.fail(new Unavailable({ detail: 'The server is stopping' })),
     );
   });

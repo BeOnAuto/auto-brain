@@ -29,6 +29,7 @@ export {
   type StandingRequest,
   type ToolCallJournal,
 } from './capability/capability.ts';
+export type { SavedDefinition, SavedDefinitions } from './capability/saved-definitions.ts';
 export {
   changedExpressions,
   noStrippedForms,
@@ -174,6 +175,7 @@ export {
   type PlaybookFunctionDefinition,
   type ComputationFunctionDefinition,
   type InteractionFunctionDefinition,
+  type PredictionFunctionDefinition,
   type RecallFunctionDefinition,
   type ReasoningFunctionDefinition,
   type WorkflowDefinition,

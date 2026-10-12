@@ -16,9 +16,9 @@ function described(name: string): string {
 }
 
 describe('the description of create_definition', () => {
-  it('names each definition type the playbook runs, the kind of definition it is and the guide to its format', () => {
+  it('names each definition type the playbook runs and the kind of definition it is', () => {
     expect(described('create_definition')).toContain(
-      "`type` is the definition's type and `name` is how workflows and tools refer to it: echo, a greeting, guide echo; probe, a probe, guide probe.",
+      "`type` is the definition's type and `name` is how workflows and tools refer to it: echo, a greeting; probe, a probe.",
     );
   });
 });
@@ -40,7 +40,7 @@ describe('the kind of definition create_definition names', () => {
       ({ registration }) => registration.name === 'create_definition',
     );
 
-    expect(createDefinition?.registration.description).toContain('outlining, an outline, guide outline.');
+    expect(createDefinition?.registration.description).toContain('outlining, an outline.');
   });
 });
 
@@ -55,12 +55,12 @@ describe('the description of every operation', () => {
 });
 
 describe('the JSON Schema of the input of the operations', () => {
-  it('lists the known capabilities for the capability field as a plain enum, with the kind each names', () => {
+  it('lists the known capabilities for the capability field as a plain enum, which alone names them', () => {
     for (const { input } of takingAType) {
       expect(input.schema).toHaveProperty(['properties', 'type'], {
         type: 'string',
         enum: ['echo', 'probe'],
-        description: "The definition's type: echo or probe",
+        description: "The definition's type",
       });
       expect(input.schema).toMatchObject({ type: 'object', additionalProperties: false });
     }
@@ -109,7 +109,7 @@ describe('the JSON Schema of the filters of the runs', () => {
     expect(listing?.input.schema).toMatchObject({
       properties: {
         type: {
-          description: 'Only the runs of this type: echo or probe',
+          description: 'Only the runs of this type',
         },
         name: { description: 'Only the runs of the definition with this name' },
       },

@@ -74,6 +74,8 @@ export type ReasoningFunctionDefinition = Definition & { readonly type: 'reasoni
 
 export type InteractionFunctionDefinition = Definition & { readonly type: 'interaction' };
 
+export type PredictionFunctionDefinition = Definition & { readonly type: 'prediction' };
+
 export type ComputationFunctionDefinition = Definition & { readonly type: 'computation' };
 
 export type RecallFunctionDefinition = Definition & { readonly type: 'recall' };
@@ -81,10 +83,17 @@ export type RecallFunctionDefinition = Definition & { readonly type: 'recall' };
 export type PlaybookFunctionDefinition =
   | ReasoningFunctionDefinition
   | InteractionFunctionDefinition
+  | PredictionFunctionDefinition
   | ComputationFunctionDefinition
   | RecallFunctionDefinition;
 
-const playbookFunctionTypes: ReadonlySet<string> = new Set(['reasoning', 'interaction', 'computation', 'recall']);
+const playbookFunctionTypes: ReadonlySet<string> = new Set([
+  'reasoning',
+  'interaction',
+  'prediction',
+  'recall',
+  'computation',
+]);
 
 export type WorkflowDefinition = Definition & { readonly type: 'workflow' };
 

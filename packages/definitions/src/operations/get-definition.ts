@@ -43,6 +43,7 @@ export function defineGetDefinition(capabilities: readonly Capability[]) {
           name,
           version: definition.version,
           status: definition.status,
+          ...(stored.details === undefined ? {} : { details: stored.details }),
         });
         return standing === undefined ? definition : { ...definition, standing };
       }),

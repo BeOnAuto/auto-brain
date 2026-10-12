@@ -1,5 +1,5 @@
 import type { CapabilityAnswer, PreparedDefinition, Capability, RunContext } from '@beonauto/definitions';
-import { noLongestRuns, recordingJournal } from '@beonauto/definitions/testing';
+import { noLongestRuns, nothingSaved, recordingJournal } from '@beonauto/definitions/testing';
 import { allPermissions, type Conflict, type InvalidInput, type Unavailable } from '@beonauto/operations';
 import { programPool, type PoolSettings, type ProgramPool } from '@beonauto/workflow-engine/dsl';
 import type { KeptView } from '@beonauto/workflow-host';
@@ -78,7 +78,7 @@ export function recallWith(pool: ProgramPool = poolOf(), bounds: AnswerBounds = 
   const capability = makeRecallFunctionAdapter({ pool, views: views.views, ...bounds });
   const prepared = (source: string): PreparedDefinition => Effect.runSync(capability.prepare(source));
   const saved = (source: string) =>
-    Effect.flatMap(prepared(source).check, (stripped) => capability.prepare(source, stripped));
+    Effect.flatMap(prepared(source).check(nothingSaved), (stripped) => capability.prepare(source, stripped));
   return {
     ...views,
     capability,

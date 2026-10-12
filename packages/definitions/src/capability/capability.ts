@@ -15,6 +15,7 @@ import type { Trigger } from '../registry/definition-triggers.ts';
 import { noFacts, type CapabilityFacts } from '../run-work/declared-facts.ts';
 import type { CancelRequestKind } from '../runs/run-events.ts';
 import type { RecordedAnswer, RecordedWork } from '../runs/run-state.ts';
+import type { SavedDefinitions } from './saved-definitions.ts';
 import { noStrippedForms, type StrippedForms } from './stripped-forms.ts';
 
 export interface DefinitionSummary {
@@ -32,6 +33,7 @@ export interface StandingRequest {
   readonly name: string;
   readonly version: number;
   readonly status: 'active' | 'retired';
+  readonly details?: Schema.JsonObject;
 }
 
 export type Standing = (request: StandingRequest) => Effect.Effect<Schema.JsonObject | undefined>;
@@ -117,6 +119,7 @@ export interface CapabilityDeclaration<Parsed> {
   readonly check?: (
     parsed: NoInfer<Parsed>,
     source: string,
+    saved: SavedDefinitions,
   ) => Effect.Effect<StrippedForms, InvalidInput | Unavailable>;
   readonly summarize: (parsed: NoInfer<Parsed>) => DefinitionSummary;
   readonly run: (
@@ -143,7 +146,7 @@ export interface CapabilityDeclaration<Parsed> {
 
 export interface PreparedDefinition {
   readonly summary: DefinitionSummary;
-  readonly check: Effect.Effect<StrippedForms, InvalidInput | Unavailable>;
+  readonly check: (saved: SavedDefinitions) => Effect.Effect<StrippedForms, InvalidInput | Unavailable>;
   readonly run: (input: Schema.Json, context: RunContext) => Effect.Effect<CapabilityAnswer, CapabilityRejection>;
   readonly whenCancelled: WhenCancelled;
   readonly callsTools: boolean;
@@ -259,7 +262,7 @@ export function defineCapability<Parsed>(definition: CapabilityDeclaration<Parse
       parse(source).pipe(
         Effect.map((parsed) => ({
           summary: summarize(parsed),
-          check: Effect.suspend(() => check(parsed, source)),
+          check: (saved) => Effect.suspend(() => check(parsed, source, saved)),
           run: (input, context) => run(parsed, input, context, stripped),
           whenCancelled,
           callsTools: callsTools(parsed),

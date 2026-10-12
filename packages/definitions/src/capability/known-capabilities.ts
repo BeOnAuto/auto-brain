@@ -25,7 +25,7 @@ function servedTypeField(types: readonly string[]): typeof DefinitionTypeField {
 
 export interface KnownCapabilities {
   readonly field: typeof DefinitionTypeField;
-  readonly typesWithGuides: string;
+  readonly typesWithNouns: string;
   readonly publish: <Operation extends PublishedOperation>(operation: Operation, meaning?: string) => Operation;
   readonly capabilityOfType: (name: string) => Effect.Effect<Capability, NotFound>;
 }
@@ -50,11 +50,10 @@ function withTypeField(
   capabilities: readonly Capability[],
   meaning: string,
 ): JsonSchemaDocument {
-  const types = alternatives(capabilities.map(({ type }) => type));
   const typeProperty = {
     type: 'string',
     enum: capabilities.map(({ type }) => type),
-    description: `${meaning}: ${types}`,
+    description: meaning,
   };
   return {
     schema: { ...schema, properties: Object.assign({}, schema['properties'], { type: typeProperty }) },
@@ -69,9 +68,7 @@ export function knownCapabilities(capabilities: readonly Capability[]): KnownCap
   const byName = new Map(capabilities.map((capability) => [capability.type, capability]));
   return {
     field: servedTypeField(names),
-    typesWithGuides: capabilities
-      .map(({ type, noun, guide }) => `${type}, ${articled(noun.one)}, guide ${guide.name}`)
-      .join('; '),
+    typesWithNouns: capabilities.map(({ type, noun }) => `${type}, ${articled(noun.one)}`).join('; '),
     publish: (operation, meaning = typeMeaning) => ({
       ...operation,
       registration: {
