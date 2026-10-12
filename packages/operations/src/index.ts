@@ -231,7 +231,7 @@ export type {
   RouteRegistration,
   Runnable,
 } from './definition/registration.ts';
-export type { BrainRequest, OrgRequest } from './dispatch/request.ts';
+export { callSummaryOf, type BrainRequest, type OrgRequest } from './dispatch/request.ts';
 export type { Method, Route } from './definition/route.ts';
 export type { OperationKind, OperationScope } from './caller/operation-scope.ts';
 export { settle } from './dispatch/settle.ts';

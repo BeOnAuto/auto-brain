@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, hash } from 'node:crypto';
 
 export interface Sha256Digest {
   readonly update: (content: string | Readonly<Uint8Array>) => void;
@@ -6,17 +6,15 @@ export interface Sha256Digest {
 }
 
 export function sha256Digest(): Sha256Digest {
-  const hash = createHash('sha256');
+  const digest = createHash('sha256');
   return {
     update: (content) => {
-      hash.update(content);
+      digest.update(content);
     },
-    hex: () => hash.digest('hex'),
+    hex: () => digest.digest('hex'),
   };
 }
 
 export function sha256Of(content: string | Readonly<Uint8Array>): string {
-  const digest = sha256Digest();
-  digest.update(content);
-  return digest.hex();
+  return hash('sha256', content, 'hex');
 }

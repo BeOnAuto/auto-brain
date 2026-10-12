@@ -2,9 +2,10 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import { compiledErrors, probeHeader, type RejectedProbe } from '../testing/compiled-probes.ts';
 
-function definedOverHttp(kind: 'query' | 'command', lines: readonly string[]) {
+function definedOverHttp(kind: 'query' | 'command', lines: readonly string[], before: readonly string[] = []) {
   return [
     ...probeHeader,
+    ...before,
     `export const probe = Operations.defineHttpOperation('brain', '${kind}', {`,
     "  ...about, name: 'probe',",
     ...lines,
@@ -43,7 +44,17 @@ const accepted: Readonly<Record<string, readonly string[]>> = {
   ]),
 };
 
+const answerOfEitherKind = ['declare const either: Operations.JsonAnswer<typeof Empty> | Operations.StreamAnswer;'];
+
 const rejected: Readonly<Record<string, RejectedProbe>> = {
+  'http-answer-of-either-kind.ts': {
+    because: "is not assignable to type 'never'",
+    source: definedOverHttp(
+      'query',
+      [get, "  body: { kind: 'none' },", '  inputSchema: Empty,', '  answer: either,', '  reasons: [],', answering],
+      answerOfEitherKind,
+    ),
+  },
   'http-query-takes-a-body.ts': {
     because: 'Type \'"csv"\' is not assignable to type \'"none"\'',
     source: definedOverHttp('query', [get, "  body: { kind: 'csv', mostBytes: 64 },", ...answeringJson, answering]),

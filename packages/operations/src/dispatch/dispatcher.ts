@@ -13,7 +13,7 @@ import { runInBrain } from './brain-binding.ts';
 import { withoutDispatcherServices, type DispatcherServices } from './dispatcher-services.ts';
 import { withErrorBoundary } from './error-boundary.ts';
 import { runInOrg } from './org-binding.ts';
-import type { BrainRequest, OrgRequest } from './request.ts';
+import { callSummaryOf, type BrainRequest, type OrgRequest } from './request.ts';
 
 export type PipelineStep = (
   registration: Runnable,
@@ -52,7 +52,7 @@ export function makeDispatcher(steps: readonly PipelineStep[]): Dispatcher {
           const ledger = yield* Ledger;
           return yield* runInOrg(registration, request, ledger).pipe(withoutDispatcherServices);
         }),
-        { operation: registration.name, org: request.org, caller: request.caller.id },
+        callSummaryOf(registration.name, request),
       ),
     dispatchToBrain: <A extends Succeeded>(registration: Runnable<'brain', A>, request: BrainRequest) =>
       withErrorBoundary(
@@ -63,7 +63,7 @@ export function makeDispatcher(steps: readonly PipelineStep[]): Dispatcher {
           const ledger = yield* Ledger;
           return yield* runInBrain(registration, request, ledger).pipe(withoutDispatcherServices);
         }),
-        { operation: registration.name, org: request.org, brain: request.brain, caller: request.caller.id },
+        callSummaryOf(registration.name, request, request.brain),
       ),
   };
 }

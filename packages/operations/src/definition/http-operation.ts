@@ -13,6 +13,7 @@ import type {
   HttpHandlerOf,
   InputSchemaFor,
   ObjectSchema,
+  OfOneAnswerKind,
   RelativePath,
 } from './definition.ts';
 import type { HandlerServices } from './handler-services.ts';
@@ -50,7 +51,11 @@ export function defineHttpOperation<
   Out extends ObjectSchema,
   const R extends DeclarableReason = never,
   Services extends HandlerServices<S, K> = never,
->(scope: S, kind: K, definition: HttpDefinition<K, P, B, A, In, Out, R, Services>): HttpOperation<S, K>;
+>(
+  scope: S,
+  kind: K,
+  definition: HttpDefinition<K, P, B, A, In, Out, R, Services> & OfOneAnswerKind<A>,
+): HttpOperation<S, K>;
 export function defineHttpOperation<
   S extends OperationScope,
   K extends OperationKind,

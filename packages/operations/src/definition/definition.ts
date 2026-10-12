@@ -105,6 +105,14 @@ export interface AnswerValues<Out extends ObjectSchema> {
 
 export type AnswerKind = keyof AnswerDeclarations<ObjectSchema>;
 
+type TheOneKindOf<A extends AnswerKind> = {
+  readonly [Kind in AnswerKind]: [A] extends [Kind] ? Kind : never;
+}[AnswerKind];
+
+export type OfOneAnswerKind<A extends AnswerKind> = [TheOneKindOf<A>] extends [never]
+  ? { readonly answer: never }
+  : unknown;
+
 export interface HttpFields<
   K extends OperationKind,
   P extends string,

@@ -10,7 +10,7 @@ export interface CallSummary {
 export interface Incident {
   readonly id: string;
   readonly original: unknown;
-  readonly call?: CallSummary;
+  readonly call?: CallSummary | undefined;
 }
 
 export class IncidentReporter extends Context.Service<
