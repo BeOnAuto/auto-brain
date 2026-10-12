@@ -1,0 +1,29 @@
+{
+  "name": "@beonauto/object-storage",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Elastic-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "measure:content": "node --expose-gc measure/object-content.ts",
+    "lint": "oxlint -c ../../.oxlintrc.json",
+    "typecheck": "tsc",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.1144.0",
+    "@aws-sdk/lib-storage": "3.1144.0",
+    "@beonauto/operations": "workspace:*",
+    "@beonauto/outbound": "workspace:*",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@beonauto/ledger": "workspace:*",
+    "@smithy/core": "3.35.2",
+    "@vitest/coverage-v8": "catalog:",
+    "vitest": "catalog:"
+  }
+}
