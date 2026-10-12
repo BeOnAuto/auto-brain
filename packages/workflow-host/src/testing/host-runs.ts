@@ -27,7 +27,7 @@ export interface HostedOptions {
   readonly sweepEveryMs?: number;
   readonly ledgerDown?: () => boolean;
   readonly holder?: string;
-  readonly views?: HostOptions['views'];
+  readonly projector?: HostOptions['projector'];
   readonly dueWork?: HostOptions['dueWork'];
 }
 
@@ -56,7 +56,7 @@ export async function hostedOn(settings: HostOptions['database'], options: Hoste
     waiting: options.waiting ?? recordedWaiting().options,
     ...(options.clock === undefined ? {} : { clock: options.clock }),
     ...(options.holder === undefined ? {} : { holder: options.holder }),
-    ...(options.views === undefined ? {} : { views: options.views }),
+    ...(options.projector === undefined ? {} : { projector: options.projector }),
     ...(options.dueWork === undefined ? {} : { dueWork: options.dueWork }),
   });
   onTestFinished(() => host.stop());

@@ -13,8 +13,11 @@ function errorFrom(environment: Environment): unknown {
 }
 
 describe('the reasoning function settings', () => {
-  it('let the model calls of a run add up to 2,000,000 input tokens when nothing is set', () => {
-    expect(readSettings({}).reasoning).toEqual({ mostInputTokens: 2_000_000 });
+  it('let the model calls of a run add up to 2,000,000 input tokens when nothing is set, or the setting is empty', () => {
+    expect([readSettings({}).reasoning, readSettings({ REASONING_MAX_INPUT_TOKENS: '' }).reasoning]).toEqual([
+      { mostInputTokens: 2_000_000 },
+      { mostInputTokens: 2_000_000 },
+    ]);
   });
 
   it('read the most input tokens of a run, from the least to the most a whole number of seven digits allows', () => {

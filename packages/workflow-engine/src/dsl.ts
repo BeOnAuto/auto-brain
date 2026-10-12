@@ -29,6 +29,15 @@ export type { CheckAnswer, CheckIssue, CheckJob, StrippedSources } from './jobs/
 export { checkPermits, programPool } from './program-pool/program-pool.ts';
 export { idleWorkerMs, jobsBeforeRecycling } from './program-pool/pool-workers.ts';
 export { workerStackMegabytes } from './program-pool/pool-threads.ts';
+export {
+  processPool,
+  type ProcessEnding,
+  type ProcessOutcome,
+  type ProcessPool,
+  type ProcessPoolSettings,
+  type ProcessRequest,
+} from './process-pool/process-pool.ts';
+export type { ProcessValue, TypedArray } from './process-pool/process-values.ts';
 export type {
   FoldPage,
   FoldStall,

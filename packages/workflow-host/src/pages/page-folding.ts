@@ -2,10 +2,10 @@ import type { FoldedView, FoldingView, FoldOutcome, FoldRequest } from '@beonaut
 import { Array, Effect, type Schema, type Semaphore } from 'effect';
 
 import { rowsOf, type DatabaseFailed, type HostDatabase } from '../database/host-database.ts';
-import { pageDeadlineMs, waitForAWorkerMs, type ProjectorSettings } from '../projector/projector-settings.ts';
-import { isAfter } from '../views/view-points.ts';
 import { FoldedViewSchema, type StallCause, type ViewRow } from '../views/view-rows.ts';
 import { viewToFold } from '../views/view-statements.ts';
+import { pageDeadlineMs, waitForAWorkerMs, type ViewsFolding } from '../views/views-folding.ts';
+import { isAfter } from './history-points.ts';
 import type { PageEvent, ReadPage } from './page-events.ts';
 import {
   hasChanged,
@@ -25,7 +25,7 @@ export interface FoldedPageResult {
 }
 
 export interface PageFolding {
-  readonly settings: ProjectorSettings;
+  readonly settings: ViewsFolding;
   readonly share: Semaphore.Semaphore;
   readonly database: HostDatabase;
 }
@@ -69,7 +69,7 @@ function foldingViewOf({ row, view, events }: Folding): FoldingView {
   };
 }
 
-function requestOf(foldings: readonly Folding[], page: ReadPage, { folding }: ProjectorSettings): FoldRequest {
+function requestOf(foldings: readonly Folding[], page: ReadPage, { folding }: ViewsFolding): FoldRequest {
   return {
     ...folding,
     events: page.events.map(({ event }) => event),
@@ -79,7 +79,7 @@ function requestOf(foldings: readonly Folding[], page: ReadPage, { folding }: Pr
   };
 }
 
-function retriesOf({ overtimesBeforeStall, folding }: ProjectorSettings): Retries {
+function retriesOf({ overtimesBeforeStall, folding }: ViewsFolding): Retries {
   return { overtimesBeforeStall, foldDeadlineMs: folding.foldDeadlineMs };
 }
 

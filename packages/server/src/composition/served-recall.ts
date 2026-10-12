@@ -4,7 +4,14 @@ import { appendSignal, type AppendSignal } from '@beonauto/ledger';
 import type { DispatcherServices } from '@beonauto/operations';
 import { makeRecallFunctionAdapter, recallBounds, recallDefinitionType, recallFolding } from '@beonauto/recall';
 import type { ProgramPool } from '@beonauto/workflow-engine/dsl';
-import { openWorkflowStore, type ProjectorSettings, type WorkflowStore } from '@beonauto/workflow-host';
+import {
+  openWorkflowStore,
+  someFolder,
+  viewsFolder,
+  viewsPortOn,
+  type ProjectorSettings,
+  type WorkflowStore,
+} from '@beonauto/workflow-host';
 
 import type { Settings } from '../settings/settings.ts';
 import { hostDatabaseOf } from '../workflows/host-dependencies.ts';
@@ -13,7 +20,7 @@ import { hostReports } from '../workflows/host-reports.ts';
 interface ServedRecall {
   readonly capability: Capability;
   readonly store: WorkflowStore;
-  readonly views: ProjectorSettings;
+  readonly projector: ProjectorSettings;
 }
 
 export interface RecallWiring {
@@ -30,18 +37,26 @@ export function recallWiring(): RecallWiring {
   return {
     appends,
     served: async (runtime, { ledger, recall }, pool) => {
-      const store = await openWorkflowStore(hostDatabaseOf(ledger), hostReports(runtime).lostConnection);
+      const views = viewsFolder({
+        definitionType: recallDefinitionType,
+        pool,
+        folding: recallFolding,
+        overtimesBeforeStall: recallBounds.overtimesBeforeStall,
+        rebuildsAtOnce: recall.rebuildsAtOnce,
+      });
+      const folders = [someFolder(views)];
+      const store = await openWorkflowStore(hostDatabaseOf(ledger), hostReports(runtime).lostConnection, folders);
       return {
-        capability: makeRecallFunctionAdapter({ pool, views: store.views, mostFunctions: recall.mostFunctions }),
-        store,
-        views: {
-          definitionType: recallDefinitionType,
+        capability: makeRecallFunctionAdapter({
           pool,
-          folding: recallFolding,
+          views: viewsPortOn(store.database),
+          mostFunctions: recall.mostFunctions,
+        }),
+        store,
+        projector: {
+          folders,
           playbooksAtOnce: recall.playbooksAtOnce,
-          rebuildsAtOnce: recall.rebuildsAtOnce,
           pagesPerWake: recallBounds.pagesPerWake,
-          overtimesBeforeStall: recallBounds.overtimesBeforeStall,
           appends,
         },
       };

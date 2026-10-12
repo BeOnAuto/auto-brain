@@ -1,6 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { programPool, unitMemoryBytes, workerStackBytes } from '@beonauto/workflow-engine/dsl';
+import { programPool } from '@beonauto/workflow-engine/dsl';
 import { Effect, Function } from 'effect';
 
 import type { DatabaseSettings } from '../src/database/host-databases.ts';
@@ -8,6 +8,7 @@ import { statement } from '../src/database/statement.ts';
 import { openWorkflowStore, type WorkflowStore } from '../src/host/workflow-store.ts';
 import { systemClock } from '../src/loop/host-clock.ts';
 import { startProjector } from '../src/projector/projector.ts';
+import { measuredViewOf, measuredViews } from './measured-views.ts';
 
 export interface IdleViews {
   readonly views: number;
@@ -51,9 +52,7 @@ async function savedInTurn(store: WorkflowStore, views: number, index = 0): Prom
 
 async function allLive(store: WorkflowStore, views: number): Promise<void> {
   const kept = await Promise.all(
-    Array.from({ length: views }, (_, index) =>
-      Effect.runPromise(store.views.viewOf({ org: 'acme', playbook: 'alpha' }, `view-${index}`)),
-    ),
+    Array.from({ length: views }, (_, index) => measuredViewOf(store.database, `view-${index}`)),
   );
   if (kept.every((view) => view?.phase === 'live')) {
     return;
@@ -63,27 +62,13 @@ async function allLive(store: WorkflowStore, views: number): Promise<void> {
 }
 
 export async function idleViewsOn(settings: DatabaseSettings, views: number, seconds: number): Promise<IdleViews> {
-  const store = await openWorkflowStore(settings, Function.constVoid);
-  await savedInTurn(store, views);
   const pool = programPool({ workers: 4, heapMegabytes: 256 });
+  const measured = measuredViews(pool);
+  const store = await openWorkflowStore(settings, Function.constVoid, measured.folders);
+  await savedInTurn(store, views);
   const projector = startProjector({
     database: store.database,
-    settings: {
-      definitionType: 'recall',
-      pool,
-      folding: {
-        budget: 500,
-        memoryBytes: unitMemoryBytes,
-        stackBytes: workerStackBytes,
-        foldDeadlineMs: 10_000,
-        pageBudgetMs: 2000,
-        mostViewBytes: 524_288,
-      },
-      playbooksAtOnce: 4,
-      rebuildsAtOnce: 4,
-      pagesPerWake: 10,
-      overtimesBeforeStall: 20,
-    },
+    settings: measured,
     reports: {
       unsettled: () => Effect.void,
       trouble: () => Effect.void,

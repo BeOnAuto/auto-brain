@@ -1,8 +1,9 @@
 import type { Schema } from 'effect';
 
 import { statement, type Statement } from '../database/statement.ts';
-import { pointText } from './view-points.ts';
-import type { FoldedEvent, ViewPhase, ViewRow, ViewStall } from './view-rows.ts';
+import { pointText } from '../pages/history-points.ts';
+import type { RowPhase } from '../projector/folder.ts';
+import type { FoldedEvent, ViewRow, ViewStall } from './view-rows.ts';
 
 export interface NewView {
   readonly playbookKey: string;
@@ -10,7 +11,7 @@ export interface NewView {
   readonly version: number;
   readonly saved: number;
   readonly details: string;
-  readonly phase: ViewPhase;
+  readonly phase: RowPhase;
   readonly view: string;
 }
 
@@ -21,7 +22,7 @@ export interface FoldedRow {
   readonly lastEvent: FoldedEvent | null;
   readonly folded: number;
   readonly overtimes: number;
-  readonly phase: ViewPhase;
+  readonly phase: RowPhase;
   readonly stall?: ViewStall;
 }
 
@@ -84,7 +85,7 @@ export function viewDropped(playbookKey: string, name: string): Statement {
   return statement`DELETE FROM recall_views WHERE playbook_key = ${playbookKey} AND name = ${name}`;
 }
 
-export function phaseSet({ playbookKey, name, version }: ViewRow, phase: ViewPhase): Statement {
+export function phaseSet({ playbookKey, name, version }: ViewRow, phase: RowPhase): Statement {
   return statement`UPDATE recall_views SET phase = ${phase}
     WHERE playbook_key = ${playbookKey} AND name = ${name} AND version = ${version} AND phase IN ('waiting', 'rebuilding')`;
 }

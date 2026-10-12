@@ -19,8 +19,4 @@ export type JobEnvelope = typeof JobSchema.Type;
 
 export const JobAnswerSchema = Schema.Struct({ job: Schema.Number, answer: Schema.Unknown, keep: Schema.Boolean });
 
-export const ReadySchema = Schema.Struct({ ready: Schema.Literal(true) });
-
-export const readySignal: typeof ReadySchema.Type = { ready: true };
-
 export type JobAnswer = typeof JobAnswerSchema.Type;

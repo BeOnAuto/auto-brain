@@ -1,9 +1,8 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { Effect, Function, Semaphore } from 'effect';
+import { Effect, Function } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { HostDatabase } from '../database/host-database.ts';
 import { onSQLite } from '../testing/host-files.ts';
 import { heldFolds, heldReads } from '../views-testing/pool-faults.ts';
 import {
@@ -17,6 +16,7 @@ import {
 import * as documents from '../views-testing/view-documents.ts';
 import { viewHarness, type ViewHarness } from '../views-testing/view-harness.ts';
 import { playbookPass, type PassParts } from './playbook-pass.ts';
+import { definitionsByType } from './projector-schedule.ts';
 
 const { alpha, alphaKey, counting, detailsOf, foldedAll, foldingOf, isLive, liveWith, succeeded, viewTestTimeoutMs } =
   documents;
@@ -32,13 +32,12 @@ async function viewsInEveryPlaybook(views: ViewHarness): Promise<void> {
   );
 }
 
-function partsOf(views: ViewHarness, database: HostDatabase, pagesPerWake: number): PassParts {
+function partsOf(views: ViewHarness, database: PassParts['database'], pagesPerWake: number): PassParts {
   return {
     database,
     note: () => Effect.void,
     settings: views.settingsOf({ pagesPerWake, folding: { ...foldingOf(), pageBudgetMs: 60_000 } }),
-    share: Semaphore.makeUnsafe(2),
-    reconciling: { database, definitionType: 'recall', rebuildsAtOnce: 4, definitions: new Map() },
+    definitions: definitionsByType().of,
     resting: { isResting: () => false, rest: Function.constVoid },
     firstSeen: () => true,
     trouble: () => Effect.void,

@@ -3,6 +3,7 @@ import { readDuration } from '@beonauto/workflow-engine';
 import { mostOpenCallsOfATree } from '@beonauto/workflow-host';
 import { Config, ConfigProvider, Effect } from 'effect';
 
+import { countOf } from '../function-settings/counted-settings.ts';
 import { InvalidSettingsError } from './invalid-settings-error.ts';
 
 export interface WorkflowSettings {
@@ -20,8 +21,6 @@ interface Bounds {
 }
 
 const hour = 3_600_000;
-
-const wholeNumber = /^\d{1,7}$/u;
 
 const mostDuration: Bounds = {
   setting: 'WORKFLOW_MAX_DURATION',
@@ -60,10 +59,6 @@ const sources = Config.all({
 
 function millisecondsOf(text: string): number {
   return { milliseconds: Number.NaN, ...readDuration(text.trim()) }.milliseconds;
-}
-
-export function countOf(text: string): number {
-  return wholeNumber.test(text.trim()) ? Number(text.trim()) : Number.NaN;
 }
 
 function problemOf(value: number, { setting, least, most, expected }: Bounds): readonly string[] {

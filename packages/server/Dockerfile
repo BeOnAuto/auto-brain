@@ -67,6 +67,7 @@ RUN apt-get update \
   && install --directory --owner=node --group=node /data \
   && ln --symbolic /data /app/data
 USER node
+RUN prlimit --core=0 --data=805306368 node --input-type=module --eval "await import('/app/packages/workflow-engine/src/process-loop.ts')"
 VOLUME /data
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

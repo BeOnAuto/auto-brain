@@ -2,12 +2,12 @@ import { Schema, Struct } from 'effect';
 
 import { CheckAnswerSchema, type CheckAnswer } from '../jobs/check-messages.ts';
 import { foldJobOf } from '../jobs/fold-job.ts';
-import { stopped, type Ending } from '../jobs/job-endings.ts';
 import type { CheckRequest, PoolSettings, ProgramPool, ProgramRequest } from '../jobs/pool-contract.ts';
 import type { Job } from '../jobs/pool-job.ts';
 import { ProgramAnswerSchema, type ProgramAnswer } from '../jobs/program-messages.ts';
 import { poolEvaluationsOf } from './evaluation-thread.ts';
-import { poolSlots, type PoolSlots } from './pool-slots.ts';
+import { admitted, poolSlots } from './pool-slots.ts';
+import { workerThreadsOf } from './pool-threads.ts';
 import { poolWorkers } from './pool-workers.ts';
 
 export const checkPermits = 1;
@@ -32,6 +32,7 @@ function programJob(module: Readonly<URL>, request: ProgramRequest, until: numbe
     context: request.context ?? null,
   };
   return {
+    key: module.href,
     module,
     envelope: (id) => ({ job: id, kind: 'program', request: job }),
     decode: decodeProgramAnswer,
@@ -41,34 +42,21 @@ function programJob(module: Readonly<URL>, request: ProgramRequest, until: numbe
 function checkJob(module: Readonly<URL>, request: CheckRequest): Job<CheckAnswer> {
   const job = Struct.omit(request, ['deadlineMs', 'worker']);
   return {
+    key: module.href,
     module,
     envelope: (id) => ({ job: id, kind: 'check', request: job }),
     decode: decodeCheckAnswer,
   };
 }
 
-async function admitted<Answer>(
-  slots: PoolSlots,
-  admitUntil: number,
-  signal: Readonly<AbortSignal> | undefined,
-  evaluate: () => Promise<Ending<Answer>>,
-): Promise<Ending<Answer>> {
-  const admission = await slots.admit(admitUntil, signal);
-  if (admission !== 'admitted') {
-    return stopped(admission);
-  }
-  try {
-    return signal?.aborted === true ? stopped('cancelled') : await evaluate();
-  } finally {
-    slots.release();
-  }
-}
-
 export function programPool(settings: PoolSettings): ProgramPool {
   const slots = poolSlots(settings.workers);
   const checkSlots = poolSlots(checkPermits);
-  const workers = poolWorkers(settings);
-  const checkers = poolWorkers({ ...settings, workers: checkPermits, idleMs: Number.POSITIVE_INFINITY });
+  const workers = poolWorkers(settings, workerThreadsOf(settings));
+  const checkers = poolWorkers(
+    { ...settings, workers: checkPermits, idleMs: Number.POSITIVE_INFINITY },
+    workerThreadsOf(settings),
+  );
   const evaluations = poolEvaluationsOf(settings.evaluationWorker ?? evaluationWorker, settings);
   return {
     workers: settings.workers,

@@ -2,8 +2,8 @@ import { Effect } from 'effect';
 import { expect, vi } from 'vitest';
 
 import type { HostClock } from '../loop/host-clock.ts';
-import type { FoldingSettings } from '../projector/projector-settings.ts';
-import { rowsOfPlaybook } from '../projector/view-reconciling.ts';
+import { rowsOfPlaybook } from '../views/view-reconciling.ts';
+import type { FoldingSettings } from '../views/views-folding.ts';
 import { foldingWorker } from './test-fold-workers.ts';
 import { alphaKey, foldOf, foldingOf } from './view-documents.ts';
 import type { ViewHarness } from './view-harness.ts';

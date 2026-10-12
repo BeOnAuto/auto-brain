@@ -13,7 +13,7 @@ import { hostEngineOn, type EngineOptions, type HostEngine } from './host-engine
 export interface ServingOptions extends EngineOptions {
   readonly sweepEveryMs: number;
   readonly consumers?: readonly Consumer[];
-  readonly views?: ProjectorSettings;
+  readonly projector?: ProjectorSettings;
   readonly waiting: WaitingOptions;
   readonly mostOpenCalls?: number;
   readonly dueWork?: LoopParts['dueWork'];
@@ -75,13 +75,12 @@ export function startServing(database: HostDatabase, options: ServingOptions): S
   });
   alarm.armed = loop.armed;
   const follower = followerOf(database, options, engine, served);
-  const { views } = options;
   const projector =
-    views === undefined
+    options.projector === undefined
       ? undefined
       : startProjector({
           database,
-          settings: views,
+          settings: options.projector,
           reports: options.reports,
           clock: options.clock,
           sweepEveryMs: options.sweepEveryMs,

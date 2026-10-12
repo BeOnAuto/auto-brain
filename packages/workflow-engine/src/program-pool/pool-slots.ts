@@ -1,3 +1,5 @@
+import { stopped, type Ending } from '../jobs/job-endings.ts';
+
 type Admission = 'admitted' | 'busy' | 'cancelled' | 'closing';
 
 export interface PoolSlots {
@@ -71,4 +73,21 @@ export function poolSlots(size: number): PoolSlots {
       }
     },
   };
+}
+
+export async function admitted<Answer>(
+  slots: PoolSlots,
+  admitUntil: number,
+  signal: Readonly<AbortSignal> | undefined,
+  evaluate: () => Promise<Ending<Answer>>,
+): Promise<Ending<Answer>> {
+  const admission = await slots.admit(admitUntil, signal);
+  if (admission !== 'admitted') {
+    return stopped(admission);
+  }
+  try {
+    return signal?.aborted === true ? stopped('cancelled') : await evaluate();
+  } finally {
+    slots.release();
+  }
 }

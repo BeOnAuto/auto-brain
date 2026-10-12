@@ -1,6 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { programPool, unitMemoryBytes, workerStackBytes } from '@beonauto/workflow-engine/dsl';
+import { programPool } from '@beonauto/workflow-engine/dsl';
 import { Effect, Function } from 'effect';
 
 import type { HostDatabase } from '../src/database/host-database.ts';
@@ -9,6 +9,7 @@ import { openWorkflowStore } from '../src/host/workflow-store.ts';
 import { systemClock } from '../src/loop/host-clock.ts';
 import { startProjector } from '../src/projector/projector.ts';
 import { reviewsFold } from '../src/views-testing/campaign-reviews.ts';
+import { measuredViewOf, measuredViews } from './measured-views.ts';
 
 export interface Rebuild {
   readonly events: number;
@@ -101,29 +102,15 @@ function counted(database: HostDatabase): Counted {
 }
 
 export async function rebuildOn(settings: DatabaseSettings, events: number): Promise<Rebuild> {
-  const store = await openWorkflowStore(settings, Function.constVoid);
-  await recorded(store.database, events);
   const pool = programPool({ workers: 4, heapMegabytes: 256 });
+  const measured = measuredViews(pool);
+  const store = await openWorkflowStore(settings, Function.constVoid, measured.folders);
+  await recorded(store.database, events);
   const counting = counted(store.database);
   const started = performance.now();
   const projector = startProjector({
     database: counting.database,
-    settings: {
-      definitionType: 'recall',
-      pool,
-      folding: {
-        budget: 500,
-        memoryBytes: unitMemoryBytes,
-        stackBytes: workerStackBytes,
-        foldDeadlineMs: 10_000,
-        pageBudgetMs: 2000,
-        mostViewBytes: 524_288,
-      },
-      playbooksAtOnce: 4,
-      rebuildsAtOnce: 4,
-      pagesPerWake: 10,
-      overtimesBeforeStall: 20,
-    },
+    settings: measured,
     reports: {
       unsettled: () => Effect.void,
       trouble: () => Effect.void,
@@ -148,7 +135,7 @@ export async function rebuildOn(settings: DatabaseSettings, events: number): Pro
 }
 
 async function liveAfter(store: Awaited<ReturnType<typeof openWorkflowStore>>, events: number): Promise<unknown> {
-  const kept = await Effect.runPromise(store.views.viewOf({ org: 'acme', playbook: 'alpha' }, 'reviews'));
+  const kept = await measuredViewOf(store.database, 'reviews');
   if (kept?.phase === 'live' && kept.folded === events) {
     return kept.view;
   }

@@ -3,9 +3,9 @@ import type { FoldedView, FoldStall } from '@beonauto/workflow-engine/dsl';
 import { Struct, type Schema } from 'effect';
 
 import { lineInDocument } from '../views/view-details.ts';
-import { comparePoints, pointText, type Point } from '../views/view-points.ts';
 import type { FoldedEvent, StallCause, ViewRow, ViewStall } from '../views/view-rows.ts';
 import type { FoldedRow } from '../views/view-statements.ts';
+import { comparePoints, pointText, type Point } from './history-points.ts';
 import type { PageEvent, ReadPage } from './page-events.ts';
 
 export interface ViewChange {
@@ -134,6 +134,15 @@ export function lostTryOf(row: ViewRow, lost: Try): ViewChange {
 export function salvagedTryOf(row: ViewRow, folded: FoldedView, salvage: FoldedPageOf, lost: Try): ViewChange {
   const advance = advanceOf(row, salvage.page, folded);
   return { row, next: triedAgain(row, advance, endOf(row, folded, salvage), lost) };
+}
+
+export function unchangedOf(row: ViewRow): ViewChange {
+  const { checkpoint, checkpointAt, lastEvent, folded, overtimes, phase } = row;
+  return { row, next: { checkpoint, checkpointAt, lastEvent, folded, overtimes, phase } };
+}
+
+export function liveFrom({ row, next }: ViewChange): ViewChange {
+  return { row, next: { ...next, phase: 'live' } };
 }
 
 export function hasChanged({ row, next }: ViewChange): boolean {

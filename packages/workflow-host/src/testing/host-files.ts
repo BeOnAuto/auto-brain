@@ -7,6 +7,7 @@ import { onTestFinished } from 'vitest';
 
 import type { HostDatabase } from '../database/host-database.ts';
 import { openHostDatabase, type DatabaseSettings } from '../database/host-databases.ts';
+import type { Statement } from '../database/statement.ts';
 
 export type SettingsOf = () => Promise<DatabaseSettings>;
 
@@ -20,8 +21,8 @@ export function aSQLiteFile(): string {
 
 export const onSQLite: SettingsOf = () => Promise.resolve({ store: 'sqlite', file: aSQLiteFile() });
 
-export async function openedOn(settings: DatabaseSettings): Promise<HostDatabase> {
-  const database = await openHostDatabase(settings, Function.constVoid);
+export async function openedOn(settings: DatabaseSettings, tables: readonly Statement[] = []): Promise<HostDatabase> {
+  const database = await openHostDatabase(settings, Function.constVoid, tables);
   onTestFinished(() => database.close());
   return database;
 }
