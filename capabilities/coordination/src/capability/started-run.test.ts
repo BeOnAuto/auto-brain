@@ -65,7 +65,7 @@ describe('the run a run of a workflow starts for a call or a trigger', () => {
       callDepth: 1,
       calledBy: { run_id: 'r-0', reference: '/do/0/flow', run: 1 },
       trigger: { kind: 'event', reference: '/schedule/on' },
-      longestRunOf: noLongestRuns,
+      ...noLongestRuns,
     } as const;
 
     await Effect.runPromise(prepared.run({}, context));

@@ -2,75 +2,24 @@ import {
   defineCapability,
   outputInWords,
   type BrainOwnNames,
-  type RunContext,
-  type FinishesLater,
+  type CapabilityFacts,
   type Capability,
 } from '@beonauto/definitions';
-import { Conflict, type InvalidInput, type Unavailable } from '@beonauto/operations';
-import type { StartAnswer, WorkflowHost } from '@beonauto/workflow-host';
-import { Effect, Random, type Schema } from 'effect';
+import type { InvalidInput } from '@beonauto/operations';
+import type { Effect } from 'effect';
 
 import { checkedExpressions, type ExpressionCheck } from '../document/expression-check.ts';
-import {
-  runnableDocument,
-  workflowReaderOf,
-  type ReadWorkflow,
-  type WorkflowDefinitionDocument,
-} from '../document/workflow-document.ts';
+import { runnableDocument, workflowReaderOf, type ReadWorkflow } from '../document/workflow-document.ts';
 import { summaryOf } from '../document/workflow-summary.ts';
-import { longestCallsOf } from '../runs/call-limits.ts';
-import { unavailableUnless } from '../runs/host-refusals.ts';
-import type { RunAttributes } from '../runs/run-attributes.ts';
+import { runPresenter } from '../presenting/run-presenter.ts';
+import { started, type WorkflowStarts } from '../runs/run-start.ts';
 
-export interface WorkflowAdapterDependencies {
-  readonly runs: Pick<WorkflowHost, 'start'>;
+export interface WorkflowAdapterDependencies extends WorkflowStarts {
   readonly check: ExpressionCheck;
-  readonly mostDurationMs: number;
-  readonly longestCallMs: number;
   readonly names: BrainOwnNames;
 }
 
-const ranBefore =
-  'This run ID already ran its workflow, which ended; a workflow runs once for a run ID, so use a new run ID to run it again';
-
-const notNow = 'The workflow cannot start now; try again shortly';
-
-const mostSeed = 2_147_483_647;
-
-function finishedLaterOr(answer: StartAnswer): Effect.Effect<FinishesLater, Conflict> {
-  return answer === 'settled'
-    ? Effect.fail(new Conflict({ detail: ranBefore, kind: 'unworkable' }))
-    : Effect.succeed({ finishesLater: true, record: {} });
-}
-
-function started(
-  { runs, mostDurationMs, longestCallMs }: WorkflowAdapterDependencies,
-  document: WorkflowDefinitionDocument,
-  input: Schema.Json,
-  { id, org, brain, caller, definition, lineage, depth, callDepth, calledBy, trigger, longestRunOf }: RunContext,
-): Effect.Effect<FinishesLater, Conflict | Unavailable> {
-  return Effect.gen(function* () {
-    const seed = yield* Random.nextIntBetween(0, mostSeed);
-    const attributes: RunAttributes = {
-      org,
-      brain,
-      run_id: id,
-      definition,
-      caller,
-      depth,
-      call_depth: callDepth,
-      ...(calledBy === undefined ? {} : { called_by: calledBy }),
-      ...(trigger === undefined ? {} : { trigger }),
-      lineage: { start: lineage.startId, correlation: lineage.correlationId },
-    };
-    const longestCallMsByTask = yield* longestCallsOf(document, longestRunOf);
-    const limits = { mostDurationMs, longestCallMs, longestCallMsByTask };
-    const answer = yield* runs
-      .start({ org, brain, runId: id }, { document, input, limits, attributes, seed })
-      .pipe(Effect.mapError(unavailableUnless(notNow)));
-    return yield* finishedLaterOr(answer);
-  });
-}
+export const workflowFacts: CapabilityFacts = { onRuns: [], streams: [runPresenter] };
 
 export function makeWorkflowAdapter(dependencies: WorkflowAdapterDependencies): Capability {
   const readWorkflowDocument = workflowReaderOf(dependencies.names);
@@ -90,5 +39,6 @@ export function makeWorkflowAdapter(dependencies: WorkflowAdapterDependencies): 
     whenCancelled: 'finish',
     finishesLater: true,
     longestRunOf: () => dependencies.mostDurationMs,
+    facts: workflowFacts,
   });
 }

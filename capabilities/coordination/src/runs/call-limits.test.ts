@@ -13,6 +13,8 @@ function longestRunOf(type: string, name: string): Effect.Effect<number | undefi
   return Effect.succeed(longestRuns[`${type}/${name}`]);
 }
 
+const saved = { longestRunOf, longestRunFor: longestRunOf };
+
 const document = workflow(`
 do:
   - classify: { call: run_definition, with: { type: reasoning, name: classify } }
@@ -29,14 +31,14 @@ do:
 
 describe('the longest call of each step of a workflow', () => {
   it('is the longest run of the definition it names, written out, with a minute of grace, wherever the step sits', async () => {
-    expect(await Effect.runPromise(longestCallsOf(document, longestRunOf))).toEqual({
+    expect(await Effect.runPromise(longestCallsOf(document, saved))).toEqual({
       '/do/0/classify': 85_000 + callMarginMs,
       '/do/1/each/do/0/review': 3_600_000 + callMarginMs,
     });
   });
 
   it('is left to the run-wide value for a definition computed at run time, one not saved, or another function', async () => {
-    const limits = await Effect.runPromise(longestCallsOf(document, longestRunOf));
+    const limits = await Effect.runPromise(longestCallsOf(document, saved));
 
     expect(Object.keys(limits)).not.toContain('/do/2/computed');
     expect(Object.keys(limits)).not.toContain('/do/3/unsaved');
@@ -50,13 +52,15 @@ do:
   - deeper: { call: run_definition, with: { type: counting, name: items, input: { items: [{ name: '\${ $data }' }] } } }
 `);
 
-function countingLongestRunOf(_type: string, _name: string, input?: Schema.Json): Effect.Effect<number> {
-  return Effect.succeed(input === undefined ? 600_000 : JSON.stringify(input).length * 1000);
-}
+const countingItems = {
+  longestRunOf: () => Effect.succeed(600_000),
+  longestRunFor: (_type: string, _name: string, input: Schema.Json) =>
+    Effect.succeed(JSON.stringify(input).length * 1000),
+};
 
 describe('the longest call of a step that gives the function its input written out', () => {
   it('is the longest run of that input, and the longest of any input when an expression computes any part of it', async () => {
-    expect(await Effect.runPromise(longestCallsOf(counting, countingLongestRunOf))).toEqual({
+    expect(await Effect.runPromise(longestCallsOf(counting, countingItems))).toEqual({
       '/do/0/listed': JSON.stringify([1, 2, { more: [3] }]).length * 1000 + callMarginMs,
       '/do/1/computed': 600_000 + callMarginMs,
       '/do/2/deeper': 600_000 + callMarginMs,
