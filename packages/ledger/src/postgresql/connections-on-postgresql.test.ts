@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { setTimeout } from 'node:timers/promises';
 
 import { Effect, Function, Layer, Logger } from 'effect';
@@ -8,6 +7,7 @@ import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import { sweepsWatched } from '../content/content-samples.ts';
 import { openLedgerWith } from '../testing/open-ledger.ts';
 import { tally } from '../testing/tally.ts';
+import { lostConnectionsLoggedWith } from './lost-connections.ts';
 import { postgresqlEventStore, postgresqlLedgerLayer } from './postgresql-ledger.ts';
 import { emmettsMigrationLock } from './postgresql-run-outcomes.ts';
 
@@ -29,7 +29,7 @@ async function queried(database: string, statement: string): Promise<readonly un
 }
 
 async function aDatabase(): Promise<string> {
-  const name = `ledger_${randomUUID().replaceAll('-', '')}`;
+  const name = `ledger_${crypto.randomUUID().replaceAll('-', '')}`;
   await queried(server, `CREATE DATABASE ${name}`);
   onTestFinished(async () => {
     await queried(server, `DROP DATABASE ${name} WITH (FORCE)`);
@@ -163,17 +163,27 @@ describe.skipIf(skipped)(
   },
 );
 
+async function aLedgerLogging(database: string) {
+  const logged: string[] = [];
+  const logging = Logger.layer([
+    Logger.map(Logger.formatJson, (line: string) => {
+      logged.push(line);
+    }),
+  ]);
+  const context = await Effect.runPromise(Effect.context().pipe(Effect.provide(logging)));
+  const watched = sweepsWatched(() =>
+    postgresqlEventStore({ connectionString: database, reportLostConnection: lostConnectionsLoggedWith(context) }),
+  );
+  const { ledger, dispose } = await openLedgerWith(watched.layer.pipe(Layer.provide(logging)));
+  onTestFinished(dispose);
+  return { ledger, logged, firstSweep: watched.finished };
+}
+
 describe.skipIf(skipped)(`A ledger whose PostgreSQL database ends its connections${notice}`, () => {
   it('reports each lost connection to the log, and goes on reading and appending on new ones', async () => {
     const database = await aDatabase();
-    const logged: string[] = [];
-    const capture = Logger.map(Logger.formatJson, (line: string) => {
-      logged.push(line);
-    });
-    const { ledger, dispose } = await openLedgerWith(
-      postgresqlLedgerLayer({ connectionString: database }).pipe(Layer.provide(Logger.layer([capture]))),
-    );
-    onTestFinished(dispose);
+    const { ledger, logged, firstSweep } = await aLedgerLogging(database);
+    expect(await firstSweep).toBe('swept');
     await Effect.runPromise(ledger.execute('org/acme/tallies', tally, [1]));
 
     const ended = await queried(database, endingConnectionsTo(database));
