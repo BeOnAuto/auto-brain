@@ -1,12 +1,21 @@
 import { CreateMultipartUploadCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { notTheBytesOfItsDigest, randomUUIDv7, sha256Of } from '@beonauto/operations';
-import { alpha, deliveredBeforeFailing, generated, json, present, resultOf } from '@beonauto/operations/testing';
+import {
+  alpha,
+  deliveredBeforeFailing,
+  generated,
+  json,
+  present,
+  refusalOf,
+  resultOf,
+} from '@beonauto/operations/testing';
 import { describe, expect, it } from 'vitest';
 
 import { copiedFirst, heldAt } from '../content/bucket-requests.ts';
-import { objectContentOn } from '../content/object-content.ts';
+import { objectContentOn, objectStoreReached, ObjectStoreUnreachable } from '../content/object-content.ts';
 import { objectKeysOf } from '../location/object-keys.ts';
-import { keysIn, openUploadsIn, type ObjectStoreEntry, type ObjectStoreUnderTest } from './object-store-entry.ts';
+import type { ObjectStoreEntry, ObjectStoreUnderTest } from './object-store-entry.ts';
+import { keysIn, openUploadsIn } from './test-object-store.ts';
 
 const longAgo = '00000000-0000-7000-8000-000000000001';
 
@@ -19,7 +28,7 @@ function keptOnObjects(entry: ObjectStoreEntry): void {
 
     await resultOf(content.put(alpha, { ...generatedContent(), mediaType: json }));
     await resultOf(content.stage(alpha, 'run/1', generatedContent()));
-    const kept = await keysIn(store, store.location.prefix);
+    const kept = await keysIn(store.bucket, store.location.prefix);
     const held = await heldAt(store.bucket, keys.kept(alpha, sha256));
     await resultOf(content.unstage(alpha, 'run/1'));
 
@@ -30,7 +39,7 @@ function keptOnObjects(entry: ObjectStoreEntry): void {
       ].toSorted(),
     );
     expect(held).toEqual({ bytes: 2_500_000, mediaType: json });
-    expect(await keysIn(store, keys.run(alpha, 'run/1'))).toEqual([keys.ended(alpha, 'run/1')]);
+    expect(await keysIn(store.bucket, keys.run(alpha, 'run/1'))).toEqual([keys.ended(alpha, 'run/1')]);
   });
 }
 
@@ -73,13 +82,26 @@ function uploadsSwept(entry: ObjectStoreEntry): void {
 
     await sweepContent(Date.now() - 60_000);
 
-    expect(await keysIn(store, keys.uploads)).toEqual([keys.upload(fresh)]);
-    expect(await openUploadsIn(store, keys.uploads)).not.toContain(keys.upload(longAgo));
+    expect(await keysIn(store.bucket, keys.uploads)).toEqual([keys.upload(fresh)]);
+    expect(await openUploadsIn(store.bucket, keys.uploads)).toEqual([keys.upload(fresh)]);
+  });
+}
+
+function bucketChecked(entry: ObjectStoreEntry): void {
+  it('reaches the bucket it keeps content in, and is refused a bucket that does not exist, with the answer of the store', async () => {
+    const store = await entry.aStore();
+    const missing = `missing-${randomUUIDv7()}`;
+
+    const refused = await refusalOf(objectStoreReached(store.bucket.client, { bucket: missing, prefix: '' }));
+
+    await expect(resultOf(objectStoreReached(store.bucket.client, store.location))).resolves.toBeUndefined();
+    expect(refused).toEqual(new ObjectStoreUnreachable({ bucket: missing, answer: 'NotFound (404)' }));
   });
 }
 
 export function objectContentBehaviour(entry: ObjectStoreEntry): void {
   describe('the content kept on objects', () => {
+    bucketChecked(entry);
     keptOnObjects(entry);
     misfiledRead(entry);
     uploadsSwept(entry);

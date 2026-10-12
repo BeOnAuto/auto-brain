@@ -1,4 +1,4 @@
-import { HeadBucketCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import { CreateMultipartUploadCommand, ListBucketsCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { sha256Of, textOfContent, textToKeep } from '@beonauto/operations';
 import { alpha, generated, octets, present, refusalOf, resultOf } from '@beonauto/operations/testing';
 import { Effect } from 'effect';
@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import { objectKeysOf } from '../location/object-keys.ts';
 import { fakeContentStore, type FakeContentStore } from '../testing/fake-bucket.ts';
+import { openUploadsIn } from '../testing/test-object-store.ts';
 import { uploadPartBytes } from './upload-writing.ts';
 
 const location = { bucket: 'content', prefix: 'brains' };
@@ -141,11 +142,20 @@ describe('the sweep of the uploads on object storage', () => {
 });
 
 describe('the fake bucket of these tests', () => {
+  it('lists the open multipart uploads in the order of their keys and ids, a page at a time', async () => {
+    const store = fakeContentStore(location, { pageSize: 1 });
+    const begun = (key: string) =>
+      store.client().send(new CreateMultipartUploadCommand({ Bucket: location.bucket, Key: key }));
+    await begun('b');
+    await begun('a');
+    await begun('a');
+
+    expect(await openUploadsIn({ client: store.client, name: location.bucket }, '')).toEqual(['a', 'a', 'b']);
+  });
+
   it('answers no request it does not know', async () => {
     const store = fakeContentStore(location);
 
-    await expect(store.client().send(new HeadBucketCommand({ Bucket: location.bucket }))).rejects.toThrow(
-      'NotImplemented',
-    );
+    await expect(store.client().send(new ListBucketsCommand({}))).rejects.toThrow('NotImplemented');
   });
 });

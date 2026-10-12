@@ -1,27 +1,16 @@
-import { CreateBucketCommand, HeadBucketCommand, type S3Client } from '@aws-sdk/client-s3';
 import { recordedContentBehaviour } from '@beonauto/operations/testing';
-import { describe } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { storageClientOf } from '../client/storage-client.ts';
 import { objectContentBehaviour } from '../testing/object-content-behaviour.ts';
 import { contentEntryOf, objectStoreEntry } from '../testing/object-store-entry.ts';
+import { bucketReady, testObjectStoreOf } from '../testing/test-object-store.ts';
 
 const server = process.env['CONTENT_TEST_OBJECT_STORE_URL'] ?? '';
 
-function clientOf(): S3Client {
-  const url = new URL(server);
-  return storageClientOf(
-    { endpoint: url.origin, region: 'us-east-1', proxy: { enabled: false, environment: {} } },
-    { accessKeyId: decodeURIComponent(url.username), secretAccessKey: decodeURIComponent(url.password) },
-  );
-}
-
 const onTheServer = objectStoreEntry(async () => {
-  const [writing, reading] = [clientOf(), clientOf()];
-  const bucket = new URL(server).pathname.slice(1);
-  const held = () => writing.send(new HeadBucketCommand({ Bucket: bucket }));
-  await held().catch(() => writing.send(new CreateBucketCommand({ Bucket: bucket })).catch(held));
-  return { writing: () => writing, reading: () => reading, bucket };
+  const [writing, reading] = [testObjectStoreOf(server), testObjectStoreOf(server)];
+  await bucketReady(writing.bucket);
+  return { writing: writing.bucket.client, reading: reading.bucket.client, bucket: writing.bucket.name };
 });
 
 const skipped = server === '';
@@ -31,6 +20,10 @@ const notice = skipped
   : '';
 
 describe.skipIf(skipped)(`The content kept on an S3-compatible object store${notice}`, { timeout: 120_000 }, () => {
+  const warned = vi.spyOn(console, 'warn');
   recordedContentBehaviour(contentEntryOf(onTheServer));
   objectContentBehaviour(onTheServer);
+  it('writes nothing to console.warn from the SDK while it keeps, reads, stages and sweeps', () => {
+    expect(warned).not.toHaveBeenCalled();
+  });
 });

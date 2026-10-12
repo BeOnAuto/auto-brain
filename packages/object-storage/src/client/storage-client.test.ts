@@ -1,6 +1,26 @@
-import { describe, expect, it } from 'vitest';
+import { once } from 'node:events';
+import { createServer } from 'node:http';
 
+import { sha256Of } from '@beonauto/operations';
+import { alpha, generated, refusalOf } from '@beonauto/operations/testing';
+import { Effect, Function, Schema } from 'effect';
+import { describe, expect, it, onTestFinished } from 'vitest';
+
+import { objectContentOn, objectStoreReached } from '../content/object-content.ts';
 import { storageClientOf } from './storage-client.ts';
+
+const decodeAddress = Schema.decodeUnknownSync(Schema.Struct({ port: Schema.Number }));
+
+async function aStoreThatNeverAnswers(): Promise<string> {
+  const server = createServer(Function.constVoid).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  onTestFinished(async () => {
+    server.closeAllConnections();
+    server.close();
+    await once(server, 'close');
+  });
+  return `http://127.0.0.1:${String(decodeAddress(server.address()).port)}`;
+}
 
 const credentials = { accessKeyId: 'access', secretAccessKey: 'secret' };
 
@@ -43,4 +63,30 @@ describe('the client of an object store', () => {
 
     expect(typeof client.config.region).toBe('function');
   });
+});
+
+describe('the client of an object store that stops answering', () => {
+  it(
+    'gives up on each request after its wait, so no check, read or put of a stalled store waits for ever',
+    { timeout: 30_000 },
+    async () => {
+      const endpoint = await aStoreThatNeverAnswers();
+      const client = storageClientOf({ endpoint, region: 'us-east-1', proxy: noProxy }, credentials, {
+        connectionMs: 100,
+        requestMs: 100,
+      });
+      const location = { bucket: 'content', prefix: '' };
+      const { content } = objectContentOn(() => client, location);
+      const started = performance.now();
+
+      const refused = await refusalOf(objectStoreReached(() => client, location));
+      const read = Effect.runPromise(content.get(alpha, sha256Of('stalled')));
+      await expect(read).rejects.toThrow('requestTimeout');
+      const put = Effect.runPromise(content.put(alpha, (await generated(2_500_000)).content()));
+      await expect(put).rejects.toThrow('requestTimeout');
+
+      expect(refused.answer).toMatch(/^TimeoutError/u);
+      expect(performance.now() - started).toBeLessThan(20_000);
+    },
+  );
 });

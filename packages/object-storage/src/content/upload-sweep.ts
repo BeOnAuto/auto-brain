@@ -1,8 +1,9 @@
+import { uuidV7Before } from '@beonauto/operations';
+
 import { keysUnder, removed, uploadAbandoned, uploadsUnder, type Bucket } from './bucket-requests.ts';
 
 function startedBefore(key: string, before: number): boolean {
-  const uploadId = key.slice(key.lastIndexOf('/') + 1);
-  return Number.parseInt(`${uploadId.slice(0, 8)}${uploadId.slice(9, 13)}`, 16) < before;
+  return uuidV7Before(key.slice(key.lastIndexOf('/') + 1), before);
 }
 
 async function staleObjectsUnder(bucket: Bucket, uploads: string, before: number): Promise<readonly string[]> {

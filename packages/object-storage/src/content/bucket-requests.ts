@@ -3,6 +3,7 @@ import {
   CopyObjectCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
+  HeadBucketCommand,
   HeadObjectCommand,
   ListMultipartUploadsCommand,
   ListObjectsV2Command,
@@ -44,24 +45,44 @@ interface UploadMarkers {
 
 const mostKeysInOneDelete = 1000;
 
+const mostConditionalWrites = 3;
+
 const octets = 'application/octet-stream';
 
 const ifNoneMatch = '*';
 
-const notFound: ReadonlySet<number> = new Set([404]);
+const notFound = 404;
 
-const anotherWroteFirst: ReadonlySet<number> = new Set([409, 412]);
+const anotherWroteFirst = 412;
+
+const conditionalConflict = 409;
 
 function statusOf(failure: unknown): number | undefined {
   return failure instanceof S3ServiceException ? failure.$metadata.httpStatusCode : undefined;
 }
 
-async function unlessStatus<A>(statuses: ReadonlySet<number>, request: Promise<A>): Promise<A | undefined> {
+async function unlessNotFound<A>(request: Promise<A>): Promise<A | undefined> {
   try {
     return await request;
   } catch (failure) {
-    if (statuses.has(statusOf(failure) ?? 0)) {
+    if (statusOf(failure) === notFound) {
       return undefined;
+    }
+    throw failure;
+  }
+}
+
+async function writtenIfFirst(write: () => Promise<unknown>, attempt = 1): Promise<boolean> {
+  try {
+    await write();
+    return true;
+  } catch (failure) {
+    const status = statusOf(failure);
+    if (status === anotherWroteFirst) {
+      return false;
+    }
+    if (status === conditionalConflict && attempt < mostConditionalWrites) {
+      return writtenIfFirst(write, attempt + 1);
     }
     throw failure;
   }
@@ -82,12 +103,43 @@ function copySourceOf(bucket: string, key: string): string {
   return [bucket, ...key.split('/')].map((segment) => encodeURIComponent(segment)).join('/');
 }
 
+function piecesWithin(source: ReadableStream<unknown>, waitMs: number, key: string): ReadableStream<unknown> {
+  const reader = source.getReader();
+  return new ReadableStream<unknown>(
+    {
+      pull: async (controller) => {
+        const waited = Promise.withResolvers<'stalled'>();
+        const timer = setTimeout(() => {
+          waited.resolve('stalled');
+        }, waitMs);
+        const next = await Promise.race([reader.read(), waited.promise]).finally(() => {
+          clearTimeout(timer);
+        });
+        if (next === 'stalled') {
+          controller.error(new Error(`The object store sent no piece of ${key} for ${String(waitMs)} ms`));
+          await reader.cancel();
+        } else if (next.done) {
+          controller.close();
+        } else {
+          controller.enqueue(next.value);
+        }
+      },
+      cancel: (reason) => reader.cancel(reason),
+    },
+    { highWaterMark: 0 },
+  );
+}
+
 function isOpenUpload(upload: ListedUpload): upload is OpenUpload {
   return [upload.key, upload.uploadId].every((part) => part !== undefined);
 }
 
+export async function bucketReached({ client, name }: Bucket): Promise<void> {
+  await client().send(new HeadBucketCommand({ Bucket: name }));
+}
+
 export async function heldAt({ client, name }: Bucket, key: string): Promise<Held | undefined> {
-  const head = await unlessStatus(notFound, client().send(new HeadObjectCommand({ Bucket: name, Key: key })));
+  const head = await unlessNotFound(client().send(new HeadObjectCommand({ Bucket: name, Key: key })));
   return head === undefined
     ? undefined
     : { bytes: sizeOf(key, head.ContentLength), mediaType: head.ContentType ?? octets };
@@ -96,9 +148,9 @@ export async function heldAt({ client, name }: Bucket, key: string): Promise<Hel
 export async function readAt(
   { client, name }: Bucket,
   key: string,
-  sha256: string,
+  { sha256, waitMs }: { readonly sha256: string; readonly waitMs: number },
 ): Promise<StreamedContent | undefined> {
-  const object = await unlessStatus(notFound, client().send(new GetObjectCommand({ Bucket: name, Key: key })));
+  const object = await unlessNotFound(client().send(new GetObjectCommand({ Bucket: name, Key: key })));
   if (object === undefined) {
     return undefined;
   }
@@ -107,17 +159,17 @@ export async function readAt(
   }
   const bytes = sizeOf(key, object.ContentLength);
   return {
-    stream: verifiedStream(sha256, bytes, object.Body.transformToWebStream()),
+    stream: verifiedStream(sha256, bytes, piecesWithin(object.Body.transformToWebStream(), waitMs, key)),
     bytes,
     mediaType: object.ContentType ?? octets,
   };
 }
 
 export async function marked({ client, name }: Bucket, key: string): Promise<void> {
-  await client().send(new PutObjectCommand({ Bucket: name, Key: key }));
+  await client().send(new PutObjectCommand({ Bucket: name, Key: key, Body: new Uint8Array() }));
 }
 
-export async function writtenFirst(
+export function writtenFirst(
   { client, name }: Bucket,
   key: string,
   { body, mediaType }: { readonly body: Readonly<Uint8Array>; readonly mediaType: string },
@@ -129,17 +181,17 @@ export async function writtenFirst(
     ContentType: mediaType,
     IfNoneMatch: ifNoneMatch,
   });
-  return (await unlessStatus(anotherWroteFirst, client().send(put))) !== undefined;
+  return writtenIfFirst(() => client().send(put));
 }
 
-export async function copiedFirst({ client, name }: Bucket, from: string, to: string): Promise<boolean> {
+export function copiedFirst({ client, name }: Bucket, from: string, to: string): Promise<boolean> {
   const copy = new CopyObjectCommand({
     Bucket: name,
     Key: to,
     CopySource: copySourceOf(name, from),
     IfNoneMatch: ifNoneMatch,
   });
-  return (await unlessStatus(anotherWroteFirst, client().send(copy))) !== undefined;
+  return writtenIfFirst(() => client().send(copy));
 }
 
 export async function removed(bucket: Bucket, keys: readonly string[]): Promise<void> {
@@ -173,12 +225,11 @@ export async function* uploadsUnder(
   prefix: string,
   markers?: UploadMarkers,
 ): AsyncGenerator<OpenUpload> {
-  const page = await bucket
-    .client()
-    .send(new ListMultipartUploadsCommand({ Bucket: bucket.name, Prefix: prefix, ...markers }));
+  const page = await bucket.client().send(new ListMultipartUploadsCommand({ Bucket: bucket.name, ...markers }));
   yield* (page.Uploads ?? [])
     .map(({ Key, UploadId }: Listed) => ({ key: Key, uploadId: UploadId }))
-    .filter((upload: ListedUpload) => isOpenUpload(upload));
+    .filter((upload: ListedUpload) => isOpenUpload(upload))
+    .filter(({ key }) => key.startsWith(prefix));
   if (page.IsTruncated === true) {
     yield* uploadsUnder(bucket, prefix, { KeyMarker: page.NextKeyMarker, UploadIdMarker: page.NextUploadIdMarker });
   }

@@ -124,3 +124,35 @@ describe('a put on object storage that another put of its digest raced', () => {
     );
   });
 });
+
+function conflicting(): Promise<never> {
+  return Promise.reject(
+    new S3ServiceException({
+      name: 'ConditionalRequestConflict',
+      $fault: 'client',
+      $metadata: { httpStatusCode: 409 },
+      message: 'A conflicting conditional operation is in progress',
+    }),
+  );
+}
+
+describe('a put on object storage whose conditional write meets a conflicting one', () => {
+  it('writes again, and fails as a defect when the conflict is still there after three writes', async () => {
+    const writing = fakeContentStore(location);
+    const copying = fakeContentStore(location);
+    const { sha256, content } = await generated(2_500_000);
+    writing.bucket.intercepting('PutObjectCommand', conflicting);
+    [1, 2, 3].forEach(() => {
+      copying.bucket.intercepting('CopyObjectCommand', conflicting);
+    });
+
+    const kept = await resultOf(writing.content.put(alpha, textToKeep('small', octets)));
+    const copied = Effect.runPromise(copying.content.put(alpha, content()));
+
+    expect(kept).toEqual({ sha256: sha256Of('small'), bytes: 5, mediaType: octets });
+    expect(writing.bucket.asked()).toEqual(['HeadObject', 'PutObject', 'PutObject']);
+    await expect(copied).rejects.toThrow('A conflicting conditional operation is in progress');
+    expect(copying.bucket.asked().filter((asked) => asked === 'CopyObject')).toHaveLength(3);
+    expect(copying.bucket.keys()).not.toContain(keys.kept(alpha, sha256));
+  });
+});
