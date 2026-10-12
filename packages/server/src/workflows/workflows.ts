@@ -1,6 +1,12 @@
 import type { AppRuntime } from '@beonauto/api';
 import { callMarginMs, defineSendRunEvent, makeWorkflowAdapter, type ExpressionCheck } from '@beonauto/coordination';
-import { defineStartVersion, type BrainOperation, type BrainOwnNames, type Capability } from '@beonauto/definitions';
+import {
+  defineStartVersion,
+  type BrainOperation,
+  type BrainOwnNames,
+  type Capability,
+  type CapabilityFacts,
+} from '@beonauto/definitions';
 import { makeCatalog, makeDispatcher, type DispatcherServices, type Registration } from '@beonauto/operations';
 import type { WorkflowHost } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
@@ -18,6 +24,7 @@ export interface WorkflowParts extends HostParts {
   readonly orgOperations: readonly OrgOperation[];
   readonly brainOperations: readonly BrainOperation[];
   readonly check: ExpressionCheck;
+  readonly facts: CapabilityFacts;
   readonly names: BrainOwnNames;
 }
 
@@ -56,7 +63,7 @@ export async function serveWorkflows(runtime: AppRuntime<DispatcherServices>, pa
   opening.resolve(host);
   const catalog = makeCatalog([
     ...parts.orgOperations,
-    ...brainOperationsServing(capabilities, names),
+    ...brainOperationsServing(capabilities, parts),
     ...parts.brainOperations,
     defineSendRunEvent(host, names),
   ]);

@@ -29,10 +29,11 @@ export async function functionsServedBy(
   const computation = await computationServedBy(settings.computation, programPoolOf);
   const recall = await wiring.served(runtime, settings, computation.pool);
   const capabilities = [reasoning.capability, interaction.capability, computation.capability, recall.capability];
-  const { names, record } = factsComposedOf(runtime, capabilities);
+  const { facts, names, record } = factsComposedOf(runtime, capabilities);
   return {
     parts: {
       capabilities,
+      facts,
       names,
       orgOperations: [...brainOperations, reasoning.listModels, reasoning.listToolServersInOrg],
       brainOperations: [reasoning.listToolServers, reasoning.testToolCall, ...interaction.operations],

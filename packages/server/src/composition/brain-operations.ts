@@ -4,17 +4,18 @@ import {
   makeDefinitionOperations,
   makeDefinitionPresenters,
   type BrainOperation,
-  type BrainOwnNames,
   type Capability,
 } from '@beonauto/definitions';
 
+import type { ComposedFacts } from './composed-facts.ts';
+
 export function brainOperationsServing(
   capabilities: readonly Capability[],
-  names: BrainOwnNames,
+  { facts, names }: Pick<ComposedFacts, 'facts' | 'names'>,
 ): readonly BrainOperation[] {
-  const presenters = makeDefinitionPresenters(capabilities);
+  const presenters = makeDefinitionPresenters(capabilities, facts);
   return [
-    ...makeDefinitionOperations(capabilities, presenters),
+    ...makeDefinitionOperations(capabilities, facts, presenters),
     defineListBrainEvents(presenters),
     defineGetEvent(presenters),
     definePublishEvent(names),

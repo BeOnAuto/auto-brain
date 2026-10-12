@@ -1,6 +1,12 @@
 import { DatabaseSync } from 'node:sqlite';
 
-import { answerInteraction, conversations, openRequests, openRequestsName } from '@beonauto/interaction';
+import {
+  answerInteraction,
+  conversations,
+  listInteractions,
+  openRequests,
+  openRequestsName,
+} from '@beonauto/interaction';
 import {
   alpha,
   answererId,
@@ -13,7 +19,7 @@ import {
 import { postgresqlLedgerLayer } from '@beonauto/ledger/postgresql';
 import { ledgerLayer } from '@beonauto/ledger/sqlite3';
 import { Ledger, projectedTableOf } from '@beonauto/operations';
-import { Effect, Layer, ManagedRuntime } from 'effect';
+import { Effect, Layer, ManagedRuntime, Schema } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
@@ -33,6 +39,8 @@ const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 const answeredId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b';
 
 const nudgedId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7c';
+
+const namesakeId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7d';
 
 async function opened(layer: Layer.Layer<Ledger>): Promise<HarnessLedger> {
   const runtime = ManagedRuntime.make(layer);
@@ -117,6 +125,10 @@ async function rowsOf(ledger: HarnessLedger) {
   };
 }
 
+const decodeListing = Schema.decodeUnknownSync(
+  Schema.Struct({ output: Schema.Struct({ interactions: Schema.Array(Schema.Struct({ run_id: Schema.String })) }) }),
+);
+
 describe.each(stores)('the projections of the requests and the conversations on $store', ({ skipped, aPlace }) => {
   it.skipIf(skipped)(
     'are filled from the history of the brain when their tables are new, each row as the appends folded it, the cadence its reader advances aside',
@@ -146,4 +158,25 @@ describe.each(stores)('the projections of the requests and the conversations on 
       expect(filled).toEqual(kept);
     },
   );
+});
+
+describe.each(stores)('the open requests listed on $store', ({ skipped, aPlace }) => {
+  it.skipIf(skipped)('are those of one type, or of one function with its type or without, newest first', async () => {
+    const brain = await chatHarness({ ledger: await (await aPlace()).open(), others: [nudging] });
+    await brain.askInThread(runId);
+    await brain.defineAs('nudging', 'forecast', 'Go?');
+    await brain.askAs('nudging', 'forecast', {}, nudgedId);
+    await brain.defineAs('nudging', 'approve-brief', 'Approve?');
+    await brain.askAs('nudging', 'approve-brief', {}, namesakeId);
+    const listed = async (filters: Readonly<Record<string, string>>) =>
+      decodeListing(await brain.call(listInteractions, filters)).output.interactions.map(({ run_id: id }) => id);
+
+    expect([
+      await listed({ type: 'nudging' }),
+      await listed({ type: 'interaction' }),
+      await listed({ type: 'nudging', function: 'approve-brief' }),
+      await listed({ type: 'interaction', function: 'approve-brief' }),
+      await listed({ function: 'approve-brief' }),
+    ]).toEqual([[namesakeId, nudgedId], [runId], [namesakeId], [runId], [namesakeId, runId]]);
+  });
 });

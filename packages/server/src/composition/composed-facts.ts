@@ -2,11 +2,12 @@ import type { AppRuntime } from '@beonauto/api';
 import { workflowFacts } from '@beonauto/coordination';
 import {
   brainOwnNamesOf,
-  declaredFactsOf,
+  composedFactsOf,
   runFactsOf,
   workRecorder,
   type BrainOwnNames,
   type Capability,
+  type CapabilityFacts,
   type RecordWork,
 } from '@beonauto/definitions';
 import type { DispatcherServices } from '@beonauto/operations';
@@ -14,6 +15,7 @@ import type { DispatcherServices } from '@beonauto/operations';
 import { runtimeLedger } from './runtime-ledger.ts';
 
 export interface ComposedFacts {
+  readonly facts: CapabilityFacts;
   readonly names: BrainOwnNames;
   readonly record: RecordWork;
 }
@@ -22,9 +24,11 @@ export function factsComposedOf(
   runtime: AppRuntime<DispatcherServices>,
   capabilities: readonly Capability[],
 ): ComposedFacts {
-  const declarations = [...capabilities, { facts: workflowFacts }];
+  const declarations = [...capabilities, workflowFacts];
+  const facts = composedFactsOf(declarations);
   return {
-    names: brainOwnNamesOf(declarations),
-    record: workRecorder(runtimeLedger(runtime), runFactsOf(declaredFactsOf(declarations))),
+    facts,
+    names: brainOwnNamesOf(declarations, facts),
+    record: workRecorder(runtimeLedger(runtime), runFactsOf(facts.onRuns)),
   };
 }
