@@ -1,9 +1,18 @@
+import { SQL } from '@event-driven-io/dumbo';
+import { pgFormatter } from '@event-driven-io/dumbo/pg';
 import { Schema } from 'effect';
 
 import type { RecordedPoint } from '../event-store.ts';
 import { readMetadataOf, type ExaminationScope, type RecordHead } from '../recorded/recorded-statements.ts';
 
 export type Query = (text: string, values: readonly unknown[]) => Promise<readonly unknown[]>;
+
+export function formattedFor(query: Query): (sql: SQL) => Promise<readonly unknown[]> {
+  return (sql) => {
+    const { query: text, params } = SQL.format(sql, pgFormatter);
+    return query(text, params);
+  };
+}
 
 export type Bind = (value: unknown) => string;
 

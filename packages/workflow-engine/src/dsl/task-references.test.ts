@@ -34,6 +34,14 @@ describe('the reference of a task that starts a run', () => {
     ]);
   });
 
+  it('is shown cut at a whole character within 120 bytes', () => {
+    const name = '𝄞'.repeat(70);
+
+    expect(rejectionsOf(callNamed(name)).map(({ detail }) => detail)).toEqual([
+      `The reference of this task, /do/0/${'𝄞'.repeat(28)}…, takes 286 bytes, more than the 256 a reference may take, since a run the task starts carries it; shorten its name or the names above it`,
+    ]);
+  });
+
   it('counts the names above it, since the pointer of a nested task grows with them', () => {
     const outer = 'o'.repeat(240);
     const document = { document: header, do: [{ [outer]: { do: [{ inner: notifying }, { short: { set: {} } }] } }] };

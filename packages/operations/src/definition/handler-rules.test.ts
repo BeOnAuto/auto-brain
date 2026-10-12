@@ -1,15 +1,6 @@
-import { spawnSync } from 'node:child_process';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-
 import { beforeAll, describe, expect, it } from 'vitest';
 
-const header = [
-  "import { Effect, Schema } from 'effect';",
-  "import * as Operations from '../../../src/index.ts';",
-  'const Empty = Schema.Record(Schema.String, Schema.Never);',
-  "const about = { title: 'Probe', description: 'Probe.' };",
-];
+import { compiledErrors, probeHeader as header, type RejectedProbe } from '../testing/compiled-probes.ts';
 
 function defined(definer: 'defineQuery' | 'defineCommand', scope: 'org' | 'playbook', lines: readonly string[]) {
   return [
@@ -95,12 +86,7 @@ const accepted: Readonly<Record<string, readonly string[]>> = {
   ],
 };
 
-interface Rejection {
-  readonly because: string;
-  readonly source: readonly string[];
-}
-
-const rejected: Readonly<Record<string, Rejection>> = {
+const rejected: Readonly<Record<string, RejectedProbe>> = {
   'org-query-asks-playbook-context.ts': {
     because: "Type 'PlaybookContext' is not assignable to type 'Caller | OrgContext | OrgReader'",
     source: defined('defineQuery', 'org', [get, ...emptyInputAndOutput, asking('PlaybookContext')]),
@@ -256,34 +242,11 @@ const rejected: Readonly<Record<string, Rejection>> = {
   },
 };
 
-const fixtureDirectory = fileURLToPath(new URL('../../node_modules/.cache/handler-rules/', import.meta.url));
-
-function compiledErrors(): readonly string[] {
-  rmSync(fixtureDirectory, { recursive: true, force: true });
-  mkdirSync(fixtureDirectory, { recursive: true });
-  for (const [file, source] of Object.entries(accepted)) {
-    writeFileSync(`${fixtureDirectory}${file}`, source.join('\n'));
-  }
-  for (const [file, { source }] of Object.entries(rejected)) {
-    writeFileSync(`${fixtureDirectory}${file}`, source.join('\n'));
-  }
-  writeFileSync(
-    `${fixtureDirectory}tsconfig.json`,
-    JSON.stringify({ extends: '../../../../../tsconfig.base.json', include: ['*.ts'] }),
-  );
-  const compiler = fileURLToPath(new URL('bin/tsc', import.meta.resolve('typescript/package.json')));
-  const { stdout } = spawnSync(process.execPath, [compiler, '--pretty', 'false'], {
-    cwd: fixtureDirectory,
-    encoding: 'utf8',
-  });
-  return stdout.split(/\n(?=\S)/u).filter((error) => error.includes('error TS'));
-}
-
 describe('the compiler', () => {
   let errors: readonly string[] = [];
 
   beforeAll(() => {
-    errors = compiledErrors();
+    errors = compiledErrors('handler-rules', { accepted, rejected });
   }, 60_000);
 
   it('accepts every definition that keeps the rules and rejects every one that breaks them', () => {

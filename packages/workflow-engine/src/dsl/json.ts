@@ -56,8 +56,15 @@ export function jsonEquals(left: Json | undefined, right: Json | undefined): boo
   return left === right;
 }
 
+const utf8 = new TextEncoder();
+
 export function jsonBytesOf(value: Json): number {
-  return new TextEncoder().encode(JSON.stringify(value)).length;
+  return utf8.encode(JSON.stringify(value)).length;
+}
+
+export function withinBytes(text: string, mostBytes: number): string {
+  const { read } = utf8.encodeInto(text, new Uint8Array(mostBytes));
+  return text.slice(0, read);
 }
 
 export function itemAt(value: Json, index: number): Json | undefined {

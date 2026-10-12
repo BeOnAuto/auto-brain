@@ -1,13 +1,13 @@
 import type { OperationScope } from '../caller/operation-scope.ts';
-import type { Registration } from '../definition/registration.ts';
+import type { RouteRegistration } from '../definition/registration.ts';
 
 interface Registered {
-  readonly registration: Registration;
+  readonly registration: RouteRegistration;
 }
 
 export interface Catalog {
-  readonly operations: readonly Registration[];
-  readonly operationsIn: <S extends OperationScope>(scope: S) => readonly Registration<S>[];
+  readonly operations: readonly RouteRegistration[];
+  readonly operationsIn: <S extends OperationScope>(scope: S) => readonly RouteRegistration<S>[];
 }
 
 const prefixByScope: Readonly<Record<OperationScope, string>> = {
@@ -15,22 +15,22 @@ const prefixByScope: Readonly<Record<OperationScope, string>> = {
   playbook: '/orgs/{org}/playbooks/{playbook}',
 };
 
-function routeOf({ scope, route }: Registration): string {
+function routeOf({ scope, route }: RouteRegistration): string {
   return `${route.method} ${prefixByScope[scope]}${route.path}`;
 }
 
-function routeShapeOf(registration: Registration): string {
+function routeShapeOf(registration: RouteRegistration): string {
   return routeOf(registration)
     .split('/')
     .map((segment) => (segment.startsWith('{') ? '{}' : segment))
     .join('/');
 }
 
-function scopedNameOf({ scope, name }: Registration): string {
+function scopedNameOf({ scope, name }: RouteRegistration): string {
   return `${scope}:${name}`;
 }
 
-function requireUniqueNames(registrations: readonly Registration[]): void {
+function requireUniqueNames(registrations: readonly RouteRegistration[]): void {
   const scopedNames = registrations.map((registration) => scopedNameOf(registration));
   const repeated = registrations.find(
     (registration, index) => scopedNames.indexOf(scopedNameOf(registration)) !== index,
@@ -40,14 +40,14 @@ function requireUniqueNames(registrations: readonly Registration[]): void {
   }
 }
 
-function twinProblem(org: Registration, playbook: Registration): string | undefined {
+function twinProblem(org: RouteRegistration, playbook: RouteRegistration): string | undefined {
   if (!org.targetsPlaybook) {
     return 'so the org operation must take the playbook it answers for';
   }
   return org.kind === playbook.kind ? undefined : `so both must be of one kind, and the org one is a ${org.kind}`;
 }
 
-function requireTwinsAlike(registrations: readonly Registration[]): void {
+function requireTwinsAlike(registrations: readonly RouteRegistration[]): void {
   const playbookOperations = new Map(
     registrations.filter(({ scope }) => scope === 'playbook').map((registration) => [registration.name, registration]),
   );
@@ -60,7 +60,7 @@ function requireTwinsAlike(registrations: readonly Registration[]): void {
   }
 }
 
-function requireUniqueRoutes(registrations: readonly Registration[]): void {
+function requireUniqueRoutes(registrations: readonly RouteRegistration[]): void {
   const operationByRouteShape = new Map<string, string>();
   for (const registration of registrations) {
     const shape = routeShapeOf(registration);
@@ -77,7 +77,7 @@ export function makeCatalog(operations: readonly Registered[]): Catalog {
   requireUniqueNames(registrations);
   requireTwinsAlike(registrations);
   requireUniqueRoutes(registrations);
-  const byScope: { readonly [S in OperationScope]: readonly Registration<S>[] } = {
+  const byScope: { readonly [S in OperationScope]: readonly RouteRegistration<S>[] } = {
     org: registrations.filter((registration) => registration.scope === 'org'),
     playbook: registrations.filter((registration) => registration.scope === 'playbook'),
   };

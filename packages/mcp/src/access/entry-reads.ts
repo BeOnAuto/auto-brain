@@ -1,4 +1,4 @@
-import type { PlaybookAddress, RecordedContent } from '@beonauto/operations';
+import { sha256Of, textToKeep, type PlaybookAddress, type RecordedContent } from '@beonauto/operations';
 import { Effect, Function, Result } from 'effect';
 
 import { secretsOfServers } from '../bounds/secrets.ts';
@@ -25,8 +25,15 @@ export type ContentStore = Pick<RecordedContent, 'put'>;
 
 export function keepingIn(content: ContentStore): KeepIn {
   return ({ org, playbook }) =>
-    (sha256, text) =>
-      Effect.runPromise(content.put({ org, playbook }, sha256, text));
+    (text) =>
+      Effect.runPromise(
+        content
+          .put({ org, playbook }, { ...textToKeep(text, 'application/json'), expected: { sha256: sha256Of(text) } })
+          .pipe(
+            Effect.map(({ sha256 }) => sha256),
+            Effect.orDie,
+          ),
+      );
 }
 
 const nothingKept: Pick<McpServerSettings, 'record_content' | 'request_id'> = {

@@ -6,7 +6,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { StatementExecutor } from '../event-store.ts';
 import type { Query } from '../postgresql-reads/recorded-parts.ts';
-import { formattedFor, postgresqlProjectionDialect, postgresqlProjectionsOf } from './postgresql-projections.ts';
+import { formattedFor } from '../postgresql-reads/recorded-parts.ts';
+import { postgresqlProjectionDialect, postgresqlProjectionsOf } from './postgresql-projections.ts';
 
 interface Asked {
   readonly text: string;

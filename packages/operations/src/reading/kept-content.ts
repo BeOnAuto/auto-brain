@@ -1,5 +1,7 @@
 import { Effect, Predicate } from 'effect';
 
+import { leftUnread } from '../content/content-intake.ts';
+import { textOfContent, type StreamedContent } from '../content/streamed-content.ts';
 import { PlaybookReader } from '../ledger/playbook-reader.ts';
 import type { KeptContent } from './presenter.ts';
 import type { RecordedFact } from './recorded-read.ts';
@@ -20,6 +22,11 @@ function digestsKeptIn(data: unknown, mostBytes: number): readonly string[] {
   return digests;
 }
 
+function isText({ mediaType }: StreamedContent): boolean {
+  const type = mediaType.replace(/;.*$/su, '').trim().toLowerCase();
+  return type.startsWith('text/') || type === 'application/json' || type.endsWith('+json');
+}
+
 export const nothingKept: KeptContent = (sha256) => new Map<string, string>().get(sha256);
 
 export function keptContentOf(
@@ -31,9 +38,11 @@ export function keptContentOf(
     const reader = yield* PlaybookReader;
     const kept = new Map<string, string>();
     for (const digest of digests) {
-      const text = yield* reader.readContent(digest);
-      if (text !== undefined) {
-        kept.set(digest, text);
+      const content = yield* reader.readContent(digest);
+      if (content !== undefined && isText(content)) {
+        kept.set(digest, yield* textOfContent(content));
+      } else if (content !== undefined) {
+        yield* leftUnread(content.stream);
       }
     }
     return (sha256: string) => kept.get(sha256);

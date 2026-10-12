@@ -26,7 +26,7 @@ export function runtimeLedger(runtime: AppRuntime<DispatcherServices>): RuntimeL
     readDueRows: (projection, query) => viaLedger((ledger) => ledger.readDueRows(projection, query)),
     nextDueOf: (projection, column, after) => viaLedger((ledger) => ledger.nextDueOf(projection, column, after)),
     content: {
-      put: (playbook, sha256, text) => viaLedger((ledger) => ledger.content.put(playbook, sha256, text)),
+      put: (playbook, content) => viaLedger((ledger) => ledger.content.put(playbook, content)),
     },
   };
 }

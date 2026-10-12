@@ -1,7 +1,9 @@
 import {
   type CallerIdentity,
+  type OperationScope,
   type RegisteredPlainLanguage,
   type Registration,
+  type RouteRegistration,
   type Dispatcher,
 } from '@beonauto/operations';
 import type { McpServer } from '@modelcontextprotocol/server';
@@ -54,6 +56,12 @@ function offered<R extends Registration>(
     definition: definitionOf(registration),
     plainLanguage: plainLanguageOf(registration),
   }));
+}
+
+function servedAsTools<S extends OperationScope>(
+  registrations: readonly RouteRegistration<S>[],
+): readonly Registration<S>[] {
+  return registrations.filter((registration) => registration.servedOverHttpAlone === undefined);
 }
 
 function permittedTo<R extends Registration>(
@@ -154,7 +162,7 @@ function playbookArgumentDispatchOf(
 }
 
 export function orgServerFactory(serving: ToolServing): McpServerFactory {
-  const orgOffers = offered(serving.catalog.operationsIn('org'), toolDefinitionOf);
+  const orgOffers = offered(servedAsTools(serving.catalog.operationsIn('org')), toolDefinitionOf);
   const connection = connectionOf('org', serving, everyToolOf(orgOffers, []));
   return (context) => {
     const call = orgCallOf(context);
@@ -165,7 +173,7 @@ export function orgServerFactory(serving: ToolServing): McpServerFactory {
 }
 
 export function playbookServerFactory(serving: ToolServing): McpServerFactory {
-  const playbookOffers = offered(serving.catalog.operationsIn('playbook'), toolDefinitionOf);
+  const playbookOffers = offered(servedAsTools(serving.catalog.operationsIn('playbook')), toolDefinitionOf);
   const connection = connectionOf('playbook', serving, everyToolOf([], playbookOffers));
   return (context) => {
     const call = playbookCallOf(context);
@@ -184,10 +192,10 @@ function namedInPlaybookAlone(
 }
 
 export function catalogServerFactory(serving: ToolServing): McpServerFactory {
-  const orgRegistrations = serving.catalog.operationsIn('org');
+  const orgRegistrations = servedAsTools(serving.catalog.operationsIn('org'));
   const orgOffers = offered(orgRegistrations, toolDefinitionOf);
   const playbookOffers = offered(
-    namedInPlaybookAlone(serving.catalog.operationsIn('playbook'), orgRegistrations),
+    namedInPlaybookAlone(servedAsTools(serving.catalog.operationsIn('playbook')), orgRegistrations),
     toolDefinitionTakingPlaybookOf,
   );
   const connection = connectionOf('own org', serving, everyToolOf(orgOffers, playbookOffers));

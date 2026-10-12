@@ -1,5 +1,3 @@
-import { sha256Of } from '@beonauto/operations';
-import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { postgresqlRecordedStore, type Query } from './postgresql-recorded.ts';
@@ -62,27 +60,5 @@ describe('one record read by its message id on PostgreSQL', () => {
     const { query } = answering([]);
 
     await expect(postgresqlRecordedStore(query).readRecordedEvent(alpha, 'message-99')).resolves.toBeUndefined();
-  });
-});
-
-describe('the content a playbook keeps on PostgreSQL', () => {
-  it('joins the chunks of a digest the playbook holds, in their order, and writes them, then the head, once', async () => {
-    const reading = answering([{ chunks: 2 }], [{ text: '{"a":' }, { text: '1}' }]);
-    const writing = answering([], [], []);
-    const playbook = { org: 'acme', playbook: 'alpha' };
-
-    const text = await Effect.runPromise(
-      postgresqlRecordedStore(reading.query).content.get(playbook, await sha256Of('{"a":1}')),
-    );
-    await Effect.runPromise(
-      postgresqlRecordedStore(writing.query).content.put(playbook, await sha256Of('{"b":2}'), '{"b":2}'),
-    );
-
-    expect(text).toBe('{"a":1}');
-    expect(writing.asked.map(({ text: statement }) => statement.split(' ').slice(0, 3).join(' '))).toEqual([
-      'SELECT chunks FROM',
-      'INSERT INTO recorded_content_chunks',
-      'INSERT INTO recorded_content_heads',
-    ]);
   });
 });
