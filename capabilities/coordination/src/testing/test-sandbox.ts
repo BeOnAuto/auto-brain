@@ -14,7 +14,7 @@ import { workflowMachineOptionsOf, workflowMachineSettingsOf } from '../runs/wor
 
 export const testSandbox: MachineSandbox = reusedSandbox(await freshInstance(unitMemoryBytes), () => 0);
 
-export const testBrainNames: BrainOwnNames = brainOwnNamesOf([echo, { facts: workflowFacts }]);
+export const testBrainNames: BrainOwnNames = brainOwnNamesOf([echo, workflowFacts]);
 
 export const testWorkflowPolicy: WorkflowPolicy = workflowPolicyOf(testBrainNames);
 

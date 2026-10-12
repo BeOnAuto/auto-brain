@@ -2,8 +2,8 @@ import {
   defineCapability,
   outputInWords,
   type BrainOwnNames,
-  type CapabilityFacts,
   type Capability,
+  type DeclaringCapability,
 } from '@beonauto/definitions';
 import type { InvalidInput } from '@beonauto/operations';
 import type { Effect } from 'effect';
@@ -19,12 +19,12 @@ export interface WorkflowAdapterDependencies extends WorkflowStarts {
   readonly names: BrainOwnNames;
 }
 
-export const workflowFacts: CapabilityFacts = { onRuns: [], streams: [runPresenter] };
+export const workflowFacts: DeclaringCapability = { type: 'workflow', facts: { onRuns: [], streams: [runPresenter] } };
 
 export function makeWorkflowAdapter(dependencies: WorkflowAdapterDependencies): Capability {
   const readWorkflowDocument = workflowReaderOf(dependencies.names);
   return defineCapability({
-    type: 'workflow',
+    type: workflowFacts.type,
     title: 'Workflow',
     guide: { name: 'workflow' },
     noun: { one: 'workflow', other: 'workflows' },
@@ -39,6 +39,6 @@ export function makeWorkflowAdapter(dependencies: WorkflowAdapterDependencies): 
     whenCancelled: 'finish',
     finishesLater: true,
     longestRunOf: () => dependencies.mostDurationMs,
-    facts: workflowFacts,
+    facts: workflowFacts.facts,
   });
 }

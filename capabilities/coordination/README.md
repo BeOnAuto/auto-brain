@@ -14,7 +14,7 @@ Public documentation explains [workflows and their availability](../../docs/conc
 - `definitionCalls(runDefinition)`: calls a saved definition from a workflow. This adapter accepts reasoning functions, workflows and custom definition types; it does not classify every extension as a brain function.
 - `callResultOfEnding(ending)`: the answer of a call for the ending of the run it waits for, which the workflow host is given as its result mapping.
 - `callMarginMs`: the minute a call is given beyond the longest its definition may run.
-- `workflowFacts`: the facts the capability declares, `{ onRuns: [], streams: [runPresenter] }`, the presenter of the run log, for the history of a run and the events of a brain; exported as a constant, since the brain's own names it reserves are built before the adapter exists, and the adapter takes them.
+- `workflowFacts`: the capability's type and the facts it declares, `{ type: 'workflow', facts: { onRuns: [], streams: [runPresenter] } }`, the presenter of the run log, for the history of a run and the events of a brain; exported as a constant, since the brain's own names it reserves are built before the adapter exists, and the adapter takes them.
 - `definitionRunResultOf`, `RunDefinition`, `DefinitionRunRequest` and `DefinitionRunResult`, for the server, which runs a definition called by a workflow through its operations.
 
 ## The expressions of a document
