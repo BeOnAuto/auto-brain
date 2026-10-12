@@ -7,7 +7,7 @@ const firstLine =
   'Fit a model of the weekly {{ function.target }} of each of {{ dataset.series }} regions, in {{ function.unit }},';
 
 const shape =
-  'the brief reads dataset (rows, series, periods, window, holdout, features, horizons) and function (name, target, unit, rules)';
+  'the brief reads dataset (rows, series, periods, window, holdout, features, horizons, accumulates) and function (name, target, unit, rules)';
 
 const briefLines = weeklyOrdersLines.slice(weeklyOrdersLines.lastIndexOf('---') + 1);
 

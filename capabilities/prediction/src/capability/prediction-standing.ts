@@ -1,9 +1,10 @@
 import type { Standing } from '@on.auto/definitions';
-import { cursorOfParts } from '@on.auto/operations';
+import { cursorOfParts, type PlaybookAddress, type ProjectionReader } from '@on.auto/operations';
 import { Effect, Option, Schema } from 'effect';
 
 import type { DatasetRow } from '../dataset/dataset-rows.ts';
 import type { DatasetsPort } from '../dataset/datasets-port.ts';
+import { modelStandingOf } from './model-standing.ts';
 
 const DetailsSchema = Schema.Struct({
   data_sha256: Schema.String,
@@ -45,15 +46,29 @@ function datasetStanding(dataSha256: string, row: DatasetRow | undefined): Schem
   };
 }
 
-export function predictionStanding(datasets: DatasetsPort): Standing {
-  return ({ org, playbook, status, details }) =>
+function datasetPart(
+  datasets: DatasetsPort,
+  playbook: PlaybookAddress,
+  dataSha256: string,
+  dataset: string | undefined,
+) {
+  return dataset === undefined
+    ? Effect.map(datasets.datasetOf(playbook, dataSha256), (row) => datasetStanding(dataSha256, row))
+    : Effect.succeed({ kind: 'uploaded', sha256: dataset });
+}
+
+export function predictionStanding(
+  datasets: DatasetsPort,
+  ledger: Pick<ProjectionReader, 'readProjectedRows'>,
+): Standing {
+  return ({ org, playbook, name, status, details }) =>
     Option.match(status === 'retired' ? Option.none() : decodeDetails(details), {
       onNone: () => Effect.undefined,
       onSome: ({ data_sha256: dataSha256, data }) =>
-        data.dataset === undefined
-          ? Effect.map(datasets.datasetOf({ org, playbook }, dataSha256), (row) => ({
-              dataset: datasetStanding(dataSha256, row),
-            }))
-          : Effect.succeed({ dataset: { kind: 'uploaded', sha256: data.dataset } }),
+        Effect.zipWith(
+          datasetPart(datasets, { org, playbook }, dataSha256, data.dataset),
+          modelStandingOf(ledger, { org, playbook }, name),
+          (dataset, { models, build }) => ({ dataset, models, build }),
+        ),
     });
 }

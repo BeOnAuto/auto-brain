@@ -14,6 +14,7 @@ const datasetShape: Shape = {
     holdout: 'value',
     features: { items: featureShape },
     horizons: { items: 'value' },
+    accumulates: 'value',
   },
 };
 
@@ -83,7 +84,7 @@ function referenceIssue({ path, line }: VariableReference): DocumentIssue | unde
     : {
         line,
         pointer: '',
-        detail: `${nameOf(path.slice(0, at + 2))} is not a part of ${String(root)}; the brief reads dataset (rows, series, periods, window, holdout, features, horizons) and function (name, target, unit, rules)`,
+        detail: `${nameOf(path.slice(0, at + 2))} is not a part of ${String(root)}; the brief reads dataset (rows, series, periods, window, holdout, features, horizons, accumulates) and function (name, target, unit, rules)`,
       };
 }
 

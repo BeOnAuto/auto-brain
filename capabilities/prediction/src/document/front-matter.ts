@@ -1,6 +1,7 @@
 import type { FrontMatterSection, FrontMatterShape } from '@on.auto/definitions/document';
 import { Schema } from 'effect';
 
+import { enclosings } from '../periods/enclosing.ts';
 import { grains } from '../periods/grains.ts';
 
 const descriptionLength = 1000;
@@ -13,7 +14,8 @@ const PredictsSchema = Schema.Struct({
   target: Schema.String,
   period: Schema.Literals(grains),
   season: Schema.optionalKey(Schema.Number),
-  horizons: Schema.Array(Schema.Number),
+  horizons: Schema.optionalKey(Schema.Array(Schema.Number)),
+  accumulates: Schema.optionalKey(Schema.Literals(enclosings)),
   unit: Schema.String,
 });
 

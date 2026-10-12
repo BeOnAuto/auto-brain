@@ -4,26 +4,20 @@ import {
   functionResourceLabels,
   type Capability,
 } from '@on.auto/definitions';
-import type { ProgramPool } from '@on.auto/workflow-engine/dsl';
 
-import type { DatasetsPort } from '../dataset/datasets-port.ts';
-import { predictionRun } from '../run/prediction-run.ts';
-import { finishesLater, finishesLaterFor, longestRunFor, longestRunOf } from '../run/run-lengths.ts';
+import { predictionFacts } from '../facts/prediction-facts.ts';
+import { predictionRunsOn } from '../run/prediction-runs.ts';
 import { predictionBounds, predictionDefinitionType } from './prediction-bounds.ts';
 import { predictionCheck } from './prediction-check.ts';
 import { parse, summarize } from './prediction-definitions.ts';
+import type { PredictionFunctionAdapterOptions } from './prediction-ports.ts';
 import { predictionStanding } from './prediction-standing.ts';
 import { describeOutput } from './prediction-words.ts';
-
-export interface PredictionFunctionAdapterOptions {
-  readonly pool: ProgramPool;
-  readonly datasets: DatasetsPort;
-  readonly mostFunctions?: number;
-}
 
 export function makePredictionFunctionAdapter({
   pool,
   datasets,
+  ports,
   mostFunctions = predictionBounds.mostFunctions,
 }: PredictionFunctionAdapterOptions): Capability {
   return defineCapability({
@@ -36,12 +30,9 @@ export function makePredictionFunctionAdapter({
     parse,
     check: predictionCheck(pool),
     summarize,
-    run: (document, input) => predictionRun(document, input),
-    finishesLater,
-    finishesLaterFor,
-    longestRunOf,
-    longestRunFor,
+    ...predictionRunsOn(ports),
+    facts: predictionFacts,
     mostActive: mostFunctions,
-    standing: predictionStanding(datasets),
+    standing: predictionStanding(datasets, ports.ledger),
   });
 }

@@ -1,4 +1,4 @@
-import { Conflict, InvalidInput, Unavailable } from '@on.auto/operations';
+import { Conflict, InvalidInput } from '@on.auto/operations';
 import { Effect, Exit, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -28,7 +28,7 @@ function issueAt(pointer: string): unknown {
 }
 
 describe('the prediction capability', () => {
-  it('is the type prediction, written in Markdown, guided by prediction-function, with no facts of its own', () => {
+  it('is the type prediction, written in Markdown, guided by prediction-function, with the facts of its builds and of its models', () => {
     const { capability } = predictionRuns();
 
     expect([capability.type, capability.title, capability.mediaType, capability.guide, capability.noun]).toEqual([
@@ -38,14 +38,30 @@ describe('the prediction capability', () => {
       { name: 'prediction-function' },
       { one: 'prediction function', other: 'prediction functions' },
     ]);
-    expect([capability.facts, capability.mostActive, predictionRuns(undefined, 3).capability.mostActive]).toEqual([
-      { onRuns: [], streams: [] },
+    expect([
+      capability.facts.onRuns.map(({ type }) => type),
+      capability.facts.streams.map(({ streamKind }) => streamKind),
+      capability.mostActive,
+      predictionRuns(undefined, 3).capability.mostActive,
+    ]).toEqual([
+      [
+        'dataset_assembled',
+        'candidate_uploaded',
+        'candidate_refused',
+        'candidate_scored',
+        'candidate_disqualified',
+        'baseline_scored',
+        'baseline_not_walked',
+      ],
+      ['models'],
       32,
       3,
     ]);
   });
+});
 
-  it('refuses a document that is not one, naming each problem', async () => {
+describe('a document the prediction capability refuses', () => {
+  it('is refused naming each problem', async () => {
     const refused = await Effect.runPromiseExit(
       predictionRuns().capability.prepare(weeklyOrdersWith(['  horizons: [1, 4]', '  horizons: [4, 4]'])),
     );
@@ -93,24 +109,12 @@ describe('the summary of a prediction function', () => {
 });
 
 describe('a run of a prediction function before a version is built', () => {
-  it('refuses a question, since no version is active yet and this runtime builds none', async () => {
+  it('refuses a question, since no version is active yet, and says how to ask for a build', async () => {
     expect(await predictionRuns().running(weeklyOrders, question)).toEqual(
       Exit.fail(
         new Conflict({
-          detail: 'The function has no active version yet, and this runtime does not offer a build yet',
+          detail: 'The function has no active version yet; ask for a build with the input { build: {} }',
           kind: 'no_active_version',
-        }),
-      ),
-    );
-  });
-
-  it('refuses a build as unavailable, of a kind no retry resolves, since this runtime does not offer builds yet', async () => {
-    expect(await predictionRuns().running(weeklyOrders, { build: {} })).toEqual(
-      Exit.fail(
-        new Unavailable({
-          detail:
-            'This runtime does not offer builds of a prediction function yet, so no version can be built; its dataset is kept meanwhile, as get_definition shows',
-          kind: 'build_not_offered',
         }),
       ),
     );
@@ -178,7 +182,7 @@ describe('a run of a prediction function cancelled from outside while its call i
     ]);
     expect([asked, built]).toMatchObject([
       { status: 'rejected', reason: 'conflict', kind: 'no_active_version' },
-      { status: 'rejected' },
+      { status: 'rejected', reason: 'unavailable', kind: 'dataset_not_ready' },
     ]);
   });
 });

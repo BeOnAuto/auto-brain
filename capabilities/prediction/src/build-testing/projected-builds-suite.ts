@@ -1,0 +1,138 @@
+import { rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { setTimeout as sleep } from 'node:timers/promises';
+
+import { Effect } from 'effect';
+import { describe, expect, it } from 'vitest';
+
+import type { SettingsOf } from '../dataset-testing/dataset-stores.ts';
+import { asked, builtFrom, modelFactsOf, standingOf } from './built-versions.ts';
+import { performedOnce, performedUntilQuiet } from './due-driving.ts';
+import { gappyVisits, quietVisits, visits } from './projected-fixtures.ts';
+import { day, projectedSales, type Projected, type Sales } from './projected-visits.ts';
+
+const testTimeoutMs = 120_000;
+
+type Script = Parameters<Projected['scripted']['next']>[0];
+
+const aRest = 2 * 60_000;
+
+function performedIn(projected: Projected, turns: readonly Script[], rested = 0): Promise<unknown> {
+  const ahead = Date.now() + 4 * day + rested * aRest;
+  return turns.reduce<Promise<unknown>>(
+    (before, script, turn) =>
+      before.then(() => {
+        projected.scripted.next(script);
+        return performedOnce(projected.playbook.due, ahead + turn * aRest);
+      }),
+    Promise.resolve(),
+  );
+}
+
+async function challenged(settingsOf: SettingsOf, sales: Sales = visits): Promise<Projected> {
+  const projected = await projectedSales(settingsOf, sales);
+  await builtFrom(projected.playbook, ['visits-mean']);
+  await builtFrom(projected.playbook, ['visits-mean']);
+  return projected;
+}
+
+function typesOf(facts: readonly { readonly type: string }[]): readonly string[] {
+  return facts.map(({ type }) => type);
+}
+
+function shadowDecisions(settingsOf: SettingsOf): void {
+  it('predicts with each version at each close, grades them once the periods close, and activates a challenger that does no worse', async () => {
+    const projected = await challenged(settingsOf, quietVisits(Math.floor(Date.now() / day)));
+    const waiting = await standingOf(projected.playbook);
+    await performedUntilQuiet(projected.playbook.due, 4 * day);
+    const facts = await modelFactsOf(projected.playbook);
+
+    expect(waiting).toMatchObject({
+      output: {
+        standing: { models: { active: { version: 1 }, challenger: { version: 2, shadow: { predicted: 0 } } } },
+      },
+    });
+    expect(typesOf(facts).filter((type) => type === 'shadow_predicted')).toHaveLength(4);
+    expect(typesOf(facts).filter((type) => type === 'shadow_graded').length).toBeGreaterThanOrEqual(4);
+    expect(facts.at(-2)).toMatchObject({ type: 'shadow_passed', data: { version: 2, metric: 'mase' } });
+    expect(facts.at(-1)).toMatchObject({ type: 'version_activated', data: { version: 2, rule: 'automatic' } });
+  });
+
+  it('refuses a challenger that does worse than the active version over the same closes', async () => {
+    const projected = await challenged(settingsOf);
+    await performedIn(projected, ['shifted', 'real', 'shifted', 'real']);
+    projected.scripted.next('real');
+    await performedUntilQuiet(projected.playbook.due, 4 * day);
+    const facts = await modelFactsOf(projected.playbook);
+
+    expect(facts.at(-2)).toMatchObject({ type: 'shadow_failed', data: { version: 2 } });
+    expect(facts.at(-1)).toMatchObject({ type: 'activation_refused', data: { version: 2, because: 'shadow_failed' } });
+  });
+}
+
+function shadowWaits(settingsOf: SettingsOf): void {
+  it('waits for a scoring permit and for its dataset at a close, and counts a prediction no process answered as none', async () => {
+    const projected = await challenged(settingsOf);
+    rmSync(join(projected.playbook.test.directory, 'models'), { recursive: true, force: true });
+    const { permits } = projected.playbook.test.ports;
+    const taken = [permits.take(), permits.take()];
+    await performedIn(projected, ['real']);
+    for (const release of taken) {
+      release?.();
+    }
+    projected.read('empty');
+    await performedIn(projected, ['real'], 1);
+    projected.read('live');
+    await performedIn(projected, ['exits'], 2);
+    const facts = await modelFactsOf(projected.playbook);
+
+    expect(facts.filter(({ type }) => type === 'shadow_predicted')).toMatchObject([{ data: { of: 2, count: 0 } }]);
+  });
+
+  it('waits while every model process is taken, and grades with no truth while its dataset is not made', async () => {
+    const projected = await challenged(settingsOf, { ...visits, deadlines: { check: 3000, run: 10_000, walk: 1500 } });
+    const { models } = projected.playbook.test.ports;
+    projected.scripted.next('sleeps');
+    for (const held of ['first', 'second', 'third', 'fourth']) {
+      void Effect.runPromise(models.check({ sha256: held, path: `/${held}.onnx` }));
+    }
+    await performedIn(projected, ['sleeps']);
+    await sleep(3500);
+    await performedIn(projected, ['real', 'real', 'real', 'real'], 1);
+    projected.read('empty');
+    await performedUntilQuiet(projected.playbook.due, 4 * day);
+    const facts = await modelFactsOf(projected.playbook);
+
+    expect(facts.filter(({ type }) => type === 'shadow_predicted')).toHaveLength(4);
+    expect(facts.find(({ type }) => type === 'shadow_graded')).toMatchObject({ data: { graded: 0 } });
+  });
+}
+
+function shadowGaps(settingsOf: SettingsOf): void {
+  it('shadows a series observed every other day, which has no scale, and a period whose truth was not given', async () => {
+    const projected = await projectedSales(settingsOf, gappyVisits(Math.floor(Date.now() / day)));
+    await builtFrom(projected.playbook, ['visits-observed-mean']);
+    await builtFrom(projected.playbook, ['visits-observed-mean']);
+    const east = await asked(projected.playbook, { series: 'east', horizon: 1 });
+    await performedUntilQuiet(projected.playbook.due, 4 * day);
+    const graded = (await modelFactsOf(projected.playbook)).filter(({ type }) => type === 'shadow_graded');
+
+    expect(east).toMatchObject({ output: { status: 'succeeded', output: { value: 30, low: 28, high: 32 } } });
+    expect(graded.length).toBeGreaterThanOrEqual(4);
+    expect(graded[0]).toMatchObject({ data: { graded: 3, missing: 1 } });
+  });
+}
+
+export function projectedBuildsSuite(settingsOf: SettingsOf): void {
+  describe('the shadow of a challenger over a series with gaps', { timeout: testTimeoutMs }, () => {
+    shadowGaps(settingsOf);
+  });
+
+  describe('the shadow of a challenger over a projected dataset', { timeout: testTimeoutMs }, () => {
+    shadowDecisions(settingsOf);
+  });
+
+  describe('the shadow of a challenger that has to wait', { timeout: testTimeoutMs }, () => {
+    shadowWaits(settingsOf);
+  });
+}

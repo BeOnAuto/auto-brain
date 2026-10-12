@@ -20,7 +20,7 @@ export interface DatasetFiles {
   readonly lastPeriod: string;
   readonly window: number;
   readonly holdout: number;
-  readonly checkpoint: string;
+  readonly checkpoint: string | null;
 }
 
 export interface WindowOfTheBuild {
