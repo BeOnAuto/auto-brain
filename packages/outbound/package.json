@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@aws-sdk/credential-providers": "3.1144.0",
+    "@aws-sdk/rds-signer": "3.1144.0",
     "effect": "catalog:"
   },
   "devDependencies": {
