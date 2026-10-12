@@ -26,7 +26,9 @@
     "@beonauto/interaction": "workspace:*",
     "@beonauto/ledger": "workspace:*",
     "@beonauto/mcp": "workspace:*",
+    "@beonauto/object-storage": "workspace:*",
     "@beonauto/operations": "workspace:*",
+    "@beonauto/outbound": "workspace:*",
     "@beonauto/reasoning": "workspace:*",
     "@beonauto/recall": "workspace:*",
     "@beonauto/workflow-engine": "workspace:*",
@@ -34,6 +36,7 @@
     "effect": "catalog:"
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "3.1144.0",
     "@types/pg": "8.23.1",
     "@vitest/coverage-v8": "catalog:",
     "pg": "8.23.1",

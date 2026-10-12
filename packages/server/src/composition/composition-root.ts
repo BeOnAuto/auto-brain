@@ -4,9 +4,9 @@ import type { HostClock } from '@beonauto/workflow-host';
 import { Layer } from 'effect';
 
 import { defaultServerOptions, type ServerOptions } from '../lifecycle/lifecycle.ts';
-import { logIncident, logLedger } from '../logging/logging.ts';
+import { logContentStore, logIncident, logLedger } from '../logging/logging.ts';
 import { serveWorkflows } from '../workflows/workflows.ts';
-import { ledgerLayerOf } from './ledger-store.ts';
+import { ledgerLayerFor } from './ledger-store.ts';
 import { functionWiringOf, functionsServedBy, type FunctionWiring } from './served-functions.ts';
 import { loggedModelAccess } from './served-reasoning.ts';
 
@@ -25,10 +25,11 @@ export function compositionRootWith(
   const wiring = functionWiringOf(modelAccessOf, programPoolOf, toolTiming);
   return {
     ...defaultServerOptions,
-    runtimeLayer: ({ ledger }) => applicationLayer(ledgerLayerOf(ledger, wiring.recall.appends)),
+    runtimeLayer: (settings) => applicationLayer(ledgerLayerFor(settings, wiring.recall.appends)),
     serve: async (runtime, settings) => {
       const { ledger, workflows } = settings;
       await runtime.run(logLedger(ledger));
+      await runtime.run(logContentStore(settings.content));
       const functions = await functionsServedBy(runtime, settings, wiring);
       const parts = { ledger, workflows, ...functions.parts, ...(clock === undefined ? {} : { clock }) };
       return functions.closing(await serveWorkflows(runtime, parts));

@@ -5,6 +5,7 @@ import { Effect, Result } from 'effect';
 import { fileSettings, refusedKeys } from '../config-file/file-settings.ts';
 import { readFunctionSettings, type FunctionSettings } from '../function-settings/function-settings.ts';
 import { readAccessSettings, type AccessSettings } from './access-settings.ts';
+import { readContentSettings, type ContentSettings } from './content-settings.ts';
 import { readLedgerSettings, type LedgerSettings } from './ledger-settings.ts';
 import { readWorkflowSettings, type WorkflowSettings } from './workflow-settings.ts';
 
@@ -19,6 +20,7 @@ export interface Settings extends FunctionSettings, AccessSettings {
   readonly port: number;
   readonly apiKeys: readonly ApiKey[] | undefined;
   readonly ledger: LedgerSettings;
+  readonly content: ContentSettings;
   readonly workflows: WorkflowSettings;
   readonly configFile: ConfigFileSources | undefined;
 }
@@ -32,6 +34,7 @@ export function readSettings(given: Environment): Settings {
   const { host, port } = readServerConfig(environment);
   const { allowedOrigins, localMode, logFormat } = Effect.runSync(readAccessSettings(environment));
   const ledger = Effect.runSync(readLedgerSettings(environment));
+  const content = Effect.runSync(readContentSettings(environment));
   const functions = readFunctionSettings(environment, file);
   const workflows = Effect.runSync(readWorkflowSettings(environment));
   return {
@@ -40,6 +43,7 @@ export function readSettings(given: Environment): Settings {
     allowedOrigins,
     apiKeys: readApiKeys(environment),
     ledger,
+    content,
     localMode,
     logFormat,
     ...functions,

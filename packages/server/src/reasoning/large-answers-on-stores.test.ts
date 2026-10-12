@@ -1,12 +1,13 @@
-import { Buffer } from 'node:buffer';
 import { randomUUID } from 'node:crypto';
 
+import { CreateBucketCommand, DeleteObjectsCommand, HeadBucketCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { toolBounds } from '@beonauto/mcp';
 import { serveFakeMcp } from '@beonauto/mcp/testing';
+import { storageClientOf } from '@beonauto/object-storage';
 import { answers, callingTools, textResult } from '@beonauto/reasoning/testing';
 import { Schema } from 'effect';
 import { Client } from 'pg';
-import { describe, expect, it, onTestFinished } from 'vitest';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
@@ -14,6 +15,13 @@ const postgresql = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
 
 const postgresqlNotice =
   postgresql === '' ? ', skipped: set LEDGER_TEST_POSTGRESQL_URL to the URL of a PostgreSQL server to run it' : '';
+
+const objectStore = process.env['CONTENT_TEST_OBJECT_STORE_URL'] ?? '';
+
+const objectStoreNotice =
+  objectStore === ''
+    ? ', skipped: set CONTENT_TEST_OBJECT_STORE_URL to the URL of an S3-compatible server with its credentials and a bucket to run it'
+    : '';
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
@@ -42,6 +50,42 @@ async function onADatabaseOfItsOwn(): Promise<Readonly<Record<string, string>>> 
   const database = new URL(postgresql);
   database.pathname = `/${name}`;
   return { LEDGER_FILE: '', DATABASE_URL: database.href };
+}
+
+function objectStoreClient() {
+  const url = new URL(objectStore);
+  return {
+    url,
+    bucket: url.pathname.slice(1),
+    client: storageClientOf(
+      { endpoint: url.origin, region: 'us-east-1', proxy: { enabled: false, environment: {} } },
+      { accessKeyId: decodeURIComponent(url.username), secretAccessKey: decodeURIComponent(url.password) },
+    ),
+  };
+}
+
+async function onAnObjectStorePrefixOfItsOwn(prefix: string): Promise<Readonly<Record<string, string>>> {
+  const { url, bucket, client } = objectStoreClient();
+  const held = () => client.send(new HeadBucketCommand({ Bucket: bucket }));
+  await held().catch(() => client.send(new CreateBucketCommand({ Bucket: bucket })).catch(held));
+  onTestFinished(async () => {
+    const objects = (await objectsUnder(`${prefix}/`)).map((key) => ({ Key: `${prefix}/${key}` }));
+    await client.send(new DeleteObjectsCommand({ Bucket: bucket, Delete: { Objects: objects } }));
+  });
+  vi.stubEnv('AWS_ACCESS_KEY_ID', decodeURIComponent(url.username));
+  vi.stubEnv('AWS_SECRET_ACCESS_KEY', decodeURIComponent(url.password));
+  onTestFinished(() => {
+    vi.unstubAllEnvs();
+  });
+  return { CONTENT_STORE_URL: `s3://${bucket}/${prefix}`, AWS_ENDPOINT_URL: url.origin, AWS_REGION: 'us-east-1' };
+}
+
+async function objectsUnder(prefix: string): Promise<readonly string[]> {
+  const { bucket, client } = objectStoreClient();
+  const listed = await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix }));
+  return (listed.Contents ?? []).map(({ Key }: { readonly Key?: string | undefined }) =>
+    String(Key).slice(prefix.length),
+  );
 }
 
 interface Store {
@@ -116,6 +160,33 @@ describe.each(stores)('a reasoning run whose every call answers 1 MB, on $store'
       expect(readBack).toEqual(
         Array.from({ length: calls }, (_, call) => ({ kibibytes: kibibytesOf(call), whole: true })),
       );
+      expect(took).toBeLessThan(toolBounds.runMs);
+    },
+  );
+});
+
+describe(`a reasoning run whose every call answers 1 MB, its content on object storage${objectStoreNotice}`, () => {
+  it.skipIf(objectStore === '')(
+    'keeps the arguments and the answer of each call as objects of the bucket under its brain, and reads every answer back within the deadline of the run',
+    { timeout: toolBounds.runMs },
+    async () => {
+      const prefix = `large-answers/${randomUUID()}`;
+      const server = await servingLargeAnswers(await onAnObjectStorePrefixOfItsOwn(prefix));
+      const started = performance.now();
+
+      const ran = await server.call('POST', `${alpha}/definitions/reasoning/reading/run`, {
+        body: { input: {}, run_id: runId },
+      });
+      const readBack = await answersReadBack(server);
+      const took = performance.now() - started;
+      const kept = await objectsUnder(`${prefix}/`);
+
+      expect(ran.body).toMatchObject({ status: 'succeeded', output: 'Read them all.' });
+      expect(readBack).toEqual(
+        Array.from({ length: calls }, (_, call) => ({ kibibytes: kibibytesOf(call), whole: true })),
+      );
+      expect(kept).toHaveLength(2 * calls);
+      expect(kept.every((key) => /^brain\/acme\/alpha\/[0-9a-f]{64}$/u.test(key))).toBe(true);
       expect(took).toBeLessThan(toolBounds.runMs);
     },
   );

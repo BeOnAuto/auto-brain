@@ -67,6 +67,7 @@ const functionsRun: readonly string[] = [
 ];
 
 const ledgerKept = `The ledger is kept in the file ${ledger.fileName}`;
+const keptIn: readonly string[] = [ledgerKept, "Content is kept in the ledger's database"];
 
 const ModelLineSchema = Schema.Struct({
   message: Schema.String,
@@ -93,7 +94,7 @@ function messagesOf(stderr: string): readonly string[] {
 }
 
 function startInLocalMode(...after: readonly string[]): readonly unknown[] {
-  return [expect.stringMatching(/^Local mode is on: /u), ledgerKept, noModelProvider, ...functionsRun, ...after];
+  return [expect.stringMatching(/^Local mode is on: /u), ...keptIn, noModelProvider, ...functionsRun, ...after];
 }
 
 describe('main', { timeout: spawnedServerTestTimeoutMs }, () => {
@@ -204,7 +205,7 @@ describe('main with settings', { timeout: spawnedServerTestTimeoutMs }, () => {
     expect({ withoutKey: withoutKey.status, withKey: withKey.status }).toEqual({ withoutKey: 401, withKey: 200 });
     expect(withoutKey.headers.get('www-authenticate')).toBe('Bearer');
     expect(child.output().stdout).toBe(`auto-brain listening on port ${port}\n`);
-    expect(messagesOf(child.output().stderr)).toEqual([ledgerKept, noModelProvider, ...functionsRun]);
+    expect(messagesOf(child.output().stderr)).toEqual([...keptIn, noModelProvider, ...functionsRun]);
   });
 
   it.each(invalidSettings)(

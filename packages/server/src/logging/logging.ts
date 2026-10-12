@@ -6,6 +6,7 @@ import type { Incident } from '@beonauto/operations';
 import type { OperatorHintReport, ProviderMessageReport, ProviderStatus } from '@beonauto/reasoning';
 import { Cause, Effect, Logger, type Layer } from 'effect';
 
+import type { ContentSettings } from '../settings/content-settings.ts';
 import type { LedgerSettings } from '../settings/ledger-settings.ts';
 
 export type LogFormat = 'json' | 'pretty';
@@ -113,6 +114,27 @@ export function logLedger(ledger: LedgerSettings): Effect.Effect<void> {
         Effect.annotateLogs({ database: ledger.database, database_host: ledger.host }),
       )
     : ledgerFileLine(ledger.file === privateMemory ? ledger.file : resolve(ledger.file));
+}
+
+function objectStorageLine(bucket: string, prefix: string, endpoint: string | undefined): Effect.Effect<void> {
+  const under = prefix === '' ? '' : ` under ${prefix}/`;
+  const host = endpoint === undefined ? undefined : new URL(endpoint).host;
+  return Effect.logInfo(
+    `Content is kept on object storage, in the bucket ${bucket}${under}, on ${host ?? 'the S3 endpoint of its region'}`,
+  ).pipe(
+    Effect.annotateLogs({
+      content_store: 'object-storage',
+      content_bucket: bucket,
+      content_prefix: prefix,
+      ...(host === undefined ? {} : { content_endpoint: host }),
+    }),
+  );
+}
+
+export function logContentStore(content: ContentSettings): Effect.Effect<void> {
+  return content.store === 'ledger'
+    ? Effect.logInfo("Content is kept in the ledger's database").pipe(Effect.annotateLogs({ content_store: 'ledger' }))
+    : objectStorageLine(content.location.bucket, content.location.prefix, content.endpoint);
 }
 
 const causeNotFormattable = Effect.logError('Unexpected error whose cause could not be formatted');
