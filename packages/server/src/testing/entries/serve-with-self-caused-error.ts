@@ -1,8 +1,9 @@
 import type { RegisterRoutes } from '@on.auto/api';
 
-import { defaultServerOptions, servedBy } from '../../lifecycle/lifecycle.ts';
+import { servedBy } from '../../lifecycle/lifecycle.ts';
 import { exitOnStartupFailure, runServer } from '../../lifecycle/run-server.ts';
 import { stopRequestedBy } from '../../lifecycle/stop-request.ts';
+import { optionsServing } from './serving-options.ts';
 
 const selfCaused = new Error('an error whose cause is itself');
 selfCaused.cause = selfCaused;
@@ -15,6 +16,6 @@ const selfCausedRoute: RegisterRoutes = (routes) => {
 
 await runServer(
   process,
-  { ...defaultServerOptions, serve: () => servedBy([selfCausedRoute]) },
+  optionsServing(() => servedBy([selfCausedRoute])),
   stopRequestedBy(process),
 ).catch(exitOnStartupFailure(process));

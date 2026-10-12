@@ -44,7 +44,11 @@ function refusalOf(url: Readonly<URL>): string | undefined {
   if (url.searchParams.getAll('sslmode').some((mode) => mode !== 'verify-full')) {
     return `DATABASE_URL: ${withSignedTokens} the connection verifies the database's certificate and host name, so sslmode is verify-full or left out`;
   }
-  const others = options.filter((option) => option !== 'sslmode');
+  const tlsOptions = options.filter((option) => option.startsWith('ssl') && option !== 'sslmode');
+  if (tlsOptions.length > 0) {
+    return `DATABASE_URL: ${withSignedTokens} the connection checks the database's certificate against the certificate authorities Node trusts, so the URL takes no ${tlsOptions.join(', ')}; name the file of your authority's certificate in NODE_EXTRA_CA_CERTS instead`;
+  }
+  const others = options.filter((option) => !option.startsWith('ssl'));
   return others.length === 0
     ? undefined
     : `DATABASE_URL: ${withSignedTokens} the connection is made from the user, host, port and database of the URL alone, so it takes no ${others.join(', ')}`;

@@ -7,7 +7,7 @@ import { StartRefused, StartRejected } from '@on.auto/workflow-host';
 import { Effect } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
-import { applicationLayer } from '../composition/composition-root.ts';
+import { applicationLayer } from '../composition/application-layer.ts';
 import { reactionsOf } from './reaction-dependencies.ts';
 
 const start = {

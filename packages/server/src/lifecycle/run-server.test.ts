@@ -2,8 +2,9 @@ import type { Environment } from '@on.auto/config';
 import { Effect, Layer } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { optionsComposing, optionsServing } from '../testing/entries/serving-options.ts';
 import { isAcceptingConnections } from '../testing/processes/accepting-connections.ts';
-import { defaultServerOptions } from './lifecycle.ts';
+import { defaultServerOptions, servedBy } from './lifecycle.ts';
 import { exitOnStartupFailure, runServer, type ServerProcess } from './run-server.ts';
 import { stopInsistedBy, stopRequestedBy, type StopSignal } from './stop-request.ts';
 
@@ -72,14 +73,14 @@ function signalledOnAnnouncement(signal: StopSignal): FakeProcess {
   };
 }
 
-function signalledDuringStartUp(signal: StopSignal): { fake: FakeProcess; runtimeLayer: () => Layer.Layer<never> } {
+function signalledDuringStartUp(signal: StopSignal): { fake: FakeProcess; services: Layer.Layer<never> } {
   const fake = fakeProcess();
   const sendTheSignal = Layer.effectDiscard(
     Effect.sync(() => {
       fake.send(signal);
     }),
   );
-  return { fake, runtimeLayer: () => sendTheSignal };
+  return { fake, services: sendTheSignal };
 }
 
 describe('runServer', () => {
@@ -141,8 +142,12 @@ describe('runServer on a stop signal', () => {
   it.each<StopSignal>(['SIGTERM', 'SIGINT'])(
     'stops as soon as it has started when %s arrived during start-up',
     async (signal) => {
-      const { fake, runtimeLayer } = signalledDuringStartUp(signal);
-      const server = await runServer(fake.serverProcess, { ...defaultServerOptions, runtimeLayer }, fake.stopRequested);
+      const { fake, services } = signalledDuringStartUp(signal);
+      const server = await runServer(
+        fake.serverProcess,
+        optionsComposing(services, () => servedBy([])),
+        fake.stopRequested,
+      );
 
       const acceptingAfterStartUp = await isAcceptingConnections(server.port);
       await server.stop();
@@ -188,7 +193,7 @@ describe('runServer told to stop twice', () => {
     const neverStops = Promise.withResolvers<void>().promise;
     await runServer(
       serverProcess,
-      { ...defaultServerOptions, serve: () => ({ routes: [], stopWork: () => neverStops }) },
+      optionsServing(() => ({ routes: [], stopWork: () => neverStops })),
       stopRequested,
       stopInsisted,
     );

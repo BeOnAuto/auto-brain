@@ -82,11 +82,11 @@ describe('the pools of a ledger that signs a token for each connection', () => {
     const { proxy } = readSettings(proxied);
 
     const pool = databasePoolsOf(signingLedgerOn(database.port), proxy, signer.signerOf)({ max: 2 });
+    onTestFinished(() => pool.end());
     const connections = await Promise.all([pool.connect(), pool.connect()]);
     for (const connection of connections) {
       connection.release();
     }
-    await pool.end();
 
     expect(signer.asked()).toEqual([
       { proxy, request: { hostname: '127.0.0.1', port: database.port, username: 'auto_runtime', region: 'eu-west-1' } },
@@ -115,6 +115,21 @@ describe('the pools of a ledger that signs a token for each connection', () => {
     await expect(pool.connect()).rejects.toThrow('The server does not support SSL connections');
     expect(database.askedForTls()).toBe(1);
     expect(signer.signed()).toEqual([]);
+  });
+});
+
+describe('the host name of a database that signs in with tokens', () => {
+  it('is checked against its certificate, which names another address, before any token is asked for', async () => {
+    const certificate = aCertificateOfTheLoopback('127.0.0.2');
+    trustedForTheTest(certificate);
+    const database = await aFakePostgreSQL(certificate);
+    const signer = aRecordingSigner();
+    const pool = databasePoolsOf(signingLedgerOn(database.port), readSettings({}).proxy, signer.signerOf)({ max: 1 });
+    onTestFinished(() => pool.end());
+
+    await expect(pool.connect()).rejects.toMatchObject({ code: 'ERR_TLS_CERT_ALTNAME_INVALID' });
+    expect(signer.signed()).toEqual([]);
+    expect(database.passwords()).toEqual([]);
   });
 });
 

@@ -10,11 +10,11 @@ import {
   type HarnessLedger,
   type InteractionHarness,
 } from '@on.auto/interaction/testing';
-import { postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
+import { plainPoolsOn, postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
 import { ledgerLayer } from '@on.auto/ledger/sqlite3';
 import { Ledger } from '@on.auto/operations';
 import { Layer, ManagedRuntime } from 'effect';
-import { Client, Pool } from 'pg';
+import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
@@ -59,7 +59,7 @@ async function onPostgreSQL(): Promise<HarnessLedger> {
   url.pathname = `/${name}`;
   return opened(
     postgresqlLedgerLayer({
-      pools: ({ max }) => new Pool({ connectionString: url.href, max }),
+      pools: plainPoolsOn(url.href),
       projections: [openRequests],
     }),
   );

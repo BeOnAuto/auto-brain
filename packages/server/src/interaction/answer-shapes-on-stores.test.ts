@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 
-import { postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
+import { plainPoolsOn, postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
 import { ledgerLayer } from '@on.auto/ledger/sqlite3';
 import { Schema } from 'effect';
-import { Client, Pool } from 'pg';
+import { Client } from 'pg';
 import { onTestFinished } from 'vitest';
 
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
@@ -84,7 +84,7 @@ async function onPostgreSQL(): Promise<ProjectionStore> {
     environment: { LEDGER_FILE: '', DATABASE_URL: url },
     ledgerKeeping: (projection) =>
       postgresqlLedgerLayer({
-        pools: ({ max }) => new Pool({ connectionString: url, max }),
+        pools: plainPoolsOn(url),
         projections: [projection],
       }),
     tablesOf: (projection) =>

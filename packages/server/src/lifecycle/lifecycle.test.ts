@@ -5,13 +5,16 @@ import { createApiKey } from '@on.auto/identity';
 import { Effect, Layer } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { optionsComposing, optionsServing } from '../testing/entries/serving-options.ts';
 import { testRoutes } from '../testing/entries/test-routes.ts';
 import { isAcceptingConnections } from '../testing/processes/accepting-connections.ts';
 import { startServer, tcpPort, defaultServerOptions, servedBy, type Served } from './lifecycle.ts';
 
 const loopback = { HOST: '127.0.0.1', PORT: '0', LOCAL_MODE: 'true' };
 
-function recordingDisposal(): { runtimeLayer: () => Layer.Layer<never>; events: string[] } {
+const servingTestRoutes = optionsServing(() => servedBy([testRoutes]));
+
+function recordingDisposal(): { services: Layer.Layer<never>; events: string[] } {
   const events: string[] = [];
   const recording = Layer.effectDiscard(
     Effect.addFinalizer(() =>
@@ -20,7 +23,7 @@ function recordingDisposal(): { runtimeLayer: () => Layer.Layer<never>; events: 
       }),
     ),
   );
-  return { runtimeLayer: () => recording, events };
+  return { services: recording, events };
 }
 
 function recordingWork(record: (event: string) => void): Served {
@@ -78,18 +81,15 @@ describe('startServer', () => {
 describe('the runtime of a server that cannot start', () => {
   it('is disposed before start-up rejects because the port is already taken', async () => {
     const first = await startServer(loopback, defaultServerOptions);
-    const { runtimeLayer, events } = recordingDisposal();
+    const { services, events } = recordingDisposal();
 
     const failure = await startServer(
       { ...loopback, PORT: String(first.port) },
-      {
-        ...defaultServerOptions,
-        runtimeLayer,
-        serve: () =>
-          recordingWork((event) => {
-            events.push(event);
-          }),
-      },
+      optionsComposing(services, () =>
+        recordingWork((event) => {
+          events.push(event);
+        }),
+      ),
     ).then(
       () => 'started',
       (error: unknown) => {
@@ -104,13 +104,12 @@ describe('the runtime of a server that cannot start', () => {
   });
 
   it('is disposed before start-up rejects because its routes cannot be built', async () => {
-    const { runtimeLayer, events } = recordingDisposal();
+    const { services, events } = recordingDisposal();
 
-    const failure = await startServer(loopback, {
-      ...defaultServerOptions,
-      runtimeLayer,
-      serve: () => Promise.reject(new Error('The routes cannot be built')),
-    }).then(
+    const failure = await startServer(
+      loopback,
+      optionsComposing(services, () => Promise.reject(new Error('The routes cannot be built'))),
+    ).then(
       () => 'started',
       (error: unknown) => {
         events.push('start-up rejected');
@@ -125,9 +124,10 @@ describe('the runtime of a server that cannot start', () => {
 
 describe('the runtime of a started server', () => {
   it('is kept until the server stops', async () => {
-    const { runtimeLayer, events } = recordingDisposal();
+    const { services, events } = recordingDisposal();
 
-    const server = await startServer(loopback, { ...defaultServerOptions, runtimeLayer });
+    const keptUntilStopped = optionsComposing(services, () => servedBy([]));
+    const server = await startServer(loopback, keptUntilStopped);
     const whileRunning = [...events];
     await server.stop();
 
@@ -137,7 +137,7 @@ describe('the runtime of a started server', () => {
 
 describe('the work a started server does besides answering requests', () => {
   it('stops after the server stopped accepting connections, and before the runtime is disposed', async () => {
-    const { runtimeLayer, events } = recordingDisposal();
+    const { services, events } = recordingDisposal();
     const listening = { port: 0 };
     const served = {
       routes: [],
@@ -148,7 +148,10 @@ describe('the work a started server does besides answering requests', () => {
       },
     };
 
-    const server = await startServer(loopback, { ...defaultServerOptions, runtimeLayer, serve: () => served });
+    const server = await startServer(
+      loopback,
+      optionsComposing(services, () => served),
+    );
     listening.port = server.port;
     await server.stop();
 
@@ -194,7 +197,7 @@ describe('startServer validates requests from browsers', () => {
 
 describe('startServer with routes', () => {
   it('serves the routes it is given', async () => {
-    const server = await startServer(loopback, { ...defaultServerOptions, serve: () => servedBy([testRoutes]) });
+    const server = await startServer(loopback, servingTestRoutes);
 
     const response = await fetch(`http://127.0.0.1:${server.port}/slow?ms=1`);
     await server.stop();
@@ -203,7 +206,7 @@ describe('startServer with routes', () => {
   });
 
   it('answers an unexpected error with a 500 problem document', async () => {
-    const server = await startServer(loopback, { ...defaultServerOptions, serve: () => servedBy([testRoutes]) });
+    const server = await startServer(loopback, servingTestRoutes);
 
     const response = await fetch(`http://127.0.0.1:${server.port}/fail`);
     await server.stop();
@@ -217,7 +220,7 @@ describe('startServer with routes', () => {
 
 describe('stopping a started server', () => {
   it('lets a request in flight finish, then stops without waiting for the shutdown timeout', async () => {
-    const server = await startServer(loopback, { ...defaultServerOptions, serve: () => servedBy([testRoutes]) });
+    const server = await startServer(loopback, servingTestRoutes);
     const inFlight = fetch(`http://127.0.0.1:${server.port}/slow?ms=300`);
     await setTimeout(50);
     const stopping = performance.now();
@@ -233,17 +236,17 @@ describe('stopping a started server', () => {
 describe('the work a stopping server does besides answering requests', () => {
   it('stops while the requests in flight finish, not after them', async () => {
     const events: string[] = [];
-    const server = await startServer(loopback, {
-      ...defaultServerOptions,
-      serve: () => ({
+    const server = await startServer(
+      loopback,
+      optionsServing(() => ({
         routes: [testRoutes],
         stopWork: async () => {
           events.push('work stopping');
           await setTimeout(50);
           events.push('work stopped');
         },
-      }),
-    });
+      })),
+    );
     const inFlight = fetch(`http://127.0.0.1:${server.port}/slow?ms=300`).then(() => {
       events.push('request answered');
       return events;
@@ -270,11 +273,7 @@ describe('stopping a started server with connections still open', () => {
   });
 
   it('cuts off a request still running at the shutdown timeout', async () => {
-    const server = await startServer(loopback, {
-      ...defaultServerOptions,
-      serve: () => servedBy([testRoutes]),
-      shutdownTimeoutMs: 100,
-    });
+    const server = await startServer(loopback, { ...servingTestRoutes, shutdownTimeoutMs: 100 });
     const inFlight = fetch(`http://127.0.0.1:${server.port}/slow?ms=60000`).then(
       () => 'answered',
       () => 'cut off',

@@ -3,9 +3,7 @@ import { ledgerLayer } from '@on.auto/ledger/sqlite3';
 import { Cause, Effect, Exit, Layer, Logger } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { applicationLayer } from '../composition/composition-root.ts';
-import { readSettings } from '../settings/settings.ts';
-import { hostDatabaseOf } from './host-dependencies.ts';
+import { applicationLayer } from '../composition/application-layer.ts';
 import { hostReports } from './host-reports.ts';
 import { inRuntime } from './in-runtime.ts';
 
@@ -83,24 +81,5 @@ describe('the reports of the workflow host', () => {
       expect.stringContaining('"annotations":{"error":"Connection terminated unexpectedly"}'),
       expect.stringContaining('"message":"A run that could not be settled was settled at attempt 21"'),
     ]);
-  });
-});
-
-describe('the database of the workflow host', () => {
-  it('is the file of the ledger when the ledger is kept in SQLite', () => {
-    expect(hostDatabaseOf(readSettings({ LEDGER_FILE: '/data/ledger.db' }))).toEqual({
-      store: 'sqlite',
-      file: '/data/ledger.db',
-    });
-  });
-
-  it('is the database of the ledger when the ledger is kept in PostgreSQL, reached through the pools the server composes', () => {
-    const url = 'postgresql://playbooks:secret@db.example.com:5432/playbooks';
-
-    const database = hostDatabaseOf(readSettings({ DATABASE_URL: url }));
-
-    const somePools: unknown = expect.any(Function);
-
-    expect(database).toEqual({ store: 'postgresql', pools: somePools });
   });
 });

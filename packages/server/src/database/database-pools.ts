@@ -1,4 +1,4 @@
-import type { PostgreSQLPools } from '@on.auto/ledger/postgresql';
+import { plainPoolsOn, type PostgreSQLPools } from '@on.auto/ledger/postgresql';
 import type { ProxySettings } from '@on.auto/outbound';
 import { awsDatabaseTokenSigner, type DatabaseTokenRequest, type DatabaseTokenSigner } from '@on.auto/outbound/aws';
 import { Redacted } from 'effect';
@@ -15,8 +15,7 @@ export function databasePoolsOf(
 ): PostgreSQLPools {
   const { credentials, database } = ledger;
   if (credentials.kind === 'url') {
-    const connectionString = Redacted.value(ledger.url);
-    return ({ max }) => new Pool({ connectionString, max });
+    return plainPoolsOn(Redacted.value(ledger.url));
   }
   const { hostname, port, username } = credentials.signedFor;
   const signedToken = signerOf(proxy, credentials.signedFor);

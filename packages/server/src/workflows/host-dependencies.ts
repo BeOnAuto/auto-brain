@@ -3,7 +3,6 @@ import type { Capability } from '@on.auto/definitions';
 import type { Dispatcher, DispatcherServices } from '@on.auto/operations';
 import {
   openWorkflowHost,
-  type DatabaseSettings,
   type HostClock,
   type HostOptions,
   type ProjectorSettings,
@@ -11,7 +10,6 @@ import {
   type WorkflowStore,
 } from '@on.auto/workflow-host';
 
-import { databasePoolsOf } from '../database/database-pools.ts';
 import { logWorkflows } from '../logging/logging.ts';
 import type { Settings } from '../settings/settings.ts';
 import { hostReports } from './host-reports.ts';
@@ -26,12 +24,6 @@ export interface HostParts {
   readonly dueWork: NonNullable<HostOptions['dueWork']>;
   readonly evaluations: WorkParts['evaluations'];
   readonly clock?: HostClock;
-}
-
-export function hostDatabaseOf({ ledger, proxy }: Pick<Settings, 'ledger' | 'proxy'>): DatabaseSettings {
-  return ledger.store === 'sqlite'
-    ? { store: 'sqlite', file: ledger.file }
-    : { store: 'postgresql', pools: databasePoolsOf(ledger, proxy) };
 }
 
 export async function openedHost(

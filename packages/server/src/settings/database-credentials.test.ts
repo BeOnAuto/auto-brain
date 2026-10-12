@@ -115,14 +115,27 @@ describe('a URL the server cannot sign its connections for', () => {
     },
   );
 
+  it.each(['sslrootcert=/certs/global-bundle.pem', 'ssl=0', 'sslcert=/certs/client.pem&sslkey=/certs/client.key'])(
+    'stop the server from starting when the URL gives a TLS option, %s, naming where the authority goes',
+    (option) => {
+      const names = [...new URLSearchParams(option).keys()].join(', ');
+
+      expect(
+        errorFrom({ ...signedTokens, DATABASE_URL: `postgresql://auto_runtime@${rdsHost}/playbooks?${option}` }),
+      ).toBe(
+        `${refusedAs} DATABASE_URL: With DATABASE_CREDENTIALS=aws-iam the connection checks the database's certificate against the certificate authorities Node trusts, so the URL takes no ${names}; name the file of your authority's certificate in NODE_EXTRA_CA_CERTS instead`,
+      );
+    },
+  );
+
   it('stop the server from starting when the URL gives the driver options a signed connection does not take', () => {
     expect(
       errorFrom({
         ...signedTokens,
-        DATABASE_URL: `postgresql://auto_runtime@${rdsHost}/playbooks?sslmode=verify-full&ssl=0&application_name=runtime&ssl=1`,
+        DATABASE_URL: `postgresql://auto_runtime@${rdsHost}/playbooks?sslmode=verify-full&application_name=runtime&options=-c%20search_path%3Dledger&application_name=again`,
       }),
     ).toBe(
-      `${refusedAs} DATABASE_URL: With DATABASE_CREDENTIALS=aws-iam the connection is made from the user, host, port and database of the URL alone, so it takes no ssl, application_name`,
+      `${refusedAs} DATABASE_URL: With DATABASE_CREDENTIALS=aws-iam the connection is made from the user, host, port and database of the URL alone, so it takes no application_name, options`,
     );
   });
 

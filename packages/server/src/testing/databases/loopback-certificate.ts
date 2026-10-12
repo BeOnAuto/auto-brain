@@ -42,11 +42,14 @@ const commonName = Buffer.from('0603550403', 'hex');
 
 const subjectAltName = Buffer.from('0603551d11', 'hex');
 
-const theLoopbackAddress = element(
-  tags.sequence,
-  subjectAltName,
-  element(tags.octetString, element(tags.sequence, element(tags.ipAddress, Buffer.from([127, 0, 0, 1])))),
-);
+function alternativeNameOf(address: string): Buffer {
+  const octets = Buffer.from(address.split('.').map(Number));
+  return element(
+    tags.sequence,
+    subjectAltName,
+    element(tags.octetString, element(tags.sequence, element(tags.ipAddress, octets))),
+  );
+}
 
 function nameOf(text: string): Buffer {
   return element(
@@ -60,7 +63,7 @@ function utcTimeOf(time: number): Buffer {
   return element(tags.utcTime, Buffer.from(`${digits}Z`));
 }
 
-export function aCertificateOfTheLoopback(): LoopbackCertificate {
+export function aCertificateOfTheLoopback(address = '127.0.0.1'): LoopbackCertificate {
   const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
   const name = nameOf('a test database');
   const now = Date.now();
@@ -73,7 +76,7 @@ export function aCertificateOfTheLoopback(): LoopbackCertificate {
     element(tags.sequence, utcTimeOf(now - day), utcTimeOf(now + day)),
     name,
     publicKey.export({ type: 'spki', format: 'der' }),
-    element(tags.extensions, element(tags.sequence, theLoopbackAddress)),
+    element(tags.extensions, element(tags.sequence, alternativeNameOf(address))),
   );
   const signature = element(tags.bitString, Buffer.from([0]), sign('sha256', toBeSigned, privateKey));
   return {

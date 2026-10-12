@@ -23,9 +23,13 @@ export interface Served {
 
 export type ServedClosing = (served: Served) => Served;
 
+export interface Composed<R> {
+  readonly services: Layer.Layer<R>;
+  readonly serve: (runtime: AppRuntime<R>) => Served | Promise<Served>;
+}
+
 export interface ServerOptions<R> {
-  readonly runtimeLayer: (settings: Settings) => Layer.Layer<R>;
-  readonly serve: (runtime: AppRuntime<R>, settings: Settings) => Served | Promise<Served>;
+  readonly composed: (settings: Settings) => Composed<R>;
   readonly shutdownTimeoutMs: number;
   readonly exitDeadlineMs: number;
 }
@@ -35,15 +39,14 @@ export function servedBy(routes: readonly RegisterRoutes[]): Served {
 }
 
 export const defaultServerOptions: ServerOptions<never> = {
-  runtimeLayer: () => Layer.empty,
-  serve: () => servedBy([]),
+  composed: () => ({ services: Layer.empty, serve: () => servedBy([]) }),
   shutdownTimeoutMs: 8000,
   exitDeadlineMs: 1000,
 };
 
-async function servedOf<R>(options: ServerOptions<R>, runtime: AppRuntime<R>, settings: Settings): Promise<Served> {
+async function servedOf<R>(composed: Composed<R>, runtime: AppRuntime<R>): Promise<Served> {
   try {
-    return await options.serve(runtime, settings);
+    return await composed.serve(runtime);
   } catch (failure) {
     await runtime.dispose();
     throw failure;
@@ -61,10 +64,11 @@ async function startRuntime<R>(services: Layer.Layer<R>, logFormat: LogFormat): 
 export async function startServer<R>(environment: Environment, options: ServerOptions<R>): Promise<RunningServer> {
   const settings = readSettings(environment);
   const authenticator = authenticatorFor(settings);
-  const runtime = await startRuntime(options.runtimeLayer(settings), settings.logFormat);
+  const composed = options.composed(settings);
+  const runtime = await startRuntime(composed.services, settings.logFormat);
   await runtime.run(logAccessMode(authenticator.mode, settings.localMode));
   await runtime.run(logConfigFile(settings.configFile));
-  const served = await servedOf(options, runtime, settings);
+  const served = await servedOf(composed, runtime);
   const api = createApiHandler({
     allowedOrigins: settings.allowedOrigins,
     authenticator,
