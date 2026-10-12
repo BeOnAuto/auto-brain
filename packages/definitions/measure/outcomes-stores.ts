@@ -103,7 +103,7 @@ function sqliteWrite(fileName: string, count: number, rowsOf: RowsOf): void {
 export const onSQLite: Bench = {
   store: 'SQLite',
   aPlace: () => {
-    const directory = mkdtempSync(join(tmpdir(), 'auto-brain-outcomes-'));
+    const directory = mkdtempSync(join(tmpdir(), 'auto-runtime-outcomes-'));
     const drop = async (): Promise<void> => {
       await Promise.resolve();
       rmSync(directory, { recursive: true, force: true });
