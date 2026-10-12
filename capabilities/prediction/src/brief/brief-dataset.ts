@@ -1,12 +1,19 @@
+import type { DocumentIssue } from '@on.auto/definitions/document';
 import type { Schema } from 'effect';
 
 import { predictionBounds } from '../capability/prediction-bounds.ts';
-import { isProjected, type DataPart, type Evaluation, type Predicts } from '../document/prediction-document.ts';
+import {
+  isProjected,
+  type DataPart,
+  type Evaluation,
+  type PredictionFunctionDefinitionDocument,
+  type Predicts,
+} from '../document/prediction-document.ts';
 import { civilDay } from '../periods/civil-days.ts';
 import { periodForm, periodOfDay } from '../periods/grains.ts';
-import type { BriefVariables } from './brief-template.ts';
+import { briefRenderIssues, type BriefVariables } from './brief-template.ts';
 
-export interface BriefParts {
+interface BriefParts {
   readonly predicts: Predicts;
   readonly data: DataPart;
   readonly evaluation: Evaluation;
@@ -54,11 +61,17 @@ function briefVariablesOf(
   };
 }
 
-export function largestBriefVariables(parts: BriefParts): BriefVariables {
+function largestBriefVariables(parts: BriefParts): BriefVariables {
   return briefVariablesOf(parts, {
     name: longestName,
     rows: predictionBounds.mostDatasetRows,
     series: predictionBounds.mostDatasetSeries,
     lastPeriod: periodOfDay(parts.predicts.period, latestDay),
   });
+}
+
+export function briefIssuesOverTheLargestDataset(
+  document: PredictionFunctionDefinitionDocument,
+): readonly DocumentIssue[] {
+  return briefRenderIssues(document.brief, largestBriefVariables(document));
 }

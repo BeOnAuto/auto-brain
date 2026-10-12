@@ -1,5 +1,7 @@
-import { rebuiltOn, type Folding } from './measure/dataset-rebuild.ts';
-import { seriesMeasured } from './measure/order-history.ts';
+import { programPool } from '@on.auto/workflow-engine/dsl';
+
+import { rebuiltOn, type Folding, type History } from './measure/dataset-rebuild.ts';
+import { dailyOrders, seriesMeasured, testedDailyOrders } from './measure/order-history.ts';
 import { measuredStores, type MeasuredStore } from './measure/stores.ts';
 import { writtenOn, type FileRead } from './measure/written-files.ts';
 
@@ -25,32 +27,56 @@ function rateOf({ events, milliseconds }: Folding): string {
   return `${counted.format(Math.round((events * 1000) / milliseconds))} events a second`;
 }
 
+function pageCostOf({ pages, milliseconds }: Folding): string {
+  return `${(milliseconds / pages).toFixed(1)} ms a page`;
+}
+
 function readLine(file: string, { bytes, milliseconds, whole }: FileRead): string {
   return `${file} ${counted.format(bytes)} bytes (${(bytes / mebibyte).toFixed(1)} MiB) read back in ${milliseconds.toFixed(1)} ms, ${whole ? 'its digest the one it was kept under' : 'NOT its digest'}`;
 }
 
-async function measuredOn({ store, aDatabase, removeAll }: MeasuredStore): Promise<void> {
+async function untestedOn({ store, aDatabase }: MeasuredStore, history: History): Promise<void> {
+  const { settings, ledger } = await aDatabase();
+  const { folders, recordingMs, rebuild, live } = await rebuiltOn(settings, dailyOrders, history);
+  write(
+    `${store}: ${counted.format(rebuild.events)} events of ${seriesMeasured} series over ${days} days recorded in ${seconds(recordingMs)}`,
+  );
+  write(
+    `${store}: the dataset rebuilt from that history in ${seconds(rebuild.milliseconds)}, ${rateOf(rebuild)}, in ${rebuild.pages} pages, ${pageCostOf(rebuild)}, to ${counted.format(rebuild.row.rows)} rows of ${rebuild.row.series} series`,
+  );
+  write(
+    `${store}: ${counted.format(live.events)} more events appended in ${liveDays} appends folded live within ${seconds(live.milliseconds)} of the first, ${rateOf(live)}, to ${counted.format(live.row.rows)} rows`,
+  );
+  const written = await writtenOn(folders.database, ledger, days + liveDays);
+  write(
+    `${store}: the two files of ${counted.format(written.files.rows)} rows written at a build's start in ${seconds(written.writtenMs)}`,
+  );
+  write(`${store}: ${readLine('the training rows', written.training)}`);
+  write(`${store}: ${readLine('the scoring rows', written.scoring)}`);
+  await folders.close();
+}
+
+async function testedOn({ store, aDatabase }: MeasuredStore, history: History): Promise<void> {
+  const { settings } = await aDatabase();
+  const { folders, rebuild, live } = await rebuiltOn(settings, testedDailyOrders, history);
+  write(
+    `${store}: with a data test on the pool's filter thread, the dataset rebuilt from the same history in ${seconds(rebuild.milliseconds)}, ${rateOf(rebuild)}, in ${rebuild.pages} pages, ${pageCostOf(rebuild)}, to ${counted.format(rebuild.row.rows)} rows`,
+  );
+  write(
+    `${store}: with a data test, ${counted.format(live.events)} more events folded live within ${seconds(live.milliseconds)} of the first, ${rateOf(live)}`,
+  );
+  await folders.close();
+}
+
+async function measuredOn(measured: MeasuredStore): Promise<void> {
+  const pool = programPool({ workers: 1, heapMegabytes: 256 });
+  const history = { days, liveDays, filters: pool.evaluations.filters };
   try {
-    const { settings, ledger } = await aDatabase();
-    const { folders, recordingMs, rebuild, live } = await rebuiltOn(settings, days, liveDays);
-    write(
-      `${store}: ${counted.format(rebuild.events)} events of ${seriesMeasured} series over ${days} days recorded in ${seconds(recordingMs)}`,
-    );
-    write(
-      `${store}: the dataset rebuilt from that history in ${seconds(rebuild.milliseconds)}, ${rateOf(rebuild)}, in ${rebuild.pages} pages, to ${counted.format(rebuild.row.rows)} rows of ${rebuild.row.series} series`,
-    );
-    write(
-      `${store}: ${counted.format(live.events)} more events appended in ${liveDays} appends folded live within ${seconds(live.milliseconds)} of the first, ${rateOf(live)}, to ${counted.format(live.row.rows)} rows`,
-    );
-    const written = await writtenOn(folders.database, ledger, days + liveDays);
-    write(
-      `${store}: the two files of ${counted.format(written.files.rows)} rows written at a build's start in ${seconds(written.writtenMs)}`,
-    );
-    write(`${store}: ${readLine('the training rows', written.training)}`);
-    write(`${store}: ${readLine('the scoring rows', written.scoring)}`);
-    await folders.close();
+    await untestedOn(measured, history);
+    await testedOn(measured, history);
   } finally {
-    await removeAll();
+    await pool.close();
+    await measured.removeAll();
   }
 }
 

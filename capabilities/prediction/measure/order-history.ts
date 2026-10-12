@@ -16,17 +16,32 @@ const firstDay = Date.UTC(2026, 0, 1);
 
 const day = 86_400_000;
 
-const dailyOrders = weeklyOrdersWith(
+export interface MeasuredFunction {
+  readonly name: string;
+  readonly source: string;
+  readonly document: PredictionFunctionDefinitionDocument;
+}
+
+const dailyLines: readonly (readonly [string, string])[] = [
   ['  period: week', '  period: day'],
   ['  season: 52', ''],
   ['  horizons: [1, 4]', '  horizons: [1, 7]'],
   ['  window: 156', '  window: 200'],
   ['  holdout: 12', '  holdout: 14'],
-);
+];
 
-export const dailyDocument: PredictionFunctionDefinitionDocument = Result.getOrThrow(
-  parsePredictionDocument(dailyOrders),
-);
+const testedLine: readonly [string, string] = [
+  '    - type: order.placed',
+  "    - type: order.placed\n      data: '${ $data.total > 0 }'",
+];
+
+function measuredFunction(name: string, source: string): MeasuredFunction {
+  return { name, source, document: Result.getOrThrow(parsePredictionDocument(source)) };
+}
+
+export const dailyOrders = measuredFunction('daily-orders', weeklyOrdersWith(...dailyLines));
+
+export const testedDailyOrders = measuredFunction('tested-daily-orders', weeklyOrdersWith(...dailyLines, testedLine));
 
 export function buildStartAfter(days: number): number {
   return firstDay + days * day + day / 2;
@@ -72,20 +87,15 @@ export function recordedDays(folders: ProjectedFolders, from: number, days: numb
   );
 }
 
-export function savedDaily(folders: ProjectedFolders): Promise<void> {
+export function savedIn(folders: ProjectedFolders, { name, source, document }: MeasuredFunction): Promise<void> {
   return folders.append(
     `${alphaKey}definitions/prediction`,
-    [
-      {
-        type: 'definition_created',
-        data: { content: { source: dailyOrders, details: datasetDetailsOf(dailyDocument) } },
-      },
-    ],
+    [{ type: 'definition_created', data: { content: { source, details: datasetDetailsOf(document) } } }],
     {
       by: 'acme-admin',
       at: '2026-01-01T00:00:00.000Z',
       definitionType: 'prediction',
-      definitionName: 'daily-orders',
+      definitionName: name,
       definitionVersion: 1,
     },
   );

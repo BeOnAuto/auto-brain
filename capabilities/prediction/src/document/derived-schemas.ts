@@ -16,11 +16,11 @@ function givenSchema(given: readonly string[]): Schema.JsonObject {
   };
 }
 
-function questionSchema({ horizons, unit }: Predicts, { given }: Pick<DataPart, 'given'>): Schema.JsonObject {
+function questionSchema({ target, horizons, unit }: Predicts, { given }: Pick<DataPart, 'given'>): Schema.JsonObject {
   return {
     type: 'object',
     title: 'question',
-    description: `A question: the series and the horizon to predict, in ${unit}`,
+    description: `A question: the series whose ${target}, in ${unit}, to predict, and the horizon`,
     required: given.length === 0 ? ['series', 'horizon'] : ['series', 'horizon', 'given'],
     additionalProperties: false,
     properties: {

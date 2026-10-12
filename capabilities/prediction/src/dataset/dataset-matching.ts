@@ -1,15 +1,26 @@
-import { enclosedBody, filterVerdictsOf, type FilterSandbox, type FilterVerdict } from '@on.auto/workflow-engine';
+import {
+  enclosedBody,
+  filterTestingOf,
+  type FilterSandbox,
+  type FilterVerdict,
+  type MatchedFilter,
+} from '@on.auto/workflow-engine';
 import type { PageEvent } from '@on.auto/workflow-host';
 import { Effect, type Schema } from 'effect';
 
 import { canonicalJson } from '../data/data-digest.ts';
 import type { DatasetData } from './dataset-data.ts';
 
-export type EventMatch =
+type EventMatch =
   | { readonly kind: 'taken' }
   | { readonly kind: 'not_taken' }
   | { readonly kind: 'refused'; readonly detail: string }
   | { readonly kind: 'stopped'; readonly detail: string };
+
+export interface DatasetMatching {
+  readonly matchOf: (placed: PageEvent) => Effect.Effect<EventMatch>;
+  readonly close: () => void;
+}
 
 type Filter = DatasetData['events'][number];
 
@@ -47,22 +58,27 @@ function matchOfVerdicts(verdicts: readonly FilterVerdict[]): EventMatch {
     : { kind: 'stopped', detail: wordsOf(stop) };
 }
 
-export function eventMatchOf(
-  data: DatasetData,
-  { event, recordedAt }: PageEvent,
-  sandbox: FilterSandbox,
-): Effect.Effect<EventMatch> {
-  const typed = data.events.filter(({ type }) => type === event.type);
-  if (typed.some((filter) => !isTested(filter) && holdsLiterally(filter, event))) {
-    return Effect.succeed(taken);
-  }
-  const tested = typed.filter((filter) => isTested(filter));
-  if (tested.length === 0) {
-    return Effect.succeed(notTaken);
-  }
-  const filters = tested.map((attributes, index) => ({ reference: `/data/events/${index}`, attributes }));
-  return Effect.map(
-    Effect.promise(() => filterVerdictsOf(filters, event, sandbox, Date.parse(recordedAt))),
-    matchOfVerdicts,
-  );
+function typeFirst({ type, ...attributes }: Filter, index: number): MatchedFilter {
+  return { reference: `/data/events/${index}`, attributes: { type, ...attributes } };
+}
+
+export function datasetMatchingOf(data: DatasetData, sandbox: FilterSandbox): DatasetMatching {
+  const tested = data.events.flatMap((filter, index) => (isTested(filter) ? [typeFirst(filter, index)] : []));
+  const testing = filterTestingOf(tested, sandbox);
+  return {
+    matchOf: ({ event, recordedAt }) => {
+      const typed = data.events.filter(({ type }) => type === event.type);
+      if (typed.some((filter) => !isTested(filter) && holdsLiterally(filter, event))) {
+        return Effect.succeed(taken);
+      }
+      if (!typed.some((filter) => isTested(filter))) {
+        return Effect.succeed(notTaken);
+      }
+      return Effect.map(
+        Effect.promise(() => testing.verdictsOf(event, Date.parse(recordedAt))),
+        matchOfVerdicts,
+      );
+    },
+    close: testing.close,
+  };
 }

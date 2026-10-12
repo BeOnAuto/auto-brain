@@ -6,7 +6,7 @@ import type { SettingsOf } from './dataset-stores.ts';
 import { watchingDatasets } from './dataset-watch.ts';
 import { keptRowsOf } from './kept-rows.ts';
 import { orderPlaced } from './orders.ts';
-import { projectedDatasets } from './projected-datasets.ts';
+import { alphaKey, projectedDatasets } from './projected-datasets.ts';
 import { refusalWhenFolded } from './written-files.ts';
 
 const testTimeoutMs = 30_000;
@@ -56,7 +56,7 @@ const timedOrders = [
 ];
 
 const stalledWords: unknown = expect.stringMatching(
-  /^Its data test was stopped 3 times at this event by a limit of time or memory, which no event causes: /u,
+  /^Its data test was stopped 3 times without a page folded whole, the last at this event, by a limit of time or memory, which no event causes: /u,
 );
 
 const notReadyWords: unknown = expect.stringMatching(
@@ -89,7 +89,9 @@ function stoppedTest(settingsOf: SettingsOf): void {
         tries: 3,
         stall: { record: anyText, detail: stalledWords },
       });
-      expect(datasets.notes()).toEqual([]);
+      expect(await datasets.noted(1)).toEqual([
+        { kind: 'dataset_stalled', playbook: alphaKey, dataSha256, record: row.stall?.record, detail: stalledWords },
+      ]);
       expect(await refusalWhenFolded(datasets, document)).toMatchObject({
         refusal: { kind: 'not_ready', phase: 'stalled' },
         detail: notReadyWords,

@@ -85,9 +85,9 @@ function readingOf(folders: ProjectedFolders): Pick<ProjectedDatasets, 'datasets
 
 export async function projectedDatasets(
   settings: DatabaseSettings,
-  folding: Omit<DatasetFolding, 'filters'> = {},
+  folding: Partial<Omit<DatasetFolding, 'filters'>> = {},
 ): Promise<ProjectedDatasets> {
-  const folder = datasetFolder({ filters: filterSandboxOf(), ...folding });
+  const folder = datasetFolder({ filters: filterSandboxOf(), triesBeforeStall: Number.POSITIVE_INFINITY, ...folding });
   const folders = await projectedFolders(settings, [someFolder(folder)]);
   onTestFinished(folders.close);
   return {

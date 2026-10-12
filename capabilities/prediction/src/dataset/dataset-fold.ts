@@ -11,7 +11,7 @@ import {
 import { Effect } from 'effect';
 
 import { periodForm, periodOfForm } from '../periods/grains.ts';
-import { eventMatchOf } from './dataset-matching.ts';
+import { datasetMatchingOf, type DatasetMatching } from './dataset-matching.ts';
 import { mergedRows, type MergedRow } from './dataset-merging.ts';
 import { standingOf, type DatasetRow, type DatasetStanding } from './dataset-rows.ts';
 import { eventReadingOf, type Contribution } from './event-values.ts';
@@ -46,13 +46,13 @@ function passedOver(read: Read, placed: PageEvent, detail: string): Read {
   return { ...read, passedOver: [...read.passedOver, { record: placed.record, detail }], lastRead: placed };
 }
 
-function readFrom(row: DatasetRow, events: readonly PageEvent[], sandbox: FilterSandbox): Effect.Effect<Read> {
+function readWith(matching: DatasetMatching, row: DatasetRow, events: readonly PageEvent[]): Effect.Effect<Read> {
   return Effect.reduce(
     events,
     () => nothingRead,
     (read: Read, placed: PageEvent) =>
       read.stop === undefined
-        ? Effect.map(eventMatchOf(row.data, placed, sandbox), (match): Read => {
+        ? Effect.map(matching.matchOf(placed), (match): Read => {
             if (match.kind === 'stopped') {
               return { ...read, stop: { placed, detail: match.detail } };
             }
@@ -68,6 +68,14 @@ function readFrom(row: DatasetRow, events: readonly PageEvent[], sandbox: Filter
               : { ...read, contributions: [...read.contributions, reading.contribution], lastRead: placed };
           })
         : Effect.succeed(read),
+  );
+}
+
+function readFrom(row: DatasetRow, events: readonly PageEvent[], sandbox: FilterSandbox): Effect.Effect<Read> {
+  return Effect.acquireUseRelease(
+    Effect.sync(() => datasetMatchingOf(row.data, sandbox)),
+    (matching) => readWith(matching, row, events),
+    (matching) => Effect.sync(matching.close),
   );
 }
 
@@ -120,7 +128,7 @@ function triedOf(
   if (tries < triesBeforeStall) {
     return { phase: row.phase, tries, stall: null };
   }
-  const detail = `Its data test was stopped ${tries} times at this event by a limit of time or memory, which no event causes: ${stop.detail}`;
+  const detail = `Its data test was stopped ${tries} times without a page folded whole, the last at this event, by a limit of time or memory, which no event causes: ${stop.detail}`;
   return { phase: 'stalled', tries, stall: { record: stop.placed.record, detail } };
 }
 

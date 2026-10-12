@@ -59,7 +59,7 @@ function datasetNamedBy(dataSha256: string): string {
   return `the dataset ${dataSha256.slice(0, 12)}`;
 }
 
-function noted({ note, playbook }: Writing, { row, passedOver }: DatasetChange): Effect.Effect<void> {
+function passedOverNoted({ note, playbook }: Writing, { row, passedOver }: DatasetChange): Effect.Effect<void> {
   return Effect.forEach(
     passedOver.slice(0, predictionBounds.mostNotesAPage),
     ({ record, detail }) =>
@@ -75,6 +75,12 @@ function noted({ note, playbook }: Writing, { row, passedOver }: DatasetChange):
   );
 }
 
+function stallNoted({ note, playbook }: Writing, { row, next }: DatasetChange): Effect.Effect<void> {
+  return next.stall === null || row.phase === 'stalled'
+    ? Effect.void
+    : note({ kind: 'dataset_stalled', playbook, dataSha256: row.dataSha256, ...next.stall });
+}
+
 export function datasetWritten(
   writing: Writing,
   change: DatasetChange,
@@ -84,6 +90,10 @@ export function datasetWritten(
   return Effect.flatMap(rowsOf(WrittenSchema, written), (took) =>
     took.length === 0
       ? Effect.undefined
-      : Effect.as(noted(writing, change), { ...row, ...next, checkpointText: pointText(next.checkpoint) }),
+      : Effect.as(Effect.andThen(passedOverNoted(writing, change), stallNoted(writing, change)), {
+          ...row,
+          ...next,
+          checkpointText: pointText(next.checkpoint),
+        }),
   );
 }
