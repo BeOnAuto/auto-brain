@@ -1,4 +1,4 @@
-import { unitMemoryBytes, workerStackBytes, type ProgramPool } from '@beonauto/workflow-engine/dsl';
+import { unitMemoryBytes, workerStackBytes, type ProgramPool } from '@on.auto/workflow-engine/dsl';
 import { Effect } from 'effect';
 
 import type { HostDatabase } from '../src/database/host-database.ts';

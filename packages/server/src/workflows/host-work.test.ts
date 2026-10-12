@@ -1,9 +1,9 @@
-import { makeAppRuntime } from '@beonauto/api';
-import { playbookOwnNamesOf, defineStartVersion } from '@beonauto/definitions';
-import { echo } from '@beonauto/definitions/testing';
-import { ledgerLayer } from '@beonauto/ledger/sqlite3';
-import { makeDispatcher } from '@beonauto/operations';
-import { filterSandboxOf, machineSandboxOf, programPool } from '@beonauto/workflow-engine/dsl';
+import { makeAppRuntime } from '@on.auto/api';
+import { playbookOwnNamesOf, defineStartVersion } from '@on.auto/definitions';
+import { echo } from '@on.auto/definitions/testing';
+import { ledgerLayer } from '@on.auto/ledger/sqlite3';
+import { makeDispatcher } from '@on.auto/operations';
+import { filterSandboxOf, machineSandboxOf, programPool } from '@on.auto/workflow-engine/dsl';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

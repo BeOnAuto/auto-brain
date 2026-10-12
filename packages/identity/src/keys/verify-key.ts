@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 
-import { sha256Of } from '@beonauto/operations';
+import { sha256Of } from '@on.auto/operations';
 
 import { keyIdOf, type ApiKey } from './api-key.ts';
 

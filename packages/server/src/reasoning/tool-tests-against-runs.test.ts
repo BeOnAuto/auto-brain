@@ -1,5 +1,5 @@
-import { serveFakeMcp } from '@beonauto/mcp/testing';
-import { textResult, type ScriptedReply } from '@beonauto/reasoning/testing';
+import { serveFakeMcp } from '@on.auto/mcp/testing';
+import { textResult, type ScriptedReply } from '@on.auto/reasoning/testing';
 import { Effect, Option } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 

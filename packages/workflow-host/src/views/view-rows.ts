@@ -1,5 +1,5 @@
-import { recordedCursorOf } from '@beonauto/ledger';
-import type { StallKind } from '@beonauto/workflow-engine/dsl';
+import { recordedCursorOf } from '@on.auto/ledger';
+import type { StallKind } from '@on.auto/workflow-engine/dsl';
 import { Schema } from 'effect';
 
 import { WholeNumber } from '../database/host-database.ts';

@@ -1,4 +1,4 @@
-import type { Environment } from '@beonauto/config';
+import type { Environment } from '@on.auto/config';
 import { Effect, Layer } from 'effect';
 import { describe, expect, it } from 'vitest';
 

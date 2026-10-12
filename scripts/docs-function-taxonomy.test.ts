@@ -10,7 +10,7 @@ import {
   functionDescriptions,
   functionTypeOrder,
   functionResourceLabels,
-} from '@beonauto/definitions';
+} from '@on.auto/definitions';
 
 import {
   checkFunctionTaxonomy,
@@ -32,7 +32,7 @@ await test('the published taxonomy comes from the runtime metadata in canonical 
   const document: unknown = JSON.parse(functionTaxonomyDocument);
   assert.deepEqual(document, {
     schema: 2,
-    source: '@beonauto/definitions',
+    source: '@on.auto/definitions',
     functions: functionTypeOrder.map((type) => ({
       type,
       label: functionCategoryLabels[type],

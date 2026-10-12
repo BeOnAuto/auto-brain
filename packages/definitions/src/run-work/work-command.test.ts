@@ -1,4 +1,4 @@
-import { Conflict, messageIdOf, type StreamReader, type StreamWriter } from '@beonauto/operations';
+import { Conflict, messageIdOf, type StreamReader, type StreamWriter } from '@on.auto/operations';
 import { Effect, Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 

@@ -1,6 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
-import type { Environment } from '@beonauto/config';
+import type { Environment } from '@on.auto/config';
 
 import { startServer, type RunningServer, type ServerOptions } from './lifecycle.ts';
 

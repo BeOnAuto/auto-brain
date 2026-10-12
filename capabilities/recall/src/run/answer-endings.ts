@@ -1,7 +1,7 @@
-import type { CompiledSchema } from '@beonauto/definitions/document';
-import { issuesDetail } from '@beonauto/definitions/json-schema';
-import { Conflict, Unavailable } from '@beonauto/operations';
-import { jsonBytesOf, type PoolOutcome, type ProgramIssue, type Stopped } from '@beonauto/workflow-engine/dsl';
+import type { CompiledSchema } from '@on.auto/definitions/document';
+import { issuesDetail } from '@on.auto/definitions/json-schema';
+import { Conflict, Unavailable } from '@on.auto/operations';
+import { jsonBytesOf, type PoolOutcome, type ProgramIssue, type Stopped } from '@on.auto/workflow-engine/dsl';
 import { Effect, Result, type Schema } from 'effect';
 
 import { mebibytes, mostOutputBytes, recallBounds } from './recall-bounds.ts';

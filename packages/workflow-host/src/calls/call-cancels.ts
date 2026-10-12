@@ -1,4 +1,4 @@
-import type { Lineage } from '@beonauto/operations';
+import type { Lineage } from '@on.auto/operations';
 import {
   callKeyText,
   type CallCancelReceipt,
@@ -6,7 +6,7 @@ import {
   type CancelReason,
   type OutputOrigin,
   type RunContext,
-} from '@beonauto/workflow-engine';
+} from '@on.auto/workflow-engine';
 import { Data, Effect } from 'effect';
 
 import type { DatabaseFailed, HostDatabase } from '../database/host-database.ts';

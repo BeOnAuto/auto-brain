@@ -1,4 +1,4 @@
-import { lineageAttributeNames } from '@beonauto/operations';
+import { lineageAttributeNames } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 import type { Capability } from '../capability/capability.ts';

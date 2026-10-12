@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 
-import type { Issue } from '@beonauto/operations';
+import type { Issue } from '@on.auto/operations';
 import { Result, type Schema } from 'effect';
 
 import type { ReplyRefusal } from '../facts/run-facts.ts';

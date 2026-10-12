@@ -23,4 +23,4 @@ export interface GivenLineage {
   readonly trigger: TriggerLink | null;
 }
 
-export class CallLineage extends Context.Service<CallLineage, GivenLineage>()('@beonauto/operations/CallLineage') {}
+export class CallLineage extends Context.Service<CallLineage, GivenLineage>()('@on.auto/operations/CallLineage') {}

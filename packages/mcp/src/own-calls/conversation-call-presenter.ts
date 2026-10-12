@@ -1,4 +1,4 @@
-import { quoted, type KeptContent, type PresentedFact, type Presenter } from '@beonauto/operations';
+import { quoted, type KeptContent, type PresentedFact, type Presenter } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 import { toolBounds } from '../bounds/call-bounds.ts';

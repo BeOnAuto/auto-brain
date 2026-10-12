@@ -1,4 +1,4 @@
-import { programPool, type Json, type ProgramPool, type ProgramRequest } from '@beonauto/workflow-engine/dsl';
+import { programPool, type Json, type ProgramPool, type ProgramRequest } from '@on.auto/workflow-engine/dsl';
 
 import { computationBounds } from '../src/run/run-bounds.ts';
 

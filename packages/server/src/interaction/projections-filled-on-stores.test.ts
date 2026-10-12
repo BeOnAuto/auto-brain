@@ -6,7 +6,7 @@ import {
   listInteractions,
   openRequests,
   openRequestsName,
-} from '@beonauto/interaction';
+} from '@on.auto/interaction';
 import {
   alpha,
   answererId,
@@ -15,10 +15,10 @@ import {
   farAhead,
   nudging,
   type HarnessLedger,
-} from '@beonauto/interaction/testing';
-import { postgresqlLedgerLayer } from '@beonauto/ledger/postgresql';
-import { ledgerLayer } from '@beonauto/ledger/sqlite3';
-import { Ledger, projectedTableOf } from '@beonauto/operations';
+} from '@on.auto/interaction/testing';
+import { postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
+import { ledgerLayer } from '@on.auto/ledger/sqlite3';
+import { Ledger, projectedTableOf } from '@on.auto/operations';
 import { Effect, Layer, ManagedRuntime, Schema } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';

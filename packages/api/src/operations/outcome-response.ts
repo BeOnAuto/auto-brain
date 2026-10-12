@@ -1,4 +1,4 @@
-import type { Settled, Succeeded } from '@beonauto/operations';
+import type { Settled, Succeeded } from '@on.auto/operations';
 
 import { problemOfOutcome } from '../problem/outcome-problem.ts';
 import { problemResponse } from '../problem/problem.ts';

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { topicFacts, topicRows } from '@beonauto/operations/testing';
+import { topicFacts, topicRows } from '@on.auto/operations/testing';
 import { Effect } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';

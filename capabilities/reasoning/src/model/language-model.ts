@@ -10,4 +10,4 @@ export class LanguageModel extends Context.Service<
     readonly admit: (request: ModelRequest) => Effect.Effect<void, ModelFailure>;
     readonly generate: (request: ModelRequest) => Effect.Effect<ModelResult, ModelFailure>;
   }
->()('@beonauto/reasoning/LanguageModel') {}
+>()('@on.auto/reasoning/LanguageModel') {}

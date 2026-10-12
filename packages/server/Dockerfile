@@ -24,14 +24,14 @@ COPY capabilities/coordination/package.json capabilities/coordination/
 COPY capabilities/interaction/package.json capabilities/interaction/
 COPY capabilities/reasoning/package.json capabilities/reasoning/
 COPY capabilities/recall/package.json capabilities/recall/
-RUN pnpm install --frozen-lockfile --prod --no-optional --ignore-scripts --filter @beonauto/server...
+RUN pnpm install --frozen-lockfile --prod --no-optional --ignore-scripts --filter @on.auto/server...
 RUN --network=none npm_config_build_from_source=sqlite3 npm_config_nodedir=/usr/local \
-  pnpm rebuild --filter @beonauto/server... sqlite3 \
+  pnpm rebuild --filter @on.auto/server... sqlite3 \
   && find node_modules/.pnpm -path '*/node_modules/sqlite3/build/Release/*' -prune ! -name node_sqlite3.node \
     -exec rm -rf {} +
 ARG AZURE_IDENTITY=false
 RUN case "$AZURE_IDENTITY" in \
-    true) pnpm install --frozen-lockfile --prod --ignore-scripts --filter @beonauto/reasoning ;; \
+    true) pnpm install --frozen-lockfile --prod --ignore-scripts --filter @on.auto/reasoning ;; \
     false) ;; \
     *) echo "AZURE_IDENTITY is true or false, not $AZURE_IDENTITY" >&2 && exit 1 ;; \
   esac

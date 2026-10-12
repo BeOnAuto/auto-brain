@@ -19,15 +19,15 @@ Copy the Agent prompt into a coding agent with terminal access, or use the Manua
 ::: code-group
 
 ```text [Agent]
-Install https://github.com/BeOnAuto/auto-runtime using its setup guide.
+Install https://github.com/BeOnAuto/runtime using its setup guide.
 Ask before installing prerequisites; keep existing files and .env.
 Use pinned versions. Never print secrets or ask for API keys in chat.
 Help configure my model provider, then show how to start the server.
 ```
 
 ```bash [Manual]
-git clone https://github.com/BeOnAuto/auto-runtime.git
-cd auto-runtime
+git clone https://github.com/BeOnAuto/runtime.git
+cd runtime
 pnpm install
 cp .env.example .env
 ```
@@ -48,7 +48,7 @@ Open `.env`, uncomment one provider setting and replace its placeholder with you
 
 Use a key with access to the model you want to run. Auto reads it on the server; you do not need to paste it into the agent's conversation or its MCP configuration. Model calls may incur charges from your provider.
 
-For another provider or an OpenAI-compatible model gateway, see the repository's [model configuration guide](https://github.com/BeOnAuto/auto-runtime/blob/main/docs/engineering/self-host/models.md).
+For another provider or an OpenAI-compatible model gateway, see the repository's [model configuration guide](https://github.com/BeOnAuto/runtime/blob/main/docs/engineering/self-host/models.md).
 
 ## 3. Start the server
 
@@ -162,7 +162,7 @@ A reasoning function can use the tools of an MCP server, such as a search servic
    tools to find recent news about a company and sums it up in three points.
    ```
 
-The key never goes in `auto-runtime.yaml`; the file only names the variable that holds it. `auto-runtime.example.yaml` at the root of the repository shows every other setting, and the repository's [configuration guide](https://github.com/BeOnAuto/auto-runtime/blob/main/docs/engineering/self-host/configuration.md#mcp-servers) lists every field of a server.
+The key never goes in `auto-runtime.yaml`; the file only names the variable that holds it. `auto-runtime.example.yaml` at the root of the repository shows every other setting, and the repository's [configuration guide](https://github.com/BeOnAuto/runtime/blob/main/docs/engineering/self-host/configuration.md#mcp-servers) lists every field of a server.
 
 Your agent can try a tool before a function uses it, to see what it answers. A server that marks its read-only tools needs nothing more for that. For one that marks none, add a `testable` line naming its read-only tools inside its entry in `auto-runtime.yaml`, below `org: local` and indented as that line is, then stop the server with Ctrl+C and start it again with `pnpm dev`. For example, if the server is a Constellation gateway, whose read-only tools are search, introspect, validate and dry_run, the end of the entry reads:
 

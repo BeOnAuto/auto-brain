@@ -3,5 +3,5 @@ import { Context } from 'effect';
 import type { StreamWriter } from './stream-ports.ts';
 
 export class PlaybookWriter extends Context.Service<PlaybookWriter, StreamWriter>()(
-  '@beonauto/operations/PlaybookWriter',
+  '@on.auto/operations/PlaybookWriter',
 ) {}

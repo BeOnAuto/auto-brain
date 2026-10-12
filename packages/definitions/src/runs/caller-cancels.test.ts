@@ -1,4 +1,4 @@
-import { Conflict, NotFound, RunCancelled } from '@beonauto/operations';
+import { Conflict, NotFound, RunCancelled } from '@on.auto/operations';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 

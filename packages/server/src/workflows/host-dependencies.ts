@@ -1,6 +1,6 @@
-import type { AppRuntime } from '@beonauto/api';
-import type { Capability } from '@beonauto/definitions';
-import type { Dispatcher, DispatcherServices } from '@beonauto/operations';
+import type { AppRuntime } from '@on.auto/api';
+import type { Capability } from '@on.auto/definitions';
+import type { Dispatcher, DispatcherServices } from '@on.auto/operations';
 import {
   openWorkflowHost,
   type DatabaseSettings,
@@ -9,7 +9,7 @@ import {
   type ProjectorSettings,
   type WorkflowHost,
   type WorkflowStore,
-} from '@beonauto/workflow-host';
+} from '@on.auto/workflow-host';
 import { Redacted } from 'effect';
 
 import { logWorkflows } from '../logging/logging.ts';

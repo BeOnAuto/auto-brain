@@ -1,4 +1,4 @@
-import { capitalized, counted, listed, plainNumber, type Noun, type PlainLanguage } from '@beonauto/operations';
+import { capitalized, counted, listed, plainNumber, type Noun, type PlainLanguage } from '@on.auto/operations';
 
 import type { DefinitionWords } from '../plain-language/definition-words.ts';
 import { endingsInWords, runsOfWhat } from '../plain-language/reading-words.ts';

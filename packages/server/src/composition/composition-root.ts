@@ -1,5 +1,5 @@
-import { IncidentReporter, type DispatcherServices, type Ledger } from '@beonauto/operations';
-import { ledgerPlaybookRegistry } from '@beonauto/playbooks';
+import { IncidentReporter, type DispatcherServices, type Ledger } from '@on.auto/operations';
+import { ledgerPlaybookRegistry } from '@on.auto/playbooks';
 import { Layer } from 'effect';
 
 import { defaultServerOptions, type ServerOptions } from '../lifecycle/lifecycle.ts';

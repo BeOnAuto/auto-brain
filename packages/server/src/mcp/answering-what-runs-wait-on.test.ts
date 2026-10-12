@@ -1,4 +1,4 @@
-import { textOf, type McpSession } from '@beonauto/api/testing';
+import { textOf, type McpSession } from '@on.auto/api/testing';
 import { Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 

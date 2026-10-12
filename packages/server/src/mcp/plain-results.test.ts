@@ -6,11 +6,11 @@ import {
   withMcpSession,
   type McpSession,
   type ToolResult,
-} from '@beonauto/api/testing';
-import { createApiKey } from '@beonauto/identity';
-import { allPermissions } from '@beonauto/operations';
-import { ModelNotAllowed, ProviderNotConfigured, DefinitionInvalid } from '@beonauto/reasoning';
-import { answers, textResult, type ScriptedReply } from '@beonauto/reasoning/testing';
+} from '@on.auto/api/testing';
+import { createApiKey } from '@on.auto/identity';
+import { allPermissions } from '@on.auto/operations';
+import { ModelNotAllowed, ProviderNotConfigured, DefinitionInvalid } from '@on.auto/reasoning';
+import { answers, textResult, type ScriptedReply } from '@on.auto/reasoning/testing';
 import { Effect, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 

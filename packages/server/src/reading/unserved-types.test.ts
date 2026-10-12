@@ -1,4 +1,4 @@
-import { withMcpSession } from '@beonauto/api/testing';
+import { withMcpSession } from '@on.auto/api/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';

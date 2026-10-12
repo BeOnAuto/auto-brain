@@ -1,5 +1,5 @@
-import { Conflict, InvalidInput, Unavailable } from '@beonauto/operations';
-import type { ViewStall } from '@beonauto/workflow-host';
+import { Conflict, InvalidInput, Unavailable } from '@on.auto/operations';
+import type { ViewStall } from '@on.auto/workflow-host';
 import { Exit, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

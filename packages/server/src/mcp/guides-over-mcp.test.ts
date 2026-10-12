@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
 
-import { withMcpSession, type McpSession } from '@beonauto/api/testing';
-import { createApiKey } from '@beonauto/identity';
+import { withMcpSession, type McpSession } from '@on.auto/api/testing';
+import { createApiKey } from '@on.auto/identity';
 import { Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 

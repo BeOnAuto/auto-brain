@@ -3,7 +3,7 @@ import {
   mostReceivedEvents,
   mostWaitingEventBytes,
   mostWaitingEvents,
-} from '@beonauto/workflow-engine';
+} from '@on.auto/workflow-engine';
 import { describe, expect, it } from 'vitest';
 
 import type { MachineHost } from '../testing/machine-host.ts';

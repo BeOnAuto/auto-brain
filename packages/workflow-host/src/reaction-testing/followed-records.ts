@@ -1,4 +1,4 @@
-import type { Json } from '@beonauto/workflow-engine';
+import type { Json } from '@on.auto/workflow-engine';
 import { Effect } from 'effect';
 
 import type { FollowedRecord } from '../follower/consumers.ts';

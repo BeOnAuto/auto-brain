@@ -1,5 +1,5 @@
-import { streamPrefixOfPlaybook } from '@beonauto/operations';
-import { listenFiltersOf, loadedRunOf, valueAtPointer, type CallKey } from '@beonauto/workflow-engine';
+import { streamPrefixOfPlaybook } from '@on.auto/operations';
+import { listenFiltersOf, loadedRunOf, valueAtPointer, type CallKey } from '@on.auto/workflow-engine';
 import { Effect, Schema } from 'effect';
 
 import { rowsOf, type HostDatabase } from '../database/host-database.ts';

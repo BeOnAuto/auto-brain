@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
-import { serveFakeMcp } from '@beonauto/mcp/testing';
-import { answers, callingTools, textResult } from '@beonauto/reasoning/testing';
+import { serveFakeMcp } from '@on.auto/mcp/testing';
+import { answers, callingTools, textResult } from '@on.auto/reasoning/testing';
 import { Schema } from 'effect';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 

@@ -1,5 +1,5 @@
-import { callDocument } from '@beonauto/interaction/testing';
-import { fakeStdioServerPath, stdioTestTimeoutMs } from '@beonauto/mcp/testing';
+import { callDocument } from '@on.auto/interaction/testing';
+import { fakeStdioServerPath, stdioTestTimeoutMs } from '@on.auto/mcp/testing';
 import { describe, expect, it } from 'vitest';
 
 import { interactionServerOn } from '../testing/servers/interaction-server.ts';

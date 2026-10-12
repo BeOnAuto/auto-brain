@@ -1,9 +1,9 @@
 import { resolve } from 'node:path';
 
-import type { AccessMode } from '@beonauto/identity';
-import type { ServerMessage } from '@beonauto/mcp';
-import type { Incident } from '@beonauto/operations';
-import type { OperatorHintReport, ProviderMessageReport, ProviderStatus } from '@beonauto/reasoning';
+import type { AccessMode } from '@on.auto/identity';
+import type { ServerMessage } from '@on.auto/mcp';
+import type { Incident } from '@on.auto/operations';
+import type { OperatorHintReport, ProviderMessageReport, ProviderStatus } from '@on.auto/reasoning';
 import { Cause, Effect, Logger, type Layer } from 'effect';
 
 import type { ContentSettings } from '../settings/content-settings.ts';

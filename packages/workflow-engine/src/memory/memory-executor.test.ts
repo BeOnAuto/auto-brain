@@ -1,6 +1,6 @@
 import { setImmediate } from 'node:timers/promises';
 
-import type { CallResult } from '@beonauto/operations';
+import type { CallResult } from '@on.auto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

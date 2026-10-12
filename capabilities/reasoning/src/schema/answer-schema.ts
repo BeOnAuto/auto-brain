@@ -4,7 +4,7 @@ import {
   jsonSchemaLimits,
   type CompiledSchema,
   type SchemaIssue as Issue,
-} from '@beonauto/definitions/document';
+} from '@on.auto/definitions/document';
 import { Result } from 'effect';
 
 import { portabilityOf, toolInputPortabilityOf, type PortabilityIssue } from './schema-portability.ts';

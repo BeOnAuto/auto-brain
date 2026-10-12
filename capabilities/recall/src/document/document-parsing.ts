@@ -9,10 +9,10 @@ import {
   type DocumentParts,
   type ReadFrontMatter,
   type SourceLines,
-} from '@beonauto/definitions/document';
-import { oneLanguage } from '@beonauto/workflow-engine';
-import { enclosedBody, jsonBytesOf, mostValueDepth } from '@beonauto/workflow-engine/dsl';
-import type { ViewFilter } from '@beonauto/workflow-host';
+} from '@on.auto/definitions/document';
+import { oneLanguage } from '@on.auto/workflow-engine';
+import { enclosedBody, jsonBytesOf, mostValueDepth } from '@on.auto/workflow-engine/dsl';
+import type { ViewFilter } from '@on.auto/workflow-host';
 import { Result, type Schema } from 'effect';
 
 import { recallBounds } from '../run/recall-bounds.ts';

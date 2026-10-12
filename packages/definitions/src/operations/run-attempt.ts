@@ -1,4 +1,4 @@
-import type { ConflictKind, RejectionBecause, UnavailableKind } from '@beonauto/operations';
+import type { ConflictKind, RejectionBecause, UnavailableKind } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 
 import type { CapabilityAnswer, CapabilityRejection } from '../capability/capability.ts';

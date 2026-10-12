@@ -1,4 +1,4 @@
-import { NotFound } from '@beonauto/operations';
+import { NotFound } from '@on.auto/operations';
 import { Effect } from 'effect';
 
 import { definitionResourceLabel } from '../capability/function-terminology.ts';

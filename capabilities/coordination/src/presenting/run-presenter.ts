@@ -1,11 +1,11 @@
-import type { Presenter } from '@beonauto/operations';
+import type { Presenter } from '@on.auto/operations';
 import {
   RunLogEventSchema,
   type EarlierStep,
   type InputReceipt,
   type RunLogEvent,
   type Step,
-} from '@beonauto/workflow-engine';
+} from '@on.auto/workflow-engine';
 import { Schema } from 'effect';
 
 import { cutAtCodePoint } from './cut-text.ts';

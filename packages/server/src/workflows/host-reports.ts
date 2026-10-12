@@ -1,6 +1,6 @@
-import type { AppRuntime } from '@beonauto/api';
-import type { DispatcherServices } from '@beonauto/operations';
-import type { HostReports } from '@beonauto/workflow-host';
+import type { AppRuntime } from '@on.auto/api';
+import type { DispatcherServices } from '@on.auto/operations';
+import type { HostReports } from '@on.auto/workflow-host';
 
 import { logHostNote } from '../logging/host-notes.ts';
 import { logLostWorkflowConnection, logUnsettled, logWorkflowTrouble } from '../logging/logging.ts';

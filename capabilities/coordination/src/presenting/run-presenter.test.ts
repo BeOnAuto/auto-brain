@@ -1,6 +1,6 @@
-import { internalTermsIn } from '@beonauto/api/testing';
-import { PublicEventSchema, mostPublicEventDataBytes, presentationOf, type RecordedEvent } from '@beonauto/operations';
-import { nothingKept } from '@beonauto/operations/testing';
+import { internalTermsIn } from '@on.auto/api/testing';
+import { PublicEventSchema, mostPublicEventDataBytes, presentationOf, type RecordedEvent } from '@on.auto/operations';
+import { nothingKept } from '@on.auto/operations/testing';
 import {
   RunLogEventSchema,
   callKeyText,
@@ -8,7 +8,7 @@ import {
   type InputReceipt,
   type RunLogEvent,
   type RunOutput,
-} from '@beonauto/workflow-engine';
+} from '@on.auto/workflow-engine';
 import { Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

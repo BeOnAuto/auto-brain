@@ -1,8 +1,8 @@
-import type { CapabilityAnswer, PreparedDefinition, Capability, RunContext } from '@beonauto/definitions';
-import { noLongestRuns, recordingJournal } from '@beonauto/definitions/testing';
-import { allPermissions, type Conflict, type InvalidInput, type Unavailable } from '@beonauto/operations';
-import { programPool, type PoolSettings, type ProgramPool } from '@beonauto/workflow-engine/dsl';
-import type { KeptView } from '@beonauto/workflow-host';
+import type { CapabilityAnswer, PreparedDefinition, Capability, RunContext } from '@on.auto/definitions';
+import { noLongestRuns, recordingJournal } from '@on.auto/definitions/testing';
+import { allPermissions, type Conflict, type InvalidInput, type Unavailable } from '@on.auto/operations';
+import { programPool, type PoolSettings, type ProgramPool } from '@on.auto/workflow-engine/dsl';
+import type { KeptView } from '@on.auto/workflow-host';
 import { Effect, type Exit, type Schema } from 'effect';
 import { afterEach } from 'vitest';
 

@@ -1,4 +1,4 @@
-import { streamPrefixOfPlaybook } from '@beonauto/operations';
+import { streamPrefixOfPlaybook } from '@on.auto/operations';
 
 export interface RunAddress {
   readonly org: string;

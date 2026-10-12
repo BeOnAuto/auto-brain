@@ -1,4 +1,4 @@
-import type { ViewStall } from '@beonauto/workflow-host';
+import type { ViewStall } from '@on.auto/workflow-host';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

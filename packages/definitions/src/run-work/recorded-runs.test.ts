@@ -1,4 +1,4 @@
-import type { StreamWriter } from '@beonauto/operations';
+import type { StreamWriter } from '@on.auto/operations';
 import { Effect, Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 

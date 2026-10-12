@@ -1,5 +1,5 @@
-import type { JsonSchemaDocument } from '@beonauto/operations';
 import type { StandardSchemaWithJSON } from '@modelcontextprotocol/server';
+import type { JsonSchemaDocument } from '@on.auto/operations';
 import { Predicate, Schema } from 'effect';
 
 export type JsonSchema = Record<string, unknown>;
@@ -75,7 +75,7 @@ export function advertisedSchema(jsonSchema: Readonly<JsonSchema>): StandardSche
   return {
     '~standard': {
       version: 1,
-      vendor: 'auto-runtime',
+      vendor: 'on.auto',
       validate: (value) => ({ value }),
       jsonSchema: { input: () => jsonSchema, output: () => jsonSchema },
     },

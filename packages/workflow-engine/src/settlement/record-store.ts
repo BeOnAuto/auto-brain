@@ -1,4 +1,4 @@
-import type { Settlement } from '@beonauto/operations';
+import type { Settlement } from '@on.auto/operations';
 import type { Effect } from 'effect';
 
 import type { DispatchFailed, OutputOrigin, RunContext } from '../dispatch/dispatch-watermark.ts';

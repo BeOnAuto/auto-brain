@@ -1,4 +1,4 @@
-import type { Emitter, Listeners } from '@beonauto/workflow-engine';
+import type { Emitter, Listeners } from '@on.auto/workflow-engine';
 
 import type { HostDatabase } from '../database/host-database.ts';
 import { ledgerEmitter } from '../emissions/ledger-emitter.ts';

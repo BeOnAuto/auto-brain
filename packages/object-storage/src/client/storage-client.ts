@@ -1,6 +1,6 @@
 import { S3Client, type S3ClientConfig } from '@aws-sdk/client-s3';
-import type { ProxySettings } from '@beonauto/outbound';
-import { awsClientSettingsOf } from '@beonauto/outbound/aws';
+import type { ProxySettings } from '@on.auto/outbound';
+import { awsClientSettingsOf } from '@on.auto/outbound/aws';
 
 export interface StorageEndpoint {
   readonly endpoint: string | undefined;

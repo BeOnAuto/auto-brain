@@ -1,4 +1,4 @@
-import { decisionLoop, type Decision, type DecisionLoop, type StreamAppend } from '@beonauto/ledger';
+import { decisionLoop, type Decision, type DecisionLoop, type StreamAppend } from '@on.auto/ledger';
 import { Data, Effect } from 'effect';
 
 import { cachedLoadOf, keptAfter, runCacheOf, type RunCache } from '../cache/run-cache.ts';

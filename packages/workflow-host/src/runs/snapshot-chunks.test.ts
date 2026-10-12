@@ -1,4 +1,4 @@
-import { snapshotOf } from '@beonauto/workflow-engine';
+import { snapshotOf } from '@on.auto/workflow-engine';
 import { Cause, Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

@@ -1,4 +1,4 @@
-import { plainTextIn, problemIn } from '@beonauto/api/testing';
+import { plainTextIn, problemIn } from '@on.auto/api/testing';
 import { Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 

@@ -1,3 +1,4 @@
+import type { SQL } from '@event-driven-io/dumbo';
 import type {
   ContentStore,
   Context,
@@ -9,8 +10,7 @@ import type {
   RunOutcomeGroup,
   RunOutcomeSelection,
   RunOutcomeWindow,
-} from '@beonauto/operations';
-import type { SQL } from '@event-driven-io/dumbo';
+} from '@on.auto/operations';
 import type { Schema } from 'effect';
 
 export interface EncodedEvent {

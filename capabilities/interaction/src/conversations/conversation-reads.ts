@@ -1,5 +1,5 @@
-import { conversationCallIdKey } from '@beonauto/mcp/policy';
-import { randomUUIDv7 } from '@beonauto/operations';
+import { conversationCallIdKey } from '@on.auto/mcp/policy';
+import { randomUUIDv7 } from '@on.auto/operations';
 import { Effect, Result } from 'effect';
 
 import { handledReply, type Reading } from '../replies/reply-handling.ts';

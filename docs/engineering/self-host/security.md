@@ -5,7 +5,7 @@
 Every path needs an API key, sent as `Authorization: Bearer <key>`, except `/health` and [the page the server shows a browser at `/`](#the-page-at-the-root). Each key belongs to one org and carries its permissions and the playbooks it may access. The key command creates one:
 
 ```bash
-docker run --rm --log-driver none beonauto/auto-runtime:latest node packages/identity/src/key-command.ts --org <org>
+docker run --rm --log-driver none beonauto/runtime:latest node packages/identity/src/key-command.ts --org <org>
 ```
 
 Options are `--id`, `--permissions` (comma-separated, from `org:read`, `org:write`, `playbook:read`, `playbook:write`; all four by default) and `--playbooks` (comma-separated playbook ids, or `*` for every playbook, the default). The command prints the key once and the entry to add to `API_KEYS`, or to `api_keys` in the [configuration file](../self-host/configuration.md), where the entry as printed is one item of the list; only the key's SHA-256 is stored, so keep the key itself somewhere safe. Write the variable unquoted, for example `API_KEYS=[{"id":"…",…}]` in an env file. `--log-driver none` keeps the key out of Docker's log driver, which could otherwise store or ship it; the command still prints it to your terminal.

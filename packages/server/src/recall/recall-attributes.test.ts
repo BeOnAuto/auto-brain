@@ -1,4 +1,4 @@
-import { foldOf, recallDocument } from '@beonauto/recall/testing';
+import { foldOf, recallDocument } from '@on.auto/recall/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 

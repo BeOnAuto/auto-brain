@@ -1,11 +1,11 @@
-import { callFieldsShown, keptAnswerOf, keptArgumentsOf } from '@beonauto/mcp';
+import { callFieldsShown, keptAnswerOf, keptArgumentsOf } from '@on.auto/mcp';
 import {
   strictRecordedDecoder,
   type KeptContent,
   type PresentedFact,
   type Presenter,
   type RecordedFact,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 
 import type { DefinitionWords } from '../plain-language/definition-words.ts';
 import {

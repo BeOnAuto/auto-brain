@@ -1,5 +1,5 @@
 import { S3ServiceException, type S3Client } from '@aws-sdk/client-s3';
-import type { ContentStore } from '@beonauto/operations';
+import type { ContentStore } from '@on.auto/operations';
 import { Data, Effect } from 'effect';
 
 import { storageWaits, type StorageWaits } from '../client/storage-client.ts';

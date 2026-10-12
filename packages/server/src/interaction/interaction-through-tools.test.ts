@@ -1,4 +1,4 @@
-import { chatDelivery } from '@beonauto/interaction/testing';
+import { chatDelivery } from '@on.auto/interaction/testing';
 import { describe, expect, it } from 'vitest';
 
 import {

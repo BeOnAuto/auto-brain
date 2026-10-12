@@ -1,4 +1,4 @@
-import { Conflict, NotFound } from '@beonauto/operations';
+import { Conflict, NotFound } from '@on.auto/operations';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 

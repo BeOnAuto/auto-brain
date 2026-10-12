@@ -1,4 +1,4 @@
-import { allPermissions, type CallerIdentity } from '@beonauto/operations';
+import { allPermissions, type CallerIdentity } from '@on.auto/operations';
 
 export const acmeAdmin: CallerIdentity = { id: 'acme-admin', org: 'acme', permissions: allPermissions, playbooks: '*' };
 

@@ -32,8 +32,9 @@ Setup work that couldn't be finished yet, and why.
 
 ## Releases
 
-- [ ] **Set up the image's registries before the next release.** Create the Docker Hub repository `beonauto/auto-runtime` and set the repository variable `DOCKERHUB_REPOSITORY` to it, since the release workflow (`.github/workflows/release.yml`) publishes to Docker Hub under the name that variable holds. Once that release has pushed `ghcr.io/beonauto/auto-runtime` for the first time, make the new package public, as the next item says.
-- [ ] **Make the GHCR package public.** Releases publish `ghcr.io/beonauto/auto-runtime`, but a new package starts private, so anonymous pulls fail. Change it in the package settings on GitHub.
+- [ ] **Rename the repository on GitHub to `BeOnAuto/runtime` right after the merge that renames it here.** The links already name the new address: the CI badge in [README.md](README.md), the edit and source links of the documentation site (`docs/.vitepress/config.mjs`), the advisory form in [SECURITY.md](SECURITY.md) and `.github/ISSUE_TEMPLATE/config.yml`, the CLA document that `.github/workflows/cla.yml` asks a contributor to sign, the raw schema URL in `docs/engineering/self-host/configuration.md` and every clone command, so they lead nowhere until the rename. After it, GitHub redirects the old addresses.
+- [ ] **Set up the image's registries before the next release.** Create the Docker Hub repository `beonauto/runtime` and make the repository variable `DOCKERHUB_REPOSITORY` say `beonauto/runtime`, whatever name it held before, since the release workflow (`.github/workflows/release.yml`) publishes to Docker Hub under the name that variable holds. Once that release has pushed `ghcr.io/beonauto/runtime` for the first time, make the new package public, as the next item says.
+- [ ] **Make the GHCR package public.** Releases publish `ghcr.io/beonauto/runtime`, but a new package starts private, so anonymous pulls fail. Change it in the package settings on GitHub.
 
 ## Local databases
 

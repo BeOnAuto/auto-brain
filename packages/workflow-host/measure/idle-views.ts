@@ -1,6 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { programPool } from '@beonauto/workflow-engine/dsl';
+import { programPool } from '@on.auto/workflow-engine/dsl';
 import { Effect, Function } from 'effect';
 
 import type { DatabaseSettings } from '../src/database/host-databases.ts';

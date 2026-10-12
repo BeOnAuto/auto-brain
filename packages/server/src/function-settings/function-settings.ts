@@ -1,4 +1,4 @@
-import type { Environment, FileUse } from '@beonauto/config';
+import type { Environment, FileUse } from '@on.auto/config';
 import { Effect } from 'effect';
 
 import { readComputationSettings, type ComputationSettings } from './computation-settings.ts';

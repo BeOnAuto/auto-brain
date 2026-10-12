@@ -5,8 +5,8 @@ import {
   tellingStartedOf,
   type DefinitionOfTheTelling,
   type ToolAccess,
-} from '@beonauto/mcp';
-import { conversationCallIdKey } from '@beonauto/mcp/policy';
+} from '@on.auto/mcp';
+import { conversationCallIdKey } from '@on.auto/mcp/policy';
 import {
   playbookCallerOf,
   messageIdOf,
@@ -15,7 +15,7 @@ import {
   type PlaybookAddress,
   type Lineage,
   type StreamWriter,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { DateTime, Effect, type Schema } from 'effect';
 
 export interface Telling {

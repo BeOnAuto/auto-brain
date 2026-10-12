@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 
-import { defineQuery, makeCatalog, makeDispatcher, type Registration } from '@beonauto/operations';
+import { defineQuery, makeCatalog, makeDispatcher, type Registration } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

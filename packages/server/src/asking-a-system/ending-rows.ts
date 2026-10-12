@@ -1,5 +1,5 @@
-import type { CallOptions } from '@beonauto/interaction/testing';
-import { patientTiming } from '@beonauto/mcp/testing';
+import type { CallOptions } from '@on.auto/interaction/testing';
+import { patientTiming } from '@on.auto/mcp/testing';
 import { Schema } from 'effect';
 import { expect } from 'vitest';
 

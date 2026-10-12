@@ -6,7 +6,7 @@ import {
   type ContentRefused,
   type ContentToKeep,
   type StagingEnded,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Effect } from 'effect';
 
 import { heldAt, keysUnder, marked, removed } from './bucket-requests.ts';

@@ -1,8 +1,8 @@
 import { Buffer } from 'node:buffer';
 import { readFileSync } from 'node:fs';
 
-import { mostGuideBytes, mostRecipeBytes } from '@beonauto/api';
-import { defineCapability, type Capability, type CapabilityGuide } from '@beonauto/definitions';
+import { mostGuideBytes, mostRecipeBytes } from '@on.auto/api';
+import { defineCapability, type Capability, type CapabilityGuide } from '@on.auto/definitions';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

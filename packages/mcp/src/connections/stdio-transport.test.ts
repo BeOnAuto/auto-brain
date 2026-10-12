@@ -3,7 +3,7 @@ import { afterAll, afterEach, describe, expect, it } from 'vitest';
 
 import { secretsOf } from '../bounds/secrets.ts';
 import type { StdioServerSettings } from '../settings/mcp-settings.ts';
-import { fakeStdioServerPath, stdioTestTimeoutMs } from '../testing/index.ts';
+import { fakeStdioServerPath, stdioTestTimeoutMs, testClientInfo } from '../testing/index.ts';
 import { errorsNoLongerReported, type CallSettled, type McpConnection } from './mcp-connection.ts';
 import { observations } from './observed-requests.ts';
 import { failureOf } from './server-failures.ts';
@@ -46,6 +46,7 @@ function stdioSettings(args: readonly string[], changes: Partial<StdioServerSett
 function linkTo(settings: StdioServerSettings, openMs = patientMs) {
   const lines: string[] = [];
   const link = serverLink(settings, {
+    client: testClientInfo,
     fetch: globalThis.fetch,
     secrets: secretsOf([Redacted.make('fake MCP server')]),
     now: Date.now,

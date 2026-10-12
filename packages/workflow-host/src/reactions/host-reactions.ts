@@ -1,4 +1,4 @@
-import { streamAppends } from '@beonauto/ledger';
+import { streamAppends } from '@on.auto/ledger';
 
 import { followerOn, type FollowerAssembly } from '../follower/follower-assembly.ts';
 import type { FollowerHost } from '../follower/follower-host.ts';

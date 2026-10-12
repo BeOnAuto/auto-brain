@@ -1,4 +1,4 @@
-import { defineQuery, quoted } from '@beonauto/operations';
+import { defineQuery, quoted } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 import { playbookStanding, purposeOf } from '../plain-language/playbook-words.ts';

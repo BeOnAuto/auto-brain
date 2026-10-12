@@ -1,7 +1,7 @@
 import { setTimeout } from 'node:timers/promises';
 
-import type { SettleRun } from '@beonauto/definitions';
-import { streamSignalOf } from '@beonauto/ledger';
+import type { SettleRun } from '@on.auto/definitions';
+import { streamSignalOf } from '@on.auto/ledger';
 import { Effect, Function } from 'effect';
 
 import { waitingCallsOf } from '../src/calls/call-rows.ts';

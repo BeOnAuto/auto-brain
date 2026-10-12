@@ -1,5 +1,5 @@
-import type { Capability } from '@beonauto/definitions';
-import type { RunStart, WorkflowHost } from '@beonauto/workflow-host';
+import type { Capability } from '@on.auto/definitions';
+import type { RunStart, WorkflowHost } from '@on.auto/workflow-host';
 import { Effect } from 'effect';
 
 import { makeWorkflowAdapter } from '../capability/workflow.ts';

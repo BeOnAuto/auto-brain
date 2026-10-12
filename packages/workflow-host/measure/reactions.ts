@@ -1,6 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { streamSignalOf } from '@beonauto/ledger';
+import { streamSignalOf } from '@on.auto/ledger';
 import { Effect, Function } from 'effect';
 
 import type { DatabaseSettings } from '../src/database/host-databases.ts';

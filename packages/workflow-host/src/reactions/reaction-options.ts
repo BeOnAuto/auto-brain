@@ -1,7 +1,7 @@
-import type { EmitEvent } from '@beonauto/definitions';
-import type { StreamSignal } from '@beonauto/ledger';
-import type { StartingTrigger } from '@beonauto/operations';
-import type { FilterSandbox } from '@beonauto/workflow-engine';
+import type { EmitEvent } from '@on.auto/definitions';
+import type { StreamSignal } from '@on.auto/ledger';
+import type { StartingTrigger } from '@on.auto/operations';
+import type { FilterSandbox } from '@on.auto/workflow-engine';
 import { Data, type Effect, type Schema } from 'effect';
 
 import type { StartRejected } from './start-rejected.ts';

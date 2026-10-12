@@ -1,4 +1,4 @@
-import type { AppendedStreams } from '@beonauto/ledger';
+import type { AppendedStreams } from '@on.auto/ledger';
 import { Effect, Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 

@@ -1,5 +1,5 @@
 {
-  "name": "@beonauto/identity",
+  "name": "@on.auto/identity",
   "version": "0.0.0",
   "private": true,
   "license": "Elastic-2.0",
@@ -14,7 +14,7 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
-    "@beonauto/operations": "workspace:*",
+    "@on.auto/operations": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

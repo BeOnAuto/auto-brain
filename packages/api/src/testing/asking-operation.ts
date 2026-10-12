@@ -1,4 +1,4 @@
-import { NotFound, defineQuery } from '@beonauto/operations';
+import { NotFound, defineQuery } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 
 export interface Asking {

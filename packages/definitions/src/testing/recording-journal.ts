@@ -1,4 +1,4 @@
-import type { CallEnded, CallStarted } from '@beonauto/mcp';
+import type { CallEnded, CallStarted } from '@on.auto/mcp';
 import { Effect } from 'effect';
 
 import type { ToolCallJournal } from '../index.ts';

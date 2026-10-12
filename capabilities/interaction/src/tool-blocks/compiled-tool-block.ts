@@ -1,6 +1,6 @@
-import { issueAt, type DocumentIssue, type SourceLines } from '@beonauto/definitions/document';
-import { isServerName, isToolName, serverNameShape, toolNameShape } from '@beonauto/mcp/policy';
-import { readDuration } from '@beonauto/workflow-engine/dsl';
+import { issueAt, type DocumentIssue, type SourceLines } from '@on.auto/definitions/document';
+import { isServerName, isToolName, serverNameShape, toolNameShape } from '@on.auto/mcp/policy';
+import { readDuration } from '@on.auto/workflow-engine/dsl';
 import { JsonPointer, Result, type Schema } from 'effect';
 
 import { templateIssues, templatesIssues, type TemplatePlace } from './block-templates.ts';

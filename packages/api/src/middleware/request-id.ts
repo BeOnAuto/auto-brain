@@ -1,4 +1,4 @@
-import { randomUUIDv7 } from '@beonauto/operations';
+import { randomUUIDv7 } from '@on.auto/operations';
 import type { MiddlewareHandler } from 'hono';
 
 import type { ApiEnv } from '../api-env.ts';

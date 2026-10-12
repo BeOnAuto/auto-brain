@@ -1,5 +1,5 @@
-import type { AppRuntime } from '@beonauto/api';
-import { eventEmitter, type PlaybookOperation, type PlaybookOwnNames } from '@beonauto/definitions';
+import type { AppRuntime } from '@on.auto/api';
+import { eventEmitter, type PlaybookOperation, type PlaybookOwnNames } from '@on.auto/definitions';
 import {
   playbookCallerOf,
   Ledger,
@@ -7,8 +7,8 @@ import {
   type Dispatcher,
   type DispatcherServices,
   type Outcome,
-} from '@beonauto/operations';
-import { StartRefused, StartRejected, type ReactionOptions, type ReactionStart } from '@beonauto/workflow-host';
+} from '@on.auto/operations';
+import { StartRefused, StartRejected, type ReactionOptions, type ReactionStart } from '@on.auto/workflow-host';
 import { Effect } from 'effect';
 
 import { inRuntime } from './in-runtime.ts';

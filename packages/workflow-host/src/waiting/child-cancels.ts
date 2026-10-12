@@ -1,5 +1,5 @@
-import type { CancelRun } from '@beonauto/definitions';
-import type { CancelReason } from '@beonauto/workflow-engine';
+import type { CancelRun } from '@on.auto/definitions';
+import type { CancelReason } from '@on.auto/workflow-engine';
 
 import type { CancelChild } from '../calls/call-cancels.ts';
 

@@ -5,7 +5,7 @@ import {
   messageIdOf,
   type Lineage,
   type RecordedEvent,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

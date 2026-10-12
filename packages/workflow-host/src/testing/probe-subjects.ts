@@ -4,7 +4,7 @@ import type {
   RunStoreSubject,
   TimerSubject,
   WatermarkSubject,
-} from '@beonauto/workflow-engine/testing';
+} from '@on.auto/workflow-engine/testing';
 import { Effect, Function } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';

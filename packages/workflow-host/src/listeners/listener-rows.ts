@@ -1,4 +1,4 @@
-import { CallKeySchema, type CallKey } from '@beonauto/workflow-engine';
+import { CallKeySchema, type CallKey } from '@on.auto/workflow-engine';
 import { Effect, Schema } from 'effect';
 
 import { rowsOf, WholeNumber, type DatabaseFailed, type HostDatabase } from '../database/host-database.ts';

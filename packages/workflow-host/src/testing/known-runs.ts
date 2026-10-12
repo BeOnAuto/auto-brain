@@ -1,5 +1,5 @@
-import type { Run, SettleRun } from '@beonauto/definitions';
-import { NotFound } from '@beonauto/operations';
+import type { Run, SettleRun } from '@on.auto/definitions';
+import { NotFound } from '@on.auto/operations';
 import { Effect } from 'effect';
 
 const settledRun: Run = {

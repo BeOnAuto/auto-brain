@@ -1,4 +1,4 @@
-import { capitalized, explanationOf, type ExplainedRejection, type PlainLanguage } from '@beonauto/operations';
+import { capitalized, explanationOf, type ExplainedRejection, type PlainLanguage } from '@on.auto/operations';
 
 import type { Capability } from '../capability/capability.ts';
 import type { RunDetail } from '../runs/run.ts';

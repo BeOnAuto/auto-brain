@@ -1,4 +1,4 @@
-import type { RunOutcomeGroup } from '@beonauto/operations';
+import type { RunOutcomeGroup } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 import { daysOf, type AnalyticsWindow } from './analytics-window.ts';

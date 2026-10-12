@@ -1,4 +1,4 @@
-import { Conflict, streamPrefixOfPlaybook, type StreamWriter } from '@beonauto/operations';
+import { Conflict, streamPrefixOfPlaybook, type StreamWriter } from '@on.auto/operations';
 import { Effect, Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 

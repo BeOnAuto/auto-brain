@@ -1,4 +1,4 @@
-import { mostStepsWithoutWaiting } from '@beonauto/workflow-engine';
+import { mostStepsWithoutWaiting } from '@on.auto/workflow-engine';
 import { describe, expect, it } from 'vitest';
 
 import { runId, interpret, outputsAtTimeZero, workflow } from '../testing/workflows.ts';

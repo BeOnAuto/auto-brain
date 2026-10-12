@@ -1,4 +1,4 @@
-import { PlaybookIdSchema, OrgIdSchema } from '@beonauto/operations';
+import { PlaybookIdSchema, OrgIdSchema } from '@on.auto/operations';
 import { JsonPointer, Result, Schema } from 'effect';
 
 import { problem, type SettingProblem } from './json-setting.ts';

@@ -1,4 +1,4 @@
-import { RunOutcomeStatusSchema, type RunOutcomeGroup } from '@beonauto/operations';
+import { RunOutcomeStatusSchema, type RunOutcomeGroup } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 export const groupFields = {

@@ -1,5 +1,5 @@
-import { reportingAccess, serveFakeMcp, type FakeMcpServer } from '@beonauto/mcp/testing';
-import { Conflict, Unavailable } from '@beonauto/operations';
+import { reportingAccess, serveFakeMcp, type FakeMcpServer } from '@on.auto/mcp/testing';
+import { Conflict, Unavailable } from '@on.auto/operations';
 import { Effect, Exit } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 

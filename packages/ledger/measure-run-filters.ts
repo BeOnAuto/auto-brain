@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 
-import type { Ledger } from '@beonauto/operations';
+import type { Ledger } from '@on.auto/operations';
 import { Effect, type Layer } from 'effect';
 import { Client } from 'pg';
 

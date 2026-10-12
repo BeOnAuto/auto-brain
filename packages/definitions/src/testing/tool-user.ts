@@ -1,5 +1,5 @@
-import type { CallEnded, CallStarted } from '@beonauto/mcp';
-import { Conflict, Unavailable } from '@beonauto/operations';
+import type { CallEnded, CallStarted } from '@on.auto/mcp';
+import { Conflict, Unavailable } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 
 import {

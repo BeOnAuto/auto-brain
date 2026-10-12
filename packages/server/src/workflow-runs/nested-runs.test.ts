@@ -1,4 +1,4 @@
-import { answers, textResult } from '@beonauto/reasoning/testing';
+import { answers, textResult } from '@on.auto/reasoning/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { TestResponse } from '../testing/servers/http-client.ts';

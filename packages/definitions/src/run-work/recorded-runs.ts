@@ -4,7 +4,7 @@ import {
   recordedDecoder,
   streamPrefixOfPlaybook,
   type StreamReader,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Effect, Option, Schema } from 'effect';
 
 import { runDecider, runStreamNameOf } from '../runs/run-decider.ts';

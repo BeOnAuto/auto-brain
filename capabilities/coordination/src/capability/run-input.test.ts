@@ -1,6 +1,6 @@
-import { memoryLedger } from '@beonauto/operations/testing';
-import type { Json } from '@beonauto/workflow-engine';
-import { HostElsewhere } from '@beonauto/workflow-host';
+import { memoryLedger } from '@on.auto/operations/testing';
+import type { Json } from '@on.auto/workflow-engine';
+import { HostElsewhere } from '@on.auto/workflow-host';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

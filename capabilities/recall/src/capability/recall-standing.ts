@@ -1,5 +1,5 @@
-import type { Standing } from '@beonauto/definitions';
-import type { KeptView, ViewsPort, ViewStall } from '@beonauto/workflow-host';
+import type { Standing } from '@on.auto/definitions';
+import type { KeptView, ViewsPort, ViewStall } from '@on.auto/workflow-host';
 import { Effect, type Schema } from 'effect';
 
 import { lagOf } from '../run/view-words.ts';

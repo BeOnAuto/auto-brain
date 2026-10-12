@@ -1,4 +1,4 @@
-import type { KeptContent } from '@beonauto/operations';
+import type { KeptContent } from '@on.auto/operations';
 import { describe, expect, it } from 'vitest';
 
 import { callFieldsShown, keptAnswerOf, keptArgumentsOf } from './shown-calls.ts';

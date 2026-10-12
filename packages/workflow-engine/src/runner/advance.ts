@@ -1,4 +1,4 @@
-import type { CallResult } from '@beonauto/operations';
+import type { CallResult } from '@on.auto/operations';
 
 import type { CancelReason } from '../dispatch/run-output.ts';
 

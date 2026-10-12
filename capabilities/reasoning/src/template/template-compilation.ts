@@ -1,4 +1,4 @@
-import { linesOf, parsedTemplate } from '@beonauto/definitions/template';
+import { linesOf, parsedTemplate } from '@on.auto/definitions/template';
 import { Result } from 'effect';
 
 import type { CompiledTemplate, TemplateIssue } from './compiled-template.ts';

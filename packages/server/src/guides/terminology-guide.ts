@@ -1,4 +1,4 @@
-import type { Guide } from '@beonauto/api';
+import type { Guide } from '@on.auto/api';
 
 interface Row {
   readonly term: string;

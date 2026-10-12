@@ -5,8 +5,8 @@ import {
   echo,
   noLongestRuns,
   recordingJournal,
-} from '@beonauto/definitions/testing';
-import { memoryLedger } from '@beonauto/operations/testing';
+} from '@on.auto/definitions/testing';
+import { memoryLedger } from '@on.auto/operations/testing';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

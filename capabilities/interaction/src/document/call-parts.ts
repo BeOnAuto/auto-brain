@@ -1,4 +1,4 @@
-import { issueAt, type DocumentIssue, type DocumentParts, type SourceLines } from '@beonauto/definitions/document';
+import { issueAt, type DocumentIssue, type DocumentParts, type SourceLines } from '@on.auto/definitions/document';
 import { Predicate, Result } from 'effect';
 
 import { compiledCallBlock } from '../tool-blocks/compiled-tool-block.ts';

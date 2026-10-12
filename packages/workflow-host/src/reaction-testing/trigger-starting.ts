@@ -1,4 +1,4 @@
-import type { FilterVerdict, MatchedFilter } from '@beonauto/workflow-engine';
+import type { FilterVerdict, MatchedFilter } from '@on.auto/workflow-engine';
 import { Array, Effect, Function } from 'effect';
 
 import { filterMatchingOf, filterStops, type FilterStops, type MatchFilters } from '../filtering/filter-matching.ts';

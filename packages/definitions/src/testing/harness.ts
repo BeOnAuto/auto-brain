@@ -9,14 +9,14 @@ import {
   type RecordedPageRequest,
   type RecordedSelection,
   type Settled,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import {
   memoryPlaybookRegistry,
   memoryLedger,
   recordingReporter,
   type MemoryLedger,
   type ReportedIncident,
-} from '@beonauto/operations/testing';
+} from '@on.auto/operations/testing';
 import { DateTime, Effect, Layer } from 'effect';
 import { TestClock } from 'effect/testing';
 

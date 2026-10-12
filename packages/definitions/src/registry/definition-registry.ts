@@ -1,4 +1,4 @@
-import type { DefinitionContext } from '@beonauto/operations';
+import type { DefinitionContext } from '@on.auto/operations';
 
 import type { DefinitionCreated, DefinitionUpdated, RecordedDefinitionEvent } from './definition-events.ts';
 import type { StoredDefinition } from './definition.ts';

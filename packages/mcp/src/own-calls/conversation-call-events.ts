@@ -1,4 +1,4 @@
-import { ActedContextSchema, RunContextSchema, factOf, type Decided } from '@beonauto/operations';
+import { ActedContextSchema, RunContextSchema, factOf, type Decided } from '@on.auto/operations';
 import { Schema, Struct } from 'effect';
 
 import { CallAnsweredSchema, CallFailedSchema, CallSentSchema } from '../calls/call-facts.ts';

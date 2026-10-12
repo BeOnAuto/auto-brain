@@ -1,6 +1,6 @@
 import { cpus } from 'node:os';
 
-import { programPool, sandboxAnswers, type CheckJob } from '@beonauto/workflow-engine/dsl';
+import { programPool, sandboxAnswers, type CheckJob } from '@on.auto/workflow-engine/dsl';
 
 import { checkerOf } from '../src/program-check/checking.ts';
 import { keptSandboxLib } from '../src/program-check/kept-lib.ts';

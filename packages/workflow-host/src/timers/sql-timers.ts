@@ -5,7 +5,7 @@ import {
   type OutputOrigin,
   type TimerCancelReceipt,
   type Timers,
-} from '@beonauto/workflow-engine';
+} from '@on.auto/workflow-engine';
 import { Effect, Schema } from 'effect';
 
 import { oneRowOf, rowsOf, WholeNumber, type DatabaseFailed, type HostDatabase } from '../database/host-database.ts';

@@ -6,7 +6,7 @@ import {
   type RecordedPage,
   type RecordedPageRequest,
   type RecordedReader,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Effect, Result } from 'effect';
 
 import type { RecordedStore, StoredPage, StoredPageRequest, StoredRecord } from '../event-store.ts';

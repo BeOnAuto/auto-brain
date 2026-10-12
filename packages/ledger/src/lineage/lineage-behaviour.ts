@@ -1,4 +1,4 @@
-import { cursorWithin, messageIdOf, type Lineage, type RecordedEvent } from '@beonauto/operations';
+import { cursorWithin, messageIdOf, type Lineage, type RecordedEvent } from '@on.auto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

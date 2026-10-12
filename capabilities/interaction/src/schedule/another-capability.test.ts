@@ -1,4 +1,4 @@
-import { defineGetRunHistory, makeDefinitionPresenters } from '@beonauto/definitions';
+import { defineGetRunHistory, makeDefinitionPresenters } from '@on.auto/definitions';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

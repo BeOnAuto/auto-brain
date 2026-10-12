@@ -77,4 +77,4 @@ The website combines both sources in one build, with a shared sidebar and search
 
 Updating the website's source pin publishes approved documentation changes. Release documentation should match the runtime release; documentation-only corrections can update the pin without a new runtime release. Use source links to identify the imported revision and mark upcoming capabilities on the pages that describe them.
 
-The standalone preview is for review, not a separate production documentation website. See the repository's [contribution guidelines](https://github.com/BeOnAuto/auto-runtime/blob/main/CONTRIBUTING.md) and [security reporting policy](https://github.com/BeOnAuto/auto-runtime/blob/main/SECURITY.md).
+The standalone preview is for review, not a separate production documentation website. See the repository's [contribution guidelines](https://github.com/BeOnAuto/runtime/blob/main/CONTRIBUTING.md) and [security reporting policy](https://github.com/BeOnAuto/runtime/blob/main/SECURITY.md).

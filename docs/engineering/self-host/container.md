@@ -2,13 +2,13 @@
 
 The runtime is in early development and is not ready for production use. Review [authentication and security](security.md) before exposing a deployment.
 
-Every release publishes the image to Docker Hub (`beonauto/auto-runtime`) and GitHub Container Registry (`ghcr.io/beonauto/auto-runtime`). A container needs two things: an [API key](security.md#api-keys), because it listens on every interface, and a place for the ledger: a volume on `/data`, where it keeps the ledger in a SQLite file, or a [PostgreSQL database](#the-ledger-in-postgresql).
+Every release publishes the image to Docker Hub (`beonauto/runtime`) and GitHub Container Registry (`ghcr.io/beonauto/runtime`). A container needs two things: an [API key](security.md#api-keys), because it listens on every interface, and a place for the ledger: a volume on `/data`, where it keeps the ledger in a SQLite file, or a [PostgreSQL database](#the-ledger-in-postgresql).
 
 ```bash
-docker run --rm --log-driver none beonauto/auto-runtime:latest node packages/identity/src/key-command.ts --org acme
+docker run --rm --log-driver none beonauto/runtime:latest node packages/identity/src/key-command.ts --org acme
 echo 'API_KEYS=[<the API_KEYS entry it printed>]' > auto-runtime.env
 docker volume create auto-runtime-data
-docker run --rm --publish 8080:8080 --env-file auto-runtime.env --volume auto-runtime-data:/data beonauto/auto-runtime:latest
+docker run --rm --publish 8080:8080 --env-file auto-runtime.env --volume auto-runtime-data:/data beonauto/runtime:latest
 curl --header 'authorization: Bearer <the key it printed>' http://localhost:8080/v1/orgs/acme/playbooks
 ```
 
@@ -19,7 +19,7 @@ The image reads a configuration file only when `CONFIG_FILE` names one. Mount th
 ```bash
 docker run --rm --publish 8080:8080 --env-file auto-runtime.env --volume auto-runtime-data:/data \
   --volume "$PWD/auto-runtime.yaml:/etc/auto-runtime/auto-runtime.yaml:ro" --env CONFIG_FILE=/etc/auto-runtime/auto-runtime.yaml \
-  beonauto/auto-runtime:latest
+  beonauto/runtime:latest
 ```
 
 The secrets the file refers to, such as `GATEWAY_API_KEY`, go in `auto-runtime.env` with the other variables.
@@ -105,7 +105,7 @@ Set `DATABASE_URL` to a PostgreSQL database, and the server keeps the ledger the
 
 ```bash
 echo 'DATABASE_URL=postgresql://auto_runtime:<password>@db.example.com:5432/auto_runtime' >> auto-runtime.env
-docker run --rm --publish 8080:8080 --env-file auto-runtime.env beonauto/auto-runtime:latest
+docker run --rm --publish 8080:8080 --env-file auto-runtime.env beonauto/runtime:latest
 ```
 
 The server creates or migrates the ledger's tables in the database's `public` schema at every start, so its user needs `CREATE` on that schema at every start, not only the first; a user that may only read and write the tables fails to start with `permission denied for schema public`. It logs at start that the ledger is kept in PostgreSQL, naming the database and its host and never the URL. A database it cannot reach stops it at start, naming the host and port. The image needs nothing more for it: the PostgreSQL driver, `pg`, is pure JavaScript. Several servers may share the database: one runs the workflows and the others stand by to take them over; see [Workflow operations](workflows.md). Servers of different versions do not share a database at the same time: stop the servers of the old version before starting those of the new one. A version that keeps a new table in the ledger, such as the outcomes of runs that a playbook's analytics read, fills it from the ledger's history at its first start, before it answers, under the database's migration lock; another server starting meanwhile waits for that lock up to 60 seconds, longer than the longest fill the ledger README records, and stops only if it is still held then; start it again once the first is ready. The [ledger README](../../../packages/ledger/README.md#keyed-projections) records how long the fill takes. The [ledger README](../../../packages/ledger/README.md#postgresql) has the details and what was verified.

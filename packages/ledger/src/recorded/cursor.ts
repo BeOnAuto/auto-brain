@@ -1,4 +1,4 @@
-import { cursorOfParts, partsOfCursor, type CursorPart, type InvalidCursorKind } from '@beonauto/operations';
+import { cursorOfParts, partsOfCursor, type CursorPart, type InvalidCursorKind } from '@on.auto/operations';
 import { Option, Result } from 'effect';
 
 import type { RecordedPoint } from '../event-store.ts';

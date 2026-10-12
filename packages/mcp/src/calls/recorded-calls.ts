@@ -1,4 +1,4 @@
-import type { PlaybookAddress } from '@beonauto/operations';
+import type { PlaybookAddress } from '@on.auto/operations';
 import type { Effect } from 'effect';
 
 import { cutToFailureBound } from '../bounds/call-bounds.ts';

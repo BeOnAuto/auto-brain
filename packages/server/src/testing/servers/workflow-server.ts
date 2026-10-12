@@ -1,8 +1,8 @@
 import { setTimeout } from 'node:timers/promises';
 
-import type { McpSession, ToolResult } from '@beonauto/api/testing';
-import type { ScriptedReply } from '@beonauto/reasoning/testing';
-import type { HostClock } from '@beonauto/workflow-host';
+import type { McpSession, ToolResult } from '@on.auto/api/testing';
+import type { ScriptedReply } from '@on.auto/reasoning/testing';
+import type { HostClock } from '@on.auto/workflow-host';
 import { Option, Schema } from 'effect';
 
 import type { ProgramPoolOf } from '../../composition/served-computation.ts';

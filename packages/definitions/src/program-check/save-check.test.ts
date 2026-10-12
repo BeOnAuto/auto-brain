@@ -1,5 +1,5 @@
-import { InvalidInput, Unavailable } from '@beonauto/operations';
-import { programPool, type CheckOutcome, type CheckJob, type ProgramPool } from '@beonauto/workflow-engine/dsl';
+import { InvalidInput, Unavailable } from '@on.auto/operations';
+import { programPool, type CheckOutcome, type CheckJob, type ProgramPool } from '@on.auto/workflow-engine/dsl';
 import { Effect, Exit } from 'effect';
 import { afterAll, describe, expect, it } from 'vitest';
 

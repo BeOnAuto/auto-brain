@@ -1,7 +1,7 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { RunLogEventSchema, RunInputSchema, type RunLogEvent, type RunInput } from '@beonauto/workflow-engine';
+import { RunLogEventSchema, RunInputSchema, type RunLogEvent, type RunInput } from '@on.auto/workflow-engine';
 import { Schema } from 'effect';
 
 export interface InputLog {

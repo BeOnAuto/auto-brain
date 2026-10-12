@@ -1,6 +1,6 @@
-import { ledgerLayer } from '@beonauto/ledger/sqlite3';
-import { ActedContextSchema, Ledger, factOf, type Decided, type Decider } from '@beonauto/operations';
-import { playbooksStreamOfOrg } from '@beonauto/playbooks';
+import { ledgerLayer } from '@on.auto/ledger/sqlite3';
+import { ActedContextSchema, Ledger, factOf, type Decided, type Decider } from '@on.auto/operations';
+import { playbooksStreamOfOrg } from '@on.auto/playbooks';
 import { Effect, ManagedRuntime, Result, Schema } from 'effect';
 
 const MalformedPlaybook = factOf('playbook_created', Schema.Struct({ playbook: Schema.Number }), ActedContextSchema);

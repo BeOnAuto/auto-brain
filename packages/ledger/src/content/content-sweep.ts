@@ -1,5 +1,5 @@
-import { uuidV7TimeOf } from '@beonauto/operations';
 import { SQL } from '@event-driven-io/dumbo';
+import { uuidV7TimeOf } from '@on.auto/operations';
 import { Clock, Effect, type Scope } from 'effect';
 
 import type { StatementExecutor } from '../event-store.ts';

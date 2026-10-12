@@ -1,6 +1,6 @@
-# @beonauto/playbooks
+# @on.auto/playbooks
 
-The playbook operations of Auto Runtime: create, list, read, update and retire the playbooks of an org, and follow what happened in one playbook. They are defined on the application layer, [`@beonauto/operations`](../operations).
+The playbook operations of Auto Runtime: create, list, read, update and retire the playbooks of an org, and follow what happened in one playbook. They are defined on the application layer, [`@on.auto/operations`](../operations).
 
 ## A playbook
 
@@ -43,7 +43,7 @@ Before a handler runs, the dispatcher rejects with `forbidden` a caller of anoth
 
 ## What happened in a playbook
 
-`defineListPlaybookEvents(presenters)` makes `list_playbook_events`, a playbook query at `GET /events` relative to the playbook, under `playbook:read`. It takes the presenters as a parameter, the way `makeDefinitionOperations` takes capabilities, so this package depends on `@beonauto/operations` alone; the server passes the presenters of every package that owns a stream kind, today `makeDefinitionPresenters` of `@beonauto/definitions`, which presents the definitions, the runs and the events published to the playbook with `publish_event`. At least one presenter must show at least one type of event.
+`defineListPlaybookEvents(presenters)` makes `list_playbook_events`, a playbook query at `GET /events` relative to the playbook, under `playbook:read`. It takes the presenters as a parameter, the way `makeDefinitionOperations` takes capabilities, so this package depends on `@on.auto/operations` alone; the server passes the presenters of every package that owns a stream kind, today `makeDefinitionPresenters` of `@on.auto/definitions`, which presents the definitions, the runs and the events published to the playbook with `publish_event`. At least one presenter must show at least one type of event.
 
 | Input    | What it does                                                                                                                          |
 | -------- | ------------------------------------------------------------------------------------------------------------------------------------- |
@@ -54,7 +54,7 @@ Before a handler runs, the dispatcher rejects with `forbidden` a caller of anoth
 | `type`   | One public type of event, which the published JSON Schema lists; it is translated to the stored types its presenters present under it |
 | `run_id` | The id of a run no other run started: only what that run and the runs it started recorded, the messages whose correlation is that run |
 
-It reads the playbook's whole partition of the ledger (`PlaybookReader.readRecorded({ kind: 'everything' }, page)`), or with `run_id` the messages correlated to that run (`{ kind: 'correlated', correlation }`), and answers `{ events, has_more, next_cursor }`, each event a `PublicEvent`, `{ id, cursor, causation_id, at, type, summary, data }`. A run that another run started belongs to the tree of the run at its top, so its own id answers nothing. `limit` counts the events a page answers with, the step events of a workflow's records included, through `eventsPageOf` of `@beonauto/operations`, so a page may end inside a record. A record of a stream kind no presenter presents, or of a type its presenter hides, is left out, and with `type` only the events presented under that name are kept, though another kind stores a type of the same name. A page looks at `limit` records, or with `type` at up to 1,000, and ends at 4 MiB of stored data. So a page may hold fewer events than `limit`, or none, while `has_more` is true; `next_cursor` is null only when nothing remains. A cursor that does not decode, or that another playbook gave, is `invalid_input` at `/cursor`, and a `type` no presenter shows `invalid_input` at `/type`.
+It reads the playbook's whole partition of the ledger (`PlaybookReader.readRecorded({ kind: 'everything' }, page)`), or with `run_id` the messages correlated to that run (`{ kind: 'correlated', correlation }`), and answers `{ events, has_more, next_cursor }`, each event a `PublicEvent`, `{ id, cursor, causation_id, at, type, summary, data }`. A run that another run started belongs to the tree of the run at its top, so its own id answers nothing. `limit` counts the events a page answers with, the step events of a workflow's records included, through `eventsPageOf` of `@on.auto/operations`, so a page may end inside a record. A record of a stream kind no presenter presents, or of a type its presenter hides, is left out, and with `type` only the events presented under that name are kept, though another kind stores a type of the same name. A page looks at `limit` records, or with `type` at up to 1,000, and ends at 4 MiB of stored data. So a page may hold fewer events than `limit`, or none, while `has_more` is true; `next_cursor` is null only when nothing remains. A cursor that does not decode, or that another playbook gave, is `invalid_input` at `/cursor`, and a `type` no presenter shows `invalid_input` at `/type`.
 
 The feed cannot show the playbook's own creation, update and retirement: they are recorded in the org's `playbooks` stream, outside the playbook's partition, and `get_playbook` reads them. A retired playbook stays readable, since the dispatcher runs every query on it.
 
@@ -70,7 +70,7 @@ There is no read model: each call folds the stream. A pure decider holds the rul
 
 ## The playbook registry port
 
-`ledgerPlaybookRegistry` is a `Layer` that provides the `PlaybookRegistry` port of `@beonauto/operations` from a `Ledger`. It answers the status of a playbook as the org's playbook registry holds it: `active` from its creation, `retired` from its retirement, and `unknown` for an id the org never created. It names the stream with `streamPrefixOfOrg`, the prefix the org-bound ports put before `playbooks`, so it reads the very stream the operations write.
+`ledgerPlaybookRegistry` is a `Layer` that provides the `PlaybookRegistry` port of `@on.auto/operations` from a `Ledger`. It answers the status of a playbook as the org's playbook registry holds it: `active` from its creation, `retired` from its retirement, and `unknown` for an id the org never created. It names the stream with `streamPrefixOfOrg`, the prefix the org-bound ports put before `playbooks`, so it reads the very stream the operations write.
 
 The dispatcher applies the status to every playbook-scoped operation. A retired playbook stays readable: every query runs on it, so what the playbook recorded survives its retirement. Every command on a retired playbook is refused with `conflict`, kind `retired`, and the detail `update_playbook` gives, such as `The playbook gamma is retired and can no longer change`. An unknown playbook is `not_found`.
 

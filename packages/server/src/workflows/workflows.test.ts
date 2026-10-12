@@ -1,6 +1,6 @@
-import { noToolServers } from '@beonauto/mcp/testing';
-import { makeReasoningFunctionAdapter } from '@beonauto/reasoning';
-import { scriptedLanguageModel } from '@beonauto/reasoning/testing';
+import { noToolServers } from '@on.auto/mcp/testing';
+import { makeReasoningFunctionAdapter } from '@on.auto/reasoning';
+import { scriptedLanguageModel } from '@on.auto/reasoning/testing';
 import { describe, expect, it } from 'vitest';
 
 import { longestCallOf } from './workflows.ts';

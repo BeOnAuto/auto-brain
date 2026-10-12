@@ -1,5 +1,5 @@
-import { Conflict } from '@beonauto/operations';
-import type { RunInput, Submission } from '@beonauto/workflow-engine';
+import { Conflict } from '@on.auto/operations';
+import type { RunInput, Submission } from '@on.auto/workflow-engine';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

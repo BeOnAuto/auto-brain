@@ -1,4 +1,4 @@
-import { presentationOf, type Context, type KeptContent, type RecordedEvent } from '@beonauto/operations';
+import { presentationOf, type Context, type KeptContent, type RecordedEvent } from '@on.auto/operations';
 import { describe, expect, it } from 'vitest';
 
 import { makeDefinitionPresenters } from '../index.ts';

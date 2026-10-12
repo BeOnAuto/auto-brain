@@ -1,12 +1,12 @@
-import { playbookOwnNamesOf, type PlaybookOwnNames } from '@beonauto/definitions';
-import { echo } from '@beonauto/definitions/testing';
+import { playbookOwnNamesOf, type PlaybookOwnNames } from '@on.auto/definitions';
+import { echo } from '@on.auto/definitions/testing';
 import {
   reusedSandbox,
   type MachineOptions,
   type MachineSandbox,
   type MachineSettings,
-} from '@beonauto/workflow-engine';
-import { freshInstance, unitMemoryBytes } from '@beonauto/workflow-engine/dsl';
+} from '@on.auto/workflow-engine';
+import { freshInstance, unitMemoryBytes } from '@on.auto/workflow-engine/dsl';
 
 import { workflowFacts } from '../capability/workflow.ts';
 import { workflowPolicyOf, type WorkflowPolicy } from '../document/workflow-functions.ts';

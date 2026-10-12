@@ -1,6 +1,6 @@
-import type { CallResult } from '@beonauto/operations';
-import { callKeyText, type CallKey } from '@beonauto/workflow-engine';
-import type { ExecutorSubject } from '@beonauto/workflow-engine/testing';
+import type { CallResult } from '@on.auto/operations';
+import { callKeyText, type CallKey } from '@on.auto/workflow-engine';
+import type { ExecutorSubject } from '@on.auto/workflow-engine/testing';
 import { Deferred, Effect, Function } from 'effect';
 
 import { hostExecutor, type HostExecutor } from '../calls/host-executor.ts';

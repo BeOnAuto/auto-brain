@@ -1,8 +1,8 @@
-import type { CapabilityAnswer, CapabilityRejection, RunContext } from '@beonauto/definitions';
-import { noLongestRuns, recordingJournal, type RecordingJournal } from '@beonauto/definitions/testing';
-import type { Timing } from '@beonauto/mcp';
-import { reportingAccess, serveFakeMcp, type FakeMcpOptions, type FakeMcpServer } from '@beonauto/mcp/testing';
-import { allPermissions } from '@beonauto/operations';
+import type { CapabilityAnswer, CapabilityRejection, RunContext } from '@on.auto/definitions';
+import { noLongestRuns, recordingJournal, type RecordingJournal } from '@on.auto/definitions/testing';
+import type { Timing } from '@on.auto/mcp';
+import { reportingAccess, serveFakeMcp, type FakeMcpOptions, type FakeMcpServer } from '@on.auto/mcp/testing';
+import { allPermissions } from '@on.auto/operations';
 import { Effect, Function, type Exit, type Schema } from 'effect';
 import { onTestFinished } from 'vitest';
 

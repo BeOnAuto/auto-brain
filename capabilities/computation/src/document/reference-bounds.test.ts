@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 
-import { mostAssignmentsInAFunction } from '@beonauto/definitions/check';
+import { mostAssignmentsInAFunction } from '@on.auto/definitions/check';
 import { describe, expect, it } from 'vitest';
 
 import { computationBounds, mebibytes, mostOutputBytes } from '../run/run-bounds.ts';

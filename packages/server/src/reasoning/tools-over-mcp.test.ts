@@ -1,7 +1,7 @@
-import { listedTools, plainTextIn, withMcpSession, type McpSession } from '@beonauto/api/testing';
-import { fakeStdioServerPath, serveFakeMcp, stdioTestTimeoutMs, type FakeMcpServer } from '@beonauto/mcp/testing';
-import { TimedOut } from '@beonauto/reasoning';
-import { answers, callingTools, textResult, type ScriptedReply } from '@beonauto/reasoning/testing';
+import { listedTools, plainTextIn, withMcpSession, type McpSession } from '@on.auto/api/testing';
+import { fakeStdioServerPath, serveFakeMcp, stdioTestTimeoutMs, type FakeMcpServer } from '@on.auto/mcp/testing';
+import { TimedOut } from '@on.auto/reasoning';
+import { answers, callingTools, textResult, type ScriptedReply } from '@on.auto/reasoning/testing';
 import { Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 

@@ -1,6 +1,6 @@
-import { refusingForbiddenCharacters } from '@beonauto/definitions';
-import type { ParsedTemplate } from '@beonauto/definitions/template';
-import { Conflict, InvalidInput } from '@beonauto/operations';
+import { refusingForbiddenCharacters } from '@on.auto/definitions';
+import type { ParsedTemplate } from '@on.auto/definitions/template';
+import { Conflict, InvalidInput } from '@on.auto/operations';
 import { Effect, JsonPointer, Result, Schema } from 'effect';
 
 import { interactionBounds } from './run-bounds.ts';

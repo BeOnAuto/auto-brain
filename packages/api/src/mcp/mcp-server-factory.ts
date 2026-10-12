@@ -1,3 +1,4 @@
+import type { McpServer } from '@modelcontextprotocol/server';
 import {
   type CallerIdentity,
   type OperationScope,
@@ -5,8 +6,7 @@ import {
   type Registration,
   type RouteRegistration,
   type Dispatcher,
-} from '@beonauto/operations';
-import type { McpServer } from '@modelcontextprotocol/server';
+} from '@on.auto/operations';
 import { Effect, Result } from 'effect';
 
 import {

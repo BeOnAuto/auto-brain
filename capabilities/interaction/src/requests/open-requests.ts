@@ -5,8 +5,8 @@ import {
   type RecordedRunEvent,
   type RecordedRunFact,
   type RunEvent,
-} from '@beonauto/definitions';
-import type { ProjectedMessage, ProjectedRow, KeyedProjection, RunContext } from '@beonauto/operations';
+} from '@on.auto/definitions';
+import type { ProjectedMessage, ProjectedRow, KeyedProjection, RunContext } from '@on.auto/operations';
 import type { Schema } from 'effect';
 
 import { conversationKeyOf } from '../conversations/conversation-keys.ts';

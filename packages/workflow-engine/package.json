@@ -1,5 +1,5 @@
 {
-  "name": "@beonauto/workflow-engine",
+  "name": "@on.auto/workflow-engine",
   "version": "0.0.0",
   "private": true,
   "license": "Elastic-2.0",
@@ -19,9 +19,9 @@
     "measure": "node measure.ts"
   },
   "dependencies": {
-    "@beonauto/ledger": "workspace:*",
-    "@beonauto/operations": "workspace:*",
     "@jitl/quickjs-wasmfile-release-sync": "0.32.0",
+    "@on.auto/ledger": "workspace:*",
+    "@on.auto/operations": "workspace:*",
     "effect": "catalog:",
     "quickjs-emscripten-core": "0.32.0"
   },

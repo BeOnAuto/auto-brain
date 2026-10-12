@@ -1,4 +1,4 @@
-import { randomUUIDv7, type CallSummary, type Failed } from '@beonauto/operations';
+import { randomUUIDv7, type CallSummary, type Failed } from '@on.auto/operations';
 
 import { internalErrorProblem, problemResponse } from './problem.ts';
 

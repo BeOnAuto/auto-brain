@@ -1,7 +1,7 @@
-import { mostResultBytes } from '@beonauto/definitions';
-import { checkedWorker } from '@beonauto/definitions/json-schema';
-import { mostValueDepth, runMemoryBytes, unitMemoryBytes, workerStackBytes } from '@beonauto/workflow-engine/dsl';
-import type { FoldingSettings } from '@beonauto/workflow-host';
+import { mostResultBytes } from '@on.auto/definitions';
+import { checkedWorker } from '@on.auto/definitions/json-schema';
+import { mostValueDepth, runMemoryBytes, unitMemoryBytes, workerStackBytes } from '@on.auto/workflow-engine/dsl';
+import type { FoldingSettings } from '@on.auto/workflow-host';
 
 export const recallBounds = {
   mostFilters: 8,

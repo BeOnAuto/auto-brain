@@ -1,5 +1,5 @@
-import type { Environment, FileUse } from '@beonauto/config';
-import { McpSettingsInvalid, readMcpSettings, type McpSettings } from '@beonauto/mcp';
+import type { Environment, FileUse } from '@on.auto/config';
+import { McpSettingsInvalid, readMcpSettings, type McpSettings } from '@on.auto/mcp';
 import {
   defaultMostInputTokens,
   ModelSettingsInvalid,
@@ -7,7 +7,7 @@ import {
   readModelSettings,
   type ModelSettings,
   type SettingProblem,
-} from '@beonauto/reasoning';
+} from '@on.auto/reasoning';
 import { Effect } from 'effect';
 
 import { countsIn } from './counted-settings.ts';

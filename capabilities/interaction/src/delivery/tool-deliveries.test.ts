@@ -48,7 +48,7 @@ describe('a request delivered through a tool', () => {
         playbook: 'alpha',
         reference: { server: 'chat', tool: 'post_message' },
         input: { channel: '#approvals-ada', text: 'Please review the brief for Spring.' },
-        meta: { 'com.beonauto/run_id': askedRunId, 'com.beonauto/delivery_id': anyText },
+        meta: { 'auto.on/run_id': askedRunId, 'auto.on/delivery_id': anyText },
       },
     ]);
     expect(await deliveryFacts(playbook)).toMatchObject([

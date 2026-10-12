@@ -1,4 +1,4 @@
-import type { Ledger, RunOutcomeMapping, KeyedProjection } from '@beonauto/operations';
+import type { Ledger, RunOutcomeMapping, KeyedProjection } from '@on.auto/operations';
 import { Effect, type Layer } from 'effect';
 import { onTestFinished } from 'vitest';
 

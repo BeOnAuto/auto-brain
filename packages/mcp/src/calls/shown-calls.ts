@@ -1,4 +1,4 @@
-import type { KeptContent } from '@beonauto/operations';
+import type { KeptContent } from '@on.auto/operations';
 import { Option, Schema } from 'effect';
 
 import { cutAsStored } from '../bounds/text-bytes.ts';

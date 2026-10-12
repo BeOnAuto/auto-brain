@@ -1,4 +1,4 @@
-import type { FoldedView, FoldingView, FoldOutcome, FoldRequest } from '@beonauto/workflow-engine/dsl';
+import type { FoldedView, FoldingView, FoldOutcome, FoldRequest } from '@on.auto/workflow-engine/dsl';
 import { Array, Effect, type Schema, type Semaphore } from 'effect';
 
 import { rowsOf, type DatabaseFailed, type HostDatabase } from '../database/host-database.ts';

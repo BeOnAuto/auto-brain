@@ -1,10 +1,4 @@
-import {
-  PlaybookRegistry,
-  defineCommand,
-  defineQuery,
-  makeDispatcher,
-  type CallerIdentity,
-} from '@beonauto/operations';
+import { PlaybookRegistry, defineCommand, defineQuery, makeDispatcher, type CallerIdentity } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

@@ -1,7 +1,7 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { listedTools, toolNamesIn, withMcpSession, type McpSession, type ToolResult } from '@beonauto/api/testing';
-import { answers, jsonResult, type ScriptedReply } from '@beonauto/reasoning/testing';
+import { listedTools, toolNamesIn, withMcpSession, type McpSession, type ToolResult } from '@on.auto/api/testing';
+import { answers, jsonResult, type ScriptedReply } from '@on.auto/reasoning/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 

@@ -1,4 +1,4 @@
-import { makeDefinitionPresenters } from '@beonauto/definitions';
+import { makeDefinitionPresenters } from '@on.auto/definitions';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

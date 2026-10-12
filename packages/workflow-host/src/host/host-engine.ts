@@ -1,4 +1,4 @@
-import type { Conflict } from '@beonauto/operations';
+import type { Conflict } from '@on.auto/operations';
 import {
   runCacheBounds,
   runCacheOf,
@@ -9,7 +9,7 @@ import {
   type RunLogStore,
   type Submission,
   type WorkflowEngine,
-} from '@beonauto/workflow-engine';
+} from '@on.auto/workflow-engine';
 import { Effect } from 'effect';
 
 import { hostExecutor, type ExecutorParts, type HostExecutor, type Perform } from '../calls/host-executor.ts';

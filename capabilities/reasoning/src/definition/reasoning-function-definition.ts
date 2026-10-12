@@ -1,4 +1,4 @@
-import type { ToolReference } from '@beonauto/mcp/policy';
+import type { ToolReference } from '@on.auto/mcp/policy';
 import type { Schema } from 'effect';
 
 import type { GenerationSettings, OutputRequest, ProviderOptions } from '../model/model-request.ts';

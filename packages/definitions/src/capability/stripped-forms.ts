@@ -1,4 +1,4 @@
-import { enclosedBody } from '@beonauto/workflow-engine';
+import { enclosedBody } from '@on.auto/workflow-engine';
 import { Array, Schema } from 'effect';
 
 export const StrippedFormsSchema = Schema.Struct({

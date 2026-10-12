@@ -1,4 +1,4 @@
-import type { InvalidInput, Unavailable } from '@beonauto/operations';
+import type { InvalidInput, Unavailable } from '@on.auto/operations';
 import { Effect, Order, Struct } from 'effect';
 
 import type { Capability, DefinitionSummary } from '../capability/capability.ts';

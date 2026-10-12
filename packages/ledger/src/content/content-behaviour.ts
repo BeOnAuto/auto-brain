@@ -1,4 +1,4 @@
-import { mostContentChunkBytes, sha256Of, textOfContent, textToKeep, type Ledger } from '@beonauto/operations';
+import { mostContentChunkBytes, sha256Of, textOfContent, textToKeep, type Ledger } from '@on.auto/operations';
 import {
   alpha,
   answerOfAbout,
@@ -11,7 +11,7 @@ import {
   recordedContentBehaviour,
   resultOf,
   type ContentEntry,
-} from '@beonauto/operations/testing';
+} from '@on.auto/operations/testing';
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

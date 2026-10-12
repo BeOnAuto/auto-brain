@@ -1,5 +1,5 @@
-import type { Catalog, Dispatcher } from '@beonauto/operations';
 import { McpServer } from '@modelcontextprotocol/server';
+import type { Catalog, Dispatcher } from '@on.auto/operations';
 
 import {
   mostInstructionCharacters,
@@ -44,6 +44,8 @@ export interface Connection {
 
 const noChangesAnnounced = { listChanged: false };
 
+const serverTitle = 'Auto Runtime';
+
 function instructionsOf({ endpoint, serving, shelf }: Connection, served: ServedTools): string {
   return instructionsFor(endpoint, served, serving.definitionTypes, shelf.recipes);
 }
@@ -81,7 +83,7 @@ export function serverOf(
   registerTools: (server: GuideRegistry) => void,
 ): McpServer {
   const server = new McpServer(
-    { ...connection.serving.serverInfo },
+    { ...connection.serving.serverInfo, title: serverTitle },
     {
       capabilities: { tools: noChangesAnnounced, resources: noChangesAnnounced, prompts: noChangesAnnounced },
       instructions: instructionsOf(connection, served),

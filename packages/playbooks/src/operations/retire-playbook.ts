@@ -1,4 +1,4 @@
-import { defineCommand, quoted } from '@beonauto/operations';
+import { defineCommand, quoted } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 import { playbookNamed } from '../plain-language/playbook-words.ts';

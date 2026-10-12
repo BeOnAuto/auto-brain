@@ -1,5 +1,5 @@
 {
-  "name": "@beonauto/mcp",
+  "name": "@on.auto/mcp",
   "version": "0.0.0",
   "private": true,
   "license": "Elastic-2.0",
@@ -15,10 +15,10 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
-    "@beonauto/config": "workspace:*",
-    "@beonauto/operations": "workspace:*",
-    "@beonauto/outbound": "workspace:*",
     "@modelcontextprotocol/client": "2.2.0",
+    "@on.auto/config": "workspace:*",
+    "@on.auto/operations": "workspace:*",
+    "@on.auto/outbound": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

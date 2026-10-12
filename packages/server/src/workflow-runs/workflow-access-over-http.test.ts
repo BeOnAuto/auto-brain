@@ -1,6 +1,6 @@
-import { createApiKey } from '@beonauto/identity';
-import { allPermissions } from '@beonauto/operations';
-import { answers, jsonResult } from '@beonauto/reasoning/testing';
+import { createApiKey } from '@on.auto/identity';
+import { allPermissions } from '@on.auto/operations';
+import { answers, jsonResult } from '@on.auto/reasoning/testing';
 import { Schema } from 'effect';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 

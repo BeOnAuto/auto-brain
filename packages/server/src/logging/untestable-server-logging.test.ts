@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 
-import { serveFakeMcp, type FakeMcpOptions } from '@beonauto/mcp/testing';
+import { serveFakeMcp, type FakeMcpOptions } from '@on.auto/mcp/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';

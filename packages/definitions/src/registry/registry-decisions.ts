@@ -1,4 +1,4 @@
-import { Conflict, plainNumber, type Context, type Rejection } from '@beonauto/operations';
+import { Conflict, plainNumber, type Context, type Rejection } from '@on.auto/operations';
 import { Result } from 'effect';
 
 import { definitionResourceLabel } from '../capability/function-terminology.ts';

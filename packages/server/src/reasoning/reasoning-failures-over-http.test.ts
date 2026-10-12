@@ -7,7 +7,7 @@ import {
   DefinitionInvalid,
   TimedOut,
   type ModelFailure,
-} from '@beonauto/reasoning';
+} from '@on.auto/reasoning';
 import { Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 

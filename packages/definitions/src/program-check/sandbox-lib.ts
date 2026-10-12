@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 
-import { sandboxRemovals } from '@beonauto/workflow-engine/worker';
+import { sandboxRemovals } from '@on.auto/workflow-engine/worker';
 import ts from 'typescript6';
 
 import { instanceSamples } from './instance-samples.ts';

@@ -1,5 +1,5 @@
-import type { DefinitionSummary } from '@beonauto/definitions';
-import { type JsonObject, objectField, textField } from '@beonauto/workflow-engine';
+import type { DefinitionSummary } from '@on.auto/definitions';
+import { type JsonObject, objectField, textField } from '@on.auto/workflow-engine';
 
 import { triggersOfDocument } from './workflow-schedule.ts';
 

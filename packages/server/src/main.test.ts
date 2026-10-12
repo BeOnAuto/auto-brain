@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 
-import { withMcpSession } from '@beonauto/api/testing';
-import { createApiKey } from '@beonauto/identity';
+import { withMcpSession } from '@on.auto/api/testing';
+import { createApiKey } from '@on.auto/identity';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { spawnServer, spawnedServerTestTimeoutMs } from './testing/processes/spawned-server.ts';

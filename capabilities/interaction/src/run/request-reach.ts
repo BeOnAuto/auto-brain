@@ -1,6 +1,6 @@
-import { toolBounds, type ToolAccess, type ToolNotOffered } from '@beonauto/mcp';
-import type { ToolReference } from '@beonauto/mcp/policy';
-import { Unavailable, type PlaybookAddress, type Conflict } from '@beonauto/operations';
+import { toolBounds, type ToolAccess, type ToolNotOffered } from '@on.auto/mcp';
+import type { ToolReference } from '@on.auto/mcp/policy';
+import { Unavailable, type PlaybookAddress, type Conflict } from '@on.auto/operations';
 import { Effect, Result, type Schema } from 'effect';
 
 import { deliveryVariablesOf, renderedArguments, type ArgumentsFailure } from '../tool-blocks/rendered-arguments.ts';

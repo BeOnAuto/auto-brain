@@ -1,5 +1,5 @@
-import { codesOf, isUntrustedCertificate } from '@beonauto/outbound';
 import { INVALID_PARAMS, ProtocolError, SdkError, SdkErrorCode, SdkHttpError } from '@modelcontextprotocol/client';
+import { codesOf, isUntrustedCertificate } from '@on.auto/outbound';
 
 export type FailureKind =
   | 'unreachable'

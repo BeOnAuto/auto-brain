@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 
-import { unreachableDatabase } from '@beonauto/ledger/testing';
+import { unreachableDatabase } from '@on.auto/ledger/testing';
 import { describe, expect, it } from 'vitest';
 
 import { compositionRoot } from '../composition/composition-root.ts';

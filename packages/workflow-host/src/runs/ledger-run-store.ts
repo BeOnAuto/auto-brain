@@ -1,4 +1,4 @@
-import { eventAppenderOf, eventCodecOf } from '@beonauto/ledger';
+import { eventAppenderOf, eventCodecOf } from '@on.auto/ledger';
 import {
   RunLogRecordSchema,
   runLogRecordOf,
@@ -6,7 +6,7 @@ import {
   type RunLogEvent,
   type RunLogRecord,
   type RunLogStore,
-} from '@beonauto/workflow-engine';
+} from '@on.auto/workflow-engine';
 import { Effect } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';

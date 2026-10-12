@@ -1,5 +1,5 @@
 import type { S3Client } from '@aws-sdk/client-s3';
-import type { ContentEntry } from '@beonauto/operations/testing';
+import type { ContentEntry } from '@on.auto/operations/testing';
 import { onTestFinished } from 'vitest';
 
 import type { Bucket } from '../content/bucket-requests.ts';

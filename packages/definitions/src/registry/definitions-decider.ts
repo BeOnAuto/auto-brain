@@ -1,4 +1,4 @@
-import type { Decider } from '@beonauto/operations';
+import type { Decider } from '@on.auto/operations';
 
 import type { DefinitionCommand } from './definition-commands.ts';
 import { DefinitionEventSchema, type RecordedDefinitionEvent } from './definition-events.ts';

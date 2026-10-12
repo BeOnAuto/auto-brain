@@ -1,8 +1,8 @@
 import { once } from 'node:events';
 import { createServer } from 'node:http';
 
-import { Ledger, sha256Of, textToKeep } from '@beonauto/operations';
-import { memoryRecordedContent } from '@beonauto/operations/testing';
+import { Ledger, sha256Of, textToKeep } from '@on.auto/operations';
+import { memoryRecordedContent } from '@on.auto/operations/testing';
 import { Effect, ManagedRuntime, Schema } from 'effect';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 

@@ -1,4 +1,4 @@
-import { PlaybookRegistry, Ledger } from '@beonauto/operations';
+import { PlaybookRegistry, Ledger } from '@on.auto/operations';
 import { Effect, Layer } from 'effect';
 
 import { playbooksStreamOfOrg } from './playbooks-stream.ts';

@@ -1,6 +1,6 @@
-import type { CallResult } from '@beonauto/operations';
-import type { CallKey, Json, RunOutput } from '@beonauto/workflow-engine';
-import type { Dispatched } from '@beonauto/workflow-engine/testing';
+import type { CallResult } from '@on.auto/operations';
+import type { CallKey, Json, RunOutput } from '@on.auto/workflow-engine';
+import type { Dispatched } from '@on.auto/workflow-engine/testing';
 
 import { failureChain, isArgumentsProblem, definitionArgumentsOf } from '../document/definition-arguments.ts';
 import type { Command } from './machine-host.ts';

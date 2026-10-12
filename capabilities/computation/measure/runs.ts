@@ -1,7 +1,7 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { checkedWorker } from '@beonauto/definitions/json-schema';
-import { idleWorkerMs, type ProgramRequest } from '@beonauto/workflow-engine/dsl';
+import { checkedWorker } from '@on.auto/definitions/json-schema';
+import { idleWorkerMs, type ProgramRequest } from '@on.auto/workflow-engine/dsl';
 
 import { formatted, functionOf, inTurn, median, millisecondsOf, poolOfOne, request } from './common.ts';
 

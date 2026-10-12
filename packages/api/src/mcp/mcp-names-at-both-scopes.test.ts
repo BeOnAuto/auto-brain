@@ -1,4 +1,4 @@
-import { PlaybookIdSchema, defineQuery } from '@beonauto/operations';
+import { PlaybookIdSchema, defineQuery } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 

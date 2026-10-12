@@ -1,4 +1,4 @@
-import type { KeptView, ViewsPort } from '@beonauto/workflow-host';
+import type { KeptView, ViewsPort } from '@on.auto/workflow-host';
 import { Effect } from 'effect';
 
 export interface KeptViews {

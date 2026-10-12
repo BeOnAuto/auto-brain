@@ -1,12 +1,12 @@
-import { mcpRoutes, operationRoutes, type AppRuntime, type RegisterRoutes } from '@beonauto/api';
-import type { Capability } from '@beonauto/definitions';
+import { mcpRoutes, operationRoutes, type AppRuntime, type RegisterRoutes } from '@on.auto/api';
+import type { Capability } from '@on.auto/definitions';
 import {
   makeCatalog,
   makeDispatcher,
   type Catalog,
   type Dispatcher,
   type DispatcherServices,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 
 import { servedGuidesOf } from '../guides/served-guides.ts';
 import { logMcpError } from '../logging/logging.ts';

@@ -1,4 +1,4 @@
-import { EventTriggerSchema, TriggerSchema, type Trigger, type TriggerFilter } from '@beonauto/definitions';
+import { EventTriggerSchema, TriggerSchema, type Trigger, type TriggerFilter } from '@on.auto/definitions';
 import { Effect, Schema } from 'effect';
 
 import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';

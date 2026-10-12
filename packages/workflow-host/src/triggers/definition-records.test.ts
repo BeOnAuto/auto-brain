@@ -1,4 +1,4 @@
-import type { Trigger } from '@beonauto/definitions';
+import type { Trigger } from '@on.auto/definitions';
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 

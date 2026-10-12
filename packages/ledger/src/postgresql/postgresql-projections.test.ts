@@ -1,6 +1,6 @@
-import { runTallyRows, topicRows } from '@beonauto/operations/testing';
 import { SQL } from '@event-driven-io/dumbo';
 import { pgFormatter } from '@event-driven-io/dumbo/pg';
+import { runTallyRows, topicRows } from '@on.auto/operations/testing';
 import { Effect, Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 

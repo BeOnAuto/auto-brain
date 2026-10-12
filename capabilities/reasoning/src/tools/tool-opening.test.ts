@@ -1,4 +1,4 @@
-import { reportingAccess, serveFakeMcp, type FakeMcpServer } from '@beonauto/mcp/testing';
+import { reportingAccess, serveFakeMcp, type FakeMcpServer } from '@on.auto/mcp/testing';
 import { Effect, Exit } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -65,7 +65,7 @@ describe('a reasoning function that names tools', () => {
     expect(run.requests()[0]?.tools).not.toHaveProperty('contextWindow');
     expect(run.journal.recorded().map(({ type }) => type)).toEqual(['tool_call_started', 'tool_call_answered']);
     expect(fake.received()).toEqual([
-      { tool: 'search', arguments: { query: 'acme' }, meta: { 'com.beonauto/run_id': runContext.id } },
+      { tool: 'search', arguments: { query: 'acme' }, meta: { 'auto.on/run_id': runContext.id } },
     ]);
     expect(fake.endedSessions()).toBe(1);
   });

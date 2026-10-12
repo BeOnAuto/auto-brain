@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs';
 
-import { sandboxAnswers } from '@beonauto/workflow-engine/dsl';
+import { sandboxAnswers } from '@on.auto/workflow-engine/dsl';
 
 import { keptLibFiles } from './src/program-check/kept-lib.ts';
 import { sandboxLibOf } from './src/program-check/sandbox-lib.ts';

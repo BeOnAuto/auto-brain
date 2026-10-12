@@ -5,8 +5,8 @@ import {
   technicalTextIn,
   withMcpSession,
   type ToolResult,
-} from '@beonauto/api/testing';
-import { anthropicModels, jsonResponse, recordingFetch, vercelGatewayModels } from '@beonauto/reasoning/testing';
+} from '@on.auto/api/testing';
+import { anthropicModels, jsonResponse, recordingFetch, vercelGatewayModels } from '@on.auto/reasoning/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';

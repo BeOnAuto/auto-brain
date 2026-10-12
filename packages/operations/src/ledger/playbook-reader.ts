@@ -7,4 +7,4 @@ import type { PlaybookRecordedReader, PlaybookRunOutcomesReader, StreamReader } 
 export class PlaybookReader extends Context.Service<
   PlaybookReader,
   StreamReader & PlaybookRecordedReader & PlaybookRunOutcomesReader & PlaybookProjectionReader & PlaybookContentReader
->()('@beonauto/operations/PlaybookReader') {}
+>()('@on.auto/operations/PlaybookReader') {}

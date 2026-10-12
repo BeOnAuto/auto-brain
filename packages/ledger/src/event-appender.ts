@@ -1,5 +1,5 @@
-import { checkedContext, recordingOf, type Decided, type Recorded } from '@beonauto/operations';
 import { isExpectedVersionConflictError } from '@event-driven-io/emmett';
+import { checkedContext, recordingOf, type Decided, type Recorded } from '@on.auto/operations';
 import { Effect, type Schema } from 'effect';
 
 import { eventCodecOf } from './event-codec.ts';

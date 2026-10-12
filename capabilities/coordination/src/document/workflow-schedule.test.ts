@@ -1,4 +1,4 @@
-import type { Json } from '@beonauto/workflow-engine';
+import type { Json } from '@on.auto/workflow-engine';
 import { describe, expect, it } from 'vitest';
 
 import { mostTriggerFilters, scheduleRejections, triggersOfDocument } from './workflow-schedule.ts';

@@ -1,4 +1,4 @@
-import type { RunContext } from '@beonauto/definitions';
+import type { RunContext } from '@on.auto/definitions';
 import {
   allTaskEntries,
   field,
@@ -6,8 +6,8 @@ import {
   isObject,
   type Json,
   type JsonObject,
-} from '@beonauto/workflow-engine';
-import { enclosedBody } from '@beonauto/workflow-engine/dsl';
+} from '@on.auto/workflow-engine';
+import { enclosedBody } from '@on.auto/workflow-engine/dsl';
 import { Effect } from 'effect';
 
 import { runDefinitionFunction } from '../document/workflow-functions.ts';

@@ -1,4 +1,4 @@
-import { threadReplies } from '@beonauto/mcp/testing';
+import { threadReplies } from '@on.auto/mcp/testing';
 import { describe, expect, it } from 'vitest';
 
 import { chatKey } from '../testing/servers/chat-deliveries.ts';
@@ -46,7 +46,7 @@ describe('an interaction function that asks a system, over HTTP', { timeout: wor
       {
         tool: 'thread',
         arguments: { channel: 'C0123', ts: '1728379900.000050', limit: 100, inclusive: false },
-        meta: { 'com.beonauto/run_id': systemRunId },
+        meta: { 'auto.on/run_id': systemRunId },
       },
     ]);
   });

@@ -1,12 +1,7 @@
-import { fileSetting, type FileSetting, type RefusedKeys } from '@beonauto/config';
-import { ApiKeysSchema } from '@beonauto/identity';
-import { McpServersSchema } from '@beonauto/mcp';
-import {
-  AllowedModelsSchema,
-  DeclaredModelsSchema,
-  ModelAliasesSchema,
-  ModelGatewaysSchema,
-} from '@beonauto/reasoning';
+import { fileSetting, type FileSetting, type RefusedKeys } from '@on.auto/config';
+import { ApiKeysSchema } from '@on.auto/identity';
+import { McpServersSchema } from '@on.auto/mcp';
+import { AllowedModelsSchema, DeclaredModelsSchema, ModelAliasesSchema, ModelGatewaysSchema } from '@on.auto/reasoning';
 import { Schema } from 'effect';
 
 import { Origin } from '../settings/origin.ts';

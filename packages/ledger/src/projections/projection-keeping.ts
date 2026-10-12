@@ -8,7 +8,7 @@ import {
   type KeyedProjection,
   type ProjectedMessage,
   type ProjectedRow,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 
 import type { StatementExecutor } from '../event-store.ts';
 import {

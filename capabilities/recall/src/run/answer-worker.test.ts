@@ -1,4 +1,4 @@
-import type { ProgramPool, ProgramRequest } from '@beonauto/workflow-engine/dsl';
+import type { ProgramPool, ProgramRequest } from '@on.auto/workflow-engine/dsl';
 import { Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 

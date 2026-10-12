@@ -1,11 +1,11 @@
+import { SQL } from '@event-driven-io/dumbo';
 import {
   streamPrefixOfPlaybook,
   verifiedStream,
   type PlaybookAddress,
   type ContentKept,
   type StreamedContent,
-} from '@beonauto/operations';
-import { SQL } from '@event-driven-io/dumbo';
+} from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 
 import type { StatementExecutor } from '../event-store.ts';

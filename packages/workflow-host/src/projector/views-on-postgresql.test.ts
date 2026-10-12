@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { setTimeout } from 'node:timers/promises';
 
-import { messageIdOf } from '@beonauto/operations';
+import { messageIdOf } from '@on.auto/operations';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 

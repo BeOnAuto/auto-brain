@@ -1,6 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
-import type { ScriptedReply } from '@beonauto/reasoning/testing';
+import type { ScriptedReply } from '@on.auto/reasoning/testing';
 import { Schema } from 'effect';
 
 import type { TestResponse } from './http-client.ts';

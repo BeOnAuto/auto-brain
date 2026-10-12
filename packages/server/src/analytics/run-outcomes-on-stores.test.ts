@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
-import { postgresqlLedgerLayer } from '@beonauto/ledger/postgresql';
-import { ledgerLayer } from '@beonauto/ledger/sqlite3';
+import { postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
+import { ledgerLayer } from '@on.auto/ledger/sqlite3';
 import {
   ContextSchema,
   Ledger,
@@ -9,7 +9,7 @@ import {
   type Decided,
   type Decider,
   type RunOutcomeGroup,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Effect, ManagedRuntime, Redacted, Result, Schema, type Layer } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';

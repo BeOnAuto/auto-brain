@@ -6,12 +6,14 @@ import {
   connectionOver,
   errorsNoLongerReported,
   openingClient,
+  type ClientInfo,
   type McpConnection,
   type OutputReport,
 } from './mcp-connection.ts';
 import { StdioProcessTransport } from './stdio-transport.ts';
 
 export interface StdioOpening {
+  readonly client: ClientInfo;
   readonly timeoutMs: number;
   readonly output: OutputReport;
 }
@@ -23,7 +25,11 @@ function environmentOf({ env }: StdioServerSettings): Readonly<Record<string, st
 }
 
 export async function openStdio(settings: StdioServerSettings, opening: StdioOpening): Promise<McpConnection> {
-  const opened = openingClient(settings.request_id, boundedReport(opening.output, errorsNoLongerReported));
+  const opened = openingClient(
+    opening.client,
+    settings.request_id,
+    boundedReport(opening.output, errorsNoLongerReported),
+  );
   const transport = new StdioProcessTransport(
     { command: settings.command, args: settings.args, env: environmentOf(settings) },
     opened.observations,

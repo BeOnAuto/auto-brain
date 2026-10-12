@@ -1,4 +1,4 @@
-import { listed } from '@beonauto/operations';
+import { listed } from '@on.auto/operations';
 
 import { aliasPatternOf, isWildcardAlias } from '../model/model-alias.ts';
 import type { OfferedModels } from '../model/offered-models.ts';

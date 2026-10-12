@@ -4,7 +4,7 @@ import {
   type DocumentIssue,
   type SchemaIssue,
   type SourceLines,
-} from '@beonauto/definitions/document';
+} from '@on.auto/definitions/document';
 import { Result, type Schema } from 'effect';
 
 import type { OutputRequest } from '../model/model-request.ts';

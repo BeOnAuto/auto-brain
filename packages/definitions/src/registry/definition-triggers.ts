@@ -1,4 +1,4 @@
-import { ContextReference } from '@beonauto/operations';
+import { ContextReference } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 const referenceWords = 'Where the document names it, as a JSON pointer, which no later version renumbers';

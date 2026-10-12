@@ -1,6 +1,6 @@
-import type { DocumentIssue, SourceLines } from '@beonauto/definitions/document';
-import { issueAt } from '@beonauto/definitions/document';
-import type { ParsedTemplate } from '@beonauto/definitions/template';
+import type { DocumentIssue, SourceLines } from '@on.auto/definitions/document';
+import { issueAt } from '@on.auto/definitions/document';
+import type { ParsedTemplate } from '@on.auto/definitions/template';
 import { Result, type Schema } from 'effect';
 
 import type { ReplyRule, WrittenRule } from '../replies/reply-rule.ts';

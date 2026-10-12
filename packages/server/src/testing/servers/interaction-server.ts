@@ -1,4 +1,4 @@
-import { approvalDocument, notificationDocument } from '@beonauto/interaction/testing';
+import { approvalDocument, notificationDocument } from '@on.auto/interaction/testing';
 import { Schema } from 'effect';
 import { onTestFinished } from 'vitest';
 

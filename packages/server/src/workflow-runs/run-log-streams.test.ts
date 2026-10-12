@@ -1,6 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 
-import { answers, textResult } from '@beonauto/reasoning/testing';
+import { answers, textResult } from '@on.auto/reasoning/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 

@@ -1,5 +1,5 @@
-import type { CapabilityAnswer, CapabilityRejection, RunContext } from '@beonauto/definitions';
-import type { Conflict, InvalidInput } from '@beonauto/operations';
+import type { CapabilityAnswer, CapabilityRejection, RunContext } from '@on.auto/definitions';
+import type { Conflict, InvalidInput } from '@on.auto/operations';
 import { Clock, Effect, type Schema } from 'effect';
 
 import type { RequestDocument } from '../document/interaction-document.ts';

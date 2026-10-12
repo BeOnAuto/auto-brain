@@ -1,8 +1,8 @@
-import { workflowFacts } from '@beonauto/coordination';
-import { nudging } from '@beonauto/interaction/testing';
-import { ledgerLayer } from '@beonauto/ledger/sqlite3';
-import { PlaybookRegistry, allPermissions, makeDispatcher, type CallerIdentity } from '@beonauto/operations';
-import { createPlaybook } from '@beonauto/playbooks';
+import { workflowFacts } from '@on.auto/coordination';
+import { nudging } from '@on.auto/interaction/testing';
+import { ledgerLayer } from '@on.auto/ledger/sqlite3';
+import { PlaybookRegistry, allPermissions, makeDispatcher, type CallerIdentity } from '@on.auto/operations';
+import { createPlaybook } from '@on.auto/playbooks';
 import { Effect, Layer, ManagedRuntime } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -27,9 +27,9 @@ describe('the services the playbook operations run on', () => {
     await runtime.dispose();
 
     expect(keys.filter((key) => !key.startsWith('effect/')).toSorted()).toEqual([
-      '@beonauto/operations/IncidentReporter',
-      '@beonauto/operations/Ledger',
-      '@beonauto/operations/PlaybookRegistry',
+      '@on.auto/operations/IncidentReporter',
+      '@on.auto/operations/Ledger',
+      '@on.auto/operations/PlaybookRegistry',
     ]);
   });
 

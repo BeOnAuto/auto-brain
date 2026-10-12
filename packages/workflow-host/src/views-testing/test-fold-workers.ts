@@ -1,12 +1,12 @@
-import { mostValueDepth } from '@beonauto/workflow-engine/dsl';
+import { mostValueDepth } from '@on.auto/workflow-engine/dsl';
 
 export const breaksTheWorker = 'breaks the worker';
 
-const jobLoop = import.meta.resolve('@beonauto/workflow-engine/job-loop');
+const jobLoop = import.meta.resolve('@on.auto/workflow-engine/job-loop');
 
-const answerers = import.meta.resolve('@beonauto/workflow-engine/worker');
+const answerers = import.meta.resolve('@on.auto/workflow-engine/worker');
 
-const schemaChecks = import.meta.resolve('@beonauto/definitions/json-schema');
+const schemaChecks = import.meta.resolve('@on.auto/definitions/json-schema');
 
 interface Folding {
   readonly prelude: readonly string[];

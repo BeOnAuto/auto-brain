@@ -1,5 +1,5 @@
-import type { AppRuntime } from '@beonauto/api';
-import type { DispatcherServices } from '@beonauto/operations';
+import type { AppRuntime } from '@on.auto/api';
+import type { DispatcherServices } from '@on.auto/operations';
 import { Effect, Exit } from 'effect';
 
 export function inRuntime<A, E>(

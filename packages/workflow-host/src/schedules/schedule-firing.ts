@@ -1,4 +1,4 @@
-import { triggerNamed } from '@beonauto/definitions';
+import { triggerNamed } from '@on.auto/definitions';
 import { Effect, Schema } from 'effect';
 
 import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';

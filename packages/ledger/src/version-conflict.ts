@@ -1,4 +1,4 @@
-import { Conflict } from '@beonauto/operations';
+import { Conflict } from '@on.auto/operations';
 import { Data, Effect } from 'effect';
 
 export class VersionConflict extends Data.TaggedError('version_conflict') {}

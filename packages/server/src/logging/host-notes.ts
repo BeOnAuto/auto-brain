@@ -1,4 +1,4 @@
-import type { HostNote } from '@beonauto/workflow-host';
+import type { HostNote } from '@on.auto/workflow-host';
 import { Effect } from 'effect';
 
 type NoteOf<Kind extends HostNote['kind']> = Extract<HostNote, { readonly kind: Kind }>;

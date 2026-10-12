@@ -1,5 +1,5 @@
 import type { S3Client, ServiceOutputTypes } from '@aws-sdk/client-s3';
-import type { ContentStore } from '@beonauto/operations';
+import type { ContentStore } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 import { storageClientOf } from '../client/storage-client.ts';

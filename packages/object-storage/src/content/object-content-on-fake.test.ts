@@ -1,4 +1,4 @@
-import { recordedContentBehaviour } from '@beonauto/operations/testing';
+import { recordedContentBehaviour } from '@on.auto/operations/testing';
 import { describe } from 'vitest';
 
 import { fakeBucket, type FakeBucketOptions } from '../testing/fake-bucket.ts';

@@ -1,5 +1,5 @@
 {
-  "name": "@beonauto/definitions",
+  "name": "@on.auto/definitions",
   "version": "0.0.0",
   "private": true,
   "license": "Elastic-2.0",
@@ -21,9 +21,9 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
-    "@beonauto/mcp": "workspace:*",
-    "@beonauto/operations": "workspace:*",
-    "@beonauto/workflow-engine": "workspace:*",
+    "@on.auto/mcp": "workspace:*",
+    "@on.auto/operations": "workspace:*",
+    "@on.auto/workflow-engine": "workspace:*",
     "effect": "catalog:",
     "liquidjs": "10.29.0",
     "ts-blank-space": "0.9.0",
@@ -31,8 +31,8 @@
     "yaml": "2.9.1"
   },
   "devDependencies": {
-    "@beonauto/ledger": "workspace:*",
-    "@beonauto/playbooks": "workspace:*",
+    "@on.auto/ledger": "workspace:*",
+    "@on.auto/playbooks": "workspace:*",
     "@types/pg": "8.23.1",
     "@vitest/coverage-v8": "catalog:",
     "pg": "8.23.1",

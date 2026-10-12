@@ -6,5 +6,5 @@ export interface PlaybookAddress {
 }
 
 export class PlaybookContext extends Context.Service<PlaybookContext, PlaybookAddress>()(
-  '@beonauto/operations/PlaybookContext',
+  '@on.auto/operations/PlaybookContext',
 ) {}

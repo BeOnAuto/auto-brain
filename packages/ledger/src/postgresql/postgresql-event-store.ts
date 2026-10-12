@@ -1,6 +1,6 @@
-import type { RunOutcomeMapping, KeyedProjection } from '@beonauto/operations';
 import { getPostgreSQLEventStore } from '@event-driven-io/emmett-postgresql';
 import { pgEventStoreDriver } from '@event-driven-io/emmett-postgresql/pg';
+import type { RunOutcomeMapping, KeyedProjection } from '@on.auto/operations';
 import { Pool } from 'pg';
 
 import { emmettEventStore } from '../emmett/emmett-event-store.ts';

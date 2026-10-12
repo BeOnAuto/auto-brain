@@ -1,11 +1,4 @@
-import {
-  PlaybookContext,
-  PlaybookReader,
-  CallLineage,
-  Caller,
-  Conflict,
-  type GivenLineage,
-} from '@beonauto/operations';
+import { PlaybookContext, PlaybookReader, CallLineage, Caller, Conflict, type GivenLineage } from '@on.auto/operations';
 import { Cause, Effect, Option } from 'effect';
 
 import type { Capability, PreparedDefinition, RunContext, RunLineage } from '../capability/capability.ts';

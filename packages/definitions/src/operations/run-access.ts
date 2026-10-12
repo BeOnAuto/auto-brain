@@ -6,7 +6,7 @@ import {
   randomUUIDv7,
   streamPrefixOfPlaybook,
   type Lineage,
-} from '@beonauto/operations';
+} from '@on.auto/operations';
 import { Effect } from 'effect';
 
 import type { RunFinish, RunStart } from '../runs/run-commands.ts';

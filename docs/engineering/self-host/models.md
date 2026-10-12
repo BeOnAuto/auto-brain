@@ -82,7 +82,7 @@ Definitions name the deployment: `azure/gpt-5-production`. To address the resour
 Microsoft Entra ID needs `@azure/identity`, an optional dependency of this package that is not in the default image. Build the image with it:
 
 ```sh
-docker build --build-arg AZURE_IDENTITY=true --file packages/server/Dockerfile --tag auto-runtime:entra .
+docker build --build-arg AZURE_IDENTITY=true --file packages/server/Dockerfile --tag beonauto/runtime:entra .
 ```
 
 `AZURE_IDENTITY=true` adds `@azure/identity`, at the exact version `capabilities/reasoning/package.json` pins, and nothing else: the other optional packages of the server's dependencies, such as the telemetry exporters of the ledger's libraries, stay out. Measured on arm64, the default image is 402 MB and this one 426 MB. Any value but `true` or `false` stops the build. Then give the workload an identity with the role _Cognitive Services OpenAI User_ on the resource (Azure workload identity on AKS, or a managed identity), and leave `AZURE_API_KEY` unset:

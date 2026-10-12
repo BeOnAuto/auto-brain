@@ -1,4 +1,4 @@
-import { counted, listed, plainNumber, quoted, type Noun, type RecordedOrder } from '@beonauto/operations';
+import { counted, listed, plainNumber, quoted, type Noun, type RecordedOrder } from '@on.auto/operations';
 
 import type { RunStatus } from '../reading/run-status.ts';
 import type { DefinitionWords } from './definition-words.ts';

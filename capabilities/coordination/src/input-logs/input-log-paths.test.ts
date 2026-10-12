@@ -1,4 +1,4 @@
-import type { CallResult } from '@beonauto/operations';
+import type { CallResult } from '@on.auto/operations';
 import { describe, expect, it } from 'vitest';
 
 import { inputLogOf, responderOf } from './input-log-paths.ts';

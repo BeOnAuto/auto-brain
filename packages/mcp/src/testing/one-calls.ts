@@ -1,4 +1,4 @@
-import type { RecordedContent } from '@beonauto/operations';
+import type { RecordedContent } from '@on.auto/operations';
 import { Effect } from 'effect';
 import { afterEach } from 'vitest';
 
@@ -60,7 +60,7 @@ export const echoCall: OneCall = {
   playbook: 'alpha',
   reference: { server: 'graph', tool: 'echo' },
   input: { channel: '#approvals', text: 'Please approve' },
-  meta: { 'com.beonauto/run_id': callingRunId, 'com.beonauto/delivery_id': deliveryId },
+  meta: { 'auto.on/run_id': callingRunId, 'auto.on/delivery_id': deliveryId },
 };
 
 export function calledOnce(

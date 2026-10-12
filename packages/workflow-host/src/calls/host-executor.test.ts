@@ -1,7 +1,7 @@
 import { setTimeout } from 'node:timers/promises';
 
-import type { CallResult } from '@beonauto/operations';
-import { callKeyText, type CallKey, type StartCall } from '@beonauto/workflow-engine';
+import type { CallResult } from '@on.auto/operations';
+import { callKeyText, type CallKey, type StartCall } from '@on.auto/workflow-engine';
 import { Deferred, Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

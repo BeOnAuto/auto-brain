@@ -1,4 +1,4 @@
-import type { StreamSignal } from '@beonauto/ledger';
+import type { StreamSignal } from '@on.auto/ledger';
 import { Effect, Fiber } from 'effect';
 
 import type { Trouble } from '../calls/host-executor.ts';

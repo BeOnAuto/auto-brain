@@ -6,7 +6,7 @@ A playbook contains one **brain**, its reusable function collection, and **workf
 
 Your agent builds and directs the work. **Auto Runtime** stores and executes it; [**Auto Studio**](https://studio.on.auto) lets you inspect and manage it.
 
-[![CI](https://github.com/BeOnAuto/auto-runtime/actions/workflows/ci.yml/badge.svg)](https://github.com/BeOnAuto/auto-runtime/actions/workflows/ci.yml)
+[![CI](https://github.com/BeOnAuto/runtime/actions/workflows/ci.yml/badge.svg)](https://github.com/BeOnAuto/runtime/actions/workflows/ci.yml)
 
 ## Get started
 
@@ -18,7 +18,7 @@ _Local runtime with synthetic Accounts Payable data._
 
 ## Contribute and get help
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and checks, and [documentation contributions](docs/contributing/documentation.md) to preview a guide. [Open an issue](https://github.com/BeOnAuto/auto-runtime/issues/new/choose) for bugs and questions; report vulnerabilities through [SECURITY.md](SECURITY.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and checks, and [documentation contributions](docs/contributing/documentation.md) to preview a guide. [Open an issue](https://github.com/BeOnAuto/runtime/issues/new/choose) for bugs and questions; report vulnerabilities through [SECURITY.md](SECURITY.md).
 
 ## License
 

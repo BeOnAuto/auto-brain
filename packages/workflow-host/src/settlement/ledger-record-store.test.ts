@@ -1,5 +1,5 @@
-import type { SettleRun } from '@beonauto/definitions';
-import type { Settlement } from '@beonauto/operations';
+import type { SettleRun } from '@on.auto/definitions';
+import type { Settlement } from '@on.auto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 

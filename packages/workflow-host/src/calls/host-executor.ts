@@ -1,4 +1,4 @@
-import type { CallResult } from '@beonauto/operations';
+import type { CallResult } from '@on.auto/operations';
 import {
   DispatchFailed,
   callKeyText,
@@ -8,7 +8,7 @@ import {
   type RunContext,
   type StartCall,
   type StartReceipt,
-} from '@beonauto/workflow-engine';
+} from '@on.auto/workflow-engine';
 import { Effect, Schedule, Semaphore, type Cause } from 'effect';
 
 import type { DatabaseFailed, HostDatabase } from '../database/host-database.ts';

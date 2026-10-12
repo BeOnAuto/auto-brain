@@ -1,4 +1,4 @@
-import type { StartedFields } from '@beonauto/mcp';
+import type { StartedFields } from '@on.auto/mcp';
 
 import type { DeliveryEnded, DeliveryStarted } from '../facts/run-facts.ts';
 import { attemptInFlightMs } from '../requests/open-requests.ts';

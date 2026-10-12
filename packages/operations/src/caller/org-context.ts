@@ -4,4 +4,4 @@ export interface OrgAddress {
   readonly org: string;
 }
 
-export class OrgContext extends Context.Service<OrgContext, OrgAddress>()('@beonauto/operations/OrgContext') {}
+export class OrgContext extends Context.Service<OrgContext, OrgAddress>()('@on.auto/operations/OrgContext') {}

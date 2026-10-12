@@ -1,5 +1,5 @@
-import { PlaybookIdSchema, CallerIdentitySchema, type CallerIdentity } from '@beonauto/operations';
 import type { AuthInfo } from '@modelcontextprotocol/server';
+import { PlaybookIdSchema, CallerIdentitySchema, type CallerIdentity } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 import { DroppedArgumentSchema, type DroppedArgument } from './dropped-arguments.ts';

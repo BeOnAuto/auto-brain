@@ -1,5 +1,5 @@
-import { CallResultSchema, type CallResult } from '@beonauto/operations';
-import { CallKeySchema, type OutputOrigin, type RunContext, type StartCall } from '@beonauto/workflow-engine';
+import { CallResultSchema, type CallResult } from '@on.auto/operations';
+import { CallKeySchema, type OutputOrigin, type RunContext, type StartCall } from '@on.auto/workflow-engine';
 import { Effect, Schema } from 'effect';
 
 import { oneRowOf, rowsOf, WholeNumber, type DatabaseFailed, type HostDatabase } from '../database/host-database.ts';
