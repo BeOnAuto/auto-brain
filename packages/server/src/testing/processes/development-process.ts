@@ -42,12 +42,12 @@ const mainModule = fileURLToPath(new URL('../../main.ts', import.meta.url));
 const pidLine = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Struct({ pid: Schema.optional(Schema.Number) })));
 
 export function developmentFiles(envFileText = 'HOST=127.0.0.1\nLOCAL_MODE=true\n'): DevelopmentFiles {
-  const directory = mkdtempSync(join(tmpdir(), 'auto-brain-development-'));
+  const directory = mkdtempSync(join(tmpdir(), 'auto-runtime-development-'));
   const files = {
     directory,
     envFile: join(directory, 'dev.env'),
     localEnvFile: join(directory, '.env'),
-    configFile: join(directory, 'auto-brain.yaml'),
+    configFile: join(directory, 'auto-runtime.yaml'),
     sourceDirectory: join(directory, 'src'),
     serverEntry: join(directory, 'src', 'entry.ts'),
     pidsFile: join(directory, 'pids'),

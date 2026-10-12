@@ -74,7 +74,7 @@ function secondEnvironment(): Promise<Readonly<Record<string, string>>> {
 }
 
 function aLedgerFile(): Readonly<Record<string, string>> {
-  const directory = mkdtempSync(join(tmpdir(), 'auto-brain-computation-'));
+  const directory = mkdtempSync(join(tmpdir(), 'auto-runtime-computation-'));
   onTestFinished(() => {
     rmSync(directory, { recursive: true, force: true });
   });

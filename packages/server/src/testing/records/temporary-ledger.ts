@@ -9,7 +9,7 @@ export interface TemporaryLedger {
 }
 
 export function temporaryLedger(): TemporaryLedger {
-  const directory = mkdtempSync(join(tmpdir(), 'auto-brain-server-'));
+  const directory = mkdtempSync(join(tmpdir(), 'auto-runtime-server-'));
   return {
     directory,
     fileName: join(directory, 'ledger.db'),

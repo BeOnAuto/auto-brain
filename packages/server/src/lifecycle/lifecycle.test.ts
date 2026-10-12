@@ -294,7 +294,7 @@ describe('tcpPort', () => {
     expect(tcpPort({ address: '127.0.0.1', family: 'IPv4', port: 4321 })).toBe(4321);
   });
 
-  it.each([null, '/tmp/auto-brain.sock'])('rejects %s because it is not a TCP address', (address) => {
+  it.each([null, '/tmp/auto-runtime.sock'])('rejects %s because it is not a TCP address', (address) => {
     expect(() => tcpPort(address)).toThrow(new TypeError('The server is not listening on a TCP port'));
   });
 });

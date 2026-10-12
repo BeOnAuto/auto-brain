@@ -20,7 +20,7 @@ import {
 
 const example = new URL('../../../../.env.example', import.meta.url);
 
-const exampleConfigFile = fileURLToPath(new URL('../../../../auto-brain.example.yaml', import.meta.url));
+const exampleConfigFile = fileURLToPath(new URL('../../../../auto-runtime.example.yaml', import.meta.url));
 
 const localMode = '"message":"Local mode is on:';
 
@@ -74,7 +74,7 @@ describe('the settings files pnpm dev reads', { timeout: developmentTestTimeoutM
     await expect(accessNoticeWith('LOCAL_MODE=true\n', { environment: { LOCAL_MODE: 'false' } })).resolves.toBe(closed);
   });
 
-  it('documents the model settings in .env.example and auto-brain.example.yaml in a form that reads as written', () => {
+  it('documents the model settings in .env.example and auto-runtime.example.yaml in a form that reads as written', () => {
     const environment = parseEnv(uncommented(readFileSync(example, 'utf8')));
 
     const { models, allowedOrigins, configFile } = readSettings({ ...environment, CONFIG_FILE: exampleConfigFile });
@@ -95,7 +95,7 @@ describe('the settings files pnpm dev reads', { timeout: developmentTestTimeoutM
 });
 
 describe('the configuration file pnpm dev passes', { timeout: developmentTestTimeoutMs }, () => {
-  it('is auto-brain.yaml at the root of the repository, when it is there', async () => {
+  it('is auto-runtime.yaml at the root of the repository, when it is there', async () => {
     const files = developmentFiles();
     writeFileSync(files.configFile, 'model_aliases:\n  house/fast: anthropic/claude-haiku-4-5\n');
     const development = startDevelopment(files);
