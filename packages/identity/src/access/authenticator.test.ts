@@ -18,7 +18,7 @@ const otherHosts = [
   '10.0.0.1',
   '192.168.1.10',
   '128.0.0.1',
-  'auto-brain.example',
+  'auto-runtime.example',
   'localhost.example.com',
   'localhost.evil',
 ];
