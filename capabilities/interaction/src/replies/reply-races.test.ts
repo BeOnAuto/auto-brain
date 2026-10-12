@@ -20,12 +20,21 @@ function answeredMeanwhile(brain: ChatHarness): ConversationLedger {
   };
 }
 
-async function repliedInThread(): Promise<ChatHarness> {
+function cancelledMeanwhile(brain: ChatHarness): ConversationLedger {
+  const ledger = brain.ledger.service;
+  return {
+    ...ledger,
+    readProjectedRows: (name, place, query) =>
+      Effect.tap(ledger.readProjectedRows(name, place, query), () => Effect.promise(() => brain.cancel(runId))),
+  };
+}
+
+async function repliedInThread(text = 'approve'): Promise<ChatHarness> {
   const brain = await chatHarness();
   await brain.askInThread(runId);
   await brain.performDue(Date.now());
   const [thread] = brain.chat.posted().map(({ ts }) => ts);
-  brain.chat.reply({ channel: '#approvals-sales', thread, user: answererId, text: 'approve' });
+  brain.chat.reply({ channel: '#approvals-sales', thread, user: answererId, text });
   return brain;
 }
 
@@ -71,5 +80,19 @@ describe('a reply to a request answered while the conversation was read', () => 
       (await recordsOf(brain.ledger, 'request_answered', 'reply_refused')).map(({ type, data }) => [type, data]),
     ).toEqual([['request_answered', { answer: { choice: 'reject' } }]]);
     expect(await brain.runOf(runId)).toMatchObject({ output: { output: { choice: 'reject' } } });
+  });
+});
+
+describe('a reply refused once a cancel of the run was asked while the conversation was read', () => {
+  it('records nothing and tells nobody', async () => {
+    const brain = await repliedInThread('maybe later');
+
+    const exit = await readOver(brain, cancelledMeanwhile(brain));
+
+    expect(Exit.isSuccess(exit)).toBe(true);
+    expect(await recordsOf(brain.ledger, 'run_cancel_requested', 'reply_refused', 'telling_started')).toMatchObject([
+      { type: 'run_cancel_requested' },
+    ]);
+    expect(brain.chat.posted()).toHaveLength(1);
   });
 });

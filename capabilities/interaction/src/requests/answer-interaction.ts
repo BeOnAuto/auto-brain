@@ -34,8 +34,8 @@ const ClaimedForField = Schema.String.annotate({
 );
 
 const description = [
-  "Answers a request a function's run waits on; the run takes it within the host's sweep, a second by default,",
-  "and an interaction function's run succeeds with it, reaching a workflow that waits for it.",
+  "Answers a request a function's run waits on; the run takes the answer within the host's sweep, a second by default,",
+  "and an interaction function's run succeeds with it.",
   'Use it when the person approves, rejects, revises or otherwise answers a request list_interactions shows, wherever it reached them;',
   'a new run asks again and answers nothing, and send_run_event gives an event to a waiting workflow instead.',
   '`run_id` is the run of the request, and `answer` takes the shape of the request\'s answer_schema, which list_interactions shows, such as {"decision": "approve"}.',

@@ -9,6 +9,7 @@ import {
 import { Ledger } from '@beonauto/operations';
 import { Effect, Layer, Schema } from 'effect';
 
+import { interactionType } from '../capability/interaction-type.ts';
 import { interactionFacts } from '../facts/declared-facts.ts';
 import { askedRunId } from './asked-requests.ts';
 import type { HarnessLedger } from './interaction-harness.ts';
@@ -21,7 +22,7 @@ const address = { org: 'acme', brain: 'alpha', id: askedRunId };
 
 const lineage = { causationId: null, correlationId: askedRunId };
 
-const factsOfTheInteraction = runFactsOf(declaredFactsOf([{ facts: interactionFacts }]));
+const factsOfTheInteraction = runFactsOf(declaredFactsOf([{ type: interactionType, facts: interactionFacts }]));
 
 export const takenReply = { id: '1699.2', sender: 'ada' };
 

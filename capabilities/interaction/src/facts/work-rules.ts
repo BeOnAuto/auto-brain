@@ -77,14 +77,21 @@ const refusedEnough = new Conflict({
   detail: `The run has refused ${replyBounds.refusals} replies, the most it records, so it records no more`,
 });
 
+const refusedWhileCancelling = new Conflict({
+  detail: 'The run is being cancelled, so it records no refused reply and tells the party nothing',
+});
+
 export function replyRule(replyId: string, refusing: boolean): WorkRule {
-  return ({ answer, work }) => {
+  return ({ cancel, answer, work }) => {
     const { refusedReplies } = interactionWorkOf(work);
     if (refusedReplies.includes(replyId) || answer?.reply?.id === replyId) {
       return replySeen;
     }
     if (answer !== null) {
       return answeredAlready;
+    }
+    if (refusing && cancel !== undefined) {
+      return refusedWhileCancelling;
     }
     return refusing && refusedReplies.length >= replyBounds.refusals ? refusedEnough : undefined;
   };

@@ -279,3 +279,17 @@ describe('a request whose run is cancelled', () => {
     });
   });
 });
+
+describe('an answer to a request whose run has a cancel asked', () => {
+  it('is a conflict before the run ends, and the run stays started', async () => {
+    const { brain } = await askedApproval();
+    await brain.cancel(runId);
+
+    expect(await brain.call(answer, { run_id: runId, answer: { choice: 'approve' } })).toMatchObject({
+      status: 'rejected',
+      reason: 'conflict',
+      detail: 'A cancel of the run was asked before it took an answer, so it takes none',
+    });
+    expect(await brain.runOf(runId)).toMatchObject({ output: { status: 'started' } });
+  });
+});

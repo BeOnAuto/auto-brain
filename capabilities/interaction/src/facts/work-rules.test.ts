@@ -130,11 +130,22 @@ describe('the replies a request takes or refuses', () => {
     ]);
   });
 
-  it('take no answer once a cancel is asked, by the rule every answer meets', async () => {
+  it('take no answer once a cancel is asked, by the rule every answer meets, and record no refusal then', async () => {
     const { brain } = await askedThroughChat();
     await brain.cancel(askedRunId);
+    const record = recording(brain);
 
-    expect(await recording(brain)(taking('r-1'), replyRule('r-1', false))).toEqual(Result.fail(cancelledUnanswered));
+    expect([
+      await record(taking('r-1'), replyRule('r-1', false)),
+      await record(refusal('r-2'), replyRule('r-2', true)),
+    ]).toEqual([
+      Result.fail(cancelledUnanswered),
+      Result.fail(
+        new Conflict({
+          detail: 'The run is being cancelled, so it records no refused reply and tells the party nothing',
+        }),
+      ),
+    ]);
   });
 });
 
