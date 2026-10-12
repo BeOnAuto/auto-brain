@@ -31,8 +31,8 @@ const brought = { answer: 'yes', at, reply: takenReply };
 const answeredByThePlaybook = {
   status: 'succeeded',
   output: 'yes',
-  record: { answered_by: 'brain:alpha', answered_at: at, reply: takenReply },
-  by: 'brain:alpha',
+  record: { answered_by: 'playbook:alpha', answered_at: at, reply: takenReply },
+  by: 'playbook:alpha',
 };
 
 describe('the cancel of a request', () => {
@@ -83,7 +83,7 @@ describe('a cancel asked after a reply answered and before its run was settled',
       output: {
         status: 'succeeded',
         output: { choice: 'approve' },
-        record: { answered_by: 'brain:alpha', reply: takenReply },
+        record: { answered_by: 'playbook:alpha', reply: takenReply },
       },
     });
   });

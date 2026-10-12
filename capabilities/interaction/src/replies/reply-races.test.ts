@@ -67,7 +67,7 @@ describe('a reply taken, whose settlement the server stopped before', () => {
       output: {
         status: 'succeeded',
         output: { choice: 'approve' },
-        record: { answered_by: 'brain:alpha', reply: { sender: answererId } },
+        record: { answered_by: 'playbook:alpha', reply: { sender: answererId } },
       },
     });
   });

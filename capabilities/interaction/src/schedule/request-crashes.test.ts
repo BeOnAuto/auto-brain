@@ -16,7 +16,7 @@ const days = 24 * 60 * 60_000;
 
 const anyTime: unknown = expect.any(String);
 
-const answeredByTheReply = { answered_by: 'brain:alpha', reply: takenReply };
+const answeredByTheReply = { answered_by: 'playbook:alpha', reply: takenReply };
 
 describe('an answer a reply brought, whose settlement the server stopped before', () => {
   it('is settled from the reply after a restart, as the playbook, with no attempt made again', async () => {
