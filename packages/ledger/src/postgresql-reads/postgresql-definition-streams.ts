@@ -1,7 +1,7 @@
 import { Schema } from 'effect';
 
 import type { DefinitionStreamsStore } from '../event-store.ts';
-import { definitionTypeOfStream } from './brain-indexes.ts';
+import { definitionTypeOfStream } from './playbook-indexes.ts';
 import { defaultPartition, type Query } from './recorded-parts.ts';
 
 const StreamRows = Schema.Array(Schema.Struct({ stream: Schema.String, version: Schema.FiniteFromString }));

@@ -25,7 +25,7 @@ export function postgresqlRunOutcomesReader(query: Query): RunOutcomesStore['rea
           coalesce(sum(cached_tokens), 0)::float8 AS cached_tokens,
           coalesce(json_agg(duration_ms) FILTER (WHERE duration_ms IS NOT NULL), '[]'::json) AS durations
         FROM ${runOutcomesTable}
-        WHERE brain_key = ${bind(playbookKey)} AND started_day BETWEEN ${bind(from)} AND ${bind(to)}${selected(bind, selection)}
+        WHERE playbook_key = ${bind(playbookKey)} AND started_day BETWEEN ${bind(from)} AND ${bind(to)}${selected(bind, selection)}
         GROUP BY started_day, definition_type, name, status`,
       values,
     );

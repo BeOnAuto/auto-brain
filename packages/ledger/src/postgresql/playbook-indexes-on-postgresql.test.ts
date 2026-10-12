@@ -52,7 +52,7 @@ async function anAppendLeftOpen(database: string): Promise<Client> {
       ARRAY['late-1'], ARRAY[$1::jsonb], ARRAY[$3::jsonb], ARRAY['1'], ARRAY['noted'], ARRAY['E'], $2, 'playbook', 0, 'emt:default')`,
     [
       { json: JSON.stringify({ detail: 'late' }) },
-      'brain/acme/alpha/late',
+      'playbook/acme/alpha/late',
       { at: '2026-10-05T09:00:00.000Z', by: 'tester' },
     ],
   );

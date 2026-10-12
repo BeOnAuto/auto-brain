@@ -68,5 +68,5 @@ export function streamsAndTypes({ records }: RecordedPage): readonly string[] {
 }
 
 export function inAlpha(relative: string): string {
-  return `brain/acme/alpha/${relative}`;
+  return `playbook/acme/alpha/${relative}`;
 }

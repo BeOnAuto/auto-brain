@@ -56,7 +56,7 @@ function aReadByCorrelation(aLedger: LedgerMaker): void {
       await happenWith(ledger, inAlpha(`runs/${root}`), ofRoot, 'root started');
       await happenWith(ledger, inAlpha('notes'), { causationId: null, correlationId: null }, 'elsewhere');
       await happenWith(ledger, inAlpha(`runs/${child}`), ofRoot, 'child started');
-      await happenWith(ledger, 'brain/acme/beta/notes', ofRoot, 'another playbook');
+      await happenWith(ledger, 'playbook/acme/beta/notes', ofRoot, 'another playbook');
       await happenWith(ledger, inAlpha(`runs/${root}`), ofRoot, 'root finished');
 
       const pages = await Promise.all([
@@ -109,11 +109,11 @@ function oneEventByItsId(aLedger: LedgerMaker): void {
       const ledger = await aLedger();
       await happenWith(ledger, inAlpha(`runs/${root}`), { causationId: null, correlationId: root }, 'start');
       await happenWith(ledger, inAlpha(`runs/${root}`), { causationId: null, correlationId: root }, 'finish');
-      await happenWith(ledger, 'brain/acme/beta/notes', { causationId: null, correlationId: null }, 'elsewhere');
+      await happenWith(ledger, 'playbook/acme/beta/notes', { causationId: null, correlationId: null }, 'elsewhere');
       const finished = messageIdOf(inAlpha(`runs/${root}`), 2);
 
       const read = await Promise.all(
-        [finished, messageIdOf('brain/acme/beta/notes', 1), 'no such event'].map((id) =>
+        [finished, messageIdOf('playbook/acme/beta/notes', 1), 'no such event'].map((id) =>
           Effect.runPromise(ledger.readRecordedEvent(alpha, id)),
         ),
       );
@@ -133,7 +133,7 @@ function oneEventByItsId(aLedger: LedgerMaker): void {
     it('gives each record its context and a place across the ledger that grows with each message', async () => {
       const ledger = await aLedger();
       await happenWith(ledger, inAlpha('notes'), { causationId: null, correlationId: null }, 'first');
-      await happenWith(ledger, 'brain/acme/beta/notes', { causationId: null, correlationId: null }, 'elsewhere');
+      await happenWith(ledger, 'playbook/acme/beta/notes', { causationId: null, correlationId: null }, 'elsewhere');
       await happenWith(ledger, inAlpha('notes'), { causationId: null, correlationId: null }, 'second');
 
       const { records } = await reading(ledger, { kind: 'everything' }, { order: 'asc', limit: 10 });

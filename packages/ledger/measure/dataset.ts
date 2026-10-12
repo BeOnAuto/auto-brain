@@ -18,7 +18,7 @@ const largeEvery = 200;
 
 export const longRunId = 'long-running';
 
-export const longRun = `brain/o1/big/run-logs/${longRunId}`;
+export const longRun = `playbook/o1/big/run-logs/${longRunId}`;
 
 const statuses: readonly (readonly [number, number, string])[] = [
   [largeEvery, 13, 'succeeded'],
@@ -45,7 +45,7 @@ export function runIdOf(run: number): string {
 }
 
 export function datasetRunStream(run: number): string {
-  return `brain/o1/big/runs/${runIdOf(run)}`;
+  return `playbook/o1/big/runs/${runIdOf(run)}`;
 }
 
 function metadataOf(context: Readonly<Record<string, unknown>>, correlation: string | undefined): string {
@@ -82,7 +82,7 @@ function finishOf(run: number, at: string): readonly Row[] {
 function inputsOf(t: number, at: string): readonly Row[] {
   return Array.from({ length: t % 10 === 0 ? 20 : 0 }, (_, index) =>
     row(
-      `brain/o1/big/run-logs/${runIdOf(t)}`,
+      `playbook/o1/big/run-logs/${runIdOf(t)}`,
       index + 1,
       { type: 'input_applied', data: { type: 'input_applied', patch: text(2048) }, context: { at, by: 'user-1' } },
       runIdOf(t),
@@ -94,7 +94,7 @@ export function tick(t: number): readonly Row[] {
   const at = timeOf(t);
   const input = { text: text(t % largeEvery === 13 ? 262_144 : 320) };
   const others = Array.from({ length: 7 }, (_, index) =>
-    row(`brain/o2/other-${t % 99}/runs/${t}-${index}`, 1, {
+    row(`playbook/o2/other-${t % 99}/runs/${t}-${index}`, 1, {
       type: 'run_started',
       data: { input: text(512) },
       context: { at, by: 'user-2' },
@@ -111,7 +111,7 @@ export function tick(t: number): readonly Row[] {
       ? [
           {
             ...started,
-            stream: `brain/o1/big/runs/${longRunId}`,
+            stream: `playbook/o1/big/runs/${longRunId}`,
             metadata: metadataOf({ at, by: 'user-1' }, longRunId),
           },
         ]
@@ -136,11 +136,11 @@ const laterContext = '{"at":"2026-06-01T00:00:00.000Z","by":"user-3"}';
 export const othersInSQLite = `WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 1000000)
   INSERT INTO emt_messages (stream_id, stream_position, partition, message_data, message_metadata,
     message_schema_version, message_type, message_id)
-  SELECT 'brain/o3/other-' || (i % 50) || '/runs/' || i, 1, 'emt:default', '{"input":null}', '${laterContext}',
+  SELECT 'playbook/o3/other-' || (i % 50) || '/runs/' || i, 1, 'emt:default', '{"input":null}', '${laterContext}',
     '1', 'run_started', 'later-' || i FROM n`;
 
 export const othersInPostgreSQL = `INSERT INTO emt_messages (stream_id, stream_position, message_data, message_metadata,
     message_schema_version, message_type, message_id, transaction_id)
-  SELECT 'brain/o3/other-' || (i % 50) || '/runs/' || i, 1, jsonb_build_object('json', '{"input":null}'),
+  SELECT 'playbook/o3/other-' || (i % 50) || '/runs/' || i, 1, jsonb_build_object('json', '{"input":null}'),
     '${laterContext}', '1', 'run_started', 'later-' || i, pg_current_xact_id()
   FROM generate_series(1, 1000000) AS i`;

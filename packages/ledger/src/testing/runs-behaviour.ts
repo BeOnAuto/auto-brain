@@ -39,7 +39,7 @@ function theRunsAPageExamines(aLedger: LedgerMaker): void {
         expect([first.records.length, first.hasMore, streamsAndTypes(rest), rest.nextCursor]).toEqual([
           0,
           true,
-          ['brain/acme/alpha/runs/oldest run_started', 'brain/acme/alpha/runs/oldest run_failed'],
+          ['playbook/acme/alpha/runs/oldest run_started', 'playbook/acme/alpha/runs/oldest run_failed'],
           null,
         ]);
       },
@@ -55,7 +55,7 @@ function theStreamsOfOneRun(aLedger: LedgerMaker): void {
       await happen(ledger, inAlpha('run-logs/r1'), noted('input_applied'));
       await happen(ledger, inAlpha('runs/r10'), noted('run_started'));
       await happen(ledger, inAlpha('run-logs/r1x'), noted('input_applied'));
-      await happen(ledger, 'brain/acme/beta/runs/r1', noted('run_started'));
+      await happen(ledger, 'playbook/acme/beta/runs/r1', noted('run_started'));
       await happen(ledger, inAlpha('runs/r1'), noted('run_succeeded'));
 
       const page = await reading(ledger, { kind: 'run', run: 'r1' }, { order: 'asc', limit: 10 });
@@ -65,11 +65,11 @@ function theStreamsOfOneRun(aLedger: LedgerMaker): void {
         { order: 'desc', limit: 10, types: ['run_succeeded'] },
       );
 
-      expect(streamsAndTypes(succeeded)).toEqual(['brain/acme/alpha/runs/r1 run_succeeded']);
+      expect(streamsAndTypes(succeeded)).toEqual(['playbook/acme/alpha/runs/r1 run_succeeded']);
       expect(streamsAndTypes(page)).toEqual([
-        'brain/acme/alpha/runs/r1 run_started',
-        'brain/acme/alpha/run-logs/r1 input_applied',
-        'brain/acme/alpha/runs/r1 run_succeeded',
+        'playbook/acme/alpha/runs/r1 run_started',
+        'playbook/acme/alpha/run-logs/r1 input_applied',
+        'playbook/acme/alpha/runs/r1 run_succeeded',
       ]);
     });
   });
@@ -83,7 +83,7 @@ async function threeRuns(ledger: AnyLedger): Promise<void> {
   await happen(ledger, inAlpha('notes'), noted('noted'));
   await happen(ledger, inAlpha('runs/r1'), noted('run_succeeded', 'r1 done'));
   await happen(ledger, inAlpha('runs/r3'), noted('run_failed', 'r3 done'));
-  await happen(ledger, 'brain/acme/alpha2/runs/r4', noted('run_started', 'r4'));
+  await happen(ledger, 'playbook/acme/alpha2/runs/r4', noted('run_started', 'r4'));
 }
 
 function theRunsOfAPlaybook(aLedger: LedgerMaker): void {

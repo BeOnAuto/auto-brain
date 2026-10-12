@@ -28,7 +28,7 @@ function sqliteRunOutcomesReader(execute: StatementExecutor): RunOutcomesStore['
           coalesce(sum(cached_tokens), 0) AS cached_tokens,
           json_group_array(duration_ms) FILTER (WHERE duration_ms IS NOT NULL) AS durations
         FROM ${table}
-        WHERE brain_key = ${playbookKey} AND started_day BETWEEN ${from} AND ${to}${selected(selection)}
+        WHERE playbook_key = ${playbookKey} AND started_day BETWEEN ${from} AND ${to}${selected(selection)}
         GROUP BY started_day, definition_type, name, status`,
     );
     return Schema.decodeUnknownSync(GroupRows)(rows).map((row) => groupOf(row));

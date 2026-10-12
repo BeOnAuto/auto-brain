@@ -20,7 +20,7 @@ function answering(...answers: readonly (readonly unknown[])[]): { readonly quer
   };
 }
 
-const alpha = 'brain/acme/alpha/';
+const alpha = 'playbook/acme/alpha/';
 
 const at = '2026-10-05T09:00:00.000Z';
 

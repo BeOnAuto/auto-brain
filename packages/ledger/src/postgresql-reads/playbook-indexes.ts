@@ -17,13 +17,13 @@ const playbookKey = SQL.plain(playbookKeyOfStream);
 
 const playbookIndexes: readonly PlaybookIndex[] = [
   {
-    name: 'ledger_messages_by_brain',
-    create: () => SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_brain
+    name: 'ledger_messages_by_playbook',
+    create: () => SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_playbook
       ON emt_messages ((${playbookKey}), transaction_id, global_position)`,
   },
   {
-    name: 'ledger_messages_by_brain_and_time',
-    create: () => SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_brain_and_time
+    name: 'ledger_messages_by_playbook_and_time',
+    create: () => SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_playbook_and_time
       ON emt_messages ((${playbookKey}), created, transaction_id, global_position)`,
   },
   {
@@ -37,8 +37,8 @@ const playbookIndexes: readonly PlaybookIndex[] = [
       ON emt_messages ((${SQL.plain(kindKeyOfStream)}), stream_position, transaction_id, global_position)`,
   },
   {
-    name: 'ledger_messages_by_brain_and_correlation',
-    create: () => SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_brain_and_correlation
+    name: 'ledger_messages_by_playbook_and_correlation',
+    create: () => SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_playbook_and_correlation
       ON emt_messages ((${playbookKey}), ${SQL.plain(correlationOfMessage)}, transaction_id, global_position)`,
   },
   {

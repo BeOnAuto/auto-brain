@@ -3,7 +3,7 @@ import { pgFormatter } from '@event-driven-io/dumbo/pg';
 import { describe, expect, it } from 'vitest';
 
 import type { IndexExecutor } from '../recorded/missing-indexes.ts';
-import { createPostgreSQLPlaybookIndexes } from './brain-indexes.ts';
+import { createPostgreSQLPlaybookIndexes } from './playbook-indexes.ts';
 import { postgresqlRecordedStore, type Query } from './postgresql-recorded.ts';
 
 interface Asked {
@@ -22,7 +22,7 @@ function answering(...answers: readonly (readonly unknown[])[]): { readonly quer
   };
 }
 
-const alpha = 'brain/acme/alpha/';
+const alpha = 'playbook/acme/alpha/';
 
 const at = '2026-10-05T09:00:00.000Z';
 
@@ -260,11 +260,11 @@ describe("the playbook's indexes on PostgreSQL", () => {
     await createPostgreSQLPlaybookIndexes({ execute });
 
     expect(commands).toEqual([
-      "CREATE INDEX IF NOT EXISTS ledger_messages_by_brain ON emt_messages ((substring(stream_id FROM '^(?:[^/]*/){3}')), transaction_id, global_position)",
-      "CREATE INDEX IF NOT EXISTS ledger_messages_by_brain_and_time ON emt_messages ((substring(stream_id FROM '^(?:[^/]*/){3}')), created, transaction_id, global_position)",
+      "CREATE INDEX IF NOT EXISTS ledger_messages_by_playbook ON emt_messages ((substring(stream_id FROM '^(?:[^/]*/){3}')), transaction_id, global_position)",
+      "CREATE INDEX IF NOT EXISTS ledger_messages_by_playbook_and_time ON emt_messages ((substring(stream_id FROM '^(?:[^/]*/){3}')), created, transaction_id, global_position)",
       'CREATE INDEX IF NOT EXISTS ledger_messages_by_stream ON emt_messages (stream_id, transaction_id, global_position)',
       "CREATE INDEX IF NOT EXISTS ledger_first_messages_by_kind ON emt_messages ((substring(stream_id FROM '^(?:[^/]*/){4}')), stream_position, transaction_id, global_position)",
-      "CREATE INDEX IF NOT EXISTS ledger_messages_by_brain_and_correlation ON emt_messages ((substring(stream_id FROM '^(?:[^/]*/){3}')), (message_metadata ->> 'correlationId'), transaction_id, global_position)",
+      "CREATE INDEX IF NOT EXISTS ledger_messages_by_playbook_and_correlation ON emt_messages ((substring(stream_id FROM '^(?:[^/]*/){3}')), (message_metadata ->> 'correlationId'), transaction_id, global_position)",
       "CREATE INDEX IF NOT EXISTS ledger_definition_streams ON emt_streams ((substring(stream_id FROM '^(?:[^/]*/){3}definitions/([^/]+)$'))) WHERE (substring(stream_id FROM '^(?:[^/]*/){3}definitions/([^/]+)$')) IS NOT NULL",
       'CREATE INDEX IF NOT EXISTS ledger_messages_by_id ON emt_messages (message_id)',
       'ANALYZE emt_messages, emt_streams',
@@ -273,11 +273,11 @@ describe("the playbook's indexes on PostgreSQL", () => {
 
   it('are created only when missing, so a start that finds them issues no CREATE and analyses nothing', async () => {
     const all = [
-      'ledger_messages_by_brain',
-      'ledger_messages_by_brain_and_time',
+      'ledger_messages_by_playbook',
+      'ledger_messages_by_playbook_and_time',
       'ledger_messages_by_stream',
       'ledger_first_messages_by_kind',
-      'ledger_messages_by_brain_and_correlation',
+      'ledger_messages_by_playbook_and_correlation',
       'ledger_definition_streams',
       'ledger_messages_by_id',
     ];

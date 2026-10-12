@@ -30,14 +30,14 @@ const NameRows = Schema.Array(Schema.Struct({ name: Schema.String }));
 
 const playbookIndexes: readonly PlaybookIndex[] = [
   {
-    name: 'ledger_messages_by_brain',
+    name: 'ledger_messages_by_playbook',
     create: () =>
-      SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_brain ON emt_messages (${playbookKeyOfStream}, global_position)`,
+      SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_playbook ON emt_messages (${playbookKeyOfStream}, global_position)`,
   },
   {
-    name: 'ledger_messages_by_brain_and_time',
+    name: 'ledger_messages_by_playbook_and_time',
     create: () =>
-      SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_brain_and_time ON emt_messages (${playbookKeyOfStream}, created)`,
+      SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_playbook_and_time ON emt_messages (${playbookKeyOfStream}, created)`,
   },
   {
     name: 'ledger_messages_by_stream',
@@ -50,8 +50,8 @@ const playbookIndexes: readonly PlaybookIndex[] = [
       ON emt_messages (${kindKeyOfStream}, global_position) WHERE stream_position = 1`,
   },
   {
-    name: 'ledger_messages_by_brain_and_correlation',
-    create: () => SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_brain_and_correlation
+    name: 'ledger_messages_by_playbook_and_correlation',
+    create: () => SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_playbook_and_correlation
       ON emt_messages (${playbookKeyOfStream}, ${correlationOfMessage}, global_position)`,
   },
   {

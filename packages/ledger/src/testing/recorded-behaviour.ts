@@ -27,7 +27,14 @@ function thePlaybookOfARead(aLedger: LedgerMaker): void {
   describe('the playbook a read of what was recorded names', () => {
     it('is matched exactly, whatever its case, an underscore in it, or a playbook whose id it begins', async () => {
       const ledger = await aLedger();
-      const streams = ['brain/o/b/s', 'brain/o/B/s', 'brain/o/b2/s', 'brain/o/a_c/s', 'brain/o/abc/s', 'brain/o/b'];
+      const streams = [
+        'playbook/o/b/s',
+        'playbook/o/B/s',
+        'playbook/o/b2/s',
+        'playbook/o/a_c/s',
+        'playbook/o/abc/s',
+        'playbook/o/b',
+      ];
       await Promise.all(streams.map((stream) => happen(ledger, stream, noted('noted', stream))));
 
       const read = (playbook: string) =>
@@ -35,11 +42,11 @@ function thePlaybookOfARead(aLedger: LedgerMaker): void {
       const pages = await Promise.all(['b', 'B', 'b2', 'a_c', 'abc', 'missing'].map((playbook) => read(playbook)));
 
       expect(pages.map((page) => details(page))).toEqual([
-        ['brain/o/b/s'],
-        ['brain/o/B/s'],
-        ['brain/o/b2/s'],
-        ['brain/o/a_c/s'],
-        ['brain/o/abc/s'],
+        ['playbook/o/b/s'],
+        ['playbook/o/B/s'],
+        ['playbook/o/b2/s'],
+        ['playbook/o/a_c/s'],
+        ['playbook/o/abc/s'],
         [],
       ]);
     });
@@ -221,7 +228,7 @@ function cursorsOfARead(aLedger: LedgerMaker): void {
 
     it('is refused when it cannot be read, or another playbook gave it', async () => {
       const ledger = await aLedger();
-      await happen(ledger, 'brain/acme/beta/notes', noted('noted', 1));
+      await happen(ledger, 'playbook/acme/beta/notes', noted('noted', 1));
       const beta = await reading(ledger, everything, { order: 'asc', limit: 1 }, { org: 'acme', playbook: 'beta' });
       const cursors = [...beta.records.map(({ cursor }) => cursor), 'not a cursor', 'WyJicmFpbi9hY21lL2FscGhhLyJd'];
 

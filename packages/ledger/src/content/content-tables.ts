@@ -10,21 +10,21 @@ const contentTables: readonly PlaybookIndex[] = [
   {
     name: 'recorded_content_chunks',
     create: () => SQL`CREATE TABLE IF NOT EXISTS recorded_content_chunks (
-      brain_key TEXT NOT NULL,
+      playbook_key TEXT NOT NULL,
       sha256 TEXT NOT NULL,
       chunk INTEGER NOT NULL,
       text TEXT NOT NULL,
-      PRIMARY KEY (brain_key, sha256, chunk)
+      PRIMARY KEY (playbook_key, sha256, chunk)
     )`,
   },
   {
     name: 'recorded_content_heads',
     create: () => SQL`CREATE TABLE IF NOT EXISTS recorded_content_heads (
-      brain_key TEXT NOT NULL,
+      playbook_key TEXT NOT NULL,
       sha256 TEXT NOT NULL,
       bytes BIGINT NOT NULL,
       chunks INTEGER NOT NULL,
-      PRIMARY KEY (brain_key, sha256)
+      PRIMARY KEY (playbook_key, sha256)
     )`,
   },
 ];
@@ -39,7 +39,7 @@ const ChunkRows = Schema.Array(Schema.Struct({ text: Schema.String }));
 
 async function headOf(execute: StatementExecutor, playbookKey: string, sha256: string) {
   const { rows } = await execute.query(
-    SQL`SELECT chunks FROM recorded_content_heads WHERE brain_key = ${playbookKey} AND sha256 = ${sha256}`,
+    SQL`SELECT chunks FROM recorded_content_heads WHERE playbook_key = ${playbookKey} AND sha256 = ${sha256}`,
   );
   return Schema.decodeUnknownSync(HeadRows)(rows).at(0);
 }
@@ -51,13 +51,13 @@ async function kept(execute: StatementExecutor, playbookKey: string, sha256: str
   const chunks = chunksOf(text);
   await inTurn([...chunks.entries()], ([chunk, part]: readonly [number, string]) =>
     execute.command(
-      SQL`INSERT INTO recorded_content_chunks (brain_key, sha256, chunk, text)
+      SQL`INSERT INTO recorded_content_chunks (playbook_key, sha256, chunk, text)
         VALUES (${playbookKey}, ${sha256}, ${chunk}, ${part})
         ON CONFLICT DO NOTHING`,
     ),
   );
   await execute.command(
-    SQL`INSERT INTO recorded_content_heads (brain_key, sha256, bytes, chunks)
+    SQL`INSERT INTO recorded_content_heads (playbook_key, sha256, bytes, chunks)
       VALUES (${playbookKey}, ${sha256}, ${bytesOfText(text)}, ${chunks.length})
       ON CONFLICT DO NOTHING`,
   );
@@ -69,7 +69,7 @@ async function read(execute: StatementExecutor, playbookKey: string, sha256: str
     return undefined;
   }
   const { rows } = await execute.query(
-    SQL`SELECT text FROM recorded_content_chunks WHERE brain_key = ${playbookKey} AND sha256 = ${sha256} ORDER BY chunk`,
+    SQL`SELECT text FROM recorded_content_chunks WHERE playbook_key = ${playbookKey} AND sha256 = ${sha256} ORDER BY chunk`,
   );
   const text = Schema.decodeUnknownSync(ChunkRows)(rows)
     .map(({ text: chunk }) => chunk)

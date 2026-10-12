@@ -60,9 +60,9 @@ function thePlaceOfEachRecord(entry: LedgerEntry): void {
     it('names the stream, the position and the global position the table holds for its message', async () => {
       const database = await entry.aDatabase();
       const ledger = await aLedger(entry, database);
-      await Effect.runPromise(ledger.execute('brain/acme/alpha/notes', notes, [{ a: 1 }, { b: 2 }]));
-      await Effect.runPromise(ledger.execute('brain/acme/beta/notes', notes, [{ c: 3 }]));
-      await Effect.runPromise(ledger.execute('brain/acme/alpha/runs/r1', notes, [{ d: 4 }]));
+      await Effect.runPromise(ledger.execute('playbook/acme/alpha/notes', notes, [{ a: 1 }, { b: 2 }]));
+      await Effect.runPromise(ledger.execute('playbook/acme/beta/notes', notes, [{ c: 3 }]));
+      await Effect.runPromise(ledger.execute('playbook/acme/alpha/runs/r1', notes, [{ d: 4 }]));
       await entry.untilReadable(database);
 
       const { records } = await Effect.runPromise(
@@ -71,7 +71,7 @@ function thePlaceOfEachRecord(entry: LedgerEntry): void {
       const columns = Schema.decodeUnknownSync(PlaceRows)(
         await entry.queried(
           database,
-          "SELECT stream_id AS stream, CAST(stream_position AS INTEGER) AS position, CAST(global_position AS INTEGER) AS global_position FROM emt_messages WHERE stream_id LIKE 'brain/acme/alpha/%' ORDER BY global_position",
+          "SELECT stream_id AS stream, CAST(stream_position AS INTEGER) AS position, CAST(global_position AS INTEGER) AS global_position FROM emt_messages WHERE stream_id LIKE 'playbook/acme/alpha/%' ORDER BY global_position",
         ),
       );
 
@@ -91,7 +91,7 @@ function thePlansOfTheReads(entry: LedgerEntry): void {
     it('walk the index of first messages by kind for the runs of one definition, and the index on the message id for one event', async () => {
       const database = await entry.aDatabase();
       await aLedger(entry, database);
-      const playbookKey = 'brain/acme/alpha/';
+      const playbookKey = 'playbook/acme/alpha/';
 
       const ofOneDefinition = await entry.planOf(database, (store) =>
         store.readRecorded(

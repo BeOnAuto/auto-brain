@@ -30,7 +30,7 @@ describe('a ledger on PostgreSQL that cannot be reached', () => {
     onTestFinished(() => store.close());
 
     await expect(
-      store.readRecorded('brain/acme/alpha/', { kind: 'everything' }, { order: 'asc', limit: 1 }),
+      store.readRecorded('playbook/acme/alpha/', { kind: 'everything' }, { order: 'asc', limit: 1 }),
     ).rejects.toThrow(`ECONNREFUSED 127.0.0.1:${port}`);
     expect(lost).toEqual([]);
   });

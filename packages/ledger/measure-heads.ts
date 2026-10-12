@@ -11,7 +11,7 @@ type Querying = Readonly<Pick<Client, 'query'>>;
 
 const postgresqlServer = process.env['LEDGER_MEASURE_POSTGRESQL_URL'] ?? '';
 
-const playbookKey = 'brain/o1/big/';
+const playbookKey = 'playbook/o1/big/';
 
 const records = 20;
 

@@ -27,7 +27,7 @@ function theVersionOfARecord(aLedger: LedgerMaker): void {
         playbook.records.map(({ stream, version }) => `${stream} ${version}`),
         runs.records.map(({ type, version }) => `${type} ${version}`),
       ]).toEqual([
-        ['notes 1', 'notes 2', 'runs/r1 1', 'notes 3', 'runs/r1 2'].map((head) => `brain/acme/alpha/${head}`),
+        ['notes 1', 'notes 2', 'runs/r1 1', 'notes 3', 'runs/r1 2'].map((head) => `playbook/acme/alpha/${head}`),
         ['run_started 1', 'run_succeeded 2'],
       ]);
     });
