@@ -91,7 +91,7 @@ const TypedArraySchema = TypedWireSchema.pipe(
 const ProcessValueSchema: Schema.Codec<ProcessValue, unknown> = Schema.Union([
   Schema.Null,
   Schema.Boolean,
-  Schema.Number,
+  Schema.Finite,
   Schema.String,
   TypedArraySchema,
   Schema.Array(Schema.suspend((): Schema.Codec<ProcessValue, unknown> => ProcessValueSchema)),

@@ -61,7 +61,7 @@ function pidOf(outcome: ProcessOutcome): number {
 }
 
 describe('the memory of a process of the pool', { timeout: poolTestTimeoutMs }, () => {
-  it('is bounded by prlimit, given no core dump and the bound of its data, where prlimit is on the path', async () => {
+  it('is bounded by prlimit, given a core file size of 0 and the bound of its data, where prlimit is on the path', async () => {
     const fake = aFake();
     const pool = poolOf({ path: fake.limiting, memoryBytes: fakeBound });
 
@@ -86,7 +86,7 @@ describe('the memory of a process of the pool', { timeout: poolTestTimeoutMs }, 
 
 describe(`the memory of a process of the pool on Linux${elsewhere}`, { timeout: poolTestTimeoutMs }, () => {
   it.skipIf(!onLinux)(
-    'is bounded by the prlimit of the system, its data at the bound and no core dumped, so a job that fills twice the bound ends out of memory and the next job starts in a fresh process',
+    'is bounded by the prlimit of the system, its data at the bound and its core file size at 0, so the kernel writes no core file, and a job that fills twice the bound ends out of memory while the next job starts in a fresh process',
     async () => {
       const fake = aFake();
       const pool = poolOf({ path: process.env['PATH'], memoryBytes: realBound });

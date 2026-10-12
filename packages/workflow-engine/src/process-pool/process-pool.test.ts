@@ -152,11 +152,17 @@ describe('a job of a process of the pool', { timeout: poolTestTimeoutMs }, () =>
     expect(namesIn(outcome).filter((name) => isOwn(name))).toEqual([]);
   });
 
-  it('ends crashed, before it takes a permit, when its payload holds an object of the two names alone that a typed array crosses the pipe as', async () => {
+  it.each<readonly [string, ProcessValue]>([
+    [
+      'an object of the two names alone that a typed array crosses the pipe as',
+      { $typed: 'Uint8Array', base64: 'AQID' },
+    ],
+    ['a number that is not finite, which JSON would carry as null', { values: [1, Number.NaN] }],
+  ])('ends crashed, before it takes a permit, when its payload holds %s', async (_what, payload) => {
     const pool = poolOf({ processes: 1 });
     const holding = run(pool, 'sleep', 300);
 
-    const outcome = await run(pool, 'echo', { $typed: 'Uint8Array', base64: 'AQID' });
+    const outcome = await run(pool, 'echo', payload);
 
     expect(outcome).toMatchObject({
       ended: 'crashed',

@@ -51,6 +51,12 @@ describe('a value the pipe to a process does not carry', () => {
     ]);
   });
 
+  it('is a number that is not finite, which JSON would carry as null', () => {
+    expect(
+      [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY].map((number) => wireOf({ values: [1, number] })),
+    ).toEqual([Option.none(), Option.none(), Option.none()]);
+  });
+
   it.each<readonly [string, unknown]>([
     ['a typed array of a kind it does not know', { $typed: 'Float16Array', base64: 'AAA=' }],
     ['a typed array whose name is not text', { $typed: 4, base64: 'AAAA' }],
