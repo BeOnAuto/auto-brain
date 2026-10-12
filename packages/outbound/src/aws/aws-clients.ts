@@ -1,9 +1,6 @@
 import { fromNodeProviderChain } from '@aws-sdk/credential-providers';
 
-export interface ProxySettings {
-  readonly enabled: boolean;
-  readonly environment: Readonly<Record<string, string | undefined>>;
-}
+import type { ProxySettings } from '../proxy/proxy-settings.ts';
 
 interface ProxiedAgent {
   readonly proxyEnv: Record<string, string | undefined>;

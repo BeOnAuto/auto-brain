@@ -27,6 +27,7 @@ export interface FactorySources {
   readonly fetch: Fetch;
   readonly credentials: CredentialSources;
   readonly azureTokens: AccessTokenSource | undefined;
+  readonly proxy: Parameters<typeof awsCredentialChain>[0];
 }
 
 type Entry = readonly [string, ModelFactory];
@@ -45,10 +46,13 @@ function azureCredentialOf(
   return tokens === undefined ? undefined : { tokens: guarded(tokens) };
 }
 
-function cloudEntries(settings: ModelSettings, { fetch, credentials, azureTokens }: FactorySources): readonly Entry[] {
+function cloudEntries(
+  settings: ModelSettings,
+  { fetch, credentials, azureTokens, proxy }: FactorySources,
+): readonly Entry[] {
   return [
     ...entriesFor(settings.bedrock, (bedrock) => {
-      const aws = guarded<AwsCredentials>(credentials.aws ?? awsCredentialChain(settings.proxy));
+      const aws = guarded<AwsCredentials>(credentials.aws ?? awsCredentialChain(proxy));
       return [
         ['bedrock', bedrockModels(bedrock, aws, fetch)],
         ['bedrock-anthropic', bedrockAnthropicModels(bedrock, aws, fetch)],

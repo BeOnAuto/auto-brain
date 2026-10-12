@@ -1,3 +1,4 @@
+import { proxySettingsOf } from '@beonauto/outbound';
 import { Effect, Layer } from 'effect';
 
 import { LanguageModel } from '../model/language-model.ts';
@@ -13,7 +14,7 @@ export function languageModelLayer(
   return Layer.effect(
     LanguageModel,
     readModelSettings(environment).pipe(
-      Effect.flatMap((settings) => makeModelAccess(settings, options)),
+      Effect.flatMap((settings) => makeModelAccess(settings, { proxy: proxySettingsOf(environment), ...options })),
       Effect.map(({ languageModel }) => languageModel),
     ),
   );
