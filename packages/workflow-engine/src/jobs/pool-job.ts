@@ -5,9 +5,10 @@ import type { JobSchema } from './job-envelopes.ts';
 
 type Envelope = typeof JobSchema.Encoded;
 
-export interface Job<Answer> {
+export interface Job<Answer, Message = Envelope> {
+  readonly key: string;
   readonly module: Readonly<URL>;
-  readonly envelope: (job: number) => Envelope;
+  readonly envelope: (job: number) => Message;
   readonly decode: (answer: unknown) => Option.Option<Answer>;
 }
 
@@ -17,4 +18,7 @@ export interface Running {
   readonly afterReady?: number;
 }
 
-export type Evaluate = <Answer>(job: Job<Answer>, running: Running) => Promise<Ending<Answer>>;
+export type Evaluate<Message = Envelope> = <Answer>(
+  job: Job<Answer, Message>,
+  running: Running,
+) => Promise<Ending<Answer>>;

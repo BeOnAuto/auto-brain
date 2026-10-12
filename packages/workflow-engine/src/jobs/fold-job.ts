@@ -28,6 +28,7 @@ export function foldJobOf(
   const page = foldPageData(Struct.omit(request, ['waitMs', 'deadlineMs', 'worker']));
   const progress = foldProgress();
   const job: Job<FoldAnswer> = {
+    key: module.href,
     module,
     envelope: (id) => ({ job: id, kind: 'fold', request: page, progress: progress.shared }),
     decode: decodeFoldAnswer,

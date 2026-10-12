@@ -15,14 +15,11 @@ const source = fileURLToPath(new URL('..', import.meta.url));
 
 const importedEverywhere: ReadonlySet<string> = new Set(['effect', '@beonauto/operations', '@beonauto/ledger']);
 
-const importedInTheEvaluator: ReadonlySet<string> = new Set(['quickjs-emscripten-core']);
-
-const importedInThePool: ReadonlySet<string> = new Set(['node:worker_threads']);
-
-const importedByTheInstances: ReadonlySet<string> = new Set([
-  'node:fs/promises',
-  'quickjs-emscripten-core',
-  '@jitl/quickjs-wasmfile-release-sync',
+const importedInAFolder: ReadonlyMap<string, readonly string[]> = new Map([
+  ['programs/', ['quickjs-emscripten-core']],
+  ['program-pool/', ['node:worker_threads']],
+  ['process-pool/', ['node:buffer', 'node:child_process', 'node:fs', 'node:path', 'node:url']],
+  ['instances/', ['node:fs/promises', 'quickjs-emscripten-core', '@jitl/quickjs-wasmfile-release-sync']],
 ]);
 
 const quickJs = 'quickjs-emscripten-core';
@@ -43,9 +40,10 @@ function isAllowedImport(file: string, specifier: string): boolean {
   return (
     isOwnFile(file, specifier) ||
     importedEverywhere.has(specifier) ||
-    (file.startsWith('programs/') && importedInTheEvaluator.has(specifier)) ||
-    (file.startsWith('program-pool/') && importedInThePool.has(specifier)) ||
-    (file.startsWith('instances/') && importedByTheInstances.has(specifier))
+    [...importedInAFolder].some(
+      ([folder, allowed]: readonly [string, readonly string[]]) =>
+        file.startsWith(folder) && allowed.includes(specifier),
+    )
   );
 }
 
@@ -124,7 +122,9 @@ function expressionCallsUnder(files: readonly string[]): readonly string[] {
 
 const everySource = sourcesUnder('.');
 
-const nodeHosted = ['dsl.ts', 'job-loop.ts', 'program-pool/', 'workers/', 'instances/'];
+const nodeHostedEntries = ['dsl.ts', 'job-loop.ts', 'process-loop.ts'];
+
+const nodeHosted = [...nodeHostedEntries, 'program-pool/', 'process-pool/', 'workers/', 'instances/'];
 
 const portableSources = everySource.filter((file) => !nodeHosted.some((hosted) => file.startsWith(hosted)));
 
@@ -169,13 +169,14 @@ describe('the testing entry', () => {
 });
 
 describe('the entries of the engine', () => {
-  it('reach the worker pool and the instances of the sandbox only through the dsl and job-loop subpaths, so the main, testing and worker entries stay portable', () => {
+  it('reach the worker pool, the process pool and the instances of the sandbox only through the dsl, job-loop and process-loop subpaths, so the main, testing and worker entries stay portable', () => {
     expect(reachableFrom('dsl.ts')).toEqual(
       expect.arrayContaining(['program-pool/program-pool.ts', 'instances/fresh-instances.ts']),
     );
     expect(reachableFrom('job-loop.ts')).toEqual(
       expect.arrayContaining(['program-pool/job-loop.ts', 'instances/instance-stock.ts']),
     );
+    expect(reachableFrom('process-loop.ts').filter((file) => /^(?:program-pool|instances)\//u.test(file))).toEqual([]);
     expect(reachableFrom('worker.ts')).toEqual(
       expect.arrayContaining(['jobs/program-answer.ts', 'programs/sandbox-session.ts']),
     );
@@ -186,7 +187,7 @@ describe('the entries of the engine', () => {
 });
 
 describe('the engine core', () => {
-  it('imports only effect, the workspace packages it builds on and its own files, the sandbox in the evaluator, the build of QuickJS in the instances alone and worker threads in the pool alone', () => {
+  it('imports only effect, the workspace packages it builds on and its own files, the sandbox in the evaluator, the build of QuickJS in the instances alone, worker threads in the pool alone and child processes in the process pool alone', () => {
     expect(everySource.length).toBeGreaterThan(20);
     expect(
       everySource.flatMap((file) => importsOutsideTheAllowList(file, readFileSync(join(source, file), 'utf8'))),

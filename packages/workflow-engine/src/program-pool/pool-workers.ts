@@ -1,48 +1,53 @@
 import { stopped } from '../jobs/job-endings.ts';
-import type { PoolSettings } from '../jobs/pool-contract.ts';
-import type { Evaluate } from '../jobs/pool-job.ts';
-import { threadOf, type Thread, type ThreadHooks } from './pool-threads.ts';
+import type { Evaluate, Job } from '../jobs/pool-job.ts';
+import type { StartThread, Thread, ThreadHooks } from './pool-threads.ts';
 
 export const idleWorkerMs = 60_000;
 
 export const jobsBeforeRecycling = 1000;
 
-export interface PoolWorkers {
-  readonly evaluate: Evaluate;
+export interface RosterSettings {
+  readonly workers: number;
+  readonly idleMs?: number;
+  readonly jobsPerWorker?: number;
+}
+
+export interface PoolWorkers<Message> {
+  readonly evaluate: Evaluate<Message>;
   readonly close: () => Promise<void>;
 }
 
-interface Shelf {
-  readonly forget: (thread: Thread) => void;
-  readonly hold: (thread: Thread) => void;
-  readonly rest: (thread: Thread) => void;
-  readonly warm: (module: string) => Thread | undefined;
-  readonly oldest: () => readonly Thread[];
-  readonly all: () => readonly Thread[];
+interface Shelf<Message> {
+  readonly forget: (thread: Thread<Message>) => void;
+  readonly hold: (thread: Thread<Message>) => void;
+  readonly rest: (thread: Thread<Message>) => void;
+  readonly warm: (key: string) => Thread<Message> | undefined;
+  readonly oldest: () => readonly Thread<Message>[];
+  readonly all: () => readonly Thread<Message>[];
 }
 
-interface Fleet {
-  readonly start: (module: string, signal?: Readonly<AbortSignal>) => Promise<Thread | undefined>;
-  readonly letGo: (thread: Thread) => Promise<number>;
+interface Fleet<Message> {
+  readonly start: (work: Job<unknown, Message>, signal?: Readonly<AbortSignal>) => Promise<Thread<Message> | undefined>;
+  readonly letGo: (thread: Thread<Message>) => Promise<unknown>;
   readonly ended: () => Promise<unknown>;
 }
 
-interface Seats {
+interface Seats<Message> {
   readonly free: () => boolean;
-  readonly oldest: () => readonly Thread[];
-  readonly letGo: (thread: Thread) => Promise<number>;
-  readonly someEnded: () => Promise<number>;
+  readonly oldest: () => readonly Thread<Message>[];
+  readonly letGo: (thread: Thread<Message>) => Promise<unknown>;
+  readonly someEnded: () => Promise<unknown>;
 }
 
-interface Roster {
-  readonly take: (module: string, signal?: Readonly<AbortSignal>) => Promise<Thread | undefined>;
-  readonly rest: (thread: Thread) => void;
-  readonly letGo: (thread: Thread) => Promise<number>;
+interface Roster<Message> {
+  readonly take: (work: Job<unknown, Message>, signal?: Readonly<AbortSignal>) => Promise<Thread<Message> | undefined>;
+  readonly rest: (thread: Thread<Message>) => void;
+  readonly letGo: (thread: Thread<Message>) => Promise<unknown>;
   readonly closing: () => boolean;
   readonly close: () => Promise<void>;
 }
 
-async function roomIn(seats: Seats): Promise<void> {
+async function roomIn<Message>(seats: Seats<Message>): Promise<void> {
   if (seats.free()) {
     return;
   }
@@ -53,10 +58,10 @@ async function roomIn(seats: Seats): Promise<void> {
   await roomIn(seats);
 }
 
-function shelfOf(): Shelf {
-  const idle: Thread[] = [];
-  const busy = new Set<Thread>();
-  const forget = (thread: Thread): void => {
+function shelfOf<Message>(): Shelf<Message> {
+  const idle: Thread<Message>[] = [];
+  const busy = new Set<Thread<Message>>();
+  const forget = (thread: Thread<Message>): void => {
     const at = idle.indexOf(thread);
     if (at !== -1) {
       idle.splice(at, 1);
@@ -73,23 +78,28 @@ function shelfOf(): Shelf {
       forget(thread);
       idle.push(thread);
     },
-    warm: (module) => idle.findLast((each) => each.module === module),
+    warm: (key) => idle.findLast((each) => each.key === key),
     oldest: () => idle.slice(0, 1),
     all: () => [...idle, ...busy],
   };
 }
 
-function fleetOf(settings: PoolSettings, shelf: Shelf, closing: () => boolean): Fleet {
-  const dying = new Set<Promise<number>>();
+function fleetOf<Message>(
+  settings: RosterSettings,
+  shelf: Shelf<Message>,
+  closing: () => boolean,
+  startThread: StartThread<Message>,
+): Fleet<Message> {
+  const dying = new Set<Promise<unknown>>();
   const count = { alive: 0, starting: 0 };
-  const letGo = (thread: Thread): Promise<number> => {
+  const letGo = (thread: Thread<Message>): Promise<unknown> => {
     shelf.forget(thread);
     const ended = thread.end();
     dying.add(ended);
     void ended.then(() => dying.delete(ended));
     return ended;
   };
-  const hooks: ThreadHooks = {
+  const hooks: ThreadHooks<Message> = {
     closing,
     troubled: (thread) => {
       void letGo(thread);
@@ -99,38 +109,42 @@ function fleetOf(settings: PoolSettings, shelf: Shelf, closing: () => boolean): 
       count.alive -= 1;
     },
   };
-  const seats: Seats = {
+  const seats: Seats<Message> = {
     free: () => closing() || count.alive + count.starting <= settings.workers,
     oldest: shelf.oldest,
     letGo,
     someEnded: () => Promise.race(dying),
   };
-  const started = (module: string): Thread => {
-    const thread = threadOf(module, settings, hooks);
+  const started = (work: Job<unknown, Message>): Thread<Message> => {
+    const thread = startThread(work, hooks);
     count.alive += 1;
     return thread;
   };
   return {
-    start: async (module, signal) => {
+    start: async (work, signal) => {
       count.starting += 1;
       await roomIn(seats);
       count.starting -= 1;
-      return closing() || signal?.aborted === true ? undefined : started(module);
+      return closing() || signal?.aborted === true ? undefined : started(work);
     },
     letGo,
     ended: () => Promise.all(dying),
   };
 }
 
-function rosterOf(settings: PoolSettings, idleMs: number): Roster {
-  const shelf = shelfOf();
+function rosterOf<Message>(
+  settings: RosterSettings,
+  idleMs: number,
+  startThread: StartThread<Message>,
+): Roster<Message> {
+  const shelf = shelfOf<Message>();
   const state = { closing: false };
-  const fleet = fleetOf(settings, shelf, () => state.closing);
+  const fleet = fleetOf(settings, shelf, () => state.closing, startThread);
   return {
-    take: async (module, signal) => {
-      const warm = shelf.warm(module);
+    take: async (work, signal) => {
+      const warm = shelf.warm(work.key);
       warm?.wake();
-      const thread = warm ?? (await fleet.start(module, signal));
+      const thread = warm ?? (await fleet.start(work, signal));
       if (thread !== undefined) {
         shelf.hold(thread);
       }
@@ -152,13 +166,16 @@ function rosterOf(settings: PoolSettings, idleMs: number): Roster {
   };
 }
 
-export function poolWorkers(settings: PoolSettings): PoolWorkers {
+export function poolWorkers<Message>(
+  settings: RosterSettings,
+  startThread: StartThread<Message>,
+): PoolWorkers<Message> {
   const jobsPerWorker = settings.jobsPerWorker ?? jobsBeforeRecycling;
-  const roster = rosterOf(settings, settings.idleMs ?? idleWorkerMs);
+  const roster = rosterOf(settings, settings.idleMs ?? idleWorkerMs, startThread);
   const jobs = { last: 0 };
   return {
     evaluate: async (work, running) => {
-      const thread = await roster.take(work.module.href, running.signal);
+      const thread = await roster.take(work, running.signal);
       if (thread === undefined) {
         return stopped(roster.closing() ? 'closing' : 'cancelled');
       }

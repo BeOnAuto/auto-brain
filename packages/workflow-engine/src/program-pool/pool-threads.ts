@@ -3,31 +3,35 @@ import { Worker, type WorkerOptions } from 'node:worker_threads';
 import { Option, Schema } from 'effect';
 
 import { crashed, stopped, type Ending, type Interrupted } from '../jobs/job-endings.ts';
-import { JobAnswerSchema, ReadySchema } from '../jobs/job-envelopes.ts';
+import { JobAnswerSchema, ReadySchema, type JobSchema } from '../jobs/job-envelopes.ts';
 import type { PoolSettings } from '../jobs/pool-contract.ts';
 import type { Job, Running } from '../jobs/pool-job.ts';
 
 export const workerStackMegabytes = 64;
 
-interface Served<Answer> {
+export interface Served<Answer> {
   readonly ending: Ending<Answer>;
   readonly keep: boolean;
 }
 
-export interface Thread {
-  readonly module: string;
+export interface Thread<Message> {
+  readonly key: string;
   readonly jobs: () => number;
-  readonly serve: <Answer>(job: number, work: Job<Answer>, running: Running) => Promise<Served<Answer>>;
+  readonly serve: <Answer>(job: number, work: Job<Answer, Message>, running: Running) => Promise<Served<Answer>>;
   readonly rest: (idleMs: number, tired: () => void) => void;
   readonly wake: () => void;
-  readonly end: () => Promise<number>;
+  readonly end: () => Promise<unknown>;
 }
 
-export interface ThreadHooks {
+export interface ThreadHooks<Message> {
   readonly closing: () => boolean;
-  readonly troubled: (thread: Thread) => void;
-  readonly gone: (thread: Thread) => void;
+  readonly troubled: (thread: Thread<Message>) => void;
+  readonly gone: (thread: Thread<Message>) => void;
 }
+
+export type StartThread<Message> = (work: Job<unknown, Message>, hooks: ThreadHooks<Message>) => Thread<Message>;
+
+type Envelope = typeof JobSchema.Encoded;
 
 interface ThreadEvents {
   readonly answered: (message: unknown) => void;
@@ -151,7 +155,7 @@ async function servedOnceReady<Answer>(serving: Serving, job: number, work: Job<
   return start === 'gone' ? goneBeforeReady<Answer>(serving.closing()) : { ending: start, keep: true };
 }
 
-function restingFor(idleMs: number, tired: () => void): ReturnType<typeof setTimeout> | undefined {
+export function restingFor(idleMs: number, tired: () => void): ReturnType<typeof setTimeout> | undefined {
   return Number.isFinite(idleMs) ? setTimeout(tired, idleMs).unref() : undefined;
 }
 
@@ -197,8 +201,8 @@ export function workerOptions(settings: PoolSettings): WorkerOptions {
   };
 }
 
-export function threadOf(module: string, settings: PoolSettings, hooks: ThreadHooks): Thread {
-  const worker = new Worker(new URL(module), workerOptions(settings));
+function threadOf(start: Job<unknown>, settings: PoolSettings, hooks: ThreadHooks<Envelope>): Thread<Envelope> {
+  const worker = new Worker(start.module, workerOptions(settings));
   const state: ThreadState = { jobs: 0, resting: undefined };
   const loading = Promise.withResolvers<boolean>();
   const served = async <Answer>(job: number, work: Job<Answer>, running: Running): Promise<Served<Answer>> => {
@@ -212,8 +216,8 @@ export function threadOf(module: string, settings: PoolSettings, hooks: ThreadHo
     return answer;
   };
   const serving: Serving = { loaded: loading.promise, served, closing: hooks.closing };
-  const thread: Thread = {
-    module,
+  const thread: Thread<Envelope> = {
+    key: start.key,
     jobs: () => state.jobs,
     serve: (job, work, running) => servedOnceReady(serving, job, work, running),
     rest: (idleMs, tired) => {
@@ -245,4 +249,8 @@ export function threadOf(module: string, settings: PoolSettings, hooks: ThreadHo
       route.exited(code);
     });
   return thread;
+}
+
+export function workerThreadsOf(settings: PoolSettings): StartThread<Envelope> {
+  return (start, hooks) => threadOf(start, settings, hooks);
 }
