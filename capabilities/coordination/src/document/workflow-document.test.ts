@@ -2,6 +2,7 @@ import { InvalidInput } from '@beonauto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { testWorkflowPolicy } from '../testing/test-sandbox.ts';
 import { parseWorkflowDocument } from './workflow-document.ts';
 import { summaryOf } from './workflow-summary.ts';
 
@@ -13,7 +14,7 @@ const header = `document:
 `;
 
 function parsed(source: string) {
-  return Effect.runPromise(Effect.result(parseWorkflowDocument(source)));
+  return Effect.runPromise(Effect.result(parseWorkflowDocument(source, testWorkflowPolicy)));
 }
 
 function rejected(detail: string, issues: readonly string[]) {
@@ -89,7 +90,9 @@ describe('a workflow document that waits longer than a workflow may run', () => 
         'Line 7, column 20: at /do/0/pause/wait: This duration, 2678400000 ms, is longer than the 2592000000 ms a workflow may run',
       ]),
     );
-    expect(await Effect.runPromise(Effect.result(parseWorkflowDocument(source, 31 * 86_400_000)))).toMatchObject({
+    expect(
+      await Effect.runPromise(Effect.result(parseWorkflowDocument(source, testWorkflowPolicy, 31 * 86_400_000))),
+    ).toMatchObject({
       _tag: 'Success',
     });
   });

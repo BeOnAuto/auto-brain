@@ -7,7 +7,7 @@ import {
   isWorkflowRun,
   refusingBlankText,
   refusingForbiddenCharacters,
-  refusingThePlaybooksOwnAttributes,
+  type PlaybookOwnNames,
 } from '@beonauto/definitions';
 import { PlaybookContext, Caller, defineCommand, NotFound, quoted } from '@beonauto/operations';
 import { jsonBytesOf, measureOf, mostValueDepth } from '@beonauto/workflow-engine';
@@ -60,24 +60,26 @@ const EventFields = {
   ),
 };
 
-const EventSchema = Schema.Struct({
-  ...EventFields,
-  id: Schema.optionalKey(
-    wordedText(
-      mostNameLength,
-      'An id of the event; an event is delivered to a workflow once per id. Made when left out',
+function eventSchemaOf({ refusingThePlaybooksOwnAttributes }: PlaybookOwnNames) {
+  return Schema.Struct({
+    ...EventFields,
+    id: Schema.optionalKey(
+      wordedText(
+        mostNameLength,
+        'An id of the event; an event is delivered to a workflow once per id. Made when left out',
+      ),
     ),
-  ),
-})
-  .annotate({
-    description: `An event for a workflow to listen to, after the CloudEvents attributes, at most ${mostEventBytes} bytes as JSON in UTF-8`,
   })
-  .check(
-    Schema.makeFilter((event: Schema.Json) => jsonBytesOf(event) <= mostEventBytes, {
-      expected: `an event of at most ${mostEventBytes} bytes as JSON in UTF-8`,
-    }),
-    refusingThePlaybooksOwnAttributes,
-  );
+    .annotate({
+      description: `An event for a workflow to listen to, after the CloudEvents attributes, at most ${mostEventBytes} bytes as JSON in UTF-8`,
+    })
+    .check(
+      Schema.makeFilter((event: Schema.Json) => jsonBytesOf(event) <= mostEventBytes, {
+        expected: `an event of at most ${mostEventBytes} bytes as JSON in UTF-8`,
+      }),
+      refusingThePlaybooksOwnAttributes,
+    );
+}
 
 const DeliveredEventSchema = Schema.Struct({
   ...EventFields,
@@ -97,13 +99,13 @@ const description = [
   "The playbook's own types and sources, and the lineage attributes it gives its own records, are refused.",
 ].join(' ');
 
-export function defineSendRunEvent(runs: Pick<WorkflowHost, 'deliver'>) {
+export function defineSendRunEvent(runs: Pick<WorkflowHost, 'deliver'>, names: PlaybookOwnNames) {
   return defineCommand('playbook', {
     name: 'send_run_event',
     title: 'Send event to workflow run',
     description,
     route: { method: 'POST', path: '/runs/{run_id}/events' },
-    inputSchema: Schema.Struct({ run_id: RunIdInputField, event: EventSchema }),
+    inputSchema: Schema.Struct({ run_id: RunIdInputField, event: eventSchemaOf(names) }),
     outputSchema: Schema.Struct({
       run_id: Schema.String.annotate({ description: 'The id of the workflow run' }),
       event: DeliveredEventSchema,

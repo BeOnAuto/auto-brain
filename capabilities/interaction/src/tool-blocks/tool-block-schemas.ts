@@ -89,6 +89,14 @@ export const RepliesSchema = Schema.Struct({
   tell: Schema.optionalKey(TellSchema),
 });
 
+export const DeliveredAsSchema = Schema.Struct({ conversation: Schema.String, id: Schema.String });
+
+export const RepliesInSchema = Schema.Struct({ server: Schema.String, tool: Schema.String, key: Schema.String });
+
+export type DeliveredAs = typeof DeliveredAsSchema.Type;
+
+export type RepliesIn = typeof RepliesInSchema.Type;
+
 export type DeliverBlock = typeof DeliverBlockSchema.Type;
 
 export type CallBlock = typeof CallBlockSchema.Type;

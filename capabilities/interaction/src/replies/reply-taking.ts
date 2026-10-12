@@ -1,9 +1,9 @@
 import { Buffer } from 'node:buffer';
 
-import type { ReplyRefusal } from '@beonauto/definitions';
 import type { Issue } from '@beonauto/operations';
 import { Result, type Schema } from 'effect';
 
+import type { ReplyRefusal } from '../facts/run-facts.ts';
 import { checkedAnswer } from '../requests/answer-check.ts';
 import type { OpenRequestRow } from '../requests/request-rows.ts';
 import { interactionBounds } from '../run/run-bounds.ts';

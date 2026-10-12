@@ -12,6 +12,7 @@ import {
   runCanceller,
   runSettler,
   type PlaybookOperation,
+  type PlaybookOwnNames,
   type Capability,
   type SettleRun,
 } from '@beonauto/definitions';
@@ -29,6 +30,7 @@ export interface WorkParts {
   readonly capabilities: readonly Capability[];
   readonly startVersion: PlaybookOperation;
   readonly evaluations: Evaluations;
+  readonly names: PlaybookOwnNames;
 }
 
 function nestedRuns(
@@ -82,13 +84,13 @@ function waitingOf(runtime: AppRuntime<DispatcherServices>, capabilities: readon
 export function hostWorkOf(
   runtime: AppRuntime<DispatcherServices>,
   dispatcher: Dispatcher,
-  { capabilities, startVersion, evaluations }: WorkParts,
+  { capabilities, startVersion, evaluations, names }: WorkParts,
 ): HostWork {
   return {
-    machine: workflowMachineOptionsOf(evaluations.machine),
+    machine: workflowMachineOptionsOf(evaluations.machine, names),
     perform: definitionCalls(nestedRuns(runtime, dispatcher, defineRunDefinition(capabilities))),
     settle: settlements(runtime),
-    reactions: { ...reactionsOf(runtime, dispatcher, startVersion), filters: evaluations.filters },
+    reactions: { ...reactionsOf(runtime, dispatcher, { startVersion, names }), filters: evaluations.filters },
     waiting: waitingOf(runtime, capabilities),
   };
 }

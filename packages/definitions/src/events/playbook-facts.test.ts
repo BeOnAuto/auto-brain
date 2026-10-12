@@ -106,16 +106,16 @@ describe('the facts of a run as events, by what the run recorded', () => {
 });
 
 describe('the records of a run that are no facts', () => {
-  it('are its deferrals, its cancel requests, its tool calls and its replies', () => {
-    const reply = { server: 'chat', tool: 'thread_replies', reply: { id: '1699.2', sender: 'ada' } };
+  it('are its deferrals, its cancel requests, its tool calls, its answers and the facts its capability declares', () => {
+    const reply = { id: '1699.2', sender: 'ada' };
 
     expect(
       [
         ofRun({ type: 'run_deferred', data: { record: { run: 'r-1' } } }),
         ofRun({ type: 'run_cancel_requested', data: { kind: 'requested', reason: 'No' } }),
         ofRun({ type: 'tool_call_failed', data: { number: 1, because: 'timed_out', duration_ms: 1, jsonrpc_id: 1 } }),
-        ofRun({ type: 'reply_taken', data: { ...reply, answer: { choice: 'approve' } } }),
-        ofRun({ type: 'reply_refused', data: { ...reply, because: 'not_an_answer', told: false } }),
+        ofRun({ type: 'request_answered', data: { answer: { choice: 'approve' }, reply } }),
+        { ...ofRun({ type: 'run_failed', data: {} }), type: 'nudge_sent', data: { number: 1 } },
       ].map((record) => playbookFactOf(record)),
     ).toEqual([undefined, undefined, undefined, undefined, undefined]);
   });

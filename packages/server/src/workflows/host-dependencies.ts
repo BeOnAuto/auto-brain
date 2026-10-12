@@ -1,5 +1,5 @@
 import type { AppRuntime } from '@beonauto/api';
-import type { PlaybookOperation, Capability } from '@beonauto/definitions';
+import type { Capability } from '@beonauto/definitions';
 import type { Dispatcher, DispatcherServices } from '@beonauto/operations';
 import {
   openWorkflowHost,
@@ -39,13 +39,13 @@ export async function openedHost(
   runtime: AppRuntime<DispatcherServices>,
   dispatcher: Dispatcher,
   { workflows, capabilities, store, views, dueWork, evaluations, clock }: HostParts,
-  startVersion: PlaybookOperation,
+  { startVersion, names }: Pick<WorkParts, 'startVersion' | 'names'>,
 ): Promise<WorkflowHost> {
   const host = await openWorkflowHost({
     database: store,
     views,
     dueWork,
-    ...hostWorkOf(runtime, dispatcher, { capabilities, startVersion, evaluations }),
+    ...hostWorkOf(runtime, dispatcher, { capabilities, startVersion, evaluations, names }),
     reports: hostReports(runtime),
     sweepEveryMs: workflows.sweepEveryMs,
     mostCallsAtOnce: workflows.mostCallsAtOnce,

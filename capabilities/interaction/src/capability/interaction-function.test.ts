@@ -14,23 +14,22 @@ import { describeAnswer, interactionRunWords } from './interaction-words.ts';
 describe('the interaction capability', () => {
   it('prepares a question to finish later within its expiry, and a notification to the inbox to finish at once', () => {
     const { capability } = interactionHarness();
+    const input = { campaign: 'Spring', owner: 'ada' };
+    const prepared = [approvalDocument(), notificationDocument(), notificationDocument(chatDelivery)].map((document) =>
+      Effect.runSync(capability.prepare(document)),
+    );
 
-    expect([
-      Effect.runSync(capability.prepare(approvalDocument())),
-      Effect.runSync(capability.prepare(notificationDocument())),
-      Effect.runSync(capability.prepare(notificationDocument(chatDelivery))),
-    ]).toMatchObject([
-      {
-        finishesLater: true,
-        longestRunMs: 172_800_000,
-        whenCancelled: 'finish',
-        summary: { details: { expires: 'P2D' } },
-      },
-      { finishesLater: false, longestRunMs: 3_600_000 },
-      {
-        finishesLater: true,
-        summary: { details: { expires: 'PT1H', deliver: { server: 'chat', tool: 'post_message' } } },
-      },
+    expect(prepared).toMatchObject([
+      { whenCancelled: 'finish', summary: { details: { expires: 'P2D' } } },
+      {},
+      { summary: { details: { expires: 'PT1H', deliver: { server: 'chat', tool: 'post_message' } } } },
+    ]);
+    expect(
+      prepared.map(({ finishesLaterFor, longestRunMsFor }) => [finishesLaterFor(input), longestRunMsFor(input)]),
+    ).toEqual([
+      [true, 172_800_000],
+      [false, 3_600_000],
+      [true, 3_600_000],
     ]);
   });
 
@@ -135,7 +134,7 @@ describe('the words of a request answered by reply', () => {
 });
 
 describe('the words of an answer', () => {
-  it('say that a notification was delivered, read from the record of its request or of its delivery', () => {
+  it('say that a notification was delivered, read from the record of its request or of its delivery, and give the answer of a run settled from its answer, whose record is empty', () => {
     const notified = {
       to: 'ada',
       message: 'Shipped',
@@ -147,7 +146,7 @@ describe('the words of an answer', () => {
       describeAnswer({}, notified),
       describeAnswer({}, { delivered_at: '2026-10-07T09:00:01.000Z' }),
       describeAnswer({}, { ...notified, answer_schema: {} }),
-      describeAnswer({}, { answered_by: 'acme-admin', answered_at: '2026-10-07T09:00:01.000Z' }),
+      describeAnswer({}, {}),
     ]).toEqual([
       'It delivered its notification.',
       'It delivered its notification.',

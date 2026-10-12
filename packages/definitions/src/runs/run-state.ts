@@ -11,10 +11,18 @@ export interface AskedCancel {
   readonly by: string;
 }
 
-export interface BroughtAnswer {
+export interface RecordedAnswer {
   readonly answer: Schema.Json;
+  readonly claimedFor?: string;
+  readonly reply?: ReplyIdentity;
+  readonly by: string;
   readonly at: string;
-  readonly reply: ReplyIdentity;
+}
+
+export interface RecordedWork {
+  readonly type: string;
+  readonly data: Schema.JsonObject;
+  readonly at: string;
 }
 
 export interface RecordedRunState {
@@ -26,11 +34,8 @@ export interface RecordedRunState {
   readonly lastCall: number;
   readonly mayHaveChanged: boolean;
   readonly calledOnlyReadOnly: boolean;
-  readonly deliveryInFlight: number | null;
-  readonly broughtAnswer: BroughtAnswer | null;
-  readonly deliveredAt: string | null;
-  readonly repliesSeen: readonly string[];
-  readonly replyRefusals: number;
+  readonly answer: RecordedAnswer | null;
+  readonly work: readonly RecordedWork[];
   readonly cancel?: AskedCancel;
   readonly depth: number;
   readonly callDepth: number;
@@ -86,11 +91,8 @@ function startedRun({ data, context }: RecordedRunFact<'run_started'>, earlier: 
     deferred: false,
     callsTools: calls_tools === true,
     ...callsBefore(earlier),
-    deliveryInFlight: null,
-    broughtAnswer: null,
-    deliveredAt: null,
-    repliesSeen: [],
-    replyRefusals: 0,
+    answer: null,
+    work: [],
     depth,
     callDepth,
     ...(calledBy === undefined ? {} : { calledBy }),
@@ -134,30 +136,34 @@ function finishedRun(state: RecordedRunState, event: RecordedFinish): RecordedRu
   return record === undefined ? finished : { ...finished, record };
 }
 
-function endedDelivery(
-  state: RecordedRunState,
-  { type, context }: RecordedRunFact<'delivery_succeeded' | 'delivery_failed' | 'delivery_refused'>,
-): RecordedRunState {
-  const ended = { ...state, deliveryInFlight: null };
-  return type === 'delivery_succeeded' ? { ...ended, deliveredAt: context.at } : ended;
+export interface RecordedAnswerFact {
+  readonly data: RecordedRunFact<'request_answered'>['data'];
+  readonly context: Pick<RunContext, 'by' | 'at'>;
 }
 
-function repliedTo(
-  state: RecordedRunState,
-  { type, data, context }: RecordedRunFact<'reply_taken' | 'reply_refused'>,
-): RecordedRunState {
-  const seen = { ...state, repliesSeen: [...state.repliesSeen, data.reply.id] };
-  if (type === 'reply_refused') {
-    return { ...seen, replyRefusals: state.replyRefusals + 1 };
-  }
-  return { ...seen, broughtAnswer: { answer: data.answer, at: context.at, reply: data.reply } };
+export function recordedAnswerOf({ data, context }: RecordedAnswerFact): RecordedAnswer {
+  const { answer, claimed_for: claimedFor, reply } = data;
+  return {
+    answer,
+    ...(claimedFor === undefined ? {} : { claimedFor }),
+    ...(reply === undefined ? {} : { reply }),
+    by: context.by,
+    at: context.at,
+  };
+}
+
+function workOf({ data, context }: RecordedRunFact<'work'>): RecordedWork {
+  return { type: data.fact.type, data: data.fact.data, at: context.at };
 }
 
 type RecordedAfterTheStart = Exclude<RecordedRunEvent, RecordedRunFact<'run_started'>>;
 
 function evolveWork(state: RecordedRunState, event: RecordedAfterTheStart): RecordedRunState {
-  if (event.type === 'reply_taken' || event.type === 'reply_refused') {
-    return repliedTo(state, event);
+  if (event.type === 'request_answered') {
+    return { ...state, answer: recordedAnswerOf(event) };
+  }
+  if (event.type === 'work') {
+    return { ...state, work: [...state.work, workOf(event)] };
   }
   if (event.type === 'tool_call_started') {
     return {
@@ -166,12 +172,6 @@ function evolveWork(state: RecordedRunState, event: RecordedAfterTheStart): Reco
       mayHaveChanged: true,
       calledOnlyReadOnly: state.calledOnlyReadOnly && event.data.read_only === true,
     };
-  }
-  if (event.type === 'delivery_started') {
-    return { ...state, lastCall: event.data.number, deliveryInFlight: event.data.number };
-  }
-  if (event.type === 'delivery_succeeded' || event.type === 'delivery_failed' || event.type === 'delivery_refused') {
-    return endedDelivery(state, event);
   }
   return state;
 }

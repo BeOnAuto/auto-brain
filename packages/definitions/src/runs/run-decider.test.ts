@@ -160,11 +160,8 @@ const recordedState = {
   lastCall: 0,
   mayHaveChanged: false,
   calledOnlyReadOnly: true,
-  deliveryInFlight: null,
-  broughtAnswer: null,
-  deliveredAt: null,
-  repliesSeen: [],
-  replyRefusals: 0,
+  answer: null,
+  work: [],
   depth: 0,
   callDepth: 0,
 };

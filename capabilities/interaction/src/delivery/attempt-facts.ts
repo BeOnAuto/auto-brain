@@ -1,6 +1,6 @@
-import type { DeliveryEndedFact, DeliveryStartedFact } from '@beonauto/definitions';
 import type { StartedFields } from '@beonauto/mcp';
 
+import type { DeliveryEnded, DeliveryStarted } from '../facts/run-facts.ts';
 import { attemptInFlightMs } from '../requests/open-requests.ts';
 import type { OpenRequestRow } from '../requests/request-rows.ts';
 import { attemptSchedule } from '../schedule/attempt-schedule.ts';
@@ -13,12 +13,12 @@ export interface Attempting {
   readonly tool: string;
 }
 
-export function startedFact(attempting: Attempting, call?: StartedFields): DeliveryStartedFact {
+export function startedFact(attempting: Attempting, call?: StartedFields): DeliveryStarted {
   const { number, target, server, tool } = attempting;
   return { type: 'delivery_started', data: { number, target, ...(call ?? { server, tool }) } };
 }
 
-export function endedFact(number: number, end: AttemptEnd, durationMs: number): DeliveryEndedFact {
+export function endedFact(number: number, end: AttemptEnd, durationMs: number): DeliveryEnded {
   const ofTheAttempt = { number, duration_ms: durationMs };
   if (end.type === 'delivery_succeeded') {
     return { type: end.type, data: { ...ofTheAttempt, ...end.data } };
@@ -28,7 +28,7 @@ export function endedFact(number: number, end: AttemptEnd, durationMs: number): 
     : { type: end.type, data: { ...ofTheAttempt, ...end.data } };
 }
 
-export function lostFact(row: OpenRequestRow): DeliveryEndedFact {
+export function lostFact(row: OpenRequestRow): DeliveryEnded {
   return endedFact(row.attempts, { type: 'delivery_failed', data: { because: 'lost' } }, attemptInFlightMs);
 }
 

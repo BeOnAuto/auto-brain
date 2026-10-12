@@ -1,6 +1,6 @@
-import type { ReplyRefusal } from '@beonauto/definitions';
 import type { Issue } from '@beonauto/operations';
 
+import type { ReplyRefusal } from '../facts/run-facts.ts';
 import { interactionBounds } from '../run/run-bounds.ts';
 import type { ReplyRule, RulePart } from './reply-rule.ts';
 

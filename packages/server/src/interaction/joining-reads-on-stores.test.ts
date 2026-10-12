@@ -123,6 +123,7 @@ describe.each(stores)('a conversation read on $store', ({ skipped, aLedger }) =>
     await playbook.performReads(Date.now() + farAhead);
     playbook.chat.reply({ channel, user: answererId, text: 'reject' });
     await playbook.performReads(Date.now() + 2 * farAhead);
+    await playbook.performDue(Date.now());
 
     expect([await playbook.runOf(first), await playbook.runOf(second)]).toMatchObject([
       { output: { status: 'succeeded', output: { choice: 'approve' } } },

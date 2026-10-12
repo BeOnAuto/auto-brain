@@ -29,7 +29,7 @@ function readsOf(playbook: ChatHarness): number {
 }
 
 describe('the replies of a conversation, read once for every open request in it', () => {
-  it('takes a reply from the answerer as the answer, settled by the playbook with the reply as evidence', async () => {
+  it('takes a reply from the answerer as the answer the run records with the reply as evidence, which the due work settles it from as the playbook', async () => {
     const playbook = await chatHarness();
     const [thread] = await deliveredInThread(playbook, first);
     playbook.chat.reply({
@@ -40,18 +40,24 @@ describe('the replies of a conversation, read once for every open request in it'
     });
 
     await playbook.performReads(Date.now() + farAhead);
+    const read = await playbook.runOf(first);
+    await playbook.performDue(Date.now());
 
+    expect(read).toMatchObject({ output: { status: 'started' } });
     expect(await playbook.runOf(first)).toMatchObject({
-      output: {
-        status: 'succeeded',
-        output: { choice: 'reject', note: 'the second point is wrong' },
-        record: { answered_by: 'playbook:alpha', reply: { id: '1699.000002', sender: answererId } },
-      },
+      output: { status: 'succeeded', output: { choice: 'reject', note: 'the second point is wrong' }, record: {} },
     });
-    expect(JSON.stringify(await playbook.runOf(first))).not.toContain('claimed_for');
-    expect(await recordsOf(playbook.ledger, 'reply_taken', 'replies_read')).toMatchObject([
-      { type: 'reply_taken', data: { server: 'chat', tool: 'thread_replies' } },
+    expect(await recordsOf(playbook.ledger, 'request_answered', 'replies_read', 'run_succeeded')).toMatchObject([
+      {
+        type: 'request_answered',
+        data: {
+          answer: { choice: 'reject', note: 'the second point is wrong' },
+          reply: { id: '1699.000002', sender: answererId },
+        },
+        context: { by: 'playbook:alpha' },
+      },
       { type: 'replies_read', data: { conversation: '#approvals-sales/1699.000001', taken: 1, since: '1699.000002' } },
+      { type: 'run_succeeded', context: { by: 'playbook:alpha' } },
     ]);
   });
 
@@ -91,7 +97,7 @@ describe('a read of replies that finds nothing to take', () => {
 
     await playbook.performReads(Date.now() + farAhead);
 
-    expect(await recordsOf(playbook.ledger, 'reply_taken', 'reply_refused')).toEqual([]);
+    expect(await recordsOf(playbook.ledger, 'request_answered', 'reply_refused')).toEqual([]);
     expect(await recordsOf(playbook.ledger, 'replies_read')).toMatchObject([
       { data: { replies: 2, taken: 0, refused: 0 } },
     ]);

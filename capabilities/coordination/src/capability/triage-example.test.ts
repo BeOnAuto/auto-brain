@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { parseWorkflowDocument } from '../document/workflow-document.ts';
 import type { DefinitionCall, DefinitionCallResult } from '../testing/run-terms.ts';
+import { testWorkflowPolicy } from '../testing/test-sandbox.ts';
 import { interpret, workflowExample, yamlObject } from '../testing/workflows.ts';
 
 const example = yamlObject(workflowExample);
@@ -16,7 +17,9 @@ function triagedAs(urgency: string): (call: DefinitionCall) => DefinitionCallRes
 
 describe('the example of a workflow that triages a ticket', () => {
   it('stores as a valid definition document', async () => {
-    await expect(Effect.runPromise(parseWorkflowDocument(workflowExample))).resolves.toEqual(example);
+    await expect(Effect.runPromise(parseWorkflowDocument(workflowExample, testWorkflowPolicy))).resolves.toEqual(
+      example,
+    );
   });
 
   it('drafts a note for an urgent ticket and hands on what the approval event carried', async () => {

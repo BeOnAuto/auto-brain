@@ -11,12 +11,11 @@ import {
 import { memoryDriver, type MemoryDriver } from '@beonauto/workflow-engine/testing';
 import { Option, Result, Schema } from 'effect';
 
-import { workflowMachineSettings } from '../runs/workflow-machine-options.ts';
 import { endingOf, type WorkflowEnding } from './endings.ts';
 import { answerOf, commandsOf, type DefinitionResponder } from './machine-commands.ts';
 import type { Command, MachineHost, WorkflowStart } from './machine-host.ts';
 import type { RunSettlement, WorkflowRun } from './run-terms.ts';
-import { testSandbox, testWorkflowOptions } from './test-sandbox.ts';
+import { testSandbox, testWorkflowOptions, testWorkflowSettings } from './test-sandbox.ts';
 
 export interface MachineOptions {
   readonly respond?: DefinitionResponder;
@@ -41,7 +40,7 @@ function attributesOf({ run, caller }: WorkflowRun): JsonObject {
 function drivenRun(run: WorkflowRun, respond: DefinitionResponder): MemoryDriver {
   return memoryDriver({
     sandbox: testSandbox,
-    machine: workflowMachineSettings,
+    machine: testWorkflowSettings,
     respond: (call) => ({ later: answerOf(run, respond, call.key, call.arguments) }),
   });
 }

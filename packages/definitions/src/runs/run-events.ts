@@ -1,6 +1,6 @@
-import { CallAnsweredSchema, CallFailedSchema, CallSentSchema, CallStartedSchema } from '@beonauto/mcp';
-import { ActedOnRunContextSchema, IssueSchema, RunContextSchema, factOf, type Decided } from '@beonauto/operations';
-import { Schema, Struct } from 'effect';
+import { CallAnsweredSchema, CallFailedSchema, CallStartedSchema } from '@beonauto/mcp';
+import { ActedOnRunContextSchema, RunContextSchema, factOf, type Decided } from '@beonauto/operations';
+import { Schema, SchemaTransformation } from 'effect';
 
 import { RunRejectionSchema } from './run.ts';
 
@@ -8,69 +8,15 @@ const numbered = { number: Schema.Int };
 
 export const CancelRequestKindSchema = Schema.Literals(['requested', 'deadline', 'parent_ended']);
 
-const sent = Struct.omit(CallSentSchema.fields, ['read_only']);
-
-const answered = Struct.omit(CallAnsweredSchema.fields, ['is_error', 'shown_bytes']);
-
-export const DeliveryFailedBecauseSchema = Schema.Literals([
-  'tool_error',
-  'arguments_refused',
-  'server_failure',
-  'timed_out',
-  'too_large',
-  'tool_not_offered',
-  'lost',
-]);
-
-export const DeliveryRefusedBecauseSchema = Schema.Literals(['too_large', 'unworkable']);
-
-const DeliveredAsSchema = Schema.Struct({ conversation: Schema.String, id: Schema.String });
-
-const RepliesInSchema = Schema.Struct({ server: Schema.String, tool: Schema.String, key: Schema.String });
-
-const DeliveryStartedSchema = Schema.Struct({
-  ...numbered,
-  target: Schema.String,
-  server: sent.server,
-  tool: sent.tool,
-  arguments_bytes: Schema.optionalKey(sent.arguments_bytes),
-  arguments_sha256: sent.arguments_sha256,
-});
-
-const DeliverySucceededSchema = Schema.Struct({
-  ...numbered,
-  ...answered,
-  delivered_as: Schema.optionalKey(DeliveredAsSchema),
-  replies_in: Schema.optionalKey(RepliesInSchema),
-  detail: Schema.optionalKey(Schema.String),
-});
-
-const DeliveryFailedSchema = Schema.Struct({
-  ...numbered,
-  because: DeliveryFailedBecauseSchema,
-  detail: Schema.optionalKey(Schema.String),
-  retry_after_ms: Schema.optionalKey(Schema.Int),
-  result_bytes: Schema.optionalKey(answered.result_bytes),
-  result_sha256: answered.result_sha256,
-  duration_ms: Schema.Int,
-  jsonrpc_id: Schema.optionalKey(answered.jsonrpc_id),
-  server_request_id: answered.server_request_id,
-});
-
-const DeliveryRefusedSchema = Schema.Struct({
-  ...numbered,
-  because: DeliveryRefusedBecauseSchema,
-  detail: Schema.optionalKey(Schema.String),
-  duration_ms: Schema.Int,
-});
-
 const ReplyIdentitySchema = Schema.Struct({ id: Schema.String, sender: Schema.String });
 
-const ofTheReading = { server: Schema.String, tool: Schema.String, reply: ReplyIdentitySchema };
+export const RequestAnsweredSchema = Schema.Struct({
+  answer: Schema.Json,
+  claimed_for: Schema.optionalKey(Schema.String),
+  reply: Schema.optionalKey(ReplyIdentitySchema),
+});
 
-export const ReplyRefusalSchema = Schema.Literals(['not_an_answer', 'invalid', 'too_long', 'ambiguous']);
-
-export const RunEventSchema = Schema.Union([
+const coreFactSchemas = [
   factOf(
     'run_started',
     Schema.Struct({
@@ -96,22 +42,78 @@ export const RunEventSchema = Schema.Union([
   factOf('tool_call_started', Schema.Struct({ ...numbered, ...CallStartedSchema.fields }), RunContextSchema),
   factOf('tool_call_answered', Schema.Struct({ ...numbered, ...CallAnsweredSchema.fields }), RunContextSchema),
   factOf('tool_call_failed', Schema.Struct({ ...numbered, ...CallFailedSchema.fields }), RunContextSchema),
-  factOf('delivery_started', DeliveryStartedSchema, RunContextSchema),
-  factOf('delivery_succeeded', DeliverySucceededSchema, RunContextSchema),
-  factOf('delivery_failed', DeliveryFailedSchema, RunContextSchema),
-  factOf('delivery_refused', DeliveryRefusedSchema, RunContextSchema),
-  factOf('reply_taken', Schema.Struct({ ...ofTheReading, answer: Schema.Json }), RunContextSchema),
-  factOf(
-    'reply_refused',
-    Schema.Struct({
-      ...ofTheReading,
-      because: ReplyRefusalSchema,
-      issues: Schema.optionalKey(Schema.Array(IssueSchema)),
-      told: Schema.Boolean,
-    }),
-    RunContextSchema,
+  factOf('request_answered', RequestAnsweredSchema, RunContextSchema),
+];
+
+type CoreRunFact = (typeof coreFactSchemas)[number]['Type'];
+
+const coreTypes: Readonly<Record<CoreRunFact['type'], true>> = {
+  run_started: true,
+  run_deferred: true,
+  run_succeeded: true,
+  run_rejected: true,
+  run_failed: true,
+  run_cancel_requested: true,
+  tool_call_started: true,
+  tool_call_answered: true,
+  tool_call_failed: true,
+  request_answered: true,
+};
+
+export const coreRunFactTypes: readonly string[] = Object.keys(coreTypes);
+
+export function isCoreRunFactType(type: string): boolean {
+  return Object.hasOwn(coreTypes, type);
+}
+
+const endingTypes: Readonly<Record<RunFinished['type'], true>> = {
+  run_succeeded: true,
+  run_rejected: true,
+  run_failed: true,
+};
+
+export function isRunEndingType(type: string): boolean {
+  return Object.hasOwn(endingTypes, type);
+}
+
+const StoredFactSchema = Schema.Struct({ type: Schema.String, data: Schema.JsonObject, context: RunContextSchema });
+
+type StoredFact = typeof StoredFactSchema.Type;
+
+const WorkSchema = factOf(
+  'work',
+  Schema.Struct({ fact: Schema.Struct({ type: Schema.String, data: Schema.JsonObject }) }),
+  RunContextSchema,
+);
+
+type Work = typeof WorkSchema.Type;
+
+const asWork = SchemaTransformation.transform({
+  decode: ({ type, data, context }: StoredFact): Work => ({ type: 'work', data: { fact: { type, data } }, context }),
+  encode: ({ data, context }: Work): StoredFact => ({ type: data.fact.type, data: data.fact.data, context }),
+});
+
+const CapabilityFactSchema = Schema.Struct({
+  ...StoredFactSchema.fields,
+  type: Schema.String.check(
+    Schema.makeFilter((type: string) => !isCoreRunFactType(type), { expected: 'a fact a capability declares' }),
   ),
-]);
+});
+
+export type IsDeclared = (fact: StoredFact) => boolean;
+
+export function runEventSchemaOf(isDeclared: IsDeclared) {
+  const declared = CapabilityFactSchema.check(
+    Schema.makeFilter(isDeclared, { expected: 'a fact a capability of this playbook declares' }),
+  );
+  return Schema.Union([...coreFactSchemas, declared.pipe(Schema.decodeTo(WorkSchema, asWork))]);
+}
+
+function declaredByAnyCapability(): boolean {
+  return true;
+}
+
+export const RunEventSchema = runEventSchemaOf(declaredByAnyCapability);
 
 export type RecordedRunEvent = typeof RunEventSchema.Type;
 
@@ -129,30 +131,8 @@ export type ToolCallStarted = FactNamed<'tool_call_started'>;
 
 export type ToolCallEnded = FactNamed<'tool_call_answered' | 'tool_call_failed'>;
 
-export type DeliveryEvent = FactNamed<
-  'delivery_started' | 'delivery_succeeded' | 'delivery_failed' | 'delivery_refused'
->;
-
-export type DeliveryStarted = FactNamed<'delivery_started'>;
-
-export type DeliveryEnded = FactNamed<'delivery_succeeded' | 'delivery_failed' | 'delivery_refused'>;
-
-export type DeliveredAs = typeof DeliveredAsSchema.Type;
-
-export type RepliesIn = typeof RepliesInSchema.Type;
+export type RequestAnswered = FactNamed<'request_answered'>;
 
 export type ReplyIdentity = typeof ReplyIdentitySchema.Type;
-
-export type ReplyEvent = FactNamed<'reply_taken' | 'reply_refused'>;
-
-export type ReplyTaken = FactNamed<'reply_taken'>;
-
-export type ReplyRefused = FactNamed<'reply_refused'>;
-
-export type ReplyRefusal = typeof ReplyRefusalSchema.Type;
-
-export type DeliveryFailedBecause = typeof DeliveryFailedBecauseSchema.Type;
-
-export type DeliveryRefusedBecause = typeof DeliveryRefusedBecauseSchema.Type;
 
 export type RunFinished = FactNamed<'run_succeeded' | 'run_rejected' | 'run_failed'>;

@@ -1,28 +1,23 @@
 import {
+  definePublishEvent,
   makeDefinitionOperations,
   makeDefinitionPresenters,
-  publishEvent,
   type PlaybookOperation,
   type Capability,
 } from '@beonauto/definitions';
-import { conversationCallPresenter, toolTestPresenter } from '@beonauto/mcp';
-import type { Presenter } from '@beonauto/operations';
 import { defineGetEvent, defineListPlaybookEvents } from '@beonauto/playbooks';
+
+import type { ComposedFacts } from './composed-facts.ts';
 
 export function playbookOperationsServing(
   capabilities: readonly Capability[],
-  logPresenters: readonly Presenter[],
+  { facts, names }: Pick<ComposedFacts, 'facts' | 'names'>,
 ): readonly PlaybookOperation[] {
-  const presenters = [
-    ...makeDefinitionPresenters(capabilities),
-    toolTestPresenter,
-    conversationCallPresenter,
-    ...logPresenters,
-  ];
+  const presenters = makeDefinitionPresenters(capabilities, facts);
   return [
-    ...makeDefinitionOperations(capabilities, presenters),
+    ...makeDefinitionOperations(capabilities, facts, presenters),
     defineListPlaybookEvents(presenters),
     defineGetEvent(presenters),
-    publishEvent,
+    definePublishEvent(names),
   ];
 }

@@ -1,6 +1,7 @@
 import type { Presenter } from '@beonauto/operations';
 
 import {
+  declaredFactsOf,
   defineCancelRun,
   defineCreateDefinition,
   defineRunDefinition,
@@ -14,6 +15,7 @@ import {
   makeDefinitionPresenters,
   type Capability,
 } from '../index.ts';
+import { storedTypesByStatus } from '../reading/run-status.ts';
 
 export function definitionOperationsFor(
   capabilities: readonly Capability[],
@@ -28,7 +30,7 @@ export function definitionOperationsFor(
     runDefinition: defineRunDefinition(capabilities),
     getRun,
     cancelRun: defineCancelRun(capabilities),
-    listRuns: defineListRuns(capabilities),
+    listRuns: defineListRuns(capabilities, storedTypesByStatus(declaredFactsOf(capabilities))),
     getRunHistory: defineGetRunHistory(presenters),
   };
 }

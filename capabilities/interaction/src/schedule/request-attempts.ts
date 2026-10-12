@@ -4,14 +4,14 @@ import { Clock, Effect } from 'effect';
 import { deliveredOnce } from '../delivery/attempt-delivery.ts';
 import type { AttemptEnd } from '../delivery/attempt-end.ts';
 import { endedFact, isLastAttempt, lostFact } from '../delivery/attempt-facts.ts';
-import { routeOfRow } from '../requests/request-rows.ts';
+import { isInteractionNotification, routeOfRow } from '../requests/request-rows.ts';
 import { deliveringRecordOf } from '../run/request-record.ts';
 import type { DeliveryParts, DueRequest } from './delivery-parts.ts';
 import { deliveredSettlement, undeliveredSettlement } from './request-endings.ts';
 import { recordedCall, settled } from './request-ledger.ts';
 
 function settlementAfter({ row }: DueRequest, number: number, end: AttemptEnd, at: string): Settlement | undefined {
-  if (row.answers) {
+  if (!isInteractionNotification(row)) {
     return undefined;
   }
   if (end.type === 'delivery_succeeded') {
@@ -32,7 +32,7 @@ function settledAfter(parts: DeliveryParts, request: DueRequest, { number, end, 
 }
 
 export function lostAttempt(parts: DeliveryParts, { address, row, lineage }: DueRequest): Effect.Effect<void> {
-  return Effect.asVoid(recordedCall(parts.ledger, address, lostFact(row), lineage));
+  return Effect.asVoid(recordedCall(parts.record, address, lostFact(row), lineage));
 }
 
 export function nextAttempt(parts: DeliveryParts, request: DueRequest): Effect.Effect<void> {
@@ -52,7 +52,7 @@ export function nextAttempt(parts: DeliveryParts, request: DueRequest): Effect.E
     }
     const { number } = attempting;
     const ended = endedFact(number, delivered.end, (yield* Clock.currentTimeMillis) - began);
-    const endedCall = yield* recordedCall(parts.ledger, address, ended, {
+    const endedCall = yield* recordedCall(parts.record, address, ended, {
       ...lineage,
       causationId: delivered.startedId,
     });

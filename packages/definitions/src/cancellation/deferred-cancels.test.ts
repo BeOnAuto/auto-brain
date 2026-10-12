@@ -2,7 +2,15 @@ import { Conflict, type StreamReader, type StreamWriter } from '@beonauto/operat
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { deferredCanceller, defineCapability, outboundCallRecorder, type Capability } from '../index.ts';
+import {
+  declaredFactsOf,
+  deferredCanceller,
+  defineCapability,
+  runFactsOf,
+  workRecorder,
+  type Capability,
+} from '../index.ts';
+import { asking } from '../testing/asking.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
 import { harness, toPlaybook } from '../testing/harness.ts';
@@ -99,9 +107,9 @@ describe('a cancel its capability settles otherwise', () => {
   it('settles it as its capability decides, by the actor the decision names rather than whoever asked', async () => {
     const { running, ledger, run } = await withHandOn();
     await running();
-    const answering = relayDeciding(({ broughtAnswer, deliveredAt }) => ({
+    const answering = relayDeciding(({ answer, work }) => ({
       status: 'succeeded',
-      output: { delivered: JSON.stringify({ broughtAnswer, deliveredAt }) },
+      output: { delivered: JSON.stringify({ answer, work }) },
       record: {},
       by: 'ada',
     }));
@@ -119,7 +127,7 @@ describe('a cancel its capability settles otherwise', () => {
 
     expect(records.at(-1)).toMatchObject({
       type: 'run_succeeded',
-      data: { output: { delivered: JSON.stringify({ broughtAnswer: null, deliveredAt: null }) } },
+      data: { output: { delivered: JSON.stringify({ answer: null, work: [] }) } },
       context: { by: 'ada' },
     });
   });
@@ -173,39 +181,22 @@ describe('a cancel of a run of another capability that is over', () => {
   });
 });
 
-const decidingFromDelivery = relayDeciding(({ deliveredAt }) =>
-  deliveredAt === null
-    ? { status: 'rejected', reason: 'cancelled', kind: 'requested', detail: 'Nothing was delivered' }
-    : { status: 'succeeded', output: { delivered: 'delivered' } },
+const decidingFromWork = relayDeciding(({ work }) =>
+  work.length === 0
+    ? { status: 'rejected', reason: 'cancelled', kind: 'requested', detail: 'Nothing was nudged' }
+    : { status: 'succeeded', output: { delivered: work.map(({ type }) => type).join(', ') } },
 );
 
 describe('a cancel whose run changes between its read and its settlement', () => {
   it('reads the run again and lets its capability decide from what the run holds now', async () => {
     const { running, ledger, reading } = await withHandOn();
     await running();
-    const record = outboundCallRecorder(ledger.service);
-    const delivered = Effect.all([
-      record(
-        relayed,
-        { type: 'delivery_started', data: { number: 1, target: 'ada', server: 'chat', tool: 'post_message' } },
-        lineage,
-      ),
-      record(
-        relayed,
-        {
-          type: 'delivery_succeeded',
-          data: {
-            number: 1,
-            result_bytes: 2,
-            result_sha256: 'b'.repeat(64),
-            duration_ms: 3,
-            jsonrpc_id: 1,
-          },
-        },
-        lineage,
-      ),
+    const record = workRecorder(ledger.service, runFactsOf(declaredFactsOf([asking])));
+    const nudged = Effect.all([
+      record(relayed, { type: 'work', fact: { type: 'nudge_sent', data: { number: 1 } } }, lineage),
+      record(relayed, { type: 'work', fact: { type: 'nudge_sent', data: { number: 2 } } }, lineage),
     ]);
-    const turns = { next: (): Effect.Effect<unknown, unknown> => delivered };
+    const turns = { next: (): Effect.Effect<unknown, unknown> => nudged };
     const changedOnce: StreamReader & StreamWriter = {
       ...ledger.service,
       execute: (stream, decider, command, given) => {
@@ -214,9 +205,11 @@ describe('a cancel whose run changes between its read and its settlement', () =>
         return Effect.andThen(turn, ledger.service.execute(stream, decider, command, given));
       },
     };
-    await Effect.runPromise(deferredCanceller([decidingFromDelivery], changedOnce)(relayed, asked, lineage));
+    await Effect.runPromise(deferredCanceller([decidingFromWork], changedOnce)(relayed, asked, lineage));
 
-    expect(await reading()).toMatchObject({ output: { status: 'succeeded', output: { delivered: 'delivered' } } });
+    expect(await reading()).toMatchObject({
+      output: { status: 'succeeded', output: { delivered: 'nudge_sent, nudge_sent' } },
+    });
   });
 });
 

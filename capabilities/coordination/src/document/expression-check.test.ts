@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { makeWorkflowAdapter } from '../capability/workflow.ts';
 import { testExpressionCheck } from '../testing/expression-checks.ts';
 import { playbookOn } from '../testing/playbook.ts';
+import { testPlaybookNames } from '../testing/test-sandbox.ts';
 import type { ExpressionCheck } from './expression-check.ts';
 
 const header = "document: { dsl: '1.0.3', namespace: acme, name: flow, version: '1.0.0' }\n";
@@ -17,6 +18,7 @@ function saving(check: ExpressionCheck) {
     check,
     mostDurationMs: 2_592_000_000,
     longestCallMs: 1000,
+    names: testPlaybookNames,
   });
   const playbook = playbookOn(memoryLedger(), [workflow]);
   return (source: string) => playbook.call(playbook.createDefinition, { type: 'workflow', name: 'flow', source });
