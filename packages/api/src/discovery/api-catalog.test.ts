@@ -78,6 +78,20 @@ describe('the API catalog of each origin', () => {
 
     expect(here.headers.get('etag')).not.toBe(there.headers.get('etag'));
   });
+
+  it('is the origin the server receives, whatever X-Forwarded-Host and X-Forwarded-Proto say', async () => {
+    const forwarded = await server.handler.fetch(
+      new Request('http://localhost/.well-known/api-catalog', {
+        headers: { 'x-forwarded-host': 'public.example', 'x-forwarded-proto': 'https' },
+      }),
+    );
+    const catalog: unknown = await forwarded.json();
+
+    expect(catalog).toMatchObject({
+      linkset: [{ anchor: 'http://localhost/.well-known/api-catalog' }, { anchor: 'http://localhost/v1' }],
+    });
+    expect(forwarded.headers.get('link')).toBe('<http://localhost/.well-known/api-catalog>; rel="api-catalog"');
+  });
 });
 
 describe('the health of the server', () => {

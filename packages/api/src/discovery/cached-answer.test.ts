@@ -82,3 +82,13 @@ describe('HEAD on the document', () => {
     expect(cachingOf(unchanged)).toEqual([304, got.headers.get('etag'), 'public, max-age=300', '']);
   });
 });
+
+describe('HEAD on a guide', () => {
+  it('answers the headers GET answers, and no body', async () => {
+    const [got, head] = await Promise.all([fetched('/v1/guides/notebook'), fetched('/v1/guides/notebook', {}, 'HEAD')]);
+
+    expect(cachingOf(head)).toEqual([200, got.headers.get('etag'), 'public, max-age=300', '']);
+    expect(head.headers.get('content-type')).toBe('text/markdown; charset=utf-8');
+    expect(got.text).not.toBe('');
+  });
+});

@@ -58,7 +58,7 @@ describe('the OpenAPI document', () => {
     expect(second.text).toBe(first.text);
   });
 
-  it('is answered from any origin, and to no method but GET', async () => {
+  it('is answered from any origin, and to no method but GET and HEAD', async () => {
     const [foreign, posted] = await Promise.all([
       call(server.handler, '/v1/openapi.json', { headers: { origin: 'https://elsewhere.example' } }),
       call(server.handler, '/v1/openapi.json', { method: 'POST' }),
@@ -116,15 +116,18 @@ describe('a guide over HTTP', () => {
 });
 
 describe('the paths without a key', () => {
-  it('are /health, the document, each guide and the API catalog, and no other', async () => {
-    const open = ['/health', '/v1/openapi.json', ...everyGuide.map(({ name }) => `/v1/guides/${name}`)];
+  it('are /health, the document, each guide and the API catalog', async () => {
+    const open = [
+      '/health',
+      '/v1/openapi.json',
+      ...everyGuide.map(({ name }) => `/v1/guides/${name}`),
+      '/.well-known/api-catalog',
+    ];
     const answers = await Promise.all(
-      [...open, '/.well-known/api-catalog'].map(
-        async (path) => (await server.handler.fetch(new Request(`http://localhost${path}`))).status,
-      ),
+      open.map(async (path) => (await server.handler.fetch(new Request(`http://localhost${path}`))).status),
     );
 
-    expect(answers).toEqual([...open, '/.well-known/api-catalog'].map(() => 200));
+    expect(answers).toEqual(open.map(() => 200));
   });
 
   it('leave an operation, a path beyond them, a guide the shelf lacks and any other well-known path wanting one', async () => {
