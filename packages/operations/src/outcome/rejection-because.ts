@@ -17,6 +17,9 @@ export const RejectionBecauseSchema = Schema.Literals([
   'run_bound',
   'no_answer',
   'only_read',
+  'builds_of_the_day',
+  'stalled',
+  'not_finite',
 ]);
 
 export type RejectionBecause = typeof RejectionBecauseSchema.Type;

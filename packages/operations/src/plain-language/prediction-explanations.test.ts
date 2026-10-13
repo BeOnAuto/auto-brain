@@ -16,18 +16,27 @@ const ofPrediction: ReadonlyArray<readonly [ExplainedRejection, string]> = [
     'the build has ended or has taken its answer, so it takes nothing more from its trainer',
   ],
   [{ reason: 'conflict', kind: 'already_active' }, 'that version is already the active one'],
+  [{ reason: 'unavailable', kind: 'builds_full' }, 'this server is scoring as many builds as it may at once'],
   [
-    { reason: 'unavailable', kind: 'builds_full' },
-    'as many builds as may run are already in flight or were asked today',
+    { reason: 'unavailable', kind: 'builds_full', because: 'builds_of_the_day' },
+    'the function has had its builds of the day',
   ],
   [
     { reason: 'unavailable', kind: 'dataset_not_ready' },
     'its dataset is still being built from the playbook’s history',
   ],
+  [
+    { reason: 'unavailable', kind: 'dataset_not_ready', because: 'stalled' },
+    'its dataset stopped at an event its fold could not take',
+  ],
   [{ reason: 'unavailable', kind: 'model_process_busy' }, 'every model process of this server is busy'],
   [
     { reason: 'unavailable', kind: 'model_process_failed' },
     'the process that runs the model ended, or answered something other than finite numbers, before it answered',
+  ],
+  [
+    { reason: 'unavailable', kind: 'model_process_failed', because: 'not_finite' },
+    'the model answered something other than finite numbers in the shape its signature gives',
   ],
 ];
 

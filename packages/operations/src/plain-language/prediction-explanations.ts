@@ -46,8 +46,8 @@ export const predictionExplanations: Readonly<Record<PredictionKind, Explanation
     remedy: 'Nothing needs to change; get_definition shows the active version.',
   },
   builds_full: {
-    why: 'as many builds as may run are already in flight or were asked today',
-    remedy: 'It can be asked again later; the details below say when.',
+    why: 'this server is scoring as many builds as it may at once',
+    remedy: 'Nothing needs to change: trying again once one of them has scored should work.',
   },
   dataset_not_ready: {
     why: 'its dataset is still being built from the playbook’s history',
