@@ -47,12 +47,18 @@ function asInJson(secret: string): string {
   return JSON.stringify(secret).slice(1, -1);
 }
 
+function asInQuery(secret: string): string {
+  return new URLSearchParams([['', secret]]).toString().slice(1);
+}
+
 export function secretsOf(redacted: readonly Redacted.Redacted[]): Secrets {
   const known = new Set<string>();
   const add = (secret: string): void => {
     if (secret.length >= leastSecretCharacters) {
       known.add(asInJson(asInJson(secret)));
       known.add(asInJson(secret));
+      known.add(asInQuery(secret));
+      known.add(encodeURIComponent(secret));
       known.add(secret);
     }
   };

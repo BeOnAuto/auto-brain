@@ -1,6 +1,6 @@
 import { JsonPointer, type Schema } from 'effect';
 
-import type { Parameter } from './api-document.ts';
+import type { Method, Parameter } from './api-document.ts';
 import type { BodyOf, Placed } from './api-parameters.ts';
 import type { Components } from './input-schemas.ts';
 import { isSchemaObject } from './schema-translation.ts';
@@ -34,12 +34,40 @@ function sharedNameOf(names: readonly string[]): string | undefined {
   return names.find((name, index) => names.indexOf(name) < index);
 }
 
+function isSentAsWritten({ in: place, style, explode }: Parameter): boolean {
+  if (place === 'path') {
+    return style === undefined || style === 'simple';
+  }
+  return place !== 'query' || ((style === undefined || style === 'form') && explode !== false);
+}
+
+function methodBecause(method: Method, body: BodyOf): string | undefined {
+  if (method === 'trace') {
+    return 'a call cannot send TRACE, which fetch refuses';
+  }
+  return (method === 'get' || method === 'head') && body.kind !== 'none'
+    ? `it takes a body, which a ${method.toUpperCase()} cannot carry`
+    : undefined;
+}
+
+function serializedBecause(sent: readonly Parameter[]): string | undefined {
+  const styled = sent.find((each) => !isSentAsWritten(each));
+  return styled === undefined
+    ? undefined
+    : `its ${styled.in} parameter ${styled.name} is written with style ${styled.style ?? 'form'} and explode ${String(styled.explode ?? true)}, a form a call does not send`;
+}
+
 export function leftOutBecause(
+  method: Method,
   parameters: readonly Placed<Parameter>[],
   body: BodyOf,
   components: Components,
 ): string | undefined {
   const sent = parameters.map(({ value }) => value);
+  const unsendable = methodBecause(method, body) ?? serializedBecause(sent);
+  if (unsendable !== undefined) {
+    return unsendable;
+  }
   const needed = sent.find((each) => (each.in === 'header' || each.in === 'cookie') && each.required === true);
   if (needed !== undefined) {
     return `it needs the ${needed.in} ${needed.name}, which a function cannot send`;

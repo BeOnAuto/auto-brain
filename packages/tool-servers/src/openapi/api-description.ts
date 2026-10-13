@@ -1,4 +1,4 @@
-import { problem, type SettingProblem } from '@on.auto/config';
+import { problem, withoutTrailingSlashes, type SettingProblem } from '@on.auto/config';
 import { Result } from 'effect';
 
 import { at, isPinnableUrl } from '../settings/checked.ts';
@@ -20,7 +20,7 @@ function documentProblems(name: string, problems: readonly DocumentProblem[]): r
 }
 
 function serverUrlOf({ url, variables = {} }: NonNullable<ApiDocument['servers']>[number]): string {
-  return url.replaceAll(/\{([^}]+)\}/gu, (written, name: string) => {
+  return url.replaceAll(/\{([^{}]*)\}/gu, (written, name: string) => {
     const variable = Object.hasOwn(variables, name) ? variables[name] : undefined;
     return variable === undefined ? written : variable.default;
   });
@@ -42,7 +42,7 @@ function baseUrlOf(settings: OpenApiServerSettings, document: ApiDocument): Refu
     return refused('The first server the document names is not a URL this server can resolve; give base_url');
   }
   return isPinnableUrl(resolved.href)
-    ? Result.succeed(resolved.href)
+    ? Result.succeed(withoutTrailingSlashes(resolved.href))
     : refused(
         'The first server the document names is not an https URL or an http URL on a loopback address; give base_url',
       );

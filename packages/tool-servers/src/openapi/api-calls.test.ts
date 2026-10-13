@@ -98,6 +98,22 @@ describe('the request of a call of a tool of an HTTP API', () => {
     expect(get).toMatchObject({ method: 'GET', path: '/v1/rows', query: '?tag=open&tag=mine', body: '' });
   });
 
+  it('scrubs a key of its query from an answer that echoes the address, in the form the address carried it', async () => {
+    const formKey = 'k3y+With/Slash=Pad==';
+    const fake = await fakeApi({ key: formKey });
+    const reporting = await describedAccess(
+      { graph: { org: 'acme', document: fake.documentUrl, query_params: { api_key: '${GRAPH_API_KEY}' } } },
+      { environment: { GRAPH_API_KEY: formKey }, timing },
+    );
+    closing.push(reporting.access.close);
+
+    expect(await called(reporting.access, 'removeProfile', { id: 'eve' })).toMatchObject({
+      outcome: 'tool_error',
+      detail: 'No such route: DELETE /v1/profiles/eve?api_key=[redacted]',
+    });
+    expect(fake.seen()[0]?.query).toBe('?api_key=k3y%2BWith%2FSlash%3DPad%3D%3D');
+  });
+
   it('carries the query parameters of its entry, a key among them', async () => {
     const fake = await fakeApi();
     const access = await accessTo({ document: fake.documentUrl, query_params: { api_key: '${GRAPH_API_KEY}' } });
@@ -139,7 +155,7 @@ describe('the answer of a call of a tool of an HTTP API', () => {
     });
     expect(await called(access, 'removeProfile', { id: 'eve' })).toMatchObject({
       outcome: 'tool_error',
-      detail: 'No such route',
+      detail: 'No such route: DELETE /v1/profiles/eve',
     });
   });
 });
@@ -180,6 +196,10 @@ describe('a call of a tool of an HTTP API that fails', () => {
     expect(await called(access, 'get_profiles_id', { name: 'ada' })).toMatchObject({
       outcome: 'arguments_refused',
       detail: 'The arguments give name, which this operation does not take',
+    });
+    expect(await called(access, 'get_profiles_id', { id: '..' })).toMatchObject({
+      outcome: 'arguments_refused',
+      detail: 'The path arguments would take the call out of the path of this operation, as a . or a .. does',
     });
     expect(fake.seen()).toEqual([]);
   });

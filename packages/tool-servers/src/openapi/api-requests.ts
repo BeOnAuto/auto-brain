@@ -19,6 +19,29 @@ type Scalar = string | number | boolean;
 
 type Built<A> = Result.Result<A, string>;
 
+const dotSegment = /^(?:\.|%2e){1,2}$/iu;
+
+const segmentSeparators = /[/\\]/u;
+
+const droppedByAddresses = /[\t\n\r]/gu;
+
+export function keepsItsSegments(path: string): boolean {
+  return !path
+    .replaceAll(droppedByAddresses, '')
+    .split(segmentSeparators)
+    .some((segment) => dotSegment.test(segment));
+}
+
+export function isUnderBase(baseUrl: string, address: string): boolean {
+  const base = URL.parse(baseUrl);
+  const url = URL.parse(address);
+  if (base === null || url === null || base.origin === 'null' || url.origin !== base.origin) {
+    return false;
+  }
+  const basePath = base.pathname === '/' ? '' : base.pathname;
+  return url.pathname === basePath || url.pathname.startsWith(`${basePath}/`);
+}
+
 function isScalar(value: unknown): value is Scalar {
   return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
 }
@@ -47,7 +70,9 @@ function pathOf(operation: ApiOperation, input: Readonly<Record<string, unknown>
     }
     path = path.replaceAll(`{${name}}`, values.success.map((value) => encodeURIComponent(value)).join(','));
   }
-  return Result.succeed(path);
+  return keepsItsSegments(path)
+    ? Result.succeed(path)
+    : Result.fail('The path arguments would take the call out of the path of this operation, as a . or a .. does');
 }
 
 function queryOf(
@@ -97,14 +122,6 @@ function headersOf(operation: ApiOperation, endpoint: ApiEndpoint, body: string 
   };
 }
 
-function withoutTrailingSlashes(url: string): string {
-  let end = url.length;
-  while (url.charAt(end - 1) === '/') {
-    end -= 1;
-  }
-  return url.slice(0, end);
-}
-
 export function apiRequestOf(
   operation: ApiOperation,
   input: Readonly<Record<string, unknown>>,
@@ -117,7 +134,7 @@ export function apiRequestOf(
   return Result.flatMap(pathOf(operation, input), (path) =>
     Result.flatMap(queryOf(operation, input, endpoint), (query) =>
       Result.map(bodyOf(operation, input), (body) => ({
-        url: `${withoutTrailingSlashes(endpoint.baseUrl)}${path}${query}`,
+        url: `${endpoint.baseUrl}${path}${query}`,
         method: operation.method.toUpperCase(),
         headers: headersOf(operation, endpoint, body),
         body,

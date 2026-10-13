@@ -1,11 +1,11 @@
 import { Redacted, Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { apiRequestOf, type ApiEndpoint } from './api-requests.ts';
+import { apiRequestOf, isUnderBase, type ApiEndpoint } from './api-requests.ts';
 import type { ApiOperation } from './api-tools.ts';
 
 const endpoint: ApiEndpoint = {
-  baseUrl: 'https://graph.example.com/v1/',
+  baseUrl: 'https://graph.example.com/v1',
   headers: new Map([['X-Api-Key', Redacted.make('graph-api-key-4f1d9a7c2b')]]),
   query: new Map([['tenant', Redacted.make('acme')]]),
 };
@@ -33,18 +33,52 @@ const writing: ApiOperation = {
   body: { mediaType: 'application/merge-patch+json', required: true },
 };
 
-function urlFrom(baseUrl: string): Result.Result<string, string> {
-  return Result.map(apiRequestOf(writing, { body: {} }, { ...endpoint, baseUrl }), ({ url }) => url);
+const pair: ApiOperation = {
+  tool,
+  method: 'get',
+  path: '/notes/{a}{b}',
+  inputs: [
+    { name: 'a', in: 'path' },
+    { name: 'b', in: 'path' },
+  ],
+  body: null,
+};
+
+const climbedOut = 'The path arguments would take the call out of the path of this operation, as a . or a .. does';
+
+function refusalOf(operation: ApiOperation, input: Readonly<Record<string, unknown>>): string {
+  return Result.getOrThrow(Result.flip(apiRequestOf(operation, input, endpoint)));
 }
 
-describe('the address of a call of an HTTP API', () => {
-  it('is built once from a base URL that ends in several slashes, and reads a long run of them once', () => {
-    const run = '/'.repeat(200_000);
+describe('the path of a call of an HTTP API', () => {
+  it('refuses an argument of . or .., alone or joined in one segment, which would climb out of the operation', () => {
+    expect([
+      refusalOf(listing, { folder: '..', id: 'b' }),
+      refusalOf(listing, { folder: 'a', id: '.' }),
+      refusalOf(pair, { a: '.', b: '.' }),
+    ]).toEqual([climbedOut, climbedOut, climbedOut]);
+  });
 
-    expect([urlFrom('https://graph.example.com/v1///'), urlFrom(`https://graph.example.com${run}v1`)]).toEqual([
-      Result.succeed('https://graph.example.com/v1/notes?tenant=acme'),
-      Result.succeed(`https://graph.example.com${run}v1/notes?tenant=acme`),
-    ]);
+  it('keeps a dot that is not a whole segment, and a slash an argument holds, inside its segment', () => {
+    expect(Result.map(apiRequestOf(listing, { folder: '../x', id: '...' }, endpoint), ({ url }) => url)).toEqual(
+      Result.succeed('https://graph.example.com/v1/notes/..%2Fx/...?tenant=acme'),
+    );
+  });
+});
+
+describe('the address of a call of an HTTP API', () => {
+  it('is under base_url when it has its origin and its path begins with the path of base_url', () => {
+    expect([
+      isUnderBase('https://graph.example.com/v1', 'https://graph.example.com/v1/notes?x=1'),
+      isUnderBase('https://graph.example.com/v1', 'https://graph.example.com/v1'),
+      isUnderBase('https://graph.example.com', 'https://graph.example.com/notes'),
+      isUnderBase('https://graph.example.com/v1', 'https://graph.example.com.attacker.example/notes'),
+      isUnderBase('https://graph.example.com', 'https://graph.example.com:8443/notes'),
+      isUnderBase('https://graph.example.com/v1', 'https://graph.example.com/v1evil/notes'),
+      isUnderBase('https://graph.example.com/v1', 'https://graph.example.com/v1/../admin'),
+      isUnderBase('https://graph.example.com/v1', 'not an address'),
+      isUnderBase('data:text/plain,a', 'data:text/plain,a/b'),
+    ]).toEqual([true, true, true, false, false, false, false, false, false]);
   });
 });
 

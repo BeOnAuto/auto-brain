@@ -47,6 +47,55 @@ describe('an operation of an HTTP API that no tool is offered for', () => {
   });
 });
 
+const listed = { name: 'tags', schema: { type: 'array', items: { type: 'string' } } };
+
+describe('an operation of an HTTP API that a call could only send in another form, or not at all', () => {
+  it('is TRACE, which fetch refuses, or a GET or HEAD that takes a body', () => {
+    const json = { requestBody: { content: { 'application/json': {} } } };
+    const { leftOut } = toolsOf(documentOf({ '/a': { trace: {}, get: json, head: json, post: json } }));
+
+    expect(leftOut).toEqual([
+      { operation: 'GET /a', because: 'it takes a body, which a GET cannot carry' },
+      { operation: 'HEAD /a', because: 'it takes a body, which a HEAD cannot carry' },
+      { operation: 'TRACE /a', because: 'a call cannot send TRACE, which fetch refuses' },
+    ]);
+  });
+
+  it('writes a parameter in a style or with an explode other than the ones a call sends, a path as simple and a query as exploded form', () => {
+    const { operations, leftOut } = toolsOf(
+      documentOf({
+        '/a/{id}': {
+          get: { parameters: [{ name: 'id', in: 'path', required: true, style: 'label' }] },
+          put: { parameters: [{ name: 'id', in: 'path', required: true, style: 'simple', explode: true }] },
+        },
+        '/b': {
+          get: { parameters: [{ ...listed, in: 'query', explode: false }] },
+          put: { parameters: [{ ...listed, in: 'query', style: 'pipeDelimited' }] },
+          post: { parameters: [{ ...listed, in: 'query', style: 'form', explode: true }] },
+          delete: { parameters: [{ name: 'X-Trace', in: 'header', style: 'simple', explode: true }] },
+        },
+      }),
+    );
+
+    expect(operations.map(({ tool }) => tool.name)).toEqual(['put_a_id', 'post_b', 'delete_b']);
+    expect(leftOut).toEqual([
+      {
+        operation: 'GET /a/{id}',
+        because: 'its path parameter id is written with style label and explode true, a form a call does not send',
+      },
+      {
+        operation: 'GET /b',
+        because: 'its query parameter tags is written with style form and explode false, a form a call does not send',
+      },
+      {
+        operation: 'PUT /b',
+        because:
+          'its query parameter tags is written with style pipeDelimited and explode true, a form a call does not send',
+      },
+    ]);
+  });
+});
+
 describe('the tools of an HTTP API, in documents of other shapes', () => {
   it('are none for a document of no paths', () => {
     expect(toolsOf({ openapi: '3.1.0' })).toEqual({ operations: [], leftOut: [] });

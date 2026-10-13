@@ -84,4 +84,30 @@ describe('the document of an openapi server, read from a file at start', () => {
       'https://eu.graph.example.com/%7Bstage%7D',
     );
   });
+
+  it('sends the calls to the first server it names without the slashes it ends in, as base_url is read', async () => {
+    const directory = directoryWith({
+      'graph.json': documentWithServer('https://graph.example.com/v1/'),
+      'root.json': documentWithServer('https://graph.example.com'),
+    });
+
+    expect(
+      await Promise.all(
+        ['graph.json', 'root.json'].map(
+          async (document) => (await describedApiOf({ graph: { document, org: 'acme' } }, { directory }))?.baseUrl,
+        ),
+      ),
+    ).toEqual(['https://graph.example.com/v1', 'https://graph.example.com']);
+  });
+});
+
+describe('the address of the first server a document names', () => {
+  it('reads an address of 200,000 braces in one pass, and keeps them as written', async () => {
+    const braces = '{'.repeat(200_000);
+    const directory = directoryWith({ 'graph.json': documentWithServer(`https://graph.example.com/${braces}`) });
+
+    expect((await describedApiOf({ graph: { document: 'graph.json', org: 'acme' } }, { directory }))?.baseUrl).toBe(
+      `https://graph.example.com/${'%7B'.repeat(200_000)}`,
+    );
+  });
 });

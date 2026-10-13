@@ -16,6 +16,8 @@ const ParameterSchema = Schema.Struct({
   in: Schema.Literals(['path', 'query', 'header', 'cookie']),
   required: Schema.optionalKey(Schema.Boolean),
   description: Schema.optionalKey(Schema.String),
+  style: Schema.optionalKey(Schema.String),
+  explode: Schema.optionalKey(Schema.Boolean),
   schema: Schema.optionalKey(SchemaValue),
 });
 

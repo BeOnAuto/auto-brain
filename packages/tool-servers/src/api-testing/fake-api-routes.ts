@@ -52,6 +52,11 @@ const routes: ReadonlyMap<string, Route> = new Map<string, Route>([
   ['GET /notes', () => new Response('', { status: 200 })],
 ]);
 
+function noSuchRoute(request: Readonly<Request>): Response {
+  const { pathname, search } = new URL(request.url);
+  return new Response(`No such route: ${request.method} ${pathname}${search}`, { status: 404 });
+}
+
 function withRequestId(response: Readonly<Response>, name: string | undefined, value: string): Response {
   if (name === undefined) {
     return response;
@@ -71,7 +76,6 @@ export async function answerTo(request: Readonly<Request>, path: string, answeri
   if (path === '/denied') {
     return withRequestId(problem(403, answering.deniedText), answering.requestIdHeader, requestId);
   }
-  const response =
-    route === undefined ? new Response('No such route', { status: 404 }) : await route(request, new URL(request.url));
+  const response = route === undefined ? noSuchRoute(request) : await route(request, new URL(request.url));
   return withRequestId(response, answering.requestIdHeader, requestId);
 }

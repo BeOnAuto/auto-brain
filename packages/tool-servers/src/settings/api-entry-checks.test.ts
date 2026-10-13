@@ -44,11 +44,11 @@ function sentOf(server: ServerSettings | undefined): readonly Readonly<Record<st
 }
 
 describe('reading an openapi server', () => {
-  it('reads an entry given a document, with its base URL and the headers and query parameters it sends', () => {
+  it('reads an entry given a document, with its base URL without the slashes it ends in, and the headers and query parameters it sends', () => {
     const [server] = serversOf({
       billing: {
         ...billing,
-        base_url: 'https://billing.example.com/v2',
+        base_url: 'https://billing.example.com/v2///',
         headers: { 'X-Api-Key': '${BILLING_API_KEY}', 'X-Region': 'eu' },
         query_params: { api_key: '${BILLING_API_KEY}' },
         request_id: 'x-request-id',

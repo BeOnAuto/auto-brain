@@ -1,5 +1,7 @@
 import { isAbsolute, normalize, resolve, sep } from 'node:path';
 
+import { withoutTrailingSlashes } from '@on.auto/config';
+
 import {
   accepted,
   isPinnableUrl,
@@ -46,7 +48,9 @@ function checkedBaseUrl(name: string, baseUrl: string | undefined): Checked<stri
   if (baseUrl === undefined) {
     return accepted(null);
   }
-  return isPinnableUrl(baseUrl) ? accepted(baseUrl) : refused(name, ['base_url'], pinnedUrlShape);
+  return isPinnableUrl(baseUrl)
+    ? accepted(withoutTrailingSlashes(baseUrl))
+    : refused(name, ['base_url'], pinnedUrlShape);
 }
 
 function checkedQuery(
