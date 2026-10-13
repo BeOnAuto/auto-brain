@@ -25,15 +25,15 @@ Use **brain functions** for the five function types. A function type in this tab
 
 Use these descriptions when choosing a function type:
 
-| Category    | Description                                                                     |
-| ----------- | ------------------------------------------------------------------------------- |
-| Reasoning   | Use a prompt, skills, and tools to interpret information or produce a response. |
-| Interaction | Exchange information with people or systems.                                    |
-| Prediction  | Create and use an ML model to make predictions.                                 |
-| Recall      | Answer from what the playbook keeps of its own history.                         |
-| Computation | Run defined code or expressions to calculate or transform data.                 |
+| Category    | Description                                                                       |
+| ----------- | --------------------------------------------------------------------------------- |
+| Reasoning   | Use a prompt, skills, and tools to interpret information or produce a response.   |
+| Interaction | Exchange information with people or systems.                                      |
+| Prediction  | Predict a quantity from the playbook's own history with a model a trainer builds. |
+| Recall      | Answer from what the playbook keeps of its own history.                           |
+| Computation | Run defined code or expressions to calculate or transform data.                   |
 
-These describe each type's intended responsibility. Self-hosted reasoning functions can use operator-configured MCP tools in a bounded loop. Auto Cloud tool access, skill references and a separately managed tool library are still planned. A reasoning function can interpret, generate, classify or judge; it is not restricted to a model's reasoning mode. Interaction covers people and machines. Prediction includes creating and using a predictive model. Recall answers from the playbook's own history; recall over documents and other sources is not available yet. Computation executes specified logic and need not be mathematically pure.
+These describe each type's intended responsibility. Self-hosted reasoning functions can use operator-configured MCP tools in a bounded loop. Auto Cloud tool access, skill references and a separately managed tool library are still planned. A reasoning function can interpret, generate, classify or judge; it is not restricted to a model's reasoning mode. Interaction covers people and machines. Prediction answers from a predictive model a trainer builds outside the playbook, which the playbook scores before a version of the function holds it. Recall answers from the playbook's own history; recall over documents and other sources is not available yet. Computation executes specified logic and need not be mathematically pure.
 
 Classify a function by its responsibility. Calling an API does not turn a recall function into an interaction function. Running code does not turn a prediction function into a computation function.
 
@@ -77,6 +77,21 @@ See [Workflows and runs](workflows.md) for the implemented version, retry, waiti
 
 An interaction function asks a system and answers at once, or asks a person and takes the answer later. A run that asks a person makes one request; the answer is recorded on that run, which takes it within the host's sweep, a second by default, and a request nobody answers before it expires ends it as unanswered. Answering a request is not sending an event: an event goes to a waiting workflow run, and an answer goes to the run of the function that asked.
 
+## Prediction
+
+| Term           | Meaning                                                                                                                    |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Dataset        | The rows a prediction function learns from, one for each series and period, folded from the playbook's events or uploaded. |
+| Brief          | The text a trainer reads first, which the function's document renders over its dataset's figures.                          |
+| Build          | A run of a prediction function that asks a trainer for candidate models, scores them and keeps the winner as a version.    |
+| Trainer        | The person or agent who reads a build's brief and rows, fits models outside the playbook and uploads them.                 |
+| Candidate      | A model file a trainer uploads to a build, scored on periods the trainer never saw.                                        |
+| Card           | What a version was built from and how it scored, recorded when the build keeps it.                                         |
+| Shadow         | A later version predicting beside the active version as periods close, before it may replace it.                           |
+| Active version | The version of a prediction function that answers its questions.                                                           |
+
+A prediction function, the predictive model a version of it holds and the prediction a run returns are distinct. Each version a build keeps holds one model with its card, and a function's versions are numbered from 1, apart from the versions of its document. The active version alone answers questions; a version built while another is active runs in shadow for the periods its function names before its rule may activate it, and a version activated again by hand is a rollback.
+
 ## Supporting assets
 
 | Term             | Meaning                                                                                                               |
@@ -85,7 +100,7 @@ An interaction function asks a system and answers at once, or asks a person and 
 | Skill            | A reusable package of task guidance and associated resources.                                                         |
 | Tool             | A calling interface for an operation, including an external operation or a function exposed to a caller.              |
 | Language model   | A model used by a reasoning function.                                                                                 |
-| Predictive model | A model created or used by a prediction function.                                                                     |
+| Predictive model | A model a trainer builds for a prediction function, as a file the playbook runs in a process of its own.              |
 | Source           | Information a function can consult.                                                                                   |
 | Event            | A recorded fact that something happened, its type named in the past tense for what happened, as `delivery_failed` is. |
 | Event data       | The fact itself: what happened, and nothing of who acted, when, or the run it belongs to.                             |
@@ -96,7 +111,5 @@ An interaction function asks a system and answers at once, or asks a person and 
 | Event ledger     | One source of recorded history.                                                                                       |
 
 A reasoning function has a prompt; the prompt is not the entire configured function. A function exposed as a tool keeps its function type and identity. A skill supplies guidance rather than naming every executable component. Recall answers from what the playbook keeps; memory, projections and the event ledger retain their distinct meanings.
-
-The prediction function, its predictive model and the prediction in a run result are also distinct. Labels such as **Build model**, **Evaluate model**, **Predict**, **Retrain model**, **No model**, **Building model** and **Ready** apply only when those lifecycle controls exist. Prediction is not implemented yet.
 
 Dream is an optional planned process using functions and history. It is not a sixth function type.

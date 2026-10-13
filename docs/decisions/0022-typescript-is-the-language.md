@@ -1,6 +1,6 @@
 # 0022 — TypeScript is the language: the code a person writes inside the brain, in every place jq was accepted
 
-**Status:** accepted (2026-10-09), proposed and revised twice the same day after two independent audits of the drafts, each with probes; built 2026-10-09, with the amendments at the end
+**Status:** accepted (2026-10-09), proposed and revised twice the same day after two independent audits of the drafts, each with probes; built 2026-10-09, with the amendments at the end; amended (2026-10-13) by [decision 0012](0012-prediction-functions.md): the paragraph "In the hosted runtime" and the model runtime's build it left to be measured are that record's container and its measurement: the hosted runtime runs the same image as a self-hosted server, a model runs in a model process the operating system bounds, beside the worker pool and never in it, and the WebAssembly build of the model runtime was not taken, since it cannot cap its own memory
 
 Designed against `origin/main` at b753ded3, after the one-vocabulary rename (0007).
 

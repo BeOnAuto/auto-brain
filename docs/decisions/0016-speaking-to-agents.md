@@ -1,6 +1,6 @@
 # 0016 — Speaking to agents: what the brain says when an agent connects, measured against the servers that do it best
 
-**Status:** accepted (2026-10-07), with the amendments from the build at the end; amended (2026-10-09): the tools advertise no output schema; amended (2026-10-11): the bound on the tools of a connection is set by reason
+**Status:** accepted (2026-10-07), with the amendments from the build at the end; amended (2026-10-09): the tools advertise no output schema; amended (2026-10-11): the bound on the tools of a connection is set by reason; amended (2026-10-13) by [decision 0012](0012-prediction-functions.md): `activate_version`, which makes a version a prediction function built its active one, is served over HTTP alone, and its tool waits for room in the listing, which an amendment of this record gives when it is added; the instructions gain a sentence for prediction functions, which says that a build answers started, and those of `/mcp` with every tool take 1,947 of their 2,000 characters
 
 ## Context
 

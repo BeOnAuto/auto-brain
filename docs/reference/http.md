@@ -438,6 +438,9 @@ API errors use RFC 9457 problem documents with `Content-Type: application/proble
 | 405    | Unsupported method; see the `Allow` header |
 | 409    | `conflict` or `cancelled`                  |
 | 410    | `unanswered`                               |
+| 411    | `length_required`                          |
+| 413    | `content_too_large`                        |
+| 415    | `unsupported_media_type`                   |
 | 422    | `invalid_input`                            |
 | 500    | `internal`                                 |
 | 503    | `unavailable`                              |
@@ -456,9 +459,10 @@ A problem document's `type` is a URI that names its kind of problem:
 | `https://on.auto/problems/tools_called`           | 409    | A run that may have called tools is not run again under its id; its `reason` is `conflict`                                                                                            |
 | `https://on.auto/problems/effect_unknown`         | 409    | A run called a tool that may change something and could not finish, so whether it did is not known; its `reason` is `conflict`, and a person or a workflow rule that names it decides |
 | `https://on.auto/problems/cancelled`              | 409    | The run was cancelled, with the `kind` of its cancellation; its `reason` is `cancelled`                                                                                               |
-| `https://on.auto/problems/unanswered`             | 410    | Nobody answered the request of an interaction function, with the `kind` `expired` or `undelivered`                                                                                    |
-| `https://on.auto/problems/content_too_large`      | 413    | The body is larger than the 1,048,576 bytes the operation takes                                                                                                                       |
-| `https://on.auto/problems/unsupported_media_type` | 415    | The body is not sent as `application/json` in UTF-8                                                                                                                                   |
+| `https://on.auto/problems/unanswered`             | 410    | Nobody answered the request a run waited on, of an interaction function or a prediction function's build, with the `kind` `expired` or `undelivered`                                  |
+| `https://on.auto/problems/length_required`        | 411    | A body a route streams, a dataset or a candidate, was sent without its `Content-Length`                                                                                               |
+| `https://on.auto/problems/content_too_large`      | 413    | The body is larger than the operation takes: 1,048,576 bytes of JSON, or the 64 MiB of a dataset or a candidate, whose `Content-Length` is refused before the body is read            |
+| `https://on.auto/problems/unsupported_media_type` | 415    | The body is not sent as the media type the operation takes, `application/json` in UTF-8 unless the route says otherwise, or is sent compressed                                        |
 | `https://on.auto/problems/invalid_input`          | 422    | The input does not fit, with the `errors` that point at it                                                                                                                            |
 | `https://on.auto/problems/client_closed_request`  | 499    | The client went away before the answer                                                                                                                                                |
 | `https://on.auto/problems/internal`               | 500    | Something went wrong inside the server                                                                                                                                                |
