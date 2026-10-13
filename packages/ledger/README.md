@@ -436,7 +436,7 @@ An append on PostgreSQL binds ten parameters whatever the number of events, one 
 
 Every command is a decision appended under an expected version, so concurrent writers never lose an update to playbooks and definitions. Every server runs a workflow host, and one of them runs the database's workflows at a time, under a claim the workflow host keeps in its own table, so several servers may share the database.
 
-## Portability
+## What a store must provide
 
 The ledger runs on Node, the one runtime the server's image carries, so any of its modules may use Node's own, as the digest of recorded content does with `node:crypto`. Its stores are SQLite and PostgreSQL; on SQLite it binds at most 100 parameters in one statement (`src/sqlite-event-store.ts`, `src/projections/sqlite-projections.ts`), and what it asks of a store comes in two parts.
 
