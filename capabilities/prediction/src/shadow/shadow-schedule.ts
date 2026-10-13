@@ -1,7 +1,10 @@
+import { predictionBounds } from '../capability/prediction-bounds.ts';
 import type { Predicts } from '../document/prediction-document.ts';
 import { closeOf, enclosingOf, periodsToTheEnd } from '../periods/enclosing.ts';
 import { periodForm } from '../periods/grains.ts';
 import { periodOfMoment } from '../periods/moments.ts';
+
+export const mostShadowCloses = predictionBounds.mostShadowPeriods;
 
 export interface ShadowOrigin {
   readonly origin: number;

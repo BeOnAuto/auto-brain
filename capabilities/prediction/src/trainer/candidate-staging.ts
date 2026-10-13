@@ -23,3 +23,15 @@ export function staged(
       Effect.catchTags({ staging_ended: () => Effect.fail(buildEnded), content_refused: Effect.die }),
     );
 }
+
+export function stagedUnlessItIs(
+  ports: Pick<PredictionPorts, 'ledger'>,
+  build: Pick<BuildState, 'address'>,
+  path: string,
+  sha256: string,
+): Effect.Effect<void, Conflict> {
+  const { org, playbook, id } = build.address;
+  return Effect.flatMap(ports.ledger.content.staged({ org, playbook }, id, sha256), (found) =>
+    found === undefined ? staged(ports, build, path, sha256) : Effect.promise(() => found.stream.cancel()),
+  );
+}

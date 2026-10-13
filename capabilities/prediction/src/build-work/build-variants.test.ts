@@ -1,34 +1,13 @@
-import { createHash } from 'node:crypto';
-
 import { describe, expect, it } from 'vitest';
 
 import { buildPlaybook } from '../build-testing/build-playbook.ts';
 import { asked, builtFrom, runOf, savedFunction, workOf } from '../build-testing/built-versions.ts';
 import { candidateSha256 } from '../build-testing/due-driving.ts';
+import { weekdaysAndWeekends, weeklyOrderRows as weeklyRows } from '../build-testing/uploaded-rows.ts';
 import { uploadedDailyTotals } from '../testing/daily-documents.ts';
-import { dailyRows } from '../testing/daily-rows.ts';
 import { uploadedWeeklyOrders } from '../testing/weekly-orders.ts';
 
 const testTimeoutMs = 60_000;
-
-const weekdaysAndWeekends = dailyRows('sales', ['north', 'south'], 56, (_series, day) => (day % 7 < 5 ? 10 : 14));
-
-function weekOf(week: number): string {
-  return `2026-W${String(week).padStart(2, '0')}`;
-}
-
-function weeklyText(): string {
-  const weeks = Array.from({ length: 21 }, (_, at) => 20 + at);
-  const lines = [
-    'series,period,orders,basket,promotion',
-    ...weeks.map((week) => `north,${weekOf(week)},5,10,${week % 2}`),
-    ...weeks.map((week) => `south,${weekOf(week)},7,12,0`),
-  ];
-  const text = `${lines.join('\r\n')}\r\n`;
-  return text;
-}
-
-const weeklyRows = { text: weeklyText(), sha256: createHash('sha256').update(weeklyText(), 'utf8').digest('hex') };
 
 describe('a build of a function that predicts a total to the end of the week', { timeout: testTimeoutMs }, () => {
   it('scores the total against the run-rate, builds the version and answers the total to the end of the next week', async () => {

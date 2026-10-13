@@ -1,5 +1,5 @@
 import { recordedRunIn, runCanceller } from '@on.auto/definitions';
-import { Effect } from 'effect';
+import { Effect, Option } from 'effect';
 
 import type { PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';
 import { lifecycleStep } from '../shadow/model-lifecycle.ts';
@@ -29,10 +29,7 @@ function childrenCancelled(performing: Performing): Effect.Effect<void> {
   );
 }
 
-export function afterTheRun(
-  performing: Performing,
-  document: PredictionFunctionDefinitionDocument,
-): Effect.Effect<void> {
+function endedWork(performing: Performing, document: PredictionFunctionDefinitionDocument): Effect.Effect<void> {
   const { ports, row, build, now } = performing;
   const { org, playbook, id } = build.address;
   if (row.staged) {
@@ -42,4 +39,12 @@ export function afterTheRun(
     );
   }
   return row.open ? lifecycleStep(performing, document) : childrenCancelled(performing);
+}
+
+export function afterTheRun(
+  performing: Performing,
+  document: PredictionFunctionDefinitionDocument,
+): Effect.Effect<void> {
+  const { scoring_sha256: scoring } = Option.getOrThrow(Option.fromNullishOr(performing.build.assembled));
+  return Effect.andThen(performing.ports.caches.parsed.released(scoring), endedWork(performing, document));
 }

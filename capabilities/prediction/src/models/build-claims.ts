@@ -118,12 +118,33 @@ function endedClaims({ ports, playbook }: Claiming, state: ModelsState, now: num
   );
 }
 
-export function claimedBuild(claiming: Claiming): Effect.Effect<void, Conflict | Unavailable> {
-  const { ports, playbook, lineage, command } = claiming;
-  const stream = `${streamPrefixOfPlaybook(playbook)}${modelsStreamOf(command.name)}`;
+function claimsStreamOf({ playbook, command }: Claiming): string {
+  return `${streamPrefixOfPlaybook(playbook)}${modelsStreamOf(command.name)}`;
+}
+
+interface Claims {
+  readonly state: ModelsState;
+  readonly command: ClaimCommand;
+}
+
+function claimsOf(claiming: Claiming): Effect.Effect<Claims> {
   return Effect.gen(function* () {
-    const { state } = yield* ports.ledger.load(stream, claimsDecider);
-    const ending = yield* endedClaims(claiming, state, command.now);
-    yield* ports.ledger.execute(stream, claimsDecider, { ...command, ending }, lineage);
+    const { state } = yield* claiming.ports.ledger.load(claimsStreamOf(claiming), claimsDecider);
+    const ending = yield* endedClaims(claiming, state, claiming.command.now);
+    return { state, command: { ...claiming.command, ending } };
+  });
+}
+
+export function claimable(claiming: Claiming): Effect.Effect<void, Conflict | Unavailable> {
+  return Effect.flatMap(claimsOf(claiming), ({ state, command }) => {
+    const decision = claimed(command, state);
+    return Result.isFailure(decision) ? Effect.fail(decision.failure) : Effect.void;
+  });
+}
+
+export function claimedBuild(claiming: Claiming): Effect.Effect<void, Conflict | Unavailable> {
+  return Effect.gen(function* () {
+    const { command } = yield* claimsOf(claiming);
+    yield* claiming.ports.ledger.execute(claimsStreamOf(claiming), claimsDecider, command, claiming.lineage);
   });
 }

@@ -7,6 +7,7 @@ export interface ParsedRows {
     sha256: string,
     parse: () => Promise<readonly SeriesRows[]>,
   ) => Effect.Effect<readonly SeriesRows[]>;
+  readonly released: (sha256: string) => Effect.Effect<void>;
 }
 
 export function parsedRows(most: number): ParsedRows {
@@ -22,5 +23,11 @@ export function parsedRows(most: number): ParsedRows {
     parsing.catch(() => kept.delete(sha256));
     return parsing;
   };
-  return { rowsOf: (sha256, parse) => Effect.promise(() => parsedOf(sha256, parse)) };
+  return {
+    rowsOf: (sha256, parse) => Effect.promise(() => parsedOf(sha256, parse)),
+    released: (sha256) =>
+      Effect.sync(() => {
+        kept.delete(sha256);
+      }),
+  };
 }

@@ -8,7 +8,7 @@ import { periodOfForm } from '../periods/grains.ts';
 import { shadowVerdictOf } from './shadow-grades.ts';
 import { graded, type Shadowing } from './shadow-grading.ts';
 import { predicted } from './shadow-predictions.ts';
-import { shadowOrigins, targetsOf, type ShadowOrigin, type ShadowTarget } from './shadow-schedule.ts';
+import { mostShadowCloses, shadowOrigins, targetsOf, type ShadowOrigin, type ShadowTarget } from './shadow-schedule.ts';
 
 function unpredictedOf(
   { models, challenger, active }: Shadowing,
@@ -74,10 +74,19 @@ function nextStep(performing: Performing, shadowing: Shadowing): Effect.Effect<v
   if (step !== undefined) {
     return step;
   }
-  const verdict = shadowVerdictOf(models.graded, challenger.version, document.evaluation.metric);
-  return verdict === undefined
+  const { metric } = document.evaluation;
+  const verdict = shadowVerdictOf(models.graded, challenger.version, metric);
+  if (verdict !== undefined) {
+    return decided(performing, challenger, verdict, metric);
+  }
+  return closes < mostShadowCloses
     ? Option.getOrThrow(Option.fromNullishOr(stepOver(performing, shadowing, closes + 1)))
-    : decided(performing, challenger, verdict, document.evaluation.metric);
+    : decided(
+        performing,
+        challenger,
+        { passed: false, challenger: null, active: null, ungradedCloses: closes },
+        metric,
+      );
 }
 
 export function shadowStep(

@@ -61,7 +61,7 @@ const activatedWords: Readonly<Record<ModelFactOf<'version_activated'>['data']['
 const refusalWords: Readonly<Record<ModelFactOf<'activation_refused'>['data']['because'], string>> = {
   approver_rejected: 'its approver rejected it',
   unanswered: 'nobody answered its approval',
-  shadow_failed: 'it did worse than the active version in its shadow',
+  shadow_failed: 'it did not pass its shadow beside the active version',
   superseded: 'a newer version was built while it waited',
 };
 
@@ -79,7 +79,10 @@ const modelWords = {
   shadow_graded: ({ of, period, graded, answered, missing }: ModelFactOf<'shadow_graded'>['data']) =>
     `The shadow predictions of version ${of} for ${period} were graded: ${figure(graded)} graded beside the other version's, of ${figure(answered)} it answered, ${figure(missing)} without an answer or a truth`,
   shadow_passed: (data: ModelFactOf<'shadow_passed'>['data']) => `The shadow passed for ${verdictWords(data)}`,
-  shadow_failed: (data: ModelFactOf<'shadow_failed'>['data']) => `The shadow failed for ${verdictWords(data)}`,
+  shadow_failed: (data: ModelFactOf<'shadow_failed'>['data']) =>
+    data.ungraded_closes === undefined
+      ? `The shadow failed for ${verdictWords(data)}`
+      : `The shadow failed for version ${data.version}: none of its ${figure(data.ungraded_closes)} closes graded a series both versions predicted`,
   version_activated: ({ version, rule }: ModelFactOf<'version_activated'>['data']) =>
     `Version ${version} of the model was activated ${activatedWords[rule]}`,
   activation_refused: ({ version, because }: ModelFactOf<'activation_refused'>['data']) =>

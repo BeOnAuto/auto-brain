@@ -64,15 +64,11 @@ export function checkedCandidate(ports: PredictionPorts, build: BuildState, file
     const detail = `The build has its ${candidatesInABuild} candidates`;
     return Effect.succeed({ refused: { sha256, bytes, because: 'too_many', detail } });
   }
-  const release = ports.permits.take();
-  if (release === null) {
-    return Effect.succeed({ busy: true });
-  }
   return Effect.flatMap(ports.models.check({ sha256, path: file.path }), (outcome): Effect.Effect<Checked> => {
     if (outcome.ended === 'answered') {
       return answeredOf(ports, build, file, outcome.answer);
     }
     const refusal = refusalOf(outcome);
     return Effect.succeed(refusal === undefined ? { busy: true } : { refused: { sha256, bytes, ...refusal } });
-  }).pipe(Effect.ensuring(Effect.sync(release)));
+  });
 }

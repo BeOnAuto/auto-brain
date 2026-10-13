@@ -166,6 +166,11 @@ const modelFacts: readonly (readonly [string, Schema.JsonObject, string])[] = [
     'The shadow failed for version 2, with no active version graded beside it',
   ],
   [
+    'shadow_failed',
+    { ...verdict, challenger: null, active: null, ungraded_closes: 52 },
+    'The shadow failed for version 2: none of its 52 closes graded a series both versions predicted',
+  ],
+  [
     'version_activated',
     {
       version: 2,
@@ -181,7 +186,7 @@ const modelFacts: readonly (readonly [string, Schema.JsonObject, string])[] = [
   [
     'activation_refused',
     { version: 2, because: 'shadow_failed', build: 'run-2' },
-    'Version 2 of the model was not activated: it did worse than the active version in its shadow',
+    'Version 2 of the model was not activated: it did not pass its shadow beside the active version',
   ],
   [
     'activation_refused',

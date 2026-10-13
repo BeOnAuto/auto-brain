@@ -37,6 +37,17 @@ describe('the rows a server parsed for the builds it scores', () => {
     expect([first.times(), second.times(), again]).toEqual([2, 1, north]);
   });
 
+  it('are parsed again once the build that read them let them go', async () => {
+    const parsed = parsedRows(2);
+    const rows = counted();
+
+    await Effect.runPromise(parsed.rowsOf('rows', rows.parse));
+    await Effect.runPromise(parsed.released('rows'));
+    await Effect.runPromise(parsed.rowsOf('rows', rows.parse));
+
+    expect(rows.times()).toBe(2);
+  });
+
   it('are parsed again after a parse that failed', async () => {
     const parsed = parsedRows(2);
     const later = counted();

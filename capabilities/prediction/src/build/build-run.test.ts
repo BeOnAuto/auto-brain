@@ -1,3 +1,5 @@
+import type { RecordedContent } from '@on.auto/operations';
+import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { buildPlaybook } from '../build-testing/build-playbook.ts';
@@ -24,6 +26,28 @@ const someBytes: unknown = expect.any(Number);
 const askAgainLater: unknown = expect.stringMatching(
   /^This function has had its 1 builds of the day; ask again after \d{4}-/u,
 );
+
+interface CountedPuts {
+  readonly content: (kept: RecordedContent) => RecordedContent;
+  readonly count: () => number;
+}
+
+function countedPuts(): CountedPuts {
+  const puts = { count: 0 };
+  return {
+    content: (kept) => ({
+      ...kept,
+      put: (playbook, content) =>
+        Effect.andThen(
+          Effect.sync(() => {
+            puts.count += 1;
+          }),
+          kept.put(playbook, content),
+        ),
+    }),
+    count: () => puts.count,
+  };
+}
 
 const routes = (build: string) => {
   const base = `/v1/orgs/acme/playbooks/alpha/runs/${build}/build`;
@@ -73,6 +97,28 @@ describe('a build of a prediction function', { timeout: testTimeoutMs }, () => {
       kind: 'build_in_flight',
       detail: `A build of this function is in flight, run ${first}; wait for it or cancel it`,
     });
+  });
+});
+
+describe('a build of a prediction function that is refused by its claim', { timeout: testTimeoutMs }, () => {
+  it('writes no rows and no brief while another build is in flight or the builds of the day are spent', async () => {
+    const puts = countedPuts();
+    const playbook = buildPlaybook({ bounds: { buildsPerDay: 2 }, content: puts.content });
+    await savedFunction(playbook);
+    const first = await askedBuild(playbook);
+    const keptByTheFirst = puts.count();
+    const inFlight = await buildAsked(playbook);
+    const keptWhileInFlight = puts.count() - keptByTheFirst;
+    await playbook.cancelled(first);
+    await playbook.cancelled(await askedBuild(playbook));
+    const keptByTheSecond = puts.count();
+    const ofTheDay = await buildAsked(playbook);
+
+    expect([inFlight, ofTheDay]).toMatchObject([
+      { status: 'rejected', kind: 'build_in_flight' },
+      { status: 'rejected', kind: 'builds_full', because: 'builds_of_the_day' },
+    ]);
+    expect([keptByTheFirst > 0, keptWhileInFlight, puts.count() - keptByTheSecond]).toEqual([true, 0, 0]);
   });
 });
 

@@ -75,6 +75,9 @@ function shadowed(row: ModelsRow, fact: ShadowFact): ModelsRow {
       ? { ...row, shadow_graded: row.shadow_graded + 1 }
       : row;
   }
+  if (row.challenger !== fact.data.version) {
+    return row;
+  }
   return { ...row, shadow: fact.type === 'shadow_passed' ? 'passed' : 'failed' };
 }
 

@@ -80,6 +80,7 @@ const ShadowVerdictSchema = Schema.Struct({
   metric: Schema.String,
   challenger: Schema.NullOr(Schema.Number),
   active: Schema.NullOr(Schema.Number),
+  ungraded_closes: Schema.optionalKey(Schema.Int),
 });
 
 const ActivationRuleSchema = Schema.Literals(['automatic', 'approved', 'requested']);

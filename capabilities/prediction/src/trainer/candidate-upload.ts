@@ -7,7 +7,7 @@ import { predictionBounds } from '../capability/prediction-bounds.ts';
 import type { PredictionPorts } from '../capability/prediction-ports.ts';
 import { buildRunFacts } from '../facts/prediction-facts.ts';
 import { checkedCandidate, type Checked } from './candidate-checks.ts';
-import { staged } from './candidate-staging.ts';
+import { staged, stagedUnlessItIs } from './candidate-staging.ts';
 import { waitingBuildOf } from './waiting-builds.ts';
 
 const UploadedSchema = Schema.Struct({
@@ -66,6 +66,28 @@ function refused(ports: PredictionPorts, build: BuildState, checked: Extract<Che
   );
 }
 
+function uploadedTo(ports: PredictionPorts, build: BuildState, body: StreamedContent) {
+  return Effect.gen(function* () {
+    const file = yield* ports.caches.models.received(body.stream);
+    const checked = yield* checkedCandidate(ports, build, file);
+    if ('busy' in checked) {
+      return yield* Effect.fail(busy);
+    }
+    if ('refused' in checked) {
+      return yield* refused(ports, build, checked);
+    }
+    const { uploaded } = checked;
+    const taken = checked.already
+      ? false
+      : yield* recorded(ports, build, { type: 'candidate_uploaded', data: uploaded }, uploadRule(uploaded.sha256)).pipe(
+          Effect.as(true),
+          Effect.catchIf(wasAlreadyUploaded, () => Effect.succeed(false)),
+        );
+    yield* (taken ? staged : stagedUnlessItIs)(ports, build, file.path, file.sha256);
+    return { candidate: uploaded.sha256, bytes: uploaded.bytes, opset: uploaded.opset };
+  });
+}
+
 export function uploadCandidate(ports: PredictionPorts) {
   return defineHttpOperation('playbook', 'command', {
     name: 'upload_candidate',
@@ -83,30 +105,12 @@ export function uploadCandidate(ports: PredictionPorts) {
     handle: ({ run_id: id }, body: StreamedContent) =>
       Effect.gen(function* () {
         const { build } = yield* waitingBuildOf(id);
-        const file = yield* ports.caches.models.received(body.stream);
-        const checked = yield* checkedCandidate(ports, build, file);
-        if ('busy' in checked) {
+        const release = ports.permits.take();
+        if (release === null) {
+          yield* Effect.promise(() => body.stream.cancel());
           return yield* Effect.fail(busy);
         }
-        if ('refused' in checked) {
-          return yield* refused(ports, build, checked);
-        }
-        const { uploaded } = checked;
-        const taken = checked.already
-          ? false
-          : yield* recorded(
-              ports,
-              build,
-              { type: 'candidate_uploaded', data: uploaded },
-              uploadRule(uploaded.sha256),
-            ).pipe(
-              Effect.as(true),
-              Effect.catchIf(wasAlreadyUploaded, () => Effect.succeed(false)),
-            );
-        if (taken) {
-          yield* staged(ports, build, file.path, file.sha256);
-        }
-        return { candidate: uploaded.sha256, bytes: uploaded.bytes, opset: uploaded.opset };
+        return yield* uploadedTo(ports, build, body).pipe(Effect.ensuring(Effect.sync(release)));
       }),
   });
 }

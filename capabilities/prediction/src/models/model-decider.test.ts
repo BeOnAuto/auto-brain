@@ -137,4 +137,12 @@ describe('the models of a prediction function when a newer version is built', ()
 
     expect(await executed({ ...acted, type: 'build', card: { ...card, build: 'build-2' } })).toEqual(Result.succeed(3));
   });
+
+  it('record no verdict of a version superseded meanwhile, so the newer version stays the one in its shadow', async () => {
+    const executed = ledgerOfModels();
+    await executed({ ...acted, type: 'build', card });
+    await executed({ ...acted, type: 'build', card: { ...card, build: 'build-2' } });
+
+    expect(await executed({ ...acted, type: 'decide', passed: false, data: verdict })).toEqual(Result.succeed(3));
+  });
 });

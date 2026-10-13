@@ -47,6 +47,7 @@ export function decided(
       metric,
       challenger: verdict.challenger,
       active: verdict.active,
+      ...(verdict.ungradedCloses === undefined ? {} : { ungraded_closes: verdict.ungradedCloses }),
     },
   }));
 }

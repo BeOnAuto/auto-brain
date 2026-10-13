@@ -1,3 +1,5 @@
+import type { RecordedContent } from '@on.auto/operations';
+import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { buildPlaybook, type BuildPlaybook } from '../build-testing/build-playbook.ts';
@@ -6,6 +8,8 @@ import { candidateBytes, candidateSha256, type CandidateName } from '../build-te
 import { uploadCandidate } from './candidate-upload.ts';
 
 const testTimeoutMs = 60_000;
+
+const alpha = { org: 'acme', playbook: 'alpha' };
 
 const someDetail: unknown = expect.any(String);
 
@@ -41,6 +45,50 @@ describe('a candidate a trainer uploads to a build', { timeout: testTimeoutMs },
     ]);
   });
 });
+
+function stagingThatFailsOnce(kept: RecordedContent): RecordedContent {
+  const stages = { failed: false };
+  return {
+    ...kept,
+    stage: (playbook, run, content) => {
+      if (stages.failed) {
+        return kept.stage(playbook, run, content);
+      }
+      stages.failed = true;
+      return Effect.die(new Error('The server stopped before the candidate was staged'));
+    },
+  };
+}
+
+describe(
+  'a candidate recorded but not staged, as when its server stops between the two',
+  { timeout: testTimeoutMs },
+  () => {
+    it('is staged by the trainer sending the same bytes again', async () => {
+      const playbook = buildPlaybook({ content: stagingThatFailsOnce });
+      const build = await waitingBuild(playbook);
+      const first = await sent(playbook, build, 'visits-mean');
+      const unstaged = await Effect.runPromise(
+        playbook.test.ports.ledger.content.staged(alpha, build, candidateSha256('visits-mean')),
+      );
+      const again = await sent(playbook, build, 'visits-mean');
+      const staged = await Effect.runPromise(
+        playbook.test.ports.ledger.content.staged(alpha, build, candidateSha256('visits-mean')),
+      );
+
+      expect([first.status, unstaged, again.status, staged?.bytes]).toEqual([
+        'failed',
+        undefined,
+        'succeeded',
+        candidateBytes('visits-mean').length,
+      ]);
+      expect((await workOf(playbook, build)).map(({ type }) => type)).toEqual([
+        'dataset_assembled',
+        'candidate_uploaded',
+      ]);
+    });
+  },
+);
 
 describe('a candidate whose data names a file outside its own', { timeout: testTimeoutMs }, () => {
   it('reads none of another model the server keeps, by its digest beside it or in the folder of that model', async () => {

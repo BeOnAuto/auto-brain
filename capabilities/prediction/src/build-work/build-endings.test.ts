@@ -1,6 +1,6 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 
-import { Effect } from 'effect';
+import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { buildPlaybook } from '../build-testing/build-playbook.ts';
@@ -82,6 +82,30 @@ describe('a build that is cancelled', { timeout: testTimeoutMs }, () => {
     expect(await runOf(playbook, build)).toMatchObject({
       output: { status: 'rejected', rejection: { reason: 'cancelled' } },
     });
+  });
+});
+
+describe('a build that was scored and has ended', { timeout: testTimeoutMs }, () => {
+  it('lets go of the scoring rows the server parsed for its candidates and baselines', async () => {
+    const playbook = buildPlaybook();
+    await savedFunction(playbook);
+    const build = await askedBuild(playbook);
+    await uploaded(playbook, build, ['visits-mean']);
+    await answered(playbook, build, { candidates: [candidateSha256('visits-mean')] });
+    await performedUntilQuiet(playbook.due);
+    const [assembled] = await workOf(playbook, build);
+    const parses = { count: 0 };
+    await Effect.runPromise(
+      playbook.test.ports.caches.parsed.rowsOf(
+        Schema.decodeUnknownSync(Schema.String)(assembled?.data['scoring_sha256']),
+        () => {
+          parses.count += 1;
+          return Promise.resolve([]);
+        },
+      ),
+    );
+
+    expect([assembled?.type, parses.count]).toEqual(['dataset_assembled', 1]);
   });
 });
 

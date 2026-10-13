@@ -40,6 +40,10 @@ function decidesAShadow({ type }: { readonly type: string }): boolean {
   return type === 'shadow_passed' || type === 'shadow_failed';
 }
 
+function settlesAVersion({ type }: { readonly type: string }): boolean {
+  return decidesAShadow({ type }) || type === 'activation_refused';
+}
+
 function typesOf(facts: readonly { readonly type: string }[]): readonly string[] {
   return facts.map(({ type }) => type);
 }
@@ -152,6 +156,23 @@ function shadowWaits(settingsOf: SettingsOf): void {
   });
 }
 
+function shadowUngraded(settingsOf: SettingsOf): void {
+  it('fails once it has predicted at the most closes a shadow may without a series both versions answered', async () => {
+    const projected = await challenged(settingsOf);
+    projected.scripted.next('not-finite');
+    await performedUntilQuiet(projected.playbook.due, 60 * day, 512);
+    const facts = await modelFactsOf(projected.playbook);
+
+    expect(facts.filter(({ type }) => type === 'shadow_predicted')).toHaveLength(2 * 52);
+    expect(facts.filter((fact) => settlesAVersion(fact))).toMatchObject([
+      { type: 'shadow_passed', data: { version: 1 } },
+      { type: 'shadow_failed', data: { version: 2, challenger: null, active: null, ungraded_closes: 52 } },
+      { type: 'activation_refused', data: { version: 2, because: 'shadow_failed' } },
+    ]);
+    expect(await standingOf(projected.playbook)).toMatchObject({ output: { standing: { build: null } } });
+  });
+}
+
 function shadowGaps(settingsOf: SettingsOf): void {
   it('shadows a series observed every other day, which has no scale, and a period whose truth was not given', async () => {
     const projected = await projectedSales(settingsOf, gappyVisits(Math.floor(Date.now() / day)));
@@ -182,5 +203,9 @@ export function projectedBuildsSuite(settingsOf: SettingsOf): void {
 
   describe('the shadow of a challenger that a newer version supersedes', { timeout: testTimeoutMs }, () => {
     shadowSuperseded(settingsOf);
+  });
+
+  describe('the shadow of a challenger that no close grades', { timeout: testTimeoutMs }, () => {
+    shadowUngraded(settingsOf);
   });
 }

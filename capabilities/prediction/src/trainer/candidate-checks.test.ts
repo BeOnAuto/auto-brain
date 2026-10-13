@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 import { Effect } from 'effect';
@@ -5,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 
 import { buildPlaybook, type BuildPlaybook } from '../build-testing/build-playbook.ts';
 import { askedBuild, savedFunction, workOf } from '../build-testing/built-versions.ts';
-import { candidateBytes, type CandidateName } from '../build-testing/due-driving.ts';
+import { candidateBytes, candidateSha256, type CandidateName } from '../build-testing/due-driving.ts';
 import { scriptedModels } from '../build-testing/scripted-models.ts';
 import { uploadCandidate } from './candidate-upload.ts';
 
@@ -85,18 +87,20 @@ describe('a candidate uploaded while every model process is taken', { timeout: t
     });
     expect((await workOf(playbook, build)).map(({ type }) => type)).toEqual(['dataset_assembled']);
   });
-  it('is told every model process is busy while builds hold every scoring permit, so a question keeps its process', async () => {
+  it('is told every model process is busy before its body is read while builds hold every scoring permit, so a question keeps its process', async () => {
     const playbook = buildPlaybook();
     const build = await waitingBuild(playbook);
     const { permits } = playbook.test.ports;
     const taken = [permits.take(), permits.take()];
 
     const refused = await sent(playbook, build, 'visits-mean');
+    const written = existsSync(join(playbook.test.directory, 'models', candidateSha256('visits-mean')));
     for (const release of taken) {
       release?.();
     }
 
     expect(refused).toMatchObject({ status: 'rejected', reason: 'unavailable', kind: 'model_process_busy' });
+    expect(written).toBe(false);
     expect(await sent(playbook, build, 'visits-mean')).toMatchObject({ status: 'succeeded' });
   });
 });

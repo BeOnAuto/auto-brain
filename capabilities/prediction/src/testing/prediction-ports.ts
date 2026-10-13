@@ -1,5 +1,5 @@
 import { runOutcomeMapping } from '@on.auto/definitions';
-import type { KeyedProjection } from '@on.auto/operations';
+import type { KeyedProjection, RecordedContent } from '@on.auto/operations';
 import { memoryLedger, type MemoryLedger } from '@on.auto/operations/testing';
 import { Effect } from 'effect';
 
@@ -16,6 +16,7 @@ export interface PortOptions extends Pick<ModelPortSettings, 'module' | 'deadlin
   readonly longJobs?: number;
   readonly openRequests?: number;
   readonly projections?: readonly KeyedProjection[];
+  readonly content?: (kept: RecordedContent) => RecordedContent;
 }
 
 export interface TestPorts {
@@ -33,7 +34,10 @@ export function testPorts(options: PortOptions = {}): TestPorts {
   const ledger = memoryLedger(runOutcomeMapping, [predictionBuilds, predictionModels, ...(options.projections ?? [])]);
   const processes = options.processes ?? 4;
   const ports: PredictionPorts = {
-    ledger: ledger.service,
+    ledger:
+      options.content === undefined
+        ? ledger.service
+        : { ...ledger.service, content: options.content(ledger.service.content) },
     database: options.database ?? emptyHostDatabase,
     ...modelPorts({
       ...options,

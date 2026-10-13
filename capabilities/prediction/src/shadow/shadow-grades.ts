@@ -157,6 +157,7 @@ export interface Verdict {
   readonly passed: boolean;
   readonly challenger: number | null;
   readonly active: number | null;
+  readonly ungradedCloses?: number;
 }
 
 export function shadowVerdictOf(grades: readonly ShadowGrade[], version: number, metric: Metric): Verdict | undefined {

@@ -1,5 +1,7 @@
 import type { Stats } from 'node:fs';
-import { stat } from 'node:fs/promises';
+import { mkdir, stat } from 'node:fs/promises';
+
+import { folderMode } from './cached-files.ts';
 
 const writableByOthers = 0o022;
 
@@ -14,6 +16,7 @@ function problemOf(found: Readonly<Stats>, owner: number | undefined): string | 
 }
 
 export async function cacheFolderProblem(directory: string, owner = process.getuid?.()): Promise<string | undefined> {
+  await mkdir(directory, { recursive: true, mode: folderMode }).catch(() => null);
   const found = await stat(directory).catch(() => null);
-  return found === null ? undefined : problemOf(found, owner);
+  return found === null ? 'could not be made' : problemOf(found, owner);
 }

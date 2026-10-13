@@ -1,5 +1,3 @@
-import { cpus } from 'node:os';
-
 import { seriesRowsIn } from '../src/files/series-rows.ts';
 import { loadWithOnnxRuntime } from '../src/model-jobs/model-sessions.ts';
 import { walked } from '../src/model-jobs/walk-job.ts';
@@ -9,7 +7,7 @@ import { daysMeasured, widestFeatures } from './model-files.ts';
 const serverProcesses = 4;
 
 const [model = '', rows = ''] = process.argv.slice(2);
-const threads = threadsOf(serverProcesses, cpus().length);
+const threads = threadsOf(serverProcesses);
 const before = process.memoryUsage().rss;
 const loaded = await loadWithOnnxRuntime(model, threads);
 const started = performance.now();

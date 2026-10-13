@@ -103,7 +103,7 @@ function shadowed(
   if (command.type === 'grade') {
     return once(wasGraded(state, command.data), { type: 'shadow_graded', data: command.data });
   }
-  return once(state.verdicts.has(command.data.version), {
+  return once(state.verdicts.has(command.data.version) || state.settled.has(command.data.build), {
     type: command.passed ? 'shadow_passed' : 'shadow_failed',
     data: command.data,
   });
