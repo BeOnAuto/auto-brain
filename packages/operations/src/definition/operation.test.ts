@@ -98,6 +98,18 @@ describe('a registration', () => {
   });
 });
 
+describe('a query routed by POST', () => {
+  it('stays a query, permitted by the read permission of its scope', () => {
+    const posted = defineQuery('playbook', { ...about, name: 'posted', route: { method: 'POST', path: '/posted' } });
+
+    expect(posted.registration).toMatchObject({
+      kind: 'query',
+      route: { method: 'POST', path: '/posted' },
+      permissions: ['playbook:read'],
+    });
+  });
+});
+
 describe('the reach of a registration', () => {
   it('says it reaches systems outside the server only when its definition says so', () => {
     const asking = defineQuery('org', {

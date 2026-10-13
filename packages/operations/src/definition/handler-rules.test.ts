@@ -80,6 +80,11 @@ const accepted: Readonly<Record<string, readonly string[]>> = {
   ]),
   'declared-rejection.ts': defined('defineCommand', 'playbook', [post, ...declaring('conflict', conflicting)]),
   'declared-invalid-input.ts': defined('defineQuery', 'playbook', [get, ...declaring('invalid_input', refusingInput)]),
+  'query-posts-an-input-a-query-string-cannot-carry.ts': defined('defineQuery', 'playbook', [
+    post,
+    ...emptyInputAndOutput,
+    answering,
+  ]),
   'command-calls-query.ts': [
     ...callingOther('defineQuery', get, 'PlaybookReader'),
     ...callerOfOther('defineCommand', post),
@@ -208,9 +213,13 @@ const rejected: Readonly<Record<string, RejectedProbe>> = {
       answering,
     ]),
   },
-  'query-posts.ts': {
-    because: 'Type \'"POST"\' is not assignable to type \'"GET"\'',
-    source: defined('defineQuery', 'playbook', [post, ...emptyInputAndOutput, answering]),
+  'query-puts.ts': {
+    because: 'Type \'"PUT"\' is not assignable to type \'"GET" | "POST"\'',
+    source: defined('defineQuery', 'playbook', [
+      "  route: { method: 'PUT', path: '/probe' },",
+      ...emptyInputAndOutput,
+      answering,
+    ]),
   },
   'command-gets.ts': {
     because: 'Type \'"GET"\' is not assignable to type \'"POST" | "PUT"\'',
