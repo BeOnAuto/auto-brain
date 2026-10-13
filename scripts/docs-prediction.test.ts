@@ -29,7 +29,15 @@ await test('the guide of prediction functions gives a trainer its path, and an a
     format,
     /^### The trainer's path\n\nA trainer is whoever fits the model: a person, or any agent with an environment that runs code/mu,
   );
-  assert.match(format, /^6\. Answer the request with `answer_interaction`/mu);
+  assert.match(
+    format,
+    /^2\. Read the brief and the training rows over the routes below, sending the key as `Authorization: Bearer <key>`\.$/mu,
+  );
+  assert.match(
+    format,
+    /^6\. Answer the request, .* through the tool `answer_interaction`, or over HTTP alone with `POST \/v1\/orgs\/\{org\}\/playbooks\/\{playbook\}\/runs\/\{run_id\}\/answer`/mu,
+  );
+  assert.match(format, /^### Sending a build through an interaction function$/mu);
   assert.ok(
     format.includes(
       'An agent that can only call tools, as an agent connected to the runtime over MCP alone is, cannot train',

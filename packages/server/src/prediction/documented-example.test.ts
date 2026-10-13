@@ -1,15 +1,16 @@
 import { uploadedWeeklyOrders } from '@on.auto/prediction/testing';
-import { afterEach, describe, expect, it } from 'vitest';
+import { Option, Schema } from 'effect';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import { blocksInOrderOf } from '../testing/servers/tutorial-calls.ts';
 import { runIdIn, settledRun } from '../testing/servers/workflow-server.ts';
-import { askedBuild, candidateFile, digestOf, sentCandidate, standingWhen } from './build-calls.ts';
+import { askedBuild, candidateFile, digestOf, endedRun, sentCandidate, standingWhen } from './build-calls.ts';
 import { sha256Of, uploaded } from './dataset-uploads.ts';
 
 const testTimeoutMs = 90_000;
 
-const [, , , nextWeekOrders] = blocksInOrderOf('reference/prediction-format.md').map(({ body }) => body);
+const [, , , sendBuild, nextWeekOrders] = blocksInOrderOf('reference/prediction-format.md').map(({ body }) => body);
 
 const weeks = Array.from({ length: 20 }, (_, at) => `2026-W${String(21 + at).padStart(2, '0')}`);
 
@@ -68,5 +69,61 @@ describe('the workflow of the prediction function format, through the server', {
       status: 'succeeded',
       output: { forecast: { series: 'north', horizon: 1, value: 1, low: -1, high: 3, coverage: 0.8, version: 1 } },
     });
+  });
+});
+
+function throughSendBuild(source: string): string {
+  return source.replace('  expires: P7D', '  through: send-build\n  expires: P7D');
+}
+
+const ListedSchema = Schema.Struct({
+  interactions: Schema.Array(Schema.Struct({ run_id: Schema.String, message: Schema.String })),
+});
+
+function requestOfSendBuild(): Promise<{ readonly run_id: string; readonly message: string }> {
+  return vi.waitFor(
+    async () => {
+      const listed = await server.call('GET', `${alpha}/interactions?function=send-build`);
+      const [request] = Schema.decodeUnknownSync(ListedSchema)(listed.body).interactions;
+      expect(request).toBeDefined();
+      return Option.getOrThrow(Option.fromNullishOr(request));
+    },
+    { timeout: 30_000, interval: 50 },
+  );
+}
+
+describe('the function a build of the prediction function format is sent through', { timeout: testTimeoutMs }, () => {
+  it('is saved and named under source.through, and its request names the build and its routes and takes its answer', async () => {
+    server = await servingReasoning([], { LOCAL_MODE: 'true', WORKFLOW_SWEEP_INTERVAL: 'PT0.05S' });
+    await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
+    await uploaded(server.origin, orderRows);
+    const created = [
+      await server.call('POST', `${alpha}/definitions/interaction`, {
+        body: { name: 'send-build', source: sendBuild },
+      }),
+      await server.call('POST', `${alpha}/definitions/prediction`, {
+        body: {
+          name: 'weekly-orders',
+          source: throughSendBuild(withoutPersistence(uploadedWeeklyOrders(sha256Of(orderRows)))),
+        },
+      }),
+    ];
+    const build = await askedBuild(server, 'weekly-orders');
+    const request = await requestOfSendBuild();
+    const candidate = candidateFile('orders-last');
+    await sentCandidate(server, build, candidate);
+    const answered = await server.call('POST', `${alpha}/runs/${request.run_id}/answer`, {
+      body: { answer: { candidates: [digestOf(candidate)] } },
+    });
+    const routes = `/v1/orgs/acme/playbooks/alpha/runs/${build}/build`;
+
+    expect([...created.map(({ status }) => status), answered.status]).toEqual([201, 201, 200]);
+    expect(request.message).toContain(`Build ${build} of weekly-orders waits for its candidates until`);
+    expect(
+      [`GET ${routes}/brief`, `GET ${routes}/rows`, `POST ${routes}/candidates`].filter(
+        (route) => !request.message.includes(route),
+      ),
+    ).toEqual([]);
+    expect(await endedRun(server, build)).toMatchObject({ status: 'succeeded', output: { version: 1 } });
   });
 });

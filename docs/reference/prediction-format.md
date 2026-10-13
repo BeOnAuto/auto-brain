@@ -54,8 +54,12 @@ Before writing one, establish with the person:
 - **The target and its grain**: the one quantity to predict, how it is read from each event, and the period it is counted over, a day, a week, a month, a quarter or a year.
 - **The horizons**: how many periods ahead a question asks, such as next week and four weeks out, or, when the question is where a week, a month, a quarter or a year will land, that period, under `accumulates` in their place.
 - **The features a trainer may use**: the other values of each event a model may learn from, each with how it is aggregated over a period.
-- **What a prediction is conditioned on**: the features a question supplies for the period it asks about, such as a promotion that is already planned, named under `given`.
+- **What a prediction is conditioned on**: the features a question supplies for the periods ahead, such as a promotion that is already planned, named under `given`.
 - **The rules**: what the trainer must follow and the model's card must state, in a line each.
+- **Whether a person approves each version**: `evaluation.activate`, required, is `automatic` when a version that passes activates on its own, or names the interaction function that asks a person to approve it.
+- **Who trains, and through what**: a party who reads the playbook's inbox, `source.to`, `trainer` when left out, or an interaction function that sends the build where the trainer works, `source.through`.
+- **How long a build may wait for its trainer**: `source.expires`, required, from one minute to 30 days.
+- **Whether the playbook has enough history**: the window must hold the holdout plus two seasons, or plus twice the longest horizon when no season is named, so weekly periods with a season of 52 need at least the holdout plus 104 weeks; a playbook without that history can upload its rows, as [An uploaded dataset](#an-uploaded-dataset) says.
 
 ## Fields
 
@@ -92,7 +96,7 @@ Every problem a save finds is refused with its line, and nothing is saved.
 
 ### The input and the output
 
-The input of a run is one of two shapes. A **question** is `{ series, horizon, given? }`: the series as text of 1 to 256 bytes, one of the function's horizons, and, when the function names `given`, the value of each given feature for the period asked about, by its name, and no other. A **build** is `{ build: {} }`, which asks for a new version.
+The input of a run is one of two shapes. A **question** is `{ series, horizon, given? }`: the series as text of 1 to 256 bytes, one of the function's horizons, and, when the function names `given`, the value of each given feature, by its name, and no other, which the playbook feeds to every period up to the one predicted. A **build** is `{ build: {} }`, which asks for a new version.
 
 A question's output is the **prediction**, `{ series, origin, period, horizon, value, low, high, coverage, version }`: `origin` is the last observed period and `period` the predicted one, each in the ISO 8601 form of the grain, `YYYY-MM-DD`, `YYYY-Www`, `YYYY-MM`, `YYYY-Qn` or `YYYY`; `value` is the 50th percentile, `low` the 10th and `high` the 90th, so `coverage` is 0.8; `version` is the version of the model that answered. A build's output is `{ version, winner, candidates }`, `version` and `winner` null when no candidate beat the baselines.
 
@@ -113,7 +117,7 @@ A forecast is at a grain and the playbook records events one by one, so the play
 | `data.series`   | A JSON Pointer to the value that names the series, text of 1 to 256 bytes                                                                                                       |
 | `data.target`   | `{ as, of }`: how the target is aggregated over a period, `count`, `sum`, `last` or `mean`, and `of`, the pointer to the value, which `count` leaves out                        |
 | `data.features` | At most 40 of `{ name, of, as }`, aggregated as the target is                                                                                                                   |
-| `data.given`    | The names among the features a question supplies for the period it asks about                                                                                                   |
+| `data.given`    | The names among the features a question supplies for the periods ahead                                                                                                          |
 | `data.dataset`  | In place of the projection: the SHA-256 of a dataset uploaded as [An uploaded dataset](#an-uploaded-dataset) says, with `features` naming its columns after the target in order |
 
 A `time` or a `series` that points where none of the named event types holds a value, such as `/output/region` under an event `run_rejected`, is refused at save, as a recall function's filters are checked.
@@ -189,16 +193,48 @@ The builds in flight and the builds of the day are read from the function's mode
 
 Otherwise the build writes the two files of [The rows a build reads](#the-rows-a-build-reads), renders the brief over them and asks its trainer. With `source.to`, the default, the build is a request in the playbook's inbox: `list_interactions` lists it for its party, with a message that names the build's run id, its three routes and the opening of the brief, within 8 KiB, and its answer is `{ candidates, recipe?, limitations? }`. With `source.through`, the build starts that interaction function with the input `{ build: { run_id, function, brief_sha256, routes, expires_at } }`, and that function's request is the one the inbox lists; its answer is the build's.
 
+### Sending a build through an interaction function
+
+The function `source.through` names is an active interaction function of the playbook, so save it before the prediction function. Its message is all the trainer receives of the build, so it renders the build's run id, `{{ input.build.run_id }}`, and its routes, `{{ input.build.routes.brief }}`, `{{ input.build.routes.rows }}` and `{{ input.build.routes.candidates }}`; the save does not read the message. The save checks the function against the input `{ build: {} }`, so its input schema declares `build` as an object without requiring any of its fields, and its output schema is an object whose one required property `candidates` is a list of text, with `recipe` and `limitations` beside it if it takes them. This one waits in the inbox for its party; one that names a tool in `deliver` sends the build where the trainer works, as [Sending through a tool](interaction-format.md#sending-through-a-tool) says:
+
+<!-- prettier-ignore -->
+```markdown
+---
+description: Sends a build of a prediction function to its trainer and takes the candidates back
+to: trainer
+expires: P7D
+input:
+  schema:
+    type: object
+    required: [build]
+    properties:
+      build: { type: object }
+output:
+  schema:
+    type: object
+    required: [candidates]
+    properties:
+      candidates: { type: array, items: { type: string } }
+      recipe: { type: string }
+      limitations: { type: string }
+---
+Build {{ input.build.run_id }} of {{ input.build.function }} waits for its candidates until {{ input.build.expires_at }}.
+Read the brief with GET {{ input.build.routes.brief }} and the training rows with GET {{ input.build.routes.rows }},
+upload each candidate with POST {{ input.build.routes.candidates }}, and answer with the SHA-256 of each.
+```
+
+Saved as `send-build`, it is named in the prediction function's `source` as `through: send-build`, beside `expires` and in place of `to`.
+
 ### The trainer's path
 
 A trainer is whoever fits the model: a person, or any agent with an environment that runs code, where it can call the runtime over HTTP, read the rows, fit a model with the libraries it needs and write the file it exports. It trains outside the playbook:
 
 1. Find the build. `list_interactions` with `to` set to the function's party, `trainer` unless `source.to` names another, lists its request, whose `run_id` is the build's and whose message names the three routes below and how to answer; with `source.through`, the request of that function's run carries the build's `run_id` and routes in its input.
-2. Read the brief and the training rows over the routes below.
+2. Read the brief and the training rows over the routes below, sending the key as `Authorization: Bearer <key>`.
 3. Fit a model to the rows, as the brief and the rules say.
 4. Export it to ONNX in [the signature of a candidate](#the-signature-of-a-candidate), within 64 MiB.
 5. Upload each candidate, at most 8, and keep the SHA-256 each upload answers as `candidate`.
-6. Answer the request with `answer_interaction`, `{ "candidates": [<the SHA-256 of each>] }`, and, if the trainer wrote them, `recipe` and `limitations` in words beside them.
+6. Answer the request, under the `run_id` `list_interactions` gave it, with `{ "candidates": [<the SHA-256 of each>] }` and, if the trainer wrote them, `recipe` and `limitations` in words beside them: through the tool `answer_interaction`, or over HTTP alone with `POST /v1/orgs/{org}/playbooks/{playbook}/runs/{run_id}/answer` and the body `{ "answer": { "candidates": [...] } }`, with the same key.
 
 An agent that can only call tools, as an agent connected to the runtime over MCP alone is, cannot train: the three routes are served over HTTP alone, and fitting and exporting a model runs code. It needs an environment that runs code beside it, one that reaches the runtime over HTTP with a key that may read and write the playbook, to read, fit, export and upload; it can still find the build and answer the request itself, with the digests that environment uploaded.
 
@@ -208,7 +244,7 @@ An agent that can only call tools, as an agent connected to the runtime over MCP
 | `GET /runs/{run_id}/build/rows`        | The training rows, as `text/csv`, streamed | `playbook:read`  |
 | `POST /runs/{run_id}/build/candidates` | `{ candidate, bytes, opset }` for a model  | `playbook:write` |
 
-The routes are relative to `/v1/orgs/{org}/playbooks/{playbook}`, served over HTTP alone, under the caller's own key, and answer only a build that waits for its answer: a run the playbook does not hold answers `not_found`, a run that is no build `conflict` with the kind `not_a_build`, and a build that took its answer or ended `conflict` with the kind `build_ended`. A candidate is the ONNX file as `application/octet-stream` with its `Content-Length`: a body without one answers 411 and one past 64 MiB 413, before the body is read. The playbook checks the file in a model process within 30 seconds and refuses it `invalid_input` when the runtime does not load it, when its signature is not the one the function feeds or its opset is older than 13, and once the build has its 8 candidates; it answers `unavailable` with the kind `model_process_busy` while every model process a build may hold is taken, since a check holds one of the processes the builds share and never one a question needs. The same bytes again answer the same, and nothing is recorded for them twice.
+The routes are relative to `/v1/orgs/{org}/playbooks/{playbook}`, served over HTTP alone, under the caller's own key, sent as `Authorization: Bearer <key>`, which a runtime in loopback-only local mode does not ask for, and answer only a build that waits for its answer: a run the playbook does not hold answers `not_found`, a run that is no build `conflict` with the kind `not_a_build`, and a build that took its answer or ended `conflict` with the kind `build_ended`. A candidate is the ONNX file as `application/octet-stream` with its `Content-Length`: a body without one answers 411 and one past 64 MiB 413, before the body is read. The playbook checks the file in a model process within 30 seconds and refuses it `invalid_input` when the runtime does not load it, when its signature is not the one the function feeds or its opset is older than 13, and once the build has its 8 candidates; it answers `unavailable` with the kind `model_process_busy` while every model process a build may hold is taken, since a check holds one of the processes the builds share and never one a question needs. The same accepted bytes again answer the same, and nothing is recorded for them twice; a refused file sent again is checked again and refused again. When uploads checked at the same moment would pass the eighth, the one recorded past it answers `conflict`, "The build took its 8 candidates meanwhile", and records nothing.
 
 The answer names the candidates by their SHA-256, at most 8, each one uploaded to this build; `recipe` and `limitations` are how the candidates were trained and what they do not do well, in words, at most 8 KiB each, kept with the version. A candidate the answer names that was not uploaded is refused `invalid_input` at its pointer, and so is a `recipe` or `limitations` past 8 KiB; an answer through the function of `source.through` is checked the same way, and one that fails ends the build `rejected` with the reason `invalid_input`, its errors under `/answer`.
 
@@ -224,7 +260,7 @@ A candidate takes the target, and the features the function names, over the peri
 | `h`     | `[1]`       | int64   | With `accumulates`, how many periods the total sums                                                                 |
 | `q`     | `[1, H, 3]` | float32 | The answer: for each step ahead, the 10th, 50th and 90th percentile; with `accumulates`, `[1, 1, 3]`, the one total |
 
-`L` may be dynamic, and the playbook feeds the whole window, or fixed, and it feeds the last `L` periods, `NaN` before the first. `H` is the longest horizon, fixed or dynamic; with `accumulates`, the periods to the end of the enclosing period, so dynamic. The model takes no other input and answers no other output, in opset 13 or later.
+The leading axis of every tensor is 1 or dynamic. `L` may be dynamic, and the playbook feeds the whole window, or fixed, and it feeds the last `L` periods, `NaN` before the first. `H` is the longest horizon, fixed or dynamic; with `accumulates`, the periods to the end of the enclosing period, so dynamic. The model takes no other input and answers no other output, in opset 13 or later.
 
 ### How a candidate is scored
 
@@ -271,7 +307,7 @@ A question, `{ series, horizon, given? }`, or `{ series, given? }` with `accumul
 | `unavailable`, kind `model_process_failed` | A question's model process ended before it answered, as when it ran out of time or memory; with the because `not_finite`, the model answered a number that is not finite or a shape its signature does not give |
 | The refusals of [A build](#a-build)        | A build refused as it starts: `build_in_flight`, `builds_full`, `requests_full`, `dataset_too_large` or `unworkable`                                                                                            |
 | `rejected` as `unanswered`, kind `expired` | Nobody answered a build's request before `source.expires`                                                                                                                                                       |
-| `rejected` as `unanswered`                 | A build through `source.through` whose function's run ended without an answer, with the kind its run ended with, or `undelivered` when it had none                                                              |
+| `rejected` as `unanswered`                 | A build through `source.through` whose function's run ended without an answer: with that run's kind when it ended `unanswered`, and `undelivered` for any other ending or when it could not start               |
 | `rejected` as `invalid_input`              | A build through `source.through` whose function answered a candidate not uploaded to the build, or a `recipe` or `limitations` past 8 KiB, its errors under `/answer`                                           |
 | `rejected` as `cancelled`                  | A build cancelled through `cancel_run`, starting, waiting or scoring alike, with the kind `requested`, or by the workflow that waited for it, which ran out of time or ended first                              |
 | `failed`                                   | The runtime itself broke down                                                                                                                                                                                   |
@@ -280,28 +316,28 @@ A question ends within its call and cannot be cancelled while it runs; a build f
 
 ## Bounds
 
-| Bound                    | Value                                                                                                | When it is reached                       |
-| ------------------------ | ---------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| Horizons                 | 1 to 8, each 1 to 52 periods                                                                         | The save is refused                      |
-| A total                  | A day to a week, a month or a quarter; a week to a quarter or a year; a month to a quarter or a year | The save is refused                      |
-| Holdout                  | At least twice the longest horizon and at least 8, at most half the window                           | The save is refused                      |
-| Window                   | At least the holdout plus two seasons, or plus twice the longest horizon; at most 1,000              | The save is refused                      |
-| Season                   | 2 to 366 periods                                                                                     | The save is refused                      |
-| Shadow periods           | 0 to 52                                                                                              | The save is refused                      |
-| Filters, features, rules | 8 filters; 40 features; 32 rules of 256 bytes each                                                   | The save is refused                      |
-| A build's wait           | One minute to 30 days                                                                                | The save is refused                      |
-| The brief                | 64 KiB rendered over the largest dataset, within the 200 ms a template renders in                    | The save is refused                      |
-| A series                 | 1 to 256 bytes of text                                                                               | The event is passed over                 |
-| A dataset                | 200,000 rows over 1,000 series, 64 MiB as CSV                                                        | A build is refused; an upload is refused |
-| Functions a playbook     | 32 active, unless the server's `PREDICTION_MAX_FUNCTIONS` says otherwise, from 1 to 1,000            | The save is refused                      |
-| A question's run         | 10 seconds within its call                                                                           | The run ends                             |
-| A build's run            | Its wait, the scoring of eight candidates at ten minutes each, and a minute to start                 | The run ends                             |
-| Builds a function a day  | 4, unless the server's `PREDICTION_BUILDS_PER_DAY` says otherwise, from 1 to 100                     | The build is refused                     |
-| Candidates of a build    | 8, each a file of at most 64 MiB with its `Content-Length`                                           | The upload is refused                    |
-| A candidate's check      | 30 seconds to load in a model process                                                                | The upload is refused                    |
-| A candidate's scoring    | 10 minutes in a model process                                                                        | The candidate is disqualified            |
-| A recipe, a limitation   | 8 KiB of text each                                                                                   | The answer is refused                    |
-| A version's card         | 4 KiB as JSON                                                                                        | Its features are kept apart              |
+| Bound                    | Value                                                                                                                                                                          | When it is reached                                                         |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| Horizons                 | 1 to 8, each 1 to 52 periods                                                                                                                                                   | The save is refused                                                        |
+| A total                  | A day to a week, a month or a quarter, at most 7, 31 or 92 days; a week to a quarter or a year, at most 14 or 53 weeks; a month to a quarter or a year, at most 3 or 12 months | The save is refused                                                        |
+| Holdout                  | At least twice the longest horizon and at least 8, at most half the window                                                                                                     | The save is refused                                                        |
+| Window                   | At least the holdout plus two seasons, or plus twice the longest horizon; at most 1,000                                                                                        | The save is refused                                                        |
+| Season                   | 2 to 366 periods                                                                                                                                                               | The save is refused                                                        |
+| Shadow periods           | 0 to 52                                                                                                                                                                        | The save is refused                                                        |
+| Filters, features, rules | 8 filters; 40 features; 32 rules of 256 bytes each                                                                                                                             | The save is refused                                                        |
+| A build's wait           | One minute to 30 days                                                                                                                                                          | The save is refused                                                        |
+| The brief                | 64 KiB rendered over the largest dataset, within the 200 ms a template renders in                                                                                              | The save is refused                                                        |
+| A series                 | 1 to 256 bytes of text                                                                                                                                                         | The event is passed over                                                   |
+| A dataset                | 200,000 rows over 1,000 series, 64 MiB as CSV                                                                                                                                  | A build is refused; an upload is refused                                   |
+| Functions a playbook     | 32 active, unless the server's `PREDICTION_MAX_FUNCTIONS` says otherwise, from 1 to 1,000                                                                                      | The save is refused                                                        |
+| A question's run         | 10 seconds from when its job holds a model process, after a wait of up to 10 seconds for one; over an uploaded dataset, a window job bounded alike before it                   | The run ends `unavailable`, `model_process_busy` or `model_process_failed` |
+| A build's run            | Its wait, the scoring of eight candidates at ten minutes each, and a minute to start                                                                                           | The run ends                                                               |
+| Builds a function a day  | 4, unless the server's `PREDICTION_BUILDS_PER_DAY` says otherwise, from 1 to 100                                                                                               | The build is refused                                                       |
+| Candidates of a build    | 8, each a file of at most 64 MiB with its `Content-Length`                                                                                                                     | The upload is refused                                                      |
+| A candidate's check      | 30 seconds to load in a model process                                                                                                                                          | The upload is refused                                                      |
+| A candidate's scoring    | 10 minutes in a model process                                                                                                                                                  | The candidate is disqualified                                              |
+| A recipe, a limitation   | 8 KiB of text each                                                                                                                                                             | The answer is refused                                                      |
+| A version's card         | 4 KiB as JSON                                                                                                                                                                  | Its features are kept apart                                                |
 
 ## In a workflow
 
