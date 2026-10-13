@@ -4,6 +4,7 @@ import { RunOutputSchema } from '../dispatch/run-output.ts';
 import { InputReceiptSchema } from '../machine/input-receipt.ts';
 import { mostEventBytes } from '../machine/limits.ts';
 import { EarlierStepSchema, ResumedSchema, StepSchema } from '../steps/step-entry.ts';
+import { EventOfFormatSevenSchema, eventNamesOfFormatSeven } from './formats/format-seven-records.ts';
 import {
   EventOfFormatsOneToSixSchema,
   eventNamesOfFormatsOneToSix,
@@ -31,6 +32,7 @@ export const RunLogEventSchema = Schema.Union([
     eventInFormat(FormatsOneToSixSchema),
     eventNamesOfFormatsOneToSix,
   ),
+  writtenInAnOlderFormat(EventOfFormatSevenSchema, eventInFormat(Schema.Literal(7)), eventNamesOfFormatSeven),
 ]);
 
 export type RunLogEvent = typeof RunLogEventSchema.Type;
