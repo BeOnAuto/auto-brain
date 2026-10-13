@@ -36,10 +36,11 @@ function closedNotice(localMode: boolean): Effect.Effect<void> {
   );
 }
 
-function configuredCredentials({ apiKeys = [], signIn }: AccessReport): string {
-  return [...(apiKeys.length > 0 ? ['API keys'] : []), ...(signIn === undefined ? [] : ['identity providers'])].join(
-    ' and ',
-  );
+function whyLocalModeIsIgnored({ apiKeys = [], signIn }: AccessReport): string {
+  return [
+    ...(apiKeys.length > 0 ? ['API keys are configured'] : []),
+    ...(signIn === undefined ? [] : ['PUBLIC_URL is set, which signs persons in']),
+  ].join(' and ');
 }
 
 function signInNotice(signIn: SignInSettings | undefined): readonly Effect.Effect<void>[] {
@@ -47,19 +48,14 @@ function signInNotice(signIn: SignInSettings | undefined): readonly Effect.Effec
     ? []
     : [
         Effect.logInfo(
-          `Signed-in persons are admitted through the identity providers ${[...new Set(signIn.providers.map(({ name }) => name))].join(', ')}, by tokens whose audience is ${signIn.publicUrl}`,
-        ).pipe(
-          Effect.annotateLogs({
-            public_url: signIn.publicUrl,
-            identity_providers: signIn.providers.map(({ name, issuer, org }) => ({ name, issuer, org })),
-          }),
-        ),
+          `Signed-in persons are admitted through the identity service at ${signIn.issuer}, by tokens whose audience is ${signIn.publicUrl}`,
+        ).pipe(Effect.annotateLogs({ public_url: signIn.publicUrl, identity_issuer: signIn.issuer })),
       ];
 }
 
 function credentialNotices(report: AccessReport): readonly Effect.Effect<void>[] {
   const ignored = report.localMode
-    ? [Effect.logWarning(`LOCAL_MODE is ignored because ${configuredCredentials(report)} are configured`)]
+    ? [Effect.logWarning(`LOCAL_MODE is ignored because ${whyLocalModeIsIgnored(report)}`)]
     : [];
   return [...ignored, ...signInNotice(report.signIn)];
 }

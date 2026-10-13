@@ -1,15 +1,34 @@
 import { Schema } from 'effect';
 
+function isOriginOf(text: string, protocols: readonly string[]): boolean {
+  const url = URL.parse(text);
+  return url?.origin === text && protocols.includes(url.protocol);
+}
+
 export const Origin = Schema.String.check(
   Schema.makeFilter(
     (text: string) => URL.parse(text)?.origin === text || 'Expected an origin such as https://app.example.com',
   ),
 );
 
-export const PublicUrl = Schema.String.check(
+export const IssuerOrigin = Schema.String.check(
   Schema.makeFilter(
     (text: string) =>
-      (text.startsWith('https://') && URL.parse(text)?.origin === text) ||
+      isOriginOf(text, ['https:']) ||
+      'Expected the https URL of the identity service, with no path, query or fragment, such as https://auth.on.auto',
+  ),
+);
+
+export const PublicOrigin = Schema.String.check(
+  Schema.makeFilter(
+    (text: string) =>
+      isOriginOf(text, ['https:', 'http:']) ||
       'Expected an https URL with no path, query or fragment, such as https://runtime.example.com',
   ),
 );
+
+const loopbackNames: ReadonlySet<string> = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+export function namesALoopbackHost(origin: string): boolean {
+  return loopbackNames.has(new URL(origin).hostname);
+}

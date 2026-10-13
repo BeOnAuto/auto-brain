@@ -15,13 +15,6 @@ function errorFrom(environment: Environment): unknown {
 
 const { entry } = createApiKey({ id: 'ci-1', org: 'acme', permissions: ['org:read'], playbooks: '*' });
 
-const corp = {
-  name: 'corp',
-  issuer: 'https://login.example.com/tenant',
-  org: 'acme',
-  grants: { claim: 'groups', by: { engineers: { permissions: ['playbook:read'], playbooks: '*' } } },
-};
-
 const defaultPrediction = {
   processes: 4,
   processMemoryMebibytes: 1280,
@@ -67,7 +60,7 @@ describe('readSettings given every setting', () => {
       PORT: '3000',
       ALLOWED_ORIGINS: 'https://app.example.com,http://localhost:5173,http://[::1]:3000',
       API_KEYS: JSON.stringify([entry]),
-      IDENTITY_PROVIDERS: JSON.stringify([corp]),
+      IDENTITY_ISSUER: 'https://identity.example',
       PUBLIC_URL: 'https://runtime.example.com',
       LEDGER_FILE: '/data/ledger.db',
       CONTENT_STORE_URL: 's3://playbook-content/production',
@@ -89,7 +82,7 @@ describe('readSettings given every setting', () => {
       port: 3000,
       allowedOrigins: ['https://app.example.com', 'http://localhost:5173', 'http://[::1]:3000'],
       apiKeys: [entry],
-      signIn: { providers: [corp], publicUrl: 'https://runtime.example.com' },
+      signIn: { issuer: 'https://identity.example', publicUrl: 'https://runtime.example.com' },
       ledger: { store: 'sqlite', file: '/data/ledger.db' },
       content: {
         store: 'object-storage',
@@ -187,14 +180,50 @@ describe('readSettings rejects invalid settings', () => {
   });
 });
 
+const httpOffLoopback =
+  'InvalidSettingsError: PUBLIC_URL: Expected an https URL; an http URL is taken only for localhost, 127.0.0.1 or [::1] on a server whose HOST is a loopback address';
+
+describe('readSettings signing persons in', () => {
+  it('signs persons in through the Auto identity service once PUBLIC_URL is set, and through no one without it', () => {
+    expect([
+      readSettings({ PUBLIC_URL: 'https://runtime.example.com' }).signIn,
+      readSettings({ IDENTITY_ISSUER: 'https://identity.example' }).signIn,
+    ]).toEqual([{ issuer: 'https://auth.on.auto', publicUrl: 'https://runtime.example.com' }, undefined]);
+  });
+
+  it('signs persons in through the identity service IDENTITY_ISSUER names, such as a development instance', () => {
+    expect(
+      readSettings({ IDENTITY_ISSUER: 'https://identity.example', PUBLIC_URL: 'https://runtime.example.com' }).signIn,
+    ).toEqual({ issuer: 'https://identity.example', publicUrl: 'https://runtime.example.com' });
+  });
+
+  it.each(['http://localhost:5555', 'http://127.0.0.1:5555', 'http://[::1]:5555'])(
+    'takes PUBLIC_URL=%s on a server that listens on a loopback address',
+    (publicUrl) => {
+      expect(readSettings({ HOST: '127.0.0.1', PUBLIC_URL: publicUrl }).signIn).toEqual({
+        issuer: 'https://auth.on.auto',
+        publicUrl,
+      });
+    },
+  );
+
+  it.each([
+    ['0.0.0.0', 'http://localhost:5555'],
+    ['127.0.0.1', 'http://runtime.example.com'],
+    ['0.0.0.0', 'http://runtime.example.com'],
+  ])('refuses on HOST=%s the http PUBLIC_URL=%s, naming the setting', (host, publicUrl) => {
+    expect(String(errorFrom({ HOST: host, PUBLIC_URL: publicUrl }))).toBe(httpOffLoopback);
+  });
+});
+
 describe('readSettings rejects invalid credential settings', () => {
   it.each([
-    'http://runtime.example.com',
     'https://runtime.example.com/',
     'https://runtime.example.com/runtime',
     'https://runtime.example.com?tenant=acme',
     'https://runtime.example.com#top',
     'https://Runtime.example.com',
+    'ftp://runtime.example.com',
     'runtime.example.com',
   ])('rejects PUBLIC_URL="%s", which is not an https URL without a path, naming the setting', (publicUrl) => {
     expect(String(errorFrom({ PUBLIC_URL: publicUrl }))).toBe(
@@ -202,24 +231,14 @@ describe('readSettings rejects invalid credential settings', () => {
     );
   });
 
-  it('requires PUBLIC_URL when IDENTITY_PROVIDERS lists a provider, since a token names it as its audience', () => {
-    const error = errorFrom({ IDENTITY_PROVIDERS: JSON.stringify([corp]) });
-
-    expect(error).toMatchObject({ name: 'InvalidSettingsError' });
-    expect(String(error)).toContain('PUBLIC_URL: Expected the https URL the runtime is reached at');
-  });
-
-  it('takes PUBLIC_URL without a provider, and signs no one in', () => {
-    expect(readSettings({ PUBLIC_URL: 'https://runtime.example.com' }).signIn).toBeUndefined();
-  });
-
-  it('rejects invalid identity providers with the named error that points at the entry', () => {
-    expect(
-      String(
-        errorFrom({ IDENTITY_PROVIDERS: JSON.stringify([{ ...corp, org: 'local' }]), PUBLIC_URL: 'https://a.example' }),
-      ),
-    ).toBe('InvalidIdentityProvidersError: IDENTITY_PROVIDERS[0].org: This org id is reserved for local mode');
-  });
+  it.each(['http://auth.on.auto', 'https://auth.on.auto/tenant', 'https://auth.on.auto?x=1', 'https://auth.on.auto#y'])(
+    'rejects IDENTITY_ISSUER="%s", which is not the https URL of a service without a path, naming the setting',
+    (issuer) => {
+      expect(String(errorFrom({ IDENTITY_ISSUER: issuer }))).toBe(
+        'InvalidSettingsError: SchemaError(Expected the https URL of the identity service, with no path, query or fragment, such as https://auth.on.auto\n  at ["IDENTITY_ISSUER"])',
+      );
+    },
+  );
 });
 
 describe('readSettings rejects invalid settings of other packages', () => {

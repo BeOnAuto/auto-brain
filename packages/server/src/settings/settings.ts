@@ -38,7 +38,7 @@ export function readSettings(given: Environment): Settings {
   const { environment, file } = Result.getOrThrow(configurationOf(given, fileSettings, refusedKeys));
   const { host, port } = readServerConfig(environment);
   const { allowedOrigins, localMode, logFormat, logLevel } = Effect.runSync(readAccessSettings(environment));
-  const { apiKeys, signIn } = readCredentialSettings(environment);
+  const { apiKeys, signIn } = readCredentialSettings(environment, host);
   const ledger = Effect.runSync(readLedgerSettings(environment));
   const content = Effect.runSync(readContentSettings(environment));
   const functions = readFunctionSettings(environment, file);

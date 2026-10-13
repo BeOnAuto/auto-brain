@@ -1,10 +1,16 @@
 import type { Environment } from '@on.auto/config';
-import { readApiKeys, readIdentityProviders, type ApiKey, type SignInSettings } from '@on.auto/identity';
+import {
+  autoIdentityService,
+  listensOnlyOnLoopback,
+  readApiKeys,
+  type ApiKey,
+  type SignInSettings,
+} from '@on.auto/identity';
 import { Config, ConfigProvider, Effect, Option } from 'effect';
 
 import type { LogFormat, LogLevelSetting } from '../logging/log-formats.ts';
 import { InvalidSettingsError } from './invalid-settings-error.ts';
-import { Origin, PublicUrl } from './origin.ts';
+import { IssuerOrigin, namesALoopbackHost, Origin, PublicOrigin } from './origin.ts';
 
 export interface AccessSettings {
   readonly allowedOrigins: readonly string[];
@@ -35,21 +41,27 @@ export interface CredentialSettings {
   readonly signIn: SignInSettings | undefined;
 }
 
-const publicUrlSetting = Config.option(Config.schema(PublicUrl, 'PUBLIC_URL'));
+const signInSettings = Config.all({
+  publicUrl: Config.option(Config.schema(PublicOrigin, 'PUBLIC_URL')),
+  issuer: Config.schema(IssuerOrigin, 'IDENTITY_ISSUER').pipe(Config.withDefault(autoIdentityService)),
+});
 
-const publicUrlRequired =
-  'PUBLIC_URL: Expected the https URL the runtime is reached at, with no path, such as https://runtime.example.com, since IDENTITY_PROVIDERS lists a provider and every token names it as its audience';
+const httpOffLoopback =
+  'PUBLIC_URL: Expected an https URL; an http URL is taken only for localhost, 127.0.0.1 or [::1] on a server whose HOST is a loopback address';
 
-export function readCredentialSettings(environment: Environment): CredentialSettings {
-  const publicUrl = Effect.runSync(
-    asInvalidSettings(publicUrlSetting.parse(ConfigProvider.fromEnvRecord(environment))),
+function isServedFrom(publicUrl: string, host: string): boolean {
+  return publicUrl.startsWith('https://') || (namesALoopbackHost(publicUrl) && listensOnlyOnLoopback(host));
+}
+
+export function readCredentialSettings(environment: Environment, host: string): CredentialSettings {
+  const { publicUrl, issuer } = Effect.runSync(
+    asInvalidSettings(signInSettings.parse(ConfigProvider.fromEnvRecord(environment))),
   );
-  const providers = readIdentityProviders(environment);
-  if (providers.length > 0 && Option.isNone(publicUrl)) {
-    throw new InvalidSettingsError({ message: publicUrlRequired });
+  if (Option.isSome(publicUrl) && !isServedFrom(publicUrl.value, host)) {
+    throw new InvalidSettingsError({ message: httpOffLoopback });
   }
   return {
     apiKeys: readApiKeys(environment),
-    signIn: Option.isSome(publicUrl) && providers.length > 0 ? { providers, publicUrl: publicUrl.value } : undefined,
+    signIn: Option.isSome(publicUrl) ? { issuer, publicUrl: publicUrl.value } : undefined,
   };
 }

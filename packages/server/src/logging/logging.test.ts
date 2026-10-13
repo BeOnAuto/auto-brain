@@ -1,7 +1,7 @@
 import { setTimeout } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
-import type { IdentityProvider, SignInSettings } from '@on.auto/identity';
+import type { SignInSettings } from '@on.auto/identity';
 import { Cause } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -31,22 +31,7 @@ function syntaxErrorParsing(text: string): SyntaxError {
 
 const serveWithTestRoutes = fileURLToPath(new URL('../testing/entries/serve-with-test-routes.ts', import.meta.url));
 
-const providers: readonly IdentityProvider[] = [
-  {
-    name: 'corp',
-    issuer: 'https://login.example',
-    org: 'acme',
-    grants: { claim: 'groups', by: { engineers: { permissions: [], playbooks: '*' } } },
-  },
-  {
-    name: 'corp',
-    issuer: 'https://login.example',
-    org: 'globex',
-    grants: { claim: 'groups', by: { engineers: { permissions: [], playbooks: '*' } } },
-  },
-];
-
-const signIn = { providers, publicUrl: 'https://runtime.example' };
+const signIn: SignInSettings = { issuer: 'https://auth.on.auto', publicUrl: 'https://runtime.example' };
 
 const nothingConfigured = { localMode: false, apiKeys: undefined, signIn: undefined };
 
@@ -90,8 +75,8 @@ describe('logAccessMode with credentials configured', () => {
 
   it.each([
     [['a key'], undefined, 'API keys are configured'],
-    [[], signIn, 'identity providers are configured'],
-    [['a key'], signIn, 'API keys and identity providers are configured'],
+    [[], signIn, 'PUBLIC_URL is set, which signs persons in'],
+    [['a key'], signIn, 'API keys are configured and PUBLIC_URL is set, which signs persons in'],
   ])(
     'warns that LOCAL_MODE is ignored when %j and %j are given, because %s',
     async (apiKeys: readonly string[], given: SignInSettings | undefined, why) => {
@@ -103,16 +88,14 @@ describe('logAccessMode with credentials configured', () => {
     },
   );
 
-  it('names the identity providers persons sign in through, and the audience of their tokens', async () => {
+  it('names the identity service persons sign in through, and the audience of their tokens', async () => {
     const [line] = await linesLoggedBy(logAccessMode({ ...nothingConfigured, mode: 'credentials', signIn }));
 
     expect(line).toContain('"level":"INFO"');
     expect(line).toContain(
-      '"message":"Signed-in persons are admitted through the identity providers corp, by tokens whose audience is https://runtime.example"',
+      '"message":"Signed-in persons are admitted through the identity service at https://auth.on.auto, by tokens whose audience is https://runtime.example"',
     );
-    expect(line).toContain(
-      '"identity_providers":[{"name":"corp","issuer":"https://login.example","org":"acme"},{"name":"corp","issuer":"https://login.example","org":"globex"}]',
-    );
+    expect(line).toContain('"public_url":"https://runtime.example","identity_issuer":"https://auth.on.auto"');
   });
 });
 

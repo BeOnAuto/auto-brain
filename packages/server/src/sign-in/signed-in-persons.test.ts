@@ -10,31 +10,24 @@ import { alpha } from '../testing/servers/reasoning-server.ts';
 import { runIdIn, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 import { issuerOverHttps } from './issuer-over-https.ts';
 
-const publicUrl = 'https://runtime.example';
+const publicUrl = 'http://localhost:5555';
 
-function providersAt(issuer: string): string {
-  return JSON.stringify([
-    {
-      name: 'corp',
-      issuer,
-      org: 'acme',
-      grants: { claim: 'groups', by: { engineers: { permissions: allPermissions, playbooks: '*' } } },
-    },
-  ]);
+function signingIn(issuer: string): Readonly<Record<string, string>> {
+  return { IDENTITY_ISSUER: issuer, PUBLIC_URL: publicUrl };
 }
 
 describe('a signed-in person on the facts', { timeout: workflowTestTimeoutMs }, () => {
-  it('is named person:<provider>/<subject> as who created the playbook and the definition, started the run and answered it', async () => {
+  it('is named person:<subject> as who created the playbook and the definition, started the run and answered it', async () => {
     const issuer = await issuerOverHttps();
-    const server = await interactionServerOn({ IDENTITY_PROVIDERS: providersAt(issuer.issuer), PUBLIC_URL: publicUrl });
+    const server = await interactionServerOn(signingIn(issuer.issuer));
     const seconds = Math.floor(Date.now() / 1000);
     const key = await issuer.sign({
       iss: issuer.issuer,
-      sub: 'auth0|ada',
+      sub: 'user|ada',
       aud: publicUrl,
       iat: seconds,
       exp: seconds + 300,
-      groups: ['engineers'],
+      org_id: 'acme',
     });
 
     const playbook = await server.call('POST', '/v1/orgs/acme/playbooks', {
@@ -57,18 +50,18 @@ describe('a signed-in person on the facts', { timeout: workflowTestTimeoutMs }, 
     const run = await server.call('GET', `${alpha}/runs/${runId}`, { key });
 
     expect([playbook.body, definition.body, run.body, answered.body]).toMatchObject([
-      { created_by: 'person:corp/auth0|ada' },
-      { created_by: 'person:corp/auth0|ada' },
-      { started_by: 'person:corp/auth0|ada' },
-      { answered_by: 'person:corp/auth0|ada' },
+      { created_by: 'person:user|ada' },
+      { created_by: 'person:user|ada' },
+      { started_by: 'person:user|ada' },
+      { answered_by: 'person:user|ada' },
     ]);
   });
 });
 
-describe('a server with an identity provider', { timeout: workflowTestTimeoutMs }, () => {
-  it('serves the protected resource metadata without a key, naming the provider as its authorization server', async () => {
+describe('a server that signs persons in', { timeout: workflowTestTimeoutMs }, () => {
+  it('serves the protected resource metadata without a key, naming the identity service as its authorization server', async () => {
     const issuer = await issuerOverHttps();
-    const server = await interactionServerOn({ IDENTITY_PROVIDERS: providersAt(issuer.issuer), PUBLIC_URL: publicUrl });
+    const server = await interactionServerOn(signingIn(issuer.issuer));
 
     const metadata = await server.call('GET', '/.well-known/oauth-protected-resource/mcp');
     const unauthenticated = await server.call('GET', '/v1/orgs/acme/playbooks');
@@ -82,7 +75,7 @@ describe('a server with an identity provider', { timeout: workflowTestTimeoutMs 
     );
   });
 
-  it('does not start when the provider cannot be read, naming it', async () => {
+  it('does not start when the identity service cannot be read, naming it', async () => {
     const ledger = temporaryLedger();
 
     const failure = await startServer(
@@ -91,16 +84,15 @@ describe('a server with an identity provider', { timeout: workflowTestTimeoutMs 
         PORT: '0',
         LEDGER_FILE: ledger.fileName,
         PREDICTION_CACHE_DIR: ledger.cacheDirectory,
-        IDENTITY_PROVIDERS: providersAt('https://127.0.0.1:9'),
-        PUBLIC_URL: publicUrl,
+        ...signingIn('https://127.0.0.1:9'),
       },
       compositionRoot,
     ).catch((error: unknown) => error);
     ledger.remove();
 
-    expect(failure).toMatchObject({ name: 'UnusableProviderError' });
+    expect(failure).toMatchObject({ name: 'UnusableIdentityServiceError' });
     expect(String(failure)).toMatch(
-      /^UnusableProviderError: The identity provider corp cannot be used: no metadata of https:\/\/127\.0\.0\.1:9 could be used: /u,
+      /^UnusableIdentityServiceError: The identity service at https:\/\/127\.0\.0\.1:9 cannot be used: no metadata of https:\/\/127\.0\.0\.1:9 could be used: /u,
     );
   });
 });
