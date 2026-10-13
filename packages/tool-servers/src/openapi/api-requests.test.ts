@@ -23,6 +23,7 @@ const listing: ApiOperation = {
     { name: 'limit', in: 'query' },
   ],
   body: null,
+  credentials: [],
 };
 
 const writing: ApiOperation = {
@@ -31,6 +32,7 @@ const writing: ApiOperation = {
   path: '/notes',
   inputs: [],
   body: { mediaType: 'application/merge-patch+json', required: true },
+  credentials: [],
 };
 
 const pair: ApiOperation = {
@@ -42,6 +44,7 @@ const pair: ApiOperation = {
     { name: 'b', in: 'path' },
   ],
   body: null,
+  credentials: [],
 };
 
 const climbedOut = 'The path arguments would take the call out of the path of this operation, as a . or a .. does';
@@ -90,6 +93,7 @@ describe('the request of a call of an HTTP API', () => {
         method: 'GET',
         headers: { 'X-Api-Key': 'graph-api-key-4f1d9a7c2b', accept: 'application/json' },
         body: null,
+        usesToken: false,
       }),
     );
   });
@@ -113,6 +117,7 @@ describe('the request of a call of an HTTP API', () => {
           'content-type': 'application/merge-patch+json',
         },
         body: '{"text":"Hello"}',
+        usesToken: false,
       }),
     );
     expect(

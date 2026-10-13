@@ -1,4 +1,4 @@
-import { servesPlaybook } from '@on.auto/config';
+import { servesOrg, servesPlaybook } from '@on.auto/config';
 import type { Redacted } from 'effect';
 
 export type AuthCredential =
@@ -19,7 +19,7 @@ export interface ToolLists {
 
 interface ServedBy extends ToolLists {
   readonly name: string;
-  readonly org: string;
+  readonly orgs: readonly string[] | null;
   readonly playbooks: readonly string[] | null;
   readonly record_content: boolean;
   readonly request_id: string | null;
@@ -50,6 +50,7 @@ export interface OpenApiServerSettings extends ServedBy {
   readonly base_url: string | null;
   readonly headers: ReadonlyMap<string, Redacted.Redacted>;
   readonly query_params: ReadonlyMap<string, Redacted.Redacted>;
+  readonly security: ReadonlyMap<string, Redacted.Redacted>;
   readonly auth: AuthSettings | null;
 }
 
@@ -71,7 +72,7 @@ export interface ServersScope {
 export const everyPlaybook = '*';
 
 function servesScope(server: ServedBy, { org, playbook }: ServersScope): boolean {
-  return playbook === undefined ? server.org === org : servesPlaybook(server, { org, playbook });
+  return playbook === undefined ? servesOrg(server, org) : servesPlaybook(server, { org, playbook });
 }
 
 export function isListedFor(server: ServedBy, scope: ServersScope, named: string | undefined): boolean {

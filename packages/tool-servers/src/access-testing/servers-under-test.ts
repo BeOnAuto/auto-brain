@@ -47,7 +47,7 @@ export const apiUnderTest: ServerUnderTest = {
       ...(requestIdHeader === undefined ? {} : { requestIdHeader }),
     });
     return {
-      entry: { document: fake.documentUrl, headers: { 'X-Api-Key': '${GRAPH_API_KEY}' }, org: 'acme' },
+      entry: { document: fake.documentUrl, security: { apiKeyAuth: '${GRAPH_API_KEY}' }, org: 'acme' },
       echoed: (input) => ({ body: input }),
       failNextCall: (status, headers = {}) => {
         fake.answerNextWith({ status, headers });

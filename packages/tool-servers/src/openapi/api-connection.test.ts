@@ -23,7 +23,7 @@ async function elsewhere(): Promise<FakeApiServer> {
 }
 
 function searchAt(path: string): ApiOperation {
-  return { tool: { name: 'search', inputSchema: {} }, method: 'get', path, inputs: [], body: null };
+  return { tool: { name: 'search', inputSchema: {} }, method: 'get', path, inputs: [], body: null, credentials: [] };
 }
 
 function calledAt(baseUrl: string, path: string): Promise<CallSettled> {
@@ -60,8 +60,9 @@ const settings: DescribedApiSettings = {
   base_url: null,
   headers: new Map(),
   query_params: new Map(),
+  security: new Map(),
   auth: null,
-  org: 'acme',
+  orgs: ['acme'],
   playbooks: null,
   allowed: null,
   testable: [],

@@ -38,7 +38,7 @@ async function accessTo(entry: Readonly<Record<string, unknown>>) {
 }
 
 function keyed(fake: FakeApiServer) {
-  return { document: fake.documentUrl, headers: { 'X-Api-Key': '${GRAPH_API_KEY}' } };
+  return { document: fake.documentUrl, security: { apiKeyAuth: '${GRAPH_API_KEY}' } };
 }
 
 function called(
@@ -102,7 +102,7 @@ describe('the request of a call of a tool of an HTTP API', () => {
     const formKey = 'k3y+With/Slash=Pad==';
     const fake = await fakeApi({ key: formKey });
     const reporting = await describedAccess(
-      { graph: { org: 'acme', document: fake.documentUrl, query_params: { api_key: '${GRAPH_API_KEY}' } } },
+      { graph: { org: 'acme', document: fake.documentUrl, security: { queryKey: '${GRAPH_API_KEY}' } } },
       { environment: { GRAPH_API_KEY: formKey }, timing },
     );
     closing.push(reporting.access.close);
@@ -113,13 +113,19 @@ describe('the request of a call of a tool of an HTTP API', () => {
     });
     expect(fake.seen()[0]?.query).toBe('?api_key=k3y%2BWith%2FSlash%3DPad%3D%3D');
   });
+});
 
-  it('carries the query parameters of its entry, a key among them', async () => {
+describe('the query of a call of a tool of an HTTP API', () => {
+  it('carries the query parameters of its entry beside the key its security scheme places in the query', async () => {
     const fake = await fakeApi();
-    const access = await accessTo({ document: fake.documentUrl, query_params: { api_key: '${GRAPH_API_KEY}' } });
+    const access = await accessTo({
+      document: fake.documentUrl,
+      query_params: { tenant: 'acme-eu' },
+      security: { queryKey: '${GRAPH_API_KEY}' },
+    });
 
     expect(await called(access, 'search', { query: 'acme' })).toMatchObject({ outcome: 'result' });
-    expect(fake.seen()[0]?.query).toBe(`?query=acme&api_key=${apiKey}`);
+    expect(fake.seen()[0]?.query).toBe(`?query=acme&tenant=acme-eu&api_key=${apiKey}`);
   });
 });
 
@@ -180,7 +186,7 @@ describe('a call of a tool of an HTTP API that answers a redirect', () => {
 describe('a call of a tool of an HTTP API that fails', () => {
   it('fails a call its API does not accept the key of, as a key the server refused', async () => {
     const fake = await fakeApi();
-    const access = await accessTo({ document: fake.documentUrl });
+    const access = await accessTo({ document: fake.documentUrl, security: { apiKeyAuth: '${GRAPH_CLIENT_SECRET}' } });
 
     expect(await called(access, 'search', { query: 'acme' })).toMatchObject({
       outcome: 'server_failure',

@@ -8,6 +8,7 @@ import { decodedDocument, type ApiDocument, type DocumentProblem } from './api-d
 import { derivedTools } from './api-tools.ts';
 import type { DescribedApiSettings, Describing } from './described-api.ts';
 import { documentBounds, documentOf } from './document-reading.ts';
+import { securityProblemsOf } from './security-schemes.ts';
 
 type Problems = readonly SettingProblem[];
 
@@ -59,13 +60,20 @@ export async function describedApi(
   if (Result.isFailure(read)) {
     return Result.fail([problem(toolServersSetting, at(settings.name, 'document'), read.failure)]);
   }
+  const presented = { security: settings.security, auth: settings.auth !== null };
   const derived = Result.flatMap(decodedDocument(read.success), (decoded) =>
-    Result.map(derivedTools(decoded), (tools) => ({ document: decoded.document, tools })),
+    Result.map(derivedTools(decoded, presented), (tools) => ({ document: decoded.document, tools })),
   );
   if (Result.isFailure(derived)) {
     return Result.fail(documentProblems(settings.name, derived.failure));
   }
   const { document, tools } = derived.success;
+  const unsecured = securityProblemsOf(settings, document);
+  if (unsecured.length > 0) {
+    return Result.fail(
+      unsecured.map(({ path, detail }) => problem(toolServersSetting, at(settings.name, ...path), detail)),
+    );
+  }
   return Result.map(baseUrlOf(settings, document), (baseUrl) => {
     for (const leftOut of tools.leftOut) {
       describing.reportLeftOut(settings.name, leftOut);

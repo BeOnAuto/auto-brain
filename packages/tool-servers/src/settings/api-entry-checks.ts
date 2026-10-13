@@ -18,7 +18,7 @@ import type { ApiDocumentSource, OpenApiServerSettings } from './server-settings
 
 export type ApiTransport = Pick<
   OpenApiServerSettings,
-  'type' | 'document' | 'base_url' | 'headers' | 'query_params' | 'auth'
+  'type' | 'document' | 'base_url' | 'headers' | 'query_params' | 'security' | 'auth'
 >;
 
 const headersOfTheBridge: ReservedHeaders = {
@@ -65,6 +65,18 @@ function checkedQuery(
   return problems.length === 0 ? accepted(secretsOf(query)) : rejected(problems);
 }
 
+function checkedSecurity(
+  name: string,
+  security: Readonly<Record<string, string>>,
+): Checked<OpenApiServerSettings['security']> {
+  const problems = problemsOf(
+    ...Object.keys(security).map((scheme) =>
+      scheme === '' ? refused(name, ['security', scheme], 'Expected the name of a security scheme') : accepted(scheme),
+    ),
+  );
+  return problems.length === 0 ? accepted(secretsOf(security)) : rejected(problems);
+}
+
 export function apiTransport(
   name: string,
   fields: ServerEntryFields,
@@ -75,15 +87,17 @@ export function apiTransport(
   const baseUrl = checkedBaseUrl(name, fields.base_url);
   const headers = checkedHeaders(name, fields.headers ?? {}, headersOfTheBridge);
   const query = checkedQuery(name, fields.query_params ?? {});
+  const security = checkedSecurity(name, fields.security ?? {});
   const auth = checkedAuth(name, fields);
-  return source.ok && baseUrl.ok && headers.ok && query.ok && auth.ok
+  return source.ok && baseUrl.ok && headers.ok && query.ok && security.ok && auth.ok
     ? accepted({
         type: 'openapi',
         document: source.value,
         base_url: baseUrl.value,
         headers: headers.value,
         query_params: query.value,
+        security: security.value,
         auth: auth.value,
       })
-    : rejected(problemsOf(source, baseUrl, headers, query, auth));
+    : rejected(problemsOf(source, baseUrl, headers, query, security, auth));
 }

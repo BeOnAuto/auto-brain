@@ -43,13 +43,15 @@ function readEntry(
   const resolved = substituted(written, pointer, environment);
   const unresolved = resolved.problems.map(({ pointer: place, detail }) => problem(toolServersSetting, place, detail));
   const problems = [...credentials, ...unresolved, ...misplacedReferences(name, resolved.references)];
-  return problems.length > 0
-    ? Result.fail(problems)
-    : checkedEntry(name, decodeEntry(resolved.value), {
-        providers: context.modelProviders,
-        directory: context.documentsDirectory ?? process.cwd(),
-        secrets: secretsOfEntry(name, resolved.references),
-      });
+  if (problems.length > 0) {
+    return Result.fail(problems);
+  }
+  const fields = decodeEntry(resolved.value);
+  return checkedEntry(name, fields, {
+    providers: context.modelProviders,
+    directory: context.documentsDirectory ?? process.cwd(),
+    secrets: secretsOfEntry(name, fields, resolved.references),
+  });
 }
 
 function serversOf(

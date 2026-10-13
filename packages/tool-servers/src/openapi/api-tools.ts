@@ -17,6 +17,7 @@ import { keepsItsSegments } from './api-requests.ts';
 import { documentBounds } from './document-reading.ts';
 import { bytesOf, componentsOf, inputSchemaOf, oversizedBecause, type Components } from './input-schemas.ts';
 import { leftOutBecause } from './left-out.ts';
+import { requirementOf, type Placement, type Presented } from './security-schemes.ts';
 
 interface ApiInput {
   readonly name: string;
@@ -29,6 +30,7 @@ export interface ApiOperation {
   readonly path: string;
   readonly inputs: readonly ApiInput[];
   readonly body: Pick<JsonBody, 'mediaType' | 'required'> | null;
+  readonly credentials: readonly Placement[];
 }
 
 export interface LeftOutOperation {
@@ -58,6 +60,17 @@ type Derived =
   | { readonly kind: 'left_out'; readonly leftOut: LeftOutOperation };
 
 type Deriving<A> = Result.Result<A, readonly DocumentProblem[]>;
+
+interface Context {
+  readonly components: Components;
+  readonly presented: Presented;
+}
+
+interface Sent {
+  readonly parameters: readonly Placed<Parameter>[];
+  readonly body: BodyOf;
+  readonly credentials: readonly Placement[];
+}
 
 const outsideToolNames = /[^A-Za-z0-9_.-]/gu;
 
@@ -115,12 +128,7 @@ function namedOperation({ method, path, operation }: Located): string {
   return given === undefined ? route : `${given} (${route})`;
 }
 
-function offeredOf(
-  located: Located,
-  inputSchema: Schema.JsonObject,
-  parameters: readonly Placed<Parameter>[],
-  body: BodyOf,
-): Offered {
+function offeredOf(located: Located, inputSchema: Schema.JsonObject, { parameters, body, credentials }: Sent): Offered {
   const description = descriptionOf(located.operation.value);
   const tool: ListedTool = {
     name: toolNameOf(located),
@@ -135,12 +143,17 @@ function offeredOf(
       path: located.path,
       inputs: inputsOf(parameters),
       body: body.kind === 'json' ? { mediaType: body.body.mediaType, required: body.body.required } : null,
+      credentials,
     },
     pointer: located.operation.pointer,
   };
 }
 
-function derivedAt(read: ReadDocument, components: Components, located: Located): Deriving<Derived> {
+function leftOut(located: Located, because: string): Derived {
+  return { kind: 'left_out', leftOut: { operation: namedOperation(located), because } };
+}
+
+function derivedAt(read: ReadDocument, { components, presented }: Context, located: Located): Deriving<Derived> {
   const parameters = parametersOf(read.document, located.item, located.operation);
   const body = bodyOf(read.document, located.operation);
   if (Result.isFailure(parameters) || Result.isFailure(body)) {
@@ -151,13 +164,18 @@ function derivedAt(read: ReadDocument, components: Components, located: Located)
   }
   const because = leftOutBecause(located.method, parameters.success, body.success, components);
   if (because !== undefined) {
-    return Result.succeed({ kind: 'left_out', leftOut: { operation: namedOperation(located), because } });
+    return Result.succeed(leftOut(located, because));
   }
+  const requirement = requirementOf(read.document, located.operation.value, presented);
+  if (requirement.kind === 'unmet') {
+    return Result.succeed(leftOut(located, requirement.because));
+  }
+  const sent: Sent = { parameters: parameters.success, body: body.success, credentials: requirement.placements };
   return Result.map(inputSchemaOf(read.version, components, parameters.success, body.success), (inputSchema) => {
     const oversized = oversizedBecause(inputSchema);
     return oversized === undefined
-      ? { kind: 'offered', offered: offeredOf(located, inputSchema.schema, parameters.success, body.success) }
-      : { kind: 'left_out', leftOut: { operation: namedOperation(located), because: oversized } };
+      ? { kind: 'offered', offered: offeredOf(located, inputSchema.schema, sent) }
+      : leftOut(located, oversized);
   });
 }
 
@@ -230,7 +248,7 @@ function pathProblemsOf(document: ApiDocument): readonly DocumentProblem[] {
   });
 }
 
-export function derivedTools(read: ReadDocument): Deriving<DerivedTools> {
+export function derivedTools(read: ReadDocument, presented: Presented): Deriving<DerivedTools> {
   const located = locatedIn(read.document);
   if (located.length > documentBounds.operations) {
     return Result.fail([
@@ -245,7 +263,7 @@ export function derivedTools(read: ReadDocument): Deriving<DerivedTools> {
     return Result.fail(misplaced);
   }
   return Result.flatMap(componentsOf(read), (components) => {
-    const derived = collected(located, (each) => derivedAt(read, components, each));
+    const derived = collected(located, (each) => derivedAt(read, { components, presented }, each));
     return Result.flatMap(derived, toolsOf);
   });
 }

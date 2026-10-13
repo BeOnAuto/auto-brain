@@ -75,7 +75,7 @@ function otherPaths(): DocumentFields {
     },
     '/denied': { get: { operationId: 'denied', summary: 'Answers as a policy that denies a field.' } },
     '/photo': { get: { operationId: 'photo' } },
-    '/notes': { get: { operationId: 'notes' } },
+    '/notes': { get: { operationId: 'notes', security: [] } },
     '/sessions': {
       get: {
         operationId: 'sessionState',
@@ -97,16 +97,31 @@ function otherPaths(): DocumentFields {
   };
 }
 
+const securitySchemes: DocumentFields = {
+  apiKeyAuth: { type: 'apiKey', in: 'header', name: 'X-Api-Key' },
+  queryKey: { type: 'apiKey', in: 'query', name: 'api_key' },
+  bearerAuth: { type: 'http', scheme: 'bearer' },
+  basicAuth: { type: 'http', scheme: 'basic' },
+  clientCredentials: {
+    type: 'oauth2',
+    flows: { clientCredentials: { tokenUrl: 'https://auth.example.com/token', scopes: {} } },
+  },
+};
+
+const fakeApiSchemes = Object.keys(securitySchemes);
+
 export function fakeApiDocument(version: FakeApiVersion, serverUrl: string): DocumentFields {
   return {
     openapi: version === '3.0' ? '3.0.3' : '3.1.0',
     info: { title: 'Graph', version: '1.0.0' },
     servers: [{ url: serverUrl }],
+    security: fakeApiSchemes.map((scheme) => ({ [scheme]: [] })),
     paths: { ...readPaths(), ...otherPaths() },
     components: {
       schemas: { Profile: version === '3.0' ? profile30 : profile31, Person: person },
       parameters: { ProfileId: profileId },
       requestBodies: { Profile: { required: true, ...json({ $ref: '#/components/schemas/Profile' }) } },
+      securitySchemes,
     },
   };
 }

@@ -107,3 +107,37 @@ describe('the playbooks a server serves', () => {
     expect(served(somePlaybooks, 'acme', 'alpha')).toBe(false);
   });
 });
+
+describe('the orgs a server serves', () => {
+  it('are the orgs of a list, each with the same playbooks, or every org for *, for a server of any kind', () => {
+    const [listed, every, stdio] = settingsOf({
+      graph: { ...graph, org: ['acme', 'globex'], playbooks: ['sales'] },
+      wiki: { url: 'https://wiki.example.com/mcp', org: '*' },
+      notes: { command: '/usr/local/bin/notes', org: ['acme', 'initech'] },
+    }).servers;
+
+    expect([
+      served(listed, 'acme', 'sales'),
+      served(listed, 'globex', 'sales'),
+      served(listed, 'globex', 'alpha'),
+      served(listed, 'initech', 'sales'),
+      served(every, 'initech', 'alpha'),
+      served(stdio, 'initech', 'alpha'),
+      served(stdio, 'globex', 'alpha'),
+    ]).toEqual([true, true, false, false, true, true, false]);
+  });
+
+  it('are refused as an empty list, an entry that is no org id, or every org beside playbooks, at their places', () => {
+    expect(
+      problemsOf({
+        graph: { ...graph, org: [] },
+        crm: { ...graph, org: ['acme', '*'] },
+        wiki: { ...graph, org: '*', playbooks: ['sales'] },
+      }),
+    ).toEqual([
+      'TOOL_SERVERS /graph/org: Expected at least one org id',
+      'TOOL_SERVERS /crm/org/1: Expected an org id; * stands alone, for every org',
+      'TOOL_SERVERS /wiki/playbooks: Expected no playbooks beside every org, since a playbook id belongs to one org',
+    ]);
+  });
+});

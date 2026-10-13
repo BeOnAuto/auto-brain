@@ -32,7 +32,7 @@ const AuthSchema = Schema.Struct({
 const remoteFields = {
   headers: Schema.optionalKey(
     Schema.Record(Schema.String, Schema.String).annotate({
-      description: `Headers sent to a remote MCP server or an HTTP API with every request; ${referencedValues}`,
+      description: `Headers sent to a remote MCP server, or to an HTTP API outside its document's security schemes, with every request; ${referencedValues}`,
     }),
   ),
   auth: Schema.optionalKey(AuthSchema),
@@ -77,16 +77,27 @@ const openApiFields = {
   ),
   query_params: Schema.optionalKey(
     Schema.Record(Schema.String, Schema.String).annotate({
-      description: `Query parameters sent to an HTTP API with every call, such as a key the API takes in its query; ${referencedValues}`,
+      description: `Query parameters sent to an HTTP API with every call, outside its document's security schemes, such as a tenant; ${referencedValues}`,
+    }),
+  ),
+  security: Schema.optionalKey(
+    Schema.Record(Schema.String, Schema.String).annotate({
+      description: `The credential of each security scheme of an HTTP API's document the entry gives, by the scheme's name, placed as the scheme says: an apiKey in its header or query parameter, a bearer as Authorization: Bearer, a basic as user:password; an oauth2 or openIdConnect scheme takes the auth block instead; ${referencedValues}`,
     }),
   ),
 };
 
 const servedFields = {
-  org: Schema.optionalKey(Schema.String.annotate({ description: 'The org this server serves, required' })),
+  org: Schema.optionalKey(
+    Schema.Union([Schema.String, Schema.Array(Schema.String)]).annotate({
+      description:
+        'The org this server serves, a list of orgs, or * for every org of this server, required; one entry serves each org it names under one name, with one credential and one connection',
+    }),
+  ),
   playbooks: Schema.optionalKey(
     Schema.Array(Schema.String).annotate({
-      description: 'The playbooks of the org this server serves; every playbook of the org when left out',
+      description:
+        'The playbooks this server serves within each org it names, by id; every playbook of each org when left out, and refused beside * for every org',
     }),
   ),
   allowed: Schema.optionalKey(

@@ -1,6 +1,9 @@
+import { Buffer } from 'node:buffer';
+
 import { Predicate, Redacted, Result } from 'effect';
 
 import type { ApiOperation } from './api-tools.ts';
+import type { Placement } from './security-schemes.ts';
 
 export interface ApiEndpoint {
   readonly baseUrl: string;
@@ -13,6 +16,7 @@ export interface ApiRequest {
   readonly method: string;
   readonly headers: Readonly<Record<string, string>>;
   readonly body: string | null;
+  readonly usesToken: boolean;
 }
 
 type Scalar = string | number | boolean;
@@ -93,6 +97,11 @@ function queryOf(
   for (const [name, value] of endpoint.query) {
     query.append(name, Redacted.value(value));
   }
+  for (const placement of operation.credentials) {
+    if (placement.kind === 'query') {
+      query.append(placement.name, Redacted.value(placement.value));
+    }
+  }
   const written = query.toString();
   return Result.succeed(written === '' ? '' : `?${written}`);
 }
@@ -112,11 +121,24 @@ function bodyOf(operation: ApiOperation, input: Readonly<Record<string, unknown>
   return Result.succeed(JSON.stringify(input['body']));
 }
 
+function credentialHeader(placement: Placement): readonly (readonly [string, string])[] {
+  if (placement.kind === 'header') {
+    return [[placement.name, Redacted.value(placement.value)]];
+  }
+  if (placement.kind === 'bearer') {
+    return [['Authorization', `Bearer ${Redacted.value(placement.value)}`]];
+  }
+  return placement.kind === 'basic'
+    ? [['Authorization', `Basic ${Buffer.from(Redacted.value(placement.value)).toString('base64')}`]]
+    : [];
+}
+
 function headersOf(operation: ApiOperation, endpoint: ApiEndpoint, body: string | null): Record<string, string> {
   return {
     ...Object.fromEntries(
       [...endpoint.headers].map(([name, value]: readonly [string, Redacted.Redacted]) => [name, Redacted.value(value)]),
     ),
+    ...Object.fromEntries(operation.credentials.flatMap((placement) => credentialHeader(placement))),
     accept: 'application/json',
     ...(body === null || operation.body === null ? {} : { 'content-type': operation.body.mediaType }),
   };
@@ -138,6 +160,7 @@ export function apiRequestOf(
         method: operation.method.toUpperCase(),
         headers: headersOf(operation, endpoint, body),
         body,
+        usesToken: operation.credentials.some(({ kind }) => kind === 'token'),
       })),
     ),
   );

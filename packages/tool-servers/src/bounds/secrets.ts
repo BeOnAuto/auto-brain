@@ -1,3 +1,5 @@
+import { Buffer } from 'node:buffer';
+
 import { Redacted } from 'effect';
 
 import { authOf, type AuthSettings, type ServerSettings } from '../settings/server-settings.ts';
@@ -51,6 +53,10 @@ function asInQuery(secret: string): string {
   return new URLSearchParams([['', secret]]).toString().slice(1);
 }
 
+function asInBasic(secret: string): string {
+  return Buffer.from(secret).toString('base64');
+}
+
 export function secretsOf(redacted: readonly Redacted.Redacted[]): Secrets {
   const known = new Set<string>();
   const add = (secret: string): void => {
@@ -59,6 +65,7 @@ export function secretsOf(redacted: readonly Redacted.Redacted[]): Secrets {
       known.add(asInJson(secret));
       known.add(asInQuery(secret));
       known.add(encodeURIComponent(secret));
+      known.add(asInBasic(secret));
       known.add(secret);
     }
   };

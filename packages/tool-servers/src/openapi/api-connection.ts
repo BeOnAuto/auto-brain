@@ -33,18 +33,19 @@ async function sent(
   signal: Readonly<AbortSignal>,
   mintedAgain = false,
 ): Promise<Response> {
+  const tokens = request.usesToken ? opening.tokens : undefined;
   const response = await opening.fetch(request.url, {
     method: request.method,
-    headers: { ...request.headers, ...(await authorizationOf(opening.tokens)) },
+    headers: { ...request.headers, ...(await authorizationOf(tokens)) },
     body: request.body,
     redirect: 'manual',
     signal,
   });
-  if (response.status !== 401 || opening.tokens === undefined || mintedAgain) {
+  if (response.status !== 401 || tokens === undefined || mintedAgain) {
     return response;
   }
   await response.body?.cancel();
-  await opening.tokens.onUnauthorized();
+  await tokens.onUnauthorized();
   return sent(request, opening, signal, true);
 }
 
