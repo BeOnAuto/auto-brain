@@ -30,7 +30,7 @@ const unfinishedBecauses = [
 const toolEndings: ReadonlyArray<readonly [string, ExplainedRejection, string, string]> = [
   [
     'a tool server not set up for the playbook',
-    { reason: 'unavailable', kind: 'tool_not_offered', because: 'mcp_server_not_configured' },
+    { reason: 'unavailable', kind: 'tool_not_offered', because: 'tool_server_not_configured' },
     'this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this playbook',
     toolsNamed,
   ],
@@ -54,25 +54,25 @@ const toolEndings: ReadonlyArray<readonly [string, ExplainedRejection, string, s
   ],
   [
     'a tool server that kept failing before any call',
-    { reason: 'unavailable', kind: 'mcp_server_failed', because: 'failing' },
+    { reason: 'unavailable', kind: 'tool_server_failed', because: 'failing' },
     'a tool server it needs could not be used, because the tool server kept failing',
     serverFailed,
   ],
   [
     'a tool server that asked to slow down',
-    { reason: 'unavailable', kind: 'mcp_server_failed', because: 'rate_limited' },
+    { reason: 'unavailable', kind: 'tool_server_failed', because: 'rate_limited' },
     'a tool server it needs could not be used, because the tool server asked it to slow down for longer than a run waits',
     serverFailed,
   ],
   [
     'a tool server that did not accept its key',
-    { reason: 'unavailable', kind: 'mcp_server_failed', because: 'key_refused' },
+    { reason: 'unavailable', kind: 'tool_server_failed', because: 'key_refused' },
     'a tool server it needs could not be used, because the tool server did not accept the key this server gives it',
     'Trying again will not help until whoever runs the server checks the key it gives that tool server.',
   ],
   [
     'a tool server out of reach',
-    { reason: 'unavailable', kind: 'mcp_server_failed', because: 'unreachable' },
+    { reason: 'unavailable', kind: 'tool_server_failed', because: 'unreachable' },
     'a tool server it needs could not be used, because the tool server could not be reached in time',
     serverFailed,
   ],
@@ -129,14 +129,14 @@ describe('explanationOf a run that needs tools', () => {
 
 const serverNamed = 'list_tool_servers shows the tool servers this playbook may use.';
 
-const ownRemedies: Remedies = { mcp_server_not_configured: serverNamed };
+const ownRemedies: Remedies = { tool_server_not_configured: serverNamed };
 
 const notConfigured = {
   status: 'rejected',
   reason: 'unavailable',
   detail: 'x',
   kind: 'tool_not_offered',
-  because: 'mcp_server_not_configured',
+  because: 'tool_server_not_configured',
 } as const;
 
 describe('the remedies an operation gives of its own', () => {
