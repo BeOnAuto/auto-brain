@@ -25,19 +25,22 @@ export function misplacedReferences(entry: string, references: readonly Referenc
   return misplacedIn(placementOf(entry), references);
 }
 
+export function unreferencedSecurity(
+  entry: string,
+  written: ServerEntryFields,
+  references: readonly Reference[],
+): readonly string[] {
+  const pointers = new Set(references.map(({ pointer }) => pointer));
+  return Object.keys(written.security ?? {})
+    .map((scheme) => `/${JsonPointer.escapeToken(entry)}/security/${JsonPointer.escapeToken(scheme)}`)
+    .filter((pointer) => !pointers.has(pointer));
+}
+
 export function secretsOfEntry(
   entry: string,
   fields: ServerEntryFields,
   references: readonly Reference[],
 ): readonly Redacted.Redacted[] {
-  const security = `/${JsonPointer.escapeToken(entry)}/security/`;
-  const referenced = new Set(
-    references
-      .filter(({ pointer }) => pointer.startsWith(security))
-      .map(({ pointer }) => JsonPointer.unescapeToken(pointer.slice(security.length))),
-  );
-  const wholeValues = Object.entries(fields.security ?? {}).flatMap(([scheme, value]: readonly [string, string]) =>
-    referenced.has(scheme) ? [Redacted.make(value)] : [],
-  );
+  const wholeValues = Object.values(fields.security ?? {}).map((value) => Redacted.make(value));
   return [...secretsIn(placementOf(entry), references), ...wholeValues];
 }

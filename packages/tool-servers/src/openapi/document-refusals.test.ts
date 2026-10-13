@@ -205,6 +205,22 @@ describe('a document refused at start because a path would take its calls elsewh
   });
 });
 
+describe('a document refused at start because its calls would land in a query or a fragment', () => {
+  it('naming a first server with either', async () => {
+    const refused = refusedIn(
+      directoryWith({
+        'query.json': documentWithServer('https://graph.example.com/v1?tenant=acme'),
+        'fragment.json': documentWithServer('https://graph.example.com/v1#top'),
+      }),
+    );
+    const landsElsewhere = baseUrlProblem(
+      'The first server the document names has a query or a fragment, which the path of a call would land in; give base_url',
+    );
+
+    expect([await refused('query.json'), await refused('fragment.json')]).toEqual([landsElsewhere, landsElsewhere]);
+  });
+});
+
 describe('a document refused at start because its calls would have nowhere to go', () => {
   it('naming no server, one relative to a file, or one neither https nor on loopback', async () => {
     const refused = refusedIn(

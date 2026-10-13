@@ -30,13 +30,17 @@ function annotationsOf({ annotations }: ListedTool) {
   return annotations === undefined || Object.keys(annotations).length === 0 ? {} : { annotations };
 }
 
+export function scrubbedSchema(inputSchema: Schema.JsonObject, scrub: Scrub): Schema.JsonObject {
+  return decodeJsonObject(JSON.stringify(inputSchema, scrubbing(scrub)));
+}
+
 export function shownTool(tool: ListedTool, lists: ToolLists, showing: Showing): ServerTool {
   const { name, description = '', inputSchema } = tool;
   const { scrub } = showing.secrets;
   return {
     name: scrub(name),
     description: cutToDescriptionBound(scrub(description)),
-    input_schema: decodeJsonObject(JSON.stringify(inputSchema, scrubbing(scrub))),
+    input_schema: scrubbedSchema(inputSchema, scrub),
     ...annotationsOf(tool),
     testable: canBeTested(name, tool.annotations, lists),
   };

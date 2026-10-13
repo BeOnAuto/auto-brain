@@ -48,9 +48,16 @@ function checkedBaseUrl(name: string, baseUrl: string | undefined): Checked<stri
   if (baseUrl === undefined) {
     return accepted(null);
   }
-  return isPinnableUrl(baseUrl)
-    ? accepted(withoutTrailingSlashes(baseUrl))
-    : refused(name, ['base_url'], pinnedUrlShape);
+  if (!isPinnableUrl(baseUrl)) {
+    return refused(name, ['base_url'], pinnedUrlShape);
+  }
+  return /[?#]/u.test(baseUrl)
+    ? refused(
+        name,
+        ['base_url'],
+        'Expected a URL without a query or a fragment, which the path of a call would land in',
+      )
+    : accepted(withoutTrailingSlashes(baseUrl));
 }
 
 function checkedQuery(

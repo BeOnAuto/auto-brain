@@ -3,9 +3,16 @@ import { Buffer } from 'node:buffer';
 import { Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { refusalOf } from '../api-testing/described-documents.ts';
+import { refusalOf, servedDocumentAt } from '../api-testing/described-documents.ts';
 import type { CalledOnce } from '../one-call/called-once.ts';
-import { describedAccess, serveFakeApi, type FakeApiServer, type ReportingAccess } from '../testing/index.ts';
+import {
+  describedAccess,
+  recordingCallJournal,
+  serveFakeApi,
+  toolRun,
+  type FakeApiServer,
+  type ReportingAccess,
+} from '../testing/index.ts';
 
 const key = 'k3y+With/Slash="Pad"==';
 
@@ -162,5 +169,45 @@ describe('a credential of a security scheme in what a call records and says', ()
 
     expect([answered, refused]).toMatchObject([{ outcome: 'result' }, { outcome: 'tool_error' }]);
     expect(formsOfTheKey.filter((form) => said.includes(form))).toEqual([]);
+  });
+});
+
+function documentTelling(secret: string) {
+  return {
+    openapi: '3.1.0',
+    servers: [{ url: 'https://graph.example.com/v1' }],
+    paths: {
+      '/search': {
+        get: {
+          operationId: 'search',
+          summary: `Searches with the key ${secret}.`,
+          parameters: [
+            { name: 'query', in: 'query', description: `Sent beside ${secret}`, schema: { type: 'string' } },
+          ],
+        },
+      },
+    },
+  };
+}
+
+describe('the tools a run is offered from a document that holds a secret', () => {
+  it('reach the model scrubbed, in their descriptions and their input schemas', async () => {
+    const document = await servedDocumentAt(() => Promise.resolve(Response.json(documentTelling(key))));
+    const reporting = await describedAccess(
+      { graph: { org: 'acme', document, headers: { 'X-Tenant': '${GRAPH_API_KEY}' } } },
+      { environment: { GRAPH_API_KEY: key }, timing },
+    );
+    closing.push(reporting.access.close);
+    const tools = await Effect.runPromise(
+      reporting.access.open(toolRun(recordingCallJournal()), [{ server: 'graph', tool: 'search' }]),
+    );
+    closing.push(tools.close);
+
+    const [offered] = tools.offered;
+
+    expect([offered?.description, JSON.stringify(offered?.inputSchema)]).toEqual([
+      'Searches with the key [redacted].',
+      expect.stringContaining('"description":"Sent beside [redacted]"'),
+    ]);
   });
 });

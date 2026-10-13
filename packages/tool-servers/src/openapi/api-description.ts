@@ -38,7 +38,13 @@ function baseUrlOf(settings: OpenApiServerSettings, document: ApiDocument): Refu
     return refused('Expected base_url, since the document names no server');
   }
   const relativeTo = settings.document.kind === 'url' ? settings.document.url : undefined;
-  const resolved = URL.parse(serverUrlOf(first), relativeTo);
+  const written = serverUrlOf(first);
+  if (/[?#]/u.test(written)) {
+    return refused(
+      'The first server the document names has a query or a fragment, which the path of a call would land in; give base_url',
+    );
+  }
+  const resolved = URL.parse(written, relativeTo);
   if (resolved === null) {
     return refused('The first server the document names is not a URL this server can resolve; give base_url');
   }

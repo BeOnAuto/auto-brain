@@ -72,6 +72,9 @@ function pathOf(operation: ApiOperation, input: Readonly<Record<string, unknown>
     if (values.success.length === 0) {
       return Result.fail(`The arguments give no ${name}, which the path of this operation needs`);
     }
+    if (values.success.some((value) => value === '' || value.includes('/'))) {
+      return Result.fail(`The argument ${name} is empty or holds a /, which a path argument may not`);
+    }
     path = path.replaceAll(`{${name}}`, values.success.map((value) => encodeURIComponent(value)).join(','));
   }
   return keepsItsSegments(path)

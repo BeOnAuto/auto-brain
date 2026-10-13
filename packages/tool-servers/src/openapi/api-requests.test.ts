@@ -62,10 +62,21 @@ describe('the path of a call of an HTTP API', () => {
     ]).toEqual([climbedOut, climbedOut, climbedOut]);
   });
 
-  it('keeps a dot that is not a whole segment, and a slash an argument holds, inside its segment', () => {
-    expect(Result.map(apiRequestOf(listing, { folder: '../x', id: '...' }, endpoint), ({ url }) => url)).toEqual(
-      Result.succeed('https://graph.example.com/v1/notes/..%2Fx/...?tenant=acme'),
+  it('keeps a dot that is not a whole segment, and a character an address reserves, inside its segment', () => {
+    expect(Result.map(apiRequestOf(listing, { folder: 'a?b#c', id: '...' }, endpoint), ({ url }) => url)).toEqual(
+      Result.succeed('https://graph.example.com/v1/notes/a%3Fb%23c/...?tenant=acme'),
     );
+  });
+
+  it('refuses an argument that is empty or holds a /, unsent, however its segments would read', () => {
+    const emptyOrSlashed = 'The argument folder is empty or holds a /, which a path argument may not';
+
+    expect([
+      refusalOf(listing, { folder: '../../admin', id: 'b' }),
+      refusalOf(listing, { folder: 'a/../b', id: 'b' }),
+      refusalOf(listing, { folder: '', id: 'b' }),
+      refusalOf(listing, { folder: ['a', 'b/c'], id: 'b' }),
+    ]).toEqual([emptyOrSlashed, emptyOrSlashed, emptyOrSlashed, emptyOrSlashed]);
   });
 });
 
@@ -87,9 +98,9 @@ describe('the address of a call of an HTTP API', () => {
 
 describe('the request of a call of an HTTP API', () => {
   it('fills the path with its encoded arguments and the query with repeated keys and the parameters of the entry', () => {
-    expect(apiRequestOf(listing, { folder: 'a/b', id: 7, tag: ['x', true], limit: null }, endpoint)).toEqual(
+    expect(apiRequestOf(listing, { folder: 'a b', id: 7, tag: ['x', true], limit: null }, endpoint)).toEqual(
       Result.succeed({
-        url: 'https://graph.example.com/v1/notes/a%2Fb/7?tag=x&tag=true&tenant=acme',
+        url: 'https://graph.example.com/v1/notes/a%20b/7?tag=x&tag=true&tenant=acme',
         method: 'GET',
         headers: { 'X-Api-Key': 'graph-api-key-4f1d9a7c2b', accept: 'application/json' },
         body: null,

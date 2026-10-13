@@ -167,15 +167,39 @@ describe('an openapi server refused for what it sends', () => {
 });
 
 describe('the security of an openapi server', () => {
-  it('reads each credential by the name of its scheme, the whole value a secret where it holds a reference, and a value written out not one', () => {
+  it('reads each credential by the name of its scheme, the whole value a secret as well as its reference', () => {
     const [server] = serversOf({
-      billing: { ...billing, security: { basicAuth: 'ada:${BILLING_API_KEY}', publicKey: 'public-demo' } },
+      billing: { ...billing, security: { basicAuth: 'ada:${BILLING_API_KEY}', bearerAuth: '${BILLING_API_KEY}' } },
     });
 
-    expect(securityOf(server)).toEqual({
-      basicAuth: `ada:${apiKey}`,
-      publicKey: 'public-demo',
-    });
-    expect(server?.secrets.map((secret) => Redacted.value(secret))).toEqual([apiKey, `ada:${apiKey}`]);
+    expect(securityOf(server)).toEqual({ basicAuth: `ada:${apiKey}`, bearerAuth: apiKey });
+    expect(server?.secrets.map((secret) => Redacted.value(secret))).toEqual([apiKey, apiKey, `ada:${apiKey}`, apiKey]);
+  });
+
+  it('refuses a credential written out instead of referenced, once, whether or not it looks like one', () => {
+    expect(
+      problemsOf({
+        billing: { ...billing, security: { publicKey: 'public-demo', liveKey: 'sk-live-4f1d9a7c2b8e6d5a' } },
+      }),
+    ).toEqual(
+      ['liveKey', 'publicKey'].map(
+        (scheme) =>
+          `/billing/security/${scheme}: Looks like a credential, which this setting never holds; write a reference to the environment variable that holds it instead, such as \${GRAPH_API_KEY}`,
+      ),
+    );
+  });
+
+  it('refuses a base URL with a query or a fragment, which the path of a call would land in', () => {
+    expect(
+      problemsOf({
+        a: { ...billing, base_url: 'https://billing.example.com/v2?tenant=acme' },
+        b: { ...billing, base_url: 'https://billing.example.com/v2#top' },
+      }),
+    ).toEqual(
+      ['a', 'b'].map(
+        (name) =>
+          `/${name}/base_url: Expected a URL without a query or a fragment, which the path of a call would land in`,
+      ),
+    );
   });
 });
