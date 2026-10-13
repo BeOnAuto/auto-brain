@@ -43,16 +43,8 @@ interface Answer {
   readonly text: string | undefined;
 }
 
-export function withoutTrailingSlashes(text: string): string {
-  let end = text.length;
-  while (text.charAt(end - 1) === '/') {
-    end -= 1;
-  }
-  return text.slice(0, end);
-}
-
 export function endpointUrl(baseUrl: string, path: string): URL {
-  return new URL(`${withoutTrailingSlashes(baseUrl)}${path}`);
+  return new URL(`${baseUrl}${path}`);
 }
 
 function unread(reason: string): ListingProblem {

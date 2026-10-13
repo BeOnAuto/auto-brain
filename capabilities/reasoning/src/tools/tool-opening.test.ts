@@ -70,7 +70,7 @@ describe('a reasoning function that names tools', () => {
     expect(fake.endedSessions()).toBe(1);
   });
 
-  it('says it may change something outside when MCP servers are configured', async () => {
+  it('says it may change something outside when tool servers are configured', async () => {
     const run = reasoningWithTools(accessTo(await graphServer()));
 
     expect(run.capability.mayChangeOutside).toBe(true);
@@ -119,7 +119,7 @@ describe('a tool a reasoning function names that is not offered', () => {
     );
   });
 
-  it('rejects the run as unavailable when no MCP server is configured at all', async () => {
+  it('rejects the run as unavailable when no tool server is configured at all', async () => {
     expect(await reasoningWith().running(naming('graph/search', 'crm/find'))).toEqual(
       Exit.fail(
         expect.objectContaining({

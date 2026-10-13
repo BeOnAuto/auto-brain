@@ -42,12 +42,12 @@ describe('readModelSettings with nothing set', () => {
 });
 
 describe('readModelSettings for the direct providers', () => {
-  it('reads every setting of anthropic, openai and google', async () => {
+  it('reads every setting of anthropic, openai and google, a base URL without the slashes it ends in', async () => {
     const settings = await settingsOf({
       ANTHROPIC_API_KEY: 'a-key',
-      ANTHROPIC_BASE_URL: 'https://llm.example.com/anthropic',
+      ANTHROPIC_BASE_URL: 'https://llm.example.com/anthropic/',
       OPENAI_API_KEY: 'o-key',
-      OPENAI_BASE_URL: 'https://llm.example.com/openai',
+      OPENAI_BASE_URL: 'https://llm.example.com/openai///',
       OPENAI_API: 'chat_completions',
       GOOGLE_GENERATIVE_AI_API_KEY: 'g-key',
     });
