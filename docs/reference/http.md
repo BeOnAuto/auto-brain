@@ -407,15 +407,16 @@ Content-Type: application/json
 
 `dry_run` answers what `execute` would check for the tool and its `arguments`, without calling the tool:
 
-| Field        | Contents                                                                                                                                                             |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `would_run`  | Whether `execute` would call the tool now: the caller may, the operator allows the tool, and its server answered                                                     |
-| `needs`      | `playbook:write`, the permission `execute` needs whatever the tool does                                                                                              |
-| `caller_may` | Whether the caller holds it                                                                                                                                          |
-| `allowed`    | Whether the operator allows the tool on its server's entry, for runs and for `execute` alike                                                                         |
-| `read_only`  | Whether the server marks the tool read-only; `null` when the tool's listing was not read, for a tool the operator does not allow or a server that could not be asked |
-| `arguments`  | The `arguments` checked as `validate` checks them, `valid: null` with one issue saying why where the tool's input schema was not read; `null` when none were given   |
-| `server`     | `reachable`, `yes` or `no`, and with `no` the `because` of a server that could not be asked                                                                          |
+| Field              | Contents                                                                                                                                                             |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `would_run`        | Whether `execute` would call the tool now: the caller may, the playbook is not retired, the operator allows the tool, and its server answered                        |
+| `needs`            | `playbook:write`, the permission `execute` needs whatever the tool does                                                                                              |
+| `caller_may`       | Whether the caller holds it                                                                                                                                          |
+| `playbook_retired` | Whether the playbook is retired, which `execute` refuses, since a retired playbook can no longer change                                                              |
+| `allowed`          | Whether the operator allows the tool on its server's entry, for runs and for `execute` alike                                                                         |
+| `read_only`        | Whether the server marks the tool read-only; `null` when the tool's listing was not read, for a tool the operator does not allow or a server that could not be asked |
+| `arguments`        | The `arguments` checked as `validate` checks them, `valid: null` with one issue saying why where the tool's input schema was not read; `null` when none were given   |
+| `server`           | `reachable`, `yes` or `no`, and with `no` the `because` of a server that could not be asked                                                                          |
 
 `dry_run` answers `would_run: true` for arguments the tool's schema does not take, since `execute` checks no arguments and the tool answers an error of its own for them; `arguments` says so beforehand.
 
