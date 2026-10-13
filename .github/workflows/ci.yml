@@ -108,6 +108,20 @@ jobs:
           test "$(docker run --rm onauto/runtime:ci node packages/identity/src/key-command.ts --org demo | grep --count --extended-regexp '^API key, shown only this once: abk_[0-9a-f]{8}_[A-Za-z0-9_-]{43}$')" = 1
           docker stop smoke
           test "$(docker inspect smoke --format '{{.State.ExitCode}}')" = 0
+      - name: Start the image with telemetry sent to a collector that is not there
+        run: |
+          . .github/smoke/calls.sh
+          show_logs_on_failure telemetry
+          docker run --detach --name telemetry --publish 5556:5555 \
+            --env OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:9 onauto/runtime:ci
+          for attempt in $(seq 1 30); do
+            curl --silent --fail http://127.0.0.1:5556/health && break
+            sleep 1
+          done
+          test "$(curl --silent --fail http://127.0.0.1:5556/health)" = '{"status":"ok"}'
+          test "$(docker logs telemetry 2>&1 | grep --count 'Telemetry is on, exported over OTLP')" = 1
+          docker stop telemetry
+          test "$(docker inspect telemetry --format '{{.State.ExitCode}}')" = 0
       - name: Measure what the model runtime adds to the image
         timeout-minutes: 2
         run: |

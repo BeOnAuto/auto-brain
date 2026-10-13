@@ -25,8 +25,8 @@ export function startLogs(target: SignalExport, resource: ResourceDescription): 
     layer: OtelLogger.layer({ mergeWithExisting: true }).pipe(
       Layer.provide(Layer.succeed(OtelLogger.OtelLoggerProvider, provider)),
     ),
-    shutdown: async () => {
-      await provider.shutdown();
+    flushed: () => provider.shutdown(),
+    released: () => {
       logs.disable();
     },
   };

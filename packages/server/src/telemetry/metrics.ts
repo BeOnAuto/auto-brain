@@ -38,8 +38,8 @@ export function startMetrics(target: SignalExport, intervalMs: number, resource:
   metrics.setGlobalMeterProvider(provider);
   return {
     layer: Layer.empty,
-    shutdown: async () => {
-      await provider.shutdown();
+    flushed: () => provider.shutdown(),
+    released: () => {
       metrics.disable();
     },
   };

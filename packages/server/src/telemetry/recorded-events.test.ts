@@ -61,8 +61,9 @@ describe('an event appended to the ledger', () => {
       scope: '@on.auto/ledger',
       eventName: 'run_started',
       severityText: 'INFO',
-      body: undefined,
+      body: 'run_started',
       attributes: {
+        'auto.on.type': 'run_started',
         'auto.on.stream': stream,
         'auto.on.position': 1,
         'auto.on.by': 'playbook:alpha',
@@ -97,6 +98,7 @@ describe('an event appended without a run or a chain', () => {
       'auto.on.message_id',
       'auto.on.position',
       'auto.on.stream',
+      'auto.on.type',
     ]);
     expect(log?.attributes['auto.on.position']).toBe(5);
     expect(metricNamesIn(receiver.received())).toContain('auto.on.runs.ended');
@@ -104,7 +106,7 @@ describe('an event appended without a run or a chain', () => {
 });
 
 describe('an event appended while TELEMETRY_CONTENT asks for content', () => {
-  it('carries its data, cut to 2048 characters', async () => {
+  it('carries its data in auto.on.data, cut to 2048 characters', async () => {
     const { receiver, telemetry, observer } = await observed({ TELEMETRY_CONTENT: 'true' });
     observer.appended(stream, [{ type: 'run_started', data: { input: 'x'.repeat(3000) } }], {
       expectedVersion: 0,
@@ -113,6 +115,6 @@ describe('an event appended while TELEMETRY_CONTENT asks for content', () => {
     await telemetry.shutdown();
     const [log] = logsIn(receiver.received());
 
-    expect(log?.body).toBe(JSON.stringify({ input: 'x'.repeat(3000) }).slice(0, 2048));
+    expect(log?.attributes['auto.on.data']).toBe(JSON.stringify({ input: 'x'.repeat(3000) }).slice(0, 2048));
   });
 });

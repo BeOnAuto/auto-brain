@@ -4,7 +4,7 @@ import { messageIdOf } from '@on.auto/operations';
 import { context, metrics, type Counter } from '@opentelemetry/api';
 import { logs, SeverityNumber } from '@opentelemetry/api-logs';
 
-const mostBodyCharacters = 2048;
+const mostDataCharacters = 2048;
 
 type Value = string | number | null | undefined;
 
@@ -61,11 +61,13 @@ export function recordedEventsOf(content: boolean): AppendObserver {
           severityNumber: SeverityNumber.INFO,
           severityText: 'INFO',
           context: active,
+          body: event.type,
           attributes: {
+            'auto.on.type': event.type,
             ...attributesOf(stream, place.expectedVersion + index + 1, place),
             'auto.on.data_bytes': Buffer.byteLength(data),
+            ...(content ? { 'auto.on.data': data.slice(0, mostDataCharacters) } : {}),
           },
-          ...(content ? { body: data.slice(0, mostBodyCharacters) } : {}),
         });
         countedIfEnding(runsEnded, event.type, place);
       }

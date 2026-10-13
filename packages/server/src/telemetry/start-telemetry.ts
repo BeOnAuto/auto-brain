@@ -13,7 +13,7 @@ import { noTelemetry, type Telemetry } from './telemetry.ts';
 
 export { noTelemetry, type Telemetry } from './telemetry.ts';
 
-const longestShutdownMs = 3000;
+const longestShutdownMs = 1000;
 
 export function startTelemetry(settings: TelemetrySettings | undefined): Telemetry {
   if (settings === undefined) {
@@ -29,9 +29,12 @@ export function startTelemetry(settings: TelemetrySettings | undefined): Telemet
     shutdown: async () => {
       stopInstrumentations();
       await Promise.race([
-        Promise.allSettled(signals.map(({ shutdown }) => shutdown())),
+        Promise.allSettled(signals.map(({ flushed }) => flushed())),
         setTimeout(longestShutdownMs, undefined, { ref: false }),
       ]);
+      for (const { released } of signals) {
+        released();
+      }
     },
   };
 }

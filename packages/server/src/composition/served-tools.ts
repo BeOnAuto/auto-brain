@@ -10,7 +10,7 @@ import { runtimeLedger } from './runtime-ledger.ts';
 import { interactionServedBy, type ServedInteraction } from './served-interaction.ts';
 import { reasoningServedBy, type ModelAccessOf, type ServedReasoning } from './served-reasoning.ts';
 
-export interface TimedTools {
+interface TimedTools {
   readonly toolTiming?: Timing;
 }
 

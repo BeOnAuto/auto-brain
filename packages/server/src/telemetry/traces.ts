@@ -34,8 +34,8 @@ export function startTraces(
   provider.register();
   return {
     layer: OtelTracer.layerGlobal.pipe(Layer.provide(effectResourceOf(resource))),
-    shutdown: async () => {
-      await provider.shutdown();
+    flushed: () => provider.shutdown(),
+    released: () => {
       trace.disable();
       propagation.disable();
       context.disable();
