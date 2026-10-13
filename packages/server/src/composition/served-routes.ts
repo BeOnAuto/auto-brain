@@ -1,4 +1,5 @@
 import {
+  apiCatalogRoutes,
   guideRoutes,
   guideShelfOf,
   mcpRoutes,
@@ -34,6 +35,7 @@ export function routesFor(
     operationRoutes({ catalog, dispatcher, runCall: runtime.run }),
     openApiDocumentRoutes({ catalog, serverInfo: release, shelf }),
     guideRoutes(shelf),
+    apiCatalogRoutes(shelf),
     mcpRoutes({
       catalog,
       dispatcher,
