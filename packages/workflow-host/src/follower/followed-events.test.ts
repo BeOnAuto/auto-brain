@@ -129,13 +129,13 @@ describe('a fact of a playbook that is none, or cannot be read, as the follower 
     ]).toEqual(['unreadable', 'none', 'none']);
   });
 
-  it('is none for the records of a test of a tool, which no recall function folds and no trigger takes, with no note', () => {
-    const tested = { test_id: 't-1', server: 'graph', tool: 'search' };
+  it('is none for the records of a call made by hand, which no recall function folds and no trigger takes, with no note', () => {
+    const called = { call_id: 'c-1', server: 'graph', tool: 'search', arguments_bytes: 2 };
 
     expect([
-      followedEventOf(recordOf('tool-tests/t-1', { type: 'tool_test_started', data: tested }), 'workflow'),
-      followedEventOf(recordOf('tool-tests/t-1', { type: 'tool_test_answered', data: tested }), 'workflow'),
-      followedEventOf(recordOf('tool-tests/t-1', { type: 'tool_test_started' }), 'recall'),
+      followedEventOf(recordOf('tool-calls/c-1', { type: 'tool_call_started', data: called }), 'workflow'),
+      followedEventOf(recordOf('tool-calls/c-1', { type: 'tool_call_answered', data: called }), 'workflow'),
+      followedEventOf(recordOf('tool-calls/c-1', { type: 'tool_call_started' }), 'recall'),
     ]).toEqual(['none', 'none', 'none']);
   });
 });
