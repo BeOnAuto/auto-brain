@@ -2,7 +2,7 @@
 
 ## API keys
 
-Every path needs an API key, sent as `Authorization: Bearer <key>`, except `/health`, the OpenAPI document at `/v1/openapi.json` and the guides at `/v1/guides/{guide}`, which name no secret and describe the API, and [the page the server shows a browser at `/`](#the-page-at-the-root). Each key belongs to one org and carries its permissions and the playbooks it may access. The key command creates one:
+Every path needs an API key, sent as `Authorization: Bearer <key>`, except `/health`, the OpenAPI document at `/v1/openapi.json`, the guides at `/v1/guides/{guide}` and the API catalog at `/.well-known/api-catalog`, which name no secret and describe the API, and [the page the server shows a browser at `/`](#the-page-at-the-root). Each key belongs to one org and carries its permissions and the playbooks it may access. The key command creates one:
 
 ```bash
 docker run --rm --log-driver none onauto/runtime:latest node packages/identity/src/key-command.ts --org <org>

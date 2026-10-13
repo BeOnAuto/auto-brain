@@ -12,13 +12,15 @@ Org routes begin at `/v1/orgs/{org}`. Playbook routes begin at `/v1/orgs/{org}/p
 
 Request bodies may be at most 1 MiB; compressed bodies are not accepted. Query parameters belong to GET requests. A field cannot be supplied in more than one location.
 
-## The OpenAPI document and the guides
+## The OpenAPI document, the guides and the API catalog
 
 `GET /v1/openapi.json` answers the OpenAPI 3.1.1 document of this API, which the server builds from its operations when it starts, the same operations its routes and its MCP tools serve. Each operation appears once: its `operationId` is the operation's name, `list_tool_servers_in_org` for the org's `list_tool_servers`, its summary is its title, its description is the description its MCP tool has, or its own for the five prediction routes served over HTTP alone, which are no tools, and its tag names the resource it acts on. Its input is in the path, in the query string of a `GET` and in the JSON body of a command, but for the two uploads, which take a CSV dataset or a candidate's bytes as the body, with their most bytes, and its schemas are JSON Schema 2020-12, each with an `$id` of its own under `https://on.auto/schemas/runtime/` and its definitions inside it, and each problem it can answer is listed at its status. The server URL is `/v1`, relative, so the document holds behind any host. A client library can be generated from it, and a gateway that takes OpenAPI documents can add the runtime from it.
 
 `GET /v1/guides/{guide}` answers one of the guides the MCP endpoints serve as `guide://{guide}`, the same text, as `text/markdown`: what the words mean, the format of each definition type and the recipes for common tasks. The document lists their names. Each guide has a path of its own, so a name the server does not hold is answered as any other path it does not serve: `401` without a key.
 
-The document, the guides and `GET /health`, which says the server is up, need no key. The document and the guides are answered with `Cache-Control: no-store`.
+`GET /.well-known/api-catalog` answers the API catalog of this server, a linkset of the API catalog profile (`application/linkset+json`): its API at `/v1`, described by the document, documented by each guide with its title, and its status at `/health`, every address absolute on the origin the request came in on. It and `HEAD` on it carry `Link: <…/.well-known/api-catalog>; rel="api-catalog"`, and `GET /health` carries the same relation, so a client given only the health address finds the catalog, and from it the document and the guides.
+
+The document, the guides, the catalog and `GET /health`, which says the server is up, need no key. The document, the guides and the catalog change only when the server is released or configured again, so each carries a strong `ETag` of its bytes and `Cache-Control: public, max-age=300`, and answers `304` with no body to a request whose `If-None-Match` names its tag, a list holding it, or `*`; `HEAD` answers their headers without the body. `/health` is not kept: it answers `Cache-Control: no-store`.
 
 ## Playbooks
 
