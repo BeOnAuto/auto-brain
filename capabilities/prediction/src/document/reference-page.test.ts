@@ -6,6 +6,7 @@ import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { predictionBounds } from '../capability/prediction-bounds.ts';
+import { enclosings, longestSpanOf, type Enclosing } from '../periods/enclosing.ts';
 import { uploading } from '../testing/upload-calls.ts';
 import { weeklyOrders, weeklyOrdersLines } from '../testing/weekly-orders.ts';
 import { parsePredictionDocument } from './document-parsing.ts';
@@ -122,5 +123,42 @@ describe('the bounds on the reference page of the dataset and the runs of a pred
       bounds.scoringACandidateMs,
       bounds.buildStartMs,
     ]).toEqual([60_000, 2_592_000_000, 8, 600_000, 60_000]);
+  });
+});
+
+type Grain = Parameters<typeof longestSpanOf>[0];
+
+const grains: readonly Grain[] = ['day', 'week', 'month', 'quarter', 'year'];
+
+const summedGrains: readonly (readonly [Grain, string])[] = [
+  ['day', 'days'],
+  ['week', 'weeks'],
+  ['month', 'months'],
+];
+
+function inTurn(items: readonly string[]): string {
+  return `${items.slice(0, -1).join(', ')} or ${String(items.at(-1))}`;
+}
+
+function enclosingsOf(grain: Grain): readonly Enclosing[] {
+  return enclosings.filter((enclosing) => longestSpanOf(grain, enclosing) !== undefined);
+}
+
+function spansOf(grain: Grain): string {
+  return inTurn(enclosingsOf(grain).map((enclosing) => String(longestSpanOf(grain, enclosing))));
+}
+
+function totalOf([grain, periods]: readonly [Grain, string]): string {
+  const summed = inTurn(enclosingsOf(grain).map((enclosing) => `a ${enclosing}`));
+  return `a ${grain} to ${summed}, at most ${spansOf(grain)} ${periods}`;
+}
+
+describe('the totals on the reference page of prediction functions', () => {
+  it('are the pairs of periods the code sums, each with the most periods its enclosing period holds', () => {
+    expect(grains.filter((grain) => enclosingsOf(grain).length > 0)).toEqual(summedGrains.map(([grain]) => grain));
+    expect([valueOf('A total').toLowerCase(), page]).toEqual([
+      expect.stringContaining(summedGrains.map((summed) => totalOf(summed)).join('; ')),
+      expect.stringContaining(`${spansOf('day')} days, ${spansOf('week')} weeks, or ${spansOf('month')} months`),
+    ]);
   });
 });
