@@ -8,7 +8,14 @@ import {
 } from '@on.auto/operations/testing';
 import { Layer } from 'effect';
 
-import { makeAppRuntime, mcpRoutes, operationRoutes, type ApiHandler, type AppRuntime } from '../index.ts';
+import {
+  makeAppRuntime,
+  mcpRoutes,
+  openApiRoutes,
+  operationRoutes,
+  type ApiHandler,
+  type AppRuntime,
+} from '../index.ts';
 import { createTestHandler, type ReportedThrown } from './api-calls.ts';
 import { testDefinitionTypes, testGuides, testRecipes } from './guides.ts';
 import { notebookOperations } from './notebook.ts';
@@ -77,16 +84,16 @@ export async function operationServer({
   const catalog = makeCatalog(operations);
   const dispatcher = makeDispatcher([]);
   const mcpErrors: string[] = [];
+  const guides = { definitionTypes: testDefinitionTypes, guides: testGuides, recipes: testRecipes };
   const routes = [
     operationRoutes({ catalog, dispatcher, runCall: runtime.run }),
+    openApiRoutes({ catalog, serverInfo: testServerInfo, ...guides }),
     mcpRoutes({
       catalog,
       dispatcher,
       runCall: runtime.run,
       serverInfo: testServerInfo,
-      definitionTypes: testDefinitionTypes,
-      guides: testGuides,
-      recipes: testRecipes,
+      ...guides,
       reportError: (error) => {
         mcpErrors.push(error.message);
       },

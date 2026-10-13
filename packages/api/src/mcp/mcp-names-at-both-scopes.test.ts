@@ -1,28 +1,10 @@
-import { PlaybookIdSchema, defineQuery } from '@on.auto/operations';
-import { Effect, Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { listenOnLoopback, type Listening } from '../testing/listening.ts';
 import { withMcpSession, type McpSession } from '../testing/mcp-clients.ts';
-import { notebookOperations } from '../testing/notebook.ts';
+import { listNotesOfTheOrg, notebookOperations } from '../testing/notebook.ts';
 import { acmeAdmin, operationServer, type OperationServer } from '../testing/operation-server.ts';
 import { listedTools, toolNamesIn, type ListedTool } from '../testing/tool-listing.ts';
-
-const listNotesOfTheOrg = defineQuery('org', {
-  name: 'list_notes',
-  title: 'List notes',
-  description: 'Lists where the notes are kept. Use it to find the notes. `playbook` keeps those of one playbook.',
-  route: { method: 'GET', path: '/notes' },
-  inputSchema: Schema.Struct({
-    playbook: Schema.optionalKey(
-      PlaybookIdSchema.annotate({ description: 'The playbook whose notes to list; every playbook without it' }),
-    ),
-  }),
-  outputSchema: Schema.Struct({ kept_for: Schema.String }),
-  reasons: [],
-  handle: ({ playbook = 'the org' }) => Effect.succeed({ kept_for: playbook }),
-  plainLanguage: { task: 'list the notes', attempt: () => 'list the notes', outcome: () => 'Listed the notes.' },
-});
 
 let server: OperationServer;
 let listening: Listening;

@@ -12,6 +12,13 @@ export {
   type ToolResult,
 } from './mcp-clients.ts';
 export { internalTerms, internalTermsIn } from './internal-terms.ts';
+export {
+  openApiErrorsIn,
+  operationsIn,
+  schemaErrorsIn,
+  unresolvedSchemasIn,
+  type DocumentedOperation,
+} from './openapi-document.ts';
 export { waitForever } from './notebook.ts';
 export { danglingReferencesIn } from './self-contained.ts';
 export {

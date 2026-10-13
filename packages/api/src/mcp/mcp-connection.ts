@@ -44,7 +44,7 @@ export interface Connection {
 
 const noChangesAnnounced = { listChanged: false };
 
-const serverTitle = 'Auto Runtime';
+export const serverTitle = 'Auto Runtime';
 
 function instructionsOf({ endpoint, serving, shelf }: Connection, served: ServedTools): string {
   return instructionsFor(endpoint, served, serving.definitionTypes, shelf.recipes);
