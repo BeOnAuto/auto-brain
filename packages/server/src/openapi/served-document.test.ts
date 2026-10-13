@@ -71,7 +71,7 @@ describe('the OpenAPI document of the server', () => {
         securitySchemes: {
           openIdConnect: {
             type: 'openIdConnect',
-            openIdConnectUrl: 'https://login.on.auto/.well-known/openid-configuration',
+            openIdConnectUrl: 'https://clerk.on.auto/.well-known/openid-configuration',
           },
         },
       },
