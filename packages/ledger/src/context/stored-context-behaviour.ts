@@ -63,7 +63,6 @@ function thePlaceOfEachRecord(entry: LedgerEntry): void {
       await Effect.runPromise(ledger.execute('playbook/acme/alpha/notes', notes, [{ a: 1 }, { b: 2 }]));
       await Effect.runPromise(ledger.execute('playbook/acme/beta/notes', notes, [{ c: 3 }]));
       await Effect.runPromise(ledger.execute('playbook/acme/alpha/runs/r1', notes, [{ d: 4 }]));
-      await entry.untilReadable(database);
 
       const { records } = await Effect.runPromise(
         ledger.readRecorded({ org: 'acme', playbook: 'alpha' }, { kind: 'everything' }, { order: 'asc', limit: 10 }),

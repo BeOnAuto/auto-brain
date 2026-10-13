@@ -18,16 +18,24 @@ export type Bind = (value: unknown) => string;
 
 export const defaultPartition = 'emt:default';
 
-export const oldestWriteOfThisDatabase = `(
+const WriteRows = Schema.Array(Schema.Struct({ id: Schema.String }));
+
+export async function writesOpenElsewhere(query: Query): Promise<readonly string[]> {
+  const rows = await query(
+    `SELECT backend_xid::text AS id FROM pg_stat_activity
+      WHERE backend_xid IS NOT NULL AND datname IS DISTINCT FROM current_database()`,
+    [],
+  );
+  return Schema.decodeUnknownSync(WriteRows)(rows).map(({ id }) => id);
+}
+
+export function oldestWriteOfThisDatabase(bind: Bind, elsewhere: readonly string[]): string {
+  return `(
   SELECT coalesce(min(running.xid), pg_snapshot_xmax(pg_current_snapshot()))
   FROM pg_snapshot_xip(pg_current_snapshot()) AS running(xid)
-  WHERE running.xid::text::bigint % 4294967296 NOT IN (
-    SELECT backend_xid::text::bigint FROM pg_stat_activity
-    WHERE backend_xid IS NOT NULL AND datname IS DISTINCT FROM current_database()
-  )
+  WHERE running.xid::text::bigint % 4294967296 <> ALL(${bind(elsewhere)}::bigint[])
 )`;
-
-const belowTheHorizon = `transaction_id < ${oldestWriteOfThisDatabase}`;
+}
 
 export const PointFields = { transaction: Schema.String, position: Schema.String };
 
@@ -88,8 +96,14 @@ export function bounds(bind: Bind, scope: ExaminationScope): string {
   return from === undefined ? after : `${after} AND (transaction_id, global_position) >= ${pointAt(bind, from)}`;
 }
 
-export function horizonOf({ order }: ExaminationScope): string {
-  return order === 'asc' ? ` AND ${belowTheHorizon}` : '';
+type BelowTheHorizon = (bind: Bind) => string;
+
+export async function horizonOf(query: Query, { order }: ExaminationScope): Promise<BelowTheHorizon> {
+  if (order !== 'asc') {
+    return () => '';
+  }
+  const elsewhere = await writesOpenElsewhere(query);
+  return (bind) => ` AND transaction_id < ${oldestWriteOfThisDatabase(bind, elsewhere)}`;
 }
 
 export function matchedThroughItsIndex(bind: Bind, key: string, value: string): string {

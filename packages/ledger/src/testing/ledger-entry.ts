@@ -1,5 +1,5 @@
 import type { Ledger, RunOutcomeMapping, KeyedProjection } from '@on.auto/operations';
-import { Effect, type Layer } from 'effect';
+import type { Layer } from 'effect';
 import { onTestFinished } from 'vitest';
 
 import type { LedgerStore, RecordedStore } from '../event-store.ts';
@@ -16,7 +16,6 @@ export interface LedgerEntry {
     projections?: readonly KeyedProjection[],
   ) => Layer.Layer<Ledger>;
   readonly storeOn: (database: string) => LedgerStore;
-  readonly untilReadable: (database: string) => Promise<void>;
   readonly queried: (database: string, statement: string) => Promise<readonly unknown[]>;
   readonly definitionStreamsIndexed: (database: string) => Promise<boolean>;
   readonly planOf: (database: string, read: (store: RecordedStore) => Promise<unknown>) => Promise<string>;
@@ -51,15 +50,3 @@ export async function aStore(entry: LedgerEntry): Promise<LedgerStore> {
 export const tallies = 'org/acme/tallies';
 
 export const changedWhileDeciding = 'The state changed while the command was decided';
-
-export async function aLedgerReadingWhatCommitted(entry: LedgerEntry): Promise<Ledger['Service']> {
-  const database = await entry.aDatabase();
-  const ledger = await aLedger(entry, database);
-  return {
-    ...ledger,
-    readRecorded: (playbook, selection, page) =>
-      Effect.promise(() => entry.untilReadable(database)).pipe(
-        Effect.andThen(ledger.readRecorded(playbook, selection, page)),
-      ),
-  };
-}

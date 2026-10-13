@@ -6,6 +6,7 @@ import {
   binding,
   defaultPartition,
   oldestWriteOfThisDatabase,
+  writesOpenElsewhere,
   type Query,
 } from '../postgresql-reads/recorded-parts.ts';
 
@@ -58,10 +59,11 @@ function appendedOf(horizon: string, groups: readonly Group[], most: number): Ap
 
 export function postgresqlAppended(query: Query): RecordedStore['readAppended'] {
   return async (after, most) => {
+    const elsewhere = await writesOpenElsewhere(query);
     const { values, bind } = binding();
     const [transaction = '0', position = '0'] = after ?? [];
     const rows = await query(
-      `WITH horizon AS MATERIALIZED (SELECT ${oldestWriteOfThisDatabase} AS below),
+      `WITH horizon AS MATERIALIZED (SELECT ${oldestWriteOfThisDatabase(bind, elsewhere)} AS below),
       appended AS (
         SELECT transaction_id, global_position, coalesce(${kindKeyOfStream}, stream_id) AS name
         FROM emt_messages

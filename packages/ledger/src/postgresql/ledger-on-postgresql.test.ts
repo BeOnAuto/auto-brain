@@ -72,43 +72,6 @@ async function aDatabase(): Promise<string> {
   return database.href;
 }
 
-function pause(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, milliseconds);
-  });
-}
-
-const longestWaitBehindTheHorizon = 10_000;
-
-function olderThanEveryWriteOpenOnTheServer(besides: string): string {
-  return `transaction_id < (
-    SELECT coalesce(min(running.xid), pg_snapshot_xmax(pg_current_snapshot()))
-    FROM pg_snapshot_xip(pg_current_snapshot()) AS running(xid)
-    WHERE running.xid::text <> '${besides}'
-  )`;
-}
-
-async function untilReadable(
-  database: string,
-  besides = '',
-  deadline = Date.now() + longestWaitBehindTheHorizon,
-): Promise<void> {
-  const hidden = await queried(
-    database,
-    `SELECT 1 FROM emt_messages WHERE NOT (${olderThanEveryWriteOpenOnTheServer(besides)}) LIMIT 1`,
-  );
-  if (hidden.length === 0) {
-    return;
-  }
-  if (Date.now() > deadline) {
-    throw new Error(
-      `A committed message stayed behind the oldest open transaction of the server for ${longestWaitBehindTheHorizon} ms`,
-    );
-  }
-  await pause(20);
-  await untilReadable(database, besides, deadline);
-}
-
 const lostConnections: Readonly<Error>[] = [];
 
 const onPostgreSQL: LedgerEntry = {
@@ -116,7 +79,6 @@ const onPostgreSQL: LedgerEntry = {
   afterClosing: 'Cannot use a pool after calling end on the pool',
   closedWhileWriting: 'Cannot use a pool after calling end on the pool',
   aDatabase,
-  untilReadable,
   ledgerOn: (database, runOutcomes, projections = []) =>
     postgresqlLedgerLayer({
       pools: plainPoolsOn(database),

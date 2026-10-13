@@ -91,9 +91,26 @@ The ledger keeps that horizon where it is needed, and narrows it:
 
 - **Oldest first**, a reader follows the tail and goes on from its last record, so a message committed late below that record would be skipped for good. These reads stay behind the horizon: a message whose transaction is still open, and every message after it in the order, waits until that transaction ends, then comes in the next page, once.
 - **Newest first**, a read pages downward from a position, and a message committed late appears in its next fresh read, so these reads keep no horizon and show every committed message.
-- **The horizon is the ledger's own database's.** Transaction ids belong to the whole PostgreSQL server, and `pg_snapshot_xmin` is the oldest transaction open anywhere on it, so an idle write in another database would hide the newest messages of every ledger on the server for as long as it stays open. The ledger instead takes the oldest id among the transactions the read's own snapshot sees in progress, `pg_snapshot_xip(pg_current_snapshot())`, leaving out the ids that `pg_stat_activity.backend_xid` shows writing in another database. An id that is in doubt stays in: one whose transaction ended between the snapshot and the lookup, or one a role may not see in `pg_stat_activity`. A transaction holds an id once it first writes, so a transaction that has only read holds nothing back, which a probe confirmed.
+- **The horizon is the ledger's own database's.** Transaction ids belong to the whole PostgreSQL server, and `pg_snapshot_xmin` is the oldest transaction open anywhere on it, so an idle write in another database would hide the newest messages of every ledger on the server for as long as it stays open. The ledger instead takes the oldest id among the transactions the read's own snapshot sees in progress, `pg_snapshot_xip(pg_current_snapshot())`, leaving out the ids that `pg_stat_activity.backend_xid` showed writing in another database when the read looked them up, in a statement of its own just before it (`writesOpenElsewhere` in `src/postgresql-reads/recorded-parts.ts`). The lookup comes first because a statement takes its snapshot before it runs: looked up inside the read, a write of another database that ended between the snapshot and the lookup could not be told from one of the ledger's own database, and held back every message written after it began, a message committed before the read among them, as [the measurement below](#measurement-of-the-horizon) counts. A write of another database open at the lookup is left out whenever it ends, one that ended before the lookup is not in the snapshot, and one that began after it holds an id above every message committed before the read began. An id that is in doubt stays in: one of a write of another database that began after the lookup, which can hold back only messages written after the read began, or an id `pg_stat_activity` does not show, such as a prepared transaction's, which no backend holds, since the lookup takes only the rows with a `backend_xid`. A transaction holds an id once it first writes, so a transaction that has only read holds nothing back, which a probe confirmed.
 
 The read never waits for the horizon: it answers at once with what lies below it. A reader that reaches the newest end oldest first, while a write of the ledger's database is open, cannot tell a quiet playbook from one held back.
+
+### Measurement of the horizon
+
+`measure-horizon.ts` counts how often a read holds back a write of its own database that committed just before it, while 8 connections of another database of the server keep writing, each in a transaction of up to 50 ms. It makes two databases of its own, which it drops afterwards, and takes 3,000 reads each way, each right after a commit, with the lookup of the other database's writes inside the read's own statement, after its snapshot, and with the ledger's own lookup, in a statement before the read; without `LEDGER_MEASURE_POSTGRESQL_URL` it measures nothing:
+
+```bash
+LEDGER_MEASURE_POSTGRESQL_URL=postgresql://postgres:ledger-test@127.0.0.1:19632/postgres pnpm --filter @on.auto/ledger measure:horizon
+```
+
+Measured on 2026-10-12 on an Apple M4 Max of 16 cores, with Node 26.10 and PostgreSQL 18.4 run locally with its default settings but 300 connections, two runs with 8 busy loops beside them and two at a load average of about 2:
+
+| Where the read looks up the writes open in other databases | Reads that held the write back, beside 8 busy loops | At a load average of about 2 |
+| ---------------------------------------------------------- | --------------------------------------------------- | ---------------------------- |
+| inside the read's own statement                            | 3 and 9 of 3,000                                    | 5 and 4 of 3,000             |
+| in a statement of its own, before the read                 | 0 and 0 of 3,000                                    | 0 and 0 of 3,000             |
+
+One more run, while other work held the machine at a load average of about 47, held back 26 of 3,000 with the lookup inside the read's statement and none with it first.
 
 ### The cursor
 
@@ -186,6 +203,8 @@ Each page was read through `Ledger.readRecorded`, 20 records or runs to a page u
 | The tree of a run of 21 messages, newest first, behind a million newer messages of other playbooks | 0.26 (0.33)              | 1.52 (1.72)                  | 20      | 44 KiB   |
 
 Every page, unfiltered or filtered by status, answered within 11 ms at the median and 13 ms at the slowest, under the bar of 50 ms this ledger set itself for staying without a read model ([decision 0002](../../docs/decisions/0002-reading-runs-and-brain-events.md)). The slowest pages are those that load a run of 1.25 MiB; a page of runs filtered by status examines up to 1,000 runs, which SQLite does all at once and PostgreSQL only until the page is full.
+
+A page read oldest first on PostgreSQL costs one statement more than this table measured, the lookup of the writes open in other databases (see [Order, and the horizon on PostgreSQL](#order-and-the-horizon-on-postgresql)), and that statement is within the measurement's noise: `measure.ts` run twice without it and twice with it on 2026-10-12, at a load average of 2 to 4, moved the 13 pages read oldest first by 0.015 ms at the median, from 0.20 ms less to 0.10 ms more, and the 21 pages read newest first, which look nothing up, by 0.015 ms less, from 0.15 ms less to 0.05 ms more.
 
 ### Measurement of the run filters
 

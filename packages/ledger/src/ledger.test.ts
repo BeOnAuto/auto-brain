@@ -20,7 +20,6 @@ const onSQLite: LedgerEntry = {
   ledgerOn: (fileName, runOutcomes, projections = []) =>
     ledgerLayer({ fileName, projections, ...(runOutcomes === undefined ? {} : { runOutcomes }) }),
   storeOn: (fileName) => sqliteEventStore(() => ({ driver: sqlite3EventStoreDriver, fileName })),
-  untilReadable: () => Promise.resolve(),
   queried,
   definitionStreamsIndexed,
   planOf,

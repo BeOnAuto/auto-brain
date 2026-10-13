@@ -15,6 +15,7 @@
   "scripts": {
     "measure": "node measure.ts",
     "measure:heads": "node measure-heads.ts",
+    "measure:horizon": "node measure-horizon.ts",
     "measure:run-filters": "node measure-run-filters.ts",
     "measure:message-index": "node measure/message-index.ts",
     "measure:content": "node --expose-gc measure/recorded-content.ts",

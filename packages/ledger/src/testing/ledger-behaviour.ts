@@ -5,7 +5,7 @@ import { runOutcomeTableBehaviour } from '../outcomes/run-outcome-table-behaviou
 import { projectionTableBehaviour } from '../projections/projection-table-behaviour.ts';
 import { commandsBehaviour } from './commands-behaviour.ts';
 import { eventsBehaviour } from './events-behaviour.ts';
-import { aLedgerReadingWhatCommitted, type LedgerEntry } from './ledger-entry.ts';
+import { aLedger, type LedgerEntry } from './ledger-entry.ts';
 import { recordedBehaviour } from './recorded-behaviour.ts';
 import { storeBehaviour } from './store-behaviour.ts';
 
@@ -14,7 +14,7 @@ export function ledgerBehaviour(entry: LedgerEntry): void {
   eventsBehaviour(entry);
   storeBehaviour(entry);
   definitionStreamsBehaviour(entry);
-  recordedBehaviour(() => aLedgerReadingWhatCommitted(entry));
+  recordedBehaviour(() => aLedger(entry));
   runOutcomeTableBehaviour(entry);
   projectionTableBehaviour(entry);
   storedContextBehaviour(entry);

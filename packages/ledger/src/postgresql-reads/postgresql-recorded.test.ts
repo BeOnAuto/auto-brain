@@ -75,8 +75,9 @@ const kindKey = "substring(stream_id FROM '^(?:[^/]*/){4}')";
 const correlation = "(message_metadata ->> 'correlationId')";
 
 describe('the read of what a playbook recorded on PostgreSQL, oldest first', () => {
-  it('walks the playbook index in transaction id then position, behind the oldest write open in its database', async () => {
+  it('walks the playbook index in transaction id then position, behind the oldest write open in its database, once it has looked up the writes open in others', async () => {
     const { query, asked } = answering(
+      [{ id: '9' }],
       [
         examined('11', '21', false, 1),
         examined('11', '22', true, 2),
@@ -97,20 +98,20 @@ describe('the read of what a playbook recorded on PostgreSQL, oldest first', () 
       [['12', '23'], { type: 'noted', detail: 'third' }],
     ]);
     expect(page.resumeAfter).toEqual(['12', '23']);
-    expect(asked[0]?.text).toContain(theHorizon);
-    expect(asked[0]?.text).toContain('datname IS DISTINCT FROM current_database()');
-    expect(asked[0]?.text).toContain('AND (transaction_id, global_position) > ($3::xid8, $4::bigint)');
-    expect(asked[0]?.text).toContain(`WHERE ${playbookKey} = ANY($6::text[])`);
-    expect(asked[0]?.text).toContain(`ORDER BY ${playbookKey} ASC, transaction_id ASC, global_position ASC`);
-    expect(asked[0]?.text).toContain('ORDER BY transaction_id ASC, global_position ASC');
-    expect(asked[0]?.values).toEqual([['noted'], 'emt:default', '10', '20', 1001, [alpha], 1000, 4]);
-    expect(asked[1]?.values).toEqual([['11', '12'], ['22', '23'], 'emt:default']);
+    expect(asked[0]?.text).toMatch(/FROM pg_stat_activity\s+WHERE .* datname IS DISTINCT FROM current_database/u);
+    expect(asked[1]?.text).toContain('WHERE running.xid::text::bigint % 4294967296 <> ALL($3::bigint[])');
+    expect(asked[1]?.text).toContain('AND (transaction_id, global_position) > ($4::xid8, $5::bigint)');
+    expect(asked[1]?.text).toContain(`WHERE ${playbookKey} = ANY($7::text[])`);
+    expect(asked[1]?.text).toContain(`ORDER BY ${playbookKey} ASC, transaction_id ASC, global_position ASC`);
+    expect(asked[1]?.text).toContain('ORDER BY transaction_id ASC, global_position ASC');
+    expect(asked[1]?.values).toEqual([['noted'], 'emt:default', ['9'], '10', '20', 1001, [alpha], 1000, 4]);
+    expect(asked[2]?.values).toEqual([['11', '12'], ['22', '23'], 'emt:default']);
   });
 });
 
 describe('the size a read on PostgreSQL measures', () => {
   it('measures the records of the types whose data the page loads, and none for a page of heads', async () => {
-    const { query, asked } = answering([], [], [], []);
+    const { query, asked } = answering([], [], [], [], [], []);
     const store = postgresqlRecordedStore(query);
 
     await store.readRecorded(alpha, { kind: 'everything' }, { order: 'asc', limit: 5, dataOf: ['noted'] });
@@ -118,19 +119,19 @@ describe('the size a read on PostgreSQL measures', () => {
     await store.readRecorded(alpha, { kind: 'runs' }, { order: 'desc', limit: 5, dataOf: ['noted'] });
     await store.readRecorded(alpha, { kind: 'runs' }, { order: 'desc', limit: 5, dataOf: [] });
 
-    expect(asked[0]?.text).toContain(
-      "CASE WHEN wanted AND type = ANY($3::text[]) THEN octet_length(numbered.message_data ->> 'json') ELSE 0 END AS size",
+    expect(asked[1]?.text).toContain(
+      "CASE WHEN wanted AND type = ANY($4::text[]) THEN octet_length(numbered.message_data ->> 'json') ELSE 0 END AS size",
     );
-    expect(asked[0]?.values[2]).toEqual(['noted']);
-    expect(asked[1]?.text).toContain('examined::int AS examined, 0 AS size');
-    expect(asked[1]?.text).not.toContain('octet_length');
-    expect(asked[2]?.text).toContain(
+    expect(asked[1]?.values[3]).toEqual(['noted']);
+    expect(asked[3]?.text).toContain('examined::int AS examined, 0 AS size');
+    expect(asked[3]?.text).not.toContain('octet_length');
+    expect(asked[4]?.text).toContain(
       "CASE WHEN TRUE AND f.of_the_definition AND f.type = ANY($1::text[]) THEN octet_length(f.message_data ->> 'json') ELSE 0 END AS size",
     );
-    expect(asked[2]?.text).toContain(
+    expect(asked[4]?.text).toContain(
       "THEN CASE WHEN TRUE AND f.of_the_definition AND latest.message_type = ANY($1::text[]) THEN octet_length(latest.message_data ->> 'json')",
     );
-    expect(asked[3]?.text).not.toContain('octet_length');
+    expect(asked[5]?.text).not.toContain('octet_length');
   });
 });
 
@@ -174,7 +175,7 @@ describe('a read of one run on PostgreSQL, newest first', () => {
 
 describe('a read on PostgreSQL by correlation, from inside a record', () => {
   it('walks the playbook and the correlation through their index, from that record on, in either order', async () => {
-    const { query, asked } = answering([examined('9', '10', true, 1)], [stored('9', '10', 'only')], [], []);
+    const { query, asked } = answering([], [examined('9', '10', true, 1)], [stored('9', '10', 'only')], []);
     const store = postgresqlRecordedStore(query);
 
     const page = await store.readRecorded(
@@ -189,12 +190,12 @@ describe('a read on PostgreSQL by correlation, from inside a record', () => {
     );
 
     expect(page.records.map(({ id, correlationId }) => [id, correlationId])).toEqual([['message-10', 'r1']]);
-    expect(asked[0]?.text).toContain('AND (transaction_id, global_position) >= ($2::xid8, $3::bigint)');
-    expect(asked[0]?.text).toContain(`WHERE ${playbookKey} = ANY($5::text[]) AND ${correlation} = ANY($6::text[])`);
-    expect(asked[0]?.text).toContain(
+    expect(asked[1]?.text).toContain('AND (transaction_id, global_position) >= ($3::xid8, $4::bigint)');
+    expect(asked[1]?.text).toContain(`WHERE ${playbookKey} = ANY($6::text[]) AND ${correlation} = ANY($7::text[])`);
+    expect(asked[1]?.text).toContain(
       `ORDER BY ${playbookKey} ASC, ${correlation} ASC, transaction_id ASC, global_position ASC`,
     );
-    expect(asked[2]?.text).toContain('AND (transaction_id, global_position) <= ($2::xid8, $3::bigint)');
+    expect(asked[3]?.text).toContain('AND (transaction_id, global_position) <= ($2::xid8, $3::bigint)');
   });
 });
 
