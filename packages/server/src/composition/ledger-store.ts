@@ -18,9 +18,10 @@ export function ledgerLayerOf(
   content?: ContentStore,
 ): Layer.Layer<Ledger> {
   const signalled = { ...(appends === undefined ? {} : { appends }), ...(content === undefined ? {} : { content }) };
+  const kept = { runOutcomes: runOutcomeMapping, projections, observer: database.observer, ...signalled };
   return database.store === 'postgresql'
-    ? postgresqlLedgerLayer({ pools: database.pools, runOutcomes: runOutcomeMapping, projections, ...signalled })
-    : ledgerLayer({ fileName: database.file, runOutcomes: runOutcomeMapping, projections, ...signalled });
+    ? postgresqlLedgerLayer({ pools: database.pools, ...kept })
+    : ledgerLayer({ fileName: database.file, ...kept });
 }
 
 export function ledgerLayerFor(

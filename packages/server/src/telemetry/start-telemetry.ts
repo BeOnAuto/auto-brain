@@ -1,26 +1,16 @@
 import { setTimeout } from 'node:timers/promises';
 
-import type { ApiEnv } from '@on.auto/api';
 import { Layer } from 'effect';
-import type { MiddlewareHandler } from 'hono';
 
 import { release } from '../composition/release.ts';
 import { startInstrumentations } from './instrumentations.ts';
+import { recordedEventsOf } from './recorded-events.ts';
 import { requestTracing } from './request-tracing.ts';
 import type { TelemetrySettings } from './telemetry-settings.ts';
 import { signalsOf } from './telemetry-signals.ts';
+import { noTelemetry, type Telemetry } from './telemetry.ts';
 
-export interface Telemetry {
-  readonly layer: Layer.Layer<never>;
-  readonly requests: MiddlewareHandler<ApiEnv> | undefined;
-  readonly shutdown: () => Promise<void>;
-}
-
-export const noTelemetry: Telemetry = {
-  layer: Layer.empty,
-  requests: undefined,
-  shutdown: () => Promise.resolve(),
-};
+export { noTelemetry, type Telemetry } from './telemetry.ts';
 
 const longestShutdownMs = 3000;
 
@@ -33,6 +23,7 @@ export function startTelemetry(settings: TelemetrySettings | undefined): Telemet
   return {
     layer: Layer.mergeAll(Layer.empty, ...signals.map(({ layer }) => layer)),
     requests: requestTracing(),
+    appended: recordedEventsOf(settings.content),
     shutdown: async () => {
       stopInstrumentations();
       await Promise.race([
