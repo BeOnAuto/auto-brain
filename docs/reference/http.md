@@ -12,6 +12,14 @@ Org routes begin at `/v1/orgs/{org}`. Playbook routes begin at `/v1/orgs/{org}/p
 
 Request bodies may be at most 1 MiB; compressed bodies are not accepted. Query parameters belong to GET requests. A field cannot be supplied in more than one location.
 
+## The OpenAPI document and the guides
+
+`GET /v1/openapi.json` answers the OpenAPI 3.1.1 document of this API, which the server builds from its operations when it starts, the same operations its routes and its MCP tools serve. Each operation appears once: its `operationId` is the operation's name, `list_tool_servers_in_org` for the org's `list_tool_servers`, its summary is its title, its description is the description its MCP tool has, and its tag names the resource it acts on. Its input is in the path, in the query string of a `GET` and in the JSON body of a command, its schemas are JSON Schema 2020-12, each with an `$id` of its own under `https://on.auto/schemas/runtime/` and its definitions inside it, and each problem it can answer is listed at its status. The server URL is `/v1`, relative, so the document holds behind any host. A client library can be generated from it, and a gateway that takes OpenAPI documents can add the runtime from it.
+
+`GET /v1/guides/{guide}` answers one of the guides the MCP endpoints serve as `guide://{guide}`, the same text, as `text/markdown`: what the words mean, the format of each definition type and the recipes for common tasks. The document lists their names. A name the server does not hold answers `404` `not_found`.
+
+These two routes and `GET /health`, which says the server is up, need no key. The document and the guides are answered with `Cache-Control: no-store`.
+
 ## Playbooks
 
 These routes are relative to `/v1/orgs/{org}`:
