@@ -1,4 +1,4 @@
-import { Caller, PlaybookContext, defineQuery, type Permission } from '@on.auto/operations';
+import { Caller, PlaybookContext, PlaybookLifecycle, defineQuery, type Permission } from '@on.auto/operations';
 import { Array as Arr, Effect, Option, Result, Schema } from 'effect';
 
 import { isReadOnly } from '../bounds/tool-results.ts';
@@ -11,7 +11,7 @@ import { dryRunWords, readingTask, toolRead } from './read-words.ts';
 import { toolRemedies, unavailableOf } from './tool-refusals.ts';
 
 const description = [
-  'Answers what execute would check for one tool and its arguments, without calling the tool: whether the caller may execute, whether whoever runs this server allows the tool, whether it only reads, whether the arguments match its input schema and whether its server can be reached just now.',
+  'Answers what execute would check for one tool and its arguments, without calling the tool: whether the caller may execute, whether the playbook is retired, whether whoever runs this server allows the tool, whether it only reads, whether the arguments match its input schema and whether its server can be reached just now.',
   'Use it before execute when a call may change something, or when the arguments are unsure.',
   'Nothing is sent to the tool and nothing is recorded.',
   '`server` and `tool` name the tool as search lists it, and `arguments`, when given, are checked as validate checks them.',
@@ -56,10 +56,12 @@ export function defineDryRun(access: ToolLookup) {
       const listed = Option.getOrThrow(Arr.head(yield* access.listServers(address, server)));
       const seen = yield* seenOn(listed, { server, tool }, allowed);
       const callerMay = (yield* Caller).permissions.includes(executeNeeds);
+      const retired = (yield* PlaybookLifecycle).status === 'retired';
       const answer: DryRun = {
-        would_run: callerMay && allowed && seen.server.reachable === 'yes',
+        would_run: callerMay && !retired && allowed && seen.server.reachable === 'yes',
         needs: executeNeeds,
         caller_may: callerMay,
+        playbook_retired: retired,
         allowed,
         read_only: readOnlyOf(seen),
         arguments: argumentsOf(seen, input),

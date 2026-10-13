@@ -53,6 +53,7 @@ describe('dry_run', () => {
         would_run: true,
         needs: 'playbook:write',
         caller_may: true,
+        playbook_retired: false,
         allowed: true,
         read_only: true,
         arguments: { valid: true, issues: [] },
@@ -74,6 +75,7 @@ describe('dry_run of a call that would not be made', () => {
         would_run: false,
         needs: 'playbook:write',
         caller_may: false,
+        playbook_retired: false,
         allowed: true,
         read_only: false,
         arguments: null,
@@ -91,6 +93,7 @@ describe('dry_run of a call that would not be made', () => {
         would_run: false,
         needs: 'playbook:write',
         caller_may: true,
+        playbook_retired: false,
         allowed: false,
         read_only: null,
         arguments: {
@@ -102,6 +105,21 @@ describe('dry_run of a call that would not be made', () => {
         server: reached,
       },
     });
+  });
+});
+
+describe('dry_run on a retired playbook', () => {
+  it('answers that execute would not call the tool, since the playbook can no longer change, and says so', async () => {
+    const fake = await fakeServer();
+    const { call } = callsOn({ graph: remote(fake) });
+
+    const asked = await call('dry_run', { server: 'graph', tool: 'search' }, { playbook: 'old' });
+
+    expect(asked).toMatchObject({
+      status: 'succeeded',
+      output: { would_run: false, caller_may: true, playbook_retired: true, allowed: true, server: reached },
+    });
+    expect(fake.received()).toEqual([]);
   });
 });
 

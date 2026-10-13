@@ -80,6 +80,7 @@ const wouldRun = {
   would_run: true,
   needs: 'playbook:write',
   caller_may: true,
+  playbook_retired: false,
   allowed: true,
   read_only: true,
   arguments: null,
@@ -107,10 +108,12 @@ describe('the plain words of dry_run', () => {
 
     expect([
       dryRunWords?.outcome({ ...refused, caller_may: false }, asked),
+      dryRunWords?.outcome({ ...refused, playbook_retired: true }, asked),
       dryRunWords?.outcome({ ...refused, allowed: false, server: { reachable: 'no', because: 'key_refused' } }, asked),
       dryRunWords?.outcome({ ...refused, server: { reachable: 'no', because: 'unreachable' } }, asked),
     ]).toEqual([
       'A call of the search tool of graph would not be made now: the caller may not change this playbook, which a call needs.',
+      'A call of the search tool of graph would not be made now: the playbook is retired and can no longer change.',
       'A call of the search tool of graph would not be made now: whoever runs this server does not allow the tool; its tool server did not accept the key this server gives it.',
       'A call of the search tool of graph would not be made now: its tool server could not be asked just now.',
     ]);

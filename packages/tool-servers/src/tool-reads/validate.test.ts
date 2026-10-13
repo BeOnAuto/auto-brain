@@ -158,3 +158,50 @@ describe('the arguments validate takes', () => {
     expect(fake.seen()).toHaveLength(before);
   });
 });
+
+const tallies = Array.from({ length: 21 }, (_, index) => `count${String(index + 1)}`);
+
+async function tallying() {
+  const document = {
+    openapi: '3.1.0',
+    info: { title: 'Tallies', version: '1' },
+    servers: [{ url: 'https://tallies.example.com' }],
+    paths: {
+      '/tallies': {
+        get: {
+          operationId: 'tally',
+          parameters: tallies.map((name) => ({ name, in: 'query', schema: { type: 'integer' } })),
+        },
+      },
+    },
+  };
+  const url = await servedDocumentAt(() => Promise.resolve(Response.json(document)));
+  const { call } = await validatingAnApi({ document: url });
+  return (wrong: number) =>
+    call('validate', {
+      server: 'graph',
+      tool: 'tally',
+      arguments: Object.fromEntries(tallies.slice(0, wrong).map((name) => [name, 'many'])),
+    });
+}
+
+function issuesAt(names: readonly string[]): readonly unknown[] {
+  return names.map((name) => ({ path: `/${name}` }));
+}
+
+describe('validate at the bound of its issues', () => {
+  it('answers 20 issues whole, and for 21 the first 20 and then one saying how many more there are', async () => {
+    const validate = await tallying();
+
+    const twenty = await validate(20);
+    const twentyOne = await validate(21);
+
+    expect(twenty).toMatchObject({ output: { valid: false, issues: issuesAt(tallies.slice(0, 20)) } });
+    expect(twentyOne).toMatchObject({
+      output: {
+        valid: false,
+        issues: [...issuesAt(tallies.slice(0, 20)), { path: '', message: '1 more issue is not shown' }],
+      },
+    });
+  });
+});

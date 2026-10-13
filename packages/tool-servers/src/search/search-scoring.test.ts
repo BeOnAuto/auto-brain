@@ -127,6 +127,38 @@ describe('search with terms', () => {
   });
 });
 
+function operation(operationId: string, summary: string, ...parameters: readonly string[]): Schema.Json {
+  return { get: { operationId, summary, parameters: parameters.map((name) => queried(name)) } };
+}
+
+describe('the weights of a word of the terms', () => {
+  it('rank a word in the name above one in an argument, and that above one in the description, whatever the names', async () => {
+    const search = await searching({
+      '/archive': operation('archive', 'Stores an invoice away.'),
+      '/paid': operation('markPaid', 'Settles a bill.', 'invoice_id'),
+      '/void': operation('voidInvoice', 'Cancels one.'),
+    });
+
+    expect(await search({ terms: 'invoice' })).toMatchObject({
+      output: { tools: found('billing', 'voidInvoice', 'markPaid', 'archive') },
+    });
+  });
+
+  it('make a word in an argument and in the description tie a word in the name, the tie answered by name', async () => {
+    const search = await searching({
+      '/add': operation('addInvoice', 'Opens one.'),
+      '/notify': operation('notify', 'Tells a customer about an invoice.', 'invoice'),
+      '/send': operation('sendInvoice', 'Mails one.'),
+      '/tag': operation('tag', 'Labels an invoice.', 'invoice'),
+      '/remind': operation('remind', 'Nudges a customer.', 'invoice'),
+    });
+
+    expect(await search({ terms: 'invoice' })).toMatchObject({
+      output: { tools: found('billing', 'addInvoice', 'notify', 'sendInvoice', 'tag', 'remind') },
+    });
+  });
+});
+
 describe('a tool whose input schema names no argument', () => {
   it('is found by its name and its description alone', async () => {
     const { access } = reportingAccess({});
