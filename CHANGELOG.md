@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/BeOnAuto/runtime/compare/v0.6.0...v0.7.0) (2026-10-13)
+
+
+### Features
+
+* **server:** npx [@on](https://github.com/on).auto/runtime opens with the Auto logo, links and one clean stop ([#165](https://github.com/BeOnAuto/runtime/issues/165)) ([81975aa](https://github.com/BeOnAuto/runtime/commit/81975aae2923de05e3a2819067feb5be82f2ef03))
+
 ## [0.6.0](https://github.com/BeOnAuto/runtime/compare/v0.5.0...v0.6.0) (2026-10-12)
 
 
