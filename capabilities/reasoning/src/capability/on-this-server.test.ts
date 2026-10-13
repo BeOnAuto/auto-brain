@@ -5,7 +5,7 @@ import { onThisServer } from './on-this-server.ts';
 describe('the sentence the reasoning-function guide ends with on a server', () => {
   it('names the providers a reasoning function names its model through, and says it may name tools', () => {
     expect(onThisServer({ providers: ['anthropic', 'gateway'], aliases: [] }, true)).toBe(
-      'On this server, a reasoning function names its model through anthropic and gateway, written anthropic/<model id> or gateway/<model id>; it may name the tools of the tool servers that list_tool_servers lists.',
+      'On this server, a reasoning function names its model through anthropic and gateway, written anthropic/<model id> or gateway/<model id>; it may name the tools of the tool servers that search finds.',
     );
   });
 
