@@ -128,6 +128,19 @@ describe('the deadline of a job of a process', { timeout: poolTestTimeoutMs }, (
     expect(waited.milliseconds).toBeGreaterThan(3000);
   });
 
+  it('still ends a job that waited for a permit once it has run for the whole of its deadline from its hold', async () => {
+    const pool = poolOf();
+    await echoed(pool, 'a');
+    await echoed(pool, 'b');
+    const holding = run(pool, 'sleep', { key: 'a', long: true, payload: 1500 });
+
+    const waited = await run(pool, 'sleep', { key: 'b', long: true, payload: 6000, deadlineMs: 3000 });
+    await holding;
+
+    expect(waited.ended).toBe('timed_out');
+    expect([waited.milliseconds > 3000, waited.milliseconds < 6000]).toEqual([true, true]);
+  });
+
   it('kills a warm process blocked past it, while a process of another key answers and the pool goes on, and the next job of its key starts afresh', async () => {
     const pool = poolOf();
     const warm = await echoed(pool, 'a');
