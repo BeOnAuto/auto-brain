@@ -32,6 +32,7 @@ beforeEach(async () => {
       HOST: '127.0.0.1',
       PORT: '0',
       LEDGER_FILE: ledger.fileName,
+      PREDICTION_CACHE_DIR: ledger.cacheDirectory,
       API_KEYS: JSON.stringify([admin.entry, reader.entry, outsider.entry]),
     },
     compositionRoot,

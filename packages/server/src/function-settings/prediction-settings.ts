@@ -1,7 +1,10 @@
+import { isAbsolute } from 'node:path';
+
 import type { Environment } from '@on.auto/config';
+import { cacheDirectory } from '@on.auto/prediction';
 import { Effect } from 'effect';
 
-import type { InvalidSettingsError } from '../settings/invalid-settings-error.ts';
+import { InvalidSettingsError } from '../settings/invalid-settings-error.ts';
 import { countsIn, type CountBounds } from './counted-settings.ts';
 
 interface ModelProcesses {
@@ -13,6 +16,7 @@ interface ModelProcesses {
 export interface PredictionSettings extends ModelProcesses {
   readonly mostFunctions: number;
   readonly buildsPerDay: number;
+  readonly cacheDirectory: string;
   readonly path: string | undefined;
 }
 
@@ -31,12 +35,28 @@ const buildsPerDay: CountBounds = { setting: 'PREDICTION_BUILDS_PER_DAY', least:
 
 const mostFunctions: CountBounds = { setting: 'PREDICTION_MAX_FUNCTIONS', least: 1, most: 1000, example: 32 };
 
+const cacheSetting = 'PREDICTION_CACHE_DIR';
+
 function belowTheProcesses(settings: ModelProcesses): readonly string[] {
   return settings.buildsAtOnce < settings.processes
     ? []
     : [
         `${buildsAtOnce.setting}: Expected a whole number below ${processes.setting}, ${settings.processes}, so that a prediction always finds a model process`,
       ];
+}
+
+function cacheDirectoryIn(environment: Environment): Effect.Effect<string, InvalidSettingsError> {
+  const written = (environment[cacheSetting] ?? '').trim();
+  if (written === '') {
+    return Effect.succeed(cacheDirectory);
+  }
+  return isAbsolute(written)
+    ? Effect.succeed(written)
+    : Effect.fail(
+        new InvalidSettingsError({
+          message: `The prediction function settings are invalid. ${cacheSetting}: Expected an absolute path, such as ${cacheDirectory}`,
+        }),
+      );
 }
 
 export function readPredictionSettings(
@@ -47,5 +67,9 @@ export function readPredictionSettings(
     bounds: { processes, processMemoryMebibytes, buildsAtOnce, buildsPerDay, mostFunctions },
     beyondTheRanges: (counts) => belowTheProcesses(counts),
   });
-  return Effect.map(counted, (counts) => ({ ...counts, path: environment['PATH'] }));
+  return Effect.zipWith(counted, cacheDirectoryIn(environment), (counts, kept) => ({
+    ...counts,
+    cacheDirectory: kept,
+    path: environment['PATH'],
+  }));
 }

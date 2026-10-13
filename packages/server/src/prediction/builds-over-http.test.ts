@@ -96,7 +96,7 @@ describe('the version a build over HTTP builds', { timeout: testTimeoutMs }, () 
 });
 
 describe('the routes a trainer calls', { timeout: testTimeoutMs }, () => {
-  it('refuse a candidate with no Content-Length and one that says it is past 64 MiB before they read the body, and a run that is not a build', async () => {
+  it('refuse a candidate with no Content-Length and one that says it is past 64 MiB before they read the body, and answer a run there is not as not found', async () => {
     const server = await serving();
     await savedVisits(server);
     const build = await askedBuild(server);
@@ -110,12 +110,12 @@ describe('the routes a trainer calls', { timeout: testTimeoutMs }, () => {
       'content-type': 'application/octet-stream',
       'content-length': String(65 * mebibyte),
     });
-    const notABuild = await readOf(server, `${alpha}/runs/${other}/build/brief`);
+    const missing = await readOf(server, `${alpha}/runs/${other}/build/brief`);
 
     expect([unsized.status, large.status]).toEqual([411, 413]);
-    expect([notABuild.status, JSON.parse(notABuild.text)]).toEqual([
-      409,
-      expect.objectContaining({ kind: 'not_a_build', detail: `Run ${other} is not a build` }),
+    expect([missing.status, JSON.parse(missing.text)]).toEqual([
+      404,
+      expect.objectContaining({ reason: 'not_found', detail: 'There is no such run in this playbook' }),
     ]);
   });
 });

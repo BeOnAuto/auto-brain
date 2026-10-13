@@ -42,6 +42,8 @@ const reserved = [
   'shadow_failed',
   'version_activated',
   'activation_refused',
+  'build_asked',
+  'build_ended',
   'workflow_input_applied',
   'step_started',
   'step_waiting',

@@ -1,30 +1,27 @@
 import type { AppRuntime } from '@on.auto/api';
 import { openRequestsName } from '@on.auto/interaction';
 import type { DispatcherServices } from '@on.auto/operations';
-import { modelPorts, type PredictionPorts } from '@on.auto/prediction';
-import { processPool } from '@on.auto/workflow-engine/dsl';
+import type { PredictionPorts } from '@on.auto/prediction';
 import type { WorkflowStore } from '@on.auto/workflow-host';
 
 import type { ServedClosing } from '../lifecycle/lifecycle.ts';
 import { logPredictionFunctions } from '../logging/prediction-logging.ts';
 import type { Settings } from '../settings/settings.ts';
 import { runtimeLedger } from './runtime-ledger.ts';
+import { servedModels } from './served-models.ts';
 
 export interface ServedPrediction {
   readonly ports: PredictionPorts;
   readonly withProcessesClosed: ServedClosing;
 }
 
-const mebibyte = 1_048_576;
-
 export async function predictionServedBy(
   runtime: AppRuntime<DispatcherServices>,
   { prediction, interaction }: Pick<Settings, 'prediction' | 'interaction'>,
   store: WorkflowStore,
 ): Promise<ServedPrediction> {
-  const { mostFunctions, processes, processMemoryMebibytes, buildsAtOnce, buildsPerDay, path } = prediction;
-  const memoryBytes = processMemoryMebibytes * mebibyte;
-  const pool = processPool({ processes, longJobs: buildsAtOnce, memoryBytes, path });
+  const { mostFunctions, processes, processMemoryMebibytes, buildsAtOnce, buildsPerDay, cacheDirectory } = prediction;
+  const { pool, ports: models } = await servedModels(prediction);
   await runtime.run(
     logPredictionFunctions({
       mostFunctions,
@@ -32,6 +29,7 @@ export async function predictionServedBy(
       memoryMebibytes: processMemoryMebibytes,
       buildsAtOnce,
       buildsPerDay,
+      cacheDirectory,
       limiter: pool.limiter,
     }),
   );
@@ -40,7 +38,7 @@ export async function predictionServedBy(
     ports: {
       ledger,
       database: store.database,
-      ...modelPorts({ pool, scoringAtOnce: buildsAtOnce }),
+      ...models,
       bounds: { buildsPerDay, buildsAtOnce, mostOpenRequests: interaction.mostOpenRequests },
       openRequests: (playbook) =>
         ledger.countProjectedRows(openRequestsName, playbook, [{ column: 'open', equals: true }]),

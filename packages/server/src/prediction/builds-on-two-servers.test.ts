@@ -1,9 +1,12 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { uploadedDailyVisits } from '@on.auto/prediction/testing';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import type { SpawnedServer } from '../testing/processes/spawned-server.ts';
 import { requestTo, settledOver, workflowProcess } from '../testing/processes/workflow-process.ts';
-import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
+import { cacheBeside, temporaryLedger } from '../testing/records/temporary-ledger.ts';
 import { runIdIn } from '../testing/servers/workflow-server.ts';
 import { candidateFile, digestOf, visits } from './build-calls.ts';
 
@@ -32,11 +35,12 @@ async function put(port: number, path: string, type: string, body: string | Read
 }
 
 describe('a build asked of a server that does not hold the lease of the due work', { timeout: 120_000 }, () => {
-  it('is scored and builds its version on the server that holds it, and answers on either', async () => {
+  it('is scored and builds its version on the server that holds it, which reads the candidate from where the other staged it, and answers on either', async () => {
     const file = ledgerFile();
-    const holder = workflowProcess(file);
+    const caches = { holder: cacheBeside(file, 'holder-cache'), standby: cacheBeside(file, 'standby-cache') };
+    const holder = workflowProcess(file, { PREDICTION_CACHE_DIR: caches.holder });
     const holding = await holder.port;
-    const standby = workflowProcess(file);
+    const standby = workflowProcess(file, { PREDICTION_CACHE_DIR: caches.standby });
     const port = await standby.port;
     await requestTo(port, 'POST', '', { playbook: 'alpha', name: 'Alpha' });
     const candidate = candidateFile('visits-mean');
@@ -58,6 +62,11 @@ describe('a build asked of a server that does not hold the lease of the due work
       output: { version: 1 },
     });
     expect(await settledOver(holding, `/alpha/runs/${build}`)).toMatchObject({ status: 'succeeded' });
+    expect(
+      [caches.standby, caches.holder].map((cache) =>
+        existsSync(join(cache, 'models', digestOf(candidate), 'model.onnx')),
+      ),
+    ).toEqual([true, true]);
     expect([await stopped(standby), await stopped(holder)]).toEqual([0, 0]);
   });
 });

@@ -34,6 +34,7 @@ model_aliases:
 | The ledger in Amazon RDS without a database password | `DATABASE_URL` without a password and `DATABASE_CREDENTIALS=aws-iam`                    | [Without a password](container.md#without-a-password-on-amazon-rds)                     |
 | Tools that functions may call                        | `mcp_servers` in the file, each entry's `allowed` to allow only some of its tools       | [MCP servers](#mcp-servers)                                                             |
 | The requests interaction functions may keep open     | `INTERACTION_OPEN_REQUESTS`                                                             | [Interaction functions](#interaction-functions)                                         |
+| The folder prediction functions keep model files in  | `PREDICTION_CACHE_DIR`                                                                  | [Prediction functions](#prediction-functions)                                           |
 
 `list_models` (`GET /v1/orgs/{org}/models`, and the MCP tool of the same name) lists the models the server can call: it asks Anthropic, OpenAI, Google and each gateway for their models with the server's own credentials, keeps each list for five minutes, adds the models `declared_models` names and the aliases whose target's provider is configured, and leaves out what `allowed_models` does not allow. A definition that names a model outside `allowed_models`, by its own name or the alias it is sent through, cannot run, and its run says the model is not offered and that `list_models` shows those that are.
 
@@ -104,3 +105,13 @@ One setting goes with interaction functions:
 | Setting                     | What it holds                                                                                                                                            |
 | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `INTERACTION_OPEN_REQUESTS` | The most requests a playbook may have open at once, from 1 to 1,000,000, 10,000 when unset; a run past it is `unavailable` with the kind `requests_full` |
+
+## Prediction functions
+
+A prediction function's model processes load models and read a build's rows from files the server keeps on its own disk, written again from the playbook's content whenever one is missing, so the folder needs no volume and loses nothing when it is emptied. The [container guide](container.md) sets out the settings that bound the processes and the builds; this one names the folder:
+
+| Setting                | What it holds                                                                                                                                                                                                                                                                                     |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PREDICTION_CACHE_DIR` | The absolute path of the folder the model files are kept in, `/var/tmp/auto-runtime` when unset. The server makes it, and each folder within it, readable by its own user alone, and refuses to start, naming the setting, when the folder belongs to another user or other users may write to it |
+
+Give two servers on one machine a folder each, since each bounds the files it keeps, 1 GiB of models and 1 GiB of rows, by what it counts itself. A folder another user may write to would let that user change a model before it is loaded, which is why the server refuses one; the files found in the folder at start are read again and kept only when their bytes are the digest they are named by.
