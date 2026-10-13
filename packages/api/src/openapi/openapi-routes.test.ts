@@ -45,7 +45,7 @@ function resourceTexts(): Promise<readonly string[]> {
 }
 
 describe('the OpenAPI document', () => {
-  it('is answered at /v1/openapi.json without a key, as JSON that no cache keeps, the same bytes each time', async () => {
+  it('is answered at /v1/openapi.json without a key, as JSON a cache may keep for five minutes, the same bytes each time', async () => {
     const [first, second] = [
       await call(server.handler, '/v1/openapi.json'),
       await call(server.handler, '/v1/openapi.json'),
@@ -54,7 +54,7 @@ describe('the OpenAPI document', () => {
     expect(first).toMatchObject({ status: 200, body: { openapi: '3.1.1', info: { title: 'Auto Runtime' } } });
     expect(operationsIn(first.body)).toHaveLength(notebookOperations.length + 1);
     expect(first.headers.get('content-type')).toBe('application/json');
-    expect(first.headers.get('cache-control')).toBe('no-store');
+    expect(first.headers.get('cache-control')).toBe('public, max-age=300');
     expect(second.text).toBe(first.text);
   });
 
@@ -80,14 +80,14 @@ async function guideOverHttp(name: string): Promise<Markdown> {
 }
 
 describe('a guide over HTTP', () => {
-  it('is answered without a key as Markdown no cache keeps, the very text the MCP resource of its name reads', async () => {
+  it('is answered without a key as Markdown a cache may keep for five minutes, the very text the MCP resource of its name reads', async () => {
     const answers = await Promise.all(everyGuide.map(({ name }) => guideOverHttp(name)));
 
     expect(answers.map(({ status, text }) => ({ status, text }))).toEqual(
       (await resourceTexts()).map((text) => ({ status: 200, text })),
     );
     expect(answers.map(({ headers }) => [headers.get('content-type'), headers.get('cache-control')])).toEqual(
-      everyGuide.map(() => ['text/markdown; charset=utf-8', 'no-store']),
+      everyGuide.map(() => ['text/markdown; charset=utf-8', 'public, max-age=300']),
     );
   });
 
@@ -116,14 +116,27 @@ describe('a guide over HTTP', () => {
 });
 
 describe('the paths without a key', () => {
-  it('are the document and each guide alone, so an operation, a path beyond them and a guide the shelf lacks want one', async () => {
+  it('are /health, the document, each guide and the API catalog, and no other', async () => {
+    const open = ['/health', '/v1/openapi.json', ...everyGuide.map(({ name }) => `/v1/guides/${name}`)];
+    const answers = await Promise.all(
+      [...open, '/.well-known/api-catalog'].map(
+        async (path) => (await server.handler.fetch(new Request(`http://localhost${path}`))).status,
+      ),
+    );
+
+    expect(answers).toEqual([...open, '/.well-known/api-catalog'].map(() => 200));
+  });
+
+  it('leave an operation, a path beyond them, a guide the shelf lacks and any other well-known path wanting one', async () => {
     const answers = await Promise.all([
       call(server.handler, '/v1/orgs/acme/playbooks/alpha/notes'),
       call(server.handler, '/v1/openapi.json/notes'),
       call(server.handler, '/v1/guides/notebook/pages'),
       call(server.handler, '/v1/guides'),
+      call(server.handler, '/.well-known/api-catalog/entries'),
+      call(server.handler, '/.well-known/openid-configuration'),
     ]);
 
-    expect(answers.map(({ status }) => status)).toEqual([401, 401, 401, 401]);
+    expect(answers.map(({ status }) => status)).toEqual([401, 401, 401, 401, 401, 401]);
   });
 });

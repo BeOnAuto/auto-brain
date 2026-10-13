@@ -5,6 +5,7 @@ export { operationRoutes, type OperationRoutesOptions, type RunCall } from './op
 export { mcpRoutes, type McpRoutesOptions } from './mcp/mcp-routes.ts';
 export { openApiDocumentRoutes, openApiPath, type OpenApiServing } from './openapi/openapi-routes.ts';
 export { guideRoutes } from './guides/guide-routes.ts';
+export { apiCatalogRoutes } from './discovery/api-catalog.ts';
 export {
   instructionsFor,
   type DefinitionType,

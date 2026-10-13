@@ -3,9 +3,8 @@ import { methodNotAllowed } from 'hono/method-not-allowed';
 
 import type { ApiEnv } from './api-env.ts';
 import type { ApiOptions } from './api-options.ts';
-import { landingPage } from './landing/landing-page.ts';
+import { healthRoutes } from './discovery/health.ts';
 import { middlewareFor } from './middleware/middleware-chain.ts';
-import { requestIdAndSecurityHeaders } from './middleware/response-headers.ts';
 import { errorHandler, failureOfThrown } from './problem/error-boundary.ts';
 import { problemOf, problemResponse } from './problem/problem.ts';
 import type { Close } from './routes.ts';
@@ -18,9 +17,7 @@ export interface ApiApp {
 export function createApp(options: ApiOptions): ApiApp {
   const app = new Hono<ApiEnv>();
   const closes: Close[] = [];
-  const publicPaths = new Set(['/health']);
-  app.use(landingPage);
-  app.use(...requestIdAndSecurityHeaders);
+  const publicPaths = new Set<string>();
   app.use(...middlewareFor(options, publicPaths));
   app.use(
     methodNotAllowed({
@@ -31,9 +28,8 @@ export function createApp(options: ApiOptions): ApiApp {
         }),
     }),
   );
-  app.get('/health', (c) => c.json({ status: 'ok' }, 200, { 'cache-control': 'no-store' }));
   const reportThrown = failureOfThrown(options.reportIncident);
-  for (const register of options.routes) {
+  for (const register of [healthRoutes, ...options.routes]) {
     register({
       add: (method, path, handler) => {
         app.on(method, path, handler);

@@ -9,6 +9,7 @@ import {
 import { Layer } from 'effect';
 
 import {
+  apiCatalogRoutes,
   makeAppRuntime,
   guideRoutes,
   mcpRoutes,
@@ -89,6 +90,7 @@ export async function operationServer({
     operationRoutes({ catalog, dispatcher, runCall: runtime.run }),
     openApiDocumentRoutes({ catalog, serverInfo: testServerInfo, shelf: testShelf }),
     guideRoutes(testShelf),
+    apiCatalogRoutes(testShelf),
     mcpRoutes({
       catalog,
       dispatcher,
