@@ -3,7 +3,7 @@
 Settings come from environment variables and, for those that are lists or maps, from an optional YAML file:
 
 - **Environment variables** can hold every setting, and are the only place for keys and other secrets. In development, `pnpm dev` reads `.env` at the root of the repository after `packages/server/dev.env`, and a variable set in the shell wins over both; the server itself never reads `.env`. A container takes environment variables, or a file of them with `docker run --env-file`.
-- **The configuration file**, named by `CONFIG_FILE`, holds `model_gateways`, `model_aliases`, `declared_models`, `allowed_models`, `mcp_servers`, `api_keys` and `allowed_origins`. `pnpm dev` passes `auto-runtime.yaml` at the root of the repository when it is there; copy [`auto-runtime.example.yaml`](https://github.com/BeOnAuto/runtime/blob/main/auto-runtime.example.yaml) to start one. Git ignores it. In development, the environment variables that a `${NAME}` reference in it needs go in `.env` at the root of the repository, which `pnpm dev` loads and Git also ignores.
+- **The configuration file**, named by `CONFIG_FILE`, holds `model_gateways`, `model_aliases`, `declared_models`, `allowed_models`, `mcp_servers`, `api_keys`, `identity_providers` and `allowed_origins`. `pnpm dev` passes `auto-runtime.yaml` at the root of the repository when it is there; copy [`auto-runtime.example.yaml`](https://github.com/BeOnAuto/runtime/blob/main/auto-runtime.example.yaml) to start one. Git ignores it. In development, the environment variables that a `${NAME}` reference in it needs go in `.env` at the root of the repository, which `pnpm dev` loads and Git also ignores.
 
 Each key of the file stands for the environment variable of the same name in upper case, and a variable that is set wins over the key, whole: `MODEL_GATEWAYS` replaces the file's `model_gateways`, it is not merged with it. The server logs at start which settings it read from the file, and which of them the environment set too. A secret is never written in the file: the file refers to the variable that holds it as `${NAME}`, or `${NAME:-default}`, and `$$` stands for a literal `$`. A value that looks like a credential and is not such a reference stops the server at start, as does a URL with a password, or whose user or query value looks like one, or an argument whose part after its `=` does; a value is judged by what it holds, never by the name a URL or an argument gives it.
 
@@ -34,6 +34,7 @@ model_aliases:
 | The ledger in Amazon RDS without a database password       | `DATABASE_URL` without a password and `DATABASE_CREDENTIALS=aws-iam`                                                                         | [Without a password](container.md#without-a-password-on-amazon-rds)                     |
 | Content kept in an object store instead of the ledger      | `CONTENT_STORE_URL`, an `s3://bucket/prefix` URL                                                                                             | [Content on object storage](container.md#content-on-object-storage)                     |
 | Tools that functions may call                              | `mcp_servers` in the file, each entry's `allowed` to allow only some of its tools                                                            | [MCP servers](#mcp-servers)                                                             |
+| Persons signed in through the company's identity provider  | `identity_providers` in the file and `PUBLIC_URL`                                                                                            | [Identity providers](#identity-providers)                                               |
 | The requests interaction functions may keep open           | `INTERACTION_OPEN_REQUESTS`                                                                                                                  | [Interaction functions](#interaction-functions)                                         |
 | The model processes and the builds of prediction functions | `PREDICTION_PROCESSES`, `PREDICTION_PROCESS_MEMORY`, `PREDICTION_BUILDS_AT_ONCE`, `PREDICTION_BUILDS_PER_DAY` and `PREDICTION_MAX_FUNCTIONS` | [Prediction functions](#prediction-functions)                                           |
 | The folder prediction functions keep model files in        | `PREDICTION_CACHE_DIR`                                                                                                                       | [Prediction functions](#prediction-functions)                                           |
@@ -97,6 +98,41 @@ Write a `command` as an installed program, never as a package downloaded at star
 `list_tool_servers` (`GET /v1/orgs/{org}/playbooks/{playbook}/tool-servers`, and the MCP tool of the same name) shows anyone who may read a playbook the entries that serve it, and at the org (`GET /v1/orgs/{org}/tool-servers`, and the same tool on `/mcp` without a `playbook`) a key that may read every playbook of the org, by `org:read` or `playbook:read`, every entry whose `org` is the org, each with its `playbooks`, `["*"]` when they are left out, by name and type, with the tools its entry lets its functions name, each with the hints its server gives it and whether it can be tested, asking each server as a run does; it adds no header, environment value, URL, command or credential of its own, and what a server writes is passed on with the secrets above scrubbed out, a value shorter than 8 characters excepted.
 
 The server checks every entry at start and stops, naming the setting and the place but never a value, at an entry with neither `url` nor `command` or with both, a name that is not 1 to 32 lowercase letters, digits and hyphens starting with a letter, the name of a model provider or gateway, a missing `org`, a credential written out instead of referenced, among them a password in a `url`, and a user, a query value or the part of an argument after its `=` that looks like a credential, such as `--key=sk-live-...`, judged by the value and never by the name it is given, a reference in `url`, `command` or `args`, an `Authorization` header beside an `auth` block, an `issuer` that is neither https nor on a loopback address, and in `allowed` or `testable` a name that is not a tool name of 1 to 128 letters, digits, underscores, hyphens and dots, such as `graph/search`, a `*`, a name listed twice or an empty list, and a name in `testable` that `allowed` does not name. It does not connect to a server or start a process until a run, `list_tool_servers` or `test_tool_call` needs one. The servers' messages, a process's output on stderr and every failed call go to the server's log, scrubbed of the entry's secrets.
+
+## Identity providers
+
+A person the company signs in through its identity provider calls the runtime with the provider's access token instead of a key, through an agent gateway that brokers them or an agent that runs the authorization flow; the [security guide](security.md#signed-in-persons) sets out what the runtime verifies and what it answers. `identity_providers` lists the providers, one entry for each org a provider admits people to, and `PUBLIC_URL` is the runtime's own URL, which every token must name as its audience:
+
+```yaml
+identity_providers:
+  - name: corp
+    issuer: https://login.example.com/oauth2/default
+    org: acme
+    membership: { claim: tenant, value: acme }
+    grants:
+      claim: groups
+      by:
+        playbook-authors: { permissions: [org:read, playbook:read, playbook:write], playbooks: '*' }
+        sales-readers: { permissions: [playbook:read], playbooks: [sales] }
+  - name: corp
+    issuer: https://login.example.com/oauth2/default
+    org: globex
+    grants:
+      claim: scope
+      by:
+        playbook:read: { permissions: [playbook:read], playbooks: '*' }
+```
+
+| Field        | What it holds                                                                                                                                                                                                                                                                                                               |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`       | The provider's name, 1 to 32 lowercase letters, digits and hyphens starting with a letter; a signed-in person is recorded as `person:<name>/<subject>`. An issuer has one name, and a name one issuer                                                                                                                       |
+| `issuer`     | The `https` URL the tokens' `iss` equals, written as the provider writes it, with no query or fragment; its metadata and key set are read from it at start                                                                                                                                                                  |
+| `org`        | The org this entry admits a person to, any org id but `local`; an org has at most one entry for each issuer                                                                                                                                                                                                                 |
+| `membership` | `claim` and `value`: the entry applies only to a token whose claim holds the value, such as a tenant or a group of everyone who may use the runtime; to every token of the issuer when left out                                                                                                                             |
+| `grants`     | `claim` and `by`: each value of the claim that `by` names grants its `permissions` and `playbooks` in the org, and a person's are the union of the values they hold, `*` winning; a claim holds an array of strings or a string of words separated by spaces, as `scope` does. A person granted nothing is admitted nowhere |
+| `subject`    | The claim that names the person, `sub` when left out, such as `oid` for an identifier the same across a provider's applications                                                                                                                                                                                             |
+
+`PUBLIC_URL` is `https` with no path, query or fragment, such as `https://runtime.example.com`, and is required when `identity_providers` lists an entry; it is the audience a token must name and the base of the metadata's `resource`. An entry the setting refuses stops the server at start, naming the entry and the field, and so does a provider whose metadata or key set cannot be read, naming the provider. The server logs at start the providers persons sign in through and the audience their tokens name. Persons and keys work side by side: a credential that has the form of a key is checked as a key, and any other as a token.
 
 ## Interaction functions
 

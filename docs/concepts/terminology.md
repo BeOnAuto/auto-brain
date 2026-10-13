@@ -92,6 +92,17 @@ An interaction function asks a system and answers at once, or asks a person and 
 
 A prediction function, the predictive model a version of it holds and the prediction a run returns are distinct. Each version a build keeps holds one model with its card, and a function's versions are numbered from 1, apart from the versions of its document. The active version alone answers questions; a version built while another is active runs in shadow for the periods its function names before its rule may activate it, and a version activated again by hand is a rollback.
 
+## Callers
+
+| Term             | Meaning                                                                                                                         |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Caller           | Whoever a request acts for, a key, the local developer or a signed-in person, named on every fact it records.                   |
+| Key              | A credential the runtime issues itself, for a machine, a pipeline, a trainer's agent or a person whose company signs no one in. |
+| Local developer  | The caller of every request in local mode, on the developer's own machine, with every permission in every org.                  |
+| Signed-in person | A person an identity provider the operator configures vouches for, recorded under the provider's name and the person's subject. |
+
+A signed-in person is the person a request comes from; a person an interaction function asks is the party of its request, who may answer without calling the runtime at all. A run keeps acting as the caller that started it.
+
 ## Supporting assets
 
 | Term             | Meaning                                                                                                               |
