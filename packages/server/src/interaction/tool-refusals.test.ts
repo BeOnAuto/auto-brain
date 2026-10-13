@@ -37,7 +37,7 @@ describe('a delivery through a tool this playbook may not use, over HTTP', { tim
 
     expect(refusals).toMatchObject([
       {
-        refusal: { reason: 'unavailable', kind: 'tool_not_offered', because: 'mcp_server_not_configured' },
+        refusal: { reason: 'unavailable', kind: 'tool_not_offered', because: 'tool_server_not_configured' },
         types: ['run_started', 'run_rejected'],
       },
       { refusal: { detail: 'No tool server named chat is configured for this playbook' } },

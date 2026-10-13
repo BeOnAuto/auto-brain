@@ -113,7 +113,7 @@ const rows = campaignRows(100);
 function readingRowsThroughTheGraph(): ScriptedReply {
   return (request) =>
     Effect.promise(async (signal) => {
-      const echo = request.tools?.offered.find(({ name }) => name === 'mcp__graph__echo');
+      const echo = request.tools?.offered.find(({ name }) => name === 'graph__echo');
       const reply = await echo?.call(
         { callId: 'call-1', input: { rows: rows['rows'] } },
         { signal, cancelled: signal },

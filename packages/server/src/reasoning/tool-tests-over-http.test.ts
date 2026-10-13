@@ -110,7 +110,7 @@ describe('test_tool_call over HTTP', () => {
     expect(notTestable.headers.get('retry-after')).toBeNull();
     expect(failing).toMatchObject({
       status: 503,
-      body: { reason: 'unavailable', kind: 'mcp_server_failed', because: 'failing' },
+      body: { reason: 'unavailable', kind: 'tool_server_failed', because: 'failing' },
     });
     expect(failing.headers.get('retry-after')).toBe('5');
     expect(graph.received()).toEqual([]);

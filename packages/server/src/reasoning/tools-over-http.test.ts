@@ -95,7 +95,7 @@ async function historyOf(server: ReasoningServer): Promise<readonly string[]> {
 }
 
 const searched = (server: string) =>
-  callingTools([[`mcp__${server}__search`, { query: 'acme' }]], answers(textResult('Acme has 2 rows.')));
+  callingTools([[`${server}__search`, { query: 'acme' }]], answers(textResult('Acme has 2 rows.')));
 
 const calledTools: unknown = expect.stringMatching(
   /^The run called tools and did not succeed, so it is not run again under its id/u,
@@ -148,7 +148,7 @@ describe('running again a run that called tools, over HTTP', () => {
 
   it('refuses to run again under its id a run that called tools and did not succeed', async () => {
     const fake = await fakeGraph();
-    const server = await serving(fake, callingTools([['mcp__graph__search', { query: 'acme' }]], timedOut));
+    const server = await serving(fake, callingTools([['graph__search', { query: 'acme' }]], timedOut));
 
     const first = await running(server, 'graph');
     const again = await running(server, 'graph');
@@ -189,7 +189,7 @@ describe('a server bound to another org, over HTTP', () => {
 
     expect(refused).toMatchObject({
       status: 503,
-      body: { reason: 'unavailable', kind: 'tool_not_offered', because: 'mcp_server_not_configured' },
+      body: { reason: 'unavailable', kind: 'tool_not_offered', because: 'tool_server_not_configured' },
     });
     expect(refused.headers.get('retry-after')).toBeNull();
     expect(fake.seen()).toEqual([]);
@@ -204,7 +204,7 @@ const decodeIds = Schema.decodeUnknownSync(
 describe('the secrets of a server, over HTTP', () => {
   it('never show in the history of a run that keeps what its calls sent and received, nor in any of its events read whole, as a value, a key or a number', async () => {
     const echoed = callingTools(
-      [['mcp__graph__echo', { said: `the key is ${apiKey}`, [apiKey]: 'a key', pin: Number(pin) }]],
+      [['graph__echo', { said: `the key is ${apiKey}`, [apiKey]: 'a key', pin: Number(pin) }]],
       answers(textResult('Echoed.')),
     );
     const server = await serving(await fakeGraph(), echoed);
