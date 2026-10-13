@@ -175,14 +175,14 @@ describe('a settlement', () => {
         status: 'rejected',
         reason: 'unavailable',
         detail,
-        kind: 'mcp_server_failed',
+        kind: 'tool_server_failed',
         because: 'unreachable',
       }),
     ).toStrictEqual(
       Result.succeed({
         ...settled,
         status: 'rejected',
-        rejection: { reason: 'unavailable', detail, kind: 'mcp_server_failed', because: 'unreachable' },
+        rejection: { reason: 'unavailable', detail, kind: 'tool_server_failed', because: 'unreachable' },
       }),
     );
   });
