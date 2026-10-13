@@ -149,6 +149,23 @@ describe('the answer of a call of a tool of an HTTP API', () => {
   });
 });
 
+describe('a call of a tool of an HTTP API that answers a redirect', () => {
+  it('is an error result with its status, sending nothing and no key to the address the redirect names', async () => {
+    const fake = await fakeApi();
+    const elsewhere = await fakeApi();
+    const access = await accessTo(keyed(fake));
+    fake.answerNextWith({ status: 307, headers: { location: `${elsewhere.baseUrl}/search?query=acme` } });
+
+    expect(await called(access, 'search', { query: 'acme' })).toMatchObject({
+      outcome: 'tool_error',
+      detail: 'The tool server answered a redirect, HTTP 307, which a call does not follow',
+      answered: { is_error: true, jsonrpc_id: null },
+    });
+    expect(fake.seen()).toHaveLength(1);
+    expect(elsewhere.seen()).toEqual([]);
+  });
+});
+
 describe('a call of a tool of an HTTP API that fails', () => {
   it('fails a call its API does not accept the key of, as a key the server refused', async () => {
     const fake = await fakeApi();

@@ -12,7 +12,7 @@ export function unavailableOf({
 }
 
 export const toolRemedies: Remedies = {
-  mcp_server_not_configured:
+  tool_server_not_configured:
     'This can be put right on your side: search shows the tool servers this playbook may use, so naming one of those can work.',
   tool_not_allowed:
     'This can be put right on your side: search shows the tools this playbook may use, which whoever runs the server allows, so naming one of those can work.',

@@ -17,8 +17,8 @@ const decodeHistory = Schema.decodeUnknownSync(
 
 const searchedBoth = callingTools(
   [
-    ['mcp__graph__search', { query: 'acme' }],
-    ['mcp__billing__search', { query: 'acme' }],
+    ['graph__search', { query: 'acme' }],
+    ['billing__search', { query: 'acme' }],
   ],
   answers(textResult('Acme has 2 rows in the graph and 2 in billing.')),
 );

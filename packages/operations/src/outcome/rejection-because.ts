@@ -3,10 +3,9 @@ import { Schema } from 'effect';
 export const RejectionBecauseSchema = Schema.Literals([
   'provider_not_configured',
   'model_not_allowed',
-  'mcp_server_not_configured',
+  'tool_server_not_configured',
   'tool_not_allowed',
   'tool_not_listed',
-  'not_testable',
   'failing',
   'rate_limited',
   'unreachable',

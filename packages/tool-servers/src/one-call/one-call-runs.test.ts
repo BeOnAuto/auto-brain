@@ -78,7 +78,7 @@ describe('a call its run records nothing of', () => {
       ),
       unopenedWith('tool_not_offered', 'tool_not_listed', 'The tool server graph does not list the tool gone'),
       unopenedWith(
-        'mcp_server_failed',
+        'tool_server_failed',
         'unreachable',
         'The tool server graph could not be used: The tool server could not be reached',
       ),

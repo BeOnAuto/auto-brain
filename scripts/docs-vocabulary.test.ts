@@ -37,17 +37,18 @@ const oldWords: readonly string[] = [
   '(?i:auto[-_ ]?brain)',
   '(?i:beonauto/auto-runtime)',
   String.raw`(?i:com\.beonauto/)`,
+  'mcp_server_failed',
+  'mcp_server_not_configured',
 ];
 
 const keptFolders: readonly string[] = ['docs/decisions/'];
 
 const frozenFormats: readonly string[] = [
-  ...['1', '2', '3', '4', '5', '6'].map((format) => `packages/workflow-engine/corpus/format-${format}.json`),
-  ...['one', 'two', 'three', 'four', 'five', 'six'].map(
+  ...['1', '2', '3', '4', '5', '6', '7'].map((format) => `packages/workflow-engine/corpus/format-${format}.json`),
+  ...['one', 'two', 'three', 'four', 'five', 'six', 'six-records', 'seven', 'seven-records'].map(
     (format) => `packages/workflow-engine/src/run-log/formats/format-${format}.ts`,
   ),
-  'packages/workflow-engine/src/run-log/formats/format-six-records.ts',
-  ...['one', 'two', 'four', 'six', 'six-records'].map(
+  ...['one', 'two', 'four', 'six', 'six-records', 'seven', 'seven-records'].map(
     (format) => `packages/workflow-engine/src/run-log/formats/format-${format}.test.ts`,
   ),
 ];
@@ -82,7 +83,7 @@ const allowances: readonly Allowance[] = [
       'capabilities/coordination/src/workflows/error-tasks.test.ts',
       'docs/reference/workflow-format.md',
       'packages/server/src/computation/computation-workflows.test.ts',
-      'packages/workflow-engine/corpus/format-7.json',
+      'packages/workflow-engine/corpus/format-8.json',
       'packages/workflow-engine/src/decider/open-calls.test.ts',
       'packages/workflow-engine/src/dsl/raised-error.test.ts',
       'packages/workflow-engine/src/dsl/raised-error.ts',
@@ -115,7 +116,13 @@ const allowances: readonly Allowance[] = [
   { text: 'application inference profile', in: ['docs/engineering/self-host/models.md'] },
   { text: 'InferenceSession', in: [modelSessions] },
   { text: 'executionMode', in: [modelSessions] },
-  { text: 'toolSpec', in: ['capabilities/reasoning/src/adapter/cloud-providers.test.ts'] },
+  {
+    text: 'toolSpec',
+    in: [
+      'capabilities/reasoning/src/adapter/cloud-providers.test.ts',
+      'capabilities/reasoning/src/tools/tool-loop.test.ts',
+    ],
+  },
   { text: 'code_execution', in: ['capabilities/reasoning/src/testing/model-lists.ts'] },
   { text: 'execution-denied', in: ['capabilities/reasoning/src/tools/final-step.test.ts'] },
   ...['primitives?', 'executions?', 'inference', 'orchestration', 'recollection'].map((term) => ({
@@ -148,7 +155,10 @@ function textOf(path: string): string | undefined {
   }
 }
 
-const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8' })
+const tracked = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], {
+  cwd: root,
+  encoding: 'utf8',
+})
   .split('\0')
   .filter((path) => path !== '');
 
@@ -222,7 +232,7 @@ const oldLanguageOnPages = tracked
     foundIn(textOf(path) ?? '', String.raw`\bjq\b`).map(({ index }) => `${path}:${lineAt(textOf(path) ?? '', index)}`),
   );
 
-await test('no tracked file says an old word, outside the records, the changelog, the lockfile and the frozen formats, but the texts it allows', () => {
+await test('no file of the repository, committed or about to be, says an old word, outside the records, the changelog, the lockfile and the frozen formats, but the texts it allows', () => {
   assert.deepEqual(findings, []);
 });
 
@@ -230,6 +240,6 @@ await test('no page of the reference, the concepts or the tutorials, the pages t
   assert.deepEqual(oldLanguageOnPages, []);
 });
 
-await test('every text the search allows still occurs in each file it is allowed in, and every file it leaves out is still tracked', () => {
+await test('every text the search allows still occurs in each file it is allowed in, and every file it leaves out is still in the repository', () => {
   assert.deepEqual([...allowedButAbsent, ...leftOutButUntracked], []);
 });

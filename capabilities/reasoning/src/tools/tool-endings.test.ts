@@ -66,7 +66,7 @@ const refused: ScriptedReply = () =>
     }),
   );
 
-const searched: readonly ScriptedCall[] = [['mcp__graph__search', { query: 'acme' }]];
+const searched: readonly ScriptedCall[] = [['graph__search', { query: 'acme' }]];
 
 const used = 'after the run called the search tool of graph';
 
@@ -109,7 +109,7 @@ describe('a run that called tools and lost its model', () => {
 
 describe('a run whose tool servers kept failing', () => {
   it('is unavailable as unfinished because a tool server kept failing', async () => {
-    const broken = [1, 2, 3, 4, 5].map((attempt): ScriptedCall => ['mcp__graph__broken', { attempt }]);
+    const broken = [1, 2, 3, 4, 5].map((attempt): ScriptedCall => ['graph__broken', { attempt }]);
     const reply = callingTools(broken, stoppedBy('server_failed', 'Its tool servers failed'));
 
     expect(await ending(await graphServer(), reply)).toEqual(
@@ -119,7 +119,7 @@ describe('a run whose tool servers kept failing', () => {
 
   it('is unavailable as unfinished because a tool server kept asking it to slow down', async () => {
     const fake = await graphServer();
-    const limited = ['a', 'b', 'c', 'd', 'e'].map((query): ScriptedCall => ['mcp__graph__search', { query }]);
+    const limited = ['a', 'b', 'c', 'd', 'e'].map((query): ScriptedCall => ['graph__search', { query }]);
     const reply = callingTools(limited, stoppedBy('server_failed', 'Its tool servers failed'));
     const limiting: ScriptedReply = (request) =>
       Effect.sync(() => {
@@ -136,7 +136,7 @@ function unknown(because: string, detail: string) {
   return Exit.fail(expect.objectContaining({ _tag: 'conflict', kind: 'effect_unknown', because, detail }));
 }
 
-const echoed: ScriptedCall = ['mcp__graph__echo', { said: 'acme' }];
+const echoed: ScriptedCall = ['graph__echo', { said: 'acme' }];
 
 const usedBoth = 'after the run called the search and echo tools of graph';
 

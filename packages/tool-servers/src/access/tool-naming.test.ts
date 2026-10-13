@@ -57,7 +57,7 @@ describe('a tool that is not offered', () => {
 
     expect(await refusalOf(access, 'wiki/search', 'graph/search', 'crm/search', 'mail/send')).toMatchObject({
       _tag: 'tool_not_offered',
-      because: 'mcp_server_not_configured',
+      because: 'tool_server_not_configured',
       detail: 'No tool server named graph, crm, or mail is configured for this playbook',
     });
     expect(fake.seen()).toEqual([]);

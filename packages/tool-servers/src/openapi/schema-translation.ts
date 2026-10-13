@@ -125,12 +125,20 @@ function withNull(schema: SchemaObject): SchemaObject {
   };
 }
 
+function examplesOf(example: Schema.Json | undefined, examples: Schema.Json | undefined): SchemaObject {
+  if (example === undefined) {
+    return examples === undefined ? {} : { examples };
+  }
+  return { examples: isSchemaList(examples) ? [...examples, example] : [example] };
+}
+
 function fromVersion30(schema: SchemaObject): SchemaObject {
-  const { nullable, minimum, maximum, exclusiveMinimum, exclusiveMaximum, ...rest } = schema;
+  const { nullable, minimum, maximum, exclusiveMinimum, exclusiveMaximum, example, examples, ...rest } = schema;
   const bounded = {
     ...rest,
     ...boundOf(minimum, exclusiveMinimum, lower),
     ...boundOf(maximum, exclusiveMaximum, upper),
+    ...examplesOf(example, examples),
   };
   return nullable === true ? withNull(bounded) : bounded;
 }

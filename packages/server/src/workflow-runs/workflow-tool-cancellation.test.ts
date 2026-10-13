@@ -42,7 +42,7 @@ afterEach(async () => {
 
 async function serving(fake: FakeMcpServer): Promise<ReasoningServer> {
   const server = await servingWorkflows(
-    [callingTools([['mcp__graph__sleep', { ms: 60_000 }]], answers(textResult('Slept.')))],
+    [callingTools([['graph__sleep', { ms: 60_000 }]], answers(textResult('Slept.')))],
     {
       LOCAL_MODE: 'true',
       GRAPH_API_KEY: apiKey,

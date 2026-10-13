@@ -33,6 +33,21 @@ const writing: ApiOperation = {
   body: { mediaType: 'application/merge-patch+json', required: true },
 };
 
+function urlFrom(baseUrl: string): Result.Result<string, string> {
+  return Result.map(apiRequestOf(writing, { body: {} }, { ...endpoint, baseUrl }), ({ url }) => url);
+}
+
+describe('the address of a call of an HTTP API', () => {
+  it('is built once from a base URL that ends in several slashes, and reads a long run of them once', () => {
+    const run = '/'.repeat(200_000);
+
+    expect([urlFrom('https://graph.example.com/v1///'), urlFrom(`https://graph.example.com${run}v1`)]).toEqual([
+      Result.succeed('https://graph.example.com/v1/notes?tenant=acme'),
+      Result.succeed(`https://graph.example.com${run}v1/notes?tenant=acme`),
+    ]);
+  });
+});
+
 describe('the request of a call of an HTTP API', () => {
   it('fills the path with its encoded arguments and the query with repeated keys and the parameters of the entry', () => {
     expect(apiRequestOf(listing, { folder: 'a/b', id: 7, tag: ['x', true], limit: null }, endpoint)).toEqual(

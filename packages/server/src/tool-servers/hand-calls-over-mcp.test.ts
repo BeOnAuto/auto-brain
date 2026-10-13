@@ -102,7 +102,7 @@ describe('execute refused over MCP', () => {
     );
 
     expect(refused.isError).toBe(true);
-    expect(problemIn(refused)).toMatchObject({ kind: 'tool_not_offered', because: 'mcp_server_not_configured' });
+    expect(problemIn(refused)).toMatchObject({ kind: 'tool_not_offered', because: 'tool_server_not_configured' });
     expect(plainTextIn(refused)).toBe(
       'Could not call the search tool of wiki: this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this playbook. Nothing was changed. This can be put right on your side: search shows the tool servers this playbook may use, so naming one of those can work.',
     );

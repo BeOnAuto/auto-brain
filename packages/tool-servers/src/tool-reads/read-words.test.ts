@@ -42,7 +42,7 @@ describe('the plain words of introspect', () => {
       unsuccessfulWords(
         'describe the search tool of wiki',
         'query',
-        { ...refusal, because: 'mcp_server_not_configured' },
+        { ...refusal, because: 'tool_server_not_configured' },
         introspectWords?.remedies,
       ),
     ).toBe(

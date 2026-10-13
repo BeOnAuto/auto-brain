@@ -128,7 +128,7 @@ export type ServerEntryFields = typeof ServerEntrySchema.Type;
 export const ToolServersSchema = Schema.Record(
   Schema.String.annotate({
     description:
-      'The name a function gives the server in server/tool: 1 to 32 lowercase letters, digits and hyphens, starting with a letter, and not the name of a model provider or gateway',
+      'The name a function gives the server in server/tool: 1 to 32 lowercase letters, digits and hyphens, starting with a letter, with no two hyphens together and none at the end, and not the name of a model provider or gateway',
   }),
   ServerEntrySchema,
 );

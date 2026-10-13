@@ -86,6 +86,30 @@ describe('an answer of an HTTP API that is not shown as it is', () => {
   });
 });
 
+describe('an answer of an HTTP API that redirects', () => {
+  it('is an error result naming the redirect and its status, whatever its body', async () => {
+    expect(
+      await resultsOf(
+        new Response('Moved', { status: 301, headers: { location: 'https://elsewhere.example.com/v1/search' } }),
+        new Response(null, { status: 307, headers: { location: '/v2/search' } }),
+      ),
+    ).toEqual([
+      {
+        content: [
+          { type: 'text', text: 'The tool server answered a redirect, HTTP 301, which a call does not follow' },
+        ],
+        isError: true,
+      },
+      {
+        content: [
+          { type: 'text', text: 'The tool server answered a redirect, HTTP 307, which a call does not follow' },
+        ],
+        isError: true,
+      },
+    ]);
+  });
+});
+
 describe('an answer of an HTTP API that fails its call', () => {
   it('of 401, 429 or 5xx is a failure of the server, with the wait a 429 asks for', async () => {
     const statuses = [

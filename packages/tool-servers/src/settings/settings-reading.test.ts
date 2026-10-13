@@ -174,6 +174,10 @@ describe('the name, org and playbooks of a server', () => {
     expect(problemsOf({ Graph: graph })).toEqual([
       'TOOL_SERVERS /Graph: Expected a name of 1 to 32 lowercase letters, digits and hyphens, starting with a letter',
     ]);
+    expect(problemsOf({ 'crm--eu': graph, 'crm-': graph })).toEqual([
+      "TOOL_SERVERS /crm--eu: Expected no two hyphens together and none at the end: a model sees each tool of the server as server__tool, a hyphen as an underscore, and the server's name ends at the first __",
+      "TOOL_SERVERS /crm-: Expected no two hyphens together and none at the end: a model sees each tool of the server as server__tool, a hyphen as an underscore, and the server's name ends at the first __",
+    ]);
     expect(problemsOf({ openai: graph, gateway: graph })).toEqual([
       'TOOL_SERVERS /openai: The name of a model provider or gateway, which a reasoning function could not tell apart from it',
       'TOOL_SERVERS /gateway: The name of a model provider or gateway, which a reasoning function could not tell apart from it',

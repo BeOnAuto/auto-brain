@@ -12,12 +12,19 @@ const hashCharacters = 8;
 
 const unsafeCharacters = /[^A-Za-z0-9_]/gu;
 
+const separator = '__';
+
 function hashOf(tool: ToolReference): string {
   return sha256Of(writtenOf(tool)).slice(0, hashCharacters);
 }
 
 function plainNameOf({ server, tool }: ToolReference): string {
-  return `mcp__${server}__${tool}`.replaceAll(unsafeCharacters, '_');
+  return `${server}${separator}${tool}`.replaceAll(unsafeCharacters, '_');
+}
+
+export function endsAtTheFirstSeparator(server: string): boolean {
+  const facing = server.replaceAll(unsafeCharacters, '_');
+  return !facing.includes(separator) && !facing.endsWith('_');
 }
 
 function hashedNameOf(tool: ToolReference): string {

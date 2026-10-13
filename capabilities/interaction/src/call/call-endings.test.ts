@@ -30,7 +30,7 @@ describe('a run that asks a system and sends nothing', () => {
       await narrow.run(callDocument()),
       await narrow.run(callDocument({ tool: 'gone', read: null })),
     ]).toEqual([
-      rejectedWith({ kind: 'tool_not_offered', because: 'mcp_server_not_configured' }),
+      rejectedWith({ kind: 'tool_not_offered', because: 'tool_server_not_configured' }),
       rejectedWith({ kind: 'tool_not_offered', because: 'tool_not_allowed' }),
       rejectedWith({ kind: 'tool_not_offered', because: 'tool_not_allowed' }),
     ]);
@@ -48,7 +48,7 @@ describe('a run that asks a system and sends nothing', () => {
         because: 'tool_not_listed',
         detail: 'The tool server chat does not list the tool gone',
       }),
-      rejectedWith({ kind: 'mcp_server_failed', because: 'unreachable' }),
+      rejectedWith({ kind: 'tool_server_failed', because: 'unreachable' }),
     ]);
     expect(journal.recorded()).toEqual([]);
   });

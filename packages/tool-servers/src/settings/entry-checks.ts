@@ -1,6 +1,7 @@
 import { problem, servedScopeOf, type SettingProblem } from '@on.auto/config';
 import { Result, type Redacted } from 'effect';
 
+import { endsAtTheFirstSeparator } from '../names/model-facing-names.ts';
 import { isServerName } from '../names/tool-reference.ts';
 import { apiTransport } from './api-entry-checks.ts';
 import { accepted, at, problemsOf, refused, rejected, secretsOf, type Checked } from './checked.ts';
@@ -42,6 +43,13 @@ function checkedName(name: string, providers: readonly string[]): Checked<string
       name,
       [],
       'Expected a name of 1 to 32 lowercase letters, digits and hyphens, starting with a letter',
+    );
+  }
+  if (!endsAtTheFirstSeparator(name)) {
+    return refused(
+      name,
+      [],
+      "Expected no two hyphens together and none at the end: a model sees each tool of the server as server__tool, a hyphen as an underscore, and the server's name ends at the first __",
     );
   }
   return providers.includes(name)

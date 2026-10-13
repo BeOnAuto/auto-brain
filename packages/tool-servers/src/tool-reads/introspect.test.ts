@@ -133,7 +133,7 @@ describe('introspect refusing', () => {
       {
         reason: 'unavailable',
         kind: 'tool_not_offered',
-        because: 'mcp_server_not_configured',
+        because: 'tool_server_not_configured',
         detail: 'No tool server named crm is configured for this playbook',
       },
       {
@@ -168,7 +168,7 @@ describe('introspect refusing what it cannot reach', () => {
 
     expect(await call('introspect', { server: 'graph', tool: 'search' })).toMatchObject({
       reason: 'unavailable',
-      kind: 'mcp_server_failed',
+      kind: 'tool_server_failed',
       because: 'failing',
       detail: `The tool server graph could not be used: ${refusal}`.slice(0, toolBounds.failureBytes),
     });

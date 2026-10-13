@@ -14,7 +14,7 @@ afterEach(async () => {
   await Promise.all(closing.splice(0).map((close) => close()));
 });
 
-const largeTool = 'mcp__graph__large';
+const largeTool = 'graph__large';
 
 const utf8 = new TextEncoder();
 

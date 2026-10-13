@@ -97,6 +97,14 @@ function headersOf(operation: ApiOperation, endpoint: ApiEndpoint, body: string 
   };
 }
 
+function withoutTrailingSlashes(url: string): string {
+  let end = url.length;
+  while (url.charAt(end - 1) === '/') {
+    end -= 1;
+  }
+  return url.slice(0, end);
+}
+
 export function apiRequestOf(
   operation: ApiOperation,
   input: Readonly<Record<string, unknown>>,
@@ -109,7 +117,7 @@ export function apiRequestOf(
   return Result.flatMap(pathOf(operation, input), (path) =>
     Result.flatMap(queryOf(operation, input, endpoint), (query) =>
       Result.map(bodyOf(operation, input), (body) => ({
-        url: `${endpoint.baseUrl.replace(/\/+$/u, '')}${path}${query}`,
+        url: `${withoutTrailingSlashes(endpoint.baseUrl)}${path}${query}`,
         method: operation.method.toUpperCase(),
         headers: headersOf(operation, endpoint, body),
         body,

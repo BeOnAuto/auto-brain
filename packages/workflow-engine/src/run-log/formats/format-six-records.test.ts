@@ -167,8 +167,42 @@ const callOfFormatSix = {
   ],
 };
 
+const writeEvent = Schema.encodeSync(Schema.toCodecJson(RunLogEventSchema));
+
+const rejected = { status: 'rejected', detail: 'The tool server is gone' };
+
+type Written = Readonly<Record<string, unknown>>;
+
+const settlementsOfFormatSix: readonly Written[] = [
+  { ...rejected, reason: 'unavailable', kind: 'mcp_server_failed', because: 'mcp_server_not_configured' },
+  { ...rejected, reason: 'unavailable', kind: 'tools_unfinished', because: 'failing' },
+  { ...rejected, reason: 'unavailable' },
+  { ...rejected, reason: 'conflict', kind: 'stalled' },
+];
+
+const settlementsNow = [
+  { ...rejected, reason: 'unavailable', kind: 'tool_server_failed', because: 'tool_server_not_configured' },
+  ...settlementsOfFormatSix.slice(1),
+];
+
+function settledWith(settlement: object): unknown {
+  return { ...stream[0]?.event, outputs: [{ kind: 'settle', executionId: runId, settlement }] };
+}
+
+function settlementOf(output: RunOutput | undefined): unknown {
+  return output?.kind === 'settle' ? output.settlement : output;
+}
+
 function decoded(event: unknown) {
   return Result.getOrThrow(decodeEvent(event));
+}
+
+function settlementsRead(settlements: readonly Written[]): readonly unknown[] {
+  return settlements.map((settlement) => settlementOf(decoded(settledWith(settlement)).outputs[0]));
+}
+
+function settlementsWrittenBack(settlements: readonly Written[]): readonly unknown[] {
+  return settlements.map((settlement) => writeEvent(decoded(settledWith(settlement))));
 }
 
 function runIdOf(output: RunOutput): string {
@@ -189,6 +223,30 @@ describe('an event of formats 1 to 6', () => {
       Result.isFailure(decodeEvent(readJson(settling))),
       Result.isFailure(decodeEvent({ ...stream[0]?.event, noted: true })),
     ]).toEqual([true, true]);
+  });
+});
+
+describe('the words of an event of formats 1 to 6', () => {
+  it('give the rejection a call answered and the settlement of a run the words of format 8, written back as they were', () => {
+    const answered = stream[1]?.event;
+
+    expect(decoded(answered).receipt).toMatchObject({ rejection: { kind: 'tool_server_failed' } });
+    expect(writeEvent(decoded(answered))).toEqual(answered);
+    expect(settlementsRead(settlementsOfFormatSix)).toEqual(settlementsNow);
+    expect(settlementsWrittenBack(settlementsOfFormatSix)).toEqual(
+      settlementsOfFormatSix.map((each) => settledWith(each)),
+    );
+  });
+
+  it('refuse a settlement that holds not_testable, which format 8 has no word for', () => {
+    const raisedByItsDocument = {
+      ...rejected,
+      reason: 'unavailable',
+      kind: 'tools_unfinished',
+      because: 'not_testable',
+    };
+
+    expect(Result.isFailure(decodeEvent(settledWith(raisedByItsDocument)))).toBe(true);
   });
 });
 

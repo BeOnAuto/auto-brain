@@ -30,7 +30,7 @@ function digestOf(text: string): string {
 async function servingTheEcho(recordContent: boolean): Promise<ReasoningServer> {
   const graph = await serveFakeMcp({ bearer: apiKey });
   onTestFinished(graph.close);
-  const echoed = callingTools([['mcp__graph__echo', sent]], answers(textResult('Echoed.')));
+  const echoed = callingTools([['graph__echo', sent]], answers(textResult('Echoed.')));
   const server = await servingReasoning([echoed], {
     LOCAL_MODE: 'true',
     GRAPH_API_KEY: apiKey,

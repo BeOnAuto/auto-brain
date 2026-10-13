@@ -36,6 +36,47 @@ describe('a schema of a document of OpenAPI 3.0', () => {
   });
 });
 
+describe('the keywords of a schema of OpenAPI 3.0 that JSON Schema 2020-12 writes otherwise', () => {
+  it('leave out nullable beside a $ref, which 3.0 reads as nothing, and keep a binary format as it is', () => {
+    expect(
+      translatedSchema(
+        {
+          properties: {
+            owner: { $ref: '#/components/schemas/Person', nullable: true },
+            photo: { type: 'string', format: 'binary' },
+          },
+        },
+        '3.0',
+      ),
+    ).toEqual({
+      properties: { owner: { $ref: '#/components/schemas/Person' }, photo: { type: 'string', format: 'binary' } },
+    });
+  });
+
+  it('turn an example into the one value of examples, joining any examples written beside it', () => {
+    expect(
+      translatedSchema(
+        {
+          properties: {
+            name: { type: 'string', example: 'Ada' },
+            nothing: { type: 'string', nullable: true, example: null },
+            more: { type: 'string', example: 'Ada', examples: ['Grace'] },
+            listed: { type: 'string', examples: ['Grace'] },
+          },
+        },
+        '3.0',
+      ),
+    ).toEqual({
+      properties: {
+        name: { type: 'string', examples: ['Ada'] },
+        nothing: { type: ['string', 'null'], examples: [null] },
+        more: { type: 'string', examples: ['Grace', 'Ada'] },
+        listed: { type: 'string', examples: ['Grace'] },
+      },
+    });
+  });
+});
+
 describe('the bounds of a schema of a document of OpenAPI 3.0', () => {
   it('turn their flags of exclusive bounds into the numbers JSON Schema 2020-12 takes', () => {
     expect(
@@ -45,6 +86,7 @@ describe('the bounds of a schema of a document of OpenAPI 3.0', () => {
             { type: 'number', minimum: 0, exclusiveMinimum: true, maximum: 10, exclusiveMaximum: false },
             { type: 'number', exclusiveMaximum: true },
             { type: 'number', exclusiveMinimum: 2, minimum: 1 },
+            { type: 'integer', minimum: 1, exclusiveMinimum: false, maximum: 5, exclusiveMaximum: true },
           ],
         },
         '3.0',
@@ -54,6 +96,7 @@ describe('the bounds of a schema of a document of OpenAPI 3.0', () => {
         { type: 'number', exclusiveMinimum: 0, maximum: 10 },
         { type: 'number' },
         { type: 'number', exclusiveMinimum: 2, minimum: 1 },
+        { type: 'integer', minimum: 1, exclusiveMaximum: 5 },
       ],
     });
   });

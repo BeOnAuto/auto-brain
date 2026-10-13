@@ -161,11 +161,11 @@ describe('the words of a rejection of a function a workflow called', () => {
 
   it.each([
     [
-      rejectedWith('tool_not_offered', 'mcp_server_not_configured'),
+      rejectedWith('tool_not_offered', 'tool_server_not_configured'),
       'A function the workflow called did not succeed. This server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this playbook.',
     ],
     [
-      rejectedWith('mcp_server_failed', 'rate_limited'),
+      rejectedWith('tool_server_failed', 'rate_limited'),
       'A function the workflow called did not succeed. A tool server it needs could not be used, because the tool server asked it to slow down for longer than a run waits.',
     ],
     [

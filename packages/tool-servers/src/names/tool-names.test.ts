@@ -9,6 +9,9 @@ const named = (...written: readonly string[]) =>
     written.map((each): Referring => ({ reference: toolReferenceOf(each) ?? { server: '', tool: '' } })),
   ).map(({ name }) => name);
 
+const serverPartsOf = (...written: readonly string[]) =>
+  named(...written).map((name) => name.slice(0, name.indexOf('__')));
+
 describe('a tool written in a reasoning function', () => {
   it('reads server/tool and server/*', () => {
     expect(toolReferenceOf('graph/search')).toEqual({ server: 'graph', tool: 'search' });
@@ -30,35 +33,42 @@ describe('a tool written in a reasoning function', () => {
 });
 
 describe('the names the model sees', () => {
-  it('names a tool mcp__server__tool, with what a provider refuses mapped to underscores', () => {
-    expect(named('graph/search', 'graph/graph.query.v2', 'crm-eu/find-person')).toEqual([
-      'mcp__graph__search',
-      'mcp__graph__graph_query_v2',
-      'mcp__crm_eu__find_person',
+  it('names a tool server__tool, with what a provider refuses mapped to underscores', () => {
+    expect(named('graph/search', 'graph/graph.query.v2', 'crm-eu/find-person', 'billing/search')).toEqual([
+      'graph__search',
+      'graph__graph_query_v2',
+      'crm_eu__find_person',
+      'billing__search',
     ]);
+  });
+
+  it('splits at its first __ into the server, whatever the tool holds and however it is cut', () => {
+    expect(
+      serverPartsOf('crm-eu/find__person', 'crm-eu/__private', 'graph/a.b', 'graph/a_b', `x-1/${'y'.repeat(100)}`),
+    ).toEqual(['crm_eu', 'crm_eu', 'graph', 'graph', 'x_1']);
   });
 
   it('cuts a name over 64 characters and keeps it apart with a hash', () => {
     const [name] = named(`graph/${'a'.repeat(100)}`);
 
     expect(name).toHaveLength(64);
-    expect(name).toMatch(/^mcp__graph__a{43}_[0-9a-f]{8}$/u);
+    expect(name).toMatch(/^graph__a{48}_[0-9a-f]{8}$/u);
   });
 
   it('keeps two tools apart whose names map to the same name', () => {
     const names = named('graph/a.b', 'graph/a_b', 'graph/c');
 
-    expect(names[0]).toMatch(/^mcp__graph__a_b_[0-9a-f]{8}$/u);
-    expect(names[1]).toMatch(/^mcp__graph__a_b_[0-9a-f]{8}$/u);
+    expect(names[0]).toMatch(/^graph__a_b_[0-9a-f]{8}$/u);
+    expect(names[1]).toMatch(/^graph__a_b_[0-9a-f]{8}$/u);
     expect(names[0]).not.toBe(names[1]);
-    expect(names[2]).toBe('mcp__graph__c');
+    expect(names[2]).toBe('graph__c');
   });
 });
 
 describe('collisions after shortening tool names', () => {
   it('keeps a shortened name apart from a tool already named for its shortened form', () => {
     const long = `graph/${'x'.repeat(60)}`;
-    const short = `graph/${'x'.repeat(43)}_9684c8b8`;
+    const short = `graph/${'x'.repeat(48)}_9684c8b8`;
 
     for (const references of [
       [long, short],
@@ -73,12 +83,12 @@ describe('collisions after shortening tool names', () => {
   });
 
   it('keeps checking generated names when a disambiguating suffix is also taken', () => {
-    const original = `mcp__graph__${'x'.repeat(43)}_9684c8b8`;
+    const original = `graph__${'x'.repeat(48)}_9684c8b8`;
     const suffixed = `${original.slice(0, 62)}_1`;
     const references: readonly ToolReference[] = [
       { server: 'graph', tool: 'x'.repeat(60) },
-      { server: 'graph', tool: suffixed.slice('mcp__graph__'.length) },
-      { server: 'graph', tool: original.slice('mcp__graph__'.length) },
+      { server: 'graph', tool: suffixed.slice('graph__'.length) },
+      { server: 'graph', tool: original.slice('graph__'.length) },
     ];
     const tools = modelFacingNames(references.map((reference): Referring => ({ reference })));
 

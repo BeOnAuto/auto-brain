@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   baseUrlProblem,
+  countedFetch,
   directoryWith,
   documentProblem,
   documentWithServer,
@@ -120,6 +121,36 @@ describe('a document refused at start because of what it holds', () => {
         'At /paths/~1b/get of the document: The tool name a is the name of the operation at /paths/~1a/get too; give one of them another operationId',
       ),
     );
+  });
+});
+
+const elsewhere = [
+  'https://schemas.example.com/note.json',
+  'http://schemas.example.com/note.json',
+  'file:///etc/passwd',
+];
+
+function referringTo(address: string): string {
+  return JSON.stringify({ openapi: '3.1.0', paths: {}, components: { schemas: { Note: { $ref: address } } } });
+}
+
+describe('a document refused at start because a schema refers outside it', () => {
+  it('to an https, http or file address, naming the entry and the place, and fetching nothing', async () => {
+    const counted = countedFetch(globalThis.fetch);
+    const directory = directoryWith(
+      Object.fromEntries(elsewhere.map((address, index) => [`graph-${index}.json`, referringTo(address)])),
+    );
+    const refused = (document: string) =>
+      refusalOf({ graph: { document, org: 'acme' } }, { directory, fetch: counted.fetch });
+
+    expect(await Promise.all(elsewhere.map((_, index) => refused(`graph-${index}.json`)))).toEqual(
+      elsewhere.map(() =>
+        documentProblem(
+          'At /components/schemas/Note/$ref of the document: A reference the runtime cannot follow: a schema of a tool server may refer only to #/components/schemas/<name> of its own document',
+        ),
+      ),
+    );
+    expect(counted.fetched()).toEqual([]);
   });
 });
 

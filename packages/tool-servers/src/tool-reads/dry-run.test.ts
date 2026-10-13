@@ -152,7 +152,7 @@ describe('dry_run refusing', () => {
       await call('dry_run', { server: 'crm', tool: 'search' }),
       await call('dry_run', { server: 'graph', tool: 'lookup' }),
     ]).toMatchObject([
-      { reason: 'unavailable', kind: 'tool_not_offered', because: 'mcp_server_not_configured' },
+      { reason: 'unavailable', kind: 'tool_not_offered', because: 'tool_server_not_configured' },
       { reason: 'unavailable', kind: 'tool_not_offered', because: 'tool_not_listed' },
     ]);
     expect(fake.received()).toEqual([]);

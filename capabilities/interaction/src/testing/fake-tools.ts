@@ -39,7 +39,7 @@ function notAllowed(tool: string): Refusal {
 
 function notConfigured(server: string): Refusal {
   return {
-    because: 'mcp_server_not_configured',
+    because: 'tool_server_not_configured',
     detail: `No tool server named ${server} is configured for this playbook`,
   };
 }
@@ -70,7 +70,7 @@ function startOf({ reference, input }: Pick<OneCall, 'reference' | 'input'>): Ef
 
 function unsentBy(answer: Exclude<FakeAnswer, BoardAnswer>, { reference }: OneCall): CalledOnce {
   return answer.kind === 'unopened'
-    ? { kind: 'unopened', refused: 'mcp_server_failed', because: 'failing', detail: answer.detail }
+    ? { kind: 'unopened', refused: 'tool_server_failed', because: 'failing', detail: answer.detail }
     : notOfferedBy(notAllowed(reference.tool));
 }
 

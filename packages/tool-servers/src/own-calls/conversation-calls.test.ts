@@ -136,7 +136,7 @@ describe('a telling the playbook makes in a conversation', () => {
       tellingEndedOf(telling, notOffered, recorded).event,
       tellingEndedOf(
         telling,
-        { kind: 'unopened', refused: 'mcp_server_failed', because: 'unreachable', detail: '' },
+        { kind: 'unopened', refused: 'tool_server_failed', because: 'unreachable', detail: '' },
         recorded,
       ).event,
     ]).toEqual([

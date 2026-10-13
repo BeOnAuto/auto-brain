@@ -42,8 +42,8 @@ describe('a server that cannot take one call now', () => {
     await fake.close();
 
     expect([listingRefused, await calledOnce(oneCallAccess(url))]).toEqual([
-      unopenedWith('mcp_server_failed', 'failing', `${couldNotBeUsed}The tool server answered HTTP 503`),
-      unopenedWith('mcp_server_failed', 'unreachable', `${couldNotBeUsed}The tool server could not be reached`),
+      unopenedWith('tool_server_failed', 'failing', `${couldNotBeUsed}The tool server answered HTTP 503`),
+      unopenedWith('tool_server_failed', 'unreachable', `${couldNotBeUsed}The tool server could not be reached`),
     ]);
     expect(fake.received()).toEqual([]);
   });
@@ -58,7 +58,7 @@ describe('a server that cannot take one call now', () => {
     closedAfter(access.close);
 
     expect(await calledOnce(access)).toEqual(
-      unopenedWith('mcp_server_failed', 'failing', `${couldNotBeUsed}${refusal}`.slice(0, toolBounds.failureBytes)),
+      unopenedWith('tool_server_failed', 'failing', `${couldNotBeUsed}${refusal}`.slice(0, toolBounds.failureBytes)),
     );
   });
 });
@@ -75,12 +75,12 @@ describe('one call through a tool this playbook is not offered', () => {
     ]).toEqual([
       unopenedWith(
         'tool_not_offered',
-        'mcp_server_not_configured',
+        'tool_server_not_configured',
         'No tool server named wiki is configured for this playbook',
       ),
       unopenedWith(
         'tool_not_offered',
-        'mcp_server_not_configured',
+        'tool_server_not_configured',
         'No tool server named graph is configured for this playbook',
       ),
       unopenedWith(
@@ -122,7 +122,7 @@ describe('one call to a server that opens no connection', () => {
 
     expect(ended).toEqual(
       unopenedWith(
-        'mcp_server_failed',
+        'tool_server_failed',
         'unreachable',
         `${couldNotBeUsed}The tool server did not open a connection within 300 ms`,
       ),
@@ -137,7 +137,7 @@ describe('one call to a server that does not list its tools in time', () => {
     fake.holdNextOf('tools/list');
 
     expect(await calledOnce(oneCallAccess(fake.url, {}, { openMs: 300 }))).toEqual(
-      unopenedWith('mcp_server_failed', 'unreachable', `${couldNotBeUsed}The tool server did not answer in time`),
+      unopenedWith('tool_server_failed', 'unreachable', `${couldNotBeUsed}The tool server did not answer in time`),
     );
     expect(fake.received()).toEqual([]);
   });

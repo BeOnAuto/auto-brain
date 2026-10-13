@@ -98,7 +98,7 @@ describe('problemResponse', () => {
   });
 
   it('asks for a retry of a tool server that could not be used, which a retry may find working', () => {
-    expect(retryAfterOf({ kind: 'mcp_server_failed', because: 'unreachable' })).toBe('5');
+    expect(retryAfterOf({ kind: 'tool_server_failed', because: 'unreachable' })).toBe('5');
   });
 
   it('adds the headers it is given', () => {

@@ -150,7 +150,7 @@ export const beforeAnything: ReadonlyArray<readonly [string, Row, Ending]> = [
   [
     'a server that does not serve the playbook',
     { server: { entry: { playbooks: ['beta'] } } },
-    sentNothing('mcp_server_not_configured', 'No tool server named chat is configured for this playbook'),
+    sentNothing('tool_server_not_configured', 'No tool server named chat is configured for this playbook'),
   ],
   [
     'a tool the operator does not allow',
@@ -160,7 +160,7 @@ export const beforeAnything: ReadonlyArray<readonly [string, Row, Ending]> = [
   [
     'a server that cannot be reached',
     { before: (server) => server.fake.close() },
-    sentNothing('unreachable', expect.stringContaining('could not be reached'), 'mcp_server_failed'),
+    sentNothing('unreachable', expect.stringContaining('could not be reached'), 'tool_server_failed'),
   ],
   [
     'a server that refuses the key at its opening',
@@ -173,7 +173,7 @@ export const beforeAnything: ReadonlyArray<readonly [string, Row, Ending]> = [
     sentNothing(
       'key_refused',
       'The tool server chat could not be used: The tool server answered HTTP 401',
-      'mcp_server_failed',
+      'tool_server_failed',
     ),
   ],
   [
@@ -183,7 +183,7 @@ export const beforeAnything: ReadonlyArray<readonly [string, Row, Ending]> = [
         server.fake.answerNextOf('tools/list', 429, 1, { 'retry-after': '120' });
       },
     },
-    sentNothing('rate_limited', expect.stringContaining('could not be used'), 'mcp_server_failed'),
+    sentNothing('rate_limited', expect.stringContaining('could not be used'), 'tool_server_failed'),
   ],
   [
     'a listing of the tools that fails',
@@ -192,7 +192,7 @@ export const beforeAnything: ReadonlyArray<readonly [string, Row, Ending]> = [
         server.fake.answerNextOf('tools/list', 500);
       },
     },
-    sentNothing('failing', expect.stringContaining('answered HTTP 500'), 'mcp_server_failed'),
+    sentNothing('failing', expect.stringContaining('answered HTTP 500'), 'tool_server_failed'),
   ],
   [
     'a listing of the tools that does not answer in time',
@@ -204,7 +204,7 @@ export const beforeAnything: ReadonlyArray<readonly [string, Row, Ending]> = [
     sentNothing(
       'unreachable',
       'The tool server chat could not be used: The tool server did not answer in time',
-      'mcp_server_failed',
+      'tool_server_failed',
     ),
   ],
   [

@@ -93,7 +93,7 @@ async function annotationsOf(server: ReasoningServer) {
   return listed.find(({ name }) => name === 'run_definition')?.annotations;
 }
 
-const searched = callingTools([['mcp__graph__search', { query: 'acme' }]], answers(textResult('Acme has 2 rows.')));
+const searched = callingTools([['graph__search', { query: 'acme' }]], answers(textResult('Acme has 2 rows.')));
 
 describe('run_definition over MCP on a server with tool servers', () => {
   it('is destructive when a tool server is configured, so an assistant asks before running a function', async () => {
@@ -125,10 +125,7 @@ describe('a reasoning function with tools over MCP', () => {
     'runs a reasoning function with the tools of a process the server starts',
     { timeout: stdioTestTimeoutMs },
     async () => {
-      const reply = callingTools(
-        [['mcp__limitless__search', { query: 'acme' }]],
-        answers(textResult('Acme has 2 rows.')),
-      );
+      const reply = callingTools([['limitless__search', { query: 'acme' }]], answers(textResult('Acme has 2 rows.')));
       const processSource = source.replace('graph/search', 'limitless/search');
 
       const { first, history } = await executedTwice(await serving(await fakeGraph(), [reply]), processSource);
@@ -150,7 +147,7 @@ describe('the words of a reasoning run over MCP that could not finish after call
   it('says in plain words that a run whose tools only read may run again, though not under its id', async () => {
     const fake = await fakeGraph();
     const { first, again } = await executedTwice(
-      await serving(fake, [callingTools([['mcp__graph__search', { query: 'acme' }]], timedOut)]),
+      await serving(fake, [callingTools([['graph__search', { query: 'acme' }]], timedOut)]),
     );
 
     expect(plainTextIn(first)).toBe(
@@ -165,7 +162,7 @@ describe('the words of a reasoning run over MCP that could not finish after call
   it('says in plain words that a run whose tool may have changed something is not run again by itself', async () => {
     const fake = await fakeGraph();
     const { first, again } = await executedTwice(
-      await serving(fake, [callingTools([['mcp__graph__echo', { said: 'acme' }]], timedOut)]),
+      await serving(fake, [callingTools([['graph__echo', { said: 'acme' }]], timedOut)]),
       source.replace('graph/search', 'graph/echo'),
     );
 

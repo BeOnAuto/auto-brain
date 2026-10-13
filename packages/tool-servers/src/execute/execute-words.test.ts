@@ -84,7 +84,7 @@ describe('the plain words of a call refused a tool it is not offered', () => {
       unsuccessfulWords(
         'call the search tool of wiki',
         'command',
-        notOffered('mcp_server_not_configured'),
+        notOffered('tool_server_not_configured'),
         words?.remedies,
       ),
     ).toBe(

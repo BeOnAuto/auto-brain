@@ -90,10 +90,7 @@ const decodeAnswered = Schema.decodeUnknownSync(
 async function servingLargeAnswers(environment: Readonly<Record<string, string>>): Promise<ReasoningServer> {
   const graph = await serveFakeMcp();
   onTestFinished(graph.close);
-  const everyCall = Array.from(
-    { length: calls },
-    (_, call) => ['mcp__graph__large', { kib: kibibytesOf(call) }] as const,
-  );
+  const everyCall = Array.from({ length: calls }, (_, call) => ['graph__large', { kib: kibibytesOf(call) }] as const);
   const server = await servingReasoning([callingTools(everyCall, answers(textResult('Read them all.')))], {
     LOCAL_MODE: 'true',
     TOOL_SERVERS: JSON.stringify({ graph: { url: graph.url, org: 'acme' } }),

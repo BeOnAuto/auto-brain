@@ -31,6 +31,7 @@ async function sent(
     method: request.method,
     headers: { ...request.headers, ...(await authorizationOf(opening.tokens)) },
     body: request.body,
+    redirect: 'manual',
     signal,
   });
   if (response.status !== 401 || opening.tokens === undefined || mintedAgain) {
