@@ -186,10 +186,8 @@ await test('the first-playbook tutorial supplies inputs and observable checks fo
 await test('the local quick start gives runnable setup and distinguishes local clients from Cloud', () => {
   const guide = readFileSync(join(docs, 'get-started/local.md'), 'utf8');
   for (const command of [
-    'git clone https://github.com/BeOnAuto/runtime.git',
-    'pnpm install',
-    'cp .env.example .env',
-    'pnpm dev',
+    'npx @on.auto/runtime --version',
+    'npx @on.auto/runtime\n',
     'curl http://localhost:5555/health',
     'claude mcp add --transport http auto-runtime http://localhost:5555/mcp',
     'codex mcp add auto-runtime --url http://localhost:5555/mcp',

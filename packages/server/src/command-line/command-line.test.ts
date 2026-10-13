@@ -50,7 +50,8 @@ function recordedHost(): Recorded {
 const startedSettings = {
   HOST: '127.0.0.1',
   LOCAL_MODE: 'true',
-  LOG_FORMAT: 'pretty',
+  LOG_FORMAT: 'console',
+  LOG_LEVEL: 'warn',
   LEDGER_FILE: '/home/ada/.auto-runtime/ledger.db',
   ANTHROPIC_API_KEY: 'sk-ant-test',
 };

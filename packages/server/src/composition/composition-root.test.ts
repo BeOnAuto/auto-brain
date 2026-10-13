@@ -6,7 +6,7 @@ import { createPlaybook } from '@on.auto/playbooks';
 import { Effect, Layer, ManagedRuntime } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { logsToStderr } from '../logging/logging.ts';
+import { logsToStderr } from '../logging/log-formats.ts';
 import { applicationLayer } from './application-layer.ts';
 import { factsComposedOf } from './composed-facts.ts';
 

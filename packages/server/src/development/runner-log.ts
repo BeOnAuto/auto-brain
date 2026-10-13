@@ -1,7 +1,7 @@
 import type { Environment } from '@on.auto/config';
 import { Effect, type Layer } from 'effect';
 
-import { logsToStderr } from '../logging/logging.ts';
+import { logsToStderr } from '../logging/log-formats.ts';
 
 export interface RunnerLog {
   readonly info: (message: string) => void;
