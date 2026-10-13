@@ -61,8 +61,8 @@ describe('the OpenAPI document of the server', () => {
     ]);
   });
 
-  it('takes 163,071 bytes and those of the version of the release, 163,076 at 0.8.0', () => {
-    expect(Buffer.byteLength(text) - Buffer.byteLength(release.version)).toBe(163_071);
+  it('takes 163,072 bytes and those of the version of the release, 163,077 at 0.8.0', () => {
+    expect(Buffer.byteLength(text) - Buffer.byteLength(release.version)).toBe(163_072);
   });
 
   it('names the OpenID Connect metadata of the Auto identity service when IDENTITY_ISSUER is not set', () => {
@@ -71,7 +71,7 @@ describe('the OpenAPI document of the server', () => {
         securitySchemes: {
           openIdConnect: {
             type: 'openIdConnect',
-            openIdConnectUrl: 'https://auth.on.auto/.well-known/openid-configuration',
+            openIdConnectUrl: 'https://login.on.auto/.well-known/openid-configuration',
           },
         },
       },

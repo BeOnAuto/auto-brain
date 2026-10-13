@@ -50,7 +50,7 @@ const signInSettings = Config.all({
 const httpOffLoopback =
   'PUBLIC_URL: Expected an https URL; an http URL is taken only for localhost, 127.0.0.1 or [::1] on a server whose HOST is a loopback address';
 
-function isServedFrom(publicUrl: string, host: string): boolean {
+function isUsableOnHost(publicUrl: string, host: string): boolean {
   return publicUrl.startsWith('https://') || (namesALoopbackHost(publicUrl) && listensOnlyOnLoopback(host));
 }
 
@@ -58,7 +58,7 @@ export function readCredentialSettings(environment: Environment, host: string): 
   const { publicUrl, issuer } = Effect.runSync(
     asInvalidSettings(signInSettings.parse(ConfigProvider.fromEnvRecord(environment))),
   );
-  if (Option.isSome(publicUrl) && !isServedFrom(publicUrl.value, host)) {
+  if (Option.isSome(publicUrl) && !isUsableOnHost(publicUrl.value, host)) {
     throw new InvalidSettingsError({ message: httpOffLoopback });
   }
   return {

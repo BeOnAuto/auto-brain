@@ -36,7 +36,7 @@ describe('readSettings', () => {
       port: 5555,
       allowedOrigins: [],
       apiKeys: undefined,
-      identityIssuer: 'https://auth.on.auto',
+      identityIssuer: 'https://login.on.auto',
       signIn: undefined,
       ledger: { store: 'sqlite', file: 'data/ledger.db' },
       content: { store: 'ledger' },
@@ -192,7 +192,7 @@ describe('readSettings signing persons in', () => {
     expect([
       readSettings({ PUBLIC_URL: 'https://runtime.example.com' }).signIn,
       readSettings({ IDENTITY_ISSUER: 'https://identity.example' }).signIn,
-    ]).toEqual([{ issuer: 'https://auth.on.auto', publicUrl: 'https://runtime.example.com' }, undefined]);
+    ]).toEqual([{ issuer: 'https://login.on.auto', publicUrl: 'https://runtime.example.com' }, undefined]);
   });
 
   it('signs persons in through the identity service IDENTITY_ISSUER names, such as a development instance', () => {
@@ -205,7 +205,7 @@ describe('readSettings signing persons in', () => {
     'takes PUBLIC_URL=%s on a server that listens on a loopback address',
     (publicUrl) => {
       expect(readSettings({ HOST: '127.0.0.1', PUBLIC_URL: publicUrl }).signIn).toEqual({
-        issuer: 'https://auth.on.auto',
+        issuer: 'https://login.on.auto',
         publicUrl,
       });
     },
@@ -235,11 +235,16 @@ describe('readSettings rejects invalid credential settings', () => {
     );
   });
 
-  it.each(['http://auth.on.auto', 'https://auth.on.auto/tenant', 'https://auth.on.auto?x=1', 'https://auth.on.auto#y'])(
+  it.each([
+    'http://login.on.auto',
+    'https://login.on.auto/tenant',
+    'https://login.on.auto?x=1',
+    'https://login.on.auto#y',
+  ])(
     'rejects IDENTITY_ISSUER="%s", which is not the https URL of a service without a path, naming the setting',
     (issuer) => {
       expect(String(errorFrom({ IDENTITY_ISSUER: issuer }))).toBe(
-        'InvalidSettingsError: SchemaError(Expected the https URL of the identity service, with no path, query or fragment, such as https://auth.on.auto\n  at ["IDENTITY_ISSUER"])',
+        'InvalidSettingsError: SchemaError(Expected the https URL of the identity service, with no path, query or fragment, such as https://login.on.auto\n  at ["IDENTITY_ISSUER"])',
       );
     },
   );

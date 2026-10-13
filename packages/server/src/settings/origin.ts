@@ -15,7 +15,7 @@ export const IssuerOrigin = Schema.String.check(
   Schema.makeFilter(
     (text: string) =>
       isOriginOf(text, ['https:']) ||
-      'Expected the https URL of the identity service, with no path, query or fragment, such as https://auth.on.auto',
+      'Expected the https URL of the identity service, with no path, query or fragment, such as https://login.on.auto',
   ),
 );
 

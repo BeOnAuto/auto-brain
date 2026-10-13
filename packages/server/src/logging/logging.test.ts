@@ -31,7 +31,7 @@ function syntaxErrorParsing(text: string): SyntaxError {
 
 const serveWithTestRoutes = fileURLToPath(new URL('../testing/entries/serve-with-test-routes.ts', import.meta.url));
 
-const signIn: SignInSettings = { issuer: 'https://auth.on.auto', publicUrl: 'https://runtime.example' };
+const signIn: SignInSettings = { issuer: 'https://login.on.auto', publicUrl: 'https://runtime.example' };
 
 const nothingConfigured = { localMode: false, apiKeys: undefined, signIn: undefined };
 
@@ -93,9 +93,9 @@ describe('logAccessMode with credentials configured', () => {
 
     expect(line).toContain('"level":"INFO"');
     expect(line).toContain(
-      '"message":"Signed-in persons are admitted through the identity service at https://auth.on.auto, by tokens whose audience is https://runtime.example"',
+      '"message":"Signed-in persons are admitted through the identity service at https://login.on.auto, by tokens whose audience is https://runtime.example"',
     );
-    expect(line).toContain('"public_url":"https://runtime.example","identity_issuer":"https://auth.on.auto"');
+    expect(line).toContain('"public_url":"https://runtime.example","identity_issuer":"https://login.on.auto"');
   });
 });
 
