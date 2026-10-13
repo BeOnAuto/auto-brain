@@ -15,8 +15,12 @@ const prefixByScope: Readonly<Record<OperationScope, string>> = {
   playbook: '/orgs/{org}/playbooks/{playbook}',
 };
 
-function routeOf({ scope, route }: RouteRegistration): string {
-  return `${route.method} ${prefixByScope[scope]}${route.path}`;
+export function catalogPathOf({ scope, route }: RouteRegistration): string {
+  return `${prefixByScope[scope]}${route.path}`;
+}
+
+function routeOf(registration: RouteRegistration): string {
+  return `${registration.route.method} ${catalogPathOf(registration)}`;
 }
 
 function routeShapeOf(registration: RouteRegistration): string {
