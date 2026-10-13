@@ -3,7 +3,7 @@ import { dirname } from 'node:path';
 
 import { dumbo, type SQL } from '@event-driven-io/dumbo';
 import { sqlite3EventStoreDriver } from '@event-driven-io/emmett-sqlite/sqlite3';
-import { sqliteEventStore } from '@on.auto/ledger';
+import { sqliteEventStore, type AppendObserver } from '@on.auto/ledger';
 import { Effect, Function, Schema } from 'effect';
 
 import {
@@ -91,11 +91,15 @@ function columnsAddedTo(database: HostDatabase): Effect.Effect<void, DatabaseFai
   );
 }
 
-export async function openSQLiteDatabase(fileName: string, tables: readonly Statement[]): Promise<HostDatabase> {
+export async function openSQLiteDatabase(
+  fileName: string,
+  tables: readonly Statement[],
+  observer?: AppendObserver,
+): Promise<HostDatabase> {
   prepareDirectoryOf(fileName);
   const options = { driver: sqlite3EventStoreDriver, fileName, connectionOptions: modestConnections };
   const pool = dumbo(sqlite3EventStoreDriver.mapToDumboOptions(options));
-  const store = sqliteEventStore(() => ({ ...options, pool }));
+  const store = sqliteEventStore(() => ({ ...options, pool }), {}, observer);
   const inASnapshot: InASnapshot =
     fileName === privateMemory
       ? (handle) => pool.withTransaction(handle, deferred)
