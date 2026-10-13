@@ -12,7 +12,7 @@ Options are `--id`, `--permissions` (comma-separated, from `org:read`, `org:writ
 
 Following [RFC 6750](https://www.rfc-editor.org/rfc/rfc6750), a request without an `Authorization` header gets `401` with `WWW-Authenticate: Bearer`, a key that is not valid gets `401` with `error="invalid_token"`, an `Authorization` header that is not exactly one `Bearer <key>` gets `400` with `error="invalid_request"`, and a key that lacks the permission, playbook or org a call needs gets `403` with `error="insufficient_scope"`.
 
-Without `API_KEYS`, or with `API_KEYS=[]`, and without local mode, the server rejects every path except those two with `401`, on any address, and warns at start-up that no request can authenticate.
+Without `API_KEYS`, or with `API_KEYS=[]`, and without local mode, the server rejects every path but those named above with `401`, on any address, and warns at start-up that no request can authenticate.
 
 ## Local mode
 

@@ -4,7 +4,7 @@ import { existsSync, lstatSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 
-import { foundIn, oldWords } from './docs-old-words.ts';
+import { foundIn, oldWords } from '@on.auto/api/testing';
 
 const root = resolve(import.meta.dirname, '..');
 
@@ -21,12 +21,13 @@ const frozenFormats: readonly string[] = [
   ),
 ];
 
-const publishedOpenApiSchema = 'packages/api/src/testing/openapi-3.1-schema-2022-10-07';
+const publishedOpenApiSchema = 'packages/api/src/testing/openapi/openapi-3.1-schema-2022-10-07';
 
 const keptFiles: readonly string[] = [
   'CHANGELOG.md',
   'pnpm-lock.yaml',
-  'scripts/docs-old-words.ts',
+  'packages/api/src/testing/vocabulary/old-words.ts',
+  'packages/api/src/testing/vocabulary/old-words.test.ts',
   'scripts/docs-vocabulary.test.ts',
   `${publishedOpenApiSchema}.json`,
   ...frozenFormats,
@@ -37,9 +38,9 @@ interface Allowance {
   readonly in: readonly string[];
 }
 
-const internalTerms = 'packages/api/src/testing/internal-terms.ts';
+const internalTerms = 'packages/api/src/testing/vocabulary/internal-terms.ts';
 
-const internalTermsTest = 'packages/api/src/testing/internal-terms.test.ts';
+const internalTermsTest = 'packages/api/src/testing/vocabulary/internal-terms.test.ts';
 
 const reasoningReference = 'docs/engineering/reference/reasoning-format.md';
 
