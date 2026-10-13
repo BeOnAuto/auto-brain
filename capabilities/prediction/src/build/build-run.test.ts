@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildPlaybook } from '../build-testing/build-playbook.ts';
-import { askedBuild, buildAsked, runOf, savedFunction, visitsRows } from '../build-testing/built-versions.ts';
+import {
+  answered,
+  askedBuild,
+  buildAsked,
+  runOf,
+  savedFunction,
+  uploaded,
+  visitsRows,
+} from '../build-testing/built-versions.ts';
+import { candidateSha256, performedUntilQuiet } from '../build-testing/due-driving.ts';
 import { dailyVisitsWith, uploadedDailyVisits } from '../testing/daily-documents.ts';
 
 const testTimeoutMs = 30_000;
@@ -82,19 +91,31 @@ describe('the builds a server takes', { timeout: testTimeoutMs }, () => {
     });
   });
 
-  it('are bounded across the functions of the deployment', async () => {
+  it('are bounded across the functions of the deployment by the builds being scored, not those that wait for a trainer', async () => {
     const playbook = buildPlaybook({ bounds: { buildsAtOnce: 1 } });
     await savedFunction(playbook);
     await savedFunction(playbook, { name: 'other-visits' });
-    await askedBuild(playbook);
+    await savedFunction(playbook, { name: 'third-visits' });
+    const scored = await askedBuild(playbook);
+    const waiting = await buildAsked(playbook, 'other-visits');
+    await uploaded(playbook, scored, ['visits-mean']);
+    await answered(playbook, scored, { candidates: [candidateSha256('visits-mean')] });
+    const whileScored = await buildAsked(playbook, 'third-visits');
+    await performedUntilQuiet(playbook.due);
 
-    expect(await buildAsked(playbook, 'other-visits')).toMatchObject({
-      status: 'rejected',
-      kind: 'builds_full',
-      detail: 'Every build permit of this server is taken; ask again shortly',
-    });
+    expect([waiting, whileScored, await buildAsked(playbook, 'third-visits')]).toMatchObject([
+      { status: 'succeeded' },
+      {
+        status: 'rejected',
+        kind: 'builds_full',
+        detail: 'Every build this server may score at once is being scored; ask again once one has scored',
+      },
+      { status: 'succeeded' },
+    ]);
   });
+});
 
+describe('the builds asked through the inbox', { timeout: testTimeoutMs }, () => {
   it('ask no trainer through the inbox while the playbook holds the most open requests it may', async () => {
     const playbook = buildPlaybook({ openRequests: 64 });
     await savedFunction(playbook);

@@ -27,10 +27,10 @@ export function scratchDirectory(): string {
   return directory;
 }
 
-export function closedAfterTheTest(processes: number): ProcessPool {
+export function closedAfterTheTest(processes: number, longJobs = Math.max(1, processes - 2)): ProcessPool {
   const pool = processPool({
     processes,
-    longJobs: Math.max(1, processes - 2),
+    longJobs,
     memoryBytes: 1280 * megabyte,
     path: process.env['PATH'],
   });

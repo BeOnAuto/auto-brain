@@ -33,6 +33,16 @@ export const WalkJobSchema = Schema.Struct({
 
 export type WalkJob = typeof WalkJobSchema.Type;
 
+export const WindowJobSchema = Schema.Struct({
+  rows: Schema.String,
+  series: Schema.String,
+  features: Whole,
+  grain: Schema.Literals(['day', 'week', 'month', 'quarter', 'year']),
+  window: Whole,
+});
+
+export type WindowJob = typeof WindowJobSchema.Type;
+
 export interface Fed {
   readonly y: Readonly<Float32Array>;
   readonly x: Readonly<Float32Array> | null;

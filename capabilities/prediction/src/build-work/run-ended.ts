@@ -4,6 +4,7 @@ import { Effect } from 'effect';
 import type { PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';
 import { lifecycleStep } from '../shadow/model-lifecycle.ts';
 import { advanced, restingUntil, type Performing } from './build-performing.ts';
+import { approvalReference, childIdOf } from './child-runs.ts';
 
 function childCancelled(performing: Performing, child: string): Effect.Effect<void> {
   const { ports, build, lineage } = performing;
@@ -14,8 +15,17 @@ function childCancelled(performing: Performing, child: string): Effect.Effect<vo
           address,
           { kind: 'parent_ended', reason: 'The build that asked for it has ended' },
           lineage,
-        ).pipe(Effect.orDie, Effect.andThen(restingUntil(performing, null)))
+        ).pipe(Effect.orDie, Effect.asVoid)
       : Effect.void,
+  );
+}
+
+function childrenCancelled(performing: Performing): Effect.Effect<void> {
+  const { row, build } = performing;
+  const children = [childIdOf(build.address.id, approvalReference), ...(row.through === null ? [] : [row.through])];
+  return Effect.andThen(
+    Effect.forEach(children, (child) => childCancelled(performing, child)),
+    restingUntil(performing, null),
   );
 }
 
@@ -31,11 +41,5 @@ export function afterTheRun(
       advanced(performing, build.address, { staged: false, next_due_at: now }),
     );
   }
-  const lifecycle =
-    build.run.run.status === 'succeeded' && row.version !== null && row.open
-      ? lifecycleStep(performing, document)
-      : restingUntil(performing, null);
-  return row.through === null || row.open
-    ? lifecycle
-    : Effect.andThen(childCancelled(performing, row.through), lifecycle);
+  return row.open ? lifecycleStep(performing, document) : childrenCancelled(performing);
 }

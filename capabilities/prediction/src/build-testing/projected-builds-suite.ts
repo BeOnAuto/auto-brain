@@ -36,6 +36,10 @@ async function challenged(settingsOf: SettingsOf, sales: Sales = visits): Promis
   return projected;
 }
 
+function decidesAShadow({ type }: { readonly type: string }): boolean {
+  return type === 'shadow_passed' || type === 'shadow_failed';
+}
+
 function typesOf(facts: readonly { readonly type: string }[]): readonly string[] {
   return facts.map(({ type }) => type);
 }
@@ -68,6 +72,41 @@ function shadowDecisions(settingsOf: SettingsOf): void {
     expect(facts.at(-2)).toMatchObject({ type: 'shadow_failed', data: { version: 2 } });
     expect(facts.at(-1)).toMatchObject({ type: 'activation_refused', data: { version: 2, because: 'shadow_failed' } });
   });
+
+  it('keeps out of its predictions what a walk answered that is not finite, and refuses a challenger that answered nothing beside an active version that did', async () => {
+    const projected = await challenged(settingsOf);
+    await performedIn(projected, ['not-finite', 'real', 'not-finite', 'real']);
+    projected.scripted.next('real');
+    await performedUntilQuiet(projected.playbook.due, 4 * day);
+    const facts = await modelFactsOf(projected.playbook);
+
+    expect(facts.filter(({ type }) => type === 'shadow_predicted')).toMatchObject([
+      { data: { of: 2, count: 0, missing: 2 } },
+      { data: { of: 1, count: 2, missing: 0 } },
+      { data: { of: 2, count: 0, missing: 2 } },
+      { data: { of: 1, count: 2, missing: 0 } },
+    ]);
+    expect(facts.at(-2)).toMatchObject({ type: 'shadow_failed', data: { version: 2, challenger: null } });
+    expect(facts.at(-1)).toMatchObject({ type: 'activation_refused', data: { version: 2, because: 'shadow_failed' } });
+  });
+}
+
+function shadowSuperseded(settingsOf: SettingsOf): void {
+  it('refuses a challenger as superseded when a newer version is built during its shadow, which then shadows in its place', async () => {
+    const projected = await challenged(settingsOf, quietVisits(Math.floor(Date.now() / day)));
+    await builtFrom(projected.playbook, ['visits-mean']);
+    await performedUntilQuiet(projected.playbook.due, 4 * day);
+    const facts = await modelFactsOf(projected.playbook);
+
+    expect(facts.filter(({ type }) => type === 'activation_refused')).toMatchObject([
+      { data: { version: 2, because: 'superseded' } },
+    ]);
+    expect(facts.filter((fact) => decidesAShadow(fact))).toMatchObject([
+      { data: { version: 1 } },
+      { data: { version: 3 } },
+    ]);
+    expect(facts.at(-1)).toMatchObject({ type: 'version_activated', data: { version: 3, rule: 'automatic' } });
+  });
 }
 
 function shadowWaits(settingsOf: SettingsOf): void {
@@ -89,7 +128,7 @@ function shadowWaits(settingsOf: SettingsOf): void {
     expect(facts.filter(({ type }) => type === 'shadow_predicted')).toMatchObject([{ data: { of: 2, count: 0 } }]);
   });
 
-  it('waits while every model process is taken, and grades with no truth while its dataset is not made', async () => {
+  it('waits while every model process is taken, grades with no truth while its dataset is not made, and decides only at a later close that has one', async () => {
     const projected = await challenged(settingsOf, { ...visits, deadlines: { check: 3000, run: 10_000, walk: 1500 } });
     const { models } = projected.playbook.test.ports;
     projected.scripted.next('sleeps');
@@ -101,10 +140,15 @@ function shadowWaits(settingsOf: SettingsOf): void {
     await performedIn(projected, ['real', 'real', 'real', 'real'], 1);
     projected.read('empty');
     await performedUntilQuiet(projected.playbook.due, 4 * day);
-    const facts = await modelFactsOf(projected.playbook);
+    const undecided = await modelFactsOf(projected.playbook);
+    projected.read('live');
+    await performedUntilQuiet(projected.playbook.due, 5 * day);
+    const decisions = (await modelFactsOf(projected.playbook)).filter((fact) => decidesAShadow(fact));
 
-    expect(facts.filter(({ type }) => type === 'shadow_predicted')).toHaveLength(4);
-    expect(facts.find(({ type }) => type === 'shadow_graded')).toMatchObject({ data: { graded: 0 } });
+    expect(undecided.filter(({ type }) => type === 'shadow_predicted')).toHaveLength(4);
+    expect(undecided.find(({ type }) => type === 'shadow_graded')).toMatchObject({ data: { graded: 0, answered: 0 } });
+    expect(undecided.filter((fact) => decidesAShadow(fact))).toMatchObject([{ data: { version: 1 } }]);
+    expect(decisions).toMatchObject([{ data: { version: 1 } }, { data: { version: 2 } }]);
   });
 }
 
@@ -134,5 +178,9 @@ export function projectedBuildsSuite(settingsOf: SettingsOf): void {
 
   describe('the shadow of a challenger that has to wait', { timeout: testTimeoutMs }, () => {
     shadowWaits(settingsOf);
+  });
+
+  describe('the shadow of a challenger that a newer version supersedes', { timeout: testTimeoutMs }, () => {
+    shadowSuperseded(settingsOf);
   });
 }

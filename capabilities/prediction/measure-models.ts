@@ -6,12 +6,19 @@ import { fileURLToPath } from 'node:url';
 import { Schema } from 'effect';
 
 import { measuredFiles, seriesMeasured, daysMeasured } from './measure/model-files.ts';
-import { modelTimings } from './measure/model-timings.ts';
+import { modelTimings, questionTimings } from './measure/model-timings.ts';
 
 const mebibyte = 1_048_576;
 
 const MemorySchema = Schema.fromJsonString(
-  Schema.Struct({ before: Schema.Number, after: Schema.Number, peak: Schema.Number }),
+  Schema.Struct({
+    threads: Schema.Number,
+    series: Schema.Number,
+    walkMs: Schema.Number,
+    before: Schema.Number,
+    after: Schema.Number,
+    peak: Schema.Number,
+  }),
 );
 
 function write(line: string): void {
@@ -40,18 +47,22 @@ try {
   write(`the shadow's walk of one version at one close over ${seriesMeasured} series: ${ms(timed.shadowWalkMs)}`);
   write(`the shadow's grade of one period over ${seriesMeasured} series: ${ms(timed.gradeMs)}`);
   execFileSync(process.execPath, [fileURLToPath(new URL('./measure/large-model.ts', import.meta.url)), files.large]);
+  execFileSync(process.execPath, [fileURLToPath(new URL('./measure/large-rows.ts', import.meta.url)), files.widest]);
   const largeBytes = statSync(files.large).size;
+  const widestBytes = statSync(files.widest).size;
   const memory = Schema.decodeUnknownSync(MemorySchema)(
     execFileSync(
       process.execPath,
-      [fileURLToPath(new URL('./measure/session-memory.ts', import.meta.url)), files.large],
-      {
-        encoding: 'utf8',
-      },
+      [fileURLToPath(new URL('./measure/session-memory.ts', import.meta.url)), files.large, files.widest],
+      { encoding: 'utf8' },
     ),
   );
   write(
-    `a session of a ${mib(largeBytes)} model: ${mib(memory.before)} resident before it, ${mib(memory.after)} after it loaded and ran, ${mib(memory.peak)} at the peak`,
+    `a session of a ${mib(largeBytes)} model on ${memory.threads} threads walking ${memory.series} series of ${mib(widestBytes)} of rows in ${ms(memory.walkMs)}: ${mib(memory.before)} resident before it, ${mib(memory.after)} after, ${mib(memory.peak)} at the peak`,
+  );
+  const asked = await questionTimings(files);
+  write(
+    `a question over an upload of ${mib(widestBytes)}: the window read by a model process in ${ms(asked.windowMs)}, the question answered in ${ms(asked.runMs)}, the server's heap ${mib(asked.heapGrowth)} larger after it`,
   );
 } finally {
   rmSync(files.directory, { recursive: true, force: true });

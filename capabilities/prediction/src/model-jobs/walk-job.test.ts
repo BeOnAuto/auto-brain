@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import type { SeriesRows } from '../files/series-rows.ts';
 import type { LoadedModel, ModelFeeds } from './model-sessions.ts';
 import { walked } from './walk-job.ts';
 
@@ -36,17 +37,27 @@ function lastValueModel(steps: (feeds: ModelFeeds) => number, heard: (fed: Fed) 
   };
 }
 
-const rows = [
-  'series,period,visits,promotion',
-  'north,2026-10-01,10,0',
-  'north,2026-10-02,11,1',
-  'north,2026-10-03,12,0',
-  'north,2026-10-04,13,1',
-  'south,2026-10-01,20,1',
-  'south,2026-10-02,21,0',
-  'south,2026-10-03,22,1',
-  'south,2026-10-04,23,0',
-].join('\r\n');
+const periods = ['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04'];
+
+interface Kept {
+  readonly series: string;
+  readonly values: readonly number[];
+  readonly promotion: readonly number[];
+}
+
+function rowsOf(features: number): readonly SeriesRows[] {
+  return [
+    { series: 'north', values: [10, 11, 12, 13], promotion: [0, 1, 0, 1] },
+    { series: 'south', values: [20, 21, 22, 23], promotion: [1, 0, 1, 0] },
+  ].map(({ series, values, promotion }: Kept) => ({
+    series,
+    periods,
+    values: Float64Array.from(values),
+    features: Float64Array.from(features === 0 ? [] : promotion),
+  }));
+}
+
+const rows = rowsOf(0);
 
 const walk = {
   model: 'm',
@@ -102,7 +113,7 @@ describe('a walk of a model that takes given features or predicts a total', () =
         },
       ),
       givenWalk,
-      rows,
+      rowsOf(1),
     );
 
     expect(seen.slice(0, 2)).toEqual([

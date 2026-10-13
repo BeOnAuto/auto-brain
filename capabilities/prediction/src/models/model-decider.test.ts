@@ -41,11 +41,21 @@ const predicted = {
   build: 'build-1',
   origin: '2026-10-12',
   count: 2,
+  missing: 0,
   predictions_sha256: sha256,
   predictions_bytes: 90,
 };
 
-const graded = { version: 1, of: 1, build: 'build-1', period: '2026-10-13', scores: [], graded: 2, missing: 0 };
+const graded = {
+  version: 1,
+  of: 1,
+  build: 'build-1',
+  period: '2026-10-13',
+  scores: [],
+  graded: 2,
+  answered: 2,
+  missing: 0,
+};
 
 const verdict = { version: 1, build: 'build-1', metric: 'mase', challenger: null, active: null };
 
@@ -93,8 +103,6 @@ describe('the models of a prediction function', () => {
   it('activate a version once for its build, settle a build a caller activates before its end, and refuse once for a build', async () => {
     const executed = ledgerOfModels();
     await executed({ ...acted, type: 'build', card });
-    await executed({ ...acted, type: 'build', card: { ...card, build: 'build-2' } });
-    const requested = await executed({ ...acted, type: 'activate', data: { version: 2, rule: 'requested' } });
     const automatic = await executed({
       ...acted,
       type: 'activate',
@@ -105,17 +113,28 @@ describe('the models of a prediction function', () => {
       type: 'activate',
       data: { version: 1, rule: 'automatic', build: 'build-1' },
     });
+    await executed({ ...acted, type: 'build', card: { ...card, build: 'build-2' } });
+    const requested = await executed({ ...acted, type: 'activate', data: { version: 2, rule: 'requested' } });
     const refusedOnce = await executed({
       ...acted,
       type: 'refuse',
       data: { version: 2, because: 'shadow_failed', build: 'build-2' },
     });
 
-    expect([requested, automatic, settledAlready, refusedOnce]).toEqual([
-      Result.succeed(3),
-      Result.succeed(4),
+    expect([automatic, settledAlready, requested, refusedOnce]).toEqual([
+      Result.succeed(2),
+      Result.succeed(2),
       Result.succeed(4),
       Result.succeed(4),
     ]);
+  });
+});
+
+describe('the models of a prediction function when a newer version is built', () => {
+  it('refuse the activation of every version not yet settled as superseded when a newer one is built', async () => {
+    const executed = ledgerOfModels();
+    await executed({ ...acted, type: 'build', card });
+
+    expect(await executed({ ...acted, type: 'build', card: { ...card, build: 'build-2' } })).toEqual(Result.succeed(3));
   });
 });

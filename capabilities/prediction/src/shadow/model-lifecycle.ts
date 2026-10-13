@@ -1,8 +1,8 @@
 import type { RecordedRun } from '@on.auto/definitions';
 import { Effect, Option, Schema } from 'effect';
 
-import { restingUntil, type Performing } from '../builds/build-performing.ts';
-import { approvalReference, childRunOf, startedChild } from '../builds/child-runs.ts';
+import { restingUntil, type Performing } from '../build-work/build-performing.ts';
+import { approvalReference, childRunOf, startedChild } from '../build-work/child-runs.ts';
 import type { PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';
 import { executed, modelsOf } from '../models/model-commands.ts';
 import { versionOfBuild, type BuiltVersion } from '../models/model-state.ts';

@@ -1,7 +1,7 @@
-import { cursorOfParts, InvalidInput, textOfContent, Unavailable, type PlaybookAddress } from '@on.auto/operations';
+import { cursorOfParts, InvalidInput, Unavailable, type PlaybookAddress } from '@on.auto/operations';
 import { Effect, Option } from 'effect';
 
-import { lastPeriodOf } from '../build/uploaded-files.ts';
+import { notReadyAs } from '../build/build-files.ts';
 import type { PredictionPorts } from '../capability/prediction-ports.ts';
 import { cellOf } from '../dataset/row-measures.ts';
 import {
@@ -10,9 +10,8 @@ import {
   type ProjectedData,
 } from '../document/prediction-document.ts';
 import { datasetRead, windowOf } from '../files/build-reads.ts';
-import { seriesRowsOf, type SeriesRows } from '../files/series-rows.ts';
+import type { DatasetFilesRefused } from '../files/files-refusals.ts';
 import { periodsOfSeries } from '../files/window-reads.ts';
-import { periodOfForm } from '../periods/grains.ts';
 
 export interface SeriesWindow {
   readonly y: Readonly<Float32Array>;
@@ -29,11 +28,6 @@ export interface Asking {
 }
 
 type WindowRefused = InvalidInput | Unavailable;
-
-const notReady = new Unavailable({
-  detail: "The dataset is still being built from the playbook's history; ask again once get_definition shows it live",
-  kind: 'dataset_not_ready',
-});
 
 function unknownSeries(series: string): InvalidInput {
   const detail = `The dataset holds no series ${JSON.stringify(series)} in its window`;
@@ -72,51 +66,44 @@ function projectedWindow(ports: PredictionPorts, asking: Asking, data: Projected
     )
     .pipe(
       Effect.catchTags({
-        dataset_files_refused: () => Effect.fail<WindowRefused>(notReady),
+        dataset_files_refused: (refused: Pick<DatasetFilesRefused, 'refusal' | 'detail'>) =>
+          Effect.fail<WindowRefused>(notReadyAs(refused)),
         database_failed: Effect.die,
       }),
     );
 }
 
-function uploadedWindow(rows: readonly SeriesRows[], asking: Asking): Effect.Effect<SeriesWindow, WindowRefused> {
-  const { document, series } = asking;
-  const grain = document.predicts.period;
-  const found = rows.find((each) => each.series === series);
-  if (found === undefined) {
-    return Effect.fail(unknownSeries(series));
-  }
-  const last = lastPeriodOf(document, rows);
-  const { window } = document.data;
-  const width = document.data.features.length;
-  const at = new Map(found.periods.map((form, index) => [Number(periodOfForm(grain, form)), index]));
-  const positions = Array.from({ length: window }, (_, offset) => at.get(last - window + 1 + offset));
-  return Effect.succeed({
-    y: Float32Array.from(positions, (index) => (index === undefined ? Number.NaN : Number(found.values[index]))),
-    x:
-      width === 0
-        ? null
-        : Float32Array.from(
-            positions.flatMap((index) =>
-              Array.from({ length: width }, (_, column) =>
-                index === undefined ? Number.NaN : Number(found.features[index * width + column]),
-              ),
-            ),
-          ),
-    origin: last,
-    checkpoint: null,
-  });
-}
+const busy = new Unavailable({ detail: 'Every model process is busy; try again shortly', kind: 'model_process_busy' });
 
-function uploadedRowsOf(
+function uploadedWindow(
   ports: PredictionPorts,
-  { playbook, document }: Asking,
+  { playbook, document, series }: Asking,
   sha256: string,
-): Effect.Effect<readonly SeriesRows[]> {
-  return Effect.flatMap(ports.ledger.content.get(playbook, sha256), (content) =>
-    Effect.map(textOfContent(Option.getOrThrow(Option.fromNullishOr(content))), (text) =>
-      seriesRowsOf(text, document.data.features.length),
-    ),
-  );
+): Effect.Effect<SeriesWindow, WindowRefused> {
+  return Effect.gen(function* () {
+    const kept = yield* ports.caches.rows.pathOf(sha256, () => ports.ledger.content.get(playbook, sha256));
+    const outcome = yield* ports.models.window(
+      { sha256, path: Option.getOrThrow(Option.fromNullishOr(kept)) },
+      {
+        series,
+        features: document.data.features.length,
+        grain: document.predicts.period,
+        window: document.data.window,
+      },
+    );
+    if (outcome.ended === 'busy') {
+      return yield* Effect.fail(busy);
+    }
+    if (outcome.ended !== 'answered') {
+      return yield* Effect.fail(
+        new Unavailable({ detail: 'The model process ended before it read the dataset', kind: 'model_process_failed' }),
+      );
+    }
+    const { answer } = outcome;
+    return 'unknown' in answer
+      ? yield* Effect.fail(unknownSeries(series))
+      : { y: answer.y, x: answer.x, origin: answer.origin, checkpoint: null };
+  });
 }
 
 export function seriesWindow(ports: PredictionPorts, asking: Asking): Effect.Effect<SeriesWindow, WindowRefused> {
@@ -124,5 +111,5 @@ export function seriesWindow(ports: PredictionPorts, asking: Asking): Effect.Eff
   if (isProjected(data)) {
     return projectedWindow(ports, asking, data);
   }
-  return Effect.flatMap(uploadedRowsOf(ports, asking, data.dataset), (rows) => uploadedWindow(rows, asking));
+  return uploadedWindow(ports, asking, data.dataset);
 }

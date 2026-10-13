@@ -1,7 +1,8 @@
 import { join } from 'node:path';
 
 import type { PredictionPorts } from '../capability/prediction-ports.ts';
-import { fileCache, mostCachedBytes } from './model-files.ts';
+import { fileCache, mostCachedBytes } from '../model-cache/model-files.ts';
+import { parsedRows } from '../model-cache/parsed-rows.ts';
 import { modelProcesses, type ModelProcessSettings } from './model-processes.ts';
 import { scoringPermits } from './scoring-permits.ts';
 
@@ -20,8 +21,9 @@ export function modelPorts(settings: ModelPortSettings): ModelPorts {
   return {
     models: modelProcesses(settings),
     caches: {
-      models: fileCache({ directory: join(directory, 'models'), extension: 'onnx', mostBytes }),
-      rows: fileCache({ directory: join(directory, 'rows'), extension: 'csv', mostBytes }),
+      models: fileCache({ directory: join(directory, 'models'), fileName: 'model.onnx', mostBytes }),
+      rows: fileCache({ directory: join(directory, 'rows'), fileName: 'rows.csv', mostBytes }),
+      parsed: parsedRows(scoringAtOnce),
     },
     permits: scoringPermits(scoringAtOnce),
   };

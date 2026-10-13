@@ -1,10 +1,10 @@
-import { textOfContent, type ContentKept, type PlaybookAddress, type RecordedContent } from '@on.auto/operations';
+import type { ContentKept, PlaybookAddress, RecordedContent } from '@on.auto/operations';
 import { Effect, Option } from 'effect';
 
 import type { PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';
 import { cellText, fieldOf, recordOf } from '../files/csv-text.ts';
 import type { DatasetFiles } from '../files/files-refusals.ts';
-import { seriesRowsOf, type SeriesRows } from '../files/series-rows.ts';
+import { seriesRowsOfStream, type SeriesRows } from '../files/series-rows.ts';
 import { periodForm, periodOfForm } from '../periods/grains.ts';
 import { featureNamesOf } from '../scoring/scoring-inputs.ts';
 
@@ -19,7 +19,7 @@ function cellsAt(rows: SeriesRows, at: number, width: number): readonly string[]
   return [value, ...features].map((cell) => cellText(Number.isNaN(cell) ? null : cell));
 }
 
-export function lastPeriodOf(document: PredictionFunctionDefinitionDocument, all: readonly SeriesRows[]): number {
+function lastPeriodOf(document: PredictionFunctionDefinitionDocument, all: readonly SeriesRows[]): number {
   const grain = document.predicts.period;
   return all.reduce(
     (latest, { periods }) =>
@@ -69,10 +69,9 @@ export function uploadedDatasetFiles(
 ): Effect.Effect<DatasetFiles> {
   return Effect.gen(function* () {
     const upload = Option.getOrThrow(Option.fromNullishOr(yield* content.get(playbook, dataset)));
-    const text = yield* textOfContent(upload);
     const header = ['series', 'period', document.predicts.target, ...featureNamesOf(document)];
     const width = header.length - 3;
-    const all = seriesRowsOf(text, width);
+    const all = yield* Effect.promise(() => seriesRowsOfStream(upload.stream, { features: width }));
     const grain = document.predicts.period;
     const last = lastPeriodOf(document, all);
     const { window } = document.data;

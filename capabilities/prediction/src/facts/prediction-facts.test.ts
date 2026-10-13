@@ -148,15 +148,16 @@ const modelFacts: readonly (readonly [string, Schema.JsonObject, string])[] = [
       build: 'run-2',
       origin: '2026-10-11',
       count: 3,
+      missing: 1,
       predictions_sha256: sha256,
       predictions_bytes: 90,
     },
-    'Version 1 predicted 3 series from 2026-10-11 in the shadow of version 2',
+    'Version 1 predicted 3 series from 2026-10-11 in the shadow of version 2, and 1 with no finite answer',
   ],
   [
     'shadow_graded',
-    { version: 2, of: 2, build: 'run-2', period: '2026-10-12', scores: [score], graded: 3, missing: 1 },
-    'The shadow predictions of version 2 for 2026-10-12 were graded: 3 graded, 1 without a truth',
+    { version: 2, of: 2, build: 'run-2', period: '2026-10-12', scores: [score], graded: 3, answered: 4, missing: 1 },
+    "The shadow predictions of version 2 for 2026-10-12 were graded: 3 graded beside the other version's, of 4 it answered, 1 without an answer or a truth",
   ],
   ['shadow_passed', verdict, 'The shadow passed for version 2, mase 0.5 against 0.75 of the active version'],
   [
@@ -166,7 +167,15 @@ const modelFacts: readonly (readonly [string, Schema.JsonObject, string])[] = [
   ],
   [
     'version_activated',
-    { version: 2, data_sha256: sha256, file_sha256: sha256, rule: 'approved', approved_by: 'ada', build: 'run-2' },
+    {
+      version: 2,
+      definition_version: 1,
+      data_sha256: sha256,
+      file_sha256: sha256,
+      rule: 'approved',
+      approved_by: 'ada',
+      build: 'run-2',
+    },
     'Version 2 of the model was activated as its approver approved',
   ],
   [
@@ -174,6 +183,13 @@ const modelFacts: readonly (readonly [string, Schema.JsonObject, string])[] = [
     { version: 2, because: 'shadow_failed', build: 'run-2' },
     'Version 2 of the model was not activated: it did worse than the active version in its shadow',
   ],
+  [
+    'activation_refused',
+    { version: 2, because: 'superseded', build: 'run-2' },
+    'Version 2 of the model was not activated: a newer version was built while it waited',
+  ],
+  ['build_asked', { build: 'run-3', asked_at: '2026-10-13T08:00:00.000Z' }, 'Build run-3 of the function was asked'],
+  ['build_ended', { build: 'run-3' }, 'Build run-3 of the function ended'],
 ];
 
 describe('the facts of the models of a function, as its stream shows them', () => {

@@ -42,6 +42,27 @@ describe('a candidate a trainer uploads to a build', { timeout: testTimeoutMs },
   });
 });
 
+describe('a candidate whose data names a file outside its own', { timeout: testTimeoutMs }, () => {
+  it('reads none of another model the server keeps, by its digest beside it or in the folder of that model', async () => {
+    const playbook = buildPlaybook();
+    const build = await waitingBuild(playbook);
+    await uploaded(playbook, build, ['visits-mean']);
+
+    expect([await sent(playbook, build, 'visits-sibling'), await sent(playbook, build, 'visits-cousin')]).toMatchObject(
+      [
+        { status: 'rejected', reason: 'invalid_input', detail: notLoaded },
+        { status: 'rejected', reason: 'invalid_input', detail: notLoaded },
+      ],
+    );
+    expect((await workOf(playbook, build)).map(({ data }) => data['because'])).toEqual([
+      undefined,
+      undefined,
+      'failed_to_load',
+      'failed_to_load',
+    ]);
+  });
+});
+
 describe('a candidate a build does not take', { timeout: testTimeoutMs }, () => {
   it('is refused when the runtime does not load it, when it is not in the signature the function feeds, or when it is older than opset 13', async () => {
     const playbook = buildPlaybook();

@@ -23,10 +23,10 @@ function horizonOf({ horizons, accumulates }: Predicts): { readonly horizon?: Sc
     : {};
 }
 
-function questionWords({ target, unit, accumulates }: Predicts): string {
+function questionWords({ target, unit, period, accumulates }: Predicts): string {
   return accumulates === undefined
     ? `A question: the series and the horizon to predict its ${target} at, in ${unit}`
-    : `A question: the series whose total in ${unit} to the end of the ${accumulates} after its last observed period to predict`;
+    : `A question: the series to predict the total of its ${target} for, in ${unit}, from the ${period} after its last observed one to the end of that ${accumulates}`;
 }
 
 function questionSchema(predicts: Predicts, { given }: Pick<DataPart, 'given'>): Schema.JsonObject {

@@ -1,4 +1,4 @@
-import { seriesRowsOf, type SeriesRows } from '../files/series-rows.ts';
+import type { SeriesRows } from '../files/series-rows.ts';
 import { feedsOf, type WalkJob } from './model-feeds.ts';
 import type { LoadedModel } from './model-sessions.ts';
 
@@ -93,6 +93,6 @@ async function walkedEach(
     : walkedEach(model, walk, rest, { series: [...done.series, rows.series], q: [...done.q, answer] });
 }
 
-export function walked(model: LoadedModel, walk: WalkJob, text: string): Promise<WalkAnswer> {
-  return walkedEach(model, walk, seriesRowsOf(text, walk.features), { series: [], q: [] });
+export function walked(model: LoadedModel, walk: WalkJob, rows: readonly SeriesRows[]): Promise<WalkAnswer> {
+  return walkedEach(model, walk, rows, { series: [], q: [] });
 }

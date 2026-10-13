@@ -145,7 +145,7 @@ export function allocatingModel(steps: number): Bytes {
   });
 }
 
-export function hostileModel(steps: number): Bytes {
+export function hostileModel(steps: number, location: string): Bytes {
   return model({
     name: 'hostile',
     nodes: [
@@ -158,7 +158,7 @@ export function hostileModel(steps: number): Bytes {
       lastIndex,
       tensor('level_cube', int64, [3], [1, 1, 1]),
       tensor('answer_shape', int64, [3], [1, steps, 3]),
-      externalTensor('outside', [1], '../../../../../../etc/passwd'),
+      externalTensor('outside', [1], location),
     ],
     inputs: inputsOf({}, steps),
     outputs: [valueInfo('q', float, [1, steps, 3])],

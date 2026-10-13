@@ -2,10 +2,10 @@ import { runEnded, runSettler, workRecorder, type Settlement } from '@on.auto/de
 import type { Lineage } from '@on.auto/operations';
 import { Effect, Equal, type Schema } from 'effect';
 
+import { predictionBuildsName, type BuildRow } from '../builds/build-rows.ts';
+import type { BuildAddress, BuildState } from '../builds/build-state.ts';
 import type { PredictionPorts, StartChild } from '../capability/prediction-ports.ts';
 import { buildRunFacts } from '../facts/prediction-facts.ts';
-import { predictionBuildsName, type BuildRow } from './build-rows.ts';
-import type { BuildAddress, BuildState } from './build-state.ts';
 
 export interface Performing {
   readonly ports: PredictionPorts;

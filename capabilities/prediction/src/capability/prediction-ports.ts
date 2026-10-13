@@ -15,9 +15,10 @@ import type { HostDatabase } from '@on.auto/workflow-host';
 import type { Effect, Schema } from 'effect';
 
 import type { DatasetsPort } from '../dataset/datasets-port.ts';
-import type { FileCache } from '../process/model-files.ts';
-import type { ModelProcesses } from '../process/model-processes.ts';
-import type { ScoringPermits } from '../process/scoring-permits.ts';
+import type { FileCache } from '../model-cache/model-files.ts';
+import type { ParsedRows } from '../model-cache/parsed-rows.ts';
+import type { ModelProcesses } from '../model-processes/model-processes.ts';
+import type { ScoringPermits } from '../model-processes/scoring-permits.ts';
 
 export interface PredictionLedger
   extends StreamReader, StreamWriter, Pick<RecordedReader, 'readRecorded'>, ProjectionReader, ProjectionAdvancer {
@@ -47,6 +48,7 @@ export type StartChild = (start: ChildStart) => Effect.Effect<ChildStarted>;
 export interface ModelCaches {
   readonly models: FileCache;
   readonly rows: FileCache;
+  readonly parsed: ParsedRows;
 }
 
 export interface BuildBounds {

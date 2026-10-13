@@ -70,7 +70,7 @@ const internalTermsTest = 'packages/api/src/testing/internal-terms.test.ts';
 
 const reasoningReference = 'docs/engineering/reference/reasoning-format.md';
 
-const modelSessions = 'capabilities/prediction/src/process/model-sessions.ts';
+const modelSessions = 'capabilities/prediction/src/model-jobs/model-sessions.ts';
 
 const allowances: readonly Allowance[] = [
   {

@@ -58,6 +58,7 @@ const ShadowPredictedSchema = Schema.Struct({
   build: Schema.String,
   origin: Schema.String,
   count: Schema.Int,
+  missing: Schema.Int,
   predictions_sha256: Schema.String,
   predictions_bytes: Schema.Int,
 });
@@ -69,6 +70,7 @@ const ShadowGradedSchema = Schema.Struct({
   period: Schema.String,
   scores: Schema.Array(ScoreSchema),
   graded: Schema.Int,
+  answered: Schema.Int,
   missing: Schema.Int,
 });
 
@@ -84,6 +86,7 @@ const ActivationRuleSchema = Schema.Literals(['automatic', 'approved', 'requeste
 
 const ActivatedSchema = Schema.Struct({
   version: Schema.Int,
+  definition_version: Schema.Int,
   data_sha256: Schema.String,
   file_sha256: Schema.String,
   rule: ActivationRuleSchema,
@@ -93,14 +96,18 @@ const ActivatedSchema = Schema.Struct({
 
 const RefusedSchema = Schema.Struct({
   version: Schema.Int,
-  because: Schema.Literals(['approver_rejected', 'unanswered', 'shadow_failed']),
+  because: Schema.Literals(['approver_rejected', 'unanswered', 'shadow_failed', 'superseded']),
   refused_by: Schema.optionalKey(Schema.String),
   build: Schema.String,
 });
 
+const AskedSchema = Schema.Struct({ build: Schema.String, asked_at: Schema.String });
+
+const EndedSchema = Schema.Struct({ build: Schema.String });
+
 const context = DefinitionContextSchema;
 
-export const ModelFactSchema = Schema.Union([
+const versionFacts = [
   factOf('version_built', CardSchema, context),
   factOf('shadow_predicted', ShadowPredictedSchema, context),
   factOf('shadow_graded', ShadowGradedSchema, context),
@@ -108,6 +115,16 @@ export const ModelFactSchema = Schema.Union([
   factOf('shadow_failed', ShadowVerdictSchema, context),
   factOf('version_activated', ActivatedSchema, context),
   factOf('activation_refused', RefusedSchema, context),
+] as const;
+
+export const VersionFactSchema = Schema.Union(versionFacts);
+
+export type RecordedVersionFact = typeof VersionFactSchema.Type;
+
+export const ModelFactSchema = Schema.Union([
+  ...versionFacts,
+  factOf('build_asked', AskedSchema, context),
+  factOf('build_ended', EndedSchema, context),
 ]);
 
 export type RecordedModelFact = typeof ModelFactSchema.Type;
@@ -116,7 +133,7 @@ export type ModelFact = Decided<RecordedModelFact>;
 
 export type ModelFactOf<Type extends ModelFact['type']> = Extract<ModelFact, { readonly type: Type }>;
 
-export const modelFactTypes: readonly ModelFact['type'][] = [
+export const versionFactTypes: readonly ModelFact['type'][] = [
   'version_built',
   'shadow_predicted',
   'shadow_graded',
@@ -125,6 +142,8 @@ export const modelFactTypes: readonly ModelFact['type'][] = [
   'version_activated',
   'activation_refused',
 ];
+
+export const modelFactTypes: readonly ModelFact['type'][] = [...versionFactTypes, 'build_asked', 'build_ended'];
 
 export function modelsStreamOf(name: string): string {
   return `${modelsStreamKind}/${name}`;

@@ -79,7 +79,7 @@ export function uploadCandidate(ports: PredictionPorts) {
     body: { kind: 'octet-stream', mostBytes: predictionBounds.mostCandidateBytes },
     inputSchema: Schema.Struct({ run_id: RunIdInputField }),
     answer: { kind: 'json', outputSchema: UploadedSchema },
-    reasons: ['invalid_input', 'conflict', 'unavailable'],
+    reasons: ['invalid_input', 'not_found', 'conflict', 'unavailable'],
     handle: ({ run_id: id }, body: StreamedContent) =>
       Effect.gen(function* () {
         const { build } = yield* waitingBuildOf(id);
@@ -92,14 +92,19 @@ export function uploadCandidate(ports: PredictionPorts) {
           return yield* refused(ports, build, checked);
         }
         const { uploaded } = checked;
-        if (!checked.already) {
+        const taken = checked.already
+          ? false
+          : yield* recorded(
+              ports,
+              build,
+              { type: 'candidate_uploaded', data: uploaded },
+              uploadRule(uploaded.sha256),
+            ).pipe(
+              Effect.as(true),
+              Effect.catchIf(wasAlreadyUploaded, () => Effect.succeed(false)),
+            );
+        if (taken) {
           yield* staged(ports, build, file.path, file.sha256);
-          yield* recorded(
-            ports,
-            build,
-            { type: 'candidate_uploaded', data: uploaded },
-            uploadRule(uploaded.sha256),
-          ).pipe(Effect.catchIf(wasAlreadyUploaded, () => Effect.void));
         }
         return { candidate: uploaded.sha256, bytes: uploaded.bytes, opset: uploaded.opset };
       }),

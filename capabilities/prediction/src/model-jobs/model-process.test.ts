@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { modelProcessModule } from './model-processes.ts';
+import { modelProcessModule } from '../model-processes/model-processes.ts';
 
 describe('the module a model process runs', { timeout: 30_000 }, () => {
   it('says it is ready to its server, and ends of itself when its server lets it go', async () => {

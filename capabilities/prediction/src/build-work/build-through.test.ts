@@ -9,14 +9,14 @@ import {
   savedFunction,
   standingOf,
   uploaded,
+  visitsRows,
   workOf,
 } from '../build-testing/built-versions.ts';
-import { visitsRows } from '../build-testing/built-versions.ts';
 import { sendingDocument } from '../build-testing/called-documents.ts';
 import { candidateSha256, performedOnce, performedUntilQuiet } from '../build-testing/due-driving.ts';
+import { predictionBuildsName } from '../builds/build-rows.ts';
 import { uploadedDailyVisits } from '../testing/daily-documents.ts';
 import { readBuildBrief } from '../trainer/build-reads.ts';
-import { predictionBuildsName } from './build-rows.ts';
 import { childIdOf } from './child-runs.ts';
 
 const testTimeoutMs = 60_000;
@@ -164,7 +164,7 @@ describe(
       expect(await standingOf(playbook)).toMatchObject({ output: { standing: { build: { run_id: build } } } });
     });
 
-    it('disqualifies as not loaded a candidate its child names that was never uploaded', async () => {
+    it('ends refused when its child answers a candidate that was never uploaded, as an inbox build refuses the answer', async () => {
       const playbook = buildPlaybook();
       const build = await sentThrough(playbook);
       await performedOnce(playbook.due, Date.now());
@@ -174,14 +174,18 @@ describe(
       });
       await performedUntilQuiet(playbook.due);
 
-      expect(await workOf(playbook, build)).toMatchObject([
-        { type: 'dataset_assembled' },
-        {
-          type: 'candidate_disqualified',
-          data: { because: 'not_loaded', detail: 'Candidate eeeeeeeeeeee… was not uploaded to this build' },
+      expect(await workOf(playbook, build)).toMatchObject([{ type: 'dataset_assembled' }]);
+      expect(await runOf(playbook, build)).toMatchObject({
+        output: {
+          status: 'rejected',
+          rejection: {
+            reason: 'invalid_input',
+            issues: [
+              { pointer: '/answer/candidates/0', detail: 'Candidate eeeeeeeeeeee… was not uploaded to this build' },
+            ],
+          },
         },
-        { type: 'baseline_scored' },
-      ]);
+      });
     });
   },
 );

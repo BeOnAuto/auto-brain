@@ -5,13 +5,13 @@ import {
   type Capability,
 } from '@on.auto/definitions';
 
+import { predictionCheck } from '../checks/prediction-check.ts';
 import { predictionFacts } from '../facts/prediction-facts.ts';
 import { predictionRunsOn } from '../run/prediction-runs.ts';
+import { predictionStanding } from '../standing/prediction-standing.ts';
 import { predictionBounds, predictionDefinitionType } from './prediction-bounds.ts';
-import { predictionCheck } from './prediction-check.ts';
 import { parse, summarize } from './prediction-definitions.ts';
 import type { PredictionFunctionAdapterOptions } from './prediction-ports.ts';
-import { predictionStanding } from './prediction-standing.ts';
 import { describeOutput } from './prediction-words.ts';
 
 export function makePredictionFunctionAdapter({

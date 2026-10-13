@@ -30,6 +30,8 @@ export interface Sales {
   readonly after: number;
   readonly valueOf: (level: number, day: number) => number | null | undefined;
   readonly deadlines?: { readonly check: number; readonly run: number; readonly walk: number };
+  readonly processes?: number;
+  readonly longJobs?: number;
   readonly events?: (today: number) => readonly Schema.JsonObject[];
 }
 
@@ -81,6 +83,7 @@ export async function projectedSales(settingsOf: SettingsOf, sales: Sales): Prom
     database: databaseReading(datasets.database, () => reading.current),
     module: scripted.module,
     ...(sales.deadlines === undefined ? {} : { deadlines: sales.deadlines }),
+    ...(sales.processes === undefined ? {} : { processes: sales.processes, longJobs: sales.longJobs }),
   });
   expect(
     await playbook.call(playbook.operations.create, { type: 'prediction', name: sales.name, source: sales.source }),

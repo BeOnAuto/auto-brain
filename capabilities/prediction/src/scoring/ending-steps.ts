@@ -1,6 +1,6 @@
 import { Effect } from 'effect';
 
-import { recordedWork, settledBuild, type Performing } from '../builds/build-performing.ts';
+import { recordedWork, settledBuild, type Performing } from '../build-work/build-performing.ts';
 import type { Baseline } from '../document/prediction-document.ts';
 import type { BuildWorkOf } from '../facts/build-facts.ts';
 import { executed, modelsOf } from '../models/model-commands.ts';

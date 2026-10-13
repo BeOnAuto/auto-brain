@@ -1,11 +1,11 @@
 import { Effect, Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { datasetDetailsOf } from '../capability/prediction-definitions.ts';
 import type { DatasetRow } from '../dataset/dataset-rows.ts';
 import { parsePredictionDocument } from '../document/document-parsing.ts';
 import { predictionRuns } from '../testing/prediction-runs.ts';
 import { weeklyOrders } from '../testing/weekly-orders.ts';
-import { datasetDetailsOf } from './prediction-definitions.ts';
 
 const anyText: unknown = expect.any(String);
 

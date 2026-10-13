@@ -3,7 +3,7 @@ import { Buffer } from 'node:buffer';
 import { cutAtCodePoint } from '@on.auto/definitions';
 import type { Schema } from 'effect';
 
-import { childIdOf, requestReference } from '../builds/child-runs.ts';
+import { childIdOf, requestReference } from '../build-work/child-runs.ts';
 import { predictionBounds } from '../capability/prediction-bounds.ts';
 import type { PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';
 import type { Assembled } from '../facts/build-facts.ts';

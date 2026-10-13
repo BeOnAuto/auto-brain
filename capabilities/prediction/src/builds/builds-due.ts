@@ -2,13 +2,13 @@ import type { ProjectedKeyedRow } from '@on.auto/operations';
 import type { DueItem, DueWork } from '@on.auto/workflow-host';
 import { Effect, Option } from 'effect';
 
+import type { Performing } from '../build-work/build-performing.ts';
+import { afterTheRun } from '../build-work/run-ended.ts';
+import { duringTheRun } from '../build-work/run-steps.ts';
 import type { PredictionPorts, StartChild } from '../capability/prediction-ports.ts';
 import { documentOfBuild } from './build-document.ts';
-import type { Performing } from './build-performing.ts';
 import { buildRowFrom, predictionBuildsName } from './build-rows.ts';
 import { buildOf, correlationOf } from './build-state.ts';
-import { afterTheRun } from './run-ended.ts';
-import { duringTheRun } from './run-steps.ts';
 
 export interface BuildsDueParts {
   readonly ports: PredictionPorts;

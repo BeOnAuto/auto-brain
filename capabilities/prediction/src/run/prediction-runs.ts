@@ -1,8 +1,8 @@
 import type { CapabilityDeclaration } from '@on.auto/definitions';
 
 import { buildRun } from '../build/build-run.ts';
-import { buildAnswerIssues } from '../capability/build-answers.ts';
 import type { PredictionPorts } from '../capability/prediction-ports.ts';
+import { buildAnswerIssues } from '../checks/build-answers.ts';
 import type { PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';
 import { questionRun } from '../question/question-run.ts';
 import { predictionRun } from './prediction-run.ts';

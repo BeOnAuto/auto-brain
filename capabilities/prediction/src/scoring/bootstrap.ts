@@ -19,8 +19,11 @@ export function seedOf(runId: string): number {
   return createHash('sha256').update(runId, 'utf8').digest().readUInt32BE(0);
 }
 
+const blocksASeasonNeeds = 3;
+
 export function blockLengthOf(season: number | undefined, count: number): number {
-  return Math.max(1, Math.min(count, season ?? Math.ceil(Math.cbrt(count))));
+  const fits = season !== undefined && season * blocksASeasonNeeds <= count;
+  return Math.max(1, Math.min(count, fits ? season : Math.ceil(Math.cbrt(count))));
 }
 
 function resampledMean(differences: readonly number[], block: number, draw: Draw): number {

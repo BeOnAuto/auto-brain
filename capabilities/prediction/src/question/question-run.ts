@@ -1,12 +1,12 @@
 import type { CapabilityAnswer, CapabilityRejection, RunContext } from '@on.auto/definitions';
-import { Conflict, Unavailable, type PlaybookAddress } from '@on.auto/operations';
+import { Unavailable, type PlaybookAddress } from '@on.auto/operations';
 import { Clock, Effect, Option, Schema } from 'effect';
 
 import type { PredictionPorts } from '../capability/prediction-ports.ts';
 import type { PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';
-import { modelsRowOf, predictionModelsName, type ModelsRow } from '../models/models-projection.ts';
 import { enclosingOf, periodsToTheEnd } from '../periods/enclosing.ts';
 import { periodForm } from '../periods/grains.ts';
+import { activeVersionOf } from './active-version.ts';
 import { seriesWindow, type SeriesWindow } from './series-window.ts';
 
 const QuestionSchema = Schema.Struct({
@@ -17,11 +17,6 @@ const QuestionSchema = Schema.Struct({
 
 type Question = typeof QuestionSchema.Type;
 
-const noActiveVersion = new Conflict({
-  detail: 'The function has no active version yet; ask for a build with the input { build: {} }',
-  kind: 'no_active_version',
-});
-
 const busy = new Unavailable({ detail: 'Every model process is busy; try again shortly', kind: 'model_process_busy' });
 
 const ended = new Unavailable({ detail: 'The model process ended before it answered', kind: 'model_process_failed' });
@@ -29,6 +24,7 @@ const ended = new Unavailable({ detail: 'The model process ended before it answe
 const notFinite = new Unavailable({
   detail: 'The model answered something other than finite numbers in the shape its signature gives',
   kind: 'model_process_failed',
+  because: 'not_finite',
 });
 
 interface Asked {
@@ -58,20 +54,6 @@ function askedOf({ predicts }: PredictionFunctionDefinitionDocument, origin: num
   };
 }
 
-function activeOf(row: ModelsRow, { dataSha256 }: PredictionFunctionDefinitionDocument) {
-  if (row.active === null || row.active_file_sha256 === null) {
-    return Effect.fail(noActiveVersion);
-  }
-  return row.active_data_sha256 === dataSha256
-    ? Effect.succeed({ version: row.active, file: row.active_file_sha256 })
-    : Effect.fail(
-        new Conflict({
-          detail: `The data part changed since version ${row.active} was built, so its model no longer fits the rows; ask for a build`,
-          kind: 'data_changed',
-        }),
-      );
-}
-
 function givenOf(
   document: PredictionFunctionDefinitionDocument,
   { given }: Question,
@@ -82,18 +64,6 @@ function givenOf(
   }
   const values = document.data.given.map((name) => Number(given[name]));
   return Float32Array.from(Array.from({ length: steps }, () => values).flat());
-}
-
-function readModelsRow(ports: PredictionPorts, playbook: PlaybookAddress, name: string) {
-  return Effect.map(
-    ports.ledger.readProjectedRows(predictionModelsName, playbook, {
-      where: [{ column: 'row_key', equals: name }],
-      orderBy: [],
-      order: 'asc',
-      limit: 1,
-    }),
-    ([kept]) => modelsRowOf(kept?.row),
-  );
 }
 
 interface Answering {
@@ -151,9 +121,13 @@ export function questionRun(
   const playbook = { org: context.org, playbook: context.playbook };
   const question = Schema.decodeUnknownSync(QuestionSchema)(input);
   return Effect.gen(function* () {
-    const active = yield* Effect.flatMap(readModelsRow(ports, playbook, context.definition.name), (row) =>
-      activeOf(row, document),
-    );
+    const active = yield* activeVersionOf({
+      ledger: ports.ledger,
+      playbook,
+      name: context.definition.name,
+      definitionVersion: context.definition.version,
+      document,
+    });
     const now = yield* Clock.currentTimeMillis;
     const window = yield* seriesWindow(ports, { playbook, document, series: question.series, now });
     const { asked, numbers, milliseconds } = yield* answered({ ports, playbook, document, question }, active, window);

@@ -6,7 +6,12 @@ import {
 } from '@on.auto/operations';
 import { Schema } from 'effect';
 
-import { ModelFactSchema, modelFactTypes, modelsStreamKind, type RecordedModelFact } from '../facts/model-facts.ts';
+import {
+  modelsStreamKind,
+  VersionFactSchema,
+  versionFactTypes,
+  type RecordedVersionFact,
+} from '../facts/model-facts.ts';
 
 export const predictionModelsName = 'prediction_models';
 
@@ -14,6 +19,7 @@ const ModelsRowSchema = Schema.Struct({
   active: Schema.NullOr(Schema.Int),
   active_data_sha256: Schema.NullOr(Schema.String),
   active_file_sha256: Schema.NullOr(Schema.String),
+  active_definition_version: Schema.NullOr(Schema.Int),
   latest: Schema.NullOr(Schema.Int),
   versions: Schema.Int,
   challenger: Schema.NullOr(Schema.Int),
@@ -29,6 +35,7 @@ const noModelsRow: ModelsRow = {
   active: null,
   active_data_sha256: null,
   active_file_sha256: null,
+  active_definition_version: null,
   latest: null,
   versions: 0,
   challenger: null,
@@ -53,7 +60,7 @@ function ofTheChallenger(row: ModelsRow, version: number, of: number): boolean {
 }
 
 type ShadowFact = Extract<
-  RecordedModelFact,
+  RecordedVersionFact,
   { readonly type: 'shadow_predicted' | 'shadow_graded' | 'shadow_passed' | 'shadow_failed' }
 >;
 
@@ -71,7 +78,7 @@ function shadowed(row: ModelsRow, fact: ShadowFact): ModelsRow {
   return { ...row, shadow: fact.type === 'shadow_passed' ? 'passed' : 'failed' };
 }
 
-function changed(row: ModelsRow, fact: RecordedModelFact): ModelsRow {
+function changed(row: ModelsRow, fact: RecordedVersionFact): ModelsRow {
   if (fact.type === 'version_built') {
     return {
       ...row,
@@ -85,16 +92,22 @@ function changed(row: ModelsRow, fact: RecordedModelFact): ModelsRow {
     };
   }
   if (fact.type === 'version_activated') {
-    const { version, data_sha256: dataSha256, file_sha256: fileSha256 } = fact.data;
+    const { version, data_sha256: dataSha256, file_sha256: fileSha256, definition_version: built } = fact.data;
     return withoutChallenger(
-      { ...row, active: version, active_data_sha256: dataSha256, active_file_sha256: fileSha256 },
+      {
+        ...row,
+        active: version,
+        active_data_sha256: dataSha256,
+        active_file_sha256: fileSha256,
+        active_definition_version: built,
+      },
       version,
     );
   }
   return fact.type === 'activation_refused' ? withoutChallenger(row, fact.data.version) : shadowed(row, fact);
 }
 
-const decodeFact = strictRecordedDecoder(ModelFactSchema);
+const decodeFact = strictRecordedDecoder(VersionFactSchema);
 
 function rowAfter(row: ProjectedRow | undefined, message: ProjectedMessage): ProjectedRow {
   return changed(modelsRowOf(row), decodeFact(message));
@@ -104,11 +117,12 @@ export const predictionModels: KeyedProjection = {
   name: predictionModelsName,
   version: 1,
   kinds: [modelsStreamKind],
-  types: modelFactTypes,
+  types: versionFactTypes,
   columns: [
     { name: 'active', kind: 'integer' },
     { name: 'active_data_sha256', kind: 'text' },
     { name: 'active_file_sha256', kind: 'text' },
+    { name: 'active_definition_version', kind: 'integer' },
     { name: 'latest', kind: 'integer' },
     { name: 'versions', kind: 'integer' },
     { name: 'challenger', kind: 'integer' },

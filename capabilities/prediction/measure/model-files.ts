@@ -16,6 +16,7 @@ export interface MeasuredFiles {
   readonly mean: string;
   readonly large: string;
   readonly rows: string;
+  readonly widest: string;
 }
 
 export const largeModelFloats = 16_777_216;
@@ -76,12 +77,30 @@ function rowsText(): string {
   return `${records.join('\r\n')}\r\n`;
 }
 
+export const widestFeatures = 40;
+
+export function widestRowsText(): string {
+  const features = Array.from({ length: widestFeatures }, (_, feature) => `feature_${feature}`);
+  const records = [['series', 'period', 'visits', ...features].join(',')];
+  const first = Date.UTC(2026, 2, 1);
+  for (let series = 0; series < seriesMeasured; series += 1) {
+    const name = `store-${String(series).padStart(4, '0')}`;
+    for (let day = 0; day < daysMeasured; day += 1) {
+      const period = new Date(first + day * 86_400_000).toISOString().slice(0, 10);
+      const values = features.map((_, feature) => (1000 + feature * 1.25 + ((day + series) % 7)).toFixed(3));
+      records.push([name, period, String(10 + ((day + series) % 7)), ...values].join(','));
+    }
+  }
+  return `${records.join('\r\n')}\r\n`;
+}
+
 export function measuredFiles(): MeasuredFiles {
   const directory = mkdtempSync(join(tmpdir(), 'auto-runtime-prediction-models-'));
   const files = {
     mean: join(directory, 'mean.onnx'),
     large: join(directory, 'large.onnx'),
     rows: join(directory, 'scoring.csv'),
+    widest: join(directory, 'widest.csv'),
   };
   writeFileSync(files.mean, meanModel({ steps: 2, low: 2, high: 2 }));
   writeFileSync(files.rows, rowsText());

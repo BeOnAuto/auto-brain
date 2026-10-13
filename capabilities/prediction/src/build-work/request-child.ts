@@ -2,10 +2,11 @@ import type { RecordedRun } from '@on.auto/definitions';
 import { Effect } from 'effect';
 
 import { routesOf } from '../build/build-request.ts';
+import type { BuildRecord } from '../builds/build-state.ts';
+import { buildAnswerIssues } from '../checks/build-answers.ts';
 import type { PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';
 import type { TrainerAnswer } from '../scoring/version-card.ts';
 import { restingUntil, settledBuild, type Performing } from './build-performing.ts';
-import type { BuildRecord } from './build-state.ts';
 import { childRunOf, requestReference, startedChild } from './child-runs.ts';
 import { trainerAnswerOf } from './trainer-answers.ts';
 
@@ -68,8 +69,17 @@ export function throughAChild(
     if (child.run.status === 'started') {
       return restingUntil(performing, null);
     }
-    return child.run.status === 'succeeded' && child.answer !== null
+    if (child.run.status !== 'succeeded' || child.answer === null) {
+      return endedChild(performing, through, child);
+    }
+    const issues = buildAnswerIssues(child.answer.answer, { work: performing.build.run.work });
+    return issues.length === 0
       ? scoring(trainerAnswerOf(child.answer))
-      : endedChild(performing, through, child);
+      : settledBuild(performing, {
+          status: 'rejected',
+          reason: 'invalid_input',
+          detail: `The interaction function ${through} answered what the build cannot take`,
+          issues: issues.map(({ pointer, detail }) => ({ pointer: `/answer${pointer}`, detail })),
+        });
   });
 }

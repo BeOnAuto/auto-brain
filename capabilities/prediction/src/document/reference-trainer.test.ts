@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { mostNoteBytes } from '../build/build-request.ts';
 import { predictionBounds } from '../capability/prediction-bounds.ts';
-import { modelDeadlines } from '../process/model-processes.ts';
+import { modelDeadlines } from '../model-processes/model-processes.ts';
 import { mostCardBytes } from '../scoring/version-card.ts';
 
 const page = readFileSync(new URL('../../../../docs/reference/prediction-format.md', import.meta.url), 'utf8');

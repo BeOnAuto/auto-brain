@@ -5,9 +5,9 @@ import type { CheckIssue, ProgramPool } from '@on.auto/workflow-engine/dsl';
 import { Effect } from 'effect';
 
 import { briefIssuesOverTheLargestDataset } from '../brief/brief-dataset.ts';
+import { invalidDefinition, type PredictionCheck } from '../capability/prediction-definitions.ts';
 import type { PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';
 import { calledFunctionIssues } from './called-functions.ts';
-import { invalidDefinition, type PredictionCheck } from './prediction-definitions.ts';
 import { uploadedDatasetIssues } from './uploaded-datasets.ts';
 
 const dataNames = ['$data'];

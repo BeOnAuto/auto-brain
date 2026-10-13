@@ -24,7 +24,7 @@ describe('the reads of a build that waits for its trainer', { timeout: testTimeo
 });
 
 describe('the routes of a trainer on a run that is no build waiting for its answer', { timeout: testTimeoutMs }, () => {
-  it('refuse a run there is not and a question as no build', async () => {
+  it('answer a run there is not as not found, and refuse a question as no build', async () => {
     const playbook = buildPlaybook();
     await savedFunction(playbook);
     await asked(playbook, { series: 'north', horizon: 1 }, { runId: questionRun });
@@ -33,8 +33,8 @@ describe('the routes of a trainer on a run that is no build waiting for its answ
       await readOf(playbook, readBuildBrief, otherRun),
       await readOf(playbook, readBuildRows, questionRun),
     ]).toMatchObject([
-      { status: 'rejected', reason: 'conflict', kind: 'not_a_build', detail: `Run ${otherRun} is not a build` },
-      { status: 'rejected', kind: 'not_a_build' },
+      { status: 'rejected', reason: 'not_found', detail: 'There is no such run in this playbook' },
+      { status: 'rejected', reason: 'conflict', kind: 'not_a_build', detail: `Run ${questionRun} is not a build` },
     ]);
   });
 

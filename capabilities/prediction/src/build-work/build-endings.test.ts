@@ -15,7 +15,7 @@ import {
 } from '../build-testing/built-versions.ts';
 import { candidateSha256, performedOnce, performedUntilQuiet } from '../build-testing/due-driving.ts';
 import { scriptedModels } from '../build-testing/scripted-models.ts';
-import { buildsDue } from './builds-due.ts';
+import { buildsDue } from '../builds/builds-due.ts';
 
 const testTimeoutMs = 60_000;
 
@@ -55,18 +55,25 @@ describe('a build that is cancelled', { timeout: testTimeoutMs }, () => {
     expect(staged).toBeUndefined();
   });
 
-  it('ends cancelled while a candidate is scored, the fact of that candidate taken as done', async () => {
+  it('ends cancelled while a candidate is scored, the walk ended and its permit let go well before its deadline', async () => {
     const scripted = scriptedModels();
-    const playbook = buildPlaybook({ module: scripted.module, deadlines: { check: 30_000, run: 10_000, walk: 2000 } });
+    const playbook = buildPlaybook({
+      module: scripted.module,
+      deadlines: { check: 30_000, run: 10_000, walk: 30_000 },
+    });
     await savedFunction(playbook);
     const build = await askedBuild(playbook);
     await uploaded(playbook, build, ['visits-mean']);
     await answered(playbook, build, { candidates: [candidateSha256('visits-mean')] });
     scripted.next('sleeps');
+    const started = performance.now();
     const scoring = performedOnce(playbook.due, Date.now());
     await sleep(300);
     await playbook.cancelled(build);
     await scoring;
+    const scoredFor = performance.now() - started;
+
+    expect([scoredFor < 10_000, playbook.test.ports.permits.taken()]).toEqual([true, 0]);
 
     expect((await workOf(playbook, build)).map(({ type }) => type)).toEqual([
       'dataset_assembled',
@@ -75,6 +82,27 @@ describe('a build that is cancelled', { timeout: testTimeoutMs }, () => {
     expect(await runOf(playbook, build)).toMatchObject({
       output: { status: 'rejected', rejection: { reason: 'cancelled' } },
     });
+  });
+});
+
+describe('a build cancelled as the walk of its candidate ends', { timeout: testTimeoutMs }, () => {
+  it('takes the end of its run as done, and records nothing of the candidate', async () => {
+    const scripted = scriptedModels();
+    const playbook = buildPlaybook({ module: scripted.module });
+    await savedFunction(playbook);
+    const build = await askedBuild(playbook);
+    await uploaded(playbook, build, ['visits-mean']);
+    await answered(playbook, build, { candidates: [candidateSha256('visits-mean')] });
+    scripted.next('slow');
+    const scoring = performedOnce(playbook.due, Date.now());
+    await sleep(100);
+    await playbook.cancelled(build);
+    await scoring;
+
+    expect((await workOf(playbook, build)).map(({ type }) => type)).toEqual([
+      'dataset_assembled',
+      'candidate_uploaded',
+    ]);
   });
 });
 

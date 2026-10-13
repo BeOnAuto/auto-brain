@@ -1,6 +1,6 @@
-import type { Effect } from 'effect';
+import { Option, type Effect } from 'effect';
 
-import { restingUntil, type Performing } from '../builds/build-performing.ts';
+import { restingUntil, type Performing } from '../build-work/build-performing.ts';
 import { isProjected, type PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';
 import { decided } from '../models/model-commands.ts';
 import { builtVersionOf, wasGraded, wasPredicted, type BuiltVersion, type ModelsState } from '../models/model-state.ts';
@@ -40,10 +40,10 @@ function targetsAimed({ document, models, challenger }: Shadowing): readonly Aim
     );
 }
 
-function nextStep(performing: Performing, shadowing: Shadowing): Effect.Effect<void> {
+function stepOver(performing: Performing, shadowing: Shadowing, closes: number): Effect.Effect<void> | undefined {
   const { document, models, challenger } = shadowing;
   const { now } = performing;
-  const origins = shadowOrigins(document.predicts, challenger.builtAt, document.evaluation.shadowPeriods);
+  const origins = shadowOrigins(document.predicts, challenger.builtAt, closes);
   const unpredicted = unpredictedOf(shadowing, origins, now);
   if (unpredicted !== undefined) {
     return predicted(performing, { document, challenger, ...unpredicted });
@@ -59,11 +59,25 @@ function nextStep(performing: Performing, shadowing: Shadowing): Effect.Effect<v
   const pending = [...origins.map(({ closesAt }) => closesAt), ...targets.map(({ target }) => target.closesAt)].filter(
     (at) => at > now,
   );
-  if (pending.length > 0) {
-    return restingUntil(performing, Math.min(...pending));
+  return pending.length > 0 ? restingUntil(performing, Math.min(...pending)) : undefined;
+}
+
+function closesPredicted({ models, challenger }: Shadowing): number {
+  return new Set(models.predicted.filter(({ version }) => version === challenger.version).map(({ origin }) => origin))
+    .size;
+}
+
+function nextStep(performing: Performing, shadowing: Shadowing): Effect.Effect<void> {
+  const { document, models, challenger } = shadowing;
+  const closes = Math.max(document.evaluation.shadowPeriods, closesPredicted(shadowing));
+  const step = stepOver(performing, shadowing, closes);
+  if (step !== undefined) {
+    return step;
   }
   const verdict = shadowVerdictOf(models.graded, challenger.version, document.evaluation.metric);
-  return decided(performing, challenger, verdict, document.evaluation.metric);
+  return verdict === undefined
+    ? Option.getOrThrow(Option.fromNullishOr(stepOver(performing, shadowing, closes + 1)))
+    : decided(performing, challenger, verdict, document.evaluation.metric);
 }
 
 export function shadowStep(

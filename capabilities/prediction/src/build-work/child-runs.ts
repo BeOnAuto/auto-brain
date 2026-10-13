@@ -2,8 +2,8 @@ import { nestedRunId, recordedRunIn, type RecordedRun } from '@on.auto/definitio
 import { playbookCallerOf, type Lineage, type StreamReader } from '@on.auto/operations';
 import type { Effect, Schema } from 'effect';
 
+import type { BuildAddress } from '../builds/build-state.ts';
 import type { ChildStarted, StartChild } from '../capability/prediction-ports.ts';
-import type { BuildAddress } from './build-state.ts';
 
 export const requestReference = '/request';
 

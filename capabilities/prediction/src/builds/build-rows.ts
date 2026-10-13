@@ -27,7 +27,7 @@ const BuildRowSchema = Schema.Struct({
   shadow_origins: Schema.Int,
   next_due_at: Schema.NullOr(Schema.Int),
   open: Schema.Boolean,
-  in_flight: Schema.NullOr(Schema.Int),
+  scoring_since: Schema.NullOr(Schema.Int),
   ended: Schema.NullOr(Schema.String),
   staged: Schema.Boolean,
   cause: Schema.String,

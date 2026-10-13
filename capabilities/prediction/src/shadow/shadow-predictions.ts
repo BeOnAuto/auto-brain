@@ -1,7 +1,7 @@
 import { textToKeep } from '@on.auto/operations';
 import { Effect } from 'effect';
 
-import { aMinute, restingUntil, type Performing } from '../builds/build-performing.ts';
+import { aMinute, restingUntil, type Performing } from '../build-work/build-performing.ts';
 import { executed } from '../models/model-commands.ts';
 import { predictionsText } from './shadow-records.ts';
 import { shadowRowsOf, type ShadowRows } from './shadow-rows.ts';
@@ -17,7 +17,7 @@ function predictedOn(performing: Performing, predicting: Predicting, rows: Shado
       return yield* restingUntil(performing, now + aMinute);
     }
     const answer = outcome.ended === 'answered' ? outcome.answer : undefined;
-    const text = yield* predictionsText(document, origin, rows, answer);
+    const { text, count, missing } = yield* predictionsText(document, origin, rows, answer);
     const predictions = yield* Effect.orDie(
       ports.ledger.content.put({ org, playbook }, textToKeep(text, 'application/json')),
     );
@@ -30,7 +30,8 @@ function predictedOn(performing: Performing, predicting: Predicting, rows: Shado
         of: of.version,
         build: id,
         origin: origin.form,
-        count: answer === undefined ? 0 : answer.series.length,
+        count,
+        missing,
         predictions_sha256: predictions.sha256,
         predictions_bytes: predictions.bytes,
       },

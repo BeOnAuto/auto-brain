@@ -1,15 +1,13 @@
-import { readFileSync } from 'node:fs';
-
 import { processPool } from '@on.auto/workflow-engine/dsl';
 import { Effect } from 'effect';
 
 import type { Evaluation } from '../src/document/prediction-document.ts';
-import { seriesRowsOf } from '../src/files/series-rows.ts';
-import { modelProcesses, type ModelProcesses } from '../src/process/model-processes.ts';
+import { seriesRowsIn } from '../src/files/series-rows.ts';
+import { modelProcesses, type ModelProcesses } from '../src/model-processes/model-processes.ts';
 import { baselineWalks, verdictOf } from '../src/scoring/candidate-scoring.ts';
 import { scoringGridOf } from '../src/scoring/scoring-grid.ts';
 import { gradeOf } from '../src/shadow/shadow-grades.ts';
-import { daysMeasured, type MeasuredFiles } from './model-files.ts';
+import { daysMeasured, widestFeatures, type MeasuredFiles } from './model-files.ts';
 
 const mebibyte = 1_048_576;
 
@@ -77,7 +75,7 @@ async function scoredOnce(models: ModelProcesses, files: MeasuredFiles): Promise
     throw new Error(`The walk ended ${outcome.ended}`);
   }
   const started = performance.now();
-  const rows = seriesRowsOf(readFileSync(files.rows, 'utf8'), 0);
+  const rows = await seriesRowsIn(files.rows, { features: 0 });
   const grid = scoringGridOf(
     { target: 'visits', period: 'day', horizons: [1, 2], unit: 'visits' },
     { window: daysMeasured, holdout: 8, firstPeriod: '2026-03-01' },
@@ -87,15 +85,15 @@ async function scoredOnce(models: ModelProcesses, files: MeasuredFiles): Promise
   return millisecondsOf(started);
 }
 
-function gradedOnce(files: MeasuredFiles): number {
-  const rows = seriesRowsOf(readFileSync(files.rows, 'utf8'), 0);
+async function gradedOnce(files: MeasuredFiles): Promise<number> {
+  const rows = await seriesRowsIn(files.rows, { features: 0 });
   const started = performance.now();
   const predictions = {
     origin: '2026-09-16',
     series: rows.map(({ series }) => ({ series, q: [9, 11, 13, 9, 11, 13], scale: 1 })),
   };
   const truths = new Map(rows.map(({ series }) => [series, 11]));
-  gradeOf([{ predictions, horizon: 1 }], { truths, absentIsZero: true });
+  gradeOf([{ predictions, horizon: 1 }], [{ predictions, horizon: 1 }], { truths, absentIsZero: true });
   return millisecondsOf(started);
 }
 
@@ -127,7 +125,38 @@ export async function modelTimings(files: MeasuredFiles): Promise<Timed> {
     }),
   );
   const shadowWalkMs = millisecondsOf(shadowed);
-  const gradeMs = gradedOnce(files);
+  const gradeMs = await gradedOnce(files);
   await pool.close();
   return { coldCheckMs, coldRunMs, warmRunMs, walksMs, verdictMs, shadowWalkMs, gradeMs };
+}
+
+export interface QuestionTimed {
+  readonly windowMs: number;
+  readonly runMs: number;
+  readonly heapGrowth: number;
+}
+
+export async function questionTimings(files: MeasuredFiles): Promise<QuestionTimed> {
+  const pool = processPool({ processes: 4, longJobs: 2, memoryBytes: 1280 * mebibyte, path: process.env['PATH'] });
+  const models = modelProcesses({ pool });
+  const heapBefore = process.memoryUsage().heapUsed;
+  const read = performance.now();
+  const window = await Effect.runPromise(
+    models.window(
+      { sha256: 'widest', path: files.widest },
+      { series: 'store-0500', features: widestFeatures, grain: 'day', window: daysMeasured },
+    ),
+  );
+  const windowMs = millisecondsOf(read);
+  if (window.ended !== 'answered' || 'unknown' in window.answer) {
+    throw new Error(`The window was not read: ${window.ended}`);
+  }
+  const { y } = window.answer;
+  await Effect.runPromise(
+    models.run({ sha256: 'mean', path: files.mean }, { y, x: null, given: null, h: null, features: 0, givens: 0 }),
+  );
+  const runMs = millisecondsOf(read);
+  const heapGrowth = process.memoryUsage().heapUsed - heapBefore;
+  await pool.close();
+  return { windowMs, runMs, heapGrowth };
 }

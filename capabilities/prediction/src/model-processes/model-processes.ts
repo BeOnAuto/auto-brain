@@ -4,7 +4,7 @@ import type { ProcessOutcome, ProcessPool, ProcessValue } from '@on.auto/workflo
 import { Effect, Option, Schema } from 'effect';
 
 import { TensorSchema } from '../facts/build-facts.ts';
-import type { Fed, WalkJob } from './model-feeds.ts';
+import type { Fed, WalkJob, WindowJob } from '../model-jobs/model-feeds.ts';
 
 export interface ModelDeadlines {
   readonly check: number;
@@ -14,7 +14,7 @@ export interface ModelDeadlines {
 
 export const modelDeadlines: ModelDeadlines = { check: 30_000, run: 10_000, walk: 600_000 };
 
-export const modelProcessModule = new URL('./model-process.ts', import.meta.url);
+export const modelProcessModule = new URL('../model-jobs/model-process.ts', import.meta.url);
 
 const Floats = Schema.declare((value: unknown): value is Readonly<Float32Array> => value instanceof Float32Array);
 
@@ -34,11 +34,18 @@ const QuestionAnswerSchema = Schema.Struct({ q: Floats, dims: Schema.Array(Schem
 
 const WalkAnswerSchema = Schema.Struct({ series: Schema.Array(Schema.String), q: Schema.Array(Floats) });
 
+const WindowAnswerSchema = Schema.Union([
+  Schema.Struct({ unknown: Schema.Literal(true) }),
+  Schema.Struct({ y: Floats, x: Schema.NullOr(Floats), origin: Schema.Number }),
+]);
+
 export type Signature = typeof SignatureSchema.Type;
 
 type QuestionAnswer = typeof QuestionAnswerSchema.Type;
 
 export type WalkAnswer = typeof WalkAnswerSchema.Type;
+
+type WindowAnswer = typeof WindowAnswerSchema.Type;
 
 type Interrupted = Exclude<ProcessOutcome['ended'], 'answered' | 'crashed'>;
 
@@ -55,10 +62,13 @@ interface ModelFile {
 
 type Walk = Omit<WalkJob, 'model' | 'threads'>;
 
+type Window = Omit<WindowJob, 'rows'>;
+
 export interface ModelProcesses {
   readonly check: (model: ModelFile) => Effect.Effect<ModelOutcome<Signature>>;
   readonly run: (model: ModelFile, question: Fed) => Effect.Effect<ModelOutcome<QuestionAnswer>>;
   readonly walk: (model: ModelFile, walk: Walk) => Effect.Effect<ModelOutcome<WalkAnswer>>;
+  readonly window: (rows: ModelFile, window: Window) => Effect.Effect<ModelOutcome<WindowAnswer>>;
 }
 
 export interface ModelProcessSettings {
@@ -102,27 +112,34 @@ export function modelProcesses({
 }: ModelProcessSettings): ModelProcesses {
   const threads = threadsOf(pool.processes);
   const asked = <Answer>(
-    model: ModelFile,
-    kind: keyof ModelDeadlines,
+    key: string,
+    kind: keyof ModelDeadlines | 'window',
     payload: { readonly [name: string]: ProcessValue },
     decode: (answer: unknown) => Option.Option<Answer>,
   ): Effect.Effect<ModelOutcome<Answer>> =>
     Effect.map(
-      Effect.promise(() =>
-        pool.run({
-          module,
-          key: model.sha256,
-          kind,
-          payload: { ...payload, model: model.path, threads },
-          deadlineMs: deadlines[kind],
-          long: kind === 'walk',
-        }),
+      Effect.promise((signal) =>
+        pool.run(
+          {
+            module,
+            key,
+            kind,
+            payload: { ...payload, threads },
+            deadlineMs: kind === 'window' ? deadlines.run : deadlines[kind],
+            long: kind === 'walk' || kind === 'check',
+          },
+          signal,
+        ),
       ),
       (outcome) => outcomeOf(outcome, decode),
     );
   return {
-    check: (model) => asked(model, 'check', {}, Schema.decodeUnknownOption(SignatureSchema)),
-    run: (model, question) => asked(model, 'run', { ...question }, Schema.decodeUnknownOption(QuestionAnswerSchema)),
-    walk: (model, walk) => asked(model, 'walk', { ...walk }, Schema.decodeUnknownOption(WalkAnswerSchema)),
+    check: (model) => asked(model.sha256, 'check', { model: model.path }, Schema.decodeUnknownOption(SignatureSchema)),
+    run: (model, question) =>
+      asked(model.sha256, 'run', { ...question, model: model.path }, Schema.decodeUnknownOption(QuestionAnswerSchema)),
+    walk: (model, walk) =>
+      asked(model.sha256, 'walk', { ...walk, model: model.path }, Schema.decodeUnknownOption(WalkAnswerSchema)),
+    window: (rows, window) =>
+      asked(rows.sha256, 'window', { ...window, rows: rows.path }, Schema.decodeUnknownOption(WindowAnswerSchema)),
   };
 }

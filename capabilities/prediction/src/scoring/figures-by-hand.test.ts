@@ -111,13 +111,15 @@ describe('the moving-block bootstrap of the difference by origin', () => {
     expect(originDifferences(grid, [{ candidate, baseline: persistence }], 'mase')).toEqual([0, 0, 0]);
   });
 
-  it('takes blocks of a season, or of the cube root of the origins rounded up, never more than the origins', () => {
+  it('takes blocks of a season when three fit the origins, or else of the cube root of the origins rounded up, at least one', () => {
     expect([
       blockLengthOf(undefined, 8),
       blockLengthOf(undefined, 9),
+      blockLengthOf(7, 21),
+      blockLengthOf(7, 20),
       blockLengthOf(52, 11),
       blockLengthOf(undefined, 0),
-    ]).toEqual([2, 3, 11, 1]);
+    ]).toEqual([2, 3, 7, 3, 3, 1]);
   });
 
   it('is sure the candidate is better when every difference is below zero, and never when none is', () => {
@@ -134,7 +136,9 @@ describe('the moving-block bootstrap of the difference by origin', () => {
     const seed = seedOf('0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a');
 
     expect(pBetterOf([-3, 1], undefined, seed)).toBe(1);
-    expect(pBetterOf([-3, 1], 1, seed)).toBeCloseTo(0.75, 1);
-    expect(pBetterOf([-3, 1], 1, seed)).toBe(pBetterOf([-3, 1], 1, seedOf('0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a')));
+    expect(pBetterOf([-3, 1, 1, 1, 1, 1], 1, seed)).toBeCloseTo(0.26, 1);
+    expect(pBetterOf([-3, 1, 1, 1, 1, 1], 1, seed)).toBe(
+      pBetterOf([-3, 1, 1, 1, 1, 1], 1, seedOf('0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a')),
+    );
   });
 });

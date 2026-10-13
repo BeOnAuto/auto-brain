@@ -8,10 +8,15 @@ import {
 } from '@on.auto/operations';
 import { Option, Schema } from 'effect';
 
+import { childReferences, requestReference } from '../build-work/child-runs.ts';
 import { predictionDefinitionType } from '../capability/prediction-bounds.ts';
-import { ModelFactSchema, modelFactTypes, modelsStreamKind, type RecordedModelFact } from '../facts/model-facts.ts';
+import {
+  modelsStreamKind,
+  VersionFactSchema,
+  versionFactTypes,
+  type RecordedVersionFact,
+} from '../facts/model-facts.ts';
 import { buildRowOf, predictionBuildsName, type BuildRow } from './build-rows.ts';
-import { childReferences, requestReference } from './child-runs.ts';
 
 const DeferredBuildSchema = Schema.Struct({
   expires_at: Schema.String,
@@ -49,7 +54,7 @@ function deferred(
         shadow_origins: 0,
         next_due_at: through ? at : null,
         open: true,
-        in_flight: at,
+        scoring_since: null,
         ended: null,
         staged: false,
         cause: message.id,
@@ -62,8 +67,12 @@ function dueNow(row: BuildRow, message: ProjectedMessage, changes: Partial<Build
   return { ...row, ...changes, next_due_at: Date.parse(message.context.at), cause: message.id };
 }
 
+function scoringFrom(row: BuildRow, message: ProjectedMessage): BuildRow {
+  return dueNow(row, message, { standing: 'scoring', scoring_since: Date.parse(message.context.at) });
+}
+
 function ownEnding(row: BuildRow, type: RunType, message: ProjectedMessage): BuildRow {
-  const ended = { in_flight: null, ended: type };
+  const ended = { scoring_since: null, ended: type };
   const versioned = type === 'run_succeeded' && row.version !== null;
   return versioned ? dueNow(row, message, ended) : dueNow(row, message, { ...ended, standing: 'ended', open: false });
 }
@@ -71,7 +80,7 @@ function ownEnding(row: BuildRow, type: RunType, message: ProjectedMessage): Bui
 function childEnding(row: BuildRow, type: RunType, message: ProjectedMessage): BuildRow {
   const answered =
     message.context.calledBy?.reference === requestReference && type === 'run_succeeded' && row.standing !== 'ended';
-  return answered ? dueNow(row, message, { standing: 'scoring' }) : dueNow(row, message);
+  return answered ? scoringFrom(row, message) : dueNow(row, message);
 }
 
 function onRun(row: BuildRow, fact: RecordedRunEvent, message: ProjectedMessage): BuildRow | undefined {
@@ -82,7 +91,7 @@ function onRun(row: BuildRow, fact: RecordedRunEvent, message: ProjectedMessage)
       : undefined;
   }
   if (fact.type === 'request_answered') {
-    return dueNow(row, message, { standing: 'scoring' });
+    return scoringFrom(row, message);
   }
   return child ? childEnding(row, fact.type, message) : ownEnding(row, fact.type, message);
 }
@@ -104,10 +113,10 @@ function onWork(row: BuildRow, type: string, message: ProjectedMessage): BuildRo
     : dueNow(row, message);
 }
 
-function onModel(row: BuildRow, fact: RecordedModelFact, message: ProjectedMessage): BuildRow {
+function onModel(row: BuildRow, fact: RecordedVersionFact, message: ProjectedMessage): BuildRow {
   if (fact.type === 'version_built') {
     const { version, file, rule } = fact.data;
-    return dueNow(row, message, { standing: 'in_shadow', version, winner: file.sha256, rule });
+    return dueNow(row, message, { standing: 'in_shadow', scoring_since: null, version, winner: file.sha256, rule });
   }
   if (fact.type === 'shadow_predicted') {
     return dueNow(row, message, { shadow_origins: row.shadow_origins + (fact.data.of === fact.data.version ? 1 : 0) });
@@ -116,7 +125,7 @@ function onModel(row: BuildRow, fact: RecordedModelFact, message: ProjectedMessa
     return dueNow(row, message, { standing: row.rule === 'approved' ? 'awaiting_approval' : row.standing });
   }
   return fact.type === 'version_activated' || fact.type === 'activation_refused'
-    ? dueNow(row, message, { standing: 'ended', open: false, next_due_at: null })
+    ? dueNow(row, message, { standing: 'ended', open: false })
     : dueNow(row, message);
 }
 
@@ -135,7 +144,7 @@ function rowAfter(row: ProjectedRow | undefined, message: ProjectedMessage): Pro
   return fact === undefined ? onModel(kept, decodeModelFact(message), message) : onRun(kept, fact, message);
 }
 
-const decodeModelFact = strictRecordedDecoder(ModelFactSchema);
+const decodeModelFact = strictRecordedDecoder(VersionFactSchema);
 
 function keyOf(message: ProjectedMessage, stream: ProjectedStream): string | undefined {
   if (stream.kind === modelsStreamKind) {
@@ -154,7 +163,7 @@ const types = [
   'run_rejected',
   'run_failed',
   ...workTypes,
-  ...modelFactTypes,
+  ...versionFactTypes,
 ];
 
 export const predictionBuilds: KeyedProjection = {
@@ -177,16 +186,15 @@ export const predictionBuilds: KeyedProjection = {
     { name: 'shadow_origins', kind: 'integer' },
     { name: 'next_due_at', kind: 'integer' },
     { name: 'open', kind: 'boolean' },
-    { name: 'in_flight', kind: 'integer' },
+    { name: 'scoring_since', kind: 'integer' },
     { name: 'ended', kind: 'text' },
     { name: 'staged', kind: 'boolean' },
     { name: 'cause', kind: 'text' },
   ],
   indexes: [
     { name: 'by_open', columns: ['function', 'open', 'requested_at', 'row_key'] },
-    { name: 'by_requested', columns: ['function', 'requested_at', 'row_key'] },
     { name: 'builds_due', columns: ['next_due_at'], acrossPlaybooks: true, whereSet: 'next_due_at' },
-    { name: 'builds_in_flight', columns: ['in_flight'], acrossPlaybooks: true, whereSet: 'in_flight' },
+    { name: 'builds_scoring', columns: ['scoring_since'], acrossPlaybooks: true, whereSet: 'scoring_since' },
   ],
   keyOf,
   advanced: { columns: ['next_due_at', 'staged'], setBy: types },

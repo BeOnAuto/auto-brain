@@ -1,7 +1,7 @@
 import { playbookCallerOf, streamPrefixOfPlaybook } from '@on.auto/operations';
 import { Clock, DateTime, Effect } from 'effect';
 
-import type { Performing } from '../builds/build-performing.ts';
+import type { Performing } from '../build-work/build-performing.ts';
 import { modelsStreamOf } from '../facts/model-facts.ts';
 import type { Verdict } from '../shadow/shadow-grades.ts';
 import { modelsDecider, type ModelCommand } from './model-decider.ts';

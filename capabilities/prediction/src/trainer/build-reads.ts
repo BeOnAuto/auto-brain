@@ -27,7 +27,7 @@ export const readBuildBrief = defineHttpOperation('playbook', 'query', {
   body: { kind: 'none' },
   inputSchema: BuildRunInput,
   answer: { kind: 'stream', mediaType: 'text/markdown' },
-  reasons: ['conflict'],
+  reasons: ['not_found', 'conflict'],
   handle: ({ run_id: id }) => Effect.flatMap(waitingBuildOf(id), ({ record }) => keptStream(record.build.brief_sha256)),
 });
 
@@ -43,7 +43,7 @@ export const readBuildRows = defineHttpOperation('playbook', 'query', {
   body: { kind: 'none' },
   inputSchema: BuildRunInput,
   answer: { kind: 'stream', mediaType: 'text/csv' },
-  reasons: ['conflict'],
+  reasons: ['not_found', 'conflict'],
   handle: ({ run_id: id }) =>
     Effect.flatMap(waitingBuildOf(id), ({ record }) => keptStream(record.build.training_sha256)),
 });

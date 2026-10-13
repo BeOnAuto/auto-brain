@@ -1,11 +1,11 @@
 import { Option, type Effect } from 'effect';
 
+import { buildRecordOf } from '../builds/build-state.ts';
 import type { PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';
 import { endingStep } from '../scoring/ending-steps.ts';
 import { scoredCandidate } from '../scoring/scoring-step.ts';
 import type { TrainerAnswer } from '../scoring/version-card.ts';
 import { restingUntil, type Performing } from './build-performing.ts';
-import { buildRecordOf } from './build-state.ts';
 import { throughAChild } from './request-child.ts';
 import { trainerAnswerOf } from './trainer-answers.ts';
 

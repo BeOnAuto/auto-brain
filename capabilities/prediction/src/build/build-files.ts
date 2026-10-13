@@ -8,10 +8,15 @@ import { writtenDatasetFiles } from '../files/dataset-files.ts';
 import type { DatasetFiles, DatasetFilesRefused } from '../files/files-refusals.ts';
 import { uploadedDatasetFiles } from './uploaded-files.ts';
 
-function refusedAs({ refusal, detail }: Pick<DatasetFilesRefused, 'refusal' | 'detail'>): Conflict | Unavailable {
-  return refusal.kind === 'too_large'
-    ? new Conflict({ detail, kind: 'dataset_too_large' })
-    : new Unavailable({ detail, kind: 'dataset_not_ready' });
+export function notReadyAs({ refusal, detail }: Pick<DatasetFilesRefused, 'refusal' | 'detail'>): Unavailable {
+  const stalled = refusal.kind === 'not_ready' && refusal.phase === 'stalled';
+  return new Unavailable({ detail, kind: 'dataset_not_ready', ...(stalled ? { because: 'stalled' } : {}) });
+}
+
+function refusedAs(refused: Pick<DatasetFilesRefused, 'refusal' | 'detail'>): Conflict | Unavailable {
+  return refused.refusal.kind === 'too_large'
+    ? new Conflict({ detail: refused.detail, kind: 'dataset_too_large' })
+    : notReadyAs(refused);
 }
 
 export function assembledOf(files: DatasetFiles): Assembled {

@@ -1,21 +1,25 @@
 import { createReadStream } from 'node:fs';
 import { Readable } from 'node:stream';
 
+import type { Conflict } from '@on.auto/operations';
 import { Effect } from 'effect';
 
 import type { BuildState } from '../builds/build-state.ts';
 import type { PredictionPorts } from '../capability/prediction-ports.ts';
+import { buildEnded } from './waiting-builds.ts';
 
-export function staged(ports: PredictionPorts, build: BuildState, path: string, sha256: string): Effect.Effect<void> {
-  const { org, playbook, id } = build.address;
+export function staged(
+  ports: Pick<PredictionPorts, 'ledger'>,
+  { address }: Pick<BuildState, 'address'>,
+  path: string,
+  sha256: string,
+): Effect.Effect<void, Conflict> {
+  const { org, playbook, id } = address;
   const stream = Readable.toWeb(createReadStream(path));
-  return Effect.asVoid(
-    Effect.orDie(
-      ports.ledger.content.stage({ org, playbook }, id, {
-        stream,
-        mediaType: 'application/octet-stream',
-        expected: { sha256 },
-      }),
-    ),
-  );
+  return ports.ledger.content
+    .stage({ org, playbook }, id, { stream, mediaType: 'application/octet-stream', expected: { sha256 } })
+    .pipe(
+      Effect.asVoid,
+      Effect.catchTags({ staging_ended: () => Effect.fail(buildEnded), content_refused: Effect.die }),
+    );
 }

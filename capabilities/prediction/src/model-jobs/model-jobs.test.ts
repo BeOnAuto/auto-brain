@@ -6,6 +6,7 @@ import type { ProcessValue } from '@on.auto/workflow-engine/process-loop';
 import { describe, expect, it } from 'vitest';
 
 import { candidateUrl, type CandidateName } from '../build-testing/due-driving.ts';
+import { periodOfForm } from '../periods/grains.ts';
 import { scratchDirectory } from '../testing/scratch.ts';
 import { modelJobs } from './model-jobs.ts';
 import type { LoadedModel, LoadModel } from './model-sessions.ts';
@@ -105,6 +106,35 @@ describe('a question run in a model process', () => {
     );
 
     expect(failed).toBe('The model answered a number that is not finite');
+  });
+});
+
+describe('the window of a series read in a model process', () => {
+  it('reads the periods of the series asked up to the last period of the whole file, NaN where it has none', async () => {
+    const path = join(scratchDirectory(), 'upload.csv');
+    writeFileSync(
+      path,
+      [
+        'series,period,visits,promotion',
+        'north,2026-10-01,10,1',
+        'north,2026-10-03,14,0',
+        'south,2026-10-04,20,1',
+      ].join('\r\n'),
+    );
+    const window = { rows: path, features: 1, grain: 'day', window: 4, threads: 1 };
+
+    expect([
+      await asked('window', { ...window, series: 'north' }),
+      await asked('window', { ...window, series: 'east' }),
+    ]).toEqual([
+      {
+        y: Float32Array.of(10, Number.NaN, 14, Number.NaN),
+        x: Float32Array.of(1, Number.NaN, 0, Number.NaN),
+        origin: periodOfForm('day', '2026-10-04'),
+      },
+      { unknown: true },
+    ]);
+    expect(await asked('window', { ...window, features: 0, series: 'south' })).toMatchObject({ x: null });
   });
 });
 

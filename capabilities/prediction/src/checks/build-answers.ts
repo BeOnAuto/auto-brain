@@ -5,8 +5,8 @@ import type { Issue } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 import { mostNoteBytes } from '../build/build-request.ts';
+import { figure } from '../capability/figures.ts';
 import { buildWorkIn } from '../facts/build-facts.ts';
-import { figure } from './figures.ts';
 
 const AnswerSchema = Schema.Struct({
   candidates: Schema.Array(Schema.String),

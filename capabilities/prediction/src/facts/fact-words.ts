@@ -62,6 +62,7 @@ const refusalWords: Readonly<Record<ModelFactOf<'activation_refused'>['data']['b
   approver_rejected: 'its approver rejected it',
   unanswered: 'nobody answered its approval',
   shadow_failed: 'it did worse than the active version in its shadow',
+  superseded: 'a newer version was built while it waited',
 };
 
 function verdictWords({ version, metric, challenger, active }: ModelFactOf<'shadow_passed'>['data']): string {
@@ -73,16 +74,18 @@ function verdictWords({ version, metric, challenger, active }: ModelFactOf<'shad
 const modelWords = {
   version_built: ({ version, file }: ModelFactOf<'version_built'>['data']) =>
     `Version ${version} of the model was built from candidate ${shortOf(file.sha256)}`,
-  shadow_predicted: ({ version, of, origin, count }: ModelFactOf<'shadow_predicted'>['data']) =>
-    `Version ${of} predicted ${figure(count)} series from ${origin} in the shadow of version ${version}`,
-  shadow_graded: ({ of, period, graded, missing }: ModelFactOf<'shadow_graded'>['data']) =>
-    `The shadow predictions of version ${of} for ${period} were graded: ${figure(graded)} graded, ${figure(missing)} without a truth`,
+  shadow_predicted: ({ version, of, origin, count, missing }: ModelFactOf<'shadow_predicted'>['data']) =>
+    `Version ${of} predicted ${figure(count)} series from ${origin} in the shadow of version ${version}, and ${figure(missing)} with no finite answer`,
+  shadow_graded: ({ of, period, graded, answered, missing }: ModelFactOf<'shadow_graded'>['data']) =>
+    `The shadow predictions of version ${of} for ${period} were graded: ${figure(graded)} graded beside the other version's, of ${figure(answered)} it answered, ${figure(missing)} without an answer or a truth`,
   shadow_passed: (data: ModelFactOf<'shadow_passed'>['data']) => `The shadow passed for ${verdictWords(data)}`,
   shadow_failed: (data: ModelFactOf<'shadow_failed'>['data']) => `The shadow failed for ${verdictWords(data)}`,
   version_activated: ({ version, rule }: ModelFactOf<'version_activated'>['data']) =>
     `Version ${version} of the model was activated ${activatedWords[rule]}`,
   activation_refused: ({ version, because }: ModelFactOf<'activation_refused'>['data']) =>
     `Version ${version} of the model was not activated: ${refusalWords[because]}`,
+  build_asked: ({ build }: ModelFactOf<'build_asked'>['data']) => `Build ${build} of the function was asked`,
+  build_ended: ({ build }: ModelFactOf<'build_ended'>['data']) => `Build ${build} of the function ended`,
 };
 
 export function buildSummaryOf(work: BuildWork): string {
@@ -124,6 +127,9 @@ export function modelSummaryOf(fact: ModelFact): string {
   }
   if (fact.type === 'version_activated') {
     return modelWords.version_activated(fact.data);
+  }
+  if (fact.type === 'build_asked' || fact.type === 'build_ended') {
+    return fact.type === 'build_asked' ? modelWords.build_asked(fact.data) : modelWords.build_ended(fact.data);
   }
   return fact.type === 'activation_refused' ? modelWords.activation_refused(fact.data) : shadowSummaryOf(fact);
 }

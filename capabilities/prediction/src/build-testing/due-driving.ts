@@ -20,6 +20,8 @@ export type CandidateName =
   | 'visits-whole-numbers'
   | 'visits-allocating'
   | 'visits-hostile'
+  | 'visits-sibling'
+  | 'visits-cousin'
   | 'visits-sequence'
   | 'orders-last'
   | 'totals-run-rate'

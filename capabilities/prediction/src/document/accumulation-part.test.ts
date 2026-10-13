@@ -80,9 +80,20 @@ describe('a prediction function that sums its target to the end of an enclosing 
       Result.isSuccess(schemas.question.validate({ series: 'north' })),
       Result.isSuccess(schemas.question.validate({ series: 'north', horizon: 1 })),
     ]).toEqual([true, false]);
-    expect(schemas.input).toMatchObject({ oneOf: [{ required: ['series'] }, { title: 'build' }] });
+    expect(schemas.input).toMatchObject({
+      oneOf: [
+        {
+          required: ['series'],
+          description:
+            'A question: the series to predict the total of its sales for, in sales, from the day after its last observed one to the end of that week',
+        },
+        { title: 'build' },
+      ],
+    });
   });
+});
 
+describe('the answer of a prediction function that sums its target', () => {
   it('answers the enclosing period and the periods its total sums', () => {
     expect(documentOf(dailyTotals).schemas.output).toMatchObject({
       oneOf: [

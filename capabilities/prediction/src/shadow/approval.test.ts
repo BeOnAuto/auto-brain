@@ -11,7 +11,7 @@ import {
 } from '../build-testing/built-versions.ts';
 import { approvingDocument } from '../build-testing/called-documents.ts';
 import { performedUntilQuiet } from '../build-testing/due-driving.ts';
-import { childIdOf } from '../builds/child-runs.ts';
+import { childIdOf } from '../build-work/child-runs.ts';
 import { uploadedDailyVisits } from '../testing/daily-documents.ts';
 
 const testTimeoutMs = 60_000;
@@ -35,6 +35,29 @@ async function awaitingApproval(playbook: BuildPlaybook, expires = 'P1D'): Promi
 function decided(playbook: BuildPlaybook, build: string, decision: string) {
   return playbook.call(playbook.operations.answer, { run_id: childIdOf(build, '/approval'), answer: { decision } });
 }
+
+describe('a version that waits for its approver when a newer one is built', { timeout: testTimeoutMs }, () => {
+  it('is refused as superseded, its approval cancelled, and the newer version waits in its place', async () => {
+    const playbook = buildPlaybook();
+    const first = await awaitingApproval(playbook);
+    await builtFrom(playbook, ['visits-mean']);
+    await performedUntilQuiet(playbook.due);
+
+    expect((await modelFactsOf(playbook)).filter(({ type }) => type === 'activation_refused')).toMatchObject([
+      { data: { version: 1, because: 'superseded', build: first } },
+    ]);
+    expect(await decided(playbook, first, 'approve')).toMatchObject({
+      status: 'rejected',
+      reason: 'conflict',
+      detail: 'A cancel of the run was asked before it took an answer, so it takes none',
+    });
+    expect(await standingOf(playbook)).toMatchObject({
+      output: {
+        standing: { models: { active: null, challenger: { version: 2 } }, build: { standing: 'awaiting_approval' } },
+      },
+    });
+  });
+});
 
 describe('a version whose activation is approved', { timeout: testTimeoutMs }, () => {
   it('waits for its approver, asked with the function, the version and its card', async () => {

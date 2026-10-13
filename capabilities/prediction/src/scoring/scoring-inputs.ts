@@ -1,12 +1,10 @@
-import { readFile } from 'node:fs/promises';
-
 import { Effect, Option } from 'effect';
 
 import type { BuildState } from '../builds/build-state.ts';
 import type { PredictionPorts } from '../capability/prediction-ports.ts';
 import { isProjected, type PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';
 import type { Assembled } from '../facts/build-facts.ts';
-import { seriesRowsOf } from '../files/series-rows.ts';
+import { seriesRowsIn } from '../files/series-rows.ts';
 import { seedOf } from './bootstrap.ts';
 import type { Scoring } from './candidate-scoring.ts';
 import { scoringGridOf } from './scoring-grid.ts';
@@ -46,7 +44,8 @@ export function scoringOf(
 ): Effect.Effect<ScoringRows> {
   return Effect.gen(function* () {
     const path = yield* rowsFileOf(ports, build, assembled.scoring_sha256);
-    const text = yield* Effect.promise(() => readFile(path, 'utf8'));
+    const features = featureNamesOf(document).length;
+    const rows = yield* ports.caches.parsed.rowsOf(assembled.scoring_sha256, () => seriesRowsIn(path, { features }));
     const grid = scoringGridOf(document.predicts, {
       window: assembled.window,
       holdout: assembled.holdout,
@@ -56,7 +55,7 @@ export function scoringOf(
       path,
       scoring: {
         grid,
-        rows: seriesRowsOf(text, featureNamesOf(document).length),
+        rows,
         evaluation: document.evaluation,
         seed: seedOf(build.address.id),
       },

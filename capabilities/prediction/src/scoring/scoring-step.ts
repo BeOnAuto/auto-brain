@@ -1,9 +1,10 @@
 import { Effect } from 'effect';
 
-import { aMinute, recordedWork, restingUntil, type Performing } from '../builds/build-performing.ts';
+import { aMinute, recordedWork, restingUntil, type Performing } from '../build-work/build-performing.ts';
+import { untilTheRunEnds } from '../build-work/run-watch.ts';
 import type { PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';
 import type { Assembled, BuildWorkOf } from '../facts/build-facts.ts';
-import type { ModelOutcome, WalkAnswer } from '../process/model-processes.ts';
+import type { ModelOutcome, WalkAnswer } from '../model-processes/model-processes.ts';
 import { baselineWalks, verdictOf, type Scoring } from './candidate-scoring.ts';
 import { remainingOfTheOrigins } from './scoring-grid.ts';
 import { featureNamesOf, givenIndexesOf, scoringOf, type ScoredBuild } from './scoring-inputs.ts';
@@ -11,6 +12,8 @@ import { featureNamesOf, givenIndexesOf, scoringOf, type ScoredBuild } from './s
 type Disqualified = BuildWorkOf<'candidate_disqualified'>['data'];
 
 type Interrupted = Exclude<ModelOutcome<WalkAnswer>, { readonly ended: 'answered' }>;
+
+const cancelled: ModelOutcome<WalkAnswer> = { ended: 'cancelled', milliseconds: 0 };
 
 function disqualifiedOf(sha256: string, outcome: Interrupted): Disqualified | undefined {
   if (outcome.ended === 'timed_out' || outcome.ended === 'out_of_memory') {
@@ -47,7 +50,7 @@ function walked(
   const { ports, build, now } = performing;
   return Effect.gen(function* () {
     const { path: rows, scoring } = yield* scoringOf(ports, build, document, assembled);
-    const outcome = yield* ports.models.walk(
+    const walk = ports.models.walk(
       { sha256, path },
       {
         rows,
@@ -59,6 +62,7 @@ function walked(
         remaining: remainingOfTheOrigins(scoring.grid),
       },
     );
+    const outcome = yield* Effect.raceFirst(walk, Effect.as(untilTheRunEnds(ports, build.address), cancelled));
     if (outcome.ended === 'answered') {
       return yield* recordedWork(performing, answeredFact(scoring, sha256, outcome.answer, outcome.milliseconds));
     }
@@ -83,9 +87,6 @@ export function scoredCandidate(
   const notLoaded = (detail: string) =>
     recordedWork(performing, { type: 'candidate_disqualified', data: { sha256, because: 'not_loaded', detail } });
   return Effect.gen(function* () {
-    if (!build.uploads.some((uploaded) => uploaded.sha256 === sha256)) {
-      return yield* notLoaded(`Candidate ${sha256.slice(0, 12)}… was not uploaded to this build`);
-    }
     const path = yield* ports.caches.models.pathOf(sha256, () =>
       ports.ledger.content.staged({ org, playbook }, id, sha256),
     );

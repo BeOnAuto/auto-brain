@@ -13,9 +13,9 @@ import {
   workOf,
 } from '../build-testing/built-versions.ts';
 import { candidateSha256, performedOnce, performedUntilQuiet } from '../build-testing/due-driving.ts';
+import { predictionBuildsName } from '../builds/build-rows.ts';
+import { buildsDue } from '../builds/builds-due.ts';
 import { activateVersion } from '../models/activate-version.ts';
-import { predictionBuildsName } from './build-rows.ts';
-import { buildsDue } from './builds-due.ts';
 
 const testTimeoutMs = 60_000;
 

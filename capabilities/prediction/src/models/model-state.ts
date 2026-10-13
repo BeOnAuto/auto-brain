@@ -14,7 +14,14 @@ export type ShadowPrediction = ModelFactOf<'shadow_predicted'>['data'];
 
 export type ShadowGrade = ModelFactOf<'shadow_graded'>['data'];
 
+export interface AskedBuild {
+  readonly build: string;
+  readonly askedAt: number;
+}
+
 export interface ModelsState {
+  readonly asked: readonly AskedBuild[];
+  readonly ended: ReadonlySet<string>;
   readonly versions: readonly BuiltVersion[];
   readonly active: number | null;
   readonly predicted: readonly ShadowPrediction[];
@@ -24,6 +31,8 @@ export interface ModelsState {
 }
 
 export const noModels: ModelsState = {
+  asked: [],
+  ended: new Set(),
   versions: [],
   active: null,
   predicted: [],
@@ -48,7 +57,19 @@ function builtOf({ data, context }: Extract<RecordedModelFact, { readonly type: 
   };
 }
 
+function claimed(
+  state: ModelsState,
+  fact: Extract<RecordedModelFact, { readonly type: 'build_asked' | 'build_ended' }>,
+) {
+  return fact.type === 'build_asked'
+    ? { ...state, asked: [...state.asked, { build: fact.data.build, askedAt: Date.parse(fact.data.asked_at) }] }
+    : { ...state, ended: new Set([...state.ended, fact.data.build]) };
+}
+
 export function evolveModels(state: ModelsState, fact: RecordedModelFact): ModelsState {
+  if (fact.type === 'build_asked' || fact.type === 'build_ended') {
+    return claimed(state, fact);
+  }
   if (fact.type === 'version_built') {
     return { ...state, versions: [...state.versions, builtOf(fact)] };
   }

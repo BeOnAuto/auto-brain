@@ -13,6 +13,8 @@ import { uploadDataset } from '../upload/upload-dataset.ts';
 
 const testTimeoutMs = 60_000;
 
+const heldWalk = { rows: '/held.csv', window: 3, holdout: 1, steps: 1, features: 0, given: [], remaining: null };
+
 const someMilliseconds: unknown = expect.any(Number);
 
 async function activeVisits(options: PortOptions = {}): Promise<BuildPlaybook> {
@@ -89,7 +91,15 @@ describe('a question whose model process does not answer', { timeout: testTimeou
     const exhausted = await asked(playbook, { series: 'north', horizon: 1 });
     scripted.next('not-finite');
     const notFinite = await asked(playbook, { series: 'north', horizon: 1 });
+    scripted.next('unreadable');
+    const unread = await asked(playbook, { series: 'north', horizon: 1 });
 
+    expect(unread).toMatchObject({
+      status: 'rejected',
+      reason: 'unavailable',
+      kind: 'model_process_failed',
+      detail: 'The model process ended before it read the dataset',
+    });
     expect([exited, exhausted, notFinite]).toMatchObject([
       {
         status: 'rejected',
@@ -111,13 +121,17 @@ describe('a question whose model process does not answer', { timeout: testTimeou
       },
     ]);
   });
+});
 
+describe('a question whose model processes are all taken', { timeout: testTimeoutMs }, () => {
   it('is told every model process is busy while every one is taken', async () => {
-    const { scripted, playbook } = await scriptedVisits({ check: 60_000, run: 300, walk: 60_000 }, 3);
+    const scripted = scriptedModels();
+    const deadlines = { check: 60_000, run: 300, walk: 60_000 };
+    const playbook = await activeVisits({ module: scripted.module, deadlines, processes: 3, longJobs: 3 });
     scripted.next('sleeps');
     const { models } = playbook.test.ports;
     for (const held of ['first', 'second', 'third']) {
-      void Effect.runPromise(models.check({ sha256: held, path: `/${held}.onnx` }));
+      void Effect.runPromise(models.walk({ sha256: held, path: `/${held}.onnx` }, heldWalk));
     }
     await sleep(100);
 

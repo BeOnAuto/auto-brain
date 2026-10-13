@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 
 import {
@@ -16,12 +17,16 @@ import type { Bytes } from './onnx-writer.ts';
 
 const visits = { steps: 2, low: 1, high: 1 };
 
+const mean = meanModel({ ...visits, low: 2, high: 2 });
+
+const meanSha256 = createHash('sha256').update(mean).digest('hex');
+
 const candidates: Readonly<Record<string, Bytes>> = {
   'visits-last': lastValueModel(visits),
   'visits-wide': lastValueModel({ ...visits, low: 100, high: 100 }),
   'visits-narrow': lastValueModel({ ...visits, low: 0, high: 0 }),
   'visits-even': lastValueModel({ ...visits, low: 3, high: 3 }),
-  'visits-mean': meanModel({ ...visits, low: 2, high: 2 }),
+  'visits-mean': mean,
   'visits-observed-mean': observedMeanModel({ ...visits, low: 2, high: 2 }),
   'visits-week': lastValueModel(visits, { length: 7 }),
   'visits-many-features': meanModel({ ...visits, low: 2, high: 2 }, { features: 40, given: 8 }),
@@ -31,7 +36,9 @@ const candidates: Readonly<Record<string, Bytes>> = {
   'visits-opset-12': lastValueModel(visits, {}, 12),
   'visits-whole-numbers': wholeNumbersModel(2),
   'visits-allocating': allocatingModel(2),
-  'visits-hostile': hostileModel(2),
+  'visits-hostile': hostileModel(2, '../../../../../../etc/passwd'),
+  'visits-sibling': hostileModel(2, `${meanSha256}.onnx`),
+  'visits-cousin': hostileModel(2, `../${meanSha256}/model.onnx`),
   'visits-sequence': sequenceModel(2),
   'orders-last': lastValueModel({ steps: 4, low: 2, high: 2 }, { features: 2, given: 1 }),
   'totals-run-rate': runRateModel(),

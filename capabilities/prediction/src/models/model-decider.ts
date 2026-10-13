@@ -22,7 +22,7 @@ interface Acted {
 
 type Built = Omit<ModelFactOf<'version_built'>['data'], 'version'>;
 
-type Activation = Omit<ModelFactOf<'version_activated'>['data'], 'data_sha256' | 'file_sha256'>;
+type Activation = Omit<ModelFactOf<'version_activated'>['data'], 'data_sha256' | 'file_sha256' | 'definition_version'>;
 
 export type ModelCommand = Acted &
   (
@@ -43,8 +43,17 @@ function once(already: boolean, fact: ModelFact): Decision {
 }
 
 function built(state: ModelsState, card: Built): Decision {
-  const version = state.versions.length + 1;
-  return once(versionOfBuild(state, card.build) !== undefined, { type: 'version_built', data: { ...card, version } });
+  if (versionOfBuild(state, card.build) !== undefined) {
+    return nothing;
+  }
+  const superseded = state.versions.filter(({ build }) => !state.settled.has(build));
+  return Result.succeed([
+    ...superseded.map(({ version, build }): ModelFact => ({
+      type: 'activation_refused',
+      data: { version, because: 'superseded', build },
+    })),
+    { type: 'version_built', data: { ...card, version: state.versions.length + 1 } },
+  ]);
 }
 
 function activated(state: ModelsState, { name, data }: Extract<ModelCommand, { readonly type: 'activate' }>): Decision {
@@ -55,7 +64,12 @@ function activated(state: ModelsState, { name, data }: Extract<ModelCommand, { r
   if (data.rule !== 'requested') {
     return once(data.build !== undefined && state.settled.has(data.build), {
       type: 'version_activated',
-      data: { ...data, data_sha256: found.dataSha256, file_sha256: found.fileSha256 },
+      data: {
+        ...data,
+        definition_version: found.definitionVersion,
+        data_sha256: found.dataSha256,
+        file_sha256: found.fileSha256,
+      },
     });
   }
   if (state.active === data.version) {
@@ -69,6 +83,7 @@ function activated(state: ModelsState, { name, data }: Extract<ModelCommand, { r
       type: 'version_activated',
       data: {
         version: data.version,
+        definition_version: found.definitionVersion,
         rule: 'requested',
         data_sha256: found.dataSha256,
         file_sha256: found.fileSha256,

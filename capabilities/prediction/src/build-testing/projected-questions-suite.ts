@@ -1,3 +1,6 @@
+import { setTimeout as sleep } from 'node:timers/promises';
+
+import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { SettingsOf } from '../dataset-testing/dataset-stores.ts';
@@ -45,6 +48,27 @@ function questions(settingsOf: SettingsOf): void {
       { status: 'rejected', reason: 'unavailable', kind: 'dataset_not_ready' },
       { status: 'failed' },
     ]);
+  });
+}
+
+function busy(settingsOf: SettingsOf): void {
+  it('is told every model process is busy while builds hold every one', async () => {
+    const deadlines = { check: 30_000, run: 300, walk: 60_000 };
+    const projected = await projectedSales(settingsOf, { ...visits, deadlines, processes: 2, longJobs: 2 });
+    await builtFrom(projected.playbook, ['visits-mean']);
+    projected.scripted.next('sleeps');
+    const { models } = projected.playbook.test.ports;
+    const walk = { rows: '/held.csv', window: 3, holdout: 1, steps: 1, features: 0, given: [], remaining: null };
+    for (const held of ['first', 'second']) {
+      void Effect.runPromise(models.walk({ sha256: held, path: `/${held}.onnx` }, walk));
+    }
+    await sleep(100);
+
+    expect(await asked(projected.playbook, { series: 'north', horizon: 1 })).toMatchObject({
+      status: 'rejected',
+      reason: 'unavailable',
+      kind: 'model_process_busy',
+    });
   });
 }
 
@@ -103,6 +127,10 @@ function totalsAndBounds(settingsOf: SettingsOf): void {
 export function projectedQuestionsSuite(settingsOf: SettingsOf): void {
   describe('a question over a projected dataset', { timeout: testTimeoutMs }, () => {
     questions(settingsOf);
+  });
+
+  describe('a question over a projected dataset while builds hold every process', { timeout: testTimeoutMs }, () => {
+    busy(settingsOf);
   });
 
   describe('a question over a projected dataset with features', { timeout: testTimeoutMs }, () => {

@@ -5,14 +5,15 @@ import { Effect } from 'effect';
 
 import { predictionBuilds } from '../builds/builds-projection.ts';
 import type { BuildBounds, PredictionPorts } from '../capability/prediction-ports.ts';
+import { modelPorts, type ModelPortSettings } from '../model-processes/model-ports.ts';
 import { predictionModels } from '../models/models-projection.ts';
-import { modelPorts, type ModelPortSettings } from '../process/model-ports.ts';
 import { closedAfterTheTest, scratchDirectory } from './scratch.ts';
 
 export interface PortOptions extends Pick<ModelPortSettings, 'module' | 'deadlines' | 'mostBytes'> {
   readonly database?: PredictionPorts['database'];
   readonly bounds?: Partial<BuildBounds>;
   readonly processes?: number;
+  readonly longJobs?: number;
   readonly openRequests?: number;
   readonly projections?: readonly KeyedProjection[];
 }
@@ -36,7 +37,7 @@ export function testPorts(options: PortOptions = {}): TestPorts {
     database: options.database ?? emptyHostDatabase,
     ...modelPorts({
       ...options,
-      pool: closedAfterTheTest(processes),
+      pool: closedAfterTheTest(processes, options.longJobs),
       scoringAtOnce: Math.max(1, processes - 2),
       directory,
     }),

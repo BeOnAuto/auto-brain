@@ -85,4 +85,18 @@ describe('a candidate uploaded while every model process is taken', { timeout: t
     });
     expect((await workOf(playbook, build)).map(({ type }) => type)).toEqual(['dataset_assembled']);
   });
+  it('is told every model process is busy while builds hold every scoring permit, so a question keeps its process', async () => {
+    const playbook = buildPlaybook();
+    const build = await waitingBuild(playbook);
+    const { permits } = playbook.test.ports;
+    const taken = [permits.take(), permits.take()];
+
+    const refused = await sent(playbook, build, 'visits-mean');
+    for (const release of taken) {
+      release?.();
+    }
+
+    expect(refused).toMatchObject({ status: 'rejected', reason: 'unavailable', kind: 'model_process_busy' });
+    expect(await sent(playbook, build, 'visits-mean')).toMatchObject({ status: 'succeeded' });
+  });
 });
