@@ -20,3 +20,6 @@ coverage
 /auto-runtime.yaml
 /docs/.vitepress/cache/
 .vitest/
+
+# engineering notes kept out of the repository
+.engineering/
