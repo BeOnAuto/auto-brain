@@ -18,8 +18,8 @@ function opened(
     Effect.catchTags({
       tool_not_offered: ({ because, detail }: Refused<NotOfferedBecause>) =>
         Effect.fail(new Unavailable({ detail, kind: 'tool_not_offered', because })),
-      mcp_server_failed: ({ because, detail }: Refused<ServerFailedBecause>) =>
-        Effect.fail(new Unavailable({ detail, kind: 'mcp_server_failed', because })),
+      tool_server_failed: ({ because, detail }: Refused<ServerFailedBecause>) =>
+        Effect.fail(new Unavailable({ detail, kind: 'tool_server_failed', because })),
     }),
   );
 }

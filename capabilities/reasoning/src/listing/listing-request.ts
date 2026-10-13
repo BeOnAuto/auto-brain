@@ -43,10 +43,12 @@ interface Answer {
   readonly text: string | undefined;
 }
 
-const trailingSlashes = /\/+$/u;
-
 export function withoutTrailingSlashes(text: string): string {
-  return text.replace(trailingSlashes, '');
+  let end = text.length;
+  while (text.charAt(end - 1) === '/') {
+    end -= 1;
+  }
+  return text.slice(0, end);
 }
 
 export function endpointUrl(baseUrl: string, path: string): URL {
