@@ -68,8 +68,8 @@ describe('the OpenAPI document of the server', () => {
     ]);
   });
 
-  it('takes 173,338 bytes and those of the version of the release, 173,343 at 0.8.0', () => {
-    expect(Buffer.byteLength(text) - Buffer.byteLength(release.version)).toBe(173_338);
+  it('takes 173,575 bytes and those of the version of the release, 173,580 at 0.8.0', () => {
+    expect(Buffer.byteLength(text) - Buffer.byteLength(release.version)).toBe(173_575);
   });
 
   it('says none of the old words the vocabulary of the repository refuses', () => {
