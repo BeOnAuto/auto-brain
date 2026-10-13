@@ -35,7 +35,7 @@ npx @on.auto/runtime --help
 
 ## Run it in a container
 
-The same release is the image `onauto/runtime` on Docker Hub. See [running in a container](https://github.com/BeOnAuto/runtime/blob/main/docs/engineering/self-host/container.md).
+The same release is the image `onauto/runtime` on Docker Hub. See [Run with Docker](https://on.auto/docs/self-host/docker).
 
 ## License
 

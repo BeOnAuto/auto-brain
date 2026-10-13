@@ -10,6 +10,8 @@ const markdownDestinations = (source: string): readonly string[] =>
   [...source.matchAll(/\]\(([^)]+)\)/gu)]
     .map((match: readonly string[]) => match[1])
     .filter((href) => href !== undefined);
+const selfHostGuidesLinkedFrom = (source: string): readonly string[] =>
+  [...new Set(markdownDestinations(source).filter((href) => /^self-host\/[a-z-]+\.md$/u.test(href)))].toSorted();
 const navigation = readFileSync(join(docs, 'nav.json'), 'utf8');
 const pages = readdirSync(docs, { recursive: true, withFileTypes: true })
   .filter(
@@ -103,7 +105,7 @@ await test('guide Markdown does not depend on private source files', () => {
 await test('engineering guides and decisions remain in the repository without entering the public preview', () => {
   assert.ok(pages.includes(join(docs, 'decisions/README.md')));
   assert.ok(pages.includes(join(docs, 'engineering/index.md')));
-  assert.ok(pages.includes(join(docs, 'engineering/self-host/workflows.md')));
+  assert.ok(pages.includes(join(docs, 'engineering/self-host/installation.md')));
   assert.ok(pages.includes(join(docs, 'engineering/reference/workflow-format.md')));
   for (const directory of repositoryOnlyDirectories) {
     assert.equal(existsSync(join(output, directory)), false);
@@ -115,10 +117,12 @@ await test('engineering guides and decisions remain in the repository without en
   }
 });
 
-await test('public docs offer a local learning path and one self-hosting services overview', () => {
-  const selfHostPages = publicPages.filter((page) => relative(docs, page).startsWith('self-host'));
-  assert.deepEqual(selfHostPages, [join(docs, 'self-host.md')]);
+await test('public docs offer a local learning path and a self-hosting overview that leads to its guides', () => {
+  const selfHostGuides = publicPages
+    .filter((page) => relative(docs, page).startsWith('self-host/'))
+    .map((page) => relative(docs, page));
   const selfHost = readFileSync(join(docs, 'self-host.md'), 'utf8');
+  assert.deepEqual(selfHostGuides.toSorted(), selfHostGuidesLinkedFrom(selfHost));
   assert.ok(selfHost.includes('[Xolvio Professional Services](https://www.xolv.io/contact-us)'));
   assert.ok(markdownDestinations(selfHost).includes('get-started/local.md'));
   assert.ok(selfHost.includes('Auto Cloud is coming soon'));

@@ -20,7 +20,7 @@ Before `pnpm dev`, uncomment one line of `.env` and put your key in it:
 | Google                       | `GOOGLE_GENERATIVE_AI_API_KEY=<your key>` | `google/gemini-2.5-flash`     |
 | An OpenAI-compatible gateway | `GATEWAY_API_KEY=<your key>`              | `gateway/<model>`             |
 
-A gateway also needs its address, which goes in the [configuration file](../self-host/configuration.md):
+A gateway also needs its address, which goes in the [configuration file](../../self-host/configuration.md):
 
 ```bash
 cp auto-runtime.example.yaml auto-runtime.yaml
@@ -32,7 +32,7 @@ Then put your gateway's `base_url` in `auto-runtime.yaml`. Start the configured 
 pnpm dev
 ```
 
-`pnpm dev` starts the server, which runs workflows itself, in [local mode](../self-host/security.md#local-mode), on `http://localhost:5555`. Once it is up, it says so:
+`pnpm dev` starts the server, which runs workflows itself, in [local mode](../../self-host/security.md#local-mode), on `http://localhost:5555`. Once it is up, it says so:
 
 ```text
 10:42:44.130 INFO  [dev] Auto Runtime is ready
@@ -61,6 +61,6 @@ Name a model your provider serves, such as `anthropic/claude-sonnet-4-5` or `gat
 
 Each tool's description explains the supported definition format. This example drafts outputs and tests a waiting workflow; it does not install a support-system connector or execute a refund.
 
-To reuse your first function, ask another question in a new conversation connected to the same runtime. For a shared deployment, use a persistent container and scoped API keys. Local mode is only for your own machine; do not expose it to colleagues through a proxy. See [Run in a container](../self-host/container.md) and [Authentication and security](../self-host/security.md).
+To reuse your first function, ask another question in a new conversation connected to the same runtime. For a shared deployment, use a persistent container and scoped API keys. Local mode is only for your own machine; do not expose it to colleagues through a proxy. See [Run with Docker](../../self-host/docker.md) and [Authentication and security](../../self-host/security.md).
 
 To try it without an assistant, `scripts/try-reasoning.sh http://localhost:5555 <provider/model>` and `scripts/try-workflows.sh http://localhost:5555 <provider/model>` run a reasoning function and a workflow over HTTP and print what happened. [How it works](../reference/http-tutorial.md) walks through the same steps.
