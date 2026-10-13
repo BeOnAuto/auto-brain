@@ -6,8 +6,10 @@ import {
   recordingReporter,
   type ReportedIncident,
 } from '@on.auto/operations/testing';
-import { Layer } from 'effect';
+import { Layer, Tracer } from 'effect';
+import type { MiddlewareHandler } from 'hono';
 
+import type { ApiEnv } from '../api-env.ts';
 import {
   apiCatalogRoutes,
   makeAppRuntime,
@@ -71,17 +73,25 @@ export interface OperationServerOptions {
   readonly authenticator?: Authenticator;
   readonly allowedOrigins?: readonly string[];
   readonly operations?: Parameters<typeof makeCatalog>[0];
+  readonly requests?: MiddlewareHandler<ApiEnv>;
+  readonly tracer?: Tracer.Tracer;
+}
+
+function tracingWith(tracer: Tracer.Tracer | undefined): Layer.Layer<never> {
+  return tracer === undefined ? Layer.empty : Layer.succeed(Tracer.Tracer, tracer);
 }
 
 export async function operationServer({
   authenticator = keyHolders,
   allowedOrigins = [],
   operations = notebookOperations,
+  requests,
+  tracer,
 }: OperationServerOptions = {}): Promise<OperationServer> {
   const ledger = memoryLedger();
   const recording = recordingReporter();
   const runtime = await makeAppRuntime(
-    Layer.mergeAll(ledger.layer, memoryPlaybookRegistry(knownPlaybooks), recording.layer),
+    Layer.mergeAll(ledger.layer, memoryPlaybookRegistry(knownPlaybooks), recording.layer, tracingWith(tracer)),
   );
   const catalog = makeCatalog(operations);
   const dispatcher = makeDispatcher([]);
@@ -102,7 +112,12 @@ export async function operationServer({
       },
     }),
   ];
-  const { handler, reported } = createTestHandler({ authenticator, allowedOrigins, routes });
+  const { handler, reported } = createTestHandler({
+    authenticator,
+    allowedOrigins,
+    routes,
+    ...(requests === undefined ? {} : { requests }),
+  });
   return {
     handler,
     runtime,

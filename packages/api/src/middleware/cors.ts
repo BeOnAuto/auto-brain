@@ -4,9 +4,9 @@ import type { ApiEnv } from '../api-env.ts';
 
 const allowedMethods = 'GET, HEAD, POST, PUT';
 
-const allowedHeaders = 'authorization, content-type';
+const allowedHeaders = 'authorization, content-type, traceparent, tracestate, baggage';
 
-const exposedHeaders = 'x-request-id';
+const exposedHeaders = 'x-request-id, x-trace-id';
 
 const preflightCacheSeconds = '600';
 

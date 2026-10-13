@@ -27,7 +27,7 @@ function corsHeadersOf(headers: Headers): Readonly<Record<string, string | null>
 }
 
 describe('a preflight request from an allowed origin', () => {
-  it('is answered 204 before authentication, with the methods and headers the API allows', async () => {
+  it('is answered 204 before authentication, with the methods and headers the API allows, trace context among them', async () => {
     const { handler } = await operationServer({ allowedOrigins: [allowed] });
 
     const answer = await call(handler, notes, { method: 'OPTIONS', headers: preflightFrom(allowed) });
@@ -43,7 +43,7 @@ describe('a preflight request from an allowed origin', () => {
     }).toEqual({
       allowOrigin: allowed,
       allowMethods: 'GET, HEAD, POST, PUT',
-      allowHeaders: 'authorization, content-type',
+      allowHeaders: 'authorization, content-type, traceparent, tracestate, baggage',
       maxAge: '600',
       allowCredentials: null,
       vary: 'Origin',
@@ -77,7 +77,7 @@ const answeredRequests: ReadonlyArray<readonly [string, Readonly<Record<string, 
 
 describe('a request from an allowed origin', () => {
   it.each(answeredRequests)(
-    'carries that origin, Vary: Origin and x-request-id exposed on %s',
+    'carries that origin, Vary: Origin and x-request-id and x-trace-id exposed on %s',
     async (_case, headers, status) => {
       const { handler } = await operationServer({ allowedOrigins: [allowed] });
 
@@ -86,7 +86,7 @@ describe('a request from an allowed origin', () => {
       expect(answer.status).toBe(status);
       expect(corsHeadersOf(answer.headers)).toEqual({
         allowOrigin: allowed,
-        exposeHeaders: 'x-request-id',
+        exposeHeaders: 'x-request-id, x-trace-id',
         allowCredentials: null,
         vary: 'Origin',
       });

@@ -1,7 +1,7 @@
 import { createMcpHandler, type McpHttpHandler } from '@modelcontextprotocol/server';
 import { canAccessPlaybook, type CallerIdentity, type OperationScope } from '@on.auto/operations';
 
-import { authInfoFor, type PlaybookCall, type OrgCall } from '../hand-off/caller-hand-off.ts';
+import { authInfoFor, tracedBy, type PlaybookCall, type OrgCall } from '../hand-off/caller-hand-off.ts';
 import { droppedArgumentsOf } from '../hand-off/dropped-arguments.ts';
 import { requestBodyLimit } from '../operations/request-body.ts';
 import type { Problem } from '../problem/problem-document.ts';
@@ -52,8 +52,8 @@ function endpoint(fetchMcp: FetchMcp, scope: OperationScope): RouteHandler {
     if (rejection !== undefined) {
       return problemResponse(rejection, insufficientScope);
     }
-    const requestId = c.get('requestId');
-    const call = playbook === undefined ? { caller, org, requestId } : { caller, org, playbook, requestId };
+    const handedOver = { caller, org, requestId: c.get('requestId'), ...tracedBy(c.get('traceParent')) };
+    const call = playbook === undefined ? handedOver : { ...handedOver, playbook };
     return handedOff(fetchMcp, c.req.raw, call);
   };
 }
@@ -61,7 +61,12 @@ function endpoint(fetchMcp: FetchMcp, scope: OperationScope): RouteHandler {
 function ownOrgEndpoint(fetchMcp: FetchMcp): RouteHandler {
   return (c) => {
     const { org, callerIn } = c.get('principal');
-    return handedOff(fetchMcp, c.req.raw, { caller: callerIn(org), org, requestId: c.get('requestId') });
+    return handedOff(fetchMcp, c.req.raw, {
+      caller: callerIn(org),
+      org,
+      requestId: c.get('requestId'),
+      ...tracedBy(c.get('traceParent')),
+    });
   };
 }
 
