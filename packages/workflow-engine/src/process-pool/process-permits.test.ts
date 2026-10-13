@@ -115,6 +115,19 @@ describe('the processes of a pool and its permits', { timeout: poolTestTimeoutMs
 });
 
 describe('the deadline of a job of a process', { timeout: poolTestTimeoutMs }, () => {
+  it('starts once the job holds its process, so a job that waited for a permit still has the whole of it to run', async () => {
+    const pool = poolOf();
+    await echoed(pool, 'a');
+    await echoed(pool, 'b');
+    const holding = run(pool, 'sleep', { key: 'a', long: true, payload: 1500 });
+
+    const waited = await run(pool, 'sleep', { key: 'b', long: true, payload: 2000, deadlineMs: 3000 });
+    await holding;
+
+    expect(waited.ended).toBe('answered');
+    expect(waited.milliseconds).toBeGreaterThan(3000);
+  });
+
   it('kills a warm process blocked past it, while a process of another key answers and the pool goes on, and the next job of its key starts afresh', async () => {
     const pool = poolOf();
     const warm = await echoed(pool, 'a');
