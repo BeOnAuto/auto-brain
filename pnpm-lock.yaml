@@ -644,6 +644,9 @@ importers:
         specifier: 6.0.1
         version: 6.0.1
     devDependencies:
+      '@opentelemetry/sdk-trace-base':
+        specifier: 2.9.0
+        version: 2.9.0(@opentelemetry/api@1.9.1)
       '@types/pg':
         specifier: 8.23.1
         version: 8.23.1

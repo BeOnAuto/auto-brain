@@ -4,7 +4,7 @@ import type { RunOutcomeMapping, KeyedProjection } from '@on.auto/operations';
 import { Pool } from 'pg';
 
 import { emmettEventStore } from '../emmett/emmett-event-store.ts';
-import type { LedgerStore } from '../event-store.ts';
+import type { AppendObserver, LedgerStore } from '../event-store.ts';
 import { formattedFor, postgresqlRecordedStoreOn, type Query } from '../postgresql-reads/postgresql-recorded.ts';
 import { dataAsJsonText } from './json-text.ts';
 import { postgresqlProjectionsOf } from './postgresql-projections.ts';
@@ -24,6 +24,7 @@ export interface PostgreSQLOptions {
   readonly pools: PostgreSQLPools;
   readonly runOutcomes?: RunOutcomeMapping;
   readonly projections?: readonly KeyedProjection[];
+  readonly observer?: AppendObserver | undefined;
 }
 
 export interface PostgreSQLStoreOptions extends PostgreSQLOptions {
@@ -39,6 +40,7 @@ export function postgresqlEventStore({
   reportLostConnection,
   runOutcomes,
   projections,
+  observer,
 }: PostgreSQLStoreOptions): LedgerStore {
   const pool = pools({ max: connectionsOfOneLedger });
   pool.on('error', reportLostConnection);
@@ -51,7 +53,7 @@ export function postgresqlEventStore({
       projections: [...kept.registrations],
       hooks: { onBeforeSchemaCreated: migrationLockTakenWithin(), onAfterSchemaCreated: kept.afterTheSchema },
     }),
-    { data: dataAsJsonText, mostEventsInOneAppend: eventsInOneBoundedAppend },
+    { data: dataAsJsonText, mostEventsInOneAppend: eventsInOneBoundedAppend, observer },
   );
   const query: Query = async (text, values) =>
     (await pool.query<Readonly<Record<string, unknown>>>(text, [...values])).rows;

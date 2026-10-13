@@ -2,7 +2,7 @@ import { dumbo } from '@event-driven-io/dumbo';
 import { getSQLiteEventStore } from '@event-driven-io/emmett-sqlite';
 
 import { dataAsWritten, emmettEventStore } from './emmett/emmett-event-store.ts';
-import type { LedgerStore } from './event-store.ts';
+import type { AppendObserver, LedgerStore } from './event-store.ts';
 import { ledgerLayerOver, type StoreLayerOptions } from './ledger-layer.ts';
 import { sqliteRunOutcomesOf } from './outcomes/sqlite-run-outcomes.ts';
 import type { KeptTables } from './projections/projection-parts.ts';
@@ -19,6 +19,7 @@ export type SQLiteStoreOptions<Driver extends AnyDriver> = Parameters<typeof get
 export function sqliteEventStore<Driver extends AnyDriver>(
   optionsOf: () => SQLiteStoreOptions<Driver>,
   kept: KeptTables = {},
+  observer?: AppendObserver,
 ): LedgerStore {
   const options = optionsOf();
   const pool =
@@ -33,6 +34,7 @@ export function sqliteEventStore<Driver extends AnyDriver>(
   const streams = emmettEventStore(store, {
     data: dataAsWritten,
     mostEventsInOneAppend: eventsWithinAHundredParameters,
+    observer,
   });
   return {
     ...streams,
@@ -52,7 +54,10 @@ export function sqliteEventStore<Driver extends AnyDriver>(
 
 export function sqliteLedgerLayer<Driver extends AnyDriver>(
   optionsOf: () => SQLiteStoreOptions<Driver>,
-  { runOutcomes, projections, appends, content }: StoreLayerOptions = {},
+  { runOutcomes, projections, appends, content, observer }: StoreLayerOptions = {},
 ) {
-  return ledgerLayerOver(() => sqliteEventStore(optionsOf, { runOutcomes, projections }), { appends, content });
+  return ledgerLayerOver(() => sqliteEventStore(optionsOf, { runOutcomes, projections }, observer), {
+    appends,
+    content,
+  });
 }
