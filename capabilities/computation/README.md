@@ -36,7 +36,7 @@ A `conflict` of the kind `unworkable` is recorded with its kind, so the run, the
 
 `computationBounds` holds them: a budget of 20,000 checkpoints, a deadline of 10,000 ms, a sandbox of 256 MiB, a stack of 1 MiB, a worker heap of 256 MiB, 4 workers by default and a value depth of 512; the engine's pool adds the worker's own stack of 64 MiB. Each bound has a test that reaches it and ends as [the reference](../../docs/reference/computation-format.md#bounds) says (`src/run/run-endings.test.ts`, and the server's `src/computation` for the deadline over HTTP, a busy pool and a crash). Tests that start workers have 30 seconds, and assert wall-clock time only as a lower bound.
 
-The hosted runtime does not offer computation functions until its adapter bounds the time and the memory of a run, measured in a real isolate; the sandbox's own memory maximum and deadline are the bounds it would keep, and its isolates have no threads, so a run that stalls in one native operation is stopped there by its deadline alone. The server here runs every run in a worker thread, terminated at the run's deadline and let go of after any run the pool had to stop.
+Computation functions run in a self-hosted runtime: the server runs every run in a worker thread, terminated at the run's deadline and let go of after any run the pool had to stop.
 
 ## Measurements
 
