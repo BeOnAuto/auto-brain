@@ -114,3 +114,18 @@ allowed_models: []
     );
   });
 });
+
+describe('a configuration file whose identity providers collide', { timeout: spawnedServerTestTimeoutMs }, () => {
+  it('stops the start naming the org and the issuer the two entries share', async () => {
+    const text = [
+      'identity_providers:',
+      "  - { name: corp, issuer: 'https://login.example', org: acme, grants: { claim: groups, by: { a: { permissions: [org:read], playbooks: '*' } } } }",
+      "  - { name: corp, issuer: 'https://login.example', org: acme, grants: { claim: groups, by: { b: { permissions: [org:read], playbooks: '*' } } } }",
+      '',
+    ].join('\n');
+
+    await expect(startupLine(text)).resolves.toBe(
+      `${invalid} auto-runtime.yaml:2:3 identity_providers: The org acme has two entries for the issuer https://login.example; an org has at most one entry for each issuer\n`,
+    );
+  });
+});

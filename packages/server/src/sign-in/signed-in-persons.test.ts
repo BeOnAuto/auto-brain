@@ -28,7 +28,7 @@ describe('a signed-in person on the facts', { timeout: workflowTestTimeoutMs }, 
     const issuer = await issuerOverHttps();
     const server = await interactionServerOn({ IDENTITY_PROVIDERS: providersAt(issuer.issuer), PUBLIC_URL: publicUrl });
     const seconds = Math.floor(Date.now() / 1000);
-    const key = issuer.sign({
+    const key = await issuer.sign({
       iss: issuer.issuer,
       sub: 'auth0|ada',
       aud: publicUrl,
