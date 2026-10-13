@@ -35,6 +35,8 @@ const purposeByType: Readonly<Record<string, string>> = {
   interaction: 'An interaction function asks a system and answers at once, or asks a person and answers started.',
   computation: 'A computation function runs a program on its input and gives the same output every time.',
   recall: 'Recall retrieves retained run results, definitions and events, excluding run inputs and tool calls.',
+  prediction:
+    "A prediction function answers a question from a model a trainer built on the playbook's history, and a build, the input { build: {} }, answers started.",
   workflow: 'A workflow runs functions in steps, waits for input and can start on a schedule or on an event.',
 };
 

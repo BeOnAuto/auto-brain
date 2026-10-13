@@ -56,6 +56,7 @@ export const definitionTypes: readonly DefinitionType[] = [
   { type: 'interaction', noun: 'interaction function', guide: 'interaction-function' },
   { type: 'computation', noun: 'computation function', guide: 'computation-function' },
   { type: 'recall', noun: 'recall function', guide: 'recall-function' },
+  { type: 'prediction', noun: 'prediction function', guide: 'prediction-function' },
   { type: 'workflow', noun: 'workflow', guide: 'workflow' },
 ];
 
