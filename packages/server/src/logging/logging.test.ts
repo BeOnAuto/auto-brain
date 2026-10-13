@@ -1,13 +1,12 @@
 import { setTimeout } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
-import { Cause, Effect, Logger } from 'effect';
+import { Cause } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
 import { linesLoggedBy } from '../testing/records/logged-lines.ts';
 import {
-  formatPretty,
   logAccessMode,
   logIncident,
   logLostWorkflowConnection,
@@ -17,15 +16,6 @@ import {
   logWorkflows,
   logWorkflowTrouble,
 } from './logging.ts';
-
-async function prettyLinesLoggedBy(effect: Effect.Effect<void>): Promise<readonly string[]> {
-  const lines: string[] = [];
-  const capture = Logger.map(formatPretty, (line: string) => {
-    lines.push(line.replace(/^\d{2}:\d{2}:\d{2}\.\d{3} /u, '<time> '));
-  });
-  await Effect.runPromise(effect.pipe(Effect.provide(Logger.layer([capture]))));
-  return lines;
-}
 
 function syntaxErrorParsing(text: string): SyntaxError {
   try {
@@ -222,46 +212,5 @@ describe('the server process', { timeout: spawnedServerTestTimeoutMs }, () => {
 
     expect({ abandoned, exitCode: await child.exited }).toEqual({ abandoned: 'abandoned', exitCode: 0 });
     expect(child.output().stdout).toBe(`Auto Runtime listening on port ${port}\n`);
-  });
-});
-
-describe('the pretty log format', () => {
-  it('writes the local time, the level, the message and then the annotations on one line', async () => {
-    const lines = await prettyLinesLoggedBy(
-      logWorkflows({ mostDurationMs: 604_800_000, mostCallsAtOnce: 8, sweepEveryMs: 250 }),
-    );
-
-    expect(lines).toEqual([
-      '<time> INFO  Workflows run in this server: a run lasts at most 7 days, at most 8 of their calls run at once, and the runs are swept every 250 ms most_duration_ms=604800000 most_calls_at_once=8 sweep_every_ms=250',
-    ]);
-  });
-
-  it('writes an annotation that is not one plain word as JSON', async () => {
-    const lines = await prettyLinesLoggedBy(
-      logUnsettled({ org: 'acme', playbook: 'alpha', runId: 'e-1', reason: 'The ledger has no such run' }),
-    );
-
-    expect(lines).toEqual([
-      '<time> ERROR A run stays started because settling it failed org=acme playbook=alpha run_id=e-1 reason="The ledger has no such run"',
-    ]);
-  });
-
-  it('puts the source of a line first, in brackets, and writes a message that is not text as JSON', async () => {
-    const lines = await prettyLinesLoggedBy(
-      Effect.logWarning({ answered: false }).pipe(Effect.annotateLogs({ source: 'dev', attempt: 2 })),
-    );
-
-    expect(lines).toEqual(['<time> WARN  [dev] {"answered":false} attempt=2']);
-  });
-
-  it('writes the cause of an incident below its line, indented', async () => {
-    const [line] = await prettyLinesLoggedBy(
-      logIncident({ id: 'incident-1', original: new Error('the ledger is unreachable') }),
-    );
-
-    expect(line?.split('\n').slice(0, 2)).toEqual([
-      '<time> ERROR Unexpected error incident=incident-1',
-      '    Error: the ledger is unreachable',
-    ]);
   });
 });

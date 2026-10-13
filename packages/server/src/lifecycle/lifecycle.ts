@@ -5,7 +5,7 @@ import type { Environment } from '@on.auto/config';
 import { authenticatorFor } from '@on.auto/identity';
 import { Effect, Layer } from 'effect';
 
-import { logAccessMode, logConfigFile, logIncident, logsToStderr, type LogFormat } from '../logging/logging.ts';
+import { logAccessMode, logConfigFile, logIncident, serverLogs, type LogSettings } from '../logging/logging.ts';
 import { readSettings, type Settings } from '../settings/settings.ts';
 import { createHttpServer, listen } from './http-server.ts';
 import { shutDown } from './shutdown.ts';
@@ -53,9 +53,9 @@ async function servedOf<R>(composed: Composed<R>, runtime: AppRuntime<R>): Promi
   }
 }
 
-async function startRuntime<R>(services: Layer.Layer<R>, logFormat: LogFormat): Promise<AppRuntime<R>> {
+async function startRuntime<R>(services: Layer.Layer<R>, logs: LogSettings): Promise<AppRuntime<R>> {
   try {
-    return await makeAppRuntime(services.pipe(Layer.provideMerge(logsToStderr(logFormat))));
+    return await makeAppRuntime(services.pipe(Layer.provideMerge(serverLogs(logs))));
   } catch (failure) {
     throw new StartupError({ message: `The server's services could not start: ${String(failure)}` });
   }
@@ -65,7 +65,7 @@ export async function startServer<R>(environment: Environment, options: ServerOp
   const settings = readSettings(environment);
   const authenticator = authenticatorFor(settings);
   const composed = options.composed(settings);
-  const runtime = await startRuntime(composed.services, settings.logFormat);
+  const runtime = await startRuntime(composed.services, settings);
   await runtime.run(logAccessMode(authenticator.mode, settings.localMode));
   await runtime.run(logConfigFile(settings.configFile));
   const served = await servedOf(composed, runtime);

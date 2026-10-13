@@ -10,7 +10,7 @@ Run Auto Runtime on your computer and use your agent to create a reusable functi
 Auto Cloud hosting is coming soon. [Request an invitation](https://on.auto/request-invite).
 :::
 
-This setup is for macOS or Linux. You need [Git](https://git-scm.com/downloads), [pnpm](https://pnpm.io/installation), and an agent such as Claude Code or Codex on the same computer. The Claude Desktop instructions below are for macOS. To run a reasoning function, Auto also needs access to a model provider. Your agent's subscription does not supply the server's model credentials.
+This setup is for macOS or Linux. You need [Node.js](https://nodejs.org/en/download) 26.10 or later, which comes with `npx`, and an agent such as Claude Code or Codex on the same computer. The Claude Desktop instructions below are for macOS. To run a reasoning function, Auto also needs access to a model provider. Your agent's subscription does not supply the server's model credentials.
 
 ## 1. Install Auto Runtime
 
@@ -19,26 +19,25 @@ Copy the Agent prompt into a coding agent with terminal access, or use the Manua
 ::: code-group
 
 ```text [Agent]
-Install https://github.com/BeOnAuto/runtime using its setup guide.
-Ask before installing prerequisites; keep existing files and .env.
-Use pinned versions. Never print secrets or ask for API keys in chat.
-Help configure my model provider, then show how to start the server.
+Install Auto Runtime with npx @on.auto/runtime, as https://on.auto/docs/get-started/local describes.
+Ask before installing prerequisites such as Node.js 26.10; keep existing files and .env.
+Never print secrets or ask for API keys in chat.
+Help configure my model provider in .env, then show how to start the server.
 ```
 
 ```bash [Manual]
-git clone https://github.com/BeOnAuto/runtime.git
-cd runtime
-pnpm install
-cp .env.example .env
+mkdir auto-runtime
+cd auto-runtime
+npx @on.auto/runtime --version
 ```
 
 :::
 
-pnpm uses the Node and pnpm versions pinned by the repository, downloading them when needed. If you are returning to an existing checkout, keep your existing `.env` file.
+`npx` downloads Auto Runtime the first time and keeps it in its cache, so nothing is cloned or built. Auto Runtime reads its settings from the directory you start it in, so use the same directory each time. If you are returning to it, keep your existing `.env` file.
 
 ## 2. Configure a model provider
 
-Open `.env`, uncomment one provider setting and replace its placeholder with your API key:
+Create a file named `.env` in that directory, holding one provider setting with your API key, such as `ANTHROPIC_API_KEY=` followed by the key:
 
 | Provider  | Setting                        |
 | --------- | ------------------------------ |
@@ -46,17 +45,17 @@ Open `.env`, uncomment one provider setting and replace its placeholder with you
 | OpenAI    | `OPENAI_API_KEY`               |
 | Google    | `GOOGLE_GENERATIVE_AI_API_KEY` |
 
-Use a key with access to the model you want to run. Auto reads it on the server; you do not need to paste it into the agent's conversation or its MCP configuration. Model calls may incur charges from your provider.
+Use a key with access to the model you want to run. Auto reads it on the server; you do not need to paste it into the agent's conversation or its MCP configuration. A setting exported in your shell works too, and wins over `.env`. Model calls may incur charges from your provider.
 
 For another provider or an OpenAI-compatible model gateway, see the repository's [model configuration guide](https://github.com/BeOnAuto/runtime/blob/main/docs/engineering/self-host/models.md).
 
 ## 3. Start the server
 
 ```bash
-pnpm dev
+npx @on.auto/runtime
 ```
 
-Keep this terminal open. In a second terminal, check that the server is ready:
+It shows the address of the server, `http://localhost:5555`, its MCP endpoint, a link that opens [Auto Studio](https://studio.on.auto) on it, the model providers it found and where it keeps your work. Keep this terminal open. In a second terminal, check that the server is ready:
 
 ```bash
 curl http://localhost:5555/health
@@ -94,7 +93,7 @@ Start a new Codex session. Use `/mcp` in the CLI to check the connection, or `co
 
 Claude Desktop needs a local MCP connection for this setup. Its remote connector runs from Anthropic's servers, so entering `http://localhost:5555/mcp` there will not reach Auto on your computer.
 
-Install a current [Node.js LTS release](https://nodejs.org/en/download) with npm, so Desktop can run `npx`. This is separate from the Node version pnpm manages inside the Auto repository.
+Desktop runs the bridge below with `npx`, from the Node.js you installed for Auto Runtime.
 
 In Claude Desktop, open **Settings → Developer → Edit Config**. Add the `auto-runtime` entry to `mcpServers`, keeping any existing entries:
 
@@ -142,7 +141,7 @@ For a second run and a comparison of the results, continue with [Build your firs
 
 A reasoning function can use the tools of an MCP server, such as a search service. You tell Auto about the server in a settings file, `auto-runtime.yaml`, and keep the server's key in `.env`.
 
-1. Create `auto-runtime.yaml` at the root of the repository, which Git ignores, holding exactly this, with your server's address in place of the example one. It adds the server under `mcp_servers` for the org `local` that a local server uses, with a header that names the environment variable holding its key, written `${NAME}`; every tool of the server is allowed, since its entry leaves `allowed` out:
+1. Create `auto-runtime.yaml` in the directory you start Auto Runtime in, holding exactly this, with your server's address in place of the example one. It adds the server under `mcp_servers` for the org `local` that a local server uses, with a header that names the environment variable holding its key, written `${NAME}`; every tool of the server is allowed, since its entry leaves `allowed` out:
 
    ```yaml
    mcp_servers:
@@ -154,7 +153,7 @@ A reasoning function can use the tools of an MCP server, such as a search servic
    ```
 
 2. Put the key in `.env` as `SEARCH_API_KEY=` followed by the key.
-3. Stop the server with Ctrl+C and start it again with `pnpm dev`.
+3. Stop the server with Ctrl+C and start it again with `npx @on.auto/runtime`.
 4. Ask your agent to make a function that can use the server:
 
    ```text
@@ -162,9 +161,9 @@ A reasoning function can use the tools of an MCP server, such as a search servic
    tools to find recent news about a company and sums it up in three points.
    ```
 
-The key never goes in `auto-runtime.yaml`; the file only names the variable that holds it. `auto-runtime.example.yaml` at the root of the repository shows every other setting, and the repository's [configuration guide](https://github.com/BeOnAuto/runtime/blob/main/docs/engineering/self-host/configuration.md#mcp-servers) lists every field of a server.
+The key never goes in `auto-runtime.yaml`; the file only names the variable that holds it. [`auto-runtime.example.yaml`](https://github.com/BeOnAuto/runtime/blob/main/auto-runtime.example.yaml) shows every other setting, and the repository's [configuration guide](https://github.com/BeOnAuto/runtime/blob/main/docs/engineering/self-host/configuration.md#mcp-servers) lists every field of a server.
 
-Your agent can try a tool before a function uses it, to see what it answers. A server that marks its read-only tools needs nothing more for that. For one that marks none, add a `testable` line naming its read-only tools inside its entry in `auto-runtime.yaml`, below `org: local` and indented as that line is, then stop the server with Ctrl+C and start it again with `pnpm dev`. For example, if the server is a Constellation gateway, whose read-only tools are search, introspect, validate and dry_run, the end of the entry reads:
+Your agent can try a tool before a function uses it, to see what it answers. A server that marks its read-only tools needs nothing more for that. For one that marks none, add a `testable` line naming its read-only tools inside its entry in `auto-runtime.yaml`, below `org: local` and indented as that line is, then stop the server with Ctrl+C and start it again with `npx @on.auto/runtime`. For example, if the server is a Constellation gateway, whose read-only tools are search, introspect, validate and dry_run, the end of the entry reads:
 
 ```text
     org: local
@@ -175,9 +174,9 @@ Your agent can try a tool before a function uses it, to see what it answers. A s
 
 If the health check fails, check the server terminal for startup errors and confirm that port 5555 is free. If your agent cannot connect but the health check works, check its MCP endpoint, restart the agent session, and confirm it is running on the same computer as Auto.
 
-If a reasoning function reports `provider_not_configured`, check the uncommented setting in `.env` and restart Auto. If model discovery is incomplete, use a concrete model reference supported by your configured provider. Do not paste keys into a prompt to fix a connection.
+If a reasoning function reports `provider_not_configured`, check the setting in `.env` in the directory you started Auto in, and restart Auto. If model discovery is incomplete, use a concrete model reference supported by your configured provider. Do not paste keys into a prompt to fix a connection.
 
-Definitions and run history are saved in the local ledger at `packages/server/.data/ledger.db`. Stop the server with Ctrl+C and restart it with `pnpm dev` when you return. Keep the ledger file if you want to retain your work.
+Definitions and run history are saved in the local ledger at `~/.auto-runtime/ledger.db`, whichever directory you start Auto Runtime in. Stop the server with Ctrl+C and start it again with `npx @on.auto/runtime` when you return. Keep the ledger file if you want to retain your work.
 
 The runtime is in early development and is not ready for production use.
 
