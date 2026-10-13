@@ -41,4 +41,14 @@ describe('internalTermsIn', () => {
   it('leaves alone words that only contain a term', () => {
     expect(internalTermsIn('A specific, inspected prospect with 12 notes, ran by 2030.')).toEqual([]);
   });
+
+  it('leaves alone a measured number that only looks like a status code', () => {
+    expect(
+      internalTermsIn('It answered in 126 ms, read 1,250 rows and 300 events over 3.125 s, and holds 512 MiB.'),
+    ).toEqual([]);
+  });
+
+  it('still finds a status code beside a measured number', () => {
+    expect(internalTermsIn('It answered 404 after 126 ms.')).toEqual(['404']);
+  });
 });
