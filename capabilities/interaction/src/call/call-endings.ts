@@ -1,9 +1,9 @@
 import { Buffer } from 'node:buffer';
 
 import { mostResultBytes } from '@on.auto/definitions';
-import { issuesDetail } from '@on.auto/definitions/json-schema';
-import { answerDocument, isReadOnly, toolInWords, type AnsweredOnce, type CalledOnce } from '@on.auto/mcp';
+import { issuesDetail } from '@on.auto/json-schema';
 import { capitalized, Conflict, Unavailable } from '@on.auto/operations';
+import { answerDocument, isReadOnly, toolInWords, type AnsweredOnce, type CalledOnce } from '@on.auto/tool-servers';
 import { measureOf, mostValueDepth } from '@on.auto/workflow-engine/dsl';
 import { Effect, Result, Schema } from 'effect';
 
@@ -107,7 +107,7 @@ function endedWith(document: CallDocument, called: AnsweredOnce): Ending {
     : afterSending(
         called,
         'server_failed',
-        `The MCP server ${document.call.server} failed: ${called.detail}, after the run called ${named}`,
+        `The tool server ${document.call.server} failed: ${called.detail}, after the run called ${named}`,
       );
 }
 

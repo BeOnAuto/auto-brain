@@ -97,7 +97,7 @@ The HTTP method decides nothing. The server serves these, which `packages/server
 | `send_run_event`         | false          | false             | false            | false           |
 | `get_guide`              | true           | false             | true             | false           |
 
-`run_definition` is destructive while a tool server is configured, since a reasoning function's tools, or the tool an interaction function calls or sends through, may then change something outside, and `test_tool_call` while an entry of `mcp_servers` marks a tool testable, since a tool its server does not mark read-only may then be tested; the table is the server without either, as the test serves it. `list_models` and `run_definition` reach model providers, and `list_tool_servers` and `test_tool_call` reach the tool servers.
+`run_definition` is destructive while a tool server is configured, since a reasoning function's tools, or the tool an interaction function calls or sends through, may then change something outside, and `test_tool_call` while an entry of `tool_servers` marks a tool testable, since a tool its server does not mark read-only may then be tested; the table is the server without either, as the test serves it. `list_models` and `run_definition` reach model providers, and `list_tool_servers` and `test_tool_call` reach the tool servers.
 
 **Calls.** On a scoped endpoint the org, and the playbook of a playbook endpoint, come from the URL, and the arguments are the whole input; on `/mcp` the org is the caller's own and the playbook an argument. The input is decoded with the `json` encoding. A call goes through the same dispatcher and the same `settle` as an HTTP request, with the caller in the URL's org.
 

@@ -1,4 +1,4 @@
-import { isKnownKeyword, pointerOf, type SchemaIssue } from '@on.auto/definitions/document';
+import { isKnownKeyword, pointerOf, type SchemaIssue } from '@on.auto/json-schema';
 import type { Schema } from 'effect';
 
 import { schemaNodes, type Path, type SchemaNode } from './schema-nodes.ts';

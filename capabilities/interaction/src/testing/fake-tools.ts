@@ -1,7 +1,14 @@
 import { Buffer } from 'node:buffer';
 
-import type { AnsweredOnce, CalledOnce, NotOfferedBecause, OneCall, StartedFields, ToolAccess } from '@on.auto/mcp';
-import { ToolNotOffered } from '@on.auto/mcp';
+import type {
+  AnsweredOnce,
+  CalledOnce,
+  NotOfferedBecause,
+  OneCall,
+  StartedFields,
+  ToolAccess,
+} from '@on.auto/tool-servers';
+import { ToolNotOffered } from '@on.auto/tool-servers';
 import { Effect, Result } from 'effect';
 
 import { chatBoard, type BoardAnswer, type ChatBoard } from './chat-board.ts';
@@ -33,7 +40,7 @@ function notAllowed(tool: string): Refusal {
 function notConfigured(server: string): Refusal {
   return {
     because: 'mcp_server_not_configured',
-    detail: `No MCP server named ${server} is configured for this playbook`,
+    detail: `No tool server named ${server} is configured for this playbook`,
   };
 }
 

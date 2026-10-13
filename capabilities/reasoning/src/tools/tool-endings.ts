@@ -1,5 +1,5 @@
-import type { RunTools } from '@on.auto/mcp';
 import { Conflict, Unavailable, type RejectionBecause } from '@on.auto/operations';
+import type { RunTools } from '@on.auto/tool-servers';
 import { Effect, type Schema } from 'effect';
 
 import type { ToolsStoppedBecause } from '../failure/tools-stopped.ts';

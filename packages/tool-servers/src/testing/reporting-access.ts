@@ -1,0 +1,76 @@
+import type { RecordedContent } from '@on.auto/operations';
+import { memoryRecordedContent } from '@on.auto/operations/testing';
+import { Effect } from 'effect';
+
+import type { ServerMessage } from '../access/caller-context.ts';
+import { makeToolAccess, type ToolAccess, type ToolAccessOptions } from '../access/tool-access.ts';
+import type { Timing } from '../bounds/call-bounds.ts';
+import { ignored } from '../connections/ignored.ts';
+import type { Describing, ToolServers } from '../openapi/described-api.ts';
+import { describedToolServers } from '../openapi/described-servers.ts';
+import { readToolServerSettings, type Environment } from '../settings/settings-reading.ts';
+
+export const testClientInfo: ToolAccessOptions['client'] = { name: '@on.auto/runtime', version: '0.0.0-test' };
+
+export interface AccessOptions {
+  readonly environment?: Environment;
+  readonly timing?: Timing;
+  readonly fetch?: ToolAccessOptions['fetch'];
+}
+
+export interface ReportingAccess {
+  readonly access: ToolAccess;
+  readonly content: RecordedContent;
+  readonly messages: () => readonly ServerMessage[];
+  readonly untestable: () => readonly string[];
+}
+
+function servers(
+  written: Readonly<Record<string, unknown>>,
+  { environment = {}, fetch }: AccessOptions,
+  describing: Describing,
+) {
+  return readToolServerSettings({ ...environment, TOOL_SERVERS: JSON.stringify(written) }, { modelProviders: [] }).pipe(
+    Effect.flatMap((settings) =>
+      describedToolServers(settings, { ...describing, ...(fetch === undefined ? {} : { fetch }) }),
+    ),
+  );
+}
+
+function accessOver(settings: ToolServers, { timing, fetch }: AccessOptions): ReportingAccess {
+  const messages: ServerMessage[] = [];
+  const untestable: string[] = [];
+  const content = memoryRecordedContent();
+  const access = makeToolAccess(settings, {
+    client: testClientInfo,
+    content,
+    reportServerMessage: (message) => {
+      messages.push(message);
+    },
+    reportUntestable: (server) => {
+      untestable.push(server);
+    },
+    ...(timing === undefined ? {} : { timing }),
+    ...(fetch === undefined ? {} : { fetch }),
+  });
+  return { access, content, messages: () => [...messages], untestable: () => [...untestable] };
+}
+
+export function reportingAccess(
+  written: Readonly<Record<string, unknown>>,
+  options: AccessOptions = {},
+): ReportingAccess {
+  return accessOver(Effect.runSync(servers(written, options, { reportLeftOut: ignored })), options);
+}
+
+export async function describedAccess(
+  written: Readonly<Record<string, unknown>>,
+  options: AccessOptions = {},
+): Promise<ReportingAccess> {
+  return accessOver(await Effect.runPromise(servers(written, options, { reportLeftOut: ignored })), options);
+}
+
+export const noToolServers: ToolAccess = makeToolAccess(
+  { servers: [] },
+  { client: testClientInfo, content: memoryRecordedContent(), reportServerMessage: ignored, reportUntestable: ignored },
+);

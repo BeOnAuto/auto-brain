@@ -1,4 +1,4 @@
-import { threadReplies } from '@on.auto/mcp/testing';
+import { threadReplies } from '@on.auto/tool-servers/testing';
 import { Effect, Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 

@@ -1,5 +1,5 @@
 import type { RunContext } from '@on.auto/definitions';
-import type { ToolAccess } from '@on.auto/mcp';
+import type { ToolAccess } from '@on.auto/tool-servers';
 import { Clock, Effect } from 'effect';
 
 import type { ReasoningFunctionDefinitionDocument } from '../definition/reasoning-function-definition.ts';

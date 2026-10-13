@@ -1,5 +1,5 @@
-import type { OneCall, StartedFields } from '@on.auto/mcp';
-import { deliveryIdKey, runIdKey } from '@on.auto/mcp/policy';
+import type { OneCall, StartedFields } from '@on.auto/tool-servers';
+import { deliveryIdKey, runIdKey } from '@on.auto/tool-servers/policy';
 import { Effect, Result, type Schema } from 'effect';
 
 import type { DeliveringRecord } from '../run/request-record.ts';

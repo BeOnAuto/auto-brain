@@ -1,0 +1,75 @@
+import { problem, type SettingProblem } from '@on.auto/config';
+import { Result } from 'effect';
+
+import { at, isPinnableUrl } from '../settings/checked.ts';
+import { toolServersSetting } from '../settings/server-entries.ts';
+import type { OpenApiServerSettings } from '../settings/server-settings.ts';
+import { decodedDocument, type ApiDocument, type DocumentProblem } from './api-document.ts';
+import { derivedTools } from './api-tools.ts';
+import type { DescribedApiSettings, Describing } from './described-api.ts';
+import { documentBounds, documentOf } from './document-reading.ts';
+
+type Problems = readonly SettingProblem[];
+
+type Refused<A> = Result.Result<A, Problems>;
+
+function documentProblems(name: string, problems: readonly DocumentProblem[]): readonly SettingProblem[] {
+  return problems.map(({ pointer, detail }) =>
+    problem(toolServersSetting, at(name, 'document'), `At ${pointer} of the document: ${detail}`),
+  );
+}
+
+function serverUrlOf({ url, variables = {} }: NonNullable<ApiDocument['servers']>[number]): string {
+  return url.replaceAll(/\{([^}]+)\}/gu, (written, name: string) => {
+    const variable = Object.hasOwn(variables, name) ? variables[name] : undefined;
+    return variable === undefined ? written : variable.default;
+  });
+}
+
+function baseUrlOf(settings: OpenApiServerSettings, document: ApiDocument): Refused<string> {
+  const refused = (detail: string): Refused<string> =>
+    Result.fail([problem(toolServersSetting, at(settings.name, 'base_url'), detail)]);
+  if (settings.base_url !== null) {
+    return Result.succeed(settings.base_url);
+  }
+  const [first] = document.servers ?? [];
+  if (first === undefined) {
+    return refused('Expected base_url, since the document names no server');
+  }
+  const relativeTo = settings.document.kind === 'url' ? settings.document.url : undefined;
+  const resolved = URL.parse(serverUrlOf(first), relativeTo);
+  if (resolved === null) {
+    return refused('The first server the document names is not a URL this server can resolve; give base_url');
+  }
+  return isPinnableUrl(resolved.href)
+    ? Result.succeed(resolved.href)
+    : refused(
+        'The first server the document names is not an https URL or an http URL on a loopback address; give base_url',
+      );
+}
+
+export async function describedApi(
+  settings: OpenApiServerSettings,
+  describing: Describing,
+): Promise<Refused<DescribedApiSettings>> {
+  const read = await documentOf(settings.document, {
+    fetch: describing.fetch ?? globalThis.fetch,
+    readMs: describing.readMs ?? documentBounds.readMs,
+  });
+  if (Result.isFailure(read)) {
+    return Result.fail([problem(toolServersSetting, at(settings.name, 'document'), read.failure)]);
+  }
+  const derived = Result.flatMap(decodedDocument(read.success), (decoded) =>
+    Result.map(derivedTools(decoded), (tools) => ({ document: decoded.document, tools })),
+  );
+  if (Result.isFailure(derived)) {
+    return Result.fail(documentProblems(settings.name, derived.failure));
+  }
+  const { document, tools } = derived.success;
+  return Result.map(baseUrlOf(settings, document), (baseUrl) => {
+    for (const leftOut of tools.leftOut) {
+      describing.reportLeftOut(settings.name, leftOut);
+    }
+    return { ...settings, api: { baseUrl, operations: tools.operations } };
+  });
+}

@@ -1,4 +1,4 @@
-import { reportingAccess, serveFakeMcp, type FakeMcpServer } from '@on.auto/mcp/testing';
+import { reportingAccess, serveFakeMcp, type FakeMcpServer } from '@on.auto/tool-servers/testing';
 import { Effect, Exit } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -125,7 +125,7 @@ describe('a tool a reasoning function names that is not offered', () => {
         expect.objectContaining({
           kind: 'tool_not_offered',
           because: 'mcp_server_not_configured',
-          detail: 'No MCP server named graph or crm is configured for this playbook',
+          detail: 'No tool server named graph or crm is configured for this playbook',
         }),
       ),
     );

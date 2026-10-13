@@ -1,5 +1,5 @@
-import type { RunTools } from '@on.auto/mcp';
 import { Conflict, InvalidInput, Unavailable } from '@on.auto/operations';
+import type { RunTools } from '@on.auto/tool-servers';
 import { Clock, Effect } from 'effect';
 
 import type { FailureIssue } from '../failure/failure-issue.ts';

@@ -1,0 +1,178 @@
+import { problem, servedScopeOf, type SettingProblem } from '@on.auto/config';
+import { Result, type Redacted } from 'effect';
+
+import { isServerName } from '../names/tool-reference.ts';
+import { apiTransport } from './api-entry-checks.ts';
+import { accepted, at, problemsOf, refused, rejected, secretsOf, type Checked } from './checked.ts';
+import { checkedAuth, checkedHeaders } from './remote-checks.ts';
+import { toolServersSetting, type ServerEntryFields } from './server-entries.ts';
+import type { McpServerSettings, ServerSettings, ServerType, StdioServerSettings } from './server-settings.ts';
+import { toolListsOf } from './tool-lists.ts';
+
+type Transport<S extends ServerSettings> = S extends ServerSettings
+  ? Omit<S, 'name' | 'org' | 'playbooks' | 'allowed' | 'testable' | 'record_content' | 'request_id' | 'secrets'>
+  : never;
+
+const variableName = /^[A-Za-z_][A-Za-z0-9_]*$/u;
+
+const headersOfTheMcpClient = {
+  names: new Set(['mcp-session-id', 'mcp-protocol-version', 'content-type', 'accept', 'last-event-id']),
+  setBy: 'the MCP client',
+};
+
+const serverKinds: Readonly<Record<ServerType, string>> = {
+  mcp: 'an mcp server',
+  stdio: 'a stdio server',
+  openapi: 'an openapi server',
+};
+
+const fieldsOfKinds = {
+  mcp: ['url', 'headers', 'auth'],
+  stdio: ['command', 'args', 'env'],
+  openapi: ['document', 'base_url', 'headers', 'query_params', 'auth'],
+} as const satisfies Readonly<Record<ServerType, readonly (keyof ServerEntryFields)[]>>;
+
+const sourcesOfKinds = { mcp: 'url', stdio: 'command', openapi: 'document' } as const;
+
+const serverTypes: readonly ServerType[] = ['mcp', 'stdio', 'openapi'];
+
+function checkedName(name: string, providers: readonly string[]): Checked<string> {
+  if (!isServerName(name)) {
+    return refused(
+      name,
+      [],
+      'Expected a name of 1 to 32 lowercase letters, digits and hyphens, starting with a letter',
+    );
+  }
+  return providers.includes(name)
+    ? refused(
+        name,
+        [],
+        'The name of a model provider or gateway, which a reasoning function could not tell apart from it',
+      )
+    : accepted(name);
+}
+
+function foreignFieldProblems(name: string, fields: ServerEntryFields, type: ServerType): readonly SettingProblem[] {
+  const own: readonly string[] = fieldsOfKinds[type];
+  const foreign = [...new Set(serverTypes.flatMap((kind) => fieldsOfKinds[kind]))].filter(
+    (field) => !own.includes(field),
+  );
+  return foreign
+    .filter((field) => fields[field] !== undefined)
+    .map((field) => problem(toolServersSetting, at(name, field), `Not a field of ${serverKinds[type]}`));
+}
+
+function isWebUrl(url: string): boolean {
+  return URL.canParse(url) && ['http:', 'https:'].includes(new URL(url).protocol);
+}
+
+function mcpTransport(name: string, fields: ServerEntryFields, url: string): Checked<Transport<McpServerSettings>> {
+  const checkedUrl = isWebUrl(url) ? accepted(url) : refused(name, ['url'], 'Expected an http or https URL');
+  const headers = checkedHeaders(name, fields.headers ?? {}, headersOfTheMcpClient);
+  const auth = checkedAuth(name, fields);
+  return checkedUrl.ok && headers.ok && auth.ok
+    ? accepted({ type: 'mcp', url, headers: headers.value, auth: auth.value })
+    : rejected(problemsOf(checkedUrl, headers, auth));
+}
+
+function stdioTransport(
+  name: string,
+  fields: ServerEntryFields,
+  command: string,
+): Checked<Transport<StdioServerSettings>> {
+  const env = fields.env ?? {};
+  const problems = [
+    ...(command.trim() === '' ? problemsOf(refused(name, ['command'], 'Expected a command')) : []),
+    ...Object.keys(env).flatMap((variable) =>
+      variableName.test(variable)
+        ? []
+        : problemsOf(refused(name, ['env', variable], 'Expected an environment variable name')),
+    ),
+  ];
+  return problems.length === 0
+    ? accepted({ type: 'stdio', command, args: fields.args ?? [], env: secretsOf(env) })
+    : rejected(problems);
+}
+
+function typeOf(fields: ServerEntryFields): ServerType | undefined {
+  if (fields.type !== undefined) {
+    return fields.type;
+  }
+  const given = serverTypes.filter((type) => fields[sourcesOfKinds[type]] !== undefined);
+  return given.length === 1 ? given[0] : undefined;
+}
+
+function missingTransport<A>(name: string, type: ServerType | undefined): Checked<A> {
+  return refused(
+    name,
+    [],
+    type === undefined
+      ? 'Expected url for an mcp server, command for a stdio server or document for an openapi server, one of the three'
+      : `Expected ${sourcesOfKinds[type]} for ${serverKinds[type]}`,
+  );
+}
+
+function transportOf(
+  name: string,
+  fields: ServerEntryFields,
+  type: ServerType | undefined,
+  directory: string,
+): Checked<Transport<ServerSettings>> {
+  const { url, command, document } = fields;
+  if (type === 'mcp' && url !== undefined) {
+    return mcpTransport(name, fields, url);
+  }
+  if (type === 'stdio' && command !== undefined) {
+    return stdioTransport(name, fields, command);
+  }
+  return type === 'openapi' && document !== undefined
+    ? apiTransport(name, fields, document, directory)
+    : missingTransport(name, type);
+}
+
+function checkedTransport(
+  name: string,
+  fields: ServerEntryFields,
+  directory: string,
+): Checked<Transport<ServerSettings>> {
+  const type = typeOf(fields);
+  const transport = transportOf(name, fields, type, directory);
+  const foreign = type === undefined ? [] : foreignFieldProblems(name, fields, type);
+  return transport.ok && foreign.length === 0 ? transport : rejected([...foreign, ...problemsOf(transport)]);
+}
+
+export interface EntryContext {
+  readonly providers: readonly string[];
+  readonly directory: string;
+  readonly secrets: readonly Redacted.Redacted[];
+}
+
+export function checkedEntry(
+  name: string,
+  fields: ServerEntryFields,
+  { providers, directory, secrets }: EntryContext,
+): Result.Result<ServerSettings, readonly SettingProblem[]> {
+  const named = checkedName(name, providers);
+  const scope = servedScopeOf(toolServersSetting, name, fields, 'server');
+  const transport = checkedTransport(name, fields, directory);
+  const tools = toolListsOf(name, fields);
+  if (!named.ok || Result.isFailure(scope) || !transport.ok || Result.isFailure(tools)) {
+    return Result.fail([
+      ...problemsOf(named),
+      ...(Result.isFailure(scope) ? scope.failure : []),
+      ...problemsOf(transport),
+      ...(Result.isFailure(tools) ? tools.failure : []),
+    ]);
+  }
+  return Result.succeed({
+    ...transport.value,
+    name,
+    org: scope.success.org,
+    playbooks: scope.success.playbooks,
+    ...tools.success,
+    record_content: fields.record_content ?? true,
+    request_id: fields.request_id ?? null,
+    secrets,
+  });
+}

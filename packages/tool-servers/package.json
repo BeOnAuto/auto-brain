@@ -1,0 +1,31 @@
+{
+  "name": "@on.auto/tool-servers",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Elastic-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./policy": "./src/policy.ts",
+    "./testing": "./src/testing/index.ts"
+  },
+  "scripts": {
+    "measure": "node measure/bridge-overhead.ts",
+    "lint": "oxlint -c ../../.oxlintrc.json",
+    "typecheck": "tsc",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/client": "2.2.0",
+    "@on.auto/config": "workspace:*",
+    "@on.auto/json-schema": "workspace:*",
+    "@on.auto/operations": "workspace:*",
+    "@on.auto/outbound": "workspace:*",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/server": "2.2.0",
+    "@vitest/coverage-v8": "catalog:",
+    "vitest": "catalog:"
+  }
+}

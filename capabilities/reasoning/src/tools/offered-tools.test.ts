@@ -1,4 +1,4 @@
-import { recordingCallJournal, reportingAccess, serveFakeMcp, toolRun } from '@on.auto/mcp/testing';
+import { recordingCallJournal, reportingAccess, serveFakeMcp, toolRun } from '@on.auto/tool-servers/testing';
 import { Effect, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 

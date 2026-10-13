@@ -1,0 +1,76 @@
+import type { FetchLike } from '@modelcontextprotocol/client';
+import { Result } from 'effect';
+
+import type { Observed } from '../connections/observed-requests.ts';
+import type { ServerConnection } from '../connections/server-connection.ts';
+import type { TokenSource } from '../connections/token-source.ts';
+import { settledOf, type Answering } from './api-answers.ts';
+import { apiRequestOf, type ApiEndpoint, type ApiRequest } from './api-requests.ts';
+import { ArgumentsRefused } from './arguments-refused.ts';
+import type { DescribedApiSettings } from './described-api.ts';
+
+export interface ApiOpening {
+  readonly fetch: FetchLike;
+  readonly tokens: TokenSource | undefined;
+  readonly now: () => number;
+}
+
+const unobserved: Observed = { id: null, response: null };
+
+async function authorizationOf(tokens: TokenSource | undefined): Promise<Readonly<Record<string, string>>> {
+  return tokens === undefined ? {} : { authorization: `Bearer ${await tokens.token()}` };
+}
+
+async function sent(
+  request: ApiRequest,
+  opening: ApiOpening,
+  signal: Readonly<AbortSignal>,
+  mintedAgain = false,
+): Promise<Response> {
+  const response = await opening.fetch(request.url, {
+    method: request.method,
+    headers: { ...request.headers, ...(await authorizationOf(opening.tokens)) },
+    body: request.body,
+    signal,
+  });
+  if (response.status !== 401 || opening.tokens === undefined || mintedAgain) {
+    return response;
+  }
+  await response.body?.cancel();
+  await opening.tokens.onUnauthorized();
+  return sent(request, opening, signal, true);
+}
+
+export function apiConnection(settings: DescribedApiSettings, opening: ApiOpening): ServerConnection {
+  const operations = new Map(settings.api.operations.map((operation) => [operation.tool.name, operation]));
+  const endpoint: ApiEndpoint = {
+    baseUrl: settings.api.baseUrl,
+    headers: settings.headers,
+    query: settings.query_params,
+  };
+  const answering: Answering = { requestIdHeader: settings.request_id, now: opening.now };
+  const { promise: closed, resolve } = Promise.withResolvers<void>();
+  return {
+    call: async ({ tool, input, signal }) => {
+      const operation = operations.get(tool);
+      if (operation === undefined) {
+        return { error: new ArgumentsRefused(`The tool server lists no tool ${tool}`), observed: unobserved };
+      }
+      const request = apiRequestOf(operation, input, endpoint);
+      if (Result.isFailure(request)) {
+        return { error: new ArgumentsRefused(request.failure), observed: unobserved };
+      }
+      try {
+        return await settledOf(await sent(request.success, opening, signal), answering);
+      } catch (error) {
+        return { error, observed: unobserved };
+      }
+    },
+    listTools: () => Promise.resolve(settings.api.operations.map(({ tool }) => tool)),
+    closed,
+    end: () => {
+      resolve();
+      return closed;
+    },
+  };
+}

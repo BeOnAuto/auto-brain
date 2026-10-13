@@ -6,7 +6,7 @@ import {
   type CallAnswered,
   type CalledOnce,
   type ReadingFailedBecause,
-} from '@on.auto/mcp';
+} from '@on.auto/tool-servers';
 
 import { isBoundedPart } from '../delivery/sent-messages.ts';
 import type { Reply } from '../replies/reply-taking.ts';

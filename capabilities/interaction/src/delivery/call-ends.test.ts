@@ -1,4 +1,4 @@
-import type { CallAnswer } from '@on.auto/mcp';
+import type { CallAnswer } from '@on.auto/tool-servers';
 import { describe, expect, it } from 'vitest';
 
 import { endOfCall } from './call-ends.ts';
