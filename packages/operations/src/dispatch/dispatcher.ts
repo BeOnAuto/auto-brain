@@ -10,10 +10,10 @@ import type { Registration, Runnable } from '../definition/registration.ts';
 import { Ledger } from '../ledger/ledger.ts';
 import type { Outcome, Rejected, Succeeded } from '../outcome/outcome.ts';
 import { withoutDispatcherServices, type DispatcherServices } from './dispatcher-services.ts';
-import { withErrorBoundary } from './error-boundary.ts';
+import { withinOperation } from './operation-span.ts';
 import { runInOrg } from './org-binding.ts';
 import { runInPlaybook } from './playbook-binding.ts';
-import { callSummaryOf, type PlaybookRequest, type OrgRequest } from './request.ts';
+import type { PlaybookRequest, OrgRequest } from './request.ts';
 
 export type PipelineStep = (
   registration: Runnable,
@@ -44,7 +44,9 @@ export function makeDispatcher(steps: readonly PipelineStep[]): Dispatcher {
     Effect.forEach(steps, (step) => step(registration, request), { discard: true });
   return {
     dispatchToOrg: <A extends Succeeded>(registration: Runnable<'org', A>, request: OrgRequest) =>
-      withErrorBoundary(
+      withinOperation(
+        registration,
+        request,
         Effect.gen(function* () {
           yield* authorizeOrgCall(registration, request);
           yield* confirmOrgExists(request);
@@ -52,10 +54,11 @@ export function makeDispatcher(steps: readonly PipelineStep[]): Dispatcher {
           const ledger = yield* Ledger;
           return yield* runInOrg(registration, request, ledger).pipe(withoutDispatcherServices);
         }),
-        callSummaryOf(registration.name, request),
       ),
     dispatchToPlaybook: <A extends Succeeded>(registration: Runnable<'playbook', A>, request: PlaybookRequest) =>
-      withErrorBoundary(
+      withinOperation(
+        registration,
+        request,
         Effect.gen(function* () {
           yield* authorizePlaybookCall(registration, request);
           yield* confirmPlaybookTakesCall(registration, request);
@@ -63,7 +66,6 @@ export function makeDispatcher(steps: readonly PipelineStep[]): Dispatcher {
           const ledger = yield* Ledger;
           return yield* runInPlaybook(registration, request, ledger).pipe(withoutDispatcherServices);
         }),
-        callSummaryOf(registration.name, request, request.playbook),
       ),
   };
 }
