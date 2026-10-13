@@ -3,7 +3,7 @@ import type { Permission } from '../caller/permission.ts';
 import type { Answered, Succeeded } from '../outcome/outcome.ts';
 import type { DeclarableReason } from '../outcome/rejection.ts';
 import type { RegisteredPlainLanguage } from '../plain-language/plain-language.ts';
-import type { HttpBody, SuccessStatusByKind } from './definition.ts';
+import type { HttpBody, StreamAnswer, SuccessStatusByKind } from './definition.ts';
 import type { HandlerServices } from './handler-services.ts';
 import type { JsonSchemaDocument } from './json-schema.ts';
 import type { RegisteredRun } from './registered-run.ts';
@@ -39,7 +39,15 @@ interface RunnableOf<S extends OperationScope, K extends OperationKind, A extend
 
 export interface RegistrationOf<S extends OperationScope, K extends OperationKind> extends RunnableOf<S, K, Answered> {
   readonly servedOverHttpAlone?: never;
+  readonly output: JsonSchemaDocument;
 }
+
+export interface JsonAnswered {
+  readonly kind: 'json';
+  readonly output: JsonSchemaDocument;
+}
+
+export type RegisteredAnswer = JsonAnswered | StreamAnswer;
 
 export interface HttpRegistrationOf<S extends OperationScope, K extends OperationKind> extends RunnableOf<
   S,
@@ -47,6 +55,7 @@ export interface HttpRegistrationOf<S extends OperationScope, K extends Operatio
   Succeeded
 > {
   readonly servedOverHttpAlone: HttpBody;
+  readonly answer: RegisteredAnswer;
 }
 
 export type Runnable<S extends OperationScope = OperationScope, A extends Succeeded = Succeeded> = {

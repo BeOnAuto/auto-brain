@@ -22,7 +22,7 @@ export {
 export { PlaybookWriter } from './ledger/playbook-writer.ts';
 export { Caller, CallerIdentitySchema, playbookCallerOf, type CallerIdentity } from './caller/caller.ts';
 export { CallResultSchema, invalidArguments, type CallResult, type CallStatus } from './outcome/call-result.ts';
-export { makeCatalog, type Catalog } from './catalog/catalog.ts';
+export { catalogPathOf, makeCatalog, type Catalog } from './catalog/catalog.ts';
 export { CancelledKindSchema, RunCancelled, type CancelledKind } from './outcome/cancelled-run.ts';
 export { Conflict, ConflictKindSchema, type ConflictKind } from './outcome/conflict.ts';
 export { Forbidden } from './outcome/forbidden.ts';
@@ -228,6 +228,8 @@ export type { InputEncoding } from './definition/registered-run.ts';
 export type {
   HttpRegistration,
   HttpRegistrationOf,
+  JsonAnswered,
+  RegisteredAnswer,
   Registration,
   RegistrationOf,
   RouteRegistration,

@@ -9,13 +9,13 @@ import type { GuideShelf } from './guide-shelf.ts';
 
 export const guideToolName = 'get_guide';
 
-const description = [
+export const guideToolDescription = [
   "Reads one of the playbook's guides: what its words mean, how each kind of definition is written, with its format, examples and bounds, and how the common tasks are done.",
   'A format guide is read before a definition of that type is written, and a recipe before the task it names.',
   '`guide` names one of them, and the answer is its whole text in Markdown.',
 ].join(' ');
 
-const guideArgument =
+export const guideArgumentDescription =
   'The guide to read: the terminology, the format of a definition type, or a recipe for a common task';
 
 const strictly: SchemaAST.ParseOptions = { onExcessProperty: 'error', errors: 'all' };
@@ -25,12 +25,12 @@ const failureOf = SchemaIssue.makeFormatterStandardSchemaV1();
 export function guideToolDefinitionOf({ everyGuide }: GuideShelf): ToolDefinition {
   return {
     title: 'Get guide',
-    description,
+    description: guideToolDescription,
     inputSchema: advertisedSchema({
       $schema: 'https://json-schema.org/draft/2020-12/schema',
       type: 'object',
       properties: {
-        guide: { type: 'string', enum: everyGuide.map(({ name }) => name), description: guideArgument },
+        guide: { type: 'string', enum: everyGuide.map(({ name }) => name), description: guideArgumentDescription },
       },
       required: ['guide'],
       additionalProperties: false,

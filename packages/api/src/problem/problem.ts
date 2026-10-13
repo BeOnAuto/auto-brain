@@ -1,90 +1,41 @@
 import {
+  capitalized,
   isKindWithType,
   problemTypeOf,
+  reasonOfKind,
   type KindWithType,
   type RejectionKind,
   type RejectionBecause,
   type UnavailableKind,
 } from '@on.auto/operations';
 
-export type ProblemReason =
-  | 'invalid_input'
-  | 'forbidden'
-  | 'not_found'
-  | 'conflict'
-  | 'unavailable'
-  | 'cancelled'
-  | 'unanswered'
-  | 'client_closed_request'
-  | 'bad_request'
-  | 'unauthenticated'
-  | 'origin_not_allowed'
-  | 'method_not_allowed'
-  | 'length_required'
-  | 'content_too_large'
-  | 'unsupported_media_type'
-  | 'internal';
+import {
+  problemTypes,
+  type OptionalProblemMembers,
+  type Problem,
+  type ProblemReason,
+  type ProblemType,
+} from './problem-document.ts';
 
-export interface ProblemIssue {
-  readonly detail: string;
-  readonly pointer: string;
+function kindProblemTypeOf(kind: KindWithType): Pick<ProblemType, 'status' | 'title'> {
+  return { status: problemTypes[reasonOfKind(kind)].status, title: capitalized(kind.replaceAll('_', ' ')) };
 }
 
-export interface Problem {
+interface TypedProblem {
   readonly type: string;
-  readonly title: string;
-  readonly status: number;
-  readonly detail: string;
-  readonly reason: ProblemReason;
-  readonly instance?: string;
-  readonly errors?: readonly ProblemIssue[];
-  readonly kind?: RejectionKind;
-  readonly because?: RejectionBecause;
-}
-
-export type OptionalProblemMembers = Pick<Problem, 'instance' | 'errors' | 'kind' | 'because'>;
-
-interface ProblemType {
   readonly status: number;
   readonly title: string;
 }
 
-const problemTypes: Readonly<Record<ProblemReason, ProblemType>> = {
-  invalid_input: { status: 422, title: 'Invalid input' },
-  forbidden: { status: 403, title: 'Forbidden' },
-  not_found: { status: 404, title: 'Not found' },
-  conflict: { status: 409, title: 'Conflict' },
-  unavailable: { status: 503, title: 'Unavailable' },
-  cancelled: { status: 409, title: 'Cancelled' },
-  unanswered: { status: 410, title: 'Unanswered' },
-  client_closed_request: { status: 499, title: 'Client closed request' },
-  bad_request: { status: 400, title: 'Bad request' },
-  unauthenticated: { status: 401, title: 'Unauthenticated' },
-  origin_not_allowed: { status: 403, title: 'Origin not allowed' },
-  method_not_allowed: { status: 405, title: 'Method not allowed' },
-  length_required: { status: 411, title: 'Length required' },
-  content_too_large: { status: 413, title: 'Content too large' },
-  unsupported_media_type: { status: 415, title: 'Unsupported media type' },
-  internal: { status: 500, title: 'Internal error' },
-};
-
-const kindProblemTypes: Readonly<Record<KindWithType, ProblemType>> = {
-  tools_unfinished: { status: 503, title: 'Tools unfinished' },
-  tools_called: { status: 409, title: 'Tools called' },
-  effect_unknown: { status: 409, title: 'Effect unknown' },
-  rebuilding: { status: 503, title: 'Rebuilding' },
-};
-
-function problemTypeFor(
-  reason: ProblemReason,
-  kind: RejectionKind | undefined,
-): ProblemType & { readonly type: string } {
-  return isKindWithType(kind)
-    ? { type: problemTypeOf(kind), ...kindProblemTypes[kind] }
-    : { type: problemTypeOf(reason), ...problemTypes[reason] };
+function problemTypeFor(reason: ProblemReason, kind: RejectionKind | undefined): TypedProblem {
+  if (isKindWithType(kind)) {
+    return { type: problemTypeOf(kind), ...kindProblemTypeOf(kind) };
+  }
+  const { status, title } = problemTypes[reason];
+  return { type: problemTypeOf(reason), status, title };
 }
 
-const problemMediaType = 'application/problem+json';
+export const problemMediaType = 'application/problem+json';
 
 const retryAfterSeconds = '5';
 

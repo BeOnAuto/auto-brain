@@ -8,9 +8,18 @@ import {
 } from '@on.auto/operations/testing';
 import { Layer } from 'effect';
 
-import { makeAppRuntime, mcpRoutes, operationRoutes, type ApiHandler, type AppRuntime } from '../index.ts';
+import {
+  apiCatalogRoutes,
+  makeAppRuntime,
+  guideRoutes,
+  mcpRoutes,
+  openApiDocumentRoutes,
+  operationRoutes,
+  type ApiHandler,
+  type AppRuntime,
+} from '../index.ts';
 import { createTestHandler, type ReportedThrown } from './api-calls.ts';
-import { testDefinitionTypes, testGuides, testRecipes } from './guides.ts';
+import { testShelf } from './guides.ts';
 import { notebookOperations } from './notebook.ts';
 
 export interface OperationServer {
@@ -79,14 +88,15 @@ export async function operationServer({
   const mcpErrors: string[] = [];
   const routes = [
     operationRoutes({ catalog, dispatcher, runCall: runtime.run }),
+    openApiDocumentRoutes({ catalog, serverInfo: testServerInfo, shelf: testShelf }),
+    guideRoutes(testShelf),
+    apiCatalogRoutes(testShelf),
     mcpRoutes({
       catalog,
       dispatcher,
       runCall: runtime.run,
       serverInfo: testServerInfo,
-      definitionTypes: testDefinitionTypes,
-      guides: testGuides,
-      recipes: testRecipes,
+      shelf: testShelf,
       reportError: (error) => {
         mcpErrors.push(error.message);
       },

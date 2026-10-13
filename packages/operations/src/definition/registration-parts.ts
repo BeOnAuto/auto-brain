@@ -4,9 +4,9 @@ import type { OperationKind, OperationScope } from '../caller/operation-scope.ts
 import { rejected, type Rejected, type Succeeded } from '../outcome/outcome.ts';
 import type { DeclarableReason, Rejection } from '../outcome/rejection.ts';
 import { checkedDefinition } from './definition-checks.ts';
-import type { Definition, ObjectSchema } from './definition.ts';
-import { jsonSchemaDocumentOf } from './json-schema.ts';
-import type { RegisteredFieldsOf } from './registration.ts';
+import type { Definition, JsonAnswer, ObjectSchema, StreamAnswer } from './definition.ts';
+import { jsonSchemaDocumentOf, type JsonSchemaDocument } from './json-schema.ts';
+import type { RegisteredAnswer, RegisteredFieldsOf } from './registration.ts';
 
 export function settledOf<Answer, S extends Succeeded, R extends DeclarableReason, Services>(
   handled: Effect.Effect<Answer, Rejection<R>, Services>,
@@ -76,4 +76,14 @@ export function registeredFieldsOf<S extends OperationScope, K extends Operation
     reasons: [...new Set(definition.reasons)],
     input: jsonSchemaDocumentOf(definition.inputSchema),
   };
+}
+
+export function registeredOutputOf(outputSchema: ObjectSchema): JsonSchemaDocument {
+  return jsonSchemaDocumentOf(outputSchema);
+}
+
+export function registeredAnswerOf(answer: JsonAnswer<ObjectSchema> | StreamAnswer): RegisteredAnswer {
+  return answer.kind === 'json'
+    ? { kind: 'json', output: registeredOutputOf(answer.outputSchema) }
+    : { kind: 'stream', mediaType: answer.mediaType };
 }

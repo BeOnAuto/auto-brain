@@ -1,6 +1,7 @@
 import type { Cancelled, Failed, Rejected } from '@on.auto/operations';
 
-import { internalErrorProblem, problemOf, type OptionalProblemMembers, type Problem } from './problem.ts';
+import type { OptionalProblemMembers, Problem } from './problem-document.ts';
+import { internalErrorProblem, problemOf } from './problem.ts';
 
 export type Unsuccessful = Rejected | Failed | Cancelled;
 
