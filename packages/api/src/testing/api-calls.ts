@@ -25,11 +25,13 @@ export interface ReportedThrown {
 }
 
 const admitEveryone: Authenticator = {
-  mode: 'keys',
-  authenticate: () => ({
-    org: 'acme',
-    callerIn: (org) => ({ id: 'anyone', org, permissions: allPermissions, playbooks: '*' }),
-  }),
+  mode: 'credentials',
+  resource: undefined,
+  authenticate: () =>
+    Promise.resolve({
+      org: 'acme',
+      callerIn: (org) => ({ id: 'anyone', org, permissions: allPermissions, playbooks: '*' }),
+    }),
 };
 
 export function createTestHandler(options: Partial<ApiOptions> = {}): {
@@ -62,6 +64,6 @@ export async function call(
 
 export const echoRequestId: RegisterRoutes = (routes) => {
   routes.add('GET', '/echo', (c) =>
-    c.json({ requestId: c.get('requestId'), caller: c.get('principal').callerIn('acme').id }),
+    c.json({ requestId: c.get('requestId'), caller: c.get('principal').callerIn('acme')?.id }),
   );
 };

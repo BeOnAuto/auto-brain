@@ -5,6 +5,7 @@ import {
   type Catalog,
   type Dispatcher,
   type DispatcherServices,
+  type OrgRequest,
   type Outcome,
   type RouteRegistration,
   type Settled,
@@ -14,10 +15,10 @@ import { Effect, Result } from 'effect';
 import type { Context } from 'hono';
 
 import type { ApiEnv } from '../api-env.ts';
-import type { ReportThrown } from '../problem/error-boundary.ts';
+import { callerOfAnotherOrg, insufficientScope } from '../authentication/challenges.ts';
 import { problemResponse } from '../problem/problem.ts';
-import type { RegisterRoutes, RouteHandler } from '../routes.ts';
-import { parseCallInput, type CallInput } from './call-input.ts';
+import type { RegisterRoutes, RouteHandler, Routes } from '../routes.ts';
+import { parseCallInput } from './call-input.ts';
 import { toHttpResponse } from './outcome-response.ts';
 import { routeTableOf } from './route-table.ts';
 
@@ -40,10 +41,8 @@ function dispatched(
   dispatcher: Dispatcher,
   registration: RouteRegistration,
   c: Context<ApiEnv>,
-  given: CallInput,
+  request: OrgRequest,
 ): Dispatched {
-  const org = String(c.req.param('org'));
-  const request = { caller: c.get('principal').callerIn(org), org, ...given };
   if (registration.scope === 'org') {
     return {
       call: dispatcher.dispatchToOrg(registration, request),
@@ -60,21 +59,28 @@ function dispatched(
 function handlerFor(
   registration: RouteRegistration,
   { dispatcher, runCall }: OperationRoutesOptions,
-  reportThrown: ReportThrown,
+  { reportThrown, resource }: Routes,
 ): RouteHandler {
+  const forbidden = insufficientScope(resource, registration.permissions);
   return async (c) => {
+    const org = String(c.req.param('org'));
+    const caller = c.get('principal').callerIn(org);
+    if (caller === undefined) {
+      return problemResponse(callerOfAnotherOrg, forbidden);
+    }
     const given = await parseCallInput(c, registration);
     if (Result.isFailure(given)) {
       return problemResponse(given.failure);
     }
     const requestId = c.get('requestId');
-    const { call, summary } = dispatched(dispatcher, registration, c, given.success);
+    const { call, summary } = dispatched(dispatcher, registration, c, { caller, org, ...given.success });
     const settled = await runCall(settle(call, c.req.raw.signal).pipe(Effect.annotateLogs({ requestId })));
     return toHttpResponse(settled, {
       status: registration.successStatus,
       signal: c.req.raw.signal,
       failed: (thrown) => reportThrown(thrown, requestId, summary),
       abortConnection: c.env.abortConnection,
+      forbidden,
     });
   };
 }
@@ -83,7 +89,7 @@ export function operationRoutes(options: OperationRoutesOptions): RegisterRoutes
   const table = routeTableOf(options.catalog);
   return (routes) => {
     for (const { registration, path } of table) {
-      routes.add(registration.route.method, path, handlerFor(registration, options, routes.reportThrown));
+      routes.add(registration.route.method, path, handlerFor(registration, options, routes));
     }
   };
 }
