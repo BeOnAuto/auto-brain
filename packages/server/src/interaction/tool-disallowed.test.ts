@@ -52,7 +52,7 @@ describe('a tool its operator disallowed after a request asked through it', { ti
       type: 'delivery_failed',
       number: 1,
       because: 'server_failure',
-      detail: 'The MCP server chat could not be used: The MCP server could not be reached',
+      detail: 'The tool server chat could not be used: The tool server could not be reached',
       duration_ms: aNumber,
     });
     expect(facts.at(-1)).toMatchObject({

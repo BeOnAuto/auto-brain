@@ -137,33 +137,33 @@
       },
       "description": "The only model references a reasoning function may give, by name or through an alias, and list_models shows, each provider/model or provider/* for every model of a provider; every model when left out. ALLOWED_MODELS wins over it"
     },
-    "mcp_servers": {
+    "tool_servers": {
       "type": "object",
       "additionalProperties": {
         "type": "object",
         "properties": {
           "type": {
             "type": "string",
-            "enum": ["http", "stdio"],
-            "description": "http for a remote server, given url; stdio for a process, given command. Taken from url or command when left out"
+            "enum": ["mcp", "stdio", "openapi"],
+            "description": "mcp for a remote MCP server, given url; stdio for an MCP server this server starts as a process, given command; openapi for an HTTP API, given document. Taken from url, command or document when left out"
           },
           "url": {
             "type": "string",
-            "description": "The http or https URL of a remote server, spoken to over Streamable HTTP"
+            "description": "The http or https URL of a remote MCP server, spoken to over Streamable HTTP"
           },
           "headers": {
             "type": "object",
             "additionalProperties": {
               "type": "string"
             },
-            "description": "Headers sent to a remote server with every request, their values treated as secrets: in the configuration file a credential is a reference such as ${GRAPH_API_KEY}"
+            "description": "Headers sent to a remote MCP server or an HTTP API with every request; the value of a reference such as ${GRAPH_API_KEY} is a secret, scrubbed from everything a call records, and a value written out is not"
           },
           "auth": {
             "type": "object",
             "properties": {
               "issuer": {
                 "type": "string",
-                "description": "The issuer of the authorization server the credential was registered with, pinned: it is sent to no other. An https URL"
+                "description": "The issuer of the authorization server the credential was registered with, pinned: it is sent to no other. An https URL, or an http URL on a loopback address"
               },
               "client_id": {
                 "type": "string",
@@ -188,7 +188,7 @@
             },
             "required": ["issuer", "client_id"],
             "additionalProperties": false,
-            "description": "OAuth client credentials, for a server whose authorization server issues tokens to clients: client_secret, or private_key with its algorithm"
+            "description": "OAuth client credentials, for a server whose authorization server issues tokens to clients: client_secret, or private_key with its algorithm. An mcp server's authorization server is found from the server's own metadata, an openapi server's from the issuer's"
           },
           "command": {
             "type": "string",
@@ -206,7 +206,22 @@
             "additionalProperties": {
               "type": "string"
             },
-            "description": "The whole environment of the process of a stdio server, which inherits nothing else, their values treated as secrets: in the configuration file a credential is a reference such as ${GRAPH_API_KEY}"
+            "description": "The whole environment of the process of a stdio server, which inherits nothing else; the value of a reference such as ${GRAPH_API_KEY} is a secret, scrubbed from everything a call records, and a value written out is not"
+          },
+          "document": {
+            "type": "string",
+            "description": "The OpenAPI document of an HTTP API, version 3.0 or 3.1, read once at start: an https URL, an http URL on a loopback address, or a path relative to the directory of the configuration file"
+          },
+          "base_url": {
+            "type": "string",
+            "description": "The URL the calls of an HTTP API go to, in place of the first server its document names; required when it names none. An https URL, or an http URL on a loopback address"
+          },
+          "query_params": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Query parameters sent to an HTTP API with every call, such as a key the API takes in its query; the value of a reference such as ${GRAPH_API_KEY} is a secret, scrubbed from everything a call records, and a value written out is not"
           },
           "org": {
             "type": "string",
@@ -235,16 +250,16 @@
           },
           "record_content": {
             "type": "boolean",
-            "description": "Whether the arguments and the answers of this server's calls are kept whole, scrubbed of secrets, in the playbook's ledger, where anyone who may read the playbook reads them; false keeps their sizes and digests alone. Default true"
+            "description": "Whether the arguments and the answers of this server's calls are kept whole, scrubbed of secrets, in the playbook's ledger, where anyone who may read the playbook reads them; false keeps their sizes alone. Default true"
           },
           "request_id": {
             "type": "string",
-            "description": "The response header, or the key of the metadata of a result, in which the server carries its own id of a request, recorded with each call"
+            "description": "The response header, or for an MCP server the key of the metadata of a result, in which the server carries its own id of a request, recorded with each call"
           }
         },
         "additionalProperties": false
       },
-      "description": "The MCP servers whose tools a function may name, each bound to an org and optionally its playbooks: url for a remote server, command for a process. Secrets are references such as ${GRAPH_API_KEY}. MCP_SERVERS wins over it"
+      "description": "The tool servers whose tools a function may name, each bound to an org and optionally its playbooks: url for a remote MCP server, command for an MCP server run as a process, document for an HTTP API described by an OpenAPI document. Secrets are references such as ${GRAPH_API_KEY}. TOOL_SERVERS wins over it"
     }
   },
   "additionalProperties": false,

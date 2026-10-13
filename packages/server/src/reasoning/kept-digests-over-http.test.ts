@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
-import { serveFakeMcp } from '@on.auto/mcp/testing';
 import { answers, callingTools, textResult } from '@on.auto/reasoning/testing';
+import { serveFakeMcp } from '@on.auto/tool-servers/testing';
 import { Schema } from 'effect';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
@@ -35,7 +35,7 @@ async function servingTheEcho(recordContent: boolean): Promise<ReasoningServer> 
     LOCAL_MODE: 'true',
     GRAPH_API_KEY: apiKey,
     GRAPH_PIN: pin,
-    MCP_SERVERS: JSON.stringify({
+    TOOL_SERVERS: JSON.stringify({
       graph: {
         url: graph.url,
         headers: { Authorization: 'Bearer ${GRAPH_API_KEY}', 'X-Pin': '${GRAPH_PIN}' },

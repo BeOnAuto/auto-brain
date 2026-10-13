@@ -15,10 +15,10 @@ export interface FunctionSettings extends ReasoningSettings {
 }
 
 export function readFunctionSettings(environment: Environment, file: FileUse | undefined): FunctionSettings {
-  const { models, mcp, reasoning } = readReasoningSettings(environment, file);
+  const { models, toolServers, reasoning } = readReasoningSettings(environment, file);
   return {
     models,
-    mcp,
+    toolServers,
     reasoning,
     computation: Effect.runSync(readComputationSettings(environment)),
     recall: Effect.runSync(readRecallSettings(environment)),

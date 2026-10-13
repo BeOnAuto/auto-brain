@@ -1,8 +1,8 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { serveFakeMcp, type FakeHints } from '@on.auto/mcp/testing';
 import { TimedOut, ToolsStopped, type ToolsStoppedBecause } from '@on.auto/reasoning';
 import { answers, callingTools, textResult, type ScriptedCall, type ScriptedReply } from '@on.auto/reasoning/testing';
+import { serveFakeMcp, type FakeHints } from '@on.auto/tool-servers/testing';
 import { Effect } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
@@ -37,7 +37,7 @@ async function serving(replies: readonly ScriptedReply[], hints: FakeHints = {})
   const server = await servingReasoning(replies, {
     LOCAL_MODE: 'true',
     GRAPH_API_KEY: apiKey,
-    MCP_SERVERS: JSON.stringify({
+    TOOL_SERVERS: JSON.stringify({
       graph: { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme' },
     }),
   });

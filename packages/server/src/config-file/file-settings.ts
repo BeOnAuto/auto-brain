@@ -1,7 +1,7 @@
-import { fileSetting, type FileSetting, type RefusedKeys } from '@on.auto/config';
+import { fileSetting, type FileSetting } from '@on.auto/config';
 import { ApiKeysSchema } from '@on.auto/identity';
-import { McpServersSchema } from '@on.auto/mcp';
 import { AllowedModelsSchema, DeclaredModelsSchema, ModelAliasesSchema, ModelGatewaysSchema } from '@on.auto/reasoning';
+import { ToolServersSchema } from '@on.auto/tool-servers';
 import { Schema } from 'effect';
 
 import { Origin } from '../settings/origin.ts';
@@ -58,18 +58,12 @@ export const fileSettings: readonly FileSetting[] = [
     asJson,
   ),
   fileSetting(
-    'MCP_SERVERS',
-    McpServersSchema.annotate({
+    'TOOL_SERVERS',
+    ToolServersSchema.annotate({
       description:
-        'The MCP servers whose tools a function may name, each bound to an org and optionally its playbooks: url for a remote server, command for a process. Secrets are references such as ${GRAPH_API_KEY}. MCP_SERVERS wins over it',
+        'The tool servers whose tools a function may name, each bound to an org and optionally its playbooks: url for a remote MCP server, command for an MCP server run as a process, document for an HTTP API described by an OpenAPI document. Secrets are references such as ${GRAPH_API_KEY}. TOOL_SERVERS wins over it',
     }),
     asJson,
     { references: 'kept' },
   ),
 ];
-
-export const refusedKeys: RefusedKeys = new Map([
-  ['allowed_tools', 'a tool is allowed on the entry of its server in mcp_servers, under allowed'],
-  ['testable_tools', 'a tool is marked testable on the entry of its server in mcp_servers, under testable'],
-  ['channels', 'an interaction function names the tool it sends through in its own document, under deliver'],
-]);

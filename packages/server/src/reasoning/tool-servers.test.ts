@@ -6,7 +6,7 @@ import {
   withMcpSession,
   type McpSession,
 } from '@on.auto/api/testing';
-import { serveFakeMcp, type FakeMcpServer } from '@on.auto/mcp/testing';
+import { serveFakeMcp, type FakeMcpServer } from '@on.auto/tool-servers/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
@@ -43,7 +43,7 @@ async function serving(): Promise<Serving> {
   const server = await servingReasoning([], {
     LOCAL_MODE: 'true',
     GRAPH_API_KEY: apiKey,
-    MCP_SERVERS: JSON.stringify({
+    TOOL_SERVERS: JSON.stringify({
       graph: {
         url: graph.url,
         headers: { Authorization: 'Bearer ${GRAPH_API_KEY}', 'X-Region': 'production-eu' },
@@ -64,7 +64,7 @@ const listedForAlpha = {
   tool_servers: [
     {
       name: 'graph',
-      type: 'http',
+      type: 'mcp',
       record_content: true,
       tools: [
         {
@@ -88,9 +88,9 @@ const listedForAlpha = {
     },
     {
       name: 'wiki',
-      type: 'http',
+      type: 'mcp',
       record_content: false,
-      unavailable: 'The MCP server wiki could not be used: The MCP server could not be reached',
+      unavailable: 'The tool server wiki could not be used: The tool server could not be reached',
       because: 'unreachable',
     },
   ],
@@ -216,7 +216,7 @@ const graphInTheOrg = { ...graphOfAlpha, playbooks: ['*'] };
 
 const wikiInTheOrg = { ...wikiOfAlpha, playbooks: ['alpha'] };
 
-const salesInTheOrg = { name: 'sales', type: 'http', playbooks: ['sales'] };
+const salesInTheOrg = { name: 'sales', type: 'mcp', playbooks: ['sales'] };
 
 describe('list_tool_servers of the org over HTTP', () => {
   it('lists every server of the org with the playbooks it serves, or those that serve the playbook asked for', async () => {

@@ -2,8 +2,8 @@ import { setTimeout } from 'node:timers/promises';
 
 import { listedTools, plainTextIn, problemIn, withMcpSession, type McpSession } from '@on.auto/api/testing';
 import { createApiKey } from '@on.auto/identity';
-import { serveFakeMcp, type FakeMcpServer } from '@on.auto/mcp/testing';
 import { allPermissions } from '@on.auto/operations';
+import { serveFakeMcp, type FakeMcpServer } from '@on.auto/tool-servers/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
@@ -36,7 +36,7 @@ async function serving(entry: Readonly<Record<string, unknown>> = {}): Promise<S
   const server = await servingReasoning([], {
     API_KEYS: JSON.stringify([builder.entry, reader.entry]),
     GRAPH_API_KEY: apiKey,
-    MCP_SERVERS: JSON.stringify({
+    TOOL_SERVERS: JSON.stringify({
       graph: { url: graph.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme', ...entry },
     }),
   });

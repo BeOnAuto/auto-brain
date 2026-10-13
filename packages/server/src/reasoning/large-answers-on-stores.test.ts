@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
-import { toolBounds } from '@on.auto/mcp';
-import { serveFakeMcp } from '@on.auto/mcp/testing';
 import { bucketReady, emptied, keysIn, testObjectStoreOf } from '@on.auto/object-storage/testing';
 import { answers, callingTools, textResult } from '@on.auto/reasoning/testing';
+import { toolBounds } from '@on.auto/tool-servers';
+import { serveFakeMcp } from '@on.auto/tool-servers/testing';
 import { Schema } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
@@ -96,7 +96,7 @@ async function servingLargeAnswers(environment: Readonly<Record<string, string>>
   );
   const server = await servingReasoning([callingTools(everyCall, answers(textResult('Read them all.')))], {
     LOCAL_MODE: 'true',
-    MCP_SERVERS: JSON.stringify({ graph: { url: graph.url, org: 'acme' } }),
+    TOOL_SERVERS: JSON.stringify({ graph: { url: graph.url, org: 'acme' } }),
     ...environment,
   });
   onTestFinished(server.stop);

@@ -1,6 +1,6 @@
 import { callDocument, type CallOptions } from '@on.auto/interaction/testing';
-import type { Timing } from '@on.auto/mcp';
-import { serveFakeMcp, type FakeHints, type FakeMcpServer } from '@on.auto/mcp/testing';
+import type { Timing } from '@on.auto/tool-servers';
+import { serveFakeMcp, type FakeHints, type FakeMcpServer } from '@on.auto/tool-servers/testing';
 import { Schema } from 'effect';
 import { expect, onTestFinished } from 'vitest';
 
@@ -66,7 +66,7 @@ export async function askingASystem({
   onTestFinished(fake.close);
   const chat = { url: fake.url, headers: { Authorization: 'Bearer ${CHAT_KEY}' }, org: 'acme', ...entry };
   const server = await interactionServerOn(
-    { CHAT_KEY: chatKey, MCP_SERVERS: JSON.stringify({ chat, ...servers }), ...environment },
+    { CHAT_KEY: chatKey, TOOL_SERVERS: JSON.stringify({ chat, ...servers }), ...environment },
     timing === undefined ? {} : { toolTiming: timing },
   );
   await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });

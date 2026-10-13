@@ -1,4 +1,4 @@
-import { serveFakeMcp, type FakeMcpServer } from '@on.auto/mcp/testing';
+import { serveFakeMcp, type FakeMcpServer } from '@on.auto/tool-servers/testing';
 import { Schema } from 'effect';
 import { onTestFinished } from 'vitest';
 
@@ -19,7 +19,7 @@ export function chatEnvironment(
 ): Readonly<Record<string, string>> {
   return {
     CHAT_KEY: chatKey,
-    MCP_SERVERS: JSON.stringify({
+    TOOL_SERVERS: JSON.stringify({
       chat: { url, headers: { Authorization: 'Bearer ${CHAT_KEY}' }, org: 'acme', ...entry },
     }),
   };

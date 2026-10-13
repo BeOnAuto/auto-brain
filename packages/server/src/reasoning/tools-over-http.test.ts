@@ -1,6 +1,11 @@
-import { fakeStdioServerPath, serveFakeMcp, stdioTestTimeoutMs, type FakeMcpServer } from '@on.auto/mcp/testing';
 import { TimedOut } from '@on.auto/reasoning';
 import { answers, callingTools, textResult, type ScriptedReply } from '@on.auto/reasoning/testing';
+import {
+  fakeStdioServerPath,
+  serveFakeMcp,
+  stdioTestTimeoutMs,
+  type FakeMcpServer,
+} from '@on.auto/tool-servers/testing';
 import { Effect, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -46,7 +51,7 @@ async function serving(fake: FakeMcpServer, ...replies: readonly ScriptedReply[]
     GRAPH_API_KEY: apiKey,
     GRAPH_PIN: pin,
     NODE_V8_COVERAGE: process.env['NODE_V8_COVERAGE'] ?? '',
-    MCP_SERVERS: JSON.stringify({
+    TOOL_SERVERS: JSON.stringify({
       graph: {
         url: fake.url,
         headers: { Authorization: 'Bearer ${GRAPH_API_KEY}', 'X-Pin': '${GRAPH_PIN}' },

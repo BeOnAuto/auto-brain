@@ -1,7 +1,12 @@
 import { listedTools, plainTextIn, withMcpSession, type McpSession } from '@on.auto/api/testing';
-import { fakeStdioServerPath, serveFakeMcp, stdioTestTimeoutMs, type FakeMcpServer } from '@on.auto/mcp/testing';
 import { TimedOut } from '@on.auto/reasoning';
 import { answers, callingTools, textResult, type ScriptedReply } from '@on.auto/reasoning/testing';
+import {
+  fakeStdioServerPath,
+  serveFakeMcp,
+  stdioTestTimeoutMs,
+  type FakeMcpServer,
+} from '@on.auto/tool-servers/testing';
 import { Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -31,7 +36,7 @@ async function serving(fake: FakeMcpServer | undefined, replies: readonly Script
     fake === undefined
       ? {}
       : {
-          MCP_SERVERS: JSON.stringify({
+          TOOL_SERVERS: JSON.stringify({
             graph: { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme' },
             limitless: {
               command: process.execPath,
@@ -90,8 +95,8 @@ async function annotationsOf(server: ReasoningServer) {
 
 const searched = callingTools([['mcp__graph__search', { query: 'acme' }]], answers(textResult('Acme has 2 rows.')));
 
-describe('run_definition over MCP on a server with MCP servers', () => {
-  it('is destructive when an MCP server is configured, so an assistant asks before running a function', async () => {
+describe('run_definition over MCP on a server with tool servers', () => {
+  it('is destructive when a tool server is configured, so an assistant asks before running a function', async () => {
     const configured = await serving(await fakeGraph(), []);
     const unconfigured = await serving(undefined, []);
 

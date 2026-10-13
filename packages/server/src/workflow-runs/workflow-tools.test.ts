@@ -1,6 +1,6 @@
-import { serveFakeMcp, type FakeMcpServer } from '@on.auto/mcp/testing';
 import { TimedOut } from '@on.auto/reasoning';
 import { callingTools, type ScriptedReply } from '@on.auto/reasoning/testing';
+import { serveFakeMcp, type FakeMcpServer } from '@on.auto/tool-servers/testing';
 import { Effect, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -68,7 +68,7 @@ async function serving(...replies: readonly ScriptedReply[]): Promise<ReasoningS
   const server = await servingWorkflows(replies, {
     LOCAL_MODE: 'true',
     GRAPH_API_KEY: apiKey,
-    MCP_SERVERS: JSON.stringify({
+    TOOL_SERVERS: JSON.stringify({
       graph: { ...graph, org: 'acme' },
       crm: { ...graph, org: 'globex' },
       down: { url: gone.url, org: 'acme' },

@@ -1,7 +1,7 @@
 import { withMcpSession } from '@on.auto/api/testing';
 import { campaignPace, campaignRows } from '@on.auto/computation/testing';
-import { serveFakeMcp, type FakeMcpServer } from '@on.auto/mcp/testing';
 import { jsonResult, textResult, type ScriptedReply } from '@on.auto/reasoning/testing';
+import { serveFakeMcp, type FakeMcpServer } from '@on.auto/tool-servers/testing';
 import { scriptedPool, type PoolOutcome } from '@on.auto/workflow-engine/testing';
 import { Effect, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -141,7 +141,7 @@ async function serving(programPoolOf: ProgramPoolOf, ...replies: readonly Script
     {
       LOCAL_MODE: 'true',
       GRAPH_API_KEY: apiKey,
-      MCP_SERVERS: JSON.stringify({
+      TOOL_SERVERS: JSON.stringify({
         graph: { url: graph.url, org: 'acme', headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' } },
       }),
     },

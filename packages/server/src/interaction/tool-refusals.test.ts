@@ -40,7 +40,7 @@ describe('a delivery through a tool this playbook may not use, over HTTP', { tim
         refusal: { reason: 'unavailable', kind: 'tool_not_offered', because: 'mcp_server_not_configured' },
         types: ['run_started', 'run_rejected'],
       },
-      { refusal: { detail: 'No MCP server named chat is configured for this playbook' } },
+      { refusal: { detail: 'No tool server named chat is configured for this playbook' } },
       {
         refusal: {
           because: 'tool_not_allowed',
@@ -66,7 +66,7 @@ describe('a delivery through a tool this playbook may not use, over HTTP', { tim
     expect(facts.at(-1)).toMatchObject({
       type: 'delivery_failed',
       because: 'tool_not_offered',
-      detail: 'The MCP server chat does not list the tool post_message',
+      detail: 'The tool server chat does not list the tool post_message',
     });
     expect(chat.received()).toEqual([]);
     expect((await server.call('GET', `${alpha}/interactions`)).body).toMatchObject({

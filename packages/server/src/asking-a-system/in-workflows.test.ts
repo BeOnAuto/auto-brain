@@ -1,4 +1,4 @@
-import { inTurn, serveFakeMcp, threadReplies } from '@on.auto/mcp/testing';
+import { inTurn, serveFakeMcp, threadReplies } from '@on.auto/tool-servers/testing';
 import { Schema } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
