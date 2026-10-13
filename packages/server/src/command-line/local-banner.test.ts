@@ -3,14 +3,9 @@ import { stripVTControlCharacters } from 'node:util';
 import { describe, expect, it } from 'vitest';
 
 import { headerOf, readyNoticeOf, stoppedNotice, stoppingNotice } from './local-banner.ts';
-import { logoHeight } from './logo.ts';
+import { logoHeight, logoWidth } from './logo.ts';
 
-const ready = {
-  url: 'http://localhost:5555',
-  readyInMs: 640,
-  providers: ['anthropic', 'openai'],
-  ledger: '~/.auto-runtime/ledger.db',
-};
+const ready = { url: 'http://localhost:5555', readyInMs: 640 };
 
 describe('the header of the auto-runtime command', () => {
   it('names the runtime and its version in plain text where there are no colors', () => {
@@ -22,22 +17,21 @@ describe('the header of the auto-runtime command', () => {
     const plain = lines.map((line) => stripVTControlCharacters(line));
 
     expect(lines).toHaveLength(logoHeight + 3);
-    expect(plain[6]).toMatch(/█ {3}Auto Runtime v0\.7\.0$/u);
-    expect(plain[7]).toMatch(/ {3}Runs the playbooks your agent builds$/u);
+    const titleLine = Math.floor(logoHeight / 2);
+
+    expect(plain[titleLine]?.slice(2 + logoWidth)).toBe('  Auto Runtime v0.7.0');
+    expect(plain[titleLine + 1]?.slice(2 + logoWidth)).toBe('  Runs the playbooks your agent builds');
   });
 });
 
 describe('the notice that the server is ready', () => {
-  it('gives the addresses, the models, the ledger and how to connect an agent', () => {
+  it('gives the addresses and how to connect an agent', () => {
     expect(readyNoticeOf(ready, 1).split('\n')).toEqual([
-      '',
       '  ✔ Ready in 640 ms',
-      '',
-      '  ➜  Server   http://localhost:5555',
-      '  ➜  MCP      http://localhost:5555/mcp',
-      '  ➜  Studio   https://studio.on.auto/?server=http%3A%2F%2Flocalhost%3A5555',
-      '  ➜  Models   anthropic, openai',
-      '  ➜  Ledger   ~/.auto-runtime/ledger.db',
+      '  ➜  Studio   https://studio.on.auto',
+      '     Server   http://localhost:5555',
+      '     MCP      http://localhost:5555/mcp',
+      '     Docs     https://on.auto/docs/',
       '',
       '  Connect your agent',
       '    Claude Code   claude mcp add --transport http auto-runtime http://localhost:5555/mcp',
@@ -48,17 +42,35 @@ describe('the notice that the server is ready', () => {
     ]);
   });
 
-  it('says where a key goes when no model provider is configured', () => {
-    expect(readyNoticeOf({ ...ready, providers: [] }, 1)).toContain(
-      '  ➜  Models   none yet; put a key such as ANTHROPIC_API_KEY in .env in this directory\n',
-    );
-  });
-
   it('links the addresses where the terminal shows colors', () => {
     const notice = readyNoticeOf(ready, 24);
 
     expect(notice).toContain('\u001B]8;;http://localhost:5555/mcp\u001B\\http://localhost:5555/mcp\u001B]8;;\u001B\\');
     expect(stripVTControlCharacters(notice)).toBe(readyNoticeOf(ready, 1));
+  });
+
+  it('shows Studio by its address alone for the default server, and links to it with the server', () => {
+    const notice = readyNoticeOf(ready, 24);
+
+    expect(notice).toContain(
+      '\u001B]8;;https://studio.on.auto/?server=http%3A%2F%2Flocalhost%3A5555\u001B\\https://studio.on.auto\u001B]8;;\u001B\\',
+    );
+  });
+
+  it('shows the server in the Studio address when it is not the default one', () => {
+    expect(readyNoticeOf({ ...ready, url: 'http://localhost:6000' }, 1)).toContain(
+      '  ➜  Studio   https://studio.on.auto/?server=http://localhost:6000\n',
+    );
+  });
+
+  it('sets the Studio link apart, in bold cyan, and dims the labels of the others', () => {
+    const lines = readyNoticeOf(ready, 24).split('\n');
+    const studio = String(lines.find((line) => line.includes('Studio')));
+    const server = String(lines.find((line) => line.includes('Server')));
+
+    expect(studio).toContain('\u001B[36m\u001B[1m\u001B]8;;https://studio.on.auto/');
+    expect(server).toContain('\u001B[2mServer  \u001B[22m');
+    expect(server).not.toContain('\u001B[1m');
   });
 });
 

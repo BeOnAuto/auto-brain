@@ -21,13 +21,17 @@ async function startServer(settings: Readonly<Record<string, string>>): Promise<
   const stopInsisted = stopInsistedBy(signals);
   Object.assign(process.env, settings);
   await servedLocally({
-    settings: process.env,
-    home: homedir(),
     depth: colorDepthOf(process.stdout),
     write: (text) => {
       process.stdout.write(text);
     },
     clock: () => performance.now(),
+    tickEvery: (milliseconds, tick) => {
+      const timer = setInterval(tick, milliseconds);
+      return () => {
+        clearInterval(timer);
+      };
+    },
     run: async () => {
       const { compositionRoot } = await import('./src/composition/composition-root.ts');
       const { runServer } = await import('./src/lifecycle/run-server.ts');

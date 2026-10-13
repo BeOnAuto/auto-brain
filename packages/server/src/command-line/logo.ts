@@ -30,22 +30,19 @@ const backgrounds: Readonly<Record<PaintingDepth, (ink: Ink) => string>> = {
 };
 
 const pixelRows: readonly (readonly [string, string])[] = [
-  ['.................rr.ooo.gg..bb', '................rr..oo.ggg.bb.'],
-  ['...............rrr.oo..gg.bbb.', '...............rr.ooo.gg..bb..'],
-  ['.......WWWWWWWWWWWWWWWWg.bb...', '......WWWWWWWWWWWWWWWWWWbbb...'],
-  ['......WWWWKKWWWWKKKKKKWWbb....', '......WWWWKKWWWWKKKKKKWWb.....'],
-  ['......WWWKKKKWWWKKKKKKWWb.....', '......WWWKKKKWWWKKKKKKWW......'],
-  ['......WWKKKKKKWWKKKKKKWW......', '......WWKKKKKKWWWKKKKWWW......'],
-  ['......WWWWWWWWWWWWWWWWWW......', '......WWWWWWWWWWWWWWWWWW......'],
-  ['......WWKKKKKKWWWKKKKWWW......', '......WWKKKKKKWWKKKKKKWW......'],
-  ['......WWWWKKWWWWKKKKKKWW......', '.....rWWWWKKWWWWKKKKKKWW......'],
-  ['.....rWWWWKKWWWWKKKKKKWW......', '....rrWWWWKKWWWWWKKKKWWW......'],
-  ['...rrrWWWWWWWWWWWWWWWWWW......', '...rr.oWWWWWWWWWWWWWWWW.......'],
-  ['..rr..oo.ggg.bb...............', '.rrr.oo..gg.bbb...............'],
-  ['.rr.ooo.gg..bb................', 'rr..oo.ggg.bb.................'],
+  ['.............rr.oo.gg.bb', '............rr.oo.gg.bb.'],
+  ['............rr.oo.gg.bb.', '......WWWWWWWWWWWWg.bb..'],
+  ['.....WWWKWWWWKKKKKWbb...', '.....WWKKKWWWKKKKKWbb...'],
+  ['.....WWKKKWWWKKKKKWb....', '.....WKKKKKWWKKKKKW.....'],
+  ['.....WKKKKKWWWKKKWW.....', '.....WWWWWWWWWWWWWW.....'],
+  ['.....WWWWWWWWWWWWWW.....', '.....WKKKKKWWWKKKWW.....'],
+  ['.....WKKKKKWWKKKKKW.....', '....rWWKKKWWWKKKKKW.....'],
+  ['...rrWWKKKWWWKKKKKW.....', '...rrWWKKKWWWWKKKWW.....'],
+  ['..rr.oWWWWWWWWWWWW......', '.rr.oo.gg.bb............'],
+  ['.rr.oo.gg.bb............', 'rr.oo.gg.bb.............'],
 ];
 
-export const logoWidth = 30;
+export const logoWidth = 24;
 
 export const logoHeight = pixelRows.length;
 

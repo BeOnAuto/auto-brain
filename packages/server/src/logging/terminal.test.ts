@@ -25,13 +25,13 @@ describe('the colors a stream shows', () => {
 describe('painting text for a terminal', () => {
   it('leaves the text as it is where there are no colors', () => {
     expect(painterFor(1)('red', 'stopped')).toBe('stopped');
-    expect(linkerFor(1)('http://localhost:5555')).toBe('http://localhost:5555');
+    expect(linkerFor(1)('http://localhost:5555/', 'the server')).toBe('the server');
   });
 
   it('styles the text and links the address where there are colors', () => {
     expect(painterFor(24)('red', 'stopped')).toBe('\u001B[31mstopped\u001B[39m');
-    expect(linkerFor(8)('http://localhost:5555')).toBe(
-      '\u001B]8;;http://localhost:5555\u001B\\http://localhost:5555\u001B]8;;\u001B\\',
+    expect(linkerFor(8)('http://localhost:5555/', 'the server')).toBe(
+      '\u001B]8;;http://localhost:5555/\u001B\\the server\u001B]8;;\u001B\\',
     );
   });
 });

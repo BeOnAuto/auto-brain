@@ -6,11 +6,13 @@ import { logoHeight, logoLines, type PaintingDepth } from './logo.ts';
 export interface Ready {
   readonly url: string;
   readonly readyInMs: number;
-  readonly providers: readonly string[];
-  readonly ledger: string;
 }
 
 const tagline = 'Runs the playbooks your agent builds';
+
+const documentation = 'https://on.auto/docs/';
+
+const studioDefaultServer = 'http://localhost:5555';
 
 function plainHeader(version: string): string {
   return `\nAuto Runtime v${version}\n${tagline}\n\n`;
@@ -25,7 +27,7 @@ function paintedHeader(version: string, depth: PaintingDepth): string {
   ]);
   const lines = logoLines(depth).map((line, row) => {
     const beside = besideLogo.get(row);
-    return beside === undefined ? `  ${line}` : `  ${line.trimEnd()}   ${beside}`;
+    return beside === undefined ? `  ${line}` : `  ${line}  ${beside}`;
   });
   return `\n${lines.join('\n')}\n\n`;
 }
@@ -34,31 +36,22 @@ export function headerOf(version: string, depth: ColorDepth): string {
   return depth === 1 ? plainHeader(version) : paintedHeader(version, depth);
 }
 
-function modelsLine(providers: readonly string[], depth: ColorDepth): string {
-  const paint = painterFor(depth);
-  return providers.length === 0
-    ? paint('yellow', 'none yet; put a key such as ANTHROPIC_API_KEY in .env in this directory')
-    : providers.join(', ');
-}
-
-export function readyNoticeOf({ url, readyInMs, providers, ledger }: Ready, depth: ColorDepth): string {
+export function readyNoticeOf({ url, readyInMs }: Ready, depth: ColorDepth): string {
   const paint = painterFor(depth);
   const link = linkerFor(depth);
   const mcp = `${url}/mcp`;
-  const entry = (label: string, value: string): string =>
-    `  ${paint('cyan', '➜')}  ${paint('bold', label.padEnd(8))} ${value}`;
+  const studio = `${studioOrigin}/?server=${encodeURIComponent(url)}`;
+  const studioShown = url === studioDefaultServer ? studioOrigin : `${studioOrigin}/?server=${url}`;
+  const entry = (label: string, value: string): string => `     ${paint('dim', label.padEnd(8))} ${link(value, value)}`;
   const agent = (label: string, command: string): string => `    ${label.padEnd(13)} ${paint('dim', command)}`;
   return [
-    '',
     `  ${paint('green', '✔')} Ready in ${readyInMs} ms`,
+    `  ${paint('cyan', '➜')}  ${paint('bold', 'Studio'.padEnd(8))} ${paint(['cyan', 'bold'], link(studio, studioShown))}`,
+    entry('Server', url),
+    entry('MCP', mcp),
+    entry('Docs', documentation),
     '',
-    entry('Server', link(url)),
-    entry('MCP', link(mcp)),
-    entry('Studio', link(`${studioOrigin}/?server=${encodeURIComponent(url)}`)),
-    entry('Models', modelsLine(providers, depth)),
-    entry('Ledger', ledger),
-    '',
-    `  ${paint('bold', 'Connect your agent')}`,
+    `  ${paint('dim', 'Connect your agent')}`,
     agent('Claude Code', `claude mcp add --transport http auto-runtime ${mcp}`),
     agent('Codex', `codex mcp add auto-runtime --url ${mcp}`),
     '',
@@ -74,3 +67,11 @@ export function stoppingNotice(depth: ColorDepth): string {
 export function stoppedNotice(depth: ColorDepth): string {
   return `  ${painterFor(depth)('green', '✔')} Stopped\n`;
 }
+
+const spinnerFrames = '⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏';
+
+export function startingLine(frame: number, depth: ColorDepth): string {
+  return `\r  ${painterFor(depth)('cyan', spinnerFrames.charAt(frame % spinnerFrames.length))} Starting…`;
+}
+
+export const clearedLine = '\r\u001B[2K';
