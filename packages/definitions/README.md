@@ -118,7 +118,7 @@ A run carries `run_id`, `type`, `name`, `definition_version`, `status`, `output`
 
 ### Size limits
 
-The ledger's cloud store holds at most 2 MB in a row, so a run records bounded values. Sizes are counted on the value encoded as JSON, in UTF-8 bytes.
+A run records its values in its facts, which every decision on its stream and every rebuild of a projection reads back, so a run records bounded values. Sizes are counted on the value encoded as JSON, in UTF-8 bytes.
 
 - The `input` may take at most 262144 bytes (256 KiB). A larger input is rejected with `invalid_input` at `/input` when the call is decoded, before anything is recorded.
 - The `input` may nest at most 512 levels deep, `mostInputDepth`, as deep as a workflow holds a value; `nestsWithin` measures it, counting each array and object a level. A deeper input is rejected the same way, for every runtime adapter, so that none is recorded deeper than a store takes: on SQLite an input 3,000 levels deep failed to append, while PostgreSQL took it.
