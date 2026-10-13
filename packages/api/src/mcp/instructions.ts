@@ -40,7 +40,7 @@ const purposeByType: Readonly<Record<string, string>> = {
   workflow: 'A workflow runs functions in steps, waits for input and can start on a schedule or on an event.',
 };
 
-const whatAPlaybookIs = [
+export const whatAPlaybookIs = [
   'Auto Runtime executes playbooks; Studio manages them; your agent is a separate client.',
   'A playbook contains one brain (its reusable functions) and workflows. The brain shares its lifecycle. Functions run directly or through workflows; runs belong to the playbook.',
 ];

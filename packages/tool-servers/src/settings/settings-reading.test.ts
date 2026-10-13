@@ -65,7 +65,7 @@ describe('reading an mcp server', () => {
       type: 'mcp',
       url: graph.url,
       auth: null,
-      org: 'acme',
+      orgs: ['acme'],
       playbooks: ['sales', 'support'],
       allowed: null,
       record_content: true,
@@ -190,7 +190,7 @@ describe('the name, org and playbooks of a server', () => {
       'TOOL_SERVERS /Graph: Expected the org this server serves',
     ]);
     expect(problemsOf({ graph: { ...graph, org: 'acme corp', playbooks: ['sales', 'Support Desk'] } })).toEqual([
-      'TOOL_SERVERS /graph/org: Expected an org id',
+      'TOOL_SERVERS /graph/org: Expected an org id, a list of them, or *',
       'TOOL_SERVERS /graph/playbooks/1: Expected a playbook id',
     ]);
   });
@@ -270,9 +270,9 @@ describe('a credential written into the url or the args of a server', () => {
 });
 
 describe('the references of a server', () => {
-  it('refuses a reference outside headers, query_params, env and auth, where a key would show in a process listing or a URL', () => {
+  it('refuses a reference outside headers, query_params, security, env and auth, where a key would show in a process listing or a URL', () => {
     const misplaced =
-      'Holds a reference to an environment variable, which only headers, query_params, env and auth may hold: an argument shows in the listing of the processes of the machine, and the URL of a server or of a document is no place for a credential';
+      'Holds a reference to an environment variable, which only headers, query_params, security, env and auth may hold: an argument shows in the listing of the processes of the machine, and the URL of a server or of a document is no place for a credential';
 
     expect(
       problemsOf({

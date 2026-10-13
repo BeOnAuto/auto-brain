@@ -68,7 +68,7 @@ export function countedFetch<Args extends readonly [unknown, unknown?]>(
 export function describing(entries: Entries, { directory, ...more }: DescribingOptions = {}) {
   const leftOut: (Parameters<Describing['reportLeftOut']>[1] & { readonly server: string })[] = [];
   const effect = readToolServerSettings(
-    { TOOL_SERVERS: JSON.stringify(entries) },
+    { TOOL_SERVERS: JSON.stringify(entries), GRAPH_API_KEY: 'graph-api-key-4f1d9a7c2b' },
     { modelProviders: [], ...(directory === undefined ? {} : { documentsDirectory: directory }) },
   ).pipe(
     Effect.flatMap((settings) =>

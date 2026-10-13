@@ -16,6 +16,8 @@ const ParameterSchema = Schema.Struct({
   in: Schema.Literals(['path', 'query', 'header', 'cookie']),
   required: Schema.optionalKey(Schema.Boolean),
   description: Schema.optionalKey(Schema.String),
+  style: Schema.optionalKey(Schema.String),
+  explode: Schema.optionalKey(Schema.Boolean),
   schema: Schema.optionalKey(SchemaValue),
 });
 
@@ -23,6 +25,18 @@ const RequestBodySchema = Schema.Struct({
   required: Schema.optionalKey(Schema.Boolean),
   content: Schema.Record(Schema.String, Schema.Struct({ schema: Schema.optionalKey(SchemaValue) })),
 });
+
+const SecurityRequirementSchema = Schema.Record(Schema.String, Schema.Array(Schema.String));
+
+const SecuritySchemeSchema = Schema.Union([
+  Schema.Struct({
+    type: Schema.Literal('apiKey'),
+    name: Schema.String,
+    in: Schema.Literals(['query', 'header', 'cookie']),
+  }),
+  Schema.Struct({ type: Schema.Literal('http'), scheme: Schema.String }),
+  Schema.Struct({ type: Schema.Literals(['oauth2', 'openIdConnect', 'mutualTLS']) }),
+]);
 
 const ParameterOrReferenceSchema = Schema.Union([ReferenceSchema, ParameterSchema]);
 
@@ -34,6 +48,7 @@ const OperationSchema = Schema.Struct({
   description: Schema.optionalKey(Schema.String),
   parameters: Schema.optionalKey(Schema.Array(ParameterOrReferenceSchema)),
   requestBody: Schema.optionalKey(RequestBodyOrReferenceSchema),
+  security: Schema.optionalKey(Schema.Array(SecurityRequirementSchema)),
 });
 
 export const methods = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'] as const;
@@ -58,12 +73,14 @@ const ServerSchema = Schema.Struct({
 const ApiDocumentSchema = Schema.Struct({
   openapi: Schema.String,
   servers: Schema.optionalKey(Schema.Array(ServerSchema)),
+  security: Schema.optionalKey(Schema.Array(SecurityRequirementSchema)),
   paths: Schema.optionalKey(Schema.Record(Schema.String, PathItemSchema)),
   components: Schema.optionalKey(
     Schema.Struct({
       schemas: Schema.optionalKey(Schema.Record(Schema.String, SchemaValue)),
       parameters: Schema.optionalKey(Schema.Record(Schema.String, ParameterOrReferenceSchema)),
       requestBodies: Schema.optionalKey(Schema.Record(Schema.String, RequestBodyOrReferenceSchema)),
+      securitySchemes: Schema.optionalKey(Schema.Record(Schema.String, SecuritySchemeSchema)),
     }),
   ),
 });
@@ -81,6 +98,10 @@ export type Parameter = typeof ParameterSchema.Type;
 export type ParameterOrReference = typeof ParameterOrReferenceSchema.Type;
 
 export type RequestBody = typeof RequestBodySchema.Type;
+
+export type SecurityRequirement = typeof SecurityRequirementSchema.Type;
+
+export type SecurityScheme = typeof SecuritySchemeSchema.Type;
 
 export type RequestBodyOrReference = typeof RequestBodyOrReferenceSchema.Type;
 

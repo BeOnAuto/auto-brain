@@ -125,7 +125,7 @@ describe('the console log format', () => {
 
     expect(lines).toEqual([
       '  <time> • Workflows run in this server: a run lasts at most 7 days, at most 8 of their calls run at once, and the runs are swept every 250 ms',
-      '  <time> ▲ No request can authenticate: API_KEYS lists no keys and local mode is off, so every path except /health answers 401',
+      '  <time> ▲ No request can authenticate: API_KEYS lists no keys and local mode is off, so every path answers 401 except /health, the OpenAPI document at /v1/openapi.json, the guides under /v1/guides and the API catalog at /.well-known/api-catalog',
       '  <time> ✖ A run stays started because settling it failed',
       '  <time> ✖ The ledger is gone',
       '  <time> · {"answered":false}',

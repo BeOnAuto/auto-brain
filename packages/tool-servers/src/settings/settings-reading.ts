@@ -9,7 +9,7 @@ import {
 import { Data, Effect, Option, Result, Schema } from 'effect';
 
 import { checkedEntry } from './entry-checks.ts';
-import { misplacedReferences, secretsOfEntry } from './entry-references.ts';
+import { misplacedReferences, secretsOfEntry, unreferencedSecurity } from './entry-references.ts';
 import { ServerEntrySchema, ToolServersSchema, toolServersSetting, type ServerEntryFields } from './server-entries.ts';
 import type { ServerSettings, ToolServerSettings } from './server-settings.ts';
 
@@ -37,19 +37,23 @@ function readEntry(
   context: ToolServerSettingsContext,
 ): Result.Result<ServerSettings, readonly SettingProblem[]> {
   const pointer = pointerOf([name]);
-  const credentials = credentialProblems(name, written, pointer).map(({ pointer: place }) =>
-    problem(toolServersSetting, place, credentialAdvice),
-  );
   const resolved = substituted(written, pointer, environment);
+  const flagged = credentialProblems(name, written, pointer).map(({ pointer: place }) => place);
+  const writtenOut = unreferencedSecurity(name, written, resolved.references).filter(
+    (place) => !flagged.includes(place),
+  );
+  const credentials = [...flagged, ...writtenOut].map((place) => problem(toolServersSetting, place, credentialAdvice));
   const unresolved = resolved.problems.map(({ pointer: place, detail }) => problem(toolServersSetting, place, detail));
   const problems = [...credentials, ...unresolved, ...misplacedReferences(name, resolved.references)];
-  return problems.length > 0
-    ? Result.fail(problems)
-    : checkedEntry(name, decodeEntry(resolved.value), {
-        providers: context.modelProviders,
-        directory: context.documentsDirectory ?? process.cwd(),
-        secrets: secretsOfEntry(name, resolved.references),
-      });
+  if (problems.length > 0) {
+    return Result.fail(problems);
+  }
+  const fields = decodeEntry(resolved.value);
+  return checkedEntry(name, fields, {
+    providers: context.modelProviders,
+    directory: context.documentsDirectory ?? process.cwd(),
+    secrets: secretsOfEntry(name, fields, resolved.references),
+  });
 }
 
 function serversOf(

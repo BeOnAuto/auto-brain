@@ -4,7 +4,8 @@ import { canAccessPlaybook, type CallerIdentity, type OperationScope } from '@on
 import { authInfoFor, type PlaybookCall, type OrgCall } from '../hand-off/caller-hand-off.ts';
 import { droppedArgumentsOf } from '../hand-off/dropped-arguments.ts';
 import { requestBodyLimit } from '../operations/request-body.ts';
-import { problemOf, problemResponse, type Problem } from '../problem/problem.ts';
+import type { Problem } from '../problem/problem-document.ts';
+import { problemOf, problemResponse } from '../problem/problem.ts';
 import type { RegisterRoutes, RouteHandler } from '../routes.ts';
 import type { McpServing } from './mcp-connection.ts';
 import {

@@ -1,3 +1,5 @@
+import { Buffer } from 'node:buffer';
+
 import { fakeAuthorization, type ClientRegistration, type FakeAuthorization } from '../testing/fake-authorization.ts';
 import { deniedText } from '../testing/fake-tools.ts';
 import { serveOnLoopback, type FetchHandler } from '../testing/loopback-server.ts';
@@ -38,15 +40,33 @@ const basePath = '/v1';
 
 const notFound = () => Promise.resolve(new Response(null, { status: 404 }));
 
+const openPaths: ReadonlySet<string> = new Set([`${basePath}/notes`]);
+
+function passwordOf(authorization: string): string {
+  const [, password = ''] = Buffer.from(authorization.replace(/^Basic /u, ''), 'base64')
+    .toString()
+    .split(':');
+  return password;
+}
+
+function keyed(request: Readonly<Request>, key: string): boolean {
+  const authorization = request.headers.get('authorization') ?? '';
+  return (
+    request.headers.get('x-api-key') === key ||
+    new URL(request.url).searchParams.get('api_key') === key ||
+    authorization === `Bearer ${key}` ||
+    (authorization.startsWith('Basic ') && passwordOf(authorization) === key)
+  );
+}
+
 function authorized(request: Readonly<Request>, key: string | undefined, issuing: Issuing | undefined): boolean {
+  if (openPaths.has(new URL(request.url).pathname)) {
+    return true;
+  }
   if (issuing !== undefined) {
     return issuing.accepts(String(request.headers.get('authorization')).replace(/^Bearer /u, ''));
   }
-  return (
-    key === undefined ||
-    request.headers.get('x-api-key') === key ||
-    new URL(request.url).searchParams.get('api_key') === key
-  );
+  return key === undefined || keyed(request, key);
 }
 
 async function seenOf(request: Readonly<Request>): Promise<SeenApiRequest> {

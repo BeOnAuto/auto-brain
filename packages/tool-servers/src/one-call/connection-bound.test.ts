@@ -20,7 +20,7 @@ const anyMessage: unknown = expect.any(String);
 const settings: StdioServerSettings = {
   type: 'stdio',
   name: 'notes',
-  org: 'acme',
+  orgs: ['acme'],
   playbooks: null,
   allowed: null,
   record_content: false,

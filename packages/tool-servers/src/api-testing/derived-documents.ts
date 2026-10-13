@@ -1,8 +1,14 @@
-import { Result, type Schema } from 'effect';
+import { Redacted, Result, type Schema } from 'effect';
 
 import type { ListedTool } from '../bounds/tool-results.ts';
 import { decodedDocument, type DocumentProblem } from '../openapi/api-document.ts';
 import { derivedTools, type DerivedTools } from '../openapi/api-tools.ts';
+import type { Presented } from '../openapi/security-schemes.ts';
+
+const keyPresented: Presented = {
+  security: new Map([['apiKeyAuth', Redacted.make('graph-api-key-4f1d9a7c2b')]]),
+  auth: false,
+};
 
 type DocumentFields = Readonly<Record<string, Schema.Json>>;
 
@@ -13,12 +19,14 @@ export function documentOf(paths: DocumentFields, more: DocumentFields = {}): Do
   return { openapi: '3.1.0', info: { title: 'Notes', version: '1' }, paths, ...more };
 }
 
-export function toolsOf(document: DocumentFields): DerivedTools {
-  return Result.getOrThrow(Result.flatMap(decodedDocument(document), derivedTools));
+export function toolsOf(document: DocumentFields, presented: Presented = keyPresented): DerivedTools {
+  return Result.getOrThrow(Result.flatMap(decodedDocument(document), (read) => derivedTools(read, presented)));
 }
 
 export function problemsOf(document: DocumentFields): readonly DocumentProblem[] {
-  return Result.getOrThrow(Result.flip(Result.flatMap(decodedDocument(document), derivedTools)));
+  return Result.getOrThrow(
+    Result.flip(Result.flatMap(decodedDocument(document), (read) => derivedTools(read, keyPresented))),
+  );
 }
 
 export function toolNamed(document: DocumentFields, name: string): ListedTool | undefined {

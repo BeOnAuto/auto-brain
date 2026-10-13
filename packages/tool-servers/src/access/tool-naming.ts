@@ -11,7 +11,7 @@ import type { ServerSettings } from '../settings/server-settings.ts';
 import { ToolNotOffered } from './tool-not-offered.ts';
 
 export interface Settled {
-  readonly settings: Pick<ServerSettings, 'org' | 'playbooks' | 'allowed'>;
+  readonly settings: Pick<ServerSettings, 'orgs' | 'playbooks' | 'allowed'>;
 }
 
 export interface NamingOn<Link extends Settled> {

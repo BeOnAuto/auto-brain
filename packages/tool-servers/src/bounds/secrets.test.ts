@@ -1,4 +1,4 @@
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { readToolServerSettings } from '../settings/settings-reading.ts';
@@ -115,5 +115,18 @@ describe('the secrets of a value', () => {
       '[redacted]': 1,
       kept: 3,
     });
+  });
+});
+
+describe('a secret sent in an address', () => {
+  it('is scrubbed in the forms a query and a path carry it, as well as written', () => {
+    const key = 'k3y+With/Slash=Pad== and more';
+    const { scrub } = secretsOf([Redacted.make(key)]);
+
+    expect([
+      scrub(`?api_key=${new URLSearchParams([['', key]]).toString().slice(1)}`),
+      scrub(`/keys/${encodeURIComponent(key)}`),
+      scrub(key),
+    ]).toEqual(['?api_key=[redacted]', '/keys/[redacted]', '[redacted]']);
   });
 });

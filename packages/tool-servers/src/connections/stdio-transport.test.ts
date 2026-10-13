@@ -36,7 +36,7 @@ function stdioSettings(args: readonly string[], changes: Partial<StdioServerSett
     command: process.execPath,
     args: [fakeStdioServerPath, ...args],
     env: environment,
-    org: 'acme',
+    orgs: ['acme'],
     allowed: null,
     playbooks: null,
     record_content: false,

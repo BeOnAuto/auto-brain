@@ -1,6 +1,7 @@
+import type { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { documentOf, toolNamed, toolsOf } from '../api-testing/derived-documents.ts';
+import { documentOf, problemsOf, toolNamed, toolsOf } from '../api-testing/derived-documents.ts';
 import { fakeApiDocument } from '../testing/index.ts';
 
 describe('the tools of an HTTP API', () => {
@@ -84,10 +85,69 @@ describe('the components of an HTTP API that refer to each other or to themselve
   });
 });
 
+describe('the names derived from a path of an HTTP API', () => {
+  it('read a path of 200,000 braces in one pass, as they read a server address of as many', () => {
+    const braces = '{'.repeat(200_000);
+    const [operation] = toolsOf(documentOf({ [`/${braces}`]: { get: {} } })).operations;
+
+    expect(operation?.tool.name).toBe(`get_${'{'.repeat(124)}`.replaceAll('{', '_'));
+  });
+});
+
+function propertiesOf(
+  count: number,
+): Readonly<Record<string, { readonly type: string; readonly description: string }>> {
+  return Object.fromEntries(
+    Array.from({ length: count }, (_, index) => [`p${index}`, { type: 'string', description: 'd'.repeat(40) }]),
+  );
+}
+
+function bodyOf(schema: Schema.Json): Schema.JsonObject {
+  return { post: { requestBody: { content: { 'application/json': { schema } } } } };
+}
+
+const sharedLarge = { $ref: '#/components/schemas/Large' };
+
+const oversized =
+  "its input schema, with the components it refers to, takes more than the 65536 bytes as JSON a tool's input schema may take";
+
+const listedTooLarge: unknown = expect.stringMatching(
+  /^The tools of the document take \d+ bytes as a listing, more than the 16777216 bytes a listing of a tool server's tools may take$/u,
+);
+
+describe('the size of the tools of an HTTP API', () => {
+  it('leaves out an operation whose input schema, with the components it refers to, takes more than 64 KiB', () => {
+    const tools = toolsOf(
+      documentOf(
+        {
+          '/large': bodyOf(sharedLarge),
+          '/inline': bodyOf({ type: 'object', properties: propertiesOf(1500) }),
+          '/small': bodyOf({ $ref: '#/components/schemas/Small' }),
+        },
+        { components: { schemas: { Large: { type: 'object', properties: propertiesOf(1500) }, Small: {} } } },
+      ),
+    );
+
+    expect(tools.operations.map(({ tool }) => tool.name)).toEqual(['post_small']);
+    expect(tools.leftOut).toEqual(
+      ['POST /large', 'POST /inline'].map((operation) => ({ operation, because: oversized })),
+    );
+  });
+
+  it('refuses a document whose tools, each within its bound, take more than 16 MiB listed, as an MCP server listing them would', () => {
+    const paths = Object.fromEntries(
+      Array.from({ length: 400 }, (_, index) => [`/items${index}`, bodyOf(sharedLarge)]),
+    );
+    const components = { schemas: { Large: { type: 'object', properties: propertiesOf(700) } } };
+
+    expect(problemsOf(documentOf(paths, { components }))).toEqual([{ pointer: '/paths', detail: listedTooLarge }]);
+  });
+});
+
 describe('the hints and the names of the tools of an HTTP API', () => {
   it('are read-only for GET and HEAD, destructive for DELETE, idempotent for both and for PUT, and open to the world', () => {
     const tools = toolsOf(
-      documentOf({ '/notes': { get: {}, head: {}, post: {}, put: {}, patch: {}, delete: {}, options: {}, trace: {} } }),
+      documentOf({ '/notes': { get: {}, head: {}, post: {}, put: {}, patch: {}, delete: {}, options: {} } }),
     );
 
     expect(tools.operations.map(({ tool }) => [tool.name, tool.annotations])).toEqual([
@@ -98,7 +158,6 @@ describe('the hints and the names of the tools of an HTTP API', () => {
       ['options_notes', { openWorldHint: true }],
       ['head_notes', { readOnlyHint: true, idempotentHint: true, openWorldHint: true }],
       ['patch_notes', { openWorldHint: true }],
-      ['trace_notes', { openWorldHint: true }],
     ]);
   });
 

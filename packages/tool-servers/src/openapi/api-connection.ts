@@ -5,7 +5,7 @@ import type { Observed } from '../connections/observed-requests.ts';
 import type { ServerConnection } from '../connections/server-connection.ts';
 import type { TokenSource } from '../connections/token-source.ts';
 import { settledOf, type Answering } from './api-answers.ts';
-import { apiRequestOf, type ApiEndpoint, type ApiRequest } from './api-requests.ts';
+import { apiRequestOf, isUnderBase, type ApiEndpoint, type ApiRequest } from './api-requests.ts';
 import { ArgumentsRefused } from './arguments-refused.ts';
 import type { DescribedApiSettings } from './described-api.ts';
 
@@ -17,6 +17,12 @@ export interface ApiOpening {
 
 const unobserved: Observed = { id: null, response: null };
 
+class AddressOutsideBase extends Error {
+  constructor() {
+    super('The bridge built an address outside base_url for this call, a defect of the runtime, and sent nothing');
+  }
+}
+
 async function authorizationOf(tokens: TokenSource | undefined): Promise<Readonly<Record<string, string>>> {
   return tokens === undefined ? {} : { authorization: `Bearer ${await tokens.token()}` };
 }
@@ -27,18 +33,19 @@ async function sent(
   signal: Readonly<AbortSignal>,
   mintedAgain = false,
 ): Promise<Response> {
+  const tokens = request.usesToken ? opening.tokens : undefined;
   const response = await opening.fetch(request.url, {
     method: request.method,
-    headers: { ...request.headers, ...(await authorizationOf(opening.tokens)) },
+    headers: { ...request.headers, ...(await authorizationOf(tokens)) },
     body: request.body,
     redirect: 'manual',
     signal,
   });
-  if (response.status !== 401 || opening.tokens === undefined || mintedAgain) {
+  if (response.status !== 401 || tokens === undefined || mintedAgain) {
     return response;
   }
   await response.body?.cancel();
-  await opening.tokens.onUnauthorized();
+  await tokens.onUnauthorized();
   return sent(request, opening, signal, true);
 }
 
@@ -60,6 +67,9 @@ export function apiConnection(settings: DescribedApiSettings, opening: ApiOpenin
       const request = apiRequestOf(operation, input, endpoint);
       if (Result.isFailure(request)) {
         return { error: new ArgumentsRefused(request.failure), observed: unobserved };
+      }
+      if (!isUnderBase(endpoint.baseUrl, request.success.url)) {
+        return { error: new AddressOutsideBase(), observed: unobserved };
       }
       try {
         return await settledOf(await sent(request.success, opening, signal), answering);

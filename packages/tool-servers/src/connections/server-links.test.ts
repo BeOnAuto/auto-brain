@@ -41,7 +41,7 @@ function httpSettings(url: string, changes: Partial<McpServerSettings> = {}): Mc
     url,
     headers: new Map(),
     auth: null,
-    org: 'acme',
+    orgs: ['acme'],
     playbooks: null,
     allowed: null,
     record_content: false,

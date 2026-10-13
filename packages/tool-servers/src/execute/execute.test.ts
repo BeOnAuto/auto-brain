@@ -157,7 +157,7 @@ describe('a call of an operation of an HTTP API', () => {
     const fake = await serveFakeApi({ key: fakeApiKey });
     closing.push(fake.close);
     const { access } = await describedAccess(
-      { graph: { document: fake.documentUrl, headers: { 'X-Api-Key': '${GRAPH_API_KEY}' }, org: 'acme' } },
+      { graph: { document: fake.documentUrl, security: { apiKeyAuth: '${GRAPH_API_KEY}' }, org: 'acme' } },
       { environment: { GRAPH_API_KEY: fakeApiKey }, timing: patientTiming },
     );
     closing.push(access.close);

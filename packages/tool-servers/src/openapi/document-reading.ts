@@ -30,6 +30,12 @@ const accepted = 'application/json, application/yaml;q=0.9, text/yaml;q=0.9, */*
 
 const mostProblemsNamed = 3;
 
+function unreadAnswer(status: number): string {
+  return status >= 300 && status < 400
+    ? `The document could not be read: its URL answered a redirect, HTTP ${status}, which the runtime does not follow; give the address it redirects to`
+    : `The document could not be read: its URL answered HTTP ${status}`;
+}
+
 function parsedText(text: string): Read {
   try {
     const parsed: unknown = JSON.parse(text);
@@ -58,10 +64,10 @@ async function textAt(url: string, { fetch, readMs }: DocumentReading): Promise<
   const signal = AbortSignal.timeout(readMs);
   let overflowed = false;
   try {
-    const response = await fetch(url, { headers: { accept: accepted }, signal });
+    const response = await fetch(url, { headers: { accept: accepted }, redirect: 'manual', signal });
     if (!response.ok) {
       await response.body?.cancel();
-      return Result.fail(`The document could not be read: its URL answered HTTP ${response.status}`);
+      return Result.fail(unreadAnswer(response.status));
     }
     const text = await counted(response, documentBounds.bytes, () => {
       overflowed = true;

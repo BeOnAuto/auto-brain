@@ -18,7 +18,7 @@ import type {
 } from './definition.ts';
 import type { HandlerServices } from './handler-services.ts';
 import { answeringOf, bodyArgumentsOf, requireMostBytes } from './http-body.ts';
-import { registeredFieldsOf, settledOf } from './registration-parts.ts';
+import { registeredAnswerOf, registeredFieldsOf, settledOf } from './registration-parts.ts';
 import type { HttpRegistrationOf } from './registration.ts';
 
 export interface HttpOperation<S extends OperationScope, K extends OperationKind> {
@@ -79,5 +79,5 @@ export function defineHttpOperation<
         settledOf(handle(decoded, ...bodyArguments), answered, fields.reasons),
       ),
     );
-  return { registration: { ...fields, servedOverHttpAlone: body, run } };
+  return { registration: { ...fields, servedOverHttpAlone: body, answer: registeredAnswerOf(definition.answer), run } };
 }

@@ -11,7 +11,7 @@ function httpSettings(url: string): McpServerSettings {
     url,
     headers: new Map(),
     auth: null,
-    org: 'acme',
+    orgs: ['acme'],
     playbooks: null,
     allowed: null,
     record_content: false,

@@ -33,7 +33,7 @@ async function servingBoth() {
     GRAPH_API_KEY: apiKey,
     TOOL_SERVERS: JSON.stringify({
       graph: { url: graph.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme' },
-      billing: { document: billing.documentUrl, headers: { 'X-Api-Key': '${GRAPH_API_KEY}' }, org: 'acme' },
+      billing: { document: billing.documentUrl, security: { apiKeyAuth: '${GRAPH_API_KEY}' }, org: 'acme' },
     }),
   });
   onTestFinished(server.stop);

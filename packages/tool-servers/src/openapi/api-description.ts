@@ -1,4 +1,4 @@
-import { problem, type SettingProblem } from '@on.auto/config';
+import { problem, withoutTrailingSlashes, type SettingProblem } from '@on.auto/config';
 import { Result } from 'effect';
 
 import { at, isPinnableUrl } from '../settings/checked.ts';
@@ -8,6 +8,7 @@ import { decodedDocument, type ApiDocument, type DocumentProblem } from './api-d
 import { derivedTools } from './api-tools.ts';
 import type { DescribedApiSettings, Describing } from './described-api.ts';
 import { documentBounds, documentOf } from './document-reading.ts';
+import { securityProblemsOf } from './security-schemes.ts';
 
 type Problems = readonly SettingProblem[];
 
@@ -20,7 +21,7 @@ function documentProblems(name: string, problems: readonly DocumentProblem[]): r
 }
 
 function serverUrlOf({ url, variables = {} }: NonNullable<ApiDocument['servers']>[number]): string {
-  return url.replaceAll(/\{([^}]+)\}/gu, (written, name: string) => {
+  return url.replaceAll(/\{([^{}]*)\}/gu, (written, name: string) => {
     const variable = Object.hasOwn(variables, name) ? variables[name] : undefined;
     return variable === undefined ? written : variable.default;
   });
@@ -37,12 +38,18 @@ function baseUrlOf(settings: OpenApiServerSettings, document: ApiDocument): Refu
     return refused('Expected base_url, since the document names no server');
   }
   const relativeTo = settings.document.kind === 'url' ? settings.document.url : undefined;
-  const resolved = URL.parse(serverUrlOf(first), relativeTo);
+  const written = serverUrlOf(first);
+  if (/[?#]/u.test(written)) {
+    return refused(
+      'The first server the document names has a query or a fragment, which the path of a call would land in; give base_url',
+    );
+  }
+  const resolved = URL.parse(written, relativeTo);
   if (resolved === null) {
     return refused('The first server the document names is not a URL this server can resolve; give base_url');
   }
   return isPinnableUrl(resolved.href)
-    ? Result.succeed(resolved.href)
+    ? Result.succeed(withoutTrailingSlashes(resolved.href))
     : refused(
         'The first server the document names is not an https URL or an http URL on a loopback address; give base_url',
       );
@@ -59,13 +66,20 @@ export async function describedApi(
   if (Result.isFailure(read)) {
     return Result.fail([problem(toolServersSetting, at(settings.name, 'document'), read.failure)]);
   }
+  const presented = { security: settings.security, auth: settings.auth !== null };
   const derived = Result.flatMap(decodedDocument(read.success), (decoded) =>
-    Result.map(derivedTools(decoded), (tools) => ({ document: decoded.document, tools })),
+    Result.map(derivedTools(decoded, presented), (tools) => ({ document: decoded.document, tools })),
   );
   if (Result.isFailure(derived)) {
     return Result.fail(documentProblems(settings.name, derived.failure));
   }
   const { document, tools } = derived.success;
+  const unsecured = securityProblemsOf(settings, document);
+  if (unsecured.length > 0) {
+    return Result.fail(
+      unsecured.map(({ path, detail }) => problem(toolServersSetting, at(settings.name, ...path), detail)),
+    );
+  }
   return Result.map(baseUrlOf(settings, document), (baseUrl) => {
     for (const leftOut of tools.leftOut) {
       describing.reportLeftOut(settings.name, leftOut);

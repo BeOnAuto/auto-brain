@@ -14,7 +14,7 @@ const callsMeasured = 2000;
 
 const callsToWarm = 300;
 
-const entry = { graph: { headers: { 'X-Api-Key': '${GRAPH_API_KEY}' }, org: 'acme' } };
+const entry = { graph: { security: { apiKeyAuth: '${GRAPH_API_KEY}' }, org: 'acme' } };
 
 interface Measured {
   readonly medianMs: number;

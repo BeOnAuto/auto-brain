@@ -22,7 +22,7 @@ import { Effect, Result, Schema } from 'effect';
 
 const NoteName = Schema.String.check(Schema.isPattern(/^[a-z][a-z0-9-]{0,31}$/u));
 
-const NoteSchema = Schema.Struct({ name: NoteName, text: Schema.String });
+export const NoteSchema = Schema.Struct({ name: NoteName, text: Schema.String });
 
 type Note = typeof NoteSchema.Type;
 
@@ -34,7 +34,7 @@ type NoteAdded = typeof NoteAddedSchema.Type;
 
 const writtenNow = { at: '2026-10-01T09:00:00.000Z', by: 'notebook' };
 
-const notebook: Decider<readonly Note[], Note, NoteAdded, 'conflict'> = {
+export const notebook: Decider<readonly Note[], Note, NoteAdded, 'conflict'> = {
   initialState: [],
   evolve: (notes, { data }) => [...notes, data.note],
   decide: (note, notes) =>
@@ -45,7 +45,7 @@ const notebook: Decider<readonly Note[], Note, NoteAdded, 'conflict'> = {
   eventSchema: NoteAddedSchema,
 };
 
-function plainly(task: string): PlainLanguage<unknown, unknown> {
+export function plainly(task: string): PlainLanguage<unknown, unknown> {
   return { task, attempt: () => task, outcome: () => `Done: ${task}.` };
 }
 
@@ -86,6 +86,22 @@ const listNotes = defineQuery('playbook', {
   plainLanguage: plainly('list the notes'),
 });
 
+export const listNotesOfTheOrg = defineQuery('org', {
+  name: 'list_notes',
+  title: 'List notes',
+  description: 'Lists where the notes are kept. Use it to find the notes. `playbook` keeps those of one playbook.',
+  route: { method: 'GET', path: '/notes' },
+  inputSchema: Schema.Struct({
+    playbook: Schema.optionalKey(
+      PlaybookIdSchema.annotate({ description: 'The playbook whose notes to list; every playbook without it' }),
+    ),
+  }),
+  outputSchema: Schema.Struct({ kept_for: Schema.String }),
+  reasons: [],
+  handle: ({ playbook = 'the org' }) => Effect.succeed({ kept_for: playbook }),
+  plainLanguage: plainly('list the notes'),
+});
+
 export const getNote = defineQuery('playbook', {
   name: 'get_note',
   title: 'Get note',
@@ -107,21 +123,6 @@ export const getNote = defineQuery('playbook', {
     attempt: ({ name }) => `read the note ${quoted(name)}`,
     outcome: ({ name, text }) => `The note ${quoted(name)} says ${quoted(text)}.`,
   },
-});
-
-export const findNotes = defineQuery('playbook', {
-  name: 'find_notes',
-  title: 'Find notes',
-  description: 'Finds the notes that hold every word given. Use it to look a note up. list_notes lists them all.',
-  route: { method: 'POST', path: '/notes/found' },
-  inputSchema: Schema.Struct({ words: Schema.Array(Schema.String) }),
-  outputSchema: Schema.Struct({ notes: Schema.Array(NoteSchema) }),
-  reasons: [],
-  handle: Effect.fnUntraced(function* ({ words }) {
-    const { state } = yield* (yield* PlaybookReader).load('notes', notebook);
-    return { notes: state.filter(({ text }) => words.every((word) => text.includes(word))) };
-  }),
-  plainLanguage: plainly('find notes'),
 });
 
 export const latestNote = defineQuery('playbook', {

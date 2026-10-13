@@ -9,7 +9,8 @@ import { Result } from 'effect';
 import type { Context } from 'hono';
 
 import type { ApiEnv } from '../api-env.ts';
-import { problemOf, type Problem } from '../problem/problem.ts';
+import type { Problem } from '../problem/problem-document.ts';
+import { problemOf } from '../problem/problem.ts';
 import { bodyTextOf, parseJsonBody, type JsonObject } from './request-body.ts';
 import { streamedBodyOf } from './streamed-body.ts';
 

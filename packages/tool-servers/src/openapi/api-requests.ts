@@ -1,6 +1,9 @@
+import { Buffer } from 'node:buffer';
+
 import { Predicate, Redacted, Result } from 'effect';
 
 import type { ApiOperation } from './api-tools.ts';
+import type { Placement } from './security-schemes.ts';
 
 export interface ApiEndpoint {
   readonly baseUrl: string;
@@ -13,11 +16,35 @@ export interface ApiRequest {
   readonly method: string;
   readonly headers: Readonly<Record<string, string>>;
   readonly body: string | null;
+  readonly usesToken: boolean;
 }
 
 type Scalar = string | number | boolean;
 
 type Built<A> = Result.Result<A, string>;
+
+const dotSegment = /^(?:\.|%2e){1,2}$/iu;
+
+const segmentSeparators = /[/\\]/u;
+
+const droppedByAddresses = /[\t\n\r]/gu;
+
+export function keepsItsSegments(path: string): boolean {
+  return !path
+    .replaceAll(droppedByAddresses, '')
+    .split(segmentSeparators)
+    .some((segment) => dotSegment.test(segment));
+}
+
+export function isUnderBase(baseUrl: string, address: string): boolean {
+  const base = URL.parse(baseUrl);
+  const url = URL.parse(address);
+  if (base === null || url === null || base.origin === 'null' || url.origin !== base.origin) {
+    return false;
+  }
+  const basePath = base.pathname === '/' ? '' : base.pathname;
+  return url.pathname === basePath || url.pathname.startsWith(`${basePath}/`);
+}
 
 function isScalar(value: unknown): value is Scalar {
   return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
@@ -45,9 +72,14 @@ function pathOf(operation: ApiOperation, input: Readonly<Record<string, unknown>
     if (values.success.length === 0) {
       return Result.fail(`The arguments give no ${name}, which the path of this operation needs`);
     }
+    if (values.success.some((value) => value === '' || value.includes('/'))) {
+      return Result.fail(`The argument ${name} is empty or holds a /, which a path argument may not`);
+    }
     path = path.replaceAll(`{${name}}`, values.success.map((value) => encodeURIComponent(value)).join(','));
   }
-  return Result.succeed(path);
+  return keepsItsSegments(path)
+    ? Result.succeed(path)
+    : Result.fail('The path arguments would take the call out of the path of this operation, as a . or a .. does');
 }
 
 function queryOf(
@@ -68,6 +100,11 @@ function queryOf(
   for (const [name, value] of endpoint.query) {
     query.append(name, Redacted.value(value));
   }
+  for (const placement of operation.credentials) {
+    if (placement.kind === 'query') {
+      query.append(placement.name, Redacted.value(placement.value));
+    }
+  }
   const written = query.toString();
   return Result.succeed(written === '' ? '' : `?${written}`);
 }
@@ -87,22 +124,27 @@ function bodyOf(operation: ApiOperation, input: Readonly<Record<string, unknown>
   return Result.succeed(JSON.stringify(input['body']));
 }
 
+function credentialHeader(placement: Placement): readonly (readonly [string, string])[] {
+  if (placement.kind === 'header') {
+    return [[placement.name, Redacted.value(placement.value)]];
+  }
+  if (placement.kind === 'bearer') {
+    return [['Authorization', `Bearer ${Redacted.value(placement.value)}`]];
+  }
+  return placement.kind === 'basic'
+    ? [['Authorization', `Basic ${Buffer.from(Redacted.value(placement.value)).toString('base64')}`]]
+    : [];
+}
+
 function headersOf(operation: ApiOperation, endpoint: ApiEndpoint, body: string | null): Record<string, string> {
   return {
     ...Object.fromEntries(
       [...endpoint.headers].map(([name, value]: readonly [string, Redacted.Redacted]) => [name, Redacted.value(value)]),
     ),
+    ...Object.fromEntries(operation.credentials.flatMap((placement) => credentialHeader(placement))),
     accept: 'application/json',
     ...(body === null || operation.body === null ? {} : { 'content-type': operation.body.mediaType }),
   };
-}
-
-function withoutTrailingSlashes(url: string): string {
-  let end = url.length;
-  while (url.charAt(end - 1) === '/') {
-    end -= 1;
-  }
-  return url.slice(0, end);
 }
 
 export function apiRequestOf(
@@ -117,10 +159,11 @@ export function apiRequestOf(
   return Result.flatMap(pathOf(operation, input), (path) =>
     Result.flatMap(queryOf(operation, input, endpoint), (query) =>
       Result.map(bodyOf(operation, input), (body) => ({
-        url: `${withoutTrailingSlashes(endpoint.baseUrl)}${path}${query}`,
+        url: `${endpoint.baseUrl}${path}${query}`,
         method: operation.method.toUpperCase(),
         headers: headersOf(operation, endpoint, body),
         body,
+        usesToken: operation.credentials.some(({ kind }) => kind === 'token'),
       })),
     ),
   );

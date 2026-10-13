@@ -1,6 +1,6 @@
 # @on.auto/json-schema
 
-The runtime's one JSON Schema compiler: the input, output and view schemas a person writes in a definition, the answer schema of a reasoning function, the input schemas of the tools of a tool server, and the values checked against any of them. It sits below every package that reads a schema, so [`@on.auto/definitions`](../definitions/README.md) and the capabilities import it and it imports nothing of theirs: only `effect`, whose JSON Schema importer it compiles with.
+The runtime's one JSON Schema compiler: it compiles the input, output and view schemas a person writes in a definition of a computation, recall, interaction or prediction function and the answer schema of a reasoning function, and checks values against them. It compiles no tool's input schema: reasoning reads only the size and nesting of one, with `boundedJsonSchema`, before it says what a provider may refuse in it, the tool-servers bridge bounds the nesting of an OpenAPI document with `nestedDeeperThan` and the size of a tool's input schema with `jsonSchemaLimits` and `utf8Bytes`, and the server it calls checks the arguments itself. It sits below every package that reads a schema, so [`@on.auto/definitions`](../definitions/README.md) and the capabilities import it and it imports nothing of theirs: only `effect`, whose JSON Schema importer it compiles with.
 
 ## Compiling a schema
 

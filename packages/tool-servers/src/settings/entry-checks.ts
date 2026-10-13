@@ -11,7 +11,7 @@ import type { McpServerSettings, ServerSettings, ServerType, StdioServerSettings
 import { toolListsOf } from './tool-lists.ts';
 
 type Transport<S extends ServerSettings> = S extends ServerSettings
-  ? Omit<S, 'name' | 'org' | 'playbooks' | 'allowed' | 'record_content' | 'request_id' | 'secrets'>
+  ? Omit<S, 'name' | 'orgs' | 'playbooks' | 'allowed' | 'record_content' | 'request_id' | 'secrets'>
   : never;
 
 const variableName = /^[A-Za-z_][A-Za-z0-9_]*$/u;
@@ -30,7 +30,7 @@ const serverKinds: Readonly<Record<ServerType, string>> = {
 const fieldsOfKinds = {
   mcp: ['url', 'headers', 'auth'],
   stdio: ['command', 'args', 'env'],
-  openapi: ['document', 'base_url', 'headers', 'query_params', 'auth'],
+  openapi: ['document', 'base_url', 'headers', 'query_params', 'security', 'auth'],
 } as const satisfies Readonly<Record<ServerType, readonly (keyof ServerEntryFields)[]>>;
 
 const sourcesOfKinds = { mcp: 'url', stdio: 'command', openapi: 'document' } as const;
@@ -176,7 +176,7 @@ export function checkedEntry(
   return Result.succeed({
     ...transport.value,
     name,
-    org: scope.success.org,
+    orgs: scope.success.orgs,
     playbooks: scope.success.playbooks,
     ...tools.success,
     record_content: fields.record_content ?? true,

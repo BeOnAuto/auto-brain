@@ -84,7 +84,7 @@ describe('validate', () => {
     closing.push(fake.close);
     const { call } = await validatingAnApi({
       document: fake.documentUrl,
-      headers: { 'X-Api-Key': '${GRAPH_API_KEY}' },
+      security: { apiKeyAuth: '${GRAPH_API_KEY}' },
     });
     const asked = { server: 'graph', tool: 'updateProfile' };
 

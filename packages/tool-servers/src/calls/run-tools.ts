@@ -3,6 +3,7 @@ import type { Schema } from 'effect';
 import type { CallsEndedBecause } from '../access/tool-server-failed.ts';
 import { callsEnded, cutToDescriptionBound, noCalls } from '../bounds/call-bounds.ts';
 import { isReadOnly, type ToolAnnotations } from '../bounds/tool-results.ts';
+import { scrubbedSchema } from '../listing/shown-tools.ts';
 import { modelFacingNames } from '../names/model-facing-names.ts';
 import { toolsInWords } from '../names/tool-words.ts';
 import type { CallReply } from './call-replies.ts';
@@ -57,8 +58,8 @@ export function runTools(parts: RunToolsParts): RunTools {
   };
   const offered = modelFacingNames(parts.offered).map((tool): OfferedTool => ({
     name: tool.name,
-    description: cutToDescriptionBound(tool.tool.description ?? ''),
-    inputSchema: tool.tool.inputSchema,
+    description: cutToDescriptionBound(parts.secrets.scrub(tool.tool.description ?? '')),
+    inputSchema: scrubbedSchema(tool.tool.inputSchema, parts.secrets.scrub),
     annotations: tool.tool.annotations,
     call: caller(parts, state, tool),
   }));

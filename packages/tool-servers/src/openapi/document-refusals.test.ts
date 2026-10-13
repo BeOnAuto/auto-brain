@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 
 import {
   baseUrlProblem,
@@ -45,6 +45,21 @@ describe('a document refused at start because its URL', () => {
     expect(await refusalOf({ graph: { document: silent, org: 'acme' } }, { readMs: 50 })).toBe(
       documentProblem('The document was not read within 50 ms'),
     );
+  });
+
+  it('answers a redirect, which is not followed to the address it names', async () => {
+    const other = await serveFakeApi();
+    onTestFinished(other.close);
+    const moved = await servedDocumentAt(() =>
+      Promise.resolve(new Response(null, { status: 302, headers: { location: `${other.baseUrl}/openapi.json` } })),
+    );
+
+    expect(await refusalOf({ graph: { document: moved, org: 'acme' } })).toBe(
+      documentProblem(
+        'The document could not be read: its URL answered a redirect, HTTP 302, which the runtime does not follow; give the address it redirects to',
+      ),
+    );
+    expect(other.seen()).toEqual([]);
   });
 
   it('breaks off its answer', async () => {
@@ -151,6 +166,58 @@ describe('a document refused at start because a schema refers outside it', () =>
       ),
     );
     expect(counted.fetched()).toEqual([]);
+  });
+});
+
+function pathsAt(...keys: readonly string[]): string {
+  return JSON.stringify({ openapi: '3.1.0', paths: Object.fromEntries(keys.map((key) => [key, { get: {} }])) });
+}
+
+describe('a document refused at start because a path would take its calls elsewhere', () => {
+  it('to another host or port, which a path that does not begin with / joins, sending nothing there', async () => {
+    const other = await serveFakeApi({ key: 'graph-api-key-4f1d9a7c2b' });
+    onTestFinished(other.close);
+    const port = new URL(other.origin).port;
+    const directory = directoryWith({ 'graph.json': pathsAt(`${port.slice(-1)}/v1/search`, '.attacker.example/x') });
+
+    const refusal = await refusalOf(
+      { graph: { document: 'graph.json', base_url: `http://127.0.0.1:${port.slice(0, -1)}`, org: 'acme' } },
+      { directory },
+    );
+
+    expect(refusal).toContain(
+      `graph/document: At /paths/${port.slice(-1)}~1v1~1search of the document: Expected a path that begins with /, since`,
+    );
+    expect(refusal).toContain(
+      'At /paths/.attacker.example~1x of the document: Expected a path that begins with /, since',
+    );
+    expect(other.seen()).toEqual([]);
+  });
+
+  it('out of itself, by a . or .. segment written plainly, encoded or split by a tab, or by a ? or #', async () => {
+    const refused = refusedIn(
+      directoryWith({ 'graph.json': pathsAt('/v1/../admin', '/v1/%2E%2e/admin', '/.\t./x', '/a?b') }),
+    );
+
+    expect(
+      (await refused('graph.json')).match(/At \/paths\/[^ ]+ of the document: A path a call cannot keep/gu),
+    ).toHaveLength(4);
+  });
+});
+
+describe('a document refused at start because its calls would land in a query or a fragment', () => {
+  it('naming a first server with either', async () => {
+    const refused = refusedIn(
+      directoryWith({
+        'query.json': documentWithServer('https://graph.example.com/v1?tenant=acme'),
+        'fragment.json': documentWithServer('https://graph.example.com/v1#top'),
+      }),
+    );
+    const landsElsewhere = baseUrlProblem(
+      'The first server the document names has a query or a fragment, which the path of a call would land in; give base_url',
+    );
+
+    expect([await refused('query.json'), await refused('fragment.json')]).toEqual([landsElsewhere, landsElsewhere]);
   });
 });
 

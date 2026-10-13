@@ -13,6 +13,8 @@ import { serveFakeApi, type FakeApiServer } from '../testing/index.ts';
 const notes =
   "openapi: 3.0.3\ninfo: { title: Notes, version: '1' }\nservers:\n  - url: https://notes.example.com/v1\npaths:\n  /notes:\n    get: { operationId: listNotes }\n";
 
+const keyed = { apiKeyAuth: '${GRAPH_API_KEY}' };
+
 async function fakeApi(): Promise<FakeApiServer> {
   const fake = await serveFakeApi();
   onTestFinished(fake.close);
@@ -22,7 +24,7 @@ async function fakeApi(): Promise<FakeApiServer> {
 describe('the document of an openapi server, read from its URL at start', () => {
   it('sends the calls to the first server it names, and reports every operation it leaves out', async () => {
     const fake = await fakeApi();
-    const { effect, leftOut } = describing({ graph: { document: fake.documentUrl, org: 'acme' } });
+    const { effect, leftOut } = describing({ graph: { document: fake.documentUrl, org: 'acme', security: keyed } });
 
     const { servers } = await Effect.runPromise(effect);
 
@@ -64,7 +66,10 @@ describe('the document of an openapi server, read from a file at start', () => {
       'notes.yaml': notes,
     });
 
-    const graph = await describedApiOf({ graph: { document: 'graph.json', org: 'acme' } }, { directory });
+    const graph = await describedApiOf(
+      { graph: { document: 'graph.json', org: 'acme', security: keyed } },
+      { directory },
+    );
     const listed = await describedApiOf({ notes: { document: 'notes.yaml', org: 'acme' } }, { directory });
 
     expect(graph?.baseUrl).toBe('https://graph.example.com/v1');
@@ -82,6 +87,32 @@ describe('the document of an openapi server, read from a file at start', () => {
 
     expect((await describedApiOf({ graph: { document: 'graph.json', org: 'acme' } }, { directory }))?.baseUrl).toBe(
       'https://eu.graph.example.com/%7Bstage%7D',
+    );
+  });
+
+  it('sends the calls to the first server it names without the slashes it ends in, as base_url is read', async () => {
+    const directory = directoryWith({
+      'graph.json': documentWithServer('https://graph.example.com/v1/'),
+      'root.json': documentWithServer('https://graph.example.com'),
+    });
+
+    expect(
+      await Promise.all(
+        ['graph.json', 'root.json'].map(
+          async (document) => (await describedApiOf({ graph: { document, org: 'acme' } }, { directory }))?.baseUrl,
+        ),
+      ),
+    ).toEqual(['https://graph.example.com/v1', 'https://graph.example.com']);
+  });
+});
+
+describe('the address of the first server a document names', () => {
+  it('reads an address of 200,000 braces in one pass, and keeps them as written', async () => {
+    const braces = '{'.repeat(200_000);
+    const directory = directoryWith({ 'graph.json': documentWithServer(`https://graph.example.com/${braces}`) });
+
+    expect((await describedApiOf({ graph: { document: 'graph.json', org: 'acme' } }, { directory }))?.baseUrl).toBe(
+      `https://graph.example.com/${'%7B'.repeat(200_000)}`,
     );
   });
 });

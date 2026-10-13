@@ -2,7 +2,7 @@
 
 ## API keys
 
-Every path needs an API key, sent as `Authorization: Bearer <key>`, except `/health` and [the page the server shows a browser at `/`](#the-page-at-the-root). Each key belongs to one org and carries its permissions and the playbooks it may access. The key command creates one:
+Every path needs an API key, sent as `Authorization: Bearer <key>`, except `/health`, the OpenAPI document at `/v1/openapi.json`, the guides at `/v1/guides/{guide}` and the API catalog at `/.well-known/api-catalog`, which name no secret and describe the API, and [the page the server shows a browser at `/`](#the-page-at-the-root). Each key belongs to one org and carries its permissions and the playbooks it may access. The key command creates one:
 
 ```bash
 docker run --rm --log-driver none onauto/runtime:latest node packages/identity/src/key-command.ts --org <org>
@@ -12,11 +12,11 @@ Options are `--id`, `--permissions` (comma-separated, from `org:read`, `org:writ
 
 Following [RFC 6750](https://www.rfc-editor.org/rfc/rfc6750), a request without an `Authorization` header gets `401` with `WWW-Authenticate: Bearer`, a key that is not valid gets `401` with `error="invalid_token"`, an `Authorization` header that is not exactly one `Bearer <key>` gets `400` with `error="invalid_request"`, and a key that lacks the permission, playbook or org a call needs gets `403` with `error="insufficient_scope"`.
 
-Without `API_KEYS`, or with `API_KEYS=[]`, and without local mode, the server rejects every path except those two with `401`, on any address, and warns at start-up that no request can authenticate.
+Without `API_KEYS`, or with `API_KEYS=[]`, and without local mode, the server rejects every path but those named above with `401`, on any address, and warns at start-up that no request can authenticate.
 
 ## Local mode
 
-Local mode is for development on your own machine. It is on only when `LOCAL_MODE=true`, the server listens only on a loopback address (`localhost`, `127.0.0.1` or `::1`), and `API_KEYS` is not set. Then every request acts as a local developer with every permission in whichever org it names, and no key is needed; the server logs a warning saying so when it starts. To stop a web page from driving it, local mode rejects a request whose `Host` header is not a localhost name, and, as always, a request whose `Origin` is neither the studio's nor in `ALLOWED_ORIGINS`.
+Local mode is for development on your own machine. It is on only when `LOCAL_MODE=true`, the server listens only on a loopback address (`localhost`, `127.0.0.1` or `::1`), and `API_KEYS` is not set. Then every request acts as a local developer with every permission in whichever org it names, and no key is needed; the server logs a warning saying so when it starts. To stop a web page from driving it, local mode rejects a request whose `Host` header is not a localhost name, and, as always, a request whose `Origin` is neither the studio's nor in `ALLOWED_ORIGINS`; the paths that need no key, `/health`, the OpenAPI document, the guides and the API catalog, skip both checks.
 
 > **Warning:** never enable local mode on a machine that can be reached through a proxy. A reverse proxy on the same machine, such as nginx with its default settings, forwards remote requests to the loopback address with a localhost `Host` header, so the server would trust every remote client as the local developer.
 
@@ -24,7 +24,7 @@ Local mode is for development on your own machine. It is on only when `LOCAL_MOD
 
 ## Calling from a browser
 
-A page may call the API only from the studio, `https://studio.on.auto`, or from an origin listed in `ALLOWED_ORIGINS`; a request with any other `Origin` header gets `403`. The studio is always allowed, so [the page a server shows at `/`](#the-page-at-the-root) can open the studio on that server. Being allowed lets a page reach the API, not act on it: where keys are enforced, the studio still has to send one. In local mode no key is needed, so a script served from `https://studio.on.auto` can act as the local developer. For an allowed origin the server answers CORS: a preflight (`OPTIONS` with `Access-Control-Request-Method`) gets `204` before any key is checked, allowing `GET`, `HEAD`, `POST` and `PUT` with the `authorization` and `content-type` headers, and every response carries `Access-Control-Allow-Origin` with that origin, `Vary: Origin`, and `x-request-id` among the headers the page may read. There is no wildcard and no credentials mode: the page sends its API key in the `Authorization` header.
+A page may call the API only from the studio, `https://studio.on.auto`, or from an origin listed in `ALLOWED_ORIGINS`; a request with any other `Origin` header gets `403`, but on the paths that need no key, `/health`, the OpenAPI document, the guides and the API catalog, which skip the `Host` and `Origin` checks. The studio is always allowed, so [the page a server shows at `/`](#the-page-at-the-root) can open the studio on that server. Being allowed lets a page reach the API, not act on it: where keys are enforced, the studio still has to send one. In local mode no key is needed, so a script served from `https://studio.on.auto` can act as the local developer. For an allowed origin the server answers CORS: a preflight (`OPTIONS` with `Access-Control-Request-Method`) gets `204` before any key is checked, allowing `GET`, `HEAD`, `POST` and `PUT` with the `authorization` and `content-type` headers, and every response carries `Access-Control-Allow-Origin` with that origin, `Vary: Origin`, and `x-request-id` among the headers the page may read. There is no wildcard and no credentials mode: the page sends its API key in the `Authorization` header.
 
 ## The page at the root
 

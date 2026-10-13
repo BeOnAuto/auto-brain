@@ -24,10 +24,13 @@ export {
   type SettingProblem,
 } from './json-settings/json-setting.ts';
 export {
+  everyOrg,
   servedScopeOf,
+  servesOrg,
   servesPlaybook,
   type ServedAddress,
   type ServedScope,
   type WrittenScope,
 } from './json-settings/served-scope.ts';
 export { misplacedReferences, secretsOfEntry, type ReferencePlacement } from './json-settings/placed-references.ts';
+export { withoutTrailingSlashes } from './json-settings/base-urls.ts';

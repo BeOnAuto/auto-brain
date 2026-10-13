@@ -1,7 +1,8 @@
 import { mediaTypeOfBody, type StreamedBody, type StreamedContent } from '@on.auto/operations';
 import { Result } from 'effect';
 
-import { problemOf, type Problem } from '../problem/problem.ts';
+import type { Problem } from '../problem/problem-document.ts';
+import { problemOf } from '../problem/problem.ts';
 import { bodyEncoded, bodyNotUtf8, bodySentAsAnother, bodyTooLarge } from './body-problems.ts';
 import { isIdentity, mediaTypeOf } from './request-body.ts';
 

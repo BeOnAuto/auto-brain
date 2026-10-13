@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { call } from '../testing/api-calls.ts';
-import { findNotes, notebookOperations } from '../testing/notebook.ts';
+import { findNotes } from '../testing/found-notes.ts';
+import { notebookOperations } from '../testing/notebook.ts';
 import { acmeAdmin, acmeReader, operationServer } from '../testing/operation-server.ts';
 
 const asAdmin = { authorization: `Bearer ${acmeAdmin.key}` };

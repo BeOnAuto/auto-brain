@@ -16,7 +16,7 @@ const pinned = 'Expected an https URL, or an http URL on a loopback address';
 const documentShape = `${pinned}, or a path relative to the directory of the configuration file that stays inside it`;
 
 const misplaced =
-  'Holds a reference to an environment variable, which only headers, query_params, env and auth may hold: an argument shows in the listing of the processes of the machine, and the URL of a server or of a document is no place for a credential';
+  'Holds a reference to an environment variable, which only headers, query_params, security, env and auth may hold: an argument shows in the listing of the processes of the machine, and the URL of a server or of a document is no place for a credential';
 
 function read(servers: unknown, documentsDirectory?: string) {
   return readToolServerSettings(
@@ -39,16 +39,20 @@ function plain(values: ReadonlyMap<string, Redacted.Redacted>): Readonly<Record<
   );
 }
 
+function securityOf(server: ServerSettings | undefined): Readonly<Record<string, string>> {
+  return server?.type === 'openapi' ? plain(server.security) : {};
+}
+
 function sentOf(server: ServerSettings | undefined): readonly Readonly<Record<string, string>>[] {
   return server?.type === 'openapi' ? [plain(server.headers), plain(server.query_params)] : [];
 }
 
 describe('reading an openapi server', () => {
-  it('reads an entry given a document, with its base URL and the headers and query parameters it sends', () => {
+  it('reads an entry given a document, with its base URL without the slashes it ends in, and the headers and query parameters it sends', () => {
     const [server] = serversOf({
       billing: {
         ...billing,
-        base_url: 'https://billing.example.com/v2',
+        base_url: 'https://billing.example.com/v2///',
         headers: { 'X-Api-Key': '${BILLING_API_KEY}', 'X-Region': 'eu' },
         query_params: { api_key: '${BILLING_API_KEY}' },
         request_id: 'x-request-id',
@@ -122,7 +126,7 @@ describe('an openapi server refused for its document', () => {
 });
 
 describe('an openapi server refused for what it sends', () => {
-  it('for a base URL that cannot be pinned, a header or a query parameter it cannot send, and an auth block beside an Authorization header', () => {
+  it('for a base URL that cannot be pinned, a header, a query parameter or a scheme it cannot send, and an auth block beside an Authorization header', () => {
     const auth = { issuer: 'https://auth.example.com', client_id: 'playbook', client_secret: '${BILLING_API_KEY}' };
     const headers = {
       Accept: 'text/html',
@@ -130,7 +134,14 @@ describe('an openapi server refused for what it sends', () => {
       'X Key': 'a',
       Authorization: 'Bearer ${BILLING_API_KEY}',
     };
-    const entry = { ...billing, base_url: 'http://billing.example.com', headers, query_params: { '': 'a' }, auth };
+    const entry = {
+      ...billing,
+      base_url: 'http://billing.example.com',
+      headers,
+      query_params: { '': 'a' },
+      security: { '': '${BILLING_API_KEY}' },
+      auth,
+    };
 
     expect(problemsOf({ billing: entry })).toEqual([
       `/billing/base_url: ${pinned}`,
@@ -138,6 +149,7 @@ describe('an openapi server refused for what it sends', () => {
       '/billing/headers/Content-Type: A header the runtime sets itself',
       '/billing/headers/X Key: Expected a header name',
       '/billing/query_params/: Expected a parameter name',
+      '/billing/security/: Expected the name of a security scheme',
       '/billing/auth: Set an Authorization header or an auth block, not both',
     ]);
   });
@@ -151,5 +163,43 @@ describe('an openapi server refused for what it sends', () => {
       '/billing/args: Not a field of an openapi server',
       '/billing/env: Not a field of an openapi server',
     ]);
+  });
+});
+
+describe('the security of an openapi server', () => {
+  it('reads each credential by the name of its scheme, the whole value a secret as well as its reference', () => {
+    const [server] = serversOf({
+      billing: { ...billing, security: { basicAuth: 'ada:${BILLING_API_KEY}', bearerAuth: '${BILLING_API_KEY}' } },
+    });
+
+    expect(securityOf(server)).toEqual({ basicAuth: `ada:${apiKey}`, bearerAuth: apiKey });
+    expect(server?.secrets.map((secret) => Redacted.value(secret))).toEqual([apiKey, apiKey, `ada:${apiKey}`, apiKey]);
+  });
+
+  it('refuses a credential written out instead of referenced, once, whether or not it looks like one', () => {
+    expect(
+      problemsOf({
+        billing: { ...billing, security: { publicKey: 'public-demo', liveKey: 'sk-live-4f1d9a7c2b8e6d5a' } },
+      }),
+    ).toEqual(
+      ['liveKey', 'publicKey'].map(
+        (scheme) =>
+          `/billing/security/${scheme}: Looks like a credential, which this setting never holds; write a reference to the environment variable that holds it instead, such as \${GRAPH_API_KEY}`,
+      ),
+    );
+  });
+
+  it('refuses a base URL with a query or a fragment, which the path of a call would land in', () => {
+    expect(
+      problemsOf({
+        a: { ...billing, base_url: 'https://billing.example.com/v2?tenant=acme' },
+        b: { ...billing, base_url: 'https://billing.example.com/v2#top' },
+      }),
+    ).toEqual(
+      ['a', 'b'].map(
+        (name) =>
+          `/${name}/base_url: Expected a URL without a query or a fragment, which the path of a call would land in`,
+      ),
+    );
   });
 });

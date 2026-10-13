@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { internalTermsIn } from '../testing/internal-terms.ts';
 import {
   playbookEndpoint,
   definitionTypes,
@@ -12,6 +11,7 @@ import {
   queriesInsideAPlaybook,
   recipes,
 } from '../testing/served-instructions.ts';
+import { internalTermsIn } from '../testing/vocabulary/internal-terms.ts';
 import { instructionsFor, type ServedTools } from './instructions.ts';
 
 const recordOnMcp =

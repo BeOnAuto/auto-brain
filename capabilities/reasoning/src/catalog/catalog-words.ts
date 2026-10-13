@@ -1,6 +1,6 @@
+import { withoutTrailingSlashes } from '@on.auto/config';
 import { counted, listed, type Noun } from '@on.auto/operations';
 
-import { withoutTrailingSlashes } from '../listing/listing-request.ts';
 import { aliasPatternOf } from '../model/model-alias.ts';
 import type { ModelEntry, ModelList } from './model-list.ts';
 

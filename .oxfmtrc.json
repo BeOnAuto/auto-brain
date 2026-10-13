@@ -6,7 +6,13 @@
   "semi": true,
   "arrowParens": "always",
   "sortImports": {},
-  "ignorePatterns": ["**/coverage/**", "**/dist/**", "pnpm-lock.yaml", "CHANGELOG.md"],
+  "ignorePatterns": [
+    "**/coverage/**",
+    "**/dist/**",
+    "pnpm-lock.yaml",
+    "CHANGELOG.md",
+    "packages/api/src/testing/openapi/openapi-3.1-schema-2022-10-07.json"
+  ],
   "overrides": [
     {
       "files": ["**/*.json", "**/*.jsonc"],
