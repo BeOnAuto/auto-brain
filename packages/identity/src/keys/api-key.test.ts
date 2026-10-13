@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { authenticatorFor, createApiKey, type ApiKey, type KeyGrant } from '../index.ts';
+import { principalIn } from '../testing/index.ts';
 
 const grant: KeyGrant = { id: 'ci-1', org: 'acme', permissions: ['playbook:read'], playbooks: ['alpha'] };
 
@@ -10,7 +11,7 @@ const sha256OfThatKey = '269ce89dc8b3c0eb7966560f76d53555a184aaaffe7514d545765bf
 
 async function admits(entries: readonly ApiKey[], presented: string): Promise<boolean> {
   const authenticator = authenticatorFor({ host: '0.0.0.0', apiKeys: entries, localMode: false });
-  return (await authenticator.authenticate(presented, '/v1/orgs/acme/playbooks')) !== undefined;
+  return principalIn(await authenticator.authenticate(presented, '/v1/orgs/acme/playbooks')) !== undefined;
 }
 
 describe('createApiKey', () => {

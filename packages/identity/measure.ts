@@ -2,7 +2,7 @@ import { availableParallelism } from 'node:os';
 import { performance } from 'node:perf_hooks';
 
 import { issuersOf, type IdentityProvider, type Issuers } from './src/index.ts';
-import { fakeIssuer, type FakeIssuer, type FakeSigner } from './src/testing/index.ts';
+import { fakeIssuer, principalIn, type FakeIssuer, type FakeSigner } from './src/testing/index.ts';
 
 const publicUrl = 'https://runtime.example';
 
@@ -10,7 +10,7 @@ const starts = 200;
 
 const verifications = 10_000;
 
-const signers: readonly FakeSigner[] = ['RS256', 'PS256', 'ES256', 'Ed25519', 'Ed448'];
+const signers: readonly FakeSigner[] = ['RS256', 'PS256', 'ES256', 'EdDSA'];
 
 function providerAt(issuer: string): IdentityProvider {
   return {
@@ -42,13 +42,18 @@ function median(times: readonly number[]): number {
   return times.toSorted((one, other) => one - other)[Math.floor(times.length / 2)] ?? 0;
 }
 
-async function verifiedIn(issuers: Issuers, token: string, left: number): Promise<number> {
-  const started = performance.now();
-  const checked = Array.from({ length: left }, () => issuers.personOf(token, '/mcp'));
-  const people = await Promise.all(checked);
-  if (people.some((person) => person?.callerIn('acme') === undefined)) {
+async function admitted(issuers: Issuers, token: string): Promise<void> {
+  if (principalIn(await issuers.personOf(token, '/mcp'))?.callerIn('acme') === undefined) {
     throw new Error('A token the measurement signed was refused');
   }
+}
+
+async function verifiedIn(issuers: Issuers, token: string, left: number): Promise<number> {
+  const started = performance.now();
+  await Array.from({ length: left }).reduce<Promise<void>>(
+    (previous) => previous.then(() => admitted(issuers, token)),
+    Promise.resolve(),
+  );
   return ((performance.now() - started) * 1000) / left;
 }
 
@@ -58,11 +63,13 @@ async function verificationsBy(issuers: Issuers, fake: FakeIssuer, rest: readonl
     return;
   }
   const seconds = Math.floor(Date.now() / 1000);
-  const token = fake.sign(
+  const token = await fake.sign(
     { iss: fake.issuer, sub: 'ada', aud: publicUrl, iat: seconds, exp: seconds + 3600, groups: ['engineers'] },
     { signer },
   );
-  write(`  ${signer}: ${(await verifiedIn(issuers, token, verifications)).toFixed(1)} µs per request`);
+  write(
+    `  ${signer}: ${(await verifiedIn(issuers, token, verifications)).toFixed(1)} µs per request, one after another`,
+  );
   await verificationsBy(issuers, fake, others);
 }
 
@@ -70,7 +77,7 @@ async function measured(run: number): Promise<void> {
   const fake = fakeIssuer('https://login.example');
   write(`Run ${run}`);
   write(
-    `  start, its metadata and a key set of ${signers.length} keys read and imported: ${median(await startsIn(fake, starts, [])).toFixed(2)} ms, the median of ${starts}`,
+    `  start, its metadata and a key set of ${signers.length} keys read: ${median(await startsIn(fake, starts, [])).toFixed(2)} ms, the median of ${starts}`,
   );
   await verificationsBy(await startOf(fake), fake, signers);
 }

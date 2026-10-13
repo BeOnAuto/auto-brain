@@ -123,13 +123,9 @@ describe('the metadata of an issuer the runtime refuses', () => {
       'names a jwks_uri that is not an https URL',
     ],
     [
-      'signing algorithms none of which the runtime verifies',
-      json({
-        issuer: 'https://login.example',
-        jwks_uri: 'https://login.example/jwks',
-        id_token_signing_alg_values_supported: ['HS256'],
-      }),
-      'signs with none of RS256, PS256, ES256, EdDSA',
+      'a redirect, which it does not follow',
+      new Response(null, { status: 302, headers: { location: 'http://login.example/elsewhere' } }),
+      'answers a redirect, which the runtime does not follow',
     ],
     [
       'an answer over 64 KiB',
@@ -150,10 +146,11 @@ describe('the key set of an issuer the runtime refuses at start', () => {
     ['an answer over 64 KiB', json({ keys: [], padding: 'x'.repeat(65_536) }), 'answers more than 64 KiB'],
     ['an answer without keys', json({ issuer: 'https://login.example' }), 'answers no key set'],
     [
-      'keys none of which the runtime verifies with',
-      json({ keys: [{ kty: 'oct', kid: 'shared', k: 'c2VjcmV0' }, { kty: 'RSA', n: 'AQAB' }, 'not a key'] }),
-      'holds no key the runtime verifies with',
+      'a redirect, which it does not follow',
+      new Response(null, { status: 307, headers: { location: 'http://login.example/jwks' } }),
+      'answers a redirect, which the runtime does not follow',
     ],
+    ['an empty key set', json({ keys: [] }), 'holds no keys'],
   ])('is %s', async (_case, answer, words) => {
     const fake = fakeIssuer('https://login.example');
     const answers = answering({ 'https://login.example/jwks': answer }, fake.answer);

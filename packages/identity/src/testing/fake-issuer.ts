@@ -1,12 +1,15 @@
-import { constants, generateKeyPairSync, sign, type KeyObject, type SigningOptions } from 'node:crypto';
+import { generateKeyPairSync, type KeyObject } from 'node:crypto';
 
-export type FakeSigner = 'RS256' | 'PS256' | 'ES256' | 'Ed25519' | 'Ed448';
+import { SignJWT } from 'jose';
+
+export type FakeSigner = 'RS256' | 'PS256' | 'ES256' | 'EdDSA';
 
 export type Claims = Readonly<Record<string, unknown>>;
 
 export interface Signing {
   readonly signer?: FakeSigner;
-  readonly header?: Claims;
+  readonly kid?: string;
+  readonly typ?: string | null;
 }
 
 export interface FakeClient {
@@ -22,7 +25,7 @@ export interface FakeIssuerOptions {
 export interface FakeIssuer {
   readonly issuer: string;
   readonly answer: (request: Readonly<Request>) => Promise<Response>;
-  readonly sign: (claims: Claims, signing?: Signing) => string;
+  readonly sign: (claims: Claims, signing?: Signing) => Promise<string>;
   readonly rotate: () => void;
   readonly keySetReads: () => number;
 }
@@ -30,24 +33,8 @@ export interface FakeIssuer {
 interface FakeKey {
   readonly kid: string;
   readonly jwk: Claims;
-  readonly sign: (data: string) => string;
+  readonly sign: (payload: Claims, header: { readonly kid: string; readonly typ: string | null }) => Promise<string>;
 }
-
-const headerAlgorithms: Readonly<Record<FakeSigner, string>> = {
-  RS256: 'RS256',
-  PS256: 'PS256',
-  ES256: 'ES256',
-  Ed25519: 'EdDSA',
-  Ed448: 'EdDSA',
-};
-
-const signingOptions: Readonly<Record<FakeSigner, SigningOptions>> = {
-  RS256: { padding: constants.RSA_PKCS1_PADDING },
-  PS256: { padding: constants.RSA_PKCS1_PSS_PADDING, saltLength: 32 },
-  ES256: { dsaEncoding: 'ieee-p1363' },
-  Ed25519: {},
-  Ed448: {},
-};
 
 interface KeyPair {
   readonly publicKey: KeyObject;
@@ -58,19 +45,19 @@ const pairs: Readonly<Record<FakeSigner, () => KeyPair>> = {
   RS256: () => generateKeyPairSync('rsa', { modulusLength: 2048 }),
   PS256: () => generateKeyPairSync('rsa', { modulusLength: 2048 }),
   ES256: () => generateKeyPairSync('ec', { namedCurve: 'prime256v1' }),
-  Ed25519: () => generateKeyPairSync('ed25519'),
-  Ed448: () => generateKeyPairSync('ed448'),
+  EdDSA: () => generateKeyPairSync('ed25519'),
 };
 
 function keyOf(signer: FakeSigner, generation: number): FakeKey {
   const { publicKey, privateKey } = pairs[signer]();
   const kid = `${signer.toLowerCase()}-${generation}`;
-  const digest = headerAlgorithms[signer] === 'EdDSA' ? null : 'sha256';
   return {
     kid,
-    jwk: { ...publicKey.export({ format: 'jwk' }), kid, alg: headerAlgorithms[signer], use: 'sig' },
-    sign: (data) =>
-      sign(digest, Buffer.from(data), { key: privateKey, ...signingOptions[signer] }).toString('base64url'),
+    jwk: { ...publicKey.export({ format: 'jwk' }), kid, alg: signer, use: 'sig' },
+    sign: (payload, { kid: named, typ }) =>
+      new SignJWT({ ...payload })
+        .setProtectedHeader(typ === null ? { alg: signer, kid: named } : { alg: signer, kid: named, typ })
+        .sign(privateKey),
   };
 }
 
@@ -81,13 +68,8 @@ function keysOf(generation: number): FakeKeys {
     RS256: keyOf('RS256', generation),
     PS256: keyOf('PS256', generation),
     ES256: keyOf('ES256', generation),
-    Ed25519: keyOf('Ed25519', generation),
-    Ed448: keyOf('Ed448', generation),
+    EdDSA: keyOf('EdDSA', generation),
   };
-}
-
-function segmentOf(value: Claims): string {
-  return Buffer.from(JSON.stringify(value)).toString('base64url');
 }
 
 function json(body: unknown, status = 200): Response {
@@ -96,7 +78,7 @@ function json(body: unknown, status = 200): Response {
 
 const lifetimeSeconds = 3600;
 
-type Sign = (claims: Claims, signing?: Signing) => string;
+type Sign = (claims: Claims, signing?: Signing) => Promise<string>;
 
 function clientOf(request: Readonly<Request>, clients: Readonly<Record<string, FakeClient>>): string | undefined {
   const credentials = Buffer.from(String(request.headers.get('authorization')).replace(/^Basic /u, ''), 'base64');
@@ -116,7 +98,7 @@ function tokenEndpoint(
       return json({ error: 'invalid_client' }, 401);
     }
     const now = Math.floor(Date.now() / 1000);
-    const minted = signed({
+    const minted = await signed({
       iss: issuer,
       sub: client,
       aud: form.get('resource') ?? issuer,
@@ -149,11 +131,9 @@ export function fakeIssuer(issuer: string, { metadata = {}, clients = {} }: Fake
   let generation = 1;
   let keys = keysOf(generation);
   let reads = 0;
-  const signed: Sign = (claims, { signer = 'RS256', header = {} } = {}) => {
+  const signed: Sign = (claims, { signer = 'RS256', kid, typ = 'at+jwt' } = {}) => {
     const key = keys[signer];
-    const head = segmentOf({ alg: headerAlgorithms[signer], kid: key.kid, typ: 'at+jwt', ...header });
-    const body = segmentOf(claims);
-    return `${head}.${body}.${key.sign(`${head}.${body}`)}`;
+    return key.sign({ ...claims }, { kid: kid ?? key.kid, typ });
   };
   const token = tokenEndpoint(issuer, clients, signed);
   return {

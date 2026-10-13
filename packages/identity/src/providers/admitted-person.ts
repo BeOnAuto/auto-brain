@@ -1,13 +1,14 @@
 import {
   allPermissions,
   holdsNoForbiddenCharacter,
+  mostReferenceBytes,
   type CallerIdentity,
   type PlaybookAccess,
 } from '@on.auto/operations';
-import { Option, Predicate, Schema } from 'effect';
+import { Option, Predicate, Result, Schema } from 'effect';
 
 import type { Principal } from '../access/principal.ts';
-import type { Payload } from '../tokens/access-token.ts';
+import { isWithinTheSubjectBound, type Payload } from '../tokens/token-verification.ts';
 import type { IdentityProvider } from './identity-providers-setting.ts';
 
 type Grant = IdentityProvider['grants']['by'][string];
@@ -57,10 +58,28 @@ function callerOf(provider: IdentityProvider, payload: Payload): readonly Caller
     : [];
 }
 
-export function admittedPerson(providers: readonly IdentityProvider[], payload: Payload): Principal {
-  const callers = providers.flatMap((provider) => callerOf(provider, payload));
+function overlongSubjectClaimOf(providers: readonly IdentityProvider[], payload: Payload): string | undefined {
+  return providers
+    .map(({ subject = 'sub' }) => subject)
+    .find((claim) => {
+      const subject = payload[claim];
+      return Predicate.isString(subject) && !isWithinTheSubjectBound(subject);
+    });
+}
+
+function principalOf(callers: readonly CallerIdentity[]): Principal {
   return {
     org: callers[0]?.org,
     callerIn: (org) => callers.find((caller) => caller.org === org),
   };
+}
+
+export function admittedPerson(
+  providers: readonly IdentityProvider[],
+  payload: Payload,
+): Result.Result<Principal, string> {
+  const overlong = overlongSubjectClaimOf(providers, payload);
+  return overlong === undefined
+    ? Result.succeed(principalOf(providers.flatMap((provider) => callerOf(provider, payload))))
+    : Result.fail(`its claim ${overlong} holds a subject of more than ${mostReferenceBytes} bytes`);
 }

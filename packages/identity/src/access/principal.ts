@@ -8,6 +8,18 @@ export interface Principal {
   readonly callerIn: (org: string) => CallerIdentity | undefined;
 }
 
+export interface Refusal {
+  readonly because: string | undefined;
+}
+
+export type Authentication = Principal | Refusal;
+
+export function isRefusal(authentication: Authentication): authentication is Refusal {
+  return 'because' in authentication;
+}
+
+export const unexplained: Refusal = { because: undefined };
+
 export const localDeveloper: Principal = {
   org: localOrg,
   callerIn: (org) => ({ id: localDeveloperId, org, permissions: allPermissions, playbooks: '*' }),

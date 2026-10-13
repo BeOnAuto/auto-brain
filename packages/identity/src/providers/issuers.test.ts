@@ -1,228 +1,177 @@
 import { describe, expect, it } from 'vitest';
 
-import { issuersOf, type IdentityProvider, type IssuerFetch, type IssuerRequests, type Issuers } from '../index.ts';
-import { fakeIssuer, type Claims, type FakeIssuer, type FakeSigner, type Signing } from '../testing/index.ts';
-
-const publicUrl = 'https://runtime.example';
+import { issuersOf, type IssuerFetch } from '../index.ts';
+import {
+  engineersAt,
+  fakeIssuer,
+  signedTokens,
+  testPublicUrl,
+  type Claims,
+  type FakeIssuer,
+  type FakeSigner,
+} from '../testing/index.ts';
 
 const startedAt = Date.parse('2026-10-13T09:00:00Z');
 
 const seconds = startedAt / 1000;
 
-function corpAt(issuer: string): IdentityProvider {
-  return {
-    name: 'corp',
-    issuer,
-    org: 'acme',
-    grants: { claim: 'groups', by: { engineers: { permissions: ['playbook:read'], playbooks: '*' } } },
-  };
-}
+const atStart = { now: () => startedAt };
 
-interface Signed {
-  readonly fake: FakeIssuer;
-  readonly issuers: Issuers;
-  readonly token: (claims?: Claims, signing?: Signing) => string;
-}
+const signers: readonly FakeSigner[] = ['RS256', 'PS256', 'ES256', 'EdDSA'];
 
-async function signedBy(fake: FakeIssuer, requests: Partial<IssuerRequests> = {}): Promise<Signed> {
-  const issuers = await issuersOf(
-    { providers: [corpAt(fake.issuer)], publicUrl },
-    { fetch: fake.answer, now: () => startedAt, ...requests },
-  );
-  const token = (claims: Claims = {}, signing: Signing = {}): string =>
-    fake.sign(
-      {
-        iss: fake.issuer,
-        sub: 'ada',
-        aud: publicUrl,
-        iat: seconds,
-        exp: seconds + 300,
-        groups: ['engineers'],
-        ...claims,
-      },
-      signing,
-    );
-  return { fake, issuers, token };
-}
-
-async function callerOf(issuers: Issuers, token: string, path = '/mcp'): Promise<string | undefined> {
-  return (await issuers.personOf(token, path))?.callerIn('acme')?.id;
-}
-
-interface Unreachable {
-  readonly fetch: IssuerFetch;
-  readonly cut: () => void;
-}
-
-function cutAfterStart(fake: FakeIssuer): Unreachable {
-  let reachable = true;
-  return {
-    fetch: (request) => (reachable ? fake.answer(request) : Promise.reject(new TypeError('fetch failed'))),
-    cut: () => {
-      reachable = false;
-    },
-  };
+function segmentOf(value: unknown): string {
+  return Buffer.from(JSON.stringify(value)).toString('base64url');
 }
 
 function routedTo(fakes: readonly FakeIssuer[]): IssuerFetch {
   const byHost = new Map(fakes.map((fake) => [new URL(fake.issuer).host, fake]));
   return (request) =>
-    byHost.get(new URL(request.url).host)?.answer(request) ?? Promise.reject(new TypeError('fetch failed'));
+    byHost.get(new URL(request.url).host)?.answer(request) ?? Promise.resolve(new Response(null, { status: 404 }));
 }
-
-const signers: readonly FakeSigner[] = ['RS256', 'PS256', 'ES256', 'Ed25519', 'Ed448'];
 
 describe('a token signed by a configured issuer', () => {
   it.each(signers)('is verified when signed with %s', async (signer) => {
-    const { issuers, token } = await signedBy(fakeIssuer('https://login.example'));
+    const { token, callerOf } = await signedTokens(fakeIssuer('https://login.example'), atStart);
 
-    expect(await callerOf(issuers, token({}, { signer }))).toBe('person:corp/ada');
+    expect(await callerOf(await token({}, { signer }))).toBe('person:corp/ada');
   });
 
-  it.each([['at+jwt'], ['application/at+jwt'], ['JWT'], [undefined]])('is verified with the typ %s', async (typ) => {
-    const { issuers, token } = await signedBy(fakeIssuer('https://login.example'));
+  it.each(signers)('is refused when signed with %s by another key under the same kid', async (signer) => {
+    const { issuers } = await signedTokens(fakeIssuer('https://login.example'), atStart);
+    const other = await signedTokens(fakeIssuer('https://login.example'), atStart);
 
-    expect(await callerOf(issuers, token({}, { header: { typ } }))).toBe('person:corp/ada');
+    expect(await issuers.personOf(await other.token({}, { signer }), '/mcp')).toEqual({
+      because: 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED',
+    });
   });
+
+  it.each([['at+jwt'], ['application/at+jwt'], ['JWT'], ['application/jwt'], [null]])(
+    'is verified with the typ %s',
+    async (typ) => {
+      const { token, callerOf } = await signedTokens(fakeIssuer('https://login.example'), atStart);
+
+      expect(await callerOf(await token({}, { typ }))).toBe('person:corp/ada');
+    },
+  );
 
   it.each([
-    ['the public URL', publicUrl, '/v1/orgs/acme/playbooks'],
-    ['the public URL with a slash', `${publicUrl}/`, '/mcp'],
-    ['the public URL and the path the request reached', `${publicUrl}/orgs/acme/mcp`, '/orgs/acme/mcp'],
-    ['a list that holds the public URL', ['https://other.example', publicUrl], '/mcp'],
-  ])('is verified for an audience of %s', async (_case, aud: string | readonly string[], path) => {
-    const { issuers, token } = await signedBy(fakeIssuer('https://login.example'));
+    ['the public URL', testPublicUrl, ''],
+    ['the public URL with a slash', `${testPublicUrl}/`, '/mcp'],
+    ['the public URL and the endpoint the request reached', `${testPublicUrl}/orgs/acme/mcp`, '/orgs/acme/mcp'],
+    ['a list that holds the public URL', ['https://other.example', testPublicUrl], '/mcp'],
+  ])('is verified for an audience of %s', async (_case, aud: string | readonly string[], resourcePath) => {
+    const { token, callerOf } = await signedTokens(fakeIssuer('https://login.example'), atStart);
 
-    expect(await callerOf(issuers, token({ aud }), path)).toBe('person:corp/ada');
+    expect(await callerOf(await token({ aud }), resourcePath)).toBe('person:corp/ada');
   });
 
   it('is verified within the 60 seconds of leeway around its times', async () => {
-    const { issuers, token } = await signedBy(fakeIssuer('https://login.example'));
+    const { token, callerOf } = await signedTokens(fakeIssuer('https://login.example'), atStart);
 
-    expect(await callerOf(issuers, token({ exp: seconds - 59, nbf: seconds + 59, iat: seconds + 59 }))).toBe(
+    expect(await callerOf(await token({ exp: seconds - 59, nbf: seconds + 59, iat: seconds + 59 }))).toBe(
       'person:corp/ada',
     );
   });
 });
 
-const refusedClaims: ReadonlyArray<readonly [string, Claims]> = [
-  ['a wrong iss', { iss: 'https://elsewhere.example' }],
-  ['no aud', { aud: undefined }],
-  ['an aud of another resource', { aud: 'https://other.example' }],
-  ['an aud of another path', { aud: `${publicUrl}/orgs/globex/mcp` }],
-  ['an exp past the leeway', { exp: seconds - 60 }],
-  ['no exp', { exp: undefined }],
-  ['an nbf beyond the leeway', { nbf: seconds + 61 }],
-  ['an iat beyond the leeway', { iat: seconds + 61 }],
+const refusedClaims: ReadonlyArray<readonly [string, Claims, string]> = [
+  ['a wrong iss', { iss: 'https://elsewhere.example' }, 'its iss names no identity provider'],
+  ['no iss', { iss: undefined }, 'it names no iss'],
+  ['no aud', { aud: undefined }, 'ERR_JWT_CLAIM_VALIDATION_FAILED on its aud claim'],
+  ['an aud of another resource', { aud: 'https://other.example' }, 'ERR_JWT_CLAIM_VALIDATION_FAILED on its aud claim'],
+  [
+    'an aud of another endpoint',
+    { aud: `${testPublicUrl}/orgs/globex/mcp` },
+    'ERR_JWT_CLAIM_VALIDATION_FAILED on its aud claim',
+  ],
+  ['an exp past the leeway', { exp: seconds - 60 }, 'ERR_JWT_EXPIRED on its exp claim'],
+  ['no exp', { exp: undefined }, 'ERR_JWT_CLAIM_VALIDATION_FAILED on its exp claim'],
+  ['an nbf beyond the leeway', { nbf: seconds + 61 }, 'ERR_JWT_CLAIM_VALIDATION_FAILED on its nbf claim'],
+  ['an iat beyond the leeway', { iat: seconds + 61 }, 'its iat is more than 60 seconds ahead'],
+  ['no sub', { sub: undefined }, 'ERR_JWT_CLAIM_VALIDATION_FAILED on its sub claim'],
+  ['an empty sub', { sub: '' }, 'its sub is not a non-empty string of at most 256 bytes'],
+  ['a sub that is not a string', { sub: 7 }, 'its sub is not a non-empty string of at most 256 bytes'],
+  ['a sub over 256 bytes', { sub: 'ü'.repeat(129) }, 'its sub is not a non-empty string of at most 256 bytes'],
 ];
 
-const refusedHeaders: ReadonlyArray<readonly [string, Claims]> = [
-  ['the algorithm none', { alg: 'none' }],
-  ['an algorithm the runtime does not verify', { alg: 'HS256' }],
-  ['the algorithm of another key', { alg: 'ES256' }],
-  ['no kid', { kid: undefined }],
-  ['the typ of an identity token of another kind', { typ: 'id_token+jwt' }],
-  ['a critical extension', { crit: ['exp'] }],
-];
+describe('a token the runtime refuses, saying why', () => {
+  it.each(refusedClaims)('is refused for %s', async (_case, claims, because) => {
+    const { issuers, token } = await signedTokens(fakeIssuer('https://login.example'), atStart);
 
-describe('a token the runtime refuses', () => {
-  it.each(refusedClaims)('is refused for %s', async (_case, claims) => {
-    const { issuers, token } = await signedBy(fakeIssuer('https://login.example'));
+    expect(await issuers.personOf(await token(claims), '/mcp')).toEqual({ because });
+  });
+});
 
-    expect(await issuers.personOf(token(claims), '/mcp')).toBeUndefined();
+describe('a token the runtime refuses for its form, saying why', () => {
+  it('is refused for the typ of another kind of token', async () => {
+    const { issuers, token } = await signedTokens(fakeIssuer('https://login.example'), atStart);
+
+    expect(await issuers.personOf(await token({}, { typ: 'id_token+jwt' }), '/mcp')).toEqual({
+      because: 'its typ is not that of an access token',
+    });
   });
 
-  it.each(refusedHeaders)('is refused for %s in its header', async (_case, header) => {
-    const { issuers, token } = await signedBy(fakeIssuer('https://login.example'));
+  it('is refused for the path form of its audience on a path that is no endpoint', async () => {
+    const { issuers, token } = await signedTokens(fakeIssuer('https://login.example'), atStart);
 
-    expect(await issuers.personOf(token({}, { header }), '/mcp')).toBeUndefined();
+    expect(await issuers.personOf(await token({ aud: `${testPublicUrl}/orgs/acme/mcp` }), '')).toEqual({
+      because: 'ERR_JWT_CLAIM_VALIDATION_FAILED on its aud claim',
+    });
   });
 
-  it('is refused when its signature is not the issuer key’s', async () => {
-    const { issuers, token } = await signedBy(fakeIssuer('https://login.example'));
-    const [header, payload] = token().split('.');
-    const forged = fakeIssuer('https://login.example').sign({}).split('.')[2];
+  it('is refused for the algorithm none, and for a payload changed after it was signed', async () => {
+    const { issuers, token } = await signedTokens(fakeIssuer('https://login.example'), atStart);
+    const [header = '', payload = '', signature = ''] = (await token()).split('.');
+    const claims = { iss: 'https://login.example', sub: 'ada', aud: testPublicUrl, exp: seconds + 300 };
 
-    expect(await issuers.personOf(`${String(header)}.${String(payload)}.${String(forged)}`, '/mcp')).toBeUndefined();
+    expect([
+      await issuers.personOf(`${segmentOf({ alg: 'none', kid: 'rs256-1' })}.${payload}.`, '/mcp'),
+      await issuers.personOf(
+        `${header}.${segmentOf({ ...claims, groups: ['engineers', 'admins'] })}.${signature}`,
+        '/mcp',
+      ),
+    ]).toEqual([{ because: 'ERR_JOSE_ALG_NOT_ALLOWED' }, { because: 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED' }]);
   });
 
   it.each([
     ['an opaque token', 'an-opaque-token-of-the-provider'],
-    ['a token of two segments', 'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZGEifQ'],
-    ['a token of four segments', 'a.b.c.d'],
-    ['a token without a signature', 'eyJhbGciOiJub25lIn0.eyJzdWIiOiJhZGEifQ.'],
-    ['a header that is not UTF-8', `${Buffer.from([0xff, 0xfe]).toString('base64url')}.e30.c2ln`],
-    ['a header that is not JSON', `${Buffer.from('not json').toString('base64url')}.e30.c2ln`],
+    ['a token of two segments', `${segmentOf({ alg: 'RS256' })}.${segmentOf({ sub: 'ada' })}`],
   ])('is refused for %s', async (_case, presented) => {
-    const { issuers } = await signedBy(fakeIssuer('https://login.example'));
+    const { issuers } = await signedTokens(fakeIssuer('https://login.example'), atStart);
 
-    expect(await issuers.personOf(presented, '/mcp')).toBeUndefined();
+    expect(await issuers.personOf(presented, '/mcp')).toEqual({ because: 'ERR_JWT_INVALID' });
   });
+});
 
-  it('is refused when its claims are not a JSON object', async () => {
-    const { issuers, token } = await signedBy(fakeIssuer('https://login.example'));
-    const [header] = token().split('.');
-
-    expect(await issuers.personOf(`${String(header)}.${Buffer.from('[]').toString('base64url')}.c2ln`, '/mcp')).toBe(
-      undefined,
+describe('a token the runtime refuses for its key or its subject, saying why', () => {
+  it('is refused when the claim an entry names its subject by holds more than 256 bytes', async () => {
+    const fake = fakeIssuer('https://login.example');
+    const issuers = await issuersOf(
+      { providers: [{ ...engineersAt(fake.issuer), subject: 'oid' }], publicUrl: testPublicUrl },
+      { fetch: fake.answer, ...atStart },
     );
-  });
-});
+    const claims = { iss: fake.issuer, sub: 'ada', aud: testPublicUrl, exp: seconds + 300, oid: 'ü'.repeat(129) };
 
-describe('the algorithms of an issuer', () => {
-  it('are those its metadata lists, when it lists any', async () => {
-    const fake = fakeIssuer('https://login.example', {
-      metadata: { id_token_signing_alg_values_supported: ['RS256', 'HS256'] },
+    expect(await issuers.personOf(await fake.sign(claims), '/mcp')).toEqual({
+      because: 'its claim oid holds a subject of more than 256 bytes',
     });
-    const { issuers, token } = await signedBy(fake);
-
-    expect([await callerOf(issuers, token()), await callerOf(issuers, token({}, { signer: 'ES256' }))]).toEqual([
-      'person:corp/ada',
-      undefined,
-    ]);
-  });
-});
-
-describe('the key of a token', () => {
-  it('is fetched again for an unknown kid, so a rotated key verifies, and at most once a minute', async () => {
-    let now = startedAt;
-    const fake = fakeIssuer('https://login.example');
-    const { issuers, token } = await signedBy(fake, { now: () => now });
-    now += 60_000;
-    fake.rotate();
-    const rotated = token();
-
-    expect(await callerOf(issuers, rotated)).toBe('person:corp/ada');
-    expect(await issuers.personOf(token({}, { header: { kid: 'unknown' } }), '/mcp')).toBeUndefined();
-    expect(fake.keySetReads()).toBe(2);
   });
 
-  it('refuses an unknown kid after one fetch again, and fetches no more within the minute', async () => {
-    let now = startedAt;
-    const fake = fakeIssuer('https://login.example');
-    const { issuers, token } = await signedBy(fake, { now: () => now });
-    now += 60_000;
-    const unknown = token({}, { header: { kid: 'unknown' } });
+  it('is refused when another issuer signed it under a kid both issuers use', async () => {
+    const own = fakeIssuer('https://login.example');
+    const other = fakeIssuer('https://other.example');
+    const issuers = await issuersOf(
+      {
+        providers: [engineersAt(own.issuer), { ...engineersAt(other.issuer), name: 'other' }],
+        publicUrl: testPublicUrl,
+      },
+      { fetch: routedTo([own, other]), ...atStart },
+    );
+    const claims = { iss: own.issuer, sub: 'ada', aud: testPublicUrl, exp: seconds + 300, groups: ['engineers'] };
 
-    expect(await Promise.all([issuers.personOf(unknown, '/mcp'), issuers.personOf(unknown, '/mcp')])).toEqual([
-      undefined,
-      undefined,
-    ]);
-    now += 59_999;
-    expect(await issuers.personOf(unknown, '/mcp')).toBeUndefined();
-    expect(fake.keySetReads()).toBe(2);
-  });
-
-  it('keeps the keys it holds when fetching them again fails', async () => {
-    let now = startedAt;
-    const fake = fakeIssuer('https://login.example');
-    const network = cutAfterStart(fake);
-    const { issuers, token } = await signedBy(fake, { now: () => now, fetch: network.fetch });
-    network.cut();
-    now += 60_000;
-
-    expect(await issuers.personOf(token({}, { header: { kid: 'unknown' } }), '/mcp')).toBeUndefined();
-    expect(await callerOf(issuers, token())).toBe('person:corp/ada');
+    expect(await issuers.personOf(await other.sign(claims), '/mcp')).toEqual({
+      because: 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED',
+    });
   });
 });
 
@@ -233,17 +182,17 @@ describe('the issuers of the protected resource', () => {
     const issuers = await issuersOf(
       {
         providers: [
-          corpAt(login.issuer),
-          { ...corpAt(login.issuer), org: 'globex' },
-          { ...corpAt(other.issuer), name: 'other' },
+          engineersAt(login.issuer),
+          { ...engineersAt(login.issuer), org: 'globex' },
+          { ...engineersAt(other.issuer), name: 'other' },
         ],
-        publicUrl,
+        publicUrl: testPublicUrl,
       },
-      { fetch: routedTo([login, other]), now: () => startedAt },
+      { fetch: routedTo([login, other]), ...atStart },
     );
 
     expect(issuers.resource).toEqual({
-      publicUrl,
+      publicUrl: testPublicUrl,
       authorizationServers: ['https://login.example', 'https://other.example/tenant'],
     });
   });
@@ -253,7 +202,7 @@ describe('the issuers of the protected resource', () => {
 
     await expect(
       issuersOf(
-        { providers: [corpAt(fake.issuer)], publicUrl },
+        { providers: [engineersAt(fake.issuer)], publicUrl: testPublicUrl },
         { fetch: () => Promise.resolve(new Response('', { status: 404 })), now: Date.now },
       ),
     ).rejects.toMatchObject({

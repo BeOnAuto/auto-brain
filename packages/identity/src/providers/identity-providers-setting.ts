@@ -72,16 +72,43 @@ const IdentityProviderSchema = Schema.Struct({
 
 export type IdentityProvider = typeof IdentityProviderSchema.Type;
 
+type Collision = readonly [IdentityProvider, IdentityProvider];
+
+function collisionIn(
+  providers: readonly IdentityProvider[],
+  collide: (earlier: IdentityProvider, later: IdentityProvider) => boolean,
+): Collision | undefined {
+  return providers
+    .flatMap((later, index) =>
+      providers
+        .slice(0, index)
+        .filter((earlier) => collide(earlier, later))
+        .map((earlier): Collision => [earlier, later]),
+    )
+    .at(0);
+}
+
 function oneEntryPerIssuerAndOrg(providers: readonly IdentityProvider[]): true | string {
-  const pairs = new Set(providers.map(({ issuer, org }) => JSON.stringify([issuer, org])));
-  return pairs.size === providers.length || 'An org has at most one entry for each issuer';
+  const collision = collisionIn(
+    providers,
+    (earlier, later) => earlier.issuer === later.issuer && earlier.org === later.org,
+  );
+  return (
+    collision === undefined ||
+    `The org ${collision[0].org} has two entries for the issuer ${collision[0].issuer}; an org has at most one entry for each issuer`
+  );
 }
 
 function oneNamePerIssuer(providers: readonly IdentityProvider[]): true | string {
-  const names = new Set(providers.map(({ name }) => name));
-  const issuers = new Set(providers.map(({ issuer }) => issuer));
-  const pairs = new Set(providers.map(({ name, issuer }) => JSON.stringify([name, issuer])));
-  return (names.size === pairs.size && issuers.size === pairs.size) || 'An issuer has one name, and a name one issuer';
+  const collision = collisionIn(
+    providers,
+    (earlier, later) => (earlier.name === later.name) !== (earlier.issuer === later.issuer),
+  );
+  if (collision === undefined) {
+    return true;
+  }
+  const [earlier, later] = collision;
+  return `The entry for the org ${earlier.org} names the issuer ${earlier.issuer} ${earlier.name}, and the entry for the org ${later.org} names the issuer ${later.issuer} ${later.name}; an issuer has one name, and a name one issuer`;
 }
 
 export const IdentityProvidersSchema = Schema.Array(IdentityProviderSchema).check(

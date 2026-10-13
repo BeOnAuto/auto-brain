@@ -1,11 +1,9 @@
 import { Option, Result, Schema } from 'effect';
 
-import { signingAlgorithms, type SigningAlgorithm } from '../tokens/signing-algorithms.ts';
 import { jsonAt, type IssuerRequests } from './issuer-requests.ts';
 
 export interface IssuerMetadata {
   readonly jwksUri: string;
-  readonly algorithms: readonly SigningAlgorithm[];
 }
 
 const mostMetadataBytes = 65_536;
@@ -13,7 +11,6 @@ const mostMetadataBytes = 65_536;
 const MetadataSchema = Schema.Struct({
   issuer: Schema.String,
   jwks_uri: Schema.String,
-  id_token_signing_alg_values_supported: Schema.optionalKey(Schema.Array(Schema.String)),
 });
 
 const decodeMetadata = Schema.decodeUnknownOption(MetadataSchema);
@@ -35,17 +32,13 @@ function metadataIn(json: unknown, issuer: string): Result.Result<IssuerMetadata
   if (Option.isNone(decoded)) {
     return Result.fail('answers no metadata with an issuer and a jwks_uri');
   }
-  const { issuer: named, jwks_uri: jwksUri, id_token_signing_alg_values_supported: listed } = decoded.value;
+  const { issuer: named, jwks_uri: jwksUri } = decoded.value;
   if (named !== issuer) {
     return Result.fail(`names the issuer ${named}`);
   }
-  if (URL.parse(jwksUri)?.protocol !== 'https:') {
-    return Result.fail('names a jwks_uri that is not an https URL');
-  }
-  const algorithms = signingAlgorithms.filter((algorithm) => listed?.includes(algorithm) ?? true);
-  return algorithms.length === 0
-    ? Result.fail(`signs with none of ${signingAlgorithms.join(', ')}`)
-    : Result.succeed({ jwksUri, algorithms });
+  return URL.parse(jwksUri)?.protocol === 'https:'
+    ? Result.succeed({ jwksUri })
+    : Result.fail('names a jwks_uri that is not an https URL');
 }
 
 async function firstMetadataAt(

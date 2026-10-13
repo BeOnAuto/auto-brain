@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { authenticatorFor, readApiKeys } from '../index.ts';
+import { principalIn } from '../testing/index.ts';
 import { runKeyCommand } from './run-key-command.ts';
 
 interface Session {
@@ -65,7 +66,9 @@ describe('the key command', () => {
       { org: 'demo', permissions: ['org:read', 'org:write', 'playbook:read', 'playbook:write'], playbooks: '*' },
     ]);
     expect(apiKeys?.[0]?.id).toMatch(/^[0-9a-f]{8}$/u);
-    const holder = await authenticatorFor({ host: '0.0.0.0', apiKeys, localMode: false }).authenticate(key, '/mcp');
+    const holder = principalIn(
+      await authenticatorFor({ host: '0.0.0.0', apiKeys, localMode: false }).authenticate(key, '/mcp'),
+    );
 
     expect(holder?.callerIn('demo')?.org).toBe('demo');
   });

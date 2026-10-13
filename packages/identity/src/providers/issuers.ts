@@ -1,12 +1,12 @@
 import { Result } from 'effect';
+import type { RemoteJWKSet } from 'jose';
 
-import type { Principal } from '../access/principal.ts';
-import { accessTokenOf, type AccessToken } from '../tokens/access-token.ts';
-import { isIntendedFor, isTimely } from '../tokens/token-claims.ts';
+import type { Authentication } from '../access/principal.ts';
+import { claimedIssuerOf, verifiedPayload, type Payload } from '../tokens/token-verification.ts';
 import { admittedPerson } from './admitted-person.ts';
 import type { IdentityProvider } from './identity-providers-setting.ts';
+import { keysOfIssuer } from './issuer-keys.ts';
 import { issuerRequestsOverTheNetwork, type IssuerRequests } from './issuer-requests.ts';
-import { keysOfIssuer, type IssuerKeys } from './key-set.ts';
 import { UnusableProviderError } from './unusable-provider-error.ts';
 
 export interface ProtectedResource {
@@ -16,7 +16,7 @@ export interface ProtectedResource {
 
 export interface Issuers {
   readonly resource: ProtectedResource;
-  readonly personOf: (token: string, path: string) => Promise<Principal | undefined>;
+  readonly personOf: (token: string, resourcePath: string) => Promise<Authentication>;
 }
 
 export interface SignInSettings {
@@ -24,8 +24,9 @@ export interface SignInSettings {
   readonly publicUrl: string;
 }
 
-interface TrustedIssuer extends IssuerKeys {
+interface TrustedIssuer {
   readonly providers: readonly IdentityProvider[];
+  readonly keys: RemoteJWKSet;
 }
 
 async function trustedIssuerOf(
@@ -39,12 +40,16 @@ async function trustedIssuerOf(
     const name = [...new Set(own.map((provider) => provider.name))].join(', ');
     throw new UnusableProviderError({ message: `The identity provider ${name} cannot be used: ${read.failure}` });
   }
-  return [issuer, { providers: own, ...read.success }];
+  return [issuer, { providers: own, keys: read.success }];
 }
 
-interface Presented {
-  readonly token: AccessToken;
+interface Verified {
+  readonly payload: Payload;
   readonly issuer: TrustedIssuer;
+}
+
+function audiencesOf(publicUrl: string, resourcePath: string): readonly string[] {
+  return [publicUrl, `${publicUrl}/`, ...(resourcePath === '' ? [] : [`${publicUrl}${resourcePath}`])];
 }
 
 export async function issuersOf(
@@ -53,25 +58,27 @@ export async function issuersOf(
 ): Promise<Issuers> {
   const names = [...new Set(providers.map(({ issuer }) => issuer))];
   const trusted = new Map(await Promise.all(names.map((issuer) => trustedIssuerOf(issuer, providers, requests))));
-  const presentedOf = (text: string, path: string): Presented | undefined => {
-    const token = accessTokenOf(text);
-    const issuer = token === undefined ? undefined : trusted.get(token.claims.iss);
-    return token !== undefined &&
-      issuer?.algorithms.includes(token.algorithm) === true &&
-      isTimely(token.claims, requests.now()) &&
-      isIntendedFor(token.claims, publicUrl, path)
-      ? { token, issuer }
-      : undefined;
+  const payloadOf = async (token: string, resourcePath: string): Promise<Result.Result<Verified, string>> => {
+    const claimed = claimedIssuerOf(token);
+    if (Result.isFailure(claimed)) {
+      return Result.fail(claimed.failure);
+    }
+    const issuer = trusted.get(claimed.success);
+    if (issuer === undefined) {
+      return Result.fail('its iss names no identity provider');
+    }
+    const expected = { issuer: claimed.success, audiences: audiencesOf(publicUrl, resourcePath), now: requests.now() };
+    return Result.map(await verifiedPayload(token, issuer.keys, expected), (payload) => ({ payload, issuer }));
   };
   return {
     resource: { publicUrl, authorizationServers: names },
-    personOf: async (text, path) => {
-      const presented = presentedOf(text, path);
-      const key = await presented?.issuer.keys.keyFor(presented.token.keyId);
-      return presented !== undefined &&
-        key?.verifies(presented.token.algorithm, presented.token.signed, presented.token.signature) === true
-        ? admittedPerson(presented.issuer.providers, presented.token.payload)
-        : undefined;
+    personOf: async (token, resourcePath) => {
+      const verified = await payloadOf(token, resourcePath);
+      if (Result.isFailure(verified)) {
+        return { because: verified.failure };
+      }
+      const admitted = admittedPerson(verified.success.issuer.providers, verified.success.payload);
+      return Result.isSuccess(admitted) ? admitted.success : { because: admitted.failure };
     },
   };
 }

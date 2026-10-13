@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { issuersOf } from '../index.ts';
 import { fakeIssuer } from './fake-issuer.ts';
+import { principalIn } from './principals.ts';
 
 const clients = { 'ada-agent': { secret: 'a-long-secret', claims: { sub: 'ada', groups: ['engineers'] } } };
 
@@ -43,7 +44,7 @@ describe('the fake issuer', () => {
     );
     const { access_token: token } = tokenOf(await answer.json());
 
-    expect((await issuers.personOf(token, '/mcp'))?.callerIn('acme')?.id).toBe('person:corp/ada');
+    expect(principalIn(await issuers.personOf(token, '/mcp'))?.callerIn('acme')?.id).toBe('person:corp/ada');
   });
 });
 

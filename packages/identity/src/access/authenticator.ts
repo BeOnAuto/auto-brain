@@ -3,14 +3,14 @@ import { verifyKey } from '../keys/verify-key.ts';
 import type { Issuers, ProtectedResource } from '../providers/issuers.ts';
 import { InvalidLocalModeError } from './invalid-local-mode-error.ts';
 import { listensOnlyOnLoopback } from './loopback.ts';
-import { localDeveloper, principalOf, type Principal } from './principal.ts';
+import { localDeveloper, principalOf, unexplained, type Authentication } from './principal.ts';
 
 export type AccessMode = 'local' | 'credentials' | 'closed';
 
 export interface Authenticator {
   readonly mode: AccessMode;
   readonly resource: ProtectedResource | undefined;
-  readonly authenticate: (presented: string | undefined, path: string) => Promise<Principal | undefined>;
+  readonly authenticate: (presented: string | undefined, resourcePath: string) => Promise<Authentication>;
 }
 
 export interface AccessSettings {
@@ -20,15 +20,15 @@ export interface AccessSettings {
   readonly issuers?: Issuers | undefined;
 }
 
-function keyHolderOf(keys: readonly ApiKey[], presented: string | undefined): Principal | undefined {
+function keyHolderOf(keys: readonly ApiKey[], presented: string | undefined): Authentication {
   const key = presented === undefined ? undefined : verifyKey(keys, presented);
-  return key === undefined ? undefined : principalOf(key);
+  return key === undefined ? unexplained : principalOf(key);
 }
 
 function credentialHolderOf(keys: readonly ApiKey[], issuers?: Issuers): Authenticator['authenticate'] {
-  return (presented, path) =>
+  return (presented, resourcePath) =>
     presented !== undefined && issuers !== undefined && !presented.startsWith(keyPrefix)
-      ? issuers.personOf(presented, path)
+      ? issuers.personOf(presented, resourcePath)
       : Promise.resolve(keyHolderOf(keys, presented));
 }
 

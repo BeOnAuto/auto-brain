@@ -101,15 +101,19 @@ describe('readIdentityProviders refusing an entry', () => {
     [
       'two entries for one org and issuer',
       [corp, { ...corp, membership: undefined }],
-      'An org has at most one entry for each issuer',
+      'The org acme has two entries for the issuer https://login.example/tenant; an org has at most one entry for each issuer',
     ],
-    ['two names for one issuer', [corp, { ...globex, name: 'other' }], 'An issuer has one name, and a name one issuer'],
+    [
+      'two names for one issuer',
+      [corp, { ...globex, name: 'other' }],
+      'The entry for the org acme names the issuer https://login.example/tenant corp, and the entry for the org globex names the issuer https://login.example/tenant other; an issuer has one name, and a name one issuer',
+    ],
     [
       'one name for two issuers',
       [corp, { ...globex, issuer: 'https://other.example' }],
-      'An issuer has one name, and a name one issuer',
+      'The entry for the org acme names the issuer https://login.example/tenant corp, and the entry for the org globex names the issuer https://other.example corp; an issuer has one name, and a name one issuer',
     ],
-  ])('refuses %s', (_case, providers: unknown, words) => {
+  ])('refuses %s, naming the org and the issuer of the entries', (_case, providers: unknown, words) => {
     expect(String(errorFrom(providers))).toBe(`InvalidIdentityProvidersError: IDENTITY_PROVIDERS: ${words}`);
   });
 
