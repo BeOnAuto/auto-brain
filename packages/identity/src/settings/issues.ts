@@ -13,3 +13,8 @@ function keysOf(path: IssuePath): readonly PropertyKey[] {
 export function describeIssues({ issues }: Failure, subjectOf: (keys: readonly PropertyKey[]) => string): string {
   return issues.map(({ message, path }) => `${subjectOf(keysOf(path))}: ${message}`).join('; ');
 }
+
+export function within(setting: string): (keys: readonly PropertyKey[]) => string {
+  return (keys) =>
+    `${setting}${keys.map((key) => (typeof key === 'number' ? `[${key}]` : `.${String(key)}`)).join('')}`;
+}

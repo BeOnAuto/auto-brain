@@ -8,10 +8,9 @@ const keyWithTheSecretBytes0To31 = 'abk_ci-1_AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBk
 
 const sha256OfThatKey = '269ce89dc8b3c0eb7966560f76d53555a184aaaffe7514d545765bf14701fa6a';
 
-function admits(entries: readonly ApiKey[], presented: string): boolean {
-  return (
-    authenticatorFor({ host: '0.0.0.0', apiKeys: entries, localMode: false }).authenticate(presented) !== undefined
-  );
+async function admits(entries: readonly ApiKey[], presented: string): Promise<boolean> {
+  const authenticator = authenticatorFor({ host: '0.0.0.0', apiKeys: entries, localMode: false });
+  return (await authenticator.authenticate(presented, '/v1/orgs/acme/playbooks')) !== undefined;
 }
 
 describe('createApiKey', () => {
@@ -31,11 +30,14 @@ describe('createApiKey', () => {
     expect(JSON.stringify(entry)).not.toContain(key.slice('abk_ci-1_'.length));
   });
 
-  it('stores a digest that admits the key it created and no other key', () => {
+  it('stores a digest that admits the key it created and no other key', async () => {
     const created = createApiKey(grant);
     const another = createApiKey(grant);
 
-    expect([admits([created.entry], created.key), admits([created.entry], another.key)]).toEqual([true, false]);
+    expect([await admits([created.entry], created.key), await admits([created.entry], another.key)]).toEqual([
+      true,
+      false,
+    ]);
   });
 
   it('creates a different key each time', () => {
@@ -44,7 +46,7 @@ describe('createApiKey', () => {
 });
 
 describe('the digest of an API key', () => {
-  it('is the SHA-256 of the whole key in hex, so an entry holding it admits the key', () => {
-    expect(admits([{ ...grant, sha256: sha256OfThatKey }], keyWithTheSecretBytes0To31)).toBe(true);
+  it('is the SHA-256 of the whole key in hex, so an entry holding it admits the key', async () => {
+    expect(await admits([{ ...grant, sha256: sha256OfThatKey }], keyWithTheSecretBytes0To31)).toBe(true);
   });
 });

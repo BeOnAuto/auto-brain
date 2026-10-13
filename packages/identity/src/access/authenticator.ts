@@ -1,39 +1,54 @@
-import type { ApiKey } from '../keys/api-key.ts';
+import { keyPrefix, type ApiKey } from '../keys/api-key.ts';
 import { verifyKey } from '../keys/verify-key.ts';
+import type { Issuers, ProtectedResource } from '../providers/issuers.ts';
 import { InvalidLocalModeError } from './invalid-local-mode-error.ts';
 import { listensOnlyOnLoopback } from './loopback.ts';
 import { localDeveloper, principalOf, type Principal } from './principal.ts';
 
-export type AccessMode = 'local' | 'keys' | 'closed';
+export type AccessMode = 'local' | 'credentials' | 'closed';
 
 export interface Authenticator {
   readonly mode: AccessMode;
-  readonly authenticate: (presentedKey?: string) => Principal | undefined;
+  readonly resource: ProtectedResource | undefined;
+  readonly authenticate: (presented: string | undefined, path: string) => Promise<Principal | undefined>;
 }
 
 export interface AccessSettings {
   readonly host: string;
   readonly apiKeys: readonly ApiKey[] | undefined;
   readonly localMode: boolean;
+  readonly issuers?: Issuers | undefined;
 }
 
-function keyHolderOf(keys: readonly ApiKey[], presentedKey: string | undefined): Principal | undefined {
-  const key = presentedKey === undefined ? undefined : verifyKey(keys, presentedKey);
+function keyHolderOf(keys: readonly ApiKey[], presented: string | undefined): Principal | undefined {
+  const key = presented === undefined ? undefined : verifyKey(keys, presented);
   return key === undefined ? undefined : principalOf(key);
 }
 
-const localAccess: Authenticator = { mode: 'local', authenticate: () => localDeveloper };
+function credentialHolderOf(keys: readonly ApiKey[], issuers?: Issuers): Authenticator['authenticate'] {
+  return (presented, path) =>
+    presented !== undefined && issuers !== undefined && !presented.startsWith(keyPrefix)
+      ? issuers.personOf(presented, path)
+      : Promise.resolve(keyHolderOf(keys, presented));
+}
 
-const closedAccess: Authenticator = { mode: 'closed', authenticate: (presentedKey) => keyHolderOf([], presentedKey) };
+const localAccess: Authenticator = {
+  mode: 'local',
+  resource: undefined,
+  authenticate: () => Promise.resolve(localDeveloper),
+};
 
-export function authenticatorFor({ host, apiKeys, localMode }: AccessSettings): Authenticator {
+const closedAccess: Authenticator = { mode: 'closed', resource: undefined, authenticate: credentialHolderOf([]) };
+
+export function authenticatorFor({ host, apiKeys, localMode, issuers }: AccessSettings): Authenticator {
   if (localMode && !listensOnlyOnLoopback(host)) {
     throw new InvalidLocalModeError({
       message: `LOCAL_MODE is on, but HOST ${host} is not a loopback address; local mode trusts every request, so it runs only on localhost, 127.0.0.1 or ::1`,
     });
   }
-  if (apiKeys !== undefined && apiKeys.length > 0) {
-    return { mode: 'keys', authenticate: (presentedKey) => keyHolderOf(apiKeys, presentedKey) };
+  const keys = apiKeys ?? [];
+  if (keys.length > 0 || issuers !== undefined) {
+    return { mode: 'credentials', resource: issuers?.resource, authenticate: credentialHolderOf(keys, issuers) };
   }
   return localMode && apiKeys === undefined ? localAccess : closedAccess;
 }

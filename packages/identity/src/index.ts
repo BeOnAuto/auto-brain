@@ -5,3 +5,12 @@ export { InvalidApiKeysError } from './keys/invalid-api-keys-error.ts';
 export { InvalidLocalModeError } from './access/invalid-local-mode-error.ts';
 export type { Principal } from './access/principal.ts';
 export { runKeyCommand, type Console as KeyCommandConsole } from './key-command/run-key-command.ts';
+export {
+  IdentityProvidersSchema,
+  readIdentityProviders,
+  type IdentityProvider,
+} from './providers/identity-providers-setting.ts';
+export { InvalidIdentityProvidersError } from './providers/invalid-identity-providers-error.ts';
+export { UnusableProviderError } from './providers/unusable-provider-error.ts';
+export { issuersOf, type Issuers, type ProtectedResource, type SignInSettings } from './providers/issuers.ts';
+export type { IssuerFetch, IssuerRequests } from './providers/issuer-requests.ts';

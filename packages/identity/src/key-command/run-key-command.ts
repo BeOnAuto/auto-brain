@@ -5,7 +5,7 @@ import { allPermissions } from '@on.auto/operations';
 import { Result, Schema } from 'effect';
 
 import { KeyGrantSchema, createApiKey, type KeyGrant } from '../keys/api-key.ts';
-import { describeIssues, failureOf } from '../keys/issues.ts';
+import { describeIssues, failureOf } from '../settings/issues.ts';
 
 export interface Console {
   readonly log: (line: string) => void;

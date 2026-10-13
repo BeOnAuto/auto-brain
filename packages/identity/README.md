@@ -1,0 +1,26 @@
+# @on.auto/identity
+
+Who calls the runtime: a key, the local developer, or a signed-in person an identity provider vouches for. `authenticatorFor` of `src/index.ts` takes the settings, the API keys, local mode and the issuers of the configured identity providers, and answers the access mode and an asynchronous `authenticate`, which takes the credential a request presents and the path it reached and answers its `Principal`. A principal answers the caller of an org with `callerIn(org)`, or `undefined` for an org it does not admit: a key admits its own org, the local developer every org, and a signed-in person each org an entry of their issuer admits them to. The key command, `src/key-command.ts`, prints a new key once and the `API_KEYS` entry that admits it.
+
+## Keys
+
+A key is `abk_<id>_<secret>`, stored as the SHA-256 of the whole key with its org, permissions and playbooks, and verified in constant time. The org `local` is local mode's and the id `local` the local developer's, so `API_KEYS` and the key command refuse both.
+
+## Signed-in persons
+
+`readIdentityProviders` reads `IDENTITY_PROVIDERS`, and `IdentityProvidersSchema` is its entry list for the configuration file; each refusal names the entry and the field. `issuersOf` reads, at start, each issuer's metadata, from the addresses the MCP authorization specification orders, and its key set, both within 64 KiB and 10 seconds, and stops with `UnusableProviderError` naming the provider when one cannot be used. A token is then verified per request with `node:crypto` alone, `RS256`, `PS256`, `ES256` and `EdDSA` on `Ed25519` and `Ed448`, within 8 KiB, its `iss`, its `aud` against `PUBLIC_URL` and the path, and its times with 60 seconds of leeway; an unknown `kid` reads the key set again at most once a minute. The person is `person:<name>/<subject>` in each org whose entry's membership the token holds and whose grants give it a permission. The security guide of the documentation sets out every rule.
+
+`fakeIssuer` of `@on.auto/identity/testing` is an issuer for tests: it answers its metadata, its key set and a token endpoint for the client credentials grant, signs a token with a key of each algorithm, and turns its keys over.
+
+## Measurement
+
+`pnpm --filter @on.auto/identity measure` starts the issuers 200 times against the fake issuer answered in process, its metadata and a key set of five keys, and verifies 10,000 tokens of each algorithm through `personOf`, the whole path a request takes: parsing, the claims, the key, the signature and the grants. In process, the start measures the runtime's own work; a provider's two round trips at start add their network time to it. On Node v26.10.0 with 16 cores, on 2026-10-13, two runs:
+
+| Measured                                                   | Run 1   | Run 2   |
+| ---------------------------------------------------------- | ------- | ------- |
+| Start: metadata and key set read, five keys imported       | 0.10 ms | 0.08 ms |
+| Verification of an `RS256` token, per request              | 18.0 µs | 15.9 µs |
+| Verification of a `PS256` token, per request               | 16.9 µs | 16.3 µs |
+| Verification of an `ES256` token, per request              | 40.5 µs | 40.4 µs |
+| Verification of an `EdDSA` token on `Ed25519`, per request | 42.5 µs | 42.2 µs |
+| Verification of an `EdDSA` token on `Ed448`, per request   | 68.2 µs | 67.6 µs |

@@ -46,6 +46,7 @@ const badArguments: ReadonlyArray<readonly [readonly string[], string]> = [
   [['--id', 'ci-1'], '--org: Missing key'],
   [['--org', 'a b'], '--org: Expected a string matching'],
   [['--org', 'local'], '--org: This org id is reserved for local mode'],
+  [['--org', 'acme', '--id', 'local'], '--id: This key id is reserved for the local developer'],
   [['--org', 'acme', '--id', 'CI_1'], '--id: Expected a string matching'],
   [['--org', 'acme', '--permissions', 'org:read,admin'], '--permissions: Expected "org:read"'],
   [['--org', 'acme', '--playbooks', 'Alpha'], '--playbooks: Expected a string matching'],
@@ -54,7 +55,7 @@ const badArguments: ReadonlyArray<readonly [readonly string[], string]> = [
 ];
 
 describe('the key command', () => {
-  it('prints a key once and the API_KEYS entry that admits it, with a random id, every permission and every playbook', () => {
+  it('prints a key once and the API_KEYS entry that admits it, with a random id, every permission and every playbook', async () => {
     const session = run('--org', 'demo');
     const { key, entry } = issued(session);
     const apiKeys = readApiKeys({ API_KEYS: `[${entry}]` });
@@ -64,9 +65,9 @@ describe('the key command', () => {
       { org: 'demo', permissions: ['org:read', 'org:write', 'playbook:read', 'playbook:write'], playbooks: '*' },
     ]);
     expect(apiKeys?.[0]?.id).toMatch(/^[0-9a-f]{8}$/u);
-    expect(
-      authenticatorFor({ host: '0.0.0.0', apiKeys, localMode: false }).authenticate(key)?.callerIn('demo').org,
-    ).toBe('demo');
+    const holder = await authenticatorFor({ host: '0.0.0.0', apiKeys, localMode: false }).authenticate(key, '/mcp');
+
+    expect(holder?.callerIn('demo')?.org).toBe('demo');
   });
 
   it('takes the id, the permissions and the playbooks it is given, after an optional --', () => {
