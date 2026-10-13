@@ -23,11 +23,11 @@ Use [Playbook terminology](../concepts/terminology.md) for resources, capabiliti
 
 ## What belongs here
 
-Keep local setup and agent connection instructions, shared concepts, available function behavior, the self-hosting overview and HTTP/MCP reference in the public pages under `docs/`. Keep Cloud availability, account management, hosted OAuth setup, pricing and marketing pages in the website repository.
+Keep local setup and agent connection instructions, shared concepts, available function behavior, the self-hosting guides, from running the image to configuring and operating it, and HTTP/MCP reference in the public pages under `docs/`. Keep Cloud availability, account management, hosted OAuth setup, pricing and marketing pages in the website repository.
 
 Implementation notes and contributor APIs remain in package READMEs and root contributor files. Link to the user guide instead of maintaining a second copy of it.
 
-Detailed development setup, deployment configuration and transitional implementation guides belong in `docs/engineering/`. Architecture decision records belong in `docs/decisions/`. Both directories stay beside the code and are excluded from the public preview, search, navigation and website import. Do not add them to `nav.json` or link to them through a public documentation route. GitHub links can direct contributors to these repository-only notes.
+Development setup for a checkout and transitional implementation guides belong in `docs/engineering/`. Architecture decision records belong in `docs/decisions/`. Both directories stay beside the code and are excluded from the public preview, search, navigation and website import. Do not add them to `nav.json` or link to them through a public documentation route. GitHub links can direct contributors to these repository-only notes.
 
 Keep repository-only guides accurate for the checkout. Public workflow pages describe the behavior the runtime offers today. Update the relevant public guide when a change becomes available to users.
 

@@ -2,7 +2,7 @@
 
 The workflow adapter parses a `WorkflowDefinitionDocument` from YAML in the Open Workflow Specification DSL. This document type is an alias for `JsonObject`; the parser applies the existing DSL checks. It is separate from the named, versioned definition stored in the registry. The adapter runs the workflow machine of [`@on.auto/workflow-engine`](../../packages/workflow-engine), hosted in Node by [`@on.auto/workflow-host`](../../packages/workflow-host). Workflows coordinate functions and control steps; they are not another function type. A workflow is a definition of the type `workflow`.
 
-Public documentation explains [workflows and their availability](../../docs/concepts/workflows.md) and [the workflow format](../../docs/reference/workflow-format.md), published at [on.auto/docs](https://on.auto/docs/). The repository-only [workflow run reference](../../docs/engineering/reference/workflow-format.md) and [workflow operations guide](../../docs/engineering/self-host/workflows.md) hold the implementation details, and [decision 0001](../../docs/decisions/0001-workflow-engine-on-the-ledger.md) why workflows run on an engine on the ledger.
+Public documentation explains [workflows and their availability](../../docs/concepts/workflows.md) and [the workflow format](../../docs/reference/workflow-format.md), published at [on.auto/docs](https://on.auto/docs/). The [workflow operations guide](../../docs/self-host/workflows.md) describes running them for an operator, and the repository-only [workflow run reference](../../docs/engineering/reference/workflow-format.md) holds the implementation details, and [decision 0001](../../docs/decisions/0001-workflow-engine-on-the-ledger.md) why workflows run on an engine on the ledger.
 
 ## Entry
 
