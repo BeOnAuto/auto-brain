@@ -1,7 +1,9 @@
-import type { Fold } from '@on.auto/operations';
+import { streamPrefixOfPlaybook, type Fold, type PlaybookAddress, type StreamReader } from '@on.auto/operations';
+import { Effect } from 'effect';
 
 import type { StrippedForms } from '../capability/stripped-forms.ts';
 import { DefinitionEventSchema, type RecordedDefinitionEvent } from './definition-events.ts';
+import { definitionTypeStreamOf } from './definitions-decider.ts';
 
 export interface RecordedVersion {
   readonly source: string;
@@ -35,4 +37,19 @@ export function definitionVersionFold(name: string, version: number): Fold<Versi
     evolve: evolvedSearch(name, version),
     eventSchema: DefinitionEventSchema,
   };
+}
+
+export interface DefinitionVersionAddress {
+  readonly type: string;
+  readonly name: string;
+  readonly version: number;
+}
+
+export function definitionVersionIn(
+  reader: StreamReader,
+  playbook: PlaybookAddress,
+  { type, name, version }: DefinitionVersionAddress,
+): Effect.Effect<RecordedVersion | undefined> {
+  const stream = `${streamPrefixOfPlaybook(playbook)}${definitionTypeStreamOf(type)}`;
+  return Effect.map(reader.load(stream, definitionVersionFold(name, version)), ({ state }) => state.found);
 }

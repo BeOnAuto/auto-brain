@@ -11,13 +11,23 @@ import { runDecider, runStreamNameOf } from '../runs/run-decider.ts';
 import { RunEventSchema, type RecordedRunEvent } from '../runs/run-events.ts';
 import { runDetailOf } from '../runs/run-lookup.ts';
 import type { RunStreamAddress } from '../runs/run-settler.ts';
-import { startedRunOf, takesSettlement, type RunStreamState } from '../runs/run-state.ts';
+import {
+  startedRunOf,
+  takesSettlement,
+  type RecordedAnswer,
+  type RecordedWork,
+  type RunStreamState,
+} from '../runs/run-state.ts';
 import type { RunDetail } from '../runs/run.ts';
 
 export interface RecordedRun {
   readonly run: RunDetail;
   readonly input: Schema.Json;
   readonly awaitsSettlement: boolean;
+  readonly work: readonly RecordedWork[];
+  readonly answer: RecordedAnswer | null;
+  readonly depth: number;
+  readonly callDepth: number;
 }
 
 const isWellFormed = Schema.is(
@@ -38,6 +48,10 @@ function recordedOf(id: string, state: RunStreamState): Effect.Effect<RecordedRu
         run: detail,
         input: run.input,
         awaitsSettlement: takesSettlement(run),
+        work: run.work,
+        answer: run.answer,
+        depth: run.depth,
+        callDepth: run.callDepth,
       }));
 }
 

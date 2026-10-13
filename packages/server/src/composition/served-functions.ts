@@ -37,12 +37,7 @@ export async function functionsServedBy(
   const projections = await wiring.served(runtime, { recall: settings.recall, database }, computation.pool, [
     datasetsFolderOf(computation.pool),
   ]);
-  const prediction = await predictionFunctionsServedBy(
-    runtime,
-    settings.prediction,
-    computation.pool,
-    projections.store,
-  );
+  const prediction = await predictionFunctionsServedBy(runtime, settings, computation.pool, projections.store);
   const capabilities = [
     reasoning.capability,
     interaction.capability,
@@ -57,9 +52,13 @@ export async function functionsServedBy(
       facts,
       names,
       orgOperations: [...playbookOperations, reasoning.listModels, reasoning.listToolServersInOrg],
-      playbookOperations: [reasoning.listToolServers, reasoning.testToolCall, ...interaction.operations],
+      playbookOperations: [
+        reasoning.listToolServers,
+        reasoning.testToolCall,
+        ...interaction.operationsFor(capabilities),
+      ],
       playbookRoutes: prediction.routes,
-      dueWork: interaction.dueWorkOf(record),
+      dueWork: [...interaction.dueWorkOf(record), prediction.dueWorkFor(capabilities)],
       store: projections.store,
       projector: projections.projector,
       evaluations: computation.pool.evaluations,

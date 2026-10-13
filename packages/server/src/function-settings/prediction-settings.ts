@@ -1,7 +1,10 @@
+import { isAbsolute } from 'node:path';
+
 import type { Environment } from '@on.auto/config';
+import { cacheDirectory } from '@on.auto/prediction';
 import { Effect } from 'effect';
 
-import type { InvalidSettingsError } from '../settings/invalid-settings-error.ts';
+import { InvalidSettingsError } from '../settings/invalid-settings-error.ts';
 import { countsIn, type CountBounds } from './counted-settings.ts';
 
 interface ModelProcesses {
@@ -12,6 +15,8 @@ interface ModelProcesses {
 
 export interface PredictionSettings extends ModelProcesses {
   readonly mostFunctions: number;
+  readonly buildsPerDay: number;
+  readonly cacheDirectory: string;
   readonly path: string | undefined;
 }
 
@@ -26,7 +31,11 @@ const processMemoryMebibytes: CountBounds = {
 
 const buildsAtOnce: CountBounds = { setting: 'PREDICTION_BUILDS_AT_ONCE', least: 1, most: 63, example: 2 };
 
+const buildsPerDay: CountBounds = { setting: 'PREDICTION_BUILDS_PER_DAY', least: 1, most: 100, example: 4 };
+
 const mostFunctions: CountBounds = { setting: 'PREDICTION_MAX_FUNCTIONS', least: 1, most: 1000, example: 32 };
+
+const cacheSetting = 'PREDICTION_CACHE_DIR';
 
 function belowTheProcesses(settings: ModelProcesses): readonly string[] {
   return settings.buildsAtOnce < settings.processes
@@ -36,13 +45,31 @@ function belowTheProcesses(settings: ModelProcesses): readonly string[] {
       ];
 }
 
+function cacheDirectoryIn(environment: Environment): Effect.Effect<string, InvalidSettingsError> {
+  const written = (environment[cacheSetting] ?? '').trim();
+  if (written === '') {
+    return Effect.succeed(cacheDirectory);
+  }
+  return isAbsolute(written)
+    ? Effect.succeed(written)
+    : Effect.fail(
+        new InvalidSettingsError({
+          message: `The prediction function settings are invalid. ${cacheSetting}: Expected an absolute path, such as ${cacheDirectory}`,
+        }),
+      );
+}
+
 export function readPredictionSettings(
   environment: Environment,
 ): Effect.Effect<PredictionSettings, InvalidSettingsError> {
   const counted = countsIn(environment, {
     settings: 'prediction function settings',
-    bounds: { processes, processMemoryMebibytes, buildsAtOnce, mostFunctions },
+    bounds: { processes, processMemoryMebibytes, buildsAtOnce, buildsPerDay, mostFunctions },
     beyondTheRanges: (counts) => belowTheProcesses(counts),
   });
-  return Effect.map(counted, (counts) => ({ ...counts, path: environment['PATH'] }));
+  return Effect.zipWith(counted, cacheDirectoryIn(environment), (counts, kept) => ({
+    ...counts,
+    cacheDirectory: kept,
+    path: environment['PATH'],
+  }));
 }

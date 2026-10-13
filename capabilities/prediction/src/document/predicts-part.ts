@@ -2,11 +2,15 @@ import type { DocumentIssue, SourceLines } from '@on.auto/definitions/document';
 
 import { figure } from '../capability/figures.ts';
 import { predictionBounds } from '../capability/prediction-bounds.ts';
+import { longestSpanOf } from '../periods/enclosing.ts';
 import { checkedFrom, isWhole, nameIssues, refusedAt, type Checked } from './checked-parts.ts';
-import type { WrittenPredicts } from './front-matter.ts';
+import type { WrittenData, WrittenPredicts } from './front-matter.ts';
 import type { Predicts } from './prediction-document.ts';
 
 const { mostHorizons, mostHorizon, leastSeason, mostSeason, mostUnitCharacters } = predictionBounds;
+
+const summedPairs =
+  'a day sums to a week, a month or a quarter, a week to a quarter or a year, and a month to a quarter or a year';
 
 function seasonIssues(season: number | undefined, lines: SourceLines): readonly DocumentIssue[] {
   return season === undefined || isWhole(season, leastSeason, mostSeason)
@@ -41,29 +45,63 @@ function horizonIssues(horizons: readonly number[], lines: SourceLines): readonl
   });
 }
 
+function accumulationIssues(
+  { period, accumulates, horizons }: WrittenPredicts,
+  target: WrittenData['target'],
+  lines: SourceLines,
+): readonly DocumentIssue[] {
+  if (accumulates === undefined) {
+    return horizons === undefined
+      ? refusedAt(lines, '/predicts', 'predicts names its horizons, or accumulates in their place')
+      : horizonIssues(horizons, lines);
+  }
+  if (horizons !== undefined) {
+    return refusedAt(
+      lines,
+      '/predicts/horizons',
+      'accumulates takes the place of horizons, since a total to the end of a period asks no horizon; name one or the other',
+    );
+  }
+  if (longestSpanOf(period, accumulates) === undefined) {
+    return refusedAt(lines, '/predicts/accumulates', `A ${period} does not sum to a ${accumulates}: ${summedPairs}`);
+  }
+  return target === undefined || target.as === 'count' || target.as === 'sum'
+    ? []
+    : refusedAt(
+        lines,
+        '/data/target/as',
+        `A total to the end of a ${accumulates} is a count or a sum; a sum of ${target.as} values says nothing`,
+      );
+}
+
 function unitIssues(unit: string, lines: SourceLines): readonly DocumentIssue[] {
   return unit.trim() === '' || unit.length > mostUnitCharacters
     ? refusedAt(lines, '/predicts/unit', `The unit is text of 1 to ${mostUnitCharacters} characters, such as orders`)
     : [];
 }
 
-export function predictsOf(written: WrittenPredicts, lines: SourceLines): Checked<Predicts> {
-  const { target, period, season, horizons, unit } = written;
+export function predictsOf(
+  written: WrittenPredicts,
+  target: WrittenData['target'],
+  lines: SourceLines,
+): Checked<Predicts> {
+  const { target: name, period, season, horizons = [], accumulates, unit } = written;
   const issues = [
-    ...nameIssues(target, lines, '/predicts/target'),
+    ...nameIssues(name, lines, '/predicts/target'),
     ...seasonIssues(season, lines),
-    ...horizonIssues(horizons, lines),
+    ...accumulationIssues(written, target, lines),
     ...unitIssues(unit, lines),
   ];
   return checkedFrom(issues, () => ({
-    target,
+    target: name,
     period,
     ...(season === undefined ? {} : { season }),
     horizons,
+    ...(accumulates === undefined ? {} : { accumulates }),
     unit: unit.trim(),
   }));
 }
 
-export function longestHorizonOf({ horizons }: Predicts): number {
-  return Math.max(...horizons);
+export function longestHorizonOf({ period, horizons, accumulates }: Predicts): number {
+  return accumulates === undefined ? Math.max(...horizons) : Number(longestSpanOf(period, accumulates));
 }

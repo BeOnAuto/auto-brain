@@ -2,13 +2,8 @@ import type { OperationKind } from '../caller/operation-scope.ts';
 import type { Cancelled, Failed, Rejected, RejectionReason } from '../outcome/outcome.ts';
 import type { RejectionBecause } from '../outcome/rejection-because.ts';
 import type { RejectionKind } from '../outcome/rejection.ts';
-import type { Remedies } from './plain-language.ts';
-
-export interface Explanation {
-  readonly why: string;
-  readonly remedy: string;
-  readonly mayHaveChanged?: true;
-}
+import type { Explanation, Remedies } from './plain-language.ts';
+import { predictionExplanations } from './prediction-explanations.ts';
 
 export type ExplainedRejection = Pick<Rejected, 'reason' | 'kind' | 'because'>;
 
@@ -99,15 +94,7 @@ const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
     remedy:
       'This can be put right on your side: once its result keeps only what is needed, such as fewer or smaller values, it can be run again.',
   },
-  no_active_version: {
-    why: 'the function has no model that answers yet',
-    remedy: 'It answers once a build has given it an active version, where the runtime offers builds.',
-  },
-  build_not_offered: {
-    why: 'this runtime does not offer a build of the function yet',
-    remedy:
-      'Asking again will not change that; what the function keeps meanwhile, such as its dataset, is kept as before.',
-  },
+  ...predictionExplanations,
   requested: {
     why: 'it was cancelled at the request of someone allowed to change the playbook',
     remedy: ranUntilCancelled,
@@ -172,6 +159,9 @@ const explanationByBecause: Readonly<Record<RejectionBecause, string>> = {
   run_bound: 'because it ran out of time',
   no_answer: 'because the model kept calling tools instead of answering',
   only_read: "because every tool it called only reads, by its server's own account",
+  builds_of_the_day: 'because the function has had its builds of the day',
+  stalled: 'because its dataset stopped at an event its fold could not take',
+  not_finite: 'because the model answered something other than finite numbers',
 };
 
 const remedyByBecause: Remedies = {
@@ -183,6 +173,25 @@ const remedyByBecause: Remedies = {
 const explanationByKindAndBecause: Readonly<
   Partial<Record<RejectionKind, Partial<Record<RejectionBecause, Explanation>>>>
 > = {
+  builds_full: {
+    builds_of_the_day: {
+      why: 'the function has had its builds of the day',
+      remedy: 'It can be asked again once a day has passed since the oldest of them; the details below say when.',
+    },
+  },
+  dataset_not_ready: {
+    stalled: {
+      why: 'its dataset stopped at an event its fold could not take',
+      remedy:
+        'Trying again will not help: get_definition names the event and why, and a change of the data part folds a dataset of its own.',
+    },
+  },
+  model_process_failed: {
+    not_finite: {
+      why: 'the model answered something other than finite numbers in the shape its signature gives',
+      remedy: 'Trying again gives the same answer; a new build gives the function another model.',
+    },
+  },
   tools_called: {
     only_read: {
       why: "an attempt of this run under the same id did not succeed, and every tool it called only reads, by its server's own account",

@@ -70,6 +70,8 @@ const internalTermsTest = 'packages/api/src/testing/internal-terms.test.ts';
 
 const reasoningReference = 'docs/engineering/reference/reasoning-format.md';
 
+const modelSessions = 'capabilities/prediction/src/model-jobs/model-sessions.ts';
+
 const allowances: readonly Allowance[] = [
   {
     text: 'https://open-workflow-specification.org/spec/1.0.0/errors',
@@ -111,6 +113,8 @@ const allowances: readonly Allowance[] = [
     ],
   },
   { text: 'application inference profile', in: ['docs/engineering/self-host/models.md'] },
+  { text: 'InferenceSession', in: [modelSessions] },
+  { text: 'executionMode', in: [modelSessions] },
   { text: 'toolSpec', in: ['capabilities/reasoning/src/adapter/cloud-providers.test.ts'] },
   { text: 'code_execution', in: ['capabilities/reasoning/src/testing/model-lists.ts'] },
   { text: 'execution-denied', in: ['capabilities/reasoning/src/tools/final-step.test.ts'] },

@@ -1,14 +1,9 @@
 import { DatabaseSync } from 'node:sqlite';
 
-import {
-  answerInteraction,
-  conversations,
-  listInteractions,
-  openRequests,
-  openRequestsName,
-} from '@on.auto/interaction';
+import { conversations, listInteractions, openRequests, openRequestsName } from '@on.auto/interaction';
 import {
   alpha,
+  answeringAnyRun,
   answererId,
   chatHarness,
   conversationRows,
@@ -141,7 +136,7 @@ describe.each(stores)('the projections of the requests and the conversations on 
       const [thread = ''] = playbook.chat.posted().map(({ ts }) => ts);
       playbook.chat.reply({ channel: '#approvals-sales', thread, user: answererId, text: 'maybe later' });
       await playbook.performReads(Date.now() + farAhead);
-      await playbook.call(answerInteraction, { run_id: answeredId, answer: { choice: 'approve' } });
+      await playbook.call(answeringAnyRun, { run_id: answeredId, answer: { choice: 'approve' } });
       await playbook.defineAs('nudging', 'forecast', 'Go?');
       await playbook.askAs('nudging', 'forecast', {}, nudgedId);
       const kept = await rowsOf(playbook.ledger);

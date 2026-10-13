@@ -89,13 +89,12 @@ describe('problemResponse', () => {
     expect(retryAfterOf({ kind: 'tools_unfinished', because: 'model_unavailable' })).toBeNull();
   });
 
-  it('asks for no retry of a tool, a model or a build not offered, which only a change of the function, the configuration or the runtime resolves', () => {
+  it('asks for no retry of a tool or a model not offered, which only a change of the function or the configuration resolves', () => {
     expect([
       retryAfterOf({ kind: 'tool_not_offered', because: 'tool_not_allowed' }),
       retryAfterOf({ kind: 'model_not_offered', because: 'model_not_allowed' }),
       retryAfterOf({ kind: 'model_not_offered', because: 'provider_not_configured' }),
-      retryAfterOf({ kind: 'build_not_offered' }),
-    ]).toEqual([null, null, null, null]);
+    ]).toEqual([null, null, null]);
   });
 
   it('asks for a retry of a tool server that could not be used, which a retry may find working', () => {
@@ -106,6 +105,25 @@ describe('problemResponse', () => {
     const response = problemResponse(problemOf('method_not_allowed', 'Not here'), { allow: 'GET, HEAD' });
 
     expect(response.headers.get('allow')).toBe('GET, HEAD');
+  });
+});
+
+describe('the retry of a refusal of a prediction function', () => {
+  it('asks for a retry of a prediction function whose builds or model processes are all taken, or whose dataset is not ready', () => {
+    expect([
+      retryAfterOf({ kind: 'builds_full' }),
+      retryAfterOf({ kind: 'dataset_not_ready' }),
+      retryAfterOf({ kind: 'model_process_busy' }),
+      retryAfterOf({ kind: 'model_process_failed' }),
+    ]).toEqual(['5', '5', '5', '5']);
+  });
+
+  it('asks for no retry of a prediction function whose builds of the day are spent, whose dataset stalled or whose model answers what it cannot', () => {
+    expect([
+      retryAfterOf({ kind: 'builds_full', because: 'builds_of_the_day' }),
+      retryAfterOf({ kind: 'dataset_not_ready', because: 'stalled' }),
+      retryAfterOf({ kind: 'model_process_failed', because: 'not_finite' }),
+    ]).toEqual([null, null, null]);
   });
 });
 

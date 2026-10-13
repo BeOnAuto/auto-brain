@@ -53,13 +53,27 @@ function errorFrom(environment: Environment): unknown {
 }
 
 describe('the prediction function settings', () => {
-  it('keep 4 model processes of 1,280 MiB each, 2 of them for builds, and 32 active functions a playbook, when nothing is set', () => {
+  it('keep 4 model processes of 1,280 MiB each, 2 of them for the builds being scored, 4 builds a function a day, 32 active functions a playbook, and the files of the models under /var/tmp/auto-runtime, when nothing is set', () => {
     expect(readSettings({}).prediction).toEqual({
       processes: 4,
       processMemoryMebibytes: 1280,
       buildsAtOnce: 2,
+      buildsPerDay: 4,
       mostFunctions: 32,
+      cacheDirectory: '/var/tmp/auto-runtime',
     });
+  });
+
+  it('keep the files of the models in the absolute folder PREDICTION_CACHE_DIR names, and refuse a relative one', () => {
+    expect([
+      readSettings({ PREDICTION_CACHE_DIR: ' /srv/models ' }).prediction.cacheDirectory,
+      readSettings({ PREDICTION_CACHE_DIR: '' }).prediction.cacheDirectory,
+      String(errorFrom({ PREDICTION_CACHE_DIR: 'models' })),
+    ]).toEqual([
+      '/srv/models',
+      '/var/tmp/auto-runtime',
+      'InvalidSettingsError: The prediction function settings are invalid. PREDICTION_CACHE_DIR: Expected an absolute path, such as /var/tmp/auto-runtime',
+    ]);
   });
 
   it('look for prlimit in the PATH the server was started with, and nowhere without one', () => {
@@ -68,16 +82,25 @@ describe('the prediction function settings', () => {
       readSettings({}).prediction.path,
     ]).toEqual(['/usr/local/bin:/usr/bin', undefined]);
   });
+});
 
-  it('read each of the four', () => {
+describe('the prediction function settings given values', () => {
+  it('read each of the five', () => {
     expect(
       readSettings({
         PREDICTION_PROCESSES: ' 8 ',
         PREDICTION_PROCESS_MEMORY: '1024',
         PREDICTION_BUILDS_AT_ONCE: '3',
+        PREDICTION_BUILDS_PER_DAY: '100',
         PREDICTION_MAX_FUNCTIONS: '1000',
       }).prediction,
-    ).toEqual({ processes: 8, processMemoryMebibytes: 1024, buildsAtOnce: 3, mostFunctions: 1000 });
+    ).toMatchObject({
+      processes: 8,
+      processMemoryMebibytes: 1024,
+      buildsAtOnce: 3,
+      buildsPerDay: 100,
+      mostFunctions: 1000,
+    });
   });
 
   it('stop the server from starting when one is out of its range or not a whole number, naming each', () => {
@@ -87,11 +110,12 @@ describe('the prediction function settings', () => {
           PREDICTION_PROCESSES: '1',
           PREDICTION_PROCESS_MEMORY: '16385',
           PREDICTION_BUILDS_AT_ONCE: 'many',
+          PREDICTION_BUILDS_PER_DAY: '101',
           PREDICTION_MAX_FUNCTIONS: '0',
         }),
       ),
     ).toBe(
-      'InvalidSettingsError: The prediction function settings are invalid. PREDICTION_PROCESSES: Expected a whole number from 2 to 64, such as 4; PREDICTION_PROCESS_MEMORY: Expected a whole number from 768 to 16384, such as 1280; PREDICTION_BUILDS_AT_ONCE: Expected a whole number from 1 to 63, such as 2; PREDICTION_MAX_FUNCTIONS: Expected a whole number from 1 to 1000, such as 32',
+      'InvalidSettingsError: The prediction function settings are invalid. PREDICTION_PROCESSES: Expected a whole number from 2 to 64, such as 4; PREDICTION_PROCESS_MEMORY: Expected a whole number from 768 to 16384, such as 1280; PREDICTION_BUILDS_AT_ONCE: Expected a whole number from 1 to 63, such as 2; PREDICTION_BUILDS_PER_DAY: Expected a whole number from 1 to 100, such as 4; PREDICTION_MAX_FUNCTIONS: Expected a whole number from 1 to 1000, such as 32',
     );
   });
 });
@@ -115,7 +139,7 @@ describe('the least memory of a model process', () => {
     const { floor, entry, user, copied } = proofIn(dockerfile);
 
     expect([entry, user, copied, existsSync(new URL(`../../../../${entry}`, import.meta.url))]).toEqual([
-      'packages/workflow-engine/src/process-loop.ts',
+      'capabilities/prediction/src/model-jobs/model-process.ts',
       'USER node',
       true,
       true,

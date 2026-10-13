@@ -34,3 +34,4 @@ export {
   type Recorded,
 } from './chat-harness.ts';
 export { flatReplies } from './reading-documents.ts';
+export { answeringAnyRun } from './harness-parts.ts';

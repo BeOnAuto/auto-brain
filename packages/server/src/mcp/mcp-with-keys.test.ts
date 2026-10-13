@@ -46,7 +46,13 @@ let server: RunningServer;
 beforeEach(async () => {
   ledger = temporaryLedger();
   server = await startServer(
-    { HOST: '127.0.0.1', PORT: '0', LEDGER_FILE: ledger.fileName, API_KEYS: apiKeys },
+    {
+      HOST: '127.0.0.1',
+      PORT: '0',
+      LEDGER_FILE: ledger.fileName,
+      PREDICTION_CACHE_DIR: ledger.cacheDirectory,
+      API_KEYS: apiKeys,
+    },
     compositionRoot,
   );
 });

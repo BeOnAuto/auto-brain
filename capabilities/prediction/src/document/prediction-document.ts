@@ -2,6 +2,7 @@ import type { CompiledSchema } from '@on.auto/definitions/document';
 import type { ParsedTemplate } from '@on.auto/definitions/template';
 import type { Schema } from 'effect';
 
+import type { Enclosing } from '../periods/enclosing.ts';
 import type { Grain } from '../periods/grains.ts';
 
 export type Aggregation = 'count' | 'sum' | 'last' | 'mean';
@@ -15,6 +16,7 @@ export interface Predicts {
   readonly period: Grain;
   readonly season?: number;
   readonly horizons: readonly number[];
+  readonly accumulates?: Enclosing;
   readonly unit: string;
 }
 

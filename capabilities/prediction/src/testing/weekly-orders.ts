@@ -36,16 +36,20 @@ export const weeklyOrdersLines: readonly string[] = [
 
 export const weeklyOrders = weeklyOrdersLines.join('\n');
 
-export function weeklyOrdersWith(...replaced: readonly (readonly [string, string])[]): string {
+export function documentWith(lines: readonly string[], ...replaced: readonly (readonly [string, string])[]): string {
   return replaced
-    .reduce<readonly string[]>((lines, [from, to]) => {
-      const at = lines.indexOf(from);
+    .reduce<readonly string[]>((kept, [from, to]) => {
+      const at = kept.indexOf(from);
       if (at === -1) {
         throw new Error(`The example has no line ${from}`);
       }
-      return [...lines.slice(0, at), ...(to === '' ? [] : to.split('\n')), ...lines.slice(at + 1)];
-    }, weeklyOrdersLines)
+      return [...kept.slice(0, at), ...(to === '' ? [] : to.split('\n')), ...kept.slice(at + 1)];
+    }, lines)
     .join('\n');
+}
+
+export function weeklyOrdersWith(...replaced: readonly (readonly [string, string])[]): string {
+  return documentWith(weeklyOrdersLines, ...replaced);
 }
 
 export const basketLine = '    - { name: basket, of: /total, as: mean }';

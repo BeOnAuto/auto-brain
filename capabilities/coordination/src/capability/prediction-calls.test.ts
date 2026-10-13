@@ -1,6 +1,6 @@
 import { memoryLedger } from '@on.auto/operations/testing';
 import { makePredictionFunctionAdapter } from '@on.auto/prediction';
-import { weeklyOrders } from '@on.auto/prediction/testing';
+import { testPorts, weeklyOrders } from '@on.auto/prediction/testing';
 import { programPool } from '@on.auto/workflow-engine/dsl';
 import { Effect } from 'effect';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -15,7 +15,11 @@ const pool = programPool({ workers: 1, heapMegabytes: 256 });
 
 afterAll(() => pool.close());
 
-const prediction = makePredictionFunctionAdapter({ pool, datasets: { datasetOf: () => Effect.undefined } });
+const prediction = makePredictionFunctionAdapter({
+  pool,
+  datasets: { datasetOf: () => Effect.undefined },
+  ports: testPorts().ports,
+});
 
 const question = '{ series: north, horizon: 1, given: { promotion: 1 } }';
 

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { nestedRunId } from './nested-run-id.ts';
+import { nestedRunId } from './nested-run-ids.ts';
 
 const nameBasedUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 
-describe('the id of a run a workflow runs', () => {
+describe('the id of a run another run starts', () => {
   it('is a name-based UUID, the same for the same run, task and run of the task', () => {
     const id = nestedRunId('run-1', '/do/0/ask', 1);
 
@@ -12,7 +12,7 @@ describe('the id of a run a workflow runs', () => {
     expect(nestedRunId('run-1', '/do/0/ask', 1)).toBe(id);
   });
 
-  it('is the id the runs already started were given, so a call started again is the same run', () => {
+  it('is the id the runs already started were given, so a child started again is the same run', () => {
     expect([
       nestedRunId('run-1', '/do/0/ask', 1),
       nestedRunId('0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', '/do/0/judge', 2),

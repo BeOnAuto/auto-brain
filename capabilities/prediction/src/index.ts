@@ -1,12 +1,27 @@
 export type { PredictionFunctionDefinitionDocument } from './document/prediction-document.ts';
-export {
-  makePredictionFunctionAdapter,
-  type PredictionFunctionAdapterOptions,
-} from './capability/prediction-function.ts';
+export { makePredictionFunctionAdapter } from './capability/prediction-function.ts';
+export type {
+  BuildBounds,
+  ChildStart,
+  ChildStarted,
+  ModelCaches,
+  PredictionFunctionAdapterOptions,
+  PredictionLedger,
+  PredictionPorts,
+  StartChild,
+} from './capability/prediction-ports.ts';
 export { predictionBounds, predictionDefinitionType } from './capability/prediction-bounds.ts';
+export { predictionBuilds } from './builds/builds-projection.ts';
+export { buildsDue, type BuildsDueParts } from './builds/builds-due.ts';
+export { predictionModels } from './models/models-projection.ts';
+export { activateVersion } from './models/activate-version.ts';
+export { readBuildBrief, readBuildRows } from './trainer/build-reads.ts';
+export { uploadCandidate } from './trainer/candidate-upload.ts';
 export { datasetFolder, type DatasetFolding } from './dataset/dataset-folder.ts';
 export { datasetsPortOn, type DatasetsPort } from './dataset/datasets-port.ts';
-export type { FilesRequest } from './files/build-reads.ts';
-export { writtenDatasetFiles } from './files/dataset-files.ts';
-export { DatasetFilesRefused, type DatasetFiles, type FilesRefusal } from './files/files-refusals.ts';
 export { uploadDataset } from './upload/upload-dataset.ts';
+export type { FileCache } from './model-cache/model-files.ts';
+export { cacheFolderProblem } from './model-cache/cache-folder.ts';
+export { modelDeadlines, modelProcessModule, type ModelProcesses } from './model-processes/model-processes.ts';
+export { cacheDirectory, modelPorts, type ModelPorts, type ModelPortSettings } from './model-processes/model-ports.ts';
+export type { ScoringPermits } from './model-processes/scoring-permits.ts';

@@ -241,7 +241,10 @@ const becauseOfKind = {
   tools_unfinished: { because: 'model_unavailable' },
   rebuilding: {},
   requests_full: {},
-  build_not_offered: {},
+  builds_full: {},
+  dataset_not_ready: {},
+  model_process_busy: {},
+  model_process_failed: {},
 } as const;
 
 const sendNotes = defineCommand('playbook', {

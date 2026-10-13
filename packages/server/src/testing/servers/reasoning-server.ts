@@ -41,7 +41,13 @@ export async function servingReasoning(
   const ledger = temporaryLedger();
   const scripted = scriptedLanguageModel(...replies);
   const server = await startServer(
-    { HOST: '127.0.0.1', PORT: '0', LEDGER_FILE: ledger.fileName, ...environment },
+    {
+      HOST: '127.0.0.1',
+      PORT: '0',
+      LEDGER_FILE: ledger.fileName,
+      PREDICTION_CACHE_DIR: ledger.cacheDirectory,
+      ...environment,
+    },
     compositionRootWith(
       (settings) =>
         Effect.map(makeModelAccess(settings, { fetch }), (access) => ({

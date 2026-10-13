@@ -9,6 +9,8 @@ export { defineStartVersion } from './operations/start-version.ts';
 export {
   cancelledAsAsked,
   defineCapability,
+  type AnswerIssues,
+  type AnsweringRun,
   defaultRunWords,
   type CancelDecision,
   type CancelledRun,
@@ -75,6 +77,7 @@ export {
   type WorkRule,
 } from './run-work/work-recorder.ts';
 export { answeredAlready, cancelledUnanswered, endedUnanswered, runEnded } from './run-work/work-decisions.ts';
+export { nestedRunId } from './run-work/nested-run-ids.ts';
 export { mostCallDepth } from './operations/run-requests.ts';
 export {
   cancelRequestOf,
@@ -117,6 +120,11 @@ export {
   type RecordedDefinitionEvent,
 } from './registry/definition-events.ts';
 export { definitionTypeStreamOf } from './registry/definitions-decider.ts';
+export {
+  definitionVersionIn,
+  type DefinitionVersionAddress,
+  type RecordedVersion,
+} from './registry/definition-versions.ts';
 export {
   playbookOwnNamesOf,
   callerSourcePrefix,

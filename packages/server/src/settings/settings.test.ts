@@ -15,6 +15,15 @@ function errorFrom(environment: Environment): unknown {
 
 const { entry } = createApiKey({ id: 'ci-1', org: 'acme', permissions: ['org:read'], playbooks: '*' });
 
+const defaultPrediction = {
+  processes: 4,
+  processMemoryMebibytes: 1280,
+  buildsAtOnce: 2,
+  buildsPerDay: 4,
+  mostFunctions: 32,
+  cacheDirectory: '/var/tmp/auto-runtime',
+};
+
 describe('readSettings', () => {
   it('listens on every interface at port 5555, allows no origin, has no API keys and keeps the ledger in data/ by default', () => {
     const { models, mcp, interaction, ...server } = readSettings({});
@@ -37,7 +46,7 @@ describe('readSettings', () => {
       workflows: { mostDurationMs: 2_592_000_000, mostCallsAtOnce: 32, mostOpenCalls: 1000, sweepEveryMs: 1000 },
       computation: { workers: 4 },
       recall: { mostFunctions: 32, rebuildsAtOnce: 4, playbooksAtOnce: 4 },
-      prediction: { processes: 4, processMemoryMebibytes: 1280, buildsAtOnce: 2, mostFunctions: 32 },
+      prediction: defaultPrediction,
       configFile: undefined,
     });
   });
@@ -85,7 +94,7 @@ describe('readSettings given every setting', () => {
       workflows: { mostDurationMs: 2_592_000_000, mostCallsAtOnce: 32, mostOpenCalls: 1000, sweepEveryMs: 1000 },
       computation: { workers: 4 },
       recall: { mostFunctions: 32, rebuildsAtOnce: 4, playbooksAtOnce: 4 },
-      prediction: { processes: 4, processMemoryMebibytes: 1280, buildsAtOnce: 2, mostFunctions: 32 },
+      prediction: defaultPrediction,
       configFile: undefined,
     });
   });

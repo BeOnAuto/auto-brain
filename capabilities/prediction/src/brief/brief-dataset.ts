@@ -20,11 +20,12 @@ interface BriefParts {
   readonly rules: readonly string[];
 }
 
-interface DatasetFigures {
+export interface DatasetFigures {
   readonly name: string;
   readonly rows: number;
   readonly series: number;
-  readonly lastPeriod: number;
+  readonly firstPeriod: string;
+  readonly lastPeriod: string;
 }
 
 const longestName = `p${'x'.repeat(47)}`;
@@ -37,11 +38,11 @@ function featuresOf(data: DataPart): Schema.JsonArray {
     : data.features.map((name) => ({ name, as: null, given: data.given.includes(name) }));
 }
 
-function briefVariablesOf(
+export function briefVariablesOf(
   { predicts, data, evaluation, rules }: BriefParts,
-  { name, rows, series, lastPeriod }: DatasetFigures,
+  { name, rows, series, firstPeriod, lastPeriod }: DatasetFigures,
 ): BriefVariables {
-  const { period: grain, season, target, unit, horizons } = predicts;
+  const { period: grain, season, target, unit, horizons, accumulates } = predicts;
   return {
     dataset: {
       rows,
@@ -49,24 +50,28 @@ function briefVariablesOf(
       periods: {
         grain,
         season: season ?? null,
-        first: periodForm(grain, lastPeriod - data.window + 1),
-        last: periodForm(grain, lastPeriod),
+        first: firstPeriod,
+        last: lastPeriod,
       },
       window: data.window,
       holdout: evaluation.holdout,
       features: featuresOf(data),
       horizons: [...horizons],
+      accumulates: accumulates ?? null,
     },
     function: { name, target, unit, rules: [...rules] },
   };
 }
 
 function largestBriefVariables(parts: BriefParts): BriefVariables {
+  const { period } = parts.predicts;
+  const last = periodOfDay(period, latestDay);
   return briefVariablesOf(parts, {
     name: longestName,
     rows: predictionBounds.mostDatasetRows,
     series: predictionBounds.mostDatasetSeries,
-    lastPeriod: periodOfDay(parts.predicts.period, latestDay),
+    firstPeriod: periodForm(period, last - parts.data.window + 1),
+    lastPeriod: periodForm(period, last),
   });
 }
 

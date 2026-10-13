@@ -4,13 +4,13 @@ import type { AppendSignal } from '@on.auto/ledger';
 import { postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
 import { ledgerLayer } from '@on.auto/ledger/sqlite3';
 import type { ContentStore, Ledger } from '@on.auto/operations';
+import { predictionBuilds, predictionModels } from '@on.auto/prediction';
 import type { DatabaseSettings } from '@on.auto/workflow-host';
 import { Effect, Layer } from 'effect';
 
-import type { Settings } from '../settings/settings.ts';
-import { contentStoreOf } from './content-store.ts';
+import { contentStoreOf, type ContentStoreSettings } from './content-store.ts';
 
-const projections = [openRequests, conversations];
+const projections = [openRequests, conversations, predictionBuilds, predictionModels];
 
 export function ledgerLayerOf(
   database: DatabaseSettings,
@@ -24,7 +24,7 @@ export function ledgerLayerOf(
 }
 
 export function ledgerLayerFor(
-  settings: Pick<Settings, 'content' | 'proxy'>,
+  settings: ContentStoreSettings,
   database: DatabaseSettings,
   appends?: AppendSignal,
 ): Layer.Layer<Ledger> {

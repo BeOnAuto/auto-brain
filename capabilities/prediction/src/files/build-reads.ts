@@ -15,7 +15,7 @@ import { csvStream, DatasetTooLarge, type CsvPlan } from './dataset-csv.ts';
 import { filesRefusedAs, type DatasetFilesRefused, type WindowOfTheBuild } from './files-refusals.ts';
 
 export interface FilesRequest {
-  readonly database: HostDatabase;
+  readonly database: Pick<HostDatabase, 'readConsistently'>;
   readonly content: Pick<RecordedContent, 'put'>;
   readonly playbook: PlaybookAddress;
   readonly document: PredictionFunctionDefinitionDocument;

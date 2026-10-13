@@ -1,4 +1,4 @@
-import type { RunEnding } from '@on.auto/definitions';
+import { nestedRunId, type RunEnding } from '@on.auto/definitions';
 import { invalidArguments, type CallResult } from '@on.auto/operations';
 import { jsonBytesOf } from '@on.auto/workflow-engine';
 import { recordIdOf, type CallAnswer, type Perform } from '@on.auto/workflow-host';
@@ -8,7 +8,6 @@ import { isArgumentsProblem, definitionArgumentsOf } from '../document/definitio
 import { attributesOfRun } from '../runs/run-attributes.ts';
 import { endedRunResultOf } from './function-results.ts';
 import type { DefinitionRunResult, EndedRunResult, RunDefinition } from './function-run.ts';
-import { nestedRunId } from './nested-run-id.ts';
 
 const mostDefinitionOutputBytes = 1_048_576;
 

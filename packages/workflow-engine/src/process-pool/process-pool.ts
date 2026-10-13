@@ -87,8 +87,8 @@ function servedIn(
 ): Promise<Ending<Answered>> {
   const { until, signal } = running;
   const job = jobOf(request, payload);
-  const served = (): Promise<Ending<Answered>> =>
-    admitted(slots, until, signal, () => processes.evaluate(job, running));
+  const held = (): Running => ({ ...running, until: performance.now() + request.deadlineMs });
+  const served = (): Promise<Ending<Answered>> => admitted(slots, until, signal, () => processes.evaluate(job, held()));
   return request.long === true ? admitted(longSlots, until, signal, served) : served();
 }
 

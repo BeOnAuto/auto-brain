@@ -16,6 +16,7 @@ import { afterEach } from 'vitest';
 import { makePredictionFunctionAdapter } from '../capability/prediction-function.ts';
 import type { DatasetRow } from '../dataset/dataset-rows.ts';
 import type { DatasetsPort } from '../dataset/datasets-port.ts';
+import { testPorts } from './prediction-ports.ts';
 
 export const workerTestTimeoutMs = 30_000;
 
@@ -96,6 +97,7 @@ export function predictionRuns(pool: ProgramPool = poolOf(), mostFunctions?: num
   const capability = makePredictionFunctionAdapter({
     pool,
     datasets,
+    ports: testPorts().ports,
     ...(mostFunctions === undefined ? {} : { mostFunctions }),
   });
   const prepared = (source: string) => Effect.runSync(capability.prepare(source));

@@ -31,6 +31,7 @@ export const predictionBounds = {
   mostBriefBytes: 65_536,
   questionMs: 10_000,
   candidatesInABuild: 8,
+  mostCandidateBytes: 64 * mebibyte,
   scoringACandidateMs: 10 * minute,
   buildStartMs: minute,
   mostFunctions: 32,

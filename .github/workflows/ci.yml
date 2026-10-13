@@ -94,6 +94,8 @@ jobs:
           tags: onauto/runtime:ci
       - name: Smoke test the image
         run: |
+          . .github/smoke/calls.sh
+          show_logs_on_failure smoke
           docker run --detach --name smoke --publish 5555:5555 onauto/runtime:ci
           for attempt in $(seq 1 30); do
             curl --silent --fail http://127.0.0.1:5555/health && break
@@ -101,13 +103,49 @@ jobs:
           done
           test "$(curl --silent --fail http://127.0.0.1:5555/health)" = '{"status":"ok"}'
           test "$(docker exec smoke id -un)" = node
-          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:5555/v1/orgs/demo/playbooks)" = 401
+          test "$(answered refused.json http://127.0.0.1:5555/v1/orgs/demo/playbooks)" = 401
           test "$(curl --silent --include http://127.0.0.1:5555/v1/orgs/demo/playbooks | grep --ignore-case --count '^www-authenticate: Bearer')" = 1
           test "$(docker run --rm onauto/runtime:ci node packages/identity/src/key-command.ts --org demo | grep --count --extended-regexp '^API key, shown only this once: abk_[0-9a-f]{8}_[A-Za-z0-9_-]{43}$')" = 1
           docker stop smoke
           test "$(docker inspect smoke --format '{{.State.ExitCode}}')" = 0
+      - name: Measure what the model runtime adds to the image
+        timeout-minutes: 2
+        run: |
+          image="$(docker image inspect onauto/runtime:ci --format '{{.Size}}')"
+          runtime="$(docker run --rm --entrypoint sh onauto/runtime:ci -c \
+            'du --summarize --bytes node_modules/.pnpm/onnxruntime-* | awk "{ total += \$1 } END { print total }"')"
+          test "$runtime" -gt 0
+          {
+            echo "### The image on linux/${{ matrix.architecture }}"
+            echo "| Part | MiB |"
+            echo "| --- | --- |"
+            echo "| The whole image | $((image / 1048576)) |"
+            echo "| The model runtime, onnxruntime-node and onnxruntime-common | $((runtime / 1048576)) |"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Load a 64 MiB model and walk the widest rows under the default data of a model process
+        timeout-minutes: 5
+        run: |
+          docker run --rm --entrypoint sh \
+            --volume "$PWD/capabilities/prediction/measure:/app/capabilities/prediction/measure:ro" \
+            --volume "$PWD/capabilities/prediction/candidates:/app/capabilities/prediction/candidates:ro" \
+            onauto/runtime:ci -c '
+              node capabilities/prediction/measure/large-model.ts /tmp/large.onnx
+              node capabilities/prediction/measure/large-rows.ts /tmp/rows.csv
+              prlimit --core=0 --data=1342177280 \
+                node capabilities/prediction/measure/session-memory.ts /tmp/large.onnx /tmp/rows.csv' > session.json
+          test "$(jq --raw-output .series session.json)" = 1000
+          {
+            echo "### A 64 MiB model walking the widest rows on linux/${{ matrix.architecture }}, under 1280 MiB of data"
+            echo "| What | Figure |"
+            echo "| --- | --- |"
+            echo "| Threads | $(jq --raw-output .threads session.json) |"
+            echo "| The walk of 1000 series, ms | $(jq --raw-output '.walkMs | floor' session.json) |"
+            echo "| Resident at the peak, MiB | $(jq --raw-output '.peak / 1048576 | floor' session.json) |"
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Keep a playbook on a volume across a restart
         run: |
+          . .github/smoke/calls.sh
+          show_logs_on_failure first second
           wait_for_health() {
             for attempt in $(seq 1 30); do
               curl --silent --fail http://127.0.0.1:5555/health > /dev/null && return 0
@@ -124,7 +162,7 @@ jobs:
             test "$(docker inspect "$1" --format '{{.State.ExitCode}}')" = 0
           }
           read_playbook() {
-            curl --silent --fail --header "authorization: Bearer $key" http://127.0.0.1:5555/v1/orgs/demo/playbooks/smoke
+            test "$(answered "$1" --header "authorization: Bearer $key" http://127.0.0.1:5555/v1/orgs/demo/playbooks/smoke)" = 200
           }
           issued="$(docker run --rm onauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
@@ -133,20 +171,22 @@ jobs:
           export API_KEYS
           docker volume create playbooks
           start_server first
-          test "$(curl --silent --output created.json --write-out '%{http_code}' \
+          test "$(answered created.json \
             --header "authorization: Bearer $key" --header 'content-type: application/json' \
             --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:5555/v1/orgs/demo/playbooks)" = 201
-          read_playbook > before-restart.json
+          read_playbook before-restart.json
           grep --quiet '"id":"smoke"' before-restart.json
           cmp created.json before-restart.json
           stop_server first
           start_server second
-          read_playbook > after-restart.json
+          read_playbook after-restart.json
           cmp before-restart.json after-restart.json
           stop_server second
       - name: Keep a playbook in PostgreSQL across a restart
         timeout-minutes: 2
         run: |
+          . .github/smoke/calls.sh
+          show_logs_on_failure ledger postgresql
           issued="$(docker run --rm onauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
@@ -170,22 +210,22 @@ jobs:
             return 1
           }
           read_playbook() {
-            curl --silent --fail --max-time 10 --header "authorization: Bearer $key" \
-              http://127.0.0.1:5555/v1/orgs/demo/playbooks/smoke
+            test "$(answered "$1" --max-time 10 --header "authorization: Bearer $key" \
+              http://127.0.0.1:5555/v1/orgs/demo/playbooks/smoke)" = 200
           }
           docker run --detach --name ledger --network ledger --publish 5555:5555 --env API_KEYS --env DATABASE_URL \
             onauto/runtime:ci
           wait_for_health
-          test "$(curl --silent --max-time 10 --output created.json --write-out '%{http_code}' \
+          test "$(answered created.json --max-time 10 \
             --header "authorization: Bearer $key" --header 'content-type: application/json' \
             --data '{"playbook":"smoke","name":"Smoke test"}' http://127.0.0.1:5555/v1/orgs/demo/playbooks)" = 201
-          read_playbook > before-restart.json
+          read_playbook before-restart.json
           cmp created.json before-restart.json
           docker stop ledger
           test "$(docker inspect ledger --format '{{.State.ExitCode}}')" = 0
           docker start ledger
           wait_for_health
-          read_playbook > after-restart.json
+          read_playbook after-restart.json
           cmp before-restart.json after-restart.json
           docker stop ledger
           test "$(docker inspect ledger --format '{{.State.ExitCode}}')" = 0
@@ -194,6 +234,8 @@ jobs:
           docker stop postgresql
       - name: Serve the tools over MCP
         run: |
+          . .github/smoke/calls.sh
+          show_logs_on_failure mcp
           issued="$(docker run --rm onauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
@@ -208,62 +250,65 @@ jobs:
             sleep 1
           done
           call_mcp_as() {
-            curl --silent --fail --header "authorization: Bearer $1" \
+            test "$(answered "$4" --header "authorization: Bearer $1" \
               --header 'content-type: application/json' --header 'accept: application/json, text/event-stream' \
-              --header 'mcp-protocol-version: 2025-11-25' --data "$3" "http://127.0.0.1:5555$2"
+              --header 'mcp-protocol-version: 2025-11-25' --data "$3" "http://127.0.0.1:5555$2")" = 200
           }
           call_mcp() {
-            call_mcp_as "$key" "$1" "$2"
+            call_mcp_as "$key" "$1" "$2" "$3"
           }
-          call_mcp /orgs/demo/mcp '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' > tools.txt
+          call_mcp /orgs/demo/mcp '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' tools.txt
           for tool in create_playbook list_playbooks get_playbook update_playbook retire_playbook; do
             grep --quiet "\"name\":\"$tool\"" tools.txt
           done
-          call_mcp /orgs/demo/mcp '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"create_playbook","arguments":{"playbook":"smoke","name":"Smoke test"}}}' > created.txt
+          call_mcp /orgs/demo/mcp '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"create_playbook","arguments":{"playbook":"smoke","name":"Smoke test"}}}' created.txt
           grep --quiet '"structuredContent":{"id":"smoke","name":"Smoke test"' created.txt
-          call_mcp /orgs/demo/mcp '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_playbook","arguments":{"playbook":"smoke"}}}' > read.txt
+          call_mcp /orgs/demo/mcp '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_playbook","arguments":{"playbook":"smoke"}}}' read.txt
           grep --quiet '"structuredContent":{"id":"smoke","name":"Smoke test"' read.txt
-          call_mcp /mcp '{"jsonrpc":"2.0","id":4,"method":"tools/list"}' > all-tools.txt
+          call_mcp /mcp '{"jsonrpc":"2.0","id":4,"method":"tools/list"}' all-tools.txt
           test "$(grep --only-matching '"name":"[a-z_]*","title"' all-tools.txt | wc -l)" -eq 26
           for tool in list_models list_runs get_run_history get_event get_playbook_analytics list_playbook_events publish_event list_tool_servers test_tool_call list_interactions answer_interaction send_run_event cancel_run get_guide; do
             grep --quiet "\"name\":\"$tool\"" all-tools.txt
           done
-          call_mcp /mcp '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"list_definitions","arguments":{"playbook":"smoke","type":"reasoning"}}}' > definitions.txt
+          call_mcp /mcp '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"list_definitions","arguments":{"playbook":"smoke","type":"reasoning"}}}' definitions.txt
           grep --quiet '"structuredContent":{"definitions":\[\]}' definitions.txt
-          call_mcp /mcp '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"list_runs","arguments":{"playbook":"smoke"}}}' > runs.txt
+          call_mcp /mcp '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"list_runs","arguments":{"playbook":"smoke"}}}' runs.txt
           grep --quiet '"structuredContent":{"runs":\[\],"has_more":false,"next_cursor":null}' runs.txt
-          call_mcp /mcp '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"list_tool_servers","arguments":{"playbook":"smoke"}}}' > tool-servers.txt
+          call_mcp /mcp '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"list_tool_servers","arguments":{"playbook":"smoke"}}}' tool-servers.txt
           grep --quiet '"structuredContent":{"tool_servers":\[\]}' tool-servers.txt
-          call_mcp /mcp '{"jsonrpc":"2.0","id":15,"method":"tools/call","params":{"name":"list_tool_servers","arguments":{}}}' > org-tool-servers.txt
+          call_mcp /mcp '{"jsonrpc":"2.0","id":15,"method":"tools/call","params":{"name":"list_tool_servers","arguments":{}}}' org-tool-servers.txt
           grep --quiet '"structuredContent":{"tool_servers":\[\]}' org-tool-servers.txt
-          test "$(curl --silent --fail --header "authorization: Bearer $read_key" http://127.0.0.1:5555/v1/orgs/demo/tool-servers)" = '{"tool_servers":[]}'
-          call_mcp /mcp '{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"test_tool_call","arguments":{"playbook":"smoke","server":"graph","tool":"search"}}}' > tested.txt
+          test "$(answered org-servers.json --header "authorization: Bearer $read_key" http://127.0.0.1:5555/v1/orgs/demo/tool-servers)" = 200
+          test "$(cat org-servers.json)" = '{"tool_servers":[]}'
+          call_mcp /mcp '{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"test_tool_call","arguments":{"playbook":"smoke","server":"graph","tool":"search"}}}' tested.txt
           grep --quiet '"isError":true' tested.txt
           grep --quiet 'mcp_server_not_configured' tested.txt
-          call_mcp_as "$read_key" /mcp '{"jsonrpc":"2.0","id":14,"method":"tools/list"}' > read-tools.txt
+          call_mcp_as "$read_key" /mcp '{"jsonrpc":"2.0","id":14,"method":"tools/list"}' read-tools.txt
           grep --quiet '"name":"list_tool_servers"' read-tools.txt
           test "$(grep --count '"name":"test_tool_call"' read-tools.txt)" = 0
-          test "$(curl --silent --output refused.json --write-out '%{http_code}' \
+          test "$(answered refused.json \
             --header "authorization: Bearer $read_key" --header 'content-type: application/json' --data '{"arguments":{}}' \
             http://127.0.0.1:5555/v1/orgs/demo/playbooks/smoke/tool-servers/graph/tools/search/test)" = 403
           grep --quiet '"reason":"forbidden"' refused.json
-          call_mcp /mcp '{"jsonrpc":"2.0","id":8,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"ci","version":"1"}}}' > initialized.txt
+          call_mcp /mcp '{"jsonrpc":"2.0","id":8,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"ci","version":"1"}}}' initialized.txt
           grep --quiet 'Before writing a definition, read its format with get_guide' initialized.txt
-          call_mcp /mcp '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"get_guide","arguments":{"guide":"reasoning-function"}}}' > guide.txt
+          call_mcp /mcp '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"get_guide","arguments":{"guide":"reasoning-function"}}}' guide.txt
           grep --quiet '# Reasoning function format' guide.txt
           grep --quiet 'On this server, ' guide.txt
-          call_mcp /mcp '{"jsonrpc":"2.0","id":10,"method":"resources/list"}' > resources.txt
+          call_mcp /mcp '{"jsonrpc":"2.0","id":10,"method":"resources/list"}' resources.txt
           test "$(grep --only-matching '"uri":"guide://[a-z-]*"' resources.txt | wc -l)" -eq 11
-          call_mcp /mcp '{"jsonrpc":"2.0","id":11,"method":"prompts/list"}' > prompts.txt
+          call_mcp /mcp '{"jsonrpc":"2.0","id":11,"method":"prompts/list"}' prompts.txt
           for prompt in first-playbook remember give-tools schedule; do
             grep --quiet "\"name\":\"$prompt\"" prompts.txt
           done
-          call_mcp /mcp '{"jsonrpc":"2.0","id":12,"method":"prompts/get","params":{"name":"first-playbook"}}' > first-playbook.txt
+          call_mcp /mcp '{"jsonrpc":"2.0","id":12,"method":"prompts/get","params":{"name":"first-playbook"}}' first-playbook.txt
           grep --quiet 'Create my first playbook.' first-playbook.txt
           docker stop mcp
           test "$(docker inspect mcp --format '{{.State.ExitCode}}')" = 0
       - name: Run a reasoning function without model settings
         run: |
+          . .github/smoke/calls.sh
+          show_logs_on_failure reasoning
           issued="$(docker run --rm onauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
@@ -275,8 +320,7 @@ jobs:
             sleep 1
           done
           call() {
-            curl --silent --output "$1" --write-out '%{http_code}' \
-              --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
+            answered "$1" --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
           }
           playbook=http://127.0.0.1:5555/v1/orgs/demo/playbooks/smoke
           source="$(printf '%s\n' '---' 'model: anthropic/claude-sonnet-4-5' '---' 'Say hello to {{ input.name }}.')"
@@ -293,6 +337,8 @@ jobs:
           test "$(docker inspect reasoning --format '{{.State.ExitCode}}')" = 0
       - name: Run a computation function
         run: |
+          . .github/smoke/calls.sh
+          show_logs_on_failure computation
           issued="$(docker run --rm onauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
@@ -304,7 +350,7 @@ jobs:
             sleep 1
           done
           call() {
-            curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' \
+            answered "$1" --max-time 30 \
               --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
           }
           playbook=http://127.0.0.1:5555/v1/orgs/demo/playbooks/smoke
@@ -330,6 +376,8 @@ jobs:
       - name: Ask through the inbox and answer over HTTP
         timeout-minutes: 2
         run: |
+          . .github/smoke/calls.sh
+          show_logs_on_failure interaction
           issued="$(docker run --rm onauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
@@ -341,7 +389,7 @@ jobs:
             sleep 1
           done
           call() {
-            curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' \
+            answered "$1" --max-time 30 \
               --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
           }
           playbook=http://127.0.0.1:5555/v1/orgs/demo/playbooks/smoke
@@ -368,9 +416,93 @@ jobs:
           test "$(call again.json --data '{"answer":{"choice":"reject"}}' "$playbook/runs/$asked/answer")" = 409
           docker stop interaction
           test "$(docker inspect interaction --format '{{.State.ExitCode}}')" = 0
+      - name: Build a prediction function and ask it a question
+        timeout-minutes: 5
+        run: |
+          . .github/smoke/calls.sh
+          show_logs_on_failure prediction
+          issued="$(docker run --rm onauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
+          key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
+          echo "::add-mask::$key"
+          API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
+          export API_KEYS
+          docker run --detach --name prediction --publish 5555:5555 --env API_KEYS onauto/runtime:ci
+          for attempt in $(seq 1 30); do
+            curl --silent --fail --max-time 5 http://127.0.0.1:5555/health > /dev/null && break
+            sleep 1
+          done
+          call() {
+            answered "$1" --max-time 60 --header "authorization: Bearer $key" "${@:2}"
+          }
+          json=(--header 'content-type: application/json')
+          playbook=http://127.0.0.1:5555/v1/orgs/demo/playbooks/smoke
+          printf 'series,period,visits\n' > rows.csv
+          for store in north south; do
+            level=$([ "$store" = north ] && echo 10 || echo 20)
+            for day in $(seq 0 39); do
+              printf '%s,%s,%s\n' "$store" "$(date --utc --date "2026-08-31 +$day days" +%F)" "$((level + day % 3))" >> rows.csv
+            done
+          done
+          dataset="$(sha256sum rows.csv | cut --delimiter ' ' --fields 1)"
+          source="$(printf '%s\n' '---' 'predicts:' '  target: visits' '  period: day' '  horizons: [1, 2]' \
+            '  unit: visits' 'data:' "  dataset: $dataset" '  window: 24' 'evaluation:' '  holdout: 8' \
+            '  activate: automatic' 'source:' '  expires: P1D' '---' \
+            'Fit a model of the daily {{ function.target }} of each of {{ dataset.series }} stores.')"
+          definition="$(jq --null-input --arg source "$source" '{name: "daily-visits", source: $source}')"
+          test "$(call playbook.json "${json[@]}" --data '{"playbook":"smoke","name":"Smoke test"}' \
+            http://127.0.0.1:5555/v1/orgs/demo/playbooks)" = 201
+          test "$(call kept.json --request PUT --header 'content-type: text/csv' --data-binary @rows.csv \
+            "$playbook/datasets/$dataset")" = 200
+          test "$(call created.json "${json[@]}" --data "$definition" "$playbook/definitions/prediction")" = 201
+          test "$(call asked.json "${json[@]}" --data '{"input":{"build":{}}}' \
+            "$playbook/definitions/prediction/daily-visits/run")" = 200
+          test "$(jq --raw-output .status asked.json)" = started
+          build="$(jq --raw-output .run_id asked.json)"
+          test "$(call brief.md "$playbook/runs/$build/build/brief")" = 200
+          grep --quiet 'Fit a model of the daily visits of each of 2 stores.' brief.md
+          test "$(call training.csv "$playbook/runs/$build/build/rows")" = 200
+          test "$(head --lines 1 training.csv | tr --delete '\r')" = series,period,visits
+          for model in visits-mean visits-allocating; do
+            test "$(call "$model.json" --header 'content-type: application/octet-stream' \
+              --data-binary "@capabilities/prediction/candidates/$model.onnx" "$playbook/runs/$build/build/candidates")" = 200
+          done
+          candidate="$(jq --raw-output .candidate visits-mean.json)"
+          test "$candidate" = "$(sha256sum capabilities/prediction/candidates/visits-mean.onnx | cut --delimiter ' ' --fields 1)"
+          allocating="$(jq --raw-output .candidate visits-allocating.json)"
+          answer="$(jq --null-input --arg candidate "$candidate" --arg allocating "$allocating" \
+            '{answer: {candidates: [$candidate, $allocating]}}')"
+          test "$(call answered.json "${json[@]}" --data "$answer" "$playbook/runs/$build/answer")" = 200
+          for attempt in $(seq 1 60); do
+            test "$(call built.json "$playbook/runs/$build")" = 200
+            test "$(jq --raw-output .status built.json)" != started && break
+            sleep 1
+          done
+          test "$(jq --compact-output '[.status, .output.version, .output.winner]' built.json)" = \
+            "[\"succeeded\",1,\"$candidate\"]"
+          verdict="$(jq --raw-output '.output.candidates[1].verdict' built.json)"
+          echo "The candidate that allocates without bound: $verdict" >> "$GITHUB_STEP_SUMMARY"
+          case "$verdict" in
+            out_of_memory | crashed) ;;
+            *) false ;;
+          esac
+          test "$(curl --silent --fail http://127.0.0.1:5555/health)" = '{"status":"ok"}'
+          for attempt in $(seq 1 30); do
+            test "$(call function.json "$playbook/definitions/prediction/daily-visits")" = 200
+            test "$(jq --raw-output '.standing.models.active.version // empty' function.json)" = 1 && break
+            sleep 1
+          done
+          test "$(jq --raw-output .standing.models.active.version function.json)" = 1
+          test "$(call question.json "${json[@]}" --data '{"input":{"series":"north","horizon":1}}' \
+            "$playbook/definitions/prediction/daily-visits/run")" = 200
+          test "$(jq --compact-output '[.status, .output.value, .output.low, .output.high, .output.version]' question.json)" = \
+            '["succeeded",11,9,13,1]'
+          docker stop prediction
+          test "$(docker inspect prediction --format '{{.State.ExitCode}}')" = 0
       - name: Run workflows across a restart, and read the steps of a run and their causes
         timeout-minutes: 5
         run: |
+          . .github/smoke/calls.sh
+          show_logs_on_failure workflows-first workflows-second
           issued="$(docker run --rm onauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
@@ -392,7 +524,7 @@ jobs:
             test "$(docker inspect "$1" --format '{{.State.ExitCode}}')" = 0
           }
           call() {
-            curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' \
+            answered "$1" --max-time 30 \
               --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
           }
           playbook=http://127.0.0.1:5555/v1/orgs/demo/playbooks/smoke
@@ -439,6 +571,8 @@ jobs:
       - name: Read the analytics of a playbook
         timeout-minutes: 2
         run: |
+          . .github/smoke/calls.sh
+          show_logs_on_failure analytics
           issued="$(docker run --rm onauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
@@ -450,7 +584,7 @@ jobs:
             sleep 1
           done
           call() {
-            curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' \
+            answered "$1" --max-time 30 \
               --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
           }
           playbook=http://127.0.0.1:5555/v1/orgs/demo/playbooks/smoke
@@ -468,6 +602,8 @@ jobs:
       - name: Recall what the smoke workflows answered
         timeout-minutes: 2
         run: |
+          . .github/smoke/calls.sh
+          show_logs_on_failure recall
           issued="$(docker run --rm onauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
@@ -479,7 +615,7 @@ jobs:
             sleep 1
           done
           call() {
-            curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' \
+            answered "$1" --max-time 30 \
               --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
           }
           playbook=http://127.0.0.1:5555/v1/orgs/demo/playbooks/smoke
@@ -504,6 +640,8 @@ jobs:
       - name: Start a workflow by its event trigger and by its schedule
         timeout-minutes: 5
         run: |
+          . .github/smoke/calls.sh
+          show_logs_on_failure reactions
           issued="$(docker run --rm onauto/runtime:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
@@ -515,7 +653,7 @@ jobs:
             sleep 1
           done
           call() {
-            curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' \
+            answered "$1" --max-time 30 \
               --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
           }
           playbook=http://127.0.0.1:5555/v1/orgs/demo/playbooks/smoke

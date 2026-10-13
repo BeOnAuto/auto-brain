@@ -1,8 +1,8 @@
+import { nestedRunId } from '@on.auto/definitions';
 import { textField, type ChildCall } from '@on.auto/workflow-engine';
 
 import { isArgumentsProblem, definitionArgumentsOf } from '../document/definition-arguments.ts';
 import { runDefinitionFunction } from '../document/workflow-functions.ts';
-import { nestedRunId } from './nested-run-id.ts';
 
 export function childRunOf({
   function: name,
