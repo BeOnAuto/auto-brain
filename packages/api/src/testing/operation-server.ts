@@ -10,14 +10,15 @@ import { Layer } from 'effect';
 
 import {
   makeAppRuntime,
+  guideRoutes,
   mcpRoutes,
-  openApiRoutes,
+  openApiDocumentRoutes,
   operationRoutes,
   type ApiHandler,
   type AppRuntime,
 } from '../index.ts';
 import { createTestHandler, type ReportedThrown } from './api-calls.ts';
-import { testDefinitionTypes, testGuides, testRecipes } from './guides.ts';
+import { testShelf } from './guides.ts';
 import { notebookOperations } from './notebook.ts';
 
 export interface OperationServer {
@@ -84,16 +85,16 @@ export async function operationServer({
   const catalog = makeCatalog(operations);
   const dispatcher = makeDispatcher([]);
   const mcpErrors: string[] = [];
-  const guides = { definitionTypes: testDefinitionTypes, guides: testGuides, recipes: testRecipes };
   const routes = [
     operationRoutes({ catalog, dispatcher, runCall: runtime.run }),
-    openApiRoutes({ catalog, serverInfo: testServerInfo, ...guides }),
+    openApiDocumentRoutes({ catalog, serverInfo: testServerInfo, shelf: testShelf }),
+    guideRoutes(testShelf),
     mcpRoutes({
       catalog,
       dispatcher,
       runCall: runtime.run,
       serverInfo: testServerInfo,
-      ...guides,
+      shelf: testShelf,
       reportError: (error) => {
         mcpErrors.push(error.message);
       },

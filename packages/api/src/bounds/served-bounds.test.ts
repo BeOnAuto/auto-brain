@@ -2,7 +2,7 @@ import { defineQuery, makeCatalog, makeDispatcher, type Registration } from '@on
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { instructionsFor, mcpRoutes, type DefinitionType, type Guide, type Recipe } from '../index.ts';
+import { guideShelfOf, instructionsFor, mcpRoutes, type DefinitionType, type Guide, type Recipe } from '../index.ts';
 import { createTestHandler } from '../testing/api-calls.ts';
 import { asking, sentencesOf } from '../testing/asking-operation.ts';
 import { notebookGuide, noteRecipe, wordsGuide } from '../testing/guides.ts';
@@ -28,9 +28,7 @@ function starting({ operations = [], guides = [], recipes = [], definitionTypes 
           dispatcher: makeDispatcher([]),
           runCall: () => Promise.reject(new Error('not called')),
           serverInfo: testServerInfo,
-          definitionTypes,
-          guides,
-          recipes,
+          shelf: guideShelfOf(guides, recipes, definitionTypes),
           reportError: (error) => {
             reportedErrors.push(error.message);
           },

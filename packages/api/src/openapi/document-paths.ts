@@ -34,10 +34,9 @@ export function documentPathsOf(catalog: Catalog, shelf: GuideShelf): DocumentPa
   const described = catalog.operations.map((registration) =>
     describedOperationOf(registration, operationIdOf(registration)),
   );
-  const guides = guidePathItemOf(shelf);
   return {
-    paths: { ...pathItemsOf(described), [guidePath]: guides.item },
+    paths: { ...pathItemsOf(described), [guidePath]: guidePathItemOf(shelf) },
     tags: tagsNamed([...described.map(({ tag }) => tag), guidesTag]),
-    problems: [...described.flatMap(({ problems }) => problems), ...guides.problems],
+    problems: described.flatMap(({ problems }) => problems),
   };
 }

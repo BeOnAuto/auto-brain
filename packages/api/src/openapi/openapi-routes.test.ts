@@ -6,7 +6,7 @@ import { testGuides, testRecipes } from '../testing/guides.ts';
 import { listenOnLoopback, type Listening } from '../testing/listening.ts';
 import { withMcpSession } from '../testing/mcp-clients.ts';
 import { notebookOperations } from '../testing/notebook.ts';
-import { operationsIn, schemaErrorsIn } from '../testing/openapi-document.ts';
+import { operationsIn, schemaErrorsIn } from '../testing/openapi/openapi-document.ts';
 import { acmeAdmin, operationServer, type OperationServer } from '../testing/operation-server.ts';
 
 let server: OperationServer;
@@ -91,14 +91,16 @@ describe('a guide over HTTP', () => {
     );
   });
 
-  it('is a not_found problem document for a name the shelf does not hold', async () => {
-    const answer = await call(server.handler, '/v1/guides/cooking');
+  it('is a path of its own, so a name the shelf does not hold is a path like any other: 401 without a key, 404 with one', async () => {
+    const [withoutKey, withKey] = await Promise.all([
+      call(server.handler, '/v1/guides/cooking'),
+      call(server.handler, '/v1/guides/cooking', { headers: { authorization: `Bearer ${acmeAdmin.key}` } }),
+    ]);
 
-    expect(answer).toMatchObject({
-      status: 404,
-      body: { reason: 'not_found', detail: 'The server holds no guide of that name' },
-    });
-    expect(answer.headers.get('content-type')).toBe('application/problem+json');
+    expect([withoutKey, withKey]).toMatchObject([
+      { status: 401, body: { reason: 'unauthenticated' } },
+      { status: 404, body: { reason: 'not_found', detail: 'No route matches the path' } },
+    ]);
   });
 
   it("is refused with a problem the document's schema of a problem accepts", async () => {
@@ -114,12 +116,14 @@ describe('a guide over HTTP', () => {
 });
 
 describe('the paths without a key', () => {
-  it('are the document and the guides alone, so an operation still wants one', async () => {
-    const [operation, beyond] = await Promise.all([
+  it('are the document and each guide alone, so an operation, a path beyond them and a guide the shelf lacks want one', async () => {
+    const answers = await Promise.all([
       call(server.handler, '/v1/orgs/acme/playbooks/alpha/notes'),
       call(server.handler, '/v1/openapi.json/notes'),
+      call(server.handler, '/v1/guides/notebook/pages'),
+      call(server.handler, '/v1/guides'),
     ]);
 
-    expect([operation.status, beyond.status]).toEqual([401, 401]);
+    expect(answers.map(({ status }) => status)).toEqual([401, 401, 401, 401]);
   });
 });

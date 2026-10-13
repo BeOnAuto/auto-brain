@@ -18,9 +18,10 @@ export interface ApiApp {
 export function createApp(options: ApiOptions): ApiApp {
   const app = new Hono<ApiEnv>();
   const closes: Close[] = [];
+  const publicPaths = new Set(['/health']);
   app.use(landingPage);
   app.use(...requestIdAndSecurityHeaders);
-  app.use(...middlewareFor(options));
+  app.use(...middlewareFor(options, publicPaths));
   app.use(
     methodNotAllowed({
       app,
@@ -35,6 +36,10 @@ export function createApp(options: ApiOptions): ApiApp {
   for (const register of options.routes) {
     register({
       add: (method, path, handler) => {
+        app.on(method, path, handler);
+      },
+      addPublic: (method, path, handler) => {
+        publicPaths.add(path);
         app.on(method, path, handler);
       },
       onClose: (close) => {

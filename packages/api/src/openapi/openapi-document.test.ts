@@ -2,11 +2,10 @@ import { defineCommand, defineQuery, makeCatalog } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { guideShelfOf } from '../guides/guide-shelf.ts';
 import { blobOperations } from '../testing/blob-operations.ts';
-import { testDefinitionTypes, testGuides, testRecipes } from '../testing/guides.ts';
+import { testShelf } from '../testing/guides.ts';
 import { listNotesOfTheOrg, notebookOperations } from '../testing/notebook.ts';
-import { openApiErrorsIn, operationsIn, unresolvedSchemasIn } from '../testing/openapi-document.ts';
+import { openApiErrorsIn, operationsIn, unresolvedSchemasIn } from '../testing/openapi/openapi-document.ts';
 import { testServerInfo } from '../testing/operation-server.ts';
 import { openApiDocumentOf } from './openapi-document.ts';
 
@@ -48,13 +47,11 @@ const measureNote = defineQuery('playbook', {
   handle: () => Effect.succeed({ size: 0 }),
 });
 
-const shelf = guideShelfOf(testGuides, testRecipes, testDefinitionTypes);
-
 const operations = [...notebookOperations, listNotesOfTheOrg, ...blobOperations, moveNote, findNote];
 
 const catalog = makeCatalog(operations);
 
-const document = openApiDocumentOf(catalog, testServerInfo, shelf);
+const document = openApiDocumentOf(catalog, testServerInfo, testShelf);
 
 function operationNamed(id: string) {
   const found = operationsIn(document).find(({ operation }) => operation.operationId === id);
@@ -117,7 +114,7 @@ describe('the OpenAPI document of a catalog', () => {
   });
 
   it('refuses a query by GET that takes one of several inputs, which its query parameters cannot tell apart', () => {
-    expect(() => openApiDocumentOf(makeCatalog([measureNote]), testServerInfo, shelf)).toThrow(
+    expect(() => openApiDocumentOf(makeCatalog([measureNote]), testServerInfo, testShelf)).toThrow(
       'The query measure_note takes one of several inputs, which its query parameters cannot tell apart',
     );
   });

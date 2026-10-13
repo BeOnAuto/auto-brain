@@ -2,20 +2,17 @@ import { makeCatalog } from '@on.auto/operations';
 import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { guideShelfOf } from '../guides/guide-shelf.ts';
 import { blobOperations } from '../testing/blob-operations.ts';
-import { testDefinitionTypes, testGuides, testRecipes } from '../testing/guides.ts';
+import { testShelf } from '../testing/guides.ts';
 import { listNotesOfTheOrg, notebookOperations } from '../testing/notebook.ts';
-import { operationsIn } from '../testing/openapi-document.ts';
+import { operationsIn } from '../testing/openapi/openapi-document.ts';
 import { testServerInfo } from '../testing/operation-server.ts';
 import { openApiDocumentOf } from './openapi-document.ts';
-
-const shelf = guideShelfOf(testGuides, testRecipes, testDefinitionTypes);
 
 const document = openApiDocumentOf(
   makeCatalog([...notebookOperations, listNotesOfTheOrg, ...blobOperations]),
   testServerInfo,
-  shelf,
+  testShelf,
 );
 
 const ComponentsSchema = Schema.Struct({
@@ -45,6 +42,7 @@ const answeredByEveryOperation = {
   415: { $ref: '#/components/responses/unsupported_media_type' },
   422: { $ref: '#/components/responses/invalid_input' },
   500: { $ref: '#/components/responses/internal' },
+  503: { $ref: '#/components/responses/unavailable' },
 };
 
 describe('the answers of an operation', () => {
@@ -140,7 +138,7 @@ describe('the components of the document', () => {
 });
 
 describe('the guides of the document', () => {
-  it('are one route that takes the name of a guide the shelf holds, answers its text in Markdown, and needs no key', () => {
+  it('are one path that takes the name of a guide the shelf holds, answers its text in Markdown, and needs no key', () => {
     const guide = operationsIn(document).find(({ operation }) => operation.operationId === 'get_guide');
 
     expect(guide).toMatchObject({
@@ -159,7 +157,6 @@ describe('the guides of the document', () => {
         ],
         responses: {
           200: { content: { 'text/markdown': { schema: { type: 'string' } } } },
-          404: { $ref: '#/components/responses/not_found' },
         },
         security: [],
       },

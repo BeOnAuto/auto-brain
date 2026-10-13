@@ -6,7 +6,7 @@ import { blobOperations } from '../testing/blob-operations.ts';
 import { listenOnLoopback, type Listening } from '../testing/listening.ts';
 import { withMcpSession } from '../testing/mcp-clients.ts';
 import { listNotesOfTheOrg, notebookOperations } from '../testing/notebook.ts';
-import { operationsIn, type DocumentedOperation } from '../testing/openapi-document.ts';
+import { operationsIn, type DocumentedOperation } from '../testing/openapi/openapi-document.ts';
 import { acmeAdmin, operationServer, type OperationServer } from '../testing/operation-server.ts';
 import { operationToolsIn, type ListedTool } from '../testing/tool-listing.ts';
 

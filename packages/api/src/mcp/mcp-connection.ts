@@ -9,17 +9,11 @@ import {
   requireWithin,
 } from '../bounds/served-bounds.ts';
 import { serveGuides, type GuideRegistry } from '../guides/guide-serving.ts';
-import { guideShelfOf, type Guide, type GuideShelf, type Recipe } from '../guides/guide-shelf.ts';
+import type { GuideShelf } from '../guides/guide-shelf.ts';
 import { guideToolDefinitionOf, guideToolName } from '../guides/guide-tool.ts';
 import type { RunCall } from '../operations/operation-routes.ts';
 import { listingBytesOf, type ListedTool } from '../tools/tool-listing.ts';
-import {
-  instructionsFor,
-  recipesFollowedWith,
-  type DefinitionType,
-  type McpEndpoint,
-  type ServedTools,
-} from './instructions.ts';
+import { instructionsFor, recipesFollowedWith, type McpEndpoint, type ServedTools } from './instructions.ts';
 
 export interface ServerInfo {
   readonly name: string;
@@ -31,9 +25,7 @@ export interface McpServing {
   readonly dispatcher: Dispatcher;
   readonly runCall: RunCall;
   readonly serverInfo: ServerInfo;
-  readonly definitionTypes: readonly DefinitionType[];
-  readonly guides: readonly Guide[];
-  readonly recipes: readonly Recipe[];
+  readonly shelf: GuideShelf;
 }
 
 export interface Connection {
@@ -46,8 +38,8 @@ const noChangesAnnounced = { listChanged: false };
 
 export const serverTitle = 'Auto Runtime';
 
-function instructionsOf({ endpoint, serving, shelf }: Connection, served: ServedTools): string {
-  return instructionsFor(endpoint, served, serving.definitionTypes, shelf.recipes);
+function instructionsOf({ endpoint, shelf }: Connection, served: ServedTools): string {
+  return instructionsFor(endpoint, served, shelf.definitionTypes, shelf.recipes);
 }
 
 export interface EveryTool {
@@ -59,7 +51,7 @@ export function connectionOf(endpoint: McpEndpoint, serving: McpServing, { serve
   const connection = {
     endpoint,
     serving,
-    shelf: guideShelfOf(serving.guides, serving.recipes, serving.definitionTypes),
+    shelf: serving.shelf,
   };
   const listing = [...listed, { name: guideToolName, definition: guideToolDefinitionOf(connection.shelf) }];
   requireWithin(`The ${endpoint} endpoint`, listing.length, mostToolsOnAConnection, 'tools');

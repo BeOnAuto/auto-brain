@@ -1,22 +1,18 @@
 import { versionPrefix } from '../operations/route-table.ts';
-import { problemOf, problemResponse } from '../problem/problem.ts';
 import type { RegisterRoutes } from '../routes.ts';
 import { guideMediaType } from './guide-resources.ts';
-import type { GuideShelf } from './guide-shelf.ts';
+import type { Guide, GuideShelf } from './guide-shelf.ts';
 
-export const guidesPathPrefix = `${versionPrefix}/guides/`;
+const guideHeaders = { 'content-type': `${guideMediaType}; charset=utf-8`, 'cache-control': 'no-store' };
 
-const noSuchGuide = problemOf('not_found', 'The server holds no guide of that name');
+function guidePathOf({ name }: Pick<Guide, 'name'>): string {
+  return `${versionPrefix}/guides/${name}`;
+}
 
-export function guideRoutesOf({ named }: GuideShelf): RegisterRoutes {
+export function guideRoutes({ everyGuide }: GuideShelf): RegisterRoutes {
   return (routes) => {
-    routes.add('GET', `${guidesPathPrefix}:guide`, (c) => {
-      const guide = named(String(c.req.param('guide')));
-      return guide === undefined
-        ? problemResponse(noSuchGuide)
-        : new Response(guide.text, {
-            headers: { 'content-type': `${guideMediaType}; charset=utf-8`, 'cache-control': 'no-store' },
-          });
-    });
+    for (const guide of everyGuide) {
+      routes.addPublic('GET', guidePathOf(guide), () => new Response(guide.text, { headers: guideHeaders }));
+    }
   };
 }

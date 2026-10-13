@@ -22,6 +22,7 @@ const answeredToEveryOperation: ReadonlySet<ProblemReason> = new Set<ProblemReas
   'unsupported_media_type',
   'invalid_input',
   'internal',
+  'unavailable',
 ]);
 
 type Header = readonly [name: string, header: OpenApiObject];
@@ -68,7 +69,7 @@ const statuses = [...new Set(problemReasons.map((reason) => problemTypes[reason]
   (one, other) => one - other,
 );
 
-export function problemAnswersOf(answered: ReadonlySet<ProblemReason>): readonly ProblemAnswer[] {
+function problemAnswersOf(answered: ReadonlySet<ProblemReason>): readonly ProblemAnswer[] {
   return statuses.flatMap((status) => {
     const reasons = problemReasons.filter((reason) => answered.has(reason) && problemTypes[reason].status === status);
     return reasons.length === 0 ? [] : [{ status, name: reasons.join('_or_'), response: responseOf(reasons) }];

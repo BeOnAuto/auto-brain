@@ -3,7 +3,8 @@ export type { ApiHandler } from './api-handler.ts';
 export type { ApiOptions } from './api-options.ts';
 export { operationRoutes, type OperationRoutesOptions, type RunCall } from './operations/operation-routes.ts';
 export { mcpRoutes, type McpRoutesOptions } from './mcp/mcp-routes.ts';
-export { openApiPath, openApiRoutes, type OpenApiServing } from './openapi/openapi-routes.ts';
+export { openApiDocumentRoutes, openApiPath, type OpenApiServing } from './openapi/openapi-routes.ts';
+export { guideRoutes } from './guides/guide-routes.ts';
 export {
   instructionsFor,
   type DefinitionType,
@@ -11,7 +12,14 @@ export {
   type RecipeCalls,
   type ServedTools,
 } from './mcp/instructions.ts';
-export type { Guide, Recipe, RecipeArgument, RecipeWords } from './guides/guide-shelf.ts';
+export {
+  guideShelfOf,
+  type Guide,
+  type GuideShelf,
+  type Recipe,
+  type RecipeArgument,
+  type RecipeWords,
+} from './guides/guide-shelf.ts';
 export { guideAddress, guideMediaType } from './guides/guide-resources.ts';
 export {
   mostArgumentDescriptionCharacters,
