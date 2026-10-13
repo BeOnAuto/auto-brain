@@ -54,6 +54,12 @@ model_aliases:
 # marks none needs its read-only tools named, for example the search,
 # introspect, validate and dry_run of an agent gateway. An HTTP API marks the
 # tools of its GET and HEAD operations read-only.
+#
+# An openapi entry gives its credential under security, by the name of the
+# security scheme its document declares, and the server places it as the scheme
+# says; headers and query_params hold what the schemes do not, such as a tenant.
+# org names one org, a list of orgs, or * for every org; one entry serves each
+# under one name, with one credential.
 # tool_servers:
 #   graph:
 #     url: https://gateway.example.com/mcp
@@ -72,9 +78,9 @@ model_aliases:
 #   billing:
 #     document: https://billing.example.com/openapi.json
 #     base_url: https://billing.example.com/v2
-#     headers:
-#       X-Api-Key: ${BILLING_API_KEY}
-#     org: acme
+#     security:
+#       apiKeyAuth: ${BILLING_API_KEY}
+#     org: [acme, globex]
 #     allowed: [listInvoices, getInvoice]
 
 # The origins a page in a browser may call the API from.

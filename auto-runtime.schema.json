@@ -156,7 +156,7 @@
             "additionalProperties": {
               "type": "string"
             },
-            "description": "Headers sent to a remote MCP server or an HTTP API with every request; the value of a reference such as ${GRAPH_API_KEY} is a secret, scrubbed from everything a call records, and a value written out is not"
+            "description": "Headers sent to a remote MCP server, or to an HTTP API outside its document's security schemes, with every request; the value of a reference such as ${GRAPH_API_KEY} is a secret, scrubbed from everything a call records, and a value written out is not"
           },
           "auth": {
             "type": "object",
@@ -221,18 +221,35 @@
             "additionalProperties": {
               "type": "string"
             },
-            "description": "Query parameters sent to an HTTP API with every call, such as a key the API takes in its query; the value of a reference such as ${GRAPH_API_KEY} is a secret, scrubbed from everything a call records, and a value written out is not"
+            "description": "Query parameters sent to an HTTP API with every call, outside its document's security schemes, such as a tenant; the value of a reference such as ${GRAPH_API_KEY} is a secret, scrubbed from everything a call records, and a value written out is not"
+          },
+          "security": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "The credential of each security scheme of an HTTP API's document the entry gives, by the scheme's name, placed as the scheme says: an apiKey in its header or query parameter, a bearer as Authorization: Bearer, a basic as user:password; an oauth2 or openIdConnect scheme takes the auth block instead; the value of a reference such as ${GRAPH_API_KEY} is a secret, scrubbed from everything a call records, and a value written out is not"
           },
           "org": {
-            "type": "string",
-            "description": "The org this server serves, required"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ],
+            "description": "The org this server serves, a list of orgs, or * for every org of this server, required; one entry serves each org it names under one name, with one credential and one connection"
           },
           "playbooks": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "The playbooks of the org this server serves; every playbook of the org when left out"
+            "description": "The playbooks this server serves within each org it names, by id; every playbook of each org when left out, and refused beside * for every org"
           },
           "allowed": {
             "type": "array",

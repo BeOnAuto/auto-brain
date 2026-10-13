@@ -49,7 +49,12 @@ describe('the tool servers of the server', () => {
 
     expect(settings.toolServers).toEqual({
       servers: [
-        expect.objectContaining({ name: 'graph', org: 'acme', allowed: ['search', 'execute'], testable: ['execute'] }),
+        expect.objectContaining({
+          name: 'graph',
+          orgs: ['acme'],
+          allowed: ['search', 'execute'],
+          testable: ['execute'],
+        }),
       ],
     });
     expect(authorizationOf(settings)).toBe(`Bearer ${apiKey}`);
@@ -62,7 +67,9 @@ describe('the tool servers of the server', () => {
 
     expect(authorizationOf(readSettings({ CONFIG_FILE: path, GRAPH_API_KEY: apiKey }))).toBe(`Bearer ${apiKey}`);
   });
+});
 
+describe('the tool servers the server refuses', () => {
   it('stops the start at a server named as a model provider or a gateway, never printing a value', () => {
     const gateways = JSON.stringify([{ name: 'house', base_url: 'https://llm.example.com/v1' }]);
     const error = errorFrom({

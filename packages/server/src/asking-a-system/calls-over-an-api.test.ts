@@ -21,7 +21,7 @@ const decodeHistory = Schema.decodeUnknownSync(
 async function askingAnApi() {
   const billing = await serveFakeApi({ key: apiKey, requestIdHeader: 'x-request-id' });
   onTestFinished(billing.close);
-  const entry = { document: billing.documentUrl, headers: { 'X-Api-Key': '${BILLING_KEY}' }, org: 'acme' };
+  const entry = { document: billing.documentUrl, security: { apiKeyAuth: '${BILLING_KEY}' }, org: 'acme' };
   const server = await interactionServerOn({
     BILLING_KEY: apiKey,
     TOOL_SERVERS: JSON.stringify({ billing: { ...entry, request_id: 'x-request-id' } }),
