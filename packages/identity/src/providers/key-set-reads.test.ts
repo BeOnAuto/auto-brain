@@ -68,8 +68,39 @@ describe('the key set of an issuer', () => {
     expect(await callerOf(await token())).toBe('person:corp/ada');
     expect(fake.keySetReads()).toBe(2);
   });
+});
 
-  it('keeps the keys it holds when it cannot be read again', async () => {
+describe('the age of the key set of an issuer', () => {
+  it('is ten minutes, after which it is read again, so a key the provider removed verifies nothing more', async () => {
+    const fake = fakeIssuer('https://login.example');
+    const { token, callerOf } = await signedTokens(fake);
+    const signedByTheRemovedKey = await token({ exp: Math.floor(startedAt / 1000) + 3600 });
+    fake.rotate();
+    after(599_999);
+    const beforeTheAge = await callerOf(signedByTheRemovedKey);
+    after(600_001);
+    const afterTheAge = await callerOf(signedByTheRemovedKey);
+
+    expect([beforeTheAge, afterTheAge, fake.keySetReads()]).toEqual(['person:corp/ada', undefined, 2]);
+  });
+
+  it('refuses every token once ten minutes have passed and it cannot be read again', async () => {
+    const fake = fakeIssuer('https://login.example');
+    const network = cutAfterStart(fake);
+    const { issuers, token, callerOf } = await signedTokens(fake, { fetch: network.fetch });
+    const signed = await token({ exp: Math.floor(startedAt / 1000) + 3600 });
+    network.cut();
+    after(599_999);
+    const beforeTheAge = await callerOf(signed);
+    after(600_001);
+
+    expect(beforeTheAge).toBe('person:corp/ada');
+    expect(await issuers.personOf(signed, '/mcp')).toEqual({ because: 'the key set of its issuer could not be read' });
+  });
+});
+
+describe('the key set of an issuer that cannot be read again', () => {
+  it('keeps the keys it holds when it is read for an unknown kid', async () => {
     const fake = fakeIssuer('https://login.example');
     const network = cutAfterStart(fake);
     const { issuers, token, callerOf } = await signedTokens(fake, { fetch: network.fetch });

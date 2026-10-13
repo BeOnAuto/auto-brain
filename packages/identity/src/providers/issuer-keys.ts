@@ -8,11 +8,13 @@ const mostKeySetBytes = 65_536;
 
 const leastRefetchMs = 60_000;
 
+const mostKeySetAgeMs = 600_000;
+
 async function keySetAt(jwksUri: string, requests: IssuerRequests): Promise<Result.Result<RemoteJWKSet, string>> {
   const keySet = createRemoteJWKSet(new URL(jwksUri), {
     timeoutDuration: issuerAnswerMs,
     cooldownDuration: leastRefetchMs,
-    cacheMaxAge: Infinity,
+    cacheMaxAge: mostKeySetAgeMs,
     [customFetch]: boundedFetchOf(requests, mostKeySetBytes),
   });
   try {
