@@ -1,11 +1,12 @@
 import { InvalidInput, Unavailable } from '@on.auto/operations';
-import type {
-  CheckIssue,
-  CheckJob,
-  CheckOutcome,
-  ProgramPool,
-  Stopped,
-  StrippedSources,
+import {
+  pooledJob,
+  type CheckIssue,
+  type CheckJob,
+  type CheckOutcome,
+  type ProgramPool,
+  type Stopped,
+  type StrippedSources,
 } from '@on.auto/workflow-engine/dsl';
 import { Effect } from 'effect';
 
@@ -70,9 +71,9 @@ export function checkedAtSave(
   job: CheckJob,
   deadlineMs: number = checkDeadlineMs,
 ): Effect.Effect<CheckedDocument, InvalidInput | Unavailable> {
-  return Effect.promise((signal) => pool.check({ ...job, deadlineMs, worker: checkWorker }, signal)).pipe(
-    Effect.flatMap((outcome) => issuesOf(job, outcome, deadlineMs)),
-  );
+  return pooledJob('program', 'check', (signal) =>
+    pool.check({ ...job, deadlineMs, worker: checkWorker }, signal),
+  ).pipe(Effect.flatMap((outcome) => issuesOf(job, outcome, deadlineMs)));
 }
 
 export function warmedChecks(pool: ProgramPool): Promise<CheckOutcome> {

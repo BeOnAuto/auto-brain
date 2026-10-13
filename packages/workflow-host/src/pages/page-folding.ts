@@ -1,4 +1,10 @@
-import type { FoldedView, FoldingView, FoldOutcome, FoldRequest } from '@on.auto/workflow-engine/dsl';
+import {
+  pooledJob,
+  type FoldedView,
+  type FoldingView,
+  type FoldOutcome,
+  type FoldRequest,
+} from '@on.auto/workflow-engine/dsl';
 import { Array, Effect, type Schema, type Semaphore } from 'effect';
 
 import { rowsOf, type DatabaseFailed, type HostDatabase } from '../database/host-database.ts';
@@ -113,7 +119,7 @@ function foldedChanges(foldings: readonly Folding[], page: ReadPage, outcome: Fo
 }
 
 function foldedBy(request: FoldRequest, { settings, share }: PageFolding): Effect.Effect<FoldOutcome> {
-  return share.withPermits(1)(Effect.promise((signal) => settings.pool.fold(request, signal)));
+  return share.withPermits(1)(pooledJob('program', 'fold', (signal) => settings.pool.fold(request, signal)));
 }
 
 function salvageOf(page: ReadPage, at: number): ReadPage {

@@ -1,6 +1,6 @@
 import { checkedWorker } from '@on.auto/definitions/json-schema';
 import { Conflict, type Unavailable } from '@on.auto/operations';
-import type { ProgramPool, ProgramRequest } from '@on.auto/workflow-engine/dsl';
+import { pooledJob, type ProgramPool, type ProgramRequest } from '@on.auto/workflow-engine/dsl';
 import type { ViewsPort } from '@on.auto/workflow-host';
 import { Clock, Effect, type Schema } from 'effect';
 
@@ -64,7 +64,9 @@ function answeredBy(
   asked: Asked,
 ): Answering {
   const bounds = { deadlineMs, budget, memoryBytes };
-  return Effect.promise((signal) => pool.run(requestOf({ document, program }, asked, bounds), signal)).pipe(
+  return pooledJob('program', 'recall', (signal) =>
+    pool.run(requestOf({ document, program }, asked, bounds), signal),
+  ).pipe(
     Effect.flatMap((outcome) =>
       answerEndingOf(outcome, {
         foldLine: document.details.foldLine,
