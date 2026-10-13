@@ -27,7 +27,7 @@ export function compositionRootWith(
           const { ledger, workflows } = settings;
           await runtime.run(logLedger(ledger));
           await runtime.run(logContentStore(settings.content));
-          const functions = await functionsServedBy(runtime, settings, database, wiring);
+          const functions = await functionsServedBy(runtime, settings, database, { ...wiring, telemetry });
           const parts = { ledger, workflows, ...functions.parts, ...(clock === undefined ? {} : { clock }) };
           return functions.closing(await serveWorkflows(runtime, parts));
         },

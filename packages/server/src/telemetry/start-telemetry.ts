@@ -4,6 +4,7 @@ import { Layer } from 'effect';
 
 import { release } from '../composition/release.ts';
 import { startInstrumentations } from './instrumentations.ts';
+import { outboundTelemetry } from './outbound-telemetry.ts';
 import { recordedEventsOf } from './recorded-events.ts';
 import { requestTracing } from './request-tracing.ts';
 import type { TelemetrySettings } from './telemetry-settings.ts';
@@ -24,6 +25,7 @@ export function startTelemetry(settings: TelemetrySettings | undefined): Telemet
     layer: Layer.mergeAll(Layer.empty, ...signals.map(({ layer }) => layer)),
     requests: requestTracing(),
     appended: recordedEventsOf(settings.content),
+    ...outboundTelemetry(settings.content),
     shutdown: async () => {
       stopInstrumentations();
       await Promise.race([

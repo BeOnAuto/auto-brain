@@ -4,6 +4,7 @@ import { awsCredentialChain } from '@on.auto/outbound/aws';
 import { Effect } from 'effect';
 
 import type { Settings } from '../settings/settings.ts';
+import { commandSpansIn, commandSpanStep } from '../telemetry/object-commands.ts';
 
 export type ContentStoreSettings = Pick<Settings, 'content' | 'proxy'>;
 
@@ -22,6 +23,7 @@ export function contentStoreOf({ content, proxy }: ContentStoreSettings): Compos
   }
   const { endpoint, region, location } = content;
   const client = storageClientOf({ endpoint, region, proxy }, awsCredentialChain(proxy));
+  client.middlewareStack.add(commandSpansIn(location.bucket), commandSpanStep);
   const unreachable = (answer: string) =>
     new Error(
       `CONTENT_STORE_URL names the bucket ${location.bucket} on ${hostOf(endpoint)}, which could not be reached: ${answer}`,

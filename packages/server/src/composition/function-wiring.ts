@@ -1,10 +1,9 @@
 import { workerPool, type ProgramPoolOf } from './served-computation.ts';
 import { projectionWiring, type ProjectionWiring } from './served-projections.ts';
 import type { ModelAccessOf } from './served-reasoning.ts';
-import type { TimedTools } from './served-tools.ts';
+import type { ToolWiring } from './served-tools.ts';
 
-export interface FunctionWiring extends TimedTools {
-  readonly modelAccessOf: ModelAccessOf;
+export interface FunctionWiring extends ToolWiring {
   readonly programPoolOf: ProgramPoolOf;
   readonly projections: ProjectionWiring;
 }

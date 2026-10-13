@@ -9,13 +9,18 @@ import {
   makeModelAccess,
   type ModelAccess,
   type ModelSettings,
+  type ModelTelemetry,
 } from '@on.auto/reasoning';
 import { Effect } from 'effect';
 
 import { logModelProviders, logOperatorHint, logProviderMessage, logReasoning } from '../logging/logging.ts';
 import type { Settings } from '../settings/settings.ts';
 
-export type ModelAccessOf = (settings: ModelSettings, proxy: ProxySettings) => Effect.Effect<ModelAccess>;
+export type ModelAccessOf = (
+  settings: ModelSettings,
+  proxy: ProxySettings,
+  telemetry?: ModelTelemetry,
+) => Effect.Effect<ModelAccess>;
 
 export interface ServedReasoning {
   readonly capability: ReturnType<typeof makeReasoningFunctionAdapter>;
@@ -25,8 +30,13 @@ export interface ServedReasoning {
   readonly testToolCall: ReturnType<typeof defineTestToolCall>;
 }
 
-export const loggedModelAccess: ModelAccessOf = (settings, proxy) =>
-  makeModelAccess(settings, { proxy, reportProviderMessage: logProviderMessage, reportOperatorHint: logOperatorHint });
+export const loggedModelAccess: ModelAccessOf = (settings, proxy, telemetry) =>
+  makeModelAccess(settings, {
+    proxy,
+    reportProviderMessage: logProviderMessage,
+    reportOperatorHint: logOperatorHint,
+    telemetry,
+  });
 
 export async function reasoningServedBy(
   runtime: AppRuntime<DispatcherServices>,

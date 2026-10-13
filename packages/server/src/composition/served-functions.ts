@@ -25,14 +25,9 @@ export async function functionsServedBy(
   runtime: AppRuntime<DispatcherServices>,
   settings: Settings,
   database: LedgerDatabase,
-  { modelAccessOf, programPoolOf, projections: wiring, toolTiming }: FunctionWiring,
+  { programPoolOf, projections: wiring, ...tools }: FunctionWiring,
 ): Promise<ServedFunctions> {
-  const { reasoning, interaction, withToolsClosed } = await toolUsersServedBy(
-    runtime,
-    settings,
-    modelAccessOf,
-    toolTiming,
-  );
+  const { reasoning, interaction, withToolsClosed } = await toolUsersServedBy(runtime, settings, tools);
   const computation = await computationServedBy(settings.computation, programPoolOf);
   const projections = await wiring.served(runtime, { recall: settings.recall, database }, computation.pool, [
     datasetsFolderOf(computation.pool),
