@@ -45,7 +45,7 @@ describe('logAccessMode', () => {
 
     expect(line).toContain('"level":"WARN"');
     expect(line).toContain(
-      '"message":"No request can authenticate: API_KEYS lists no keys and local mode is off, so every path except /health answers 401"',
+      '"message":"No request can authenticate: API_KEYS lists no keys and local mode is off, so every path answers 401 except /health, the OpenAPI document at /v1/openapi.json and the guides under /v1/guides"',
     );
   });
 

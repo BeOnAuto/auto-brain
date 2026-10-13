@@ -1,10 +1,9 @@
 import { Buffer } from 'node:buffer';
 
-import { openApiErrorsIn, operationsIn, unresolvedSchemasIn, withMcpSession } from '@on.auto/api/testing';
+import { oldWordsIn, openApiErrorsIn, operationsIn, unresolvedSchemasIn, withMcpSession } from '@on.auto/api/testing';
 import { Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { oldWordsIn } from '../../../../scripts/docs-old-words.ts';
 import { release } from '../composition/release.ts';
 import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
@@ -62,8 +61,8 @@ describe('the OpenAPI document of the server', () => {
     ]);
   });
 
-  it('takes 160,688 bytes and those of the version of the release, 160,693 at 0.8.0', () => {
-    expect(Buffer.byteLength(text) - Buffer.byteLength(release.version)).toBe(160_688);
+  it('takes 161,938 bytes and those of the version of the release, 161,943 at 0.8.0', () => {
+    expect(Buffer.byteLength(text) - Buffer.byteLength(release.version)).toBe(161_938);
   });
 
   it('says none of the old words the vocabulary of the repository refuses', () => {

@@ -23,7 +23,7 @@ const accessNotices: Readonly<Record<AccessMode, Effect.Effect<void>>> = {
     'Local mode is on: every request is trusted as the local developer, with every permission in every org. Never enable LOCAL_MODE on a machine reachable through a proxy',
   ),
   closed: Effect.logWarning(
-    'No request can authenticate: API_KEYS lists no keys and local mode is off, so every path except /health answers 401',
+    'No request can authenticate: API_KEYS lists no keys and local mode is off, so every path answers 401 except /health, the OpenAPI document at /v1/openapi.json and the guides under /v1/guides',
   ),
   keys: Effect.void,
 };
