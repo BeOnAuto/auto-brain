@@ -4,13 +4,15 @@ import { defineQuery, makeCatalog, makeDispatcher, type Registration } from '@on
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { mcpRoutes, mostArgumentDescriptionCharacters, mostDescriptionCharacters } from '../index.ts';
+import { guideShelfOf, mcpRoutes, mostArgumentDescriptionCharacters, mostDescriptionCharacters } from '../index.ts';
 import { createTestHandler } from '../testing/api-calls.ts';
 import { asking, sentencesOf } from '../testing/asking-operation.ts';
 import { postMcp, requestOf } from '../testing/mcp-requests.ts';
 import { testServerInfo } from '../testing/operation-server.ts';
 
 const reportedErrors: string[] = [];
+
+const emptyShelf = guideShelfOf([], [], []);
 
 interface Serving {
   readonly operations: readonly { readonly registration: Registration }[];
@@ -24,9 +26,7 @@ function handlerOf({ operations }: Serving) {
         dispatcher: makeDispatcher([]),
         runCall: () => Promise.reject(new Error('not called')),
         serverInfo: testServerInfo,
-        definitionTypes: [],
-        guides: [],
-        recipes: [],
+        shelf: emptyShelf,
         reportError: (error) => {
           reportedErrors.push(error.message);
         },

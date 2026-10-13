@@ -86,6 +86,22 @@ const listNotes = defineQuery('playbook', {
   plainLanguage: plainly('list the notes'),
 });
 
+export const listNotesOfTheOrg = defineQuery('org', {
+  name: 'list_notes',
+  title: 'List notes',
+  description: 'Lists where the notes are kept. Use it to find the notes. `playbook` keeps those of one playbook.',
+  route: { method: 'GET', path: '/notes' },
+  inputSchema: Schema.Struct({
+    playbook: Schema.optionalKey(
+      PlaybookIdSchema.annotate({ description: 'The playbook whose notes to list; every playbook without it' }),
+    ),
+  }),
+  outputSchema: Schema.Struct({ kept_for: Schema.String }),
+  reasons: [],
+  handle: ({ playbook = 'the org' }) => Effect.succeed({ kept_for: playbook }),
+  plainLanguage: plainly('list the notes'),
+});
+
 export const getNote = defineQuery('playbook', {
   name: 'get_note',
   title: 'Get note',

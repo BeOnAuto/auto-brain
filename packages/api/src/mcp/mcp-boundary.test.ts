@@ -2,7 +2,7 @@ import { defineQuery, makeCatalog, makeDispatcher } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { mcpRoutes } from '../index.ts';
+import { guideShelfOf, mcpRoutes } from '../index.ts';
 import { createTestHandler } from '../testing/api-calls.ts';
 import { listenOnLoopback } from '../testing/listening.ts';
 import { plainTextIn, problemIn, withMcpSession } from '../testing/mcp-clients.ts';
@@ -11,14 +11,14 @@ import { testServerInfo } from '../testing/operation-server.ts';
 
 const sdkErrors: string[] = [];
 
+const emptyShelf = guideShelfOf([], [], []);
+
 const brokenRuntime = mcpRoutes({
   catalog: makeCatalog(notebookOperations),
   dispatcher: makeDispatcher([]),
   runCall: () => Promise.reject(new Error('the runtime broke while holding database password hunter2')),
   serverInfo: testServerInfo,
-  definitionTypes: [],
-  guides: [],
-  recipes: [],
+  shelf: emptyShelf,
   reportError: (error) => {
     sdkErrors.push(error.message);
   },
@@ -93,9 +93,7 @@ describe('an operation without plain language', () => {
       dispatcher: makeDispatcher([]),
       runCall: () => Promise.reject(new Error('not called')),
       serverInfo: testServerInfo,
-      definitionTypes: [],
-      guides: [],
-      recipes: [],
+      shelf: emptyShelf,
       reportError: () => {
         sdkErrors.push('unexpected');
       },

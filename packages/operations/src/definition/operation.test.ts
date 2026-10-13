@@ -77,7 +77,27 @@ describe('a registration', () => {
     });
   });
 
-  it('exports a union input as one object schema with a branch per member', () => {
+  it('carries its output as a JSON Schema document beside its input, with the definitions it names', () => {
+    expect(addNote.registration.output).toEqual({
+      schema: {
+        type: 'object',
+        properties: { added: { $ref: '#/$defs/Note' }, version: { type: 'integer' } },
+        required: ['added', 'version'],
+        additionalProperties: false,
+      },
+      definitions: { Note: noteJsonSchema },
+    });
+    expect(measure.registration.output.schema).toEqual({
+      type: 'object',
+      properties: { area: { type: 'number' } },
+      required: ['area'],
+      additionalProperties: false,
+    });
+  });
+});
+
+describe('the input of a registration', () => {
+  it('is exported, for a union, as one object schema with a branch per member', () => {
     expect(measure.registration.input.schema).toEqual({
       type: 'object',
       anyOf: [

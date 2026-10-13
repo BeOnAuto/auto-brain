@@ -38,6 +38,7 @@ export function readAccessSettings(environment: Environment): Effect.Effect<Acce
 
 export interface CredentialSettings {
   readonly apiKeys: readonly ApiKey[] | undefined;
+  readonly identityIssuer: string;
   readonly signIn: SignInSettings | undefined;
 }
 
@@ -62,6 +63,7 @@ export function readCredentialSettings(environment: Environment, host: string): 
   }
   return {
     apiKeys: readApiKeys(environment),
+    identityIssuer: issuer,
     signIn: Option.isSome(publicUrl) ? { issuer, publicUrl: publicUrl.value } : undefined,
   };
 }

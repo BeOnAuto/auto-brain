@@ -48,7 +48,7 @@ describe('the access mode of a server on loopback', { timeout: spawnedServerTest
 
     expect(served.status).toBe(401);
     expect(served.stderr).toContain(
-      '"message":"No request can authenticate: API_KEYS lists no keys and local mode is off, so every path except /health answers 401"',
+      '"message":"No request can authenticate: API_KEYS lists no keys and local mode is off, so every path answers 401 except /health, the OpenAPI document at /v1/openapi.json, the guides under /v1/guides and the API catalog at /.well-known/api-catalog"',
     );
   });
 
@@ -64,7 +64,7 @@ describe('the access mode of a server on loopback', { timeout: spawnedServerTest
 
     expect(served.status).toBe(401);
     expect(served.stderr).toContain(
-      '"message":"No request can authenticate: API_KEYS lists no keys, and LOCAL_MODE is ignored because API_KEYS is set, so every path except /health answers 401"',
+      '"message":"No request can authenticate: API_KEYS lists no keys, and LOCAL_MODE is ignored because API_KEYS is set, so every path answers 401 except /health, the OpenAPI document at /v1/openapi.json, the guides under /v1/guides and the API catalog at /.well-known/api-catalog"',
     );
     expect(served.stderr).not.toContain('API keys are configured');
   });

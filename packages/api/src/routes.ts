@@ -10,6 +10,7 @@ export type Close = () => Promise<void>;
 
 export interface Routes {
   readonly add: (method: string, path: string, handler: RouteHandler) => void;
+  readonly addPublic: (method: string, path: string, handler: RouteHandler) => void;
   readonly onClose: (close: Close) => void;
   readonly reportThrown: ReportThrown;
   readonly resource: ProtectedResource | undefined;

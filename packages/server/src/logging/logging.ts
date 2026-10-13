@@ -29,10 +29,13 @@ const localModeOn = Effect.logWarning(
   'Local mode is on: every request is trusted as the local developer, with every permission in every org. Never enable LOCAL_MODE on a machine reachable through a proxy',
 );
 
+const keylessPaths =
+  '/health, the OpenAPI document at /v1/openapi.json, the guides under /v1/guides and the API catalog at /.well-known/api-catalog';
+
 function closedNotice(localMode: boolean): Effect.Effect<void> {
   const why = localMode ? ', and LOCAL_MODE is ignored because API_KEYS is set' : ' and local mode is off';
   return Effect.logWarning(
-    `No request can authenticate: API_KEYS lists no keys${why}, so every path except /health answers 401`,
+    `No request can authenticate: API_KEYS lists no keys${why}, so every path answers 401 except ${keylessPaths}`,
   );
 }
 

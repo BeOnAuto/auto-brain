@@ -17,7 +17,7 @@ Workflows run in the server itself, on the workflow engine of `@on.auto/workflow
 
 ## Implementation reference
 
-- [HTTP API](reference/http.md) and [HTTP walkthrough](reference/http-tutorial.md)
+- [HTTP API](../reference/http.md), the public reference, and the [OpenAPI document](../reference/http.md#the-openapi-document-the-guides-and-the-api-catalog) a running server answers at `/v1/openapi.json`, and the API catalog at `/.well-known/api-catalog` that leads to it; [HTTP walkthrough](reference/http-tutorial.md)
 - [MCP transport and tool behavior](reference/mcp.md)
 - [Complete reasoning function format](reference/reasoning-format.md)
 - [Workflow format and runs](reference/workflow-format.md)

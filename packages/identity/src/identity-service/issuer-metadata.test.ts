@@ -44,49 +44,42 @@ const oauthAddress = 'https://login.example/.well-known/oauth-authorization-serv
 const openIdAddress = 'https://login.example/.well-known/openid-configuration';
 
 describe('the metadata addresses of an issuer', () => {
-  it('are the OAuth and then the OpenID Connect document at the root, for an issuer without a path', () => {
+  it('are the OAuth and then the OpenID Connect document at its origin, the order of the MCP specification', () => {
     expect([metadataAddressesOf('https://login.example'), metadataAddressesOf('https://login.example/')]).toEqual([
       [oauthAddress, openIdAddress],
       [oauthAddress, openIdAddress],
-    ]);
-  });
-
-  it('insert the path and then append it, for an issuer with a path, as the MCP specification orders them', () => {
-    expect(metadataAddressesOf('https://login.example/tenant/v2/')).toEqual([
-      'https://login.example/.well-known/oauth-authorization-server/tenant/v2',
-      'https://login.example/.well-known/openid-configuration/tenant/v2',
-      'https://login.example/tenant/v2/.well-known/openid-configuration',
     ]);
   });
 });
 
 describe('reading the metadata of an issuer at start', () => {
   it('goes on to the next address while one answers nothing it can use, and reads the key set it names', async () => {
-    const fake = fakeIssuer('https://login.example/tenant');
+    const fake = fakeIssuer('https://login.example');
     const metadata = {
       issuer: fake.issuer,
       jwks_uri: 'https://login.example/jwks',
       id_token_signing_alg_values_supported: ['RS256'],
     };
     const answers = answering(
-      {
-        'https://login.example/.well-known/oauth-authorization-server/tenant': new Response('gone', { status: 404 }),
-        'https://login.example/.well-known/openid-configuration/tenant': json({
-          ...metadata,
-          issuer: 'https://login.example',
-        }),
-        'https://login.example/tenant/.well-known/openid-configuration': json(metadata),
-      },
+      { [oauthAddress]: new Response('gone', { status: 404 }), [openIdAddress]: json(metadata) },
       fake.answer,
     );
 
     expect(await refusalOf(fake.issuer, answers.fetch)).toBe('started');
-    expect(answers.asked()).toEqual([
-      'https://login.example/.well-known/oauth-authorization-server/tenant',
-      'https://login.example/.well-known/openid-configuration/tenant',
-      'https://login.example/tenant/.well-known/openid-configuration',
-      'https://login.example/jwks',
-    ]);
+    expect(answers.asked()).toEqual([oauthAddress, openIdAddress, 'https://login.example/jwks']);
+  });
+
+  it('refuses metadata that names another issuer, such as one with a path', async () => {
+    const answers = answering(
+      {
+        [oauthAddress]: json({ issuer: 'https://login.example/tenant', jwks_uri: 'https://login.example/jwks' }),
+      },
+      nothingThere,
+    );
+
+    expect(await refusalOf('https://login.example', answers.fetch)).toContain(
+      `${oauthAddress} names the issuer https://login.example/tenant; ${openIdAddress} answers 404`,
+    );
   });
 
   it.each([

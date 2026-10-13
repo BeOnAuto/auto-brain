@@ -4,7 +4,7 @@ import { Predicate, Schema } from 'effect';
 
 export type JsonSchema = Record<string, unknown>;
 
-const dialect = 'https://json-schema.org/draft/2020-12/schema';
+export const jsonSchemaDialect = 'https://json-schema.org/draft/2020-12/schema';
 
 const definitionReference = /^#\/\$defs\/(.+)$/u;
 
@@ -67,7 +67,7 @@ export function withoutUnreferencedDefinitions(schema: Readonly<JsonSchema>): Js
 }
 
 export function selfContainedSchemaOf(document: JsonSchemaDocument): JsonSchema {
-  const root = { $schema: dialect, ...inlinedRootOf(document) };
+  const root = { $schema: jsonSchemaDialect, ...inlinedRootOf(document) };
   return Object.keys(document.definitions).length === 0 ? root : { ...root, $defs: { ...document.definitions } };
 }
 

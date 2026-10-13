@@ -98,14 +98,36 @@ describe('an operation served over HTTP alone', () => {
       reachesOutside: false,
     });
   });
+});
 
-  it('is refused at its definition when its streamed body has no whole number of most bytes above 0', () => {
+describe('the answer of an operation served over HTTP alone', () => {
+  it("is registered with its JSON answer's output schema, or its streamed answer's media type and no schema", () => {
+    expect([nameModel.registration.answer, readModel.registration.answer]).toEqual([
+      {
+        kind: 'json',
+        output: {
+          schema: {
+            type: 'object',
+            properties: { named: { type: 'string' } },
+            required: ['named'],
+            additionalProperties: false,
+          },
+          definitions: {},
+        },
+      },
+      { kind: 'stream', mediaType: 'text/plain' },
+    ]);
+  });
+});
+
+describe('the definition of an operation served over HTTP alone', () => {
+  it('is refused when its streamed body has no whole number of most bytes above 0', () => {
     expect(withMostBytes(0)).toThrow('The most bytes of the body of keep_any must be a whole number above 0');
     expect(withMostBytes(1.5)).toThrow('The most bytes of the body of keep_any must be a whole number above 0');
     expect(withMostBytes(1)).not.toThrow();
   });
 
-  it('is refused at its definition when its JSON answer is not an object that declares its fields', () => {
+  it('is refused when its JSON answer is not an object that declares its fields', () => {
     expect(() =>
       defineHttpOperation('playbook', 'query', {
         name: 'read_any',

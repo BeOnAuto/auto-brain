@@ -12,6 +12,16 @@ Org routes begin at `/v1/orgs/{org}`. Playbook routes begin at `/v1/orgs/{org}/p
 
 Request bodies may be at most 1 MiB; compressed bodies are not accepted. Query parameters belong to GET requests. A field cannot be supplied in more than one location.
 
+## The OpenAPI document, the guides and the API catalog
+
+`GET /v1/openapi.json` answers the OpenAPI 3.1.1 document of this API, which the server builds from its operations when it starts, the same operations its routes and its MCP tools serve. Each operation appears once: its `operationId` is the operation's name, `list_tool_servers_in_org` for the org's `list_tool_servers`, its summary is its title, its description is the description its MCP tool has, or its own for the five prediction routes served over HTTP alone, which are no tools, and its tag names the resource it acts on. Its input is in the path, in the query string of a `GET` and in the JSON body of a command, but for the two uploads, which take a CSV dataset or a candidate's bytes as the body, with their most bytes, and its schemas are JSON Schema 2020-12, each with an `$id` of its own under `https://on.auto/schemas/runtime/` and its definitions inside it, and each problem it can answer is listed at its status. The server URL is `/v1`, relative, so the document holds behind any host. A client library can be generated from it, and a gateway that takes OpenAPI documents can add the runtime from it.
+
+`GET /v1/guides/{guide}` answers one of the guides the MCP endpoints serve as `guide://{guide}`, the same text, as `text/markdown`: what the words mean, the format of each definition type and the recipes for common tasks. The document lists their names. Each guide has a path of its own, so a name the server does not hold is answered as any other path it does not serve: `401` without a key.
+
+`GET /.well-known/api-catalog` answers the API catalog of this server, a linkset of the API catalog profile (`application/linkset+json`): its API at `/v1`, described by the document, documented by each guide with its title, and its status at `/health`, every address absolute on the origin the request came in on; behind a proxy, that is the scheme and host the server itself receives, since it reads no `X-Forwarded-*` header. It and `HEAD` on it carry `Link: <…/.well-known/api-catalog>; rel="api-catalog"`, and `GET /health` carries the same relation, so a client given only the health address finds the catalog, and from it the document and the guides.
+
+The document, the guides, the catalog and `GET /health`, which says the server is up, need no key. The document, the guides and the catalog change only when the server is released or configured again, so each carries a strong `ETag` of its bytes and `Cache-Control: public, max-age=300`, and answers `304` with no body to a request whose `If-None-Match` names its tag, a list holding it, or `*`; `HEAD` answers their headers without the body. `/health` is not kept: it answers `Cache-Control: no-store`.
+
 ## Playbooks
 
 These routes are relative to `/v1/orgs/{org}`:
@@ -425,7 +435,7 @@ Each test is recorded in the playbook's history as `tool_test_started` and `tool
 
 ## Responses and errors
 
-Successful responses contain JSON with `Cache-Control: no-store`. Create operations return 201; other successful operations generally return 200.
+Successful responses of the operations contain JSON with `Cache-Control: no-store`. Create operations return 201; other successful operations generally return 200.
 
 API errors use RFC 9457 problem documents with `Content-Type: application/problem+json`. Inspect `reason` and `detail`; `invalid_input` includes an `errors` list of JSON pointers. A rejection that has a `kind` carries it, and an `unavailable` or `conflict` one its `because`. A run that called tools and could not finish ends `unavailable` with the kind `tools_unfinished` when every tool it called is one its server marks read-only, so running it again is safe, and `conflict` with the kind `effect_unknown` when any is not, since whether that tool changed something is not known; either way a request with the same run id answers `conflict` with the kind `tools_called`, with the `because` `only_read`, and words that say nothing was changed, when every tool the run called only reads. `Retry-After` comes only with an `unavailable` answer that a retry of the same request may resolve, never with `tools_unfinished`, `tool_not_offered` or `model_not_offered`, never with the `because` `builds_of_the_day`, `stalled` or `not_finite`, which no wait resolves, and never with `cancelled`. A `conflict` may have the kind `oversized`, for a workflow whose output is larger than a run records.
 

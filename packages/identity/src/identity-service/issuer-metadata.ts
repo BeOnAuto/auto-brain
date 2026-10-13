@@ -16,15 +16,8 @@ const MetadataSchema = Schema.Struct({
 const decodeMetadata = Schema.decodeUnknownOption(MetadataSchema);
 
 export function metadataAddressesOf(issuer: string): readonly string[] {
-  const { origin, pathname } = new URL(issuer);
-  const path = pathname.replace(/\/$/u, '');
-  return path === ''
-    ? [`${origin}/.well-known/oauth-authorization-server`, `${origin}/.well-known/openid-configuration`]
-    : [
-        `${origin}/.well-known/oauth-authorization-server${path}`,
-        `${origin}/.well-known/openid-configuration${path}`,
-        `${origin}${path}/.well-known/openid-configuration`,
-      ];
+  const { origin } = new URL(issuer);
+  return [`${origin}/.well-known/oauth-authorization-server`, `${origin}/.well-known/openid-configuration`];
 }
 
 function metadataIn(json: unknown, issuer: string): Result.Result<IssuerMetadata, string> {

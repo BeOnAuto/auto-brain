@@ -4,6 +4,7 @@ import { methodNotAllowed } from 'hono/method-not-allowed';
 import type { ApiEnv } from './api-env.ts';
 import type { ApiOptions } from './api-options.ts';
 import { protectedResourceRoutes } from './authentication/protected-resource.ts';
+import { healthRoutes } from './discovery/health.ts';
 import { middlewareFor } from './middleware/middleware-chain.ts';
 import { errorHandler, failureOfThrown } from './problem/error-boundary.ts';
 import { problemOf, problemResponse } from './problem/problem.ts';
@@ -17,7 +18,8 @@ export interface ApiApp {
 export function createApp(options: ApiOptions): ApiApp {
   const app = new Hono<ApiEnv>();
   const closes: Close[] = [];
-  app.use(...middlewareFor(options));
+  const publicPaths = new Set<string>();
+  app.use(...middlewareFor(options, publicPaths));
   app.use(
     methodNotAllowed({
       app,
@@ -27,15 +29,18 @@ export function createApp(options: ApiOptions): ApiApp {
         }),
     }),
   );
-  app.get('/health', (c) => c.json({ status: 'ok' }, 200, { 'cache-control': 'no-store' }));
   const { resource } = options.authenticator;
   for (const { path, handler } of protectedResourceRoutes(resource)) {
     app.get(path, handler);
   }
   const reportThrown = failureOfThrown(options.reportIncident);
-  for (const register of options.routes) {
+  for (const register of [healthRoutes, ...options.routes]) {
     register({
       add: (method, path, handler) => {
+        app.on(method, path, handler);
+      },
+      addPublic: (method, path, handler) => {
+        publicPaths.add(path);
         app.on(method, path, handler);
       },
       onClose: (close) => {

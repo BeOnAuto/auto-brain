@@ -96,3 +96,35 @@ describe('a server that signs persons in', { timeout: workflowTestTimeoutMs }, (
     );
   });
 });
+
+describe('the documents of a server that signs persons in', { timeout: workflowTestTimeoutMs }, () => {
+  it('names PUBLIC_URL in its API catalog, not the address the request reached', async () => {
+    const issuer = await issuerOverHttps();
+    const server = await interactionServerOn(signingIn(issuer.issuer));
+
+    const catalog = await server.call('GET', '/.well-known/api-catalog');
+
+    expect(catalog).toMatchObject({
+      status: 200,
+      body: { linkset: [{ anchor: `${publicUrl}/.well-known/api-catalog` }, { anchor: `${publicUrl}/v1` }] },
+    });
+  });
+
+  it('names the OpenID Connect metadata of the issuer IDENTITY_ISSUER names in its OpenAPI document', async () => {
+    const issuer = await issuerOverHttps();
+    const server = await interactionServerOn(signingIn(issuer.issuer));
+
+    const document = await server.call('GET', '/v1/openapi.json');
+
+    expect(document).toMatchObject({
+      status: 200,
+      body: {
+        components: {
+          securitySchemes: {
+            openIdConnect: { openIdConnectUrl: `${issuer.issuer}/.well-known/openid-configuration` },
+          },
+        },
+      },
+    });
+  });
+});

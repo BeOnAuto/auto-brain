@@ -1,4 +1,4 @@
-import type { DefinitionType, Guide, Recipe } from '../index.ts';
+import { guideShelfOf, type DefinitionType, type Guide, type Recipe } from '../index.ts';
 
 export const notebookGuide: Guide = {
   name: 'notebook',
@@ -34,3 +34,5 @@ export const testGuides: readonly Guide[] = [wordsGuide, notebookGuide];
 export const testRecipes: readonly Recipe[] = [noteRecipe];
 
 export const testDefinitionTypes: readonly DefinitionType[] = [{ type: 'notes', noun: 'note', guide: 'notebook' }];
+
+export const testShelf = guideShelfOf(testGuides, testRecipes, testDefinitionTypes);

@@ -134,7 +134,6 @@ function metadataOf(issuer: string, metadata: Claims): Claims {
 }
 
 export function fakeIssuer(issuer: string, { metadata = {}, clients = {} }: FakeIssuerOptions = {}): FakeIssuer {
-  const metadataPath = `/.well-known/oauth-authorization-server${new URL(issuer).pathname.replace(/\/$/u, '')}`;
   let generation = 1;
   let keys = keysOf(generation);
   let reads = 0;
@@ -152,7 +151,7 @@ export function fakeIssuer(issuer: string, { metadata = {}, clients = {} }: Fake
       }
       reads += Number(pathname === '/jwks');
       const documents = new Map([
-        [metadataPath, metadataOf(issuer, metadata)],
+        ['/.well-known/oauth-authorization-server', metadataOf(issuer, metadata)],
         ['/jwks', { keys: Object.values(keys).map(({ jwk }) => jwk) }],
       ]);
       const document = documents.get(pathname);

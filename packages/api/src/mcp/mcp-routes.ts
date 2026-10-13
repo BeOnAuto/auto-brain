@@ -1,16 +1,10 @@
 import { createMcpHandler, type McpHttpHandler } from '@modelcontextprotocol/server';
-import { allPermissions, canAccessPlaybook, type CallerIdentity, type OperationScope } from '@on.auto/operations';
+import type { OperationScope } from '@on.auto/operations';
 
-import {
-  callerOfAnotherOrg,
-  endpointPathOf,
-  insufficientScope,
-  namesAnEndpoint,
-} from '../authentication/challenges.ts';
+import { admissionAt } from '../authentication/endpoint-admission.ts';
 import { authInfoFor, type PlaybookCall, type OrgCall } from '../hand-off/caller-hand-off.ts';
 import { droppedArgumentsOf } from '../hand-off/dropped-arguments.ts';
 import { requestBodyLimit } from '../operations/request-body.ts';
-import { problemOf, problemResponse, type Problem } from '../problem/problem.ts';
 import type { RegisterRoutes, RouteHandler, Routes } from '../routes.ts';
 import type { McpServing } from './mcp-connection.ts';
 import {
@@ -26,35 +20,7 @@ export interface McpRoutesOptions extends McpServing {
 
 type FetchMcp = McpHttpHandler['fetch'];
 
-const anotherPlaybook = problemOf('forbidden', 'The caller may not access this playbook');
-
-const noSuchOrg = problemOf('not_found', 'There is no such org');
-
-const noSuchPlaybook = problemOf('not_found', 'There is no such playbook in this org');
-
 type Resource = Routes['resource'];
-
-type Admission = { readonly caller: CallerIdentity } | { readonly refusal: Problem };
-
-function refused(problem: Problem, resource: Resource, path: string): Response {
-  return problemResponse(
-    problem,
-    problem.reason === 'forbidden' ? insufficientScope(resource, allPermissions, path) : {},
-  );
-}
-
-function admissionOf(caller: CallerIdentity | undefined, org: string, playbook: string | undefined): Admission {
-  if (caller === undefined) {
-    return { refusal: callerOfAnotherOrg };
-  }
-  if (playbook !== undefined && !canAccessPlaybook(caller.playbooks, playbook)) {
-    return { refusal: anotherPlaybook };
-  }
-  if (!namesAnEndpoint(org)) {
-    return { refusal: noSuchOrg };
-  }
-  return namesAnEndpoint(org, playbook) ? { caller } : { refusal: noSuchPlaybook };
-}
 
 async function handedOff(
   fetchMcp: FetchMcp,
@@ -69,9 +35,9 @@ function endpoint(fetchMcp: FetchMcp, scope: OperationScope, resource: Resource)
   return (c) => {
     const org = String(c.req.param('org'));
     const playbook = scope === 'playbook' ? String(c.req.param('playbook')) : undefined;
-    const admission = admissionOf(c.get('principal').callerIn(org), org, playbook);
-    if ('refusal' in admission) {
-      return refused(admission.refusal, resource, endpointPathOf(org, playbook));
+    const admission = admissionAt(c.get('principal').callerIn(org), org, playbook, resource);
+    if ('refused' in admission) {
+      return admission.refused;
     }
     const { caller } = admission;
     const requestId = c.get('requestId');

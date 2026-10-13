@@ -12,16 +12,19 @@ import { validateOrigin } from './validate-origin.ts';
 
 type IsPublic = (path: string) => boolean;
 
-function publicPathsOf({ resource }: ApiOptions['authenticator']): IsPublic {
-  return (path) => path === '/health' || (resource !== undefined && isMetadataPath(path));
+function publicPathsOf({ resource }: ApiOptions['authenticator'], publicPaths: ReadonlySet<string>): IsPublic {
+  return (path) => publicPaths.has(path) || (resource !== undefined && isMetadataPath(path));
 }
 
 function exceptOn(isPublic: IsPublic, middleware: MiddlewareHandler<ApiEnv>): MiddlewareHandler<ApiEnv> {
   return (c, next) => (isPublic(c.req.path) ? next() : middleware(c, next));
 }
 
-export function middlewareFor({ allowedOrigins, authenticator }: ApiOptions): readonly MiddlewareHandler<ApiEnv>[] {
-  const isPublic = publicPathsOf(authenticator);
+export function middlewareFor(
+  { allowedOrigins, authenticator }: ApiOptions,
+  publicPaths: ReadonlySet<string>,
+): readonly MiddlewareHandler<ApiEnv>[] {
+  const isPublic = publicPathsOf(authenticator, publicPaths);
   const hostValidation = authenticator.mode === 'local' ? [validateHost] : [];
   const origins = [studioOrigin, ...allowedOrigins];
   return [

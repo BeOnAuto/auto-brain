@@ -17,7 +17,7 @@ import { toolUsersServedBy } from './served-tools.ts';
 type LedgerDatabase = Parameters<FunctionWiring['projections']['served']>[1]['database'];
 
 export interface ServedFunctions {
-  readonly parts: Omit<WorkflowParts, 'ledger' | 'workflows'>;
+  readonly parts: Omit<WorkflowParts, 'ledger' | 'workflows' | 'identityIssuer'>;
   readonly closing: ServedPredictionFunctions['withProcessesClosed'];
 }
 

@@ -36,6 +36,7 @@ describe('readSettings', () => {
       port: 5555,
       allowedOrigins: [],
       apiKeys: undefined,
+      identityIssuer: 'https://auth.on.auto',
       signIn: undefined,
       ledger: { store: 'sqlite', file: 'data/ledger.db' },
       content: { store: 'ledger' },
@@ -53,26 +54,28 @@ describe('readSettings', () => {
   });
 });
 
+const everySetting = {
+  HOST: '127.0.0.1',
+  PORT: '3000',
+  ALLOWED_ORIGINS: 'https://app.example.com,http://localhost:5173,http://[::1]:3000',
+  API_KEYS: JSON.stringify([entry]),
+  IDENTITY_ISSUER: 'https://identity.example',
+  PUBLIC_URL: 'https://runtime.example.com',
+  LEDGER_FILE: '/data/ledger.db',
+  CONTENT_STORE_URL: 's3://playbook-content/production',
+  NODE_USE_ENV_PROXY: '1',
+  HTTPS_PROXY: 'http://proxy.internal:3128',
+  LOCAL_MODE: 'true',
+  LOG_FORMAT: 'pretty',
+  LOG_LEVEL: 'warn',
+  OPENAI_API_KEY: 'sk-test',
+  INTERACTION_OPEN_REQUESTS: '250',
+  REASONING_MAX_INPUT_TOKENS: '500000',
+};
+
 describe('readSettings given every setting', () => {
   it('reads every setting from the environment it is given', () => {
-    const { models, mcp, interaction, ...server } = readSettings({
-      HOST: '127.0.0.1',
-      PORT: '3000',
-      ALLOWED_ORIGINS: 'https://app.example.com,http://localhost:5173,http://[::1]:3000',
-      API_KEYS: JSON.stringify([entry]),
-      IDENTITY_ISSUER: 'https://identity.example',
-      PUBLIC_URL: 'https://runtime.example.com',
-      LEDGER_FILE: '/data/ledger.db',
-      CONTENT_STORE_URL: 's3://playbook-content/production',
-      NODE_USE_ENV_PROXY: '1',
-      HTTPS_PROXY: 'http://proxy.internal:3128',
-      LOCAL_MODE: 'true',
-      LOG_FORMAT: 'pretty',
-      LOG_LEVEL: 'warn',
-      OPENAI_API_KEY: 'sk-test',
-      INTERACTION_OPEN_REQUESTS: '250',
-      REASONING_MAX_INPUT_TOKENS: '500000',
-    });
+    const { models, mcp, interaction, ...server } = readSettings(everySetting);
 
     expect(interaction).toEqual({ mostOpenRequests: 250 });
     expect(models.openai).toMatchObject({ configured: true });
@@ -82,6 +85,7 @@ describe('readSettings given every setting', () => {
       port: 3000,
       allowedOrigins: ['https://app.example.com', 'http://localhost:5173', 'http://[::1]:3000'],
       apiKeys: [entry],
+      identityIssuer: 'https://identity.example',
       signIn: { issuer: 'https://identity.example', publicUrl: 'https://runtime.example.com' },
       ledger: { store: 'sqlite', file: '/data/ledger.db' },
       content: {
