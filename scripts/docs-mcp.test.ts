@@ -48,7 +48,9 @@ await test('reasoning guides retain tool-use limits and side-effect-aware retrie
 await test('the configuration of tool servers documents recording and credential boundaries', () => {
   const configuration = readFileSync(join(docs, 'engineering/self-host/configuration.md'), 'utf8');
   const http = readFileSync(join(docs, 'reference/http.md'), 'utf8');
-  assert.ok(configuration.includes('Only `headers`, `query_params`, `env` and `auth` may hold a reference'));
+  assert.ok(
+    configuration.includes('Only `headers`, `query_params`, `security`, `env` and `auth` may hold a reference'),
+  );
   assert.ok(configuration.includes('a value shorter than 8 characters is not'));
   assert.ok(configuration.includes('anyone who may read the playbook reads them'));
   assert.ok(http.includes('`tool_call_answered` when the tool answered'));
