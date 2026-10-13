@@ -47,13 +47,10 @@ model_aliases:
 # operation one tool.
 #
 # allowed names the tools of a server a function may name, as the server lists
-# them; every tool of the server when left out. testable names the tools
-# test_tool_call may test although the server does not mark them read-only, each
-# also in allowed; only the tools the server marks read-only can be tested when
-# left out. A server that marks its read-only tools needs no testable; one that
-# marks none needs its read-only tools named, for example the search,
-# introspect, validate and dry_run of an agent gateway. An HTTP API marks the
-# tools of its GET and HEAD operations read-only.
+# them; every tool of the server when left out. It is the one list of the tools
+# of a server, for the runs of functions and for a call made by hand with
+# execute alike; search shows whether the server marks each one read-only, and
+# an HTTP API marks the tools of its GET and HEAD operations read-only.
 # tool_servers:
 #   graph:
 #     url: https://gateway.example.com/mcp
@@ -62,7 +59,6 @@ model_aliases:
 #     org: acme
 #     playbooks: [sales]
 #     allowed: [search, introspect, validate, dry_run, execute, post_message]
-#     testable: [search, introspect, validate, dry_run]
 #   notes:
 #     command: /usr/local/bin/notes-mcp-server
 #     args: [--read-only]

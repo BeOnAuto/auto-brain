@@ -184,7 +184,7 @@ It returns 200 with the event's `id` and `time`, and `recorded_at`, when the pla
 
 A playbook holds one event for each `source` and `id`. Publishing the same event again records nothing and returns the first `id`, `time` and `recorded_at`, so a request can be retried with the same id; a retry that leaves out `time` is the same event. Times are compared as instants, so `2026-10-01T10:59:00+02:00` is the same time as `2026-10-01T08:59:00Z`. A leap second counts as the first second of the next day, so `2016-12-31T23:59:60Z` is the same time as `2017-01-01T00:00:00Z`. A retry that gives a `time` to an event first published without one is the same event too, and returns the time the runtime filled in the first time, not the one the retry gave. A different event with the same `source` and `id` returns `conflict`. Without an `id`, every request records a new event.
 
-The event, with its id and time filled in, may take at most 240 KiB as JSON. The types `run_started`, `run_deferred`, `run_succeeded`, `run_rejected`, `run_failed`, `run_cancel_requested`, `tool_call_started`, `tool_call_answered`, `tool_call_failed`, `request_answered`, `delivery_started`, `delivery_succeeded`, `delivery_failed`, `delivery_refused`, `reply_refused`, `telling_started`, `telling_succeeded`, `telling_failed`, `replies_read`, `reading_failed`, `interaction_requested`, `tool_test_started`, `tool_test_answered`, `tool_test_failed`, `dataset_assembled`, `candidate_uploaded`, `candidate_refused`, `candidate_scored`, `candidate_disqualified`, `baseline_scored`, `baseline_not_walked`, `version_built`, `shadow_predicted`, `shadow_graded`, `shadow_passed`, `shadow_failed`, `version_activated`, `activation_refused`, `build_asked`, `build_ended`, `definition_created`, `definition_updated`, `definition_retired`, `event_published`, `workflow_input_applied`, `step_started`, `step_waiting`, `step_finished`, `step_failed`, `step_skipped` and `reaction_refused`, which include every type the playbook's events show and every fact the playbook's capabilities declare, and sources beginning `/runs/`, `/definitions/` or `/callers/`, name what the runtime records itself; an event that uses them returns `invalid_input` at `/event/type` or `/event/source`. The attributes `causationid`, `correlationid`, `caller`, `definitionversion`, `depth`, `calldepth`, `calledby`, `triggerkind` and `triggerreference` are the ones the playbook gives its own events (see [the playbook's events](recall-format.md#the-events)), so an event that names one returns `invalid_input` at `/event/` and its name, and no published event claims a cause, a caller or a depth it does not have. `list_playbook_events` shows each published event as an `event_published` event. A published event starts the workflows whose [event trigger](workflow-format.md#triggers) matches it, and reaches the runs listening for its type.
+The event, with its id and time filled in, may take at most 240 KiB as JSON. The types `run_started`, `run_deferred`, `run_succeeded`, `run_rejected`, `run_failed`, `run_cancel_requested`, `tool_call_started`, `tool_call_answered`, `tool_call_failed`, `request_answered`, `delivery_started`, `delivery_succeeded`, `delivery_failed`, `delivery_refused`, `reply_refused`, `telling_started`, `telling_succeeded`, `telling_failed`, `replies_read`, `reading_failed`, `interaction_requested`, `dataset_assembled`, `candidate_uploaded`, `candidate_refused`, `candidate_scored`, `candidate_disqualified`, `baseline_scored`, `baseline_not_walked`, `version_built`, `shadow_predicted`, `shadow_graded`, `shadow_passed`, `shadow_failed`, `version_activated`, `activation_refused`, `build_asked`, `build_ended`, `definition_created`, `definition_updated`, `definition_retired`, `event_published`, `workflow_input_applied`, `step_started`, `step_waiting`, `step_finished`, `step_failed`, `step_skipped` and `reaction_refused`, which include every type the playbook's events show and every fact the playbook's capabilities declare, and sources beginning `/runs/`, `/definitions/` or `/callers/`, name what the runtime records itself; an event that uses them returns `invalid_input` at `/event/type` or `/event/source`. The attributes `causationid`, `correlationid`, `caller`, `definitionversion`, `depth`, `calldepth`, `calledby`, `triggerkind` and `triggerreference` are the ones the playbook gives its own events (see [the playbook's events](recall-format.md#the-events)), so an event that names one returns `invalid_input` at `/event/` and its name, and no published event claims a cause, a caller or a depth it does not have. `list_playbook_events` shows each published event as an `event_published` event. A published event starts the workflows whose [event trigger](workflow-format.md#triggers) matches it, and reaches the runs listening for its type.
 
 ## Run history and playbook events
 
@@ -296,132 +296,161 @@ A run started again under its `run_id` counts once: its tokens add up over every
 
 ## Tool servers
 
-These routes are relative to `/v1/orgs/{org}`. `list_tool_servers` at the org needs `org:read` or `playbook:read`, at a playbook `playbook:read`, and `test_tool_call` `playbook:write`:
+Five operations find and call the tools of the tool servers the operator of a self-hosted runtime set up for a playbook, MCP servers and HTTP APIs described by an OpenAPI document alike, which a [reasoning function](reasoning-format.md#tools) names in `tools` as `server/tool` or `server/*`. These routes are relative to `/v1/orgs/{org}`. `search` at the org needs `org:read` or `playbook:read`; `search`, `introspect`, `validate` and `dry_run` at a playbook need `playbook:read`; `execute` needs `playbook:write` for every tool, since a call acts as the playbook, under the credential of the server's entry:
 
-| Operation           | Method and route                                                     | Input                                             |
-| ------------------- | -------------------------------------------------------------------- | ------------------------------------------------- |
-| `list_tool_servers` | `GET /tool-servers`                                                  | Optional `playbook` and `server`                  |
-| `list_tool_servers` | `GET /playbooks/{playbook}/tool-servers`                             | Playbook id in path; optional `server`            |
-| `test_tool_call`    | `POST /playbooks/{playbook}/tool-servers/{server}/tools/{tool}/test` | Server and tool in the path; optional `arguments` |
+| Operation    | Method and route                                                         | Input                                                      |
+| ------------ | ------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| `search`     | `GET /tool-servers/search`                                               | Optional `playbook`, `terms`, `server` and `only`          |
+| `search`     | `GET /playbooks/{playbook}/tool-servers/search`                          | Playbook id in path; optional `terms`, `server` and `only` |
+| `introspect` | `GET /playbooks/{playbook}/tool-servers/{server}/tools/{tool}`           | Server and tool in the path                                |
+| `validate`   | `POST /playbooks/{playbook}/tool-servers/{server}/tools/{tool}/validate` | Server and tool in the path; `arguments` in the body       |
+| `dry_run`    | `POST /playbooks/{playbook}/tool-servers/{server}/tools/{tool}/dry-run`  | Server and tool in the path; optional `arguments`          |
+| `execute`    | `POST /playbooks/{playbook}/tool-servers/{server}/tools/{tool}/execute`  | Server and tool in the path; optional `arguments`          |
 
-`list_tool_servers` lists the tool servers the operator of a self-hosted runtime set up for the playbook, with the tools each offers, so a [reasoning function](reasoning-format.md#tools) can name them in `tools` as `server/tool` or `server/*`. It asks each server for its tools when you call it, as a run does, within the same time to connect and to list. `server` keeps only the server of that name, and asks no other; a name that no server of the playbook has returns `invalid_input` at `/server`, so call it without `server` to see the names.
+`validate` and `dry_run` are routed by `POST` because their `arguments` are an object a query string cannot carry; they are reads all the same, which change nothing, call no tool and need only `playbook:read`, and a query string beside their body returns `bad_request`. The four reads ask each server they need for its tools when you call them, as a run does, within the same time to connect and to list, and record nothing; an HTTP API is asked nothing, since its document is the list. At a playbook, a playbook that does not exist returns `not_found`; a retired playbook answers the reads like any other, and refuses `execute` with `conflict`, kind `retired`, as every command.
+
+### Searching the tools
+
+`search` answers the servers set up for the playbook and the tools of each that the operator allows. Without `terms` it lists every tool while the servers offer at most 100 together, in the order of the servers and of each server's own list; with more, it answers the servers alone, each with its count of tools, so search them by `terms`. `terms` is up to 8 words of up to 64 characters, separated by spaces: each word, and each part of it split at `_`, `.`, `-` and case changes, counts 3 where it is a word of a tool's name split the same way, 2 where it is a word of the name of one of the tool's arguments, and 1 where it is a word of its description, whatever its case; the tools with a score come best first, those of one score by name and then by server, at most 100. `only: read` keeps the tools their server marks read-only, `only: write` the others. `server` keeps the server of that name and asks no other; a name no server of the playbook has returns `invalid_input` at `/server`.
 
 ```http
-GET /v1/orgs/acme/playbooks/sales/tool-servers
+GET /v1/orgs/acme/playbooks/sales/tool-servers/search?terms=invoice
 Authorization: Bearer <key>
 ```
 
 ```json
 {
-  "tool_servers": [
-    {
-      "name": "graph",
-      "type": "mcp",
-      "tools": [
-        {
-          "name": "search",
-          "description": "Finds the operations that answer a question.",
-          "input_schema": {
-            "type": "object",
-            "properties": { "query": { "type": "string" } },
-            "required": ["query"]
-          },
-          "annotations": { "readOnlyHint": true },
-          "testable": true
-        },
-        {
-          "name": "execute",
-          "description": "Runs an operation of the graph.",
-          "input_schema": { "type": "object" },
-          "testable": false
-        }
-      ]
-    },
+  "servers": [
+    { "name": "billing", "type": "openapi", "record_content": true, "tool_count": 5 },
     {
       "name": "notes",
       "type": "stdio",
+      "record_content": true,
       "unavailable": "The tool server notes could not be used: The tool server could not be reached",
       "because": "unreachable"
     }
-  ]
+  ],
+  "tools": [
+    { "server": "billing", "tool": "getInvoice", "summary": "Reads one invoice.", "read_only": true },
+    {
+      "server": "billing",
+      "tool": "listCustomers",
+      "summary": "Lists the customers, with the invoice each owes.",
+      "read_only": true
+    }
+  ],
+  "scopes": ["billing", "notes"]
 }
 ```
 
-| Field         | Contents                                                                                                                                                                                                                          |
-| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`        | The server's name, which a function writes before the slash                                                                                                                                                                       |
-| `type`        | `http` for a remote server, `stdio` for a process the runtime starts                                                                                                                                                              |
-| `tools`       | The tools the server lists that the operator allows on its entry, in the server's order, each with its `name`, its `description` cut to 4 KiB, its `input_schema`, the hints its server gives it as `annotations`, and `testable` |
-| `unavailable` | In place of `tools`, why the server could not be asked for its tools, in words cut to 1 KiB; the other servers are listed beside it                                                                                               |
-| `because`     | With `unavailable`: `key_refused` when the server did not accept the key the runtime gives it, which only the operator can put right; `failing`, `rate_limited` or `unreachable` when asking again later may work                 |
-| `playbooks`   | At the org only: the playbooks of the org whose functions may use the server, or `["*"]` for every playbook of the org                                                                                                            |
+| Field         | Contents                                                                                                                                                                                                          |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `servers`     | The servers searched, sorted by name, each with its `name`, which a function writes before the slash, its `type`, `mcp`, `stdio` or `openapi`, and `record_content`, whether the content of its calls is kept     |
+| `tool_count`  | How many tools of the server the operator allows, of those `only` keeps                                                                                                                                           |
+| `unavailable` | In place of `tool_count`, why the server could not be asked for its tools, in words cut to 1 KiB; the other servers are searched beside it                                                                        |
+| `because`     | With `unavailable`: `key_refused` when the server did not accept the key the runtime gives it, which only the operator can put right; `failing`, `rate_limited` or `unreachable` when asking again later may work |
+| `tools`       | The tools found, each with its `server`, its name as `tool`, its `summary`, the first sentence of its description cut at 300 characters, and `read_only`, whether its server marks it read-only                   |
+| `scopes`      | The names of the servers searched                                                                                                                                                                                 |
+| `playbooks`   | At the org only, on each server: the playbooks of the org whose functions may use it, or `["*"]` for every playbook of the org                                                                                    |
 
-A tool's `annotations` are the hints its server gives it, `readOnlyHint`, `destructiveHint`, `idempotentHint` and `openWorldHint`, as booleans and as the server gives them; a tool its server gives no hint has no `annotations`. `testable` is `true` when `test_tool_call` may test the tool: when its server marks it read-only, or the operator marks it testable on its entry.
+A server set up for another org, or for other playbooks of the org, is neither searched nor asked. The runtime adds no header, environment value, address, command or credential of a server to the answer. What a server writes, such as its tools' names, descriptions and schemas, is passed on with the values of the operator's `${...}` references and the tokens minted for a server scrubbed out; a referenced value shorter than 8 characters is not scrubbed.
 
-Servers are sorted by name, and a server set up for another org, or for other playbooks of the org, is neither listed nor asked. The runtime adds no header, environment value, address, command or credential of a server to the answer. What a server writes, such as its tools' names, descriptions and schemas, is passed on with the values of the operator's `${...}` references and the tokens minted for a server scrubbed out; a referenced value shorter than 8 characters is not scrubbed. At a playbook, a playbook that does not exist returns `not_found`; a retired playbook answers like any other.
+At the org, `search` answers for the org's playbooks, so you can see what the operator set up before a playbook exists or without naming one. It searches every server set up for the org, each with `playbooks`; `playbook` keeps the servers that serve that playbook, as the playbook's own route searches them, `playbooks` included. A key limited to some playbooks must give `playbook`, and sees in `playbooks` only the playbooks it may access; without `playbook` it is refused with `forbidden`, whose detail says to name one of its playbooks in `playbook`. A `playbook` the org does not have returns `not_found`, as the playbook's own route does, and no server is asked. A `server` that no server of the org, or of the playbook given, has returns `invalid_input` at `/server`.
 
-At the org, `list_tool_servers` answers for the org's playbooks, so you can see what the operator set up before a playbook exists or without naming one. It lists every server set up for the org, each with `playbooks`, the playbooks whose functions may use it, `["*"]` for every playbook of the org; `playbook` keeps the servers that serve that playbook, as the playbook's own route lists them, `playbooks` included. A key limited to some playbooks must give `playbook`, and sees in `playbooks` only the playbooks it may access; without `playbook` it is refused with `forbidden`, whose detail says to name one of its playbooks in `playbook`. A `playbook` the org does not have returns `not_found`, as the playbook's own route does, and no server is asked. A `server` that no server of the org, or of the playbook given, has returns `invalid_input` at `/server`.
+### Reading one tool
+
+`introspect` answers one tool whole, as its server lists it: its `description`, cut to 4 KiB, its `input_schema`, the JSON Schema of the arguments it takes, and the hints its server gives it as `annotations`, `readOnlyHint`, `destructiveHint`, `idempotentHint` and `openWorldHint`, left out where it gives none. A tool of an HTTP API takes one object, each path and query parameter by its name and `body` for a JSON body, with the schemas of the document's `components` it refers to held under `$defs`.
 
 ```http
-GET /v1/orgs/acme/tool-servers
+GET /v1/orgs/acme/playbooks/sales/tool-servers/billing/tools/getInvoice
 Authorization: Bearer <key>
 ```
 
 ```json
 {
-  "tool_servers": [
-    { "name": "graph", "type": "mcp", "playbooks": ["*"], "tools": [] },
-    {
-      "name": "notes",
-      "type": "stdio",
-      "playbooks": ["sales"],
-      "unavailable": "The tool server notes could not be used: The tool server could not be reached",
-      "because": "unreachable"
-    }
-  ]
+  "server": "billing",
+  "tool": "getInvoice",
+  "description": "Reads one invoice.",
+  "input_schema": {
+    "type": "object",
+    "properties": { "id": { "type": "string" } },
+    "required": ["id"],
+    "additionalProperties": false
+  },
+  "annotations": { "readOnlyHint": true, "idempotentHint": true, "openWorldHint": true }
 }
 ```
 
-### Testing a tool
-
-`test_tool_call` calls one tool of one tool server with the `arguments` given, as a run of a reasoning function would call it, and answers what that run's model would see and the document an interaction function's call reads, so you learn what a tool answers before a function names it, or find an id a prompt needs, without making a function to look. `arguments` is the object the tool's `input_schema` takes, `{}` when left out, and may take at most 16 KiB as JSON; more returns `invalid_input` at `/arguments` before anything is called.
+`validate` checks `arguments`, at most 16 KiB as JSON, against the tool's input schema and answers `valid`, `true` or `false`, and `issues`, each with the JSON Pointer of the argument at fault as `path` and what is wrong there as `message`, at most 20 and then one saying how many more there are. A schema this runtime's checker cannot take, such as one with a regular expression, answers `valid: null` with one issue saying why; the arguments may still be right.
 
 ```http
-POST /v1/orgs/acme/playbooks/sales/tool-servers/graph/tools/search/test
+POST /v1/orgs/acme/playbooks/sales/tool-servers/billing/tools/getInvoice/validate
 Authorization: Bearer <key>
 Content-Type: application/json
 
-{ "arguments": { "query": "renewals due this month" } }
+{ "arguments": { "id": 42 } }
+```
+
+```json
+{ "valid": false, "issues": [{ "path": "/id", "message": "Expected string" }] }
+```
+
+`dry_run` answers what `execute` would check for the tool and its `arguments`, without calling the tool:
+
+| Field        | Contents                                                                                                                                                             |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `would_run`  | Whether `execute` would call the tool now: the caller may, the operator allows the tool, and its server answered                                                     |
+| `needs`      | `playbook:write`, the permission `execute` needs whatever the tool does                                                                                              |
+| `caller_may` | Whether the caller holds it                                                                                                                                          |
+| `allowed`    | Whether the operator allows the tool on its server's entry, for runs and for `execute` alike                                                                         |
+| `read_only`  | Whether the server marks the tool read-only; `null` when the tool's listing was not read, for a tool the operator does not allow or a server that could not be asked |
+| `arguments`  | The `arguments` checked as `validate` checks them, `valid: null` with one issue saying why where the tool's input schema was not read; `null` when none were given   |
+| `server`     | `reachable`, `yes` or `no`, and with `no` the `because` of a server that could not be asked                                                                          |
+
+`dry_run` answers `would_run: true` for arguments the tool's schema does not take, since `execute` checks no arguments and the tool answers an error of its own for them; `arguments` says so beforehand.
+
+`introspect`, `validate` and `dry_run` refuse a server not set up for the playbook, and `introspect` and `validate` a tool the operator does not allow, with `unavailable`, kind `tool_not_offered` and `because: "tool_server_not_configured"` or `"tool_not_allowed"`, before any server is asked; a tool the server does not list returns the same kind with `tool_not_listed`, and a server that cannot be asked returns `unavailable` with kind `tool_server_failed` and its `because`, as `execute` does.
+
+### Calling a tool by hand
+
+`execute` calls one tool of one tool server with the `arguments` given, as a run of a reasoning function would call it, and answers what that run's model would see and the document an interaction function's call reads, so you learn what a tool answers before a function names it, find an id a prompt needs, or do what the person asked of the tool, without making a function to look. `arguments` is the object the tool's `input_schema` takes, `{}` when left out, and may take at most 16 KiB as JSON; more returns `invalid_input` at `/arguments` before anything is called.
+
+```http
+POST /v1/orgs/acme/playbooks/sales/tool-servers/billing/tools/getInvoice/execute
+Authorization: Bearer <key>
+Content-Type: application/json
+
+{ "arguments": { "id": "inv-2041" } }
 ```
 
 ```json
 {
-  "test_id": "0199b7e2-4c1d-7a3e-8f5b-6d2c1e0f9a8b",
-  "server": "graph",
-  "tool": "search",
+  "call_id": "0199b7e2-4c1d-7a3e-8f5b-6d2c1e0f9a8b",
+  "server": "billing",
+  "tool": "getInvoice",
   "outcome": "result",
-  "text": "Found 2 operations: listRenewals and renewalById.",
-  "answer": "Found 2 operations: listRenewals and renewalById.",
+  "text": "{\"id\":\"inv-2041\",\"total\":1200}",
+  "answer": { "id": "inv-2041", "total": 1200 },
   "result_bytes": 98,
   "duration_ms": 312,
-  "tested_at": "2026-10-08T09:00:00.000Z"
+  "called_at": "2026-10-08T09:00:00.000Z"
 }
 ```
 
 | Field               | Contents                                                                                                                                                                                                                                                                                   |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `test_id`           | The id of the test, a UUID, under which its two events are recorded                                                                                                                                                                                                                        |
+| `call_id`           | The id of the call, a UUID, under which its two events are recorded                                                                                                                                                                                                                        |
 | `outcome`           | `result`; `tool_error` when the tool answered an error or refused the arguments, which a run's model may recover from; `server_failure` when the server failed on the call; `timed_out` when it did not answer within 30 seconds; `too_large` when it answered more than one call may take |
 | `text`              | What a reasoning function's model would see: text content as text, structured content as JSON only when there is no text, other content as a placeholder, scrubbed of the server's secrets and cut at 64 KiB with a note; for a failure, the words the model gets                          |
 | `answer`            | The document a call's `read` points into: the structured content, else the first text block parsed as JSON, else that text, scrubbed of the server's secrets; absent when the tool answered neither, and when it takes more than 64 KiB as JSON                                            |
 | `result_bytes`      | The size of the whole result as the playbook keeps it, scrubbed of the server's secrets, before the cut; `null` when there is none                                                                                                                                                         |
 | `duration_ms`       | How long the call took                                                                                                                                                                                                                                                                     |
 | `server_request_id` | The server's own id of the request, where the operator's `request_id` says where it carries one                                                                                                                                                                                            |
-| `tested_at`         | When the call was made, in ISO 8601 UTC                                                                                                                                                                                                                                                    |
+| `called_at`         | When the call was made, in ISO 8601 UTC                                                                                                                                                                                                                                                    |
 
-The answer is `200` whenever the call was made, however the tool answered. Only a tool its server marks read-only, or that the operator marks testable on its entry, can be tested; any other returns `unavailable` with kind `tool_not_offered` and `because: "not_testable"`, and nothing is called. A tool the operator does not allow, a server not set up for the playbook and a tool the server does not list return the same kind with `tool_not_allowed`, `mcp_server_not_configured` or `tool_not_listed`, and a server that cannot be used returns `unavailable` with kind `mcp_server_failed`. A test is live: a tool the operator marks testable may still change something, which is why `test_tool_call` is marked destructive over MCP while any entry marks a tool testable.
+The answer is `200` whenever the call was made, however the tool answered. A tool the operator does not allow, a server not set up for the playbook and a tool the server does not list return `unavailable` with kind `tool_not_offered` and `tool_not_allowed`, `tool_server_not_configured` or `tool_not_listed`, and a server that cannot be used returns `unavailable` with kind `tool_server_failed`; nothing is called. A call is live: a tool its server does not mark read-only may change something, which is why `execute` is marked destructive over MCP while a tool server is configured.
 
-Each test is recorded in the playbook's history as `tool_test_started` and `tool_test_answered`, which `list_playbook_events` shows, with the arguments and the answer kept unless the operator turns `record_content` off for the server; a test starts no run, so `list_runs` and `get_run_history` never show it. A caller that goes away during the call leaves a start without an answer. Each test makes one call; a test of a server no run holds opens a connection and lets it go once the call has answered.
+Each call is recorded in the playbook's history, before it is sent, as `tool_call_started`, and after as `tool_call_answered` or `tool_call_failed`, the facts of a run's tool calls with the caller who made it as who acted, on a stream of its own and with no run, so `list_runs` and `get_run_history` never show it while `list_playbook_events` does, with the arguments and the answer kept unless the operator turns `record_content` off for the server. A caller that goes away during the call leaves a start without an answer. Each call of a server no run holds opens a connection and lets it go once the call has answered.
 
 ## Responses and errors
 
@@ -472,4 +501,4 @@ A problem document's `type` is a URI that names its kind of problem:
 
 A 500 response contains an incident reference. Its `instance` and the `x-request-id` response header identify the server log entry. Include that reference when reporting a problem, without sharing credentials or confidential input. Malformed HTTP can return a bare status before the API handles it.
 
-A function naming a model outside the deployment's allow list returns `unavailable` with kind `model_not_offered` and `because: "model_not_allowed"`, before calling the provider. A missing provider can return the same kind with `because: "provider_not_configured"`. Use `list_models` to inspect the offered references. A function naming a tool the playbook's servers do not offer returns `unavailable` with kind `tool_not_offered`; use `list_tool_servers` to see the servers and tools it may name. `test_tool_call` answers with the same kind, and with `not_testable` for a tool that cannot be tested.
+A function naming a model outside the deployment's allow list returns `unavailable` with kind `model_not_offered` and `because: "model_not_allowed"`, before calling the provider. A missing provider can return the same kind with `because: "provider_not_configured"`. Use `list_models` to inspect the offered references. A function naming a tool the playbook's servers do not offer returns `unavailable` with kind `tool_not_offered`; use `search` to see the servers and tools it may name. `introspect`, `validate`, `dry_run` and `execute` answer with the same kind for a tool the playbook is not offered.
