@@ -1,6 +1,7 @@
 import { Result } from 'effect';
 
-import { problemOf, type Problem } from '../problem/problem.ts';
+import type { Problem } from '../problem/problem-document.ts';
+import { problemOf } from '../problem/problem.ts';
 
 export const bodyEncoded = Result.fail(
   problemOf('unsupported_media_type', 'A body must be sent without a Content-Encoding other than identity'),

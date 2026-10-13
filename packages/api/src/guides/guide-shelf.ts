@@ -35,6 +35,7 @@ export interface ShelvedRecipe extends Recipe {
 }
 
 export interface GuideShelf {
+  readonly definitionTypes: readonly DefinitionType[];
   readonly guides: readonly Guide[];
   readonly recipes: readonly ShelvedRecipe[];
   readonly everyGuide: readonly Guide[];
@@ -85,6 +86,7 @@ export function guideShelfOf(
     requireBytesWithin(`The recipe ${name}`, text, mostRecipeBytes);
   }
   return {
+    definitionTypes,
     guides,
     recipes: shelved,
     everyGuide,

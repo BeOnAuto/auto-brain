@@ -1,4 +1,4 @@
-import type { Catalog, OperationScope, RouteRegistration } from '@on.auto/operations';
+import { catalogPathOf, type Catalog, type RouteRegistration } from '@on.auto/operations';
 
 export interface RouteEntry {
   readonly registration: RouteRegistration;
@@ -10,15 +10,12 @@ interface Templated {
   readonly template: string;
 }
 
-const prefixes: Readonly<Record<OperationScope, string>> = {
-  org: '/v1/orgs/{org}',
-  playbook: '/v1/orgs/{org}/playbooks/{playbook}',
-};
+export const versionPrefix = '/v1';
 
 const parameter = /\{(\w+)\}/gu;
 
 function templateOf(registration: RouteRegistration): Templated {
-  return { registration, template: `${prefixes[registration.scope]}${registration.route.path}` };
+  return { registration, template: `${versionPrefix}${catalogPathOf(registration)}` };
 }
 
 function orderOf({ template }: Templated): string {

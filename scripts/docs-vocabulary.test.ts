@@ -4,43 +4,9 @@ import { existsSync, lstatSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 
-const root = resolve(import.meta.dirname, '..');
+import { foundIn, oldWords } from '@on.auto/api/testing';
 
-const oldWords: readonly string[] = [
-  '[pP]rimitive|PRIMITIVE',
-  '(?<![A-Za-z])[sS]pecs?(?![a-z])|(?<=[a-z])Specs?(?![a-z])|(?<![A-Za-z])SPECS?(?![A-Z])',
-  '[eE]xecution|EXECUTION',
-  '[iI]nference|INFERENCE',
-  '[oO]rchestrat|ORCHESTRAT',
-  '[rR]ecollection|RECOLLECTION',
-  'execute_spec',
-  String.raw`/execute\b`,
-  '[eE]xecuteSpec',
-  'language: jq',
-  String.raw`evaluate\.language: jq`,
-  'jq-ts',
-  'delivery_ended',
-  'telling_ended',
-  'arguments_json',
-  'result_json',
-  String.raw`(?<![\w-])brain\\?/`,
-  'brain_key',
-  'brain:read|brain:write',
-  String.raw`(?<![\w-])brain:(?=\S)`,
-  'brain_(?:created|updated|retired)',
-  String.raw`/brains(?![\w-])`,
-  '(?i:@beonauto)',
-  'workflow_followed_brains',
-  '_by_brain',
-  'RECALL_BRAINS_AT_ONCE',
-  String.raw`(?:[{,]\s*|\n\s*|["'])brains?["']?\s*:`,
-  '(?i:auto[-_ ]?brain)',
-  '(?i:beonauto/auto-runtime)',
-  String.raw`(?i:com\.beonauto/)`,
-  'mcp_server_failed',
-  'mcp_server_not_configured',
-  'mcp__',
-];
+const root = resolve(import.meta.dirname, '..');
 
 const keptFolders: readonly string[] = ['docs/decisions/'];
 
@@ -54,10 +20,15 @@ const frozenFormats: readonly string[] = [
   ),
 ];
 
+const publishedOpenApiSchema = 'packages/api/src/testing/openapi/openapi-3.1-schema-2022-10-07';
+
 const keptFiles: readonly string[] = [
   'CHANGELOG.md',
   'pnpm-lock.yaml',
+  'packages/api/src/testing/vocabulary/old-words.ts',
+  'packages/api/src/testing/vocabulary/old-words.test.ts',
   'scripts/docs-vocabulary.test.ts',
+  `${publishedOpenApiSchema}.json`,
   ...frozenFormats,
 ];
 
@@ -66,9 +37,9 @@ interface Allowance {
   readonly in: readonly string[];
 }
 
-const internalTerms = 'packages/api/src/testing/internal-terms.ts';
+const internalTerms = 'packages/api/src/testing/vocabulary/internal-terms.ts';
 
-const internalTermsTest = 'packages/api/src/testing/internal-terms.test.ts';
+const internalTermsTest = 'packages/api/src/testing/vocabulary/internal-terms.test.ts';
 
 const reasoningReference = 'docs/engineering/reference/reasoning-format.md';
 
@@ -96,6 +67,7 @@ const allowances: readonly Allowance[] = [
     text: 'https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md',
     in: ['docs/reference/http.md', 'packages/definitions/README.md'],
   },
+  { text: 'https://spec.openapis.org/oas/3.1/schema/2022-10-07', in: [`${publishedOpenApiSchema}.txt`] },
   {
     text: 'inferenceConfig',
     in: [
@@ -156,14 +128,14 @@ function textOf(path: string): string | undefined {
   }
 }
 
-const tracked = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], {
+const listed = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], {
   cwd: root,
   encoding: 'utf8',
 })
   .split('\0')
   .filter((path) => path !== '');
 
-const searched = tracked.filter(
+const searched = listed.filter(
   (path) =>
     !keptFolders.some((folder) => path.startsWith(folder)) &&
     !keptFiles.includes(path) &&
@@ -192,19 +164,6 @@ function lineAt(text: string, index: number): number {
   return text.slice(0, index).split('\n').length;
 }
 
-interface Found {
-  readonly index: number;
-  readonly word: string;
-}
-
-function foundIn(masked: string, word: string): readonly Found[] {
-  const found: Found[] = [];
-  for (const match of masked.matchAll(new RegExp(word, 'gu'))) {
-    found.push({ index: match.index, word: match[0] });
-  }
-  return found;
-}
-
 function oldWordsIn(path: string, text: string): readonly string[] {
   const masked = maskedAllowances(path, text);
   const found = oldWords
@@ -223,17 +182,17 @@ const allowedButAbsent = allowances
   .flatMap((allowance) => allowance.in.map((path) => placeOf(allowance, path)))
   .filter((place) => (allowedOccurrences.get(place) ?? 0) === 0);
 
-const leftOutButUntracked = keptFiles.filter((path) => !tracked.includes(path));
+const leftOutButUnlisted = keptFiles.filter((path) => !listed.includes(path));
 
 const pagesOfTheGuides = /^docs\/(?:reference|concepts|tutorials)\/.*\.md$/u;
 
-const oldLanguageOnPages = tracked
+const oldLanguageOnPages = listed
   .filter((path) => pagesOfTheGuides.test(path))
   .flatMap((path) =>
     foundIn(textOf(path) ?? '', String.raw`\bjq\b`).map(({ index }) => `${path}:${lineAt(textOf(path) ?? '', index)}`),
   );
 
-await test('no file of the repository, committed or about to be, says an old word, outside the records, the changelog, the lockfile and the frozen formats, but the texts it allows', () => {
+await test('no file git tracks or would add says an old word, outside the records, the changelog, the lockfile, the frozen formats, the old words themselves and the published schema of OpenAPI documents, but the texts it allows', () => {
   assert.deepEqual(findings, []);
 });
 
@@ -241,6 +200,6 @@ await test('no page of the reference, the concepts or the tutorials, the pages t
   assert.deepEqual(oldLanguageOnPages, []);
 });
 
-await test('every text the search allows still occurs in each file it is allowed in, and every file it leaves out is still in the repository', () => {
-  assert.deepEqual([...allowedButAbsent, ...leftOutButUntracked], []);
+await test('every text the search allows still occurs in each file it is allowed in, and every file it leaves out is still there', () => {
+  assert.deepEqual([...allowedButAbsent, ...leftOutButUnlisted], []);
 });

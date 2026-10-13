@@ -1,6 +1,7 @@
 import { Predicate, Result } from 'effect';
 
-import { problemOf, type Problem } from '../problem/problem.ts';
+import type { Problem } from '../problem/problem-document.ts';
+import { problemOf } from '../problem/problem.ts';
 import { bodyEncoded, bodyNotUtf8, bodySentAsAnother, bodyTooLarge } from './body-problems.ts';
 
 export type JsonObject = Readonly<Record<string, unknown>>;

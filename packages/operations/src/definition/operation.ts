@@ -7,7 +7,7 @@ import { inputDecoder, outputEncoder, plainLanguageFields, typeValidator } from 
 import type { Definition, InputSchemaFor, ObjectSchema, RelativePath } from './definition.ts';
 import type { HandlerServices } from './handler-services.ts';
 import type { InputEncoding } from './registered-run.ts';
-import { registeredFieldsOf, settledOf } from './registration-parts.ts';
+import { registeredFieldsOf, registeredOutputOf, settledOf } from './registration-parts.ts';
 import type { RegistrationOf } from './registration.ts';
 
 export interface Operation<
@@ -83,6 +83,7 @@ function defineOperation<
   return {
     registration: {
       ...fields,
+      output: registeredOutputOf(outputSchema),
       ...plainLanguageFields(definition.plainLanguage, inputSchema, outputSchema),
       run: runnerOf(decodeInput, handle, encodeOutput, fields.reasons),
     },

@@ -1,4 +1,13 @@
-import { mcpRoutes, operationRoutes, type AppRuntime, type RegisterRoutes } from '@on.auto/api';
+import {
+  apiCatalogRoutes,
+  guideRoutes,
+  guideShelfOf,
+  mcpRoutes,
+  openApiDocumentRoutes,
+  operationRoutes,
+  type AppRuntime,
+  type RegisterRoutes,
+} from '@on.auto/api';
 import type { Capability } from '@on.auto/definitions';
 import {
   makeCatalog,
@@ -20,14 +29,19 @@ export function routesFor(
   dispatcher: Dispatcher,
   capabilities: readonly Capability[],
 ): readonly RegisterRoutes[] {
+  const { guides, recipes, definitionTypes } = servedGuidesOf(capabilities);
+  const shelf = guideShelfOf(guides, recipes, definitionTypes);
   return [
     operationRoutes({ catalog, dispatcher, runCall: runtime.run }),
+    openApiDocumentRoutes({ catalog, serverInfo: release, shelf }),
+    guideRoutes(shelf),
+    apiCatalogRoutes(shelf),
     mcpRoutes({
       catalog,
       dispatcher,
       runCall: runtime.run,
       serverInfo: release,
-      ...servedGuidesOf(capabilities),
+      shelf,
       reportError: (error) => {
         void runtime.run(logMcpError(error));
       },
