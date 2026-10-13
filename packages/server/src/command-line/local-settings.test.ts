@@ -31,7 +31,7 @@ describe('the settings of a server started on this computer', () => {
       HOST: '127.0.0.1',
       LOCAL_MODE: 'true',
       LOG_FORMAT: 'console',
-      LOG_LEVEL: 'warn',
+      LOG_LEVEL: 'error',
       LEDGER_FILE: '/home/ada/.auto-runtime/ledger.db',
     });
   });
@@ -48,7 +48,7 @@ describe('the settings of a server started on this computer', () => {
       HOST: '127.0.0.1',
       LOCAL_MODE: 'true',
       LOG_FORMAT: 'json',
-      LOG_LEVEL: 'warn',
+      LOG_LEVEL: 'error',
       LEDGER_FILE: '/home/ada/.auto-runtime/ledger.db',
       CONFIG_FILE: join(directory, 'auto-runtime.yaml'),
       ANTHROPIC_API_KEY: 'from-the-file',

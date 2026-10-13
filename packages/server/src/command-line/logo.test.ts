@@ -30,10 +30,10 @@ describe('the logo', () => {
   });
 
   it('draws a pixel with nothing below it as an upper half, and one with nothing above it as a lower half', () => {
-    const [top = ''] = logoLines(24);
+    const drawn = logoLines(24).join('');
 
-    expect(top).toContain('\u001B[38;2;236;63;74m▀\u001B[0m');
-    expect(top).toContain('\u001B[38;2;236;63;74m▄\u001B[0m');
+    expect(drawn).toContain('\u001B[38;2;236;63;74m▀\u001B[0m');
+    expect(drawn).toContain('\u001B[38;2;236;63;74m▄\u001B[0m');
   });
 
   it('uses the 256 colors of a terminal without true color, and the 16 of a basic one', () => {

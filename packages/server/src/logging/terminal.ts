@@ -20,6 +20,6 @@ export function painterFor(depth: ColorDepth): (style: Style, text: string) => s
   return depth === 1 ? (_style, text) => text : (style, text) => styleText(style, text, { validateStream: false });
 }
 
-export function linkerFor(depth: ColorDepth): (url: string) => string {
-  return depth === 1 ? (url) => url : (url) => `\u001B]8;;${url}\u001B\\${url}\u001B]8;;\u001B\\`;
+export function linkerFor(depth: ColorDepth): (url: string, text: string) => string {
+  return depth === 1 ? (_url, text) => text : (url, text) => `\u001B]8;;${url}\u001B\\${text}\u001B]8;;\u001B\\`;
 }

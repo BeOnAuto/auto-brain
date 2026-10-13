@@ -20,7 +20,7 @@ claude mcp add --transport http auto-runtime http://localhost:5555/mcp
 
 Settings are environment variables. The command reads them from the shell and from a `.env` file in the current directory, and the shell wins. To run reasoning functions, give it a model provider's key, such as `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY`. Settings that are lists or maps, such as model gateways and MCP servers, go in `auto-runtime.yaml` in the current directory; `auto-runtime.example.yaml` in this package shows every one.
 
-The command shows the server's warnings and errors; set `LOG_LEVEL=info` to see everything it logs.
+The command shows only the server's errors; set `LOG_LEVEL=warn` to see its warnings too, or `LOG_LEVEL=info` to see everything it logs.
 
 The ledger, where playbooks and their runs are kept, is the SQLite file `~/.auto-runtime/ledger.db` unless `LEDGER_FILE` names another file or `DATABASE_URL` names a PostgreSQL database. `PORT` changes the port.
 

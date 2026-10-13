@@ -65,9 +65,9 @@ describe('the auto-runtime command', { timeout: spawnedServerTestTimeoutMs }, ()
 
     expect(await health.json()).toEqual({ status: 'ok' });
     expect(await playbooks.json()).toEqual({ playbooks: [] });
-    expect(runtime.output().stdout).toContain(`  ➜  MCP      ${runtime.url}/mcp\n`);
-    expect(runtime.output().stdout).toContain('  ➜  Ledger   ~/.auto-runtime/ledger.db\n');
-    expect(runtime.output().stderr).toMatch(/^ {2}\d{2}:\d{2}:\d{2} ▲ Local mode is on: /u);
+    expect(runtime.output().stdout).toContain(`     MCP      ${runtime.url}/mcp\n`);
+    expect(runtime.output().stdout).toContain('     Docs     https://on.auto/docs/\n');
+    expect(runtime.output().stderr).toBe('');
     runtime.interrupt();
     await runtime.exited;
   });

@@ -593,7 +593,7 @@ jobs:
             sleep 1
           done
           test "$(curl --silent --fail http://127.0.0.1:5555/health)" = '{"status":"ok"}'
-          test "$(grep --count 'Local mode is on' runtime.log)" = 1
+          test "$(grep --count 'Ready in' runtime.log)" = 1
           call() {
             curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' --header 'content-type: application/json' "${@:2}"
           }
