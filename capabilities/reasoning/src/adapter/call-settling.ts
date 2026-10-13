@@ -31,7 +31,12 @@ export async function settledCall(
   const cancelled = AbortSignal.any([interruption, request.signal].filter((signal) => signal !== undefined));
   const { whole, step } = deadlines;
   const stops = [cancelled, whole?.signal, step.signal, request.tools?.ended].filter((signal) => signal !== undefined);
-  const calling = callingModel(target, request, { signal: AbortSignal.any(stops), cancelled }, step);
+  const calling = callingModel(
+    target,
+    request,
+    { signal: AbortSignal.any(stops), cancelled },
+    { step, telemetry: policy.telemetry },
+  );
   try {
     return {
       settled: await calling.settled,

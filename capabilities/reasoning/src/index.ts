@@ -2,6 +2,7 @@ export { languageModelLayer } from './adapter/language-model-layer.ts';
 export { makeModelAccess, type ModelAccess } from './adapter/model-access.ts';
 export type {
   ModelAccessOptions,
+  ModelTelemetry,
   OperatorHintReport,
   ProviderMessageReport,
   ReportOperatorHint,

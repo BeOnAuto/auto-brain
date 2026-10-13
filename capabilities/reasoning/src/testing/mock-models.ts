@@ -38,6 +38,7 @@ export function mockGeneration(model: () => MockLanguageModelV4, reportHint: Rep
     admitsOptions: () => Result.void,
   });
   return {
+    generate,
     succeeded: (request: ModelRequest): Promise<ModelResult> => Effect.runPromise(generate(request)),
     failed: (request: ModelRequest): Promise<ModelFailure> => Effect.runPromise(Effect.flip(generate(request))),
     exit: (request: ModelRequest) => Effect.runPromiseExit(generate(request)),

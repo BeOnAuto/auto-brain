@@ -6,6 +6,7 @@ import type { ModelResult } from '../model/model-result.ts';
 import { checkedRequest } from '../model/request-checks.ts';
 import type { CallPolicy } from './call-policy.ts';
 import { settledCall, type CallReports } from './call-settling.ts';
+import { callFailed, callSucceeded } from './model-metrics.ts';
 import type { ModelResolution, ModelTarget } from './model-resolution.ts';
 import { UnclassifiedModelError } from './unclassified-model-error.ts';
 
@@ -52,10 +53,17 @@ export function generation(resolve: ModelResolution, policy: CallPolicy): Genera
     const { settled } = call;
     if (Result.isSuccess(settled)) {
       const result: ModelResult = { ...settled.success, duration_ms: finished - started };
+      yield* callSucceeded(target, result);
       return result;
     }
     const failure = settled.failure;
-    return yield* failure instanceof UnclassifiedModelError ? Effect.die(failure) : Effect.fail(failure);
+    if (failure instanceof UnclassifiedModelError) {
+      yield* callFailed(target, 'unclassified', finished - started);
+      return yield* Effect.die(failure);
+    }
+    const { _tag: kind } = failure;
+    yield* callFailed(target, kind, finished - started);
+    return yield* Effect.fail(failure);
   });
   return { admit: (request) => Effect.asVoid(admitted(request)), generate };
 }
