@@ -1,6 +1,7 @@
 import { setTimeout } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
+import type { IdentityProvider, SignInSettings } from '@on.auto/identity';
 import { Cause } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -30,9 +31,28 @@ function syntaxErrorParsing(text: string): SyntaxError {
 
 const serveWithTestRoutes = fileURLToPath(new URL('../testing/entries/serve-with-test-routes.ts', import.meta.url));
 
+const providers: readonly IdentityProvider[] = [
+  {
+    name: 'corp',
+    issuer: 'https://login.example',
+    org: 'acme',
+    grants: { claim: 'groups', by: { engineers: { permissions: [], playbooks: '*' } } },
+  },
+  {
+    name: 'corp',
+    issuer: 'https://login.example',
+    org: 'globex',
+    grants: { claim: 'groups', by: { engineers: { permissions: [], playbooks: '*' } } },
+  },
+];
+
+const signIn = { providers, publicUrl: 'https://runtime.example' };
+
+const nothingConfigured = { localMode: false, apiKeys: undefined, signIn: undefined };
+
 describe('logAccessMode', () => {
   it('warns that local mode trusts every request', async () => {
-    const [line] = await linesLoggedBy(logAccessMode('local', true));
+    const [line] = await linesLoggedBy(logAccessMode({ ...nothingConfigured, mode: 'local', localMode: true }));
 
     expect(line).toContain('"level":"WARN"');
     expect(line).toContain(
@@ -41,7 +61,7 @@ describe('logAccessMode', () => {
   });
 
   it('warns when the server is not in local mode and has no API keys', async () => {
-    const [line] = await linesLoggedBy(logAccessMode('closed', false));
+    const [line] = await linesLoggedBy(logAccessMode({ ...nothingConfigured, mode: 'closed' }));
 
     expect(line).toContain('"level":"WARN"');
     expect(line).toContain(
@@ -49,15 +69,50 @@ describe('logAccessMode', () => {
     );
   });
 
-  it('says nothing when API keys are configured', async () => {
-    expect(await linesLoggedBy(logAccessMode('keys', false))).toEqual([]);
-  });
-
-  it('warns that LOCAL_MODE is ignored when API keys are configured', async () => {
-    const lines = await linesLoggedBy(logAccessMode('keys', true));
+  it('says in one line that API_KEYS lists no keys and that local mode is ignored, when API_KEYS is []', async () => {
+    const lines = await linesLoggedBy(
+      logAccessMode({ ...nothingConfigured, mode: 'closed', localMode: true, apiKeys: [] }),
+    );
 
     expect(lines).toHaveLength(1);
-    expect(lines[0]).toContain('"message":"LOCAL_MODE is ignored because API keys are configured"');
+    expect(lines[0]).toContain(
+      '"message":"No request can authenticate: API_KEYS lists no keys, and LOCAL_MODE is ignored because API_KEYS is set, so every path except /health answers 401"',
+    );
+  });
+});
+
+describe('logAccessMode with credentials configured', () => {
+  it('says nothing when API keys are configured', async () => {
+    expect(
+      await linesLoggedBy(logAccessMode({ ...nothingConfigured, mode: 'credentials', apiKeys: ['a key'] })),
+    ).toEqual([]);
+  });
+
+  it.each([
+    [['a key'], undefined, 'API keys are configured'],
+    [[], signIn, 'identity providers are configured'],
+    [['a key'], signIn, 'API keys and identity providers are configured'],
+  ])(
+    'warns that LOCAL_MODE is ignored when %j and %j are given, because %s',
+    async (apiKeys: readonly string[], given: SignInSettings | undefined, why) => {
+      const lines = await linesLoggedBy(
+        logAccessMode({ mode: 'credentials', localMode: true, apiKeys, signIn: given }),
+      );
+
+      expect(lines[0]).toContain(`"message":"LOCAL_MODE is ignored because ${why}"`);
+    },
+  );
+
+  it('names the identity providers persons sign in through, and the audience of their tokens', async () => {
+    const [line] = await linesLoggedBy(logAccessMode({ ...nothingConfigured, mode: 'credentials', signIn }));
+
+    expect(line).toContain('"level":"INFO"');
+    expect(line).toContain(
+      '"message":"Signed-in persons are admitted through the identity providers corp, by tokens whose audience is https://runtime.example"',
+    );
+    expect(line).toContain(
+      '"identity_providers":[{"name":"corp","issuer":"https://login.example","org":"acme"},{"name":"corp","issuer":"https://login.example","org":"globex"}]',
+    );
   });
 });
 

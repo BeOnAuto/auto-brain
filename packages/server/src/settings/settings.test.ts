@@ -15,6 +15,13 @@ function errorFrom(environment: Environment): unknown {
 
 const { entry } = createApiKey({ id: 'ci-1', org: 'acme', permissions: ['org:read'], playbooks: '*' });
 
+const corp = {
+  name: 'corp',
+  issuer: 'https://login.example.com/tenant',
+  org: 'acme',
+  grants: { claim: 'groups', by: { engineers: { permissions: ['playbook:read'], playbooks: '*' } } },
+};
+
 const defaultPrediction = {
   processes: 4,
   processMemoryMebibytes: 1280,
@@ -36,6 +43,7 @@ describe('readSettings', () => {
       port: 5555,
       allowedOrigins: [],
       apiKeys: undefined,
+      signIn: undefined,
       ledger: { store: 'sqlite', file: 'data/ledger.db' },
       content: { store: 'ledger' },
       proxy: { enabled: false, environment: {} },
@@ -59,6 +67,8 @@ describe('readSettings given every setting', () => {
       PORT: '3000',
       ALLOWED_ORIGINS: 'https://app.example.com,http://localhost:5173,http://[::1]:3000',
       API_KEYS: JSON.stringify([entry]),
+      IDENTITY_PROVIDERS: JSON.stringify([corp]),
+      PUBLIC_URL: 'https://runtime.example.com',
       LEDGER_FILE: '/data/ledger.db',
       CONTENT_STORE_URL: 's3://playbook-content/production',
       NODE_USE_ENV_PROXY: '1',
@@ -79,6 +89,7 @@ describe('readSettings given every setting', () => {
       port: 3000,
       allowedOrigins: ['https://app.example.com', 'http://localhost:5173', 'http://[::1]:3000'],
       apiKeys: [entry],
+      signIn: { providers: [corp], publicUrl: 'https://runtime.example.com' },
       ledger: { store: 'sqlite', file: '/data/ledger.db' },
       content: {
         store: 'object-storage',
@@ -174,7 +185,44 @@ describe('readSettings rejects invalid settings', () => {
     expect(error).toMatchObject({ name: 'InvalidSettingsError' });
     expect(String(error)).toContain('LOCAL_MODE');
   });
+});
 
+describe('readSettings rejects invalid credential settings', () => {
+  it.each([
+    'http://runtime.example.com',
+    'https://runtime.example.com/',
+    'https://runtime.example.com/runtime',
+    'https://runtime.example.com?tenant=acme',
+    'https://runtime.example.com#top',
+    'https://Runtime.example.com',
+    'runtime.example.com',
+  ])('rejects PUBLIC_URL="%s", which is not an https URL without a path, naming the setting', (publicUrl) => {
+    expect(String(errorFrom({ PUBLIC_URL: publicUrl }))).toBe(
+      'InvalidSettingsError: SchemaError(Expected an https URL with no path, query or fragment, such as https://runtime.example.com\n  at ["PUBLIC_URL"])',
+    );
+  });
+
+  it('requires PUBLIC_URL when IDENTITY_PROVIDERS lists a provider, since a token names it as its audience', () => {
+    const error = errorFrom({ IDENTITY_PROVIDERS: JSON.stringify([corp]) });
+
+    expect(error).toMatchObject({ name: 'InvalidSettingsError' });
+    expect(String(error)).toContain('PUBLIC_URL: Expected the https URL the runtime is reached at');
+  });
+
+  it('takes PUBLIC_URL without a provider, and signs no one in', () => {
+    expect(readSettings({ PUBLIC_URL: 'https://runtime.example.com' }).signIn).toBeUndefined();
+  });
+
+  it('rejects invalid identity providers with the named error that points at the entry', () => {
+    expect(
+      String(
+        errorFrom({ IDENTITY_PROVIDERS: JSON.stringify([{ ...corp, org: 'local' }]), PUBLIC_URL: 'https://a.example' }),
+      ),
+    ).toBe('InvalidIdentityProvidersError: IDENTITY_PROVIDERS[0].org: This org id is reserved for local mode');
+  });
+});
+
+describe('readSettings rejects invalid settings of other packages', () => {
   it('rejects invalid API keys with the named error from the identity settings', () => {
     expect(String(errorFrom({ API_KEYS: '[{"id":"ci-1"}]' }))).toContain('InvalidApiKeysError: API_KEYS[0].org');
   });

@@ -1,5 +1,5 @@
 import { fileSetting, type FileSetting, type RefusedKeys } from '@on.auto/config';
-import { ApiKeysSchema } from '@on.auto/identity';
+import { ApiKeysSchema, IdentityProvidersSchema } from '@on.auto/identity';
 import { McpServersSchema } from '@on.auto/mcp';
 import { AllowedModelsSchema, DeclaredModelsSchema, ModelAliasesSchema, ModelGatewaysSchema } from '@on.auto/reasoning';
 import { Schema } from 'effect';
@@ -23,6 +23,14 @@ export const fileSettings: readonly FileSetting[] = [
     'API_KEYS',
     ApiKeysSchema.annotate({
       description: 'The API keys the server accepts, each as the key command prints it. API_KEYS wins over it',
+    }),
+    asJson,
+  ),
+  fileSetting(
+    'IDENTITY_PROVIDERS',
+    IdentityProvidersSchema.annotate({
+      description:
+        'The identity providers whose tokens admit a signed-in person, each entry admitting to one org with the permissions and playbooks its claims grant; PUBLIC_URL is then required. IDENTITY_PROVIDERS wins over it',
     }),
     asJson,
   ),

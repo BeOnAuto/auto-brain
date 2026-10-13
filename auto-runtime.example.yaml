@@ -70,10 +70,32 @@ allowed_origins:
   - http://localhost:5173
 
 # The API keys the server accepts, each as pnpm key prints it. With any key
-# set, local mode is off and every request needs a key.
+# set, local mode is off and every request needs a key, or a token of one of
+# the identity providers below.
 # api_keys:
 #   - id: ci
 #     org: acme
 #     permissions: [org:read, org:write, playbook:read, playbook:write]
 #     playbooks: '*'
 #     sha256: <the digest pnpm key prints>
+
+# The identity providers whose access tokens admit a signed-in person, each
+# entry to one org. The issuer's metadata and keys are read at start. A token's
+# audience must be PUBLIC_URL, which is then required, such as
+# PUBLIC_URL=https://runtime.example.com. The values of the claim under grants
+# give the permissions and playbooks; membership, when given, is a value a
+# token must hold for the entry to apply. A person is recorded as
+# person:<name>/<subject>, the subject being sub unless subject names a claim.
+# identity_providers:
+#   - name: corp
+#     issuer: https://login.example.com/oauth2/default
+#     org: acme
+#     grants:
+#       claim: groups
+#       by:
+#         playbook-authors:
+#           permissions: [org:read, playbook:read, playbook:write]
+#           playbooks: '*'
+#         readers:
+#           permissions: [playbook:read]
+#           playbooks: [sales]

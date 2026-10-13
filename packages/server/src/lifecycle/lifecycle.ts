@@ -2,7 +2,7 @@ import type { AddressInfo } from 'node:net';
 
 import { createApiHandler, makeAppRuntime, type RegisterRoutes, type AppRuntime } from '@on.auto/api';
 import type { Environment } from '@on.auto/config';
-import { authenticatorFor } from '@on.auto/identity';
+import { authenticatorFor, issuersOf } from '@on.auto/identity';
 import { Effect, Layer } from 'effect';
 
 import { logAccessMode, logConfigFile, logIncident, serverLogs, type LogSettings } from '../logging/logging.ts';
@@ -63,10 +63,11 @@ async function startRuntime<R>(services: Layer.Layer<R>, logs: LogSettings): Pro
 
 export async function startServer<R>(environment: Environment, options: ServerOptions<R>): Promise<RunningServer> {
   const settings = readSettings(environment);
-  const authenticator = authenticatorFor(settings);
+  const issuers = settings.signIn === undefined ? undefined : await issuersOf(settings.signIn);
+  const authenticator = authenticatorFor({ ...settings, issuers });
   const composed = options.composed(settings);
   const runtime = await startRuntime(composed.services, settings);
-  await runtime.run(logAccessMode(authenticator.mode, settings.localMode));
+  await runtime.run(logAccessMode({ ...settings, mode: authenticator.mode }));
   await runtime.run(logConfigFile(settings.configFile));
   const served = await servedOf(composed, runtime);
   const api = createApiHandler({

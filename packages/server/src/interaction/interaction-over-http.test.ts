@@ -96,7 +96,10 @@ describe('an Authorization header that holds no Bearer key, over HTTP', { timeou
 
     expect([answered.status, answered.body]).toMatchObject([
       400,
-      { reason: 'bad_request', detail: 'The Authorization header must hold exactly one API key, as Bearer <key>' },
+      {
+        reason: 'bad_request',
+        detail: 'The Authorization header must hold exactly one API key or access token, as Bearer <key or token>',
+      },
     ]);
   });
 });
