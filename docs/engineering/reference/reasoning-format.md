@@ -202,25 +202,25 @@ pnpm dev
 With the [reasoning function document](#reasoning-function-document-format) saved as `account-summary.md`, create a playbook and the function. `jq` turns the document into a JSON string:
 
 ```bash
-curl --request POST http://localhost:8080/v1/orgs/acme/playbooks \
+curl --request POST http://localhost:5555/v1/orgs/acme/playbooks \
   --header 'content-type: application/json' \
   --data '{"playbook":"sales","name":"Sales"}'
 jq --null-input --rawfile source account-summary.md '{name: "account-summary", source: $source}' |
-  curl --request POST http://localhost:8080/v1/orgs/acme/playbooks/sales/definitions/reasoning \
+  curl --request POST http://localhost:5555/v1/orgs/acme/playbooks/sales/definitions/reasoning \
     --header 'content-type: application/json' --data @-
 ```
 
 `create_definition` answers `201` with the definition: its `version` 1, the `description`, the `input_schema`, any `warnings`, and the document as `source`. A document with problems gets `422` with every problem under `/source`. Read it back, and list the reasoning functions in the playbook:
 
 ```bash
-curl http://localhost:8080/v1/orgs/acme/playbooks/sales/definitions/reasoning/account-summary
-curl http://localhost:8080/v1/orgs/acme/playbooks/sales/definitions/reasoning
+curl http://localhost:5555/v1/orgs/acme/playbooks/sales/definitions/reasoning/account-summary
+curl http://localhost:5555/v1/orgs/acme/playbooks/sales/definitions/reasoning
 ```
 
 Run the function. The optional `run_id` identifies the run so you can inspect it and retry according to the [retry rules](#when-a-run-is-rejected):
 
 ```bash
-curl --request POST http://localhost:8080/v1/orgs/acme/playbooks/sales/definitions/reasoning/account-summary/run \
+curl --request POST http://localhost:5555/v1/orgs/acme/playbooks/sales/definitions/reasoning/account-summary/run \
   --header 'content-type: application/json' \
   --data '{"input":{"account":"Globex"},"run_id":"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a"}'
 ```
@@ -242,7 +242,7 @@ curl --request POST http://localhost:8080/v1/orgs/acme/playbooks/sales/definitio
 `get_run` reads it back with the [record](#what-a-run-records):
 
 ```bash
-curl http://localhost:8080/v1/orgs/acme/playbooks/sales/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a
+curl http://localhost:5555/v1/orgs/acme/playbooks/sales/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a
 ```
 
 An agent calls the same operations as MCP tools on `POST /mcp`, where the tools inside a playbook take its id as `playbook`: `get_guide` serves the format of the document as the guide `reasoning-function`, the public reference page with what this server offers at its end, and a rejection comes back as `isError` with the same problem document. A retry with the same `run_id`, definition and input returns a recorded success or invalid-input rejection without calling the model. Other failures may permit another attempt, except where tool calls may already have changed something; [rejection and retry rules](#when-a-run-is-rejected) cover those cases. `update_definition` (`PUT …/definitions/reasoning/account-summary` with a new `source`) makes version 2, and `retire_definition` (`POST …/retire`) retires the function for good. The [definitions README](../../../packages/definitions/README.md) has the rules of each operation.
@@ -250,7 +250,7 @@ An agent calls the same operations as MCP tools on `POST /mcp`, where the tools 
 `scripts/try-reasoning.sh` at the root of the repository does all of this against a server that is already running, with a small reasoning function of its own, and prints the run and its record. It starts nothing, and needs `curl` and `jq`:
 
 ```bash
-scripts/try-reasoning.sh http://localhost:8080 anthropic/claude-sonnet-4-5
+scripts/try-reasoning.sh http://localhost:5555 anthropic/claude-sonnet-4-5
 ```
 
 It works in org `local`, or `AUTO_RUNTIME_ORG`, creates a playbook named `try-<seconds>`, and sends `AUTO_RUNTIME_KEY` as the API key when it is set. CI never runs it.

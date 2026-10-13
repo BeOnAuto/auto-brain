@@ -48,7 +48,7 @@ describe('isolation between orgs over HTTP', () => {
     const { handler } = await operationServer({
       authenticator: authenticatorFor({ host: '127.0.0.1', apiKeys: undefined, localMode: true }),
     });
-    const local = { host: 'localhost:8080' };
+    const local = { host: 'localhost:5555' };
 
     expect(await call(handler, '/v1/orgs/globex/playbooks/gamma/notes', { headers: local })).toMatchObject({
       status: 200,

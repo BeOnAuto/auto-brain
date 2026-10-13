@@ -33,14 +33,14 @@ jobs:
           file: packages/server/Dockerfile
           platforms: linux/${{ matrix.architecture }}
           load: true
-          tags: beonauto/runtime:ci
+          tags: onauto/runtime:ci
       - name: Measure the least data under which a model process loads a 64 MiB model and walks the widest rows
         timeout-minutes: 20
         run: |
           docker run --rm --entrypoint sh \
             --volume "$PWD/capabilities/prediction/measure:/app/capabilities/prediction/measure:ro" \
             --volume "$PWD/capabilities/prediction/candidates:/app/capabilities/prediction/candidates:ro" \
-            beonauto/runtime:ci -c '
+            onauto/runtime:ci -c '
               node capabilities/prediction/measure/large-model.ts /tmp/large.onnx
               node capabilities/prediction/measure/large-rows.ts /tmp/rows.csv
               loads() {

@@ -49,7 +49,7 @@ RUN case "$AZURE_IDENTITY" in \
 
 FROM node:26.10.0-slim@sha256:ec7758ee051e457b468b32bde57b0879010b325bb9862718e9615225ce4aaae1
 LABEL org.opencontainers.image.licenses="Elastic-2.0"
-ENV NODE_ENV=production HOST=0.0.0.0 PORT=8080
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=5555
 WORKDIR /app
 COPY --from=dependencies /app ./
 COPY LICENSE ./
@@ -83,7 +83,7 @@ RUN apt-get update \
 USER node
 RUN prlimit --core=0 --data=805306368 node --input-type=module --eval "await import('/app/capabilities/prediction/src/model-jobs/model-process.ts')"
 VOLUME /data
-EXPOSE 8080
+EXPOSE 5555
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD ["node", "-e", "fetch(`http://127.0.0.1:${process.env.PORT}/health`).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
 ENTRYPOINT ["/usr/bin/tini", "-e", "143", "--"]

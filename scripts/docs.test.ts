@@ -190,9 +190,9 @@ await test('the local quick start gives runnable setup and distinguishes local c
     'pnpm install',
     'cp .env.example .env',
     'pnpm dev',
-    'curl http://localhost:8080/health',
-    'claude mcp add --transport http auto-runtime http://localhost:8080/mcp',
-    'codex mcp add auto-runtime --url http://localhost:8080/mcp',
+    'curl http://localhost:5555/health',
+    'claude mcp add --transport http auto-runtime http://localhost:5555/mcp',
+    'codex mcp add auto-runtime --url http://localhost:5555/mcp',
   ])
     assert.ok(guide.includes(command), `Missing quick-start command: ${command}`);
   assert.ok(guide.includes('ANTHROPIC_API_KEY'));
@@ -221,7 +221,7 @@ await test('the local quick start gives runnable setup and distinguishes local c
     mcpServers: {
       'auto-runtime': {
         command: 'npx',
-        args: ['-y', 'mcp-remote@0.14.3', 'http://localhost:8080/mcp', '--allow-http', '--transport', 'http-only'],
+        args: ['-y', 'mcp-remote@0.14.3', 'http://localhost:5555/mcp', '--allow-http', '--transport', 'http-only'],
       },
     },
   });

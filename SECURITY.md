@@ -10,4 +10,4 @@ A useful report says what you found, how to reproduce it, which version or image
 
 ## Supported versions
 
-Fixes land on `main` and ship in the next release. Only the latest release of the container image (`beonauto/runtime` on Docker Hub, `ghcr.io/beonauto/runtime` on GitHub) receives security fixes, so upgrade to it before reporting if you can.
+Fixes land on `main` and ship in the next release. Only the latest release of the container image (`onauto/runtime` on Docker Hub) and of the npm package (`@on.auto/runtime`) receives security fixes, so upgrade to it before reporting if you can.

@@ -25,7 +25,7 @@ const defaultPrediction = {
 };
 
 describe('readSettings', () => {
-  it('listens on every interface at port 8080, allows no origin, has no API keys and keeps the ledger in data/ by default', () => {
+  it('listens on every interface at port 5555, allows no origin, has no API keys and keeps the ledger in data/ by default', () => {
     const { models, mcp, interaction, ...server } = readSettings({});
 
     expect(models.openai).toEqual({ configured: false, missing: ['OPENAI_API_KEY'] });
@@ -33,7 +33,7 @@ describe('readSettings', () => {
     expect(interaction).toEqual({ mostOpenRequests: 10_000 });
     expect(server).toEqual({
       host: '0.0.0.0',
-      port: 8080,
+      port: 5555,
       allowedOrigins: [],
       apiKeys: undefined,
       ledger: { store: 'sqlite', file: 'data/ledger.db' },

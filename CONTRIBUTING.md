@@ -15,7 +15,7 @@ You need Node 26 (`nvm use` reads `.nvmrc`) and pnpm 12 (`npm install --global p
 
 ```bash
 pnpm install          # also installs the git hooks
-pnpm dev              # the server on http://localhost:8080, reloading on save
+pnpm dev              # the server on http://localhost:5555, reloading on save
 pnpm test:watch       # every package's tests, rerun on save
 pnpm typecheck:watch  # TypeScript over the whole repo
 pnpm check            # everything CI checks; run it before you push

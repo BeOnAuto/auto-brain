@@ -2,14 +2,14 @@
 
 The runtime is in early development and is not ready for production use. Review [authentication and security](security.md) before exposing a deployment.
 
-Every release publishes the image to Docker Hub (`beonauto/runtime`) and GitHub Container Registry (`ghcr.io/beonauto/runtime`). A container needs two things: an [API key](security.md#api-keys), because it listens on every interface, and a place for the ledger: a volume on `/data`, where it keeps the ledger in a SQLite file, or a [PostgreSQL database](#the-ledger-in-postgresql).
+Every release publishes the image to Docker Hub as `onauto/runtime`. A container needs two things: an [API key](security.md#api-keys), because it listens on every interface, and a place for the ledger: a volume on `/data`, where it keeps the ledger in a SQLite file, or a [PostgreSQL database](#the-ledger-in-postgresql).
 
 ```bash
-docker run --rm --log-driver none beonauto/runtime:latest node packages/identity/src/key-command.ts --org acme
+docker run --rm --log-driver none onauto/runtime:latest node packages/identity/src/key-command.ts --org acme
 echo 'API_KEYS=[<the API_KEYS entry it printed>]' > auto-runtime.env
 docker volume create auto-runtime-data
-docker run --rm --publish 8080:8080 --env-file auto-runtime.env --volume auto-runtime-data:/data beonauto/runtime:latest
-curl --header 'authorization: Bearer <the key it printed>' http://localhost:8080/v1/orgs/acme/playbooks
+docker run --rm --publish 5555:5555 --env-file auto-runtime.env --volume auto-runtime-data:/data onauto/runtime:latest
+curl --header 'authorization: Bearer <the key it printed>' http://localhost:5555/v1/orgs/acme/playbooks
 ```
 
 Without a named volume, Docker gives each container a fresh anonymous volume, so its playbooks last only as long as that container.
@@ -17,16 +17,16 @@ Without a named volume, Docker gives each container a fresh anonymous volume, so
 The image reads a configuration file only when `CONFIG_FILE` names one. Mount the file read-only and name it:
 
 ```bash
-docker run --rm --publish 8080:8080 --env-file auto-runtime.env --volume auto-runtime-data:/data \
+docker run --rm --publish 5555:5555 --env-file auto-runtime.env --volume auto-runtime-data:/data \
   --volume "$PWD/auto-runtime.yaml:/etc/auto-runtime/auto-runtime.yaml:ro" --env CONFIG_FILE=/etc/auto-runtime/auto-runtime.yaml \
-  beonauto/runtime:latest
+  onauto/runtime:latest
 ```
 
 The secrets the file refers to, such as `GATEWAY_API_KEY`, go in `auto-runtime.env` with the other variables.
 
 | Variable               | Default                                                                | Purpose                                                                                                                                                                                                                                                                                                                                                         |
 | ---------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PORT`                 | `8080`                                                                 | Port the server listens on                                                                                                                                                                                                                                                                                                                                      |
+| `PORT`                 | `5555`                                                                 | Port the server listens on                                                                                                                                                                                                                                                                                                                                      |
 | `HOST`                 | `0.0.0.0`                                                              | Interface the server binds to                                                                                                                                                                                                                                                                                                                                   |
 | `CONFIG_FILE`          | none                                                                   | The [configuration file](configuration.md) to read the settings that are lists or maps from, absolute or relative to the working directory                                                                                                                                                                                                                      |
 | `ALLOWED_ORIGINS`      | none                                                                   | Comma-separated origins a browser page may call the API from, with CORS, besides the studio's; see [Calling from a browser](security.md#calling-from-a-browser); `allowed_origins` in the file                                                                                                                                                                  |
@@ -118,7 +118,7 @@ Set `DATABASE_URL` to a PostgreSQL database, and the server keeps the ledger the
 
 ```bash
 echo 'DATABASE_URL=postgresql://auto_runtime:<password>@db.example.com:5432/auto_runtime' >> auto-runtime.env
-docker run --rm --publish 8080:8080 --env-file auto-runtime.env beonauto/runtime:latest
+docker run --rm --publish 5555:5555 --env-file auto-runtime.env onauto/runtime:latest
 ```
 
 The server creates or migrates the ledger's tables in the database's `public` schema at every start, so its user needs `CREATE` on that schema at every start, not only the first; a user that may only read and write the tables fails to start with `permission denied for schema public`. It logs at start that the ledger is kept in PostgreSQL, naming the database and its host and never the URL. A database it cannot reach stops it at start, naming the host and port. The image needs nothing more for it: the PostgreSQL driver, `pg`, is pure JavaScript. Several servers may share the database: one runs the workflows and the others stand by to take them over; see [Workflow operations](workflows.md). Servers of different versions do not share a database at the same time: stop the servers of the old version before starting those of the new one. A version that keeps a new table in the ledger, such as the outcomes of runs that a playbook's analytics read, fills it from the ledger's history at its first start, before it answers, under the database's migration lock; another server starting meanwhile waits for that lock up to 60 seconds, longer than the longest fill the ledger README records, and stops only if it is still held then; start it again once the first is ready. The [ledger README](../../../packages/ledger/README.md#keyed-projections) records how long the fill takes. The [ledger README](../../../packages/ledger/README.md#postgresql) has the details and what was verified.
@@ -139,8 +139,8 @@ A database of Amazon RDS or Aurora PostgreSQL can authenticate its user with IAM
 echo 'DATABASE_URL=postgresql://auto_runtime@ledger.c9akciq32.eu-west-1.rds.amazonaws.com:5432/auto_runtime' >> auto-runtime.env
 echo 'DATABASE_CREDENTIALS=aws-iam' >> auto-runtime.env
 echo 'NODE_EXTRA_CA_CERTS=/etc/auto-runtime/rds-global-bundle.pem' >> auto-runtime.env
-docker run --rm --publish 8080:8080 --env-file auto-runtime.env \
-  --volume "$PWD/global-bundle.pem:/etc/auto-runtime/rds-global-bundle.pem:ro" beonauto/runtime:latest
+docker run --rm --publish 5555:5555 --env-file auto-runtime.env \
+  --volume "$PWD/global-bundle.pem:/etc/auto-runtime/rds-global-bundle.pem:ro" onauto/runtime:latest
 ```
 
 Each time a pool of the ledger or of the workflows opens a connection, the server signs a new token for the host, the port and the user of `DATABASE_URL`, valid for 15 minutes, with the credentials of the AWS default credential chain, as the Bedrock provider and the object store take theirs, through the outbound proxy when `NODE_USE_ENV_PROXY=1` is set; the token is the password the connection signs in with. It signs for the region the host name names, such as `eu-west-1` above, or, for a host name that names none, for `AWS_REGION`. The connection always uses TLS and checks the database's certificate and host name, as `sslmode=verify-full` does, with or without `sslmode` in the URL. The server logs at start the user and the region it signs for, never a token.

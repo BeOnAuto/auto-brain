@@ -191,7 +191,7 @@ describe('the org of /mcp without a key', () => {
     const local = await operationServer({
       authenticator: authenticatorFor({ host: '127.0.0.1', apiKeys: undefined, localMode: true }),
     });
-    const onLocalhost = { host: 'localhost:8080' };
+    const onLocalhost = { host: 'localhost:5555' };
 
     const labelled = await postMcp(
       local.handler,

@@ -10,7 +10,7 @@ A reasoning function can also call tools itself, through MCP servers the operato
 
 ## Transport and authentication
 
-Endpoints use streamable HTTP without sessions. The local quick start uses `http://localhost:8080/mcp` without an authentication header. Local mode trusts requests on your computer; do not expose it through a tunnel or public proxy.
+Endpoints use streamable HTTP without sessions. The local quick start uses `http://localhost:5555/mcp` without an authentication header. Local mode trusts requests on your computer; do not expose it through a tunnel or public proxy.
 
 An authenticated deployment supplies its own endpoint and API key. Credentials belong in the connection configuration, outside prompts and function documents.
 
