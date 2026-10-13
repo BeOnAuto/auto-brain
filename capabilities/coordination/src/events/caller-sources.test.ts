@@ -34,7 +34,7 @@ afterAll(async () => {
 
 describe('the source send_run_event gives an event sent without one', () => {
   it.each([
-    ['a signed-in person', 'person:corp/auth0|ada ü%', '/callers/person:corp%2Fauth0%7Cada%20%C3%BC%25', 1],
+    ['a signed-in person', 'person:user/ada|7 ü%', '/callers/person:user%2Fada%7C7%20%C3%BC%25', 1],
     ['the playbook itself', 'playbook:alpha', '/callers/playbook:alpha', 2],
     ['a key', "acme-ci_1.~!$&'()*+,;=@", "/callers/acme-ci_1.~!$&'()*+,;=@", 3],
   ])('percent-encodes the id of %s where RFC 3986 requires, in one path segment', async (_case, id, source, run) => {
