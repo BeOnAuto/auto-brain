@@ -8,7 +8,7 @@ import { activateVersion } from './activate-version.ts';
 const testTimeoutMs = 60_000;
 
 const signedInPerson: CallerIdentity = {
-  id: 'person:corp/auth0|ada',
+  id: 'person:user|ada',
   org: 'acme',
   permissions: allPermissions,
   playbooks: '*',
@@ -77,7 +77,7 @@ describe('the activation of a version a signed-in person asks for', { timeout: t
     expect((await modelFactsOf(playbook)).at(-1)).toMatchObject({
       type: 'version_activated',
       data: { version: 1, rule: 'requested' },
-      by: 'person:corp/auth0|ada',
+      by: 'person:user|ada',
     });
   });
 });

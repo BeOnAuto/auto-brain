@@ -18,7 +18,7 @@ import { uploadedDailyVisits } from '../testing/daily-documents.ts';
 const testTimeoutMs = 60_000;
 
 const signedInPerson: CallerIdentity = {
-  id: 'person:corp/auth0|ada',
+  id: 'person:user|ada',
   org: 'acme',
   permissions: allPermissions,
   playbooks: '*',
@@ -202,7 +202,7 @@ describe('a version a signed-in person approves', { timeout: testTimeoutMs }, ()
 
     expect((await modelFactsOf(playbook)).at(-1)).toMatchObject({
       type: 'version_activated',
-      data: { rule: 'approved', approved_by: 'person:corp/auth0|ada' },
+      data: { rule: 'approved', approved_by: 'person:user|ada' },
     });
   });
 });
