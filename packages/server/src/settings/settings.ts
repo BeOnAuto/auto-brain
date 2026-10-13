@@ -1,10 +1,10 @@
 import { configurationOf, readServerConfig, type Environment, type FileUse } from '@on.auto/config';
-import { readApiKeys, type ApiKey } from '@on.auto/identity';
 import { proxySettingsOf, type ProxySettings } from '@on.auto/outbound';
 import { Effect, Result } from 'effect';
 
 import { fileSettings, refusedKeys } from '../config-file/file-settings.ts';
 import { readFunctionSettings, type FunctionSettings } from '../function-settings/function-settings.ts';
+import { readTelemetrySettings, type TelemetrySettings } from '../telemetry/telemetry-settings.ts';
 import { readAccessSettings, type AccessSettings } from './access-settings.ts';
 import { readContentSettings, type ContentSettings } from './content-settings.ts';
 import { readLedgerSettings, type LedgerSettings } from './ledger-settings.ts';
@@ -19,11 +19,11 @@ interface ConfigFileSources {
 export interface Settings extends FunctionSettings, AccessSettings {
   readonly host: string;
   readonly port: number;
-  readonly apiKeys: readonly ApiKey[] | undefined;
   readonly ledger: LedgerSettings;
   readonly content: ContentSettings;
   readonly proxy: ProxySettings;
   readonly workflows: WorkflowSettings;
+  readonly telemetry: TelemetrySettings | undefined;
   readonly configFile: ConfigFileSources | undefined;
 }
 
@@ -34,16 +34,17 @@ function sourcesOf(file: FileUse | undefined): ConfigFileSources | undefined {
 export function readSettings(given: Environment): Settings {
   const { environment, file } = Result.getOrThrow(configurationOf(given, fileSettings, refusedKeys));
   const { host, port } = readServerConfig(environment);
-  const { allowedOrigins, localMode, logFormat, logLevel } = Effect.runSync(readAccessSettings(environment));
+  const { apiKeys, allowedOrigins, localMode, logFormat, logLevel } = Effect.runSync(readAccessSettings(environment));
   const ledger = Effect.runSync(readLedgerSettings(environment));
   const content = Effect.runSync(readContentSettings(environment));
   const functions = readFunctionSettings(environment, file);
   const workflows = Effect.runSync(readWorkflowSettings(environment));
+  const telemetry = Effect.runSync(readTelemetrySettings(environment));
   return {
     host,
     port,
     allowedOrigins,
-    apiKeys: readApiKeys(environment),
+    apiKeys,
     ledger,
     content,
     proxy: proxySettingsOf(environment),
@@ -52,6 +53,7 @@ export function readSettings(given: Environment): Settings {
     logLevel,
     ...functions,
     workflows,
+    telemetry,
     configFile: sourcesOf(file),
   };
 }

@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { optionsComposing, optionsServing } from '../testing/entries/serving-options.ts';
 import { testRoutes } from '../testing/entries/test-routes.ts';
 import { isAcceptingConnections } from '../testing/processes/accepting-connections.ts';
-import { startServer, tcpPort, defaultServerOptions, servedBy, type Served } from './lifecycle.ts';
+import { startServer, defaultServerOptions, servedBy, type Served } from './lifecycle.ts';
 
 const loopback = { HOST: '127.0.0.1', PORT: '0', LOCAL_MODE: 'true' };
 
@@ -285,15 +285,5 @@ describe('stopping a started server with connections still open', () => {
 
     expect(performance.now() - stopping).toBeLessThan(1000);
     expect(await inFlight).toBe('cut off');
-  });
-});
-
-describe('tcpPort', () => {
-  it('reads the port of a TCP address', () => {
-    expect(tcpPort({ address: '127.0.0.1', family: 'IPv4', port: 4321 })).toBe(4321);
-  });
-
-  it.each([null, '/tmp/auto-runtime.sock'])('rejects %s because it is not a TCP address', (address) => {
-    expect(() => tcpPort(address)).toThrow(new TypeError('The server is not listening on a TCP port'));
   });
 });

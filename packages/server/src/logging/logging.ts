@@ -7,6 +7,7 @@ import { Cause, Effect, Layer } from 'effect';
 
 import type { ContentSettings } from '../settings/content-settings.ts';
 import type { LedgerSettings, PostgreSQLLedgerSettings } from '../settings/ledger-settings.ts';
+import type { SignalExport, TelemetrySettings } from '../telemetry/telemetry-settings.ts';
 import { logsFrom, logsToStderr, type LogFormat, type LogLevelSetting } from './log-formats.ts';
 
 export interface LogSettings {
@@ -249,4 +250,22 @@ export function logOperatorHint({ provider, model, hint, run_id }: OperatorHintR
   return Effect.logWarning(`Model provider ${provider} could not be called: ${hint}`).pipe(
     Effect.annotateLogs({ provider, model, run_id }),
   );
+}
+
+function destinationOf(target: SignalExport | undefined): string {
+  return target === undefined ? 'off' : `${new URL(target.url).origin} over ${target.protocol}`;
+}
+
+export function logTelemetry(telemetry?: TelemetrySettings): Effect.Effect<void> {
+  return telemetry === undefined
+    ? Effect.void
+    : Effect.logInfo('Telemetry is on, exported over OTLP').pipe(
+        Effect.annotateLogs({
+          service: telemetry.serviceName,
+          traces: destinationOf(telemetry.traces),
+          metrics: destinationOf(telemetry.metrics),
+          logs: destinationOf(telemetry.logs),
+          content: telemetry.content ? 'recorded' : 'left out',
+        }),
+      );
 }

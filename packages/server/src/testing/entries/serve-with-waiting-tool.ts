@@ -13,8 +13,8 @@ await runServer<DispatcherServices>(
   process,
   {
     ...compositionRoot,
-    composed: (settings) => ({
-      ...compositionRoot.composed(settings),
+    composed: (settings, telemetry) => ({
+      ...compositionRoot.composed(settings, telemetry),
       serve: (runtime) => servedBy(routesServing([...playbookOperations, waitForever])(runtime)),
     }),
     shutdownTimeoutMs: shortShutdownTimeoutMs,

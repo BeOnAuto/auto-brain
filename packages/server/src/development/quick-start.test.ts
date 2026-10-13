@@ -7,7 +7,7 @@ import { withMcpSession, type McpSession, type ToolResult } from '@on.auto/api/t
 import { Schema } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
-import { tcpPort } from '../lifecycle/lifecycle.ts';
+import { tcpPort } from '../lifecycle/http-server.ts';
 import {
   developmentFiles,
   developmentTestTimeoutMs,

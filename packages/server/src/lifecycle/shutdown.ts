@@ -5,6 +5,7 @@ import { setTimeout } from 'node:timers/promises';
 export interface ShutdownHooks {
   readonly stopWork: () => Promise<void>;
   readonly disposeRuntime: () => Promise<void>;
+  readonly stopTelemetry: () => Promise<void>;
   readonly closeApi: () => Promise<void>;
 }
 
@@ -15,6 +16,7 @@ export async function shutDown(server: Server, hooks: ShutdownHooks, timeoutMs: 
   server.close();
   await Promise.all([Promise.race([closed, elapsed(timeoutMs)]), hooks.stopWork()]);
   await hooks.disposeRuntime();
+  await hooks.stopTelemetry();
   await hooks.closeApi();
   await Promise.race([closed, elapsed(graceMs)]);
   server.closeAllConnections();

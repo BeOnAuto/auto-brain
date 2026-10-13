@@ -18,6 +18,9 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
+    "@effect/opentelemetry": "4.0.0",
+    "@event-driven-io/emmett": "0.43.0-beta.50",
+    "@hono/otel": "1.2.0",
     "@on.auto/api": "workspace:*",
     "@on.auto/computation": "workspace:*",
     "@on.auto/config": "workspace:*",
@@ -36,7 +39,23 @@
     "@on.auto/recall": "workspace:*",
     "@on.auto/workflow-engine": "workspace:*",
     "@on.auto/workflow-host": "workspace:*",
+    "@opentelemetry/api": "1.9.1",
+    "@opentelemetry/api-logs": "0.220.0",
+    "@opentelemetry/exporter-logs-otlp-http": "0.220.0",
+    "@opentelemetry/exporter-logs-otlp-proto": "0.220.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "0.220.0",
+    "@opentelemetry/exporter-metrics-otlp-proto": "0.220.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.220.0",
+    "@opentelemetry/exporter-trace-otlp-proto": "0.220.0",
+    "@opentelemetry/instrumentation": "0.220.0",
+    "@opentelemetry/instrumentation-runtime-node": "0.33.0",
+    "@opentelemetry/instrumentation-undici": "0.30.0",
+    "@opentelemetry/resources": "2.9.0",
+    "@opentelemetry/sdk-logs": "0.220.0",
+    "@opentelemetry/sdk-metrics": "2.9.0",
+    "@opentelemetry/sdk-trace-node": "2.9.0",
     "effect": "catalog:",
+    "hono": "catalog:",
     "pg": "8.23.1"
   },
   "devDependencies": {

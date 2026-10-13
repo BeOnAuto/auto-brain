@@ -47,6 +47,7 @@ describe('readSettings', () => {
       computation: { workers: 4 },
       recall: { mostFunctions: 32, rebuildsAtOnce: 4, playbooksAtOnce: 4 },
       prediction: defaultPrediction,
+      telemetry: undefined,
       configFile: undefined,
     });
   });
@@ -95,6 +96,7 @@ describe('readSettings given every setting', () => {
       computation: { workers: 4 },
       recall: { mostFunctions: 32, rebuildsAtOnce: 4, playbooksAtOnce: 4 },
       prediction: defaultPrediction,
+      telemetry: undefined,
       configFile: undefined,
     });
   });

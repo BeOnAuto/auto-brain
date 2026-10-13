@@ -1,4 +1,5 @@
 import type { Environment } from '@on.auto/config';
+import { readApiKeys, type ApiKey } from '@on.auto/identity';
 import { Config, ConfigProvider, Effect } from 'effect';
 
 import type { LogFormat, LogLevelSetting } from '../logging/log-formats.ts';
@@ -6,6 +7,7 @@ import { InvalidSettingsError } from './invalid-settings-error.ts';
 import { Origin } from './origin.ts';
 
 export interface AccessSettings {
+  readonly apiKeys: readonly ApiKey[] | undefined;
   readonly allowedOrigins: readonly string[];
   readonly localMode: boolean;
   readonly logFormat: LogFormat;
@@ -20,7 +22,15 @@ const accessSettings = Config.all({
 });
 
 export function readAccessSettings(environment: Environment): Effect.Effect<AccessSettings, InvalidSettingsError> {
-  return accessSettings
-    .parse(ConfigProvider.fromEnvRecord(environment))
-    .pipe(Effect.mapError(({ message }: { readonly message: string }) => new InvalidSettingsError({ message })));
+  const apiKeys = readApiKeys(environment);
+  return accessSettings.parse(ConfigProvider.fromEnvRecord(environment)).pipe(
+    Effect.mapError(({ message }: { readonly message: string }) => new InvalidSettingsError({ message })),
+    Effect.map(({ allowedOrigins, localMode, logFormat, logLevel }) => ({
+      apiKeys,
+      allowedOrigins,
+      localMode,
+      logFormat,
+      logLevel,
+    })),
+  );
 }
