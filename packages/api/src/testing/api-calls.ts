@@ -29,7 +29,7 @@ const admitEveryone: Authenticator = {
   resource: undefined,
   authenticate: () =>
     Promise.resolve({
-      org: 'acme',
+      own: { id: 'anyone', org: 'acme', permissions: allPermissions, playbooks: '*' },
       callerIn: (org) => ({ id: 'anyone', org, permissions: allPermissions, playbooks: '*' }),
     }),
 };

@@ -8,7 +8,7 @@ const metadataPath = '/.well-known/oauth-protected-resource';
 
 const asAdmin = { authorization: `Bearer ${acmeAdmin.key}` };
 
-describe('the protected resource metadata, with a provider configured', () => {
+describe('the protected resource metadata, with sign-in on', () => {
   it.each([
     ['', publicUrl],
     ['/mcp', `${publicUrl}/mcp`],
@@ -68,7 +68,7 @@ describe('the paths around the protected resource metadata', () => {
   );
 });
 
-describe('the protected resource metadata, without a provider', () => {
+describe('the protected resource metadata, with sign-in off', () => {
   it('is not served, and its path needs a key as every path does', async () => {
     const { handler } = await operationServer();
 

@@ -28,8 +28,6 @@ type FetchMcp = McpHttpHandler['fetch'];
 
 const anotherPlaybook = problemOf('forbidden', 'The caller may not access this playbook');
 
-const noOrg = problemOf('forbidden', 'The caller belongs to no org');
-
 const noSuchOrg = problemOf('not_found', 'There is no such org');
 
 const noSuchPlaybook = problemOf('not_found', 'There is no such playbook in this org');
@@ -82,14 +80,10 @@ function endpoint(fetchMcp: FetchMcp, scope: OperationScope, resource: Resource)
   };
 }
 
-function ownOrgEndpoint(fetchMcp: FetchMcp, resource: Resource): RouteHandler {
+function ownOrgEndpoint(fetchMcp: FetchMcp): RouteHandler {
   return (c) => {
-    const { org, callerIn } = c.get('principal');
-    const caller = org === undefined ? undefined : callerIn(org);
-    if (caller === undefined) {
-      return refused(noOrg, resource, '/mcp');
-    }
-    return handedOff(fetchMcp, c.req.raw, { caller, org: caller.org, requestId: c.get('requestId') });
+    const { own } = c.get('principal');
+    return handedOff(fetchMcp, c.req.raw, { caller: own, org: own.org, requestId: c.get('requestId') });
   };
 }
 
@@ -103,7 +97,7 @@ export function mcpRoutes(options: McpRoutesOptions): RegisterRoutes {
     const catalog = handlerFor(catalogServerFactory(serving), options);
     const org = handlerFor(orgServerFactory(serving), options);
     const playbook = handlerFor(playbookServerFactory(serving), options);
-    routes.add('POST', '/mcp', ownOrgEndpoint(catalog.fetch, routes.resource));
+    routes.add('POST', '/mcp', ownOrgEndpoint(catalog.fetch));
     routes.add('POST', '/orgs/:org/mcp', endpoint(org.fetch, 'org', routes.resource));
     routes.add('POST', '/orgs/:org/playbooks/:playbook/mcp', endpoint(playbook.fetch, 'playbook', routes.resource));
     routes.onClose(async () => {

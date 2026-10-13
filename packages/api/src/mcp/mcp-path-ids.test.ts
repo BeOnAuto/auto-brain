@@ -2,14 +2,14 @@ import { authenticatorFor } from '@on.auto/identity';
 import { describe, expect, it } from 'vitest';
 
 import { jsonOf, postMcp } from '../testing/mcp-requests.ts';
-import { acmeAdmin, operationServer } from '../testing/operation-server.ts';
+import { acmeAdmin, acmeAlphaWriter, operationServer } from '../testing/operation-server.ts';
 import { publicUrl, signedInServer } from '../testing/signed-in.ts';
 
 const rootChallenge = `Bearer error="insufficient_scope", scope="org:read org:write playbook:read playbook:write", resource_metadata="${publicUrl}/.well-known/oauth-protected-resource"`;
 
 const asAdmin = { authorization: `Bearer ${acmeAdmin.key}` };
 
-describe('an MCP path whose org id is not one, with a provider configured', () => {
+describe('an MCP path whose org id is not one, with sign-in on', () => {
   it.each([
     ['a quotation mark', '/orgs/x%22y/mcp'],
     ['a line break and a header', '/orgs/x%0d%0aSet-Cookie:%20a=b/mcp'],
@@ -29,13 +29,11 @@ describe('an MCP path whose org id is not one, with a provider configured', () =
   });
 
   it('refuses a playbook id that is not one, outside the caller’s playbooks, naming the root metadata', async () => {
-    const { server, bearer } = await signedInServer();
+    const { server } = await signedInServer();
 
-    const answer = await postMcp(
-      server.handler,
-      '/orgs/acme/playbooks/x%22y/mcp',
-      await bearer({ groups: ['readers'] }),
-    );
+    const answer = await postMcp(server.handler, '/orgs/acme/playbooks/x%22y/mcp', {
+      authorization: `Bearer ${acmeAlphaWriter.key}`,
+    });
 
     expect(answer.status).toBe(403);
     expect(answer.headers.get('www-authenticate')).toBe(rootChallenge);

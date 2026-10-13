@@ -2,39 +2,14 @@ import { once } from 'node:events';
 import { createServer, type Server } from 'node:http';
 
 import { getRequestListener } from '@hono/node-server';
-import { authenticatorFor, issuersOf, type IdentityProvider, type IssuerRequests } from '@on.auto/identity';
+import { authenticatorFor, identityServiceOf, type IssuerRequests } from '@on.auto/identity';
 import { fakeIssuer, type Claims, type FakeClient, type FakeIssuer } from '@on.auto/identity/testing';
-import { allPermissions } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 import type { ApiHandler } from '../index.ts';
-import { acmeAdmin, operationServer, type OperationServer } from './operation-server.ts';
+import { acmeAdmin, acmeAlphaWriter, operationServer, type OperationServer } from './operation-server.ts';
 
 export const publicUrl = 'https://runtime.example';
-
-function providersAt(issuer: string): readonly IdentityProvider[] {
-  return [
-    {
-      name: 'corp',
-      issuer,
-      org: 'acme',
-      grants: {
-        claim: 'groups',
-        by: {
-          engineers: { permissions: allPermissions, playbooks: '*' },
-          readers: { permissions: ['playbook:read'], playbooks: ['alpha'] },
-        },
-      },
-    },
-    {
-      name: 'corp',
-      issuer,
-      org: 'globex',
-      membership: { claim: 'tid', value: 'globex-tenant' },
-      grants: { claim: 'groups', by: { engineers: { permissions: ['org:read', 'playbook:read'], playbooks: '*' } } },
-    },
-  ];
-}
 
 export interface SignedIn {
   readonly server: OperationServer;
@@ -43,9 +18,14 @@ export interface SignedIn {
 }
 
 async function serverOf(issuer: FakeIssuer, resource: string, requests: IssuerRequests): Promise<OperationServer> {
-  const issuers = await issuersOf({ providers: providersAt(issuer.issuer), publicUrl: resource }, requests);
+  const identityService = await identityServiceOf({ issuer: issuer.issuer, publicUrl: resource }, requests);
   return operationServer({
-    authenticator: authenticatorFor({ host: '0.0.0.0', apiKeys: [acmeAdmin.entry], localMode: false, issuers }),
+    authenticator: authenticatorFor({
+      host: '0.0.0.0',
+      apiKeys: [acmeAdmin.entry, acmeAlphaWriter.entry],
+      localMode: false,
+      identityService,
+    }),
   });
 }
 
@@ -63,8 +43,7 @@ export async function signedInServer(): Promise<SignedIn> {
         aud: publicUrl,
         iat: seconds,
         exp: seconds + 300,
-        groups: ['engineers'],
-        tid: 'globex-tenant',
+        org_id: 'acme',
         ...claims,
       })}`,
     }),

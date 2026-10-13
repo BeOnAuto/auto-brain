@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { issuerOnLoopback, signedInOnLoopback, type OnLoopback } from '../testing/signed-in.ts';
 import { toolNamesIn } from '../testing/tool-listing.ts';
 
-const clients = { 'ada-agent': { secret: 'a-secret-only-ada-holds', claims: { sub: 'ada', groups: ['engineers'] } } };
+const clients = { 'ada-agent': { secret: 'a-secret-only-ada-holds', claims: { sub: 'ada', org_id: 'acme' } } };
 
 const opened: OnLoopback<unknown>[] = [];
 
