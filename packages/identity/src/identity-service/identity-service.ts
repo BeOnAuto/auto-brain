@@ -6,7 +6,7 @@ import { keysOfIssuer } from './issuer-keys.ts';
 import { issuerRequestsOverTheNetwork, type IssuerRequests } from './issuer-requests.ts';
 import { UnusableIdentityServiceError } from './unusable-identity-service-error.ts';
 
-export const autoIdentityService = 'https://auth.on.auto';
+export const autoIdentityService = 'https://login.on.auto';
 
 export interface ProtectedResource {
   readonly publicUrl: string;
