@@ -53,6 +53,7 @@ ENV NODE_ENV=production HOST=0.0.0.0 PORT=5555
 WORKDIR /app
 COPY --from=dependencies /app ./
 COPY LICENSE ./
+COPY packages/server/container.vex.json packages/server/
 COPY docs/concepts/terminology.md docs/concepts/
 COPY docs/reference/*-format.md docs/reference/
 COPY packages/api/src packages/api/src
