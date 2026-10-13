@@ -47,11 +47,11 @@ const amendments: readonly (readonly [string, string])[] = [
   [", as a run's id they will return to.", '.'],
   [
     'may name tools that list_tool_servers lists.',
-    'may name tools that list_tool_servers lists; test_tool_call shows what a tool answers.',
+    'may name tools that search finds; execute calls one and shows what it answers, and dry_run what it would check.',
   ],
   [
     'list_models lists the models this server can call, which a reasoning function names. get_guide holds what these words mean and how each kind of definition is written.',
-    'get_guide holds what these words mean and how each kind of definition is written. A reasoning function names a model that list_models lists and may name tools that list_tool_servers lists.',
+    'get_guide holds what these words mean and how each kind of definition is written. A reasoning function names a model that list_models lists and may name tools that search finds.',
   ],
 ];
 
@@ -229,7 +229,7 @@ describe('what the instructions say of the definition types', () => {
     const withoutReasoning = definitionTypes.slice(1);
 
     expect(
-      ['list_models', 'list_tool_servers'].filter((name) =>
+      ['list_models', 'search'].filter((name) =>
         [
           instructionsFor('own org', ownOrg, withoutReasoning, recipes),
           instructionsFor('org', orgEndpoint, withoutReasoning, recipes),

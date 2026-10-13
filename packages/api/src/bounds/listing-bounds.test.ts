@@ -43,6 +43,8 @@ function starting(serving: Serving): () => void {
 
 const twoSentences = 'Asks. It answers. ';
 
+const longestArgument = 'q'.repeat(mostArgumentDescriptionCharacters);
+
 function describedIn(length: number): string {
   return `${twoSentences}${sentencesOf(length - twoSentences.length)}`;
 }
@@ -59,13 +61,13 @@ function describedWithin(extra: number, index: number): string {
   return describedIn(leastDescription + Math.min(descriptionRoom, Math.max(0, extra - descriptionRoom * index)));
 }
 
-function tellingInTheOrg(name: string, description: string) {
+function tellingInTheOrg(name: string, description: string, argument: string) {
   return defineQuery('org', {
     name,
     title: 'Tell',
     description,
     route: { method: 'GET', path: `/${name.replaceAll('_', '-')}` },
-    inputSchema: Schema.Struct({ news: Schema.optionalKey(Schema.String.annotate({ description: 'What to tell' })) }),
+    inputSchema: Schema.Struct({ news: Schema.optionalKey(Schema.String.annotate({ description: argument })) }),
     outputSchema: Schema.Struct({ told: Schema.Boolean }),
     reasons: [],
     handle: () => Effect.succeed({ told: true }),
@@ -73,9 +75,9 @@ function tellingInTheOrg(name: string, description: string) {
   });
 }
 
-function orgToolsFilled(count: number, extra: number) {
+function orgToolsFilled(count: number, extra: number, argument = 'What to tell') {
   return Array.from({ length: count }, (_, index) =>
-    tellingInTheOrg(toolNameOf('tell', index), describedWithin(extra, index)),
+    tellingInTheOrg(toolNameOf('tell', index), describedWithin(extra, index), argument),
   );
 }
 
@@ -96,25 +98,25 @@ const listings: readonly Listing[] = [
   {
     endpoint: 'own org',
     path: '/mcp',
-    most: 40_000,
+    most: 48_000,
     servingWith: (extra) => ({
       operations: [
-        ...orgToolsFilled(6, descriptionRoom * 6),
-        ...playbookToolsFilled(25, extra, 'q'.repeat(mostArgumentDescriptionCharacters)),
+        ...orgToolsFilled(6, descriptionRoom * 6, longestArgument),
+        ...playbookToolsFilled(25, extra, longestArgument),
       ],
     }),
   },
   {
     endpoint: 'org',
     path: '/orgs/acme/mcp',
-    most: 9000,
-    servingWith: (extra) => ({ operations: orgToolsFilled(8, extra) }),
+    most: 12_000,
+    servingWith: (extra) => ({ operations: orgToolsFilled(8, extra, longestArgument) }),
   },
   {
     endpoint: 'playbook',
     path: '/orgs/acme/playbooks/alpha/mcp',
-    most: 32_000,
-    servingWith: (extra) => ({ operations: playbookToolsFilled(31, extra) }),
+    most: 40_000,
+    servingWith: (extra) => ({ operations: playbookToolsFilled(31, extra, longestArgument) }),
   },
 ];
 
