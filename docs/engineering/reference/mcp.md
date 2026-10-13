@@ -8,7 +8,7 @@ The server is also an [MCP](https://modelcontextprotocol.io) server, so an agent
 {
   "mcpServers": {
     "auto-runtime": {
-      "type": "mcp",
+      "type": "http",
       "url": "http://localhost:5555/mcp",
       "headers": { "Authorization": "Bearer <key>" }
     }

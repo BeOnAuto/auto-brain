@@ -39,6 +39,7 @@ const oldWords: readonly string[] = [
   String.raw`(?i:com\.beonauto/)`,
   'mcp_server_failed',
   'mcp_server_not_configured',
+  'mcp__',
 ];
 
 const keptFolders: readonly string[] = ['docs/decisions/'];
