@@ -6,7 +6,7 @@ import type { OperationKind } from '../caller/operation-scope.ts';
 import { canAccessPlaybook } from '../caller/playbook-access.ts';
 import type { Runnable } from '../definition/registration.ts';
 import type { PlaybookRequest, OrgRequest } from '../dispatch/request.ts';
-import { PlaybookRegistry, type PlaybookStatus } from '../ledger/playbook-registry.ts';
+import { PlaybookRegistry, type LivePlaybookStatus, type PlaybookStatus } from '../ledger/playbook-registry.ts';
 import { rejected, type Rejected } from '../outcome/outcome.ts';
 import { alternatives } from '../plain-language/phrasing.ts';
 
@@ -86,5 +86,7 @@ export const confirmPlaybookTakesCall = Effect.fnUntraced(function* (
 ) {
   yield* failWith(rejectionOfOrgId(org) ?? rejectionOfPlaybookId(playbook));
   const status = yield* (yield* PlaybookRegistry).status({ org, playbook });
-  return yield* failWith(rejectionOfPlaybookStatus(status, kind, playbook));
+  yield* failWith(rejectionOfPlaybookStatus(status, kind, playbook));
+  const live: LivePlaybookStatus = status === 'retired' ? 'retired' : 'active';
+  return live;
 });

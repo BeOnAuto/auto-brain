@@ -3,6 +3,7 @@ import { Context } from 'effect';
 import { CallLineage } from '../caller/call-lineage.ts';
 import { Caller } from '../caller/caller.ts';
 import { PlaybookContext } from '../caller/playbook-context.ts';
+import { PlaybookLifecycle } from '../caller/playbook-lifecycle.ts';
 import {
   playbookBoundProjectionReader,
   playbookBoundRecordedReader,
@@ -16,13 +17,19 @@ import { PlaybookReader } from '../ledger/playbook-reader.ts';
 import { PlaybookWriter } from '../ledger/playbook-writer.ts';
 import type { PlaybookRequest } from './request.ts';
 
+export interface PlaybookBinding {
+  readonly ledger: LedgerPorts;
+  readonly lifecycle: PlaybookLifecycle['Service'];
+}
+
 export function playbookServicesOf(
   { caller, org, playbook, lineage, depth, callDepth, calledBy, trigger }: PlaybookRequest,
-  ledger: LedgerPorts,
+  { ledger, lifecycle }: PlaybookBinding,
 ) {
   const prefix = streamPrefixOfPlaybook({ org, playbook });
   const forQueries = Context.make(Caller, caller).pipe(
     Context.add(PlaybookContext, { org, playbook }),
+    Context.add(PlaybookLifecycle, lifecycle),
     Context.add(PlaybookReader, {
       ...prefixedReader(ledger, prefix),
       ...playbookBoundRecordedReader(ledger, { org, playbook }),

@@ -1,6 +1,6 @@
 export { playbookOfStreamPrefix, streamPrefixOfPlaybook, streamPrefixOfOrg } from './ledger/bound-ports.ts';
 export { PlaybookAccessSchema, canAccessPlaybook, type PlaybookAccess } from './caller/playbook-access.ts';
-export { PlaybookRegistry, type PlaybookStatus } from './ledger/playbook-registry.ts';
+export { PlaybookRegistry, type LivePlaybookStatus, type PlaybookStatus } from './ledger/playbook-registry.ts';
 export {
   boundedPage,
   mostBytesLoadedInAPage,
@@ -12,6 +12,7 @@ export {
 export { PlaybookReader } from './ledger/playbook-reader.ts';
 export { isCalendarDay } from './reading/calendar-days.ts';
 export { PlaybookContext, type PlaybookAddress } from './caller/playbook-context.ts';
+export { PlaybookLifecycle } from './caller/playbook-lifecycle.ts';
 export {
   CallLineage,
   type CallLink,

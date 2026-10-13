@@ -58,10 +58,12 @@ export function makeDispatcher(steps: readonly PipelineStep[]): Dispatcher {
       withErrorBoundary(
         Effect.gen(function* () {
           yield* authorizePlaybookCall(registration, request);
-          yield* confirmPlaybookTakesCall(registration, request);
+          const status = yield* confirmPlaybookTakesCall(registration, request);
           yield* passSteps(registration, request);
           const ledger = yield* Ledger;
-          return yield* runInPlaybook(registration, request, ledger).pipe(withoutDispatcherServices);
+          return yield* runInPlaybook(registration, request, { ledger, lifecycle: { status } }).pipe(
+            withoutDispatcherServices,
+          );
         }),
         callSummaryOf(registration.name, request, request.playbook),
       ),

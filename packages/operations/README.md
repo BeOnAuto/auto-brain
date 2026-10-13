@@ -53,10 +53,10 @@ The compiler holds a definition to these rules:
 - The handler may fail only with the rejections it declares in `reasons`: `NotFound`, `Conflict`, `Unavailable`, `InvalidInput`, `RunCancelled`, the rejection of a run that was cancelled, with the kind `requested`, `deadline`, `overrun` or `parent_ended`, answered with HTTP 409 and no `Retry-After`, `RunUnanswered`, the rejection of a run whose request nobody answered, with the kind `expired` or `undelivered`, answered with HTTP 410 and no `Retry-After`, or `Forbidden`, for an operation that authorizes its caller itself (below).
 - The handler may ask only for the services of its scope and kind:
 
-| Scope      | Query                                         | Command also gets               |
-| ---------- | --------------------------------------------- | ------------------------------- |
-| `org`      | `Caller`, `OrgContext`, `OrgReader`           | `OrgWriter`                     |
-| `playbook` | `Caller`, `PlaybookContext`, `PlaybookReader` | `PlaybookWriter`, `CallLineage` |
+| Scope      | Query                                                              | Command also gets               |
+| ---------- | ------------------------------------------------------------------ | ------------------------------- |
+| `org`      | `Caller`, `OrgContext`, `OrgReader`                                | `OrgWriter`                     |
+| `playbook` | `Caller`, `PlaybookContext`, `PlaybookLifecycle`, `PlaybookReader` | `PlaybookWriter`, `CallLineage` |
 
 When an operation is defined, it checks again what the compiler cannot see, on the encoded form of its schemas, the form that travels:
 
@@ -116,7 +116,7 @@ An org operation targets at most one playbook, and names it `playbook`. When its
 1. The caller's org must equal the org of the call, or the call is rejected with `forbidden`.
 2. The caller must hold one of the operation's `permissions`: the permission of its kind and scope, `org:read`, `org:write`, `playbook:read` or `playbook:write`, unless its definition names others, or the call is rejected with `forbidden`, whose detail names each.
 3. At playbook scope, and for an org operation that targets a playbook, the caller must have access to that playbook. A caller limited to some playbooks that calls an org operation that takes `playbook` without one is refused with the detail `The caller may access only some playbooks of this org; name one of them in playbook`, so it knows to name one; any other playbook it may not access gets `The caller may not access this playbook`.
-4. The org id must be well formed and, at playbook scope, the playbook id must be well formed and the playbook must exist, or the call is rejected with `not_found`. An ill-formed id is never echoed back. A retired playbook stays readable: a query runs on it as on an active playbook, while a command is rejected with `conflict`, kind `retired`, and the detail `The playbook <id> is retired and can no longer change`, the words `update_playbook` uses for a retired playbook.
+4. The org id must be well formed and, at playbook scope, the playbook id must be well formed and the playbook must exist, or the call is rejected with `not_found`. An ill-formed id is never echoed back. A retired playbook stays readable: a query runs on it as on an active playbook, while a command is rejected with `conflict`, kind `retired`, and the detail `The playbook <id> is retired and can no longer change`, the words `update_playbook` uses for a retired playbook. The status the dispatcher read reaches the handler as `PlaybookLifecycle`, `active` or `retired`, so a query that answers what a command would do, as `dry_run` of `@on.auto/tool-servers` does, can say that a retired playbook takes no command without reading the registry, which no handler sees.
 5. The pipeline steps run in order.
 6. The input is decoded, rejecting unknown keys and pointing at every problem, up to 100 of them. Input nested too deeply to decode is rejected the same way.
 7. The handler runs.
