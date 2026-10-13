@@ -3,7 +3,7 @@ import type { CallsEndedBecause } from '../access/tool-server-failed.ts';
 import { failedOnce, failuresEnded, shownResult, type CallTally } from '../bounds/call-bounds.ts';
 import { bytesOf } from '../bounds/text-bytes.ts';
 import { errorTextForModel, errorTextForOperator, resultText, type ToolAnswer } from '../bounds/tool-results.ts';
-import { runIdKey, toolTestIdKey } from './call-meta.ts';
+import { runIdKey, callIdKey } from './call-meta.ts';
 import type { Delivered, Forwarded, ForwardedOutcome } from './tool-calls.ts';
 
 interface ModelWords {
@@ -55,7 +55,7 @@ export function failureCounted(
     server: replying.server,
     message: errorTextForOperator(done.message, replying.scrub),
     run_id: replying.meta[runIdKey] ?? null,
-    tool_test_id: replying.meta[toolTestIdKey] ?? null,
+    call_id: replying.meta[callIdKey] ?? null,
   });
   const counted = failedOnce(tally);
   const because = done.failure === 'rate_limited' ? 'rate_limited' : 'failing';

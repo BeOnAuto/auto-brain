@@ -12,7 +12,7 @@ export const toolBounds = {
   runMs: 600_000,
   descriptionBytes: 4096,
   failureBytes: 1024,
-  testedAnswerBytes: 65_536,
+  executedAnswerBytes: 65_536,
   readAnswerBytes: 65_536,
   httpAnswerBytes: 16_777_216,
   stdioOutputBytes: 4_194_304,

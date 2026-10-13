@@ -22,7 +22,15 @@ export { brokenPromise, threadReplies } from './fake-data-tools.ts';
 export { fetchWithDeletion } from './deleting-fetch.ts';
 export { fakeApiKey, openFakeToolRun, type FakeToolRun } from './fake-tool-run.ts';
 export { recordingTimer, type RecordingTimer, type Wait } from './recording-timer.ts';
-export { toolTester, toolTests, type TestAsking, type ToolTests, type ToolTestsOptions } from './tool-test-runs.ts';
+export {
+  playbookToolCalls,
+  toolCaller,
+  toolReader,
+  type Asking,
+  type PlaybookTool,
+  type PlaybookToolCalls,
+  type WritesOptions,
+} from './playbook-tool-calls.ts';
 export {
   describedAccess,
   noToolServers,

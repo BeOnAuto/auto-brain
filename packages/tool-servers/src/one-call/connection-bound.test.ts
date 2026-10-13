@@ -23,7 +23,6 @@ const settings: StdioServerSettings = {
   org: 'acme',
   playbooks: null,
   allowed: null,
-  testable: [],
   record_content: false,
   request_id: null,
   secrets: [],

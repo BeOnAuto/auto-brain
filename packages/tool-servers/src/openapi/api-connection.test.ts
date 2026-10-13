@@ -20,7 +20,6 @@ const settings: DescribedApiSettings = {
   org: 'acme',
   playbooks: null,
   allowed: null,
-  testable: [],
   record_content: true,
   request_id: null,
   secrets: [],

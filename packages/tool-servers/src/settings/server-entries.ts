@@ -95,12 +95,6 @@ const servedFields = {
         'The tools of this server a function may name, each named as the server lists it; every tool of the server when left out',
     }),
   ),
-  testable: Schema.optionalKey(
-    Schema.Array(Schema.String).annotate({
-      description:
-        'The tools of this server test_tool_call may test although the server does not mark them read-only, each named as the server lists it and among allowed; only the tools the server marks read-only when left out',
-    }),
-  ),
   record_content: Schema.optionalKey(
     Schema.Boolean.annotate({
       description:

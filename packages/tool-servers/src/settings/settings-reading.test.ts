@@ -68,7 +68,6 @@ describe('reading an mcp server', () => {
       org: 'acme',
       playbooks: ['sales', 'support'],
       allowed: null,
-      testable: [],
       record_content: true,
       request_id: 'x-request-id',
     });

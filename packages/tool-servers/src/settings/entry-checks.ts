@@ -10,7 +10,7 @@ import type { McpServerSettings, ServerSettings, ServerType, StdioServerSettings
 import { toolListsOf } from './tool-lists.ts';
 
 type Transport<S extends ServerSettings> = S extends ServerSettings
-  ? Omit<S, 'name' | 'org' | 'playbooks' | 'allowed' | 'testable' | 'record_content' | 'request_id' | 'secrets'>
+  ? Omit<S, 'name' | 'org' | 'playbooks' | 'allowed' | 'record_content' | 'request_id' | 'secrets'>
   : never;
 
 const variableName = /^[A-Za-z_][A-Za-z0-9_]*$/u;

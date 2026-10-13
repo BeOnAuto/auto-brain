@@ -44,7 +44,6 @@ function httpSettings(url: string, changes: Partial<McpServerSettings> = {}): Mc
     org: 'acme',
     playbooks: null,
     allowed: null,
-    testable: [],
     record_content: false,
     request_id: null,
     secrets: [],
