@@ -96,7 +96,7 @@ Every problem a save finds is refused with its line, and nothing is saved.
 
 ### The input and the output
 
-The input of a run is one of two shapes. A **question** is `{ series, horizon, given? }`: the series as text of 1 to 256 bytes, one of the function's horizons, and, when the function names `given`, the value of each given feature, by its name, and no other, which the playbook feeds to every period up to the one predicted. A **build** is `{ build: {} }`, which asks for a new version.
+The input of a run is one of two shapes. A **question** is `{ series, horizon, given? }`: the series as text of 1 to 256 bytes, one of the function's horizons, and, when the function names `given`, the value of each given feature, by its name, and no other, which the playbook feeds to each of the periods ahead the model is fed. A **build** is `{ build: {} }`, which asks for a new version.
 
 A question's output is the **prediction**, `{ series, origin, period, horizon, value, low, high, coverage, version }`: `origin` is the last observed period and `period` the predicted one, each in the ISO 8601 form of the grain, `YYYY-MM-DD`, `YYYY-Www`, `YYYY-MM`, `YYYY-Qn` or `YYYY`; `value` is the 50th percentile, `low` the 10th and `high` the 90th, so `coverage` is 0.8; `version` is the version of the model that answered. A build's output is `{ version, winner, candidates }`, `version` and `winner` null when no candidate beat the baselines.
 
@@ -229,7 +229,7 @@ Saved as `send-build`, it is named in the prediction function's `source` as `thr
 
 A trainer is whoever fits the model: a person, or any agent with an environment that runs code, where it can call the runtime over HTTP, read the rows, fit a model with the libraries it needs and write the file it exports. It trains outside the playbook:
 
-1. Find the build. `list_interactions` with `to` set to the function's party, `trainer` unless `source.to` names another, lists its request, whose `run_id` is the build's and whose message names the three routes below and how to answer; with `source.through`, the request of that function's run carries the build's `run_id` and routes in its input.
+1. Find the build. `list_interactions` with `to` set to the function's party, `trainer` unless `source.to` names another, lists its request, whose `run_id` is the build's and whose message names the three routes below and how to answer; with `source.through`, the request of that function's run carries the build's `run_id` and routes in its message, as [Sending a build through an interaction function](#sending-a-build-through-an-interaction-function) says.
 2. Read the brief and the training rows over the routes below, sending the key as `Authorization: Bearer <key>`.
 3. Fit a model to the rows, as the brief and the rules say.
 4. Export it to ONNX in [the signature of a candidate](#the-signature-of-a-candidate), within 64 MiB.
