@@ -24,6 +24,7 @@ export interface ToolAccessOptions {
   readonly fetch?: LinkOptions['fetch'];
   readonly now?: () => number;
   readonly timing?: Timing;
+  readonly traceMeta?: LinkOptions['traceMeta'];
 }
 
 export interface ToolAccess {

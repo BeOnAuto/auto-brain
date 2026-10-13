@@ -9,8 +9,10 @@ import {
   boundedReport,
   errorsNoLongerReported,
   type ClientInfo,
+  tracedConnection,
   type McpConnection,
   type OutputReport,
+  type TraceMeta,
 } from './mcp-connection.ts';
 import { openStdio } from './stdio-connection.ts';
 import { tokenSource } from './token-source.ts';
@@ -31,6 +33,7 @@ export interface LinkOptions {
   readonly timer?: Timer;
   readonly timing: Timing;
   readonly reportOutput: (server: string, line: string) => void;
+  readonly traceMeta?: TraceMeta;
 }
 
 function opener(settings: McpServerSettings, options: LinkOptions): () => Promise<McpConnection> {
@@ -105,8 +108,12 @@ async function usedOrForgotten(held: HeldConnection): Promise<McpConnection> {
   }
 }
 
+function tracedOpener(open: () => Promise<McpConnection>, traceMeta?: TraceMeta): () => Promise<McpConnection> {
+  return traceMeta === undefined ? open : async () => tracedConnection(await open(), traceMeta);
+}
+
 export function serverLink(settings: McpServerSettings, options: LinkOptions): ServerLink {
-  const held = heldConnection(opener(settings, options));
+  const held = heldConnection(tracedOpener(opener(settings, options), options.traceMeta));
   let holders = 0;
   return {
     settings,

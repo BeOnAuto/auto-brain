@@ -14,6 +14,7 @@ export interface AccessOptions {
   readonly environment?: Environment;
   readonly timing?: Timing;
   readonly fetch?: ToolAccessOptions['fetch'];
+  readonly traceMeta?: ToolAccessOptions['traceMeta'];
 }
 
 export interface ReportingAccess {
@@ -25,7 +26,7 @@ export interface ReportingAccess {
 
 export function reportingAccess(
   servers: Readonly<Record<string, unknown>>,
-  { environment = {}, timing, fetch }: AccessOptions = {},
+  { environment = {}, timing, fetch, traceMeta }: AccessOptions = {},
 ): ReportingAccess {
   const messages: ServerMessage[] = [];
   const untestable: string[] = [];
@@ -44,6 +45,7 @@ export function reportingAccess(
     },
     ...(timing === undefined ? {} : { timing }),
     ...(fetch === undefined ? {} : { fetch }),
+    ...(traceMeta === undefined ? {} : { traceMeta }),
   });
   return { access, content, messages: () => [...messages], untestable: () => [...untestable] };
 }

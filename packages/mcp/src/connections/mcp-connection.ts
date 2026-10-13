@@ -17,6 +17,8 @@ export type CallSettled =
   | { readonly result: ToolResult; readonly resultJson: string; readonly observed: Observed }
   | { readonly error: unknown; readonly observed: Observed };
 
+export type TraceMeta = () => Readonly<Record<string, string>>;
+
 export interface McpConnection {
   readonly call: (calling: ToolCalling) => Promise<CallSettled>;
   readonly listTools: (timeoutMs: number) => Promise<readonly ListedTool[]>;
@@ -101,6 +103,13 @@ function contentJsonOf(answer: unknown): string {
 
 function settledOf(answer: unknown): { readonly result: ToolResult; readonly resultJson: string } {
   return { result: decodeToolResult(answer), resultJson: contentJsonOf(answer) };
+}
+
+export function tracedConnection(connection: McpConnection, traceMeta: TraceMeta): McpConnection {
+  return {
+    ...connection,
+    call: (calling) => connection.call({ ...calling, meta: { ...traceMeta(), ...calling.meta } }),
+  };
 }
 
 export function connectionOver(

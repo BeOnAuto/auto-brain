@@ -23,6 +23,7 @@ export function linkedAccess(settings: McpSettings, options: LinkedOptions): Lin
     reportOutput: (server, message) => {
       report({ server, message, run_id: null, tool_test_id: null });
     },
+    ...(options.traceMeta === undefined ? {} : { traceMeta: options.traceMeta }),
   };
   const links = new Map(settings.servers.map((server) => [server.name, serverLink(server, linkOptions)]));
   const toolsListed = untestableNoting(options.reportUntestable);
