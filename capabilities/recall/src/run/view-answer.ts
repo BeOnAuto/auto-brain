@@ -1,4 +1,4 @@
-import { checkedWorker } from '@on.auto/definitions/json-schema';
+import { checkedWorker } from '@on.auto/definitions';
 import { Conflict, type Unavailable } from '@on.auto/operations';
 import type { ProgramPool, ProgramRequest } from '@on.auto/workflow-engine/dsl';
 import type { ViewsPort } from '@on.auto/workflow-host';

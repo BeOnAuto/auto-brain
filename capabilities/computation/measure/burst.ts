@@ -1,4 +1,4 @@
-import { checkedWorker } from '@on.auto/definitions/json-schema';
+import { checkedWorker } from '@on.auto/definitions';
 import { programPool, type ProgramRequest } from '@on.auto/workflow-engine/dsl';
 
 import { computationBounds } from '../src/run/run-bounds.ts';

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import * as checkedWorkerModule from './checked-worker.ts';
-import { checkedWorker, outputCheckOf, valueChecks, viewCheckOf } from './value-checks.ts';
+import { outputCheckOf, valueChecks, viewCheckOf } from './value-checks.ts';
+import { checkedWorker } from './worker-url.ts';
 
 describe('the check of an output against the output schema', () => {
   it('names at most three issues of the output, each at its pointer', () => {
