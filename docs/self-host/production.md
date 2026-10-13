@@ -58,6 +58,8 @@ In the image, the server writes one JSON object per line to stderr, with a `leve
 
 At start the server logs where the ledger and content are kept, which model providers are configured, and the limits it runs with, and warns about anything missing; a setting it cannot read stops it, naming the setting and never its value. An error response with status `500` carries an incident id, which the server logs with the error and the request's `x-request-id`, so either id finds it; see [Troubleshooting](troubleshooting.md#error-responses).
 
+To see how requests, runs and calls of models and tools took their time, [send telemetry to an OpenTelemetry collector](telemetry.md). With telemetry on, every response carries its trace's id in `x-trace-id`, and a line the server logs while it answers a request names that trace in `trace_id`.
+
 ## Upgrades
 
 Pin a full version, such as `onauto/runtime:0.9.1`, and upgrade on purpose: read the [release notes](https://github.com/BeOnAuto/runtime/releases), pull the new tag and replace the container. The new server migrates the ledger at start.

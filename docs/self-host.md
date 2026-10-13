@@ -35,6 +35,7 @@ The ledger is the runtime's record of everything: playbooks, definitions, runs, 
 - [Model providers and gateways](self-host/models.md): credentials for each provider, gateways, aliases and allowed models
 - [Authentication and security](self-host/security.md): API keys, local mode and calls from a browser
 - [Workflow operations](self-host/workflows.md): where runs are kept, how a server stops and restarts, and how several servers share the workflows
+- [Send telemetry to an OpenTelemetry collector](self-host/telemetry.md): traces, metrics and logs over OTLP, what they record and what they leave out, and Grafana on your machine to read them
 - [Troubleshooting](self-host/troubleshooting.md): error responses and common problems
 
 ## Plan your deployment with Xolvio

@@ -15,6 +15,10 @@ Before that chain, a browser opening `/` (a `GET` that accepts `text/html`) gets
 
 A path with no route gets `404` `not_found`, and a method the path does not serve gets `405` `method_not_allowed` with an `Allow` header. Every one of these errors is an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem document.
 
+## Telemetry
+
+`ApiOptions.requests`, when given, is the first middleware of every request: the server's, which traces the request with `@hono/otel` when telemetry is on, sets the `x-trace-id` header and hands the request's span to the operation as `traceParent`. The route runs the operation under that span, `underTraceParent`, which also names the trace in the logs as `trace_id`, and an MCP tool call is a `tools/call <tool>` server span linked to the `traceparent` its `_meta` carries. The API itself takes no OpenTelemetry dependency; CORS allows `traceparent`, `tracestate` and `baggage` and exposes `x-trace-id` whether telemetry is on or not. [Decision 0024](../../docs/decisions/0024-telemetry.md) records the design.
+
 ## Over HTTP
 
 `operationRoutes` registers one route per operation. An org operation's route is relative to `/v1/orgs/{org}`, a playbook operation's to `/v1/orgs/{org}/playbooks/{playbook}`; literal segments win over parameters wherever two routes could match the same path.

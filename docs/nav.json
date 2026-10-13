@@ -90,6 +90,10 @@
         "link": "/self-host/workflows"
       },
       {
+        "text": "Telemetry",
+        "link": "/self-host/telemetry"
+      },
+      {
         "text": "Troubleshooting",
         "link": "/self-host/troubleshooting"
       }
