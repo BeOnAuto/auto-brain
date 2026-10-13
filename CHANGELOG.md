@@ -38,7 +38,7 @@
 * **definitions:** one answer fact, facts composed from every capability, an input-aware contract ([#147](https://github.com/BeOnAuto/runtime/issues/147)) ([db609dc](https://github.com/BeOnAuto/runtime/commit/db609dce22fb75b586e3d3c77ea7f814e0ce5928))
 * **global:** add README quickstart and Studio invite links ([#95](https://github.com/BeOnAuto/runtime/issues/95)) ([68b0f3b](https://github.com/BeOnAuto/runtime/commit/68b0f3b75c74095c13d4ee0af1568415b47d2278))
 * **global:** align runtime APIs and documentation around playbooks ([4e57fe2](https://github.com/BeOnAuto/runtime/commit/4e57fe280208a4c94535856923d9ab52105fee93))
-* **global:** rebuild auto-brain as a Node 26 TypeScript monorepo ([#46](https://github.com/BeOnAuto/runtime/issues/46)) ([405d04b](https://github.com/BeOnAuto/runtime/commit/405d04bd1b7b7e824c06369041273f10d28fddcf))
+* **global:** rebuild the runtime as a Node 26 TypeScript monorepo ([#46](https://github.com/BeOnAuto/runtime/issues/46)) ([405d04b](https://github.com/BeOnAuto/runtime/commit/405d04bd1b7b7e824c06369041273f10d28fddcf))
 * **inference:** call what a brain does by its functions ([#84](https://github.com/BeOnAuto/runtime/issues/84)) ([7eaf4dc](https://github.com/BeOnAuto/runtime/commit/7eaf4dcdac2cbff81b488ee4adbab54ca1f00309))
 * **inference:** execute prompts as specs ([#71](https://github.com/BeOnAuto/runtime/issues/71)) ([fda92e7](https://github.com/BeOnAuto/runtime/commit/fda92e76104f2c5b9ec15328ea98a7a8b921c1ee))
 * **inference:** list the models a server can call ([#87](https://github.com/BeOnAuto/runtime/issues/87)) ([90f3cde](https://github.com/BeOnAuto/runtime/commit/90f3cdee395765168d0cf72e8a6c600218368c64))
