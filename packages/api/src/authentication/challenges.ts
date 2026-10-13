@@ -1,11 +1,38 @@
 import type { ProtectedResource } from '@on.auto/identity';
-import { allPermissions, type Permission } from '@on.auto/operations';
+import { allPermissions, OrgIdSchema, PlaybookIdSchema, type Permission } from '@on.auto/operations';
+import { Schema } from 'effect';
 
 import { problemOf } from '../problem/problem.ts';
 
 export const metadataPath = '/.well-known/oauth-protected-resource';
 
 export const callerOfAnotherOrg = problemOf('forbidden', 'The caller does not belong to this org');
+
+const isOrgId = Schema.is(OrgIdSchema);
+
+const isPlaybookId = Schema.is(PlaybookIdSchema);
+
+export function namesAnEndpoint(org: string | undefined, playbook?: string): boolean {
+  return (org === undefined || isOrgId(org)) && (playbook === undefined || isPlaybookId(playbook));
+}
+
+export function endpointPathOf(org: string, playbook?: string): string {
+  if (!namesAnEndpoint(org, playbook)) {
+    return '';
+  }
+  return playbook === undefined ? `/orgs/${org}/mcp` : `/orgs/${org}/playbooks/${playbook}/mcp`;
+}
+
+const mcpEndpoint = /^(?:\/orgs\/([^/]+)(?:\/playbooks\/([^/]+))?)?\/mcp$/u;
+
+export function mcpEndpointPathOf(path: string): string {
+  const named = mcpEndpoint.exec(path);
+  if (named === null) {
+    return '';
+  }
+  const [, org, playbook] = named;
+  return org === undefined ? '/mcp' : endpointPathOf(org, playbook);
+}
 
 type Parameter = readonly [string, string];
 

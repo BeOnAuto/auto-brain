@@ -39,7 +39,7 @@ function providersAt(issuer: string): readonly IdentityProvider[] {
 export interface SignedIn {
   readonly server: OperationServer;
   readonly issuer: FakeIssuer;
-  readonly bearer: (claims?: Claims) => Readonly<Record<string, string>>;
+  readonly bearer: (claims?: Claims) => Promise<Readonly<Record<string, string>>>;
 }
 
 async function serverOf(issuer: FakeIssuer, resource: string, requests: IssuerRequests): Promise<OperationServer> {
@@ -56,8 +56,8 @@ export async function signedInServer(): Promise<SignedIn> {
   return {
     server,
     issuer,
-    bearer: (claims = {}) => ({
-      authorization: `Bearer ${issuer.sign({
+    bearer: async (claims = {}) => ({
+      authorization: `Bearer ${await issuer.sign({
         iss: issuer.issuer,
         sub: 'ada',
         aud: publicUrl,

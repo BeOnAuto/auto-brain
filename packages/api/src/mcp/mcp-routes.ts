@@ -1,7 +1,12 @@
 import { createMcpHandler, type McpHttpHandler } from '@modelcontextprotocol/server';
-import { allPermissions, canAccessPlaybook, type OperationScope } from '@on.auto/operations';
+import { allPermissions, canAccessPlaybook, type CallerIdentity, type OperationScope } from '@on.auto/operations';
 
-import { callerOfAnotherOrg, insufficientScope } from '../authentication/challenges.ts';
+import {
+  callerOfAnotherOrg,
+  endpointPathOf,
+  insufficientScope,
+  namesAnEndpoint,
+} from '../authentication/challenges.ts';
 import { authInfoFor, type PlaybookCall, type OrgCall } from '../hand-off/caller-hand-off.ts';
 import { droppedArgumentsOf } from '../hand-off/dropped-arguments.ts';
 import { requestBodyLimit } from '../operations/request-body.ts';
@@ -25,10 +30,32 @@ const anotherPlaybook = problemOf('forbidden', 'The caller may not access this p
 
 const noOrg = problemOf('forbidden', 'The caller belongs to no org');
 
+const noSuchOrg = problemOf('not_found', 'There is no such org');
+
+const noSuchPlaybook = problemOf('not_found', 'There is no such playbook in this org');
+
 type Resource = Routes['resource'];
 
+type Admission = { readonly caller: CallerIdentity } | { readonly refusal: Problem };
+
 function refused(problem: Problem, resource: Resource, path: string): Response {
-  return problemResponse(problem, insufficientScope(resource, allPermissions, path));
+  return problemResponse(
+    problem,
+    problem.reason === 'forbidden' ? insufficientScope(resource, allPermissions, path) : {},
+  );
+}
+
+function admissionOf(caller: CallerIdentity | undefined, org: string, playbook: string | undefined): Admission {
+  if (caller === undefined) {
+    return { refusal: callerOfAnotherOrg };
+  }
+  if (playbook !== undefined && !canAccessPlaybook(caller.playbooks, playbook)) {
+    return { refusal: anotherPlaybook };
+  }
+  if (!namesAnEndpoint(org)) {
+    return { refusal: noSuchOrg };
+  }
+  return namesAnEndpoint(org, playbook) ? { caller } : { refusal: noSuchPlaybook };
 }
 
 async function handedOff(
@@ -44,13 +71,11 @@ function endpoint(fetchMcp: FetchMcp, scope: OperationScope, resource: Resource)
   return (c) => {
     const org = String(c.req.param('org'));
     const playbook = scope === 'playbook' ? String(c.req.param('playbook')) : undefined;
-    const caller = c.get('principal').callerIn(org);
-    if (caller === undefined) {
-      return refused(callerOfAnotherOrg, resource, c.req.path);
+    const admission = admissionOf(c.get('principal').callerIn(org), org, playbook);
+    if ('refusal' in admission) {
+      return refused(admission.refusal, resource, endpointPathOf(org, playbook));
     }
-    if (playbook !== undefined && !canAccessPlaybook(caller.playbooks, playbook)) {
-      return refused(anotherPlaybook, resource, c.req.path);
-    }
+    const { caller } = admission;
     const requestId = c.get('requestId');
     const call = playbook === undefined ? { caller, org, requestId } : { caller, org, playbook, requestId };
     return handedOff(fetchMcp, c.req.raw, call);
@@ -62,7 +87,7 @@ function ownOrgEndpoint(fetchMcp: FetchMcp, resource: Resource): RouteHandler {
     const { org, callerIn } = c.get('principal');
     const caller = org === undefined ? undefined : callerIn(org);
     if (caller === undefined) {
-      return refused(noOrg, resource, c.req.path);
+      return refused(noOrg, resource, '/mcp');
     }
     return handedOff(fetchMcp, c.req.raw, { caller, org: caller.org, requestId: c.get('requestId') });
   };

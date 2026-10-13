@@ -1,9 +1,8 @@
 import type { ProtectedResource } from '@on.auto/identity';
-import { allPermissions, OrgIdSchema, PlaybookIdSchema } from '@on.auto/operations';
-import { Schema } from 'effect';
+import { allPermissions } from '@on.auto/operations';
 
 import type { RouteHandler } from '../routes.ts';
-import { metadataPath } from './challenges.ts';
+import { metadataPath, namesAnEndpoint } from './challenges.ts';
 
 const resourceDocumentation = 'https://on.auto/docs/reference/mcp';
 
@@ -13,14 +12,6 @@ export interface MetadataRoute {
 }
 
 const endpointPaths: readonly string[] = ['', '/mcp', '/orgs/:org/mcp', '/orgs/:org/playbooks/:playbook/mcp'];
-
-const isOrgId = Schema.is(OrgIdSchema);
-
-const isPlaybookId = Schema.is(PlaybookIdSchema);
-
-function namesAnEndpoint(org: string | undefined, playbook: string | undefined): boolean {
-  return (org === undefined || isOrgId(org)) && (playbook === undefined || isPlaybookId(playbook));
-}
 
 function answeredFor({ publicUrl, authorizationServers }: ProtectedResource): RouteHandler {
   return (c) =>

@@ -16,15 +16,15 @@ describe('a signed-in person over HTTP', () => {
     const { server, bearer } = await signedInServer();
 
     expect([
-      (await call(server.handler, '/v1/orgs/acme/playbooks/alpha/notes', { headers: bearer() })).status,
-      (await call(server.handler, '/v1/orgs/globex/playbooks/gamma/notes', { headers: bearer() })).status,
+      (await call(server.handler, '/v1/orgs/acme/playbooks/alpha/notes', { headers: await bearer() })).status,
+      (await call(server.handler, '/v1/orgs/globex/playbooks/gamma/notes', { headers: await bearer() })).status,
     ]).toEqual([200, 200]);
   });
 
   it('is refused a third org with 403, naming the scope of the operation and the metadata', async () => {
     const { server, bearer } = await signedInServer();
 
-    const answer = await call(server.handler, '/v1/orgs/initech/playbook-labels', { headers: bearer() });
+    const answer = await call(server.handler, '/v1/orgs/initech/playbook-labels', { headers: await bearer() });
 
     expect(answer).toMatchObject({
       status: 403,
@@ -40,7 +40,7 @@ describe('a signed-in person over HTTP', () => {
 
     const answer = await call(server.handler, '/v1/orgs/acme/playbooks/alpha/notes', {
       method: 'POST',
-      headers: { ...bearer({ groups: ['readers'] }), 'content-type': 'application/json' },
+      headers: { ...(await bearer({ groups: ['readers'] })), 'content-type': 'application/json' },
       body: '{"name":"a","text":"b"}',
     });
 
@@ -56,7 +56,7 @@ describe('a signed-in person whose grants fall short', () => {
     const { server, bearer } = await signedInServer();
 
     const answer = await call(server.handler, '/v1/orgs/acme/playbooks/alpha/notes', {
-      headers: bearer({ groups: ['visitors'] }),
+      headers: await bearer({ groups: ['visitors'] }),
     });
 
     expect(answer).toMatchObject({ status: 403, body: { reason: 'forbidden' } });
@@ -77,7 +77,7 @@ describe('a signed-in person over MCP', () => {
   it('is refused an org no entry admits them to with 403, naming every scope and the endpoint’s metadata', async () => {
     const { server, bearer } = await signedInServer();
 
-    const answer = await postMcp(server.handler, '/orgs/initech/mcp', bearer());
+    const answer = await postMcp(server.handler, '/orgs/initech/mcp', await bearer());
 
     expect(answer.status).toBe(403);
     expect(answer.headers.get('www-authenticate')).toBe(
@@ -88,7 +88,11 @@ describe('a signed-in person over MCP', () => {
   it('is refused a playbook outside their grants on a playbook endpoint', async () => {
     const { server, bearer } = await signedInServer();
 
-    const answer = await postMcp(server.handler, '/orgs/acme/playbooks/beta/mcp', bearer({ groups: ['readers'] }));
+    const answer = await postMcp(
+      server.handler,
+      '/orgs/acme/playbooks/beta/mcp',
+      await bearer({ groups: ['readers'] }),
+    );
 
     expect(answer.status).toBe(403);
     expect(answer.headers.get('www-authenticate')).toBe(
@@ -104,10 +108,10 @@ describe('the own org of a signed-in person over MCP', () => {
     const labelled = await postMcp(
       server.handler,
       '/mcp',
-      { ...bearer(), ...onTheCurrentRevision },
+      { ...(await bearer()), ...onTheCurrentRevision },
       requestOf(1, 'tools/call', { name: 'label_playbook', arguments: { playbook: 'alpha', label: 'signed-in' } }),
     );
-    const labels = await call(server.handler, '/v1/orgs/acme/playbook-labels', { headers: bearer() });
+    const labels = await call(server.handler, '/v1/orgs/acme/playbook-labels', { headers: await bearer() });
 
     expect(messagesIn(labelled)).toMatchObject([
       { result: { structuredContent: { playbook: 'alpha', label: 'signed-in' } } },
@@ -118,7 +122,7 @@ describe('the own org of a signed-in person over MCP', () => {
   it('is refused /mcp with 403 when no entry admits them', async () => {
     const { server, bearer } = await signedInServer();
 
-    const answer = await postMcp(server.handler, '/mcp', bearer({ groups: ['visitors'] }));
+    const answer = await postMcp(server.handler, '/mcp', await bearer({ groups: ['visitors'] }));
 
     expect([answer.status, JSON.parse(answer.text)]).toMatchObject([403, { detail: 'The caller belongs to no org' }]);
     expect(answer.headers.get('www-authenticate')).toBe(
@@ -141,7 +145,9 @@ describe('a request without a valid token, with a provider configured', () => {
       `Bearer resource_metadata="${rootMetadata}", scope="${everyScope}"`,
     );
   });
+});
 
+describe('a token the runtime refuses, with a provider configured', () => {
   it('is answered 401 with invalid_token for an opaque token', async () => {
     const { server } = await signedInServer();
 
@@ -149,17 +155,39 @@ describe('a request without a valid token, with a provider configured', () => {
       headers: { authorization: 'Bearer an-opaque-token' },
     });
 
-    expect(answer.status).toBe(401);
+    expect(answer).toMatchObject({
+      status: 401,
+      body: { reason: 'unauthenticated', detail: 'The access token was refused: ERR_JWT_INVALID' },
+    });
     expect(answer.headers.get('www-authenticate')).toBe(
       `Bearer error="invalid_token", resource_metadata="${rootMetadata}", scope="${everyScope}"`,
     );
   });
 
+  it.each([
+    ['no sub', { sub: undefined }, 'ERR_JWT_CLAIM_VALIDATION_FAILED on its sub claim'],
+    ['an empty sub', { sub: '' }, 'its sub is not a non-empty string of at most 256 bytes'],
+    ['an expired one', { exp: 1 }, 'ERR_JWT_EXPIRED on its exp claim'],
+  ])(
+    'says why it refused a token with %s, naming no value of it',
+    async (_case, claims: Readonly<Record<string, unknown>>, words) => {
+      const { server, bearer } = await signedInServer();
+
+      const answer = await call(server.handler, '/v1/orgs/acme/playbooks/alpha/notes', {
+        headers: await bearer(claims),
+      });
+
+      expect(answer).toMatchObject({ status: 401, body: { detail: `The access token was refused: ${words}` } });
+    },
+  );
+});
+
+describe('the audience of a token, with a provider configured', () => {
   it('is answered 401 for a token whose audience is another endpoint', async () => {
     const { server, bearer } = await signedInServer();
 
     const answer = await call(server.handler, '/v1/orgs/acme/playbooks/alpha/notes', {
-      headers: bearer({ aud: `${publicUrl}/orgs/acme/mcp` }),
+      headers: await bearer({ aud: `${publicUrl}/orgs/acme/mcp` }),
     });
 
     expect(answer.status).toBe(401);
@@ -168,7 +196,7 @@ describe('a request without a valid token, with a provider configured', () => {
   it('takes a token for the endpoint it reached', async () => {
     const { server, bearer } = await signedInServer();
 
-    const answer = await postMcp(server.handler, '/orgs/acme/mcp', bearer({ aud: `${publicUrl}/orgs/acme/mcp` }));
+    const answer = await postMcp(server.handler, '/orgs/acme/mcp', await bearer({ aud: `${publicUrl}/orgs/acme/mcp` }));
 
     expect(answer.status).toBe(200);
   });
