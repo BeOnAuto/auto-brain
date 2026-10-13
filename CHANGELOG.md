@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/BeOnAuto/runtime/compare/v0.7.0...v0.8.0) (2026-10-13)
+
+
+### Features
+
+* **server:** a compact startup screen for npx [@on](https://github.com/on).auto/runtime, with Studio the one link to follow ([#167](https://github.com/BeOnAuto/runtime/issues/167)) ([20fd114](https://github.com/BeOnAuto/runtime/commit/20fd1145c1524cf5d6cbfb403303113f43e9c704))
+
 ## [0.7.0](https://github.com/BeOnAuto/runtime/compare/v0.6.0...v0.7.0) (2026-10-13)
 
 
