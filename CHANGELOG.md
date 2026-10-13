@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/BeOnAuto/runtime/compare/v0.9.0...v0.9.1) (2026-10-13)
+
+
+### Bug Fixes
+
+* **server:** the image states the two scanner findings that do not apply to it ([#179](https://github.com/BeOnAuto/runtime/issues/179)) ([01dc4da](https://github.com/BeOnAuto/runtime/commit/01dc4da9c9f5bb5bd14df643186f798cf7774d9e))
+
 ## [0.9.0](https://github.com/BeOnAuto/runtime/compare/v0.8.0...v0.9.0) (2026-10-13)
 
 
