@@ -1,7 +1,7 @@
 # 1. Run workflows on an engine on the ledger, not on Temporal
 
 - Status: accepted, amended
-- Date: 2026-10-04, amended 2026-10-05 (see Amendments)
+- Date: 2026-10-04, amended 2026-10-05 and 2026-10-13 (see Amendments)
 
 ## Context
 
@@ -87,6 +87,10 @@ Tenant data is stored once, and a workflow needs no service beyond the server.
 - A settlement the record refuses, as when a run ends before its start recorded that the execution finishes later or while the ledger cannot be reached, is dispatched again by each sweep, and after 20 failed attempts once a minute, for ever, with a warning when the back-off begins and one when the execution is settled; the watermark stays below the run until then, and starting the execution again tries the settlement at once. Temporal retried it for about 14 minutes and then gave up.
 - The host sweeps every `ORCHESTRATION_SWEEP_INTERVAL`, one second by default: the runs due for more than a minute, up to 1,024 runs whose dispatch fell behind, and the calls recorded as running that no fiber runs. A timer fires when it is due, without waiting for a sweep. Stopping the server lets the starts and events it took finish, then cuts off the calls in flight, which start again, under the same execution id, at the next start. An answer that cannot be written is written again until it is, and a call is performed again only after a restart left its answer unwritten.
 - Timer lateness, measured over 1,000 timers: 2 to 5 ms at p99 on SQLite and 5 to 9 ms on PostgreSQL, the 9 ms in a reviewer's measurement. A run of 3,000 inputs takes 1,038 inputs a second on SQLite and 181 on PostgreSQL, a round trip to the database bounding one run's inputs there; a run whose snapshot holds 1.05 MiB takes its first input after a restart in 2.5 ms on SQLite and 22.6 ms on PostgreSQL.
+
+2026-10-13, by [decision 0012](0012-prediction-functions.md), section 16:
+
+- The hosted runtime runs the same container image as a self-hosted server, so the isolate platform this record designed for is one the product no longer targets: the single-threaded isolate for each run, its alarms, its memory of about 128 MB and its CPU for each wake-up, the 2 MB rows of its database, the hosted adapters and the question left open on a call that outlasts a wake-up. The rest of the record stands as history.
 
 ## Evidence
 

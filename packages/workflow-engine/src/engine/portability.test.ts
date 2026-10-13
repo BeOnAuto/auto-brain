@@ -160,7 +160,7 @@ const nodeOrYaml: readonly Forbidden[] = [
 ];
 
 describe('the testing entry', () => {
-  it('takes no Node module and no YAML parser, so a hosted adapter can run its probes, its driver and the scripted pool', () => {
+  it('reaches the memory adapter and the scripted pool, and takes no Node module and no YAML parser through any module it reaches', () => {
     const testingEntry = reachableFrom('testing/index.ts');
 
     expect(testingEntry).toEqual(expect.arrayContaining(['memory/memory-ports.ts', 'pool-testing/scripted-pool.ts']));

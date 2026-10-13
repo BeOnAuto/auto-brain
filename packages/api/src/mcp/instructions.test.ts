@@ -65,18 +65,27 @@ const interactionSentence =
 const answeringSentence =
   "When the person approves, rejects or otherwise answers what a run waits on, answer its request with answer_interaction, in the shape its function's answer takes, and start no new run for it.";
 
-function asServedWithFiveTypes(recordText: string): string {
+const recallSentence =
+  'Recall retrieves retained run results, definitions and events, excluding run inputs and tool calls.';
+
+const predictionSentence =
+  "A prediction function answers a question from a model a trainer built on the playbook's history, and a build, the input { build: {} }, answers started.";
+
+function asServedWithSixTypes(recordText: string): string {
   return asServedWithFourTypes(recordText)
     .replace(
       'A reasoning function has a prompt and calls a language model.',
       `A reasoning function has a prompt and calls a language model. ${interactionSentence}`,
     )
+    .replace(recallSentence, `${recallSentence} ${predictionSentence}`)
     .replace(
       'A run of a workflow answers started; get_run shows whether it ended or still waits.',
       `A run of a workflow answers started; get_run shows whether it ended or still waits. ${answeringSentence}`,
     )
     .replace('Runs, history and events come', 'Runs, history, events and requests come');
 }
+
+const typesAfterTheRecord: ReadonlySet<string> = new Set(['interaction', 'prediction']);
 
 function withoutInteraction({ orgTools, playbookTools }: ServedTools): ServedTools {
   return {
@@ -101,7 +110,7 @@ describe('the instructions of each endpoint, for a key that may call every tool'
   ] as const)(
     'read on the %s endpoint as the decision record gives them, with a sentence per type the server runs, and the run sentence and the playbook argument the bound leaves room for',
     (endpoint, served, recordText) => {
-      expect(instructionsFor(endpoint, served, definitionTypes, recipes)).toBe(asServedWithFiveTypes(recordText));
+      expect(instructionsFor(endpoint, served, definitionTypes, recipes)).toBe(asServedWithSixTypes(recordText));
     },
   );
 
@@ -112,7 +121,7 @@ describe('the instructions of each endpoint, for a key that may call every tool'
   ] as const)(
     'read on the %s endpoint of a server with the four types of the record as the record gives them, but for those two',
     (endpoint, served, recordText) => {
-      const fourTypes = definitionTypes.filter(({ type }) => type !== 'interaction');
+      const fourTypes = definitionTypes.filter(({ type }) => !typesAfterTheRecord.has(type));
 
       expect(instructionsFor(endpoint, withoutInteraction(served), fourTypes, recipes)).toBe(
         asServedWithFourTypes(recordText),
@@ -180,6 +189,19 @@ describe('instructions scoped to a playbook endpoint', () => {
     ).toContain(
       "This connection manages the playbooks of one org: create_playbook makes a playbook, and a playbook's functions and workflows are made on the playbook's own connection, /orgs/{org}/playbooks/{playbook}/mcp.",
     );
+  });
+});
+
+describe('what the instructions say of a prediction function', () => {
+  it('say, where the server runs one, that it answers a question and that its build answers started', () => {
+    const predicting = definitionTypes.filter(({ type }) => type === 'prediction');
+
+    expect(instructionsFor('playbook', playbookEndpoint, predicting, recipes)).toContain(
+      `Functions run directly or through workflows; runs belong to the playbook. ${predictionSentence} This connection acts inside one playbook.`,
+    );
+    expect(
+      instructionsFor('playbook', playbookEndpoint, definitionTypes.slice(0, 1), recipes).includes(predictionSentence),
+    ).toBe(false);
   });
 });
 

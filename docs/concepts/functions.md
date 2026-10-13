@@ -1,6 +1,6 @@
 # Functions
 
-The brain inside a playbook contains its reusable functions. The five function types are Reasoning, Computation, Prediction, Recall and Interaction. Workflows coordinate those functions around the way your business works.
+The brain inside a playbook contains its reusable functions. The five function types are Reasoning, Interaction, Prediction, Recall and Computation. Workflows coordinate those functions around the way your business works.
 
 A brain function defines a reusable operation, including its inputs, outputs and behavior. A workflow coordinates uses of those functions. The same function can be called directly by an agent or used as a step in more than one workflow. Coordination and the five function types make six capabilities; workflows are separate from the function categories.
 
@@ -12,13 +12,13 @@ The source-available runtime is in early development and is not ready for produc
 | ----------- | ----------------------- | ---------------------------------- |
 | Reasoning   | A reasoning function    | Available                          |
 | Interaction | An interaction function | Available in a self-hosted runtime |
-| Prediction  | A prediction function   | Planned                            |
+| Prediction  | A prediction function   | Available in a self-hosted runtime |
 | Recall      | A recall function       | Available in a self-hosted runtime |
 | Computation | A computation function  | Available in a self-hosted runtime |
 
 Workflows are available and coordinate the functions above. They are not another function type.
 
-Every runtime runs workflows itself, with nothing more to set up: a connection's tools include `send_run_event`, and `create_definition` accepts the type `workflow`. A self-hosted runtime runs interaction, computation and recall functions too: its `create_definition` accepts the types `interaction`, `computation` and `recall`, and its tools include `list_interactions` and `answer_interaction`; Auto Cloud does not offer them yet.
+Every runtime runs workflows itself, with nothing more to set up: a connection's tools include `send_run_event`, and `create_definition` accepts the type `workflow`. A self-hosted runtime runs interaction, prediction, recall and computation functions too: its `create_definition` accepts the types `interaction`, `prediction`, `recall` and `computation`, its tools include `list_interactions` and `answer_interaction`, and its HTTP API serves the routes a prediction function's trainer and its uploaded datasets use; Auto Cloud does not offer them yet.
 
 Dream is coming soon. It is an optional process using history and functions, not a sixth function type. API details should match the runtime version in use.
 
@@ -46,9 +46,13 @@ See [Interaction function format](../reference/interaction-format.md).
 
 ## Prediction
 
-A prediction function defines an objective and the data needed to create and use a predictive model. Prediction includes building or training that model, evaluating it, and using a ready model to estimate an outcome.
+A prediction function answers a question with numbers learned from the playbook's own history: a quantity over a grain of time, such as the orders of each region in a week, one or more periods ahead, or its total to the end of a week, a month, a quarter or a year, as a likely value with a low and a high. The model it answers from is trained outside the playbook, by a person or an agent with the skills and an environment that runs code, and the playbook decides whether that model is good enough.
 
-Keep three objects distinct: the prediction function someone defines, the predictive model it creates or uses, and the prediction returned by a run. The proposed lifecycle allows an initial call to build a model and later calls to use it, with states such as no model, building and ready.
+Keep three objects distinct: the prediction function someone defines, the predictive model a version of it holds, and the prediction a run returns.
+
+In the current runtime, a saved prediction function keeps a dataset, the rows of each series and period folded from the events its filters name, or rows uploaded for a playbook that has no history yet. A **build**, a run of the function with the input `{ build: {} }`, asks a trainer for candidate models through the playbook's inbox or an interaction function, and waits: the trainer reads a brief and the rows the playbook gives it, trains, and uploads each candidate as a model file in the ONNX format. The playbook scores each candidate on the periods the trainer never saw, against baselines it computes itself, and keeps the winner as the function's next **version**, with a **card** that says what it was built from and how it scored. A function's first version needs no shadow; a later one runs in **shadow** beside the **active version** for the periods the function names, both predicting as those periods close, and passes when it predicted at least as well. A version that passes becomes the active version by the function's rule, at once or once a person approves it. A question, a run that names a series and, unless the function predicts a total, how far ahead, is answered by the active version within its call, and each prediction is recorded with the version that made it. A model runs in a process of its own that the server bounds, never in the server itself.
+
+See [Prediction function format](../reference/prediction-format.md).
 
 ## Recall
 

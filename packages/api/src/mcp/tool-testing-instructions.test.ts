@@ -11,10 +11,10 @@ import {
 import { instructionsFor } from './instructions.ts';
 
 describe('the length of the instructions with every tool', () => {
-  it('take 1,795 characters on /mcp, 1,436 on the org endpoint and 1,746 on the playbook endpoint', () => {
+  it('take 1,947 characters on /mcp, 1,588 on the org endpoint and 1,898 on the playbook endpoint', () => {
     expect(
       everyEndpoint.map(([endpoint, served]) => instructionsFor(endpoint, served, definitionTypes, recipes).length),
-    ).toEqual([1436, 1746, 1795]);
+    ).toEqual([1588, 1898, 1947]);
   });
 });
 
@@ -57,6 +57,6 @@ describe('what the instructions say of testing a tool', () => {
     ];
 
     expect(lengths.filter((instructions) => instructions.includes('test_tool_call'))).toEqual([]);
-    expect(lengths.map(({ length }) => length)).toEqual([1472, 1509, 1406, 1469]);
+    expect(lengths.map(({ length }) => length)).toEqual([1624, 1661, 1558, 1621]);
   });
 });

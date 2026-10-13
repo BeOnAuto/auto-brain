@@ -1,6 +1,6 @@
 # 0005 — Computation functions: a brain computes with a program, deterministically and without the outside world
 
-**Status:** proposed (2026-10-05), revised twice after audit by 2026-10-06; built 2026-10-06, with the amendments at the end
+**Status:** proposed (2026-10-05), revised twice after audit by 2026-10-06; built 2026-10-06, with the amendments at the end; amended (2026-10-13) by [decision 0012](0012-prediction-functions.md): the hosted runtime runs the same image as a self-hosted server, so the adapter that was to bound a run's time and memory in an isolate describes a platform the product no longer targets, and what Auto Cloud offers stays the documentation's to say
 
 ## Context
 

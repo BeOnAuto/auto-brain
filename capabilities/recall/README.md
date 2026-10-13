@@ -31,7 +31,7 @@ The host's projector folds pages of events in the pool with `recallFolding`, who
 
 `recallBounds` holds them: 8 filters, 500 checkpoints of work for a fold and for an answer, a sandbox of 64 MiB for each view of a page and of 256 MiB for an answer, a stack of 1 MiB, a fold deadline and a run deadline of 10,000 ms, a worker heap of 256 MiB, a view of 524,288 bytes, a value depth of 512, twenty overtimes before a fold that runs past its deadline stalls, a page budget of 2,000 ms, ten pages a playbook a pass, and the defaults of the settings, 32 functions a playbook, four rebuilds a playbook and four playbooks at once. Each bound has a test that reaches it: here; in [`@on.auto/workflow-host`](../../packages/workflow-host/README.md#testing) for the projector's, the pages of a pass, the playbooks at once, the half of the pool the projector holds, the tries before a stall and the page budget, each with a smaller value of its setting so that the test fails when the bound is removed; and in the server's `src/recall` over HTTP and MCP.
 
-The hosted runtime does not offer recall functions until its adapter bounds the time and the memory of a fold and an answer, as for computation functions.
+Recall functions run in a self-hosted runtime: a run answers in a worker of the pool computation functions use, and the server that runs the workflows folds each page of a view in one, using at most half of the workers at once and at least one.
 
 ## Measurements
 

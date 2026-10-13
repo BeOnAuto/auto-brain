@@ -150,7 +150,7 @@ With `DATABASE_CREDENTIALS=aws-iam`, the server builds each connection from the 
 
 ## Content on object storage
 
-Set `CONTENT_STORE_URL` to an `s3://bucket/prefix` URL, and the server keeps the content a playbook keeps, a tool's arguments and answers among it, in that bucket, one object for each content under its playbook and its SHA-256, instead of in the ledger's database; every other record stays in the ledger. The server speaks the S3 API, so the bucket may be on any S3-compatible server:
+Set `CONTENT_STORE_URL` to an `s3://bucket/prefix` URL, and the server keeps the content a playbook keeps, a tool's arguments and answers among it, and a prediction function's uploaded datasets, the rows and the brief of each build and the model file of each version, in that bucket, one object for each content under its playbook and its SHA-256, instead of in the ledger's database; a build's candidates are staged under `<prefix>/staging/` and deleted when the build ends; every other record stays in the ledger. The server speaks the S3 API, so the bucket may be on any S3-compatible server:
 
 | Variable                                    | Purpose                                                                                                                                                                                                                                                                                         |
 | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

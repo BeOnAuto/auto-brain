@@ -19,7 +19,7 @@ Auto Runtime
 ├── Playbooks
 │   └── Paid media planning
 │       ├── Brain
-│       │   ├── Forecast signups (Prediction; planned)
+│       │   ├── Forecast signups (Prediction)
 │       │   └── Compare performance (Computation)
 │       └── Workflows
 │           ├── Monthly plan
