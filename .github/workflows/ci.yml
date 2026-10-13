@@ -291,6 +291,16 @@ jobs:
             --header "authorization: Bearer $read_key" --header 'content-type: application/json' --data '{"arguments":{}}' \
             http://127.0.0.1:5555/v1/orgs/demo/playbooks/smoke/tool-servers/graph/tools/search/execute)" = 403
           grep --quiet '"reason":"forbidden"' refused.json
+          for read in validate dry-run; do
+            test "$(answered "$read.json" \
+              --header "authorization: Bearer $read_key" --header 'content-type: application/json' --data '{"arguments":{}}' \
+              "http://127.0.0.1:5555/v1/orgs/demo/playbooks/smoke/tool-servers/graph/tools/search/$read")" = 503
+            grep --quiet '"reason":"unavailable"' "$read.json"
+            grep --quiet '"because":"tool_server_not_configured"' "$read.json"
+          done
+          call_mcp_as "$read_key" /mcp '{"jsonrpc":"2.0","id":16,"method":"tools/call","params":{"name":"introspect","arguments":{"playbook":"smoke","server":"graph","tool":"search"}}}' introspected.txt
+          grep --quiet '"isError":true' introspected.txt
+          grep --quiet 'tool_server_not_configured' introspected.txt
           call_mcp /mcp '{"jsonrpc":"2.0","id":8,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"ci","version":"1"}}}' initialized.txt
           grep --quiet 'Before writing a definition, read its format with get_guide' initialized.txt
           call_mcp /mcp '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"get_guide","arguments":{"guide":"reasoning-function"}}}' guide.txt
