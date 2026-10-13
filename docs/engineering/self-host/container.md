@@ -22,7 +22,7 @@ docker run --rm --publish 5555:5555 --env-file auto-runtime.env --volume auto-ru
   onauto/runtime:latest
 ```
 
-The secrets the file refers to, such as `GATEWAY_API_KEY`, go in `auto-runtime.env` with the other variables.
+The secrets the file refers to, such as `GATEWAY_API_KEY`, go in `auto-runtime.env` with the other variables. The OpenAPI document of an `openapi` tool server, when its entry in `tool_servers` names it by a path, is read at start from the directory of the file, so mount it there too, as `--volume "$PWD/billing.json:/etc/auto-runtime/billing.json:ro"`, or name it by an https URL the container can reach; a document the server cannot read stops the start, naming the entry.
 
 | Variable               | Default                                                                | Purpose                                                                                                                                                                                                                                                                                                                                                         |
 | ---------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -87,7 +87,7 @@ The [prediction function adapter](../../reference/prediction-format.md) keeps th
 | -------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `PREDICTION_MAX_FUNCTIONS` | `32`    | How many active prediction functions a playbook may keep, from 1 to 1000; lowering it below what a playbook keeps refuses its saves and nothing else |
 
-The [interaction function adapter](../../reference/interaction-format.md) keeps the open requests in a table of the ledger's database, written in the same transaction as each run's facts, and the server that runs the workflows performs their expiries and delivery attempts with its timers, so a request needs no other storage or schedule. A function sends its request through a tool of a server in `mcp_servers`, which it names itself, and this setting goes with it:
+The [interaction function adapter](../../reference/interaction-format.md) keeps the open requests in a table of the ledger's database, written in the same transaction as each run's facts, and the server that runs the workflows performs their expiries and delivery attempts with its timers, so a request needs no other storage or schedule. A function sends its request through a tool of a server in `tool_servers`, which it names itself, and this setting goes with it:
 
 | Variable                    | Default | Purpose                                                                                                                               |
 | --------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------- |

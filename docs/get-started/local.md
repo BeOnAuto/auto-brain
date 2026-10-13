@@ -139,12 +139,12 @@ For a second run and a comparison of the results, continue with [Build your firs
 
 ## 6. Give your playbook tools
 
-A reasoning function can use the tools of an MCP server, such as a search service. You tell Auto about the server in a settings file, `auto-runtime.yaml`, and keep the server's key in `.env`.
+A reasoning function can use the tools of a tool server, such as the MCP server of a search service. You tell Auto about the server in a settings file, `auto-runtime.yaml`, and keep the server's key in `.env`.
 
-1. Create `auto-runtime.yaml` in the directory you start Auto Runtime in, holding exactly this, with your server's address in place of the example one. It adds the server under `mcp_servers` for the org `local` that a local server uses, with a header that names the environment variable holding its key, written `${NAME}`; every tool of the server is allowed, since its entry leaves `allowed` out:
+1. Create `auto-runtime.yaml` in the directory you start Auto Runtime in, holding exactly this, with your server's address in place of the example one. It adds the server under `tool_servers` for the org `local` that a local server uses, with a header that names the environment variable holding its key, written `${NAME}`; every tool of the server is allowed, since its entry leaves `allowed` out:
 
    ```yaml
-   mcp_servers:
+   tool_servers:
      search:
        url: https://search.example.com/mcp
        headers:
@@ -161,7 +161,7 @@ A reasoning function can use the tools of an MCP server, such as a search servic
    tools to find recent news about a company and sums it up in three points.
    ```
 
-The key never goes in `auto-runtime.yaml`; the file only names the variable that holds it. [`auto-runtime.example.yaml`](https://github.com/BeOnAuto/runtime/blob/main/auto-runtime.example.yaml) shows every other setting, and the repository's [configuration guide](https://github.com/BeOnAuto/runtime/blob/main/docs/engineering/self-host/configuration.md#mcp-servers) lists every field of a server.
+The key never goes in `auto-runtime.yaml`; the file only names the variable that holds it. [`auto-runtime.example.yaml`](https://github.com/BeOnAuto/runtime/blob/main/auto-runtime.example.yaml) shows every other setting, and the repository's [configuration guide](https://github.com/BeOnAuto/runtime/blob/main/docs/engineering/self-host/configuration.md#tool-servers) lists every field of a server, an HTTP API with an OpenAPI document among them.
 
 Your agent can try a tool before a function uses it, to see what it answers. A server that marks its read-only tools needs nothing more for that. For one that marks none, add a `testable` line naming its read-only tools inside its entry in `auto-runtime.yaml`, below `org: local` and indented as that line is, then stop the server with Ctrl+C and start it again with `npx @on.auto/runtime`. For example, if the server is a Constellation gateway, whose read-only tools are search, introspect, validate and dry_run, the end of the entry reads:
 

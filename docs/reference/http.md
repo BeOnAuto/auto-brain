@@ -304,7 +304,7 @@ These routes are relative to `/v1/orgs/{org}`. `list_tool_servers` at the org ne
 | `list_tool_servers` | `GET /playbooks/{playbook}/tool-servers`                             | Playbook id in path; optional `server`            |
 | `test_tool_call`    | `POST /playbooks/{playbook}/tool-servers/{server}/tools/{tool}/test` | Server and tool in the path; optional `arguments` |
 
-`list_tool_servers` lists the MCP servers the operator of a self-hosted runtime set up for the playbook, with the tools each offers, so a [reasoning function](reasoning-format.md#tools) can name them in `tools` as `server/tool` or `server/*`. It asks each server for its tools when you call it, as a run does, within the same time to connect and to list. `server` keeps only the server of that name, and asks no other; a name that no server of the playbook has returns `invalid_input` at `/server`, so call it without `server` to see the names.
+`list_tool_servers` lists the tool servers the operator of a self-hosted runtime set up for the playbook, with the tools each offers, so a [reasoning function](reasoning-format.md#tools) can name them in `tools` as `server/tool` or `server/*`. It asks each server for its tools when you call it, as a run does, within the same time to connect and to list. `server` keeps only the server of that name, and asks no other; a name that no server of the playbook has returns `invalid_input` at `/server`, so call it without `server` to see the names.
 
 ```http
 GET /v1/orgs/acme/playbooks/sales/tool-servers
@@ -316,7 +316,7 @@ Authorization: Bearer <key>
   "tool_servers": [
     {
       "name": "graph",
-      "type": "http",
+      "type": "mcp",
       "tools": [
         {
           "name": "search",
@@ -340,7 +340,7 @@ Authorization: Bearer <key>
     {
       "name": "notes",
       "type": "stdio",
-      "unavailable": "The MCP server notes could not be used: The MCP server could not be reached",
+      "unavailable": "The tool server notes could not be used: The tool server could not be reached",
       "because": "unreachable"
     }
   ]
@@ -370,12 +370,12 @@ Authorization: Bearer <key>
 ```json
 {
   "tool_servers": [
-    { "name": "graph", "type": "http", "playbooks": ["*"], "tools": [] },
+    { "name": "graph", "type": "mcp", "playbooks": ["*"], "tools": [] },
     {
       "name": "notes",
       "type": "stdio",
       "playbooks": ["sales"],
-      "unavailable": "The MCP server notes could not be used: The MCP server could not be reached",
+      "unavailable": "The tool server notes could not be used: The tool server could not be reached",
       "because": "unreachable"
     }
   ]
