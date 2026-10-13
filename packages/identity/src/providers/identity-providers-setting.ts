@@ -108,7 +108,7 @@ function oneNamePerIssuer(providers: readonly IdentityProvider[]): true | string
     return true;
   }
   const [earlier, later] = collision;
-  return `The entry for the org ${earlier.org} names the issuer ${earlier.issuer} ${earlier.name}, and the entry for the org ${later.org} names the issuer ${later.issuer} ${later.name}; an issuer has one name, and a name one issuer`;
+  return `The entry for the org ${earlier.org} gives the name ${earlier.name} to the issuer ${earlier.issuer}, and the entry for the org ${later.org} gives the name ${later.name} to the issuer ${later.issuer}; an issuer has one name, and a name one issuer`;
 }
 
 export const IdentityProvidersSchema = Schema.Array(IdentityProviderSchema).check(

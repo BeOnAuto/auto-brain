@@ -35,6 +35,33 @@ function cutAfterStart(fake: FakeIssuer): Unreachable {
 
 const noKey = { because: 'ERR_JWKS_NO_MATCHING_KEY' };
 
+interface Answering {
+  readonly fetch: IssuerFetch;
+  readonly answerTheKeySetWith: (answer: () => Response) => void;
+  readonly asked: () => readonly string[];
+}
+
+function answeringAfterStart(fake: FakeIssuer): Answering {
+  const asked: string[] = [];
+  let keySetAnswer: (() => Response) | undefined;
+  return {
+    fetch: (request) => {
+      asked.push(new URL(request.url).pathname);
+      const answer = new URL(request.url).pathname === '/jwks' ? keySetAnswer : undefined;
+      return answer === undefined ? fake.answer(request) : Promise.resolve(answer());
+    },
+    answerTheKeySetWith: (answer) => {
+      keySetAnswer = answer;
+    },
+    asked: () => [...asked],
+  };
+}
+
+const answersThatRefuse: ReadonlyArray<readonly [string, () => Response]> = [
+  ['a redirect', () => new Response(null, { status: 302, headers: { location: 'https://login.example/elsewhere' } })],
+  ['a body over 64 KiB', () => Response.json({ keys: [], padding: 'x'.repeat(65_536) })],
+];
+
 describe('the key set of an issuer', () => {
   it('is read at start, and again for an unknown kid only once a minute has passed since the last read', async () => {
     const fake = fakeIssuer('https://login.example');
@@ -112,4 +139,22 @@ describe('the key set of an issuer that cannot be read again', () => {
     });
     expect(await callerOf(await token())).toBe('person:corp/ada');
   });
+
+  it.each(answersThatRefuse)(
+    'keeps the keys it holds when it answers %s, and follows no redirect',
+    async (_case, answer) => {
+      const fake = fakeIssuer('https://login.example');
+      const network = answeringAfterStart(fake);
+      const { issuers, token, callerOf } = await signedTokens(fake, { fetch: network.fetch });
+      network.answerTheKeySetWith(answer);
+      after(61_000);
+
+      expect(await issuers.personOf(await token({}, { kid: 'unknown' }), '/mcp')).toEqual({
+        because: 'the key set of its issuer could not be read',
+      });
+      expect(await callerOf(await token())).toBe('person:corp/ada');
+      expect(network.asked().filter((path) => path === '/jwks')).toHaveLength(2);
+      expect(network.asked()).not.toContain('/elsewhere');
+    },
+  );
 });

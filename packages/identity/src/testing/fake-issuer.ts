@@ -8,7 +8,7 @@ export type Claims = Readonly<Record<string, unknown>>;
 
 export interface Signing {
   readonly signer?: FakeSigner;
-  readonly kid?: string;
+  readonly kid?: string | null;
   readonly typ?: string | null;
 }
 
@@ -33,7 +33,10 @@ export interface FakeIssuer {
 interface FakeKey {
   readonly kid: string;
   readonly jwk: Claims;
-  readonly sign: (payload: Claims, header: { readonly kid: string; readonly typ: string | null }) => Promise<string>;
+  readonly sign: (
+    payload: Claims,
+    header: { readonly kid: string | null; readonly typ: string | null },
+  ) => Promise<string>;
 }
 
 interface KeyPair {
@@ -56,7 +59,11 @@ function keyOf(signer: FakeSigner, generation: number): FakeKey {
     jwk: { ...publicKey.export({ format: 'jwk' }), kid, alg: signer, use: 'sig' },
     sign: (payload, { kid: named, typ }) =>
       new SignJWT({ ...payload })
-        .setProtectedHeader(typ === null ? { alg: signer, kid: named } : { alg: signer, kid: named, typ })
+        .setProtectedHeader({
+          alg: signer,
+          ...(named === null ? {} : { kid: named }),
+          ...(typ === null ? {} : { typ }),
+        })
         .sign(privateKey),
   };
 }
@@ -133,7 +140,7 @@ export function fakeIssuer(issuer: string, { metadata = {}, clients = {} }: Fake
   let reads = 0;
   const signed: Sign = (claims, { signer = 'RS256', kid, typ = 'at+jwt' } = {}) => {
     const key = keys[signer];
-    return key.sign({ ...claims }, { kid: kid ?? key.kid, typ });
+    return key.sign({ ...claims }, { kid: kid === undefined ? key.kid : kid, typ });
   };
   const token = tokenEndpoint(issuer, clients, signed);
   return {

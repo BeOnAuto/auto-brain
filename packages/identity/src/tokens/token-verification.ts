@@ -1,6 +1,8 @@
 import { bytesOfReference, mostReferenceBytes } from '@on.auto/operations';
 import { Predicate, Result } from 'effect';
-import { decodeJwt, decodeProtectedHeader, errors, jwtVerify, type JWTVerifyGetKey } from 'jose';
+import { decodeJwt, errors, jwtVerify, type JWTVerifyGetKey } from 'jose';
+
+import { UnreadAnswer } from '../providers/issuer-requests.ts';
 
 export const mostTokenBytes = 8192;
 
@@ -23,12 +25,12 @@ export function isWithinTheSubjectBound(subject: string): boolean {
 }
 
 function refusalOf(error: unknown): string {
-  if (!(error instanceof errors.JOSEError)) {
-    return 'the key set of its issuer could not be read';
+  if (error instanceof errors.JOSEError) {
+    return Predicate.hasProperty(error, 'claim') && Predicate.isString(error.claim)
+      ? `${error.code} on its ${error.claim} claim`
+      : error.code;
   }
-  return Predicate.hasProperty(error, 'claim') && Predicate.isString(error.claim)
-    ? `${error.code} on its ${error.claim} claim`
-    : error.code;
+  return error instanceof UnreadAnswer ? 'the key set of its issuer could not be read' : 'it could not be verified';
 }
 
 export function claimedIssuerOf(token: string): Result.Result<string, string> {
@@ -40,9 +42,8 @@ export function claimedIssuerOf(token: string): Result.Result<string, string> {
   );
 }
 
-function typeRefusal(token: string): string | undefined {
-  const { typ } = decodeProtectedHeader(token);
-  return typ === undefined || accessTokenTypes.has(typ.toLowerCase())
+function typeRefusal(typ: unknown): string | undefined {
+  return typ === undefined || (Predicate.isString(typ) && accessTokenTypes.has(typ.toLowerCase()))
     ? undefined
     : 'its typ is not that of an access token';
 }
@@ -57,7 +58,7 @@ function claimsRefusal({ iat, sub }: Payload, now: number): string | undefined {
 }
 
 async function verified(token: string, keySet: JWTVerifyGetKey, expected: Expected): Promise<string | Payload> {
-  const { payload } = await jwtVerify(token, keySet, {
+  const { payload, protectedHeader } = await jwtVerify(token, keySet, {
     issuer: expected.issuer,
     audience: [...expected.audiences],
     algorithms: signingAlgorithms,
@@ -65,7 +66,7 @@ async function verified(token: string, keySet: JWTVerifyGetKey, expected: Expect
     requiredClaims: ['exp', 'sub'],
     currentDate: new Date(expected.now),
   });
-  return claimsRefusal(payload, expected.now) ?? payload;
+  return typeRefusal(protectedHeader.typ) ?? claimsRefusal(payload, expected.now) ?? payload;
 }
 
 export async function verifiedPayload(
@@ -74,7 +75,7 @@ export async function verifiedPayload(
   expected: Expected,
 ): Promise<Result.Result<Payload, string>> {
   try {
-    const refusal = typeRefusal(token) ?? (await verified(token, keySet, expected));
+    const refusal = await verified(token, keySet, expected);
     return typeof refusal === 'string' ? Result.fail(refusal) : Result.succeed(refusal);
   } catch (error) {
     return Result.fail(refusalOf(error));
