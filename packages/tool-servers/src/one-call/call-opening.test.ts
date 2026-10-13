@@ -54,7 +54,7 @@ describe('the opening of one call to a process that exited', () => {
   it('starts the process again before it lists its tools, and is unopened when it cannot', async () => {
     expect(await openedFor({ server: 'notes', tool: 'search' }, notStartingAgain, listing)).toEqual({
       kind: 'unopened',
-      refused: 'mcp_server_failed',
+      refused: 'tool_server_failed',
       because: 'failing',
       detail: 'The tool server notes could not be used: The notes process could not start',
     });
@@ -65,7 +65,7 @@ describe('the opening of one call', () => {
   it('gives up on a connection that does not open within the open bound, as a server that could not be reached', async () => {
     expect(await openedFor({ server: 'notes', tool: 'search' }, hanging, listing)).toEqual({
       kind: 'unopened',
-      refused: 'mcp_server_failed',
+      refused: 'tool_server_failed',
       because: 'unreachable',
       detail: 'The tool server notes could not be used: The tool server did not open a connection within 10 ms',
     });

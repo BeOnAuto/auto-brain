@@ -37,7 +37,7 @@ interface Unopened<Refused extends string, Because extends string> {
 
 export type UnopenedOnce =
   | Unopened<'tool_not_offered', NotOfferedBecause>
-  | Unopened<'mcp_server_failed', ServerFailedBecause>;
+  | Unopened<'tool_server_failed', ServerFailedBecause>;
 
 export type CalledOnce = UnopenedOnce | AnsweredOnce;
 
@@ -48,7 +48,7 @@ export function notOfferedOnce({ because, detail }: Refusal<ToolNotOffered>): Un
 }
 
 export function failedToOpenOnce({ because, detail }: Refusal<ToolServerFailed>): UnopenedOnce {
-  return { kind: 'unopened', refused: 'mcp_server_failed', because, detail: cutToFailureBound(detail) };
+  return { kind: 'unopened', refused: 'tool_server_failed', because, detail: cutToFailureBound(detail) };
 }
 
 export function answeredOnce(

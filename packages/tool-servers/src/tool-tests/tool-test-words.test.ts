@@ -80,7 +80,7 @@ const notOffered = (because: RejectionBecause) =>
 
 const remedies: ReadonlyArray<readonly [RejectionBecause, string]> = [
   [
-    'mcp_server_not_configured',
+    'tool_server_not_configured',
     'This can be put right on your side: list_tool_servers shows the tool servers this playbook may use, so a test that names one of those can be tried.',
   ],
   [
@@ -114,7 +114,7 @@ describe('the plain words of a test refused a tool it is not offered', () => {
       unsuccessfulWords(
         'test the search tool of wiki',
         'command',
-        notOffered('mcp_server_not_configured'),
+        notOffered('tool_server_not_configured'),
         words?.remedies,
       ),
     ).toBe(

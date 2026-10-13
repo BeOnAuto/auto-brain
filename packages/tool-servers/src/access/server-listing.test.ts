@@ -57,7 +57,7 @@ describe('listing the tools of a server as a run opens them', () => {
     );
 
     expect(Option.getOrUndefined(Result.getFailure(opened))).toMatchObject({
-      _tag: 'mcp_server_failed',
+      _tag: 'tool_server_failed',
       because: 'unreachable',
     });
     expect(performance.now() - began).toBeLessThan(5000);

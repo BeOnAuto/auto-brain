@@ -52,7 +52,7 @@ export async function openFakeToolRun(
     messages,
     call: (tool, input, signals, room) => {
       calls += 1;
-      const offered = Option.getOrThrow(Option.fromNullishOr(byName.get(`mcp__graph__${tool}`)));
+      const offered = Option.getOrThrow(Option.fromNullishOr(byName.get(`graph__${tool}`)));
       const request = { callId: `call-${calls}`, input, ...(room === undefined ? {} : { room }) };
       return offered.call(request, signals ?? controlledSignals());
     },

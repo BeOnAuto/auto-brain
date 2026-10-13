@@ -73,7 +73,7 @@ async function refusalOf(access: ReturnType<typeof accessTo>['access'], ...writt
 }
 
 const hashedLongName: unknown = expect.stringMatching(
-  /^mcp__graph__a_tool_whose_name_is_much_longer_than_the_s_[0-9a-f]{8}$/u,
+  /^graph__a_tool_whose_name_is_much_longer_than_the_sixty__[0-9a-f]{8}$/u,
 );
 
 describe('the tools a run is offered', () => {
@@ -86,7 +86,7 @@ describe('the tools a run is offered', () => {
     expect(access.configured).toBe(true);
     expect(tools.offered.map(({ name, description, inputSchema }) => ({ name, description, inputSchema }))).toEqual([
       {
-        name: 'mcp__graph__search',
+        name: 'graph__search',
         description: 'Finds the rows of the graph that match a query.',
         inputSchema: {
           type: 'object',
@@ -94,7 +94,7 @@ describe('the tools a run is offered', () => {
           required: ['query'],
         },
       },
-      { name: 'mcp__graph__profile', description: '', inputSchema: { type: 'object', properties: {}, required: [] } },
+      { name: 'graph__profile', description: '', inputSchema: { type: 'object', properties: {}, required: [] } },
       {
         name: hashedLongName,
         description: 'A tool whose name is longer than a provider takes.',
@@ -114,7 +114,7 @@ describe('the tools a run is offered', () => {
       await long?.call({ callId: 'call-2', input: {} }, controlledSignals()),
     ];
 
-    expect(dotted?.name).toBe('mcp__graph__graph_query_v2');
+    expect(dotted?.name).toBe('graph__graph_query_v2');
     expect(replies).toMatchObject([
       { text: 'Queried acme.', isError: false },
       { text: 'Answered from far away.', isError: false },
@@ -136,7 +136,7 @@ describe('the tools of server/*', () => {
     const allowed = await offeredBy(narrowed, 'graph/*');
 
     expect(every.offered).toHaveLength(fakeToolNames.length);
-    expect(allowed.offered.map(({ name }) => name)).toEqual(['mcp__graph__search', 'mcp__graph__echo']);
+    expect(allowed.offered.map(({ name }) => name)).toEqual(['graph__search', 'graph__echo']);
   });
 
   it('offers no tool when no server is configured', () => {
@@ -153,7 +153,7 @@ describe('a server that cannot be used', () => {
     const { access } = accessTo({ graph: graphOf(fake) });
 
     expect(await refusalOf(access, 'graph/search')).toMatchObject({
-      _tag: 'mcp_server_failed',
+      _tag: 'tool_server_failed',
       because: 'unreachable',
       detail: 'The tool server graph could not be used: The tool server could not be reached',
     });
@@ -169,8 +169,8 @@ describe('a server that cannot be used', () => {
     fake.answerNextWith(429);
     const limited = await refusalOf(access, 'graph/search');
 
-    expect(failing).toMatchObject({ _tag: 'mcp_server_failed', because: 'failing' });
-    expect(limited).toMatchObject({ _tag: 'mcp_server_failed', because: 'rate_limited' });
+    expect(failing).toMatchObject({ _tag: 'tool_server_failed', because: 'failing' });
+    expect(limited).toMatchObject({ _tag: 'tool_server_failed', because: 'rate_limited' });
     expect(other.endedSessions()).toBe(1);
     expect(other.openSessions()).toBe(0);
   });
@@ -184,7 +184,7 @@ describe('a server that cannot be used', () => {
     const failing = await refusalOf(access, 'graph/search');
     const reply = await holding.offered[0]?.call({ callId: 'call-1', input: { query: 'acme' } }, controlledSignals());
 
-    expect(failing).toMatchObject({ _tag: 'mcp_server_failed', because: 'failing' });
+    expect(failing).toMatchObject({ _tag: 'tool_server_failed', because: 'failing' });
     expect(reply).toMatchObject({ text: 'Found 2 rows for acme.', isError: false });
   });
 });

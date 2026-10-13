@@ -43,6 +43,47 @@ describe('the tools of an HTTP API', () => {
   });
 });
 
+const loopingComponents = {
+  schemas: {
+    Team: { type: 'object', properties: { lead: { $ref: '#/components/schemas/Member' } } },
+    Member: { type: 'object', properties: { team: { $ref: '#/components/schemas/Team' } } },
+    Folder: {
+      type: 'object',
+      properties: { folders: { type: 'array', items: { $ref: '#/components/schemas/Folder' } } },
+    },
+  },
+};
+
+const loopingBody = {
+  type: 'object',
+  properties: { team: { $ref: '#/components/schemas/Team' }, folder: { $ref: '#/components/schemas/Folder' } },
+};
+
+const loopingPaths = {
+  '/teams': { post: { requestBody: { content: { 'application/json': { schema: loopingBody } } } } },
+};
+
+describe('the components of an HTTP API that refer to each other or to themselves', () => {
+  it('stand alone under $defs, each once, and no object of the schema loops back on itself', () => {
+    const [operation] = toolsOf(documentOf(loopingPaths, { components: loopingComponents })).operations;
+    const schema = operation?.tool.inputSchema;
+
+    expect(schema).toEqual({
+      type: 'object',
+      properties: {
+        body: { type: 'object', properties: { team: { $ref: '#/$defs/Team' }, folder: { $ref: '#/$defs/Folder' } } },
+      },
+      additionalProperties: false,
+      $defs: {
+        Folder: { type: 'object', properties: { folders: { type: 'array', items: { $ref: '#/$defs/Folder' } } } },
+        Team: { type: 'object', properties: { lead: { $ref: '#/$defs/Member' } } },
+        Member: { type: 'object', properties: { team: { $ref: '#/$defs/Team' } } },
+      },
+    });
+    expect(JSON.parse(JSON.stringify(schema))).toEqual(schema);
+  });
+});
+
 describe('the hints and the names of the tools of an HTTP API', () => {
   it('are read-only for GET and HEAD, destructive for DELETE, idempotent for both and for PUT, and open to the world', () => {
     const tools = toolsOf(

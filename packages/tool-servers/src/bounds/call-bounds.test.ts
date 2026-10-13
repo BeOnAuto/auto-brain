@@ -16,7 +16,7 @@ import { bytesOf } from './text-bytes.ts';
 
 type Input = Readonly<Record<string, unknown>>;
 
-const asked = (callId: string, input: Input) => ({ tool: 'mcp__graph__search', callId, input });
+const asked = (callId: string, input: Input) => ({ tool: 'graph__search', callId, input });
 
 const searched = (callId: string) => asked(callId, { query: callId });
 

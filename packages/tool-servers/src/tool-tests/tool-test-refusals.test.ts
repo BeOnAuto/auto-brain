@@ -104,9 +104,9 @@ describe('a tool this playbook is not offered', () => {
         because: 'tool_not_allowed',
         detail: 'The operator of this server does not allow graph/search',
       },
-      { kind: 'tool_not_offered', because: 'mcp_server_not_configured' },
-      { kind: 'tool_not_offered', because: 'mcp_server_not_configured' },
-      { because: 'mcp_server_not_configured', detail: 'No tool server named mail is configured for this playbook' },
+      { kind: 'tool_not_offered', because: 'tool_server_not_configured' },
+      { kind: 'tool_not_offered', because: 'tool_server_not_configured' },
+      { because: 'tool_server_not_configured', detail: 'No tool server named mail is configured for this playbook' },
     ]);
     expect(fake.seen()).toEqual([]);
   });
@@ -145,7 +145,7 @@ describe('a tool server that cannot be used', () => {
     expect([unreachable, failing, limited, refused]).toMatchObject(
       ['unreachable', 'failing', 'rate_limited', 'key_refused'].map((because) => ({
         reason: 'unavailable',
-        kind: 'mcp_server_failed',
+        kind: 'tool_server_failed',
         because,
       })),
     );
@@ -163,7 +163,7 @@ describe('the words of a tool server that cannot be used for a test', () => {
 
     expect(refused).toMatchObject({
       reason: 'unavailable',
-      kind: 'mcp_server_failed',
+      kind: 'tool_server_failed',
       because: 'failing',
       detail: `The tool server graph could not be used: ${refusal}`.slice(0, toolBounds.failureBytes),
     });

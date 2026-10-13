@@ -40,7 +40,7 @@ const unsent: CallReply = {
 };
 
 const search: OfferedTool = {
-  name: 'mcp__graph__search',
+  name: 'graph__search',
   description: 'Finds the rows of the graph that match a query.',
   inputSchema: { type: 'object' },
   annotations: { readOnlyHint: true },

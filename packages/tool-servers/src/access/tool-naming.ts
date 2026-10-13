@@ -43,7 +43,7 @@ const disjunction = new Intl.ListFormat('en', { style: 'long', type: 'disjunctio
 function notConfigured(named: readonly ToolReference[]): ToolNotOffered {
   const servers = disjunction.format(new Set(named.map(({ server }) => server)));
   return new ToolNotOffered({
-    because: 'mcp_server_not_configured',
+    because: 'tool_server_not_configured',
     detail: `No tool server named ${servers} is configured for this playbook`,
   });
 }

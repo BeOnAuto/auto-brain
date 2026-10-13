@@ -27,6 +27,10 @@ function failed(status: number): boolean {
   return status === 401 || status === 429 || status >= 500;
 }
 
+function redirected(status: number): boolean {
+  return status >= 300 && status < 400;
+}
+
 function mediaTypeOf(response: Readonly<Response>): string | undefined {
   const written = response.headers.get('content-type')?.split(';', 1).join('').trim().toLowerCase();
   return written === undefined || written === '' ? undefined : written;
@@ -79,17 +83,29 @@ function settled(answer: Answer, observed: Observed): CallSettled {
   return { result: decodeToolResult(answer), resultJson: JSON.stringify(kept), observed };
 }
 
+function unreadAnswer(status: number, mediaType: string | undefined): Answer {
+  return redirected(status)
+    ? {
+        content: [
+          { type: 'text', text: `The tool server answered a redirect, HTTP ${status}, which a call does not follow` },
+        ],
+        isError: true,
+      }
+    : { content: [{ type: 'binary', ...(mediaType === undefined ? {} : { mimeType: mediaType }) }] };
+}
+
+function leftUnread(status: number, mediaType: string | undefined, hasBody: boolean): boolean {
+  return failed(status) || redirected(status) || (status < 300 && !isShown(mediaType) && hasBody);
+}
+
 export async function settledOf(response: Readonly<Response>, answering: Answering): Promise<CallSettled> {
   const mediaType = mediaTypeOf(response);
-  if (failed(response.status) || (response.status < 300 && !isShown(mediaType) && response.body !== null)) {
+  if (leftUnread(response.status, mediaType, response.body !== null)) {
     await response.body?.cancel();
     const observed = observedOf(response, answering, false);
     return failed(response.status)
       ? { error: new AnsweredStatus(response.status), observed }
-      : settled(
-          { content: [{ type: 'binary', ...(mediaType === undefined ? {} : { mimeType: mediaType }) }] },
-          observed,
-        );
+      : settled(unreadAnswer(response.status, mediaType), observed);
   }
   let tooLarge = false;
   try {
