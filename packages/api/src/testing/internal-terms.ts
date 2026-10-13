@@ -13,7 +13,7 @@ export const internalTerms: readonly RegExp[] = [
   /\bfront matter\b/iu,
   /\benums?\b/iu,
   /\bidempotent\b/iu,
-  /\b[1-5]\d{2}\b/u,
+  /(?<![\d,])(?<!\d\.)\b[1-5]\d{2}\b(?!\.\d|[\d,]|\s?(?:ms|s|m|h|d|%|KiB|MiB|GiB|bytes|rows|events|series|periods|tokens|times)\b)/u,
   /\b[A-Z][A-Z0-9]*_[A-Z0-9_]+\b/u,
   /\b[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}\b/iu,
   /\S\/\S/u,
