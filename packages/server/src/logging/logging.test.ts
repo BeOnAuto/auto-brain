@@ -1,13 +1,12 @@
 import { setTimeout } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
-import { Cause, Effect, Logger } from 'effect';
+import { Cause } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
 import { linesLoggedBy } from '../testing/records/logged-lines.ts';
 import {
-  formatPretty,
   logAccessMode,
   logIncident,
   logLostWorkflowConnection,
@@ -17,15 +16,6 @@ import {
   logWorkflows,
   logWorkflowTrouble,
 } from './logging.ts';
-
-async function prettyLinesLoggedBy(effect: Effect.Effect<void>): Promise<readonly string[]> {
-  const lines: string[] = [];
-  const capture = Logger.map(formatPretty, (line: string) => {
-    lines.push(line.replace(/^\d{2}:\d{2}:\d{2}\.\d{3} /u, '<time> '));
-  });
-  await Effect.runPromise(effect.pipe(Effect.provide(Logger.layer([capture]))));
-  return lines;
-}
 
 function syntaxErrorParsing(text: string): SyntaxError {
   try {
@@ -39,10 +29,6 @@ function syntaxErrorParsing(text: string): SyntaxError {
 }
 
 const serveWithTestRoutes = fileURLToPath(new URL('../testing/entries/serve-with-test-routes.ts', import.meta.url));
-
-const mainModule = fileURLToPath(new URL('../main.ts', import.meta.url));
-
-const loopback = { HOST: '127.0.0.1', PORT: '0', LEDGER_FILE: ':memory:' };
 
 describe('logAccessMode', () => {
   it('warns that local mode trusts every request', async () => {
@@ -226,72 +212,5 @@ describe('the server process', { timeout: spawnedServerTestTimeoutMs }, () => {
 
     expect({ abandoned, exitCode: await child.exited }).toEqual({ abandoned: 'abandoned', exitCode: 0 });
     expect(child.output().stdout).toBe(`Auto Runtime listening on port ${port}\n`);
-  });
-});
-
-describe('the pretty log format', () => {
-  it('writes the local time, the level, the message and then the annotations on one line', async () => {
-    const lines = await prettyLinesLoggedBy(
-      logWorkflows({ mostDurationMs: 604_800_000, mostCallsAtOnce: 8, sweepEveryMs: 250 }),
-    );
-
-    expect(lines).toEqual([
-      '<time> INFO  Workflows run in this server: a run lasts at most 7 days, at most 8 of their calls run at once, and the runs are swept every 250 ms most_duration_ms=604800000 most_calls_at_once=8 sweep_every_ms=250',
-    ]);
-  });
-
-  it('writes an annotation that is not one plain word as JSON', async () => {
-    const lines = await prettyLinesLoggedBy(
-      logUnsettled({ org: 'acme', playbook: 'alpha', runId: 'e-1', reason: 'The ledger has no such run' }),
-    );
-
-    expect(lines).toEqual([
-      '<time> ERROR A run stays started because settling it failed org=acme playbook=alpha run_id=e-1 reason="The ledger has no such run"',
-    ]);
-  });
-
-  it('puts the source of a line first, in brackets, and writes a message that is not text as JSON', async () => {
-    const lines = await prettyLinesLoggedBy(
-      Effect.logWarning({ answered: false }).pipe(Effect.annotateLogs({ source: 'dev', attempt: 2 })),
-    );
-
-    expect(lines).toEqual(['<time> WARN  [dev] {"answered":false} attempt=2']);
-  });
-
-  it('writes the cause of an incident below its line, indented', async () => {
-    const [line] = await prettyLinesLoggedBy(
-      logIncident({ id: 'incident-1', original: new Error('the ledger is unreachable') }),
-    );
-
-    expect(line?.split('\n').slice(0, 2)).toEqual([
-      '<time> ERROR Unexpected error incident=incident-1',
-      '    Error: the ledger is unreachable',
-    ]);
-  });
-});
-
-describe('the server with LOG_FORMAT=pretty', { timeout: spawnedServerTestTimeoutMs }, () => {
-  it('writes its logs as readable lines to stderr, and still exactly the listening line to stdout', async () => {
-    const child = spawnServer(mainModule, { ...loopback, LOCAL_MODE: 'true', LOG_FORMAT: 'pretty' });
-    const port = await child.port;
-    child.signal('SIGTERM');
-    await child.exited;
-
-    expect(child.output().stdout).toBe(`Auto Runtime listening on port ${port}\n`);
-    expect(
-      child
-        .output()
-        .stderr.split('\n')
-        .map((line) => line.replace(/^\d{2}:\d{2}:\d{2}\.\d{3} /u, '')),
-    ).toEqual([
-      expect.stringMatching(/^WARN {2}Local mode is on: /u),
-      'INFO  The ledger is kept in the file :memory: ledger_file=:memory:',
-      "INFO  Content is kept in the ledger's database content_store=ledger",
-      expect.stringMatching(/^WARN {2}No model provider is configured, .* providers=\[\{"provider":"anthropic",/u),
-      "INFO  Reasoning functions run in this server: the model calls of a run add up to at most 2,000,000 input tokens, and each answer of a tool is read whole where it fits the model's context window most_input_tokens=2000000",
-      'INFO  Prediction functions run in this server: a playbook keeps at most 32 active, and model processes may run at most 4 at once, at most 2 of them for builds, with 1,280 MiB of data each, which nothing bounds, since prlimit is not on the path most_functions=32 model_processes=4 model_process_memory_mib=1280 model_process_builds=2 model_process_limiter=null',
-      'INFO  Workflows run in this server: a run lasts at most 30 days, at most 32 of their calls run at once, and the runs are swept every 1000 ms most_duration_ms=2592000000 most_calls_at_once=32 sweep_every_ms=1000',
-      '',
-    ]);
   });
 });

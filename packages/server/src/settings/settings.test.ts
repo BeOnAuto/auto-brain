@@ -32,6 +32,7 @@ describe('readSettings', () => {
       proxy: { enabled: false, environment: {} },
       localMode: false,
       logFormat: 'json',
+      logLevel: 'info',
       reasoning: { mostInputTokens: 2_000_000 },
       workflows: { mostDurationMs: 2_592_000_000, mostCallsAtOnce: 32, mostOpenCalls: 1000, sweepEveryMs: 1000 },
       computation: { workers: 4 },
@@ -55,6 +56,7 @@ describe('readSettings given every setting', () => {
       HTTPS_PROXY: 'http://proxy.internal:3128',
       LOCAL_MODE: 'true',
       LOG_FORMAT: 'pretty',
+      LOG_LEVEL: 'warn',
       OPENAI_API_KEY: 'sk-test',
       INTERACTION_OPEN_REQUESTS: '250',
       REASONING_MAX_INPUT_TOKENS: '500000',
@@ -78,6 +80,7 @@ describe('readSettings given every setting', () => {
       proxy: { enabled: true, environment: { HTTPS_PROXY: 'http://proxy.internal:3128' } },
       localMode: true,
       logFormat: 'pretty',
+      logLevel: 'warn',
       reasoning: { mostInputTokens: 500_000 },
       workflows: { mostDurationMs: 2_592_000_000, mostCallsAtOnce: 32, mostOpenCalls: 1000, sweepEveryMs: 1000 },
       computation: { workers: 4 },
@@ -98,6 +101,7 @@ describe('readSettings with empty values', () => {
         CONTENT_STORE_URL: '',
         LOCAL_MODE: '',
         LOG_FORMAT: '',
+        LOG_LEVEL: '',
         INTERACTION_OPEN_REQUESTS: '',
       }),
     ).toMatchObject({
@@ -108,11 +112,32 @@ describe('readSettings with empty values', () => {
       content: { store: 'ledger' },
       localMode: false,
       logFormat: 'json',
+      logLevel: 'info',
     });
   });
 
   it.each([' ', '\t', '  \n  '])('treats API_KEYS=%j, only whitespace, as no API keys', (keys) => {
     expect(readSettings({ API_KEYS: keys })).toMatchObject({ apiKeys: undefined });
+  });
+});
+
+describe('readSettings rejects invalid log settings', () => {
+  it.each(['text', 'JSON', 'logfmt'])('rejects LOG_FORMAT="%s", naming the formats it accepts', (value) => {
+    const error = errorFrom({ LOG_FORMAT: value });
+
+    expect(error).toMatchObject({ name: 'InvalidSettingsError' });
+    expect(String(error)).toBe(
+      'InvalidSettingsError: SchemaError(Expected "json" | "pretty" | "console"\n  at ["LOG_FORMAT"])',
+    );
+  });
+
+  it.each(['verbose', 'WARN', 'trace'])('rejects LOG_LEVEL="%s", naming the levels it accepts', (value) => {
+    const error = errorFrom({ LOG_LEVEL: value });
+
+    expect(error).toMatchObject({ name: 'InvalidSettingsError' });
+    expect(String(error)).toBe(
+      'InvalidSettingsError: SchemaError(Expected "debug" | "info" | "warn" | "error"\n  at ["LOG_LEVEL"])',
+    );
   });
 });
 
@@ -139,13 +164,6 @@ describe('readSettings rejects invalid settings', () => {
 
     expect(error).toMatchObject({ name: 'InvalidSettingsError' });
     expect(String(error)).toContain('LOCAL_MODE');
-  });
-
-  it.each(['text', 'JSON', 'logfmt'])('rejects LOG_FORMAT="%s", naming the formats it accepts', (value) => {
-    const error = errorFrom({ LOG_FORMAT: value });
-
-    expect(error).toMatchObject({ name: 'InvalidSettingsError' });
-    expect(String(error)).toBe('InvalidSettingsError: SchemaError(Expected "json" | "pretty"\n  at ["LOG_FORMAT"])');
   });
 
   it('rejects invalid API keys with the named error from the identity settings', () => {

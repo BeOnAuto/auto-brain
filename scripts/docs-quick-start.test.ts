@@ -12,7 +12,7 @@ await test('the local quick start connects an agent and runs a first function wi
   assert.match(guide, /^# Quick start: connect your agent$/mu);
   assert.ok(guide.includes('Start Auto Runtime on your computer and connect Claude Code, Claude Desktop or Codex.'));
   const walkthrough = [
-    'pnpm dev\n',
+    'npx @on.auto/runtime\n',
     'curl http://localhost:5555/health',
     'http://localhost:5555/mcp',
     'Do not expose it through a tunnel or public proxy',
@@ -25,7 +25,7 @@ await test('the local quick start connects an agent and runs a first function wi
     'the recorded run, including its run id',
     'missing measurable goal',
     '## 6. Give your playbook tools',
-    'Create `auto-runtime.yaml` at the root of the repository, which Git ignores, holding exactly this',
+    'Create `auto-runtime.yaml` in the directory you start Auto Runtime in, holding exactly this',
     'Authorization: Bearer ${SEARCH_API_KEY}',
     'The key never goes in `auto-runtime.yaml`',
     'configuration.md#mcp-servers',
@@ -39,7 +39,9 @@ await test('the local quick start connects an agent and runs a first function wi
   );
   assert.doesNotMatch(guide, /<details>|workspace's MCP URL|pnpm dev:lean/u);
   const setup = guide.slice(guide.indexOf('This setup'), guide.indexOf('## Hosted playbooks'));
-  assert.ok(setup.startsWith('This setup is for macOS or Linux. You need [Git]'));
+  assert.ok(
+    setup.startsWith('This setup is for macOS or Linux. You need [Node.js](https://nodejs.org/en/download) 26.10'),
+  );
   assert.doesNotMatch(setup, /Auto Cloud|request-invite|account/iu);
   const hosted = guide.split('## Hosted playbooks')[1];
   assert.ok(hosted !== undefined);

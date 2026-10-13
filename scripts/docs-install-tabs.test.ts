@@ -17,12 +17,10 @@ await test('the install step defaults to Agent on the left with Manual on the ri
       ['bash', 'Manual'],
     ],
   );
-  assert.equal(
-    options[1]?.[3],
-    'git clone https://github.com/BeOnAuto/runtime.git\ncd runtime\npnpm install\ncp .env.example .env\n',
-  );
+  assert.equal(options[1]?.[3], 'mkdir auto-runtime\ncd auto-runtime\nnpx @on.auto/runtime --version\n');
   const prompt = options[0]?.[3];
   assert.ok(prompt !== undefined);
+  assert.ok(prompt.includes('npx @on.auto/runtime'));
   assert.ok(prompt.includes('Ask before installing prerequisites'));
   assert.equal(prompt.trimEnd().split('\n').length, 4);
   assert.ok(prompt.includes('keep existing files and .env'));

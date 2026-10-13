@@ -1,17 +1,11 @@
-import { configurationOf, type Environment } from '@on.auto/config';
-import { providerStatus, readModelSettings } from '@on.auto/reasoning';
-import { Effect, Function, Result } from 'effect';
+import type { Environment } from '@on.auto/config';
 
-import { fileSettings, refusedKeys } from '../config-file/file-settings.ts';
+import { configuredProviders } from '../settings/configured-providers.ts';
 
 const noModelYet = 'none configured; copy .env.example to .env and put a key in it';
 
 function modelsIn(settings: Environment): string {
-  const { environment } = Result.getOrElse(
-    configurationOf(settings, fileSettings, refusedKeys),
-    Function.constant({ environment: settings, file: undefined }),
-  );
-  const { configured } = providerStatus(Effect.runSync(readModelSettings(environment)), { entraId: false });
+  const configured = configuredProviders(settings);
   return configured.length === 0 ? noModelYet : configured.join(', ');
 }
 
