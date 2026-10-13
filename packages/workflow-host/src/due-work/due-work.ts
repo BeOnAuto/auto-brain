@@ -2,6 +2,7 @@ import { Effect, Semaphore } from 'effect';
 
 import { background } from '../calls/background.ts';
 import type { Trouble } from '../calls/host-executor.ts';
+import type { HostContext } from '../loop/forked-fibers.ts';
 import { rowWaits, type RowWaits } from './row-waits.ts';
 
 export interface DueItem {
@@ -26,6 +27,7 @@ export interface DueParts {
   readonly trouble: Trouble;
   readonly now: () => number;
   readonly wake: () => void;
+  readonly context?: HostContext;
 }
 
 export const dueInOneTick = 256;
@@ -39,6 +41,7 @@ function itemPerformer(work: DueWork, waits: RowWaits, { trouble, now }: DuePart
     Effect.suspend(() => {
       const at = now();
       return item.perform(at).pipe(
+        Effect.withSpan(`due ${work.name}`, { attributes: { 'auto.on.due.key': item.key } }),
         Effect.andThen(
           Effect.sync(() => {
             waits.performed(item.key);
@@ -78,10 +81,11 @@ interface LaneParts {
   readonly performed: (item: DueItem) => Effect.Effect<void>;
   readonly finished: Effect.Effect<void>;
   readonly mostInFlight: number;
+  readonly context: HostContext;
 }
 
-function laneOf({ performed, finished, mostInFlight }: LaneParts): Lane {
-  const running = background();
+function laneOf({ performed, finished, mostInFlight, context }: LaneParts): Lane {
+  const running = background(context);
   const atOnce = Semaphore.makeUnsafe(duePerformedAtOnce);
   const backlog = { more: false };
   return {
@@ -120,8 +124,13 @@ function workPerformer(work: DueWork, parts: DueParts): DuePerformer {
   const finished = Effect.sync(() => {
     parts.wake();
   });
-  const outbound = laneOf({ performed: performedItem, finished, mostInFlight: duePerformedAtOnce });
-  const local = laneOf({ performed: performedItem, finished, mostInFlight: dueInOneTick });
+  const outbound = laneOf({
+    performed: performedItem,
+    finished,
+    mostInFlight: duePerformedAtOnce,
+    context: parts.context,
+  });
+  const local = laneOf({ performed: performedItem, finished, mostInFlight: dueInOneTick, context: parts.context });
   const lanes = [outbound, local];
   const handedOut = (items: readonly DueItem[], now: number): readonly string[] => {
     const ready = [...new Map(items.map((item) => [item.key, item])).values()].filter(

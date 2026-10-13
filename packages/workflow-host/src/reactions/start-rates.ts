@@ -1,10 +1,11 @@
 import { triggerNamed } from '@on.auto/definitions';
 import { StartingTriggerSchema } from '@on.auto/operations';
-import { Effect, Schema } from 'effect';
+import { Effect, Schema, type Tracer } from 'effect';
 
 import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
 import { DeliveryFailed, deliverySweeps } from '../follower/consumers.ts';
+import { linksTo } from '../runs/run-spans.ts';
 import type { ReactionStart, StartReaction } from './reaction-options.ts';
 import type { Refusals } from './refusals.ts';
 
@@ -39,6 +40,7 @@ const ReactionStartSchema = Schema.Struct({
   depth: Schema.Int,
   cause: Schema.String,
   trigger: StartingTriggerSchema,
+  trace: Schema.optionalKey(Schema.Struct({ traceId: Schema.String, spanId: Schema.String })),
 });
 
 const DeferredRow = Schema.Struct({
@@ -152,11 +154,25 @@ function failedWhenDue(parts: StartingParts, deferred: Deferred, minute: number,
       );
 }
 
+function deferredSpanOf({ org, playbook, runId, workflow, trigger, trace }: ReactionStart): Tracer.SpanOptions {
+  return {
+    attributes: {
+      'auto.on.org': org,
+      'auto.on.playbook': playbook,
+      'auto.on.run_id': runId,
+      'auto.on.workflow': workflow,
+      'auto.on.trigger.kind': trigger.kind,
+    },
+    links: linksTo(trace),
+  };
+}
+
 function startedWhenDue(parts: StartingParts, deferred: Deferred, minute: number) {
   const { playbook_key: playbookKey, start } = deferred;
   return Effect.flatMap(admitted(parts.database, playbookKey, start.workflow, minute), (admits) =>
     admits
       ? started(parts, playbookKey, start).pipe(
+          Effect.withSpan('deferred_start', deferredSpanOf(start)),
           Effect.andThen(withoutDeferred(parts.database, deferred)),
           Effect.catch(({ detail }: Readonly<{ detail: string }>) => failedWhenDue(parts, deferred, minute, detail)),
         )

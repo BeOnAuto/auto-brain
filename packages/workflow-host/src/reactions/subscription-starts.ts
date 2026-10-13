@@ -87,6 +87,10 @@ function isOwn(parts: StartParts, workflow: string, { playbookKey, event }: Foll
     : Effect.map(parts.workflowOfRun(playbookKey, event.topRun), (owner) => owner === workflow);
 }
 
+function tracedBy({ traceId, spanId }: FollowedRecord['record']) {
+  return traceId === undefined || spanId === undefined ? {} : { trace: { traceId, spanId } };
+}
+
 function startOf(parts: StartParts, subscription: EventSubscription, followed: FollowedRecord): Delivery {
   const { playbook, playbookKey, record, event } = followed;
   const { workflow, version, reference } = subscription;
@@ -115,6 +119,7 @@ function startOf(parts: StartParts, subscription: EventSubscription, followed: F
             depth: event.depth,
             cause: record.id,
             trigger: { kind: 'event', reference },
+            ...tracedBy(record),
           }),
   };
 }

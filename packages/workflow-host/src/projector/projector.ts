@@ -2,6 +2,7 @@ import { Cause, Effect, Fiber } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
 import type { HostReports } from '../host/host-reports.ts';
+import { forkedIn, type HostContext } from '../loop/forked-fibers.ts';
 import type { HostClock } from '../loop/host-clock.ts';
 import type { SomeFolder } from './folder.ts';
 import { playbookKeyOfDefinitions } from './playbook-definitions.ts';
@@ -19,6 +20,7 @@ export interface ProjectorParts {
   readonly reports: HostReports;
   readonly clock: HostClock;
   readonly sweepEveryMs: number;
+  readonly context?: HostContext;
 }
 
 const mostRemembered = 1024;
@@ -150,7 +152,8 @@ export function startProjector(parts: ProjectorParts): Projector {
       parts.reports.trouble('A sweep of the views failed; the next sweep tries again', cause),
     ),
   );
-  const fiber = Effect.runFork(
+  const fiber = forkedIn(
+    parts.context,
     Effect.forever(
       Effect.andThen(
         cycle,

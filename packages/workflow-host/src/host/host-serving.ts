@@ -33,6 +33,7 @@ function followerOf(database: HostDatabase, options: ServingOptions, engine: Hos
       clock: options.clock,
       sweepEveryMs: options.sweepEveryMs,
       reports: options.reports,
+      context: options.context,
     },
     options.reactions,
     engine.reacting,
@@ -72,6 +73,7 @@ export function startServing(database: HostDatabase, options: ServingOptions): S
     resume: () => Effect.andThen(served.cancelsAsked, engine.executor.resume()),
     trouble: options.reports.trouble,
     sweepEveryMs: options.sweepEveryMs,
+    context: options.context,
   });
   alarm.armed = loop.armed;
   const follower = followerOf(database, options, engine, served);
@@ -84,6 +86,7 @@ export function startServing(database: HostDatabase, options: ServingOptions): S
           reports: options.reports,
           clock: options.clock,
           sweepEveryMs: options.sweepEveryMs,
+          context: options.context,
         });
   return {
     engine,

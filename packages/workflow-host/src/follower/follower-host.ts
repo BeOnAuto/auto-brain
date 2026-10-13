@@ -4,6 +4,7 @@ import type { Effect } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
 import type { HostReports } from '../host/host-reports.ts';
+import type { HostContext } from '../loop/forked-fibers.ts';
 import type { HostClock } from '../loop/host-clock.ts';
 
 export interface FollowerHost {
@@ -12,4 +13,5 @@ export interface FollowerHost {
   readonly clock: HostClock;
   readonly sweepEveryMs: number;
   readonly reports: HostReports;
+  readonly context?: HostContext;
 }

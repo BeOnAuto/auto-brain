@@ -1,6 +1,7 @@
 import { playbookOfStreamPrefix, streamKindOf, type PlaybookAddress, type RecordedEvent } from '@on.auto/operations';
 import { Effect, Option } from 'effect';
 
+import { followSpanOf } from '../runs/run-spans.ts';
 import type { ApplyDefinitionRecord } from '../triggers/definition-records.ts';
 import {
   boundTo,
@@ -103,7 +104,9 @@ function deliveredStep(parts: StepParts, stepping: Stepping, progress: Progress,
     if (consumers.length === 0) {
       return { progress: passedOver(record) };
     }
-    const { made, ...delivered } = yield* deliveredAll(consumers, progress, stepping.mode);
+    const { made, ...delivered } = yield* deliveredAll(consumers, progress, stepping.mode).pipe(
+      Effect.withSpan(`follow ${record.type}`, followSpanOf(record)),
+    );
     return delivered.end === undefined
       ? { progress: passedOver(record), delivered: made }
       : { ...delivered, delivered: made };

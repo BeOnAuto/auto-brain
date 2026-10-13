@@ -94,6 +94,16 @@ function settledFor(settling: Settling, attemptsBefore: number): Receipt {
           ? Effect.succeed('unknown_run' as const)
           : failedAttempt(settling, detailOf(Cause.squash(cause))),
     }),
+    Effect.tap((receipt: SettleReceipt) => Effect.annotateCurrentSpan('auto.on.settle.receipt', receipt)),
+    Effect.withSpan('settle', {
+      attributes: {
+        'auto.on.org': org,
+        'auto.on.playbook': playbook,
+        'auto.on.run_id': runId,
+        'auto.on.settlement.status': settling.settlement.status,
+        'auto.on.settle.attempts_before': attemptsBefore,
+      },
+    }),
   );
 }
 

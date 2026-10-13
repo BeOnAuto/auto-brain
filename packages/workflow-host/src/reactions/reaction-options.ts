@@ -4,6 +4,7 @@ import type { StartingTrigger } from '@on.auto/operations';
 import type { FilterSandbox } from '@on.auto/workflow-engine';
 import { Data, type Effect, type Schema } from 'effect';
 
+import type { SpanReference } from '../runs/run-spans.ts';
 import type { StartRejected } from './start-rejected.ts';
 
 export interface ReactionStart {
@@ -16,6 +17,7 @@ export interface ReactionStart {
   readonly depth: number;
   readonly cause: string;
   readonly trigger: StartingTrigger;
+  readonly trace?: SpanReference;
 }
 
 export class StartRefused extends Data.TaggedError('start_refused')<{ readonly detail: string }> {}

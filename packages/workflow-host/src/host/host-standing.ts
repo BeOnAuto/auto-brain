@@ -44,6 +44,7 @@ export async function standingOn(
     standingBy: ({ holder: elsewhere, until }) =>
       Effect.andThen(servedNoMore, reports.note({ kind: 'standing_by', holder: elsewhere, until })),
     trouble: reports.trouble,
+    context: options.context,
   });
   return {
     serving: () => current.serving?.engine,

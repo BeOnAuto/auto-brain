@@ -1,5 +1,5 @@
 import type { StreamSignal } from '@on.auto/ledger';
-import { Effect, Fiber } from 'effect';
+import { Context, Effect, Fiber } from 'effect';
 
 import type { Trouble } from '../calls/host-executor.ts';
 import type { HostClock } from '../loop/host-clock.ts';
@@ -26,6 +26,7 @@ export interface FollowerParts {
   readonly pace: HostClock;
   readonly sweepEveryMs: number;
   readonly trouble: Trouble;
+  readonly context?: Context.Context<never> | undefined;
 }
 
 export interface Follower {
@@ -165,7 +166,7 @@ export function startFollower(parts: FollowerParts): Follower {
   const stopListening = parts.appended.listen(wakes.woken);
   const tick = tickOf(parts, wakes);
   const wait = waitOf(parts, wakes);
-  const fiber = Effect.runFork(
+  const fiber = Effect.runForkWith(parts.context ?? Context.empty())(
     Effect.andThen(startedOf(parts), Effect.forever(Effect.andThen(Effect.uninterruptible(tick), wait))),
   );
   return {

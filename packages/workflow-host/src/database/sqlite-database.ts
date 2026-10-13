@@ -60,15 +60,17 @@ function readsOn({ execute }: ReaderTransaction): ReadStatement {
 
 function consistentReadsIn(inASnapshot: InASnapshot): HostDatabase['readConsistently'] {
   return (reads) =>
-    Effect.flatten(
-      Effect.tryPromise({
-        try: (signal) =>
-          inASnapshot(async (transaction) => ({
-            success: true,
-            result: await Effect.runPromiseExit(reads(readsOn(transaction)), { signal }),
-          })),
-        catch: failedWith,
-      }),
+    Effect.flatMap(Effect.context(), (context) =>
+      Effect.flatten(
+        Effect.tryPromise({
+          try: (signal) =>
+            inASnapshot(async (transaction) => ({
+              success: true,
+              result: await Effect.runPromiseExitWith(context)(reads(readsOn(transaction)), { signal }),
+            })),
+          catch: failedWith,
+        }),
+      ),
     );
 }
 

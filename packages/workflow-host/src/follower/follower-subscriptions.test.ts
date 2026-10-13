@@ -43,7 +43,7 @@ async function sentinelPassed(reacting: ReactingHost, id: string): Promise<void>
 }
 
 describe('a workflow whose trigger is an event', () => {
-  it('is started once for each event that matches, with the event as its input, and for no other', async () => {
+  it('is started once for each event that matches, with the event as its input and its trace, and for no other', async () => {
     const reacting = await reactingHost();
     const { store } = reacting.database;
     const trigger = eventTrigger({ type: 'com.acme.closed', data: { region: 'eu' } });
@@ -54,6 +54,7 @@ describe('a workflow whose trigger is an event', () => {
     await published(store, { id: 'e3', type: 'com.acme.opened', data: { region: 'eu' } });
     const starts = await startsReaching(reacting, 1);
     const cause = messageIdOf(`${alpha}events/e1`, 1);
+    const kept = await store.readRecordedEvent(alpha, cause);
 
     expect(starts).toEqual([
       {
@@ -68,6 +69,7 @@ describe('a workflow whose trigger is an event', () => {
         depth: 1,
         cause,
         trigger: { kind: 'event', reference: '/schedule/on' },
+        trace: { traceId: kept?.metadata.traceId, spanId: kept?.metadata.spanId },
       },
     ]);
   });
