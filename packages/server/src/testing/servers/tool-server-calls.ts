@@ -27,13 +27,17 @@ export async function servingWithAToolServer(replies: readonly ScriptedReply[]):
   };
 }
 
-export async function toolTestsCalled(
+export async function toolServerToolsCalled(
   session: McpSession,
   inPlaybook: InPlaybook,
 ): Promise<readonly (readonly [string, ToolResult])[]> {
-  const tested = await session.callTool(
-    'test_tool_call',
-    inPlaybook({ server: 'graph', tool: 'search', arguments: { query: 'acme' } }),
-  );
-  return [['test_tool_call', tested]];
+  const asked = { server: 'graph', tool: 'search' };
+  const searchedFor = { ...asked, arguments: { query: 'acme' } };
+  return [
+    ['search', await session.callTool('search', inPlaybook({ terms: 'rows' }))],
+    ['introspect', await session.callTool('introspect', inPlaybook(asked))],
+    ['validate', await session.callTool('validate', inPlaybook(searchedFor))],
+    ['dry_run', await session.callTool('dry_run', inPlaybook(searchedFor))],
+    ['execute', await session.callTool('execute', inPlaybook(searchedFor))],
+  ];
 }

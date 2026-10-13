@@ -41,16 +41,14 @@ function authorizationOf(settings: ReturnType<typeof readSettings>): string | un
 }
 
 describe('the tool servers of the server', () => {
-  it('reads the servers, each with its allowed and testable tools, from the environment', () => {
+  it('reads the servers, each with the tools it allows, from the environment', () => {
     const settings = readSettings({
-      TOOL_SERVERS: JSON.stringify({ graph: { ...graph, allowed: ['search', 'execute'], testable: ['execute'] } }),
+      TOOL_SERVERS: JSON.stringify({ graph: { ...graph, allowed: ['search', 'execute'] } }),
       GRAPH_API_KEY: apiKey,
     });
 
     expect(settings.toolServers).toEqual({
-      servers: [
-        expect.objectContaining({ name: 'graph', org: 'acme', allowed: ['search', 'execute'], testable: ['execute'] }),
-      ],
+      servers: [expect.objectContaining({ name: 'graph', org: 'acme', allowed: ['search', 'execute'] })],
     });
     expect(authorizationOf(settings)).toBe(`Bearer ${apiKey}`);
   });
@@ -94,34 +92,24 @@ const refusedLists = [
   '    url: https://graph.example.com/mcp',
   '    org: acme',
   '    allowed: [search, graph/search, search]',
-  '  notes:',
-  '    command: /usr/local/bin/notes-mcp-server',
-  '    org: acme',
-  '    allowed: [search]',
-  '    testable: [execute, "*"]',
   '  wiki:',
   '    command: /usr/local/bin/wiki-mcp-server',
   '    org: acme',
   '    allowed: []',
-  '    testable: []',
   '',
 ].join('\n');
 
 describe('the tools of a tool server in the configuration file', () => {
   it('are read from the entry of the server', () => {
     const path = configFile(
-      'tool_servers:\n  graph:\n    url: https://graph.example.com/mcp\n    org: acme\n    allowed: [search, execute]\n    testable: [execute]\n  notes:\n    command: /usr/local/bin/notes-mcp-server\n    org: acme\n',
+      'tool_servers:\n  graph:\n    url: https://graph.example.com/mcp\n    org: acme\n    allowed: [search, execute]\n  notes:\n    command: /usr/local/bin/notes-mcp-server\n    org: acme\n',
     );
 
     expect(
-      readSettings({ CONFIG_FILE: path }).toolServers.servers.map(({ name, allowed, testable }) => ({
-        name,
-        allowed,
-        testable,
-      })),
+      readSettings({ CONFIG_FILE: path }).toolServers.servers.map(({ name, allowed }) => ({ name, allowed })),
     ).toEqual([
-      { name: 'graph', allowed: ['search', 'execute'], testable: ['execute'] },
-      { name: 'notes', allowed: null, testable: [] },
+      { name: 'graph', allowed: ['search', 'execute'] },
+      { name: 'notes', allowed: null },
     ]);
   });
 
@@ -132,10 +120,7 @@ describe('the tools of a tool server in the configuration file', () => {
       'tool_server_settings_invalid: The tool server settings are invalid. ' +
         `${path}:5:23 tool_servers.graph.allowed[1]: Expected a tool name of 1 to 128 letters, digits, underscores, hyphens and dots; ` +
         `${path}:5:37 tool_servers.graph.allowed[2]: search is listed twice; ` +
-        `${path}:10:16 tool_servers.notes.testable[0]: allowed does not name execute, and a tool a function may not call cannot be tested either; ` +
-        `${path}:10:25 tool_servers.notes.testable[1]: * would vouch for every tool of the server, those it adds later among them; name each tool that is safe to test; ` +
-        `${path}:14:14 tool_servers.wiki.allowed: Expected at least one tool; leave allowed out to allow every tool; ` +
-        `${path}:15:15 tool_servers.wiki.testable: Expected at least one tool; leave testable out to test only the tools the server marks read-only`,
+        `${path}:9:14 tool_servers.wiki.allowed: Expected at least one tool; leave allowed out to allow every tool`,
     );
   });
 });
@@ -166,8 +151,7 @@ describe('the tools of a tool server in the environment', () => {
     const error = errorFrom({
       TOOL_SERVERS: JSON.stringify({
         graph: { ...graph, allowed: ['search', '*'] },
-        notes: { ...graph, testable: ['execute', 'execute'] },
-        wiki: { ...graph, allowed: ['search'], testable: ['execute'] },
+        notes: { ...graph, allowed: ['execute', 'execute'] },
       }),
       GRAPH_API_KEY: apiKey,
     });
@@ -175,8 +159,7 @@ describe('the tools of a tool server in the environment', () => {
     expect(error).toBe(
       'tool_server_settings_invalid: The tool server settings are invalid. ' +
         'TOOL_SERVERS: /graph/allowed/1: Every tool of the server is allowed when allowed is left out; name the tools to allow, or leave it out; ' +
-        'TOOL_SERVERS: /notes/testable/1: execute is listed twice; ' +
-        'TOOL_SERVERS: /wiki/testable/0: allowed does not name execute, and a tool a function may not call cannot be tested either',
+        'TOOL_SERVERS: /notes/allowed/1: execute is listed twice',
     );
     expect(error).not.toContain(apiKey);
   });

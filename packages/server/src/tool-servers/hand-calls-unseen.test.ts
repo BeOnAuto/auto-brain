@@ -14,9 +14,9 @@ afterEach(async () => {
   await Promise.all(closing.splice(0).map((close) => close()));
 });
 
-const onATest = workflowSource(
-  'on-a-test',
-  'schedule:\n  on: { one: { with: { type: tool_test_started } } }\ndo:\n  - seen: { set: { seen: true } }\n',
+const onACall = workflowSource(
+  'on-a-call',
+  'schedule:\n  on: { one: { with: { type: tool_call_started } } }\ndo:\n  - seen: { set: { seen: true } }\n',
 );
 
 const onAClosing = workflowSource(
@@ -30,8 +30,8 @@ const foldingWhatItSees = [
   'language: typescript',
   'source:',
   '  events:',
-  '    - type: tool_test_started',
-  '    - type: tool_test_answered',
+  '    - type: tool_call_started',
+  '    - type: tool_call_answered',
   '    - type: com.acme.ledger.closed',
   'view:',
   '  initial: []',
@@ -46,12 +46,12 @@ const RunsSchema = Schema.Struct({ runs: Schema.Array(Schema.Struct({ status: Sc
 
 const decodeRuns = Schema.decodeUnknownSync(RunsSchema);
 
-interface TestedPlaybook {
+interface CalledPlaybook {
   readonly server: ReasoningServer;
   readonly saved: readonly number[];
 }
 
-async function servingATestedPlaybook(): Promise<TestedPlaybook> {
+async function servingACalledPlaybook(): Promise<CalledPlaybook> {
   const graph = await serveFakeMcp({ bearer: apiKey });
   closing.push(graph.close);
   const server = await servingWorkflows([], {
@@ -64,7 +64,7 @@ async function servingATestedPlaybook(): Promise<TestedPlaybook> {
   closing.push(server.stop);
   await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   const saving = [
-    await server.call('POST', `${alpha}/definitions/workflow`, { body: { name: 'on-a-test', source: onATest } }),
+    await server.call('POST', `${alpha}/definitions/workflow`, { body: { name: 'on-a-call', source: onACall } }),
     await server.call('POST', `${alpha}/definitions/workflow`, { body: { name: 'on-a-closing', source: onAClosing } }),
     await server.call('POST', `${alpha}/definitions/recall`, { body: { name: 'seen', source: foldingWhatItSees } }),
   ];
@@ -76,11 +76,11 @@ async function runsOf(server: ReasoningServer, name: string) {
   return decodeRuns(body).runs;
 }
 
-describe('the tests of a tool in a playbook', { timeout: recallTestTimeoutMs }, () => {
+describe('the calls made by hand in a playbook', { timeout: recallTestTimeoutMs }, () => {
   it('reach no recall function and start no workflow, while the events after them do', async () => {
-    const { server, saved } = await servingATestedPlaybook();
+    const { server, saved } = await servingACalledPlaybook();
 
-    const tested = await server.call('POST', `${alpha}/tool-servers/graph/tools/search/test`, {
+    const called = await server.call('POST', `${alpha}/tool-servers/graph/tools/search/execute`, {
       body: { arguments: { query: 'acme' } },
     });
     await server.call('POST', `${alpha}/events`, {
@@ -104,10 +104,10 @@ describe('the tests of a tool in a playbook', { timeout: recallTestTimeoutMs }, 
     );
 
     expect(saved).toEqual([201, 201, 201]);
-    expect(tested).toMatchObject({ status: 200, body: { outcome: 'result' } });
+    expect(called).toMatchObject({ status: 200, body: { outcome: 'result' } });
     expect(triggered).toHaveLength(1);
-    expect(await runsOf(server, 'on-a-test')).toEqual([]);
+    expect(await runsOf(server, 'on-a-call')).toEqual([]);
     expect(recalled).toMatchObject({ output: ['com.acme.ledger.closed'] });
-    expect(await runsOf(server, 'on-a-test')).toEqual([]);
+    expect(await runsOf(server, 'on-a-call')).toEqual([]);
   });
 });

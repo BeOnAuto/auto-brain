@@ -52,8 +52,8 @@ async function serving(): Promise<Serving> {
   return { server, graph };
 }
 
-function testOf(server: ReasoningServer, tool: string, body: unknown = {}, key = builder.key) {
-  return server.call('POST', `${alpha}/tool-servers/graph/tools/${tool}/test`, { key, body });
+function executeOf(server: ReasoningServer, tool: string, body: unknown = {}, key = builder.key) {
+  return server.call('POST', `${alpha}/tool-servers/graph/tools/${tool}/execute`, { key, body });
 }
 
 async function until(holds: () => boolean, waited = 0): Promise<boolean> {
@@ -70,20 +70,21 @@ const decodeEvents = Schema.decodeUnknownSync(
   Schema.Struct({ events: Schema.Array(Schema.Struct({ type: Schema.String })) }),
 );
 
-const aTestId: unknown = expect.stringMatching(/^[0-9a-f-]{36}$/u);
+const aCallId: unknown = expect.stringMatching(/^[0-9a-f-]{36}$/u);
 
 const aNumber: unknown = expect.any(Number);
 
-describe('test_tool_call over HTTP', () => {
-  it('tests a tool its server marks read-only, answering what a run’s model would see', async () => {
+describe('execute over HTTP', () => {
+  it('calls a tool, whether its server marks it read-only or not, answering what a run’s model would see', async () => {
     const { server, graph } = await serving();
 
-    const tested = await testOf(server, 'search', { arguments: { query: 'acme' } });
+    const read = await executeOf(server, 'search', { arguments: { query: 'acme' } });
+    const written = await executeOf(server, 'echo', { arguments: { said: 'hello' } });
 
-    expect(tested).toMatchObject({
+    expect(read).toMatchObject({
       status: 200,
       body: {
-        test_id: aTestId,
+        call_id: aCallId,
         server: 'graph',
         tool: 'search',
         outcome: 'result',
@@ -92,41 +93,42 @@ describe('test_tool_call over HTTP', () => {
         duration_ms: aNumber,
       },
     });
-    expect(tested.headers.get('cache-control')).toBe('no-store');
-    expect(graph.received()).toMatchObject([{ tool: 'search', arguments: { query: 'acme' } }]);
+    expect(written).toMatchObject({ status: 200, body: { outcome: 'result', text: '{"said":"hello"}' } });
+    expect(read.headers.get('cache-control')).toBe('no-store');
+    expect(graph.received()).toMatchObject([{ tool: 'search' }, { tool: 'echo' }]);
   });
 
-  it('answers a tool that cannot be tested, or a server that cannot be used, as a problem, retried only when it may help', async () => {
+  it('answers a server that cannot be used as a problem retried later, and a tool it is not offered as one that is not', async () => {
     const { server, graph } = await serving();
 
-    const notTestable = await testOf(server, 'echo');
     graph.answerNextWith(503);
-    const failing = await testOf(server, 'search', { arguments: { query: 'acme' } });
+    const failing = await executeOf(server, 'search', { arguments: { query: 'acme' } });
+    const unlisted = await executeOf(server, 'lookup');
 
-    expect(notTestable).toMatchObject({
-      status: 503,
-      body: { reason: 'unavailable', kind: 'tool_not_offered', because: 'not_testable' },
-    });
-    expect(notTestable.headers.get('retry-after')).toBeNull();
     expect(failing).toMatchObject({
       status: 503,
       body: { reason: 'unavailable', kind: 'mcp_server_failed', because: 'failing' },
     });
     expect(failing.headers.get('retry-after')).toBe('5');
+    expect(unlisted).toMatchObject({
+      status: 503,
+      body: { reason: 'unavailable', kind: 'tool_not_offered', because: 'tool_not_listed' },
+    });
+    expect(unlisted.headers.get('retry-after')).toBeNull();
     expect(graph.received()).toEqual([]);
   });
 });
 
-describe('who may test a tool over HTTP, and what the answer leaves out', () => {
-  it('refuses a key that may only read, and a retired playbook, and shows no secret of the server', async () => {
+describe('who may execute a tool over HTTP, and what the answer leaves out', () => {
+  it('refuses a key that may only read, even for a tool that only reads, and a retired playbook, and shows no secret', async () => {
     const { server, graph } = await serving();
 
-    const read = await testOf(server, 'search', { arguments: { query: 'acme' } }, reader.key);
-    const tested = await testOf(server, 'search', { arguments: { query: 'acme' } });
+    const read = await executeOf(server, 'search', { arguments: { query: 'acme' } }, reader.key);
+    const called = await executeOf(server, 'search', { arguments: { query: 'acme' } });
     await server.call('POST', `${alpha}/retire`, { key: builder.key });
-    const retired = await testOf(server, 'search', { arguments: { query: 'acme' } });
+    const retired = await executeOf(server, 'search', { arguments: { query: 'acme' } });
     const events = await server.call('GET', `${alpha}/events?order=asc`, { key: builder.key });
-    const text = JSON.stringify([tested.body, events.body]);
+    const text = JSON.stringify([called.body, events.body]);
 
     expect(read).toMatchObject({ status: 403, body: { reason: 'forbidden' } });
     expect(retired).toMatchObject({ status: 409, body: { reason: 'conflict', kind: 'retired' } });
@@ -135,40 +137,40 @@ describe('who may test a tool over HTTP, and what the answer leaves out', () => 
   });
 });
 
-describe('what a test records in the history of the playbook', () => {
-  it('shows a start and an answer in the events of the playbook, by type, and in the history of no run', async () => {
+describe('what a call made by hand records in the history of the playbook', () => {
+  it('shows a start and an answer in the events of the playbook, by type, beside the calls of runs, and in the history of no run', async () => {
     const { server } = await serving();
 
-    await testOf(server, 'search', { arguments: { query: 'acme' } });
+    await executeOf(server, 'search', { arguments: { query: 'acme' } });
     const events = await server.call('GET', `${alpha}/events?order=asc`, { key: builder.key });
-    const starts = await server.call('GET', `${alpha}/events?type=tool_test_started`, { key: builder.key });
-    const answers = await server.call('GET', `${alpha}/events?type=tool_test_answered`, { key: builder.key });
+    const starts = await server.call('GET', `${alpha}/events?type=tool_call_started`, { key: builder.key });
+    const answers = await server.call('GET', `${alpha}/events?type=tool_call_answered`, { key: builder.key });
     const runs = await server.call('GET', `${alpha}/runs`, { key: builder.key });
 
     expect(events.body).toMatchObject({
       events: [
         {
-          type: 'tool_test_started',
-          summary: 'Someone allowed to change the playbook tested the search tool of graph.',
-          data: { server: 'graph', tool: 'search' },
+          type: 'tool_call_started',
+          summary: 'Someone allowed to change the playbook called the search tool of graph by hand.',
+          data: { server: 'graph', tool: 'search', arguments: { query: 'acme' } },
           metadata: { causation_id: null, by: 'acme-builder' },
         },
         {
-          type: 'tool_test_answered',
-          summary: 'The tested tool answered.',
+          type: 'tool_call_answered',
+          summary: 'The tool answered.',
           data: { is_error: false, answer: 'Found 2 rows for acme.' },
         },
       ],
     });
     expect([starts.body, answers.body]).toMatchObject([
-      { events: [{ type: 'tool_test_started' }] },
-      { events: [{ type: 'tool_test_answered' }] },
+      { events: [{ type: 'tool_call_started' }] },
+      { events: [{ type: 'tool_call_answered' }] },
     ]);
     expect(runs.body).toMatchObject({ runs: [] });
   });
 });
 
-describe('what a test does not record', () => {
+describe('what a call made by hand does not record', () => {
   it('is in the history of no run, which shows only what the run recorded', async () => {
     const { server } = await serving();
     const echo = [
@@ -188,31 +190,21 @@ describe('what a test does not record', () => {
       key: builder.key,
       body: { input: { said: 'hello' } },
     });
-    await testOf(server, 'search', { arguments: { query: 'acme' } });
+    await executeOf(server, 'search', { arguments: { query: 'acme' } });
     const history = await server.call('GET', `${alpha}/runs/${decodeRun(ran.body).run_id}/history`, {
       key: builder.key,
     });
 
     expect(decodeEvents(history.body).events.map(({ type }) => type)).toEqual(['run_started', 'run_succeeded']);
   });
-
-  it('is refused as the type of an event published to the playbook', async () => {
-    const { server } = await serving();
-    const event = { id: 'e-1', source: '/acme', type: 'tool_test_started', specversion: '1.0' };
-
-    expect(await server.call('POST', `${alpha}/events`, { key: builder.key, body: { event } })).toMatchObject({
-      status: 422,
-      body: { reason: 'invalid_input', errors: [{ pointer: '/event/type' }] },
-    });
-  });
 });
 
-describe('a test whose caller goes away over HTTP while the tool is called', () => {
+describe('a call made by hand whose caller goes away over HTTP while the tool is called', () => {
   it('records a start and no answer, sends no second call, and still lets the session go', async () => {
     const { server, graph } = await serving();
     const leaving = new AbortController();
 
-    const gone: Promise<unknown> = fetch(`${server.origin}${alpha}/tool-servers/graph/tools/sleep/test`, {
+    const gone: Promise<unknown> = fetch(`${server.origin}${alpha}/tool-servers/graph/tools/sleep/execute`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${builder.key}` },
       body: JSON.stringify({ arguments: { ms: 5000 } }),
@@ -224,7 +216,7 @@ describe('a test whose caller goes away over HTTP while the tool is called', () 
     expect(await gone).toMatchObject({ name: 'AbortError' });
     expect(await until(() => graph.endedSessions() === 1)).toBe(true);
     const events = await server.call('GET', `${alpha}/events?order=asc`, { key: builder.key });
-    expect(events.body).toMatchObject({ events: [{ type: 'tool_test_started' }] });
+    expect(events.body).toMatchObject({ events: [{ type: 'tool_call_started' }] });
     expect(graph.received()).toHaveLength(1);
   });
 });

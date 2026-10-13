@@ -23,7 +23,7 @@ const profiling = ['---', 'model: anthropic/claude-sonnet-4-5', 'tools: [graph/p
   '\n',
 );
 
-describe('what a test of a tool answers', () => {
+describe('what a call made by hand answers', () => {
   it('is the text the model of a run of a function that names the same tool sees of its answer', async () => {
     const graph = await serveFakeMcp({ bearer: apiKey });
     closing.push(graph.close);
@@ -39,10 +39,10 @@ describe('what a test of a tool answers', () => {
     await server.call('POST', `${alpha}/definitions/reasoning`, { body: { name: 'profile', source: profiling } });
 
     const ran = await server.call('POST', `${alpha}/definitions/reasoning/profile/run`, { body: { input: {} } });
-    const tested = await server.call('POST', `${alpha}/tool-servers/graph/tools/profile/test`, { body: {} });
+    const called = await server.call('POST', `${alpha}/tool-servers/graph/tools/profile/execute`, { body: {} });
 
     expect(ran).toMatchObject({ status: 200, body: { status: 'succeeded', output: '{"name":"Ada","rows":2}' } });
-    expect(tested).toMatchObject({ status: 200, body: { outcome: 'result', text: '{"name":"Ada","rows":2}' } });
+    expect(called).toMatchObject({ status: 200, body: { outcome: 'result', text: '{"name":"Ada","rows":2}' } });
     expect(graph.received().map(({ tool }) => tool)).toEqual(['profile', 'profile']);
   });
 });
