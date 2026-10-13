@@ -5,7 +5,7 @@ export const localOrg = 'local';
 
 export const localDeveloperId = 'local';
 
-export const refusingTheLocalOrg = Schema.makeFilter(
+const refusingTheLocalOrg = Schema.makeFilter(
   (org: string) => org !== localOrg || 'This org id is reserved for local mode',
 );
 

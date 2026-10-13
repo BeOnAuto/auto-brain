@@ -1,19 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { issuersOf, type IdentityProvider, type IssuerFetch } from '../index.ts';
+import { identityServiceOf, type IssuerFetch } from '../index.ts';
 import { fakeIssuer } from '../testing/index.ts';
 import { metadataAddressesOf } from './issuer-metadata.ts';
 
 const publicUrl = 'https://runtime.example';
-
-function corpAt(issuer: string): IdentityProvider {
-  return {
-    name: 'corp',
-    issuer,
-    org: 'acme',
-    grants: { claim: 'groups', by: { engineers: { permissions: ['org:read'], playbooks: '*' } } },
-  };
-}
 
 interface Answering {
   readonly fetch: IssuerFetch;
@@ -41,7 +32,7 @@ function json(body: unknown): Response {
 
 async function refusalOf(issuer: string, fetch: IssuerFetch): Promise<string> {
   try {
-    await issuersOf({ providers: [corpAt(issuer)], publicUrl }, { fetch, now: Date.now });
+    await identityServiceOf({ issuer, publicUrl }, { fetch, now: Date.now });
   } catch (error) {
     return String(error);
   }
@@ -132,11 +123,11 @@ describe('the metadata of an issuer the runtime refuses', () => {
       json({ issuer: 'https://login.example', padding: 'x'.repeat(65_536) }),
       'answers more than 64 KiB',
     ],
-  ])('is %s, and the refusal names the provider and each address it read', async (_case, answer, words) => {
+  ])('is %s, and the refusal names the service and each address it read', async (_case, answer, words) => {
     const answers = answering({ [oauthAddress]: answer }, nothingThere);
 
     expect(await refusalOf('https://login.example', answers.fetch)).toBe(
-      `UnusableProviderError: The identity provider corp cannot be used: no metadata of https://login.example could be used: ${oauthAddress} ${words}; ${openIdAddress} answers 404`,
+      `UnusableIdentityServiceError: The identity service at https://login.example cannot be used: no metadata of https://login.example could be used: ${oauthAddress} ${words}; ${openIdAddress} answers 404`,
     );
   });
 });
@@ -156,7 +147,7 @@ describe('the key set of an issuer the runtime refuses at start', () => {
     const answers = answering({ 'https://login.example/jwks': answer }, fake.answer);
 
     expect(await refusalOf(fake.issuer, answers.fetch)).toBe(
-      `UnusableProviderError: The identity provider corp cannot be used: its key set at https://login.example/jwks ${words}`,
+      `UnusableIdentityServiceError: The identity service at https://login.example cannot be used: its key set at https://login.example/jwks ${words}`,
     );
   });
 });

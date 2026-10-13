@@ -1,32 +1,23 @@
-import { issuersOf, type IdentityProvider, type IssuerRequests, type Issuers } from '../index.ts';
+import { identityServiceOf, type IdentityService, type IssuerRequests } from '../index.ts';
 import type { Claims, FakeIssuer, Signing } from './fake-issuer.ts';
 import { principalIn } from './principals.ts';
 
 export const testPublicUrl = 'https://runtime.example';
 
 export interface SignedTokens {
-  readonly issuers: Issuers;
+  readonly identityService: IdentityService;
   readonly token: (claims?: Claims, signing?: Signing) => Promise<string>;
-  readonly callerOf: (token: string, resourcePath?: string) => Promise<string | undefined>;
-}
-
-export function engineersAt(issuer: string): IdentityProvider {
-  return {
-    name: 'corp',
-    issuer,
-    org: 'acme',
-    grants: { claim: 'groups', by: { engineers: { permissions: ['playbook:read'], playbooks: '*' } } },
-  };
+  readonly callerOf: (token: string, resourcePath?: string, org?: string) => Promise<string | undefined>;
 }
 
 export async function signedTokens(fake: FakeIssuer, requests: Partial<IssuerRequests> = {}): Promise<SignedTokens> {
   const now = requests.now ?? Date.now;
-  const issuers = await issuersOf(
-    { providers: [engineersAt(fake.issuer)], publicUrl: testPublicUrl },
+  const identityService = await identityServiceOf(
+    { issuer: fake.issuer, publicUrl: testPublicUrl },
     { fetch: fake.answer, now, ...requests },
   );
   return {
-    issuers,
+    identityService,
     token: (claims = {}, signing = {}) => {
       const seconds = Math.floor(now() / 1000);
       return fake.sign(
@@ -36,13 +27,13 @@ export async function signedTokens(fake: FakeIssuer, requests: Partial<IssuerReq
           aud: testPublicUrl,
           iat: seconds,
           exp: seconds + 300,
-          groups: ['engineers'],
+          org_id: 'acme',
           ...claims,
         },
         signing,
       );
     },
-    callerOf: async (token, resourcePath = '/mcp') =>
-      principalIn(await issuers.personOf(token, resourcePath))?.callerIn('acme')?.id,
+    callerOf: async (token, resourcePath = '/mcp', org = 'acme') =>
+      principalIn(await identityService.personOf(token, resourcePath))?.callerIn(org)?.id,
   };
 }

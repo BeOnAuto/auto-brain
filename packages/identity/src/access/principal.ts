@@ -4,7 +4,7 @@ import type { ApiKey } from '../keys/api-key.ts';
 import { localDeveloperId, localOrg } from './local-org.ts';
 
 export interface Principal {
-  readonly org: string | undefined;
+  readonly own: CallerIdentity;
   readonly callerIn: (org: string) => CallerIdentity | undefined;
 }
 
@@ -14,18 +14,31 @@ export interface Refusal {
 
 export type Authentication = Principal | Refusal;
 
+export interface VerifiedPerson {
+  readonly subject: string;
+  readonly org: string;
+}
+
 export function isRefusal(authentication: Authentication): authentication is Refusal {
   return 'because' in authentication;
 }
 
 export const unexplained: Refusal = { because: undefined };
 
-export const localDeveloper: Principal = {
-  org: localOrg,
-  callerIn: (org) => ({ id: localDeveloperId, org, permissions: allPermissions, playbooks: '*' }),
-};
+function developerIn(org: string): CallerIdentity {
+  return { id: localDeveloperId, org, permissions: allPermissions, playbooks: '*' };
+}
+
+export const localDeveloper: Principal = { own: developerIn(localOrg), callerIn: developerIn };
+
+function principalOfCaller(caller: CallerIdentity): Principal {
+  return { own: caller, callerIn: (asked) => (asked === caller.org ? caller : undefined) };
+}
 
 export function principalOf({ id, org, permissions, playbooks }: ApiKey): Principal {
-  const caller: CallerIdentity = { id, org, permissions, playbooks };
-  return { org, callerIn: (asked) => (asked === org ? caller : undefined) };
+  return principalOfCaller({ id, org, permissions, playbooks });
+}
+
+export function signedInPersonOf({ subject, org }: VerifiedPerson): Principal {
+  return principalOfCaller({ id: `person:${subject}`, org, permissions: allPermissions, playbooks: '*' });
 }

@@ -1,11 +1,11 @@
 import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { issuersOf } from '../index.ts';
+import { identityServiceOf } from '../index.ts';
 import { fakeIssuer } from './fake-issuer.ts';
 import { principalIn } from './principals.ts';
 
-const clients = { 'ada-agent': { secret: 'a-long-secret', claims: { sub: 'ada', groups: ['engineers'] } } };
+const clients = { 'ada-agent': { secret: 'a-long-secret', claims: { sub: 'ada', org_id: 'acme' } } };
 
 const tokenOf = Schema.decodeUnknownSync(Schema.Struct({ access_token: Schema.String }));
 
@@ -20,18 +20,8 @@ function tokenRequest(credentials: string, form: Readonly<Record<string, string>
 describe('the fake issuer', () => {
   it('mints a token for a client by its credentials, for the resource asked, that the runtime verifies', async () => {
     const fake = fakeIssuer('https://login.example', { clients });
-    const issuers = await issuersOf(
-      {
-        providers: [
-          {
-            name: 'corp',
-            issuer: fake.issuer,
-            org: 'acme',
-            grants: { claim: 'groups', by: { engineers: { permissions: ['org:read'], playbooks: '*' } } },
-          },
-        ],
-        publicUrl: 'https://runtime.example',
-      },
+    const identityService = await identityServiceOf(
+      { issuer: fake.issuer, publicUrl: 'https://runtime.example' },
       { fetch: fake.answer, now: Date.now },
     );
 
@@ -44,7 +34,7 @@ describe('the fake issuer', () => {
     );
     const { access_token: token } = tokenOf(await answer.json());
 
-    expect(principalIn(await issuers.personOf(token, '/mcp'))?.callerIn('acme')?.id).toBe('person:corp/ada');
+    expect(principalIn(await identityService.personOf(token, '/mcp'))?.callerIn('acme')?.id).toBe('person:ada');
   });
 });
 

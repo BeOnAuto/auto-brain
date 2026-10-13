@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { authenticatorFor, createApiKey, type ApiKey, type Issuers } from '../index.ts';
+import { authenticatorFor, createApiKey, type ApiKey, type IdentityService } from '../index.ts';
 import { principalIn } from '../testing/index.ts';
 
 const reader = createApiKey({ id: 'acme-reader', org: 'acme', permissions: ['playbook:read'], playbooks: ['alpha'] });
@@ -28,14 +28,13 @@ const anyPath = '/v1/orgs/acme/playbooks';
 
 const unexplained = { because: undefined };
 
-const signedInAda = {
-  org: 'acme',
-  callerIn: (org: string) => ({ id: 'person:corp/ada', org, permissions: [], playbooks: [] }),
-};
+const adaOfAcme = { id: 'person:ada', org: 'acme', permissions: [], playbooks: [] };
+
+const signedInAda = { own: adaOfAcme, callerIn: () => adaOfAcme };
 
 const tokensSeen: string[] = [];
 
-const issuers: Issuers = {
+const identityService: IdentityService = {
   resource: { publicUrl: 'https://runtime.example', authorizationServers: ['https://login.example'] },
   personOf: (token, path) => {
     tokensSeen.push(`${token} at ${path}`);
@@ -65,7 +64,7 @@ describe('authenticatorFor with local mode on and no API keys', () => {
     const authenticator = authenticatorFor({ host: '127.0.0.1', apiKeys: undefined, localMode: true });
     const developer = principalIn(await authenticator.authenticate('a.token.of-ada', anyPath));
 
-    expect(developer?.org).toBe('local');
+    expect(developer?.own.org).toBe('local');
   });
 
   it.each(otherHosts)('stops start-up on %s, which is not loopback, with a named error', (host) => {
@@ -118,7 +117,7 @@ describe('authenticatorFor with API keys', () => {
       playbooks: ['alpha'],
     });
     expect(holder?.callerIn('globex')).toBeUndefined();
-    expect(holder?.org).toBe('acme');
+    expect(holder?.own).toEqual(holder?.callerIn('acme'));
   });
 
   it.each([
@@ -144,17 +143,17 @@ describe('authenticatorFor with API keys', () => {
   });
 });
 
-describe('authenticatorFor with identity providers', () => {
+describe('authenticatorFor with the identity service', () => {
   it('checks credentials even with no key and local mode on, and names the protected resource', () => {
-    const authenticator = authenticatorFor({ host: '127.0.0.1', apiKeys: [], localMode: true, issuers });
+    const authenticator = authenticatorFor({ host: '127.0.0.1', apiKeys: [], localMode: true, identityService });
 
     expect(authenticator.mode).toBe('credentials');
-    expect(authenticator.resource).toEqual(issuers.resource);
+    expect(authenticator.resource).toEqual(identityService.resource);
   });
 
-  it('asks the issuers about a token that is not a key, with the path the request reached', async () => {
+  it('asks the identity service about a token that is not a key, with the path the request reached', async () => {
     tokensSeen.length = 0;
-    const authenticator = authenticatorFor({ host: '0.0.0.0', apiKeys: keys, localMode: false, issuers });
+    const authenticator = authenticatorFor({ host: '0.0.0.0', apiKeys: keys, localMode: false, identityService });
 
     expect(await authenticator.authenticate('a.token.of-ada', '/mcp')).toBe(signedInAda);
     expect(await authenticator.authenticate('an.opaque.token', '/mcp')).toEqual({ because: 'ERR_JWS_INVALID' });
@@ -163,9 +162,9 @@ describe('authenticatorFor with identity providers', () => {
 
   it('verifies a key as a key, never as a token', async () => {
     tokensSeen.length = 0;
-    const authenticator = authenticatorFor({ host: '0.0.0.0', apiKeys: keys, localMode: false, issuers });
+    const authenticator = authenticatorFor({ host: '0.0.0.0', apiKeys: keys, localMode: false, identityService });
 
-    expect(principalIn(await authenticator.authenticate(admin.key, anyPath))?.org).toBe('acme');
+    expect(principalIn(await authenticator.authenticate(admin.key, anyPath))?.own.id).toBe('acme-admin');
     expect(await authenticator.authenticate(wrongSecret, anyPath)).toEqual(unexplained);
     expect(tokensSeen).toEqual([]);
   });

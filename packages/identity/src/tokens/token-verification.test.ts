@@ -1,7 +1,7 @@
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { claimedIssuerOf, mostTokenBytes } from './token-verification.ts';
+import { mostTokenBytes, verifiedPerson } from './token-verification.ts';
 
 function segmentOf(value: unknown): string {
   return Buffer.from(JSON.stringify(value)).toString('base64url');
@@ -15,12 +15,23 @@ function tokenOf(length: number): string {
   return `${header}.${payload}.${'A'.repeat(length - header.length - payload.length - 2)}`;
 }
 
-describe('the issuer a token claims', () => {
-  it('is read from a token of 8 KiB, and a token one byte longer is refused before anything is decoded', () => {
-    expect([tokenOf(mostTokenBytes).length, claimedIssuerOf(tokenOf(mostTokenBytes))]).toEqual([
+const expected = { issuer: 'https://login.example', audiences: ['https://runtime.example'], now: 0 };
+
+describe('the length of a token', () => {
+  it('is taken at 8 KiB, and a token one byte longer is refused before anything is decoded or asked of a key', async () => {
+    const keysAsked: string[] = [];
+    const keySet = (): Promise<never> => {
+      keysAsked.push('asked');
+      return Promise.reject(new TypeError('no key in this test'));
+    };
+
+    expect([tokenOf(mostTokenBytes).length, await verifiedPerson(tokenOf(mostTokenBytes), keySet, expected)]).toEqual([
       8192,
-      Result.succeed('https://login.example'),
+      Result.fail('it could not be verified'),
     ]);
-    expect(claimedIssuerOf(tokenOf(mostTokenBytes + 1))).toEqual(Result.fail('it is longer than 8 KiB'));
+    expect(await verifiedPerson(tokenOf(mostTokenBytes + 1), keySet, expected)).toEqual(
+      Result.fail('it is longer than 8 KiB'),
+    );
+    expect(keysAsked).toEqual(['asked']);
   });
 });

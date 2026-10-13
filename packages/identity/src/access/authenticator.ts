@@ -1,6 +1,6 @@
+import type { IdentityService, ProtectedResource } from '../identity-service/identity-service.ts';
 import { keyPrefix, type ApiKey } from '../keys/api-key.ts';
 import { verifyKey } from '../keys/verify-key.ts';
-import type { Issuers, ProtectedResource } from '../providers/issuers.ts';
 import { InvalidLocalModeError } from './invalid-local-mode-error.ts';
 import { listensOnlyOnLoopback } from './loopback.ts';
 import { localDeveloper, principalOf, unexplained, type Authentication } from './principal.ts';
@@ -17,7 +17,7 @@ export interface AccessSettings {
   readonly host: string;
   readonly apiKeys: readonly ApiKey[] | undefined;
   readonly localMode: boolean;
-  readonly issuers?: Issuers | undefined;
+  readonly identityService?: IdentityService | undefined;
 }
 
 function keyHolderOf(keys: readonly ApiKey[], presented: string | undefined): Authentication {
@@ -25,10 +25,10 @@ function keyHolderOf(keys: readonly ApiKey[], presented: string | undefined): Au
   return key === undefined ? unexplained : principalOf(key);
 }
 
-function credentialHolderOf(keys: readonly ApiKey[], issuers?: Issuers): Authenticator['authenticate'] {
+function credentialHolderOf(keys: readonly ApiKey[], identityService?: IdentityService): Authenticator['authenticate'] {
   return (presented, resourcePath) =>
-    presented !== undefined && issuers !== undefined && !presented.startsWith(keyPrefix)
-      ? issuers.personOf(presented, resourcePath)
+    presented !== undefined && identityService !== undefined && !presented.startsWith(keyPrefix)
+      ? identityService.personOf(presented, resourcePath)
       : Promise.resolve(keyHolderOf(keys, presented));
 }
 
@@ -40,15 +40,19 @@ const localAccess: Authenticator = {
 
 const closedAccess: Authenticator = { mode: 'closed', resource: undefined, authenticate: credentialHolderOf([]) };
 
-export function authenticatorFor({ host, apiKeys, localMode, issuers }: AccessSettings): Authenticator {
+export function authenticatorFor({ host, apiKeys, localMode, identityService }: AccessSettings): Authenticator {
   if (localMode && !listensOnlyOnLoopback(host)) {
     throw new InvalidLocalModeError({
       message: `LOCAL_MODE is on, but HOST ${host} is not a loopback address; local mode trusts every request, so it runs only on localhost, 127.0.0.1 or ::1`,
     });
   }
   const keys = apiKeys ?? [];
-  if (keys.length > 0 || issuers !== undefined) {
-    return { mode: 'credentials', resource: issuers?.resource, authenticate: credentialHolderOf(keys, issuers) };
+  if (keys.length > 0 || identityService !== undefined) {
+    return {
+      mode: 'credentials',
+      resource: identityService?.resource,
+      authenticate: credentialHolderOf(keys, identityService),
+    };
   }
   return localMode && apiKeys === undefined ? localAccess : closedAccess;
 }
