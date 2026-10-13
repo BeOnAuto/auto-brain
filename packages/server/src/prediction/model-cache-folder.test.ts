@@ -40,13 +40,14 @@ describe('the folder of the model files', { timeout: spawnedServerTestTimeoutMs 
     );
   });
 
-  it('is not made by a server that has kept no model file yet', async () => {
+  it('is made by the server as it starts, readable by its own user alone, before it keeps any model file', async () => {
     const ledger = aLedger();
     const child = serverOn(ledger);
     await child.port;
+    const made = statSync(ledger.cacheDirectory);
     child.signal('SIGTERM');
     await child.exited;
 
-    expect(() => statSync(ledger.cacheDirectory)).toThrow(/ENOENT/u);
+    expect([made.isDirectory(), made.mode & 0o777]).toEqual([true, 0o700]);
   });
 });

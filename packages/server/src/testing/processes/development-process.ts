@@ -82,6 +82,7 @@ export function startDevelopment(files: DevelopmentFiles, options: DevelopmentOp
       TMPDIR: tmpdir(),
       PORT: '0',
       LEDGER_FILE: files.ledgerFile,
+      PREDICTION_CACHE_DIR: join(files.directory, 'prediction-cache'),
       ...options.environment,
     },
     stdio: ['ignore', 'pipe', 'pipe'],

@@ -34,7 +34,14 @@ function calling(method: string, path: string, body: object): Promise<TestRespon
 
 async function executedVerdict(models: Readonly<Record<string, string>>): Promise<TestResponse> {
   server = await startServer(
-    { HOST: '127.0.0.1', PORT: '0', LEDGER_FILE: ledger.fileName, LOCAL_MODE: 'true', ...models },
+    {
+      HOST: '127.0.0.1',
+      PORT: '0',
+      LEDGER_FILE: ledger.fileName,
+      PREDICTION_CACHE_DIR: ledger.cacheDirectory,
+      LOCAL_MODE: 'true',
+      ...models,
+    },
     compositionRoot,
   );
   await calling('POST', '/v1/orgs/acme/playbooks', { playbook: 'alpha', name: 'Alpha' });

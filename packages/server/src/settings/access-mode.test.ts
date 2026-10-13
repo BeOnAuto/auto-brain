@@ -75,7 +75,16 @@ describe('the access mode of a server on loopback', { timeout: spawnedServerTest
 describe('LOCAL_MODE off loopback', () => {
   it('stops start-up with a named error before the server listens', async () => {
     await expect(
-      startServer({ HOST: '0.0.0.0', PORT: '0', LEDGER_FILE: ledger.fileName, LOCAL_MODE: 'true' }, compositionRoot),
+      startServer(
+        {
+          HOST: '0.0.0.0',
+          PORT: '0',
+          LEDGER_FILE: ledger.fileName,
+          PREDICTION_CACHE_DIR: ledger.cacheDirectory,
+          LOCAL_MODE: 'true',
+        },
+        compositionRoot,
+      ),
     ).rejects.toMatchObject({ name: 'InvalidLocalModeError' });
   });
 });
