@@ -24,7 +24,9 @@ export {
   type SettingProblem,
 } from './json-settings/json-setting.ts';
 export {
+  everyOrg,
   servedScopeOf,
+  servesOrg,
   servesPlaybook,
   type ServedAddress,
   type ServedScope,
