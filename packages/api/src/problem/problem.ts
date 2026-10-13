@@ -94,8 +94,18 @@ const resolvedOnlyByChange: ReadonlySet<RejectionKind> = new Set<UnavailableKind
   'model_not_offered',
 ]);
 
-function isWorthRetrying({ reason, kind }: Problem): boolean {
-  return reason === 'unavailable' && (kind === undefined || !resolvedOnlyByChange.has(kind));
+const notResolvedByWaiting: ReadonlySet<RejectionBecause> = new Set<RejectionBecause>([
+  'builds_of_the_day',
+  'stalled',
+  'not_finite',
+]);
+
+function isWorthRetrying({ reason, kind, because }: Problem): boolean {
+  return (
+    reason === 'unavailable' &&
+    (kind === undefined || !resolvedOnlyByChange.has(kind)) &&
+    (because === undefined || !notResolvedByWaiting.has(because))
+  );
 }
 
 export function problemOf(reason: ProblemReason, detail: string, optional: OptionalProblemMembers = {}): Problem {
