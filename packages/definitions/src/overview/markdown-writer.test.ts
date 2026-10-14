@@ -165,6 +165,34 @@ describe('the diagram of an overview', () => {
   });
 });
 
+describe('a node of a diagram', () => {
+  it('of the shape cylinder is drawn as a cylinder, inside a group or not', () => {
+    expect(
+      writtenBlocks({
+        kind: 'diagram',
+        nodes: [
+          { label: 'The view', shape: 'cylinder' },
+          { label: 'The "kept" view', shape: 'cylinder' },
+        ],
+        edges: [{ from: 0, to: 1 }],
+        groups: [{ label: 'Kept', nodes: [1] }],
+      }),
+    ).toBe(
+      [
+        '```mermaid',
+        'flowchart LR',
+        '  subgraph g1["Kept"]',
+        '    n2[("The #34;kept#34; view")]',
+        '  end',
+        '  n1[("The view")]',
+        '  n1 --> n2',
+        '```',
+        '',
+      ].join('\n'),
+    );
+  });
+});
+
 describe(`an overview past ${mostOverviewBytes} bytes`, () => {
   it('is cut at the boundary of a block, with one last line that says so, within the bound', () => {
     const written = markdownOf(overviewWith(...Array.from({ length: 20 }, () => paragraphOf(4000))));

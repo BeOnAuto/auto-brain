@@ -56,6 +56,7 @@ const bounds: readonly Bound[] = [
   { low: 'minimum', high: 'maximum', from: 'from ' },
   { low: 'minLength', high: 'maxLength', from: '', unit: { one: 'character', other: 'characters' } },
   { low: 'minItems', high: 'maxItems', from: '', unit: { one: 'item', other: 'items' } },
+  { low: 'minProperties', high: 'maxProperties', from: '', unit: { one: 'entry', other: 'entries' } },
 ];
 
 export const mostFieldDescriptionCharacters = 300;
@@ -131,8 +132,17 @@ function subFieldPhrases(name: string, property: JsonSchema, required: boolean, 
   ];
 }
 
+function entryWords(entries: JsonSchema, reading: SchemaReading, count: Count): Words {
+  const [first, ...rest] = wordsOf(entries, deeper(reading), 'one');
+  return [`${record[count]} whose every entry is ${first}`, ...rest];
+}
+
 function recordWords(schema: JsonSchema, reading: SchemaReading, count: Count): Words {
   const properties = propertiesOf(schema);
+  const entries = schema['additionalProperties'];
+  if (!reading.expanded && properties.length === 0 && isJsonSchema(entries)) {
+    return entryWords(entries, reading, count);
+  }
   if (reading.expanded || properties.length === 0) {
     return [record[count]];
   }

@@ -7,6 +7,7 @@ import {
   type Overview,
   type OverviewBlock,
   type OverviewSection,
+  type Phrases,
 } from './overview.ts';
 
 export const mostOverviewBytes = 65_536;
@@ -45,12 +46,19 @@ function fieldTableText({ rows }: FieldTable): string {
   ].join('\n');
 }
 
+function itemsText(items: readonly Phrases[], markerOf: (index: number) => string): string {
+  return items.map((item, index) => `${markerOf(index)} ${oneLine(phrasesText(item, 'prose')).trim()}`).join('\n');
+}
+
 function blockText(block: OverviewBlock): string {
   if (block.kind === 'paragraph') {
     return phrasesText(block.phrases, 'prose');
   }
   if (block.kind === 'list') {
-    return block.items.map((item) => `- ${oneLine(phrasesText(item, 'prose')).trim()}`).join('\n');
+    return itemsText(block.items, () => '-');
+  }
+  if (block.kind === 'numbered') {
+    return itemsText(block.items, (index) => `${index + 1}.`);
   }
   return block.kind === 'fields' ? fieldTableText(block) : mermaidOf(block);
 }

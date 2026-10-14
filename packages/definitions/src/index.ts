@@ -205,7 +205,9 @@ export {
 export { checkedWorker } from './checking/worker-url.ts';
 export {
   bulletList,
+  listedPhrases,
   named,
+  numberedList,
   paragraph,
   sectionOf,
   type BulletList,
@@ -215,6 +217,8 @@ export {
   type DiagramNode,
   type FieldRow,
   type FieldTable,
+  type NodeShape,
+  type NumberedList,
   type Overview,
   type OverviewBlock,
   type OverviewSection,
@@ -222,6 +226,7 @@ export {
   type Phrase,
   type Phrases,
 } from './overview/overview.ts';
+export { durationInWords } from './overview/duration-words.ts';
 export { appendedSection, markdownOf, mostOverviewBytes, mostTableRows } from './overview/markdown-writer.ts';
 export { mostFieldDescriptionCharacters, schemaBlocks } from './overview/schema-words.ts';
 export {

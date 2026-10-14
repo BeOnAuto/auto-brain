@@ -248,6 +248,12 @@ The run ends `succeeded` with the answer, such as `{"choice": "approve"}`, as it
 
 `send_run_event` remains for events a waiting workflow listens for that are not the answer to a question.
 
+## The overview
+
+`get_definition` answers a saved function with its `overview`, the function in plain words for a person who does not read Liquid or YAML, which Auto Studio shows before the document. It opens with the `description`, or says the function has none yet. Of a function that asks a system, it then says who it asks, the tool and its server; what it sends, each field of `input.schema` with its type and its bounds; and what it reads, the part of the tool's answer `read` points at and each field of `output.schema`. Of a function that asks a person, it says what it needs, each field of `input.schema` with its type and its bounds; who it asks, `to` and `from` as a person reads them, each value a template reads, such as `{{ input.owner }}`, its name in bold, **owner**, as for the instructions of a [reasoning function](reasoning-format.md#the-overview); what it sends, the message read the same way; where, the tool of `deliver` or the playbook's inbox; how long it waits, `expires` in words, such as 2 days for `P2D`; what answer it expects, each field of `output.schema`, or that it is a notification; and, for a function that reads replies, the tool it reads them with and the reply rule in words: where in a reply each property of the answer comes from, and the words that mean each value.
+
+The overview is written from the document when it is saved, so it says only what the document says. Write the `description` for the person who will read it and give each field of the schemas a `description`, so the overview can say it. A function without them still has an overview, with the types alone.
+
 ## Availability
 
 Interaction functions are available in a self-hosted runtime, through the inbox and the tools of the tool servers its operator configures. See [Functions and availability](../concepts/functions.md#availability).
