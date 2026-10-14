@@ -20,6 +20,11 @@
       "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
       "groupName": "non-major dependencies",
       "groupSlug": "non-major"
+    },
+    {
+      "matchFileNames": ["packages/server/Dockerfile"],
+      "groupName": "container base image",
+      "groupSlug": "container-base-image"
     }
   ]
 }

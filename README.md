@@ -10,7 +10,7 @@ Your agent builds and directs the work. **Auto Runtime** stores and executes it;
 
 ## Get started
 
-Start Auto Runtime on your computer with `npx @on.auto/runtime`. It needs Node.js 26.10 or later on macOS or Linux, and listens on `http://localhost:5555` in local mode. Every release is also the image `onauto/runtime` on Docker Hub; see [running in a container](docs/engineering/self-host/container.md).
+Start Auto Runtime on your computer with `npx @on.auto/runtime`. It needs Node.js 26.10 or later on macOS or Linux, and listens on `http://localhost:5555` in local mode. Every release is also the image `onauto/runtime` on Docker Hub; see [Run with Docker](docs/self-host/docker.md) and the [self-hosting guides](docs/self-host.md).
 
 Follow the [local setup guide](docs/get-started/local.md) or browse the [Auto documentation](https://on.auto/docs/). See [function availability](docs/concepts/functions.md#availability) for implemented capabilities.
 
