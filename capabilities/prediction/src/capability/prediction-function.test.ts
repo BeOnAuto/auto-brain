@@ -101,6 +101,21 @@ describe('the summary of a prediction function', () => {
     });
   });
 
+  it('keeps in its details the interaction functions it calls: the one that sends a build, then the one that approves', () => {
+    const throughBoth = weeklyOrdersWith(
+      ['  activate: automatic', '  activate: { approved: approve-version }'],
+      ['  expires: P7D', '  through: send-build\n  expires: P7D'],
+    );
+
+    expect(predictionRuns().prepared(throughBoth).summary.details).toMatchObject({
+      calls: [
+        { type: 'interaction', name: 'send-build', role: 'trainer' },
+        { type: 'interaction', name: 'approve-version', role: 'approver' },
+      ],
+    });
+    expect(predictionRuns().prepared(weeklyOrders).summary.details).not.toHaveProperty('calls');
+  });
+
   it('has no description when its document has none', () => {
     const bare = weeklyOrdersWith(['description: Predicts the orders of each region one and four weeks ahead', '']);
 
