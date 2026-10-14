@@ -63,6 +63,15 @@ describe('the message of a built-in provider at its default endpoint', () => {
     ]);
   });
 
+  it('reaches the caller as its first line, however much space that line holds', async () => {
+    const spaced = `Unsupported${' '.repeat(100_000)}parameter`;
+    const { failure } = await outcomeOf({ OPENAI_API_KEY: apiKey }, 'openai/gpt-5', () =>
+      jsonResponse(openAiError(`${spaced}\nSee the documentation`), 400),
+    );
+
+    expect(failure).toMatchObject({ provider_message: spaced.slice(0, 300) });
+  });
+
   it('reaches the caller with at most 300 characters, and the operator with at most 2000', async () => {
     const { failure, reports } = await outcomeOf({ OPENAI_API_KEY: apiKey }, 'openai/gpt-5', () =>
       jsonResponse(openAiError('x'.repeat(3000)), 422),

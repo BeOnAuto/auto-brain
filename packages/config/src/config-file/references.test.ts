@@ -25,6 +25,23 @@ describe('the references a substitution finds', () => {
     });
   });
 
+  it('reads the references of a text in turn, and a `${` without its close as the text it is', () => {
+    expect(substituted('${HOST}:${PORT} ${open $$HOME', '/url', { HOST: 'db', PORT: '5432' })).toEqual({
+      value: 'db:5432 ${open $HOME',
+      problems: [],
+      references: [
+        { pointer: '/url', value: 'db' },
+        { pointer: '/url', value: '5432' },
+      ],
+    });
+  });
+
+  it('reads a text whole, however many `${` it holds without a close', () => {
+    const text = '${'.repeat(100_000);
+
+    expect(substituted(text, '/url', {})).toEqual({ value: text, problems: [], references: [] });
+  });
+
   it('finds no reference in text without one, nor in a value that is not text', () => {
     expect(substituted({ count: 2, on: true, none: null, text: 'plain' }, '', {})).toMatchObject({ references: [] });
   });

@@ -25,19 +25,48 @@ interface EntrySubstitution {
   readonly result: Substituted;
 }
 
-const pieces = /(\$\$|\$\{[^}]*\})/u;
+interface Piece {
+  readonly kind: 'text' | 'escape' | 'reference';
+  readonly text: string;
+}
 
 const environmentReference = /^\$\{(?:env:)?([A-Za-z_][A-Za-z0-9_]*)(?::-([^}]*))?\}$/u;
 
 const notAReference =
   'Holds a ${…} that is not a reference to an environment variable; write ${NAME}, or $$ for a literal $';
 
-function piecesOf(text: string): readonly string[] {
-  return text.split(pieces).filter((piece) => piece !== '');
+function pieceAt(text: string, dollar: number, close: number): Piece | undefined {
+  if (text.startsWith('$$', dollar)) {
+    return { kind: 'escape', text: '$$' };
+  }
+  return text.startsWith('${', dollar) && close !== -1
+    ? { kind: 'reference', text: text.slice(dollar, close + 1) }
+    : undefined;
 }
 
-function isReference(piece: string): boolean {
-  return piece.startsWith('${');
+function textPieces(text: string): readonly Piece[] {
+  return text === '' ? [] : [{ kind: 'text', text }];
+}
+
+function piecesOf(text: string): readonly Piece[] {
+  const found: Piece[] = [];
+  let textFrom = 0;
+  let close = text.indexOf('}');
+  let dollar = text.indexOf('$');
+  while (dollar !== -1) {
+    if (close !== -1 && close < dollar + 2) {
+      close = text.indexOf('}', dollar + 2);
+    }
+    const piece = pieceAt(text, dollar, close);
+    if (piece === undefined) {
+      dollar = text.indexOf('$', dollar + 1);
+    } else {
+      found.push(...textPieces(text.slice(textFrom, dollar)), piece);
+      textFrom = dollar + piece.text.length;
+      dollar = text.indexOf('$', textFrom);
+    }
+  }
+  return [...found, ...textPieces(text.slice(textFrom))];
 }
 
 function isSet(value: string | undefined): value is string {
@@ -52,14 +81,14 @@ function failed(problem: string): Resolution {
   return { text: '', problem };
 }
 
-function resolved(piece: string, environment: Environment): Resolution {
-  if (piece === '$$') {
+function resolved(piece: Piece, environment: Environment): Resolution {
+  if (piece.kind === 'escape') {
     return plain('$');
   }
-  if (!isReference(piece)) {
-    return plain(piece);
+  if (piece.kind === 'text') {
+    return plain(piece.text);
   }
-  const reference = environmentReference.exec(piece);
+  const reference = environmentReference.exec(piece.text);
   if (reference === null) {
     return failed(notAReference);
   }
@@ -86,12 +115,13 @@ function substitutedText(textWithReferences: string, pointer: string, environmen
 
 export function literalTextOf(textWithReferences: string): string {
   return piecesOf(textWithReferences)
-    .filter((piece) => !isReference(piece))
+    .filter((piece) => piece.kind !== 'reference')
+    .map((piece) => piece.text)
     .join('');
 }
 
 export function holdsReference(textWithReferences: string): boolean {
-  return piecesOf(textWithReferences).some((piece) => environmentReference.test(piece));
+  return piecesOf(textWithReferences).some((piece) => environmentReference.test(piece.text));
 }
 
 export function substituted(value: Schema.Json, pointer: string, environment: Environment): Substituted {
