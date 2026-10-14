@@ -1,16 +1,8 @@
 import type { RunContext } from '@on.auto/definitions';
-import {
-  allTaskEntries,
-  field,
-  holdsAnExpression,
-  isObject,
-  type Json,
-  type JsonObject,
-} from '@on.auto/workflow-engine';
-import { enclosedBody } from '@on.auto/workflow-engine/dsl';
+import { allTaskEntries, field, holdsAnExpression, type JsonObject } from '@on.auto/workflow-engine';
 import { Effect } from 'effect';
 
-import { runDefinitionFunction } from '../document/workflow-functions.ts';
+import { definitionCallOf, type RunDefinitionCall } from '../document/workflow-functions.ts';
 
 export const callMarginMs = 60_000;
 
@@ -21,11 +13,7 @@ interface CalledDefinition {
   readonly longest: (lengths: RunLengths) => Effect.Effect<number | undefined>;
 }
 
-function literalOf(value: Json | undefined): string | undefined {
-  return typeof value === 'string' && enclosedBody(value) === undefined ? value : undefined;
-}
-
-function longestOf(type: string, name: string, given: JsonObject): CalledDefinition['longest'] {
+function longestOf({ type, name, given }: RunDefinitionCall): CalledDefinition['longest'] {
   const input = field(given, 'input') ?? {};
   return holdsAnExpression(input)
     ? ({ longestRunOf }) => longestRunOf(type, name)
@@ -33,13 +21,8 @@ function longestOf(type: string, name: string, given: JsonObject): CalledDefinit
 }
 
 function calledDefinitionOf(task: JsonObject, reference: string): readonly CalledDefinition[] {
-  const given = field(task, 'with');
-  if (field(task, 'call') !== runDefinitionFunction || !isObject(given)) {
-    return [];
-  }
-  const type = literalOf(field(given, 'type'));
-  const name = literalOf(field(given, 'name'));
-  return type === undefined || name === undefined ? [] : [{ reference, longest: longestOf(type, name, given) }];
+  const call = definitionCallOf(task);
+  return call === undefined ? [] : [{ reference, longest: longestOf(call) }];
 }
 
 type CallLimit = readonly [string, number];

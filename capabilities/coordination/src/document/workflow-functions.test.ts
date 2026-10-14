@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { testPlaybookNames, testWorkflowPolicy as workflowPolicy } from '../testing/test-sandbox.ts';
 import { workflow } from '../testing/workflows.ts';
-import { workflowFunctionsOf } from './workflow-functions.ts';
+import { definitionsCalledIn, workflowFunctionsOf } from './workflow-functions.ts';
+import { summaryOf } from './workflow-summary.ts';
 
 const workflowFunctions = workflowFunctionsOf(testPlaybookNames);
 
@@ -41,6 +42,53 @@ describe('a call of run_definition', () => {
       workflowFunctions.describe('run_definition', { name: 'summarize' }),
       workflowFunctions.describe('run_definition', 'summarize'),
     ]).toEqual(['the reasoning function summarize', 'the echo definition greet', 'run_definition', 'run_definition']);
+  });
+});
+
+describe('the definitions a workflow calls', () => {
+  it('are those its calls of run_definition name, nested or not, in the order of the document and each once', () => {
+    expect(
+      definitionsCalledIn(
+        workflow(`do:
+  - review:
+      call: run_definition
+      with: { type: reasoning, name: review-brief, input: {} }
+  - each:
+      for: { each: brief, in: '\${ $data.briefs }' }
+      do:
+        - again: { call: run_definition, with: { type: reasoning, name: review-brief } }
+        - pace: { call: run_definition, with: { type: computation, name: campaign-pace } }
+  - guarded:
+      try:
+        - ask: { call: run_definition, with: { type: interaction, name: ask-approval } }
+      catch:
+        do:
+          - note: { call: run_definition, with: { type: workflow, name: note-failure } }
+  - both:
+      fork:
+        branches:
+          - left: { call: run_definition, with: { type: recall, name: review-history } }
+  - chosen: { call: run_definition, with: { type: reasoning, name: '\${ $data.reviewer }' } }
+  - typed: { call: run_definition, with: { type: '\${ $data.type }', name: review-brief } }
+  - plain: { set: { done: true } }
+`),
+      ),
+    ).toEqual([
+      { type: 'reasoning', name: 'review-brief' },
+      { type: 'computation', name: 'campaign-pace' },
+      { type: 'interaction', name: 'ask-approval' },
+      { type: 'workflow', name: 'note-failure' },
+      { type: 'recall', name: 'review-history' },
+    ]);
+  });
+
+  it('are the calls the details of its summary keep, and a workflow that calls none keeps no details', () => {
+    const calling = workflow(
+      'do:\n  - pace: { call: run_definition, with: { type: computation, name: campaign-pace } }',
+    );
+
+    expect(summaryOf(calling).details).toEqual({ calls: [{ type: 'computation', name: 'campaign-pace' }] });
+    expect(summaryOf(workflow('do:\n  - plain: { set: { done: true } }'))).not.toHaveProperty('details');
   });
 });
 

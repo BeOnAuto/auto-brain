@@ -2,10 +2,13 @@ import {
   definitionResourceLabel,
   emittedEventsOf,
   isReservedSource,
+  type CalledDefinition,
   type PlaybookOwnNames,
 } from '@on.auto/definitions';
 import {
+  allTaskEntries,
   type CallFunctions,
+  enclosedBody,
   field,
   isObject,
   type Json,
@@ -22,6 +25,36 @@ import { scheduleRejections } from './workflow-schedule.ts';
 export const runDefinitionFunction = 'run_definition';
 
 const runDefinitionArguments = new Set(['type', 'name', 'input']);
+
+export interface RunDefinitionCall {
+  readonly type: string;
+  readonly name: string;
+  readonly given: JsonObject;
+}
+
+function literalOf(value: Json | undefined): string | undefined {
+  return typeof value === 'string' && enclosedBody(value) === undefined ? value : undefined;
+}
+
+export function definitionCallOf(task: JsonObject): RunDefinitionCall | undefined {
+  const given = field(task, 'with');
+  if (field(task, 'call') !== runDefinitionFunction || !isObject(given)) {
+    return undefined;
+  }
+  const type = literalOf(field(given, 'type'));
+  const name = literalOf(field(given, 'name'));
+  return type === undefined || name === undefined ? undefined : { type, name, given };
+}
+
+export function definitionsCalledIn(document: JsonObject): readonly CalledDefinition[] {
+  const calls: readonly CalledDefinition[] = allTaskEntries(field(document, 'do'), '/do').flatMap(({ task }) => {
+    const call = definitionCallOf(task);
+    return call === undefined ? [] : [{ type: call.type, name: call.name }];
+  });
+  return calls.filter(
+    ({ type, name }, index) => calls.findIndex((call) => call.type === type && call.name === name) === index,
+  );
+}
 
 function runDefinitionRejections(arguments_: Json | undefined, pointer: string): readonly Rejection[] {
   if (!isObject(arguments_)) {
