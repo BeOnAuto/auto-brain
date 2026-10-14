@@ -1440,6 +1440,10 @@
                       "type": "string",
                       "description": "The definition document"
                     },
+                    "overview": {
+                      "type": "string",
+                      "description": "The definition in plain words for a person who does not read its document: Markdown with tables of its fields and Mermaid diagrams, written by the runtime from the document when this version was saved"
+                    },
                     "triggers_since": {
                       "type": "string",
                       "description": "For an active definition with triggers, the id of the record that saved its current version: from that record on, what its triggers start is a run of this version"
@@ -1458,7 +1462,8 @@
                     "created_at",
                     "created_by",
                     "updated_at",
-                    "source"
+                    "source",
+                    "overview"
                   ],
                   "additionalProperties": false,
                   "description": "A saved definition, with its document"
@@ -2020,6 +2025,10 @@
                       "type": "string",
                       "description": "The definition document"
                     },
+                    "overview": {
+                      "type": "string",
+                      "description": "The definition in plain words for a person who does not read its document: Markdown with tables of its fields and Mermaid diagrams, written by the runtime from the document when this version was saved"
+                    },
                     "triggers_since": {
                       "type": "string",
                       "description": "For an active definition with triggers, the id of the record that saved its current version: from that record on, what its triggers start is a run of this version"
@@ -2038,7 +2047,8 @@
                     "created_at",
                     "created_by",
                     "updated_at",
-                    "source"
+                    "source",
+                    "overview"
                   ],
                   "additionalProperties": false,
                   "description": "A saved definition, with its document"
@@ -2329,6 +2339,10 @@
                       "type": "string",
                       "description": "The definition document"
                     },
+                    "overview": {
+                      "type": "string",
+                      "description": "The definition in plain words for a person who does not read its document: Markdown with tables of its fields and Mermaid diagrams, written by the runtime from the document when this version was saved"
+                    },
                     "triggers_since": {
                       "type": "string",
                       "description": "For an active definition with triggers, the id of the record that saved its current version: from that record on, what its triggers start is a run of this version"
@@ -2347,7 +2361,8 @@
                     "created_at",
                     "created_by",
                     "updated_at",
-                    "source"
+                    "source",
+                    "overview"
                   ],
                   "additionalProperties": false,
                   "description": "A saved definition, with its document"
@@ -2634,6 +2649,10 @@
                       "type": "string",
                       "description": "The definition document"
                     },
+                    "overview": {
+                      "type": "string",
+                      "description": "The definition in plain words for a person who does not read its document: Markdown with tables of its fields and Mermaid diagrams, written by the runtime from the document when this version was saved"
+                    },
                     "triggers_since": {
                       "type": "string",
                       "description": "For an active definition with triggers, the id of the record that saved its current version: from that record on, what its triggers start is a run of this version"
@@ -2652,7 +2671,8 @@
                     "created_at",
                     "created_by",
                     "updated_at",
-                    "source"
+                    "source",
+                    "overview"
                   ],
                   "additionalProperties": false,
                   "description": "A saved definition, with its document"

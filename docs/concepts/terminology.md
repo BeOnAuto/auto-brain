@@ -39,27 +39,28 @@ Classify a function by its responsibility. Calling an API does not turn a recall
 
 ## Definitions and runs
 
-| Term         | Meaning                                                                                                                                    |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Playbook     | The complete system for a business responsibility, including methods, functions, workflows, relevant information and operating boundaries. |
-| Brain        | The playbook's reusable function collection; it shares the playbook lifecycle.                                                             |
-| Auto Runtime | The software that stores and executes playbooks.                                                                                           |
-| Auto Studio  | The interface for inspecting and managing playbooks.                                                                                       |
-| Connection   | Authorized service access, potentially shared by several playbooks.                                                                        |
-| Method       | The business's approach: what evidence matters, how decisions are made and what should happen.                                             |
-| Workflow     | A reusable definition coordinating steps, dependencies, conditions and handoffs.                                                           |
-| Function     | A reusable definition of an operation with declared inputs, outputs and behavior.                                                          |
-| Step         | One use of a function, another workflow or a control operation within a workflow.                                                          |
-| Trigger      | A configured condition that starts a workflow.                                                                                             |
-| Version      | An identified revision of a definition or predictive model.                                                                                |
-| Run          | A workflow or function carried out once against particular inputs.                                                                         |
-| Step run     | One workflow step carried out once.                                                                                                        |
-| Attempt      | One try at a step's work, or at a run started again under its id; a retry is another attempt.                                              |
-| Result       | The output produced by a run.                                                                                                              |
+| Term         | Meaning                                                                                                                                      |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Playbook     | The complete system for a business responsibility, including methods, functions, workflows, relevant information and operating boundaries.   |
+| Brain        | The playbook's reusable function collection; it shares the playbook lifecycle.                                                               |
+| Auto Runtime | The software that stores and executes playbooks.                                                                                             |
+| Auto Studio  | The interface for inspecting and managing playbooks.                                                                                         |
+| Connection   | Authorized service access, potentially shared by several playbooks.                                                                          |
+| Method       | The business's approach: what evidence matters, how decisions are made and what should happen.                                               |
+| Workflow     | A reusable definition coordinating steps, dependencies, conditions and handoffs.                                                             |
+| Function     | A reusable definition of an operation with declared inputs, outputs and behavior.                                                            |
+| Step         | One use of a function, another workflow or a control operation within a workflow.                                                            |
+| Trigger      | A configured condition that starts a workflow.                                                                                               |
+| Version      | An identified revision of a definition or predictive model.                                                                                  |
+| Overview     | A definition in plain words for a person who does not read its document, which the runtime writes from the document when it saves a version. |
+| Run          | A workflow or function carried out once against particular inputs.                                                                           |
+| Step run     | One workflow step carried out once.                                                                                                          |
+| Attempt      | One try at a step's work, or at a run started again under its id; a retry is another attempt.                                                |
+| Result       | The output produced by a run.                                                                                                                |
 
 A method does not require a `Method` resource. A shared function remains one definition when several workflows use it. A step refers to that definition; it does not copy it. A retry does not create another business function.
 
-Definitions, versions, runs and results are separate concepts. The runtime versions definitions and records the version each run uses. It does not currently let a caller select an arbitrary historical definition version to run. A workflow can call the functions of its playbook and other workflows; a workflow called this way is a subworkflow. A run of a workflow finishes later, so the call waits for it, and a run can be cancelled, which ends it as cancelled.
+Definitions, versions, runs and results are separate concepts. The runtime versions definitions and records the version each run uses. It does not currently let a caller select an arbitrary historical definition version to run. A workflow can call the functions of its playbook and other workflows; a workflow called this way is a subworkflow. A run of a workflow finishes later, so the call waits for it, and a run can be cancelled, which ends it as cancelled. Each version of a definition has one overview, written from its document: it describes the definition and is never a second source of it.
 
 The configured trigger types are **Schedule trigger** and **Event trigger**; a workflow's schedule may name an event trigger and schedule triggers of both kinds, a cron schedule and an every schedule, each kept and matched on its own. Starting a workflow by hand is a **Run** action. Sending an approval or other input to a waiting run answers that run; it does not start a new one. Existing workflow timers and event waits are control steps, not configured triggers.
 
