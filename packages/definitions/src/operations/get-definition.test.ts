@@ -4,7 +4,7 @@ import { acmeAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
 import { echo } from '../testing/echo.ts';
 import { asQueryString, firstMoment, harness, toPlaybook } from '../testing/harness.ts';
-import { probe } from '../testing/probe.ts';
+import { overviewOfAProbe, probe } from '../testing/probe.ts';
 
 const { createDefinition, getDefinition, retireDefinition } = definitionOperationsFor([echo, probe().capability]);
 
@@ -48,6 +48,7 @@ describe('get_definition', () => {
         created_by: 'acme-admin',
         updated_at: firstMoment,
         source: 'text',
+        overview: overviewOfAProbe('plain'),
       },
     });
     expect(

@@ -24,6 +24,15 @@ async function withGreet() {
   return definitions;
 }
 
+const howdyOverview = [
+  '# greet',
+  'This greeting has no description yet.',
+  '## What it needs',
+  'A record.',
+  '## What it produces',
+  '| Field | Required | What it is |\n| --- | --- | --- |\n| **greeting** | yes | Exactly Howdy. |\n| **input** | yes | A record. |\n',
+].join('\n\n');
+
 function updatingGreet(source: string) {
   return toAlpha(acmeAlphaKeeper, { type: 'echo', name: 'greet', source });
 }
@@ -62,14 +71,17 @@ describe('update_definition', () => {
         created_by: 'acme-admin',
         updated_at: later,
         source: '{"greeting": "Howdy"}',
+        overview: howdyOverview,
       },
     });
     expect(await call(updateDefinition, updatingGreet(hello), later)).toMatchObject({
       output: { version: 3, description: 'Greets the caller' },
     });
   });
+});
 
-  it('succeeds and records nothing when the document is the same', async () => {
+describe('update_definition of the same document', () => {
+  it('succeeds and records nothing', async () => {
     const { call } = await withGreet();
 
     expect(await call(updateDefinition, updatingGreet(hello), later)).toMatchObject({

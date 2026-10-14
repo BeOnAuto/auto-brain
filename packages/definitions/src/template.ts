@@ -17,3 +17,10 @@ export {
 } from './template/template-parsing.ts';
 export { renderedTemplate, type RenderFailure, type TemplateRender } from './template/template-rendering.ts';
 export { inputVariableIssues } from './template/template-variables.ts';
+export {
+  mostReadCharacters,
+  readableParts,
+  readableTemplate,
+  type ReadParts,
+  type TemplateText,
+} from './overview/liquid-reading.ts';

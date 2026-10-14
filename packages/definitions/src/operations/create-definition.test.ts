@@ -5,7 +5,7 @@ import { acmeAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
 import { echo } from '../testing/echo.ts';
 import { firstMoment, harness, toPlaybook } from '../testing/harness.ts';
-import { probe } from '../testing/probe.ts';
+import { overviewOfAProbe, probe } from '../testing/probe.ts';
 
 const { createDefinition, retireDefinition } = definitionOperationsFor([echo, probe().capability]);
 
@@ -54,6 +54,14 @@ describe('create_definition', () => {
         created_by: 'acme-admin',
         updated_at: firstMoment,
         source: hello,
+        overview: [
+          '# greet',
+          'Greets the caller',
+          '## What it needs',
+          'A record.',
+          '## What it produces',
+          '| Field | Required | What it is |\n| --- | --- | --- |\n| **greeting** | yes | Exactly Hello. |\n| **input** | yes | A record. |\n',
+        ].join('\n\n'),
       },
     });
   });
@@ -90,6 +98,7 @@ describe('the definition create_definition records', () => {
         created_by: 'acme-admin',
         updated_at: firstMoment,
         source: 'just text',
+        overview: overviewOfAProbe('plain'),
       },
     });
   });

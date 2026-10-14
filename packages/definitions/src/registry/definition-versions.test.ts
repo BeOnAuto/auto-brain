@@ -18,11 +18,19 @@ function about(name: string, version: number): DefinitionContext {
 }
 
 const history: readonly RecordedDefinitionEvent[] = [
-  { type: 'definition_created', data: { content: { source: 'one' } }, context: about('greet', 1) },
-  { type: 'definition_created', data: { content: { source: 'else' } }, context: about('other', 1) },
+  {
+    type: 'definition_created',
+    data: { content: { source: 'one', overview: '# greet\n' } },
+    context: about('greet', 1),
+  },
+  {
+    type: 'definition_created',
+    data: { content: { source: 'else', overview: '# other\n' } },
+    context: about('other', 1),
+  },
   {
     type: 'definition_updated',
-    data: { content: { source: 'two', stripped: { module: 'TWO' } } },
+    data: { content: { source: 'two', overview: '# greet\n', stripped: { module: 'TWO' } } },
     context: about('greet', 2),
   },
   { type: 'definition_retired', data: {}, context: about('greet', 2) },
@@ -52,10 +60,20 @@ describe('a read of one version of a definition of a playbook', () => {
     const stream = 'playbook/acme/alpha/definitions/echo';
     const decider = definitionsDecider('echo');
     await Effect.runPromise(
-      ledger.execute(stream, decider, { type: 'create', name: 'greet', content: { source: 'one' }, ...at }),
+      ledger.execute(stream, decider, {
+        type: 'create',
+        name: 'greet',
+        content: { source: 'one', overview: '# greet\n' },
+        ...at,
+      }),
     );
     await Effect.runPromise(
-      ledger.execute(stream, decider, { type: 'update', name: 'greet', content: { source: 'two' }, ...at }),
+      ledger.execute(stream, decider, {
+        type: 'update',
+        name: 'greet',
+        content: { source: 'two', overview: '# greet\n' },
+        ...at,
+      }),
     );
     const alpha = { org: 'acme', playbook: 'alpha' };
 

@@ -13,9 +13,17 @@ import { jsonBytesOf } from '../runs/recorded-size.ts';
 import { firstCharacters, mostDescriptionCharacters } from './event-data.ts';
 import { eventPresenter, type Account } from './event-presenter.ts';
 
-function contentShown({ source, description, input_schema, output_schema, warnings = [] }: DefinitionContent) {
+function contentShown({
+  source,
+  overview,
+  description,
+  input_schema,
+  output_schema,
+  warnings = [],
+}: DefinitionContent) {
   return {
     source_bytes: Buffer.byteLength(source, 'utf8'),
+    overview_bytes: Buffer.byteLength(overview, 'utf8'),
     ...(description === undefined ? {} : { description: firstCharacters(description, mostDescriptionCharacters) }),
     ...(input_schema === undefined ? {} : { input_schema_bytes: jsonBytesOf(input_schema) }),
     ...(output_schema === undefined ? {} : { output_schema_bytes: jsonBytesOf(output_schema) }),

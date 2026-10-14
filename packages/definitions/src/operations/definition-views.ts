@@ -15,16 +15,18 @@ export function definitionOf({ type, mediaType }: Capability, stored: StoredDefi
 }
 
 export function listedDefinitionOf(capability: Capability, stored: StoredDefinition): ListedDefinition {
-  return Struct.omit(definitionOf(capability, stored), ['source']);
+  return Struct.omit(definitionOf(capability, stored), ['source', 'overview']);
 }
 
 function contentFrom(
   source: string,
   { description, inputSchema, outputSchema, warnings = [], triggers = [], details }: DefinitionSummary,
   stripped: StrippedForms,
+  overview: string,
 ): DefinitionContent {
   return {
     source,
+    overview,
     ...(description === undefined ? {} : { description }),
     ...(inputSchema === undefined ? {} : { input_schema: inputSchema }),
     ...(outputSchema === undefined ? {} : { output_schema: outputSchema }),
@@ -41,11 +43,12 @@ function refusedSource(rejection: Rejection): Effect.Effect<never, InvalidInput>
 
 export function contentOf(
   capability: Capability,
+  name: string,
   source: string,
 ): Effect.Effect<DefinitionContent, InvalidInput | Unavailable, PlaybookReader> {
   return Effect.gen(function* () {
-    const { summary, check } = yield* capability.prepare(source);
+    const { summary, check, overview } = yield* capability.prepare(source);
     const stripped = yield* check(yield* savedDefinitions);
-    return contentFrom(source, summary, stripped);
+    return contentFrom(source, summary, stripped, overview(name));
   }).pipe(Effect.catchTag('invalid_input', refusedSource));
 }

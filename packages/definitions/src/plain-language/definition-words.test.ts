@@ -30,6 +30,7 @@ const greet = {
   status: 'active',
   media_type: 'application/json',
   source: '{"greeting":"Hello"}',
+  overview: '# greet\n\nThis greeting has no description yet.\n',
   created_at: '2026-10-02T09:00:00.000Z',
   created_by: 'acme-admin',
   updated_at: '2026-10-02T09:00:00.000Z',
@@ -38,7 +39,9 @@ const greet = {
 const greetInput = { type: 'echo', name: 'greet', source: '{"greeting":"Hello"}' };
 
 function listed(definition: Readonly<Record<string, unknown>>): Readonly<Record<string, unknown>> {
-  return Object.fromEntries(Object.entries(definition).filter(([key]: readonly [string, unknown]) => key !== 'source'));
+  return Object.fromEntries(
+    Object.entries(definition).filter(([key]: readonly [string, unknown]) => key !== 'source' && key !== 'overview'),
+  );
 }
 
 const describing: ReadonlyArray<readonly [string, Readonly<Record<string, unknown>>, string]> = [

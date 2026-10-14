@@ -137,6 +137,7 @@ const largestRunEvents: readonly RunEvent[] = [
 
 const largestContent = {
   source: '😀'.repeat(16 * 1024),
+  overview: '😀'.repeat(16 * 1024),
   description: awkward,
   input_schema: largestJson,
   output_schema: largestJson,

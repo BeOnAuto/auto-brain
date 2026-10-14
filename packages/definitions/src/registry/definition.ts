@@ -59,6 +59,10 @@ export const ListedDefinitionSchema = Schema.Struct(listedDefinitionFields).anno
 export const DefinitionSchema = Schema.Struct({
   ...listedDefinitionFields,
   source: Schema.String.annotate({ description: 'The definition document' }),
+  overview: Schema.String.annotate({
+    description:
+      'The definition in plain words for a person who does not read its document: Markdown with tables of its fields and Mermaid diagrams, written by the runtime from the document when this version was saved',
+  }),
   triggers_since: Schema.optionalKey(
     Schema.String.annotate({
       description:

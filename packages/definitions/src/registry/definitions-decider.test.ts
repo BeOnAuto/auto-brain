@@ -14,12 +14,13 @@ const change = { by: 'acme-editor', at: '2026-10-02T10:30:00.000Z' };
 
 const hello: DefinitionContent = {
   source: '{"greeting": "Hello"}',
+  overview: '# greet\n\nGreets\n',
   description: 'Greets',
   input_schema: { type: 'object' },
   output_schema: { type: 'object' },
 };
 
-const howdy: DefinitionContent = { source: '{"greeting": "Howdy"}' };
+const howdy: DefinitionContent = { source: '{"greeting": "Howdy"}', overview: '# greet\n\nHowdy\n' };
 
 type RecordedDefinition = RecordedDefinitionEvent;
 
@@ -151,7 +152,7 @@ describe('the definitions of a capability', () => {
     expect(definitionTypeStreamOf('echo')).toBe('definitions/echo');
   });
 
-  it('hold each definition as its events left it, its content replaced by every update', () => {
+  it('hold each definition as its events left it, its content and its overview replaced by every update', () => {
     const registry = registryAfter(
       greetCreated,
       created('wave', howdy),
@@ -165,6 +166,7 @@ describe('the definitions of a capability', () => {
         version: 2,
         status: 'retired',
         source: '{"greeting": "Howdy"}',
+        overview: '# greet\n\nHowdy\n',
         created_at: '2026-10-01T09:00:00.000Z',
         created_by: 'acme-admin',
         updated_at: '2026-10-03T08:00:00.000Z',
@@ -175,6 +177,7 @@ describe('the definitions of a capability', () => {
         version: 1,
         status: 'active',
         source: '{"greeting": "Howdy"}',
+        overview: '# greet\n\nHowdy\n',
         created_at: '2026-10-01T09:00:00.000Z',
         created_by: 'acme-admin',
         updated_at: '2026-10-01T09:00:00.000Z',
@@ -211,7 +214,11 @@ const threeTriggers: DefinitionContent['triggers'] = [
   { kind: 'every', reference: '/schedule/every', milliseconds: 60_000 },
 ];
 
-const reacting: DefinitionContent = { source: '{"greeting": "Hello", "triggers": "three"}', triggers: threeTriggers };
+const reacting: DefinitionContent = {
+  source: '{"greeting": "Hello", "triggers": "three"}',
+  overview: '# reacting\n',
+  triggers: threeTriggers,
+};
 
 function reactingDefinitions(count: number): readonly RecordedDefinition[] {
   return Array.from({ length: count }, (_, index) => created(`reacting-${index}`, reacting));

@@ -5,7 +5,7 @@ import { acmeAdmin } from '../testing/callers.ts';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
 import { echo } from '../testing/echo.ts';
 import { firstMoment, harness, toPlaybook } from '../testing/harness.ts';
-import { probe } from '../testing/probe.ts';
+import { overviewOfAProbe, probe } from '../testing/probe.ts';
 
 const { createDefinition, runDefinition, retireDefinition } = definitionOperationsFor([echo, probe().capability]);
 
@@ -28,6 +28,7 @@ const retiredPlain = {
   updated_at: later,
   retired_at: later,
   source: 'text',
+  overview: overviewOfAProbe('plain'),
 };
 
 async function withPlain() {
