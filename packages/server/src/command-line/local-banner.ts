@@ -1,4 +1,4 @@
-import { studioOrigin } from '@on.auto/api';
+import { studioOrigin } from '@on.auto/identity';
 
 import { linkerFor, painterFor, type ColorDepth } from '../logging/terminal.ts';
 import { logoHeight, logoLines, type PaintingDepth } from './logo.ts';
