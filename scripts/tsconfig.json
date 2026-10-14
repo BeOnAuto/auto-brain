@@ -1,4 +1,7 @@
 {
   "extends": "../tsconfig.base.json",
-  "include": ["docs*.ts"]
+  "compilerOptions": {
+    "types": ["node", "vitest/config"]
+  },
+  "include": ["*.ts"]
 }

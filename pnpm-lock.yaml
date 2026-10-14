@@ -224,6 +224,9 @@ importers:
       '@on.auto/definitions':
         specifier: workspace:*
         version: link:packages/definitions
+      '@on.auto/server':
+        specifier: workspace:*
+        version: link:packages/server
       '@types/node':
         specifier: 26.6.3
         version: 26.6.3

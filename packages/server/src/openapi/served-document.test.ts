@@ -1,4 +1,4 @@
-import { Buffer } from 'node:buffer';
+import { readFileSync } from 'node:fs';
 
 import {
   oldWordsIn,
@@ -17,6 +17,8 @@ import { servingReasoning, type ReasoningServer } from '../testing/servers/reaso
 let server: ReasoningServer;
 let text: string;
 let document: unknown;
+
+const keptDocument = new URL('../../../../docs/assets/openapi.json', import.meta.url);
 
 beforeAll(async () => {
   server = await servingReasoning([]);
@@ -68,8 +70,9 @@ describe('the OpenAPI document of the server', () => {
     ]);
   });
 
-  it('takes 174,772 bytes and those of the version of the release, 174,777 at 0.9.1', () => {
-    expect(Buffer.byteLength(text) - Buffer.byteLength(release.version)).toBe(174_772);
+  it('is the kept document, docs/assets/openapi.json, at the version of the release; pnpm docs:openapi writes it again', () => {
+    expect(document).toEqual(JSON.parse(readFileSync(keptDocument, 'utf8')));
+    expect(document).toMatchObject({ info: { version: release.version } });
   });
 
   it('names the OpenID Connect metadata of the Auto identity service when IDENTITY_ISSUER is not set', () => {

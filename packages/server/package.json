@@ -4,6 +4,9 @@
   "private": true,
   "license": "Elastic-2.0",
   "type": "module",
+  "exports": {
+    "./openapi-document": "./src/testing/openapi/served-document-text.ts"
+  },
   "scripts": {
     "dev": "node dev.ts",
     "auto-runtime": "node auto-runtime.ts",
