@@ -46,7 +46,7 @@ describe('the overview of a workflow with a schedule', () => {
   it('says each trigger of the schedule of the reference in words, and that a call starts it too', () => {
     expect(sectionIn(overview, 'What starts it')).toBe(
       [
-        '- On each event **com.example.brief.submitted** whose data passes `$data.priority === "high"`',
+        '- On an event, each time an event `com.example.brief.submitted` is published to the playbook, when `$data.priority === "high"` holds for its data',
         '- On a schedule, at 09:00 UTC from Monday to Friday',
         '- Every 15 minutes, counted from when the trigger was saved',
         '- By a call of `run_definition`, from a caller or from a step of another workflow',
