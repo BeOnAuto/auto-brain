@@ -8,6 +8,8 @@ import { UnusableIdentityServiceError } from './unusable-identity-service-error.
 
 export const autoIdentityService = 'https://clerk.on.auto';
 
+export const signInScope = 'user:org:read';
+
 export interface ProtectedResource {
   readonly publicUrl: string;
   readonly authorizationServers: readonly string[];

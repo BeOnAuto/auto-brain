@@ -1,5 +1,4 @@
-import type { ProtectedResource } from '@on.auto/identity';
-import { allPermissions } from '@on.auto/operations';
+import { signInScope, type ProtectedResource } from '@on.auto/identity';
 
 import type { RouteHandler } from '../routes.ts';
 import { metadataPath, namesAnEndpoint } from './challenges.ts';
@@ -21,7 +20,7 @@ function answeredFor({ publicUrl, authorizationServers }: ProtectedResource): Ro
             resource: `${publicUrl}${c.req.path.slice(metadataPath.length)}`,
             authorization_servers: authorizationServers,
             bearer_methods_supported: ['header'],
-            scopes_supported: allPermissions,
+            scopes_supported: [signInScope],
             resource_documentation: resourceDocumentation,
           },
           200,

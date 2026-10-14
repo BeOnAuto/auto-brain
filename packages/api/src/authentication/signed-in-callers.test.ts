@@ -7,7 +7,7 @@ import { publicUrl, signedInServer } from '../testing/signed-in.ts';
 
 const rootMetadata = `${publicUrl}/.well-known/oauth-protected-resource`;
 
-const everyScope = 'org:read org:write playbook:read playbook:write';
+const signInScope = 'user:org:read';
 
 const onTheCurrentRevision = { 'mcp-protocol-version': '2025-11-25' };
 
@@ -29,7 +29,7 @@ describe('a signed-in person over HTTP', () => {
     ]).toEqual([200, 201, 200]);
   });
 
-  it('is refused another org with 403, naming the scope of the operation and the metadata', async () => {
+  it('is refused another org with 403, naming the sign-in scope and the metadata', async () => {
     const { server, bearer } = await signedInServer();
 
     const answer = await call(server.handler, '/v1/orgs/globex/playbook-labels', { headers: await bearer() });
@@ -39,7 +39,7 @@ describe('a signed-in person over HTTP', () => {
       body: { reason: 'forbidden', detail: 'The caller does not belong to this org' },
     });
     expect(answer.headers.get('www-authenticate')).toBe(
-      `Bearer error="insufficient_scope", scope="org:read", resource_metadata="${rootMetadata}"`,
+      `Bearer error="insufficient_scope", scope="${signInScope}", resource_metadata="${rootMetadata}"`,
     );
   });
 
@@ -55,14 +55,14 @@ describe('a signed-in person over HTTP', () => {
 });
 
 describe('a signed-in person over MCP', () => {
-  it('is refused another org with 403, naming every scope and the endpoint’s metadata', async () => {
+  it('is refused another org with 403, naming the sign-in scope and the endpoint’s metadata', async () => {
     const { server, bearer } = await signedInServer();
 
     const answer = await postMcp(server.handler, '/orgs/globex/mcp', await bearer());
 
     expect(answer.status).toBe(403);
     expect(answer.headers.get('www-authenticate')).toBe(
-      `Bearer error="insufficient_scope", scope="${everyScope}", resource_metadata="${rootMetadata}/orgs/globex/mcp"`,
+      `Bearer error="insufficient_scope", scope="${signInScope}", resource_metadata="${rootMetadata}/orgs/globex/mcp"`,
     );
   });
 
@@ -97,7 +97,7 @@ describe('a request without a valid token, with sign-in on', () => {
       body: { reason: 'unauthenticated', detail: 'A valid API key or access token is required' },
     });
     expect(answer.headers.get('www-authenticate')).toBe(
-      `Bearer resource_metadata="${rootMetadata}", scope="${everyScope}"`,
+      `Bearer resource_metadata="${rootMetadata}", scope="${signInScope}"`,
     );
   });
 });
@@ -115,7 +115,7 @@ describe('a token the runtime refuses, with sign-in on', () => {
       body: { reason: 'unauthenticated', detail: 'The access token was refused: ERR_JWS_INVALID' },
     });
     expect(answer.headers.get('www-authenticate')).toBe(
-      `Bearer error="invalid_token", resource_metadata="${rootMetadata}", scope="${everyScope}"`,
+      `Bearer error="invalid_token", resource_metadata="${rootMetadata}", scope="${signInScope}"`,
     );
   });
 

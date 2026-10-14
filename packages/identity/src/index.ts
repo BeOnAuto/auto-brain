@@ -10,6 +10,7 @@ export { UnusableIdentityServiceError } from './identity-service/unusable-identi
 export {
   autoIdentityService,
   identityServiceOf,
+  signInScope,
   type IdentityService,
   type ProtectedResource,
   type SignInSettings,
