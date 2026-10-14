@@ -1,8 +1,10 @@
 import type { Noun } from '@on.auto/operations';
 import type { Schema } from 'effect';
 
-import { markdownOf } from './markdown-writer.ts';
-import { sectionOf, type Overview, type OverviewSection } from './overview.ts';
+import { definitionResourceLabel } from '../capability/function-terminology.ts';
+import type { DefinitionUser, UserRelation } from '../used-by/user-relations.ts';
+import { appendedSection, markdownOf } from './markdown-writer.ts';
+import { bulletList, named, sectionOf, type Overview, type OverviewSection } from './overview.ts';
 import { schemaBlocks } from './schema-words.ts';
 
 interface OverviewSubject {
@@ -34,6 +36,27 @@ export function outputSection(schema?: Schema.JsonObject): OverviewSection {
   );
 }
 
+const relationWords: Readonly<Record<UserRelation, string>> = {
+  calls: 'calls it',
+  'sends-builds': 'sends it builds to train',
+  'asks-approval': 'asks it to approve a version',
+  'remembers-runs': 'remembers its runs',
+  'remembers-changes': 'remembers its changes',
+};
+
+export function usedBySection(users: readonly DefinitionUser[]): OverviewSection {
+  return sectionOf(
+    'Used by',
+    bulletList(
+      users.map(({ type, name, relation }) => [
+        `The ${definitionResourceLabel(type)} `,
+        named(name),
+        ` ${relationWords[relation]}.`,
+      ]),
+    ),
+  );
+}
+
 function openingOf(description: string | undefined, noun: Noun): string {
   return description === undefined || description.trim() === ''
     ? `This ${noun.one} has no description yet.`
@@ -51,4 +74,8 @@ function overviewOf({ name, noun, summary, sections }: OverviewRequest): Overvie
 
 export function writtenOverview(request: OverviewRequest): string {
   return markdownOf(overviewOf(request));
+}
+
+export function overviewWithUsers(overview: string, users: readonly DefinitionUser[]): string {
+  return users.length === 0 ? overview : appendedSection(overview, usedBySection(users));
 }

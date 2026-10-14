@@ -25,6 +25,7 @@ function servedTypeField(types: readonly string[]): typeof DefinitionTypeField {
 
 export interface KnownCapabilities {
   readonly field: typeof DefinitionTypeField;
+  readonly types: readonly string[];
   readonly typesWithNouns: string;
   readonly publish: <Operation extends PublishedOperation>(operation: Operation, meaning?: string) => Operation;
   readonly capabilityOfType: (name: string) => Effect.Effect<Capability, NotFound>;
@@ -68,6 +69,7 @@ export function knownCapabilities(capabilities: readonly Capability[]): KnownCap
   const byName = new Map(capabilities.map((capability) => [capability.type, capability]));
   return {
     field: servedTypeField(names),
+    types: names,
     typesWithNouns: capabilities.map(({ type, noun }) => `${type}, ${articled(noun.one)}`).join('; '),
     publish: (operation, meaning = typeMeaning) => ({
       ...operation,
