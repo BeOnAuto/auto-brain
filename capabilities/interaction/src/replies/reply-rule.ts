@@ -26,10 +26,15 @@ export type WrittenRule = typeof WrittenRuleSchema.Type;
 
 export const replyRuleBounds = { values: 16, wordsPerValue: 16, wordBytes: 64 } as const;
 
-const edgePunctuation = /^[\p{P}\p{S}]+|[\p{P}\p{S}]+$/gu;
+const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+
+const punctuation = /^[\p{P}\p{S}]+$/u;
 
 export function normalizedWord(text: string): string {
-  return text.toLowerCase().replaceAll(edgePunctuation, '');
+  const parts = Array.from(graphemes.segment(text.toLowerCase()), ({ segment }: Readonly<Intl.SegmentData>) => segment);
+  const first = parts.findIndex((part) => !punctuation.test(part));
+  const last = parts.findLastIndex((part) => !punctuation.test(part));
+  return first === -1 ? '' : parts.slice(first, last + 1).join('');
 }
 
 export interface StringProperty {

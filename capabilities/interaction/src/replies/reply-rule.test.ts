@@ -28,6 +28,14 @@ describe('the words of a reply, as the rule reads them', () => {
     });
   });
 
+  it('read the first word whole, however long a run of punctuation it holds inside', () => {
+    expect(answerOfReply(approval, `yes${'!'.repeat(100_000)}no`)).toBeUndefined();
+  });
+
+  it('strip a symbol of several parts from the edge of the first word', () => {
+    expect(answerOfReply(approval, '👍🏽yes')).toEqual({ choice: 'approve' });
+  });
+
   it('are no answer when the first word means no value, or there are no words at all', () => {
     expect([answerOfReply(approval, 'maybe later'), answerOfReply(approval, '   ')]).toEqual([undefined, undefined]);
   });
