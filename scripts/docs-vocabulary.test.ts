@@ -86,7 +86,7 @@ const allowances: readonly Allowance[] = [
       'capabilities/reasoning/src/settings/catalog-settings.test.ts',
     ],
   },
-  { text: 'application inference profile', in: ['docs/engineering/self-host/models.md'] },
+  { text: 'application inference profile', in: ['docs/self-host/models.md'] },
   { text: 'InferenceSession', in: [modelSessions] },
   { text: 'executionMode', in: [modelSessions] },
   {

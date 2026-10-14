@@ -47,7 +47,7 @@ Create a file named `.env` in that directory, holding one provider setting with 
 
 Use a key with access to the model you want to run. Auto reads it on the server; you do not need to paste it into the agent's conversation or its MCP configuration. A setting exported in your shell works too, and wins over `.env`. Model calls may incur charges from your provider.
 
-For another provider or an OpenAI-compatible model gateway, see the repository's [model configuration guide](https://github.com/BeOnAuto/runtime/blob/main/docs/engineering/self-host/models.md).
+For another provider or an OpenAI-compatible model gateway, see [Model providers and gateways](../self-host/models.md).
 
 ## 3. Start the server
 
@@ -161,7 +161,7 @@ A reasoning function can use the tools of a tool server, such as the MCP server 
    tools to find recent news about a company and sums it up in three points.
    ```
 
-The key never goes in `auto-runtime.yaml`; the file only names the variable that holds it. [`auto-runtime.example.yaml`](https://github.com/BeOnAuto/runtime/blob/main/auto-runtime.example.yaml) shows every other setting, and the repository's [configuration guide](https://github.com/BeOnAuto/runtime/blob/main/docs/engineering/self-host/configuration.md#tool-servers) lists every field of a server, an HTTP API with an OpenAPI document among them.
+The key never goes in `auto-runtime.yaml`; the file only names the variable that holds it. [`auto-runtime.example.yaml`](https://github.com/BeOnAuto/runtime/blob/main/auto-runtime.example.yaml) shows every other setting, and the [configuration guide](../self-host/configuration.md#tool-servers) lists every field of a server, an HTTP API with an OpenAPI document among them.
 
 Your agent can try a tool before a function uses it, to see what it answers: it finds the tool with search and calls it once with execute, and the playbook records the call in its history. A tool its server does not mark read-only may change something, so your agent should ask you before it calls one.
 

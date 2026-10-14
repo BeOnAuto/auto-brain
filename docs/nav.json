@@ -56,6 +56,42 @@
       {
         "text": "Deployment and support",
         "link": "/self-host"
+      },
+      {
+        "text": "Run with Docker",
+        "link": "/self-host/docker"
+      },
+      {
+        "text": "Use PostgreSQL",
+        "link": "/self-host/postgresql"
+      },
+      {
+        "text": "Keep content on object storage",
+        "link": "/self-host/object-storage"
+      },
+      {
+        "text": "Run in production",
+        "link": "/self-host/production"
+      },
+      {
+        "text": "Configure the runtime",
+        "link": "/self-host/configuration"
+      },
+      {
+        "text": "Model providers and gateways",
+        "link": "/self-host/models"
+      },
+      {
+        "text": "Authentication and security",
+        "link": "/self-host/security"
+      },
+      {
+        "text": "Workflow operations",
+        "link": "/self-host/workflows"
+      },
+      {
+        "text": "Troubleshooting",
+        "link": "/self-host/troubleshooting"
       }
     ]
   },
