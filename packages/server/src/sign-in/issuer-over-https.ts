@@ -21,6 +21,19 @@ async function answered(
   outgoing.end(await answer.text());
 }
 
+export function accessTokenOf(issuer: FakeIssuer, audience: string, scope: string): Promise<string> {
+  const seconds = Math.floor(Date.now() / 1000);
+  return issuer.sign({
+    iss: issuer.issuer,
+    sub: 'user|ada',
+    aud: audience,
+    iat: seconds,
+    exp: seconds + 300,
+    org_id: 'acme',
+    scope,
+  });
+}
+
 export async function issuerOverHttps(): Promise<FakeIssuer> {
   const certificate = aCertificateOfTheLoopback();
   trustedForTheTest(certificate);
