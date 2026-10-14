@@ -389,6 +389,12 @@ do:
 
 `run_definition` of `decide-on-campaign` takes an input such as `{"campaign": "spring-sale"}`. When the view is still being built, the `recall` task tries again up to three more times; when the view has stalled, the run ends `rejected` at once, and its history shows the recall function's run with the stall.
 
+## The overview
+
+`get_definition` answers a saved function with its `overview`, the function in plain words for a person who does not read TypeScript or YAML, which Auto Studio shows before the document. It opens with the `description`, or says the function has none yet, then says what the function remembers, each filter as a sentence, such as "each time a run of the reasoning function **review-brief** succeeds" for the example at the top of this page: a filter without a `subject` names every run, one for a definition's event without a `source` every definition, and each other attribute and the `data` a filter names are said with it, an expression as it is written. It then says what the function keeps, the view's schema in words with its bounds, such as `maxProperties` and `maxItems`, and `view.initial` unless it is empty; what it answers, each field of `input.schema` and `output.schema`, or the view itself for a module without `answer`; and how the view is kept, a diagram from each filter to the view and from the view to the answer, with one line that the program is TypeScript and is shown under Source. The module itself is not described.
+
+The overview is written from the document when it is saved, so it says only what the document says. Write the `description` for the person who will read it and give each field of the schemas a `description`, so the overview can say it. A function without them still has an overview, with the types alone.
+
 ## Availability
 
 Recall functions are available in a self-hosted runtime; Auto Cloud does not offer them until it bounds their time and memory, as for computation functions. See [Functions and availability](../concepts/functions.md#availability).
