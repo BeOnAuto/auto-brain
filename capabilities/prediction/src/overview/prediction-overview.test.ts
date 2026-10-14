@@ -97,7 +97,10 @@ describe('the overview of a prediction function sent to its trainer and approved
       'A question names a series and how many days ahead.',
     ]);
     expect(sectionIn(overview, 'What it learns from')).toContain(
-      '- each event **visit.made** whose source is `shop` and whose data passes `$data.paid`\n- each event **visit.counted** whose data is `{"kind":"walk-in"}`',
+      [
+        '- each time an event `visit.made` is published to the playbook, from the source `shop` and when `$data.paid` holds for its data',
+        '- each time an event `visit.counted` is published to the playbook, when its data is exactly `{"kind":"walk-in"}`',
+      ].join('\n'),
     );
   });
 

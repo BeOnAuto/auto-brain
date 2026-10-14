@@ -14,9 +14,9 @@ It answers with a likely value, a low and a high: the 50th, 10th and 90th percen
 
 ## What it learns from
 
-It learns from the rows the playbook folds from its own history, from these events:
+It learns from the rows the playbook folds from the first event of its history on:
 
-- each event **order.placed**
+- each time an event `order.placed` is published to the playbook
 
 Each row is one series and one week, and holds:
 
@@ -42,7 +42,11 @@ Predict **horizons** weeks ahead. The features are
 
 *For each feature of dataset.features:*
 
-**name** (**as**)`{% unless forloop.last %}`,
+**name** (**as**)
+
+*Unless forloop.last:*
+
+,
 
 .
 
