@@ -59,5 +59,6 @@ export function followerOn(host: FollowerHost, assembly: FollowerAssembly): Foll
     pace: assembly.pace,
     sweepEveryMs: host.sweepEveryMs,
     trouble: reports.trouble,
+    context: host.context,
   });
 }

@@ -1,6 +1,6 @@
 import { availableParallelism } from 'node:os';
 
-import type { ProcessOutcome, ProcessPool, ProcessValue } from '@on.auto/workflow-engine/dsl';
+import { pooledJob, type ProcessOutcome, type ProcessPool, type ProcessValue } from '@on.auto/workflow-engine/dsl';
 import { Effect, Option, Schema } from 'effect';
 
 import { TensorSchema } from '../facts/build-facts.ts';
@@ -118,7 +118,7 @@ export function modelProcesses({
     decode: (answer: unknown) => Option.Option<Answer>,
   ): Effect.Effect<ModelOutcome<Answer>> =>
     Effect.map(
-      Effect.promise((signal) =>
+      pooledJob('model', kind, (signal) =>
         pool.run(
           {
             module,

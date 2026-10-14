@@ -3,11 +3,11 @@ import { Effect } from 'effect';
 
 import type { ToolAccess } from '../access/tool-access.ts';
 import { handCallContext } from '../hand-calls/hand-call-journal.ts';
+import { tracedByHand } from '../one-call/traced-calls.ts';
 import { toolRemedies, unavailableOf } from '../tool-reads/tool-refusals.ts';
 import { ExecuteInputSchema, ExecutedSchema } from './execute-schemas.ts';
 import { executeAttempted, executeTask, executed } from './execute-words.ts';
-import { executedAnswer } from './executed-answer.ts';
-import { calledOn, calledOutcomeOf, stopped } from './executed-call.ts';
+import { answeredOn, offeredIn } from './executed-call.ts';
 
 const description = [
   "Calls one tool of a tool server this playbook's functions may use, with the arguments it is given, as a run of a reasoning function would call it, and answers what that run's model would see.",
@@ -34,25 +34,11 @@ export function defineExecute(access: Pick<ToolAccess, 'open' | 'configured'>) {
       const called = { reference: { server, tool }, callId, input };
       return yield* Effect.uninterruptibleMask((restore) =>
         Effect.gen(function* () {
-          const tools = yield* restore(access.open(context, [called.reference])).pipe(Effect.mapError(unavailableOf));
-          const calling = yield* calledOn(tools, called);
-          const reply = yield* restore(Effect.promise(() => calling.replying)).pipe(
-            Effect.onInterrupt(() => stopped(calling)),
-          );
-          return {
-            call_id: callId,
-            server,
-            tool,
-            outcome: yield* calledOutcomeOf(reply),
-            text: reply.text,
-            ...executedAnswer(reply),
-            result_bytes: reply.resultBytes,
-            duration_ms: reply.durationMs,
-            ...(reply.serverRequestId === null ? {} : { server_request_id: reply.serverRequestId }),
-            called_at: calling.calledAt,
-          };
+          const tools = yield* restore(access.open(context, [called.reference]));
+          const offered = yield* offeredIn(tools, called);
+          return yield* tracedByHand(called.reference, offered.serverType, answeredOn(tools, offered, called, restore));
         }),
-      );
+      ).pipe(Effect.mapError(unavailableOf));
     }),
     plainLanguage: {
       task: executeTask,

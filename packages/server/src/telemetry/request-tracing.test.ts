@@ -1,0 +1,103 @@
+import { INVALID_SPAN_CONTEXT, trace } from '@opentelemetry/api';
+import { describe, expect, it, onTestFinished } from 'vitest';
+
+import { defaultServerOptions, startServer, type RunningServer } from '../lifecycle/lifecycle.ts';
+import { metricNamesIn, spansIn } from '../testing/telemetry/otlp-exports.ts';
+import { receivingOtlp, type OtlpReceiver } from '../testing/telemetry/otlp-receiver.ts';
+import { tracedRequestOf } from './request-tracing.ts';
+
+interface Traced {
+  readonly receiver: OtlpReceiver;
+  readonly server: RunningServer;
+}
+
+async function tracedServer(endpoint = 'OTEL_EXPORTER_OTLP_ENDPOINT', path = ''): Promise<Traced> {
+  const receiver = await receivingOtlp();
+  onTestFinished(receiver.close);
+  const server = await startServer(
+    {
+      HOST: '127.0.0.1',
+      PORT: '0',
+      LOCAL_MODE: 'true',
+      [endpoint]: `${receiver.endpoint}${path}`,
+      OTEL_EXPORTER_OTLP_PROTOCOL: 'http/json',
+    },
+    defaultServerOptions,
+  );
+  return { receiver, server };
+}
+
+const traceId = 'a'.repeat(32);
+
+const spanId = 'b'.repeat(16);
+
+describe('a request to a server with telemetry', () => {
+  it('is a server span, whose trace the answer names in x-trace-id, beside its request id', async () => {
+    const { receiver, server } = await tracedServer();
+    const answer = await fetch(`http://127.0.0.1:${server.port}/nowhere`);
+    await server.stop();
+    const [span] = spansIn(receiver.received());
+
+    expect(answer.status).toBe(404);
+    expect(span).toMatchObject({
+      traceId: answer.headers.get('x-trace-id'),
+      kind: 2,
+      attributes: {
+        'http.request.method': 'GET',
+        'http.response.status_code': 404,
+        'auto.on.request_id': answer.headers.get('x-request-id'),
+      },
+    });
+  });
+
+  it('continues the trace the caller sent in traceparent', async () => {
+    const { receiver, server } = await tracedServer();
+    const answer = await fetch(`http://127.0.0.1:${server.port}/nowhere`, {
+      headers: { traceparent: `00-${traceId}-${spanId}-01` },
+    });
+    await server.stop();
+
+    expect(answer.headers.get('x-trace-id')).toBe(traceId);
+    expect(spansIn(receiver.received())).toMatchObject([{ traceId, parentSpanId: spanId }]);
+  });
+
+  it('leaves the health check untraced', async () => {
+    const { receiver, server } = await tracedServer();
+    const answer = await fetch(`http://127.0.0.1:${server.port}/health`);
+    await server.stop();
+
+    expect(answer.headers.get('x-trace-id')).toBeNull();
+    expect(spansIn(receiver.received())).toEqual([]);
+  });
+});
+
+describe('a request to a server exporting metrics alone', () => {
+  it('is measured but not traced, and names no trace', async () => {
+    const { receiver, server } = await tracedServer('OTEL_EXPORTER_OTLP_METRICS_ENDPOINT', '/v1/metrics');
+    const answer = await fetch(`http://127.0.0.1:${server.port}/nowhere`);
+    await server.stop();
+
+    expect(answer.headers.get('x-trace-id')).toBeNull();
+    expect(spansIn(receiver.received())).toEqual([]);
+    expect(metricNamesIn(receiver.received())).toContain('http.server.request.duration');
+  });
+});
+
+describe('the trace of a request', () => {
+  it('is none without a span, or with a span that names no trace', () => {
+    expect([tracedRequestOf(), tracedRequestOf(trace.wrapSpanContext(INVALID_SPAN_CONTEXT))]).toEqual([
+      undefined,
+      undefined,
+    ]);
+  });
+
+  it('is the trace and the span of a valid span, sampled when its trace flags say so', () => {
+    const sampled = trace.wrapSpanContext({ traceId, spanId, traceFlags: 1 });
+    const unsampled = trace.wrapSpanContext({ traceId, spanId, traceFlags: 0 });
+
+    expect([tracedRequestOf(sampled)?.parent, tracedRequestOf(unsampled)?.parent]).toEqual([
+      { traceId, spanId, sampled: true },
+      { traceId, spanId, sampled: false },
+    ]);
+  });
+});

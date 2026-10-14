@@ -1,6 +1,6 @@
 import type { ModelRequest } from '../model/model-request.ts';
 import type { ProviderOptionsCheck } from './gateway-options.ts';
-import type { ReportOperatorHint, ReportProviderMessage } from './model-access-options.ts';
+import type { ModelTelemetry, ReportOperatorHint, ReportProviderMessage } from './model-access-options.ts';
 
 export interface CallPolicy {
   readonly configured: readonly string[];
@@ -9,6 +9,7 @@ export interface CallPolicy {
   readonly report: ReportProviderMessage;
   readonly reportHint: ReportOperatorHint;
   readonly admitsOptions: ProviderOptionsCheck;
+  readonly telemetry?: ModelTelemetry | undefined;
 }
 
 const leastQuotedCharacters = 8;

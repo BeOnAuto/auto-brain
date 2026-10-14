@@ -5,7 +5,7 @@ import {
   type StrippedForms,
 } from '@on.auto/definitions';
 import { Conflict, type InvalidInput } from '@on.auto/operations';
-import { jsonBytesOf, type ProgramPool, type ProgramRequest } from '@on.auto/workflow-engine/dsl';
+import { jsonBytesOf, pooledJob, type ProgramPool, type ProgramRequest } from '@on.auto/workflow-engine/dsl';
 import { Clock, Effect, type Schema } from 'effect';
 
 import type { ComputationFunctionDefinitionDocument } from '../document/computation-document.ts';
@@ -76,7 +76,9 @@ export function computationRun({ pool, ...bounds }: ComputationRunOptions): Comp
           CapabilityAnswer,
           CapabilityRejection | InvalidInput
         > =>
-          Effect.promise((signal) => pool.run(requestOf(runnable, admitted, moment, bounds), signal)).pipe(
+          pooledJob('program', 'computation', (signal) =>
+            pool.run(requestOf(runnable, admitted, moment, bounds), signal),
+          ).pipe(
             Effect.flatMap((outcome) =>
               endingOf(outcome, {
                 document,

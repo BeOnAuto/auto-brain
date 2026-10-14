@@ -4,6 +4,7 @@ import { Effect, Result } from 'effect';
 
 import { fileSettings } from '../config-file/file-settings.ts';
 import { readFunctionSettings, type FunctionSettings } from '../function-settings/function-settings.ts';
+import { readTelemetrySettings, type TelemetrySettings } from '../telemetry/telemetry-settings.ts';
 import {
   readAccessSettings,
   readCredentialSettings,
@@ -27,6 +28,7 @@ export interface Settings extends FunctionSettings, AccessSettings, CredentialSe
   readonly content: ContentSettings;
   readonly proxy: ProxySettings;
   readonly workflows: WorkflowSettings;
+  readonly telemetry: TelemetrySettings | undefined;
   readonly configFile: ConfigFileSources | undefined;
 }
 
@@ -43,6 +45,7 @@ export function readSettings(given: Environment): Settings {
   const content = Effect.runSync(readContentSettings(environment));
   const functions = readFunctionSettings(environment, file);
   const workflows = Effect.runSync(readWorkflowSettings(environment));
+  const telemetry = Effect.runSync(readTelemetrySettings(environment));
   return {
     host,
     port,
@@ -58,6 +61,7 @@ export function readSettings(given: Environment): Settings {
     logLevel,
     ...functions,
     workflows,
+    telemetry,
     configFile: sourcesOf(file),
   };
 }

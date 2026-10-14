@@ -2,7 +2,7 @@ import type { Event, EventStore as EmmettEventStore } from '@event-driven-io/emm
 import { contextOf, messageIdOf, noLineage, type Context, type Lineage } from '@on.auto/operations';
 import type { Schema } from 'effect';
 
-import type { MessageLineage, RecordedMessage, StreamStore } from '../event-store.ts';
+import type { AppendObserver, MessageLineage, RecordedMessage, StreamStore } from '../event-store.ts';
 import { streamAppends, type StreamSignal } from '../signal/append-signal.ts';
 
 export interface EmmettStore extends Pick<EmmettEventStore, 'readStream' | 'appendToStream'> {
@@ -19,6 +19,7 @@ export interface EmmettEventStoreOptions<Stored extends Record<string, unknown>>
   readonly data: StoredData<Stored>;
   readonly mostEventsInOneAppend: number;
   readonly appended?: StreamSignal;
+  readonly observer?: AppendObserver | undefined;
 }
 
 export const dataAsWritten: StoredData<Schema.JsonObject> = {
@@ -40,6 +41,16 @@ function metadataOf(messageId: string, { causationId, correlationId }: Lineage, 
   return { messageId, causationId, correlationId, ...context };
 }
 
+function observabilityOf({ causationId, correlationId }: Lineage, { runId }: Context) {
+  return {
+    context: {
+      ...(causationId === null ? {} : { causationId }),
+      ...(correlationId === null ? {} : { correlationId }),
+    },
+    attributes: runId === undefined ? {} : { 'auto.on.run_id': runId },
+  };
+}
+
 function recordedMessageOf<Stored extends Record<string, unknown>>(
   data: StoredData<Stored>,
 ): (event: { readonly type: string; readonly data: Stored; readonly metadata: StoredMetadata }) => RecordedMessage {
@@ -53,7 +64,7 @@ function recordedMessageOf<Stored extends Record<string, unknown>>(
 
 export function emmettEventStore<Stored extends Record<string, unknown>>(
   store: EmmettStore,
-  { data, mostEventsInOneAppend, appended = streamAppends }: EmmettEventStoreOptions<Stored>,
+  { data, mostEventsInOneAppend, appended = streamAppends, observer }: EmmettEventStoreOptions<Stored>,
 ): StreamStore {
   const recorded = recordedMessageOf(data);
   return {
@@ -78,9 +89,10 @@ export function emmettEventStore<Stored extends Record<string, unknown>>(
           data: data.stored(event.data),
           metadata: metadataOf(messageIdOf(stream, expectedVersion + index + 1), lineage, context),
         })),
-        { expectedStreamVersion: BigInt(expectedVersion) },
+        { expectedStreamVersion: BigInt(expectedVersion), observability: observabilityOf(lineage, context) },
       );
       appended.raise(stream);
+      observer?.appended(stream, events, { expectedVersion, context, lineage });
     },
     migrate: async () => {
       await store.schema.migrate();

@@ -4,6 +4,7 @@ export { memoryRecordedContent } from '../content/memory-content.ts';
 export { keptTextOf } from './kept-text.ts';
 export { nothingKept } from '../reading/kept-content.ts';
 export { recordingReporter, type RecordingReporter, type ReportedIncident } from './recording-reporter.ts';
+export { recordingTracer, type RecordedSpan, type RecordingTracer } from './recording-tracer.ts';
 export { runFacts, runTallies, talliedContext, type RunFact } from '../run-outcomes/run-tallies.ts';
 export { runTallyRows, tallyDueAfterMs, tallyRowsOf } from '../projections/tally-rows.ts';
 export { topicFacts, topicRows, topicWaitMs, type TopicFact } from '../projections/topic-rows.ts';

@@ -9,11 +9,12 @@ import {
   type StartCall,
   type StartReceipt,
 } from '@on.auto/workflow-engine';
-import { Effect, Schedule, Semaphore, type Cause } from 'effect';
+import { Effect, Schedule, Semaphore, type Cause, type Context } from 'effect';
 
 import type { DatabaseFailed, HostDatabase } from '../database/host-database.ts';
 import { runSerialiser } from '../dispatch/run-serialiser.ts';
 import { correlationOfRun } from '../runs/run-lineage.ts';
+import { callSpanOf, currentSpanIdentity, type SpanIdentity } from '../runs/run-spans.ts';
 import { background, type Background } from './background.ts';
 import { cancelledCall, type CancelChild } from './call-cancels.ts';
 import {
@@ -54,6 +55,7 @@ export interface ExecutorParts {
   readonly childOf: (call: StartCall, run: RunContext) => string | null;
   readonly childAnswerOf: (runKey: string, child: string) => Effect.Effect<CallResult | undefined>;
   readonly cancelChild: CancelChild;
+  readonly context?: Context.Context<never> | undefined;
 }
 
 export interface HostExecutor {
@@ -70,7 +72,7 @@ interface Starting {
 }
 
 interface Calls {
-  readonly begin: (key: string, call: StartCall, run: RunContext, origin: OutputOrigin) => void;
+  readonly begin: (key: string, starting: Starting, parent?: SpanIdentity) => void;
   readonly answerAgain: (key: string, callKey: CallKey, result: CallResult) => void;
   readonly isRunning: (key: string) => boolean;
   readonly interrupt: (key: string) => Effect.Effect<void>;
@@ -135,12 +137,13 @@ function callsOf(parts: ExecutorParts, running: Background): Calls {
     answer.status === 'waiting' ? waited(key, call, answer.child) : settled(key, call, answer);
   const roots = runSerialiser();
   return {
-    begin: (key, call, run, origin) => {
+    begin: (key, { call, run, origin }, parent) => {
       running.run(
         key,
         atOnce.withPermit(perform(call, run, origin)).pipe(
           Effect.flatMap((answer) => answered(key, call, answer)),
           Effect.catchCause((cause: Cause.Cause<unknown>) => trouble('A call could not record its answer', cause)),
+          Effect.withSpan(`call ${call.function}`, callSpanOf(call, parent)),
         ),
       );
     },
@@ -173,13 +176,19 @@ function startedOnce(
     }
     const inserted = yield* startedRow(database, key, { call, run, origin, child: childOf(call, run), root });
     if (inserted) {
-      calls.begin(key, call, run, origin);
+      calls.begin(key, { call, run, origin }, yield* currentSpanIdentity);
     }
     return inserted;
   }).pipe((counted) => calls.underItsRoot(correlationOfRun(run.runId, run.attributes), counted));
 }
 
-function startedAgain(calls: Calls, { call, run, origin }: Starting, { state, result }: CallRow): StartReceipt {
+function startedAgain(
+  calls: Calls,
+  starting: Starting,
+  { state, result }: CallRow,
+  parent: SpanIdentity | undefined,
+): StartReceipt {
+  const { call } = starting;
   const key = callKeyText(call.key);
   if (state === 'cancelled') {
     return 'refused_after_cancel';
@@ -191,7 +200,7 @@ function startedAgain(calls: Calls, { call, run, origin }: Starting, { state, re
   if (state === 'waiting' || calls.isRunning(key)) {
     return 'running';
   }
-  calls.begin(key, call, run, origin);
+  calls.begin(key, starting, parent);
   return 'started_again';
 }
 
@@ -200,13 +209,14 @@ function started(parts: ExecutorParts, calls: Calls, starting: Starting): Effect
     if (yield* startedOnce(parts, calls, starting)) {
       return 'started';
     }
-    return startedAgain(calls, starting, yield* existingRowOf(parts.database, callKeyText(starting.call.key)));
+    const row = yield* existingRowOf(parts.database, callKeyText(starting.call.key));
+    return startedAgain(calls, starting, row, yield* currentSpanIdentity);
   });
 }
 
 function resumedIn(calls: Calls, { key, call, run, origin, result }: UnfinishedCall): void {
   if (result === null) {
-    calls.begin(key, call, run, origin);
+    calls.begin(key, { call, run, origin });
   } else {
     calls.answerAgain(key, call.key, result);
   }
@@ -233,7 +243,7 @@ function waitingAnsweredOnce(parts: ExecutorParts, calls: Calls): Effect.Effect<
 
 export function hostExecutor(parts: ExecutorParts): HostExecutor {
   const { database } = parts;
-  const running = background();
+  const running = background(parts.context);
   const calls = callsOf(parts, running);
   const waitingAnswered = waitingAnsweredOnce(parts, calls);
   return {

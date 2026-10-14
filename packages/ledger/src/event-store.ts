@@ -35,6 +35,10 @@ export interface AppendPlace {
   readonly lineage?: Lineage;
 }
 
+export interface AppendObserver {
+  readonly appended: (stream: string, events: readonly EncodedEvent[], place: AppendPlace) => void;
+}
+
 export interface RecordedStream {
   readonly version: number;
   readonly messages: readonly RecordedMessage[];

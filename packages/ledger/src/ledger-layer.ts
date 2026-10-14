@@ -3,7 +3,7 @@ import { Effect, Layer } from 'effect';
 
 import { signalledOn, type AppendSignal } from './appends/append-signal.ts';
 import { sweptHourly } from './content/content-sweep.ts';
-import type { LedgerStore } from './event-store.ts';
+import type { AppendObserver, LedgerStore } from './event-store.ts';
 import { makeLedger } from './ledger-service.ts';
 
 export interface OpenedWith {
@@ -14,6 +14,7 @@ export interface OpenedWith {
 export interface StoreLayerOptions extends OpenedWith {
   readonly runOutcomes?: RunOutcomeMapping | undefined;
   readonly projections?: readonly KeyedProjection[] | undefined;
+  readonly observer?: AppendObserver | undefined;
 }
 
 export function ledgerLayerOver(open: () => LedgerStore, { appends, content }: OpenedWith = {}): Layer.Layer<Ledger> {

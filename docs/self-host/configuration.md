@@ -94,6 +94,10 @@ Reasoning functions call language models with these settings, all optional. A pr
 
 [Workflow operations](workflows.md#starting-stopping-and-restarting) lists `WORKFLOW_MAX_DURATION`, `WORKFLOW_NESTED_RUNS`, `WORKFLOW_MAX_OPEN_CALLS` and `WORKFLOW_SWEEP_INTERVAL`, which bound how long a run lasts, how many of its calls run at once and how often the server sweeps the runs.
 
+### Telemetry
+
+[Send telemetry to an OpenTelemetry collector](telemetry.md#settings) lists `OTEL_EXPORTER_OTLP_ENDPOINT`, which turns telemetry on, the other `OTEL_` settings the server reads, and `TELEMETRY_CONTENT`, which records content. Each is read from the environment only.
+
 ### Computation and recall functions
 
 Each run of a computation function, and each run and view of a recall function, runs in a worker thread the server keeps between runs. The server never keeps more workers alive than `COMPUTATION_WORKERS`, and folds the views of recall functions in at most half of them at once and at least one. It ends a worker after a run that ran past its time, used too much memory, was cancelled or broke, after its thousandth run, and after a minute without one. A worker is stopped when its heap grows past 256 MiB, and has a stack of 64 MiB, so plan for about 320 MiB for each.

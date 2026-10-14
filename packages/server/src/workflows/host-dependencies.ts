@@ -38,6 +38,7 @@ export async function openedHost(
     dueWork,
     ...hostWorkOf(runtime, dispatcher, { capabilities, startVersion, evaluations, names }),
     reports: hostReports(runtime),
+    context: runtime.context,
     sweepEveryMs: workflows.sweepEveryMs,
     mostCallsAtOnce: workflows.mostCallsAtOnce,
     mostOpenCalls: workflows.mostOpenCalls,

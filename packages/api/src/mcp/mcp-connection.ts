@@ -11,7 +11,7 @@ import {
 import { serveGuides, type GuideRegistry } from '../guides/guide-serving.ts';
 import type { GuideShelf } from '../guides/guide-shelf.ts';
 import { guideToolDefinitionOf, guideToolName } from '../guides/guide-tool.ts';
-import type { RunCall } from '../operations/operation-routes.ts';
+import type { RunCall } from '../operations/operation-handler.ts';
 import { listingBytesOf, type ListedTool } from '../tools/tool-listing.ts';
 import { instructionsFor, recipesFollowedWith, type McpEndpoint, type ServedTools } from './instructions.ts';
 

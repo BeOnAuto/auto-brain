@@ -1,5 +1,7 @@
 import { Deferred, Effect, Exit, Fiber } from 'effect';
 
+import { forkedIn, type HostContext } from '../loop/forked-fibers.ts';
+
 export interface Background {
   readonly run: (key: string, work: Effect.Effect<void>) => void;
   readonly has: (key: string) => boolean;
@@ -10,7 +12,7 @@ export interface Background {
   readonly stop: () => Effect.Effect<void>;
 }
 
-export function background(): Background {
+export function background(context?: HostContext): Background {
   const fibers = new Map<string, Fiber.Fiber<void>>();
   const lifecycle = { stopped: false };
   return {
@@ -19,7 +21,8 @@ export function background(): Background {
         return;
       }
       const gate = Deferred.makeUnsafe<void>();
-      const fiber = Effect.runFork(
+      const fiber = forkedIn(
+        context,
         Deferred.await(gate).pipe(
           Effect.andThen(work),
           Effect.ensuring(

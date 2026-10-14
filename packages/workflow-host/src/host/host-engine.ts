@@ -10,13 +10,13 @@ import {
   type Submission,
   type WorkflowEngine,
 } from '@on.auto/workflow-engine';
-import { Effect } from 'effect';
+import { Effect, type Context } from 'effect';
 
 import { hostExecutor, type ExecutorParts, type HostExecutor, type Perform } from '../calls/host-executor.ts';
-import type { HostDatabase } from '../database/host-database.ts';
 import type { HostClock } from '../loop/host-clock.ts';
 import type { ReactionOptions } from '../reactions/reaction-options.ts';
 import { reactionPortsOn, type ReactionPorts } from '../reactions/reaction-ports.ts';
+import { runAttributesOf } from '../runs/run-spans.ts';
 import { sqlTimers, type TimerTable } from '../timers/sql-timers.ts';
 import { hostPortsOn, type PortParts } from './host-ports.ts';
 
@@ -27,6 +27,7 @@ export interface EngineOptions extends Pick<PortParts, 'settle' | 'reports'> {
   readonly clock: HostClock;
   readonly cacheBounds?: RunCacheBounds;
   readonly reactions: ReactionOptions;
+  readonly context?: Context.Context<never> | undefined;
 }
 
 export interface HostEngine {
@@ -41,7 +42,7 @@ export interface HostEngine {
 export type WaitingCalls = Pick<ExecutorParts, 'mostOpen' | 'childOf' | 'childAnswerOf' | 'cancelChild'>;
 
 export function hostEngineOn(
-  database: HostDatabase,
+  database: ExecutorParts['database'],
   options: EngineOptions,
   waiting: WaitingCalls,
   armed: (dueAt: number) => void,
@@ -49,13 +50,19 @@ export function hostEngineOn(
   const { reports, clock } = options;
   const timers = sqlTimers(database, armed);
   const submitted = (input: RunInput): Effect.Effect<Submission, Conflict> =>
-    Effect.uninterruptible(engine.submit(input));
+    Effect.uninterruptible(engine.submit(input)).pipe(
+      Effect.tap(({ outcome, version }: Submission) =>
+        Effect.annotateCurrentSpan({ 'auto.on.submission': outcome, 'auto.on.version': version }),
+      ),
+      Effect.withSpan(input.kind, { attributes: runAttributesOf(input.runId) }),
+    );
   const executor = hostExecutor({
     database,
     perform: options.perform,
     deliver: (key, result) => submitted({ kind: 'call_answered', runId: key.runId, at: clock.now(), key, result }),
     trouble: reports.trouble,
     mostAtOnce: options.mostCallsAtOnce,
+    context: options.context,
     ...waiting,
   });
   const reacting = reactionPortsOn(database, options.reactions, clock.now);

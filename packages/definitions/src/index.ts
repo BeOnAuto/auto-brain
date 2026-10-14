@@ -42,6 +42,7 @@ export {
 export type { AnswerFact, CapabilityFact, RunOutcome, RunResult } from './runs/run-commands.ts';
 export {
   CancelRequestKindSchema,
+  isRunEndingType,
   RequestAnsweredSchema,
   RunEventSchema,
   type CancelRequestKind,

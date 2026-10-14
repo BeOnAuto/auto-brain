@@ -21,13 +21,14 @@ function exceptOn(isPublic: IsPublic, middleware: MiddlewareHandler<ApiEnv>): Mi
 }
 
 export function middlewareFor(
-  { allowedOrigins, authenticator }: ApiOptions,
+  { allowedOrigins, authenticator, requests }: ApiOptions,
   publicPaths: ReadonlySet<string>,
 ): readonly MiddlewareHandler<ApiEnv>[] {
   const isPublic = publicPathsOf(authenticator, publicPaths);
   const hostValidation = authenticator.mode === 'local' ? [validateHost] : [];
   const origins = [studioOrigin, ...allowedOrigins];
   return [
+    ...(requests === undefined ? [] : [requests]),
     landingPage,
     ...requestIdAndSecurityHeaders,
     ...[validateOrigin(origins), ...hostValidation].map((middleware) => exceptOn(isPublic, middleware)),

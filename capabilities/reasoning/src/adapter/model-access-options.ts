@@ -1,4 +1,5 @@
 import type { ProxySettings } from '@on.auto/outbound';
+import type { Telemetry } from 'ai';
 import type { Effect } from 'effect';
 
 import type { CredentialSources } from './credential-sources.ts';
@@ -24,6 +25,11 @@ export interface OperatorHintReport {
 
 export type ReportOperatorHint = (report: OperatorHintReport) => Effect.Effect<void>;
 
+export interface ModelTelemetry {
+  readonly integrations: readonly Readonly<Telemetry>[];
+  readonly recordContent: boolean;
+}
+
 export interface ModelAccessOptions {
   readonly fetch?: Fetch;
   readonly credentials?: CredentialSources;
@@ -31,4 +37,5 @@ export interface ModelAccessOptions {
   readonly loadEntraIdentity?: EntraIdentityLoader;
   readonly reportProviderMessage?: ReportProviderMessage;
   readonly reportOperatorHint?: ReportOperatorHint;
+  readonly telemetry?: ModelTelemetry | undefined;
 }

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { tcpPort } from './http-server.ts';
 import { startServer, defaultServerOptions, type RunningServer } from './lifecycle.ts';
 
 describe('HTTP server', () => {
@@ -34,5 +35,15 @@ describe('HTTP server', () => {
 
   it('answers 405 for non-GET requests to /health', async () => {
     expect(await request('/health', 'POST')).toMatchObject({ status: 405, body: { reason: 'method_not_allowed' } });
+  });
+});
+
+describe('tcpPort', () => {
+  it('reads the port of a TCP address', () => {
+    expect(tcpPort({ address: '127.0.0.1', family: 'IPv4', port: 4321 })).toBe(4321);
+  });
+
+  it.each([null, '/tmp/auto-runtime.sock'])('rejects %s because it is not a TCP address', (address) => {
+    expect(() => tcpPort(address)).toThrow(new TypeError('The server is not listening on a TCP port'));
   });
 });

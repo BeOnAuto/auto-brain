@@ -3,7 +3,7 @@ import { nudging } from '@on.auto/interaction/testing';
 import { ledgerLayer } from '@on.auto/ledger/sqlite3';
 import { PlaybookRegistry, allPermissions, makeDispatcher, type CallerIdentity } from '@on.auto/operations';
 import { createPlaybook } from '@on.auto/playbooks';
-import { Effect, Layer, ManagedRuntime } from 'effect';
+import { Context, Effect, Layer, ManagedRuntime } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { logsToStderr } from '../logging/log-formats.ts';
@@ -53,6 +53,7 @@ describe('the services the playbook operations run on', () => {
 const runsNothing = {
   run: () => Promise.reject(new Error('The facts are composed before anything runs')),
   dispose: () => Promise.resolve(),
+  context: Context.empty(),
 };
 
 describe('the facts the server composes from its capabilities and the workflow’s, as it starts', () => {

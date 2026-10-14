@@ -12,6 +12,7 @@ import { caller } from './tool-caller.ts';
 
 export interface OfferedTool {
   readonly name: string;
+  readonly serverType: OfferedOnServer['slot']['settings']['type'];
   readonly description: string;
   readonly inputSchema: Schema.JsonObject;
   readonly annotations: ToolAnnotations | undefined;
@@ -58,6 +59,7 @@ export function runTools(parts: RunToolsParts): RunTools {
   };
   const offered = modelFacingNames(parts.offered).map((tool): OfferedTool => ({
     name: tool.name,
+    serverType: tool.slot.settings.type,
     description: cutToDescriptionBound(parts.secrets.scrub(tool.tool.description ?? '')),
     inputSchema: scrubbedSchema(tool.tool.inputSchema, parts.secrets.scrub),
     annotations: tool.tool.annotations,

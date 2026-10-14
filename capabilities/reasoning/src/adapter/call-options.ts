@@ -2,6 +2,9 @@ import type { JSONValue, ModelMessage as SdkMessage } from 'ai';
 import type { Schema } from 'effect';
 
 import type { GenerationSettings, ModelMessage, ModelRequest, ProviderOptions } from '../model/model-request.ts';
+import type { ModelTelemetry } from './model-access-options.ts';
+
+export type CallTelemetry = ModelTelemetry | undefined;
 
 type MutableObject = Record<string, JSONValue>;
 
@@ -64,4 +67,16 @@ export function providerOptionsOf(options: ProviderOptions | undefined) {
 
 export function retriesOf(request: ModelRequest): number {
   return request.retries === 'caller' ? 0 : 2;
+}
+
+export function telemetryOf(telemetry: CallTelemetry) {
+  return telemetry === undefined
+    ? {}
+    : {
+        telemetry: {
+          integrations: [...telemetry.integrations],
+          recordInputs: telemetry.recordContent,
+          recordOutputs: telemetry.recordContent,
+        },
+      };
 }

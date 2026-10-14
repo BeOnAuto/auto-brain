@@ -13,7 +13,7 @@ import {
   recordingReporter,
   type ReportedIncident,
 } from '@on.auto/operations/testing';
-import { Effect, Layer } from 'effect';
+import { Effect, Layer, type Tracer } from 'effect';
 
 import type { ToolAccess } from '../access/tool-access.ts';
 import { defineExecute } from '../execute/execute.ts';
@@ -37,6 +37,7 @@ export interface Asking {
   readonly caller?: CallerIdentity;
   readonly playbook?: string;
   readonly signal?: AbortSignal;
+  readonly tracer?: Tracer.Tracer;
 }
 
 export interface PlaybookToolCalls {
@@ -97,19 +98,19 @@ export function playbookToolCalls(
   const dispatcher = makeDispatcher([]);
   return {
     registrations,
-    call: (tool, input, { caller = toolCaller, playbook = 'alpha', signal } = {}) =>
-      Effect.runPromise(
-        settle(
-          dispatcher.dispatchToPlaybook(registrations[tool], {
-            caller,
-            org: 'acme',
-            playbook,
-            input,
-            encoding: 'json',
-          }),
-          signal,
-        ).pipe(Effect.provide(services)),
-      ),
+    call: (tool, input, { caller = toolCaller, playbook = 'alpha', signal, tracer } = {}) => {
+      const settled = settle(
+        dispatcher.dispatchToPlaybook(registrations[tool], {
+          caller,
+          org: 'acme',
+          playbook,
+          input,
+          encoding: 'json',
+        }),
+        signal,
+      ).pipe(Effect.provide(services));
+      return Effect.runPromise(tracer === undefined ? settled : Effect.withTracer(settled, tracer));
+    },
     recorded: async () => {
       const page = await Effect.runPromise(
         ledger.service.readRecorded(

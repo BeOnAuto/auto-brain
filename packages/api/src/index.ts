@@ -1,7 +1,10 @@
 export { createApiHandler } from './api-handler.ts';
 export type { ApiHandler } from './api-handler.ts';
 export type { ApiOptions } from './api-options.ts';
-export { operationRoutes, type OperationRoutesOptions, type RunCall } from './operations/operation-routes.ts';
+export type { ApiEnv } from './api-env.ts';
+export type { TraceParent } from './tracing/trace-parent.ts';
+export { operationRoutes } from './operations/operation-routes.ts';
+export type { OperationRoutesOptions, RunCall } from './operations/operation-handler.ts';
 export { mcpRoutes, type McpRoutesOptions } from './mcp/mcp-routes.ts';
 export { openApiDocumentRoutes, openApiPath, type OpenApiServing } from './openapi/openapi-routes.ts';
 export { guideRoutes } from './guides/guide-routes.ts';

@@ -4,6 +4,7 @@ import { Effect, Fiber } from 'effect';
 import type { Trouble } from '../calls/host-executor.ts';
 import { duePerformer, type DuePerformer, type DueWork } from '../due-work/due-work.ts';
 import type { DueTimer, TimerTable } from '../timers/sql-timers.ts';
+import { forkedIn, type HostContext } from './forked-fibers.ts';
 import type { HostClock } from './host-clock.ts';
 
 export interface LoopParts {
@@ -15,6 +16,7 @@ export interface LoopParts {
   readonly resume: () => Effect.Effect<number>;
   readonly trouble: Trouble;
   readonly sweepEveryMs: number;
+  readonly context?: HostContext;
 }
 
 export interface HostLoop {
@@ -67,8 +69,8 @@ function nextDueOf({ timers, trouble }: LoopParts): Effect.Effect<number | null>
     );
 }
 
-function dueOf({ dueWork, trouble, clock }: LoopParts, wake: () => void): DuePerformer {
-  return duePerformer(dueWork, { trouble, now: clock.now, wake });
+function dueOf({ dueWork, trouble, clock, context }: LoopParts, wake: () => void): DuePerformer {
+  return duePerformer(dueWork, { trouble, now: clock.now, wake, context });
 }
 
 export function startLoop(parts: LoopParts): HostLoop {
@@ -110,7 +112,7 @@ export function startLoop(parts: LoopParts): HostLoop {
       Effect.promise(() => promise),
     );
   });
-  const fiber = Effect.runFork(Effect.forever(Effect.andThen(Effect.uninterruptible(tick), wait)));
+  const fiber = forkedIn(parts.context, Effect.forever(Effect.andThen(Effect.uninterruptible(tick), wait)));
   return {
     armed: (dueAt) => {
       plan.armedSince = Math.min(plan.armedSince, dueAt);

@@ -1,16 +1,20 @@
 import type { AppRuntime } from '@on.auto/api';
 import type { DispatcherServices } from '@on.auto/operations';
-import type { Timing } from '@on.auto/tool-servers';
+import type { ToolAccessOptions } from '@on.auto/tool-servers';
 
 import type { Served } from '../lifecycle/lifecycle.ts';
 import type { Settings } from '../settings/settings.ts';
 import { interactionServedBy, type ServedInteraction } from './served-interaction.ts';
 import { reasoningServedBy, type ModelAccessOf, type ServedReasoning } from './served-reasoning.ts';
-import { toolAccessOf } from './served-tool-access.ts';
+import { toolAccessOf, type ToolAccessWiring } from './served-tool-access.ts';
 import { toolOperationsOf, type ServedToolOperations } from './served-tool-operations.ts';
 
-export interface TimedTools {
-  readonly toolTiming?: Timing;
+export interface ToolWiring extends ToolAccessWiring {
+  readonly modelAccessOf: ModelAccessOf;
+  readonly telemetry?: {
+    readonly models: Parameters<ModelAccessOf>[2];
+    readonly traceMeta: ToolAccessOptions['traceMeta'];
+  };
 }
 
 export interface ServedToolUsers {
@@ -23,12 +27,13 @@ export interface ServedToolUsers {
 export async function toolUsersServedBy(
   runtime: AppRuntime<DispatcherServices>,
   settings: Settings,
-  modelAccessOf: ModelAccessOf,
-  timing?: Timing,
+  { modelAccessOf, ...wiring }: ToolWiring,
 ): Promise<ServedToolUsers> {
-  const tools = await toolAccessOf(runtime, settings, timing);
+  const tools = await toolAccessOf(runtime, settings, wiring);
+  const models = wiring.telemetry?.models;
+  const access: ModelAccessOf = (modelSettings, proxy) => modelAccessOf(modelSettings, proxy, models);
   return {
-    reasoning: await reasoningServedBy(runtime, settings, modelAccessOf, tools),
+    reasoning: await reasoningServedBy(runtime, settings, access, tools),
     interaction: interactionServedBy(runtime, settings, tools),
     toolOperations: toolOperationsOf(tools),
     withToolsClosed: ({ routes, stopWork }) => ({

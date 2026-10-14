@@ -1,4 +1,4 @@
-import type { EventStore } from '@on.auto/ledger';
+import type { AppendObserver, EventStore } from '@on.auto/ledger';
 import { postgresqlEventStore, type PostgreSQLPools } from '@on.auto/ledger/postgresql';
 import { Effect, Function, Schema } from 'effect';
 
@@ -19,6 +19,7 @@ export interface PostgreSQLDatabaseOptions {
   readonly pools: PostgreSQLPools;
   readonly reportLostConnection: (error: Readonly<Error>) => void;
   readonly tables: readonly Statement[];
+  readonly observer?: AppendObserver | undefined;
 }
 
 export interface Connection {
@@ -144,8 +145,9 @@ export function openPostgreSQLDatabase({
   pools,
   reportLostConnection,
   tables,
+  observer,
 }: PostgreSQLDatabaseOptions): Promise<HostDatabase> {
   const pool = pools({ max: connectionsForTheHostTables });
   pool.on('error', reportLostConnection);
-  return postgresqlDatabaseOn(postgresqlEventStore({ pools, reportLostConnection }), pool, tables);
+  return postgresqlDatabaseOn(postgresqlEventStore({ pools, reportLostConnection, observer }), pool, tables);
 }

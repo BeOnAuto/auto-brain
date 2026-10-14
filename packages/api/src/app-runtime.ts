@@ -1,16 +1,17 @@
 import type { Cancelled } from '@on.auto/operations';
-import { Cause, Exit, ManagedRuntime, type Effect, type Layer } from 'effect';
+import { Cause, Exit, ManagedRuntime, type Context, type Effect, type Layer } from 'effect';
 
 export interface AppRuntime<R> {
   readonly run: <A>(effect: Effect.Effect<A, never, R>, signal?: AbortSignal) => Promise<A | Cancelled>;
   readonly dispose: () => Promise<void>;
+  readonly context: Context.Context<never>;
 }
 
 const cancelled: Cancelled = { status: 'cancelled' };
 
 export async function makeAppRuntime<R, E>(layer: Layer.Layer<R, E>): Promise<AppRuntime<R>> {
   const runtime = ManagedRuntime.make(layer);
-  await runtime.context();
+  const context = await runtime.context();
   let disposed = false;
   return {
     run: async (effect, signal) => {
@@ -30,5 +31,6 @@ export async function makeAppRuntime<R, E>(layer: Layer.Layer<R, E>): Promise<Ap
       disposed = true;
       await runtime.dispose();
     },
+    context,
   };
 }

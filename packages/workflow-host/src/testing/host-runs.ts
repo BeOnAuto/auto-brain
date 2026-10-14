@@ -29,6 +29,7 @@ export interface HostedOptions {
   readonly holder?: string;
   readonly projector?: HostOptions['projector'];
   readonly dueWork?: HostOptions['dueWork'];
+  readonly context?: HostOptions['context'];
 }
 
 const answeredWithNull = (): ReturnType<HostOptions['perform']> =>
@@ -58,6 +59,7 @@ export async function hostedOn(settings: HostOptions['database'], options: Hoste
     ...(options.holder === undefined ? {} : { holder: options.holder }),
     ...(options.projector === undefined ? {} : { projector: options.projector }),
     ...(options.dueWork === undefined ? {} : { dueWork: options.dueWork }),
+    ...(options.context === undefined ? {} : { context: options.context }),
   });
   onTestFinished(() => host.stop());
   return {

@@ -1,4 +1,4 @@
-import type { Schema } from 'effect';
+import { Effect, type Schema } from 'effect';
 
 import type { NotOfferedBecause, ToolNotOffered } from '../access/tool-not-offered.ts';
 import type { ToolServerFailed, ServerFailedBecause } from '../access/tool-server-failed.ts';
@@ -6,6 +6,9 @@ import { cutToFailureBound } from '../bounds/call-bounds.ts';
 import { resultText, type AnswerBlock, type ToolAnnotations } from '../bounds/tool-results.ts';
 import type { CallAnswered, CallFailed, CallFailedBecause } from '../calls/call-facts.ts';
 import type { SentCall } from '../calls/tool-caller.ts';
+import type { ToolReference } from '../names/tool-reference.ts';
+import type { ServerType } from '../settings/server-settings.ts';
+import { answeredEnding, refusedEnding, traced } from './traced-calls.ts';
 
 export interface CallAnswer {
   readonly content: readonly AnswerBlock[];
@@ -65,4 +68,16 @@ export function answeredOnce(
   return done.outcome === 'result'
     ? { ...answered, outcome: done.outcome, answer: done.scrubbed, answered: fact, detail: '' }
     : { ...answered, outcome: done.outcome, answered: fact, detail: cutToFailureBound(resultText(done.scrubbed)) };
+}
+
+function endingOf(once: CalledOnce): Readonly<Record<string, string>> {
+  return once.kind === 'unopened' ? refusedEnding(once.refused, once.because) : answeredEnding(once.outcome);
+}
+
+export function tracedOnce(
+  reference: ToolReference,
+  serverType: ServerType,
+  calling: Effect.Effect<CalledOnce>,
+): Effect.Effect<CalledOnce> {
+  return traced(reference, serverType, (endCall) => calling.pipe(Effect.tap((once) => endCall(endingOf(once)))));
 }

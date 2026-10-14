@@ -8,7 +8,7 @@ import { journalledCall, type CallJournalling } from '../calls/tool-caller.ts';
 import type { ServerLink } from '../connections/server-links.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
 import { openedFor } from './call-opening.ts';
-import { answeredOnce, notOfferedOnce, type CalledOnce } from './called-once.ts';
+import { answeredOnce, notOfferedOnce, tracedOnce, type CalledOnce } from './called-once.ts';
 
 export interface OneCall {
   readonly org: string;
@@ -78,10 +78,14 @@ function journallingOf(runCall: RunCall | undefined, awaited: Awaiting): Journal
 }
 
 function called(call: OneCall, link: ServerLink, access: OneCallAccess, runCall?: RunCall): Effect.Effect<CalledOnce> {
-  return Effect.gen(function* () {
-    const journalling = journallingOf(runCall, Effect.runPromiseWith(yield* Effect.context()));
-    return yield* Effect.promise((signal) => calledOnce(call, link, { access, journalling, signal }));
-  });
+  return tracedOnce(
+    { server: link.settings.name, tool: call.reference.tool },
+    link.settings.type,
+    Effect.gen(function* () {
+      const journalling = journallingOf(runCall, Effect.runPromiseWith(yield* Effect.context()));
+      return yield* Effect.promise((signal) => calledOnce(call, link, { access, journalling, signal }));
+    }),
+  );
 }
 
 export function oneCall(call: OneCall, access: OneCallAccess, runCall?: RunCall): Effect.Effect<CalledOnce> {

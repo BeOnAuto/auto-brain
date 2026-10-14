@@ -6,6 +6,8 @@ import { decodeListedTools, decodeToolResult, type ToolResult } from '../bounds/
 import { observations, type Observations } from './observed-requests.ts';
 import type { ServerConnection } from './server-connection.ts';
 
+export type TraceMeta = () => Readonly<Record<string, string>>;
+
 interface ToolClient {
   readonly request: Client['request'];
   readonly listTools: Client['listTools'];
@@ -83,6 +85,13 @@ function contentJsonOf(answer: unknown): string {
 
 function settledOf(answer: unknown): { readonly result: ToolResult; readonly resultJson: string } {
   return { result: decodeToolResult(answer), resultJson: contentJsonOf(answer) };
+}
+
+export function tracedConnection(connection: ServerConnection, traceMeta: TraceMeta): ServerConnection {
+  return {
+    ...connection,
+    call: (calling) => connection.call({ ...calling, meta: { ...traceMeta(), ...calling.meta } }),
+  };
 }
 
 export function connectionOver(

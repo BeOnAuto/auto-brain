@@ -2,12 +2,14 @@ import type { AuthInfo } from '@modelcontextprotocol/server';
 import { PlaybookIdSchema, CallerIdentitySchema, type CallerIdentity } from '@on.auto/operations';
 import { Schema } from 'effect';
 
+import { TraceParentSchema, type TraceParent } from '../tracing/trace-parent.ts';
 import { DroppedArgumentSchema, type DroppedArgument } from './dropped-arguments.ts';
 
 export interface OrgCall {
   readonly caller: CallerIdentity;
   readonly org: string;
   readonly requestId: string;
+  readonly trace?: TraceParent;
   readonly dropped: readonly DroppedArgument[];
 }
 
@@ -25,6 +27,7 @@ const OrgCallSchema = Schema.Struct({
   caller: CallerIdentitySchema,
   org: Schema.String,
   requestId: Schema.String,
+  trace: Schema.optionalKey(TraceParentSchema),
   dropped: Schema.Array(DroppedArgumentSchema),
 });
 
@@ -33,6 +36,10 @@ const PlaybookCallSchema = Schema.Struct({ ...OrgCallSchema.fields, playbook: Pl
 const decodeOrgCall = Schema.decodeUnknownSync(OrgCallSchema);
 
 const decodePlaybookCall = Schema.decodeUnknownSync(PlaybookCallSchema);
+
+export function tracedBy(trace: TraceParent | undefined): { readonly trace?: TraceParent } {
+  return trace === undefined ? {} : { trace };
+}
 
 export function authInfoFor(call: OrgCall | PlaybookCall): AuthInfo {
   return {

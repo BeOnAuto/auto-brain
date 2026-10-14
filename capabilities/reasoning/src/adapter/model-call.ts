@@ -5,7 +5,14 @@ import type { ModelFailure } from '../failure/model-failure.ts';
 import type { ModelRequest, ToolCallSignals } from '../model/model-request.ts';
 import { toolLoop, turnsOf } from '../tools/tool-loop.ts';
 import { projected, readOutput, settledAnswer, type Answered } from './answer-settling.ts';
-import { callSettingsOf, promptOf, providerOptionsOf, retriesOf } from './call-options.ts';
+import {
+  callSettingsOf,
+  promptOf,
+  providerOptionsOf,
+  retriesOf,
+  telemetryOf,
+  type CallTelemetry,
+} from './call-options.ts';
 import { jsonOutput } from './json-output.ts';
 import type { ModelTarget } from './model-resolution.ts';
 import type { StepDeadline } from './stopped-call.ts';
@@ -33,8 +40,12 @@ function callOf(request: ModelRequest, step: StepDeadline, turns: Turns) {
   };
 }
 
-interface CallHooks {
+interface Calling {
   readonly step: StepDeadline;
+  readonly telemetry?: CallTelemetry;
+}
+
+interface CallHooks extends Calling {
   readonly turns: Turns;
 }
 
@@ -47,7 +58,7 @@ async function modelAnswer(
   target: ModelTarget,
   request: ModelRequest,
   signals: ToolCallSignals,
-  { step, turns }: CallHooks,
+  { step, turns, telemetry }: CallHooks,
 ): Promise<Settled> {
   const response: { id: string | null } = { id: null };
   const model = wrapLanguageModel({
@@ -65,6 +76,7 @@ async function modelAnswer(
   const call = {
     model,
     ...callOf(request, step, turns),
+    ...telemetryOf(telemetry),
     tools: { ...tools },
     prepareStep,
     stopWhen,
@@ -97,8 +109,8 @@ export function callingModel(
   target: ModelTarget,
   request: ModelRequest,
   signals: ToolCallSignals,
-  step: StepDeadline,
+  { step, telemetry }: Calling,
 ): CallingModel {
   const turns = turnsOf(request.tools);
-  return { turns, settled: modelAnswer(target, request, signals, { step, turns }) };
+  return { turns, settled: modelAnswer(target, request, signals, { step, turns, telemetry }) };
 }

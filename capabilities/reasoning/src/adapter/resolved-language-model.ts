@@ -14,7 +14,7 @@ export function resolvedLanguageModel(
   models: ReadonlyMap<string, ModelFactory>,
   settings: ModelSettings,
   status: ProviderStatus,
-  { reportProviderMessage, reportOperatorHint }: ModelAccessOptions,
+  { reportProviderMessage, reportOperatorHint, telemetry }: ModelAccessOptions,
 ): LanguageModel['Service'] {
   const showing = providersShowingMessages(settings);
   return LanguageModel.of(
@@ -25,6 +25,7 @@ export function resolvedLanguageModel(
       report: reportProviderMessage ?? (() => Effect.void),
       reportHint: reportOperatorHint ?? (() => Effect.void),
       admitsOptions: gatewayOptionsCheck(settings.gateways),
+      telemetry,
     }),
   );
 }

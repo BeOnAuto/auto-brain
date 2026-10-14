@@ -34,6 +34,7 @@
     "sqlite3": "6.0.1"
   },
   "devDependencies": {
+    "@opentelemetry/sdk-trace-base": "2.9.0",
     "@types/pg": "8.23.1",
     "@vitest/coverage-v8": "catalog:",
     "vitest": "catalog:"

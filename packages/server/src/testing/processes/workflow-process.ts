@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { Schema } from 'effect';
 import { onTestFinished } from 'vitest';
 
-import { tcpPort } from '../../lifecycle/lifecycle.ts';
+import { tcpPort } from '../../lifecycle/http-server.ts';
 import { runIdIn, isStarted, workflowSource } from '../servers/workflow-server.ts';
 import { spawnServer, type SpawnedServer } from './spawned-server.ts';
 

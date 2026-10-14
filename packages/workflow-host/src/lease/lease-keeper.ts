@@ -1,6 +1,7 @@
 import { Effect, Fiber, type Cause } from 'effect';
 
 import type { Trouble } from '../calls/host-executor.ts';
+import { forkedIn, ranIn, type HostContext } from '../loop/forked-fibers.ts';
 import type { HostClock } from '../loop/host-clock.ts';
 import type { HostLease, LeaseClaim } from './host-lease.ts';
 
@@ -16,6 +17,7 @@ export interface KeeperParts {
   readonly held: (before: Standing) => Effect.Effect<void>;
   readonly standingBy: (refusal: LeaseRefusal, before: Standing) => Effect.Effect<void>;
   readonly trouble: Trouble;
+  readonly context?: HostContext;
 }
 
 export interface LeaseKeeper {
@@ -48,8 +50,9 @@ export async function keptLease(parts: KeeperParts): Promise<LeaseKeeper> {
     );
   };
   const kept = lease.claimed().pipe(Effect.flatMap(claimed), Effect.catchCause(unrenewed));
-  await Effect.runPromise(kept);
-  const fiber = Effect.runFork(
+  await ranIn(parts.context, kept);
+  const fiber = forkedIn(
+    parts.context,
     Effect.forever(Effect.andThen(Effect.sleep(sweepEveryMs), Effect.uninterruptible(kept))),
   );
   return { stop: () => Effect.runPromise(Effect.asVoid(Fiber.interrupt(fiber))) };

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { linesLoggedBy } from '../testing/records/logged-lines.ts';
-import { logOperatorHint, logProviderMessage } from './logging.ts';
+import { logOperatorHint, logProviderMessage } from './provider-logging.ts';
 
 describe('logProviderMessage', () => {
   it('warns with the provider, the model, the status, the run and what the provider said', async () => {

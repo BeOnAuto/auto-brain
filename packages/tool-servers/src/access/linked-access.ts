@@ -22,6 +22,7 @@ export function linkedAccess(settings: ToolServers, options: LinkedOptions): Lin
     reportOutput: (server: string, message: string) => {
       report({ server, message, run_id: null, call_id: null });
     },
+    ...(options.traceMeta === undefined ? {} : { traceMeta: options.traceMeta }),
   };
   const links = new Map(settings.servers.map((server) => [server.name, serverLink(server, linkOptions)]));
   return {

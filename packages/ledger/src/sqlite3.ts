@@ -6,6 +6,7 @@ import type { ContentStore, Ledger, RunOutcomeMapping, KeyedProjection } from '@
 import type { Layer } from 'effect';
 
 import type { AppendSignal } from './appends/append-signal.ts';
+import type { AppendObserver } from './event-store.ts';
 import { sqliteLedgerLayer } from './sqlite-event-store.ts';
 
 export interface LedgerOptions {
@@ -14,6 +15,7 @@ export interface LedgerOptions {
   readonly projections?: readonly KeyedProjection[];
   readonly appends?: AppendSignal;
   readonly content?: ContentStore;
+  readonly observer?: AppendObserver | undefined;
 }
 
 const pageCacheOfEightMebibytes = -8192;
@@ -38,12 +40,13 @@ export function ledgerLayer({
   projections,
   appends,
   content,
+  observer,
 }: LedgerOptions): Layer.Layer<Ledger> {
   return sqliteLedgerLayer(
     () => {
       prepareDirectoryOf(fileName);
       return { driver: sqlite3EventStoreDriver, fileName, connectionOptions: modestConnections };
     },
-    { runOutcomes, projections, appends, content },
+    { runOutcomes, projections, appends, content, observer },
   );
 }

@@ -9,6 +9,8 @@ export {
   type RecordingReporter,
 } from './provider-errors.ts';
 export { jsonResponse, recordingFetch, type RecordingFetch } from './recording-fetch.ts';
+export { anthropicMessage } from './provider-replies.ts';
+export { anthropicToolCall } from './tool-call-replies.ts';
 export {
   answers,
   scriptedLanguageModel,

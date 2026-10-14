@@ -85,7 +85,7 @@ Microsoft Entra ID needs `@azure/identity`, an optional dependency of this packa
 docker build --build-arg AZURE_IDENTITY=true --file packages/server/Dockerfile --tag onauto/runtime:entra .
 ```
 
-`AZURE_IDENTITY=true` adds `@azure/identity`, at the exact version `capabilities/reasoning/package.json` pins, and nothing else: the other optional packages of the server's dependencies, such as the telemetry exporters of the ledger's libraries, stay out. Measured on arm64, the default image is 402 MB and this one 426 MB. Any value but `true` or `false` stops the build. Then give the workload an identity with the role _Cognitive Services OpenAI User_ on the resource (Azure workload identity on AKS, or a managed identity), and leave `AZURE_API_KEY` unset:
+`AZURE_IDENTITY=true` adds `@azure/identity`, at the exact version `capabilities/reasoning/package.json` pins, and nothing else: the other optional packages of the server's dependencies stay out. Measured on arm64, the default image is 505 MB and this one 529 MB. Any value but `true` or `false` stops the build. Then give the workload an identity with the role _Cognitive Services OpenAI User_ on the resource (Azure workload identity on AKS, or a managed identity), and leave `AZURE_API_KEY` unset:
 
 ```sh
 AZURE_RESOURCE_NAME=acme-openai

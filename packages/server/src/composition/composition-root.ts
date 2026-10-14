@@ -19,15 +19,15 @@ export function compositionRootWith(
   const wiring = functionWiringOf(modelAccessOf, programPoolOf, toolTiming);
   return {
     ...defaultServerOptions,
-    composed: (settings) => {
-      const database = ledgerDatabaseOf(settings);
+    composed: (settings, telemetry) => {
+      const database = ledgerDatabaseOf(settings, telemetry.appended);
       return {
         services: applicationLayer(ledgerLayerFor(settings, database, wiring.projections.appends)),
         serve: async (runtime) => {
           const { ledger, workflows, identityIssuer } = settings;
           await runtime.run(logLedger(ledger));
           await runtime.run(logContentStore(settings.content));
-          const functions = await functionsServedBy(runtime, settings, database, wiring);
+          const functions = await functionsServedBy(runtime, settings, database, { ...wiring, telemetry });
           const parts = {
             ledger,
             workflows,
