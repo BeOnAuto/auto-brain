@@ -1,4 +1,4 @@
-import { allPermissions, type CallerIdentity } from '@on.auto/operations';
+import { allPermissions, type CallerIdentity, type Permission } from '@on.auto/operations';
 
 import type { ApiKey } from '../keys/api-key.ts';
 import { localDeveloperId, localOrg } from './local-org.ts';
@@ -17,6 +17,7 @@ export type Authentication = Principal | Refusal;
 export interface VerifiedPerson {
   readonly subject: string;
   readonly org: string;
+  readonly permissions: readonly Permission[];
 }
 
 export function isRefusal(authentication: Authentication): authentication is Refusal {
@@ -39,6 +40,6 @@ export function principalOf({ id, org, permissions, playbooks }: ApiKey): Princi
   return principalOfCaller({ id, org, permissions, playbooks });
 }
 
-export function signedInPersonOf({ subject, org }: VerifiedPerson): Principal {
-  return principalOfCaller({ id: `person:${subject}`, org, permissions: allPermissions, playbooks: '*' });
+export function signedInPersonOf({ subject, org, permissions }: VerifiedPerson): Principal {
+  return principalOfCaller({ id: `person:${subject}`, org, permissions, playbooks: '*' });
 }

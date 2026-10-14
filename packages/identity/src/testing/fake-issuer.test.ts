@@ -18,7 +18,7 @@ function tokenRequest(credentials: string, form: Readonly<Record<string, string>
 }
 
 describe('the fake issuer', () => {
-  it('mints a token for a client by its credentials, for the resource asked, that the runtime verifies', async () => {
+  it('mints a token for a client by its credentials, for the resource and the scopes asked, that the runtime verifies', async () => {
     const fake = fakeIssuer('https://login.example', { clients });
     const identityService = await identityServiceOf(
       { issuer: fake.issuer, publicUrl: 'https://runtime.example' },
@@ -29,12 +29,15 @@ describe('the fake issuer', () => {
       tokenRequest('ada-agent:a-long-secret', {
         grant_type: 'client_credentials',
         resource: 'https://runtime.example',
-        scope: 'org:read',
+        scope: 'user:org:read org:read',
       }),
     );
     const { access_token: token } = tokenOf(await answer.json());
 
-    expect(principalIn(await identityService.personOf(token, '/mcp'))?.callerIn('acme')?.id).toBe('person:ada');
+    expect(principalIn(await identityService.personOf(token, '/mcp'))?.callerIn('acme')).toMatchObject({
+      id: 'person:ada',
+      permissions: ['org:read'],
+    });
   });
 });
 

@@ -1,3 +1,4 @@
+import { allPermissions } from '@on.auto/operations';
 import { describe, expect, it } from 'vitest';
 
 import { identityServiceOf, type IssuerFetch } from '../index.ts';
@@ -66,7 +67,7 @@ describe('a token signed by the identity service', () => {
 });
 
 describe('the person a token names', () => {
-  it('is admitted to the org its org_id claim names, with every permission over every playbook, and nowhere else', async () => {
+  it('is admitted to the org its org_id claim names, with every permission its scopes grant over every playbook, and nowhere else', async () => {
     const { identityService, token } = await signedTokens(fakeIssuer('https://login.example'), atStart);
     const person = await identityService.personOf(await token({ org_id: 'globex', sub: 'user|ada/ü 1' }), '/mcp');
 
@@ -86,6 +87,45 @@ describe('the person a token names', () => {
     const subjectOf256Bytes = `${'ü'.repeat(127)}ab`;
 
     expect(await callerOf(await token({ sub: subjectOf256Bytes }))).toBe(`person:${subjectOf256Bytes}`);
+  });
+});
+
+const readScopes = ['org:read', 'playbook:read'];
+
+const grantedScopes: ReadonlyArray<readonly [string, string, readonly string[]]> = [
+  ['every scope a sign-in asks for', 'user:org:read org:read org:write playbook:read playbook:write', allPermissions],
+  ['the two read scopes', 'user:org:read org:read playbook:read', readScopes],
+  ['none of the four permissions', 'user:org:read', []],
+  [
+    'scopes repeated, unknown, out of order or apart by two spaces',
+    'playbook:read  openid org:read playbook:read',
+    readScopes,
+  ],
+];
+
+describe('the permissions of the person a token names', () => {
+  it.each(grantedScopes)('are the permissions among its scopes, for %s', async (_case, scope, permissions) => {
+    const { identityService, token } = await signedTokens(fakeIssuer('https://login.example'), atStart);
+
+    expect(await identityService.personOf(await token({ scope }), '/mcp')).toMatchObject({
+      own: { id: 'person:ada', org: 'acme', permissions, playbooks: '*' },
+    });
+  });
+
+  it('are none for a token without a scope claim, which still admits the person to their org', async () => {
+    const { identityService, token } = await signedTokens(fakeIssuer('https://login.example'), atStart);
+    const person = principalIn(await identityService.personOf(await token({ scope: undefined }), '/mcp'));
+
+    expect(person?.callerIn('acme')).toEqual({ id: 'person:ada', org: 'acme', permissions: [], playbooks: '*' });
+  });
+
+  it('are the four for a token that holds them without user:org:read, since org_id is what binds the org', async () => {
+    const { identityService, token } = await signedTokens(fakeIssuer('https://login.example'), atStart);
+    const scope = allPermissions.join(' ');
+
+    expect(await identityService.personOf(await token({ scope }), '/mcp')).toMatchObject({
+      own: { id: 'person:ada', org: 'acme', permissions: allPermissions },
+    });
   });
 });
 
@@ -118,6 +158,11 @@ const refusedPersons: ReadonlyArray<readonly [string, Claims, string]> = [
   ['an org_id that is no org id', { org_id: 'ac me' }, 'its org_id claim is not an org id other than local'],
   ['the org of local mode', { org_id: 'local' }, 'its org_id claim is not an org id other than local'],
   ['an org_id that is not a string', { org_id: 7 }, 'its org_id claim is not an org id other than local'],
+  [
+    'a scope that is not a string',
+    { scope: ['org:read'] },
+    'its scope claim is not a string of scopes separated by spaces',
+  ],
 ];
 
 describe('a token the runtime refuses, saying why', () => {

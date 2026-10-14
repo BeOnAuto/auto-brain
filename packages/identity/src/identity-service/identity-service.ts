@@ -1,3 +1,4 @@
+import { allPermissions } from '@on.auto/operations';
 import { Result } from 'effect';
 
 import { signedInPersonOf, type Authentication } from '../access/principal.ts';
@@ -8,7 +9,9 @@ import { UnusableIdentityServiceError } from './unusable-identity-service-error.
 
 export const autoIdentityService = 'https://clerk.on.auto';
 
-export const signInScope = 'user:org:read';
+const organizationScope = 'user:org:read';
+
+export const signInScopes: readonly string[] = [organizationScope, ...allPermissions];
 
 export interface ProtectedResource {
   readonly publicUrl: string;
