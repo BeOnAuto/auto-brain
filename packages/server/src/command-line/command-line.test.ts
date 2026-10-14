@@ -49,7 +49,6 @@ function recordedHost(): Recorded {
 
 const startedSettings = {
   HOST: '127.0.0.1',
-  LOCAL_MODE: 'true',
   LOG_FORMAT: 'console',
   LOG_LEVEL: 'error',
   LEDGER_FILE: '/home/ada/.auto-runtime/ledger.db',
@@ -57,7 +56,7 @@ const startedSettings = {
 };
 
 describe('starting the server with the auto-runtime command', () => {
-  it('starts it in local mode when given no command, and leaves the exit code to the server', async () => {
+  it('starts it when given no command, and leaves the exit code to the server', async () => {
     const { host, started } = recordedHost();
 
     await expect(runCommandLine([], host)).resolves.toBeUndefined();
@@ -102,6 +101,8 @@ describe('the other commands of auto-runtime', () => {
     await expect(runCommandLine(['--help'], host)).resolves.toBe(0);
     expect(logged[0]).toMatch(/^Usage: auto-runtime \[command\]\n/u);
     expect(logged[0]).toContain('http://localhost:5555');
+    expect(logged[0]).toContain('A person signs in through the Auto identity service when their agent connects.');
+    expect(logged[0]).toContain('LOCAL_MODE=true trusts every request on this computer instead, for development.');
   });
 });
 

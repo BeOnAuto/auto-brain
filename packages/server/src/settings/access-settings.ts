@@ -1,16 +1,10 @@
-import type { Environment } from '@on.auto/config';
-import {
-  autoIdentityService,
-  listensOnlyOnLoopback,
-  readApiKeys,
-  type ApiKey,
-  type SignInSettings,
-} from '@on.auto/identity';
+import type { Environment, ServerConfig } from '@on.auto/config';
+import { autoIdentityService, readApiKeys, type ApiKey, type SignInSettings } from '@on.auto/identity';
 import { Config, ConfigProvider, Effect, Option } from 'effect';
 
 import type { LogFormat, LogLevelSetting } from '../logging/log-formats.ts';
 import { InvalidSettingsError } from './invalid-settings-error.ts';
-import { IssuerOrigin, namesALoopbackHost, Origin, PublicOrigin } from './origin.ts';
+import { IssuerOrigin, namesALoopbackHost, Origin, ownLoopbackOrigin, PublicOrigin } from './origin.ts';
 
 export interface AccessSettings {
   readonly allowedOrigins: readonly string[];
@@ -48,22 +42,27 @@ const signInSettings = Config.all({
 });
 
 const httpOffLoopback =
-  'PUBLIC_URL: Expected an https URL; an http URL is taken only for localhost, 127.0.0.1 or [::1] on a server whose HOST is a loopback address';
+  'PUBLIC_URL: Expected an https URL; an http URL is taken only for localhost, 127.0.0.1 or [::1]';
 
-function isUsableOnHost(publicUrl: string, host: string): boolean {
-  return publicUrl.startsWith('https://') || (namesALoopbackHost(publicUrl) && listensOnlyOnLoopback(host));
+function isUsable(publicUrl: string): boolean {
+  return publicUrl.startsWith('https://') || namesALoopbackHost(publicUrl);
 }
 
-export function readCredentialSettings(environment: Environment, host: string): CredentialSettings {
+export function readCredentialSettings(
+  environment: Environment,
+  server: ServerConfig,
+  localMode: boolean,
+): CredentialSettings {
   const { publicUrl, issuer } = Effect.runSync(
     asInvalidSettings(signInSettings.parse(ConfigProvider.fromEnvRecord(environment))),
   );
-  if (Option.isSome(publicUrl) && !isUsableOnHost(publicUrl.value, host)) {
+  if (Option.isSome(publicUrl) && !isUsable(publicUrl.value)) {
     throw new InvalidSettingsError({ message: httpOffLoopback });
   }
+  const reachedAt = localMode ? publicUrl : Option.orElse(publicUrl, () => ownLoopbackOrigin(server));
   return {
     apiKeys: readApiKeys(environment),
     identityIssuer: issuer,
-    signIn: Option.isSome(publicUrl) ? { issuer, publicUrl: publicUrl.value } : undefined,
+    signIn: Option.isSome(reachedAt) ? { issuer, publicUrl: reachedAt.value } : undefined,
   };
 }

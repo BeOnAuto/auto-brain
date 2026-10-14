@@ -24,12 +24,11 @@ afterEach(() => {
 });
 
 describe('the settings of a server started on this computer', () => {
-  it('listen on the loopback address in local mode, log for a person and keep the ledger in the home directory', () => {
+  it('listen on the loopback address, log for a person and keep the ledger in the home directory', () => {
     const directory = directoryWith({});
 
     expect(localSettings({}, { directory, home: '/home/ada' })).toEqual({
       HOST: '127.0.0.1',
-      LOCAL_MODE: 'true',
       LOG_FORMAT: 'console',
       LOG_LEVEL: 'error',
       LEDGER_FILE: '/home/ada/.auto-runtime/ledger.db',
@@ -46,7 +45,6 @@ describe('the settings of a server started on this computer', () => {
 
     expect(settings).toEqual({
       HOST: '127.0.0.1',
-      LOCAL_MODE: 'true',
       LOG_FORMAT: 'json',
       LOG_LEVEL: 'error',
       LEDGER_FILE: '/home/ada/.auto-runtime/ledger.db',
@@ -71,5 +69,14 @@ describe('the settings of a server started on this computer', () => {
     expect(localSettings({ DATABASE_URL: '' }, { directory: directoryWith({}), home: '/home/ada' })).toMatchObject({
       LEDGER_FILE: '/home/ada/.auto-runtime/ledger.db',
     });
+  });
+});
+
+describe('local mode on this computer', () => {
+  it('is off unless .env or the shell sets LOCAL_MODE', () => {
+    const directory = directoryWith({ '.env': 'LOCAL_MODE=true\n' });
+
+    expect(localSettings({}, { directory: directoryWith({}), home: '/home/ada' })).not.toHaveProperty('LOCAL_MODE');
+    expect(localSettings({}, { directory, home: '/home/ada' })).toMatchObject({ LOCAL_MODE: 'true' });
   });
 });
