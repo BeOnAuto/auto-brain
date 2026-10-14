@@ -90,7 +90,12 @@ export function recordedDays(folders: ProjectedFolders, from: number, days: numb
 export function savedIn(folders: ProjectedFolders, { name, source, document }: MeasuredFunction): Promise<void> {
   return folders.append(
     `${alphaKey}definitions/prediction`,
-    [{ type: 'definition_created', data: { content: { source, details: datasetDetailsOf(document) } } }],
+    [
+      {
+        type: 'definition_created',
+        data: { content: { source, overview: `# ${name}\n`, details: datasetDetailsOf(document) } },
+      },
+    ],
     {
       by: 'acme-admin',
       at: '2026-01-01T00:00:00.000Z',

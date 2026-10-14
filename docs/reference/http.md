@@ -66,6 +66,8 @@ The `source` is a [reasoning function document](reasoning-format.md). Names foll
 
 Changing a document creates a version. Updating it with identical source records no change. A run uses the active latest version. Retired definitions can be read but cannot be edited or run.
 
+`get_definition`, like `create_definition` and `update_definition`, answers the definition with its `overview`, the definition in plain words for a person who does not read its document: Markdown with a table of the fields it needs and produces, and for a reasoning function its model, its tools and what it is told, which the runtime writes from the document when it saves the version and `list_definitions` leaves out.
+
 ## Interaction functions
 
 A self-hosted runtime offers interaction functions under the same operations, with `interaction` in place of `reasoning` in each route, such as `POST /definitions/interaction` and `POST /definitions/interaction/{name}/run`. The `source` is an [interaction function document](interaction-format.md), and names, document size, versions and retirement follow the rules for reasoning functions above. A run answers 200 with `status: started` and its `run_id`, and waits until its request is answered, expires or is cancelled; a notification to the inbox, and a function that calls a tool, answer within the request, the second with what the tool answered as its output or with an ending its format lists. A `to` or an argument the function cannot render answers `conflict` with the kind `unworkable`, a server or a tool the playbook may not use `unavailable` with the kind `tool_not_offered`, and a playbook with as many open requests as the runtime allows `unavailable` with the kind `requests_full`.

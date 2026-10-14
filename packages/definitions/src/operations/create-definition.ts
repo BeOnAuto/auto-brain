@@ -30,7 +30,7 @@ export function defineCreateDefinition(capabilities: readonly Capability[]) {
       reasons: ['not_found', 'invalid_input', 'conflict', 'unavailable'],
       handle: Effect.fnUntraced(function* ({ type, name, source }) {
         const capability = yield* known.capabilityOfType(type);
-        const content = yield* contentOf(capability, source);
+        const content = yield* contentOf(capability, name, source);
         return definitionOf(capability, yield* recordInRegistry(capability, { type: 'create', name, content }));
       }),
       plainLanguage: {

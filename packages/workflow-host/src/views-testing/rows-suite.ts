@@ -101,7 +101,7 @@ function slotTests(settingsOf: SettingsOf): void {
 
   it('keep none for a version whose details it cannot read', async () => {
     const views = await viewHarness(await settingsOf());
-    const content = { source: 'a document saved before views were kept' };
+    const content = { source: 'a document saved before views were kept', overview: '# older\n' };
     const event = {
       type: 'definition_created',
       name: 'older',

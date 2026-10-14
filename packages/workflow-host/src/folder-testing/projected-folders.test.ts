@@ -43,7 +43,12 @@ async function projected() {
   onTestFinished(folders.close);
   await folders.append(
     definitionStreamOf(alphaKey, tallyType),
-    [{ type: 'definition_created', data: { content: { source: 'runs', details: { counts: 'run_succeeded' } } } }],
+    [
+      {
+        type: 'definition_created',
+        data: { content: { source: 'runs', overview: '# runs\n', details: { counts: 'run_succeeded' } } },
+      },
+    ],
     saved,
   );
   return folders;

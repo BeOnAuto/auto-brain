@@ -53,7 +53,7 @@ function definitionsOf(folders: ProjectedFolders): Pick<ProjectedDatasets, 'save
       const document = documentOf(source);
       const version = (versions.get(name) ?? 0) + 1;
       versions.set(name, version);
-      const content = { source, details: datasetDetailsOf(document) };
+      const content = { source, overview: `# ${name}\n`, details: datasetDetailsOf(document) };
       const type = version === 1 ? 'definition_created' : 'definition_updated';
       await folders.append(stream, [{ type, data: { content } }], contextOf(name, version));
       return document;

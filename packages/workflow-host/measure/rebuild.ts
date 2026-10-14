@@ -68,7 +68,7 @@ async function recorded(database: HostDatabase, events: number): Promise<void> {
   };
   await database.store.append(
     `${playbook}definitions/recall`,
-    [{ type: 'definition_created', data: { content: { source: 'reviews', details } } }],
+    [{ type: 'definition_created', data: { content: { source: 'reviews', overview: '# reviews\n', details } } }],
     { expectedVersion: 0, context },
   );
 }

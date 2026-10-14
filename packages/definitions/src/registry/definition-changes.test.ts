@@ -19,9 +19,9 @@ const triggers: DefinitionContent['triggers'] = [
   { kind: 'every', reference: '/schedule/every', milliseconds: 900_000 },
 ];
 
-const reacting: DefinitionContent = { source: 'schedule: ...', triggers };
+const reacting: DefinitionContent = { source: 'schedule: ...', overview: '# close\n', triggers };
 
-const plain = { source: 'do: []' };
+const plain = { source: 'do: []', overview: '# plain\n' };
 
 function changeOf(event: DefinitionEvent, name = 'close', version = 1) {
   return definitionChangeOf({ ...event, context: about(name, version) });
@@ -73,6 +73,7 @@ describe('the triggers a version activates', () => {
     ];
     const content: DefinitionContent = {
       source: 'schedule: ...',
+      overview: '# close\n',
       triggers: eventTriggers,
       stripped: { expressions: { ' $data.total as number > 1 ': ' $data.total           > 1 ' } },
     };

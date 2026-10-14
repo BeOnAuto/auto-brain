@@ -12,6 +12,7 @@ import type {
 import type { CallEnded, CallStarted } from '@on.auto/tool-servers';
 import { Effect, type Schema } from 'effect';
 
+import { writtenOverview, type SectionsOf } from '../overview/definition-overview.ts';
 import type { Trigger } from '../registry/definition-triggers.ts';
 import { noFacts, type CapabilityFacts } from '../run-work/declared-facts.ts';
 import type { CancelRequestKind } from '../runs/run-events.ts';
@@ -129,6 +130,7 @@ export interface CapabilityDeclaration<Parsed> {
     saved: SavedDefinitions,
   ) => Effect.Effect<StrippedForms, InvalidInput | Unavailable>;
   readonly summarize: (parsed: NoInfer<Parsed>) => DefinitionSummary;
+  readonly overview?: SectionsOf<NoInfer<Parsed>>;
   readonly run: (
     parsed: NoInfer<Parsed>,
     input: Schema.Json,
@@ -154,6 +156,7 @@ export interface CapabilityDeclaration<Parsed> {
 
 export interface PreparedDefinition {
   readonly summary: DefinitionSummary;
+  readonly overview: (name: string) => string;
   readonly check: (saved: SavedDefinitions) => Effect.Effect<StrippedForms, InvalidInput | Unavailable>;
   readonly run: (input: Schema.Json, context: RunContext) => Effect.Effect<CapabilityAnswer, CapabilityRejection>;
   readonly whenCancelled: WhenCancelled;
@@ -255,7 +258,7 @@ function declaredRuns<Parsed>(definition: CapabilityDeclaration<Parsed>, longest
 }
 
 export function defineCapability<Parsed>(definition: CapabilityDeclaration<Parsed>): Capability {
-  const { type, title, guide, noun, describeOutput, mediaType, parse, summarize, run } = definition;
+  const { type, title, guide, noun, describeOutput, mediaType, parse, summarize, overview, run } = definition;
   const bounds = declaredBounds(definition);
   const { check, whenCancelled, callsTools, finishesLaterFor, longestRunOf, longestRunFor } = declaredRuns(
     definition,
@@ -274,16 +277,20 @@ export function defineCapability<Parsed>(definition: CapabilityDeclaration<Parse
     ...bounds,
     prepare: (source, stripped = noStrippedForms) =>
       parse(source).pipe(
-        Effect.map((parsed) => ({
-          summary: summarize(parsed),
-          check: (saved) => Effect.suspend(() => check(parsed, source, saved)),
-          run: (input, context) => run(parsed, input, context, stripped),
-          whenCancelled,
-          callsTools: callsTools(parsed),
-          finishesLaterFor: (input) => finishesLaterFor(parsed, input),
-          longestRunMs: longestRunOf(parsed),
-          longestRunMsFor: (input) => longestRunFor(parsed, input),
-        })),
+        Effect.map((parsed) => {
+          const summary = summarize(parsed);
+          return {
+            summary,
+            overview: (name) => writtenOverview({ name, noun, summary, sections: overview?.(parsed, source) }),
+            check: (saved) => Effect.suspend(() => check(parsed, source, saved)),
+            run: (input, context) => run(parsed, input, context, stripped),
+            whenCancelled,
+            callsTools: callsTools(parsed),
+            finishesLaterFor: (input) => finishesLaterFor(parsed, input),
+            longestRunMs: longestRunOf(parsed),
+            longestRunMsFor: (input) => longestRunFor(parsed, input),
+          };
+        }),
       ),
   };
 }

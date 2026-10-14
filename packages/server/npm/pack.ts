@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 
 import { Schema } from 'effect';
 
+import { bareSpecifiersIn } from './imported-packages.ts';
+
 const repository = fileURLToPath(new URL('../../../', import.meta.url));
 const distribution = join(repository, 'dist');
 const output = join(distribution, 'npm');
@@ -129,8 +131,6 @@ function dependenciesOf(names: readonly string[]): Readonly<Record<string, strin
   );
 }
 
-const specifiers = /(?:\bfrom\s+|\bimport\s*\(\s*|\bimport\s+|import\.meta\.resolve\(\s*)'([^'./][^']*)'/gu;
-
 function packageNameOf(specifier: string): string {
   const parts = specifier.split('/');
   return (specifier.startsWith('@') ? parts.slice(0, 2) : parts.slice(0, 1)).join('/');
@@ -140,8 +140,7 @@ function undeclaredImports(known: ReadonlySet<string>): readonly string[] {
   return readdirSync(output, { recursive: true, encoding: 'utf8' })
     .filter((file) => file.endsWith('.ts'))
     .flatMap((file) =>
-      [...stripTypeScriptTypes(readFileSync(join(output, file), 'utf8')).matchAll(specifiers)]
-        .map((found: readonly string[]) => found[1] ?? '')
+      bareSpecifiersIn(stripTypeScriptTypes(readFileSync(join(output, file), 'utf8')))
         .filter((specifier) => !isBuiltin(specifier) && !known.has(packageNameOf(specifier)))
         .map((specifier) => `${file}: ${specifier}`),
     );

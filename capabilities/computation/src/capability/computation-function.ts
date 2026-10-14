@@ -13,6 +13,7 @@ import { Effect, Result } from 'effect';
 import type { ComputationFunctionDefinitionDocument } from '../document/computation-document.ts';
 import { documentCheck, invalidDefinition } from '../document/document-check.ts';
 import { parseComputationDocument } from '../document/document-parsing.ts';
+import { computationOverview } from '../overview/computation-overview.ts';
 import { computationRun } from '../run/computation-run.ts';
 import { computationBounds } from '../run/run-bounds.ts';
 
@@ -55,6 +56,7 @@ export function makeComputationFunctionAdapter({
     parse,
     check: documentCheck(pool),
     summarize,
+    overview: computationOverview,
     run: (document, input, _run, stripped) => run(document, input, stripped),
     longestAnyRunMs: deadlineMs,
   });

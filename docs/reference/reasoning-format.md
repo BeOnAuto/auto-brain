@@ -106,6 +106,12 @@ A run whose function names a tool the playbook's servers do not offer, or whose 
 
 Tool access is available in a self-hosted runtime whose operator configures tool servers; Auto Cloud does not offer it yet. The operator configures the servers with `tool_servers` and narrows the tools of each with its `allowed`, as the [configuration guide](../self-host/configuration.md#tool-servers) describes. See [Tool access inside a reasoning function](../concepts/functions.md#tool-access-inside-a-reasoning-function).
 
+## The overview
+
+`get_definition` answers a saved function with its `overview`, the function in plain words for a person who does not read Liquid or YAML, which Auto Studio shows before the document. It opens with the `description`, or says the function has none yet, and then says what the function needs, each field of `input.schema` with its type, its bounds and the value `input.default` gives it; what it produces, text or each field of `output.schema`; the model and each tool it may call; and what it is told, the instructions and the message as a person reads them. There each value the template reads, such as `{{ input.brief }}`, is its name in bold, **brief**, without its filters; `{% if input.vip %}` is an italic line, _When input.vip:_, `{% elsif %}` _Or when …:_ and `{% else %}` _Otherwise:_; `{% for item in input.items %}` is _For each item of input.items:_; comments are left out, a `raw` block keeps its text, and any other tag stays as it is written. The instructions and the message are each cut past 8,192 characters, with the line of the document where they go on.
+
+The overview is written from the document when it is saved, so it says only what the document says. Write the `description` for the person who will read it, give each field of the schemas a `description`, and put the value a field takes when a run leaves it out in `input.default`, so the overview can say it. A function without them still has an overview, with the types alone.
+
 ## Provider options
 
 `provider_options` holds, under the namespace of a provider, only the options that shape how the model reasons or writes its answer:

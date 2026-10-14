@@ -121,7 +121,7 @@ describe('the records of a run that are no facts', () => {
   });
 });
 
-const content = { source: '---\nmodel: anthropic/claude-sonnet-4-5\n---\nSummarize.' };
+const content = { source: '---\nmodel: anthropic/claude-sonnet-4-5\n---\nSummarize.', overview: '# summary\n' };
 
 describe('the facts of a definition as events', () => {
   it('are its creation, its changes and its retirement, about the definition and its version, with no subject and no data', () => {

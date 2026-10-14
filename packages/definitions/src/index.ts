@@ -203,3 +203,25 @@ export {
   type FunctionType,
 } from './capability/function-terminology.ts';
 export { checkedWorker } from './checking/worker-url.ts';
+export {
+  bulletList,
+  named,
+  paragraph,
+  sectionOf,
+  type BulletList,
+  type Diagram,
+  type DiagramEdge,
+  type DiagramGroup,
+  type DiagramNode,
+  type FieldRow,
+  type FieldTable,
+  type Overview,
+  type OverviewBlock,
+  type OverviewSection,
+  type Paragraph,
+  type Phrase,
+  type Phrases,
+} from './overview/overview.ts';
+export { markdownOf, mostOverviewBytes, mostTableRows } from './overview/markdown-writer.ts';
+export { mostFieldDescriptionCharacters, schemaBlocks } from './overview/schema-words.ts';
+export { inputSection, outputSection, writtenOverview, type SectionsOf } from './overview/definition-overview.ts';

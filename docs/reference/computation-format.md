@@ -292,6 +292,12 @@ do:
 
 `run_definition` of `campaign-pace-report` takes an input such as `{"month": "2026-09", "period": {"days_elapsed": 12, "days_total": 30}}`. The run reads the rows, computes them, and ends with the summary as its output. When the computation function's run is `unavailable`, the `compute` task tries it up to twice more; when the program raises an error or reaches a bound of its sandbox, the run ends `rejected` at once, and the history shows the computation function's run with its line and error.
 
+## The overview
+
+`get_definition` answers a saved function with its `overview`, the function in plain words for a person who does not read TypeScript, which Auto Studio shows before the document. It opens with the `description`, or says the function has none yet, then says what the function needs and what it produces, each field of `input.schema` and `output.schema` with its type, its bounds and its default, a record one level down with its fields, and says in one line that the program is TypeScript and is shown under Source; the program itself is not described.
+
+The overview is written from the document when it is saved, so it says only what the document says. Write the `description` for the person who will read it, give each field of the schemas a `description`, and when the program gives a field a value of its own where the input leaves it out, write that value as the field's `default` in `input.schema`, so the overview can say it. A function without them still has an overview, with the types alone.
+
 ## Availability
 
 Computation functions are available in a self-hosted runtime; Auto Cloud does not offer them yet. See [Functions and availability](../concepts/functions.md#availability).
