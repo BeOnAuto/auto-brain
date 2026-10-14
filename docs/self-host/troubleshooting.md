@@ -12,6 +12,10 @@ Check which providers the startup log names. Confirm the provider prefix in the 
 
 Every server offers workflows and `send_run_event`, with nothing to configure. A workflow that does not go on is usually waiting: for an event, a timer or a function it called. When the server cannot do the work of its runs, it logs a warning saying what failed, such as `A sweep of the runs failed; the next sweep tries again`; [Workflow operations](workflows.md) lists them. When several servers share a database, one of them runs the workflows and the others answer workflow operations `unavailable`, saying another server runs them; the log of each server says which it is.
 
+## The server stops at start, naming the identity service
+
+A runtime that signs people in reads the metadata and the key set of the Auto identity service, `https://clerk.on.auto`, as it starts, and stops with an `UnusableIdentityServiceError` naming the service and each address it read when it cannot. Check that the machine reaches the service, through its outbound proxy where it has one, as [Model providers and gateways](models.md#behind-an-outbound-proxy-with-a-private-certificate-authority) sets out. For development on a machine that cannot reach it, `LOCAL_MODE=true` runs the runtime in [local mode](security.md#local-mode), which signs no one in.
+
 ## The browser receives 403
 
 Add the exact page origin to `ALLOWED_ORIGINS`. Local mode also checks the request Host. Never bypass these protections to expose local mode through a proxy. See [Authentication and security](security.md).

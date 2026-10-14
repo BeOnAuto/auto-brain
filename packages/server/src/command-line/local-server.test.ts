@@ -1,5 +1,6 @@
 import { stripVTControlCharacters } from 'node:util';
 
+import type { SignInSettings } from '@on.auto/identity';
 import { describe, expect, it } from 'vitest';
 
 import { release } from '../composition/release.ts';
@@ -18,11 +19,13 @@ interface Served {
 interface Options {
   readonly depth?: ColorDepth;
   readonly run?: LocalServerHost['run'];
+  readonly signIn?: SignInSettings;
 }
 
-function stoppable(count: () => void): ReturnType<LocalServerHost['run']> {
+function stoppable(count: () => void, signIn?: SignInSettings): ReturnType<LocalServerHost['run']> {
   return Promise.resolve({
     port: 5600,
+    signIn,
     stop: () => {
       count();
       return Promise.resolve();
@@ -30,7 +33,7 @@ function stoppable(count: () => void): ReturnType<LocalServerHost['run']> {
   });
 }
 
-function served({ depth = 1, run }: Options = {}): Served {
+function served({ depth = 1, run, signIn }: Options = {}): Served {
   const written: string[] = [];
   const { promise: stopRequested, resolve: stop } = Promise.withResolvers<void>();
   const clock = [1000, 1640];
@@ -66,7 +69,7 @@ function served({ depth = 1, run }: Options = {}): Served {
         (() =>
           stoppable(() => {
             stops += 1;
-          })),
+          }, signIn)),
       stopRequested,
     },
   };
@@ -84,8 +87,22 @@ describe('serving the runtime on this computer', () => {
     expect(local.written[0]).toBe(`\nAuto Runtime v${release.version}\nRuns the playbooks your agent builds\n\n`);
     expect(local.written[1]).toContain('  ✔ Ready in 640 ms\n');
     expect(local.written[1]).toContain('     Server   http://localhost:5600\n');
+    expect(local.written[1]).not.toContain('Sign-in');
     expect(local.written.slice(2)).toEqual(['\n  Stopping…\n', '  ✔ Stopped\n']);
     expect(local.stops()).toBe(1);
+  });
+
+  it('shows the identity service persons sign in through when the server signs them in', async () => {
+    const local = served({ signIn: { issuer: 'https://clerk.on.auto', publicUrl: 'http://localhost:5600' } });
+
+    const serving = servedLocally(local.host);
+    await expect.poll(() => local.written).toHaveLength(2);
+    local.stop();
+    await serving;
+
+    expect(local.written[1]).toContain(
+      '     MCP      http://localhost:5600/mcp\n     Sign-in  https://clerk.on.auto\n',
+    );
   });
 
   it('fails as the server failed to start, after the header', async () => {

@@ -21,7 +21,7 @@ pnpm typecheck:watch  # TypeScript over the whole repo
 pnpm check            # everything CI checks; run it before you push
 ```
 
-Node runs the TypeScript sources directly, so there's no build step.
+Node runs the TypeScript sources directly, so there's no build step. `pnpm dev` signs you in through the Auto identity service when your agent connects; `LOCAL_MODE=true` in `.env` runs it in local mode, which trusts every request on your machine.
 
 ## Documentation
 

@@ -743,7 +743,7 @@ jobs:
         working-directory: ${{ runner.temp }}
         run: |
           tarball="$(ls "$GITHUB_WORKSPACE"/dist/on.auto-runtime-*.tgz)"
-          export XDG_CACHE_HOME="$RUNNER_TEMP/cache" LEDGER_FILE="$RUNNER_TEMP/ledger.db"
+          export XDG_CACHE_HOME="$RUNNER_TEMP/cache" LEDGER_FILE="$RUNNER_TEMP/ledger.db" LOCAL_MODE=true
           runtime() {
             npx --yes --package="$tarball" auto-runtime "$@"
           }

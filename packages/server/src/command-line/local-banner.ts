@@ -6,6 +6,7 @@ import { logoHeight, logoLines, type PaintingDepth } from './logo.ts';
 export interface Ready {
   readonly url: string;
   readonly readyInMs: number;
+  readonly identityService: string | undefined;
 }
 
 const tagline = 'Runs the playbooks your agent builds';
@@ -36,7 +37,7 @@ export function headerOf(version: string, depth: ColorDepth): string {
   return depth === 1 ? plainHeader(version) : paintedHeader(version, depth);
 }
 
-export function readyNoticeOf({ url, readyInMs }: Ready, depth: ColorDepth): string {
+export function readyNoticeOf({ url, readyInMs, identityService }: Ready, depth: ColorDepth): string {
   const paint = painterFor(depth);
   const link = linkerFor(depth);
   const mcp = `${url}/mcp`;
@@ -44,11 +45,13 @@ export function readyNoticeOf({ url, readyInMs }: Ready, depth: ColorDepth): str
   const studioShown = url === studioDefaultServer ? studioOrigin : `${studioOrigin}/?server=${url}`;
   const entry = (label: string, value: string): string => `     ${paint('dim', label.padEnd(8))} ${link(value, value)}`;
   const agent = (label: string, command: string): string => `    ${label.padEnd(13)} ${paint('dim', command)}`;
+  const signIn = identityService === undefined ? [] : [entry('Sign-in', identityService)];
   return [
     `  ${paint('green', '✔')} Ready in ${readyInMs} ms`,
     `  ${paint('cyan', '➜')}  ${paint('bold', 'Studio'.padEnd(8))} ${paint(['cyan', 'bold'], link(studio, studioShown))}`,
     entry('Server', url),
     entry('MCP', mcp),
+    ...signIn,
     entry('Docs', documentation),
     '',
     `  ${paint('dim', 'Connect your agent')}`,

@@ -11,7 +11,7 @@ export interface LocalPlace {
 
 type Settings = Readonly<Record<string, string>>;
 
-const localDefaults: Settings = { HOST: '127.0.0.1', LOCAL_MODE: 'true', LOG_FORMAT: 'console', LOG_LEVEL: 'error' };
+const localDefaults: Settings = { HOST: '127.0.0.1', LOG_FORMAT: 'console', LOG_LEVEL: 'error' };
 
 function definedIn(environment: Environment): Settings {
   return Object.fromEntries(

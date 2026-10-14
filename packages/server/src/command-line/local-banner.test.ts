@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { headerOf, readyNoticeOf, stoppedNotice, stoppingNotice } from './local-banner.ts';
 import { logoHeight, logoWidth } from './logo.ts';
 
-const ready = { url: 'http://localhost:5555', readyInMs: 640 };
+const ready = { url: 'http://localhost:5555', readyInMs: 640, identityService: undefined };
 
 describe('the header of the auto-runtime command', () => {
   it('names the runtime and its version in plain text where there are no colors', () => {
@@ -71,6 +71,18 @@ describe('the notice that the server is ready', () => {
     expect(studio).toContain('\u001B[36m\u001B[1m\u001B]8;;https://studio.on.auto/');
     expect(server).toContain('\u001B[2mServer  \u001B[22m');
     expect(server).not.toContain('\u001B[1m');
+  });
+});
+
+describe('the notice that a server that signs persons in is ready', () => {
+  it('names the identity service they sign in through, beneath the MCP endpoint', () => {
+    const lines = readyNoticeOf({ ...ready, identityService: 'https://clerk.on.auto' }, 1).split('\n');
+
+    expect(lines.slice(3, 6)).toEqual([
+      '     MCP      http://localhost:5555/mcp',
+      '     Sign-in  https://clerk.on.auto',
+      '     Docs     https://on.auto/docs/',
+    ]);
   });
 });
 

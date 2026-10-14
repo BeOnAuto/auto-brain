@@ -24,10 +24,16 @@ interface Started {
   readonly exited: Promise<unknown>;
 }
 
-async function started(): Promise<Started> {
+async function started(settings: Readonly<Record<string, string>> = {}): Promise<Started> {
   const child = spawn(process.execPath, [command], {
     cwd: home,
-    env: { NODE_V8_COVERAGE: process.env['NODE_V8_COVERAGE'], PATH: process.env['PATH'], HOME: home, PORT: '0' },
+    env: {
+      NODE_V8_COVERAGE: process.env['NODE_V8_COVERAGE'],
+      PATH: process.env['PATH'],
+      HOME: home,
+      PORT: '0',
+      ...settings,
+    },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   onTestFinished(() => {
@@ -57,8 +63,8 @@ async function started(): Promise<Started> {
 }
 
 describe('the auto-runtime command', { timeout: spawnedServerTestTimeoutMs }, () => {
-  it('starts the server in local mode and shows where it answers', async () => {
-    const runtime = await started();
+  it('starts the server in local mode when LOCAL_MODE is set, and shows where it answers', async () => {
+    const runtime = await started({ LOCAL_MODE: 'true' });
 
     const health = await fetch(`${runtime.url}/health`);
     const playbooks = await fetch(`${runtime.url}/v1/orgs/local/playbooks`);
@@ -68,6 +74,16 @@ describe('the auto-runtime command', { timeout: spawnedServerTestTimeoutMs }, ()
     expect(runtime.output().stdout).toContain(`     MCP      ${runtime.url}/mcp\n`);
     expect(runtime.output().stdout).toContain('     Docs     https://on.auto/docs/\n');
     expect(runtime.output().stderr).toBe('');
+    runtime.interrupt();
+    await runtime.exited;
+  });
+
+  it('trusts no request without a credential when LOCAL_MODE is not set', async () => {
+    const runtime = await started();
+
+    const playbooks = await fetch(`${runtime.url}/v1/orgs/local/playbooks`);
+
+    expect(playbooks.status).toBe(401);
     runtime.interrupt();
     await runtime.exited;
   });
