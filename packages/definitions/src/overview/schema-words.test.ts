@@ -192,6 +192,28 @@ describe('a record in words', () => {
   });
 });
 
+describe('a record of entries in words', () => {
+  it('says what every entry of a record without fields is, and how many entries it may have', () => {
+    const reviews = { type: 'array', maxItems: 20, items: { type: 'object', properties: { at: { type: 'string' } } } };
+
+    expect([
+      wordsOf({ type: 'object', maxProperties: 50, additionalProperties: reviews }),
+      wordsOf({ type: 'object', minProperties: 1, additionalProperties: { type: 'integer' } }),
+      listOf({ type: 'object', additionalProperties: { type: 'string' } }),
+      wordsOf({ type: 'object', additionalProperties: false }),
+      wordsOf({ type: 'object', properties: { a: { type: 'object', additionalProperties: { type: 'string' } } } }),
+      wordsOf({ type: 'object', minProperties: 2, maxProperties: 4 }),
+    ]).toEqual([
+      'A record whose every entry is a list of records with: **at** (text, optional), at most 20 items, at most 50 entries.',
+      'A record whose every entry is a whole number, at least 1 entry.',
+      'A list of records whose every entry is text.',
+      'A record.',
+      'A record with: **a** (a record, optional).',
+      'A record, 2 to 4 entries.',
+    ]);
+  });
+});
+
 describe('the references of a schema', () => {
   it('are read within the document, by $defs, definitions or the root', () => {
     const root = {

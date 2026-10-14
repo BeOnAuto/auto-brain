@@ -40,7 +40,7 @@ export interface FieldTable {
   readonly rows: readonly FieldRow[];
 }
 
-export type NodeShape = 'step' | 'decision' | 'terminal';
+export type NodeShape = 'step' | 'decision' | 'terminal' | 'cylinder';
 
 export interface DiagramNode {
   readonly label: string;

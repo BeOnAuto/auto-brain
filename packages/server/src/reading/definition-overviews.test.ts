@@ -81,6 +81,10 @@ describe('the overview of every type of definition', { timeout: 60_000 }, () => 
       saved.map(({ name }) => `# ${name}`),
     );
     expect(overviews.every((overview) => overview.split('\n\n').length > 2)).toBe(true);
+    expect(overviews[1]).toContain(
+      '\n\n## Who it asks\n\nIt asks a system: each run calls the tool **campaign-costs**',
+    );
+    expect(overviews[3]).toContain('\n\n## What it remembers\n\n');
     expect(listed).toMatchObject({ status: 200, body: { definitions: [{ name: 'review-brief' }] } });
     expect(listed.body).not.toHaveProperty('definitions.0.overview');
   });

@@ -17,6 +17,7 @@ const bracketsOfShape: Readonly<Record<NodeShape, readonly [string, string]>> = 
   step: ['[', ']'],
   decision: ['{', '}'],
   terminal: ['([', '])'],
+  cylinder: ['[(', ')]'],
 };
 
 const indentStep = '  ';
