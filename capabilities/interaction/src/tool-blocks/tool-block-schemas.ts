@@ -17,8 +17,8 @@ const ArgumentsSchema = Templates.annotate({
 });
 
 const ToolUseSchema = Schema.Struct({
-  server: Schema.String.annotate({ description: 'The tool server, as list_tool_servers names it' }),
-  tool: Schema.String.annotate({ description: 'The tool of that server, as list_tool_servers lists it' }),
+  server: Schema.String.annotate({ description: 'The tool server, as search names it' }),
+  tool: Schema.String.annotate({ description: 'The tool of that server, as search lists it' }),
   with: ArgumentsSchema,
 });
 

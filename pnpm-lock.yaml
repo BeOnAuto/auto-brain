@@ -198,6 +198,9 @@ catalogs:
     hono:
       specifier: 4.13.12
       version: 4.13.12
+    jose:
+      specifier: 6.2.12
+      version: 6.2.12
     vitest:
       specifier: 5.0.2
       version: 5.0.2
@@ -272,6 +275,9 @@ importers:
       '@on.auto/definitions':
         specifier: workspace:*
         version: link:../../packages/definitions
+      '@on.auto/json-schema':
+        specifier: workspace:*
+        version: link:../../packages/json-schema
       '@on.auto/operations':
         specifier: workspace:*
         version: link:../../packages/operations
@@ -334,12 +340,15 @@ importers:
       '@on.auto/definitions':
         specifier: workspace:*
         version: link:../../packages/definitions
-      '@on.auto/mcp':
+      '@on.auto/json-schema':
         specifier: workspace:*
-        version: link:../../packages/mcp
+        version: link:../../packages/json-schema
       '@on.auto/operations':
         specifier: workspace:*
         version: link:../../packages/operations
+      '@on.auto/tool-servers':
+        specifier: workspace:*
+        version: link:../../packages/tool-servers
       '@on.auto/workflow-engine':
         specifier: workspace:*
         version: link:../../packages/workflow-engine
@@ -362,6 +371,9 @@ importers:
       '@on.auto/definitions':
         specifier: workspace:*
         version: link:../../packages/definitions
+      '@on.auto/json-schema':
+        specifier: workspace:*
+        version: link:../../packages/json-schema
       '@on.auto/operations':
         specifier: workspace:*
         version: link:../../packages/operations
@@ -429,15 +441,18 @@ importers:
       '@on.auto/definitions':
         specifier: workspace:*
         version: link:../../packages/definitions
-      '@on.auto/mcp':
+      '@on.auto/json-schema':
         specifier: workspace:*
-        version: link:../../packages/mcp
+        version: link:../../packages/json-schema
       '@on.auto/operations':
         specifier: workspace:*
         version: link:../../packages/operations
       '@on.auto/outbound':
         specifier: workspace:*
         version: link:../../packages/outbound
+      '@on.auto/tool-servers':
+        specifier: workspace:*
+        version: link:../../packages/tool-servers
       ai:
         specifier: 7.0.124
         version: 7.0.124(zod@4.6.5)
@@ -473,6 +488,9 @@ importers:
       '@on.auto/definitions':
         specifier: workspace:*
         version: link:../../packages/definitions
+      '@on.auto/json-schema':
+        specifier: workspace:*
+        version: link:../../packages/json-schema
       '@on.auto/operations':
         specifier: workspace:*
         version: link:../../packages/operations
@@ -557,12 +575,15 @@ importers:
 
   packages/definitions:
     dependencies:
-      '@on.auto/mcp':
+      '@on.auto/json-schema':
         specifier: workspace:*
-        version: link:../mcp
+        version: link:../json-schema
       '@on.auto/operations':
         specifier: workspace:*
         version: link:../operations
+      '@on.auto/tool-servers':
+        specifier: workspace:*
+        version: link:../tool-servers
       '@on.auto/workflow-engine':
         specifier: workspace:*
         version: link:../workflow-engine
@@ -609,6 +630,22 @@ importers:
       effect:
         specifier: 'catalog:'
         version: 4.0.0
+      jose:
+        specifier: 'catalog:'
+        version: 6.2.12
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 5.0.2(vitest@5.0.2)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.2(@opentelemetry/api@1.9.1)(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
+
+  packages/json-schema:
+    dependencies:
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0
     devDependencies:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
@@ -650,34 +687,6 @@ importers:
       '@types/pg':
         specifier: 8.23.1
         version: 8.23.1
-      '@vitest/coverage-v8':
-        specifier: 'catalog:'
-        version: 5.0.2(vitest@5.0.2)
-      vitest:
-        specifier: 'catalog:'
-        version: 5.0.2(@opentelemetry/api@1.9.1)(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
-
-  packages/mcp:
-    dependencies:
-      '@modelcontextprotocol/client':
-        specifier: 2.2.0
-        version: 2.2.0
-      '@on.auto/config':
-        specifier: workspace:*
-        version: link:../config
-      '@on.auto/operations':
-        specifier: workspace:*
-        version: link:../operations
-      '@on.auto/outbound':
-        specifier: workspace:*
-        version: link:../outbound
-      effect:
-        specifier: 'catalog:'
-        version: 4.0.0
-    devDependencies:
-      '@modelcontextprotocol/server':
-        specifier: 2.2.0
-        version: 2.2.0
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.2(vitest@5.0.2)
@@ -802,9 +811,6 @@ importers:
       '@on.auto/ledger':
         specifier: workspace:*
         version: link:../ledger
-      '@on.auto/mcp':
-        specifier: workspace:*
-        version: link:../mcp
       '@on.auto/object-storage':
         specifier: workspace:*
         version: link:../object-storage
@@ -826,6 +832,9 @@ importers:
       '@on.auto/recall':
         specifier: workspace:*
         version: link:../../capabilities/recall
+      '@on.auto/tool-servers':
+        specifier: workspace:*
+        version: link:../tool-servers
       '@on.auto/workflow-engine':
         specifier: workspace:*
         version: link:../workflow-engine
@@ -897,6 +906,37 @@ importers:
         specifier: 'catalog:'
         version: 5.0.2(@opentelemetry/api@1.9.1)(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
 
+  packages/tool-servers:
+    dependencies:
+      '@modelcontextprotocol/client':
+        specifier: 2.2.0
+        version: 2.2.0
+      '@on.auto/config':
+        specifier: workspace:*
+        version: link:../config
+      '@on.auto/json-schema':
+        specifier: workspace:*
+        version: link:../json-schema
+      '@on.auto/operations':
+        specifier: workspace:*
+        version: link:../operations
+      '@on.auto/outbound':
+        specifier: workspace:*
+        version: link:../outbound
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0
+    devDependencies:
+      '@modelcontextprotocol/server':
+        specifier: 2.2.0
+        version: 2.2.0
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 5.0.2(vitest@5.0.2)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.2(@opentelemetry/api@1.9.1)(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
+
   packages/workflow-engine:
     dependencies:
       '@jitl/quickjs-wasmfile-release-sync':
@@ -936,6 +976,9 @@ importers:
       '@on.auto/definitions':
         specifier: workspace:*
         version: link:../definitions
+      '@on.auto/json-schema':
+        specifier: workspace:*
+        version: link:../json-schema
       '@on.auto/ledger':
         specifier: workspace:*
         version: link:../ledger

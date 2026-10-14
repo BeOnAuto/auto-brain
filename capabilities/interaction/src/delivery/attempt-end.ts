@@ -1,4 +1,4 @@
-import type { AnsweredOnce, CallAnswered, CallFailed, CalledOnce } from '@on.auto/mcp';
+import type { AnsweredOnce, CallAnswered, CallFailed, CalledOnce } from '@on.auto/tool-servers';
 import { Struct } from 'effect';
 
 import type { DeliveryEnded } from '../facts/run-facts.ts';

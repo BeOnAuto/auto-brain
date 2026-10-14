@@ -1,7 +1,7 @@
 import type { CapabilityAnswer, CapabilityRejection, RunContext } from '@on.auto/definitions';
-import { toolBounds, type ToolAccess } from '@on.auto/mcp';
-import { runIdKey } from '@on.auto/mcp/policy';
 import type { Conflict, InvalidInput } from '@on.auto/operations';
+import { toolBounds, type ToolAccess } from '@on.auto/tool-servers';
+import { runIdKey } from '@on.auto/tool-servers/policy';
 import { Clock, Effect, Result, type Schema } from 'effect';
 
 import type { CallDocument } from '../document/interaction-document.ts';

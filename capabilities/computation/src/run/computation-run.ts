@@ -1,5 +1,9 @@
-import type { CapabilityAnswer, CapabilityRejection, StrippedForms } from '@on.auto/definitions';
-import { checkedWorker } from '@on.auto/definitions/json-schema';
+import {
+  checkedWorker,
+  type CapabilityAnswer,
+  type CapabilityRejection,
+  type StrippedForms,
+} from '@on.auto/definitions';
 import { Conflict, type InvalidInput } from '@on.auto/operations';
 import { jsonBytesOf, pooledJob, type ProgramPool, type ProgramRequest } from '@on.auto/workflow-engine/dsl';
 import { Clock, Effect, type Schema } from 'effect';

@@ -11,4 +11,18 @@ describe('the old words of the vocabulary', () => {
     ]);
     expect(oldWordsIn('A playbook runs its functions and workflows.')).toEqual([]);
   });
+
+  it('name a tool server by its transport, in the kinds a refusal carries and the name a model sees', () => {
+    expect(oldWordsIn('mcp_server_failed, because mcp_server_not_configured, calling mcp__graph__search')).toEqual([
+      'mcp_server_failed',
+      'mcp_server_not_configured',
+      'mcp__',
+    ]);
+    expect(oldWordsIn('tool_server_failed, because tool_server_not_configured, calling graph__search')).toEqual([]);
+  });
+
+  it('find the old route that ran a definition, and pass the route that calls a tool and the folder of execute', () => {
+    expect(oldWordsIn('It called POST /v1/orgs/{org}/execute to run it.')).toEqual(['/execute']);
+    expect(oldWordsIn('POST /tool-servers/{server}/tools/{tool}/execute, in src/execute/execute.ts')).toEqual([]);
+  });
 });

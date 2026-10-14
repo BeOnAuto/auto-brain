@@ -1,7 +1,14 @@
 import { Buffer } from 'node:buffer';
 
-import type { AnsweredOnce, CalledOnce, NotOfferedBecause, OneCall, StartedFields, ToolAccess } from '@on.auto/mcp';
-import { ToolNotOffered } from '@on.auto/mcp';
+import type {
+  AnsweredOnce,
+  CalledOnce,
+  NotOfferedBecause,
+  OneCall,
+  StartedFields,
+  ToolAccess,
+} from '@on.auto/tool-servers';
+import { ToolNotOffered } from '@on.auto/tool-servers';
 import { Effect, Result } from 'effect';
 
 import { chatBoard, type BoardAnswer, type ChatBoard } from './chat-board.ts';
@@ -32,8 +39,8 @@ function notAllowed(tool: string): Refusal {
 
 function notConfigured(server: string): Refusal {
   return {
-    because: 'mcp_server_not_configured',
-    detail: `No MCP server named ${server} is configured for this playbook`,
+    because: 'tool_server_not_configured',
+    detail: `No tool server named ${server} is configured for this playbook`,
   };
 }
 
@@ -63,7 +70,7 @@ function startOf({ reference, input }: Pick<OneCall, 'reference' | 'input'>): Ef
 
 function unsentBy(answer: Exclude<FakeAnswer, BoardAnswer>, { reference }: OneCall): CalledOnce {
   return answer.kind === 'unopened'
-    ? { kind: 'unopened', refused: 'mcp_server_failed', because: 'failing', detail: answer.detail }
+    ? { kind: 'unopened', refused: 'tool_server_failed', because: 'failing', detail: answer.detail }
     : notOfferedBy(notAllowed(reference.tool));
 }
 

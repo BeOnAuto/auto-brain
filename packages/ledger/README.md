@@ -387,7 +387,7 @@ The pages read fall from 6.5 times the 276 MiB of records the fill loads to 2.1 
 
 ## Telemetry
 
-Each append passes Emmett the run's lineage as its observability context, so the store's `eventStore.appendToStream` span names the run in `auto.on.run_id` and its chain as its correlation and causation ids, and the `traceId` and `spanId` a message stores are that span's. An `AppendObserver`, `observer` on the layers and the stores, is told of every append after it commits, never of one that met a version conflict, with the events, the expected version, the context and the lineage; it must not throw. The server's observer turns each event into a log record over OTLP. The ledger takes no OpenTelemetry dependency: the server registers Emmett's instrumentation before any store is created. [Decision 0024](../../docs/decisions/0024-telemetry.md) records the design.
+Each append passes Emmett the run's lineage as its observability context, so the store's `eventStore.appendToStream` span names the run in `auto.on.run_id` and its chain as its correlation and causation ids, and the `traceId` and `spanId` a message stores are that span's. An `AppendObserver`, `observer` on the layers and the stores, is told of every append after it commits, never of one that met a version conflict, with the events, the expected version, the context and the lineage; it must not throw. The server's observer turns each event into a log record over OTLP. The ledger takes no OpenTelemetry dependency at run time: the server registers Emmett's instrumentation before any store is created. Its tests capture the event store's spans with the trace SDK, `@opentelemetry/sdk-trace-base`, a development dependency.
 
 ## The streams appended to
 

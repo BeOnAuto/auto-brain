@@ -5,7 +5,7 @@ import {
   outputInWords,
   type Capability,
 } from '@on.auto/definitions';
-import { toolTestPresenter } from '@on.auto/mcp';
+import { handCallPresenter } from '@on.auto/tool-servers';
 
 import { parse, summarize } from '../definition/definition-reading.ts';
 import type { OfferedModels } from '../model/offered-models.ts';
@@ -37,6 +37,6 @@ export function makeReasoningFunctionAdapter(options: ReasoningFunctionAdapterOp
     reachesOutside: true,
     mayChangeOutside: options.tools.configured,
     callsTools: ({ tools }) => tools.length > 0,
-    facts: { onRuns: [], streams: [toolTestPresenter] },
+    facts: { onRuns: [], streams: [handCallPresenter] },
   });
 }

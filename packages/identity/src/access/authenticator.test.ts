@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { authenticatorFor, createApiKey, type ApiKey } from '../index.ts';
+import { authenticatorFor, createApiKey, type ApiKey, type IdentityService } from '../index.ts';
+import { principalIn } from '../testing/index.ts';
 
 const reader = createApiKey({ id: 'acme-reader', org: 'acme', permissions: ['playbook:read'], playbooks: ['alpha'] });
 
@@ -23,13 +24,32 @@ const otherHosts = [
   'localhost.evil',
 ];
 
+const anyPath = '/v1/orgs/acme/playbooks';
+
+const unexplained = { because: undefined };
+
+const adaOfAcme = { id: 'person:ada', org: 'acme', permissions: [], playbooks: [] };
+
+const signedInAda = { own: adaOfAcme, callerIn: () => adaOfAcme };
+
+const tokensSeen: string[] = [];
+
+const identityService: IdentityService = {
+  resource: { publicUrl: 'https://runtime.example', authorizationServers: ['https://login.example'] },
+  personOf: (token, path) => {
+    tokensSeen.push(`${token} at ${path}`);
+    return Promise.resolve(token === 'a.token.of-ada' ? signedInAda : { because: 'ERR_JWS_INVALID' });
+  },
+};
+
 describe('authenticatorFor with local mode on and no API keys', () => {
   it.each(loopbackHosts)('is in local mode on the loopback address %s', (host) => {
     expect(authenticatorFor({ host, apiKeys: undefined, localMode: true }).mode).toBe('local');
   });
 
-  it('admits every request in local mode as the local developer of whichever org it names', () => {
-    const developer = authenticatorFor({ host: '127.0.0.1', apiKeys: undefined, localMode: true }).authenticate();
+  it('admits every request in local mode as the local developer of whichever org it names', async () => {
+    const authenticator = authenticatorFor({ host: '127.0.0.1', apiKeys: undefined, localMode: true });
+    const developer = principalIn(await authenticator.authenticate(undefined, anyPath));
 
     expect(developer?.callerIn('globex')).toEqual({
       id: 'local',
@@ -37,12 +57,14 @@ describe('authenticatorFor with local mode on and no API keys', () => {
       permissions: ['org:read', 'org:write', 'playbook:read', 'playbook:write'],
       playbooks: '*',
     });
+    expect(authenticator.resource).toBeUndefined();
   });
 
-  it('gives the local developer the org local as its own', () => {
-    expect(authenticatorFor({ host: '127.0.0.1', apiKeys: undefined, localMode: true }).authenticate()?.org).toBe(
-      'local',
-    );
+  it('gives the local developer the org local as its own', async () => {
+    const authenticator = authenticatorFor({ host: '127.0.0.1', apiKeys: undefined, localMode: true });
+    const developer = principalIn(await authenticator.authenticate('a.token.of-ada', anyPath));
+
+    expect(developer?.own.org).toBe('local');
   });
 
   it.each(otherHosts)('stops start-up on %s, which is not loopback, with a named error', (host) => {
@@ -62,32 +84,40 @@ describe('authenticatorFor with local mode on and no API keys', () => {
 });
 
 describe('authenticatorFor with local mode off and no API keys', () => {
-  it.each([...loopbackHosts, ...otherHosts])('is closed on %s and admits nobody, whatever key is presented', (host) => {
-    const authenticator = authenticatorFor({ host, apiKeys: undefined, localMode: false });
+  it.each([...loopbackHosts, ...otherHosts])(
+    'is closed on %s and admits nobody, whatever key is presented',
+    async (host) => {
+      const authenticator = authenticatorFor({ host, apiKeys: undefined, localMode: false });
 
-    expect(authenticator.mode).toBe('closed');
-    expect([authenticator.authenticate(), authenticator.authenticate(reader.key)]).toEqual([undefined, undefined]);
-  });
+      expect(authenticator.mode).toBe('closed');
+      expect([
+        await authenticator.authenticate(undefined, anyPath),
+        await authenticator.authenticate(reader.key, anyPath),
+      ]).toEqual([unexplained, unexplained]);
+    },
+  );
 });
 
 describe('authenticatorFor with API keys', () => {
-  it('enforces the keys on loopback, even with local mode on', () => {
+  it('enforces the keys on loopback, even with local mode on', async () => {
     const authenticator = authenticatorFor({ host: '127.0.0.1', apiKeys: keys, localMode: true });
 
-    expect(authenticator.mode).toBe('keys');
-    expect(authenticator.authenticate()).toBeUndefined();
+    expect(authenticator.mode).toBe('credentials');
+    expect(await authenticator.authenticate(undefined, anyPath)).toEqual(unexplained);
   });
 
-  it('admits a configured key as a caller of its own org, whatever org a request names', () => {
-    const holder = authenticatorFor({ host: '0.0.0.0', apiKeys: keys, localMode: false }).authenticate(reader.key);
+  it('admits a configured key as a caller of its own org, and of no other', async () => {
+    const authenticator = authenticatorFor({ host: '0.0.0.0', apiKeys: keys, localMode: false });
+    const holder = principalIn(await authenticator.authenticate(reader.key, anyPath));
 
-    expect(holder?.callerIn('globex')).toEqual({
+    expect(holder?.callerIn('acme')).toEqual({
       id: 'acme-reader',
       org: 'acme',
       permissions: ['playbook:read'],
       playbooks: ['alpha'],
     });
-    expect(holder?.org).toBe('acme');
+    expect(holder?.callerIn('globex')).toBeUndefined();
+    expect(holder?.own).toEqual(holder?.callerIn('acme'));
   });
 
   it.each([
@@ -96,16 +126,46 @@ describe('authenticatorFor with API keys', () => {
     ['an unknown id', admin.key.replace('acme-admin', 'acme-other')],
     ['a malformed key', 'not-a-key'],
     ['the digest itself', reader.entry.sha256],
-  ])('rejects %s', (_case, presentedKey) => {
+  ])('rejects %s', async (_case, presentedKey) => {
     expect(
-      authenticatorFor({ host: '0.0.0.0', apiKeys: keys, localMode: false }).authenticate(presentedKey),
-    ).toBeUndefined();
+      await authenticatorFor({ host: '0.0.0.0', apiKeys: keys, localMode: false }).authenticate(presentedKey, anyPath),
+    ).toEqual(unexplained);
   });
 
-  it.each([false, true])('is closed when the configured list is empty, with local mode %s', (localMode) => {
+  it.each([false, true])('is closed when the configured list is empty, with local mode %s', async (localMode) => {
     const authenticator = authenticatorFor({ host: '127.0.0.1', apiKeys: [], localMode });
 
     expect(authenticator.mode).toBe('closed');
-    expect([authenticator.authenticate(), authenticator.authenticate(reader.key)]).toEqual([undefined, undefined]);
+    expect([
+      await authenticator.authenticate(undefined, anyPath),
+      await authenticator.authenticate(reader.key, anyPath),
+    ]).toEqual([unexplained, unexplained]);
+  });
+});
+
+describe('authenticatorFor with the identity service', () => {
+  it('checks credentials even with no key and local mode on, and names the protected resource', () => {
+    const authenticator = authenticatorFor({ host: '127.0.0.1', apiKeys: [], localMode: true, identityService });
+
+    expect(authenticator.mode).toBe('credentials');
+    expect(authenticator.resource).toEqual(identityService.resource);
+  });
+
+  it('asks the identity service about a token that is not a key, with the path the request reached', async () => {
+    tokensSeen.length = 0;
+    const authenticator = authenticatorFor({ host: '0.0.0.0', apiKeys: keys, localMode: false, identityService });
+
+    expect(await authenticator.authenticate('a.token.of-ada', '/mcp')).toBe(signedInAda);
+    expect(await authenticator.authenticate('an.opaque.token', '/mcp')).toEqual({ because: 'ERR_JWS_INVALID' });
+    expect(tokensSeen).toEqual(['a.token.of-ada at /mcp', 'an.opaque.token at /mcp']);
+  });
+
+  it('verifies a key as a key, never as a token', async () => {
+    tokensSeen.length = 0;
+    const authenticator = authenticatorFor({ host: '0.0.0.0', apiKeys: keys, localMode: false, identityService });
+
+    expect(principalIn(await authenticator.authenticate(admin.key, anyPath))?.own.id).toBe('acme-admin');
+    expect(await authenticator.authenticate(wrongSecret, anyPath)).toEqual(unexplained);
+    expect(tokensSeen).toEqual([]);
   });
 });

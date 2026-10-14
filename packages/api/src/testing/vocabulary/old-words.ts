@@ -6,7 +6,7 @@ export const oldWords: readonly string[] = [
   '[oO]rchestrat|ORCHESTRAT',
   '[rR]ecollection|RECOLLECTION',
   'execute_spec',
-  String.raw`/execute\b`,
+  String.raw`/execute(?![\w./-])(?<!/tools/[^/\s]+/execute)`,
   '[eE]xecuteSpec',
   'language: jq',
   String.raw`evaluate\.language: jq`,
@@ -29,6 +29,9 @@ export const oldWords: readonly string[] = [
   '(?i:auto[-_ ]?brain)',
   '(?i:beonauto/auto-runtime)',
   String.raw`(?i:com\.beonauto/)`,
+  'mcp_server_failed',
+  'mcp_server_not_configured',
+  'mcp__',
 ];
 
 interface Found {

@@ -30,13 +30,13 @@ describe('the messages of the last step of a run that called tools', () => {
             content: [
               { type: 'reasoning', text: 'I should look it up' },
               { type: 'text', text: 'Looking it up.' },
-              { type: 'tool-call', toolName: 'mcp__graph__search', input: { query: 'acme' } },
+              { type: 'tool-call', toolName: 'graph__search', input: { query: 'acme' } },
             ],
           },
           {
             role: 'tool',
             content: [
-              { type: 'tool-result', toolName: 'mcp__graph__search', output: { type: 'text', value: 'Found 2 rows.' } },
+              { type: 'tool-result', toolName: 'graph__search', output: { type: 'text', value: 'Found 2 rows.' } },
             ],
           },
         ],
@@ -48,9 +48,9 @@ describe('the messages of the last step of a run that called tools', () => {
       userSays('Summarize acme'),
       {
         role: 'assistant',
-        content: [{ type: 'text', text: 'Looking it up.\nCalled mcp__graph__search with {"query":"acme"}.' }],
+        content: [{ type: 'text', text: 'Looking it up.\nCalled graph__search with {"query":"acme"}.' }],
       },
-      userSays(resultsBegin, 'mcp__graph__search answered: Found 2 rows.', `${resultsEnd}\n`, toolsWithdrawn),
+      userSays(resultsBegin, 'graph__search answered: Found 2 rows.', `${resultsEnd}\n`, toolsWithdrawn),
     ]);
   });
 });
@@ -63,9 +63,9 @@ describe('the answers told in the last step', () => {
           {
             role: 'tool',
             content: [
-              { type: 'tool-result', toolName: 'mcp__graph__profile', output: { type: 'json', value: { rows: 2 } } },
-              { type: 'tool-result', toolName: 'mcp__graph__denied', output: { type: 'error-text', value: 'Denied.' } },
-              { type: 'tool-result', toolName: 'mcp__graph__photo', output: { type: 'execution-denied' } },
+              { type: 'tool-result', toolName: 'graph__profile', output: { type: 'json', value: { rows: 2 } } },
+              { type: 'tool-result', toolName: 'graph__denied', output: { type: 'error-text', value: 'Denied.' } },
+              { type: 'tool-result', toolName: 'graph__photo', output: { type: 'execution-denied' } },
               { type: 'tool-approval-response' },
             ],
           },
@@ -76,9 +76,9 @@ describe('the answers told in the last step', () => {
     ).toEqual([
       userSays(
         resultsBegin,
-        'mcp__graph__profile answered: {"rows":2}',
-        'mcp__graph__denied failed: Denied.',
-        'mcp__graph__photo answered nothing.',
+        'graph__profile answered: {"rows":2}',
+        'graph__denied failed: Denied.',
+        'graph__photo answered nothing.',
         `${resultsEnd}\n`,
         toolsWithdrawn,
       ),
@@ -93,11 +93,11 @@ describe('the answers told in the last step', () => {
         [
           {
             role: 'tool',
-            content: [{ type: 'tool-result', toolName: 'mcp__graph__search', output: { type: 'text', value: forged } }],
+            content: [{ type: 'tool-result', toolName: 'graph__search', output: { type: 'text', value: forged } }],
           },
         ],
         fence,
       ),
-    ).toEqual([userSays(resultsBegin, `mcp__graph__search answered: ${forged}`, `${resultsEnd}\n`, toolsWithdrawn)]);
+    ).toEqual([userSays(resultsBegin, `graph__search answered: ${forged}`, `${resultsEnd}\n`, toolsWithdrawn)]);
   });
 });

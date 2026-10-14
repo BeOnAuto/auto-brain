@@ -16,8 +16,11 @@ const insideAPlaybook = [
   'get_playbook_analytics',
   'list_playbook_events',
   'publish_event',
-  'list_tool_servers',
-  'test_tool_call',
+  'search',
+  'introspect',
+  'validate',
+  'dry_run',
+  'execute',
   'list_interactions',
   'answer_interaction',
   'send_run_event',
@@ -32,12 +35,15 @@ export const queriesInsideAPlaybook = [
   'get_run_history',
   'get_playbook_analytics',
   'list_playbook_events',
-  'list_tool_servers',
+  'search',
+  'introspect',
+  'validate',
+  'dry_run',
   'list_interactions',
   'get_guide',
 ];
 
-const discovering = ['list_models', 'list_tool_servers'];
+const discovering = ['list_models', 'search'];
 
 export const orgEndpoint: ServedTools = {
   orgTools: [...managingPlaybooks, ...discovering, 'get_guide'],
@@ -63,12 +69,12 @@ export const definitionTypes: readonly DefinitionType[] = [
 export const recipes: readonly RecipeCalls[] = [
   {
     name: 'first-playbook',
-    calls: ['list_playbooks', 'create_playbook', 'create_definition', 'test_tool_call', 'run_definition'],
+    calls: ['list_playbooks', 'create_playbook', 'create_definition', 'execute', 'run_definition'],
   },
   { name: 'remember', calls: ['list_definitions', 'create_definition', 'update_definition', 'run_definition'] },
   {
     name: 'give-tools',
-    calls: ['list_tool_servers', 'test_tool_call', 'create_definition', 'run_definition', 'get_run_history'],
+    calls: ['search', 'introspect', 'execute', 'create_definition', 'run_definition', 'get_run_history'],
   },
   { name: 'schedule', calls: ['list_definitions', 'create_definition', 'update_definition', 'list_runs', 'get_run'] },
 ];

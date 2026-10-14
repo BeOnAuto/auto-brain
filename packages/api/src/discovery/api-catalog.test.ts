@@ -4,6 +4,7 @@ import { call } from '../testing/api-calls.ts';
 import { testShelf } from '../testing/guides.ts';
 import { listenOnLoopback } from '../testing/listening.ts';
 import { operationServer, type OperationServer } from '../testing/operation-server.ts';
+import { publicUrl, signedInServer } from '../testing/signed-in.ts';
 
 let server: OperationServer;
 
@@ -91,6 +92,26 @@ describe('the API catalog of each origin', () => {
       linkset: [{ anchor: 'http://localhost/.well-known/api-catalog' }, { anchor: 'http://localhost/v1' }],
     });
     expect(forwarded.headers.get('link')).toBe('<http://localhost/.well-known/api-catalog>; rel="api-catalog"');
+  });
+});
+
+describe('the API catalog of a server whose PUBLIC_URL is set', () => {
+  it('names PUBLIC_URL as the origin of every address, whatever origin the request reached', async () => {
+    const { server: signedIn } = await signedInServer();
+    const answer = await signedIn.handler.fetch(new Request(`${origin}/.well-known/api-catalog`));
+    const catalog: unknown = await answer.json();
+
+    expect(catalog).toMatchObject({
+      linkset: [
+        { anchor: `${publicUrl}/.well-known/api-catalog`, item: [{ href: `${publicUrl}/v1` }] },
+        {
+          anchor: `${publicUrl}/v1`,
+          'service-desc': [{ href: `${publicUrl}/v1/openapi.json` }],
+          status: [{ href: `${publicUrl}/health` }],
+        },
+      ],
+    });
+    expect(answer.headers.get('link')).toBe(`<${publicUrl}/.well-known/api-catalog>; rel="api-catalog"`);
   });
 });
 

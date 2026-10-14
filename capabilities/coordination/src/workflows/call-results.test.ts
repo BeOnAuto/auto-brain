@@ -97,7 +97,7 @@ describe('a rejected run that names its kind and because', () => {
       kind: 'completed',
       output: { offered: false },
     });
-    expect((await interpret(branching, { respond: rejectedAs('mcp_server_failed') })).ending).toEqual({
+    expect((await interpret(branching, { respond: rejectedAs('tool_server_failed') })).ending).toEqual({
       kind: 'failed',
       type: 'UncaughtError',
       message: 'The reasoning function lookup rejected the run with unavailable: No (at /do/0/lookup/try/0/fetch)',

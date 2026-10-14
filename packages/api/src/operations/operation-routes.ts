@@ -6,7 +6,7 @@ export function operationRoutes(options: OperationRoutesOptions): RegisterRoutes
   const table = routeTableOf(options.catalog);
   return (routes) => {
     for (const { registration, path } of table) {
-      routes.add(registration.route.method, path, handlerFor(registration, options, routes.reportThrown));
+      routes.add(registration.route.method, path, handlerFor(registration, options, routes));
     }
   };
 }

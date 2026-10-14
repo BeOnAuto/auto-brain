@@ -121,7 +121,7 @@ describe('the type of the error of a call rejected with a kind', () => {
 
     expect([
       callErrorOf({ ...unavailable, kind: 'tools_unfinished' }, site).type,
-      callErrorOf({ ...unavailable, kind: 'mcp_server_failed' }, site).type,
+      callErrorOf({ ...unavailable, kind: 'tool_server_failed' }, site).type,
       callErrorOf({ status: 'rejected', reason: 'conflict', detail: 'No', kind: 'tools_called' }, site),
     ]).toEqual([
       'https://on.auto/problems/tools_unfinished',

@@ -1,0 +1,52 @@
+import { Effect, Result } from 'effect';
+
+import type { Timing } from '../bounds/call-bounds.ts';
+import type { Secrets } from '../bounds/secrets.ts';
+import type { KeepIn } from '../calls/recorded-calls.ts';
+import { runTools, type RunTools } from '../calls/run-tools.ts';
+import { ignored } from '../connections/ignored.ts';
+import type { CallerContext, ServerMessage, ToolsNotOpened } from './caller-context.ts';
+import { listedOn, released } from './server-listing.ts';
+import { namedLinks, notListed, offeredOn, unlistedOn, type Listed, type Naming } from './tool-naming.ts';
+import type { ToolServerFailed } from './tool-server-failed.ts';
+
+export interface Opening extends Naming {
+  readonly context: CallerContext;
+  readonly secrets: Secrets;
+  readonly keepIn: KeepIn;
+  readonly timing: Timing;
+  readonly report: (message: ServerMessage) => void;
+}
+
+type Listing = Promise<Result.Result<readonly Listed[], ToolServerFailed>>;
+
+function releasedOnceSettled(listing: Listing): Effect.Effect<void> {
+  return Effect.sync(() => {
+    void listing
+      .then(Result.getOrElse((): readonly Listed[] => []))
+      .then(released)
+      .catch(ignored);
+  });
+}
+
+export function openedRun(opening: Opening): Effect.Effect<RunTools, ToolsNotOpened> {
+  return Effect.gen(function* () {
+    const links = yield* Effect.fromResult(namedLinks(opening.context, opening));
+    const context = yield* Effect.context();
+    const listing = yield* Effect.sync(() => listedOn(links, opening));
+    const settled = yield* Effect.promise(() => listing).pipe(Effect.onInterrupt(() => releasedOnceSettled(listing)));
+    const listed = yield* Effect.fromResult(settled);
+    const missing = listed.flatMap((each) => unlistedOn(each, opening));
+    if (missing.length > 0) {
+      yield* Effect.promise(() => released(listed));
+      return yield* notListed(missing);
+    }
+    return runTools({
+      ...opening,
+      keep: opening.keepIn(opening.context),
+      slots: listed.map(({ slot }) => slot),
+      offered: listed.flatMap((each) => offeredOn(each, opening)),
+      run: Effect.runPromiseWith(context),
+    });
+  });
+}

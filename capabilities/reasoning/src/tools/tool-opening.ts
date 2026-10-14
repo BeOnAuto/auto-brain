@@ -1,7 +1,7 @@
 import type { RunContext } from '@on.auto/definitions';
-import type { NotOfferedBecause, RunTools, ServerFailedBecause, ToolAccess } from '@on.auto/mcp';
-import { runIdKey, type ToolReference } from '@on.auto/mcp/policy';
 import { Unavailable } from '@on.auto/operations';
+import type { NotOfferedBecause, RunTools, ServerFailedBecause, ToolAccess } from '@on.auto/tool-servers';
+import { runIdKey, type ToolReference } from '@on.auto/tool-servers/policy';
 import { Effect } from 'effect';
 
 interface Refused<Because> {
@@ -18,8 +18,8 @@ function opened(
     Effect.catchTags({
       tool_not_offered: ({ because, detail }: Refused<NotOfferedBecause>) =>
         Effect.fail(new Unavailable({ detail, kind: 'tool_not_offered', because })),
-      mcp_server_failed: ({ because, detail }: Refused<ServerFailedBecause>) =>
-        Effect.fail(new Unavailable({ detail, kind: 'mcp_server_failed', because })),
+      tool_server_failed: ({ because, detail }: Refused<ServerFailedBecause>) =>
+        Effect.fail(new Unavailable({ detail, kind: 'tool_server_failed', because })),
     }),
   );
 }

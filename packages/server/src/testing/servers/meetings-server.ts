@@ -1,6 +1,6 @@
 import { listedTools, withMcpSession, type ListedTool, type McpSession } from '@on.auto/api/testing';
-import { serveFakeMcp, type FakeMcpServer } from '@on.auto/mcp/testing';
 import type { ScriptedReply } from '@on.auto/reasoning/testing';
+import { serveFakeMcp, type FakeMcpServer } from '@on.auto/tool-servers/testing';
 
 import { servingReasoning } from './reasoning-server.ts';
 
@@ -47,7 +47,6 @@ async function chatServing(options: MeetingsOptions) {
     headers: { Authorization: 'Bearer ${CHAT_KEY}' },
     org: 'local',
     playbooks: ['meetings'],
-    testable: ['post_message'],
   };
   return { chat, servers: { chat: entry } };
 }
@@ -63,7 +62,7 @@ export async function servingMeetings(
     SLACK_KEY: slackKey,
     CHAT_KEY: chatKey,
     NOTES_KEY: 'a-key-the-server-refuses',
-    MCP_SERVERS: JSON.stringify({
+    TOOL_SERVERS: JSON.stringify({
       slack: {
         url: slack.url,
         headers: { Authorization: 'Bearer ${SLACK_KEY}' },

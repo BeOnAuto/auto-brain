@@ -76,7 +76,7 @@ async function welcomedAfterReply(session: McpSession): Promise<ToolResult> {
 }
 
 describe('/mcp with workflows', { timeout: workflowTestTimeoutMs }, () => {
-  it('lists twenty-six tools, and its instructions say how to see whether a workflow run ended or still waits', async () => {
+  it('lists twenty-nine tools, and its instructions say how to see whether a workflow run ended or still waits', async () => {
     server = await servingWorkflows([]);
 
     const served = await onMcp(async (session) => ({
@@ -84,7 +84,7 @@ describe('/mcp with workflows', { timeout: workflowTestTimeoutMs }, () => {
       instructions: session.instructions,
     }));
 
-    expect(served.tools).toHaveLength(26);
+    expect(served.tools).toHaveLength(29);
     expect(served.tools.slice(-2)).toEqual(['send_run_event', 'get_guide']);
     expect(served.instructions).toContain(
       'A run of a workflow answers started; get_run shows whether it ended or still waits.',

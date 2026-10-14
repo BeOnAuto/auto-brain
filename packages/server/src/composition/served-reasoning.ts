@@ -1,8 +1,6 @@
 import type { AppRuntime } from '@on.auto/api';
-import { defineListToolServers, defineListToolServersInOrg, defineTestToolCall, type ToolAccess } from '@on.auto/mcp';
 import type { DispatcherServices } from '@on.auto/operations';
 import type { ProxySettings } from '@on.auto/outbound';
-import { foundPlaybook } from '@on.auto/playbooks';
 import {
   defineListModels,
   makeReasoningFunctionAdapter,
@@ -11,9 +9,11 @@ import {
   type ModelSettings,
   type ModelTelemetry,
 } from '@on.auto/reasoning';
+import type { ToolAccess } from '@on.auto/tool-servers';
 import { Effect } from 'effect';
 
-import { logModelProviders, logOperatorHint, logProviderMessage, logReasoning } from '../logging/logging.ts';
+import { logReasoning } from '../logging/logging.ts';
+import { logModelProviders, logOperatorHint, logProviderMessage } from '../logging/provider-logging.ts';
 import type { Settings } from '../settings/settings.ts';
 
 export type ModelAccessOf = (
@@ -25,9 +25,6 @@ export type ModelAccessOf = (
 export interface ServedReasoning {
   readonly capability: ReturnType<typeof makeReasoningFunctionAdapter>;
   readonly listModels: ReturnType<typeof defineListModels>;
-  readonly listToolServers: ReturnType<typeof defineListToolServers>;
-  readonly listToolServersInOrg: ReturnType<typeof defineListToolServersInOrg>;
-  readonly testToolCall: ReturnType<typeof defineTestToolCall>;
 }
 
 export const loggedModelAccess: ModelAccessOf = (settings, proxy, telemetry) =>
@@ -54,8 +51,5 @@ export async function reasoningServedBy(
   return {
     capability: makeReasoningFunctionAdapter({ languageModel, offered, tools, reading }),
     listModels: defineListModels(catalog),
-    listToolServers: defineListToolServers(tools),
-    listToolServersInOrg: defineListToolServersInOrg(tools, foundPlaybook),
-    testToolCall: defineTestToolCall(tools),
   };
 }

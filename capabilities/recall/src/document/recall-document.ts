@@ -1,4 +1,4 @@
-import type { CompiledSchema } from '@on.auto/definitions/document';
+import type { CompiledSchema } from '@on.auto/json-schema';
 import type { ViewDetails } from '@on.auto/workflow-host';
 
 export interface ValueContract {

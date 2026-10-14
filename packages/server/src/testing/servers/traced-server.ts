@@ -1,6 +1,6 @@
-import { serveFakeMcp, type FakeMcpServer } from '@on.auto/mcp/testing';
 import { makeModelAccess } from '@on.auto/reasoning';
 import { anthropicMessage, anthropicToolCall, jsonResponse, recordingFetch } from '@on.auto/reasoning/testing';
+import { serveFakeMcp, type FakeMcpServer } from '@on.auto/tool-servers/testing';
 import { onTestFinished } from 'vitest';
 
 import { compositionRootWith } from '../../composition/composition-root.ts';
@@ -26,7 +26,7 @@ const searching = ['---', 'model: anthropic/claude-sonnet-4-5', 'tools: [graph/s
 function answerOf(asked: unknown): object {
   return JSON.stringify(asked).includes('"tool_result"')
     ? anthropicMessage('Acme has 2.')
-    : anthropicToolCall('mcp__graph__search', { query: 'acme' });
+    : anthropicToolCall('graph__search', { query: 'acme' });
 }
 
 const provider = (): ReturnType<typeof recordingFetch> =>
@@ -51,7 +51,7 @@ export async function servingTraced(environment: Readonly<Record<string, string>
       LOCAL_MODE: 'true',
       ANTHROPIC_API_KEY: 'k',
       GRAPH_API_KEY: toolKey,
-      MCP_SERVERS: JSON.stringify({
+      TOOL_SERVERS: JSON.stringify({
         graph: { url: tools.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme' },
       }),
       OTEL_EXPORTER_OTLP_ENDPOINT: receiver.endpoint,

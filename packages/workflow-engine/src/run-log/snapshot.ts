@@ -2,6 +2,7 @@ import { Schema } from 'effect';
 
 import { withinBytes } from '../dsl/json.ts';
 import { RunStateSchema, type RunState } from '../machine/run-state.ts';
+import { SnapshotOfFormatSevenSchema, snapshotNamesOfFormatSeven } from './formats/format-seven-records.ts';
 import {
   FormatsOneToSixSchema,
   SnapshotOfFormatsOneToSixSchema,
@@ -31,6 +32,7 @@ export const SnapshotSchema = Schema.Union([
     snapshotInFormat(FormatsOneToSixSchema),
     snapshotNamesOfFormatsOneToSix,
   ),
+  writtenInAnOlderFormat(SnapshotOfFormatSevenSchema, snapshotInFormat(Schema.Literal(7)), snapshotNamesOfFormatSeven),
 ]);
 
 export type Snapshot = typeof SnapshotSchema.Type;

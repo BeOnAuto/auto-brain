@@ -1,3 +1,4 @@
+import { allPermissions, type CallerIdentity } from '@on.auto/operations';
 import { describe, expect, it } from 'vitest';
 
 import { buildPlaybook, type BuildPlaybook } from '../build-testing/build-playbook.ts';
@@ -15,6 +16,13 @@ import { childIdOf } from '../build-work/child-runs.ts';
 import { uploadedDailyVisits } from '../testing/daily-documents.ts';
 
 const testTimeoutMs = 60_000;
+
+const signedInPerson: CallerIdentity = {
+  id: 'person:user|ada',
+  org: 'acme',
+  permissions: allPermissions,
+  playbooks: '*',
+};
 
 async function awaitingApproval(playbook: BuildPlaybook, expires = 'P1D'): Promise<string> {
   expect(
@@ -177,6 +185,24 @@ describe('a version whose approver answers no decision', { timeout: testTimeoutM
     expect((await modelFactsOf(playbook)).at(-1)).toMatchObject({
       type: 'activation_refused',
       data: { because: 'unanswered' },
+    });
+  });
+});
+
+describe('a version a signed-in person approves', { timeout: testTimeoutMs }, () => {
+  it('names a signed-in person who approves it as the facts name them', async () => {
+    const playbook = buildPlaybook();
+    const build = await awaitingApproval(playbook);
+    await playbook.call(
+      playbook.operations.answer,
+      { run_id: childIdOf(build, '/approval'), answer: { decision: 'approve' } },
+      signedInPerson,
+    );
+    await performedUntilQuiet(playbook.due);
+
+    expect((await modelFactsOf(playbook)).at(-1)).toMatchObject({
+      type: 'version_activated',
+      data: { rule: 'approved', approved_by: 'person:user|ada' },
     });
   });
 });

@@ -3,7 +3,7 @@ import type { OperationKind } from '../caller/operation-scope.ts';
 export type Method = 'GET' | 'POST' | 'PUT';
 
 interface MethodsByKind {
-  readonly query: 'GET';
+  readonly query: 'GET' | 'POST';
   readonly command: 'POST' | 'PUT';
 }
 

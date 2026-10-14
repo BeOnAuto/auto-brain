@@ -15,7 +15,7 @@ import { Effect, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { interactionsCalled } from '../testing/servers/interaction-calls.ts';
-import { servingWithAToolServer, toolTestsCalled } from '../testing/servers/tool-test-calls.ts';
+import { servingWithAToolServer, toolServerToolsCalled } from '../testing/servers/tool-server-calls.ts';
 import { servingWorkflows, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 type Called = readonly (readonly [string, ToolResult])[];
@@ -149,7 +149,6 @@ async function reasonFunctionsCalled(session: McpSession): Promise<Called> {
     ['get_event', await session.callTool('get_event', inSales({ event_id: firstEventIn(listed) }))],
     ['list_playbook_events', await session.callTool('list_playbook_events', { playbook: 'old-sales' })],
     ['get_playbook_analytics', await session.callTool('get_playbook_analytics', inSales({ days: 30 }))],
-    ['list_tool_servers', await session.callTool('list_tool_servers', inSales({}))],
   ];
 }
 
@@ -242,7 +241,7 @@ describe('the plain words that lead each result over MCP', { timeout: workflowTe
         ...(await reasonFunctionsCalled(session)),
         ...(await workflowsCalled(session)),
         ...(await interactionsCalled(session, inSales)),
-        ...(await toolTestsCalled(session, inSales)),
+        ...(await toolServerToolsCalled(session, inSales)),
       ],
       errors: await errorsCalled(session),
     }));

@@ -82,9 +82,9 @@ const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
   tool_not_offered: {
     why: 'this server does not offer a tool it names',
     remedy:
-      'This can be put right on your side: whoever runs the server decides which tool servers and tools this playbook may use, which list_tool_servers shows, so once it names only those, it can be tried again.',
+      'This can be put right on your side: whoever runs the server decides which tool servers and tools this playbook may use, which search shows, so once it names only those, it can be tried again.',
   },
-  mcp_server_failed: {
+  tool_server_failed: {
     why: 'a tool server it needs could not be used',
     remedy:
       'Nothing was called through it, so it can be tried again later; if it keeps happening, whoever runs the server can look into that tool server.',
@@ -143,12 +143,10 @@ const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
 const explanationByBecause: Readonly<Record<RejectionBecause, string>> = {
   provider_not_configured: 'because its provider is not set up on this server, though others are',
   model_not_allowed: 'because it is not among the models whoever runs the server allows',
-  mcp_server_not_configured:
+  tool_server_not_configured:
     'because whoever runs the server has not set up a tool server of that name for this playbook',
   tool_not_allowed: 'because it is not among the tools whoever runs the server allows',
   tool_not_listed: 'because the tool server it names does not have that tool',
-  not_testable:
-    "because by its server's own account it may change something, and whoever runs the server has not listed it as safe to test",
   failing: 'because the tool server kept failing',
   rate_limited: 'because the tool server asked it to slow down for longer than a run waits',
   unreachable: 'because the tool server could not be reached in time',
@@ -165,8 +163,6 @@ const explanationByBecause: Readonly<Record<RejectionBecause, string>> = {
 };
 
 const remedyByBecause: Remedies = {
-  not_testable:
-    "A tool that may change something is called only by a function the person asked to run; whoever runs the server can mark it testable on its tool server's entry, and list_tool_servers shows which tools can be tested.",
   key_refused: 'Trying again will not help until whoever runs the server checks the key it gives that tool server.',
 };
 

@@ -1,6 +1,6 @@
 import { createApiHandler, makeAppRuntime, type RegisterRoutes, type AppRuntime } from '@on.auto/api';
 import type { Environment } from '@on.auto/config';
-import { authenticatorFor, type Authenticator } from '@on.auto/identity';
+import { authenticatorFor, identityServiceOf, type Authenticator } from '@on.auto/identity';
 import { Effect, Layer } from 'effect';
 
 import {
@@ -81,7 +81,7 @@ async function startRuntime<R>(
 async function started<R>({ settings, authenticator, telemetry, options }: Starting<R>): Promise<RunningServer> {
   const composed = options.composed(settings, telemetry);
   const runtime = await startRuntime(composed.services, settings, telemetry.layer);
-  await runtime.run(logAccessMode(authenticator.mode, settings.localMode));
+  await runtime.run(logAccessMode({ ...settings, mode: authenticator.mode }));
   await runtime.run(logConfigFile(settings.configFile));
   await runtime.run(logTelemetry(settings.telemetry));
   const served = await servedOf(composed, runtime);
@@ -124,7 +124,8 @@ async function started<R>({ settings, authenticator, telemetry, options }: Start
 
 export async function startServer<R>(environment: Environment, options: ServerOptions<R>): Promise<RunningServer> {
   const settings = readSettings(environment);
-  const authenticator = authenticatorFor(settings);
+  const identityService = settings.signIn === undefined ? undefined : await identityServiceOf(settings.signIn);
+  const authenticator = authenticatorFor({ ...settings, identityService });
   const telemetry = startTelemetry(settings.telemetry);
   try {
     return await started({ settings, authenticator, telemetry, options });

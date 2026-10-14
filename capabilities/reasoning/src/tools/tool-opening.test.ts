@@ -1,4 +1,4 @@
-import { reportingAccess, serveFakeMcp, type FakeMcpServer } from '@on.auto/mcp/testing';
+import { reportingAccess, serveFakeMcp, type FakeMcpServer } from '@on.auto/tool-servers/testing';
 import { Effect, Exit } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -51,14 +51,14 @@ describe('a reasoning function that names tools', () => {
     const fake = await graphServer();
     const run = reasoningWithTools(
       accessTo(fake),
-      callingTools([['mcp__graph__search', { query: 'acme' }]], answers(textResult('Acme has 2 rows.'))),
+      callingTools([['graph__search', { query: 'acme' }]], answers(textResult('Acme has 2 rows.'))),
     );
 
     const ran = await run.running(naming('graph/search'));
 
     expect(ran).toMatchObject({ _tag: 'Success', value: { output: 'Acme has 2 rows.' } });
     expect(run.requests()[0]?.tools).toMatchObject({
-      offered: [{ name: 'mcp__graph__search' }],
+      offered: [{ name: 'graph__search' }],
       runBoundMs: 600_000,
       mostInputTokens: 2_000_000,
     });
@@ -70,7 +70,7 @@ describe('a reasoning function that names tools', () => {
     expect(fake.endedSessions()).toBe(1);
   });
 
-  it('says it may change something outside when MCP servers are configured', async () => {
+  it('says it may change something outside when tool servers are configured', async () => {
     const run = reasoningWithTools(accessTo(await graphServer()));
 
     expect(run.capability.mayChangeOutside).toBe(true);
@@ -82,7 +82,7 @@ describe('the reading of a reasoning function that names tools', () => {
   it('is bounded by the input tokens the operator allows and by the window the catalog gives its model', async () => {
     const asked: string[] = [];
     const scripted = scriptedLanguageModel(
-      callingTools([['mcp__graph__search', { query: 'acme' }]], answers(textResult('Acme has 2 rows.'))),
+      callingTools([['graph__search', { query: 'acme' }]], answers(textResult('Acme has 2 rows.'))),
     );
     const capability = makeReasoningFunctionAdapter({
       languageModel: scripted.languageModel,
@@ -113,19 +113,19 @@ describe('a tool a reasoning function names that is not offered', () => {
         expect.objectContaining({
           _tag: 'unavailable',
           kind: 'tool_not_offered',
-          because: 'mcp_server_not_configured',
+          because: 'tool_server_not_configured',
         }),
       ),
     );
   });
 
-  it('rejects the run as unavailable when no MCP server is configured at all', async () => {
+  it('rejects the run as unavailable when no tool server is configured at all', async () => {
     expect(await reasoningWith().running(naming('graph/search', 'crm/find'))).toEqual(
       Exit.fail(
         expect.objectContaining({
           kind: 'tool_not_offered',
-          because: 'mcp_server_not_configured',
-          detail: 'No MCP server named graph or crm is configured for this playbook',
+          because: 'tool_server_not_configured',
+          detail: 'No tool server named graph or crm is configured for this playbook',
         }),
       ),
     );
@@ -137,7 +137,7 @@ describe('a tool a reasoning function names that is not offered', () => {
     const run = reasoningWithTools(accessTo(fake));
 
     expect(await run.running(naming('graph/search'))).toEqual(
-      Exit.fail(expect.objectContaining({ kind: 'mcp_server_failed', because: 'unreachable' })),
+      Exit.fail(expect.objectContaining({ kind: 'tool_server_failed', because: 'unreachable' })),
     );
   });
 });

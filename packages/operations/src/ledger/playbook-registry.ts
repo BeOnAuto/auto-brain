@@ -4,6 +4,8 @@ import type { PlaybookAddress } from '../caller/playbook-context.ts';
 
 export type PlaybookStatus = 'active' | 'retired' | 'unknown';
 
+export type LivePlaybookStatus = Exclude<PlaybookStatus, 'unknown'>;
+
 export class PlaybookRegistry extends Context.Service<
   PlaybookRegistry,
   {

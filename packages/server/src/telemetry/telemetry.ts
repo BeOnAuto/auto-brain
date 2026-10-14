@@ -1,7 +1,7 @@
 import type { ApiEnv } from '@on.auto/api';
 import type { AppendObserver } from '@on.auto/ledger';
-import type { ToolAccessOptions } from '@on.auto/mcp';
 import type { ModelTelemetry } from '@on.auto/reasoning';
+import type { ToolAccessOptions } from '@on.auto/tool-servers';
 import { Layer } from 'effect';
 import type { MiddlewareHandler } from 'hono';
 

@@ -1,8 +1,8 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { serveFakeMcp, type FakeHints } from '@on.auto/mcp/testing';
 import { TimedOut, ToolsStopped, type ToolsStoppedBecause } from '@on.auto/reasoning';
 import { answers, callingTools, textResult, type ScriptedCall, type ScriptedReply } from '@on.auto/reasoning/testing';
+import { serveFakeMcp, type FakeHints } from '@on.auto/tool-servers/testing';
 import { Effect } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
@@ -25,11 +25,11 @@ const timedOut: ScriptedReply = () =>
     new TimedOut({ detail: 'anthropic did not answer within 60000 ms', provider: 'anthropic', timeout_ms: 60_000 }),
   );
 
-const searched: ScriptedCall = ['mcp__graph__search', { query: 'acme' }];
+const searched: ScriptedCall = ['graph__search', { query: 'acme' }];
 
-const echoed: ScriptedCall = ['mcp__graph__echo', { said: 'acme' }];
+const echoed: ScriptedCall = ['graph__echo', { said: 'acme' }];
 
-const broken = [1, 2, 3, 4, 5].map((attempt): ScriptedCall => ['mcp__graph__broken', { attempt }]);
+const broken = [1, 2, 3, 4, 5].map((attempt): ScriptedCall => ['graph__broken', { attempt }]);
 
 async function serving(replies: readonly ScriptedReply[], hints: FakeHints = {}): Promise<ReasoningServer> {
   const fake = await serveFakeMcp({ bearer: apiKey, hints });
@@ -37,7 +37,7 @@ async function serving(replies: readonly ScriptedReply[], hints: FakeHints = {})
   const server = await servingReasoning(replies, {
     LOCAL_MODE: 'true',
     GRAPH_API_KEY: apiKey,
-    MCP_SERVERS: JSON.stringify({
+    TOOL_SERVERS: JSON.stringify({
       graph: { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme' },
     }),
   });
@@ -79,7 +79,7 @@ async function untilCalled(calledAny: () => boolean): Promise<void> {
 
 const unanswered: ScriptedReply = (request) =>
   Effect.promise(async () => {
-    const sleeping = request.tools?.offered.find(({ name }) => name === 'mcp__graph__sleep');
+    const sleeping = request.tools?.offered.find(({ name }) => name === 'graph__sleep');
     void sleeping?.call(
       { callId: 'call-1', input: { ms: 5000 } },
       { signal: AbortSignal.timeout(10_000), cancelled: new AbortController().signal },

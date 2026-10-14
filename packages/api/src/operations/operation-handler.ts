@@ -5,6 +5,7 @@ import {
   type Catalog,
   type Dispatcher,
   type DispatcherServices,
+  type OrgRequest,
   type Outcome,
   type RouteRegistration,
   type Settled,
@@ -14,11 +15,11 @@ import { Effect, Result } from 'effect';
 import type { Context } from 'hono';
 
 import type { ApiEnv } from '../api-env.ts';
-import type { ReportThrown } from '../problem/error-boundary.ts';
+import { callerOfAnotherOrg, insufficientScope } from '../authentication/challenges.ts';
 import { problemResponse } from '../problem/problem.ts';
-import type { RouteHandler } from '../routes.ts';
+import type { RouteHandler, Routes } from '../routes.ts';
 import { underTraceParent } from '../tracing/trace-parent.ts';
-import { parseCallInput, type CallInput } from './call-input.ts';
+import { parseCallInput } from './call-input.ts';
 import { toHttpResponse } from './outcome-response.ts';
 
 export type RunCall = <S extends Succeeded>(
@@ -40,10 +41,8 @@ function dispatched(
   dispatcher: Dispatcher,
   registration: RouteRegistration,
   c: Context<ApiEnv>,
-  given: CallInput,
+  request: OrgRequest,
 ): Dispatched {
-  const org = String(c.req.param('org'));
-  const request = { caller: c.get('principal').callerIn(org), org, ...given };
   if (registration.scope === 'org') {
     return {
       call: dispatcher.dispatchToOrg(registration, request),
@@ -60,15 +59,21 @@ function dispatched(
 export function handlerFor(
   registration: RouteRegistration,
   { dispatcher, runCall }: OperationRoutesOptions,
-  reportThrown: ReportThrown,
+  { reportThrown, resource }: Routes,
 ): RouteHandler {
+  const forbidden = insufficientScope(resource, registration.permissions);
   return async (c) => {
+    const org = String(c.req.param('org'));
+    const caller = c.get('principal').callerIn(org);
+    if (caller === undefined) {
+      return problemResponse(callerOfAnotherOrg, forbidden);
+    }
     const given = await parseCallInput(c, registration);
     if (Result.isFailure(given)) {
       return problemResponse(given.failure);
     }
     const requestId = c.get('requestId');
-    const { call, summary } = dispatched(dispatcher, registration, c, given.success);
+    const { call, summary } = dispatched(dispatcher, registration, c, { caller, org, ...given.success });
     const settled = await runCall(
       underTraceParent(settle(call, c.req.raw.signal).pipe(Effect.annotateLogs({ requestId })), c.get('traceParent')),
     );
@@ -77,6 +82,7 @@ export function handlerFor(
       signal: c.req.raw.signal,
       failed: (thrown) => reportThrown(thrown, requestId, summary),
       abortConnection: c.env.abortConnection,
+      forbidden,
     });
   };
 }

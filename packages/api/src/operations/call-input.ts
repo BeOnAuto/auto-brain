@@ -24,8 +24,11 @@ const jsonBody: HttpBody = { kind: 'json' };
 
 const bodyOnNone = Result.fail(problemOf('bad_request', 'This operation takes no body'));
 
-const queryOnCommand = Result.fail(
-  problemOf('bad_request', 'A command takes no query parameters; send its input in the JSON body'),
+const queryBesideABody = Result.fail(
+  problemOf(
+    'bad_request',
+    'An operation called by POST or PUT takes no query parameters; send its input in the JSON body',
+  ),
 );
 
 function givenTwice(name: string): Result.Result<never, Problem> {
@@ -63,7 +66,7 @@ export async function parseCallInput(
     return Result.flatMap(queryFieldsOf(query), (given) => combined(pathFields, given, 'strings'));
   }
   if (query.size > 0) {
-    return queryOnCommand;
+    return queryBesideABody;
   }
   const body = registration.servedOverHttpAlone ?? jsonBody;
   if (isStreamedBody(body)) {

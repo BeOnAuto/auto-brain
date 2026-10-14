@@ -62,7 +62,7 @@ function contentRecordedIn(spans: readonly ExportedSpan[]): readonly string[] {
 describe('a run of a reasoning function that calls a tool, with telemetry on', () => {
   it('is one trace from the request through the call of the model to the call of the tool', async () => {
     const { traceId, spans, server } = await tracedRun();
-    const tool = named(spans, 'execute_tool mcp__graph__search');
+    const tool = named(spans, 'execute_tool graph__search');
     const [received] = server.tools.received();
 
     expect(traceId).toMatch(/^[0-9a-f]{32}$/u);
@@ -72,7 +72,7 @@ describe('a run of a reasoning function that calls a tool, with telemetry on', (
         'run_definition',
         'invoke_agent claude-sonnet-4-5',
         'chat claude-sonnet-4-5',
-        'execute_tool mcp__graph__search',
+        'execute_tool graph__search',
         'eventStore.appendToStream',
       ]),
     );

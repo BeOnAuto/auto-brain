@@ -161,11 +161,11 @@ describe('the records that are no facts of the playbook', () => {
     expect(unreadable.map((record) => playbookFactOf(record))).toEqual([undefined, undefined, undefined]);
   });
 
-  it('are the run logs and every other stream kind, tool tests and conversation reads among them', () => {
+  it('are the run logs and every other stream kind, calls made by hand and conversation reads among them', () => {
     const others: readonly RecordedFact[] = [
       { ...about, stream: `run-logs/${runId}`, type: 'input_applied', data: {}, context: ofSummary },
       { ...about, stream: 'events/0199a3c4', type: 'event_published', data: {}, context: ofSummary },
-      { ...about, stream: 'tool-tests/0199b7e2', type: 'tool_test_started', data: {}, context: ofSummary },
+      { ...about, stream: 'tool-calls/0199b7e2', type: 'tool_call_started', data: {}, context: ofSummary },
       { ...about, stream: 'conversation-calls/0199b7e3', type: 'replies_read', data: {}, context: ofSummary },
     ];
 

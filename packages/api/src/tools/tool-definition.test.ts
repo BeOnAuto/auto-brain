@@ -29,6 +29,26 @@ describe('the open-world hint of a tool', () => {
   });
 });
 
+describe('the read-only hint of a tool', () => {
+  it('follows the kind of its operation, so a query routed by POST only reads', () => {
+    const posted = defineQuery('org', {
+      name: 'ask_forecast',
+      title: 'Ask forecast',
+      description: 'Asks for a forecast of the places given. Use it for many places at once. It answers nothing.',
+      route: { method: 'POST', path: '/forecast' },
+      inputSchema: Schema.Struct({ places: Schema.Array(Schema.String) }),
+      outputSchema: Nothing,
+      reasons: [],
+      handle: () => Effect.succeed({}),
+    });
+
+    expect(toolDefinitionOf(posted.registration).annotations).toMatchObject({
+      readOnlyHint: true,
+      idempotentHint: true,
+    });
+  });
+});
+
 describe('the destructive hint of a tool', () => {
   it('is true when its operation says it may change something outside the server, and false otherwise', () => {
     const changing = toolDefinitionOf(askingWith({ reachesOutside: true, mayChangeOutside: true }).registration);

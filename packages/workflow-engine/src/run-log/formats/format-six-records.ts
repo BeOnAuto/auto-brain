@@ -1,6 +1,16 @@
+import type { RejectionBecause, Settlement, UnavailableKind } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 import type { RunOutput } from '../../dispatch/run-output.ts';
+import type { InputReceipt } from '../../machine/input-receipt.ts';
+import {
+  currentWordOf,
+  inWrittenWords,
+  isNotATestRefusal,
+  receiptInWords,
+  withoutAWordInFormatEight,
+  writtenWordOf,
+} from './format-seven.ts';
 import { RunCountSchema, StepCauseSchema, StepOutcomeSchema, withExecutionId, withRunId } from './format-six.ts';
 import { CallKeySchema, InstantSchema, TimerPurposeSchema } from './format-two.ts';
 
@@ -8,7 +18,7 @@ export const FormatsOneToSixSchema = Schema.Literals([1, 2, 3, 4, 5, 6]);
 
 const keyed = { key: Schema.String, at: InstantSchema };
 
-const ReceiptSchema = Schema.Union([
+export const ReceiptSchema = Schema.Union([
   Schema.Struct({ kind: Schema.Literal('started'), ...keyed }),
   Schema.Struct({ kind: Schema.Literal('timer_fired'), ...keyed }),
   Schema.Struct({
@@ -30,7 +40,7 @@ const ReceiptSchema = Schema.Union([
   }),
 ]);
 
-const StepSchema = Schema.Struct({
+export const StepSchema = Schema.Struct({
   reference: Schema.String,
   run: RunCountSchema,
   outcome: StepOutcomeSchema,
@@ -42,17 +52,21 @@ const StepSchema = Schema.Struct({
   child: Schema.optionalKey(Schema.String),
 });
 
-const EarlierStepSchema = Schema.Struct({ reference: Schema.String, run: RunCountSchema, outcome: StepOutcomeSchema });
+export const EarlierStepSchema = Schema.Struct({
+  reference: Schema.String,
+  run: RunCountSchema,
+  outcome: StepOutcomeSchema,
+});
 
-const ResumedSchema = Schema.Struct({ reference: Schema.String, run: RunCountSchema, times: RunCountSchema });
+export const ResumedSchema = Schema.Struct({ reference: Schema.String, run: RunCountSchema, times: RunCountSchema });
 
-const PatchOperationSchema = Schema.Union([
+export const PatchOperationSchema = Schema.Union([
   Schema.Struct({ op: Schema.Literal('add'), path: Schema.String, value: Schema.Json }),
   Schema.Struct({ op: Schema.Literal('replace'), path: Schema.String, value: Schema.Json }),
   Schema.Struct({ op: Schema.Literal('remove'), path: Schema.String }),
 ]);
 
-const IssueSchema = Schema.Struct({ detail: Schema.String, pointer: Schema.String });
+export const IssueSchema = Schema.Struct({ detail: Schema.String, pointer: Schema.String });
 
 const settledBy = { by: Schema.optionalKey(Schema.NonEmptyString) };
 
@@ -86,6 +100,10 @@ const UnavailableBecauseSchema = Schema.Literals([
   'no_answer',
 ]);
 
+const BecauseOfFormatEightSchema = UnavailableBecauseSchema.pipe(
+  Schema.refine(isNotATestRefusal, withoutAWordInFormatEight),
+);
+
 const ConflictKindSchema = Schema.Literals([
   'taken',
   'retired',
@@ -107,7 +125,7 @@ const SettlementSchema = Schema.Union([
     ...rejected,
     reason: Schema.Literal('unavailable'),
     kind: Schema.optionalKey(UnavailableKindSchema),
-    because: Schema.optionalKey(UnavailableBecauseSchema),
+    because: Schema.optionalKey(BecauseOfFormatEightSchema),
   }),
   Schema.Struct({ ...rejected, reason: Schema.Literal('conflict'), kind: Schema.optionalKey(ConflictKindSchema) }),
   Schema.Struct({
@@ -157,6 +175,28 @@ const OutputSchema = Schema.Union([
 
 type OutputOfFormatSix = typeof OutputSchema.Type;
 
+type SettlementOfFormatSix = typeof SettlementSchema.Type;
+
+function kindNow(kind: typeof UnavailableKindSchema.Type): UnavailableKind {
+  return kind === 'mcp_server_failed' ? 'tool_server_failed' : kind;
+}
+
+function becauseNow(because: typeof BecauseOfFormatEightSchema.Type): RejectionBecause {
+  return because === 'mcp_server_not_configured' ? 'tool_server_not_configured' : because;
+}
+
+function settlementNow(settlement: SettlementOfFormatSix): Settlement {
+  if (settlement.status !== 'rejected' || settlement.reason !== 'unavailable') {
+    return settlement;
+  }
+  const { kind, because, ...unavailable } = settlement;
+  return {
+    ...unavailable,
+    ...(kind === undefined ? {} : { kind: kindNow(kind) }),
+    ...(because === undefined ? {} : { because: becauseNow(because) }),
+  };
+}
+
 export const EventOfFormatsOneToSixSchema = Schema.Struct({
   type: Schema.Literal('input_applied'),
   format: FormatsOneToSixSchema,
@@ -175,21 +215,37 @@ function outputWithRunId(output: OutputOfFormatSix): RunOutput {
     return withRunId(output);
   }
   if (output.kind === 'settle') {
-    return withRunId(output);
+    return { ...withRunId(output), settlement: settlementNow(output.settlement) };
   }
   return { ...output, key: withRunId(output.key) };
 }
 
 function outputWithExecutionId(output: RunOutput): unknown {
+  if (output.kind === 'settle') {
+    return withExecutionId({ ...output, settlement: inWrittenWords(output.settlement) });
+  }
   return 'key' in output ? { ...output, key: withExecutionId(output.key) } : withExecutionId(output);
 }
 
-function eventWithRunIds({ outputs, ...event }: typeof EventOfFormatsOneToSixSchema.Type) {
-  return { ...event, outputs: outputs.map((output) => outputWithRunId(output)) };
+function eventWithRunIds({ receipt, outputs, ...event }: typeof EventOfFormatsOneToSixSchema.Type) {
+  return {
+    ...event,
+    receipt: receiptInWords(receipt, currentWordOf),
+    outputs: outputs.map((output) => outputWithRunId(output)),
+  };
 }
 
-function eventWithExecutionIds({ outputs, ...event }: { readonly outputs: readonly RunOutput[] }): unknown {
-  return { ...event, outputs: outputs.map((output) => outputWithExecutionId(output)) };
+interface EventNow {
+  readonly receipt: InputReceipt;
+  readonly outputs: readonly RunOutput[];
+}
+
+function eventWithExecutionIds({ receipt, outputs, ...event }: EventNow): unknown {
+  return {
+    ...event,
+    receipt: receiptInWords(receipt, writtenWordOf),
+    outputs: outputs.map((output) => outputWithExecutionId(output)),
+  };
 }
 
 export const eventNamesOfFormatsOneToSix = { current: eventWithRunIds, written: eventWithExecutionIds };

@@ -37,6 +37,7 @@ export interface WorkflowParts extends HostParts {
   readonly check: ExpressionCheck;
   readonly facts: CapabilityFacts;
   readonly names: PlaybookOwnNames;
+  readonly identityIssuer: string;
 }
 
 export function longestCallOf(capabilities: readonly Pick<Capability, 'longestAnyRunMs'>[]): number {
@@ -79,5 +80,6 @@ export async function serveWorkflows(runtime: AppRuntime<DispatcherServices>, pa
     ...parts.playbookRoutes,
     defineSendRunEvent(host, names),
   ]);
-  return { routes: routesFor(runtime, catalog, dispatcher, capabilities), stopWork: host.stop };
+  const served = { catalog, dispatcher, capabilities, identityIssuer: parts.identityIssuer };
+  return { routes: routesFor(runtime, served), stopWork: host.stop };
 }

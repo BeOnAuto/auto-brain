@@ -17,7 +17,7 @@ export interface ScriptedTools {
   readonly signals: () => readonly ToolCallSignals[];
 }
 
-export const searchTool = 'mcp__graph__search';
+export const searchTool = 'graph__search';
 
 export const foundRows: ToolReply = { text: 'Found 2 rows.', isError: false };
 

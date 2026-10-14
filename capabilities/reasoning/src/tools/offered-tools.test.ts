@@ -1,4 +1,4 @@
-import { recordingCallJournal, reportingAccess, serveFakeMcp, toolRun } from '@on.auto/mcp/testing';
+import { recordingCallJournal, reportingAccess, serveFakeMcp, toolRun } from '@on.auto/tool-servers/testing';
 import { Effect, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -14,7 +14,7 @@ afterEach(async () => {
   await Promise.all(closing.splice(0).map((close) => close()));
 });
 
-const largeTool = 'mcp__graph__large';
+const largeTool = 'graph__large';
 
 const utf8 = new TextEncoder();
 

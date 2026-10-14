@@ -3,17 +3,20 @@ import { randomBytes } from 'node:crypto';
 import { CallerIdentitySchema, sha256Of } from '@on.auto/operations';
 import { Schema } from 'effect';
 
-import { localOrg } from '../access/local-org.ts';
+import { CredentialOrgSchema, localDeveloperId } from '../access/local-org.ts';
 
-const KeyIdSchema = Schema.String.check(Schema.isPattern(/^[a-z0-9-]{1,32}$/u));
+const KeyIdSchema = Schema.String.check(
+  Schema.isPattern(/^[a-z0-9-]{1,32}$/u),
+  Schema.makeFilter((id: string) => id !== localDeveloperId || 'This key id is reserved for the local developer'),
+);
 
 const DigestSchema = Schema.String.check(Schema.isPattern(/^[0-9a-f]{64}$/u));
 
-const KeyOrgSchema = CallerIdentitySchema.fields.org.check(
-  Schema.makeFilter((org: string) => org !== localOrg || 'This org id is reserved for local mode'),
-);
-
-export const KeyGrantSchema = Schema.Struct({ ...CallerIdentitySchema.fields, id: KeyIdSchema, org: KeyOrgSchema });
+export const KeyGrantSchema = Schema.Struct({
+  ...CallerIdentitySchema.fields,
+  id: KeyIdSchema,
+  org: CredentialOrgSchema,
+});
 
 export type KeyGrant = typeof KeyGrantSchema.Type;
 
@@ -28,11 +31,13 @@ export interface CreatedKey {
 
 const presentedKey = /^abk_([a-z0-9-]{1,32})_[A-Za-z0-9_-]{43}$/u;
 
+export const keyPrefix = 'abk_';
+
 export function keyIdOf(key: string): string | undefined {
   return presentedKey.exec(key)?.[1];
 }
 
 export function createApiKey({ id, org, permissions, playbooks }: KeyGrant): CreatedKey {
-  const key = `abk_${id}_${randomBytes(32).toString('base64url')}`;
+  const key = `${keyPrefix}${id}_${randomBytes(32).toString('base64url')}`;
   return { key, entry: { id, sha256: sha256Of(key), org, permissions, playbooks } };
 }

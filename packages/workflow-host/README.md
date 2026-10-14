@@ -97,7 +97,7 @@ A projection of runs that is a schedule, as the open requests of interaction fun
 
 ## Telemetry
 
-`HostOptions.context`, the context of the server's runtime, is the context the host's fibers run in, so its spans reach the server's tracer; without it they run in an empty one. Each input submitted is a span named for its kind, a call `call <function>` beneath the input that made it, the answer and the `settle` beneath the call, a record the follower delivers `follow <type>` linked to the append that kept it, and a start that waited for a later minute `deferred_start`, linked the same way. Idle sweeps make no span. [Decision 0024](../../docs/decisions/0024-telemetry.md) records the design.
+`HostOptions.context`, the context of the server's runtime, is the context the host's fibers run in, so its spans reach the server's tracer; without it they run in an empty one. Each input submitted is a span named for its kind, a call `call <function>` beneath the input that made it, the answer and the `settle` beneath the call, a record the follower delivers `follow <type>` linked to the append that kept it, and a start that waited for a later minute `deferred_start`, linked the same way. Idle sweeps make no span.
 
 ## One host for a database
 

@@ -1,15 +1,24 @@
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { servedScopeOf, servesPlaybook } from '../index.ts';
+import { servedScopeOf, servesOrg, servesPlaybook } from '../index.ts';
 
 describe('the org and playbooks an entry serves', () => {
   it('are its org and the playbooks it names, or every playbook of the org when it names none', () => {
     expect(servedScopeOf('EXAMPLE', 'graph', { org: 'acme', playbooks: ['sales'] }, 'server')).toEqual(
-      Result.succeed({ org: 'acme', playbooks: ['sales'] }),
+      Result.succeed({ orgs: ['acme'], playbooks: ['sales'] }),
     );
     expect(servedScopeOf('EXAMPLE', 'graph', { org: 'acme' }, 'server')).toEqual(
-      Result.succeed({ org: 'acme', playbooks: null }),
+      Result.succeed({ orgs: ['acme'], playbooks: null }),
+    );
+  });
+
+  it('are the orgs of a list, with the playbooks it names within each, or every org for *', () => {
+    expect(servedScopeOf('EXAMPLE', 'graph', { org: ['acme', 'globex'], playbooks: ['sales'] }, 'server')).toEqual(
+      Result.succeed({ orgs: ['acme', 'globex'], playbooks: ['sales'] }),
+    );
+    expect(servedScopeOf('EXAMPLE', 'graph', { org: '*' }, 'server')).toEqual(
+      Result.succeed({ orgs: null, playbooks: null }),
     );
   });
 
@@ -19,20 +28,49 @@ describe('the org and playbooks an entry serves', () => {
     );
     expect(servedScopeOf('EXAMPLE', 'graph', { org: 'ac/me', playbooks: ['sales', 'Sales'] }, 'server')).toEqual(
       Result.fail([
-        { setting: 'EXAMPLE', detail: '/graph/org: Expected an org id' },
+        { setting: 'EXAMPLE', detail: '/graph/org: Expected an org id, a list of them, or *' },
         { setting: 'EXAMPLE', detail: '/graph/playbooks/1: Expected a playbook id' },
       ]),
     );
   });
+});
 
-  it('decide whether the entry serves a playbook', () => {
-    const sales = { org: 'acme', playbooks: ['sales'] };
+describe('the orgs an entry serves, refused', () => {
+  it('as an empty list, an entry of a list that is no org id or *, and * beside playbooks', () => {
+    expect([
+      servedScopeOf('EXAMPLE', 'graph', { org: [] }, 'server'),
+      servedScopeOf('EXAMPLE', 'graph', { org: ['acme', 'glo/bex', '*'] }, 'server'),
+      servedScopeOf('EXAMPLE', 'graph', { org: '*', playbooks: ['sales'] }, 'server'),
+    ]).toEqual([
+      Result.fail([{ setting: 'EXAMPLE', detail: '/graph/org: Expected at least one org id' }]),
+      Result.fail([
+        { setting: 'EXAMPLE', detail: '/graph/org/1: Expected an org id' },
+        { setting: 'EXAMPLE', detail: '/graph/org/2: Expected an org id; * stands alone, for every org' },
+      ]),
+      Result.fail([
+        {
+          setting: 'EXAMPLE',
+          detail: '/graph/playbooks: Expected no playbooks beside every org, since a playbook id belongs to one org',
+        },
+      ]),
+    ]);
+  });
+});
+
+describe('the org and the playbook a call comes from', () => {
+  it('decide whether the entry serves them', () => {
+    const sales = { orgs: ['acme', 'globex'], playbooks: ['sales'] };
+    const every = { orgs: null, playbooks: null };
 
     expect([
       servesPlaybook(sales, { org: 'acme', playbook: 'sales' }),
+      servesPlaybook(sales, { org: 'globex', playbook: 'sales' }),
       servesPlaybook(sales, { org: 'acme', playbook: 'support' }),
-      servesPlaybook({ org: 'acme', playbooks: null }, { org: 'acme', playbook: 'support' }),
-      servesPlaybook({ org: 'acme', playbooks: null }, { org: 'globex', playbook: 'support' }),
-    ]).toEqual([true, false, true, false]);
+      servesPlaybook(sales, { org: 'initech', playbook: 'sales' }),
+      servesPlaybook(every, { org: 'initech', playbook: 'support' }),
+      servesOrg(sales, 'globex'),
+      servesOrg(sales, 'initech'),
+      servesOrg(every, 'initech'),
+    ]).toEqual([true, true, false, false, true, true, false, true]);
   });
 });

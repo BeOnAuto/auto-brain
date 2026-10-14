@@ -1,5 +1,5 @@
-import type { CompiledSchema } from '@on.auto/definitions/document';
 import type { ParsedTemplate } from '@on.auto/definitions/template';
+import type { CompiledSchema } from '@on.auto/json-schema';
 import type { Schema } from 'effect';
 
 import type { Enclosing } from '../periods/enclosing.ts';

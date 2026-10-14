@@ -66,7 +66,7 @@ export {
   type AnswerSchema,
   type SchemaReport,
 } from './schema/answer-schema.ts';
-export type { SchemaIssue } from '@on.auto/definitions/document';
+export type { SchemaIssue } from '@on.auto/json-schema';
 export type { PortabilityIssue } from './schema/schema-portability.ts';
 export { ModelAliasesSchema } from './settings/alias-settings.ts';
 export { AllowedModelsSchema, DeclaredModelsSchema } from './settings/catalog-settings.ts';

@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 
-import { compileJsonSchema } from '@on.auto/definitions/document';
+import { compileJsonSchema } from '@on.auto/json-schema';
 import type { Issue } from '@on.auto/operations';
 import { Result, type Schema } from 'effect';
 

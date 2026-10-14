@@ -1,4 +1,4 @@
-import { boundedIssues, hiddenIssues } from './json-bounds.ts';
+import { boundedIssues, hiddenIssues } from '@on.auto/json-schema';
 
 export interface DocumentIssue {
   readonly line: number;

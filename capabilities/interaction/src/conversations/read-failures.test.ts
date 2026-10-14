@@ -49,9 +49,9 @@ describe('a read that fails', () => {
       answered({ messages: { ts: '1' } }),
       { outcome: 'result', answer: { content: [{ type: 'image' }] }, detail: '', retryAfterMs: null },
       { outcome: 'tool_error', detail: 'channel_not_found', retryAfterMs: null },
-      { outcome: 'timed_out', detail: 'The MCP server did not answer within 30000 ms', retryAfterMs: null },
+      { outcome: 'timed_out', detail: 'The tool server did not answer within 30000 ms', retryAfterMs: null },
       { outcome: 'cancelled', detail: '', retryAfterMs: null },
-      { kind: 'unopened', detail: 'The MCP server could not be reached' },
+      { kind: 'unopened', detail: 'The tool server could not be reached' },
       { kind: 'not_offered' },
     ];
 
@@ -71,7 +71,7 @@ describe('a read that fails', () => {
   it('waits as long as a server asked with Retry-After, an hour at most', async () => {
     const { read, row, before } = await readAfter({
       outcome: 'server_failure',
-      detail: 'The MCP server answered HTTP 429',
+      detail: 'The tool server answered HTTP 429',
       retryAfterMs: 120_000,
     });
 

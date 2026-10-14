@@ -107,7 +107,7 @@ describe('the definition tools an agent sees', { timeout: recallTestTimeoutMs },
 
     const guide = await onAlpha(server, (session) => session.callTool('get_guide', { guide: 'recall-function' }));
 
-    expect(listedTools(everyTool)).toHaveLength(26);
+    expect(listedTools(everyTool)).toHaveLength(29);
     expect(createDefinition?.description).toContain('recall, a recall function;');
     expect(getGuide?.inputSchema).toMatchObject({
       properties: { guide: { enum: listingTheRecallGuide } },

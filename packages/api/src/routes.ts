@@ -1,3 +1,4 @@
+import type { ProtectedResource } from '@on.auto/identity';
 import type { Context } from 'hono';
 
 import type { ApiEnv } from './api-env.ts';
@@ -12,6 +13,7 @@ export interface Routes {
   readonly addPublic: (method: string, path: string, handler: RouteHandler) => void;
   readonly onClose: (close: Close) => void;
   readonly reportThrown: ReportThrown;
+  readonly resource: ProtectedResource | undefined;
 }
 
 export type RegisterRoutes = (routes: Routes) => void;

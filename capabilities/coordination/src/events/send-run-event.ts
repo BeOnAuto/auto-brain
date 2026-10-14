@@ -41,6 +41,12 @@ function text(most: number, description: string) {
   );
 }
 
+const outsideAPathSegment = /[^\w.~!$&'()*+,;=:@-]/gu;
+
+function pathSegmentOf(id: string): string {
+  return id.toWellFormed().replaceAll(outsideAPathSegment, (character) => encodeURIComponent(character));
+}
+
 function wordedText(most: number, description: string) {
   return text(most, description).check(Schema.isNonEmpty(), refusingBlankText);
 }
@@ -85,7 +91,7 @@ const DeliveredEventSchema = Schema.Struct({
   ...EventFields,
   id: Schema.String.annotate({ description: 'The id of the event' }),
   source: Schema.String.annotate({
-    description: `Where the event comes from: as given, or ${callerSourcePrefix} and the id of the caller who sent it`,
+    description: `Where the event comes from: as given, or ${callerSourcePrefix} and the id of the caller who sent it, percent-encoded as one path segment`,
   }),
   time: Schema.String.annotate({ description: 'When the event was sent, in ISO 8601 UTC' }),
 }).annotate({ identifier: 'DeliveredEvent', description: 'The event as the workflow received it' });
@@ -121,7 +127,7 @@ export function defineSendRunEvent(runs: Pick<WorkflowHost, 'deliver'>, names: P
       const delivered = {
         ...event,
         id: event.id ?? randomUUID(),
-        source: event.source ?? `${callerSourcePrefix}${caller}`,
+        source: event.source ?? `${callerSourcePrefix}${pathSegmentOf(caller)}`,
         time: DateTime.formatIso(yield* DateTime.now),
       };
       const answer = yield* runs

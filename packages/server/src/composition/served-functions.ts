@@ -17,7 +17,7 @@ import { toolUsersServedBy } from './served-tools.ts';
 type LedgerDatabase = Parameters<FunctionWiring['projections']['served']>[1]['database'];
 
 export interface ServedFunctions {
-  readonly parts: Omit<WorkflowParts, 'ledger' | 'workflows'>;
+  readonly parts: Omit<WorkflowParts, 'ledger' | 'workflows' | 'identityIssuer'>;
   readonly closing: ServedPredictionFunctions['withProcessesClosed'];
 }
 
@@ -27,7 +27,7 @@ export async function functionsServedBy(
   database: LedgerDatabase,
   { programPoolOf, projections: wiring, ...tools }: FunctionWiring,
 ): Promise<ServedFunctions> {
-  const { reasoning, interaction, withToolsClosed } = await toolUsersServedBy(runtime, settings, tools);
+  const { reasoning, interaction, toolOperations, withToolsClosed } = await toolUsersServedBy(runtime, settings, tools);
   const computation = await computationServedBy(settings.computation, programPoolOf);
   const projections = await wiring.served(runtime, { recall: settings.recall, database }, computation.pool, [
     datasetsFolderOf(computation.pool),
@@ -46,12 +46,8 @@ export async function functionsServedBy(
       capabilities,
       facts,
       names,
-      orgOperations: [...playbookOperations, reasoning.listModels, reasoning.listToolServersInOrg],
-      playbookOperations: [
-        reasoning.listToolServers,
-        reasoning.testToolCall,
-        ...interaction.operationsFor(capabilities),
-      ],
+      orgOperations: [...playbookOperations, reasoning.listModels, ...toolOperations.inOrg],
+      playbookOperations: [...toolOperations.inPlaybook, ...interaction.operationsFor(capabilities)],
       playbookRoutes: prediction.routes,
       dueWork: [...interaction.dueWorkOf(record), prediction.dueWorkFor(capabilities)],
       store: projections.store,

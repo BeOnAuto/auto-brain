@@ -26,16 +26,18 @@ const defaultPrediction = {
 
 describe('readSettings', () => {
   it('listens on every interface at port 5555, allows no origin, has no API keys and keeps the ledger in data/ by default', () => {
-    const { models, mcp, interaction, ...server } = readSettings({});
+    const { models, toolServers, interaction, ...server } = readSettings({});
 
     expect(models.openai).toEqual({ configured: false, missing: ['OPENAI_API_KEY'] });
-    expect(mcp).toEqual({ servers: [] });
+    expect(toolServers).toEqual({ servers: [] });
     expect(interaction).toEqual({ mostOpenRequests: 10_000 });
     expect(server).toEqual({
       host: '0.0.0.0',
       port: 5555,
       allowedOrigins: [],
       apiKeys: undefined,
+      identityIssuer: 'https://clerk.on.auto',
+      signIn: undefined,
       ledger: { store: 'sqlite', file: 'data/ledger.db' },
       content: { store: 'ledger' },
       proxy: { enabled: false, environment: {} },
@@ -53,33 +55,39 @@ describe('readSettings', () => {
   });
 });
 
+const everySetting = {
+  HOST: '127.0.0.1',
+  PORT: '3000',
+  ALLOWED_ORIGINS: 'https://app.example.com,http://localhost:5173,http://[::1]:3000',
+  API_KEYS: JSON.stringify([entry]),
+  IDENTITY_ISSUER: 'https://identity.example',
+  PUBLIC_URL: 'https://runtime.example.com',
+  LEDGER_FILE: '/data/ledger.db',
+  CONTENT_STORE_URL: 's3://playbook-content/production',
+  NODE_USE_ENV_PROXY: '1',
+  HTTPS_PROXY: 'http://proxy.internal:3128',
+  LOCAL_MODE: 'true',
+  LOG_FORMAT: 'pretty',
+  LOG_LEVEL: 'warn',
+  OPENAI_API_KEY: 'sk-test',
+  INTERACTION_OPEN_REQUESTS: '250',
+  REASONING_MAX_INPUT_TOKENS: '500000',
+};
+
 describe('readSettings given every setting', () => {
   it('reads every setting from the environment it is given', () => {
-    const { models, mcp, interaction, ...server } = readSettings({
-      HOST: '127.0.0.1',
-      PORT: '3000',
-      ALLOWED_ORIGINS: 'https://app.example.com,http://localhost:5173,http://[::1]:3000',
-      API_KEYS: JSON.stringify([entry]),
-      LEDGER_FILE: '/data/ledger.db',
-      CONTENT_STORE_URL: 's3://playbook-content/production',
-      NODE_USE_ENV_PROXY: '1',
-      HTTPS_PROXY: 'http://proxy.internal:3128',
-      LOCAL_MODE: 'true',
-      LOG_FORMAT: 'pretty',
-      LOG_LEVEL: 'warn',
-      OPENAI_API_KEY: 'sk-test',
-      INTERACTION_OPEN_REQUESTS: '250',
-      REASONING_MAX_INPUT_TOKENS: '500000',
-    });
+    const { models, toolServers, interaction, ...server } = readSettings(everySetting);
 
     expect(interaction).toEqual({ mostOpenRequests: 250 });
     expect(models.openai).toMatchObject({ configured: true });
-    expect(mcp.servers).toEqual([]);
+    expect(toolServers.servers).toEqual([]);
     expect(server).toEqual({
       host: '127.0.0.1',
       port: 3000,
       allowedOrigins: ['https://app.example.com', 'http://localhost:5173', 'http://[::1]:3000'],
       apiKeys: [entry],
+      identityIssuer: 'https://identity.example',
+      signIn: { issuer: 'https://identity.example', publicUrl: 'https://runtime.example.com' },
       ledger: { store: 'sqlite', file: '/data/ledger.db' },
       content: {
         store: 'object-storage',
@@ -176,7 +184,75 @@ describe('readSettings rejects invalid settings', () => {
     expect(error).toMatchObject({ name: 'InvalidSettingsError' });
     expect(String(error)).toContain('LOCAL_MODE');
   });
+});
 
+const httpOffLoopback =
+  'InvalidSettingsError: PUBLIC_URL: Expected an https URL; an http URL is taken only for localhost, 127.0.0.1 or [::1] on a server whose HOST is a loopback address';
+
+describe('readSettings signing persons in', () => {
+  it('signs persons in through the Auto identity service once PUBLIC_URL is set, and through no one without it', () => {
+    expect([
+      readSettings({ PUBLIC_URL: 'https://runtime.example.com' }).signIn,
+      readSettings({ IDENTITY_ISSUER: 'https://identity.example' }).signIn,
+    ]).toEqual([{ issuer: 'https://clerk.on.auto', publicUrl: 'https://runtime.example.com' }, undefined]);
+  });
+
+  it('signs persons in through the identity service IDENTITY_ISSUER names, such as a development instance', () => {
+    expect(
+      readSettings({ IDENTITY_ISSUER: 'https://identity.example', PUBLIC_URL: 'https://runtime.example.com' }).signIn,
+    ).toEqual({ issuer: 'https://identity.example', publicUrl: 'https://runtime.example.com' });
+  });
+
+  it.each(['http://localhost:5555', 'http://127.0.0.1:5555', 'http://[::1]:5555'])(
+    'takes PUBLIC_URL=%s on a server that listens on a loopback address',
+    (publicUrl) => {
+      expect(readSettings({ HOST: '127.0.0.1', PUBLIC_URL: publicUrl }).signIn).toEqual({
+        issuer: 'https://clerk.on.auto',
+        publicUrl,
+      });
+    },
+  );
+
+  it.each([
+    ['0.0.0.0', 'http://localhost:5555'],
+    ['127.0.0.1', 'http://runtime.example.com'],
+    ['0.0.0.0', 'http://runtime.example.com'],
+  ])('refuses on HOST=%s the http PUBLIC_URL=%s, naming the setting', (host, publicUrl) => {
+    expect(String(errorFrom({ HOST: host, PUBLIC_URL: publicUrl }))).toBe(httpOffLoopback);
+  });
+});
+
+describe('readSettings rejects invalid credential settings', () => {
+  it.each([
+    'https://runtime.example.com/',
+    'https://runtime.example.com/runtime',
+    'https://runtime.example.com?tenant=acme',
+    'https://runtime.example.com#top',
+    'https://Runtime.example.com',
+    'ftp://runtime.example.com',
+    'runtime.example.com',
+  ])('rejects PUBLIC_URL="%s", which is not an https URL without a path, naming the setting', (publicUrl) => {
+    expect(String(errorFrom({ PUBLIC_URL: publicUrl }))).toBe(
+      'InvalidSettingsError: SchemaError(Expected an https URL with no path, query or fragment, such as https://runtime.example.com\n  at ["PUBLIC_URL"])',
+    );
+  });
+
+  it.each([
+    'http://clerk.on.auto',
+    'https://clerk.on.auto/tenant',
+    'https://clerk.on.auto?x=1',
+    'https://clerk.on.auto#y',
+  ])(
+    'rejects IDENTITY_ISSUER="%s", which is not the https URL of a service without a path, naming the setting',
+    (issuer) => {
+      expect(String(errorFrom({ IDENTITY_ISSUER: issuer }))).toBe(
+        'InvalidSettingsError: SchemaError(Expected the https URL of the identity service, with no path, query or fragment, such as https://clerk.on.auto\n  at ["IDENTITY_ISSUER"])',
+      );
+    },
+  );
+});
+
+describe('readSettings rejects invalid settings of other packages', () => {
   it('rejects invalid API keys with the named error from the identity settings', () => {
     expect(String(errorFrom({ API_KEYS: '[{"id":"ci-1"}]' }))).toContain('InvalidApiKeysError: API_KEYS[0].org');
   });

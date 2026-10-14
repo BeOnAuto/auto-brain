@@ -2,9 +2,9 @@ import { timingSafeEqual } from 'node:crypto';
 
 import { sha256Of } from '@on.auto/operations';
 
-import { keyIdOf, type ApiKey } from './api-key.ts';
+import { keyIdOf, keyPrefix, type ApiKey } from './api-key.ts';
 
-const digestOfNoKey = sha256Of('abk_');
+const digestOfNoKey = sha256Of(keyPrefix);
 
 function sameDigest(presented: string, stored: string): boolean {
   return timingSafeEqual(Buffer.from(presented, 'hex'), Buffer.from(stored, 'hex'));

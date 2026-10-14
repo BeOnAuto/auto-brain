@@ -1,5 +1,5 @@
 import type { Finished } from '@on.auto/definitions';
-import { issuesDetail } from '@on.auto/definitions/json-schema';
+import { issuesDetail } from '@on.auto/json-schema';
 import { Conflict, Unavailable } from '@on.auto/operations';
 import type { PoolOutcome, ProgramIssue, Stopped } from '@on.auto/workflow-engine/dsl';
 import { Effect, type Schema } from 'effect';

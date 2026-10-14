@@ -1,6 +1,6 @@
-import type { Timing } from '@on.auto/mcp';
 import { makeModelAccess } from '@on.auto/reasoning';
 import { scriptedLanguageModel, type ScriptedReply } from '@on.auto/reasoning/testing';
+import type { Timing } from '@on.auto/tool-servers';
 import type { HostClock } from '@on.auto/workflow-host';
 import { Effect } from 'effect';
 

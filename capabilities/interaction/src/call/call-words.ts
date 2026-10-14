@@ -1,6 +1,6 @@
 import { inWords } from '@on.auto/definitions';
-import { toolInWords } from '@on.auto/mcp';
 import { asSentence, counted } from '@on.auto/operations';
+import { toolInWords } from '@on.auto/tool-servers';
 import { Option, Schema } from 'effect';
 
 const CallRecordSchema = Schema.Struct({

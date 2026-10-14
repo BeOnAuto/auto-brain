@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 
 import { templateLimits } from '@on.auto/definitions/template';
-import { toolBounds } from '@on.auto/mcp';
+import { toolBounds } from '@on.auto/tool-servers';
 import { describe, expect, it } from 'vitest';
 
 import { mostOutputTokens } from '../definition/definition-settings.ts';
