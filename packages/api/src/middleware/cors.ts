@@ -1,3 +1,4 @@
+import { pageOriginsOf } from '@on.auto/identity';
 import type { MiddlewareHandler } from 'hono';
 
 import type { ApiEnv } from '../api-env.ts';
@@ -10,11 +11,11 @@ const exposedHeaders = 'x-request-id, x-trace-id, www-authenticate';
 
 const preflightCacheSeconds = '600';
 
-function answerPreflight(allowedOrigins: readonly string[]): MiddlewareHandler<ApiEnv> {
+function answerPreflight(pageOrigins: readonly string[]): MiddlewareHandler<ApiEnv> {
   return (c, next) => {
     const origin = c.req.header('origin') ?? '';
     const isPreflight = c.req.method === 'OPTIONS' && c.req.header('access-control-request-method') !== undefined;
-    return isPreflight && allowedOrigins.includes(origin)
+    return isPreflight && pageOrigins.includes(origin)
       ? Promise.resolve(
           c.body(null, 204, {
             'access-control-allow-origin': origin,
@@ -28,12 +29,12 @@ function answerPreflight(allowedOrigins: readonly string[]): MiddlewareHandler<A
   };
 }
 
-function allowOrigin(allowedOrigins: readonly string[]): MiddlewareHandler<ApiEnv> {
+function allowOrigin(pageOrigins: readonly string[]): MiddlewareHandler<ApiEnv> {
   return async (c, next) => {
     await next();
     const origin = c.req.header('origin') ?? '';
     c.res.headers.append('vary', 'Origin');
-    if (allowedOrigins.includes(origin)) {
+    if (pageOrigins.includes(origin)) {
       c.res.headers.set('access-control-allow-origin', origin);
       c.res.headers.set('access-control-expose-headers', exposedHeaders);
     }
@@ -41,5 +42,6 @@ function allowOrigin(allowedOrigins: readonly string[]): MiddlewareHandler<ApiEn
 }
 
 export function corsFor(allowedOrigins: readonly string[]): readonly MiddlewareHandler<ApiEnv>[] {
-  return [answerPreflight(allowedOrigins), allowOrigin(allowedOrigins)];
+  const pageOrigins = pageOriginsOf(allowedOrigins);
+  return [answerPreflight(pageOrigins), allowOrigin(pageOrigins)];
 }

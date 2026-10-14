@@ -1,13 +1,12 @@
 import { createHash } from 'node:crypto';
 
+import { studioOrigin } from '@on.auto/identity';
 import type { MiddlewareHandler } from 'hono';
 import { html, raw } from 'hono/html';
 
 import type { ApiEnv } from '../api-env.ts';
 import { iconOnDark, iconOnLight, mark } from './auto-logo.ts';
 import { fontFaces } from './fonts.ts';
-
-export const studioOrigin = 'https://studio.on.auto';
 
 const styles = `${fontFaces}
 :root {

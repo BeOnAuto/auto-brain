@@ -1,4 +1,4 @@
-import { signInScopes } from '@on.auto/identity';
+import { signInScopes, studioOrigin } from '@on.auto/identity';
 import { approvalDocument } from '@on.auto/interaction/testing';
 import { describe, expect, it } from 'vitest';
 
@@ -111,6 +111,84 @@ describe('the permissions of a signed-in person', { timeout: workflowTestTimeout
       `Bearer error="insufficient_scope", scope="org:write", resource_metadata="${rootMetadata}"`,
       `Bearer error="insufficient_scope", scope="org:read playbook:read", resource_metadata="${rootMetadata}"`,
     ]);
+  });
+});
+
+const allowedPage = 'https://app.example';
+
+const aKeyNoListHolds = `abk_acme-admin_${'A'.repeat(43)}`;
+
+function createdWith(server: string, session: string, presentedFrom: string | undefined): Promise<Response> {
+  return fetch(`${server}/v1/orgs/acme/playbooks`, {
+    method: 'POST',
+    headers: {
+      ...(presentedFrom === undefined ? {} : { origin: presentedFrom }),
+      authorization: `Bearer ${session}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ playbook: 'alpha', name: 'Alpha' }),
+  });
+}
+
+describe('a page signed in to Auto, calling a server that signs persons in', { timeout: workflowTestTimeoutMs }, () => {
+  it.each([
+    ['the studio', studioOrigin],
+    ['an origin of ALLOWED_ORIGINS', allowedPage],
+  ])('is served from %s with the session the identity service gave it, as the person', async (_case, page) => {
+    const issuer = await issuerOverHttps();
+    const server = await interactionServerOn({ ...signingIn(issuer.issuer), ALLOWED_ORIGINS: allowedPage });
+    const session = await issuer.session(page, { sub: 'user|ada', org_id: 'acme' });
+
+    const created = await createdWith(server.origin, session, page);
+
+    expect([created.status, created.headers.get('access-control-allow-origin')]).toEqual([201, page]);
+    expect(await created.json()).toMatchObject({ created_by: 'person:user|ada' });
+  });
+
+  it('refuses the session another page was given, naming its azp claim', async () => {
+    const issuer = await issuerOverHttps();
+    const server = await interactionServerOn(signingIn(issuer.issuer));
+    const session = await issuer.session('https://elsewhere.example', { sub: 'user|ada', org_id: 'acme' });
+
+    const refused = await createdWith(server.origin, session, studioOrigin);
+
+    expect(refused.status).toBe(401);
+    expect(await refused.json()).toMatchObject({
+      detail: 'The token was refused: ERR_JWT_CLAIM_VALIDATION_FAILED on its azp claim',
+    });
+  });
+
+  it.each([
+    ['from another origin the server allows', allowedPage],
+    ['without an Origin header, as an agent sends it', undefined],
+  ])('refuses the session of the studio presented %s, naming no value', async (_case, presentedFrom) => {
+    const issuer = await issuerOverHttps();
+    const server = await interactionServerOn({ ...signingIn(issuer.issuer), ALLOWED_ORIGINS: allowedPage });
+    const session = await issuer.session(studioOrigin, { sub: 'user|ada', org_id: 'acme' });
+
+    const refused = await createdWith(server.origin, session, presentedFrom);
+
+    expect([refused.status, await refused.json()]).toMatchObject([
+      401,
+      { detail: 'The token was refused: the session was not presented by the page it was issued to' },
+    ]);
+  });
+});
+
+describe('a server in local mode', { timeout: workflowTestTimeoutMs }, () => {
+  it('takes a page that sends its session, and a key where no key is set, as the local developer', async () => {
+    const issuer = await issuerOverHttps();
+    const server = await interactionServerOn({});
+    const session = await issuer.session(studioOrigin, { sub: 'user|ada', org_id: 'acme' });
+
+    const fromThePage = await createdWith(server.origin, session, studioOrigin);
+    const withAKey = await server.call('POST', '/v1/orgs/acme/playbooks', {
+      key: aKeyNoListHolds,
+      body: { playbook: 'beta', name: 'Beta' },
+    });
+
+    expect([fromThePage.status, await fromThePage.json()]).toMatchObject([201, { created_by: 'local' }]);
+    expect(withAKey).toMatchObject({ status: 201, body: { created_by: 'local' } });
   });
 });
 

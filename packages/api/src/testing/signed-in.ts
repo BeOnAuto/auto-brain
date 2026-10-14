@@ -11,14 +11,23 @@ import { acmeAdmin, acmeAlphaWriter, operationServer, type OperationServer } fro
 
 export const publicUrl = 'https://runtime.example';
 
+export const allowedOrigin = 'https://app.example';
+
+type RequestHeaders = Readonly<Record<string, string>>;
+
 export interface SignedIn {
   readonly server: OperationServer;
   readonly issuer: FakeIssuer;
-  readonly bearer: (claims?: Claims) => Promise<Readonly<Record<string, string>>>;
+  readonly bearer: (claims?: Claims) => Promise<RequestHeaders>;
+  readonly fromPage: (page: string, claims?: Claims) => Promise<RequestHeaders>;
 }
 
 async function serverOf(issuer: FakeIssuer, resource: string, requests: IssuerRequests): Promise<OperationServer> {
-  const identityService = await identityServiceOf({ issuer: issuer.issuer, publicUrl: resource }, requests);
+  const allowedOrigins = [allowedOrigin];
+  const identityService = await identityServiceOf(
+    { issuer: issuer.issuer, publicUrl: resource, allowedOrigins },
+    requests,
+  );
   return operationServer({
     authenticator: authenticatorFor({
       host: '0.0.0.0',
@@ -26,6 +35,7 @@ async function serverOf(issuer: FakeIssuer, resource: string, requests: IssuerRe
       localMode: false,
       identityService,
     }),
+    allowedOrigins,
   });
 }
 
@@ -47,6 +57,10 @@ export async function signedInServer(): Promise<SignedIn> {
         scope: signInScopes.join(' '),
         ...claims,
       })}`,
+    }),
+    fromPage: async (page, claims = {}) => ({
+      origin: page,
+      authorization: `Bearer ${await issuer.session(page, { sub: 'ada', org_id: 'acme', ...claims })}`,
     }),
   };
 }

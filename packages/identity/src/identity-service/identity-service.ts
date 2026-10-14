@@ -1,6 +1,7 @@
 import { allPermissions } from '@on.auto/operations';
 import { Result } from 'effect';
 
+import { pageOriginsOf } from '../access/page-origins.ts';
 import { signedInPersonOf, type Authentication } from '../access/principal.ts';
 import { verifiedPerson } from '../tokens/token-verification.ts';
 import { keysOfIssuer } from './issuer-keys.ts';
@@ -20,7 +21,7 @@ export interface ProtectedResource {
 
 export interface IdentityService {
   readonly resource: ProtectedResource;
-  readonly personOf: (token: string, resourcePath: string) => Promise<Authentication>;
+  readonly personOf: (token: string, resourcePath: string, requestOrigin?: string) => Promise<Authentication>;
 }
 
 export interface SignInSettings {
@@ -28,12 +29,16 @@ export interface SignInSettings {
   readonly publicUrl: string;
 }
 
+export interface IdentityServiceSettings extends SignInSettings {
+  readonly allowedOrigins: readonly string[];
+}
+
 function audiencesOf(publicUrl: string, resourcePath: string): readonly string[] {
   return [publicUrl, `${publicUrl}/`, ...(resourcePath === '' ? [] : [`${publicUrl}${resourcePath}`])];
 }
 
 export async function identityServiceOf(
-  { issuer, publicUrl }: SignInSettings,
+  { issuer, publicUrl, allowedOrigins }: IdentityServiceSettings,
   requests: IssuerRequests = issuerRequestsOverTheNetwork,
 ): Promise<IdentityService> {
   const keys = await keysOfIssuer(issuer, requests);
@@ -42,10 +47,12 @@ export async function identityServiceOf(
       message: `The identity service at ${issuer} cannot be used: ${keys.failure}`,
     });
   }
+  const pageOrigins = pageOriginsOf(allowedOrigins);
   return {
     resource: { publicUrl, authorizationServers: [issuer] },
-    personOf: async (token, resourcePath) => {
-      const expected = { issuer, audiences: audiencesOf(publicUrl, resourcePath), now: requests.now() };
+    personOf: async (token, resourcePath, requestOrigin) => {
+      const audiences = audiencesOf(publicUrl, resourcePath);
+      const expected = { issuer, audiences, pageOrigins, requestOrigin, now: requests.now() };
       const verified = await verifiedPerson(token, keys.success, expected);
       return Result.isSuccess(verified) ? signedInPersonOf(verified.success) : { because: verified.failure };
     },

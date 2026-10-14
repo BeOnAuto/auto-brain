@@ -7,7 +7,7 @@ import {
   type Permission,
 } from '@on.auto/operations';
 import { Predicate, Result, Schema } from 'effect';
-import { errors, jwtVerify, type JWTVerifyGetKey } from 'jose';
+import { decodeJwt, errors, jwtVerify, type JWTVerifyGetKey, type JWTVerifyOptions } from 'jose';
 
 import { CredentialOrgSchema } from '../access/local-org.ts';
 import type { VerifiedPerson } from '../access/principal.ts';
@@ -19,6 +19,8 @@ const orgClaim = 'org_id';
 
 const scopeClaim = 'scope';
 
+const pageClaim = 'azp';
+
 const leewaySeconds = 60;
 
 const accessTokenTypes: ReadonlySet<string> = new Set(['at+jwt', 'application/at+jwt', 'jwt', 'application/jwt']);
@@ -29,19 +31,45 @@ const isCredentialOrg = Schema.is(CredentialOrgSchema);
 
 type Payload = Readonly<Record<string, unknown>>;
 
+type Form = 'access token' | 'session';
+
 export interface Expected {
   readonly issuer: string;
   readonly audiences: readonly string[];
+  readonly pageOrigins: readonly string[];
+  readonly requestOrigin: string | undefined;
   readonly now: number;
+}
+
+const presentedByAnotherPage = 'the session was not presented by the page it was issued to';
+
+function onItsClaim(code: string, claim: string): string {
+  return `${code} on its ${claim} claim`;
 }
 
 function refusalOf(error: unknown): string {
   if (error instanceof errors.JOSEError) {
     return Predicate.hasProperty(error, 'claim') && Predicate.isString(error.claim)
-      ? `${error.code} on its ${error.claim} claim`
+      ? onItsClaim(error.code, error.claim)
       : error.code;
   }
   return error instanceof UnreadAnswer ? 'the key set of its issuer could not be read' : 'it could not be verified';
+}
+
+function formOf(token: string): Form {
+  const claims = Result.try(() => decodeJwt(token));
+  return Result.isSuccess(claims) && claims.success.aud === undefined ? 'session' : 'access token';
+}
+
+function optionsOf({ issuer, audiences, now }: Expected, form: Form): JWTVerifyOptions {
+  return {
+    issuer,
+    ...(form === 'access token' ? { audience: [...audiences] } : {}),
+    algorithms: signingAlgorithms,
+    clockTolerance: leewaySeconds,
+    requiredClaims: ['exp', 'sub', orgClaim],
+    currentDate: new Date(now),
+  };
 }
 
 function typeRefusal(typ: unknown): string | undefined {
@@ -50,19 +78,33 @@ function typeRefusal(typ: unknown): string | undefined {
     : 'its typ is not that of an access token';
 }
 
+function pageRefusal({ [pageClaim]: page }: Payload, form: Form, expected: Expected): string | undefined {
+  if (form === 'access token') {
+    return undefined;
+  }
+  if (!Predicate.isString(page) || !expected.pageOrigins.includes(page)) {
+    return onItsClaim(errors.JWTClaimValidationFailed.code, pageClaim);
+  }
+  return page === expected.requestOrigin ? undefined : presentedByAnotherPage;
+}
+
 function isSubject(sub: unknown): sub is string {
   return Predicate.isString(sub) && sub !== '' && bytesOfReference(sub) <= mostReferenceBytes;
 }
 
-function permissionsGrantedBy(scope: string): readonly Permission[] {
+function permissionsGrantedBy({ [scopeClaim]: scope = '' }: Payload, form: Form): string | readonly Permission[] {
+  if (form === 'session') {
+    return allPermissions;
+  }
+  if (!Predicate.isString(scope)) {
+    return `its ${scopeClaim} claim is not a string of scopes separated by spaces`;
+  }
   const granted = new Set(scope.split(' '));
   return allPermissions.filter((permission) => granted.has(permission));
 }
 
-function personIn(
-  { iat, sub, [orgClaim]: org, [scopeClaim]: scope = '' }: Payload,
-  now: number,
-): string | VerifiedPerson {
+function personIn(payload: Payload, form: Form, now: number): string | VerifiedPerson {
+  const { iat, sub, [orgClaim]: org } = payload;
   if (Predicate.isNumber(iat) && iat > now / 1000 + leewaySeconds) {
     return `its iat is more than ${leewaySeconds} seconds ahead`;
   }
@@ -72,21 +114,16 @@ function personIn(
   if (!isCredentialOrg(org)) {
     return `its ${orgClaim} claim is not an org id other than local`;
   }
-  return Predicate.isString(scope)
-    ? { subject: sub, org, permissions: permissionsGrantedBy(scope) }
-    : `its ${scopeClaim} claim is not a string of scopes separated by spaces`;
+  const permissions = permissionsGrantedBy(payload, form);
+  return Predicate.isString(permissions) ? permissions : { subject: sub, org, permissions };
 }
 
 async function verified(token: string, keySet: JWTVerifyGetKey, expected: Expected): Promise<string | VerifiedPerson> {
-  const { payload, protectedHeader } = await jwtVerify(token, keySet, {
-    issuer: expected.issuer,
-    audience: [...expected.audiences],
-    algorithms: signingAlgorithms,
-    clockTolerance: leewaySeconds,
-    requiredClaims: ['exp', 'sub', orgClaim],
-    currentDate: new Date(expected.now),
-  });
-  return typeRefusal(protectedHeader.typ) ?? personIn(payload, expected.now);
+  const form = formOf(token);
+  const { payload, protectedHeader } = await jwtVerify(token, keySet, optionsOf(expected, form));
+  return (
+    typeRefusal(protectedHeader.typ) ?? pageRefusal(payload, form, expected) ?? personIn(payload, form, expected.now)
+  );
 }
 
 export async function verifiedPerson(

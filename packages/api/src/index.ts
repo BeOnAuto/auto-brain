@@ -43,4 +43,3 @@ export type { Problem, OptionalProblemMembers, ProblemIssue, ProblemReason } fro
 export type { Close, RegisterRoutes, RouteHandler, Routes } from './routes.ts';
 export { makeAppRuntime } from './app-runtime.ts';
 export type { AppRuntime } from './app-runtime.ts';
-export { studioOrigin } from './landing/landing-page.ts';

@@ -17,7 +17,7 @@ function malformed(): Response {
 }
 
 function detailOf({ because }: Refusal, missing: string): string {
-  return because === undefined ? missing : `The access token was refused: ${because}`;
+  return because === undefined ? missing : `The token was refused: ${because}`;
 }
 
 export function authenticate({ authenticate: authenticated, resource }: Authenticator): MiddlewareHandler<ApiEnv> {
@@ -29,7 +29,7 @@ export function authenticate({ authenticate: authenticated, resource }: Authenti
     if (authorization !== undefined && presented === undefined) {
       return malformed();
     }
-    const authentication = await authenticated(presented, mcpEndpointPathOf(c.req.path));
+    const authentication = await authenticated(presented, mcpEndpointPathOf(c.req.path), c.req.header('origin'));
     if (isRefusal(authentication)) {
       return problemResponse(problemOf('unauthenticated', detailOf(authentication, missing)), {
         'www-authenticate': unauthenticatedChallenge(resource, presented !== undefined),

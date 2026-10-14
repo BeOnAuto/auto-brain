@@ -126,7 +126,10 @@ async function started<R>({ settings, authenticator, telemetry, options }: Start
 
 export async function startServer<R>(environment: Environment, options: ServerOptions<R>): Promise<RunningServer> {
   const settings = readSettings(environment);
-  const identityService = settings.signIn === undefined ? undefined : await identityServiceOf(settings.signIn);
+  const identityService =
+    settings.signIn === undefined
+      ? undefined
+      : await identityServiceOf({ ...settings.signIn, allowedOrigins: settings.allowedOrigins });
   const authenticator = authenticatorFor({ ...settings, identityService });
   const telemetry = startTelemetry(settings.telemetry);
   try {

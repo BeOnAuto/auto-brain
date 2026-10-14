@@ -38,7 +38,10 @@ function answeringKeys(keys: readonly Jwk[]): IssuerFetch {
 }
 
 function serviceAnswering(keys: readonly Jwk[]): Promise<IdentityService> {
-  return identityServiceOf({ issuer, publicUrl: testPublicUrl }, { fetch: answeringKeys(keys), now: Date.now });
+  return identityServiceOf(
+    { issuer, publicUrl: testPublicUrl, allowedOrigins: [] },
+    { fetch: answeringKeys(keys), now: Date.now },
+  );
 }
 
 function signedByTheFirst(header: Readonly<Record<string, unknown>>): Promise<string> {

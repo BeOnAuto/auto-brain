@@ -26,6 +26,7 @@ export interface FakeIssuer {
   readonly issuer: string;
   readonly answer: (request: Readonly<Request>) => Promise<Response>;
   readonly sign: (claims: Claims, signing?: Signing) => Promise<string>;
+  readonly session: (page: string, claims?: Claims) => Promise<string>;
   readonly rotate: () => void;
   readonly keySetReads: () => number;
 }
@@ -119,6 +120,28 @@ function tokenEndpoint(
   };
 }
 
+const sessionLifetimeSeconds = 60;
+
+function sessionsOf(issuer: string, signed: Sign): FakeIssuer['session'] {
+  let issued = 0;
+  return (page, claims = {}) => {
+    issued += 1;
+    const now = Math.floor(Date.now() / 1000);
+    return signed(
+      {
+        iss: issuer,
+        sid: `session-${issued}`,
+        azp: page,
+        iat: now,
+        nbf: now,
+        exp: now + sessionLifetimeSeconds,
+        ...claims,
+      },
+      { typ: 'JWT' },
+    );
+  };
+}
+
 function metadataOf(issuer: string, metadata: Claims): Claims {
   const { origin } = new URL(issuer);
   return {
@@ -158,6 +181,7 @@ export function fakeIssuer(issuer: string, { metadata = {}, clients = {} }: Fake
       return Promise.resolve(document === undefined ? json({}, 404) : json(document));
     },
     sign: signed,
+    session: sessionsOf(issuer, signed),
     rotate: () => {
       generation += 1;
       keys = keysOf(generation);

@@ -17,7 +17,10 @@ function write(line: string): void {
 }
 
 function startOf(fake: FakeIssuer): Promise<IdentityService> {
-  return identityServiceOf({ issuer: fake.issuer, publicUrl }, { fetch: fake.answer, now: Date.now });
+  return identityServiceOf(
+    { issuer: fake.issuer, publicUrl, allowedOrigins: [] },
+    { fetch: fake.answer, now: Date.now },
+  );
 }
 
 async function startsIn(fake: FakeIssuer, left: number, times: readonly number[]): Promise<readonly number[]> {

@@ -9,6 +9,8 @@ const clients = { 'ada-agent': { secret: 'a-long-secret', claims: { sub: 'ada', 
 
 const tokenOf = Schema.decodeUnknownSync(Schema.Struct({ access_token: Schema.String }));
 
+const timesOf = Schema.decodeUnknownSync(Schema.Struct({ iat: Schema.Number, nbf: Schema.Number, exp: Schema.Number }));
+
 function tokenRequest(credentials: string, form: Readonly<Record<string, string>>): Request {
   return new Request('https://login.example/token', {
     method: 'POST',
@@ -21,7 +23,7 @@ describe('the fake issuer', () => {
   it('mints a token for a client by its credentials, for the resource and the scopes asked, that the runtime verifies', async () => {
     const fake = fakeIssuer('https://login.example', { clients });
     const identityService = await identityServiceOf(
-      { issuer: fake.issuer, publicUrl: 'https://runtime.example' },
+      { issuer: fake.issuer, publicUrl: 'https://runtime.example', allowedOrigins: [] },
       { fetch: fake.answer, now: Date.now },
     );
 
@@ -71,5 +73,38 @@ describe('the fake issuer answering', () => {
     expect(
       (await fakeIssuer('https://login.example').answer(new Request('https://login.example/userinfo'))).status,
     ).toBe(404);
+  });
+});
+
+function segmentOf(token: string, index: number): unknown {
+  return JSON.parse(Buffer.from(String(token.split('.')[index]), 'base64url').toString('utf8'));
+}
+
+describe('the fake issuer giving a page its session', () => {
+  it('issues a session of a minute to the page, its origin as azp, with a sid, the claims given and no aud', async () => {
+    const session = await fakeIssuer('https://login.example').session('https://studio.example', {
+      sub: 'ada',
+      org_id: 'acme',
+    });
+    const claims = segmentOf(session, 1);
+
+    expect([segmentOf(session, 0), claims]).toMatchObject([
+      { alg: 'RS256', typ: 'JWT' },
+      { iss: 'https://login.example', sub: 'ada', org_id: 'acme', azp: 'https://studio.example', sid: 'session-1' },
+    ]);
+    const { iat, nbf, exp } = timesOf(claims);
+
+    expect(claims).not.toHaveProperty('aud');
+    expect([nbf - iat, exp - iat]).toEqual([0, 60]);
+  });
+
+  it('names each session it issues by a sid of its own', async () => {
+    const fake = fakeIssuer('https://login.example');
+    const sessions = [await fake.session('https://studio.example'), await fake.session('https://studio.example')];
+
+    expect(sessions.map((session) => segmentOf(session, 1))).toMatchObject([
+      { sid: 'session-1' },
+      { sid: 'session-2' },
+    ]);
   });
 });
