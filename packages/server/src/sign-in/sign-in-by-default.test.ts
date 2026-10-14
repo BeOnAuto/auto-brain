@@ -1,7 +1,7 @@
 import { once } from 'node:events';
 import { createServer } from 'node:net';
 
-import { signInScope } from '@on.auto/identity';
+import { signInScopes } from '@on.auto/identity';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { tcpPort } from '../lifecycle/http-server.ts';
@@ -41,7 +41,7 @@ describe('a server on its own loopback address without PUBLIC_URL', { timeout: w
     });
     expect(refused.status).toBe(401);
     expect(refused.headers.get('www-authenticate')).toBe(
-      `Bearer resource_metadata="${ownAddress}/.well-known/oauth-protected-resource", scope="${signInScope}"`,
+      `Bearer resource_metadata="${ownAddress}/.well-known/oauth-protected-resource", scope="${signInScopes.join(' ')}"`,
     );
   });
 
