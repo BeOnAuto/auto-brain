@@ -2,7 +2,7 @@
 
 The workflow adapter parses a `WorkflowDefinitionDocument` from YAML in the Open Workflow Specification DSL. This document type is an alias for `JsonObject`; the parser applies the existing DSL checks. It is separate from the named, versioned definition stored in the registry. The adapter runs the workflow machine of [`@on.auto/workflow-engine`](../../packages/workflow-engine), hosted in Node by [`@on.auto/workflow-host`](../../packages/workflow-host). Workflows coordinate functions and control steps; they are not another function type. A workflow is a definition of the type `workflow`.
 
-Public documentation explains [workflows and their availability](../../docs/concepts/workflows.md) and [the workflow format](../../docs/reference/workflow-format.md), published at [on.auto/docs](https://on.auto/docs/). The [workflow operations guide](../../docs/self-host/workflows.md) describes running them for an operator, and the repository-only [workflow run reference](../../docs/engineering/reference/workflow-format.md) holds the implementation details, and [decision 0001](../../docs/decisions/0001-workflow-engine-on-the-ledger.md) why workflows run on an engine on the ledger.
+Public documentation explains [workflows and their availability](../../docs/concepts/workflows.md) and [the workflow format](../../docs/reference/workflow-format.md), published at [on.auto/docs](https://on.auto/docs/). The [workflow operations guide](../../docs/self-host/workflows.md) describes running them for an operator, and the repository-only [workflow run reference](../../docs/engineering/reference/workflow-format.md) holds the implementation details.
 
 ## Entry
 
@@ -31,7 +31,7 @@ A call of a workflow, `call: run_definition`, executes the definition it names t
 
 ## Triggers
 
-A document's `schedule` names its triggers ([decision 0015](../../docs/decisions/0015-several-triggers.md)), `on`, `cron` and `every`, any one, two or three of them, each a trigger of its own, checked on its own when the definition is saved by `scheduleRejections` (`src/document/workflow-schedule.ts`), which the policy of the engine calls:
+A document's `schedule` names its triggers, `on`, `cron` and `every`, any one, two or three of them, each a trigger of its own, checked on its own when the definition is saved by `scheduleRejections` (`src/document/workflow-schedule.ts`), which the policy of the engine calls:
 
 - `on`: `one` filter, or `any` of a list of at least one and at most 64, `mostTriggerFilters`, each a literal event filter of the engine (`literalFilterOf`): its `with` names the type of the events it takes as text, and any other attribute it names, such as `source`, `subject`, `caller` or `triggerkind`, as text too, or as a whole number from 1 for `depth`, `calldepth` and `definitionversion`, the least count the context declares (`leastCount` of `@on.auto/operations`); a `data` expression that uses a variable such as `$workflow` is refused, since no run exists when the trigger is matched, and so is a filter of `any` whose type and attributes an earlier one has, in any order of keys. `all` and `until` are refused.
 - `cron`: five fields, minute, hour, day of month and month, and day of week, read in UTC by `cronRejectionOf` of `@on.auto/workflow-host`, which refuses an expression that cannot be read or names no time that comes.

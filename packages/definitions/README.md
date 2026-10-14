@@ -381,7 +381,7 @@ The event's `type` is the stored type, its `id` the record's id, the message's o
 
 ## Tool calls
 
-A capability whose runs call tools, as reasoning does through tool servers ([decision 0003](../../docs/decisions/0003-mcp-servers.md)), records each call on the run's own stream as it happens, through the `journal` of its context, which answers whether the fact was recorded:
+A capability whose runs call tools, as reasoning does through tool servers, records each call on the run's own stream as it happens, through the `journal` of its context, which answers whether the fact was recorded:
 
 - `tool_call_started`, before the call is sent: its `number` within the run, which the decider gives it as it appends the fact and the journal answers, the `call_id` the model gave it, the `server` and `tool`, the size of its arguments as the playbook keeps them, scrubbed of the server's secrets (`arguments_bytes`), and their SHA-256 digest, the key they are kept under in the ledger's recorded content (`arguments_sha256`), unless the server's `record_content` is `false`, when the fact carries the size alone, and `read_only` where the server marks the tool so;
 - `tool_call_answered`, when the tool answered: the `number`, `is_error` when its answer is an error of its own, the size of the protocol answer as kept, scrubbed (`result_bytes`), and its digest where it was kept (`result_sha256`), `shown_bytes` when the model read less than the whole, `duration_ms`, the `jsonrpc_id` sent and `server_request_id` when the server's entry names where it carries one;

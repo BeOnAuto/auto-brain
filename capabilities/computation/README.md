@@ -1,6 +1,6 @@
 # @on.auto/computation
 
-The implementation of computation functions. A computation function is a program in TypeScript with schemas for its input and output; a run calls the program's function with its input and answers with the value it returns, the same for the same input on every host of the same image, within bounds on its work, its memory, its stack, the values it answers and its time. [Decision 0005](../../docs/decisions/0005-computation-functions.md) says why it exists and how it is bounded.
+The implementation of computation functions. A computation function is a program in TypeScript with schemas for its input and output; a run calls the program's function with its input and answers with the value it returns, the same for the same input on every host of the same image, within bounds on its work, its memory, its stack, the values it answers and its time.
 
 User documentation is [Computation function format](../../docs/reference/computation-format.md), published at [on.auto/docs](https://on.auto/docs/): the document, the types, the check at save, the sandbox, the number rules, the endings and the bounds. Update it alongside behaviour changes.
 

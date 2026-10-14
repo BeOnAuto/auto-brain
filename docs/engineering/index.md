@@ -18,4 +18,4 @@ The public self-hosting guides cover [running the image](../self-host/docker.md)
 - [Complete reasoning function format](reference/reasoning-format.md)
 - [Workflow format and runs](reference/workflow-format.md)
 
-Keep these notes accurate when changing the runtime. Publish the relevant user-facing behavior separately in the public guides. Package READMEs retain code entry points and test instructions; architecture decisions live in [decisions](../decisions/README.md).
+Keep these notes accurate when changing the runtime. Publish the relevant user-facing behavior separately in the public guides. Package READMEs retain code entry points and test instructions.

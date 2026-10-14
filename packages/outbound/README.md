@@ -1,6 +1,6 @@
 # @on.auto/outbound
 
-How the server calls systems on the internet. It tells a certificate the server does not trust from any other failure of a call: the reasoning function adapter and the tool-servers package take the classification from here, so a model provider and a tool server whose certificate the server does not trust are named alike, as [decision 0010](../../docs/decisions/0010-interaction-functions.md) set out; every caller keeps its own client and bounds. And it makes the settings of a client of the AWS SDK, which the Bedrock provider of the reasoning capability and the object store of [`@on.auto/object-storage`](../object-storage/README.md) share, and signs the tokens the server signs in to the ledger's database with when `DATABASE_CREDENTIALS=aws-iam`.
+How the server calls systems on the internet. It tells a certificate the server does not trust from any other failure of a call: the reasoning function adapter and the tool-servers package take the classification from here, so a model provider and a tool server whose certificate the server does not trust are named alike; every caller keeps its own client and bounds. And it makes the settings of a client of the AWS SDK, which the Bedrock provider of the reasoning capability and the object store of [`@on.auto/object-storage`](../object-storage/README.md) share, and signs the tokens the server signs in to the ledger's database with when `DATABASE_CREDENTIALS=aws-iam`.
 
 ## Certificates
 

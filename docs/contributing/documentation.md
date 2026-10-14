@@ -27,7 +27,7 @@ Keep local setup and agent connection instructions, shared concepts, available f
 
 Implementation notes and contributor APIs remain in package READMEs and root contributor files. Link to the user guide instead of maintaining a second copy of it.
 
-Development setup for a checkout and transitional implementation guides belong in `docs/engineering/`. Architecture decision records belong in `docs/decisions/`. Both directories stay beside the code and are excluded from the public preview, search, navigation and website import. Do not add them to `nav.json` or link to them through a public documentation route. GitHub links can direct contributors to these repository-only notes.
+Development setup for a checkout and transitional implementation guides belong in `docs/engineering/`, which stays beside the code and is excluded from the public preview, search, navigation and website import. Do not add it to `nav.json` or link to it through a public documentation route. GitHub links can direct contributors to these repository-only notes.
 
 Keep repository-only guides accurate for the checkout. Public workflow pages describe the behavior the runtime offers today. Update the relevant public guide when a change becomes available to users.
 
@@ -71,7 +71,7 @@ Describe the checkout's implemented behavior precisely. Mark planned capabilitie
 
 ## Publication contract
 
-The Auto website imports public Markdown, `assets/` and `nav.json` from a pinned runtime commit. Its own documentation index can replace this preview's `index.md`. The import excludes `engineering/`, `decisions/`, `.vitepress`, generated output and tooling.
+The Auto website imports public Markdown, `assets/` and `nav.json` from a pinned runtime commit. Its own documentation index can replace this preview's `index.md`. The import excludes `engineering/`, `.vitepress`, generated output and tooling.
 
 The website combines both sources in one build, with a shared sidebar and search. Imported pages link back to the corresponding public file through Edit this page. They are generated build inputs in the website; contributors edit the original here.
 
