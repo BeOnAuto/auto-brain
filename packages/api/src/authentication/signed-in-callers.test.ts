@@ -114,7 +114,7 @@ describe('a token the runtime refuses, with sign-in on', () => {
 
     expect(answer).toMatchObject({
       status: 401,
-      body: { reason: 'unauthenticated', detail: 'The access token was refused: ERR_JWS_INVALID' },
+      body: { reason: 'unauthenticated', detail: 'The token was refused: ERR_JWS_INVALID' },
     });
     expect(answer.headers.get('www-authenticate')).toBe(
       `Bearer error="invalid_token", resource_metadata="${rootMetadata}", scope="${signInScopes}"`,
@@ -134,7 +134,7 @@ describe('a token the runtime refuses, with sign-in on', () => {
         headers: await bearer(claims),
       });
 
-      expect(answer).toMatchObject({ status: 401, body: { detail: `The access token was refused: ${words}` } });
+      expect(answer).toMatchObject({ status: 401, body: { detail: `The token was refused: ${words}` } });
     },
   );
 });
