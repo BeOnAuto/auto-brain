@@ -2,14 +2,14 @@
 
 These repository-only guides describe the development checkout for contributors. They are excluded from the public documentation build and search. Start with the [local quick start](../get-started/local.md) to try Auto. To run and operate the runtime, follow the public [self-hosting guides](../self-host.md).
 
-Workflows run in the server itself, on the workflow engine of `@on.auto/workflow-engine` hosted in Node by `@on.auto/workflow-host`, and are kept in the ledger's database. The adapters for Auto's cloud hosting are not built yet. These guides describe the setup and the limitations of the current cod## Run the checkout
+Workflows run in the server itself, on the workflow engine of `@on.auto/workflow-engine` hosted in Node by `@on.auto/workflow-host`, and are kept in the ledger's database. The adapters for Auto's cloud hosting are not built yet. These guides describe the setup and the limitations of the current code.
+
+## Run the checkout
 
 - [Local quickstart](get-started/self-hosted.md)
 - [Install from source](self-host/installation.md)
 
 The public self-hosting guides cover [running the image](../self-host/docker.md), [PostgreSQL](../self-host/postgresql.md), [object storage](../self-host/object-storage.md), [production](../self-host/production.md), [configuration](../self-host/configuration.md), [models and gateways](../self-host/models.md), [authentication and security](../self-host/security.md), [workflow operations](../self-host/workflows.md) and [troubleshooting](../self-host/troubleshooting.md).
-
-d)
 
 ## Implementation reference
 
