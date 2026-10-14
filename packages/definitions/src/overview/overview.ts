@@ -24,6 +24,11 @@ export interface BulletList {
   readonly items: readonly Phrases[];
 }
 
+export interface NumberedList {
+  readonly kind: 'numbered';
+  readonly items: readonly Phrases[];
+}
+
 export interface FieldRow {
   readonly name: string;
   readonly required: boolean;
@@ -35,19 +40,24 @@ export interface FieldTable {
   readonly rows: readonly FieldRow[];
 }
 
+export type NodeShape = 'step' | 'decision' | 'terminal';
+
 export interface DiagramNode {
   readonly label: string;
+  readonly shape?: NodeShape;
 }
 
 export interface DiagramEdge {
   readonly from: number;
   readonly to: number;
   readonly label?: string;
+  readonly dashed?: boolean;
 }
 
 export interface DiagramGroup {
   readonly label: string;
   readonly nodes: readonly number[];
+  readonly within?: number;
 }
 
 export interface Diagram {
@@ -57,7 +67,7 @@ export interface Diagram {
   readonly groups?: readonly DiagramGroup[];
 }
 
-export type OverviewBlock = Paragraph | BulletList | FieldTable | Diagram;
+export type OverviewBlock = Paragraph | BulletList | NumberedList | FieldTable | Diagram;
 
 export interface OverviewSection {
   readonly heading: string;
@@ -70,6 +80,10 @@ export interface Overview {
   readonly sections: readonly OverviewSection[];
 }
 
+const conjunction = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' });
+
+const disjunction = new Intl.ListFormat('en', { style: 'long', type: 'disjunction' });
+
 export function named(name: string): Name {
   return { name };
 }
@@ -80,6 +94,19 @@ export function paragraph(...phrases: Phrases): Paragraph {
 
 export function bulletList(items: readonly Phrases[]): BulletList {
   return { kind: 'list', items };
+}
+
+export function numberedList(items: readonly Phrases[]): NumberedList {
+  return { kind: 'numbered', items };
+}
+
+export function listedPhrases(items: readonly Phrases[], joiner: 'and' | 'or'): Phrases {
+  const format = joiner === 'and' ? conjunction : disjunction;
+  return format
+    .formatToParts(items.map((_, index) => String(index)))
+    .flatMap(({ type, value }: { readonly type: string; readonly value: string }) =>
+      type === 'element' ? items.filter((_, index) => String(index) === value).flat() : [value],
+    );
 }
 
 export function sectionOf(heading: string, ...blocks: readonly OverviewBlock[]): OverviewSection {
