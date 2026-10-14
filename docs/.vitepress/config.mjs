@@ -7,7 +7,7 @@ export default defineConfig({
   description: 'Contributor-owned documentation for Auto Runtime.',
   base: '/docs/',
   cleanUrls: true,
-  srcExclude: ['decisions/**', 'engineering/**'],
+  srcExclude: ['engineering/**'],
   lastUpdated: true,
   head: [['meta', { name: 'robots', content: 'noindex' }]],
   themeConfig: {

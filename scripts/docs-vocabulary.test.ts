@@ -8,8 +8,6 @@ import { foundIn, oldWords } from '@on.auto/api/testing';
 
 const root = resolve(import.meta.dirname, '..');
 
-const keptFolders: readonly string[] = ['docs/decisions/'];
-
 const frozenFormats: readonly string[] = [
   ...['1', '2', '3', '4', '5', '6', '7'].map((format) => `packages/workflow-engine/corpus/format-${format}.json`),
   ...['one', 'two', 'three', 'four', 'five', 'six', 'six-records', 'seven', 'seven-records'].map(
@@ -136,11 +134,7 @@ const listed = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '-
   .filter((path) => path !== '');
 
 const searched = listed.filter(
-  (path) =>
-    !keptFolders.some((folder) => path.startsWith(folder)) &&
-    !keptFiles.includes(path) &&
-    existsSync(join(root, path)) &&
-    !lstatSync(join(root, path)).isSymbolicLink(),
+  (path) => !keptFiles.includes(path) && existsSync(join(root, path)) && !lstatSync(join(root, path)).isSymbolicLink(),
 );
 
 function placeOf(allowance: Allowance, path: string): string {

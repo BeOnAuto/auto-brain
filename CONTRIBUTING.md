@@ -32,7 +32,7 @@ pnpm docs:dev
 pnpm docs:check
 ```
 
-The preview opens under `/docs/`. Read [Documentation contributions](docs/contributing/documentation.md) for navigation, links, status labels and the publication contract. Package READMEs keep code entry points and test instructions. Detailed setup and implementation guides live in [docs/engineering/](docs/engineering/index.md), and architecture decisions in `docs/decisions/`; both are excluded from the public build and website import.
+The preview opens under `/docs/`. Read [Documentation contributions](docs/contributing/documentation.md) for navigation, links, status labels and the publication contract. Package READMEs keep code entry points and test instructions. Detailed setup and implementation guides live in [docs/engineering/](docs/engineering/index.md), which is excluded from the public build and website import.
 
 ## How the code is written
 

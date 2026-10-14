@@ -19,7 +19,7 @@ const pages = readdirSync(docs, { recursive: true, withFileTypes: true })
       entry.isFile() && entry.name.endsWith('.md') && !entry.parentPath.includes('.vitepress'),
   )
   .map((entry: Readonly<Dirent>) => join(entry.parentPath, entry.name));
-const repositoryOnlyDirectories = ['decisions', 'engineering'];
+const repositoryOnlyDirectories = ['engineering'];
 const publicPages = pages.filter(
   (page) => !repositoryOnlyDirectories.some((directory) => relative(docs, page).startsWith(`${directory}/`)),
 );
@@ -102,8 +102,7 @@ await test('guide Markdown does not depend on private source files', () => {
   }
 });
 
-await test('engineering guides and decisions remain in the repository without entering the public preview', () => {
-  assert.ok(pages.includes(join(docs, 'decisions/README.md')));
+await test('engineering guides remain in the repository without entering the public preview', () => {
   assert.ok(pages.includes(join(docs, 'engineering/index.md')));
   assert.ok(pages.includes(join(docs, 'engineering/self-host/installation.md')));
   assert.ok(pages.includes(join(docs, 'engineering/reference/workflow-format.md')));
