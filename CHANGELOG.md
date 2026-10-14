@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.9.1](https://github.com/BeOnAuto/runtime/compare/v0.9.0...v0.9.1) (2026-10-13)
+
+
+### Bug Fixes
+
+* **server:** the image states the two scanner findings that do not apply to it ([#179](https://github.com/BeOnAuto/runtime/issues/179)) ([01dc4da](https://github.com/BeOnAuto/runtime/commit/01dc4da9c9f5bb5bd14df643186f798cf7774d9e))
+
+## [0.9.0](https://github.com/BeOnAuto/runtime/compare/v0.8.0...v0.9.0) (2026-10-13)
+
+
+### Features
+
+* **api:** the runtime serves its OpenAPI document and its guides over HTTP ([#175](https://github.com/BeOnAuto/runtime/issues/175)) ([739f231](https://github.com/BeOnAuto/runtime/commit/739f231b48a8b243a08eb31d092b5db193370829))
+* **prediction:** builds answered by a trainer, scored, shadowed, activated and asked ([#161](https://github.com/BeOnAuto/runtime/issues/161)) ([b4e085a](https://github.com/BeOnAuto/runtime/commit/b4e085a51130eb51317a483c3f1a1dfe2aef7bf5))
+
+
+### Bug Fixes
+
+* **ledger:** a read looks up other databases' writes before it takes its snapshot ([#162](https://github.com/BeOnAuto/runtime/issues/162)) ([6f7b527](https://github.com/BeOnAuto/runtime/commit/6f7b52761ac69e647cc05d6c9f5c2ae0f65aae71))
+* **server:** build the image on node:26.11.1-slim and leave npm out of it ([#178](https://github.com/BeOnAuto/runtime/issues/178)) ([f9fbcab](https://github.com/BeOnAuto/runtime/commit/f9fbcabdb46e2312deb4d6b3213fc02eff3901b8))
+
 ## [0.8.0](https://github.com/BeOnAuto/runtime/compare/v0.7.0...v0.8.0) (2026-10-13)
 
 

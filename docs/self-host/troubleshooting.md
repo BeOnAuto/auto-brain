@@ -18,7 +18,7 @@ Add the exact page origin to `ALLOWED_ORIGINS`. Local mode also checks the reque
 
 ## Data disappeared after replacing a container
 
-The ledger lives on `/data`. Reuse the named persistent volume across container replacements. An anonymous volume is not a persistence plan. See [Run in a container](container.md).
+The ledger lives on `/data`. Reuse the named persistent volume across container replacements. An anonymous volume is not a persistence plan. See [Back up and restore](docker.md#back-up-and-restore).
 
 ## A run stays started
 

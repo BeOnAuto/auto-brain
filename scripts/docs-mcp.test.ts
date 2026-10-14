@@ -46,7 +46,7 @@ await test('reasoning guides retain tool-use limits and side-effect-aware retrie
 });
 
 await test('the configuration of tool servers documents recording and credential boundaries', () => {
-  const configuration = readFileSync(join(docs, 'engineering/self-host/configuration.md'), 'utf8');
+  const configuration = readFileSync(join(docs, 'self-host/configuration.md'), 'utf8');
   const http = readFileSync(join(docs, 'reference/http.md'), 'utf8');
   assert.ok(
     configuration.includes('Only `headers`, `query_params`, `security`, `env` and `auth` may hold a reference'),

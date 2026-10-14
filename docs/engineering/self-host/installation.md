@@ -21,4 +21,4 @@ Saving a `.ts` file other than a test under the `src` of any package of the repo
 
 `packages/server/dev.env` sets `LOG_FORMAT=pretty`, so the logs read as lines of text; lines from `pnpm dev` itself are marked `[dev]`.
 
-For a packaged deployment, see [Run in a container](container.md).
+For a packaged deployment, see [Run with Docker](../../self-host/docker.md).
