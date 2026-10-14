@@ -1,8 +1,8 @@
 import type { CapabilityAnswer, RunContext, PreparedDefinition, Capability } from '@on.auto/definitions';
 import { noLongestRuns, recordingJournal, type RecordingJournal } from '@on.auto/definitions/testing';
-import type { ToolAccess } from '@on.auto/mcp';
-import { noToolServers } from '@on.auto/mcp/testing';
 import { allPermissions, type Conflict, type InvalidInput, type Unavailable } from '@on.auto/operations';
+import type { ToolAccess } from '@on.auto/tool-servers';
+import { noToolServers } from '@on.auto/tool-servers/testing';
 import { DateTime, Effect, type Exit, type Schema } from 'effect';
 import { TestClock } from 'effect/testing';
 

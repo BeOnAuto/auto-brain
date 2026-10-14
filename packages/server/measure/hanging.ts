@@ -1,5 +1,5 @@
-import { deliveryIdKey } from '@on.auto/mcp/policy';
-import { serveFakeMcp, type FakeMcpServer } from '@on.auto/mcp/testing';
+import { deliveryIdKey } from '@on.auto/tool-servers/policy';
+import { serveFakeMcp, type FakeMcpServer } from '@on.auto/tool-servers/testing';
 import { Schema } from 'effect';
 
 import type { MeasuredLedger } from './measured-ledgers.ts';
@@ -51,7 +51,7 @@ function sampledBursts(tool: FakeMcpServer): Bursts {
 function hangingServerOf(url: string): Readonly<Record<string, string>> {
   return {
     HANGING_KEY: toolKey,
-    MCP_SERVERS: JSON.stringify({
+    TOOL_SERVERS: JSON.stringify({
       hanging: { url, headers: { Authorization: 'Bearer ${HANGING_KEY}' }, org: 'local' },
     }),
   };

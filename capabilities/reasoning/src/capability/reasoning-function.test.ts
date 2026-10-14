@@ -1,5 +1,5 @@
-import { noToolServers } from '@on.auto/mcp/testing';
 import { InvalidInput } from '@on.auto/operations';
+import { noToolServers } from '@on.auto/tool-servers/testing';
 import { Effect, Exit } from 'effect';
 import { TestClock } from 'effect/testing';
 import { describe, expect, it } from 'vitest';

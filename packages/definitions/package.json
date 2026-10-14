@@ -8,7 +8,6 @@
     ".": "./src/index.ts",
     "./check": "./src/check.ts",
     "./document": "./src/document.ts",
-    "./json-schema": "./src/json-schema.ts",
     "./template": "./src/template.ts",
     "./testing": "./src/testing/index.ts"
   },
@@ -21,8 +20,9 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
-    "@on.auto/mcp": "workspace:*",
+    "@on.auto/json-schema": "workspace:*",
     "@on.auto/operations": "workspace:*",
+    "@on.auto/tool-servers": "workspace:*",
     "@on.auto/workflow-engine": "workspace:*",
     "effect": "catalog:",
     "liquidjs": "10.29.0",

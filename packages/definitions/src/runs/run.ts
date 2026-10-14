@@ -19,13 +19,13 @@ export const RunRejectionSchema = Schema.Union([
     kind: Schema.optionalKey(
       UnavailableKindSchema.annotate({
         description:
-          'What the run could not use, when known: model_not_offered for a model this server does not offer, tool_not_offered for a tool it does not offer, mcp_server_failed for a tool server that failed before any tool was called, tools_unfinished for a run that called tools and could not finish, every one of which its server marks read-only, so running it again is safe, and rebuilding for a recall function whose view is still being built, which trying again later may resolve',
+          'What the run could not use, when known: model_not_offered for a model this server does not offer, tool_not_offered for a tool it does not offer, tool_server_failed for a tool server that failed before any tool was called, tools_unfinished for a run that called tools and could not finish, every one of which its server marks read-only, so running it again is safe, and rebuilding for a recall function whose view is still being built, which trying again later may resolve',
       }),
     ),
     because: Schema.optionalKey(
       RejectionBecauseSchema.annotate({
         description:
-          'Why. With model_not_offered: provider_not_configured when its provider is not set up on this server while others are, model_not_allowed when it is outside the models the operator allows. With tool_not_offered: mcp_server_not_configured, tool_not_allowed or tool_not_listed. With mcp_server_failed: failing, rate_limited, unreachable or key_refused. With tools_unfinished: server_failed, tool_error, model_unavailable, run_bound or no_answer',
+          'Why. With model_not_offered: provider_not_configured when its provider is not set up on this server while others are, model_not_allowed when it is outside the models the operator allows. With tool_not_offered: tool_server_not_configured, tool_not_allowed or tool_not_listed. With tool_server_failed: failing, rate_limited, unreachable or key_refused. With tools_unfinished: server_failed, tool_error, model_unavailable, run_bound or no_answer',
       }),
     ),
   }),

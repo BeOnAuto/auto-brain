@@ -1,10 +1,5 @@
-import {
-  issueAt,
-  issueText,
-  type DocumentIssue,
-  type SchemaIssue,
-  type SourceLines,
-} from '@on.auto/definitions/document';
+import { issueAt, issueText, type DocumentIssue, type SourceLines } from '@on.auto/definitions/document';
+import { type SchemaIssue } from '@on.auto/json-schema';
 import { Result, type Schema } from 'effect';
 
 import type { OutputRequest } from '../model/model-request.ts';

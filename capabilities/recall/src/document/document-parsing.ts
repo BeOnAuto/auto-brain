@@ -1,15 +1,14 @@
 import {
-  compileJsonSchema,
   frontMatterIn,
   issueAt,
   reportedIssues,
   splitDocument,
-  type CompiledSchema,
   type DocumentIssue,
   type DocumentParts,
   type ReadFrontMatter,
   type SourceLines,
 } from '@on.auto/definitions/document';
+import { compileJsonSchema, type CompiledSchema } from '@on.auto/json-schema';
 import { oneLanguage } from '@on.auto/workflow-engine';
 import { enclosedBody, jsonBytesOf, mostValueDepth } from '@on.auto/workflow-engine/dsl';
 import type { ViewFilter } from '@on.auto/workflow-host';

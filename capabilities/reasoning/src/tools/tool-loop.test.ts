@@ -49,6 +49,17 @@ const anthropic: Provider = {
   native: ['"tool_use"', '"tool_result"'],
 };
 
+const bedrock: Provider = {
+  name: 'bedrock',
+  model: 'bedrock/amazon.nova-pro-v1:0',
+  environment: { AWS_REGION: 'eu-west-1' },
+  options: { credentials: { aws } },
+  toolCall: converseToolCall,
+  text: converseMessage,
+  json: converseToolAnswer,
+  native: ['"toolUse"', '"toolResult"'],
+};
+
 const providers: readonly Provider[] = [
   anthropic,
   {
@@ -82,16 +93,7 @@ const providers: readonly Provider[] = [
     json: asText(geminiContent),
     native: ['"functionCall"', '"functionResponse"'],
   },
-  {
-    name: 'bedrock',
-    model: 'bedrock/amazon.nova-pro-v1:0',
-    environment: { AWS_REGION: 'eu-west-1' },
-    options: { credentials: { aws } },
-    toolCall: converseToolCall,
-    text: converseMessage,
-    json: converseToolAnswer,
-    native: ['"toolUse"', '"toolResult"'],
-  },
+  bedrock,
 ];
 
 const aCallId: unknown = expect.any(String);
@@ -221,5 +223,26 @@ describe('a run whose next turn its budget of input tokens would not pay for', (
     expect(last).toContain(toolsWithdrawn);
     expect(last).not.toContain(`"name":"${searchTool}"`);
     expect(Number(result.usage?.input.total)).toBeLessThanOrEqual(100);
+  });
+});
+
+function toolNamesOf(body: string): readonly string[] {
+  const names: string[] = [];
+  for (const { groups } of body.matchAll(/"toolSpec":\{"name":"(?<name>[^"]+)"/gu)) {
+    names.push(String(groups?.['name']));
+  }
+  return names;
+}
+
+describe('the names of the tools a run offers its model', () => {
+  it('keep each tool of a tool server, named server__tool, apart from the json tool a provider makes of the output, which holds no __', async () => {
+    const { tools } = scriptedTools();
+
+    const { first } = await twoSteps(bedrock, bedrock.json({ verdict: 'approve' }), (model) =>
+      jsonRequest(model, { tools }),
+    );
+
+    expect(toolNamesOf(first)).toEqual([searchTool, 'json']);
+    expect(toolNamesOf(first).filter((name) => name.includes('__'))).toEqual([searchTool]);
   });
 });

@@ -11,4 +11,13 @@ describe('the old words of the vocabulary', () => {
     ]);
     expect(oldWordsIn('A playbook runs its functions and workflows.')).toEqual([]);
   });
+
+  it('name a tool server by its transport, in the kinds a refusal carries and the name a model sees', () => {
+    expect(oldWordsIn('mcp_server_failed, because mcp_server_not_configured, calling mcp__graph__search')).toEqual([
+      'mcp_server_failed',
+      'mcp_server_not_configured',
+      'mcp__',
+    ]);
+    expect(oldWordsIn('tool_server_failed, because tool_server_not_configured, calling graph__search')).toEqual([]);
+  });
 });

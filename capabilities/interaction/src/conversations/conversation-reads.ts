@@ -1,5 +1,5 @@
-import { conversationCallIdKey } from '@on.auto/mcp/policy';
 import { randomUUIDv7 } from '@on.auto/operations';
+import { conversationCallIdKey } from '@on.auto/tool-servers/policy';
 import { Effect, Result } from 'effect';
 
 import { handledReply, type Reading } from '../replies/reply-handling.ts';

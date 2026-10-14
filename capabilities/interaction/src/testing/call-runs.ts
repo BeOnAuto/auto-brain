@@ -1,8 +1,8 @@
 import type { CapabilityAnswer, CapabilityRejection, RunContext } from '@on.auto/definitions';
 import { noLongestRuns, recordingJournal, type RecordingJournal } from '@on.auto/definitions/testing';
-import type { Timing } from '@on.auto/mcp';
-import { reportingAccess, serveFakeMcp, type FakeMcpOptions, type FakeMcpServer } from '@on.auto/mcp/testing';
 import { allPermissions } from '@on.auto/operations';
+import type { Timing } from '@on.auto/tool-servers';
+import { reportingAccess, serveFakeMcp, type FakeMcpOptions, type FakeMcpServer } from '@on.auto/tool-servers/testing';
 import { Effect, Function, type Exit, type Schema } from 'effect';
 import { onTestFinished } from 'vitest';
 

@@ -1,5 +1,6 @@
+import { dirname } from 'node:path';
+
 import type { Environment, FileUse } from '@on.auto/config';
-import { McpSettingsInvalid, readMcpSettings, type McpSettings } from '@on.auto/mcp';
 import {
   defaultMostInputTokens,
   ModelSettingsInvalid,
@@ -8,6 +9,7 @@ import {
   type ModelSettings,
   type SettingProblem,
 } from '@on.auto/reasoning';
+import { ToolServerSettingsInvalid, readToolServerSettings, type ToolServerSettings } from '@on.auto/tool-servers';
 import { Effect } from 'effect';
 
 import { countsIn } from './counted-settings.ts';
@@ -18,7 +20,7 @@ interface ReasoningBounds {
 
 export interface ReasoningSettings {
   readonly models: ModelSettings;
-  readonly mcp: McpSettings;
+  readonly toolServers: ToolServerSettings;
   readonly reasoning: ReasoningBounds;
 }
 
@@ -47,10 +49,10 @@ function modelsPlaced(invalid: Problems, file: FileUse | undefined): ModelSettin
   return new ModelSettingsInvalid({ message: `The model settings are invalid. ${listedIn(invalid, file)}`, problems });
 }
 
-function serversPlaced(invalid: Problems, file: FileUse | undefined): McpSettingsInvalid {
+function serversPlaced(invalid: Problems, file: FileUse | undefined): ToolServerSettingsInvalid {
   const { problems } = invalid;
-  return new McpSettingsInvalid({
-    message: `The MCP server settings are invalid. ${listedIn(invalid, file)}`,
+  return new ToolServerSettingsInvalid({
+    message: `The tool server settings are invalid. ${listedIn(invalid, file)}`,
     problems,
   });
 }
@@ -64,11 +66,12 @@ export function readReasoningSettings(environment: Environment, file: FileUse | 
   const models = Effect.runSync(
     readModelSettings(environment).pipe(Effect.mapError((invalid: Problems) => modelsPlaced(invalid, file))),
   );
-  const mcp = Effect.runSync(
-    readMcpSettings(environment, { modelProviders: modelProvidersOf(models) }).pipe(
-      Effect.mapError((invalid: Problems) => serversPlaced(invalid, file)),
-    ),
+  const toolServers = Effect.runSync(
+    readToolServerSettings(environment, {
+      modelProviders: modelProvidersOf(models),
+      ...(file === undefined ? {} : { documentsDirectory: dirname(file.path) }),
+    }).pipe(Effect.mapError((invalid: Problems) => serversPlaced(invalid, file))),
   );
   const reasoning = Effect.runSync(countsIn(environment, { settings: 'reasoning function settings', bounds }));
-  return { models, mcp, reasoning };
+  return { models, toolServers, reasoning };
 }

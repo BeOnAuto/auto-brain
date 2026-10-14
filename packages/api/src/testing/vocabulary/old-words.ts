@@ -29,6 +29,9 @@ export const oldWords: readonly string[] = [
   '(?i:auto[-_ ]?brain)',
   '(?i:beonauto/auto-runtime)',
   String.raw`(?i:com\.beonauto/)`,
+  'mcp_server_failed',
+  'mcp_server_not_configured',
+  'mcp__',
 ];
 
 interface Found {

@@ -1,4 +1,4 @@
-import { decodedJsonSettingWith, strictly } from '@on.auto/config';
+import { decodedJsonSettingWith, strictly, withoutTrailingSlashes } from '@on.auto/config';
 import { Effect, Redacted, Result, Schema } from 'effect';
 
 import { allowedOptionProblems } from './allowed-provider-options.ts';
@@ -168,7 +168,7 @@ const gatewayFrom = Effect.fnUntraced(function* (environment: Environment, entry
     ],
     gateway: {
       name: entry.name,
-      base_url: entry.base_url,
+      base_url: withoutTrailingSlashes(entry.base_url),
       api_key: api_key ?? null,
       headers: secretsOf(entry.headers),
       query_params: secretsOf(entry.query_params),

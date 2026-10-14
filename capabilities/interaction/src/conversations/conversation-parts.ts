@@ -1,6 +1,6 @@
 import type { RecordWork } from '@on.auto/definitions';
-import type { ToolAccess } from '@on.auto/mcp';
 import type { PlaybookAddress, ProjectionAdvancer, ProjectionReader } from '@on.auto/operations';
+import type { ToolAccess } from '@on.auto/tool-servers';
 import type { Effect } from 'effect';
 
 import type { RequestLedger } from '../schedule/request-ledger.ts';

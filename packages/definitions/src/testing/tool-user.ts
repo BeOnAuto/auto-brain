@@ -1,5 +1,5 @@
-import type { CallEnded, CallStarted } from '@on.auto/mcp';
 import { Conflict, Unavailable } from '@on.auto/operations';
+import type { CallEnded, CallStarted } from '@on.auto/tool-servers';
 import { Effect, Schema } from 'effect';
 
 import {

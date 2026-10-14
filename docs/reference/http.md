@@ -314,7 +314,7 @@ These routes are relative to `/v1/orgs/{org}`. `list_tool_servers` at the org ne
 | `list_tool_servers` | `GET /playbooks/{playbook}/tool-servers`                             | Playbook id in path; optional `server`            |
 | `test_tool_call`    | `POST /playbooks/{playbook}/tool-servers/{server}/tools/{tool}/test` | Server and tool in the path; optional `arguments` |
 
-`list_tool_servers` lists the MCP servers the operator of a self-hosted runtime set up for the playbook, with the tools each offers, so a [reasoning function](reasoning-format.md#tools) can name them in `tools` as `server/tool` or `server/*`. It asks each server for its tools when you call it, as a run does, within the same time to connect and to list. `server` keeps only the server of that name, and asks no other; a name that no server of the playbook has returns `invalid_input` at `/server`, so call it without `server` to see the names.
+`list_tool_servers` lists the tool servers the operator of a self-hosted runtime set up for the playbook, with the tools each offers, so a [reasoning function](reasoning-format.md#tools) can name them in `tools` as `server/tool` or `server/*`. It asks each server for its tools when you call it, as a run does, within the same time to connect and to list. `server` keeps only the server of that name, and asks no other; a name that no server of the playbook has returns `invalid_input` at `/server`, so call it without `server` to see the names.
 
 ```http
 GET /v1/orgs/acme/playbooks/sales/tool-servers
@@ -326,7 +326,7 @@ Authorization: Bearer <key>
   "tool_servers": [
     {
       "name": "graph",
-      "type": "http",
+      "type": "mcp",
       "tools": [
         {
           "name": "search",
@@ -350,7 +350,7 @@ Authorization: Bearer <key>
     {
       "name": "notes",
       "type": "stdio",
-      "unavailable": "The MCP server notes could not be used: The MCP server could not be reached",
+      "unavailable": "The tool server notes could not be used: The tool server could not be reached",
       "because": "unreachable"
     }
   ]
@@ -360,7 +360,7 @@ Authorization: Bearer <key>
 | Field         | Contents                                                                                                                                                                                                                          |
 | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `name`        | The server's name, which a function writes before the slash                                                                                                                                                                       |
-| `type`        | `http` for a remote server, `stdio` for a process the runtime starts                                                                                                                                                              |
+| `type`        | `mcp` for a remote MCP server, `stdio` for an MCP server the runtime starts as a process, `openapi` for an HTTP API described by an OpenAPI document                                                                              |
 | `tools`       | The tools the server lists that the operator allows on its entry, in the server's order, each with its `name`, its `description` cut to 4 KiB, its `input_schema`, the hints its server gives it as `annotations`, and `testable` |
 | `unavailable` | In place of `tools`, why the server could not be asked for its tools, in words cut to 1 KiB; the other servers are listed beside it                                                                                               |
 | `because`     | With `unavailable`: `key_refused` when the server did not accept the key the runtime gives it, which only the operator can put right; `failing`, `rate_limited` or `unreachable` when asking again later may work                 |
@@ -380,12 +380,12 @@ Authorization: Bearer <key>
 ```json
 {
   "tool_servers": [
-    { "name": "graph", "type": "http", "playbooks": ["*"], "tools": [] },
+    { "name": "graph", "type": "mcp", "playbooks": ["*"], "tools": [] },
     {
       "name": "notes",
       "type": "stdio",
       "playbooks": ["sales"],
-      "unavailable": "The MCP server notes could not be used: The MCP server could not be reached",
+      "unavailable": "The tool server notes could not be used: The tool server could not be reached",
       "because": "unreachable"
     }
   ]
@@ -429,7 +429,7 @@ Content-Type: application/json
 | `server_request_id` | The server's own id of the request, where the operator's `request_id` says where it carries one                                                                                                                                                                                            |
 | `tested_at`         | When the call was made, in ISO 8601 UTC                                                                                                                                                                                                                                                    |
 
-The answer is `200` whenever the call was made, however the tool answered. Only a tool its server marks read-only, or that the operator marks testable on its entry, can be tested; any other returns `unavailable` with kind `tool_not_offered` and `because: "not_testable"`, and nothing is called. A tool the operator does not allow, a server not set up for the playbook and a tool the server does not list return the same kind with `tool_not_allowed`, `mcp_server_not_configured` or `tool_not_listed`, and a server that cannot be used returns `unavailable` with kind `mcp_server_failed`. A test is live: a tool the operator marks testable may still change something, which is why `test_tool_call` is marked destructive over MCP while any entry marks a tool testable.
+The answer is `200` whenever the call was made, however the tool answered. Only a tool its server marks read-only, or that the operator marks testable on its entry, can be tested; any other returns `unavailable` with kind `tool_not_offered` and `because: "not_testable"`, and nothing is called. A tool the operator does not allow, a server not set up for the playbook and a tool the server does not list return the same kind with `tool_not_allowed`, `tool_server_not_configured` or `tool_not_listed`, and a server that cannot be used returns `unavailable` with kind `tool_server_failed`. A test is live: a tool the operator marks testable may still change something, which is why `test_tool_call` is marked destructive over MCP while any entry marks a tool testable.
 
 Each test is recorded in the playbook's history as `tool_test_started` and `tool_test_answered`, which `list_playbook_events` shows, with the arguments and the answer kept unless the operator turns `record_content` off for the server; a test starts no run, so `list_runs` and `get_run_history` never show it. A caller that goes away during the call leaves a start without an answer. Each test makes one call; a test of a server no run holds opens a connection and lets it go once the call has answered.
 

@@ -1,5 +1,5 @@
-import type { CompiledSchema } from '@on.auto/definitions/document';
-import { issuesDetail } from '@on.auto/definitions/json-schema';
+import type { CompiledSchema } from '@on.auto/json-schema';
+import { issuesDetail } from '@on.auto/json-schema';
 import { Conflict, Unavailable } from '@on.auto/operations';
 import { jsonBytesOf, type PoolOutcome, type ProgramIssue, type Stopped } from '@on.auto/workflow-engine/dsl';
 import { Effect, Result, type Schema } from 'effect';

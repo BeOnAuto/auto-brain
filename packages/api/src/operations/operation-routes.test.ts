@@ -177,7 +177,7 @@ describe('an ending that names its kind', () => {
       call(handler, `${notes}/sending`, { method: 'POST', headers: jsonAsAdmin, body: JSON.stringify({ kind }) });
 
     const unfinished = await sending('tools_unfinished');
-    const failing = await sending('mcp_server_failed');
+    const failing = await sending('tool_server_failed');
 
     expect(unfinished).toMatchObject({
       status: 503,
@@ -188,7 +188,7 @@ describe('an ending that names its kind', () => {
         because: 'model_unavailable',
       },
     });
-    expect(failing).toMatchObject({ status: 503, body: { kind: 'mcp_server_failed', because: 'unreachable' } });
+    expect(failing).toMatchObject({ status: 503, body: { kind: 'tool_server_failed', because: 'unreachable' } });
     expect([unfinished.headers.get('retry-after'), failing.headers.get('retry-after')]).toEqual([null, '5']);
   });
 

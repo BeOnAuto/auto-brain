@@ -1,5 +1,5 @@
 import type { CallOptions } from '@on.auto/interaction/testing';
-import { patientTiming } from '@on.auto/mcp/testing';
+import { patientTiming } from '@on.auto/tool-servers/testing';
 import { Schema } from 'effect';
 import { expect } from 'vitest';
 
@@ -28,11 +28,11 @@ export const refusingTheArguments: unknown = expect.stringMatching(
 
 export const failedAfterCalling = (tool: string): unknown =>
   expect.stringMatching(
-    new RegExp(`^The MCP server chat failed: .*, after the run called the ${tool} tool of chat$`, 'u'),
+    new RegExp(`^The tool server chat failed: .*, after the run called the ${tool} tool of chat$`, 'u'),
   );
 
 export const notAnsweredInTime: unknown = expect.stringMatching(
-  /^The MCP server chat failed: .*did not answer within 300 ms.*, after the run called the sleep tool of chat$/u,
+  /^The tool server chat failed: .*did not answer within 300 ms.*, after the run called the sleep tool of chat$/u,
 );
 
 export interface Ending {
@@ -150,7 +150,7 @@ export const beforeAnything: ReadonlyArray<readonly [string, Row, Ending]> = [
   [
     'a server that does not serve the playbook',
     { server: { entry: { playbooks: ['beta'] } } },
-    sentNothing('mcp_server_not_configured', 'No MCP server named chat is configured for this playbook'),
+    sentNothing('tool_server_not_configured', 'No tool server named chat is configured for this playbook'),
   ],
   [
     'a tool the operator does not allow',
@@ -160,7 +160,7 @@ export const beforeAnything: ReadonlyArray<readonly [string, Row, Ending]> = [
   [
     'a server that cannot be reached',
     { before: (server) => server.fake.close() },
-    sentNothing('unreachable', expect.stringContaining('could not be reached'), 'mcp_server_failed'),
+    sentNothing('unreachable', expect.stringContaining('could not be reached'), 'tool_server_failed'),
   ],
   [
     'a server that refuses the key at its opening',
@@ -172,8 +172,8 @@ export const beforeAnything: ReadonlyArray<readonly [string, Row, Ending]> = [
     },
     sentNothing(
       'key_refused',
-      'The MCP server chat could not be used: The MCP server answered HTTP 401',
-      'mcp_server_failed',
+      'The tool server chat could not be used: The tool server answered HTTP 401',
+      'tool_server_failed',
     ),
   ],
   [
@@ -183,7 +183,7 @@ export const beforeAnything: ReadonlyArray<readonly [string, Row, Ending]> = [
         server.fake.answerNextOf('tools/list', 429, 1, { 'retry-after': '120' });
       },
     },
-    sentNothing('rate_limited', expect.stringContaining('could not be used'), 'mcp_server_failed'),
+    sentNothing('rate_limited', expect.stringContaining('could not be used'), 'tool_server_failed'),
   ],
   [
     'a listing of the tools that fails',
@@ -192,7 +192,7 @@ export const beforeAnything: ReadonlyArray<readonly [string, Row, Ending]> = [
         server.fake.answerNextOf('tools/list', 500);
       },
     },
-    sentNothing('failing', expect.stringContaining('answered HTTP 500'), 'mcp_server_failed'),
+    sentNothing('failing', expect.stringContaining('answered HTTP 500'), 'tool_server_failed'),
   ],
   [
     'a listing of the tools that does not answer in time',
@@ -203,13 +203,13 @@ export const beforeAnything: ReadonlyArray<readonly [string, Row, Ending]> = [
     },
     sentNothing(
       'unreachable',
-      'The MCP server chat could not be used: The MCP server did not answer in time',
-      'mcp_server_failed',
+      'The tool server chat could not be used: The tool server did not answer in time',
+      'tool_server_failed',
     ),
   ],
   [
     'a tool the server does not list',
     { document: calling('gone') },
-    sentNothing('tool_not_listed', 'The MCP server chat does not list the tool gone'),
+    sentNothing('tool_not_listed', 'The tool server chat does not list the tool gone'),
   ],
 ];

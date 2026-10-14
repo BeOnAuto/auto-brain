@@ -1,5 +1,5 @@
-import type { CallEnded } from '@on.auto/mcp';
 import { PlaybookContext, PlaybookWriter, Caller, messageIdOf, streamPrefixOfPlaybook } from '@on.auto/operations';
+import type { CallEnded } from '@on.auto/tool-servers';
 import { DateTime, Effect, Exit, Ref, Semaphore } from 'effect';
 
 import type { RunLineage, ToolCallJournal } from '../capability/capability.ts';

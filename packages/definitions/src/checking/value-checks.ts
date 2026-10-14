@@ -1,9 +1,6 @@
+import { issuesDetail, schemaCheckOf } from '@on.auto/json-schema';
 import type { ValueChecks } from '@on.auto/workflow-engine/job-loop';
 import { mostValueDepth, type Json, type OutputCheck, type ViewCheck } from '@on.auto/workflow-engine/worker';
-
-import { issuesDetail, schemaCheckOf } from './schema-checks.ts';
-
-export const checkedWorker = new URL('./checked-worker.ts', import.meta.url);
 
 export function outputCheckOf(schema: Json): OutputCheck {
   return schemaCheckOf(schema, { what: 'output', nesting: mostValueDepth });

@@ -6,7 +6,7 @@ const jobLoop = import.meta.resolve('@on.auto/workflow-engine/job-loop');
 
 const answerers = import.meta.resolve('@on.auto/workflow-engine/worker');
 
-const schemaChecks = import.meta.resolve('@on.auto/definitions/json-schema');
+const schemaChecks = import.meta.resolve('@on.auto/json-schema');
 
 interface Folding {
   readonly prelude: readonly string[];

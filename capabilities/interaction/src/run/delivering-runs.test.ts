@@ -23,8 +23,8 @@ describe('a run whose delivery names a tool this playbook may not use', () => {
 
     expect(asked).toMatchObject({
       ...notOffered,
-      because: 'mcp_server_not_configured',
-      detail: 'No MCP server named chat is configured for this playbook',
+      because: 'tool_server_not_configured',
+      detail: 'No tool server named chat is configured for this playbook',
     });
     expect(await playbook.call(listInteractions, {})).toMatchObject({ output: { interactions: [] } });
   });
@@ -34,8 +34,8 @@ describe('a run whose delivery names a tool this playbook may not use', () => {
 
     expect((await askedThrough(documentOf(elsewhere, answering), fakeTools())).asked).toMatchObject({
       ...notOffered,
-      because: 'mcp_server_not_configured',
-      detail: 'No MCP server named elsewhere is configured for this playbook',
+      because: 'tool_server_not_configured',
+      detail: 'No tool server named elsewhere is configured for this playbook',
     });
   });
 

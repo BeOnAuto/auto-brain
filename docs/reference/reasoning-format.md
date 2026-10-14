@@ -44,7 +44,7 @@ For this document, `create_definition` takes `type: "reasoning"`, a function `na
 | `output.format`                                                              | `text` by default, or `json`                                           |
 | `output.schema`                                                              | Required for JSON output; disallowed for text output                   |
 | `provider_options`                                                           | Optional reviewed provider-specific settings                           |
-| `tools`                                                                      | Optional list of the tools of MCP servers the run may call             |
+| `tools`                                                                      | Optional list of the tools of tool servers the run may call            |
 
 Unknown fields are rejected. Creation and updates validate the document and report issues under `/source`, with line numbers and JSON pointers where available. Warnings can identify schema features a provider may not enforce while generating an answer; the runtime still validates the returned JSON.
 
@@ -92,7 +92,7 @@ The date filters are left out, since they read the server's clock and time zone,
 
 ## Tools
 
-`tools` lists the tools of the MCP servers configured for the playbook that a run may call, each written `server/tool`, or `server/*` for every tool of a server that the operator allows:
+`tools` lists the tools of the tool servers configured for the playbook that a run may call, each written `server/tool`, or `server/*` for every tool of a server that the operator allows:
 
 ```yaml
 tools: [graph/search, graph/query, notes/*]
@@ -104,7 +104,7 @@ The model receives those tools and can call them before it answers. A run makes 
 
 A run whose function names a tool the playbook's servers do not offer, or whose server cannot be reached, is `unavailable` before the model is called. After a tool call, a run that cannot finish ends `unavailable` with the kind `tools_unfinished` when every tool it called is one its server marks read-only, so a new run, or a workflow's retry on status 503, may make it, and `conflict` with the kind `effect_unknown`, status 409, when any is not, since that tool may already have changed an external system. The same run id cannot run that work again and returns `tools_called`. A tool-using run still marked `started` also cannot restart under its id, even before its first recorded call. Inspect its history and any external effects before deliberately starting a new run with a new id. Retrying a successful run returns its recorded result without calling tools again.
 
-Tool access is available in a self-hosted runtime whose operator configures MCP servers; Auto Cloud does not offer it yet. The operator configures the servers with `mcp_servers` and narrows the tools of each with its `allowed`, as the [configuration guide](../self-host/configuration.md#mcp-servers) describes. See [Tool access inside a reasoning function](../concepts/functions.md#tool-access-inside-a-reasoning-function).
+Tool access is available in a self-hosted runtime whose operator configures tool servers; Auto Cloud does not offer it yet. The operator configures the servers with `tool_servers` and narrows the tools of each with its `allowed`, as the [configuration guide](../self-host/configuration.md#tool-servers) describes. See [Tool access inside a reasoning function](../concepts/functions.md#tool-access-inside-a-reasoning-function).
 
 ## Provider options
 

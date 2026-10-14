@@ -1,5 +1,5 @@
 import { declaredFact, type CapabilityFacts } from '@on.auto/definitions';
-import { conversationCallPresenter } from '@on.auto/mcp';
+import { conversationCallPresenter } from '@on.auto/tool-servers';
 
 import {
   failedAccount,

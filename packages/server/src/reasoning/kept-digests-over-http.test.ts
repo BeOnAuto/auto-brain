@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
-import { serveFakeMcp } from '@on.auto/mcp/testing';
 import { answers, callingTools, textResult } from '@on.auto/reasoning/testing';
+import { serveFakeMcp } from '@on.auto/tool-servers/testing';
 import { Schema } from 'effect';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
@@ -30,12 +30,12 @@ function digestOf(text: string): string {
 async function servingTheEcho(recordContent: boolean): Promise<ReasoningServer> {
   const graph = await serveFakeMcp({ bearer: apiKey });
   onTestFinished(graph.close);
-  const echoed = callingTools([['mcp__graph__echo', sent]], answers(textResult('Echoed.')));
+  const echoed = callingTools([['graph__echo', sent]], answers(textResult('Echoed.')));
   const server = await servingReasoning([echoed], {
     LOCAL_MODE: 'true',
     GRAPH_API_KEY: apiKey,
     GRAPH_PIN: pin,
-    MCP_SERVERS: JSON.stringify({
+    TOOL_SERVERS: JSON.stringify({
       graph: {
         url: graph.url,
         headers: { Authorization: 'Bearer ${GRAPH_API_KEY}', 'X-Pin': '${GRAPH_PIN}' },

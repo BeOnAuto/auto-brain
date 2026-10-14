@@ -1,4 +1,4 @@
-import type { SettingProblem } from '@on.auto/config';
+import { withoutTrailingSlashes, type SettingProblem } from '@on.auto/config';
 import { Config, ConfigProvider, Option, type Redacted } from 'effect';
 
 export type { SettingProblem } from '@on.auto/config';
@@ -53,6 +53,10 @@ export function problem(setting: string, detail: string): readonly SettingProble
 
 function isWebUrl(url: string): boolean {
   return URL.canParse(url) && ['http:', 'https:'].includes(new URL(url).protocol);
+}
+
+export function baseUrlOf(url: string | undefined): string | null {
+  return url === undefined ? null : withoutTrailingSlashes(url);
 }
 
 export function urlProblems(setting: string, url: string | undefined): readonly SettingProblem[] {

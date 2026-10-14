@@ -10,16 +10,18 @@ await test('docs distinguish inbound MCP from the tools a reasoning function cal
   const functions = readFileSync(join(docs, 'concepts/functions.md'), 'utf8');
   assert.ok(mcp.includes('inbound interface'));
   assert.ok(mcp.includes('It does not configure tools inside a reasoning function'));
-  assert.ok(mcp.includes('through MCP servers the operator of a self-hosted runtime configures'));
+  assert.ok(mcp.includes('through tool servers the operator of a self-hosted runtime configures'));
   assert.ok(mcp.includes('never by adding an endpoint to an external assistant'));
   assert.ok(
     functions.includes(
-      'Tool access is available in a self-hosted runtime whose operator configures MCP servers; Auto Cloud does not offer it yet',
+      'Tool access is available in a self-hosted runtime whose operator configures tool servers; Auto Cloud does not offer it yet',
     ),
   );
   assert.ok(functions.includes('model gateways connect to language models'));
   assert.ok(
-    functions.includes("A reasoning function can call the tools of MCP servers that the runtime's operator configures"),
+    functions.includes(
+      "A reasoning function can call the tools of tool servers that the runtime's operator configures",
+    ),
   );
   assert.ok(
     functions.includes("Connecting an external agent to Auto does not give the function access to that agent's tools"),
@@ -43,10 +45,12 @@ await test('reasoning guides retain tool-use limits and side-effect-aware retrie
   assert.equal(engineeringGuide.includes('interrupted and stays `started`'), false);
 });
 
-await test('MCP configuration documents recording and credential boundaries', () => {
+await test('the configuration of tool servers documents recording and credential boundaries', () => {
   const configuration = readFileSync(join(docs, 'self-host/configuration.md'), 'utf8');
   const http = readFileSync(join(docs, 'reference/http.md'), 'utf8');
-  assert.ok(configuration.includes('Only `headers`, `env` and `auth` may hold a reference'));
+  assert.ok(
+    configuration.includes('Only `headers`, `query_params`, `security`, `env` and `auth` may hold a reference'),
+  );
   assert.ok(configuration.includes('a value shorter than 8 characters is not'));
   assert.ok(configuration.includes('anyone who may read the playbook reads them'));
   assert.ok(http.includes('`tool_call_answered` when the tool answered'));

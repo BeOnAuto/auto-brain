@@ -15,7 +15,7 @@ const unrenderable: unknown = expect.objectContaining({
 
 const someText: unknown = expect.any(String);
 
-const failing = { outcome: 'server_failure', detail: 'The MCP server answered HTTP 503', retryAfterMs: null } as const;
+const failing = { outcome: 'server_failure', detail: 'The tool server answered HTTP 503', retryAfterMs: null } as const;
 
 const Deferring = Schema.Struct({
   type: Schema.Literal('finish'),
@@ -81,7 +81,7 @@ describe('a delivery that fails for a while', () => {
 
   it('honours the wait a 429 asks for within the schedule', async () => {
     const { playbook, tools, askedAt } = await askedThroughChat();
-    tools.answerNext({ ...failing, detail: 'The MCP server answered HTTP 429', retryAfterMs: 120_000 });
+    tools.answerNext({ ...failing, detail: 'The tool server answered HTTP 429', retryAfterMs: 120_000 });
 
     await playbook.performDue(askedAt);
     const afterTheSchedule = await playbook.performDue(Date.now() + minute + 5000);

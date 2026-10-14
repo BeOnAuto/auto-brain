@@ -1,5 +1,4 @@
 import {
-  compileJsonSchema,
   frontMatterIn,
   issueAt,
   reportedIssues,
@@ -9,6 +8,7 @@ import {
   type ReadFrontMatter,
   type SourceLines,
 } from '@on.auto/definitions/document';
+import { compileJsonSchema } from '@on.auto/json-schema';
 import { oneLanguage } from '@on.auto/workflow-engine';
 import { mostValueDepth } from '@on.auto/workflow-engine/dsl';
 import { Result, type Schema } from 'effect';

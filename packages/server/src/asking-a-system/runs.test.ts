@@ -1,5 +1,5 @@
 import { callDocument } from '@on.auto/interaction/testing';
-import { fakeStdioServerPath, stdioTestTimeoutMs } from '@on.auto/mcp/testing';
+import { fakeStdioServerPath, stdioTestTimeoutMs } from '@on.auto/tool-servers/testing';
 import { describe, expect, it } from 'vitest';
 
 import { interactionServerOn } from '../testing/servers/interaction-server.ts';
@@ -37,7 +37,7 @@ describe('a run that asks a system whose session or process is gone', { timeout:
     { timeout: stdioTestTimeoutMs },
     async () => {
       const server = await interactionServerOn({
-        MCP_SERVERS: JSON.stringify({
+        TOOL_SERVERS: JSON.stringify({
           notes: {
             command: process.execPath,
             args: [fakeStdioServerPath],

@@ -43,14 +43,8 @@ interface Answer {
   readonly text: string | undefined;
 }
 
-const trailingSlashes = /\/+$/u;
-
-export function withoutTrailingSlashes(text: string): string {
-  return text.replace(trailingSlashes, '');
-}
-
 export function endpointUrl(baseUrl: string, path: string): URL {
-  return new URL(`${withoutTrailingSlashes(baseUrl)}${path}`);
+  return new URL(`${baseUrl}${path}`);
 }
 
 function unread(reason: string): ListingProblem {

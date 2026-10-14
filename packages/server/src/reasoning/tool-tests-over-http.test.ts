@@ -1,8 +1,8 @@
 import { setTimeout } from 'node:timers/promises';
 
 import { createApiKey } from '@on.auto/identity';
-import { serveFakeMcp, type FakeMcpServer } from '@on.auto/mcp/testing';
 import { allPermissions } from '@on.auto/operations';
+import { serveFakeMcp, type FakeMcpServer } from '@on.auto/tool-servers/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -36,7 +36,7 @@ async function serving(): Promise<Serving> {
   const server = await servingReasoning([], {
     API_KEYS: JSON.stringify([builder.entry, reader.entry]),
     GRAPH_API_KEY: apiKey,
-    MCP_SERVERS: JSON.stringify({
+    TOOL_SERVERS: JSON.stringify({
       graph: {
         url: graph.url,
         headers: { Authorization: 'Bearer ${GRAPH_API_KEY}', 'X-Region': 'production-eu' },
@@ -110,7 +110,7 @@ describe('test_tool_call over HTTP', () => {
     expect(notTestable.headers.get('retry-after')).toBeNull();
     expect(failing).toMatchObject({
       status: 503,
-      body: { reason: 'unavailable', kind: 'mcp_server_failed', because: 'failing' },
+      body: { reason: 'unavailable', kind: 'tool_server_failed', because: 'failing' },
     });
     expect(failing.headers.get('retry-after')).toBe('5');
     expect(graph.received()).toEqual([]);

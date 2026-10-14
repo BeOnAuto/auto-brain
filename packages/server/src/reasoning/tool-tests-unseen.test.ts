@@ -1,4 +1,4 @@
-import { serveFakeMcp } from '@on.auto/mcp/testing';
+import { serveFakeMcp } from '@on.auto/tool-servers/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -57,7 +57,7 @@ async function servingATestedPlaybook(): Promise<TestedPlaybook> {
   const server = await servingWorkflows([], {
     LOCAL_MODE: 'true',
     GRAPH_API_KEY: apiKey,
-    MCP_SERVERS: JSON.stringify({
+    TOOL_SERVERS: JSON.stringify({
       graph: { url: graph.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme' },
     }),
   });

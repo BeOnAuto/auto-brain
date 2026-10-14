@@ -1,5 +1,5 @@
 import { recordingJournal } from '@on.auto/definitions/testing';
-import { deniedText, patientTiming } from '@on.auto/mcp/testing';
+import { deniedText, patientTiming } from '@on.auto/tool-servers/testing';
 import { Cause, Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -30,7 +30,7 @@ describe('a run that asks a system and sends nothing', () => {
       await narrow.run(callDocument()),
       await narrow.run(callDocument({ tool: 'gone', read: null })),
     ]).toEqual([
-      rejectedWith({ kind: 'tool_not_offered', because: 'mcp_server_not_configured' }),
+      rejectedWith({ kind: 'tool_not_offered', because: 'tool_server_not_configured' }),
       rejectedWith({ kind: 'tool_not_offered', because: 'tool_not_allowed' }),
       rejectedWith({ kind: 'tool_not_offered', because: 'tool_not_allowed' }),
     ]);
@@ -46,9 +46,9 @@ describe('a run that asks a system and sends nothing', () => {
       rejectedWith({
         kind: 'tool_not_offered',
         because: 'tool_not_listed',
-        detail: 'The MCP server chat does not list the tool gone',
+        detail: 'The tool server chat does not list the tool gone',
       }),
-      rejectedWith({ kind: 'mcp_server_failed', because: 'unreachable' }),
+      rejectedWith({ kind: 'tool_server_failed', because: 'unreachable' }),
     ]);
     expect(journal.recorded()).toEqual([]);
   });
@@ -129,7 +129,7 @@ describe('a run whose call was sent and could not finish', () => {
         kind: 'tools_unfinished',
         because: 'server_failed',
         detail: expect.stringMatching(
-          /^The MCP server chat failed: .*, after the run called the broken tool of chat$/u,
+          /^The tool server chat failed: .*, after the run called the broken tool of chat$/u,
         ),
       }),
       rejectedWith({ _tag: 'conflict', kind: 'effect_unknown', because: 'server_failed' }),

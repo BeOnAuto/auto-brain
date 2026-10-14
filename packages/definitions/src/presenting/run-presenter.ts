@@ -1,4 +1,3 @@
-import { callFieldsShown, keptAnswerOf, keptArgumentsOf } from '@on.auto/mcp';
 import {
   strictRecordedDecoder,
   type KeptContent,
@@ -6,6 +5,7 @@ import {
   type Presenter,
   type RecordedFact,
 } from '@on.auto/operations';
+import { callFieldsShown, keptAnswerOf, keptArgumentsOf } from '@on.auto/tool-servers';
 
 import type { DefinitionWords } from '../plain-language/definition-words.ts';
 import {

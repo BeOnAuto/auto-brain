@@ -3,7 +3,7 @@ import { readApiKeys, type ApiKey } from '@on.auto/identity';
 import { proxySettingsOf, type ProxySettings } from '@on.auto/outbound';
 import { Effect, Result } from 'effect';
 
-import { fileSettings, refusedKeys } from '../config-file/file-settings.ts';
+import { fileSettings } from '../config-file/file-settings.ts';
 import { readFunctionSettings, type FunctionSettings } from '../function-settings/function-settings.ts';
 import { readAccessSettings, type AccessSettings } from './access-settings.ts';
 import { readContentSettings, type ContentSettings } from './content-settings.ts';
@@ -32,7 +32,7 @@ function sourcesOf(file: FileUse | undefined): ConfigFileSources | undefined {
 }
 
 export function readSettings(given: Environment): Settings {
-  const { environment, file } = Result.getOrThrow(configurationOf(given, fileSettings, refusedKeys));
+  const { environment, file } = Result.getOrThrow(configurationOf(given, fileSettings));
   const { host, port } = readServerConfig(environment);
   const { allowedOrigins, localMode, logFormat, logLevel } = Effect.runSync(readAccessSettings(environment));
   const ledger = Effect.runSync(readLedgerSettings(environment));
