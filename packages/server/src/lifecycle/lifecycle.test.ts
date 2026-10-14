@@ -71,7 +71,7 @@ describe('startServer', () => {
   it('rejects when the port is already taken', async () => {
     const first = await startServer({ HOST: '127.0.0.1', PORT: '0' }, defaultServerOptions);
 
-    await expect(startServer({ HOST: '127.0.0.1', PORT: String(first.port) }, defaultServerOptions)).rejects.toThrow(
+    await expect(startServer({ ...loopback, PORT: String(first.port) }, defaultServerOptions)).rejects.toThrow(
       'EADDRINUSE',
     );
     await first.stop();
