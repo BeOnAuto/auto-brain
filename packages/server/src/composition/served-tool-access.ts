@@ -3,7 +3,7 @@ import type { DispatcherServices } from '@on.auto/operations';
 import { describedToolServers, makeToolAccess, type Timing, type ToolAccess } from '@on.auto/tool-servers';
 import { Effect } from 'effect';
 
-import { logLeftOutOperation, logServerMessage, logUntestableServer } from '../logging/tool-server-logging.ts';
+import { logLeftOutOperation, logServerMessage } from '../logging/tool-server-logging.ts';
 import type { Settings } from '../settings/settings.ts';
 import { release } from './release.ts';
 import { runtimeLedger } from './runtime-ledger.ts';
@@ -26,9 +26,6 @@ export async function toolAccessOf(
     content: runtimeLedger(runtime).content,
     reportServerMessage: (report) => {
       void runtime.run(logServerMessage(report));
-    },
-    reportUntestable: (server) => {
-      void runtime.run(logUntestableServer(server));
     },
   });
 }

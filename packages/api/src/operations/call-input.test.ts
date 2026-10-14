@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { call } from '../testing/api-calls.ts';
-import { acmeAdmin, operationServer } from '../testing/operation-server.ts';
+import { findNotes } from '../testing/found-notes.ts';
+import { notebookOperations } from '../testing/notebook.ts';
+import { acmeAdmin, acmeReader, operationServer } from '../testing/operation-server.ts';
 
 const asAdmin = { authorization: `Bearer ${acmeAdmin.key}` };
 
@@ -10,6 +12,11 @@ const jsonAsAdmin = { ...asAdmin, 'content-type': 'application/json' };
 const notes = '/v1/orgs/acme/playbooks/alpha/notes';
 
 const betaLabel = '/v1/orgs/acme/playbooks/beta/label';
+
+const found = '/v1/orgs/acme/playbooks/alpha/notes/found';
+
+const queryBesideABody =
+  'An operation called by POST or PUT takes no query parameters; send its input in the JSON body';
 
 describe('the input of a GET operation', () => {
   it('comes from the query string, decoded from strings', async () => {
@@ -75,7 +82,7 @@ describe('the input of a POST or PUT operation', () => {
 
     expect(await call(handler, path, { method, headers: jsonAsAdmin, body })).toMatchObject({
       status: 400,
-      body: { reason: 'bad_request', detail: 'A command takes no query parameters; send its input in the JSON body' },
+      body: { reason: 'bad_request', detail: queryBesideABody },
     });
   });
 
@@ -86,5 +93,26 @@ describe('the input of a POST or PUT operation', () => {
       status: 422,
       body: { errors: [{ pointer: '/name' }, { pointer: '/text' }] },
     });
+  });
+});
+
+describe('the input of a query routed by POST', () => {
+  it('comes from the JSON body, which carries a list a query string cannot, for a key that may only read', async () => {
+    const { handler } = await operationServer({ operations: [...notebookOperations, findNotes] });
+    const asReader = { authorization: `Bearer ${acmeReader.key}`, 'content-type': 'application/json' };
+    await call(handler, notes, { method: 'POST', headers: jsonAsAdmin, body: '{"name":"first","text":"red sky"}' });
+
+    const answered = await call(handler, found, { method: 'POST', headers: asReader, body: '{"words":["red","sky"]}' });
+
+    expect(answered).toMatchObject({ status: 200, body: { notes: [{ name: 'first', text: 'red sky' }] } });
+    expect(answered.headers.get('cache-control')).toBe('no-store');
+  });
+
+  it('refuses a query string beside the body, as every POST does', async () => {
+    const { handler } = await operationServer({ operations: [...notebookOperations, findNotes] });
+
+    expect(
+      await call(handler, `${found}?words=red`, { method: 'POST', headers: jsonAsAdmin, body: '{"words":[]}' }),
+    ).toMatchObject({ status: 400, body: { reason: 'bad_request', detail: queryBesideABody } });
   });
 });

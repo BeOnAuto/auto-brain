@@ -68,7 +68,7 @@ describe('the operations of the document and the tools of the endpoints', () => 
     expect(servedAsTools().map((described) => toolsOf(described).map(({ description }) => description))).toEqual(
       servedAsTools().map(({ operation }) => [operation.description]),
     );
-    expect(servedAsTools()).toHaveLength(26);
+    expect(servedAsTools()).toHaveLength(29);
   });
 
   it('leave no tool of an endpoint without its operation, and give none to an operation served over HTTP alone', () => {
@@ -95,7 +95,7 @@ describe('the paths of the document', () => {
 });
 
 describe('the input an operation documents', () => {
-  it("is its tool's input without the fields its path gives, in the body of a command or the query of a query", () => {
+  it("is its tool's input without the fields its path gives, in the query of a GET and the body of a POST", () => {
     expect(servedAsTools().map((described) => [documentedInputOf(described)])).toEqual(
       servedAsTools().map((described) => inputOfToolsOf(described, toolsOf(described))),
     );

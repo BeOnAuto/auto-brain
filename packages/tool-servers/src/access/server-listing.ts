@@ -2,18 +2,15 @@ import { Result } from 'effect';
 
 import type { Timing } from '../bounds/call-bounds.ts';
 import type { Secrets } from '../bounds/secrets.ts';
-import type { ListedTool } from '../bounds/tool-results.ts';
 import { takenSlot, type ServerSlot } from '../calls/server-slot.ts';
 import { failureOf, type FailureKind, type ServerFailure } from '../connections/server-failures.ts';
 import type { ServerLink } from '../connections/server-links.ts';
-import type { ServerSettings } from '../settings/server-settings.ts';
 import type { Listed } from './tool-naming.ts';
 import { ToolServerFailed, type ServerFailedBecause } from './tool-server-failed.ts';
 
 export interface Listing {
   readonly secrets: Secrets;
   readonly timing: Timing;
-  readonly toolsListed: (server: ServerSettings, tools: readonly ListedTool[]) => void;
 }
 
 const failedBecause: Readonly<Record<FailureKind, ServerFailedBecause>> = {
@@ -41,16 +38,13 @@ export function serverFailed(
 
 export function listedThrough(
   slot: ServerSlot,
-  { secrets, timing, toolsListed }: Listing,
+  { secrets, timing }: Listing,
 ): Promise<Result.Result<Listed, ToolServerFailed>> {
   return slot
     .connection()
     .listTools(timing.openMs)
     .then(
-      (tools) => {
-        toolsListed(slot.settings, tools);
-        return Result.succeed({ slot, tools });
-      },
+      (tools) => Result.succeed({ slot, tools }),
       async (error: unknown) => {
         await slot.release();
         return Result.fail(serverFailed(slot, failureOf(error), secrets));

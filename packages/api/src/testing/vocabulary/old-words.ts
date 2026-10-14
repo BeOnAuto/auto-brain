@@ -6,7 +6,7 @@ export const oldWords: readonly string[] = [
   '[oO]rchestrat|ORCHESTRAT',
   '[rR]ecollection|RECOLLECTION',
   'execute_spec',
-  String.raw`/execute\b`,
+  String.raw`/execute(?![\w./-])(?<!/tools/[^/\s]+/execute)`,
   '[eE]xecuteSpec',
   'language: jq',
   String.raw`evaluate\.language: jq`,

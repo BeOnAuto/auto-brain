@@ -73,13 +73,13 @@ afterAll(async () => {
 
 async function askedToSendADraft(session: McpSession) {
   const guide = textOf(await session.callTool('get_guide', { guide: 'interaction-function' }));
-  const sent = await session.callTool('test_tool_call', {
+  const sent = await session.callTool('execute', {
     ...inMeetings,
     server: 'chat',
     tool: 'post_message',
     arguments: { channel: '#drafts', text: 'A draft to look at' },
   });
-  const read = await session.callTool('test_tool_call', {
+  const read = await session.callTool('execute', {
     ...inMeetings,
     server: 'chat',
     tool: 'thread_replies',
@@ -116,7 +116,7 @@ describe(
   'episode 9: asked to send the person a draft in the chat and take their approval',
   { timeout: workflowTestTimeoutMs },
   () => {
-    it('reads the interaction sentence, tests the tool that sends and the tool that reads, and saves one interaction function', async () => {
+    it('reads the interaction sentence, calls the tool that sends and the tool that reads, and saves one interaction function', async () => {
       const seen = await meetings.onMcp(askedToSendADraft);
 
       expect(sentenceNaming(meetings.surfaces.instructions, 'An interaction function')).toBe(
@@ -136,7 +136,7 @@ describe(
       const refused = await meetings.onMcp(askedWhereNoToolServerIs);
 
       expect(plainTextIn(refused)).toBe(
-        'Could not run the interaction function “approve-draft”: this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this playbook. Nothing was changed. This can be put right on your side: whoever runs the server decides which tool servers and tools this playbook may use, which list_tool_servers shows, so once it names only those, it can be tried again.',
+        'Could not run the interaction function “approve-draft”: this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this playbook. Nothing was changed. This can be put right on your side: whoever runs the server decides which tool servers and tools this playbook may use, which search shows, so once it names only those, it can be tried again.',
       );
     });
   },
@@ -164,7 +164,7 @@ const readingAThread = [
 
 async function askedForTheRepliesOfAThread(session: McpSession) {
   const recipe = textOf(await session.callTool('get_guide', { guide: 'give-tools' }));
-  const tested = await session.callTool('test_tool_call', {
+  const called = await session.callTool('execute', {
     ...inMeetings,
     server: 'chat',
     tool: 'thread_replies',
@@ -177,14 +177,14 @@ async function askedForTheRepliesOfAThread(session: McpSession) {
     source: readingAThread,
   });
   const reasoning = await session.callTool('list_definitions', { ...inMeetings, type: 'reasoning' });
-  return { recipe, tested, saved, reasoning };
+  return { recipe, called, saved, reasoning };
 }
 
 describe(
   'episode 10: asked to put the replies of a thread into the weekly summary',
   { timeout: workflowTestTimeoutMs },
   () => {
-    it('reads the interaction sentence and the give-tools sentence, tests the tool, reads its answer, and saves one interaction function that calls it', async () => {
+    it('reads the interaction sentence and the give-tools sentence, calls the tool, reads its answer, and saves one interaction function that calls it', async () => {
       const seen = await meetings.onMcp(askedForTheRepliesOfAThread);
 
       expect(sentenceNaming(meetings.surfaces.instructions, 'An interaction function')).toBe(
@@ -193,7 +193,7 @@ describe(
       expect(seen.recipe).toContain(
         'When the playbook only needs what a tool answers, with nothing to reason about, write an interaction function that calls the tool instead',
       );
-      expect(seen.tested.structuredContent).toMatchObject({
+      expect(seen.called.structuredContent).toMatchObject({
         outcome: 'result',
         text: listingTheMessages,
         answer: { messages: someMessages },

@@ -77,11 +77,11 @@ describe('episode 2: asked to create a playbook for meetings', () => {
 });
 
 describe('episode 3: asked to use Slack', () => {
-  it('finds list_tool_servers in the instructions, and its answer names each tool server', async () => {
-    const listed = await onMcp((session) => session.callTool('list_tool_servers', { playbook: 'meetings' }));
+  it('finds search in the instructions, and its answer names each tool server', async () => {
+    const listed = await onMcp((session) => session.callTool('search', { playbook: 'meetings' }));
 
-    expect(sentenceNaming(surfaces.instructions, 'list_tool_servers')).toBe(
-      'A reasoning function names a model that list_models lists and may name tools that list_tool_servers lists; test_tool_call shows what a tool answers.',
+    expect(sentenceNaming(surfaces.instructions, 'search finds')).toBe(
+      'A reasoning function names a model that list_models lists and may name tools that search finds; execute calls one and shows what it answers, and dry_run what it would check.',
     );
     expect(plainTextIn(listed)).toMatch(/^This playbook's functions may use 2 tool servers\. /u);
     expect(plainTextIn(listed)).toContain('“slack” offers');
@@ -223,7 +223,7 @@ describe('episode 6: a tool server that refuses its key, and a playbook with no 
           name: 'post-notes',
           input: { meeting: 'the standup' },
         }),
-        empty: await session.callTool('list_tool_servers', { playbook: 'standups' }),
+        empty: await session.callTool('search', { playbook: 'standups' }),
       };
     });
 
@@ -238,47 +238,50 @@ describe('episode 6: a tool server that refuses its key, and a playbook with no 
 
 const ChannelsSchema = Schema.fromJsonString(Schema.Array(Schema.Struct({ id: Schema.String, name: Schema.String })));
 
-const TestedSchema = Schema.Struct({ structuredContent: Schema.Struct({ text: Schema.String }) });
+const CalledSchema = Schema.Struct({ structuredContent: Schema.Struct({ text: Schema.String }) });
 
-function channelsIn(tested: unknown) {
+function channelsIn(called: unknown) {
   return Schema.decodeUnknownSync(ChannelsSchema)(
-    Schema.decodeUnknownSync(TestedSchema)(tested).structuredContent.text,
+    Schema.decodeUnknownSync(CalledSchema)(called).structuredContent.text,
   );
 }
 
-const searchTestable: unknown = expect.arrayContaining([expect.objectContaining({ name: 'search', testable: true })]);
-
 async function lookedAtOverMcp(session: McpSession) {
   const before = await session.callTool('list_definitions', { playbook: 'meetings', type: 'reasoning' });
-  const listed = await session.callTool('list_tool_servers', { playbook: 'meetings', server: 'slack' });
-  const tested = await session.callTool('test_tool_call', {
+  const found = await session.callTool('search', { playbook: 'meetings', server: 'slack', terms: 'search rows' });
+  const called = await session.callTool('execute', {
     playbook: 'meetings',
     server: 'slack',
     tool: 'search',
     arguments: { query: 'standups' },
   });
   const after = await session.callTool('list_definitions', { playbook: 'meetings', type: 'reasoning' });
-  return { before, listed, tested, after };
+  return { before, found, called, after };
 }
 
 describe('episode 8: asked what a gateway-style tool server offers, and then to post to #random', () => {
-  it('finds the clause in the instructions and testable in the listing, tests the search tool, and makes no function to look', async () => {
+  it('finds the clause in the instructions, finds the search tool by its words, calls it, and makes no function to look', async () => {
     const seen = await onMcp(lookedAtOverMcp);
 
-    expect(sentenceNaming(surfaces.instructions, 'test_tool_call')).toBe(
-      'A reasoning function names a model that list_models lists and may name tools that list_tool_servers lists; test_tool_call shows what a tool answers.',
+    expect(sentenceNaming(surfaces.instructions, 'search finds', 'execute')).toBe(
+      'A reasoning function names a model that list_models lists and may name tools that search finds; execute calls one and shows what it answers, and dry_run what it would check.',
     );
-    expect(seen.listed.structuredContent).toMatchObject({ tool_servers: [{ name: 'slack', tools: searchTestable }] });
-    expect(plainTextIn(seen.listed)).toMatch(/; search, .* can be tested\.$/u);
-    expect(seen.tested.structuredContent).toMatchObject({ outcome: 'result', text: 'Found 2 rows for standups.' });
+    expect(seen.found.structuredContent).toMatchObject({
+      servers: [{ name: 'slack' }],
+      tools: [{ server: 'slack', tool: 'search', read_only: true }],
+    });
+    expect(plainTextIn(seen.found)).toBe(
+      "1 tool of this playbook's tool servers matches “search rows”, best first: the search tool of slack.",
+    );
+    expect(seen.called.structuredContent).toMatchObject({ outcome: 'result', text: 'Found 2 rows for standups.' });
     expect(seen.after.structuredContent).toEqual(seen.before.structuredContent);
-    expect(descriptionOf('test_tool_call')).toContain('in place of a function made to look');
+    expect(descriptionOf('execute')).toContain('in place of a function made to look');
   });
 
-  it('tests the tool that lists the channels and takes the id of #random from its answer, as the give-tools recipe says', async () => {
-    const { prompt, tested } = await onMcp(async (session) => ({
+  it('calls the tool that lists the channels and takes the id of #random from its answer, as the give-tools recipe says', async () => {
+    const { prompt, called } = await onMcp(async (session) => ({
       prompt: Schema.decodeUnknownSync(PromptSchema)(await session.getPrompt('give-tools', { server: 'slack' })),
-      tested: await session.callTool('test_tool_call', {
+      called: await session.callTool('execute', {
         playbook: 'meetings',
         server: 'slack',
         tool: 'list_channels',
@@ -286,8 +289,8 @@ describe('episode 8: asked what a gateway-style tool server offers, and then to 
     }));
 
     expect(String(prompt.messages[0]?.content.text)).toContain(
-      "When a prompt needs an id, such as a channel's, test the tool that lists them and take the id from its answer, confirming the choice with the person.",
+      "When a prompt needs an id, such as a channel's, call the tool that lists them and take the id from its answer, confirming the choice with the person.",
     );
-    expect(channelsIn(tested).find(({ name }) => name === 'random')?.id).toBe('C08RNDM4Q2');
+    expect(channelsIn(called).find(({ name }) => name === 'random')?.id).toBe('C08RNDM4Q2');
   });
 });

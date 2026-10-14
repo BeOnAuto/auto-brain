@@ -3,6 +3,7 @@ import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { blobOperations } from '../testing/blob-operations.ts';
+import { findNotes } from '../testing/found-notes.ts';
 import { testShelf } from '../testing/guides.ts';
 import { listNotesOfTheOrg, notebookOperations } from '../testing/notebook.ts';
 import { openApiErrorsIn, operationsIn, unresolvedSchemasIn } from '../testing/openapi/openapi-document.ts';
@@ -47,7 +48,7 @@ const measureNote = defineQuery('playbook', {
   handle: () => Effect.succeed({ size: 0 }),
 });
 
-const operations = [...notebookOperations, listNotesOfTheOrg, ...blobOperations, moveNote, findNote];
+const operations = [...notebookOperations, findNotes, listNotesOfTheOrg, ...blobOperations, moveNote, findNote];
 
 const catalog = makeCatalog(operations);
 
@@ -138,6 +139,22 @@ describe('the input of a query', () => {
       in: 'query',
       required: true,
       schema: { type: 'string', pattern: '^[a-z][a-z0-9-]{0,31}$' },
+    });
+  });
+
+  it('routed by POST, for an input a query string cannot carry, is a JSON body and no query parameter', () => {
+    expect(operationNamed('find_notes')).toMatchObject({
+      path: '/orgs/{org}/playbooks/{playbook}/notes/found',
+      method: 'post',
+      operation: {
+        parameters: [{ $ref: '#/components/parameters/org' }, { $ref: '#/components/parameters/playbook' }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': { schema: { properties: { words: { type: 'array' } }, required: ['words'] } },
+          },
+        },
+      },
     });
   });
 });

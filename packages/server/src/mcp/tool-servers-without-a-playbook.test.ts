@@ -30,31 +30,35 @@ function playbookArgumentOf(tool: string) {
   );
 }
 
-const ListedServersSchema = Schema.Struct({
-  tool_servers: Schema.Array(Schema.Record(Schema.String, Schema.Unknown)),
+const SearchedServersSchema = Schema.Struct({
+  servers: Schema.Array(Schema.Record(Schema.String, Schema.Unknown)),
 });
 
-function fieldsOfEachServer(listed: unknown): readonly (readonly string[])[] {
-  return Schema.decodeUnknownSync(ListedServersSchema)(listed).tool_servers.map((server) => Object.keys(server));
+function fieldsOfEachServer(found: unknown): readonly (readonly string[])[] {
+  return Schema.decodeUnknownSync(SearchedServersSchema)(found).servers.map((server) => Object.keys(server));
 }
 
-const searchTestable: unknown = expect.arrayContaining([expect.objectContaining({ name: 'search', testable: true })]);
+const aSummary: unknown = expect.any(String);
+
+const searchThatReads: unknown = expect.arrayContaining([
+  { server: 'slack', tool: 'search', summary: aSummary, read_only: true },
+]);
 
 async function askedBeforeAndAfterThePlaybookIsMade() {
-  const inOrg = await meetings.onMcp((session) => session.callTool('list_tool_servers', {}));
+  const inOrg = await meetings.onMcp((session) => session.callTool('search', {}));
   await meetings.onMcp((session) => session.callTool('create_playbook', { playbook: 'meetings', name: 'Meetings' }));
-  const inPlaybook = await meetings.onPlaybook('meetings', (session) => session.callTool('list_tool_servers', {}));
+  const inPlaybook = await meetings.onPlaybook('meetings', (session) => session.callTool('search', {}));
   return { inOrg, inPlaybook };
 }
 
 describe('episode 9: asked for the tool servers on the connection of the whole org, without naming a playbook', () => {
   it('finds the playbook optional, and what the tool answers without it, in the served surfaces', () => {
-    const { required = [], properties } = playbookArgumentOf('list_tool_servers');
+    const { required = [], properties } = playbookArgumentOf('search');
 
     expect(required).not.toContain('playbook');
-    expect(properties.playbook.description).toContain('without it, every tool server of the org is listed');
-    expect(sentenceNaming(descriptionIn(meetings.surfaces, 'list_tool_servers'), 'Without `playbook`')).toBe(
-      'Without `playbook` it answers for the whole org, naming the playbooks each server serves.',
+    expect(properties.playbook.description).toContain('without it, every tool server of the org');
+    expect(sentenceNaming(descriptionIn(meetings.surfaces, 'search'), 'Without `playbook`')).toBe(
+      'Without `playbook` it searches the tool servers of the whole org, naming the playbooks each serves.',
     );
   });
 
@@ -63,19 +67,21 @@ describe('episode 9: asked for the tool servers on the connection of the whole o
 
     expect(inOrg.isError).not.toBe(true);
     expect(inOrg.structuredContent).toMatchObject({
-      tool_servers: [
+      servers: [
         { name: 'notes', playbooks: ['meetings'], because: 'key_refused' },
-        { name: 'slack', playbooks: ['meetings'], tools: searchTestable },
+        { name: 'slack', playbooks: ['meetings'] },
       ],
+      tools: searchThatReads,
     });
     expect(plainTextIn(inOrg)).toMatch(
       /^The playbooks of this org may use 2 tool servers\. “notes”, for the playbook “meetings”, did not accept the key/u,
     );
     expect(inPlaybook.structuredContent).toMatchObject({
-      tool_servers: [
+      servers: [
         { name: 'notes', because: 'key_refused' },
-        { name: 'slack', tools: searchTestable },
+        { name: 'slack', tool_count: 14 },
       ],
+      tools: searchThatReads,
     });
     expect(fieldsOfEachServer(inPlaybook.structuredContent).map((fields) => fields.includes('playbooks'))).toEqual([
       false,
@@ -87,8 +93,8 @@ describe('episode 9: asked for the tool servers on the connection of the whole o
 
 async function askedForAMissingPlaybook() {
   return {
-    onMcp: await meetings.onMcp((session) => session.callTool('list_tool_servers', { playbook: 'nowhere' })),
-    onItsEndpoint: await meetings.onPlaybook('nowhere', (session) => session.callTool('list_tool_servers', {})),
+    onMcp: await meetings.onMcp((session) => session.callTool('search', { playbook: 'nowhere' })),
+    onItsEndpoint: await meetings.onPlaybook('nowhere', (session) => session.callTool('search', {})),
   };
 }
 

@@ -24,7 +24,7 @@ interface RecordNames<Written, Current> {
 }
 
 export function writtenInAnOlderFormat<Written, Type, Current>(
-  written: Schema.Codec<Written>,
+  written: Schema.Decoder<Written>,
   current: Schema.Codec<Type, Current>,
   names: RecordNames<Written, Current>,
 ) {

@@ -34,14 +34,17 @@ const definitionTools = [
   'list_playbook_events',
   'get_event',
   'publish_event',
-  'list_tool_servers',
-  'test_tool_call',
+  'search',
+  'introspect',
+  'validate',
+  'dry_run',
+  'execute',
   'answer_interaction',
   'list_interactions',
   'send_run_event',
 ];
 
-const orgTools = [...playbookTools, 'list_models', 'list_tool_servers'];
+const orgTools = [...playbookTools, 'list_models', 'search'];
 
 const insideAPlaybookAlone = definitionTools.filter((name) => !orgTools.includes(name));
 
@@ -97,7 +100,7 @@ describe('the playbook argument of the definition tools on /mcp', () => {
 });
 
 describe('the tools of /mcp', () => {
-  it('are the playbook tools, list_models, list_tool_servers and the definition tools, the definition tools taking a playbook, with self-contained input schemas', async () => {
+  it('are the playbook tools, list_models, search and the definition tools, the definition tools taking a playbook, with self-contained input schemas', async () => {
     server = await servingReasoning([]);
     await server.call('POST', '/v1/orgs/local/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
 
@@ -128,7 +131,7 @@ const definitionTypes = [
 const recipes = [
   { name: 'first-playbook', calls: ['create_playbook', 'create_definition', 'run_definition'] },
   { name: 'remember', calls: ['create_definition', 'run_definition'] },
-  { name: 'give-tools', calls: ['list_tool_servers', 'create_definition'] },
+  { name: 'give-tools', calls: ['search', 'create_definition'] },
   { name: 'schedule', calls: ['create_definition', 'list_runs'] },
 ];
 
@@ -161,14 +164,7 @@ const connections: readonly Connection[] = [
     endpoint: 'org',
     served: { orgTools, playbookTools: [] },
     sentence: 'This connection manages the playbooks of one org: list_playbooks shows them',
-    unnamed: [
-      'create_definition',
-      'run_definition',
-      'get_run',
-      'test_tool_call',
-      'answer_interaction',
-      'send_run_event',
-    ],
+    unnamed: ['create_definition', 'run_definition', 'get_run', 'dry_run', 'answer_interaction', 'send_run_event'],
   },
   {
     path: '/orgs/acme/playbooks/alpha/mcp',
@@ -217,14 +213,17 @@ function reachingOutside(tools: readonly ListedTool[]): readonly string[] {
 }
 
 describe('the open-world hint of the tools of /mcp', () => {
-  it('is set for list_models and run_definition, which reach model providers, for list_tool_servers and test_tool_call, which reach tool servers, and for no other tool', async () => {
+  it('is set for list_models and run_definition, which reach model providers, for the five tools over the tool servers, which reach them, and for no other tool', async () => {
     server = await servingReasoning([]);
 
     expect(reachingOutside(await listingOn('/mcp'))).toEqual([
       'list_models',
-      'list_tool_servers',
+      'search',
       'run_definition',
-      'test_tool_call',
+      'introspect',
+      'validate',
+      'dry_run',
+      'execute',
     ]);
   });
 });

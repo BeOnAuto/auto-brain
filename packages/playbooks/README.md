@@ -74,7 +74,7 @@ There is no read model: each call folds the stream. A pure decider holds the rul
 
 The dispatcher applies the status to every playbook-scoped operation. A retired playbook stays readable: every query runs on it, so what the playbook recorded survives its retirement. Every command on a retired playbook is refused with `conflict`, kind `retired`, and the detail `update_playbook` gives, such as `The playbook gamma is retired and can no longer change`. An unknown playbook is `not_found`.
 
-`foundPlaybook(playbook)` is the same lookup for an org operation that takes a `playbook` of its own, which the dispatcher checks access to but never looks up: an effect that needs `OrgReader` and answers the playbook, active or retired, as `get_playbook` does, or fails with `NotFound` and `get_playbook`'s detail, `There is no playbook nowhere in this org`, the words the dispatcher gives an unknown playbook. The server gives it to `list_tool_servers` of the org, so a playbook it is given that the org does not have is `not_found` there as at the playbook's own route.
+`foundPlaybook(playbook)` is the same lookup for an org operation that takes a `playbook` of its own, which the dispatcher checks access to but never looks up: an effect that needs `OrgReader` and answers the playbook, active or retired, as `get_playbook` does, or fails with `NotFound` and `get_playbook`'s detail, `There is no playbook nowhere in this org`, the words the dispatcher gives an unknown playbook. The server gives it to `search` of the org, so a playbook it is given that the org does not have is `not_found` there as at the playbook's own route.
 
 ## Source
 

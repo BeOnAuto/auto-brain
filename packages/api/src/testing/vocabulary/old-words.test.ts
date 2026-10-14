@@ -20,4 +20,9 @@ describe('the old words of the vocabulary', () => {
     ]);
     expect(oldWordsIn('tool_server_failed, because tool_server_not_configured, calling graph__search')).toEqual([]);
   });
+
+  it('find the old route that ran a definition, and pass the route that calls a tool and the folder of execute', () => {
+    expect(oldWordsIn('It called POST /v1/orgs/{org}/execute to run it.')).toEqual(['/execute']);
+    expect(oldWordsIn('POST /tool-servers/{server}/tools/{tool}/execute, in src/execute/execute.ts')).toEqual([]);
+  });
 });

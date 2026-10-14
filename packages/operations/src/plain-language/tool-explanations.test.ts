@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { explanationOf, unsuccessfulWords, type ExplainedRejection, type Remedies } from '../index.ts';
 
 const toolsNamed =
-  'This can be put right on your side: whoever runs the server decides which tool servers and tools this playbook may use, which list_tool_servers shows, so once it names only those, it can be tried again.';
+  'This can be put right on your side: whoever runs the server decides which tool servers and tools this playbook may use, which search shows, so once it names only those, it can be tried again.';
 
 const serverFailed =
   'Nothing was called through it, so it can be tried again later; if it keeps happening, whoever runs the server can look into that tool server.';
@@ -45,12 +45,6 @@ const toolEndings: ReadonlyArray<readonly [string, ExplainedRejection, string, s
     { reason: 'unavailable', kind: 'tool_not_offered', because: 'tool_not_listed' },
     'this server does not offer a tool it names, because the tool server it names does not have that tool',
     toolsNamed,
-  ],
-  [
-    'a tool its server may let change something, which whoever runs the server has not listed as safe to test',
-    { reason: 'unavailable', kind: 'tool_not_offered', because: 'not_testable' },
-    "this server does not offer a tool it names, because by its server's own account it may change something, and whoever runs the server has not listed it as safe to test",
-    "A tool that may change something is called only by a function the person asked to run; whoever runs the server can mark it testable on its tool server's entry, and list_tool_servers shows which tools can be tested.",
   ],
   [
     'a tool server that kept failing before any call',
@@ -99,13 +93,6 @@ describe('explanationOf a run that needs tools', () => {
     expect(explanationOf(rejection)).toMatchObject({ why, remedy });
   });
 
-  it('says in 214 characters where whoever runs the server marks a tool testable', () => {
-    const { remedy } = explanationOf({ reason: 'unavailable', kind: 'tool_not_offered', because: 'not_testable' });
-
-    expect(remedy).toContain("whoever runs the server can mark it testable on its tool server's entry");
-    expect(remedy).toHaveLength(214);
-  });
-
   it('says only of tool calls whose effect is not known that something may have changed', () => {
     const changing = [...toolEndings, ...unfinishedEndings].filter(
       ([, rejection]) => explanationOf(rejection).mayHaveChanged === true,
@@ -127,7 +114,7 @@ describe('explanationOf a run that needs tools', () => {
   });
 });
 
-const serverNamed = 'list_tool_servers shows the tool servers this playbook may use.';
+const serverNamed = 'search shows the tool servers this playbook may use.';
 
 const ownRemedies: Remedies = { tool_server_not_configured: serverNamed };
 
@@ -147,8 +134,8 @@ describe('the remedies an operation gives of its own', () => {
   });
 
   it('end the words of a refusal for their because', () => {
-    expect(unsuccessfulWords('test the tool', 'command', notConfigured, ownRemedies)).toBe(
-      `Could not test the tool: this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this playbook. Nothing was changed. ${serverNamed}`,
+    expect(unsuccessfulWords('call the tool', 'command', notConfigured, ownRemedies)).toBe(
+      `Could not call the tool: this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this playbook. Nothing was changed. ${serverNamed}`,
     );
   });
 });
