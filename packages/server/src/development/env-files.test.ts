@@ -20,6 +20,8 @@ import {
 
 const example = new URL('../../../../.env.example', import.meta.url);
 
+const devEnv = new URL('../../dev.env', import.meta.url);
+
 const exampleConfigFile = fileURLToPath(new URL('../../../../auto-runtime.example.yaml', import.meta.url));
 
 const localMode = '"message":"Local mode is on:';
@@ -40,10 +42,10 @@ function uncommented(text: string): string {
 }
 
 describe('local Studio under pnpm dev', { timeout: developmentTestTimeoutMs }, () => {
-  it('allows the local Studio origins while refusing an unrelated browser origin', async () => {
-    const development = startDevelopment(
-      developmentFiles(readFileSync(new URL('../../dev.env', import.meta.url), 'utf8')),
-    );
+  it('allows the local Studio origins in local mode while refusing an unrelated browser origin', async () => {
+    const development = startDevelopment(developmentFiles(readFileSync(devEnv, 'utf8')), {
+      environment: { LOCAL_MODE: 'true' },
+    });
     const port = await untilListening(development);
 
     await Promise.all(
@@ -66,6 +68,13 @@ describe('local Studio under pnpm dev', { timeout: developmentTestTimeoutMs }, (
 });
 
 describe('the settings files pnpm dev reads', { timeout: developmentTestTimeoutMs }, () => {
+  it('sign persons in at http://localhost:5555 with dev.env alone, which leaves local mode to .env', () => {
+    expect(readSettings(parseEnv(readFileSync(devEnv, 'utf8')))).toMatchObject({
+      localMode: false,
+      signIn: { issuer: 'https://clerk.on.auto', publicUrl: 'http://localhost:5555' },
+    });
+  });
+
   it('lets .env override dev.env', async () => {
     await expect(accessNoticeWith('LOCAL_MODE=true\n', {})).resolves.toBe(localMode);
   });

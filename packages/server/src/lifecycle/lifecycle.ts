@@ -1,6 +1,6 @@
 import { createApiHandler, makeAppRuntime, type RegisterRoutes, type AppRuntime } from '@on.auto/api';
 import type { Environment } from '@on.auto/config';
-import { authenticatorFor, identityServiceOf, type Authenticator } from '@on.auto/identity';
+import { authenticatorFor, identityServiceOf, type Authenticator, type SignInSettings } from '@on.auto/identity';
 import { Effect, Layer } from 'effect';
 
 import {
@@ -19,6 +19,7 @@ import { StartupError } from './startup-error.ts';
 
 export interface RunningServer {
   readonly port: number;
+  readonly signIn: SignInSettings | undefined;
   stop(): Promise<void>;
 }
 
@@ -106,6 +107,7 @@ async function started<R>({ settings, authenticator, telemetry, options }: Start
   let stopping: Promise<void> | undefined;
   return {
     port: tcpPort(server.address()),
+    signIn: settings.signIn,
     stop: async () => {
       stopping ??= shutDown(
         server,

@@ -1,9 +1,12 @@
+import type { SignInSettings } from '@on.auto/identity';
+
 import { release } from '../composition/release.ts';
 import type { ColorDepth } from '../logging/terminal.ts';
 import { clearedLine, headerOf, readyNoticeOf, startingLine, stoppedNotice, stoppingNotice } from './local-banner.ts';
 
 interface LocalServer {
   readonly port: number;
+  readonly signIn: SignInSettings | undefined;
   stop(): Promise<void>;
 }
 
@@ -42,6 +45,7 @@ export async function servedLocally(host: LocalServerHost): Promise<void> {
       {
         url: `http://localhost:${server.port}`,
         readyInMs: Math.round(host.clock() - startedAt),
+        identityService: server.signIn?.issuer,
       },
       host.depth,
     ),

@@ -10,11 +10,13 @@ You need Node.js 26.10 or later on macOS or Linux.
 npx @on.auto/runtime
 ```
 
-The server starts in local mode at `http://localhost:5555`, trusting callers on your computer and needing no API key. Do not expose it through a tunnel or public proxy. Its MCP endpoint is `http://localhost:5555/mcp`; connect Claude Code with:
+The server starts at `http://localhost:5555`, and you sign in through the Auto identity service when your agent connects, with nothing to set. Do not expose it through a tunnel or public proxy. Its MCP endpoint is `http://localhost:5555/mcp`; connect Claude Code with:
 
 ```bash
 claude mcp add --transport http auto-runtime http://localhost:5555/mcp
 ```
+
+The first time it connects, your agent opens the sign-in page in your browser. For development without signing in, set `LOCAL_MODE=true`: local mode trusts every request on your computer as the local developer, in the org `local`.
 
 ## Configure it
 
@@ -28,7 +30,7 @@ The ledger, where playbooks and their runs are kept, is the SQLite file `~/.auto
 
 ```bash
 npx @on.auto/runtime                # start the server (also: start)
-npx @on.auto/runtime key --org acme # issue an API key for a server that is not in local mode
+npx @on.auto/runtime key --org acme # issue an API key for a machine or a pipeline
 npx @on.auto/runtime --version
 npx @on.auto/runtime --help
 ```

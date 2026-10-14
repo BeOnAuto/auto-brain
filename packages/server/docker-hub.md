@@ -6,32 +6,32 @@ Auto Runtime runs the playbooks your agent builds: their reasoning, interaction,
 
 ## Quick start
 
-A container listens on every interface, so every request needs an API key. Create one, put the entry it prints in a file of settings, and start the server with a volume for its ledger:
+A person signs in through the Auto identity service, and the runtime needs only the address it is reached at, `PUBLIC_URL`. Put it in a file of settings, and start the server with its port published on this machine's loopback address and a volume for its ledger:
 
 ```bash
-docker run --rm --log-driver none onauto/runtime:latest node packages/identity/src/key-command.ts --org acme
-echo 'API_KEYS=[<the API_KEYS entry it printed>]' > auto-runtime.env
+echo 'PUBLIC_URL=http://localhost:5555' > auto-runtime.env
 docker volume create auto-runtime-data
 docker run --detach --name auto-runtime --restart unless-stopped \
-  --publish 5555:5555 --env-file auto-runtime.env --volume auto-runtime-data:/data \
+  --publish 127.0.0.1:5555:5555 --env-file auto-runtime.env --volume auto-runtime-data:/data \
   onauto/runtime:latest
 curl http://localhost:5555/health
 ```
 
-Then connect your agent to `/mcp` with the key, for example in Claude Code:
+Then connect your agent to `/mcp`, for example in Claude Code, and sign in when it opens the Auto identity service in your browser:
 
 ```bash
-claude mcp add --transport http auto-runtime http://localhost:5555/mcp --header "Authorization: Bearer <your key>"
+claude mcp add --transport http auto-runtime http://localhost:5555/mcp
 ```
 
-**[Run with Docker](https://on.auto/docs/self-host/docker)** walks through each step, adds a model provider and has a Compose file that runs the runtime beside PostgreSQL.
+**[Run with Docker](https://on.auto/docs/self-host/docker)** walks through each step, adds a model provider, gives a machine or a pipeline an API key and has a Compose file that runs the runtime beside PostgreSQL.
 
 ## What a deployment needs
 
 | Need           | What to use                                                                                                                                                      |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | The ledger     | A volume on `/data`, where it keeps a SQLite file, or a PostgreSQL database named by `DATABASE_URL`: [Use PostgreSQL](https://on.auto/docs/self-host/postgresql) |
-| API keys       | `API_KEYS`, with an entry for each key the key command makes: [Authentication and security](https://on.auto/docs/self-host/security)                             |
+| Sign-in        | `PUBLIC_URL`, the public `https` address people reach the runtime at: [Run in production](https://on.auto/docs/self-host/production)                             |
+| API keys       | `API_KEYS`, for machines and pipelines, with an entry for each key the key command makes: [Authentication and security](https://on.auto/docs/self-host/security) |
 | A model        | Anthropic, OpenAI, Google, Amazon Bedrock, Azure OpenAI, Vertex AI or your own gateway: [Model providers and gateways](https://on.auto/docs/self-host/models)    |
 | HTTPS          | A reverse proxy or load balancer in front of port `5555`: [Run in production](https://on.auto/docs/self-host/production)                                         |
 | Object storage | Optional, an S3-compatible bucket for large content: [Keep content on object storage](https://on.auto/docs/self-host/object-storage)                             |
@@ -50,7 +50,7 @@ Every tag is published for `linux/amd64` and `linux/arm64`, built in GitHub Acti
 
 ## Without Docker
 
-`npx @on.auto/runtime` runs the same server on macOS or Linux with Node.js 26.10 or later, in local mode on `http://localhost:5555`. See the [local quick start](https://on.auto/docs/get-started/local).
+`npx @on.auto/runtime` runs the same server on macOS or Linux with Node.js 26.10 or later, on `http://localhost:5555`, where you sign in through the Auto identity service. See the [local quick start](https://on.auto/docs/get-started/local).
 
 ## License
 

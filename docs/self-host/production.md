@@ -1,6 +1,6 @@
 # Run in production
 
-A production deployment is the container from [Run with Docker](docker.md), with HTTPS in front of it, a durable ledger, scoped keys, enough memory, and a plan for logs, upgrades and backups. This page goes through each.
+A production deployment is the container from [Run with Docker](docker.md), with HTTPS in front of it and its public address as `PUBLIC_URL`, a durable ledger, scoped keys, enough memory, and a plan for logs, upgrades and backups. This page goes through each.
 
 Auto Runtime is in early development. Review [Function availability](../concepts/functions.md#availability) before you commit a production workload to it.
 
@@ -8,13 +8,15 @@ Auto Runtime is in early development. Review [Function availability](../concepts
 
 The server speaks plain HTTP on `PORT`, `5555` unless set, on every interface (`HOST`, `0.0.0.0` in the image). Put a reverse proxy or a load balancer in front of it to end TLS, such as nginx, Caddy, Traefik, an ingress controller or your cloud's load balancer, and keep port `5555` itself off the internet.
 
+Set `PUBLIC_URL` to the public `https` address people reach the runtime at, such as `https://runtime.example.com`, with no path. People sign in through the Auto identity service, and every token must name that address as its audience, so it is the address of the proxy, not of the container; the `http` addresses `PUBLIC_URL` also takes, on `localhost`, `127.0.0.1` or `[::1]`, are for a runtime reached on its own machine. [Signed-in persons](security.md#signed-in-persons) sets out what the runtime verifies.
+
 Never turn on [local mode](security.md#local-mode) behind a proxy. Local mode trusts every request as the local developer, and a proxy on the same machine makes remote requests look local. The image cannot run in local mode anyway, since it listens on every interface; a server with `LOCAL_MODE=true` on such an address stops at start.
 
 A web page may call the API only from Auto Studio or from an origin you list in `ALLOWED_ORIGINS`; see [Calling from a browser](security.md#calling-from-a-browser).
 
 ## Give every client its own key
 
-Make one [API key](security.md#api-keys) for each person, agent or system that connects, with only the permissions and playbooks it needs, so a key can be revoked without disturbing the others. To revoke or rotate one, change `API_KEYS` and restart the server: requests with a key that is no longer listed get `401`. A workflow run keeps acting for the caller who started it, with the permissions that caller had then, until it ends; revoking the key does not stop it, and `cancel_run` does.
+A person signs in and needs no key. Make one [API key](security.md#api-keys) for each machine, pipeline or agent that signs in nowhere, and for each caller that needs a grant narrower than a signed-in person's, with only the permissions and playbooks it needs, so a key can be revoked without disturbing the others. To revoke or rotate one, change `API_KEYS` and restart the server: requests with a key that is no longer listed get `401`. A workflow run keeps acting for the caller who started it, with the permissions that caller had then, until it ends; revoking the key does not stop it, and `cancel_run` does.
 
 Keep keys and every other secret in your platform's secret store, passed to the container as environment variables. The configuration file never holds a secret; it names the variable that does.
 
