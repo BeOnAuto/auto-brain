@@ -409,6 +409,14 @@ These are refused when a document is saved:
 | An expression that is not one TypeScript expression, or names what its place lacks                                                                                                                           | See [Expressions](#expressions)                                                     |
 | Durations in years or months, or longer than a run may last                                                                                                                                                  | See [Durations](#durations) and [Limits](#limits)                                   |
 
+## The overview
+
+`get_definition` answers a saved workflow with its `overview`, the workflow in plain words for a person who does not read YAML, which Auto Studio shows before the document. It opens with the `summary`, or else the `title`, or says the workflow has no description yet, and then says what starts it: each trigger of its `schedule` in words, a `cron` as a time in UTC and its days where it reads plainly and as it is written otherwise, and a call of `run_definition`, which can always start it; what it needs and what it produces, each field of `input.schema.document` and `output.schema.document` with its type; what it does, a flowchart of its tasks and, beneath it, the same steps as a numbered list in words; and what it calls, each definition a `call: run_definition` names, with its type.
+
+In the flowchart, each trigger is an entry node and each task a step, numbered in the order of the document as in the list beneath it. A `call` is a node named for the definition it runs, such as `Run review-campaign-brief`; a `switch` is a decision with an edge for each case; a `set`, a `listen`, a `wait`, an `emit` and a `run` are each a node in words; and a `raise` is an end node. A `for`, a `do`, a `fork` and a `try` are each a group around their tasks: a `for` draws an edge back for the next item, a `fork` starts each branch at once and its group says when the first to finish wins, and a `try` draws its `catch` as a dashed edge from each of its steps to the steps of `catch.do`, or to the step after it when `catch.do` names none. The edges follow the order of the document and each `then`, and pass around a task whose `if` may not hold.
+
+The overview is written from the document when it is saved, so it says only what the document says. Write the `summary` and the `description` of each field of the schemas for the person who will read it, and name each task for what it does, since the steps carry those names.
+
 ## How a run ends
 
 `run_definition` answers `status: started` as soon as the run begins, or how the run ended when it ended before its first wait. `get_run` shows the run as `started` until it ends:
