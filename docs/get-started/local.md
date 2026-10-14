@@ -55,7 +55,7 @@ For another provider or an OpenAI-compatible model gateway, see [Model providers
 npx @on.auto/runtime
 ```
 
-It shows the address of the server, `http://localhost:5555`, its MCP endpoint, a link that opens [Auto Studio](https://studio.on.auto) on it, the model providers it found and where it keeps your work. Keep this terminal open. In a second terminal, check that the server is ready:
+It shows the address of the server, `http://localhost:5555`, its MCP endpoint, the identity service you sign in through, a link that opens [Auto Studio](https://studio.on.auto) on it, the model providers it found and where it keeps your work. Keep this terminal open. In a second terminal, check that the server is ready:
 
 ```bash
 curl http://localhost:5555/health
@@ -63,11 +63,13 @@ curl http://localhost:5555/health
 
 You should see `{"status":"ok"}`. The MCP endpoint is `http://localhost:5555/mcp`.
 
-This local mode needs no authentication header and trusts callers on your computer. Do not expose it through a tunnel or public proxy. The server runs reasoning functions, such as the example below, computation functions and workflows.
+You sign in through the Auto identity service when your agent connects, and the server takes `http://localhost:5555` as the address it is reached at, with nothing to set. Do not expose it through a tunnel or public proxy. The server runs reasoning functions, such as the example below, computation functions and workflows.
+
+For development without signing in, put `LOCAL_MODE=true` in `.env` and start the server again: local mode trusts every request on your computer as the local developer, in the org `local`, and no one signs in.
 
 ## 4. Connect your agent {#connect-your-agent}
 
-Choose your client below. The agent must reach the server on your computer; a web-based connector running in the cloud cannot reach your `localhost`.
+Choose your client below. The agent must reach the server on your computer; a web-based connector running in the cloud cannot reach your `localhost`. The first time it connects, your agent opens the Auto identity service in your browser: sign in and choose your organization; the playbooks your agent makes belong to its org.
 
 ### Claude Code
 
@@ -77,7 +79,7 @@ In a terminal, add the HTTP connection:
 claude mcp add --transport http auto-runtime http://localhost:5555/mcp
 ```
 
-Start Claude Code in that directory, then use `/mcp` to check that `auto-runtime` is connected. See [Claude Code's MCP documentation](https://code.claude.com/docs/en/mcp) for connection scopes and tool permissions.
+Start Claude Code in that directory, then use `/mcp` to check that `auto-runtime` is connected, and to sign in while it is not. See [Claude Code's MCP documentation](https://code.claude.com/docs/en/mcp) for connection scopes and tool permissions.
 
 ### Codex
 
@@ -87,7 +89,7 @@ Add the HTTP connection:
 codex mcp add auto-runtime --url http://localhost:5555/mcp
 ```
 
-Start a new Codex session. Use `/mcp` in the CLI to check the connection, or `codex mcp list` to inspect the saved configuration. See [Codex MCP documentation](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
+Start a new Codex session. Use `/mcp` in the CLI to check the connection, or `codex mcp list` to inspect the saved configuration. The [Codex MCP documentation](https://learn.chatgpt.com/docs/extend/mcp?surface=cli) describes how Codex signs you in to a server that asks for it.
 
 ### Claude Desktop
 
@@ -108,7 +110,7 @@ In Claude Desktop, open **Settings → Developer → Edit Config**. Add the `aut
 }
 ```
 
-This uses the third-party [mcp-remote](https://github.com/punkpeye/mcp-remote) bridge to connect Desktop's local stdio transport to Auto's HTTP endpoint. The first launch downloads the pinned bridge package. Quit and reopen Claude Desktop, keeping Auto running, then check that its Auto tools are available in a new conversation.
+This uses the third-party [mcp-remote](https://github.com/punkpeye/mcp-remote) bridge to connect Desktop's local stdio transport to Auto's HTTP endpoint. The first launch downloads the pinned bridge package, and the bridge opens the sign-in page in your browser the first time it connects. Quit and reopen Claude Desktop, keeping Auto running, then check that its Auto tools are available in a new conversation.
 
 If Desktop cannot find `npx`, use the full path to your `npx` executable as `command`. See the [local MCP setup guide](https://modelcontextprotocol.io/docs/develop/connect-local-servers) for configuration paths and troubleshooting. Do not put this local URL in Claude's [remote connector settings](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
 
@@ -141,7 +143,7 @@ For a second run and a comparison of the results, continue with [Build your firs
 
 A reasoning function can use the tools of a tool server, such as the MCP server of a search service. You tell Auto about the server in a settings file, `auto-runtime.yaml`, and keep the server's key in `.env`.
 
-1. Create `auto-runtime.yaml` in the directory you start Auto Runtime in, holding exactly this, with your server's address in place of the example one. It adds the server under `tool_servers` for the org `local` that a local server uses, with a header that names the environment variable holding its key, written `${NAME}`; every tool of the server is allowed, since its entry leaves `allowed` out:
+1. Create `auto-runtime.yaml` in the directory you start Auto Runtime in, holding exactly this, with your server's address in place of the example one. It adds the server under `tool_servers` for `*`, every org of the runtime, which on your computer is the org you sign in to, with a header that names the environment variable holding its key, written `${NAME}`; every tool of the server is allowed, since its entry leaves `allowed` out:
 
    ```yaml
    tool_servers:
@@ -149,7 +151,7 @@ A reasoning function can use the tools of a tool server, such as the MCP server 
        url: https://search.example.com/mcp
        headers:
          Authorization: Bearer ${SEARCH_API_KEY}
-       org: local
+       org: '*'
    ```
 
 2. Put the key in `.env` as `SEARCH_API_KEY=` followed by the key.
@@ -167,7 +169,7 @@ Your agent can try a tool before a function uses it, to see what it answers: it 
 
 ## If something does not connect
 
-If the health check fails, check the server terminal for startup errors and confirm that port 5555 is free. If your agent cannot connect but the health check works, check its MCP endpoint, restart the agent session, and confirm it is running on the same computer as Auto.
+If the health check fails, check the server terminal for startup errors and confirm that port 5555 is free. A server that says the identity service cannot be used could not reach `https://clerk.on.auto` as it started; check your connection, or put `LOCAL_MODE=true` in `.env` to work in local mode. If your agent cannot connect but the health check works, check its MCP endpoint, restart the agent session, and confirm it is running on the same computer as Auto.
 
 If a reasoning function reports `provider_not_configured`, check the setting in `.env` in the directory you started Auto in, and restart Auto. If model discovery is incomplete, use a concrete model reference supported by your configured provider. Do not paste keys into a prompt to fix a connection.
 
