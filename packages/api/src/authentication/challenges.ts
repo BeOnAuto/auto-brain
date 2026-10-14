@@ -1,5 +1,5 @@
-import type { ProtectedResource } from '@on.auto/identity';
-import { allPermissions, OrgIdSchema, PlaybookIdSchema, type Permission } from '@on.auto/operations';
+import { signInScope, type ProtectedResource } from '@on.auto/identity';
+import { OrgIdSchema, PlaybookIdSchema } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 import { problemOf } from '../problem/problem.ts';
@@ -53,21 +53,17 @@ export function unauthenticatedChallenge(resource: ProtectedResource | undefined
   return challengeOf(
     resource === undefined
       ? error
-      : [...error, ['resource_metadata', metadataAddressOf(resource)], ['scope', allPermissions.join(' ')]],
+      : [...error, ['resource_metadata', metadataAddressOf(resource)], ['scope', signInScope]],
   );
 }
 
-export function insufficientScope(
-  resource: ProtectedResource | undefined,
-  scopes: readonly Permission[],
-  resourcePath = '',
-): ChallengeHeaders {
+export function insufficientScope(resource: ProtectedResource | undefined, resourcePath = ''): ChallengeHeaders {
   const error: Parameter = ['error', 'insufficient_scope'];
   return {
     'www-authenticate': challengeOf(
       resource === undefined
         ? [error]
-        : [error, ['scope', scopes.join(' ')], ['resource_metadata', metadataAddressOf(resource, resourcePath)]],
+        : [error, ['scope', signInScope], ['resource_metadata', metadataAddressOf(resource, resourcePath)]],
     ),
   };
 }

@@ -5,7 +5,7 @@ import { jsonOf, postMcp } from '../testing/mcp-requests.ts';
 import { acmeAdmin, acmeAlphaWriter, operationServer } from '../testing/operation-server.ts';
 import { publicUrl, signedInServer } from '../testing/signed-in.ts';
 
-const rootChallenge = `Bearer error="insufficient_scope", scope="org:read org:write playbook:read playbook:write", resource_metadata="${publicUrl}/.well-known/oauth-protected-resource"`;
+const rootChallenge = `Bearer error="insufficient_scope", scope="user:org:read", resource_metadata="${publicUrl}/.well-known/oauth-protected-resource"`;
 
 const asAdmin = { authorization: `Bearer ${acmeAdmin.key}` };
 

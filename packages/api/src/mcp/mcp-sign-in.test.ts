@@ -38,7 +38,7 @@ describe('an agent signing in through the authorization server the metadata name
       iss: issuer.origin,
       aud: runtime.origin,
       sub: 'ada',
-      scope: 'org:read org:write playbook:read playbook:write',
+      scope: 'user:org:read',
     });
   });
 });

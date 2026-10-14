@@ -1,5 +1,5 @@
+import { signInScope } from '@on.auto/identity';
 import { approvalDocument } from '@on.auto/interaction/testing';
-import { allPermissions } from '@on.auto/operations';
 import { describe, expect, it } from 'vitest';
 
 import { compositionRoot } from '../composition/composition-root.ts';
@@ -71,7 +71,7 @@ describe('a server that signs persons in', { timeout: workflowTestTimeoutMs }, (
       body: { resource: `${publicUrl}/mcp`, authorization_servers: [issuer.issuer] },
     });
     expect(unauthenticated.headers.get('www-authenticate')).toBe(
-      `Bearer resource_metadata="${publicUrl}/.well-known/oauth-protected-resource", scope="${allPermissions.join(' ')}"`,
+      `Bearer resource_metadata="${publicUrl}/.well-known/oauth-protected-resource", scope="${signInScope}"`,
     );
   });
 
