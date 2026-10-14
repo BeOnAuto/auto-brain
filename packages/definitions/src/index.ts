@@ -227,6 +227,7 @@ export {
   type Phrases,
 } from './overview/overview.ts';
 export { durationInWords } from './overview/duration-words.ts';
+export { eventFilterPhrases, type EventFilter } from './overview/event-filter-words.ts';
 export { appendedSection, markdownOf, mostOverviewBytes, mostTableRows } from './overview/markdown-writer.ts';
 export { mostFieldDescriptionCharacters, schemaBlocks } from './overview/schema-words.ts';
 export {
