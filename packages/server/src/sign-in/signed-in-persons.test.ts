@@ -1,4 +1,4 @@
-import { signInScope } from '@on.auto/identity';
+import { signInScopes } from '@on.auto/identity';
 import { approvalDocument } from '@on.auto/interaction/testing';
 import { describe, expect, it } from 'vitest';
 
@@ -8,9 +8,11 @@ import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
 import { brief, interactionServerOn } from '../testing/servers/interaction-server.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
 import { runIdIn, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
-import { issuerOverHttps } from './issuer-over-https.ts';
+import { accessTokenOf, issuerOverHttps } from './issuer-over-https.ts';
 
 const publicUrl = 'http://localhost:5555';
+
+const rootMetadata = `${publicUrl}/.well-known/oauth-protected-resource`;
 
 function signingIn(issuer: string): Readonly<Record<string, string>> {
   return { IDENTITY_ISSUER: issuer, PUBLIC_URL: publicUrl };
@@ -20,15 +22,7 @@ describe('a signed-in person on the facts', { timeout: workflowTestTimeoutMs }, 
   it('is named person:<subject> as who created the playbook and the definition, started the run and answered it', async () => {
     const issuer = await issuerOverHttps();
     const server = await interactionServerOn(signingIn(issuer.issuer));
-    const seconds = Math.floor(Date.now() / 1000);
-    const key = await issuer.sign({
-      iss: issuer.issuer,
-      sub: 'user|ada',
-      aud: publicUrl,
-      iat: seconds,
-      exp: seconds + 300,
-      org_id: 'acme',
-    });
+    const key = await accessTokenOf(issuer, publicUrl, signInScopes.join(' '));
 
     const playbook = await server.call('POST', '/v1/orgs/acme/playbooks', {
       key,
@@ -70,8 +64,9 @@ describe('a server that signs persons in', { timeout: workflowTestTimeoutMs }, (
       status: 200,
       body: { resource: `${publicUrl}/mcp`, authorization_servers: [issuer.issuer] },
     });
+    expect(metadata.body).toMatchObject({ scopes_supported: signInScopes });
     expect(unauthenticated.headers.get('www-authenticate')).toBe(
-      `Bearer resource_metadata="${publicUrl}/.well-known/oauth-protected-resource", scope="${signInScope}"`,
+      `Bearer resource_metadata="${rootMetadata}", scope="user:org:read org:read org:write playbook:read playbook:write"`,
     );
   });
 
@@ -94,6 +89,28 @@ describe('a server that signs persons in', { timeout: workflowTestTimeoutMs }, (
     expect(String(failure)).toMatch(
       /^UnusableIdentityServiceError: The identity service at https:\/\/127\.0\.0\.1:9 cannot be used: no metadata of https:\/\/127\.0\.0\.1:9 could be used: /u,
     );
+  });
+});
+
+describe('the permissions of a signed-in person', { timeout: workflowTestTimeoutMs }, () => {
+  it('are the permissions among the scopes their token was granted, a refusal naming what it needs', async () => {
+    const issuer = await issuerOverHttps();
+    const server = await interactionServerOn(signingIn(issuer.issuer));
+    const reader = await accessTokenOf(issuer, publicUrl, 'user:org:read org:read playbook:read');
+    const noPermission = await accessTokenOf(issuer, publicUrl, 'user:org:read');
+
+    const listed = await server.call('GET', '/v1/orgs/acme/playbooks', { key: reader });
+    const created = await server.call('POST', '/v1/orgs/acme/playbooks', {
+      key: reader,
+      body: { playbook: 'alpha', name: 'Alpha' },
+    });
+    const refused = await server.call('GET', '/v1/orgs/acme/playbooks', { key: noPermission });
+
+    expect([listed.status, created.status, refused.status]).toEqual([200, 403, 403]);
+    expect([created, refused].map(({ headers }) => headers.get('www-authenticate'))).toEqual([
+      `Bearer error="insufficient_scope", scope="org:write", resource_metadata="${rootMetadata}"`,
+      `Bearer error="insufficient_scope", scope="org:read playbook:read", resource_metadata="${rootMetadata}"`,
+    ]);
   });
 });
 

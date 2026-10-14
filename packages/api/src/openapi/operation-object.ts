@@ -132,7 +132,7 @@ export function describedOperationOf(registration: RouteRegistration, operationI
         [registration.successStatus]: successOf(registration, operationId),
         ...referencesTo(problems),
       },
-      security: [{ bearer: [] }, { openIdConnect: [] }],
+      security: [{ bearer: [] }, ...registration.permissions.map((permission) => ({ openIdConnect: [permission] }))],
     },
   };
 }

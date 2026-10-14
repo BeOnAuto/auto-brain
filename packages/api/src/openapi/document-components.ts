@@ -36,7 +36,8 @@ function securitySchemesOf(identityIssuer: string): OpenApiObject {
       description: [
         'An access token of the Auto identity service, sent as Authorization: Bearer <token>, for a person signed in there.',
         'A server whose PUBLIC_URL is set takes a token whose audience is that URL.',
-        'The person acts in the org their organization in the identity service names, with every permission over every playbook.',
+        'The person acts in the org their organization in the identity service names, over every playbook, with the permissions among the scopes their token was granted.',
+        'Each permission that permits an operation is the scope of one of its requirements.',
       ].join(' '),
     },
   };

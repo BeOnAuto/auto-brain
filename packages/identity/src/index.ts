@@ -9,7 +9,7 @@ export { UnusableIdentityServiceError } from './identity-service/unusable-identi
 export {
   autoIdentityService,
   identityServiceOf,
-  signInScope,
+  signInScopes,
   type IdentityService,
   type ProtectedResource,
   type SignInSettings,

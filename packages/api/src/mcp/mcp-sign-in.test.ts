@@ -13,7 +13,7 @@ afterEach(async () => {
 });
 
 describe('an agent signing in through the authorization server the metadata names', () => {
-  it('connects with the SDK’s client, is challenged, gets a token for the resource and calls the tools', async () => {
+  it('connects with the SDK’s client, is challenged, gets a token of every scope asked for the resource and calls the tools', async () => {
     const issuer = await issuerOnLoopback(clients);
     const runtime = await signedInOnLoopback(issuer.served);
     opened.push(issuer, runtime);
@@ -38,7 +38,7 @@ describe('an agent signing in through the authorization server the metadata name
       iss: issuer.origin,
       aud: runtime.origin,
       sub: 'ada',
-      scope: 'user:org:read',
+      scope: 'user:org:read org:read org:write playbook:read playbook:write',
     });
   });
 });

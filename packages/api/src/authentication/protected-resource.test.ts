@@ -29,7 +29,7 @@ describe('the protected resource metadata, with sign-in on', () => {
           resource,
           authorization_servers: ['https://login.example'],
           bearer_methods_supported: ['header'],
-          scopes_supported: ['user:org:read'],
+          scopes_supported: ['user:org:read', 'org:read', 'org:write', 'playbook:read', 'playbook:write'],
           resource_documentation: 'https://on.auto/docs/reference/mcp',
         },
       });

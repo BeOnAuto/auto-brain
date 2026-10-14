@@ -48,7 +48,28 @@ const measureNote = defineQuery('playbook', {
   handle: () => Effect.succeed({ size: 0 }),
 });
 
-const operations = [...notebookOperations, findNotes, listNotesOfTheOrg, ...blobOperations, moveNote, findNote];
+const countNotes = defineQuery('org', {
+  name: 'count_notes',
+  title: 'Count notes',
+  description:
+    'Counts the notes of the playbooks the caller may read. Use it to size the notebook. It answers a number.',
+  route: { method: 'GET', path: '/note-counts' },
+  inputSchema: Schema.Record(Schema.String, Schema.Never),
+  outputSchema: Schema.Struct({ notes: Schema.Int }),
+  permittedBy: ['org:read', 'playbook:read'],
+  reasons: [],
+  handle: () => Effect.succeed({ notes: 0 }),
+});
+
+const operations = [
+  ...notebookOperations,
+  findNotes,
+  listNotesOfTheOrg,
+  ...blobOperations,
+  moveNote,
+  findNote,
+  countNotes,
+];
 
 const catalog = makeCatalog(operations);
 
@@ -109,7 +130,7 @@ describe('the OpenAPI document of a catalog', () => {
     expect(operationNamed('add_note').operation).toMatchObject({
       summary: 'Add note',
       tags: ['notes'],
-      security: [{ bearer: [] }, { openIdConnect: [] }],
+      security: [{ bearer: [] }, { openIdConnect: ['playbook:write'] }],
     });
     expect(keysIn(document).filter((key) => key.startsWith('x-'))).toEqual([]);
   });
@@ -220,12 +241,28 @@ describe('the input of a command that streams its body', () => {
 });
 
 describe('the security of the operations of the document', () => {
-  it('takes on every operation but the guides a key or an access token of the identity service, either', () => {
+  it('takes on every operation but the guides a key, or an access token granted the permission it needs as a scope', () => {
     const { get_guide: guides, ...others } = Object.fromEntries(
-      operationsIn(document).map(({ operation }) => [operation.operationId, JSON.stringify(operation.security)]),
+      operationsIn(document).map(({ operation }) => [operation.operationId, operation.security]),
     );
 
-    expect(guides).toBe('[]');
-    expect(new Set(Object.values(others))).toEqual(new Set(['[{"bearer":[]},{"openIdConnect":[]}]']));
+    expect(guides).toEqual([]);
+    expect(others).toMatchObject({
+      list_notes: [{ bearer: [] }, { openIdConnect: ['playbook:read'] }],
+      add_note: [{ bearer: [] }, { openIdConnect: ['playbook:write'] }],
+      list_notes_in_org: [{ bearer: [] }, { openIdConnect: ['org:read'] }],
+      label_playbook: [{ bearer: [] }, { openIdConnect: ['org:write'] }],
+    });
+    expect(new Set(Object.values(others).map((security) => JSON.stringify(security[0])))).toEqual(
+      new Set(['{"bearer":[]}']),
+    );
+  });
+
+  it('names each permission that permits an operation as the scope of a requirement of its own, any of which serves', () => {
+    expect(operationNamed('count_notes').operation.security).toEqual([
+      { bearer: [] },
+      { openIdConnect: ['org:read'] },
+      { openIdConnect: ['playbook:read'] },
+    ]);
   });
 });

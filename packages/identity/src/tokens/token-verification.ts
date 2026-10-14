@@ -1,8 +1,10 @@
 import {
+  allPermissions,
   bytesOfReference,
   forbiddenCharactersInWords,
   holdsNoForbiddenCharacter,
   mostReferenceBytes,
+  type Permission,
 } from '@on.auto/operations';
 import { Predicate, Result, Schema } from 'effect';
 import { errors, jwtVerify, type JWTVerifyGetKey } from 'jose';
@@ -14,6 +16,8 @@ import { UnreadAnswer } from '../identity-service/issuer-requests.ts';
 export const mostTokenBytes = 8192;
 
 const orgClaim = 'org_id';
+
+const scopeClaim = 'scope';
 
 const leewaySeconds = 60;
 
@@ -50,14 +54,27 @@ function isSubject(sub: unknown): sub is string {
   return Predicate.isString(sub) && sub !== '' && bytesOfReference(sub) <= mostReferenceBytes;
 }
 
-function personIn({ iat, sub, [orgClaim]: org }: Payload, now: number): string | VerifiedPerson {
+function permissionsGrantedBy(scope: string): readonly Permission[] {
+  const granted = new Set(scope.split(' '));
+  return allPermissions.filter((permission) => granted.has(permission));
+}
+
+function personIn(
+  { iat, sub, [orgClaim]: org, [scopeClaim]: scope = '' }: Payload,
+  now: number,
+): string | VerifiedPerson {
   if (Predicate.isNumber(iat) && iat > now / 1000 + leewaySeconds) {
     return `its iat is more than ${leewaySeconds} seconds ahead`;
   }
   if (!isSubject(sub) || !holdsNoForbiddenCharacter(sub)) {
     return `its sub is not a non-empty string of at most ${mostReferenceBytes} bytes without ${forbiddenCharactersInWords}`;
   }
-  return isCredentialOrg(org) ? { subject: sub, org } : `its ${orgClaim} claim is not an org id other than local`;
+  if (!isCredentialOrg(org)) {
+    return `its ${orgClaim} claim is not an org id other than local`;
+  }
+  return Predicate.isString(scope)
+    ? { subject: sub, org, permissions: permissionsGrantedBy(scope) }
+    : `its ${scopeClaim} claim is not a string of scopes separated by spaces`;
 }
 
 async function verified(token: string, keySet: JWTVerifyGetKey, expected: Expected): Promise<string | VerifiedPerson> {

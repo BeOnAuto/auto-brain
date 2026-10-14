@@ -95,12 +95,12 @@ A prediction function, the predictive model a version of it holds and the predic
 
 ## Callers
 
-| Term             | Meaning                                                                                                                                  |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Caller           | Whoever a request acts for, a key, the local developer or a signed-in person, named on every fact it records.                            |
-| Key              | A credential the runtime issues itself, for a machine, a pipeline, a trainer's agent or a grant narrower than a signed-in person's.      |
-| Local developer  | The caller of every request in local mode, on the developer's own machine, with every permission in every org.                           |
-| Signed-in person | A person the Auto identity service signs in, with every permission in the org of their organization there, recorded under their subject. |
+| Term             | Meaning                                                                                                                                                                    |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Caller           | Whoever a request acts for, a key, the local developer or a signed-in person, named on every fact it records.                                                              |
+| Key              | A credential the runtime issues itself, for a machine, a pipeline, a trainer's agent or a grant over some of an org's playbooks.                                           |
+| Local developer  | The caller of every request in local mode, on the developer's own machine, with every permission in every org.                                                             |
+| Signed-in person | A person the Auto identity service signs in, in the org of their organization there, with the permissions their token was granted as scopes, recorded under their subject. |
 
 A signed-in person is the person a request comes from; a person an interaction function asks is the party of its request, who may answer without calling the runtime at all. A run keeps acting as the caller that started it.
 

@@ -1,4 +1,4 @@
-import { identityServiceOf, type IdentityService, type IssuerRequests } from '../index.ts';
+import { identityServiceOf, signInScopes, type IdentityService, type IssuerRequests } from '../index.ts';
 import type { Claims, FakeIssuer, Signing } from './fake-issuer.ts';
 import { principalIn } from './principals.ts';
 
@@ -28,6 +28,7 @@ export async function signedTokens(fake: FakeIssuer, requests: Partial<IssuerReq
           iat: seconds,
           exp: seconds + 300,
           org_id: 'acme',
+          scope: signInScopes.join(' '),
           ...claims,
         },
         signing,
