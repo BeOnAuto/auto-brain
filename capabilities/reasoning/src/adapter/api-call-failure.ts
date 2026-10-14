@@ -83,7 +83,10 @@ function retryAfterMs(headers: Readonly<Record<string, string>> | undefined, now
 
 const documentStart = /^[[{<]/u;
 
-const laterLines = /\s*\n[\s\S]*$/u;
+function firstLineOf(text: string): string {
+  const lineEnd = text.indexOf('\n');
+  return (lineEnd === -1 ? text : text.slice(0, lineEnd)).trimEnd();
+}
 
 function quotesBody(message: string, responseBody: string | undefined): boolean {
   return responseBody !== undefined && responseBody.trim() !== '' && message.includes(responseBody.trim());
@@ -92,7 +95,7 @@ function quotesBody(message: string, responseBody: string | undefined): boolean 
 function providerMessage({ message, responseBody, showsMessage, scrub }: ApiCallDetails): string | null {
   const trimmed = message.trim();
   const unusable = !showsMessage || trimmed === '' || documentStart.test(trimmed) || quotesBody(trimmed, responseBody);
-  return unusable ? null : scrub(trimmed.replace(laterLines, '')).slice(0, mostShownCharacters);
+  return unusable ? null : scrub(firstLineOf(trimmed)).slice(0, mostShownCharacters);
 }
 
 function tooLong(details: ApiCallDetails, status: number, signal: string): ModelFailure {
