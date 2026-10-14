@@ -61,7 +61,7 @@ describe('an output that reads no value', () => {
         [
           'Dear customer,',
           '{% if input.vip %}Treat this customer as a VIP.{% elsif input.score  >  3 %}Be warm.{% else %}Be kind.{% endif %} Thank them.',
-          '{% for item in input.items limit: 3 %}- {{ item.name }}',
+          `{% for item in input.items${' '.repeat(5000)}limit: 3 %}- {{ item.name }}`,
           '{% endfor %}',
         ].join('\n'),
       ),

@@ -2,8 +2,6 @@ import type { Phrase, Phrases } from './overview.ts';
 
 type Place = 'prose' | 'cell';
 
-const lineBreaks = /[ \t]*\r?\n\s*/gu;
-
 const inlinePunctuation = /[\\`*[\]<>]/gu;
 
 const underscoreAtAWordBoundary = /(?<![\p{L}\p{N}])_|_(?![\p{L}\p{N}])/gu;
@@ -13,7 +11,15 @@ const cellPunctuation = /[\\`|]/gu;
 const backtickRuns = /`+/gu;
 
 export function oneLine(text: string): string {
-  return text.replaceAll(lineBreaks, ' ');
+  const lines = text.split('\n');
+  const last = lines.length - 1;
+  return lines
+    .map((line, index) => {
+      const ended = index < last ? line.trimEnd() : line;
+      return index > 0 ? ended.trimStart() : ended;
+    })
+    .filter((line, index) => index === 0 || index === last || line !== '')
+    .join(' ');
 }
 
 export function escapedInline(text: string): string {

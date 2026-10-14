@@ -88,7 +88,7 @@ function cutIndexOf(text: string, room: number): number {
   if (lastBreak > 0) {
     return lastBreak + 1;
   }
-  const lastSpace = shown.search(/\s\S*$/u);
+  const lastSpace = Math.max(shown.lastIndexOf(' '), shown.lastIndexOf('\t'));
   if (lastSpace > 0) {
     return lastSpace + 1;
   }

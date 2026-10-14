@@ -66,6 +66,14 @@ describe('the Markdown of an overview', () => {
       '- the tool **search** of **graph**\n- every tool\n',
     );
   });
+
+  it('makes the line breaks of an item one space each, and keeps a long run of tabs that holds none as it is', () => {
+    const tabs = '\t'.repeat(60_000);
+
+    expect(writtenBlocks(bulletList([['every \t\r\n\t\n\n  tool\n'], [`a${tabs}b`]]))).toBe(
+      `- every tool\n- a${tabs}b\n`,
+    );
+  });
 });
 
 describe('the table of fields of an overview', () => {

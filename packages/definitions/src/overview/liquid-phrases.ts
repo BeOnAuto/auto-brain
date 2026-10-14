@@ -40,9 +40,7 @@ const blockEnd = /^end[a-z]+$/u;
 
 const endsOfReadBlocks: ReadonlySet<string> = new Set(['endif', 'endfor']);
 
-const loop = /^\s*(?<item>[\w-]+)\s+in\s+(?<list>\S[\s\S]*?)\s*$/u;
-
-const blankLine = /\n[ \t]*\n\s*/u;
+const loop = /^\s*(?<item>[\w-]+)\s+in\s+(?<list>\S[\s\S]*)$/u;
 
 function lastNameIn(content: string): string | undefined {
   const value = new Tokenizer(content).readValue();
@@ -112,11 +110,27 @@ function unitsOf(piece: Piece): readonly Unit[] {
   return [name === undefined ? { code: piece.written } : named(name)];
 }
 
+function paragraphsIn(text: string): readonly string[] {
+  const lines = text.split('\n');
+  const last = lines.length - 1;
+  const paragraphs: string[] = [];
+  let current: string[] = [];
+  for (const [index, line] of lines.entries()) {
+    if (index > 0 && index < last && line.trim() === '') {
+      paragraphs.push(current.join('\n'));
+      current = [];
+    } else {
+      current.push(line);
+    }
+  }
+  return [...paragraphs, current.join('\n')];
+}
+
 function marksOf(unit: Unit): readonly Unit[] {
   if (typeof unit !== 'string') {
     return [unit];
   }
-  return unit.split(blankLine).flatMap((part, index) => (index > 0 ? [paragraphBreak, part] : [part]));
+  return paragraphsIn(unit).flatMap((part, index) => (index > 0 ? [paragraphBreak, part] : [part]));
 }
 
 function isLine(mark: Unit): mark is Line {
