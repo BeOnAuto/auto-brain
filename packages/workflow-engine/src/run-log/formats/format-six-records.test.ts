@@ -237,6 +237,17 @@ describe('the words of an event of formats 1 to 6', () => {
       settlementsOfFormatSix.map((each) => settledWith(each)),
     );
   });
+
+  it('refuse a settlement that holds not_testable, which format 8 has no word for', () => {
+    const raisedByItsDocument = {
+      ...rejected,
+      reason: 'unavailable',
+      kind: 'tools_unfinished',
+      because: 'not_testable',
+    };
+
+    expect(Result.isFailure(decodeEvent(settledWith(raisedByItsDocument)))).toBe(true);
+  });
 });
 
 describe('a snapshot of formats 1 to 6', () => {

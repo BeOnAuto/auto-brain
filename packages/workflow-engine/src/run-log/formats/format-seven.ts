@@ -14,6 +14,17 @@ const writtenWords: ReadonlyMap<string, string> = new Map(
   [...currentWords].map(([written, current]: readonly [string, string]) => [current, written]),
 );
 
+export function isNotATestRefusal<Because extends string>(
+  because: Because,
+): because is Exclude<Because, 'not_testable'> {
+  return because !== 'not_testable';
+}
+
+export const withoutAWordInFormatEight = {
+  message:
+    'not_testable, the refusal of a test of a tool, has no word in format 8, so a settlement holding it is not read',
+};
+
 export function currentWordOf(word: string): string {
   return currentWords.get(word) ?? word;
 }

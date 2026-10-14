@@ -47,7 +47,6 @@ async function chatServing(options: MeetingsOptions) {
     headers: { Authorization: 'Bearer ${CHAT_KEY}' },
     org: 'local',
     playbooks: ['meetings'],
-    testable: ['post_message'],
   };
   return { chat, servers: { chat: entry } };
 }

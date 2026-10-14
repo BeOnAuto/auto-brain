@@ -38,7 +38,6 @@ const echoTool = {
   name: 'echo',
   description: 'Answers with its arguments.',
   input_schema: { type: 'object', properties: {}, required: [] },
-  testable: false,
 };
 
 describe('a tool server that cannot be asked for its tools', () => {

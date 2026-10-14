@@ -3,8 +3,6 @@ import { Predicate, Schema } from 'effect';
 import { cutToDescriptionBound } from '../bounds/call-bounds.ts';
 import type { Secrets } from '../bounds/secrets.ts';
 import type { ListedTool } from '../bounds/tool-results.ts';
-import type { ToolLists } from '../settings/server-settings.ts';
-import { canBeTested } from '../tool-tests/testing-guard.ts';
 import type { ServerTool } from './tool-server.ts';
 
 export interface Showing {
@@ -34,7 +32,7 @@ export function scrubbedSchema(inputSchema: Schema.JsonObject, scrub: Scrub): Sc
   return decodeJsonObject(JSON.stringify(inputSchema, scrubbing(scrub)));
 }
 
-export function shownTool(tool: ListedTool, lists: ToolLists, showing: Showing): ServerTool {
+export function shownTool(tool: ListedTool, showing: Showing): ServerTool {
   const { name, description = '', inputSchema } = tool;
   const { scrub } = showing.secrets;
   return {
@@ -42,6 +40,5 @@ export function shownTool(tool: ListedTool, lists: ToolLists, showing: Showing):
     description: cutToDescriptionBound(scrub(description)),
     input_schema: scrubbedSchema(inputSchema, scrub),
     ...annotationsOf(tool),
-    testable: canBeTested(name, tool.annotations, lists),
   };
 }

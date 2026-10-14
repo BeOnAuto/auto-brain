@@ -61,7 +61,12 @@ function answerOf(answered: CalledOnce): unknown {
   return 'answer' in answered ? answered.answer : answered;
 }
 
-const searchTool: unknown = expect.arrayContaining([expect.objectContaining({ name: 'search', testable: true })]);
+const searchTool: unknown = expect.arrayContaining([
+  expect.objectContaining({
+    name: 'search',
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
+  }),
+]);
 
 async function authorized(registration: Partial<ClientRegistration> = {}) {
   const fake = await fakeApi({

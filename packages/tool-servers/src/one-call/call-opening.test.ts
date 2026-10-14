@@ -1,4 +1,4 @@
-import { Function, Redacted } from 'effect';
+import { Redacted } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { defaultTiming } from '../bounds/call-bounds.ts';
@@ -14,7 +14,6 @@ const settings: StdioServerSettings = {
   orgs: ['acme'],
   playbooks: null,
   allowed: null,
-  testable: [],
   record_content: false,
   request_id: null,
   secrets: [],
@@ -34,7 +33,6 @@ const hanging: ServerLink = {
 const listing = {
   secrets: secretsOf([Redacted.make('notes-key')]),
   timing: { ...defaultTiming, openMs: 10 },
-  toolsListed: Function.constVoid,
 };
 
 const exited: ServerConnection = {

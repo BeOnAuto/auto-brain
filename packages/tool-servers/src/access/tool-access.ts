@@ -6,12 +6,7 @@ import type { ToolServer } from '../listing/tool-server.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
 import type { CallOnce } from '../one-call/one-call.ts';
 import type { ToolServers } from '../openapi/described-api.ts';
-import {
-  playbooksServedBy,
-  isListedFor,
-  type ServersScope,
-  type ServerToolLists,
-} from '../settings/server-settings.ts';
+import { playbooksServedBy, isListedFor, type ServersScope } from '../settings/server-settings.ts';
 import type { CallerContext, ServerMessage, ToolsNotOpened } from './caller-context.ts';
 import { keepingIn, namingOf, startsOf, type ContentStore, type NamingCheck, type StartOf } from './entry-reads.ts';
 
@@ -19,7 +14,6 @@ export interface ToolAccessOptions {
   readonly client: LinkOptions['client'];
   readonly content: ContentStore;
   readonly reportServerMessage: (report: ServerMessage) => void;
-  readonly reportUntestable: (server: string) => void;
   readonly fetch?: LinkOptions['fetch'];
   readonly now?: () => number;
   readonly timing?: LinkOptions['timing'];
@@ -27,7 +21,6 @@ export interface ToolAccessOptions {
 
 export interface ToolAccess {
   readonly configured: boolean;
-  readonly testing: readonly ServerToolLists[];
   readonly open: (
     context: CallerContext,
     references: readonly ToolReference[],
@@ -60,7 +53,6 @@ export function makeToolAccess(settings: ToolServers, options: ToolAccessOptions
   };
   return {
     configured: settings.servers.length > 0,
-    testing: settings.servers,
     open: (context, references) => Effect.flatMap(Effect.promise(loaded), (access) => access.open(context, references)),
     named: namingOf(settings.servers),
     startOf: startsOf(settings.servers, keepIn),

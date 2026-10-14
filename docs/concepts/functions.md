@@ -84,7 +84,7 @@ A reasoning function can call the tools of tool servers that the runtime's opera
 
 A tool may change something outside the playbook. A run that called tools and did not succeed is therefore not run again under the same run id; start a new run once you have checked what its history shows it called. When any tool server is configured, an agent connected to Auto sees `run_definition` marked as possibly destructive, so it can ask before running a function.
 
-To learn what a tool answers before a function names it, an agent tests it with `test_tool_call` instead of making a function to look: the playbook calls the tool once, as a run would, and answers what the run's model would see. Only a tool its server marks read-only, or that the operator marks testable on its entry, can be tested, and each test is recorded in the playbook's history, never as a run.
+To learn what a tool answers before a function names it, an agent calls it by hand with `execute` instead of making a function to look: the playbook calls the tool once, as a run would, and answers what the run's model would see. The agent finds the tools with `search`, reads one whole with `introspect`, checks its arguments with `validate` and asks what a call would check with `dry_run`; none of these four calls a tool. A call made by hand needs the permission to change the playbook, whatever the tool does, and each one is recorded in the playbook's history, never as a run.
 
 One of those servers can be an agent services gateway, which fronts the systems an organization connected and applies its own policies to the application whose key the runtime uses. Provider settings called model gateways connect to language models; they provide no tools.
 

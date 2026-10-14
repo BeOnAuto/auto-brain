@@ -80,6 +80,11 @@ const accepted: Readonly<Record<string, readonly string[]>> = {
   ]),
   'declared-rejection.ts': defined('defineCommand', 'playbook', [post, ...declaring('conflict', conflicting)]),
   'declared-invalid-input.ts': defined('defineQuery', 'playbook', [get, ...declaring('invalid_input', refusingInput)]),
+  'query-posts-an-input-a-query-string-cannot-carry.ts': defined('defineQuery', 'playbook', [
+    post,
+    ...emptyInputAndOutput,
+    answering,
+  ]),
   'command-calls-query.ts': [
     ...callingOther('defineQuery', get, 'PlaybookReader'),
     ...callerOfOther('defineCommand', post),
@@ -96,7 +101,8 @@ const rejected: Readonly<Record<string, RejectedProbe>> = {
     source: defined('defineCommand', 'org', [post, ...emptyInputAndOutput, asking('PlaybookWriter')]),
   },
   'playbook-query-asks-org-reader.ts': {
-    because: "Type 'OrgReader' is not assignable to type 'Caller | PlaybookContext | PlaybookReader'",
+    because:
+      "Type 'OrgReader' is not assignable to type 'Caller | PlaybookContext | PlaybookLifecycle | PlaybookReader'",
     source: defined('defineQuery', 'playbook', [get, ...emptyInputAndOutput, asking('OrgReader')]),
   },
   'org-query-asks-org-writer.ts': {
@@ -104,16 +110,18 @@ const rejected: Readonly<Record<string, RejectedProbe>> = {
     source: defined('defineQuery', 'org', [get, ...emptyInputAndOutput, asking('OrgWriter')]),
   },
   'playbook-query-asks-playbook-writer.ts': {
-    because: "Type 'PlaybookWriter' is not assignable to type 'Caller | PlaybookContext | PlaybookReader'",
+    because:
+      "Type 'PlaybookWriter' is not assignable to type 'Caller | PlaybookContext | PlaybookLifecycle | PlaybookReader'",
     source: defined('defineQuery', 'playbook', [get, ...emptyInputAndOutput, asking('PlaybookWriter')]),
   },
   'query-calls-command.ts': {
-    because: "Type 'PlaybookWriter' is not assignable to type 'Caller | PlaybookContext | PlaybookReader'",
+    because:
+      "Type 'PlaybookWriter' is not assignable to type 'Caller | PlaybookContext | PlaybookLifecycle | PlaybookReader'",
     source: [...callingOther('defineCommand', post, 'PlaybookWriter'), ...callerOfOther('defineQuery', get)],
   },
   'command-asks-ledger.ts': {
     because:
-      "Type 'Ledger' is not assignable to type 'CallLineage | Caller | PlaybookContext | PlaybookReader | PlaybookWriter'",
+      "Type 'Ledger' is not assignable to type 'CallLineage | Caller | PlaybookContext | PlaybookLifecycle | PlaybookReader | PlaybookWriter'",
     source: defined('defineCommand', 'playbook', [post, ...emptyInputAndOutput, asking('Ledger')]),
   },
   'command-asks-playbook-registry.ts': {
@@ -121,7 +129,8 @@ const rejected: Readonly<Record<string, RejectedProbe>> = {
     source: defined('defineCommand', 'org', [post, ...emptyInputAndOutput, asking('PlaybookRegistry')]),
   },
   'query-asks-incident-reporter.ts': {
-    because: "Type 'IncidentReporter' is not assignable to type 'Caller | PlaybookContext | PlaybookReader'",
+    because:
+      "Type 'IncidentReporter' is not assignable to type 'Caller | PlaybookContext | PlaybookLifecycle | PlaybookReader'",
     source: defined('defineQuery', 'playbook', [get, ...emptyInputAndOutput, asking('IncidentReporter')]),
   },
   'undeclared-rejection.ts': {
@@ -208,9 +217,13 @@ const rejected: Readonly<Record<string, RejectedProbe>> = {
       answering,
     ]),
   },
-  'query-posts.ts': {
-    because: 'Type \'"POST"\' is not assignable to type \'"GET"\'',
-    source: defined('defineQuery', 'playbook', [post, ...emptyInputAndOutput, answering]),
+  'query-puts.ts': {
+    because: 'Type \'"PUT"\' is not assignable to type \'"GET" | "POST"\'',
+    source: defined('defineQuery', 'playbook', [
+      "  route: { method: 'PUT', path: '/probe' },",
+      ...emptyInputAndOutput,
+      answering,
+    ]),
   },
   'command-gets.ts': {
     because: 'Type \'"GET"\' is not assignable to type \'"POST" | "PUT"\'',

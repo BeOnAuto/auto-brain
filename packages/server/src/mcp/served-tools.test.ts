@@ -92,8 +92,8 @@ function hasNoConstraint({ name, keywords }: Argument): boolean {
 }
 
 describe('the descriptions of the tools of /mcp', () => {
-  it('are twenty-six, each under 800 characters, in three to eight sentences', () => {
-    expect(tools).toHaveLength(26);
+  it('are twenty-nine, each under 800 characters, in three to eight sentences', () => {
+    expect(tools).toHaveLength(29);
     expect(tools.filter(({ description = '' }) => description.length >= 800).map(({ name }) => name)).toEqual([]);
     expect(tools.filter((tool) => isOutsideTheSentenceBound(tool)).map(({ name }) => name)).toEqual([]);
   });
@@ -118,12 +118,12 @@ describe('the descriptions of the tools of /mcp', () => {
     });
   });
 
-  it('say that a function that calls a tool may change something, in run_definition at 777 characters, and that a run that ends within its call cannot be cancelled, in cancel_run at 671', () => {
+  it('say that a function that calls a tool may change something, in run_definition at 777 characters, and that a run that ends within its call cannot be cancelled, in cancel_run at 711', () => {
     const [running, cancelling] = [descriptionOf('run_definition'), descriptionOf('cancel_run')];
 
     expect(running).toContain('A function that calls a tool may change something outside the playbook');
     expect(cancelling).toContain('or an interaction function that calls a tool, cannot be cancelled.');
-    expect([running.length, cancelling.length]).toEqual([777, 671]);
+    expect([running.length, cancelling.length]).toEqual([777, 711]);
   });
 });
 
@@ -174,8 +174,11 @@ const served: Readonly<Record<string, Hints>> = {
   list_playbook_events: [true, false, true, false],
   get_event: [true, false, true, false],
   publish_event: [false, false, false, false],
-  list_tool_servers: [true, false, true, true],
-  test_tool_call: [false, false, false, true],
+  search: [true, false, true, true],
+  introspect: [true, false, true, true],
+  validate: [true, false, true, true],
+  dry_run: [true, false, true, true],
+  execute: [false, false, false, true],
   answer_interaction: [false, true, true, false],
   list_interactions: [true, false, true, false],
   send_run_event: [false, false, false, false],

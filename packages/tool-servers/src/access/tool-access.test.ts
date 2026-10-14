@@ -235,7 +235,7 @@ describe('a stdio server and the MCP client', { timeout: stdioTestTimeoutMs }, (
       server: 'limitless',
       message: 'The fake MCP server says line 1 on stderr',
       run_id: null,
-      tool_test_id: null,
+      call_id: null,
     });
   });
 
@@ -251,7 +251,7 @@ describe('a stdio server and the MCP client', { timeout: stdioTestTimeoutMs }, (
       server: 'limitless',
       message: 'The MCP server wrote a message that is not JSON-RPC',
       run_id: null,
-      tool_test_id: null,
+      call_id: null,
     });
   });
 });

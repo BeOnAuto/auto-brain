@@ -7,6 +7,7 @@ import type { Settings } from '../settings/settings.ts';
 import { interactionServedBy, type ServedInteraction } from './served-interaction.ts';
 import { reasoningServedBy, type ModelAccessOf, type ServedReasoning } from './served-reasoning.ts';
 import { toolAccessOf } from './served-tool-access.ts';
+import { toolOperationsOf, type ServedToolOperations } from './served-tool-operations.ts';
 
 export interface TimedTools {
   readonly toolTiming?: Timing;
@@ -15,6 +16,7 @@ export interface TimedTools {
 export interface ServedToolUsers {
   readonly reasoning: ServedReasoning;
   readonly interaction: ServedInteraction;
+  readonly toolOperations: ServedToolOperations;
   readonly withToolsClosed: (served: Served) => Served;
 }
 
@@ -28,6 +30,7 @@ export async function toolUsersServedBy(
   return {
     reasoning: await reasoningServedBy(runtime, settings, modelAccessOf, tools),
     interaction: interactionServedBy(runtime, settings, tools),
+    toolOperations: toolOperationsOf(tools),
     withToolsClosed: ({ routes, stopWork }) => ({
       routes,
       stopWork: async () => {

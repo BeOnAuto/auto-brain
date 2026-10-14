@@ -87,9 +87,9 @@ interface Endpoint {
 }
 
 const endpoints: readonly Endpoint[] = [
-  { path: '/mcp', tools: 26, bytes: 39_748, mostBytes: mostListingBytes['own org'] },
-  { path: '/orgs/local/mcp', tools: 8, bytes: 8377, mostBytes: mostListingBytes.org },
-  { path: '/orgs/local/playbooks/alpha/mcp', tools: 20, bytes: 31_189, mostBytes: mostListingBytes.playbook },
+  { path: '/mcp', tools: 29, bytes: 44_219, mostBytes: mostListingBytes['own org'] },
+  { path: '/orgs/local/mcp', tools: 8, bytes: 8737, mostBytes: mostListingBytes.org },
+  { path: '/orgs/local/playbooks/alpha/mcp', tools: 23, bytes: 35_321, mostBytes: mostListingBytes.playbook },
 ];
 
 describe('the tools of each endpoint', () => {
@@ -124,11 +124,11 @@ function outputIn(result: ToolResult): unknown {
 }
 
 describe.each(mcpClientKinds)('the %s client on /mcp', (kind) => {
-  it('lists the tools, then accepts the results of list_tool_servers, list_playbooks and run_definition without compiling an output validator', async () => {
+  it('lists the tools, then accepts the results of search, list_playbooks and run_definition without compiling an output validator', async () => {
     const outcome = await withMcpSession(kind, { url: `${server.origin}/mcp`, headers: {} }, async (session) => {
       await session.listTools();
       const results = [
-        await session.callTool('list_tool_servers', {}),
+        await session.callTool('search', {}),
         await session.callTool('list_playbooks', {}),
         await session.callTool('run_definition', {
           playbook: 'alpha',
@@ -148,7 +148,7 @@ describe.each(mcpClientKinds)('the %s client on /mcp', (kind) => {
     ]);
     expect(outcome.results.flatMap((result) => internalTermsIn(plainTextIn(result)))).toEqual([]);
     expect(outcome.results.map(({ structuredContent }) => structuredContent)).toMatchObject([
-      { tool_servers: [] },
+      { servers: [], tools: [], scopes: [] },
       { playbooks: [{ id: 'alpha' }] },
       { status: 'succeeded', output: 'Profits rose.' },
     ]);

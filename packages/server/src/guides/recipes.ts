@@ -11,7 +11,7 @@ const outlines: readonly RecipeOutline[] = [
     description: 'Creates a playbook with a first reasoning function, and runs it once the person has agreed to it.',
     arguments: [],
     formatGuide: 'reasoning-function',
-    calls: ['list_playbooks', 'create_playbook', 'create_definition', 'test_tool_call', 'run_definition'],
+    calls: ['list_playbooks', 'create_playbook', 'create_definition', 'execute', 'run_definition'],
     request: () => 'Create my first playbook.',
   },
   {
@@ -36,12 +36,12 @@ const outlines: readonly RecipeOutline[] = [
     arguments: [
       {
         name: 'server',
-        description: 'The tool server whose tools to give, as list_tool_servers names it',
+        description: 'The tool server whose tools to give, as search names it',
         required: false,
       },
     ],
     formatGuide: 'reasoning-function',
-    calls: ['list_tool_servers', 'test_tool_call', 'create_definition', 'run_definition', 'get_run_history'],
+    calls: ['search', 'introspect', 'execute', 'create_definition', 'run_definition', 'get_run_history'],
     request: ({ server }) =>
       server === undefined ? 'Give the playbook tools.' : `Give the playbook the tools of the tool server ${server}.`,
   },
@@ -74,8 +74,8 @@ const whereInteractionIsServed: Readonly<Record<string, Insertion>> = {
   'give-tools': {
     after: 'and which of them it needs.',
     words: [
-      " When the playbook only needs what a tool answers, with nothing to reason about, write an interaction function that calls the tool instead: it answers at once with what the tool answered and spends no model call, and the interaction-function guide says how to write it from the test's answer.",
-      ' When the playbook should send a person a message through a tool and take their answer, write an interaction function instead: the interaction-function guide says how it names the tool it sends through and the tool it reads replies with, each tested the same way.',
+      ' When the playbook only needs what a tool answers, with nothing to reason about, write an interaction function that calls the tool instead: it answers at once with what the tool answered and spends no model call, and the interaction-function guide says how to write it from the answer execute gave.',
+      ' When the playbook should send a person a message through a tool and take their answer, write an interaction function instead: the interaction-function guide says how it names the tool it sends through and the tool it reads replies with, each called the same way.',
     ].join(''),
   },
   'first-playbook': {

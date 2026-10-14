@@ -33,8 +33,11 @@ const definitionTools = [
   'list_playbook_events',
   'get_event',
   'publish_event',
-  'list_tool_servers',
-  'test_tool_call',
+  'search',
+  'introspect',
+  'validate',
+  'dry_run',
+  'execute',
   'answer_interaction',
   'list_interactions',
   'send_run_event',
@@ -80,7 +83,7 @@ function postInitialize(path: string, headers: Readonly<Record<string, string>>)
 }
 
 describe('the org endpoint of the server', () => {
-  it('names the release under the title Auto Runtime and lists the five playbook tools, list_models and list_tool_servers', async () => {
+  it('names the release under the title Auto Runtime and lists the five playbook tools, list_models and search', async () => {
     const connected = await withMcpSession(
       'current revision',
       endpoint('/orgs/acme/mcp', acmeAdmin.key),
@@ -92,7 +95,7 @@ describe('the org endpoint of the server', () => {
 
     expect(connected).toEqual({
       serverVersion: { ...release, title: 'Auto Runtime' },
-      tools: [...playbookTools, 'list_models', 'list_tool_servers', 'get_guide'],
+      tools: [...playbookTools, 'list_models', 'search', 'get_guide'],
     });
   });
 
@@ -164,7 +167,7 @@ describe('the permissions and playbooks of a key over MCP', () => {
       }),
     );
 
-    expect(outcome.tools).toEqual(['list_playbooks', 'get_playbook', 'list_models', 'list_tool_servers', 'get_guide']);
+    expect(outcome.tools).toEqual(['list_playbooks', 'get_playbook', 'list_models', 'search', 'get_guide']);
     expect(outcome.listed.structuredContent).toEqual({ playbooks: [] });
   });
 

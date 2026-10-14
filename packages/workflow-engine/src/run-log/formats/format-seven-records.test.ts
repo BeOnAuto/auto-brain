@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { RunLogEventSchema, snapshotFromChunks, type RunOutput } from '../../index.ts';
+import { RunLogEventSchema, snapshotFromChunks, stateInCurrentFormat, type RunOutput } from '../../index.ts';
 
 const CorpusOfFormatSevenSchema = Schema.Struct({
   stream: Schema.Array(Schema.Struct({ version: Schema.Int, event: Schema.JsonObject })),
@@ -16,6 +16,8 @@ const { stream, snapshot } = Schema.decodeUnknownSync(Schema.fromJsonString(Corp
 );
 
 const snapshotText = snapshot.chunks.join('');
+
+const readSnapshotState = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Struct({ state: Schema.JsonObject })));
 
 const EventJsonSchema = Schema.toCodecJson(RunLogEventSchema);
 
@@ -86,6 +88,25 @@ describe('an event of format 7', () => {
     expect(settlementsWrittenBack(settlementsOfFormatSeven)).toEqual(
       settlementsOfFormatSeven.map((each) => settledWith(each)),
     );
+  });
+
+  it('keeps not_testable as written in a receipt and a raised error, which hold a string, and refuses a settlement that holds it', () => {
+    const rejection = { kind: 'effect_unknown', because: 'not_testable' };
+    const receipt = { ...decoded(answered?.event).receipt, rejection };
+    const receivedWithIt = { ...answered?.event, receipt };
+    const raisedError = {
+      type: 'https://on.auto/problems/effect_unknown',
+      status: 409,
+      instance: '/do/0',
+      ...rejection,
+    };
+    const raised = { kind: 'raised', error: raisedError };
+    const { state } = readSnapshotState(snapshotText);
+
+    expect(decoded(receivedWithIt).receipt).toEqual(receipt);
+    expect(writeEvent(decoded(receivedWithIt))).toEqual(receivedWithIt);
+    expect(stateInCurrentFormat(7, { ...state, outcome: raised }).outcome).toEqual(raised);
+    expect(Result.isFailure(decodeEvent(settledWith({ ...rejected, reason: 'conflict', ...rejection })))).toBe(true);
   });
 
   it('is refused when it names a kind as format 8 does, or holds a member format 7 does not describe', () => {

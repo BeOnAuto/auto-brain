@@ -14,7 +14,6 @@ function httpSettings(url: string): McpServerSettings {
     orgs: ['acme'],
     playbooks: null,
     allowed: null,
-    testable: [],
     record_content: false,
     request_id: null,
     secrets: [],

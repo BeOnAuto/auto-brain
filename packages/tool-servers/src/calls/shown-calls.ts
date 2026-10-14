@@ -47,7 +47,6 @@ export function keptAnswerOf(
 
 const mostTextBytes: Readonly<Record<string, number>> = {
   call_id: 256,
-  test_id: 256,
   server: 256,
   tool: 256,
   conversation: 256,

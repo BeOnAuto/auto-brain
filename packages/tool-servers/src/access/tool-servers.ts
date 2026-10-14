@@ -22,7 +22,7 @@ async function toolServerOf(link: ServerLink, listing: ServersListing): Promise<
   const listed = connected.success;
   await listed.slot.release();
   const offered = offeredOn(listed, { references: [{ server: name, tool: '*' }] });
-  return { name, type, record_content, tools: offered.map(({ tool }) => shownTool(tool, link.settings, listing)) };
+  return { name, type, record_content, tools: offered.map(({ tool }) => shownTool(tool, listing)) };
 }
 
 function byName(first: ServerLink, second: ServerLink): number {

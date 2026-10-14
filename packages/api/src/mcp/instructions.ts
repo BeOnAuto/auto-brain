@@ -90,7 +90,7 @@ const purposes: Sentences = ({ definitionTypes }) =>
 const connection: Sentences = (serving) => [whatTheConnectionDoes[serving.endpoint](serving)];
 
 const modelsBeforeWriting: Sentences = ({ reasoning, listed }) =>
-  reasoning !== undefined && listed('list_models') && !listed('list_tool_servers')
+  reasoning !== undefined && listed('list_models') && !listed('search')
     ? ['list_models lists the models this server can call, which a reasoning function names.']
     : [];
 
@@ -103,16 +103,27 @@ const guides: Sentences = ({ listed, recipes }) => {
   return [served.length === 0 ? `${reading}.` : `${reading}, which also holds the recipes: ${inTurn(served)}.`];
 };
 
+function callingWords(listed: Serving['listed']): string {
+  const executing = listed('execute');
+  const dryRunning = listed('dry_run');
+  if (executing && dryRunning) {
+    return '; execute calls one and shows what it answers, and dry_run what it would check';
+  }
+  if (executing) {
+    return '; execute calls one and shows what it answers';
+  }
+  return dryRunning ? '; dry_run shows what a call of one would check' : '';
+}
+
 const modelsAndTools: Sentences = ({ reasoning, listed }) => {
-  if (reasoning === undefined || !listed('list_tool_servers')) {
+  if (reasoning === undefined || !listed('search')) {
     return [];
   }
-  const tools = 'may name tools that list_tool_servers lists';
-  const testing = listed('test_tool_call') ? '; test_tool_call shows what a tool answers' : '';
+  const tools = `may name tools that search finds${callingWords(listed)}`;
   return [
     listed('list_models')
-      ? `A reasoning function names a model that list_models lists and ${tools}${testing}.`
-      : `A reasoning function names a model this server can call, as the ${reasoning.guide} guide says, and ${tools}${testing}.`,
+      ? `A reasoning function names a model that list_models lists and ${tools}.`
+      : `A reasoning function names a model this server can call, as the ${reasoning.guide} guide says, and ${tools}.`,
   ];
 };
 

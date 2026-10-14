@@ -22,7 +22,6 @@ export interface ReportingAccess {
   readonly access: ToolAccess;
   readonly content: RecordedContent;
   readonly messages: () => readonly ServerMessage[];
-  readonly untestable: () => readonly string[];
 }
 
 function servers(
@@ -39,7 +38,6 @@ function servers(
 
 function accessOver(settings: ToolServers, { timing, fetch }: AccessOptions): ReportingAccess {
   const messages: ServerMessage[] = [];
-  const untestable: string[] = [];
   const content = memoryRecordedContent();
   const access = makeToolAccess(settings, {
     client: testClientInfo,
@@ -47,13 +45,10 @@ function accessOver(settings: ToolServers, { timing, fetch }: AccessOptions): Re
     reportServerMessage: (message) => {
       messages.push(message);
     },
-    reportUntestable: (server) => {
-      untestable.push(server);
-    },
     ...(timing === undefined ? {} : { timing }),
     ...(fetch === undefined ? {} : { fetch }),
   });
-  return { access, content, messages: () => [...messages], untestable: () => [...untestable] };
+  return { access, content, messages: () => [...messages] };
 }
 
 export function reportingAccess(
@@ -72,5 +67,5 @@ export async function describedAccess(
 
 export const noToolServers: ToolAccess = makeToolAccess(
   { servers: [] },
-  { client: testClientInfo, content: memoryRecordedContent(), reportServerMessage: ignored, reportUntestable: ignored },
+  { client: testClientInfo, content: memoryRecordedContent(), reportServerMessage: ignored },
 );

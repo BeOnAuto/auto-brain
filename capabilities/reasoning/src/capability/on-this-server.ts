@@ -29,7 +29,7 @@ function modelsOf({ providers, aliases }: OfferedModels): string {
 
 function toolsOf(toolsConfigured: boolean): string {
   return toolsConfigured
-    ? 'it may name the tools of the tool servers that list_tool_servers lists'
+    ? 'it may name the tools of the tool servers that search finds'
     : 'no tool server is configured, so it may name no tools';
 }
 

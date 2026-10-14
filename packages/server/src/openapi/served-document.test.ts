@@ -1,6 +1,13 @@
 import { Buffer } from 'node:buffer';
 
-import { oldWordsIn, openApiErrorsIn, operationsIn, unresolvedSchemasIn, withMcpSession } from '@on.auto/api/testing';
+import {
+  oldWordsIn,
+  openApiErrorsIn,
+  operationsIn,
+  unresolvedSchemasIn,
+  withMcpSession,
+  type DocumentedOperation,
+} from '@on.auto/api/testing';
 import { Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -45,8 +52,8 @@ describe('the OpenAPI document of the server', () => {
     expect(unresolvedSchemasIn(document)).toEqual([]);
   });
 
-  it('describes the 31 operations of the catalog and the guides, under the tags of their resources', () => {
-    expect(operationsIn(document)).toHaveLength(32);
+  it('describes the 34 operations of the catalog and the guides, under the tags of their resources', () => {
+    expect(operationsIn(document)).toHaveLength(35);
     expect(Schema.decodeUnknownSync(TagsSchema)(document).tags.map(({ name }) => name)).toEqual([
       'playbooks',
       'models',
@@ -61,12 +68,56 @@ describe('the OpenAPI document of the server', () => {
     ]);
   });
 
-  it('takes 162,308 bytes and those of the version of the release, 162,313 at 0.8.0', () => {
-    expect(Buffer.byteLength(text) - Buffer.byteLength(release.version)).toBe(162_308);
+  it('takes 173,575 bytes and those of the version of the release, 173,580 at 0.8.0', () => {
+    expect(Buffer.byteLength(text) - Buffer.byteLength(release.version)).toBe(173_575);
   });
 
   it('says none of the old words the vocabulary of the repository refuses', () => {
     expect(oldWordsIn(text)).toEqual([]);
+  });
+});
+
+function shapeOf({ path, method, operation }: DocumentedOperation): readonly string[] {
+  return [
+    operation.operationId,
+    `${method.toUpperCase()} ${path}`,
+    operation.requestBody === undefined ? 'no body' : 'a JSON body',
+    '409' in operation.responses ? 'refused on a retired playbook' : 'served on a retired playbook',
+  ];
+}
+
+describe('the five tools over the tool servers in the document', () => {
+  it('carry validate and dry_run by POST with a body, as queries a retired playbook still serves, and execute as a command', () => {
+    const toolServers = operationsIn(document).filter(({ path }) => path.includes('/tool-servers/'));
+
+    expect(toolServers.map((described) => shapeOf(described))).toEqual([
+      ['search_in_org', 'GET /orgs/{org}/tool-servers/search', 'no body', 'served on a retired playbook'],
+      ['search', 'GET /orgs/{org}/playbooks/{playbook}/tool-servers/search', 'no body', 'served on a retired playbook'],
+      [
+        'introspect',
+        'GET /orgs/{org}/playbooks/{playbook}/tool-servers/{server}/tools/{tool}',
+        'no body',
+        'served on a retired playbook',
+      ],
+      [
+        'validate',
+        'POST /orgs/{org}/playbooks/{playbook}/tool-servers/{server}/tools/{tool}/validate',
+        'a JSON body',
+        'served on a retired playbook',
+      ],
+      [
+        'dry_run',
+        'POST /orgs/{org}/playbooks/{playbook}/tool-servers/{server}/tools/{tool}/dry-run',
+        'a JSON body',
+        'served on a retired playbook',
+      ],
+      [
+        'execute',
+        'POST /orgs/{org}/playbooks/{playbook}/tool-servers/{server}/tools/{tool}/execute',
+        'a JSON body',
+        'refused on a retired playbook',
+      ],
+    ]);
   });
 });
 

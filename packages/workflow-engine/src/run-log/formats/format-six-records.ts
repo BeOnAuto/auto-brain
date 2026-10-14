@@ -3,7 +3,14 @@ import { Schema } from 'effect';
 
 import type { RunOutput } from '../../dispatch/run-output.ts';
 import type { InputReceipt } from '../../machine/input-receipt.ts';
-import { currentWordOf, inWrittenWords, receiptInWords, writtenWordOf } from './format-seven.ts';
+import {
+  currentWordOf,
+  inWrittenWords,
+  isNotATestRefusal,
+  receiptInWords,
+  withoutAWordInFormatEight,
+  writtenWordOf,
+} from './format-seven.ts';
 import { RunCountSchema, StepCauseSchema, StepOutcomeSchema, withExecutionId, withRunId } from './format-six.ts';
 import { CallKeySchema, InstantSchema, TimerPurposeSchema } from './format-two.ts';
 
@@ -93,6 +100,10 @@ const UnavailableBecauseSchema = Schema.Literals([
   'no_answer',
 ]);
 
+const BecauseOfFormatEightSchema = UnavailableBecauseSchema.pipe(
+  Schema.refine(isNotATestRefusal, withoutAWordInFormatEight),
+);
+
 const ConflictKindSchema = Schema.Literals([
   'taken',
   'retired',
@@ -114,7 +125,7 @@ const SettlementSchema = Schema.Union([
     ...rejected,
     reason: Schema.Literal('unavailable'),
     kind: Schema.optionalKey(UnavailableKindSchema),
-    because: Schema.optionalKey(UnavailableBecauseSchema),
+    because: Schema.optionalKey(BecauseOfFormatEightSchema),
   }),
   Schema.Struct({ ...rejected, reason: Schema.Literal('conflict'), kind: Schema.optionalKey(ConflictKindSchema) }),
   Schema.Struct({
@@ -170,7 +181,7 @@ function kindNow(kind: typeof UnavailableKindSchema.Type): UnavailableKind {
   return kind === 'mcp_server_failed' ? 'tool_server_failed' : kind;
 }
 
-function becauseNow(because: typeof UnavailableBecauseSchema.Type): RejectionBecause {
+function becauseNow(because: typeof BecauseOfFormatEightSchema.Type): RejectionBecause {
   return because === 'mcp_server_not_configured' ? 'tool_server_not_configured' : because;
 }
 

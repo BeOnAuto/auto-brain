@@ -27,7 +27,7 @@ export async function functionsServedBy(
   database: LedgerDatabase,
   { modelAccessOf, programPoolOf, projections: wiring, toolTiming }: FunctionWiring,
 ): Promise<ServedFunctions> {
-  const { reasoning, interaction, withToolsClosed } = await toolUsersServedBy(
+  const { reasoning, interaction, toolOperations, withToolsClosed } = await toolUsersServedBy(
     runtime,
     settings,
     modelAccessOf,
@@ -51,12 +51,8 @@ export async function functionsServedBy(
       capabilities,
       facts,
       names,
-      orgOperations: [...playbookOperations, reasoning.listModels, reasoning.listToolServersInOrg],
-      playbookOperations: [
-        reasoning.listToolServers,
-        reasoning.testToolCall,
-        ...interaction.operationsFor(capabilities),
-      ],
+      orgOperations: [...playbookOperations, reasoning.listModels, ...toolOperations.inOrg],
+      playbookOperations: [...toolOperations.inPlaybook, ...interaction.operationsFor(capabilities)],
       playbookRoutes: prediction.routes,
       dueWork: [...interaction.dueWorkOf(record), prediction.dueWorkFor(capabilities)],
       store: projections.store,

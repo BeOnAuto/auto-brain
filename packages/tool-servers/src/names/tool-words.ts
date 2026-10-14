@@ -33,6 +33,14 @@ export function toolInWords({ server, tool }: ToolReference): string {
   return toolsOfServer(server, [tool]);
 }
 
+const mostNamed = 20;
+
+export function namesListed(names: readonly string[]): string {
+  const named = names.slice(0, mostNamed);
+  const others = names.length - named.length;
+  return conjunction.format(others === 0 ? named : [...named, `${others} more`]);
+}
+
 export function toolsInWords(tools: readonly ToolReference[]): string {
   const byServer = Map.groupBy(tools, ({ server }) => server);
   const parts = [...byServer].map(([server, used]: readonly [string, readonly ToolReference[]]) =>

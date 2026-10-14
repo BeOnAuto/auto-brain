@@ -21,7 +21,7 @@ const aDuration: unknown = expect.any(Number);
 
 const answeredWith61Bytes: unknown = expect.objectContaining({ result_bytes: 61 });
 
-const testId = '0199b7e2-4c1d-7a3e-8f5b-6d2c1e0f9a8b';
+const givenId = '0199b7e2-4c1d-7a3e-8f5b-6d2c1e0f9a8b';
 
 const closing: (() => Promise<void>)[] = [];
 
@@ -45,16 +45,16 @@ async function opened(meta: Readonly<Record<string, string>>, ...tools: readonly
   closing.push(access.close);
   const journal = recordingCallJournal();
   const references = tools.map((tool) => ({ server: 'graph', tool }));
-  const run = await Effect.runPromise(access.open(toolRun(journal, { id: testId, meta }), references));
+  const run = await Effect.runPromise(access.open(toolRun(journal, { id: givenId, meta }), references));
   closing.push(run.close);
   const call = (index: number, input: Readonly<Record<string, unknown>>) =>
-    run.offered[index]?.call({ callId: testId, input }, controlledSignals());
+    run.offered[index]?.call({ callId: givenId, input }, controlledSignals());
   return { call, journal, messages };
 }
 
 describe('what a call answers beside what the model sees', () => {
   it('is the outcome, the size of the whole result, how long it took and the id the server gave it, as recorded', async () => {
-    const { call, journal } = await opened({ 'auto.on/run_id': testId }, 'search', 'denied');
+    const { call, journal } = await opened({ 'auto.on/run_id': givenId }, 'search', 'denied');
 
     const replies = [await call(0, { query: 'acme' }), await call(1, {})];
 
@@ -76,7 +76,7 @@ describe('what a call answers beside what the model sees', () => {
   });
 
   it('is a server failure with no result when the server fails the call', async () => {
-    const { call } = await opened({ 'auto.on/run_id': testId }, 'broken');
+    const { call } = await opened({ 'auto.on/run_id': givenId }, 'broken');
 
     expect(await call(0, {})).toMatchObject({
       isError: true,
@@ -88,16 +88,16 @@ describe('what a call answers beside what the model sees', () => {
 });
 
 describe('a failed call reported to the operator', () => {
-  it('names the run whose call it was, or the test, by the id its opener gave', async () => {
-    const ofARun = await opened({ 'auto.on/run_id': testId }, 'broken');
-    const ofATest = await opened({ 'auto.on/tool_test_id': testId }, 'broken');
+  it('names the run whose call it was, or the call made by hand, by the id its opener gave', async () => {
+    const ofARun = await opened({ 'auto.on/run_id': givenId }, 'broken');
+    const byHand = await opened({ 'auto.on/call_id': givenId }, 'broken');
 
     await ofARun.call(0, {});
-    await ofATest.call(0, {});
+    await byHand.call(0, {});
 
-    expect([...ofARun.messages(), ...ofATest.messages()]).toMatchObject([
-      { server: 'graph', run_id: testId, tool_test_id: null },
-      { server: 'graph', run_id: null, tool_test_id: testId },
+    expect([...ofARun.messages(), ...byHand.messages()]).toMatchObject([
+      { server: 'graph', run_id: givenId, call_id: null },
+      { server: 'graph', run_id: null, call_id: givenId },
     ]);
   });
 });

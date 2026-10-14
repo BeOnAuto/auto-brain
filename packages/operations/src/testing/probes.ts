@@ -4,6 +4,7 @@ import {
   PlaybookRegistry,
   PlaybookReader,
   PlaybookContext,
+  PlaybookLifecycle,
   PlaybookWriter,
   Caller,
   IncidentReporter,
@@ -32,6 +33,7 @@ const visibleServices = Effect.gen(function* () {
     { name: 'OrgReader', found: Option.isSome(yield* Effect.serviceOption(OrgReader)) },
     { name: 'OrgWriter', found: Option.isSome(yield* Effect.serviceOption(OrgWriter)) },
     { name: 'PlaybookContext', found: Option.isSome(yield* Effect.serviceOption(PlaybookContext)) },
+    { name: 'PlaybookLifecycle', found: Option.isSome(yield* Effect.serviceOption(PlaybookLifecycle)) },
     { name: 'PlaybookReader', found: Option.isSome(yield* Effect.serviceOption(PlaybookReader)) },
     { name: 'PlaybookWriter', found: Option.isSome(yield* Effect.serviceOption(PlaybookWriter)) },
   ];
@@ -40,7 +42,11 @@ const visibleServices = Effect.gen(function* () {
 
 const OrgView = Schema.Struct({ caller: Schema.String, org: Schema.String, visible: Schema.Array(Schema.String) });
 
-const PlaybookView = Schema.Struct({ ...OrgView.fields, playbook: Schema.String });
+const PlaybookView = Schema.Struct({
+  ...OrgView.fields,
+  playbook: Schema.String,
+  status: Schema.Literals(['active', 'retired']),
+});
 
 const viewFromOrg = Effect.fnUntraced(function* () {
   const { id } = yield* Caller;
@@ -51,7 +57,8 @@ const viewFromOrg = Effect.fnUntraced(function* () {
 const viewFromPlaybook = Effect.fnUntraced(function* () {
   const { id } = yield* Caller;
   const { org, playbook } = yield* PlaybookContext;
-  return { caller: id, org, playbook, visible: yield* visibleServices };
+  const { status } = yield* PlaybookLifecycle;
+  return { caller: id, org, playbook, status, visible: yield* visibleServices };
 });
 
 const peek = { title: 'Peek', description: 'Shows what the handler of a call can see.', reasons: [] };

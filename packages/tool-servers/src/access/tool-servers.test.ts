@@ -56,7 +56,6 @@ const searchTool = {
     required: ['query'],
   },
   annotations: { readOnlyHint: true, openWorldHint: true },
-  testable: true,
 };
 
 const nothingTaken = { type: 'object', properties: {}, required: [] };
@@ -65,7 +64,6 @@ const echoTool = {
   name: 'echo',
   description: 'Answers with its arguments.',
   input_schema: nothingTaken,
-  testable: false,
 };
 
 describe('the tool servers a playbook may use', () => {
@@ -111,7 +109,6 @@ describe('the tool servers a playbook may use', () => {
             name: 'verbose',
             description: verboseDescription.slice(0, 4096),
             input_schema: nothingTaken,
-            testable: false,
           },
         ],
       },
@@ -276,7 +273,6 @@ describe('the secrets of a tool server', () => {
               properties: { query: { type: 'string', description: '[redacted]' } },
             },
             annotations: searchTool.annotations,
-            testable: true,
           },
         ],
       },

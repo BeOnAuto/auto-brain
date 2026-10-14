@@ -3,7 +3,15 @@ import { Schema } from 'effect';
 
 import type { RunOutput } from '../../dispatch/run-output.ts';
 import type { InputReceipt } from '../../machine/input-receipt.ts';
-import { CallKeySchema, currentWordOf, inWrittenWords, receiptInWords, writtenWordOf } from './format-seven.ts';
+import {
+  CallKeySchema,
+  currentWordOf,
+  inWrittenWords,
+  isNotATestRefusal,
+  receiptInWords,
+  withoutAWordInFormatEight,
+  writtenWordOf,
+} from './format-seven.ts';
 import {
   EarlierStepSchema,
   IssueSchema,
@@ -49,6 +57,10 @@ const RejectionBecauseSchema = Schema.Literals([
   'not_finite',
 ]);
 
+const BecauseOfFormatEightSchema = RejectionBecauseSchema.pipe(
+  Schema.refine(isNotATestRefusal, withoutAWordInFormatEight),
+);
+
 const ConflictKindSchema = Schema.Literals([
   'taken',
   'retired',
@@ -84,13 +96,13 @@ const SettlementSchema = Schema.Union([
     ...rejected,
     reason: Schema.Literal('unavailable'),
     kind: Schema.optionalKey(UnavailableKindSchema),
-    because: Schema.optionalKey(RejectionBecauseSchema),
+    because: Schema.optionalKey(BecauseOfFormatEightSchema),
   }),
   Schema.Struct({
     ...rejected,
     reason: Schema.Literal('conflict'),
     kind: Schema.optionalKey(ConflictKindSchema),
-    because: Schema.optionalKey(RejectionBecauseSchema),
+    because: Schema.optionalKey(BecauseOfFormatEightSchema),
   }),
   Schema.Struct({
     ...rejected,
@@ -155,11 +167,11 @@ function kindNow(kind: typeof UnavailableKindSchema.Type): UnavailableKind {
   return kind === 'mcp_server_failed' ? 'tool_server_failed' : kind;
 }
 
-function becauseNow(because: typeof RejectionBecauseSchema.Type): RejectionBecause {
+function becauseNow(because: typeof BecauseOfFormatEightSchema.Type): RejectionBecause {
   return because === 'mcp_server_not_configured' ? 'tool_server_not_configured' : because;
 }
 
-function becauseOf(because: typeof RejectionBecauseSchema.Type | undefined) {
+function becauseOf(because: typeof BecauseOfFormatEightSchema.Type | undefined) {
   return because === undefined ? {} : { because: becauseNow(because) };
 }
 

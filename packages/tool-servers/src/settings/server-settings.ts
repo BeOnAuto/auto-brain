@@ -14,7 +14,6 @@ export interface AuthSettings {
 
 export interface ToolLists {
   readonly allowed: readonly string[] | null;
-  readonly testable: readonly string[];
 }
 
 interface ServedBy extends ToolLists {
@@ -57,8 +56,6 @@ export interface OpenApiServerSettings extends ServedBy {
 export type ServerSettings = McpServerSettings | StdioServerSettings | OpenApiServerSettings;
 
 export type ServerType = ServerSettings['type'];
-
-export type ServerToolLists = Pick<ServerSettings, 'name' | 'allowed' | 'testable'>;
 
 export interface ToolServerSettings {
   readonly servers: readonly ServerSettings[];

@@ -22,7 +22,7 @@ import { Effect, Result, Schema } from 'effect';
 
 const NoteName = Schema.String.check(Schema.isPattern(/^[a-z][a-z0-9-]{0,31}$/u));
 
-const NoteSchema = Schema.Struct({ name: NoteName, text: Schema.String });
+export const NoteSchema = Schema.Struct({ name: NoteName, text: Schema.String });
 
 type Note = typeof NoteSchema.Type;
 
@@ -34,7 +34,7 @@ type NoteAdded = typeof NoteAddedSchema.Type;
 
 const writtenNow = { at: '2026-10-01T09:00:00.000Z', by: 'notebook' };
 
-const notebook: Decider<readonly Note[], Note, NoteAdded, 'conflict'> = {
+export const notebook: Decider<readonly Note[], Note, NoteAdded, 'conflict'> = {
   initialState: [],
   evolve: (notes, { data }) => [...notes, data.note],
   decide: (note, notes) =>
@@ -45,7 +45,7 @@ const notebook: Decider<readonly Note[], Note, NoteAdded, 'conflict'> = {
   eventSchema: NoteAddedSchema,
 };
 
-function plainly(task: string): PlainLanguage<unknown, unknown> {
+export function plainly(task: string): PlainLanguage<unknown, unknown> {
   return { task, attempt: () => task, outcome: () => `Done: ${task}.` };
 }
 

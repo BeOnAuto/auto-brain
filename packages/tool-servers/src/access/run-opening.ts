@@ -6,11 +6,11 @@ import type { KeepIn } from '../calls/recorded-calls.ts';
 import { runTools, type RunTools } from '../calls/run-tools.ts';
 import { ignored } from '../connections/ignored.ts';
 import type { CallerContext, ServerMessage, ToolsNotOpened } from './caller-context.ts';
-import { listedOn, released, type Listing as ToolsListing } from './server-listing.ts';
+import { listedOn, released } from './server-listing.ts';
 import { namedLinks, notListed, offeredOn, unlistedOn, type Listed, type Naming } from './tool-naming.ts';
 import type { ToolServerFailed } from './tool-server-failed.ts';
 
-export interface Opening extends Naming, Pick<ToolsListing, 'toolsListed'> {
+export interface Opening extends Naming {
   readonly context: CallerContext;
   readonly secrets: Secrets;
   readonly keepIn: KeepIn;
