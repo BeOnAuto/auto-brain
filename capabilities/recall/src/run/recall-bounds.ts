@@ -1,5 +1,4 @@
-import { mostResultBytes } from '@on.auto/definitions';
-import { checkedWorker } from '@on.auto/definitions/json-schema';
+import { checkedWorker, mostResultBytes } from '@on.auto/definitions';
 import { mostValueDepth, runMemoryBytes, unitMemoryBytes, workerStackBytes } from '@on.auto/workflow-engine/dsl';
 import type { FoldingSettings } from '@on.auto/workflow-host';
 

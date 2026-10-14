@@ -1,4 +1,4 @@
-import { compileJsonSchema, type CompiledSchema } from '@on.auto/definitions/document';
+import { compileJsonSchema, type CompiledSchema } from '@on.auto/json-schema';
 import { Result, type Schema } from 'effect';
 
 import { predictionBounds } from '../capability/prediction-bounds.ts';

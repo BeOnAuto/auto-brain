@@ -1,7 +1,7 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { serveFakeMcp, type FakeMcpServer } from '@on.auto/mcp/testing';
 import { answers, callingTools, textResult } from '@on.auto/reasoning/testing';
+import { serveFakeMcp, type FakeMcpServer } from '@on.auto/tool-servers/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -42,11 +42,11 @@ afterEach(async () => {
 
 async function serving(fake: FakeMcpServer): Promise<ReasoningServer> {
   const server = await servingWorkflows(
-    [callingTools([['mcp__graph__sleep', { ms: 60_000 }]], answers(textResult('Slept.')))],
+    [callingTools([['graph__sleep', { ms: 60_000 }]], answers(textResult('Slept.')))],
     {
       LOCAL_MODE: 'true',
       GRAPH_API_KEY: apiKey,
-      MCP_SERVERS: JSON.stringify({
+      TOOL_SERVERS: JSON.stringify({
         graph: { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme' },
       }),
     },

@@ -1,6 +1,6 @@
-import { serveFakeMcp, type FakeMcpServer } from '@on.auto/mcp/testing';
 import { TimedOut } from '@on.auto/reasoning';
 import { callingTools, type ScriptedReply } from '@on.auto/reasoning/testing';
+import { serveFakeMcp, type FakeMcpServer } from '@on.auto/tool-servers/testing';
 import { Effect, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -68,7 +68,7 @@ async function serving(...replies: readonly ScriptedReply[]): Promise<ReasoningS
   const server = await servingWorkflows(replies, {
     LOCAL_MODE: 'true',
     GRAPH_API_KEY: apiKey,
-    MCP_SERVERS: JSON.stringify({
+    TOOL_SERVERS: JSON.stringify({
       graph: { ...graph, org: 'acme' },
       crm: { ...graph, org: 'globex' },
       down: { url: gone.url, org: 'acme' },
@@ -118,7 +118,7 @@ describe(
       const { settled, answers } = await settledWorkflowRun(server, 'reporting');
 
       expect(settled).toMatchObject({
-        body: { status: 'succeeded', output: { kind: 'tool_not_offered', because: 'mcp_server_not_configured' } },
+        body: { status: 'succeeded', output: { kind: 'tool_not_offered', because: 'tool_server_not_configured' } },
       });
       expect(answers).toMatchObject([
         {
@@ -127,7 +127,7 @@ describe(
           data: {
             input: {
               status: 'rejected',
-              rejection: { kind: 'tool_not_offered', because: 'mcp_server_not_configured' },
+              rejection: { kind: 'tool_not_offered', because: 'tool_server_not_configured' },
             },
           },
         },
@@ -136,7 +136,7 @@ describe(
     });
 
     it('ends with the kind and because of tools that could not finish when nothing catches them', async () => {
-      const server = await serving(callingTools([['mcp__graph__search', { query: 'acme' }]], timedOut));
+      const server = await serving(callingTools([['graph__search', { query: 'acme' }]], timedOut));
 
       const { settled, answers } = await settledWorkflowRun(server, 'careless');
 

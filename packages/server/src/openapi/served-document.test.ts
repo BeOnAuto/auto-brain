@@ -61,8 +61,8 @@ describe('the OpenAPI document of the server', () => {
     ]);
   });
 
-  it('takes 163,072 bytes and those of the version of the release, 163,077 at 0.8.0', () => {
-    expect(Buffer.byteLength(text) - Buffer.byteLength(release.version)).toBe(163_072);
+  it('takes 163,442 bytes and those of the version of the release, 163,447 at 0.9.1', () => {
+    expect(Buffer.byteLength(text) - Buffer.byteLength(release.version)).toBe(163_442);
   });
 
   it('names the OpenID Connect metadata of the Auto identity service when IDENTITY_ISSUER is not set', () => {

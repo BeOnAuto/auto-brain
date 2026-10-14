@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 
-import { serveFakeMcp, type FakeMcpOptions } from '@on.auto/mcp/testing';
+import { serveFakeMcp, type FakeMcpOptions } from '@on.auto/tool-servers/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
@@ -11,7 +11,7 @@ const mainModule = fileURLToPath(new URL('../main.ts', import.meta.url));
 const graphKey = 'graph-api-key-4f1d9a7c2b';
 
 const note =
-  '"message":"The MCP server graph marks none of its allowed tools read-only and its entry marks none testable';
+  '"message":"The tool server graph marks none of its allowed tools read-only and its entry marks none testable';
 
 let ledger: TemporaryLedger;
 
@@ -34,7 +34,7 @@ async function notesAfterTwoListings(
     LEDGER_FILE: ledger.fileName,
     LOCAL_MODE: 'true',
     GRAPH_API_KEY: graphKey,
-    MCP_SERVERS: JSON.stringify({
+    TOOL_SERVERS: JSON.stringify({
       graph: { url: graph.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'local', ...entry },
     }),
   });

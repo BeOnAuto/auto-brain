@@ -1,6 +1,6 @@
 import type { RecordWork } from '@on.auto/definitions';
-import type { ToolAccess } from '@on.auto/mcp';
 import type { Lineage } from '@on.auto/operations';
+import type { ToolAccess } from '@on.auto/tool-servers';
 
 import type { RequestAddress } from '../delivery/attempt-end.ts';
 import type { OpenRequestRow } from '../requests/request-rows.ts';

@@ -1,6 +1,6 @@
 import type { McpSession, ToolResult } from '@on.auto/api/testing';
-import { serveFakeMcp } from '@on.auto/mcp/testing';
 import type { ScriptedReply } from '@on.auto/reasoning/testing';
+import { serveFakeMcp } from '@on.auto/tool-servers/testing';
 
 import type { ReasoningServer } from './reasoning-server.ts';
 import { servingWorkflows } from './workflow-server.ts';
@@ -14,7 +14,7 @@ export async function servingWithAToolServer(replies: readonly ScriptedReply[]):
   const server = await servingWorkflows(replies, {
     LOCAL_MODE: 'true',
     GRAPH_API_KEY: toolServerKey,
-    MCP_SERVERS: JSON.stringify({
+    TOOL_SERVERS: JSON.stringify({
       graph: { url: graph.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'local' },
     }),
   });

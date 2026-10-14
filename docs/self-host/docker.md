@@ -143,7 +143,7 @@ The runtime waits until PostgreSQL is ready, creates its tables at start and log
 
 ## Use a configuration file
 
-Settings that are lists or maps, such as the [tool servers](configuration.md#mcp-servers) functions may call, model gateways and model aliases, can go in a YAML file. The image reads one only when `CONFIG_FILE` names it, so mount it read-only and name it:
+Settings that are lists or maps, such as the [tool servers](configuration.md#tool-servers) functions may call, model gateways and model aliases, can go in a YAML file. The image reads one only when `CONFIG_FILE` names it, so mount it read-only and name it:
 
 ```bash
 docker run --detach --name auto-runtime --restart unless-stopped \
@@ -153,7 +153,7 @@ docker run --detach --name auto-runtime --restart unless-stopped \
   onauto/runtime:latest
 ```
 
-Secrets stay in `auto-runtime.env`; the file refers to them by name, such as `${GATEWAY_API_KEY}`. [Configure the runtime](configuration.md) describes the file and every setting.
+Secrets stay in `auto-runtime.env`; the file refers to them by name, such as `${GATEWAY_API_KEY}`. The OpenAPI document of an `openapi` tool server, when its entry in `tool_servers` names it by a path, is read at start from the directory of the file, so mount it there too, as `--volume "$PWD/billing.json:/etc/auto-runtime/billing.json:ro"`, or name it by an https URL the container can reach; a document the server cannot read stops the start, naming the entry. [Configure the runtime](configuration.md) describes the file and every setting.
 
 ## Upgrade
 

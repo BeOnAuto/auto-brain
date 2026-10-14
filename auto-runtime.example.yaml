@@ -36,20 +36,31 @@ model_aliases:
 #   - anthropic/*
 #   - gateway/anthropic/claude-haiku-4-5
 
-# The MCP servers whose tools a function may name, a reasoning function in its
+# The tool servers whose tools a function may name, a reasoning function in its
 # tools key and an interaction function in deliver, each bound to an org and,
-# optionally, to some of its playbooks. A remote server has a url; a process has a
-# command, installed and pinned, which inherits nothing from the server's
-# environment but its env.
+# optionally, to some of its playbooks. Each is one of three types, taken from
+# the field that names it when type is left out: mcp, a remote MCP server at a
+# url; stdio, an MCP server run as a process, a command installed and pinned,
+# which inherits nothing from the server's environment but its env; openapi, an
+# HTTP API whose OpenAPI document, 3.0 or 3.1, is read once at start from an
+# https URL or from a path relative to the directory of this file, each
+# operation one tool.
 #
 # allowed names the tools of a server a function may name, as the server lists
 # them; every tool of the server when left out. testable names the tools
 # test_tool_call may test although the server does not mark them read-only, each
 # also in allowed; only the tools the server marks read-only can be tested when
 # left out. A server that marks its read-only tools needs no testable; one that
-# marks none needs its read-only tools named, for example a Constellation
-# gateway's search, introspect, validate and dry_run.
-# mcp_servers:
+# marks none needs its read-only tools named, for example the search,
+# introspect, validate and dry_run of an agent gateway. An HTTP API marks the
+# tools of its GET and HEAD operations read-only.
+#
+# An openapi entry gives its credential under security, by the name of the
+# security scheme its document declares, and the server places it as the scheme
+# says; headers and query_params hold what the schemes do not, such as a tenant.
+# org names one org, a list of orgs, or * for every org; one entry serves each
+# under one name, with one credential.
+# tool_servers:
 #   graph:
 #     url: https://gateway.example.com/mcp
 #     headers:
@@ -64,6 +75,13 @@ model_aliases:
 #     env:
 #       NOTES_API_KEY: ${NOTES_API_KEY}
 #     org: acme
+#   billing:
+#     document: https://billing.example.com/openapi.json
+#     base_url: https://billing.example.com/v2
+#     security:
+#       apiKeyAuth: ${BILLING_API_KEY}
+#     org: [acme, globex]
+#     allowed: [listInvoices, getInvoice]
 
 # The origins a page in a browser may call the API from.
 allowed_origins:

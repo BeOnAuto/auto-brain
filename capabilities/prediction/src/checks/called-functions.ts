@@ -1,5 +1,6 @@
 import type { SavedDefinition, SavedDefinitions } from '@on.auto/definitions';
-import { compileJsonSchema, issueAt, type DocumentIssue } from '@on.auto/definitions/document';
+import { issueAt, type DocumentIssue } from '@on.auto/definitions/document';
+import { compileJsonSchema } from '@on.auto/json-schema';
 import { Effect, Result, type Schema } from 'effect';
 
 import { isMapping } from '../document/checked-parts.ts';

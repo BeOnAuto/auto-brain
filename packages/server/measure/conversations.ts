@@ -1,6 +1,6 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 
-import { serveFakeMcp, type FakeMcpServer } from '@on.auto/mcp/testing';
+import { serveFakeMcp, type FakeMcpServer } from '@on.auto/tool-servers/testing';
 
 import type { MeasuredLedger } from './measured-ledgers.ts';
 import { playbook, inTurns, measuredServer, percentile, type MeasuredServer } from './measured-server.ts';
@@ -50,7 +50,7 @@ interface ReadCount {
 function chatServerOf(url: string): Readonly<Record<string, string>> {
   return {
     CHAT_KEY: chatKey,
-    MCP_SERVERS: JSON.stringify({ chat: { url, headers: { Authorization: 'Bearer ${CHAT_KEY}' }, org: 'local' } }),
+    TOOL_SERVERS: JSON.stringify({ chat: { url, headers: { Authorization: 'Bearer ${CHAT_KEY}' }, org: 'local' } }),
   };
 }
 

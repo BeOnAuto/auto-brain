@@ -28,7 +28,7 @@ await test('the local quick start connects an agent and runs a first function wi
     'Create `auto-runtime.yaml` in the directory you start Auto Runtime in, holding exactly this',
     'Authorization: Bearer ${SEARCH_API_KEY}',
     'The key never goes in `auto-runtime.yaml`',
-    'configuration.md#mcp-servers',
+    'configuration.md#tool-servers',
     '## Hosted playbooks',
   ];
   for (const passage of walkthrough) assert.ok(guide.includes(passage), `Missing from the quick start: ${passage}`);

@@ -1,13 +1,4 @@
 import {
-  conversationCallDecider,
-  conversationCallStreamOf,
-  tellingEndedOf,
-  tellingStartedOf,
-  type DefinitionOfTheTelling,
-  type ToolAccess,
-} from '@on.auto/mcp';
-import { conversationCallIdKey } from '@on.auto/mcp/policy';
-import {
   playbookCallerOf,
   messageIdOf,
   randomUUIDv7,
@@ -16,6 +7,15 @@ import {
   type Lineage,
   type StreamWriter,
 } from '@on.auto/operations';
+import {
+  conversationCallDecider,
+  conversationCallStreamOf,
+  tellingEndedOf,
+  tellingStartedOf,
+  type DefinitionOfTheTelling,
+  type ToolAccess,
+} from '@on.auto/tool-servers';
+import { conversationCallIdKey } from '@on.auto/tool-servers/policy';
 import { DateTime, Effect, type Schema } from 'effect';
 
 export interface Telling {

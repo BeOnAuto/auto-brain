@@ -1,4 +1,3 @@
-import type { CallEnded, CallStarted } from '@on.auto/mcp';
 import type {
   CallerIdentity,
   CallLink,
@@ -10,6 +9,7 @@ import type {
   TriggerLink,
   Unavailable,
 } from '@on.auto/operations';
+import type { CallEnded, CallStarted } from '@on.auto/tool-servers';
 import { Effect, type Schema } from 'effect';
 
 import type { Trigger } from '../registry/definition-triggers.ts';

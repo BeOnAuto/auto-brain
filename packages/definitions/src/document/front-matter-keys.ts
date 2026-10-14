@@ -1,8 +1,8 @@
+import { pointerOf } from '@on.auto/json-schema';
 import { Predicate, Result, SchemaIssue, type Schema, type StandardSchema } from 'effect';
 
 import { issueAt, type DocumentIssue, type SourceLines } from './document-issue.ts';
 import { readFrontMatter } from './front-matter-reading.ts';
-import { pointerOf } from './json-bounds.ts';
 
 export interface FrontMatterSection {
   readonly name: string | undefined;

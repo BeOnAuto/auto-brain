@@ -170,7 +170,7 @@ describe('a call whose definition is rejected with a kind and because', () => {
       reason: 'unavailable',
       detail: 'No tool server of that name',
       kind: 'tool_not_offered',
-      because: 'mcp_server_not_configured',
+      because: 'tool_server_not_configured',
     });
 
     expect(await Effect.runPromise(perform(classify, run, origin))).toEqual({
@@ -178,7 +178,7 @@ describe('a call whose definition is rejected with a kind and because', () => {
       reason: 'unavailable',
       detail: 'No tool server of that name',
       kind: 'tool_not_offered',
-      because: 'mcp_server_not_configured',
+      because: 'tool_server_not_configured',
     });
   });
 });

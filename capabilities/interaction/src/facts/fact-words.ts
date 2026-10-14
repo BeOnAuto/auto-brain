@@ -1,5 +1,5 @@
-import { toolInWords } from '@on.auto/mcp';
 import { plainNumber } from '@on.auto/operations';
+import { toolInWords } from '@on.auto/tool-servers';
 
 import type {
   DeliveryEnded,

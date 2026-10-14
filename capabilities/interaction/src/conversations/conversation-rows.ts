@@ -1,5 +1,5 @@
-import { ConversationCallEventSchema, conversationCallsKind, type ReadingRecorded } from '@on.auto/mcp';
 import { recordedDecoder, type KeyedProjection, type ProjectedMessage, type ProjectedRow } from '@on.auto/operations';
+import { ConversationCallEventSchema, conversationCallsKind, type ReadingRecorded } from '@on.auto/tool-servers';
 import { Option, Schema } from 'effect';
 
 import { interactionFactOf } from '../facts/run-facts.ts';

@@ -1,4 +1,4 @@
-import { threadReplies } from '@on.auto/mcp/testing';
+import { threadReplies } from '@on.auto/tool-servers/testing';
 import { describe, expect, it } from 'vitest';
 
 import { chatKey } from '../testing/servers/chat-deliveries.ts';

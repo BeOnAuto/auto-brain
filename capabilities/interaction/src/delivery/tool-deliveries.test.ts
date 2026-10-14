@@ -88,7 +88,7 @@ describe('the arguments of a delivery', () => {
     const { playbook, tools, askedAt } = await askedThroughChat({ delivery: delivering });
     tools.answerNext({
       outcome: 'timed_out',
-      detail: 'The MCP server did not answer within 30000 ms',
+      detail: 'The tool server did not answer within 30000 ms',
       retryAfterMs: null,
     });
 
@@ -104,7 +104,7 @@ describe('the arguments of a delivery', () => {
 describe('an attempt that fails', () => {
   it('records the failure in words, the wait a server asked for, and the call it made', async () => {
     const { playbook, tools, askedAt } = await askedThroughChat();
-    tools.answerNext({ outcome: 'server_failure', detail: 'The MCP server answered HTTP 429', retryAfterMs: 120_000 });
+    tools.answerNext({ outcome: 'server_failure', detail: 'The tool server answered HTTP 429', retryAfterMs: 120_000 });
 
     await playbook.performDue(askedAt);
 
@@ -115,7 +115,7 @@ describe('an attempt that fails', () => {
         data: {
           because: 'server_failure',
           retry_after_ms: 120_000,
-          detail: 'The MCP server answered HTTP 429',
+          detail: 'The tool server answered HTTP 429',
           jsonrpc_id: 1,
         },
       },
@@ -146,7 +146,7 @@ describe('an attempt whose call did not answer as asked', () => {
 
   it('ends with no field of an answer when no call was sent, for a tool no longer offered or a server not reached', async () => {
     const { playbook, tools, askedAt } = await askedThroughChat();
-    tools.answerNext({ kind: 'not_offered' }, { kind: 'unopened', detail: 'The MCP server could not be reached' });
+    tools.answerNext({ kind: 'not_offered' }, { kind: 'unopened', detail: 'The tool server could not be reached' });
 
     await playbook.performEach([askedAt, askedAt + 61_000]);
     const [started, notOffered, , unopened] = await deliveryFacts(playbook);
@@ -162,7 +162,7 @@ describe('an attempt whose call did not answer as asked', () => {
       },
       {
         type: 'delivery_failed',
-        data: { because: 'server_failure', detail: 'The MCP server could not be reached' },
+        data: { because: 'server_failure', detail: 'The tool server could not be reached' },
       },
     ]);
     expect(notOffered).not.toHaveProperty('data.result_bytes');

@@ -1,3 +1,4 @@
+import { playbookCallerOf, streamPrefixOfPlaybook, type StreamWriter } from '@on.auto/operations';
 import {
   conversationCallDecider,
   conversationCallStreamOf,
@@ -7,9 +8,8 @@ import {
   type ConversationCall,
   type Recorded,
   type StartedFields,
-} from '@on.auto/mcp';
-import type { ToolReference } from '@on.auto/mcp/policy';
-import { playbookCallerOf, streamPrefixOfPlaybook, type StreamWriter } from '@on.auto/operations';
+} from '@on.auto/tool-servers';
+import type { ToolReference } from '@on.auto/tool-servers/policy';
 import { DateTime, Effect } from 'effect';
 
 import type { ReadingState } from '../replies/reply-recording.ts';

@@ -201,3 +201,4 @@ export {
   functionResourceLabels,
   type FunctionType,
 } from './capability/function-terminology.ts';
+export { checkedWorker } from './checking/worker-url.ts';

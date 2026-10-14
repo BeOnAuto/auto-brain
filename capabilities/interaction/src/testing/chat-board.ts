@@ -1,4 +1,4 @@
-import type { AnsweredOnce, CallAnswer, OneCall } from '@on.auto/mcp';
+import type { AnsweredOnce, CallAnswer, OneCall } from '@on.auto/tool-servers';
 
 interface Answering {
   readonly detail: string;

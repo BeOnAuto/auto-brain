@@ -5,7 +5,7 @@ import {
   outputInWords,
   type Capability,
 } from '@on.auto/definitions';
-import { toolTestPresenter } from '@on.auto/mcp';
+import { toolTestPresenter } from '@on.auto/tool-servers';
 
 import { parse, summarize } from '../definition/definition-reading.ts';
 import type { OfferedModels } from '../model/offered-models.ts';

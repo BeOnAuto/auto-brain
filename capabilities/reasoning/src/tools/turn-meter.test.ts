@@ -5,7 +5,7 @@ import { turnMeter, type TurnAnswered, type TurnSent } from './turn-meter.ts';
 const sent: TurnSent = {
   instructions: 'Answer from the rows the tools give.',
   messages: [{ role: 'user', content: [{ type: 'text', text: 'Summarize acme, é and all.' }] }],
-  tools: [{ name: 'mcp__graph__search', description: 'Finds rows.' }],
+  tools: [{ name: 'graph__search', description: 'Finds rows.' }],
 };
 
 const sentBytes = new TextEncoder().encode(JSON.stringify(sent)).byteLength;

@@ -15,8 +15,9 @@
   },
   "dependencies": {
     "@on.auto/definitions": "workspace:*",
-    "@on.auto/mcp": "workspace:*",
+    "@on.auto/json-schema": "workspace:*",
     "@on.auto/operations": "workspace:*",
+    "@on.auto/tool-servers": "workspace:*",
     "@on.auto/workflow-engine": "workspace:*",
     "effect": "catalog:",
     "liquidjs": "10.29.0"

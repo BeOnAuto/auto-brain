@@ -1,5 +1,5 @@
-import { serveFakeMcp } from '@on.auto/mcp/testing';
 import { textResult, type ScriptedReply } from '@on.auto/reasoning/testing';
+import { serveFakeMcp } from '@on.auto/tool-servers/testing';
 import { Effect, Option } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -30,7 +30,7 @@ describe('what a test of a tool answers', () => {
     const server = await servingReasoning([answeringWhatItSaw], {
       LOCAL_MODE: 'true',
       GRAPH_API_KEY: apiKey,
-      MCP_SERVERS: JSON.stringify({
+      TOOL_SERVERS: JSON.stringify({
         graph: { url: graph.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme' },
       }),
     });

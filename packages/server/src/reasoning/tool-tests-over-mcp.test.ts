@@ -2,8 +2,8 @@ import { setTimeout } from 'node:timers/promises';
 
 import { listedTools, plainTextIn, problemIn, withMcpSession, type McpSession } from '@on.auto/api/testing';
 import { createApiKey } from '@on.auto/identity';
-import { serveFakeMcp, type FakeMcpServer } from '@on.auto/mcp/testing';
 import { allPermissions } from '@on.auto/operations';
+import { serveFakeMcp, type FakeMcpServer } from '@on.auto/tool-servers/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
@@ -36,7 +36,7 @@ async function serving(entry: Readonly<Record<string, unknown>> = {}): Promise<S
   const server = await servingReasoning([], {
     API_KEYS: JSON.stringify([builder.entry, reader.entry]),
     GRAPH_API_KEY: apiKey,
-    MCP_SERVERS: JSON.stringify({
+    TOOL_SERVERS: JSON.stringify({
       graph: { url: graph.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme', ...entry },
     }),
   });
@@ -124,7 +124,7 @@ describe('test_tool_call refused over MCP', () => {
       session.callTool('test_tool_call', { server: 'wiki', tool: 'search' }),
     );
 
-    expect(problemIn(refused)).toMatchObject({ kind: 'tool_not_offered', because: 'mcp_server_not_configured' });
+    expect(problemIn(refused)).toMatchObject({ kind: 'tool_not_offered', because: 'tool_server_not_configured' });
     expect(plainTextIn(refused)).toBe(
       'Could not test the search tool of wiki: this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this playbook. Nothing was changed. This can be put right on your side: list_tool_servers shows the tool servers this playbook may use, so a test that names one of those can be tried.',
     );

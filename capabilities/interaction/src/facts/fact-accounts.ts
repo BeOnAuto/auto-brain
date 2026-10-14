@@ -1,6 +1,6 @@
 import { cutAtCodePoint, issuesShown, mostNameBytes } from '@on.auto/definitions';
-import { callFieldsShown, keptAnswerOf, keptArgumentsOf } from '@on.auto/mcp';
 import type { KeptContent, PresentedFact } from '@on.auto/operations';
+import { callFieldsShown, keptAnswerOf, keptArgumentsOf } from '@on.auto/tool-servers';
 import type { Schema } from 'effect';
 
 import type { DeliveredAs, RepliesIn } from '../tool-blocks/tool-block-schemas.ts';

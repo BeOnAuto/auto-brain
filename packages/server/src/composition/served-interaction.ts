@@ -9,8 +9,8 @@ import {
   requestsDue,
   type RequestsDue,
 } from '@on.auto/interaction';
-import type { ToolAccess } from '@on.auto/mcp';
 import type { DispatcherServices } from '@on.auto/operations';
+import type { ToolAccess } from '@on.auto/tool-servers';
 
 import type { Settings } from '../settings/settings.ts';
 import { runtimeLedger } from './runtime-ledger.ts';

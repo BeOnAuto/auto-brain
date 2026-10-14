@@ -11,12 +11,11 @@ const root = resolve(import.meta.dirname, '..');
 const keptFolders: readonly string[] = ['docs/decisions/'];
 
 const frozenFormats: readonly string[] = [
-  ...['1', '2', '3', '4', '5', '6'].map((format) => `packages/workflow-engine/corpus/format-${format}.json`),
-  ...['one', 'two', 'three', 'four', 'five', 'six'].map(
+  ...['1', '2', '3', '4', '5', '6', '7'].map((format) => `packages/workflow-engine/corpus/format-${format}.json`),
+  ...['one', 'two', 'three', 'four', 'five', 'six', 'six-records', 'seven', 'seven-records'].map(
     (format) => `packages/workflow-engine/src/run-log/formats/format-${format}.ts`,
   ),
-  'packages/workflow-engine/src/run-log/formats/format-six-records.ts',
-  ...['one', 'two', 'four', 'six', 'six-records'].map(
+  ...['one', 'two', 'four', 'six', 'six-records', 'seven', 'seven-records'].map(
     (format) => `packages/workflow-engine/src/run-log/formats/format-${format}.test.ts`,
   ),
 ];
@@ -56,7 +55,7 @@ const allowances: readonly Allowance[] = [
       'capabilities/coordination/src/workflows/error-tasks.test.ts',
       'docs/reference/workflow-format.md',
       'packages/server/src/computation/computation-workflows.test.ts',
-      'packages/workflow-engine/corpus/format-7.json',
+      'packages/workflow-engine/corpus/format-8.json',
       'packages/workflow-engine/src/decider/open-calls.test.ts',
       'packages/workflow-engine/src/dsl/raised-error.test.ts',
       'packages/workflow-engine/src/dsl/raised-error.ts',
@@ -90,7 +89,13 @@ const allowances: readonly Allowance[] = [
   { text: 'application inference profile', in: ['docs/self-host/models.md'] },
   { text: 'InferenceSession', in: [modelSessions] },
   { text: 'executionMode', in: [modelSessions] },
-  { text: 'toolSpec', in: ['capabilities/reasoning/src/adapter/cloud-providers.test.ts'] },
+  {
+    text: 'toolSpec',
+    in: [
+      'capabilities/reasoning/src/adapter/cloud-providers.test.ts',
+      'capabilities/reasoning/src/tools/tool-loop.test.ts',
+    ],
+  },
   { text: 'code_execution', in: ['capabilities/reasoning/src/testing/model-lists.ts'] },
   { text: 'execution-denied', in: ['capabilities/reasoning/src/tools/final-step.test.ts'] },
   ...['primitives?', 'executions?', 'inference', 'orchestration', 'recollection'].map((term) => ({

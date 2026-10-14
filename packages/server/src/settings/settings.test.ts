@@ -26,10 +26,10 @@ const defaultPrediction = {
 
 describe('readSettings', () => {
   it('listens on every interface at port 5555, allows no origin, has no API keys and keeps the ledger in data/ by default', () => {
-    const { models, mcp, interaction, ...server } = readSettings({});
+    const { models, toolServers, interaction, ...server } = readSettings({});
 
     expect(models.openai).toEqual({ configured: false, missing: ['OPENAI_API_KEY'] });
-    expect(mcp).toEqual({ servers: [] });
+    expect(toolServers).toEqual({ servers: [] });
     expect(interaction).toEqual({ mostOpenRequests: 10_000 });
     expect(server).toEqual({
       host: '0.0.0.0',
@@ -75,11 +75,11 @@ const everySetting = {
 
 describe('readSettings given every setting', () => {
   it('reads every setting from the environment it is given', () => {
-    const { models, mcp, interaction, ...server } = readSettings(everySetting);
+    const { models, toolServers, interaction, ...server } = readSettings(everySetting);
 
     expect(interaction).toEqual({ mostOpenRequests: 250 });
     expect(models.openai).toMatchObject({ configured: true });
-    expect(mcp.servers).toEqual([]);
+    expect(toolServers.servers).toEqual([]);
     expect(server).toEqual({
       host: '127.0.0.1',
       port: 3000,

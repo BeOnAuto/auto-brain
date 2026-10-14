@@ -2,6 +2,7 @@ import { Config, type Redacted } from 'effect';
 
 import {
   anySet,
+  baseUrlOf,
   bothProblems,
   configured,
   labelProblems,
@@ -115,7 +116,7 @@ export function anthropicReading(source: AnthropicSource): Reading<AnthropicSett
     availability:
       credential === undefined
         ? unconfigured(['ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN'], anySet(source.base_url))
-        : configured({ credential, base_url: source.base_url ?? null }),
+        : configured({ credential, base_url: baseUrlOf(source.base_url) }),
   };
 }
 
@@ -140,7 +141,7 @@ export function openAiReading(source: OpenAiSource): Reading<OpenAiSettings> {
     availability:
       source.api_key === undefined
         ? unconfigured(['OPENAI_API_KEY'], anySet(source.base_url, source.api))
-        : configured({ api_key: source.api_key, base_url: source.base_url ?? null, api: known ? api : 'responses' }),
+        : configured({ api_key: source.api_key, base_url: baseUrlOf(source.base_url), api: known ? api : 'responses' }),
   };
 }
 

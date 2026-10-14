@@ -30,9 +30,9 @@ const internal = {
 };
 
 describe('MODEL_GATEWAYS', () => {
-  it('reads each gateway with its key, headers, query parameters and switches, and keeps secrets redacted', async () => {
+  it('reads each gateway with its key, headers, query parameters and switches, keeps secrets redacted and trims its base URL', async () => {
     const settings = await Effect.runPromise(
-      readModelSettings(gateways([internal, { name: 'local', base_url: 'http://localhost:11434/v1' }])),
+      readModelSettings(gateways([internal, { name: 'local', base_url: 'http://localhost:11434/v1//' }])),
     );
 
     expect(settings.gateways).toEqual([
