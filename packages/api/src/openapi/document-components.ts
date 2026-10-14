@@ -13,28 +13,41 @@ function scopeParameterOf(name: string, schema: Schema.Constraint, description: 
 const problemSchema = identifiedSchemaOf(selfContainedSchemaOf(Schema.toJsonSchemaDocument(ProblemSchema)), 'problem');
 
 const parameters = {
-  org: scopeParameterOf('org', OrgIdSchema, "The id of the org, which is the key's own"),
+  org: scopeParameterOf('org', OrgIdSchema, "The id of the org, which is the caller's own"),
   playbook: scopeParameterOf('playbook', PlaybookIdSchema, 'The id of the playbook to act in'),
 };
 
-const securitySchemes = {
-  bearer: {
-    type: 'http',
-    scheme: 'bearer',
-    description: [
-      'An API key, sent as Authorization: Bearer <key>.',
-      'A key belongs to one org and holds permissions, such as playbook:read and playbook:write, for some or all of its playbooks.',
-      'A server in local mode answers requests from its own machine without a key.',
-    ].join(' '),
-  },
+const bearer = {
+  type: 'http',
+  scheme: 'bearer',
+  description: [
+    'An API key, sent as Authorization: Bearer <key>.',
+    'A key belongs to one org and holds permissions, such as playbook:read and playbook:write, for some or all of its playbooks.',
+    'A server in local mode answers requests from its own machine without a key.',
+  ].join(' '),
 };
 
-export function componentsOf(problems: readonly ProblemAnswer[]): OpenApiObject {
+function securitySchemesOf(identityIssuer: string): OpenApiObject {
+  return {
+    bearer,
+    openIdConnect: {
+      type: 'openIdConnect',
+      openIdConnectUrl: `${identityIssuer}/.well-known/openid-configuration`,
+      description: [
+        'An access token of the Auto identity service, sent as Authorization: Bearer <token>, for a person signed in there.',
+        'A server whose PUBLIC_URL is set takes a token whose audience is that URL.',
+        'The person acts in the org their organization in the identity service names, with every permission over every playbook.',
+      ].join(' '),
+    },
+  };
+}
+
+export function componentsOf(problems: readonly ProblemAnswer[], identityIssuer: string): OpenApiObject {
   const responses = problems.toSorted((one, other) => one.status - other.status);
   return {
     schemas: { problem: problemSchema },
     responses: Object.fromEntries(responses.map(({ name, response }) => [name, response])),
     parameters,
-    securitySchemes,
+    securitySchemes: securitySchemesOf(identityIssuer),
   };
 }

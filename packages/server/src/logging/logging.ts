@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 
-import type { AccessMode } from '@on.auto/identity';
+import type { AccessMode, SignInSettings } from '@on.auto/identity';
 import type { Incident } from '@on.auto/operations';
 import type { OperatorHintReport, ProviderMessageReport, ProviderStatus } from '@on.auto/reasoning';
 import { Cause, Effect, Layer } from 'effect';
@@ -18,22 +18,58 @@ export function serverLogs({ logFormat, logLevel }: LogSettings): Layer.Layer<ne
   return Layer.mergeAll(logsToStderr(logFormat), logsFrom(logLevel));
 }
 
-const accessNotices: Readonly<Record<AccessMode, Effect.Effect<void>>> = {
-  local: Effect.logWarning(
-    'Local mode is on: every request is trusted as the local developer, with every permission in every org. Never enable LOCAL_MODE on a machine reachable through a proxy',
-  ),
-  closed: Effect.logWarning(
-    'No request can authenticate: API_KEYS lists no keys and local mode is off, so every path answers 401 except /health, the OpenAPI document at /v1/openapi.json, the guides under /v1/guides and the API catalog at /.well-known/api-catalog',
-  ),
-  keys: Effect.void,
-};
+export interface AccessReport {
+  readonly mode: AccessMode;
+  readonly localMode: boolean;
+  readonly apiKeys: readonly unknown[] | undefined;
+  readonly signIn: SignInSettings | undefined;
+}
 
-const localModeIgnored = Effect.logWarning('LOCAL_MODE is ignored because API keys are configured');
+const localModeOn = Effect.logWarning(
+  'Local mode is on: every request is trusted as the local developer, with every permission in every org. Never enable LOCAL_MODE on a machine reachable through a proxy',
+);
 
-export function logAccessMode(mode: AccessMode, localModeRequested: boolean): Effect.Effect<void> {
-  return localModeRequested && mode !== 'local'
-    ? Effect.andThen(accessNotices[mode], localModeIgnored)
-    : accessNotices[mode];
+const keylessPaths =
+  '/health, the OpenAPI document at /v1/openapi.json, the guides under /v1/guides and the API catalog at /.well-known/api-catalog';
+
+function closedNotice(localMode: boolean): Effect.Effect<void> {
+  const why = localMode ? ', and LOCAL_MODE is ignored because API_KEYS is set' : ' and local mode is off';
+  return Effect.logWarning(
+    `No request can authenticate: API_KEYS lists no keys${why}, so every path answers 401 except ${keylessPaths}`,
+  );
+}
+
+function whyLocalModeIsIgnored({ apiKeys = [], signIn }: AccessReport): string {
+  return [
+    ...(apiKeys.length > 0 ? ['API keys are configured'] : []),
+    ...(signIn === undefined ? [] : ['PUBLIC_URL is set, which signs persons in']),
+  ].join(' and ');
+}
+
+function signInNotice(signIn: SignInSettings | undefined): readonly Effect.Effect<void>[] {
+  return signIn === undefined
+    ? []
+    : [
+        Effect.logInfo(
+          `Signed-in persons are admitted through the identity service at ${signIn.issuer}, by tokens whose audience is ${signIn.publicUrl}`,
+        ).pipe(Effect.annotateLogs({ public_url: signIn.publicUrl, identity_issuer: signIn.issuer })),
+      ];
+}
+
+function credentialNotices(report: AccessReport): readonly Effect.Effect<void>[] {
+  const ignored = report.localMode
+    ? [Effect.logWarning(`LOCAL_MODE is ignored because ${whyLocalModeIsIgnored(report)}`)]
+    : [];
+  return [...ignored, ...signInNotice(report.signIn)];
+}
+
+export function logAccessMode(report: AccessReport): Effect.Effect<void> {
+  if (report.mode === 'local') {
+    return localModeOn;
+  }
+  return report.mode === 'closed'
+    ? closedNotice(report.localMode)
+    : Effect.all(credentialNotices(report), { discard: true });
 }
 
 export interface ConfigFileReport {

@@ -24,11 +24,17 @@ export function compositionRootWith(
       return {
         services: applicationLayer(ledgerLayerFor(settings, database, wiring.projections.appends)),
         serve: async (runtime) => {
-          const { ledger, workflows } = settings;
+          const { ledger, workflows, identityIssuer } = settings;
           await runtime.run(logLedger(ledger));
           await runtime.run(logContentStore(settings.content));
           const functions = await functionsServedBy(runtime, settings, database, wiring);
-          const parts = { ledger, workflows, ...functions.parts, ...(clock === undefined ? {} : { clock }) };
+          const parts = {
+            ledger,
+            workflows,
+            identityIssuer,
+            ...functions.parts,
+            ...(clock === undefined ? {} : { clock }),
+          };
           return functions.closing(await serveWorkflows(runtime, parts));
         },
       };

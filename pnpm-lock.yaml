@@ -198,6 +198,9 @@ catalogs:
     hono:
       specifier: 4.13.12
       version: 4.13.12
+    jose:
+      specifier: 6.2.12
+      version: 6.2.12
     vitest:
       specifier: 5.0.2
       version: 5.0.2
@@ -627,6 +630,9 @@ importers:
       effect:
         specifier: 'catalog:'
         version: 4.0.0
+      jose:
+        specifier: 'catalog:'
+        version: 6.2.12
     devDependencies:
       '@vitest/coverage-v8':
         specifier: 'catalog:'

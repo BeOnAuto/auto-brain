@@ -113,7 +113,7 @@ describe('the console log format', () => {
       Effect.all(
         [
           logWorkflows({ mostDurationMs: 604_800_000, mostCallsAtOnce: 8, sweepEveryMs: 250 }),
-          logAccessMode('closed', false),
+          logAccessMode({ mode: 'closed', localMode: false, apiKeys: undefined, signIn: undefined }),
           logUnsettled({ org: 'acme', playbook: 'alpha', runId: 'e-1', reason: 'The ledger has no such run' }),
           Effect.logFatal('The ledger is gone'),
           Effect.logDebug({ answered: false }),

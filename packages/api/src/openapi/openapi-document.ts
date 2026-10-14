@@ -11,7 +11,12 @@ import type { OpenApiObject } from './problem-responses.ts';
 
 const openApiVersion = '3.1.1';
 
-export function openApiDocumentOf(catalog: Catalog, { version }: ServerInfo, shelf: GuideShelf): OpenApiObject {
+export function openApiDocumentOf(
+  catalog: Catalog,
+  { version }: ServerInfo,
+  shelf: GuideShelf,
+  identityIssuer: string,
+): OpenApiObject {
   const { paths, tags, problems } = documentPathsOf(catalog, shelf);
   return {
     openapi: openApiVersion,
@@ -20,6 +25,6 @@ export function openApiDocumentOf(catalog: Catalog, { version }: ServerInfo, she
     servers: [{ url: versionPrefix }],
     tags,
     paths,
-    components: componentsOf(problems),
+    components: componentsOf(problems, identityIssuer),
   };
 }

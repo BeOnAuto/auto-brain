@@ -1,12 +1,11 @@
 import { createMcpHandler, type McpHttpHandler } from '@modelcontextprotocol/server';
-import { canAccessPlaybook, type CallerIdentity, type OperationScope } from '@on.auto/operations';
+import type { OperationScope } from '@on.auto/operations';
 
+import { admissionAt } from '../authentication/endpoint-admission.ts';
 import { authInfoFor, type PlaybookCall, type OrgCall } from '../hand-off/caller-hand-off.ts';
 import { droppedArgumentsOf } from '../hand-off/dropped-arguments.ts';
 import { requestBodyLimit } from '../operations/request-body.ts';
-import type { Problem } from '../problem/problem-document.ts';
-import { problemOf, problemResponse } from '../problem/problem.ts';
-import type { RegisterRoutes, RouteHandler } from '../routes.ts';
+import type { RegisterRoutes, RouteHandler, Routes } from '../routes.ts';
 import type { McpServing } from './mcp-connection.ts';
 import {
   playbookServerFactory,
@@ -21,18 +20,7 @@ export interface McpRoutesOptions extends McpServing {
 
 type FetchMcp = McpHttpHandler['fetch'];
 
-const insufficientScope = { 'www-authenticate': 'Bearer error="insufficient_scope"' };
-
-const anotherOrg = problemOf('forbidden', 'The caller does not belong to this org');
-
-const anotherPlaybook = problemOf('forbidden', 'The caller may not access this playbook');
-
-function rejectionOf(caller: CallerIdentity, org: string, playbook: string | undefined): Problem | undefined {
-  if (caller.org !== org) {
-    return anotherOrg;
-  }
-  return playbook === undefined || canAccessPlaybook(caller.playbooks, playbook) ? undefined : anotherPlaybook;
-}
+type Resource = Routes['resource'];
 
 async function handedOff(
   fetchMcp: FetchMcp,
@@ -43,15 +31,15 @@ async function handedOff(
   return fetchMcp(request, { authInfo: authInfoFor({ ...call, dropped }) });
 }
 
-function endpoint(fetchMcp: FetchMcp, scope: OperationScope): RouteHandler {
+function endpoint(fetchMcp: FetchMcp, scope: OperationScope, resource: Resource): RouteHandler {
   return (c) => {
     const org = String(c.req.param('org'));
     const playbook = scope === 'playbook' ? String(c.req.param('playbook')) : undefined;
-    const caller = c.get('principal').callerIn(org);
-    const rejection = rejectionOf(caller, org, playbook);
-    if (rejection !== undefined) {
-      return problemResponse(rejection, insufficientScope);
+    const admission = admissionAt(c.get('principal').callerIn(org), org, playbook, resource);
+    if ('refused' in admission) {
+      return admission.refused;
     }
+    const { caller } = admission;
     const requestId = c.get('requestId');
     const call = playbook === undefined ? { caller, org, requestId } : { caller, org, playbook, requestId };
     return handedOff(fetchMcp, c.req.raw, call);
@@ -60,8 +48,8 @@ function endpoint(fetchMcp: FetchMcp, scope: OperationScope): RouteHandler {
 
 function ownOrgEndpoint(fetchMcp: FetchMcp): RouteHandler {
   return (c) => {
-    const { org, callerIn } = c.get('principal');
-    return handedOff(fetchMcp, c.req.raw, { caller: callerIn(org), org, requestId: c.get('requestId') });
+    const { own } = c.get('principal');
+    return handedOff(fetchMcp, c.req.raw, { caller: own, org: own.org, requestId: c.get('requestId') });
   };
 }
 
@@ -76,8 +64,8 @@ export function mcpRoutes(options: McpRoutesOptions): RegisterRoutes {
     const org = handlerFor(orgServerFactory(serving), options);
     const playbook = handlerFor(playbookServerFactory(serving), options);
     routes.add('POST', '/mcp', ownOrgEndpoint(catalog.fetch));
-    routes.add('POST', '/orgs/:org/mcp', endpoint(org.fetch, 'org'));
-    routes.add('POST', '/orgs/:org/playbooks/:playbook/mcp', endpoint(playbook.fetch, 'playbook'));
+    routes.add('POST', '/orgs/:org/mcp', endpoint(org.fetch, 'org', routes.resource));
+    routes.add('POST', '/orgs/:org/playbooks/:playbook/mcp', endpoint(playbook.fetch, 'playbook', routes.resource));
     routes.onClose(async () => {
       await Promise.all([catalog.close(), org.close(), playbook.close()]);
     });

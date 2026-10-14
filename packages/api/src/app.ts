@@ -3,6 +3,7 @@ import { methodNotAllowed } from 'hono/method-not-allowed';
 
 import type { ApiEnv } from './api-env.ts';
 import type { ApiOptions } from './api-options.ts';
+import { protectedResourceRoutes } from './authentication/protected-resource.ts';
 import { healthRoutes } from './discovery/health.ts';
 import { middlewareFor } from './middleware/middleware-chain.ts';
 import { errorHandler, failureOfThrown } from './problem/error-boundary.ts';
@@ -28,6 +29,10 @@ export function createApp(options: ApiOptions): ApiApp {
         }),
     }),
   );
+  const { resource } = options.authenticator;
+  for (const { path, handler } of protectedResourceRoutes(resource)) {
+    app.get(path, handler);
+  }
   const reportThrown = failureOfThrown(options.reportIncident);
   for (const register of [healthRoutes, ...options.routes]) {
     register({
@@ -42,6 +47,7 @@ export function createApp(options: ApiOptions): ApiApp {
         closes.push(close);
       },
       reportThrown,
+      resource,
     });
   }
   app.notFound(() => problemResponse(problemOf('not_found', 'No route matches the path')));

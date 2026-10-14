@@ -1,9 +1,16 @@
 import type { Environment } from '@on.auto/config';
-import { Config, ConfigProvider, Effect } from 'effect';
+import {
+  autoIdentityService,
+  listensOnlyOnLoopback,
+  readApiKeys,
+  type ApiKey,
+  type SignInSettings,
+} from '@on.auto/identity';
+import { Config, ConfigProvider, Effect, Option } from 'effect';
 
 import type { LogFormat, LogLevelSetting } from '../logging/log-formats.ts';
 import { InvalidSettingsError } from './invalid-settings-error.ts';
-import { Origin } from './origin.ts';
+import { IssuerOrigin, namesALoopbackHost, Origin, PublicOrigin } from './origin.ts';
 
 export interface AccessSettings {
   readonly allowedOrigins: readonly string[];
@@ -19,8 +26,44 @@ const accessSettings = Config.all({
   logLevel: Config.Literals(['debug', 'info', 'warn', 'error'], 'LOG_LEVEL').pipe(Config.withDefault('info')),
 });
 
+function asInvalidSettings<A>(
+  parsing: Effect.Effect<A, { readonly message: string }>,
+): Effect.Effect<A, InvalidSettingsError> {
+  return parsing.pipe(Effect.mapError(({ message }) => new InvalidSettingsError({ message })));
+}
+
 export function readAccessSettings(environment: Environment): Effect.Effect<AccessSettings, InvalidSettingsError> {
-  return accessSettings
-    .parse(ConfigProvider.fromEnvRecord(environment))
-    .pipe(Effect.mapError(({ message }: { readonly message: string }) => new InvalidSettingsError({ message })));
+  return asInvalidSettings(accessSettings.parse(ConfigProvider.fromEnvRecord(environment)));
+}
+
+export interface CredentialSettings {
+  readonly apiKeys: readonly ApiKey[] | undefined;
+  readonly identityIssuer: string;
+  readonly signIn: SignInSettings | undefined;
+}
+
+const signInSettings = Config.all({
+  publicUrl: Config.option(Config.schema(PublicOrigin, 'PUBLIC_URL')),
+  issuer: Config.schema(IssuerOrigin, 'IDENTITY_ISSUER').pipe(Config.withDefault(autoIdentityService)),
+});
+
+const httpOffLoopback =
+  'PUBLIC_URL: Expected an https URL; an http URL is taken only for localhost, 127.0.0.1 or [::1] on a server whose HOST is a loopback address';
+
+function isUsableOnHost(publicUrl: string, host: string): boolean {
+  return publicUrl.startsWith('https://') || (namesALoopbackHost(publicUrl) && listensOnlyOnLoopback(host));
+}
+
+export function readCredentialSettings(environment: Environment, host: string): CredentialSettings {
+  const { publicUrl, issuer } = Effect.runSync(
+    asInvalidSettings(signInSettings.parse(ConfigProvider.fromEnvRecord(environment))),
+  );
+  if (Option.isSome(publicUrl) && !isUsableOnHost(publicUrl.value, host)) {
+    throw new InvalidSettingsError({ message: httpOffLoopback });
+  }
+  return {
+    apiKeys: readApiKeys(environment),
+    identityIssuer: issuer,
+    signIn: Option.isSome(publicUrl) ? { issuer, publicUrl: publicUrl.value } : undefined,
+  };
 }

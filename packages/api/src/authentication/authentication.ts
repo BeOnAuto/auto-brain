@@ -1,40 +1,41 @@
-import type { Authenticator } from '@on.auto/identity';
+import { isRefusal, type Authenticator, type Refusal } from '@on.auto/identity';
 import type { MiddlewareHandler } from 'hono';
 
 import type { ApiEnv } from '../api-env.ts';
 import { problemOf, problemResponse } from '../problem/problem.ts';
+import { mcpEndpointPathOf, unauthenticatedChallenge } from './challenges.ts';
 
 const bearerCredentials = /^Bearer +([\w.~+/-]+=*) *$/iu;
 
-const missingKey = problemOf('unauthenticated', 'A valid API key is required');
-
 const malformedCredentials = problemOf(
   'bad_request',
-  'The Authorization header must hold exactly one API key, as Bearer <key>',
+  'The Authorization header must hold exactly one API key or access token, as Bearer <key or token>',
 );
-
-function unauthenticated(presentedKey: string | undefined): Response {
-  return problemResponse(missingKey, {
-    'www-authenticate': presentedKey === undefined ? 'Bearer' : 'Bearer error="invalid_token"',
-  });
-}
 
 function malformed(): Response {
   return problemResponse(malformedCredentials, { 'www-authenticate': 'Bearer error="invalid_request"' });
 }
 
-export function authenticate(authenticator: Authenticator): MiddlewareHandler<ApiEnv> {
-  return (c, next) => {
+function detailOf({ because }: Refusal, missing: string): string {
+  return because === undefined ? missing : `The access token was refused: ${because}`;
+}
+
+export function authenticate({ authenticate: authenticated, resource }: Authenticator): MiddlewareHandler<ApiEnv> {
+  const missing =
+    resource === undefined ? 'A valid API key is required' : 'A valid API key or access token is required';
+  return async (c, next) => {
     const authorization = c.req.header('authorization');
-    const presentedKey = authorization === undefined ? undefined : bearerCredentials.exec(authorization)?.[1];
-    if (authorization !== undefined && presentedKey === undefined) {
-      return Promise.resolve(malformed());
+    const presented = authorization === undefined ? undefined : bearerCredentials.exec(authorization)?.[1];
+    if (authorization !== undefined && presented === undefined) {
+      return malformed();
     }
-    const principal = authenticator.authenticate(presentedKey);
-    if (principal === undefined) {
-      return Promise.resolve(unauthenticated(presentedKey));
+    const authentication = await authenticated(presented, mcpEndpointPathOf(c.req.path));
+    if (isRefusal(authentication)) {
+      return problemResponse(problemOf('unauthenticated', detailOf(authentication, missing)), {
+        'www-authenticate': unauthenticatedChallenge(resource, presented !== undefined),
+      });
     }
-    c.set('principal', principal);
+    c.set('principal', authentication);
     return next();
   };
 }

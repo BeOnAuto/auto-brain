@@ -1,3 +1,4 @@
+import { allPermissions, type CallerIdentity } from '@on.auto/operations';
 import { describe, expect, it } from 'vitest';
 
 import { buildPlaybook } from '../build-testing/build-playbook.ts';
@@ -5,6 +6,13 @@ import { builtFrom, modelFactsOf, savedFunction, standingOf } from '../build-tes
 import { activateVersion } from './activate-version.ts';
 
 const testTimeoutMs = 60_000;
+
+const signedInPerson: CallerIdentity = {
+  id: 'person:user|ada',
+  org: 'acme',
+  permissions: allPermissions,
+  playbooks: '*',
+};
 
 const anInstant: unknown = expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/u);
 
@@ -54,5 +62,22 @@ describe('the activation of a version a caller asks for', { timeout: testTimeout
         detail: 'Version 1 of daily-visits is already active',
       },
     ]);
+  });
+});
+
+describe('the activation of a version a signed-in person asks for', { timeout: testTimeoutMs }, () => {
+  it('records the person as who activated it', async () => {
+    const playbook = buildPlaybook();
+    await savedFunction(playbook);
+    await builtFrom(playbook, ['visits-mean']);
+    await builtFrom(playbook, ['visits-steady']);
+
+    await playbook.send(activateVersion, { name: 'daily-visits', version: 1 }, undefined, signedInPerson);
+
+    expect((await modelFactsOf(playbook)).at(-1)).toMatchObject({
+      type: 'version_activated',
+      data: { version: 1, rule: 'requested' },
+      by: 'person:user|ada',
+    });
   });
 });

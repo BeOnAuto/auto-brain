@@ -23,17 +23,22 @@ import { release } from './release.ts';
 
 type Operations = Parameters<typeof makeCatalog>[0];
 
+export interface ServedCatalog {
+  readonly catalog: Catalog;
+  readonly dispatcher: Dispatcher;
+  readonly capabilities: readonly Capability[];
+  readonly identityIssuer: string;
+}
+
 export function routesFor(
   runtime: AppRuntime<DispatcherServices>,
-  catalog: Catalog,
-  dispatcher: Dispatcher,
-  capabilities: readonly Capability[],
+  { catalog, dispatcher, capabilities, identityIssuer }: ServedCatalog,
 ): readonly RegisterRoutes[] {
   const { guides, recipes, definitionTypes } = servedGuidesOf(capabilities);
   const shelf = guideShelfOf(guides, recipes, definitionTypes);
   return [
     operationRoutes({ catalog, dispatcher, runCall: runtime.run }),
-    openApiDocumentRoutes({ catalog, serverInfo: release, shelf }),
+    openApiDocumentRoutes({ catalog, serverInfo: release, shelf, identityIssuer }),
     guideRoutes(shelf),
     apiCatalogRoutes(shelf),
     mcpRoutes({
@@ -51,6 +56,8 @@ export function routesFor(
 
 export function routesServing(
   operations: Operations,
+  identityIssuer: string,
 ): (runtime: AppRuntime<DispatcherServices>) => readonly RegisterRoutes[] {
-  return (runtime) => routesFor(runtime, makeCatalog(operations), makeDispatcher([]), []);
+  const served = { catalog: makeCatalog(operations), dispatcher: makeDispatcher([]), capabilities: [], identityIssuer };
+  return (runtime) => routesFor(runtime, served);
 }

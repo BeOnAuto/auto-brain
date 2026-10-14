@@ -81,3 +81,12 @@ describe('the org reserved for local mode', () => {
     expect(String(error)).toBe('InvalidApiKeysError: API_KEYS[0].org: This org id is reserved for local mode');
   });
 });
+
+describe('the key id the local developer is recorded under', () => {
+  it('is refused in API_KEYS, so no key can act as the local developer on the facts', () => {
+    const error = errorFrom(JSON.stringify([{ ...entry, id: 'local' }]));
+
+    expect(error).toBeInstanceOf(InvalidApiKeysError);
+    expect(String(error)).toBe('InvalidApiKeysError: API_KEYS[0].id: This key id is reserved for the local developer');
+  });
+});

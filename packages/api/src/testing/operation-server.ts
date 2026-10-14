@@ -32,6 +32,8 @@ export interface OperationServer {
 
 export const testServerInfo = { name: '@on.auto/runtime', version: '0.0.0-test' };
 
+export const testIdentityIssuer = 'https://identity.example';
+
 const knownPlaybooks = [
   { org: 'acme', playbook: 'alpha' },
   { org: 'acme', playbook: 'beta' },
@@ -88,7 +90,12 @@ export async function operationServer({
   const mcpErrors: string[] = [];
   const routes = [
     operationRoutes({ catalog, dispatcher, runCall: runtime.run }),
-    openApiDocumentRoutes({ catalog, serverInfo: testServerInfo, shelf: testShelf }),
+    openApiDocumentRoutes({
+      catalog,
+      serverInfo: testServerInfo,
+      shelf: testShelf,
+      identityIssuer: testIdentityIssuer,
+    }),
     guideRoutes(testShelf),
     apiCatalogRoutes(testShelf),
     mcpRoutes({

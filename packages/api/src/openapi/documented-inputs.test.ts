@@ -7,12 +7,12 @@ import { findNotes } from '../testing/found-notes.ts';
 import { testShelf } from '../testing/guides.ts';
 import { listNotesOfTheOrg, notebookOperations } from '../testing/notebook.ts';
 import { operationsIn, type DocumentedOperation } from '../testing/openapi/openapi-document.ts';
-import { testServerInfo } from '../testing/operation-server.ts';
+import { testIdentityIssuer, testServerInfo } from '../testing/operation-server.ts';
 import { openApiDocumentOf } from './openapi-document.ts';
 
 const catalog = makeCatalog([...notebookOperations, findNotes, listNotesOfTheOrg, ...blobOperations]);
 
-const documented = operationsIn(openApiDocumentOf(catalog, testServerInfo, testShelf));
+const documented = operationsIn(openApiDocumentOf(catalog, testServerInfo, testShelf, testIdentityIssuer));
 
 const FieldsSchema = Schema.Struct({
   properties: Schema.optionalKey(Schema.Record(Schema.String, Schema.Unknown)),

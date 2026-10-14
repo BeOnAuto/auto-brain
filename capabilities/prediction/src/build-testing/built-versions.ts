@@ -114,6 +114,7 @@ export async function workOf(playbook: BuildPlaybook, id: string): Promise<reado
 export interface ModelFactSeen {
   readonly type: string;
   readonly data: unknown;
+  readonly by: string;
 }
 
 export async function modelFactsOf(playbook: BuildPlaybook, name = 'daily-visits'): Promise<readonly ModelFactSeen[]> {
@@ -135,5 +136,5 @@ export async function modelFactsOf(playbook: BuildPlaybook, name = 'daily-visits
   );
   return page.records
     .filter(({ stream }) => stream.endsWith(`models/${name}`))
-    .map(({ type, data }) => ({ type, data }));
+    .map(({ type, data, context }) => ({ type, data, by: context.by }));
 }

@@ -78,7 +78,7 @@ describe('a malformed Authorization header', () => {
       status: 400,
       body: {
         reason: 'bad_request',
-        detail: 'The Authorization header must hold exactly one API key, as Bearer <key>',
+        detail: 'The Authorization header must hold exactly one API key or access token, as Bearer <key or token>',
       },
     });
     expect(answer.headers.get('www-authenticate')).toBe('Bearer error="invalid_request"');

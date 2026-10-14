@@ -4,12 +4,17 @@ import { versionPrefix } from '../operations/route-table.ts';
 import type { RegisterRoutes } from '../routes.ts';
 import { openApiDocumentOf } from './openapi-document.ts';
 
-export type OpenApiServing = Pick<McpServing, 'catalog' | 'serverInfo' | 'shelf'>;
+export interface OpenApiServing extends Pick<McpServing, 'catalog' | 'serverInfo' | 'shelf'> {
+  readonly identityIssuer: string;
+}
 
 export const openApiPath = `${versionPrefix}/openapi.json`;
 
-export function openApiDocumentRoutes({ catalog, serverInfo, shelf }: OpenApiServing): RegisterRoutes {
-  const document = cachedAnswerOf(JSON.stringify(openApiDocumentOf(catalog, serverInfo, shelf)), 'application/json');
+export function openApiDocumentRoutes({ catalog, serverInfo, shelf, identityIssuer }: OpenApiServing): RegisterRoutes {
+  const document = cachedAnswerOf(
+    JSON.stringify(openApiDocumentOf(catalog, serverInfo, shelf, identityIssuer)),
+    'application/json',
+  );
   return (routes) => {
     routes.addPublic('GET', openApiPath, (c) => answerOf(c, document));
   };

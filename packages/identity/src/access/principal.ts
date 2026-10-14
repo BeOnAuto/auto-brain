@@ -1,19 +1,44 @@
 import { allPermissions, type CallerIdentity } from '@on.auto/operations';
 
 import type { ApiKey } from '../keys/api-key.ts';
-import { localOrg } from './local-org.ts';
+import { localDeveloperId, localOrg } from './local-org.ts';
 
 export interface Principal {
-  readonly org: string;
-  readonly callerIn: (org: string) => CallerIdentity;
+  readonly own: CallerIdentity;
+  readonly callerIn: (org: string) => CallerIdentity | undefined;
 }
 
-export const localDeveloper: Principal = {
-  org: localOrg,
-  callerIn: (org) => ({ id: 'local', org, permissions: allPermissions, playbooks: '*' }),
-};
+export interface Refusal {
+  readonly because: string | undefined;
+}
+
+export type Authentication = Principal | Refusal;
+
+export interface VerifiedPerson {
+  readonly subject: string;
+  readonly org: string;
+}
+
+export function isRefusal(authentication: Authentication): authentication is Refusal {
+  return 'because' in authentication;
+}
+
+export const unexplained: Refusal = { because: undefined };
+
+function developerIn(org: string): CallerIdentity {
+  return { id: localDeveloperId, org, permissions: allPermissions, playbooks: '*' };
+}
+
+export const localDeveloper: Principal = { own: developerIn(localOrg), callerIn: developerIn };
+
+function principalOfCaller(caller: CallerIdentity): Principal {
+  return { own: caller, callerIn: (asked) => (asked === caller.org ? caller : undefined) };
+}
 
 export function principalOf({ id, org, permissions, playbooks }: ApiKey): Principal {
-  const caller: CallerIdentity = { id, org, permissions, playbooks };
-  return { org, callerIn: () => caller };
+  return principalOfCaller({ id, org, permissions, playbooks });
+}
+
+export function signedInPersonOf({ subject, org }: VerifiedPerson): Principal {
+  return principalOfCaller({ id: `person:${subject}`, org, permissions: allPermissions, playbooks: '*' });
 }

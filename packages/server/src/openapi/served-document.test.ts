@@ -68,8 +68,21 @@ describe('the OpenAPI document of the server', () => {
     ]);
   });
 
-  it('takes 173,575 bytes and those of the version of the release, 173,580 at 0.8.0', () => {
-    expect(Buffer.byteLength(text) - Buffer.byteLength(release.version)).toBe(173_575);
+  it('takes 174,772 bytes and those of the version of the release, 174,777 at 0.9.1', () => {
+    expect(Buffer.byteLength(text) - Buffer.byteLength(release.version)).toBe(174_772);
+  });
+
+  it('names the OpenID Connect metadata of the Auto identity service when IDENTITY_ISSUER is not set', () => {
+    expect(document).toMatchObject({
+      components: {
+        securitySchemes: {
+          openIdConnect: {
+            type: 'openIdConnect',
+            openIdConnectUrl: 'https://clerk.on.auto/.well-known/openid-configuration',
+          },
+        },
+      },
+    });
   });
 
   it('says none of the old words the vocabulary of the repository refuses', () => {
