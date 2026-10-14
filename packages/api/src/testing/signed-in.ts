@@ -2,7 +2,7 @@ import { once } from 'node:events';
 import { createServer, type Server } from 'node:http';
 
 import { getRequestListener } from '@hono/node-server';
-import { authenticatorFor, identityServiceOf, type IssuerRequests } from '@on.auto/identity';
+import { authenticatorFor, identityServiceOf, signInScopes, type IssuerRequests } from '@on.auto/identity';
 import { fakeIssuer, type Claims, type FakeClient, type FakeIssuer } from '@on.auto/identity/testing';
 import { Schema } from 'effect';
 
@@ -44,6 +44,7 @@ export async function signedInServer(): Promise<SignedIn> {
         iat: seconds,
         exp: seconds + 300,
         org_id: 'acme',
+        scope: signInScopes.join(' '),
         ...claims,
       })}`,
     }),

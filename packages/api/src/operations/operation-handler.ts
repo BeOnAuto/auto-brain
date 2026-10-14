@@ -61,7 +61,7 @@ export function handlerFor(
   { dispatcher, runCall }: OperationRoutesOptions,
   { reportThrown, resource }: Routes,
 ): RouteHandler {
-  const forbidden = insufficientScope(resource);
+  const forbidden = insufficientScope(resource, registration.permissions);
   return async (c) => {
     const org = String(c.req.param('org'));
     const caller = c.get('principal').callerIn(org);
