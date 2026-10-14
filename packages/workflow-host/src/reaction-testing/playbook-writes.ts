@@ -91,7 +91,9 @@ export function definitionRecorded(
   { name, version, triggers, when = at }: DefinitionVersion,
   playbookKey = alpha,
 ) {
-  const content = triggers.length === 0 ? { source: 'do: []' } : { source: 'schedule: {}', triggers };
+  const overview = `# ${name}\n`;
+  const content =
+    triggers.length === 0 ? { source: 'do: []', overview } : { source: 'schedule: {}', overview, triggers };
   return recorded(
     store,
     `${playbookKey}definitions/workflow`,

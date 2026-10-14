@@ -25,7 +25,7 @@ describe('the recall functions a playbook keeps', () => {
     const definitions = definitionsAfter(
       noDefinitions,
       [
-        savedAs('runs', { source: 'the runs document', details: { fold } }),
+        savedAs('runs', { source: 'the runs document', overview: '# runs\n', details: { fold } }),
         { type: 'definition_renamed', data: {}, context: { by: 'acme-admin', at: 'now', definitionName: 'runs' } },
       ],
       runnableDetailsOf,
@@ -39,7 +39,7 @@ describe('the recall functions a playbook keeps', () => {
     const definitions = definitionsAfter(
       noDefinitions,
       [
-        savedAs('runs', { source: 'the runs document', details: { fold } }),
+        savedAs('runs', { source: 'the runs document', overview: '# runs\n', details: { fold } }),
         {
           type: 'definition_retired',
           data: {},
@@ -69,7 +69,10 @@ describe('the fold a playbook keeps for a recall function', () => {
 
     const kept = definitionsAfter(
       noDefinitions,
-      [savedAs('runs', { source: 'a', details: typed, stripped }), savedAs('plain', { source: 'b', details: typed })],
+      [
+        savedAs('runs', { source: 'a', overview: '# runs\n', details: typed, stripped }),
+        savedAs('plain', { source: 'b', overview: '# plain\n', details: typed }),
+      ],
       runnableDetailsOf,
     );
 

@@ -78,7 +78,7 @@ export async function tallyHarness(settings: DatabaseSettings): Promise<TallyHar
       const version = (versions.get(name) ?? 0) + 1;
       versions.set(name, version);
       const type = version === 1 ? 'definition_created' : 'definition_updated';
-      const content = { source: `the ${name} tally, version ${version}`, details };
+      const content = { source: `the ${name} tally, version ${version}`, overview: `# ${name}\n`, details };
       await views.append(tallyStream, [{ type, data: { content } }], contextOf(name, version));
     },
     retiredTally: async (name) => {
