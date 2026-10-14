@@ -6,7 +6,7 @@ const allowedMethods = 'GET, HEAD, POST, PUT';
 
 const allowedHeaders = 'authorization, content-type, traceparent, tracestate, baggage';
 
-const exposedHeaders = 'x-request-id, x-trace-id';
+const exposedHeaders = 'x-request-id, x-trace-id, www-authenticate';
 
 const preflightCacheSeconds = '600';
 

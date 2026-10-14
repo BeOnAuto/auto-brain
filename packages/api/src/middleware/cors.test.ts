@@ -86,7 +86,7 @@ describe('a request from an allowed origin', () => {
       expect(answer.status).toBe(status);
       expect(corsHeadersOf(answer.headers)).toEqual({
         allowOrigin: allowed,
-        exposeHeaders: 'x-request-id, x-trace-id',
+        exposeHeaders: 'x-request-id, x-trace-id, www-authenticate',
         allowCredentials: null,
         vary: 'Origin',
       });
