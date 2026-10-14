@@ -131,7 +131,12 @@ describe('the permissions of the person a token names', () => {
 
 const refusedClaims: ReadonlyArray<readonly [string, Claims, string]> = [
   ['a wrong iss', { iss: 'https://elsewhere.example' }, 'ERR_JWT_CLAIM_VALIDATION_FAILED on its iss claim'],
-  ['no aud', { aud: undefined }, 'ERR_JWT_CLAIM_VALIDATION_FAILED on its aud claim'],
+  [
+    'no aud, which makes it a session, and no azp',
+    { aud: undefined },
+    'ERR_JWT_CLAIM_VALIDATION_FAILED on its azp claim',
+  ],
+  ['an empty list as its aud', { aud: [] }, 'ERR_JWT_CLAIM_VALIDATION_FAILED on its aud claim'],
   ['an aud of another resource', { aud: 'https://other.example' }, 'ERR_JWT_CLAIM_VALIDATION_FAILED on its aud claim'],
   [
     'an aud of another endpoint',
@@ -223,7 +228,7 @@ describe('the identity service of the protected resource', () => {
   it('is its one authorization server, with the public URL', async () => {
     const fake = fakeIssuer('https://login.example');
     const identityService = await identityServiceOf(
-      { issuer: fake.issuer, publicUrl: testPublicUrl },
+      { issuer: fake.issuer, publicUrl: testPublicUrl, allowedOrigins: [] },
       { fetch: fake.answer, ...atStart },
     );
 
@@ -236,7 +241,7 @@ describe('the identity service of the protected resource', () => {
   it('stops the server at start, naming the service, when it cannot be read', async () => {
     await expect(
       identityServiceOf(
-        { issuer: 'https://login.example', publicUrl: testPublicUrl },
+        { issuer: 'https://login.example', publicUrl: testPublicUrl, allowedOrigins: [] },
         { fetch: answeringNothing, now: Date.now },
       ),
     ).rejects.toMatchObject({

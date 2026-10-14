@@ -32,7 +32,7 @@ function json(body: unknown): Response {
 
 async function refusalOf(issuer: string, fetch: IssuerFetch): Promise<string> {
   try {
-    await identityServiceOf({ issuer, publicUrl }, { fetch, now: Date.now });
+    await identityServiceOf({ issuer, publicUrl, allowedOrigins: [] }, { fetch, now: Date.now });
   } catch (error) {
     return String(error);
   }

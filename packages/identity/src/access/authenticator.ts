@@ -10,7 +10,11 @@ export type AccessMode = 'local' | 'credentials' | 'closed';
 export interface Authenticator {
   readonly mode: AccessMode;
   readonly resource: ProtectedResource | undefined;
-  readonly authenticate: (presented: string | undefined, resourcePath: string) => Promise<Authentication>;
+  readonly authenticate: (
+    presented: string | undefined,
+    resourcePath: string,
+    requestOrigin?: string,
+  ) => Promise<Authentication>;
 }
 
 export interface AccessSettings {
@@ -26,9 +30,9 @@ function keyHolderOf(keys: readonly ApiKey[], presented: string | undefined): Au
 }
 
 function credentialHolderOf(keys: readonly ApiKey[], identityService?: IdentityService): Authenticator['authenticate'] {
-  return (presented, resourcePath) =>
+  return (presented, resourcePath, requestOrigin) =>
     presented !== undefined && identityService !== undefined && !presented.startsWith(keyPrefix)
-      ? identityService.personOf(presented, resourcePath)
+      ? identityService.personOf(presented, resourcePath, requestOrigin)
       : Promise.resolve(keyHolderOf(keys, presented));
 }
 

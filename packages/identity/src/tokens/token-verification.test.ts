@@ -15,7 +15,13 @@ function tokenOf(length: number): string {
   return `${header}.${payload}.${'A'.repeat(length - header.length - payload.length - 2)}`;
 }
 
-const expected = { issuer: 'https://login.example', audiences: ['https://runtime.example'], now: 0 };
+const expected = {
+  issuer: 'https://login.example',
+  audiences: ['https://runtime.example'],
+  pageOrigins: [],
+  requestOrigin: undefined,
+  now: 0,
+};
 
 describe('the length of a token', () => {
   it('is taken at 8 KiB, and a token one byte longer is refused before anything is decoded or asked of a key', async () => {

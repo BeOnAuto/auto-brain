@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { authenticatorFor, createApiKey, type ApiKey, type IdentityService } from '../index.ts';
-import { principalIn } from '../testing/index.ts';
+import { authenticatorFor, createApiKey, studioOrigin, type ApiKey, type IdentityService } from '../index.ts';
+import { fakeIssuer, principalIn } from '../testing/index.ts';
 
 const reader = createApiKey({ id: 'acme-reader', org: 'acme', permissions: ['playbook:read'], playbooks: ['alpha'] });
 
@@ -36,8 +36,8 @@ const tokensSeen: string[] = [];
 
 const identityService: IdentityService = {
   resource: { publicUrl: 'https://runtime.example', authorizationServers: ['https://login.example'] },
-  personOf: (token, path) => {
-    tokensSeen.push(`${token} at ${path}`);
+  personOf: (token, path, origin = 'no origin') => {
+    tokensSeen.push(`${token} at ${path} from ${origin}`);
     return Promise.resolve(token === 'a.token.of-ada' ? signedInAda : { because: 'ERR_JWS_INVALID' });
   },
 };
@@ -80,6 +80,19 @@ describe('authenticatorFor with local mode on and no API keys', () => {
     expect(() => authenticatorFor({ host: '0.0.0.0', apiKeys: keys, localMode: true })).toThrow(
       expect.objectContaining({ name: 'InvalidLocalModeError' }),
     );
+  });
+});
+
+describe('authenticatorFor in local mode, with a credential presented', () => {
+  it.each([
+    ['the session a page signed in to Auto sends', () => fakeIssuer('https://login.example').session(studioOrigin)],
+    ['a key, where no key is set', () => Promise.resolve(admin.key)],
+    ['a key that is not valid', () => Promise.resolve(wrongSecret)],
+  ])('ignores %s and admits the request as the local developer', async (_case, presented) => {
+    const authenticator = authenticatorFor({ host: '127.0.0.1', apiKeys: undefined, localMode: true });
+    const developer = principalIn(await authenticator.authenticate(await presented(), anyPath));
+
+    expect(developer?.callerIn('acme')).toMatchObject({ id: 'local', org: 'acme', playbooks: '*' });
   });
 });
 
@@ -151,13 +164,16 @@ describe('authenticatorFor with the identity service', () => {
     expect(authenticator.resource).toEqual(identityService.resource);
   });
 
-  it('asks the identity service about a token that is not a key, with the path the request reached', async () => {
+  it('asks the identity service about a token that is not a key, with the path and the origin of the request', async () => {
     tokensSeen.length = 0;
     const authenticator = authenticatorFor({ host: '0.0.0.0', apiKeys: keys, localMode: false, identityService });
 
-    expect(await authenticator.authenticate('a.token.of-ada', '/mcp')).toBe(signedInAda);
+    expect(await authenticator.authenticate('a.token.of-ada', '/mcp', studioOrigin)).toBe(signedInAda);
     expect(await authenticator.authenticate('an.opaque.token', '/mcp')).toEqual({ because: 'ERR_JWS_INVALID' });
-    expect(tokensSeen).toEqual(['a.token.of-ada at /mcp', 'an.opaque.token at /mcp']);
+    expect(tokensSeen).toEqual([
+      'a.token.of-ada at /mcp from https://studio.on.auto',
+      'an.opaque.token at /mcp from no origin',
+    ]);
   });
 
   it('verifies a key as a key, never as a token', async () => {
