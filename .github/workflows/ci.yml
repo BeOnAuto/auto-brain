@@ -19,34 +19,17 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    services:
-      postgresql:
-        image: postgres:18.6-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
-        env:
-          POSTGRES_PASSWORD: ledger-ci
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready --username postgres"
-          --health-interval 2s
-          --health-timeout 5s
-          --health-retries 15
-      object-store:
-        image: rustfs/rustfs:1.0.1@sha256:1803faef57627e2d9c2e7d89d655d712ddded5389040054987163043fecb6a3c
-        env:
-          RUSTFS_ACCESS_KEY: content-ci
-          RUSTFS_SECRET_KEY: content-ci-secret
-        ports:
-          - 9000:9000
-        options: >-
-          --health-cmd "curl --fail --silent http://127.0.0.1:9000/health"
-          --health-interval 2s
-          --health-timeout 5s
-          --health-retries 15
     steps:
       - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
           egress-policy: audit
+      - name: Start PostgreSQL and the object store, after the runner is hardened, so no restart of Docker stops them
+        run: |
+          docker run --detach --name postgresql --publish 5432:5432 --env POSTGRES_PASSWORD=ledger-ci \
+            postgres:18.6-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+          docker run --detach --name object-store --publish 9000:9000 \
+            --env RUSTFS_ACCESS_KEY=content-ci --env RUSTFS_SECRET_KEY=content-ci-secret \
+            rustfs/rustfs:1.0.1@sha256:1803faef57627e2d9c2e7d89d655d712ddded5389040054987163043fecb6a3c
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -56,6 +39,18 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Wait until PostgreSQL and the object store answer on their ports
+        run: |
+          for attempt in $(seq 1 30); do
+            docker exec postgresql pg_isready --host 127.0.0.1 --username postgres && break
+            sleep 1
+          done
+          docker exec postgresql pg_isready --host 127.0.0.1 --username postgres
+          for attempt in $(seq 1 30); do
+            curl --fail --silent http://127.0.0.1:9000/health && break
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:9000/health
       - name: Format, lint, type-check, test with 100% coverage, knip, sherif
         run: pnpm check:ci
         env:
@@ -63,6 +58,11 @@ jobs:
           TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
           LEDGER_TEST_POSTGRESQL_URL: postgresql://postgres:ledger-ci@127.0.0.1:5432/postgres
           CONTENT_TEST_OBJECT_STORE_URL: http://content-ci:content-ci-secret@127.0.0.1:9000/content-ci
+      - name: Show the logs of PostgreSQL and the object store when the gate failed
+        if: failure()
+        run: |
+          docker logs postgresql
+          docker logs object-store
 
   container:
     name: Container (linux/${{ matrix.architecture }})

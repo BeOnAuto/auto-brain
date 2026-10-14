@@ -26,5 +26,16 @@
       "groupName": "container base image",
       "groupSlug": "container-base-image"
     }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Container images the workflows run in their steps, pinned by tag and digest",
+      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
+      "matchStrings": [
+        "\\s(?<depName>[a-z0-9][a-z0-9./-]*):(?<currentValue>[A-Za-z0-9._-]+)@(?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
+      "datasourceTemplate": "docker"
+    }
   ]
 }
