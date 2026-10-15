@@ -43,6 +43,7 @@ export interface ModelSettings {
   readonly aliases: ReadonlyMap<string, string>;
   readonly declared: ReadonlyMap<string, readonly string[]>;
   readonly allowed: readonly string[] | null;
+  readonly providerSetup?: string | undefined;
 }
 
 export class ModelSettingsInvalid extends Data.TaggedError('model_settings_invalid')<{

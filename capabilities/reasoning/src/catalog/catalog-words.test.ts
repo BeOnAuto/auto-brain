@@ -74,6 +74,13 @@ describe('the plain words for no model, or a list that may be incomplete', () =>
     expect(modelsListed(listOf([]), 'mistral')).toBe('This server has no model it can call through mistral.');
   });
 
+  it('say how a person adds a provider, where the server says, when it has none at all', () => {
+    const setup = 'To add one, the person puts a key in the settings of the server.';
+
+    expect(modelsListed(listOf([]), undefined, setup)).toBe(`This server has no model it can call. ${setup}`);
+    expect(modelsListed(listOf([]), 'mistral', setup)).toBe('This server has no model it can call through mistral.');
+  });
+
   it('say when a provider could not be asked', () => {
     expect(modelsListed(listOf([model('gateway/fast', 'gateway')], 'partial'))).toBe(
       'This server can call 1 model through gateway: fast. The list may be incomplete: a provider could not be asked just now.',

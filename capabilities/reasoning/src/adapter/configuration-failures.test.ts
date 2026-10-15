@@ -1,9 +1,12 @@
+import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { readModelSettings } from '../settings/model-settings.ts';
 import { accessFor, failed, promptText, succeeded, textRequest } from '../testing/adapter-harness.ts';
 import { exposedText } from '../testing/exposure.ts';
 import { anthropicMessage } from '../testing/provider-replies.ts';
 import { jsonResponse, recordingFetch } from '../testing/recording-fetch.ts';
+import { makeModelAccess } from './model-access.ts';
 
 const secret = 'SECRET-credential-material-91b0';
 
@@ -116,5 +119,25 @@ describe('model aliases', () => {
     });
     expect(recording.requests()[0]?.body).toMatchObject({ model: 'claude-haiku-4-5' });
     expect(access.offered).toEqual({ providers: ['anthropic'], aliases: ['fast/default'] });
+  });
+});
+
+describe('a model reference to a provider the server has not set up', () => {
+  it('says how a person sets one up, where the server says', async () => {
+    const settings = await Effect.runPromise(readModelSettings({}));
+    const access = await Effect.runPromise(
+      makeModelAccess(
+        { ...settings, providerSetup: 'To add one, the person puts a key in the settings of the server.' },
+        { fetch: recordingFetch(() => jsonResponse({})).fetch },
+      ),
+    );
+
+    const failure = await failed(access, textRequest('anthropic/claude-sonnet-4-5'));
+
+    expect(failure).toMatchObject({
+      _tag: 'provider_not_configured',
+      detail:
+        'anthropic is not configured. No model provider is configured. To add one, the person puts a key in the settings of the server.',
+    });
   });
 });

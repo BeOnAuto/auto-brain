@@ -26,4 +26,12 @@ describe('the sentence the reasoning-function guide ends with on a server', () =
       'On this server, no model provider is configured yet, so a reasoning function cannot run until whoever runs the server configures one; no tool server is configured, so it may name no tools.',
     );
   });
+
+  it('says how a person adds a provider, where the server says, while there is none', () => {
+    const setup = 'To add one, the person puts a key in the settings of the server.';
+
+    expect(onThisServer({ providers: [], aliases: [] }, false, setup)).toMatch(/may name no tools\. To add one, /u);
+    expect(onThisServer({ providers: ['anthropic'], aliases: [] }, false, setup)).not.toContain(setup);
+    expect(onThisServer({ providers: [], aliases: ['house/fast'] }, false, setup)).not.toContain(setup);
+  });
 });

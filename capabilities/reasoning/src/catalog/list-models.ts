@@ -1,9 +1,9 @@
 import { defineQuery } from '@on.auto/operations';
-import { Schema } from 'effect';
+import { Effect, Schema } from 'effect';
 
 import type { ModelCatalog } from './catalog-listing.ts';
 import { modelsListed } from './catalog-words.ts';
-import { ModelListSchema } from './model-list.ts';
+import { ModelListSchema, type ModelList } from './model-list.ts';
 
 const task = 'list the models this server can call';
 
@@ -24,7 +24,13 @@ const InputSchema = Schema.Struct({
   ),
 });
 
-export function defineListModels(catalog: ModelCatalog) {
+function withSetup(list: ModelList, provider: string | undefined, providerSetup: string | undefined): ModelList {
+  return list.data.length === 0 && provider === undefined && providerSetup !== undefined
+    ? { ...list, provider_setup: providerSetup }
+    : list;
+}
+
+export function defineListModels(catalog: ModelCatalog, providerSetup?: string) {
   return defineQuery('org', {
     name: 'list_models',
     title: 'List models',
@@ -34,11 +40,11 @@ export function defineListModels(catalog: ModelCatalog) {
     inputSchema: InputSchema,
     outputSchema: ModelListSchema,
     reasons: [],
-    handle: ({ provider }) => catalog.list(provider),
+    handle: ({ provider }) => Effect.map(catalog.list(provider), (list) => withSetup(list, provider, providerSetup)),
     plainLanguage: {
       task,
       attempt: ({ provider }) => (provider === undefined ? task : `${task} through ${provider}`),
-      outcome: (list, { provider }) => modelsListed(list, provider),
+      outcome: (list, { provider }) => modelsListed(list, provider, providerSetup),
     },
   });
 }
