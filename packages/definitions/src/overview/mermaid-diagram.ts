@@ -24,8 +24,9 @@ function nodeId(index: number): string {
   return `n${index + 1}`;
 }
 
-function nodeLine({ label }: DiagramNode, index: number, indent: string): string {
-  return `${indent}${nodeId(index)}[${quoted(label)}]`;
+function nodeLine({ label, shape }: DiagramNode, index: number, indent: string): string {
+  const [opening, closing] = shape === 'cylinder' ? ['[(', ')]'] : ['[', ']'];
+  return `${indent}${nodeId(index)}${opening}${quoted(label)}${closing}`;
 }
 
 function edgeLine({ from, to, label }: DiagramEdge): string {

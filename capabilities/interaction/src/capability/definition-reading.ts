@@ -1,10 +1,12 @@
-import type { DefinitionSummary } from '@on.auto/definitions';
+import type { DefinitionSummary, OverviewSection } from '@on.auto/definitions';
 import { issueText } from '@on.auto/definitions/document';
 import { InvalidInput } from '@on.auto/operations';
 import { Effect, Result, type Schema } from 'effect';
 
 import { parseInteractionDocument } from '../document/document-parsing.ts';
 import type { InteractionFunctionDefinitionDocument } from '../document/interaction-document.ts';
+import { callSections } from '../overview/call-overview.ts';
+import { requestSections } from '../overview/request-overview.ts';
 
 export function parse(source: string): Effect.Effect<InteractionFunctionDefinitionDocument, InvalidInput> {
   return Result.match(parseInteractionDocument(source), {
@@ -37,4 +39,8 @@ export function summarize(document: InteractionFunctionDefinitionDocument): Defi
     ...(output.schema === undefined ? {} : { outputSchema: output.schema.document }),
     details: detailsOf(document),
   };
+}
+
+export function overview(document: InteractionFunctionDefinitionDocument, source: string): readonly OverviewSection[] {
+  return document.shape === 'call' ? callSections(document) : requestSections(document, source);
 }

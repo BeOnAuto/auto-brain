@@ -37,6 +37,7 @@ export interface FieldTable {
 
 export interface DiagramNode {
   readonly label: string;
+  readonly shape?: 'cylinder';
 }
 
 export interface DiagramEdge {
