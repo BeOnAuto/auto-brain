@@ -1,5 +1,27 @@
 [
   {
+    "text": "Get started",
+    "items": [
+      {
+        "text": "Quick start",
+        "link": "/get-started/local"
+      }
+    ]
+  },
+  {
+    "text": "Tutorials",
+    "items": [
+      {
+        "text": "Build your first playbook",
+        "link": "/tutorials/first-playbook"
+      },
+      {
+        "text": "Build your first workflow",
+        "link": "/tutorials/first-workflow"
+      }
+    ]
+  },
+  {
     "text": "Concepts",
     "items": [
       {
@@ -15,29 +37,8 @@
         "link": "/concepts/workflows"
       },
       {
-        "text": "History and Dream",
+        "text": "History and events",
         "link": "/concepts/history-and-dream"
-      },
-      {
-        "text": "Terminology",
-        "link": "/concepts/terminology"
-      }
-    ]
-  },
-  {
-    "text": "Get started",
-    "items": [
-      {
-        "text": "Connect your agent",
-        "link": "/get-started/local"
-      },
-      {
-        "text": "Build your first playbook",
-        "link": "/tutorials/first-playbook"
-      },
-      {
-        "text": "Build your first workflow",
-        "link": "/tutorials/first-workflow"
       }
     ]
   },
@@ -45,8 +46,47 @@
     "text": "Guides",
     "items": [
       {
-        "text": "Use Auto with Apollo",
-        "link": "/integrations/apollo"
+        "text": "Build functions",
+        "items": [
+          {
+            "text": "Give a function tools",
+            "link": "/guides/tools"
+          },
+          {
+            "text": "Make a playbook remember",
+            "link": "/guides/remember"
+          },
+          {
+            "text": "Calculate with a computation function",
+            "link": "/guides/computation"
+          },
+          {
+            "text": "Forecast with a prediction function",
+            "link": "/guides/forecast"
+          },
+          {
+            "text": "Developer example: forecast sign-ups",
+            "link": "/tutorials/first-forecast"
+          }
+        ]
+      },
+      {
+        "text": "Run and inspect",
+        "items": [
+          {
+            "text": "Run a workflow on a schedule or event",
+            "link": "/guides/triggers"
+          }
+        ]
+      },
+      {
+        "text": "Connect data",
+        "items": [
+          {
+            "text": "Use Auto with Apollo",
+            "link": "/integrations/apollo"
+          }
+        ]
       }
     ]
   },
@@ -54,48 +94,58 @@
     "text": "Self-hosting",
     "items": [
       {
-        "text": "Deployment and support",
+        "text": "Self-hosting overview",
         "link": "/self-host"
       },
       {
-        "text": "Run with Docker",
-        "link": "/self-host/docker"
+        "text": "Deploy",
+        "items": [
+          {
+            "text": "Run with Docker",
+            "link": "/self-host/docker"
+          },
+          {
+            "text": "Use PostgreSQL",
+            "link": "/self-host/postgresql"
+          },
+          {
+            "text": "Keep content on object storage",
+            "link": "/self-host/object-storage"
+          },
+          {
+            "text": "Deploy for your team",
+            "link": "/self-host/production"
+          }
+        ]
       },
       {
-        "text": "Use PostgreSQL",
-        "link": "/self-host/postgresql"
-      },
-      {
-        "text": "Keep content on object storage",
-        "link": "/self-host/object-storage"
-      },
-      {
-        "text": "Run in production",
-        "link": "/self-host/production"
-      },
-      {
-        "text": "Configure the runtime",
-        "link": "/self-host/configuration"
-      },
-      {
-        "text": "Model providers and gateways",
-        "link": "/self-host/models"
-      },
-      {
-        "text": "Authentication and security",
-        "link": "/self-host/security"
-      },
-      {
-        "text": "Workflow operations",
-        "link": "/self-host/workflows"
-      },
-      {
-        "text": "Telemetry",
-        "link": "/self-host/telemetry"
-      },
-      {
-        "text": "Troubleshooting",
-        "link": "/self-host/troubleshooting"
+        "text": "Operate",
+        "items": [
+          {
+            "text": "Add a tool server",
+            "link": "/self-host/tool-servers"
+          },
+          {
+            "text": "Authentication and security",
+            "link": "/self-host/security"
+          },
+          {
+            "text": "Set up a model provider",
+            "link": "/self-host/models"
+          },
+          {
+            "text": "Workflow storage and failover",
+            "link": "/self-host/workflows"
+          },
+          {
+            "text": "Send telemetry",
+            "link": "/self-host/telemetry"
+          },
+          {
+            "text": "Troubleshooting",
+            "link": "/self-host/troubleshooting"
+          }
+        ]
       }
     ]
   },
@@ -103,8 +153,28 @@
     "text": "Reference",
     "items": [
       {
+        "text": "Terminology",
+        "link": "/concepts/terminology"
+      },
+      {
         "text": "MCP reference",
         "link": "/reference/mcp"
+      },
+      {
+        "text": "HTTP API",
+        "link": "/reference/http"
+      },
+      {
+        "text": "Configuration reference",
+        "link": "/self-host/configuration"
+      },
+      {
+        "text": "Model settings reference",
+        "link": "/reference/model-settings"
+      },
+      {
+        "text": "Sign-in and token reference",
+        "link": "/reference/authentication"
       },
       {
         "text": "Reasoning function format",
@@ -115,24 +185,20 @@
         "link": "/reference/interaction-format"
       },
       {
-        "text": "Computation function format",
-        "link": "/reference/computation-format"
+        "text": "Prediction function format",
+        "link": "/reference/prediction-format"
       },
       {
         "text": "Recall function format",
         "link": "/reference/recall-format"
       },
       {
-        "text": "Prediction function format",
-        "link": "/reference/prediction-format"
+        "text": "Computation function format",
+        "link": "/reference/computation-format"
       },
       {
         "text": "Workflow format",
         "link": "/reference/workflow-format"
-      },
-      {
-        "text": "HTTP API",
-        "link": "/reference/http"
       }
     ]
   },

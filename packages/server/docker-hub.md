@@ -30,14 +30,14 @@ claude mcp add --transport http auto-runtime http://localhost:5555/mcp
 | Need           | What to use                                                                                                                                                      |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | The ledger     | A volume on `/data`, where it keeps a SQLite file, or a PostgreSQL database named by `DATABASE_URL`: [Use PostgreSQL](https://on.auto/docs/self-host/postgresql) |
-| Secrets key    | `SECRETS_KEY`, 32 random bytes in base64 that seal the secrets kept in the ledger: [Run in production](https://on.auto/docs/self-host/production)                |
-| Sign-in        | `PUBLIC_URL`, the public `https` address people reach the runtime at: [Run in production](https://on.auto/docs/self-host/production)                             |
+| Secrets key    | `SECRETS_KEY`, 32 random bytes in base64 that seal the secrets kept in the ledger: [Deploy for your team](https://on.auto/docs/self-host/production)             |
+| Sign-in        | `PUBLIC_URL`, the public `https` address people reach the runtime at: [Deploy for your team](https://on.auto/docs/self-host/production)                          |
 | API keys       | `API_KEYS`, for machines and pipelines, with an entry for each key the key command makes: [Authentication and security](https://on.auto/docs/self-host/security) |
 | A model        | Anthropic, OpenAI, Google, Amazon Bedrock, Azure OpenAI, Vertex AI or your own gateway: [Model providers and gateways](https://on.auto/docs/self-host/models)    |
-| HTTPS          | A reverse proxy or load balancer in front of port `5555`: [Run in production](https://on.auto/docs/self-host/production)                                         |
+| HTTPS          | A reverse proxy or load balancer in front of port `5555`: [Deploy for your team](https://on.auto/docs/self-host/production)                                      |
 | Object storage | Optional, an S3-compatible bucket for large content: [Keep content on object storage](https://on.auto/docs/self-host/object-storage)                             |
 
-Every setting is an environment variable; [Configure the runtime](https://on.auto/docs/self-host/configuration) lists them all, with the configuration file for tool servers, gateways and model aliases. [Troubleshooting](https://on.auto/docs/self-host/troubleshooting) covers the common problems.
+Every setting is an environment variable; The [configuration reference](https://on.auto/docs/self-host/configuration) lists them all, with the configuration file for tool servers, gateways and model aliases. [Troubleshooting](https://on.auto/docs/self-host/troubleshooting) covers the common problems.
 
 ## Tags
 

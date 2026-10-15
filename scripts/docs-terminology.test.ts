@@ -18,12 +18,8 @@ await test('playbook terminology distinguishes five function types from workflow
 });
 
 await test('terminology distinguishes available and absent capabilities', () => {
-  assert.ok(terminology.includes('Self-hosted reasoning functions can use operator-configured MCP tools'));
-  assert.ok(
-    terminology.includes(
-      'Auto Cloud tool access, skill references and a separately managed tool library are still planned',
-    ),
-  );
+  assert.ok(terminology.includes('It can call the tools of operator-configured tool servers in a bounded loop.'));
+  assert.ok(terminology.includes('Skill references and a separately managed tool library are still planned'));
   assert.ok(terminology.includes('A workflow can call the functions of its playbook and other workflows'));
   assert.ok(terminology.includes('a workflow called this way is a subworkflow'));
 });

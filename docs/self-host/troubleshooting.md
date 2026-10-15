@@ -1,33 +1,131 @@
 # Troubleshooting
 
+Each problem below gives the symptom, its usual cause and the fix. The first four are the ones people meet when they first start the server on their own computer.
+
+Never paste an API key into a prompt to fix a connection. The server reads keys from its own settings.
+
+## The health check fails or port 5555 is busy {#health-check-fails}
+
+**Symptom.** `curl http://localhost:5555/health` does not return `{"status":"ok"}`.
+
+**Cause.** The server did not start, or another process holds port `5555`. A server that cannot start prints `Auto Runtime could not start:` and the reason, such as `EADDRINUSE` for a port in use. In Docker, a second container on the same port fails with `port is already allocated`, and a second container with the same name fails with `is already in use`.
+
+**Fix.**
+
+- With `npx @on.auto/runtime`, read the server's terminal for startup errors. Stop whatever else listens on port `5555`, or set `PORT` in `.env` to a free port and use that port in your agent's MCP address.
+- With Docker, run `docker logs auto-runtime` to read the startup errors. Stop and remove the earlier container before you start another with the same name or port: `docker stop auto-runtime && docker rm auto-runtime`. [Run with Docker](docker.md#start-the-server) keeps the command in a script that does this for you.
+
+## The agent cannot connect, though `/health` responds {#agent-cannot-connect}
+
+**Symptom.** The health check returns `{"status":"ok"}`, but your agent shows `auto-runtime` as not connected.
+
+**Cause.** The agent has the wrong MCP address, has not reloaded its connections, or runs somewhere that cannot reach your computer. A web-based connector running in the cloud cannot reach your `localhost`.
+
+**Fix.**
+
+- Check the agent's MCP endpoint. It is `http://localhost:5555/mcp`, or the port you set.
+- Restart the agent session.
+- Confirm that the agent runs on the same computer as Auto Runtime.
+
+## A reasoning function reports `provider_not_configured` {#provider-not-configured}
+
+**Symptom.** A run of a reasoning function fails with `provider_not_configured`, or is rejected as `unavailable` of the kind `model_not_offered` with `because: "provider_not_configured"`.
+
+**Cause.** The definition names a provider whose settings the server did not find. The API hides missing settings and secrets from callers on purpose; the detail names only the providers that are configured.
+
+**Fix.**
+
+- Check which providers the server's startup log names.
+- With `npx`, check the setting in `.env` in the directory you started Auto Runtime in. With Docker, check `auto-runtime.env`.
+- Restart the server after you change a setting. With Docker, replace the container, since `docker restart` does not read the file again.
+- Confirm the provider prefix in the definition, and that the model id is available to your account.
+
+[Choose a provider](models.md#choose-a-provider) lists each provider's settings.
+
+## The list of models is incomplete {#incomplete-model-list}
+
+**Symptom.** `list_models` does not show the model you want, or shows only a wildcard such as `bedrock/*`.
+
+**Cause.** Some providers list no models of their own, and an alias can hide the models it sends elsewhere.
+
+**Fix.** Use a concrete model reference that your configured provider supports, such as a model id from the provider's own documentation. A wildcard such as `provider/*` is not a model to run. [Listing the models](../reference/model-settings.md#listing-the-models) explains where each list comes from.
+
+## The server says the identity service cannot be used {#identity-service}
+
+**Symptom.** The server stops at start with an `UnusableIdentityServiceError`, naming the Auto identity service and each address it read.
+
+**Cause.** A runtime that signs people in reads the metadata and the key set of the Auto identity service, `https://clerk.on.auto`, as it starts. It could not reach them.
+
+**Fix.**
+
+- Check that the machine reaches `https://clerk.on.auto`. Where the machine has an outbound proxy, the server must go through it, as [Set up a model provider](models.md#behind-an-outbound-proxy-with-a-private-certificate-authority) sets out.
+- For development on a machine that cannot reach the service, remove `PUBLIC_URL` from `.env` and start the server again. A server on a loopback address without `API_KEYS` then runs in [local mode](security.md#local-mode), which signs no one in.
+
+## The server stops at start, naming `PUBLIC_URL` and `API_KEYS` {#reachable-without-credentials}
+
+**Symptom.** The server stops before it listens, with a `ReachableWithoutCredentialsError`: `A server reachable beyond this computer needs PUBLIC_URL, to sign people in, or API_KEYS, and this one listens on HOST 0.0.0.0`.
+
+**Cause.** The server listens beyond loopback, as the Docker image does on `0.0.0.0`, and neither `PUBLIC_URL` nor `API_KEYS` is set. Anyone who reached it could otherwise act without a credential.
+
+**Fix.**
+
+- To sign people in, set `PUBLIC_URL`, as [Run with Docker](docker.md) does.
+- For machines and pipelines, set `API_KEYS` ([API keys](security.md#api-keys)).
+- For one person on their own computer, outside a container, set `HOST=127.0.0.1` instead. The server then runs in [local mode](security.md#local-mode).
+
 ## Error responses
 
-Every error is an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem document (`application/problem+json`) with a machine-readable `reason`, such as `bad_request`, `invalid_input` (with an `errors` list of JSON pointers), `forbidden`, `not_found` or `conflict`. A `500` says nothing about the cause; its `instance` is `urn:uuid:<id>`, and the server logs the error to stderr under `"incident":"<id>"` together with `"requestId"`, the value of the response's `x-request-id` header, so either id finds the log line. A request that Node's HTTP parser rejects before the API sees it, such as one with oversized headers or invalid framing, gets a bare status line, such as `431` or `400`, and no problem document.
+Every error is an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem document (`application/problem+json`) with a machine-readable `reason`, such as:
 
-## The model is unavailable
+- `bad_request`;
+- `invalid_input`, with an `errors` list of JSON pointers;
+- `forbidden`;
+- `not_found`;
+- `conflict`.
 
-Check which providers the startup log names. Confirm the provider prefix in the definition, the configured credentials and the model id available to your account. The API deliberately hides missing settings and secrets from callers. See [Model providers](models.md).
+[Responses and errors](../reference/http.md#responses-and-errors) lists every reason.
 
-## Workflows are missing or unavailable
+A `500` says nothing about the cause. To find it in the log:
 
-Every server offers workflows and `send_run_event`, with nothing to configure. A workflow that does not go on is usually waiting: for an event, a timer or a function it called. When the server cannot do the work of its runs, it logs a warning saying what failed, such as `A sweep of the runs failed; the next sweep tries again`; [Workflow operations](workflows.md) lists them. When several servers share a database, one of them runs the workflows and the others answer workflow operations `unavailable`, saying another server runs them; the log of each server says which it is.
+1. Read the response's `instance`, which is `urn:uuid:<id>`, or its `x-request-id` header.
+2. Search the server's stderr. The server logs the error under `"incident":"<id>"`, together with `"requestId"`, the value of `x-request-id`. Either id finds the line.
 
-## The server stops at start, naming the identity service
-
-A runtime that signs people in reads the metadata and the key set of the Auto identity service, `https://clerk.on.auto`, as it starts, and stops with an `UnusableIdentityServiceError` naming the service and each address it read when it cannot. Check that the machine reaches the service, through its outbound proxy where it has one, as [Model providers and gateways](models.md#behind-an-outbound-proxy-with-a-private-certificate-authority) sets out. For development on a machine that cannot reach it, leave `PUBLIC_URL` unset: a runtime on a loopback address without `API_KEYS` is then in [local mode](security.md#local-mode), which signs no one in.
-
-## The server stops at start, naming PUBLIC_URL and API_KEYS
-
-A server that listens beyond loopback, as the image does on `0.0.0.0`, with neither `PUBLIC_URL` nor `API_KEYS` stops with a `ReachableWithoutCredentialsError` naming the `HOST` it listens on, since anyone who reaches it could otherwise act without a credential. Set `PUBLIC_URL` to sign people in, as [Run with Docker](docker.md) does, or `API_KEYS` for keys; for one person on their own computer, `HOST=127.0.0.1` runs it in [local mode](security.md#local-mode) instead.
+A request that Node's HTTP parser rejects before the API sees it gets a bare status line, such as `431` or `400`, and no problem document. Oversized headers and invalid framing are rejected this way.
 
 ## The browser receives 403
 
-Add the exact page origin to `ALLOWED_ORIGINS`. Local mode also checks the request Host. Never bypass these protections to expose local mode through a proxy. See [Authentication and security](security.md).
+**Cause.** The page's origin is not allowed, or, in local mode, the request's Host is not local.
+
+**Fix.**
+
+- Add the exact page origin to `ALLOWED_ORIGINS`.
+- Local mode also checks the request's Host. Never bypass these protections to expose local mode through a proxy.
+
+See [Authentication and security](security.md).
 
 ## Data disappeared after replacing a container
 
-The ledger lives on `/data`. Reuse the named persistent volume across container replacements. An anonymous volume is not a persistence plan. See [Back up and restore](docker.md#back-up-and-restore).
+**Cause.** The ledger lives on `/data`. A container started without a named volume gets an empty anonymous volume, and its playbooks last only as long as that container.
+
+**Fix.** Reuse the same named volume across container replacements. An anonymous volume is not a persistence plan. See [Back up and restore](docker.md#back-up-and-restore).
+
+## Workflows are missing or unavailable
+
+Every server offers workflows and `send_run_event`, with nothing to configure.
+
+| Symptom                                             | Cause and fix                                                                                                                                                                                                                                                                    |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A workflow does not go on                           | It is usually waiting: for an event, a timer or a function it called. Its history shows which                                                                                                                                                                                    |
+| The log warns about the runs                        | The server cannot do the work of its runs, and says what failed, such as `A sweep of the runs failed; the next sweep tries again`. [What the logs say](workflows.md#what-the-logs-say) lists them                                                                                |
+| Workflow starts and run events return `unavailable` | Several servers share a database, and the request reached one that stands by. Its detail says another server runs the workflows, and each server's log says which it is. Route these operations as [Choose one server or a standby](production.md#run-several-servers) describes |
 
 ## A run stays started
 
-A waiting workflow can legitimately remain `started`. Its history, `get_run_history`, shows the steps each input moved, and the last one shows what the run waits for. A run the ledger would not settle yet also stays `started` until a later attempt settles it; the server warns once when such a run backs off to an attempt a minute, and once when it is settled. [Workflow operations](workflows.md) explains how a run ends.
+**Cause.** A waiting workflow can legitimately remain `started`. A run whose end the ledger could not record also stays `started` until a later attempt records it.
+
+**Fix.**
+
+- Read the run's history with `get_run_history`. It shows the run's steps, and the last one shows what the run waits for.
+- Check the log. The server warns once when such a run backs off to an attempt a minute, and once when it is settled.
+
+[Workflow storage and failover](workflows.md#how-a-run-ends) explains how a run ends.
