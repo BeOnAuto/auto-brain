@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import { blocksInOrderOf } from '../testing/servers/tutorial-calls.ts';
-import { runIdIn, servingWorkflows, settledRun, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { runIdIn, servingWorkflows, settledRun } from '../testing/servers/workflow-server.ts';
 
 const [reviewAndApprove] = blocksInOrderOf('reference/workflow-format.md').map(({ body }) => body);
 
@@ -22,7 +22,7 @@ afterEach(async () => {
   await server.stop();
 });
 
-describe('the example of the workflow format, through the server', { timeout: workflowTestTimeoutMs }, () => {
+describe('the example of the workflow format, through the server', () => {
   it('reviews the brief, waits for the decision, and ends approved with the review', async () => {
     server = await servingWorkflows([answers(textResult('Approve: the brief names its audience.'))]);
     await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });

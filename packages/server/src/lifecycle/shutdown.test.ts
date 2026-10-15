@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { shortShutdownTimeoutMs } from '../testing/processes/short-shutdown-timeout.ts';
-import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
+import { spawnServer } from '../testing/processes/spawned-server.ts';
 import { defaultServerOptions } from './lifecycle.ts';
 
 const serveWithTestRoutes = fileURLToPath(new URL('../testing/entries/serve-with-test-routes.ts', import.meta.url));
@@ -26,7 +26,7 @@ function answeringSlowly(port: number, ms: number): Promise<Response> {
   return fetch(`http://127.0.0.1:${port}/slow-body?ms=${ms}`);
 }
 
-describe('shutting down the server process', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('shutting down the server process', () => {
   it('lets a slow request finish after SIGTERM and exits 0 before the shutdown timeout', async () => {
     const child = spawnServer(serveWithTestRoutes, loopback);
     const slow = await answeringSlowly(await child.port, 500);
@@ -59,7 +59,7 @@ describe('shutting down the server process', { timeout: spawnedServerTestTimeout
   });
 });
 
-describe('a repeated stop signal', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('a repeated stop signal', () => {
   it.each<NodeJS.Signals>(['SIGTERM', 'SIGINT'])(
     'is ignored while the server process shuts down after the first %s, which still exits 0',
     async (signal) => {
@@ -80,21 +80,17 @@ describe('a repeated stop signal', { timeout: spawnedServerTestTimeoutMs }, () =
   );
 });
 
-describe(
-  'a server process that something keeps running after it stopped',
-  { timeout: spawnedServerTestTimeoutMs },
-  () => {
-    it('exits 0 at the exit deadline and says why on stderr', async () => {
-      const child = spawnServer(serveWithTestRoutes, loopback);
-      const port = await child.port;
-      await (await fetch(`http://127.0.0.1:${port}/linger?ms=60000`)).text();
+describe('a server process that something keeps running after it stopped', () => {
+  it('exits 0 at the exit deadline and says why on stderr', async () => {
+    const child = spawnServer(serveWithTestRoutes, loopback);
+    const port = await child.port;
+    await (await fetch(`http://127.0.0.1:${port}/linger?ms=60000`)).text();
 
-      child.signal('SIGTERM');
+    child.signal('SIGTERM');
 
-      expect(await child.exited).toBe(0);
-      expect(child.output().stderr).toContain(
-        `Auto Runtime was still running ${defaultServerOptions.exitDeadlineMs} ms after it stopped, so it exits now\n`,
-      );
-    });
-  },
-);
+    expect(await child.exited).toBe(0);
+    expect(child.output().stderr).toContain(
+      `Auto Runtime was still running ${defaultServerOptions.exitDeadlineMs} ms after it stopped, so it exits now\n`,
+    );
+  });
+});

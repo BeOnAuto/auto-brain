@@ -2,13 +2,7 @@ import { answers, textResult } from '@on.auto/reasoning/testing';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { alpha } from '../testing/servers/reasoning-server.ts';
-import {
-  runIdIn,
-  servingWorkflows,
-  settledRun,
-  workflowSource,
-  workflowTestTimeoutMs,
-} from '../testing/servers/workflow-server.ts';
+import { runIdIn, servingWorkflows, settledRun, workflowSource } from '../testing/servers/workflow-server.ts';
 import { spansIn, type ExportedSpan } from '../testing/telemetry/otlp-exports.ts';
 import { receivingOtlp } from '../testing/telemetry/otlp-receiver.ts';
 
@@ -45,7 +39,7 @@ function linkedTraces(spans: readonly ExportedSpan[], name: string): readonly st
   return spans.filter((span) => span.name === name).flatMap(({ links }) => links.map(({ traceId }) => traceId));
 }
 
-describe('a run of a workflow that calls a function, with telemetry on', { timeout: workflowTestTimeoutMs }, () => {
+describe('a run of a workflow that calls a function, with telemetry on', () => {
   it('is one trace: the input that started it, the call beneath it, the function beneath the call', async () => {
     const spans = await spansOfARun();
     const request = childOf(spans, runPath);

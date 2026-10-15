@@ -6,7 +6,6 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 import { interactionServerOn } from '../testing/servers/interaction-server.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
 import { openInput, systemRunId } from '../testing/servers/system-calls.ts';
-import { workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 const apiKey = 'billing-api-key-5c2e8d1f';
 
@@ -39,7 +38,7 @@ async function askingAnApi() {
   return { billing, server };
 }
 
-describe('an interaction function that asks a system through an HTTP API', { timeout: workflowTestTimeoutMs }, () => {
+describe('an interaction function that asks a system through an HTTP API', () => {
   it('calls the operation once with the key of its entry, answers what it read, and records the call', async () => {
     const { billing, server } = await askingAnApi();
 

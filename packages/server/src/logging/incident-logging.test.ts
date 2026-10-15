@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { spawnServer, spawnedServerTestTimeoutMs, type SpawnedServer } from '../testing/processes/spawned-server.ts';
+import { spawnServer, type SpawnedServer } from '../testing/processes/spawned-server.ts';
 import { linesLoggedBy } from '../testing/records/logged-lines.ts';
 import { logIncident } from './logging.ts';
 
@@ -38,7 +38,7 @@ describe('logIncident for an error whose cause cannot be formatted', () => {
   });
 });
 
-describe('a server whose route throws an error that is its own cause', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('a server whose route throws an error that is its own cause', () => {
   it('answers 500, logs the incident and keeps serving', async () => {
     const child = spawnServer(serveWithSelfCausedError, { HOST: '127.0.0.1', PORT: '0' });
     const port = await child.port;

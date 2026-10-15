@@ -6,7 +6,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import {
   liveWith,
-  recallTestTimeoutMs,
   recalled,
   reviewed,
   servingRecall,
@@ -36,7 +35,7 @@ function saved(type: string, name: string, source: string | undefined) {
   return server.call('POST', `${alpha}/definitions/${type}`, { body: { name, source } });
 }
 
-describe('the example of the recall function format, through the server', { timeout: recallTestTimeoutMs }, () => {
+describe('the example of the recall function format, through the server', () => {
   it('folds the runs of review-brief, answers the verdicts the page shows, and runs the workflow of the page', async () => {
     server = await servingRecall([
       ...verdicts(

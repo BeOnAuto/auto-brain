@@ -5,7 +5,6 @@ import { plainTextIn, textOf, type McpSession } from '@on.auto/api/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { sentenceNaming, servingMeetings, type MeetingsServer } from '../testing/servers/meetings-server.ts';
-import { workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 let meetings: MeetingsServer;
 
@@ -112,35 +111,31 @@ async function askedWhereNoToolServerIs(session: McpSession) {
   });
 }
 
-describe(
-  'episode 9: asked to send the person a draft in the chat and take their approval',
-  { timeout: workflowTestTimeoutMs },
-  () => {
-    it('reads the interaction sentence, calls the tool that sends and the tool that reads, and saves one interaction function', async () => {
-      const seen = await meetings.onMcp(askedToSendADraft);
+describe('episode 9: asked to send the person a draft in the chat and take their approval', () => {
+  it('reads the interaction sentence, calls the tool that sends and the tool that reads, and saves one interaction function', async () => {
+    const seen = await meetings.onMcp(askedToSendADraft);
 
-      expect(sentenceNaming(meetings.surfaces.instructions, 'An interaction function')).toBe(
-        'An interaction function asks a system and answers at once, or asks a person and answers started.',
-      );
-      expect([seen.sent.structuredContent, seen.read.structuredContent]).toMatchObject([
-        { outcome: 'result', text: namingTheMessage },
-        { outcome: 'result', text: listingTheMessages },
-      ]);
-      expect(seen.guide).toMatch(/^## Sending through a tool\n[\s\S]*^### Attempts\n[\s\S]*^## Fields$/mu);
-      expect(Buffer.byteLength(seen.guide)).toBeLessThan(mostGuideBytes);
-      expect(seen.saved.isError).not.toBe(true);
-      expect(seen.reasoning.structuredContent).toEqual({ definitions: [] });
-    });
+    expect(sentenceNaming(meetings.surfaces.instructions, 'An interaction function')).toBe(
+      'An interaction function asks a system and answers at once, or asks a person and answers started.',
+    );
+    expect([seen.sent.structuredContent, seen.read.structuredContent]).toMatchObject([
+      { outcome: 'result', text: namingTheMessage },
+      { outcome: 'result', text: listingTheMessages },
+    ]);
+    expect(seen.guide).toMatch(/^## Sending through a tool\n[\s\S]*^### Attempts\n[\s\S]*^## Fields$/mu);
+    expect(Buffer.byteLength(seen.guide)).toBeLessThan(mostGuideBytes);
+    expect(seen.saved.isError).not.toBe(true);
+    expect(seen.reasoning.structuredContent).toEqual({ definitions: [] });
+  });
 
-    it('is told, on a playbook no tool server serves, what whoever runs the server sets up', async () => {
-      const refused = await meetings.onMcp(askedWhereNoToolServerIs);
+  it('is told, on a playbook no tool server serves, what whoever runs the server sets up', async () => {
+    const refused = await meetings.onMcp(askedWhereNoToolServerIs);
 
-      expect(plainTextIn(refused)).toBe(
-        'Could not run the interaction function “approve-draft”: this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this playbook. Nothing was changed. This can be put right on your side: whoever runs the server decides which tool servers and tools this playbook may use, which search shows, so once it names only those, it can be tried again.',
-      );
-    });
-  },
-);
+    expect(plainTextIn(refused)).toBe(
+      'Could not run the interaction function “approve-draft”: this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this playbook. Nothing was changed. This can be put right on your side: whoever runs the server decides which tool servers and tools this playbook may use, which search shows, so once it names only those, it can be tried again.',
+    );
+  });
+});
 
 const readingAThread = [
   '---',
@@ -180,26 +175,22 @@ async function askedForTheRepliesOfAThread(session: McpSession) {
   return { recipe, called, saved, reasoning };
 }
 
-describe(
-  'episode 10: asked to put the replies of a thread into the weekly summary',
-  { timeout: workflowTestTimeoutMs },
-  () => {
-    it('reads the interaction sentence and the give-tools sentence, calls the tool, reads its answer, and saves one interaction function that calls it', async () => {
-      const seen = await meetings.onMcp(askedForTheRepliesOfAThread);
+describe('episode 10: asked to put the replies of a thread into the weekly summary', () => {
+  it('reads the interaction sentence and the give-tools sentence, calls the tool, reads its answer, and saves one interaction function that calls it', async () => {
+    const seen = await meetings.onMcp(askedForTheRepliesOfAThread);
 
-      expect(sentenceNaming(meetings.surfaces.instructions, 'An interaction function')).toBe(
-        'An interaction function asks a system and answers at once, or asks a person and answers started.',
-      );
-      expect(seen.recipe).toContain(
-        'When the playbook only needs what a tool answers, with nothing to reason about, write an interaction function that calls the tool instead',
-      );
-      expect(seen.called.structuredContent).toMatchObject({
-        outcome: 'result',
-        text: listingTheMessages,
-        answer: { messages: someMessages },
-      });
-      expect(seen.saved.isError).not.toBe(true);
-      expect(seen.reasoning.structuredContent).toEqual({ definitions: [] });
+    expect(sentenceNaming(meetings.surfaces.instructions, 'An interaction function')).toBe(
+      'An interaction function asks a system and answers at once, or asks a person and answers started.',
+    );
+    expect(seen.recipe).toContain(
+      'When the playbook only needs what a tool answers, with nothing to reason about, write an interaction function that calls the tool instead',
+    );
+    expect(seen.called.structuredContent).toMatchObject({
+      outcome: 'result',
+      text: listingTheMessages,
+      answer: { messages: someMessages },
     });
-  },
-);
+    expect(seen.saved.isError).not.toBe(true);
+    expect(seen.reasoning.structuredContent).toEqual({ definitions: [] });
+  });
+});

@@ -130,7 +130,7 @@ function headingsOf(overview: string): readonly string[] {
     .map((line) => line.slice('## '.length));
 }
 
-describe('the overview of every type of definition', { timeout: 60_000 }, () => {
+describe('the overview of every type of definition', () => {
   it('is answered over HTTP to a key that may read the playbook, opening with its name, and is not listed', async () => {
     const overviews = await Promise.all(saved.map((definition) => overviewOverHttp(definition)));
     const listed = await server.call('GET', `${alpha}/definitions/reasoning`, { key: reader.key });
@@ -166,7 +166,7 @@ describe('the overview of every type of definition', { timeout: 60_000 }, () => 
   });
 });
 
-describe('the overview of a definition that others of its playbook name', { timeout: 60_000 }, () => {
+describe('the overview of a definition that others of its playbook name', () => {
   it('ends with each of them, over HTTP and over MCP alike, and a definition nobody names has no such section', async () => {
     await server.call('POST', '/v1/orgs/acme/playbooks', { key: admin.key, body: { playbook: 'beta', name: 'Beta' } });
     const statuses = [

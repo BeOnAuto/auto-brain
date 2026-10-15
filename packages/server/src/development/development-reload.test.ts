@@ -6,7 +6,6 @@ import { describe, expect, it } from 'vitest';
 import { endingOf, runningDevelopment } from '../testing/processes/development-endings.ts';
 import {
   developmentFiles,
-  developmentTestTimeoutMs,
   pidsOf,
   startDevelopment,
   untilListening,
@@ -17,7 +16,7 @@ import { gatewayThatHangsFirst, settledOver, welcomingStarted } from '../testing
 
 const runnerSays = /changed, so the server restarts$|^The server stopped/u;
 
-describe('saving a file under pnpm dev', { timeout: developmentTestTimeoutMs }, () => {
+describe('saving a file under pnpm dev', () => {
   it('restarts the server once through its clean shutdown, and leaves nothing running when stopped', async () => {
     const development = await runningDevelopment();
 
@@ -34,7 +33,7 @@ describe('saving a file under pnpm dev', { timeout: developmentTestTimeoutMs }, 
   });
 });
 
-describe('a broken save under pnpm dev', { timeout: developmentTestTimeoutMs }, () => {
+describe('a broken save under pnpm dev', () => {
   it('keeps running when the server cannot start, and starts it on the next save', async () => {
     const development = await runningDevelopment();
 
@@ -58,7 +57,7 @@ describe('a broken save under pnpm dev', { timeout: developmentTestTimeoutMs }, 
   });
 });
 
-describe('a server crash under pnpm dev', { timeout: developmentTestTimeoutMs }, () => {
+describe('a server crash under pnpm dev', () => {
   it('keeps running when the server dies while a workflow waits on a function, and on the next save the run goes on', async () => {
     const gateway = await gatewayThatHangsFirst();
     const development = startDevelopment(developmentFiles(), { environment: { MODEL_GATEWAYS: gateway.gateways } });

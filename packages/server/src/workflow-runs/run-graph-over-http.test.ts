@@ -4,13 +4,7 @@ import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import {
-  runIdIn,
-  servingWorkflows,
-  settledRun,
-  workflowSource,
-  workflowTestTimeoutMs,
-} from '../testing/servers/workflow-server.ts';
+import { runIdIn, servingWorkflows, settledRun, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const verdict = [
   '---',
@@ -110,7 +104,7 @@ function named(events: readonly Event[], type: string, name?: string): Event {
   return found;
 }
 
-describe('the graph of a workflow run, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+describe('the graph of a workflow run, over HTTP', () => {
   it('names every event and its cause, from the start through each step to the finish', async () => {
     const runId = await reviewed();
     const events = await everyEvent(`${alpha}/runs/${runId}/history?limit=100`);
@@ -159,7 +153,7 @@ function rowCalled(page: unknown, id: string | undefined): unknown {
   return decodeRows(page).events.find((row) => row['id'] === id);
 }
 
-describe('one event of a workflow run, read by its id, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+describe('one event of a workflow run, read by its id, over HTTP', () => {
   it('is the row the history shows, a step by the id of its record, an underscore and its number, and the input by the id of the record', async () => {
     const runId = await reviewed();
     const page = (await server.call('GET', `${alpha}/runs/${runId}/history?limit=100`)).body;
@@ -200,7 +194,7 @@ describe('one event of a workflow run, read by its id, over HTTP', { timeout: wo
   });
 });
 
-describe('the tree of a workflow run, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+describe('the tree of a workflow run, over HTTP', () => {
   it('reads the whole tree of a run in the feed, its child started by the input that started the call, and nothing for the child', async () => {
     const runId = await reviewed();
     const tree = await everyEvent(`${alpha}/events?run_id=${runId}&order=asc&limit=100`);
@@ -232,7 +226,7 @@ describe('the tree of a workflow run, over HTTP', { timeout: workflowTestTimeout
   });
 });
 
-describe('the pages of a workflow run, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+describe('the pages of a workflow run, over HTTP', () => {
   it('reads on from a page that ends at an input, the steps of that input first, with nothing lost or repeated', async () => {
     const runId = await reviewed();
     const feed = `${alpha}/events?run_id=${runId}&order=asc`;

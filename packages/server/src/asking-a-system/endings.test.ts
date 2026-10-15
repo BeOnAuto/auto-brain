@@ -13,7 +13,6 @@ import {
   systemRunId,
   type SystemServer,
 } from '../testing/servers/system-calls.ts';
-import { workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 import { beforeAnything, endedFor, endingOf, problems } from './ending-rows.ts';
 import { afterSending, unreadable } from './sent-ending-rows.ts';
 
@@ -23,35 +22,23 @@ const someDetail: unknown = expect.any(String);
 
 const anIncident: unknown = expect.stringMatching(/^urn:uuid:/u);
 
-describe(
-  'a run that asks a system and ends before anything is sent, over HTTP',
-  { timeout: workflowTestTimeoutMs },
-  () => {
-    it.each(beforeAnything)('ends as the table says after %s', async (_case, row, ending) => {
-      expect(await endedFor(row)).toEqual(ending);
-    });
-  },
-);
+describe('a run that asks a system and ends before anything is sent, over HTTP', () => {
+  it.each(beforeAnything)('ends as the table says after %s', async (_case, row, ending) => {
+    expect(await endedFor(row)).toEqual(ending);
+  });
+});
 
-describe(
-  'a run that asks a system and ends after its call was sent, over HTTP',
-  { timeout: workflowTestTimeoutMs },
-  () => {
-    it.each(afterSending)('ends as the table says after %s', async (_case, row, ending) => {
-      expect(await endedFor(row)).toEqual(ending);
-    });
-  },
-);
+describe('a run that asks a system and ends after its call was sent, over HTTP', () => {
+  it.each(afterSending)('ends as the table says after %s', async (_case, row, ending) => {
+    expect(await endedFor(row)).toEqual(ending);
+  });
+});
 
-describe(
-  'a run that asks a system and cannot use what the tool answered, over HTTP',
-  { timeout: workflowTestTimeoutMs },
-  () => {
-    it.each(unreadable)('ends as the table says after %s', async (_case, row, ending) => {
-      expect(await endedFor(row)).toEqual(ending);
-    });
-  },
-);
+describe('a run that asks a system and cannot use what the tool answered, over HTTP', () => {
+  it.each(unreadable)('ends as the table says after %s', async (_case, row, ending) => {
+    expect(await endedFor(row)).toEqual(ending);
+  });
+});
 
 async function refusingCallStarts(): Promise<SystemServer> {
   const directory = mkdtempSync(join(tmpdir(), 'asking-a-system-'));
@@ -68,30 +55,26 @@ async function refusingCallStarts(): Promise<SystemServer> {
   return server;
 }
 
-describe(
-  'a run that asks a system whose start of the call the ledger refuses, over HTTP',
-  { timeout: workflowTestTimeoutMs },
-  () => {
-    it('fails with an incident, sends nothing, and is recorded failed', async () => {
-      const server = await refusingCallStarts();
-      await server.define('asking');
+describe('a run that asks a system whose start of the call the ledger refuses, over HTTP', () => {
+  it('fails with an incident, sends nothing, and is recorded failed', async () => {
+    const server = await refusingCallStarts();
+    await server.define('asking');
 
-      const ended = await server.runCall('asking');
-      const read = await server.call('GET', `${alpha}/runs/${systemRunId}`);
+    const ended = await server.runCall('asking');
+    const read = await server.call('GET', `${alpha}/runs/${systemRunId}`);
 
-      expect(endingOf(ended)).toEqual({
-        status: 500,
-        type: `${problems}internal`,
-        detail: someDetail,
-        retryAfter: null,
-      });
-      expect(ended.body).toMatchObject({ instance: anIncident });
-      expect([read.body, server.fake.received()]).toEqual([problemWith({ status: 'failed' }), []]);
+    expect(endingOf(ended)).toEqual({
+      status: 500,
+      type: `${problems}internal`,
+      detail: someDetail,
+      retryAfter: null,
     });
-  },
-);
+    expect(ended.body).toMatchObject({ instance: anIncident });
+    expect([read.body, server.fake.received()]).toEqual([problemWith({ status: 'failed' }), []]);
+  });
+});
 
-describe('a run that asks a system, run again under its id, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+describe('a run that asks a system, run again under its id, over HTTP', () => {
   it('runs again when nothing was sent, and is tools_called once its call was sent', async () => {
     const server = await askingASystem({ entry: { allowed: ['search', 'gone', 'denied'] } });
     await server.define('asking');

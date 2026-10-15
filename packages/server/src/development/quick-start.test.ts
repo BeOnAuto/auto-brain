@@ -8,12 +8,7 @@ import { Schema } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { tcpPort } from '../lifecycle/http-server.ts';
-import {
-  developmentFiles,
-  developmentTestTimeoutMs,
-  startDevelopment,
-  untilListening,
-} from '../testing/processes/development-process.ts';
+import { developmentFiles, startDevelopment, untilListening } from '../testing/processes/development-process.ts';
 
 const playbook = 'support';
 
@@ -141,44 +136,38 @@ async function ran(session: McpSession, name: string, input: object, type = 'rea
   return settled(session, started['run_id']);
 }
 
-describe(
-  'the requests the quick start suggests, made over /mcp as an assistant would',
-  {
-    timeout: developmentTestTimeoutMs,
-  },
-  () => {
-    it('creates a playbook, stores a reasoning function that classifies tickets, runs it, reads its record and runs a new version', async () => {
-      const steps = await onPnpmDev(async (session) => ({
-        playbook: structured(await session.callTool('create_playbook', { playbook, name: 'Support' })),
-        stored: await stored(session, 'reasoning', 'classify-ticket', classifyingPrompt('Answer as JSON.')),
-        first: await ran(session, 'classify-ticket', { ticket: charged }),
-        updated: structured(
-          await session.callTool('update_definition', {
-            playbook,
-            type: 'reasoning',
-            name: 'classify-ticket',
-            source: classifyingPrompt('Anything about money is billing and at least normal urgency.'),
-          }),
-        ),
-        second: await ran(session, 'classify-ticket', { ticket: charged }),
-      }));
+describe('the requests the quick start suggests, made over /mcp as an assistant would', () => {
+  it('creates a playbook, stores a reasoning function that classifies tickets, runs it, reads its record and runs a new version', async () => {
+    const steps = await onPnpmDev(async (session) => ({
+      playbook: structured(await session.callTool('create_playbook', { playbook, name: 'Support' })),
+      stored: await stored(session, 'reasoning', 'classify-ticket', classifyingPrompt('Answer as JSON.')),
+      first: await ran(session, 'classify-ticket', { ticket: charged }),
+      updated: structured(
+        await session.callTool('update_definition', {
+          playbook,
+          type: 'reasoning',
+          name: 'classify-ticket',
+          source: classifyingPrompt('Anything about money is billing and at least normal urgency.'),
+        }),
+      ),
+      second: await ran(session, 'classify-ticket', { ticket: charged }),
+    }));
 
-      expect(steps).toMatchObject({
-        playbook: { isError: false, id: playbook, status: 'active' },
-        stored: { isError: false, name: 'classify-ticket', version: 1 },
-        first: {
-          status: 'succeeded',
-          output: { category: 'billing', urgency: 'high' },
-          record: { usage: { total: 80 }, prompt: { message: `\nTicket: ${charged}` } },
-        },
-        updated: { isError: false, version: 2 },
-        second: { status: 'succeeded', name: 'classify-ticket', definition_version: 2 },
-      });
+    expect(steps).toMatchObject({
+      playbook: { isError: false, id: playbook, status: 'active' },
+      stored: { isError: false, name: 'classify-ticket', version: 1 },
+      first: {
+        status: 'succeeded',
+        output: { category: 'billing', urgency: 'high' },
+        record: { usage: { total: 80 }, prompt: { message: `\nTicket: ${charged}` } },
+      },
+      updated: { isError: false, version: 2 },
+      second: { status: 'succeeded', name: 'classify-ticket', definition_version: 2 },
     });
-  },
-);
+  });
+});
 
-describe('the workflow requests of the quick start, over /mcp', { timeout: developmentTestTimeoutMs }, () => {
+describe('the workflow requests of the quick start, over /mcp', () => {
   it('builds a workflow that drafts an escalation note only for an urgent ticket, and runs it on two', async () => {
     const outputs = await onPnpmDev(async (session) => {
       await session.callTool('create_playbook', { playbook, name: 'Support' });
@@ -239,7 +228,7 @@ function inTheirOrder(steps: string, names: readonly string[]): boolean {
   return places.every((place, index) => place >= 0 && (index === 0 || place > Number(places[index - 1])));
 }
 
-describe('the first-playbook prompt of the quick start, over /mcp', { timeout: developmentTestTimeoutMs }, () => {
+describe('the first-playbook prompt of the quick start, over /mcp', () => {
   it('is served by the playbook, and an agent that follows its steps creates a playbook, saves a reasoning function and runs it', async () => {
     const outcome = await onPnpmDev(async (session) => {
       const {

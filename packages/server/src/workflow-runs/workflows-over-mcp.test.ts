@@ -6,7 +6,7 @@ import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import { servingWorkflows, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { servingWorkflows, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const verdict = [
   '---',
@@ -101,7 +101,7 @@ function typesOfCreateDefinition(listing: unknown): readonly string[] {
   return createDefinition.flatMap(({ inputSchema }) => typeField(inputSchema).properties.type.enum);
 }
 
-describe('workflows over MCP', { timeout: workflowTestTimeoutMs }, () => {
+describe('workflows over MCP', () => {
   it('lists eighteen tools on the endpoint of a playbook, and every capability in the definition tools', async () => {
     const listing = await onAlpha([], (session) => session.listTools());
 
@@ -170,7 +170,7 @@ function causesNamedNowhereIn(events: readonly Event[]): readonly string[] {
   return events.flatMap(({ metadata: { causation_id: cause } }) => (cause === null || ids.has(cause) ? [] : [cause]));
 }
 
-describe('the graph of a workflow run over MCP', { timeout: workflowTestTimeoutMs }, () => {
+describe('the graph of a workflow run over MCP', () => {
   it('reads the steps of a run with their causes, and the whole tree of the run in the feed of its playbook, its child caused by the input that started the call', async () => {
     const { history, tree } = await onAlpha([answers(jsonResult({ approve: true }))], async (session) => {
       await session.callTool('create_definition', { type: 'reasoning', name: 'verdict', source: verdict });

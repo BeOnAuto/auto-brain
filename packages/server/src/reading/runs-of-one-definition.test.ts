@@ -137,7 +137,6 @@ function overMcp(): Promise<readonly RunsPage[]> {
 describe.each(stores)('the runs of one capability, a page at a time, on $store', ({ skipped, environment }) => {
   it.skipIf(skipped)(
     'fill each page with as many of its runs as the limit asks, behind newer runs of another, over HTTP and MCP',
-    { timeout: 60_000 },
     async () => {
       await threeReasoningRunsBehindFiveComputationRuns(await environment());
 

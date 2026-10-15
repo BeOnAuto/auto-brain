@@ -5,7 +5,6 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 import { endingOf, runningDevelopment } from '../testing/processes/development-endings.ts';
 import {
   developmentFiles,
-  developmentTestTimeoutMs,
   pidsOf,
   startDevelopment,
   untilListening,
@@ -19,7 +18,7 @@ const serverThatStopsOnlyWhenKilled = [
   "process.stdout.write('Auto Runtime listening on port 0\\n');",
 ].join('\n');
 
-describe('stopping pnpm dev', { timeout: developmentTestTimeoutMs }, () => {
+describe('stopping pnpm dev', () => {
   it.each<NodeJS.Signals>(['SIGINT', 'SIGTERM', 'SIGHUP'])(
     'stops the server on %s, leaves nothing running and exits 0',
     async (signal) => {
@@ -54,7 +53,7 @@ describe('stopping pnpm dev', { timeout: developmentTestTimeoutMs }, () => {
   });
 });
 
-describe('killing pnpm dev', { timeout: developmentTestTimeoutMs }, () => {
+describe('killing pnpm dev', () => {
   it('leaves nothing running when the runner itself is killed', async () => {
     const development = await runningDevelopment();
 

@@ -6,13 +6,13 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 import { interactionServerOn } from '../testing/servers/interaction-server.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
 import { fencedBlocksOf, pageOf, tutorialRunOn } from '../testing/servers/tutorial-calls.ts';
-import { runIdIn, servingWorkflows, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { runIdIn, servingWorkflows } from '../testing/servers/workflow-server.ts';
 
 const reference = fencedBlocksOf('reference/interaction-format.md');
 
 const decodeAnswer = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Record(Schema.String, Schema.Json)));
 
-describe('the example of the interaction function format', { timeout: workflowTestTimeoutMs }, () => {
+describe('the example of the interaction function format', () => {
   it('asks through the inbox in a workflow that takes the answer the page shows as its output', async () => {
     const server = await interactionServerOn({});
     await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
@@ -36,7 +36,7 @@ describe('the example of the interaction function format', { timeout: workflowTe
   });
 });
 
-describe('the tutorial of a first workflow', { timeout: workflowTestTimeoutMs }, () => {
+describe('the tutorial of a first workflow', () => {
   it('reviews, asks through the inbox and ends with the answer, in the words the tutorial and the MCP reference quote', async () => {
     const server = await servingWorkflows([answers(textResult('Revise: the audience lacks a job role.'))]);
     onTestFinished(server.stop);

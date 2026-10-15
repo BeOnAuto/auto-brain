@@ -4,12 +4,12 @@ import { unreachableDatabase } from '@on.auto/ledger/testing';
 import { describe, expect, it } from 'vitest';
 
 import { compositionRoot } from '../composition/composition-root.ts';
-import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
+import { spawnServer } from '../testing/processes/spawned-server.ts';
 import { startServer } from './lifecycle.ts';
 
 const mainModule = fileURLToPath(new URL('../main.ts', import.meta.url));
 
-describe('a ledger in PostgreSQL that cannot be reached', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('a ledger in PostgreSQL that cannot be reached', () => {
   it('stops start-up with a named error that gives the address and no credential', async () => {
     const { url, port, password } = await unreachableDatabase();
 
@@ -42,7 +42,7 @@ describe('a ledger in PostgreSQL that cannot be reached', { timeout: spawnedServ
   });
 });
 
-describe('a server given both DATABASE_URL and LEDGER_FILE', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('a server given both DATABASE_URL and LEDGER_FILE', () => {
   it('does not start, naming both settings and neither value', async () => {
     const child = spawnServer(mainModule, {
       HOST: '127.0.0.1',
