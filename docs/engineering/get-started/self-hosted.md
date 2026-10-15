@@ -32,7 +32,7 @@ Then put your gateway's `base_url` in `auto-runtime.yaml`. Start the configured 
 pnpm dev
 ```
 
-`pnpm dev` starts the server, which runs workflows itself, on `http://localhost:5555`, and signs people in through the Auto identity service at that address, with nothing to set. Once it is up, it says so:
+`pnpm dev` starts the server, which runs workflows itself, on `http://localhost:5555`, in local mode, with nothing to set. Once it is up, it says so:
 
 ```text
 10:42:44.130 INFO  [dev] Auto Runtime is ready
@@ -41,14 +41,14 @@ pnpm dev
   MCP        http://localhost:5555/mcp
 ```
 
-Next, connect your AI assistant to `http://localhost:5555/mcp`. The first time it connects, it opens the Auto identity service in your browser, where you sign in and choose your organization:
+Next, connect your AI assistant to `http://localhost:5555/mcp`. The server is in [local mode](../../self-host/security.md#local-mode), so it connects without signing in:
 
 - **Claude Code**: `claude mcp add --transport http auto-runtime http://localhost:5555/mcp`
 - **Cursor**, in `.cursor/mcp.json` or `~/.cursor/mcp.json`: `{"mcpServers": {"auto-runtime": {"url": "http://localhost:5555/mcp"}}}`
 - **VS Code**, in `.vscode/mcp.json`: `{"servers": {"auto-runtime": {"type": "http", "url": "http://localhost:5555/mcp"}}}`
 - **Other assistants** take the entry under [Connecting an agent over MCP](../reference/mcp.md), without its header.
 
-To work without signing in, put `LOCAL_MODE=true` in `.env`: the server restarts in [local mode](../../self-host/security.md#local-mode), which trusts every request on your machine as the local developer, needs no key, and keeps the playbooks an agent makes in the org `local`. The scripts and the HTTP walkthrough below use it.
+Local mode trusts every request on your machine as the local developer, needs no key, and keeps the playbooks an agent makes in the org `local`; the scripts and the HTTP walkthrough below use it. To sign people in through the Auto identity service instead, put `PUBLIC_URL=http://localhost:5555` in `.env`: the server restarts, and the first time your assistant connects it opens the identity service in your browser, where you sign in and choose your organization.
 
 You can begin by asking: "Given what you know about my work, suggest a small reusable function we could build in Auto. Tell me what information it needs before creating anything." For a concrete first run, follow the example below.
 

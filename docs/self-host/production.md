@@ -10,7 +10,7 @@ The server speaks plain HTTP on `PORT`, `5555` unless set, on every interface (`
 
 Set `PUBLIC_URL` to the public `https` address people reach the runtime at, such as `https://runtime.example.com`, with no path. People sign in through the Auto identity service, and every access token must name that address as its audience, so it is the address of the proxy, not of the container; the `http` addresses `PUBLIC_URL` also takes, on `localhost`, `127.0.0.1` or `[::1]`, are for a runtime reached on its own machine. [Signed-in persons](security.md#signed-in-persons) sets out what the runtime verifies.
 
-Never turn on [local mode](security.md#local-mode) behind a proxy. Local mode trusts every request as the local developer, and a proxy on the same machine makes remote requests look local. The image cannot run in local mode anyway, since it listens on every interface; a server with `LOCAL_MODE=true` on such an address stops at start.
+Never run a server in [local mode](security.md#local-mode) behind a proxy. Local mode trusts every request as the local developer, and a proxy on the same machine makes remote requests look local. The image cannot run in local mode anyway, since it listens on every interface: a server on such an address with neither `PUBLIC_URL` nor `API_KEYS` stops at start.
 
 A web page may call the API only from Auto Studio or from an origin you list in `ALLOWED_ORIGINS`; see [Calling from a browser](security.md#calling-from-a-browser).
 

@@ -1,6 +1,6 @@
 # Create and run a playbook over HTTP
 
-Start the runtime using the [local quick start](../get-started/self-hosted.md), with `LOCAL_MODE=true` in `.env`. These examples use local mode and need `curl` and `jq`. Use an API key and your own org id outside local mode.
+Start the runtime using the [local quick start](../get-started/self-hosted.md), without `PUBLIC_URL` or `API_KEYS` in `.env`. These examples use local mode and need `curl` and `jq`. Use an API key and your own org id outside local mode.
 
 Everything an assistant does over MCP is also an operation over HTTP. In local mode every org is open; the playbooks an assistant makes on `/mcp` belong to the org `local`, so these commands use it. Create a playbook, list the org's playbooks, and read one back:
 

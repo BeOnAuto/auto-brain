@@ -83,9 +83,9 @@ model_aliases:
 allowed_origins:
   - http://localhost:5173
 
-# The API keys the server accepts, each as pnpm key prints it. With any key
-# set, local mode is off and every request needs a key, or, where PUBLIC_URL
-# is set, an access token of the Auto identity service.
+# The API keys the server accepts, each as pnpm key prints it. With the list
+# set, even empty, local mode is off and every request needs a key, or, where
+# PUBLIC_URL is set, an access token of the Auto identity service.
 # api_keys:
 #   - id: ci
 #     org: acme
