@@ -137,7 +137,7 @@ describe('a page signed in to Auto, calling a server that signs persons in', { t
   ])('is served from %s with the session the identity service gave it, as the person', async (_case, page) => {
     const issuer = await issuerOverHttps();
     const server = await interactionServerOn({ ...signingIn(issuer.issuer), ALLOWED_ORIGINS: allowedPage });
-    const session = await issuer.session(page, { sub: 'user|ada', org_id: 'acme' });
+    const session = await issuer.session(page, { sub: 'user|ada' });
 
     const created = await createdWith(server.origin, session, page);
 
@@ -148,7 +148,7 @@ describe('a page signed in to Auto, calling a server that signs persons in', { t
   it('refuses the session another page was given, naming its azp claim', async () => {
     const issuer = await issuerOverHttps();
     const server = await interactionServerOn(signingIn(issuer.issuer));
-    const session = await issuer.session('https://elsewhere.example', { sub: 'user|ada', org_id: 'acme' });
+    const session = await issuer.session('https://elsewhere.example', { sub: 'user|ada' });
 
     const refused = await createdWith(server.origin, session, studioOrigin);
 
@@ -164,7 +164,7 @@ describe('a page signed in to Auto, calling a server that signs persons in', { t
   ])('refuses the session of the studio presented %s, naming no value', async (_case, presentedFrom) => {
     const issuer = await issuerOverHttps();
     const server = await interactionServerOn({ ...signingIn(issuer.issuer), ALLOWED_ORIGINS: allowedPage });
-    const session = await issuer.session(studioOrigin, { sub: 'user|ada', org_id: 'acme' });
+    const session = await issuer.session(studioOrigin, { sub: 'user|ada' });
 
     const refused = await createdWith(server.origin, session, presentedFrom);
 
@@ -179,7 +179,7 @@ describe('a server in local mode', { timeout: workflowTestTimeoutMs }, () => {
   it('takes a page that sends its session, and a key where no key is set, as the local developer', async () => {
     const issuer = await issuerOverHttps();
     const server = await interactionServerOn({});
-    const session = await issuer.session(studioOrigin, { sub: 'user|ada', org_id: 'acme' });
+    const session = await issuer.session(studioOrigin, { sub: 'user|ada' });
 
     const fromThePage = await createdWith(server.origin, session, studioOrigin);
     const withAKey = await server.call('POST', '/v1/orgs/acme/playbooks', {
