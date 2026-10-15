@@ -96,7 +96,8 @@ jobs:
         run: |
           . .github/smoke/calls.sh
           show_logs_on_failure smoke
-          docker run --detach --name smoke --publish 5555:5555 onauto/runtime:ci
+          test "$(docker run --rm onauto/runtime:ci 2>&1 | grep --count '^Auto Runtime could not start: ReachableWithoutCredentialsError: ')" = 1
+          docker run --detach --name smoke --publish 5555:5555 --env 'API_KEYS=[]' onauto/runtime:ci
           for attempt in $(seq 1 30); do
             curl --silent --fail http://127.0.0.1:5555/health && break
             sleep 1
@@ -112,7 +113,7 @@ jobs:
         run: |
           . .github/smoke/calls.sh
           show_logs_on_failure telemetry
-          docker run --detach --name telemetry --publish 5556:5555 \
+          docker run --detach --name telemetry --publish 5556:5555 --env 'API_KEYS=[]' \
             --env OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:9 onauto/runtime:ci
           for attempt in $(seq 1 30); do
             curl --silent --fail http://127.0.0.1:5556/health && break
@@ -743,7 +744,7 @@ jobs:
         working-directory: ${{ runner.temp }}
         run: |
           tarball="$(ls "$GITHUB_WORKSPACE"/dist/on.auto-runtime-*.tgz)"
-          export XDG_CACHE_HOME="$RUNNER_TEMP/cache" LEDGER_FILE="$RUNNER_TEMP/ledger.db" LOCAL_MODE=true
+          export XDG_CACHE_HOME="$RUNNER_TEMP/cache" LEDGER_FILE="$RUNNER_TEMP/ledger.db"
           runtime() {
             npx --yes --package="$tarball" auto-runtime "$@"
           }
