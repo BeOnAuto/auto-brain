@@ -2,6 +2,8 @@ import { type JsonObject, taskKinds } from '@on.auto/workflow-engine';
 import { buildGraph, Classes, SchemaValidationError, WorkflowValidationError } from '@openworkflowspec/sdk';
 import { Predicate } from 'effect';
 
+import { withoutOutputShape } from './workflow-output.ts';
+
 export interface Problem {
   readonly pointer: string;
   readonly detail: string;
@@ -63,7 +65,7 @@ function standardErrors(key: string, value: unknown): unknown {
 
 function deserialize(document: JsonObject): Deserialized {
   try {
-    return { workflow: Classes.Workflow.deserialize(JSON.stringify(document, standardErrors)) };
+    return { workflow: Classes.Workflow.deserialize(JSON.stringify(withoutOutputShape(document), standardErrors)) };
   } catch (error) {
     if (error instanceof SchemaValidationError) {
       return { problems: schemaProblems(error.schemaErrors) };
