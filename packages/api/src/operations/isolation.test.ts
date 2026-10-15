@@ -46,7 +46,7 @@ describe('isolation between orgs over HTTP', () => {
 
   it('lets the local developer access any org', async () => {
     const { handler } = await operationServer({
-      authenticator: authenticatorFor({ host: '127.0.0.1', apiKeys: undefined, localMode: true }),
+      authenticator: authenticatorFor({ host: '127.0.0.1', apiKeys: undefined }),
     });
     const local = { host: 'localhost:5555' };
 

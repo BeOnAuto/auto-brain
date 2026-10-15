@@ -7,7 +7,7 @@ import { call, createTestHandler } from '../testing/api-calls.ts';
 
 const acme = createApiKey({ id: 'acme-reader', org: 'acme', permissions: ['org:read'], playbooks: '*' });
 
-const keyHolders = authenticatorFor({ host: '0.0.0.0', apiKeys: [acme.entry], localMode: false });
+const keyHolders = authenticatorFor({ host: '0.0.0.0', apiKeys: [acme.entry] });
 
 const whoIsCalling: RegisterRoutes = (routes) => {
   routes.add('GET', '/v1/orgs/:org/whoami', (c) => c.json(c.get('principal').callerIn(c.req.param('org') ?? '')));
@@ -150,9 +150,9 @@ describe('the public /health path', () => {
 });
 
 describe('authentication without API keys', () => {
-  it('admits nobody outside local mode, whatever key is presented', async () => {
+  it('admits nobody when the list of keys is empty, whatever key is presented', async () => {
     const { handler } = createTestHandler({
-      authenticator: authenticatorFor({ host: '0.0.0.0', apiKeys: undefined, localMode: false }),
+      authenticator: authenticatorFor({ host: '0.0.0.0', apiKeys: [] }),
       routes: [whoIsCalling],
     });
 
@@ -164,7 +164,7 @@ describe('authentication without API keys', () => {
 
   it('admits every request in local mode as the local developer of the org it names', async () => {
     const { handler } = createTestHandler({
-      authenticator: authenticatorFor({ host: '127.0.0.1', apiKeys: undefined, localMode: true }),
+      authenticator: authenticatorFor({ host: '127.0.0.1', apiKeys: undefined }),
       routes: [whoIsCalling],
     });
 
@@ -181,7 +181,7 @@ describe('a credential presented in local mode', () => {
     ['a key, where no key is set', () => Promise.resolve(acme.key)],
   ])('is ignored: a request that presents %s acts as the local developer', async (_case, presented) => {
     const { handler } = createTestHandler({
-      authenticator: authenticatorFor({ host: '127.0.0.1', apiKeys: undefined, localMode: true }),
+      authenticator: authenticatorFor({ host: '127.0.0.1', apiKeys: undefined }),
       routes: [whoIsCalling],
     });
 

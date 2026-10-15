@@ -56,7 +56,7 @@ describe('an MCP path whose id is not one, from a caller who may reach any', () 
 
   it('answers an org id that is not one with 404, as an operation route does', async () => {
     const { handler } = await operationServer({
-      authenticator: authenticatorFor({ host: '127.0.0.1', apiKeys: undefined, localMode: true }),
+      authenticator: authenticatorFor({ host: '127.0.0.1', apiKeys: undefined }),
     });
 
     const answer = await postMcp(handler, '/orgs/x%22y/mcp', { host: 'localhost:5555' });

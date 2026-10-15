@@ -8393,7 +8393,7 @@
       "bearer": {
         "type": "http",
         "scheme": "bearer",
-        "description": "An API key, sent as Authorization: Bearer <key>. A key belongs to one org and holds permissions, such as playbook:read and playbook:write, for some or all of its playbooks. A server in local mode answers requests from its own machine without a key."
+        "description": "An API key, sent as Authorization: Bearer <key>. A key belongs to one org and holds permissions, such as playbook:read and playbook:write, for some or all of its playbooks. A server on a loopback address with neither PUBLIC_URL nor API_KEYS set is in local mode, and answers requests from its own machine without a key."
       },
       "openIdConnect": {
         "type": "openIdConnect",

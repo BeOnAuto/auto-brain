@@ -156,7 +156,7 @@ describe('an MCP endpoint once the MCP SDK runs', () => {
 
   it('admits the local developer in local mode without a key', async () => {
     const { handler } = await operationServer({
-      authenticator: authenticatorFor({ host: '127.0.0.1', apiKeys: undefined, localMode: true }),
+      authenticator: authenticatorFor({ host: '127.0.0.1', apiKeys: undefined }),
     });
 
     const answer = await postMcp(handler, '/orgs/acme/mcp', { host: 'localhost:5555' });

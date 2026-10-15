@@ -189,7 +189,7 @@ describe('the callers of /mcp', () => {
 describe('the org of /mcp without a key', () => {
   it('is local in local mode, where no key names an org', async () => {
     const local = await operationServer({
-      authenticator: authenticatorFor({ host: '127.0.0.1', apiKeys: undefined, localMode: true }),
+      authenticator: authenticatorFor({ host: '127.0.0.1', apiKeys: undefined }),
     });
     const onLocalhost = { host: 'localhost:5555' };
 
