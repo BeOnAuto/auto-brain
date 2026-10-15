@@ -1,0 +1,215 @@
+import { randomBytes } from 'node:crypto';
+
+import { randomUUIDv7, sha256Of } from '@on.auto/operations';
+import { Effect, Redacted, Schema } from 'effect';
+import { decodeProtectedHeader } from 'jose';
+import { describe, expect, it, onTestFinished } from 'vitest';
+
+import { aLedger, type LedgerEntry } from '../testing/ledger-entry.ts';
+import type { SecretKeys } from './secret-keys.ts';
+import type { SecretStore } from './secret-store.ts';
+
+export interface SecretsEntry extends LedgerEntry {
+  readonly secretStoreOn: (database: string, keys: SecretKeys) => Effect.Effect<SecretStore>;
+}
+
+type Key = Redacted.Redacted<Uint8Array>;
+
+const SealedRows = Schema.Array(
+  Schema.Struct({ id: Schema.String, kid: Schema.String, sealed: Schema.String, kept_at: Schema.String }),
+);
+
+const uuidV7 = /^[\da-f]{8}-[\da-f]{4}-7[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/u;
+
+function aKey(): Key {
+  return Redacted.make(new Uint8Array(randomBytes(32)));
+}
+
+function kidOf(key: Key): string {
+  return sha256Of(Redacted.value(key)).slice(0, 16);
+}
+
+async function aDatabaseWithItsLedger(entry: SecretsEntry): Promise<string> {
+  const database = await entry.aDatabase();
+  await aLedger(entry, database);
+  return database;
+}
+
+async function aStoreOn(entry: SecretsEntry, database: string, keys: SecretKeys): Promise<SecretStore> {
+  const store = await Effect.runPromise(entry.secretStoreOn(database, keys));
+  onTestFinished(() => store.close());
+  return store;
+}
+
+function kept(store: SecretStore, value: string): Promise<string> {
+  return Effect.runPromise(store.keep(Redacted.make(value)));
+}
+
+function keptEach(store: SecretStore, values: readonly string[]): Promise<readonly string[]> {
+  return Effect.runPromise(Effect.forEach(values, (value) => store.keep(Redacted.make(value))));
+}
+
+async function readBack(store: SecretStore, id: string): Promise<string | undefined> {
+  const read = await Effect.runPromise(store.read(id));
+  return read === undefined ? undefined : Redacted.value(read);
+}
+
+async function rowsIn(entry: SecretsEntry, database: string) {
+  return Schema.decodeUnknownSync(SealedRows)(
+    await entry.queried(database, 'SELECT id, kid, sealed, kept_at FROM sealed_secrets ORDER BY id'),
+  );
+}
+
+async function kidsIn(entry: SecretsEntry, database: string): Promise<Readonly<Record<string, number>>> {
+  const counted: Record<string, number> = {};
+  for (const { kid } of await rowsIn(entry, database)) {
+    counted[kid] = (counted[kid] ?? 0) + 1;
+  }
+  return counted;
+}
+
+function keepingBehaviour(entry: SecretsEntry): void {
+  it('keeps a value under an id of its own, a UUIDv7, and reads it back redacted', async () => {
+    const database = await aDatabaseWithItsLedger(entry);
+    const store = await aStoreOn(entry, database, { current: aKey() });
+    const before = new Date().toISOString();
+
+    const ids = await keptEach(store, ['pasted-key', 'pasted-key']);
+    const read = await Effect.runPromise(store.read(String(ids[0])));
+    const after = new Date().toISOString();
+    const rows = await rowsIn(entry, database);
+
+    expect(ids).toEqual([expect.stringMatching(uuidV7), expect.stringMatching(uuidV7)]);
+    expect(new Set(ids).size).toBe(2);
+    expect(JSON.stringify({ read })).toBe('{"read":"<redacted>"}');
+    expect(await Promise.all(ids.map((id) => readBack(store, id)))).toEqual(['pasted-key', 'pasted-key']);
+    expect(rows.map(({ id }) => id)).toEqual(ids.toSorted());
+    expect(rows.map(({ sealed }) => sealed.includes('pasted-key'))).toEqual([false, false]);
+    expect(rows[0]?.sealed).not.toBe(rows[1]?.sealed);
+    expect(rows.map(({ kept_at }) => [kept_at >= before, kept_at <= after])).toEqual([
+      [true, true],
+      [true, true],
+    ]);
+  });
+
+  it('seals each value as one JWE whose protected header names the key that wrapped it', async () => {
+    const database = await aDatabaseWithItsLedger(entry);
+    const key = aKey();
+    const store = await aStoreOn(entry, database, { current: key });
+
+    await kept(store, 'pasted-key');
+    const [row] = await rowsIn(entry, database);
+
+    expect(store.kid).toBe(kidOf(key));
+    expect(store.kid).toMatch(/^[\da-f]{16}$/u);
+    expect(row?.kid).toBe(store.kid);
+    expect(row?.sealed.split('.')).toHaveLength(5);
+    expect(decodeProtectedHeader(String(row?.sealed))).toEqual({ alg: 'A256KW', enc: 'A256GCM', kid: store.kid });
+  });
+
+  it('answers nothing for an id it does not keep, and forgets a value, twice as once', async () => {
+    const database = await aDatabaseWithItsLedger(entry);
+    const store = await aStoreOn(entry, database, { current: aKey() });
+    const id = await kept(store, 'pasted-key');
+
+    await Effect.runPromise(Effect.andThen(store.forget(id), store.forget(id)));
+
+    expect([await readBack(store, randomUUIDv7()), await readBack(store, id)]).toEqual([undefined, undefined]);
+    expect(await rowsIn(entry, database)).toEqual([]);
+  });
+}
+
+function refusalBehaviour(entry: SecretsEntry): void {
+  it('cannot read a value sealed under another key, and names that key and never the value', async () => {
+    const database = await aDatabaseWithItsLedger(entry);
+    const sealing = aKey();
+    const id = await kept(await aStoreOn(entry, database, { current: sealing }), 'pasted-key');
+    const other = await aStoreOn(entry, database, { current: aKey() });
+
+    const refused = await Effect.runPromise(Effect.flip(other.read(id)));
+
+    expect(refused).toMatchObject({
+      _tag: 'secret_key_unknown',
+      kid: kidOf(sealing),
+      detail: `The secret is sealed under the key ${kidOf(sealing)}, which is neither the current key nor the previous one`,
+    });
+    expect(JSON.stringify(refused)).not.toContain('pasted-key');
+  });
+
+  it('refuses an empty value and one of more than 8 KiB of UTF-8, and keeps neither', async () => {
+    const database = await aDatabaseWithItsLedger(entry);
+    const store = await aStoreOn(entry, database, { current: aKey() });
+
+    const refusals = await Effect.runPromise(
+      Effect.forEach(['', 'x'.repeat(8193), 'é'.repeat(4097)], (value) =>
+        Effect.flip(store.keep(Redacted.make(value))),
+      ),
+    );
+    const largest = await keptEach(store, ['x'.repeat(8192), 'é'.repeat(4096)]);
+
+    expect(refusals).toEqual([
+      expect.objectContaining({ _tag: 'secret_refused', because: 'empty', detail: 'A secret to keep is empty' }),
+      expect.objectContaining({ because: 'too_large', detail: 'A secret to keep holds more than 8 KiB' }),
+      expect.objectContaining({ because: 'too_large', detail: 'A secret to keep holds more than 8 KiB' }),
+    ]);
+    expect(await Promise.all(largest.map((id) => readBack(store, id)))).toEqual(['x'.repeat(8192), 'é'.repeat(4096)]);
+    expect(await rowsIn(entry, database)).toHaveLength(2);
+  });
+
+  it('opens only with keys of 32 bytes, naming the length of the other and never its bytes', async () => {
+    const database = await aDatabaseWithItsLedger(entry);
+    const short = { current: Redacted.make(new Uint8Array(16)) };
+    const long = { current: aKey(), previous: Redacted.make(new Uint8Array(33)) };
+
+    await expect(Effect.runPromise(entry.secretStoreOn(database, short))).rejects.toThrow(
+      'A key that seals secrets is 32 bytes, and this one is 16',
+    );
+    await expect(Effect.runPromise(entry.secretStoreOn(database, long))).rejects.toThrow(
+      'A key that seals secrets is 32 bytes, and this one is 33',
+    );
+  });
+}
+
+function rotationBehaviour(entry: SecretsEntry): void {
+  it('reads with its previous key, and re-seals in batches what that key sealed under the current one, leaving the rest', async () => {
+    const database = await aDatabaseWithItsLedger(entry);
+    const [previous, current, stray] = [aKey(), aKey(), aKey()];
+    const values = Array.from({ length: 101 }, (_, index) => `pasted-key-${index}`);
+    const ids = await keptEach(await aStoreOn(entry, database, { current: previous }), values);
+    const strayId = await kept(await aStoreOn(entry, database, { current: stray }), 'stray-key');
+    const rotating = await aStoreOn(entry, database, { current, previous });
+    const keptAt = (await rowsIn(entry, database)).map((row) => row.kept_at);
+
+    const readBefore = await readBack(rotating, String(ids[0]));
+    const resealed = await Effect.runPromise(rotating.rotated());
+    const afterwards = await aStoreOn(entry, database, { current });
+
+    expect({ readBefore, resealed }).toEqual({ readBefore: 'pasted-key-0', resealed: 101 });
+    expect(await kidsIn(entry, database)).toEqual({ [kidOf(current)]: 101, [kidOf(stray)]: 1 });
+    expect((await rowsIn(entry, database)).map((row) => row.kept_at)).toEqual(keptAt);
+    expect(await Promise.all(ids.map((id) => readBack(afterwards, id)))).toEqual(values);
+    expect(await Effect.runPromise(rotating.rotated())).toBe(0);
+    expect(await Effect.runPromise(Effect.flip(rotating.read(strayId)))).toMatchObject({ kid: kidOf(stray) });
+  });
+
+  it('re-seals nothing without a previous key, or with the current key given as the previous one', async () => {
+    const database = await aDatabaseWithItsLedger(entry);
+    const key = aKey();
+    const alone = await aStoreOn(entry, database, { current: key });
+    const id = await kept(alone, 'pasted-key');
+    const twice = await aStoreOn(entry, database, { current: key, previous: key });
+
+    const resealed = [await Effect.runPromise(alone.rotated()), await Effect.runPromise(twice.rotated())];
+
+    expect(resealed).toEqual([0, 0]);
+    expect(await readBack(twice, id)).toBe('pasted-key');
+  });
+}
+
+export function secretsBehaviour(entry: SecretsEntry): void {
+  describe('the secrets it keeps sealed', () => {
+    keepingBehaviour(entry);
+    refusalBehaviour(entry);
+    rotationBehaviour(entry);
+  });
+}

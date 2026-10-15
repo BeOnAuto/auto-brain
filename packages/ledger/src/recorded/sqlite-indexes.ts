@@ -3,6 +3,7 @@ import { Schema } from 'effect';
 
 import { sqliteContent } from '../content/content-dialects.ts';
 import { createdContentTables } from '../content/content-tables.ts';
+import { createdSecretTable } from '../secrets/sealed-secrets.ts';
 import { createMissingIndexes, type PlaybookIndex, type IndexExecutor } from './missing-indexes.ts';
 
 function prefixThroughSlashes(count: number): string {
@@ -78,4 +79,5 @@ export async function createSQLitePlaybookIndexes(execute: IndexExecutor): Promi
 export async function sqliteSchemaCreated(execute: IndexExecutor): Promise<void> {
   await createSQLitePlaybookIndexes(execute);
   await createdContentTables(execute, sqliteContent);
+  await createdSecretTable(execute, sqliteContent);
 }

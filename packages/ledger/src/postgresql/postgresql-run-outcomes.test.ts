@@ -56,7 +56,7 @@ const indexes = [
   'ledger_messages_by_id',
 ].map((name) => ({ name }));
 
-const contentIndexes = ['recorded_content_heads_by_upload', 'staged_content_by_upload'].map((name) => ({ name }));
+const contentIndexesAndSecrets = ['recorded_content_heads_by_upload', 'staged_content_by_upload', 'sealed_secrets'];
 
 function contentAnswering(statement: string): readonly { readonly name: string }[] {
   const table = contentTables.find(({ name }) => statement.includes(`to_regclass("${name}")`));
@@ -71,8 +71,8 @@ function aLedgerWithOneRun(tables: readonly string[]): Answers {
     if (statement.includes('recorded_content_chunks') || statement.includes('pg_attribute')) {
       return contentAnswering(statement);
     }
-    if (statement.includes('_by_upload')) {
-      return contentIndexes;
+    if (/_by_upload|sealed_secrets/u.test(statement)) {
+      return contentIndexesAndSecrets.map((name) => ({ name }));
     }
     if (statement.includes('pg_class')) {
       return tables.map((name) => ({ name }));
