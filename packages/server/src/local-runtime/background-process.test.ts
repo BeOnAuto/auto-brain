@@ -20,9 +20,10 @@ import { fileURLToPath } from 'node:url';
 import { Function } from 'effect';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
 import { noticesFor, restartMarkIn, startInBackgroundOf, startingLockIn } from './background-process.ts';
 import { restartWaitMs, startWaitMs } from './background-start.ts';
+
+const patiently = { timeout: 30_000, interval: 10 };
 
 const recordingEntry = fileURLToPath(new URL('../testing/entries/record-background-start.ts', import.meta.url));
 
@@ -37,7 +38,7 @@ afterEach(() => {
   rmSync(home, { recursive: true, force: true });
 });
 
-describe('starting the runtime in the background', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('starting the runtime in the background', () => {
   it('starts it from the home of the runtime, writing to its log', async () => {
     startInBackgroundOf({
       execPath: process.execPath,
@@ -51,14 +52,14 @@ describe('starting the runtime in the background', { timeout: spawnedServerTestT
     const runtimeHome = join(home, '.auto-runtime');
     await vi.waitFor(() => {
       expect(existsSync(join(runtimeHome, 'started.json'))).toBe(true);
-    }, spawnedServerTestTimeoutMs);
+    }, patiently);
     expect(JSON.parse(readFileSync(join(runtimeHome, 'started.json'), 'utf8'))).toEqual({
       arguments: ['start', '--background'],
       directory: runtimeHome,
     });
     await vi.waitFor(() => {
       expect(readFileSync(join(runtimeHome, 'runtime.log'), 'utf8')).toBe('started in the background\n');
-    }, spawnedServerTestTimeoutMs);
+    }, patiently);
   });
 
   it('reports a runtime it could not start', async () => {
@@ -77,7 +78,7 @@ describe('starting the runtime in the background', { timeout: spawnedServerTestT
 
     await vi.waitFor(() => {
       expect(reported).toEqual([expect.stringMatching(/^Auto Runtime could not be started: spawn .*ENOENT$/u)]);
-    }, spawnedServerTestTimeoutMs);
+    }, patiently);
   });
 });
 

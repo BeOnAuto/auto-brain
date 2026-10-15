@@ -6,7 +6,6 @@ import { defaultServerOptions, startServer, servedBy, type ServerOptions } from 
 import { accessTokenOf, issuerOverHttps } from '../sign-in/issuer-over-https.ts';
 import { optionsServing } from '../testing/entries/serving-options.ts';
 import { testRoutes } from '../testing/entries/test-routes.ts';
-import { spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
 import { localControlOf, type LocalControl } from './local-control.ts';
 import { runsInFlight } from './runs-in-flight.ts';
 
@@ -114,7 +113,7 @@ describe('a server of the auto-runtime command that takes keys', () => {
   });
 });
 
-describe('a server of the auto-runtime command that signs people in', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('a server of the auto-runtime command that signs people in', () => {
   it('has no control, as a server the command did not start, though it listens on loopback', async () => {
     const issuer = await issuerOverHttps();
     const publicUrl = 'http://localhost:5555';

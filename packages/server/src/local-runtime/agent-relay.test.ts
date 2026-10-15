@@ -9,7 +9,8 @@ import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 
 
 import { aPortNothingListensOn } from '../testing/processes/free-port.ts';
 import { ranToEnd, spawnRuntimeCommand, type RuntimeCommandRun } from '../testing/processes/runtime-command.ts';
-import { spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
+
+const patiently = { timeout: 30_000, interval: 10 };
 
 let home: string;
 
@@ -40,7 +41,7 @@ async function stoppedAndGone({ port, pid }: Runtime): Promise<void> {
   await fetch(`http://127.0.0.1:${port}/runtime/stop`, { method: 'POST' }).catch(Function.constVoid);
   await vi.waitFor(() => {
     expect(isRunning(pid)).toBe(false);
-  }, spawnedServerTestTimeoutMs);
+  }, patiently);
 }
 
 beforeEach(() => {
@@ -77,11 +78,11 @@ function lineOf(message: object): string {
 async function answered(relay: Readonly<RuntimeCommandRun>, count: number): Promise<readonly unknown[]> {
   await vi.waitFor(() => {
     expect(answersIn(relay.stdout())).toHaveLength(count);
-  }, spawnedServerTestTimeoutMs);
+  }, patiently);
   return answersIn(relay.stdout());
 }
 
-describe('an agent that starts auto-runtime mcp', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('an agent that starts auto-runtime mcp', () => {
   it('reaches a runtime it starts in the background', async () => {
     const port = await aPortNothingListensOn();
     const relay = spawnRuntimeCommand(['mcp'], { home, port });
@@ -122,7 +123,7 @@ describe('an agent that starts auto-runtime mcp', { timeout: spawnedServerTestTi
   });
 });
 
-describe('an agent whose process group is killed', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('an agent whose process group is killed', () => {
   it('leaves the runtime it started running, as it does when some agents end their servers so', async () => {
     const port = await aPortNothingListensOn();
     const relay = spawnRuntimeCommand(['mcp'], { home, port, inAGroupOfItsOwn: true });
@@ -138,7 +139,7 @@ describe('an agent whose process group is killed', { timeout: spawnedServerTestT
   });
 });
 
-describe('an agent whose runtime restarts', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('an agent whose runtime restarts', () => {
   it('has a request it sends while the runtime is down sent again once the runtime is back', async () => {
     const port = await aPortNothingListensOn();
     const relay = spawnRuntimeCommand(['mcp'], { home, port });
@@ -150,7 +151,7 @@ describe('an agent whose runtime restarts', { timeout: spawnedServerTestTimeoutM
     await fetch(`http://127.0.0.1:${port}/runtime/restart`, { method: 'POST' });
     await vi.waitFor(async () => {
       await expect(fetch(`http://127.0.0.1:${port}/health`)).rejects.toThrow('fetch failed');
-    }, spawnedServerTestTimeoutMs);
+    }, patiently);
     relay.write(lineOf({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} }));
     const answers = await answered(relay, 2);
     relay.end();
@@ -165,7 +166,7 @@ function markedAsRestartingBy(pid: number): void {
   writeFileSync(join(home, '.auto-runtime', 'restart-mark.json'), JSON.stringify({ pid, at: Date.now() }));
 }
 
-describe('an agent that starts while a runtime restarts', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('an agent that starts while a runtime restarts', () => {
   it('waits for that runtime to come back instead of starting a second one', async () => {
     const port = await aPortNothingListensOn();
     markedAsRestartingBy(process.pid);
@@ -199,7 +200,7 @@ describe('an agent that starts while a runtime restarts', { timeout: spawnedServ
   });
 });
 
-describe('an agent whose runtime port another program holds', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('an agent whose runtime port another program holds', () => {
   it('is told why it cannot reach the runtime, and answered once with what its request met', async () => {
     const port = await aPortNothingListensOn();
     const other = createServer((_request, response) => {

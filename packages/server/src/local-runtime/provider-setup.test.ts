@@ -6,7 +6,6 @@ import { startServer, type RunningServer } from '../lifecycle/lifecycle.ts';
 import { temporaryLedger, type TemporaryLedger } from '../testing/records/temporary-ledger.ts';
 import { request } from '../testing/servers/http-client.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
-import { workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 import { providerSetupFor, restartWordsFor } from './local-control.ts';
 
 const setup = providerSetupFor('/Users/ada/.auto-runtime', restartWordsFor({ port: undefined, version: '0.9.1' }));
@@ -34,7 +33,7 @@ afterEach(async () => {
   ledger.remove();
 });
 
-describe('a runtime on this computer with no model provider', { timeout: workflowTestTimeoutMs }, () => {
+describe('a runtime on this computer with no model provider', () => {
   it('tells an agent that lists its models where the person puts their key', async () => {
     const listed = await withMcpSession(
       'current revision',
