@@ -6,8 +6,8 @@ Spend, pace and projection per campaign, in cents, for a reporting period
 
 | Field | Required | What it is |
 | --- | --- | --- |
-| **rows** | yes | A list of records with: **campaign** (text), **cost_cents** (a whole number), **budget_cents** (a whole number). |
-| **period** | yes | A record with: **days_elapsed** (a whole number, at least 1), **days_total** (a whole number, at least 1). |
+| **rows** | yes | A list of at most 4,000 records with: **campaign** (text), **cost_cents** (a whole number, from 0 to 5,000,000), **budget_cents** (a whole number, from 0 to 1,000,000,000). |
+| **period** | yes | A record with: **days_elapsed** (a whole number, from 1 to 366), **days_total** (a whole number, from 1 to 366). |
 
 ## What it produces
 

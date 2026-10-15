@@ -1,6 +1,6 @@
 # next-week-orders
 
-Forecasts a region's orders for next week, or answers none while no version is active.
+Forecasts a region's orders for next week, or returns none while no version is active.
 
 ## What starts it
 

@@ -1,14 +1,13 @@
 # approve-brief
 
-Ask the campaign's owner to approve a brief
+Asks the campaign owner to approve a reviewed brief
 
 ## What it needs
 
 | Field | Required | What it is |
 | --- | --- | --- |
-| **campaign** | yes | Text. |
 | **owner** | yes | Text. |
-| **summary** | yes | Text, at most 4,000 characters. |
+| **review** | yes | Text. |
 
 ## Who it asks
 
@@ -18,9 +17,11 @@ It asks a person, and each request goes to **owner**.
 
 Its message, with the values of each run in place of the names in bold:
 
-Please review the brief for **campaign**.
+The review of your campaign brief is ready:
 
-**summary**
+**review**
+
+Approve the brief as it stands, or ask for a revision.
 
 ## Where
 
@@ -34,5 +35,5 @@ It waits up to 2 days for the answer; a request nobody answers by then ends unan
 
 | Field | Required | What it is |
 | --- | --- | --- |
-| **choice** | yes | One of: approve, reject. |
+| **verdict** | yes | One of: approve, revise. |
 | **note** | no | Text, at most 2,000 characters. |
