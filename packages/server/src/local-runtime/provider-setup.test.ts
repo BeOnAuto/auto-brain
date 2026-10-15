@@ -7,9 +7,9 @@ import { temporaryLedger, type TemporaryLedger } from '../testing/records/tempor
 import { request } from '../testing/servers/http-client.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
 import { workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
-import { providerSetupFor } from './local-control.ts';
+import { providerSetupFor, restartWordsFor } from './local-control.ts';
 
-const setup = providerSetupFor('/Users/ada/.auto-runtime');
+const setup = providerSetupFor('/Users/ada/.auto-runtime', restartWordsFor({ port: undefined, version: '0.9.1' }));
 
 const review = ['---', 'model: anthropic/claude-sonnet-4-5', '---', 'Review {{ input.brief }}.'].join('\n');
 
@@ -24,9 +24,8 @@ beforeEach(async () => {
       PORT: '0',
       LEDGER_FILE: ledger.fileName,
       PREDICTION_CACHE_DIR: ledger.cacheDirectory,
-      LOCAL_MODE: 'true',
     },
-    { ...compositionRoot, providerSetup: setup },
+    { ...compositionRoot, localServingIn: () => ({ providerSetup: setup }) },
   );
 });
 

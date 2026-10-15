@@ -1,10 +1,12 @@
 import { studioOrigin, type AccessMode } from '@on.auto/identity';
 
+import { defaultRuntimePort } from '../local-runtime/local-control.ts';
 import { linkerFor, painterFor, type ColorDepth } from '../logging/terminal.ts';
 import { logoHeight, logoLines, type PaintingDepth } from './logo.ts';
 
 export interface Ready {
-  readonly url: string;
+  readonly version: string;
+  readonly port: number;
   readonly readyInMs: number;
   readonly mode: AccessMode;
   readonly identityService: string | undefined;
@@ -14,20 +16,19 @@ const tagline = 'Runs the playbooks your agent builds';
 
 const documentation = 'https://on.auto/docs/';
 
-const studioDefaultServer = 'http://localhost:5555';
-
-const mcpCommand = 'npx -y @on.auto/runtime@latest mcp';
-
-function agentCommandsFor(url: string, mcp: string): readonly (readonly [string, string])[] {
-  return url === studioDefaultServer
-    ? [
-        ['Claude Code', `claude mcp add auto-runtime -- ${mcpCommand}`],
-        ['Codex', `codex mcp add auto-runtime -- ${mcpCommand}`],
-      ]
-    : [
-        ['Claude Code', `claude mcp add --transport http auto-runtime ${mcp}`],
-        ['Codex', `codex mcp add auto-runtime --url ${mcp}`],
-      ];
+function agentCommandsFor({ version, port, mode }: Ready, mcp: string): readonly (readonly [string, string])[] {
+  if (mode !== 'local') {
+    return [
+      ['Claude Code', `claude mcp add --transport http auto-runtime ${mcp}`],
+      ['Codex', `codex mcp add auto-runtime --url ${mcp}`],
+    ];
+  }
+  const entry = `npx -y @on.auto/runtime@${version} mcp`;
+  const portSet = port === defaultRuntimePort ? '' : ` --env PORT=${port}`;
+  return [
+    ['Claude Code', `claude mcp add${portSet} auto-runtime -- ${entry}`],
+    ['Codex', `codex mcp add auto-runtime${portSet} -- ${entry}`],
+  ];
 }
 
 function plainHeader(version: string): string {
@@ -61,12 +62,14 @@ function localModeNotice(url: string, depth: ColorDepth): readonly string[] {
   ];
 }
 
-export function readyNoticeOf({ url, readyInMs, mode, identityService }: Ready, depth: ColorDepth): string {
+export function readyNoticeOf(ready: Ready, depth: ColorDepth): string {
+  const { port, readyInMs, mode, identityService } = ready;
   const paint = painterFor(depth);
   const link = linkerFor(depth);
+  const url = `http://localhost:${port}`;
   const mcp = `${url}/mcp`;
   const studio = `${studioOrigin}/?server=${encodeURIComponent(url)}`;
-  const studioShown = url === studioDefaultServer ? studioOrigin : `${studioOrigin}/?server=${url}`;
+  const studioShown = port === defaultRuntimePort ? studioOrigin : `${studioOrigin}/?server=${url}`;
   const entry = (label: string, value: string): string => `     ${paint('dim', label.padEnd(8))} ${link(value, value)}`;
   const agent = (label: string, command: string): string => `    ${label.padEnd(13)} ${paint('dim', command)}`;
   const signIn = identityService === undefined ? [] : [entry('Sign-in', identityService)];
@@ -80,7 +83,7 @@ export function readyNoticeOf({ url, readyInMs, mode, identityService }: Ready, 
     ...(mode === 'local' ? localModeNotice(url, depth) : []),
     '',
     `  ${paint('dim', 'Connect your agent')}`,
-    ...agentCommandsFor(url, mcp).map(([label, command]) => agent(label, command)),
+    ...agentCommandsFor(ready, mcp).map(([label, command]) => agent(label, command)),
     '',
     `  ${paint('dim', 'Press Ctrl+C to stop.')}`,
     '',

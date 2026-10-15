@@ -9,6 +9,7 @@ const runningInATerminal = {
   started_at: '2026-10-14T09:41:07.000Z',
   started_by: 'terminal',
   directory: '/Users/ada/playbooks',
+  runs_in_flight: 0,
 };
 
 const runningForAnAgent = {
@@ -166,7 +167,7 @@ describe('what cannot be controlled from the command line', () => {
 
     await expect(runRuntimeCommand('stop', 5555, asking)).resolves.toBe(1);
     expect(errors).toEqual([
-      'The Auto Runtime on port 5555 was not started by the auto-runtime command, so it cannot be controlled from here',
+      'The Auto Runtime on port 5555 cannot be controlled from here: only one the auto-runtime command started in local mode can',
     ]);
   });
 

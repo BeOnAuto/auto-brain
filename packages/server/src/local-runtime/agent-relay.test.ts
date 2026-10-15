@@ -1,9 +1,10 @@
-import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { Function } from 'effect';
+import { Function, Schema } from 'effect';
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import { aPortNothingListensOn } from '../testing/processes/free-port.ts';
@@ -12,11 +13,42 @@ import { spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.
 
 let home: string;
 
+interface Runtime {
+  readonly port: number;
+  readonly pid: number;
+}
+
+const inTheBackground: Runtime[] = [];
+
+const pidOf = Schema.decodeUnknownSync(Schema.Struct({ pid: Schema.Number }));
+
+async function keptTrackOf(port: number): Promise<void> {
+  const { pid } = pidOf(await (await fetch(`http://127.0.0.1:${port}/runtime`)).json());
+  inTheBackground.push({ port, pid });
+}
+
+function isRunning(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function stoppedAndGone({ port, pid }: Runtime): Promise<void> {
+  await fetch(`http://127.0.0.1:${port}/runtime/stop`, { method: 'POST' }).catch(Function.constVoid);
+  await vi.waitFor(() => {
+    expect(isRunning(pid)).toBe(false);
+  }, spawnedServerTestTimeoutMs);
+}
+
 beforeEach(() => {
   home = realpathSync(mkdtempSync(join(tmpdir(), 'auto-runtime-agent-')));
 });
 
-afterEach(() => {
+afterEach(async () => {
+  await Promise.all(inTheBackground.splice(0).map((runtime) => stoppedAndGone(runtime)));
   rmSync(home, { recursive: true, force: true });
 });
 
@@ -49,20 +81,14 @@ async function answered(relay: Readonly<RuntimeCommandRun>, count: number): Prom
   return answersIn(relay.stdout());
 }
 
-function stoppedAfterwards(port: number): void {
-  onTestFinished(async () => {
-    await fetch(`http://127.0.0.1:${port}/runtime/stop`, { method: 'POST' }).catch(Function.constVoid);
-  });
-}
-
 describe('an agent that starts auto-runtime mcp', { timeout: spawnedServerTestTimeoutMs }, () => {
   it('reaches a runtime it starts in the background', async () => {
     const port = await aPortNothingListensOn();
-    stoppedAfterwards(port);
     const relay = spawnRuntimeCommand(['mcp'], { home, port });
 
     relay.write(lineOf(initialize));
     await answered(relay, 1);
+    await keptTrackOf(port);
     relay.write(lineOf({ jsonrpc: '2.0', method: 'notifications/initialized' }));
     relay.write(lineOf({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} }));
     relay.write(
@@ -80,10 +106,10 @@ describe('an agent that starts auto-runtime mcp', { timeout: spawnedServerTestTi
 
   it('leaves that runtime running once the agent leaves, until it is stopped', async () => {
     const port = await aPortNothingListensOn();
-    stoppedAfterwards(port);
     const relay = spawnRuntimeCommand(['mcp'], { home, port });
     relay.write(lineOf(initialize));
     await answered(relay, 1);
+    await keptTrackOf(port);
     relay.end();
     await relay.exited;
 
@@ -96,8 +122,85 @@ describe('an agent that starts auto-runtime mcp', { timeout: spawnedServerTestTi
   });
 });
 
+describe('an agent whose process group is killed', { timeout: spawnedServerTestTimeoutMs }, () => {
+  it('leaves the runtime it started running, as it does when some agents end their servers so', async () => {
+    const port = await aPortNothingListensOn();
+    const relay = spawnRuntimeCommand(['mcp'], { home, port, inAGroupOfItsOwn: true });
+    relay.write(lineOf(initialize));
+    await answered(relay, 1);
+    await keptTrackOf(port);
+
+    relay.killGroup();
+    await relay.exited;
+
+    expect(await ranToEnd(['status'], { home, port })).toMatchObject({ code: 0 });
+    expect(await ranToEnd(['stop'], { home, port })).toEqual({ code: 0, stdout: 'Auto Runtime has stopped\n' });
+  });
+});
+
+describe('an agent whose runtime restarts', { timeout: spawnedServerTestTimeoutMs }, () => {
+  it('has a request it sends while the runtime is down sent again once the runtime is back', async () => {
+    const port = await aPortNothingListensOn();
+    const relay = spawnRuntimeCommand(['mcp'], { home, port });
+    relay.write(lineOf(initialize));
+    await answered(relay, 1);
+    await keptTrackOf(port);
+    relay.write(lineOf({ jsonrpc: '2.0', method: 'notifications/initialized' }));
+
+    await fetch(`http://127.0.0.1:${port}/runtime/restart`, { method: 'POST' });
+    await vi.waitFor(async () => {
+      await expect(fetch(`http://127.0.0.1:${port}/health`)).rejects.toThrow('fetch failed');
+    }, spawnedServerTestTimeoutMs);
+    relay.write(lineOf({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} }));
+    const answers = await answered(relay, 2);
+    relay.end();
+
+    expect(JSON.stringify(answerWithId(answers, 2))).toContain('"name":"list_playbooks"');
+    expect(await relay.exited).toBe(0);
+  });
+});
+
+function markedAsRestartingBy(pid: number): void {
+  mkdirSync(join(home, '.auto-runtime'), { recursive: true });
+  writeFileSync(join(home, '.auto-runtime', 'restart-mark.json'), JSON.stringify({ pid, at: Date.now() }));
+}
+
+describe('an agent that starts while a runtime restarts', { timeout: spawnedServerTestTimeoutMs }, () => {
+  it('waits for that runtime to come back instead of starting a second one', async () => {
+    const port = await aPortNothingListensOn();
+    markedAsRestartingBy(process.pid);
+    const relay = spawnRuntimeCommand(['mcp'], { home, port });
+    relay.write(lineOf(initialize));
+
+    const runtime = spawnRuntimeCommand([], { home, port });
+    onTestFinished(runtime.kill);
+    await answered(relay, 1);
+    relay.end();
+    const status = await ranToEnd(['status'], { home, port });
+    runtime.interrupt();
+
+    expect(status.stdout).toContain('in a terminal');
+    expect(existsSync(join(home, '.auto-runtime', 'runtime.log'))).toBe(false);
+    expect([await relay.exited, await runtime.exited]).toEqual([0, 0]);
+  });
+
+  it('starts one when the mark is stale, its process gone', async () => {
+    const port = await aPortNothingListensOn();
+    markedAsRestartingBy(spawnSync(process.execPath, ['-e', '']).pid);
+    const relay = spawnRuntimeCommand(['mcp'], { home, port });
+
+    relay.write(lineOf(initialize));
+    await answered(relay, 1);
+    await keptTrackOf(port);
+    relay.end();
+
+    expect((await ranToEnd(['status'], { home, port })).stdout).toContain('by your agent');
+    expect(await relay.exited).toBe(0);
+  });
+});
+
 describe('an agent whose runtime port another program holds', { timeout: spawnedServerTestTimeoutMs }, () => {
-  it('is answered with why it cannot reach the runtime', async () => {
+  it('is told why it cannot reach the runtime, and answered once with what its request met', async () => {
     const port = await aPortNothingListensOn();
     const other = createServer((_request, response) => {
       response.end('hello');
@@ -112,16 +215,11 @@ describe('an agent whose runtime port another program holds', { timeout: spawned
     relay.end();
 
     expect(answers).toEqual([
-      {
-        jsonrpc: '2.0',
-        id: 1,
-        error: {
-          code: -32_603,
-          message: `Another program answers on port ${port}; set PORT to start Auto Runtime on a free port`,
-        },
-      },
+      { jsonrpc: '2.0', id: 1, error: { code: -32_603, message: 'SdkError: Unexpected content type: null' } },
     ]);
-    expect(relay.stderr()).toContain(`Another program answers on port ${port}`);
+    expect(relay.stderr()).toContain(
+      `Another program answers on port ${port}; set PORT to start Auto Runtime on a free port\n`,
+    );
     expect(await relay.exited).toBe(0);
   });
 });

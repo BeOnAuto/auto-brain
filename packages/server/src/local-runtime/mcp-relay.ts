@@ -4,7 +4,6 @@ import {
   parseJSONRPCMessage,
   type Transport,
 } from '@modelcontextprotocol/server';
-import { Function } from 'effect';
 
 export interface Relaying {
   readonly agent: () => Transport;
@@ -14,6 +13,16 @@ export interface Relaying {
 }
 
 const internalError = -32_603;
+
+type Sending = { readonly failed: false } | { readonly failed: true; readonly failure: unknown };
+
+function couldNotConnect(cause: unknown): boolean {
+  return typeof cause === 'object' && cause !== null && 'syscall' in cause && cause.syscall === 'connect';
+}
+
+function neverWentOut(failure: unknown): boolean {
+  return failure instanceof TypeError && couldNotConnect(failure.cause);
+}
 
 class McpRelay {
   readonly #agent: Transport;
@@ -68,20 +77,32 @@ class McpRelay {
     if (isJSONRPCRequest(message) && message.method === 'initialize') {
       this.#initializing.add(message.id);
     }
-    const problem = (await this.#sent(message)) === undefined ? undefined : await this.#sentAgain(message);
+    const sending = await this.#sent(message);
+    if (!sending.failed) {
+      return;
+    }
+    const problem = neverWentOut(sending.failure) ? await this.#sentAgain(message) : String(sending.failure);
     if (problem !== undefined) {
       await this.#refused(message, problem);
     }
   }
 
-  #sent(message: unknown): Promise<string | undefined> {
-    return Promise.resolve()
-      .then(() => this.#runtime.send(parseJSONRPCMessage(message)))
-      .then(Function.constUndefined, String);
+  async #sent(message: unknown): Promise<Sending> {
+    try {
+      await this.#runtime.send(parseJSONRPCMessage(message));
+      return { failed: false };
+    } catch (failure) {
+      return { failed: true, failure };
+    }
   }
 
   async #sentAgain(message: unknown): Promise<string | undefined> {
-    return (await this.#relaying.recover()) ?? this.#sent(message);
+    const recovering = await this.#relaying.recover();
+    if (recovering !== undefined) {
+      return recovering;
+    }
+    const sending = await this.#sent(message);
+    return sending.failed ? String(sending.failure) : undefined;
   }
 
   async #refused(message: unknown, problem: string): Promise<void> {

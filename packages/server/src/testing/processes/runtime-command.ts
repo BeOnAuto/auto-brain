@@ -9,6 +9,7 @@ export interface RuntimeCommandRun {
   readonly write: (text: string) => void;
   readonly end: () => void;
   readonly kill: () => void;
+  readonly killGroup: () => void;
   readonly interrupt: () => void;
   readonly stdout: () => string;
   readonly stderr: () => string;
@@ -19,13 +20,15 @@ export interface RuntimeCommandPlace {
   readonly home: string;
   readonly port: number;
   readonly settings?: Readonly<Record<string, string>>;
+  readonly inAGroupOfItsOwn?: boolean;
 }
 
 export function spawnRuntimeCommand(
   args: readonly string[],
-  { home, port, settings = {} }: RuntimeCommandPlace,
+  { home, port, settings = {}, inAGroupOfItsOwn = false }: RuntimeCommandPlace,
 ): RuntimeCommandRun {
   const child = spawn(process.execPath, [command, ...args], {
+    detached: inAGroupOfItsOwn,
     cwd: home,
     env: {
       NODE_V8_COVERAGE: process.env['NODE_V8_COVERAGE'],
@@ -53,6 +56,9 @@ export function spawnRuntimeCommand(
     },
     kill: () => {
       child.kill('SIGKILL');
+    },
+    killGroup: () => {
+      process.kill(-Number(child.pid), 'SIGKILL');
     },
     interrupt: () => {
       child.kill('SIGINT');

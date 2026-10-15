@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { impatient, runningRuntime, throughARestart, type BackgroundStarting } from './background-start.ts';
-import type { RuntimeFetch } from './runtime-probe.ts';
+import { defaultServerOptions } from '../lifecycle/lifecycle.ts';
+import { longestStopMs } from '../lifecycle/shutdown.ts';
+import {
+  impatient,
+  restartWaitMs,
+  runningRuntime,
+  startWaitMs,
+  throughARestart,
+  type BackgroundStarting,
+} from './background-start.ts';
+import { probeEveryMs, type RuntimeFetch } from './runtime-probe.ts';
 
 const startedForAnAgent = {
   version: '0.9.1',
@@ -10,6 +19,7 @@ const startedForAnAgent = {
   started_by: 'agent',
   directory: '/Users/ada/.auto-runtime',
   log_file: '/Users/ada/.auto-runtime/runtime.log',
+  runs_in_flight: 0,
 };
 
 interface Computer {
@@ -54,6 +64,7 @@ interface Options {
   readonly startsAs?: object | undefined;
   readonly comesBackAfter?: number;
   readonly lockTaken?: boolean;
+  readonly restarting?: boolean;
 }
 
 function startingOn(computer: Computer, options: Options = {}): BackgroundStarting {
@@ -82,12 +93,26 @@ function startingOn(computer: Computer, options: Options = {}): BackgroundStarti
         computer.record('unlocked');
       },
     },
+    notice: (line) => {
+      computer.record(`noticed ${line}`);
+    },
+    restartUnderWay: () => options.restarting === true,
   };
 }
 
 function refusingToStop(fetch: RuntimeFetch): RuntimeFetch {
   return (address, request) =>
     request.method === 'POST' ? Promise.reject(new TypeError('fetch failed')) : fetch(address, request);
+}
+
+function stayingUp(computer: Computer): RuntimeFetch {
+  return (address, { method }) => {
+    if (method === 'POST') {
+      computer.record(`asked ${address.slice(address.lastIndexOf('/') + 1)}`);
+      return Promise.resolve(Response.json({ status: 'stopping' }, { status: 202 }));
+    }
+    return Promise.resolve(Response.json(computer.answering()));
+  };
 }
 
 describe('making sure the runtime runs before an agent talks to it', () => {
@@ -134,6 +159,14 @@ describe('the runtime an agent finds on the port', () => {
     expect(computer.events()).toEqual([]);
   });
 
+  it('waits through a restart a runtime marked, as long as a restart can take, without taking the lock', async () => {
+    const computer = computerWith();
+    const starting = startingOn(computer, { restarting: true, comesBackAfter: throughARestart.attempts - 1 });
+
+    await expect(runningRuntime(5555, starting, impatient)).resolves.toBeUndefined();
+    expect(computer.events()).toEqual([]);
+  });
+
   it('connects to a runtime that runs without the controls of the auto-runtime command', async () => {
     const computer = computerWith({ status: 'ok' });
 
@@ -174,13 +207,44 @@ describe('a newer release of the runtime for an agent', () => {
     expect(computer.events()).toEqual([]);
   });
 
-  it('keeps the older one when it does not stop', async () => {
+  it('says so when the older one does not stop', async () => {
     const computer = computerWith(startedForAnAgent);
     const starting = startingOn(computer, { version: '0.10.0' });
 
-    await expect(
-      runningRuntime(5555, { ...starting, fetch: refusingToStop(starting.fetch) }, impatient),
-    ).resolves.toBeUndefined();
+    await expect(runningRuntime(5555, { ...starting, fetch: refusingToStop(starting.fetch) }, impatient)).resolves.toBe(
+      'Auto Runtime 0.9.1 on port 5555 did not stop, so Auto Runtime 0.10.0 could not replace it',
+    );
     expect(computer.events()).toEqual([]);
+  });
+
+  it('says so when the older one does not go down once asked to stop', async () => {
+    const computer = computerWith(startedForAnAgent);
+    const starting = startingOn(computer, { version: '0.10.0' });
+
+    await expect(runningRuntime(5555, { ...starting, fetch: stayingUp(computer) }, impatient)).resolves.toBe(
+      'Auto Runtime 0.9.1 on port 5555 did not stop, so Auto Runtime 0.10.0 could not replace it',
+    );
+    expect(computer.events()).toEqual(['asked stop']);
+  });
+});
+
+describe('a newer release of the runtime for an agent, while the older one has runs in flight', () => {
+  it('leaves the older one running, relays to it, and says that it waits for it to be idle', async () => {
+    const computer = computerWith({ ...startedForAnAgent, runs_in_flight: 2 });
+
+    await expect(runningRuntime(5555, startingOn(computer, { version: '0.10.0' }), impatient)).resolves.toBeUndefined();
+    expect(computer.events()).toEqual([
+      'noticed Auto Runtime 0.10.0 waits for Auto Runtime 0.9.1 on port 5555 to be idle before it replaces it, and relays to 0.9.1 until then',
+    ]);
+  });
+});
+
+describe('the patience of an agent for a runtime that restarts', () => {
+  it('lasts as long as the runtime takes to stop, by the bounds of its shutdown, and then to start', () => {
+    const { shutdownTimeoutMs, exitDeadlineMs } = defaultServerOptions;
+
+    expect(throughARestart.attempts * probeEveryMs).toBe(restartWaitMs);
+    expect(restartWaitMs).toBe(longestStopMs + startWaitMs);
+    expect(longestStopMs).toBeGreaterThan(shutdownTimeoutMs + exitDeadlineMs);
   });
 });

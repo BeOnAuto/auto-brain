@@ -1,15 +1,17 @@
+import type { RuntimeControl } from '@on.auto/api';
 import { describe, expect, it } from 'vitest';
 
 import {
-  isControlledAt,
   localControlOf,
   logFileIn,
   providerSetupFor,
   restartIn,
+  restartWordsFor,
   runtimeStatusOf,
   type LocalRun,
   type RestartingProcess,
 } from './local-control.ts';
+import { runsInFlight } from './runs-in-flight.ts';
 
 const inATerminal: LocalRun = {
   version: '0.9.1',
@@ -18,44 +20,47 @@ const inATerminal: LocalRun = {
   directory: '/Users/ada/playbooks',
   home: '/Users/ada',
   startedBy: 'terminal',
+  port: undefined,
 };
+
+const noMark = { leave: () => true };
+
+function controlOf(
+  run: LocalRun = inATerminal,
+  restartMark: { readonly leave: (pid: number) => boolean } = noMark,
+): { readonly control: RuntimeControl; readonly asked: Promise<unknown> } {
+  const local = localControlOf(run, runsInFlight(), restartMark);
+  const { runtimeControl } = local.servingIn('local');
+  if (runtimeControl === undefined) {
+    throw new Error('a runtime in local mode has no control');
+  }
+  return { control: runtimeControl, asked: local.asked };
+}
 
 describe('the status of a runtime the auto-runtime command started', () => {
   it('names no log when it writes to the terminal it started in', () => {
-    expect(runtimeStatusOf(inATerminal)).toEqual({
+    expect(runtimeStatusOf(inATerminal, 0)).toEqual({
       version: '0.9.1',
       pid: 4242,
       startedAt: new Date('2026-10-14T09:41:07.000Z'),
       directory: '/Users/ada/playbooks',
       startedBy: 'terminal',
       logFile: undefined,
+      runsInFlight: 0,
     });
   });
 
   it('names the log in the home of the runtime when an agent started it', () => {
-    expect(runtimeStatusOf({ ...inATerminal, startedBy: 'agent' }).logFile).toBe(
+    expect(runtimeStatusOf({ ...inATerminal, startedBy: 'agent' }, 0).logFile).toBe(
       '/Users/ada/.auto-runtime/runtime.log',
     );
     expect(logFileIn('/Users/ada')).toBe('/Users/ada/.auto-runtime/runtime.log');
   });
 });
 
-describe('where a runtime may be controlled', () => {
-  it.each(['127.0.0.1', '::1', 'localhost'])('is controlled when it listens on %s', (host) => {
-    expect(isControlledAt(host)).toBe(true);
-  });
-
-  it.each([undefined, '0.0.0.0', '::', '192.168.1.20'])(
-    'is not controlled when it listens on %s, where others may reach it',
-    (host) => {
-      expect(isControlledAt(host)).toBe(false);
-    },
-  );
-});
-
 describe('asking a runtime to stop or restart', () => {
   it('says what was asked first', async () => {
-    const { control, asked } = localControlOf(runtimeStatusOf(inATerminal));
+    const { control, asked } = controlOf();
 
     control.restart();
     control.stop();
@@ -63,18 +68,54 @@ describe('asking a runtime to stop or restart', () => {
     await expect(asked).resolves.toBe('restart');
   });
 
+  it('leaves the mark of its process before it restarts, and none when it stops', async () => {
+    const left: number[] = [];
+    const recording = {
+      leave: (pid: number) => {
+        left.push(pid);
+        return true;
+      },
+    };
+    const toRestart = controlOf(inATerminal, recording);
+    const toStop = controlOf(inATerminal, { leave: () => false });
+
+    toRestart.control.restart();
+    toStop.control.stop();
+
+    await expect(Promise.all([toRestart.asked, toStop.asked])).resolves.toEqual(['restart', 'stop']);
+    expect(left).toEqual([4242]);
+  });
+
   it('says it was asked to stop', async () => {
-    const { control, asked } = localControlOf(runtimeStatusOf(inATerminal));
+    const { control, asked } = controlOf();
 
     control.stop();
 
     await expect(asked).resolves.toBe('stop');
   });
 
-  it('reports the status it was given', () => {
-    const status = runtimeStatusOf(inATerminal);
+  it('reports the status of the run it was given', () => {
+    expect(controlOf().control.status()).toEqual(runtimeStatusOf(inATerminal, 0));
+  });
+});
 
-    expect(localControlOf(status).control.status()).toBe(status);
+describe('what a runtime the auto-runtime command started serves in each access mode', () => {
+  it('is controlled in local mode, counts its runs in flight and names the restart in its provider setup', () => {
+    const runs = runsInFlight();
+
+    const serving = localControlOf(inATerminal, runs, noMark).servingIn('local');
+
+    expect(serving).toMatchObject({
+      appended: runs,
+      providerSetup: providerSetupFor('/Users/ada/playbooks', restartWordsFor(inATerminal)),
+    });
+    expect(serving.runtimeControl?.status()).toMatchObject({ runsInFlight: 0 });
+  });
+
+  it.each(['credentials', 'closed'] as const)('is not controlled in %s mode, and names no restart command', (mode) => {
+    expect(localControlOf(inATerminal, runsInFlight(), noMark).servingIn(mode)).toEqual({
+      providerSetup: providerSetupFor('/Users/ada/playbooks'),
+    });
   });
 });
 
@@ -140,14 +181,20 @@ describe('restarting the process of the runtime', () => {
 
 describe('what a runtime on this computer tells an agent about adding a model provider', () => {
   it('names the .env it reads, how to restart it, and the first function after', () => {
-    expect(providerSetupFor('/Users/ada/.auto-runtime')).toBe(
-      'To add one, ask the person to put a line such as ANTHROPIC_API_KEY=<their key> in /Users/ada/.auto-runtime/.env, never in this chat, then restart Auto Runtime with npx @on.auto/runtime restart or at http://localhost:5555. Then offer a first function, as the first-playbook recipe of get_guide does; on.auto/docs has more.',
+    expect(providerSetupFor('/Users/ada/.auto-runtime', restartWordsFor(inATerminal))).toBe(
+      'To add one, ask the person to put a line such as ANTHROPIC_API_KEY=<their key> in /Users/ada/.auto-runtime/.env, never in this chat, then restart Auto Runtime with npx -y @on.auto/runtime@0.9.1 restart or at http://localhost:5555. Then offer a first function, as the first-playbook recipe of get_guide does; on.auto/docs has more.',
     );
   });
 
   it('names its port where it runs on another one', () => {
-    expect(providerSetupFor('/Users/ada/playbooks', '6060')).toContain(
-      'then restart Auto Runtime with PORT=6060 npx @on.auto/runtime restart or at http://localhost:6060.',
+    expect(providerSetupFor('/Users/ada/playbooks', restartWordsFor({ ...inATerminal, port: '6060' }))).toContain(
+      'then restart Auto Runtime with PORT=6060 npx -y @on.auto/runtime@0.9.1 restart or at http://localhost:6060.',
+    );
+  });
+
+  it('only asks for a restart where the auto-runtime command cannot restart it', () => {
+    expect(providerSetupFor('/Users/ada/playbooks')).toContain(
+      'in /Users/ada/playbooks/.env, never in this chat, then restart Auto Runtime. Then offer a first function',
     );
   });
 });

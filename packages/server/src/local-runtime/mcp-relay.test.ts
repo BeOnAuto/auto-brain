@@ -40,6 +40,7 @@ interface FakeRuntime {
   readonly received: unknown[];
   readonly negotiated: string[];
   readonly closed: () => boolean;
+  readonly sends: () => number;
 }
 
 function fakeRuntime({ reply = echoTools, failures = [], negotiates = true }: FakeRuntimeOptions = {}): FakeRuntime {
@@ -47,9 +48,11 @@ function fakeRuntime({ reply = echoTools, failures = [], negotiates = true }: Fa
   const negotiated: string[] = [];
   const failing = [...failures];
   let closed = false;
+  let sends = 0;
   const transport: Transport = {
     start: () => Promise.resolve(),
     send: (message: unknown) => {
+      sends += 1;
       const failure = failing.shift();
       if (failure !== undefined) {
         return Promise.reject(failure);
@@ -73,8 +76,20 @@ function fakeRuntime({ reply = echoTools, failures = [], negotiates = true }: Fa
         }
       : {}),
   };
-  return { transport, received, negotiated, closed: () => closed };
+  return { transport, received, negotiated, closed: () => closed, sends: () => sends };
 }
+
+const refusedAtConnect = new TypeError('fetch failed', {
+  cause: Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:5555'), { code: 'ECONNREFUSED', syscall: 'connect' }),
+});
+
+const cutOffMidAnswer = new TypeError('terminated', {
+  cause: Object.assign(new Error('other side closed'), { code: 'UND_ERR_SOCKET' }),
+});
+
+const droppedAfterTheRequest = new TypeError('fetch failed', {
+  cause: Object.assign(new Error('other side closed'), { code: 'UND_ERR_SOCKET' }),
+});
 
 function fakeRuntimeEnd(options: FakeRuntimeOptions = {}): () => Transport {
   const { transport } = fakeRuntime(options);
@@ -189,18 +204,20 @@ describe('the end of a relay', () => {
 });
 
 describe('relaying an agent to a runtime that does not answer', () => {
-  it('makes sure the runtime runs, then sends the request again', async () => {
-    const { agent, next, recovered } = await relayed(fakeRuntimeEnd({ failures: [new TypeError('fetch failed')] }));
+  it('makes sure the runtime runs, then sends again a request whose connection could not be made', async () => {
+    const runtime = fakeRuntime({ failures: [refusedAtConnect] });
+    const { agent, next, recovered } = await relayed(() => runtime.transport);
 
     await agent.send(listTools);
 
     expect(await next()).toEqual({ jsonrpc: '2.0', id: 2, result: { tools: [] } });
     expect(recovered()).toBe(1);
+    expect(runtime.sends()).toBe(2);
   });
 
   it('answers the request with why the runtime could not be started', async () => {
     const { agent, next } = await relayed(
-      fakeRuntimeEnd({ failures: [new TypeError('fetch failed')] }),
+      fakeRuntimeEnd({ failures: [refusedAtConnect] }),
       'Auto Runtime did not start on port 5555; its log is /Users/ada/.auto-runtime/runtime.log',
     );
 
@@ -218,17 +235,19 @@ describe('relaying an agent to a runtime that does not answer', () => {
 
   it('answers the request with what went wrong when it fails again', async () => {
     const { agent, next } = await relayed(
-      fakeRuntimeEnd({ failures: [new TypeError('fetch failed'), new Error('Error POSTing to endpoint')] }),
+      fakeRuntimeEnd({ failures: [refusedAtConnect, new Error('Error POSTing to endpoint')] }),
     );
 
     await agent.send(listTools);
 
     expect(await next()).toMatchObject({ id: 2, error: { message: 'Error: Error POSTing to endpoint' } });
   });
+});
 
+describe('relaying a notification to a runtime that does not answer', () => {
   it('reports a notification it could not deliver, which has no one to answer', async () => {
     const { agent, reported } = await relayed(
-      fakeRuntimeEnd({ failures: [new TypeError('fetch failed'), new Error('refused again')] }),
+      fakeRuntimeEnd({ failures: [refusedAtConnect, new Error('refused again')] }),
     );
 
     await agent.send(initialized);
@@ -236,6 +255,27 @@ describe('relaying an agent to a runtime that does not answer', () => {
     await vi.waitFor(() => {
       expect(reported).toEqual(['Auto Runtime did not take a message: Error: refused again']);
     });
+  });
+});
+
+describe('relaying an agent to a runtime that may have taken the request', () => {
+  it.each<readonly [string, Readonly<Error>, string]>([
+    ['whose answer was cut off', cutOffMidAnswer, 'TypeError: terminated'],
+    ['whose connection closed after it went out', droppedAfterTheRequest, 'TypeError: fetch failed'],
+    [
+      'that the runtime answered with an error status',
+      new Error('Error POSTing to endpoint: busy'),
+      'Error: Error POSTing to endpoint: busy',
+    ],
+  ])('answers a request %s with what went wrong, and never sends it again', async (_case, failure, problem) => {
+    const runtime = fakeRuntime({ failures: [failure] });
+    const { agent, next, recovered } = await relayed(() => runtime.transport);
+
+    await agent.send(listTools);
+
+    expect(await next()).toEqual({ jsonrpc: '2.0', id: 2, error: { code: -32_603, message: problem } });
+    expect(runtime.sends()).toBe(1);
+    expect(recovered()).toBe(0);
   });
 });
 

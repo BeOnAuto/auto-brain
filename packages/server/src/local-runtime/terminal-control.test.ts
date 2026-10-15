@@ -1,4 +1,4 @@
-import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -35,7 +35,7 @@ function readiesIn(text: string): number {
 describe('a runtime started in a terminal', { timeout: spawnedServerTestTimeoutMs }, () => {
   it('restarts in the same process when asked, and stops when asked', async () => {
     const port = await aPortNothingListensOn();
-    const runtime = spawnRuntimeCommand([], { home, port, settings: { LOCAL_MODE: 'true' } });
+    const runtime = spawnRuntimeCommand([], { home, port });
     onTestFinished(runtime.kill);
     await vi.waitFor(() => {
       expect(readiesIn(runtime.stdout())).toBe(1);
@@ -52,6 +52,7 @@ describe('a runtime started in a terminal', { timeout: spawnedServerTestTimeoutM
     expect(before).toMatchObject({ pid: runtime.pid, started_by: 'terminal', directory: home });
     expect(after.pid).toBe(runtime.pid);
     expect(after.started_at).not.toBe(before.started_at);
+    expect(existsSync(join(home, '.auto-runtime', 'restart-mark.json'))).toBe(false);
     expect(await runtime.exited).toBe(0);
   });
 
@@ -79,13 +80,13 @@ describe('a runtime started in a terminal', { timeout: spawnedServerTestTimeoutM
 describe('a runtime started in a terminal on a taken port', { timeout: spawnedServerTestTimeoutMs }, () => {
   it('says why it could not start, and exits', async () => {
     const port = await aPortNothingListensOn();
-    const first = spawnRuntimeCommand([], { home, port, settings: { LOCAL_MODE: 'true' } });
+    const first = spawnRuntimeCommand([], { home, port });
     onTestFinished(first.kill);
     await vi.waitFor(() => {
       expect(readiesIn(first.stdout())).toBe(1);
     }, spawnedServerTestTimeoutMs);
 
-    const second = spawnRuntimeCommand([], { home, port, settings: { LOCAL_MODE: 'true' } });
+    const second = spawnRuntimeCommand([], { home, port });
 
     expect(await second.exited).toBe(1);
     expect(second.stderr()).toContain('Auto Runtime could not start');

@@ -30,6 +30,7 @@ const runningStatus = {
   started_at: '2026-10-14T09:41:07.000Z',
   started_by: 'terminal',
   directory: '/home/ada/playbooks',
+  runs_in_flight: 0,
 };
 
 function recordedHost(): Recorded {
