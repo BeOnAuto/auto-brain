@@ -25,6 +25,16 @@
       "matchFileNames": ["packages/server/Dockerfile"],
       "groupName": "container base image",
       "groupSlug": "container-base-image"
+    },
+    {
+      "description": "typescript6 is TypeScript 6 under an alias, the last version with the compiler API the program check of the definitions package calls, so it stays below 7; an alias is matched by its dependency name, since its package name is typescript",
+      "matchDepNames": ["typescript6"],
+      "allowedVersions": "<7"
+    },
+    {
+      "description": "dumbo's 0.13.0-betabeta.50 is a mistyped tag published as latest, which semver ranks above every 0.13.0-beta.N; dumbo and emmett never take a version whose prerelease tag holds betabeta",
+      "matchPackageNames": ["@event-driven-io/dumbo", "@event-driven-io/emmett"],
+      "allowedVersions": "!/betabeta/"
     }
   ],
   "customManagers": [
