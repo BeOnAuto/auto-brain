@@ -4,6 +4,7 @@ export type { ApiOptions } from './api-options.ts';
 export {
   runtimeActionPaths,
   runtimePath,
+  startedInWords,
   type RuntimeAction,
   type RuntimeControl,
   type RuntimeStatus,
