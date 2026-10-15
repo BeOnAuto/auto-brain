@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import type { StartedBy } from '@on.auto/api';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { release } from '../composition/release.ts';
@@ -18,16 +19,34 @@ interface Recorded {
   readonly logged: string[];
   readonly errors: string[];
   readonly started: Readonly<Record<string, string>>[];
+  readonly startedBy: StartedBy[];
+  readonly relayed: number[];
+  readonly asked: string[];
 }
+
+const runningStatus = {
+  version: '0.9.1',
+  pid: 4242,
+  started_at: '2026-10-14T09:41:07.000Z',
+  started_by: 'terminal',
+  directory: '/home/ada/playbooks',
+  runs_in_flight: 0,
+};
 
 function recordedHost(): Recorded {
   const logged: string[] = [];
   const errors: string[] = [];
   const started: Readonly<Record<string, string>>[] = [];
+  const startedBy: StartedBy[] = [];
+  const relayed: number[] = [];
+  const asked: string[] = [];
   return {
     logged,
     errors,
     started,
+    startedBy,
+    relayed,
+    asked,
     host: {
       environment: { ANTHROPIC_API_KEY: 'sk-ant-test' },
       place: { directory, home: '/home/ada' },
@@ -39,8 +58,20 @@ function recordedHost(): Recorded {
           errors.push(line);
         },
       },
-      startServer: (settings) => {
+      waiting: {
+        fetch: (address) => {
+          asked.push(address);
+          return Promise.resolve(Response.json(runningStatus));
+        },
+        sleep: () => Promise.resolve(),
+      },
+      startServer: (settings, by) => {
         started.push(settings);
+        startedBy.push(by);
+        return Promise.resolve();
+      },
+      relay: (port) => {
+        relayed.push(port);
         return Promise.resolve();
       },
     },
@@ -63,12 +94,38 @@ describe('starting the server with the auto-runtime command', () => {
     expect(started).toEqual([startedSettings]);
   });
 
-  it('starts it with start', async () => {
-    const { host, started } = recordedHost();
+  it('starts it with start, as started in a terminal', async () => {
+    const { host, started, startedBy } = recordedHost();
 
     await runCommandLine(['start'], host);
 
     expect(started).toEqual([startedSettings]);
+    expect(startedBy).toEqual(['terminal']);
+  });
+
+  it('starts it in the background for an agent', async () => {
+    const { host, startedBy } = recordedHost();
+
+    await runCommandLine(['start', '--background'], host);
+
+    expect(startedBy).toEqual(['agent']);
+  });
+});
+
+describe('the commands of auto-runtime for the runtime on this computer', () => {
+  it('relays an agent to the runtime on port 5555 with mcp, and ends well once the agent leaves', async () => {
+    const { host, relayed } = recordedHost();
+
+    await expect(runCommandLine(['mcp'], host)).resolves.toBe(0);
+    expect(relayed).toEqual([5555]);
+  });
+
+  it('asks the runtime on this computer for its status', async () => {
+    const { host, logged, asked } = recordedHost();
+
+    await expect(runCommandLine(['status'], host)).resolves.toBe(0);
+    expect(asked).toEqual(['http://127.0.0.1:5555/runtime']);
+    expect(logged[0]).toBe('Auto Runtime 0.9.1 is running at http://localhost:5555');
   });
 });
 
@@ -122,6 +179,14 @@ describe('what the auto-runtime command refuses', () => {
     await expect(runCommandLine(['start', '--port', '6000'], host)).resolves.toBe(1);
     expect(errors[0]).toBe('auto-runtime has no command "start --port 6000"');
     expect(started).toEqual([]);
+  });
+
+  it('refuses arguments after mcp or status', async () => {
+    const { host, relayed } = recordedHost();
+
+    await expect(runCommandLine(['mcp', '--port', '6000'], host)).resolves.toBe(1);
+    await expect(runCommandLine(['status', '--json'], host)).resolves.toBe(1);
+    expect(relayed).toEqual([]);
   });
 
   it('refuses a name that only an object has', async () => {

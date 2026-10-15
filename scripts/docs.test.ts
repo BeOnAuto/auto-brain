@@ -4,6 +4,8 @@ import type { Dirent } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { test } from 'node:test';
 
+import manifest from '../package.json' with { type: 'json' };
+
 const docs = resolve(import.meta.dirname, '../docs');
 const output = join(docs, '.vitepress/dist');
 const markdownDestinations = (source: string): readonly string[] =>
@@ -194,40 +196,26 @@ await test('the first-playbook tutorial supplies inputs and observable checks fo
 await test('the local quick start gives runnable setup and points teams to self-hosting', () => {
   const guide = readFileSync(join(docs, 'get-started/local.md'), 'utf8');
   for (const command of [
-    'npx @on.auto/runtime --version',
-    'npx @on.auto/runtime\n',
-    'curl http://localhost:5555/health',
-    'claude mcp add --transport http auto-runtime http://localhost:5555/mcp',
-    'codex mcp add auto-runtime --url http://localhost:5555/mcp',
+    `claude mcp add -s user auto-runtime -- npx -y @on.auto/runtime@${manifest.version} mcp`,
+    `codex mcp add auto-runtime -- npx -y @on.auto/runtime@${manifest.version} mcp`,
+    `gemini mcp add -s user auto-runtime npx -y @on.auto/runtime@${manifest.version} mcp`,
+    `grok mcp add -s user auto-runtime npx -- -y @on.auto/runtime@${manifest.version} mcp`,
+    'npx @on.auto/runtime status',
+    '`npx @on.auto/runtime` starts Auto',
+    'claude mcp add --transport http auto-runtime https://auto.example.com/mcp',
   ])
     assert.ok(guide.includes(command), `Missing quick-start command: ${command}`);
-  assert.ok(guide.includes('ANTHROPIC_API_KEY'));
-  assert.ok(guide.includes('OPENAI_API_KEY'));
-  assert.ok(guide.includes('GOOGLE_GENERATIVE_AI_API_KEY'));
-  assert.ok(guide.includes("Your agent's subscription does not supply the server's model credentials"));
+  assert.ok(guide.includes('ANTHROPIC_API_KEY='));
+  assert.ok(guide.includes("Your agent's subscription does not cover it"));
+  assert.ok(guide.includes('Never paste the key into the conversation'));
   assert.ok(guide.includes('Claude Desktop'));
-  assert.ok(guide.includes('This setup is for macOS or Linux'));
-  assert.ok(guide.includes('## 4. Connect your agent {#connect-your-agent}'));
-  assert.ok(guide.includes('third-party'));
-  assert.ok(guide.includes("remote connector runs from Anthropic's servers"));
-  assert.ok(guide.includes('Do not expose it through a tunnel or public proxy'));
-  assert.ok(guide.includes('## Run it for your team'));
+  assert.ok(guide.includes('## 1. Add Auto to your agent {#connect-your-agent}'));
+  assert.ok(guide.includes('Do not expose Auto on your computer through a tunnel or public proxy'));
+  assert.ok(guide.includes('`http://localhost:5555`'));
   assert.doesNotMatch(guide, /Prefer a hosted brain\b/u);
-  assert.ok(guide.includes('To run Auto on a server for your team'));
   assert.ok(markdownDestinations(guide).includes('../self-host.md'));
   assert.ok(markdownDestinations(guide).includes('../tutorials/first-playbook.md'));
-  const configBlock = [...guide.matchAll(/```json\n([\s\S]*?)```/gu)].at(0)?.[1];
-  assert.notEqual(configBlock, '');
-  assert.ok(configBlock !== undefined);
-  const config: unknown = JSON.parse(configBlock);
-  assert.deepEqual(config, {
-    mcpServers: {
-      'auto-runtime': {
-        command: 'npx',
-        args: ['-y', 'mcp-remote@0.14.3', 'http://localhost:5555/mcp', '--allow-http', '--transport', 'http-only'],
-      },
-    },
-  });
+  assert.ok(markdownDestinations(guide).includes('../self-host/models.md'));
 });
 
 await test('model discovery is documented without treating wildcard entries as runnable models', () => {

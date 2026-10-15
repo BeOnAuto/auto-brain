@@ -18,7 +18,7 @@ export function resolvedLanguageModel(
 ): LanguageModel['Service'] {
   const showing = providersShowingMessages(settings);
   return LanguageModel.of(
-    generation(modelResolution(models, settings.aliases, status, settings.allowed), {
+    generation(modelResolution(models, settings, status), {
       configured: status.configured,
       showsProviderMessages: (provider) => showing.has(provider),
       scrub: secretScrubber(settings),

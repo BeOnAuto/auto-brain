@@ -44,7 +44,8 @@ export async function servedLocally(host: LocalServerHost): Promise<void> {
   host.write(
     readyNoticeOf(
       {
-        url: `http://localhost:${server.port}`,
+        version: release.version,
+        port: server.port,
         readyInMs: Math.round(host.clock() - startedAt),
         mode: server.mode,
         identityService: server.signIn?.issuer,

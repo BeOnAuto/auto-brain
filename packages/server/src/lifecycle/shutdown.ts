@@ -9,7 +9,13 @@ export interface ShutdownHooks {
   readonly closeApi: () => Promise<void>;
 }
 
+export const shutdownTimeoutMs = 8000;
+
+export const exitDeadlineMs = 1000;
+
 const graceMs = 100;
+
+export const longestStopMs = shutdownTimeoutMs + graceMs + exitDeadlineMs;
 
 export async function shutDown(server: Server, hooks: ShutdownHooks, timeoutMs: number): Promise<void> {
   const closed = once(server, 'close');

@@ -29,14 +29,17 @@ export function generatedText(text: string): GenerateResult {
 export function mockGeneration(model: () => MockLanguageModelV4, reportHint: ReportOperatorHint = () => Effect.void) {
   installSdkGlobals();
   const status = { configured: ['mock'], unconfigured: [] };
-  const { generate } = generation(modelResolution(new Map([['mock', model]]), new Map(), status, null), {
-    configured: ['mock'],
-    showsProviderMessages: () => true,
-    scrub: (text) => text,
-    report: () => Effect.void,
-    reportHint,
-    admitsOptions: () => Result.void,
-  });
+  const { generate } = generation(
+    modelResolution(new Map([['mock', model]]), { aliases: new Map(), allowed: null }, status),
+    {
+      configured: ['mock'],
+      showsProviderMessages: () => true,
+      scrub: (text) => text,
+      report: () => Effect.void,
+      reportHint,
+      admitsOptions: () => Result.void,
+    },
+  );
   return {
     generate,
     succeeded: (request: ModelRequest): Promise<ModelResult> => Effect.runPromise(generate(request)),
