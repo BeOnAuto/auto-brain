@@ -6,8 +6,6 @@ import { weekdaysAndWeekends, weeklyOrderRows } from '../build-testing/uploaded-
 import { uploadedDailyTotals, uploadedDailyVisits } from '../testing/daily-documents.ts';
 import { uploadedWeeklyOrders } from '../testing/weekly-orders.ts';
 
-const testTimeoutMs = 60_000;
-
 const signatureChanged = {
   status: 'rejected',
   reason: 'conflict',
@@ -26,7 +24,7 @@ function updated(playbook: BuildPlaybook, replaced: string, by: string): Promise
   return updatedTo(playbook, 'daily-visits', uploadedDailyVisits(visitsRows.sha256).replace(replaced, by));
 }
 
-describe('a question after its function was edited', { timeout: testTimeoutMs }, () => {
+describe('a question after its function was edited', () => {
   it('is answered by the active version after an edit that leaves the horizons, the given features and the total alone', async () => {
     const playbook = buildPlaybook();
     await savedFunction(playbook);
@@ -48,7 +46,7 @@ describe('a question after its function was edited', { timeout: testTimeoutMs },
   });
 });
 
-describe('a question after the features a question gives or the total were edited', { timeout: testTimeoutMs }, () => {
+describe('a question after the features a question gives or the total were edited', () => {
   it('is refused once the given features changed since its version was built', async () => {
     const playbook = buildPlaybook();
     const source = uploadedWeeklyOrders(weeklyOrderRows.sha256).replace(

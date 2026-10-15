@@ -7,7 +7,7 @@ import { startServer } from '../lifecycle/lifecycle.ts';
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
 import { brief, interactionServerOn } from '../testing/servers/interaction-server.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
-import { runIdIn, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { runIdIn } from '../testing/servers/workflow-server.ts';
 import { accessTokenOf, issuerOverHttps } from './issuer-over-https.ts';
 
 const publicUrl = 'http://localhost:5555';
@@ -18,7 +18,7 @@ function signingIn(issuer: string): Readonly<Record<string, string>> {
   return { IDENTITY_ISSUER: issuer, PUBLIC_URL: publicUrl };
 }
 
-describe('a signed-in person on the facts', { timeout: workflowTestTimeoutMs }, () => {
+describe('a signed-in person on the facts', () => {
   it('is named person:<subject> as who created the playbook and the definition, started the run and answered it', async () => {
     const issuer = await issuerOverHttps();
     const server = await interactionServerOn(signingIn(issuer.issuer));
@@ -52,7 +52,7 @@ describe('a signed-in person on the facts', { timeout: workflowTestTimeoutMs }, 
   });
 });
 
-describe('a server that signs persons in', { timeout: workflowTestTimeoutMs }, () => {
+describe('a server that signs persons in', () => {
   it('serves the protected resource metadata without a key, naming the identity service as its authorization server', async () => {
     const issuer = await issuerOverHttps();
     const server = await interactionServerOn(signingIn(issuer.issuer));
@@ -92,7 +92,7 @@ describe('a server that signs persons in', { timeout: workflowTestTimeoutMs }, (
   });
 });
 
-describe('the permissions of a signed-in person', { timeout: workflowTestTimeoutMs }, () => {
+describe('the permissions of a signed-in person', () => {
   it('are the permissions among the scopes their token was granted, a refusal naming what it needs', async () => {
     const issuer = await issuerOverHttps();
     const server = await interactionServerOn(signingIn(issuer.issuer));
@@ -130,7 +130,7 @@ function createdWith(server: string, session: string, presentedFrom: string | un
   });
 }
 
-describe('a page signed in to Auto, calling a server that signs persons in', { timeout: workflowTestTimeoutMs }, () => {
+describe('a page signed in to Auto, calling a server that signs persons in', () => {
   it.each([
     ['the studio', studioOrigin],
     ['an origin of ALLOWED_ORIGINS', allowedPage],
@@ -175,7 +175,7 @@ describe('a page signed in to Auto, calling a server that signs persons in', { t
   });
 });
 
-describe('a server in local mode', { timeout: workflowTestTimeoutMs }, () => {
+describe('a server in local mode', () => {
   it('takes a page that sends its session, and a key where no key is set, as the local developer', async () => {
     const issuer = await issuerOverHttps();
     const server = await interactionServerOn({});
@@ -192,7 +192,7 @@ describe('a server in local mode', { timeout: workflowTestTimeoutMs }, () => {
   });
 });
 
-describe('the documents of a server that signs persons in', { timeout: workflowTestTimeoutMs }, () => {
+describe('the documents of a server that signs persons in', () => {
   it('names PUBLIC_URL in its API catalog, not the address the request reached', async () => {
     const issuer = await issuerOverHttps();
     const server = await interactionServerOn(signingIn(issuer.issuer));

@@ -42,6 +42,7 @@ The preview opens under `/docs/`. Read [Documentation contributions](docs/contri
 - **The lint and TypeScript rules are strict and stay that way.** No `any`, no `as` assertions, no `@ts-ignore`, no disable directives.
 - **TypeScript must be erasable**, because Node strips the types at runtime. That means no `enum`, `namespace`, parameter properties or decorators. Relative imports include the `.ts` extension.
 - **Tests sit next to the code** as `*.test.ts` and test behaviour through the public interface, with injected fakes rather than mocks.
+- **A test waits for the event that shows the state it needs, never for the clock,** and the one-minute ceiling in `vitest.shared.ts` only guards against a hang.
 
 ## Commits and pull requests
 

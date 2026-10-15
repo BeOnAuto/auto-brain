@@ -4,13 +4,7 @@ import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import {
-  runIdIn,
-  servingWorkflows,
-  settledRun,
-  workflowSource,
-  workflowTestTimeoutMs,
-} from '../testing/servers/workflow-server.ts';
+import { runIdIn, servingWorkflows, settledRun, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const ListedRuns = Schema.Struct({
   runs: Schema.Array(
@@ -77,7 +71,7 @@ async function triggeredRunOf(name: string) {
   return { run, settled };
 }
 
-describe('a workflow whose trigger is an event', { timeout: workflowTestTimeoutMs }, () => {
+describe('a workflow whose trigger is an event', () => {
   it('is run by the playbook itself for an event published to the playbook, with the event as its input', async () => {
     await servingWith(['close-the-month', closing]);
 
@@ -103,7 +97,7 @@ describe('a workflow whose trigger is an event', { timeout: workflowTestTimeoutM
   });
 });
 
-describe('a run waiting for an event whose type its filter names', { timeout: workflowTestTimeoutMs }, () => {
+describe('a run waiting for an event whose type its filter names', () => {
   it('takes one published to its playbook', async () => {
     await servingWith(['approval', approving]);
     const started = await server.call('POST', `${alpha}/definitions/workflow/approval/run`, { body: { input: {} } });

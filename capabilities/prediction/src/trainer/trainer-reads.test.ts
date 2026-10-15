@@ -5,13 +5,11 @@ import { answered, askedBuild, asked, readOf, savedFunction } from '../build-tes
 import { readBuildBrief, readBuildRows } from './build-reads.ts';
 import { uploadCandidate } from './candidate-upload.ts';
 
-const testTimeoutMs = 30_000;
-
 const otherRun = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7f';
 
 const questionRun = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b70';
 
-describe('the reads of a build that waits for its trainer', { timeout: testTimeoutMs }, () => {
+describe('the reads of a build that waits for its trainer', () => {
   it('answer its brief as Markdown and its training rows as CSV, the held-back periods left out', async () => {
     const playbook = buildPlaybook();
     await savedFunction(playbook);
@@ -23,7 +21,7 @@ describe('the reads of a build that waits for its trainer', { timeout: testTimeo
   });
 });
 
-describe('the routes of a trainer on a run that is no build waiting for its answer', { timeout: testTimeoutMs }, () => {
+describe('the routes of a trainer on a run that is no build waiting for its answer', () => {
   it('answer a run there is not as not found, and refuse a question as no build', async () => {
     const playbook = buildPlaybook();
     await savedFunction(playbook);

@@ -101,7 +101,7 @@ const endings: readonly (readonly [string, string, Partial<ProgramRequest>, Read
   ],
 ];
 
-describe('a program run in a worker of the pool', { timeout: poolTestTimeoutMs }, () => {
+describe('a program run in a worker of the pool', () => {
   it('answers its output as JSON with its size and the work it did, and how long the run took', async () => {
     const outcome = await poolOf().run(
       request(program('return input.rows.map((row) => row * 2);'), { rows: [1, 2, 3] }),
@@ -124,7 +124,7 @@ describe('a program run in a worker of the pool', { timeout: poolTestTimeoutMs }
   });
 });
 
-describe('a program that would depend on the stack of its worker', { timeout: poolTestTimeoutMs }, () => {
+describe('a program that would depend on the stack of its worker', () => {
   it('overflows its stack of a fixed size at the same depth every time, which it may catch', async () => {
     const pool = poolOf();
     const deepest = program(
@@ -144,7 +144,7 @@ describe('a program that would depend on the stack of its worker', { timeout: po
   });
 });
 
-describe('what a worker of the pool refuses', { timeout: poolTestTimeoutMs }, () => {
+describe('what a worker of the pool refuses', () => {
   it('cuts the text of an error the program raised at 1,024 bytes, so a long one never crosses whole', async () => {
     expect(await poolOf().run(request(program('throw new Error("x".repeat(30000000));')))).toMatchObject({
       ran: 'raised',
@@ -168,7 +168,7 @@ describe('what a worker of the pool refuses', { timeout: poolTestTimeoutMs }, ()
   });
 });
 
-describe('the deadline and the memory of a worker', { timeout: poolTestTimeoutMs }, () => {
+describe('the deadline and the memory of a worker', () => {
   it('terminate a worker at the deadline', async () => {
     const ended = await poolOf({ worker: blocking }).run(request('.', null, { deadlineMs: 500 }));
 
@@ -186,7 +186,7 @@ describe('the deadline and the memory of a worker', { timeout: poolTestTimeoutMs
   });
 });
 
-describe('the workers of a pool', { timeout: poolTestTimeoutMs }, () => {
+describe('the workers of a pool', () => {
   it('go on answering on the others while one is blocked, however long it takes', async () => {
     const pool = poolOf();
     const cancelling = new AbortController();
@@ -215,7 +215,7 @@ describe('the workers of a pool', { timeout: poolTestTimeoutMs }, () => {
   });
 });
 
-describe('the worker a request names', { timeout: poolTestTimeoutMs }, () => {
+describe('the worker a request names', () => {
   it("answers that request, with the context the request gives, while other requests keep the pool's worker", async () => {
     const echoing = answeringWith("{ context: request.context, worker: 'named' }");
     const pool = poolOf();
@@ -230,7 +230,7 @@ describe('the worker a request names', { timeout: poolTestTimeoutMs }, () => {
   });
 });
 
-describe('a worker that breaks', { timeout: poolTestTimeoutMs }, () => {
+describe('a worker that breaks', () => {
   it.each([
     ['throws', 'throw new Error("broken on purpose")', 'The worker failed: broken on purpose'],
     ['ends', 'process.exit(3)', 'The worker ended with code 3 before it answered'],
@@ -254,7 +254,7 @@ describe('a worker that breaks', { timeout: poolTestTimeoutMs }, () => {
   });
 });
 
-describe('a run of the pool that is cancelled', { timeout: poolTestTimeoutMs }, () => {
+describe('a run of the pool that is cancelled', () => {
   it('stops its worker', async () => {
     const cancelling = new AbortController();
     const run = poolOf({ worker: blocking }).run(request('.'), cancelling.signal);
@@ -289,7 +289,7 @@ describe('a run of the pool that is cancelled', { timeout: poolTestTimeoutMs }, 
   });
 });
 
-describe('a closed pool', { timeout: poolTestTimeoutMs }, () => {
+describe('a closed pool', () => {
   it('takes no more runs', async () => {
     const pool = poolOf();
     await pool.close();

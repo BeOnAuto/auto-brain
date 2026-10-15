@@ -98,7 +98,7 @@ function foldOf(
   });
 }
 
-describe('a worker of the pool kept between jobs', { timeout: poolTestTimeoutMs }, () => {
+describe('a worker of the pool kept between jobs', () => {
   it('takes job after job in one thread, which counts them 1, 2 and 3', async () => {
     const pool = poolOf();
 
@@ -137,7 +137,7 @@ describe('a worker of the pool kept between jobs', { timeout: poolTestTimeoutMs 
   });
 });
 
-describe('a worker of the pool after a job the pool had to stop', { timeout: poolTestTimeoutMs }, () => {
+describe('a worker of the pool after a job the pool had to stop', () => {
   it.each<readonly [string, string, Partial<PoolSettings>, Readonly<Record<string, unknown>>]>([
     ['its deadline stopped', 'block', {}, { ran: 'stopped', because: 'deadline' }],
     ['ran out of memory', 'allocate', { heapMegabytes: 16 }, { ran: 'stopped', because: 'memory' }],
@@ -173,7 +173,7 @@ describe('a worker of the pool after a job the pool had to stop', { timeout: poo
   });
 });
 
-describe('a job of the pool cancelled before it has a worker', { timeout: poolTestTimeoutMs }, () => {
+describe('a job of the pool cancelled before it has a worker', () => {
   it('ends as cancelled a job cancelled while it waits for its seat, starting no worker for it, rather than running it to its deadline', async () => {
     const before = threadsAlive();
     const pool = poolOf({ workers: 1 });
@@ -211,7 +211,7 @@ describe('a job of the pool cancelled before it has a worker', { timeout: poolTe
   });
 });
 
-describe('a worker of the pool after a job whose answer says not to keep it', { timeout: poolTestTimeoutMs }, () => {
+describe('a worker of the pool after a job whose answer says not to keep it', () => {
   it('is let go of after a program its evaluator ended at the deadline', async () => {
     const pool = poolOf();
 
@@ -225,60 +225,56 @@ describe('a worker of the pool after a job whose answer says not to keep it', { 
   });
 });
 
-describe(
-  'a fold worker of the pool after a page whose answer says not to keep it',
-  { timeout: poolTestTimeoutMs },
-  () => {
-    it.each<readonly [string, Partial<FoldRequest>, Readonly<Record<string, unknown>>]>([
-      [
-        'a view ran past its deadline',
-        { foldDeadlineMs: 1, budget: Number.MAX_SAFE_INTEGER },
-        { ran: 'folded', views: [{ overtime: 0 }] },
-      ],
-      ['it could not read', { mostViewBytes: 0 }, { ran: 'unreadable' }],
-    ])('is let go of after a page %s', async (_why, more, ended) => {
-      const pool = poolOf();
-      const slow = { fold: 'export function fold(view) {\n  for (;;) {}\n}' };
+describe('a fold worker of the pool after a page whose answer says not to keep it', () => {
+  it.each<readonly [string, Partial<FoldRequest>, Readonly<Record<string, unknown>>]>([
+    [
+      'a view ran past its deadline',
+      { foldDeadlineMs: 1, budget: Number.MAX_SAFE_INTEGER },
+      { ran: 'folded', views: [{ overtime: 0 }] },
+    ],
+    ['it could not read', { mostViewBytes: 0 }, { ran: 'unreadable' }],
+  ])('is let go of after a page %s', async (_why, more, ended) => {
+    const pool = poolOf();
+    const slow = { fold: 'export function fold(view) {\n  for (;;) {}\n}' };
 
-      const ran = [
-        await counted(pool, countingOnTheLoop),
-        await foldOf(pool, [slow], more),
-        await counted(pool, countingOnTheLoop),
-      ];
+    const ran = [
+      await counted(pool, countingOnTheLoop),
+      await foldOf(pool, [slow], more),
+      await counted(pool, countingOnTheLoop),
+    ];
 
-      expect(ran).toMatchObject([{ jobs: 1 }, ended, { jobs: 1 }]);
+    expect(ran).toMatchObject([{ jobs: 1 }, ended, { jobs: 1 }]);
+  });
+
+  it('keeps its worker after a page that stalled, which then folds the next page as a fresh worker does', async () => {
+    const warm = poolOf({ workers: 1 });
+    const views = [
+      {},
+      {
+        fold: 'export function fold(view, event) {\n  return [view, event.data.n];\n}',
+        view: [],
+      },
+    ];
+
+    const stalled = await foldOf(warm, [
+      {
+        fold: 'export function fold(view, event) {\n  throw new Error(`stop ${event.data.n}`);\n}',
+      },
+    ]);
+    const afterTheStall = await foldOf(warm, views);
+    const ran = await counted(warm, countingOnTheLoop);
+    const cold = await foldOf(poolOf({ workers: 1 }), views);
+
+    expect(stalled).toMatchObject({
+      ran: 'folded',
+      views: [{ stall: { kind: 'raised', message: 'Error: stop 1' } }],
     });
+    expect({ ...afterTheStall, milliseconds: 0 }).toEqual({ ...cold, milliseconds: 0 });
+    expect(ran.jobs).toBe(3);
+  });
+});
 
-    it('keeps its worker after a page that stalled, which then folds the next page as a fresh worker does', async () => {
-      const warm = poolOf({ workers: 1 });
-      const views = [
-        {},
-        {
-          fold: 'export function fold(view, event) {\n  return [view, event.data.n];\n}',
-          view: [],
-        },
-      ];
-
-      const stalled = await foldOf(warm, [
-        {
-          fold: 'export function fold(view, event) {\n  throw new Error(`stop ${event.data.n}`);\n}',
-        },
-      ]);
-      const afterTheStall = await foldOf(warm, views);
-      const ran = await counted(warm, countingOnTheLoop);
-      const cold = await foldOf(poolOf({ workers: 1 }), views);
-
-      expect(stalled).toMatchObject({
-        ran: 'folded',
-        views: [{ stall: { kind: 'raised', message: 'Error: stop 1' } }],
-      });
-      expect({ ...afterTheStall, milliseconds: 0 }).toEqual({ ...cold, milliseconds: 0 });
-      expect(ran.jobs).toBe(3);
-    });
-  },
-);
-
-describe('a worker of the pool that, idle, sends a message, fails or ends', { timeout: poolTestTimeoutMs }, () => {
+describe('a worker of the pool that, idle, sends a message, fails or ends', () => {
   it.each(['then message', 'then throw', 'then exit'])(
     'is forgotten, ending no job, and the next job starts afresh (%s)',
     async (misbehaviour) => {

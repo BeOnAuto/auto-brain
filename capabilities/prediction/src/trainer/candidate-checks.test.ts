@@ -11,8 +11,6 @@ import { candidateBytes, candidateSha256, type CandidateName } from '../build-te
 import { scriptedModels } from '../build-testing/scripted-models.ts';
 import { uploadCandidate } from './candidate-upload.ts';
 
-const testTimeoutMs = 60_000;
-
 const endedWhileLoading: unknown = expect.stringMatching(/^The model process ended while it loaded the file: /u);
 
 const question = { y: Float32Array.of(1), x: null, given: null, h: null, features: 0, givens: 0 };
@@ -26,7 +24,7 @@ async function waitingBuild(playbook: BuildPlaybook): Promise<string> {
   return askedBuild(playbook);
 }
 
-describe('a candidate whose check ends without an answer', { timeout: testTimeoutMs }, () => {
+describe('a candidate whose check ends without an answer', () => {
   it('is refused as one that does not load past the deadline of a check, out of memory, or when its process ends or answers badly', async () => {
     const scripted = scriptedModels();
     const hurried = buildPlaybook({ module: scripted.module, deadlines: { check: 1500, run: 10_000, walk: 60_000 } });
@@ -64,7 +62,7 @@ describe('a candidate whose check ends without an answer', { timeout: testTimeou
   });
 });
 
-describe('a candidate uploaded while every model process is taken', { timeout: testTimeoutMs }, () => {
+describe('a candidate uploaded while every model process is taken', () => {
   it('is told every model process is busy, and nothing is recorded of it', async () => {
     const scripted = scriptedModels();
     const playbook = buildPlaybook({

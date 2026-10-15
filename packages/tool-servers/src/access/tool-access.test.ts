@@ -1,3 +1,4 @@
+import { keptTextOf } from '@on.auto/operations/testing';
 import { Effect, Option, Result } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -10,7 +11,6 @@ import {
   recordingCallJournal,
   reportingAccess,
   serveFakeMcp,
-  stdioTestTimeoutMs,
   toolRun,
   toolRunId,
   type FakeMcpOptions,
@@ -19,11 +19,13 @@ import {
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
+const clientSecret = 'graph-client-secret-81c2';
+
 const closing: (() => Promise<void>)[] = [];
 
 afterEach(async () => {
   await Promise.all(closing.splice(0).map((close) => close()));
-}, stdioTestTimeoutMs);
+});
 
 async function fakeServer(options?: FakeMcpOptions): Promise<FakeMcpServer> {
   const fake = await serveFakeMcp(options);
@@ -33,7 +35,11 @@ async function fakeServer(options?: FakeMcpOptions): Promise<FakeMcpServer> {
 
 function accessTo(servers: Readonly<Record<string, unknown>>) {
   const reporting = reportingAccess(servers, {
-    environment: { GRAPH_API_KEY: apiKey, NODE_V8_COVERAGE: process.env['NODE_V8_COVERAGE'] },
+    environment: {
+      GRAPH_API_KEY: apiKey,
+      GRAPH_CLIENT_SECRET: clientSecret,
+      NODE_V8_COVERAGE: process.env['NODE_V8_COVERAGE'],
+    },
     timing: patientTiming,
   });
   closing.push(reporting.access.close);
@@ -219,7 +225,31 @@ describe('the sessions of runs', () => {
   });
 });
 
-describe('a stdio server and the MCP client', { timeout: stdioTestTimeoutMs }, () => {
+describe('the secrets of an access', () => {
+  it('scrub a token a link minted from the recorded start of a call made by hand', async () => {
+    const fake = await fakeServer({ client: { clientId: 'playbook', clientSecret, expiresInSeconds: 3600 } });
+    const auth = { issuer: fake.origin, client_id: 'playbook', client_secret: '${GRAPH_CLIENT_SECRET}' };
+    const { access, content } = accessTo({ graph: { url: fake.url, org: 'acme', auth } });
+    await offeredBy(access, 'graph/echo');
+    const [, minted] = String(fake.seen().at(-1)?.authorization).split(' ');
+
+    const started = await Effect.runPromise(
+      access.startOf({
+        org: 'acme',
+        playbook: 'alpha',
+        reference: { server: 'graph', tool: 'echo' },
+        input: { minted },
+      }),
+    );
+
+    expect(minted).toMatch(/^token-1-/u);
+    await expect(
+      keptTextOf(content, { org: 'acme', playbook: 'alpha' }, String(started.arguments_sha256)),
+    ).resolves.toBe(JSON.stringify({ minted: '[redacted]' }));
+  });
+});
+
+describe('a stdio server and the MCP client', () => {
   it('starts a stdio server once for every run, and stops it when the access closes', async () => {
     const { access, messages } = accessTo({ limitless });
 

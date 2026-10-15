@@ -3,13 +3,7 @@ import { Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { campaignPace, campaignRows } from '../testing/campaign-pace.ts';
-import {
-  computationWith,
-  functionOf,
-  poolOf,
-  programDocument,
-  workerTestTimeoutMs,
-} from '../testing/computation-runs.ts';
+import { computationWith, functionOf, poolOf, programDocument } from '../testing/computation-runs.ts';
 
 function recording(pool: ProgramPool): { readonly pool: ProgramPool; readonly requests: ProgramRequest[] } {
   const requests: ProgramRequest[] = [];
@@ -32,7 +26,7 @@ function recording(pool: ProgramPool): { readonly pool: ProgramPool; readonly re
 
 const outputSchema = 'language: typescript\noutput:\n  schema: {type: array, items: {type: string}}';
 
-describe('the check of an output against the output schema', { timeout: workerTestTimeoutMs }, () => {
+describe('the check of an output against the output schema', () => {
   it('runs in the checked worker that runs the program, under its deadline, never on the thread that asked, the one module every run names', async () => {
     const { pool, requests } = recording(poolOf());
     const run = computationWith(pool);

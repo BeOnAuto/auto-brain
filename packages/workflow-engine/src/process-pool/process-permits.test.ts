@@ -18,8 +18,6 @@ interface Ran {
   readonly pid: number;
 }
 
-const poolTestTimeoutMs = 30_000;
-
 const timerSlackMs = 2;
 
 const fake = fakeProcesses();
@@ -71,7 +69,7 @@ function executed(script: string): Promise<string> {
   return promise;
 }
 
-describe('the processes of a pool and its permits', { timeout: poolTestTimeoutMs }, () => {
+describe('the processes of a pool and its permits', () => {
   it('runs at most as many jobs at once as it has permits, and a job that finds none within its deadline is busy', async () => {
     const pool = poolOf();
     const holding = [run(pool, 'sleep', { key: 'a' }), run(pool, 'sleep', { key: 'b' })];
@@ -114,7 +112,7 @@ describe('the processes of a pool and its permits', { timeout: poolTestTimeoutMs
   });
 });
 
-describe('the deadline of a job of a process', { timeout: poolTestTimeoutMs }, () => {
+describe('the deadline of a job of a process', () => {
   it('starts once the job holds its process, so a job that waited for a permit still has the whole of it to run', async () => {
     const pool = poolOf();
     await echoed(pool, 'a');
@@ -165,7 +163,7 @@ describe('the deadline of a job of a process', { timeout: poolTestTimeoutMs }, (
   });
 });
 
-describe('a pool of processes that closes', { timeout: poolTestTimeoutMs }, () => {
+describe('a pool of processes that closes', () => {
   it('ends its idle processes and its busy ones, a busy job as closing, and runs no job after', async () => {
     const pool = poolOf();
     const idle = await echoed(pool, 'a');

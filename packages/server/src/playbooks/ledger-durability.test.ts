@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { compositionRoot } from '../composition/composition-root.ts';
 import { startServer } from '../lifecycle/lifecycle.ts';
-import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
+import { spawnServer } from '../testing/processes/spawned-server.ts';
 import { appendMalformedPlaybookEvent } from '../testing/records/malformed-playbook-event.ts';
 import { temporaryLedger, type TemporaryLedger } from '../testing/records/temporary-ledger.ts';
 import { request } from '../testing/servers/http-client.ts';
@@ -53,30 +53,26 @@ describe('playbooks in the ledger file', () => {
     expect(read).toMatchObject({ status: 200, body: { id: 'alpha', name: 'Alpha', status: 'active' } });
   });
 
-  it(
-    'are kept by a process that exits 0 on SIGTERM, and read by the next process',
-    { timeout: spawnedServerTestTimeoutMs },
-    async () => {
-      const first = spawnServer(mainModule, onLoopback(ledger.fileName));
-      const created = await request(await first.port, 'POST', '/v1/orgs/acme/playbooks', {
-        body: { playbook: 'alpha', name: 'Alpha' },
-      });
-      first.signal('SIGTERM');
-      const firstExit = await first.exited;
+  it('are kept by a process that exits 0 on SIGTERM, and read by the next process', async () => {
+    const first = spawnServer(mainModule, onLoopback(ledger.fileName));
+    const created = await request(await first.port, 'POST', '/v1/orgs/acme/playbooks', {
+      body: { playbook: 'alpha', name: 'Alpha' },
+    });
+    first.signal('SIGTERM');
+    const firstExit = await first.exited;
 
-      const second = spawnServer(mainModule, onLoopback(ledger.fileName));
-      const read = await request(await second.port, 'GET', alpha);
-      second.signal('SIGTERM');
+    const second = spawnServer(mainModule, onLoopback(ledger.fileName));
+    const read = await request(await second.port, 'GET', alpha);
+    second.signal('SIGTERM');
 
-      expect({ created: created.status, firstExit, read: read.status, secondExit: await second.exited }).toEqual({
-        created: 201,
-        firstExit: 0,
-        read: 200,
-        secondExit: 0,
-      });
-      expect(read.body).toEqual(created.body);
-    },
-  );
+    expect({ created: created.status, firstExit, read: read.status, secondExit: await second.exited }).toEqual({
+      created: 201,
+      firstExit: 0,
+      read: 200,
+      secondExit: 0,
+    });
+    expect(read.body).toEqual(created.body);
+  });
 });
 
 describe('a ledger that cannot be opened', () => {
@@ -86,25 +82,21 @@ describe('a ledger that cannot be opened', () => {
     });
   });
 
-  it(
-    'stops the process with the error on stderr, a non-zero exit and nothing on stdout',
-    { timeout: spawnedServerTestTimeoutMs },
-    async () => {
-      const child = spawnServer(mainModule, onLoopback(aPathUnderAFile()));
+  it('stops the process with the error on stderr, a non-zero exit and nothing on stdout', async () => {
+    const child = spawnServer(mainModule, onLoopback(aPathUnderAFile()));
 
-      expect(await child.exited).toBe(1);
-      expect(child.output().stdout).toBe('');
-      expect(child.output().stderr.split('\n')).toEqual([
-        expect.stringContaining(
-          "Auto Runtime could not start: StartupError: The server's services could not start: Error: EEXIST: file already exists, mkdir",
-        ),
-        '',
-      ]);
-    },
-  );
+    expect(await child.exited).toBe(1);
+    expect(child.output().stdout).toBe('');
+    expect(child.output().stderr.split('\n')).toEqual([
+      expect.stringContaining(
+        "Auto Runtime could not start: StartupError: The server's services could not start: Error: EEXIST: file already exists, mkdir",
+      ),
+      '',
+    ]);
+  });
 });
 
-describe('an error in the ledger', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('an error in the ledger', () => {
   it('answers 500 identified by the urn:uuid of an incident, logged with the operation, the org and the caller but not the input', async () => {
     const child = spawnServer(mainModule, onLoopback(ledger.fileName));
     const port = await child.port;

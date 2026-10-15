@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { Cause, Effect, Layer, Logger, References } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
-import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
+import { spawnServer } from '../testing/processes/spawned-server.ts';
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
 import { formatConsole, formatPretty, logsFrom, logsToStderr } from './log-formats.ts';
 import { logAccessMode, logIncident, logUnsettled, logWorkflows } from './logging.ts';
@@ -74,7 +74,7 @@ describe('the pretty log format', () => {
   });
 });
 
-describe('the server with LOG_FORMAT=pretty', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('the server with LOG_FORMAT=pretty', () => {
   it('writes its logs as readable lines to stderr, and still exactly the listening line to stdout', async () => {
     const { cacheDirectory, remove } = temporaryLedger();
     onTestFinished(remove);
@@ -175,7 +175,7 @@ describe('the least level logged', () => {
   });
 });
 
-describe('the server with LOG_FORMAT=console and LOG_LEVEL=warn', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('the server with LOG_FORMAT=console and LOG_LEVEL=warn', () => {
   it('writes only its warnings, as console lines, to stderr', async () => {
     const child = spawnServer(mainModule, {
       ...loopback,

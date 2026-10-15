@@ -23,5 +23,5 @@ describe('the due rows of a projection, across hosts of one database', () => {
       ['after', 'second'],
     ]);
     expect(rows.attempts()).toHaveLength(2);
-  }, 60_000);
+  });
 });

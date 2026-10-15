@@ -82,62 +82,54 @@ function holdingTheInsert(database: HostDatabase, { held, insertInto, meanwhile 
 }
 
 describe.skipIf(server === '')('a listener kept while the gate passes its run early, on PostgreSQL', () => {
-  it(
-    'is marked passed though its insert was still open when the gate marked the run passed',
-    { timeout: 30_000 },
-    async () => {
-      const connectionString = await aDatabase();
-      const database = await openedOn(onPostgreSQLAt(connectionString));
-      const held = await connected(connectionString);
-      await Effect.runPromise(
-        database.write(
-          statement`INSERT INTO workflow_runs (run_key, stream_id, dispatched_through) VALUES (${runKey}, ${stream}, ${0})`,
-        ),
-      );
-      const passing = () => Effect.runPromise(runGateOf(database, playbookKey).verdictOn(record, true));
+  it('is marked passed though its insert was still open when the gate marked the run passed', async () => {
+    const connectionString = await aDatabase();
+    const database = await openedOn(onPostgreSQLAt(connectionString));
+    const held = await connected(connectionString);
+    await Effect.runPromise(
+      database.write(
+        statement`INSERT INTO workflow_runs (run_key, stream_id, dispatched_through) VALUES (${runKey}, ${stream}, ${0})`,
+      ),
+    );
+    const passing = () => Effect.runPromise(runGateOf(database, playbookKey).verdictOn(record, true));
 
-      await Effect.runPromise(
-        insertedListener(holdingTheInsert(database, { held, insertInto: 'workflow_listeners', meanwhile: passing }), {
-          runKey,
-          listener: 'held',
-          playbookKey,
-          streamId: stream,
-          armedBy: 2,
-          filters: '[]',
-          workflow: 'wait',
-          version: 1,
-          passed: false,
-        }),
-      );
-      const listeners = await Effect.runPromise(
-        rowsOf(PassedRow, database.read(statement`SELECT listener, passed FROM workflow_listeners`)),
-      );
+    await Effect.runPromise(
+      insertedListener(holdingTheInsert(database, { held, insertInto: 'workflow_listeners', meanwhile: passing }), {
+        runKey,
+        listener: 'held',
+        playbookKey,
+        streamId: stream,
+        armedBy: 2,
+        filters: '[]',
+        workflow: 'wait',
+        version: 1,
+        passed: false,
+      }),
+    );
+    const listeners = await Effect.runPromise(
+      rowsOf(PassedRow, database.read(statement`SELECT listener, passed FROM workflow_listeners`)),
+    );
 
-      expect(listeners).toEqual([{ listener: 'held', passed: 1 }]);
-    },
-  );
+    expect(listeners).toEqual([{ listener: 'held', passed: 1 }]);
+  });
 });
 
 describe.skipIf(server === '')('the note of a run passed early while its dispatch catches up, on PostgreSQL', () => {
-  it(
-    'is taken back when the dispatch reached the record while the note was still being written',
-    { timeout: 30_000 },
-    async () => {
-      const connectionString = await aDatabase();
-      const database = await openedOn(onPostgreSQLAt(connectionString));
-      const held = await connected(connectionString);
-      await Effect.runPromise(
-        database.write(
-          statement`INSERT INTO workflow_runs (run_key, stream_id, dispatched_through) VALUES (${runKey}, ${stream}, ${0})`,
-        ),
-      );
-      const catchingUp = () => Effect.runPromise(sqlWatermark(database).advance(runKey, 2));
-      const holding = holdingTheInsert(database, { held, insertInto: 'workflow_passed_runs', meanwhile: catchingUp });
+  it('is taken back when the dispatch reached the record while the note was still being written', async () => {
+    const connectionString = await aDatabase();
+    const database = await openedOn(onPostgreSQLAt(connectionString));
+    const held = await connected(connectionString);
+    await Effect.runPromise(
+      database.write(
+        statement`INSERT INTO workflow_runs (run_key, stream_id, dispatched_through) VALUES (${runKey}, ${stream}, ${0})`,
+      ),
+    );
+    const catchingUp = () => Effect.runPromise(sqlWatermark(database).advance(runKey, 2));
+    const holding = holdingTheInsert(database, { held, insertInto: 'workflow_passed_runs', meanwhile: catchingUp });
 
-      const verdict = await Effect.runPromise(runGateOf(holding, playbookKey).verdictOn(record, true));
-      const left = await Effect.runPromise(database.read(statement`SELECT run_key FROM workflow_passed_runs`));
+    const verdict = await Effect.runPromise(runGateOf(holding, playbookKey).verdictOn(record, true));
+    const left = await Effect.runPromise(database.read(statement`SELECT run_key FROM workflow_passed_runs`));
 
-      expect([verdict, left]).toEqual(['overdue', []]);
-    },
-  );
+    expect([verdict, left]).toEqual(['overdue', []]);
+  });
 });

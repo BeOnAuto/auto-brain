@@ -3,11 +3,11 @@ import { describe, expect, it } from 'vitest';
 
 import { asking, brief, servingInteractions } from '../testing/servers/interaction-server.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
-import { runIdIn, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { runIdIn } from '../testing/servers/workflow-server.ts';
 
 const answerIdOf = Schema.decodeUnknownSync(Schema.Struct({ answer_id: Schema.String }));
 
-describe('an interaction function through the inbox, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+describe('an interaction function through the inbox, over HTTP', () => {
   it('leaves its request in the inbox and takes a checked answer as the output, once, which its history shows', async () => {
     const server = await servingInteractions();
     const started = await server.call('POST', `${alpha}/definitions/interaction/approve-brief/run`, {
@@ -57,36 +57,32 @@ describe('an interaction function through the inbox, over HTTP', { timeout: work
   });
 });
 
-describe(
-  'an interaction function through the inbox that ends without an answer, over HTTP',
-  { timeout: workflowTestTimeoutMs },
-  () => {
-    it('ends a cancelled request as cancelled, which a late answer then finds ended', async () => {
-      const server = await servingInteractions();
-      const runId = await server.ask('approve-brief');
+describe('an interaction function through the inbox that ends without an answer, over HTTP', () => {
+  it('ends a cancelled request as cancelled, which a late answer then finds ended', async () => {
+    const server = await servingInteractions();
+    const runId = await server.ask('approve-brief');
 
-      await server.call('POST', `${alpha}/runs/${runId}/cancel`, { body: { reason: 'The brief was withdrawn' } });
-      const settled = await server.settled(runId);
-      const late = await server.answer(runId, { answer: { choice: 'approve' } });
+    await server.call('POST', `${alpha}/runs/${runId}/cancel`, { body: { reason: 'The brief was withdrawn' } });
+    const settled = await server.settled(runId);
+    const late = await server.answer(runId, { answer: { choice: 'approve' } });
 
-      expect(settled).toMatchObject({
-        status: 'rejected',
-        rejection: { reason: 'cancelled', detail: 'The brief was withdrawn' },
-      });
-      expect([late.status, await server.openRequests(0)]).toEqual([409, []]);
+    expect(settled).toMatchObject({
+      status: 'rejected',
+      rejection: { reason: 'cancelled', detail: 'The brief was withdrawn' },
     });
+    expect([late.status, await server.openRequests(0)]).toEqual([409, []]);
+  });
 
-    it('succeeds a notification at once, with nothing left in the inbox', async () => {
-      const server = await servingInteractions();
-      const runId = await server.ask('brief-out');
+  it('succeeds a notification at once, with nothing left in the inbox', async () => {
+    const server = await servingInteractions();
+    const runId = await server.ask('brief-out');
 
-      expect(await server.settled(runId)).toMatchObject({ status: 'succeeded', output: {} });
-      expect((await server.call('GET', `${alpha}/interactions`)).body).toMatchObject({ interactions: [] });
-    });
-  },
-);
+    expect(await server.settled(runId)).toMatchObject({ status: 'succeeded', output: {} });
+    expect((await server.call('GET', `${alpha}/interactions`)).body).toMatchObject({ interactions: [] });
+  });
+});
 
-describe('an Authorization header that holds no Bearer key, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+describe('an Authorization header that holds no Bearer key, over HTTP', () => {
   it('is refused as malformed, in the one sentence that names Bearer, before any playbook is read', async () => {
     const server = await servingInteractions();
     const answered = await server.call('POST', `${alpha}/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/answer`, {
@@ -104,7 +100,7 @@ describe('an Authorization header that holds no Bearer key, over HTTP', { timeou
   });
 });
 
-describe('a workflow that asks through the inbox', { timeout: workflowTestTimeoutMs }, () => {
+describe('a workflow that asks through the inbox', () => {
   it('waits for the answer and takes it as the output of its step', async () => {
     const server = await servingInteractions();
     const workflowId = await server.workflow('approval', `do:\n${asking('approve-brief', 'approve')}`);

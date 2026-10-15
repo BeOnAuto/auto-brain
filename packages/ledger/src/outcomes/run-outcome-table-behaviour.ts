@@ -88,29 +88,25 @@ function aStoreWithoutTheProjection(entry: LedgerEntry): void {
 
 function aNewTableVersion(entry: LedgerEntry): void {
   describe('a table of the outcomes of runs that is not there yet', () => {
-    it(
-      'is filled when the ledger opens, from every run stream, as the projection keeps it, and earlier versions dropped',
-      { timeout: 60_000 },
-      async () => {
-        const database = await entry.aDatabase();
-        const writing = await aLedger(entry, database);
-        await fourRuns(writing);
-        await noting(writing, 'playbook/acme/alpha/runs/r6', ended('failed', 1), { type: 'run_noted', data: {} });
-        await noting(writing, 'playbook/acme/alpha/runs/r7/nested', began('triage'));
-        await noting(writing, 'playbook/acme/alpha/runs/r8', { type: 'run_noted', data: {} });
-        await manyRuns(entry, database, 1000);
-        await entry.queried(database, 'CREATE TABLE run_outcomes_3 (playbook_key text, row_key text)');
+    it('is filled when the ledger opens, from every run stream, as the projection keeps it, and earlier versions dropped', async () => {
+      const database = await entry.aDatabase();
+      const writing = await aLedger(entry, database);
+      await fourRuns(writing);
+      await noting(writing, 'playbook/acme/alpha/runs/r6', ended('failed', 1), { type: 'run_noted', data: {} });
+      await noting(writing, 'playbook/acme/alpha/runs/r7/nested', began('triage'));
+      await noting(writing, 'playbook/acme/alpha/runs/r8', { type: 'run_noted', data: {} });
+      await manyRuns(entry, database, 1000);
+      await entry.queried(database, 'CREATE TABLE run_outcomes_3 (playbook_key text, row_key text)');
 
-        const filled = await aLedger(entry, database, runTallies);
+      const filled = await aLedger(entry, database, runTallies);
 
-        expect((await reading(filled, { from: '2026-10-01', to: '2026-10-02' }, { name: 'triage' })).length).toBe(2);
-        expect(await reading(filled, { from: '2026-10-01', to: '2026-10-02' }, { name: 'many' })).toMatchObject([
-          { runs: 1000 },
-        ]);
-        expect((await reading(filled)).filter(({ name }) => name !== 'many')).toEqual(fourRunsKept);
-        expect(await tablesIn(entry, database)).toEqual([{ name: 'run_outcomes_4' }]);
-      },
-    );
+      expect((await reading(filled, { from: '2026-10-01', to: '2026-10-02' }, { name: 'triage' })).length).toBe(2);
+      expect(await reading(filled, { from: '2026-10-01', to: '2026-10-02' }, { name: 'many' })).toMatchObject([
+        { runs: 1000 },
+      ]);
+      expect((await reading(filled)).filter(({ name }) => name !== 'many')).toEqual(fourRunsKept);
+      expect(await tablesIn(entry, database)).toEqual([{ name: 'run_outcomes_4' }]);
+    });
   });
 }
 
@@ -157,7 +153,7 @@ function largeEnd(ms: number, note: string): RunFact {
 
 function aFillOfLargeRecords(entry: LedgerEntry): void {
   describe('a fill of run streams whose records are large', () => {
-    it('reads them at most 16 MiB at a time, and keeps every run', { timeout: 60_000 }, async () => {
+    it('reads them at most 16 MiB at a time, and keeps every run', async () => {
       const database = await entry.aDatabase();
       const writing = await aLedger(entry, database);
       const notes = [1, 1, 1, 6, 6, 6].map((mebibytes) => 'x'.repeat(mebibytes * mebibyte));
@@ -181,7 +177,7 @@ function aFillOfLargeRecords(entry: LedgerEntry): void {
 
 function aFillOfAnOversizedRun(entry: LedgerEntry): void {
   describe('a fill that meets a run stream holding more than 16 MiB of records', () => {
-    it('reads that stream alone, and keeps it and every run after it', { timeout: 60_000 }, async () => {
+    it('reads that stream alone, and keeps it and every run after it', async () => {
       const database = await entry.aDatabase();
       const writing = await aLedger(entry, database);
       const note = 'x'.repeat(6 * mebibyte);

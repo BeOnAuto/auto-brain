@@ -20,7 +20,7 @@ function saved(type: string, name: string, source: string | undefined) {
   return server.call('POST', `${alpha}/definitions/${type}`, { body: { name, source } });
 }
 
-describe('the example of the computation function format, through the server', { timeout: 30_000 }, () => {
+describe('the example of the computation function format, through the server', () => {
   it('saves the function and answers the output the page shows for its input, after the work it says', async () => {
     server = await servingReasoning([]);
     await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });

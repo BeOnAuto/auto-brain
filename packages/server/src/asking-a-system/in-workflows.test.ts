@@ -5,7 +5,6 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 import { chatKey } from '../testing/servers/chat-deliveries.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
 import { askingASystem, calling, threadInput, type SystemServer } from '../testing/servers/system-calls.ts';
-import { workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 const decodeRuns = Schema.decodeUnknownSync(Schema.Struct({ runs: Schema.Array(Schema.Unknown) }));
 
@@ -47,7 +46,7 @@ async function endedWorkflow(server: SystemServer, name: string, steps: string) 
   return server.settled(await server.workflow(name, steps));
 }
 
-describe('a workflow that asks a system in a step', { timeout: workflowTestTimeoutMs }, () => {
+describe('a workflow that asks a system in a step', () => {
   it('takes what the tool answered at read as the output of the step', async () => {
     const server = await askingASystem();
     await server.define('thread-replies');
@@ -80,7 +79,7 @@ describe('a workflow that asks a system in a step', { timeout: workflowTestTimeo
   });
 });
 
-describe('a workflow that names effect_unknown on purpose', { timeout: workflowTestTimeoutMs }, () => {
+describe('a workflow that names effect_unknown on purpose', () => {
   it('retries it when its catch names the type of effect_unknown, or the kind in a when', async () => {
     const server = await askingASystem({ hints: { broken: { readOnlyHint: false } } });
     await server.define('by-type', calling('broken'));

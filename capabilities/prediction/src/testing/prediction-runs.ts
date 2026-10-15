@@ -18,8 +18,6 @@ import type { DatasetRow } from '../dataset/dataset-rows.ts';
 import type { DatasetsPort } from '../dataset/datasets-port.ts';
 import { testPorts } from './prediction-ports.ts';
 
-export const workerTestTimeoutMs = 30_000;
-
 const pools: ProgramPool[] = [];
 
 afterEach(async () => {

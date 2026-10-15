@@ -15,8 +15,6 @@ interface Ran {
   readonly thread: number;
 }
 
-const poolTestTimeoutMs = 30_000;
-
 const pools: ProgramPool[] = [];
 
 const coverage = process.env['NODE_V8_COVERAGE'];
@@ -85,7 +83,7 @@ async function held(pool: ProgramPool, jobs: number): Promise<readonly number[]>
   return outcomes.map((outcome) => ranOf(outcome).thread);
 }
 
-describe('the workers of a pool and its permits', { timeout: poolTestTimeoutMs }, () => {
+describe('the workers of a pool and its permits', () => {
   it('starts the worker of another module only once it has let go of the oldest idle one, so the threads alive never exceed the permits', async () => {
     const before = threadsAlive();
     const pool = poolOf();
@@ -118,7 +116,7 @@ describe('the workers of a pool and its permits', { timeout: poolTestTimeoutMs }
   });
 });
 
-describe('the workers of a pool and its permits, while a worker is let go of', { timeout: poolTestTimeoutMs }, () => {
+describe('the workers of a pool and its permits, while a worker is let go of', () => {
   it('starts two jobs at once against a worker still dying only once it has gone, so the threads alive never exceed the permits', async () => {
     const before = threadsAlive();
     const pool = poolOf({ workers: 2 });
@@ -151,7 +149,7 @@ describe('the workers of a pool and its permits, while a worker is let go of', {
   });
 });
 
-describe('the deadline of a warm worker', { timeout: poolTestTimeoutMs }, () => {
+describe('the deadline of a warm worker', () => {
   it('terminates a warm worker blocked past its deadline, and the jobs after it go to the worker left and a fresh one', async () => {
     const pool = poolOf({ workers: 2 });
     const warm = await Promise.all([counted(pool), counted(pool)]);
@@ -166,7 +164,7 @@ describe('the deadline of a warm worker', { timeout: poolTestTimeoutMs }, () => 
   });
 });
 
-describe('a pool that closes', { timeout: poolTestTimeoutMs }, () => {
+describe('a pool that closes', () => {
   it('ends its idle workers, and its busy jobs as closing, leaving no thread alive', async () => {
     const before = threadsAlive();
     const pool = poolOf();

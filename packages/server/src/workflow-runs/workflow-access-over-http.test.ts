@@ -5,13 +5,7 @@ import { Schema } from 'effect';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import {
-  runIdIn,
-  servingWorkflows,
-  settledRun,
-  workflowSource,
-  workflowTestTimeoutMs,
-} from '../testing/servers/workflow-server.ts';
+import { runIdIn, servingWorkflows, settledRun, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const admin = createApiKey({ id: 'acme-admin', org: 'acme', permissions: allPermissions, playbooks: '*' });
 
@@ -85,7 +79,7 @@ async function startedBy(key: string): Promise<string> {
   return runIdIn(response.body);
 }
 
-describe('a workflow that listens for an event, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+describe('a workflow that listens for an event, over HTTP', () => {
   it('takes the event sent to its run and settles with it, as the caller who started it', async () => {
     const runId = await startedBy(runner.key);
 
@@ -107,7 +101,7 @@ describe('a workflow that listens for an event, over HTTP', { timeout: workflowT
   });
 });
 
-describe('a key without access to the playbook of a workflow', { timeout: workflowTestTimeoutMs }, () => {
+describe('a key without access to the playbook of a workflow', () => {
   it('cannot execute it, read its run, or send it an event', async () => {
     const runId = await startedBy(admin.key);
     const asOutsider = { key: outsider.key };

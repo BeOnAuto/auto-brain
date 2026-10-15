@@ -76,7 +76,7 @@ describe('due rows that end while the loop reads when to wake next', () => {
     const performed = await eventually(rows.performed, (done) => done.length === duePerformedAtOnce + 1, 800);
 
     expect(performed).toHaveLength(duePerformedAtOnce + 1);
-  }, 15_000);
+  });
 });
 
 describe('a host that stops while due rows are in flight', () => {

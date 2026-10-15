@@ -8,7 +8,7 @@ import {
   workflowProcess,
 } from '../testing/processes/workflow-process.ts';
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
-import { runIdIn, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { runIdIn, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const ledger = temporaryLedger();
 
@@ -18,7 +18,7 @@ afterAll(() => {
 
 const greeting = workflowSource('greeting', "do:\n  - greet: { set: { greeting: '${ `Hello, ${$data.name}` }' } }\n");
 
-describe('a server that ran workflows, told to stop', { timeout: workflowTestTimeoutMs }, () => {
+describe('a server that ran workflows, told to stop', () => {
   it('exits 0 at once, holding nothing open', async () => {
     const child = workflowProcess(ledger.fileName);
     const port = await child.port;

@@ -109,10 +109,21 @@ function foldedColumnsOf(row: Readonly<Record<string, unknown>>) {
   );
 }
 
-async function rowsOf(ledger: HarnessLedger) {
-  const requests = await Effect.runPromise(
+function requestRowsOf(ledger: HarnessLedger) {
+  return Effect.runPromise(
     ledger.service.readProjectedRows(openRequestsName, alpha, { where: [], orderBy: [], order: 'asc', limit: 50 }),
   );
+}
+
+const decodeSent = Schema.decodeUnknownSync(Schema.Struct({ sent_id: Schema.String }));
+
+async function threadOfRun(ledger: HarnessLedger, run: string): Promise<string> {
+  const requests = await requestRowsOf(ledger);
+  return decodeSent(requests.find(({ key }) => key === run)?.row).sent_id;
+}
+
+async function rowsOf(ledger: HarnessLedger) {
+  const requests = await requestRowsOf(ledger);
   const conversationsRead = await conversationRows(ledger);
   return {
     requests: requests.map(({ row }) => row),
@@ -133,7 +144,7 @@ describe.each(stores)('the projections of the requests and the conversations on 
       await playbook.askInThread(runId);
       await playbook.askInThread(answeredId);
       await playbook.performDue(Date.now());
-      const [thread = ''] = playbook.chat.posted().map(({ ts }) => ts);
+      const thread = await threadOfRun(playbook.ledger, runId);
       playbook.chat.reply({ channel: '#approvals-sales', thread, user: answererId, text: 'maybe later' });
       await playbook.performReads(Date.now() + farAhead);
       await playbook.call(answeringAnyRun, { run_id: answeredId, answer: { choice: 'approve' } });

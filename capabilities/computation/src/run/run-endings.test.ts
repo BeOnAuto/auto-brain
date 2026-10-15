@@ -4,14 +4,7 @@ import { scriptedPool } from '@on.auto/workflow-engine/testing';
 import { Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import {
-  computationWith,
-  functionOf,
-  poolOf,
-  programDocument,
-  workerTestTimeoutMs,
-  type RunBounds,
-} from '../testing/computation-runs.ts';
+import { computationWith, functionOf, poolOf, programDocument, type RunBounds } from '../testing/computation-runs.ts';
 
 function unworkable(detail: string): Exit.Exit<never, Conflict> {
   return Exit.fail(new Conflict({ detail, kind: 'unworkable' }));
@@ -74,7 +67,7 @@ const notJson: readonly (readonly [string, string, string])[] = [
   ['a cycle', 'const kept: any = {};\n  kept.self = kept;\n  return kept;', 'a cycle at $.self'],
 ];
 
-describe('a run whose program raises', { timeout: workerTestTimeoutMs }, () => {
+describe('a run whose program raises', () => {
   it('ends in conflict, unworkable, with the error the program raised and its line in the document', async () => {
     expect(await ended('const rows = [1, 2, 3];\n  throw new Error(`stopped at ${rows.length}`);')).toEqual(
       unworkable('The program raised an error on line 6: Error: stopped at 3'),
@@ -98,7 +91,7 @@ describe('a run whose program raises', { timeout: workerTestTimeoutMs }, () => {
   });
 });
 
-describe('a run whose program answers what cannot be its output', { timeout: workerTestTimeoutMs }, () => {
+describe('a run whose program answers what cannot be its output', () => {
   it.each(notJson)('ends in conflict when its output holds %s, naming where', async (_what, body, where) => {
     expect(await ended(body)).toEqual(
       unworkable(`The program's output is not JSON: The answer holds ${where}, which JSON cannot carry`),
@@ -147,7 +140,7 @@ describe('a run whose program answers what cannot be its output', { timeout: wor
   });
 });
 
-describe('a run that reaches a bound of its sandbox', { timeout: workerTestTimeoutMs }, () => {
+describe('a run that reaches a bound of its sandbox', () => {
   it('ends in conflict when it does more work than its budget, whatever a try around it does, before any deadline', async () => {
     const tooMuch = unworkable('The program did more work than a run may, 50 checkpoints, and was stopped');
 
@@ -197,7 +190,7 @@ describe('a run that reaches a bound of its sandbox', { timeout: workerTestTimeo
   });
 });
 
-describe('the bounds a run asks its sandbox for', { timeout: workerTestTimeoutMs }, () => {
+describe('the bounds a run asks its sandbox for', () => {
   it('are those its host gives, or 20,000 checkpoints and 256 MiB, named when the run reaches them', async () => {
     const byDefault = recordingPool([reaching('work'), reaching('memory')]);
     const given = recordingPool([reaching('work'), reaching('memory')]);
@@ -236,7 +229,7 @@ describe('a run of a program its save did not strip', () => {
   });
 });
 
-describe('a run of the server that cannot finish', { timeout: workerTestTimeoutMs }, () => {
+describe('a run of the server that cannot finish', () => {
   it('is unavailable when it runs past its deadline, though its native work spends few checkpoints', async () => {
     const slow = computationWith(poolOf(), { deadlineMs: 500 });
     const churning = 'const big = ["x".repeat(4000000)];\n  for (;;) JSON.stringify(big);';

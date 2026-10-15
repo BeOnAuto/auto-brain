@@ -7,7 +7,7 @@ import { Effect } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import { runIdIn, settledRun, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { runIdIn, settledRun, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
@@ -138,27 +138,23 @@ async function reviewed(replies: readonly ScriptedReply[]) {
   return { ended: ended.body, modelCalls: server.modelCalls() };
 }
 
-describe(
-  'a workflow whose reasoning step called tools and could not finish',
-  { timeout: workflowTestTimeoutMs },
-  () => {
-    it('never retries on status 503 a step whose tool may have changed something, raised at 409 under its own type', async () => {
-      expect(await reviewed([callingTools([echoed], timedOut)])).toMatchObject({
-        ended: {
-          status: 'rejected',
-          rejection: { reason: 'conflict', kind: 'effect_unknown', because: 'model_unavailable' },
-        },
-        modelCalls: 1,
-      });
+describe('a workflow whose reasoning step called tools and could not finish', () => {
+  it('never retries on status 503 a step whose tool may have changed something, raised at 409 under its own type', async () => {
+    expect(await reviewed([callingTools([echoed], timedOut)])).toMatchObject({
+      ended: {
+        status: 'rejected',
+        rejection: { reason: 'conflict', kind: 'effect_unknown', because: 'model_unavailable' },
+      },
+      modelCalls: 1,
     });
+  });
 
-    it('retries on status 503 a step whose tools only read', async () => {
-      const unfinished = callingTools([searched], timedOut);
+  it('retries on status 503 a step whose tools only read', async () => {
+    const unfinished = callingTools([searched], timedOut);
 
-      expect(await reviewed([unfinished, unfinished, answers(textResult('Acme has 2 rows.'))])).toMatchObject({
-        ended: { status: 'succeeded', output: 'Acme has 2 rows.' },
-        modelCalls: 3,
-      });
+    expect(await reviewed([unfinished, unfinished, answers(textResult('Acme has 2 rows.'))])).toMatchObject({
+      ended: { status: 'succeeded', output: 'Acme has 2 rows.' },
+      modelCalls: 3,
     });
-  },
-);
+  });
+});
