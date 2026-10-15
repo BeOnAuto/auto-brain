@@ -7,6 +7,7 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { aFakePostgreSQL } from '../testing/databases/fake-postgresql.ts';
 import { aCertificateOfTheLoopback, type LoopbackCertificate } from '../testing/databases/loopback-certificate.ts';
+import { secretsKey } from '../testing/databases/secrets-key.ts';
 import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
 
 const mainModule = fileURLToPath(new URL('../main.ts', import.meta.url));
@@ -66,6 +67,7 @@ describe(
         PORT: '0',
         DATABASE_CREDENTIALS: 'aws-iam',
         DATABASE_URL: `postgresql://auto_runtime@127.0.0.1:${database.port}/playbooks`,
+        SECRETS_KEY: secretsKey,
         AWS_REGION: 'eu-west-1',
         NODE_EXTRA_CA_CERTS: trustedByAServer(certificate, directory),
         AWS_SHARED_CREDENTIALS_FILE: directory.fileOf('no-credentials'),

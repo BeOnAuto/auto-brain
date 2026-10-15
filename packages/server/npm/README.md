@@ -24,7 +24,7 @@ Settings are environment variables. The command reads them from the shell and fr
 
 The command shows only the server's errors; set `LOG_LEVEL=warn` to see its warnings too, or `LOG_LEVEL=info` to see everything it logs.
 
-The ledger, where playbooks and their runs are kept, is the SQLite file `~/.auto-runtime/ledger.db` unless `LEDGER_FILE` names another file or `DATABASE_URL` names a PostgreSQL database. `PORT` changes the port.
+The ledger, where playbooks and their runs are kept, is the SQLite file `~/.auto-runtime/ledger.db` unless `LEDGER_FILE` names another file or `DATABASE_URL` names a PostgreSQL database. The secrets it keeps are sealed under the key in `secrets.key` beside the ledger file, which the command makes at its first start, unless `SECRETS_KEY` gives one, as a ledger in PostgreSQL needs. `PORT` changes the port.
 
 ## Commands
 

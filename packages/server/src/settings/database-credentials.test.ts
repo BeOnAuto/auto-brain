@@ -1,11 +1,16 @@
 import type { Environment } from '@on.auto/config';
 import { describe, expect, it } from 'vitest';
 
-import { readSettings } from './settings.ts';
+import { secretsKey } from '../testing/databases/secrets-key.ts';
+import { readSettings, type Settings } from './settings.ts';
+
+function settingsOf(environment: Environment): Settings {
+  return readSettings({ SECRETS_KEY: secretsKey, ...environment });
+}
 
 function errorFrom(environment: Environment): string {
   try {
-    readSettings(environment);
+    settingsOf(environment);
   } catch (error) {
     return String(error);
   }
@@ -21,10 +26,10 @@ const refusedAs = 'InvalidSettingsError: The ledger settings are invalid.';
 describe('the credentials of a ledger in PostgreSQL', () => {
   it('are the password in DATABASE_URL unless DATABASE_CREDENTIALS says otherwise', () => {
     expect(
-      readSettings({ DATABASE_URL: `postgresql://auto_runtime:a-password@${rdsHost}/playbooks` }).ledger,
+      settingsOf({ DATABASE_URL: `postgresql://auto_runtime:a-password@${rdsHost}/playbooks` }).ledger,
     ).toMatchObject({ credentials: { kind: 'url' } });
     expect(
-      readSettings({
+      settingsOf({
         DATABASE_URL: `postgresql://auto_runtime:a-password@${rdsHost}/playbooks`,
         DATABASE_CREDENTIALS: 'url',
       }).ledger,
@@ -33,7 +38,7 @@ describe('the credentials of a ledger in PostgreSQL', () => {
 
   it('are a token signed for the host, the port and the user of DATABASE_URL, in the region its RDS host names', () => {
     expect(
-      readSettings({ ...signedTokens, DATABASE_URL: `postgresql://auto%5Fruntime@${rdsHost}:5433/playbooks` }).ledger,
+      settingsOf({ ...signedTokens, DATABASE_URL: `postgresql://auto%5Fruntime@${rdsHost}:5433/playbooks` }).ledger,
     ).toMatchObject({
       credentials: {
         kind: 'aws-iam',
@@ -44,7 +49,7 @@ describe('the credentials of a ledger in PostgreSQL', () => {
 
   it("take the region of the database's RDS host over AWS_REGION, which the server's other AWS clients read", () => {
     expect(
-      readSettings({
+      settingsOf({
         ...signedTokens,
         AWS_REGION: 'us-east-1',
         DATABASE_URL: `postgresql://auto_runtime@${rdsHost}/playbooks`,
@@ -54,7 +59,7 @@ describe('the credentials of a ledger in PostgreSQL', () => {
 
   it('take AWS_REGION for a host that names no region, and an address as the driver reads it', () => {
     expect(
-      readSettings({
+      settingsOf({
         ...signedTokens,
         AWS_REGION: 'eu-central-1',
         DATABASE_URL: 'postgresql://auto_runtime@[fd00::5]:6432/playbooks?sslmode=verify-full',

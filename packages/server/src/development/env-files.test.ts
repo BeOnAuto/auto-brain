@@ -151,6 +151,9 @@ describe('pnpm dev with LOG_FORMAT=pretty in dev.env', { timeout: developmentTes
       expect.stringMatching(/^WARN {2}Local mode is on: /u),
       expect.stringMatching(/^INFO {2}The ledger is kept in the file \S+\/ledger\.db ledger_file=\S+\/ledger\.db$/u),
       "INFO  Content is kept in the ledger's database content_store=ledger",
+      expect.stringMatching(
+        /^INFO {2}Secrets are kept sealed under the key [\da-f]{16}, and 0 sealed under the previous key were sealed again under it secrets_kid=[\da-f]{16} secrets_resealed=0$/u,
+      ),
       expect.stringMatching(/^WARN {2}No model provider is configured, /u),
       expect.stringMatching(/^INFO {2}Reasoning functions run in this server: the model calls of a run add up to /u),
       expect.stringMatching(/^INFO {2}Prediction functions run in this server: a playbook keeps at most 32 active, /u),

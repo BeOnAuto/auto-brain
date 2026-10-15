@@ -30,6 +30,7 @@ claude mcp add --transport http auto-runtime http://localhost:5555/mcp
 | Need           | What to use                                                                                                                                                      |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | The ledger     | A volume on `/data`, where it keeps a SQLite file, or a PostgreSQL database named by `DATABASE_URL`: [Use PostgreSQL](https://on.auto/docs/self-host/postgresql) |
+| Secrets key    | `SECRETS_KEY`, 32 random bytes in base64 that seal the secrets kept in the ledger: [Run in production](https://on.auto/docs/self-host/production)                |
 | Sign-in        | `PUBLIC_URL`, the public `https` address people reach the runtime at: [Run in production](https://on.auto/docs/self-host/production)                             |
 | API keys       | `API_KEYS`, for machines and pipelines, with an entry for each key the key command makes: [Authentication and security](https://on.auto/docs/self-host/security) |
 | A model        | Anthropic, OpenAI, Google, Amazon Bedrock, Azure OpenAI, Vertex AI or your own gateway: [Model providers and gateways](https://on.auto/docs/self-host/models)    |

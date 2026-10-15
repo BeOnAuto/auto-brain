@@ -4,6 +4,7 @@ import { unreachableDatabase } from '@on.auto/ledger/testing';
 import { describe, expect, it } from 'vitest';
 
 import { compositionRoot } from '../composition/composition-root.ts';
+import { secretsKey } from '../testing/databases/secrets-key.ts';
 import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
 import { startServer } from './lifecycle.ts';
 
@@ -13,9 +14,10 @@ describe('a ledger in PostgreSQL that cannot be reached', { timeout: spawnedServ
   it('stops start-up with a named error that gives the address and no credential', async () => {
     const { url, port, password } = await unreachableDatabase();
 
-    const failure = await startServer({ HOST: '127.0.0.1', PORT: '0', DATABASE_URL: url }, compositionRoot).catch(
-      (error: unknown) => error,
-    );
+    const failure = await startServer(
+      { HOST: '127.0.0.1', PORT: '0', DATABASE_URL: url, SECRETS_KEY: secretsKey },
+      compositionRoot,
+    ).catch((error: unknown) => error);
 
     expect(failure).toMatchObject({ name: 'StartupError' });
     expect(String(failure)).toContain(`ECONNREFUSED 127.0.0.1:${port}`);
@@ -25,7 +27,7 @@ describe('a ledger in PostgreSQL that cannot be reached', { timeout: spawnedServ
   it('stops the process with the error on one line of stderr, without the URL', async () => {
     const { url, port, password } = await unreachableDatabase();
 
-    const child = spawnServer(mainModule, { HOST: '127.0.0.1', PORT: '0', DATABASE_URL: url });
+    const child = spawnServer(mainModule, { HOST: '127.0.0.1', PORT: '0', DATABASE_URL: url, SECRETS_KEY: secretsKey });
 
     expect(await child.exited).toBe(1);
     expect(child.output().stdout).toBe('');

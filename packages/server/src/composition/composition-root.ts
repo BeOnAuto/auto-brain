@@ -1,8 +1,8 @@
 import type { DispatcherServices } from '@on.auto/operations';
 
 import { ledgerDatabaseOf } from '../database/ledger-database.ts';
+import { ledgerStoresOpenedBy } from '../database/ledger-stores.ts';
 import { defaultServerOptions, type ServerOptions } from '../lifecycle/lifecycle.ts';
-import { logContentStore, logLedger } from '../logging/logging.ts';
 import { serveWorkflows, type WorkflowParts } from '../workflows/workflows.ts';
 import { applicationLayer } from './application-layer.ts';
 import { functionWiringOf, type FunctionWiring } from './function-wiring.ts';
@@ -25,8 +25,7 @@ export function compositionRootWith(
         services: applicationLayer(ledgerLayerFor(settings, database, wiring.projections.appends)),
         serve: async (runtime) => {
           const { ledger, workflows, identityIssuer } = settings;
-          await runtime.run(logLedger(ledger));
-          await runtime.run(logContentStore(settings.content));
+          const stores = await ledgerStoresOpenedBy(runtime.context, settings, database);
           const functions = await functionsServedBy(runtime, settings, database, { ...wiring, telemetry });
           const parts = {
             ledger,
@@ -35,7 +34,7 @@ export function compositionRootWith(
             ...functions.parts,
             ...(clock === undefined ? {} : { clock }),
           };
-          return functions.closing(await serveWorkflows(runtime, parts));
+          return stores.withSecretsClosed(functions.closing(await serveWorkflows(runtime, parts)));
         },
       };
     },

@@ -7,6 +7,7 @@ import { Schema } from 'effect';
 import { Client } from 'pg';
 import { onTestFinished } from 'vitest';
 
+import { secretsKey } from '../testing/databases/secrets-key.ts';
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
 import { answerShapesOn, type ProjectionStore } from '../testing/servers/answer-shapes.ts';
 
@@ -81,7 +82,7 @@ async function onPostgreSQL(): Promise<ProjectionStore> {
   database.pathname = `/${name}`;
   const url = database.href;
   return {
-    environment: { LEDGER_FILE: '', DATABASE_URL: url },
+    environment: { LEDGER_FILE: '', DATABASE_URL: url, SECRETS_KEY: secretsKey },
     ledgerKeeping: (projection) =>
       postgresqlLedgerLayer({
         pools: plainPoolsOn(url),
