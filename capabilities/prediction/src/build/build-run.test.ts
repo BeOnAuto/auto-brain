@@ -15,8 +15,6 @@ import {
 import { candidateSha256, performedUntilQuiet } from '../build-testing/due-driving.ts';
 import { dailyVisitsWith, uploadedDailyVisits } from '../testing/daily-documents.ts';
 
-const testTimeoutMs = 30_000;
-
 const aDigest: unknown = expect.stringMatching(/^[0-9a-f]{64}$/u);
 
 const anInstant: unknown = expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u);
@@ -54,7 +52,7 @@ const routes = (build: string) => {
   return { brief: `${base}/brief`, rows: `${base}/rows`, candidates: `${base}/candidates` };
 };
 
-describe('a build of a prediction function', { timeout: testTimeoutMs }, () => {
+describe('a build of a prediction function', () => {
   it('assembles its dataset, keeps its brief and waits for its trainer with a request that names its routes', async () => {
     const playbook = buildPlaybook();
     await savedFunction(playbook);
@@ -100,7 +98,7 @@ describe('a build of a prediction function', { timeout: testTimeoutMs }, () => {
   });
 });
 
-describe('a build of a prediction function that is refused by its claim', { timeout: testTimeoutMs }, () => {
+describe('a build of a prediction function that is refused by its claim', () => {
   it('writes no rows and no brief while another build is in flight or the builds of the day are spent', async () => {
     const puts = countedPuts();
     const playbook = buildPlaybook({ bounds: { buildsPerDay: 2 }, content: puts.content });
@@ -122,7 +120,7 @@ describe('a build of a prediction function that is refused by its claim', { time
   });
 });
 
-describe('the builds a server takes', { timeout: testTimeoutMs }, () => {
+describe('the builds a server takes', () => {
   it('are bounded for each function in a day, and say when the next one may be asked', async () => {
     const playbook = buildPlaybook({ bounds: { buildsPerDay: 1 } });
     await savedFunction(playbook);
@@ -161,7 +159,7 @@ describe('the builds a server takes', { timeout: testTimeoutMs }, () => {
   });
 });
 
-describe('the builds asked through the inbox', { timeout: testTimeoutMs }, () => {
+describe('the builds asked through the inbox', () => {
   it('ask no trainer through the inbox while the playbook holds the most open requests it may', async () => {
     const playbook = buildPlaybook({ openRequests: 64 });
     await savedFunction(playbook);
@@ -176,7 +174,7 @@ describe('the builds asked through the inbox', { timeout: testTimeoutMs }, () =>
   });
 });
 
-describe('a build whose dataset or brief does not serve', { timeout: testTimeoutMs }, () => {
+describe('a build whose dataset or brief does not serve', () => {
   it('is refused while its dataset is not yet made', async () => {
     const playbook = buildPlaybook();
     expect(

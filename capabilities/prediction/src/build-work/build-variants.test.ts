@@ -7,9 +7,7 @@ import { weekdaysAndWeekends, weeklyOrderRows as weeklyRows } from '../build-tes
 import { uploadedDailyTotals } from '../testing/daily-documents.ts';
 import { uploadedWeeklyOrders } from '../testing/weekly-orders.ts';
 
-const testTimeoutMs = 60_000;
-
-describe('a build of a function that predicts a total to the end of the week', { timeout: testTimeoutMs }, () => {
+describe('a build of a function that predicts a total to the end of the week', () => {
   it('scores the total against the run-rate, builds the version and answers the total to the end of the next week', async () => {
     const playbook = buildPlaybook();
     const source = uploadedDailyTotals(weekdaysAndWeekends.sha256).replace(
@@ -31,7 +29,7 @@ describe('a build of a function that predicts a total to the end of the week', {
   });
 });
 
-describe('a build of a function whose data has features and given features', { timeout: testTimeoutMs }, () => {
+describe('a build of a function whose data has features and given features', () => {
   it('feeds them to the candidate, scores no baseline that walks no series, and answers a question with its given', async () => {
     const playbook = buildPlaybook();
     const source = uploadedWeeklyOrders(weeklyRows.sha256).replace(

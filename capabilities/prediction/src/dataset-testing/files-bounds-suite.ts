@@ -9,8 +9,6 @@ import type { SettingsOf } from './dataset-stores.ts';
 import { orderPlaced } from './orders.ts';
 import { foldedFor, refusalOf } from './written-files.ts';
 
-const testTimeoutMs = 60_000;
-
 const thousandDays = weeklyOrdersWith(
   ['  period: week', '  period: day'],
   ['  season: 52', ''],
@@ -73,52 +71,40 @@ function failingAt(database: HostDatabase, start: string): HostDatabase {
 }
 
 function boundsTest(settingsOf: SettingsOf): void {
-  it(
-    'refuses rows past the 200,000 a build takes, counting only the series observed often enough, and a function that names an uploaded dataset',
-    async () => {
-      const { request } = await foldedFor(await settingsOf(), thousandDays, manySeries);
+  it('refuses rows past the 200,000 a build takes, counting only the series observed often enough, and a function that names an uploaded dataset', async () => {
+    const { request } = await foldedFor(await settingsOf(), thousandDays, manySeries);
 
-      expect(await refusalOf(request)).toMatchObject({
-        refusal: { kind: 'too_large', rows: 201_000, series: 201 },
-        detail:
-          'The dataset holds 201,000 rows over 201 series and a build takes 200,000 rows over at most 1,000 series; narrow the window or the series',
-      });
-      expect(await refusalOf({ ...request, document: uploaded })).toMatchObject({ refusal: { kind: 'uploaded' } });
-    },
-    testTimeoutMs,
-  );
+    expect(await refusalOf(request)).toMatchObject({
+      refusal: { kind: 'too_large', rows: 201_000, series: 201 },
+      detail:
+        'The dataset holds 201,000 rows over 201 series and a build takes 200,000 rows over at most 1,000 series; narrow the window or the series',
+    });
+    expect(await refusalOf({ ...request, document: uploaded })).toMatchObject({ refusal: { kind: 'uploaded' } });
+  });
 }
 
 function seriesTest(settingsOf: SettingsOf): void {
-  it(
-    'refuses more series than a build takes, with the figure it counted',
-    async () => {
-      const { request } = await foldedFor(await settingsOf(), sixteenDays, moreSeriesThanABuildTakes);
+  it('refuses more series than a build takes, with the figure it counted', async () => {
+    const { request } = await foldedFor(await settingsOf(), sixteenDays, moreSeriesThanABuildTakes);
 
-      expect(await refusalOf(request)).toMatchObject({
-        refusal: { kind: 'too_large', rows: 16_032, series: 1002 },
-        detail:
-          'The dataset holds 16,032 rows over 1,002 series and a build takes 200,000 rows over at most 1,000 series; narrow the window or the series',
-      });
-    },
-    testTimeoutMs,
-  );
+    expect(await refusalOf(request)).toMatchObject({
+      refusal: { kind: 'too_large', rows: 16_032, series: 1002 },
+      detail:
+        'The dataset holds 16,032 rows over 1,002 series and a build takes 200,000 rows over at most 1,000 series; narrow the window or the series',
+    });
+  });
 }
 
 function failedTest(settingsOf: SettingsOf): void {
-  it(
-    'fails when the store fails while the rows are counted, and while they are written',
-    async () => {
-      const { datasets, request } = await foldedFor(await settingsOf(), sixteenWeeks, nineWeeks);
-      const failedAt = (start: string) =>
-        Effect.runPromiseExit(writtenDatasetFiles({ ...request, database: failingAt(datasets.database, start) }));
-      const counting = await failedAt('SELECT COUNT');
-      const writing = await failedAt('SELECT period_index');
+  it('fails when the store fails while the rows are counted, and while they are written', async () => {
+    const { datasets, request } = await foldedFor(await settingsOf(), sixteenWeeks, nineWeeks);
+    const failedAt = (start: string) =>
+      Effect.runPromiseExit(writtenDatasetFiles({ ...request, database: failingAt(datasets.database, start) }));
+    const counting = await failedAt('SELECT COUNT');
+    const writing = await failedAt('SELECT period_index');
 
-      expect([Exit.hasDies(counting), Exit.hasDies(writing)]).toEqual([true, true]);
-    },
-    testTimeoutMs,
-  );
+    expect([Exit.hasDies(counting), Exit.hasDies(writing)]).toEqual([true, true]);
+  });
 }
 
 export function datasetFilesBoundsSuite(settingsOf: SettingsOf): void {
