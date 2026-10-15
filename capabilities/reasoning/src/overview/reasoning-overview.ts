@@ -5,12 +5,14 @@ import {
   outputSection,
   paragraph,
   sectionOf,
+  type Diagram,
+  type OverviewBlock,
   type OverviewSection,
   type Phrases,
 } from '@on.auto/definitions';
 import { splitDocument } from '@on.auto/definitions/document';
 import { readableParts } from '@on.auto/definitions/template';
-import type { ToolReference } from '@on.auto/tool-servers/policy';
+import { writtenOf, type ToolReference } from '@on.auto/tool-servers/policy';
 import { Result, type Schema } from 'effect';
 
 import type {
@@ -20,6 +22,19 @@ import type {
 import type { OutputRequest } from '../model/model-request.ts';
 
 type Entry = readonly [string, Schema.Json];
+
+const everyTool = '*';
+
+const everyToolOf = 'every tool of ';
+
+const howTheModelCalls =
+  "The model may call these tools before it answers, several in one step and over several steps, within a run's limits on calls, time and failures.";
+
+const functionNode = 0;
+
+const modelNode = 1;
+
+const firstToolNode = 2;
 
 function isRecord(value: Schema.Json | undefined): value is Schema.JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -48,18 +63,41 @@ function producedSection(output: OutputRequest): OverviewSection {
 }
 
 function toolPhrases({ server, tool }: ToolReference): Phrases {
-  return tool === '*' ? ['every tool of ', named(server)] : ['the tool ', named(tool), ' of ', named(server)];
+  return tool === everyTool ? [everyToolOf, named(server)] : ['the tool ', named(tool), ' of ', named(server)];
 }
 
-function modelSection({ model, tools }: ReasoningFunctionDefinitionDocument): OverviewSection {
-  const toolBlocks =
-    tools.length === 0
-      ? [paragraph('It calls no tools.')]
-      : [paragraph('It may call these tools:'), bulletList(tools.map((tool) => toolPhrases(tool)))];
+function toolLabel(reference: ToolReference): string {
+  return reference.tool === everyTool ? `${everyToolOf}${reference.server}` : writtenOf(reference);
+}
+
+function modelAndTools(name: string, { model, tools }: ReasoningFunctionDefinitionDocument): Diagram {
+  return {
+    kind: 'diagram',
+    nodes: [{ label: name }, { label: model }, ...tools.map((tool) => ({ label: toolLabel(tool) }))],
+    edges: [
+      { from: functionNode, to: modelNode, label: 'reasons with' },
+      ...tools.map((_, index) => ({ from: modelNode, to: firstToolNode + index, label: 'may call' })),
+    ],
+  };
+}
+
+function toolBlocks(name: string, definition: ReasoningFunctionDefinitionDocument): readonly OverviewBlock[] {
+  const { tools } = definition;
+  return tools.length === 0
+    ? [paragraph('It calls no tools.')]
+    : [
+        paragraph('It may call these tools:'),
+        bulletList(tools.map((tool) => toolPhrases(tool))),
+        modelAndTools(name, definition),
+        paragraph(howTheModelCalls),
+      ];
+}
+
+function modelSection(name: string, definition: ReasoningFunctionDefinitionDocument): OverviewSection {
   return sectionOf(
     'Which model and tools',
-    paragraph('It reasons with the model ', { code: model }, '.'),
-    ...toolBlocks,
+    paragraph('It reasons with the model ', { code: definition.model }, '.'),
+    ...toolBlocks(name, definition),
   );
 }
 
@@ -79,11 +117,12 @@ function toldSection(source: string): OverviewSection {
 export function reasoningOverview(
   definition: ReasoningFunctionDefinitionDocument,
   source: string,
+  name: string,
 ): readonly OverviewSection[] {
   return [
     inputSection(documentedInput(definition.input)),
     producedSection(definition.output),
-    modelSection(definition),
+    modelSection(name, definition),
     toldSection(source),
   ];
 }
