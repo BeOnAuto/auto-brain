@@ -143,6 +143,43 @@ describe('an answer that does not match the schema', () => {
   });
 });
 
+describe('an answer checked further than its schema can say', () => {
+  const ordered = Result.getOrThrow(
+    compileJsonSchema(
+      { type: 'array', items: { type: 'number' } },
+      {
+        ...asAnAnswer,
+        further: (answer) =>
+          Array.isArray(answer) && answer.length > 1 && answer[0] === answer[1]
+            ? [{ pointer: '/1', detail: 'Expected a number other than the one before it' }]
+            : [],
+      },
+    ),
+  );
+
+  it('is returned unchanged when it holds what the further check asks too', () => {
+    expect(ordered.validate([1, 2])).toEqual(Result.succeed([1, 2]));
+  });
+
+  it('is reported with the issues of the further check after those of the schema', () => {
+    expect(answerIssues(ordered, [3, 3])).toEqual([
+      { pointer: '/1', detail: 'Expected a number other than the one before it' },
+    ]);
+    expect(answerIssues(ordered, ['x', 'x'])).toEqual([
+      { pointer: '/0', detail: 'Expected number' },
+      { pointer: '/1', detail: 'Expected number' },
+      { pointer: '/1', detail: 'Expected a number other than the one before it' },
+    ]);
+  });
+
+  it('is not checked further when it is not JSON, or nests deeper than the limit', () => {
+    expect([answerIssues(ordered, new Date(0)), answerIssues(ordered, nestedObjects(answerNesting + 1))]).toEqual([
+      [{ pointer: '', detail: 'The answer is not JSON' }],
+      [{ pointer: '', detail: `The answer nests more than ${answerNesting} levels` }],
+    ]);
+  });
+});
+
 describe('an answer that cannot be checked', () => {
   it('is rejected when it is nested deeper than the limit', () => {
     const anything = compiled({});

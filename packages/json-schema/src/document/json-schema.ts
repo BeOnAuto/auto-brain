@@ -23,9 +23,12 @@ export interface CompiledSchema {
   readonly validate: (value: unknown) => Result.Result<Schema.Json, readonly Issue[]>;
 }
 
+export type FurtherCheck = (value: Schema.Json) => readonly Issue[];
+
 export interface Validation {
   readonly what: string;
   readonly nesting: number;
+  readonly further?: FurtherCheck;
 }
 
 type Decoder = (input: unknown) => Result.Result<unknown, Schema.SchemaError>;
@@ -97,15 +100,24 @@ function isPropertyKey(segment: IssueSegment): segment is PropertyKey {
   return typeof segment !== 'object';
 }
 
-function valueIssues(issues: readonly StandardSchema.StandardSchemaV1.Issue[]): readonly Issue[] {
-  const found = issues.map(({ message, path = [] }) => ({
-    pointer: pointerOf(path.filter((segment) => isPropertyKey(segment))),
-    detail: message,
-  }));
-  return boundedIssues(found, issueBounds);
+function nothingFurther(): readonly Issue[] {
+  return [];
 }
 
-function validatorOf(decode: Decoder, { what, nesting }: Validation): CompiledSchema['validate'] {
+function schemaIssuesOf(decode: Decoder, value: Schema.Json): readonly Issue[] {
+  const decoded = decode(value);
+  return Result.isSuccess(decoded)
+    ? []
+    : formatIssues(decoded.failure.issue).issues.map(({ message, path = [] }) => ({
+        pointer: pointerOf(path.filter((segment) => isPropertyKey(segment))),
+        detail: message,
+      }));
+}
+
+function validatorOf(
+  decode: Decoder,
+  { what, nesting, further = nothingFurther }: Validation,
+): CompiledSchema['validate'] {
   return (value) => {
     if (nestedDeeperThan(value, nesting)) {
       return Result.fail(rootIssue(`The ${what} nests more than ${nesting} levels`));
@@ -113,10 +125,8 @@ function validatorOf(decode: Decoder, { what, nesting }: Validation): CompiledSc
     if (!isJson(value)) {
       return Result.fail(rootIssue(`The ${what} is not JSON`));
     }
-    const decoded = decode(value);
-    return Result.isSuccess(decoded)
-      ? Result.succeed(value)
-      : Result.fail(valueIssues(formatIssues(decoded.failure.issue).issues));
+    const issues = [...schemaIssuesOf(decode, value), ...further(value)];
+    return issues.length === 0 ? Result.succeed(value) : Result.fail(boundedIssues(issues, issueBounds));
   };
 }
 
