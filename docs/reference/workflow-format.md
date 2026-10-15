@@ -146,10 +146,12 @@ An approval, or any other question for a person or a system, is an interaction f
 | `do`                                        | Required list of named tasks, run in order                                      |
 | `output.as`                                 | Optional expression or template that shapes the run's output                    |
 | `output.schema.document`                    | Optional inline JSON Schema, published as the definition's `output_schema`      |
+| `output.shape`                              | Optional [output shape](output-shapes.md), checked when the run ends; see below |
 | `timeout`                                   | Optional limit for the run: `after` and a duration, or a name in `use.timeouts` |
 | `use.errors`, `use.retries`, `use.timeouts` | Optional named errors, retry policies and timeouts that tasks name              |
 
 - The runtime does not check a run's input or output against these schemas; they tell callers what the workflow takes and gives. A run whose input lacks a value still starts, and a step that depends on the value fails, as a reasoning function rejects input that does not match its own schema.
+- `output.shape`, the runtime's own beside the DSL's keys, names an [output shape](output-shapes.md): `series`, `categories`, `table` or `text`. Its schema is published as the definition's `output_schema`, and `output.schema` beside it is refused. When the run ends, its output, after `output.as`, is checked against the shape; one that does not match ends the run `rejected` as `conflict` of the kind `unworkable`, naming the issues. A task's `output` takes no shape.
 - Schemas are written inline under `document`, as JSON Schema.
 - `document.version` is part of the document you write. The definition's `version` counts saved changes: it is 1 when the workflow is created and increases each time `update_definition` changes the document.
 
@@ -610,7 +612,7 @@ These are refused when a document is saved, each for the reason given:
 
 1. The `summary`, or else the `title`, or that the workflow has no description yet.
 2. What starts it: each trigger of its `schedule` in words, and a call of `run_definition`, which can always start it. A `cron` reads as a time in UTC and its days where it reads plainly, and as written otherwise.
-3. What it needs and produces: each field of `input.schema.document` and `output.schema.document`, with its type.
+3. What it needs and produces: each field of `input.schema.document` and `output.schema.document`, with its type, or the shape `output.shape` names, in a sentence.
 4. What it does: a flowchart of its tasks, with the same steps beneath it as a numbered list in words.
 5. What it calls: each definition a `call: run_definition` names, with its type.
 6. **Used by**: the active definitions of the playbook that use this workflow, read each time it is returned, and left out when there are none.
@@ -628,11 +630,11 @@ The overview is written from the document when it is saved, so it says only what
 
 `run_definition` returns `status: started` as soon as the run begins, or how the run ended when it ended before its first wait. `get_run` shows the run as `started` until it ends with one of these statuses:
 
-| Status      | When                                                                      |
-| ----------- | ------------------------------------------------------------------------- |
-| `succeeded` | Its last task completed, or a task ended it; `output` is the run's output |
-| `rejected`  | An uncaught error, a cancellation, or an output too large; see below      |
-| `failed`    | The run broke down inside the runtime                                     |
+| Status      | When                                                                                     |
+| ----------- | ---------------------------------------------------------------------------------------- |
+| `succeeded` | Its last task completed, or a task ended it; `output` is the run's output                |
+| `rejected`  | An uncaught error, a cancellation, or an output too large or not of its shape; see below |
+| `failed`    | The run broke down inside the runtime                                                    |
 
 The rejection gives a `reason`, and a `kind` where it has one:
 
@@ -643,6 +645,7 @@ The rejection gives a `reason`, and a `kind` where it has one:
 | `unavailable`   | `tools_unfinished`, `rebuilding` | An uncaught error of the problem type of that kind                           |
 | `conflict`      | `effect_unknown`, `tools_called` | An uncaught error of the problem type of that kind                           |
 | `conflict`      | `oversized`                      | Its output is larger than 1,048,574 bytes as JSON                            |
+| `conflict`      | `unworkable`                     | Its output does not match the shape its `output.shape` names                 |
 | `cancelled`     | `requested`                      | `cancel_run` cancelled it                                                    |
 | `cancelled`     | `deadline`                       | The workflow that waited for it ran out of time                              |
 | `cancelled`     | `overrun`                        | It was still running at the longest a run may last                           |
