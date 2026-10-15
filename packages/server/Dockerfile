@@ -4,7 +4,7 @@ RUN apt-get update \
   && apt-get install --yes --no-install-recommends g++ make python3 \
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-RUN npm install --global --no-fund --no-audit pnpm@12.8.1
+RUN npm install --global --no-fund --no-audit pnpm@12.11.2
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/server/package.json packages/server/
 COPY packages/api/package.json packages/api/

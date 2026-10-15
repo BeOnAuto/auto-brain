@@ -19,8 +19,8 @@ These are stored records with names, versions and audit fields. The adapters' pa
 This extension interface accepts custom adapters. Product categories use the shared `FunctionType` metadata: `functionTypeOrder`, and `functionCategoryLabels`, `functionResourceLabels` and `functionDescriptions`, each keyed by type.
 
 ```ts
-import { InvalidInput } from '@on.auto/operations';
 import { defineCapability } from '@on.auto/definitions';
+import { InvalidInput } from '@on.auto/operations';
 import { Effect, Predicate } from 'effect';
 
 const parseGreeting = (source: string) =>

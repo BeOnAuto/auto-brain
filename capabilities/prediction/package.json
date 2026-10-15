@@ -23,7 +23,7 @@
     "@on.auto/workflow-engine": "workspace:*",
     "@on.auto/workflow-host": "workspace:*",
     "effect": "catalog:",
-    "liquidjs": "10.29.0",
+    "liquidjs": "10.30.0",
     "onnxruntime-node": "1.30.0"
   },
   "devDependencies": {
