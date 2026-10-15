@@ -37,8 +37,8 @@ describe('the notice that the server is ready', () => {
       '  Set PUBLIC_URL=http://localhost:5555 to sign people in.',
       '',
       '  Connect your agent',
-      '    Claude Code   claude mcp add --transport http auto-runtime http://localhost:5555/mcp',
-      '    Codex         codex mcp add auto-runtime --url http://localhost:5555/mcp',
+      '    Claude Code   claude mcp add auto-runtime -- npx -y @on.auto/runtime@latest mcp',
+      '    Codex         codex mcp add auto-runtime -- npx -y @on.auto/runtime@latest mcp',
       '',
       '  Press Ctrl+C to stop.',
       '',
@@ -61,7 +61,9 @@ describe('the Studio entry of the notice that the server is ready', () => {
       '\u001B]8;;https://studio.on.auto/?server=http%3A%2F%2Flocalhost%3A5555\u001B\\https://studio.on.auto\u001B]8;;\u001B\\',
     );
   });
+});
 
+describe('how the notice shows Studio', () => {
   it('shows the server in the Studio address when it is not the default one', () => {
     expect(readyNoticeOf({ ...ready, url: 'http://localhost:6000' }, 1)).toContain(
       '  ➜  Studio   https://studio.on.auto/?server=http://localhost:6000\n',
@@ -85,6 +87,17 @@ describe('the notice that a server in local mode is ready', () => {
 
     expect(lines).toContain('  \u001B[2mLocal mode: anyone on this computer acts as you, with no sign-in.\u001B[22m');
     expect(lines).toContain('  \u001B[2mSet PUBLIC_URL=http://localhost:6000 to sign people in.\u001B[22m');
+  });
+});
+
+describe('how the notice says to connect an agent', () => {
+  it('connects an agent over HTTP to a server on another port, which the mcp command does not reach', () => {
+    const notice = readyNoticeOf({ ...ready, url: 'http://localhost:6060' }, 1);
+
+    expect(notice).toContain(
+      '    Claude Code   claude mcp add --transport http auto-runtime http://localhost:6060/mcp\n',
+    );
+    expect(notice).toContain('    Codex         codex mcp add auto-runtime --url http://localhost:6060/mcp\n');
   });
 });
 

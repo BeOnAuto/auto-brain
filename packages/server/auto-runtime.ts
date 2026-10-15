@@ -1,53 +1,37 @@
 import { homedir } from 'node:os';
+import { setTimeout } from 'node:timers/promises';
 
-import { coalescedSignals } from './src/command-line/coalesced-signals.ts';
 import { runCommandLine } from './src/command-line/command-line.ts';
-import { servedLocally } from './src/command-line/local-server.ts';
-import { stopInsistedBy, stopRequestedBy } from './src/lifecycle/stop-request.ts';
+import { relayedAgent } from './src/local-runtime/agent-relay.ts';
+import { restartIn } from './src/local-runtime/local-control.ts';
+import { startedLocally } from './src/local-runtime/local-start.ts';
+import { overTheNetwork } from './src/local-runtime/runtime-probe.ts';
 import { colorDepthOf } from './src/logging/terminal.ts';
 
-const signalsOfOneStop = 1000;
+const environmentAtStart = { ...process.env };
 
-const serverProcess = {
-  env: process.env,
-  stdout: { write: () => true },
-  stderr: process.stderr,
-  exit: (code: number) => process.exit(code),
+const home = homedir();
+
+const waiting = { fetch: overTheNetwork, sleep: (milliseconds: number) => setTimeout(milliseconds) };
+
+const terminal = {
+  depth: colorDepthOf(process.stdout),
+  write: (text: string) => {
+    process.stdout.write(text);
+  },
+  clock: () => performance.now(),
+  tickEvery: (milliseconds: number, tick: () => void) => {
+    const timer = setInterval(tick, milliseconds);
+    return () => {
+      clearInterval(timer);
+    };
+  },
 };
-
-async function startServer(settings: Readonly<Record<string, string>>): Promise<void> {
-  const signals = coalescedSignals(process, signalsOfOneStop, () => performance.now());
-  const stopRequested = stopRequestedBy(signals);
-  const stopInsisted = stopInsistedBy(signals);
-  Object.assign(process.env, settings);
-  await servedLocally({
-    depth: colorDepthOf(process.stdout),
-    write: (text) => {
-      process.stdout.write(text);
-    },
-    clock: () => performance.now(),
-    tickEvery: (milliseconds, tick) => {
-      const timer = setInterval(tick, milliseconds);
-      return () => {
-        clearInterval(timer);
-      };
-    },
-    run: async () => {
-      const { compositionRoot } = await import('./src/composition/composition-root.ts');
-      const { runServer } = await import('./src/lifecycle/run-server.ts');
-      return runServer(serverProcess, compositionRoot, stopRequested, stopInsisted);
-    },
-    stopRequested,
-  }).catch(async (failure: unknown) => {
-    const { exitOnStartupFailure } = await import('./src/lifecycle/run-server.ts');
-    exitOnStartupFailure(serverProcess)(failure);
-  });
-}
 
 process.exitCode =
   (await runCommandLine(process.argv.slice(2), {
     environment: process.env,
-    place: { directory: process.cwd(), home: homedir() },
+    place: { directory: process.cwd(), home },
     console: {
       log: (line) => {
         process.stdout.write(`${line}\n`);
@@ -56,5 +40,11 @@ process.exitCode =
         process.stderr.write(`${line}\n`);
       },
     },
-    startServer,
+    waiting,
+    startServer: async (settings, startedBy) => {
+      if ((await startedLocally(settings, startedBy, { home, terminal })) === 'restart') {
+        restartIn(process, environmentAtStart);
+      }
+    },
+    relay: (port) => relayedAgent(port, { home, environment: environmentAtStart, waiting }),
   })) ?? process.exitCode;

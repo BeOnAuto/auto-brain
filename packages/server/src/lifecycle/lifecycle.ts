@@ -1,4 +1,10 @@
-import { createApiHandler, makeAppRuntime, type RegisterRoutes, type AppRuntime } from '@on.auto/api';
+import {
+  createApiHandler,
+  makeAppRuntime,
+  type RegisterRoutes,
+  type AppRuntime,
+  type RuntimeControl,
+} from '@on.auto/api';
 import type { Environment } from '@on.auto/config';
 import {
   authenticatorFor,
@@ -46,6 +52,7 @@ export interface ServerOptions<R> {
   readonly composed: (settings: Settings, telemetry: Telemetry) => Composed<R>;
   readonly shutdownTimeoutMs: number;
   readonly exitDeadlineMs: number;
+  readonly runtimeControl?: RuntimeControl;
 }
 
 export function servedBy(routes: readonly RegisterRoutes[]): Served {
@@ -101,6 +108,7 @@ async function started<R>({ settings, authenticator, telemetry, options }: Start
       void runtime.run(logIncident({ id, original: error, call }).pipe(Effect.annotateLogs({ requestId })));
     },
     ...(telemetry.requests === undefined ? {} : { requests: telemetry.requests }),
+    ...(options.runtimeControl === undefined ? {} : { runtimeControl: options.runtimeControl }),
   });
   const server = createHttpServer(api.listener);
   try {

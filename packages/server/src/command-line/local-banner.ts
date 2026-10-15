@@ -16,6 +16,20 @@ const documentation = 'https://on.auto/docs/';
 
 const studioDefaultServer = 'http://localhost:5555';
 
+const mcpCommand = 'npx -y @on.auto/runtime@latest mcp';
+
+function agentCommandsFor(url: string, mcp: string): readonly (readonly [string, string])[] {
+  return url === studioDefaultServer
+    ? [
+        ['Claude Code', `claude mcp add auto-runtime -- ${mcpCommand}`],
+        ['Codex', `codex mcp add auto-runtime -- ${mcpCommand}`],
+      ]
+    : [
+        ['Claude Code', `claude mcp add --transport http auto-runtime ${mcp}`],
+        ['Codex', `codex mcp add auto-runtime --url ${mcp}`],
+      ];
+}
+
 function plainHeader(version: string): string {
   return `\nAuto Runtime v${version}\n${tagline}\n\n`;
 }
@@ -66,8 +80,7 @@ export function readyNoticeOf({ url, readyInMs, mode, identityService }: Ready, 
     ...(mode === 'local' ? localModeNotice(url, depth) : []),
     '',
     `  ${paint('dim', 'Connect your agent')}`,
-    agent('Claude Code', `claude mcp add --transport http auto-runtime ${mcp}`),
-    agent('Codex', `codex mcp add auto-runtime --url ${mcp}`),
+    ...agentCommandsFor(url, mcp).map(([label, command]) => agent(label, command)),
     '',
     `  ${paint('dim', 'Press Ctrl+C to stop.')}`,
     '',
