@@ -230,6 +230,9 @@ export { durationInWords } from './overview/duration-words.ts';
 export { eventFilterPhrases, type EventFilter } from './overview/event-filter-words.ts';
 export { appendedSection, markdownOf, mostOverviewBytes, mostTableRows } from './overview/markdown-writer.ts';
 export { mostFieldDescriptionCharacters, schemaBlocks } from './overview/schema-words.ts';
+export type { OutputShape, OutputShapeName } from './shapes/output-shape.ts';
+export { outputShapeNamed, outputShapeNames, shapeMismatchOf } from './shapes/output-shapes.ts';
+export { declaredShape, type ShapeRefusal } from './shapes/shape-declarations.ts';
 export {
   inputSection,
   outputSection,

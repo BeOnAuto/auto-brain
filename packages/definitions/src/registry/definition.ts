@@ -32,6 +32,14 @@ const listedDefinitionFields = {
         'What the parser found that may not work everywhere, such as a schema some providers reject; the definition was accepted with these warnings',
     }),
   ),
+  details: Schema.optionalKey(
+    Schema.Struct({
+      shape: Schema.String.annotate({
+        description:
+          'The output shape its output_schema is: series, categories, table or text, each a JSON Schema the runtime owns, which Auto Studio draws',
+      }),
+    }).annotate({ description: 'What the runtime declares of the definition beside its schemas' }),
+  ),
   triggers: Schema.optionalKey(
     Schema.Array(TriggerSchema).annotate({
       description:
@@ -111,7 +119,7 @@ export function isWorkflowDefinition(definition: Definition): definition is Work
 
 export type ListedDefinition = typeof ListedDefinitionSchema.Type;
 
-export type StoredDefinition = Omit<Definition, 'type' | 'media_type' | 'triggers_since' | 'standing'> & {
+export type StoredDefinition = Omit<Definition, 'type' | 'media_type' | 'triggers_since' | 'standing' | 'details'> & {
   readonly details?: Schema.JsonObject;
   readonly stripped?: StrippedForms;
 };

@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import { outputShapeNamed } from '../index.ts';
 import * as checkedWorkerModule from './checked-worker.ts';
 import { outputCheckOf, valueChecks, viewCheckOf } from './value-checks.ts';
 import { checkedWorker } from './worker-url.ts';
+
+const categoriesSchema = outputShapeNamed('categories')?.schema ?? {};
 
 describe('the check of an output against the output schema', () => {
   it('names at most three issues of the output, each at its pointer', () => {
@@ -14,6 +17,22 @@ describe('the check of an output against the output schema', () => {
       { pointer: '/2', detail: 'Expected string' },
     ]);
     expect(check(['x'])).toEqual([]);
+  });
+
+  it('checks an output against a shape its schema is with what the shape holds beyond its schema too', () => {
+    const shaped = outputCheckOf(categoriesSchema);
+    const twice = {
+      values: [
+        { name: 'a', value: 1 },
+        { name: 'a', value: 2, low: 3 },
+      ],
+    };
+
+    expect(shaped(twice)).toEqual([
+      { pointer: '/values/1/name', detail: 'Expected a name no value before it has' },
+      { pointer: '/values/1/low', detail: 'Expected a low of at most the value' },
+    ]);
+    expect(outputCheckOf({ type: 'object' })(twice)).toEqual([]);
   });
 
   it('refuses every output when the schema it is given does not compile, naming why', () => {
