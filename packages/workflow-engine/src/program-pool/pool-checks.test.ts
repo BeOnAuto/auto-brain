@@ -59,7 +59,7 @@ function blocked(pool: ProgramPool) {
   });
 }
 
-describe('the permit of the checks of a pool', { timeout: poolTestTimeoutMs }, () => {
+describe('the permit of the checks of a pool', () => {
   it('runs on a permit of its own, so it never waits behind the runs that take every worker', async () => {
     const pool = poolOf({ workers: 2 });
     const runs = [blocked(pool), blocked(pool)];
@@ -93,7 +93,7 @@ describe('the permit of the checks of a pool', { timeout: poolTestTimeoutMs }, (
   });
 });
 
-describe('the worker of the checks of a pool, while it starts', { timeout: poolTestTimeoutMs }, () => {
+describe('the worker of the checks of a pool, while it starts', () => {
   it('counts a check’s deadline from when its worker is ready, so a worker slower to start than the deadline answers', async () => {
     const pool = poolOf();
 
@@ -136,7 +136,7 @@ describe('the worker of the checks of a pool, while it starts', { timeout: poolT
   });
 });
 
-describe('the worker of the checks of a pool, once it started', { timeout: poolTestTimeoutMs }, () => {
+describe('the worker of the checks of a pool, once it started', () => {
   it('is kept however long it idles, so a save never waits for its start again', async () => {
     const pool = poolOf({ idleMs: 100 });
 
