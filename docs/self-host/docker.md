@@ -18,12 +18,13 @@ Pin a full version, such as `0.9.1`, wherever you need to know what is running, 
 
 The server listens on port `5555`, runs as the unprivileged user `node`, keeps a SQLite ledger on the volume at `/data` unless you give it a PostgreSQL database, checks its own health at `/health`, and stops cleanly on `SIGTERM`.
 
-## 1. Start the server
+## 1. Start the server {#start-the-server}
 
-A person signs in through the Auto identity service, and the runtime needs only the address it is reached at, `PUBLIC_URL`. Put it in a file of environment variables, which later steps add to, and start the server with a volume for its ledger:
+A person signs in through the Auto identity service, and the runtime needs the address it is reached at, `PUBLIC_URL`, and a key to seal the secrets it keeps under, `SECRETS_KEY`, 32 random bytes in base64. Put both in a file of environment variables, which later steps add to, and start the server with a volume for its ledger:
 
 ```bash
 echo 'PUBLIC_URL=http://localhost:5555' > auto-runtime.env
+echo "SECRETS_KEY=$(openssl rand -base64 32)" >> auto-runtime.env
 docker volume create auto-runtime-data
 docker run --detach --name auto-runtime --restart unless-stopped \
   --publish 127.0.0.1:5555:5555 --env-file auto-runtime.env --volume auto-runtime-data:/data \
@@ -33,6 +34,8 @@ docker run --detach --name auto-runtime --restart unless-stopped \
 `--publish 127.0.0.1:5555:5555` publishes the port on this machine's loopback address alone. An `http` address is for a runtime reached on its own machine, since a token sent over plain HTTP between machines can be read on the way; to reach the runtime from other machines, put HTTPS in front of it and set `PUBLIC_URL` to its `https` address, as [Run in production](production.md#put-https-in-front) describes.
 
 The named volume keeps the ledger when the container is replaced. Without it, Docker gives each container an empty anonymous volume, and its playbooks last only as long as that container.
+
+`SECRETS_KEY` stays out of the volume, so a copy of the volume holds no secret anyone can read without it. Without `SECRETS_KEY` the server would make a key itself, in `secrets.key` on the volume beside the ledger, where a copy of the volume would carry it. Keep a copy of the key with your other secrets: a secret sealed under a lost key cannot be read again. Where there is no `openssl`, `docker run --rm onauto/runtime:latest node --print "require('node:crypto').randomBytes(32).toString('base64')"` makes one too.
 
 ## 2. Check that it answers {#check-that-it-answers}
 
@@ -148,7 +151,7 @@ volumes:
   postgres-data:
 ```
 
-Compose reads `POSTGRES_PASSWORD` from a `.env` file in the same folder. Generate one, then start both:
+The runtime takes `SECRETS_KEY` from `auto-runtime.env`, as in [step 1](#start-the-server); a ledger in PostgreSQL needs it, and the runtime stops at start without it. Compose reads `POSTGRES_PASSWORD` from a `.env` file in the same folder. Generate one, then start both:
 
 ```bash
 echo "POSTGRES_PASSWORD=$(openssl rand -hex 16)" > .env
@@ -185,6 +188,18 @@ docker run --detach --name auto-runtime --restart unless-stopped \
 
 With Compose, run `docker compose pull` and then `docker compose up --detach`. Workflows that were waiting go on once the new server starts, and calls cut off by the stop run again. When several servers share a database, stop every server of the old version before starting the new one; see [Upgrades](production.md#upgrades).
 
+## Rotate the secrets key
+
+To replace `SECRETS_KEY`, move its value to `SECRETS_KEY_PREVIOUS`, add a new key, and start a new container as in [step 4](#add-a-model-provider):
+
+```bash
+sed 's/^SECRETS_KEY=/SECRETS_KEY_PREVIOUS=/' auto-runtime.env > auto-runtime.env.next
+echo "SECRETS_KEY=$(openssl rand -base64 32)" >> auto-runtime.env.next
+mv auto-runtime.env.next auto-runtime.env
+```
+
+At start the server seals again under the new key what the old one sealed, and `docker logs auto-runtime` says how many: `Secrets are kept sealed under the key <id>, and <count> sealed under the previous key were sealed again under it`. Then delete the `SECRETS_KEY_PREVIOUS` line from `auto-runtime.env` and start a new container once more. [Rotate the secrets key](production.md#rotate-the-secrets-key) covers several servers.
+
 ## Back up and restore
 
 On a volume, the ledger is three files, `ledger.db`, `ledger.db-wal` and `ledger.db-shm`, which belong together. Stop the server, copy the whole volume, and start it again:
@@ -195,7 +210,7 @@ docker run --rm --volume auto-runtime-data:/data:ro --volume "$PWD/backup:/backu
 docker start auto-runtime
 ```
 
-To restore, stop the server, copy the files back into the volume, and start it. With PostgreSQL, use your database's own backups, or `pg_dump`; the workflows are in the same database, so one backup holds everything.
+To restore, stop the server, copy the files back into the volume, and start it. With PostgreSQL, use your database's own backups, or `pg_dump`; the workflows are in the same database, so one backup holds everything. The secrets in a backup open only under the `SECRETS_KEY` that sealed them, so a restored ledger starts with that key, which you keep apart from the backups.
 
 ## Stop
 

@@ -30,6 +30,19 @@ The ledger holds every playbook, definition, run and its history, and the workfl
 
 Whoever can read the database can read what the runtime recorded: the inputs and outputs of runs, the documents of workflows, and the arguments and answers of tool calls unless a tool server's entry sets `record_content: false`. Restrict access to it, and to its backups, accordingly.
 
+## Keep the secrets key
+
+The runtime seals the secrets it keeps in the ledger's database under `SECRETS_KEY`, as [Secrets at rest](security.md#secrets-at-rest) describes. A container sets it from your platform's secret store, as it does the other secrets, so the key is on no disk the ledger is on and in no backup of it; a ledger in PostgreSQL cannot start without it, and every server that shares the database takes the same key. Make one with either command, and keep a copy where your other secrets are kept, since a secret sealed under a lost key cannot be read again:
+
+```bash
+openssl rand -base64 32
+docker run --rm onauto/runtime:latest node --print "require('node:crypto').randomBytes(32).toString('base64')"
+```
+
+### Rotate the secrets key
+
+To replace the key, give its value to `SECRETS_KEY_PREVIOUS`, a new key to `SECRETS_KEY`, and restart the server. At start it reads with the old key what the old key sealed, seals it again under the new one, and logs `Secrets are kept sealed under the key <id>, and <count> sealed under the previous key were sealed again under it`, where the id is the new key's, the first 16 hex characters of its SHA-256. Then remove `SECRETS_KEY_PREVIOUS` and restart it again: nothing is sealed under the old key any more. With several servers, stop them all and start them with both keys, as for an [upgrade](#upgrades), since a server that still runs with the old key alone cannot read what the new key seals.
+
 ## Run it as an always-on service
 
 Workflows, their timers and retries, the deliveries of interaction functions and the folding of recall views all run inside the server. Run it as a long-lived service with a restart policy, and do not let your platform scale it to zero or pause it between requests, or waiting workflows stop moving until it wakes.
@@ -58,7 +71,7 @@ Several servers can share one PostgreSQL database and one bucket behind a load b
 
 In the image, the server writes one JSON object per line to stderr, with a `level`, a `message` and the annotations of what it describes. Collect stderr with your platform's log driver. `LOG_LEVEL` sets the least level written, `debug`, `info`, `warn` or `error`, `info` unless set.
 
-At start the server logs where the ledger and content are kept, which model providers are configured, and the limits it runs with, and warns about anything missing; a setting it cannot read stops it, naming the setting and never its value. An error response with status `500` carries an incident id, which the server logs with the error and the request's `x-request-id`, so either id finds it; see [Troubleshooting](troubleshooting.md#error-responses).
+At start the server logs where the ledger and content are kept, the id of the key its secrets are sealed under, which model providers are configured, and the limits it runs with, and warns about anything missing; a setting it cannot read stops it, naming the setting and never its value. An error response with status `500` carries an incident id, which the server logs with the error and the request's `x-request-id`, so either id finds it; see [Troubleshooting](troubleshooting.md#error-responses).
 
 To see how requests, runs and calls of models and tools took their time, [send telemetry to an OpenTelemetry collector](telemetry.md). With telemetry on, every response carries its trace's id in `x-trace-id`, and a line the server logs while it answers a request names that trace in `trace_id`.
 
