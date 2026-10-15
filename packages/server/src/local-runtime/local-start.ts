@@ -5,7 +5,7 @@ import { coalescedSignals } from '../command-line/coalesced-signals.ts';
 import { servedLocally, type LocalServerHost } from '../command-line/local-server.ts';
 import { release } from '../composition/release.ts';
 import { stopInsistedBy, stopRequestedBy } from '../lifecycle/stop-request.ts';
-import { isControlledAt, localControlOf, runtimeStatusOf } from './local-control.ts';
+import { isControlledAt, localControlOf, providerSetupFor, runtimeStatusOf } from './local-control.ts';
 
 const signalsOfOneStop = 1000;
 
@@ -43,13 +43,14 @@ export async function startedLocally(
   const stopRequested = asked.then(Function.constVoid);
   const stopInsisted = stopInsistedBy(signals);
   const control = isControlledAt(settings['HOST']) ? { runtimeControl: local.control } : {};
+  const providerSetup = providerSetupFor(process.cwd(), settings['PORT']);
   Object.assign(process.env, settings);
   await servedLocally({
     ...terminal,
     run: async () => {
       const { compositionRoot } = await import('../composition/composition-root.ts');
       const { runServer } = await import('../lifecycle/run-server.ts');
-      return runServer(serverProcess, { ...compositionRoot, ...control }, stopRequested, stopInsisted);
+      return runServer(serverProcess, { ...compositionRoot, ...control, providerSetup }, stopRequested, stopInsisted);
     },
     stopRequested,
   }).catch(async (failure: unknown) => {

@@ -4,6 +4,7 @@ import {
   isControlledAt,
   localControlOf,
   logFileIn,
+  providerSetupFor,
   restartIn,
   runtimeStatusOf,
   type LocalRun,
@@ -134,5 +135,19 @@ describe('restarting the process of the runtime', () => {
     restartIn({ ...running, execve: undefined }, {});
 
     expect(said).toEqual(['Auto Runtime restarts only on macOS and Linux, so it has stopped instead\n']);
+  });
+});
+
+describe('what a runtime on this computer tells an agent about adding a model provider', () => {
+  it('names the .env it reads, how to restart it, and the first function after', () => {
+    expect(providerSetupFor('/Users/ada/.auto-runtime')).toBe(
+      'To add one, ask the person to put a line such as ANTHROPIC_API_KEY=<their key> in /Users/ada/.auto-runtime/.env, never in this chat, then restart Auto Runtime with npx @on.auto/runtime restart or at http://localhost:5555. Then offer a first function, as the first-playbook recipe of get_guide does; on.auto/docs has more.',
+    );
+  });
+
+  it('names its port where it runs on another one', () => {
+    expect(providerSetupFor('/Users/ada/playbooks', '6060')).toContain(
+      'then restart Auto Runtime with PORT=6060 npx @on.auto/runtime restart or at http://localhost:6060.',
+    );
   });
 });

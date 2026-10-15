@@ -37,19 +37,25 @@ export const loggedModelAccess: ModelAccessOf = (settings, proxy, telemetry) =>
 
 export async function reasoningServedBy(
   runtime: AppRuntime<DispatcherServices>,
-  settings: Pick<Settings, 'models' | 'proxy' | 'reasoning'>,
+  settings: Pick<Settings, 'models' | 'proxy' | 'reasoning' | 'providerSetup'>,
   modelAccessOf: ModelAccessOf,
   tools: ToolAccess,
 ): Promise<ServedReasoning> {
   const { languageModel, status, offered, catalog } = await Effect.runPromise(
-    modelAccessOf(settings.models, settings.proxy),
+    modelAccessOf({ ...settings.models, providerSetup: settings.providerSetup }, settings.proxy),
   );
   await runtime.run(logModelProviders(status));
   const { mostInputTokens } = settings.reasoning;
   await runtime.run(logReasoning(mostInputTokens));
   const reading = { mostInputTokens, contextWindowOf: catalog.contextWindowOf };
   return {
-    capability: makeReasoningFunctionAdapter({ languageModel, offered, tools, reading }),
-    listModels: defineListModels(catalog),
+    capability: makeReasoningFunctionAdapter({
+      languageModel,
+      offered,
+      tools,
+      reading,
+      providerSetup: settings.providerSetup,
+    }),
+    listModels: defineListModels(catalog, settings.providerSetup),
   };
 }

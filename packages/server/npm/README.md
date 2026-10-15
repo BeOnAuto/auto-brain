@@ -4,14 +4,14 @@ Auto Runtime runs the playbooks your agent builds: their reasoning, interaction,
 
 ## Connect your agent
 
-You need Node.js 26.10 or later on macOS or Linux. Add Auto Runtime to your agent as an MCP server that runs `npx -y @on.auto/runtime@latest mcp`, such as:
+It runs on macOS and Linux, with `npx` from Node.js; on a Node.js older than 26.10, the command fetches Node.js 26 from npm and runs on that. Add Auto Runtime to your agent as an MCP server that runs `npx -y @on.auto/runtime@latest mcp`, such as:
 
 ```bash
 claude mcp add auto-runtime -- npx -y @on.auto/runtime@latest mcp
 codex mcp add auto-runtime -- npx -y @on.auto/runtime@latest mcp
 ```
 
-When your agent connects, the command starts Auto Runtime in the background if it is not running yet, and relays your agent to it. The runtime it starts keeps running after your agent leaves, so the workflows it runs carry on and other agents reach the same one. It reads its settings from `~/.auto-runtime/.env`, where you put a model provider's key, such as `ANTHROPIC_API_KEY`, and writes its log to `~/.auto-runtime/runtime.log`. Your agent is told where the key goes and how to restart the runtime once it is there.
+When your agent connects, the command starts Auto Runtime in the background if it is not running yet, and relays your agent to it. The runtime it starts keeps running after your agent leaves, so the workflows it runs carry on and other agents reach the same one. It reads its settings from `~/.auto-runtime/.env`, where you put a model provider's key, such as `ANTHROPIC_API_KEY`, and writes its log to `~/.auto-runtime/runtime.log`. When no model provider is set up, your agent is told which file the key goes in and how to restart the runtime once it is there.
 
 ## Start it yourself
 

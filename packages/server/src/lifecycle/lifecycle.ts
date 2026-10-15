@@ -53,6 +53,7 @@ export interface ServerOptions<R> {
   readonly shutdownTimeoutMs: number;
   readonly exitDeadlineMs: number;
   readonly runtimeControl?: RuntimeControl;
+  readonly providerSetup?: string;
 }
 
 export function servedBy(routes: readonly RegisterRoutes[]): Served {
@@ -94,7 +95,10 @@ async function startRuntime<R>(
 }
 
 async function started<R>({ settings, authenticator, telemetry, options }: Starting<R>): Promise<RunningServer> {
-  const composed = options.composed(settings, telemetry);
+  const composed = options.composed(
+    options.providerSetup === undefined ? settings : { ...settings, providerSetup: options.providerSetup },
+    telemetry,
+  );
   const runtime = await startRuntime(composed.services, settings, telemetry.layer);
   await runtime.run(logAccessMode({ ...settings, mode: authenticator.mode }));
   await runtime.run(logConfigFile(settings.configFile));

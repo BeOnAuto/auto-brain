@@ -197,6 +197,65 @@ describe('installing a release again', () => {
   });
 });
 
+describe('launching the runtime on an older Node.js', () => {
+  it('runs it on Node.js 26 from npm when npm started it', () => {
+    const { packageRoot, cache } = installation();
+    const npm = '/usr/local/lib/node_modules/npm/bin/npm-cli.js';
+    const { host, messages } = launching({
+      versions: { node: '25.1.0' },
+      env: { XDG_CACHE_HOME: cache, npm_execpath: npm },
+    });
+
+    const executed = execveCallOf(host, packageRoot);
+
+    expect(executed.file).toBe('/usr/local/bin/node');
+    expect(executed.args).toEqual([
+      '/usr/local/bin/node',
+      npm,
+      'exec',
+      '--yes',
+      '--package=node@26.11.1',
+      '--',
+      'node',
+      join(installedRelease(packageRoot, cache), 'packages', 'server', 'auto-runtime.ts'),
+      'key',
+      '--org',
+      'acme',
+    ]);
+    expect(messages).toEqual([
+      'Auto Runtime needs Node.js 26.10.0 or later, and this is Node.js 25.1.0, so it runs on Node.js 26.11.1 from npm.\n',
+    ]);
+  });
+});
+
+describe('refusing an older Node.js', () => {
+  it.each(['/usr/local/lib/node_modules/yarn/bin/yarn.js', ''])(
+    'refuses it when it was not started by npm, here by %j',
+    (starter) => {
+      const { packageRoot, cache } = installation();
+      const { host, messages } = launching({
+        versions: { node: '25.1.0' },
+        env: { XDG_CACHE_HOME: cache, npm_execpath: starter },
+      });
+
+      expect(launch(host, urlOf(packageRoot))).toBe(1);
+      expect(messages).toEqual(['Auto Runtime needs Node.js 26.10.0 or later, and this is Node.js 25.1.0.\n']);
+    },
+  );
+
+  it('refuses it where a process cannot replace itself, as on a Node.js before 22.15', () => {
+    const { packageRoot, cache } = installation();
+    const { host, messages } = launching({
+      versions: { node: '20.18.0' },
+      env: { XDG_CACHE_HOME: cache, npm_execpath: '/usr/lib/node_modules/npm/bin/npm-cli.js' },
+      execve: undefined,
+    });
+
+    expect(launch(host, urlOf(packageRoot))).toBe(1);
+    expect(messages).toEqual(['Auto Runtime needs Node.js 26.10.0 or later, and this is Node.js 20.18.0.\n']);
+  });
+});
+
 describe('what the launcher refuses', () => {
   it.each(['26.9.9', '25.12.0'])('refuses Node.js %s', (node) => {
     const { packageRoot, cache } = installation();

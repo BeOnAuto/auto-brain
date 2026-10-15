@@ -34,6 +34,10 @@ function answersIn(stdout: string): readonly unknown[] {
     .map((line): unknown => JSON.parse(line));
 }
 
+function answerWithId(answers: readonly unknown[], id: number): unknown {
+  return answers.find((answer) => typeof answer === 'object' && answer !== null && 'id' in answer && answer.id === id);
+}
+
 function lineOf(message: object): string {
   return `${JSON.stringify(message)}\n`;
 }
@@ -61,11 +65,16 @@ describe('an agent that starts auto-runtime mcp', { timeout: spawnedServerTestTi
     await answered(relay, 1);
     relay.write(lineOf({ jsonrpc: '2.0', method: 'notifications/initialized' }));
     relay.write(lineOf({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} }));
-    const [initialized, listed] = await answered(relay, 2);
+    relay.write(
+      lineOf({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'list_models', arguments: {} } }),
+    );
+    const answers = await answered(relay, 3);
+    const [initialized, listed, models] = [1, 2, 3].map((id) => answerWithId(answers, id));
     relay.end();
 
     expect(initialized).toMatchObject({ id: 1, result: { serverInfo: { title: 'Auto Runtime' } } });
     expect(JSON.stringify(listed)).toContain('"name":"list_playbooks"');
+    expect(JSON.stringify(models)).toContain(`ANTHROPIC_API_KEY=<their key> in ${join(home, '.auto-runtime', '.env')}`);
     expect(await relay.exited).toBe(0);
   });
 

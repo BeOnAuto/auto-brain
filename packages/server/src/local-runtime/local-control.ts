@@ -19,12 +19,24 @@ export interface LocalRun {
 
 const loopbackHosts: ReadonlySet<string> = new Set(['127.0.0.1', '::1', 'localhost']);
 
+const defaultPort = '5555';
+
 export function runtimeHomeIn(home: string): string {
   return join(home, '.auto-runtime');
 }
 
 export function logFileIn(home: string): string {
   return join(runtimeHomeIn(home), 'runtime.log');
+}
+
+export function providerSetupFor(directory: string, port?: string): string {
+  const page = `http://localhost:${port ?? defaultPort}`;
+  const restart = port === undefined ? 'npx @on.auto/runtime restart' : `PORT=${port} npx @on.auto/runtime restart`;
+  return [
+    `To add one, ask the person to put a line such as ANTHROPIC_API_KEY=<their key> in ${join(directory, '.env')}, never in this chat,`,
+    `then restart Auto Runtime with ${restart} or at ${page}.`,
+    'Then offer a first function, as the first-playbook recipe of get_guide does; on.auto/docs has more.',
+  ].join(' ');
 }
 
 export function isControlledAt(host: string | undefined): boolean {

@@ -17,9 +17,12 @@ export interface LaunchingProcess {
 interface Ready {
   readonly execve: Execve;
   readonly cacheRoot: string;
+  readonly runner: readonly string[];
 }
 
 const requiredNode = '26.10.0';
+
+const nodeFromNpm = '26.11.1';
 
 const installedMarker = '.installed';
 
@@ -42,18 +45,34 @@ function cacheRootOf(env: Readonly<NodeJS.ProcessEnv>): string | undefined {
   return isSet(home) ? join(home, '.cache') : undefined;
 }
 
-function readinessOf({ versions, execve, env }: Readonly<LaunchingProcess>): Ready | string {
-  const cacheRoot = cacheRootOf(env);
-  if (!isAtLeast(versions.node, requiredNode)) {
-    return `Auto Runtime needs Node.js ${requiredNode} or later, and this is Node.js ${versions.node}.`;
+function npmOf(env: Readonly<NodeJS.ProcessEnv>): string | undefined {
+  const npm = env['npm_execpath'];
+  return isSet(npm) && basename(npm).startsWith('npm-cli') ? npm : undefined;
+}
+
+function runnerOf({ versions, execPath, env }: Readonly<LaunchingProcess>): readonly string[] | undefined {
+  if (isAtLeast(versions.node, requiredNode)) {
+    return [execPath];
   }
-  if (execve === undefined) {
+  const npm = npmOf(env);
+  return npm === undefined
+    ? undefined
+    : [execPath, npm, 'exec', '--yes', `--package=node@${nodeFromNpm}`, '--', 'node'];
+}
+
+function readinessOf(host: Readonly<LaunchingProcess>): Ready | string {
+  const cacheRoot = cacheRootOf(host.env);
+  const runner = runnerOf(host);
+  if (runner === undefined || (host.execve === undefined && runner.length > 1)) {
+    return `Auto Runtime needs Node.js ${requiredNode} or later, and this is Node.js ${host.versions.node}.`;
+  }
+  if (host.execve === undefined) {
     return 'Auto Runtime runs on macOS and Linux. On Windows, run the onauto/runtime image with Docker.';
   }
   if (cacheRoot === undefined) {
     return 'Auto Runtime keeps its files under XDG_CACHE_HOME or HOME, and neither is set.';
   }
-  return { execve, cacheRoot };
+  return { execve: host.execve, cacheRoot, runner };
 }
 
 function modulesFolders(directory: string): readonly string[] {
@@ -130,9 +149,14 @@ export function launch(host: Readonly<LaunchingProcess>, packageRoot: Readonly<U
     return 1;
   }
   const release = installedRelease(fileURLToPath(packageRoot.href), readiness.cacheRoot);
+  if (readiness.runner.length > 1) {
+    host.stderr.write(
+      `Auto Runtime needs Node.js ${requiredNode} or later, and this is Node.js ${host.versions.node}, so it runs on Node.js ${nodeFromNpm} from npm.\n`,
+    );
+  }
   return readiness.execve(
     host.execPath,
-    [host.execPath, join(release, 'packages', 'server', 'auto-runtime.ts'), ...host.argv.slice(2)],
+    [...readiness.runner, join(release, 'packages', 'server', 'auto-runtime.ts'), ...host.argv.slice(2)],
     host.env,
   );
 }
