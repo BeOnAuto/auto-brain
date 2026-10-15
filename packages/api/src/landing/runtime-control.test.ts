@@ -14,6 +14,7 @@ const startedInATerminal: RuntimeStatus = {
   directory: '/Users/ada/playbooks',
   startedBy: 'terminal',
   logFile: undefined,
+  runsInFlight: 0,
 };
 
 const startedByAnAgent: RuntimeStatus = {
@@ -153,8 +154,8 @@ describe('the page of a runtime started any other way', () => {
 });
 
 describe('the status of the runtime', () => {
-  it('is what the page shows, as JSON', async () => {
-    const answer = await call(handlerFor(controlled(startedByAnAgent).control), '/runtime', {
+  it('is what the page shows, as JSON, with the number of its runs that have not ended', async () => {
+    const answer = await call(handlerFor(controlled({ ...startedByAnAgent, runsInFlight: 2 }).control), '/runtime', {
       headers: onThisComputer,
     });
 
@@ -167,6 +168,7 @@ describe('the status of the runtime', () => {
         started_by: 'agent',
         directory: '/Users/ada/.auto-runtime',
         log_file: '/Users/ada/.auto-runtime/runtime.log',
+        runs_in_flight: 2,
       },
     });
     expect(answer.headers.get('cache-control')).toBe('no-store');

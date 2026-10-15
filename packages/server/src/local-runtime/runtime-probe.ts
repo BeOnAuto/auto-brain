@@ -17,6 +17,7 @@ const RunningStatusSchema = Schema.Struct({
   started_by: Schema.Literals(['terminal', 'agent']),
   directory: Schema.String,
   log_file: Schema.optionalKey(Schema.String),
+  runs_in_flight: Schema.Number,
 });
 
 export type RunningStatus = typeof RunningStatusSchema.Type;
@@ -79,7 +80,7 @@ export interface Waiting {
   readonly sleep: (milliseconds: number) => Promise<void>;
 }
 
-const probeEveryMs = 100;
+export const probeEveryMs = 100;
 
 export async function waitedFor(
   port: number,
@@ -95,4 +96,14 @@ export async function waitedFor(
   }
   await waiting.sleep(probeEveryMs);
   return waitedFor(port, waiting, attempts - 1, isWhatWeWait);
+}
+
+const stopAttempts = 150;
+
+function isDown(probe: Probe): boolean {
+  return probe.state === 'down';
+}
+
+export async function stoppedWhenAsked(port: number, waiting: Waiting): Promise<boolean> {
+  return (await askedTo('stop', port, waiting.fetch)) && (await waitedFor(port, waiting, stopAttempts, isDown));
 }

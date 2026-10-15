@@ -4,7 +4,8 @@ import { join } from 'node:path';
 
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { defaultRuntimePort, runtimePortOf } from './runtime-port.ts';
+import { defaultRuntimePort } from './local-control.ts';
+import { runtimePortOf } from './runtime-port.ts';
 
 const home = mkdtempSync(join(tmpdir(), 'auto-runtime-port-'));
 

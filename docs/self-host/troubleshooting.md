@@ -12,18 +12,19 @@ Never paste an API key into a prompt to fix a connection. The server reads keys 
 
 **Fix.**
 
-- With `npx @on.auto/runtime`, read the server's terminal for startup errors. Stop whatever else listens on port `5555`, or set `PORT` in `.env` to a free port and use that port in your agent's MCP address.
+- When your agent started Auto Runtime through its MCP entry, read `~/.auto-runtime/runtime.log` for startup errors, since the server has no terminal. Stop whatever else listens on port `5555`, or set `PORT` in `~/.auto-runtime/.env` to a free port; the entry reads it too.
+- With `npx @on.auto/runtime` in a terminal, read that terminal for startup errors. Stop whatever else listens on port `5555`, or set `PORT` in the `.env` of the directory you start it in to a free port, and give your agent that port: the command the server shows when it is ready carries it.
 - With Docker, run `docker logs auto-runtime` to read the startup errors. Stop and remove the earlier container before you start another with the same name or port: `docker stop auto-runtime && docker rm auto-runtime`. [Run with Docker](docker.md#start-the-server) keeps the command in a script that does this for you.
 
 ## The agent cannot connect, though `/health` responds {#agent-cannot-connect}
 
 **Symptom.** The health check returns `{"status":"ok"}`, but your agent shows `auto-runtime` as not connected.
 
-**Cause.** The agent has the wrong MCP address, has not reloaded its connections, or runs somewhere that cannot reach your computer. A web-based connector running in the cloud cannot reach your `localhost`.
+**Cause.** The agent has the wrong MCP entry or address, has not reloaded its connections, or runs somewhere that cannot reach your computer. A web-based connector running in the cloud cannot reach your `localhost`.
 
 **Fix.**
 
-- Check the agent's MCP endpoint. It is `http://localhost:5555/mcp`, or the port you set.
+- Check the agent's MCP entry. The [quick start](../get-started/local.md#connect-your-agent) gives it: the `mcp` command of `@on.auto/runtime`, run by `npx`. An agent that connects over HTTP instead, as one that signs you in does, uses `http://localhost:5555/mcp`, or the port you set.
 - Restart the agent session.
 - Confirm that the agent runs on the same computer as Auto Runtime.
 
@@ -36,7 +37,7 @@ Never paste an API key into a prompt to fix a connection. The server reads keys 
 **Fix.**
 
 - Check which providers the server's startup log names.
-- With `npx`, check the setting in `.env` in the directory you started Auto Runtime in. With Docker, check `auto-runtime.env`.
+- With `npx`, check the setting in `~/.auto-runtime/.env` when your agent started Auto Runtime, or in `.env` in the directory you started it in from a terminal. With Docker, check `auto-runtime.env`.
 - Restart the server after you change a setting. With Docker, replace the container, since `docker restart` does not read the file again.
 - Confirm the provider prefix in the definition, and that the model id is available to your account.
 

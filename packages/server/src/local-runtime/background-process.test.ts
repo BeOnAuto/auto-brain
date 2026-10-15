@@ -1,11 +1,15 @@
+import { spawnSync } from 'node:child_process';
 import {
   chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   realpathSync,
+  renameSync,
   rmSync,
+  statSync,
   utimesSync,
   writeFileSync,
 } from 'node:fs';
@@ -16,7 +20,9 @@ import { fileURLToPath } from 'node:url';
 import { Function } from 'effect';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { startInBackgroundOf, startingLockIn } from './background-process.ts';
+import { spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
+import { noticesFor, restartMarkIn, startInBackgroundOf, startingLockIn } from './background-process.ts';
+import { restartWaitMs, startWaitMs } from './background-start.ts';
 
 const recordingEntry = fileURLToPath(new URL('../testing/entries/record-background-start.ts', import.meta.url));
 
@@ -31,7 +37,7 @@ afterEach(() => {
   rmSync(home, { recursive: true, force: true });
 });
 
-describe('starting the runtime in the background', () => {
+describe('starting the runtime in the background', { timeout: spawnedServerTestTimeoutMs }, () => {
   it('starts it from the home of the runtime, writing to its log', async () => {
     startInBackgroundOf({
       execPath: process.execPath,
@@ -45,14 +51,14 @@ describe('starting the runtime in the background', () => {
     const runtimeHome = join(home, '.auto-runtime');
     await vi.waitFor(() => {
       expect(existsSync(join(runtimeHome, 'started.json'))).toBe(true);
-    });
+    }, spawnedServerTestTimeoutMs);
     expect(JSON.parse(readFileSync(join(runtimeHome, 'started.json'), 'utf8'))).toEqual({
       arguments: ['start', '--background'],
       directory: runtimeHome,
     });
     await vi.waitFor(() => {
       expect(readFileSync(join(runtimeHome, 'runtime.log'), 'utf8')).toBe('started in the background\n');
-    });
+    }, spawnedServerTestTimeoutMs);
   });
 
   it('reports a runtime it could not start', async () => {
@@ -71,9 +77,24 @@ describe('starting the runtime in the background', () => {
 
     await vi.waitFor(() => {
       expect(reported).toEqual([expect.stringMatching(/^Auto Runtime could not be started: spawn .*ENOENT$/u)]);
-    });
+    }, spawnedServerTestTimeoutMs);
   });
 });
+
+function lockFile(): string {
+  return join(home, '.auto-runtime', 'starting.lock');
+}
+
+function takenOverByAnother(): number {
+  renameSync(lockFile(), `${lockFile()}.another`);
+  return Date.now();
+}
+
+function leftAt(time: Readonly<Date>): void {
+  mkdirSync(join(home, '.auto-runtime'), { recursive: true });
+  writeFileSync(lockFile(), '');
+  utimesSync(lockFile(), time, time);
+}
 
 describe('the lock that one agent holds while it starts the runtime', () => {
   it('is held by one at a time', () => {
@@ -84,14 +105,20 @@ describe('the lock that one agent holds while it starts the runtime', () => {
     expect(lock.take()).toBe(true);
   });
 
-  it('is taken over when whoever took it left it for more than a minute', () => {
+  it('is taken over, once, when whoever took it left it for longer than a start can take', () => {
     const lock = startingLockIn(home, () => Date.now());
-    mkdirSync(join(home, '.auto-runtime'));
-    writeFileSync(join(home, '.auto-runtime', 'starting.lock'), '');
-    const twoMinutesAgo = new Date(Date.now() - 120_000);
-    utimesSync(join(home, '.auto-runtime', 'starting.lock'), twoMinutesAgo, twoMinutesAgo);
+    const left = new Date(Date.now() - 3 * startWaitMs);
+    leftAt(left);
 
-    expect(lock.take()).toBe(true);
+    expect([lock.take(), lock.take()]).toEqual([true, false]);
+    expect(statSync(lockFile()).mtimeMs).toBeGreaterThan(left.getTime());
+    expect(readdirSync(join(home, '.auto-runtime'))).toEqual(['starting.lock']);
+  });
+
+  it('is left to whoever took it while it is younger than a start can take', () => {
+    leftAt(new Date(Date.now() - startWaitMs));
+
+    expect(startingLockIn(home, () => Date.now()).take()).toBe(false);
   });
 
   it('cannot be taken where it cannot be written', () => {
@@ -100,5 +127,102 @@ describe('the lock that one agent holds while it starts the runtime', () => {
 
     expect(startingLockIn(home, () => Date.now()).take()).toBe(false);
     chmodSync(join(home, '.auto-runtime'), 0o700);
+  });
+});
+
+describe('the lock that two agents take over at once', () => {
+  it('is left to another agent whose takeover came first, between the look at it and the takeover', () => {
+    leftAt(new Date(Date.now() - 3 * startWaitMs));
+
+    expect(startingLockIn(home, takenOverByAnother).take()).toBe(false);
+  });
+
+  it('is given back to another agent that took it over between the look at it and the takeover', () => {
+    const left = new Date(Date.now() - 3 * startWaitMs);
+    leftAt(left);
+    const looks = [Date.now(), left.getTime()];
+
+    expect(startingLockIn(home, () => Number(looks.shift())).take()).toBe(false);
+    expect(readdirSync(join(home, '.auto-runtime'))).toEqual(['starting.lock']);
+  });
+});
+
+describe('the notices of an agent about the runtime', () => {
+  it('are said once each, to the agent and in the log of the runtime', () => {
+    mkdirSync(join(home, '.auto-runtime'));
+    const reported: string[] = [];
+    const notice = noticesFor(home, (line) => {
+      reported.push(line);
+    });
+
+    notice('a newer release waits');
+    notice('a newer release waits');
+
+    expect(reported).toEqual(['a newer release waits']);
+    expect(readFileSync(join(home, '.auto-runtime', 'runtime.log'), 'utf8')).toBe('a newer release waits\n');
+  });
+
+  it('are said to the agent alone, with why, where the log cannot be written', () => {
+    const reported: string[] = [];
+
+    noticesFor(home, (line) => {
+      reported.push(line);
+    })('a newer release waits');
+
+    expect(reported).toEqual([
+      'a newer release waits',
+      `Auto Runtime could not write to ${join(home, '.auto-runtime', 'runtime.log')}`,
+    ]);
+  });
+});
+
+const markFile = (): string => join(home, '.auto-runtime', 'restart-mark.json');
+
+const goneProcess = (): number => spawnSync(process.execPath, ['-e', '']).pid;
+
+describe('the mark a runtime leaves while it restarts', () => {
+  it('says a restart is under way while the process that left it runs, within the restart wait', () => {
+    const at = Date.now();
+    const mark = restartMarkIn(home, () => at);
+
+    expect(mark.leave(process.pid)).toBe(true);
+    const left: unknown = JSON.parse(readFileSync(markFile(), 'utf8'));
+    expect(left).toEqual({ pid: process.pid, at });
+    expect(mark.isUnderWay()).toBe(true);
+  });
+
+  it('is stale once its process is gone, or once it is older than the restart wait', () => {
+    restartMarkIn(home).leave(goneProcess());
+    const gone = restartMarkIn(home).isUnderWay();
+    restartMarkIn(home, () => Date.now() - restartWaitMs - 1).leave(process.pid);
+
+    expect([gone, restartMarkIn(home).isUnderWay()]).toEqual([false, false]);
+  });
+
+  it('says no restart is under way where there is no mark, or one that is not a mark', () => {
+    const mark = restartMarkIn(home);
+    const without = mark.isUnderWay();
+    mkdirSync(join(home, '.auto-runtime'));
+    writeFileSync(markFile(), 'restarting');
+
+    expect([without, mark.isUnderWay()]).toEqual([false, false]);
+  });
+
+  it('is cleared by the process that left it, once it answers again, and by no other', () => {
+    const mark = restartMarkIn(home);
+    mark.leave(process.pid);
+
+    mark.clear(process.pid + 1);
+    const keptForAnother = existsSync(markFile());
+    mark.clear(process.pid);
+
+    expect([keptForAnother, existsSync(markFile())]).toEqual([true, false]);
+  });
+
+  it('is not left where it cannot be written', () => {
+    mkdirSync(join(home, '.auto-runtime'));
+    chmodSync(join(home, '.auto-runtime'), 0o500);
+
+    expect(restartMarkIn(home).leave(process.pid)).toBe(false);
   });
 });

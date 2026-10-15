@@ -10,6 +10,7 @@ export interface RuntimeStatus {
   readonly directory: string;
   readonly startedBy: StartedBy;
   readonly logFile: string | undefined;
+  readonly runsInFlight: number;
 }
 
 export interface RuntimeControl {
@@ -51,6 +52,15 @@ export function refusalOf(asker: Asker): Response | undefined {
   return isFromItsPage(asker) ? undefined : problemResponse(notFromItsPage);
 }
 
+const startedByWords: Readonly<Record<StartedBy, string>> = {
+  terminal: 'in a terminal',
+  agent: 'by your agent',
+};
+
+export function startedInWords(startedAt: Date, startedBy: StartedBy): string {
+  return `${startedAt.toISOString().slice(0, 16).replace('T', ' ')} UTC, ${startedByWords[startedBy]}`;
+}
+
 export function statusDocumentOf(status: RuntimeStatus): Readonly<Record<string, string | number>> {
   return {
     version: status.version,
@@ -59,6 +69,7 @@ export function statusDocumentOf(status: RuntimeStatus): Readonly<Record<string,
     started_by: status.startedBy,
     directory: status.directory,
     ...(status.logFile === undefined ? {} : { log_file: status.logFile }),
+    runs_in_flight: status.runsInFlight,
   };
 }
 

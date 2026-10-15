@@ -1,4 +1,13 @@
-import { askedTo, probeAt, waitedFor, type Probe, type Waiting } from './runtime-probe.ts';
+import { longestStopMs } from '../lifecycle/shutdown.ts';
+import {
+  probeAt,
+  probeEveryMs,
+  stoppedWhenAsked,
+  waitedFor,
+  type Probe,
+  type RunningStatus,
+  type Waiting,
+} from './runtime-probe.ts';
 
 export interface StartingLock {
   readonly take: () => boolean;
@@ -10,34 +19,40 @@ export interface BackgroundStarting extends Waiting {
   readonly startInBackground: () => void;
   readonly startingLock: StartingLock;
   readonly logFile: string;
+  readonly notice: (line: string) => void;
+  readonly restartUnderWay: () => boolean;
 }
 
 export interface Patience {
   readonly attempts: number;
 }
 
+export const startWaitMs = 60_000;
+
+const startAttempts = Math.ceil(startWaitMs / probeEveryMs);
+
 export const impatient: Patience = { attempts: 0 };
 
-export const throughARestart: Patience = { attempts: 100 };
+export const restartWaitMs = longestStopMs + startWaitMs;
 
-const stopAttempts = 150;
-
-const startAttempts = 600;
+export const throughARestart: Patience = { attempts: Math.ceil(restartWaitMs / probeEveryMs) };
 
 function isNewer(version: string, than: string): boolean {
   return version.localeCompare(than, 'en', { numeric: true }) > 0;
 }
 
-function isOutdated(probe: Probe, version: string): boolean {
-  return probe.state === 'running' && probe.status.started_by === 'agent' && isNewer(version, probe.status.version);
+function outdatedOf(probe: Probe, version: string): RunningStatus | undefined {
+  const outdated =
+    probe.state === 'running' && probe.status.started_by === 'agent' && isNewer(version, probe.status.version);
+  return outdated ? probe.status : undefined;
+}
+
+function patienceFor(patience: Patience, starting: BackgroundStarting): Patience {
+  return starting.restartUnderWay() ? throughARestart : patience;
 }
 
 function isAnswering(probe: Probe): boolean {
   return probe.state === 'running' || probe.state === 'uncontrolled';
-}
-
-function isDown(probe: Probe): boolean {
-  return probe.state === 'down';
 }
 
 async function startedHere(port: number, starting: BackgroundStarting): Promise<string | undefined> {
@@ -56,10 +71,20 @@ async function startedHere(port: number, starting: BackgroundStarting): Promise<
   }
 }
 
-async function replaced(port: number, starting: BackgroundStarting): Promise<string | undefined> {
-  const stopped =
-    (await askedTo('stop', port, starting.fetch)) && (await waitedFor(port, starting, stopAttempts, isDown));
-  return stopped ? startedHere(port, starting) : undefined;
+async function replaced(
+  port: number,
+  outdated: RunningStatus,
+  starting: BackgroundStarting,
+): Promise<string | undefined> {
+  if (outdated.runs_in_flight > 0) {
+    starting.notice(
+      `Auto Runtime ${starting.version} waits for Auto Runtime ${outdated.version} on port ${port} to be idle before it replaces it, and relays to ${outdated.version} until then`,
+    );
+    return undefined;
+  }
+  return (await stoppedWhenAsked(port, starting))
+    ? startedHere(port, starting)
+    : `Auto Runtime ${outdated.version} on port ${port} did not stop, so Auto Runtime ${starting.version} could not replace it`;
 }
 
 export async function runningRuntime(
@@ -68,13 +93,14 @@ export async function runningRuntime(
   patience: Patience,
 ): Promise<string | undefined> {
   const probe = await probeAt(port, starting.fetch);
-  if (isOutdated(probe, starting.version)) {
-    return replaced(port, starting);
+  const outdated = outdatedOf(probe, starting.version);
+  if (outdated !== undefined) {
+    return replaced(port, outdated, starting);
   }
   if (probe.state === 'foreign') {
     return `Another program answers on port ${port}; set PORT to start Auto Runtime on a free port`;
   }
-  if (isAnswering(probe) || (await waitedFor(port, starting, patience.attempts, isAnswering))) {
+  if (isAnswering(probe) || (await waitedFor(port, starting, patienceFor(patience, starting).attempts, isAnswering))) {
     return undefined;
   }
   return startedHere(port, starting);

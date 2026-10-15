@@ -4,12 +4,18 @@ Auto Runtime runs the playbooks your agent builds: their reasoning, interaction,
 
 ## Connect your agent
 
-It runs on macOS and Linux, with `npx` from Node.js; on a Node.js older than 26.10, the command fetches Node.js 26 from npm and runs on that. Add Auto Runtime to your agent as an MCP server that runs `npx -y @on.auto/runtime@latest mcp`, such as:
+It needs Node.js 26.10 or later, with its `npx`, on macOS or Linux.
+
+<!-- x-release-please-start-version -->
+
+Add Auto Runtime to your agent as an MCP server that runs `npx -y @on.auto/runtime@0.10.0 mcp`, the release this README comes with, such as:
 
 ```bash
-claude mcp add auto-runtime -- npx -y @on.auto/runtime@latest mcp
-codex mcp add auto-runtime -- npx -y @on.auto/runtime@latest mcp
+claude mcp add auto-runtime -- npx -y @on.auto/runtime@0.10.0 mcp
+codex mcp add auto-runtime -- npx -y @on.auto/runtime@0.10.0 mcp
 ```
+
+<!-- x-release-please-end -->
 
 When your agent connects, the command starts Auto Runtime in the background if it is not running yet, and relays your agent to it. The runtime it starts keeps running after your agent leaves, so the workflows it runs carry on and other agents reach the same one. It reads its settings from `~/.auto-runtime/.env`, where you put a model provider's key, such as `ANTHROPIC_API_KEY`, and writes its log to `~/.auto-runtime/runtime.log`. When no model provider is set up, your agent is told which file the key goes in and how to restart the runtime once it is there.
 
@@ -27,7 +33,7 @@ claude mcp add --transport http auto-runtime http://localhost:5555/mcp
 
 To sign people in through the Auto identity service instead, set `PUBLIC_URL=http://localhost:5555`: the first time it connects, your agent then opens the sign-in page in your browser.
 
-`http://localhost:5555` shows which release runs, in which process, since when and from which directory, with buttons that restart and stop it.
+In local mode, `http://localhost:5555` shows which release runs, in which process, since when and from which directory, with buttons that restart and stop it.
 
 ## Configure it
 
@@ -49,6 +55,8 @@ npx @on.auto/runtime key --org acme # issue an API key for a machine or a pipeli
 npx @on.auto/runtime --version
 npx @on.auto/runtime --help
 ```
+
+`status`, `restart` and `stop` control a server in local mode; one that signs people in or takes keys offers no control.
 
 ## Run it in a container
 

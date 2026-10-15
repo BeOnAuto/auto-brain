@@ -10,6 +10,7 @@ import {
   refusalOf,
   runtimeActionPaths,
   runtimePath,
+  startedInWords,
   statusDocumentOf,
   type RuntimeAction,
   type RuntimeControl,
@@ -28,15 +29,6 @@ function studioOn(server: Readonly<URL>): string {
   return `${studioOrigin}/?server=${encodeURIComponent(server.origin)}`;
 }
 
-const startedByWords: Readonly<Record<RuntimeStatus['startedBy'], string>> = {
-  terminal: 'in a terminal',
-  agent: 'by your agent',
-};
-
-function startedOf({ startedAt, startedBy }: RuntimeStatus): string {
-  return `${startedAt.toISOString().slice(0, 16).replace('T', ' ')} UTC, ${startedByWords[startedBy]}`;
-}
-
 function factsOf(status: RuntimeStatus): Page {
   const log =
     status.logFile === undefined
@@ -49,7 +41,7 @@ function factsOf(status: RuntimeStatus): Page {
       <dt>Process</dt>
       <dd>${status.pid}</dd>
       <dt>Started</dt>
-      <dd>${startedOf(status)}</dd>
+      <dd>${startedInWords(status.startedAt, status.startedBy)}</dd>
       <dt>Directory</dt>
       <dd>${status.directory}</dd>
       ${log}

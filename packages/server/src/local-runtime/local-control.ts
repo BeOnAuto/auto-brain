@@ -1,12 +1,14 @@
 import { join } from 'node:path';
 
-import type { RuntimeAction, RuntimeControl, RuntimeStatus, StartedBy } from '@on.auto/api';
+import type { RuntimeAction, RuntimeStatus, StartedBy } from '@on.auto/api';
 import type { Environment } from '@on.auto/config';
+import type { AccessMode } from '@on.auto/identity';
 
-export interface LocalControl {
-  readonly control: RuntimeControl;
-  readonly asked: Promise<RuntimeAction>;
-}
+import type { LocalServing } from '../lifecycle/lifecycle.ts';
+import type { RestartMark } from './background-process.ts';
+import type { RunsInFlight } from './runs-in-flight.ts';
+
+export const defaultRuntimePort = 5555;
 
 export interface LocalRun {
   readonly version: string;
@@ -15,11 +17,13 @@ export interface LocalRun {
   readonly directory: string;
   readonly home: string;
   readonly startedBy: StartedBy;
+  readonly port: string | undefined;
 }
 
-const loopbackHosts: ReadonlySet<string> = new Set(['127.0.0.1', '::1', 'localhost']);
-
-const defaultPort = '5555';
+export interface LocalControl {
+  readonly servingIn: (mode: AccessMode) => LocalServing;
+  readonly asked: Promise<RuntimeAction>;
+}
 
 export function runtimeHomeIn(home: string): string {
   return join(home, '.auto-runtime');
@@ -29,36 +33,52 @@ export function logFileIn(home: string): string {
   return join(runtimeHomeIn(home), 'runtime.log');
 }
 
-export function providerSetupFor(directory: string, port?: string): string {
-  const page = `http://localhost:${port ?? defaultPort}`;
-  const restart = port === undefined ? 'npx @on.auto/runtime restart' : `PORT=${port} npx @on.auto/runtime restart`;
+export function restartWordsFor({ port, version }: Pick<LocalRun, 'port' | 'version'>): string {
+  const command = `${port === undefined ? '' : `PORT=${port} `}npx -y @on.auto/runtime@${version} restart`;
+  return `restart Auto Runtime with ${command} or at http://localhost:${port ?? defaultRuntimePort}`;
+}
+
+export function providerSetupFor(directory: string, restart = 'restart Auto Runtime'): string {
   return [
     `To add one, ask the person to put a line such as ANTHROPIC_API_KEY=<their key> in ${join(directory, '.env')}, never in this chat,`,
-    `then restart Auto Runtime with ${restart} or at ${page}.`,
+    `then ${restart}.`,
     'Then offer a first function, as the first-playbook recipe of get_guide does; on.auto/docs has more.',
   ].join(' ');
 }
 
-export function isControlledAt(host: string | undefined): boolean {
-  return host !== undefined && loopbackHosts.has(host);
-}
-
-export function runtimeStatusOf({ home, ...run }: LocalRun): RuntimeStatus {
-  return { ...run, logFile: run.startedBy === 'agent' ? logFileIn(home) : undefined };
-}
-
-export function localControlOf(status: RuntimeStatus): LocalControl {
-  const { promise, resolve } = Promise.withResolvers<RuntimeAction>();
+export function runtimeStatusOf(run: LocalRun, runsInFlight: number): RuntimeStatus {
   return {
-    control: {
-      status: () => status,
-      stop: () => {
-        resolve('stop');
-      },
-      restart: () => {
-        resolve('restart');
-      },
+    version: run.version,
+    pid: run.pid,
+    startedAt: run.startedAt,
+    directory: run.directory,
+    startedBy: run.startedBy,
+    logFile: run.startedBy === 'agent' ? logFileIn(run.home) : undefined,
+    runsInFlight,
+  };
+}
+
+export function localControlOf(
+  run: LocalRun,
+  runs: RunsInFlight,
+  restartMark: Pick<RestartMark, 'leave'>,
+): LocalControl {
+  const { promise, resolve } = Promise.withResolvers<RuntimeAction>();
+  const runtimeControl = {
+    status: () => runtimeStatusOf(run, runs.count()),
+    stop: () => {
+      resolve('stop');
     },
+    restart: () => {
+      restartMark.leave(run.pid);
+      resolve('restart');
+    },
+  };
+  return {
+    servingIn: (mode) =>
+      mode === 'local'
+        ? { runtimeControl, providerSetup: providerSetupFor(run.directory, restartWordsFor(run)), appended: runs }
+        : { providerSetup: providerSetupFor(run.directory) },
     asked: promise,
   };
 }

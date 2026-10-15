@@ -1,9 +1,7 @@
 import type { Environment } from '@on.auto/config';
 
 import { localSettings } from '../command-line/local-settings.ts';
-import { runtimeHomeIn } from './local-control.ts';
-
-export const defaultRuntimePort = 5555;
+import { defaultRuntimePort, runtimeHomeIn } from './local-control.ts';
 
 const largestPort = 65_535;
 

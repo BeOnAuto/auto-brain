@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 
+import manifest from '../package.json' with { type: 'json' };
+
 const docs = resolve(import.meta.dirname, '../docs');
 
 await test('the local quick start connects an agent with one MCP entry, lets it set up the key and leads to the first tutorial, and the README links to the documentation', () => {
@@ -13,7 +15,8 @@ await test('the local quick start connects an agent with one MCP entry, lets it 
   const walkthrough = [
     '## Before you start',
     '## 1. Add Auto to your agent',
-    'npx -y @on.auto/runtime@latest mcp',
+    `npx -y @on.auto/runtime@${manifest.version} mcp`,
+    'downloads that release from npm',
     '## 2. Let your agent take it from there',
     'list my playbooks and the models it can use',
     '`~/.auto-runtime/.env`',
@@ -38,6 +41,24 @@ await test('the local quick start connects an agent with one MCP entry, lets it 
   assert.ok(before.length < 300, 'Before you start says only what is needed');
   assert.ok(guide.includes('it is not a model to run'));
   assert.doesNotMatch(guide, /<details>|mcp-remote|Auto Cloud|request-invite|tool_servers/iu);
+});
+
+await test('the quick start and the npm README pin the entry to this release, and each release moves the pin', () => {
+  const config = readFileSync(join(docs, '../release-please-config.json'), 'utf8');
+  for (const file of ['docs/get-started/local.md', 'packages/server/npm/README.md']) {
+    assert.ok(
+      config.includes(`{ "type": "generic", "path": "${file}" }`),
+      `release-please does not move the pin of ${file}`,
+    );
+    const text = readFileSync(join(docs, '..', file), 'utf8');
+    const outsideTheMarkers = text.replaceAll(/x-release-please-start-version[\s\S]*?x-release-please-end/gu, '');
+    assert.ok(text.includes(`@on.auto/runtime@${manifest.version} mcp`), `${file} does not pin ${manifest.version}`);
+    assert.doesNotMatch(
+      outsideTheMarkers,
+      /@on\.auto\/runtime@/u,
+      `${file} pins a release where release-please does not move it`,
+    );
+  }
 });
 
 await test('the tool server page adds a server with its key kept out of the configuration file', () => {

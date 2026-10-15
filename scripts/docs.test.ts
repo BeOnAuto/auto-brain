@@ -4,6 +4,8 @@ import type { Dirent } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { test } from 'node:test';
 
+import manifest from '../package.json' with { type: 'json' };
+
 const docs = resolve(import.meta.dirname, '../docs');
 const output = join(docs, '.vitepress/dist');
 const markdownDestinations = (source: string): readonly string[] =>
@@ -194,10 +196,10 @@ await test('the first-playbook tutorial supplies inputs and observable checks fo
 await test('the local quick start gives runnable setup and points teams to self-hosting', () => {
   const guide = readFileSync(join(docs, 'get-started/local.md'), 'utf8');
   for (const command of [
-    'claude mcp add -s user auto-runtime -- npx -y @on.auto/runtime@latest mcp',
-    'codex mcp add auto-runtime -- npx -y @on.auto/runtime@latest mcp',
-    'gemini mcp add -s user auto-runtime npx -y @on.auto/runtime@latest mcp',
-    'grok mcp add -s user auto-runtime npx -- -y @on.auto/runtime@latest mcp',
+    `claude mcp add -s user auto-runtime -- npx -y @on.auto/runtime@${manifest.version} mcp`,
+    `codex mcp add auto-runtime -- npx -y @on.auto/runtime@${manifest.version} mcp`,
+    `gemini mcp add -s user auto-runtime npx -y @on.auto/runtime@${manifest.version} mcp`,
+    `grok mcp add -s user auto-runtime npx -- -y @on.auto/runtime@${manifest.version} mcp`,
     'npx @on.auto/runtime status',
     '`npx @on.auto/runtime` starts Auto',
     'claude mcp add --transport http auto-runtime https://auto.example.com/mcp',

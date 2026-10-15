@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { headerOf, readyNoticeOf, stoppedNotice, stoppingNotice } from './local-banner.ts';
 import { logoHeight, logoWidth } from './logo.ts';
 
-const ready = { url: 'http://localhost:5555', readyInMs: 640, mode: 'local', identityService: undefined } as const;
+const ready = { version: '0.9.1', port: 5555, readyInMs: 640, mode: 'local', identityService: undefined } as const;
 
 describe('the header of the auto-runtime command', () => {
   it('names the runtime and its version in plain text where there are no colors', () => {
@@ -37,8 +37,8 @@ describe('the notice that the server is ready', () => {
       '  Set PUBLIC_URL=http://localhost:5555 to sign people in.',
       '',
       '  Connect your agent',
-      '    Claude Code   claude mcp add auto-runtime -- npx -y @on.auto/runtime@latest mcp',
-      '    Codex         codex mcp add auto-runtime -- npx -y @on.auto/runtime@latest mcp',
+      '    Claude Code   claude mcp add auto-runtime -- npx -y @on.auto/runtime@0.9.1 mcp',
+      '    Codex         codex mcp add auto-runtime -- npx -y @on.auto/runtime@0.9.1 mcp',
       '',
       '  Press Ctrl+C to stop.',
       '',
@@ -65,7 +65,7 @@ describe('the Studio entry of the notice that the server is ready', () => {
 
 describe('how the notice shows Studio', () => {
   it('shows the server in the Studio address when it is not the default one', () => {
-    expect(readyNoticeOf({ ...ready, url: 'http://localhost:6000' }, 1)).toContain(
+    expect(readyNoticeOf({ ...ready, port: 6000 }, 1)).toContain(
       '  ➜  Studio   https://studio.on.auto/?server=http://localhost:6000\n',
     );
   });
@@ -83,7 +83,7 @@ describe('how the notice shows Studio', () => {
 
 describe('the notice that a server in local mode is ready', () => {
   it('names the port the server listens on in the PUBLIC_URL that signs people in, and dims both lines of local mode', () => {
-    const lines = readyNoticeOf({ ...ready, url: 'http://localhost:6000' }, 24).split('\n');
+    const lines = readyNoticeOf({ ...ready, port: 6000 }, 24).split('\n');
 
     expect(lines).toContain('  \u001B[2mLocal mode: anyone on this computer acts as you, with no sign-in.\u001B[22m');
     expect(lines).toContain('  \u001B[2mSet PUBLIC_URL=http://localhost:6000 to sign people in.\u001B[22m');
@@ -91,13 +91,24 @@ describe('the notice that a server in local mode is ready', () => {
 });
 
 describe('how the notice says to connect an agent', () => {
-  it('connects an agent over HTTP to a server on another port, which the mcp command does not reach', () => {
-    const notice = readyNoticeOf({ ...ready, url: 'http://localhost:6060' }, 1);
+  it('gives the mcp command of its own release the port of a server in local mode on another port', () => {
+    const notice = readyNoticeOf({ ...ready, port: 6060 }, 1);
 
     expect(notice).toContain(
-      '    Claude Code   claude mcp add --transport http auto-runtime http://localhost:6060/mcp\n',
+      '    Claude Code   claude mcp add --env PORT=6060 auto-runtime -- npx -y @on.auto/runtime@0.9.1 mcp\n',
     );
-    expect(notice).toContain('    Codex         codex mcp add auto-runtime --url http://localhost:6060/mcp\n');
+    expect(notice).toContain(
+      '    Codex         codex mcp add auto-runtime --env PORT=6060 -- npx -y @on.auto/runtime@0.9.1 mcp\n',
+    );
+  });
+
+  it('connects an agent over HTTP to a server that signs people in, so that the agent signs its person in', () => {
+    const notice = readyNoticeOf({ ...ready, mode: 'credentials', identityService: 'https://clerk.on.auto' }, 1);
+
+    expect(notice).toContain(
+      '    Claude Code   claude mcp add --transport http auto-runtime http://localhost:5555/mcp\n',
+    );
+    expect(notice).toContain('    Codex         codex mcp add auto-runtime --url http://localhost:5555/mcp\n');
   });
 });
 
