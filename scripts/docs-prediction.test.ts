@@ -9,18 +9,19 @@ const routes = [...readFileSync(join(docs, 'nav.json'), 'utf8').matchAll(/"link"
   .map((match: readonly string[]) => match[1])
   .filter((route) => route !== undefined);
 
-await test('prediction functions are available in a self-hosted runtime, with their format beside the other formats', () => {
+await test('prediction functions are available in every runtime, with their format beside the other formats', () => {
   const functions = readFileSync(join(docs, 'concepts/functions.md'), 'utf8');
   const format = readFileSync(join(docs, 'reference/prediction-format.md'), 'utf8');
-  assert.match(functions, /\| Prediction +\| A prediction function +\| Available in a self-hosted runtime +\|/u);
+  assert.ok(functions.includes('reasoning, interaction, prediction, recall and computation functions are available'));
   assert.ok(functions.includes('](../reference/prediction-format.md)'));
-  assert.ok(routes.indexOf('/reference/recall-format') < routes.indexOf('/reference/prediction-format'));
+  assert.ok(routes.indexOf('/reference/interaction-format') < routes.indexOf('/reference/prediction-format'));
+  assert.ok(routes.indexOf('/reference/prediction-format') < routes.indexOf('/reference/recall-format'));
   assert.ok(routes.indexOf('/reference/prediction-format') < routes.indexOf('/reference/workflow-format'));
   assert.match(
     format,
     /^## A question\n[\s\S]*^## How a run ends\n[\s\S]*^## Bounds\n[\s\S]*^## In a workflow\n[\s\S]*^## Availability\n/mu,
   );
-  assert.ok(format.includes('Prediction functions are available in a self-hosted runtime'));
+  assert.ok(format.includes('Prediction functions are available in every runtime'));
 });
 
 await test('the guide of prediction functions gives a trainer its path, and an agent that cannot run code the environment it needs', () => {

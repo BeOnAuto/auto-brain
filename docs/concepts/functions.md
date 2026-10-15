@@ -1,91 +1,100 @@
 # Functions
 
-The brain inside a playbook contains its reusable functions. The five function types are Reasoning, Interaction, Prediction, Recall and Computation. Workflows coordinate those functions around the way your business works.
+A function is one reusable piece of your team's method, saved in a playbook. It defines what goes in, what comes out and what happens in between. A run carries it out once with particular inputs. Your agent can call a function directly, and the same function can be a step in several workflows.
 
-A brain function defines a reusable operation, including its inputs, outputs and behavior. A workflow coordinates uses of those functions. The same function can be called directly by an agent or used as a step in more than one workflow. Coordination and the five function types make six capabilities; workflows are separate from the function categories.
+Each function has one of five types, described below. Workflows coordinate functions around the way your business works; coordination is a capability of its own, not a sixth function type. [Terminology](terminology.md) defines these words.
+
+## Choose a function type
+
+| Type        | Use it to                                                       | Example                                              |
+| ----------- | --------------------------------------------------------------- | ---------------------------------------------------- |
+| Reasoning   | Interpret, judge or write with a language model                 | Review a campaign brief against your team's criteria |
+| Interaction | Ask a person or a system, and take the answer                   | Ask the brief's owner to approve the review          |
+| Prediction  | Predict a quantity from the playbook's history or uploaded rows | Forecast next week's sign-ups in each region         |
+| Recall      | Look up what the playbook has already recorded                  | Bring back the last reviews of one campaign          |
+| Computation | Calculate or transform data exactly, with code                  | Total a campaign's spend and its pace against budget |
+
+Choose a type by the function's job, not by how it does it. A function that looks up what the playbook has already recorded is recall. A function that asks another system for what it holds right now is interaction, even when it only reads. A function whose job is to forecast is prediction, even though its model runs as code. Prompts, tools and models support functions, but they are not function types; [Terminology](terminology.md#supporting-assets) defines them.
+
+Real work often combines types. A budget review might recall the last decisions, compute the totals, reason about the options and then ask a person to approve. A workflow puts those steps in order; [Workflows and runs](workflows.md) explains how.
 
 ## Availability
 
-The source-available runtime is in early development and is not ready for production use. This table distinguishes available behavior from the capabilities being developed.
+Auto runs every function type, whether you start it with npx or with Docker. So reasoning, interaction, prediction, recall and computation functions are available. Workflows are available and coordinate the functions above. Tool access is available wherever the runtime's operator has set up tool servers. There is nothing to turn on.
 
-| Group       | What someone defines    | Current runtime                    |
-| ----------- | ----------------------- | ---------------------------------- |
-| Reasoning   | A reasoning function    | Available                          |
-| Interaction | An interaction function | Available in a self-hosted runtime |
-| Prediction  | A prediction function   | Available in a self-hosted runtime |
-| Recall      | A recall function       | Available in a self-hosted runtime |
-| Computation | A computation function  | Available in a self-hosted runtime |
+Auto Runtime is in early development and is not ready for production use.
 
-Workflows are available and coordinate the functions above. They are not another function type.
+These are planned and not available yet:
 
-Every runtime runs workflows itself, with nothing more to set up: a connection's tools include `send_run_event`, and `create_definition` accepts the type `workflow`. A self-hosted runtime runs interaction, prediction, recall and computation functions too: its `create_definition` accepts the types `interaction`, `prediction`, `recall` and `computation`, its tools include `list_interactions` and `answer_interaction`, and its HTTP API serves the routes a prediction function's trainer and its uploaded datasets use; Auto Cloud does not offer them yet.
-
-Dream is coming soon. It is an optional process using history and functions, not a sixth function type. API details should match the runtime version in use.
+- Dream, an optional process that would revisit a playbook's history and suggest ideas worth testing. It would not be a function type.
+- Skill references in a reasoning function, and a separately managed tool library.
+- Recall over documents and other sources beyond the playbook's own history.
+- Time zones for schedule triggers, which read their times in UTC today.
+- Starting one workflow run from several events that belong together.
 
 ## Reasoning
 
-A reasoning function configures language-model work such as interpreting information, generating a response or evaluating options. Its prompt supplies instructions and input framing.
+A reasoning function gives a language model a piece of work: interpret information, judge it against criteria, classify it or write a response. Its prompt holds the instructions and frames the input.
 
-For example, a reasoning function can review a campaign brief against your team's criteria. Each run supplies a brief to the saved prompt, invokes the model and records the output and usage. The [first-playbook tutorial](../tutorials/first-playbook.md) builds that example.
+For example, "Review campaign brief" checks a brief against your team's criteria and recommends Ready or Revise. Each run fills the prompt with one brief, asks the model, and records the answer and the model's usage. The [first-playbook tutorial](../tutorials/first-playbook.md) builds it.
 
-An external agent can call a reasoning function through Auto's MCP interface. Tools called from inside the reasoning function are a separate capability, described below.
+Choose reasoning when the work needs judgment or language. Leave exact arithmetic to a computation function. A reasoning function does not remember earlier runs, so give it what it needs as input, or look it up first with a recall function. It can also use tools, as [described below](#tool-access-inside-a-reasoning-function).
 
-See [Reasoning function format](../reference/reasoning-format.md).
+- [Give a function tools](../guides/tools.md) adds a tool to a reasoning function.
+- [Reasoning function format](../reference/reasoning-format.md) describes the document.
 
 ## Interaction
 
-An interaction function defines input or output between the playbook and people or other machines. Examples include requesting an approval, sending a notification, receiving structured input and exchanging information with a system.
+An interaction function exchanges information between the playbook and people or other systems. It can ask for an approval, send a notification, collect details from a person or ask another system what it holds right now.
 
-Human approval is one interaction pattern; machine-to-machine input and output belong here too.
+It asks a system and takes the result straight back, or it asks a person and waits. A request reaches the person in the playbook's inbox or through a tool, such as a chat message, and their answer becomes the run's result. For example, once a brief is reviewed, an interaction function asks its owner to approve the review.
 
-In the current runtime, an interaction function asks a system and answers at once, or asks one party and takes the answer later. One that asks a system names a tool of a tool server, calls it once and answers with the part of the tool's answer it names, checked against the shape it declares, with no model in between. One that asks a party renders a request from its input, a message and the party it goes to, and sends it through a tool of a tool server, which the function names, or leaves it in the playbook's inbox. The run then waits, holding nothing of the runtime, until the request is answered, expires or is cancelled. An answer must match the answer schema the function declares; it is recorded on the run, which takes it as its output within the host's sweep, a second by default, so a workflow that asked continues with the decision. A function without an answer schema is a notification, which succeeds once it is delivered.
+Choose interaction when a person must decide or supply something, or when the playbook needs what another system holds right now. An interaction function does not interpret anything: no model reads the answer.
 
-The inbox is the playbook's own: `list_interactions` lists the requests waiting in it, and a caller who may write to the playbook answers one with `answer_interaction`. A function that sends its request through a tool, such as one that posts in a chat, may also read the replies to its message and take the party's reply as the answer. The runtime's operator decides which tool servers a playbook may use and which of their tools. A request nobody answers before it expires ends the run as `unanswered`, which a workflow can catch and handle.
-
-See [Interaction function format](../reference/interaction-format.md).
+- [Build your first workflow](../tutorials/first-workflow.md) saves an approval and answers it through the inbox.
+- [Interaction function format](../reference/interaction-format.md) describes the document, and [Terminology](terminology.md#interaction) defines request, inbox and answer.
 
 ## Prediction
 
-A prediction function answers a question with numbers learned from the playbook's own history: a quantity over a grain of time, such as the orders of each region in a week, one or more periods ahead, or its total to the end of a week, a month, a quarter or a year, as a likely value with a low and a high. The model it answers from is trained outside the playbook, by a person or an agent with the skills and an environment that runs code, and the playbook decides whether that model is good enough.
+A prediction function predicts a number over time from the playbook's history, or from rows you upload. For example, it can forecast each region's orders next week, or their total to the end of the quarter. Each prediction is a likely value with a low and a high.
 
-Keep three objects distinct: the prediction function someone defines, the predictive model a version of it holds, and the prediction a run returns.
+The model behind it is trained outside the playbook, by a person or an agent that can run code. The playbook tests each candidate model on periods the trainer never saw, and keeps it only when it does better than simple baselines. So keep three things apart: the prediction function you define, the predictive model it holds, and the prediction a run gives back.
 
-In the current runtime, a saved prediction function keeps a dataset, the rows of each series and period folded from the events its filters name, or rows uploaded for a playbook that has no history yet. A **build**, a run of the function with the input `{ build: {} }`, asks a trainer for candidate models through the playbook's inbox or an interaction function, and waits: the trainer reads a brief and the rows the playbook gives it, trains, and uploads each candidate as a model file in the ONNX format. The playbook scores each candidate on the periods the trainer never saw, against baselines it computes itself, and keeps the winner as the function's next **version**, with a **card** that says what it was built from and how it scored. A function's first version needs no shadow; a later one runs in **shadow** beside the **active version** for the periods the function names, both predicting as those periods close, and passes when it predicted at least as well. A version that passes becomes the active version by the function's rule, at once or once a person approves it. A question, a run that names a series and, unless the function predicts a total, how far ahead, is answered by the active version within its call, and each prediction is recorded with the version that made it. A model runs in a process of its own that the server bounds, never in the server itself.
+Choose prediction for a numeric question that comes back again and again, such as weekly sign-ups, and that past figures can answer. A prediction function does not train its own model, and it does not use a language model.
 
-See [Prediction function format](../reference/prediction-format.md).
+- [Forecast with a prediction function](../guides/forecast.md) shows how to forecast from your own playbook, and [Developer example: forecast sign-ups](../tutorials/first-forecast.md) builds one with supplied data.
+- [Prediction function format](../reference/prediction-format.md) describes the document and how a model is built, and [Terminology](terminology.md#prediction) defines its words.
 
 ## Recall
 
-A recall function retrieves or reconstructs relevant information. Its sources can include recorded events, documents or other connected information. A projection derives a view from event history and is one way recall can work.
+A recall function looks up what the playbook has already recorded, so a later run can use what earlier runs decided. It keeps a view: a running summary of the events it cares about, which it updates as the playbook records each one. A run reads the view as it stands, within milliseconds.
 
-Memory describes the broader retention and availability of information. Recall is the operation that obtains the relevant parts. The event ledger already stores events and run records; it is one possible source for recall.
+For example, a recall function can keep every review that "Review campaign brief" wrote. A workflow recalls the last reviews of one campaign and passes them to the reasoning function, so the next review knows what the last one said.
 
-In the current runtime, a recall function keeps a view of the playbook's own history. Its fold, a function in TypeScript, folds each event its filters name into the view, such as every review a reasoning function wrote, and the runtime keeps the view as the playbook records events. A run answers from the view as it stands, such as the last reviews of one campaign, within milliseconds, and says how far the view has read. A workflow can recall what the playbook decided before and give it to a reasoning function as input, so the next review knows the last one. Recall over documents and other sources is not available yet.
+Choose recall when a later run needs what earlier runs found or decided. Today a recall function reads only the playbook's own history; [History and events](history-and-dream.md) describes what that history holds.
 
-See [Recall function format](../reference/recall-format.md).
+- [Make a playbook remember](../guides/remember.md) shows how to add a recall function to a playbook.
+- [Recall function format](../reference/recall-format.md) describes the document.
 
 ## Computation
 
-A computation function executes specified code or expressions with defined inputs and outputs, such as a calculation or data transformation. It need not be mathematically pure. AI-assisted authoring can help write the logic; once defined, the operation executes that specified logic.
+A computation function runs code you define to calculate or transform data. It gives the same output for the same input every time, unless the code reads the clock, which returns the moment the run started ([The sandbox](../reference/computation-format.md#the-sandbox) has the details). The work need not be mathematics: reshaping data counts too.
 
-In the current runtime, a computation function is a TypeScript function with schemas for its input and output, which are its types, checked when it is saved. A run calls the function with its input in a sandbox and answers with its output, the same output for the same input every time, within bounds on its work, memory and time. It reaches nothing outside the playbook. Use it for the arithmetic a language model should not do: a workflow can read figures through an interaction function that calls a tool, compute totals, paces and projections exactly with a computation function, and have a reasoning function write about them.
+For example, a workflow fetches a campaign's figures with an interaction function. A computation function then totals the spend and works out the pace exactly. Finally a reasoning function writes about the numbers.
 
-See [Computation function format](../reference/computation-format.md).
+Choose computation for arithmetic a language model should not do, and for any change to data that must come out the same every time. A computation function reaches nothing outside the playbook and calls no model. Your agent can write the code with you; once saved, the function runs that code as written.
 
-## Supporting assets
-
-Prompts, skills, tools, models and sources support functions. They are not additional function types.
-
-A skill is reusable task guidance and associated resources. A tool is a calling interface: a function exposed as a tool retains its function type. Tools can also represent operations outside the playbook. A language model and a predictive model serve different purposes, so qualify the word model when that distinction matters.
+- [Calculate with a computation function](../guides/computation.md) shows how to write and save one.
+- [Computation function format](../reference/computation-format.md) describes the document.
 
 ## Tool access inside a reasoning function
 
-A reasoning function can call the tools of tool servers that the runtime's operator configures: MCP servers, and HTTP APIs described by an OpenAPI document. The operator binds each server to an org, and optionally to some of its playbooks, and can narrow which of its tools functions may name. A function lists the tools it may use, such as `graph/search`, or `graph/*` for every tool of a server that the operator allows. During a run, the model can request one of those tools, receive its result and continue before it answers, within bounds on the number of calls, the size of their results and the time the run takes. Each call appears in the run's history as it happens.
+A reasoning function can call the tools of tool servers that the runtime's operator configures. A tool server is a service Auto can reach for a playbook, such as an MCP server or an HTTP API. The function names the tools it may use. During a run, the model can call them and read the results before it writes its answer. The run's history records each call.
 
-A tool may change something outside the playbook. A run that called tools and did not succeed is therefore not run again under the same run id; start a new run once you have checked what its history shows it called. When any tool server is configured, an agent connected to Auto sees `run_definition` marked as possibly destructive, so it can ask before running a function.
+Your agent's tools are not the function's tools. Connecting an external agent to Auto does not give the function access to that agent's tools, credentials or accounts. Your agent can still gather evidence through its own accounts and pass it in as input.
 
-To learn what a tool answers before a function names it, an agent calls it by hand with `execute` instead of making a function to look: the playbook calls the tool once, as a run would, and answers what the run's model would see. The agent finds the tools with `search`, reads one whole with `introspect`, checks its arguments with `validate` and asks what a call would check with `dry_run`; none of these four calls a tool. A call made by hand needs the permission to change the playbook, whatever the tool does, and each one is recorded in the playbook's history, never as a run.
+The person who runs Auto decides which tool servers each playbook may use. A tool server can itself be a gateway, such as Apollo GraphOS Agent Services, that fronts an organization's systems and applies its own policies. Auto's model gateways connect to language models and provide no tools. Skill references and a separately managed tool library are still planned.
 
-One of those servers can be an agent services gateway, which fronts the systems an organization connected and applies its own policies to the application whose key the runtime uses. Provider settings called model gateways connect to language models; they provide no tools.
-
-Tool access is available in a self-hosted runtime whose operator configures tool servers; Auto Cloud does not offer it yet. Skill references and a separately managed tool library are still planned. Connecting an external agent to Auto does not give the function access to that agent's tools, credentials or accounts: the agent can still collect evidence through its own connections and pass it in as input. See the [Reasoning function format](../reference/reasoning-format.md#tools), the [configuration guide](../self-host/configuration.md#tool-servers) for the servers and the tools a function may name, and, for the inbound connection, the [MCP reference](../reference/mcp.md).
+- [Give a function tools](../guides/tools.md) walks through finding a tool, trying it and naming it in a function.
+- [Reasoning function format](../reference/reasoning-format.md#tools) gives the rules for a run that calls tools, including when it is not run again.
+- The [MCP reference](../reference/mcp.md) covers the connection your agent uses to reach Auto.

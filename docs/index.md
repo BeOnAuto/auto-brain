@@ -1,31 +1,31 @@
 ---
-description: Understand business playbooks, build a first reasoning function, and find guides and API reference.
+description: Run Auto Runtime, connect your agent, build playbooks and look up the formats and APIs.
 ---
 
 # Auto documentation
 
-Auto stores business methods as reusable functions and workflows that an agent can run. A playbook holds those definitions and their recorded runs. Your agent is the primary interface for creating and using them; Auto Studio is the management interface for operational visibility and controls.
+Auto turns the way your team does a piece of work into functions and workflows that your agent can run again. A playbook holds those definitions and the record of every run. Your agent is how you create and use them; Auto Runtime runs them; Auto Studio lets you inspect them in a browser.
+
+## Get started
+
+Follow the [quick start](get-started/local.md) to run Auto on your computer and connect your agent. Then [build your first playbook](tutorials/first-playbook.md), which saves a campaign-brief review and compares two recorded runs, and [build your first workflow](tutorials/first-workflow.md), which adds an approval.
 
 ## Understand the model
 
-Start with [Playbooks and methods](concepts/playbooks.md) to see how a business responsibility becomes a playbook. [Functions and availability](concepts/functions.md) explains the types of work it can perform and their current status. [Workflows and runs](concepts/workflows.md) covers coordination, while [History and Dream](concepts/history-and-dream.md) explains recorded work and the proposed use of that history.
+[Playbooks and methods](concepts/playbooks.md) shows how a business method becomes a playbook. [Functions](concepts/functions.md) explains the five function types and when to use each. [Workflows and runs](concepts/workflows.md) covers how work is coordinated, and [History and events](concepts/history-and-dream.md) covers what a playbook records.
 
-[Playbook terminology](concepts/terminology.md) defines the shared vocabulary for the product, the documentation and the code.
+## Do a task
 
-## Build something
+The guides show how to [give a function tools](guides/tools.md), [run a workflow on a schedule or event](guides/triggers.md), [make a playbook remember](guides/remember.md), [calculate with a computation function](guides/computation.md), [forecast with a prediction function](guides/forecast.md) and [use Auto with Apollo](integrations/apollo.md).
 
-[Start Auto locally and connect your agent](get-started/local.md), then follow [Build your first playbook](tutorials/first-playbook.md). You do not need an Auto Cloud account. The tutorial creates a campaign-brief review function and compares two recorded runs.
+## Run it for a team
 
-Auto Cloud is coming soon. [Request an invitation](https://on.auto/request-invite) if you would prefer a hosted playbook.
-
-To bring graph data into an existing function, follow [Use Auto with Apollo](integrations/apollo.md).
+[Self-hosting](self-host.md) covers running the server with Docker, PostgreSQL and object storage, and operating it for a team.
 
 ## Look up a detail
 
-The references cover [MCP tools and results](reference/mcp.md), the [reasoning function document format](reference/reasoning-format.md), and [HTTP operations](reference/http.md).
-
-[Self-hosting](self-host.md) explains deployment responsibilities and support for teams operating their own runtime.
+The references cover the [terminology](concepts/terminology.md), [MCP tools](reference/mcp.md), the [HTTP API](reference/http.md), [configuration](self-host/configuration.md) and the format of each definition, starting with the [reasoning function format](reference/reasoning-format.md).
 
 ## Contribute
 
-These pages are maintained with the public runtime and published within [on.auto/docs](https://on.auto/docs/), alongside Cloud guides owned by the website team. This standalone build is a contributor preview. [Documentation contributions](contributing/documentation.md) explains how to edit, check and publish a change.
+These pages live in the public runtime repository and are published at [on.auto/docs](https://on.auto/docs/), alongside guides the website maintains. This standalone build is a contributor preview. [Documentation contributions](contributing/documentation.md) explains how to edit, check and publish a change.

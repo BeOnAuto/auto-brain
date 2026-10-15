@@ -1,58 +1,62 @@
 # Playbooks and methods
 
-A playbook is a system built around a business responsibility, such as reviewing campaigns or evaluating budget changes. It brings together the team's methods, the functions and workflows that express them, relevant information and limits on what it may do.
+A playbook is a system built around one business responsibility, such as reviewing campaigns or evaluating budget changes. It holds your team's methods as functions and workflows, together with the information they need and limits on what the playbook may do.
 
-A marketing specialist knows what makes a brief ready for review. Working with an agent, they can capture those criteria in a function and run it against each new brief. Engineers support the connections and operational requirements when needed.
+A marketing specialist knows what makes a brief ready for review. Working with an agent, they capture those criteria in a function and run it against each new brief. Someone comfortable with a terminal installs and runs Auto Runtime once, and sets up the services it may reach. After that, people work through their agent.
 
-## Business methods
+## From a method to runs
 
-A method is your approach to a piece of work: the evidence you consider, how you evaluate it and what should happen next. It may be documented, or it may be knowledge your specialists carry in their heads.
+A method is your approach to a piece of work: the evidence you consider, how you evaluate it and what should happen next. It may be written down, or it may live in your specialists' heads.
 
-For a campaign review, the method might require a specific audience, a clear offer and a budget within an agreed limit. The function expresses those criteria as an operation the playbook can run. One method can involve several functions and workflows; it does not require a separate `Method` object or folder.
+A playbook turns a method into definitions it can run:
 
-## Playbooks, brains, functions and workflows
+1. Functions do the individual pieces of work, actions included. For a campaign review, a reasoning function checks that a brief names a specific audience, makes a clear offer and keeps the budget within the agreed limit.
+2. Workflows put the pieces in order, such as reviewing the brief and then asking its owner to approve it.
+3. Runs carry a function or workflow out once with particular inputs, such as the autumn campaign brief, and record the result.
 
-Every playbook contains one **brain**, its reusable function collection, and its **workflows**. The brain is created with the playbook and shares its lifecycle. It is not a second business resource. Runs belong to the playbook and refer to the executed function or workflow. Connections are runtime-level authorized routes to services and may serve several playbooks.
+| Your work                              | In the playbook                                          |
+| -------------------------------------- | -------------------------------------------------------- |
+| The criteria for a brief that is ready | A reasoning function, such as "Review campaign brief"    |
+| Review the brief, then get it approved | A workflow that calls the review, then asks for approval |
+| Reviewing this week's autumn brief     | A run, with its result                                   |
+
+One method can involve several functions and workflows. It needs no separate `Method` object or folder. [Terminology](terminology.md) defines each of these words.
+
+## What a playbook contains
+
+A playbook holds functions and workflows. Functions belong to the playbook: they are saved in it, and workflows call them from there. Auto's instructions to your agent call this set of functions the playbook's brain. Runs belong to the playbook too, and each run refers to the function or workflow it carried out.
 
 ```text
 Auto Runtime
 ├── Playbooks
 │   └── Paid media planning
-│       ├── Brain
-│       │   ├── Forecast signups (Prediction)
+│       ├── Functions
+│       │   ├── Forecast sign-ups (Prediction)
 │       │   └── Compare performance (Computation)
 │       └── Workflows
 │           ├── Monthly plan
 │           └── Check outcomes
-└── Connections
+└── Tool servers
 ```
 
-Auto Runtime executes the work while it remains running and connected. Auto Studio presents and manages it. Your agent is a separate client.
+Tool servers are how a playbook's functions reach other services, such as a CRM or a chat tool. They are set up once, by whoever runs Auto, and can serve several playbooks. [Give a function tools](../guides/tools.md) explains how a function uses them.
 
-| Term     | Meaning                                                        | Campaign-review example                      |
-| -------- | -------------------------------------------------------------- | -------------------------------------------- |
-| Playbook | The complete system for a business responsibility              | A marketing playbook                         |
-| Method   | The business's approach to the work                            | The criteria used to review a campaign brief |
-| Function | A reusable operation with defined inputs, outputs and behavior | Review a brief against those criteria        |
-| Workflow | A definition coordinating steps and their dependencies         | Review the brief, then request approval      |
-| Step     | A use of a function, another workflow or control operation     | Run the brief review                         |
-| Run      | A definition carried out once against particular inputs        | Review of the autumn campaign brief          |
-| Result   | The output produced by that run                                | A recommendation and missing information     |
-
-The [function types](functions.md) describe different kinds of work. [Workflows](workflows.md) coordinate those functions. A workflow that another workflow calls is a subworkflow, and the workflow that calls it waits for its run.
+Auto Runtime runs playbooks, and Auto Studio inspects and manages them. Your agent is a separate client. [Functions](functions.md) describes the five function types and when to choose each, and [Workflows and runs](workflows.md) describes how workflows coordinate them.
 
 ## The agent and the playbook
 
-Your agent helps create and refine definitions, supplies inputs and calls functions. It can coordinate its own calls to Auto and other systems.
+Your agent helps you create and refine definitions, supplies inputs and calls functions. It can coordinate its own calls to Auto and to other systems.
 
-The playbook retains the saved definitions and recorded runs independently of that conversation. Another authorized colleague can use the same function from their agent. A colleague's access to the playbook does not automatically grant access to someone else's connected accounts.
+The playbook keeps the saved definitions and the recorded runs, whatever happens to that conversation. An authorized colleague can use the same function from their own agent. Access to the playbook does not give a colleague access to the accounts anyone else's agent is connected to.
 
-Auto Studio provides visibility into running work, history and operating controls. Authoring starts with the agent.
+Auto Studio shows running work, history and operating controls. Authoring starts with the agent.
 
 ## Authority and judgment
 
-Define which actions the playbook may take and where a person must decide. A review function can recommend a budget change without being authorized to make one. Where a person must decide, an interaction function asks them and the workflow waits for the answer: a caller who may write to the playbook answers it, or the person replies where the request reached them, when the function reads replies, and the run that asked takes the answer within the host's sweep, a second by default.
+A playbook should do only what your team would trust it to do. Decide which actions it may take on its own, and where a person must decide. A review function can recommend a budget change without being allowed to make one.
 
-Those limits must apply to operations called directly as well as through a workflow. An approval step cannot protect an action that another caller is independently allowed to invoke. The runtime provides organization and playbook permissions through API keys; [HTTP permissions](../reference/http.md#requests-and-access) describes their scope.
+Where a person must decide, the method includes an interaction function. The workflow asks that person and waits for their answer, which they give in the playbook's inbox or, for some functions, where the request reached them. [Build your first workflow](../tutorials/first-workflow.md) adds such an approval step, and the [Interaction function format](../reference/interaction-format.md) describes how a request is delivered and answered.
 
-[Build your first playbook](../tutorials/first-playbook.md) puts these concepts into practice with a saved campaign-review function.
+These limits must hold for direct calls as well as for workflows. An approval step cannot protect an action that someone is allowed to run directly. Permissions apply to an [org](terminology.md#orgs-and-callers) and its playbooks; [Requests and access](../reference/http.md#requests-and-access) lists them.
+
+[Build your first playbook](../tutorials/first-playbook.md) puts these ideas into practice with a saved campaign-review function.

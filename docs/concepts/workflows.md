@@ -1,98 +1,66 @@
 # Workflows and runs
 
-A workflow is a saved definition that coordinates a playbook's functions through steps. It can run reasoning functions in order, choose a path from their results, loop over items, run branches in parallel, wait for an event or a timer, retry a step that failed and give up after a time limit. A run keeps its place across a restart of the runtime: it goes on from where it was, waiting or working. Every runtime offers workflows; [Functions and availability](functions.md#availability) shows how to see them on your connection.
+A workflow puts a playbook's functions to work in steps. A workflow can:
 
-[Workflow format](../reference/workflow-format.md) describes the document, and the [HTTP](../reference/http.md#workflows) and [MCP](../reference/mcp.md) references list the operations.
+- call functions in order, and choose a path from their results;
+- repeat a step for each item in a list, or run branches side by side;
+- wait for a person, an event or a set time;
+- try a failed step again, and give up after a time limit.
 
-## Coordinate reusable work
+Each time a workflow is carried out, that is a run. A run keeps its place when Auto restarts, and goes on from where it was.
 
-A function defines a reusable operation; a step is where a workflow uses it. A reasoning function such as `review-campaign-brief` can be called directly by an agent and used as a step in more than one workflow. Other steps decide what happens next, wait, repeat work or handle errors without calling a function.
+## Steps
 
-In the current runtime, the functions a workflow calls are reasoning functions in the same playbook and, in a self-hosted runtime, interaction, prediction, recall and computation functions. A workflow reaches outside the playbook only through those functions: it makes no network calls of its own, an interaction function reaches only the tools of the tool servers the runtime's operator configures, and a computation or recall function reaches nothing outside. Check [Functions and availability](functions.md#availability) before planning a step around another function type.
+A step is one place where a workflow uses a function. The step refers to the function rather than copying it. So "Review campaign brief" can be a step in several workflows and still be called directly by your agent. Other steps decide what happens next, wait, repeat work or handle errors without calling a function.
 
-A budget-review workflow could assess the options with a reasoning function, then ask a person to approve them with an interaction function. The evidence arrives as the run's input or with an event, and the approval is the answer to the interaction function's request. [Build your first workflow](../tutorials/first-workflow.md) builds a small version: it reviews a campaign brief, then asks its owner to approve it through the playbook's inbox.
+A workflow can call any function in its own playbook. It can also call another workflow, which is then a subworkflow. The workflow itself reaches nothing outside the playbook: it does that only through its functions.
 
-## Definitions, versions and runs
+For example, [Build your first workflow](../tutorials/first-workflow.md) builds a workflow with two steps. It reviews a campaign brief with a reasoning function, then asks the brief's owner to approve the review with an interaction function. The run waits until the owner answers in the playbook's inbox.
 
-Keep the saved work separate from what happens when it executes:
+## Versions and runs
 
-| Term       | Meaning                                                 |
-| ---------- | ------------------------------------------------------- |
-| Definition | The reusable function or workflow someone creates       |
-| Version    | A particular revision of that definition                |
-| Run        | A definition carried out once against particular inputs |
-| Result     | The output of that run                                  |
-| Step       | One task of a workflow, such as a call to a function    |
-| Step run   | One step carried out once within a workflow run         |
-| Attempt    | One try at a step's work; a retry is another attempt    |
+Saving a workflow creates version 1, and each change saves a new version. A run uses the version that was the latest when it started, and keeps it to the end. So changing a workflow never changes a run that is already under way, and no one can start a run on an older version. A step that calls a function uses that function's latest version at the moment of the call.
 
-Saving a workflow creates its definition at version 1, and each change to its document adds a version. A run uses the active latest version when it starts and keeps that version until it ends; the run records it as `definition_version`. A step that calls a function runs the function's active latest version at the time of the call.
+Each function a step calls has a run of its own, with its own id, so you can inspect it separately. A step that is tried again starts a fresh run of the function. A restart of Auto does not repeat a function run that already finished.
 
-Each call to a function starts a run of that function, recorded under its own run id. A retry is a new attempt at the step: it starts another run of the function, not a new function. When the runtime resumes a step after an interruption, the step keeps its run id, so a function run that already has a final result is not run again. The run of a function that calls tools, a reasoning function that names them or an interaction function that calls one, is not run again under its id either when it had recorded a tool call and did not succeed, or when the run had started without ending, since its tools may have changed something. The step then fails with an error of the type `https://on.auto/problems/tools_called`, which a retry of runtime or communication errors does not catch; a retry that catches every error, or names that type, calls the function again under a new run id, and so calls its tools again. The run's history shows what the function called.
+[Terminology](terminology.md#definitions-and-runs) defines definition, version, run, step run and attempt.
 
 ## Starting a run
 
-A run starts when a caller runs the workflow with `run_definition`, giving its input. The call answers at once with the `run_id` of the run and the status `started`; the run then carries on by itself. Executing again with the same run id and input returns that run as it stands rather than starting another. A workflow runs once for each run id: executing again with the id of a run that ended without a result, `rejected` as `unavailable` or `failed`, is refused with `conflict`, so start a new run under a new run id.
+Your agent starts a run and gives it the workflow's input. The run then goes on by itself, and your agent can check on it later. Every step acts for whoever started the run, with the permissions they had when it started.
 
-A run also starts when a trigger of the workflow fires, as the next section describes.
-
-Every step acts for the caller who started the run, with the permissions that caller had at the start, for as long as the run lasts. The longest a run may last is 30 days unless the deployment sets a different limit, and a run still going when it reaches that limit fails.
+[Starting and cancelling a run](../reference/workflow-format.md#starting-and-cancelling-a-run) gives the details, including how to repeat a start safely and how to cancel a run.
 
 ## Triggers
 
-A workflow can start on its own. Its document's `schedule` names up to three triggers, one of each kind, each kept and matched on its own:
+A trigger starts a run without anyone asking for it. A workflow can have two kinds:
 
-- An **event trigger**, `on`, starts a run for each event of the playbook that one of its filters matches: an event published with `publish_event`, an event another workflow emits, or one of the playbook's own facts, such as a reasoning function's run that succeeded. The run's input is a list holding the event. It takes at most 64 filters.
-- A **schedule trigger** starts a run at the times a `cron` rule names, in UTC, or `every` period of at least a minute, counted from when the trigger was saved as it is. The run's input says when it was due. One run of a schedule trigger runs at a time: a time due while the run it started before still runs is skipped.
+- An event trigger starts a run for each matching event in the playbook. The event can come from another system or another workflow. It can also be one of the playbook's own records, such as a review that succeeded.
+- A schedule trigger starts a run at set times, such as 09:00 UTC on working days, or once every fifteen minutes.
 
-So a workflow can start on an event and at its times without switching between them. Each trigger is identified by its kind, `event`, `cron` or `every`, and its place in the document, such as `/schedule/cron`; a saved workflow shows its triggers that way, and a run says which trigger started it.
+A run that a trigger starts acts for the playbook itself, not for a person. A trigger applies from the moment it is saved; it never reacts to what the playbook recorded before. Limits stop triggers from starting runs without end. A workflow can also record an event of its own. Another workflow's trigger can react to it, and so can a run that waits for that event.
 
-A run a trigger starts acts as the playbook itself, shown as `playbook:` and the playbook's id in `started_by`, rather than for a person. A trigger applies from when it is saved as it is, never to what the playbook recorded before: a new version that leaves a trigger unchanged keeps it going as it was, with its times, while a trigger the version changes or adds applies from that version on. Each event or due time starts its run once, even across a restart of the runtime.
+[Run a workflow on a schedule or event](../guides/triggers.md) shows how to add a trigger, and [Triggers](../reference/workflow-format.md#triggers) in the workflow format gives the rules and limits.
 
-A workflow does not start for its own runs or for the events they emit, a chain of runs started by events stops at a depth of 8, and its event trigger starts at most 60 runs of it a minute. What a trigger did not start appears among the playbook's events as `reaction_refused`. The [workflow format](../reference/workflow-format.md#triggers) gives the exact rules.
+## How a run waits
 
-A workflow can also announce something with an `emit` step, which records an event in the playbook; another workflow's event trigger, or a run waiting for that event, can take it.
+A run can wait for a function that takes time, for a timer or for an event. It can wait for days without tying up Auto, and a restart does not lose its place.
 
-## Waiting and answering
+Two kinds of input reach a run that is already waiting, and neither starts a new run:
 
-A run waits while a step's function runs, while a timer or a retry delay passes, and while a step listens for an event. It shows the status `started` throughout.
+- an answer to a request that one of its steps made;
+- an event sent to the run, for input that is not an answer, such as a revised brief.
 
-An event answers a waiting run. A caller sends it with `send_run_event`, naming the `run_id` of the run and giving the event a `type` and, usually, `data`. The event belongs to that run: it does not start another one. An event that arrives before the run listens for it is kept until a step takes it, and an event repeated with the same id is taken once, so a sender can retry safely. A run that has ended refuses events.
+An approval is an interaction function. The workflow calls it as it calls any function. The function asks the person through the playbook's inbox or through a tool, such as a chat message, and the workflow waits. The person's answer is the result of that step. If nobody answers before the request expires, the workflow can catch that and take another path.
 
-A step that listens for an event whose type it names also hears the events of the whole playbook while it listens: one published with `publish_event`, emitted by another workflow, or one of the playbook's facts. The run checks the event against its own filter, so it can take only the event about the case it handles. An event published before the step listened, or after it stopped, does not reach it; send the event to the run itself when it must not be missed.
-
-An approval is an interaction function. The workflow calls it as it calls any function; the function's run asks the person, through the playbook's inbox or a tool the function names, such as one that posts in a chat, and the workflow waits, holding nothing of the runtime, until someone answers with `answer_interaction` or the person's reply answers it. The answer, checked against the function's answer schema, is recorded on the function's run, which takes it within the host's sweep, a second by default, and is the output of that call. A request nobody answers before it expires raises an `unanswered` error, which a workflow can catch to take another path, and the function's `expires` bounds how long the workflow waits. Events remain for input that is not the answer to a question.
-
-## How a run ends
-
-A run ends in one of three states:
-
-| Status      | When                                                                                     |
-| ----------- | ---------------------------------------------------------------------------------------- |
-| `succeeded` | Its steps completed; the run's `output` is its result                                    |
-| `rejected`  | A step raised an error that no step handled; the rejection gives the reason and the step |
-| `failed`    | The run broke down inside the runtime                                                    |
-
-A run that was cancelled, or that ran as long as a run may last, is `rejected` with the reason `cancelled` and the kind of its cancellation, a run that did not catch a request nobody answered is `rejected` as `unanswered` with the kind `expired` or `undelivered`, and a run whose output is too large to record is `rejected` as a `conflict` of the kind `oversized`.
-
-A rejection's reason is `invalid_input` when the error says the input or the document led to it, and `unavailable` when it was a timeout or a function that could not be reached, failed or was unavailable; a new run may then succeed. Three endings are different, because a function's tools may have changed something: `unavailable` of the kind `tools_unfinished`, when it called tools that only read and could not finish, which a new run, or a retry on status 503, may make again; `conflict` of the kind `effect_unknown`, when it called a tool that may change something and could not finish, so whether it did is not known; and `conflict` of the kind `tools_called`, when a step met a function run whose tools may already have been called. After the last two, check what the run's history shows the function called before starting a new run. The [workflow format](../reference/workflow-format.md#how-a-run-ends) lists the exact rules.
-
-## Calling another workflow
-
-A workflow calls another workflow with `run_definition`, as it calls any function of its playbook; the workflow it calls is a subworkflow. A run of a reasoning, computation or recall function, or of an interaction function that calls a tool, finishes within its call. A run of a workflow, like a run of an interaction function that asks a person, finishes later, so the calling workflow waits for that run, holding nothing of the server while it waits, and continues with its output, or catches its rejection like any error. A server that restarts meanwhile keeps the wait, and the subworkflow's ending answers it on whichever server that ending is recorded.
-
-A call waits as long as the function it names may take, plus a minute; past that, it raises a `timeout` error and the run it waited for is cancelled. Workflows that call workflows reach 8 calls deep, and the runs under one workflow wait for at most 1,000 calls at once.
-
-## Cancelling a run
-
-`cancel_run` cancels a workflow run that has not ended, with a reason the run keeps. The request is recorded at once, so it can reach any server and outlasts a restart; the run then stops, cancels each run it waits for, and ends `rejected` as `cancelled` with the kind `requested`. `cancel_run` also cancels the run of an interaction function whose request waits, which ends `rejected` as `cancelled`. A run of a reasoning, computation or recall function, or of an interaction function that calls a tool, ends within its call, and cannot be cancelled from outside it.
+[Waiting for events](../reference/workflow-format.md#waiting-for-events) gives the rules for events.
 
 ## Inspecting a run
 
-`get_run` reads a run by its `run_id`. For a workflow it returns the workflow's name, the version that ran, who started it and when, its status and, once it ends, when it finished and its output or rejection.
+A run ends when its last step completes, or earlier if an error stops it, someone cancels it or it runs too long. [How a run ends](../reference/workflow-format.md#how-a-run-ends) gives each status and its reasons.
 
-`get_run_history` reads what happened in the run, oldest first: its start, its end and, for each input the run took (its start, a function's answer, a timer or an event), a `workflow_input_applied` event. That event names the input and lists the steps it moved, each with how it ended, such as `waiting` or `completed`, so the latest one shows what the run is waiting for; an event for each step follows it, named for how the step ended that input, such as `step_waiting` or `step_finished`. Every event names the event that led to it, so the history draws as a graph: the branch a `switch` took, the branches of a `fork`, a retry and a wait. A step that calls a function shows the run id of the function's run on its `step_waiting` event, and `list_playbook_events` with the workflow's `run_id` reads the workflow and every function run it started together. It shows neither the data the run holds nor the events' data. Each function run a step started is recorded in the playbook under its own run id, which `list_runs` lists.
+Each run has a record of where it stands. It shows the workflow version, who started the run and, once it ends, its result or why it did not succeed. Its history shows what happened, oldest first: each input the run took and the steps that input moved. Each event names the one that led to it, so the history shows the run's branches, retries and waits. The latest event shows what the run is waiting for. The history shows how the run moved, not the data it holds.
 
-## Planned
+Each function a step called has its own run and history. The playbook's events show the workflow run together with every run it started. [History and events](history-and-dream.md) explains what a playbook records, and [Run history and playbook events](../reference/http.md#run-history-and-playbook-events) lists the reads and their fields.
 
-A schedule trigger reads its times in UTC; time zones are planned. Starting one run from several events that belong together is planned too. Timers and event waits inside a run are control steps, not triggers for new runs.
+The [workflow format](../reference/workflow-format.md) describes the workflow document itself.

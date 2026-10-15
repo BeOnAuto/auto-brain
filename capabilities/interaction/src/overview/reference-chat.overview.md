@@ -21,7 +21,7 @@ Here is the draft:
 
 **draft**
 
-Reply **approve** or **reject**, with a note if you reject.
+Reply **approve**, or **revise** with a note of what to change.
 
 ## Where
 
@@ -35,13 +35,14 @@ It waits up to 2 days for the answer; a request nobody answers by then ends unan
 
 | Field | Required | What it is |
 | --- | --- | --- |
-| **choice** | yes | One of: approve, reject. |
+| **verdict** | yes | One of: approve, revise. |
 | **note** | no | Text, at most 2,000 characters. |
 
 ## Replies
 
 It reads the replies to its message with the tool **thread_replies** of **chat**, and a reply from the party it goes to answers it when its reply rule reads it:
 
-- **choice**, from the first word of the reply: `approve` or `reject`
+- **verdict**, from the first word of the reply: `approve` or `revise`
+- **note**, from the words that follow the first
 
 A reply the rule cannot read is refused, and the party is told how to answer.

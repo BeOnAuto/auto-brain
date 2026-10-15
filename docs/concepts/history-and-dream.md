@@ -1,43 +1,53 @@
-# History and Dream
+# History and events
 
-A playbook's history records saved definitions and what happened when they ran. After a campaign review, you can return to the definition version used, the rendered prompt and the result it produced. The current runtime stores run inputs in an event ledger; the run API exposes the recorded prompt and result, not the original input object.
+A playbook records what happens in it: the definitions it saves, the runs it carries out and the events it takes in from elsewhere. You read that history to see what a run did and why. Recall functions and event triggers read it too, so what the playbook recorded can shape later work.
 
-For reasoning functions, recorded details also include model usage and the rendered prompt, subject to record-size limits. A new run does not automatically receive every earlier result as context; the required information must be supplied to the function.
+## What a playbook records
 
-Recorded history needs persistent storage and tested backups. Teams operating their own runtime should include both in their [self-hosting plan](../self-host.md). Event history can only preserve information recorded in it; external systems and unrecorded conversations are not retained automatically.
+A playbook records:
 
-## Recall and projections
+- each version of each definition, and when it was created, updated or retired;
+- each run: its start and input, what it did, and how it ended;
+- each tool call a run makes, and each step a workflow run takes;
+- the events published to it, and the events its workflows emit.
 
-Recall retrieves or reconstructs relevant information. A projection derives a view or state from recorded events. The ledger is one possible source for a recall function, alongside other connected information.
+For example, after a campaign review you can go back to the review the run produced. You can also see the prompt it filled in, the version of "Review campaign brief" it used and the model's usage.
 
-A self-hosted runtime runs recall functions over a playbook's own history. A recall function names the events it takes, such as every run of one reasoning function that succeeded, and a fold that folds each into a view; the runtime keeps the view as the playbook records events, builds it again from the whole history when a new version is saved, and a run answers from it, saying how far it has read. A run never waits for the view to catch up, so it may not yet show an event recorded a moment ago. See [Recall function format](../reference/recall-format.md).
+History holds only what was recorded in it. Conversations with your agent and data in other systems are not kept, unless they reach the playbook as a run's input or as an event. Recorded history needs persistent storage and tested backups, so include both when you plan how to run Auto; see the [self-hosting overview](../self-host.md).
 
-You can also read a playbook's recorded history in three ways, over HTTP and MCP:
+## Reading the history
 
-- `list_runs` lists the runs of a playbook, newest first, and can keep only the runs of one function or in one status.
-- `get_run_history` reads the history of one run: each start, what the run did, such as the tool calls of a reasoning function or the inputs and steps of a workflow, and how it ended, each with when it happened and a plain-language summary.
-- `list_playbook_events` follows everything recorded in a playbook, such as definitions created, updated and retired and runs started and ended, and can keep one type of event, what was recorded since a time, or everything one run and the runs it started recorded.
+Your agent can read where a run stands, the history of one run, the events of the whole playbook or one event in full. The same reads work over HTTP. Long histories come a page at a time, and a playbook stays readable after it is retired. The playbook's analytics sum up its runs over recent days, and they are current as soon as each run is recorded.
 
-These reads page through long histories and keep working after a playbook is retired. Events show the sizes of inputs and outputs rather than the values; `get_run` returns a run's result in full. A playbook's own creation and retirement belong to its organization and are not among its events. A workflow run's history also shows, for each input the run took, the steps that moved and how they ended, and every event names the event that led to it. See [Run history and playbook events](../reference/http.md#run-history-and-playbook-events).
+A run's record holds its result. What the run was given is on the first event of its history. The history keeps each event small, so a large value appears as its size until you read that one event in full.
 
-`get_playbook_analytics` sums up the runs of a playbook over the last 7, 14 or 30 days, or between two days: how many ended and how, the tokens their models used, a rejected run's included, and how long they took, for each day and each function or workflow. It reads a projection the runtime keeps as each run is recorded. See [Analytics](../reference/http.md#analytics).
+[Inspecting a run](workflows.md#inspecting-a-run) says what a workflow run's history shows. [Run history and playbook events](../reference/http.md#run-history-and-playbook-events) lists the reads and every event field, and the [MCP reference](../reference/mcp.md#events-history-and-analytics) lists the tools your agent uses.
 
 ## Publishing events
 
-A playbook's history can also hold what happened elsewhere, such as a month closed in a ledger or a deal won in a CRM. `publish_event` records such an event in the playbook, in the CloudEvents shape that many systems already send: where it comes from, what happened, and optionally what it is about, when it happened and its data. The event then appears in `list_playbook_events` beside the definitions and runs the playbook recorded.
+A playbook's history can also hold what happened elsewhere, such as a month closed in the accounts or a deal won in a CRM. Your agent or another system publishes such an event, in the CloudEvents shape that many systems already send. The event then appears among the playbook's events, beside its definitions and runs.
 
-An event is identified by its source and its id, and a playbook keeps one event for each pair. Publishing the same event again records nothing and returns what was recorded the first time, so a sender can retry safely; a different event under the same source and id is refused. The playbook's own facts, such as a run that finished or a definition that changed, use types and sources the playbook keeps for itself, so a published event cannot pass for one. See [Publishing events](../reference/http.md#publishing-events) for the attributes and limits.
+An event is known by where it came from and its id. Publishing the same event again records nothing new, so a sender can safely try again. A published event cannot pass for one of the playbook's own records, such as a run that finished. [Publishing events](../reference/http.md#publishing-events) gives the details.
 
-## Reactions
+## How events start work
 
-What the playbook records can start work. A workflow with an event trigger starts a run for each event that matches it, whether published, emitted by another workflow's `emit` step, or one of the playbook's own facts, and a run waiting for an event takes a matching one while it waits. The playbook matches events in the order it recorded them, the order `list_playbook_events` shows, so the history explains each reaction: the event, then the run it started, whose start names that event as its cause. An emitted event shows the run and the workflow that emitted it. What a trigger did not start, past one of its limits, is recorded as a `reaction_refused` event of the workflow, at most once a minute, with how many and why. [Workflows and runs](workflows.md#triggers) describes triggers.
+What the playbook records can start work:
 
-## Dream
+- A workflow with an event trigger starts a run for each event that matches it. That can be a published event or one that another workflow recorded. It can also be one of the playbook's own records, such as a review that succeeded.
+- A run waiting for an event takes a matching one while it waits.
 
-Coming soon.
+The playbook matches events in the order it recorded them. So the history explains each reaction: first the event, then the run it started, which names that event as its cause. When a trigger does not start a run, as when it reaches one of its limits, the playbook records that too. [Triggers](workflows.md#triggers) describes triggers.
 
-Dream revisits recorded experience and explores associations that could suggest a different approach. It may surface a pattern worth investigating or propose a change to a method.
+Triggers, waiting runs and recall functions see a run only as the fact that it started and how it ended, with its result when it succeeded. They never see the run's input or its tool calls; those stay in the run's own history. [The events](../reference/recall-format.md#the-events) lists what each of these facts carries.
 
-Those possibilities become Inspirations that the playbook can consult while it works. A reasoning function can consider an inspiration and evaluate whether it makes sense for the current task. An association is a candidate idea, not automatically a fact or an improvement.
+## Using history in later runs
 
-The intended behavior allows a playbook to present its findings for review or apply changes within the authority it has been given. Dream is optional and is not implemented in this runtime yet. It belongs to the way functions and workflows work together, not a new function category or a claim that the runtime currently improves itself.
+A new run does not see earlier results by itself. Give a function what it needs as input, or use a recall function to look it up in the history.
+
+Every runtime runs recall functions over a playbook's own history. A recall function names the events it cares about, such as every review that succeeded. It keeps a view of them up to date as the playbook records them. A run reads the view as it stands, without waiting for it to catch up. So it may not yet show an event recorded a moment ago.
+
+See [Recall](functions.md#recall) for when to choose one, and [Make a playbook remember](../guides/remember.md) to add one. The [Recall function format](../reference/recall-format.md) describes the document.
+
+## Dream (planned)
+
+Dream is a planned feature, not available yet. It would revisit what a playbook has recorded and suggest ideas worth testing, such as a change to a method, for you to review. [Availability](functions.md#availability) lists it with the other planned features, and [Terminology](terminology.md) defines it.
