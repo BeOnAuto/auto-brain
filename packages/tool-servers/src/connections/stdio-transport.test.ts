@@ -3,7 +3,7 @@ import { afterAll, afterEach, describe, expect, it } from 'vitest';
 
 import { secretsOf } from '../bounds/secrets.ts';
 import type { StdioServerSettings } from '../settings/server-settings.ts';
-import { fakeStdioServerPath, stdioTestTimeoutMs, testClientInfo } from '../testing/index.ts';
+import { fakeStdioServerPath, testClientInfo } from '../testing/index.ts';
 import { errorsNoLongerReported } from './mcp-connection.ts';
 import { observations } from './observed-requests.ts';
 import { failureOf } from './server-failures.ts';
@@ -27,7 +27,7 @@ const patientMs = 20_000;
 
 afterEach(async () => {
   await Promise.all(closing.splice(0).map((close) => close()));
-}, stdioTestTimeoutMs);
+});
 
 function stdioSettings(args: readonly string[], changes: Partial<StdioServerSettings> = {}): StdioServerSettings {
   return {
@@ -104,10 +104,10 @@ async function failureOfTaking(link: ReturnType<typeof linked>['link']) {
   );
 }
 
-describe('one stdio server that the tests of a link share', { timeout: stdioTestTimeoutMs }, () => {
+describe('one stdio server that the tests of a link share', () => {
   const shared = linkTo(stdioSettings(['--chatter', '102', '--pad', '2100', '--stdout', 'not json\n{"not":"rpc"}\n']));
 
-  afterAll(shared.link.stop, stdioTestTimeoutMs);
+  afterAll(shared.link.stop);
 
   it('starts the process on first use with the environment of its entry alone, and keeps it while it is let go', async () => {
     const { link } = shared;
@@ -144,7 +144,7 @@ describe('one stdio server that the tests of a link share', { timeout: stdioTest
   });
 });
 
-describe('what a stdio server writes', { timeout: stdioTestTimeoutMs }, () => {
+describe('what a stdio server writes', () => {
   it('passes over a large batch of non-RPC messages without exhausting the call stack, and reports only the first 100', async () => {
     const { link, lines } = linked(stdioSettings(['--stdout', '{}\n'.repeat(20_000)]));
 
@@ -179,7 +179,7 @@ describe('what a stdio server writes', { timeout: stdioTestTimeoutMs }, () => {
   });
 });
 
-describe('draining the stdio transport', { timeout: stdioTestTimeoutMs }, () => {
+describe('draining the stdio transport', () => {
   it('drains a large batch of notifications interleaved with invalid messages', async () => {
     const notification = { jsonrpc: '2.0', method: 'notice' };
     const batch = JSON.stringify(`${JSON.stringify(notification)}\n{}\n`);
@@ -220,7 +220,7 @@ describe('draining the stdio transport', { timeout: stdioTestTimeoutMs }, () => 
   });
 });
 
-describe('a stdio server that does not start or stop', { timeout: stdioTestTimeoutMs }, () => {
+describe('a stdio server that does not start or stop', () => {
   it('cannot start a command that is not there', async () => {
     const { link } = linked(stdioSettings([], { command: '/nonexistent/limitless-mcp-server', args: [] }));
 

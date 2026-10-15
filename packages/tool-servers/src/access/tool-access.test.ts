@@ -10,7 +10,6 @@ import {
   recordingCallJournal,
   reportingAccess,
   serveFakeMcp,
-  stdioTestTimeoutMs,
   toolRun,
   toolRunId,
   type FakeMcpOptions,
@@ -23,7 +22,7 @@ const closing: (() => Promise<void>)[] = [];
 
 afterEach(async () => {
   await Promise.all(closing.splice(0).map((close) => close()));
-}, stdioTestTimeoutMs);
+});
 
 async function fakeServer(options?: FakeMcpOptions): Promise<FakeMcpServer> {
   const fake = await serveFakeMcp(options);
@@ -219,7 +218,7 @@ describe('the sessions of runs', () => {
   });
 });
 
-describe('a stdio server and the MCP client', { timeout: stdioTestTimeoutMs }, () => {
+describe('a stdio server and the MCP client', () => {
   it('starts a stdio server once for every run, and stops it when the access closes', async () => {
     const { access, messages } = accessTo({ limitless });
 
