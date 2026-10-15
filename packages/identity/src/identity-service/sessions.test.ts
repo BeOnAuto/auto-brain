@@ -21,6 +21,10 @@ const everyPermissionOverEveryPlaybook = { permissions: allPermissions, playbook
 
 const pageRefusal = 'ERR_JWT_CLAIM_VALIDATION_FAILED on its azp claim';
 
+const noOrgClaim = 'ERR_JWT_CLAIM_VALIDATION_FAILED on its o claim';
+
+const orgRefusal = 'its o.id claim is not an org id other than local';
+
 const scopesASessionMayHold: ReadonlyArray<readonly [string, unknown]> = [
   ['a scope that grants one permission', 'user:org:read org:read'],
   ['a scope that is not a string', ['org:read']],
@@ -31,10 +35,12 @@ describe('a session the identity service gave a page', () => {
     ['the studio', studioOrigin],
     ['an origin of ALLOWED_ORIGINS', testAllowedOrigin],
   ])(
-    'from %s is the person of its org_id, with every permission over every playbook, and of no other org',
+    'from %s is the person of the org its o claim names, with every permission over every playbook, and of no other org',
     async (_case, page) => {
       const { identityService, session } = await signedTokens(fakeIssuer('https://login.example'), atStart);
-      const person = principalIn(await identityService.personOf(await session(page, { org_id: 'globex' }), '', page));
+      const person = principalIn(
+        await identityService.personOf(await session(page, { o: { id: 'globex' } }), '', page),
+      );
 
       expect(person?.own).toEqual({ id: 'person:ada', org: 'globex', ...everyPermissionOverEveryPlaybook });
       expect(person?.callerIn('acme')).toBeUndefined();
@@ -58,6 +64,24 @@ describe('a session the identity service gave a page', () => {
     const person = await identityService.personOf(await session(studioOrigin), '/orgs/acme/mcp', studioOrigin);
 
     expect(principalIn(person)?.own.id).toBe('person:ada');
+  });
+});
+
+describe('a session read for its o claim', () => {
+  it('gives every permission whatever role and permissions its o names, since the runtime reads its id alone', async () => {
+    const { identityService, session } = await signedTokens(fakeIssuer('https://login.example'), atStart);
+    const o = { id: 'acme', slg: 'acme', rol: 'member', per: 'read', fpm: '1' };
+    const person = principalIn(await identityService.personOf(await session(studioOrigin, { o }), '', studioOrigin));
+
+    expect(person?.own).toEqual({ id: 'person:ada', org: 'acme', ...everyPermissionOverEveryPlaybook });
+  });
+
+  it('is the person of the org its o.id names, never of an org_id it holds', async () => {
+    const { identityService, session } = await signedTokens(fakeIssuer('https://login.example'), atStart);
+    const claims = { o: { id: 'globex' }, org_id: 'initech' };
+    const person = principalIn(await identityService.personOf(await session(studioOrigin, claims), '', studioOrigin));
+
+    expect(['globex', 'initech'].map((org) => person?.callerIn(org)?.org)).toEqual(['globex', undefined]);
   });
 });
 
@@ -92,8 +116,13 @@ const refusedSessions: ReadonlyArray<readonly [string, string, Claims, string]> 
   ['the studio with a final slash', `${studioOrigin}/`, {}, pageRefusal],
   ['the public URL of the runtime', testPublicUrl, {}, pageRefusal],
   ['an azp that is not a string', studioOrigin, { azp: 7 }, pageRefusal],
-  ['no org_id', studioOrigin, { org_id: undefined }, 'ERR_JWT_CLAIM_VALIDATION_FAILED on its org_id claim'],
-  ['the org of local mode', studioOrigin, { org_id: 'local' }, 'its org_id claim is not an org id other than local'],
+  ['no o', studioOrigin, { o: undefined }, noOrgClaim],
+  ['no o, though it holds an org_id', studioOrigin, { o: undefined, org_id: 'acme' }, noOrgClaim],
+  ['an o that is no object', studioOrigin, { o: 'acme' }, orgRefusal],
+  ['an o without an id', studioOrigin, { o: {} }, orgRefusal],
+  ['an o whose id is the org of local mode', studioOrigin, { o: { id: 'local' } }, orgRefusal],
+  ['an o whose id is no org id', studioOrigin, { o: { id: 'ac me' } }, orgRefusal],
+  ['an o whose id is not a string', studioOrigin, { o: { id: 7 } }, orgRefusal],
   ['no sub', studioOrigin, { sub: undefined }, 'ERR_JWT_CLAIM_VALIDATION_FAILED on its sub claim'],
   [
     'a wrong iss',

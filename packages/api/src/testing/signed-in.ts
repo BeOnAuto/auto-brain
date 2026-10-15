@@ -60,7 +60,7 @@ export async function signedInServer(): Promise<SignedIn> {
     }),
     fromPage: async (page, claims = {}) => ({
       origin: page,
-      authorization: `Bearer ${await issuer.session(page, { sub: 'ada', org_id: 'acme', ...claims })}`,
+      authorization: `Bearer ${await issuer.session(page, claims)}`,
     }),
   };
 }

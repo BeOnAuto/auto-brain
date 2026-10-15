@@ -15,7 +15,7 @@ describe('a page at an allowed origin, sending the session the identity service 
     'acts at %s as the signed-in person, with every permission in their org, over every playbook',
     async (_case, page) => {
       const { server, fromPage } = await signedInServer();
-      const headers = await fromPage(page, { org_id: 'globex' });
+      const headers = await fromPage(page, { o: { id: 'globex' } });
 
       const labelled = await call(server.handler, '/v1/orgs/globex/playbooks/gamma/label', {
         method: 'PUT',
@@ -65,16 +65,16 @@ describe('a session the runtime refuses', () => {
     expect(answer.headers.get('www-authenticate')).toMatch(/^Bearer error="invalid_token", /u);
   });
 
-  it('is answered 401 for a session without an organization, naming the org_id claim', async () => {
+  it('is answered 401 for a session without an organization, naming the o claim', async () => {
     const { server, fromPage } = await signedInServer();
 
     const answer = await call(server.handler, '/v1/orgs/acme/playbook-labels', {
-      headers: await fromPage(studioOrigin, { org_id: undefined }),
+      headers: await fromPage(studioOrigin, { o: undefined }),
     });
 
     expect(answer).toMatchObject({
       status: 401,
-      body: { detail: 'The token was refused: ERR_JWT_CLAIM_VALIDATION_FAILED on its org_id claim' },
+      body: { detail: 'The token was refused: ERR_JWT_CLAIM_VALIDATION_FAILED on its o claim' },
     });
   });
 

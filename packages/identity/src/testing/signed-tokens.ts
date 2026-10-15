@@ -40,8 +40,6 @@ export async function signedTokens(fake: FakeIssuer, requests: Partial<IssuerReq
     session: (page, claims = {}) => {
       const seconds = Math.floor(now() / 1000);
       return fake.session(page, {
-        sub: 'ada',
-        org_id: 'acme',
         iat: seconds,
         nbf: seconds,
         exp: seconds + 60,

@@ -132,8 +132,13 @@ describe('the permissions of the person a token names', () => {
 const refusedClaims: ReadonlyArray<readonly [string, Claims, string]> = [
   ['a wrong iss', { iss: 'https://elsewhere.example' }, 'ERR_JWT_CLAIM_VALIDATION_FAILED on its iss claim'],
   [
-    'no aud, which makes it a session, and no azp',
+    'no aud, which makes it a session, whose org claim is o, not org_id',
     { aud: undefined },
+    'ERR_JWT_CLAIM_VALIDATION_FAILED on its o claim',
+  ],
+  [
+    'no aud, which makes it a session, and no azp',
+    { aud: undefined, o: { id: 'acme' } },
     'ERR_JWT_CLAIM_VALIDATION_FAILED on its azp claim',
   ],
   ['an empty list as its aud', { aud: [] }, 'ERR_JWT_CLAIM_VALIDATION_FAILED on its aud claim'],
@@ -163,6 +168,11 @@ const refusedPersons: ReadonlyArray<readonly [string, Claims, string]> = [
   ['an org_id that is no org id', { org_id: 'ac me' }, 'its org_id claim is not an org id other than local'],
   ['the org of local mode', { org_id: 'local' }, 'its org_id claim is not an org id other than local'],
   ['an org_id that is not a string', { org_id: 7 }, 'its org_id claim is not an org id other than local'],
+  [
+    'an o and no org_id, since the o of a session names no org of an access token',
+    { org_id: undefined, o: { id: 'acme' } },
+    'ERR_JWT_CLAIM_VALIDATION_FAILED on its org_id claim',
+  ],
   [
     'a scope that is not a string',
     { scope: ['org:read'] },
