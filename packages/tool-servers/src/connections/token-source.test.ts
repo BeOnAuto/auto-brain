@@ -3,6 +3,7 @@ import { generateKeyPairSync } from 'node:crypto';
 import { Redacted } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { secretsOf } from '../bounds/secrets.ts';
 import type { AuthSettings } from '../settings/server-settings.ts';
 import { serveFakeMcp, type ClientRegistration, type FakeMcpServer } from '../testing/index.ts';
 import { tokenSource } from './token-source.ts';
@@ -41,17 +42,20 @@ function secretAuth(fake: FakeMcpServer, changes: Partial<AuthSettings> = {}): A
 
 function sourceOf(fake: FakeMcpServer, settings: AuthSettings) {
   const clock = { now: Date.parse('2026-10-05T09:00:00.000Z') };
-  const minted: string[] = [];
+  const minted: (readonly [string, string])[] = [];
+  const secrets = secretsOf([]);
   const source = tokenSource(settings, {
+    server: 'graph',
     serverUrl: fake.url,
     discovery: 'from_the_server',
     fetch: globalThis.fetch,
     now: () => clock.now,
-    minted: (token) => {
-      minted.push(token);
+    minted: (server, token) => {
+      minted.push([server, token]);
+      secrets.replace(server, token);
     },
   });
-  return { source, clock, minted };
+  return { source, clock, minted, secrets };
 }
 
 describe('the tokens of an auth block', () => {
@@ -62,7 +66,7 @@ describe('the tokens of an auth block', () => {
     const tokens = await Promise.all([source.token(), source.token(), source.token()]);
 
     expect(new Set(tokens).size).toBe(1);
-    expect(minted).toEqual([tokens[0]]);
+    expect(minted).toEqual([['graph', tokens[0]]]);
     expect(fake.tokenRequests()).toBe(1);
   });
 
@@ -93,6 +97,42 @@ describe('the tokens of an auth block', () => {
 
     expect(kept).toBe(first);
     expect(renewed).not.toBe(first);
+  });
+});
+
+describe('the tokens a source mints among the secrets', () => {
+  it('replace the token before them on renewal, which still scrubs until the next renewal', async () => {
+    const fake = await authorizationServer({ clientId: 'playbook', clientSecret, expiresInSeconds: 120 });
+    const { source, clock, secrets } = sourceOf(fake, secretAuth(fake));
+
+    const first = await source.token();
+    clock.now += 60_000;
+    const renewed = await source.token();
+    const afterRenewal = secrets.scrub(`${first} ${renewed}`);
+    clock.now += 60_000;
+    const renewedAgain = await source.token();
+
+    expect([afterRenewal, secrets.scrub(`${first} ${renewed} ${renewedAgain}`)]).toEqual([
+      '[redacted] [redacted]',
+      `${first} [redacted] [redacted]`,
+    ]);
+  });
+
+  it('replace the token the server refused, which still scrubs until the next one is refused', async () => {
+    const fake = await authorizationServer({ clientId: 'playbook', clientSecret, expiresInSeconds: 3600 });
+    const { source, secrets } = sourceOf(fake, secretAuth(fake));
+
+    const refused = await source.token();
+    await source.onUnauthorized();
+    const replacing = await source.token();
+    const afterRefusal = secrets.scrub(`${refused} ${replacing}`);
+    await source.onUnauthorized();
+    const replacingAgain = await source.token();
+
+    expect([afterRefusal, secrets.scrub(`${refused} ${replacing} ${replacingAgain}`)]).toEqual([
+      '[redacted] [redacted]',
+      `${refused} [redacted] [redacted]`,
+    ]);
   });
 });
 
