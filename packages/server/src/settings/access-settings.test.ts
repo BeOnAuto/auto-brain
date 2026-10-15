@@ -50,42 +50,22 @@ describe('readSettings signing persons in', () => {
   });
 });
 
-describe('readSettings on a loopback address without PUBLIC_URL', () => {
+describe('readSettings without PUBLIC_URL', () => {
   it.each([
-    [{ HOST: '127.0.0.1' }, 'http://localhost:5555'],
-    [{ HOST: 'localhost', PORT: '6000' }, 'http://localhost:6000'],
-    [{ HOST: '::1' }, 'http://[::1]:5555'],
-  ] as const)('signs persons in with %j at its own address, %s', (server, publicUrl) => {
-    expect(readSettings(server).signIn).toEqual({ issuer: 'https://clerk.on.auto', publicUrl });
-  });
-
-  it('signs persons in at PUBLIC_URL, not at its own address, when PUBLIC_URL is set', () => {
-    expect(readSettings({ HOST: '127.0.0.1', PUBLIC_URL: 'https://runtime.example.com' }).signIn).toEqual({
-      issuer: 'https://clerk.on.auto',
-      publicUrl: 'https://runtime.example.com',
-    });
-  });
-
-  it('signs persons in at its own address through the identity service IDENTITY_ISSUER names', () => {
-    expect(readSettings({ HOST: '127.0.0.1', IDENTITY_ISSUER: 'https://identity.example' }).signIn).toEqual({
-      issuer: 'https://identity.example',
-      publicUrl: 'http://localhost:5555',
-    });
-  });
-
-  it.each([
-    ['LOCAL_MODE=true', { HOST: '127.0.0.1', LOCAL_MODE: 'true' }],
-    ['PORT=0, whose port is known only once it listens', { HOST: '127.0.0.1', PORT: '0' }],
-    ['another loopback address, which no loopback name reaches', { HOST: '127.0.0.2' }],
-    ['every interface', { HOST: '0.0.0.0' }],
-  ] as const)('signs no one in with %s', (_case, server) => {
+    [{ HOST: '127.0.0.1' }],
+    [{ HOST: 'localhost', PORT: '6000' }],
+    [{ HOST: '::1' }],
+    [{ HOST: '127.0.0.1', PORT: '0' }],
+    [{ HOST: '0.0.0.0' }],
+    [{ HOST: '127.0.0.1', IDENTITY_ISSUER: 'https://identity.example' }],
+  ] as const)('signs no one in with %j, since PUBLIC_URL has no default', (server) => {
     expect(readSettings(server).signIn).toBeUndefined();
   });
 
-  it('signs persons in at PUBLIC_URL beside LOCAL_MODE=true, which the server then ignores', () => {
-    expect(readSettings({ HOST: '127.0.0.1', LOCAL_MODE: 'true', PUBLIC_URL: 'http://localhost:5555' })).toMatchObject({
-      localMode: true,
-      signIn: { issuer: 'https://clerk.on.auto', publicUrl: 'http://localhost:5555' },
+  it('signs persons in at PUBLIC_URL on a loopback address when PUBLIC_URL is set', () => {
+    expect(readSettings({ HOST: '127.0.0.1', PUBLIC_URL: 'https://runtime.example.com' }).signIn).toEqual({
+      issuer: 'https://clerk.on.auto',
+      publicUrl: 'https://runtime.example.com',
     });
   });
 });

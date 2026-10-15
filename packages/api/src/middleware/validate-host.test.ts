@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { call, echoRequestId, createTestHandler } from '../testing/api-calls.ts';
 
-const localAccess = authenticatorFor({ host: '127.0.0.1', apiKeys: undefined, localMode: true });
+const localAccess = authenticatorFor({ host: '127.0.0.1', apiKeys: undefined });
 
 const foreignHosts = [
   'evil.example',

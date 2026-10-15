@@ -164,12 +164,8 @@ const startUpFailures: ReadonlyArray<readonly [Readonly<Record<string, string>>,
     'InvalidSettingsError: SchemaError(Expected an origin such as https://app.example.com at ["ALLOWED_ORIGINS"][0] Expected array at ["ALLOWED_ORIGINS"])',
   ],
   [
-    { HOST: '0.0.0.0', LOCAL_MODE: 'true' },
-    'InvalidLocalModeError: LOCAL_MODE is on, but HOST 0.0.0.0 is not a loopback address; local mode trusts every request, so it runs only on localhost, 127.0.0.1 or ::1',
-  ],
-  [
-    { LOCAL_MODE: 'enabled' },
-    'InvalidSettingsError: SchemaError(Expected "true" | "yes" | "on" | "1" | "y" | "false" | "no" | "off" | "0" | "n" at ["LOCAL_MODE"])',
+    { HOST: '0.0.0.0' },
+    'ReachableWithoutCredentialsError: A server reachable beyond this computer needs PUBLIC_URL, to sign people in, or API_KEYS, and this one listens on HOST 0.0.0.0',
   ],
 ];
 

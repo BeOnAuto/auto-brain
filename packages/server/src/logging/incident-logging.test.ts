@@ -40,7 +40,7 @@ describe('logIncident for an error whose cause cannot be formatted', () => {
 
 describe('a server whose route throws an error that is its own cause', { timeout: spawnedServerTestTimeoutMs }, () => {
   it('answers 500, logs the incident and keeps serving', async () => {
-    const child = spawnServer(serveWithSelfCausedError, { HOST: '127.0.0.1', PORT: '0', LOCAL_MODE: 'true' });
+    const child = spawnServer(serveWithSelfCausedError, { HOST: '127.0.0.1', PORT: '0' });
     const port = await child.port;
 
     const failed = await fetch(`http://127.0.0.1:${port}/self-caused`);

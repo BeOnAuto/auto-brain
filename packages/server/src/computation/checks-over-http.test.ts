@@ -49,7 +49,7 @@ function countingChecks(): { readonly checks: Checks; readonly poolOf: ProgramPo
 }
 
 async function serving(programPoolOf: ProgramPoolOf = workerPool): Promise<ReasoningServer> {
-  server = await servingReasoning([], { LOCAL_MODE: 'true' }, undefined, { programPoolOf });
+  server = await servingReasoning([], {}, undefined, { programPoolOf });
   await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   return server;
 }

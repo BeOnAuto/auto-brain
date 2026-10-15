@@ -1,4 +1,4 @@
-import { studioOrigin } from '@on.auto/identity';
+import { studioOrigin, type AccessMode } from '@on.auto/identity';
 
 import { linkerFor, painterFor, type ColorDepth } from '../logging/terminal.ts';
 import { logoHeight, logoLines, type PaintingDepth } from './logo.ts';
@@ -6,6 +6,7 @@ import { logoHeight, logoLines, type PaintingDepth } from './logo.ts';
 export interface Ready {
   readonly url: string;
   readonly readyInMs: number;
+  readonly mode: AccessMode;
   readonly identityService: string | undefined;
 }
 
@@ -37,7 +38,16 @@ export function headerOf(version: string, depth: ColorDepth): string {
   return depth === 1 ? plainHeader(version) : paintedHeader(version, depth);
 }
 
-export function readyNoticeOf({ url, readyInMs, identityService }: Ready, depth: ColorDepth): string {
+function localModeNotice(url: string, depth: ColorDepth): readonly string[] {
+  const paint = painterFor(depth);
+  return [
+    '',
+    `  ${paint('dim', 'Local mode: anyone on this computer acts as you, with no sign-in.')}`,
+    `  ${paint('dim', `Set PUBLIC_URL=${url} to sign people in.`)}`,
+  ];
+}
+
+export function readyNoticeOf({ url, readyInMs, mode, identityService }: Ready, depth: ColorDepth): string {
   const paint = painterFor(depth);
   const link = linkerFor(depth);
   const mcp = `${url}/mcp`;
@@ -53,6 +63,7 @@ export function readyNoticeOf({ url, readyInMs, identityService }: Ready, depth:
     entry('MCP', mcp),
     ...signIn,
     entry('Docs', documentation),
+    ...(mode === 'local' ? localModeNotice(url, depth) : []),
     '',
     `  ${paint('dim', 'Connect your agent')}`,
     agent('Claude Code', `claude mcp add --transport http auto-runtime ${mcp}`),

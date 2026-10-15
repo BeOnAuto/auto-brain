@@ -23,7 +23,7 @@ async function called(server: RunningServer, method: string, path: string, body:
 
 export async function measuredServer(ledger: Readonly<Record<string, string>>): Promise<MeasuredServer> {
   const server = await startServer(
-    { HOST: '127.0.0.1', PORT: '0', LOCAL_MODE: 'true', INTERACTION_OPEN_REQUESTS: '20000', ...ledger },
+    { HOST: '127.0.0.1', PORT: '0', INTERACTION_OPEN_REQUESTS: '20000', ...ledger },
     compositionRoot,
   );
   return {

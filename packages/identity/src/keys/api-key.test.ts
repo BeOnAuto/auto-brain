@@ -10,7 +10,7 @@ const keyWithTheSecretBytes0To31 = 'abk_ci-1_AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBk
 const sha256OfThatKey = '269ce89dc8b3c0eb7966560f76d53555a184aaaffe7514d545765bf14701fa6a';
 
 async function admits(entries: readonly ApiKey[], presented: string): Promise<boolean> {
-  const authenticator = authenticatorFor({ host: '0.0.0.0', apiKeys: entries, localMode: false });
+  const authenticator = authenticatorFor({ host: '0.0.0.0', apiKeys: entries });
   return principalIn(await authenticator.authenticate(presented, '/v1/orgs/acme/playbooks')) !== undefined;
 }
 

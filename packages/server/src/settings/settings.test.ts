@@ -41,7 +41,6 @@ describe('readSettings', () => {
       ledger: { store: 'sqlite', file: 'data/ledger.db' },
       content: { store: 'ledger' },
       proxy: { enabled: false, environment: {} },
-      localMode: false,
       logFormat: 'json',
       logLevel: 'info',
       reasoning: { mostInputTokens: 2_000_000 },
@@ -66,7 +65,6 @@ const everySetting = {
   CONTENT_STORE_URL: 's3://playbook-content/production',
   NODE_USE_ENV_PROXY: '1',
   HTTPS_PROXY: 'http://proxy.internal:3128',
-  LOCAL_MODE: 'true',
   LOG_FORMAT: 'pretty',
   LOG_LEVEL: 'warn',
   OPENAI_API_KEY: 'sk-test',
@@ -96,7 +94,6 @@ describe('readSettings given every setting', () => {
         region: undefined,
       },
       proxy: { enabled: true, environment: { HTTPS_PROXY: 'http://proxy.internal:3128' } },
-      localMode: true,
       logFormat: 'pretty',
       logLevel: 'warn',
       reasoning: { mostInputTokens: 500_000 },
@@ -118,7 +115,6 @@ describe('readSettings with empty values', () => {
         API_KEYS: '',
         LEDGER_FILE: '',
         CONTENT_STORE_URL: '',
-        LOCAL_MODE: '',
         LOG_FORMAT: '',
         LOG_LEVEL: '',
         INTERACTION_OPEN_REQUESTS: '',
@@ -129,7 +125,6 @@ describe('readSettings with empty values', () => {
       apiKeys: undefined,
       ledger: { store: 'sqlite', file: 'data/ledger.db' },
       content: { store: 'ledger' },
-      localMode: false,
       logFormat: 'json',
       logLevel: 'info',
     });
@@ -176,13 +171,6 @@ describe('readSettings rejects invalid settings', () => {
     expect(error).toMatchObject({ name: 'InvalidSettingsError', _tag: 'InvalidSettingsError' });
     expect(String(error)).toContain('ALLOWED_ORIGINS');
     expect(String(error)).toContain('Expected an origin such as https://app.example.com');
-  });
-
-  it.each(['enabled', 'TRUE!', '2'])('rejects LOCAL_MODE="%s", which is not a boolean, with a named error', (value) => {
-    const error = errorFrom({ LOCAL_MODE: value });
-
-    expect(error).toMatchObject({ name: 'InvalidSettingsError' });
-    expect(String(error)).toContain('LOCAL_MODE');
   });
 });
 

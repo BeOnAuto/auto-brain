@@ -80,7 +80,6 @@ describe('the server with LOG_FORMAT=pretty', { timeout: spawnedServerTestTimeou
     onTestFinished(remove);
     const child = spawnServer(mainModule, {
       ...loopback,
-      LOCAL_MODE: 'true',
       LOG_FORMAT: 'pretty',
       PREDICTION_CACHE_DIR: cacheDirectory,
     });
@@ -113,7 +112,7 @@ describe('the console log format', () => {
       Effect.all(
         [
           logWorkflows({ mostDurationMs: 604_800_000, mostCallsAtOnce: 8, sweepEveryMs: 250 }),
-          logAccessMode({ mode: 'closed', localMode: false, apiKeys: undefined, signIn: undefined }),
+          logAccessMode({ mode: 'closed', signIn: undefined }),
           logUnsettled({ org: 'acme', playbook: 'alpha', runId: 'e-1', reason: 'The ledger has no such run' }),
           Effect.logFatal('The ledger is gone'),
           Effect.logDebug({ answered: false }),
@@ -125,7 +124,7 @@ describe('the console log format', () => {
 
     expect(lines).toEqual([
       '  <time> • Workflows run in this server: a run lasts at most 7 days, at most 8 of their calls run at once, and the runs are swept every 250 ms',
-      '  <time> ▲ No request can authenticate: API_KEYS lists no keys and local mode is off, so every path answers 401 except /health, the OpenAPI document at /v1/openapi.json, the guides under /v1/guides and the API catalog at /.well-known/api-catalog',
+      '  <time> ▲ No request can authenticate: API_KEYS lists no keys, so every path answers 401 except /health, the OpenAPI document at /v1/openapi.json, the guides under /v1/guides and the API catalog at /.well-known/api-catalog',
       '  <time> ✖ A run stays started because settling it failed',
       '  <time> ✖ The ledger is gone',
       '  <time> · {"answered":false}',
@@ -177,7 +176,6 @@ describe('the server with LOG_FORMAT=console and LOG_LEVEL=warn', { timeout: spa
   it('writes only its warnings, as console lines, to stderr', async () => {
     const child = spawnServer(mainModule, {
       ...loopback,
-      LOCAL_MODE: 'true',
       LOG_FORMAT: 'console',
       LOG_LEVEL: 'warn',
     });

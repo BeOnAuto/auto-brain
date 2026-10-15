@@ -39,8 +39,8 @@ function sourcesOf(file: FileUse | undefined): ConfigFileSources | undefined {
 export function readSettings(given: Environment): Settings {
   const { environment, file } = Result.getOrThrow(configurationOf(given, fileSettings));
   const { host, port } = readServerConfig(environment);
-  const { allowedOrigins, localMode, logFormat, logLevel } = Effect.runSync(readAccessSettings(environment));
-  const { apiKeys, identityIssuer, signIn } = readCredentialSettings(environment, { host, port }, localMode);
+  const { allowedOrigins, logFormat, logLevel } = Effect.runSync(readAccessSettings(environment));
+  const { apiKeys, identityIssuer, signIn } = readCredentialSettings(environment);
   const ledger = Effect.runSync(readLedgerSettings(environment));
   const content = Effect.runSync(readContentSettings(environment));
   const functions = readFunctionSettings(environment, file);
@@ -56,7 +56,6 @@ export function readSettings(given: Environment): Settings {
     ledger,
     content,
     proxy: proxySettingsOf(environment),
-    localMode,
     logFormat,
     logLevel,
     ...functions,

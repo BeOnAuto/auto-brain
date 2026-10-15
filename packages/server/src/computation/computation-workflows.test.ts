@@ -139,7 +139,6 @@ async function serving(programPoolOf: ProgramPoolOf, ...replies: readonly Script
   const server = await servingWorkflows(
     replies,
     {
-      LOCAL_MODE: 'true',
       GRAPH_API_KEY: apiKey,
       TOOL_SERVERS: JSON.stringify({
         graph: { url: graph.url, org: 'acme', headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' } },

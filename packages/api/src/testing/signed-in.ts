@@ -32,7 +32,6 @@ async function serverOf(issuer: FakeIssuer, resource: string, requests: IssuerRe
     authenticator: authenticatorFor({
       host: '0.0.0.0',
       apiKeys: [acmeAdmin.entry, acmeAlphaWriter.entry],
-      localMode: false,
       identityService,
     }),
     allowedOrigins,

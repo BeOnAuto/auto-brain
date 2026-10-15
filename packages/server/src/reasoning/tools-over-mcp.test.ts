@@ -47,7 +47,6 @@ async function serving(fake: FakeMcpServer | undefined, replies: readonly Script
           }),
         };
   const server = await servingReasoning(replies, {
-    LOCAL_MODE: 'true',
     GRAPH_API_KEY: apiKey,
     NODE_V8_COVERAGE: process.env['NODE_V8_COVERAGE'] ?? '',
     ...servers,

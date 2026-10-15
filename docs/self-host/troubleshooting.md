@@ -14,7 +14,11 @@ Every server offers workflows and `send_run_event`, with nothing to configure. A
 
 ## The server stops at start, naming the identity service
 
-A runtime that signs people in reads the metadata and the key set of the Auto identity service, `https://clerk.on.auto`, as it starts, and stops with an `UnusableIdentityServiceError` naming the service and each address it read when it cannot. Check that the machine reaches the service, through its outbound proxy where it has one, as [Model providers and gateways](models.md#behind-an-outbound-proxy-with-a-private-certificate-authority) sets out. For development on a machine that cannot reach it, `LOCAL_MODE=true` runs the runtime in [local mode](security.md#local-mode), which signs no one in.
+A runtime that signs people in reads the metadata and the key set of the Auto identity service, `https://clerk.on.auto`, as it starts, and stops with an `UnusableIdentityServiceError` naming the service and each address it read when it cannot. Check that the machine reaches the service, through its outbound proxy where it has one, as [Model providers and gateways](models.md#behind-an-outbound-proxy-with-a-private-certificate-authority) sets out. For development on a machine that cannot reach it, leave `PUBLIC_URL` unset: a runtime on a loopback address without `API_KEYS` is then in [local mode](security.md#local-mode), which signs no one in.
+
+## The server stops at start, naming PUBLIC_URL and API_KEYS
+
+A server that listens beyond loopback, as the image does on `0.0.0.0`, with neither `PUBLIC_URL` nor `API_KEYS` stops with a `ReachableWithoutCredentialsError` naming the `HOST` it listens on, since anyone who reaches it could otherwise act without a credential. Set `PUBLIC_URL` to sign people in, as [Run with Docker](docker.md) does, or `API_KEYS` for keys; for one person on their own computer, `HOST=127.0.0.1` runs it in [local mode](security.md#local-mode) instead.
 
 ## The browser receives 403
 

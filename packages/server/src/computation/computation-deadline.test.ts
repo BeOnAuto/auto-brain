@@ -43,7 +43,7 @@ async function ranOn(rows: number) {
 
 describe('a run of a computation function that does not end by itself, over HTTP', { timeout: 60_000 }, () => {
   it('is unavailable once its warm worker is terminated at the deadline, while another worker answers and the server answers other requests', async () => {
-    server = await servingReasoning([], { LOCAL_MODE: 'true' }, undefined, {
+    server = await servingReasoning([], {}, undefined, {
       programPoolOf: ({ workers }) =>
         programPool({ workers, heapMegabytes: computationBounds.heapMegabytes, worker: blockingOnTwoRows }),
     });

@@ -42,13 +42,13 @@ const identityService: IdentityService = {
   },
 };
 
-describe('authenticatorFor with local mode on and no API keys', () => {
+describe('authenticatorFor on a loopback address with neither sign-in nor API keys', () => {
   it.each(loopbackHosts)('is in local mode on the loopback address %s', (host) => {
-    expect(authenticatorFor({ host, apiKeys: undefined, localMode: true }).mode).toBe('local');
+    expect(authenticatorFor({ host, apiKeys: undefined }).mode).toBe('local');
   });
 
   it('admits every request in local mode as the local developer of whichever org it names', async () => {
-    const authenticator = authenticatorFor({ host: '127.0.0.1', apiKeys: undefined, localMode: true });
+    const authenticator = authenticatorFor({ host: '127.0.0.1', apiKeys: undefined });
     const developer = principalIn(await authenticator.authenticate(undefined, anyPath));
 
     expect(developer?.callerIn('globex')).toEqual({
@@ -61,24 +61,20 @@ describe('authenticatorFor with local mode on and no API keys', () => {
   });
 
   it('gives the local developer the org local as its own', async () => {
-    const authenticator = authenticatorFor({ host: '127.0.0.1', apiKeys: undefined, localMode: true });
+    const authenticator = authenticatorFor({ host: '127.0.0.1', apiKeys: undefined });
     const developer = principalIn(await authenticator.authenticate('a.token.of-ada', anyPath));
 
     expect(developer?.own.org).toBe('local');
   });
+});
 
-  it.each(otherHosts)('stops start-up on %s, which is not loopback, with a named error', (host) => {
-    expect(() => authenticatorFor({ host, apiKeys: undefined, localMode: true })).toThrow(
+describe('authenticatorFor beyond loopback with neither sign-in nor API keys', () => {
+  it.each(otherHosts)('stops start-up on %s with a named error that says what the server needs', (host) => {
+    expect(() => authenticatorFor({ host, apiKeys: undefined })).toThrow(
       expect.objectContaining({
-        name: 'InvalidLocalModeError',
-        message: `LOCAL_MODE is on, but HOST ${host} is not a loopback address; local mode trusts every request, so it runs only on localhost, 127.0.0.1 or ::1`,
+        name: 'ReachableWithoutCredentialsError',
+        message: `A server reachable beyond this computer needs PUBLIC_URL, to sign people in, or API_KEYS, and this one listens on HOST ${host}`,
       }),
-    );
-  });
-
-  it('stops start-up off loopback even when API keys are configured', () => {
-    expect(() => authenticatorFor({ host: '0.0.0.0', apiKeys: keys, localMode: true })).toThrow(
-      expect.objectContaining({ name: 'InvalidLocalModeError' }),
     );
   });
 });
@@ -89,38 +85,23 @@ describe('authenticatorFor in local mode, with a credential presented', () => {
     ['a key, where no key is set', () => Promise.resolve(admin.key)],
     ['a key that is not valid', () => Promise.resolve(wrongSecret)],
   ])('ignores %s and admits the request as the local developer', async (_case, presented) => {
-    const authenticator = authenticatorFor({ host: '127.0.0.1', apiKeys: undefined, localMode: true });
+    const authenticator = authenticatorFor({ host: '127.0.0.1', apiKeys: undefined });
     const developer = principalIn(await authenticator.authenticate(await presented(), anyPath));
 
     expect(developer?.callerIn('acme')).toMatchObject({ id: 'local', org: 'acme', playbooks: '*' });
   });
 });
 
-describe('authenticatorFor with local mode off and no API keys', () => {
-  it.each([...loopbackHosts, ...otherHosts])(
-    'is closed on %s and admits nobody, whatever key is presented',
-    async (host) => {
-      const authenticator = authenticatorFor({ host, apiKeys: undefined, localMode: false });
-
-      expect(authenticator.mode).toBe('closed');
-      expect([
-        await authenticator.authenticate(undefined, anyPath),
-        await authenticator.authenticate(reader.key, anyPath),
-      ]).toEqual([unexplained, unexplained]);
-    },
-  );
-});
-
 describe('authenticatorFor with API keys', () => {
-  it('enforces the keys on loopback, even with local mode on', async () => {
-    const authenticator = authenticatorFor({ host: '127.0.0.1', apiKeys: keys, localMode: true });
+  it.each([...loopbackHosts, ...otherHosts])('enforces the keys on %s', async (host) => {
+    const authenticator = authenticatorFor({ host, apiKeys: keys });
 
     expect(authenticator.mode).toBe('credentials');
     expect(await authenticator.authenticate(undefined, anyPath)).toEqual(unexplained);
   });
 
   it('admits a configured key as a caller of its own org, and of no other', async () => {
-    const authenticator = authenticatorFor({ host: '0.0.0.0', apiKeys: keys, localMode: false });
+    const authenticator = authenticatorFor({ host: '0.0.0.0', apiKeys: keys });
     const holder = principalIn(await authenticator.authenticate(reader.key, anyPath));
 
     expect(holder?.callerIn('acme')).toEqual({
@@ -140,33 +121,43 @@ describe('authenticatorFor with API keys', () => {
     ['a malformed key', 'not-a-key'],
     ['the digest itself', reader.entry.sha256],
   ])('rejects %s', async (_case, presentedKey) => {
-    expect(
-      await authenticatorFor({ host: '0.0.0.0', apiKeys: keys, localMode: false }).authenticate(presentedKey, anyPath),
-    ).toEqual(unexplained);
+    expect(await authenticatorFor({ host: '0.0.0.0', apiKeys: keys }).authenticate(presentedKey, anyPath)).toEqual(
+      unexplained,
+    );
   });
 
-  it.each([false, true])('is closed when the configured list is empty, with local mode %s', async (localMode) => {
-    const authenticator = authenticatorFor({ host: '127.0.0.1', apiKeys: [], localMode });
+  it.each([...loopbackHosts, ...otherHosts])(
+    'is closed on %s when the configured list is empty, and admits nobody, whatever key is presented',
+    async (host) => {
+      const authenticator = authenticatorFor({ host, apiKeys: [] });
 
-    expect(authenticator.mode).toBe('closed');
-    expect([
-      await authenticator.authenticate(undefined, anyPath),
-      await authenticator.authenticate(reader.key, anyPath),
-    ]).toEqual([unexplained, unexplained]);
-  });
+      expect(authenticator.mode).toBe('closed');
+      expect([
+        await authenticator.authenticate(undefined, anyPath),
+        await authenticator.authenticate(reader.key, anyPath),
+      ]).toEqual([unexplained, unexplained]);
+    },
+  );
 });
 
 describe('authenticatorFor with the identity service', () => {
-  it('checks credentials even with no key and local mode on, and names the protected resource', () => {
-    const authenticator = authenticatorFor({ host: '127.0.0.1', apiKeys: [], localMode: true, identityService });
+  it.each<readonly ApiKey[] | undefined>([undefined, []])(
+    'checks credentials on loopback with API keys %j, and names the protected resource',
+    (apiKeys) => {
+      const authenticator = authenticatorFor({ host: '127.0.0.1', apiKeys, identityService });
 
-    expect(authenticator.mode).toBe('credentials');
-    expect(authenticator.resource).toEqual(identityService.resource);
+      expect(authenticator.mode).toBe('credentials');
+      expect(authenticator.resource).toEqual(identityService.resource);
+    },
+  );
+
+  it('checks credentials beyond loopback without API keys', () => {
+    expect(authenticatorFor({ host: '0.0.0.0', apiKeys: undefined, identityService }).mode).toBe('credentials');
   });
 
   it('asks the identity service about a token that is not a key, with the path and the origin of the request', async () => {
     tokensSeen.length = 0;
-    const authenticator = authenticatorFor({ host: '0.0.0.0', apiKeys: keys, localMode: false, identityService });
+    const authenticator = authenticatorFor({ host: '0.0.0.0', apiKeys: keys, identityService });
 
     expect(await authenticator.authenticate('a.token.of-ada', '/mcp', studioOrigin)).toBe(signedInAda);
     expect(await authenticator.authenticate('an.opaque.token', '/mcp')).toEqual({ because: 'ERR_JWS_INVALID' });
@@ -178,7 +169,7 @@ describe('authenticatorFor with the identity service', () => {
 
   it('verifies a key as a key, never as a token', async () => {
     tokensSeen.length = 0;
-    const authenticator = authenticatorFor({ host: '0.0.0.0', apiKeys: keys, localMode: false, identityService });
+    const authenticator = authenticatorFor({ host: '0.0.0.0', apiKeys: keys, identityService });
 
     expect(principalIn(await authenticator.authenticate(admin.key, anyPath))?.own.id).toBe('acme-admin');
     expect(await authenticator.authenticate(wrongSecret, anyPath)).toEqual(unexplained);

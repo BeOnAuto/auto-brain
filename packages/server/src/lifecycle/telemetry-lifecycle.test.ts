@@ -16,7 +16,6 @@ function withTelemetryTo(receiver: OtlpReceiver): Readonly<Record<string, string
   return {
     HOST: '127.0.0.1',
     PORT: '0',
-    LOCAL_MODE: 'true',
     OTEL_EXPORTER_OTLP_ENDPOINT: receiver.endpoint,
     OTEL_EXPORTER_OTLP_PROTOCOL: 'http/json',
   };

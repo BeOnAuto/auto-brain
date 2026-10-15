@@ -48,7 +48,6 @@ export async function servingTraced(environment: Readonly<Record<string, string>
       PORT: '0',
       LEDGER_FILE: ledger.fileName,
       PREDICTION_CACHE_DIR: ledger.cacheDirectory,
-      LOCAL_MODE: 'true',
       ANTHROPIC_API_KEY: 'k',
       GRAPH_API_KEY: toolKey,
       TOOL_SERVERS: JSON.stringify({

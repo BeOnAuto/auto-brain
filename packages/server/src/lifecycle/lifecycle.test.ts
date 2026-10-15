@@ -10,7 +10,7 @@ import { testRoutes } from '../testing/entries/test-routes.ts';
 import { isAcceptingConnections } from '../testing/processes/accepting-connections.ts';
 import { startServer, defaultServerOptions, servedBy, type Served } from './lifecycle.ts';
 
-const loopback = { HOST: '127.0.0.1', PORT: '0', LOCAL_MODE: 'true' };
+const loopback = { HOST: '127.0.0.1', PORT: '0' };
 
 const servingTestRoutes = optionsServing(() => servedBy([testRoutes]));
 

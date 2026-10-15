@@ -16,7 +16,6 @@ async function servingOrgs() {
   const billing = await serveFakeApi({ key: apiKey });
   onTestFinished(billing.close);
   const server = await servingReasoning([searched(), searched()], {
-    LOCAL_MODE: 'true',
     BILLING_KEY: apiKey,
     TOOL_SERVERS: JSON.stringify({
       billing: { document: billing.documentUrl, security: { apiKeyAuth: '${BILLING_KEY}' }, org: ['acme', 'globex'] },

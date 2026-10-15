@@ -1,5 +1,4 @@
-import type { ServerConfig } from '@on.auto/config';
-import { Option, Schema } from 'effect';
+import { Schema } from 'effect';
 
 function isOriginOf(text: string, protocols: readonly string[]): boolean {
   const url = URL.parse(text);
@@ -32,15 +31,4 @@ const loopbackNames: ReadonlySet<string> = new Set(['localhost', '127.0.0.1', '[
 
 export function namesALoopbackHost(origin: string): boolean {
   return loopbackNames.has(new URL(origin).hostname);
-}
-
-const loopbackNamesOfHosts: ReadonlyMap<string, string> = new Map([
-  ['localhost', 'localhost'],
-  ['127.0.0.1', 'localhost'],
-  ['::1', '[::1]'],
-]);
-
-export function ownLoopbackOrigin({ host, port }: ServerConfig): Option.Option<string> {
-  const name = loopbackNamesOfHosts.get(host);
-  return name === undefined || port === 0 ? Option.none() : Option.some(`http://${name}:${port}`);
 }

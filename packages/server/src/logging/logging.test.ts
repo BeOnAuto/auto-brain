@@ -33,63 +33,34 @@ const serveWithTestRoutes = fileURLToPath(new URL('../testing/entries/serve-with
 
 const signIn: SignInSettings = { issuer: 'https://clerk.on.auto', publicUrl: 'https://runtime.example' };
 
-const nothingConfigured = { localMode: false, apiKeys: undefined, signIn: undefined };
-
 describe('logAccessMode', () => {
-  it('warns that local mode trusts every request', async () => {
-    const [line] = await linesLoggedBy(logAccessMode({ ...nothingConfigured, mode: 'local', localMode: true }));
+  it('warns that local mode trusts every request, and what a machine reachable through a proxy sets instead', async () => {
+    const [line] = await linesLoggedBy(logAccessMode({ mode: 'local', signIn: undefined }));
 
     expect(line).toContain('"level":"WARN"');
     expect(line).toContain(
-      '"message":"Local mode is on: every request is trusted as the local developer, with every permission in every org. Never enable LOCAL_MODE on a machine reachable through a proxy"',
+      '"message":"Local mode is on: every request is trusted as the local developer, with every permission in every org. Set PUBLIC_URL or API_KEYS on a machine reachable through a proxy"',
     );
   });
 
-  it('warns when the server is not in local mode and has no API keys', async () => {
-    const [line] = await linesLoggedBy(logAccessMode({ ...nothingConfigured, mode: 'closed' }));
-
-    expect(line).toContain('"level":"WARN"');
-    expect(line).toContain(
-      '"message":"No request can authenticate: API_KEYS lists no keys and local mode is off, so every path answers 401 except /health, the OpenAPI document at /v1/openapi.json, the guides under /v1/guides and the API catalog at /.well-known/api-catalog"',
-    );
-  });
-
-  it('says in one line that API_KEYS lists no keys and that local mode is ignored, when API_KEYS is []', async () => {
-    const lines = await linesLoggedBy(
-      logAccessMode({ ...nothingConfigured, mode: 'closed', localMode: true, apiKeys: [] }),
-    );
+  it('warns in one line that no request can authenticate when API_KEYS lists no keys', async () => {
+    const lines = await linesLoggedBy(logAccessMode({ mode: 'closed', signIn: undefined }));
 
     expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain('"level":"WARN"');
     expect(lines[0]).toContain(
-      '"message":"No request can authenticate: API_KEYS lists no keys, and LOCAL_MODE is ignored because API_KEYS is set, so every path answers 401 except /health, the OpenAPI document at /v1/openapi.json, the guides under /v1/guides and the API catalog at /.well-known/api-catalog"',
+      '"message":"No request can authenticate: API_KEYS lists no keys, so every path answers 401 except /health, the OpenAPI document at /v1/openapi.json, the guides under /v1/guides and the API catalog at /.well-known/api-catalog"',
     );
   });
 });
 
 describe('logAccessMode with credentials configured', () => {
-  it('says nothing when API keys are configured', async () => {
-    expect(
-      await linesLoggedBy(logAccessMode({ ...nothingConfigured, mode: 'credentials', apiKeys: ['a key'] })),
-    ).toEqual([]);
+  it('says nothing when API keys alone are configured', async () => {
+    expect(await linesLoggedBy(logAccessMode({ mode: 'credentials', signIn: undefined }))).toEqual([]);
   });
 
-  it.each([
-    [['a key'], undefined, 'API keys are configured'],
-    [[], signIn, 'PUBLIC_URL is set, which signs persons in'],
-    [['a key'], signIn, 'API keys are configured and PUBLIC_URL is set, which signs persons in'],
-  ])(
-    'warns that LOCAL_MODE is ignored when %j and %j are given, because %s',
-    async (apiKeys: readonly string[], given: SignInSettings | undefined, why) => {
-      const lines = await linesLoggedBy(
-        logAccessMode({ mode: 'credentials', localMode: true, apiKeys, signIn: given }),
-      );
-
-      expect(lines[0]).toContain(`"message":"LOCAL_MODE is ignored because ${why}"`);
-    },
-  );
-
   it('names the identity service persons sign in through, and the audience of their tokens', async () => {
-    const [line] = await linesLoggedBy(logAccessMode({ ...nothingConfigured, mode: 'credentials', signIn }));
+    const [line] = await linesLoggedBy(logAccessMode({ mode: 'credentials', signIn }));
 
     expect(line).toContain('"level":"INFO"');
     expect(line).toContain(
@@ -216,7 +187,7 @@ describe('logMcpError', () => {
 
 describe('the server process', { timeout: spawnedServerTestTimeoutMs }, () => {
   it('logs an unexpected error to stderr under the incident id it answers with', async () => {
-    const child = spawnServer(serveWithTestRoutes, { HOST: '127.0.0.1', PORT: '0', LOCAL_MODE: 'true' });
+    const child = spawnServer(serveWithTestRoutes, { HOST: '127.0.0.1', PORT: '0' });
     const port = await child.port;
 
     const response = await fetch(`http://127.0.0.1:${port}/fail`);
@@ -234,7 +205,7 @@ describe('the server process', { timeout: spawnedServerTestTimeoutMs }, () => {
   });
 
   it('writes nothing more to stdout when a client abandons a slow request', async () => {
-    const child = spawnServer(serveWithTestRoutes, { HOST: '127.0.0.1', PORT: '0', LOCAL_MODE: 'true' });
+    const child = spawnServer(serveWithTestRoutes, { HOST: '127.0.0.1', PORT: '0' });
     const port = await child.port;
 
     const client = new AbortController();

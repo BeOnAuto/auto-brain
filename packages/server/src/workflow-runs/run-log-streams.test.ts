@@ -106,7 +106,6 @@ describe('the run log of a workflow', { timeout: workflowTestTimeoutMs }, () => 
   it('is kept under its own kind, so no stream of the kind of a run begins with an input the engine applied', async () => {
     ledger = temporaryLedger();
     server = await servingWorkflows([answers(textResult('Short.'))], {
-      LOCAL_MODE: 'true',
       LEDGER_FILE: ledger.fileName,
     });
     await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });

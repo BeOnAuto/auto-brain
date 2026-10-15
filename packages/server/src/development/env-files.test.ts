@@ -24,17 +24,17 @@ const devEnv = new URL('../../dev.env', import.meta.url);
 
 const exampleConfigFile = fileURLToPath(new URL('../../../../auto-runtime.example.yaml', import.meta.url));
 
-const localMode = '"message":"Local mode is on:';
+const localModeNotice = '"message":"Local mode is on:';
 
-const closed = '"message":"No request can authenticate:';
+const closedNotice = '"message":"No request can authenticate:';
 
 async function accessNoticeWith(localEnvFile: string, options: DevelopmentOptions): Promise<string> {
-  const files = developmentFiles('HOST=127.0.0.1\nLOCAL_MODE=false\n');
+  const files = developmentFiles('HOST=127.0.0.1\nAPI_KEYS=[]\n');
   writeFileSync(files.localEnvFile, localEnvFile);
   const development = startDevelopment(files, options);
   await untilListening(development);
   await stoppedWith(development, 'SIGTERM');
-  return [localMode, closed].filter((notice) => development.stderr().includes(notice)).join();
+  return [localModeNotice, closedNotice].filter((notice) => development.stderr().includes(notice)).join();
 }
 
 function uncommented(text: string): string {
@@ -43,9 +43,7 @@ function uncommented(text: string): string {
 
 describe('local Studio under pnpm dev', { timeout: developmentTestTimeoutMs }, () => {
   it('allows the local Studio origins in local mode while refusing an unrelated browser origin', async () => {
-    const development = startDevelopment(developmentFiles(readFileSync(devEnv, 'utf8')), {
-      environment: { LOCAL_MODE: 'true' },
-    });
+    const development = startDevelopment(developmentFiles(readFileSync(devEnv, 'utf8')));
     const port = await untilListening(development);
 
     await Promise.all(
@@ -68,19 +66,20 @@ describe('local Studio under pnpm dev', { timeout: developmentTestTimeoutMs }, (
 });
 
 describe('the settings files pnpm dev reads', { timeout: developmentTestTimeoutMs }, () => {
-  it('sign persons in at http://localhost:5555 with dev.env alone, which leaves local mode to .env', () => {
+  it('run the server in local mode with dev.env alone, on a loopback address with neither PUBLIC_URL nor API_KEYS', () => {
     expect(readSettings(parseEnv(readFileSync(devEnv, 'utf8')))).toMatchObject({
-      localMode: false,
-      signIn: { issuer: 'https://clerk.on.auto', publicUrl: 'http://localhost:5555' },
+      host: '127.0.0.1',
+      apiKeys: undefined,
+      signIn: undefined,
     });
   });
 
   it('lets .env override dev.env', async () => {
-    await expect(accessNoticeWith('LOCAL_MODE=true\n', {})).resolves.toBe(localMode);
+    await expect(accessNoticeWith('API_KEYS=\n', {})).resolves.toBe(localModeNotice);
   });
 
   it('lets a variable set in the shell win over both files', async () => {
-    await expect(accessNoticeWith('LOCAL_MODE=true\n', { environment: { LOCAL_MODE: 'false' } })).resolves.toBe(closed);
+    await expect(accessNoticeWith('API_KEYS=\n', { environment: { API_KEYS: '[]' } })).resolves.toBe(closedNotice);
   });
 
   it('documents the model settings in .env.example and auto-runtime.example.yaml in a form that reads as written', () => {
@@ -137,7 +136,7 @@ describe('the configuration file pnpm dev passes', { timeout: developmentTestTim
 
 describe('pnpm dev with LOG_FORMAT=pretty in dev.env', { timeout: developmentTestTimeoutMs }, () => {
   it("writes its own lines and the server's as readable lines", async () => {
-    const development = startDevelopment(developmentFiles('HOST=127.0.0.1\nLOCAL_MODE=true\nLOG_FORMAT=pretty\n'));
+    const development = startDevelopment(developmentFiles('HOST=127.0.0.1\nLOG_FORMAT=pretty\n'));
 
     const port = await untilListening(development);
     await untilWritten(development.stderr, /\[dev\] Auto Runtime is ready/u);

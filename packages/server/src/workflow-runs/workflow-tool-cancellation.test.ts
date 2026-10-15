@@ -44,7 +44,6 @@ async function serving(fake: FakeMcpServer): Promise<ReasoningServer> {
   const server = await servingWorkflows(
     [callingTools([['graph__sleep', { ms: 60_000 }]], answers(textResult('Slept.')))],
     {
-      LOCAL_MODE: 'true',
       GRAPH_API_KEY: apiKey,
       TOOL_SERVERS: JSON.stringify({
         graph: { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme' },

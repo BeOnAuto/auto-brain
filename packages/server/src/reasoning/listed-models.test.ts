@@ -12,7 +12,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
 const environment = {
-  LOCAL_MODE: 'true',
   ANTHROPIC_API_KEY: 'sk-ant-SECRET-key-0001',
   MODEL_GATEWAYS: JSON.stringify([
     {

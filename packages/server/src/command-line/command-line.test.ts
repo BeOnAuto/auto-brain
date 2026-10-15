@@ -101,8 +101,9 @@ describe('the other commands of auto-runtime', () => {
     await expect(runCommandLine(['--help'], host)).resolves.toBe(0);
     expect(logged[0]).toMatch(/^Usage: auto-runtime \[command\]\n/u);
     expect(logged[0]).toContain('http://localhost:5555');
-    expect(logged[0]).toContain('A person signs in through the Auto identity service when their agent connects.');
-    expect(logged[0]).toContain('LOCAL_MODE=true trusts every request on this computer instead, for development.');
+    expect(logged[0]).toContain(
+      '\nOn this computer every request is trusted as you, with no sign-in.\nPUBLIC_URL=http://localhost:5555 signs people in through the Auto identity service instead.\n',
+    );
   });
 });
 

@@ -39,7 +39,6 @@ async function waitingCallOn(kind: McpClientKind): Promise<WaitingCall> {
   const child = spawnServer(serveWithWaitingTool, {
     HOST: '127.0.0.1',
     PORT: '0',
-    LOCAL_MODE: 'true',
     LEDGER_FILE: ledger.fileName,
   });
   const port = await child.port;

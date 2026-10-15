@@ -41,7 +41,7 @@ const mainModule = fileURLToPath(new URL('../../main.ts', import.meta.url));
 
 const pidLine = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Struct({ pid: Schema.optional(Schema.Number) })));
 
-export function developmentFiles(envFileText = 'HOST=127.0.0.1\nLOCAL_MODE=true\n'): DevelopmentFiles {
+export function developmentFiles(envFileText = 'HOST=127.0.0.1\n'): DevelopmentFiles {
   const directory = mkdtempSync(join(tmpdir(), 'auto-runtime-development-'));
   const files = {
     directory,

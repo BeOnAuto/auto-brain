@@ -48,7 +48,6 @@ const definitionTools = [
 ];
 
 const withAnthropicThroughGateway = {
-  LOCAL_MODE: 'true',
   MODEL_GATEWAYS: JSON.stringify([{ name: 'gateway', base_url: 'https://gateway.example.com/v1' }]),
   MODEL_ALIASES: JSON.stringify({ 'anthropic/*': 'gateway/anthropic/*' }),
 };

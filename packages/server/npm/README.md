@@ -10,13 +10,13 @@ You need Node.js 26.10 or later on macOS or Linux.
 npx @on.auto/runtime
 ```
 
-The server starts at `http://localhost:5555`, and you sign in through the Auto identity service when your agent connects, with nothing to set. Do not expose it through a tunnel or public proxy. Its MCP endpoint is `http://localhost:5555/mcp`; connect Claude Code with:
+The server starts at `http://localhost:5555` in local mode: no one signs in, and every request on your computer acts as you, the local developer, in the org `local`. Do not expose it through a tunnel or public proxy. Its MCP endpoint is `http://localhost:5555/mcp`; connect Claude Code with:
 
 ```bash
 claude mcp add --transport http auto-runtime http://localhost:5555/mcp
 ```
 
-The first time it connects, your agent opens the sign-in page in your browser. For development without signing in, set `LOCAL_MODE=true`: local mode trusts every request on your computer as the local developer, in the org `local`.
+To sign people in through the Auto identity service instead, set `PUBLIC_URL=http://localhost:5555`: the first time it connects, your agent then opens the sign-in page in your browser.
 
 ## Configure it
 

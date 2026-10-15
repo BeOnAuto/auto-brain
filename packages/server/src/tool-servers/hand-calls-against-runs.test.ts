@@ -28,7 +28,6 @@ describe('what a call made by hand answers', () => {
     const graph = await serveFakeMcp({ bearer: apiKey });
     closing.push(graph.close);
     const server = await servingReasoning([answeringWhatItSaw], {
-      LOCAL_MODE: 'true',
       GRAPH_API_KEY: apiKey,
       TOOL_SERVERS: JSON.stringify({
         graph: { url: graph.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme' },

@@ -1,9 +1,9 @@
 import type { IdentityService, ProtectedResource } from '../identity-service/identity-service.ts';
 import { keyPrefix, type ApiKey } from '../keys/api-key.ts';
 import { verifyKey } from '../keys/verify-key.ts';
-import { InvalidLocalModeError } from './invalid-local-mode-error.ts';
 import { listensOnlyOnLoopback } from './loopback.ts';
 import { localDeveloper, principalOf, unexplained, type Authentication } from './principal.ts';
+import { ReachableWithoutCredentialsError } from './reachable-without-credentials-error.ts';
 
 export type AccessMode = 'local' | 'credentials' | 'closed';
 
@@ -20,7 +20,6 @@ export interface Authenticator {
 export interface AccessSettings {
   readonly host: string;
   readonly apiKeys: readonly ApiKey[] | undefined;
-  readonly localMode: boolean;
   readonly identityService?: IdentityService | undefined;
 }
 
@@ -44,19 +43,25 @@ const localAccess: Authenticator = {
 
 const closedAccess: Authenticator = { mode: 'closed', resource: undefined, authenticate: credentialHolderOf([]) };
 
-export function authenticatorFor({ host, apiKeys, localMode, identityService }: AccessSettings): Authenticator {
-  if (localMode && !listensOnlyOnLoopback(host)) {
-    throw new InvalidLocalModeError({
-      message: `LOCAL_MODE is on, but HOST ${host} is not a loopback address; local mode trusts every request, so it runs only on localhost, 127.0.0.1 or ::1`,
+function credentialAccessOf(keys: readonly ApiKey[], identityService: IdentityService | undefined): Authenticator {
+  if (keys.length === 0 && identityService === undefined) {
+    return closedAccess;
+  }
+  return {
+    mode: 'credentials',
+    resource: identityService?.resource,
+    authenticate: credentialHolderOf(keys, identityService),
+  };
+}
+
+export function authenticatorFor({ host, apiKeys, identityService }: AccessSettings): Authenticator {
+  if (apiKeys !== undefined || identityService !== undefined) {
+    return credentialAccessOf(apiKeys ?? [], identityService);
+  }
+  if (!listensOnlyOnLoopback(host)) {
+    throw new ReachableWithoutCredentialsError({
+      message: `A server reachable beyond this computer needs PUBLIC_URL, to sign people in, or API_KEYS, and this one listens on HOST ${host}`,
     });
   }
-  const keys = apiKeys ?? [];
-  if (keys.length > 0 || identityService !== undefined) {
-    return {
-      mode: 'credentials',
-      resource: identityService?.resource,
-      authenticate: credentialHolderOf(keys, identityService),
-    };
-  }
-  return localMode && apiKeys === undefined ? localAccess : closedAccess;
+  return localAccess;
 }
