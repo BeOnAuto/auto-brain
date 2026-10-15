@@ -1,144 +1,70 @@
-import { createHash } from 'node:crypto';
-
 import { studioOrigin } from '@on.auto/identity';
-import type { MiddlewareHandler } from 'hono';
+import type { Context, MiddlewareHandler } from 'hono';
 import { html, raw } from 'hono/html';
 
 import type { ApiEnv } from '../api-env.ts';
-import { iconOnDark, iconOnLight, mark } from './auto-logo.ts';
-import { fontFaces } from './fonts.ts';
-
-const styles = `${fontFaces}
-:root {
-  color-scheme: light dark;
-  --paper: #ffffff;
-  --ink: #121212;
-  --rule: #12121233;
-  --muted: #666666;
-  --focus: #0088b8;
-  --running: #5ec72d;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #121212;
-    --ink: #ffffff;
-    --rule: #ffffff33;
-    --muted: #b8b8b8;
-    --focus: #42c3f7;
-  }
-}
-* { box-sizing: border-box; }
-body {
-  margin: 0;
-  min-height: 100dvh;
-  padding: 16px;
-  display: flex;
-  background: var(--paper);
-  color: var(--ink);
-  font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
-}
-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  border: 1px solid var(--rule);
-  border-radius: 20px;
-  text-align: center;
-}
-.logo { width: 52px; height: 52px; }
-.logo .tile { fill: var(--ink); }
-.logo .glyph { fill: var(--paper); }
-h1 {
-  margin: 14px 0 0;
-  font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 22px;
-  font-weight: 500;
-  letter-spacing: -0.8px;
-}
-p {
-  margin: 8px 0 18px;
-  font-size: 15px;
-  line-height: 1.6;
-  color: var(--muted);
-}
-.address {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 26px;
-  padding: 0 12px;
-  border: 1px solid color-mix(in srgb, var(--running) 45%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--running) 10%, transparent);
-  font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-  font-weight: 500;
-}
-.address::before {
-  content: '';
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--running);
-}
-.open {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 40px;
-  margin-top: 24px;
-  padding: 0 20px;
-  border-radius: 999px;
-  background: var(--ink);
-  color: var(--paper);
-  font-size: 14px;
-  font-weight: 500;
-  text-decoration: none;
-}
-.open:hover { background: color-mix(in srgb, var(--ink) 90%, transparent); }
-.open:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.open svg { width: 16px; height: 16px; }
-`;
+import { mark } from './auto-logo.ts';
+import { controlPageHeaders, headOf, readOnlyPageHeaders } from './page-style.ts';
+import {
+  act,
+  refusalOf,
+  runtimeActionPaths,
+  runtimePath,
+  statusDocumentOf,
+  type RuntimeAction,
+  type RuntimeControl,
+  type RuntimeStatus,
+} from './runtime-control.ts';
 
 const arrow = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>`;
 
-const ownStyles = `<style>${styles}</style>`;
+const statusHeaders = { 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' };
 
-const contentSecurityPolicy = [
-  "default-src 'none'",
-  `style-src 'sha256-${createHash('sha256').update(styles).digest('base64')}'`,
-  'font-src data:',
-  'img-src data:',
-  "base-uri 'none'",
-  "form-action 'none'",
-  "frame-ancestors 'none'",
-].join('; ');
+const head = headOf('');
 
-const pageHeaders = {
-  'cache-control': 'no-store',
-  'content-security-policy': contentSecurityPolicy,
-  'referrer-policy': 'no-referrer',
-  'x-content-type-options': 'nosniff',
-  'x-frame-options': 'DENY',
-};
+type Page = ReturnType<typeof html>;
 
 function studioOn(server: Readonly<URL>): string {
   return `${studioOrigin}/?server=${encodeURIComponent(server.origin)}`;
 }
 
-function pageOf(server: Readonly<URL>): ReturnType<typeof html> {
+const startedByWords: Readonly<Record<RuntimeStatus['startedBy'], string>> = {
+  terminal: 'in a terminal',
+  agent: 'by your agent',
+};
+
+function startedOf({ startedAt, startedBy }: RuntimeStatus): string {
+  return `${startedAt.toISOString().slice(0, 16).replace('T', ' ')} UTC, ${startedByWords[startedBy]}`;
+}
+
+function factsOf(status: RuntimeStatus): Page {
+  const log =
+    status.logFile === undefined
+      ? ''
+      : html`<dt>Log</dt>
+          <dd>${status.logFile}</dd>`;
+  return html`<dl class="facts">
+      <dt>Version</dt>
+      <dd>${status.version}</dd>
+      <dt>Process</dt>
+      <dd>${status.pid}</dd>
+      <dt>Started</dt>
+      <dd>${startedOf(status)}</dd>
+      <dt>Directory</dt>
+      <dd>${status.directory}</dd>
+      ${log}
+    </dl>
+    <div class="controls">
+      <form method="post" action="${runtimeActionPaths.restart}"><button type="submit">Restart</button></form>
+      <form method="post" action="${runtimeActionPaths.stop}"><button type="submit">Stop</button></form>
+    </div>`;
+}
+
+function pageOf(server: Readonly<URL>, status: RuntimeStatus | undefined): Page {
   return html`<!doctype html>
     <html lang="en">
       <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Auto Runtime</title>
-        <link rel="icon" href="${iconOnLight}" media="(prefers-color-scheme: light)" />
-        <link rel="icon" href="${iconOnDark}" media="(prefers-color-scheme: dark)" />
-        ${raw(ownStyles)}
+        ${raw(head)}
       </head>
       <body>
         <main>
@@ -147,16 +73,100 @@ function pageOf(server: Readonly<URL>): ReturnType<typeof html> {
           <p>Create and manage your playbooks in the studio.</p>
           <span class="address">${server.host}</span>
           <a class="open" href="${studioOn(server)}">Open studio ${raw(arrow)}</a>
+          ${status === undefined ? '' : factsOf(status)}
         </main>
       </body>
     </html>`;
 }
 
-function asksForThePage(method: string, path: string, accept: string): boolean {
-  return method === 'GET' && path === '/' && accept.includes('text/html');
+const restartingPage = html`<!doctype html>
+  <html lang="en">
+    <head>
+      ${raw(headOf('<meta http-equiv="refresh" content="4; url=/" />'))}
+    </head>
+    <body>
+      <main>
+        ${raw(mark)}
+        <h1>Auto Runtime is restarting</h1>
+        <p>This page opens again once it is back.</p>
+      </main>
+    </body>
+  </html>`;
+
+const stoppedPage = html`<!doctype html>
+  <html lang="en">
+    <head>
+      ${raw(head)}
+    </head>
+    <body>
+      <main>
+        ${raw(mark)}
+        <h1>Auto Runtime has stopped</h1>
+        <p>Your agent starts it again when it next needs it. To start it yourself, run npx @on.auto/runtime.</p>
+      </main>
+    </body>
+  </html>`;
+
+const actionPages: Readonly<Record<RuntimeAction, Page>> = { stop: stoppedPage, restart: restartingPage };
+
+const actionStates: Readonly<Record<RuntimeAction, string>> = { stop: 'stopping', restart: 'restarting' };
+
+type Answer = (c: Context<ApiEnv>) => Response | Promise<Response>;
+
+function asksForAPage(c: Context<ApiEnv>): boolean {
+  return (c.req.header('accept') ?? '').includes('text/html');
 }
 
-export const landingPage: MiddlewareHandler<ApiEnv> = (c, next) =>
-  asksForThePage(c.req.method, c.req.path, c.req.header('accept') ?? '')
-    ? Promise.resolve(c.html(pageOf(new URL(c.req.url)), 200, pageHeaders))
-    : next();
+function guarded(answer: Answer): Answer {
+  return (c) =>
+    refusalOf({
+      host: c.req.header('host') ?? '',
+      origin: c.req.header('origin'),
+      fetchSite: c.req.header('sec-fetch-site'),
+    }) ?? answer(c);
+}
+
+function landingAnswerOf(control: RuntimeControl | undefined): Answer {
+  return (c) =>
+    c.html(
+      pageOf(new URL(c.req.url), control?.status()),
+      200,
+      control === undefined ? readOnlyPageHeaders : controlPageHeaders,
+    );
+}
+
+function actionAnswerOf(control: RuntimeControl, action: RuntimeAction): Answer {
+  return guarded((c) => {
+    act(control, action);
+    return asksForAPage(c)
+      ? c.html(actionPages[action], 200, readOnlyPageHeaders)
+      : c.json({ status: actionStates[action] }, 202, statusHeaders);
+  });
+}
+
+function controlAnswersOf(control: RuntimeControl): ReadonlyMap<string, Answer> {
+  return new Map([
+    [`GET ${runtimePath}`, guarded((c) => c.json(statusDocumentOf(control.status()), 200, statusHeaders))],
+    [`POST ${runtimeActionPaths.stop}`, actionAnswerOf(control, 'stop')],
+    [`POST ${runtimeActionPaths.restart}`, actionAnswerOf(control, 'restart')],
+  ]);
+}
+
+function answerFor(
+  c: Context<ApiEnv>,
+  control: RuntimeControl | undefined,
+  controls: ReadonlyMap<string, Answer>,
+): Answer | undefined {
+  if (c.req.method === 'GET' && c.req.path === '/' && asksForAPage(c)) {
+    return landingAnswerOf(control);
+  }
+  return controls.get(`${c.req.method} ${c.req.path}`);
+}
+
+export function landingPageFor(control: RuntimeControl | undefined): MiddlewareHandler<ApiEnv> {
+  const controls = control === undefined ? new Map<string, Answer>() : controlAnswersOf(control);
+  return (c, next) => {
+    const answer = answerFor(c, control, controls);
+    return answer === undefined ? next() : Promise.resolve(answer(c));
+  };
+}

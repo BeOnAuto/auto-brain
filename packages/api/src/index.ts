@@ -1,6 +1,14 @@
 export { createApiHandler } from './api-handler.ts';
 export type { ApiHandler } from './api-handler.ts';
 export type { ApiOptions } from './api-options.ts';
+export {
+  runtimeActionPaths,
+  runtimePath,
+  type RuntimeAction,
+  type RuntimeControl,
+  type RuntimeStatus,
+  type StartedBy,
+} from './landing/runtime-control.ts';
 export type { ApiEnv } from './api-env.ts';
 export type { TraceParent } from './tracing/trace-parent.ts';
 export { operationRoutes } from './operations/operation-routes.ts';
