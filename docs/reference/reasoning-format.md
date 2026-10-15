@@ -2,11 +2,11 @@
 
 # Reasoning function format
 
-The API stores a reasoning function as a definition of the type `reasoning`. Its source document defines the model, input and output contracts, settings and prompt template. This reference describes that format; [Build your first playbook](../tutorials/first-playbook.md) provides a guided example using an agent.
+A reasoning function is a definition of the type `reasoning`. Its document names a model, the input and output contracts, the settings and a prompt template. A run renders the prompt from its input, calls the model and records the model's answer. [Build your first playbook](../tutorials/first-playbook.md) walks through one with an agent.
 
 ## A function document
 
-The source is Markdown with YAML front matter followed by a Liquid prompt template. This example reviews a campaign brief. Replace the model reference with a concrete id from [`list_models`](mcp.md#model-information), or one confirmed by your workspace administrator.
+The source is Markdown: YAML front matter, then a Liquid prompt template. This example reviews a campaign brief. Replace the model reference with a concrete id from [`list_models`](mcp.md#model-information), or with one your workspace administrator confirms.
 
 ```markdown
 ---
@@ -28,59 +28,115 @@ Brief: {{ input.brief }}
 Criteria: {{ input.criteria }}
 ```
 
-For this document, `create_definition` takes `type: "reasoning"`, a function `name` and the document as `source`. `run_definition` takes the same type and name, with `brief` and `criteria` in the `input` object. Both operations also require the playbook id unless the MCP connection is scoped to that playbook.
+To save it, call `create_definition` with `type: "reasoning"`, a function `name` and the document as `source`. To run it, call `run_definition` with the same type and name, and with `brief` and `criteria` in the `input` object. Both operations also need the playbook id, unless the MCP connection is scoped to that playbook.
+
+A function document contains instructions, never model credentials. Each change to the document creates a version. A run uses the latest active version and records it as `definition_version`; a run cannot select an older version.
 
 ## Fields
 
-| Field                                                                        | Purpose                                                                |
-| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `description`                                                                | Optional explanation, 1 to 1,000 characters                            |
-| `model`                                                                      | Required model reference in `provider/model` form                      |
-| `config.max_output_tokens`                                                   | Output limit from 1 to 64,000; defaults to 1,024                       |
-| `config.temperature`, `config.top_p`, `config.seed`, `config.stop_sequences` | Optional sampling settings supported by the selected provider          |
-| `config.reasoning`                                                           | Optional effort: `none`, `minimal`, `low`, `medium`, `high` or `xhigh` |
-| `input.schema`                                                               | Optional JSON Schema with an object root                               |
-| `input.default`                                                              | Optional defaults merged underneath the supplied input                 |
-| `output.format`                                                              | `text` by default, or `json`                                           |
-| `output.schema`                                                              | Required for JSON output; disallowed for text output                   |
-| `provider_options`                                                           | Optional reviewed provider-specific settings                           |
-| `tools`                                                                      | Optional list of the tools of tool servers the run may call            |
+| Field                      | Required    | Value                                                                                                              |
+| -------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------ |
+| `description`              | No          | Text of 1 to 1,000 characters. `list_definitions`, `get_definition` and the [overview](#the-overview) show it      |
+| `model`                    | Yes         | A model reference in `provider/model` form, such as `anthropic/claude-sonnet-4-5`                                  |
+| `config.max_output_tokens` | No          | A whole number from 1 to 64,000; 1,024 when left out. The most tokens the answer may use                           |
+| `config.temperature`       | No          | A finite number: the sampling temperature. Each provider accepts its own range                                     |
+| `config.top_p`             | No          | A finite number: nucleus sampling                                                                                  |
+| `config.seed`              | No          | A whole number of 0 or more, for providers that accept a seed                                                      |
+| `config.stop_sequences`    | No          | A list of strings. The answer stops where the model writes one                                                     |
+| `config.reasoning`         | No          | The reasoning effort, for models that reason: `none`, `minimal`, `low`, `medium`, `high` or `xhigh`                |
+| `input.schema`             | No          | A JSON Schema whose root is `"type": "object"`. Without it, any JSON object is accepted                            |
+| `input.default`            | No          | Defaults for top-level input fields, as a JSON object. The supplied input's fields override them before validation |
+| `output.format`            | No          | `text`, the default, or `json`                                                                                     |
+| `output.schema`            | With `json` | A JSON Schema the answer must match; see [Answers that are JSON](#answers-that-are-json). Not allowed with `text`  |
+| `provider_options`         | No          | Options for one provider, under its namespace; see [Provider options](#provider-options)                           |
+| `tools`                    | No          | The tools a run may call, each `server/tool` or `server/*`; see [Tools](#tools)                                    |
 
-Unknown fields are rejected. Creation and updates validate the document and report issues under `/source`, with line numbers and JSON pointers where available. Warnings can identify schema features a provider may not enforce while generating an answer; the runtime still validates the returned JSON.
+Any other key, at any level, is rejected.
 
-## Prompts and results
+### How a document is checked
 
-The Liquid template reads supplied values through `input`. An optional `{% system %}` block provides system instructions. The document must also produce a message outside that block. A function document contains instructions, not model credentials; see [The template](#the-template) for what a template may read and use.
+`create_definition` and `update_definition` check the whole document, and every run checks it again. A document with problems is rejected with every problem listed under `/source`:
 
-A run invokes the model and records its output and usage. When the function names tools, the model can use them in a bounded loop before answering. An external agent can also pass evidence it collected through its own connections as input.
+- Each problem names its line and, where there is one, a JSON pointer into the front matter, such as `Line 4, /config/temperature: Expected number`.
+- A problem found twice is reported once. A rejection lists at most 20 problems in line order, then one line that counts the rest, such as `Line 23: 5881 more issues are not shown`.
+- The front matter is YAML 1.2 with the core schema, so `yes` and `2026-10-01` stay strings. Anchors, aliases and tags are rejected. A key may appear only once in a mapping, and numbers must be finite. Nesting is limited to 72 levels.
+- `input.default` must match the input schema for the fields it names. Required fields may be left for the input to supply.
+- A setting in `config` is checked only against the type and range in the table above. Whether the provider accepts the value becomes clear when a run calls it.
+- Saving calls no model. Whether the provider is configured, and whether it offers the model, becomes clear only when the function runs; see [How a run ends](#how-a-run-ends).
 
-Changing the document creates a version. A run uses the active latest version and records `definition_version`; the current API does not select an arbitrary historical version to execute. See the [HTTP reference](http.md) for input limits and retry behavior.
+## How a run works
+
+A run takes these steps:
+
+1. It applies `input.default`: each top-level field the supplied input leaves out takes its default. It checks the result against `input.schema`. The input may be at most 256 KiB as JSON and 512 levels deep. A run without input gets `{}`.
+2. It renders the [template](#the-template). The system block becomes the system instructions, and everything else becomes one user message.
+3. It calls the model. A function with `tools` lets the model call them before it answers; see [Tools](#tools).
+4. It checks a JSON answer against `output.schema`.
+5. It records the output and a [record](#what-a-run-records) of the call.
+
+An external agent can pass evidence it collected through its own connections as input. The function itself cannot reach that agent's tools.
+
+Supply a `run_id` to read a run later or to retry it. The same id and input return a recorded success or `invalid_input` without calling the model again. After `unavailable`, `conflict` or a failure, they run the definition again. A run that called tools is the exception; see [When a tool-calling run cannot finish](#when-a-tool-calling-run-cannot-finish). [Retrying under a run id](http.md#retrying-under-a-run-id) gives every case. The [HTTP reference](http.md) gives the other rules of the run operations.
 
 ## The template
 
-The template reads three variables and nothing else:
+The template is [Liquid](https://shopify.github.io/liquid/). It reads three variables and nothing else:
 
-| Variable | Value                                                                              |
-| -------- | ---------------------------------------------------------------------------------- |
-| `input`  | The run's input, a JSON object, with `input.default` merged under it and validated |
-| `today`  | The date when the run starts, `YYYY-MM-DD`, in UTC                                 |
-| `now`    | The time when the run starts, in ISO 8601, in UTC                                  |
+| Variable | Value                                                                                   |
+| -------- | --------------------------------------------------------------------------------------- |
+| `input`  | The run's input, a JSON object, after `input.default` is applied and the result checked |
+| `today`  | The date when the run starts, `YYYY-MM-DD`, in UTC                                      |
+| `now`    | The time when the run starts, in ISO 8601, in UTC                                       |
 
-Names the template makes itself, with `assign`, `for`, `increment` or `cycle`, are fine; any other name is rejected when the document is saved. When the input schema lists its `properties` and sets `additionalProperties: false`, `input.<field>` must be one of them. A field the input does not have stops the run with `invalid_input`, naming the field, except in a condition of `if`, `elsif` or `unless` and in the `default` filter, so a template can test a field that may be absent: `{% if input.vip %}…{% endif %}`, `{{ input.nickname | default: "friend" }}`. A list is written as its items without separators and an object as `[object Object]`; write `{{ input.account | json }}` for JSON.
+Rules for reading values:
 
-One `{% system %}…{% endsystem %}` block may hold the system instructions. It stands at the top level of the template, outside every other tag, and its tags take no arguments; there is at most one. Everything outside it is the message, sent as one user message, and the template must write something there. An input that holds `{% system %}` or `{% endsystem %}` is written as those characters and never opens or closes the instructions.
+- The template may also read names it creates itself with `assign`, `for`, `increment` or `cycle`. Any other name is rejected when the document is saved.
+- When the input schema lists its `properties` and sets `additionalProperties: false`, `input.<field>` must be one of them.
+- A field the input does not have stops the run with `invalid_input`, naming the field and the line.
+- Two places may read a missing field without stopping the run: a condition of `if`, `elsif` or `unless`, and the `default` filter. So a template can test a field that may be absent: `{% if input.vip %}…{% endif %}`, `{{ input.nickname | default: "friend" }}`.
+- Only the input's own fields can be read: `input.constructor` is a missing field.
+- A list renders as its items with no separators, and an object renders as `[object Object]`. Use `{{ input.account | json }}` to render JSON.
 
-The tags are `assign`, `if` with `elsif` and `else`, `unless`, `case` with `when`, `for` with `break` and `continue`, `cycle`, `increment`, `decrement`, `echo`, `liquid`, `raw`, `comment`, `#` and `tablerow`. A function document is one document, so `include`, `render`, `layout` and `block` are not available, and neither is `capture`; use `assign` with `append` instead.
+### The system block
 
-The filters are the plain data and string filters of Liquid: `abs`, `append`, `array_to_sentence_string`, `at_least`, `at_most`, `base64_decode`, `base64_encode`, `capitalize`, `ceil`, `compact`, `concat`, `default`, `divided_by`, `downcase`, `escape`, `escape_once`, `find`, `find_index`, `first`, `floor`, `group_by`, `has`, `join`, `json`, `last`, `lstrip`, `map`, `minus`, `modulo`, `newline_to_br`, `normalize_whitespace`, `number_of_words`, `plus`, `pop`, `prepend`, `push`, `raw`, `reject`, `remove`, `remove_first`, `remove_last`, `replace`, `replace_first`, `replace_last`, `reverse`, `round`, `rstrip`, `shift`, `size`, `slice`, `slugify`, `sort`, `sort_natural`, `split`, `squish`, `strip`, `strip_newlines`, `sum`, `times`, `to_integer`, `truncate`, `truncatewords`, `uniq`, `unshift`, `upcase`, `where` and `xml_escape`. Three more:
+```liquid
+{% system %}You review expenses against the policy of {{ input.company }}.{% endsystem %}
+Review this expense: {{ input.expense | json }}
+```
 
-| Filter  | What it does                                                                                                   | Example                                                        |
-| ------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `money` | A number, or text that is a decimal number, as US dollars with thousands separators: no cents when it is whole | `{{ 364028 \| money }}` is `$364,028`; `1234.5` is `$1,234.50` |
-| `clip`  | Text cut to a number of characters, 400 by default, with an ellipsis appended when it is cut                   | `{{ input.notes \| clip: 200 }}`                               |
-| `words` | The number of words in a text                                                                                  | `{% assign n = input.notes \| words %}`                        |
+- The text between `{% system %}` and `{% endsystem %}` is sent as the system instructions. Everything outside it is the message, sent as one user message.
+- A template has at most one system block. The block must sit at the top level, outside every other tag, and its tags take no arguments.
+- The template must render some text outside the block.
+- An input that contains `{% system %}` or `{% endsystem %}` renders as those literal characters. It never opens or closes the instructions.
+- The template renders in document order, so a value assigned in the block is available after it.
 
-The date filters are left out, since they read the server's clock and time zone, so the same function would render differently on another server; `today` and `now` give the date and the time. So are `sample`, which is random, the digest filters, `strip_html`, the URL encoders, and the filters that evaluate an expression given as text.
+### Tags
+
+Available: `assign`, `if` with `elsif` and `else`, `unless`, `case` with `when`, `for` with `break` and `continue`, `cycle`, `increment`, `decrement`, `echo`, `liquid`, `raw`, `comment`, `#` and `tablerow`.
+
+Not available: `include`, `render`, `layout` and `block`, since a function is a single document. `capture` is not available either; use `assign` with `append` instead.
+
+### Filters
+
+Liquid's standard data and string filters are available: `abs`, `append`, `array_to_sentence_string`, `at_least`, `at_most`, `base64_decode`, `base64_encode`, `capitalize`, `ceil`, `compact`, `concat`, `default`, `divided_by`, `downcase`, `escape`, `escape_once`, `find`, `find_index`, `first`, `floor`, `group_by`, `has`, `join`, `json`, `last`, `lstrip`, `map`, `minus`, `modulo`, `newline_to_br`, `normalize_whitespace`, `number_of_words`, `plus`, `pop`, `prepend`, `push`, `raw`, `reject`, `remove`, `remove_first`, `remove_last`, `replace`, `replace_first`, `replace_last`, `reverse`, `round`, `rstrip`, `shift`, `size`, `slice`, `slugify`, `sort`, `sort_natural`, `split`, `squish`, `strip`, `strip_newlines`, `sum`, `times`, `to_integer`, `truncate`, `truncatewords`, `uniq`, `unshift`, `upcase`, `where` and `xml_escape`.
+
+The runtime adds three filters:
+
+| Filter  | What it does                                                                                                                                                                           | Example                                                        |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `money` | Formats a number, or a string holding a decimal number, as US dollars with thousands separators: no cents for a whole amount, two decimals otherwise. Any other value stops the render | `{{ 364028 \| money }}` is `$364,028`; `1234.5` is `$1,234.50` |
+| `clip`  | Cuts text to a number of characters, 400 by default, and appends an ellipsis (`…`) when it cuts. Characters are counted as Unicode code points                                         | `{{ input.notes \| clip: 200 }}`                               |
+| `words` | Counts the words in a string, where a word is a run of characters between whitespace                                                                                                   | `{% assign n = input.notes \| words %}`                        |
+
+Not available:
+
+- The date filters. They read the server's clock and time zone, so the same function would render differently on another server. Use `today` and `now` instead.
+- `sample`, which is random.
+- The digest filters, `strip_html` and the URL encoders.
+- The filters that evaluate an expression given as text, such as `where_exp`.
+- `inspect` and `jsonify`, which duplicate `json`.
+
+### Limits
 
 | Limit                                       | Value                         | When it is reached              |
 | ------------------------------------------- | ----------------------------- | ------------------------------- |
@@ -90,40 +146,279 @@ The date filters are left out, since they read the server's clock and time zone,
 | Memory that filters and ranges may charge   | 5,000,000 characters or items | The run ends as `invalid_input` |
 | Rendered instructions, and rendered message | 200,000 characters each       | The run ends as `invalid_input` |
 
+Names are counted in the text inside `{{ }}` and `{% %}`: every variable, property, filter and keyword. A template that nests tags or parentheses more deeply than the engine can parse (about 2,000 levels of tags) is refused when saved. A render limit ends the run as `invalid_input` because the input is what makes the render grow.
+
+## Answers that are JSON
+
+With `output.format: json`, the answer must match `output.schema`. The runtime validates the answer against the schema as written, whatever the provider enforced. A schema is a JSON Schema document in draft 2020-12. It is read as draft-07 when `$schema` says so, or when the document uses `definitions` without `$defs`.
+
+These rules apply to `output.schema` and `input.schema` alike, and a schema that breaks one is refused when saved:
+
+- At most 65,536 bytes as JSON, at most 64 nested levels of objects and lists, and at most 1,000 values in one `enum`.
+- No `pattern` or `patternProperties`, because a hostile regular expression can stall validation.
+- No `if`, `then`, `else`, `contains`, `minContains`, `maxContains`, `dependentRequired`, `dependentSchemas`, `dependencies`, `unevaluatedItems`, `unevaluatedProperties` or `additionalItems`.
+- No `$anchor`, `$dynamicRef`, `$dynamicAnchor`, `$recursiveRef` or `$recursiveAnchor`.
+- `$ref` may point only to `#/$defs/<name>` or `#/definitions/<name>`. `not` may only be `{}`. `enum` and `const` may contain only strings, numbers, booleans and null. `additionalProperties` may not be a schema when `properties` is present.
+- No definition that loops through `$ref`, `allOf`, `anyOf` or `oneOf` with no property or item in between, such as `"a": {"$ref": "#/$defs/a"}`. A definition may refer to itself through `properties` or `items`, as a tree does.
+
+An answer may nest at most 128 levels deep. When an input or an answer does not match, the rejection reports each distinct issue once. It lists at most 20, then one line that counts the rest.
+
+Some providers reject or do not enforce parts of a schema. Such a schema is still saved, and the definition carries `warnings` that name the line and the providers concerned. The warnings also name what is sent to the provider but not checked by the runtime, such as `format` and keywords it does not know. A definition shows at most 100 warnings. `create_definition`, `get_definition`, `list_definitions` and `update_definition` show them. For example: `Line 8, /output/schema/properties/total/minimum: minimum is not enforced while Anthropic models write the answer; an answer outside it fails as output_invalid (anthropic, bedrock, bedrock-anthropic, vertex-anthropic)`. To write a schema every provider accepts:
+
+- Make the root `"type": "object"`. OpenAI and Azure strict structured outputs accept only an object, and so do providers that return JSON through a tool call.
+- Give every object `"additionalProperties": false` and list every property in `required`. Write an optional property as nullable, such as `"type": ["string", "null"]`. OpenAI and Azure reject anything else.
+- Expect Anthropic models not to receive numeric, length and count bounds (`minimum`, `maxLength`, `minItems`, `uniqueItems` and the like). The runtime still checks them, so an answer outside them fails. The same holds for `oneOf`, which Anthropic models receive as `anyOf`.
+- Use only the formats Anthropic models accept: `date-time`, `time`, `date`, `duration`, `email`, `hostname`, `uri`, `ipv4`, `ipv6` and `uuid`.
+- Keep schemas small: Google notes that very large or deeply nested schemas may be rejected.
+
 ## Tools
 
-`tools` lists the tools of the tool servers configured for the playbook that a run may call, each written `server/tool`, or `server/*` for every tool of a server that the operator allows:
+`tools` lists the tools a run may call, from the tool servers the operator configured for the playbook. Write each as `server/tool`, or `server/*` for every tool of a server that the operator allows:
 
 ```yaml
 tools: [graph/search, graph/query, notes/*]
 ```
 
-To find the names, call `search` (`GET /v1/orgs/{org}/playbooks/{playbook}/tool-servers/search`, or the MCP tool of the same name), with a few words of what the function should do as `terms` where the servers offer many tools. It answers the servers set up for the playbook and the tools the operator allows, asking each server for them as a run does, so an agent can write `tools` without being told the names, and `introspect` answers one tool whole, with the schema of its arguments; see [Tool servers](http.md#tool-servers). To learn what a tool answers before naming it, call it with `execute`, which calls it once as a run would and answers what the run's model would see, and records the call in the playbook's history; `dry_run` says beforehand what the call would check. See [Calling a tool by hand](http.md#calling-a-tool-by-hand).
+`server/*` gives every tool the server lists that the server's `allowed` setting names. When the operator left `allowed` out, it gives every tool the server lists. A tool written in another form, or listed twice, is refused when the document is saved.
 
-The model receives those tools and can call them before it answers. A run makes at most 25 calls; a call that would exceed a bound, sends more than 16 KiB of arguments or repeats an earlier call a third time is refused, and the model is told why. The model reads each answer whole: an answer is cut, with a note of how much was left out, only where it would not fit in what the model's context window, as the server's model catalog gives it, and the run's budget leave beside the step that called it, shared equally by the step's calls and counted in the provider's own tokens for that step, and is read whole where the catalog does not know the window or the provider counts no tokens. A run's model calls add up to at most the input tokens the operator sets with `REASONING_MAX_INPUT_TOKENS`, 2,000,000 by default: before each step the playbook projects its input from the step before, and when the budget would leave too little for another step after it, that step is the last. Once the calls end or the budget would run out, the model answers from what it has, without the tools; a provider that signals the request too long ends the run `conflict` `unworkable`, with how many bytes the tools answered; ask a tool for a page of what it holds where the whole would be more than the model should read. Each call appears in the run's history, with the server and tool, the size of its arguments and result, and how it ended, and the whole answer is kept and read with `get_event`.
+### Find the tool names
 
-A run whose function names a tool the playbook's servers do not offer, or whose server cannot be reached, is `unavailable` before the model is called. After a tool call, a run that cannot finish ends `unavailable` with the kind `tools_unfinished` when every tool it called is one its server marks read-only, so a new run, or a workflow's retry on status 503, may make it, and `conflict` with the kind `effect_unknown`, status 409, when any is not, since that tool may already have changed an external system. The same run id cannot run that work again and returns `tools_called`. A tool-using run still marked `started` also cannot restart under its id, even before its first recorded call. Inspect its history and any external effects before deliberately starting a new run with a new id. Retrying a successful run returns its recorded result without calling tools again.
+Do not guess tool names. Ask the runtime:
 
-Tool access is available in a self-hosted runtime whose operator configures tool servers; Auto Cloud does not offer it yet. The operator configures the servers with `tool_servers` and narrows the tools of each with its `allowed`, as the [configuration guide](../self-host/configuration.md#tool-servers) describes. See [Tool access inside a reasoning function](../concepts/functions.md#tool-access-inside-a-reasoning-function).
+1. Call `search` (MCP, or `GET /v1/orgs/{org}/playbooks/{playbook}/tool-servers/search`). It returns the servers set up for the playbook and the tools the operator allows on each. It asks each server for its tools, as a run does. When the servers offer many tools, pass a few words describing what the function should do as `terms`. See [Tool servers](http.md#tool-servers).
+2. Call `introspect` to read one tool in full, with the schema of its arguments.
+3. Call the tool with `execute` to see what it returns before you name it. `execute` calls the tool once, as a run would, and returns what the run's model would see. The call is recorded in the playbook's history. `dry_run` reports beforehand what the call would check. See [Calling a tool by hand](http.md#calling-a-tool-by-hand).
+
+### Before the model is called
+
+A run checks its tools after it confirms that its model is offered, and before it calls the model. A run whose model is not offered contacts no tool server. A tool that cannot be used ends the run as `unavailable`, and the model is never called:
+
+| Kind                 | `because`                    | When                                                                                 |
+| -------------------- | ---------------------------- | ------------------------------------------------------------------------------------ |
+| `tool_not_offered`   | `tool_server_not_configured` | The server is not configured for the playbook                                        |
+| `tool_not_offered`   | `tool_not_allowed`           | The tool is outside the server's `allowed`                                           |
+| `tool_not_offered`   | `tool_not_listed`            | The server does not list the tool                                                    |
+| `tool_server_failed` | `unreachable`                | The server cannot be reached, or does not respond in time                            |
+| `tool_server_failed` | `failing`                    | The server fails, or refuses to list its tools                                       |
+| `tool_server_failed` | `rate_limited`               | The server asks the run to slow down                                                 |
+| `tool_server_failed` | `key_refused`                | The server did not accept the key the runtime gives it; check that key, do not retry |
+
+### What the model sees
+
+- Each tool reaches the model under a unique name made from `server__tool`, for an MCP server and an HTTP API alike. Characters other than letters, digits and underscores become underscores. A name longer than 64 characters, or one that clashes with another after that change, gets an 8-character hash. A numeric suffix resolves any clash that remains.
+- The tool's description is cut to 4 KiB. Its input schema is sent unchanged.
+- Parts of a tool's input schema that the provider may refuse or not enforce are added to the run's `warnings`, such as `graph__search inputSchema#/properties/query/maxLength`. Tools are not sent as strict structured outputs, so the rules for JSON output schemas do not apply to them.
+- The model keeps the function's output format. It may call several tools in one step, and call tools over several steps, before it answers.
+- Each call carries the run id in the request's metadata, under `auto.on/run_id`.
+- A tool's text content reaches the model as text. Structured content reaches it only when there is no text. Other content reaches it as a one-line placeholder.
+- A result the server marks `isError`, such as a policy denial, reaches the model as a tool error it may recover from.
+- A server's own instructions never reach the model. Error text is scrubbed of the server's secrets and of minted tokens.
+
+### Limits on calls
+
+The runtime checks each call before it sends it:
+
+- A run makes at most 25 calls; any further call is refused.
+- A call that sends more than 16 KiB of arguments is refused.
+- A third call of the same tool with the same arguments is refused, and the model is pointed to the result of the earlier call.
+
+A refused call is not sent and not recorded, and the model is told why.
+
+The model reads each tool result in full. A result is cut, with a note of how much was left out, only when it would not fit in the room left for the step that called it:
+
+- The room starts as the smaller of two figures: the model's context window, as the server's model catalog gives it, and what is left of the run's budget. The step's input and output are taken off it, and the step's calls share the rest equally.
+- Room is counted in the provider's tokens for that step, and converted to bytes at the step's ratio of bytes sent to input tokens counted.
+- A cut result stays valid JSON, with a note asking for fewer rows, fields or depth.
+- When the catalog does not know the window, or the provider reports no token counts, each result is read in full.
+
+A run's model calls use at most the input tokens the operator sets with `REASONING_MAX_INPUT_TOKENS`, 2,000,000 by default. Before each step, the runtime estimates that step's input from the step before. When the remaining budget would not cover another step after it, that step is the last, and it is made without tools.
+
+Once the run has used all its calls, or the budget would run out, the model answers from what it has, without tools. That last step gives the model the calls so far as text, so every provider accepts it. The tool results sit in a block fenced by a random marker and labelled as the results of the tools the model called. The label tells the model they are data to answer from, not instructions and not the user's words.
+
+A run that calls tools costs more. Every step resends the conversation so far, so a run that uses its whole budget sends on the order of a million tokens. Ask a tool for one page of its data when the whole would be more than the model should read.
+
+### Limits on time and failures
+
+| Bound                                            | Value                                                        | When it is reached                               |
+| ------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------ |
+| One call                                         | 30 seconds                                                   | A tool error that counts as a server failure     |
+| A 429 from a tool server                         | Waited out when `Retry-After` asks for at most 10 seconds    | Otherwise a server failure                       |
+| Server failures in one run                       | 5                                                            | The run ends with `because: "server_failed"`     |
+| One model call                                   | 60 seconds plus 25 ms for every token of `max_output_tokens` | The run ends with `because: "model_unavailable"` |
+| The whole run                                    | 10 minutes, or one model call's limit when that is longer    | The run ends with `because: "run_bound"`         |
+| A tool call in the last step, made without tools | None allowed                                                 | The run ends with `because: "no_answer"`         |
+
+Once the run has called a tool, each of these ends it as `tools_unfinished` or `effect_unknown`; see [When a tool-calling run cannot finish](#when-a-tool-calling-run-cannot-finish). Before its first call, the run ends as plain `unavailable`.
+
+A provider may signal that the request is too long: HTTP 413, or the error code or type `context_length_exceeded` or `request_too_large`. The run then ends as `conflict` with the kind `unworkable`. Its detail names the signal, how many bytes the tools returned, and the input tokens the provider counted for the last step.
+
+### The run's history
+
+Each call adds two events to the run's history, appended as they happen:
+
+1. `tool_call_started`, recorded before the call is sent. It has the call's number, the id the model gave it, the server, the tool and the size of its arguments. It has `read_only: true` when the server marks the tool read-only, and the SHA-256 digest of the arguments when they are kept.
+2. Then one of:
+   - `tool_call_answered`, when the tool answered: `is_error`, the size of the result and its digest when it is kept, `shown_bytes` when the model read less than all of it, the duration and the JSON-RPC id.
+   - `tool_call_failed`, when it did not: `because` (`arguments_refused`, `server_failure`, `timed_out`, `too_large` for a result larger than the transport reads, or `cancelled`), the failure message, the duration and the JSON-RPC id.
+
+Either event carries the server's own request id when the server's `request_id` setting says where to find it. The arguments and the result are kept in full, scrubbed of secrets, unless the operator sets `record_content: false` for the server. `get_run_history` shows each one when it is at most 2 KiB, and its size otherwise. `get_event` reads them in full.
+
+### When a tool-calling run cannot finish
+
+A tool may change something outside the playbook. So a run that called tools and then could not finish ends in one of two ways, depending on what it called:
+
+| It called                                                | Ending                                 | Status | What may follow                                                                                |
+| -------------------------------------------------------- | -------------------------------------- | ------ | ---------------------------------------------------------------------------------------------- |
+| Only tools their servers mark read-only (`readOnlyHint`) | `unavailable`, kind `tools_unfinished` | 503    | A new run, or a workflow's retry on status 503, may do the work again                          |
+| Any tool its server does not mark read-only              | `conflict`, kind `effect_unknown`      | 409    | No retry on status 503 matches it, since that tool may already have changed an external system |
+
+Both endings name, in words, the tools the run called. They keep the `because` field of the bound or failure that stopped the run.
+
+The same run id never runs that work again. [Retrying under a run id](http.md#retrying-under-a-run-id) gives the rule for every run; for a tool-calling run:
+
+- `run_definition` with the `run_id` of a tool-calling run that did not succeed returns `conflict` with the kind `tools_called`. When the run has ended and every tool it called only reads, the rejection also has `because: "only_read"`, and its words say nothing was changed.
+- A run of a function with `tools` that is still `started` also cannot restart under its id, even before its first recorded call, since it may still be in progress. It also returns `tools_called`.
+
+A caller that disconnects before the run returns interrupts the run, which is recorded as `failed`. Tool calls in flight are cancelled and may already have had external effects.
+
+Inspect its history and any external effects before deliberately starting a new run with a new id. Retrying a successful run returns its recorded result without calling tools again.
+
+### Setting up tools
+
+Tool access works in every runtime, whether started with npx or Docker, once the operator configures `tool_servers`. The operator binds each server to an org, and optionally to some of its playbooks. Its `allowed` setting narrows the server's tools; see the [Configuration reference](../self-host/configuration.md#tool-servers). Connecting an external agent does not give the function that agent's tools, credentials or accounts; see [Tool access inside a reasoning function](../concepts/functions.md#tool-access-inside-a-reasoning-function).
+
+## How a run ends
+
+Every rejection is a problem document, and is recorded on the run.
+
+| What happened                                                                            | Rejection                                                                    | HTTP       |
+| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ---------- |
+| The input is not a JSON object, or does not match the input schema                       | `invalid_input`, with the issues under `/input`                              | 422        |
+| The template reads a missing field outside a condition                                   | `invalid_input` at `/input/<field>`, with the line                           | 422        |
+| A filter rejects an input value, a render limit is reached, or the message renders empty | `invalid_input`, with the line                                               | 422        |
+| The model refuses the content under its policy                                           | `invalid_input`                                                              | 422        |
+| The provider rejects the model, the schema or a setting                                  | `conflict`, kind `unworkable`                                                | 409        |
+| A provider option its gateway does not allow, or a namespace nothing reads               | `conflict`, kind `unworkable`; nothing is called                             | 409        |
+| A JSON answer is cut off at `max_output_tokens`                                          | `conflict`, kind `unworkable`: raise `config.max_output_tokens`              | 409        |
+| The answer is too large for the 1 MiB a run records                                      | `conflict`, kind `unworkable`: lower `config.max_output_tokens`              | 409        |
+| The provider signals the request is too long                                             | `conflict`, kind `unworkable`                                                | 409        |
+| The model is outside the operator's allowed models                                       | `unavailable`, kind `model_not_offered`, `because: "model_not_allowed"`      | 503        |
+| The provider is not configured, or its certificate is not trusted                        | `unavailable`                                                                | 503        |
+| The provider rejects the credentials                                                     | `unavailable`, with the HTTP status                                          | 503        |
+| The provider limits the rate of requests                                                 | `unavailable`, with the seconds to wait when it said                         | 503        |
+| The provider cannot be reached or cannot serve now, or does not respond in time          | `unavailable`: try again later                                               | 503        |
+| A JSON answer does not match the schema                                                  | `unavailable`, with the first issues: try again                              | 503        |
+| A tool cannot be used before the model is called                                         | `unavailable`, kind `tool_not_offered` or `tool_server_failed`               | 503        |
+| A run that called tools cannot finish                                                    | `unavailable`, kind `tools_unfinished`, or `conflict`, kind `effect_unknown` | 503 or 409 |
+| The caller disconnects before the run returns                                            | The run is interrupted and recorded as `failed`                              | 499        |
+
+What the rejections say:
+
+- A provider's rejection names the provider, the HTTP status and what it means. It quotes the provider's own words only where [Provider messages](model-settings.md#provider-messages) allow them.
+- A rejection for a provider that is not configured names that provider, with the configured providers and the aliases. A rejection for an untrusted certificate says that the operator must act. Neither names a setting. When other providers are configured but not this one, the kind is `model_not_offered` and `because` is `provider_not_configured`.
+- Nothing is sent to a model outside the allowed models.
+- A request that is too long is explained under [Limits on time and failures](#limits-on-time-and-failures). The tool endings are explained under [Before the model is called](#before-the-model-is-called) and [When a tool-calling run cannot finish](#when-a-tool-calling-run-cannot-finish).
+
+More rules:
+
+- A text answer cut off at `max_output_tokens` succeeds, with `finish_reason: "length"` in the record.
+- A model call may take 60 seconds plus 25 ms for every token of `max_output_tokens`: 85.6 seconds at the default 1,024. That time includes up to two retries of a call that failed with HTTP 408, 409, 429 or 5xx, or could not connect.
+- When a provider ignores or changes a setting, the record's `warnings` say so.
+- The definition operations add their own rejections: `not_found` for a definition the playbook does not have, and `conflict` for a retired definition or one whose document no longer parses.
+
+## What a run records
+
+`get_run` returns the output of a succeeded run with its `record`:
+
+| Field                                | What it holds                                                                                                                  |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| `model`                              | The model as `requested`, as `resolved` through the aliases, and as the provider `answered`                                    |
+| `settings`                           | The settings sent, with the default `max_output_tokens` filled in                                                              |
+| `output_format`                      | `text` or `json`                                                                                                               |
+| `finish_reason`, `raw_finish_reason` | Why the answer ended: `stop`, `length`, `content_filter`, `tool_calls`, `error` or `other`; and the provider's own word for it |
+| `usage`                              | Input tokens (uncached, cache read, cache write), output tokens (text, reasoning) and the total; `null` where unknown          |
+| `response_id`                        | The provider's id of the response; for Bedrock, its request id                                                                 |
+| `warnings`                           | What the provider said it ignored or changed, and the parts of a tool's input schema that are not portable to it; at most 20   |
+| `duration_ms`                        | How long the call took                                                                                                         |
+| `prompt`                             | The rendered `instructions` and `message`, and `truncated`                                                                     |
+
+- The output and the record may be at most 1 MiB together; see [Runs and results](http.md#runs-and-results). When the prompt does not fit beside the answer, the record keeps the start of the instructions and of the message, and sets `truncated: true`.
+- The record contains no credentials. It also leaves out the provider options, which the definition already contains.
+- A run rejected after its model answered keeps a record with only `usage` and `duration_ms`, and the playbook's analytics count its tokens. That happens when:
+  - the answer does not match the schema, or is cut off;
+  - the model refused the content;
+  - the model kept calling tools in the last step;
+  - the answer is too large for the 1 MiB.
+- A rejection that comes before the model answers records no usage, since none is known. Neither does a call stopped by its deadline, by the run's bound or by failing tool servers.
 
 ## The overview
 
-`get_definition` answers a saved function with its `overview`, the function in plain words for a person who does not read Liquid or YAML, which Auto Studio shows before the document. It opens with the `description`, or says the function has none yet, and then says what the function needs, each field of `input.schema` with its type, its bounds and the value `input.default` gives it; what it produces, text or each field of `output.schema`; the model and each tool it may call; and what it is told, the instructions and the message as a person reads them. There each value the template reads, such as `{{ input.brief }}`, is its name in bold, **brief**, without its filters; a condition or a loop that ends on a later line than it opens reads as lines: `{% if input.vip %}` is an italic line, _When input.vip:_, `{% unless %}` _Unless …:_, `{% elsif %}` _Or when …:_ and `{% else %}` _Otherwise:_; `{% for item in input.items %}` is _For each item of input.items:_; one that opens and ends within a line is a phrase of that line, so `{% if input.vip %}Dear {% else %}Hello {% endif %}` is Dear when input.vip, otherwise Hello, and `{% for item in input.items %}{{ item.name }}{% unless forloop.last %}, {% endunless %}{% endfor %}` is each item of input.items as **name**, separated by commas; comments are left out, a `raw` block keeps its text, and any other tag stays as it is written. The instructions and the message are each cut past 8,192 characters, with the line of the document where they go on.
+`get_definition` returns a saved function with its `overview`: a plain-words description for a person who does not read Liquid or YAML. Auto Studio shows it before the document. The overview says, in order:
 
-The overview is written from the document when it is saved, so it says only what the document says. Write the `description` for the person who will read it, give each field of the schemas a `description`, and put the value a field takes when a run leaves it out in `input.default`, so the overview can say it. A function without them still has an overview, with the types alone.
+1. The `description`, or that the function has none yet.
+2. What the function needs: each field of `input.schema`, with its type, its bounds and the value `input.default` gives it.
+3. What it produces: text, or each field of `output.schema`.
+4. The model, and each tool it may call.
+5. What the model is told: the instructions and the message, as a person reads them.
+6. **Used by**: the active definitions of the playbook that use this function, read each time it is returned, and left out when there are none.
+
+In the instructions and the message:
+
+- Each value the template reads, such as `{{ input.brief }}`, appears as its name in bold, **brief**, without its filters.
+- A condition or a loop that ends on a later line than it opens reads as lines. `{% if input.vip %}` becomes an italic line, _When input.vip:_. `{% unless %}` becomes _Unless …:_, `{% elsif %}` _Or when …:_ and `{% else %}` _Otherwise:_. `{% for item in input.items %}` becomes _For each item of input.items:_.
+- A condition or a loop that opens and ends within one line reads as a phrase of that line. `{% if input.vip %}Dear {% else %}Hello {% endif %}` reads as Dear when input.vip, otherwise Hello. `{% for item in input.items %}{{ item.name }}{% unless forloop.last %}, {% endunless %}{% endfor %}` reads as each item of input.items as **name**, separated by commas.
+- Comments are left out, a `raw` block keeps its text, and any other tag stays as it is written.
+- The instructions and the message are each cut past 8,192 characters, with the line of the document where they continue.
+
+The overview is written from the document when it is saved, so it says only what the document says. Write the `description` for the person who will read it. Give each field of the schemas a `description`, and put each field's default value in `input.default`, so the overview can show it. A function without them still has an overview, with only the types.
 
 ## Provider options
 
-`provider_options` holds, under the namespace of a provider, only the options that shape how the model reasons or writes its answer:
+`provider_options` passes options to one provider, under the namespace that provider reads. Only options that shape how the model reasons or writes its answer are offered:
 
-| Namespace   | Offered                                                    |
-| ----------- | ---------------------------------------------------------- |
-| `anthropic` | `thinking`, with only `type`, `budgetTokens` and `display` |
-| `openai`    | `textVerbosity`, `reasoningMode`, `logitBias`              |
-| `google`    | `thinkingConfig`, `safetySettings`, `threshold`            |
+```yaml
+provider_options:
+  anthropic:
+    thinking: { type: enabled, budgetTokens: 2000 }
+```
 
-The [engineering reference](https://github.com/BeOnAuto/runtime/blob/main/docs/engineering/reference/reasoning-format.md#provider-options) lists the namespaces of the other providers a server may be configured for, and the options each offers. Under a gateway's name a function may set only the request body fields that the gateway's operator allows, and by default none. Any other option is rejected when the document is saved, with the option named, and so are credentials, request headers, tool servers, routing and anything the front matter already sets, such as an effort level, which `config.reasoning` sets. Your agent should use the operation's schema and validation feedback rather than copying a provider's full API request into this field.
+| Namespace       | Read for models of                                                           | Offered                                                                            |
+| --------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `anthropic`     | `anthropic`, `bedrock-anthropic`, `vertex-anthropic`                         | `thinking`, with only `type`, `budgetTokens` and `display`                         |
+| `openai`        | `openai`, and `azure` when there are no `azure` options                      | `textVerbosity`, `reasoningMode`, `logitBias`                                      |
+| `azure`         | `azure`                                                                      | `textVerbosity`, `reasoningMode`, `logitBias`                                      |
+| `google`        | `google`, and `vertex` when there are no `googleVertex` or `vertex` options  | `thinkingConfig`, `safetySettings`, `threshold`                                    |
+| `vertex`        | `vertex`                                                                     | `thinkingConfig`, `safetySettings`, `threshold`                                    |
+| `googleVertex`  | `vertex`, `vertex-anthropic`                                                 | `thinkingConfig`, `safetySettings`, `threshold`, and `thinking` as for `anthropic` |
+| `amazonBedrock` | `bedrock`                                                                    | `reasoningConfig`                                                                  |
+| `bedrock`       | `bedrock` when there are no `amazonBedrock` options, and `bedrock-anthropic` | `reasoningConfig`                                                                  |
 
-The repository's [engineering reference](https://github.com/BeOnAuto/runtime/blob/main/docs/engineering/reference/reasoning-format.md) lists the complete format, supported template operations and provider-specific options for contributors.
+An option is offered only when this table lists it; an option a provider adds is not offered until it is reviewed and listed. Put the options of Anthropic models on Bedrock under `anthropic`, since Bedrock passes anything under `bedrock` through unchanged. The runtime checks the option names, including the names inside `thinking`; the provider checks the values when the run calls it.
+
+These are never offered, for any provider:
+
+- Anything the front matter sets, such as the effort level (`config.reasoning`), the token limit or how a JSON schema is sent (`output`).
+- Credentials, and attribution such as `user`, `metadata` or `labels`.
+- Anything stored or reused on the operator's account: `store`, `previousResponseId`, `conversation`, `container`, `cacheControl`, `cachedContent`, and prompt cache keys and retention.
+- Routing, fallbacks, capacity and service tiers.
+- Request headers and betas, such as `anthropicBeta`.
+- Tools and servers, such as `mcpServers`.
+- Raw request fields, such as `additionalModelRequestFields` or `prediction`.
+- Options for provider-managed conversation state, since the runtime manages the run's conversation.
+- Output the runtime does not read, such as `logprobs` or `reasoningSummary`.
+- Options that change how the runtime sends the prompt, such as `systemMessageMode` or `forceReasoning`.
+
+An option that is not offered is refused when the document is saved. The problem names the option and says it `is not offered`, with the reason, such as `effort is not offered: the front matter sets it`. A namespace that is neither a provider's nor shaped like a gateway's name (a lowercase letter, then up to 31 letters, digits and hyphens) is refused the same way. Do not copy a provider's full API request into this field; write the options the table offers and read the validation feedback.
+
+### Options for a gateway
+
+A gateway is an endpoint the operator configures under its own name. Every field under the gateway's name, or its camel-case form (`my-gateway` and `myGateway`), goes into the request body unchanged. `user` is read from `openaiCompatible`. A gateway gives meaning to body fields its operator may not want a function to set: attribution and budgets, routing and fallbacks, mock answers, endpoints and credentials. So under any of these namespaces, a function may set only the top-level fields the operator lists in the gateway's `allowed_provider_options`. By default that list is empty. The operator cannot allow a field the runtime sets, such as `temperature`.
+
+Saving does not know which gateways are configured, so these checks happen when the function runs:
+
+- A field outside the list rejects the run as `conflict` with the kind `unworkable`, naming the field and saying the gateway does not allow it. The gateway is not called.
+- A namespace shaped like a gateway's name that no configured provider or gateway reads rejects the run the same way, before any provider is called.
+
+The repository's [engineering reference](https://github.com/BeOnAuto/runtime/blob/main/docs/engineering/reference/reasoning-format.md#provider-options) explains, for contributors, why each option and each left-out filter is withheld.
 
 </div>

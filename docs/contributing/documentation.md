@@ -1,35 +1,52 @@
 # Contribute to the documentation
 
-Runtime documentation lives in this public repository so a pull request can change behavior and its explanation together. The Auto website publishes these pages alongside its own Cloud guides and marketing content.
+Runtime documentation lives in this public repository so a pull request can change behavior and its explanation together. The Auto website publishes these pages alongside its own guides and marketing content.
 
 ## Documentation types
 
-Use [Diátaxis](https://diataxis.fr/) to distinguish learning, completing a task, looking up a fact and understanding a concept. The sidebar uses familiar product labels; a page's purpose determines what belongs in it.
+Use [Diátaxis](https://diataxis.fr/) to keep learning, doing, looking up and understanding apart. A page's purpose decides what belongs in it.
 
-| Purpose                                            | Where it belongs | What the reader should get                                                       |
-| -------------------------------------------------- | ---------------- | -------------------------------------------------------------------------------- |
-| [Explanation](https://diataxis.fr/explanation/)    | Concepts         | A model of how the pieces fit and why the distinctions matter                    |
-| [Tutorial](https://diataxis.fr/tutorials/)         | Get started      | One guided exercise with supplied inputs and visible results                     |
-| [How-to guide](https://diataxis.fr/how-to-guides/) | Guides           | Steps to complete a specific task, assuming the reader knows the basics          |
-| [Reference](https://diataxis.fr/reference/)        | Reference        | Precise formats, fields, limits and behavior that can be looked up independently |
+| Purpose                                            | Sidebar group        | What the reader should get                                             |
+| -------------------------------------------------- | -------------------- | ---------------------------------------------------------------------- |
+| Getting started                                    | Get started          | Auto running and connected, in plain steps                             |
+| [Tutorial](https://diataxis.fr/tutorials/)         | Tutorials            | One guided exercise with supplied inputs and results they can check    |
+| [How-to guide](https://diataxis.fr/how-to-guides/) | Guides, Self-hosting | Steps to complete one task, assuming the reader knows the basics       |
+| [Explanation](https://diataxis.fr/explanation/)    | Concepts             | A model of how the pieces fit and why the distinctions matter          |
+| [Reference](https://diataxis.fr/reference/)        | Reference            | Precise formats, fields, limits and behavior, each findable on its own |
 
-In a tutorial, choose the example for the reader. State prerequisites, show what should happen after each meaningful action, and include a repeatable check. Distinguish an expected model answer from output you have actually tested. Do not invent screens, endpoints or model access to make the instructions appear complete.
+Some pages keep an older address for links from elsewhere: Terminology is listed under Reference but lives at `concepts/terminology`, and the configuration reference lives at `self-host/configuration`.
 
-A guide can offer choices needed for its task, such as which Apollo connection provides business data. A reference should describe each option without turning into a walkthrough. Link to an explanation when a reader needs the reasoning behind a rule; keep that discussion out of a procedure's steps.
+The newcomer pages (the quick start and the tutorials) are written for a business specialist who is new to terminals. Use plain words, explain a term in passing, say what the reader will see, let the agent do the technical work, and name playbooks and functions by plain names in quotes rather than ids.
 
-Use ordinary language and examples grounded in the product. Keep API names exact, avoid claims without evidence and centralize capability status on [Functions](../concepts/functions.md#availability). Repeat a status only where its absence would make the page misleading, such as an upcoming internal tool-access capability.
+In a tutorial, choose the example for the reader. State prerequisites, show what should happen after each meaningful action and include a check the reader can repeat. Say which output comes from a model and varies, and which the runtime returns every time. Do not invent screens, endpoints or model access to make instructions look complete.
 
-Use [Playbook terminology](../concepts/terminology.md) for resources, capabilities and domain names. A reasoning function has a prompt; workflows coordinate functions; runs execute definitions.
+A guide can offer the choices its task needs, such as which Apollo connection provides business data. A reference describes each option without turning into a walkthrough. A concept page explains; it links to the reference for limits, error kinds and fields instead of listing them.
+
+## Writing style
+
+- Write short sentences: one idea each, rarely more than 25 words. When a sentence collects conditions, turn them into a list.
+- Put rules, limits, fields, settings and options in tables or bullets. Lead with the common case, then the exceptions.
+- Give each fact one home and link to it from other pages. The home of capability status is [Functions](../concepts/functions.md#availability).
+- Use ordinary words and examples grounded in the product. Keep API names exact and make no claim you have not checked against the code.
+- Use [Playbook terminology](../concepts/terminology.md) for resources, capabilities and domain names. A reasoning function has a prompt; workflows coordinate functions; a run carries out a definition once.
+- Use sentence-case headings, and no em dashes.
+
+The runtime serves [Terminology](../concepts/terminology.md) and every format reference to agents through `get_guide`, so an agent reads each of those pages alone. Keep each one complete on its own, and keep a format page under 64 KiB, the most a guide may hold.
 
 ## What belongs here
 
-Keep local setup and agent connection instructions, shared concepts, available function behavior, the self-hosting guides, from running the image to configuring and operating it, and HTTP/MCP reference in the public pages under `docs/`. Keep Cloud availability, account management, hosted OAuth setup, pricing and marketing pages in the website repository.
+These public pages under `docs/` hold everything a user of the runtime needs:
 
-Implementation notes and contributor APIs remain in package READMEs and root contributor files. Link to the user guide instead of maintaining a second copy of it.
+- local setup and connecting an agent;
+- the concepts, the tutorials and the task guides;
+- the self-hosting guides, from running the image to configuring and operating it;
+- the format of each definition, and the MCP and HTTP references.
 
-Development setup for a checkout and transitional implementation guides belong in `docs/engineering/`, which stays beside the code and is excluded from the public preview, search, navigation and website import. Do not add it to `nav.json` or link to it through a public documentation route. GitHub links can direct contributors to these repository-only notes.
+Account management, pricing and marketing pages belong in the website repository.
 
-Keep repository-only guides accurate for the checkout. Public workflow pages describe the behavior the runtime offers today. Update the relevant public guide when a change becomes available to users.
+Implementation notes and contributor APIs stay in package READMEs and root contributor files; link to the user guide rather than copying it. Development setup for a checkout, transitional implementation guides and internals such as library function names belong in `docs/engineering/`. That folder stays beside the code and is left out of the public preview, search, navigation and the website import. Do not add it to `nav.json` or link to it through a public route; a GitHub link can point contributors to it.
+
+Public pages describe what the runtime does today. Update the relevant public page when a change reaches users, and keep the repository-only notes accurate for the checkout.
 
 ## Preview and check
 
@@ -65,9 +82,9 @@ Open the printed `/docs/` URL. Serve the preview through VitePress rather than o
 
 Create Markdown under the relevant directory and add its route to `docs/nav.json`. Links in that file are relative to the documentation base, such as `/concepts/playbooks`; do not prefix them with `/docs`.
 
-Use relative Markdown links inside pages, such as `../concepts/functions.md`. They work in the repository, the standalone preview and the composed website. Keep assets in `docs/assets/` and refer to them relatively. Do not place secrets or Cloud account information in public examples.
+Use relative Markdown links inside pages, such as `../concepts/functions.md`. They work in the repository, the standalone preview and the composed website. Do not link to the website's own guides: the standalone preview does not have them, and its build fails on a dead link. Keep assets in `docs/assets/` and refer to them relatively. Do not place secrets or account information in public examples.
 
-Describe the checkout's implemented behavior precisely. Mark planned capabilities in their own sections and keep current API identifiers in executable examples. Inspect `structuredContent` when consuming MCP results; the first text block is a human-readable summary, not a JSON envelope.
+Describe the checkout's implemented behavior precisely. Mark a planned capability in a section of its own, and keep current API identifiers in executable examples. Inspect `structuredContent` when consuming MCP results; the first text block is a human-readable summary, not a JSON envelope.
 
 ## Publication contract
 
@@ -75,6 +92,6 @@ The Auto website imports public Markdown, `assets/` and `nav.json` from a pinned
 
 The website combines both sources in one build, with a shared sidebar and search. Imported pages link back to the corresponding public file through Edit this page. They are generated build inputs in the website; contributors edit the original here.
 
-Updating the website's source pin publishes approved documentation changes. Release documentation should match the runtime release; documentation-only corrections can update the pin without a new runtime release. Use source links to identify the imported revision and mark upcoming capabilities on the pages that describe them.
+Updating the website's source pin publishes approved documentation changes. Release documentation should match the runtime release; documentation-only corrections can update the pin without a new runtime release. Source links identify the imported revision.
 
 The standalone preview is for review, not a separate production documentation website. See the repository's [contribution guidelines](https://github.com/BeOnAuto/runtime/blob/main/CONTRIBUTING.md) and [security reporting policy](https://github.com/BeOnAuto/runtime/blob/main/SECURITY.md).

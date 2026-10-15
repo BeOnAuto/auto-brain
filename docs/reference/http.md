@@ -1,107 +1,284 @@
 # HTTP API
 
-The HTTP API provides playbook management, reasoning-function, interaction-function, computation-function, recall-function, prediction-function and workflow definitions, the requests of interaction functions and their answers, recorded runs, events for waiting workflows, events published to a playbook, the history of a run and of a playbook, the playbook's analytics, the tool servers its functions may use, and tests of their tools. Requests use the API base URL and credentials supplied for the workspace.
+The HTTP API serves every operation of Auto Runtime. It covers playbooks, function and workflow definitions, runs and their history, and requests. It also covers events, analytics and the tool servers a playbook's functions may use. This page lists every route with its fields, limits and errors.
 
-The runtime exposes the same operations through HTTP and [MCP](mcp.md). The `type` field names the type of a definition: `reasoning`, `interaction`, `computation`, `recall`, `prediction` or `workflow`.
+The [MCP endpoints](mcp.md) serve the same operations as tools. A definition's `type` is `reasoning`, `interaction`, `prediction`, `recall`, `computation` or `workflow`.
 
 ## Requests and access
 
-Send credentials as `Authorization: Bearer <key>` and command bodies as UTF-8 JSON with `Content-Type: application/json`. Keep credentials out of prompts and source documents.
+Send requests to the server's address, such as `http://localhost:5555`, with a credential.
 
-Org routes begin at `/v1/orgs/{org}`. Playbook routes begin at `/v1/orgs/{org}/playbooks/{playbook}`. Each API key belongs to one org and has permissions for a set of playbooks. Reading definitions and runs requires `playbook:read`; creating, changing or running a function or workflow, and sending or publishing an event, require `playbook:write`.
+- Org routes begin at `/v1/orgs/{org}`. Playbook routes begin at `/v1/orgs/{org}/playbooks/{playbook}`.
+- Send the credential, an [API key](../self-host/security.md#api-keys) or a signed-in person's token, as `Authorization: Bearer <key>`. Keep credentials out of prompts and source documents.
+- A server in [local mode](../self-host/security.md#local-mode) asks for no credential. The [Sign-in and token reference](authentication.md) gives the rules the server applies to credentials.
+- Send command bodies as UTF-8 JSON with `Content-Type: application/json`, at most 1 MiB. Compressed bodies are not accepted.
+- Query parameters are for `GET` requests. A field may be supplied in only one place.
 
-Request bodies may be at most 1 MiB; compressed bodies are not accepted. Query parameters belong to GET requests. A field cannot be supplied in more than one location.
+Each API key belongs to one org and has permissions for a set of playbooks:
 
-When the server [sends telemetry](../self-host/telemetry.md), every response but that of `/health` carries the id of its trace in the `x-trace-id` header, and a request with a W3C `traceparent` header continues the caller's trace.
+| Permission       | Lets the caller                                                                                                                |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `org:read`       | Read the org's playbooks, list models and search the org's tool servers                                                        |
+| `org:write`      | Create, update and retire playbooks                                                                                            |
+| `playbook:read`  | Read definitions, runs, history, events, requests and analytics, and search and read tools                                     |
+| `playbook:write` | Create, change, retire or run a function or workflow, cancel a run, send or publish an event, answer a request and call a tool |
+
+Each route table below names the permission a route needs.
+
+When the server [sends telemetry](../self-host/telemetry.md), every response except that of `/health` carries its trace id in the `x-trace-id` header. A request with a W3C `traceparent` header continues the caller's trace.
 
 ## The OpenAPI document, the guides and the API catalog
 
-`GET /v1/openapi.json` answers the OpenAPI 3.1.1 document of this API, which the server builds from its operations when it starts, the same operations its routes and its MCP tools serve. Each operation appears once: its `operationId` is the operation's name, `search_in_org` for the org's `search`, its summary is its title, its description is the description its MCP tool has, or its own for the five prediction routes served over HTTP alone, which are no tools, and its tag names the resource it acts on. Its input is in the path, in the query string of a `GET` and in the JSON body of a command or of a query routed by `POST`, such as `validate` and `dry_run`, but for the two uploads, which take a CSV dataset or a candidate's bytes as the body, with their most bytes, and its schemas are JSON Schema 2020-12, each with an `$id` of its own under `https://on.auto/schemas/runtime/` and its definitions inside it, and each problem it can answer is listed at its status. The server URL is `/v1`, relative, so the document holds behind any host. A client library can be generated from it, and a gateway that takes OpenAPI documents can add the runtime from it. The document of each release is kept in the repository at [`docs/assets/openapi.json`](https://github.com/BeOnAuto/runtime/blob/main/docs/assets/openapi.json), so a client library can be generated without running a server.
+| Method and route               | Returns                                                       |
+| ------------------------------ | ------------------------------------------------------------- |
+| `GET /v1/openapi.json`         | The OpenAPI 3.1.1 document of this API                        |
+| `GET /v1/guides/{guide}`       | One guide, as `text/markdown`                                 |
+| `GET /.well-known/api-catalog` | The API catalog of this server, as `application/linkset+json` |
+| `GET /health`                  | Whether the server is up                                      |
 
-`GET /v1/guides/{guide}` answers one of the guides the MCP endpoints serve as `guide://{guide}`, the same text, as `text/markdown`: what the words mean, the format of each definition type and the recipes for common tasks. The document lists their names. Each guide has a path of its own, so a name the server does not hold is answered as any other path it does not serve: `401` without a key.
+These four need no key. Where sign-in is on, the [protected resource metadata](authentication.md#protected-resource-metadata) needs no key either. It is served at `/.well-known/oauth-protected-resource` and under the path of each MCP endpoint.
 
-`GET /.well-known/api-catalog` answers the API catalog of this server, a linkset of the API catalog profile (`application/linkset+json`): its API at `/v1`, described by the document, documented by each guide with its title, and its status at `/health`, every address absolute on `PUBLIC_URL` where it is set, and otherwise on the origin the request came in on; behind a proxy, that is the scheme and host the server itself receives, since it reads no `X-Forwarded-*` header. It and `HEAD` on it carry `Link: <…/.well-known/api-catalog>; rel="api-catalog"`, and `GET /health` carries the same relation, so a client given only the health address finds the catalog, and from it the document and the guides.
+### The OpenAPI document
 
-The document, the guides, the catalog, `GET /health`, which says the server is up, and, where `PUBLIC_URL` is set, the protected resource metadata at `/.well-known/oauth-protected-resource` and under the path of each MCP endpoint need no key. The document, the guides and the catalog change only when the server is released or configured again, so each carries a strong `ETag` of its bytes and `Cache-Control: public, max-age=300`, and answers `304` with no body to a request whose `If-None-Match` names its tag, a list holding it, or `*`; `HEAD` answers their headers without the body. `/health` is not kept: it answers `Cache-Control: no-store`.
+The server builds the document when it starts, from its operations: the same operations its routes and its MCP tools serve.
+
+- Each operation appears once. Its `operationId` is the operation's name, with `search_in_org` for the org's `search`. Its summary is its title. Its tag names the resource it acts on.
+- Its description is its MCP tool's description. The five prediction routes served only over HTTP have no tool, so they have descriptions of their own.
+- Its input is in the path, and in the query string of a `GET`. A command, or a query routed by `POST` such as `validate` and `dry_run`, takes it in the JSON body. The two uploads take a CSV dataset or a candidate's bytes as the body, and the document gives their maximum size.
+- Its schemas are JSON Schema 2020-12. Each has its own `$id` under `https://on.auto/schemas/runtime/`, with its definitions inside it.
+- Each problem an operation can return is listed under its status.
+- The server URL is the relative `/v1`, so the document stays valid behind any host.
+
+A client library can be generated from the document, and a gateway that accepts OpenAPI documents can add the runtime from it. Each release's document is kept in the repository at [`docs/assets/openapi.json`](https://github.com/BeOnAuto/runtime/blob/main/docs/assets/openapi.json), so a client library can be generated without running a server.
+
+### The guides
+
+`GET /v1/guides/{guide}` returns one of the guides that the MCP endpoints serve as `guide://{guide}`, with the same text. The guides say what the words mean, give the format of each definition type, and hold the recipes for common tasks. The OpenAPI document lists their names. Each guide has its own path. So the server treats an unknown guide name like any other path it does not serve: without a key, the response is `401`.
+
+### The API catalog
+
+`GET /.well-known/api-catalog` returns a linkset in the API catalog profile. It lists the API at `/v1`, described by the OpenAPI document and documented by each guide with its title, and the API's status at `/health`.
+
+- Every address is absolute. It is based on `PUBLIC_URL` when that is set, and otherwise on the origin the request arrived at.
+- Behind a proxy, that origin is the scheme and host the server itself receives. The server reads no `X-Forwarded-*` header.
+- Responses for the catalog, `HEAD` included, carry `Link: <…/.well-known/api-catalog>; rel="api-catalog"`. `GET /health` carries the same relation, so a client given only the health address can find the catalog, and from there the document and the guides.
+
+### Caching
+
+The document, the guides and the catalog change only when a new release of the server is deployed or the server is configured again.
+
+- Each carries a strong `ETag` of its bytes and `Cache-Control: public, max-age=300`.
+- Each responds with `304` and no body when the request's `If-None-Match` names its tag, a list that includes it, or `*`.
+- `HEAD` returns their headers without the body.
+- `/health` is never cached: it responds with `Cache-Control: no-store`.
 
 ## Playbooks
 
 These routes are relative to `/v1/orgs/{org}`:
 
-| Operation         | Method and route                    | Input                                      |
-| ----------------- | ----------------------------------- | ------------------------------------------ |
-| `create_playbook` | `POST /playbooks`                   | `playbook`, `name`, optional `description` |
-| `list_playbooks`  | `GET /playbooks`                    | Optional `include_retired`                 |
-| `get_playbook`    | `GET /playbooks/{playbook}`         | Playbook id in path                        |
-| `update_playbook` | `PUT /playbooks/{playbook}`         | `name` and `description`                   |
-| `retire_playbook` | `POST /playbooks/{playbook}/retire` | Playbook id in path                        |
+| Operation         | Method and route                    | Permission                    | Input                                      |
+| ----------------- | ----------------------------------- | ----------------------------- | ------------------------------------------ |
+| `create_playbook` | `POST /playbooks`                   | `org:write`                   | `playbook`, `name`, optional `description` |
+| `list_playbooks`  | `GET /playbooks`                    | `org:read` or `playbook:read` | Optional `include_retired`                 |
+| `get_playbook`    | `GET /playbooks/{playbook}`         | `org:read`                    | Playbook id in path                        |
+| `update_playbook` | `PUT /playbooks/{playbook}`         | `org:write`                   | `name` and `description`                   |
+| `retire_playbook` | `POST /playbooks/{playbook}/retire` | `org:write`                   | Playbook id in path                        |
 
-Playbook ids contain 3 to 48 lowercase letters, digits and hyphens, beginning with a letter. Names contain 1 to 100 characters and descriptions at most 2,000. Read operations need `org:read`, and writes need `org:write`; `list_playbooks` also answers a key with `playbook:read`, so a key that may only read inside some playbooks can find them. Lists include accessible playbooks, with retired playbooks excluded unless requested.
+| Field         | Rule                                                                                      |
+| ------------- | ----------------------------------------------------------------------------------------- |
+| `playbook`    | The id: 3 to 48 lowercase letters, digits and hyphens, beginning with a letter            |
+| `name`        | 1 to 100 characters, stored without the whitespace around it; it cannot be all whitespace |
+| `description` | At most 2,000 characters, stored without the whitespace around it                         |
 
-Retirement is permanent. Playbook ids cannot be reused, and a retired playbook cannot be restored.
+Each operation returns the playbook, with its `id`, `name`, `description`, `status` (`active` or `retired`), `created_at`, `created_by`, `updated_at` and, once retired, `retired_at`. `list_playbooks` returns them in `playbooks`.
 
-A name and a description are stored without the whitespace around them, and a name cannot be all whitespace. `update_playbook` takes both, even when only one of them changes, and an update that changes nothing records nothing. A key limited to a list of playbooks can create only a playbook whose id is on that list. A retired playbook can still be read with `get_playbook` and listed with `include_retired`, and its definitions, runs and history remain readable, but commands inside it return `conflict` with kind `retired`; retiring it again succeeds and changes nothing. `create_playbook` returns `conflict` for an id the org has or had, `update_playbook` returns `conflict` for a retired playbook, and `get_playbook`, `update_playbook` and `retire_playbook` return `not_found` for an id the org does not have. A change that meets another change to the org's playbooks at the same moment returns `conflict`; send it again.
+- `list_playbooks` lists the playbooks the caller may access. It leaves out retired ones unless `include_retired` asks for them. It also accepts a key with only `playbook:read`, so a key that may only read inside some playbooks can find them.
+- A key limited to a list of playbooks can create only a playbook whose id is on that list.
+- `update_playbook` requires both `name` and `description`, even when only one of them changes. An update that changes nothing records nothing.
+- Retirement is permanent. A playbook id cannot be reused, and a retired playbook cannot be restored.
+- A retired playbook stays readable: `get_playbook` reads it, `include_retired` lists it, and its definitions, runs and history remain readable. Commands inside it return `conflict` with the kind `retired`. Retiring it again succeeds and changes nothing.
+
+| Case                                                                                  | Response                  |
+| ------------------------------------------------------------------------------------- | ------------------------- |
+| `create_playbook` with an id the org has or had                                       | `conflict`                |
+| `update_playbook` of a retired playbook                                               | `conflict`                |
+| `get_playbook`, `update_playbook` or `retire_playbook` of an id the org does not have | `not_found`               |
+| A change that meets another change to the org's playbooks at the same moment          | `conflict`; send it again |
 
 ## Models
 
-`GET /v1/orgs/{org}/models` lists the models the server offers. It requires `org:read` and accepts an optional `provider` query parameter. A provider prefix contains 1 to 32 lowercase letters, digits or hyphens, starting with a letter.
+| Operation     | Method and route            | Permission | Input               |
+| ------------- | --------------------------- | ---------- | ------------------- |
+| `list_models` | `GET /v1/orgs/{org}/models` | `org:read` | Optional `provider` |
 
-The JSON result contains `object: "list"`, `data`, `catalog_status` and `listed_at`. Entries are sorted by `id`, with each id appearing once. The [MCP model reference](mcp.md#model-information) describes the entry fields, aliases, wildcard patterns and incomplete results. The same output is returned over both interfaces.
+`provider` is a provider prefix of 1 to 32 lowercase letters, digits or hyphens, starting with a letter. The result is the same over HTTP and MCP; [Model information](mcp.md#model-information) describes its fields, aliases, wildcard entries and incomplete lists.
 
 ## Reasoning functions
 
 These routes are relative to `/v1/orgs/{org}/playbooks/{playbook}`:
 
-| Operation           | Method and route                            | Input                                    |
-| ------------------- | ------------------------------------------- | ---------------------------------------- |
-| `create_definition` | `POST /definitions/reasoning`               | `name`, `source`                         |
-| `list_definitions`  | `GET /definitions/reasoning`                | Optional `include_retired`               |
-| `get_definition`    | `GET /definitions/reasoning/{name}`         | Name in path                             |
-| `update_definition` | `PUT /definitions/reasoning/{name}`         | `source`                                 |
-| `retire_definition` | `POST /definitions/reasoning/{name}/retire` | Name in path                             |
-| `run_definition`    | `POST /definitions/reasoning/{name}/run`    | Optional `input`, optional UUID `run_id` |
-| `get_run`           | `GET /runs/{run_id}`                        | Run id in path                           |
+| Operation           | Method and route                            | Permission       | Input                                    |
+| ------------------- | ------------------------------------------- | ---------------- | ---------------------------------------- |
+| `create_definition` | `POST /definitions/reasoning`               | `playbook:write` | `name`, `source`                         |
+| `list_definitions`  | `GET /definitions/reasoning`                | `playbook:read`  | Optional `include_retired`               |
+| `get_definition`    | `GET /definitions/reasoning/{name}`         | `playbook:read`  | Name in path                             |
+| `update_definition` | `PUT /definitions/reasoning/{name}`         | `playbook:write` | `source`                                 |
+| `retire_definition` | `POST /definitions/reasoning/{name}/retire` | `playbook:write` | Name in path                             |
+| `run_definition`    | `POST /definitions/reasoning/{name}/run`    | `playbook:write` | Optional `input`, optional UUID `run_id` |
+| `get_run`           | `GET /runs/{run_id}`                        | `playbook:read`  | Run id in path                           |
 
-The `source` is a [reasoning function document](reasoning-format.md). Names follow the same 3 to 48 character rule as playbook ids. Source documents may be at most 65,536 UTF-8 bytes. A name is unique within its type and playbook and cannot be reused after retirement.
+The `source` is a [reasoning function document](reasoning-format.md). These rules apply to the definitions of every type:
 
-Changing a document creates a version. Updating it with identical source records no change. A run uses the active latest version. Retired definitions can be read but cannot be edited or run.
+- A name follows the playbook id rule: 3 to 48 lowercase letters, digits and hyphens, beginning with a letter.
+- A name is unique within its type and playbook, and cannot be reused after retirement.
+- A source document may be at most 65,536 UTF-8 bytes.
+- Changing a document creates a version. Updating it with identical source records no change.
+- A run uses the latest active version.
+- A retired definition can be read, but cannot be edited or run.
 
-`get_definition`, like `create_definition` and `update_definition`, answers the definition with its `overview`, the definition in plain words for a person who does not read its document: Markdown with headings, lists, tables of its fields and, where one helps, a diagram, saying what it needs and produces and what it does, as its type has it, which the runtime writes from the document when it saves the version and `list_definitions` leaves out. The overview they answer, and the one `retire_definition` answers, ends with **Used by**, a line for each of the active definitions of the playbook that use this one: a workflow whose `run_definition` calls it, a prediction function that sends it builds to train or asks it to approve a version, and a recall function with a filter on its runs, by their `subject`, or on its changes, by their `source`. The section is read each time the definition is answered, so it is as current as the playbook, and is left out when nothing uses the definition.
+`create_definition`, `update_definition`, `get_definition` and `retire_definition` return the definition with its `overview`; `list_definitions` leaves it out. The overview describes the definition in plain words, for a person who does not read its document:
+
+- It is Markdown with headings, lists, tables of its fields and, where one helps, a diagram. It says what the definition needs, what it produces and what it does, as its type has it. For a reasoning function, it also gives the model, the tools and what the model is told.
+- The runtime writes it from the document when it saves the version.
+- It ends with **Used by**, a line for each active definition of the playbook that uses this one: a workflow whose `run_definition` calls it, a prediction function that sends it builds to train or asks it to approve a version, or a recall function with a filter on its runs (by their `subject`) or on its changes (by their `source`).
+- **Used by** is read each time the definition is returned, so it is as current as the playbook. It is left out when nothing uses the definition.
 
 ## Interaction functions
 
-A self-hosted runtime offers interaction functions under the same operations, with `interaction` in place of `reasoning` in each route, such as `POST /definitions/interaction` and `POST /definitions/interaction/{name}/run`. The `source` is an [interaction function document](interaction-format.md), and names, document size, versions and retirement follow the rules for reasoning functions above. A run answers 200 with `status: started` and its `run_id`, and waits until its request is answered, expires or is cancelled; a notification to the inbox, and a function that calls a tool, answer within the request, the second with what the tool answered as its output or with an ending its format lists. A `to` or an argument the function cannot render answers `conflict` with the kind `unworkable`, a server or a tool the playbook may not use `unavailable` with the kind `tool_not_offered`, and a playbook with as many open requests as the runtime allows `unavailable` with the kind `requests_full`.
+Interaction functions use the operations of reasoning functions, with `interaction` in place of `reasoning` in each route, such as `POST /definitions/interaction` and `POST /definitions/interaction/{name}/run`. The `source` is an [interaction function document](interaction-format.md). Names, document size, versions and retirement follow the rules for [reasoning functions](#reasoning-functions).
 
-These routes are relative to `/v1/orgs/{org}/playbooks/{playbook}`:
+A run responds with `200`, `status: started` and its `run_id`. It then waits until its request is answered, expires or is cancelled. Two kinds of run finish within the request instead:
 
-| Operation            | Method and route             | Needs            | Input                                                   |
+- a notification to the inbox;
+- a function that calls a tool, whose output is the tool's result, or which ends in one of the endings its format lists.
+
+| Case                                                         | Response                                       |
+| ------------------------------------------------------------ | ---------------------------------------------- |
+| A `to` or an argument the function cannot render             | `conflict` with the kind `unworkable`          |
+| A server or a tool the playbook may not use                  | `unavailable` with the kind `tool_not_offered` |
+| The playbook has as many open requests as the runtime allows | `unavailable` with the kind `requests_full`    |
+
+The requests of a playbook have two routes of their own, relative to `/v1/orgs/{org}/playbooks/{playbook}`:
+
+| Operation            | Method and route             | Permission       | Input                                                   |
 | -------------------- | ---------------------------- | ---------------- | ------------------------------------------------------- |
 | `list_interactions`  | `GET /interactions`          | `playbook:read`  | Optional `to`, `type`, `function`, `limit` and `cursor` |
 | `answer_interaction` | `POST /runs/{run_id}/answer` | `playbook:write` | Run id in path; `answer` and an optional `claimed_for`  |
 
-`list_interactions` returns `interactions`, the playbook's open requests newest first, with `has_more` and `next_cursor`. Each has the `run_id` of the run that asked, `type`, the type of the function that asked, `function` and `version`, `to`, `delivery`, the `server` and `tool` the request is sent through or `null` for the inbox, `message`, `takes_answer`, `requested_at`, `expires_at`, `attempts`, `conversation`, the conversation the playbook reads replies in or `null`, `answerer`, the party whose reply counts or `null`, `reply_refusals`, and `standing`, which is `in_inbox`, `to_deliver`, `delivering`, `delivered`, `retrying`, `undelivered`, or `cancelling`, once a cancel of its run was asked. An answered request leaves the list. `to` keeps the requests to one party, `type` those of one type of function and `function` those of functions of one name: a name is unique within its type, so `function` with `type` names one function.
+### Listing open requests
 
-Each request also has `answer_schema`, the JSON Schema the request recorded when it was asked, which an answer must match: `answer_interaction` checks this one, even once the function has a newer version whose `output_schema` `get_definition` shows. It is `null` for a notification. A schema takes at most 64 KiB as JSON, so a page of 100 requests can hold up to 6.25 MiB of schemas, and a smaller `limit` keeps a page smaller.
+`list_interactions` returns `interactions`, the playbook's open requests newest first, with `has_more` and `next_cursor`. They are the requests of interaction functions and of prediction functions' builds. An answered request leaves the list. Anyone who may read the playbook sees each request's party and message, just as they see a run's input.
 
-`answer_interaction` takes the run's `run_id` and an `answer` that matches the answer schema of the request, at most 64 KiB as JSON, records it on the run as one fact, `request_answered`, and returns that fact: `run_id`, `answer_id`, the id of the fact, `answer`, the optional `claimed_for`, whom the caller says it answers for, at most 256 bytes and never checked, `answered_by`, the caller's id, and `answered_at`; for a run a reply answered, `answered_by` is the playbook and `reply` the identity of that reply. The run takes the answer within the host's sweep, a second by default: a run of an interaction function succeeds with it as its `output`, and a prediction function's build scores the candidates it names, `{ candidates }`, each the SHA-256 an upload answered, refusing as `invalid_input` one that was not uploaded to that build. An answer that does not match returns `invalid_input` with pointers under `/answer` and leaves the request open. The same answer again returns the fact the run took; a different answer, an answer to a request that has ended or whose run was asked to cancel, and an answer to a notification return `conflict`; a run the playbook does not have returns `not_found`.
+- `to` keeps only the requests to one party.
+- `type` keeps only those from one type of function.
+- `function` keeps only those from functions of one name. A name is unique within its type, so `function` with `type` names one function.
 
-A request nobody answered before it expired ends its run `rejected` with the reason `unanswered` and the kind `expired`, and a notification that could not be delivered with the kind `undelivered`. A request with the same run id and input then returns that ending as a `410` problem of the type `https://on.auto/problems/unanswered`. [How a run ends](interaction-format.md#how-a-run-ends) lists every ending.
+Each request has these fields:
+
+| Field            | Contents                                                                                                                           |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `run_id`         | The run that asked, which `answer_interaction` takes                                                                               |
+| `type`           | The type of the function that asked                                                                                                |
+| `function`       | The name of the function that asked                                                                                                |
+| `version`        | The version of the function that asked                                                                                             |
+| `to`             | The party the request goes to                                                                                                      |
+| `delivery`       | The `server` and `tool` the request is sent through, or `null` for the inbox                                                       |
+| `message`        | The message of the request                                                                                                         |
+| `takes_answer`   | `true` for a question, `false` for a notification                                                                                  |
+| `answer_schema`  | The JSON Schema an answer must match, as the request recorded it when it was asked; `null` for a notification                      |
+| `requested_at`   | When the request was made, in ISO 8601 UTC                                                                                         |
+| `expires_at`     | When the request expires unanswered, in ISO 8601 UTC                                                                               |
+| `attempts`       | The delivery attempts made so far                                                                                                  |
+| `conversation`   | The conversation the playbook reads replies in, or `null`                                                                          |
+| `answerer`       | The party whose reply counts, or `null`                                                                                            |
+| `reply_refusals` | How many replies from the answerer the playbook refused                                                                            |
+| `standing`       | `in_inbox`, `to_deliver`, `delivering`, `delivered`, `retrying`, `undelivered`, or `cancelling` once a cancel of its run was asked |
+
+`answer_interaction` checks the `answer_schema` the request recorded. That holds even after the function has a newer version, whose `output_schema` is the one `get_definition` shows. A schema may be up to 64 KiB as JSON, so a page of 100 requests can contain up to 6.25 MiB of schemas. A smaller `limit` keeps a page smaller.
+
+### Answering a request
+
+`answer_interaction` takes the run's `run_id`, an `answer` and an optional `claimed_for`:
+
+- `answer` must match the request's answer schema, and may be at most 64 KiB as JSON.
+- `claimed_for` names whom the caller says it is answering for, in at most 256 bytes. The runtime never checks it.
+
+It records the answer on the run as one fact, `request_answered`, and returns that fact:
+
+| Field         | Contents                                                     |
+| ------------- | ------------------------------------------------------------ |
+| `run_id`      | The run that asked                                           |
+| `answer_id`   | The id of the fact                                           |
+| `answer`      | The answer                                                   |
+| `claimed_for` | Whom the caller says it is answering for, when given         |
+| `answered_by` | The caller's id; for a run answered by a reply, the playbook |
+| `reply`       | For a run answered by a reply, that reply's identity         |
+| `answered_at` | When the answer was recorded                                 |
+
+The run takes the answer within about a second (the server checks waiting runs every second by default), as [Answering a request](interaction-format.md#answering-a-request) explains.
+
+- A run of an interaction function succeeds with the answer as its `output`, which reaches a workflow that waits for it.
+- A prediction function's build scores the candidates the answer names, `{ candidates }`, each by the SHA-256 its upload returned. A candidate not uploaded to that build is refused as `invalid_input`.
+
+| Case                                                                                                                       | Response                                                              |
+| -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| An answer that does not match                                                                                              | `invalid_input` with pointers under `/answer`; the request stays open |
+| The same answer again                                                                                                      | The fact the run took                                                 |
+| A different answer, an answer to a request that has ended or whose run was asked to cancel, or an answer to a notification | `conflict`                                                            |
+| A run the playbook does not have                                                                                           | `not_found`                                                           |
+
+### A request nobody answers
+
+When nobody answers a request before it expires, its run ends `rejected`, with the reason `unanswered` and the kind `expired`. A notification that could not be delivered ends with the kind `undelivered`. A request with the same run id and input then returns that ending as a `410` problem of the type `https://on.auto/problems/unanswered`. [How a run ends](interaction-format.md#how-a-run-ends) lists every ending.
 
 ## Computation functions
 
-A self-hosted runtime offers computation functions under the same operations, with `computation` in place of `reasoning` in each route, such as `POST /definitions/computation` and `POST /definitions/computation/{name}/run`. The `source` is a [computation function document](computation-format.md), and names, document size, versions and retirement follow the rules for reasoning functions above. A run completes within the request that runs it. Its program is checked when it is saved, and each problem is refused under `/source` with its line; a check that a ready checker does not finish within 2 seconds of the server's wall-clock time answers `invalid_input` and saves nothing, and a save that finds no checker ready answers `unavailable`, 503, so the same call may be tried again. A program that cannot give its output for the input, because it raised an error, gave an output JSON cannot carry, or did more work or used more memory than a run may, answers `conflict` with the kind `unworkable`; the same input gives the same answer again, so change the definition or the input rather than retrying.
+Computation functions use the operations of reasoning functions, with `computation` in place of `reasoning` in each route, such as `POST /definitions/computation` and `POST /definitions/computation/{name}/run`. The `source` is a [computation function document](computation-format.md). Names, document size, versions and retirement follow the rules for [reasoning functions](#reasoning-functions).
+
+A run finishes within the request that starts it. Saving a definition checks its program, and refuses each problem under `/source` with its line.
+
+| Case                                                                                       | Response                                              |
+| ------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
+| A ready checker does not finish the check within 2 seconds of the server's wall-clock time | `invalid_input`; nothing is saved                     |
+| A save finds no checker ready                                                              | `unavailable` (503); the same call may be tried again |
+| The program cannot produce its output for the input                                        | `conflict` with the kind `unworkable`                 |
+
+A program cannot produce its output when it:
+
+- raised an error;
+- returned a value JSON cannot represent, or an output larger than a run may record (see [Runs and results](#runs-and-results));
+- did more work or used more memory than a run allows.
+
+The same input gives the same `unworkable` result again, unless the program reads the clock. Change the definition or the input rather than retrying.
 
 ## Recall functions
 
-A self-hosted runtime offers recall functions under the same operations, with `recall` in place of `reasoning` in each route, such as `POST /definitions/recall` and `POST /definitions/recall/{name}/run`. The `source` is a [recall function document](recall-format.md), and names, document size, versions and retirement follow the rules for reasoning functions above; a playbook keeps at most 32 active recall functions, and a save past that answers `conflict`. A run completes within the request that runs it, answering from the function's view as it stands. While the view of the latest version is still being built, a run answers `unavailable` with the kind `rebuilding` and a `Retry-After`; while the view has stalled, `conflict` with the kind `stalled`; and an answer that cannot give its output, `conflict` with the kind `unworkable`. `get_definition` adds the view's `standing`, and `get_run` the checkpoint the run answered at in its `record`; see [How the view is kept](recall-format.md#how-the-view-is-kept).
+Recall functions use the operations of reasoning functions, with `recall` in place of `reasoning` in each route, such as `POST /definitions/recall` and `POST /definitions/recall/{name}/run`. The `source` is a [recall function document](recall-format.md). Names, document size, versions and retirement follow the rules for [reasoning functions](#reasoning-functions).
+
+A recall function keeps a view: a JSON value its module builds from the playbook's events, one event at a time. A run computes its answer from the view as it stands.
+
+- A playbook may have at most 32 active recall functions. Saving one more returns `conflict`.
+- A run finishes within the request that starts it.
+- `get_definition` adds the view's `standing`. `get_run` adds to the run's `record` the checkpoint the run read at, which says how far into the playbook's history the view had read. See [How the view is kept](recall-format.md#how-the-view-is-kept).
+
+| Case                                                | Response                                                     |
+| --------------------------------------------------- | ------------------------------------------------------------ |
+| The view of the latest version is still being built | `unavailable` with the kind `rebuilding` and a `Retry-After` |
+| The view has stalled                                | `conflict` with the kind `stalled`                           |
+| The module's `answer` cannot produce an output      | `conflict` with the kind `unworkable`                        |
 
 ## Prediction functions
 
-A self-hosted runtime offers prediction functions under the same operations, with `prediction` in place of `reasoning` in each route, such as `POST /definitions/prediction` and `POST /definitions/prediction/{name}/run`. The `source` is a [prediction function document](prediction-format.md), and names, document size, versions and retirement follow the rules for reasoning functions above; a playbook keeps at most 32 active prediction functions. A question completes within the request that runs it, answered by the function's active version; a build, the input `{ build: {} }`, answers 200 with `status: started` and waits for its trainer, as [A build](prediction-format.md#a-build) says. `get_definition` adds the dataset's and the models' `standing`.
+Prediction functions use the operations of reasoning functions, with `prediction` in place of `reasoning` in each route, such as `POST /definitions/prediction` and `POST /definitions/prediction/{name}/run`. The `source` is a [prediction function document](prediction-format.md). Names, document size, versions and retirement follow the rules for [reasoning functions](#reasoning-functions).
 
-Five routes are served over HTTP alone, so they are no tool on any MCP endpoint. They are relative to `/v1/orgs/{org}/playbooks/{playbook}`:
+- A playbook may have at most 32 active prediction functions.
+- A question finishes within the request that asks it, and the function's active version makes the prediction.
+- A build (the input `{ build: {} }`) responds with `200` and `status: started`, then waits for its trainer, as [A build](prediction-format.md#a-build) explains.
+- `get_definition` adds the dataset's and the models' `standing`.
 
-| Operation          | Method and route                               | Needs            | Body                                                                            | Answer                                                   |
+Five routes are served only over HTTP; no MCP endpoint offers them as tools. They are relative to `/v1/orgs/{org}/playbooks/{playbook}`:
+
+| Operation          | Method and route                               | Permission       | Body                                                                            | Returns                                                  |
 | ------------------ | ---------------------------------------------- | ---------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------- |
 | `upload_dataset`   | `PUT /datasets/{sha256}`                       | `playbook:write` | `text/csv` with `Content-Length`, at most 64 MiB                                | `{ dataset, bytes, rows, series, columns, period, ... }` |
 | `read_build_brief` | `GET /runs/{run_id}/build/brief`               | `playbook:read`  | None                                                                            | The brief, `text/markdown`                               |
@@ -109,35 +286,122 @@ Five routes are served over HTTP alone, so they are no tool on any MCP endpoint.
 | `upload_candidate` | `POST /runs/{run_id}/build/candidates`         | `playbook:write` | An ONNX model, `application/octet-stream` with `Content-Length`, at most 64 MiB | `{ candidate, bytes, opset }`                            |
 | `activate_version` | `POST /definitions/prediction/{name}/activate` | `playbook:write` | `{ version }`                                                                   | `{ function, version, rule, activated_at }`              |
 
-A body without its `Content-Length` answers 411 and one that says it is larger than the route takes 413, before it is read. The three routes of a build answer only a build that waits for its answer: a run the playbook does not hold answers `not_found`, a run that is no build `conflict` with the kind `not_a_build`, and a build that took its answer or ended `conflict` with the kind `build_ended`. A candidate the runtime does not load, whose signature is not the one the function feeds, or past the 8 a build takes is refused `invalid_input`; while every model process the builds may hold is taken it answers `unavailable` with the kind `model_process_busy` and a `Retry-After`, since a check shares those processes with the builds' scoring and never takes one a question needs. `activate_version` answers `not_found` for a version the function did not build and `conflict` with the kind `already_active` for its active one. The build itself is answered through `answer_interaction`, with `{ candidates }`, the SHA-256 of each candidate as `upload_candidate` answered it.
+- A body sent without its `Content-Length` gets `411`. A body whose `Content-Length` is larger than the route accepts gets `413`, before the body is read.
+- The build itself is answered through `answer_interaction`, with `{ candidates }`: the SHA-256 of each candidate, as `upload_candidate` returned it.
+
+The three build routes work only on a build that is waiting for its answer:
+
+| Case                                  | Response                               |
+| ------------------------------------- | -------------------------------------- |
+| A run the playbook does not have      | `not_found`                            |
+| A run that is not a build             | `conflict` with the kind `not_a_build` |
+| A build that took its answer or ended | `conflict` with the kind `build_ended` |
+
+`upload_candidate` refuses a candidate as `invalid_input` when:
+
+- the runtime cannot load it;
+- its signature does not match what the function feeds it, or its opset is older than 13;
+- the build already has the 8 candidates it accepts.
+
+While every model process available to builds is busy, it returns `unavailable` with the kind `model_process_busy` and a `Retry-After`. The check shares those processes with the builds' scoring, and never takes one a question needs.
+
+`activate_version` returns `not_found` for a version the function did not build, and `conflict` with the kind `already_active` for the version that is already active.
 
 ## Workflows
 
 These routes are relative to `/v1/orgs/{org}/playbooks/{playbook}`:
 
-| Operation           | Method and route                           | Input                                                                  |
-| ------------------- | ------------------------------------------ | ---------------------------------------------------------------------- |
-| `create_definition` | `POST /definitions/workflow`               | `name`, `source`                                                       |
-| `list_definitions`  | `GET /definitions/workflow`                | Optional `include_retired`                                             |
-| `get_definition`    | `GET /definitions/workflow/{name}`         | Name in path                                                           |
-| `update_definition` | `PUT /definitions/workflow/{name}`         | `source`                                                               |
-| `retire_definition` | `POST /definitions/workflow/{name}/retire` | Name in path                                                           |
-| `run_definition`    | `POST /definitions/workflow/{name}/run`    | Optional `input`, optional UUID `run_id`                               |
-| `get_run`           | `GET /runs/{run_id}`                       | Run id in path                                                         |
-| `cancel_run`        | `POST /runs/{run_id}/cancel`               | Optional `reason`                                                      |
-| `send_run_event`    | `POST /runs/{run_id}/events`               | `event` with `type`, and optional `id`, `source`, `subject` and `data` |
+| Operation           | Method and route                           | Permission       | Input                                                                  |
+| ------------------- | ------------------------------------------ | ---------------- | ---------------------------------------------------------------------- |
+| `create_definition` | `POST /definitions/workflow`               | `playbook:write` | `name`, `source`                                                       |
+| `list_definitions`  | `GET /definitions/workflow`                | `playbook:read`  | Optional `include_retired`                                             |
+| `get_definition`    | `GET /definitions/workflow/{name}`         | `playbook:read`  | Name in path                                                           |
+| `update_definition` | `PUT /definitions/workflow/{name}`         | `playbook:write` | `source`                                                               |
+| `retire_definition` | `POST /definitions/workflow/{name}/retire` | `playbook:write` | Name in path                                                           |
+| `run_definition`    | `POST /definitions/workflow/{name}/run`    | `playbook:write` | Optional `input`, optional UUID `run_id`                               |
+| `get_run`           | `GET /runs/{run_id}`                       | `playbook:read`  | Run id in path                                                         |
+| `cancel_run`        | `POST /runs/{run_id}/cancel`               | `playbook:write` | Optional `reason`                                                      |
+| `send_run_event`    | `POST /runs/{run_id}/events`               | `playbook:write` | `event` with `type`, and optional `id`, `source`, `subject` and `data` |
 
-The `source` is a [workflow document](workflow-format.md). Names, document size, versions and retirement follow the rules for reasoning functions above. A saved workflow has the `media_type` `application/yaml`, and its `description`, `input_schema` and `output_schema` come from the document. A workflow whose document has a `schedule` also has `triggers`, in `get_definition` and `list_definitions`: the [triggers](workflow-format.md#triggers) its schedule names, in the order it names them, each with its `kind`, `event`, `cron` or `every`, its `reference`, `/schedule/on`, `/schedule/cron` or `/schedule/every`, and its rule: an event trigger's `filters`, each with its `reference`, `type` and `attributes`, a cron's `expression` or an every's period in `milliseconds`. `get_definition` of an active workflow with triggers adds `triggers_since`, the id of the record that saved its current version: from that record on, what its triggers start is a run of this version. It is one id for the workflow; a trigger that a later version left unchanged goes on from the record that saved it as it is, which `triggers_since` does not show.
+### A saved workflow
 
-`run_definition` returns 200 as soon as the run begins, with its `run_id` and `status: started`, or, for a run that ended before its first wait, how it ended. Read the run with `get_run` until its status is `succeeded`, `rejected` or `failed`, and its steps with `get_run_history`, which holds one `workflow_input_applied` event for each input the run took (see [Run history and playbook events](#run-history-and-playbook-events)). While the runtime is stopping, `run_definition` returns `unavailable`; try again shortly.
+The `source` is a [workflow document](workflow-format.md). Names, document size, versions and retirement follow the rules for [reasoning functions](#reasoning-functions).
 
-A workflow runs once for each `run_id`. Executing it again with the `run_id` of a run that is going returns the run as it stands; with the `run_id` of a run that ended without a final result, it returns `conflict`, so run the workflow again under a new `run_id`.
+- A saved workflow has the `media_type` `application/yaml`.
+- Its `description`, `input_schema` and `output_schema` come from the document.
+- A workflow whose document has a `schedule` also has `triggers`, in `get_definition` and `list_definitions`. They are the [triggers](workflow-format.md#triggers) its schedule names, in the order it names them.
 
-`send_run_event` delivers an event to a run that is still `started`. It returns the `run_id` and the delivered `event`, with an `id`, made by the runtime when you leave it out, a `source`, `/callers/` and your caller id when you leave it out, and the `time` it was sent. An event may take at most 256 KiB as JSON; its `type` and `id` at most 256 characters, its `source`, a URI reference such as `/ledger/eu` as for a published event, and its `subject` at most 1,024, and its `data` may nest at most 510 levels deep, so that the run can hold the whole event in a list. A run takes an event with a given `id` once, so a request can be retried with the same id. The types and sources the runtime keeps for its own facts, listed under [Publishing events](#publishing-events), return `invalid_input` here too, and so does text that a published event may not hold: a control character, a lone surrogate or a noncharacter, or a `type`, `id` or `subject` without a character that is not a space. The operation returns `not_found` when the playbook has no running workflow with that run id, including one that has ended, and `unavailable` when the run cannot take the event at that moment, as while the runtime is stopping; try again shortly.
+| Trigger field  | Contents                                                                              |
+| -------------- | ------------------------------------------------------------------------------------- |
+| `kind`         | `event`, `cron` or `every`                                                            |
+| `reference`    | `/schedule/on`, `/schedule/cron` or `/schedule/every`                                 |
+| `filters`      | For an event trigger: its filters, each with its `reference`, `type` and `attributes` |
+| `expression`   | For a cron trigger: its expression                                                    |
+| `milliseconds` | For an every trigger: its period                                                      |
+
+`get_definition` of an active workflow with triggers adds `triggers_since`: the id of the record that saved its current version. From that record on, every run its triggers start is a run of this version. `triggers_since` is one id for the whole workflow. A trigger that a later version left unchanged continues from the record that first saved it in that form, which `triggers_since` does not show.
+
+### Running a workflow
+
+- `run_definition` returns `200` as soon as the run begins, with its `run_id` and `status: started`. A run that ended before its first wait returns how it ended.
+- Read the run with `get_run` until its status is `succeeded`, `rejected` or `failed`.
+- Read its steps with `get_run_history`, which contains one `workflow_input_applied` event for each input the run took (see [Run history and playbook events](#run-history-and-playbook-events)).
+- While the runtime is stopping, `run_definition` returns `unavailable`; try again shortly.
+
+A workflow runs once for each `run_id`. [Retrying under a run id](#retrying-under-a-run-id) says what a request with the id of an earlier run returns.
+
+### Sending an event to a run
+
+`send_run_event` delivers an event to a run that is still `started`. It returns the `run_id` and the delivered `event`, with these filled in:
+
+- `id`, which the runtime makes when you leave it out;
+- `source`, which is `/callers/` and your caller id when you leave it out;
+- `time`, when it was sent.
+
+| Part of the event | Limit                                                                             |
+| ----------------- | --------------------------------------------------------------------------------- |
+| The whole event   | 256 KiB as JSON                                                                   |
+| `type`, `id`      | 256 characters each                                                               |
+| `source`          | A URI reference such as `/ledger/eu`, as for a published event; 1,024 characters  |
+| `subject`         | 1,024 characters                                                                  |
+| `data`            | Nests at most 510 levels deep, so that the run can keep the whole event in a list |
+
+A run accepts an event with a given `id` only once, so a request can be retried with the same id.
+
+| Case                                                                                                                                                                 | Response                         |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| A type or source the runtime reserves for its own facts, as listed under [Publishing events](#publishing-events)                                                     | `invalid_input`                  |
+| Text a published event may not contain: a control character, a lone surrogate or a noncharacter, or a `type`, `id` or `subject` with no character other than a space | `invalid_input`                  |
+| The playbook has no running workflow with that run id, including one that has ended                                                                                  | `not_found`                      |
+| The run cannot take the event at that moment, such as while the runtime is stopping                                                                                  | `unavailable`; try again shortly |
 
 ### Cancelling a run
 
-`cancel_run` cancels a workflow run that is still `started`, the run of an interaction function whose request waits, or a prediction function's build, whether it is starting, waiting for its trainer or scoring, and needs `playbook:write`. It takes an optional `reason`, 1 to 1,024 characters with no control character, which the run keeps as the detail of its ending; without one, the detail says who asked. The request is recorded on the run at once, on any server, and it returns 200 with the run as it stands, still `started`. Within a moment the run stops its tasks, cancels each run it waits for, and ends `rejected` with the reason `cancelled` and the kind `requested`; read it with `get_run`. Asking again before it ended records nothing more. It returns `not_found` when the playbook has no run with that id, and `conflict` when the run has ended, or when it is a run that ends within the request that started it, as a reasoning, computation or recall function does, an interaction function that calls a tool, or a prediction function's question, which cannot be interrupted from outside.
+`cancel_run` needs `playbook:write`. It cancels:
+
+- a workflow run that is still `started`;
+- the run of an interaction function whose request waits;
+- a prediction function's build, whether it is starting, waiting for its trainer or scoring.
+
+It takes an optional `reason`, 1 to 1,024 characters with no control character. The run keeps it as the detail of its ending; without one, the detail says who asked.
+
+1. The request is recorded on the run at once, whichever server takes it. `cancel_run` returns `200` with the run as it stands, still `started`.
+2. Within a moment the run stops its tasks and cancels each run it waits for.
+3. It ends `rejected` with the reason `cancelled` and the kind `requested`. Read it with `get_run`.
+
+Asking again before the run has ended records nothing more.
+
+| Case                                            | Response    |
+| ----------------------------------------------- | ----------- |
+| The playbook has no run with that id            | `not_found` |
+| The run has ended                               | `conflict`  |
+| The run ends within the request that started it | `conflict`  |
+
+These runs end within the request that started them, so they cannot be interrupted from outside:
+
+- the run of a reasoning, computation or recall function;
+- the run of an interaction function that calls a tool;
+- a prediction function's question.
 
 A cancelled run's rejection names the kind of its cancellation:
 
@@ -150,30 +414,97 @@ A cancelled run's rejection names the kind of its cancellation:
 
 ## Runs and results
 
-A run records its `run_id`, `type`, `name`, `definition_version`, `status`, timestamps and caller identity. Successful runs include `output`; rejected runs include a rejection. `get_run` also returns the detailed `record`.
+A run records its `run_id`, `type`, `name`, `definition_version`, `status`, timestamps and caller identity. A successful run includes `output`, and a rejected run includes a rejection. `get_run` also returns the detailed `record`.
 
-Reasoning, computation and recall functions normally complete within the request that runs them. A workflow run answers `started` and continues after the request; while it is in progress, its `record` is empty. [Workflows and runs](../concepts/workflows.md) explains how a run waits and ends. Inputs may be at most 256 KiB as encoded JSON and nest at most 512 levels deep, as deep as a workflow holds a value; a deeper one returns `invalid_input` at `/input`. Output and record together may be at most 1 MiB. These limits apply independently of the request-body limit.
+Most runs finish within the request that starts them. These runs finish later, so `run_definition` returns them `started`, unless one ended before its first wait:
 
-Supply `run_id` when you need to inspect failures or retry a request. Reusing an id with a different function or input returns `conflict`. Once a run succeeds, rejects invalid input or is cancelled, another request with the same id and input returns the recorded final result. A request with the id of a workflow run still in progress returns that run as it stands, without starting another.
+- a workflow's run, whose `record` is empty while it is in progress;
+- an interaction function's run that asks a person, or that sends a notification through a tool;
+- a prediction function's build, the input `{ build: {} }`, which waits for its trainer.
 
-A run without a final result may be attempted again after an interruption or recoverable failure, with two exceptions. A workflow run runs once for its run id. A reasoning function that calls tools is never run again under its id once one of its tools may have been called: when an earlier attempt called a tool and did not succeed, or when the function names tools and an earlier attempt has started and not ended, since it may still be running. The answer is `conflict` with the kind `tools_called`; check what the run's history shows it called, then start a new run under a new id. A retry can use the latest definition version, which the new attempt records. Do not assume that an external effect happened only once because the runtime records one final result.
+Read such a run again with `get_run` until its status is `succeeded`, `rejected` or `failed`. A cancelled run is `rejected` with the reason `cancelled`. [Workflows and runs](../concepts/workflows.md) explains how a run waits and ends.
+
+| What                       | Limit                                                                                                                                              |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Input                      | 256 KiB as encoded JSON, nesting at most 512 levels deep, as deep as a workflow can hold a value. A deeper one returns `invalid_input` at `/input` |
+| Output and record together | 1 MiB (1,048,576 bytes) as JSON                                                                                                                    |
+
+These limits apply independently of the request-body limit.
+
+A run's output and its record share that 1 MiB. Each type of definition makes room for its record in its own way, so the largest output differs by type:
+
+| Type                    | Largest output                                                                                                                                   |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Reasoning               | What leaves room for the record. The record keeps less of the prompt to fit; an answer that leaves too little room ends `conflict`, `unworkable` |
+| Interaction with `call` | 1 MiB less the run's record, measured exactly                                                                                                    |
+| Computation             | 1,048,320 bytes: the function keeps 256 bytes for its record                                                                                     |
+| Recall                  | 1,046,528 bytes: the function keeps 2,048 bytes for its record, which also says where the view had read to                                       |
+| Workflow                | 1,048,574 bytes; a larger output ends the run `conflict` with the kind `oversized`                                                               |
+
+A function's output past its bound ends the run `conflict` with the kind `unworkable`. Each format page repeats the bound for its type.
+
+### Retrying under a run id
+
+`run_definition` takes an optional `run_id`, a UUID. Supply one to retry a request without doing the work twice, or to read the run later. The runtime keeps one run under each id.
+
+A request that reuses an id for another definition or another input returns `conflict`. A request with the same definition and input gets what the run under that id recorded:
+
+| The run under that id                                                                                                                  | A request with the same id and input                                                                             |
+| -------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Succeeded                                                                                                                              | Returns the recorded output; nothing runs again                                                                  |
+| Was rejected as `invalid_input`                                                                                                        | Returns the same rejection                                                                                       |
+| Was cancelled                                                                                                                          | Returns its cancellation, `cancelled` (409)                                                                      |
+| Went unanswered                                                                                                                        | Returns `unanswered` (410), as [A request nobody answers](#a-request-nobody-answers) says                        |
+| Still waits: a workflow run, an interaction function's request, or a prediction function's build                                       | Returns the run as it stands, still `started`, and starts nothing                                                |
+| Has no final result: it ended `unavailable`, `conflict` or `failed`, or it is `started` without waiting, such as after an interruption | Runs the definition again, as a new attempt. The attempt may use the latest version, and records the one it used |
+
+The last row has two exceptions.
+
+A workflow runs once for its id. A request with the id of a workflow run that ended without a final result returns `conflict` with the kind `unworkable`. Its detail says to use a new run id.
+
+A run that may have called a tool is never attempted again under its id. That is a run of a reasoning function with `tools`, or of an interaction function with `call`:
+
+- A run that recorded a tool call and has no final result returns `conflict` with the kind `tools_called`. When the run has ended and every tool it called is one its server marks read-only, the rejection adds `because: "only_read"`, and its words say nothing was changed.
+- A run of such a function that is still `started` returns `tools_called` too, even before its first recorded call, since it may still be in progress.
+- A run that ended before its first call, for example with `tool_not_offered` or `tool_server_failed`, runs again like any other.
+
+After `tools_called`, read what the run called with `get_run_history`, and check its effects outside the playbook. Then start a new run under a new id, which calls the tools again. [When a tool-calling run cannot finish](reasoning-format.md#when-a-tool-calling-run-cannot-finish) gives the endings that come before it, `tools_unfinished` and `effect_unknown`.
+
+A workflow step that calls a function meets the same rules when the server performs the step again, for example after a restart. A function run that may have called a tool then raises `tools_called` in the workflow; see [When the function's run does not succeed](workflow-format.md#when-the-function-s-run-does-not-succeed).
+
+The runtime records one final result for each run id. That does not mean an external effect happened only once.
 
 ## Publishing events
 
-`publish_event` records an event in a playbook, such as a month closed in a ledger or a deal won in a CRM. It is `POST /v1/orgs/{org}/playbooks/{playbook}/events`, relative to the playbook like the routes above, and needs `playbook:write`. Its body holds `event`, a [CloudEvents 1.0](https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md) event:
+`publish_event` records an event in a playbook, such as a month closed in a ledger or a deal won in a CRM.
 
-| Attribute                       | Required | Contents                                                                                                      |
-| ------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------- |
-| `source`                        | Yes      | Where the event comes from, a URI reference such as `/ledger/eu` or `https://acme.example/ledger`             |
-| `type`                          | Yes      | What happened, such as `com.acme.ledger.month-closed`                                                         |
-| `id`                            | No       | Unique among the events of its source; the runtime makes one when you leave it out                            |
-| `time`                          | No       | When it happened, in RFC 3339 such as `2026-10-01T09:00:00Z`; the runtime takes the time it records the event |
-| `subject`                       | No       | What the event is about within its source                                                                     |
-| `specversion`                   | No       | `1.0`                                                                                                         |
-| `datacontenttype`, `dataschema` | No       | The media type of `data`, and the absolute URI of a schema it follows                                         |
-| `data`                          | No       | Any JSON value                                                                                                |
+| Operation       | Method and route                                  | Permission       | Input   |
+| --------------- | ------------------------------------------------- | ---------------- | ------- |
+| `publish_event` | `POST /v1/orgs/{org}/playbooks/{playbook}/events` | `playbook:write` | `event` |
 
-`id` and `type` take at most 256 characters, and `source` and `subject` at most 1,024. `data` may nest at most 510 levels deep, so that a run can hold the event in a list, or it returns `invalid_input` at `/event/data`. Any other attribute is an extension, at most 32 of them: its name is 1 to 20 lowercase letters and digits, its value text, a boolean or an integer, and it is kept as given. As CloudEvents requires, no text may hold a control character, a lone surrogate or a noncharacter, `id`, `type` and `subject` need a character that is not a space, `datacontenttype` is a media type such as `application/json`, and a `time` has a second of 60 only at the end of a day in UTC.
+The body contains `event`, a [CloudEvents 1.0](https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md) event:
+
+| Attribute                       | Required | Contents                                                                                                                          | Limit                    |
+| ------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| `source`                        | Yes      | Where the event comes from, a URI reference such as `/ledger/eu` or `https://acme.example/ledger`                                 | 1,024 characters         |
+| `type`                          | Yes      | What happened, such as `com.acme.ledger.month-closed`                                                                             | 256 characters           |
+| `id`                            | No       | Unique among the events of its source; the runtime makes one when you leave it out                                                | 256 characters           |
+| `time`                          | No       | When it happened, in RFC 3339 such as `2026-10-01T09:00:00Z`; when it is left out, the runtime uses the time it records the event |                          |
+| `subject`                       | No       | What the event is about within its source                                                                                         | 1,024 characters         |
+| `specversion`                   | No       | `1.0`                                                                                                                             |                          |
+| `datacontenttype`, `dataschema` | No       | The media type of `data`, such as `application/json`, and the absolute URI of a schema it follows                                 |                          |
+| `data`                          | No       | Any JSON value                                                                                                                    | Nests at most 510 levels |
+
+- The event, with its id and time filled in, may be at most 240 KiB as JSON.
+- `data` nests at most 510 levels deep, so that a run can keep the event in a list. A deeper one returns `invalid_input` at `/event/data`.
+- Any other attribute is an extension, and an event may have at most 32. Its name is 1 to 20 lowercase letters and digits. Its value is a string, a boolean or an integer, and it is kept as given.
+
+As CloudEvents requires:
+
+- no string may contain a control character, a lone surrogate or a noncharacter;
+- `id`, `type` and `subject` need a character that is not a space;
+- `datacontenttype` is a media type;
+- a `time` has a second of 60 only at the end of a day in UTC.
 
 ```http
 POST /v1/orgs/acme/playbooks/finance/events
@@ -190,32 +521,127 @@ Content-Type: application/json
 }
 ```
 
-It returns 200 with the event's `id` and `time`, and `recorded_at`, when the playbook recorded it:
+It returns `200` with the event's `id` and `time`, and `recorded_at`, when the playbook recorded it:
 
 ```json
 { "id": "2026-09", "time": "2026-10-01T09:00:00.000Z", "recorded_at": "2026-10-01T09:00:00.000Z" }
 ```
 
-A playbook holds one event for each `source` and `id`. Publishing the same event again records nothing and returns the first `id`, `time` and `recorded_at`, so a request can be retried with the same id; a retry that leaves out `time` is the same event. Times are compared as instants, so `2026-10-01T10:59:00+02:00` is the same time as `2026-10-01T08:59:00Z`. A leap second counts as the first second of the next day, so `2016-12-31T23:59:60Z` is the same time as `2017-01-01T00:00:00Z`. A retry that gives a `time` to an event first published without one is the same event too, and returns the time the runtime filled in the first time, not the one the retry gave. A different event with the same `source` and `id` returns `conflict`. Without an `id`, every request records a new event.
+`list_playbook_events` shows each published event as an `event_published` event. A published event starts the workflows whose [event trigger](workflow-format.md#triggers) matches it, and reaches the runs listening for its type.
 
-The event, with its id and time filled in, may take at most 240 KiB as JSON. The types `run_started`, `run_deferred`, `run_succeeded`, `run_rejected`, `run_failed`, `run_cancel_requested`, `tool_call_started`, `tool_call_answered`, `tool_call_failed`, `request_answered`, `delivery_started`, `delivery_succeeded`, `delivery_failed`, `delivery_refused`, `reply_refused`, `telling_started`, `telling_succeeded`, `telling_failed`, `replies_read`, `reading_failed`, `interaction_requested`, `dataset_assembled`, `candidate_uploaded`, `candidate_refused`, `candidate_scored`, `candidate_disqualified`, `baseline_scored`, `baseline_not_walked`, `version_built`, `shadow_predicted`, `shadow_graded`, `shadow_passed`, `shadow_failed`, `version_activated`, `activation_refused`, `build_asked`, `build_ended`, `definition_created`, `definition_updated`, `definition_retired`, `event_published`, `workflow_input_applied`, `step_started`, `step_waiting`, `step_finished`, `step_failed`, `step_skipped` and `reaction_refused`, which include every type the playbook's events show and every fact the playbook's capabilities declare, and sources beginning `/runs/`, `/definitions/` or `/callers/`, name what the runtime records itself; an event that uses them returns `invalid_input` at `/event/type` or `/event/source`. The attributes `causationid`, `correlationid`, `caller`, `definitionversion`, `depth`, `calldepth`, `calledby`, `triggerkind` and `triggerreference` are the ones the playbook gives its own events (see [the playbook's events](recall-format.md#the-events)), so an event that names one returns `invalid_input` at `/event/` and its name, and no published event claims a cause, a caller or a depth it does not have. `list_playbook_events` shows each published event as an `event_published` event. A published event starts the workflows whose [event trigger](workflow-format.md#triggers) matches it, and reaches the runs listening for its type.
+### Publishing the same event again
+
+A playbook keeps one event for each `source` and `id`, so a request can be retried with the same id.
+
+- Publishing the same event again records nothing, and returns the first `id`, `time` and `recorded_at`.
+- A retry that leaves out `time` is the same event.
+- A retry that gives a `time` to an event first published without one is the same event too. It returns the time the runtime filled in the first time, not the one the retry gave.
+- Times are compared as instants, so `2026-10-01T10:59:00+02:00` is the same time as `2026-10-01T08:59:00Z`.
+- A leap second counts as the first second of the next day, so `2016-12-31T23:59:60Z` is the same time as `2017-01-01T00:00:00Z`.
+- A different event with the same `source` and `id` returns `conflict`.
+- Without an `id`, every request records a new event.
+
+### What the runtime keeps for itself
+
+Some types, sources and attributes are reserved for what the runtime records itself. An event that uses one returns `invalid_input`:
+
+| Reserved   | Names                                                                                                                                 | Refused at                         |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| Types      | Every type the playbook's events show and every fact the playbook's capabilities declare, listed below                                | `/event/type`                      |
+| Sources    | Those beginning `/runs/`, `/definitions/` or `/callers/`                                                                              | `/event/source`                    |
+| Attributes | `causationid`, `correlationid`, `caller`, `definitionversion`, `depth`, `calldepth`, `calledby`, `triggerkind` and `triggerreference` | `/event/` and the attribute's name |
+
+The reserved types are `run_started`, `run_deferred`, `run_succeeded`, `run_rejected`, `run_failed`, `run_cancel_requested`, `tool_call_started`, `tool_call_answered`, `tool_call_failed`, `request_answered`, `delivery_started`, `delivery_succeeded`, `delivery_failed`, `delivery_refused`, `reply_refused`, `telling_started`, `telling_succeeded`, `telling_failed`, `replies_read`, `reading_failed`, `interaction_requested`, `dataset_assembled`, `candidate_uploaded`, `candidate_refused`, `candidate_scored`, `candidate_disqualified`, `baseline_scored`, `baseline_not_walked`, `version_built`, `shadow_predicted`, `shadow_graded`, `shadow_passed`, `shadow_failed`, `version_activated`, `activation_refused`, `build_asked`, `build_ended`, `definition_created`, `definition_updated`, `definition_retired`, `event_published`, `workflow_input_applied`, `step_started`, `step_waiting`, `step_finished`, `step_failed`, `step_skipped` and `reaction_refused`.
+
+The reserved attributes are the ones the playbook gives its own events; see [the playbook's events](recall-format.md#the-events). So a published event cannot claim a cause, a caller or a depth it does not have.
 
 ## Run history and playbook events
 
-These routes are relative to `/v1/orgs/{org}/playbooks/{playbook}` and need `playbook:read`:
+These routes are relative to `/v1/orgs/{org}/playbooks/{playbook}`:
 
-| Operation              | Method and route             | Input                                                             |
-| ---------------------- | ---------------------------- | ----------------------------------------------------------------- |
-| `list_runs`            | `GET /runs`                  | Optional `type`, `name`, `status`, `limit` and `cursor`           |
-| `get_run_history`      | `GET /runs/{run_id}/history` | Run id in path; optional `order`, `limit` and `cursor`            |
-| `list_playbook_events` | `GET /events`                | Optional `type`, `since`, `run_id`, `order`, `limit` and `cursor` |
-| `get_event`            | `GET /events/{event_id}`     | Event id in path                                                  |
+| Operation              | Method and route             | Permission      | Input                                                             |
+| ---------------------- | ---------------------------- | --------------- | ----------------------------------------------------------------- |
+| `list_runs`            | `GET /runs`                  | `playbook:read` | Optional `type`, `name`, `status`, `limit` and `cursor`           |
+| `get_run_history`      | `GET /runs/{run_id}/history` | `playbook:read` | Run id in path; optional `order`, `limit` and `cursor`            |
+| `list_playbook_events` | `GET /events`                | `playbook:read` | Optional `type`, `since`, `run_id`, `order`, `limit` and `cursor` |
+| `get_event`            | `GET /events/{event_id}`     | `playbook:read` | Event id in path                                                  |
 
-`list_runs` returns `runs`, newest first by when each run first started. A listed run has the fields `get_run` returns, without `output`, `record` and the detail and issues of a rejection; a rejection shows its `reason`, with `kind` and `because` when the function gave them. `status` keeps the runs whose status is `started`, `succeeded`, `rejected` or `failed`, and `type` and `name` keep the runs of one definition.
+A retired playbook stays readable: these reads work on it, while every change to it is refused with `conflict`. The playbook's own creation, changes and retirement are not playbook events; `get_playbook` shows them.
 
-`get_run_history` returns the `events` of one run in the order the playbook recorded them, oldest first unless `order` is `desc`, so each event comes after the event that caused it: the facts the runtime recorded about the run, each start and how it ended. Tool-using runs, a reasoning function's and an interaction function's that calls a tool, also record each call as `tool_call_started`, with `read_only: true` where the server marks the tool read-only, and then `tool_call_answered` when the tool answered, with `is_error` when its answer is an error of its own, or `tool_call_failed` when it never answered, with `because`: `arguments_refused`, `server_failure`, `timed_out`, `cancelled`, or `too_large` when the tool answered more than one call may take. The run of an interaction function shows its request as `interaction_requested`, with the delivery, the party, the size of the message and the expiry, each delivery attempt as `delivery_started`, with the tool and the size and digest of its arguments, and then `delivery_succeeded`, with where the request landed and where its replies are read, `delivery_failed`, with `because`, `too_large` among them for an answer past what one call may take, and, where the server asked for one, `retry_after_ms`, or `delivery_refused`, with `because` `too_large` or `unworkable`, each with the size and digest of what the tool answered where it answered, the answer the run took as `request_answered`, with the answer, the claim and, for a reply, its identity, and each reply refused as `reply_refused`, with the reply's identity and never its words; its answer is the run's output, which its `run_succeeded` shows. A run that does not exist in the playbook returns `not_found`. For a workflow, the history also holds one `workflow_input_applied` event for each input its run took, followed by one event for each step that input moved, named for how the step ended that input: `step_waiting`, `step_finished`, `step_failed`, `step_skipped`, or `step_started` for a step that runs others, such as a `do` or a `fork`, and was still running. A step that starts and finishes in one input shows only `step_finished`. `list_playbook_events` returns the `events` of the whole playbook, newest first unless `order` is `asc`: definitions created, updated and retired, runs started and ended, tool calls, tests of a tool, the playbook's reads of a conversation, `replies_read` or `reading_failed`, and its tellings, `telling_started` and then `telling_succeeded` or `telling_failed`, the inputs workflow runs took and the events published to the playbook. `type` keeps one event type. `since`, an ISO 8601 time with its offset such as `2026-10-05T09:00:00Z`, keeps what the playbook recorded from that time on, in either order; its date must exist in the calendar and its hour run from 00 to 23, so `T24:00:00Z` is refused. `run_id` keeps what one run and every run it started recorded, such as the functions a workflow called: its whole tree. A run that another run started belongs to the tree of the run at its top, so its own id answers no events; read the tree from the id of the run you started.
+### Listing runs
 
-Tool-call events identify the server, the tool, the sizes of the arguments and the result, and how each call ended. The playbook keeps the arguments and the answer of every call whole, scrubbed of secrets, unless the operator turns `record_content` off for the server: the sizes are of the scrubbed text the playbook keeps, and a kept text's SHA-256 digest, `arguments_sha256` or `result_sha256`, is the key it is kept under and is there only where it was kept; the history shows `arguments` and `answer` where each is within 2 KiB, and otherwise their sizes, and `get_event` reads one event with both whole. Anyone with read access to the playbook can read that history. A started call without an answer may have had an external effect; absence of an answer does not prove it was cancelled before acting.
+`list_runs` returns `runs`, newest first by when each run first started.
+
+- A listed run has the fields `get_run` returns, without `output`, `record` and the detail and issues of a rejection.
+- A rejection shows its `reason`, with `kind` and `because` when the function gave them.
+- `status` keeps only the runs whose status is `started`, `succeeded`, `rejected` or `failed`.
+- `type` and `name` keep only the runs of one definition.
+
+### A run's history
+
+`get_run_history` returns the `events` of one run in the order the playbook recorded them, oldest first unless `order` is `desc`. Each event comes after the event that caused it. The events are the facts the runtime recorded about the run: each start and how it ended. A run that does not exist in the playbook returns `not_found`.
+
+Runs that use tools (a reasoning function's, and an interaction function's that calls a tool) also record each call:
+
+- `tool_call_started`, with `read_only: true` when the server marks the tool read-only;
+- then `tool_call_answered` when the tool answered, with `is_error` when its result is an error of its own;
+- or `tool_call_failed` when it never answered, with `because`: `arguments_refused`, `server_failure`, `timed_out`, `cancelled`, or `too_large` when the tool's result was larger than one call may return.
+
+The run of an interaction function records its request and its deliveries. Each delivery attempt starts with `delivery_started` and ends with `delivery_succeeded`, `delivery_failed` or `delivery_refused`.
+
+| Event                   | Shows                                                                                                                                 |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `interaction_requested` | The delivery, the party, the size of the message and the expiry                                                                       |
+| `delivery_started`      | The tool, and the size and digest of its arguments                                                                                    |
+| `delivery_succeeded`    | Where the request landed and where its replies are read                                                                               |
+| `delivery_failed`       | `because`, including `too_large` for a result larger than one call may return, and `retry_after_ms` when the server asked for a delay |
+| `delivery_refused`      | `because`, `too_large` or `unworkable`                                                                                                |
+| `request_answered`      | The answer the run took, `claimed_for` and, for a reply, its identity                                                                 |
+| `reply_refused`         | Each refused reply's identity, never its words                                                                                        |
+
+Each of the three endings of an attempt also shows the size and digest of the tool's result, when there was one. That result is the run's output, which its `run_succeeded` shows.
+
+A workflow's history also contains one `workflow_input_applied` event for each input its run took. Each is followed by one event for each step that input moved, named for the state the input left the step in:
+
+- `step_waiting`, `step_finished`, `step_failed` or `step_skipped`;
+- `step_started` for a step that runs others, such as a `do` or a `fork`, and was still running.
+
+A step that starts and finishes in one input shows only `step_finished`.
+
+### The playbook's events
+
+`list_playbook_events` returns the `events` of the whole playbook, newest first unless `order` is `asc`. They include:
+
+- definitions created, updated and retired;
+- runs started and ended;
+- tool calls, and tests of a tool;
+- the playbook's reads of a conversation, `replies_read` or `reading_failed`;
+- its tellings, `telling_started` and then `telling_succeeded` or `telling_failed`;
+- the inputs workflow runs took;
+- the events published to the playbook.
+
+| Filter   | Keeps                                                                                                   |
+| -------- | ------------------------------------------------------------------------------------------------------- |
+| `type`   | One event type                                                                                          |
+| `since`  | What the playbook recorded from that time on, in either order                                           |
+| `run_id` | What one run and every run it started recorded, such as the functions a workflow called: its whole tree |
+
+`since` is an ISO 8601 time with its offset, such as `2026-10-05T09:00:00Z`. Its date must exist in the calendar and its hour must run from 00 to 23, so `T24:00:00Z` is refused.
+
+A run that another run started belongs to the tree of the run at its top, so filtering by its own id returns no events. Read the tree from the id of the run you started.
+
+### Tool-call content
+
+Tool-call events identify the server, the tool, the sizes of the arguments and the result, and how each call ended. The playbook keeps the full arguments and result of every call, scrubbed of secrets, unless the operator turns `record_content` off for the server.
+
+- The sizes are of the scrubbed text the playbook keeps.
+- A kept text's SHA-256 digest, `arguments_sha256` or `result_sha256`, is the key it is kept under. It is present only when the text was kept.
+- The history shows `arguments` and `answer` when each is at most 2 KiB, and otherwise their sizes. `get_event` reads one event with both in full.
+- Anyone with read access to the playbook can read that history.
+
+A started call without an answer may have had an external effect; absence of an answer does not prove it was cancelled before acting.
+
+### Event fields
 
 Each event has these fields, and no others:
 
@@ -227,7 +653,7 @@ Each event has these fields, and no others:
 | `data`     | The fact itself, at most 4 KiB as JSON                                                                           |
 | `metadata` | Where the event is recorded, when, who acted, and which definition, run and chain it belongs to                  |
 
-`metadata` holds:
+`metadata` always has the first seven fields below, and each other field only when the event has it:
 
 | Field                 | Contents                                                                                                                                            |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -235,36 +661,102 @@ Each event has these fields, and no others:
 | `position`            | The event's number in its stream, from 1                                                                                                            |
 | `global_position`     | The store's sequence across every playbook, with gaps; it is not the order a page reads events in                                                   |
 | `correlation_id`      | The id of the run at the top of the chain the event belongs to, or `null`                                                                           |
-| `causation_id`        | The `id` of the event that directly led to this one, or `null` when nothing recorded did, as for a run you started                                  |
+| `causation_id`        | The `id` of the event that directly led to this one, or `null` when nothing recorded did, such as for a run you started                             |
 | `at`                  | When it happened, by its own clock, in ISO 8601 UTC                                                                                                 |
 | `by`                  | Who acted: a caller's id, or `playbook:` and the playbook's id for the playbook's own work                                                          |
-| `run_id`              | The run the event belongs to, where it belongs to one                                                                                               |
-| `definition`          | The `type`, `name` and, where the event names one, `version` of the definition the run executes or the event is about                               |
+| `run_id`              | The run the event belongs to, when it belongs to one                                                                                                |
+| `definition`          | The `type`, `name` and, when the event names one, `version` of the definition the run carries out or the event is about                             |
 | `called_by`           | On a run a workflow's call started: the calling run's `run_id`, the `reference` of the call in its document, and `run`, which run of the call it is |
 | `call_depth`          | On a run a call started: how many calls are above it                                                                                                |
 | `depth`               | On a run a trigger or another run started, and on an event a workflow emitted: how many reactions are above it                                      |
 | `trigger`             | On a run a trigger started: its `kind`, `event`, `cron` or `every`, and its `reference` in the document                                             |
 | `trace_id`, `span_id` | The trace and span of the append that recorded the event, one pair for every event of one append; with telemetry on, the trace the server exported  |
 
-Each field of `metadata` but the first seven is there only where the event has it. In `data`, an input, an output, a record, an answer, a call's arguments and result, and a published event's data are shown whole when each takes at most 2 KiB as JSON, and otherwise as its size in bytes under its name and `_bytes`, such as `output_bytes`; when the event's data would still take more than 4 KiB, its largest field is shown as its size first. A definition's document and schemas appear as their sizes. `get_run` returns a run's output and record, `get_definition` a definition's document and schemas, and `get_event` one event with every field whole. A rejection shows its reason, its detail shortened to fit, and for invalid input the number of issues and the first five, and a rejection that kept a record, as a run of a reasoning function does when it is rejected after its model answered, shows the record as a success does. A definition's description shows its first 300 characters, and its warnings as a count. A `workflow_input_applied` event shows the kind and key of the input, how many steps it moved and the first five, each with its task, run and outcome, the kind and because of a function's rejection that has them, in its words too, and the kinds of what the run did next; it never shows the run's data. A step event shows the step's `name`, its `reference` in the document, its `run`, which counts each time the step starts, and `times`, which counts how often it moved that way in that run; `step_waiting` adds what it waits for, `call`, `timer` or `event`, and for a call the `run_id` of the run it started, whose `run_started` names that `step_waiting` as its cause; `step_failed` adds how it failed and its error's type and title. An `event_published` event shows the published event's `event_id`, `event_type`, `source`, `subject`, `time` and `data`, and which attributes the runtime `filled` in; for an event a workflow emitted, its `metadata` names the run in `run_id`, the workflow and its version in `definition`, and its depth in a chain of triggers in `depth`. A `reaction_refused` event shows how many times in the `minute` a trigger did not start its workflow as `count`, and the last `reason`, and its `metadata` names the workflow and the version whose trigger refused in `definition`. A run a trigger started shows `playbook:` and the playbook's id as `by`, and every event of it shows the `trigger` that started it in its `metadata`, its `kind` and `reference`; its `run_started` says in words which kind it was, such as "was started by its every schedule". A run an event trigger started names the event's record as its cause. A run a schedule started names as its cause the record that saved its schedule as it is, which comes before the record of the run's `definition_version` when a later version left the schedule unchanged.
+### What `data` shows
 
-The causes link the events of a run into a graph. A run you start has no cause. A workflow run's start is followed directly by its inputs and their steps, and its first input is caused by its start. A step's event has the id of the input that moved it, an underscore and its number among the steps that input moved, such as `<input id>_2`, and is caused by what came before it in that input: the input for the first step, the step before it in its list, the `switch` that chose it, the `fork` it is a branch of, or the failed attempt a retry repeats. A step that goes on from an earlier input is caused by the input that moved it on, and that input, which answers a call, delivers an event or fires a timer, is caused by the input whose step waited for it. A run a step's call started is caused by the input that started the call, and the run's end by the input that ended it.
+`data` keeps each event within 4 KiB:
 
-`get_event` reads one event whole by its `id`, as `get_run_history` and `list_playbook_events` show it: the same `type`, `summary` and `metadata`, and its `data` with every field whole, a call's `arguments` and `result` read from what the playbook kept, and `answer`, the document read from the result. It is how a tool's answer, or an input or output too large for a page, is opened from the history. A step's id travels in the path as it is, such as `GET /events/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a_2`, and its number counts from 1 without a leading zero, so `_0` and `_02` are refused with `invalid_input`. An id the playbook does not hold, of another playbook or of a step its input did not move, returns `not_found`. Over MCP, where a result carries its output twice, every field that may be large, an input, an output, a record, an answer, a call's `arguments` and `result`, and a published event's data, appears whole where it takes at most 64 KiB as JSON, and otherwise as its size.
+- Large values are shown in full when each is at most 2 KiB as JSON. They are an input, an output, a record, an answer, a call's arguments and result, and a published event's data. A larger one is shown as its size in bytes, under its name plus `_bytes`, such as `output_bytes`.
+- When the event's data would still be larger than 4 KiB, its largest field is shown as its size first.
+- A definition's document and schemas appear as their sizes. Its description shows its first 300 characters, and its warnings as a count.
+- A rejection shows its reason, its detail shortened to fit, and for invalid input the number of issues and the first five.
+- A rejection that kept a record shows the record as a success does. A run of a reasoning function keeps one when it is rejected after its model answered.
 
-Every page carries `has_more` and `next_cursor`, on the page and not on its events. Pass `next_cursor` as `cursor` to read the next page, until `next_cursor` is `null`. `limit` is 1 to 100, and 20 when left out; it counts the events a page answers with, step events included, so a page can end between the step events of one input, and its `next_cursor` reads on from the next one. A page can hold fewer items than `limit`, or none, while `has_more` is `true`: records with no event type are left out, a page stops after loading 4 MiB of stored data, and with `status`, `type` or `name` after looking at 1,000 runs or records. Cursors are opaque; a cursor this playbook did not give returns `invalid_input` at `/cursor`.
+The full values are read elsewhere: `get_run` returns a run's output and record, `get_definition` a definition's document and schemas, and `get_event` one event with every field in full.
 
-The playbook's own creation, changes and retirement are not playbook events; `get_playbook` shows them. A retired playbook stays readable: these reads work on it, while every change to it is refused with `conflict`.
+Some events show more in `data`:
+
+- `workflow_input_applied` shows the kind and key of the input and how many steps it moved. It lists the first five, each with its task, run and outcome. For a function's rejection that has a kind and a `because`, it shows both, and its summary says them in words. It also shows the kinds of what the run did next. It never shows the run's data.
+- A step event shows the step's `name` and its `reference` in the document. It also shows `run`, which counts each time the step starts, and `times`, which counts how often it moved that way in that run.
+- `step_waiting` adds what it waits for, `call`, `timer` or `event`. For a call it adds the `run_id` of the run it started, whose `run_started` names that `step_waiting` as its cause.
+- `step_failed` adds how it failed, and its error's type and title.
+- `event_published` shows the published event's `event_id`, `event_type`, `source`, `subject`, `time` and `data`, and which attributes the runtime `filled` in.
+- `reaction_refused` shows how many times in the `minute` a trigger did not start its workflow, as `count`, and the last `reason`.
+
+Some events say more in their `metadata`:
+
+- For an event a workflow emitted, `metadata` names the run in `run_id`, the workflow and its version in `definition`, and its depth in a chain of triggers in `depth`.
+- A `reaction_refused` event's `metadata` names the workflow and the version whose trigger refused, in `definition`.
+- A run that a trigger started shows `playbook:` and the playbook's id as `by`. Every event of it shows the `trigger` that started it in its `metadata`, with its `kind` and `reference`. Its `run_started` says in words which kind it was, such as "was started by its every schedule".
+
+### How events link
+
+Each event's `causation_id` links the events of a run into a graph.
+
+- A run you start has no cause.
+- A workflow run's start is followed directly by its inputs and their steps. Its first input is caused by its start.
+- A step's event has the id of the input that moved it, an underscore and its number among the steps that input moved, such as `<input id>_2`.
+- A step's event is caused by what came before it in that input:
+  - the input, for the first step;
+  - the step before it in its list;
+  - the `switch` that chose it;
+  - the `fork` it is a branch of;
+  - the failed attempt a retry repeats.
+- A step that continues from an earlier input is caused by the input that moved it on. That input (a call's result, a delivered event or a fired timer) is caused by the input whose step waited for it.
+- A run that a step's call started is caused by the input that started the call, and the run's end by the input that ended it.
+- A run that an event trigger started names the event's record as its cause.
+- A run that a schedule started names as its cause the record that saved its schedule in its current form. That record comes before the record of the run's `definition_version` when a later version left the schedule unchanged.
+
+### Reading one event
+
+`get_event` reads one event in full by its id, as `get_run_history` and `list_playbook_events` show it. It has the same `type`, `summary` and `metadata`. Its `data` has every field in full. A call's `arguments` and `result` are read from what the playbook kept, and `answer` is the document read from the result. Use it to open a tool's result, or an input or output too large for a page, from the history.
+
+- A step event's id goes in the path unchanged, such as `GET /events/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a_2`.
+- Its number counts from 1 without a leading zero, so `_0` and `_02` are refused with `invalid_input`.
+- An id the playbook does not have, whether of another playbook or of a step its input did not move, returns `not_found`.
+
+Over MCP, a field that may be large is shown in full only up to 64 KiB, as [the MCP reference](mcp.md#events-history-and-analytics) says.
+
+### Paging
+
+Every page carries `has_more` and `next_cursor`, on the page and not on its events. Pass `next_cursor` as `cursor` to read the next page, until `next_cursor` is `null`.
+
+- `limit` is 1 to 100, and 20 when left out.
+- `limit` counts the events a page returns, step events included. A page can end between the step events of one input; its `next_cursor` continues from the next one.
+- Cursors are opaque. A cursor this playbook did not give returns `invalid_input` at `/cursor`.
+
+A page can contain fewer items than `limit`, or none, while `has_more` is `true`:
+
+- records with no event type are left out;
+- a page stops after loading 4 MiB of stored data;
+- with `status`, `type` or `name`, a page stops after looking at 1,000 runs or records.
 
 ## Analytics
 
-This route is relative to `/v1/orgs/{org}/playbooks/{playbook}` and needs `playbook:read`:
+| Operation                | Method and route | Permission      | Input                                                           |
+| ------------------------ | ---------------- | --------------- | --------------------------------------------------------------- |
+| `get_playbook_analytics` | `GET /analytics` | `playbook:read` | Optional `days`, or `from` and `to`; optional `type` and `name` |
 
-| Operation                | Method and route | Input                                                           |
-| ------------------------ | ---------------- | --------------------------------------------------------------- |
-| `get_playbook_analytics` | `GET /analytics` | Optional `days`, or `from` and `to`; optional `type` and `name` |
+The route is relative to `/v1/orgs/{org}/playbooks/{playbook}`. `get_playbook_analytics` returns what the playbook's runs did over a window of days, in UTC.
 
-`get_playbook_analytics` answers what the playbook's runs did over a window of days in UTC. `days` is `7`, `14` or `30`, the last days ending today, and `7` when nothing is given. `from` and `to` name the first and the last day as `YYYY-MM-DD`, both included: at most 366 days, with `to` not before `from` and not after today. A day must exist in the calendar, so `2026-02-30` is refused rather than read as 2 March. `type` and `name` keep the runs of one definition, as they do for `list_runs`. `days` with `from` or `to`, `from` without `to`, any other `days` and any other parameter are refused with `invalid_input`, pointing at the parameter.
+| Parameter      | Rule                                                                                                                          |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `days`         | `7`, `14` or `30`: the last days, ending today. `7` when nothing is given                                                     |
+| `from`, `to`   | The first and the last day, as `YYYY-MM-DD`, both included: at most 366 days, with `to` not before `from` and not after today |
+| `type`, `name` | Keep the runs of one definition, as they do for `list_runs`                                                                   |
+
+- A day must exist in the calendar, so `2026-02-30` is refused rather than read as 2 March.
+- These are refused with `invalid_input`, pointing at the parameter: `days` with `from` or `to`, `from` without `to`, any other `days`, and any other parameter.
 
 ```http
 GET /v1/orgs/acme/playbooks/sales/analytics?days=7&type=reasoning
@@ -295,37 +787,62 @@ Authorization: Bearer <key>
 }
 ```
 
-The example shortens `by_day`, which holds every day of the window, oldest first, days with no runs included. A run counts on the day it first started, also when it was started again later. It counts once it has ended: `succeeded`, `failed` or `rejected`; a run still going counts nowhere.
+The example shortens `by_day`. It holds every day of the window, oldest first, including days with no runs.
 
 | Field         | Contents                                                                                                                                                                                                                                       |
 | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `days`        | How many days the window holds                                                                                                                                                                                                                 |
+| `days`        | How many days the window covers                                                                                                                                                                                                                |
 | `runs`        | The runs that ended, by how they ended, and their `total`                                                                                                                                                                                      |
 | `tokens`      | The `input` and `output` tokens the models of reasoning functions used, a rejected run's included when its model answered before the rejection; `cached` is the part of `input` read from the provider's cache; `0` where nothing was recorded |
-| `duration_ms` | The median, `p50`, and the 95th percentile, `p95`, of how long the runs that succeeded or failed took, from their latest start to their end, in milliseconds; `null` when no run of the period has a duration                                  |
+| `duration_ms` | `p50` (the median) and `p95` (the 95th percentile) of how long the runs that succeeded or failed took, in milliseconds from their latest start to their end; `null` when no run of the period has a duration                                   |
 | `by_day`      | The same `runs`, `tokens` and `duration_ms` for each `day`                                                                                                                                                                                     |
 | `by_function` | Each definition by `type` and `name`, with `runs`, how many of its runs ended; the most runs first, then by `type` and `name`                                                                                                                  |
 
-A run started again under its `run_id` counts once: its tokens add up over every attempt that ended, while its duration is that of its last attempt. A percentile is the nearest rank: the duration at place ⌈p × n⌉ of the n durations in order. Rejected runs count in `runs` and in `tokens`, never in `duration_ms`; workflow runs count in `runs` and in `duration_ms`, from when the run started to when the workflow ended. The answer reads a table the runtime keeps as each run is recorded, so it is as current as the runs themselves. A playbook that does not exist returns `not_found`; a retired playbook answers like any other.
+How runs are counted:
+
+- A run counts on the day it first started, also when it was started again later.
+- A run counts once it has ended: `succeeded`, `failed` or `rejected`. A run still going counts nowhere.
+- A run started again under its `run_id` counts once. Its tokens add up over every attempt that ended, while its duration is that of its last attempt.
+- Rejected runs count in `runs` and in `tokens`, never in `duration_ms`.
+- Workflow runs count in `runs` and in `duration_ms`, from when the run started to when the workflow ended.
+- A percentile is the nearest rank: the duration at place ⌈p × n⌉ of the n durations in order.
+
+The result comes from a table the runtime updates as each run is recorded, so it is as current as the runs themselves. A playbook that does not exist returns `not_found`; a retired playbook works like any other.
 
 ## Tool servers
 
-Five operations find and call the tools of the tool servers the operator of a self-hosted runtime set up for a playbook, MCP servers and HTTP APIs described by an OpenAPI document alike, which a [reasoning function](reasoning-format.md#tools) names in `tools` as `server/tool` or `server/*`. These routes are relative to `/v1/orgs/{org}`. `search` at the org needs `org:read` or `playbook:read`; `search`, `introspect`, `validate` and `dry_run` at a playbook need `playbook:read`; `execute` needs `playbook:write` for every tool, since a call acts as the playbook, under the credential of the server's entry:
+Five operations find and call the tools of the tool servers the operator set up for a playbook: MCP servers, and HTTP APIs described by an OpenAPI document. A [reasoning function](reasoning-format.md#tools) names their tools in `tools` as `server/tool` or `server/*`. These routes are relative to `/v1/orgs/{org}`:
 
-| Operation    | Method and route                                                         | Input                                                      |
-| ------------ | ------------------------------------------------------------------------ | ---------------------------------------------------------- |
-| `search`     | `GET /tool-servers/search`                                               | Optional `playbook`, `terms`, `server` and `only`          |
-| `search`     | `GET /playbooks/{playbook}/tool-servers/search`                          | Playbook id in path; optional `terms`, `server` and `only` |
-| `introspect` | `GET /playbooks/{playbook}/tool-servers/{server}/tools/{tool}`           | Server and tool in the path                                |
-| `validate`   | `POST /playbooks/{playbook}/tool-servers/{server}/tools/{tool}/validate` | Server and tool in the path; `arguments` in the body       |
-| `dry_run`    | `POST /playbooks/{playbook}/tool-servers/{server}/tools/{tool}/dry-run`  | Server and tool in the path; optional `arguments`          |
-| `execute`    | `POST /playbooks/{playbook}/tool-servers/{server}/tools/{tool}/execute`  | Server and tool in the path; optional `arguments`          |
+| Operation    | Method and route                                                         | Permission                    | Input                                                      |
+| ------------ | ------------------------------------------------------------------------ | ----------------------------- | ---------------------------------------------------------- |
+| `search`     | `GET /tool-servers/search`                                               | `org:read` or `playbook:read` | Optional `playbook`, `terms`, `server` and `only`          |
+| `search`     | `GET /playbooks/{playbook}/tool-servers/search`                          | `playbook:read`               | Playbook id in path; optional `terms`, `server` and `only` |
+| `introspect` | `GET /playbooks/{playbook}/tool-servers/{server}/tools/{tool}`           | `playbook:read`               | Server and tool in the path                                |
+| `validate`   | `POST /playbooks/{playbook}/tool-servers/{server}/tools/{tool}/validate` | `playbook:read`               | Server and tool in the path; `arguments` in the body       |
+| `dry_run`    | `POST /playbooks/{playbook}/tool-servers/{server}/tools/{tool}/dry-run`  | `playbook:read`               | Server and tool in the path; optional `arguments`          |
+| `execute`    | `POST /playbooks/{playbook}/tool-servers/{server}/tools/{tool}/execute`  | `playbook:write`              | Server and tool in the path; optional `arguments`          |
 
-`validate` and `dry_run` are routed by `POST` because their `arguments` are an object a query string cannot carry; they are reads all the same, which change nothing, call no tool and need only `playbook:read`, and a query string beside their body returns `bad_request`. The four reads ask each server they need for its tools when you call them, as a run does, within the same time to connect and to list, and record nothing; an HTTP API is asked nothing, since its document is the list. At a playbook, a playbook that does not exist returns `not_found`; a retired playbook answers the reads like any other, and refuses `execute` with `conflict`, kind `retired`, as every command.
+- `execute` needs `playbook:write` for every tool, since a call acts as the playbook, under the credential of the server's entry.
+- `validate` and `dry_run` are routed by `POST` because their `arguments` are an object a query string cannot carry. They are still reads: they change nothing, call no tool and need only `playbook:read`. A query string beside their body returns `bad_request`.
+- The four reads ask each server they need for its tool list when you call them, as a run does, with the same time limits to connect and to list. They record nothing. An HTTP API is not asked, since its OpenAPI document is the list.
+- On a playbook route, a playbook that does not exist returns `not_found`. A retired playbook serves the reads like any other. It refuses `execute` with `conflict` of the kind `retired`, as it refuses every command.
 
 ### Searching the tools
 
-`search` answers the servers set up for the playbook and the tools of each that the operator allows. Without `terms` it lists every tool while the servers offer at most 100 together, in the order of the servers and of each server's own list; with more, it answers the servers alone, each with its count of tools, so search them by `terms`. `terms` is up to 8 words of up to 64 characters, separated by spaces: each word, and each part of it split at `_`, `.`, `-` and case changes, counts 3 where it is a word of a tool's name split the same way, 2 where it is a word of the name of one of the tool's arguments, and 1 where it is a word of its description, whatever its case; the tools with a score come best first, those of one score by name and then by server, at most 100. `only: read` keeps the tools their server marks read-only, `only: write` the others. `server` keeps the server of that name and asks no other; a name no server of the playbook has returns `invalid_input` at `/server`.
+`search` returns the servers set up for the playbook, and the tools of each that the operator allows.
+
+- Without `terms`, it lists every tool when the servers offer at most 100 in total, in the order of the servers and of each server's own list. When they offer more, it returns only the servers, each with its count of tools; search them with `terms`.
+- `terms` is up to 8 words of up to 64 characters each, separated by spaces. Tools with a score come best first, those with the same score by name and then by server, at most 100.
+- `only: read` keeps the tools their server marks read-only, and `only: write` the others.
+- `server` keeps the server of that name and asks no other. A name no server of the playbook has returns `invalid_input` at `/server`.
+
+Each word of `terms`, and each part of it split at `_`, `.`, `-` and case changes, scores in any letter case:
+
+| Where the word appears                            | Score |
+| ------------------------------------------------- | ----- |
+| A word of the tool's name, split the same way     | 3     |
+| A word of the name of one of the tool's arguments | 2     |
+| A word of the tool's description                  | 1     |
 
 ```http
 GET /v1/orgs/acme/playbooks/sales/tool-servers/search?terms=invoice
@@ -357,23 +874,56 @@ Authorization: Bearer <key>
 }
 ```
 
-| Field         | Contents                                                                                                                                                                                                                                                                                                                                 |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `servers`     | The servers searched, sorted by name, each with its `name`, which a function writes before the slash, its `type`, `mcp` for a remote MCP server, `stdio` for an MCP server the runtime starts as a process or `openapi` for an HTTP API described by an OpenAPI document, and `record_content`, whether the content of its calls is kept |
-| `tool_count`  | How many tools of the server the operator allows, of those `only` keeps                                                                                                                                                                                                                                                                  |
-| `unavailable` | In place of `tool_count`, why the server could not be asked for its tools, in words cut to 1 KiB; the other servers are searched beside it                                                                                                                                                                                               |
-| `because`     | With `unavailable`: `key_refused` when the server did not accept the key the runtime gives it, which only the operator can put right; `failing`, `rate_limited` or `unreachable` when asking again later may work                                                                                                                        |
-| `tools`       | The tools found, each with its `server`, its name as `tool`, its `summary`, the first sentence of its description cut at 300 characters, and `read_only`, whether its server marks it read-only                                                                                                                                          |
-| `scopes`      | The names of the servers searched                                                                                                                                                                                                                                                                                                        |
-| `playbooks`   | At the org only, on each server: the playbooks of the org whose functions may use it, or `["*"]` for every playbook of the org                                                                                                                                                                                                           |
+| Field     | Contents                             |
+| --------- | ------------------------------------ |
+| `servers` | The servers searched, sorted by name |
+| `tools`   | The tools found                      |
+| `scopes`  | The names of the servers searched    |
 
-A server set up for another org, or for other playbooks of the org, is neither searched nor asked. The runtime adds no header, environment value, address, command or credential of a server to the answer. What a server writes, such as its tools' names, descriptions and schemas, is passed on with the values of the operator's `${...}` references and the tokens minted for a server scrubbed out; a referenced value shorter than 8 characters is not scrubbed.
+Each server has these fields:
 
-At the org, `search` answers for the org's playbooks, so you can see what the operator set up before a playbook exists or without naming one. It searches every server set up for the org, each with `playbooks`; `playbook` keeps the servers that serve that playbook, as the playbook's own route searches them, `playbooks` included. A key limited to some playbooks must give `playbook`, and sees in `playbooks` only the playbooks it may access; without `playbook` it is refused with `forbidden`, whose detail says to name one of its playbooks in `playbook`. A `playbook` the org does not have returns `not_found`, as the playbook's own route does, and no server is asked. A `server` that no server of the org, or of the playbook given, has returns `invalid_input` at `/server`.
+| Field            | Contents                                                                                                                                                                                                    |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`           | The name a function writes before the slash                                                                                                                                                                 |
+| `type`           | `mcp` for a remote MCP server, `stdio` for an MCP server the runtime starts as a process, or `openapi` for an HTTP API described by an OpenAPI document                                                     |
+| `record_content` | Whether the content of its calls is kept                                                                                                                                                                    |
+| `tool_count`     | How many tools of the server the operator allows, of those `only` keeps                                                                                                                                     |
+| `unavailable`    | Instead of `tool_count`: why the server could not be asked for its tools, in words cut to 1 KiB. The other servers are still searched                                                                       |
+| `because`        | With `unavailable`: `key_refused` when the server did not accept the key the runtime gives it, which only the operator can fix; `failing`, `rate_limited` or `unreachable` when asking again later may work |
+| `playbooks`      | On the org route only: the playbooks of the org whose functions may use it, or `["*"]` for every playbook of the org                                                                                        |
+
+Each tool has these fields:
+
+| Field       | Contents                                                     |
+| ----------- | ------------------------------------------------------------ |
+| `server`    | The server's name                                            |
+| `tool`      | The tool's name                                              |
+| `summary`   | The first sentence of its description, cut at 300 characters |
+| `read_only` | Whether its server marks it read-only                        |
+
+What the result never contains:
+
+- A server set up for another org, or for other playbooks of the org, is neither searched nor asked.
+- The runtime adds no header, environment value, address, command or credential of a server to the result.
+- What a server returns, such as its tools' names, descriptions and schemas, is passed on with two kinds of value scrubbed out. They are the values of the operator's `${...}` references and the tokens minted for a server. A referenced value shorter than 8 characters is not scrubbed.
+
+On the org route, `search` covers the org's playbooks. So you can see what the operator set up before a playbook exists, or without naming one:
+
+- Without `playbook`, it searches every server set up for the org, each with `playbooks`.
+- With `playbook`, it returns only the servers that serve that playbook, as the playbook's own route does, with `playbooks` included.
+- A key limited to some playbooks must pass `playbook`, and sees in `playbooks` only the playbooks it may access. Without `playbook` it is refused with `forbidden`, whose detail says to name one of its playbooks in `playbook`.
+- A `playbook` the org does not have returns `not_found`, as the playbook's own route does, and no server is asked.
+- A `server` that no server of the org, or of the playbook given, has returns `invalid_input` at `/server`.
 
 ### Reading one tool
 
-`introspect` answers one tool whole, as its server lists it: its `description`, cut to 4 KiB, its `input_schema`, the JSON Schema of the arguments it takes, and the hints its server gives it as `annotations`, `readOnlyHint`, `destructiveHint`, `idempotentHint` and `openWorldHint`, left out where it gives none. A tool of an HTTP API takes one object, each path and query parameter by its name and `body` for a JSON body, with the schemas of the document's `components` it refers to held under `$defs`.
+`introspect` returns one tool in full, as its server lists it:
+
+- its `description`, cut to 4 KiB;
+- its `input_schema`, the JSON Schema of the arguments it takes;
+- its `annotations`, the hints its server gives it (`readOnlyHint`, `destructiveHint`, `idempotentHint` and `openWorldHint`), left out when the server gives none.
+
+A tool of an HTTP API takes one object: each path and query parameter by its name, and `body` for a JSON body. The schemas from the document's `components` that it refers to are placed under `$defs`.
 
 ```http
 GET /v1/orgs/acme/playbooks/sales/tool-servers/billing/tools/getInvoice
@@ -395,7 +945,7 @@ Authorization: Bearer <key>
 }
 ```
 
-`validate` checks `arguments`, at most 16 KiB as JSON, against the tool's input schema and answers `valid`, `true` or `false`, and `issues`, each with the JSON Pointer of the argument at fault as `path` and what is wrong there as `message`, at most 20 and then one saying how many more there are. A schema this runtime's checker cannot take, such as one with a regular expression, answers `valid: null` with one issue saying why; the arguments may still be right.
+`validate` checks `arguments`, at most 16 KiB as JSON, against the tool's input schema. It returns `valid` (`true` or `false`) and `issues`. Each issue has the JSON Pointer of the argument at fault as `path`, and what is wrong there as `message`. It lists at most 20 issues, then one saying how many more there are. For a schema the runtime's checker cannot handle, such as one with a regular expression, it returns `valid: null` with one issue saying why; the arguments may still be right.
 
 ```http
 POST /v1/orgs/acme/playbooks/sales/tool-servers/billing/tools/getInvoice/validate
@@ -409,26 +959,35 @@ Content-Type: application/json
 { "valid": false, "issues": [{ "path": "/id", "message": "Expected string" }] }
 ```
 
-`dry_run` answers what `execute` would check for the tool and its `arguments`, without calling the tool:
+`dry_run` reports what `execute` would check for the tool and its `arguments`, without calling the tool:
 
 | Field              | Contents                                                                                                                                                             |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `would_run`        | Whether `execute` would call the tool now: the caller may, the playbook is not retired, the operator allows the tool, and its server answered                        |
+| `would_run`        | Whether `execute` would call the tool now: the caller may, the playbook is not retired, the operator allows the tool, and its server responded                       |
 | `needs`            | `playbook:write`, the permission `execute` needs whatever the tool does                                                                                              |
-| `caller_may`       | Whether the caller holds it                                                                                                                                          |
+| `caller_may`       | Whether the caller has that permission                                                                                                                               |
 | `playbook_retired` | Whether the playbook is retired, which `execute` refuses, since a retired playbook can no longer change                                                              |
 | `allowed`          | Whether the operator allows the tool on its server's entry, for runs and for `execute` alike                                                                         |
 | `read_only`        | Whether the server marks the tool read-only; `null` when the tool's listing was not read, for a tool the operator does not allow or a server that could not be asked |
-| `arguments`        | The `arguments` checked as `validate` checks them, `valid: null` with one issue saying why where the tool's input schema was not read; `null` when none were given   |
-| `server`           | `reachable`, `yes` or `no`, and with `no` the `because` of a server that could not be asked                                                                          |
+| `arguments`        | The `arguments` checked as `validate` checks them, `valid: null` with one issue saying why when the tool's input schema was not read; `null` when none were given    |
+| `server`           | `reachable` (`yes` or `no`) and, with `no`, the `because` field that says why the server could not be asked                                                          |
 
-`dry_run` answers `would_run: true` for arguments the tool's schema does not take, since `execute` checks no arguments and the tool answers an error of its own for them; `arguments` says so beforehand.
+`dry_run` returns `would_run: true` even for arguments the tool's schema does not accept. `execute` does not check arguments, and the tool returns its own error for them. The `arguments` field reports the problem beforehand.
 
-`introspect`, `validate` and `dry_run` refuse a server not set up for the playbook, and `introspect` and `validate` a tool the operator does not allow, with `unavailable`, kind `tool_not_offered` and `because: "tool_server_not_configured"` or `"tool_not_allowed"`, before any server is asked; a tool the server does not list returns the same kind with `tool_not_listed`, and a server that cannot be asked returns `unavailable` with kind `tool_server_failed` and its `because`, as `execute` does.
+When a server or a tool cannot be used, the reads respond as below. Each refusal is `unavailable`, and no tool is called:
+
+| Case                                 | `introspect` and `validate`                                                                  | `dry_run`                                            |
+| ------------------------------------ | -------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| A server not set up for the playbook | Kind `tool_not_offered`, `because: "tool_server_not_configured"`, before any server is asked | The same                                             |
+| A tool the operator does not allow   | Kind `tool_not_offered`, `because: "tool_not_allowed"`, before any server is asked           | Returns `allowed: false`                             |
+| A tool the server does not list      | Kind `tool_not_offered`, `because: "tool_not_listed"`                                        | The same                                             |
+| A server that cannot be asked        | Kind `tool_server_failed`, with its `because`, as `execute` returns it                       | Returns `server.reachable: "no"`, with its `because` |
 
 ### Calling a tool by hand
 
-`execute` calls one tool of one tool server with the `arguments` given, as a run of a reasoning function would call it, and answers what that run's model would see and the document an interaction function's call reads, so you learn what a tool answers before a function names it, find an id a prompt needs, or do what the person asked of the tool, without making a function to look. `arguments` is the object the tool's `input_schema` takes, `{}` when left out, and may take at most 16 KiB as JSON; more returns `invalid_input` at `/arguments` before anything is called.
+`execute` calls one tool of one tool server with the `arguments` given, as a run of a reasoning function would call it. It returns what that run's model would see, and the document an interaction function's call reads. Use it to see what a tool returns before a function names it, or to find an id a prompt needs. Use it, too, to do what the person asked of the tool without first creating a function.
+
+`arguments` is the object the tool's `input_schema` takes, `{}` when left out. It may be at most 16 KiB as JSON; larger arguments return `invalid_input` at `/arguments` before anything is called.
 
 ```http
 POST /v1/orgs/acme/playbooks/sales/tool-servers/billing/tools/getInvoice/execute
@@ -452,26 +1011,49 @@ Content-Type: application/json
 }
 ```
 
-| Field               | Contents                                                                                                                                                                                                                                                                                   |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `call_id`           | The id of the call, a UUID, under which its two events are recorded                                                                                                                                                                                                                        |
-| `outcome`           | `result`; `tool_error` when the tool answered an error or refused the arguments, which a run's model may recover from; `server_failure` when the server failed on the call; `timed_out` when it did not answer within 30 seconds; `too_large` when it answered more than one call may take |
-| `text`              | What a reasoning function's model would see: text content as text, structured content as JSON only when there is no text, other content as a placeholder, scrubbed of the server's secrets and cut at 64 KiB with a note; for a failure, the words the model gets                          |
-| `answer`            | The document a call's `read` points into: the structured content, else the first text block parsed as JSON, else that text, scrubbed of the server's secrets; absent when the tool answered neither, and when it takes more than 64 KiB as JSON                                            |
-| `result_bytes`      | The size of the whole result as the playbook keeps it, scrubbed of the server's secrets, before the cut; `null` when there is none                                                                                                                                                         |
-| `duration_ms`       | How long the call took                                                                                                                                                                                                                                                                     |
-| `server_request_id` | The server's own id of the request, where the operator's `request_id` says where it carries one                                                                                                                                                                                            |
-| `called_at`         | When the call was made, in ISO 8601 UTC                                                                                                                                                                                                                                                    |
+| Field               | Contents                                                                                                                                                                                                                                                          |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `call_id`           | The id of the call, a UUID, under which its two events are recorded                                                                                                                                                                                               |
+| `outcome`           | How the call ended, from the table below                                                                                                                                                                                                                          |
+| `text`              | What a reasoning function's model would see, scrubbed of the server's secrets and cut at 64 KiB with a note. Text content is text; structured content is JSON only when there is no text; other content is a placeholder. For a failure, the words the model gets |
+| `answer`            | The document a call's `read` points into, scrubbed of the server's secrets: the structured content, else the first text block parsed as JSON, else that text. Absent when the tool returned neither, or when it is larger than 64 KiB as JSON                     |
+| `result_bytes`      | The size of the whole result as the playbook keeps it, scrubbed of the server's secrets, before the cut; `null` when there is none                                                                                                                                |
+| `duration_ms`       | How long the call took                                                                                                                                                                                                                                            |
+| `server_request_id` | The server's own id of the request, when the operator's `request_id` setting says where the server carries one                                                                                                                                                    |
+| `called_at`         | When the call was made, in ISO 8601 UTC                                                                                                                                                                                                                           |
 
-The answer is `200` whenever the call was made, however the tool answered. A tool the operator does not allow, a server not set up for the playbook and a tool the server does not list return `unavailable` with kind `tool_not_offered` and `tool_not_allowed`, `tool_server_not_configured` or `tool_not_listed`, and a server that cannot be used returns `unavailable` with kind `tool_server_failed`; nothing is called. A call is live: a tool its server does not mark read-only may change something, which is why `execute` is marked destructive over MCP while a tool server is configured.
+| `outcome`        | Means                                                                                    |
+| ---------------- | ---------------------------------------------------------------------------------------- |
+| `result`         | The tool returned a result                                                               |
+| `tool_error`     | The tool returned an error or refused the arguments; a run's model may recover from this |
+| `server_failure` | The server failed on the call                                                            |
+| `timed_out`      | The server did not respond within 30 seconds                                             |
+| `too_large`      | The tool's result was larger than one call may return                                    |
 
-Each call is recorded in the playbook's history, before it is sent, as `tool_call_started`, and after as `tool_call_answered` or `tool_call_failed`, the facts of a run's tool calls with the caller who made it as who acted, on a stream of its own and with no run, so `list_runs` and `get_run_history` never show it while `list_playbook_events` does, with the arguments and the answer kept unless the operator turns `record_content` off for the server. A caller that goes away during the call leaves a start without an answer. Each call of a server no run holds opens a connection and lets it go once the call has answered.
+The response is `200` whenever the call was made, whatever the tool returned. Nothing is called when:
+
+- the operator does not allow the tool, the server is not set up for the playbook, or the server does not list the tool: `unavailable` with kind `tool_not_offered` and `because` set to `tool_not_allowed`, `tool_server_not_configured` or `tool_not_listed`;
+- the server cannot be used: `unavailable` with kind `tool_server_failed`.
+
+A call is live: a tool its server does not mark read-only may change something. That is why `execute` is marked destructive over MCP while a tool server is configured.
+
+Each call is recorded in the playbook's history: as `tool_call_started` before it is sent, and as `tool_call_answered` or `tool_call_failed` after. These are the same facts a run's tool calls record, with the caller who made the call as the one who acted.
+
+- The call is recorded on a stream of its own, with no run. `list_runs` and `get_run_history` never show it, while `list_playbook_events` does.
+- The arguments and the result are kept unless the operator turns `record_content` off for the server.
+- A caller that disconnects during the call leaves a start without an answer.
+- When no run holds a connection to the server, each call opens one and closes it once the call ends.
 
 ## Responses and errors
 
-Successful responses of the operations contain JSON with `Cache-Control: no-store`. Create operations return 201; other successful operations generally return 200.
+A successful operation responds with JSON and `Cache-Control: no-store`. The create operations, `create_playbook` and `create_definition`, return `201`; other successful operations return `200`.
 
-API errors use RFC 9457 problem documents with `Content-Type: application/problem+json`. Inspect `reason` and `detail`; `invalid_input` includes an `errors` list of JSON pointers. A rejection that has a `kind` carries it, and an `unavailable` or `conflict` one its `because`. A run that called tools and could not finish ends `unavailable` with the kind `tools_unfinished` when every tool it called is one its server marks read-only, so running it again is safe, and `conflict` with the kind `effect_unknown` when any is not, since whether that tool changed something is not known; either way a request with the same run id answers `conflict` with the kind `tools_called`, with the `because` `only_read`, and words that say nothing was changed, when every tool the run called only reads. `Retry-After` comes only with an `unavailable` answer that a retry of the same request may resolve, never with `tools_unfinished`, `tool_not_offered` or `model_not_offered`, never with the `because` `builds_of_the_day`, `stalled` or `not_finite`, which no wait resolves, and never with `cancelled`. A `conflict` may have the kind `oversized`, for a workflow whose output is larger than a run records.
+An error is an RFC 9457 problem document, with `Content-Type: application/problem+json`. Inspect its `reason` and `detail`:
+
+- `invalid_input` includes an `errors` list of JSON pointers.
+- A rejection that has a `kind` carries it.
+- An `unavailable` or `conflict` rejection that has a `because` carries it.
+- A `conflict` may have the kind `oversized`, for a workflow whose output is larger than a run can record.
 
 | Status | Common reason                              |
 | ------ | ------------------------------------------ |
@@ -491,29 +1073,55 @@ API errors use RFC 9457 problem documents with `Content-Type: application/proble
 
 A problem document's `type` is a URI that names its kind of problem:
 
-| Type                                              | Status | Means                                                                                                                                                                                 |
-| ------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `https://on.auto/problems/bad_request`            | 400    | The request is malformed, such as a field given twice or a body that is not a JSON object                                                                                             |
-| `https://on.auto/problems/unauthenticated`        | 401    | Credentials are missing or invalid                                                                                                                                                    |
-| `https://on.auto/problems/forbidden`              | 403    | The credentials may not do that                                                                                                                                                       |
-| `https://on.auto/problems/origin_not_allowed`     | 403    | A browser sent the request from an origin the server does not allow                                                                                                                   |
-| `https://on.auto/problems/not_found`              | 404    | Something the request names does not exist                                                                                                                                            |
-| `https://on.auto/problems/method_not_allowed`     | 405    | The path does not take that method                                                                                                                                                    |
-| `https://on.auto/problems/conflict`               | 409    | The request clashes with what is there                                                                                                                                                |
-| `https://on.auto/problems/tools_called`           | 409    | A run that may have called tools is not run again under its id; its `reason` is `conflict`                                                                                            |
-| `https://on.auto/problems/effect_unknown`         | 409    | A run called a tool that may change something and could not finish, so whether it did is not known; its `reason` is `conflict`, and a person or a workflow rule that names it decides |
-| `https://on.auto/problems/cancelled`              | 409    | The run was cancelled, with the `kind` of its cancellation; its `reason` is `cancelled`                                                                                               |
-| `https://on.auto/problems/unanswered`             | 410    | Nobody answered the request a run waited on, of an interaction function or a prediction function's build, with the `kind` `expired` or `undelivered`                                  |
-| `https://on.auto/problems/length_required`        | 411    | A body a route streams, a dataset or a candidate, was sent without its `Content-Length`                                                                                               |
-| `https://on.auto/problems/content_too_large`      | 413    | The body is larger than the operation takes: 1,048,576 bytes of JSON, or the 64 MiB of a dataset or a candidate, whose `Content-Length` is refused before the body is read            |
-| `https://on.auto/problems/unsupported_media_type` | 415    | The body is not sent as the media type the operation takes, `application/json` in UTF-8 unless the route says otherwise, or is sent compressed                                        |
-| `https://on.auto/problems/invalid_input`          | 422    | The input does not fit, with the `errors` that point at it                                                                                                                            |
-| `https://on.auto/problems/client_closed_request`  | 499    | The client went away before the answer                                                                                                                                                |
-| `https://on.auto/problems/internal`               | 500    | Something went wrong inside the server                                                                                                                                                |
-| `https://on.auto/problems/unavailable`            | 503    | Something the server relies on cannot serve now                                                                                                                                       |
-| `https://on.auto/problems/tools_unfinished`       | 503    | A run called tools that only read and could not finish; its `reason` is `unavailable`, and a new run may make it                                                                      |
-| `https://on.auto/problems/rebuilding`             | 503    | The view of a recall function is still being built; its `reason` is `unavailable`; try again later                                                                                    |
+| Type                                              | Status | Means                                                                                                                                                                                                                            |
+| ------------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `https://on.auto/problems/bad_request`            | 400    | The request is malformed, such as a field given twice or a body that is not a JSON object                                                                                                                                        |
+| `https://on.auto/problems/unauthenticated`        | 401    | Credentials are missing or invalid                                                                                                                                                                                               |
+| `https://on.auto/problems/forbidden`              | 403    | The credentials may not do that                                                                                                                                                                                                  |
+| `https://on.auto/problems/origin_not_allowed`     | 403    | A browser sent the request from an origin the server does not allow                                                                                                                                                              |
+| `https://on.auto/problems/not_found`              | 404    | Something the request names does not exist                                                                                                                                                                                       |
+| `https://on.auto/problems/method_not_allowed`     | 405    | The path does not take that method                                                                                                                                                                                               |
+| `https://on.auto/problems/conflict`               | 409    | The request clashes with what is there                                                                                                                                                                                           |
+| `https://on.auto/problems/tools_called`           | 409    | A run that may have called tools is not run again under its id; its `reason` is `conflict`. When every tool the run called only reads, it has `because: "only_read"`, and its words say nothing was changed                      |
+| `https://on.auto/problems/effect_unknown`         | 409    | A run called a tool its server does not mark read-only, and could not finish. Whether the tool changed something is not known. Its `reason` is `conflict`; a person, or a workflow rule that names it, decides what happens next |
+| `https://on.auto/problems/cancelled`              | 409    | The run was cancelled, with the `kind` of its cancellation; its `reason` is `cancelled`                                                                                                                                          |
+| `https://on.auto/problems/unanswered`             | 410    | Nobody answered the request a run waited on, of an interaction function or a prediction function's build, with the `kind` `expired` or `undelivered`                                                                             |
+| `https://on.auto/problems/length_required`        | 411    | A body a route streams, a dataset or a candidate, was sent without its `Content-Length`                                                                                                                                          |
+| `https://on.auto/problems/content_too_large`      | 413    | The body is larger than the operation accepts: 1,048,576 bytes of JSON, or 64 MiB for a dataset or a candidate. Their `Content-Length` is refused before the body is read                                                        |
+| `https://on.auto/problems/unsupported_media_type` | 415    | The body is not sent as the media type the operation accepts, `application/json` in UTF-8 unless the route says otherwise, or is sent compressed                                                                                 |
+| `https://on.auto/problems/invalid_input`          | 422    | The input does not fit, with the `errors` that point at it                                                                                                                                                                       |
+| `https://on.auto/problems/client_closed_request`  | 499    | The client disconnected before the response                                                                                                                                                                                      |
+| `https://on.auto/problems/internal`               | 500    | Something went wrong inside the server                                                                                                                                                                                           |
+| `https://on.auto/problems/unavailable`            | 503    | Something the server relies on cannot serve now                                                                                                                                                                                  |
+| `https://on.auto/problems/tools_unfinished`       | 503    | A run called only tools their servers mark read-only, and could not finish; its `reason` is `unavailable`, and running it again under a new id is safe                                                                           |
+| `https://on.auto/problems/rebuilding`             | 503    | The view of a recall function is still being built; its `reason` is `unavailable`; try again later                                                                                                                               |
 
-A 500 response contains an incident reference. Its `instance` and the `x-request-id` response header identify the server log entry. Include that reference when reporting a problem, without sharing credentials or confidential input. Malformed HTTP can return a bare status before the API handles it.
+[When a tool-calling run cannot finish](reasoning-format.md#when-a-tool-calling-run-cannot-finish) explains when a run ends as `tools_unfinished` or `effect_unknown`. [Retrying under a run id](#retrying-under-a-run-id) says when a request returns `tools_called`.
 
-A function naming a model outside the deployment's allow list returns `unavailable` with kind `model_not_offered` and `because: "model_not_allowed"`, before calling the provider. A missing provider can return the same kind with `because: "provider_not_configured"`. Use `list_models` to inspect the offered references. A function naming a tool the playbook's servers do not offer returns `unavailable` with kind `tool_not_offered`; use `search` to see the servers and tools it may name. `introspect`, `validate`, `dry_run` and `execute` answer with the same kind for a tool the playbook is not offered.
+Inside a workflow, two rejections of a run the workflow called differ from their HTTP form:
+
+- `invalid_input` is status 422 over HTTP, but a workflow raises it as a `validation` error of status 400. A `catch` for it matches status 400 or the `validation` type, never 422.
+- A cancellation of a called run that the workflow does not catch rejects the workflow as `invalid_input`, not as `cancelled`, since the workflow itself was not cancelled.
+
+[When the function's run does not succeed](workflow-format.md#when-the-function-s-run-does-not-succeed) has the full table of what a workflow `catch` sees.
+
+A `500` response contains an incident reference: its `instance` and the `x-request-id` response header identify the server log entry. Include that reference when reporting a problem, without sharing credentials or confidential input. A malformed HTTP request can get a bare status before the API handles it.
+
+### When to retry
+
+`Retry-After` comes only with an `unavailable` response that a retry of the same request may resolve. It never comes:
+
+- with the kinds `tools_unfinished`, `tool_not_offered` or `model_not_offered`;
+- with `because` set to `builds_of_the_day`, `stalled` or `not_finite`, which no wait resolves;
+- with `cancelled`.
+
+### Models and tools a function may not use
+
+| Case                                                                                      | Response                                                                                                      |
+| ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| A function names a model outside the deployment's allow list                              | `unavailable` with kind `model_not_offered` and `because: "model_not_allowed"`, before the provider is called |
+| A function names a model whose provider is missing                                        | `unavailable` with kind `model_not_offered` and `because: "provider_not_configured"`                          |
+| A function names a tool the playbook's servers do not offer                               | `unavailable` with kind `tool_not_offered`                                                                    |
+| `introspect`, `validate`, `dry_run` or `execute` names a tool the playbook is not offered | `unavailable` with kind `tool_not_offered`                                                                    |
+
+Use `list_models` to see the model references the server offers, and `search` to see the servers and tools a function may name.

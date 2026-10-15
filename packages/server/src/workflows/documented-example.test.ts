@@ -1,20 +1,19 @@
 import { answers, textResult } from '@on.auto/reasoning/testing';
+import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import { blocksInOrderOf } from '../testing/servers/tutorial-calls.ts';
+import { blocksInOrderOf, fencedBlocksOf } from '../testing/servers/tutorial-calls.ts';
+import { until } from '../testing/servers/workflow-calls.ts';
 import { runIdIn, servingWorkflows, settledRun, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
-const [reviewAndApprove] = blocksInOrderOf('reference/workflow-format.md').map(({ body }) => body);
+const [reviewAndApprove, reviewCampaignBrief, approveCampaignBrief] = blocksInOrderOf(
+  'reference/workflow-format.md',
+).map(({ body }) => body);
 
-const reviewCampaignBrief = [
-  '---',
-  'model: anthropic/claude-sonnet-4-5',
-  'input:',
-  '  schema: {type: object, properties: {brief: {type: string}}, required: [brief]}',
-  '---',
-  'Review this brief against the four criteria: {{ input.brief }}',
-].join('\n');
+const decodeListed = Schema.decodeUnknownSync(
+  Schema.Struct({ interactions: Schema.Array(Schema.Struct({ run_id: Schema.String })) }),
+);
 
 let server: ReasoningServer;
 
@@ -23,27 +22,33 @@ afterEach(async () => {
 });
 
 describe('the example of the workflow format, through the server', { timeout: workflowTestTimeoutMs }, () => {
-  it('reviews the brief, waits for the decision, and ends approved with the review', async () => {
-    server = await servingWorkflows([answers(textResult('Approve: the brief names its audience.'))]);
+  it('saves the functions the page shows, reviews the brief, asks its owner through the inbox, and ends with the review and the approval', async () => {
+    server = await servingWorkflows([answers(textResult('Revise: the audience lacks a job role.'))]);
     await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
     await server.call('POST', `${alpha}/definitions/reasoning`, {
       body: { name: 'review-campaign-brief', source: reviewCampaignBrief },
+    });
+    await server.call('POST', `${alpha}/definitions/interaction`, {
+      body: { name: 'approve-campaign-brief', source: approveCampaignBrief },
     });
 
     const created = await server.call('POST', `${alpha}/definitions/workflow`, {
       body: { name: 'review-and-approve', source: reviewAndApprove },
     });
     const started = await server.call('POST', `${alpha}/definitions/workflow/review-and-approve/run`, {
-      body: { input: { brief: 'Spring sale for returning customers.' } },
+      body: { input: { brief: 'Spring sale for returning customers.', owner: 'ada@example.com' } },
     });
-    const runId = runIdIn(started.body);
-    await server.call('POST', `${alpha}/runs/${runId}/events`, {
-      body: { event: { type: 'com.example.brief.decided', data: { approved: true } } },
-    });
+    const [request] = await until(
+      async () => decodeListed((await server.call('GET', `${alpha}/interactions`)).body).interactions,
+      (interactions) => interactions.length > 0,
+    );
+    const approval = { verdict: 'approve', note: 'Approved for the spring sale.' };
+    await server.call('POST', `${alpha}/runs/${String(request?.run_id)}/answer`, { body: { answer: approval } });
 
+    expect(approveCampaignBrief).toBe(fencedBlocksOf('tutorials/first-workflow.md').get('markdown'));
     expect(created.status).toBe(201);
-    expect(await settledRun(server, `${alpha}/runs/${runId}`)).toMatchObject({
-      body: { status: 'succeeded', output: { approved: true, review: 'Approve: the brief names its audience.' } },
+    expect(await settledRun(server, `${alpha}/runs/${runIdIn(started.body)}`)).toMatchObject({
+      body: { status: 'succeeded', output: { review: 'Revise: the audience lacks a job role.', approval } },
     });
   });
 });

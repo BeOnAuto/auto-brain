@@ -2,39 +2,37 @@
 
 # Build your first workflow
 
-Turn the campaign review from [Build your first playbook](first-playbook.md) into a workflow. It reviews a brief, then asks the campaign's owner to approve it, and waits for the answer. You will save an interaction function that asks for the approval, save the workflow, start a run, find its request in the playbook's inbox, answer it, and read the finished run.
+In this tutorial you turn the brief review from [Build your first playbook](first-playbook.md) into a small process: Auto reviews a brief, asks the brief's owner to approve it, waits for the answer and records both. A process like this is called a workflow. As before, everything you do is a message to your agent.
 
-The campaign and figures below are sample data. This exercise makes no changes to advertising accounts or campaign budgets.
+The campaign and figures below are sample data. Nothing here touches an advertising account or a budget.
+
+You describe each part in plain words, and your agent writes the definition behind it. You never need to read or edit those definitions: your agent explains each one before it saves it. If you are curious, this page shows what your agent writes in collapsed sections.
 
 ## Before you start
 
-Complete [Build your first playbook](first-playbook.md) first. This exercise uses its practice playbook, `campaign-review-tutorial`, and its reasoning function, `review-campaign-brief`, which takes one required input, `brief`.
+Finish [Build your first playbook](first-playbook.md) first. This tutorial uses its "Campaign review tutorial" playbook and its "Review campaign brief" function. Leave Auto running.
 
-Your agent needs a connection with permission to create and run definitions in that playbook. Every runtime offers workflows. The approval is an interaction function, which a self-hosted runtime offers, such as the one [Connect your agent](../get-started/local.md) starts; the first check below shows whether your connection offers it.
+## 1. Check the review function
 
-## 1. Check the tools
+Send your agent this message:
 
-Ask your connected agent:
+> In my "Campaign review tutorial" playbook, show me the "Review campaign brief" function and what it needs as input. Don't change it.
 
-> List the Auto tools you can call. Tell me whether `list_interactions` and `answer_interaction` are among them, and which values the `type` field of `create_definition` accepts.
+Your agent should show the function, saved under a name like `review-campaign-brief`, and say that it needs one input: the brief. If the function is missing, do the first tutorial again.
 
-The agent should report `list_interactions` and `answer_interaction` among the tools, and `reasoning`, `interaction` and `workflow` among the accepted values of `type`, the types of reasoning functions, interaction functions and workflows. The tools also include `send_run_event`, which sends a waiting run an event that is not the answer to a question.
+## 2. Save the approval question
 
-If neither `create_definition` nor `list_interactions` is listed, the connection uses an organization endpoint, which offers playbook management and model discovery only. Connect your agent to the runtime's `/mcp` endpoint or to the playbook's own endpoint before continuing; [MCP endpoint scope](../reference/mcp.md#endpoint-scope) lists them.
+The workflow will ask the brief's owner to approve the review. Asking a person something is the job of an interaction function: it leaves a question in the playbook's inbox and waits for the answer. This one gives the owner two days, and accepts only "approve" or "revise", with an optional note.
 
-## 2. Confirm the reasoning function
+Send this message:
 
-Ask:
+> In my "Campaign review tutorial" playbook, create an interaction function called "Approve campaign brief". It asks the brief's owner, whose email address it is given, to approve a review or ask for a revision, with an optional note. It leaves the question in the playbook's inbox and waits up to two days. Before you save it, tell me in plain words what it asks, who it asks, which answers it accepts and how long it waits.
 
-> In `campaign-review-tutorial`, read back the reasoning function `review-campaign-brief`. Show its version and the inputs it requires. Do not change it.
+Your agent explains the function: it asks the owner to approve or ask for a revision, leaves the question in the inbox, accepts "approve" or "revise" with an optional note, and waits two days.
 
-You should see `review-campaign-brief`, its version, and `brief` as its required input. If the function is missing, complete Build your first playbook before continuing.
+::: details What your agent writes
 
-## 3. Save the interaction function
-
-The interaction function asks one person for a decision. Its run renders the message from its input, leaves the request in the playbook's inbox for the party named in `to`, and waits until someone answers, the request expires after two days, or the run is cancelled. The answer must match `output.schema`, and the answer is the run's output.
-
-> In `campaign-review-tutorial`, create an interaction function named `approve-campaign-brief` from the document below. Use the document unchanged as the source, with the type `interaction`. If a function with that name already exists, show it to me instead of changing it. Then show me the saved function's version and description.
+The part between the `---` lines describes the inputs and the answers the function accepts; the part after it is the message the owner reads.
 
 <!-- prettier-ignore -->
 ```markdown
@@ -64,13 +62,23 @@ The review of your campaign brief is ready:
 Approve the brief as it stands, or ask for a revision.
 ```
 
-The agent should confirm the interaction function `approve-campaign-brief` at version 1. The tool's summary reads: Created the interaction function “approve-campaign-brief”. What it does: Asks the campaign owner to approve a reviewed brief. It has been saved but has not been run yet.
+:::
 
-## 4. Save the workflow
+When it sounds right, tell your agent to save it. It is saved under a name like `approve-campaign-brief`, at version 1.
 
-The workflow has two steps. `review-brief` runs the reasoning function on the brief the run starts with and keeps the owner beside the review. `ask-for-approval` runs the interaction function with the owner and the review, and waits for its answer. The run's output keeps the review and the approval.
+## 3. Save the workflow
 
-> In `campaign-review-tutorial`, create a workflow named `review-and-approve` from the document below. Use the document unchanged as the source, with the type `workflow`. If a workflow with that name already exists, show it to me instead of changing it. Then show me the saved workflow's version, description and required input.
+The workflow has two steps. First it runs "Review campaign brief" on the brief. Then it runs "Approve campaign brief" with the owner's address and the review, and waits for the owner's answer. When the run finishes, it keeps the review and the answer together.
+
+Send this message:
+
+> In my "Campaign review tutorial" playbook, create a workflow called "Review and approve". It takes a brief and the email address of the brief's owner. First it runs "Review campaign brief" on the brief. Then it runs "Approve campaign brief" with the owner and the review, and waits for the answer. When it finishes, it keeps the review and the answer. Before you save it, tell me in plain words what it needs and what it does, step by step.
+
+Your agent explains the workflow: it needs a brief and the owner's email address; first it reviews the brief, then it asks the owner and waits; at the end it keeps the review and the answer.
+
+::: details What your agent writes
+
+Each named step under `do` calls one of your functions.
 
 ```yaml
 document:
@@ -109,13 +117,17 @@ do:
         as: '${ ({ review: $input.review, approval: $data }) }'
 ```
 
-The agent should confirm the workflow `review-and-approve` at version 1, with the description from the document's `summary` and with `brief` and `owner` as its required input. The tool's summary reads: Created the workflow “review-and-approve”. What it does: Reviews a campaign brief, then asks its owner to approve it. It has been saved but has not been run yet.
+:::
 
-If the agent reports issues under `/source`, each gives a line and a column. Compare that line with the document above; [Workflow format](../reference/workflow-format.md) describes every field.
+When it sounds right, tell your agent to save it. It is saved under a name like `review-and-approve`, at version 1. If Auto finds a problem in what your agent wrote, your agent sees exactly where and fixes it.
 
-## 5. Start a run
+## 4. Start the workflow
 
-Ask the agent to run the workflow with this text as the `brief` input and `ada@example.com` as the `owner`:
+Send this message, followed by the brief:
+
+> Run the "Review and approve" workflow on the brief below, with ada@example.com as the brief's owner. Tell me its status, and keep track of the run for later.
+
+The address is only a label for whoever should answer; Auto sends no email. The question waits in the playbook's inbox.
 
 ```text
 Campaign: Autumn reporting trial
@@ -126,80 +138,70 @@ Total budget: USD 8,000
 Success measure: Generate interest in the product
 ```
 
-> Run the workflow `review-and-approve` in `campaign-review-tutorial` with the brief above as its `brief` input and `ada@example.com` as its `owner`. Show me the run's id and status, and keep the id for later.
+The workflow starts and then carries on by itself. Your agent gets back the run's id (`run_id`) and the status `started` right away. It reviews the brief, asks for the approval and then waits, so if you ask for its status now it still says `started`.
 
-The run should answer with a `run_id` and `status: started`. The tool's summary reads: The workflow “review-and-approve” has started and is still running. It carries on by itself, and how it ends can be looked up later.
+## 5. Find the question in the inbox
 
-The run reviews the brief, then asks for the approval and waits. Check it:
+> Show me the open requests in my "Campaign review tutorial" playbook: who each is for, the message, and when it expires.
 
-> Read the Auto run with that run id and show its status.
+Your agent should show one request for ada@example.com, waiting in the inbox (`in_inbox`) and expiring in two days. The message contains the review from step 4.
 
-It should still show `status: started`, and the tool's summary reads: The workflow “review-and-approve” is still running; how it ends can be looked up again later. A run that waits for an answer stays started until the answer arrives.
+## 6. Answer it
 
-## 6. Read the inbox
+In real use, the owner would answer. Here you answer for them. Auto does not check who answers: anyone allowed to change the playbook can answer its requests, so the email address is a label, not a lock.
 
-> List the open requests of `campaign-review-tutorial`. Show the run id, the party, the message, the expiry and the standing of each.
+> Answer that request: approve, with the note "Approved for the autumn launch."
 
-The agent should show one request, to `ada@example.com`, waiting in the inbox with no `delivery`, with the standing `in_inbox`, an `expires_at` two days ahead, and the message rendered from the review. The tool's summary reads: Found 1 request waiting on this page.
+Your agent records your answer and shows it, with who answered and when. Within about a second, the workflow takes the answer and carries on.
 
-The request has a `run_id` of its own: it is the run of the interaction function that the workflow started, and it is the id to answer.
+An answer the function doesn't accept, such as "maybe", is refused, and the request stays open.
 
-## 7. Answer the request
+## 7. See how it ended
 
-> Answer that request with the verdict `approve` and the note `Approved for the autumn launch.` Show me the answer the run took.
+> Show me how the "Review and approve" run ended: its status, when it finished, and what it kept.
 
-The agent should report the answer recorded on the run of `approve-campaign-brief`, with `answered_by`, the caller that answered, and `answered_at`; the run takes it within the host's sweep, a second by default, and succeeds with it as its output. The tool's summary reads: The request is answered: the run that asked it takes the answer within the host's sweep, a second by default, and get_run shows how it ended.
+The run should show `status: succeeded`, version 1 of the workflow (`definition_version: 1`), and a finish time. It keeps two things:
 
-An answer that does not match the function's `output.schema`, such as the verdict `maybe`, is refused with `invalid_input` and a pointer under `/answer`, and the request stays open.
+- The review from "Review campaign brief". It comes from your model, so the wording varies, but for this brief it should recommend Revise: the audience lacks a job role and type of company, and the success measure lacks a number.
+- Your answer: `{ "verdict": "approve", "note": "Approved for the autumn launch." }`.
 
-## 8. Read the finished run
+The approval is the decision of whoever answered. The workflow records both, so you can see later what the review said and who approved the brief anyway.
 
-> Read the workflow run again until its status is no longer `started`. Show its status, definition version, finish time and output.
+To see how the run got there, ask:
 
-The run should show `status: succeeded`, `definition_version: 1`, a `finished_at` time and an output with two fields: `review`, the reasoning function's review, and `approval`, the answer you gave, `{ "verdict": "approve", "note": "Approved for the autumn launch." }`.
+> Show me the history of that run, step by step.
 
-The review comes from your model, so its wording can vary. For this brief it should recommend Revise: the audience lacks a job role and type of company, and the success measure lacks a numeric target. The approval is the decision of whoever answered; the workflow records both.
+Your agent walks you through it: the run started, the review step waited for its function and finished, the approval step waited for the answer and finished, and the run succeeded. Auto records each of these as an event, and each event points to the one that led to it.
 
-Then read how the run got there:
+## 8. Check that the question is closed
 
-> Read the history of that run. Show each event's type and summary and, for each `workflow_input_applied` event, the steps that moved and how each ended.
+> Answer the same request again, this time with revise. Then show me the open requests.
 
-The tool's summary reads: Found 9 events in the history of the run, oldest first, each with its fact and its metadata.
+The second answer is refused, because the request already has an answer, and the inbox is now empty. To ask again, you start the workflow again. Each start is a new run with its own id.
 
-| Type                     | Summary                                                                        | Steps that moved                                                 |
-| ------------------------ | ------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
-| `run_started`            | A run of the workflow “review-and-approve” started.                            |                                                                  |
-| `workflow_input_applied` | The workflow started, and 1 step moved.                                        | `/do/0/review-brief` waiting                                     |
-| `step_waiting`           | The step “review brief” waits for a function it called.                        |                                                                  |
-| `workflow_input_applied` | A function the workflow called answered, and 2 steps moved.                    | `/do/0/review-brief` completed; `/do/1/ask-for-approval` waiting |
-| `step_finished`          | The step “review brief” finished.                                              |                                                                  |
-| `step_waiting`           | The step “ask for approval” waits for a function it called.                    |                                                                  |
-| `workflow_input_applied` | A function the workflow called answered, and 1 step moved; the workflow ended. | `/do/1/ask-for-approval` completed                               |
-| `step_finished`          | The step “ask for approval” finished.                                          |                                                                  |
-| `run_succeeded`          | A run finished.                                                                |                                                                  |
+## If something goes wrong
 
-Each event's `metadata` carries `causation_id`, the `id` of the event that led to it, so the run can be drawn as a graph; each `step_waiting` names the run of the function it started, among them the run of `approve-campaign-brief` that held the request.
+- **Your agent can't save a function or a workflow.** Its connection to Auto isn't allowed to make changes. Connect it again as the [quick start](../get-started/local.md#connect-your-agent) shows.
+- **No question appears in the inbox.** Ask your agent to show you the run's history. If the review step failed, the run stopped before it could ask. Check that "Review campaign brief" still works on its own.
+- **Your agent tries to send your approval some other way.** Tell it to answer the request in the inbox.
+- **The workflow your agent wrote looks different from the one on this page.** That's fine as long as it has the same two steps in the same order and keeps the review and the answer.
 
-Read that run too:
+::: details For developers
 
-> Read the run of `approve-campaign-brief` that you answered. Show its status, output and history.
+- Your agent answers a request with the MCP tool `answer_interaction`. `send_run_event` is for other input that a waiting workflow listens for, not for answers.
+- A connection that has no `create_definition` tool either uses an organization endpoint or holds a key that may only read; [Endpoints](../reference/mcp.md#endpoint-scope) explains both.
+- The run's history records each step as events that point to the event that caused them; [Workflow format](../reference/workflow-format.md) describes the document and how runs end.
 
-It succeeded with the answer as its output, and its history shows the answer as `request_answered`, with who gave it and when. The tool's summary reads: The run of the interaction function “approve-campaign-brief” finished. Its answer: verdict: “approve” and note: “Approved for the autumn launch.”
+:::
 
-## 9. Check that the request has ended
+## What you built
 
-> Answer the same request again with the verdict `revise`, and show me the answer. Then list the open requests again.
+The playbook now holds a workflow that reviews a brief and asks for an approval, plus one recorded run. The review criteria live in "Review campaign brief". The question and the answers it accepts live in "Approve campaign brief". The workflow decides when each one runs.
 
-The agent should report the answer refused with `conflict`, since the run already took another answer, and the inbox empty: No request is waiting. The same answer again would answer with the answer the run took. To ask again, start a new run of the workflow: it receives a new run id and uses the same definition versions.
+Next:
 
-## What was tested
-
-Each call in this exercise was run against the runtime and its answers recorded. The statuses, fields, summaries, history and refusals in sections 1 and 3 to 9 are the ones observed. The model in that test was scripted to return one Revise review, so the test confirms the workflow's steps, its request and its answer, not a model's judgement of the brief.
-
-## Review the saved workflow
-
-The playbook now contains a workflow that reviews a brief with a reasoning function and asks for an approval with an interaction function, and one recorded run of it. The review criteria live in the reasoning function, the question and the shape of its answer in the interaction function, and the workflow decides when each runs.
-
-A request can also go to a person or a system outside the playbook through a tool of a tool server, such as one that posts in a chat, which the function names in `deliver`; [Interaction function format](../reference/interaction-format.md) describes the document, sending through a tool, answering by reply and how a request ends, and [Workflows and runs](../concepts/workflows.md) explains how runs start, wait and end.
+- An interaction function can also send its question through a tool, such as a chat message, and take the person's reply as the answer. [Interaction function format](../reference/interaction-format.md) shows how.
+- [Run a workflow on a schedule or event](../guides/triggers.md) starts a workflow without anyone asking.
+- [Workflows and runs](../concepts/workflows.md) explains how runs start, wait and end.
 
 </div>

@@ -124,7 +124,6 @@ await test('public docs offer a local learning path and a self-hosting overview 
   assert.deepEqual(selfHostGuides.toSorted(), selfHostGuidesLinkedFrom(selfHost));
   assert.ok(selfHost.includes('[Xolvio Professional Services](https://www.xolv.io/contact-us)'));
   assert.ok(markdownDestinations(selfHost).includes('get-started/local.md'));
-  assert.ok(selfHost.includes('Auto Cloud is coming soon'));
   const index = readFileSync(join(docs, 'index.md'), 'utf8');
   const destinations = markdownDestinations(index);
   assert.ok(destinations.includes('get-started/local.md'));
@@ -132,13 +131,14 @@ await test('public docs offer a local learning path and a self-hosting overview 
   assert.ok(destinations.indexOf('get-started/local.md') < destinations.indexOf('self-host.md'));
   for (const { html } of renderedPages) assert.doesNotMatch(html, /temporal/iu);
   for (const page of publicPages) assert.doesNotMatch(readFileSync(page, 'utf8'), /temporal/iu);
+  for (const page of publicPages) assert.doesNotMatch(readFileSync(page, 'utf8'), /Auto Cloud|request-invite/iu);
 });
 
 await test('documentation link checks compare the complete Markdown destination', () => {
-  const expected = 'https://on.auto/docs/get-started/cloud';
+  const expected = 'https://on.auto/docs/get-started/local';
   assert.deepEqual(markdownDestinations(`[Connect](${expected})`), [expected]);
   const misleading = [
-    `[Wrong host](https://on.auto.example.test/docs/get-started/cloud)`,
+    `[Wrong host](https://on.auto.example.test/docs/get-started/local)`,
     `[Wrong path](https://example.test/${expected})`,
     `[Unrelated text](https://example.test/) ${expected}`,
   ];
@@ -152,16 +152,22 @@ await test('documentation link checks compare the complete Markdown destination'
 
 await test('navigation separates concepts, learning, guides and reference', () => {
   assert.deepEqual(navigationGroups, [
-    'Concepts',
     'Get started',
+    'Tutorials',
+    'Concepts',
     'Guides',
+    'Build functions',
+    'Run and inspect',
+    'Connect data',
     'Self-hosting',
+    'Deploy',
+    'Operate',
     'Reference',
     'Contributing',
   ]);
   assert.ok(routes.includes('/tutorials/first-playbook'));
   assert.ok(routes.indexOf('/get-started/local') < routes.indexOf('/tutorials/first-playbook'));
-  assert.ok(navigation.includes('Deployment and support'));
+  assert.ok(routes.indexOf('/self-host') < routes.indexOf('/self-host/docker'));
   const mcp = readFileSync(join(docs, 'reference/mcp.md'), 'utf8');
   assert.match(mcp, /^# MCP reference/mu);
   assert.ok(mcp.includes('../tutorials/first-playbook.md'));
@@ -177,7 +183,6 @@ await test('the first-playbook tutorial supplies inputs and observable checks fo
   assert.equal(inputs[1]?.includes('Finance directors at UK manufacturing companies'), true);
   assert.equal(inputs[1]?.includes('Success measure: 100 trial registrations'), true);
   assert.ok(markdownDestinations(tutorial).includes('../get-started/local.md'));
-  assert.ok(tutorial.includes('You do not need an Auto Cloud account'));
   assert.ok(tutorial.includes('review-campaign-brief'));
   assert.ok(tutorial.includes('USD 10,000'));
   assert.ok(tutorial.includes('status: succeeded'));
@@ -186,7 +191,7 @@ await test('the first-playbook tutorial supplies inputs and observable checks fo
   assert.doesNotMatch(tutorial, /localhost|127\.0\.0\.1|claude-|gpt-/u);
 });
 
-await test('the local quick start gives runnable setup and distinguishes local clients from Cloud', () => {
+await test('the local quick start gives runnable setup and points teams to self-hosting', () => {
   const guide = readFileSync(join(docs, 'get-started/local.md'), 'utf8');
   for (const command of [
     'npx @on.auto/runtime --version',
@@ -206,13 +211,10 @@ await test('the local quick start gives runnable setup and distinguishes local c
   assert.ok(guide.includes('third-party'));
   assert.ok(guide.includes("remote connector runs from Anthropic's servers"));
   assert.ok(guide.includes('Do not expose it through a tunnel or public proxy'));
-  assert.match(guide, /::: info Auto Cloud\n.*coming soon.*request-invite.*\n:::\n\nThis setup/u);
-  assert.doesNotMatch(guide, /Auto Cloud is currently invite-only|You do not need an Auto Cloud account/u);
-  assert.ok(guide.includes('## Hosted playbooks'));
+  assert.ok(guide.includes('## Run it for your team'));
   assert.doesNotMatch(guide, /Prefer a hosted brain\b/u);
-  assert.ok(guide.includes('You can also host your own playbook'));
+  assert.ok(guide.includes('To run Auto on a server for your team'));
   assert.ok(markdownDestinations(guide).includes('../self-host.md'));
-  assert.ok(markdownDestinations(guide).some((href) => href === 'https://on.auto/request-invite'));
   assert.ok(markdownDestinations(guide).includes('../tutorials/first-playbook.md'));
   const configBlock = [...guide.matchAll(/```json\n([\s\S]*?)```/gu)].at(0)?.[1];
   assert.notEqual(configBlock, '');
@@ -238,7 +240,7 @@ await test('model discovery is documented without treating wildcard entries as r
   assert.ok(mcp.includes('`catalog_status: "partial"`'));
   assert.ok(mcp.includes('not a model to run'));
   assert.ok(http.includes('GET /v1/orgs/{org}/models'));
-  assert.ok(tutorial.includes('model reference that your configured provider can use'));
+  assert.ok(tutorial.includes('Use one of the models Auto can use'));
   assert.ok(tutorial.includes('Do not use a wildcard'));
 });
 
@@ -264,14 +266,14 @@ await test('public workflows are available and link their format and tutorial, w
   }
 });
 
-await test('computation functions are available in a self-hosted runtime, with their format beside the other formats', () => {
+await test('computation functions are available in every runtime, with their format beside the other formats', () => {
   const functions = readFileSync(join(docs, 'concepts/functions.md'), 'utf8');
   const format = readFileSync(join(docs, 'reference/computation-format.md'), 'utf8');
-  assert.match(functions, /\| Computation +\| A computation function +\| Available in a self-hosted runtime +\|/u);
+  assert.ok(functions.includes('reasoning, interaction, prediction, recall and computation functions are available'));
   assert.ok(markdownDestinations(functions).includes('../reference/computation-format.md'));
   assert.ok(routes.indexOf('/reference/reasoning-format') < routes.indexOf('/reference/computation-format'));
   assert.ok(routes.indexOf('/reference/computation-format') < routes.indexOf('/reference/workflow-format'));
-  assert.ok(format.includes('Auto Cloud does not offer them yet'));
+  assert.ok(format.includes('Computation functions are available in every runtime.'));
   assert.ok(format.includes('compute money in whole minor units'));
   for (const page of publicPages) assert.doesNotMatch(readFileSync(page, 'utf8'), /compute functions?\b/iu);
 });

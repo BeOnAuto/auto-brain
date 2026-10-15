@@ -18,7 +18,7 @@ describe('the terminology guide', () => {
         'The capabilities, the resource each one defines and what it does:',
         '',
         '- Coordination: Workflow.',
-        '- Reasoning: Reasoning function. Use a prompt, skills, and tools to interpret information or produce a response.',
+        '- Reasoning: Reasoning function. Use a prompt and a language model, with tools where configured, to interpret information or produce a response.',
         '',
         'Definitions and runs:',
         '',

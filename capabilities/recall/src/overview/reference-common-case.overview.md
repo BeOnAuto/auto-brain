@@ -1,6 +1,6 @@
 # announcements
 
-What the post-announcement function answered, oldest first, the last 50
+What the post-announcement function returned, oldest first, the last 50
 
 ## What it remembers
 
