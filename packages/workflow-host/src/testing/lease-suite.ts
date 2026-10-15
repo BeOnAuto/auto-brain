@@ -47,7 +47,7 @@ export function leaseSuite(databases: ProcessDatabasesOf): void {
     expect(second.notes().map(({ kind }) => kind)).toEqual(['standing_by', 'took_over']);
     expect(second.calls()).toHaveLength(1);
     expect([...settled.keys()]).toEqual([runId]);
-  }, 60_000);
+  });
 
   it('hands the workflows over at the next sweep when the host serving them stops', async () => {
     const database = await databases();
@@ -61,7 +61,7 @@ export function leaseSuite(databases: ProcessDatabasesOf): void {
       { kind: 'standing_by', holder: 'first' },
       { kind: 'took_over', holder: 'second' },
     ]);
-  }, 60_000);
+  });
 }
 
 export function claimSuite(databases: ProcessDatabasesOf, claimClock: ClaimClock): void {
@@ -78,7 +78,7 @@ export function claimSuite(databases: ProcessDatabasesOf, claimClock: ClaimClock
     expect(refused).toBeInstanceOf(HostElsewhere);
     expect(second.notes().map(({ kind }) => kind)).toEqual(['standing_by']);
     expect(second.calls()).toEqual([]);
-  }, 60_000);
+  });
 
   it(`judges the claim by the clock of the ${claimClock}, as a host whose clock runs an hour ahead finds`, async () => {
     const database = await databases();

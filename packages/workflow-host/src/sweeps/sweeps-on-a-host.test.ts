@@ -25,36 +25,28 @@ function startsReaching(reacting: ReactingHost, count: number) {
 }
 
 describe('the playbooks another process writes to, which raises no signal here', () => {
-  it(
-    'passes a playbook it followed at its start at the sweep after the playbook was appended to',
-    { timeout: 30_000 },
-    async () => {
-      const settings = await onSQLite();
-      const { store } = await openedOn(settings);
-      await playbookCreated(store, 'alpha');
-      await definitionRecorded(store, { name: 'close', version: 1, triggers: [closed] });
-      const reacting = await reactingHost({ settings, appended: streamSignalOf(), sweepEveryMs: 20 });
+  it('passes a playbook it followed at its start at the sweep after the playbook was appended to', async () => {
+    const settings = await onSQLite();
+    const { store } = await openedOn(settings);
+    await playbookCreated(store, 'alpha');
+    await definitionRecorded(store, { name: 'close', version: 1, triggers: [closed] });
+    const reacting = await reactingHost({ settings, appended: streamSignalOf(), sweepEveryMs: 20 });
 
-      await published(store, { id: 'after', type: 'com.acme.closed' });
-      const starts = await startsReaching(reacting, 1);
+    await published(store, { id: 'after', type: 'com.acme.closed' });
+    const starts = await startsReaching(reacting, 1);
 
-      expect(starts.map(({ playbook, workflow }) => [playbook, workflow])).toEqual([['alpha', 'close']]);
-    },
-  );
+    expect(starts.map(({ playbook, workflow }) => [playbook, workflow])).toEqual([['alpha', 'close']]);
+  });
 
-  it(
-    'follows a playbook its org creates from its first record, read from the registry the sweep names',
-    { timeout: 30_000 },
-    async () => {
-      const reacting = await reactingHost({ appended: streamSignalOf(), sweepEveryMs: 20 });
-      const { store } = reacting.database;
+  it('follows a playbook its org creates from its first record, read from the registry the sweep names', async () => {
+    const reacting = await reactingHost({ appended: streamSignalOf(), sweepEveryMs: 20 });
+    const { store } = reacting.database;
 
-      await playbookCreated(store, 'beta');
-      await definitionRecorded(store, { name: 'close', version: 1, triggers: [closed] }, beta);
-      await published(store, { id: 'first', type: 'com.acme.closed' }, byAdmin, beta);
-      const starts = await startsReaching(reacting, 1);
+    await playbookCreated(store, 'beta');
+    await definitionRecorded(store, { name: 'close', version: 1, triggers: [closed] }, beta);
+    await published(store, { id: 'first', type: 'com.acme.closed' }, byAdmin, beta);
+    const starts = await startsReaching(reacting, 1);
 
-      expect(starts.map(({ playbook, workflow }) => [playbook, workflow])).toEqual([['beta', 'close']]);
-    },
-  );
+    expect(starts.map(({ playbook, workflow }) => [playbook, workflow])).toEqual([['beta', 'close']]);
+  });
 });

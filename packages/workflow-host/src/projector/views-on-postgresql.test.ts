@@ -6,7 +6,7 @@ import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { onPostgreSQLAt, type SettingsOf } from '../testing/host-files.ts';
-import { collecting, foldedAll, isLive, viewTestTimeoutMs } from '../views-testing/view-documents.ts';
+import { collecting, foldedAll, isLive } from '../views-testing/view-documents.ts';
 import { viewHarness } from '../views-testing/view-harness.ts';
 import { viewsSuites } from '../views-testing/views-suites.ts';
 
@@ -68,7 +68,7 @@ async function aRunLeftOpen(connectionString: string, output: string): Promise<C
 describe.skipIf(skipped)(`the views of recall functions on PostgreSQL${notice}`, () => {
   viewsSuites(onPostgreSQL);
 
-  describe('an event committed late', { timeout: viewTestTimeoutMs }, () => {
+  describe('an event committed late', () => {
     it('is folded once it is committed, in the order the ledger recorded it, never passed over', async () => {
       const connectionString = await aDatabase();
       const views = await viewHarness(onPostgreSQLAt(connectionString));

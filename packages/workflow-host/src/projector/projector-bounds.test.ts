@@ -18,8 +18,7 @@ import { viewHarness, type ViewHarness } from '../views-testing/view-harness.ts'
 import { playbookPass, type PassParts } from './playbook-pass.ts';
 import { definitionsByType } from './projector-schedule.ts';
 
-const { alpha, alphaKey, counting, detailsOf, foldedAll, foldingOf, isLive, liveWith, succeeded, viewTestTimeoutMs } =
-  documents;
+const { alpha, alphaKey, counting, detailsOf, foldedAll, foldingOf, isLive, liveWith, succeeded } = documents;
 
 const playbooks = [alpha, { org: 'acme', playbook: 'beta' }, { org: 'acme', playbook: 'gamma' }];
 
@@ -48,7 +47,7 @@ function runsOf(count: number): readonly number[] {
   return Array.from({ length: count }, (_, run) => run);
 }
 
-describe('the pages of a pass', { timeout: viewTestTimeoutMs }, () => {
+describe('the pages of a pass', () => {
   it('reads at most the pages a pass may for a live view, and asks for another pass', async () => {
     const views = await viewHarness(await onSQLite());
     await views.saved('runs', counting);
@@ -80,7 +79,7 @@ describe('the pages of a pass', { timeout: viewTestTimeoutMs }, () => {
   });
 });
 
-describe('the share of a projector', { timeout: viewTestTimeoutMs }, () => {
+describe('the share of a projector', () => {
   it('passes at most as many playbooks at once as it may', async () => {
     const views = await viewHarness(await onSQLite());
     await viewsInEveryPlaybook(views);
@@ -122,7 +121,7 @@ describe('the share of a projector', { timeout: viewTestTimeoutMs }, () => {
   });
 });
 
-describe('a fold that ran past its deadline', { timeout: viewTestTimeoutMs }, () => {
+describe('a fold that ran past its deadline', () => {
   it('is tried again at the next sweep, not the next page, while the other views of its playbook go on', async () => {
     const views = await viewHarness(await onSQLite());
     const clock = steppedClock(Date.parse('2026-10-06T09:00:00.000Z'));
