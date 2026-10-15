@@ -38,7 +38,7 @@ type Unit = Phrase | Line | typeof paragraphBreak;
 
 const blockEnd = /^end[a-z]+$/u;
 
-const endsOfReadBlocks: ReadonlySet<string> = new Set(['endif', 'endfor']);
+const endsOfReadBlocks: ReadonlySet<string> = new Set(['endif', 'endunless', 'endfor']);
 
 const loop = /^\s*(?<item>[\w-]+)\s+in\s+(?<list>\S[\s\S]*)$/u;
 
@@ -80,6 +80,9 @@ function tagUnits({ name, args, written }: TagPiece): readonly Unit[] {
   switch (name) {
     case 'if': {
       return [{ line: `When ${asWritten(args)}:` }];
+    }
+    case 'unless': {
+      return [{ line: `Unless ${asWritten(args)}:` }];
     }
     case 'elsif': {
       return [{ line: `Or when ${asWritten(args)}:` }];

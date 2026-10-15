@@ -40,9 +40,9 @@ const choices = [
 ];
 
 describe('how long a request waits, in the overview', () => {
-  it('says the expiry in days, hours, minutes and seconds', () => {
+  it('says the expiry in days, hours, minutes and seconds, to the nearest second', () => {
     expect(['P2D', 'PT1M', 'PT4H', 'P1DT12H30M', 'PT90.5S', 'P1W'].map((expires) => waitOf(expires))).toEqual(
-      ['2 days', '1 minute', '4 hours', '1 day, 12 hours, and 30 minutes', '1 minute and 30.5 seconds', '7 days'].map(
+      ['2 days', '1 minute', '4 hours', '1 day, 12 hours, and 30 minutes', '1 minute and 31 seconds', '7 days'].map(
         (words) => `It waits up to ${words} for the answer; a request nobody answers by then ends unanswered.`,
       ),
     );

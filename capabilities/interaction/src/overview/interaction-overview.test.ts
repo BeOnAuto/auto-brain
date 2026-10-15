@@ -50,7 +50,7 @@ describe('the overview of an interaction function that asks a system', () => {
     expect(sectionOf(overview, 'What it reads')).toBe(
       [
         'It answers with what the tool answered under **data**, then **items/all~x**:',
-        'A list of records with: **user** (text), **text** (text), **ts** (text), at most 100 items.\n',
+        'A list of at most 100 records with: **user** (text), **text** (text), **ts** (text).\n',
       ].join('\n\n'),
     );
   });

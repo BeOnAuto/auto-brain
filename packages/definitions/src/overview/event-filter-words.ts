@@ -1,7 +1,10 @@
-import { definitionResourceLabel, named, type Phrase, type Phrases } from '@on.auto/definitions';
-import { enclosedBody } from '@on.auto/workflow-engine/dsl';
-import type { ViewFilter } from '@on.auto/workflow-host';
+import { enclosedBody } from '@on.auto/workflow-engine';
 import type { Schema } from 'effect';
+
+import { definitionResourceLabel } from '../capability/function-terminology.ts';
+import { named, type Phrase, type Phrases } from './overview.ts';
+
+export type EventFilter = Schema.JsonObject & { readonly type: string };
 
 interface Happening {
   readonly who: Phrases;
@@ -60,7 +63,7 @@ function definitionHappening(verb: string, source: Schema.Json | undefined): Hap
   return definition === undefined ? { who: ['a definition'], verb } : { who: definition, verb, said: 'source' };
 }
 
-function happeningOf(filter: ViewFilter): Happening {
+function happeningOf(filter: EventFilter): Happening {
   const runVerb = runVerbs.get(filter.type);
   if (runVerb !== undefined) {
     return runHappening(runVerb, filter['subject']);
@@ -108,7 +111,7 @@ function conditionPhrases([name, value]: Attribute): Phrases {
   }
 }
 
-export function filterPhrases(filter: ViewFilter): Phrases {
+export function eventFilterPhrases(filter: EventFilter): Phrases {
   const { who, verb, said } = happeningOf(filter);
   const conditions = Object.entries(filter)
     .filter(([name]: Attribute) => name !== 'type' && name !== said)
@@ -118,8 +121,4 @@ export function filterPhrases(filter: ViewFilter): Phrases {
     phrases.push(index === 0 ? ', ' : ' and ', ...condition);
   }
   return phrases;
-}
-
-export function plainText(phrases: Phrases): string {
-  return phrases.map((phrase) => (typeof phrase === 'string' ? phrase : Object.values(phrase).join(''))).join('');
 }
