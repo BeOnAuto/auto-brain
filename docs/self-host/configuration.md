@@ -289,7 +289,7 @@ There is one exception: a value shorter than 8 characters is not scrubbed, since
 
 ### Run a server as a process
 
-- Write `command` as an installed program. Never use a package downloaded at start, such as `npx -y`, which would run whatever that package is the day the process starts.
+- Write `command` as an installed program. Never use a package downloaded at start, such as `npx -y`, which would run whatever that package is the day the process starts. The MCP entry of the [quick start](../get-started/local.md#connect-your-agent) is the one exception: it is Auto Runtime itself, pinned to one release, and you choose when to move it to another.
 - The process runs under the server's user.
 - `env` is the process's whole environment, so give it `PATH` or write `command` as an absolute path.
 

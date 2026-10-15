@@ -3,9 +3,13 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 
+import manifest from '../package.json' with { type: 'json' };
+
 const docs = resolve(import.meta.dirname, '../docs');
 
-const entry = '@on.auto/runtime@latest mcp';
+const release = `@on.auto/runtime@${manifest.version}`;
+
+const entry = `${release} mcp`;
 
 interface Tab {
   readonly label: string;
@@ -42,7 +46,7 @@ await test('the connect step gives a prompt for the agent, then a tab per agent 
     [],
   );
   assert.deepEqual(config, {
-    mcpServers: { 'auto-runtime': { command: 'npx', args: ['-y', '@on.auto/runtime@latest', 'mcp'] } },
+    mcpServers: { 'auto-runtime': { command: 'npx', args: ['-y', release, 'mcp'] } },
   });
   const html = readFileSync(join(docs, '.vitepress/dist/get-started/local.html'), 'utf8');
   const labels = html.match(/class="vp-code-group[^"]*"[^>]*><div class="tabs">([\s\S]*?)<\/div>/u)?.[1];
