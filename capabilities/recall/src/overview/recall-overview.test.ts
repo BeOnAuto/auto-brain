@@ -32,6 +32,18 @@ function sectionOf(overview: string, heading: string): string {
   return overview.split(`## ${heading}\n\n`)[1]?.split('\n\n## ')[0] ?? '';
 }
 
+function rememberedOf(...filters: readonly string[]): readonly string[] {
+  const events = filters.map((filter) => `    - ${filter}`);
+  const remembered = sectionOf(
+    overviewOf(['language: typescript', 'source:', '  events:', ...events]),
+    'What it remembers',
+  );
+  return remembered
+    .split('\n')
+    .filter((line) => line.startsWith('- '))
+    .map((line) => line.slice(2));
+}
+
 function initialOf(initial: string): string {
   return sectionOf(overviewOf([...twoFilters, 'view:', `  initial: ${initial}`]), 'What it keeps');
 }
@@ -44,6 +56,22 @@ describe('the overviews of the examples of the reference of recall functions', (
     expect(prepared(announcementsExample).overview('announcements')).toBe(
       goldenOf('reference-common-case.overview.md'),
     );
+  });
+});
+
+describe('the events a recall function remembers, in its overview', () => {
+  it('say each filter after each time, in the words of an event filter, with each attribute it names', () => {
+    expect(
+      rememberedOf(
+        '{ type: run_succeeded, subject: reasoning/review-brief, caller: acme-admin }',
+        '{ type: definition_retired, source: /definitions/workflow/greet }',
+        "{ type: order_placed, data: '${ $data.revenue > 100 }' }",
+      ),
+    ).toEqual([
+      'each time a run of the reasoning function **review-brief** succeeds, when the caller is `acme-admin`',
+      'each time the workflow **greet** is retired',
+      'each time an event `order_placed` is published to the playbook, when `$data.revenue > 100` holds for its data',
+    ]);
   });
 });
 

@@ -82,6 +82,32 @@ describe('an output that reads no value', () => {
   });
 });
 
+describe('an unless block', () => {
+  it('is an italic line of its own, its else the other case, and its end the end of its paragraph', () => {
+    expect(
+      read(
+        [
+          '{% for item in input.items %}{{ item.name }}{% unless forloop.last %}, {% endunless %}{% endfor %}.',
+          '{% unless input.quiet   or input.away %}Speak up.{% else %}Write.{% endunless %} Then listen.',
+        ].join('\n'),
+      ),
+    ).toBe(
+      [
+        '*For each item of input.items:*',
+        '**name**',
+        '*Unless forloop.last:*',
+        ',',
+        '.',
+        '*Unless input.quiet or input.away:*',
+        'Speak up.',
+        '*Otherwise:*',
+        'Write.',
+        'Then listen.\n',
+      ].join('\n\n'),
+    );
+  });
+});
+
 describe('the other tags of a template', () => {
   it('leave comments out, keep the text of a raw block, and any other tag as it is in a code span', () => {
     expect(
@@ -89,7 +115,7 @@ describe('the other tags of a template', () => {
         [
           'Before{% comment %} a note, {{ input.secret }} {% if x %} {% endcomment %} after.',
           '{% # an inline note %}{% raw %}{{ written as is }}{% endraw %}',
-          '{% assign n = input.notes | words %}{% unless input.quiet %}Speak.{% endunless %}',
+          '{% assign n = input.notes | words %}{% capture note %}Speak.{% endcapture %}',
           '{% case input.tone %}{% when "warm" %}Smile.{% endcase %}{% for item %}{% break %}',
         ].join('\n'),
       ),
@@ -97,7 +123,7 @@ describe('the other tags of a template', () => {
       [
         'Before after.',
         '{{ written as is }}',
-        '`{% assign n = input.notes | words %}``{% unless input.quiet %}`Speak.',
+        '`{% assign n = input.notes | words %}``{% capture note %}`Speak.',
         '`{% case input.tone %}``{% when "warm" %}`Smile.`{% for item %}``{% break %}`',
         '',
       ].join('\n'),

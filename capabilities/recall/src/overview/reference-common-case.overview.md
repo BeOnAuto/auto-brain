@@ -12,7 +12,7 @@ It remembers, from the first event of the playbook's history on:
 
 It keeps one view, which its program updates with each event it remembers:
 
-A list, at most 50 items.
+A list of at most 50 items.
 
 ## What it answers
 

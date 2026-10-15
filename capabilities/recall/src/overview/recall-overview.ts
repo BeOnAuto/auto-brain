@@ -1,29 +1,34 @@
 import {
   bulletList,
+  eventFilterPhrases,
   paragraph,
   schemaBlocks,
   sectionOf,
   type Diagram,
   type OverviewBlock,
   type OverviewSection,
+  type Phrases,
 } from '@on.auto/definitions';
 import { capitalized } from '@on.auto/operations';
 import type { ViewFilter } from '@on.auto/workflow-host';
 import type { Schema } from 'effect';
 
 import type { RecallFunctionDefinitionDocument } from '../document/recall-document.ts';
-import { filterPhrases, plainText } from './filter-words.ts';
 
 const mostInitialCharacters = 300;
 
 const anyOutput = 'Any output, which its document does not describe.';
+
+function plainText(phrases: Phrases): string {
+  return phrases.map((phrase) => (typeof phrase === 'string' ? phrase : Object.values(phrase).join(''))).join('');
+}
 
 function remembersSection(filters: readonly ViewFilter[]): OverviewSection {
   const once = filters.length > 1 ? [paragraph('It remembers an event that matches more than one of these once.')] : [];
   return sectionOf(
     'What it remembers',
     paragraph("It remembers, from the first event of the playbook's history on:"),
-    bulletList(filters.map((filter) => ['each time ', ...filterPhrases(filter)])),
+    bulletList(filters.map((filter) => ['each time ', ...eventFilterPhrases(filter)])),
     ...once,
   );
 }
@@ -82,7 +87,7 @@ function diagramOf(filters: readonly ViewFilter[], answers: boolean): Diagram {
   return {
     kind: 'diagram',
     nodes: [
-      ...filters.map((filter) => ({ label: capitalized(plainText(filterPhrases(filter))) })),
+      ...filters.map((filter) => ({ label: capitalized(plainText(eventFilterPhrases(filter))) })),
       { label: 'The view', shape: 'cylinder' },
       { label: answers ? 'The answer of a run' : 'The answer of a run, the view itself' },
     ],

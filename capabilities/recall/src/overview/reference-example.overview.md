@@ -12,7 +12,7 @@ It remembers, from the first event of the playbook's history on:
 
 It keeps one view, which its program updates with each event it remembers:
 
-A record whose every entry is a list of records with: **at** (text), **verdict** (text), **run** (text), at most 20 items, at most 50 entries.
+A record of at most 50 entries, each a list of at most 20 records with: **at** (text), **verdict** (text), **run** (text).
 
 ## What it answers
 

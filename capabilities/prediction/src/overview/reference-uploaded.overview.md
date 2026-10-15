@@ -35,7 +35,11 @@ Predict **horizons** weeks ahead. The features are
 
 *For each feature of dataset.features:*
 
-**name** (**as**)`{% unless forloop.last %}`,
+**name** (**as**)
+
+*Unless forloop.last:*
+
+,
 
 .
 

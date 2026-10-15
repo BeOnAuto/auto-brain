@@ -1,5 +1,6 @@
 import {
   bulletList,
+  durationInWords,
   inputSection,
   named,
   paragraph,
@@ -13,7 +14,7 @@ import { Result, Schema } from 'effect';
 
 import { interactionFrontMatter } from '../document/front-matter.ts';
 import type { RequestDocument } from '../document/interaction-document.ts';
-import { durationInWords, partyBlocks, replyRuleItems } from './request-words.ts';
+import { partyBlocks, replyRuleItems } from './request-words.ts';
 
 interface WrittenTemplates {
   readonly to: TemplateText;

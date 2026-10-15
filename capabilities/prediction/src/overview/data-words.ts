@@ -1,6 +1,6 @@
 import {
   bulletList,
-  listedPhrases,
+  eventFilterPhrases,
   named,
   paragraph,
   sectionOf,
@@ -8,13 +8,10 @@ import {
   type OverviewSection,
   type Phrases,
 } from '@on.auto/definitions';
-import { enclosedBody } from '@on.auto/workflow-engine/dsl';
-import type { Schema } from 'effect';
 
 import {
   isProjected,
   type Aggregation,
-  type DatasetFilter,
   type Feature,
   type Measure,
   type PredictionFunctionDefinitionDocument,
@@ -22,29 +19,11 @@ import {
 } from '../document/prediction-document.ts';
 import { askedPeriods, periodsOf } from './predicts-words.ts';
 
-type Attribute = readonly [string, Schema.Json];
-
 const measureWords: Readonly<Record<Exclude<Aggregation, 'count'>, string>> = {
   sum: 'the sum of ',
   last: 'the last value of ',
   mean: 'the mean of ',
 };
-
-function writtenValue(value: Schema.Json): string {
-  return typeof value === 'string' ? value : JSON.stringify(value);
-}
-
-function attributePhrases([name, value]: Attribute): Phrases {
-  const test = name === 'data' ? enclosedBody(value) : undefined;
-  return test === undefined
-    ? [`whose ${name} is `, { code: writtenValue(value) }]
-    : ['whose data passes ', { code: test.trim() }];
-}
-
-function filterPhrases({ type, ...attributes }: DatasetFilter): Phrases {
-  const tests = Object.entries(attributes).map((attribute: Attribute) => attributePhrases(attribute));
-  return ['each event ', named(type), ...(tests.length === 0 ? [] : [' ', ...listedPhrases(tests, 'and')])];
-}
 
 function measurePhrases({ of, as }: Measure): Phrases {
   return of === undefined || as === 'count' ? ['the number of its events'] : [measureWords[as], { code: of }];
@@ -70,8 +49,8 @@ function projectedBlocks(
 ): readonly OverviewBlock[] {
   const asked = askedPeriods(predicts);
   return [
-    paragraph('It learns from the rows the playbook folds from its own history, from these events:'),
-    bulletList(events.map((filter) => filterPhrases(filter))),
+    paragraph('It learns from the rows the playbook folds from the first event of its history on:'),
+    bulletList(events.map((filter) => ['each time ', ...eventFilterPhrases(filter)])),
     paragraph(`Each row is one series and one ${predicts.period}, and holds:`),
     bulletList([
       timePhrases(time, predicts.period),

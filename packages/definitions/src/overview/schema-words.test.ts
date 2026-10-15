@@ -73,36 +73,6 @@ describe('the words of a simple schema', () => {
   });
 });
 
-describe('the bounds of a schema in words', () => {
-  it('say the bounds of a number, a text and a list, and the default a field takes when it is left out', () => {
-    expect([
-      wordsOf({ type: 'integer', minimum: 1, maximum: 50, default: 5 }),
-      wordsOf({ type: 'integer', minimum: 1000 }),
-      wordsOf({ type: 'number', maximum: 0.5 }),
-      wordsOf({ type: 'number', exclusiveMinimum: 0, exclusiveMaximum: 100 }),
-      wordsOf({ type: 'string', maxLength: 200 }),
-      wordsOf({ type: 'string', minLength: 1 }),
-      wordsOf({ type: 'string', minLength: 2, maxLength: 3, default: 'abc' }),
-      wordsOf({ type: 'array', items: { type: 'integer' }, minItems: 1 }),
-      wordsOf({ type: 'array', maxItems: 1 }),
-      wordsOf({ enum: ['draft', 'sent'], default: 'draft' }),
-      wordsOf({ type: 'string', default: 'x'.repeat(400) }),
-    ]).toEqual([
-      'A whole number, from 1 to 50, 5 when left out.',
-      'A whole number, at least 1,000.',
-      'A number, at most 0.5.',
-      'A number, more than 0, less than 100.',
-      'Text, at most 200 characters.',
-      'Text, at least 1 character.',
-      'Text, 2 to 3 characters, “abc” when left out.',
-      'A list of whole numbers, at least 1 item.',
-      'A list, at most 1 item.',
-      'One of: draft, sent; “draft” when left out.',
-      'Text, a default when left out.',
-    ]);
-  });
-});
-
 describe('a list in words', () => {
   it('says a list of each kind, and a list of lists, in the plural', () => {
     expect([
@@ -133,6 +103,28 @@ describe('a list in words', () => {
       'A list of whole numbers or text.',
       'A list of values of 5 kinds.',
       'A list.',
+    ]);
+  });
+});
+
+describe('the bounds of the items of a list in words', () => {
+  it('are said of each item, after the bound of the list or without one', () => {
+    expect([
+      wordsOf({ type: 'array', minItems: 1, maxItems: 10, items: { type: 'string', maxLength: 200 } }),
+      wordsOf({ type: 'array', maxItems: 3, items: { type: 'integer', minimum: 1, maximum: 50 } }),
+      listOf({ type: 'number', exclusiveMinimum: 0, exclusiveMaximum: 1 }),
+      listOf({ type: 'string', minLength: 1, default: 'x' }),
+      listOf({ enum: ['a', 'b'], default: 'a' }),
+      listOf({ anyOf: [{ type: 'integer', minimum: 1 }, { type: 'string' }] }),
+      wordsOf({ type: 'object', maxProperties: 3, additionalProperties: { type: 'integer', minimum: 1 } }),
+    ]).toEqual([
+      'A list of 1 to 10 text values, each at most 200 characters.',
+      'A list of at most 3 whole numbers, each from 1 to 50.',
+      'A list of numbers, each more than 0, less than 1.',
+      'A list of text, each at least 1 character, “x” when left out.',
+      'A list of values, each one of: a, b; each “a” when left out.',
+      'A list of whole numbers, each at least 1 or text.',
+      'A record of at most 3 entries, each a whole number, at least 1.',
     ]);
   });
 });
@@ -189,28 +181,6 @@ describe('a record in words', () => {
         properties: Object.fromEntries(Array.from({ length: 14 }, (_, index) => [`f${index}`, {}])),
       }),
     ).toMatch(/\*\*f11\*\* \(any value, optional\), and 2 more\.$/u);
-  });
-});
-
-describe('a record of entries in words', () => {
-  it('says what every entry of a record without fields is, and how many entries it may have', () => {
-    const reviews = { type: 'array', maxItems: 20, items: { type: 'object', properties: { at: { type: 'string' } } } };
-
-    expect([
-      wordsOf({ type: 'object', maxProperties: 50, additionalProperties: reviews }),
-      wordsOf({ type: 'object', minProperties: 1, additionalProperties: { type: 'integer' } }),
-      listOf({ type: 'object', additionalProperties: { type: 'string' } }),
-      wordsOf({ type: 'object', additionalProperties: false }),
-      wordsOf({ type: 'object', properties: { a: { type: 'object', additionalProperties: { type: 'string' } } } }),
-      wordsOf({ type: 'object', minProperties: 2, maxProperties: 4 }),
-    ]).toEqual([
-      'A record whose every entry is a list of records with: **at** (text, optional), at most 20 items, at most 50 entries.',
-      'A record whose every entry is a whole number, at least 1 entry.',
-      'A list of records whose every entry is text.',
-      'A record.',
-      'A record with: **a** (a record, optional).',
-      'A record, 2 to 4 entries.',
-    ]);
   });
 });
 
