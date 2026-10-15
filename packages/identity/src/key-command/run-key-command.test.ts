@@ -66,9 +66,7 @@ describe('the key command', () => {
       { org: 'demo', permissions: ['org:read', 'org:write', 'playbook:read', 'playbook:write'], playbooks: '*' },
     ]);
     expect(apiKeys?.[0]?.id).toMatch(/^[0-9a-f]{8}$/u);
-    const holder = principalIn(
-      await authenticatorFor({ host: '0.0.0.0', apiKeys, localMode: false }).authenticate(key, '/mcp'),
-    );
+    const holder = principalIn(await authenticatorFor({ host: '0.0.0.0', apiKeys }).authenticate(key, '/mcp'));
 
     expect(holder?.callerIn('demo')?.org).toBe('demo');
   });
