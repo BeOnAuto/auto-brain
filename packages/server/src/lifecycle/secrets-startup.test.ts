@@ -7,7 +7,7 @@ import { sha256Of } from '@on.auto/operations';
 import { Effect, Redacted } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
-import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
+import { spawnServer } from '../testing/processes/spawned-server.ts';
 import { messagesOf } from '../testing/processes/stderr-lines.ts';
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
 
@@ -48,7 +48,7 @@ async function secretsLinesOf(environment: Readonly<Record<string, string>>): Pr
     .filter((line) => line.includes('ecret'));
 }
 
-describe('the secret store as the server starts', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('the secret store as the server starts', () => {
   it('logs the key its secrets are sealed under and how many it re-sealed from the previous key, and nothing more', async () => {
     const fileName = aLedgerFile();
     await secretsKeptIn(fileName, ['pasted-key-1', 'pasted-key-2']);
@@ -81,7 +81,7 @@ describe('the secret store as the server starts', { timeout: spawnedServerTestTi
   });
 });
 
-describe('a server whose secrets key cannot be had', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('a server whose secrets key cannot be had', () => {
   it('stops the process at start when the key file beside the ledger may be read by others, naming the file', async () => {
     const fileName = aLedgerFile();
     const keyFile = join(fileName, '..', 'secrets.key');
