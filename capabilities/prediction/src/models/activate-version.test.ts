@@ -5,8 +5,6 @@ import { buildPlaybook } from '../build-testing/build-playbook.ts';
 import { builtFrom, modelFactsOf, savedFunction, standingOf } from '../build-testing/built-versions.ts';
 import { activateVersion } from './activate-version.ts';
 
-const testTimeoutMs = 60_000;
-
 const signedInPerson: CallerIdentity = {
   id: 'person:user|ada',
   org: 'acme',
@@ -16,7 +14,7 @@ const signedInPerson: CallerIdentity = {
 
 const anInstant: unknown = expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/u);
 
-describe('the activation of a version a caller asks for', { timeout: testTimeoutMs }, () => {
+describe('the activation of a version a caller asks for', () => {
   it('activates a version it built again, as a rollback, whatever its shadow decided', async () => {
     const playbook = buildPlaybook();
     await savedFunction(playbook);
@@ -65,7 +63,7 @@ describe('the activation of a version a caller asks for', { timeout: testTimeout
   });
 });
 
-describe('the activation of a version a signed-in person asks for', { timeout: testTimeoutMs }, () => {
+describe('the activation of a version a signed-in person asks for', () => {
   it('records the person as who activated it', async () => {
     const playbook = buildPlaybook();
     await savedFunction(playbook);

@@ -6,8 +6,6 @@ import { workerPool, type ProgramPoolOf } from '../composition/served-computatio
 import { checkRefusals, documentOf } from '../testing/servers/check-refusals.ts';
 import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
-const checkTestTimeoutMs = 30_000;
-
 const misspelt = [
   '---',
   'language: typescript',
@@ -61,7 +59,7 @@ async function onAlpha<T>(programPoolOf: ProgramPoolOf, use: (session: McpSessio
   );
 }
 
-describe('a computation function checked when it is saved, over MCP', { timeout: checkTestTimeoutMs }, () => {
+describe('a computation function checked when it is saved, over MCP', () => {
   it('answers a refused program with isError, its line and the compiler’s words, in plain words', async () => {
     const created = await onAlpha(workerPool, (session) =>
       session.callTool('create_definition', { type: 'computation', name: 'misspelt', source: misspelt }),
@@ -84,7 +82,7 @@ describe('a computation function checked when it is saved, over MCP', { timeout:
   });
 });
 
-describe('each refusal of the check at save, over MCP', { timeout: checkTestTimeoutMs }, () => {
+describe('each refusal of the check at save, over MCP', () => {
   it('answers each refusal of the check with isError, its line and its words, as over HTTP', async () => {
     const created = await onAlpha(workerPool, (session) =>
       checkRefusals.reduce<Promise<readonly ToolResult[]>>(
@@ -113,38 +111,34 @@ describe('each refusal of the check at save, over MCP', { timeout: checkTestTime
   });
 });
 
-describe(
-  'a check at save that does not answer in time, or has no checker ready, over MCP',
-  { timeout: checkTestTimeoutMs },
-  () => {
-    it('answers invalid input when the check runs past its deadline, and unavailable, on a create and an update, when no checker is ready', async () => {
-      const { stall, poolOf } = stallingChecks();
-      const saved = await onAlpha(poolOf, async (session) => {
-        await session.callTool('create_definition', { type: 'computation', name: 'pace', source: campaignPace });
-        stall('deadline');
-        const tooLong = await session.callTool('create_definition', {
-          type: 'computation',
-          name: 'slow',
-          source: campaignPace,
-        });
-        stall('busy');
-        return [
-          tooLong,
-          await session.callTool('create_definition', { type: 'computation', name: 'again', source: campaignPace }),
-          await session.callTool('update_definition', {
-            type: 'computation',
-            name: 'pace',
-            source: `${campaignPace}\n`,
-          }),
-        ];
+describe('a check at save that does not answer in time, or has no checker ready, over MCP', () => {
+  it('answers invalid input when the check runs past its deadline, and unavailable, on a create and an update, when no checker is ready', async () => {
+    const { stall, poolOf } = stallingChecks();
+    const saved = await onAlpha(poolOf, async (session) => {
+      await session.callTool('create_definition', { type: 'computation', name: 'pace', source: campaignPace });
+      stall('deadline');
+      const tooLong = await session.callTool('create_definition', {
+        type: 'computation',
+        name: 'slow',
+        source: campaignPace,
       });
-      const unavailable = { isError: true, problem: { status: 503, reason: 'unavailable' } };
-
-      expect(saved.map((result) => ({ isError: result.isError, problem: problemIn(result) }))).toMatchObject([
-        { isError: true, problem: { status: 422, reason: 'invalid_input', errors: [{ pointer: '/source' }] } },
-        unavailable,
-        unavailable,
-      ]);
+      stall('busy');
+      return [
+        tooLong,
+        await session.callTool('create_definition', { type: 'computation', name: 'again', source: campaignPace }),
+        await session.callTool('update_definition', {
+          type: 'computation',
+          name: 'pace',
+          source: `${campaignPace}\n`,
+        }),
+      ];
     });
-  },
-);
+    const unavailable = { isError: true, problem: { status: 503, reason: 'unavailable' } };
+
+    expect(saved.map((result) => ({ isError: result.isError, problem: problemIn(result) }))).toMatchObject([
+      { isError: true, problem: { status: 422, reason: 'invalid_input', errors: [{ pointer: '/source' }] } },
+      unavailable,
+      unavailable,
+    ]);
+  });
+});

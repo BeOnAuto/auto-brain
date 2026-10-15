@@ -10,8 +10,6 @@ import { scriptedModels } from '../build-testing/scripted-models.ts';
 import { closedAfterTheTest, scratchDirectory } from '../testing/scratch.ts';
 import { modelDeadlines, modelProcesses, threadsOf } from './model-processes.ts';
 
-const processTestTimeoutMs = 60_000;
-
 function fileOf(name: CandidateName) {
   return { sha256: name, path: fileURLToPath(candidateUrl(name)) };
 }
@@ -28,7 +26,7 @@ const walk = { window: 2, holdout: 1, steps: 2, features: 0, given: [], remainin
 
 const ofAnyLength: unknown = expect.any(Number);
 
-describe('the model processes of a server', { timeout: processTestTimeoutMs }, () => {
+describe('the model processes of a server', () => {
   it('check a file, answer a question and walk the held-back origins in the process that holds the model', async () => {
     const models = modelProcesses({ pool: closedAfterTheTest(3) });
     const mean = fileOf('visits-mean');
@@ -60,7 +58,7 @@ describe('the model processes of a server', { timeout: processTestTimeoutMs }, (
   });
 });
 
-describe('a model process that fails', { timeout: processTestTimeoutMs }, () => {
+describe('a model process that fails', () => {
   it('ends its job as crashed when it exits, out of memory when it runs out, crashed when it answers what no model process does, and badly as it says', async () => {
     const scripted = scriptedModels();
     const models = modelProcesses({ pool: closedAfterTheTest(3), module: scripted.module });

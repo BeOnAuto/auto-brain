@@ -5,7 +5,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 
 import { logLinesOf, requestTo, settledOver, workflowProcess } from '../testing/processes/workflow-process.ts';
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
-import { runIdIn, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { runIdIn, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const ledger = temporaryLedger();
 
@@ -34,7 +34,7 @@ const inputsOf = Schema.decodeUnknownSync(
   }),
 );
 
-describe('main with workflows', { timeout: workflowTestTimeoutMs }, () => {
+describe('main with workflows', () => {
   it('says how it runs workflows, and exits 0 at once on SIGTERM', async () => {
     const child = workflowProcess(ledger.fileName, { PREDICTION_CACHE_DIR: ledger.cacheDirectory });
     const port = await child.port;
@@ -60,7 +60,7 @@ describe('main with workflows', { timeout: workflowTestTimeoutMs }, () => {
   });
 });
 
-describe('a server started again on the ledger of its workflows', { timeout: workflowTestTimeoutMs }, () => {
+describe('a server started again on the ledger of its workflows', () => {
   it('goes on with a run that waits for an event, and with ones whose timers went off while it was stopped, the fire of each caused by the record that armed it', async () => {
     const first = workflowProcess(ledger.fileName);
     const firstPort = await first.port;

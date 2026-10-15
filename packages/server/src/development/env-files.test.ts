@@ -10,7 +10,6 @@ import { readSettings } from '../settings/settings.ts';
 import { stoppedWith } from '../testing/processes/development-endings.ts';
 import {
   developmentFiles,
-  developmentTestTimeoutMs,
   readyNoticesOf,
   startDevelopment,
   untilListening,
@@ -41,7 +40,7 @@ function uncommented(text: string): string {
   return text.replaceAll(/^# (?=[A-Z_]+=)/gmu, '');
 }
 
-describe('local Studio under pnpm dev', { timeout: developmentTestTimeoutMs }, () => {
+describe('local Studio under pnpm dev', () => {
   it('allows the local Studio origins in local mode while refusing an unrelated browser origin', async () => {
     const development = startDevelopment(developmentFiles(readFileSync(devEnv, 'utf8')));
     const port = await untilListening(development);
@@ -65,7 +64,7 @@ describe('local Studio under pnpm dev', { timeout: developmentTestTimeoutMs }, (
   });
 });
 
-describe('the settings files pnpm dev reads', { timeout: developmentTestTimeoutMs }, () => {
+describe('the settings files pnpm dev reads', () => {
   it('run the server in local mode with dev.env alone, on a loopback address with neither PUBLIC_URL nor API_KEYS', () => {
     expect(readSettings(parseEnv(readFileSync(devEnv, 'utf8')))).toMatchObject({
       host: '127.0.0.1',
@@ -102,7 +101,7 @@ describe('the settings files pnpm dev reads', { timeout: developmentTestTimeoutM
   });
 });
 
-describe('the configuration file pnpm dev passes', { timeout: developmentTestTimeoutMs }, () => {
+describe('the configuration file pnpm dev passes', () => {
   it('is auto-runtime.yaml at the root of the repository, when it is there', async () => {
     const files = developmentFiles();
     writeFileSync(files.configFile, 'model_aliases:\n  house/fast: anthropic/claude-haiku-4-5\n');
@@ -134,7 +133,7 @@ describe('the configuration file pnpm dev passes', { timeout: developmentTestTim
   });
 });
 
-describe('pnpm dev with LOG_FORMAT=pretty in dev.env', { timeout: developmentTestTimeoutMs }, () => {
+describe('pnpm dev with LOG_FORMAT=pretty in dev.env', () => {
   it("writes its own lines and the server's as readable lines", async () => {
     const development = startDevelopment(developmentFiles('HOST=127.0.0.1\nLOG_FORMAT=pretty\n'));
 

@@ -8,7 +8,6 @@ import { compositionRoot } from '../composition/composition-root.ts';
 import { tcpPort } from '../lifecycle/http-server.ts';
 import { startServer, type RunningServer } from '../lifecycle/lifecycle.ts';
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
-import { workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 import { accessTokenOf, issuerOverHttps } from './issuer-over-https.ts';
 
 async function aPortNothingListensOn(): Promise<number> {
@@ -46,7 +45,7 @@ async function statusOfPlaybooks(port: number, token: string): Promise<number> {
   return answer.status;
 }
 
-describe('a runtime on its own loopback address', { timeout: workflowTestTimeoutMs }, () => {
+describe('a runtime on its own loopback address', () => {
   it('signs no one in without PUBLIC_URL, serves no metadata and takes a request as the local developer', async () => {
     const server = await startedOn(await aPortNothingListensOn(), {});
     const metadata = await fetch(`http://127.0.0.1:${server.port}/.well-known/oauth-protected-resource`);

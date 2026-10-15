@@ -11,7 +11,7 @@ import {
 import { servingInteractions } from '../testing/servers/interaction-server.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
 import { until } from '../testing/servers/workflow-calls.ts';
-import { runIdIn, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { runIdIn } from '../testing/servers/workflow-server.ts';
 
 const aDigest: unknown = expect.stringMatching(/^[0-9a-f]{64}$/u);
 
@@ -26,7 +26,7 @@ function endedFacts(server: Awaited<ReturnType<typeof servingInteractions>>, run
   );
 }
 
-describe('an interaction function that delivers through a tool, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+describe('an interaction function that delivers through a tool, over HTTP', () => {
   it('posts its request with one recorded call, its sizes and the digests of what it kept', async () => {
     const chat = await chatServer();
     const server = await servingInteractions(chatDelivery, chatEnvironment(chat.url));
@@ -66,7 +66,7 @@ describe('an interaction function that delivers through a tool, over HTTP', { ti
   });
 });
 
-describe('the delivery of a request, in the feed of its playbook', { timeout: workflowTestTimeoutMs }, () => {
+describe('the delivery of a request, in the feed of its playbook', () => {
   it('shows when the feed is filtered by the type of the fact', async () => {
     const chat = await chatServer();
     const server = await servingInteractions(chatDelivery, chatEnvironment(chat.url));
@@ -84,41 +84,37 @@ describe('the delivery of a request, in the feed of its playbook', { timeout: wo
   });
 });
 
-describe(
-  'a request delivered through a tool, as the history of its run keeps it',
-  { timeout: workflowTestTimeoutMs },
-  () => {
-    it('keeps the arguments and the answer scrubbed, shows on the history what fits 2 KiB, and reads the rest whole as one event', async () => {
-      const chat = await chatServer();
-      const server = await servingInteractions(chatDelivery, chatEnvironment(chat.url));
-      const started = await server.call('POST', `${alpha}/definitions/interaction/approve-brief/run`, {
-        body: { input: { owner: 'ada', campaign: `${chatKey} ${'x'.repeat(5000)}` } },
-      });
-      const runId = runIdIn(started.body);
-
-      const [start, end] = await endedFacts(server, runId);
-      const [startRow] = await deliveryRowsOf(server, runId);
-      const whole = await server.call('GET', `${alpha}/events/${String(startRow?.id)}`);
-
-      expect(start).not.toHaveProperty('arguments');
-      expect(start?.['arguments_bytes']).toBeGreaterThan(5000);
-      expect(whole.body).toMatchObject({ data: { arguments: { channel: '#approvals-ada', text: scrubbedBrief } } });
-      expect(end?.['answer']).toMatchObject({ channel: '#approvals-ada', ok: true });
+describe('a request delivered through a tool, as the history of its run keeps it', () => {
+  it('keeps the arguments and the answer scrubbed, shows on the history what fits 2 KiB, and reads the rest whole as one event', async () => {
+    const chat = await chatServer();
+    const server = await servingInteractions(chatDelivery, chatEnvironment(chat.url));
+    const started = await server.call('POST', `${alpha}/definitions/interaction/approve-brief/run`, {
+      body: { input: { owner: 'ada', campaign: `${chatKey} ${'x'.repeat(5000)}` } },
     });
+    const runId = runIdIn(started.body);
 
-    it('succeeds a notification once delivered, its ending caused by the delivery that succeeded', async () => {
-      const chat = await chatServer();
-      const server = await servingInteractions(chatDelivery, chatEnvironment(chat.url));
-      const runId = await server.ask('brief-out');
+    const [start, end] = await endedFacts(server, runId);
+    const [startRow] = await deliveryRowsOf(server, runId);
+    const whole = await server.call('GET', `${alpha}/events/${String(startRow?.id)}`);
 
-      expect(await server.settled(runId)).toMatchObject({ status: 'succeeded', output: {} });
-      expect(await server.causes(runId)).toEqual([
-        ['run_started', null],
-        ['interaction_requested', 'run_started'],
-        ['delivery_started', 'interaction_requested'],
-        ['delivery_succeeded', 'delivery_started'],
-        ['run_succeeded', 'delivery_succeeded'],
-      ]);
-    });
-  },
-);
+    expect(start).not.toHaveProperty('arguments');
+    expect(start?.['arguments_bytes']).toBeGreaterThan(5000);
+    expect(whole.body).toMatchObject({ data: { arguments: { channel: '#approvals-ada', text: scrubbedBrief } } });
+    expect(end?.['answer']).toMatchObject({ channel: '#approvals-ada', ok: true });
+  });
+
+  it('succeeds a notification once delivered, its ending caused by the delivery that succeeded', async () => {
+    const chat = await chatServer();
+    const server = await servingInteractions(chatDelivery, chatEnvironment(chat.url));
+    const runId = await server.ask('brief-out');
+
+    expect(await server.settled(runId)).toMatchObject({ status: 'succeeded', output: {} });
+    expect(await server.causes(runId)).toEqual([
+      ['run_started', null],
+      ['interaction_requested', 'run_started'],
+      ['delivery_started', 'interaction_requested'],
+      ['delivery_succeeded', 'delivery_started'],
+      ['run_succeeded', 'delivery_succeeded'],
+    ]);
+  });
+});

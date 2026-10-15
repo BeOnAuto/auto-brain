@@ -11,6 +11,7 @@ export interface FakeProcesses {
   readonly limiting: string;
   readonly bare: string;
   readonly limitedWith: () => string | undefined;
+  readonly announced: (pid: number, event: string) => boolean;
   readonly removeLimiter: () => void;
   readonly remove: () => void;
 }
@@ -20,16 +21,19 @@ const processLoop = new URL('../process-pool/process-loop.ts', import.meta.url).
 const pending = 'new Promise(() => {})';
 
 const fakeProcessSource = [
-  "import { readFileSync } from 'node:fs';",
+  "import { readFileSync, writeFileSync } from 'node:fs';",
   `import { serveProcessJobs } from '${processLoop}';`,
   'let jobs = 0;',
   'let lastJob = -1;',
   'const counted = (payload) => { jobs += 1; return { jobs, pid: process.pid, payload }; };',
   'const later = (then) => { setTimeout(then, 50); };',
+  "const announce = (event) => { writeFileSync(new URL(event + '-' + process.pid, import.meta.url), ''); };",
+  "const whenNudged = (then) => { process.once('SIGUSR2', then); };",
   "process.on('message', (message) => { lastJob = message?.job ?? -1; });",
   'serveProcessJobs({',
   '  echo: (payload) => counted(payload),',
   '  sleep: (ms) => new Promise((resolve) => { setTimeout(() => resolve(counted(ms)), ms); }),',
+  `  'begin and wait': () => { announce('began'); return ${pending}; },`,
   '  block: () => { for (;;) {} },',
   '  allocate: (mebibytes) => { const chunks = []; while (chunks.length * 32 < mebibytes) chunks.push(new Uint8Array(33554432).fill(1)); return chunks.length; },',
   '  exit: (code) => process.exit(code),',
@@ -40,9 +44,9 @@ const fakeProcessSource = [
   '  environment: () => Object.keys(process.env),',
   "  limits: () => ({ pid: process.pid, limits: readFileSync('/proc/self/limits', 'utf8').split('\\n').filter((line) => /^Max (?:data|core file) size/u.test(line)) }),",
   '  typed: (payload) => ({ given: payload, doubled: Float64Array.from(payload.values, (each) => each * 2), bytes: new Uint8Array([1, 2, 255]) }),',
-  "  stray: (payload) => { later(() => process.send('stray')); return counted(payload); },",
-  "  'then exit': (payload) => { later(() => process.exit(0)); return counted(payload); },",
-  "  'disconnect later': (payload) => { later(() => { process.disconnect(); setTimeout(() => {}, 5000); }); return counted(payload); },",
+  "  stray: (payload) => { whenNudged(() => process.send('stray')); return counted(payload); },",
+  "  'then exit': (payload) => { whenNudged(() => process.exit(0)); return counted(payload); },",
+  "  'disconnect later': (payload) => { later(() => { process.once('disconnect', () => announce('disconnected')); process.disconnect(); setTimeout(() => {}, 5000); }); return counted(payload); },",
   `  'wrong job': () => { process.send({ job: lastJob + 1, answer: 1, keep: true }); return ${pending}; },`,
   `  garbage: () => { process.send({ nonsense: true }); return ${pending}; },`,
   `  undecodable: () => { process.send({ job: lastJob, answer: { $typed: 'Nope', base64: 'AA==' }, keep: true }); return ${pending}; },`,
@@ -74,6 +78,7 @@ export function fakeProcesses(): FakeProcesses {
     limiting,
     bare,
     limitedWith: () => (existsSync(limited) ? readFileSync(limited, 'utf8').trim() : undefined),
+    announced: (pid, event) => existsSync(join(directory, `${event}-${pid}`)),
     removeLimiter: () => {
       rmSync(limiter);
     },
@@ -81,6 +86,10 @@ export function fakeProcesses(): FakeProcesses {
       rmSync(directory, { recursive: true, force: true });
     },
   };
+}
+
+export function nudge(pid: number): void {
+  process.kill(pid, 'SIGUSR2');
 }
 
 export function isAlive(pid: number): boolean {

@@ -3,13 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import type { TestResponse } from '../testing/servers/http-client.ts';
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import {
-  runIdIn,
-  servingWorkflows,
-  settledRun,
-  workflowSource,
-  workflowTestTimeoutMs,
-} from '../testing/servers/workflow-server.ts';
+import { runIdIn, servingWorkflows, settledRun, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const summary = ['---', 'model: anthropic/claude-sonnet-4-5', '---', 'Summarize: {{ input.text }}'].join('\n');
 
@@ -41,7 +35,7 @@ async function settledRunOf(name: string): Promise<TestResponse> {
   return settledRun(server, `${alpha}/runs/${runIdIn(started.body)}`);
 }
 
-describe('a nested run of a workflow', { timeout: workflowTestTimeoutMs }, () => {
+describe('a nested run of a workflow', () => {
   it('runs under the id its workflow gives it, so a call again with that id runs the definition once', async () => {
     await servingAsking();
 

@@ -3,13 +3,7 @@ import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import {
-  runIdIn,
-  servingWorkflows,
-  settledRun,
-  workflowSource,
-  workflowTestTimeoutMs,
-} from '../testing/servers/workflow-server.ts';
+import { runIdIn, servingWorkflows, settledRun, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const verdict = [
   '---',
@@ -122,7 +116,7 @@ async function ran(name: string, input: object): Promise<string> {
   return runIdIn(response.body);
 }
 
-describe('a workflow that runs reasoning functions, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+describe('a workflow that runs reasoning functions, over HTTP', () => {
   it('branches on the first answer, executes the second definition, and settles succeeded with what it composed', async () => {
     await serving(answers(jsonResult({ approve: true })), answers(textResult('Dinner for six, within policy.')));
 
@@ -170,7 +164,7 @@ describe('a workflow that runs reasoning functions, over HTTP', { timeout: workf
   });
 });
 
-describe('a nested definition that rejects its input, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+describe('a nested definition that rejects its input, over HTTP', () => {
   it('is an error the workflow catches with try, and recovers from', async () => {
     await serving();
 
@@ -193,7 +187,7 @@ describe('a nested definition that rejects its input, over HTTP', { timeout: wor
   });
 });
 
-describe('the history of a workflow run, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+describe('the history of a workflow run, over HTTP', () => {
   it('shows each input the run took, with the steps that moved and how they ended', async () => {
     await serving(answers(jsonResult({ approve: false })));
 

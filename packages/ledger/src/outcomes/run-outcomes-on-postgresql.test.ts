@@ -53,7 +53,7 @@ function counting(): Counting {
   };
 }
 
-describe.skipIf(skipped)(`The outcomes of runs on PostgreSQL${notice}`, { timeout: 30_000 }, () => {
+describe.skipIf(skipped)(`The outcomes of runs on PostgreSQL${notice}`, () => {
   it('are filled once by ledgers that start together, under the lock of the migration', async () => {
     const database = await aDatabase();
     const writing = await openLedgerWith(postgresqlLedgerLayer({ pools: plainPoolsOn(database) }));

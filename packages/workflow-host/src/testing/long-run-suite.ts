@@ -45,5 +45,5 @@ export function longRunSuite(settings: SettingsOf): void {
       kind: 'completed',
       output: { n: longRunInputs - 1, padding: 'x'.repeat(paddingCharacters) },
     });
-  }, 60_000);
+  });
 }

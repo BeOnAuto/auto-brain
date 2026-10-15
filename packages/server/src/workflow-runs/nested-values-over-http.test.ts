@@ -4,7 +4,7 @@ import { Client } from 'pg';
 import { afterEach, describe, expect, it, onTestFinished } from 'vitest';
 
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import { settledRun, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { settledRun, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const postgresql = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
 
@@ -73,48 +73,44 @@ async function playbookWithAWaitingWorkflow(environment: Readonly<Record<string,
   await server.call('POST', `${alpha}/definitions/workflow`, { body: { name: 'waiting', source: waiting } });
 }
 
-describe.each(stores)(
-  'values nested as deep as a run holds them, over HTTP, on $store',
-  { timeout: workflowTestTimeoutMs },
-  ({ skipped, environment }) => {
-    it.skipIf(skipped)('are taken as a run input, as the data of a sent event and of a published one', async () => {
-      await playbookWithAWaitingWorkflow(await environment());
+describe.each(stores)('values nested as deep as a run holds them, over HTTP, on $store', ({ skipped, environment }) => {
+  it.skipIf(skipped)('are taken as a run input, as the data of a sent event and of a published one', async () => {
+    await playbookWithAWaitingWorkflow(await environment());
 
-      const started = await server.call('POST', `${alpha}/definitions/workflow/waiting/run`, {
-        body: { input: nested(512), run_id: runId },
-      });
-      const sent = await server.call('POST', `${alpha}/runs/${runId}/events`, {
-        body: { event: { type: 'com.acme.approval.decided', data: nested(510) } },
-      });
-      const published = await server.call('POST', `${alpha}/events`, {
-        body: { event: { source: '/ledger/eu', type: 'com.acme.ledger.month-closed', data: nested(510) } },
-      });
-
-      expect([started.status, sent.status, published.status]).toEqual([200, 200, 200]);
-      expect(await settledRun(server, `${alpha}/runs/${runId}`)).toMatchObject({
-        body: { status: 'succeeded' },
-      });
+    const started = await server.call('POST', `${alpha}/definitions/workflow/waiting/run`, {
+      body: { input: nested(512), run_id: runId },
+    });
+    const sent = await server.call('POST', `${alpha}/runs/${runId}/events`, {
+      body: { event: { type: 'com.acme.approval.decided', data: nested(510) } },
+    });
+    const published = await server.call('POST', `${alpha}/events`, {
+      body: { event: { source: '/ledger/eu', type: 'com.acme.ledger.month-closed', data: nested(510) } },
     });
 
-    it.skipIf(skipped)('are refused deeper than that, as invalid input, before anything is recorded', async () => {
-      await playbookWithAWaitingWorkflow(await environment());
-
-      const ran = await server.call('POST', `${alpha}/definitions/workflow/waiting/run`, {
-        body: { input: nested(3000) },
-      });
-      const sent = await server.call('POST', `${alpha}/runs/${runId}/events`, {
-        body: { event: { type: 'com.acme.approval.decided', data: nested(3000) } },
-      });
-      const published = await server.call('POST', `${alpha}/events`, {
-        body: { event: { source: '/ledger/eu', type: 'com.acme.ledger.month-closed', data: nested(3000) } },
-      });
-
-      expect([ran, sent, published].map(({ status, body }) => [status, body])).toMatchObject([
-        [422, { reason: 'invalid_input', errors: [{ pointer: '/input' }] }],
-        [422, { reason: 'invalid_input', errors: [{ pointer: '/event/data' }] }],
-        [422, { reason: 'invalid_input', errors: [{ pointer: '/event/data' }] }],
-      ]);
-      expect(await server.call('GET', `${alpha}/runs`)).toMatchObject({ body: { runs: [] } });
+    expect([started.status, sent.status, published.status]).toEqual([200, 200, 200]);
+    expect(await settledRun(server, `${alpha}/runs/${runId}`)).toMatchObject({
+      body: { status: 'succeeded' },
     });
-  },
-);
+  });
+
+  it.skipIf(skipped)('are refused deeper than that, as invalid input, before anything is recorded', async () => {
+    await playbookWithAWaitingWorkflow(await environment());
+
+    const ran = await server.call('POST', `${alpha}/definitions/workflow/waiting/run`, {
+      body: { input: nested(3000) },
+    });
+    const sent = await server.call('POST', `${alpha}/runs/${runId}/events`, {
+      body: { event: { type: 'com.acme.approval.decided', data: nested(3000) } },
+    });
+    const published = await server.call('POST', `${alpha}/events`, {
+      body: { event: { source: '/ledger/eu', type: 'com.acme.ledger.month-closed', data: nested(3000) } },
+    });
+
+    expect([ran, sent, published].map(({ status, body }) => [status, body])).toMatchObject([
+      [422, { reason: 'invalid_input', errors: [{ pointer: '/input' }] }],
+      [422, { reason: 'invalid_input', errors: [{ pointer: '/event/data' }] }],
+      [422, { reason: 'invalid_input', errors: [{ pointer: '/event/data' }] }],
+    ]);
+    expect(await server.call('GET', `${alpha}/runs`)).toMatchObject({ body: { runs: [] } });
+  });
+});

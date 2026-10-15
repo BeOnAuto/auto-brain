@@ -106,35 +106,31 @@ describe('a chain of reactions', () => {
 });
 
 describe('a playbook whose run log holds a record its dispatch never covers', () => {
-  it(
-    'passes the record at the twentieth sweep, says so, and goes on to the events after it',
-    { timeout: 30_000 },
-    async () => {
-      const reacting = await reactingHost({ sweepEveryMs: 10 });
-      const { store } = reacting.database;
-      await definitionRecorded(store, {
-        name: 'close',
+  it('passes the record at the twentieth sweep, says so, and goes on to the events after it', async () => {
+    const reacting = await reactingHost({ sweepEveryMs: 10 });
+    const { store } = reacting.database;
+    await definitionRecorded(store, {
+      name: 'close',
+      version: 1,
+      triggers: [eventTrigger({ type: 'com.acme.closed' })],
+    });
+    await recorded(store, `${alpha}run-logs/r-stuck`, { type: 'input_applied', data: { input: {} } });
+    await published(store, { id: 'closed', type: 'com.acme.closed' });
+
+    const starts = await until(
+      () => Promise.resolve(reacting.reactions.starts()),
+      (found) => found.length > 0,
+      2000,
+    );
+
+    expect(starts.map(({ workflow }) => workflow)).toEqual(['close']);
+    expect(reacting.notes()).toMatchObject([
+      {
+        kind: 'run_record_passed',
+        run: { org: 'acme', playbook: 'alpha', runId: 'r-stuck' },
         version: 1,
-        triggers: [eventTrigger({ type: 'com.acme.closed' })],
-      });
-      await recorded(store, `${alpha}run-logs/r-stuck`, { type: 'input_applied', data: { input: {} } });
-      await published(store, { id: 'closed', type: 'com.acme.closed' });
-
-      const starts = await until(
-        () => Promise.resolve(reacting.reactions.starts()),
-        (found) => found.length > 0,
-        2000,
-      );
-
-      expect(starts.map(({ workflow }) => workflow)).toEqual(['close']);
-      expect(reacting.notes()).toMatchObject([
-        {
-          kind: 'run_record_passed',
-          run: { org: 'acme', playbook: 'alpha', runId: 'r-stuck' },
-          version: 1,
-          sweeps: 20,
-        },
-      ]);
-    },
-  );
+        sweeps: 20,
+      },
+    ]);
+  });
 });

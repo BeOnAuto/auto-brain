@@ -12,8 +12,6 @@ import {
 } from '../capability/computation-function.ts';
 import { computationBounds } from '../run/run-bounds.ts';
 
-export const workerTestTimeoutMs = 30_000;
-
 const run: RunContext = {
   id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
   org: 'acme',

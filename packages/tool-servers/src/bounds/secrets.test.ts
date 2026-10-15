@@ -1,3 +1,5 @@
+import { Buffer } from 'node:buffer';
+
 import { Effect, Redacted } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -59,39 +61,85 @@ describe('the secrets of the servers', () => {
   });
 
   it('are scrubbed as they are written inside JSON too, where a quote, a backslash or a line break is escaped', () => {
-    const secrets = secretsOf([]);
     const awkward = 'pa"ss\\word\nnext-line';
-    secrets.add(awkward);
+    const secrets = secretsOf([Redacted.make(awkward)]);
 
     expect(secrets.scrub(JSON.stringify({ said: `the key is ${awkward}` }))).toBe('{"said":"the key is [redacted]"}');
     expect(secrets.scrub(`raw ${awkward}`)).toBe('raw [redacted]');
   });
 
   it('are scrubbed when JSON holds them twice encoded, as the text content of a tool that is itself JSON does', () => {
-    const secrets = secretsOf([]);
     const awkward = 'pa"ss\\word\nnext-line';
-    secrets.add(awkward);
+    const secrets = secretsOf([Redacted.make(awkward)]);
     const result = { content: [{ type: 'text', text: JSON.stringify({ key: awkward }) }] };
 
     expect(secrets.scrub(JSON.stringify(result))).toBe(
       JSON.stringify({ content: [{ type: 'text', text: '{"key":"[redacted]"}' }] }),
     );
   });
+});
 
-  it('take a token minted while the server runs, and leave out what is too short to be one', () => {
+describe('the tokens a source mints', () => {
+  it('replace the token before them, which still scrubs, while the one before that does not', () => {
+    const secrets = secretsOf([Redacted.make('graph-api-key-4f1d9a7c2b')]);
+    const said = 'graph-api-key-4f1d9a7c2b, minted-token-1-9f3e, minted-token-2-9f3e, minted-token-3-9f3e';
+
+    secrets.replace('graph', 'minted-token-1-9f3e');
+    const afterFirst = secrets.scrub(said);
+    secrets.replace('graph', 'minted-token-2-9f3e');
+    const afterSecond = secrets.scrub(said);
+    secrets.replace('graph', 'minted-token-3-9f3e');
+
+    expect([afterFirst, afterSecond, secrets.scrub(said)]).toEqual([
+      '[redacted], [redacted], minted-token-2-9f3e, minted-token-3-9f3e',
+      '[redacted], [redacted], [redacted], minted-token-3-9f3e',
+      '[redacted], minted-token-1-9f3e, [redacted], [redacted]',
+    ]);
+  });
+
+  it('replace only the tokens of their own source', () => {
     const secrets = secretsOf([]);
-    secrets.add('tiny');
-    secrets.add('minted-token-9f3e');
 
-    expect(secrets.scrub('Bearer minted-token-9f3e, tiny')).toBe('Bearer [redacted], tiny');
+    secrets.replace('wiki', 'wiki-token-1-4c2a');
+    secrets.replace('graph', 'graph-token-1-9f3e');
+    secrets.replace('graph', 'graph-token-2-9f3e');
+    secrets.replace('graph', 'graph-token-3-9f3e');
+
+    expect(secrets.scrub('wiki-token-1-4c2a, graph-token-1-9f3e')).toBe('[redacted], graph-token-1-9f3e');
+  });
+
+  it('leave a configured secret in the set when a source mints it and replaces it', () => {
+    const secrets = secretsOf([Redacted.make('graph-api-key-4f1d9a7c2b')]);
+
+    secrets.replace('graph', 'graph-api-key-4f1d9a7c2b');
+    secrets.replace('graph', 'minted-token-2-9f3e');
+    secrets.replace('graph', 'minted-token-3-9f3e');
+
+    expect(secrets.scrub('Bearer graph-api-key-4f1d9a7c2b')).toBe('Bearer [redacted]');
+  });
+});
+
+describe('a token a source mints', () => {
+  it('is scrubbed in every form a secret takes, and never when too short to be one', () => {
+    const secrets = secretsOf([]);
+    const awkward = 'pa"ss\\word next/line';
+
+    secrets.replace('graph', awkward);
+    secrets.replace('wiki', 'tiny');
+
+    expect(secrets.scrub(JSON.stringify({ text: JSON.stringify({ key: awkward }) }))).toBe(
+      JSON.stringify({ text: '{"key":"[redacted]"}' }),
+    );
+    expect(secrets.scrub(`/keys/${encodeURIComponent(awkward)} ${Buffer.from(awkward).toString('base64')}`)).toBe(
+      '/keys/[redacted] [redacted]',
+    );
+    expect(secrets.scrub('Bearer tiny')).toBe('Bearer tiny');
   });
 });
 
 describe('the secrets of a value', () => {
   it('are scrubbed from every key and every string, and from a number whose digits are one', () => {
-    const secrets = secretsOf([]);
-    secrets.add('graph-api-key-4f1d9a7c2b');
-    secrets.add('31415926535');
+    const secrets = secretsOf([Redacted.make('graph-api-key-4f1d9a7c2b'), Redacted.make('31415926535')]);
 
     expect(
       secrets.scrubValue({
@@ -107,9 +155,7 @@ describe('the secrets of a value', () => {
   });
 
   it('drop a key that scrubs to the text of an earlier key, with its value', () => {
-    const secrets = secretsOf([]);
-    secrets.add('graph-api-key-4f1d9a7c2b');
-    secrets.add('limitless-key-3e9d');
+    const secrets = secretsOf([Redacted.make('graph-api-key-4f1d9a7c2b'), Redacted.make('limitless-key-3e9d')]);
 
     expect(secrets.scrubValue({ 'graph-api-key-4f1d9a7c2b': 1, 'limitless-key-3e9d': 2, kept: 3 })).toEqual({
       '[redacted]': 1,

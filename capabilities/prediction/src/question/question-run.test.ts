@@ -11,8 +11,6 @@ import { dailyRows, steadyVisits } from '../testing/daily-rows.ts';
 import type { PortOptions } from '../testing/prediction-ports.ts';
 import { uploadDataset } from '../upload/upload-dataset.ts';
 
-const testTimeoutMs = 60_000;
-
 const heldWalk = { rows: '/held.csv', window: 3, holdout: 1, steps: 1, features: 0, given: [], remaining: null };
 
 const someMilliseconds: unknown = expect.any(Number);
@@ -34,7 +32,7 @@ async function scriptedVisits(deadlines: Deadlines = ordinaryDeadlines, processe
   return { scripted, playbook };
 }
 
-describe('a question to a prediction function', { timeout: testTimeoutMs }, () => {
+describe('a question to a prediction function', () => {
   it('is answered by the active version for the step it asks, from the last period of its dataset', async () => {
     const playbook = await activeVisits();
 
@@ -82,7 +80,7 @@ describe('a question to a prediction function', { timeout: testTimeoutMs }, () =
   });
 });
 
-describe('a question whose model process does not answer', { timeout: testTimeoutMs }, () => {
+describe('a question whose model process does not answer', () => {
   it('fails as the model process failing when it ends, runs out of memory or answers numbers that are not finite', async () => {
     const { scripted, playbook } = await scriptedVisits();
     scripted.next('exits');
@@ -123,7 +121,7 @@ describe('a question whose model process does not answer', { timeout: testTimeou
   });
 });
 
-describe('a question whose model processes are all taken', { timeout: testTimeoutMs }, () => {
+describe('a question whose model processes are all taken', () => {
   it('is told every model process is busy while every one is taken', async () => {
     const scripted = scriptedModels();
     const deadlines = { check: 60_000, run: 300, walk: 60_000 };

@@ -287,6 +287,8 @@ The server scrubs every secret from every message, event and result:
 
 There is one exception: a value shorter than 8 characters is not scrubbed, since scrubbing it would erase ordinary words. Give a server a key at least that long.
 
+One set of secrets serves all the tool servers, for runs and for calls made by hand with `execute` alike, so a token minted for a run is scrubbed from a call made by hand too. A minted token is scrubbed until the token after the one that replaces it is minted, since a call in flight as a token is renewed may still carry the one before it in a result recorded a moment later.
+
 ### Run a server as a process
 
 - Write `command` as an installed program. Never use a package downloaded at start, such as `npx -y`, which would run whatever that package is the day the process starts.

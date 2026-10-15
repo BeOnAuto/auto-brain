@@ -30,7 +30,7 @@ function checked(on: ProgramPool, deadlineMs?: number) {
 }
 
 describe('the check of a document when it is saved', () => {
-  it('runs in the pool’s check worker and answers the compiler’s issues', { timeout: 60_000 }, async () => {
+  it('runs in the pool’s check worker and answers the compiler’s issues', async () => {
     expect(await checked(pool)).toEqual(
       Exit.succeed({
         issues: [
@@ -110,25 +110,21 @@ describe('a check that does not answer', () => {
 });
 
 describe('the check worker a server warms when it starts', () => {
-  it(
-    'checks one trivial expression, so the compiler is loaded before the first save',
-    { timeout: 60_000 },
-    async () => {
-      const asked: unknown[] = [];
-      const recording: ProgramPool = {
-        ...pool,
-        check: (request, signal) => {
-          asked.push(request);
-          return pool.check(request, signal);
-        },
-      };
+  it('checks one trivial expression, so the compiler is loaded before the first save', async () => {
+    const asked: unknown[] = [];
+    const recording: ProgramPool = {
+      ...pool,
+      check: (request, signal) => {
+        asked.push(request);
+        return pool.check(request, signal);
+      },
+    };
 
-      const warmed = await warmedChecks(recording);
+    const warmed = await warmedChecks(recording);
 
-      expect(warmed).toMatchObject({ ran: 'checked', issues: [] });
-      expect(asked).toEqual([
-        { schemas: {}, expressions: [{ source: 'true', names: [] }], deadlineMs: checkDeadlineMs, worker: checkWorker },
-      ]);
-    },
-  );
+    expect(warmed).toMatchObject({ ran: 'checked', issues: [] });
+    expect(asked).toEqual([
+      { schemas: {}, expressions: [{ source: 'true', names: [] }], deadlineMs: checkDeadlineMs, worker: checkWorker },
+    ]);
+  });
 });

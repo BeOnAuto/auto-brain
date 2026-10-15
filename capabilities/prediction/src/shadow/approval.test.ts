@@ -15,8 +15,6 @@ import { performedUntilQuiet } from '../build-testing/due-driving.ts';
 import { childIdOf } from '../build-work/child-runs.ts';
 import { uploadedDailyVisits } from '../testing/daily-documents.ts';
 
-const testTimeoutMs = 60_000;
-
 const signedInPerson: CallerIdentity = {
   id: 'person:user|ada',
   org: 'acme',
@@ -44,7 +42,7 @@ function decided(playbook: BuildPlaybook, build: string, decision: string) {
   return playbook.call(playbook.operations.answer, { run_id: childIdOf(build, '/approval'), answer: { decision } });
 }
 
-describe('a version that waits for its approver when a newer one is built', { timeout: testTimeoutMs }, () => {
+describe('a version that waits for its approver when a newer one is built', () => {
   it('is refused as superseded, its approval cancelled, and the newer version waits in its place', async () => {
     const playbook = buildPlaybook();
     const first = await awaitingApproval(playbook);
@@ -67,7 +65,7 @@ describe('a version that waits for its approver when a newer one is built', { ti
   });
 });
 
-describe('a version whose activation is approved', { timeout: testTimeoutMs }, () => {
+describe('a version whose activation is approved', () => {
   it('waits for its approver, asked with the function, the version and its card', async () => {
     const playbook = buildPlaybook();
     const build = await awaitingApproval(playbook);
@@ -116,7 +114,7 @@ describe('a version whose activation is approved', { timeout: testTimeoutMs }, (
   });
 });
 
-describe('a version whose approval is not given', { timeout: testTimeoutMs }, () => {
+describe('a version whose approval is not given', () => {
   it('is refused as unanswered when its approval expires', async () => {
     const playbook = buildPlaybook();
     await awaitingApproval(playbook, 'PT1M');
@@ -153,7 +151,7 @@ describe('a version whose approval is not given', { timeout: testTimeoutMs }, ()
   });
 });
 
-describe('a version whose approver answers no decision', { timeout: testTimeoutMs }, () => {
+describe('a version whose approver answers no decision', () => {
   it('is refused as unanswered', async () => {
     const playbook = buildPlaybook();
     expect(
@@ -189,7 +187,7 @@ describe('a version whose approver answers no decision', { timeout: testTimeoutM
   });
 });
 
-describe('a version a signed-in person approves', { timeout: testTimeoutMs }, () => {
+describe('a version a signed-in person approves', () => {
   it('names a signed-in person who approves it as the facts name them', async () => {
     const playbook = buildPlaybook();
     const build = await awaitingApproval(playbook);

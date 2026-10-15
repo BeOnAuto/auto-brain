@@ -4,7 +4,7 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { campaignPace, campaignRows } from '../testing/campaign-pace.ts';
-import { computationWith, poolOf, workerTestTimeoutMs } from '../testing/computation-runs.ts';
+import { computationWith, poolOf } from '../testing/computation-runs.ts';
 import { computationBounds, mostOutputBytes } from './run-bounds.ts';
 
 const checking = poolOf();
@@ -78,7 +78,7 @@ const reading = functionOf(
   'return [Reflect.get({}, "polluted") ?? null, typeof Reflect.get(globalThis, "kept"), [1].push(2), Math.max(1, 2)];',
 );
 
-describe('a warm worker after jobs that ended badly', { timeout: workerTestTimeoutMs }, () => {
+describe('a warm worker after jobs that ended badly', () => {
   it('runs the next program as a fresh worker does: nothing a job did reaches the jobs after it', async () => {
     const warm = poolOf({ workers: 1 });
     const input = campaignRows(1000);

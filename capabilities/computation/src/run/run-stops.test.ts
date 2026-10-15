@@ -5,13 +5,7 @@ import { Exit, Option, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { campaignPace, campaignRows } from '../testing/campaign-pace.ts';
-import {
-  computationWith,
-  functionOf,
-  poolOf,
-  programDocument,
-  workerTestTimeoutMs,
-} from '../testing/computation-runs.ts';
+import { computationWith, functionOf, poolOf, programDocument } from '../testing/computation-runs.ts';
 
 const decodeRun = Schema.decodeUnknownSync(
   Schema.Struct({ output: Schema.Json, record: Schema.Struct({ work: Schema.Number }) }),
@@ -54,7 +48,7 @@ const brokenWhen: readonly (readonly [PoolOutcome, string])[] = [
   ],
 ];
 
-describe('a run that the pool stops', { timeout: workerTestTimeoutMs }, () => {
+describe('a run that the pool stops', () => {
   it.each(unavailableWhen)('is unavailable when the pool answers %j', async (outcome, detail) => {
     const run = computationWith(scriptedPool([outcome], poolOf()));
 
@@ -70,7 +64,7 @@ describe('a run that the pool stops', { timeout: workerTestTimeoutMs }, () => {
   });
 });
 
-describe('a run that was unavailable', { timeout: workerTestTimeoutMs }, () => {
+describe('a run that was unavailable', () => {
   it('runs when it is tried again, since nothing in it changed', async () => {
     const run = computationWith(scriptedPool([{ ran: 'stopped', because: 'busy', milliseconds: 10_000 }], poolOf()));
 
@@ -79,7 +73,7 @@ describe('a run that was unavailable', { timeout: workerTestTimeoutMs }, () => {
   });
 });
 
-describe('the input of a run', { timeout: workerTestTimeoutMs }, () => {
+describe('the input of a run', () => {
   it('is checked against the input schema, with a pointer to what does not fit', async () => {
     expect(
       await computationWith().running(campaignPace, {
@@ -108,7 +102,7 @@ describe('the input of a run', { timeout: workerTestTimeoutMs }, () => {
   });
 });
 
-describe('the output of a run', { timeout: workerTestTimeoutMs }, () => {
+describe('the output of a run', () => {
   it('is the same for the same input, with the same checkpoints, in two pools of workers', async () => {
     const input = campaignRows(300);
 

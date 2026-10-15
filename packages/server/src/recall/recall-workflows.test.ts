@@ -8,7 +8,6 @@ import {
   playbookWithReviews,
   inState,
   liveWith,
-  recallTestTimeoutMs,
   servingRecall,
   standingUntil,
   verdicts,
@@ -106,7 +105,7 @@ async function settledWorkflowRun(server: ReasoningServer, workflow: string) {
   return settledRun(server, `${alpha}/runs/${runIdIn(started.body)}`);
 }
 
-describe('a workflow that recalls, reasons and computes', { timeout: recallTestTimeoutMs }, () => {
+describe('a workflow that recalls, reasons and computes', () => {
   it('gives the reasoning function the verdicts the playbook reached before, and tallies them with its advice', async () => {
     const server = await serving(answers(jsonResult({ approve: false })));
 

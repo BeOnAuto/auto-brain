@@ -4,7 +4,7 @@ import { Exit, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { campaignPace } from '../testing/campaign-pace.ts';
-import { computationWith, workerTestTimeoutMs } from '../testing/computation-runs.ts';
+import { computationWith } from '../testing/computation-runs.ts';
 
 const referencePage = readFileSync(
   new URL('../../../../docs/reference/computation-format.md', import.meta.url),
@@ -25,7 +25,7 @@ const [, shapedExample = { language: '', body: '' }] = shapedBlocks;
 
 const decodeJson = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Json));
 
-describe('the example on the reference page of computation functions', { timeout: workerTestTimeoutMs }, () => {
+describe('the example on the reference page of computation functions', () => {
   it('is, byte for byte, the document the tests run', () => {
     const [example] = fencedBlocks;
 

@@ -12,8 +12,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
-const computationTestTimeoutMs = 30_000;
-
 const dated = [
   '---',
   'language: typescript',
@@ -50,46 +48,42 @@ async function onAlpha<T>(use: (session: McpSession) => Promise<T>): Promise<T> 
   );
 }
 
-describe(
-  'a computation function over MCP, on the endpoint of its playbook',
-  { timeout: computationTestTimeoutMs },
-  () => {
-    it('is created, run and read back with its run and the words of its result', async () => {
-      const { created, ran, run, summed } = await onAlpha(async (session) => {
-        const creating = await session.callTool('create_definition', {
-          type: 'computation',
-          name: 'pace',
-          source: campaignPace,
-        });
-        const running = await session.callTool('run_definition', {
-          type: 'computation',
-          name: 'pace',
-          input: campaignRows(4),
-        });
-        const reading = await session.callTool('get_run', {
-          run_id: String(running.structuredContent?.['run_id']),
-        });
-        await session.callTool('create_definition', { type: 'computation', name: 'total', source: total });
-        const summing = await session.callTool('run_definition', {
-          type: 'computation',
-          name: 'total',
-          input: campaignRows(4),
-        });
-        return { created: creating, ran: running, run: reading, summed: summing };
+describe('a computation function over MCP, on the endpoint of its playbook', () => {
+  it('is created, run and read back with its run and the words of its result', async () => {
+    const { created, ran, run, summed } = await onAlpha(async (session) => {
+      const creating = await session.callTool('create_definition', {
+        type: 'computation',
+        name: 'pace',
+        source: campaignPace,
       });
-
-      expect(created.structuredContent).toMatchObject({ type: 'computation', name: 'pace', version: 1 });
-      expect(ran.structuredContent).toMatchObject({ status: 'succeeded', output: { total_spend_cents: 4222 } });
-      expect(plainTextIn(ran)).toBe(
-        'Ran the computation function “pace”. Its result is too long to repeat here; the whole of it is in the details below.',
-      );
-      expect(plainTextIn(summed)).toBe('Ran the computation function “total”. Its result: total spend cents: 4222.');
-      expect(run.structuredContent).toMatchObject({ record: { language: 'typescript' } });
+      const running = await session.callTool('run_definition', {
+        type: 'computation',
+        name: 'pace',
+        input: campaignRows(4),
+      });
+      const reading = await session.callTool('get_run', {
+        run_id: String(running.structuredContent?.['run_id']),
+      });
+      await session.callTool('create_definition', { type: 'computation', name: 'total', source: total });
+      const summing = await session.callTool('run_definition', {
+        type: 'computation',
+        name: 'total',
+        input: campaignRows(4),
+      });
+      return { created: creating, ran: running, run: reading, summed: summing };
     });
-  },
-);
 
-describe('a computation function that cannot work as written, over MCP', { timeout: computationTestTimeoutMs }, () => {
+    expect(created.structuredContent).toMatchObject({ type: 'computation', name: 'pace', version: 1 });
+    expect(ran.structuredContent).toMatchObject({ status: 'succeeded', output: { total_spend_cents: 4222 } });
+    expect(plainTextIn(ran)).toBe(
+      'Ran the computation function “pace”. Its result is too long to repeat here; the whole of it is in the details below.',
+    );
+    expect(plainTextIn(summed)).toBe('Ran the computation function “total”. Its result: total spend cents: 4222.');
+    expect(run.structuredContent).toMatchObject({ record: { language: 'typescript' } });
+  });
+});
+
+describe('a computation function that cannot work as written, over MCP', () => {
   it('answers a program whose output is not JSON with isError, the conflict and its kind, in plain words', async () => {
     const ran = await onAlpha(async (session) => {
       await session.callTool('create_definition', { type: 'computation', name: 'dated', source: dated });
@@ -112,7 +106,7 @@ describe('a computation function that cannot work as written, over MCP', { timeo
 
 const listingTheComputationGuide: unknown = expect.arrayContaining(['computation-function']);
 
-describe('the definition tools an agent sees', { timeout: computationTestTimeoutMs }, () => {
+describe('the definition tools an agent sees', () => {
   it('name a computation function in create_definition and its guide in get_guide, which says the language it is written in', async () => {
     const tools = listedTools(await onAlpha((session) => session.listTools()));
     const createDefinition = tools.find(({ name }) => name === 'create_definition');

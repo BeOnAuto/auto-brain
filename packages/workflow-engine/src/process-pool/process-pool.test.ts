@@ -1,9 +1,7 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { Schema } from 'effect';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 
-import { fakeProcesses, isAlive } from '../process-testing/fake-processes.ts';
+import { fakeProcesses, isAlive, nudge } from '../process-testing/fake-processes.ts';
 import {
   processPool,
   type ProcessOutcome,
@@ -18,11 +16,11 @@ interface Ran {
   readonly pid: number;
 }
 
-const poolTestTimeoutMs = 30_000;
-
 const mebibyte = 1_048_576;
 
-const ordinaryDeadlineMs = 10_000;
+const ordinaryDeadlineMs = 30_000;
+
+const awaitedAtMostMs = 30_000;
 
 const fake = fakeProcesses();
 
@@ -64,6 +62,15 @@ function ranOf(outcome: ProcessOutcome): Ran {
 
 async function echoed(pool: ProcessPool, key = 'a model'): Promise<Ran> {
   return ranOf(await run(pool, 'echo', null, { key }));
+}
+
+function until(event: () => boolean): Promise<void> {
+  return vi.waitFor(
+    () => {
+      expect(event()).toBe(true);
+    },
+    { timeout: awaitedAtMostMs, interval: 10 },
+  );
 }
 
 function namesIn(outcome: ProcessOutcome): readonly unknown[] {
@@ -124,7 +131,7 @@ const endings: readonly Ending[] = [
   }),
 ];
 
-describe('a job of a process of the pool', { timeout: poolTestTimeoutMs }, () => {
+describe('a job of a process of the pool', () => {
   it('is answered with what the process answered, its typed arrays crossing the pipe both ways as base64', async () => {
     const pool = poolOf();
 
@@ -162,17 +169,20 @@ describe('a job of a process of the pool', { timeout: poolTestTimeoutMs }, () =>
     const pool = poolOf({ processes: 1 });
     const holding = run(pool, 'sleep', 300);
 
-    const outcome = await run(pool, 'echo', payload);
+    const endedFirst = await Promise.race([
+      run(pool, 'echo', payload),
+      holding.then(() => 'the job holding the permit'),
+    ]);
 
-    expect(outcome).toMatchObject({
+    expect(endedFirst).toMatchObject({
       ended: 'crashed',
       detail: 'The payload holds what the pipe to a process cannot carry',
     });
-    expect([outcome.milliseconds < 300, (await holding).ended]).toEqual([true, 'answered']);
+    expect((await holding).ended).toBe('answered');
   });
 });
 
-describe('a process of the pool kept between jobs', { timeout: poolTestTimeoutMs }, () => {
+describe('a process of the pool kept between jobs', () => {
   it('takes job after job of its key, which it counts 1, 2 and 3, while another key has a process of its own', async () => {
     const pool = poolOf();
 
@@ -197,7 +207,7 @@ describe('a process of the pool kept between jobs', { timeout: poolTestTimeoutMs
     const first = await echoed(pool);
 
     const slept = ranOf(await run(pool, 'sleep', 300));
-    await setTimeout(500);
+    await until(() => !isAlive(first.pid));
     const next = await echoed(pool);
 
     expect([slept.pid, slept.jobs]).toEqual([first.pid, 2]);
@@ -205,7 +215,7 @@ describe('a process of the pool kept between jobs', { timeout: poolTestTimeoutMs
   });
 });
 
-describe('a process of the pool after a job that ended it', { timeout: poolTestTimeoutMs }, () => {
+describe('a process of the pool after a job that ended it', () => {
   it.each(endings)(
     'is let go of after a job it $why, so the next job of its key starts in a fresh process',
     async ({ kind, payload, deadlineMs, ended }) => {
@@ -221,7 +231,7 @@ describe('a process of the pool after a job that ended it', { timeout: poolTestT
   );
 });
 
-describe('a process of the pool that misbehaves', { timeout: poolTestTimeoutMs }, () => {
+describe('a process of the pool that misbehaves', () => {
   it.each([
     ['writes to the pool', 'stray'],
     ['exits', 'then exit'],
@@ -229,17 +239,19 @@ describe('a process of the pool that misbehaves', { timeout: poolTestTimeoutMs }
     const pool = poolOf();
 
     const first = await run(pool, kind);
-    await setTimeout(300);
+    const { pid } = ranOf(first);
+    nudge(pid);
+    await until(() => !isAlive(pid));
     const next = await echoed(pool);
 
     expect(first).toMatchObject({ ended: 'answered' });
-    expect([next.jobs, next.pid === ranOf(first).pid]).toEqual([1, false]);
+    expect([next.jobs, next.pid === pid]).toEqual([1, false]);
   });
 
   it('ends a job it could not send to its process as crashed, and lets that process go', async () => {
     const pool = poolOf();
     const first = ranOf(await run(pool, 'disconnect later'));
-    await setTimeout(300);
+    await until(() => fake.announced(first.pid, 'disconnected'));
 
     const outcome = await run(pool, 'echo');
     const next = await echoed(pool);
@@ -249,7 +261,7 @@ describe('a process of the pool that misbehaves', { timeout: poolTestTimeoutMs }
   });
 });
 
-describe('a job of the pool that never reaches its process', { timeout: poolTestTimeoutMs }, () => {
+describe('a job of the pool that never reaches its process', () => {
   it('ends a job crashed when its module does not load, or its process cannot start at all', async () => {
     const gone = fakeProcesses();
     const pool = poolOf({ path: gone.limiting });
@@ -269,14 +281,14 @@ describe('a job of the pool that never reaches its process', { timeout: poolTest
     const cancelling = new AbortController();
 
     const running = pool.run(
-      { module: fake.module, key: 'a model', kind: 'sleep', payload: 5000, deadlineMs: ordinaryDeadlineMs },
+      { module: fake.module, key: 'a model', kind: 'begin and wait', payload: null, deadlineMs: ordinaryDeadlineMs },
       cancelling.signal,
     );
-    await setTimeout(100);
+    await until(() => fake.announced(warm.pid, 'began'));
     cancelling.abort();
     const outcome = await running;
 
     expect(outcome).toMatchObject({ ended: 'cancelled' });
-    expect([outcome.milliseconds < 2000, isAlive(warm.pid)]).toEqual([true, false]);
+    expect(isAlive(warm.pid)).toBe(false);
   });
 });

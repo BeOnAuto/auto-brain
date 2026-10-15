@@ -1,13 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import {
-  runIdIn,
-  servingWorkflows,
-  settledRun,
-  workflowSource,
-  workflowTestTimeoutMs,
-} from '../testing/servers/workflow-server.ts';
+import { runIdIn, servingWorkflows, settledRun, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const setting = workflowSource('setting', 'do:\n  - done: { set: { done: true } }\n');
 
@@ -40,7 +34,7 @@ function saved(task: string) {
   });
 }
 
-describe('the reference of a task that starts a run, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+describe('the reference of a task that starts a run, over HTTP', () => {
   it('is saved at 256 bytes, and the workflow runs to its end with the run it starts', async () => {
     await servingTheNested();
 

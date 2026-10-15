@@ -1,11 +1,6 @@
 import { TimedOut } from '@on.auto/reasoning';
 import { answers, callingTools, textResult, type ScriptedReply } from '@on.auto/reasoning/testing';
-import {
-  fakeStdioServerPath,
-  serveFakeMcp,
-  stdioTestTimeoutMs,
-  type FakeMcpServer,
-} from '@on.auto/tool-servers/testing';
+import { fakeStdioServerPath, serveFakeMcp, type FakeMcpServer } from '@on.auto/tool-servers/testing';
 import { Effect, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -26,7 +21,7 @@ const closing: (() => Promise<void>)[] = [];
 
 afterEach(async () => {
   await Promise.all(closing.splice(0).map((close) => close()));
-}, stdioTestTimeoutMs);
+});
 
 const timedOut: ScriptedReply = () =>
   Effect.fail(
@@ -124,7 +119,7 @@ describe('a reasoning function that calls tools, over HTTP', () => {
     ).toEqual([release]);
   });
 
-  it('runs with a tool of a process the server starts', { timeout: stdioTestTimeoutMs }, async () => {
+  it('runs with a tool of a process the server starts', async () => {
     const server = await serving(await fakeGraph(), searched('limitless'));
 
     expect(await running(server, 'limitless')).toMatchObject({ status: 200, body: { output: 'Acme has 2 rows.' } });
