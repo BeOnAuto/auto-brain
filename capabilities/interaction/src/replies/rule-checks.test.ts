@@ -1,9 +1,17 @@
 import { issueText } from '@on.auto/definitions/document';
 import { Result } from 'effect';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { parseInteractionDocument } from '../document/document-parsing.ts';
 import { notificationDocument, threadDocument } from '../testing/index.ts';
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['performance'] });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 function problemsOf(source: string): readonly string[] {
   const parsed = parseInteractionDocument(source);
