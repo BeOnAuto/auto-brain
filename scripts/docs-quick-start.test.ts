@@ -5,39 +5,39 @@ import { test } from 'node:test';
 
 const docs = resolve(import.meta.dirname, '../docs');
 
-await test('the local quick start connects an agent, checks it can see the models and leads to the first tutorial, and the README links to the documentation', () => {
+await test('the local quick start connects an agent with one MCP entry, lets it set up the key and leads to the first tutorial, and the README links to the documentation', () => {
   const readme = readFileSync(join(docs, '../README.md'), 'utf8');
   assert.ok(readme.includes('](https://on.auto/docs/)'));
   const guide = readFileSync(join(docs, 'get-started/local.md'), 'utf8');
   assert.match(guide, /^# Quick start: connect your agent$/mu);
-  assert.ok(guide.includes('Start Auto Runtime on your computer and connect Claude Code, Claude Desktop or Codex.'));
   const walkthrough = [
-    'npx @on.auto/runtime\n',
-    'http://localhost:5555/mcp',
-    'Do not expose it through a tunnel or public proxy',
-    'claude mcp add --transport http auto-runtime http://localhost:5555/mcp',
-    'codex mcp add auto-runtime --url http://localhost:5555/mcp',
-    'list my playbooks and the models this server can use',
-    '## Next: your first playbook',
+    '## Before you start',
+    '## 1. Add Auto to your agent',
+    'npx -y @on.auto/runtime@latest mcp',
+    '## 2. Let your agent take it from there',
+    'list my playbooks and the models it can use',
+    '`~/.auto-runtime/.env`',
+    '](../tutorials/first-playbook.md)',
+    '## See and control Auto',
+    'npx @on.auto/runtime status',
+    '## Other ways to run Auto',
+    '](../self-host.md)',
+    '## If something does not work',
     '](../self-host/troubleshooting.md)',
-    '## Run it for your team',
   ];
-  assert.ok(guide.includes('it is not a model to run'));
-  assert.ok(guide.includes('curl http://localhost:5555/health'));
+  for (const passage of walkthrough) assert.ok(guide.includes(passage), `Missing from the quick start: ${passage}`);
   const positions = walkthrough.map((passage) => guide.indexOf(passage));
   assert.deepEqual(
     positions,
     positions.toSorted((earlier, later) => earlier - later),
   );
-  assert.doesNotMatch(guide, /<details>|workspace's MCP URL|pnpm dev:lean|tool_servers/u);
-  const setup = guide.slice(guide.indexOf('This setup'), guide.indexOf('## Run it for your team'));
-  assert.ok(
-    setup.startsWith('This setup is for macOS or Linux. You need [Node.js](https://nodejs.org/en/download) 26.10'),
-  );
-  assert.doesNotMatch(setup, /Auto Cloud|request-invite/iu);
-  const team = guide.split('## Run it for your team')[1];
-  assert.ok(team !== undefined);
-  assert.ok(team.includes('](../self-host.md)'));
+  const before = guide.split('## Before you start')[1]?.split('## 1.')[0]?.trim();
+  assert.ok(before !== undefined);
+  assert.ok(before.includes('`npx`'));
+  assert.ok(before.includes('](https://nodejs.org/en/download)'));
+  assert.ok(before.length < 300, 'Before you start says only what is needed');
+  assert.ok(guide.includes('it is not a model to run'));
+  assert.doesNotMatch(guide, /<details>|mcp-remote|Auto Cloud|request-invite|tool_servers/iu);
 });
 
 await test('the tool server page adds a server with its key kept out of the configuration file', () => {
