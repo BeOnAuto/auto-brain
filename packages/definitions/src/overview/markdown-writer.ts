@@ -1,6 +1,14 @@
 import { escapedInline, oneLine, phrasesText } from './markdown-text.ts';
 import { mermaidOf } from './mermaid-diagram.ts';
-import { named, type FieldRow, type FieldTable, type Overview, type OverviewBlock, type Phrases } from './overview.ts';
+import {
+  named,
+  type FieldRow,
+  type FieldTable,
+  type Overview,
+  type OverviewBlock,
+  type OverviewSection,
+  type Phrases,
+} from './overview.ts';
 
 export const mostOverviewBytes = 65_536;
 
@@ -11,6 +19,8 @@ const counted = new Intl.NumberFormat('en');
 const cutLine = `*The overview stops here, at the ${counted.format(mostOverviewBytes)} bytes an overview may take; the whole definition is under Source.*`;
 
 const blockSeparator = '\n\n';
+
+const finalLineBreak = /\n$/u;
 
 const utf8 = new TextEncoder();
 
@@ -70,14 +80,21 @@ function blocksWithin(blocks: readonly string[]): readonly string[] {
   return [...kept, cutLine];
 }
 
+function sectionText({ heading, blocks }: OverviewSection): readonly string[] {
+  return [`## ${escapedInline(heading)}`, ...blocks.map((block) => blockText(block))];
+}
+
 export function markdownOf({ title, opening, sections }: Overview): string {
   const blocks = [
     `# ${escapedInline(title)}`,
     phrasesText(opening, 'prose'),
-    ...sections.flatMap(({ heading, blocks: sectionBlocks }) => [
-      `## ${escapedInline(heading)}`,
-      ...sectionBlocks.map((block) => blockText(block)),
-    ]),
+    ...sections.flatMap((section) => sectionText(section)),
   ];
   return `${blocksWithin(blocks).join(blockSeparator)}\n`;
+}
+
+export function appendedSection(markdown: string, section: OverviewSection): string {
+  const written = markdown.replace(finalLineBreak, '');
+  const blocks = blocksWithin([written, ...sectionText(section)]);
+  return written.endsWith(cutLine) || blocks[0] !== written ? markdown : `${blocks.join(blockSeparator)}\n`;
 }

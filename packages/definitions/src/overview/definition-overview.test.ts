@@ -1,8 +1,18 @@
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { defineCapability, inputSection, named, paragraph, sectionOf, writtenOverview } from '../index.ts';
+import {
+  bulletList,
+  defineCapability,
+  inputSection,
+  named,
+  paragraph,
+  sectionOf,
+  usedBySection,
+  writtenOverview,
+} from '../index.ts';
 import { echo } from '../testing/echo.ts';
+import { overviewWithUsers } from './definition-overview.ts';
 
 function overviewOf(source: string, name = 'greet'): string {
   return Effect.runSync(echo.prepare(source)).overview(name);
@@ -62,6 +72,42 @@ describe('the overview of a definition that says little', () => {
         '## What it produces',
         'It produces any output, which its document does not describe.\n',
       ].join('\n\n'),
+    );
+  });
+});
+
+describe('the section of the definitions that use a definition', () => {
+  it('says in a line what each one does with it, in the words of its relation', () => {
+    const stored = writtenOverview({ name: 'send-build', noun: { one: 'item', other: 'items' }, summary: {} });
+
+    expect(
+      overviewWithUsers(stored, [
+        { type: 'prediction', name: 'weekly-orders', relation: 'sends-builds' },
+        { type: 'prediction', name: 'demand', relation: 'asks-approval' },
+        { type: 'recall', name: 'review-history', relation: 'remembers-runs' },
+        { type: 'recall', name: 'brief-changes', relation: 'remembers-changes' },
+        { type: 'workflow', name: 'weekly-review', relation: 'calls' },
+      ]),
+    ).toBe(
+      `${stored}\n${[
+        '## Used by',
+        [
+          '- The prediction function **weekly-orders** sends it builds to train.',
+          '- The prediction function **demand** asks it to approve a version.',
+          '- The recall function **review-history** remembers its runs.',
+          '- The recall function **brief-changes** remembers its changes.',
+          '- The workflow **weekly-review** calls it.\n',
+        ].join('\n'),
+      ].join('\n\n')}`,
+    );
+  });
+
+  it('is left out when nothing uses the definition, and is a section of its own to compose', () => {
+    const stored = writtenOverview({ name: 'plain', noun: { one: 'item', other: 'items' }, summary: {} });
+
+    expect(overviewWithUsers(stored, [])).toBe(stored);
+    expect(usedBySection([{ type: 'echo', name: 'greets', relation: 'calls' }])).toEqual(
+      sectionOf('Used by', bulletList([['The echo definition ', named('greets'), ' calls it.']])),
     );
   });
 });

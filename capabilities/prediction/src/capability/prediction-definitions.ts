@@ -1,4 +1,4 @@
-import type { DefinitionSummary, SavedDefinitions, StrippedForms } from '@on.auto/definitions';
+import type { CalledDefinition, DefinitionSummary, SavedDefinitions, StrippedForms } from '@on.auto/definitions';
 import { issueText, type DocumentIssue } from '@on.auto/definitions/document';
 import { InvalidInput, type Unavailable } from '@on.auto/operations';
 import { Effect, Result, type Schema } from 'effect';
@@ -27,20 +27,33 @@ export function parse(source: string): Effect.Effect<PredictionFunctionDefinitio
   });
 }
 
-export function datasetDetailsOf({
-  data,
-  dataSha256,
-  predicts,
-}: PredictionFunctionDefinitionDocument): Schema.JsonObject {
+type DatasetDetails = { readonly data_sha256: string; readonly data: Schema.JsonObject };
+
+export function datasetDetailsOf({ data, dataSha256, predicts }: PredictionFunctionDefinitionDocument): DatasetDetails {
   return { data_sha256: dataSha256, data: dataJsonOf(data, predicts.period) };
+}
+
+function interactionCalled(
+  name: string | undefined,
+  role: NonNullable<CalledDefinition['role']>,
+): readonly CalledDefinition[] {
+  return name === undefined ? [] : [{ type: 'interaction', name, role }];
+}
+
+function callsOf({ source, evaluation: { activate } }: PredictionFunctionDefinitionDocument) {
+  return [
+    ...interactionCalled(source.through, 'trainer'),
+    ...interactionCalled(activate === 'automatic' ? undefined : activate.approved, 'approver'),
+  ];
 }
 
 export function summarize(document: PredictionFunctionDefinitionDocument): DefinitionSummary {
   const { description, schemas } = document;
+  const calls = callsOf(document);
   return {
     ...(description === undefined ? {} : { description }),
     inputSchema: schemas.input,
     outputSchema: schemas.output,
-    details: datasetDetailsOf(document),
+    details: { ...datasetDetailsOf(document), ...(calls.length === 0 ? {} : { calls }) },
   };
 }

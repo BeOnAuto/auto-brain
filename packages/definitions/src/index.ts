@@ -227,6 +227,14 @@ export {
   type Phrases,
 } from './overview/overview.ts';
 export { durationInWords } from './overview/duration-words.ts';
-export { markdownOf, mostOverviewBytes, mostTableRows } from './overview/markdown-writer.ts';
+export { appendedSection, markdownOf, mostOverviewBytes, mostTableRows } from './overview/markdown-writer.ts';
 export { mostFieldDescriptionCharacters, schemaBlocks } from './overview/schema-words.ts';
-export { inputSection, outputSection, writtenOverview, type SectionsOf } from './overview/definition-overview.ts';
+export {
+  inputSection,
+  outputSection,
+  usedBySection,
+  writtenOverview,
+  type SectionsOf,
+} from './overview/definition-overview.ts';
+export { CalledDefinitionSchema, type CalledDefinition } from './used-by/called-definitions.ts';
+export type { DefinitionUser, NamedDefinition, UserRelation } from './used-by/user-relations.ts';

@@ -29,8 +29,12 @@ const decodePublished = recordedDecoder(EventPublishedSchema);
 
 const publishedEventsKind = 'events';
 
+export function isPlaybookRunEventType(type: string): boolean {
+  return runFactTypes.some((runType) => runType === type);
+}
+
 function isRunFact(event: RecordedRunEvent): event is RunFact {
-  return runFactTypes.some((type) => type === event.type);
+  return isPlaybookRunEventType(event.type);
 }
 
 type FactContext = DefinitionContext & Partial<Pick<RunContext, 'depth' | 'callDepth' | 'calledBy' | 'trigger'>>;

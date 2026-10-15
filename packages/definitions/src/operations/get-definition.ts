@@ -5,10 +5,9 @@ import type { Capability } from '../capability/capability.ts';
 import { knownCapabilities } from '../capability/known-capabilities.ts';
 import { definitionStanding, definitionWordsFor, whatItDoes } from '../plain-language/definition-words.ts';
 import { DefinitionSchema } from '../registry/definition.ts';
-import { findDefinition } from '../registry/registry-lookup.ts';
 import { DefinitionNameField } from './definition-fields.ts';
-import { definitionOf } from './definition-views.ts';
-import { loadRegistry, triggersSince } from './registry-access.ts';
+import { readDefinition } from './definition-reading.ts';
+import { triggersSince } from './registry-access.ts';
 
 export function defineGetDefinition(capabilities: readonly Capability[]) {
   const known = knownCapabilities(capabilities);
@@ -30,12 +29,11 @@ export function defineGetDefinition(capabilities: readonly Capability[]) {
       reasons: ['not_found'],
       handle: Effect.fnUntraced(function* ({ type, name }) {
         const capability = yield* known.capabilityOfType(type);
-        const registry = yield* loadRegistry(capability.type);
-        const stored = yield* findDefinition(registry, capability.type, name);
+        const { stored, definition: read } = yield* readDefinition(capability, known.types, name);
         const definition =
           (stored.triggers ?? []).length > 0 && stored.status === 'active'
-            ? { ...definitionOf(capability, stored), triggers_since: yield* triggersSince(capability.type, stored) }
-            : definitionOf(capability, stored);
+            ? { ...read, triggers_since: yield* triggersSince(capability.type, stored) }
+            : read;
         const { org, playbook } = yield* PlaybookContext;
         const standing = yield* capability.standing({
           org,

@@ -66,7 +66,7 @@ The `source` is a [reasoning function document](reasoning-format.md). Names foll
 
 Changing a document creates a version. Updating it with identical source records no change. A run uses the active latest version. Retired definitions can be read but cannot be edited or run.
 
-`get_definition`, like `create_definition` and `update_definition`, answers the definition with its `overview`, the definition in plain words for a person who does not read its document: Markdown with headings, lists, tables of its fields and, where one helps, a diagram, saying what it needs and produces and what it does, as its type has it, which the runtime writes from the document when it saves the version and `list_definitions` leaves out.
+`get_definition`, like `create_definition` and `update_definition`, answers the definition with its `overview`, the definition in plain words for a person who does not read its document: Markdown with headings, lists, tables of its fields and, where one helps, a diagram, saying what it needs and produces and what it does, as its type has it, which the runtime writes from the document when it saves the version and `list_definitions` leaves out. The overview they answer, and the one `retire_definition` answers, ends with **Used by**, a line for each of the active definitions of the playbook that use this one: a workflow whose `run_definition` calls it, a prediction function that sends it builds to train or asks it to approve a version, and a recall function with a filter on its runs, by their `subject`, or on its changes, by their `source`. The section is read each time the definition is answered, so it is as current as the playbook, and is left out when nothing uses the definition.
 
 ## Interaction functions
 
