@@ -1,49 +1,153 @@
+---
+description: Bring data from your Apollo graph into a playbook, passed in by your agent or read by a function through GraphOS Agent Services.
+---
+
 # Use Auto with Apollo
 
-Use this guide to pass graph data into an existing Auto reasoning function. Your external agent connects to Auto and Apollo separately, retrieves authorized evidence, and supplies it as input to the function.
+Use data from your Apollo graph in a playbook's reasoning functions, either by having your agent pass it in or by letting a function call the graph itself.
+
+## Choose a path
+
+There are two ways to bring graph data into a function. They use different Apollo services and different credentials, so pick one before you start.
+
+| Path                                                              | Who connects to Apollo                                               | Use it when                                                           |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| [Pass graph evidence in](#pass-graph-evidence-into-a-function)    | Your agent, through Apollo MCP Server, beside its connection to Auto | You want to check the evidence yourself before a function runs        |
+| [Let the function call the graph](#let-a-function-call-the-graph) | Auto, through Apollo GraphOS Agent Services added as a tool server   | The function runs without you, such as in a workflow or on a schedule |
+
+In the first path, the function only sees the values your agent passes in. It does not inherit your agent's graph connection, query history or other context. In the second, the function calls the graph through Auto's tool server entry, with a key of its own that is separate from any your agent holds. Auto does not require Apollo for either.
 
 ## Before you start
 
-You need an agent connected to Auto, a saved reasoning function, and permission to read the relevant data through your graph. If you have not created a function yet, follow [Build your first playbook](../tutorials/first-playbook.md).
+- Auto runs, and your agent is connected to it. The [quick start](../get-started/local.md) sets both up.
+- You have a playbook with a reasoning function to give the data to, or you are about to write one. [Reasoning function format](../reference/reasoning-format.md) describes the document.
+- You may read the data you need through your graph.
+- For the second path, you can restart Auto, and you or your agent can edit its settings file, `auto-runtime.yaml`. If someone else runs Auto, [ask them to add the tool server](../guides/tools.md#ask-for-a-tool-server) instead.
 
-Decide which data the review needs and confirm that it may be sent to Auto and the function's model provider. Function inputs and results become part of the recorded run.
+Decide which data the function needs, and confirm that it may be sent to Auto and to the function's model provider. A function's inputs and results become part of its recorded run. So do the graph's answers to a function's tool calls, unless the tool server's entry turns `record_content` off.
 
-## 1. Connect the business graph
+## Pass graph evidence into a function
 
-[Apollo MCP Server](https://www.apollographql.com/docs/apollo-mcp-server) exposes GraphQL operations as tools an agent can call. Follow its setup guide and add that connection to the same agent that uses Auto. Limit it to the operations required for this task.
+Your agent connects to Auto and to Apollo separately. It retrieves the evidence it is allowed to read and passes it to the function as input.
 
-[GraphOS MCP Server](https://www.apollographql.com/docs/graphos/platform/graphos-mcp-server/install) provides GraphOS management and documentation tools. It is a different service and does not automatically give an agent access to business data. Choose the connection that exposes the operations your review needs.
+### 1. Connect the business graph
 
-Keep credentials in connection settings, outside function prompts and inputs. The graph and Auto authorize access separately.
+[Apollo MCP Server](https://www.apollographql.com/docs/apollo-mcp-server) exposes GraphQL operations as tools an agent can call. Follow its setup guide, and add that connection to the same agent that uses Auto. Limit it to the operations this task needs.
 
-## 2. Check the function's inputs
+[GraphOS MCP Server](https://www.apollographql.com/docs/graphos/platform/graphos-mcp-server/install) is a different service. It provides GraphOS management and documentation tools, and does not by itself give an agent access to business data. Choose the connection that exposes the operations your function needs.
 
-Ask the agent to read the saved reasoning function and show its required inputs. Then identify an approved graph query that supplies the relevant evidence.
+Keep credentials in the connection settings, never in function prompts or inputs. The graph and Auto authorize access separately.
 
-For a budget-review function, this might be the campaign's spend to date and agreed budget. The actual query and field names depend on your graph. Have the agent inspect the available tools and schema rather than invent a query from this example.
+Check that your agent lists the graph's operations beside Auto's tools.
 
-## 3. Retrieve and inspect the evidence
+### 2. Check the function's inputs
 
-Ask the agent to run the approved read-only query and show the figures it retrieved. Check the campaign, reporting period and units. Resolve missing or inconsistent data before running the review.
+Ask your agent to read your reasoning function and show its required inputs. Then pick an approved graph query that supplies the evidence.
+
+For a budget review, that might be the campaign's spend to date and its agreed budget. The real query and field names depend on your graph. Have the agent inspect the available tools and the graph's schema, the types and fields it offers, rather than invent a query from this example.
+
+Check that each required input has a field in the query that supplies it.
+
+### 3. Retrieve and inspect the evidence
+
+Ask the agent to run the approved read-only query and show the figures it retrieved. Check the campaign, the reporting period and the units. Resolve missing or inconsistent data before you run the function.
 
 Do not grant write access to complete a read-only trial.
 
-## 4. Run the saved function
+### 4. Run the function
 
-Ask the agent to map the evidence into the function's declared inputs and show that mapping before calling Auto. For example:
+Ask the agent to map the evidence onto the function's declared inputs, and to show you that mapping before it calls Auto:
 
-> Use the approved campaign-spend query for this review. Show me the reporting period, figures and any missing evidence. Map those values to our budget-review function's inputs. After I confirm the mapping, run the saved function and show its recorded result. Do not change campaign budgets.
+```text
+Use the approved <name of the graph query> for this review. Show me the
+reporting period, the figures and any missing evidence. Map those values to the
+inputs of the "<function name>" function in my "<playbook name>" playbook.
+After I confirm the mapping, run the function and show me its recorded result.
+Do not change anything in the graph.
+```
 
-The function receives the supplied values. It does not automatically inherit the graph connection, query history or the agent's other context.
+The function receives the values you confirmed, and nothing else from the agent's connection.
 
-## 5. Verify the recorded run
+### 5. Verify the recorded run
 
-Have the agent read the resulting run from Auto and show its run id, definition version, recorded prompt and output. Confirm that the prompt contains the evidence you approved and that the result addresses the intended review. The current run API returns the rendered prompt, subject to record-size limits, rather than the original input object.
+Have the agent read the run from Auto and show its run id (the id Auto gave this run), the version of the function it used, its recorded prompt and its output. `get_run` returns the prompt with the inputs filled in, as the function's template rendered it, within the run record's size limits. The run's history, from `get_run_history`, shows the input it was given on its `run_started` event, and `get_event` reads that event whole.
 
-If a required input is missing, compare the function's input contract with the mapping. If the graph operation is unavailable, check the selected Apollo server and the connection's permissions before changing the function.
+Check that the prompt contains the evidence you approved, and that the result covers what you asked for.
 
-## Tool access from inside the playbook
+## Let a function call the graph
 
-A self-hosted runtime can give reasoning functions the tools of a tool server its operator configures, and Apollo GraphOS Agent Services can be that server. The operator adds it as a remote server whose `Authorization` header carries an application API key, bound to your org and playbook. A reasoning function that lists `graph/*` in its `tools` can then search for operations and run those the application's policies allow, and each call appears in the run's history. A field the policy denies comes back to the model as a tool error, which it can explain in its answer. Auto does not require Apollo.
+Apollo GraphOS Agent Services can be a tool server that Auto connects to. It fronts the systems your organization connected to it and applies its own policies to the application whose key Auto uses. [Add a tool server](../self-host/tool-servers.md) walks through adding any tool server, and [Give a function tools](../guides/tools.md) through using one. The steps below are what differ for Apollo.
 
-That internal connection is separate from the two external-agent connections used in this guide, and Auto Cloud does not offer it yet. See [Tool access inside a reasoning function](../concepts/functions.md#tool-access-inside-a-reasoning-function).
+### 1. Add the graph as a tool server
+
+Get an application API key from Apollo for the application that should serve your playbook. Then ask your agent to add an entry to `auto-runtime.yaml`, with the MCP address Apollo gives you in place of the example one:
+
+```yaml
+tool_servers:
+  graph:
+    url: https://agents.example.com/mcp
+    headers:
+      Authorization: Bearer ${GRAPH_API_KEY}
+    org: acme
+    playbooks: [marketing]
+```
+
+`org` names your org, and `playbooks` the ids of the playbooks whose functions may use the graph; the agent puts your own in place of `acme` and `marketing`. On an Auto only you use, `org: '*'` without `playbooks` works too. Put the key in `.env` yourself as `GRAPH_API_KEY=` followed by the key, never in a prompt, and restart Auto. The key never goes in `auto-runtime.yaml`.
+
+Check that Auto starts. If it stops, the message names the line and the key at fault.
+
+If someone else runs Auto, send them the message in [Ask for a tool server](../guides/tools.md#ask-for-a-tool-server). Give them the address Apollo gives you and the playbook, and send the key separately. Go on to the next step when they confirm.
+
+### 2. Find the operations
+
+Ask your agent to call Auto's `search` for your playbook. Agent Services offers tools that search for operations and run them, so a function finds the operation it needs while it runs. Have the agent use `introspect` on a tool before a function relies on it.
+
+Check that `search` lists the server `graph` with the tools Agent Services offers.
+
+### 3. Name the graph in a function
+
+A reasoning function that lists `graph/*` in its `tools` may call every tool of that server that the entry allows; the `*` stands for all of them. During a run it can search for operations and run those the application's policies allow. Ask your agent to add `graph/*` to your function's `tools`, or to save a function such as this one. If your model provider is not Anthropic, ask your agent to use one of your provider's models.
+
+::: details The function's document
+
+```markdown
+---
+description: Reviews a campaign's spend against its agreed budget, reading both from the graph
+model: anthropic/claude-sonnet-4-5
+input:
+  schema:
+    type: object
+    properties:
+      campaign: { type: string }
+      period: { type: string }
+    required: [campaign, period]
+tools: [graph/*]
+---
+
+{% system %}Use the graph tools to read the campaign's spend for the period and its agreed budget. Search for the operations you need before you call one. Report the figures with their units, say which figures you could not read and why, and recommend whether the spend is within budget. Do not invent figures.{% endsystem %}
+Campaign: {{ input.campaign }}
+Period: {{ input.period }}
+```
+
+:::
+
+### 4. Run it and read the calls
+
+Ask your agent to run the function and read the run's history.
+
+Check that each call to the graph appears there, with the tool, its arguments and its answer. A field the policy denies comes back to the model as a tool error, which it can explain in its answer.
+
+## If something goes wrong
+
+- **A required input is missing.** Compare the function's input schema with the mapping your agent made.
+- **A graph operation is not available to your agent.** Check which Apollo server the agent is connected to and the permissions of that connection before you change the function.
+- **`search` does not show `graph`, or shows it as unavailable.** Check that the entry's `org` and `playbooks` cover the playbook, and the key in `.env`. `key_refused` means Apollo did not accept the key. [Add a tool server](../self-host/tool-servers.md#if-something-goes-wrong) lists the other causes.
+- **The function's answer says a field was denied.** The application's policy in Apollo refused it. Change the policy in Apollo, not the function.
+
+## Next
+
+- [Give a function tools](../guides/tools.md) covers finding a tool, trying it with `execute` and checking a run's tool calls.
+- [Add a tool server](../self-host/tool-servers.md) covers adding any tool server, for whoever runs Auto.
+- [Reasoning function format](../reference/reasoning-format.md#tools) has the rules and limits of `tools`.
+- The [configuration reference](../self-host/configuration.md#tool-servers) lists every field of a tool server entry.
+- [Calculate with a computation function](../guides/computation.md) totals figures such as a campaign's spend exactly, before a reasoning function writes about them.

@@ -29,15 +29,23 @@ export interface LinkOptions {
 }
 
 interface Remote {
+  readonly server: string;
   readonly auth: DescribedApiSettings['auth'];
   readonly serverUrl: string;
   readonly discovery: Discovery;
 }
 
-function tokensOf({ auth, serverUrl, discovery }: Remote, options: LinkOptions): TokenSource | undefined {
+function tokensOf({ server, auth, serverUrl, discovery }: Remote, options: LinkOptions): TokenSource | undefined {
   return auth === null
     ? undefined
-    : tokenSource(auth, { serverUrl, discovery, fetch: options.fetch, now: options.now, minted: options.secrets.add });
+    : tokenSource(auth, {
+        server,
+        serverUrl,
+        discovery,
+        fetch: options.fetch,
+        now: options.now,
+        minted: options.secrets.replace,
+      });
 }
 
 function tracedOpener(open: () => Promise<ServerConnection>, traceMeta?: TraceMeta): () => Promise<ServerConnection> {
@@ -59,13 +67,13 @@ export function openerOf(settings: LinkedServerSettings, options: LinkOptions): 
   }
   if (settings.type === 'openapi') {
     const tokens = tokensOf(
-      { auth: settings.auth, serverUrl: settings.api.baseUrl, discovery: 'from_the_issuer' },
+      { server: settings.name, auth: settings.auth, serverUrl: settings.api.baseUrl, discovery: 'from_the_issuer' },
       options,
     );
     return () => Promise.resolve(apiConnection(settings, { fetch: options.fetch, tokens, now: options.now }));
   }
   const authProvider = tokensOf(
-    { auth: settings.auth, serverUrl: settings.url, discovery: 'from_the_server' },
+    { server: settings.name, auth: settings.auth, serverUrl: settings.url, discovery: 'from_the_server' },
     options,
   );
   const { openMs, longestRetryWaitMs } = options.timing;

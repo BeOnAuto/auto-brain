@@ -1,12 +1,25 @@
 # Run with Docker
 
-This guide starts Auto Runtime from its image on Docker Hub, checks the server answers, connects an agent and signs you in through the Auto identity service. It then gives a machine or a pipeline an API key, and ends with a Compose file that runs the runtime beside PostgreSQL.
+This guide runs Auto Runtime with Docker, the tool that runs packaged programs in isolated environments called containers. You start Auto from its image (Auto Runtime packaged to run in a container) on Docker Hub, check that it responds, connect your agent and sign in through the Auto identity service. Then you add a model provider and give a machine or a pipeline an API key.
 
-You need Docker Engine or Docker Desktop, and a browser on the same machine to sign in with.
+You need Docker Engine or Docker Desktop, a terminal, and a browser on the same machine to sign in with.
+
+## Choose a variant
+
+The ledger is Auto's record of every playbook, definition and run. The two variants keep it in different places:
+
+| Variant                                          | Where the ledger is kept                                | Use it when                                                                   |
+| ------------------------------------------------ | ------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| [One container with a volume](#start-the-server) | A SQLite file (a database in a single file) on a volume | You want the quickest start on one machine                                    |
+| [Compose with PostgreSQL](#run-with-postgresql)  | A PostgreSQL database in a second container beside it   | You want the database to take the backups, and the container to keep no files |
+
+A volume is storage that Docker keeps apart from any container, so the ledger survives when you replace the container. Compose is Docker's tool for starting several containers from one file.
+
+Run one variant at a time. Both publish port `5555` on this machine, so a second one cannot start while the first runs. Steps 2 and 3 apply to both.
 
 ## The image
 
-[`onauto/runtime`](https://hub.docker.com/r/onauto/runtime) is published for `linux/amd64` and `linux/arm64` with three kinds of tag:
+[`onauto/runtime`](https://hub.docker.com/r/onauto/runtime) is published for `linux/amd64` and `linux/arm64`. Each release is published under three tags, the names you pull an image by:
 
 | Tag      | Points to                                                |
 | -------- | -------------------------------------------------------- |
@@ -14,40 +27,81 @@ You need Docker Engine or Docker Desktop, and a browser on the same machine to s
 | `0.9`    | The newest release of the 0.9 line, moving with each fix |
 | `latest` | The newest release                                       |
 
-Pin a full version, such as `0.9.1`, wherever you need to know what is running, and upgrade on purpose. The examples use `latest`.
+Pin a full version, such as `0.9.1`, so you know what is running, and upgrade on purpose. Every example on this page reads the version from one line you write in [step 1](#start-the-server). `latest` moves to each new release; use it only when you mean to run whatever is newest each time you pull.
 
-The server listens on port `5555`, runs as the unprivileged user `node`, keeps a SQLite ledger on the volume at `/data` unless you give it a PostgreSQL database, checks its own health at `/health`, and stops cleanly on `SIGTERM`.
+In the image, Auto:
 
-## 1. Start the server
+- listens on port `5555`;
+- runs as the unprivileged user `node`;
+- keeps a SQLite ledger on the volume at `/data`, unless you give it a PostgreSQL database;
+- checks its own health at `/health`;
+- stops cleanly on `SIGTERM`, the signal Docker sends to ask a program to stop.
 
-A person signs in through the Auto identity service, and the runtime needs only the address it is reached at, `PUBLIC_URL`. Put it in a file of environment variables, which later steps add to, and start the server with a volume for its ledger:
+## 1. Start Auto {#start-the-server}
+
+Make a folder for Auto Runtime's files and work in it. Then choose the release, and write it to `.env`, a file of settings for the Docker commands on this page:
+
+```bash
+mkdir auto-runtime && cd auto-runtime
+echo 'IMAGE=onauto/runtime:0.9.1' > .env
+```
+
+Replace `0.9.1` with the newest version on the [releases page](https://github.com/BeOnAuto/runtime/releases). Every command below takes the image from this line, so an upgrade changes only this line.
+
+People sign in through the Auto identity service. Auto needs only the address at which people reach it, `PUBLIC_URL`. Put it in `auto-runtime.env`, the file that holds Auto's own settings, one `NAME=value` per line. Later steps add to it. A container needs `PUBLIC_URL` or `API_KEYS`: it listens on every interface, so without either it stops at start ([Who can call a server](security.md#who-can-call-a-server)). Then create a volume for the ledger:
 
 ```bash
 echo 'PUBLIC_URL=http://localhost:5555' > auto-runtime.env
 docker volume create auto-runtime-data
-docker run --detach --name auto-runtime --restart unless-stopped \
-  --publish 127.0.0.1:5555:5555 --env-file auto-runtime.env --volume auto-runtime-data:/data \
-  onauto/runtime:latest
 ```
 
-`--publish 127.0.0.1:5555:5555` publishes the port on this machine's loopback address alone. An `http` address is for a runtime reached on its own machine, since a token sent over plain HTTP between machines can be read on the way; to reach the runtime from other machines, put HTTPS in front of it and set `PUBLIC_URL` to its `https` address, as [Run in production](production.md#put-https-in-front) describes.
+You will start the container again each time you add a setting or upgrade. Keep the command in a small script, so every restart carries every flag. The script stops and removes the previous container, if there is one, before it starts the new one:
 
-The named volume keeps the ledger when the container is replaced. Without it, Docker gives each container an empty anonymous volume, and its playbooks last only as long as that container.
+```bash
+cat > start-runtime.sh <<'EOF'
+#!/bin/sh
+cd "$(dirname "$0")" || exit 1
+. ./.env
+if docker container inspect auto-runtime >/dev/null 2>&1; then
+  docker stop auto-runtime && docker rm auto-runtime
+fi
+docker run --detach --name auto-runtime --restart unless-stopped \
+  --publish 127.0.0.1:5555:5555 --env-file auto-runtime.env --volume auto-runtime-data:/data \
+  "$IMAGE"
+EOF
+chmod +x start-runtime.sh
+./start-runtime.sh
+```
 
-## 2. Check that it answers {#check-that-it-answers}
+What the script does:
+
+- `. ./.env` reads the release you chose, so `"$IMAGE"` names it.
+- `--publish 127.0.0.1:5555:5555` makes port `5555` reachable from this machine only. It publishes the port on the loopback address `127.0.0.1`, the machine's own address, which other machines cannot reach. That suits an `http` `PUBLIC_URL` ([Let people sign in](security.md#let-people-sign-in) says why). To reach Auto from other machines, follow [Put HTTPS in front](production.md#put-https-in-front).
+- `--volume auto-runtime-data:/data` keeps the ledger on the named volume when the container is replaced. Without it, Docker gives each container an empty anonymous volume, and its playbooks last only as long as that container.
+- `--env-file auto-runtime.env` passes the settings and secrets. Docker reads the file when it creates the container, so `docker restart auto-runtime` does not pick up a change to it. Run `./start-runtime.sh` instead.
+
+## 2. Check that it responds {#check-that-it-answers}
 
 ```bash
 curl http://localhost:5555/health
 curl --include http://localhost:5555/v1/orgs/acme/playbooks
 ```
 
-The first answers `{"status":"ok"}` and needs no credential. The second answers `401` with `WWW-Authenticate: Bearer resource_metadata="http://localhost:5555/.well-known/oauth-protected-resource", scope="user:org:read"`, which tells an agent where to sign you in.
+- The first returns `{"status":"ok"}` and needs no credential.
+- The second is refused with `401`, since it sends no credential. Its `WWW-Authenticate: Bearer resource_metadata="http://localhost:5555/.well-known/oauth-protected-resource", scope="user:org:read org:read org:write playbook:read playbook:write"` header tells an agent where to sign you in.
 
-`docker logs auto-runtime` shows what the server read at start, one JSON object per line: where the ledger is kept, which model providers are configured, the identity service persons sign in through with the audience of their tokens, and a warning for anything missing.
+`docker logs auto-runtime`, or `docker compose logs runtime` with Compose, shows what Auto read when it started, one JSON object per line:
+
+- where the ledger is kept;
+- which model providers are configured;
+- the identity service people sign in through, and the audience of their tokens;
+- a warning for anything missing.
+
+If the check fails, see [Troubleshooting](troubleshooting.md).
 
 ## 3. Connect your agent and sign in {#connect-your-agent}
 
-Agents connect to `/mcp`. In Claude Code:
+Agents connect to Auto's MCP endpoint, the address `/mcp`. MCP is the protocol agents use to call tools. In Claude Code:
 
 ```bash
 claude mcp add --transport http auto-runtime http://localhost:5555/mcp
@@ -59,135 +113,172 @@ In Codex:
 codex mcp add auto-runtime --url http://localhost:5555/mcp
 ```
 
-The first time your agent connects, it opens the Auto identity service in your browser. Sign in and choose your organization: you act in the org whose id is that organization's, with every permission over every playbook there, as [Signed-in persons](security.md#signed-in-persons) describes. In Claude Code, `/mcp` shows whether `auto-runtime` is connected, and offers the sign-in while it is not.
+The first time your agent connects, it opens the Auto identity service in your browser. Sign in, choose your organization, and grant the permissions on the consent screen. [What signed-in people can do](security.md#what-signed-in-people-can-do) describes what you may then do. In Claude Code, `/mcp` shows whether `auto-runtime` is connected, and offers the sign-in while it is not.
 
-Then ask your agent to create a playbook, as [Build your first playbook](../tutorials/first-playbook.md) does. The [MCP reference](../reference/mcp.md) lists the tools, and the [HTTP API](../reference/http.md) the same operations over HTTP.
+Then ask your agent to create a playbook, as [Build your first playbook](../tutorials/first-playbook.md) does. The [MCP reference](../reference/mcp.md) lists the tools, and the [HTTP API](../reference/http.md) lists the same operations over HTTP.
 
 ## 4. Add a model provider {#add-a-model-provider}
 
-Reasoning functions need a model. Add your provider's key to `auto-runtime.env` and start a new container with it:
+Reasoning functions need a model. Add your provider's key to `auto-runtime.env`, then replace the container so it reads the file again:
 
 ```bash
 echo 'ANTHROPIC_API_KEY=<your Anthropic key>' >> auto-runtime.env
-docker rm --force auto-runtime
-docker run --detach --name auto-runtime --restart unless-stopped \
-  --publish 127.0.0.1:5555:5555 --env-file auto-runtime.env --volume auto-runtime-data:/data \
-  onauto/runtime:latest
+./start-runtime.sh
 ```
 
-`OPENAI_API_KEY` and `GOOGLE_GENERATIVE_AI_API_KEY` work the same way. For Amazon Bedrock, Azure OpenAI, Google Vertex AI or a gateway of your own, see [Model providers and gateways](models.md).
+`OPENAI_API_KEY` and `GOOGLE_GENERATIVE_AI_API_KEY` work the same way. For Amazon Bedrock, Azure OpenAI, Google Vertex AI or a gateway of your own, see [Set up a model provider](models.md).
 
 ## Keys for machines and pipelines
 
-A machine, a pipeline or a trainer's agent signs in nowhere, and some callers need a grant narrower than a signed-in person's, such as reading one playbook. Each of them calls with an API key, and keys work beside sign-in. The key command prints a new key once, with the entry the server needs to accept it; the commands use the org `acme`, so use your own org id:
+A machine or a pipeline does not sign in, so it needs an API key. Create one, add it to `auto-runtime.env` and replace the container as [API keys](security.md#api-keys) describes, with the image of [step 1](#start-the-server) (`"$IMAGE"` after `. ./.env`).
+
+## Run with PostgreSQL {#run-with-postgresql}
+
+In this variant the database holds the ledger, and Auto's container keeps nothing of its own. A Compose file runs both, with the database's data on a volume.
+
+1. If you started the single container, stop and remove it. It holds port `5555`:
+
+   ```bash
+   docker stop auto-runtime && docker rm auto-runtime
+   ```
+
+   The PostgreSQL ledger starts empty. Playbooks kept on the volume `auto-runtime-data` stay there and are not copied.
+
+2. If you do not have `.env` and `auto-runtime.env` from [step 1](#start-the-server), create them in a new folder. Replace `0.9.1` with the newest version on the [releases page](https://github.com/BeOnAuto/runtime/releases):
+
+   ```bash
+   mkdir auto-runtime && cd auto-runtime
+   echo 'IMAGE=onauto/runtime:0.9.1' > .env
+   echo 'PUBLIC_URL=http://localhost:5555' > auto-runtime.env
+   ```
+
+3. Save this as `compose.yaml` beside `auto-runtime.env`:
+
+   ```yaml
+   services:
+     postgres:
+       image: postgres:18
+       environment:
+         POSTGRES_USER: auto_runtime
+         POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+         POSTGRES_DB: auto_runtime
+       volumes:
+         - postgres-data:/var/lib/postgresql
+       healthcheck:
+         test: ['CMD-SHELL', 'pg_isready --username auto_runtime --dbname auto_runtime']
+         interval: 5s
+         retries: 12
+       restart: unless-stopped
+
+     runtime:
+       image: ${IMAGE}
+       depends_on:
+         postgres:
+           condition: service_healthy
+       env_file: auto-runtime.env
+       environment:
+         DATABASE_URL: postgresql://auto_runtime:${POSTGRES_PASSWORD}@postgres:5432/auto_runtime
+       ports:
+         - '127.0.0.1:5555:5555'
+       restart: unless-stopped
+
+   volumes:
+     postgres-data:
+   ```
+
+4. Compose reads `IMAGE` and `POSTGRES_PASSWORD` from `.env` in the same folder. Add a generated password to it, then start both:
+
+   ```bash
+   echo "POSTGRES_PASSWORD=$(openssl rand -hex 16)" >> .env
+   docker compose up --detach
+   ```
+
+Auto waits until PostgreSQL is ready and creates its tables when it starts. `docker compose logs runtime` shows `The ledger is kept in PostgreSQL, in the database auto_runtime on postgres:5432`. Check it as in [step 2](#check-that-it-answers) and connect your agent as in [step 3](#connect-your-agent).
+
+The Compose file holds every setting of both containers, so you never retype flags. After you change `auto-runtime.env`, such as adding a model provider's key as in [step 4](#add-a-model-provider), replace Auto's container:
 
 ```bash
-docker run --rm --log-driver none onauto/runtime:latest node packages/identity/src/key-command.ts --org acme
+docker compose up --detach --force-recreate runtime
 ```
 
-```text
-API key, shown only this once: abk_3e86c2be_...
-API_KEYS entry: {"id":"3e86c2be","sha256":"911afdd7...","org":"acme","permissions":["org:read","org:write","playbook:read","playbook:write"],"playbooks":"*"}
-```
+[Use PostgreSQL](postgresql.md) covers a managed database, a user with only the privileges it needs, and TLS.
 
-Keep the key somewhere safe: the server stores only its SHA-256, so it cannot show the key again. `--log-driver none` keeps the key out of Docker's logs. The key may do everything in the org; `--permissions` and `--playbooks` narrow it, as [API keys](security.md#api-keys) describes.
+## Use a configuration file {#use-a-configuration-file}
 
-Add the entry to `auto-runtime.env`, inside `[` and `]`, without quotes, and start a new container with it as in [step 4](#add-a-model-provider):
+Some settings are lists or maps, such as the [tool servers](configuration.md#tool-servers) functions may call, model gateways and model aliases. They can go in a YAML file. The image reads one only when `CONFIG_FILE` names it, so mount the file read-only and name it.
+
+For the single container, add two lines to the `docker run` command in `start-runtime.sh`. The whole script becomes:
 
 ```bash
-echo 'API_KEYS=[{"id":"3e86c2be","sha256":"911afdd7...","org":"acme","permissions":["org:read","org:write","playbook:read","playbook:write"],"playbooks":"*"}]' >> auto-runtime.env
-```
-
-For several keys, separate their entries with commas inside the brackets. A caller sends its key as a bearer token, over HTTP or to `/mcp`:
-
-```bash
-curl --header 'authorization: Bearer <your key>' http://localhost:5555/v1/orgs/acme/playbooks
-claude mcp add --transport http auto-runtime http://localhost:5555/mcp --header "Authorization: Bearer <your key>"
-```
-
-Codex reads the key from an environment variable:
-
-```bash
-export AUTO_RUNTIME_KEY=<your key>
-codex mcp add auto-runtime --url http://localhost:5555/mcp --bearer-token-env-var AUTO_RUNTIME_KEY
-```
-
-## Run with PostgreSQL
-
-With PostgreSQL, the database holds the ledger and the container keeps nothing of its own. This Compose file runs both, with the database's data on a volume. Save it as `compose.yaml` beside `auto-runtime.env`:
-
-```yaml
-services:
-  postgres:
-    image: postgres:18
-    environment:
-      POSTGRES_USER: auto_runtime
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: auto_runtime
-    volumes:
-      - postgres-data:/var/lib/postgresql
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready --username auto_runtime --dbname auto_runtime']
-      interval: 5s
-      retries: 12
-    restart: unless-stopped
-
-  runtime:
-    image: onauto/runtime:latest
-    depends_on:
-      postgres:
-        condition: service_healthy
-    env_file: auto-runtime.env
-    environment:
-      DATABASE_URL: postgresql://auto_runtime:${POSTGRES_PASSWORD}@postgres:5432/auto_runtime
-    ports:
-      - '127.0.0.1:5555:5555'
-    restart: unless-stopped
-
-volumes:
-  postgres-data:
-```
-
-Compose reads `POSTGRES_PASSWORD` from a `.env` file in the same folder. Generate one, then start both:
-
-```bash
-echo "POSTGRES_PASSWORD=$(openssl rand -hex 16)" > .env
-docker compose up --detach
-```
-
-The runtime waits until PostgreSQL is ready, creates its tables at start and logs `The ledger is kept in PostgreSQL, in the database auto_runtime on postgres:5432`. Check it as in [step 2](#check-that-it-answers). [Use PostgreSQL](postgresql.md) covers a managed database, a user with only the privileges it needs, and TLS.
-
-## Use a configuration file
-
-Settings that are lists or maps, such as the [tool servers](configuration.md#tool-servers) functions may call, model gateways and model aliases, can go in a YAML file. The image reads one only when `CONFIG_FILE` names it, so mount it read-only and name it:
-
-```bash
+#!/bin/sh
+cd "$(dirname "$0")" || exit 1
+. ./.env
+if docker container inspect auto-runtime >/dev/null 2>&1; then
+  docker stop auto-runtime && docker rm auto-runtime
+fi
 docker run --detach --name auto-runtime --restart unless-stopped \
   --publish 127.0.0.1:5555:5555 --env-file auto-runtime.env --volume auto-runtime-data:/data \
   --volume "$PWD/auto-runtime.yaml:/etc/auto-runtime/auto-runtime.yaml:ro" \
   --env CONFIG_FILE=/etc/auto-runtime/auto-runtime.yaml \
-  onauto/runtime:latest
+  "$IMAGE"
 ```
 
-Secrets stay in `auto-runtime.env`; the file refers to them by name, such as `${GATEWAY_API_KEY}`. The OpenAPI document of an `openapi` tool server, when its entry in `tool_servers` names it by a path, is read at start from the directory of the file, so mount it there too, as `--volume "$PWD/billing.json:/etc/auto-runtime/billing.json:ro"`, or name it by an https URL the container can reach; a document the server cannot read stops the start, naming the entry. [Configure the runtime](configuration.md) describes the file and every setting.
+Then run `./start-runtime.sh`.
 
-## Upgrade
+With Compose, add `CONFIG_FILE` to the `environment` of the `runtime` service, and give the service a `volumes` entry for the file. The other lines of the service stay as they are:
 
-Pull the new release and replace the container. The ledger stays on its volume or in its database, and the new server migrates it at start:
+```yaml
+services:
+  runtime:
+    environment:
+      DATABASE_URL: postgresql://auto_runtime:${POSTGRES_PASSWORD}@postgres:5432/auto_runtime
+      CONFIG_FILE: /etc/auto-runtime/auto-runtime.yaml
+    volumes:
+      - ./auto-runtime.yaml:/etc/auto-runtime/auto-runtime.yaml:ro
+```
+
+Then run `docker compose up --detach`, which replaces Auto's container because its definition changed.
+
+Rules for the file:
+
+- Secrets stay in `auto-runtime.env`. The file refers to them by name, such as `${GATEWAY_API_KEY}`.
+- An `openapi` tool server whose entry in `tool_servers` names its OpenAPI document by a path reads that document at start, from the directory of the file. Mount the document there too, as `--volume "$PWD/billing.json:/etc/auto-runtime/billing.json:ro"`, or name it by an https URL the container can reach.
+- A document that Auto cannot read stops the start, and the error names the entry.
+
+The [configuration reference](configuration.md) describes the file and every setting.
+
+## Upgrade {#upgrade}
+
+The ledger stays on its volume or in its database, and the new version migrates it when it starts.
+
+1. Read the [release notes](https://github.com/BeOnAuto/runtime/releases) of the new version.
+2. Change the version on the `IMAGE` line of `.env`, such as `IMAGE=onauto/runtime:0.9.2`.
+3. Replace the container.
+
+For the single container, pull the new release, then run the script. It replaces the container with every flag it had:
 
 ```bash
-docker pull onauto/runtime:latest
-docker rm --force auto-runtime
-docker run --detach --name auto-runtime --restart unless-stopped \
-  --publish 127.0.0.1:5555:5555 --env-file auto-runtime.env --volume auto-runtime-data:/data \
-  onauto/runtime:latest
+. ./.env
+docker pull "$IMAGE"
+./start-runtime.sh
 ```
 
-With Compose, run `docker compose pull` and then `docker compose up --detach`. Workflows that were waiting go on once the new server starts, and calls cut off by the stop run again. When several servers share a database, stop every server of the old version before starting the new one; see [Upgrades](production.md#upgrades).
+With Compose:
 
-## Back up and restore
+```bash
+docker compose pull
+docker compose up --detach
+```
 
-On a volume, the ledger is three files, `ledger.db`, `ledger.db-wal` and `ledger.db-shm`, which belong together. Stop the server, copy the whole volume, and start it again:
+After the upgrade:
+
+- Workflows that were waiting go on once the new version starts.
+- Calls cut off by the stop run again, as [Stop](#stop) describes.
+- When several servers share a database, follow [Upgrade several servers](workflows.md#upgrade-several-servers).
+
+## Back up and restore {#back-up-and-restore}
+
+For the single container, the ledger on the volume is three files that belong together: `ledger.db`, `ledger.db-wal` and `ledger.db-shm`. Stop Auto, copy the whole volume, and start it again:
 
 ```bash
 docker stop auto-runtime
@@ -195,8 +286,23 @@ docker run --rm --volume auto-runtime-data:/data:ro --volume "$PWD/backup:/backu
 docker start auto-runtime
 ```
 
-To restore, stop the server, copy the files back into the volume, and start it. With PostgreSQL, use your database's own backups, or `pg_dump`; the workflows are in the same database, so one backup holds everything.
+`docker stop` and `docker start` keep the same container, with every flag it was created with.
+
+To restore, stop Auto, replace the three files in the volume with the copies, and start it:
+
+```bash
+docker stop auto-runtime
+docker run --rm --volume auto-runtime-data:/data --volume "$PWD/backup:/backup:ro" alpine \
+  sh -c 'rm -f /data/ledger.db /data/ledger.db-wal /data/ledger.db-shm && cp -a /backup/. /data/'
+docker start auto-runtime
+```
+
+With PostgreSQL, use your database's own backups, or `pg_dump`. The workflows are in the same database, so one backup holds everything except content kept on [object storage](object-storage.md#back-up), which you back up alongside it. For the Compose variant:
+
+```bash
+docker compose exec -T postgres pg_dump --username auto_runtime --format custom auto_runtime > ledger.dump
+```
 
 ## Stop
 
-`docker stop auto-runtime` sends `SIGTERM`: the server finishes the work it already took, records where its workflows are, and exits, usually in well under a second. Calls it cut off run again when it next starts. [Workflow operations](workflows.md#starting-stopping-and-restarting) describes the stop in detail.
+`docker stop auto-runtime`, or `docker compose stop runtime` with Compose, sends `SIGTERM`. Auto finishes the work it already accepted, records where its workflows are, and exits, usually in well under a second. Calls it cut off run again when it next starts, except a function run that may have called tools ([Retrying under a run id](../reference/http.md#retrying-under-a-run-id)). [Starting, stopping and restarting](workflows.md#starting-stopping-and-restarting) describes the stop in detail.

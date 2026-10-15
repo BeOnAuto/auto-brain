@@ -22,13 +22,13 @@ const urlsInCode = (source: string): readonly string[] =>
     .filter((span) => span !== undefined && URL.canParse(span))
     .map((span) => new URL(String(span)).href);
 
-await test('interaction functions are available in a self-hosted runtime, with their format beside the other formats', () => {
+await test('interaction functions are available in every runtime, with their format beside the other formats', () => {
   const functions = readFileSync(join(docs, 'concepts/functions.md'), 'utf8');
   const format = readFileSync(join(docs, 'reference/interaction-format.md'), 'utf8');
-  assert.match(functions, /\| Interaction +\| An interaction function +\| Available in a self-hosted runtime +\|/u);
+  assert.ok(functions.includes('reasoning, interaction, prediction, recall and computation functions are available'));
   assert.ok(markdownDestinations(functions).some((href) => href === '../reference/interaction-format.md'));
   assert.ok(routes.indexOf('/reference/reasoning-format') < routes.indexOf('/reference/interaction-format'));
-  assert.ok(routes.indexOf('/reference/interaction-format') < routes.indexOf('/reference/computation-format'));
+  assert.ok(routes.indexOf('/reference/interaction-format') < routes.indexOf('/reference/prediction-format'));
   assert.ok(urlsInCode(format).some((href) => href === unansweredType.href));
   assert.match(
     format,
@@ -48,7 +48,7 @@ await test('the words of interaction are on the terminology page, and the first 
   }
   assert.ok(
     terminology.includes(
-      'An interaction function asks a system and answers at once, or asks a person and takes the answer later',
+      'An interaction function asks a system and returns its result at once, or asks a person and takes the answer later',
     ),
   );
   assert.ok(!tutorial.includes('deliver:'));

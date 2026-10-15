@@ -10,13 +10,9 @@ await test('docs distinguish inbound MCP from the tools a reasoning function cal
   const functions = readFileSync(join(docs, 'concepts/functions.md'), 'utf8');
   assert.ok(mcp.includes('inbound interface'));
   assert.ok(mcp.includes('It does not configure tools inside a reasoning function'));
-  assert.ok(mcp.includes('through tool servers the operator of a self-hosted runtime configures'));
-  assert.ok(mcp.includes('never by adding an endpoint to an external assistant'));
-  assert.ok(
-    functions.includes(
-      'Tool access is available in a self-hosted runtime whose operator configures tool servers; Auto Cloud does not offer it yet',
-    ),
-  );
+  assert.ok(mcp.includes("through tool servers the runtime's operator configures"));
+  assert.ok(mcp.includes('never by adding an endpoint to an external agent'));
+  assert.ok(functions.includes('Tool access is available wherever the runtime'));
   assert.ok(functions.includes('model gateways connect to language models'));
   assert.ok(
     functions.includes(

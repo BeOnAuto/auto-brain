@@ -17,13 +17,13 @@ describe('the example of the interaction function format', () => {
     const server = await interactionServerOn({});
     await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
     await server.call('POST', `${alpha}/definitions/interaction`, {
-      body: { name: 'approve-brief', source: reference.get('markdown') },
+      body: { name: 'approve-campaign-brief', source: reference.get('markdown') },
     });
     await server.call('POST', `${alpha}/definitions/workflow`, {
       body: { name: 'brief-approval', source: reference.get('yaml') },
     });
     const started = await server.call('POST', `${alpha}/definitions/workflow/brief-approval/run`, {
-      body: { input: { campaign: 'Spring', owner: 'ada', summary: 'A brief for the spring sale.' } },
+      body: { input: { owner: 'ada@example.com', review: 'Ready: all four criteria are met.' } },
     });
     const [request] = await server.openRequests(1);
     const answered = await server.answer(String(request), decodeAnswer(reference.get('json')));
@@ -31,7 +31,7 @@ describe('the example of the interaction function format', () => {
     expect(answered.status).toBe(200);
     expect(await server.settled(runIdIn(started.body))).toMatchObject({
       status: 'succeeded',
-      output: { choice: 'approve', note: 'Ready to launch.' },
+      output: { verdict: 'approve', note: 'Ready to launch.' },
     });
   });
 });
