@@ -96,27 +96,23 @@ describe.skipIf(skipped)(`A ledger on a PostgreSQL database of its own${notice}`
     expect(loaded).toEqual({ state: 1, version: 1 });
   });
 
-  it(
-    'holds one connection once its first sweep is done, and closes every connection when the runtime is disposed',
-    { timeout: 30_000 },
-    async () => {
-      const database = await aDatabase();
-      const watched = sweptOn(database);
-      const { ledger, dispose } = await openLedgerWith(watched.layer);
-      await watched.finished;
-      await Effect.runPromise(ledger.load('org/acme/tallies', tally));
-      const whileOpen = await queried(database, connectionsTo(database));
+  it('holds one connection once its first sweep is done, and closes every connection when the runtime is disposed', async () => {
+    const database = await aDatabase();
+    const watched = sweptOn(database);
+    const { ledger, dispose } = await openLedgerWith(watched.layer);
+    await watched.finished;
+    await Effect.runPromise(ledger.load('org/acme/tallies', tally));
+    const whileOpen = await queried(database, connectionsTo(database));
 
-      await dispose();
+    await dispose();
 
-      expect(whileOpen).toEqual([{ open: 1 }]);
-      await untilNoneOpen(database);
-    },
-  );
+    expect(whileOpen).toEqual([{ open: 1 }]);
+    await untilNoneOpen(database);
+  });
 });
 
 describe.skipIf(skipped)(`A ledger on PostgreSQL whose runtime is disposed while it sweeps${notice}`, () => {
-  it('finishes the sweep under way and then closes every connection', { timeout: 30_000 }, async () => {
+  it('finishes the sweep under way and then closes every connection', async () => {
     const database = await aDatabase();
     const held = Promise.withResolvers<void>();
     const watched = sweptOn(database, held.promise);
@@ -132,36 +128,32 @@ describe.skipIf(skipped)(`A ledger on PostgreSQL whose runtime is disposed while
   });
 });
 
-describe.skipIf(skipped)(
-  `A ledger whose PostgreSQL database another server is filling${notice}`,
-  { timeout: 30_000 },
-  () => {
-    it('waits past the 10 s the migrator itself waits for the migration lock, and builds once the fill is done', async () => {
-      const database = await aDatabase();
-      const filling = new Client({ connectionString: database });
-      await filling.connect();
-      onTestFinished(() => filling.end());
-      await filling.query('SELECT pg_advisory_lock($1)', [emmettsMigrationLock]);
-      const fill = { done: false };
+describe.skipIf(skipped)(`A ledger whose PostgreSQL database another server is filling${notice}`, () => {
+  it('waits past the 10 s the migrator itself waits for the migration lock, and builds once the fill is done', async () => {
+    const database = await aDatabase();
+    const filling = new Client({ connectionString: database });
+    await filling.connect();
+    onTestFinished(() => filling.end());
+    await filling.query('SELECT pg_advisory_lock($1)', [emmettsMigrationLock]);
+    const fill = { done: false };
 
-      const opening = openLedgerWith(postgresqlLedgerLayer({ pools: plainPoolsOn(database) })).then((opened) => ({
-        opened,
-        afterTheFill: fill.done,
-      }));
-      await setTimeout(heldPastTheMigratorsOwnWaitMs);
-      fill.done = true;
-      await filling.query('SELECT pg_advisory_unlock($1)', [emmettsMigrationLock]);
-      const { opened, afterTheFill } = await opening;
-      onTestFinished(opened.dispose);
+    const opening = openLedgerWith(postgresqlLedgerLayer({ pools: plainPoolsOn(database) })).then((opened) => ({
+      opened,
+      afterTheFill: fill.done,
+    }));
+    await setTimeout(heldPastTheMigratorsOwnWaitMs);
+    fill.done = true;
+    await filling.query('SELECT pg_advisory_unlock($1)', [emmettsMigrationLock]);
+    const { opened, afterTheFill } = await opening;
+    onTestFinished(opened.dispose);
 
-      expect(afterTheFill).toBe(true);
-      expect(await Effect.runPromise(opened.ledger.execute('org/acme/tallies', tally, [1]))).toEqual({
-        state: 1,
-        version: 1,
-      });
+    expect(afterTheFill).toBe(true);
+    expect(await Effect.runPromise(opened.ledger.execute('org/acme/tallies', tally, [1]))).toEqual({
+      state: 1,
+      version: 1,
     });
-  },
-);
+  });
+});
 
 async function aLedgerLogging(database: string) {
   const logged: string[] = [];

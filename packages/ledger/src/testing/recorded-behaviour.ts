@@ -146,35 +146,31 @@ function aThousandNoted(ledger: AnyLedger): Promise<unknown> {
 
 function aFilterOfTypes(aLedger: LedgerMaker): void {
   describe('a filter of types', () => {
-    it(
-      'examines up to 1,000 records for a page, and ends the page with a cursor past them',
-      { timeout: 60_000 },
-      async () => {
-        const ledger = await aLedger();
-        await happen(
-          ledger,
-          inAlpha('notes'),
-          ...Array.from({ length: 7 }, () => noted('noted')),
-          noted('kept', 'early'),
-        );
-        await aThousandNoted(ledger);
-        await happen(ledger, inAlpha('notes'), noted('kept', 'late'));
+    it('examines up to 1,000 records for a page, and ends the page with a cursor past them', async () => {
+      const ledger = await aLedger();
+      await happen(
+        ledger,
+        inAlpha('notes'),
+        ...Array.from({ length: 7 }, () => noted('noted')),
+        noted('kept', 'early'),
+      );
+      await aThousandNoted(ledger);
+      await happen(ledger, inAlpha('notes'), noted('kept', 'late'));
 
-        const kept = { order: 'asc', limit: 2, types: ['kept'] } as const;
-        const first = await reading(ledger, everything, kept);
-        const empty = await reading(ledger, everything, { ...kept, cursor: String(first.records[0]?.cursor) });
-        const rest = await reading(ledger, everything, { ...kept, cursor: String(empty.nextCursor) });
+      const kept = { order: 'asc', limit: 2, types: ['kept'] } as const;
+      const first = await reading(ledger, everything, kept);
+      const empty = await reading(ledger, everything, { ...kept, cursor: String(first.records[0]?.cursor) });
+      const rest = await reading(ledger, everything, { ...kept, cursor: String(empty.nextCursor) });
 
-        expect([details(first), first.hasMore, details(empty), empty.hasMore, details(rest), rest.nextCursor]).toEqual([
-          ['early'],
-          true,
-          [],
-          true,
-          ['late'],
-          null,
-        ]);
-      },
-    );
+      expect([details(first), first.hasMore, details(empty), empty.hasMore, details(rest), rest.nextCursor]).toEqual([
+        ['early'],
+        true,
+        [],
+        true,
+        ['late'],
+        null,
+      ]);
+    });
   });
 }
 
@@ -255,32 +251,28 @@ function sleep(milliseconds: number): Promise<void> {
 
 function theTimeAPageStartsFrom(aLedger: LedgerMaker): void {
   describe('the time a page starts from', () => {
-    it(
-      'bounds the page from below by the time the store recorded, oldest or newest first',
-      { timeout: 10_000 },
-      async () => {
-        const ledger = await aLedger();
-        await happen(ledger, inAlpha('notes'), noted('noted', 1), noted('noted', 2));
-        await sleep(1100);
-        await happen(ledger, inAlpha('notes'), noted('noted', 3), noted('noted', 4));
-        const { records } = await reading(ledger, everything, { order: 'asc', limit: 10 });
-        const since = String(records[2]?.recordedAt);
+    it('bounds the page from below by the time the store recorded, oldest or newest first', async () => {
+      const ledger = await aLedger();
+      await happen(ledger, inAlpha('notes'), noted('noted', 1), noted('noted', 2));
+      await sleep(1100);
+      await happen(ledger, inAlpha('notes'), noted('noted', 3), noted('noted', 4));
+      const { records } = await reading(ledger, everything, { order: 'asc', limit: 10 });
+      const since = String(records[2]?.recordedAt);
 
-        const pages = await Promise.all([
-          reading(ledger, everything, { order: 'asc', limit: 10, since }),
-          reading(ledger, everything, { order: 'desc', limit: 10, since }),
-          reading(ledger, everything, { order: 'asc', limit: 10, since: '2000-01-01T00:00:00Z' }),
-          reading(ledger, everything, { order: 'desc', limit: 10, since: '2999-01-01T00:00:00Z' }),
-        ]);
+      const pages = await Promise.all([
+        reading(ledger, everything, { order: 'asc', limit: 10, since }),
+        reading(ledger, everything, { order: 'desc', limit: 10, since }),
+        reading(ledger, everything, { order: 'asc', limit: 10, since: '2000-01-01T00:00:00Z' }),
+        reading(ledger, everything, { order: 'desc', limit: 10, since: '2999-01-01T00:00:00Z' }),
+      ]);
 
-        expect(pages.map((page) => [details(page), page.nextCursor])).toEqual([
-          [[3, 4], null],
-          [[4, 3], null],
-          [[1, 2, 3, 4], null],
-          [[], null],
-        ]);
-      },
-    );
+      expect(pages.map((page) => [details(page), page.nextCursor])).toEqual([
+        [[3, 4], null],
+        [[4, 3], null],
+        [[1, 2, 3, 4], null],
+        [[], null],
+      ]);
+    });
   });
 }
 

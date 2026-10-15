@@ -66,7 +66,7 @@ async function untilAWriteWaitsOnALock(database: string, deadline = Date.now() +
   await untilAWriteWaitsOnALock(database, deadline);
 }
 
-describe.skipIf(skipped)(`A fold beside an advance of the same row on PostgreSQL${notice}`, { timeout: 30_000 }, () => {
+describe.skipIf(skipped)(`A fold beside an advance of the same row on PostgreSQL${notice}`, () => {
   it('leaves the columns the advance wrote, though the fold read the row before the advance committed', async () => {
     const database = await aDatabase();
     const { ledger, dispose } = await openLedgerWith(
