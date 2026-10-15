@@ -8,7 +8,15 @@ import type { CallOnce } from '../one-call/one-call.ts';
 import type { ToolServers } from '../openapi/described-api.ts';
 import { playbooksServedBy, isListedFor, type ServersScope } from '../settings/server-settings.ts';
 import type { CallerContext, ServerMessage, ToolsNotOpened } from './caller-context.ts';
-import { keepingIn, namingOf, startsOf, type ContentStore, type NamingCheck, type StartOf } from './entry-reads.ts';
+import {
+  namingOf,
+  recordingPartsOf,
+  startsOf,
+  type ContentStore,
+  type NamingCheck,
+  type RecordingParts,
+  type StartOf,
+} from './entry-reads.ts';
 
 export interface ToolAccessOptions {
   readonly client: LinkOptions['client'];
@@ -36,9 +44,7 @@ export interface ToolAccess {
 
 export type LinkedAccess = Omit<ToolAccess, 'playbooksServedBy' | 'named' | 'startOf'>;
 
-export interface LinkedOptions extends ToolAccessOptions {
-  readonly keepIn: ReturnType<typeof keepingIn>;
-}
+export type LinkedOptions = ToolAccessOptions & RecordingParts;
 
 async function linked(settings: ToolServers, options: LinkedOptions): Promise<LinkedAccess> {
   const { linkedAccess } = await import('./linked-access.ts');
@@ -47,16 +53,16 @@ async function linked(settings: ToolServers, options: LinkedOptions): Promise<Li
 
 export function makeToolAccess(settings: ToolServers, options: ToolAccessOptions): ToolAccess {
   const loading: { access?: Promise<LinkedAccess> } = {};
-  const keepIn = keepingIn(options.content);
+  const recordingParts = recordingPartsOf(settings.servers, options.content);
   const loaded = (): Promise<LinkedAccess> => {
-    loading.access ??= linked(settings, { ...options, keepIn });
+    loading.access ??= linked(settings, { ...options, ...recordingParts });
     return loading.access;
   };
   return {
     configured: settings.servers.length > 0,
     open: (context, references) => Effect.flatMap(Effect.promise(loaded), (access) => access.open(context, references)),
     named: namingOf(settings.servers),
-    startOf: startsOf(settings.servers, keepIn),
+    startOf: startsOf(settings.servers, recordingParts),
     callOnce: (call, runCall) => Effect.flatMap(Effect.promise(loaded), (access) => access.callOnce(call, runCall)),
     listServers: (scope, named) =>
       settings.servers.some((server) => isListedFor(server, scope, named))

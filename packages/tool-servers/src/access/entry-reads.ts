@@ -1,7 +1,7 @@
 import { sha256Of, textToKeep, type PlaybookAddress, type RecordedContent } from '@on.auto/operations';
 import { Effect, Function, Result } from 'effect';
 
-import { secretsOfServers } from '../bounds/secrets.ts';
+import { secretsOfServers, type Secrets } from '../bounds/secrets.ts';
 import { recordingOf, startedFields, type KeepIn, type StartedFields } from '../calls/recorded-calls.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
 import type { OneCall } from '../one-call/one-call.ts';
@@ -23,7 +23,7 @@ export function namingOf(servers: readonly ServerSettings[]): NamingCheck {
 
 export type ContentStore = Pick<RecordedContent, 'put'>;
 
-export function keepingIn(content: ContentStore): KeepIn {
+function keepingIn(content: ContentStore): KeepIn {
   return ({ org, playbook }) =>
     (text) =>
       Effect.runPromise(
@@ -36,13 +36,21 @@ export function keepingIn(content: ContentStore): KeepIn {
       );
 }
 
+export interface RecordingParts {
+  readonly keepIn: KeepIn;
+  readonly secrets: Secrets;
+}
+
+export function recordingPartsOf(servers: readonly ServerSettings[], content: ContentStore): RecordingParts {
+  return { keepIn: keepingIn(content), secrets: secretsOfServers(servers) };
+}
+
 const nothingKept: Pick<ServerSettings, 'record_content' | 'request_id'> = {
   record_content: false,
   request_id: null,
 };
 
-export function startsOf(servers: readonly ServerSettings[], keepIn: KeepIn): StartOf {
-  const secrets = secretsOfServers(servers);
+export function startsOf(servers: readonly ServerSettings[], { keepIn, secrets }: RecordingParts): StartOf {
   return ({ org, playbook, reference, input }) => {
     const entry = servers.find(({ name }) => name === reference.server) ?? nothingKept;
     const recording = recordingOf({ ...entry, request_id: null }, secrets, keepIn({ org, playbook }));

@@ -18,11 +18,12 @@ export interface TokenSource extends AuthProvider {
 export type Discovery = 'from_the_server' | 'from_the_issuer';
 
 export interface TokenSourceOptions {
+  readonly server: string;
   readonly serverUrl: string;
   readonly discovery: Discovery;
   readonly fetch: FetchLike;
   readonly now: () => number;
-  readonly minted: (token: string) => void;
+  readonly minted: (server: string, token: string) => void;
 }
 
 interface Held {
@@ -59,7 +60,7 @@ function renewalTime(issuedAt: number, lifetimeSeconds: number): number {
 
 export function tokenSource(
   settings: AuthSettings,
-  { serverUrl, discovery, fetch, now, minted }: TokenSourceOptions,
+  { server, serverUrl, discovery, fetch, now, minted }: TokenSourceOptions,
 ): TokenSource {
   let held: Held | undefined;
   let minting: Promise<string> | undefined;
@@ -67,7 +68,7 @@ export function tokenSource(
     const provider = providerOf(settings, discovery);
     await auth(provider, { serverUrl, fetchFn: fetch });
     const tokens = Option.getOrThrow(Option.fromNullishOr(await provider.tokens()));
-    minted(tokens.access_token);
+    minted(server, tokens.access_token);
     held = { value: tokens.access_token, renewAt: renewalTime(now(), tokens.expires_in ?? defaultLifetimeSeconds) };
     return tokens.access_token;
   };
