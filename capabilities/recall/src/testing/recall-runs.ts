@@ -10,7 +10,7 @@ import { makeRecallFunctionAdapter, type RecallFunctionAdapterOptions } from '..
 import { recallBounds } from '../run/recall-bounds.ts';
 import { keptViews, type KeptViews } from './kept-views.ts';
 
-export const workerTestTimeoutMs = 30_000;
+const checksAwaitedAtMostMs = 30_000;
 
 const reviewsRun: RunContext = {
   id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
@@ -46,6 +46,10 @@ const measured: Readonly<Record<string, string>> = Object.fromEntries(
   ),
 );
 
+function checkingWithin(pool: ProgramPool, deadlineMs: number): ProgramPool {
+  return { ...pool, check: (request, signal) => pool.check({ ...request, deadlineMs }, signal) };
+}
+
 export function poolOf(settings: Partial<PoolSettings> = {}): ProgramPool {
   const pool = programPool({
     workers: 2,
@@ -54,7 +58,7 @@ export function poolOf(settings: Partial<PoolSettings> = {}): ProgramPool {
     ...settings,
   });
   pools.push(pool);
-  return pool;
+  return checkingWithin(pool, checksAwaitedAtMostMs);
 }
 
 export function liveView(view: Schema.Json, more: Partial<KeptView> = {}): KeptView {

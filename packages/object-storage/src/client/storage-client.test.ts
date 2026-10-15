@@ -66,27 +66,23 @@ describe('the client of an object store', () => {
 });
 
 describe('the client of an object store that stops answering', () => {
-  it(
-    'gives up on each request after its wait, so no check, read or put of a stalled store waits for ever',
-    { timeout: 30_000 },
-    async () => {
-      const endpoint = await aStoreThatNeverAnswers();
-      const client = storageClientOf({ endpoint, region: 'us-east-1', proxy: noProxy }, credentials, {
-        connectionMs: 100,
-        requestMs: 100,
-      });
-      const location = { bucket: 'content', prefix: '' };
-      const { content } = objectContentOn(() => client, location);
-      const started = performance.now();
+  it('gives up on each request after its wait, so no check, read or put of a stalled store waits for ever', async () => {
+    const endpoint = await aStoreThatNeverAnswers();
+    const client = storageClientOf({ endpoint, region: 'us-east-1', proxy: noProxy }, credentials, {
+      connectionMs: 100,
+      requestMs: 100,
+    });
+    const location = { bucket: 'content', prefix: '' };
+    const { content } = objectContentOn(() => client, location);
+    const started = performance.now();
 
-      const refused = await refusalOf(objectStoreReached(() => client, location));
-      const read = Effect.runPromise(content.get(alpha, sha256Of('stalled')));
-      await expect(read).rejects.toThrow('requestTimeout');
-      const put = Effect.runPromise(content.put(alpha, (await generated(2_500_000)).content()));
-      await expect(put).rejects.toThrow('requestTimeout');
+    const refused = await refusalOf(objectStoreReached(() => client, location));
+    const read = Effect.runPromise(content.get(alpha, sha256Of('stalled')));
+    await expect(read).rejects.toThrow('requestTimeout');
+    const put = Effect.runPromise(content.put(alpha, (await generated(2_500_000)).content()));
+    await expect(put).rejects.toThrow('requestTimeout');
 
-      expect(refused.answer).toMatch(/^TimeoutError/u);
-      expect(performance.now() - started).toBeLessThan(20_000);
-    },
-  );
+    expect(refused.answer).toMatch(/^TimeoutError/u);
+    expect(performance.now() - started).toBeLessThan(20_000);
+  });
 });

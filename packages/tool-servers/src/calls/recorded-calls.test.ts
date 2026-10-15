@@ -17,7 +17,6 @@ import {
   recordingCallJournal,
   reportingAccess,
   serveFakeMcp,
-  stdioTestTimeoutMs,
   toolRun,
   type FakeMcpOptions,
 } from '../testing/index.ts';
@@ -29,7 +28,7 @@ const closing: (() => Promise<void>)[] = [];
 
 afterEach(async () => {
   await Promise.all(closing.splice(0).map((close) => close()));
-}, stdioTestTimeoutMs);
+});
 
 const digest = (text: string) => createHash('sha256').update(text).digest('hex');
 
@@ -270,7 +269,7 @@ describe('the id a server gives a request', () => {
     expect(failed.facts[1]).toMatchObject({ type: 'tool_call_failed', data: { server_request_id: null } });
   });
 
-  it('records the JSON-RPC id of a call over stdio', { timeout: stdioTestTimeoutMs }, async () => {
+  it('records the JSON-RPC id of a call over stdio', async () => {
     const { facts } = await recordedCalls({ request_id: fakeRequestIdKey }, [['limitless/search', { query: 'acme' }]]);
 
     expect(facts[1]).toMatchObject({

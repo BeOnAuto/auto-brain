@@ -5,13 +5,7 @@ import { Effect, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import {
-  runIdIn,
-  servingWorkflows,
-  settledRun,
-  workflowSource,
-  workflowTestTimeoutMs,
-} from '../testing/servers/workflow-server.ts';
+import { runIdIn, servingWorkflows, settledRun, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
@@ -107,67 +101,59 @@ async function settledWorkflowRun(server: ReasoningServer, name: string) {
   return { settled, answers, ending };
 }
 
-describe(
-  'a workflow calling a reasoning function whose tools end it, over HTTP',
-  { timeout: workflowTestTimeoutMs },
-  () => {
-    it('catches the kind and because of a tool the server does not offer, and its history says why', async () => {
-      const server = await serving();
+describe('a workflow calling a reasoning function whose tools end it, over HTTP', () => {
+  it('catches the kind and because of a tool the server does not offer, and its history says why', async () => {
+    const server = await serving();
 
-      const { settled, answers } = await settledWorkflowRun(server, 'reporting');
+    const { settled, answers } = await settledWorkflowRun(server, 'reporting');
 
-      expect(settled).toMatchObject({
-        body: { status: 'succeeded', output: { kind: 'tool_not_offered', because: 'tool_server_not_configured' } },
-      });
-      expect(answers).toMatchObject([
-        {
-          summary:
-            'A function the workflow called did not succeed, and 3 steps moved; the workflow ended. This server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this playbook.',
-          data: {
-            input: {
-              status: 'rejected',
-              rejection: { kind: 'tool_not_offered', because: 'tool_server_not_configured' },
-            },
+    expect(settled).toMatchObject({
+      body: { status: 'succeeded', output: { kind: 'tool_not_offered', because: 'tool_server_not_configured' } },
+    });
+    expect(answers).toMatchObject([
+      {
+        summary:
+          'A function the workflow called did not succeed, and 3 steps moved; the workflow ended. This server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this playbook.',
+        data: {
+          input: {
+            status: 'rejected',
+            rejection: { kind: 'tool_not_offered', because: 'tool_server_not_configured' },
           },
         },
-      ]);
-      expect(server.modelCalls()).toBe(0);
+      },
+    ]);
+    expect(server.modelCalls()).toBe(0);
+  });
+
+  it('ends with the kind and because of tools that could not finish when nothing catches them', async () => {
+    const server = await serving(callingTools([['graph__search', { query: 'acme' }]], timedOut));
+
+    const { settled, answers } = await settledWorkflowRun(server, 'careless');
+
+    expect(settled).toMatchObject({
+      body: {
+        status: 'rejected',
+        rejection: { reason: 'unavailable', kind: 'tools_unfinished', because: 'model_unavailable' },
+      },
     });
+    expect(answers).toMatchObject([
+      {
+        summary: unfinishedWords,
+        data: { input: { rejection: { kind: 'tools_unfinished', because: 'model_unavailable' } } },
+      },
+    ]);
+  });
+});
 
-    it('ends with the kind and because of tools that could not finish when nothing catches them', async () => {
-      const server = await serving(callingTools([['graph__search', { query: 'acme' }]], timedOut));
+describe('a workflow whose step met a tool server that could not be used, over HTTP', () => {
+  it('ends as plain unavailable when a step met a tool server that could not be used, saying nothing of what was called', async () => {
+    const server = await serving();
 
-      const { settled, answers } = await settledWorkflowRun(server, 'careless');
+    const { settled, ending } = await settledWorkflowRun(server, 'stranded');
 
-      expect(settled).toMatchObject({
-        body: {
-          status: 'rejected',
-          rejection: { reason: 'unavailable', kind: 'tools_unfinished', because: 'model_unavailable' },
-        },
-      });
-      expect(answers).toMatchObject([
-        {
-          summary: unfinishedWords,
-          data: { input: { rejection: { kind: 'tools_unfinished', because: 'model_unavailable' } } },
-        },
-      ]);
-    });
-  },
-);
-
-describe(
-  'a workflow whose step met a tool server that could not be used, over HTTP',
-  { timeout: workflowTestTimeoutMs },
-  () => {
-    it('ends as plain unavailable when a step met a tool server that could not be used, saying nothing of what was called', async () => {
-      const server = await serving();
-
-      const { settled, ending } = await settledWorkflowRun(server, 'stranded');
-
-      expect(settled).toMatchObject({ body: { status: 'rejected', rejection: { reason: 'unavailable' } } });
-      expect(settled.body).not.toHaveProperty('rejection.kind');
-      expect(ending).toBe('A run did not go through: something the server relies on is not available right now.');
-      expect(server.modelCalls()).toBe(0);
-    });
-  },
-);
+    expect(settled).toMatchObject({ body: { status: 'rejected', rejection: { reason: 'unavailable' } } });
+    expect(settled.body).not.toHaveProperty('rejection.kind');
+    expect(ending).toBe('A run did not go through: something the server relies on is not available right now.');
+    expect(server.modelCalls()).toBe(0);
+  });
+});

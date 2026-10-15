@@ -9,7 +9,6 @@ import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server
 import {
   playbookWithReviews,
   liveWith,
-  recallTestTimeoutMs,
   recalled,
   reviewed,
   servingRecall,
@@ -44,7 +43,7 @@ function createdInTurn(server: ReasoningServer, names: readonly string[]): Promi
   return names.reduce<Promise<unknown>>((before, name) => before.then(() => created(server, name)), Promise.resolve());
 }
 
-describe('the recall functions a playbook keeps', { timeout: recallTestTimeoutMs }, () => {
+describe('the recall functions a playbook keeps', () => {
   it('are at most thirty-two, the thirty-third refused as a conflict, and another saved once one is retired', async () => {
     const server = await serving();
     await createdInTurn(
@@ -71,7 +70,7 @@ describe('the recall functions a playbook keeps', { timeout: recallTestTimeoutMs
   });
 });
 
-describe('the bound on the recall functions a playbook keeps', { timeout: recallTestTimeoutMs }, () => {
+describe('the bound on the recall functions a playbook keeps', () => {
   it('are bounded by a setting, and lowering it below the count refuses even a new version and changes nothing else', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'auto-runtime-recall-'));
     onTestFinished(() => {
@@ -103,7 +102,7 @@ describe('the bound on the recall functions a playbook keeps', { timeout: recall
   });
 });
 
-describe('a retired recall function', { timeout: recallTestTimeoutMs }, () => {
+describe('a retired recall function', () => {
   it('drop their view when they are retired, and a retired one runs no more', async () => {
     const server = await serving();
     await reviewed(server, 1);

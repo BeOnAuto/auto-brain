@@ -16,7 +16,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { interactionsCalled } from '../testing/servers/interaction-calls.ts';
 import { servingWithAToolServer, toolServerToolsCalled } from '../testing/servers/tool-server-calls.ts';
-import { servingWorkflows, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { servingWorkflows, workflowSource } from '../testing/servers/workflow-server.ts';
 
 type Called = readonly (readonly [string, ToolResult])[];
 
@@ -230,7 +230,7 @@ const audienceWords: Readonly<Record<string, string>> = {
   'a run that did not go through': 'did not go through: something the server relies on is not available',
 };
 
-describe('the plain words that lead each result over MCP', { timeout: workflowTestTimeoutMs }, () => {
+describe('the plain words that lead each result over MCP', () => {
   it('lead every tool’s success and every kind of error, name no internal term, and come before the details', async () => {
     server = await servingWithAToolServer(replies);
 

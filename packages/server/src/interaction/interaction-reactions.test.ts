@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { servingInteractions } from '../testing/servers/interaction-server.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
 import { until } from '../testing/servers/workflow-calls.ts';
-import { workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { workflowSource } from '../testing/servers/workflow-server.ts';
 
 const decodeRuns = Schema.decodeUnknownSync(
   Schema.Struct({
@@ -28,7 +28,7 @@ const hurried = `do:
       timeout: { after: { milliseconds: 500 } }
 `;
 
-describe('another workflow, triggered by the answer to a request', { timeout: workflowTestTimeoutMs }, () => {
+describe('another workflow, triggered by the answer to a request', () => {
   it('starts on the ending of the interaction function and reads the answer and who gave it', async () => {
     const server = await servingInteractions();
     await server.call('POST', `${alpha}/definitions/workflow`, { body: { name: 'on-approval', source: onAnApproval } });
@@ -47,7 +47,7 @@ describe('another workflow, triggered by the answer to a request', { timeout: wo
   });
 });
 
-describe('a request a workflow step waits for past its deadline', { timeout: workflowTestTimeoutMs }, () => {
+describe('a request a workflow step waits for past its deadline', () => {
   it('is cancelled with the kind deadline, and leaves the inbox', async () => {
     const server = await servingInteractions();
     const workflowId = await server.workflow('hurried', hurried);

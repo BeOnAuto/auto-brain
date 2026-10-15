@@ -61,23 +61,19 @@ function everyRunEnded(server: ReasoningServer, count: number): Promise<unknown>
   );
 }
 
-describe(
-  'a recall function whose source names the subject, the caller and the trigger kind',
-  { timeout: recallTestTimeoutMs },
-  () => {
-    it('folds the runs the playbook started for an event, and not the run a caller started', async () => {
-      const server = await servingTheTally();
-      const started = await server.call('POST', `${alpha}/definitions/workflow/tally/run`, { body: { input: {} } });
-      await settledRun(server, `${alpha}/runs/${runIdIn(started.body)}`);
+describe('a recall function whose source names the subject, the caller and the trigger kind', () => {
+  it('folds the runs the playbook started for an event, and not the run a caller started', async () => {
+    const server = await servingTheTally();
+    const started = await server.call('POST', `${alpha}/definitions/workflow/tally/run`, { body: { input: {} } });
+    await settledRun(server, `${alpha}/runs/${runIdIn(started.body)}`);
 
-      await server.call('POST', `${alpha}/events`, {
-        body: { event: { source: '/ledger', type: 'com.acme.ledger.closed', data: { month: 'september' } } },
-      });
-      await everyRunEnded(server, 2);
-      await standingUntil(server, 'triggered', liveWith(1));
-      const answer = await recalled(server, 'triggered', {});
-
-      expect(answer.body).toMatchObject({ status: 'succeeded', output: ['workflow/tally playbook:alpha event'] });
+    await server.call('POST', `${alpha}/events`, {
+      body: { event: { source: '/ledger', type: 'com.acme.ledger.closed', data: { month: 'september' } } },
     });
-  },
-);
+    await everyRunEnded(server, 2);
+    await standingUntil(server, 'triggered', liveWith(1));
+    const answer = await recalled(server, 'triggered', {});
+
+    expect(answer.body).toMatchObject({ status: 'succeeded', output: ['workflow/tally playbook:alpha event'] });
+  });
+});

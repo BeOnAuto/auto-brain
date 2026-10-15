@@ -9,7 +9,6 @@ import {
   inState,
   liveAt,
   liveWith,
-  recallTestTimeoutMs,
   recalled,
   reviewed,
   servingRecall,
@@ -62,7 +61,7 @@ async function stalledServer(): Promise<ReasoningServer> {
   return server;
 }
 
-describe('a recall function whose view stalled', { timeout: recallTestTimeoutMs }, () => {
+describe('a recall function whose view stalled', () => {
   it('stands stalled with the event, the kind and the raw error, and holds back no other view of the playbook', async () => {
     const server = await stalledServer();
 
@@ -97,7 +96,7 @@ describe('a recall function whose view stalled', { timeout: recallTestTimeoutMs 
   });
 });
 
-describe('a recall function whose view stalled, afterwards', { timeout: recallTestTimeoutMs }, () => {
+describe('a recall function whose view stalled, afterwards', () => {
   it('is repaired by saving a corrected version, which builds the view again from the history', async () => {
     const server = await stalledServer();
     await standingUntil(server, 'objects', inState('stalled'));

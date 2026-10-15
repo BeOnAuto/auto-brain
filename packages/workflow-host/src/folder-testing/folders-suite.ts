@@ -7,7 +7,7 @@ import type { Writing } from '../projector/folder.ts';
 import { definitionsByType } from '../projector/projector-schedule.ts';
 import { reconciledRows, type DefinitionsKept } from '../projector/reconciled-rows.ts';
 import { openedOn, type SettingsOf } from '../testing/host-files.ts';
-import { alphaKey, counting, foldedAll, liveWith, viewTestTimeoutMs } from '../views-testing/view-documents.ts';
+import { alphaKey, counting, foldedAll, liveWith } from '../views-testing/view-documents.ts';
 import {
   talliesOf,
   tallyFolderOf,
@@ -212,7 +212,7 @@ function tableTests(settingsOf: SettingsOf): void {
 }
 
 export function foldersSuite(settingsOf: SettingsOf): void {
-  describe('a second folder beside the views of recall functions', { timeout: viewTestTimeoutMs }, () => {
+  describe('a second folder beside the views of recall functions', () => {
     sharingTests(settingsOf);
     phaseTests(settingsOf);
     restartTests(settingsOf);

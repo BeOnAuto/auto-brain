@@ -151,50 +151,46 @@ async function approvedThenNextMonth(session: McpSession) {
   return { asked, answered, ended, openOnceAnswered, openForOctober: await deliveredRequestsIn(session, 1) };
 }
 
-describe(
-  'episode 7: the person approves, in the chat, a draft a workflow sent through a tool',
-  { timeout: workflowTestTimeoutMs },
-  () => {
-    it('finds in the instructions, answer_interaction and the guide that the answer goes to the waiting request, and nothing that says to wait in a loop', async () => {
-      const { instructions } = meetings.surfaces;
-      const guide = await meetings.onMcp((session) => session.callTool('get_guide', { guide: 'interaction-function' }));
+describe('episode 7: the person approves, in the chat, a draft a workflow sent through a tool', () => {
+  it('finds in the instructions, answer_interaction and the guide that the answer goes to the waiting request, and nothing that says to wait in a loop', async () => {
+    const { instructions } = meetings.surfaces;
+    const guide = await meetings.onMcp((session) => session.callTool('get_guide', { guide: 'interaction-function' }));
 
-      expect(sentenceNaming(instructions, 'answer_interaction')).toBe(
-        "When the person approves, rejects or otherwise answers what a run waits on, answer its request with answer_interaction, in the shape its function's answer takes, and start no new run for it.",
-      );
-      expect(sentenceNaming(instructions, 'get_run')).toBe(
-        'A run of a workflow answers started; get_run shows whether it ended or still waits.',
-      );
-      expect(instructions).not.toMatch(/\bpoll|\buntil (?:it ends|its status changes)/iu);
-      expect(descriptionIn(meetings.surfaces, 'answer_interaction')).toContain(
-        'Use it when the person approves, rejects, revises or otherwise answers a request list_interactions shows, wherever it reached them; a new run asks again and answers nothing,',
-      );
-      expect(descriptionIn(meetings.surfaces, 'answer_interaction')).toContain('such as {"decision": "approve"}.');
-      expect(textOf(guide)).toContain('it is `{ "decision": "approve" }`.');
-      expect(textOf(guide)).toContain('Running the function or its workflow again answers nothing:');
-    });
+    expect(sentenceNaming(instructions, 'answer_interaction')).toBe(
+      "When the person approves, rejects or otherwise answers what a run waits on, answer its request with answer_interaction, in the shape its function's answer takes, and start no new run for it.",
+    );
+    expect(sentenceNaming(instructions, 'get_run')).toBe(
+      'A run of a workflow answers started; get_run shows whether it ended or still waits.',
+    );
+    expect(instructions).not.toMatch(/\bpoll|\buntil (?:it ends|its status changes)/iu);
+    expect(descriptionIn(meetings.surfaces, 'answer_interaction')).toContain(
+      'Use it when the person approves, rejects, revises or otherwise answers a request list_interactions shows, wherever it reached them; a new run asks again and answers nothing,',
+    );
+    expect(descriptionIn(meetings.surfaces, 'answer_interaction')).toContain('such as {"decision": "approve"}.');
+    expect(textOf(guide)).toContain('it is `{ "decision": "approve" }`.');
+    expect(textOf(guide)).toContain('Running the function or its workflow again answers nothing:');
+  });
 
-    it('answers the request the person approved, which ends the run that waited, and starts a new run only for the next month', async () => {
-      const outcome = await meetings.onMcp(approvedThenNextMonth);
+  it('answers the request the person approved, which ends the run that waited, and starts a new run only for the next month', async () => {
+    const outcome = await meetings.onMcp(approvedThenNextMonth);
 
-      expect([outcome.asked?.delivery, outcome.asked?.message, outcome.asked?.answer_schema]).toEqual([
-        { server: 'chat', tool: 'post_message' },
-        'Here is the draft for September: approve, revise or skip?',
-        draftAnswerSchema,
-      ]);
-      expect(outcome.answered.structuredContent).toMatchObject({ answer: { decision: 'approve' } });
-      expect(outcome.ended).toMatchObject({ status: 'succeeded', output: { decision: 'approve' } });
-      expect(outcome.openOnceAnswered).toEqual([]);
-      expect(outcome.openForOctober.map(({ message }) => message)).toEqual([
-        'Here is the draft for October: approve, revise or skip?',
-      ]);
-      expect(meetings.chat?.chat.posted().map(({ text }) => text)).toEqual([
-        'Here is the draft for September: approve, revise or skip?',
-        'Here is the draft for October: approve, revise or skip?',
-      ]);
-    });
-  },
-);
+    expect([outcome.asked?.delivery, outcome.asked?.message, outcome.asked?.answer_schema]).toEqual([
+      { server: 'chat', tool: 'post_message' },
+      'Here is the draft for September: approve, revise or skip?',
+      draftAnswerSchema,
+    ]);
+    expect(outcome.answered.structuredContent).toMatchObject({ answer: { decision: 'approve' } });
+    expect(outcome.ended).toMatchObject({ status: 'succeeded', output: { decision: 'approve' } });
+    expect(outcome.openOnceAnswered).toEqual([]);
+    expect(outcome.openForOctober.map(({ message }) => message)).toEqual([
+      'Here is the draft for October: approve, revise or skip?',
+    ]);
+    expect(meetings.chat?.chat.posted().map(({ text }) => text)).toEqual([
+      'Here is the draft for September: approve, revise or skip?',
+      'Here is the draft for October: approve, revise or skip?',
+    ]);
+  });
+});
 
 describe('the shape of the answer an open request takes, as the agent reads it', () => {
   it('is on each listed request, as the description of list_interactions says within the bounds the server holds texts to', () => {

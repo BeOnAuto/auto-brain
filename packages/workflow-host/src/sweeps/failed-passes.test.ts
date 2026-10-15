@@ -117,27 +117,23 @@ function passedReaching(passes: readonly string[], count: number) {
 }
 
 describe('a sweep in which the pass over a playbook fails', () => {
-  it(
-    'passes the playbooks after it in the same sweep, and the playbook again at the next sweep',
-    { timeout: 30_000 },
-    async () => {
-      const passes: string[] = [];
-      const watched = followed({
-        streams: [`${alpha}events/`, `${beta}events/`],
-        sweepEveryMs: 20,
-        pass: passesFailingFirstFor(alpha, (playbookKey) => {
-          passes.push(playbookKey);
-        }),
-      });
+  it('passes the playbooks after it in the same sweep, and the playbook again at the next sweep', async () => {
+    const passes: string[] = [];
+    const watched = followed({
+      streams: [`${alpha}events/`, `${beta}events/`],
+      sweepEveryMs: 20,
+      pass: passesFailingFirstFor(alpha, (playbookKey) => {
+        passes.push(playbookKey);
+      }),
+    });
 
-      const passed = await passedReaching(passes, 2);
+    const passed = await passedReaching(passes, 2);
 
-      expect(passed).toEqual([beta, alpha]);
-      expect(watched.troubles()).toEqual(['A pass over a playbook failed; the next sweep passes the playbook again']);
-    },
-  );
+    expect(passed).toEqual([beta, alpha]);
+    expect(watched.troubles()).toEqual(['A pass over a playbook failed; the next sweep passes the playbook again']);
+  });
 
-  it('passes the playbook again when the next sweep fails before its passes', { timeout: 30_000 }, async () => {
+  it('passes the playbook again when the next sweep fails before its passes', async () => {
     const passes: string[] = [];
     const watched = followed({
       streams: [`${alpha}events/`],
@@ -159,30 +155,26 @@ describe('a sweep in which the pass over a playbook fails', () => {
 });
 
 describe('a sweep in which following a playbook it finds fails', () => {
-  it(
-    'passes the playbooks after it in the same sweep, and the playbook again at the next sweep',
-    { timeout: 30_000 },
-    async () => {
-      const passes: string[] = [];
-      const watched = followed({
-        streams: [`${alpha}events/`, `${beta}events/`],
-        sweepEveryMs: 20,
-        pass: passesRecorded((playbookKey) => {
-          passes.push(playbookKey);
-        }),
-        playbookSeen: failingOnceFor(alpha, () => Effect.void),
-      });
+  it('passes the playbooks after it in the same sweep, and the playbook again at the next sweep', async () => {
+    const passes: string[] = [];
+    const watched = followed({
+      streams: [`${alpha}events/`, `${beta}events/`],
+      sweepEveryMs: 20,
+      pass: passesRecorded((playbookKey) => {
+        passes.push(playbookKey);
+      }),
+      playbookSeen: failingOnceFor(alpha, () => Effect.void),
+    });
 
-      const passed = await passedReaching(passes, 2);
+    const passed = await passedReaching(passes, 2);
 
-      expect(passed).toEqual([beta, alpha]);
-      expect(watched.troubles()).toEqual(['A pass over a playbook failed; the next sweep passes the playbook again']);
-    },
-  );
+    expect(passed).toEqual([beta, alpha]);
+    expect(watched.troubles()).toEqual(['A pass over a playbook failed; the next sweep passes the playbook again']);
+  });
 });
 
 describe('a sweep in which more playbooks fail than it has room for', () => {
-  it('waits for the next interval rather than sweeping again at once', { timeout: 30_000 }, async () => {
+  it('waits for the next interval rather than sweeping again at once', async () => {
     const streams = Array.from({ length: 130 }, (_, index) => `playbook/acme/b${index}/events/`);
     const watched = followed({
       streams,
@@ -210,7 +202,7 @@ function registryReadFailingOnce(read: (registries: readonly string[]) => void) 
 }
 
 describe('a sweep whose read of a registry of playbooks fails', () => {
-  it('reads the registry again at the next sweep after its read failed', { timeout: 30_000 }, async () => {
+  it('reads the registry again at the next sweep after its read failed', async () => {
     const followedFrom: string[] = [];
     const watched = followed({
       streams: ['org/acme/playbooks'],
@@ -232,7 +224,7 @@ describe('a sweep whose read of a registry of playbooks fails', () => {
 });
 
 describe('a sweep whose read of a registry of playbooks keeps failing', () => {
-  it('still passes the playbooks appended to, and still runs its upkeep', { timeout: 30_000 }, async () => {
+  it('still passes the playbooks appended to, and still runs its upkeep', async () => {
     const passes: string[] = [];
     const watched = followed({
       streams: ['org/acme/playbooks', 'playbook/acme/alpha/events/'],

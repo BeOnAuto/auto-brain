@@ -14,7 +14,6 @@ import {
   settledRun,
   settledOverMcp,
   workflowSource,
-  workflowTestTimeoutMs,
 } from '../testing/servers/workflow-server.ts';
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
@@ -191,59 +190,55 @@ function scripted(...outcomes: readonly PoolOutcome[]): ProgramPoolOf {
   return (settings) => scriptedPool(outcomes, workerPool(settings));
 }
 
-describe(
-  'a workflow that reads rows through an MCP server, computes and reasons',
-  { timeout: workflowTestTimeoutMs },
-  () => {
-    it('turns the rows into exact totals with a computation function and has a reasoning function write the words', async () => {
-      const server = await serving(workerPool, readingRowsThroughTheGraph(), () =>
-        Effect.succeed(textResult('The campaigns spent 2,831.50 in all.')),
-      );
+describe('a workflow that reads rows through an MCP server, computes and reasons', () => {
+  it('turns the rows into exact totals with a computation function and has a reasoning function write the words', async () => {
+    const server = await serving(workerPool, readingRowsThroughTheGraph(), () =>
+      Effect.succeed(textResult('The campaigns spent 2,831.50 in all.')),
+    );
 
-      const settled = await settledWorkflowRun(server, 'report');
+    const settled = await settledWorkflowRun(server, 'report');
 
-      expect(settled).toMatchObject({ body: { status: 'succeeded', output: 'The campaigns spent 2,831.50 in all.' } });
-      expect(graphs[0]?.received()).toMatchObject([{ tool: 'echo', arguments: { rows: rows['rows'] } }]);
-      expect(await computationRuns(server)).toMatchObject({
-        runs: [{ type: 'computation', name: 'pace', status: 'succeeded' }],
-      });
-      expect(await computedOutput(server)).toMatchObject({ total_spend_cents: 283_150 });
-      expect(server.modelCalls()).toBe(2);
+    expect(settled).toMatchObject({ body: { status: 'succeeded', output: 'The campaigns spent 2,831.50 in all.' } });
+    expect(graphs[0]?.received()).toMatchObject([{ tool: 'echo', arguments: { rows: rows['rows'] } }]);
+    expect(await computationRuns(server)).toMatchObject({
+      runs: [{ type: 'computation', name: 'pace', status: 'succeeded' }],
     });
+    expect(await computedOutput(server)).toMatchObject({ total_spend_cents: 283_150 });
+    expect(server.modelCalls()).toBe(2);
+  });
 
-    it('retries the computation step after a transient failure, and runs it again', async () => {
-      const server = await serving(
-        scripted({ ran: 'stopped', because: 'busy', milliseconds: 10_000 }),
-        readingRowsThroughTheGraph(),
-        () => Effect.succeed(textResult('Spent.')),
-      );
+  it('retries the computation step after a transient failure, and runs it again', async () => {
+    const server = await serving(
+      scripted({ ran: 'stopped', because: 'busy', milliseconds: 10_000 }),
+      readingRowsThroughTheGraph(),
+      () => Effect.succeed(textResult('Spent.')),
+    );
 
-      const settled = await settledWorkflowRun(server, 'report');
+    const settled = await settledWorkflowRun(server, 'report');
 
-      expect(settled).toMatchObject({ body: { status: 'succeeded', output: 'Spent.' } });
-      expect(await computationRuns(server)).toMatchObject({
-        runs: [
-          { name: 'pace', status: 'succeeded' },
-          { name: 'pace', status: 'rejected', rejection: { reason: 'unavailable' } },
-        ],
-      });
+    expect(settled).toMatchObject({ body: { status: 'succeeded', output: 'Spent.' } });
+    expect(await computationRuns(server)).toMatchObject({
+      runs: [
+        { name: 'pace', status: 'succeeded' },
+        { name: 'pace', status: 'rejected', rejection: { reason: 'unavailable' } },
+      ],
     });
+  });
 
-    it('does not retry a conflict, since the same input gives the same result, and the workflow ends', async () => {
-      const server = await serving(workerPool, readingRowsThroughTheGraph());
+  it('does not retry a conflict, since the same input gives the same result, and the workflow ends', async () => {
+    const server = await serving(workerPool, readingRowsThroughTheGraph());
 
-      const settled = await settledWorkflowRun(server, 'stuck');
+    const settled = await settledWorkflowRun(server, 'stuck');
 
-      expect(settled).toMatchObject({ body: { status: 'rejected' } });
-      expect(await computationRuns(server)).toMatchObject({
-        runs: [{ name: 'raising', status: 'rejected', rejection: { reason: 'conflict', kind: 'unworkable' } }],
-      });
-      expect(server.modelCalls()).toBe(1);
+    expect(settled).toMatchObject({ body: { status: 'rejected' } });
+    expect(await computationRuns(server)).toMatchObject({
+      runs: [{ name: 'raising', status: 'rejected', rejection: { reason: 'conflict', kind: 'unworkable' } }],
     });
-  },
-);
+    expect(server.modelCalls()).toBe(1);
+  });
+});
 
-describe('a workflow whose computation function raises a long error', { timeout: workflowTestTimeoutMs }, () => {
+describe('a workflow whose computation function raises a long error', () => {
   it('catches it as the runtime error of status 409 the format documents, its text cut at 1,024 bytes', async () => {
     const server = await serving(workerPool);
 
@@ -265,7 +260,7 @@ describe('a workflow whose computation function raises a long error', { timeout:
   });
 });
 
-describe('the same workflow over MCP', { timeout: workflowTestTimeoutMs }, () => {
+describe('the same workflow over MCP', () => {
   it('runs as it does over HTTP', async () => {
     const server = await serving(workerPool, readingRowsThroughTheGraph(), () =>
       Effect.succeed(textResult('The campaigns spent 2,831.50 in all.')),

@@ -2,14 +2,7 @@ import { Effect, Exit, Option, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { campaignPace, campaignRows } from '../testing/campaign-pace.ts';
-import {
-  computationWith,
-  functionOf,
-  poolOf,
-  programDocument,
-  workerTestTimeoutMs,
-  type Run,
-} from '../testing/computation-runs.ts';
+import { computationWith, functionOf, poolOf, programDocument, type Run } from '../testing/computation-runs.ts';
 
 const decodeFinished = Schema.decodeUnknownSync(
   Schema.Struct({
@@ -73,7 +66,7 @@ async function succeeded(running: () => Promise<Run>): Promise<unknown> {
   return Option.getOrThrow(Exit.getSuccess(await running()));
 }
 
-describe('a run of a computation function', { timeout: workerTestTimeoutMs }, () => {
+describe('a run of a computation function', () => {
   it('applies its program to its input and answers its output exactly, in cents, with what the run took', async () => {
     const input = campaignRows(1000);
 

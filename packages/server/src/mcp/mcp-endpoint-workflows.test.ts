@@ -5,7 +5,7 @@ import { answers, textResult } from '@on.auto/reasoning/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import { servingWorkflows, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { servingWorkflows, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const greeting = ['---', 'model: anthropic/claude-sonnet-4-5', '---', 'Greet {{ input.name }}.'].join('\n');
 
@@ -75,7 +75,7 @@ async function welcomedAfterReply(session: McpSession): Promise<ToolResult> {
   return settled(session, runId);
 }
 
-describe('/mcp with workflows', { timeout: workflowTestTimeoutMs }, () => {
+describe('/mcp with workflows', () => {
   it('lists twenty-nine tools, and its instructions say how to see whether a workflow run ended or still waits', async () => {
     server = await servingWorkflows([]);
 

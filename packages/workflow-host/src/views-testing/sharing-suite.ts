@@ -3,7 +3,7 @@ import { setTimeout } from 'node:timers/promises';
 import { describe, expect, it } from 'vitest';
 
 import type { SettingsOf } from '../testing/host-files.ts';
-import { counting, detailsOf, foldOf, foldedAll, isLive, liveWith, viewTestTimeoutMs } from './view-documents.ts';
+import { counting, detailsOf, foldOf, foldedAll, isLive, liveWith } from './view-documents.ts';
 import { viewHarness, type ViewHarness } from './view-harness.ts';
 
 function countingRunsOf(subject: string) {
@@ -66,7 +66,7 @@ function slotTests(settingsOf: SettingsOf): void {
 }
 
 export function sharingSuite(settingsOf: SettingsOf): void {
-  describe('the views of one playbook', { timeout: viewTestTimeoutMs }, () => {
+  describe('the views of one playbook', () => {
     joiningTests(settingsOf);
     slotTests(settingsOf);
   });

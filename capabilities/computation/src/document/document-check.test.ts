@@ -4,13 +4,7 @@ import { Effect, Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { campaignPace } from '../testing/campaign-pace.ts';
-import {
-  computationWith,
-  functionOf,
-  poolOf,
-  programDocument,
-  workerTestTimeoutMs,
-} from '../testing/computation-runs.ts';
+import { computationWith, functionOf, poolOf, programDocument } from '../testing/computation-runs.ts';
 
 const frontMatter = [
   'language: typescript',
@@ -27,7 +21,7 @@ function checking(source: string) {
   return Effect.runPromiseExit(prepared(source).check(nothingSaved));
 }
 
-describe('the check of a computation function when it is saved', { timeout: workerTestTimeoutMs }, () => {
+describe('the check of a computation function when it is saved', () => {
   it('accepts the example of the reference, and a program over any JSON when the document has no schemas, answering each stripped of its types', async () => {
     const strippedExample: unknown = expect.stringContaining('export default function (input       )         {');
 
@@ -38,7 +32,7 @@ describe('the check of a computation function when it is saved', { timeout: work
   });
 });
 
-describe('the check of a computation function that has problems', { timeout: workerTestTimeoutMs }, () => {
+describe('the check of a computation function that has problems', () => {
   it('refuses its program’s problems at their lines in the document, with the compiler’s words', async () => {
     const program = [
       'export default function (input: Input): Output {',
@@ -82,7 +76,7 @@ describe('the check of a computation function that has problems', { timeout: wor
   });
 });
 
-describe('a check of a computation function that does not answer', { timeout: workerTestTimeoutMs }, () => {
+describe('a check of a computation function that does not answer', () => {
   it('refuses the document when a ready checker runs past its deadline, and is unavailable when no checker was ready', async () => {
     const pool = poolOf();
     const tooLong = {

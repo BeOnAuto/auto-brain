@@ -3,7 +3,7 @@ import { Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { foldOf, recallDocument } from '../testing/campaign-reviews.ts';
-import { liveView, poolOf, recallWith, workerTestTimeoutMs } from '../testing/recall-runs.ts';
+import { liveView, poolOf, recallWith } from '../testing/recall-runs.ts';
 
 const succeeded = 'language: typescript\nsource:\n  events:\n    - type: run_succeeded';
 
@@ -23,7 +23,7 @@ function recording(pool: ProgramPool): { readonly pool: ProgramPool; readonly re
   };
 }
 
-describe('the worker an answer runs in', { timeout: workerTestTimeoutMs }, () => {
+describe('the worker an answer runs in', () => {
   it('is the checked worker for every answer, with the output schema as its context, or null when there is none', async () => {
     const { pool, requests } = recording(poolOf());
     const run = recallWith(pool);

@@ -75,7 +75,7 @@ async function runsOf(server: ReasoningServer, name: string) {
   return decodeRuns(body).runs;
 }
 
-describe('the calls made by hand in a playbook', { timeout: recallTestTimeoutMs }, () => {
+describe('the calls made by hand in a playbook', () => {
   it('reach no recall function and start no workflow, while the events after them do', async () => {
     const { server, saved } = await servingACalledPlaybook();
 

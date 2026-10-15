@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it, onTestFinished } from 'vitest';
 
-import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
+import { spawnServer } from '../testing/processes/spawned-server.ts';
 import { temporaryLedger, type TemporaryLedger } from '../testing/records/temporary-ledger.ts';
 
 const mainModule = fileURLToPath(new URL('../main.ts', import.meta.url));
@@ -25,7 +25,7 @@ function serverOn(ledger: TemporaryLedger) {
   });
 }
 
-describe('the folder of the model files', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('the folder of the model files', () => {
   it('stops the server from starting when users other than its owner may write to it, naming the setting', async () => {
     const ledger = aLedger();
     mkdirSync(ledger.cacheDirectory);

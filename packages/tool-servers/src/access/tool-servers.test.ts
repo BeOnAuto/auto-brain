@@ -8,7 +8,6 @@ import {
   fakeToolNames,
   reportingAccess,
   serveFakeMcp,
-  stdioTestTimeoutMs,
   verboseDescription,
   type AccessOptions,
   type FakeMcpServer,
@@ -22,7 +21,7 @@ const closing: (() => Promise<void>)[] = [];
 
 afterEach(async () => {
   await Promise.all(closing.splice(0).map((close) => close()));
-}, stdioTestTimeoutMs);
+});
 
 async function fakeServer(): Promise<FakeMcpServer> {
   const fake = await serveFakeMcp({ bearer: apiKey });
@@ -178,7 +177,7 @@ describe('a tool server whose entry leaves allowed out', () => {
 });
 
 describe('a tool server that is a process', () => {
-  it('lists the tools of the process the server starts', { timeout: stdioTestTimeoutMs }, async () => {
+  it('lists the tools of the process the server starts', async () => {
     const limitless = {
       command: process.execPath,
       args: [fakeStdioServerPath],

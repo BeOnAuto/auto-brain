@@ -50,7 +50,7 @@ function historyOf(server: ReasoningServer, runId: string) {
   return server.call('GET', `${alpha}/runs/${runId}/history`);
 }
 
-describe('a prediction function saved over HTTP', { timeout: testTimeoutMs }, () => {
+describe('a prediction function saved over HTTP', () => {
   it('is saved from its document with its input and output derived from it, and stands on the dataset it folds from the events the playbook records', async () => {
     const server = await serving();
 

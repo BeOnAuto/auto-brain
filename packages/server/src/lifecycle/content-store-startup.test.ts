@@ -4,7 +4,7 @@ import { unreachableDatabase } from '@on.auto/ledger/testing';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import { compositionRoot } from '../composition/composition-root.ts';
-import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
+import { spawnServer } from '../testing/processes/spawned-server.ts';
 import { startServer } from './lifecycle.ts';
 
 const mainModule = fileURLToPath(new URL('../main.ts', import.meta.url));
@@ -41,7 +41,7 @@ function failureToStart(environment: Readonly<Record<string, string>>): Promise<
   return startServer(environment, compositionRoot).catch((error: unknown) => error);
 }
 
-describe('a content store whose bucket cannot be reached', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('a content store whose bucket cannot be reached', () => {
   it('stops start-up with a named error that gives the setting, the bucket and the address, and no credential', async () => {
     const { endpoint, host } = await aClosedEndpoint();
     withCredentials({});
@@ -74,7 +74,7 @@ describe('a content store whose bucket cannot be reached', { timeout: spawnedSer
   });
 });
 
-describe('a content store without a region', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('a content store without a region', () => {
   it('stops start-up, saying the region is missing, on a custom endpoint or on the endpoint of a region', async () => {
     const { endpoint, host } = await aClosedEndpoint();
     withCredentials({ AWS_REGION: undefined, AWS_PROFILE: undefined, AWS_CONFIG_FILE: '/nonexistent/aws-config' });

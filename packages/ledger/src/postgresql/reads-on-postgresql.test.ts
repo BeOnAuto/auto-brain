@@ -120,7 +120,7 @@ const everything: RecordedSelection = { kind: 'everything' };
 
 const runs: RecordedSelection = { kind: 'runs' };
 
-describe.skipIf(skipped)(`A read on PostgreSQL while an append is still open${notice}`, { timeout: 30_000 }, () => {
+describe.skipIf(skipped)(`A read on PostgreSQL while an append is still open${notice}`, () => {
   it('oldest first, stays behind it, and delivers every message once after it commits', async () => {
     const { database, ledger } = await aLedgerOnItsOwnDatabase();
     await noting(ledger, 'notes', 'noted', 'before');
@@ -166,24 +166,20 @@ describe.skipIf(skipped)(`A read on PostgreSQL while an append is still open${no
   });
 });
 
-describe.skipIf(skipped)(
-  `A list of runs on PostgreSQL while an append is still open${notice}`,
-  { timeout: 30_000 },
-  () => {
-    it('lists runs oldest first behind it, and every run once after it commits', async () => {
-      const { database, ledger } = await aLedgerOnItsOwnDatabase();
-      await noting(ledger, 'runs/r-before', 'run_started', 'before');
-      const open = await anAppendLeftOpen(database, 'playbook/acme/alpha/runs/r-late', 'run_started');
-      await noting(ledger, 'runs/r-after', 'run_started', 'after');
+describe.skipIf(skipped)(`A list of runs on PostgreSQL while an append is still open${notice}`, () => {
+  it('lists runs oldest first behind it, and every run once after it commits', async () => {
+    const { database, ledger } = await aLedgerOnItsOwnDatabase();
+    await noting(ledger, 'runs/r-before', 'run_started', 'before');
+    const open = await anAppendLeftOpen(database, 'playbook/acme/alpha/runs/r-late', 'run_started');
+    await noting(ledger, 'runs/r-after', 'run_started', 'after');
 
-      const whileOpen = await reading(ledger, runs, 'asc');
-      await open.query('COMMIT');
-      const rest = await reading(ledger, runs, 'asc', String(whileOpen.records.at(-1)?.cursor));
+    const whileOpen = await reading(ledger, runs, 'asc');
+    await open.query('COMMIT');
+    const rest = await reading(ledger, runs, 'asc', String(whileOpen.records.at(-1)?.cursor));
 
-      expect([details(whileOpen), details(rest)]).toEqual([['before'], ['late', 'after']]);
-    });
-  },
-);
+    expect([details(whileOpen), details(rest)]).toEqual([['before'], ['late', 'after']]);
+  });
+});
 
 const readsOldestFirst: readonly (readonly [string, RecordedSelection])[] = [
   ['a page of the playbook', everything],
@@ -192,7 +188,6 @@ const readsOldestFirst: readonly (readonly [string, RecordedSelection])[] = [
 
 describe.skipIf(skipped)(
   `A read on PostgreSQL oldest first while a write of another database of the server is open${notice}`,
-  { timeout: 30_000 },
   () => {
     it('lets that write hide nothing while it stays open', async () => {
       const { ledger } = await aLedgerOnItsOwnDatabase();

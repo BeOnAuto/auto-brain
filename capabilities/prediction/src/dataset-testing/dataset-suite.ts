@@ -7,8 +7,6 @@ import { keptRowsOf, type KeptRow } from './kept-rows.ts';
 import { orderPlaced } from './orders.ts';
 import { alphaKey, projectedDatasets } from './projected-datasets.ts';
 
-const testTimeoutMs = 30_000;
-
 const anyText: unknown = expect.any(String);
 
 const timeRefused =
@@ -83,73 +81,61 @@ function noted(dataSha256: string, detail: string) {
 }
 
 function foldingTest(settingsOf: SettingsOf): void {
-  it(
-    'folds the events its filters name into rows by series and week in UTC, counting the target and keeping each feature’s mean and latest value',
-    async () => {
-      const datasets = await projectedDatasets(await settingsOf());
-      const { dataSha256 } = await datasets.saved('orders', weeklyOrders);
-      await datasets.published(ordersOfTwoWeeks);
-      datasets.start();
-      const row = await datasets.until(dataSha256, liveFolded(4));
+  it('folds the events its filters name into rows by series and week in UTC, counting the target and keeping each feature’s mean and latest value', async () => {
+    const datasets = await projectedDatasets(await settingsOf());
+    const { dataSha256 } = await datasets.saved('orders', weeklyOrders);
+    await datasets.published(ordersOfTwoWeeks);
+    datasets.start();
+    const row = await datasets.until(dataSha256, liveFolded(4));
 
-      expect(row).toMatchObject({ rows: 3, series: 2, firstPeriod: '2026-W41', lastPeriod: '2026-W42', passedOver: 0 });
-      expect(await keptRowsOf(datasets.database, dataSha256)).toEqual(foldedRows);
-      expect(datasets.notes()).toEqual([]);
-    },
-    testTimeoutMs,
-  );
+    expect(row).toMatchObject({ rows: 3, series: 2, firstPeriod: '2026-W41', lastPeriod: '2026-W42', passedOver: 0 });
+    expect(await keptRowsOf(datasets.database, dataSha256)).toEqual(foldedRows);
+    expect(datasets.notes()).toEqual([]);
+  });
 }
 
 function passingOverTest(settingsOf: SettingsOf): void {
-  it(
-    'passes over an event whose series is not text, whose time is not one, is a day without its time or names a leap second, or whose value is not a finite number, counting and noting each',
-    async () => {
-      const datasets = await projectedDatasets(await settingsOf());
-      const { dataSha256 } = await datasets.saved('orders', weeklyOrders);
-      await datasets.published(faultyOrders);
-      datasets.start();
-      const row = await datasets.until(dataSha256, folded(1));
+  it('passes over an event whose series is not text, whose time is not one, is a day without its time or names a leap second, or whose value is not a finite number, counting and noting each', async () => {
+    const datasets = await projectedDatasets(await settingsOf());
+    const { dataSha256 } = await datasets.saved('orders', weeklyOrders);
+    await datasets.published(faultyOrders);
+    datasets.start();
+    const row = await datasets.until(dataSha256, folded(1));
 
-      expect([row.passedOver, row.rows]).toEqual([7, 1]);
-      expect(await datasets.noted(7)).toEqual([
-        noted(dataSha256, seriesRefused),
-        noted(dataSha256, seriesRefused),
-        noted(dataSha256, timeRefused),
-        noted(dataSha256, timeRefused),
-        noted(dataSha256, timeRefused),
-        noted(dataSha256, 'Its feature basket at /total is not a finite number'),
-        noted(dataSha256, 'Its feature promotion at /promotion is not a finite number'),
-      ]);
-    },
-    testTimeoutMs,
-  );
+    expect([row.passedOver, row.rows]).toEqual([7, 1]);
+    expect(await datasets.noted(7)).toEqual([
+      noted(dataSha256, seriesRefused),
+      noted(dataSha256, seriesRefused),
+      noted(dataSha256, timeRefused),
+      noted(dataSha256, timeRefused),
+      noted(dataSha256, timeRefused),
+      noted(dataSha256, 'Its feature basket at /total is not a finite number'),
+      noted(dataSha256, 'Its feature promotion at /promotion is not a finite number'),
+    ]);
+  });
 }
 
 function latestTest(settingsOf: SettingsOf): void {
-  it(
-    'takes the value of the latest event by its time for last, whatever order they were recorded in, and the time of the event itself when told to',
-    async () => {
-      const datasets = await projectedDatasets(await settingsOf());
-      const { dataSha256 } = await datasets.saved('orders', weeklyOrdersWith(['  time: /placed_at', '  time: event']));
-      const later = orderPlaced({ region: 'north', at: 'unread', promotion: 2 }, { time: '2026-10-07T10:00:00Z' });
-      const earlier = orderPlaced({ region: 'north', at: 'unread', promotion: 1 }, { time: '2026-10-06T10:00:00Z' });
-      await datasets.published([later, earlier]);
-      datasets.start();
-      await datasets.until(dataSha256, folded(2));
+  it('takes the value of the latest event by its time for last, whatever order they were recorded in, and the time of the event itself when told to', async () => {
+    const datasets = await projectedDatasets(await settingsOf());
+    const { dataSha256 } = await datasets.saved('orders', weeklyOrdersWith(['  time: /placed_at', '  time: event']));
+    const later = orderPlaced({ region: 'north', at: 'unread', promotion: 2 }, { time: '2026-10-07T10:00:00Z' });
+    const earlier = orderPlaced({ region: 'north', at: 'unread', promotion: 1 }, { time: '2026-10-06T10:00:00Z' });
+    await datasets.published([later, earlier]);
+    datasets.start();
+    await datasets.until(dataSha256, folded(2));
 
-      expect(await keptRowsOf(datasets.database, dataSha256)).toMatchObject([
-        {
-          series: 'north',
-          period: '2026-W41',
-          features: [
-            [0, 0, null],
-            [2, 2, Date.UTC(2026, 9, 7, 10)],
-          ],
-        },
-      ]);
-    },
-    testTimeoutMs,
-  );
+    expect(await keptRowsOf(datasets.database, dataSha256)).toMatchObject([
+      {
+        series: 'north',
+        period: '2026-W41',
+        features: [
+          [0, 0, null],
+          [2, 2, Date.UTC(2026, 9, 7, 10)],
+        ],
+      },
+    ]);
+  });
 }
 
 export function datasetFoldingSuite(settingsOf: SettingsOf): void {

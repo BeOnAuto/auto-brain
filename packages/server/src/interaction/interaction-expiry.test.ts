@@ -13,7 +13,6 @@ import {
   servingInteractions,
 } from '../testing/servers/interaction-server.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
-import { workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 function ledgerFile(): string {
   const ledger = temporaryLedger();
@@ -30,7 +29,7 @@ function expiredAgo(file: string, milliseconds: number): void {
 
 const unansweredAsExpired = { status: 'rejected', rejection: { reason: 'unanswered', kind: 'expired' } };
 
-describe('requests past their expiry while the server was stopped', { timeout: workflowTestTimeoutMs }, () => {
+describe('requests past their expiry while the server was stopped', () => {
   it('end unanswered as expired from the read model alone, which a catch names and an uncaught call passes on', async () => {
     const file = ledgerFile();
     const first = await servingInteractions([], { LEDGER_FILE: file });
