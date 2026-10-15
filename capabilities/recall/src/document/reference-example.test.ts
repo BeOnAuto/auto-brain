@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { recallFolding } from '../run/recall-bounds.ts';
 import { campaignReviews } from '../testing/campaign-reviews.ts';
-import { liveView, poolOf, recallWith, workerTestTimeoutMs } from '../testing/recall-runs.ts';
+import { liveView, poolOf, recallWith } from '../testing/recall-runs.ts';
 import { runnableDetailsOf } from '../testing/runnable-details.ts';
 import { parseRecallDocument } from './document-parsing.ts';
 
@@ -70,7 +70,7 @@ async function foldedOver(source: string, foldedEvents: readonly Schema.JsonObje
 
 const largestKept = 'x'.repeat(8190);
 
-describe('the example on the reference page of recall functions', { timeout: workerTestTimeoutMs }, () => {
+describe('the example on the reference page of recall functions', () => {
   it('is, byte for byte, the document the tests run', () => {
     const [example] = fencedBlocks;
 
@@ -100,7 +100,7 @@ describe('the example on the reference page of recall functions', { timeout: wor
   });
 });
 
-describe('the example of the common case on the reference page', { timeout: workerTestTimeoutMs }, () => {
+describe('the example of the common case on the reference page', () => {
   const [, , , , document] = fencedBlocks;
   const source = document?.body ?? '';
 
