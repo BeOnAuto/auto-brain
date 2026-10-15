@@ -83,10 +83,21 @@ describe('who a request asks, in the overview', () => {
     );
   });
 
-  it('shows a party written with a condition under the sentence that leads to it', () => {
+  it('reads a party written with a condition on one line into the sentence that leads to it', () => {
     const source = approvalDocument().replace(
       "to: '{{ input.owner }}'",
       "to: '{% if input.urgent %}on-call{% else %}{{ input.owner }}{% endif %}'",
+    );
+
+    expect(sectionOf(overviewOf(source), 'Who it asks')).toBe(
+      'It asks a person, and each request goes to on-call when input.urgent, otherwise **owner**.',
+    );
+  });
+
+  it('shows a party written with a condition over lines under the sentence that leads to it', () => {
+    const source = approvalDocument().replace(
+      "to: '{{ input.owner }}'",
+      'to: "{% if input.urgent %}on-call\\n{% else %}{{ input.owner }}{% endif %}"',
     );
 
     expect(sectionOf(overviewOf(source), 'Who it asks')).toBe(
