@@ -62,6 +62,15 @@ async function overviewOverHttp({ type, name }: Saved): Promise<string> {
   return decodeOverview(body).overview;
 }
 
+const predictionAndWorkflow: ReadonlySet<string> = new Set(['prediction', 'workflow']);
+
+function headingsOf(overview: string): readonly string[] {
+  return overview
+    .split('\n')
+    .filter((line) => line.startsWith('## '))
+    .map((line) => line.slice('## '.length));
+}
+
 describe('the overview of every type of definition', { timeout: 60_000 }, () => {
   it('is answered over HTTP to a key that may read the playbook, opening with its name, and is not listed', async () => {
     const overviews = await Promise.all(saved.map((definition) => overviewOverHttp(definition)));
@@ -78,6 +87,17 @@ describe('the overview of every type of definition', { timeout: 60_000 }, () => 
     expect(overviews[3]).toContain('\n\n## What it remembers\n\n');
     expect(listed).toMatchObject({ status: 200, body: { definitions: [{ name: 'review-brief' }] } });
     expect(listed.body).not.toHaveProperty('definitions.0.overview');
+  });
+
+  it('shows a prediction function and a workflow in sections of their own types', async () => {
+    const overviews = await Promise.all(
+      saved.filter(({ type }) => predictionAndWorkflow.has(type)).map((definition) => overviewOverHttp(definition)),
+    );
+
+    expect(overviews.map((overview) => headingsOf(overview))).toEqual([
+      ['What it predicts', 'What it learns from', 'Who trains it', 'How a version goes live', 'Rules'],
+      ['What starts it', 'What it needs', 'What it produces', 'What it does', 'What it calls'],
+    ]);
   });
 
   it('is answered over MCP to the same key, as over HTTP', async () => {
