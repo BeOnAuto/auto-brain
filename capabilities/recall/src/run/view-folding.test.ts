@@ -140,7 +140,7 @@ describe('the checked worker, folding the views of recall functions', () => {
   });
 });
 
-describe('the example of the reference page, at its largest', { timeout: workerTestTimeoutMs }, () => {
+describe('the example of the reference page, at its largest', () => {
   it('holds its view at 488,251 bytes as JSON, however long the names and verdicts it is given', async () => {
     const details = await runnableDetailsOf(campaignReviews);
     const events = [overlongReview(0, 1000), overlongReview(49, 1001)];
