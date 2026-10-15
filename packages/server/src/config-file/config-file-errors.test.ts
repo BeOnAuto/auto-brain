@@ -6,7 +6,7 @@ import { spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.
 const secret = 'sk-live-SECRET-0123456789abcdef';
 
 async function startupLine(configText: string, environment: Readonly<Record<string, string>> = {}): Promise<string> {
-  const { child, configFile } = configuredServer(configText, { LOCAL_MODE: 'true', ...environment });
+  const { child, configFile } = configuredServer(configText, environment);
   const exitCode = await child.exited;
   const { stderr } = child.output();
   expect({ exitCode, secret: stderr.includes(secret) }).toEqual({ exitCode: 1, secret: false });

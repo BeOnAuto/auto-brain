@@ -53,7 +53,7 @@ export async function interactionServerOn(
   environment: Readonly<Record<string, string>>,
   parts: ServedParts = {},
 ): Promise<InteractionServer> {
-  const server = await servingReasoning([], { LOCAL_MODE: 'true', ...environment }, noNetwork, parts);
+  const server = await servingReasoning([], environment, noNetwork, parts);
   const stop = once(server.stop);
   onTestFinished(stop);
   return {

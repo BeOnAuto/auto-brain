@@ -17,7 +17,7 @@ const question = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b71';
 const build = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b72';
 
 async function serving(environment: Readonly<Record<string, string>> = {}): Promise<ReasoningServer> {
-  const server = await servingReasoning([], { LOCAL_MODE: 'true', ...environment });
+  const server = await servingReasoning([], environment);
   closing.push(server.stop);
   await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   return server;

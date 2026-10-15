@@ -39,7 +39,6 @@ export function workflowProcess(ledgerFile: string, environment: Readonly<Record
     HOME: homedir(),
     HOST: '127.0.0.1',
     PORT: '0',
-    LOCAL_MODE: 'true',
     LEDGER_FILE: ledgerFile,
     ...environment,
   });

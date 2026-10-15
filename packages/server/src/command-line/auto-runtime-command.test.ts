@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { createApiKey } from '@on.auto/identity';
 import { afterAll, describe, expect, it, onTestFinished } from 'vitest';
 
 import { spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
@@ -12,6 +13,8 @@ import { spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.
 const command = fileURLToPath(new URL('../../auto-runtime.ts', import.meta.url));
 
 const home = mkdtempSync(join(tmpdir(), 'auto-runtime-command-'));
+
+const { entry } = createApiKey({ id: 'ci-1', org: 'acme', permissions: ['org:read'], playbooks: '*' });
 
 afterAll(() => {
   rmSync(home, { recursive: true, force: true });
@@ -63,8 +66,8 @@ async function started(settings: Readonly<Record<string, string>> = {}): Promise
 }
 
 describe('the auto-runtime command', { timeout: spawnedServerTestTimeoutMs }, () => {
-  it('starts the server in local mode when LOCAL_MODE is set, and shows where it answers', async () => {
-    const runtime = await started({ LOCAL_MODE: 'true' });
+  it('starts the server in local mode with no setting, and shows where it answers and how to sign people in', async () => {
+    const runtime = await started();
 
     const health = await fetch(`${runtime.url}/health`);
     const playbooks = await fetch(`${runtime.url}/v1/orgs/local/playbooks`);
@@ -73,17 +76,21 @@ describe('the auto-runtime command', { timeout: spawnedServerTestTimeoutMs }, ()
     expect(await playbooks.json()).toEqual({ playbooks: [] });
     expect(runtime.output().stdout).toContain(`     MCP      ${runtime.url}/mcp\n`);
     expect(runtime.output().stdout).toContain('     Docs     https://on.auto/docs/\n');
+    expect(runtime.output().stdout).toContain(
+      `  Local mode: anyone on this computer acts as you, with no sign-in.\n  Set PUBLIC_URL=${runtime.url} to sign people in.\n`,
+    );
     expect(runtime.output().stderr).toBe('');
     runtime.interrupt();
     await runtime.exited;
   });
 
-  it('trusts no request without a credential when LOCAL_MODE is not set', async () => {
-    const runtime = await started();
+  it('trusts no request without a credential when API_KEYS is set, and says nothing of local mode', async () => {
+    const runtime = await started({ API_KEYS: JSON.stringify([entry]) });
 
     const playbooks = await fetch(`${runtime.url}/v1/orgs/local/playbooks`);
 
     expect(playbooks.status).toBe(401);
+    expect(runtime.output().stdout).not.toContain('Local mode');
     runtime.interrupt();
     await runtime.exited;
   });

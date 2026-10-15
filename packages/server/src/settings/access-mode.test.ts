@@ -1,17 +1,22 @@
 import { fileURLToPath } from 'node:url';
 
-import { createApiKey } from '@on.auto/identity';
+import { createApiKey, signInScopes } from '@on.auto/identity';
 import { allPermissions } from '@on.auto/operations';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { compositionRoot } from '../composition/composition-root.ts';
 import { startServer } from '../lifecycle/lifecycle.ts';
+import { accessTokenOf, issuerOverHttps } from '../sign-in/issuer-over-https.ts';
 import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
 import { temporaryLedger, type TemporaryLedger } from '../testing/records/temporary-ledger.ts';
 
 const mainModule = fileURLToPath(new URL('../main.ts', import.meta.url));
 
 const { key, entry } = createApiKey({ id: 'acme-admin', org: 'acme', permissions: allPermissions, playbooks: '*' });
+
+const publicUrl = 'http://localhost:5555';
+
+const playbooksOfAcme = '/v1/orgs/acme/playbooks';
 
 let ledger: TemporaryLedger;
 
@@ -28,73 +33,99 @@ async function servedBy(
   headers: Readonly<Record<string, string>> = {},
 ): Promise<{ readonly status: number; readonly stderr: string }> {
   const child = spawnServer(mainModule, { HOST: '127.0.0.1', PORT: '0', LEDGER_FILE: ledger.fileName, ...env });
-  const response = await fetch(`http://127.0.0.1:${await child.port}/v1/orgs/acme/playbooks`, { headers });
+  const response = await fetch(`http://127.0.0.1:${await child.port}${playbooksOfAcme}`, { headers });
   child.signal('SIGTERM');
   await child.exited;
   return { status: response.status, stderr: child.output().stderr };
 }
 
+async function statusesOn(
+  env: Readonly<Record<string, string>>,
+  credentials: readonly (string | undefined)[],
+): Promise<readonly number[]> {
+  const server = await startServer(
+    { HOST: '127.0.0.1', PORT: '0', LEDGER_FILE: ledger.fileName, PREDICTION_CACHE_DIR: ledger.cacheDirectory, ...env },
+    compositionRoot,
+  );
+  const responses = await Promise.all(
+    credentials.map((credential) =>
+      fetch(`http://127.0.0.1:${server.port}${playbooksOfAcme}`, {
+        headers: credential === undefined ? {} : { authorization: `Bearer ${credential}` },
+      }),
+    ),
+  );
+  await server.stop();
+  return responses.map(({ status }) => status);
+}
+
 describe('the access mode of a server on loopback', { timeout: spawnedServerTestTimeoutMs }, () => {
-  it('trusts a request without a key only when LOCAL_MODE is on, and warns that it does', async () => {
-    const served = await servedBy({ LOCAL_MODE: 'true' });
+  it('is local with neither PUBLIC_URL nor API_KEYS, trusts a request without a credential and warns that it does', async () => {
+    const served = await servedBy({});
 
     expect(served.status).toBe(200);
-    expect(served.stderr).toContain('"message":"Local mode is on: every request is trusted as the local developer');
+    expect(served.stderr).toContain(
+      '"message":"Local mode is on: every request is trusted as the local developer, with every permission in every org. Set PUBLIC_URL or API_KEYS on a machine reachable through a proxy"',
+    );
     expect(served.stderr).toContain('"level":"WARN"');
   });
 
-  it('is closed without LOCAL_MODE, even for a request whose Host a proxy rewrote to localhost', async () => {
-    const served = await servedBy({}, { host: 'localhost' });
+  it('takes keys alone with API_KEYS and no PUBLIC_URL, and says nothing of local mode', async () => {
+    const withoutKey = await servedBy({ API_KEYS: JSON.stringify([entry]) });
+    const withKey = await servedBy({ API_KEYS: JSON.stringify([entry]) }, { authorization: `Bearer ${key}` });
 
-    expect(served.status).toBe(401);
-    expect(served.stderr).toContain(
-      '"message":"No request can authenticate: API_KEYS lists no keys and local mode is off, so every path answers 401 except /health, the OpenAPI document at /v1/openapi.json, the guides under /v1/guides and the API catalog at /.well-known/api-catalog"',
-    );
+    expect([withoutKey.status, withKey.status]).toEqual([401, 200]);
+    expect(withoutKey.stderr).not.toContain('Local mode is on');
+    expect(withoutKey.stderr).not.toContain('No request can authenticate');
   });
 
-  it('warns that no request can authenticate when API_KEYS lists no keys', async () => {
+  it('is closed when API_KEYS lists no keys, and warns that API_KEYS lists no keys', async () => {
     const served = await servedBy({ API_KEYS: '[]' });
 
     expect(served.status).toBe(401);
-    expect(served.stderr).toContain('"message":"No request can authenticate:');
-  });
-
-  it('is closed when API_KEYS is [] and LOCAL_MODE is on, and says that API_KEYS lists no keys, not that keys are configured', async () => {
-    const served = await servedBy({ API_KEYS: '[]', LOCAL_MODE: 'true' });
-
-    expect(served.status).toBe(401);
     expect(served.stderr).toContain(
-      '"message":"No request can authenticate: API_KEYS lists no keys, and LOCAL_MODE is ignored because API_KEYS is set, so every path answers 401 except /health, the OpenAPI document at /v1/openapi.json, the guides under /v1/guides and the API catalog at /.well-known/api-catalog"',
+      '"message":"No request can authenticate: API_KEYS lists no keys, so every path answers 401 except /health, the OpenAPI document at /v1/openapi.json, the guides under /v1/guides and the API catalog at /.well-known/api-catalog"',
     );
-    expect(served.stderr).not.toContain('API keys are configured');
-  });
-
-  it('enforces API keys when LOCAL_MODE is also on, and warns that local mode is ignored', async () => {
-    const withoutKey = await servedBy({ LOCAL_MODE: 'true', API_KEYS: JSON.stringify([entry]) });
-    const withKey = await servedBy(
-      { LOCAL_MODE: 'true', API_KEYS: JSON.stringify([entry]) },
-      { authorization: `Bearer ${key}` },
-    );
-
-    expect([withoutKey.status, withKey.status]).toEqual([401, 200]);
-    expect(withoutKey.stderr).toContain('"message":"LOCAL_MODE is ignored because API keys are configured"');
-    expect(withoutKey.stderr).not.toContain('Local mode is on');
+    expect(served.stderr).not.toContain('Local mode is on');
   });
 });
 
-describe('LOCAL_MODE off loopback', () => {
-  it('stops start-up with a named error before the server listens', async () => {
-    await expect(
-      startServer(
-        {
-          HOST: '0.0.0.0',
-          PORT: '0',
-          LEDGER_FILE: ledger.fileName,
-          PREDICTION_CACHE_DIR: ledger.cacheDirectory,
-          LOCAL_MODE: 'true',
-        },
-        compositionRoot,
-      ),
-    ).rejects.toMatchObject({ name: 'InvalidLocalModeError' });
+describe('the access mode of a server with PUBLIC_URL', { timeout: spawnedServerTestTimeoutMs }, () => {
+  it('signs people in, and refuses a request without a credential', async () => {
+    const issuer = await issuerOverHttps();
+    const token = await accessTokenOf(issuer, publicUrl, signInScopes.join(' '));
+
+    expect(await statusesOn({ IDENTITY_ISSUER: issuer.issuer, PUBLIC_URL: publicUrl }, [undefined, token])).toEqual([
+      401, 200,
+    ]);
+  });
+
+  it('takes the keys of API_KEYS beside the people it signs in', async () => {
+    const issuer = await issuerOverHttps();
+    const token = await accessTokenOf(issuer, publicUrl, signInScopes.join(' '));
+
+    expect(
+      await statusesOn({ IDENTITY_ISSUER: issuer.issuer, PUBLIC_URL: publicUrl, API_KEYS: JSON.stringify([entry]) }, [
+        undefined,
+        key,
+        token,
+      ]),
+    ).toEqual([401, 200, 200]);
   });
 });
+
+describe(
+  'a server beyond loopback with neither PUBLIC_URL nor API_KEYS',
+  { timeout: spawnedServerTestTimeoutMs },
+  () => {
+    it('stops start-up with a named error before the server listens, naming the HOST it would listen on', async () => {
+      const child = spawnServer(mainModule, { HOST: '0.0.0.0', PORT: '0', LEDGER_FILE: ledger.fileName });
+
+      expect(await child.exited).toBe(1);
+      expect(child.output()).toEqual({
+        stdout: '',
+        stderr:
+          'Auto Runtime could not start: ReachableWithoutCredentialsError: A server reachable beyond this computer needs PUBLIC_URL, to sign people in, or API_KEYS, and this one listens on HOST 0.0.0.0\n',
+      });
+    });
+  },
+);

@@ -39,7 +39,6 @@ async function executedVerdict(models: Readonly<Record<string, string>>): Promis
       PORT: '0',
       LEDGER_FILE: ledger.fileName,
       PREDICTION_CACHE_DIR: ledger.cacheDirectory,
-      LOCAL_MODE: 'true',
       ...models,
     },
     compositionRoot,

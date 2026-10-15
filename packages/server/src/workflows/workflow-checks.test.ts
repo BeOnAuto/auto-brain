@@ -53,7 +53,7 @@ describe(
   () => {
     it('checks one expression when the server starts, then a hundred as one job, saves the workflow, and runs it', async () => {
       const { checked, poolOf } = recordingChecks();
-      server = await servingWorkflows([], { LOCAL_MODE: 'true' }, poolOf);
+      server = await servingWorkflows([], {}, poolOf);
       await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
 
       const saved = await saving('hundred', hundred);

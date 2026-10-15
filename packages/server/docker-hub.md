@@ -50,7 +50,7 @@ Every tag is published for `linux/amd64` and `linux/arm64`, built in GitHub Acti
 
 ## Without Docker
 
-`npx @on.auto/runtime` runs the same server on macOS or Linux with Node.js 26.10 or later, on `http://localhost:5555`, where you sign in through the Auto identity service. See the [local quick start](https://on.auto/docs/get-started/local).
+`npx @on.auto/runtime` runs the same server on macOS or Linux with Node.js 26.10 or later, on `http://localhost:5555`, in local mode, where every request on that computer acts as you, with no sign-in. See the [local quick start](https://on.auto/docs/get-started/local).
 
 ## License
 

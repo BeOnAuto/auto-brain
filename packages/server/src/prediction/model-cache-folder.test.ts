@@ -20,7 +20,6 @@ function serverOn(ledger: TemporaryLedger) {
   return spawnServer(mainModule, {
     HOST: '127.0.0.1',
     PORT: '0',
-    LOCAL_MODE: 'true',
     LEDGER_FILE: ledger.fileName,
     PREDICTION_CACHE_DIR: ledger.cacheDirectory,
   });

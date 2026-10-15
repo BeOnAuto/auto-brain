@@ -50,7 +50,7 @@ function stallingChecks(): {
 }
 
 async function onAlpha<T>(programPoolOf: ProgramPoolOf, use: (session: McpSession) => Promise<T>): Promise<T> {
-  server = await servingReasoning([], { LOCAL_MODE: 'true' }, undefined, { programPoolOf });
+  server = await servingReasoning([], {}, undefined, { programPoolOf });
   await withMcpSession('current revision', { url: `${server.origin}/orgs/acme/mcp`, headers: {} }, (session) =>
     session.callTool('create_playbook', { playbook: 'alpha', name: 'Alpha' }),
   );

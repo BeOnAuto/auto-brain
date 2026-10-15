@@ -47,7 +47,6 @@ async function fakeGraph(): Promise<FakeMcpServer> {
 
 async function serving(fake: FakeMcpServer, ...replies: readonly ScriptedReply[]): Promise<ReasoningServer> {
   const server = await servingReasoning(replies, {
-    LOCAL_MODE: 'true',
     GRAPH_API_KEY: apiKey,
     GRAPH_PIN: pin,
     NODE_V8_COVERAGE: process.env['NODE_V8_COVERAGE'] ?? '',

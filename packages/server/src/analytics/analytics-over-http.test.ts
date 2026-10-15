@@ -32,7 +32,7 @@ async function onADatabaseOfItsOwn(): Promise<Readonly<Record<string, string>>> 
   });
   const database = new URL(postgresql);
   database.pathname = `/${name}`;
-  return { LOCAL_MODE: 'true', LEDGER_FILE: '', DATABASE_URL: database.href };
+  return { LEDGER_FILE: '', DATABASE_URL: database.href };
 }
 
 interface Store {
@@ -42,7 +42,7 @@ interface Store {
 }
 
 const stores: readonly Store[] = [
-  { store: 'SQLite', skipped: false, environment: () => Promise.resolve({ LOCAL_MODE: 'true' }) },
+  { store: 'SQLite', skipped: false, environment: () => Promise.resolve({}) },
   { store: `PostgreSQL${postgresqlNotice}`, skipped: postgresql === '', environment: onADatabaseOfItsOwn },
 ];
 

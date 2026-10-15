@@ -73,7 +73,7 @@ describe(
   { timeout: spawnedServerTestTimeoutMs },
   () => {
     it('lists the declared models, and refuses a definition that names a model it does not allow', async () => {
-      const { child, configFile } = configuredServer(modelsText, { LOCAL_MODE: 'true', AWS_REGION: 'eu-central-1' });
+      const { child, configFile } = configuredServer(modelsText, { AWS_REGION: 'eu-central-1' });
       const port = await child.port;
 
       const listed = await request(port, 'GET', '/v1/orgs/acme/models?provider=bedrock');
@@ -109,7 +109,6 @@ describe(
 describe('a server with settings in the environment', { timeout: spawnedServerTestTimeoutMs }, () => {
   it('reads them as before, and says nothing of a configuration file, when CONFIG_FILE is not set', async () => {
     const { child } = configuredServer(undefined, {
-      LOCAL_MODE: 'true',
       MODEL_GATEWAYS: JSON.stringify([{ name: 'relay', base_url: 'https://relay.example.com/v1' }]),
       MODEL_ALIASES: JSON.stringify({ 'house/fast': 'relay/llama-3.3-70b' }),
     });

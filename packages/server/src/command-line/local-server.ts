@@ -1,4 +1,4 @@
-import type { SignInSettings } from '@on.auto/identity';
+import type { AccessMode, SignInSettings } from '@on.auto/identity';
 
 import { release } from '../composition/release.ts';
 import type { ColorDepth } from '../logging/terminal.ts';
@@ -6,6 +6,7 @@ import { clearedLine, headerOf, readyNoticeOf, startingLine, stoppedNotice, stop
 
 interface LocalServer {
   readonly port: number;
+  readonly mode: AccessMode;
   readonly signIn: SignInSettings | undefined;
   stop(): Promise<void>;
 }
@@ -45,6 +46,7 @@ export async function servedLocally(host: LocalServerHost): Promise<void> {
       {
         url: `http://localhost:${server.port}`,
         readyInMs: Math.round(host.clock() - startedAt),
+        mode: server.mode,
         identityService: server.signIn?.issuer,
       },
       host.depth,

@@ -41,7 +41,6 @@ async function serving(): Promise<Serving> {
   const gone = await serveFakeMcp();
   await gone.close();
   const server = await servingReasoning([], {
-    LOCAL_MODE: 'true',
     GRAPH_API_KEY: apiKey,
     TOOL_SERVERS: JSON.stringify({
       graph: {

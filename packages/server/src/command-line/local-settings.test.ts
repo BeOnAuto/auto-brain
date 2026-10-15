@@ -71,12 +71,3 @@ describe('the settings of a server started on this computer', () => {
     });
   });
 });
-
-describe('local mode on this computer', () => {
-  it('is off unless .env or the shell sets LOCAL_MODE', () => {
-    const directory = directoryWith({ '.env': 'LOCAL_MODE=true\n' });
-
-    expect(localSettings({}, { directory: directoryWith({}), home: '/home/ada' })).not.toHaveProperty('LOCAL_MODE');
-    expect(localSettings({}, { directory, home: '/home/ada' })).toMatchObject({ LOCAL_MODE: 'true' });
-  });
-});

@@ -35,7 +35,6 @@ async function serving(replies: readonly ScriptedReply[], hints: FakeHints = {})
   const fake = await serveFakeMcp({ bearer: apiKey, hints });
   onTestFinished(fake.close);
   const server = await servingReasoning(replies, {
-    LOCAL_MODE: 'true',
     GRAPH_API_KEY: apiKey,
     TOOL_SERVERS: JSON.stringify({
       graph: { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme' },

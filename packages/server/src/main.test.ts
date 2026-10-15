@@ -40,8 +40,8 @@ const invalidSettings: ReadonlyArray<readonly [Readonly<Record<string, string>>,
     'InvalidApiKeysError: API_KEYS[0].org: This org id is reserved for local mode',
   ],
   [
-    { HOST: '0.0.0.0', LOCAL_MODE: 'true' },
-    'InvalidLocalModeError: LOCAL_MODE is on, but HOST 0.0.0.0 is not a loopback address',
+    { HOST: '0.0.0.0' },
+    'ReachableWithoutCredentialsError: A server reachable beyond this computer needs PUBLIC_URL, to sign people in, or API_KEYS, and this one listens on HOST 0.0.0.0',
   ],
   [
     { WORKFLOW_SWEEP_INTERVAL: 'PT2M' },
@@ -84,7 +84,7 @@ describe('main', { timeout: spawnedServerTestTimeoutMs }, () => {
   });
 
   it('writes exactly the listening line to stdout, and its logs as JSON lines to stderr', async () => {
-    const child = spawnServer(mainModule, { ...loopback, LOCAL_MODE: 'true' });
+    const child = spawnServer(mainModule, loopback);
     const port = await child.port;
 
     await fetch(`http://127.0.0.1:${port}/health`);
@@ -99,7 +99,7 @@ describe('main', { timeout: spawnedServerTestTimeoutMs }, () => {
 
 describe('main at start', { timeout: spawnedServerTestTimeoutMs }, () => {
   it('names the configured model providers in one line, keeping every provider in its annotations', async () => {
-    const child = spawnServer(mainModule, { ...loopback, LOCAL_MODE: 'true', OPENAI_API_KEY: 'sk-test' });
+    const child = spawnServer(mainModule, { ...loopback, OPENAI_API_KEY: 'sk-test' });
     await child.port;
     child.signal('SIGTERM');
     await child.exited;
@@ -133,7 +133,7 @@ describe('main at start', { timeout: spawnedServerTestTimeoutMs }, () => {
   });
 
   it('adds a warning of its own for a provider that has some of its settings and lacks others', async () => {
-    const child = spawnServer(mainModule, { ...loopback, LOCAL_MODE: 'true', GOOGLE_VERTEX_PROJECT: 'acme-ai' });
+    const child = spawnServer(mainModule, { ...loopback, GOOGLE_VERTEX_PROJECT: 'acme-ai' });
     await child.port;
     child.signal('SIGTERM');
     await child.exited;
@@ -230,7 +230,7 @@ describe('main with secrets in settings it cannot read', { timeout: spawnedServe
 
 describe('main over MCP', { timeout: spawnedServerTestTimeoutMs }, () => {
   it('serves the playbook tools without a key in local mode, writing only the listening line to stdout', async () => {
-    const child = spawnServer(mainModule, { ...loopback, LOCAL_MODE: 'true' });
+    const child = spawnServer(mainModule, loopback);
     const port = await child.port;
 
     const playbook = await withMcpSession(
@@ -252,7 +252,7 @@ describe('main over MCP', { timeout: spawnedServerTestTimeoutMs }, () => {
   });
 
   it('logs what the MCP layer reports as a warning on stderr, answering with its JSON-RPC error', async () => {
-    const child = spawnServer(mainModule, { ...loopback, LOCAL_MODE: 'true' });
+    const child = spawnServer(mainModule, loopback);
     const port = await child.port;
 
     const answer = await fetch(`http://127.0.0.1:${port}/orgs/demo/mcp`, {

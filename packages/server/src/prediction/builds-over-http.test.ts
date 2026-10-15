@@ -26,7 +26,7 @@ const testTimeoutMs = 90_000;
 const mebibyte = 1_048_576;
 
 async function serving(environment: Readonly<Record<string, string>> = {}): Promise<ReasoningServer> {
-  const server = await servingReasoning([], { LOCAL_MODE: 'true', WORKFLOW_SWEEP_INTERVAL: 'PT0.05S', ...environment });
+  const server = await servingReasoning([], { WORKFLOW_SWEEP_INTERVAL: 'PT0.05S', ...environment });
   closing.push(server.stop);
   await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   return server;

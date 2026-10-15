@@ -66,7 +66,6 @@ async function serving(...replies: readonly ScriptedReply[]): Promise<ReasoningS
   await gone.close();
   const graph = { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' } };
   const server = await servingWorkflows(replies, {
-    LOCAL_MODE: 'true',
     GRAPH_API_KEY: apiKey,
     TOOL_SERVERS: JSON.stringify({
       graph: { ...graph, org: 'acme' },

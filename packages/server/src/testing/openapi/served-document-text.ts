@@ -11,7 +11,6 @@ export async function servedDocumentText(): Promise<string> {
       {
         HOST: '127.0.0.1',
         PORT: '0',
-        LOCAL_MODE: 'true',
         LOG_LEVEL: 'error',
         LEDGER_FILE: ledger.fileName,
         PREDICTION_CACHE_DIR: ledger.cacheDirectory,

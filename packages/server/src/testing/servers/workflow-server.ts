@@ -11,15 +11,13 @@ import { servingReasoning, type ReasoningServer } from './reasoning-server.ts';
 
 export const workflowTestTimeoutMs = 60_000;
 
-const localMode: Readonly<Record<string, string>> = { LOCAL_MODE: 'true' };
-
 const statusOf = Schema.decodeUnknownOption(Schema.Struct({ status: Schema.String }));
 
 const runOf = Schema.decodeUnknownSync(Schema.Struct({ run_id: Schema.String }));
 
 export function servingWorkflows(
   replies: readonly ScriptedReply[],
-  environment: Readonly<Record<string, string>> = localMode,
+  environment: Readonly<Record<string, string>> = {},
   programPoolOf?: ProgramPoolOf,
   clock?: HostClock,
 ): Promise<ReasoningServer> {

@@ -18,7 +18,6 @@ beforeEach(async () => {
       PORT: '0',
       LEDGER_FILE: ledger.fileName,
       PREDICTION_CACHE_DIR: ledger.cacheDirectory,
-      LOCAL_MODE: 'true',
     },
     compositionRoot,
   );

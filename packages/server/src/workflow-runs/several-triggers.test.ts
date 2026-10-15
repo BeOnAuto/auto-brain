@@ -91,7 +91,7 @@ function startByKind(kind: string): Start | undefined {
 
 async function triggeredThreeTimes(): Promise<Seen> {
   const clock = movedClock(Date.now());
-  server = await servingWorkflows([], { LOCAL_MODE: 'true' }, undefined, clock);
+  server = await servingWorkflows([], {}, undefined, clock);
   const mcp = { url: `${server.origin}/orgs/acme/playbooks/alpha/mcp`, headers: {} };
   await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   await withMcpSession('current revision', mcp, (session) =>

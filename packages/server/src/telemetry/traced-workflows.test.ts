@@ -25,7 +25,6 @@ async function spansOfARun(): Promise<readonly ExportedSpan[]> {
   const receiver = await receivingOtlp();
   onTestFinished(receiver.close);
   const server = await servingWorkflows([answers(textResult('Short.'))], {
-    LOCAL_MODE: 'true',
     OTEL_EXPORTER_OTLP_ENDPOINT: receiver.endpoint,
     OTEL_EXPORTER_OTLP_PROTOCOL: 'http/json',
   });

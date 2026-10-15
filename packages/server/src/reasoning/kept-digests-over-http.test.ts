@@ -32,7 +32,6 @@ async function servingTheEcho(recordContent: boolean): Promise<ReasoningServer> 
   onTestFinished(graph.close);
   const echoed = callingTools([['graph__echo', sent]], answers(textResult('Echoed.')));
   const server = await servingReasoning([echoed], {
-    LOCAL_MODE: 'true',
     GRAPH_API_KEY: apiKey,
     GRAPH_PIN: pin,
     TOOL_SERVERS: JSON.stringify({

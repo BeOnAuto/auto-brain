@@ -25,6 +25,7 @@ interface Options {
 function stoppable(count: () => void, signIn?: SignInSettings): ReturnType<LocalServerHost['run']> {
   return Promise.resolve({
     port: 5600,
+    mode: signIn === undefined ? 'local' : 'credentials',
     signIn,
     stop: () => {
       count();
@@ -76,7 +77,7 @@ function served({ depth = 1, run, signIn }: Options = {}): Served {
 }
 
 describe('serving the runtime on this computer', () => {
-  it('shows the header, then the ready notice with the port and the time it took, and stops when asked', async () => {
+  it('shows the header, then the ready notice with the port, the time it took and local mode, and stops when asked', async () => {
     const local = served();
 
     const serving = servedLocally(local.host);
@@ -88,6 +89,9 @@ describe('serving the runtime on this computer', () => {
     expect(local.written[1]).toContain('  ✔ Ready in 640 ms\n');
     expect(local.written[1]).toContain('     Server   http://localhost:5600\n');
     expect(local.written[1]).not.toContain('Sign-in');
+    expect(local.written[1]).toContain(
+      '  Local mode: anyone on this computer acts as you, with no sign-in.\n  Set PUBLIC_URL=http://localhost:5600 to sign people in.\n',
+    );
     expect(local.written.slice(2)).toEqual(['\n  Stopping…\n', '  ✔ Stopped\n']);
     expect(local.stops()).toBe(1);
   });
@@ -103,6 +107,7 @@ describe('serving the runtime on this computer', () => {
     expect(local.written[1]).toContain(
       '     MCP      http://localhost:5600/mcp\n     Sign-in  https://clerk.on.auto\n',
     );
+    expect(local.written[1]).not.toContain('Local mode');
   });
 
   it('fails as the server failed to start, after the header', async () => {

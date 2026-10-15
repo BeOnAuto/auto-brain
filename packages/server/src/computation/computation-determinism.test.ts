@@ -66,11 +66,11 @@ async function onADatabaseOfItsOwn(): Promise<Readonly<Record<string, string>>> 
   });
   const database = new URL(postgresql);
   database.pathname = `/${name}`;
-  return { LOCAL_MODE: 'true', LEDGER_FILE: '', DATABASE_URL: database.href };
+  return { LEDGER_FILE: '', DATABASE_URL: database.href };
 }
 
 function secondEnvironment(): Promise<Readonly<Record<string, string>>> {
-  return postgresql === '' ? Promise.resolve({ LOCAL_MODE: 'true' }) : onADatabaseOfItsOwn();
+  return postgresql === '' ? Promise.resolve({}) : onADatabaseOfItsOwn();
 }
 
 function aLedgerFile(): Readonly<Record<string, string>> {
@@ -78,7 +78,7 @@ function aLedgerFile(): Readonly<Record<string, string>> {
   onTestFinished(() => {
     rmSync(directory, { recursive: true, force: true });
   });
-  return { LOCAL_MODE: 'true', LEDGER_FILE: join(directory, 'ledger.db') };
+  return { LEDGER_FILE: join(directory, 'ledger.db') };
 }
 
 async function ranOnce(server: ReasoningServer, name: string, input: Schema.Json, runId: string) {

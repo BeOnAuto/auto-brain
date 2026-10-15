@@ -26,15 +26,13 @@ export interface ServedParts {
 
 export const alpha = '/v1/orgs/acme/playbooks/alpha';
 
-const localMode: Readonly<Record<string, string>> = { LOCAL_MODE: 'true' };
-
 type Fetch = typeof globalThis.fetch;
 
 export const noNetwork: Fetch = () => Promise.reject(new TypeError('fetch failed: the tests reach no network'));
 
 export async function servingReasoning(
   replies: readonly ScriptedReply[],
-  environment: Readonly<Record<string, string>> = localMode,
+  environment: Readonly<Record<string, string>> = {},
   fetch: Fetch = noNetwork,
   { programPoolOf = workerPool, clock, toolTiming }: ServedParts = {},
 ): Promise<ReasoningServer> {

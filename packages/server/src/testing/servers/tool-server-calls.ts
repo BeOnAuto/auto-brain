@@ -12,7 +12,6 @@ type InPlaybook = (input: Readonly<Record<string, unknown>>) => Readonly<Record<
 export async function servingWithAToolServer(replies: readonly ScriptedReply[]): Promise<ReasoningServer> {
   const graph = await serveFakeMcp({ bearer: toolServerKey });
   const server = await servingWorkflows(replies, {
-    LOCAL_MODE: 'true',
     GRAPH_API_KEY: toolServerKey,
     TOOL_SERVERS: JSON.stringify({
       graph: { url: graph.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'local' },

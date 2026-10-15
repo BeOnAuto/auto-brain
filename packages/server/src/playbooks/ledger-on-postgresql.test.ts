@@ -37,7 +37,7 @@ async function onADatabaseOfItsOwn(): Promise<Readonly<Record<string, string>>> 
   });
   const database = new URL(server);
   database.pathname = `/${name}`;
-  return { LOCAL_MODE: 'true', LEDGER_FILE: '', DATABASE_URL: database.href };
+  return { LEDGER_FILE: '', DATABASE_URL: database.href };
 }
 
 const playbook = '/v1/orgs/acme/playbooks/alpha';
@@ -133,7 +133,7 @@ describe.skipIf(skipped)(
   () => {
     it('runs a computation function to the same output, after the same work, as a server on SQLite, in a cold worker and then a warm one', async () => {
       const onPostgresql = await computedOn(await onADatabaseOfItsOwn());
-      const onSqlite = await computedOn({ LOCAL_MODE: 'true' });
+      const onSqlite = await computedOn({});
 
       const [cold, warm] = onPostgresql;
 

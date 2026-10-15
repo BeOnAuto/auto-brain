@@ -9,7 +9,7 @@ import { defaultServerOptions } from './lifecycle.ts';
 
 const serveWithTestRoutes = fileURLToPath(new URL('../testing/entries/serve-with-test-routes.ts', import.meta.url));
 
-const loopback = { HOST: '127.0.0.1', PORT: '0', LOCAL_MODE: 'true' };
+const loopback = { HOST: '127.0.0.1', PORT: '0' };
 
 async function refusingConnections(port: number): Promise<void> {
   const accepted = await fetch(`http://127.0.0.1:${port}/health`).then(

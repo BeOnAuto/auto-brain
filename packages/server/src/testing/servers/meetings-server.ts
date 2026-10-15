@@ -58,7 +58,6 @@ export async function servingMeetings(
   const slack = await serveFakeMcp({ bearer: slackKey });
   const { chat, servers } = await chatServing(options);
   const server = await servingReasoning(replies, {
-    LOCAL_MODE: 'true',
     SLACK_KEY: slackKey,
     CHAT_KEY: chatKey,
     NOTES_KEY: 'a-key-the-server-refuses',

@@ -18,7 +18,6 @@ async function tracedServer(endpoint = 'OTEL_EXPORTER_OTLP_ENDPOINT', path = '')
     {
       HOST: '127.0.0.1',
       PORT: '0',
-      LOCAL_MODE: 'true',
       [endpoint]: `${receiver.endpoint}${path}`,
       OTEL_EXPORTER_OTLP_PROTOCOL: 'http/json',
     },

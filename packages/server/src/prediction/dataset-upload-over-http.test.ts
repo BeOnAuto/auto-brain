@@ -55,7 +55,7 @@ const stores: readonly Store[] = [
 ];
 
 async function serving(environment: Environment): Promise<ReasoningServer> {
-  const server = await servingReasoning([], { LOCAL_MODE: 'true', ...environment });
+  const server = await servingReasoning([], environment);
   onTestFinished(server.stop);
   await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
   return server;

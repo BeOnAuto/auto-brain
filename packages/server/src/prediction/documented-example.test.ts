@@ -40,7 +40,7 @@ async function forecastRun(): Promise<unknown> {
 
 describe('the workflow of the prediction function format, through the server', { timeout: testTimeoutMs }, () => {
   it('answers no forecast before weekly-orders has an active version, and the forecast of its version after a build', async () => {
-    server = await servingReasoning([], { LOCAL_MODE: 'true', WORKFLOW_SWEEP_INTERVAL: 'PT0.05S' });
+    server = await servingReasoning([], { WORKFLOW_SWEEP_INTERVAL: 'PT0.05S' });
     await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
     const upload = await uploaded(server.origin, orderRows);
     const created = [
@@ -94,7 +94,7 @@ function requestOfSendBuild(): Promise<{ readonly run_id: string; readonly messa
 
 describe('the function a build of the prediction function format is sent through', { timeout: testTimeoutMs }, () => {
   it('is saved and named under source.through, and its request names the build and its routes and takes its answer', async () => {
-    server = await servingReasoning([], { LOCAL_MODE: 'true', WORKFLOW_SWEEP_INTERVAL: 'PT0.05S' });
+    server = await servingReasoning([], { WORKFLOW_SWEEP_INTERVAL: 'PT0.05S' });
     await server.call('POST', '/v1/orgs/acme/playbooks', { body: { playbook: 'alpha', name: 'Alpha' } });
     await uploaded(server.origin, orderRows);
     const created = [

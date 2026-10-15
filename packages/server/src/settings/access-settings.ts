@@ -1,21 +1,19 @@
-import type { Environment, ServerConfig } from '@on.auto/config';
+import type { Environment } from '@on.auto/config';
 import { autoIdentityService, readApiKeys, type ApiKey, type SignInSettings } from '@on.auto/identity';
 import { Config, ConfigProvider, Effect, Option } from 'effect';
 
 import type { LogFormat, LogLevelSetting } from '../logging/log-formats.ts';
 import { InvalidSettingsError } from './invalid-settings-error.ts';
-import { IssuerOrigin, namesALoopbackHost, Origin, ownLoopbackOrigin, PublicOrigin } from './origin.ts';
+import { IssuerOrigin, namesALoopbackHost, Origin, PublicOrigin } from './origin.ts';
 
 export interface AccessSettings {
   readonly allowedOrigins: readonly string[];
-  readonly localMode: boolean;
   readonly logFormat: LogFormat;
   readonly logLevel: LogLevelSetting;
 }
 
 const accessSettings = Config.all({
   allowedOrigins: Config.Array(Origin, 'ALLOWED_ORIGINS').pipe(Config.withDefault([])),
-  localMode: Config.Boolean('LOCAL_MODE').pipe(Config.withDefault(false)),
   logFormat: Config.Literals(['json', 'pretty', 'console'], 'LOG_FORMAT').pipe(Config.withDefault('json')),
   logLevel: Config.Literals(['debug', 'info', 'warn', 'error'], 'LOG_LEVEL').pipe(Config.withDefault('info')),
 });
@@ -48,21 +46,16 @@ function isUsable(publicUrl: string): boolean {
   return publicUrl.startsWith('https://') || namesALoopbackHost(publicUrl);
 }
 
-export function readCredentialSettings(
-  environment: Environment,
-  server: ServerConfig,
-  localMode: boolean,
-): CredentialSettings {
+export function readCredentialSettings(environment: Environment): CredentialSettings {
   const { publicUrl, issuer } = Effect.runSync(
     asInvalidSettings(signInSettings.parse(ConfigProvider.fromEnvRecord(environment))),
   );
   if (Option.isSome(publicUrl) && !isUsable(publicUrl.value)) {
     throw new InvalidSettingsError({ message: httpOffLoopback });
   }
-  const reachedAt = localMode ? publicUrl : Option.orElse(publicUrl, () => ownLoopbackOrigin(server));
   return {
     apiKeys: readApiKeys(environment),
     identityIssuer: issuer,
-    signIn: Option.isSome(reachedAt) ? { issuer, publicUrl: reachedAt.value } : undefined,
+    signIn: Option.isSome(publicUrl) ? { issuer, publicUrl: publicUrl.value } : undefined,
   };
 }
