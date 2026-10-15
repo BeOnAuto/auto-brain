@@ -83,9 +83,7 @@ describe('the overview of a reasoning function without an input schema or instru
     expect(sectionOf(overview, 'What it is told')).toBe(
       [
         'Its message, with the values of each run in place of the names in bold:',
-        '*When input.vip:*',
-        'Treat them as a VIP.',
-        'Hello **name**.\n',
+        'Treat them as a VIP when input.vip. Hello **name**.\n',
       ].join('\n\n'),
     );
   });

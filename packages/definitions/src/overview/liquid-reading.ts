@@ -1,6 +1,7 @@
 import { Tokenizer, TypeGuards } from 'liquidjs';
 
 import { linesOf, type LineOfOffset } from '../template/engine-failure.ts';
+import { withInlineConstructs } from './inline-constructs.ts';
 import { blocksOf, type Piece, type TextPiece } from './liquid-phrases.ts';
 import { paragraph, type OverviewBlock } from './overview.ts';
 
@@ -117,7 +118,7 @@ function withinBound(pieces: readonly Piece[]): Bounded {
 
 function readOf(pieces: readonly Piece[], lineOf: LineOfOffset): readonly OverviewBlock[] {
   const { kept, cutAt } = withinBound(pieces);
-  const blocks = blocksOf(kept);
+  const blocks = blocksOf(withInlineConstructs(kept, lineOf));
   return cutAt === undefined
     ? blocks
     : [...blocks, paragraph(`… The rest is in the source, from line ${lineOf(cutAt)}.`)];

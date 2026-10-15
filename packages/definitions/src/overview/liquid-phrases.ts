@@ -1,6 +1,6 @@
 import { Tokenizer, TypeGuards } from 'liquidjs';
 
-import { named, paragraph, type OverviewBlock, type Phrase } from './overview.ts';
+import { named, paragraph, type OverviewBlock, type Phrase, type Phrases } from './overview.ts';
 
 export interface TextPiece {
   readonly kind: 'text';
@@ -17,7 +17,7 @@ interface OutputPiece {
   readonly end: number;
 }
 
-interface TagPiece {
+export interface TagPiece {
   readonly kind: 'tag';
   readonly name: string;
   readonly args: string;
@@ -27,6 +27,18 @@ interface TagPiece {
 }
 
 export type Piece = TextPiece | OutputPiece | TagPiece;
+
+interface InlineConstruct {
+  readonly kind: 'inline';
+  readonly phrases: Phrases;
+}
+
+export type ReadPiece = Piece | InlineConstruct;
+
+interface Loop {
+  readonly item: string;
+  readonly list: string;
+}
 
 interface Line {
   readonly line: string;
@@ -58,25 +70,26 @@ function lastNameIn(content: string): string | undefined {
   return last;
 }
 
-function asWritten(args: string): string {
+export function asWritten(args: string): string {
   return args.trim().replaceAll(/\s+/gu, ' ');
 }
 
-function loopUnits(args: string, written: string): readonly Unit[] {
+export function loopOf(args: string): Loop | undefined {
   const { item, list } = loop.exec(args)?.groups ?? {};
-  return item === undefined || list === undefined
-    ? [{ code: written }]
-    : [{ line: `For each ${item} of ${asWritten(list)}:` }];
+  return item === undefined || list === undefined ? undefined : { item, list: asWritten(list) };
 }
 
-function blockEndUnits(name: string, written: string): readonly Unit[] {
-  if (endsOfReadBlocks.has(name)) {
-    return [paragraphBreak];
-  }
-  return blockEnd.test(name) ? [] : [{ code: written }];
+function loopUnits({ args, written }: TagPiece): readonly Unit[] {
+  const read = loopOf(args);
+  return read === undefined ? [{ code: written }] : [{ line: `For each ${read.item} of ${read.list}:` }];
 }
 
-function tagUnits({ name, args, written }: TagPiece): readonly Unit[] {
+function tagPhrases({ name, written }: TagPiece): Phrases {
+  return name === 'raw' || blockEnd.test(name) ? [] : [{ code: written }];
+}
+
+function tagUnits(piece: TagPiece): readonly Unit[] {
+  const { name, args } = piece;
   switch (name) {
     case 'if': {
       return [{ line: `When ${asWritten(args)}:` }];
@@ -91,26 +104,31 @@ function tagUnits({ name, args, written }: TagPiece): readonly Unit[] {
       return [{ line: 'Otherwise:' }];
     }
     case 'for': {
-      return loopUnits(args, written);
-    }
-    case 'raw': {
-      return [];
+      return loopUnits(piece);
     }
     default: {
-      return blockEndUnits(name, written);
+      return endsOfReadBlocks.has(name) ? [paragraphBreak] : tagPhrases(piece);
     }
   }
 }
 
-function unitsOf(piece: Piece): readonly Unit[] {
+function outputPhrase({ content, written }: OutputPiece): Phrase {
+  const name = lastNameIn(content);
+  return name === undefined ? { code: written } : named(name);
+}
+
+export function phrasesOf(piece: ReadPiece): Phrases {
   if (piece.kind === 'text') {
     return [piece.text];
   }
-  if (piece.kind === 'tag') {
-    return tagUnits(piece);
+  if (piece.kind === 'output') {
+    return [outputPhrase(piece)];
   }
-  const name = lastNameIn(piece.content);
-  return [name === undefined ? { code: piece.written } : named(name)];
+  return piece.kind === 'tag' ? tagPhrases(piece) : piece.phrases;
+}
+
+function unitsOf(piece: ReadPiece): readonly Unit[] {
+  return piece.kind === 'tag' ? tagUnits(piece) : phrasesOf(piece);
 }
 
 function paragraphsIn(text: string): readonly string[] {
@@ -140,7 +158,7 @@ function isLine(mark: Unit): mark is Line {
   return typeof mark === 'object' && 'line' in mark;
 }
 
-function merged(phrases: readonly Phrase[]): readonly Phrase[] {
+function merged(phrases: Phrases): Phrases {
   const joined: Phrase[] = [];
   for (const phrase of phrases) {
     const previous = joined.at(-1);
@@ -153,7 +171,7 @@ function merged(phrases: readonly Phrase[]): readonly Phrase[] {
   return joined;
 }
 
-function trimmed(phrases: readonly Phrase[]): readonly Phrase[] {
+export function trimmed(phrases: Phrases): Phrases {
   const whole = merged(phrases);
   const last = whole.length - 1;
   return whole
@@ -167,7 +185,7 @@ function trimmed(phrases: readonly Phrase[]): readonly Phrase[] {
     .filter((phrase) => phrase !== '');
 }
 
-export function blocksOf(pieces: readonly Piece[]): readonly OverviewBlock[] {
+export function blocksOf(pieces: readonly ReadPiece[]): readonly OverviewBlock[] {
   const blocks: OverviewBlock[] = [];
   let current: Phrase[] = [];
   const close = (): void => {

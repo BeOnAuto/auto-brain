@@ -39,16 +39,7 @@ Its trainer reads the brief first, with the values of each build in place of the
 Fit a model of the weekly **target** of each of **series** regions, in **unit**,
 over **window** weeks from **first** to **last**.
 Predict **horizons** weeks ahead. The features are
-
-*For each feature of dataset.features:*
-
-**name** (**as**)
-
-*Unless forloop.last:*
-
-,
-
-.
+each feature of dataset.features as **name** (**as**), separated by commas.
 
 *For each rule of function.rules:*
 

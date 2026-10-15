@@ -55,12 +55,13 @@ describe('an output that reads no value', () => {
     );
   });
 
-  it('writes a condition, its alternatives and a loop as italic lines of their own, and the end of each as the end of its paragraph', () => {
+  it('writes a condition, its alternatives and a loop that span lines as italic lines of their own, and the end of each as the end of its paragraph', () => {
     expect(
       read(
         [
           'Dear customer,',
-          '{% if input.vip %}Treat this customer as a VIP.{% elsif input.score  >  3 %}Be warm.{% else %}Be kind.{% endif %} Thank them.',
+          '{% if input.vip %}Treat this customer as a VIP.',
+          '{% elsif input.score  >  3 %}Be warm.{% else %}Be kind.{% endif %} Thank them.',
           `{% for item in input.items${' '.repeat(5000)}limit: 3 %}- {{ item.name }}`,
           '{% endfor %}',
         ].join('\n'),
@@ -82,28 +83,16 @@ describe('an output that reads no value', () => {
   });
 });
 
-describe('an unless block', () => {
+describe('an unless block that spans lines', () => {
   it('is an italic line of its own, its else the other case, and its end the end of its paragraph', () => {
     expect(
       read(
-        [
-          '{% for item in input.items %}{{ item.name }}{% unless forloop.last %}, {% endunless %}{% endfor %}.',
-          '{% unless input.quiet   or input.away %}Speak up.{% else %}Write.{% endunless %} Then listen.',
-        ].join('\n'),
+        ['{% unless input.quiet   or input.away %}Speak up.', '{% else %}Write.{% endunless %} Then listen.'].join(
+          '\n',
+        ),
       ),
     ).toBe(
-      [
-        '*For each item of input.items:*',
-        '**name**',
-        '*Unless forloop.last:*',
-        ',',
-        '.',
-        '*Unless input.quiet or input.away:*',
-        'Speak up.',
-        '*Otherwise:*',
-        'Write.',
-        'Then listen.\n',
-      ].join('\n\n'),
+      ['*Unless input.quiet or input.away:*', 'Speak up.', '*Otherwise:*', 'Write.', 'Then listen.\n'].join('\n\n'),
     );
   });
 });
