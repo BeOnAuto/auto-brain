@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.10.0](https://github.com/BeOnAuto/runtime/compare/v0.9.1...v0.10.0) (2026-10-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* **server:** `pnpm dev` and `npx @on.auto/runtime` no longer start in local mode; set `LOCAL_MODE=true` to develop without signing in.
+
+### Features
+
+* **definitions:** every definition carries an overview, the definition in plain words ([#191](https://github.com/BeOnAuto/runtime/issues/191)) ([e0727e1](https://github.com/BeOnAuto/runtime/commit/e0727e18b65af55237e05a3500b6ebcd30732e86))
+* **global:** a runtime on a laptop runs in local mode until PUBLIC_URL signs people in ([#202](https://github.com/BeOnAuto/runtime/issues/202)) ([b7d384f](https://github.com/BeOnAuto/runtime/commit/b7d384fd67ba77e0228a39381ce4f7dc8888861a))
+* **global:** the overview ends with the definitions that use the definition ([#198](https://github.com/BeOnAuto/runtime/issues/198)) ([fd6dd4e](https://github.com/BeOnAuto/runtime/commit/fd6dd4e27ab9c9ffbd950e4580f9f1decb043873))
+* **global:** the overview of interaction and recall functions ([#196](https://github.com/BeOnAuto/runtime/issues/196)) ([7649f8a](https://github.com/BeOnAuto/runtime/commit/7649f8a501c309b6ec9fb0107e4228d1cc8a8658))
+* **global:** the overview of prediction functions and workflows ([#197](https://github.com/BeOnAuto/runtime/issues/197)) ([ede7c12](https://github.com/BeOnAuto/runtime/commit/ede7c12d3eebf3243b033a14f05663298d0b8ee6))
+* **identity:** a page at an allowed origin sends the session the identity service gave it ([#194](https://github.com/BeOnAuto/runtime/issues/194)) ([0fcddb0](https://github.com/BeOnAuto/runtime/commit/0fcddb03504bca078be9f54bcaf2b228e48e7c5f))
+* **identity:** a person signs in through the Auto identity service and is named on the facts ([#176](https://github.com/BeOnAuto/runtime/issues/176)) ([ca5365c](https://github.com/BeOnAuto/runtime/commit/ca5365cbb4a5ddab49fe8474478604bb1806f351))
+* **identity:** a signed-in person's permissions are the scopes their token was granted ([#192](https://github.com/BeOnAuto/runtime/issues/192)) ([eb6f602](https://github.com/BeOnAuto/runtime/commit/eb6f6023e46ba13ea6b1df40603ec60a07d433ad))
+* **server:** a person signs in by default, wherever the runtime runs ([#190](https://github.com/BeOnAuto/runtime/issues/190)) ([ce8a0a3](https://github.com/BeOnAuto/runtime/commit/ce8a0a3597363742cb68df8dbc2b489969af639d))
+* **server:** the OpenAPI document of each release is kept in the repository ([#187](https://github.com/BeOnAuto/runtime/issues/187)) ([6e6210f](https://github.com/BeOnAuto/runtime/commit/6e6210f136fa256368653324908a72c04539b55b))
+* **server:** traces, metrics and logs over OpenTelemetry, beside the ledger ([#183](https://github.com/BeOnAuto/runtime/issues/183)) ([e51fd53](https://github.com/BeOnAuto/runtime/commit/e51fd538761b11950450ec5b38716483b8834d8c))
+* **tool-servers:** a tool server is an MCP server or an HTTP API with an OpenAPI document ([#177](https://github.com/BeOnAuto/runtime/issues/177)) ([b03554d](https://github.com/BeOnAuto/runtime/commit/b03554d2f883564361222cb282f6a2c89764ba58))
+* **tool-servers:** search, introspect, validate, dry_run and execute over the tool servers ([#180](https://github.com/BeOnAuto/runtime/issues/180)) ([e94dbd8](https://github.com/BeOnAuto/runtime/commit/e94dbd8c586add55f46f8935b425c79467ce4db6))
+
+
+### Bug Fixes
+
+* **api:** a page may read the challenge of a refusal across origins ([#193](https://github.com/BeOnAuto/runtime/issues/193)) ([6c59e85](https://github.com/BeOnAuto/runtime/commit/6c59e854ecc8f2d33b3ac09d6819d84f055e8033))
+* **api:** a sign-in asks the identity service for the organization scope ([#189](https://github.com/BeOnAuto/runtime/issues/189)) ([9453526](https://github.com/BeOnAuto/runtime/commit/9453526e96bd852bbd0fbbd04d6f2129b12ed63e))
+* **definitions:** the overview reads a condition or a loop written within a line as a phrase of it ([#204](https://github.com/BeOnAuto/runtime/issues/204)) ([abcb304](https://github.com/BeOnAuto/runtime/commit/abcb3046e7211e5082f90a2ce3487b803862a114))
+* **global:** four scans of outside text run in linear time ([#195](https://github.com/BeOnAuto/runtime/issues/195)) ([3fdcbf2](https://github.com/BeOnAuto/runtime/commit/3fdcbf28738dab5527d3945c944103127d4caab0))
+* **identity:** a session's organization is read from the claim the identity service puts it in ([#201](https://github.com/BeOnAuto/runtime/issues/201)) ([7cca14b](https://github.com/BeOnAuto/runtime/commit/7cca14b5d151b64d037a41502c933103c3ca2e91))
+
 ## [0.9.1](https://github.com/BeOnAuto/runtime/compare/v0.9.0...v0.9.1) (2026-10-13)
 
 
