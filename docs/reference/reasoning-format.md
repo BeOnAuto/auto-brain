@@ -358,7 +358,7 @@ More rules:
 1. The `description`, or that the function has none yet.
 2. What the function needs: each field of `input.schema`, with its type, its bounds and the value `input.default` gives it.
 3. What it produces: text, or each field of `output.schema`.
-4. The model, and each tool it may call.
+4. The model, and each tool it may call. When the function names any tools, a diagram draws the function, its model and those tools.
 5. What the model is told: the instructions and the message, as a person reads them.
 6. **Used by**: the active definitions of the playbook that use this function, read each time it is returned, and left out when there are none.
 
