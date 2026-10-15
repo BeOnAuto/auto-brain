@@ -29,6 +29,7 @@ export function summarize({
     ...(description === undefined ? {} : { description }),
     ...(input.schema === undefined ? {} : { inputSchema: input.schema.document }),
     ...(output.type === 'json' ? { outputSchema: output.schema.document } : {}),
+    ...(output.type === 'json' && output.shape !== undefined ? { details: { shape: output.shape.name } } : {}),
     warnings,
   };
 }
